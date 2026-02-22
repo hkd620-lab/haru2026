@@ -11,3 +11,4 @@ frontend/.env.local
 # 패키지 의존성 폴더 (Git에 올리면 안 됨)
 node_modules/
 */node_modules/
+frontend/src/app/backup_*/

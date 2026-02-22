@@ -1,6 +1,8 @@
-import { X, TestTube2 } from 'lucide-react';
+import { X, TestTube2, Wand2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getTestData } from '../data/testData';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { toast } from 'sonner';
 
 type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록';
 
@@ -11,6 +13,10 @@ interface FormatModalProps {
   recordId: string;
   initialData?: Record<string, string>;
   onSave: (formatData: Record<string, string>) => Promise<void>;
+}
+
+interface PolishResult {
+  text: string;
 }
 
 // 형식별 입력 필드 정의
@@ -60,19 +66,37 @@ const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placehol
   ],
 };
 
+// 형식별 prefix 매핑
+const FORMAT_PREFIX: Record<RecordFormat, string> = {
+  '일기': 'diary',
+  '에세이': 'essay',
+  '선교보고': 'mission',
+  '일반보고': 'report',
+  '업무일지': 'work',
+  '여행기록': 'travel',
+};
+
 export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, onSave }: FormatModalProps) {
   const [formData, setFormData] = useState<Record<string, string>>(initialData);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPolishing, setIsPolishing] = useState(false);
+  const [polishedContent, setPolishedContent] = useState('');
+  const [showPolishModal, setShowPolishModal] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setFormData(initialData);
+      setPolishedContent('');
+      setShowPolishModal(false);
     }
   }, [isOpen, initialData]);
 
   if (!isOpen) return null;
 
   const fields = FORMAT_FIELDS[format];
+  const prefix = FORMAT_PREFIX[format];
+  const sayuKey = `${prefix}_sayu`;
+  const existingSayu = initialData[sayuKey];
 
   const handleChange = (key: string, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -89,184 +113,410 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     setIsSaving(true);
     try {
       await onSave(formData);
+      toast.success('저장되었습니다!');
       onClose();
     } catch (error) {
       console.error('저장 중 오류:', error);
+      toast.error('저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
   };
 
+  // 🌟 형식별 AI 다듬기
+  const handlePolishThisFormat = async () => {
+    setIsPolishing(true);
+    toast.info(`${format} AI 다듬기를 시작합니다...`);
+
+    try {
+      const functions = getFunctions(undefined, 'asia-northeast3');
+      const polishContentFunc = httpsCallable(functions, 'polishContent');
+
+      // 이 형식의 데이터만 수집
+      const contentValues = fields
+        .map(field => formData[field.key])
+        .filter(v => v && v.trim())
+        .join('\n\n');
+
+      if (!contentValues.trim()) {
+        toast.error('다듬을 내용이 없습니다. 먼저 작성해주세요.');
+        setIsPolishing(false);
+        return;
+      }
+
+      const result = await polishContentFunc({
+        text: `다음은 "${format}" 형식으로 작성된 기록입니다. 이 내용을 자연스럽고 읽기 좋게 다듬어주세요.\n\n${contentValues}`,
+        format: prefix
+      });
+
+      const polished = (result.data as PolishResult).text;
+      setPolishedContent(polished);
+      setShowPolishModal(true);
+      toast.success('AI 다듬기 완료!');
+    } catch (error: any) {
+      console.error('AI 처리 실패:', error);
+      toast.error('AI 연결에 실패했습니다.');
+    } finally {
+      setIsPolishing(false);
+    }
+  };
+
+  // 다듬기 저장
+  const handleSaveSayu = async () => {
+    const updateData = {
+      ...formData,
+      [sayuKey]: polishedContent,
+      [`${prefix}_polished`]: true,
+      [`${prefix}_polishedAt`]: new Date().toISOString(),
+    };
+
+    setIsSaving(true);
+    try {
+      await onSave(updateData);
+      toast.success(`${format} 다듬기가 저장되었습니다!`);
+      setShowPolishModal(false);
+      onClose();
+    } catch (error) {
+      console.error('다듬기 저장 실패:', error);
+      toast.error('저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 작성된 필드가 있는지 확인
+  const hasContent = fields.some(field => {
+    const value = formData[field.key];
+    return value && value.trim().length > 0;
+  });
+
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
-        padding: '20px',
-      }}
-      onClick={onClose}
-    >
+    <>
       <div
         style={{
-          backgroundColor: '#FAF9F6',
-          borderRadius: 12,
-          maxWidth: 600,
-          width: '100%',
-          maxHeight: '85vh',
-          overflow: 'hidden',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
           display: 'flex',
-          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px',
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={onClose}
       >
-        {/* Header */}
         <div
           style={{
-            padding: '20px 24px',
-            borderBottom: '1px solid #e5e5e5',
+            backgroundColor: '#FAF9F6',
+            borderRadius: 12,
+            maxWidth: 600,
+            width: '100%',
+            maxHeight: '85vh',
+            overflow: 'hidden',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            backgroundColor: '#fff',
+            flexDirection: 'column',
           }}
+          onClick={(e) => e.stopPropagation()}
         >
-          <h2 style={{ fontSize: 18, color: '#1A3C6E', fontWeight: 600, margin: 0 }}>
-            {format} 작성
-          </h2>
-          <button
-            onClick={onClose}
+          {/* Header */}
+          <div
             style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 8,
+              padding: '20px 24px',
+              borderBottom: '1px solid #e5e5e5',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <X style={{ width: 20, height: 20, color: '#666' }} />
-          </button>
-        </div>
-
-        {/* Test Data Button */}
-        <div style={{ padding: '16px 24px', backgroundColor: '#f8f9fa', borderBottom: '1px solid #e5e5e5' }}>
-          <button
-            onClick={handleFillTestData}
-            style={{
-              width: '100%',
-              padding: '10px 16px',
-              fontSize: 13,
-              border: '1px solid #1A3C6E',
-              borderRadius: 8,
+              justifyContent: 'space-between',
               backgroundColor: '#fff',
-              color: '#1A3C6E',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              fontWeight: 500,
             }}
           >
-            <TestTube2 style={{ width: 16, height: 16 }} />
-            📋 테스트 데이터 채우기
-          </button>
-        </div>
+            <div>
+              <h2 style={{ fontSize: 18, color: '#1A3C6E', fontWeight: 600, margin: 0 }}>
+                {format} 작성
+              </h2>
+              {existingSayu && (
+                <p style={{ fontSize: 12, color: '#10b981', margin: '4px 0 0 0' }}>
+                  ✅ 다듬기 완료
+                </p>
+              )}
+            </div>
+            <button
+              onClick={onClose}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <X style={{ width: 20, height: 20, color: '#666' }} />
+            </button>
+          </div>
 
-        {/* Content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {fields.map((field) => (
-              <div key={field.key}>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: 13,
-                    color: '#666',
-                    marginBottom: 8,
-                    fontWeight: 500,
-                  }}
-                >
-                  {field.label}
-                </label>
-                <textarea
-                  value={formData[field.key] || ''}
-                  onChange={(e) => handleChange(field.key, e.target.value)}
-                  placeholder={field.placeholder}
-                  rows={field.rows || 4}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    fontSize: 14,
-                    border: '1px solid #e5e5e5',
-                    borderRadius: 8,
-                    backgroundColor: '#fff',
-                    color: '#333',
-                    resize: 'vertical',
-                    fontFamily: 'inherit',
-                    outline: 'none',
-                  }}
-                />
-              </div>
-            ))}
+          {/* Test Data Button */}
+          <div style={{ padding: '16px 24px', backgroundColor: '#f8f9fa', borderBottom: '1px solid #e5e5e5' }}>
+            <button
+              onClick={handleFillTestData}
+              style={{
+                width: '100%',
+                padding: '10px 16px',
+                fontSize: 13,
+                border: '1px solid #1A3C6E',
+                borderRadius: 8,
+                backgroundColor: '#fff',
+                color: '#1A3C6E',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                fontWeight: 500,
+              }}
+            >
+              <TestTube2 style={{ width: 16, height: 16 }} />
+              📋 테스트 데이터 채우기
+            </button>
+          </div>
+
+          {/* Content */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {fields.map((field) => (
+                <div key={field.key}>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: 13,
+                      color: '#666',
+                      marginBottom: 8,
+                      fontWeight: 500,
+                    }}
+                  >
+                    {field.label}
+                  </label>
+                  <textarea
+                    value={formData[field.key] || ''}
+                    onChange={(e) => handleChange(field.key, e.target.value)}
+                    placeholder={field.placeholder}
+                    rows={field.rows || 4}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      fontSize: 14,
+                      border: '1px solid #e5e5e5',
+                      borderRadius: 8,
+                      backgroundColor: '#fff',
+                      color: '#333',
+                      resize: 'vertical',
+                      fontFamily: 'inherit',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div
+            style={{
+              padding: '16px 24px',
+              borderTop: '1px solid #e5e5e5',
+              backgroundColor: '#fff',
+            }}
+          >
+            {/* AI 다듬기 버튼 */}
+            {hasContent && (
+              <button
+                onClick={handlePolishThisFormat}
+                disabled={isPolishing}
+                style={{
+                  width: '100%',
+                  padding: '12px 20px',
+                  fontSize: 14,
+                  border: 'none',
+                  borderRadius: 8,
+                  backgroundColor: '#10b981',
+                  color: '#fff',
+                  cursor: isPolishing ? 'not-allowed' : 'pointer',
+                  opacity: isPolishing ? 0.7 : 1,
+                  fontWeight: 600,
+                  marginBottom: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+              >
+                {isPolishing ? (
+                  <>
+                    <Wand2 className="animate-spin" style={{ width: 16, height: 16 }} />
+                    AI 다듬는 중...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 style={{ width: 16, height: 16 }} />
+                    ✨ 이 형식만 AI 다듬기
+                  </>
+                )}
+              </button>
+            )}
+
+            {/* 저장/취소 버튼 */}
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button
+                onClick={onClose}
+                disabled={isSaving}
+                style={{
+                  padding: '10px 20px',
+                  fontSize: 14,
+                  border: '1px solid #e5e5e5',
+                  borderRadius: 8,
+                  backgroundColor: '#fff',
+                  color: '#666',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  opacity: isSaving ? 0.5 : 1,
+                }}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={isSaving}
+                style={{
+                  padding: '10px 20px',
+                  fontSize: 14,
+                  border: 'none',
+                  borderRadius: 8,
+                  backgroundColor: '#1A3C6E',
+                  color: '#FAF9F6',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  opacity: isSaving ? 0.7 : 1,
+                  fontWeight: 500,
+                }}
+              >
+                {isSaving ? '저장 중...' : '💾 원본 저장'}
+              </button>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Footer */}
+      {/* 다듬기 미리보기 모달 */}
+      {showPolishModal && (
         <div
           style={{
-            padding: '16px 24px',
-            borderTop: '1px solid #e5e5e5',
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
             display: 'flex',
-            gap: 12,
-            justifyContent: 'flex-end',
-            backgroundColor: '#fff',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+            padding: '20px',
           }}
+          onClick={() => setShowPolishModal(false)}
         >
-          <button
-            onClick={onClose}
-            disabled={isSaving}
+          <div
             style={{
-              padding: '10px 20px',
-              fontSize: 14,
-              border: '1px solid #e5e5e5',
-              borderRadius: 8,
-              backgroundColor: '#fff',
-              color: '#666',
-              cursor: isSaving ? 'not-allowed' : 'pointer',
-              opacity: isSaving ? 0.5 : 1,
+              backgroundColor: '#FAF9F6',
+              borderRadius: 12,
+              maxWidth: 700,
+              width: '100%',
+              maxHeight: '85vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
             }}
+            onClick={(e) => e.stopPropagation()}
           >
-            취소
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={isSaving}
-            style={{
-              padding: '10px 20px',
-              fontSize: 14,
-              border: 'none',
-              borderRadius: 8,
-              backgroundColor: '#1A3C6E',
-              color: '#FAF9F6',
-              cursor: isSaving ? 'not-allowed' : 'pointer',
-              opacity: isSaving ? 0.7 : 1,
-              fontWeight: 500,
-            }}
-          >
-            {isSaving ? '저장 중...' : '저장'}
-          </button>
+            <div
+              style={{
+                padding: '24px',
+                borderBottom: '1px solid #e5e5e5',
+                backgroundColor: '#fff',
+              }}
+            >
+              <h2 style={{ fontSize: 20, color: '#1A3C6E', fontWeight: 600, margin: 0 }}>
+                ✨ {format} 다듬기
+              </h2>
+              <p style={{ fontSize: 13, color: '#999', marginTop: 8, marginBottom: 0 }}>
+                AI가 다듬은 결과입니다
+              </p>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+              <div
+                style={{
+                  backgroundColor: '#fff',
+                  padding: '20px',
+                  borderRadius: 8,
+                  border: '1px solid #e5e5e5',
+                  whiteSpace: 'pre-wrap',
+                  fontSize: 14,
+                  lineHeight: 1.8,
+                  color: '#333',
+                }}
+              >
+                {polishedContent}
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: '20px 24px',
+                borderTop: '1px solid #e5e5e5',
+                display: 'flex',
+                gap: 12,
+                justifyContent: 'flex-end',
+                backgroundColor: '#fff',
+              }}
+            >
+              <button
+                onClick={() => setShowPolishModal(false)}
+                style={{
+                  padding: '12px 24px',
+                  fontSize: 14,
+                  border: '1px solid #e5e5e5',
+                  borderRadius: 8,
+                  backgroundColor: '#fff',
+                  color: '#666',
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSaveSayu}
+                disabled={isSaving}
+                style={{
+                  padding: '12px 32px',
+                  fontSize: 15,
+                  border: 'none',
+                  borderRadius: 8,
+                  backgroundColor: '#10b981',
+                  color: '#fff',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  opacity: isSaving ? 0.7 : 1,
+                  fontWeight: 600,
+                  letterSpacing: '0.05em',
+                }}
+              >
+                {isSaving ? '저장 중...' : '💾 다듬기 저장'}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </>
   );
 }

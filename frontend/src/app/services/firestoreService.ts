@@ -8,6 +8,8 @@ import {
   deleteDoc,
   query,
   orderBy,
+  where,
+  limit,
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -34,12 +36,44 @@ export interface HaruRecord {
 }
 
 export const firestoreService = {
+  // 📝 기록 저장 또는 업데이트 (같은 날짜면 덮어쓰기)
+  async saveRecord(uid: string, recordData: Partial<HaruRecord>): Promise<string> {
+    const recordsRef = collection(db, 'users', uid, 'records');
+    
+    // 🔍 같은 날짜의 기록이 있는지 확인
+    if (recordData.date) {
+      const q = query(recordsRef, where('date', '==', recordData.date), limit(1));
+      const snapshot = await getDocs(q);
+      
+      if (!snapshot.empty) {
+        // 🔄 기존 기록 업데이트 (덮어쓰기)
+        const existingDoc = snapshot.docs[0];
+        const docRef = doc(db, 'users', uid, 'records', existingDoc.id);
+        await updateDoc(docRef, {
+          ...recordData,
+          updatedAt: serverTimestamp()
+        });
+        return existingDoc.id;
+      }
+    }
+    
+    // 📝 새 기록 생성
+    const newDocRef = doc(recordsRef);
+    const data = {
+      ...recordData,
+      uid,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    await setDoc(newDocRef, data);
+    return newDocRef.id;
+  },
+
   // 📖 읽기 - 모든 기록 가져오기
   async getRecords(uid: string): Promise<HaruRecord[]> {
     const recordsRef = collection(db, 'users', uid, 'records');
     const q = query(recordsRef, orderBy('date', 'desc'));
     const snapshot = await getDocs(q);
-    
     return snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
@@ -50,33 +84,15 @@ export const firestoreService = {
   async getRecord(uid: string, recordId: string): Promise<HaruRecord | null> {
     const docRef = doc(db, 'users', uid, 'records', recordId);
     const docSnap = await getDoc(docRef);
-    
     if (docSnap.exists()) {
       return { id: docSnap.id, ...docSnap.data() } as HaruRecord;
     }
     return null;
   },
 
-  // ✏️ 저장 - 새 기록 저장 (서재에서 사용)
-  async saveRecord(uid: string, recordData: Partial<HaruRecord>): Promise<string> {
-    const recordsRef = collection(db, 'users', uid, 'records');
-    const newDocRef = doc(recordsRef); // 자동 ID 생성
-    
-    const data = {
-      ...recordData,
-      uid,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    };
-    
-    await setDoc(newDocRef, data);
-    return newDocRef.id;
-  },
-
-  // 🔄 수정 - 기존 기록 수정 (SAYU에서 사용)
+  // 🔄 수정 - 기존 기록 수정
   async updateRecord(uid: string, recordId: string, updates: Partial<HaruRecord>): Promise<void> {
     const docRef = doc(db, 'users', uid, 'records', recordId);
-    
     await updateDoc(docRef, {
       ...updates,
       updatedAt: serverTimestamp()
@@ -89,20 +105,18 @@ export const firestoreService = {
     await deleteDoc(docRef);
   },
 
-  // 📊 통계 - 기록 통계 가져오기 (SettingsPage용)
+  // 📊 통계 - 기록 통계 가져오기
   async getStats(uid: string) {
     const records = await this.getRecords(uid);
     const totalRecords = records.length;
     const polishedCount = records.filter((r) => r.polished).length;
     const sayuCount = records.filter((r) => r.sayuSavedAt).length;
     const formatCounts: Record<string, number> = {};
-    
     records.forEach((r) => {
       r.formats?.forEach((f) => {
         formatCounts[f] = (formatCounts[f] || 0) + 1;
       });
     });
-    
     return { totalRecords, polishedCount, sayuCount, formatCounts };
   },
 
