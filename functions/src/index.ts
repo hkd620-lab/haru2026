@@ -1,42 +1,74 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { setGlobalOptions } from "firebase-functions/v2";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import * as logger from "firebase-functions/logger";
+import { VertexAI } from "@google-cloud/vertexai";
+import { initializeApp } from "firebase-admin/app";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
+// 1. 초기화 (DB 및 환경 설정)
+initializeApp();
+const db = getFirestore();
 setGlobalOptions({ region: "asia-northeast3" });
 
-export const polishContent = onCall({ secrets: ["GEMINI_API_KEY"] }, async (request) => {
+// 2. Vertex AI 설정 (구글 추천 엔터프라이즈 방식)
+const project = "haru2026-8abb8";
+const location = "asia-northeast3";
+const vertexAI = new VertexAI({ project: project, location: location });
+
+// 허교장님께서 성공하신 2.5-flash 모델 적용
+const generativeModel = vertexAI.getGenerativeModel({
+  model: "gemini-2.5-flash", 
+});
+
+/* =========================================
+   3. [SAYU 다듬기] 원본 저장 + AI 교정
+========================================= */
+export const polishSayu = onCall(async (request) => {
   try {
-    const apiKey = (process.env.GEMINI_API_KEY || "").replace(/["']/g, "").trim();
-    if (!apiKey) throw new Error("API 키 누락");
+    const { observation, impression, comparison, action } = request.data;
+    const combinedText = `[관찰]: ${observation}\n[인상]: ${impression}\n[비교]: ${comparison}\n[실행]: ${action}`;
 
-    const text = request.data?.text || "";
-    if (!text) return { text: "내용을 입력해주세요." };
+    // [원본 저장] raw_sayu 폴더에 날것 그대로 기록
+    const rawDoc = await db.collection("raw_sayu").add({
+      sections: { observation, impression, comparison, action },
+      createdAt: FieldValue.serverTimestamp(),
+      status: "original"
+    });
 
-    const genAI = new GoogleGenerativeAI(apiKey);
+    // [AI 호출] 전문가용 Vertex AI 엔진 가동
+    const prompt = `너는 전문 교정 편집기다. 다음 내용을 정갈한 에세이로 다듬어줘. 내용을 지어내지 마라.\n\n[INPUT]\n${combinedText}`;
+    const result = await generativeModel.generateContent(prompt);
     
-    // ★★★ 팩트: 구글의 요구대로 가장 최신인 2.5 버전을 장착합니다! ★★★
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    // Vertex AI 응답에서 텍스트 추출
+    const response = await result.response;
+    const output = response.candidates?.[0].content.parts[0].text || "";
 
-    const prompt = `너는 전문 에디터야. 다음 내용을 자연스럽고 아름답게 다듬어줘:\n\n${text}`;
-    const result = await model.generateContent(prompt);
-    
-    return { text: result.response.text() };
-
+    return { 
+      text: output,
+      rawDocId: rawDoc.id 
+    };
   } catch (e: any) {
-    throw new HttpsError("internal", e.message);
+    logger.error("Vertex AI Error:", e);
+    throw new HttpsError("internal", e.message || "AI 처리 실패");
   }
 });
 
-export const generateSayu = onCall({ secrets: ["GEMINI_API_KEY"] }, async (request) => {
+/* =========================================
+   4. [최종 저장] 사용자가 승인한 글 저장
+========================================= */
+export const saveFinalSayu = onCall(async (request) => {
   try {
-    const apiKey = (process.env.GEMINI_API_KEY || "").replace(/["']/g, "").trim();
-    const genAI = new GoogleGenerativeAI(apiKey);
-    
-    // ★★★ 여기도 2.5 모델 적용 ★★★
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    
-    const result = await model.generateContent(request.data?.prompt || "오늘 하루를 짧은 일기로 작성해줘");
-    return { text: result.response.text() };
+    const { finalContent, rawDocId } = request.data;
+    if (!finalContent) throw new HttpsError("invalid-argument", "내용이 없습니다.");
+
+    const docRef = await db.collection("final_sayu").add({
+      content: finalContent,
+      relatedRawId: rawDocId || "", // 원본과 짝을 지어줌
+      savedAt: FieldValue.serverTimestamp(),
+      status: "final_confirmed"
+    });
+
+    return { success: true, id: docRef.id };
   } catch (e: any) {
     throw new HttpsError("internal", e.message);
   }
