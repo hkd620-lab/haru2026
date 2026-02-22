@@ -12,3 +12,7 @@ frontend/.env.local
 node_modules/
 */node_modules/
 frontend/src/app/backup_*/
+.firebase/
+frontend/dist/
+dist/
+build/
