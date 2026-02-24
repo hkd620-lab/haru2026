@@ -38,11 +38,11 @@ function SayuModal({ isOpen, onClose, content, originalData, format, dateLabel, 
     setIsSaving(true);
     try {
       onSave(editedContent, rating);
-      alert('✅ SAYU가 최종 저장되었습니다!');
+      toast.success('✅ SAYU가 최종 저장되었습니다!');
       onClose();
     } catch (error) {
       console.error('저장 실패:', error);
-      alert('❌ 저장에 실패했습니다. 다시 시도해주세요.');
+      toast.error('❌ 저장에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsSaving(false);
     }
@@ -446,33 +446,34 @@ export function SayuPage() {
     const dateStr = formatDateString(date);
     const record = records.find((r) => r.date === dateStr);
     if (!record) return false;
+    
     if (record.sayuSavedAt) return 'saved';
-    if (record.polished) return 'polished';
+    
+    const hasSayuField = Object.keys(record).some(key => 
+      key.endsWith('_sayu') && record[key] && String(record[key]).trim().length > 0
+    );
+    
+    if (hasSayuField) return 'polished';
+    
     return false;
   };
 
-  // 🆕 선택된 날짜의 형식 목록 가져오기
-  const getFormatsForDate = (dateStr: string | null) => {
-    if (!dateStr) return [];
-    const dateRecords = records.filter((r) => r.date === dateStr);
+  const getFormatsForDate = (record: HaruRecord | null) => {
+    if (!record || !record.formats) return [];
     
     const formatMap: Record<string, string> = {
-      'diary': '📔 일기',
-      'essay': '📖 에세이',
-      'mission': '✝️ 선교보고',
-      'report': '📊 일반보고',
-      'work': '💼 업무일지',
-      'travel': '✈️ 여행기록'
+      '일기': '📔 일기',
+      '에세이': '📖 에세이',
+      '선교보고': '✝️ 선교보고',
+      '일반보고': '📊 일반보고',
+      '업무일지': '💼 업무일지',
+      '여행기록': '✈️ 여행기록'
     };
     
-    const formats = dateRecords.map(r => {
-      const format = (r as any).format || 'diary';
-      return formatMap[format] || format;
-    }).filter((v, i, arr) => arr.indexOf(v) === i); // 중복 제거
-    
-    return formats;
+    return record.formats.map(format => formatMap[format] || format);
   };
 
+  // ✅ 수정된 handleDateClick: 주황색 점 클릭 시 형식별 SAYU를 합쳐서 모달 표시
   const handleDateClick = (date: Date | null) => {
     if (!date) return;
     const dateStr = formatDateString(date);
@@ -480,20 +481,67 @@ export function SayuPage() {
     const record = records.find((r) => r.date === dateStr);
     setSelectedRecord(record || null);
 
-    if (record && (record.sayuSavedAt || record.polished) && record.sayuContent) {
-      const originalData = collectOriginalData(record);
-      setSayuModalState({
-        isOpen: true,
-        content: record.sayuContent,
-        originalData: originalData,
-        dateLabel: new Date(dateStr + 'T00:00:00').toLocaleDateString('ko-KR', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          weekday: 'long',
-        }),
-        currentRating: record.mergeRating || 1,
-      });
+    if (record) {
+      // 최종 저장된 sayuContent가 있으면 바로 모달 열기 (파란색 점)
+      if (record.sayuContent) {
+        const originalData = collectOriginalData(record);
+        setSayuModalState({
+          isOpen: true,
+          content: record.sayuContent,
+          originalData: originalData,
+          dateLabel: new Date(dateStr + 'T00:00:00').toLocaleDateString('ko-KR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            weekday: 'long',
+          }),
+          currentRating: record.mergeRating || 1,
+        });
+      } else {
+        // sayuContent는 없지만 형식별 _sayu가 있는 경우 (주황색 점)
+        const formatNameMap: Record<string, string> = {
+          'diary': '📔 일기',
+          'essay': '📖 에세이',
+          'mission': '✝️ 선교보고',
+          'report': '📊 일반보고',
+          'work': '💼 업무일지',
+          'travel': '✈️ 여행기록'
+        };
+
+        const sayuContents: Array<{ format: string; content: string }> = [];
+        
+        Object.keys(record).forEach(key => {
+          if (key.endsWith('_sayu') && record[key] && String(record[key]).trim().length > 0) {
+            const formatKey = key.replace('_sayu', '');
+            const formatLabel = formatNameMap[formatKey] || formatKey;
+            sayuContents.push({
+              format: formatLabel,
+              content: String(record[key])
+            });
+          }
+        });
+        
+        if (sayuContents.length > 0) {
+          // 형식별로 구분해서 합치기
+          const mergedSayu = sayuContents
+            .map(item => `━━━━━━━━━━━━━━━━━━━\n${item.format}\n━━━━━━━━━━━━━━━━━━━\n\n${item.content}`)
+            .join('\n\n\n');
+          
+          const originalData = collectOriginalData(record);
+          setSayuModalState({
+            isOpen: true,
+            content: mergedSayu,
+            originalData: originalData,
+            dateLabel: new Date(dateStr + 'T00:00:00').toLocaleDateString('ko-KR', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              weekday: 'long',
+            }),
+            currentRating: record.mergeRating || 1,
+          });
+        }
+      }
     }
   };
 
@@ -508,7 +556,7 @@ export function SayuPage() {
   const handleSayuButtonClick = async () => {
     if (!selectedRecord) return;
 
-    if (selectedRecord.sayuSavedAt && selectedRecord.sayuContent) {
+    if (selectedRecord.sayuContent) {
       openSayuModal(selectedRecord.sayuContent, selectedRecord.mergeRating || 1);
       return;
     }
@@ -522,7 +570,9 @@ export function SayuPage() {
       
       let textToPolish = '';
       if (Object.keys(originalData).length > 0) {
-           textToPolish = Object.values(originalData).join('\n\n');
+          textToPolish = Object.entries(originalData)
+            .map(([key, value]) => `[${key}]\n${value}`)
+            .join('\n\n');
       } else if (selectedRecord.content) {
           textToPolish = selectedRecord.content;
       }
@@ -533,11 +583,13 @@ export function SayuPage() {
         return;
       }
 
-      const format = (selectedRecord as any).format || 'diary';
+      const formatString = selectedRecord.formats && selectedRecord.formats.length > 0 
+        ? selectedRecord.formats.join(', ') 
+        : '종합 기록';
       
       const result = await polishContentFunc({ 
         text: textToPolish,
-        format: format
+        format: formatString
       });
 
       const polished = (result.data as any).text;
@@ -602,10 +654,9 @@ export function SayuPage() {
 
   const days = getDaysInMonth(currentMonth);
   const monthName = currentMonth.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long' });
-  const showSayuButton = selectedRecord && (selectedRecord.content || selectedRecord.sayuContent);
+  const showSayuButton = selectedRecord && (Object.keys(collectOriginalData(selectedRecord)).length > 0 || selectedRecord.content || selectedRecord.sayuContent);
   
-  // 🆕 선택된 날짜의 형식들
-  const selectedDateFormats = getFormatsForDate(selectedDate);
+  const selectedDateFormats = getFormatsForDate(selectedRecord);
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
@@ -645,7 +696,7 @@ export function SayuPage() {
           {showSayuGuide && (
             <div className="px-3 pb-3">
               <p className="text-xs leading-relaxed" style={{ color: '#1A3C6E' }}>
-                📅 <strong>점이 있는 날짜</strong>를 누르면 글을 다시 열고 수정할 수 있습니다.
+                📅 <strong>점이 있는 날짜</strong>를 누르면 다듬은 글을 열어 최종 편집할 수 있습니다.
               </p>
             </div>
           )}
@@ -764,7 +815,7 @@ export function SayuPage() {
                 </div>
               )}
 
-              {!selectedRecord.polished && (
+              {!selectedRecord.polished && !selectedRecord.sayuSavedAt && !Object.keys(collectOriginalData(selectedRecord)).some(key => key.endsWith('_sayu')) && (
                 <div className="p-6 rounded-lg text-center" style={{ backgroundColor: '#FAF9F6', border: '1px solid #e5e5e5' }}>
                   <Sparkles className="w-12 h-12 mx-auto mb-3" style={{ color: '#1A3C6E', opacity: 0.5 }} />
                   <p className="text-sm mb-2" style={{ color: '#666' }}>
@@ -787,7 +838,6 @@ export function SayuPage() {
           )}
         </div>
 
-        {/* 🆕 달력 크기 2배로 키움 (168px → 336px) */}
         <div className="w-[80%] mx-auto lg:mx-0 lg:w-[336px] order-1 lg:order-2">
           <section className="bg-white rounded-lg p-4 lg:p-6 shadow-sm">
             <div className="flex items-center justify-between mb-3 lg:mb-4">
@@ -863,7 +913,6 @@ export function SayuPage() {
             </div>
           </section>
 
-          {/* 🆕 형식 표시 섹션 */}
           {selectedDate && selectedDateFormats.length > 0 && (
             <div className="mt-4 bg-white rounded-lg p-4 shadow-sm">
               <p className="text-xs font-semibold mb-2" style={{ color: '#1A3C6E' }}>
