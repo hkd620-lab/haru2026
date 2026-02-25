@@ -76,6 +76,35 @@ const FORMAT_PREFIX: Record<RecordFormat, string> = {
   '여행기록': 'travel',
 };
 
+// 🎨 Markdown을 HTML로 변환하는 간단한 함수
+function renderMarkdownToHtml(text: string): string {
+  let html = text;
+
+  // **굵은 글씨** → <strong>
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+  // • 항목 → <li>
+  html = html.replace(/^• (.+)$/gm, '<li>$1</li>');
+
+  // 연속된 <li>를 <ul>로 감싸기
+  html = html.replace(/(<li>.*<\/li>\n?)+/g, (match) => {
+    return '<ul>' + match + '</ul>';
+  });
+
+  // 문단 나누기 (빈 줄 기준)
+  const paragraphs = html.split('\n\n').filter(p => p.trim());
+  html = paragraphs.map(p => {
+    // ul 태그가 포함되어 있으면 그대로
+    if (p.includes('<ul>')) {
+      return p;
+    }
+    // 나머지는 <p> 태그로 감싸기
+    return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+  }).join('\n');
+
+  return html;
+}
+
 export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, onSave }: FormatModalProps) {
   const [formData, setFormData] = useState<Record<string, string>>(initialData);
   const [isSaving, setIsSaving] = useState(false);
@@ -145,7 +174,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       }
 
       const result = await polishContentFunc({
-        text: `다음은 "${format}" 형식으로 작성된 기록입니다. 이 내용을 자연스럽고 읽기 좋게 다듬어주세요.\n\n${contentValues}`,
+        text: contentValues,
         format: prefix
       });
 
@@ -161,7 +190,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     }
   };
 
-  // 다듬기 저장
+  // SAYU 저장
   const handleSaveSayu = async () => {
     const updateData = {
       ...formData,
@@ -173,11 +202,11 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     setIsSaving(true);
     try {
       await onSave(updateData);
-      toast.success(`${format} 다듬기가 저장되었습니다!`);
+      toast.success(`${format} SAYU가 저장되었습니다!`);
       setShowPolishModal(false);
       onClose();
     } catch (error) {
-      console.error('다듬기 저장 실패:', error);
+      console.error('SAYU 저장 실패:', error);
       toast.error('저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
@@ -238,7 +267,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
               </h2>
               {existingSayu && (
                 <p style={{ fontSize: 12, color: '#10b981', margin: '4px 0 0 0' }}>
-                  ✅ 다듬기 완료
+                  ✅ SAYU 완료
                 </p>
               )}
             </div>
@@ -407,7 +436,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
         </div>
       </div>
 
-      {/* 다듬기 미리보기 모달 */}
+      {/* 🎨 SAYU 미리보기 모달 - 품격 있는 문서 형식 */}
       {showPolishModal && (
         <div
           style={{
@@ -446,28 +475,95 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
               }}
             >
               <h2 style={{ fontSize: 20, color: '#1A3C6E', fontWeight: 600, margin: 0 }}>
-                ✨ {format} 다듬기
+                ✨ {format} SAYU
               </h2>
               <p style={{ fontSize: 13, color: '#999', marginTop: 8, marginBottom: 0 }}>
-                AI가 다듬은 결과입니다
+                AI가 정성껏 정돈한 결과입니다
               </p>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+            <div 
+              style={{ 
+                flex: 1, 
+                overflowY: 'auto', 
+                padding: '32px 40px',
+                backgroundColor: '#ffffff'
+              }}
+            >
               <div
                 style={{
-                  backgroundColor: '#fff',
-                  padding: '20px',
-                  borderRadius: 8,
-                  border: '1px solid #e5e5e5',
-                  whiteSpace: 'pre-wrap',
-                  fontSize: 14,
+                  fontSize: 15,
                   lineHeight: 1.8,
-                  color: '#333',
+                  color: '#2d3748',
                 }}
-              >
-                {polishedContent}
-              </div>
+                dangerouslySetInnerHTML={{ __html: renderMarkdownToHtml(polishedContent) }}
+              />
+              
+              <style>{`
+                /* 전역 스타일 */
+                div[dangerouslySetInnerHTML] {
+                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                }
+
+                /* 굵은 글씨 (항목명) */
+                div[dangerouslySetInnerHTML] strong {
+                  display: block;
+                  font-size: 16px;
+                  font-weight: 700;
+                  color: #1A3C6E;
+                  margin-top: 20px;
+                  margin-bottom: 12px;
+                  letter-spacing: -0.01em;
+                }
+
+                /* 첫 번째 항목은 위 여백 제거 */
+                div[dangerouslySetInnerHTML] strong:first-child {
+                  margin-top: 0;
+                }
+
+                /* 문단 */
+                div[dangerouslySetInnerHTML] p {
+                  margin: 0 0 16px 0;
+                  line-height: 1.8;
+                  color: #4a5568;
+                  word-break: keep-all;
+                }
+
+                /* 마지막 문단 여백 제거 */
+                div[dangerouslySetInnerHTML] p:last-child {
+                  margin-bottom: 0;
+                }
+
+                /* 리스트 */
+                div[dangerouslySetInnerHTML] ul {
+                  margin: 8px 0 16px 0;
+                  padding-left: 24px;
+                  list-style: none;
+                }
+
+                div[dangerouslySetInnerHTML] li {
+                  position: relative;
+                  margin-bottom: 8px;
+                  padding-left: 8px;
+                  line-height: 1.7;
+                  color: #4a5568;
+                }
+
+                div[dangerouslySetInnerHTML] li::before {
+                  content: "•";
+                  position: absolute;
+                  left: -16px;
+                  color: #1A3C6E;
+                  font-weight: bold;
+                }
+
+                /* 줄바꿈 */
+                div[dangerouslySetInnerHTML] br {
+                  content: "";
+                  display: block;
+                  margin: 4px 0;
+                }
+              `}</style>
             </div>
 
             <div
@@ -511,7 +607,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
                   letterSpacing: '0.05em',
                 }}
               >
-                {isSaving ? '저장 중...' : '💾 다듬기 저장'}
+                {isSaving ? '저장 중...' : '💾 SAYU 저장'}
               </button>
             </div>
           </div>
