@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router';
-import { ChevronLeft, ChevronRight, Sparkles, X, Star, Info, Wand2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles, X, Star, Info } from 'lucide-react';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { SayuTitleAnimation } from '../components/SayuTitleAnimation';
 import { toast } from 'sonner';
-import { getFunctions, httpsCallable } from 'firebase/functions';
 
 interface SayuModalProps {
   isOpen: boolean;
@@ -342,8 +341,6 @@ export function SayuPage() {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<HaruRecord | null>(null);
-  
-  const [isPolishing, setIsPolishing] = useState(false);
 
   const [sayuModalState, setSayuModalState] = useState<{
     isOpen: boolean;
@@ -352,6 +349,7 @@ export function SayuPage() {
     dateLabel: string;
     currentRating: number;
   }>({ isOpen: false, content: '', dateLabel: '', currentRating: 1 });
+  
   const [showSayuGuide, setShowSayuGuide] = useState(() => {
     try {
       const saved = localStorage.getItem('haru_sayu_guide_visible');
@@ -374,7 +372,7 @@ export function SayuPage() {
     }
   }, [loading, records, selectedDate]);
 
-  const collectOriginalData = (record: HaruRecord): Record<string, string> => {
+  const collectOriginalData = (record: HaruRecord, formatKey?: string): Record<string, string> => {
     const data: Record<string, string> = {};
     
     const systemFields = [
@@ -387,6 +385,14 @@ export function SayuPage() {
 
     try {
       Object.keys(record).forEach(key => {
+          if (formatKey && !key.startsWith(formatKey + '_')) {
+            return;
+          }
+          
+          if (key.endsWith('_sayu') || key.endsWith('_polished') || key.endsWith('_polishedAt')) {
+            return;
+          }
+          
           if (!systemFields.includes(key)) {
             const value = record[key];
             if (value !== null && value !== undefined) {
@@ -461,87 +467,48 @@ export function SayuPage() {
   const getFormatsForDate = (record: HaruRecord | null) => {
     if (!record || !record.formats) return [];
     
-    const formatMap: Record<string, string> = {
-      '일기': '📔 일기',
-      '에세이': '📖 에세이',
-      '선교보고': '✝️ 선교보고',
-      '일반보고': '📊 일반보고',
-      '업무일지': '💼 업무일지',
-      '여행기록': '✈️ 여행기록'
+    const formatMap: Record<string, { label: string; key: string }> = {
+      '일기': { label: '📔 일기', key: 'diary' },
+      '에세이': { label: '📖 에세이', key: 'essay' },
+      '선교보고': { label: '✝️ 선교보고', key: 'mission' },
+      '일반보고': { label: '📊 일반보고', key: 'report' },
+      '업무일지': { label: '💼 업무일지', key: 'work' },
+      '여행기록': { label: '✈️ 여행기록', key: 'travel' }
     };
     
-    return record.formats.map(format => formatMap[format] || format);
+    return record.formats.map(format => formatMap[format] || { label: format, key: format.toLowerCase() });
   };
 
-  // ✅ 수정된 handleDateClick: 주황색 점 클릭 시 형식별 SAYU를 합쳐서 모달 표시
   const handleDateClick = (date: Date | null) => {
     if (!date) return;
     const dateStr = formatDateString(date);
     setSelectedDate(dateStr);
     const record = records.find((r) => r.date === dateStr);
     setSelectedRecord(record || null);
+  };
 
-    if (record) {
-      // 최종 저장된 sayuContent가 있으면 바로 모달 열기 (파란색 점)
-      if (record.sayuContent) {
-        const originalData = collectOriginalData(record);
-        setSayuModalState({
-          isOpen: true,
-          content: record.sayuContent,
-          originalData: originalData,
-          dateLabel: new Date(dateStr + 'T00:00:00').toLocaleDateString('ko-KR', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            weekday: 'long',
-          }),
-          currentRating: record.mergeRating || 1,
-        });
-      } else {
-        // sayuContent는 없지만 형식별 _sayu가 있는 경우 (주황색 점)
-        const formatNameMap: Record<string, string> = {
-          'diary': '📔 일기',
-          'essay': '📖 에세이',
-          'mission': '✝️ 선교보고',
-          'report': '📊 일반보고',
-          'work': '💼 업무일지',
-          'travel': '✈️ 여행기록'
-        };
-
-        const sayuContents: Array<{ format: string; content: string }> = [];
-        
-        Object.keys(record).forEach(key => {
-          if (key.endsWith('_sayu') && record[key] && String(record[key]).trim().length > 0) {
-            const formatKey = key.replace('_sayu', '');
-            const formatLabel = formatNameMap[formatKey] || formatKey;
-            sayuContents.push({
-              format: formatLabel,
-              content: String(record[key])
-            });
-          }
-        });
-        
-        if (sayuContents.length > 0) {
-          // 형식별로 구분해서 합치기
-          const mergedSayu = sayuContents
-            .map(item => `━━━━━━━━━━━━━━━━━━━\n${item.format}\n━━━━━━━━━━━━━━━━━━━\n\n${item.content}`)
-            .join('\n\n\n');
-          
-          const originalData = collectOriginalData(record);
-          setSayuModalState({
-            isOpen: true,
-            content: mergedSayu,
-            originalData: originalData,
-            dateLabel: new Date(dateStr + 'T00:00:00').toLocaleDateString('ko-KR', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-              weekday: 'long',
-            }),
-            currentRating: record.mergeRating || 1,
-          });
-        }
-      }
+  const handleFormatClick = (formatKey: string, formatLabel: string) => {
+    if (!selectedRecord) return;
+    
+    const sayuKey = `${formatKey}_sayu`;
+    const sayuContent = selectedRecord[sayuKey];
+    
+    if (sayuContent && String(sayuContent).trim().length > 0) {
+      const originalData = collectOriginalData(selectedRecord, formatKey);
+      setSayuModalState({
+        isOpen: true,
+        content: String(sayuContent),
+        originalData: originalData,
+        dateLabel: `${formatLabel} - ${new Date(selectedDate! + 'T00:00:00').toLocaleDateString('ko-KR', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          weekday: 'long',
+        })}`,
+        currentRating: selectedRecord.mergeRating || 1,
+      });
+    } else {
+      toast.info(`${formatLabel}의 SAYU가 아직 없습니다.`);
     }
   };
 
@@ -551,72 +518,6 @@ export function SayuPage() {
 
   const handleNextMonth = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
-  };
-
-  const handleSayuButtonClick = async () => {
-    if (!selectedRecord) return;
-
-    if (selectedRecord.sayuContent) {
-      openSayuModal(selectedRecord.sayuContent, selectedRecord.mergeRating || 1);
-      return;
-    }
-
-    setIsPolishing(true);
-    try {
-      const functions = getFunctions(undefined, 'asia-northeast3');
-      const polishContentFunc = httpsCallable(functions, 'polishContent');
-      
-      const originalData = collectOriginalData(selectedRecord);
-      
-      let textToPolish = '';
-      if (Object.keys(originalData).length > 0) {
-          textToPolish = Object.entries(originalData)
-            .map(([key, value]) => `[${key}]\n${value}`)
-            .join('\n\n');
-      } else if (selectedRecord.content) {
-          textToPolish = selectedRecord.content;
-      }
-
-      if (!textToPolish.trim()) {
-        toast.error('다듬을 내용이 없습니다.');
-        setIsPolishing(false);
-        return;
-      }
-
-      const formatString = selectedRecord.formats && selectedRecord.formats.length > 0 
-        ? selectedRecord.formats.join(', ') 
-        : '종합 기록';
-      
-      const result = await polishContentFunc({ 
-        text: textToPolish,
-        format: formatString
-      });
-
-      const polished = (result.data as any).text;
-      openSayuModal(polished, selectedRecord.mergeRating || 1);
-
-    } catch (error: any) {
-      console.error('AI Processing Failed:', error);
-      toast.error('AI 연결에 실패했습니다. 잠시 후 다시 시도해주세요.');
-    } finally {
-      setIsPolishing(false);
-    }
-  };
-
-  const openSayuModal = (content: string, rating: number) => {
-    const originalData = selectedRecord ? collectOriginalData(selectedRecord) : {};
-    setSayuModalState({
-      isOpen: true,
-      content,
-      originalData,
-      dateLabel: new Date(selectedDate! + 'T00:00:00').toLocaleDateString('ko-KR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        weekday: 'long',
-      }),
-      currentRating: rating,
-    });
   };
 
   const handleSaveSayu = async (content: string, rating: number) => {
@@ -654,12 +555,10 @@ export function SayuPage() {
 
   const days = getDaysInMonth(currentMonth);
   const monthName = currentMonth.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long' });
-  const showSayuButton = selectedRecord && (Object.keys(collectOriginalData(selectedRecord)).length > 0 || selectedRecord.content || selectedRecord.sayuContent);
-  
   const selectedDateFormats = getFormatsForDate(selectedRecord);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
       <div className="mb-6">
         <div className="flex items-start justify-between mb-2">
           <SayuTitleAnimation />
@@ -696,258 +595,126 @@ export function SayuPage() {
           {showSayuGuide && (
             <div className="px-3 pb-3">
               <p className="text-xs leading-relaxed" style={{ color: '#1A3C6E' }}>
-                📅 <strong>점이 있는 날짜</strong>를 누르면 다듬은 글을 열어 최종 편집할 수 있습니다.
+                📅 <strong>점이 있는 날짜</strong>를 클릭하면 형식 목록이 표시됩니다. <strong>형식을 클릭</strong>하면 해당 형식의 SAYU를 확인할 수 있습니다.
               </p>
             </div>
           )}
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6">
-        <div className="flex-1 order-2 lg:order-1">
-          {loading ? (
-            <div className="bg-white rounded-lg p-8 shadow-sm text-center">
-              <p style={{ color: '#999' }}>불러오는 중...</p>
-            </div>
-          ) : selectedRecord ? (
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h3 className="text-lg mb-4" style={{ color: '#1A3C6E' }}>
-                {new Date(selectedDate! + 'T00:00:00').toLocaleDateString('ko-KR', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  weekday: 'long',
-                })}
-              </h3>
+      <div className="max-w-md mx-auto">
+        <section className="bg-white rounded-lg p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={handlePrevMonth}
+              className="p-3 rounded hover:bg-gray-50 transition-all"
+              style={{ color: '#1A3C6E' }}
+            >
+              <ChevronLeft className="w-7 h-7" />
+            </button>
+            <h2 className="text-lg tracking-wide font-medium" style={{ color: '#333333' }}>
+              {monthName}
+            </h2>
+            <button
+              onClick={handleNextMonth}
+              className="p-3 rounded hover:bg-gray-50 transition-all"
+              style={{ color: '#1A3C6E' }}
+            >
+              <ChevronRight className="w-7 h-7" />
+            </button>
+          </div>
 
-              {(selectedRecord.weather || selectedRecord.temperature || selectedRecord.mood) && (
-                <div className="flex gap-2 mb-5 flex-wrap">
-                  {selectedRecord.weather && (
-                    <span
-                      className="px-3 py-1 rounded-full text-xs"
-                      style={{ backgroundColor: '#FAF9F6', color: '#1A3C6E', border: '1px solid #e5e5e5' }}
-                    >
-                      날씨: {selectedRecord.weather}
-                    </span>
-                  )}
-                  {selectedRecord.temperature && (
-                    <span
-                      className="px-3 py-1 rounded-full text-xs"
-                      style={{ backgroundColor: '#FAF9F6', color: '#1A3C6E', border: '1px solid #e5e5e5' }}
-                    >
-                      기온: {selectedRecord.temperature}
-                    </span>
-                  )}
-                  {selectedRecord.mood && (
-                    <span
-                      className="px-3 py-1 rounded-full text-xs"
-                      style={{ backgroundColor: '#FAF9F6', color: '#1A3C6E', border: '1px solid #e5e5e5' }}
-                    >
-                      기분: {selectedRecord.mood}
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {showSayuButton && (
-                <div className="mb-6">
-                  <p className="text-xs mb-3 font-medium" style={{ color: '#999' }}>
-                    {selectedRecord.sayuSavedAt
-                      ? 'SAYU를 언제든지 다시 편집할 수 있습니다'
-                      : 'AI가 다듬은 글을 편집하여 SAYU를 완성하세요'}
-                  </p>
-                  <button
-                    onClick={handleSayuButtonClick}
-                    disabled={isPolishing}
-                    className="w-full px-8 rounded-xl text-base transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
-                    style={{
-                      paddingTop: '16px',
-                      paddingBottom: '16px',
-                      backgroundColor: '#1A3C6E',
-                      color: '#FAF9F6',
-                      border: '4px solid rgba(255, 255, 255, 0.3)',
-                      borderBottomWidth: '8px',
-                      boxShadow: '0 6px 0 rgba(0, 0, 0, 0.15), 0 8px 20px rgba(26, 60, 110, 0.3)',
-                      fontWeight: 700,
-                      letterSpacing: '0.08em',
-                      textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    {isPolishing ? (
-                      <>
-                        <Wand2 className="animate-spin" size={20} />
-                        AI가 글을 다듬는 중...
-                      </>
-                    ) : (
-                      <>
-                        <span>🎹</span>
-                        {selectedRecord.sayuSavedAt ? '수정' : 'AI로 글 다듬기'} (
-                        {new Date(selectedDate! + 'T00:00:00').toLocaleDateString('ko-KR', {
-                          month: 'long',
-                          day: 'numeric',
-                        })}
-                        )
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
-
-              {selectedRecord.sayuSavedAt && (
-                <div className="mt-6 p-4 rounded-lg" style={{ backgroundColor: '#F0F7F4', border: '2px solid #1A3C6E' }}>
-                  <p className="text-sm font-semibold" style={{ color: '#1A3C6E' }}>
-                    ✅ SAYU 저장 완료
-                  </p>
-                  <p className="text-xs mt-1" style={{ color: '#666' }}>
-                    저장 시간:{' '}
-                    {new Date(selectedRecord.sayuSavedAt).toLocaleString('ko-KR', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </p>
-                </div>
-              )}
-
-              {!selectedRecord.polished && !selectedRecord.sayuSavedAt && !Object.keys(collectOriginalData(selectedRecord)).some(key => key.endsWith('_sayu')) && (
-                <div className="p-6 rounded-lg text-center" style={{ backgroundColor: '#FAF9F6', border: '1px solid #e5e5e5' }}>
-                  <Sparkles className="w-12 h-12 mx-auto mb-3" style={{ color: '#1A3C6E', opacity: 0.5 }} />
-                  <p className="text-sm mb-2" style={{ color: '#666' }}>
-                    아직 다듬기가 완료되지 않았습니다
-                  </p>
-                  <p className="text-xs" style={{ color: '#999' }}>
-                    서재 페이지에서 모든 형식을 작성하고 다듬기를 완료하세요
-                  </p>
-                </div>
-              )}
-            </div>
-          ) : selectedDate ? (
-            <div className="bg-white rounded-lg p-8 shadow-sm text-center">
-              <p style={{ color: '#999' }}>이 날짜에는 기록이 없습니다</p>
-            </div>
-          ) : (
-            <div className="bg-white rounded-lg p-8 shadow-sm text-center">
-              <p style={{ color: '#999' }}>달력에서 날짜를 선택하세요</p>
-            </div>
-          )}
-        </div>
-
-        <div className="w-[80%] mx-auto lg:mx-0 lg:w-[336px] order-1 lg:order-2">
-          <section className="bg-white rounded-lg p-4 lg:p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-3 lg:mb-4">
-              <button
-                onClick={handlePrevMonth}
-                className="p-2 lg:p-3 rounded hover:bg-gray-50 transition-all"
-                style={{ color: '#1A3C6E' }}
+          <div className="grid grid-cols-7 gap-2">
+            {['일', '월', '화', '수', '목', '금', '토'].map((day, index) => (
+              <div
+                key={day}
+                className="text-center text-base py-2"
+                style={{ color: index === 0 ? '#1A3C6E' : '#999999', fontWeight: 600 }}
               >
-                <ChevronLeft className="w-5 h-5 lg:w-7 lg:h-7" />
-              </button>
-              <h2 className="text-sm lg:text-lg tracking-wide font-medium" style={{ color: '#333333' }}>
-                {monthName}
-              </h2>
-              <button
-                onClick={handleNextMonth}
-                className="p-2 lg:p-3 rounded hover:bg-gray-50 transition-all"
-                style={{ color: '#1A3C6E' }}
-              >
-                <ChevronRight className="w-5 h-5 lg:w-7 lg:h-7" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-7 gap-1 lg:gap-2">
-              {['일', '월', '화', '수', '목', '금', '토'].map((day, index) => (
-                <div
-                  key={day}
-                  className="text-center text-xs lg:text-base py-1 lg:py-2"
-                  style={{ color: index === 0 ? '#1A3C6E' : '#999999', fontWeight: 600 }}
-                >
-                  {day}
-                </div>
-              ))}
-
-              {days.map((day, index) => {
-                const sayuStatus = hasSayu(day);
-                const isSelected = day && selectedDate === formatDateString(day);
-
-                return (
-                  <button
-                    key={index}
-                    onClick={() => handleDateClick(day)}
-                    disabled={!day}
-                    className="relative aspect-square flex items-center justify-center rounded transition-all disabled:cursor-default hover:bg-gray-50"
-                    style={{
-                      backgroundColor: isSelected ? '#1A3C6E' : 'transparent',
-                      color: !day ? 'transparent' : isSelected ? '#FAF9F6' : '#333333',
-                      fontSize: '16px',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {day && day.getDate()}
-                    {sayuStatus === 'saved' && (
-                      <div
-                        className="absolute bottom-1 w-4 h-4 rounded-full"
-                        style={{
-                          backgroundColor: isSelected ? '#FAF9F6' : '#1A3C6E',
-                          boxShadow: isSelected ? 'none' : '0 0 0 2px rgba(26,60,110,0.25)',
-                        }}
-                      />
-                    )}
-                    {sayuStatus === 'polished' && (
-                      <div
-                        className="absolute bottom-1 w-4 h-4 rounded-full"
-                        style={{
-                          backgroundColor: '#F59E0B',
-                          boxShadow: '0 0 0 2px rgba(245,158,11,0.3)',
-                        }}
-                      />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          {selectedDate && selectedDateFormats.length > 0 && (
-            <div className="mt-4 bg-white rounded-lg p-4 shadow-sm">
-              <p className="text-xs font-semibold mb-2" style={{ color: '#1A3C6E' }}>
-                {new Date(selectedDate + 'T00:00:00').toLocaleDateString('ko-KR', {
-                  month: 'long',
-                  day: 'numeric',
-                })}의 기록
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {selectedDateFormats.map((format, idx) => (
-                  <span
-                    key={idx}
-                    className="px-3 py-1.5 rounded-full text-xs font-medium"
-                    style={{
-                      backgroundColor: '#F0F7FF',
-                      color: '#1A3C6E',
-                      border: '1px solid #1A3C6E'
-                    }}
-                  >
-                    {format}
-                  </span>
-                ))}
+                {day}
               </div>
-            </div>
-          )}
+            ))}
 
-          <div className="mt-3 lg:mt-4 flex flex-col gap-2 text-xs lg:text-sm" style={{ color: '#999' }}>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: '#1A3C6E', boxShadow: '0 0 0 2px rgba(26,60,110,0.25)' }} />
-              <span>SAYU 저장</span>
+            {days.map((day, index) => {
+              const sayuStatus = hasSayu(day);
+              const isSelected = day && selectedDate === formatDateString(day);
+
+              return (
+                <button
+                  key={index}
+                  onClick={() => handleDateClick(day)}
+                  disabled={!day}
+                  className="relative aspect-square flex items-center justify-center rounded transition-all disabled:cursor-default hover:bg-gray-50"
+                  style={{
+                    backgroundColor: isSelected ? '#1A3C6E' : 'transparent',
+                    color: !day ? 'transparent' : isSelected ? '#FAF9F6' : '#333333',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                  }}
+                >
+                  {day && day.getDate()}
+                  {sayuStatus === 'saved' && (
+                    <div
+                      className="absolute bottom-1 w-3 h-3 rounded-full"
+                      style={{
+                        backgroundColor: isSelected ? '#FAF9F6' : '#1A3C6E',
+                        boxShadow: isSelected ? 'none' : '0 0 0 2px rgba(26,60,110,0.25)',
+                      }}
+                    />
+                  )}
+                  {sayuStatus === 'polished' && (
+                    <div
+                      className="absolute bottom-1 w-3 h-3 rounded-full"
+                      style={{
+                        backgroundColor: '#F59E0B',
+                        boxShadow: '0 0 0 2px rgba(245,158,11,0.3)',
+                      }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {selectedDate && selectedDateFormats.length > 0 && (
+          <div className="mt-4 bg-white rounded-lg p-4 shadow-sm">
+            <p className="text-xs font-semibold mb-2" style={{ color: '#1A3C6E' }}>
+              {new Date(selectedDate + 'T00:00:00').toLocaleDateString('ko-KR', {
+                month: 'long',
+                day: 'numeric',
+              })}의 기록
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {selectedDateFormats.map((formatInfo, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleFormatClick(formatInfo.key, formatInfo.label)}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium transition-all hover:opacity-80 hover:shadow-md cursor-pointer"
+                  style={{
+                    backgroundColor: '#F0F7FF',
+                    color: '#1A3C6E',
+                    border: '1px solid #1A3C6E'
+                  }}
+                >
+                  {formatInfo.label}
+                </button>
+              ))}
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: '#F59E0B', boxShadow: '0 0 0 2px rgba(245,158,11,0.3)' }} />
-              <span>다듬기 완료</span>
-            </div>
+            <p className="text-xs mt-2" style={{ color: '#999' }}>
+              💡 형식을 클릭하면 해당 SAYU를 볼 수 있습니다
+            </p>
+          </div>
+        )}
+
+        <div className="mt-4 flex flex-col gap-2 text-sm" style={{ color: '#999' }}>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: '#1A3C6E', boxShadow: '0 0 0 2px rgba(26,60,110,0.25)' }} />
+            <span>SAYU 저장</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: '#F59E0B', boxShadow: '0 0 0 2px rgba(245,158,11,0.3)' }} />
+            <span>다듬기 완료</span>
           </div>
         </div>
       </div>
