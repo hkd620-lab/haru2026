@@ -5,6 +5,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 
 type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록';
+type PolishMode = 'basic' | 'premium';
 
 interface FormatModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ interface FormatModalProps {
 
 interface PolishResult {
   text: string;
+  mode: string;
 }
 
 // 형식별 입력 필드 정의
@@ -76,47 +78,20 @@ const FORMAT_PREFIX: Record<RecordFormat, string> = {
   '여행기록': 'travel',
 };
 
-// 🎨 Markdown을 HTML로 변환하는 간단한 함수
-function renderMarkdownToHtml(text: string): string {
-  let html = text;
-
-  // **굵은 글씨** → <strong>
-  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-
-  // • 항목 → <li>
-  html = html.replace(/^• (.+)$/gm, '<li>$1</li>');
-
-  // 연속된 <li>를 <ul>로 감싸기
-  html = html.replace(/(<li>.*<\/li>\n?)+/g, (match) => {
-    return '<ul>' + match + '</ul>';
-  });
-
-  // 문단 나누기 (빈 줄 기준)
-  const paragraphs = html.split('\n\n').filter(p => p.trim());
-  html = paragraphs.map(p => {
-    // ul 태그가 포함되어 있으면 그대로
-    if (p.includes('<ul>')) {
-      return p;
-    }
-    // 나머지는 <p> 태그로 감싸기
-    return `<p>${p.replace(/\n/g, '<br>')}</p>`;
-  }).join('\n');
-
-  return html;
-}
-
 export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, onSave }: FormatModalProps) {
   const [formData, setFormData] = useState<Record<string, string>>(initialData);
   const [isSaving, setIsSaving] = useState(false);
   const [isPolishing, setIsPolishing] = useState(false);
   const [polishedContent, setPolishedContent] = useState('');
   const [showPolishModal, setShowPolishModal] = useState(false);
+  const [selectedMode, setSelectedMode] = useState<PolishMode>('basic');
 
   useEffect(() => {
     if (isOpen) {
       setFormData(initialData);
       setPolishedContent('');
       setShowPolishModal(false);
+      setSelectedMode('basic');
     }
   }, [isOpen, initialData]);
 
@@ -152,10 +127,11 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     }
   };
 
-  // 🌟 형식별 AI 다듬기
+  // 🌟 형식별 AI 다듬기 (BASIC/PREMIUM 모드 선택)
   const handlePolishThisFormat = async () => {
     setIsPolishing(true);
-    toast.info(`${format} AI 다듬기를 시작합니다...`);
+    const modeName = selectedMode === 'basic' ? 'BASIC' : 'PREMIUM';
+    toast.info(`${format} ${modeName} 다듬기를 시작합니다...`);
 
     try {
       const functions = getFunctions(undefined, 'asia-northeast3');
@@ -175,13 +151,14 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
 
       const result = await polishContentFunc({
         text: contentValues,
+        mode: selectedMode,
         format: prefix
       });
 
       const polished = (result.data as PolishResult).text;
       setPolishedContent(polished);
       setShowPolishModal(true);
-      toast.success('AI 다듬기 완료!');
+      toast.success(`${modeName} 다듬기 완료!`);
     } catch (error: any) {
       console.error('AI 처리 실패:', error);
       toast.error('AI 연결에 실패했습니다.');
@@ -197,6 +174,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       [sayuKey]: polishedContent,
       [`${prefix}_polished`]: true,
       [`${prefix}_polishedAt`]: new Date().toISOString(),
+      [`${prefix}_mode`]: selectedMode,
     };
 
     setIsSaving(true);
@@ -359,6 +337,55 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
               backgroundColor: '#fff',
             }}
           >
+            {/* 🆕 모드 선택 UI */}
+            {hasContent && (
+              <div style={{ marginBottom: 12 }}>
+                <p style={{ fontSize: 12, color: '#666', marginBottom: 8, fontWeight: 500 }}>
+                  다듬기 모드 선택
+                </p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => setSelectedMode('basic')}
+                    style={{
+                      flex: 1,
+                      padding: '10px 16px',
+                      fontSize: 13,
+                      border: selectedMode === 'basic' ? '2px solid #10b981' : '1px solid #e5e5e5',
+                      borderRadius: 8,
+                      backgroundColor: selectedMode === 'basic' ? '#f0fdf4' : '#fff',
+                      color: selectedMode === 'basic' ? '#10b981' : '#666',
+                      cursor: 'pointer',
+                      fontWeight: selectedMode === 'basic' ? 600 : 400,
+                    }}
+                  >
+                    🟢 BASIC
+                    <div style={{ fontSize: 10, marginTop: 4, color: '#999' }}>
+                      오탈자·가독성
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setSelectedMode('premium')}
+                    style={{
+                      flex: 1,
+                      padding: '10px 16px',
+                      fontSize: 13,
+                      border: selectedMode === 'premium' ? '2px solid #3b82f6' : '1px solid #e5e5e5',
+                      borderRadius: 8,
+                      backgroundColor: selectedMode === 'premium' ? '#eff6ff' : '#fff',
+                      color: selectedMode === 'premium' ? '#3b82f6' : '#666',
+                      cursor: 'pointer',
+                      fontWeight: selectedMode === 'premium' ? 600 : 400,
+                    }}
+                  >
+                    🔵 PREMIUM
+                    <div style={{ fontSize: 10, marginTop: 4, color: '#999' }}>
+                      전체 재배치·정돈
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* AI 다듬기 버튼 */}
             {hasContent && (
               <button
@@ -370,7 +397,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
                   fontSize: 14,
                   border: 'none',
                   borderRadius: 8,
-                  backgroundColor: '#10b981',
+                  backgroundColor: selectedMode === 'premium' ? '#3b82f6' : '#10b981',
                   color: '#fff',
                   cursor: isPolishing ? 'not-allowed' : 'pointer',
                   opacity: isPolishing ? 0.7 : 1,
@@ -390,7 +417,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
                 ) : (
                   <>
                     <Wand2 style={{ width: 16, height: 16 }} />
-                    ✨ 이 형식만 AI 다듬기
+                    ✨ {selectedMode === 'basic' ? 'BASIC' : 'PREMIUM'} 다듬기
                   </>
                 )}
               </button>
@@ -436,7 +463,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
         </div>
       </div>
 
-      {/* 🎨 SAYU 미리보기 모달 - 품격 있는 문서 형식 */}
+      {/* SAYU 미리보기 모달 */}
       {showPolishModal && (
         <div
           style={{
@@ -475,95 +502,28 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
               }}
             >
               <h2 style={{ fontSize: 20, color: '#1A3C6E', fontWeight: 600, margin: 0 }}>
-                ✨ {format} SAYU
+                ✨ {format} SAYU ({selectedMode === 'basic' ? 'BASIC' : 'PREMIUM'})
               </h2>
               <p style={{ fontSize: 13, color: '#999', marginTop: 8, marginBottom: 0 }}>
-                AI가 정성껏 정돈한 결과입니다
+                AI가 다듬은 결과입니다
               </p>
             </div>
 
-            <div 
-              style={{ 
-                flex: 1, 
-                overflowY: 'auto', 
-                padding: '32px 40px',
-                backgroundColor: '#ffffff'
-              }}
-            >
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
               <div
                 style={{
-                  fontSize: 15,
+                  backgroundColor: '#fff',
+                  padding: '20px',
+                  borderRadius: 8,
+                  border: '1px solid #e5e5e5',
+                  whiteSpace: 'pre-wrap',
+                  fontSize: 14,
                   lineHeight: 1.8,
-                  color: '#2d3748',
+                  color: '#333',
                 }}
-                dangerouslySetInnerHTML={{ __html: renderMarkdownToHtml(polishedContent) }}
-              />
-              
-              <style>{`
-                /* 전역 스타일 */
-                div[dangerouslySetInnerHTML] {
-                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-                }
-
-                /* 굵은 글씨 (항목명) */
-                div[dangerouslySetInnerHTML] strong {
-                  display: block;
-                  font-size: 16px;
-                  font-weight: 700;
-                  color: #1A3C6E;
-                  margin-top: 20px;
-                  margin-bottom: 12px;
-                  letter-spacing: -0.01em;
-                }
-
-                /* 첫 번째 항목은 위 여백 제거 */
-                div[dangerouslySetInnerHTML] strong:first-child {
-                  margin-top: 0;
-                }
-
-                /* 문단 */
-                div[dangerouslySetInnerHTML] p {
-                  margin: 0 0 16px 0;
-                  line-height: 1.8;
-                  color: #4a5568;
-                  word-break: keep-all;
-                }
-
-                /* 마지막 문단 여백 제거 */
-                div[dangerouslySetInnerHTML] p:last-child {
-                  margin-bottom: 0;
-                }
-
-                /* 리스트 */
-                div[dangerouslySetInnerHTML] ul {
-                  margin: 8px 0 16px 0;
-                  padding-left: 24px;
-                  list-style: none;
-                }
-
-                div[dangerouslySetInnerHTML] li {
-                  position: relative;
-                  margin-bottom: 8px;
-                  padding-left: 8px;
-                  line-height: 1.7;
-                  color: #4a5568;
-                }
-
-                div[dangerouslySetInnerHTML] li::before {
-                  content: "•";
-                  position: absolute;
-                  left: -16px;
-                  color: #1A3C6E;
-                  font-weight: bold;
-                }
-
-                /* 줄바꿈 */
-                div[dangerouslySetInnerHTML] br {
-                  content: "";
-                  display: block;
-                  margin: 4px 0;
-                }
-              `}</style>
+              >
+                {polishedContent}
+              </div>
             </div>
 
             <div
@@ -599,7 +559,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
                   fontSize: 15,
                   border: 'none',
                   borderRadius: 8,
-                  backgroundColor: '#10b981',
+                  backgroundColor: selectedMode === 'premium' ? '#3b82f6' : '#10b981',
                   color: '#fff',
                   cursor: isSaving ? 'not-allowed' : 'pointer',
                   opacity: isSaving ? 0.7 : 1,
