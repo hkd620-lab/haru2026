@@ -1,137 +1,130 @@
 import {
+  getFirestore,
   collection,
   doc,
-  getDocs,
-  getDoc,
   setDoc,
-  updateDoc,
-  deleteDoc,
+  getDoc,
+  getDocs,
   query,
-  orderBy,
   where,
-  limit,
-  serverTimestamp
+  updateDoc,
+  Timestamp,
 } from 'firebase/firestore';
-import { db } from '../config/firebase';
 
-export type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록';
+const db = getFirestore();
+
+export type RecordFormat =
+  | '일기'
+  | '에세이'
+  | '선교보고'
+  | '일반보고'
+  | '업무일지'
+  | '여행기록'
+  | '애완동물관찰일지'
+  | '육아일기'
+  | '텃밭일지';
 
 export interface HaruRecord {
   id: string;
-  uid: string;
   date: string;
   weather?: string;
   temperature?: string;
   mood?: string;
   formats?: RecordFormat[];
-  polished?: boolean;
-  polishedAt?: string | null;
-  sayuContent?: string | null;
-  sayuSavedAt?: string | null;
-  mergeRating?: number;
-  createdAt: string;
-  updatedAt?: string;
   content?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
   [key: string]: any;
 }
 
-export const firestoreService = {
-  // 📝 기록 저장 또는 업데이트 (같은 날짜면 덮어쓰기)
-  async saveRecord(uid: string, recordData: Partial<HaruRecord>): Promise<string> {
-    const recordsRef = collection(db, 'users', uid, 'records');
-    
-    // 🔍 같은 날짜의 기록이 있는지 확인
-    if (recordData.date) {
-      const q = query(recordsRef, where('date', '==', recordData.date), limit(1));
-      const snapshot = await getDocs(q);
-      
-      if (!snapshot.empty) {
-        // 🔄 기존 기록 업데이트 (덮어쓰기)
-        const existingDoc = snapshot.docs[0];
-        const docRef = doc(db, 'users', uid, 'records', existingDoc.id);
-        await updateDoc(docRef, {
-          ...recordData,
-          updatedAt: serverTimestamp()
-        });
-        return existingDoc.id;
-      }
-    }
-    
-    // 📝 새 기록 생성
-    const newDocRef = doc(recordsRef);
-    const data = {
-      ...recordData,
-      uid,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    };
-    await setDoc(newDocRef, data);
-    return newDocRef.id;
-  },
+export interface RecordInput {
+  date: string;
+  weather?: string;
+  temperature?: string;
+  mood?: string;
+  formats?: RecordFormat[];
+  content?: string;
+}
 
-  // 📖 읽기 - 모든 기록 가져오기
-  async getRecords(uid: string): Promise<HaruRecord[]> {
-    const recordsRef = collection(db, 'users', uid, 'records');
-    const q = query(recordsRef, orderBy('date', 'desc'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as HaruRecord));
-  },
+class FirestoreService {
+  private recordsCollection = 'records';
 
-  // 📖 읽기 - 특정 기록 가져오기
-  async getRecord(uid: string, recordId: string): Promise<HaruRecord | null> {
-    const docRef = doc(db, 'users', uid, 'records', recordId);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() } as HaruRecord;
-    }
-    return null;
-  },
+  async saveRecord(uid: string, recordData: RecordInput): Promise<void> {
+    const recordRef = doc(db, this.recordsCollection, `${uid}_${recordData.date}`);
 
-  // 🔄 수정 - 기존 기록 수정
-  async updateRecord(uid: string, recordId: string, updates: Partial<HaruRecord>): Promise<void> {
-    const docRef = doc(db, 'users', uid, 'records', recordId);
-    await updateDoc(docRef, {
-      ...updates,
-      updatedAt: serverTimestamp()
-    });
-  },
+    const existingDoc = await getDoc(recordRef);
 
-  // 🗑️ 삭제 - 기록 삭제
-  async deleteRecord(uid: string, recordId: string): Promise<void> {
-    const docRef = doc(db, 'users', uid, 'records', recordId);
-    await deleteDoc(docRef);
-  },
-
-  // 📊 통계 - 기록 통계 가져오기
-  async getStats(uid: string) {
-    const records = await this.getRecords(uid);
-    const totalRecords = records.length;
-    const polishedCount = records.filter((r) => r.polished).length;
-    const sayuCount = records.filter((r) => r.sayuSavedAt).length;
-    const formatCounts: Record<string, number> = {};
-    records.forEach((r) => {
-      r.formats?.forEach((f) => {
-        formatCounts[f] = (formatCounts[f] || 0) + 1;
+    if (existingDoc.exists()) {
+      await updateDoc(recordRef, {
+        ...recordData,
+        updatedAt: Timestamp.now(),
       });
-    });
-    return { totalRecords, polishedCount, sayuCount, formatCounts };
-  },
-
-  // 📤 내보내기 - 전체 데이터를 JSON으로 내보내기
-  async exportData(uid: string): Promise<string> {
-    const records = await this.getRecords(uid);
-    return JSON.stringify(records, null, 2);
-  },
-
-  // 🗑️ 전체 삭제 - 모든 기록 삭제
-  async clearAllData(uid: string): Promise<void> {
-    const records = await this.getRecords(uid);
-    const deletePromises = records.map(record => 
-      this.deleteRecord(uid, record.id)
-    );
-    await Promise.all(deletePromises);
+    } else {
+      await setDoc(recordRef, {
+        ...recordData,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      });
+    }
   }
-};
+
+  async getRecords(uid: string): Promise<HaruRecord[]> {
+    // 인덱스 불필요한 간단한 쿼리
+    const q = query(
+      collection(db, this.recordsCollection),
+      where('__name__', '>=', `${uid}_`),
+      where('__name__', '<=', `${uid}_\uf8ff`)
+    );
+
+    const snapshot = await getDocs(q);
+    const records = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        date: data.date || '',
+        weather: data.weather,
+        temperature: data.temperature,
+        mood: data.mood,
+        formats: data.formats || [],
+        content: data.content || '',
+        createdAt: data.createdAt?.toDate(),
+        updatedAt: data.updatedAt?.toDate(),
+        ...data,
+      };
+    });
+
+    // 클라이언트 측에서 정렬 (날짜 최신순)
+    return records.sort((a, b) => b.date.localeCompare(a.date));
+  }
+
+  async getRecordByDate(uid: string, date: string): Promise<HaruRecord | null> {
+    const recordRef = doc(db, this.recordsCollection, `${uid}_${date}`);
+    const snapshot = await getDoc(recordRef);
+
+    if (!snapshot.exists()) return null;
+
+    const data = snapshot.data();
+    return {
+      id: snapshot.id,
+      date: data.date || '',
+      weather: data.weather,
+      temperature: data.temperature,
+      mood: data.mood,
+      formats: data.formats || [],
+      content: data.content || '',
+      createdAt: data.createdAt?.toDate(),
+      updatedAt: data.updatedAt?.toDate(),
+      ...data,
+    };
+  }
+
+  async updateRecord(uid: string, recordId: string, updateData: Record<string, any>): Promise<void> {
+    const recordRef = doc(db, this.recordsCollection, recordId);
+    await updateDoc(recordRef, {
+      ...updateData,
+      updatedAt: Timestamp.now(),
+    });
+  }
+}
+
+export const firestoreService = new FirestoreService();

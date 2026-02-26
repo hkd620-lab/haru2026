@@ -1,11 +1,10 @@
-import { X, TestTube2, Wand2 } from 'lucide-react';
+import { X, TestTube2, Wand2, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getTestData } from '../data/testData';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 
-type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록';
-type PolishMode = 'basic' | 'premium';
+type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '애완동물관찰일지' | '육아일기' | '텃밭일지';
 
 interface FormatModalProps {
   isOpen: boolean;
@@ -18,6 +17,7 @@ interface FormatModalProps {
 
 interface PolishResult {
   text: string;
+  success: boolean;
   mode: string;
 }
 
@@ -66,9 +66,20 @@ const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placehol
     { key: 'travel_thought', label: '단상', placeholder: '빠르게 걷느라 놓쳤던 것들을 멈춰 서니 비로소 볼 수 있었습니다. 삶의 속도를 늦추는 것은 곧 깊어짐을 의미합니다.', rows: 4 },
     { key: 'travel_gratitude', label: '감사', placeholder: '길을 안내해 주신 노스님의 미소에 감사드립니다.\n비를 피할 수 있도록 해 준 쉼터 지붕에 감사드립니다.', rows: 3 },
   ],
+  애완동물관찰일지: [
+    { key: 'pet_name', label: '이름', placeholder: '(협업AI 작업 후 정식 필드로 교체 예정)', rows: 2 },
+    { key: 'pet_observation', label: '관찰 내용', placeholder: '(협업AI 작업 후 정식 필드로 교체 예정)', rows: 3 },
+  ],
+  육아일기: [
+    { key: 'parenting_child', label: '아이', placeholder: '(협업AI 작업 후 정식 필드로 교체 예정)', rows: 2 },
+    { key: 'parenting_activity', label: '활동', placeholder: '(협업AI 작업 후 정식 필드로 교체 예정)', rows: 3 },
+  ],
+  텃밭일지: [
+    { key: 'garden_crop', label: '작물', placeholder: '(협업AI 작업 후 정식 필드로 교체 예정)', rows: 2 },
+    { key: 'garden_work', label: '작업 내용', placeholder: '(협업AI 작업 후 정식 필드로 교체 예정)', rows: 3 },
+  ],
 };
 
-// 형식별 prefix 매핑
 const FORMAT_PREFIX: Record<RecordFormat, string> = {
   '일기': 'diary',
   '에세이': 'essay',
@@ -76,6 +87,9 @@ const FORMAT_PREFIX: Record<RecordFormat, string> = {
   '일반보고': 'report',
   '업무일지': 'work',
   '여행기록': 'travel',
+  '애완동물관찰일지': 'pet',
+  '육아일기': 'parenting',
+  '텃밭일지': 'garden',
 };
 
 export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, onSave }: FormatModalProps) {
@@ -84,14 +98,15 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [isPolishing, setIsPolishing] = useState(false);
   const [polishedContent, setPolishedContent] = useState('');
   const [showPolishModal, setShowPolishModal] = useState(false);
-  const [selectedMode, setSelectedMode] = useState<PolishMode>('basic');
+  const [showModeSelection, setShowModeSelection] = useState(false); // 모드 선택 모달
+  const [selectedMode, setSelectedMode] = useState<'basic' | 'premium'>('basic');
 
   useEffect(() => {
     if (isOpen) {
       setFormData(initialData);
       setPolishedContent('');
       setShowPolishModal(false);
-      setSelectedMode('basic');
+      setShowModeSelection(false);
     }
   }, [isOpen, initialData]);
 
@@ -127,47 +142,57 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     }
   };
 
-  // 🌟 형식별 AI 다듬기 (BASIC/PREMIUM 모드 선택)
-  const handlePolishThisFormat = async () => {
+  // 🌟 AI 다듬기 버튼 클릭 → 모드 선택 모달 표시
+  const handlePolishClick = () => {
+    const contentValues = fields
+      .map(field => formData[field.key])
+      .filter(v => v && v.trim())
+      .join('\n\n');
+
+    if (!contentValues.trim()) {
+      toast.error('다듬을 내용이 없습니다. 먼저 작성해주세요.');
+      return;
+    }
+
+    setShowModeSelection(true);
+  };
+
+  // 🎯 모드 선택 후 AI 다듬기 실행
+  const handlePolishWithMode = async (mode: 'basic' | 'premium') => {
+    setShowModeSelection(false);
     setIsPolishing(true);
-    const modeName = selectedMode === 'basic' ? 'BASIC' : 'PREMIUM';
-    toast.info(`${format} ${modeName} 다듬기를 시작합니다...`);
+    setSelectedMode(mode);
+    
+    const modeLabel = mode === 'basic' ? 'BASIC' : 'PREMIUM';
+    toast.info(`${format} AI 다듬기 (${modeLabel})를 시작합니다...`);
 
     try {
       const functions = getFunctions(undefined, 'asia-northeast3');
       const polishContentFunc = httpsCallable(functions, 'polishContent');
 
-      // 이 형식의 데이터만 수집
       const contentValues = fields
         .map(field => formData[field.key])
         .filter(v => v && v.trim())
         .join('\n\n');
 
-      if (!contentValues.trim()) {
-        toast.error('다듬을 내용이 없습니다. 먼저 작성해주세요.');
-        setIsPolishing(false);
-        return;
-      }
-
       const result = await polishContentFunc({
         text: contentValues,
-        mode: selectedMode,
-        format: prefix
+        format: prefix,
+        mode: mode
       });
 
       const polished = (result.data as PolishResult).text;
       setPolishedContent(polished);
       setShowPolishModal(true);
-      toast.success(`${modeName} 다듬기 완료!`);
+      toast.success(`AI 다듬기 (${modeLabel}) 완료!`);
     } catch (error: any) {
       console.error('AI 처리 실패:', error);
-      toast.error('AI 연결에 실패했습니다.');
+      toast.error(`AI 연결 실패: ${error.message || '알 수 없는 오류'}`);
     } finally {
       setIsPolishing(false);
     }
   };
 
-  // SAYU 저장
   const handleSaveSayu = async () => {
     const updateData = {
       ...formData,
@@ -191,7 +216,6 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     }
   };
 
-  // 작성된 필드가 있는지 확인
   const hasContent = fields.some(field => {
     const value = formData[field.key];
     return value && value.trim().length > 0;
@@ -337,59 +361,10 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
               backgroundColor: '#fff',
             }}
           >
-            {/* 🆕 모드 선택 UI */}
-            {hasContent && (
-              <div style={{ marginBottom: 12 }}>
-                <p style={{ fontSize: 12, color: '#666', marginBottom: 8, fontWeight: 500 }}>
-                  다듬기 모드 선택
-                </p>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    onClick={() => setSelectedMode('basic')}
-                    style={{
-                      flex: 1,
-                      padding: '10px 16px',
-                      fontSize: 13,
-                      border: selectedMode === 'basic' ? '2px solid #10b981' : '1px solid #e5e5e5',
-                      borderRadius: 8,
-                      backgroundColor: selectedMode === 'basic' ? '#f0fdf4' : '#fff',
-                      color: selectedMode === 'basic' ? '#10b981' : '#666',
-                      cursor: 'pointer',
-                      fontWeight: selectedMode === 'basic' ? 600 : 400,
-                    }}
-                  >
-                    🟢 BASIC
-                    <div style={{ fontSize: 10, marginTop: 4, color: '#999' }}>
-                      오탈자·가독성
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setSelectedMode('premium')}
-                    style={{
-                      flex: 1,
-                      padding: '10px 16px',
-                      fontSize: 13,
-                      border: selectedMode === 'premium' ? '2px solid #3b82f6' : '1px solid #e5e5e5',
-                      borderRadius: 8,
-                      backgroundColor: selectedMode === 'premium' ? '#eff6ff' : '#fff',
-                      color: selectedMode === 'premium' ? '#3b82f6' : '#666',
-                      cursor: 'pointer',
-                      fontWeight: selectedMode === 'premium' ? 600 : 400,
-                    }}
-                  >
-                    🔵 PREMIUM
-                    <div style={{ fontSize: 10, marginTop: 4, color: '#999' }}>
-                      전체 재배치·정돈
-                    </div>
-                  </button>
-                </div>
-              </div>
-            )}
-
             {/* AI 다듬기 버튼 */}
             {hasContent && (
               <button
-                onClick={handlePolishThisFormat}
+                onClick={handlePolishClick}
                 disabled={isPolishing}
                 style={{
                   width: '100%',
@@ -397,7 +372,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
                   fontSize: 14,
                   border: 'none',
                   borderRadius: 8,
-                  backgroundColor: selectedMode === 'premium' ? '#3b82f6' : '#10b981',
+                  backgroundColor: '#10b981',
                   color: '#fff',
                   cursor: isPolishing ? 'not-allowed' : 'pointer',
                   opacity: isPolishing ? 0.7 : 1,
@@ -409,17 +384,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
                   gap: 8,
                 }}
               >
-                {isPolishing ? (
-                  <>
-                    <Wand2 className="animate-spin" style={{ width: 16, height: 16 }} />
-                    AI 다듬는 중...
-                  </>
-                ) : (
-                  <>
-                    <Wand2 style={{ width: 16, height: 16 }} />
-                    ✨ {selectedMode === 'basic' ? 'BASIC' : 'PREMIUM'} 다듬기
-                  </>
-                )}
+                <Wand2 style={{ width: 16, height: 16 }} />
+                ✨ AI 다듬기 (모드 선택)
               </button>
             )}
 
@@ -463,6 +429,121 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
         </div>
       </div>
 
+      {/* 🎯 모드 선택 모달 */}
+      {showModeSelection && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+            padding: '20px',
+          }}
+          onClick={() => setShowModeSelection(false)}
+        >
+          <div
+            style={{
+              backgroundColor: '#FAF9F6',
+              borderRadius: 12,
+              maxWidth: 500,
+              width: '100%',
+              padding: '32px',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ fontSize: 20, color: '#1A3C6E', fontWeight: 600, margin: '0 0 12px 0', textAlign: 'center' }}>
+              AI 다듬기 모드 선택
+            </h2>
+            <p style={{ fontSize: 13, color: '#666', margin: '0 0 24px 0', textAlign: 'center' }}>
+              원하는 다듬기 수준을 선택하세요
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* BASIC 버튼 */}
+              <button
+                onClick={() => handlePolishWithMode('basic')}
+                style={{
+                  padding: '20px',
+                  border: '2px solid #10b981',
+                  borderRadius: 8,
+                  backgroundColor: '#fff',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f0fdf4';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#fff';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                  <Wand2 style={{ width: 20, height: 20, color: '#10b981' }} />
+                  <span style={{ fontSize: 16, fontWeight: 600, color: '#10b981' }}>BASIC</span>
+                </div>
+                <p style={{ fontSize: 13, color: '#666', margin: 0, lineHeight: 1.6 }}>
+                  오탈자 수정, 자연스러운 문장 연결<br />
+                  원본 구조와 내용 유지
+                </p>
+              </button>
+
+              {/* PREMIUM 버튼 */}
+              <button
+                onClick={() => handlePolishWithMode('premium')}
+                style={{
+                  padding: '20px',
+                  border: '2px solid #8b5cf6',
+                  borderRadius: 8,
+                  backgroundColor: '#fff',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#faf5ff';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#fff';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                  <Sparkles style={{ width: 20, height: 20, color: '#8b5cf6' }} />
+                  <span style={{ fontSize: 16, fontWeight: 600, color: '#8b5cf6' }}>PREMIUM</span>
+                </div>
+                <p style={{ fontSize: 13, color: '#666', margin: 0, lineHeight: 1.6 }}>
+                  문장 구조 재배치, 흐름 재구성<br />
+                  감정 표현 선명하게, 의미 밀도 향상
+                </p>
+              </button>
+            </div>
+
+            <button
+              onClick={() => setShowModeSelection(false)}
+              style={{
+                width: '100%',
+                marginTop: 20,
+                padding: '12px',
+                border: '1px solid #e5e5e5',
+                borderRadius: 8,
+                backgroundColor: '#fff',
+                color: '#666',
+                cursor: 'pointer',
+                fontSize: 14,
+              }}
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* SAYU 미리보기 모달 */}
       {showPolishModal && (
         <div
@@ -502,7 +583,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
               }}
             >
               <h2 style={{ fontSize: 20, color: '#1A3C6E', fontWeight: 600, margin: 0 }}>
-                ✨ {format} SAYU ({selectedMode === 'basic' ? 'BASIC' : 'PREMIUM'})
+                ✨ {format} SAYU {selectedMode === 'premium' && '(PREMIUM)'}
               </h2>
               <p style={{ fontSize: 13, color: '#999', marginTop: 8, marginBottom: 0 }}>
                 AI가 다듬은 결과입니다
@@ -559,7 +640,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
                   fontSize: 15,
                   border: 'none',
                   borderRadius: 8,
-                  backgroundColor: selectedMode === 'premium' ? '#3b82f6' : '#10b981',
+                  backgroundColor: '#10b981',
                   color: '#fff',
                   cursor: isSaving ? 'not-allowed' : 'pointer',
                   opacity: isSaving ? 0.7 : 1,

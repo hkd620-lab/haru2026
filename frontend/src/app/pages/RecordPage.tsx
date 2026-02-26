@@ -13,7 +13,12 @@ type Temperature = '폭염' | '온난' | '쾌적' | '쌀쌀' | '혹한';
 const weatherOptions: Weather[] = ['쾌청', '흐림', '강우', '굳음'];
 const temperatureOptions: Temperature[] = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
 const moodOptions: Mood[] = ['기쁨', '평온', '무미', '울적', '번잡'];
-const formatOptions: RecordFormat[] = ['일기', '에세이', '선교보고', '일반보고', '업무일지', '여행기록'];
+
+// 📚 생활 카테고리
+const lifeFormats: RecordFormat[] = ['일기', '에세이', '여행기록', '애완동물관찰일지', '육아일기', '텃밭일지'];
+
+// 💼 업무 카테고리
+const workFormats: RecordFormat[] = ['일반보고', '업무일지', '선교보고'];
 
 export function RecordPage() {
   const navigate = useNavigate();
@@ -42,6 +47,13 @@ export function RecordPage() {
   };
 
   const toggleFormat = (format: RecordFormat) => {
+    // 신규 형식은 아직 비활성화 (협업AI 작업 후 활성화 예정)
+    const disabledFormats: RecordFormat[] = ['애완동물관찰일지', '육아일기', '텃밭일지'];
+    if (disabledFormats.includes(format)) {
+      toast.info('준비 중인 형식입니다. 곧 만나요! 🚧');
+      return;
+    }
+
     if (selectedFormats.includes(format)) {
       setSelectedFormats(selectedFormats.filter((f) => f !== format));
     } else if (selectedFormats.length < 3) {
@@ -91,6 +103,35 @@ export function RecordPage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const renderFormatButton = (format: RecordFormat) => {
+    const isSelected = selectedFormats.includes(format);
+    const disabledFormats: RecordFormat[] = ['애완동물관찰일지', '육아일기', '텃밭일지'];
+    const isDisabled = disabledFormats.includes(format);
+    const isSelectionFull = !isSelected && selectedFormats.length >= 3;
+
+    return (
+      <button
+        key={format}
+        onClick={() => toggleFormat(format)}
+        disabled={isSelectionFull && !isDisabled}
+        className="p-2.5 rounded-lg text-center transition-all disabled:opacity-30 disabled:cursor-not-allowed text-xs relative"
+        style={{
+          backgroundColor: isSelected ? '#1A3C6E' : '#FAF9F6',
+          border: isSelected ? 'none' : '1px solid #e5e5e5',
+          color: isSelected ? '#FAF9F6' : isDisabled ? '#999' : '#333333',
+          opacity: isDisabled ? 0.5 : 1,
+        }}
+      >
+        {format}
+        {isDisabled && (
+          <span style={{ fontSize: 10, marginLeft: 4 }}>
+            🚧
+          </span>
+        )}
+      </button>
+    );
   };
 
   return (
@@ -186,37 +227,41 @@ export function RecordPage() {
           </div>
         </section>
 
-        {/* Format Selection */}
+        {/* Format Selection - 카테고리별 */}
         <section className="bg-white rounded-lg p-3 shadow-sm">
-          <div className="mb-2">
+          <div className="mb-3">
             <h2 className="text-xs tracking-wider" style={{ color: '#666666' }}>
               형식 선택
             </h2>
             <p className="text-xs mt-0.5" style={{ color: '#999999' }}>
-              최대 3개까지 선택 가능
+              최대 3개까지 선택 가능 (🚧 = 준비 중)
             </p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {formatOptions.map((format) => {
-              const isSelected = selectedFormats.includes(format);
-              const isDisabled = !isSelected && selectedFormats.length >= 3;
 
-              return (
-                <button
-                  key={format}
-                  onClick={() => toggleFormat(format)}
-                  disabled={isDisabled}
-                  className="p-2.5 rounded-lg text-center transition-all disabled:opacity-30 disabled:cursor-not-allowed text-xs"
-                  style={{
-                    backgroundColor: isSelected ? '#1A3C6E' : '#FAF9F6',
-                    border: isSelected ? 'none' : '1px solid #e5e5e5',
-                    color: isSelected ? '#FAF9F6' : '#333333',
-                  }}
-                >
-                  {format}
-                </button>
-              );
-            })}
+          {/* 📚 생활 카테고리 */}
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span style={{ fontSize: 16 }}>📚</span>
+              <h3 className="text-sm font-semibold" style={{ color: '#1A3C6E' }}>
+                생활
+              </h3>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {lifeFormats.map(renderFormatButton)}
+            </div>
+          </div>
+
+          {/* 💼 업무 카테고리 */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span style={{ fontSize: 16 }}>💼</span>
+              <h3 className="text-sm font-semibold" style={{ color: '#1A3C6E' }}>
+                업무
+              </h3>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {workFormats.map(renderFormatButton)}
+            </div>
           </div>
         </section>
 

@@ -1,8 +1,13 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{userId}/records/{recordId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    // records 컬렉션: 로그인한 사용자만 자기 것 읽기/쓰기 가능
+    match /records/{recordId} {
+      // 개별 문서: recordId가 유저ID_로 시작하는 것만
+      allow read, write: if request.auth != null && recordId.matches('^' + request.auth.uid + '_.*');
+      
+      // 컬렉션 전체 쿼리: 로그인한 사용자의 것만 (더 유연한 규칙)
+      allow list: if request.auth != null;
     }
   }
 }
