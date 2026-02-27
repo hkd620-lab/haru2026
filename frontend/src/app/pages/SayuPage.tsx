@@ -473,7 +473,10 @@ export function SayuPage() {
       '선교보고': { label: '✝️ 선교보고', key: 'mission' },
       '일반보고': { label: '📊 일반보고', key: 'report' },
       '업무일지': { label: '💼 업무일지', key: 'work' },
-      '여행기록': { label: '✈️ 여행기록', key: 'travel' }
+      '여행기록': { label: '✈️ 여행기록', key: 'travel' },
+      '애완동물관찰일지': { label: '🐾 애완동물관찰일지', key: 'pet' },
+      '육아일기': { label: '👶 육아일기', key: 'parenting' },
+      '텃밭일지': { label: '🌱 텃밭일지', key: 'garden' }
     };
     
     return record.formats.map(format => formatMap[format] || { label: format, key: format.toLowerCase() });

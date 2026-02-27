@@ -6,7 +6,7 @@ import {
   getDoc,
   getDocs,
   query,
-  where,
+  orderBy,
   updateDoc,
   Timestamp,
 } from 'firebase/firestore';
@@ -47,11 +47,14 @@ export interface RecordInput {
 }
 
 class FirestoreService {
-  private recordsCollection = 'records';
+  // users/{uid}/records 경로로 변경
+  private getRecordsCollection(uid: string) {
+    return collection(db, 'users', uid, 'records');
+  }
 
   async saveRecord(uid: string, recordData: RecordInput): Promise<void> {
-    const recordRef = doc(db, this.recordsCollection, `${uid}_${recordData.date}`);
-
+    // users/{uid}/records/{date} 경로
+    const recordRef = doc(this.getRecordsCollection(uid), recordData.date);
     const existingDoc = await getDoc(recordRef);
 
     if (existingDoc.exists()) {
@@ -69,13 +72,10 @@ class FirestoreService {
   }
 
   async getRecords(uid: string): Promise<HaruRecord[]> {
-    // 인덱스 불필요한 간단한 쿼리
-    const q = query(
-      collection(db, this.recordsCollection),
-      where('__name__', '>=', `${uid}_`),
-      where('__name__', '<=', `${uid}_\uf8ff`)
-    );
-
+    // users/{uid}/records 서브컬렉션에서 가져오기
+    const recordsCol = this.getRecordsCollection(uid);
+    const q = query(recordsCol, orderBy('date', 'desc'));
+    
     const snapshot = await getDocs(q);
     const records = snapshot.docs.map((doc) => {
       const data = doc.data();
@@ -93,12 +93,12 @@ class FirestoreService {
       };
     });
 
-    // 클라이언트 측에서 정렬 (날짜 최신순)
-    return records.sort((a, b) => b.date.localeCompare(a.date));
+    return records;
   }
 
   async getRecordByDate(uid: string, date: string): Promise<HaruRecord | null> {
-    const recordRef = doc(db, this.recordsCollection, `${uid}_${date}`);
+    // users/{uid}/records/{date} 경로
+    const recordRef = doc(this.getRecordsCollection(uid), date);
     const snapshot = await getDoc(recordRef);
 
     if (!snapshot.exists()) return null;
@@ -119,7 +119,8 @@ class FirestoreService {
   }
 
   async updateRecord(uid: string, recordId: string, updateData: Record<string, any>): Promise<void> {
-    const recordRef = doc(db, this.recordsCollection, recordId);
+    // users/{uid}/records/{recordId} 경로
+    const recordRef = doc(this.getRecordsCollection(uid), recordId);
     await updateDoc(recordRef, {
       ...updateData,
       updatedAt: Timestamp.now(),
