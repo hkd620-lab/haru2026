@@ -15,9 +15,39 @@ interface SayuModalProps {
   dateLabel: string;
   currentRating?: number;
   onSave: (content: string, rating: number) => void;
+  // ✅ 환경정보 추가
+  recordDate?: string;
+  weather?: string;
+  temperature?: string;
+  mood?: string;
 }
 
-function SayuModal({ isOpen, onClose, content, originalData, format, dateLabel, currentRating, onSave }: SayuModalProps) {
+// ✅ 날짜 포맷팅 함수
+function formatDateToKorean(dateStr: string): string {
+  const date = new Date(dateStr + 'T00:00:00');
+  const days = ['일', '월', '화', '수', '목', '금', '토'];
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const dayOfWeek = days[date.getDay()];
+  
+  return `${year}년 ${month}월 ${day}일 ${dayOfWeek}요일`;
+}
+
+function SayuModal({ 
+  isOpen, 
+  onClose, 
+  content, 
+  originalData, 
+  format, 
+  dateLabel, 
+  currentRating, 
+  onSave,
+  recordDate,
+  weather,
+  temperature,
+  mood
+}: SayuModalProps) {
   const [editedContent, setEditedContent] = useState(content);
   const [isSaving, setIsSaving] = useState(false);
   const [rating, setRating] = useState(currentRating || 1);
@@ -45,6 +75,24 @@ function SayuModal({ isOpen, onClose, content, originalData, format, dateLabel, 
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // ✅ 환경 정보 헤더 생성
+  const getEnvironmentHeader = () => {
+    if (!recordDate) return '';
+
+    let header = `📅 ${formatDateToKorean(recordDate)}\n`;
+    
+    const envParts: string[] = [];
+    if (weather) envParts.push(`날씨: ${weather}`);
+    if (temperature) envParts.push(`기온: ${temperature}`);
+    if (mood) envParts.push(`기분: ${mood}`);
+    
+    if (envParts.length > 0) {
+      header += `🌤️ ${envParts.join(' | ')}\n`;
+    }
+
+    return header;
   };
 
   const renderOriginalData = () => {
@@ -202,6 +250,21 @@ function SayuModal({ isOpen, onClose, content, originalData, format, dateLabel, 
         <div style={{ flex: 1, overflowY: 'auto', padding: '28px' }}>
           {viewMode === 'ai' ? (
             <>
+              {/* ✅ 환경 정보 헤더 표시 */}
+              {getEnvironmentHeader() && (
+                <div style={{ 
+                  marginBottom: '20px', 
+                  paddingBottom: '20px', 
+                  borderBottom: '2px solid #e5e5e5',
+                  color: '#1A3C6E',
+                  fontWeight: 600,
+                  lineHeight: 1.6,
+                  whiteSpace: 'pre-wrap',
+                  fontSize: 14
+                }}>
+                  {getEnvironmentHeader()}
+                </div>
+              )}
               <p style={{ fontSize: 13, color: '#999', marginBottom: 12 }}>
                 다듬어진 글을 자유롭게 편집하고 최종 저장하세요
               </p>
@@ -348,6 +411,11 @@ export function SayuPage() {
     originalData?: Record<string, string>;
     dateLabel: string;
     currentRating: number;
+    // ✅ 환경정보 추가
+    recordDate?: string;
+    weather?: string;
+    temperature?: string;
+    mood?: string;
   }>({ isOpen: false, content: '', dateLabel: '', currentRating: 1 });
   
   const [showSayuGuide, setShowSayuGuide] = useState(() => {
@@ -509,6 +577,11 @@ export function SayuPage() {
           weekday: 'long',
         })}`,
         currentRating: selectedRecord.mergeRating || 1,
+        // ✅ 환경정보 전달
+        recordDate: selectedRecord.date,
+        weather: selectedRecord.weather,
+        temperature: selectedRecord.temperature,
+        mood: selectedRecord.mood,
       });
     } else {
       toast.info(`${formatLabel}의 SAYU가 아직 없습니다.`);
@@ -730,6 +803,10 @@ export function SayuPage() {
         dateLabel={sayuModalState.dateLabel}
         currentRating={sayuModalState.currentRating}
         onSave={handleSaveSayu}
+        recordDate={sayuModalState.recordDate}
+        weather={sayuModalState.weather}
+        temperature={sayuModalState.temperature}
+        mood={sayuModalState.mood}
       />
     </div>
   );
