@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { 
+import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithRedirect,
@@ -16,6 +16,7 @@ export interface LocalUser {
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
+  providerId?: string;
 }
 
 interface AuthContextType {
@@ -24,10 +25,13 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<{ user: LocalUser | null }>;
   googleSignIn: () => Promise<void>;
+  kakaoSignIn: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const KAKAO_USER_KEY = 'haru_kakao_user';
 
 const mapUser = (user: FirebaseUser): LocalUser => ({
   uid: user.uid,
@@ -54,11 +58,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     checkRedirect();
 
+    // 카카오 사용자 체크
+    const checkKakaoUser = () => {
+      const savedUser = localStorage.getItem(KAKAO_USER_KEY);
+      if (savedUser) {
+        try {
+          const kakaoUser = JSON.parse(savedUser);
+          setUser(kakaoUser);
+          console.log('✅ 저장된 카카오 사용자 복원:', kakaoUser);
+        } catch (e) {
+          console.error('카카오 사용자 복원 실패:', e);
+          localStorage.removeItem(KAKAO_USER_KEY);
+        }
+      }
+    };
+
+    checkKakaoUser();
+
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         setUser(mapUser(firebaseUser));
+        localStorage.removeItem(KAKAO_USER_KEY);
       } else {
-        setUser(null);
+        const savedKakaoUser = localStorage.getItem(KAKAO_USER_KEY);
+        if (!savedKakaoUser) {
+          setUser(null);
+        }
       }
       setLoading(false);
     });
@@ -96,9 +121,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const kakaoSignIn = async () => {
+    try {
+      const { loginWithKakao } = await import('../../firebase');
+      const kakaoUser = await loginWithKakao();
+      
+      localStorage.setItem(KAKAO_USER_KEY, JSON.stringify(kakaoUser));
+      setUser(kakaoUser as LocalUser);
+      
+      console.log('✅ 카카오 로그인 완료, 사용자 저장:', kakaoUser);
+    } catch (error: any) {
+      console.error('Kakao sign in error:', error);
+      throw new Error(error.message || '카카오 로그인 실패');
+    }
+  };
+
   const signOut = async () => {
     try {
+      localStorage.removeItem(KAKAO_USER_KEY);
       await firebaseSignOut(auth);
+      setUser(null);
     } catch (error: any) {
       console.error('Sign out error:', error);
       throw new Error(error.message || '로그아웃 실패');
@@ -111,6 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signIn,
     signUp,
     googleSignIn,
+    kakaoSignIn,
     signOut,
   };
 

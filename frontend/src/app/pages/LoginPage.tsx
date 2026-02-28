@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { loginWithGoogle } from '../../firebase';
+import { useAuth } from '../contexts/AuthContext';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const { kakaoSignIn } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const handleGoogleLogin = async () => {
@@ -18,8 +20,18 @@ export function LoginPage() {
     }
   };
 
-  const handleKakaoLogin = () => {
-    alert("카카오 로그인 기능을 시스템에 연결 중입니다. 당분간 Google 계정을 이용해 주세요!");
+  const handleKakaoLogin = async () => {
+    setLoading(true);
+    try {
+      await kakaoSignIn();
+      console.log('✅ 카카오 로그인 완료, 홈으로 이동');
+      navigate('/', { replace: true });
+    } catch (err) {
+      console.error('카카오 로그인 오류:', err);
+      alert('카카오 로그인 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -42,6 +54,7 @@ export function LoginPage() {
 
           <button
             onClick={handleKakaoLogin}
+            disabled={loading}
             className="w-full py-3 rounded-xl font-medium text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all"
             style={{ backgroundColor: '#FEE500', color: '#3C1E1E' }}
           >
