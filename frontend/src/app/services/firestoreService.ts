@@ -1,28 +1,19 @@
-import {
-  getFirestore,
-  collection,
-  doc,
-  setDoc,
-  getDoc,
-  getDocs,
-  query,
+import { 
+  collection, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  getDocs, 
+  updateDoc, 
+  deleteDoc,
+  query, 
+  where, 
   orderBy,
-  updateDoc,
-  Timestamp,
+  Timestamp 
 } from 'firebase/firestore';
+import { db } from '../../firebase';  // ✅ 수정됨: ../firebase → ../../firebase
 
-const db = getFirestore();
-
-export type RecordFormat =
-  | '일기'
-  | '에세이'
-  | '선교보고'
-  | '일반보고'
-  | '업무일지'
-  | '여행기록'
-  | '애완동물관찰일지'
-  | '육아일기'
-  | '텃밭일지';
+export type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기';
 
 export interface HaruRecord {
   id: string;
@@ -30,101 +21,126 @@ export interface HaruRecord {
   weather?: string;
   temperature?: string;
   mood?: string;
-  formats?: RecordFormat[];
+  formats: RecordFormat[];
   content?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
   [key: string]: any;
 }
 
-export interface RecordInput {
-  date: string;
-  weather?: string;
-  temperature?: string;
-  mood?: string;
-  formats?: RecordFormat[];
-  content?: string;
+export interface GardenCrops {
+  crops: string[];
+  updatedAt: string;
 }
 
 class FirestoreService {
-  // users/{uid}/records 경로로 변경
-  private getRecordsCollection(uid: string) {
-    return collection(db, 'users', uid, 'records');
+  // 기존 기록 관련 함수들
+  async saveRecord(userId: string, recordData: Partial<HaruRecord>) {
+    const recordRef = doc(db, 'users', userId, 'records', recordData.date!);
+    await setDoc(recordRef, {
+      ...recordData,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
   }
 
-  async saveRecord(uid: string, recordData: RecordInput): Promise<void> {
-    // users/{uid}/records/{date} 경로
-    const recordRef = doc(this.getRecordsCollection(uid), recordData.date);
-    const existingDoc = await getDoc(recordRef);
+  async getRecord(userId: string, date: string): Promise<HaruRecord | null> {
+    const recordRef = doc(db, 'users', userId, 'records', date);
+    const recordSnap = await getDoc(recordRef);
+    
+    if (recordSnap.exists()) {
+      return {
+        id: recordSnap.id,
+        ...recordSnap.data(),
+      } as HaruRecord;
+    }
+    
+    return null;
+  }
 
-    if (existingDoc.exists()) {
-      await updateDoc(recordRef, {
-        ...recordData,
-        updatedAt: Timestamp.now(),
-      });
-    } else {
-      await setDoc(recordRef, {
-        ...recordData,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
-      });
+  async getRecords(userId: string): Promise<HaruRecord[]> {
+    const recordsRef = collection(db, 'users', userId, 'records');
+    const q = query(recordsRef, orderBy('date', 'desc'));
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as HaruRecord[];
+  }
+
+  async updateRecord(userId: string, recordId: string, data: Partial<HaruRecord>) {
+    const recordRef = doc(db, 'users', userId, 'records', recordId);
+    await updateDoc(recordRef, {
+      ...data,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  async deleteRecord(userId: string, recordId: string) {
+    const recordRef = doc(db, 'users', userId, 'records', recordId);
+    await deleteDoc(recordRef);
+  }
+
+  // ✅ 새로 추가: 텃밭일지 작물 관리 함수들
+  
+  /**
+   * 사용자의 현재 작물 목록 가져오기
+   */
+  async getGardenCrops(userId: string): Promise<string[]> {
+    try {
+      const cropsRef = doc(db, 'users', userId, 'settings', 'gardenCrops');
+      const cropsSnap = await getDoc(cropsRef);
+      
+      if (cropsSnap.exists()) {
+        const data = cropsSnap.data() as GardenCrops;
+        return data.crops || [];
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('작물 목록 불러오기 실패:', error);
+      return [];
     }
   }
 
-  async getRecords(uid: string): Promise<HaruRecord[]> {
-    // users/{uid}/records 서브컬렉션에서 가져오기
-    const recordsCol = this.getRecordsCollection(uid);
-    const q = query(recordsCol, orderBy('date', 'desc'));
+  /**
+   * 사용자의 작물 목록 저장/업데이트
+   */
+  async saveGardenCrops(userId: string, crops: string[]): Promise<void> {
+    try {
+      const cropsRef = doc(db, 'users', userId, 'settings', 'gardenCrops');
+      await setDoc(cropsRef, {
+        crops,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('작물 목록 저장 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 작물 추가 (중복 방지)
+   */
+  async addGardenCrop(userId: string, crop: string): Promise<string[]> {
+    const currentCrops = await this.getGardenCrops(userId);
     
-    const snapshot = await getDocs(q);
-    const records = snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        date: data.date || '',
-        weather: data.weather,
-        temperature: data.temperature,
-        mood: data.mood,
-        formats: data.formats || [],
-        content: data.content || '',
-        createdAt: data.createdAt?.toDate(),
-        updatedAt: data.updatedAt?.toDate(),
-        ...data,
-      };
-    });
-
-    return records;
+    if (!currentCrops.includes(crop)) {
+      const newCrops = [...currentCrops, crop];
+      await this.saveGardenCrops(userId, newCrops);
+      return newCrops;
+    }
+    
+    return currentCrops;
   }
 
-  async getRecordByDate(uid: string, date: string): Promise<HaruRecord | null> {
-    // users/{uid}/records/{date} 경로
-    const recordRef = doc(this.getRecordsCollection(uid), date);
-    const snapshot = await getDoc(recordRef);
-
-    if (!snapshot.exists()) return null;
-
-    const data = snapshot.data();
-    return {
-      id: snapshot.id,
-      date: data.date || '',
-      weather: data.weather,
-      temperature: data.temperature,
-      mood: data.mood,
-      formats: data.formats || [],
-      content: data.content || '',
-      createdAt: data.createdAt?.toDate(),
-      updatedAt: data.updatedAt?.toDate(),
-      ...data,
-    };
-  }
-
-  async updateRecord(uid: string, recordId: string, updateData: Record<string, any>): Promise<void> {
-    // users/{uid}/records/{recordId} 경로
-    const recordRef = doc(this.getRecordsCollection(uid), recordId);
-    await updateDoc(recordRef, {
-      ...updateData,
-      updatedAt: Timestamp.now(),
-    });
+  /**
+   * 작물 삭제
+   */
+  async removeGardenCrop(userId: string, crop: string): Promise<string[]> {
+    const currentCrops = await this.getGardenCrops(userId);
+    const newCrops = currentCrops.filter(c => c !== crop);
+    await this.saveGardenCrops(userId, newCrops);
+    return newCrops;
   }
 }
 

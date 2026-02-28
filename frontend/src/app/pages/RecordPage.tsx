@@ -7,10 +7,10 @@ import { RecordTitleAnimation } from '../components/RecordTitleAnimation';
 import { toast } from 'sonner';
 
 type Mood = '기쁨' | '평온' | '무미' | '울적' | '번잡';
-type Weather = '쾌청' | '흐림' | '강우' | '굳음';
+type Weather = '쾌청' | '흐림' | '강우' | '굳음' | '눈';
 type Temperature = '폭염' | '온난' | '쾌적' | '쌀쌀' | '혹한';
 
-const weatherOptions: Weather[] = ['쾌청', '흐림', '강우', '굳음'];
+const weatherOptions: Weather[] = ['쾌청', '흐림', '강우', '굳음', '눈'];
 const temperatureOptions: Temperature[] = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
 const moodOptions: Mood[] = ['기쁨', '평온', '무미', '울적', '번잡'];
 
@@ -47,13 +47,6 @@ export function RecordPage() {
   };
 
   const toggleFormat = (format: RecordFormat) => {
-    // 신규 형식은 아직 비활성화 (협업AI 작업 후 활성화 예정)
-    const disabledFormats: RecordFormat[] = ['애완동물관찰일지', '육아일기', '텃밭일지'];
-    if (disabledFormats.includes(format)) {
-      toast.info('준비 중인 형식입니다. 곧 만나요! 🚧');
-      return;
-    }
-
     if (selectedFormats.includes(format)) {
       setSelectedFormats(selectedFormats.filter((f) => f !== format));
     } else if (selectedFormats.length < 3) {
@@ -107,29 +100,21 @@ export function RecordPage() {
 
   const renderFormatButton = (format: RecordFormat) => {
     const isSelected = selectedFormats.includes(format);
-    const disabledFormats: RecordFormat[] = ['애완동물관찰일지', '육아일기', '텃밭일지'];
-    const isDisabled = disabledFormats.includes(format);
     const isSelectionFull = !isSelected && selectedFormats.length >= 3;
 
     return (
       <button
         key={format}
         onClick={() => toggleFormat(format)}
-        disabled={isSelectionFull && !isDisabled}
+        disabled={isSelectionFull}
         className="p-2.5 rounded-lg text-center transition-all disabled:opacity-30 disabled:cursor-not-allowed text-xs relative"
         style={{
           backgroundColor: isSelected ? '#1A3C6E' : '#FAF9F6',
           border: isSelected ? 'none' : '1px solid #e5e5e5',
-          color: isSelected ? '#FAF9F6' : isDisabled ? '#999' : '#333333',
-          opacity: isDisabled ? 0.5 : 1,
+          color: isSelected ? '#FAF9F6' : '#333333',
         }}
       >
         {format}
-        {isDisabled && (
-          <span style={{ fontSize: 10, marginLeft: 4 }}>
-            🚧
-          </span>
-        )}
       </button>
     );
   };
@@ -234,7 +219,7 @@ export function RecordPage() {
               형식 선택
             </h2>
             <p className="text-xs mt-0.5" style={{ color: '#999999' }}>
-              최대 3개까지 선택 가능 (🚧 = 준비 중)
+              최대 3개까지 선택 가능
             </p>
           </div>
 

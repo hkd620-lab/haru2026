@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react';
-import { BookOpen, Info, Wand2 } from 'lucide-react';
+import { BookOpen, Info } from 'lucide-react';
 import { FormatModal } from '../components/FormatModal';
 import { useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
@@ -29,7 +30,6 @@ export function LibraryPage() {
     }
   });
 
-  // 데이터 가져오기
   useEffect(() => {
     fetchRecords();
   }, [authUser?.uid, location]);
@@ -76,17 +76,14 @@ export function LibraryPage() {
     setModalState({ isOpen: false, format: null });
   };
 
-  // 84번째 줄 근처 수정된 함수
   const handleSaveFormatData = async (formatData: Record<string, string>) => {
     if (!selectedRecord || !authUser?.uid) return;
 
     const filteredData: Record<string, any> = {};
     Object.entries(formatData).forEach(([key, value]) => {
-      // string 타입만 trim 체크
       if (typeof value === 'string' && value.trim().length > 0) {
         filteredData[key] = value;
       } else if (typeof value === 'boolean' || (typeof value === 'string' && value.length > 0)) {
-        // boolean이나 빈 문자열이 아닌 경우(공백 포함 등) 그대로 저장
         filteredData[key] = value;
       }
     });
@@ -114,46 +111,68 @@ export function LibraryPage() {
 
   const getFormatData = (format: RecordFormat) => {
     if (!selectedRecord) return {};
-    const prefix =
-      format === '일기' ? 'diary_' :
-      format === '에세이' ? 'essay_' :
-      format === '선교보고' ? 'mission_' :
-      format === '일반보고' ? 'report_' :
-      format === '업무일지' ? 'work_' : 'travel_';
+    
+    const prefixMap: Record<RecordFormat, string> = {
+      '일기': 'diary',
+      '에세이': 'essay',
+      '선교보고': 'mission',
+      '일반보고': 'report',
+      '업무일지': 'work',
+      '여행기록': 'travel',
+      '애완동물관찰일지': 'pet',
+      '육아일기': 'parenting',
+      '텃밭일지': 'garden',
+    };
 
+    const prefix = prefixMap[format];
     const data: Record<string, string> = {};
+    
     Object.keys(selectedRecord).forEach((key) => {
-      if (key.startsWith(prefix)) {
+      if (key.startsWith(prefix + '_') || key === `${prefix}_sayu`) {
         data[key] = (selectedRecord as any)[key];
       }
     });
+    
     return data;
   };
 
-  // 다듬기 완료 여부 확인
   const isFormatPolished = (format: RecordFormat) => {
     if (!selectedRecord) return false;
-    const prefix =
-      format === '일기' ? 'diary' :
-      format === '에세이' ? 'essay' :
-      format === '선교보고' ? 'mission' :
-      format === '일반보고' ? 'report' :
-      format === '업무일지' ? 'work' : 'travel';
     
+    const prefixMap: Record<RecordFormat, string> = {
+      '일기': 'diary',
+      '에세이': 'essay',
+      '선교보고': 'mission',
+      '일반보고': 'report',
+      '업무일지': 'work',
+      '여행기록': 'travel',
+      '애완동물관찰일지': 'pet',
+      '육아일기': 'parenting',
+      '텃밭일지': 'garden',
+    };
+    
+    const prefix = prefixMap[format];
     const sayuKey = `${prefix}_sayu`;
     const value = (selectedRecord as any)[sayuKey];
     return value && typeof value === 'string' && value.trim().length > 0;
   };
 
-  // 원본만 작성 여부 확인 (다듬기는 안 함)
   const hasFormatContent = (format: RecordFormat) => {
     if (!selectedRecord) return false;
-    const prefix =
-      format === '일기' ? 'diary_' :
-      format === '에세이' ? 'essay_' :
-      format === '선교보고' ? 'mission_' :
-      format === '일반보고' ? 'report_' :
-      format === '업무일지' ? 'work_' : 'travel_';
+    
+    const prefixMap: Record<RecordFormat, string> = {
+      '일기': 'diary',
+      '에세이': 'essay',
+      '선교보고': 'mission',
+      '일반보고': 'report',
+      '업무일지': 'work',
+      '여행기록': 'travel',
+      '애완동물관찰일지': 'pet',
+      '육아일기': 'parenting',
+      '텃밭일지': 'garden',
+    };
+
+    const prefix = prefixMap[format] + '_';
 
     return Object.keys(selectedRecord).some(key => {
       if (key.startsWith(prefix)) {
@@ -164,27 +183,23 @@ export function LibraryPage() {
     });
   };
 
-  // 버튼 스타일 결정 함수
   const getButtonStyle = (format: RecordFormat) => {
     const polished = isFormatPolished(format);
     const hasContent = hasFormatContent(format);
 
     if (polished) {
-      // 다듬기 완료 - 초록색
       return {
         backgroundColor: '#10b981',
         color: '#FAF9F6',
         border: '3px solid #059669',
       };
     } else if (hasContent) {
-      // 원본만 작성 - 파란색
       return {
         backgroundColor: '#1A3C6E',
         color: '#FAF9F6',
         border: '3px solid #2A4C7E',
       };
     } else {
-      // 미작성 - 골드색
       return {
         backgroundColor: '#DAA520',
         color: '#FAF9F6',
@@ -199,7 +214,7 @@ export function LibraryPage() {
 
     try {
       const updateData: Record<string, any> = {};
-      const formatPrefixes = ['diary_', 'essay_', 'mission_', 'report_', 'work_', 'travel_', 'diary_sayu', 'essay_sayu', 'mission_sayu', 'report_sayu', 'work_sayu', 'travel_sayu'];
+      const formatPrefixes = ['diary_', 'essay_', 'mission_', 'report_', 'work_', 'travel_', 'pet_', 'parenting_', 'garden_', 'diary_sayu', 'essay_sayu', 'mission_sayu', 'report_sayu', 'work_sayu', 'travel_sayu', 'pet_sayu', 'parenting_sayu', 'garden_sayu'];
       
       Object.keys(selectedRecord).forEach((key) => {
         if (formatPrefixes.some(prefix => key.startsWith(prefix))) {
@@ -220,7 +235,6 @@ export function LibraryPage() {
     }
   };
 
-  // 오늘 날짜 기록 자동 선택
   useEffect(() => {
     if (!loading) {
       const todayStr = formatDateString(new Date());
@@ -231,7 +245,6 @@ export function LibraryPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
-      {/* Header */}
       <div className="mb-6">
         <div className="flex items-start justify-between mb-2">
           <LibraryTitleAnimation />
@@ -294,7 +307,6 @@ export function LibraryPage() {
         </div>
       </div>
 
-      {/* Main Content */}
       {loading ? (
         <div className="bg-white rounded-lg p-8 shadow-sm text-center">
           <p style={{ color: '#999' }}>불러오는 중...</p>
@@ -463,6 +475,10 @@ export function LibraryPage() {
           recordId={selectedRecord.id}
           initialData={getFormatData(modalState.format)}
           onSave={handleSaveFormatData}
+          recordDate={selectedRecord.date}
+          weather={selectedRecord.weather}
+          temperature={selectedRecord.temperature}
+          mood={selectedRecord.mood}
         />
       )}
     </div>
