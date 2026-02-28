@@ -1,157 +1,71 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.saveFinalSayu = exports.polishSayu = exports.kakaoCustomAuth = exports.generateSayu = exports.polishContent = void 0;
+exports.polishContent = void 0;
 const https_1 = require("firebase-functions/v2/https");
-const logger = __importStar(require("firebase-functions/logger"));
 const generative_ai_1 = require("@google/generative-ai");
-const params_1 = require("firebase-functions/params");
-// 🔐 Secret 정의
-const geminiApiKey = (0, params_1.defineSecret)("GEMINI_API_KEY");
-// 🌏 서울 리전 설정
-const region = "asia-northeast3";
-// 🟢 BASIC 모드 프롬프트
-const BASIC_PROMPT = `당신은 기록을 정리하는 편집기입니다.
-
-**절대 규칙:**
-- 내용 추가 금지
-- 감정 과장 금지
-- 추측 금지
-- 해석 금지
-- 길이 증가 금지
-- 원본의 모든 항목을 반드시 포함할 것
-
-**작업:**
-1. 오탈자를 수정합니다.
-2. 문장을 자연스럽게 연결합니다.
-3. 불필요한 반복 표현을 정리합니다.
-4. 가독성을 개선합니다.
-5. 원본에 있는 모든 내용을 반드시 다듬어서 출력합니다.
-
-**출력:**
-- 설명 없이 다듬어진 글만 출력하세요.
-- 원본의 모든 항목이 반드시 포함되어야 합니다.
-- "형식:", "결과:" 같은 메타 정보를 출력하지 마세요.`;
-// 🔵 PREMIUM 모드 프롬프트
-const PREMIUM_PROMPT = `당신은 기록을 고급 정돈하는 편집기입니다.
-
-**절대 규칙:**
-- 새로운 사건 추가 금지
-- 새로운 감정 추가 금지
-- 추측 금지
-- 감정 과장 금지
-- 길이 증가 금지
-- 원본의 모든 항목을 반드시 포함할 것
-
-**프리미엄 정돈 작업:**
-1. 문장 구조를 자유롭게 재배치합니다.
-2. 글의 전체 흐름을 재구성하되 인과관계와 시간 순서는 유지합니다.
-3. 동일한 감정의 반복 표현은 제거합니다.
-4. 모호한 감정 표현은 원문 의미 범위 안에서 선명하게 정제합니다.
-5. 군더더기 표현을 제거합니다.
-6. 의미 밀도를 높입니다.
-7. 자연스러운 완성도를 유지합니다.
-8. 원본의 모든 항목을 반드시 다듬어서 출력합니다.
-
-**출력:**
-- 설명 없이 다듬어진 글만 출력하세요.
-- 원본의 모든 항목이 반드시 포함되어야 합니다.
-- "형식:", "결과:" 같은 메타 정보를 출력하지 마세요.`;
-// 🎨 1. 글 다듬기 함수 (BASIC/PREMIUM 모드 지원)
-exports.polishContent = (0, https_1.onCall)({ region, secrets: [geminiApiKey] }, async (request) => {
-    if (!request.auth) {
-        throw new https_1.HttpsError("unauthenticated", "로그인이 필요합니다.");
-    }
-    const { text, mode, format } = request.data;
-    if (!text || !mode || !format) {
-        throw new https_1.HttpsError("invalid-argument", "필수 데이터가 없습니다.");
-    }
-    logger.info("글 다듬기 요청:", { format, mode, textLength: text.length });
+const genAI = new generative_ai_1.GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+exports.polishContent = (0, https_1.onCall)({ region: 'asia-northeast3' }, async (request) => {
     try {
-        // Gemini AI 초기화
-        const genAI = new generative_ai_1.GoogleGenerativeAI(geminiApiKey.value());
+        const { text, format, mode = 'premium' } = request.data;
+        if (!text || typeof text !== 'string') {
+            throw new https_1.HttpsError('invalid-argument', '텍스트가 필요합니다.');
+        }
+        // 모드별 시스템 프롬프트
+        let systemPrompt = '';
+        if (mode === 'basic') {
+            // 베이직 5/10 - 원문 최대한 유지
+            systemPrompt = `당신은 신중한 편집자입니다.
+
+주어진 기록을 최소한으로만 다듬어주세요.
+
+규칙:
+1. 원문의 단어와 표현을 최대한 그대로 사용하세요
+2. 존댓말을 반드시 유지하세요
+3. 맞춤법, 띄어쓰기, 문장 부호만 교정하세요
+4. 어색하거나 중복되는 표현만 자연스럽게 고치세요
+5. 새로운 은유, 비유, 표현을 추가하지 마세요
+6. 문장 구조를 크게 바꾸지 마세요
+7. 원문의 톤과 느낌을 100% 유지하세요
+8. 문장과 문장 사이에 빈 줄을 넣지 마세요
+9. 자연스럽게 이어지는 하나의 문단으로 작성하세요
+10. 줄바꿈은 최소화하고 문장을 자연스럽게 연결하세요
+
+목표: 원문을 95% 유지하면서 읽기 편하게 만들기`;
+        }
+        else {
+            // 프리미엄 10/10 - Gemini 최대 능력 발휘
+            systemPrompt = `당신은 재능있는 에세이 작가입니다.
+
+주어진 기록을 감동적이고 아름다운 글로 재탄생시켜주세요.
+
+자유롭게 표현하세요:
+- 문학적이고 감각적인 표현을 사용하세요
+- 은유와 비유를 효과적으로 활용하세요
+- 감정을 깊이 있게 표현하세요
+- 구조를 재구성하고 문단을 나누세요
+- 구체적인 이미지와 디테일을 추가하세요
+- 시적인 리듬감을 살려주세요
+- 독자의 마음을 울리는 글을 만드세요
+
+반드시 지켜야 할 것:
+1. 존댓말을 유지하세요 (반말 금지)
+2. 원문의 핵심 내용과 감정은 반드시 유지하세요
+3. 원문에 없는 완전히 새로운 사건이나 내용을 추가하지 마세요
+4. 교훈이나 설교조의 조언을 추가하지 마세요
+
+목표: 감동적이고 아름다운 에세이로 승화시키기`;
+        }
         const model = genAI.getGenerativeModel({
             model: "gemini-2.5-flash",
-            generationConfig: {
-                temperature: mode === "premium" ? 0.7 : 0.5,
-                maxOutputTokens: 4096, // 🔥 토큰 수 증가
-            }
+            systemInstruction: systemPrompt
         });
-        // 모드에 따른 프롬프트 선택
-        const systemPrompt = mode === "premium" ? PREMIUM_PROMPT : BASIC_PROMPT;
-        // 🔥 명확한 프롬프트
-        const prompt = `${systemPrompt}
-
-아래 내용의 모든 항목을 빠짐없이 다듬어주세요:
-
-${text}
-
-**중요:** 위 내용의 모든 부분을 다듬어서 출력하세요. 일부만 출력하지 마세요.`;
-        const result = await model.generateContent(prompt);
+        const result = await model.generateContent(text);
         const response = result.response;
         const polishedText = response.text();
-        logger.info("AI 다듬기 완료", {
-            format,
-            mode,
-            inputLength: text.length,
-            outputLength: polishedText.length
-        });
-        return {
-            text: polishedText,
-            success: true,
-            mode: mode
-        };
+        return { text: polishedText };
     }
     catch (error) {
-        logger.error("AI 처리 중 오류:", error);
-        throw new https_1.HttpsError("internal", `AI 처리 실패: ${error.message || "알 수 없는 오류"}`);
+        console.error('AI 처리 실패:', error);
+        throw new https_1.HttpsError('internal', 'AI 처리에 실패했습니다.');
     }
-});
-// 2. 사유 생성 함수 (향후 사용)
-exports.generateSayu = (0, https_1.onCall)({ region }, async (request) => {
-    return { text: "사유가 생성되었습니다.", success: true };
-});
-// 3. 카카오 인증 함수 (준비 중)
-exports.kakaoCustomAuth = (0, https_1.onCall)({ region }, async (request) => {
-    return { message: "준비 중인 기능입니다." };
-});
-// 4. 사유 다듬기 함수 (기존 연동용)
-exports.polishSayu = (0, https_1.onCall)({ region }, async (request) => {
-    return { text: "사유가 정돈되었습니다." };
-});
-// 5. 최종 저장 함수
-exports.saveFinalSayu = (0, https_1.onCall)({ region }, async (request) => {
-    return { success: true };
 });
