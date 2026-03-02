@@ -26,18 +26,21 @@ interface AuthContextType {
   signUp: (email: string, password: string) => Promise<{ user: LocalUser | null }>;
   googleSignIn: () => Promise<void>;
   kakaoSignIn: () => Promise<void>;
+  naverSignIn: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const KAKAO_USER_KEY = 'haru_kakao_user';
+const NAVER_USER_KEY = 'haru_naver_user';
 
 const mapUser = (user: FirebaseUser): LocalUser => ({
   uid: user.uid,
   email: user.email ?? null,
   displayName: user.displayName ?? user.email?.split('@')[0] ?? 'User',
   photoURL: user.photoURL ?? null,
+  providerId: user.providerData[0]?.providerId ?? 'password',
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -45,43 +48,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkRedirect = async () => {
+    const initAuth = async () => {
       try {
+        // 1. Redirect 로그인 체크 (Google 등)
         const result = await getRedirectResult(auth);
         if (result?.user) {
           setUser(mapUser(result.user));
+          setLoading(false);
+          return;
         }
+
+        // 2. Kakao 체크
+        const savedKakao = localStorage.getItem(KAKAO_USER_KEY);
+        if (savedKakao) {
+          try {
+            setUser(JSON.parse(savedKakao));
+            setLoading(false);
+            return;
+          } catch {
+            localStorage.removeItem(KAKAO_USER_KEY);
+          }
+        }
+
+        // 3. Naver 체크
+        const savedNaver = localStorage.getItem(NAVER_USER_KEY);
+        if (savedNaver) {
+          try {
+            setUser(JSON.parse(savedNaver));
+            setLoading(false);
+            return;
+          } catch {
+            localStorage.removeItem(NAVER_USER_KEY);
+          }
+        }
+
+        // 4. 아무 로그인 정보 없음
+        setLoading(false);
       } catch (error) {
-        console.error('Redirect error:', error);
-      }
-    };
-    
-    checkRedirect();
-
-    // 카카오 사용자 체크
-    const checkKakaoUser = () => {
-      const savedUser = localStorage.getItem(KAKAO_USER_KEY);
-      if (savedUser) {
-        try {
-          const kakaoUser = JSON.parse(savedUser);
-          setUser(kakaoUser);
-          console.log('✅ 저장된 카카오 사용자 복원:', kakaoUser);
-        } catch (e) {
-          console.error('카카오 사용자 복원 실패:', e);
-          localStorage.removeItem(KAKAO_USER_KEY);
-        }
+        console.error('Auth init error:', error);
+        setLoading(false);
       }
     };
 
-    checkKakaoUser();
+    initAuth();
 
+    // 5. Firebase 상태 변화 감지
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         setUser(mapUser(firebaseUser));
         localStorage.removeItem(KAKAO_USER_KEY);
+        localStorage.removeItem(NAVER_USER_KEY);
       } else {
-        const savedKakaoUser = localStorage.getItem(KAKAO_USER_KEY);
-        if (!savedKakaoUser) {
+        const savedKakao = localStorage.getItem(KAKAO_USER_KEY);
+        const savedNaver = localStorage.getItem(NAVER_USER_KEY);
+        if (!savedKakao && !savedNaver) {
           setUser(null);
         }
       }
@@ -103,8 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const localUser = mapUser(userCredential.user);
-      return { user: localUser };
+      return { user: mapUser(userCredential.user) };
     } catch (error: any) {
       console.error('Sign up error:', error);
       throw new Error(error.message || '회원가입 실패');
@@ -125,20 +144,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { loginWithKakao } = await import('../../firebase');
       const kakaoUser = await loginWithKakao();
-      
-      localStorage.setItem(KAKAO_USER_KEY, JSON.stringify(kakaoUser));
-      setUser(kakaoUser as LocalUser);
-      
-      console.log('✅ 카카오 로그인 완료, 사용자 저장:', kakaoUser);
+
+      if (!kakaoUser || !kakaoUser.uid || !kakaoUser.email) {
+        throw new Error('카카오 로그인 정보가 올바르지 않습니다');
+      }
+
+      const localUser: LocalUser = {
+        uid: kakaoUser.uid,
+        email: kakaoUser.email,
+        displayName:
+          kakaoUser.displayName ||
+          kakaoUser.email?.split('@')[0] ||
+          'User',
+        photoURL: kakaoUser.photoURL || null,
+        providerId: 'kakao',
+      };
+
+      localStorage.setItem(KAKAO_USER_KEY, JSON.stringify(localUser));
+      setUser(localUser);
     } catch (error: any) {
       console.error('Kakao sign in error:', error);
       throw new Error(error.message || '카카오 로그인 실패');
     }
   };
 
+  const naverSignIn = async () => {
+    try {
+      const { loginWithNaver } = await import('../../firebase');
+      const naverUser = await loginWithNaver();
+
+      if (!naverUser || !naverUser.uid || !naverUser.email) {
+        throw new Error('네이버 로그인 정보가 올바르지 않습니다');
+      }
+
+      const localUser: LocalUser = {
+        uid: naverUser.uid,
+        email: naverUser.email,
+        displayName:
+          naverUser.displayName ||
+          naverUser.email?.split('@')[0] ||
+          'User',
+        photoURL: naverUser.photoURL || null,
+        providerId: 'naver',
+      };
+
+      localStorage.setItem(NAVER_USER_KEY, JSON.stringify(localUser));
+      setUser(localUser);
+    } catch (error: any) {
+      console.error('Naver sign in error:', error);
+      throw new Error(error.message || '네이버 로그인 실패');
+    }
+  };
+
   const signOut = async () => {
     try {
       localStorage.removeItem(KAKAO_USER_KEY);
+      localStorage.removeItem(NAVER_USER_KEY);
       await firebaseSignOut(auth);
       setUser(null);
     } catch (error: any) {
@@ -154,6 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp,
     googleSignIn,
     kakaoSignIn,
+    naverSignIn,
     signOut,
   };
 
@@ -162,7 +224,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
