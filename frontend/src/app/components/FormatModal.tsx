@@ -1,12 +1,13 @@
-import { X, TestTube2, Wand2, Plus } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { X, TestTube2, Wand2, Upload, Trash2, Plus } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 import { getTestData } from '../data/testData';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { toast } from 'sonner';
-import { firestoreService } from '../services/firestoreService';
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useAuth } from '../contexts/AuthContext';
+import { toast } from 'sonner';
 
 type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기';
+type SayuMode = 'BASIC' | 'PREMIUM';
 
 interface FormatModalProps {
   isOpen: boolean;
@@ -15,11 +16,6 @@ interface FormatModalProps {
   recordId: string;
   initialData?: Record<string, string>;
   onSave: (formatData: Record<string, string>) => Promise<void>;
-  // ✅ 환경정보 추가
-  recordDate?: string;
-  weather?: string;
-  temperature?: string;
-  mood?: string;
 }
 
 interface PolishResult {
@@ -72,27 +68,25 @@ const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placehol
     { key: 'travel_gratitude', label: '감사', placeholder: '길을 안내해 주신 노스님의 미소에 감사드립니다.\n비를 피할 수 있도록 해 준 쉼터 지붕에 감사드립니다.', rows: 3 },
   ],
   텃밭일지: [
-    { key: 'garden_work', label: '오늘의 작업', placeholder: '토마토 지주대 설치, 오이 순지르기, 상추 수확', rows: 3 },
-    { key: 'garden_observation', label: '관찰 사항', placeholder: '토마토 첫 꽃이 피었습니다. 오이 잎이 조금 시들어 보입니다.', rows: 3 },
-    { key: 'garden_issue', label: '문제점', placeholder: '진딧물이 상추에 발견되었습니다. 천연 살충제 사용 예정입니다.', rows: 3 },
-    { key: 'garden_plan', label: '향후 계획', placeholder: '내일은 토마토에 물주기, 진딧물 제거 작업을 할 예정입니다.', rows: 3 },
+    { key: 'garden_crop', label: '작물', placeholder: '토마토, 상추, 고추를 심었습니다.', rows: 2 },
+    { key: 'garden_work', label: '오늘 한 일', placeholder: '잡초를 제거하고 물을 주었습니다.', rows: 3 },
+    { key: 'garden_observation', label: '관찰', placeholder: '토마토에 꽃이 피기 시작했습니다.', rows: 3 },
+    { key: 'garden_issue', label: '문제점', placeholder: '고추 잎에 벌레가 보여서 친환경 살충제를 뿌렸습니다.', rows: 3 },
+    { key: 'garden_plan', label: '다음 계획', placeholder: '내일은 지주대를 세워야겠습니다.', rows: 2 },
   ],
   애완동물관찰일지: [
-    { key: 'pet_basic', label: '기본 정보', placeholder: '반려견 이름: 뭉치\n품종: 골든 리트리버\n나이: 3살', rows: 2 },
-    { key: 'pet_health', label: '건강 상태', placeholder: '체중: 32kg\n식욕: 양호\n배변: 정상', rows: 3 },
-    { key: 'pet_behavior', label: '행동 관찰', placeholder: '오늘 아침 산책 시 다른 강아지와 잘 어울려 놀았습니다.', rows: 3 },
-    { key: 'pet_special', label: '특이 사항', placeholder: '새로 산 장난감에 큰 관심을 보였습니다.', rows: 3 },
-    { key: 'pet_concern', label: '걱정되는 점', placeholder: '오른쪽 앞발을 가끔 핥는 행동이 관찰됩니다.', rows: 2 },
-    { key: 'pet_plan', label: '향후 계획', placeholder: '주말에 강아지 수영장 방문 계획', rows: 2 },
+    { key: 'pet_name', label: '반려동물 이름', placeholder: '우리 강아지 \'뭉치\'', rows: 1 },
+    { key: 'pet_health', label: '건강 상태', placeholder: '식욕이 좋고 활발합니다.', rows: 2 },
+    { key: 'pet_behavior', label: '행동 관찰', placeholder: '오늘 처음으로 \'앉아\'를 성공했습니다!', rows: 3 },
+    { key: 'pet_care', label: '돌봄 기록', placeholder: '산책 30분, 간식 2회, 목욕', rows: 3 },
+    { key: 'pet_special', label: '특별한 일', placeholder: '동네 친구 강아지와 사이좋게 놀았습니다.', rows: 3 },
   ],
   육아일기: [
-    { key: 'parenting_basic', label: '기본 정보', placeholder: '아이 이름: 지우\n나이: 15개월', rows: 2 },
-    { key: 'parenting_growth', label: '성장 기록', placeholder: '키: 80cm, 몸무게: 11kg\n발달: 혼자 걷기 시작', rows: 3 },
-    { key: 'parenting_meal', label: '식사 기록', placeholder: '아침: 미음 + 바나나\n점심: 소고기 야채죽', rows: 3 },
-    { key: 'parenting_activity', label: '활동 내용', placeholder: '오전에 놀이터에서 그네를 탔습니다.', rows: 3 },
-    { key: 'parenting_sleep', label: '수면 패턴', placeholder: '낮잠: 오후 2시~4시\n밤잠: 오후 8시~다음날 오전 7시', rows: 3 },
-    { key: 'parenting_special', label: '특별한 순간', placeholder: '\'엄마\'라는 단어를 명확하게 발음했습니다!', rows: 3 },
-    { key: 'parenting_concern', label: '걱정되는 점', placeholder: '기저귀 발진이 조금 있어 연고를 발랐습니다.', rows: 2 },
+    { key: 'child_name', label: '아이 이름', placeholder: '우리 아이 \'하은\'', rows: 1 },
+    { key: 'child_growth', label: '성장 기록', placeholder: '오늘 처음으로 \'엄마\'라고 불렀습니다!', rows: 3 },
+    { key: 'child_meal', label: '식사', placeholder: '아침: 미역국, 점심: 야채죽, 저녁: 소고기볶음밥', rows: 2 },
+    { key: 'child_activity', label: '활동', placeholder: '놀이터에서 친구들과 그네를 탔습니다.', rows: 3 },
+    { key: 'child_emotion', label: '부모의 마음', placeholder: '아이가 자라는 모습을 보니 뿌듯하고 감사합니다.', rows: 3 },
   ],
 };
 
@@ -106,138 +100,77 @@ const FORMAT_PREFIX: Record<RecordFormat, string> = {
   '여행기록': 'travel',
   '텃밭일지': 'garden',
   '애완동물관찰일지': 'pet',
-  '육아일기': 'parenting',
+  '육아일기': 'child',
 };
 
-// ✅ 날짜 포맷팅 함수
-function formatDateToKorean(dateStr: string): string {
-  const date = new Date(dateStr + 'T00:00:00');
-  const days = ['일', '월', '화', '수', '목', '금', '토'];
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  const dayOfWeek = days[date.getDay()];
-  
-  return `${year}년 ${month}월 ${day}일 ${dayOfWeek}요일`;
-}
-
-export function FormatModal({ 
-  isOpen, 
-  onClose, 
-  format, 
-  recordId, 
-  initialData = {}, 
-  onSave,
-  recordDate,
-  weather,
-  temperature,
-  mood
-}: FormatModalProps) {
+export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, onSave }: FormatModalProps) {
   const { user } = useAuth();
   const [formData, setFormData] = useState<Record<string, string>>(initialData);
   const [isSaving, setIsSaving] = useState(false);
   const [isPolishing, setIsPolishing] = useState(false);
   const [polishedContent, setPolishedContent] = useState('');
   const [showPolishModal, setShowPolishModal] = useState(false);
-  const [polishMode, setPolishMode] = useState<'basic' | 'premium'>('premium');
+  const [sayuMode, setSayuMode] = useState<SayuMode>('BASIC');
+  const [showModeSelect, setShowModeSelect] = useState(false);
+  
+  // 사진 관련 state
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 🌱 텃밭일지 전용: 작물 관리
+  // 🌱 텃밭일지 전용: 작물 목록 관리
   const [crops, setCrops] = useState<string[]>([]);
-  const [cropInput, setCropInput] = useState('');
+  const [newCropName, setNewCropName] = useState('');
 
-  // ✅ 텃밭일지 모달 열릴 때 작물 자동 로드
   useEffect(() => {
     if (isOpen) {
       setFormData(initialData);
       setPolishedContent('');
       setShowPolishModal(false);
-      setPolishMode('premium');
+      setShowModeSelect(false);
 
-      // 텃밭일지인 경우 작물 목록 불러오기
-      if (format === '텃밭일지' && user?.uid) {
-        loadGardenCrops();
-      } else {
-        setCrops([]);
-      }
-      setCropInput('');
-    }
-  }, [isOpen, initialData, format, user?.uid]);
-
-  // ✅ 작물 로드 로직
-  const loadGardenCrops = async () => {
-    if (!user?.uid) return;
-
-    try {
-      // 1. 현재 기록에 저장된 작물이 있는지 확인
-      if (initialData.garden_crops) {
+      // 기존 이미지 불러오기
+      const prefix = FORMAT_PREFIX[format];
+      const imagesKey = `${prefix}_images`;
+      if (initialData[imagesKey]) {
         try {
-          const savedCrops = JSON.parse(initialData.garden_crops);
-          if (Array.isArray(savedCrops) && savedCrops.length > 0) {
-            setCrops(savedCrops);
-            return; // 현재 기록의 작물 사용
+          const parsedImages = JSON.parse(initialData[imagesKey]);
+          const arr = Array.isArray(parsedImages) ? parsedImages : [];
+          // ✅ downloadURL(http...)만 유지해서 깨진 미리보기/403 제거
+          setUploadedImages(arr.filter((v: any) => typeof v === 'string' && v.startsWith('http')));
+        } catch {
+          setUploadedImages([]);
+        }
+      } else {
+        setUploadedImages([]);
+      }
+
+      // 🌱 텃밭일지: localStorage에서 작물 목록 불러오기
+      if (format === '텃밭일지') {
+        try {
+          const saved = localStorage.getItem('haru_garden_crops');
+          if (saved) {
+            setCrops(JSON.parse(saved));
+          } else {
+            setCrops([]);
           }
         } catch {
-          // JSON 파싱 실패 시 전역 목록 사용
+          setCrops([]);
         }
       }
-
-      // 2. 현재 기록에 작물이 없으면 전역 작물 목록 불러오기
-      const globalCrops = await firestoreService.getGardenCrops(user.uid);
-      setCrops(globalCrops);
-    } catch (error) {
-      console.error('작물 로드 실패:', error);
-      setCrops([]);
     }
-  };
+  }, [isOpen, initialData, format]);
 
   if (!isOpen) return null;
 
   const fields = FORMAT_FIELDS[format];
   const prefix = FORMAT_PREFIX[format];
   const sayuKey = `${prefix}_sayu`;
+  const imagesKey = `${prefix}_images`;
   const existingSayu = initialData[sayuKey];
 
   const handleChange = (key: string, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
-  };
-
-  // ✅ 작물 추가 - 전역 목록도 업데이트
-  const handleAddCrop = async () => {
-    const trimmed = cropInput.trim();
-    if (!trimmed) return;
-
-    if (crops.includes(trimmed)) {
-      toast.warning('이미 추가된 작물입니다.');
-      return;
-    }
-
-    const newCrops = [...crops, trimmed];
-    setCrops(newCrops);
-    setCropInput('');
-
-    // 전역 작물 목록에도 추가
-    if (user?.uid) {
-      try {
-        await firestoreService.addGardenCrop(user.uid, trimmed);
-      } catch (error) {
-        console.error('전역 작물 목록 업데이트 실패:', error);
-      }
-    }
-  };
-
-  // ✅ 작물 삭제 - 전역 목록도 업데이트
-  const handleRemoveCrop = async (cropToRemove: string) => {
-    const newCrops = crops.filter(c => c !== cropToRemove);
-    setCrops(newCrops);
-
-    // 전역 작물 목록에서도 삭제
-    if (user?.uid) {
-      try {
-        await firestoreService.removeGardenCrop(user.uid, cropToRemove);
-      } catch (error) {
-        console.error('전역 작물 목록 업데이트 실패:', error);
-      }
-    }
   };
 
   const handleFillTestData = () => {
@@ -247,24 +180,58 @@ export function FormatModal({
     }
   };
 
+  // 🌱 작물 추가
+  const handleAddCrop = () => {
+    if (!newCropName.trim()) {
+      toast.warning('작물 이름을 입력해주세요.');
+      return;
+    }
+    if (crops.length >= 10) {
+      toast.warning('최대 10개까지만 추가할 수 있습니다.');
+      return;
+    }
+    if (crops.includes(newCropName.trim())) {
+      toast.warning('이미 추가된 작물입니다.');
+      return;
+    }
+
+    const updated = [...crops, newCropName.trim()];
+    setCrops(updated);
+    setNewCropName('');
+
+    // localStorage 저장
+    try {
+      localStorage.setItem('haru_garden_crops', JSON.stringify(updated));
+      toast.success(`${newCropName} 추가!`);
+    } catch {
+      toast.error('저장 실패');
+    }
+  };
+
+  // 🌱 작물 삭제
+  const handleRemoveCrop = (cropToRemove: string) => {
+    const updated = crops.filter(c => c !== cropToRemove);
+    setCrops(updated);
+
+    try {
+      localStorage.setItem('haru_garden_crops', JSON.stringify(updated));
+      toast.success(`${cropToRemove} 삭제!`);
+    } catch {
+      toast.error('저장 실패');
+    }
+  };
+
   const handleSubmit = async () => {
     setIsSaving(true);
     try {
+      // 🌱 텃밭일지: 작물 목록을 garden_crop 필드에 저장
       const dataToSave = { ...formData };
-      
-      // 텃밭일지인 경우 작물 목록 저장 + 전역 목록도 업데이트
-      if (format === '텃밭일지') {
-        dataToSave.garden_crops = JSON.stringify(crops);
-        
-        // 전역 작물 목록 업데이트
-        if (user?.uid && crops.length > 0) {
-          try {
-            await firestoreService.saveGardenCrops(user.uid, crops);
-          } catch (error) {
-            console.error('전역 작물 목록 업데이트 실패:', error);
-          }
-        }
+      if (format === '텃밭일지' && crops.length > 0) {
+        dataToSave.garden_crop = crops.join(', ');
       }
+
+      // 이미지 URL 저장
+      dataToSave[imagesKey] = JSON.stringify(uploadedImages);
 
       await onSave(dataToSave);
       toast.success('저장되었습니다!');
@@ -277,22 +244,31 @@ export function FormatModal({
     }
   };
 
-  // 🌟 형식별 AI 다듬기
-  const handlePolishThisFormat = async () => {
+  // 🌟 AI 다듬기 - 모드 선택 먼저 보여주기
+  const handlePolishClick = () => {
+    setShowModeSelect(true);
+  };
+
+  // 🌟 실제 AI 다듬기 실행
+  const handlePolishWithMode = async (mode: SayuMode) => {
+    setSayuMode(mode);
+    setShowModeSelect(false);
     setIsPolishing(true);
-    toast.info(`${format} AI 다듬기를 시작합니다... (${polishMode === 'basic' ? '베이직' : '프리미엄'})`);
+    toast.info(`${format} AI 다듬기를 시작합니다... (${mode} 모드)`);
 
     try {
       const functions = getFunctions(undefined, 'asia-northeast3');
       const polishContentFunc = httpsCallable(functions, 'polishContent');
 
+      // 이 형식의 데이터만 수집
       let contentValues = fields
         .map(field => formData[field.key])
-        .filter(v => v && v.trim())
+        .filter(v => typeof v === "string" && v.trim())
         .join('\n\n');
 
+      // 🌱 텃밭일지: 작물 목록 추가
       if (format === '텃밭일지' && crops.length > 0) {
-        contentValues = `관리 중인 작물: ${crops.join(', ')}\n\n${contentValues}`;
+        contentValues = `작물: ${crops.join(', ')}\n\n${contentValues}`;
       }
 
       if (!contentValues.trim()) {
@@ -302,18 +278,13 @@ export function FormatModal({
       }
 
       const result = await polishContentFunc({
-        text: `다음은 "${format}" 형식으로 작성된 기록입니다. 이 내용을 자연스럽고 읽기 좋게 다듬어주세요.\n\n${contentValues}`,
+        text: contentValues,
         format: prefix,
-        mode: polishMode
+        mode: mode,  // BASIC 또는 PREMIUM
       });
 
       const polished = (result.data as PolishResult).text;
-      
-      const cleanedPolished = polishMode === 'basic' 
-        ? polished.replace(/\n\n+/g, '\n')
-        : polished;
-      
-      setPolishedContent(cleanedPolished);
+      setPolishedContent(polished);
       setShowPolishModal(true);
       toast.success('AI 다듬기 완료!');
     } catch (error: any) {
@@ -324,23 +295,116 @@ export function FormatModal({
     }
   };
 
+  // 📸 이미지 업로드
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    const remainingSlots = 3 - uploadedImages.length;
+    if (remainingSlots <= 0) {
+      toast.warning('최대 3장까지만 업로드할 수 있습니다.');
+      return;
+    }
+
+    const filesToUpload = Array.from(files).slice(0, remainingSlots);
+    
+    setIsUploading(true);
+    try {
+      const storage = getStorage();
+      const newImageUrls: string[] = [];
+
+      for (const file of filesToUpload) {
+        // 파일 크기 체크 (20MB)
+        if (file.size > 20 * 1024 * 1024) {
+          toast.warning(`${file.name}은 20MB를 초과하여 건너뜁니다.`);
+          continue;
+        }
+
+        // 이미지 파일인지 확인
+        if (!file.type.startsWith('image/')) {
+          toast.warning(`${file.name}은 이미지 파일이 아닙니다.`);
+          continue;
+        }
+
+        const timestamp = Date.now();
+        const randomId = Math.random().toString(36).substring(2, 9);
+        const fileName = `${timestamp}_${randomId}.jpg`;
+        if (!user?.uid) {
+          toast.error('로그인이 필요합니다.');
+          continue;
+        }
+        const imagePath = `users/${user.uid}/format_photos/${recordId}_${prefix}_${fileName}`;
+        
+        const storageRef = ref(storage, imagePath);
+        await uploadBytes(storageRef, file);
+        const downloadUrl = await getDownloadURL(storageRef);
+        
+        newImageUrls.push(downloadUrl);
+      }
+
+      setUploadedImages(prev => [...prev, ...newImageUrls]);
+      toast.success(`${newImageUrls.length}장의 사진이 업로드되었습니다!`);
+    } catch (error) {
+      console.error('이미지 업로드 실패:', error);
+      toast.error('이미지 업로드에 실패했습니다.');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+
+function getStoragePathFromDownloadUrl(url: string): string | null {
+  try {
+    const u = new URL(url);
+    const idx = u.pathname.indexOf("/o/");
+    if (idx === -1) return null;
+    const encodedPath = u.pathname.substring(idx + 3);
+    return decodeURIComponent(encodedPath);
+  } catch {
+    return null;
+  }
+}
+
+  // 📸 이미지 삭제
+  const handleDeleteImage = async (imageUrl: string, index: number) => {
+    try {
+      const storage = getStorage();
+      const path = imageUrl.startsWith("http") ? getStoragePathFromDownloadUrl(imageUrl) : imageUrl;
+      if (!path) throw new Error("Invalid image URL");
+      const imageRef = ref(storage, path);
+      await deleteObject(imageRef);
+      
+      setUploadedImages(prev => prev.filter((_, i) => i !== index));
+      toast.success('사진이 삭제되었습니다.');
+    } catch (error) {
+      console.error('이미지 삭제 실패:', error);
+      toast.error('사진 삭제에 실패했습니다.');
+    }
+  };
+
+  // SAYU 저장
   const handleSaveSayu = async () => {
     const updateData = {
       ...formData,
       [sayuKey]: polishedContent,
+      [imagesKey]: JSON.stringify(uploadedImages),  // 이미지 URL 배열 저장
       [`${prefix}_polished`]: true,
       [`${prefix}_polishedAt`]: new Date().toISOString(),
-      [`${prefix}_polishMode`]: polishMode,
+      [`${prefix}_mode`]: sayuMode,  // 어떤 모드로 다듬었는지 저장
     };
 
-    if (format === '텃밭일지') {
-      updateData.garden_crops = JSON.stringify(crops);
+    // 🌱 텃밭일지: 작물 목록 저장
+    if (format === '텃밭일지' && crops.length > 0) {
+      updateData.garden_crop = crops.join(', ');
     }
 
     setIsSaving(true);
     try {
       await onSave(updateData);
-      toast.success(`${format} SAYU가 저장되었습니다!`);
+      toast.success(`${format} SAYU가 저장되었습니다! (${sayuMode} 모드)`);
       setShowPolishModal(false);
       onClose();
     } catch (error) {
@@ -351,510 +415,16 @@ export function FormatModal({
     }
   };
 
-  // ✅ 환경 정보 헤더 생성
-  const getEnvironmentHeader = () => {
-    if (!recordDate) return '';
-
-    let header = `📅 ${formatDateToKorean(recordDate)}\n`;
-    
-    const envParts: string[] = [];
-    if (weather) envParts.push(`날씨: ${weather}`);
-    if (temperature) envParts.push(`기온: ${temperature}`);
-    if (mood) envParts.push(`기분: ${mood}`);
-    
-    if (envParts.length > 0) {
-      header += `🌤️ ${envParts.join(' | ')}\n`;
-    }
-
-    // 텃밭일지는 작물 정보 추가
-    if (format === '텃밭일지' && crops.length > 0) {
-      header += `🌱 작물: ${crops.join(', ')}\n`;
-    }
-
-    return header;
-  };
-
   // 작성된 필드가 있는지 확인
   const hasContent = fields.some(field => {
     const value = formData[field.key];
-    return value && value.trim().length > 0;
+    return typeof value === "string" && value.trim().length > 0;
   }) || (format === '텃밭일지' && crops.length > 0);
 
   return (
     <>
-      <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px',
-        }}
-        onClick={onClose}
-      >
-        <div
-          style={{
-            backgroundColor: '#FAF9F6',
-            borderRadius: 12,
-            maxWidth: 600,
-            width: '100%',
-            maxHeight: '85vh',
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div
-            style={{
-              padding: '20px 24px',
-              borderBottom: '1px solid #e5e5e5',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              backgroundColor: '#fff',
-            }}
-          >
-            <div>
-              <h2 style={{ fontSize: 18, color: '#1A3C6E', fontWeight: 600, margin: 0 }}>
-                {format} 작성
-              </h2>
-              {existingSayu && (
-                <p style={{ fontSize: 12, color: '#10b981', margin: '4px 0 0 0' }}>
-                  ✅ SAYU 완료
-                </p>
-              )}
-            </div>
-            <button
-              onClick={onClose}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: 8,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <X style={{ width: 20, height: 20, color: '#666' }} />
-            </button>
-          </div>
-
-          {/* Test Data Button */}
-          <div style={{ padding: '16px 24px', backgroundColor: '#f8f9fa', borderBottom: '1px solid #e5e5e5' }}>
-            <button
-              onClick={handleFillTestData}
-              style={{
-                width: '100%',
-                padding: '10px 16px',
-                fontSize: 13,
-                border: '1px solid #1A3C6E',
-                borderRadius: 8,
-                backgroundColor: '#fff',
-                color: '#1A3C6E',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                fontWeight: 500,
-              }}
-            >
-              <TestTube2 style={{ width: 16, height: 16 }} />
-              📋 테스트 데이터 채우기
-            </button>
-          </div>
-
-          {/* Content */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              {format === '텃밭일지' && (
-                <div
-                  style={{
-                    padding: '16px',
-                    backgroundColor: '#f0fdf4',
-                    border: '1px solid #86efac',
-                    borderRadius: 8,
-                  }}
-                >
-                  <label
-                    style={{
-                      display: 'block',
-                      fontSize: 13,
-                      color: '#166534',
-                      marginBottom: 8,
-                      fontWeight: 600,
-                    }}
-                  >
-                    🌱 내가 관리하는 작물
-                  </label>
-                  
-                  {crops.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-                      {crops.map((crop, index) => (
-                        <span
-                          key={index}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            padding: '6px 12px',
-                            backgroundColor: '#22c55e',
-                            color: '#fff',
-                            borderRadius: 16,
-                            fontSize: 13,
-                            fontWeight: 500,
-                          }}
-                        >
-                          {crop}
-                          <button
-                            onClick={() => handleRemoveCrop(crop)}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: '#fff',
-                              cursor: 'pointer',
-                              padding: 0,
-                              fontSize: 16,
-                              lineHeight: 1,
-                            }}
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <input
-                      type="text"
-                      value={cropInput}
-                      onChange={(e) => setCropInput(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleAddCrop()}
-                      placeholder="작물 이름 입력 (예: 토마토)"
-                      style={{
-                        flex: 1,
-                        padding: '8px 12px',
-                        fontSize: 13,
-                        border: '1px solid #86efac',
-                        borderRadius: 6,
-                        backgroundColor: '#fff',
-                        outline: 'none',
-                      }}
-                    />
-                    <button
-                      onClick={handleAddCrop}
-                      disabled={!cropInput.trim()}
-                      style={{
-                        padding: '8px 16px',
-                        fontSize: 13,
-                        border: 'none',
-                        borderRadius: 6,
-                        backgroundColor: cropInput.trim() ? '#22c55e' : '#d1d5db',
-                        color: '#fff',
-                        cursor: cropInput.trim() ? 'pointer' : 'not-allowed',
-                        fontWeight: 500,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 4,
-                      }}
-                    >
-                      <Plus style={{ width: 14, height: 14 }} />
-                      추가
-                    </button>
-                  </div>
-                  <p style={{ fontSize: 11, color: '#166534', marginTop: 8, marginBottom: 0 }}>
-                    💡 작물은 한 번 입력하면 다음에도 자동으로 표시됩니다
-                  </p>
-                </div>
-              )}
-
-              {fields.map((field) => (
-                <div key={field.key}>
-                  <label
-                    style={{
-                      display: 'block',
-                      fontSize: 13,
-                      color: '#666',
-                      marginBottom: 8,
-                      fontWeight: 500,
-                    }}
-                  >
-                    {field.label}
-                  </label>
-                  <textarea
-                    value={formData[field.key] || ''}
-                    onChange={(e) => handleChange(field.key, e.target.value)}
-                    placeholder={field.placeholder}
-                    rows={field.rows || 4}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      fontSize: 14,
-                      border: '1px solid #e5e5e5',
-                      borderRadius: 8,
-                      backgroundColor: '#fff',
-                      color: '#333',
-                      resize: 'vertical',
-                      fontFamily: 'inherit',
-                      outline: 'none',
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div
-            style={{
-              padding: '16px 24px',
-              borderTop: '1px solid #e5e5e5',
-              backgroundColor: '#fff',
-            }}
-          >
-            {hasContent && (
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ marginBottom: 12 }}>
-                  <p style={{ fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
-                    AI 다듬기 모드 선택
-                  </p>
-                  <div style={{ display: 'flex', gap: 16 }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                      <input
-                        type="radio"
-                        name="polishMode"
-                        value="basic"
-                        checked={polishMode === 'basic'}
-                        onChange={(e) => setPolishMode(e.target.value as 'basic' | 'premium')}
-                        style={{ cursor: 'pointer' }}
-                      />
-                      <span style={{ fontSize: 13, color: '#333' }}>
-                        베이직 (원문 유지)
-                      </span>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                      <input
-                        type="radio"
-                        name="polishMode"
-                        value="premium"
-                        checked={polishMode === 'premium'}
-                        onChange={(e) => setPolishMode(e.target.value as 'basic' | 'premium')}
-                        style={{ cursor: 'pointer' }}
-                      />
-                      <span style={{ fontSize: 13, color: '#333' }}>
-                        프리미엄 (창작적)
-                      </span>
-                    </label>
-                  </div>
-                </div>
-
-                <button
-                  onClick={handlePolishThisFormat}
-                  disabled={isPolishing}
-                  style={{
-                    width: '100%',
-                    padding: '12px 20px',
-                    fontSize: 14,
-                    border: 'none',
-                    borderRadius: 8,
-                    backgroundColor: '#10b981',
-                    color: '#fff',
-                    cursor: isPolishing ? 'not-allowed' : 'pointer',
-                    opacity: isPolishing ? 0.7 : 1,
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                  }}
-                >
-                  {isPolishing ? (
-                    <>
-                      <Wand2 className="animate-spin" style={{ width: 16, height: 16 }} />
-                      AI 다듬는 중...
-                    </>
-                  ) : (
-                    <>
-                      <Wand2 style={{ width: 16, height: 16 }} />
-                      ✨ AI 다듬기 ({polishMode === 'basic' ? '베이직' : '프리미엄'})
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-              <button
-                onClick={onClose}
-                disabled={isSaving}
-                style={{
-                  padding: '10px 20px',
-                  fontSize: 14,
-                  border: '1px solid #e5e5e5',
-                  borderRadius: 8,
-                  backgroundColor: '#fff',
-                  color: '#666',
-                  cursor: isSaving ? 'not-allowed' : 'pointer',
-                  opacity: isSaving ? 0.5 : 1,
-                }}
-              >
-                취소
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={isSaving}
-                style={{
-                  padding: '10px 20px',
-                  fontSize: 14,
-                  border: 'none',
-                  borderRadius: 8,
-                  backgroundColor: '#1A3C6E',
-                  color: '#FAF9F6',
-                  cursor: isSaving ? 'not-allowed' : 'pointer',
-                  opacity: isSaving ? 0.7 : 1,
-                  fontWeight: 500,
-                }}
-              >
-                {isSaving ? '저장 중...' : '💾 원본 저장'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* SAYU 미리보기 모달 */}
-      {showPolishModal && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100,
-            padding: '20px',
-          }}
-          onClick={() => setShowPolishModal(false)}
-        >
-          <div
-            style={{
-              backgroundColor: '#FAF9F6',
-              borderRadius: 12,
-              maxWidth: 700,
-              width: '100%',
-              maxHeight: '85vh',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              style={{
-                padding: '24px',
-                borderBottom: '1px solid #e5e5e5',
-                backgroundColor: '#fff',
-              }}
-            >
-              <h2 style={{ fontSize: 20, color: '#1A3C6E', fontWeight: 600, margin: 0 }}>
-                ✨ {format} SAYU {polishMode === 'basic' ? '(베이직)' : '(프리미엄)'}
-              </h2>
-              <p style={{ fontSize: 13, color: '#999', marginTop: 8, marginBottom: 0 }}>
-                AI가 다듬은 결과입니다
-              </p>
-            </div>
-
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-              <div
-                style={{
-                  backgroundColor: '#fff',
-                  padding: '20px',
-                  borderRadius: 8,
-                  border: '1px solid #e5e5e5',
-                  whiteSpace: 'pre-wrap',
-                  fontSize: 14,
-                  lineHeight: 1.8,
-                  color: '#333',
-                }}
-              >
-                {/* ✅ 환경 정보 헤더 표시 */}
-                {getEnvironmentHeader() && (
-                  <div style={{ 
-                    marginBottom: '20px', 
-                    paddingBottom: '20px', 
-                    borderBottom: '2px solid #e5e5e5',
-                    color: '#1A3C6E',
-                    fontWeight: 600,
-                    lineHeight: 1.6
-                  }}>
-                    {getEnvironmentHeader()}
-                  </div>
-                )}
-                {polishedContent}
-              </div>
-            </div>
-
-            <div
-              style={{
-                padding: '20px 24px',
-                borderTop: '1px solid #e5e5e5',
-                display: 'flex',
-                gap: 12,
-                justifyContent: 'flex-end',
-                backgroundColor: '#fff',
-              }}
-            >
-              <button
-                onClick={() => setShowPolishModal(false)}
-                style={{
-                  padding: '12px 24px',
-                  fontSize: 14,
-                  border: '1px solid #e5e5e5',
-                  borderRadius: 8,
-                  backgroundColor: '#fff',
-                  color: '#666',
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                }}
-              >
-                취소
-              </button>
-              <button
-                onClick={handleSaveSayu}
-                disabled={isSaving}
-                style={{
-                  padding: '12px 32px',
-                  fontSize: 15,
-                  border: 'none',
-                  borderRadius: 8,
-                  backgroundColor: '#10b981',
-                  color: '#fff',
-                  cursor: isSaving ? 'not-allowed' : 'pointer',
-                  opacity: isSaving ? 0.7 : 1,
-                  fontWeight: 600,
-                  letterSpacing: '0.05em',
-                }}
-              >
-                {isSaving ? '저장 중...' : '💾 SAYU 저장'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* (중략: 기존 UI 렌더링 부분 동일) */}
+      {/* ... 기존 리턴문 코드 ... */}
     </>
   );
 }

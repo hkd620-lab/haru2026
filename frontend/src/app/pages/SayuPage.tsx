@@ -20,6 +20,8 @@ interface SayuModalProps {
   weather?: string;
   temperature?: string;
   mood?: string;
+  // ✅ 사진 추가
+  images?: string[];
 }
 
 // ✅ 날짜 포맷팅 함수
@@ -46,7 +48,8 @@ function SayuModal({
   recordDate,
   weather,
   temperature,
-  mood
+  mood,
+  images = []  // ✅ 사진 파라미터 추가
 }: SayuModalProps) {
   const [editedContent, setEditedContent] = useState(content);
   const [isSaving, setIsSaving] = useState(false);
@@ -162,6 +165,29 @@ function SayuModal({
       }}
       onClick={onClose}
     >
+      {/* ✅ 프린트용 CSS 추가 */}
+      <style>
+        {`
+          @media print {
+            body * {
+              visibility: hidden;
+            }
+            .sayu-print-area,
+            .sayu-print-area * {
+              visibility: visible;
+            }
+            .sayu-print-area {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+            }
+            .no-print {
+              display: none !important;
+            }
+          }
+        `}
+      </style>
       <div
         style={{
           backgroundColor: '#FAF9F6',
@@ -193,7 +219,7 @@ function SayuModal({
               </h2>
             </div>
             
-            <div style={{ display: 'flex', backgroundColor: '#f0f0f0', borderRadius: '6px', padding: '2px' }}>
+            <div className="no-print" style={{ display: 'flex', backgroundColor: '#f0f0f0', borderRadius: '6px', padding: '2px' }}>
               <button
                 onClick={() => setViewMode('ai')}
                 style={{
@@ -233,6 +259,7 @@ function SayuModal({
 
           <button
             onClick={onClose}
+            className="no-print"
             style={{
               background: 'none',
               border: 'none',
@@ -247,7 +274,7 @@ function SayuModal({
           </button>
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '28px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '28px' }} className="sayu-print-area">
           {viewMode === 'ai' ? (
             <>
               {/* ✅ 환경 정보 헤더 표시 */}
@@ -265,28 +292,80 @@ function SayuModal({
                   {getEnvironmentHeader()}
                 </div>
               )}
-              <p style={{ fontSize: 13, color: '#999', marginBottom: 12 }}>
+              <p style={{ fontSize: 13, color: '#999', marginBottom: 12 }} className="no-print">
                 다듬어진 글을 자유롭게 편집하고 최종 저장하세요
               </p>
-              <textarea
-                value={editedContent}
-                onChange={(e) => setEditedContent(e.target.value)}
-                placeholder="내용을 입력하세요..."
+              
+              {/* ✅ 텍스트와 사진을 하나의 박스로 통합 */}
+              <div
                 style={{
                   width: '100%',
                   minHeight: 400,
                   padding: '20px',
-                  fontSize: 15,
                   border: '2px solid #1A3C6E',
                   borderRadius: 10,
                   backgroundColor: '#fff',
-                  color: '#333',
-                  resize: 'vertical',
-                  fontFamily: 'inherit',
-                  lineHeight: 1.9,
-                  outline: 'none',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 20,
                 }}
-              />
+              >
+                {/* SAYU 텍스트 */}
+                <textarea
+                  value={editedContent}
+                  onChange={(e) => setEditedContent(e.target.value)}
+                  placeholder="내용을 입력하세요..."
+                  style={{
+                    width: '100%',
+                    minHeight: 350,
+                    padding: 0,
+                    fontSize: 15,
+                    border: 'none',
+                    backgroundColor: 'transparent',
+                    color: '#333',
+                    resize: 'vertical',
+                    fontFamily: 'inherit',
+                    lineHeight: 1.9,
+                    outline: 'none',
+                  }}
+                />
+
+                {/* ✅ 사진 (같은 박스 안에) */}
+                {images && images.length > 0 && (
+                  <div style={{ borderTop: '1px solid #e5e5e5', paddingTop: 20 }}>
+                    <h3 style={{ fontSize: 14, color: '#1A3C6E', fontWeight: 600, marginBottom: 12, margin: 0 }}>
+                      📸 첨부 사진 ({images.length}/3)
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginTop: 12 }}>
+                      {images.map((url, index) => (
+                        <div
+                          key={index}
+                          style={{
+                            position: 'relative',
+                            paddingBottom: '100%',
+                            borderRadius: 8,
+                            overflow: 'hidden',
+                            border: '2px solid #e5e5e5',
+                          }}
+                        >
+                          <img
+                            src={url}
+                            alt={`사진 ${index + 1}`}
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </>
           ) : (
              <>
@@ -309,6 +388,7 @@ function SayuModal({
         </div>
 
         <div
+          className="no-print"
           style={{
             padding: '16px 28px',
             borderTop: '1px solid #e5e5e5',
@@ -348,6 +428,7 @@ function SayuModal({
         </div>
 
         <div
+          className="no-print"
           style={{
             padding: '20px 28px',
             borderTop: '1px solid #e5e5e5',
@@ -416,6 +497,8 @@ export function SayuPage() {
     weather?: string;
     temperature?: string;
     mood?: string;
+    // ✅ 사진 추가
+    images?: string[];
   }>({ isOpen: false, content: '', dateLabel: '', currentRating: 1 });
   
   const [showSayuGuide, setShowSayuGuide] = useState(() => {
@@ -457,7 +540,7 @@ export function SayuPage() {
             return;
           }
           
-          if (key.endsWith('_sayu') || key.endsWith('_polished') || key.endsWith('_polishedAt')) {
+          if (key.endsWith('_sayu') || key.endsWith('_polished') || key.endsWith('_polishedAt') || key.endsWith('_images')) {
             return;
           }
           
@@ -566,6 +649,21 @@ export function SayuPage() {
     
     if (sayuContent && String(sayuContent).trim().length > 0) {
       const originalData = collectOriginalData(selectedRecord, formatKey);
+      
+      // ✅ 이미지 로드
+      const imagesKey = `${formatKey}_images`;
+      const imagesData = selectedRecord[imagesKey];
+      let loadedImages: string[] = [];
+      
+      if (imagesData) {
+        try {
+          const parsed = JSON.parse(String(imagesData));
+          loadedImages = Array.isArray(parsed) ? parsed : [];
+        } catch {
+          loadedImages = [];
+        }
+      }
+      
       setSayuModalState({
         isOpen: true,
         content: String(sayuContent),
@@ -582,6 +680,8 @@ export function SayuPage() {
         weather: selectedRecord.weather,
         temperature: selectedRecord.temperature,
         mood: selectedRecord.mood,
+        // ✅ 사진 전달
+        images: loadedImages,
       });
     } else {
       toast.info(`${formatLabel}의 SAYU가 아직 없습니다.`);
@@ -752,7 +852,7 @@ export function SayuPage() {
             })}
           </div>
         </section>
-
+https://haru2026-8abb8.web.app/library
         {selectedDate && selectedDateFormats.length > 0 && (
           <div className="mt-4 bg-white rounded-lg p-4 shadow-sm">
             <p className="text-xs font-semibold mb-2" style={{ color: '#1A3C6E' }}>
@@ -807,6 +907,7 @@ export function SayuPage() {
         weather={sayuModalState.weather}
         temperature={sayuModalState.temperature}
         mood={sayuModalState.mood}
+        images={sayuModalState.images}
       />
     </div>
   );

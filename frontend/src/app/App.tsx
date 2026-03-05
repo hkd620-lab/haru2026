@@ -1,82 +1,47 @@
-import { RouterProvider } from 'react-router';
-import { router } from './routes';
-import { Toaster } from './components/ui/sonner';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
-import { Component, ReactNode } from 'react';
+import { Toaster } from 'sonner';
+import { HomePage } from './pages/HomePage';
+import { RecordPage } from './pages/RecordPage';
+import { LibraryPage } from './pages/LibraryPage';
+import { LoginPage } from './pages/LoginPage';
+import { SayuPage } from './pages/SayuPage';
+import { MergePage } from './pages/MergePage';
+import { SettingsPage } from './pages/SettingsPage';
+import { StatisticsPage } from './pages/StatisticsPage';
+import { FormatStatisticsPage } from './pages/FormatStatisticsPage';
+import { BottomNav } from './components/BottomNav';
 
-// iOS/모바일 에러로 인한 무한 로딩 방지용 에러 바운더리
-class ErrorBoundary extends Component<
-  { children: ReactNode },
-  { hasError: boolean; error: string }
-> {
-  constructor(props: { children: ReactNode }) {
-    super(props);
-    this.state = { hasError: false, error: '' };
-  }
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error: error.message || '알 수 없는 오류' };
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div
-          style={{
-            minHeight: '100vh',
-            backgroundColor: '#FAF9F6',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '24px',
-            textAlign: 'center',
-          }}
-        >
-          <h1
-            style={{
-              fontSize: '2rem',
-              letterSpacing: '0.2em',
-              color: '#1A3C6E',
-              marginBottom: '8px',
-            }}
-          >
-            HARU
-          </h1>
-          <p style={{ color: '#666', marginBottom: '24px', fontSize: '0.9rem' }}>
-            앱을 불러오는 중 오류가 발생했습니다
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            style={{
-              backgroundColor: '#1A3C6E',
-              color: '#FAF9F6',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '12px 32px',
-              fontSize: '1rem',
-              cursor: 'pointer',
-            }}
-          >
-            다시 시도
-          </button>
-          <p style={{ color: '#ccc', marginTop: '16px', fontSize: '0.75rem' }}>
-            {this.state.error}
-          </p>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-export default function App() {
+function App() {
   return (
-    <ErrorBoundary>
-      <AuthProvider>
-        <RouterProvider router={router} />
-        <Toaster position="top-center" />
-      </AuthProvider>
-    </ErrorBoundary>
+    <AuthProvider>
+      <BrowserRouter>
+        <div className="min-h-screen" style={{ backgroundColor: '#FAF9F6' }}>
+          <main>
+            <Routes>
+              {/* 홈 화면 */}
+              <Route path="/" element={<HomePage />} />
+              
+              {/* 기존 페이지들 */}
+              <Route path="/record" element={<RecordPage />} />
+              <Route path="/library" element={<LibraryPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/sayu" element={<SayuPage />} />
+              <Route path="/merge" element={<MergePage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              
+              {/* 통계 페이지 */}
+              <Route path="/stats" element={<StatisticsPage />} />
+              <Route path="/stats/:format" element={<FormatStatisticsPage />} />
+            </Routes>
+          </main>
+          
+          <BottomNav />
+          <Toaster position="top-center" />
+        </div>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
+
+export default App;

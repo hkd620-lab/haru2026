@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from 'react';
-import { BookOpen, Info } from 'lucide-react';
+import { BookOpen, Info, Wand2 } from 'lucide-react';
 import { FormatModal } from '../components/FormatModal';
 import { useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
@@ -30,6 +29,29 @@ export function LibraryPage() {
     }
   });
 
+  // formats가 누락/불완전할 때 record 내용을 보고 보완 (서재에서 버튼이 안 뜨는 문제 해결)
+  const getFormatsForDisplay = (record: HaruRecord): RecordFormat[] => {
+    const base = (record.formats && record.formats.length > 0) ? [...record.formats] : [];
+
+    const hasPrefix = (p: string) => Object.keys(record).some((k) => k.startsWith(p));
+    const ensure = (fmt: RecordFormat, prefix: string) => {
+      if (!base.includes(fmt) && hasPrefix(prefix)) base.push(fmt);
+    };
+
+    ensure('일기', 'diary_');
+    ensure('에세이', 'essay_');
+    ensure('선교보고', 'mission_');
+    ensure('일반보고', 'report_');
+    ensure('업무일지', 'work_');
+    ensure('여행기록', 'travel_');
+    ensure('텃밭일지', 'garden_');
+    ensure('애완동물관찰일지', 'pet_');
+    ensure('육아일기', 'child_');
+
+    return base;
+  };
+
+  // 데이터 가져오기
   useEffect(() => {
     fetchRecords();
   }, [authUser?.uid, location]);
@@ -79,11 +101,9 @@ export function LibraryPage() {
   const handleSaveFormatData = async (formatData: Record<string, string>) => {
     if (!selectedRecord || !authUser?.uid) return;
 
-    const filteredData: Record<string, any> = {};
+    const filteredData: Record<string, string> = {};
     Object.entries(formatData).forEach(([key, value]) => {
       if (typeof value === 'string' && value.trim().length > 0) {
-        filteredData[key] = value;
-      } else if (typeof value === 'boolean' || (typeof value === 'string' && value.length > 0)) {
         filteredData[key] = value;
       }
     });
@@ -111,110 +131,49 @@ export function LibraryPage() {
 
   const getFormatData = (format: RecordFormat) => {
     if (!selectedRecord) return {};
-    
-    const prefixMap: Record<RecordFormat, string> = {
-      '일기': 'diary',
-      '에세이': 'essay',
-      '선교보고': 'mission',
-      '일반보고': 'report',
-      '업무일지': 'work',
-      '여행기록': 'travel',
-      '애완동물관찰일지': 'pet',
-      '육아일기': 'parenting',
-      '텃밭일지': 'garden',
-    };
+    const prefix =
+      format === '일기' ? 'diary_' :
+      format === '에세이' ? 'essay_' :
+      format === '선교보고' ? 'mission_' :
+      format === '일반보고' ? 'report_' :
+      format === '업무일지' ? 'work_' :
+      format === '여행기록' ? 'travel_' :
+      format === '텃밭일지' ? 'garden_' :
+      format === '애완동물관찰일지' ? 'pet_' : 'child_';
 
-    const prefix = prefixMap[format];
     const data: Record<string, string> = {};
-    
     Object.keys(selectedRecord).forEach((key) => {
-      if (key.startsWith(prefix + '_') || key === `${prefix}_sayu`) {
-        data[key] = (selectedRecord as any)[key];
+      if (key.startsWith(prefix)) {
+        data[key] = selectedRecord[key];
       }
     });
-    
     return data;
   };
 
   const isFormatPolished = (format: RecordFormat) => {
     if (!selectedRecord) return false;
+    const prefix =
+      format === '일기' ? 'diary' :
+      format === '에세이' ? 'essay' :
+      format === '선교보고' ? 'mission' :
+      format === '일반보고' ? 'report' :
+      format === '업무일지' ? 'work' :
+      format === '여행기록' ? 'travel' :
+      format === '텃밭일지' ? 'garden' :
+      format === '애완동물관찰일지' ? 'pet' : 'child';
     
-    const prefixMap: Record<RecordFormat, string> = {
-      '일기': 'diary',
-      '에세이': 'essay',
-      '선교보고': 'mission',
-      '일반보고': 'report',
-      '업무일지': 'work',
-      '여행기록': 'travel',
-      '애완동물관찰일지': 'pet',
-      '육아일기': 'parenting',
-      '텃밭일지': 'garden',
-    };
-    
-    const prefix = prefixMap[format];
     const sayuKey = `${prefix}_sayu`;
-    const value = (selectedRecord as any)[sayuKey];
-    return value && typeof value === 'string' && value.trim().length > 0;
-  };
-
-  const hasFormatContent = (format: RecordFormat) => {
-    if (!selectedRecord) return false;
-    
-    const prefixMap: Record<RecordFormat, string> = {
-      '일기': 'diary',
-      '에세이': 'essay',
-      '선교보고': 'mission',
-      '일반보고': 'report',
-      '업무일지': 'work',
-      '여행기록': 'travel',
-      '애완동물관찰일지': 'pet',
-      '육아일기': 'parenting',
-      '텃밭일지': 'garden',
-    };
-
-    const prefix = prefixMap[format] + '_';
-
-    return Object.keys(selectedRecord).some(key => {
-      if (key.startsWith(prefix)) {
-        const value = (selectedRecord as any)[key];
-        return value && typeof value === 'string' && value.trim().length > 0;
-      }
-      return false;
-    });
-  };
-
-  const getButtonStyle = (format: RecordFormat) => {
-    const polished = isFormatPolished(format);
-    const hasContent = hasFormatContent(format);
-
-    if (polished) {
-      return {
-        backgroundColor: '#10b981',
-        color: '#FAF9F6',
-        border: '3px solid #059669',
-      };
-    } else if (hasContent) {
-      return {
-        backgroundColor: '#1A3C6E',
-        color: '#FAF9F6',
-        border: '3px solid #2A4C7E',
-      };
-    } else {
-      return {
-        backgroundColor: '#DAA520',
-        color: '#FAF9F6',
-        border: '3px solid #B8860B',
-      };
-    }
+    const sayuValue = selectedRecord[sayuKey];
+    return typeof sayuValue === 'string' && sayuValue.trim().length > 0;
   };
 
   const handleResetFormats = async () => {
     if (!selectedRecord || !authUser?.uid) return;
-    if (!confirm('작성한 형식 내용을 모두 초기화하시겠습니까?\n\n원본과 다듬기가 모두 삭제됩니다.')) return;
+    if (!confirm('작성한 형식 내용을 모두 초기화하시겠습니까?\n\n원본과 SAYU가 모두 삭제됩니다.')) return;
 
     try {
       const updateData: Record<string, any> = {};
-      const formatPrefixes = ['diary_', 'essay_', 'mission_', 'report_', 'work_', 'travel_', 'pet_', 'parenting_', 'garden_', 'diary_sayu', 'essay_sayu', 'mission_sayu', 'report_sayu', 'work_sayu', 'travel_sayu', 'pet_sayu', 'parenting_sayu', 'garden_sayu'];
+      const formatPrefixes = ['diary_', 'essay_', 'mission_', 'report_', 'work_', 'travel_', 'garden_', 'pet_', 'child_'];
       
       Object.keys(selectedRecord).forEach((key) => {
         if (formatPrefixes.some(prefix => key.startsWith(prefix))) {
@@ -235,16 +194,24 @@ export function LibraryPage() {
     }
   };
 
+  // --- 112번 줄 근처 (return 직전) 추가된 디버깅 코드 ---
   useEffect(() => {
     if (!loading) {
       const todayStr = formatDateString(new Date());
       const todayRecord = records.find((r) => r.date === todayStr);
       setSelectedRecord(todayRecord || null);
+
+      console.log('=== 디버깅 ===');
+      console.log('오늘 날짜:', todayStr);
+      console.log('찾은 기록:', todayRecord);
+      console.log('형식 배열:', todayRecord?.formats);
+      console.log('전체 기록:', records);
     }
   }, [loading, records]);
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+      {/* Header */}
       <div className="mb-6">
         <div className="flex items-start justify-between mb-2">
           <LibraryTitleAnimation />
@@ -300,13 +267,14 @@ export function LibraryPage() {
                 💡 형식별로 작성하고, 형식별로 AI 다듬기를 할 수 있습니다.
               </p>
               <p className="text-xs mt-1 leading-relaxed" style={{ color: '#666' }}>
-                각 형식의 원본과 다듬기 결과가 따로 저장됩니다.
+                각 형식의 원본과 SAYU(다듬은 결과)가 따로 저장됩니다.
               </p>
             </div>
           )}
         </div>
       </div>
 
+      {/* Main Content */}
       {loading ? (
         <div className="bg-white rounded-lg p-8 shadow-sm text-center">
           <p style={{ color: '#999' }}>불러오는 중...</p>
@@ -358,15 +326,14 @@ export function LibraryPage() {
             </div>
           )}
 
-          {selectedRecord.formats && selectedRecord.formats.length > 0 ? (
+          {getFormatsForDisplay(selectedRecord).length > 0 ? (
             <div className="bg-white rounded-lg p-4 shadow-sm">
               <p className="text-xs mb-3 font-medium" style={{ color: '#999' }}>
                 🎹 기록 형식을 클릭하면 작성 화면이 열립니다
               </p>
               <div className="flex gap-2 flex-wrap">
-                {selectedRecord.formats.map((format: RecordFormat) => {
+                {getFormatsForDisplay(selectedRecord).map((format: RecordFormat) => {
                   const hasPolished = isFormatPolished(format);
-                  const buttonStyle = getButtonStyle(format);
                   
                   return (
                     <button
@@ -374,7 +341,9 @@ export function LibraryPage() {
                       onClick={() => handleFormatClick(format)}
                       className="px-6 py-3 rounded-lg text-sm transition-all hover:opacity-90 hover:shadow-lg shadow-md relative"
                       style={{
-                        ...buttonStyle,
+                        backgroundColor: hasPolished ? '#10b981' : '#1A3C6E',
+                        color: '#FAF9F6',
+                        border: hasPolished ? '3px solid #059669' : '3px solid #2A4C7E',
                         fontWeight: 600,
                         letterSpacing: '0.05em',
                       }}
@@ -394,24 +363,16 @@ export function LibraryPage() {
                       🎹 {format}
                       {hasPolished && (
                         <span style={{ marginLeft: 4, fontSize: 11 }}>
-                          (다듬기 ✓)
+                          (SAYU ✓)
                         </span>
                       )}
                     </button>
                   );
                 })}
               </div>
-              <div className="mt-3 space-y-1">
-                <p className="text-xs" style={{ color: '#DAA520' }}>
-                  🟡 = 미작성 (골드)
-                </p>
-                <p className="text-xs" style={{ color: '#1A3C6E' }}>
-                  🔵 = 원본 작성 완료 (파란)
-                </p>
-                <p className="text-xs" style={{ color: '#10b981' }}>
-                  ✨ = 다듬기 완료 (초록)
-                </p>
-              </div>
+              <p className="text-xs mt-3" style={{ color: '#10b981' }}>
+                ✨ = SAYU 완료된 형식
+              </p>
             </div>
           ) : (
             <div className="bg-white rounded-lg p-4 shadow-sm">
@@ -433,10 +394,10 @@ export function LibraryPage() {
                   fontWeight: 500,
                 }}
               >
-                🔄 전체 초기화 (원본 + 다듬기)
+                🔄 전체 초기화 (원본 + SAYU)
               </button>
               <p className="text-xs text-center mt-3" style={{ color: '#999' }}>
-                테스트용: 모든 형식의 원본과 다듬기를 삭제합니다
+                테스트용: 모든 형식의 원본과 SAYU를 삭제합니다
               </p>
             </div>
           )}
@@ -475,10 +436,6 @@ export function LibraryPage() {
           recordId={selectedRecord.id}
           initialData={getFormatData(modalState.format)}
           onSave={handleSaveFormatData}
-          recordDate={selectedRecord.date}
-          weather={selectedRecord.weather}
-          temperature={selectedRecord.temperature}
-          mood={selectedRecord.mood}
         />
       )}
     </div>

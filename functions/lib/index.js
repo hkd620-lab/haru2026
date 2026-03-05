@@ -66,12 +66,12 @@ exports.polishContent = (0, https_2.onCall)({ region: 'asia-northeast3' }, async
             throw new https_2.HttpsError('invalid-argument', '텍스트가 필요합니다.');
         }
         let systemPrompt = '';
-        if (mode === 'basic') {
+        if (mode === 'BASIC') {
             systemPrompt = `당신은 신중한 편집자입니다.
 원문을 최대한 유지하며 맞춤법과 어색한 표현만 교정하세요.
 존댓말 유지, 내용 추가 금지, 문단 분리 금지.`;
         }
-        else {
+        else { // 이건 PREMIUM 모드
             systemPrompt = `당신은 재능있는 에세이 작가입니다.
 감동적인 글로 재구성하되 존댓말 유지.
 새로운 사건 추가 금지.`;
