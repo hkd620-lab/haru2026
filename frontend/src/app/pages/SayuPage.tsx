@@ -194,7 +194,7 @@ function SayuModal({
           borderRadius: 12,
           maxWidth: 800,
           width: '100%',
-          maxHeight: '90vh',
+          maxHeight: '95vh',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
@@ -203,7 +203,7 @@ function SayuModal({
       >
         <div
           style={{
-            padding: '24px',
+            padding: '16px 20px',
             borderBottom: '1px solid #e5e5e5',
             display: 'flex',
             alignItems: 'center',
@@ -211,20 +211,18 @@ function SayuModal({
             backgroundColor: '#fff',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Sparkles style={{ width: 22, height: 22, color: '#1A3C6E' }} />
-              <h2 style={{ fontSize: 20, color: '#1A3C6E', fontWeight: 600, margin: 0 }}>
-                {viewMode === 'ai' ? `다듬은 글 (${dateLabel})` : `원본 기록 (${dateLabel})`}
-              </h2>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Sparkles style={{ width: 20, height: 20, color: '#1A3C6E' }} />
+            <h2 style={{ fontSize: 16, color: '#1A3C6E', fontWeight: 600, margin: 0 }}>
+              {viewMode === 'ai' ? '✨ AI 다듬기' : '📜 원본'}
+            </h2>
             
-            <div className="no-print" style={{ display: 'flex', backgroundColor: '#f0f0f0', borderRadius: '6px', padding: '2px' }}>
+            <div className="no-print" style={{ display: 'flex', backgroundColor: '#f0f0f0', borderRadius: '6px', padding: '2px', marginLeft: 8 }}>
               <button
                 onClick={() => setViewMode('ai')}
                 style={{
-                  padding: '6px 12px',
-                  fontSize: '12px',
+                  padding: '4px 10px',
+                  fontSize: 11,
                   fontWeight: 600,
                   border: 'none',
                   borderRadius: '4px',
@@ -235,13 +233,13 @@ function SayuModal({
                   transition: 'all 0.2s'
                 }}
               >
-                ✨ AI 글
+                ✨ AI
               </button>
               <button
                 onClick={() => setViewMode('original')}
                 style={{
-                  padding: '6px 12px',
-                  fontSize: '12px',
+                  padding: '4px 10px',
+                  fontSize: 11,
                   fontWeight: 600,
                   border: 'none',
                   borderRadius: '4px',
@@ -264,88 +262,96 @@ function SayuModal({
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              padding: 8,
+              padding: 6,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <X style={{ width: 22, height: 22, color: '#666' }} />
+            <X style={{ width: 20, height: 20, color: '#666' }} />
           </button>
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '28px' }} className="sayu-print-area">
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }} className="sayu-print-area">
           {viewMode === 'ai' ? (
             <>
-              {/* ✅ 환경 정보 헤더 표시 */}
-              {getEnvironmentHeader() && (
+              {/* ✅ 환경 정보 헤더 - 눈에 띄는 박스로 */}
+              {(recordDate || weather || temperature || mood) && (
                 <div style={{ 
-                  marginBottom: '20px', 
-                  paddingBottom: '20px', 
-                  borderBottom: '2px solid #e5e5e5',
-                  color: '#1A3C6E',
-                  fontWeight: 600,
-                  lineHeight: 1.6,
-                  whiteSpace: 'pre-wrap',
-                  fontSize: 14
+                  marginBottom: '16px',
+                  padding: '12px 16px',
+                  backgroundColor: '#F0F7FF',
+                  border: '2px solid #1A3C6E',
+                  borderRadius: 8,
+                  fontSize: 13,
+                  lineHeight: 1.6
                 }}>
-                  {getEnvironmentHeader()}
+                  {recordDate && (
+                    <div style={{ color: '#1A3C6E', fontWeight: 700, marginBottom: 6 }}>
+                      📅 {formatDateToKorean(recordDate)}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', color: '#1A3C6E', fontWeight: 600 }}>
+                    {weather && <span>☀️ {weather}</span>}
+                    {temperature && <span>🌡️ {temperature}</span>}
+                    {mood && <span>😊 {mood}</span>}
+                  </div>
                 </div>
               )}
-              <p style={{ fontSize: 13, color: '#999', marginBottom: 12 }} className="no-print">
-                다듬어진 글을 자유롭게 편집하고 최종 저장하세요
+              
+              <p style={{ fontSize: 12, color: '#999', marginBottom: 12 }} className="no-print">
+                다듬어진 글을 편집하고 최종 저장하세요
               </p>
               
-              {/* ✅ 텍스트와 사진을 하나의 박스로 통합 */}
+              {/* ✅ 텍스트와 사진을 하나의 박스로 통합 - 높이 축소 */}
               <div
                 style={{
                   width: '100%',
-                  minHeight: 400,
-                  padding: '20px',
+                  padding: '16px',
                   border: '2px solid #1A3C6E',
-                  borderRadius: 10,
+                  borderRadius: 8,
                   backgroundColor: '#fff',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 20,
+                  gap: 16,
                 }}
               >
-                {/* SAYU 텍스트 */}
+                {/* SAYU 텍스트 - 높이 대폭 축소 */}
                 <textarea
                   value={editedContent}
                   onChange={(e) => setEditedContent(e.target.value)}
                   placeholder="내용을 입력하세요..."
                   style={{
                     width: '100%',
-                    minHeight: 350,
+                    minHeight: 180,
                     padding: 0,
-                    fontSize: 15,
+                    fontSize: 14,
                     border: 'none',
                     backgroundColor: 'transparent',
                     color: '#333',
                     resize: 'vertical',
                     fontFamily: 'inherit',
-                    lineHeight: 1.9,
+                    lineHeight: 1.7,
                     outline: 'none',
                   }}
                 />
 
-                {/* ✅ 사진 (같은 박스 안에) */}
+                {/* ✅ 사진 (같은 박스 안에) - 컴팩트하게 */}
                 {images && images.length > 0 && (
-                  <div style={{ borderTop: '1px solid #e5e5e5', paddingTop: 20 }}>
-                    <h3 style={{ fontSize: 14, color: '#1A3C6E', fontWeight: 600, marginBottom: 12, margin: 0 }}>
-                      📸 첨부 사진 ({images.length}/3)
+                  <div style={{ borderTop: '1px solid #e5e5e5', paddingTop: 12 }}>
+                    <h3 style={{ fontSize: 13, color: '#1A3C6E', fontWeight: 600, marginBottom: 8, margin: 0 }}>
+                      📸 사진 {images.length}/3
                     </h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginTop: 12 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 8 }}>
                       {images.map((url, index) => (
                         <div
                           key={index}
                           style={{
                             position: 'relative',
                             paddingBottom: '100%',
-                            borderRadius: 8,
+                            borderRadius: 6,
                             overflow: 'hidden',
-                            border: '2px solid #e5e5e5',
+                            border: '1px solid #e5e5e5',
                           }}
                         >
                           <img
@@ -369,15 +375,16 @@ function SayuModal({
             </>
           ) : (
              <>
-              <p style={{ fontSize: 13, color: '#999', marginBottom: 12 }}>
-                AI 다듬기 전, 사용자가 직접 입력한 기록입니다 (수정 불가)
+              <p style={{ fontSize: 12, color: '#999', marginBottom: 10 }}>
+                AI 다듬기 전 원본 기록입니다
               </p>
               <div style={{ 
                 width: '100%', 
-                minHeight: 400, 
-                padding: '20px', 
+                minHeight: 250, 
+                maxHeight: 400,
+                padding: '16px', 
                 backgroundColor: '#FAF9F6', 
-                borderRadius: '10px',
+                borderRadius: '8px',
                 border: '1px dashed #ccc',
                 overflowY: 'auto'
               }}>
@@ -390,50 +397,44 @@ function SayuModal({
         <div
           className="no-print"
           style={{
-            padding: '16px 28px',
+            padding: '12px 20px',
             borderTop: '1px solid #e5e5e5',
             display: 'flex',
             alignItems: 'center',
-            gap: 16,
+            gap: 12,
             flexWrap: 'wrap',
             backgroundColor: '#fff',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <p style={{ fontSize: 13, color: '#1A3C6E', fontWeight: 600, margin: 0, whiteSpace: 'nowrap' }}>⭐ 오늘의 중요도</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            <p style={{ fontSize: 12, color: '#1A3C6E', fontWeight: 600, margin: 0, whiteSpace: 'nowrap' }}>⭐ 중요도</p>
           </div>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 4 }}>
             {[1, 2, 3, 4, 5].map((star) => (
               <Star
                 key={star}
                 fill={star <= rating ? '#FFD700' : 'none'}
                 style={{
-                  width: 24,
-                  height: 24,
+                  width: 20,
+                  height: 20,
                   color: star <= rating ? '#FFD700' : '#D1D5DB',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                 }}
                 onClick={() => setRating(star)}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'scale(1.15)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)';
-                }}
               />
             ))}
           </div>
-          <p style={{ fontSize: 12, color: '#999', margin: 0 }}>({rating}/5)</p>
+          <p style={{ fontSize: 11, color: '#999', margin: 0 }}>({rating}/5)</p>
         </div>
 
         <div
           className="no-print"
           style={{
-            padding: '20px 28px',
+            padding: '16px 20px',
             borderTop: '1px solid #e5e5e5',
             display: 'flex',
-            gap: 12,
+            gap: 10,
             justifyContent: 'flex-end',
             backgroundColor: '#fff',
           }}
@@ -442,8 +443,8 @@ function SayuModal({
             onClick={onClose}
             disabled={isSaving}
             style={{
-              padding: '12px 26px',
-              fontSize: 14,
+              padding: '10px 20px',
+              fontSize: 13,
               border: '1px solid #e5e5e5',
               borderRadius: 8,
               backgroundColor: '#fff',
@@ -459,8 +460,8 @@ function SayuModal({
             onClick={handleSave}
             disabled={isSaving}
             style={{
-              padding: '12px 26px',
-              fontSize: 14,
+              padding: '10px 24px',
+              fontSize: 13,
               border: 'none',
               borderRadius: 8,
               backgroundColor: '#1A3C6E',
@@ -470,7 +471,7 @@ function SayuModal({
               fontWeight: 600,
             }}
           >
-            {isSaving ? '💾 저장 중...' : '💾 최종 저장'}
+            {isSaving ? '저장 중...' : '💾 최종 저장'}
           </button>
         </div>
       </div>

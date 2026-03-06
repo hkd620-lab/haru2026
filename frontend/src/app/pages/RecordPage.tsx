@@ -7,10 +7,10 @@ import { RecordTitleAnimation } from '../components/RecordTitleAnimation';
 import { toast } from 'sonner';
 
 type Mood = '기쁨' | '평온' | '무미' | '울적' | '번잡';
-type Weather = '쾌청' | '흐림' | '강우' | '굳음' | '눈';
+type Weather = '쾌청' | '흐림' | '강우' | '굳음';
 type Temperature = '폭염' | '온난' | '쾌적' | '쌀쌀' | '혹한';
 
-const weatherOptions: Weather[] = ['쾌청', '흐림', '강우', '굳음', '눈'];
+const weatherOptions: Weather[] = ['쾌청', '흐림', '강우', '굳음'];
 const temperatureOptions: Temperature[] = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
 const moodOptions: Mood[] = ['기쁨', '평온', '무미', '울적', '번잡'];
 
@@ -120,7 +120,7 @@ export function RecordPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-3">
+    <div className="max-w-3xl mx-auto px-4 py-3" style={{ paddingBottom: '80px' }}>
       <div className="space-y-3">
         {/* Title Animation */}
         <section className="flex items-center justify-center py-1">
@@ -249,17 +249,31 @@ export function RecordPage() {
             </div>
           </div>
         </section>
+      </div>
 
-        {/* Save Button */}
-        <div className="flex justify-center pt-2 pb-2">
+      {/* Fixed Save Button - 화면 하단 고정 */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          padding: '16px',
+          backgroundColor: '#FAF9F6',
+          borderTop: '1px solid #e5e5e5',
+          boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.1)',
+          zIndex: 100,
+        }}
+      >
+        <div className="max-w-3xl mx-auto">
           <button
             onClick={handleSave}
             disabled={isSaving || selectedFormats.length === 0}
-            className="px-6 py-2.5 rounded-lg flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 shadow-md"
+            className="w-full px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 shadow-md"
             style={{ backgroundColor: '#1A3C6E', color: '#FAF9F6' }}
           >
             <Library className="w-4 h-4" />
-            <span className="tracking-wide text-sm">{isSaving ? '저장 중...' : '서재로 이동'}</span>
+            <span className="tracking-wide text-sm font-medium">{isSaving ? '저장 중...' : '서재로 이동'}</span>
           </button>
         </div>
       </div>
