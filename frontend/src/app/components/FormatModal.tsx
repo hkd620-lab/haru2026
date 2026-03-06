@@ -136,7 +136,6 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
         try {
           const parsedImages = JSON.parse(initialData[imagesKey]);
           const arr = Array.isArray(parsedImages) ? parsedImages : [];
-          // ✅ downloadURL(http...)만 유지해서 깨진 미리보기/403 제거
           setUploadedImages(arr.filter((v: any) => typeof v === 'string' && v.startsWith('http')));
         } catch {
           setUploadedImages([]);
@@ -199,7 +198,6 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     setCrops(updated);
     setNewCropName('');
 
-    // localStorage 저장
     try {
       localStorage.setItem('haru_garden_crops', JSON.stringify(updated));
       toast.success(`${newCropName} 추가!`);
@@ -224,13 +222,11 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const handleSubmit = async () => {
     setIsSaving(true);
     try {
-      // 🌱 텃밭일지: 작물 목록을 garden_crop 필드에 저장
       const dataToSave = { ...formData };
       if (format === '텃밭일지' && crops.length > 0) {
         dataToSave.garden_crop = crops.join(', ');
       }
 
-      // 이미지 URL 저장
       dataToSave[imagesKey] = JSON.stringify(uploadedImages);
 
       await onSave(dataToSave);
@@ -244,12 +240,10 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     }
   };
 
-  // 🌟 AI 다듬기 - 모드 선택 먼저 보여주기
   const handlePolishClick = () => {
     setShowModeSelect(true);
   };
 
-  // 🌟 실제 AI 다듬기 실행
   const handlePolishWithMode = async (mode: SayuMode) => {
     setSayuMode(mode);
     setShowModeSelect(false);
@@ -260,13 +254,11 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       const functions = getFunctions(undefined, 'asia-northeast3');
       const polishContentFunc = httpsCallable(functions, 'polishContent');
 
-      // 이 형식의 데이터만 수집
       let contentValues = fields
         .map(field => formData[field.key])
         .filter(v => typeof v === "string" && v.trim())
         .join('\n\n');
 
-      // 🌱 텃밭일지: 작물 목록 추가
       if (format === '텃밭일지' && crops.length > 0) {
         contentValues = `작물: ${crops.join(', ')}\n\n${contentValues}`;
       }
@@ -280,7 +272,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       const result = await polishContentFunc({
         text: contentValues,
         format: prefix,
-        mode: mode,  // BASIC 또는 PREMIUM
+        mode: mode,
       });
 
       const polished = (result.data as PolishResult).text;
@@ -295,7 +287,6 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     }
   };
 
-  // 📸 이미지 업로드
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
@@ -314,13 +305,11 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       const newImageUrls: string[] = [];
 
       for (const file of filesToUpload) {
-        // 파일 크기 체크 (20MB)
         if (file.size > 20 * 1024 * 1024) {
           toast.warning(`${file.name}은 20MB를 초과하여 건너뜁니다.`);
           continue;
         }
 
-        // 이미지 파일인지 확인
         if (!file.type.startsWith('image/')) {
           toast.warning(`${file.name}은 이미지 파일이 아닙니다.`);
           continue;
@@ -355,20 +344,18 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     }
   };
 
-
-function getStoragePathFromDownloadUrl(url: string): string | null {
-  try {
-    const u = new URL(url);
-    const idx = u.pathname.indexOf("/o/");
-    if (idx === -1) return null;
-    const encodedPath = u.pathname.substring(idx + 3);
-    return decodeURIComponent(encodedPath);
-  } catch {
-    return null;
+  function getStoragePathFromDownloadUrl(url: string): string | null {
+    try {
+      const u = new URL(url);
+      const idx = u.pathname.indexOf("/o/");
+      if (idx === -1) return null;
+      const encodedPath = u.pathname.substring(idx + 3);
+      return decodeURIComponent(encodedPath);
+    } catch {
+      return null;
+    }
   }
-}
 
-  // 📸 이미지 삭제
   const handleDeleteImage = async (imageUrl: string, index: number) => {
     try {
       const storage = getStorage();
@@ -385,18 +372,16 @@ function getStoragePathFromDownloadUrl(url: string): string | null {
     }
   };
 
-  // SAYU 저장
   const handleSaveSayu = async () => {
     const updateData = {
       ...formData,
       [sayuKey]: polishedContent,
-      [imagesKey]: JSON.stringify(uploadedImages),  // 이미지 URL 배열 저장
+      [imagesKey]: JSON.stringify(uploadedImages),
       [`${prefix}_polished`]: true,
       [`${prefix}_polishedAt`]: new Date().toISOString(),
-      [`${prefix}_mode`]: sayuMode,  // 어떤 모드로 다듬었는지 저장
+      [`${prefix}_mode`]: sayuMode,
     };
 
-    // 🌱 텃밭일지: 작물 목록 저장
     if (format === '텃밭일지' && crops.length > 0) {
       updateData.garden_crop = crops.join(', ');
     }
@@ -415,7 +400,6 @@ function getStoragePathFromDownloadUrl(url: string): string | null {
     }
   };
 
-  // 작성된 필드가 있는지 확인
   const hasContent = fields.some(field => {
     const value = formData[field.key];
     return typeof value === "string" && value.trim().length > 0;
@@ -423,8 +407,585 @@ function getStoragePathFromDownloadUrl(url: string): string | null {
 
   return (
     <>
-      {/* (중략: 기존 UI 렌더링 부분 동일) */}
-      {/* ... 기존 리턴문 코드 ... */}
+      {/* 메인 모달 */}
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px',
+        }}
+        onClick={onClose}
+      >
+        <div
+          style={{
+            backgroundColor: '#FAF9F6',
+            borderRadius: 12,
+            maxWidth: 600,
+            width: '100%',
+            maxHeight: '85vh',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div
+            style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid #e5e5e5',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              backgroundColor: '#fff',
+            }}
+          >
+            <div>
+              <h2 style={{ fontSize: 18, color: '#1A3C6E', fontWeight: 600, margin: 0 }}>
+                {format} 작성
+              </h2>
+              {existingSayu && (
+                <p style={{ fontSize: 12, color: '#10b981', margin: '4px 0 0 0' }}>
+                  ✅ SAYU 완료
+                </p>
+              )}
+            </div>
+            <button
+              onClick={onClose}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <X style={{ width: 20, height: 20, color: '#666' }} />
+            </button>
+          </div>
+
+          {/* Test Data Button */}
+          <div style={{ padding: '16px 24px', backgroundColor: '#f8f9fa', borderBottom: '1px solid #e5e5e5' }}>
+            <button
+              onClick={handleFillTestData}
+              style={{
+                width: '100%',
+                padding: '10px 16px',
+                fontSize: 13,
+                border: '1px solid #1A3C6E',
+                borderRadius: 8,
+                backgroundColor: '#fff',
+                color: '#1A3C6E',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                fontWeight: 500,
+              }}
+            >
+              <TestTube2 style={{ width: 16, height: 16 }} />
+              📋 테스트 데이터 채우기
+            </button>
+          </div>
+
+          {/* Content */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {/* 📸 사진 업로드 섹션 - 맨 위로 이동 */}
+              <div>
+                <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
+                  📸 사진 (최대 3장)
+                </label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageUpload}
+                  style={{ display: 'none' }}
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading || uploadedImages.length >= 3}
+                  style={{
+                    width: '100%',
+                    padding: '10px 16px',
+                    fontSize: 13,
+                    border: '1px dashed #d1d5db',
+                    borderRadius: 8,
+                    backgroundColor: '#f9fafb',
+                    color: '#6b7280',
+                    cursor: isUploading || uploadedImages.length >= 3 ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    opacity: isUploading || uploadedImages.length >= 3 ? 0.5 : 1,
+                  }}
+                >
+                  <Upload style={{ width: 16, height: 16 }} />
+                  {isUploading ? '업로드 중...' : `사진 추가 (${uploadedImages.length}/3)`}
+                </button>
+
+                {uploadedImages.length > 0 && (
+                  <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
+                    {uploadedImages.map((url, index) => (
+                      <div key={index} style={{ position: 'relative', width: 100, height: 100 }}>
+                        <img
+                          src={url}
+                          alt={`업로드된 사진 ${index + 1}`}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            borderRadius: 8,
+                            border: '1px solid #e5e5e5',
+                          }}
+                        />
+                        <button
+                          onClick={() => handleDeleteImage(url, index)}
+                          style={{
+                            position: 'absolute',
+                            top: -8,
+                            right: -8,
+                            width: 24,
+                            height: 24,
+                            borderRadius: '50%',
+                            backgroundColor: '#ef4444',
+                            color: '#fff',
+                            border: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: 0,
+                          }}
+                        >
+                          <Trash2 style={{ width: 14, height: 14 }} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 🌱 텃밭일지: 작물 목록 UI */}
+              {format === '텃밭일지' && (
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
+                    🌱 작물 목록
+                  </label>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                    <input
+                      type="text"
+                      value={newCropName}
+                      onChange={(e) => setNewCropName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddCrop()}
+                      placeholder="작물 이름 입력 (예: 토마토)"
+                      style={{
+                        flex: 1,
+                        padding: '8px 12px',
+                        fontSize: 13,
+                        border: '1px solid #e5e5e5',
+                        borderRadius: 6,
+                        outline: 'none',
+                      }}
+                    />
+                    <button
+                      onClick={handleAddCrop}
+                      style={{
+                        padding: '8px 16px',
+                        fontSize: 13,
+                        border: 'none',
+                        borderRadius: 6,
+                        backgroundColor: '#10b981',
+                        color: '#fff',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      <Plus style={{ width: 14, height: 14 }} />
+                      추가
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {crops.map((crop) => (
+                      <div
+                        key={crop}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          padding: '4px 10px',
+                          fontSize: 12,
+                          backgroundColor: '#f0f9ff',
+                          color: '#1A3C6E',
+                          borderRadius: 6,
+                          border: '1px solid #bfdbfe',
+                        }}
+                      >
+                        {crop}
+                        <button
+                          onClick={() => handleRemoveCrop(crop)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            color: '#ef4444',
+                          }}
+                        >
+                          <X style={{ width: 12, height: 12 }} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 기존 필드들 */}
+              {fields.map((field) => (
+                <div key={field.key}>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: 13,
+                      color: '#666',
+                      marginBottom: 8,
+                      fontWeight: 500,
+                    }}
+                  >
+                    {field.label}
+                  </label>
+                  <textarea
+                    value={formData[field.key] || ''}
+                    onChange={(e) => handleChange(field.key, e.target.value)}
+                    placeholder={field.placeholder}
+                    rows={field.rows || 4}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      fontSize: 14,
+                      border: '1px solid #e5e5e5',
+                      borderRadius: 8,
+                      backgroundColor: '#fff',
+                      color: '#333',
+                      resize: 'vertical',
+                      fontFamily: 'inherit',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+              ))}
+
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div
+            style={{
+              padding: '16px 24px',
+              borderTop: '1px solid #e5e5e5',
+              backgroundColor: '#fff',
+            }}
+          >
+            {hasContent && (
+              <button
+                onClick={handlePolishClick}
+                disabled={isPolishing}
+                style={{
+                  width: '100%',
+                  padding: '12px 20px',
+                  fontSize: 14,
+                  border: 'none',
+                  borderRadius: 8,
+                  backgroundColor: '#10b981',
+                  color: '#fff',
+                  cursor: isPolishing ? 'not-allowed' : 'pointer',
+                  opacity: isPolishing ? 0.7 : 1,
+                  fontWeight: 600,
+                  marginBottom: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+              >
+                {isPolishing ? (
+                  <>
+                    <Wand2 className="animate-spin" style={{ width: 16, height: 16 }} />
+                    AI 다듬는 중...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 style={{ width: 16, height: 16 }} />
+                    ✨ AI 다듬기 (SAYU)
+                  </>
+                )}
+              </button>
+            )}
+
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button
+                onClick={onClose}
+                disabled={isSaving}
+                style={{
+                  padding: '10px 20px',
+                  fontSize: 14,
+                  border: '1px solid #e5e5e5',
+                  borderRadius: 8,
+                  backgroundColor: '#fff',
+                  color: '#666',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  opacity: isSaving ? 0.5 : 1,
+                }}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={isSaving}
+                style={{
+                  padding: '10px 20px',
+                  fontSize: 14,
+                  border: 'none',
+                  borderRadius: 8,
+                  backgroundColor: '#1A3C6E',
+                  color: '#FAF9F6',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  opacity: isSaving ? 0.7 : 1,
+                  fontWeight: 500,
+                }}
+              >
+                {isSaving ? '저장 중...' : '💾 원본 저장'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 모드 선택 모달 */}
+      {showModeSelect && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+            padding: '20px',
+          }}
+          onClick={() => setShowModeSelect(false)}
+        >
+          <div
+            style={{
+              backgroundColor: '#FAF9F6',
+              borderRadius: 12,
+              maxWidth: 500,
+              width: '100%',
+              padding: '32px',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ fontSize: 20, color: '#1A3C6E', fontWeight: 600, marginBottom: 8 }}>
+              SAYU 모드 선택
+            </h3>
+            <p style={{ fontSize: 14, color: '#666', marginBottom: 24 }}>
+              원하는 다듬기 모드를 선택하세요
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <button
+                onClick={() => handlePolishWithMode('BASIC')}
+                style={{
+                  padding: '20px',
+                  fontSize: 15,
+                  border: '2px solid #3b82f6',
+                  borderRadius: 10,
+                  backgroundColor: '#eff6ff',
+                  color: '#1e40af',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  fontWeight: 500,
+                }}
+              >
+                <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>⚡ BASIC 모드</div>
+                <div style={{ fontSize: 13, opacity: 0.8 }}>
+                  맞춤법과 문장을 간단히 다듬습니다
+                </div>
+              </button>
+
+              <button
+                onClick={() => handlePolishWithMode('PREMIUM')}
+                style={{
+                  padding: '20px',
+                  fontSize: 15,
+                  border: '2px solid #8b5cf6',
+                  borderRadius: 10,
+                  backgroundColor: '#f5f3ff',
+                  color: '#6d28d9',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  fontWeight: 500,
+                }}
+              >
+                <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>✨ PREMIUM 모드</div>
+                <div style={{ fontSize: 13, opacity: 0.8 }}>
+                  내용을 완전히 재구성하여 세련되게 다듬습니다
+                </div>
+              </button>
+            </div>
+
+            <button
+              onClick={() => setShowModeSelect(false)}
+              style={{
+                marginTop: 20,
+                width: '100%',
+                padding: '12px',
+                fontSize: 14,
+                border: '1px solid #e5e5e5',
+                borderRadius: 8,
+                backgroundColor: '#fff',
+                color: '#666',
+                cursor: 'pointer',
+              }}
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* SAYU 미리보기 모달 */}
+      {showPolishModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+            padding: '20px',
+          }}
+          onClick={() => setShowPolishModal(false)}
+        >
+          <div
+            style={{
+              backgroundColor: '#FAF9F6',
+              borderRadius: 12,
+              maxWidth: 700,
+              width: '100%',
+              maxHeight: '85vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: '24px',
+                borderBottom: '1px solid #e5e5e5',
+                backgroundColor: '#fff',
+              }}
+            >
+              <h2 style={{ fontSize: 20, color: '#1A3C6E', fontWeight: 600, margin: 0 }}>
+                ✨ {format} SAYU ({sayuMode})
+              </h2>
+              <p style={{ fontSize: 13, color: '#999', marginTop: 8, marginBottom: 0 }}>
+                AI가 다듬은 결과입니다
+              </p>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+              <div
+                style={{
+                  backgroundColor: '#fff',
+                  padding: '20px',
+                  borderRadius: 8,
+                  border: '1px solid #e5e5e5',
+                  whiteSpace: 'pre-wrap',
+                  fontSize: 14,
+                  lineHeight: 1.8,
+                  color: '#333',
+                }}
+              >
+                {polishedContent}
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: '20px 24px',
+                borderTop: '1px solid #e5e5e5',
+                display: 'flex',
+                gap: 12,
+                justifyContent: 'flex-end',
+                backgroundColor: '#fff',
+              }}
+            >
+              <button
+                onClick={() => setShowPolishModal(false)}
+                style={{
+                  padding: '12px 24px',
+                  fontSize: 14,
+                  border: '1px solid #e5e5e5',
+                  borderRadius: 8,
+                  backgroundColor: '#fff',
+                  color: '#666',
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSaveSayu}
+                disabled={isSaving}
+                style={{
+                  padding: '12px 32px',
+                  fontSize: 15,
+                  border: 'none',
+                  borderRadius: 8,
+                  backgroundColor: '#10b981',
+                  color: '#fff',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  opacity: isSaving ? 0.7 : 1,
+                  fontWeight: 600,
+                  letterSpacing: '0.05em',
+                }}
+              >
+                {isSaving ? '저장 중...' : '💾 SAYU 저장'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
 import { Settings, Database, Download, Trash2, BarChart3, LogOut, User } from 'lucide-react';
 import { firestoreService } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 
 export function SettingsPage() {
-  const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [stats, setStats] = useState({
@@ -15,13 +13,6 @@ export function SettingsPage() {
     formatCounts: {} as Record<string, number>
   });
   const [loadingStats, setLoadingStats] = useState(true);
-
-  // 🔒 로그인 체크
-  useEffect(() => {
-    if (!user) {
-      navigate('/login');
-    }
-  }, [user, navigate]);
 
   useEffect(() => {
     if (user?.uid) {
@@ -86,18 +77,12 @@ export function SettingsPage() {
     if (confirm('로그아웃 하시겠습니까?')) {
       try {
         await signOut();
-        navigate('/login');
       } catch (error) {
         console.error('로그아웃 실패:', error);
         alert('로그아웃 중 오류가 발생했습니다.');
       }
     }
   };
-
-  // 로그인하지 않은 경우 렌더링 방지
-  if (!user) {
-    return null;
-  }
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">

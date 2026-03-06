@@ -6,8 +6,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { firestoreService, HaruRecord, RecordFormat } from '../services/firestoreService';
 import { LibraryTitleAnimation } from '../components/LibraryTitleAnimation';
 import { toast } from 'sonner';
-import { doc, updateDoc, deleteField } from 'firebase/firestore';
-import { db } from '../config/firebase';
 
 export function LibraryPage() {
   const location = useLocation();
@@ -178,29 +176,19 @@ export function LibraryPage() {
 
     try {
       const updateData: Record<string, any> = {
-        formats: []  // formats 배열 초기화
+        formats: []  // 👈 formats 배열도 초기화!
       };
       const formatPrefixes = ['diary_', 'essay_', 'mission_', 'report_', 'work_', 'travel_', 'garden_', 'pet_', 'child_'];
 
-      // 형식 관련 모든 필드를 deleteField로 삭제
       Object.keys(selectedRecord).forEach((key) => {
         if (formatPrefixes.some(prefix => key.startsWith(prefix))) {
-          updateData[key] = deleteField();  // 👈 null 대신 deleteField() 사용!
+          updateData[key] = null;
         }
       });
 
-      // Firestore에서 직접 업데이트
-      const recordRef = doc(db, 'users', authUser.uid, 'records', selectedRecord.id);
-      await updateDoc(recordRef, updateData);
+      await firestoreService.updateRecord(authUser.uid, selectedRecord.id, updateData);
 
-      // 로컬 state 업데이트 - 삭제된 필드 제거
-      const updated = { ...selectedRecord, formats: [] };
-      Object.keys(updateData).forEach((key) => {
-        if (key !== 'formats') {
-          delete updated[key];  // 필드 완전 삭제
-        }
-      });
-      
+      const updated = { ...selectedRecord, ...updateData };
       setRecords((prev) => prev.map((r) => (r.id === selectedRecord.id ? updated : r)));
       setSelectedRecord(updated);
 
