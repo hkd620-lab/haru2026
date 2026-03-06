@@ -5,6 +5,7 @@ import { HomePage } from './pages/HomePage';
 import { RecordPage } from './pages/RecordPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { LoginPage } from './pages/LoginPage';
+import { AuthCallbackPage } from './pages/AuthCallbackPage';
 import { SayuPage } from './pages/SayuPage';
 import { MergePage } from './pages/MergePage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -22,10 +23,13 @@ function App() {
               {/* 홈 화면 */}
               <Route path="/" element={<HomePage />} />
               
+              {/* 인증 */}
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/auth/callback" element={<AuthCallbackPage />} />
+              
               {/* 기존 페이지들 */}
               <Route path="/record" element={<RecordPage />} />
               <Route path="/library" element={<LibraryPage />} />
-              <Route path="/login" element={<LoginPage />} />
               <Route path="/sayu" element={<SayuPage />} />
               <Route path="/merge" element={<MergePage />} />
               <Route path="/settings" element={<SettingsPage />} />

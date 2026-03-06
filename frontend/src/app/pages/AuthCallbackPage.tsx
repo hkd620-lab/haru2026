@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { signInWithCustomToken } from 'firebase/auth';
-import { auth } from '../../firebase';
+import { auth } from '../config/firebase';
 import { toast } from 'sonner';
 
 export function AuthCallbackPage() {

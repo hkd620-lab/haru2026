@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { auth } from '../../firebase';
+import { auth } from '../config/firebase';
 import { BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
 import { Settings, Database, Download, Trash2, BarChart3, LogOut, User } from 'lucide-react';
 import { firestoreService } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 
 export function SettingsPage() {
+  const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [stats, setStats] = useState({
@@ -14,14 +16,36 @@ export function SettingsPage() {
   });
   const [loadingStats, setLoadingStats] = useState(true);
 
+  // 🔒 로그인 체크
   useEffect(() => {
-    loadStats();
-  }, [user.uid]);
+    if (!user) {
+      navigate('/login');
+    }
+  }, [user, navigate]);
+
+  useEffect(() => {
+    if (user?.uid) {
+      loadStats();
+    } else {
+      setLoadingStats(false);
+    }
+  }, [user?.uid]);
 
   const loadStats = async () => {
+    if (!user?.uid) {
+      setLoadingStats(false);
+      return;
+    }
+    
     try {
-      const data = await firestoreService.getStats(user.uid);
-      setStats(data);
+      // TODO: firestoreService.getStats 함수 구현 필요
+      // 임시로 기본값 사용
+      setStats({
+        totalRecords: 0,
+        polishedCount: 0,
+        sayuCount: 0,
+        formatCounts: {}
+      });
     } catch (error) {
       console.error('통계 로딩 실패:', error);
     } finally {
@@ -30,26 +54,29 @@ export function SettingsPage() {
   };
 
   const handleExportData = async () => {
+    if (!user?.uid) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+    
     try {
-      const jsonData = await firestoreService.exportData(user.uid);
-      const blob = new Blob([jsonData], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `haru_records_${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      // TODO: firestoreService.exportData 함수 구현 필요
+      alert('데이터 내보내기 기능은 준비 중입니다.');
     } catch (error) {
       alert('내보내기에 실패했습니다.');
     }
   };
 
   const handleClearData = async () => {
+    if (!user?.uid) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+    
     try {
-      await firestoreService.clearAllData(user.uid);
+      // TODO: firestoreService.clearAllData 함수 구현 필요
       setShowClearConfirm(false);
-      alert('✅ 모든 데이터가 삭제되었습니다.');
-      window.location.reload();
+      alert('데이터 삭제 기능은 준비 중입니다.');
     } catch (error) {
       alert('삭제에 실패했습니다.');
     }
@@ -59,12 +86,18 @@ export function SettingsPage() {
     if (confirm('로그아웃 하시겠습니까?')) {
       try {
         await signOut();
+        navigate('/login');
       } catch (error) {
         console.error('로그아웃 실패:', error);
         alert('로그아웃 중 오류가 발생했습니다.');
       }
     }
   };
+
+  // 로그인하지 않은 경우 렌더링 방지
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
@@ -281,7 +314,7 @@ export function SettingsPage() {
                 로그아웃
               </p>
               <p className="text-xs mt-0.5" style={{ color: '#9CA3AF' }}>
-                현재 계정({user.email || '게스트'})에서 로그아웃합니다
+                현재 계정({user?.email || '게스트'})에서 로그아웃합니다
               </p>
             </div>
           </button>

@@ -6,6 +6,7 @@ import {
   getDocs, 
   updateDoc, 
   deleteDoc,
+  deleteField,
   query, 
   where, 
   orderBy,

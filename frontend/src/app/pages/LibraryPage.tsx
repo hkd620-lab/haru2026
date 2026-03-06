@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { BookOpen, Info, Wand2 } from 'lucide-react';
+import { BookOpen, Info } from 'lucide-react';
 import { FormatModal } from '../components/FormatModal';
 import { useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService, HaruRecord, RecordFormat } from '../services/firestoreService';
 import { LibraryTitleAnimation } from '../components/LibraryTitleAnimation';
 import { toast } from 'sonner';
+import { doc, updateDoc, deleteField } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 export function LibraryPage() {
   const location = useLocation();
@@ -14,7 +16,7 @@ export function LibraryPage() {
   const [records, setRecords] = useState<HaruRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRecord, setSelectedRecord] = useState<HaruRecord | null>(null);
-  
+
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
     format: RecordFormat | null;
@@ -48,12 +50,14 @@ export function LibraryPage() {
     ensure('애완동물관찰일지', 'pet_');
     ensure('육아일기', 'child_');
 
-    return base;
+    // 최대 3개로 제한
+    return base.slice(0, 3);
   };
 
   // 데이터 가져오기
   useEffect(() => {
     fetchRecords();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser?.uid, location]);
 
   const toggleLibraryGuide = () => {
@@ -69,7 +73,7 @@ export function LibraryPage() {
       setLoading(false);
       return;
     }
-    
+
     setLoading(true);
     try {
       const uid = authUser.uid;
@@ -121,7 +125,6 @@ export function LibraryPage() {
       setSelectedRecord(updated);
 
       toast.success('저장되었습니다!');
-      
       await fetchRecords();
     } catch (error) {
       console.error('저장 실패:', error);
@@ -144,6 +147,7 @@ export function LibraryPage() {
     const data: Record<string, string> = {};
     Object.keys(selectedRecord).forEach((key) => {
       if (key.startsWith(prefix)) {
+        // @ts-ignore
         data[key] = selectedRecord[key];
       }
     });
@@ -161,8 +165,9 @@ export function LibraryPage() {
       format === '여행기록' ? 'travel' :
       format === '텃밭일지' ? 'garden' :
       format === '애완동물관찰일지' ? 'pet' : 'child';
-    
+
     const sayuKey = `${prefix}_sayu`;
+    // @ts-ignore
     const sayuValue = selectedRecord[sayuKey];
     return typeof sayuValue === 'string' && sayuValue.trim().length > 0;
   };
@@ -172,18 +177,30 @@ export function LibraryPage() {
     if (!confirm('작성한 형식 내용을 모두 초기화하시겠습니까?\n\n원본과 SAYU가 모두 삭제됩니다.')) return;
 
     try {
-      const updateData: Record<string, any> = {};
+      const updateData: Record<string, any> = {
+        formats: []  // formats 배열 초기화
+      };
       const formatPrefixes = ['diary_', 'essay_', 'mission_', 'report_', 'work_', 'travel_', 'garden_', 'pet_', 'child_'];
-      
+
+      // 형식 관련 모든 필드를 deleteField로 삭제
       Object.keys(selectedRecord).forEach((key) => {
         if (formatPrefixes.some(prefix => key.startsWith(prefix))) {
-          updateData[key] = null;
+          updateData[key] = deleteField();  // 👈 null 대신 deleteField() 사용!
         }
       });
 
-      await firestoreService.updateRecord(authUser.uid, selectedRecord.id, updateData);
+      // Firestore에서 직접 업데이트
+      const recordRef = doc(db, 'users', authUser.uid, 'records', selectedRecord.id);
+      await updateDoc(recordRef, updateData);
 
-      const updated = { ...selectedRecord, ...updateData };
+      // 로컬 state 업데이트 - 삭제된 필드 제거
+      const updated = { ...selectedRecord, formats: [] };
+      Object.keys(updateData).forEach((key) => {
+        if (key !== 'formats') {
+          delete updated[key];  // 필드 완전 삭제
+        }
+      });
+      
       setRecords((prev) => prev.map((r) => (r.id === selectedRecord.id ? updated : r)));
       setSelectedRecord(updated);
 
@@ -194,11 +211,11 @@ export function LibraryPage() {
     }
   };
 
-  // --- 112번 줄 근처 (return 직전) 추가된 디버깅 코드 ---
+  // 오늘 레코드 선택 (date OR id 로 잡기)
   useEffect(() => {
     if (!loading) {
       const todayStr = formatDateString(new Date());
-      const todayRecord = records.find((r) => r.date === todayStr);
+      const todayRecord = records.find((r) => r.date === todayStr || r.id === todayStr);
       setSelectedRecord(todayRecord || null);
 
       console.log('=== 디버깅 ===');
@@ -208,6 +225,8 @@ export function LibraryPage() {
       console.log('전체 기록:', records);
     }
   }, [loading, records]);
+
+  const formatsForDisplay = selectedRecord ? getFormatsForDisplay(selectedRecord) : [];
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
@@ -283,7 +302,7 @@ export function LibraryPage() {
         <div className="space-y-4">
           <div className="bg-white rounded-lg p-4 shadow-sm">
             <h3 className="text-base font-semibold" style={{ color: '#1A3C6E' }}>
-              {new Date(selectedRecord.date + 'T00:00:00').toLocaleDateString('ko-KR', {
+              {new Date((selectedRecord.date || selectedRecord.id) + 'T00:00:00').toLocaleDateString('ko-KR', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
@@ -326,15 +345,15 @@ export function LibraryPage() {
             </div>
           )}
 
-          {getFormatsForDisplay(selectedRecord).length > 0 ? (
+          {formatsForDisplay.length > 0 ? (
             <div className="bg-white rounded-lg p-4 shadow-sm">
               <p className="text-xs mb-3 font-medium" style={{ color: '#999' }}>
                 🎹 기록 형식을 클릭하면 작성 화면이 열립니다
               </p>
               <div className="flex gap-2 flex-wrap">
-                {getFormatsForDisplay(selectedRecord).map((format: RecordFormat) => {
+                {formatsForDisplay.map((format: RecordFormat) => {
                   const hasPolished = isFormatPolished(format);
-                  
+
                   return (
                     <button
                       key={format}
@@ -382,7 +401,7 @@ export function LibraryPage() {
             </div>
           )}
 
-          {selectedRecord.formats && selectedRecord.formats.length > 0 && (
+          {formatsForDisplay.length > 0 && (
             <div className="bg-white rounded-lg p-6 shadow-sm">
               <button
                 onClick={handleResetFormats}
