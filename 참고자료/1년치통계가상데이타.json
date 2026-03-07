@@ -1,0 +1,167 @@
+{
+  "season_id": "season_1",
+  "year": 2026,
+  "monthly": [
+    {
+      "month": "2026-01",
+      "total_days": 24,
+      "positive_sum": 70,
+      "negative_sum": 48,
+      "conflict_days": 8,
+      "conflict_with_learning_days": 6,
+      "learning_days": 18,
+      "space_days": 16,
+      "energy_sum": 72,
+      "action_counts": { "health": 6, "work": 8, "social": 4, "rest": 4, "learning": 2 }
+    },
+    {
+      "month": "2026-02",
+      "total_days": 22,
+      "positive_sum": 65,
+      "negative_sum": 52,
+      "conflict_days": 9,
+      "conflict_with_learning_days": 7,
+      "learning_days": 17,
+      "space_days": 15,
+      "energy_sum": 66,
+      "action_counts": { "health": 5, "work": 9, "social": 3, "rest": 3, "learning": 2 }
+    },
+    {
+      "month": "2026-03",
+      "total_days": 26,
+      "positive_sum": 80,
+      "negative_sum": 55,
+      "conflict_days": 10,
+      "conflict_with_learning_days": 8,
+      "learning_days": 20,
+      "space_days": 18,
+      "energy_sum": 78,
+      "action_counts": { "health": 7, "work": 10, "social": 4, "rest": 3, "learning": 2 }
+    },
+    {
+      "month": "2026-04",
+      "total_days": 25,
+      "positive_sum": 95,
+      "negative_sum": 40,
+      "conflict_days": 6,
+      "conflict_with_learning_days": 6,
+      "learning_days": 22,
+      "space_days": 20,
+      "energy_sum": 85,
+      "action_counts": { "health": 8, "work": 7, "social": 5, "rest": 3, "learning": 2 }
+    },
+    {
+      "month": "2026-05",
+      "total_days": 26,
+      "positive_sum": 102,
+      "negative_sum": 38,
+      "conflict_days": 5,
+      "conflict_with_learning_days": 5,
+      "learning_days": 23,
+      "space_days": 21,
+      "energy_sum": 92,
+      "action_counts": { "health": 9, "work": 6, "social": 5, "rest": 4, "learning": 2 }
+    },
+    {
+      "month": "2026-06",
+      "total_days": 25,
+      "positive_sum": 100,
+      "negative_sum": 35,
+      "conflict_days": 5,
+      "conflict_with_learning_days": 5,
+      "learning_days": 22,
+      "space_days": 19,
+      "energy_sum": 88,
+      "action_counts": { "health": 8, "work": 6, "social": 4, "rest": 5, "learning": 2 }
+    },
+    {
+      "month": "2026-07",
+      "total_days": 27,
+      "positive_sum": 85,
+      "negative_sum": 70,
+      "conflict_days": 12,
+      "conflict_with_learning_days": 9,
+      "learning_days": 19,
+      "space_days": 14,
+      "energy_sum": 82,
+      "action_counts": { "health": 4, "work": 14, "social": 3, "rest": 3, "learning": 3 }
+    },
+    {
+      "month": "2026-08",
+      "total_days": 26,
+      "positive_sum": 78,
+      "negative_sum": 75,
+      "conflict_days": 13,
+      "conflict_with_learning_days": 10,
+      "learning_days": 18,
+      "space_days": 12,
+      "energy_sum": 80,
+      "action_counts": { "health": 3, "work": 15, "social": 2, "rest": 3, "learning": 3 }
+    },
+    {
+      "month": "2026-09",
+      "total_days": 25,
+      "positive_sum": 82,
+      "negative_sum": 68,
+      "conflict_days": 11,
+      "conflict_with_learning_days": 8,
+      "learning_days": 20,
+      "space_days": 15,
+      "energy_sum": 83,
+      "action_counts": { "health": 5, "work": 12, "social": 3, "rest": 3, "learning": 2 }
+    },
+    {
+      "month": "2026-10",
+      "total_days": 25,
+      "positive_sum": 98,
+      "negative_sum": 45,
+      "conflict_days": 7,
+      "conflict_with_learning_days": 6,
+      "learning_days": 22,
+      "space_days": 20,
+      "energy_sum": 90,
+      "action_counts": { "health": 8, "work": 6, "social": 5, "rest": 4, "learning": 2 }
+    },
+    {
+      "month": "2026-11",
+      "total_days": 24,
+      "positive_sum": 92,
+      "negative_sum": 40,
+      "conflict_days": 6,
+      "conflict_with_learning_days": 6,
+      "learning_days": 21,
+      "space_days": 19,
+      "energy_sum": 86,
+      "action_counts": { "health": 7, "work": 6, "social": 5, "rest": 4, "learning": 2 }
+    },
+    {
+      "month": "2026-12",
+      "total_days": 25,
+      "positive_sum": 105,
+      "negative_sum": 35,
+      "conflict_days": 5,
+      "conflict_with_learning_days": 5,
+      "learning_days": 23,
+      "space_days": 22,
+      "energy_sum": 94,
+      "action_counts": { "health": 9, "work": 5, "social": 5, "rest": 4, "learning": 2 }
+    }
+  ],
+  "season_total": {
+    "total_days": 300,
+    "positive_sum": 1052,
+    "negative_sum": 601,
+    "conflict_days": 97,
+    "conflict_with_learning_days": 81,
+    "learning_days": 245,
+    "space_days": 211,
+    "energy_sum": 996,
+    "action_counts": {
+      "health": 79,
+      "work": 104,
+      "social": 48,
+      "rest": 43,
+      "learning": 24
+    }
+  }
+}

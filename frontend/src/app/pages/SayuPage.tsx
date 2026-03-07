@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router';
-import { ChevronLeft, ChevronRight, Sparkles, X, Star, Info } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles, X, Star, Info, Printer } from 'lucide-react';
+import { useReactToPrint } from 'react-to-print';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { SayuTitleAnimation } from '../components/SayuTitleAnimation';
@@ -55,6 +56,35 @@ function SayuModal({
   const [isSaving, setIsSaving] = useState(false);
   const [rating, setRating] = useState(currentRating || 1);
   const [viewMode, setViewMode] = useState<'ai' | 'original'>('ai');
+  
+  // 🖨️ react-to-print 설정
+  const printRef = useRef<HTMLDivElement>(null);
+  
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `SAYU_${recordDate || formatDateToKorean(new Date().toISOString().split('T')[0])}_${format || '기록'}`,
+    pageStyle: `
+      @page {
+        size: A4;
+        margin: 15mm;
+      }
+      @media print {
+        body {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        
+        /* 사진 컨테이너 - 단순하게 */
+        .sayu-print-area img {
+          width: 100% !important;
+          height: 160px !important;
+          object-fit: contain !important;
+          background-color: #f5f5f5 !important;
+          page-break-inside: avoid !important;
+        }
+      }
+    `,
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -165,29 +195,6 @@ function SayuModal({
       }}
       onClick={onClose}
     >
-      {/* ✅ 프린트용 CSS 추가 */}
-      <style>
-        {`
-          @media print {
-            body * {
-              visibility: hidden;
-            }
-            .sayu-print-area,
-            .sayu-print-area * {
-              visibility: visible;
-            }
-            .sayu-print-area {
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 100%;
-            }
-            .no-print {
-              display: none !important;
-            }
-          }
-        `}
-      </style>
       <div
         style={{
           backgroundColor: '#FAF9F6',
@@ -272,42 +279,18 @@ function SayuModal({
           </button>
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }} className="sayu-print-area">
+        <div ref={printRef} style={{ flex: 1, overflowY: 'auto', padding: '20px' }} className="sayu-print-area">
           {viewMode === 'ai' ? (
             <>
-              {/* ✅ 환경 정보 헤더 - 눈에 띄는 박스로 */}
-              {(recordDate || weather || temperature || mood) && (
-                <div style={{ 
-                  marginBottom: '16px',
-                  padding: '12px 16px',
-                  backgroundColor: '#F0F7FF',
-                  border: '2px solid #1A3C6E',
-                  borderRadius: 8,
-                  fontSize: 13,
-                  lineHeight: 1.6
-                }}>
-                  {recordDate && (
-                    <div style={{ color: '#1A3C6E', fontWeight: 700, marginBottom: 6 }}>
-                      📅 {formatDateToKorean(recordDate)}
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', color: '#1A3C6E', fontWeight: 600 }}>
-                    {weather && <span>☀️ {weather}</span>}
-                    {temperature && <span>🌡️ {temperature}</span>}
-                    {mood && <span>😊 {mood}</span>}
-                  </div>
-                </div>
-              )}
-              
               <p style={{ fontSize: 12, color: '#999', marginBottom: 12 }} className="no-print">
                 다듬어진 글을 편집하고 최종 저장하세요
               </p>
               
-              {/* ✅ 텍스트와 사진을 하나의 박스로 통합 - 높이 축소 */}
+              {/* ✅ 통합 박스: 환경 + 텍스트 + 사진 */}
               <div
                 style={{
                   width: '100%',
-                  padding: '16px',
+                  padding: '20px',
                   border: '2px solid #1A3C6E',
                   borderRadius: 8,
                   backgroundColor: '#fff',
@@ -316,54 +299,87 @@ function SayuModal({
                   gap: 16,
                 }}
               >
-                {/* SAYU 텍스트 - 높이 대폭 축소 */}
-                <textarea
-                  value={editedContent}
-                  onChange={(e) => setEditedContent(e.target.value)}
-                  placeholder="내용을 입력하세요..."
+                {/* 환경 정보 */}
+                {(recordDate || weather || temperature || mood) && (
+                  <div style={{ 
+                    padding: '12px 16px',
+                    backgroundColor: '#F0F7FF',
+                    border: '1px solid #1A3C6E',
+                    borderRadius: 6,
+                    fontSize: 13,
+                    lineHeight: 1.6
+                  }}>
+                    {recordDate && (
+                      <div style={{ color: '#1A3C6E', fontWeight: 700, marginBottom: 6 }}>
+                        📅 {formatDateToKorean(recordDate)}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', color: '#1A3C6E', fontWeight: 600 }}>
+                      {weather && <span>☀️ {weather}</span>}
+                      {temperature && <span>🌡️ {temperature}</span>}
+                      {mood && <span>😊 {mood}</span>}
+                    </div>
+                  </div>
+                )}
+
+                {/* SAYU 텍스트 - contentEditable div */}
+                <div
+                  contentEditable
+                  suppressContentEditableWarning
+                  onInput={(e) => {
+                    setEditedContent(e.currentTarget.textContent || '');
+                  }}
+                  onBlur={(e) => {
+                    setEditedContent(e.currentTarget.textContent || '');
+                  }}
                   style={{
                     width: '100%',
-                    minHeight: 180,
-                    padding: 0,
+                    minHeight: '200px',
+                    padding: '12px',
                     fontSize: 14,
-                    border: 'none',
-                    backgroundColor: 'transparent',
+                    border: '1px dashed #ccc',
+                    borderRadius: 6,
+                    backgroundColor: '#fafafa',
                     color: '#333',
-                    resize: 'vertical',
                     fontFamily: 'inherit',
                     lineHeight: 1.7,
                     outline: 'none',
+                    whiteSpace: 'pre-wrap',
+                    wordWrap: 'break-word',
                   }}
+                  dangerouslySetInnerHTML={{ __html: editedContent.replace(/\n/g, '<br>') }}
                 />
 
-                {/* ✅ 사진 (같은 박스 안에) - 컴팩트하게 */}
+                {/* 사진 - 단순화 버전 */}
                 {images && images.length > 0 && (
-                  <div style={{ borderTop: '1px solid #e5e5e5', paddingTop: 12 }}>
-                    <h3 style={{ fontSize: 13, color: '#1A3C6E', fontWeight: 600, marginBottom: 8, margin: 0 }}>
+                  <div>
+                    <h3 style={{ fontSize: 13, color: '#1A3C6E', fontWeight: 600, marginBottom: 12, margin: 0 }}>
                       📸 사진 {images.length}/3
                     </h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 8 }}>
+                    <div style={{ 
+                      display: 'flex', 
+                      gap: '12px', 
+                      marginTop: 12 
+                    }}>
                       {images.map((url, index) => (
                         <div
                           key={index}
                           style={{
-                            position: 'relative',
-                            paddingBottom: '100%',
-                            borderRadius: 6,
-                            overflow: 'hidden',
+                            flex: 1,
+                            height: '160px',
+                            borderRadius: 8,
                             border: '1px solid #e5e5e5',
+                            backgroundColor: '#f5f5f5',
+                            overflow: 'hidden',
                           }}
                         >
                           <img
                             src={url}
                             alt={`사진 ${index + 1}`}
                             style={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
                               width: '100%',
                               height: '100%',
-                              objectFit: 'cover',
+                              objectFit: 'contain',
                             }}
                           />
                         </div>
@@ -457,6 +473,25 @@ function SayuModal({
             취소
           </button>
           <button
+            onClick={handlePrint}
+            style={{
+              padding: '10px 20px',
+              fontSize: 13,
+              border: '1px solid #10b981',
+              borderRadius: 8,
+              backgroundColor: '#fff',
+              color: '#10b981',
+              cursor: 'pointer',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <Printer style={{ width: 16, height: 16 }} />
+            PDF 인쇄
+          </button>
+          <button
             onClick={handleSave}
             disabled={isSaving}
             style={{
@@ -515,7 +550,7 @@ export function SayuPage() {
 
   useEffect(() => {
     fetchRecords();
-  }, [location]);
+  }, [authUser?.uid, location]);
 
   useEffect(() => {
     if (!loading && selectedDate) {
@@ -563,6 +598,11 @@ export function SayuPage() {
   };
 
   const fetchRecords = async () => {
+    if (!authUser?.uid) {
+      setLoading(false);
+      return;
+    }
+    
     try {
       const uid = authUser.uid;
       const data = await firestoreService.getRecords(uid);
@@ -698,7 +738,7 @@ export function SayuPage() {
   };
 
   const handleSaveSayu = async (content: string, rating: number) => {
-    if (!selectedRecord) return;
+    if (!selectedRecord || !authUser?.uid) return;
 
     try {
       const updateData = {

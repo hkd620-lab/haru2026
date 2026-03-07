@@ -1,0 +1,230 @@
+작업일지/2026-03-03-소셜로그인-성공.md << 
+# 2026-03-03 소셜 로그인 구현 성공 🎉
+
+## 최종 결과
+✅ **카카오 로그인 완전 성공**
+✅ **네이버 로그인 완전 성공**
+
+---
+
+## 성공까지의 여정
+
+### 1단계: 환경변수 전쟁 (가장 어려움!)
+**문제:**
+- Firebase Functions Gen 2가 .env 파일을 배포 시 무시함
+- .env.production, .env.yaml 모두 실패
+- Google Cloud Console UI로 환경변수 추가해도 실행 시 (0)
+
+**해결:**
+```typescript
+// functions/src/index.ts 맨 앞에 직접 하드코딩
+const KAKAO_CLIENT_ID = 'b910c15fde12b678e612c23aa56fe27f';
+const KAKAO_CLIENT_SECRET = 'a2wUyOK1MK9TcfSYw6e7BET7aU8Gn1au';
+const NAVER_CLIENT_ID = 'mRSWCHU_IHbPE7teR4P5';
+const NAVER_CLIENT_SECRET = 'EpEDTAjryH';
+const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
+```
+
+**교훈:** Firebase Gen 2는 환경변수 처리가 Gen 1과 완전히 다름!
+
+---
+
+### 2단계: 권한 문제 발견
+**문제:**
+```
+Permission 'iam.serviceAccounts.signBlob' denied
+code: 'auth/insufficient-permission'
+```
+
+**원인:** 
+- customToken 생성에 필요한 권한이 없음
+- Firebase Admin SDK가 토큰에 서명할 수 없음
+
+**해결:**
+1. Google Cloud Console → IAM → 서비스 계정
+2. `398138267500-compute@developer.gserviceaccount.com` 선택
+3. **"Service Account Token Creator"** 역할 추가
+4. 5분 대기 (권한 전파 시간)
+
+**교훈:** Gen 2는 보안이 강화되어 명시적 권한 설정 필요!
+
+---
+
+### 3단계: 네이버 photoURL 문제
+**문제:**
+```
+The photoURL field must be a valid URL
+code: 'auth/invalid-photo-url'
+```
+
+**시도한 것들:**
+```typescript
+// 시도 1: null 체크
+const photoURL = naverUser.profile_image || null;
+// ❌ 실패
+
+// 시도 2: 빈 문자열 체크
+let photoURL = null;
+if (naverUser.profile_image && naverUser.profile_image.trim() !== '') {
+  photoURL = naverUser.profile_image;
+}
+// ❌ 여전히 실패
+```
+
+**최종 해결:**
+```typescript
+// photoURL 완전히 제거
+await admin.auth().createUser({ uid, email, displayName });
+// photoURL 파라미터 자체를 안 넣음
+```
+
+**교훈:** 빈 문자열도 invalid URL로 간주됨. 아예 제거가 정답!
+
+---
+
+### 4단계: 이메일 충돌 문제
+**문제:**
+```
+auth/email-already-exists
+The email address is already in use by another account
+```
+
+**원인:** 
+- 이전 테스트로 생성된 계정들
+- Google 로그인 계정과 이메일 충돌
+
+**해결:**
+- Firebase Authentication에서 테스트 계정 삭제
+- 깔끔한 상태에서 재테스트
+
+---
+
+## 핵심 성공 요인
+
+### 1. 환경변수를 코드에 직접 하드코딩
+```
+Firebase Gen 2 환경변수 문제를 우회
+→ 배포 패키지에 확실히 포함
+→ 실행 시 100% 로드 보장
+```
+
+### 2. Service Account Token Creator 권한
+```
+customToken 생성에 필요한 핵심 권한
+→ IAM에서 명시적으로 추가
+→ 5분 대기 후 작동
+```
+
+### 3. 네이버 photoURL 완전 제거
+```
+빈 문자열 체크로 안 됨
+→ 파라미터 자체를 제거
+→ 성공!
+```
+
+---
+
+## 배운 교훈들
+
+### 🔥 Firebase Gen 2는 Gen 1과 완전히 다름
+- 환경변수: .env 자동 로드 안 됨
+- 권한: 명시적으로 설정해야 함
+- 보안: 훨씬 강화됨
+
+### 🔍 에러 로그 = 보물지도
+- firebase functions:log 필수
+- 단계별로 어디서 멈추는지 확인
+- 에러 메시지를 정확히 읽기
+
+### 🚀 작동 우선, 보안은 나중
+1. 일단 코드에 박아서 작동시키기
+2. 작동 확인 후 Secret Manager로 이전
+3. 완벽보다 진행이 중요
+
+### 💡 환경변수 = 배포의 가장 어려운 부분
+- 로컬에서는 잘 됨
+- 배포하면 안 됨
+- 가장 많은 시간 소요
+
+---
+
+## 다음 작업 (우선순위)
+
+### 1. 프론트엔드 콜백 처리 (필수!)
+```typescript
+// frontend/src/pages/AuthCallbackPage.tsx 생성
+// customToken으로 Firebase 로그인
+// 메인 페이지로 리다이렉트
+```
+
+### 2. 보안 강화 (중요!)
+```
+코드에 박힌 API 키들을 Secret Manager로 이전
+→ Git에 커밋되지 않도록
+→ 해킹 위험 제거
+```
+
+### 3. 카카오 이메일 동의 처리
+```
+사용자가 이메일 제공 거부 시 처리 로직
+```
+
+---
+
+## 파일 위치
+
+**Functions 코드:**
+```
+~/Desktop/HARU2026/functions/src/index.ts
+```
+
+**배포 명령어:**
+```bash
+cd ~/Desktop/HARU2026/functions
+npm run build
+cd ..
+firebase deploy --only functions
+```
+
+**로그 확인:**
+```bash
+firebase functions:log --only kakaoCallback,naverCallback
+```
+
+---
+
+## 최종 상태
+
+✅ 카카오 로그인: customToken 생성 성공
+✅ 네이버 로그인: customToken 생성 성공
+⚠️ 프론트엔드 콜백: 아직 미구현 (다음 작업)
+⚠️ 보안: API 키 노출 상태 (Secret Manager 이전 필요)
+
+---
+
+**총 소요 시간:** 약 4시간
+**가장 어려웠던 부분:** 환경변수 문제 (2시간+)
+**가장 뿌듯한 순간:** 카카오 로그인 성공 로그 확인!
+
+허 교장님, 정말 수고 많으셨습니다! 🎉
+```
+
+---
+
+## 🔒 보안 작업 (Secret Manager)
+
+**네, 이제 해도 됩니다!**
+
+하지만 **주의사항:**
+
+### 지금 당장 하면:
+```
+Secret Manager 설정 중 에러 가능
+→ 다시 디버깅 필요
+```
+
+### 추천 순서:
+```
+1. Git 커밋 (현재 작동하는 버전 저장) ✅
+2. 프론트엔드 콜백 완성 (완전한 로그인 구현)
+3. Secret Manager로 이전 (보안 강화)
