@@ -2,9 +2,12 @@ import { useState, useEffect } from 'react';
 import { Settings, Database, Download, Trash2, BarChart3, LogOut, User } from 'lucide-react';
 import { firestoreService } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 export function SettingsPage() {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [stats, setStats] = useState({
     totalRecords: 0,
@@ -46,30 +49,30 @@ export function SettingsPage() {
 
   const handleExportData = async () => {
     if (!user?.uid) {
-      alert('로그인이 필요합니다.');
+      toast.error('로그인이 필요합니다.');
       return;
     }
     
     try {
       // TODO: firestoreService.exportData 함수 구현 필요
-      alert('데이터 내보내기 기능은 준비 중입니다.');
+      toast.info('데이터 내보내기 기능은 준비 중입니다.');
     } catch (error) {
-      alert('내보내기에 실패했습니다.');
+      toast.error('내보내기에 실패했습니다.');
     }
   };
 
   const handleClearData = async () => {
     if (!user?.uid) {
-      alert('로그인이 필요합니다.');
+      toast.error('로그인이 필요합니다.');
       return;
     }
     
     try {
       // TODO: firestoreService.clearAllData 함수 구현 필요
       setShowClearConfirm(false);
-      alert('데이터 삭제 기능은 준비 중입니다.');
+      toast.info('데이터 삭제 기능은 준비 중입니다.');
     } catch (error) {
-      alert('삭제에 실패했습니다.');
+      toast.error('삭제에 실패했습니다.');
     }
   };
 
@@ -77,9 +80,11 @@ export function SettingsPage() {
     if (confirm('로그아웃 하시겠습니까?')) {
       try {
         await signOut();
+        toast.success('로그아웃되었습니다!');
+        navigate('/login');
       } catch (error) {
         console.error('로그아웃 실패:', error);
-        alert('로그아웃 중 오류가 발생했습니다.');
+        toast.error('로그아웃 중 오류가 발생했습니다.');
       }
     }
   };
