@@ -270,7 +270,11 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       }
 
       const result = await polishContentFunc({
-        text: contentValues,
+        text: `다음은 "${format}" 형식으로 작성된 기록입니다. 이 내용을 자연스럽고 읽기 좋게 다듬어주세요.
+
+**중요: PDF 1페이지 출력을 위해 다듬은 결과는 반드시 공백 제외 2500자 이내로 작성해주세요.**
+
+${contentValues}`,
         format: prefix,
         mode: mode,
       });
