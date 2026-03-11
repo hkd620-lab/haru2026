@@ -64,15 +64,24 @@ function SayuModal({
         margin: 10mm;
       }
       @media print {
+        * {
+          -webkit-font-smoothing: antialiased !important;
+          -moz-osx-font-smoothing: grayscale !important;
+          text-rendering: optimizeLegibility !important;
+          font-smooth: always !important;
+        }
+        
         body {
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
         }
         
         .sayu-print-area {
-          font-size: 11px !important;
-          line-height: 1.5 !important;
+          font-size: 12px !important;
+          line-height: 1.7 !important;
           page-break-inside: auto !important;
+          font-weight: 400 !important;
+          color: #000000 !important;
         }
         
         .sayu-print-area img {
@@ -93,36 +102,40 @@ function SayuModal({
         }
         
         .sayu-print-area h1 {
-          font-size: 18px !important;
+          font-size: 20px !important;
           font-weight: 700 !important;
-          padding-bottom: 8px !important;
-          margin-bottom: 8px !important;
+          padding-bottom: 10px !important;
+          margin-bottom: 10px !important;
           border-bottom: 2px solid #1A3C6E !important;
+          color: #000000 !important;
         }
         
         .sayu-print-area h2, 
         .sayu-print-area h3 {
-          font-size: 14px !important;
+          font-size: 15px !important;
           font-weight: 600 !important;
-          padding-bottom: 5px !important;
-          margin-bottom: 6px !important;
+          padding-bottom: 6px !important;
+          margin-bottom: 8px !important;
+          color: #000000 !important;
         }
         
         .sayu-print-area p {
           text-indent: 10pt !important;
           margin-top: 0 !important;
           margin-bottom: 0px !important;
-          padding-bottom: 3px !important;
-          line-height: 1.6 !important;
-          font-size: 11px !important;
+          padding-bottom: 4px !important;
+          line-height: 1.7 !important;
+          font-size: 12px !important;
+          font-weight: 400 !important;
+          color: #000000 !important;
         }
         
         .sayu-print-area > div {
-          margin-bottom: 5px !important;
+          margin-bottom: 6px !important;
         }
         
         .sayu-print-area > div > div {
-          padding: 8px !important;
+          padding: 10px !important;
         }
       }
     `,
@@ -653,7 +666,7 @@ export function SayuPage() {
     const record = records.find((r) => r.date === dateStr);
     if (!record) return null;
 
-    const formats = ['diary', 'essay', 'mission', 'report', 'work', 'travel'];
+    const formats = ['diary', 'essay', 'mission', 'report', 'work', 'travel', 'garden', 'pet', 'child'];
     const hasPolishedSayu = formats.some((fmt) => {
       const sayuKey = `${fmt}_sayu`;
       const polishedKey = `${fmt}_polished`;
@@ -684,6 +697,9 @@ export function SayuPage() {
       report: '일반보고',
       work: '업무일지',
       travel: '여행기록',
+      garden: '텃밭일지',
+      pet: '애완동물관찰일지',
+      child: '육아일기',
     };
 
     const result: { key: string; label: string }[] = [];

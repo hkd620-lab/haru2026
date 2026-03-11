@@ -271,6 +271,13 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
 
       const result = await polishContentFunc({
         text: `다음은 "${format}" 형식으로 작성된 기록입니다. 이 내용을 자연스럽고 읽기 좋게 다듬어주세요.
+
+**제목 생성:**
+1. 먼저 내용을 읽고 핵심을 파악하세요.
+2. 내용을 대표하는 짧고 인상적인 제목을 만드세요 (10자 이내 권장).
+3. 제목은 **제목내용** 형식으로 첫 줄에 작성하세요.
+4. 제목 다음 줄은 비우고, 그 다음부터 본문을 시작하세요.
+
 **절대 준수 사항:**
 1. 말투는 무조건 "~다", "~했다", "~이다" 체로만 작성하세요.
    - "했습니다" → "했다"
@@ -281,12 +288,18 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
    - 절대 존댓말(~습니다, ~세요)을 사용하지 마세요.
 **중요: PDF 1페이지 출력을 위해 다듬은 결과는 반드시 공백 제외 2500자 이내로 작성해주세요.**
 
+**응답 형식 예시:**
+**봄날의 첫 수확**
+
+오늘 토마토를 처음 수확했다...
+
 ${contentValues}`,
         format: prefix,
         mode: mode,
       });
 
       const polished = (result.data as PolishResult).text;
+      // AI가 이미 제목을 포함해서 반환함
       setPolishedContent(polished);
       setShowPolishModal(true);
       toast.success('AI 다듬기 완료!');
@@ -940,13 +953,45 @@ ${contentValues}`,
                   padding: '20px',
                   borderRadius: 8,
                   border: '1px solid #e5e5e5',
-                  whiteSpace: 'pre-wrap',
-                  fontSize: 14,
-                  lineHeight: 1.8,
-                  color: '#333',
                 }}
               >
-                {polishedContent}
+                {/* 제목과 본문 분리해서 렌더링 */}
+                {polishedContent.split('\n\n').map((paragraph, idx) => {
+                  // 첫 번째 단락이 **형식명** 형태면 제목으로 표시
+                  if (idx === 0 && paragraph.startsWith('**') && paragraph.endsWith('**')) {
+                    const title = paragraph.replace(/\*\*/g, '');
+                    return (
+                      <h1 
+                        key={idx}
+                        style={{ 
+                          fontSize: 24, 
+                          fontWeight: 700, 
+                          color: '#1A3C6E',
+                          marginTop: 0,
+                          marginBottom: 24,
+                          textAlign: 'center',
+                        }}
+                      >
+                        {title}
+                      </h1>
+                    );
+                  }
+                  // 나머지는 본문
+                  return (
+                    <p 
+                      key={idx}
+                      style={{ 
+                        fontSize: 14, 
+                        lineHeight: 1.8, 
+                        color: '#333',
+                        marginBottom: 16,
+                        whiteSpace: 'pre-wrap',
+                      }}
+                    >
+                      {paragraph}
+                    </p>
+                  );
+                })}
               </div>
             </div>
 
