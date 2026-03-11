@@ -13,8 +13,21 @@ import {
   Timestamp 
 } from 'firebase/firestore';
 import { db } from '../../firebase';  // ✅ 수정됨: ../firebase → ../../firebase
+import { 
+  RecordFormatKorean,
+  DiaryStats,
+  EssayStats,
+  MissionReportStats,
+  GeneralReportStats,
+  WorkLogStats,
+  TravelRecordStats,
+  GardenLogStats,
+  PetLogStats,
+  GrowthDiaryStats,
+  ratioToStatScore,
+} from '../types/haruTypes';
 
-export type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기';
+export type RecordFormat = RecordFormatKorean;
 
 export interface HaruRecord {
   id: string;
@@ -178,9 +191,14 @@ class FirestoreService {
   }
 
   /**
-   * 업무일지 통계 계산
+   * 업무일지 통계 계산 - 개선된 버전
    */
-  private calculateWorkStats(records: HaruRecord[], prefix: string) {
+  private calculateWorkStats(records: HaruRecord[], prefix: string): WorkLogStats & {
+    total_days: number;
+    energy_average: number;
+    personality_type: string;
+    strengths: string[];
+  } {
     const totalDays = records.length;
     
     // Rating 평균 계산
@@ -196,27 +214,37 @@ class FirestoreService {
       ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length 
       : 0;
     
-    // 긍정성 지수 (Rating 3점 이상 비율)
-    const positiveRatings = ratings.filter(r => r >= 3).length;
-    const positivityRatio = ratings.length > 0 ? positiveRatings / ratings.length : 0;
+    // ===== WorkLogStats 고유 지표 =====
     
-    // Result 필드 작성 비율
+    // 1. task_completion: 업무 완성도 (Result 작성률)
     const resultCount = records.filter(r => 
       r[`${prefix}_result`] && r[`${prefix}_result`].trim().length > 0
     ).length;
-    const learningRatio = totalDays > 0 ? resultCount / totalDays : 0;
+    const taskCompletionRatio = totalDays > 0 ? resultCount / totalDays : 0;
+    const task_completion = ratioToStatScore(taskCompletionRatio);
     
-    // Pending 필드 작성 비율 (미래 지향성)
-    const pendingCount = records.filter(r => 
-      r[`${prefix}_pending`] && r[`${prefix}_pending`].trim().length > 0
-    ).length;
-    const spaceRatio = totalDays > 0 ? pendingCount / totalDays : 0;
+    // 2. productivity_score: 생산성 점수 (Rating 평균 기반)
+    const productivityRatio = ratings.length > 0 ? energyAverage / 5 : 0;
+    const productivity_score = ratioToStatScore(productivityRatio);
+    
+    // 3. self_evaluation: 자기 평가 일관성 (Rating 작성 비율)
+    const ratingCount = ratings.length;
+    const selfEvaluationRatio = totalDays > 0 ? ratingCount / totalDays : 0;
+    const self_evaluation = ratioToStatScore(selfEvaluationRatio);
+    
+    // ===== 공통 지표 =====
+    
+    // positivity_ratio: Rating 3점 이상 비율
+    const positiveRatings = ratings.filter(r => r >= 3).length;
+    const positivityRatio = ratings.length > 0 ? positiveRatings / ratings.length : 0;
+    const positivity_ratio = ratioToStatScore(positivityRatio);
 
     return {
       total_days: totalDays,
-      positivity_ratio: positivityRatio,
-      learning_ratio: learningRatio,
-      space_ratio: spaceRatio,
+      positivity_ratio,
+      task_completion,
+      productivity_score,
+      self_evaluation,
       energy_average: energyAverage,
       personality_type: '실무형 실행가',
       strengths: [
@@ -228,42 +256,56 @@ class FirestoreService {
   }
 
   /**
-   * 일기 통계 계산
+   * 일기 통계 계산 - 개선된 버전
    */
-  private calculateDiaryStats(records: HaruRecord[], prefix: string) {
+  private calculateDiaryStats(records: HaruRecord[], prefix: string): DiaryStats & { 
+    total_days: number; 
+    energy_average: number; 
+    personality_type: string; 
+    strengths: string[];
+  } {
     const totalDays = records.length;
     
-    // 좋았던 일 작성 비율
+    // ===== DiaryStats 고유 지표 =====
+    
+    // 1. emotional_flow: 감정 흐름 (좋았던 일 -> 갈등 -> 배움의 연결성)
+    const hasEmotionalFlow = records.filter(r => 
+      r[`${prefix}_good`] && r[`${prefix}_good`].trim().length > 0 &&
+      r[`${prefix}_conflict`] && r[`${prefix}_conflict`].trim().length > 0 &&
+      r[`${prefix}_learning`] && r[`${prefix}_learning`].trim().length > 0
+    ).length;
+    const emotionalFlowRatio = totalDays > 0 ? hasEmotionalFlow / totalDays : 0;
+    const emotional_flow = ratioToStatScore(emotionalFlowRatio);
+    
+    // 2. self_awareness: 자기인식 (배움 필드의 작성률과 깊이)
+    const learningCount = records.filter(r => 
+      r[`${prefix}_learning`] && r[`${prefix}_learning`].trim().length > 50
+    ).length;
+    const selfAwarenessRatio = totalDays > 0 ? learningCount / totalDays : 0;
+    const self_awareness = ratioToStatScore(selfAwarenessRatio);
+    
+    // 3. daily_stability: 일상 안정성 (여백/내일 계획의 규칙성)
+    const spaceCount = records.filter(r => 
+      r[`${prefix}_space`] && r[`${prefix}_space`].trim().length > 0
+    ).length;
+    const dailyStabilityRatio = totalDays > 0 ? spaceCount / totalDays : 0;
+    const daily_stability = ratioToStatScore(dailyStabilityRatio);
+    
+    // ===== 공통 지표 =====
+    
+    // positivity_ratio: 좋았던 일 작성 비율
     const goodCount = records.filter(r => 
       r[`${prefix}_good`] && r[`${prefix}_good`].trim().length > 0
     ).length;
     const positivityRatio = totalDays > 0 ? goodCount / totalDays : 0;
-    
-    // 배움 작성 비율
-    const learningCount = records.filter(r => 
-      r[`${prefix}_learning`] && r[`${prefix}_learning`].trim().length > 0
-    ).length;
-    const learningRatio = totalDays > 0 ? learningCount / totalDays : 0;
-    
-    // 여백 작성 비율
-    const spaceCount = records.filter(r => 
-      r[`${prefix}_space`] && r[`${prefix}_space`].trim().length > 0
-    ).length;
-    const spaceRatio = totalDays > 0 ? spaceCount / totalDays : 0;
-    
-    // 갈등과 배움이 모두 작성된 비율
-    const conflictWithLearning = records.filter(r => 
-      r[`${prefix}_conflict`] && r[`${prefix}_conflict`].trim().length > 0 &&
-      r[`${prefix}_learning`] && r[`${prefix}_learning`].trim().length > 0
-    ).length;
-    const conflictWithLearningRatio = totalDays > 0 ? conflictWithLearning / totalDays : 0;
+    const positivity_ratio = ratioToStatScore(positivityRatio);
 
     return {
       total_days: totalDays,
-      positivity_ratio: positivityRatio,
-      learning_ratio: learningRatio,
-      space_ratio: spaceRatio,
-      conflict_with_learning_ratio: conflictWithLearningRatio,
+      positivity_ratio,
+      emotional_flow,
+      self_awareness,
+      daily_stability,
       energy_average: 3.5,
       personality_type: '성장형 균형주의자',
       strengths: [
@@ -303,47 +345,62 @@ class FirestoreService {
   }
 
   /**
-   * 에세이 통계 계산
+   * 에세이 통계 계산 - 개선된 버전
    * 필드: observation, impression, comparison, essence, closing
    */
-  private calculateEssayStats(records: HaruRecord[], prefix: string) {
+  private calculateEssayStats(records: HaruRecord[], prefix: string): EssayStats & {
+    total_days: number;
+    energy_average: number;
+    personality_type: string;
+    strengths: string[];
+  } {
     const totalDays = records.length;
     
-    // 관찰 작성률
-    const observationCount = records.filter(r => 
-      r[`${prefix}_observation`] && r[`${prefix}_observation`].trim().length > 0
-    ).length;
+    // ===== EssayStats 고유 지표 =====
     
-    // 핵심 작성률 (깊이 있는 사색)
-    const essenceCount = records.filter(r => 
-      r[`${prefix}_essence`] && r[`${prefix}_essence`].trim().length > 0
-    ).length;
-    const learningRatio = totalDays > 0 ? essenceCount / totalDays : 0;
+    // 1. theme_frequency: 주제 다양성 (다양한 필드 작성)
+    const hasMultipleFields = records.filter(r => {
+      const fieldCount = [
+        r[`${prefix}_observation`],
+        r[`${prefix}_impression`],
+        r[`${prefix}_comparison`],
+        r[`${prefix}_essence`],
+        r[`${prefix}_closing`],
+      ].filter(field => field && String(field).trim().length > 0).length;
+      return fieldCount >= 4;
+    }).length;
+    const themeFrequencyRatio = totalDays > 0 ? hasMultipleFields / totalDays : 0;
+    const theme_frequency = ratioToStatScore(themeFrequencyRatio);
     
-    // 끝인사 작성률 (완결성)
+    // 2. emotional_depth: 감정 표현의 깊이 (첫인상 필드)
+    const deepImpressions = records.filter(r => 
+      r[`${prefix}_impression`] && String(r[`${prefix}_impression`]).trim().length > 50
+    ).length;
+    const emotionalDepthRatio = totalDays > 0 ? deepImpressions / totalDays : 0;
+    const emotional_depth = ratioToStatScore(emotionalDepthRatio);
+    
+    // 3. reflection_depth: 성찰의 깊이 (핵심 필드)
+    const deepEssence = records.filter(r => 
+      r[`${prefix}_essence`] && String(r[`${prefix}_essence`]).trim().length > 30
+    ).length;
+    const reflectionDepthRatio = totalDays > 0 ? deepEssence / totalDays : 0;
+    const reflection_depth = ratioToStatScore(reflectionDepthRatio);
+    
+    // ===== 공통 지표 =====
+    
+    // positivity_ratio: 긍정적 끝인사 작성률
     const closingCount = records.filter(r => 
-      r[`${prefix}_closing`] && r[`${prefix}_closing`].trim().length > 0
+      r[`${prefix}_closing`] && String(r[`${prefix}_closing`]).trim().length > 0
     ).length;
-    const spaceRatio = totalDays > 0 ? closingCount / totalDays : 0;
-    
-    // 비유 사용률 (comparison 작성률)
-    const comparisonCount = records.filter(r => 
-      r[`${prefix}_comparison`] && r[`${prefix}_comparison`].trim().length > 0
-    ).length;
-    const comparisonRatio = totalDays > 0 ? comparisonCount / totalDays : 0;
-    
-    // 긍정성: 인상 필드 작성률
-    const impressionCount = records.filter(r => 
-      r[`${prefix}_impression`] && r[`${prefix}_impression`].trim().length > 0
-    ).length;
-    const positivityRatio = totalDays > 0 ? impressionCount / totalDays : 0;
+    const positivityRatio = totalDays > 0 ? closingCount / totalDays : 0;
+    const positivity_ratio = ratioToStatScore(positivityRatio);
 
     return {
       total_days: totalDays,
-      positivity_ratio: positivityRatio,
-      learning_ratio: learningRatio,
-      space_ratio: spaceRatio,
-      comparison_ratio: comparisonRatio,
+      positivity_ratio,
+      theme_frequency,
+      emotional_depth,
+      reflection_depth,
       energy_average: 3.8,
       personality_type: '관찰형 사색가',
       strengths: [
@@ -355,42 +412,55 @@ class FirestoreService {
   }
 
   /**
-   * 선교보고 통계 계산
+   * 선교보고 통계 계산 - 개선된 버전
    * 필드: place, action, grace, heart, prayer
    */
-  private calculateMissionStats(records: HaruRecord[], prefix: string) {
+  private calculateMissionStats(records: HaruRecord[], prefix: string): MissionReportStats & {
+    total_days: number;
+    energy_average: number;
+    personality_type: string;
+    strengths: string[];
+  } {
     const totalDays = records.length;
     
-    // 은혜 발견률
+    // ===== MissionReportStats 고유 지표 =====
+    
+    // 1. grace_awareness: 은혜 인식 (Grace 필드 작성 빈도)
     const graceCount = records.filter(r => 
       r[`${prefix}_grace`] && r[`${prefix}_grace`].trim().length > 0
     ).length;
-    const positivityRatio = totalDays > 0 ? graceCount / totalDays : 0;
+    const graceAwarenessRatio = totalDays > 0 ? graceCount / totalDays : 0;
+    const grace_awareness = ratioToStatScore(graceAwarenessRatio);
     
-    // 마음 나눔률 (성찰)
-    const heartCount = records.filter(r => 
-      r[`${prefix}_heart`] && r[`${prefix}_heart`].trim().length > 0
+    // 2. spiritual_growth: 영적 성장 (Heart 필드의 깊이)
+    const deepHeart = records.filter(r => 
+      r[`${prefix}_heart`] && r[`${prefix}_heart`].trim().length > 50
     ).length;
-    const learningRatio = totalDays > 0 ? heartCount / totalDays : 0;
+    const spiritualGrowthRatio = totalDays > 0 ? deepHeart / totalDays : 0;
+    const spiritual_growth = ratioToStatScore(spiritualGrowthRatio);
     
-    // 기도 작성률 (미래 지향)
+    // 3. service_impact: 섬김 영향력 (Action 필드의 구체성)
+    const actionCount = records.filter(r => 
+      r[`${prefix}_action`] && r[`${prefix}_action`].trim().length > 30
+    ).length;
+    const serviceImpactRatio = totalDays > 0 ? actionCount / totalDays : 0;
+    const service_impact = ratioToStatScore(serviceImpactRatio);
+    
+    // ===== 공통 지표 =====
+    
+    // positivity_ratio: 기도 작성률
     const prayerCount = records.filter(r => 
       r[`${prefix}_prayer`] && r[`${prefix}_prayer`].trim().length > 0
     ).length;
-    const spaceRatio = totalDays > 0 ? prayerCount / totalDays : 0;
-    
-    // 활동 기록률
-    const actionCount = records.filter(r => 
-      r[`${prefix}_action`] && r[`${prefix}_action`].trim().length > 0
-    ).length;
-    const actionRatio = totalDays > 0 ? actionCount / totalDays : 0;
+    const positivityRatio = totalDays > 0 ? prayerCount / totalDays : 0;
+    const positivity_ratio = ratioToStatScore(positivityRatio);
 
     return {
       total_days: totalDays,
-      positivity_ratio: positivityRatio,
-      learning_ratio: learningRatio,
-      space_ratio: spaceRatio,
-      action_ratio: actionRatio,
+      positivity_ratio,
+      grace_awareness,
+      spiritual_growth,
+      service_impact,
       energy_average: 4.0,
       personality_type: '감사형 헌신자',
       strengths: [
@@ -402,42 +472,56 @@ class FirestoreService {
   }
 
   /**
-   * 일반보고 통계 계산
+   * 일반보고 통계 계산 - 개선된 버전
    * 필드: activity, progress, achievement, notes, future
    */
-  private calculateReportStats(records: HaruRecord[], prefix: string) {
+  private calculateReportStats(records: HaruRecord[], prefix: string): GeneralReportStats & {
+    total_days: number;
+    energy_average: number;
+    personality_type: string;
+    strengths: string[];
+  } {
     const totalDays = records.length;
     
-    // 핵심 성과 작성률
+    // ===== GeneralReportStats 고유 지표 =====
+    
+    // 1. completion_rate: 완성도 (모든 필드 작성 비율)
+    const completeCount = records.filter(r => 
+      r[`${prefix}_activity`] && r[`${prefix}_progress`] &&
+      r[`${prefix}_achievement`] && r[`${prefix}_notes`] && r[`${prefix}_future`]
+    ).length;
+    const completionRatio = totalDays > 0 ? completeCount / totalDays : 0;
+    const completion_rate = ratioToStatScore(completionRatio);
+    
+    // 2. issue_awareness: 문제 인식 (특이사항 기록률)
+    const notesCount = records.filter(r => 
+      r[`${prefix}_notes`] && r[`${prefix}_notes`].trim().length > 0
+    ).length;
+    const issueAwarenessRatio = totalDays > 0 ? notesCount / totalDays : 0;
+    const issue_awareness = ratioToStatScore(issueAwarenessRatio);
+    
+    // 3. planning_quality: 계획 품질 (향후 계획 구체성)
+    const detailedFuture = records.filter(r => 
+      r[`${prefix}_future`] && r[`${prefix}_future`].trim().length > 30
+    ).length;
+    const planningQualityRatio = totalDays > 0 ? detailedFuture / totalDays : 0;
+    const planning_quality = ratioToStatScore(planningQualityRatio);
+    
+    // ===== 공통 지표 =====
+    
+    // positivity_ratio: 핵심 성과 작성률
     const achievementCount = records.filter(r => 
       r[`${prefix}_achievement`] && r[`${prefix}_achievement`].trim().length > 0
     ).length;
     const positivityRatio = totalDays > 0 ? achievementCount / totalDays : 0;
-    
-    // 특이사항 기록률 (문제 인식)
-    const notesCount = records.filter(r => 
-      r[`${prefix}_notes`] && r[`${prefix}_notes`].trim().length > 0
-    ).length;
-    const learningRatio = totalDays > 0 ? notesCount / totalDays : 0;
-    
-    // 향후 계획 작성률
-    const futureCount = records.filter(r => 
-      r[`${prefix}_future`] && r[`${prefix}_future`].trim().length > 0
-    ).length;
-    const spaceRatio = totalDays > 0 ? futureCount / totalDays : 0;
-    
-    // 진행 상황 작성률
-    const progressCount = records.filter(r => 
-      r[`${prefix}_progress`] && r[`${prefix}_progress`].trim().length > 0
-    ).length;
-    const progressRatio = totalDays > 0 ? progressCount / totalDays : 0;
+    const positivity_ratio = ratioToStatScore(positivityRatio);
 
     return {
       total_days: totalDays,
-      positivity_ratio: positivityRatio,
-      learning_ratio: learningRatio,
-      space_ratio: spaceRatio,
-      progress_ratio: progressRatio,
+      positivity_ratio,
+      completion_rate,
+      issue_awareness,
+      planning_quality,
       energy_average: 3.4,
       personality_type: '체계적 보고자',
       strengths: [
@@ -449,50 +533,53 @@ class FirestoreService {
   }
 
   /**
-   * 여행기록 통계 계산
+   * 여행기록 통계 계산 - 개선된 버전
    * 필드: journey, scenery, food, thought, gratitude
    */
-  private calculateTravelStats(records: HaruRecord[], prefix: string) {
+  private calculateTravelStats(records: HaruRecord[], prefix: string): TravelRecordStats & {
+    total_days: number;
+    energy_average: number;
+    personality_type: string;
+    strengths: string[];
+  } {
     const totalDays = records.length;
     
-    // 단상 작성률 (사색 깊이)
-    const thoughtCount = records.filter(r => 
-      r[`${prefix}_thought`] && r[`${prefix}_thought`].trim().length > 0
-    ).length;
-    const learningRatio = totalDays > 0 ? thoughtCount / totalDays : 0;
+    // ===== TravelRecordStats 고유 지표 =====
     
-    // 감사 표현률
-    const gratitudeCount = records.filter(r => 
-      r[`${prefix}_gratitude`] && r[`${prefix}_gratitude`].trim().length > 0
-    ).length;
-    const positivityRatio = totalDays > 0 ? gratitudeCount / totalDays : 0;
-    
-    // 풍경 기록률
-    const sceneryCount = records.filter(r => 
-      r[`${prefix}_scenery`] && r[`${prefix}_scenery`].trim().length > 0
-    ).length;
-    const sceneryRatio = totalDays > 0 ? sceneryCount / totalDays : 0;
-    
-    // 미식 기록률
-    const foodCount = records.filter(r => 
-      r[`${prefix}_food`] && r[`${prefix}_food`].trim().length > 0
-    ).length;
-    const foodRatio = totalDays > 0 ? foodCount / totalDays : 0;
-    
-    // 완성도: 모든 필드 작성 비율
+    // 1. experience_richness: 경험의 풍부함 (모든 필드 작성률)
     const completeCount = records.filter(r => 
       r[`${prefix}_journey`] && r[`${prefix}_scenery`] && 
       r[`${prefix}_food`] && r[`${prefix}_thought`] && r[`${prefix}_gratitude`]
     ).length;
-    const spaceRatio = totalDays > 0 ? completeCount / totalDays : 0;
+    const experienceRichnessRatio = totalDays > 0 ? completeCount / totalDays : 0;
+    const experience_richness = ratioToStatScore(experienceRichnessRatio);
+    
+    // 2. gratitude_level: 감사 수준
+    const gratitudeCount = records.filter(r => 
+      r[`${prefix}_gratitude`] && r[`${prefix}_gratitude`].trim().length > 0
+    ).length;
+    const gratitudeLevelRatio = totalDays > 0 ? gratitudeCount / totalDays : 0;
+    const gratitude_level = ratioToStatScore(gratitudeLevelRatio);
+    
+    // 3. reflection_depth: 성찰 깊이 (단상의 질)
+    const deepThought = records.filter(r => 
+      r[`${prefix}_thought`] && r[`${prefix}_thought`].trim().length > 50
+    ).length;
+    const reflectionDepthRatio = totalDays > 0 ? deepThought / totalDays : 0;
+    const reflection_depth = ratioToStatScore(reflectionDepthRatio);
+    
+    // ===== 공통 지표 =====
+    
+    // positivity_ratio: 감사 표현률
+    const positivityRatio = gratitudeLevelRatio;
+    const positivity_ratio = ratioToStatScore(positivityRatio);
 
     return {
       total_days: totalDays,
-      positivity_ratio: positivityRatio,
-      learning_ratio: learningRatio,
-      space_ratio: spaceRatio,
-      scenery_ratio: sceneryRatio,
-      food_ratio: foodRatio,
+      positivity_ratio,
+      experience_richness,
+      gratitude_level,
+      reflection_depth,
       energy_average: 4.2,
       personality_type: '경험 수집가',
       strengths: [
@@ -504,24 +591,55 @@ class FirestoreService {
   }
 
   /**
-   * 텃밭일지 통계 계산
+   * 텃밭일지 통계 계산 - 개선된 버전
    */
-  private calculateGardenStats(records: HaruRecord[], prefix: string) {
+  private calculateGardenStats(records: HaruRecord[], prefix: string): GardenLogStats & {
+    total_days: number;
+    energy_average: number;
+    personality_type: string;
+    strengths: string[];
+  } {
     const totalDays = records.length;
     
-    // 기본 통계 (필드 구조 확인 필요)
+    // ===== GardenLogStats 고유 지표 =====
+    
+    // 1. crop_diversity: 작물 다양성 (작물 필드 작성)
+    const cropsCount = records.filter(r => 
+      r[`${prefix}_crops`] && String(r[`${prefix}_crops`]).trim().length > 0
+    ).length;
+    const cropDiversityRatio = totalDays > 0 ? cropsCount / totalDays : 0;
+    const crop_diversity = ratioToStatScore(cropDiversityRatio);
+    
+    // 2. observation_detail: 관찰 세밀도 (관찰 필드 상세도)
+    const detailedObservation = records.filter(r => 
+      r[`${prefix}_observation`] && String(r[`${prefix}_observation`]).trim().length > 30
+    ).length;
+    const observationDetailRatio = totalDays > 0 ? detailedObservation / totalDays : 0;
+    const observation_detail = ratioToStatScore(observationDetailRatio);
+    
+    // 3. issue_management: 문제 대응력 (문제 인식 및 계획)
+    const hasIssueAndPlan = records.filter(r => 
+      r[`${prefix}_issue`] && r[`${prefix}_plan`]
+    ).length;
+    const issueManagementRatio = totalDays > 0 ? hasIssueAndPlan / totalDays : 0;
+    const issue_management = ratioToStatScore(issueManagementRatio);
+    
+    // ===== 공통 지표 =====
+    
+    // positivity_ratio: 전반적인 기록 완성도
     const filledRecords = records.filter(r => {
       const keys = Object.keys(r).filter(k => k.startsWith(prefix));
       return keys.some(k => r[k] && String(r[k]).trim().length > 0);
     }).length;
-    
     const positivityRatio = totalDays > 0 ? filledRecords / totalDays : 0;
+    const positivity_ratio = ratioToStatScore(positivityRatio);
 
     return {
       total_days: totalDays,
-      positivity_ratio: positivityRatio,
-      learning_ratio: 0.70,
-      space_ratio: 0.68,
+      positivity_ratio,
+      crop_diversity,
+      observation_detail,
+      issue_management,
       energy_average: 3.6,
       personality_type: '관찰형 재배자',
       strengths: [
@@ -533,24 +651,55 @@ class FirestoreService {
   }
 
   /**
-   * 애완동물관찰일지 통계 계산
+   * 애완동물관찰일지 통계 계산 - 개선된 버전
    */
-  private calculatePetStats(records: HaruRecord[], prefix: string) {
+  private calculatePetStats(records: HaruRecord[], prefix: string): PetLogStats & {
+    total_days: number;
+    energy_average: number;
+    personality_type: string;
+    strengths: string[];
+  } {
     const totalDays = records.length;
     
-    // 기본 통계
+    // ===== PetLogStats 고유 지표 =====
+    
+    // 1. care_attention: 돌봄 관심도 (건강 필드 작성)
+    const healthCount = records.filter(r => 
+      r[`${prefix}_health`] && String(r[`${prefix}_health`]).trim().length > 0
+    ).length;
+    const careAttentionRatio = totalDays > 0 ? healthCount / totalDays : 0;
+    const care_attention = ratioToStatScore(careAttentionRatio);
+    
+    // 2. emotional_bond: 정서적 유대감 (감정 필드 작성)
+    const emotionCount = records.filter(r => 
+      r[`${prefix}_emotion`] && String(r[`${prefix}_emotion`]).trim().length > 0
+    ).length;
+    const emotionalBondRatio = totalDays > 0 ? emotionCount / totalDays : 0;
+    const emotional_bond = ratioToStatScore(emotionalBondRatio);
+    
+    // 3. health_awareness: 건강 인식 (행동과 건강 연결)
+    const hasBehaviorAndHealth = records.filter(r => 
+      r[`${prefix}_behavior`] && r[`${prefix}_health`]
+    ).length;
+    const healthAwarenessRatio = totalDays > 0 ? hasBehaviorAndHealth / totalDays : 0;
+    const health_awareness = ratioToStatScore(healthAwarenessRatio);
+    
+    // ===== 공통 지표 =====
+    
+    // positivity_ratio: 전반적인 기록 완성도
     const filledRecords = records.filter(r => {
       const keys = Object.keys(r).filter(k => k.startsWith(prefix));
       return keys.some(k => r[k] && String(r[k]).trim().length > 0);
     }).length;
-    
     const positivityRatio = totalDays > 0 ? filledRecords / totalDays : 0;
+    const positivity_ratio = ratioToStatScore(positivityRatio);
 
     return {
       total_days: totalDays,
-      positivity_ratio: positivityRatio,
-      learning_ratio: 0.65,
-      space_ratio: 0.58,
+      positivity_ratio,
+      care_attention,
+      emotional_bond,
+      health_awareness,
       energy_average: 4.5,
       personality_type: '따뜻한 관찰자',
       strengths: [
@@ -562,24 +711,55 @@ class FirestoreService {
   }
 
   /**
-   * 육아일기 통계 계산
+   * 육아(성장)일기 통계 계산 - 개선된 버전
    */
-  private calculateParentingStats(records: HaruRecord[], prefix: string) {
+  private calculateParentingStats(records: HaruRecord[], prefix: string): GrowthDiaryStats & {
+    total_days: number;
+    energy_average: number;
+    personality_type: string;
+    strengths: string[];
+  } {
     const totalDays = records.length;
     
-    // 기본 통계
+    // ===== GrowthDiaryStats 고유 지표 =====
+    
+    // 1. growth_observation: 성장 관찰력 (성장 필드 작성)
+    const growthCount = records.filter(r => 
+      r[`${prefix}_growth`] && String(r[`${prefix}_growth`]).trim().length > 0
+    ).length;
+    const growthObservationRatio = totalDays > 0 ? growthCount / totalDays : 0;
+    const growth_observation = ratioToStatScore(growthObservationRatio);
+    
+    // 2. emotional_understanding: 감정 이해도 (감정 필드 작성)
+    const emotionCount = records.filter(r => 
+      r[`${prefix}_emotion`] && String(r[`${prefix}_emotion`]).trim().length > 0
+    ).length;
+    const emotionalUnderstandingRatio = totalDays > 0 ? emotionCount / totalDays : 0;
+    const emotional_understanding = ratioToStatScore(emotionalUnderstandingRatio);
+    
+    // 3. learning_support: 학습 지원도 (학습 필드 작성)
+    const learningCount = records.filter(r => 
+      r[`${prefix}_learning`] && String(r[`${prefix}_learning`]).trim().length > 0
+    ).length;
+    const learningSupportRatio = totalDays > 0 ? learningCount / totalDays : 0;
+    const learning_support = ratioToStatScore(learningSupportRatio);
+    
+    // ===== 공통 지표 =====
+    
+    // positivity_ratio: 전반적인 기록 완성도
     const filledRecords = records.filter(r => {
       const keys = Object.keys(r).filter(k => k.startsWith(prefix));
       return keys.some(k => r[k] && String(r[k]).trim().length > 0);
     }).length;
-    
     const positivityRatio = totalDays > 0 ? filledRecords / totalDays : 0;
+    const positivity_ratio = ratioToStatScore(positivityRatio);
 
     return {
       total_days: totalDays,
-      positivity_ratio: positivityRatio,
-      learning_ratio: 0.85,
-      space_ratio: 0.72,
+      positivity_ratio,
+      growth_observation,
+      emotional_understanding,
+      learning_support,
       energy_average: 2.8,
       personality_type: '성장하는 부모',
       strengths: [
