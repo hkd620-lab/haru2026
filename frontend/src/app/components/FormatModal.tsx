@@ -112,6 +112,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [showPolishModal, setShowPolishModal] = useState(false);
   const [sayuMode, setSayuMode] = useState<SayuMode>('BASIC');
   const [showModeSelect, setShowModeSelect] = useState(false);
+  const [polishStats, setPolishStats] = useState<any>(null);  // 📊 AI 통계 데이터
   
   // 사진 관련 state
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
@@ -298,9 +299,13 @@ ${contentValues}`,
         mode: mode,
       });
 
-      const polished = (result.data as PolishResult).text;
+      const responseData = result.data as any;
+      const polished = responseData.text;
+      const stats = responseData.stats;  // 📊 통계 데이터
+      
       // AI가 이미 제목을 포함해서 반환함
       setPolishedContent(polished);
+      setPolishStats(stats);  // 통계 저장
       setShowPolishModal(true);
       toast.success('AI 다듬기 완료!');
     } catch (error: any) {
@@ -397,7 +402,7 @@ ${contentValues}`,
   };
 
   const handleSaveSayu = async () => {
-    const updateData = {
+    const updateData: Record<string, any> = {
       ...formData,
       [sayuKey]: polishedContent,
       [imagesKey]: JSON.stringify(uploadedImages),
@@ -405,6 +410,11 @@ ${contentValues}`,
       [`${prefix}_polishedAt`]: new Date().toISOString(),
       [`${prefix}_mode`]: sayuMode,
     };
+
+    // 📊 통계 데이터 저장 (모든 형식)
+    if (polishStats) {
+      updateData[`${prefix}_stats`] = polishStats;
+    }
 
     if (format === '텃밭일지' && crops.length > 0) {
       updateData.garden_crop = crops.join(', ');
