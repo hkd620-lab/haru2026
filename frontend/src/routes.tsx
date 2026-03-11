@@ -2,7 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router';
 import { lazy, Suspense } from 'react';
 import { Layout } from './Layout';
 import { LoginPage } from './pages/LoginPage';
-import { AuthCallbackPage } from './pages/AuthCallbackPage';
+import { AuthCallbackPage } from "./pages/AuthCallbackPage";
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 // 초기 번들 크기 최소화를 위한 Lazy 로딩 (iOS 모바일 초기 로딩 속도 개선)
@@ -12,6 +12,8 @@ const LibraryPage = lazy(() => import('./pages/LibraryPage').then((m) => ({ defa
 const SayuPage = lazy(() => import('./pages/SayuPage').then((m) => ({ default: m.SayuPage })));
 const MergePage = lazy(() => import('./pages/MergePage').then((m) => ({ default: m.MergePage })));
 const StatsPage = lazy(() => import('./pages/StatsPage').then((m) => ({ default: m.StatsPage })));
+const StatisticsPage = lazy(() => import('./pages/StatisticsPage').then((m) => ({ default: m.StatisticsPage })));
+const FormatStatisticsPage = lazy(() => import('./pages/FormatStatisticsPage').then((m) => ({ default: m.FormatStatisticsPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 
 // iOS 안전 로딩 인디케이터 (간단하고 블로킹 없음)
@@ -58,7 +60,8 @@ export const router = createBrowserRouter([
           { path: 'library', element: withSuspense(<LibraryPage />) },
           { path: 'sayu', element: withSuspense(<SayuPage />) },
           { path: 'merge', element: withSuspense(<MergePage />) },
-          { path: 'stats', element: withSuspense(<StatsPage />) },
+          { path: 'stats', element: withSuspense(<StatisticsPage />) },
+          { path: 'stats/:format', element: withSuspense(<FormatStatisticsPage />) },
           { path: 'settings', element: withSuspense(<SettingsPage />) },
         ],
       },

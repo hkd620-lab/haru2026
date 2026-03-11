@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, TrendingUp, Brain, Sparkles, Activity } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowLeft, TrendingUp, Brain, Sparkles, Activity, Calendar } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기';
 
@@ -150,13 +150,65 @@ const ACTION_LABELS: Record<string, string> = {
   learning: '📚 학습',
 };
 
+// 날짜 계산 함수들
+function getWeekRange(year: number, month: number, week: number) {
+  const startDay = (week - 1) * 7 + 1;
+  const endDay = Math.min(week * 7, new Date(year, month, 0).getDate());
+  
+  const start = new Date(year, month - 1, startDay);
+  const end = new Date(year, month - 1, endDay);
+  
+  return {
+    start: formatDate(start),
+    end: formatDate(end),
+    label: `${year}.${String(month).padStart(2, '0')}.${String(startDay).padStart(2, '0')} - ${String(endDay).padStart(2, '0')}`
+  };
+}
+
+function getMonthRange(year: number, month: number) {
+  const start = new Date(year, month - 1, 1);
+  const end = new Date(year, month, 0);
+  
+  return {
+    start: formatDate(start),
+    end: formatDate(end),
+    label: `${year}.${String(month).padStart(2, '0')}.01 - ${String(end.getDate()).padStart(2, '0')}`
+  };
+}
+
+function formatDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getWeeksInMonth(year: number, month: number): number {
+  const lastDay = new Date(year, month, 0).getDate();
+  return Math.ceil(lastDay / 7);
+}
+
 export function FormatStatisticsPage() {
   const { format } = useParams<{ format: string }>();
   const navigate = useNavigate();
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [selectedGraphMonth, setSelectedGraphMonth] = useState<number | null>(null);
+
+  // 기간 선택 상태
+  const [periodMode, setPeriodMode] = useState<'week' | 'month'>('month');
+  const today = new Date();
+  const [selectedYear, setSelectedYear] = useState(today.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1);
+  const [selectedWeek, setSelectedWeek] = useState(1);
 
   const formatType = format as RecordFormat;
   const data = SIMULATION_DATA[formatType];
+
+  // 선택된 기간 정보 계산
+  const periodInfo = periodMode === 'week' 
+    ? getWeekRange(selectedYear, selectedMonth, selectedWeek)
+    : getMonthRange(selectedYear, selectedMonth);
+
+  const weeksInMonth = getWeeksInMonth(selectedYear, selectedMonth);
 
   if (!data) {
     return (
@@ -181,7 +233,7 @@ export function FormatStatisticsPage() {
       {/* Header */}
       <div className="mb-6">
         <button
-          onClick={() => navigate('/stats')}  // /statistics → /stats로 변경
+          onClick={() => navigate('/stats')}
           className="flex items-center gap-2 mb-4 text-sm hover:opacity-70 transition-opacity"
           style={{ color: '#1A3C6E' }}
         >
@@ -195,8 +247,130 @@ export function FormatStatisticsPage() {
           </h1>
         </div>
         <p className="text-sm" style={{ color: '#666666' }}>
-          2026년 1년간의 기록 분석 결과입니다
+          선택한 기간의 기록을 분석합니다
         </p>
+      </div>
+
+      {/* 기간 선택 UI */}
+      <div className="mb-6 bg-white rounded-lg p-5 shadow-sm">
+        <div className="flex items-center gap-2 mb-4">
+          <Calendar className="w-5 h-5" style={{ color: '#1A3C6E' }} />
+          <h3 className="text-sm font-semibold" style={{ color: '#1A3C6E' }}>
+            조회 기간
+          </h3>
+        </div>
+
+        {/* 주간/월간 탭 */}
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => setPeriodMode('week')}
+            className="flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+            style={{
+              backgroundColor: periodMode === 'week' ? '#1A3C6E' : '#F0F7FF',
+              color: periodMode === 'week' ? '#FAF9F6' : '#1A3C6E',
+              border: periodMode === 'week' ? 'none' : '1px solid #d0dff0'
+            }}
+          >
+            📅 주간
+          </button>
+          <button
+            onClick={() => setPeriodMode('month')}
+            className="flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+            style={{
+              backgroundColor: periodMode === 'month' ? '#1A3C6E' : '#F0F7FF',
+              color: periodMode === 'month' ? '#FAF9F6' : '#1A3C6E',
+              border: periodMode === 'month' ? 'none' : '1px solid #d0dff0'
+            }}
+          >
+            📆 월간
+          </button>
+        </div>
+
+        {/* 주간 선택 */}
+        {periodMode === 'week' && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-3 gap-2">
+              <select 
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                className="px-3 py-2 rounded-lg border text-sm"
+                style={{ borderColor: '#e5e5e5', color: '#333' }}
+              >
+                {[2024, 2025, 2026, 2027].map(year => (
+                  <option key={year} value={year}>{year}년</option>
+                ))}
+              </select>
+              
+              <select
+                value={selectedMonth}
+                onChange={(e) => {
+                  setSelectedMonth(Number(e.target.value));
+                  setSelectedWeek(1); // 월 변경시 1주차로 리셋
+                }}
+                className="px-3 py-2 rounded-lg border text-sm"
+                style={{ borderColor: '#e5e5e5', color: '#333' }}
+              >
+                {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                  <option key={m} value={m}>{m}월</option>
+                ))}
+              </select>
+              
+              <select
+                value={selectedWeek}
+                onChange={(e) => setSelectedWeek(Number(e.target.value))}
+                className="px-3 py-2 rounded-lg border text-sm"
+                style={{ borderColor: '#e5e5e5', color: '#333' }}
+              >
+                {Array.from({ length: weeksInMonth }, (_, i) => i + 1).map(w => (
+                  <option key={w} value={w}>{w}주</option>
+                ))}
+              </select>
+            </div>
+            
+            <div 
+              className="text-xs text-center py-2 rounded-lg"
+              style={{ backgroundColor: '#F0F7FF', color: '#1A3C6E' }}
+            >
+              📅 {periodInfo.label}
+            </div>
+          </div>
+        )}
+
+        {/* 월간 선택 */}
+        {periodMode === 'month' && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                className="px-3 py-2 rounded-lg border text-sm"
+                style={{ borderColor: '#e5e5e5', color: '#333' }}
+              >
+                {[2024, 2025, 2026, 2027].map(year => (
+                  <option key={year} value={year}>{year}년</option>
+                ))}
+              </select>
+              
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                className="px-3 py-2 rounded-lg border text-sm"
+                style={{ borderColor: '#e5e5e5', color: '#333' }}
+              >
+                {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                  <option key={m} value={m}>{m}월</option>
+                ))}
+              </select>
+            </div>
+            
+            <div 
+              className="text-xs text-center py-2 rounded-lg"
+              style={{ backgroundColor: '#F0F7FF', color: '#1A3C6E' }}
+            >
+              📆 {periodInfo.label}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Summary Cards */}
@@ -208,6 +382,9 @@ export function FormatStatisticsPage() {
           </div>
           <p className="text-2xl font-bold" style={{ color: '#1A3C6E' }}>
             {data.total_days}일
+          </p>
+          <p className="text-xs mt-1" style={{ color: '#999' }}>
+            (시뮬레이션)
           </p>
         </div>
 
@@ -387,13 +564,13 @@ export function FormatStatisticsPage() {
           <div className="flex items-end justify-between h-40 gap-1">
             {data.monthly_trend.map((value: number, index: number) => {
               const month = index + 1;
-              const isSelected = selectedMonth === month;
+              const isSelected = selectedGraphMonth === month;
               const barColor = value >= 70 ? '#10b981' : value >= 50 ? '#f59e0b' : '#ef4444';
               
               return (
                 <button
                   key={month}
-                  onClick={() => setSelectedMonth(isSelected ? null : month)}
+                  onClick={() => setSelectedGraphMonth(isSelected ? null : month)}
                   className="flex-1 flex flex-col items-center gap-1 transition-opacity hover:opacity-70"
                   style={{ opacity: isSelected ? 1 : 0.8 }}
                 >
@@ -447,7 +624,7 @@ export function FormatStatisticsPage() {
           🔧 <strong>개발자 노트:</strong> 이 통계는 시뮬레이션 데이터입니다
         </p>
         <p className="text-xs text-gray-500 mt-1">
-          실제 서비스에서는 SAYU 생성 시 수집된 AI 분석 데이터를 기반으로 표시됩니다
+          실제 서비스에서는 선택한 기간({periodInfo.label})의 SAYU 분석 데이터를 기반으로 표시됩니다
         </p>
       </div>
     </div>
