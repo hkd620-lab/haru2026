@@ -176,6 +176,19 @@ function getMonthRange(year: number, month: number) {
   };
 }
 
+function getCustomRange(startDate: string, endDate: string) {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  
+  return {
+    start: startDate,
+    end: endDate,
+    label: `${startDate.replace(/-/g, '.')} - ${endDate.split('-').slice(1).join('.')} (${daysDiff}일)`
+  };
+}
+
 function formatDate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -194,19 +207,24 @@ export function FormatStatisticsPage() {
   const [selectedGraphMonth, setSelectedGraphMonth] = useState<number | null>(null);
 
   // 기간 선택 상태
-  const [periodMode, setPeriodMode] = useState<'week' | 'month'>('month');
+  const [periodMode, setPeriodMode] = useState<'week' | 'month' | 'custom'>('month');
   const today = new Date();
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1);
   const [selectedWeek, setSelectedWeek] = useState(1);
+  
+  // 기간 설정 모드
+  const [customStartDate, setCustomStartDate] = useState(formatDate(new Date(today.getFullYear(), today.getMonth(), 1)));
+  const [customEndDate, setCustomEndDate] = useState(formatDate(today));
 
   const formatType = format as RecordFormat;
   const data = SIMULATION_DATA[formatType];
 
   // 선택된 기간 정보 계산
-  const periodInfo = periodMode === 'week' 
-    ? getWeekRange(selectedYear, selectedMonth, selectedWeek)
-    : getMonthRange(selectedYear, selectedMonth);
+  const periodInfo = 
+    periodMode === 'week' ? getWeekRange(selectedYear, selectedMonth, selectedWeek) :
+    periodMode === 'month' ? getMonthRange(selectedYear, selectedMonth) :
+    getCustomRange(customStartDate, customEndDate);
 
   const weeksInMonth = getWeeksInMonth(selectedYear, selectedMonth);
 
@@ -260,11 +278,11 @@ export function FormatStatisticsPage() {
           </h3>
         </div>
 
-        {/* 주간/월간 탭 */}
-        <div className="flex gap-2 mb-4">
+        {/* 주간/월간/기간설정 탭 */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
           <button
             onClick={() => setPeriodMode('week')}
-            className="flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+            className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
             style={{
               backgroundColor: periodMode === 'week' ? '#1A3C6E' : '#F0F7FF',
               color: periodMode === 'week' ? '#FAF9F6' : '#1A3C6E',
@@ -275,7 +293,7 @@ export function FormatStatisticsPage() {
           </button>
           <button
             onClick={() => setPeriodMode('month')}
-            className="flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+            className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
             style={{
               backgroundColor: periodMode === 'month' ? '#1A3C6E' : '#F0F7FF',
               color: periodMode === 'month' ? '#FAF9F6' : '#1A3C6E',
@@ -283,6 +301,17 @@ export function FormatStatisticsPage() {
             }}
           >
             📆 월간
+          </button>
+          <button
+            onClick={() => setPeriodMode('custom')}
+            className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+            style={{
+              backgroundColor: periodMode === 'custom' ? '#1A3C6E' : '#F0F7FF',
+              color: periodMode === 'custom' ? '#FAF9F6' : '#1A3C6E',
+              border: periodMode === 'custom' ? 'none' : '1px solid #d0dff0'
+            }}
+          >
+            📋 기간 설정
           </button>
         </div>
 
@@ -305,7 +334,7 @@ export function FormatStatisticsPage() {
                 value={selectedMonth}
                 onChange={(e) => {
                   setSelectedMonth(Number(e.target.value));
-                  setSelectedWeek(1); // 월 변경시 1주차로 리셋
+                  setSelectedWeek(1);
                 }}
                 className="px-3 py-2 rounded-lg border text-sm"
                 style={{ borderColor: '#e5e5e5', color: '#333' }}
@@ -368,6 +397,46 @@ export function FormatStatisticsPage() {
               style={{ backgroundColor: '#F0F7FF', color: '#1A3C6E' }}
             >
               📆 {periodInfo.label}
+            </div>
+          </div>
+        )}
+
+        {/* 기간 설정 */}
+        {periodMode === 'custom' && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs mb-1 block" style={{ color: '#666' }}>
+                  시작일
+                </label>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border text-sm"
+                  style={{ borderColor: '#e5e5e5', color: '#333' }}
+                />
+              </div>
+              
+              <div>
+                <label className="text-xs mb-1 block" style={{ color: '#666' }}>
+                  종료일
+                </label>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border text-sm"
+                  style={{ borderColor: '#e5e5e5', color: '#333' }}
+                />
+              </div>
+            </div>
+            
+            <div 
+              className="text-xs text-center py-2 rounded-lg"
+              style={{ backgroundColor: '#F0F7FF', color: '#1A3C6E' }}
+            >
+              📋 {periodInfo.label}
             </div>
           </div>
         )}
