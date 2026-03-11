@@ -29,7 +29,7 @@ export const polishContent = onCall(
   { region: 'asia-northeast3' },
   async (request) => {
     try {
-      const { text, mode = 'premium' } = request.data;
+      const { text, mode = 'premium', format } = request.data;
 
       if (!text || typeof text !== 'string') {
         throw new HttpsError('invalid-argument', '텍스트가 필요합니다.');
@@ -55,7 +55,16 @@ export const polishContent = onCall(
       const result = await model.generateContent(text);
       const polishedText = result.response.text();
 
-      return { text: polishedText };
+      // ===== 통계 분석 (모든 형식) =====
+      let stats = null;
+      if (format) {
+        stats = await analyzeStats(text, format);
+      }
+
+      return { 
+        text: polishedText,
+        stats: stats
+      };
 
     } catch (error: any) {
       console.error('AI 처리 실패:', error);
@@ -63,6 +72,215 @@ export const polishContent = onCall(
     }
   }
 );
+
+// ===== 📊 형식별 통계 분석 프롬프트 정의 =====
+const STATS_PROMPTS: Record<string, string> = {
+  // Type 1: 숫자형 (0~1 비율)
+  diary: `다음은 일기 내용입니다. 분석해서 JSON으로 반환하세요.
+
+분석 기준:
+1. positivity_ratio: 긍정적 표현(기쁨, 감사, 행복, 좋았다 등) 비율 (0~1)
+2. learning_ratio: 배움/깨달음 표현이 있으면 1, 없으면 0
+3. space_ratio: 미래 계획/바람 표현이 있으면 1, 없으면 0
+4. energy_level: 에너지 수준 1~5 (피곤=1, 보통=3, 활발=5)
+5. conflict_with_learning: 갈등/어려움이 있고 동시에 배움도 있으면 true
+
+JSON만 출력:
+{
+  "positivity_ratio": 0.75,
+  "learning_ratio": 1,
+  "space_ratio": 1,
+  "energy_level": 4,
+  "conflict_with_learning": true
+}`,
+
+  // Type 2: 태그형 (문자열 배열)
+  essay: `다음은 에세이 내용입니다. 분석해서 JSON으로 반환하세요.
+
+분석 기준:
+1. theme: 주제 1~2개 (배열)
+2. emotionPrimary: 주감정 1개 (문자열)
+3. emotionSecondary: 보조감정 0~2개 (배열)
+4. people: 관계 대상 0~3개 (배열)
+5. actions: 행동/사건 1~3개 (배열)
+6. lesson: 배움/깨달음 1개 (문자열)
+7. lifeArea: 인생영역 1개 (문자열)
+8. tone: 문체 톤 1개 (문자열)
+
+JSON만 출력:
+{
+  "theme": ["가족", "돌봄"],
+  "emotionPrimary": "감사",
+  "emotionSecondary": ["아쉬움", "평안"],
+  "people": ["아내", "장모님", "나"],
+  "actions": ["병원 방문", "돌봄", "회상"],
+  "lesson": "배려",
+  "lifeArea": "가족",
+  "tone": "차분함"
+}`,
+
+  mission: `다음은 선교보고 내용입니다. 분석해서 JSON으로 반환하세요.
+
+분석 기준:
+1. placeType: 장소 유형 1개 (교회/가정집/복지시설/지역사회/의료시설/선교지/기타)
+2. actions: 활동 1~3개 (배열)
+3. graceType: 은혜 유형 1개 (문자열)
+4. heartPrimary: 주요 마음 1개 (문자열)
+5. heartSecondary: 보조 마음 0~2개 (배열)
+6. prayerFocus: 기도제목 1~3개 (배열)
+7. ministryArea: 사역 영역 1개 (문자열)
+
+JSON만 출력:
+{
+  "placeType": "가정집",
+  "actions": ["심방", "기도"],
+  "graceType": "위로",
+  "heartPrimary": "감사",
+  "heartSecondary": ["겸손"],
+  "prayerFocus": ["건강 회복"],
+  "ministryArea": "심방/돌봄"
+}`,
+
+  // Type 3: 단계형 (1~5 점수)
+  report: `다음은 일반보고 내용입니다. 분석해서 JSON으로 반환하세요.
+
+분석 기준:
+1. completion_rate: 완료율 1~5 (1=시작전, 3=절반, 5=완료)
+2. issue_awareness: 문제인식 1~5 (1=없음, 3=일부인식, 5=명확)
+3. planning_quality: 계획수립 1~5 (1=없음, 3=기본, 5=구체적)
+4. positivity_ratio: 긍정성 1~5 (1=부정, 3=혼합, 5=긍정)
+
+JSON만 출력:
+{
+  "completion_rate": 4,
+  "issue_awareness": 3,
+  "planning_quality": 4,
+  "positivity_ratio": 4
+}`,
+
+  work: `다음은 업무일지 내용입니다. 분석해서 JSON으로 반환하세요.
+
+분석 기준:
+1. task_completion: 업무완료율 1~5 (1=거의못함, 3=절반, 5=완료)
+2. productivity_score: 생산성 1~5 (1=낮음, 3=보통, 5=높음)
+3. self_evaluation: 자기평가 1~5 (1=아쉬움, 3=보통, 5=만족)
+4. positivity_ratio: 긍정성 1~5 (1=부정, 3=혼합, 5=긍정)
+
+JSON만 출력:
+{
+  "task_completion": 4,
+  "productivity_score": 4,
+  "self_evaluation": 3,
+  "positivity_ratio": 4
+}`,
+
+  travel: `다음은 여행기록 내용입니다. 분석해서 JSON으로 반환하세요.
+
+분석 기준:
+1. experience_richness: 경험 풍부도 1~5 (1=단조, 3=보통, 5=다채)
+2. gratitude_level: 감사 수준 1~5 (1=없음, 3=보통, 5=깊음)
+3. reflection_depth: 성찰 깊이 1~5 (1=없음, 3=기본, 5=깊음)
+4. positivity_ratio: 긍정성 1~5 (1=부정, 3=혼합, 5=긍정)
+
+JSON만 출력:
+{
+  "experience_richness": 4,
+  "gratitude_level": 5,
+  "reflection_depth": 4,
+  "positivity_ratio": 5
+}`,
+
+  garden: `다음은 텃밭일지 내용입니다. 분석해서 JSON으로 반환하세요.
+
+분석 기준:
+1. crop_diversity: 작물 다양성 1~5 (1=1종, 3=3-4종, 5=7종+)
+2. observation_detail: 관찰 상세도 1~5 (1=단순, 3=보통, 5=세밀)
+3. issue_management: 문제 관리 1~5 (1=없음, 3=일부대응, 5=명확)
+4. positivity_ratio: 긍정성 1~5 (1=부정, 3=혼합, 5=긍정)
+
+JSON만 출력:
+{
+  "crop_diversity": 3,
+  "observation_detail": 4,
+  "issue_management": 4,
+  "positivity_ratio": 4
+}`,
+
+  pet: `다음은 애완동물관찰일지 내용입니다. 분석해서 JSON으로 반환하세요.
+
+분석 기준:
+1. care_attention: 돌봄 관심도 1~5 (1=단순, 3=기본, 5=세밀)
+2. emotional_bond: 감정적 유대 1~5 (1=약함, 3=보통, 5=깊음)
+3. health_awareness: 건강 인식 1~5 (1=없음, 3=기본, 5=세밀)
+4. positivity_ratio: 긍정성 1~5 (1=부정, 3=혼합, 5=긍정)
+
+JSON만 출력:
+{
+  "care_attention": 4,
+  "emotional_bond": 5,
+  "health_awareness": 4,
+  "positivity_ratio": 5
+}`,
+
+  child: `다음은 육아일기 내용입니다. 분석해서 JSON으로 반환하세요.
+
+분석 기준:
+1. growth_observation: 성장 관찰력 1~5 (1=단순, 3=기본, 5=세밀)
+2. emotional_understanding: 감정 이해 1~5 (1=없음, 3=기본, 5=깊음)
+3. learning_support: 배움 지원 1~5 (1=약함, 3=기본, 5=적절)
+4. positivity_ratio: 긍정성 1~5 (1=부정, 3=혼합, 5=긍정)
+
+JSON만 출력:
+{
+  "growth_observation": 4,
+  "emotional_understanding": 4,
+  "learning_support": 5,
+  "positivity_ratio": 5
+}`
+};
+
+// ===== 📊 범용 통계 분석 함수 =====
+async function analyzeStats(text: string, format: string) {
+  try {
+    const prompt = STATS_PROMPTS[format];
+    if (!prompt) {
+      console.log(`No stats prompt for format: ${format}`);
+      return null;
+    }
+
+    const analysisPrompt = `${prompt}
+
+기록 내용:
+${text}`;
+
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-2.5-flash"
+    });
+
+    const result = await model.generateContent(analysisPrompt);
+    const responseText = result.response.text();
+    
+    // JSON 파싱
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const stats = JSON.parse(jsonMatch[0]);
+      stats.analyzed_at = new Date().toISOString();
+      return stats;
+    }
+
+    console.error('JSON 파싱 실패:', responseText);
+    return null;
+
+  } catch (error) {
+    console.error('통계 분석 실패:', error);
+    return null;
+  }
+}
+
+// ===== 📊 일기 통계 분석 함수 (하위 호환성) =====
+async function analyzeDiaryStats(text: string) {
+  return analyzeStats(text, 'diary');
+}
 
 // ===== 🟡 카카오 로그인 시작 =====
 export const kakaoLoginStart = onRequest(
