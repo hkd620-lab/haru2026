@@ -1,6 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, TrendingUp, Brain, Sparkles, Activity, Calendar } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { firestoreService } from '../services/firestoreService';
 
 type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기';
 
@@ -204,6 +206,7 @@ function getWeeksInMonth(year: number, month: number): number {
 export function FormatStatisticsPage() {
   const { format } = useParams<{ format: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [selectedGraphMonth, setSelectedGraphMonth] = useState<number | null>(null);
 
   // 기간 선택 상태
@@ -217,8 +220,14 @@ export function FormatStatisticsPage() {
   const [customStartDate, setCustomStartDate] = useState(formatDate(new Date(today.getFullYear(), today.getMonth(), 1)));
   const [customEndDate, setCustomEndDate] = useState(formatDate(today));
 
+  // ✅ 실제 데이터 로드 상태
+  const [realData, setRealData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
   const formatType = format as RecordFormat;
-  const data = SIMULATION_DATA[formatType];
+  
+  // ✅ 실제 데이터가 있으면 사용, 없으면 시뮬레이션 데이터 사용
+  const data = realData || SIMULATION_DATA[formatType];
 
   // 선택된 기간 정보 계산
   const periodInfo = 
@@ -227,6 +236,54 @@ export function FormatStatisticsPage() {
     getCustomRange(customStartDate, customEndDate);
 
   const weeksInMonth = getWeeksInMonth(selectedYear, selectedMonth);
+
+  // ✅ 실제 데이터 불러오기
+  useEffect(() => {
+    async function loadRealData() {
+      if (!user?.uid) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        console.log('=== 실제 데이터 불러오기 시작 ===');
+        console.log('형식:', formatType);
+        console.log('기간:', periodInfo.start, '~', periodInfo.end);
+        
+        const stats = await firestoreService.calculateFormatStatistics(
+          user.uid,
+          formatType,
+          periodInfo.start,
+          periodInfo.end
+        );
+
+        console.log('불러온 통계:', stats);
+
+        if (stats) {
+          setRealData(stats);
+        } else {
+          console.log('실제 데이터 없음, 시뮬레이션 사용');
+          setRealData(null);
+        }
+      } catch (error) {
+        console.error('실제 데이터 불러오기 실패:', error);
+        setRealData(null);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadRealData();
+  }, [user?.uid, formatType, periodInfo.start, periodInfo.end]);
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <p className="text-center" style={{ color: '#999' }}>통계를 불러오는 중...</p>
+      </div>
+    );
+  }
 
   if (!data) {
     return (
@@ -689,12 +746,25 @@ export function FormatStatisticsPage() {
 
       {/* Developer Note */}
       <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-        <p className="text-xs text-gray-600">
-          🔧 <strong>개발자 노트:</strong> 이 통계는 시뮬레이션 데이터입니다
-        </p>
-        <p className="text-xs text-gray-500 mt-1">
-          실제 서비스에서는 선택한 기간({periodInfo.label})의 SAYU 분석 데이터를 기반으로 표시됩니다
-        </p>
+        {realData ? (
+          <>
+            <p className="text-xs text-green-600 font-semibold">
+              ✅ <strong>실제 데이터:</strong> 선택한 기간({periodInfo.label})의 기록을 분석한 결과입니다
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              총 {data.total_days}일의 {formatType} 기록이 분석되었습니다
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-xs text-gray-600">
+              🔧 <strong>개발자 노트:</strong> 이 통계는 시뮬레이션 데이터입니다
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              선택한 기간({periodInfo.label})에 작성된 {formatType} 기록이 없습니다
+            </p>
+          </>
+        )}
       </div>
     </div>
   );
