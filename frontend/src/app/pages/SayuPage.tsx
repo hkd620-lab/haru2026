@@ -125,14 +125,44 @@ function SayuModal({
               padding: 10mm;
             }
             
-            /* 본문 폰트 크기 축소 */
+            /* 본문 폰트 크기 */
             p {
+              font-size: 13px !important;
+              line-height: 1.5 !important;
+            }
+            
+            /* PDF 인쇄용 사진 크기 - 크게 */
+            .photo-large {
+              max-height: 340px !important;
+              height: 340px !important;
+            }
+            
+            .photo-small {
+              max-height: 340px !important;
+              height: 340px !important;
+            }
+            
+            /* 사진 이미지 자체도 크기 제한 */
+            .photo-large img,
+            .photo-small img {
+              max-height: 100% !important;
+              object-fit: cover !important;
+            }
+            
+            /* 사진 컨테이너 간격 */
+            div[style*="gap"] {
+              gap: 8px !important;
+            }
+            
+            /* 제목 여백 */
+            h3 {
+              margin-bottom: 8px !important;
               font-size: 12px !important;
             }
             
-            /* 사진 높이만 축소 */
-            div[style*="height: 120px"] {
-              height: 80px !important;
+            /* 본문 여백 */
+            div.sayu-print-area {
+              padding: 12px !important;
             }
           }
         </style>
@@ -426,7 +456,7 @@ function SayuModal({
                     key={idx}
                     contentEditable
                     suppressContentEditableWarning
-                    onBlur={(e) => {
+                    onInput={(e) => {
                       const paragraphs = editedContent.split('\n\n').filter(p => p.trim());
                       paragraphs[idx] = e.currentTarget.textContent || '';
                       setEditedContent(paragraphs.join('\n\n'));
@@ -448,35 +478,63 @@ function SayuModal({
               </div>
 
               {images && images.length > 0 && (
-                <div>
+                <div style={{ marginTop: 16 }}>
                   <h3 style={{ fontSize: 13, color: '#1A3C6E', fontWeight: 600, marginBottom: 12 }}>
                     📸 사진 {images.length}/3
                   </h3>
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    {images.map((url, index) => (
-                      <div
-                        key={index}
-                        style={{
-                          flex: 1,
-                          height: '120px',
-                          borderRadius: 8,
-                          border: '1px solid #e5e5e5',
-                          backgroundColor: '#f5f5f5',
-                          overflow: 'hidden',
-                        }}
-                      >
+                  
+                  {/* 1장: 큰 사진 1개 */}
+                  {images.length === 1 && (
+                    <div className="photo-large" style={{ width: '100%', aspectRatio: '4/3', borderRadius: 8, border: '1px solid #e5e5e5', overflow: 'hidden', backgroundColor: '#f5f5f5' }}>
+                      <img
+                        src={images[0]}
+                        alt="사진 1"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    </div>
+                  )}
+
+                  {/* 2장: 균등 배치 */}
+                  {images.length === 2 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      {images.map((url, index) => (
+                        <div key={index} className="photo-small" style={{ width: '100%', aspectRatio: '1/1', borderRadius: 8, border: '1px solid #e5e5e5', overflow: 'hidden', backgroundColor: '#f5f5f5' }}>
+                          <img
+                            src={url}
+                            alt={`사진 ${index + 1}`}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 3장: 위 큰 1개 + 아래 작은 2개 */}
+                  {images.length === 3 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {/* 큰 사진 */}
+                      <div className="photo-large" style={{ width: '100%', aspectRatio: '4/3', borderRadius: 8, border: '1px solid #e5e5e5', overflow: 'hidden', backgroundColor: '#f5f5f5' }}>
                         <img
-                          src={url}
-                          alt={`사진 ${index + 1}`}
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'contain',
-                          }}
+                          src={images[0]}
+                          alt="사진 1"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
                       </div>
-                    ))}
-                  </div>
+                      
+                      {/* 작은 사진 2개 */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        {images.slice(1).map((url, index) => (
+                          <div key={index + 1} className="photo-small" style={{ width: '100%', aspectRatio: '1/1', borderRadius: 8, border: '1px solid #e5e5e5', overflow: 'hidden', backgroundColor: '#f5f5f5' }}>
+                            <img
+                              src={url}
+                              alt={`사진 ${index + 2}`}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -608,6 +666,7 @@ export function SayuPage() {
     content: string;
     originalData?: Record<string, string>;
     format?: string;
+    formatKey?: string;
     dateLabel: string;
     currentRating: number;
     recordDate?: string;
@@ -771,6 +830,7 @@ export function SayuPage() {
         content: String(sayuContent),
         originalData,
         format: formatLabel,
+        formatKey: formatKey,
         dateLabel: formatLabel,
         currentRating: selectedRecord.mergeRating || 1,
         recordDate: selectedRecord.date,
@@ -794,10 +854,17 @@ export function SayuPage() {
 
   const handleSaveSayu = async (content: string, rating: number) => {
     if (!selectedRecord || !authUser?.uid) return;
+    
+    const formatKey = sayuModalState.formatKey;
+    if (!formatKey) {
+      console.error('formatKey가 없습니다');
+      return;
+    }
 
     try {
+      const sayuKey = `${formatKey}_sayu`;
       const updateData = {
-        sayuContent: content,
+        [sayuKey]: content,
         sayuSavedAt: new Date().toISOString(),
         mergeRating: rating,
       };
