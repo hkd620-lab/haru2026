@@ -573,12 +573,13 @@ ${contentValues}`,
                 </button>
 
                 {uploadedImages.length > 0 && (
-                  <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
-                    {uploadedImages.map((url, index) => (
-                      <div key={index} style={{ position: 'relative', width: 100, height: 100 }}>
+                  <div style={{ marginTop: 12 }}>
+                    {/* 1장: 큰 사진 1개 */}
+                    {uploadedImages.length === 1 && (
+                      <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3' }}>
                         <img
-                          src={url}
-                          alt={`업로드된 사진 ${index + 1}`}
+                          src={uploadedImages[0]}
+                          alt="업로드된 사진 1"
                           style={{
                             width: '100%',
                             height: '100%',
@@ -588,13 +589,13 @@ ${contentValues}`,
                           }}
                         />
                         <button
-                          onClick={() => handleDeleteImage(url, index)}
+                          onClick={() => handleDeleteImage(uploadedImages[0], 0)}
                           style={{
                             position: 'absolute',
-                            top: -8,
-                            right: -8,
-                            width: 24,
-                            height: 24,
+                            top: 8,
+                            right: 8,
+                            width: 28,
+                            height: 28,
                             borderRadius: '50%',
                             backgroundColor: '#ef4444',
                             color: '#fff',
@@ -606,10 +607,133 @@ ${contentValues}`,
                             padding: 0,
                           }}
                         >
-                          <Trash2 style={{ width: 14, height: 14 }} />
+                          <Trash2 style={{ width: 16, height: 16 }} />
                         </button>
                       </div>
-                    ))}
+                    )}
+
+                    {/* 2장: 균등 배치 */}
+                    {uploadedImages.length === 2 && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        {uploadedImages.map((url, index) => (
+                          <div key={index} style={{ position: 'relative', width: '100%', aspectRatio: '1/1' }}>
+                            <img
+                              src={url}
+                              alt={`업로드된 사진 ${index + 1}`}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                borderRadius: 8,
+                                border: '1px solid #e5e5e5',
+                              }}
+                            />
+                            <button
+                              onClick={() => handleDeleteImage(url, index)}
+                              style={{
+                                position: 'absolute',
+                                top: 8,
+                                right: 8,
+                                width: 28,
+                                height: 28,
+                                borderRadius: '50%',
+                                backgroundColor: '#ef4444',
+                                color: '#fff',
+                                border: 'none',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: 0,
+                              }}
+                            >
+                              <Trash2 style={{ width: 16, height: 16 }} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 3장: 위 큰 1개 + 아래 작은 2개 */}
+                    {uploadedImages.length === 3 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {/* 큰 사진 */}
+                        <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3' }}>
+                          <img
+                            src={uploadedImages[0]}
+                            alt="업로드된 사진 1"
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              borderRadius: 8,
+                              border: '1px solid #e5e5e5',
+                            }}
+                          />
+                          <button
+                            onClick={() => handleDeleteImage(uploadedImages[0], 0)}
+                            style={{
+                              position: 'absolute',
+                              top: 8,
+                              right: 8,
+                              width: 28,
+                              height: 28,
+                              borderRadius: '50%',
+                              backgroundColor: '#ef4444',
+                              color: '#fff',
+                              border: 'none',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: 0,
+                            }}
+                          >
+                            <Trash2 style={{ width: 16, height: 16 }} />
+                          </button>
+                        </div>
+
+                        {/* 작은 사진 2개 */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                          {uploadedImages.slice(1).map((url, index) => (
+                            <div key={index + 1} style={{ position: 'relative', width: '100%', aspectRatio: '1/1' }}>
+                              <img
+                                src={url}
+                                alt={`업로드된 사진 ${index + 2}`}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover',
+                                  borderRadius: 8,
+                                  border: '1px solid #e5e5e5',
+                                }}
+                              />
+                              <button
+                                onClick={() => handleDeleteImage(url, index + 1)}
+                                style={{
+                                  position: 'absolute',
+                                  top: 8,
+                                  right: 8,
+                                  width: 28,
+                                  height: 28,
+                                  borderRadius: '50%',
+                                  backgroundColor: '#ef4444',
+                                  color: '#fff',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  padding: 0,
+                                }}
+                              >
+                                <Trash2 style={{ width: 16, height: 16 }} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

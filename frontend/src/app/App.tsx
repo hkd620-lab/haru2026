@@ -8,6 +8,7 @@ import { LoginPage } from './pages/LoginPage';
 import { AuthCallbackPage } from './pages/AuthCallbackPage';
 import { SayuPage } from './pages/SayuPage';
 import { MergePage } from './pages/MergePage';
+import { MergeViewerPage } from './pages/MergeViewerPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { StatisticsPage } from './pages/StatisticsPage';
 import { FormatStatisticsPage } from './pages/FormatStatisticsPage';
@@ -32,6 +33,7 @@ function App() {
               <Route path="/library" element={<LibraryPage />} />
               <Route path="/sayu" element={<SayuPage />} />
               <Route path="/merge" element={<MergePage />} />
+              <Route path="/merge-viewer" element={<MergeViewerPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               
               {/* 통계 페이지 */}
