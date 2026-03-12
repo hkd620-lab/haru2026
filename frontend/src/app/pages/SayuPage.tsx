@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router';
 import { ChevronLeft, ChevronRight, Sparkles, X, Star, Info, Printer } from 'lucide-react';
-import { useReactToPrint } from 'react-to-print';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { SayuTitleAnimation } from '../components/SayuTitleAnimation';
@@ -55,91 +54,112 @@ function SayuModal({
   const [viewMode, setViewMode] = useState<'ai' | 'original'>('ai');
   
   const printRef = useRef<HTMLDivElement>(null);
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: `SAYU_${recordDate || formatDateToKorean(new Date().toISOString().split('T')[0])}_${format || '기록'}`,
-    pageStyle: `
-      @page {
-        size: A4;
-        margin: 10mm;
-      }
-      @media print {
-        * {
-          -webkit-font-smoothing: antialiased !important;
-          -moz-osx-font-smoothing: grayscale !important;
-          text-rendering: optimizeLegibility !important;
-          font-smooth: always !important;
-        }
-        
-        body {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-        
-        .sayu-print-area {
-          font-size: 12px !important;
-          line-height: 1.7 !important;
-          page-break-inside: auto !important;
-          font-weight: 400 !important;
-          color: #000000 !important;
-        }
-        
-        .sayu-print-area img {
-          width: 100% !important;
-          height: 100% !important;
-          object-fit: contain !important;
-          display: block !important;
-          page-break-inside: avoid !important;
-        }
-        
-        .sayu-print-area > div > div > div > div {
-          height: 110px !important;
-          flex: 1 !important;
-          overflow: hidden !important;
-          border-radius: 8px !important;
-          border: 1px solid #e5e5e5 !important;
-          background-color: #f5f5f5 !important;
-        }
-        
-        .sayu-print-area h1 {
-          font-size: 20px !important;
-          font-weight: 700 !important;
-          padding-bottom: 10px !important;
-          margin-bottom: 10px !important;
-          border-bottom: 2px solid #1A3C6E !important;
-          color: #000000 !important;
-        }
-        
-        .sayu-print-area h2, 
-        .sayu-print-area h3 {
-          font-size: 15px !important;
-          font-weight: 600 !important;
-          padding-bottom: 6px !important;
-          margin-bottom: 8px !important;
-          color: #000000 !important;
-        }
-        
-        .sayu-print-area p {
-          text-indent: 10pt !important;
-          margin-top: 0 !important;
-          margin-bottom: 0px !important;
-          padding-bottom: 4px !important;
-          line-height: 1.7 !important;
-          font-size: 12px !important;
-          font-weight: 400 !important;
-          color: #000000 !important;
-        }
-        
-        .sayu-print-area > div {
-          margin-bottom: 6px !important;
-        }
-        
-        .sayu-print-area > div > div {
-          padding: 10px !important;
-        }
-      }
-    `,
-  });
+  
+  // Safari 호환 커스텀 인쇄 함수
+  const handlePrint = () => {
+    if (!printRef.current) return;
+    
+    // 인쇄할 HTML 추출 (기존 스타일 그대로 유지)
+    const printContent = printRef.current.innerHTML;
+    
+    // 새 창 열기
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!printWindow) {
+      toast.error('팝업이 차단되었습니다. 팝업을 허용해주세요.');
+      return;
+    }
+    
+    // HTML 작성 (기존 인라인 스타일 유지, 인쇄 최적화만 추가)
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>SAYU_${recordDate || formatDateToKorean(new Date().toISOString().split('T')[0])}_${format || '기록'}</title>
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 12mm;
+          }
+          
+          * {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            box-sizing: border-box;
+          }
+          
+          html, body {
+            width: 210mm;
+            height: 297mm;
+            margin: 0;
+            padding: 0;
+          }
+          
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', sans-serif;
+            padding: 12mm;
+            background: white;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          
+          /* 페이지 분리 방지 */
+          * {
+            page-break-inside: avoid !important;
+          }
+          
+          /* contentEditable 속성 제거 */
+          [contenteditable] {
+            -webkit-user-modify: read-only !important;
+          }
+          
+          /* 1페이지 압축을 위한 최소 조정 */
+          @media print {
+            html, body {
+              width: 210mm;
+              height: 297mm;
+            }
+            
+            body {
+              padding: 10mm;
+            }
+            
+            /* 본문 폰트 크기 축소 */
+            p {
+              font-size: 12px !important;
+            }
+            
+            /* 사진 높이만 축소 */
+            div[style*="height: 120px"] {
+              height: 80px !important;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        ${printContent}
+        <script>
+          window.onload = function() {
+            // contentEditable 속성 모두 제거
+            document.querySelectorAll('[contenteditable]').forEach(el => {
+              el.removeAttribute('contenteditable');
+            });
+            
+            setTimeout(function() {
+              window.print();
+              setTimeout(function() {
+                window.close();
+              }, 100);
+            }, 250);
+          };
+        </script>
+      </body>
+      </html>
+    `);
+    
+    printWindow.document.close();
+  };
 
   useEffect(() => {
     if (isOpen) {
