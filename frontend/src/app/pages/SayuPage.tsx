@@ -104,6 +104,11 @@ function SayuModal({
             print-color-adjust: exact;
           }
           
+          /* 불필요한 요소 숨김 */
+          .no-print {
+            display: none !important;
+          }
+          
           /* 페이지 분리 방지 */
           * {
             page-break-inside: avoid !important;
@@ -131,15 +136,15 @@ function SayuModal({
               line-height: 1.5 !important;
             }
             
-            /* PDF 인쇄용 사진 크기 - 크게 */
+            /* PDF 인쇄용 사진 크기 - 30% 축소 (340px → 238px) */
             .photo-large {
-              max-height: 340px !important;
-              height: 340px !important;
+              max-height: 238px !important;
+              height: 238px !important;
             }
             
             .photo-small {
-              max-height: 340px !important;
-              height: 340px !important;
+              max-height: 238px !important;
+              height: 238px !important;
             }
             
             /* 사진 이미지 자체도 크기 제한 */

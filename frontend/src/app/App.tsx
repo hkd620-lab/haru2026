@@ -43,7 +43,7 @@ function App() {
           </main>
           
           <BottomNav />
-          <Toaster position="top-center" />
+          <Toaster position="top-center" toastOptions={{ className: 'no-print' }} />
         </div>
       </BrowserRouter>
     </AuthProvider>
