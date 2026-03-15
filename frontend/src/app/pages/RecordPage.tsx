@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Calendar, Library } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import { firestoreService, RecordFormat } from '../services/firestoreService';
+import { firestoreService } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { RecordTitleAnimation } from '../components/RecordTitleAnimation';
 import { toast } from 'sonner';
+import { RecordFormat, Category, CATEGORY_FORMATS } from '../types/haruTypes';
 
 type Mood = '기쁨' | '평온' | '무미' | '울적' | '번잡';
 type Weather = '쾌청' | '흐림' | '강우' | '굳음';
@@ -14,12 +15,6 @@ const weatherOptions: Weather[] = ['쾌청', '흐림', '강우', '굳음'];
 const temperatureOptions: Temperature[] = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
 const moodOptions: Mood[] = ['기쁨', '평온', '무미', '울적', '번잡'];
 
-// 📚 생활 카테고리
-const lifeFormats: RecordFormat[] = ['일기', '에세이', '여행기록', '애완동물관찰일지', '육아일기', '텃밭일지'];
-
-// 💼 업무 카테고리
-const workFormats: RecordFormat[] = ['일반보고', '업무일지', '선교보고'];
-
 export function RecordPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -27,6 +22,7 @@ export function RecordPage() {
   const [mood, setMood] = useState<Mood>('평온');
   const [weather, setWeather] = useState<Weather>('쾌청');
   const [temperature, setTemperature] = useState<Temperature>('쾌적');
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedFormats, setSelectedFormats] = useState<RecordFormat[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -49,7 +45,8 @@ export function RecordPage() {
   const toggleFormat = (format: RecordFormat) => {
     if (selectedFormats.includes(format)) {
       setSelectedFormats(selectedFormats.filter((f) => f !== format));
-    } else if (selectedFormats.length < 3) {
+    } else {
+      // 제한 없이 추가 가능!
       setSelectedFormats([...selectedFormats, format]);
     }
   };
@@ -98,29 +95,8 @@ export function RecordPage() {
     }
   };
 
-  const renderFormatButton = (format: RecordFormat) => {
-    const isSelected = selectedFormats.includes(format);
-    const isSelectionFull = !isSelected && selectedFormats.length >= 3;
-
-    return (
-      <button
-        key={format}
-        onClick={() => toggleFormat(format)}
-        disabled={isSelectionFull}
-        className="p-2.5 rounded-lg text-center transition-all disabled:opacity-30 disabled:cursor-not-allowed text-xs relative"
-        style={{
-          backgroundColor: isSelected ? '#1A3C6E' : '#FAF9F6',
-          border: isSelected ? 'none' : '1px solid #e5e5e5',
-          color: isSelected ? '#FAF9F6' : '#333333',
-        }}
-      >
-        {format}
-      </button>
-    );
-  };
-
   return (
-    <div className="max-w-3xl mx-auto px-4 py-3" style={{ paddingBottom: '80px' }}>
+    <div className="max-w-3xl mx-auto px-4 py-3">
       <div className="space-y-3">
         {/* Title Animation */}
         <section className="flex items-center justify-center py-1">
@@ -212,68 +188,101 @@ export function RecordPage() {
           </div>
         </section>
 
-        {/* Format Selection - 카테고리별 */}
+        {/* Format Selection */}
         <section className="bg-white rounded-lg p-3 shadow-sm">
-          <div className="mb-3">
+          <div className="mb-2">
             <h2 className="text-xs tracking-wider" style={{ color: '#666666' }}>
               형식 선택
             </h2>
             <p className="text-xs mt-0.5" style={{ color: '#999999' }}>
-              최대 3개까지 선택 가능
+              원하는 만큼 선택 가능
             </p>
           </div>
 
-          {/* 📚 생활 카테고리 */}
-          <div className="mb-4">
-            <div className="flex items-center gap-2 mb-2">
-              <span style={{ fontSize: 16 }}>📚</span>
-              <h3 className="text-sm font-semibold" style={{ color: '#1A3C6E' }}>
-                생활
-              </h3>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {lifeFormats.map(renderFormatButton)}
-            </div>
+          {/* 카테고리 선택 */}
+          <div className="flex gap-2 mb-3">
+            {(['생활', '업무'] as Category[]).map((category) => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(selectedCategory === category ? null : category)}
+                className="px-4 py-2 rounded-lg text-xs transition-all"
+                style={{
+                  backgroundColor: selectedCategory === category ? '#1A3C6E' : '#F0F7FF',
+                  color: selectedCategory === category ? '#FAF9F6' : '#1A3C6E',
+                  border: selectedCategory === category ? 'none' : '1px solid #d0dff0',
+                  fontWeight: selectedCategory === category ? 600 : 500,
+                }}
+              >
+                {category}
+              </button>
+            ))}
           </div>
 
-          {/* 💼 업무 카테고리 */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span style={{ fontSize: 16 }}>💼</span>
-              <h3 className="text-sm font-semibold" style={{ color: '#1A3C6E' }}>
-                업무
-              </h3>
+          {/* 형식 버튼 */}
+          {selectedCategory ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {CATEGORY_FORMATS[selectedCategory].map((format) => {
+                const isSelected = selectedFormats.includes(format);
+
+                return (
+                  <button
+                    key={format}
+                    onClick={() => toggleFormat(format)}
+                    className="p-2.5 rounded-lg text-center transition-all text-xs"
+                    style={{
+                      backgroundColor: isSelected ? '#1A3C6E' : '#FAF9F6',
+                      border: isSelected ? 'none' : '1px solid #e5e5e5',
+                      color: isSelected ? '#FAF9F6' : '#333333',
+                    }}
+                  >
+                    {format}
+                  </button>
+                );
+              })}
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              {workFormats.map(renderFormatButton)}
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-xs" style={{ color: '#999' }}>
+                생활 또는 업무 카테고리를 선택하세요
+              </p>
             </div>
-          </div>
+          )}
+
+          {/* 선택된 형식 표시 */}
+          {selectedFormats.length > 0 && (
+            <div className="mt-3 pt-3 border-t" style={{ borderColor: '#e5e5e5' }}>
+              <p className="text-xs mb-2" style={{ color: '#666' }}>
+                선택된 형식: {selectedFormats.length}개
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {selectedFormats.map((format) => (
+                  <span
+                    key={format}
+                    className="px-2 py-1 rounded text-xs"
+                    style={{
+                      backgroundColor: '#F0F7FF',
+                      color: '#1A3C6E',
+                      border: '1px solid #d0dff0',
+                    }}
+                  >
+                    {format}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
-      </div>
 
-      {/* Fixed Save Button - 화면 하단 고정 */}
-      <div
-        style={{
-          position: 'fixed',
-          bottom: 64,
-          left: 0,
-          right: 0,
-          padding: '16px',
-          backgroundColor: '#FAF9F6',
-          borderTop: '1px solid #e5e5e5',
-          boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.1)',
-          zIndex: 100,
-        }}
-      >
-        <div className="max-w-3xl mx-auto">
+        {/* Save Button */}
+        <div className="flex justify-center pt-2 pb-2">
           <button
             onClick={handleSave}
             disabled={isSaving || selectedFormats.length === 0}
-            className="w-full px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 shadow-md"
+            className="px-6 py-2.5 rounded-lg flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 shadow-md"
             style={{ backgroundColor: '#1A3C6E', color: '#FAF9F6' }}
           >
             <Library className="w-4 h-4" />
-            <span className="tracking-wide text-sm font-medium">{isSaving ? '저장 중...' : '서재로 이동'}</span>
+            <span className="tracking-wide text-sm">{isSaving ? '저장 중...' : '서재로 이동'}</span>
           </button>
         </div>
       </div>

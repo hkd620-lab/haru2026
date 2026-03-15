@@ -1,528 +1,170 @@
-// ==============================
-// HARU Record Type System Final
-// ==============================
+/**
+ * HARU2026 기록 형식 중앙 정의
+ * 
+ * 모든 페이지에서 이 파일의 타입과 상수를 사용합니다.
+ * Single Source of Truth!
+ */
 
-// ---------- 공통 기본 타입 ----------
+// ===========================================
+// 형식 타입 정의
+// ===========================================
 
-export type HaruCategory = 'daily' | 'report' | 'observation';
-
-export type HaruFormat =
-  | 'diary'
-  | 'essay'
-  | 'mission-report'
-  | 'general-report'
-  | 'work-log'
-  | 'travel-record'
-  | 'garden-log'
-  | 'pet-log'
-  | 'growth-diary';
-
-// 한글 형식명 (기존 시스템과 호환)
-export type RecordFormatKorean = 
+// 9가지 기록 형식
+export type RecordFormat = 
   | '일기' 
   | '에세이' 
   | '선교보고' 
   | '일반보고' 
   | '업무일지' 
-  | '여행기록' 
-  | '텃밭일지' 
-  | '애완동물관찰일지' 
+  | '여행기록'
+  | '텃밭일지'
+  | '애완동물관찰일지'
   | '육아일기';
 
-// 한글 <-> 영문 매핑
-export const FORMAT_MAP: Record<RecordFormatKorean, HaruFormat> = {
+// 기존 코드 호환성을 위한 alias
+export type RecordFormatKorean = RecordFormat;
+
+// 카테고리
+export type Category = '생활' | '업무';
+
+// ===========================================
+// 형식 상수
+// ===========================================
+
+// 카테고리별 형식 분류
+export const CATEGORY_FORMATS: Record<Category, RecordFormat[]> = {
+  '생활': ['일기', '에세이', '여행기록', '텃밭일지', '애완동물관찰일지', '육아일기'],
+  '업무': ['선교보고', '일반보고', '업무일지']
+};
+
+// 전체 형식 목록 (순서대로)
+export const ALL_FORMATS: RecordFormat[] = [
+  '일기', 
+  '에세이', 
+  '선교보고', 
+  '일반보고', 
+  '업무일지', 
+  '여행기록',
+  '텃밭일지', 
+  '애완동물관찰일지', 
+  '육아일기'
+];
+
+// 형식별 Firestore prefix 매핑
+export const FORMAT_PREFIX: Record<RecordFormat, string> = {
   '일기': 'diary',
   '에세이': 'essay',
-  '선교보고': 'mission-report',
-  '일반보고': 'general-report',
-  '업무일지': 'work-log',
-  '여행기록': 'travel-record',
-  '텃밭일지': 'garden-log',
-  '애완동물관찰일지': 'pet-log',
-  '육아일기': 'growth-diary',
+  '선교보고': 'mission',
+  '일반보고': 'report',
+  '업무일지': 'work',
+  '여행기록': 'travel',
+  '텃밭일지': 'garden',
+  '애완동물관찰일지': 'pet',
+  '육아일기': 'child',
 };
 
-// 영문 -> 한글 역매핑
-export const FORMAT_MAP_REVERSE: Record<HaruFormat, RecordFormatKorean> = {
+// prefix에서 형식명 찾기 (역매핑)
+export const PREFIX_TO_FORMAT: Record<string, RecordFormat> = {
   'diary': '일기',
   'essay': '에세이',
-  'mission-report': '선교보고',
-  'general-report': '일반보고',
-  'work-log': '업무일지',
-  'travel-record': '여행기록',
-  'garden-log': '텃밭일지',
-  'pet-log': '애완동물관찰일지',
-  'growth-diary': '육아일기',
+  'mission': '선교보고',
+  'report': '일반보고',
+  'work': '업무일지',
+  'travel': '여행기록',
+  'garden': '텃밭일지',
+  'pet': '애완동물관찰일지',
+  'child': '육아일기',
 };
 
-export type StatScore = 1 | 2 | 3 | 4 | 5;
+// 형식별 이모지 (선택사항)
+export const FORMAT_EMOJI: Record<RecordFormat, string> = {
+  '일기': '📔',
+  '에세이': '✍️',
+  '선교보고': '✝️',
+  '일반보고': '📋',
+  '업무일지': '💼',
+  '여행기록': '✈️',
+  '텃밭일지': '🌱',
+  '애완동물관찰일지': '🐾',
+  '육아일기': '👶',
+};
 
-export interface HaruMeta {
-  id: string;
-  userId: string;
-  date: string; // YYYY-MM-DD
-  category: HaruCategory;
-  format: HaruFormat;
-  title: string;
-  createdAt: string; // ISO string
-  updatedAt: string; // ISO string
+// ===========================================
+// 통계 타입 정의
+// ===========================================
+
+// 일기 통계
+export interface DiaryStats {
+  emotional_flow: number;      // 감정 흐름
+  self_awareness: number;       // 자기인식
+  daily_stability: number;      // 일상 안정성
 }
 
-// ---------- 공통 Stats ----------
-
-export interface BaseStats {
-  positivity_ratio: StatScore;
+// 에세이 통계
+export interface EssayStats {
+  theme_frequency: number;      // 주제 다양성
+  emotional_depth: number;      // 감정 깊이
+  literary_skill: number;       // 문학적 표현
 }
 
-// ---------- 일기 ----------
-
-export interface DiaryFields {
-  scene: string;
-  mood: string;
-  event: string;
-  reflection: string;
-  tomorrow: string;
+// 선교보고 통계
+export interface MissionReportStats {
+  grace_awareness: number;      // 은혜 인식
+  spiritual_growth: number;     // 영적 성장
+  ministry_impact: number;      // 사역 영향력
 }
 
-export interface DiaryStats extends BaseStats {
-  emotional_flow: StatScore;       // 감정 흐름 (좋았던 일 -> 갈등 -> 배움의 연결성)
-  self_awareness: StatScore;        // 자기인식 (성찰과 배움의 깊이)
-  daily_stability: StatScore;       // 일상 안정성 (여백/내일 계획의 규칙성)
+// 일반보고 통계
+export interface GeneralReportStats {
+  completion_rate: number;      // 완료율
+  detail_level: number;         // 상세도
+  planning_quality: number;     // 계획 품질
 }
 
-export interface DiaryRecord {
-  meta: HaruMeta & {
-    category: 'daily';
-    format: 'diary';
-  };
-  fields: DiaryFields;
-  stats: DiaryStats;
+// 업무일지 통계
+export interface WorkLogStats {
+  task_completion: number;      // 업무 완수
+  time_management: number;      // 시간 관리
+  productivity: number;         // 생산성
 }
 
-// ---------- 에세이 ----------
-
-export interface EssayFields {
-  theme: string[]; // 1~2
-  emotionPrimary: string;
-  emotionSecondary: string[]; // 0~2
-  people: string[]; // 0~3
-  actions: string[]; // 1~3
-  lesson: string;
-  lifeArea: string;
-  tone: string;
+// 여행기록 통계
+export interface TravelRecordStats {
+  journey_diversity: number;    // 여정 다양성
+  sensory_richness: number;     // 감각적 풍부함
+  reflection_depth: number;     // 성찰 깊이
 }
 
-export interface EssayStats extends BaseStats {
-  theme_frequency: StatScore;      // 주제 다양성
-  emotional_depth: StatScore;      // 감정 표현의 깊이
-  reflection_depth: StatScore;     // 성찰의 깊이
+// 텃밭일지 통계
+export interface GardenLogStats {
+  cultivation_care: number;     // 경작 정성
+  growth_observation: number;   // 성장 관찰
+  ecological_harmony: number;   // 생태 조화
 }
 
-export interface EssayRecord {
-  meta: HaruMeta & {
-    category: 'daily';
-    format: 'essay';
-  };
-  fields: EssayFields;
-  stats: EssayStats;
+// 애완동물관찰일지 통계
+export interface PetLogStats {
+  observation_detail: number;   // 관찰 세밀함
+  behavioral_insight: number;   // 행동 통찰
+  bond_expression: number;      // 유대감 표현
 }
 
-// ---------- 선교보고 ----------
-
-export interface MissionReportFields {
-  mission_place: string;
-  mission_action: string[];
-  mission_grace: string[];
-  mission_heart: string[];
-  mission_prayer: string[];
+// 육아일기 통계
+export interface GrowthDiaryStats {
+  developmental_tracking: number;  // 발달 추적
+  parental_reflection: number;     // 양육 성찰
+  emotional_connection: number;    // 감정 연결
 }
 
-export interface MissionReportStats extends BaseStats {
-  grace_awareness: StatScore;      // 은혜 인식 (Grace 필드 작성 빈도)
-  spiritual_growth: StatScore;     // 영적 성장 (Heart 필드의 깊이)
-  service_impact: StatScore;       // 섬김 영향력 (Action 필드의 구체성)
-}
-
-export interface MissionReportRecord {
-  meta: HaruMeta & {
-    category: 'report';
-    format: 'mission-report';
-  };
-  fields: MissionReportFields;
-  stats: MissionReportStats;
-}
-
-// ---------- 일반보고 ----------
-
-export interface GeneralReportFields {
-  report_activity: string;
-  report_progress: string;
-  report_achievement: string;
-  report_notes: string;
-  report_future: string;
-}
-
-export interface GeneralReportStats extends BaseStats {
-  completion_rate: StatScore;      // 완성도 (모든 필드 작성 비율)
-  issue_awareness: StatScore;      // 문제 인식 (특이사항 기록률)
-  planning_quality: StatScore;     // 계획 품질 (향후 계획 구체성)
-}
-
-export interface GeneralReportRecord {
-  meta: HaruMeta & {
-    category: 'report';
-    format: 'general-report';
-  };
-  fields: GeneralReportFields;
-  stats: GeneralReportStats;
-}
-
-// ---------- 업무일지 ----------
-
-// 자유도를 남기되 너무 풀어놓지 않기 위한 기본 구조
-export interface WorkMetric {
-  meetings?: number;
-  calls?: number;
-  documents_created?: number;
-  documents_updated?: number;
-  items_completed?: number;
-  items_total?: number;
-  hours_worked?: number;
-  visits?: number;
-  tests_run?: number;
-  issues_fixed?: number;
-
-  // 필요 시 확장 가능
-  [key: string]: string | number | undefined;
-}
-
-export interface WorkLogFields {
-  work_schedule: string[];
-  work_result: string[];
-  work_pending: string[];
-  work_metric: WorkMetric;
-  work_rating: string;
-}
-
-export interface WorkLogStats extends BaseStats {
-  task_completion: StatScore;      // 업무 완성도 (Result 작성률)
-  productivity_score: StatScore;   // 생산성 점수 (Rating 평균)
-  self_evaluation: StatScore;      // 자기 평가 일관성
-}
-
-export interface WorkLogRecord {
-  meta: HaruMeta & {
-    category: 'report';
-    format: 'work-log';
-  };
-  fields: WorkLogFields;
-  stats: WorkLogStats;
-}
-
-// ---------- 여행기록 ----------
-
-export interface TravelRecordFields {
-  travel_journey: string[];
-  travel_scenery: string[];
-  travel_food: string[];
-  travel_thought: string;
-  travel_gratitude: string[];
-}
-
-export interface TravelRecordStats extends BaseStats {
-  experience_richness: StatScore;  // 경험의 풍부함 (모든 필드 작성률)
-  gratitude_level: StatScore;      // 감사 수준
-  reflection_depth: StatScore;     // 성찰 깊이 (단상의 질)
-}
-
-export interface TravelRecord {
-  meta: HaruMeta & {
-    category: 'daily';
-    format: 'travel-record';
-  };
-  fields: TravelRecordFields;
-  stats: TravelRecordStats;
-}
-
-// ---------- 텃밭일지 ----------
-
-export interface GardenLogFields {
-  garden_crops: string[];
-  garden_observation: string[];
-  garden_work: string[];
-  garden_issue: string[];
-  garden_plan: string[];
-}
-
-export interface GardenLogStats extends BaseStats {
-  crop_diversity: StatScore;       // 작물 다양성
-  observation_detail: StatScore;   // 관찰 세밀도
-  issue_management: StatScore;     // 문제 대응력
-}
-
-export interface GardenLogRecord {
-  meta: HaruMeta & {
-    category: 'observation';
-    format: 'garden-log';
-  };
-  fields: GardenLogFields;
-  stats: GardenLogStats;
-}
-
-// ---------- 애완동물 관찰일기 ----------
-
-export interface PetLogFields {
-  pet_behavior: string[];
-  pet_health: string[];
-  pet_play: string[];
-  pet_emotion: string[];
-  pet_note: string[];
-}
-
-export interface PetLogStats extends BaseStats {
-  care_attention: StatScore;       // 돌봄 관심도
-  emotional_bond: StatScore;       // 정서적 유대감
-  health_awareness: StatScore;     // 건강 인식
-}
-
-export interface PetLogRecord {
-  meta: HaruMeta & {
-    category: 'observation';
-    format: 'pet-log';
-  };
-  fields: PetLogFields;
-  stats: PetLogStats;
-}
-
-// ---------- 육아(성장)일기 ----------
-
-export interface GrowthDiaryFields {
-  child_growth: string[];
-  child_activity: string[];
-  child_emotion: string[];
-  child_learning: string[];
-  child_plan: string[];
-}
-
-export interface GrowthDiaryStats extends BaseStats {
-  growth_observation: StatScore;   // 성장 관찰력
-  emotional_understanding: StatScore; // 감정 이해도
-  learning_support: StatScore;     // 학습 지원도
-}
-
-export interface GrowthDiaryRecord {
-  meta: HaruMeta & {
-    category: 'observation';
-    format: 'growth-diary';
-  };
-  fields: GrowthDiaryFields;
-  stats: GrowthDiaryStats;
-}
-
-// ---------- 전체 Union ----------
-
-export type HaruRecord =
-  | DiaryRecord
-  | EssayRecord
-  | MissionReportRecord
-  | GeneralReportRecord
-  | WorkLogRecord
-  | TravelRecord
-  | GardenLogRecord
-  | PetLogRecord
-  | GrowthDiaryRecord;
-
-// ---------- 포맷별 매핑 ----------
-
-export interface HaruRecordMap {
-  diary: DiaryRecord;
-  essay: EssayRecord;
-  'mission-report': MissionReportRecord;
-  'general-report': GeneralReportRecord;
-  'work-log': WorkLogRecord;
-  'travel-record': TravelRecord;
-  'garden-log': GardenLogRecord;
-  'pet-log': PetLogRecord;
-  'growth-diary': GrowthDiaryRecord;
-}
-
-export type HaruRecordByFormat<F extends HaruFormat> = HaruRecordMap[F];
-
-// ---------- 생성용 입력 타입 ----------
-
-export interface HaruCreateMetaBase {
-  userId: string;
-  date: string;
-  title: string;
-}
-
-export interface CreateDiaryRecord {
-  meta: HaruCreateMetaBase & {
-    category: 'daily';
-    format: 'diary';
-  };
-  fields: DiaryFields;
-  stats: DiaryStats;
-}
-
-export interface CreateEssayRecord {
-  meta: HaruCreateMetaBase & {
-    category: 'daily';
-    format: 'essay';
-  };
-  fields: EssayFields;
-  stats: EssayStats;
-}
-
-export interface CreateMissionReportRecord {
-  meta: HaruCreateMetaBase & {
-    category: 'report';
-    format: 'mission-report';
-  };
-  fields: MissionReportFields;
-  stats: MissionReportStats;
-}
-
-export interface CreateGeneralReportRecord {
-  meta: HaruCreateMetaBase & {
-    category: 'report';
-    format: 'general-report';
-  };
-  fields: GeneralReportFields;
-  stats: GeneralReportStats;
-}
-
-export interface CreateWorkLogRecord {
-  meta: HaruCreateMetaBase & {
-    category: 'report';
-    format: 'work-log';
-  };
-  fields: WorkLogFields;
-  stats: WorkLogStats;
-}
-
-export interface CreateTravelRecord {
-  meta: HaruCreateMetaBase & {
-    category: 'daily';
-    format: 'travel-record';
-  };
-  fields: TravelRecordFields;
-  stats: TravelRecordStats;
-}
-
-export interface CreateGardenLogRecord {
-  meta: HaruCreateMetaBase & {
-    category: 'observation';
-    format: 'garden-log';
-  };
-  fields: GardenLogFields;
-  stats: GardenLogStats;
-}
-
-export interface CreatePetLogRecord {
-  meta: HaruCreateMetaBase & {
-    category: 'observation';
-    format: 'pet-log';
-  };
-  fields: PetLogFields;
-  stats: PetLogStats;
-}
-
-export interface CreateGrowthDiaryRecord {
-  meta: HaruCreateMetaBase & {
-    category: 'observation';
-    format: 'growth-diary';
-  };
-  fields: GrowthDiaryFields;
-  stats: GrowthDiaryStats;
-}
-
-export type HaruCreateRecord =
-  | CreateDiaryRecord
-  | CreateEssayRecord
-  | CreateMissionReportRecord
-  | CreateGeneralReportRecord
-  | CreateWorkLogRecord
-  | CreateTravelRecord
-  | CreateGardenLogRecord
-  | CreatePetLogRecord
-  | CreateGrowthDiaryRecord;
-
-// ---------- 유틸 함수용 타입 가드 ----------
-
-export function isDiaryRecord(record: HaruRecord): record is DiaryRecord {
-  return record.meta.format === 'diary';
-}
-
-export function isEssayRecord(record: HaruRecord): record is EssayRecord {
-  return record.meta.format === 'essay';
-}
-
-export function isMissionReportRecord(record: HaruRecord): record is MissionReportRecord {
-  return record.meta.format === 'mission-report';
-}
-
-export function isGeneralReportRecord(record: HaruRecord): record is GeneralReportRecord {
-  return record.meta.format === 'general-report';
-}
-
-export function isWorkLogRecord(record: HaruRecord): record is WorkLogRecord {
-  return record.meta.format === 'work-log';
-}
-
-export function isTravelRecord(record: HaruRecord): record is TravelRecord {
-  return record.meta.format === 'travel-record';
-}
-
-export function isGardenLogRecord(record: HaruRecord): record is GardenLogRecord {
-  return record.meta.format === 'garden-log';
-}
-
-export function isPetLogRecord(record: HaruRecord): record is PetLogRecord {
-  return record.meta.format === 'pet-log';
-}
-
-export function isGrowthDiaryRecord(record: HaruRecord): record is GrowthDiaryRecord {
-  return record.meta.format === 'growth-diary';
-}
-
-// ---------- 통계 점수 변환 헬퍼 함수 ----------
+// ===========================================
+// 유틸리티 함수
+// ===========================================
 
 /**
- * 비율(0~1)을 StatScore(1~5)로 변환
+ * 비율을 통계 점수(0-100)로 변환
+ * @param ratio 0-1 사이의 비율
+ * @returns 0-100 사이의 점수
  */
-export function ratioToStatScore(ratio: number): StatScore {
-  if (ratio >= 0.9) return 5;
-  if (ratio >= 0.7) return 4;
-  if (ratio >= 0.5) return 3;
-  if (ratio >= 0.3) return 2;
-  return 1;
-}
-
-/**
- * StatScore를 텍스트로 변환
- */
-export function statScoreToText(score: StatScore): string {
-  const texts: Record<StatScore, string> = {
-    5: '매우 우수',
-    4: '우수',
-    3: '보통',
-    2: '개선 필요',
-    1: '매우 개선 필요',
-  };
-  return texts[score];
-}
-
-/**
- * StatScore를 색상으로 변환
- */
-export function statScoreToColor(score: StatScore): string {
-  const colors: Record<StatScore, string> = {
-    5: '#10b981', // 초록
-    4: '#3b82f6', // 파랑
-    3: '#f59e0b', // 주황
-    2: '#ef4444', // 빨강
-    1: '#991b1b', // 어두운 빨강
-  };
-  return colors[score];
+export function ratioToStatScore(ratio: number): number {
+  return Math.round(ratio * 100);
 }
