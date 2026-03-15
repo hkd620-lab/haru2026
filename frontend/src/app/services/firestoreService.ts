@@ -110,7 +110,15 @@ export const firestoreService = {
     const records = await this.getRecords(uid);
     const totalRecords = records.length;
     const polishedCount = records.filter((r) => r.polished).length;
-    const sayuCount = records.filter((r) => r.sayuSavedAt).length;
+    const sayuCount = records.filter((r) => {
+      // sayuSavedAt이 있으면 최종 저장된 SAYU
+      if (r.sayuSavedAt) return true;
+      // 형식별 _sayu 필드가 있으면 다듬기 완료된 SAYU
+      const hasSayuField = Object.keys(r).some(key =>
+        key.endsWith('_sayu') && r[key] && String(r[key]).trim().length > 0
+      );
+      return hasSayuField;
+    }).length;
     const formatCounts: Record<string, number> = {};
     records.forEach((r) => {
       r.formats?.forEach((f) => {
