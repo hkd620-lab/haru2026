@@ -446,15 +446,18 @@ export function SayuPage() {
     const dateStr = formatDateString(date);
     const record = records.find((r) => r.date === dateStr);
     if (!record) return false;
-    
+
     if (record.sayuSavedAt) return 'saved';
-    
-    const hasSayuField = Object.keys(record).some(key => 
-      key.endsWith('_sayu') && record[key] && String(record[key]).trim().length > 0
-    );
-    
+
+    const hasSayuField = Object.keys(record).some(key => {
+      const value = record[key];
+      if (!key.endsWith('_sayu') || !value) return false;
+      const strValue = String(value).trim();
+      return strValue.length > 0 && strValue !== '[object Object]';
+    });
+
     if (hasSayuField) return 'polished';
-    
+
     return false;
   };
 
