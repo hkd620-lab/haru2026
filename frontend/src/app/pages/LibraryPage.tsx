@@ -3,7 +3,8 @@ import { BookOpen, Info } from 'lucide-react';
 import { FormatModal } from '../components/FormatModal';
 import { useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
-import { firestoreService, HaruRecord, RecordFormat } from '../services/firestoreService';
+import { firestoreService, HaruRecord } from '../services/firestoreService';
+import { RecordFormat } from '../types/haruTypes';
 import { LibraryTitleAnimation } from '../components/LibraryTitleAnimation';
 import { toast } from 'sonner';
 
@@ -48,8 +49,8 @@ export function LibraryPage() {
     ensure('애완동물관찰일지', 'pet_');
     ensure('육아일기', 'child_');
 
-    // 최대 3개로 제한
-    return base.slice(0, 3);
+    // ✅ 제한 없이 모든 형식 표시
+    return base;
   };
 
   // 데이터 가져오기

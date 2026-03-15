@@ -161,10 +161,47 @@ export interface GrowthDiaryStats {
 // ===========================================
 
 /**
+ * 통계 점수 타입 (1~5점)
+ */
+export type StatScore = 1 | 2 | 3 | 4 | 5;
+
+/**
  * 비율을 통계 점수(0-100)로 변환
  * @param ratio 0-1 사이의 비율
  * @returns 0-100 사이의 점수
  */
 export function ratioToStatScore(ratio: number): number {
   return Math.round(ratio * 100);
+}
+
+/**
+ * 통계 점수를 텍스트로 변환
+ * @param score 1-5 사이의 점수
+ * @returns 점수에 해당하는 텍스트
+ */
+export function statScoreToText(score: StatScore): string {
+  const textMap: Record<StatScore, string> = {
+    1: '매우 낮음',
+    2: '낮음',
+    3: '보통',
+    4: '높음',
+    5: '매우 높음',
+  };
+  return textMap[score];
+}
+
+/**
+ * 통계 점수를 색상으로 변환
+ * @param score 1-5 사이의 점수
+ * @returns 점수에 해당하는 색상 코드
+ */
+export function statScoreToColor(score: StatScore): string {
+  const colorMap: Record<StatScore, string> = {
+    1: '#ef4444',  // 빨강 (매우 낮음)
+    2: '#f97316',  // 주황 (낮음)
+    3: '#eab308',  // 노랑 (보통)
+    4: '#84cc16',  // 연두 (높음)
+    5: '#10b981',  // 초록 (매우 높음)
+  };
+  return colorMap[score];
 }
