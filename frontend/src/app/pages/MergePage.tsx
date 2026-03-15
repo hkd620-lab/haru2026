@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Layers, X } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { Layers, Info, X, Calendar } from 'lucide-react';
 import { MergeTitleAnimation } from '../components/MergeTitleAnimation';
 import { useAuth } from '../contexts/AuthContext';
-import { firestoreService, RecordFormat } from '../services/firestoreService';
+import { firestoreService } from '../services/firestoreService';
 import { toast } from 'sonner';
 
 type StarThreshold = 1 | 2 | 3 | 4 | 5;
 type MergePeriod = 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'custom';
-type Category = '생활' | '업무';
 
 interface PeriodOption {
   id: MergePeriod;
@@ -16,17 +14,8 @@ interface PeriodOption {
   description: string;
 }
 
-// 카테고리별 형식 분류
-const categoryFormats: Record<Category, RecordFormat[]> = {
-  '생활': ['일기', '에세이', '여행기록', '텃밭일지', '애완동물관찰일지', '육아일기'],
-  '업무': ['선교보고', '일반보고', '업무일지']
-};
-
 export function MergePage() {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-  const [selectedFormat, setSelectedFormat] = useState<RecordFormat | null>(null);
   const [starThreshold, setStarThreshold] = useState<StarThreshold>(3);
   const [selectedPeriod, setSelectedPeriod] = useState<MergePeriod | null>(null);
   const [startDate, setStartDate] = useState('');
@@ -39,12 +28,14 @@ export function MergePage() {
     { id: 'monthly', title: '월간', description: '최근 30일 기준' },
     { id: 'quarterly', title: '분기', description: '3개월 기준' },
     { id: 'yearly', title: '연간', description: '12개월 기준' },
-    { id: 'custom', title: '직접선택', description: '기간 직접 입력' },
   ];
 
+  // 오늘 날짜를 기본값으로 설정
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
     setEndDate(today);
+    
+    // 기본 시작일: 30일 전
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     setStartDate(thirtyDaysAgo.toISOString().split('T')[0]);
@@ -53,58 +44,37 @@ export function MergePage() {
   const handlePeriodSelect = (period: MergePeriod) => {
     setSelectedPeriod(period);
     
-    // custom이 아닌 경우에만 날짜 자동 설정
-    if (period !== 'custom') {
-      const today = new Date();
-      const end = today.toISOString().split('T')[0];
-      setEndDate(end);
-      
-      let start = new Date();
-      switch (period) {
-        case 'weekly':
-          start.setDate(start.getDate() - 7);
-          break;
-        case 'monthly':
-          start.setDate(start.getDate() - 30);
-          break;
-        case 'quarterly':
-          start.setMonth(start.getMonth() - 3);
-          break;
-        case 'yearly':
-          start.setFullYear(start.getFullYear() - 1);
-          break;
-      }
-      setStartDate(start.toISOString().split('T')[0]);
+    // 빠른 선택 시 날짜 자동 계산
+    const today = new Date();
+    const end = today.toISOString().split('T')[0];
+    setEndDate(end);
+    
+    let start = new Date();
+    switch (period) {
+      case 'weekly':
+        start.setDate(start.getDate() - 7);
+        break;
+      case 'monthly':
+        start.setDate(start.getDate() - 30);
+        break;
+      case 'quarterly':
+        start.setMonth(start.getMonth() - 3);
+        break;
+      case 'yearly':
+        start.setFullYear(start.getFullYear() - 1);
+        break;
     }
+    
+    setStartDate(start.toISOString().split('T')[0]);
   };
 
   const handleCustomDateChange = () => {
     setSelectedPeriod('custom');
   };
 
-  const getFormatPrefix = (format: RecordFormat): string => {
-    const prefixMap: Record<RecordFormat, string> = {
-      '일기': 'diary',
-      '에세이': 'essay',
-      '선교보고': 'mission',
-      '일반보고': 'report',
-      '업무일지': 'work',
-      '여행기록': 'travel',
-      '텃밭일지': 'garden',
-      '애완동물관찰일지': 'pet',
-      '육아일기': 'child',
-    };
-    return prefixMap[format] || 'diary';
-  };
-
   const handleRunMerge = async () => {
     if (!user) {
       toast.error('로그인이 필요합니다.');
-      return;
-    }
-
-    if (!selectedFormat) {
-      toast.warning('형식을 선택해주세요.');
       return;
     }
 
@@ -121,43 +91,30 @@ export function MergePage() {
     setIsRunning(true);
 
     try {
+      // Firebase에서 기록 가져오기
       const records = await firestoreService.getRecords(user.uid);
       
-      const dateFiltered = records.filter(record => {
+      // 날짜 범위 필터링
+      const filteredRecords = records.filter(record => {
         return record.date >= startDate && record.date <= endDate;
       });
 
-      const formatFiltered = dateFiltered.filter(record => {
-        return record.formats && record.formats.includes(selectedFormat);
-      });
-
-      const formatPrefix = getFormatPrefix(selectedFormat);
-      const starFiltered = formatFiltered.filter(record => {
-        const sayuKey = `${formatPrefix}_sayu`;
-        const hasSayu = record[sayuKey] && record[sayuKey].trim().length > 0;
-        
-        if (!hasSayu) return false;
-        
+      // 별점 필터링
+      const starFilteredRecords = filteredRecords.filter(record => {
         const rating = record.mergeRating || 0;
         return rating >= starThreshold;
       });
 
-      if (starFiltered.length === 0) {
-        toast.warning(`조건에 맞는 ${selectedFormat} 기록이 없습니다.`);
+      if (starFilteredRecords.length === 0) {
+        toast.warning('조건에 맞는 기록이 없습니다.');
         setIsRunning(false);
         return;
       }
 
-      // 뷰어 페이지로 이동
-      navigate('/merge-viewer', {
-        state: {
-          records: starFiltered,
-          format: selectedFormat,
-          startDate,
-          endDate,
-          threshold: starThreshold,
-        },
-      });
+      // PDF 생성
+      await generatePDF(starFilteredRecords);
+
+      toast.success(`✅ ${starFilteredRecords.length}개의 기록을 합쳤습니다!`);
     } catch (error) {
       console.error('병합 실패:', error);
       toast.error('합치기에 실패했습니다. 다시 시도해주세요.');
@@ -166,12 +123,49 @@ export function MergePage() {
     }
   };
 
+  const generatePDF = async (records: any[]) => {
+    // PDF 생성 로직 (임시)
+    const content = records
+      .map(record => {
+        const date = new Date(record.date + 'T00:00:00').toLocaleDateString('ko-KR', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          weekday: 'long',
+        });
+        
+        return `
+===========================================
+📅 ${date}
+⭐ 별점: ${record.mergeRating || 0}점
+🌤️ ${record.weather || ''} | ${record.temperature || ''} | ${record.mood || ''}
+-------------------------------------------
+${record.sayuContent || record.content || '내용 없음'}
+===========================================
+        `.trim();
+      })
+      .join('\n\n');
+
+    // 텍스트 파일 다운로드 (임시 - 추후 PDF로 변경)
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `HARU_합본_${startDate}_to_${endDate}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col gap-3">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <MergeTitleAnimation />
       </div>
 
+      {/* 중요 안내 모달 */}
       {showNotice && (
         <div
           className="rounded-lg p-4 shadow-sm"
@@ -194,69 +188,13 @@ export function MergePage() {
           
           <ul className="space-y-1 pl-4" style={{ color: '#92400E', fontSize: '12px' }}>
             <li>• 합본 결과는 서버에 저장되지 않습니다</li>
-            <li>• 앱 내부 뷰어에서 바로 확인하세요</li>
-            <li>• PDF로 저장하려면 뷰어에서 저장 버튼을 누르세요</li>
+            <li>• 다운로드한 파일을 직접 보관하세요</li>
+            <li>• 다시 보려면 재생성이 필요합니다</li>
           </ul>
         </div>
       )}
 
-      <section className="bg-white rounded-lg shadow-sm overflow-hidden">
-        <div className="px-4 pt-3 pb-2 flex items-center gap-2">
-          <span style={{ fontSize: '13px', color: '#1A3C6E', fontWeight: 600 }}>
-            📝 형식 선택
-          </span>
-          <span className="text-xs" style={{ color: '#999' }}>
-            — 카테고리를 선택한 후 형식을 선택하세요
-          </span>
-        </div>
-
-        {/* 카테고리 선택 */}
-        <div className="px-3 pb-2">
-          <div className="flex gap-2">
-            {(['생활', '업무'] as Category[]).map((category) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className="flex-1 p-3 rounded-lg text-center transition-all text-sm font-medium"
-                style={{
-                  backgroundColor: selectedCategory === category ? '#1A3C6E' : '#FAF9F6',
-                  border: selectedCategory === category ? 'none' : '1px solid #e5e5e5',
-                  color: selectedCategory === category ? '#FAF9F6' : '#333',
-                }}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 형식 선택 - 카테고리 선택 후 표시 */}
-        {selectedCategory && (
-          <div className="px-3 pb-3">
-            <div className="grid grid-cols-3 gap-2">
-              {categoryFormats[selectedCategory].map((format) => {
-                const isSelected = selectedFormat === format;
-                return (
-                  <button
-                    key={format}
-                    onClick={() => setSelectedFormat(format)}
-                    className="py-2 px-3 rounded-lg text-sm transition-all"
-                    style={{
-                      backgroundColor: isSelected ? '#1A3C6E' : '#FAF9F6',
-                      color: isSelected ? '#FAF9F6' : '#333',
-                      border: isSelected ? 'none' : '1px solid #e5e5e5',
-                      fontWeight: isSelected ? 600 : 400,
-                    }}
-                  >
-                    {format}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </section>
-
+      {/* Step 1: 병합 기준 별점 선택 */}
       <section className="bg-white rounded-lg shadow-sm overflow-hidden">
         <div className="px-4 pt-3 pb-2 flex items-center gap-2">
           <span style={{ fontSize: '13px', color: '#1A3C6E', fontWeight: 600 }}>
@@ -305,6 +243,7 @@ export function MergePage() {
         </div>
       </section>
 
+      {/* Step 2: 병합 기간 선택 */}
       <section className="bg-white rounded-lg shadow-sm overflow-hidden">
         <div className="px-4 pt-3 pb-2 flex items-center gap-2">
           <span style={{ fontSize: '13px', color: '#1A3C6E', fontWeight: 600 }}>
@@ -315,8 +254,8 @@ export function MergePage() {
           </span>
         </div>
 
-        {/* 5개 버튼: 주간, 월간, 분기, 연간, 직접선택 */}
-        <div className="grid grid-cols-5 gap-0 px-3">
+        {/* 빠른 선택 */}
+        <div className="grid grid-cols-4 gap-0 px-3">
           {periodOptions.map((option, index) => {
             const isSelected = selectedPeriod === option.id;
             return (
@@ -333,7 +272,7 @@ export function MergePage() {
                   borderRadius:
                     index === 0
                       ? '6px 0 0 6px'
-                      : index === 4
+                      : index === 3
                       ? '0 6px 6px 0'
                       : '0',
                   fontWeight: isSelected ? 600 : 400,
@@ -357,56 +296,58 @@ export function MergePage() {
           })}
         </div>
 
-        {/* "직접선택" 선택 시 시작일/종료일 표시 */}
-        {selectedPeriod === 'custom' && (
-          <div className="px-3 py-3 border-t" style={{ borderColor: '#e5e5e5' }}>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs block mb-1" style={{ color: '#999' }}>
-                  시작일
-                </label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => {
-                    setStartDate(e.target.value);
-                    handleCustomDateChange();
-                  }}
-                  className="w-full px-3 py-2 text-sm rounded-lg border"
-                  style={{
-                    borderColor: '#e5e5e5',
-                    backgroundColor: '#fff',
-                    color: '#333',
-                  }}
-                />
-              </div>
-              <div>
-                <label className="text-xs block mb-1" style={{ color: '#999' }}>
-                  종료일
-                </label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => {
-                    setEndDate(e.target.value);
-                    handleCustomDateChange();
-                  }}
-                  className="w-full px-3 py-2 text-sm rounded-lg border"
-                  style={{
-                    borderColor: '#e5e5e5',
-                    backgroundColor: '#fff',
-                    color: '#333',
-                  }}
-                />
-              </div>
+        {/* 직접 선택 */}
+        <div className="px-3 py-3 border-t" style={{ borderColor: '#e5e5e5' }}>
+          <p className="text-xs mb-2" style={{ color: '#666' }}>
+            또는 직접 선택:
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs block mb-1" style={{ color: '#999' }}>
+                시작일
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  handleCustomDateChange();
+                }}
+                className="w-full px-3 py-2 text-sm rounded-lg border"
+                style={{
+                  borderColor: '#e5e5e5',
+                  backgroundColor: '#fff',
+                  color: '#333',
+                }}
+              />
+            </div>
+            <div>
+              <label className="text-xs block mb-1" style={{ color: '#999' }}>
+                종료일
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  handleCustomDateChange();
+                }}
+                className="w-full px-3 py-2 text-sm rounded-lg border"
+                style={{
+                  borderColor: '#e5e5e5',
+                  backgroundColor: '#fff',
+                  color: '#333',
+                }}
+              />
             </div>
           </div>
-        )}
+        </div>
       </section>
 
+      {/* Step 3: 합치기 실행 버튼 */}
       <button
         onClick={handleRunMerge}
-        disabled={isRunning || !selectedFormat || !startDate || !endDate}
+        disabled={isRunning || !startDate || !endDate}
         className="w-full py-3 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 shadow-md"
         style={{
           backgroundColor: '#1A3C6E',
