@@ -17,6 +17,7 @@ export default defineConfig({
         name: 'HARU2026',
         short_name: 'HARU',
         description: '하루를 기록하는 앱',
+        lang: 'ko',
         theme_color: '#4F46E5',
         background_color: '#ffffff',
         display: 'standalone',
@@ -35,11 +36,6 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
-          {
-            // Firebase Firestore / Functions API 캐싱 제외
-            urlPattern: /^https:\/\/.*\.googleapis\.com\/.*/i,
-            handler: 'NetworkOnly',
-          },
           {
             // Google Fonts 캐싱
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
