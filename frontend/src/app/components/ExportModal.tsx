@@ -352,7 +352,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       }
 
       const result = await polishContentFunc({
-        text: `다음은 "${format}" 형식으로 작성된 기록입니다. 이 내용을 자연스럽고 읽기 좋게 다듬어주세요.\n\n${contentValues}`,
+        text: `다음은 "${format}" 형식으로 작성된 기록입니다. 이 내용을 자연스럽고 읽기 좋게 교정해주세요.\n\n원문에 없는 사실, 감정, 배경, 원인, 결과를 절대 추가하지 마세요. 교정 완료 후 출력 전, 결과물에 원문에 없는 내용이 추가되었는지 확인하고 있다면 제거하세요.\n\n${contentValues}`,
         format: prefix
       });
 
@@ -922,7 +922,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       }
 
       const result = await polishContentFunc({
-        text: `다음은 "${format}" 형식으로 작성된 기록입니다. 이 내용을 자연스럽고 읽기 좋게 다듬어주세요.\n\n${contentValues}`,
+        text: `다음은 "${format}" 형식으로 작성된 기록입니다. 이 내용을 자연스럽고 읽기 좋게 교정해주세요.\n\n원문에 없는 사실, 감정, 배경, 원인, 결과를 절대 추가하지 마세요. 교정 완료 후 출력 전, 결과물에 원문에 없는 내용이 추가되었는지 확인하고 있다면 제거하세요.\n\n${contentValues}`,
         format: prefix
       });
 

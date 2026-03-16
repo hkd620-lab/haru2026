@@ -271,7 +271,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       }
 
       const result = await polishContentFunc({
-        text: `다음은 "${format}" 형식으로 작성된 기록입니다. 이 내용을 자연스럽고 읽기 좋게 다듬어주세요.
+        text: `다음은 "${format}" 형식으로 작성된 기록입니다. 이 내용을 자연스럽고 읽기 좋게 교정해주세요.
 
 **제목 생성:**
 1. 먼저 내용을 읽고 핵심을 파악하세요.
@@ -282,11 +282,18 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
 **절대 준수 사항:**
 1. 말투는 무조건 "~다", "~했다", "~이다" 체로만 작성하세요.
    - "했습니다" → "했다"
-   - "있었습니다" → "있었다"  
+   - "있었습니다" → "있었다"
    - "되었습니다" → "되었다"
    - "느꼈습니다" → "느꼈다"
    - "생각합니다" → "생각한다"
    - 절대 존댓말(~습니다, ~세요)을 사용하지 마세요.
+2. 원문에 없는 사실, 감정, 배경, 원인, 결과를 절대 추가하지 마세요.
+   - 원문에 없는 장소, 인물, 날씨, 느낌, 이유, 결과를 임의로 삽입하지 마세요.
+   - 교정은 원문의 내용을 그대로 유지하면서 문법·맞춤법·어색한 표현만 수정합니다.
+
+**사실 보존 자기검증 (내부 단계 — 출력하지 말 것):**
+교정 완료 후 출력 전, 결과물에 원문에 없는 내용이 추가되었는지 확인하고 있다면 제거하세요.
+
 **중요: PDF 1페이지 출력을 위해 다듬은 결과는 반드시 공백 제외 2500자 이내로 작성해주세요.**
 
 **응답 형식 예시:**
@@ -987,9 +994,9 @@ ${contentValues}`,
                   fontWeight: 500,
                 }}
               >
-                <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>⚡ BASIC 모드</div>
+                <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>⚡ 사실 보존형 교정</div>
                 <div style={{ fontSize: 13, opacity: 0.8 }}>
-                  맞춤법과 문장을 간단히 다듬습니다
+                  원문의 사실만 유지하며 맞춤법·표현을 교정합니다
                 </div>
               </button>
 
