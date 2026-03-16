@@ -1,0 +1,20 @@
+# API 키 및 민감 정보
+.env
+.env.*
+.env.local
+.env.production
+.env.development
+functions/.env
+functions/.env.*
+frontend/.env
+frontend/.env.*
+
+# Firebase 서비스 계정 키
+*firebase-adminsdk*.json
+*service-account*.json
+*credentials*.json
+
+# 기타 민감 파일
+*.pem
+*.key
+*.p12
