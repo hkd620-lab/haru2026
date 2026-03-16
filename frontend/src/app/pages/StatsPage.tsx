@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { StatsTitleAnimation } from '../components/StatsTitleAnimation';
 import { firestoreService } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,12 +9,12 @@ const FORMAT_CATEGORIES = [
   {
     label: '생활',
     formats: [
-      { key: '일기',           icon: '📔', en: 'Diary' },
-      { key: '에세이',         icon: '📖', en: 'Essay' },
-      { key: '여행기록',       icon: '✈️', en: 'Travel' },
-      { key: '텃밭일기',       icon: '🌱', en: 'Garden' },
+      { key: '일기',            icon: '📔', en: 'Diary' },
+      { key: '에세이',          icon: '📖', en: 'Essay' },
+      { key: '여행기록',        icon: '✈️', en: 'Travel' },
+      { key: '텃밭일기',        icon: '🌱', en: 'Garden' },
       { key: '애완동물관찰일지', icon: '🐾', en: 'Pet' },
-      { key: '육아일기',       icon: '👶', en: 'Parenting' },
+      { key: '육아일기',        icon: '👶', en: 'Parenting' },
     ],
   },
   {
@@ -26,35 +27,22 @@ const FORMAT_CATEGORIES = [
   },
 ];
 
+type Stats = Awaited<ReturnType<typeof firestoreService.getStats>>;
+
 export function StatsPage() {
   const { user } = useAuth();
-  const [stats, setStats] = useState<{
-    totalRecords: number;
-    polishedCount: number;
-    sayuCount: number;
-    formatCounts: Record<string, number>;
-    formatDays: Record<string, number>;
-  } | null>(null);
+  const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadStats = async () => {
-      try {
-        const data = await firestoreService.getStats(user.uid);
-        setStats(data);
-      } catch (error) {
-        console.error('통계 로딩 실패:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadStats();
+    firestoreService.getStats(user.uid)
+      .then(setStats)
+      .catch((e) => console.error('통계 로딩 실패:', e))
+      .finally(() => setLoading(false));
   }, [user.uid]);
 
   const allFormats = FORMAT_CATEGORIES.flatMap((c) => c.formats.map((f) => f.key));
-  const maxDays = stats
-    ? Math.max(...allFormats.map((f) => stats.formatDays[f] ?? 0), 1)
-    : 1;
+  const maxDays = stats ? Math.max(...allFormats.map((f) => stats.formatDays[f] ?? 0), 1) : 1;
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
@@ -65,7 +53,18 @@ export function StatsPage() {
           <div className="w-full text-center py-16">
             <p className="text-sm" style={{ color: '#999' }}>통계를 불러오는 중...</p>
           </div>
-        ) : stats ? (
+        ) : !stats || stats.totalRecords === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.7 }}
+            className="bg-white rounded-xl shadow-sm w-full max-w-2xl px-6 py-8"
+          >
+            <p className="text-sm text-center" style={{ color: '#999' }}>
+              기록이 없습니다. 기록을 작성하면 통계를 볼 수 있습니다.
+            </p>
+          </motion.div>
+        ) : (
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
@@ -88,7 +87,25 @@ export function StatsPage() {
               </div>
             </div>
 
-            {/* 카테고리별 형식 상세통계 */}
+            {/* 월별 기록 추이 (실제 데이터) */}
+            <div className="bg-white rounded-lg p-6 shadow-sm">
+              <h3 className="text-base mb-1 tracking-wide" style={{ color: '#003366' }}>월별 기록 추이</h3>
+              <p className="text-xs mb-5" style={{ color: '#999' }}>최근 6개월</p>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={stats.monthlyCounts} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+                  <XAxis dataKey="month" tick={{ fill: '#999', fontSize: 12 }} stroke="#e5e5e5" />
+                  <YAxis tick={{ fill: '#999', fontSize: 12 }} stroke="#e5e5e5" allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e5e5', borderRadius: '8px' }}
+                    formatter={(v: number) => [`${v}개`, '기록 수']}
+                  />
+                  <Bar dataKey="count" fill="#003366" radius={[4, 4, 0, 0]} name="기록 수" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* 카테고리별 형식 상세통계 (실제 데이터) */}
             {FORMAT_CATEGORIES.map((category) => (
               <div key={category.label} className="bg-white rounded-lg p-6 shadow-sm">
                 <h3 className="text-base mb-5 tracking-wide" style={{ color: '#003366' }}>
@@ -98,16 +115,24 @@ export function StatsPage() {
                   {category.formats.map(({ key: format, icon, en }) => {
                     const days = stats.formatDays[format] ?? 0;
                     const count = stats.formatCounts[format] ?? 0;
+                    const lastDate = stats.formatLastDate[format] ?? '';
                     return (
                       <div
                         key={format}
                         className="rounded-lg p-4"
                         style={{ backgroundColor: '#F9F8F3', border: '1px solid #e5e5e5' }}
                       >
-                        <div className="flex items-center gap-2 mb-3">
-                          <span style={{ fontSize: '1rem' }}>{icon}</span>
-                          <span className="text-sm tracking-wide" style={{ color: '#333' }}>{format}</span>
-                          <span className="text-xs" style={{ color: '#aaa' }}>{en}</span>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <span style={{ fontSize: '1rem' }}>{icon}</span>
+                            <span className="text-sm tracking-wide" style={{ color: '#333' }}>{format}</span>
+                            <span className="text-xs" style={{ color: '#aaa' }}>{en}</span>
+                          </div>
+                          {lastDate && (
+                            <span className="text-xs" style={{ color: '#aaa' }}>
+                              최근 {lastDate}
+                            </span>
+                          )}
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div
@@ -142,17 +167,6 @@ export function StatsPage() {
                 </div>
               </div>
             ))}
-          </motion.div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.0, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="bg-white rounded-xl shadow-sm w-full max-w-2xl px-6 py-8"
-          >
-            <p className="text-sm text-center" style={{ color: '#999' }}>
-              기록이 없습니다. 기록을 작성하면 통계를 볼 수 있습니다.
-            </p>
           </motion.div>
         )}
       </div>

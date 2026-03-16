@@ -130,7 +130,28 @@ export const firestoreService = {
     Object.keys(formatDateSets).forEach((f) => {
       formatDays[f] = formatDateSets[f].size;
     });
-    return { totalRecords, polishedCount, sayuCount, formatCounts, formatDays };
+    // 월별 기록 수 (최근 6개월)
+    const monthlyMap: Record<string, number> = {};
+    records.forEach((r) => {
+      if (!r.date) return;
+      const ym = r.date.slice(0, 7); // 'YYYY-MM'
+      monthlyMap[ym] = (monthlyMap[ym] || 0) + 1;
+    });
+    const now = new Date();
+    const monthlyCounts = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      return { month: ym.slice(5) + '월', count: monthlyMap[ym] ?? 0 };
+    });
+
+    // 형식별 최근 기록일
+    const formatLastDate: Record<string, string> = {};
+    Object.keys(formatDateSets).forEach((f) => {
+      const dates = Array.from(formatDateSets[f]).sort();
+      formatLastDate[f] = dates[dates.length - 1] ?? '';
+    });
+
+    return { totalRecords, polishedCount, sayuCount, formatCounts, formatDays, monthlyCounts, formatLastDate };
   },
 
   // 📤 내보내기 - 전체 데이터를 JSON으로 내보내기

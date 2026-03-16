@@ -1,8 +1,30 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // 기록 데이터 — 본인만 읽기/쓰기
     match /users/{userId}/records/{recordId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth != null
+                         && request.auth.uid == userId;
+    }
+
+    // 구독 정보 — 본인은 읽기만, 쓰기는 서버(Functions)만
+    match /users/{userId}/subscription/{document=**} {
+      allow read: if request.auth != null
+                  && request.auth.uid == userId;
+      allow write: if false; // Functions에서만 처리
+    }
+
+    // 결제 내역 — 본인은 읽기만, 쓰기는 서버(Functions)만
+    match /users/{userId}/payments/{document=**} {
+      allow read: if request.auth != null
+                  && request.auth.uid == userId;
+      allow write: if false; // Functions에서만 처리
+    }
+
+    // 그 외 모든 경로 — 차단
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
