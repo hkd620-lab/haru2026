@@ -17,7 +17,7 @@ export function BottomNav() {
   return (
     <nav 
       className="fixed bottom-0 left-0 right-0 bg-white border-t z-50 no-print"
-      style={{ borderColor: '#e5e5e5' }}
+      style={{ borderColor: '#e5e5e5', paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="max-w-7xl mx-auto px-1 sm:px-3">
         <div className="grid grid-cols-7 gap-0.5">{navItems.map((item) => {

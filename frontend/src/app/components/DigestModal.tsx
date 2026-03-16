@@ -131,7 +131,7 @@ export function DigestModal({ open, onClose, config }: DigestModalProps) {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => alert('다운로드 기능 준비 중입니다')}
-                className="p-2 rounded hover:bg-gray-50 transition-all"
+                className="p-3 rounded hover:bg-gray-50 transition-all"
                 style={{ color: '#003366' }}
                 title="다운로드"
               >
@@ -139,7 +139,7 @@ export function DigestModal({ open, onClose, config }: DigestModalProps) {
               </button>
               <button
                 onClick={onClose}
-                className="p-2 rounded hover:bg-gray-50 transition-all"
+                className="p-3 rounded hover:bg-gray-50 transition-all"
                 style={{ color: '#999999' }}
                 title="닫기"
               >

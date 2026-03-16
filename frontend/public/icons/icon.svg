@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="80" fill="#4F46E5"/>
+  <text
+    x="256"
+    y="300"
+    font-family="system-ui, -apple-system, sans-serif"
+    font-size="220"
+    font-weight="700"
+    fill="white"
+    text-anchor="middle"
+    dominant-baseline="middle"
+  >하루</text>
+</svg>

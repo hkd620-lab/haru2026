@@ -19,7 +19,7 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <div className="min-h-screen" style={{ backgroundColor: '#FAF9F6' }}>
-          <main className="pb-20">
+          <main style={{ paddingBottom: 'var(--content-pb)' }}>
             <Routes>
               {/* 홈 화면 */}
               <Route path="/" element={<HomePage />} />

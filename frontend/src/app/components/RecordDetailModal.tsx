@@ -75,7 +75,7 @@ export function RecordDetailModal({ record, onClose }: RecordDetailModalProps) {
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded hover:bg-gray-50 transition-all"
+            className="p-3 rounded hover:bg-gray-50 transition-all"
             style={{ color: '#999999' }}
             aria-label="닫기"
           >

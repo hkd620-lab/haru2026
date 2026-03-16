@@ -279,7 +279,7 @@ export function LibraryPage() {
           <div className="flex gap-2 self-start mt-1 ml-auto">
             <button
               onClick={fetchRecords}
-              className="text-xs px-3 py-1.5 rounded-lg transition-all hover:opacity-80"
+              className="text-xs px-3 py-2.5 rounded-lg transition-all hover:opacity-80"
               style={{
                 backgroundColor: '#F0F7FF',
                 color: '#1A3C6E',

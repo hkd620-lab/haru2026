@@ -7,13 +7,13 @@ export function TopBar() {
   const isHome = location.pathname === '/';
 
   return (
-    <div className="fixed top-0 left-0 right-0 bg-white border-b z-50" style={{ borderColor: '#e5e5e5' }}>
+    <div className="fixed top-0 left-0 right-0 bg-white border-b z-50" style={{ borderColor: '#e5e5e5', paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
           <button
             onClick={() => navigate(-1)}
             disabled={isHome}
-            className="p-2 rounded transition-all disabled:opacity-30"
+            className="p-3 rounded transition-all disabled:opacity-30"
             style={{ color: '#1A3C6E' }}
             aria-label="뒤로가기"
           >
@@ -22,7 +22,7 @@ export function TopBar() {
           
           <button
             onClick={() => navigate('/')}
-            className="p-2 rounded transition-all"
+            className="p-3 rounded transition-all"
             style={{ color: '#1A3C6E' }}
             aria-label="홈으로"
           >

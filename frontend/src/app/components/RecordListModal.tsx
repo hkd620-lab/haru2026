@@ -99,7 +99,7 @@ export function RecordListModal({ records, selectedDate, onClose }: RecordListMo
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-white rounded-lg transition-all"
+              className="p-3 hover:bg-white rounded-lg transition-all"
             >
               <X className="w-5 h-5" style={{ color: '#666666' }} />
             </button>

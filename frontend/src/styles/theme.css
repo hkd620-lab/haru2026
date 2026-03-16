@@ -1,6 +1,14 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  /* iOS Safe Area */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --topbar-height: 3.5rem;    /* 56px (h-14) */
+  --bottomnav-height: 5rem;   /* 80px (pb-20) */
+  --content-pt: calc(var(--topbar-height) + var(--safe-area-top));
+  --content-pb: calc(var(--bottomnav-height) + var(--safe-area-bottom));
+
   --font-size: 16px;
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;

@@ -72,7 +72,7 @@ export function PDFPreviewModal({ open, onClose, data }: PDFPreviewModalProps) {
             </button>
             <button
               onClick={onClose}
-              className="p-2 rounded hover:bg-gray-50 transition-all"
+              className="p-3 rounded hover:bg-gray-50 transition-all"
               style={{ color: '#999999' }}
             >
               <X className="w-5 h-5" />
