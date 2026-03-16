@@ -14,7 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
-export type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록';
+export type RecordFormat = '일기' | '에세이' | '여행기록' | '텃밭일기' | '애완동물관찰일지' | '육아일기' | '선교보고' | '일반보고' | '업무일지';
 
 export interface HaruRecord {
   id: string;

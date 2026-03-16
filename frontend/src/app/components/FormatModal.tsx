@@ -4,7 +4,7 @@ import { getTestData } from '../data/testData';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 
-type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록';
+type RecordFormat = '일기' | '에세이' | '여행기록' | '텃밭일기' | '애완동물관찰일지' | '육아일기' | '선교보고' | '일반보고' | '업무일지';
 
 interface FormatModalProps {
   isOpen: boolean;
@@ -64,16 +64,40 @@ const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placehol
     { key: 'travel_thought', label: '단상', placeholder: '빠르게 걷느라 놓쳤던 것들을 멈춰 서니 비로소 볼 수 있었습니다. 삶의 속도를 늦추는 것은 곧 깊어짐을 의미합니다.', rows: 4 },
     { key: 'travel_gratitude', label: '감사', placeholder: '길을 안내해 주신 노스님의 미소에 감사드립니다.\n비를 피할 수 있도록 해 준 쉼터 지붕에 감사드립니다.', rows: 3 },
   ],
+  텃밭일기: [
+    { key: 'garden_weather', label: '날씨/환경', placeholder: '맑음, 최고 18°C. 바람이 약하게 불어 작업하기 좋은 날이었습니다.', rows: 2 },
+    { key: 'garden_work', label: '오늘 한 일', placeholder: '상추 모종 10포기 정식. 고추 지지대 설치. 잡초 제거 약 1시간.', rows: 3 },
+    { key: 'garden_observation', label: '관찰', placeholder: '토마토 첫 꽃봉오리 발견. 상추 잎에 작은 벌레 흔적이 보임.', rows: 3 },
+    { key: 'garden_harvest', label: '수확/변화', placeholder: '열무 200g 수확. 지난주보다 깻잎이 두 배 가까이 자랐습니다.', rows: 3 },
+    { key: 'garden_memo', label: '메모/계획', placeholder: '다음 주 방울토마토 지지대 추가 필요. 물은 이틀에 한 번 주기.', rows: 2 },
+  ],
+  애완동물관찰일지: [
+    { key: 'pet_health', label: '건강 상태', placeholder: '식욕 양호, 활동량 보통. 눈곱이 조금 있어 생리식염수로 닦아줌.', rows: 2 },
+    { key: 'pet_behavior', label: '행동/특이사항', placeholder: '오늘 처음으로 "앉아" 명령을 세 번 연속 성공함. 낯선 소리에 짖는 횟수가 줄었습니다.', rows: 3 },
+    { key: 'pet_food', label: '식사', placeholder: '오전 사료 60g 완식. 저녁 간식(닭가슴살 treats) 2개. 물 충분히 섭취.', rows: 2 },
+    { key: 'pet_activity', label: '활동', placeholder: '오전 공원 산책 30분. 오후 실내 공놀이 10분. 낮잠 약 3시간.', rows: 3 },
+    { key: 'pet_memo', label: '메모/다음 할 일', placeholder: '이번 달 말 예방접종 예약 필요. 발톱이 길어졌으니 주말에 손질 예정.', rows: 2 },
+  ],
+  육아일기: [
+    { key: 'parenting_growth', label: '오늘의 성장', placeholder: '혼자 숟가락으로 밥을 떠먹으려고 시도함. 아직 흘리지만 의지가 대단합니다.', rows: 3 },
+    { key: 'parenting_moment', label: '특별한 순간', placeholder: '"엄마, 사랑해"를 처음으로 스스로 말했습니다. 눈물이 날 뻔했습니다.', rows: 3 },
+    { key: 'parenting_health', label: '건강/수면', placeholder: '열 없음, 컨디션 양호. 낮잠 2시간, 밤 9시 취침.', rows: 2 },
+    { key: 'parenting_concern', label: '걱정/고민', placeholder: '또래보다 말이 조금 늦는 것 같아 걱정됩니다. 더 많이 말 걸어줘야겠습니다.', rows: 3 },
+    { key: 'parenting_gratitude', label: '감사', placeholder: '웃는 얼굴을 보면 피로가 싹 사라집니다. 이 아이가 내 곁에 있어 감사합니다.', rows: 3 },
+  ],
 };
 
 // 형식별 prefix 매핑
 const FORMAT_PREFIX: Record<RecordFormat, string> = {
   '일기': 'diary',
   '에세이': 'essay',
+  '여행기록': 'travel',
+  '텃밭일기': 'garden',
+  '애완동물관찰일지': 'pet',
+  '육아일기': 'parenting',
   '선교보고': 'mission',
   '일반보고': 'report',
   '업무일지': 'work',
-  '여행기록': 'travel',
 };
 
 export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, onSave }: FormatModalProps) {

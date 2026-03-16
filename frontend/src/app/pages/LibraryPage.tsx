@@ -112,14 +112,18 @@ export function LibraryPage() {
     }
   };
 
+  const getFormatPrefix = (format: RecordFormat): string => {
+    const prefixMap: Record<string, string> = {
+      '일기': 'diary_', '에세이': 'essay_', '여행기록': 'travel_',
+      '텃밭일기': 'garden_', '애완동물관찰일지': 'pet_', '육아일기': 'parenting_',
+      '선교보고': 'mission_', '일반보고': 'report_', '업무일지': 'work_',
+    };
+    return prefixMap[format] ?? `${format}_`;
+  };
+
   const getFormatData = (format: RecordFormat) => {
     if (!selectedRecord) return {};
-    const prefix =
-      format === '일기' ? 'diary_' :
-      format === '에세이' ? 'essay_' :
-      format === '선교보고' ? 'mission_' :
-      format === '일반보고' ? 'report_' :
-      format === '업무일지' ? 'work_' : 'travel_';
+    const prefix = getFormatPrefix(format);
 
     const data: Record<string, string> = {};
     Object.keys(selectedRecord).forEach((key) => {
@@ -133,13 +137,12 @@ export function LibraryPage() {
   // 다듬기 완료 여부 확인
   const isFormatPolished = (format: RecordFormat) => {
     if (!selectedRecord) return false;
-    const prefix =
-      format === '일기' ? 'diary' :
-      format === '에세이' ? 'essay' :
-      format === '선교보고' ? 'mission' :
-      format === '일반보고' ? 'report' :
-      format === '업무일지' ? 'work' : 'travel';
-    
+    const prefixMap: Record<string, string> = {
+      '일기': 'diary', '에세이': 'essay', '여행기록': 'travel',
+      '텃밭일기': 'garden', '애완동물관찰일지': 'pet', '육아일기': 'parenting',
+      '선교보고': 'mission', '일반보고': 'report', '업무일지': 'work',
+    };
+    const prefix = prefixMap[format] ?? format;
     const sayuKey = `${prefix}_sayu`;
     const value = (selectedRecord as any)[sayuKey];
     return value && typeof value === 'string' && value.trim().length > 0;
@@ -148,12 +151,7 @@ export function LibraryPage() {
   // 원본만 작성 여부 확인 (다듬기는 안 함)
   const hasFormatContent = (format: RecordFormat) => {
     if (!selectedRecord) return false;
-    const prefix =
-      format === '일기' ? 'diary_' :
-      format === '에세이' ? 'essay_' :
-      format === '선교보고' ? 'mission_' :
-      format === '일반보고' ? 'report_' :
-      format === '업무일지' ? 'work_' : 'travel_';
+    const prefix = getFormatPrefix(format);
 
     return Object.keys(selectedRecord).some(key => {
       if (key.startsWith(prefix)) {
@@ -199,7 +197,12 @@ export function LibraryPage() {
 
     try {
       const updateData: Record<string, any> = {};
-      const formatPrefixes = ['diary_', 'essay_', 'mission_', 'report_', 'work_', 'travel_', 'diary_sayu', 'essay_sayu', 'mission_sayu', 'report_sayu', 'work_sayu', 'travel_sayu'];
+      const formatPrefixes = [
+        'diary_', 'essay_', 'travel_', 'garden_', 'pet_', 'parenting_',
+        'mission_', 'report_', 'work_',
+        'diary_sayu', 'essay_sayu', 'travel_sayu', 'garden_sayu', 'pet_sayu', 'parenting_sayu',
+        'mission_sayu', 'report_sayu', 'work_sayu',
+      ];
       
       Object.keys(selectedRecord).forEach((key) => {
         if (formatPrefixes.some(prefix => key.startsWith(prefix))) {

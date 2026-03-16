@@ -13,7 +13,10 @@ type Temperature = '폭염' | '온난' | '쾌적' | '쌀쌀' | '혹한';
 const weatherOptions: Weather[] = ['쾌청', '흐림', '강우', '굳음'];
 const temperatureOptions: Temperature[] = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
 const moodOptions: Mood[] = ['기쁨', '평온', '무미', '울적', '번잡'];
-const formatOptions: RecordFormat[] = ['일기', '에세이', '선교보고', '일반보고', '업무일지', '여행기록'];
+const FORMAT_CATEGORIES = [
+  { label: '생활', formats: ['일기', '에세이', '여행기록', '텃밭일기', '애완동물관찰일지', '육아일기'] as RecordFormat[] },
+  { label: '업무', formats: ['선교보고', '일반보고', '업무일지'] as RecordFormat[] },
+];
 
 export function RecordPage() {
   const navigate = useNavigate();
@@ -196,27 +199,35 @@ export function RecordPage() {
               최대 3개까지 선택 가능
             </p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {formatOptions.map((format) => {
-              const isSelected = selectedFormats.includes(format);
-              const isDisabled = !isSelected && selectedFormats.length >= 3;
-
-              return (
-                <button
-                  key={format}
-                  onClick={() => toggleFormat(format)}
-                  disabled={isDisabled}
-                  className="p-2.5 rounded-lg text-center transition-all disabled:opacity-30 disabled:cursor-not-allowed text-xs"
-                  style={{
-                    backgroundColor: isSelected ? '#1A3C6E' : '#FAF9F6',
-                    border: isSelected ? 'none' : '1px solid #e5e5e5',
-                    color: isSelected ? '#FAF9F6' : '#333333',
-                  }}
-                >
-                  {format}
-                </button>
-              );
-            })}
+          <div className="space-y-3">
+            {FORMAT_CATEGORIES.map((category) => (
+              <div key={category.label}>
+                <p className="text-xs mb-1.5 tracking-wider" style={{ color: '#999999' }}>
+                  {category.label}
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {category.formats.map((format) => {
+                    const isSelected = selectedFormats.includes(format);
+                    const isDisabled = !isSelected && selectedFormats.length >= 3;
+                    return (
+                      <button
+                        key={format}
+                        onClick={() => toggleFormat(format)}
+                        disabled={isDisabled}
+                        className="p-2.5 rounded-lg text-center transition-all disabled:opacity-30 disabled:cursor-not-allowed text-xs"
+                        style={{
+                          backgroundColor: isSelected ? '#1A3C6E' : '#FAF9F6',
+                          border: isSelected ? 'none' : '1px solid #e5e5e5',
+                          color: isSelected ? '#FAF9F6' : '#333333',
+                        }}
+                      >
+                        {format}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 
