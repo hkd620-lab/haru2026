@@ -130,6 +130,9 @@ export const firestoreService = {
     Object.keys(formatDateSets).forEach((f) => {
       formatDays[f] = formatDateSets[f].size;
     });
+
+    // 🔍 디버깅 로그
+    console.log('📊 통계 데이터:', { formatCounts, formatDays, formatDateSets: Object.keys(formatDateSets).reduce((acc, f) => ({...acc, [f]: Array.from(formatDateSets[f])}), {}) });
     // 월별 기록 수 (최근 6개월)
     const monthlyMap: Record<string, number> = {};
     records.forEach((r) => {
