@@ -117,7 +117,20 @@ export const firestoreService = {
         formatCounts[f] = (formatCounts[f] || 0) + 1;
       });
     });
-    return { totalRecords, polishedCount, sayuCount, formatCounts };
+    // 형식별 고유 기록일수 (중복 날짜 제거)
+    const formatDateSets: Record<string, Set<string>> = {};
+    records.forEach((r) => {
+      if (!r.date) return;
+      r.formats?.forEach((f) => {
+        if (!formatDateSets[f]) formatDateSets[f] = new Set();
+        formatDateSets[f].add(r.date);
+      });
+    });
+    const formatDays: Record<string, number> = {};
+    Object.keys(formatDateSets).forEach((f) => {
+      formatDays[f] = formatDateSets[f].size;
+    });
+    return { totalRecords, polishedCount, sayuCount, formatCounts, formatDays };
   },
 
   // 📤 내보내기 - 전체 데이터를 JSON으로 내보내기
