@@ -36,7 +36,15 @@ export function StatsPage() {
 
   useEffect(() => {
     firestoreService.getStats(user.uid)
-      .then(setStats)
+      .then((data) => {
+        console.log('✅ 통계 데이터 로드 완료:', data);
+        console.log('🔍 에세이 정보:', {
+          count: data.formatCounts['에세이'],
+          days: data.formatDays['에세이'],
+          lastDate: data.formatLastDate['에세이']
+        });
+        setStats(data);
+      })
       .catch((e) => console.error('통계 로딩 실패:', e))
       .finally(() => setLoading(false));
   }, [user.uid]);
