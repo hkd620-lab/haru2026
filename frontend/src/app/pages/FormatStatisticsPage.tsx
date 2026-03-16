@@ -171,6 +171,15 @@ export function FormatStatisticsPage() {
         return;
       }
 
+      console.log('\n\n🌟 ===== FormatStatisticsPage 데이터 로드 시작 =====');
+      console.log('🎯 형식:', formatType);
+      console.log('📅 선택된 기간 모드:', periodMode);
+      console.log('📅 계산된 기간:', periodInfo);
+      console.log('  시작일:', periodInfo.start);
+      console.log('  종료일:', periodInfo.end);
+      console.log('  라벨:', periodInfo.label);
+      console.log('======================================\n');
+
       setLoading(true);
       try {
         const result = await firestoreService.calculateFormatStatistics(
@@ -180,8 +189,12 @@ export function FormatStatisticsPage() {
           periodInfo.end
         );
         setData(result);
+        
+        console.log('\n✅ 데이터 로드 완료');
+        console.log('결과:', result);
+        console.log('======================================\n\n');
       } catch (error) {
-        console.error('통계 로드 실패:', error);
+        console.error('❌ 통계 로드 실패:', error);
         setData(null);
       } finally {
         setLoading(false);

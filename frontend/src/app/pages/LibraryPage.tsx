@@ -15,7 +15,7 @@ export function LibraryPage() {
   const [records, setRecords] = useState<HaruRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRecord, setSelectedRecord] = useState<HaruRecord | null>(null);
-
+  
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
     format: RecordFormat | null;
@@ -33,7 +33,6 @@ export function LibraryPage() {
   // formats가 누락/불완전할 때 record 내용을 보고 보완 (서재에서 버튼이 안 뜨는 문제 해결)
   const getFormatsForDisplay = (record: HaruRecord): RecordFormat[] => {
     const base = (record.formats && record.formats.length > 0) ? [...record.formats] : [];
-
     const hasPrefix = (p: string) => Object.keys(record).some((k) => k.startsWith(p));
     const ensure = (fmt: RecordFormat, prefix: string) => {
       if (!base.includes(fmt) && hasPrefix(prefix)) base.push(fmt);
@@ -72,7 +71,7 @@ export function LibraryPage() {
       setLoading(false);
       return;
     }
-
+    
     setLoading(true);
     try {
       const uid = authUser.uid;
@@ -104,29 +103,83 @@ export function LibraryPage() {
   const handleSaveFormatData = async (formatData: Record<string, string>) => {
     if (!selectedRecord || !authUser?.uid) return;
 
-    const filteredData: Record<string, string> = {};
+    console.log('💾 ===== 형식 데이터 저장 시작 =====');
+    console.log('현재 선택된 형식:', modalState.format);
+    console.log('기존 formats 배열:', selectedRecord.formats);
+    console.log('전달받은 formatData:', formatData);
+    
+    // ✅ 수정: 빈 값은 null로 저장 (삭제 가능하게)
+    const updateData: Record<string, any> = {};
+    const fieldsToDelete: string[] = [];  // 삭제할 필드 목록
+    let hasContent = false;  // 최소 1개 이상의 내용이 있는지 체크
+    
     Object.entries(formatData).forEach(([key, value]) => {
-      if (typeof value === 'string' && value.trim().length > 0) {
-        filteredData[key] = value;
+      if (typeof value === 'string') {
+        if (value.trim().length > 0) {
+          updateData[key] = value;
+          hasContent = true;
+        } else {
+          // 빈 값은 null로 저장 (Firestore에서 필드 삭제)
+          updateData[key] = null;
+          fieldsToDelete.push(key);  // 삭제할 필드로 표시
+        }
       }
     });
 
-    if (Object.keys(filteredData).length === 0) {
+    if (!hasContent) {
       toast.warning('최소 1개 이상의 필드를 작성해주세요.');
       return;
     }
 
     try {
-      await firestoreService.updateRecord(authUser.uid, selectedRecord.id, filteredData);
+      // ✅ formats 배열 업데이트 로직
+      const currentFormats = selectedRecord.formats || [];
+      const formatToAdd = modalState.format!;
+      
+      // 이미 formats 배열에 있는지 확인
+      const updatedFormats = currentFormats.includes(formatToAdd)
+        ? currentFormats
+        : [...currentFormats, formatToAdd];
+      
+      console.log('업데이트될 formats 배열:', updatedFormats);
+      console.log('추가된 형식:', formatToAdd);
+      console.log('삭제할 필드:', fieldsToDelete);
+      
+      // formats 배열도 함께 저장
+      updateData.formats = updatedFormats;
+      
+      console.log('저장할 전체 데이터:', updateData);
 
-      const updated = { ...selectedRecord, ...filteredData };
+      await firestoreService.updateRecord(authUser.uid, selectedRecord.id, updateData);
+
+      // ✅ 로컬 state 업데이트: null 필드는 완전히 제거!
+      const updated = { ...selectedRecord };
+      
+      // 값이 있는 필드만 업데이트
+      Object.entries(updateData).forEach(([key, value]) => {
+        if (value !== null) {
+          updated[key] = value;
+        }
+      });
+      
+      // null로 표시된 필드는 완전히 삭제
+      fieldsToDelete.forEach(key => {
+        delete updated[key];
+      });
+      
       setRecords((prev) => prev.map((r) => (r.id === selectedRecord.id ? updated : r)));
       setSelectedRecord(updated);
 
       toast.success('저장되었습니다!');
+      
+      console.log('✅ 저장 완료! 새로운 formats:', updated.formats);
+      console.log('삭제된 필드:', fieldsToDelete);
+      console.log('최종 updated 객체:', updated);
+      console.log('=====================================\n');
+      
       await fetchRecords();
     } catch (error) {
-      console.error('저장 실패:', error);
+      console.error('❌ 저장 실패:', error);
       toast.error('저장에 실패했습니다. 다시 시도해주세요.');
     }
   };
@@ -164,7 +217,7 @@ export function LibraryPage() {
       format === '여행기록' ? 'travel' :
       format === '텃밭일지' ? 'garden' :
       format === '애완동물관찰일지' ? 'pet' : 'child';
-
+    
     const sayuKey = `${prefix}_sayu`;
     // @ts-ignore
     const sayuValue = selectedRecord[sayuKey];
@@ -180,7 +233,7 @@ export function LibraryPage() {
         formats: []  // 👈 formats 배열도 초기화!
       };
       const formatPrefixes = ['diary_', 'essay_', 'mission_', 'report_', 'work_', 'travel_', 'garden_', 'pet_', 'child_'];
-
+      
       Object.keys(selectedRecord).forEach((key) => {
         if (formatPrefixes.some(prefix => key.startsWith(prefix))) {
           updateData[key] = null;
@@ -342,7 +395,7 @@ export function LibraryPage() {
               <div className="flex gap-2 flex-wrap">
                 {formatsForDisplay.map((format: RecordFormat) => {
                   const hasPolished = isFormatPolished(format);
-
+                  
                   return (
                     <button
                       key={format}

@@ -1,5 +1,6 @@
 import { onRequest } from 'firebase-functions/v2/https';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { defineSecret } from 'firebase-functions/params';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as admin from 'firebase-admin';
 import axios from 'axios';
@@ -10,8 +11,12 @@ if (!admin.apps.length) {
   admin.initializeApp();
 }
 
-// ===== 환경변수 직접 설정 =====
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+// ===== 🔐 Secrets 정의 (보안) =====
+const GEMINI_API_KEY_SECRET = defineSecret('GEMINI_API_KEY');
+const GOOGLE_CLIENT_ID_SECRET = defineSecret('GOOGLE_CLIENT_ID');
+const GOOGLE_CLIENT_SECRET_SECRET = defineSecret('GOOGLE_CLIENT_SECRET');
+
+// ===== 환경변수 직접 설정 (카카오/네이버는 비공개 아님) =====
 const KAKAO_CLIENT_ID = 'b910c15fde12b678e612c23aa56fe27f';
 const KAKAO_CLIENT_SECRET = 'a2wUyOK1MK9TcfSYw6e7BET7aU8Gn1au';
 const NAVER_CLIENT_ID = 'mRSWCHU_IHbPE7teR4P5';
@@ -20,13 +25,81 @@ const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
 
 const KAKAO_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/kakaoCallback';
 const NAVER_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/naverCallback';
+const GOOGLE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/googleCallback';
 
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const db = admin.firestore();
+
+// ===== 🔑 이메일 기반 통합 UID 생성/조회 함수 (기존 UID 우선) =====
+async function getOrCreateUnifiedUid(email: string, provider: string): Promise<string> {
+  try {
+    // 1. 이메일을 정규화 (소문자, 공백 제거)
+    const normalizedEmail = email.toLowerCase().trim();
+    
+    // 2. Firestore에서 이메일 → UID 매핑 확인
+    const emailDoc = await db.collection('email_to_uid').doc(normalizedEmail).get();
+    
+    if (emailDoc.exists) {
+      // 기존 매핑 반환
+      const data = emailDoc.data();
+      console.log(`✅ 매핑된 UID 사용: ${data?.uid} (이메일: ${normalizedEmail})`);
+      return data?.uid as string;
+    }
+    
+    // 3. 기존 사용자 데이터 검색 (naver_xxx, kakao_xxx, BBPe... 등)
+    console.log(`🔍 기존 사용자 검색 중... (이메일: ${normalizedEmail})`);
+    
+    try {
+      // Firebase Auth에서 이메일로 사용자 검색
+      const userRecord = await admin.auth().getUserByEmail(normalizedEmail);
+      
+      if (userRecord && userRecord.uid) {
+        console.log(`✅ 기존 UID 발견: ${userRecord.uid} (이메일: ${normalizedEmail})`);
+        
+        // 매핑 저장
+        await db.collection('email_to_uid').doc(normalizedEmail).set({
+          uid: userRecord.uid,
+          email: normalizedEmail,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          migratedFrom: provider,
+          originalUid: userRecord.uid,
+        });
+        
+        return userRecord.uid;
+      }
+    } catch (authError: any) {
+      if (authError.code !== 'auth/user-not-found') {
+        console.error('Firebase Auth 검색 오류:', authError);
+      }
+      // 사용자 없음 - 계속 진행
+    }
+    
+    // 4. 정말 새 사용자 - 통합 UID 생성 (이메일 SHA256 해시 기반)
+    const hash = crypto.createHash('sha256').update(normalizedEmail).digest('hex');
+    const unifiedUid = `unified_${hash.substring(0, 28)}`; // Firebase UID 길이 제한 고려
+    
+    // 5. Firestore에 매핑 저장
+    await db.collection('email_to_uid').doc(normalizedEmail).set({
+      uid: unifiedUid,
+      email: normalizedEmail,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      firstProvider: provider,
+    });
+    
+    console.log(`✨ 새 통합 UID 생성: ${unifiedUid} (이메일: ${normalizedEmail}, provider: ${provider})`);
+    return unifiedUid;
+    
+  } catch (error) {
+    console.error('❌ 통합 UID 생성/조회 실패:', error);
+    throw error;
+  }
+}
 
 // ===== 🎨 AI 다듬기 =====
 export const polishContent = onCall(
-  { region: 'asia-northeast3' },
+  { 
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET]  // 🔐 Secret 연결
+  },
   async (request) => {
     try {
       const { text, mode = 'premium', format } = request.data;
@@ -47,6 +120,7 @@ export const polishContent = onCall(
 새로운 사건 추가 금지.`;
       }
 
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());  // 🔐 Secret 값 사용
       const model = genAI.getGenerativeModel({
         model: "gemini-2.5-flash",
         systemInstruction: systemPrompt
@@ -58,7 +132,7 @@ export const polishContent = onCall(
       // ===== 통계 분석 (모든 형식) =====
       let stats = null;
       if (format) {
-        stats = await analyzeStats(text, format);
+        stats = await analyzeStats(text, format, GEMINI_API_KEY_SECRET.value());
       }
 
       return { 
@@ -240,7 +314,7 @@ JSON만 출력:
 };
 
 // ===== 📊 범용 통계 분석 함수 =====
-async function analyzeStats(text: string, format: string) {
+async function analyzeStats(text: string, format: string, apiKey: string) {
   try {
     const prompt = STATS_PROMPTS[format];
     if (!prompt) {
@@ -253,6 +327,7 @@ async function analyzeStats(text: string, format: string) {
 기록 내용:
 ${text}`;
 
+    const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ 
       model: "gemini-2.5-flash"
     });
@@ -277,11 +352,6 @@ ${text}`;
   }
 }
 
-// ===== 📊 일기 통계 분석 함수 (하위 호환성) =====
-async function analyzeDiaryStats(text: string) {
-  return analyzeStats(text, 'diary');
-}
-
 // ===== 🟡 카카오 로그인 시작 =====
 export const kakaoLoginStart = onRequest(
   { region: 'asia-northeast3' },
@@ -300,6 +370,7 @@ export const kakaoLoginStart = onRequest(
         `client_id=${KAKAO_CLIENT_ID}&` +
         `redirect_uri=${encodeURIComponent(KAKAO_REDIRECT_URI)}&` +
         `response_type=code&` +
+        `scope=account_email&` +
         `state=${state}`;
 
       res.redirect(kakaoAuthUrl);
@@ -310,7 +381,7 @@ export const kakaoLoginStart = onRequest(
   }
 );
 
-// ===== 🟡 카카오 콜백 =====
+// ===== 🟡 카카오 콜백 (통합 UID 적용) =====
 export const kakaoCallback = onRequest(
   { region: 'asia-northeast3' },
   async (req, res) => {
@@ -359,18 +430,19 @@ export const kakaoCallback = onRequest(
         throw new Error('카카오 사용자 ID를 가져올 수 없습니다');
       }
 
-      const uid = `kakao_${kakaoUser.id}`;
       const email = kakaoUser.kakao_account?.email || `kakao_${kakaoUser.id}@placeholder.local`;
       const displayName =
         kakaoUser.kakao_account?.profile?.nickname || `kakao_user_${kakaoUser.id}`;
-      const photoURL =
-        kakaoUser.kakao_account?.profile?.profile_image_url || null;
 
+      // 🔑 통합 UID 생성/조회
+      const uid = await getOrCreateUnifiedUid(email, 'kakao');
+
+      // photoURL 완전히 제거 - 카카오는 photoURL 없이 생성
       try {
-        await admin.auth().updateUser(uid, { email, displayName, photoURL });
+        await admin.auth().updateUser(uid, { email, displayName });
       } catch (error: any) {
         if (error.code === 'auth/user-not-found') {
-          await admin.auth().createUser({ uid, email, displayName, photoURL });
+          await admin.auth().createUser({ uid, email, displayName });
         } else throw error;
       }
 
@@ -417,7 +489,7 @@ export const naverLoginStart = onRequest(
   }
 );
 
-// ===== 🟢 네이버 콜백 =====
+// ===== 🟢 네이버 콜백 (통합 UID 적용) =====
 export const naverCallback = onRequest(
   { region: 'asia-northeast3' },
   async (req, res) => {
@@ -460,9 +532,11 @@ export const naverCallback = onRequest(
 
       const naverUser = userResponse.data.response;
 
-      const uid = `naver_${naverUser.id}`;
       const email = naverUser.email || `naver_${naverUser.id}@placeholder.local`;
       const displayName = naverUser.name || `naver_user_${naverUser.id}`;
+      
+      // 🔑 통합 UID 생성/조회
+      const uid = await getOrCreateUnifiedUid(email, 'naver');
       
       // photoURL 완전히 제거 - 네이버는 photoURL 없이 생성
       try {
@@ -481,6 +555,115 @@ export const naverCallback = onRequest(
 
     } catch (error: any) {
       console.error('❌ 네이버 콜백 실패:', error);
+      res.redirect(
+        `${FRONTEND_URL}/login?error=${encodeURIComponent(error.message)}`
+      );
+    }
+  }
+);
+
+// ===== 🔵 구글 로그인 시작 =====
+export const googleLoginStart = onRequest(
+  { 
+    region: 'asia-northeast3',
+    secrets: [GOOGLE_CLIENT_ID_SECRET, GOOGLE_CLIENT_SECRET_SECRET]  // 🔐 Secret 연결
+  },
+  async (req, res) => {
+    try {
+      const GOOGLE_CLIENT_ID = GOOGLE_CLIENT_ID_SECRET.value();  // 🔐 Secret 값 사용
+      
+      const state = crypto.randomBytes(32).toString('hex');
+
+      await db.collection('oauth_states').doc(state).set({
+        provider: 'google',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
+      });
+
+      const googleAuthUrl =
+        `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${GOOGLE_CLIENT_ID}&` +
+        `redirect_uri=${encodeURIComponent(GOOGLE_REDIRECT_URI)}&` +
+        `response_type=code&` +
+        `scope=email profile&` +
+        `state=${state}`;
+
+      res.redirect(googleAuthUrl);
+    } catch (error) {
+      console.error('❌ 구글 로그인 시작 실패:', error);
+      res.redirect(`${FRONTEND_URL}/login?error=start_failed`);
+    }
+  }
+);
+
+// ===== 🔵 구글 콜백 (통합 UID 적용) =====
+export const googleCallback = onRequest(
+  { 
+    region: 'asia-northeast3',
+    secrets: [GOOGLE_CLIENT_ID_SECRET, GOOGLE_CLIENT_SECRET_SECRET]  // 🔐 Secret 연결
+  },
+  async (req, res) => {
+    try {
+      const GOOGLE_CLIENT_ID = GOOGLE_CLIENT_ID_SECRET.value();  // 🔐 Secret 값 사용
+      const GOOGLE_CLIENT_SECRET = GOOGLE_CLIENT_SECRET_SECRET.value();  // 🔐 Secret 값 사용
+      
+      const { code, state } = req.query;
+
+      if (!state || typeof state !== 'string') throw new Error('Invalid state');
+
+      const stateDoc = await db.collection('oauth_states').doc(state).get();
+      if (!stateDoc.exists) throw new Error('State not found');
+
+      const stateData = stateDoc.data();
+      if (stateData?.expiresAt.toMillis() < Date.now()) {
+        throw new Error('State expired');
+      }
+
+      await stateDoc.ref.delete();
+
+      const tokenResponse = await axios.post(
+        'https://oauth2.googleapis.com/token',
+        {
+          code,
+          client_id: GOOGLE_CLIENT_ID,
+          client_secret: GOOGLE_CLIENT_SECRET,
+          redirect_uri: GOOGLE_REDIRECT_URI,
+          grant_type: 'authorization_code',
+        }
+      );
+
+      const { access_token } = tokenResponse.data;
+
+      const userResponse = await axios.get(
+        'https://www.googleapis.com/oauth2/v2/userinfo',
+        { headers: { Authorization: `Bearer ${access_token}` } }
+      );
+
+      const googleUser = userResponse.data;
+
+      const email = googleUser.email;
+      const displayName = googleUser.name || `google_user_${googleUser.id}`;
+      const photoURL = googleUser.picture || null;
+
+      // 🔑 통합 UID 생성/조회
+      const uid = await getOrCreateUnifiedUid(email, 'google');
+
+      try {
+        await admin.auth().updateUser(uid, { email, displayName, photoURL });
+      } catch (error: any) {
+        if (error.code === 'auth/user-not-found') {
+          await admin.auth().createUser({ uid, email, displayName, photoURL });
+        } else throw error;
+      }
+
+      const customToken = await admin.auth().createCustomToken(uid);
+
+      res.redirect(
+        `${FRONTEND_URL}/auth/callback?customToken=${customToken}&provider=google`
+      );
+
+    } catch (error: any) {
+      console.error('❌ 구글 콜백 실패:', error);
       res.redirect(
         `${FRONTEND_URL}/login?error=${encodeURIComponent(error.message)}`
       );

@@ -184,36 +184,36 @@ function SayuModal({
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {Object.entries(originalData).map(([key, value]) => {
-            let displayLabel = key;
-            if (key.includes('_')) {
-              const parts = key.split('_');
-              if (parts.length > 1) {
-                const label = parts[1];
-                displayLabel = label.charAt(0).toUpperCase() + label.slice(1);
-              }
-            } else {
-               displayLabel = key.charAt(0).toUpperCase() + key.slice(1);
+          let displayLabel = key;
+          if (key.includes('_')) {
+            const parts = key.split('_');
+            if (parts.length > 1) {
+              const label = parts[1];
+              displayLabel = label.charAt(0).toUpperCase() + label.slice(1);
             }
-            
-            return (
-              <div key={key} style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '8px', border: '1px solid #eee' }}>
-                <span style={{ 
-                  display: 'inline-block', 
-                  fontSize: '11px', 
-                  fontWeight: '600', 
-                  color: '#1A3C6E', 
-                  backgroundColor: '#F0F7FF', 
-                  padding: '4px 8px', 
-                  borderRadius: '4px',
-                  marginBottom: '8px'
-                }}>
-                  {displayLabel}
-                </span>
-                <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.6', color: '#333', whiteSpace: 'pre-wrap' }}>
-                  {value}
-                </p>
-              </div>
-            );
+          } else {
+            displayLabel = key.charAt(0).toUpperCase() + key.slice(1);
+          }
+
+          return (
+            <div key={key} style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '8px', border: '1px solid #eee' }}>
+              <span style={{ 
+                display: 'inline-block', 
+                fontSize: '11px', 
+                fontWeight: '600', 
+                color: '#1A3C6E', 
+                backgroundColor: '#F0F7FF', 
+                padding: '4px 8px', 
+                borderRadius: '4px',
+                marginBottom: '8px'
+              }}>
+                {displayLabel}
+              </span>
+              <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.6', color: '#333', whiteSpace: 'pre-wrap' }}>
+                {value}
+              </p>
+            </div>
+          );
         })}
       </div>
     );
@@ -249,6 +249,7 @@ function SayuModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Header */}
         <div
           style={{
             padding: '16px 20px',
@@ -264,7 +265,6 @@ function SayuModal({
             <h2 style={{ fontSize: 16, color: '#1A3C6E', fontWeight: 600, margin: 0 }}>
               {viewMode === 'ai' ? '✨ AI 다듬기' : '📜 원본'}
             </h2>
-            
             <div className="no-print" style={{ display: 'flex', backgroundColor: '#f0f0f0', borderRadius: '6px', padding: '2px', marginLeft: 8 }}>
               <button
                 onClick={() => setViewMode('ai')}
@@ -317,6 +317,7 @@ function SayuModal({
           </button>
         </div>
 
+        {/* Content */}
         <div
           ref={printRef}
           style={{
@@ -377,42 +378,30 @@ function SayuModal({
                 </h1>
               )}
 
-              <div
+              {/* ✅ textarea로 변경하여 자유롭게 편집 가능 */}
+              <textarea
+                value={editedContent}
+                onChange={(e) => setEditedContent(e.target.value)}
+                placeholder="AI가 다듬은 내용을 자유롭게 수정할 수 있습니다..."
                 style={{
                   width: '100%',
-                  padding: '8px',
+                  minHeight: '400px',
+                  padding: '16px',
                   fontSize: 14,
-                  border: '1px dashed #ccc',
-                  borderRadius: 6,
-                  backgroundColor: '#fafafa',
+                  lineHeight: 1.8,
+                  border: '1px solid #e5e5e5',
+                  borderRadius: 8,
+                  backgroundColor: '#fff',
                   color: '#333',
+                  resize: 'vertical',
+                  fontFamily: 'inherit',
+                  outline: 'none',
+                  whiteSpace: 'pre-wrap',
                 }}
-              >
-                {editedContent.split('\n\n').filter(para => para.trim()).map((paragraph, idx) => (
-                  <p
-                    key={idx}
-                    contentEditable
-                    suppressContentEditableWarning
-                    onBlur={(e) => {
-                      const paragraphs = editedContent.split('\n\n').filter(p => p.trim());
-                      paragraphs[idx] = e.currentTarget.textContent || '';
-                      setEditedContent(paragraphs.join('\n\n'));
-                    }}
-                    style={{
-                      margin: 0,
-                      marginBottom: '3px',
-                      padding: 0,
-                      fontSize: 14,
-                      color: '#333',
-                      lineHeight: 1.7,
-                      outline: 'none',
-                      textIndent: '10pt',
-                    }}
-                  >
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
+              />
+              <p style={{ fontSize: 12, color: '#999', marginTop: 8, marginBottom: 12 }}>
+                💡 AI가 생성한 내용을 자유롭게 수정하세요. 수정 후 "💾 최종 저장" 버튼을 눌러주세요!
+              </p>
 
               {images && images.length > 0 && (
                 <div>
@@ -464,6 +453,7 @@ function SayuModal({
           )}
         </div>
 
+        {/* Rating */}
         <div
           className="no-print"
           style={{
@@ -495,6 +485,7 @@ function SayuModal({
           </div>
         </div>
 
+        {/* Footer Buttons */}
         <div
           className="no-print"
           style={{
@@ -575,6 +566,7 @@ export function SayuPage() {
     content: string;
     originalData?: Record<string, string>;
     format?: string;
+    formatKey?: string;  // ✅ 추가: 형식 키 (essay, diary 등)
     dateLabel: string;
     currentRating: number;
     recordDate?: string;
@@ -649,11 +641,13 @@ export function SayuPage() {
 
   const hasSayu = (day: Date | null): 'saved' | 'polished' | null => {
     if (!day) return null;
+
     const dateStr = formatDateString(day);
     const record = records.find((r) => r.date === dateStr);
     if (!record) return null;
 
     const formats = ['diary', 'essay', 'mission', 'report', 'work', 'travel', 'garden', 'pet', 'child'];
+
     const hasPolishedSayu = formats.some((fmt) => {
       const sayuKey = `${fmt}_sayu`;
       const polishedKey = `${fmt}_polished`;
@@ -738,6 +732,7 @@ export function SayuPage() {
         content: String(sayuContent),
         originalData,
         format: formatLabel,
+        formatKey: formatKey,  // ✅ 추가: formatKey 저장
         dateLabel: formatLabel,
         currentRating: selectedRecord.mergeRating || 1,
         recordDate: selectedRecord.date,
@@ -763,17 +758,58 @@ export function SayuPage() {
     if (!selectedRecord || !authUser?.uid) return;
 
     try {
-      const updateData = {
+      const updateData: Record<string, any> = {
         sayuContent: content,
         sayuSavedAt: new Date().toISOString(),
         mergeRating: rating,
       };
+      
+      // ✅ 형식별 SAYU도 함께 저장!
+      if (sayuModalState.formatKey) {
+        const sayuKey = `${sayuModalState.formatKey}_sayu`;
+        updateData[sayuKey] = content;
+        console.log(`✅ ${sayuKey}도 함께 저장:`, content.substring(0, 50) + '...');
+        
+        // ✅ formats 배열도 자동 업데이트 (통계를 위해)
+        const formatMap: Record<string, string> = {
+          diary: '일기',
+          essay: '에세이',
+          mission: '선교보고',
+          report: '일반보고',
+          work: '업무일지',
+          travel: '여행기록',
+          garden: '텃밭일지',
+          pet: '애완동물관찰일지',
+          child: '육아일기',
+        };
+        
+        const currentFormats = selectedRecord.formats || [];
+        const formatToAdd = formatMap[sayuModalState.formatKey];
+        
+        if (formatToAdd) {
+          const updatedFormats = currentFormats.includes(formatToAdd)
+            ? currentFormats
+            : [...currentFormats, formatToAdd];
+          
+          updateData.formats = updatedFormats;
+          console.log(`✅ formats 배열 업데이트: ${currentFormats} → ${updatedFormats}`);
+        }
+      }
       
       await firestoreService.updateRecord(authUser.uid, selectedRecord.id, updateData);
 
       const updated = { ...selectedRecord, ...updateData };
       setRecords((prev) => prev.map((r) => (r.id === selectedRecord.id ? updated : r)));
       setSelectedRecord(updated);
+      
+      // ✅ 모달 state도 함께 업데이트 (PDF 인쇄/미리보기에서 바로 반영)
+      setSayuModalState(prev => ({
+        ...prev,
+        content: content,
+        currentRating: rating,
+      }));
+      
+      console.log('✅ SAYU 저장 완료 + 모달 state 업데이트:', content.substring(0, 50) + '...');
     } catch (error) {
       console.error('SAYU 저장 실패:', error);
       throw error;

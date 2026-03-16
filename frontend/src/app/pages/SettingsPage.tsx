@@ -32,16 +32,11 @@ export function SettingsPage() {
     }
     
     try {
-      // TODO: firestoreService.getStats 함수 구현 필요
-      // 임시로 기본값 사용
-      setStats({
-        totalRecords: 0,
-        polishedCount: 0,
-        sayuCount: 0,
-        formatCounts: {}
-      });
+      const data = await firestoreService.getStats(user.uid);
+      setStats(data);
     } catch (error) {
       console.error('통계 로딩 실패:', error);
+      toast.error('통계를 불러오는데 실패했습니다.');
     } finally {
       setLoadingStats(false);
     }
@@ -54,9 +49,31 @@ export function SettingsPage() {
     }
     
     try {
-      // TODO: firestoreService.exportData 함수 구현 필요
-      toast.info('데이터 내보내기 기능은 준비 중입니다.');
+      toast.info('데이터를 내보내는 중...');
+      
+      const blob = await firestoreService.exportData(user.uid);
+      
+      // 파일 이름 생성 (날짜 포함)
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const filename = `HARU_백업_${today}.json`;
+      
+      // Blob을 다운로드 링크로 변환
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      
+      // 클릭 이벤트 트리거
+      document.body.appendChild(link);
+      link.click();
+      
+      // 정리
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      toast.success('데이터 내보내기 완료!');
     } catch (error) {
+      console.error('내보내기 실패:', error);
       toast.error('내보내기에 실패했습니다.');
     }
   };
@@ -68,10 +85,15 @@ export function SettingsPage() {
     }
     
     try {
-      // TODO: firestoreService.clearAllData 함수 구현 필요
+      await firestoreService.clearAllData(user.uid);
+      
+      // 통계 다시 로드 (0으로 표시됨)
+      await loadStats();
+      
       setShowClearConfirm(false);
-      toast.info('데이터 삭제 기능은 준비 중입니다.');
+      toast.success('모든 데이터가 삭제되었습니다!');
     } catch (error) {
+      console.error('삭제 실패:', error);
       toast.error('삭제에 실패했습니다.');
     }
   };
@@ -148,24 +170,6 @@ export function SettingsPage() {
                   <p className="text-xs" style={{ color: '#666' }}>SAYU 완성</p>
                 </div>
               </div>
-
-              {/* 형식별 통계 */}
-              {Object.keys(stats.formatCounts).length > 0 && (
-                <div className="mt-4 pt-4 border-t" style={{ borderColor: '#e5e5e5' }}>
-                  <p className="text-xs mb-3" style={{ color: '#999' }}>형식별 기록 수</p>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(stats.formatCounts).map(([format, count]) => (
-                      <span
-                        key={format}
-                        className="px-3 py-1 rounded-full text-xs"
-                        style={{ backgroundColor: '#FAF9F6', color: '#1A3C6E', border: '1px solid #d0dff0' }}
-                      >
-                        {format}: {count}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
             </>
           )}
         </section>
@@ -186,7 +190,7 @@ export function SettingsPage() {
             </div>
             <div className="flex items-center justify-between py-2">
               <span style={{ color: '#666' }}>클라우드 동기화</span>
-              <span style={{ color: '#999' }}>준비 중</span>
+              <span style={{ color: '#10b981', fontWeight: 500 }}>✓ 자동 동기화 중</span>
             </div>
           </div>
         </section>

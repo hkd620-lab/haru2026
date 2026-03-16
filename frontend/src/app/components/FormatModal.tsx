@@ -1081,52 +1081,30 @@ ${contentValues}`,
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-              <div
+              {/* ✅ 편집 가능한 textarea로 변경 */}
+              <textarea
+                value={polishedContent}
+                onChange={(e) => setPolishedContent(e.target.value)}
+                placeholder="AI가 다듬은 내용을 자유롭게 수정할 수 있습니다..."
                 style={{
-                  backgroundColor: '#fff',
+                  width: '100%',
+                  minHeight: '400px',
                   padding: '20px',
-                  borderRadius: 8,
+                  fontSize: 14,
+                  lineHeight: 1.8,
                   border: '1px solid #e5e5e5',
+                  borderRadius: 8,
+                  backgroundColor: '#fff',
+                  color: '#333',
+                  resize: 'vertical',
+                  fontFamily: 'inherit',
+                  outline: 'none',
+                  whiteSpace: 'pre-wrap',
                 }}
-              >
-                {/* 제목과 본문 분리해서 렌더링 */}
-                {polishedContent.split('\n\n').map((paragraph, idx) => {
-                  // 첫 번째 단락이 **형식명** 형태면 제목으로 표시
-                  if (idx === 0 && paragraph.startsWith('**') && paragraph.endsWith('**')) {
-                    const title = paragraph.replace(/\*\*/g, '');
-                    return (
-                      <h1 
-                        key={idx}
-                        style={{ 
-                          fontSize: 24, 
-                          fontWeight: 700, 
-                          color: '#1A3C6E',
-                          marginTop: 0,
-                          marginBottom: 24,
-                          textAlign: 'center',
-                        }}
-                      >
-                        {title}
-                      </h1>
-                    );
-                  }
-                  // 나머지는 본문
-                  return (
-                    <p 
-                      key={idx}
-                      style={{ 
-                        fontSize: 14, 
-                        lineHeight: 1.8, 
-                        color: '#333',
-                        marginBottom: 16,
-                        whiteSpace: 'pre-wrap',
-                      }}
-                    >
-                      {paragraph}
-                    </p>
-                  );
-                })}
-              </div>
+              />
+              <p style={{ fontSize: 12, color: '#999', marginTop: 12, marginBottom: 0 }}>
+                💡 AI가 생성한 내용을 자유롭게 수정하세요. "장미" → "민들레" 같은 수정도 가능합니다!
+              </p>
             </div>
 
             <div

@@ -1,7 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { auth } from '../config/firebase';
 import { BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -9,20 +7,9 @@ export function LoginPage() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Google 로그인
-  const handleGoogleLogin = async () => {
-    setIsLoading(true);
-    try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      toast.success('로그인 성공!');
-      navigate('/');
-    } catch (error: any) {
-      console.error('Google 로그인 실패:', error);
-      toast.error('로그인에 실패했습니다.');
-    } finally {
-      setIsLoading(false);
-    }
+  // Google 로그인 - Cloud Functions 사용
+  const handleGoogleLogin = () => {
+    window.location.href = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/googleLoginStart';
   };
 
   // 카카오 로그인
