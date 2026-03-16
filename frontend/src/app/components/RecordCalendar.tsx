@@ -65,7 +65,7 @@ export function RecordCalendar({ recordDates, onDateSelect }: RecordCalendarProp
       <div className="flex items-center justify-between mb-3">
         <button
           onClick={prevMonth}
-          className="p-1.5 hover:bg-gray-100 rounded-lg transition-all"
+          className="p-3 hover:bg-gray-100 rounded-lg transition-all"
           aria-label="이전 달"
         >
           <ChevronLeft className="w-3.5 h-3.5" style={{ color: '#003366' }} />
@@ -75,7 +75,7 @@ export function RecordCalendar({ recordDates, onDateSelect }: RecordCalendarProp
         </h3>
         <button
           onClick={nextMonth}
-          className="p-1.5 hover:bg-gray-100 rounded-lg transition-all"
+          className="p-3 hover:bg-gray-100 rounded-lg transition-all"
           aria-label="다음 달"
         >
           <ChevronRight className="w-3.5 h-3.5" style={{ color: '#003366' }} />

@@ -13,7 +13,7 @@ export function TopBar() {
           <button
             onClick={() => navigate(-1)}
             disabled={isHome}
-            className="p-2 rounded transition-all disabled:opacity-30"
+            className="p-3 rounded transition-all disabled:opacity-30"
             style={{ color: '#1A3C6E' }}
             aria-label="뒤로가기"
           >
@@ -22,7 +22,7 @@ export function TopBar() {
           
           <button
             onClick={() => navigate('/')}
-            className="p-2 rounded transition-all"
+            className="p-3 rounded transition-all"
             style={{ color: '#1A3C6E' }}
             aria-label="홈으로"
           >
