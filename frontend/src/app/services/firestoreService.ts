@@ -89,6 +89,11 @@ class FirestoreService {
    */
   async getRecordsInRange(userId: string, startDate: string, endDate: string): Promise<HaruRecord[]> {
     try {
+      console.log('\n📥 getRecordsInRange 호출');
+      console.log('  userId:', userId);
+      console.log('  startDate:', startDate);
+      console.log('  endDate:', endDate);
+      
       const recordsRef = collection(db, 'users', userId, 'records');
       const q = query(
         recordsRef,
@@ -98,22 +103,42 @@ class FirestoreService {
       );
       const querySnapshot = await getDocs(q);
       
-      return querySnapshot.docs.map(doc => ({
+      console.log('  Firestore 쿼리 결과:', querySnapshot.docs.length, '개');
+      
+      const records = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
       })) as HaruRecord[];
+      
+      console.log('  반환할 기록:', records.length, '개\n');
+      
+      return records;
     } catch (error) {
-      console.error('날짜 범위 기록 불러오기 실패:', error);
+      console.error('❌ 날짜 범위 기록 불러오기 실패:', error);
       return [];
     }
   }
 
   async updateRecord(userId: string, recordId: string, data: Partial<HaruRecord>) {
     const recordRef = doc(db, 'users', userId, 'records', recordId);
-    await updateDoc(recordRef, {
-      ...data,
+    
+    // ✅ null 값을 deleteField로 변환 (Firestore에서 필드 삭제)
+    const processedData: Record<string, any> = {
       updatedAt: new Date().toISOString(),
+    };
+    
+    Object.entries(data).forEach(([key, value]) => {
+      if (value === null) {
+        processedData[key] = deleteField();  // null이면 필드 삭제
+      } else {
+        processedData[key] = value;
+      }
     });
+    
+    console.log('🔥 Firestore updateRecord:', recordId);
+    console.log('  처리된 데이터:', processedData);
+    
+    await updateDoc(recordRef, processedData);
   }
 
   async deleteRecord(userId: string, recordId: string) {
@@ -135,13 +160,32 @@ class FirestoreService {
     endDate: string
   ): Promise<any> {
     try {
+      console.log('\n\n🔍 ===== 형식별 통계 계산 시작 =====');
+      console.log('📅 기간:', startDate, '~', endDate);
+      console.log('📋 형식:', format);
+      console.log('👤 사용자 ID:', userId);
+      
       // 해당 기간의 기록 가져오기
       const records = await this.getRecordsInRange(userId, startDate, endDate);
+      
+      console.log('\n📦 1단계: 날짜 범위 내 전체 기록');
+      console.log('가져온 기록 개수:', records.length);
+      records.forEach((r, idx) => {
+        console.log(`  ${idx + 1}. ${r.date} - formats:`, r.formats);
+      });
       
       // 해당 형식의 기록만 필터링
       const formatRecords = records.filter(r => r.formats && r.formats.includes(format));
       
+      console.log(`\n🎯 2단계: "${format}" 형식 필터링`);
+      console.log('필터링 후 기록 개수:', formatRecords.length);
+      formatRecords.forEach((r, idx) => {
+        console.log(`  ${idx + 1}. ${r.date} - formats:`, r.formats);
+      });
+      
       if (formatRecords.length === 0) {
+        console.log('❌ 해당 형식의 기록이 없습니다!');
+        console.log('=================================\n\n');
         return null; // 데이터 없음
       }
 
@@ -160,32 +204,51 @@ class FirestoreService {
 
       const prefix = prefixMap[format];
       
+      console.log('\n📊 3단계: 통계 계산 진행');
+      console.log('prefix:', prefix);
+      console.log('total_days:', formatRecords.length);
+      
       // 형식별 통계 계산
+      let result;
       switch (format) {
         case '일기':
-          return this.calculateDiaryStats(formatRecords, prefix);
+          result = this.calculateDiaryStats(formatRecords, prefix);
+          break;
         case '업무일지':
-          return this.calculateWorkStats(formatRecords, prefix);
+          result = this.calculateWorkStats(formatRecords, prefix);
+          break;
         case '에세이':
-          return this.calculateEssayStats(formatRecords, prefix);
+          result = this.calculateEssayStats(formatRecords, prefix);
+          break;
         case '선교보고':
-          return this.calculateMissionStats(formatRecords, prefix);
+          result = this.calculateMissionStats(formatRecords, prefix);
+          break;
         case '일반보고':
-          return this.calculateReportStats(formatRecords, prefix);
+          result = this.calculateReportStats(formatRecords, prefix);
+          break;
         case '여행기록':
-          return this.calculateTravelStats(formatRecords, prefix);
+          result = this.calculateTravelStats(formatRecords, prefix);
+          break;
         case '텃밭일지':
-          return this.calculateGardenStats(formatRecords, prefix);
+          result = this.calculateGardenStats(formatRecords, prefix);
+          break;
         case '애완동물관찰일지':
-          return this.calculatePetStats(formatRecords, prefix);
+          result = this.calculatePetStats(formatRecords, prefix);
+          break;
         case '육아일기':
-          return this.calculateParentingStats(formatRecords, prefix);
+          result = this.calculateParentingStats(formatRecords, prefix);
+          break;
         default:
-          return this.calculateBasicStats(formatRecords, prefix, format);
+          result = this.calculateBasicStats(formatRecords, prefix, format);
       }
       
+      console.log('\n✅ 최종 결과:', result);
+      console.log('=================================\n\n');
+      
+      return result;
+      
     } catch (error) {
-      console.error('통계 계산 실패:', error);
+      console.error('❌ 통계 계산 실패:', error);
       return null;
     }
   }
@@ -831,6 +894,154 @@ class FirestoreService {
     const newCrops = currentCrops.filter(c => c !== crop);
     await this.saveGardenCrops(userId, newCrops);
     return newCrops;
+  }
+
+  // ========================================
+  // 설정 페이지 기능
+  // ========================================
+
+  /**
+   * 사용자 통계 가져오기
+   */
+  async getStats(userId: string) {
+    try {
+      const records = await this.getRecords(userId);
+      
+      console.log('===== 📊 통계 계산 시작 =====');
+      console.log('총 기록 개수:', records.length);
+      
+      // 총 기록 개수
+      const totalRecords = records.length;
+      
+      // 다듬기 완료 개수 (polished 필드가 있는 기록)
+      let polishedCount = 0;
+      
+      // SAYU 완성 개수 (_sayu 필드가 있는 기록)
+      let sayuCount = 0;
+      
+      // 형식별 카운트 (formats 배열 기준 - 실제 작성한 형식)
+      const formatCounts: Record<string, number> = {};
+      
+      // 형식별 SAYU 완료 카운트 (SAYU 기준)
+      const formatSayuCounts: Record<string, number> = {};
+      
+      // 9개 형식의 prefix
+      const formatPrefixes = [
+        { name: '일기', prefix: 'diary' },
+        { name: '에세이', prefix: 'essay' },
+        { name: '선교보고', prefix: 'mission' },
+        { name: '일반보고', prefix: 'report' },
+        { name: '업무일지', prefix: 'work' },
+        { name: '여행기록', prefix: 'travel' },
+        { name: '텃밭일지', prefix: 'garden' },
+        { name: '애완동물관찰일지', prefix: 'pet' },
+        { name: '육아일기', prefix: 'child' },
+      ];
+      
+      records.forEach((record, index) => {
+        console.log(`\n--- 기록 ${index + 1} (${record.date}) ---`);
+        console.log('선택된 형식:', record.formats);
+        
+        // 이 기록에 SAYU가 있는지 체크
+        let hasSayu = false;
+        let hasPolished = false;
+        
+        // ✅ formats 배열 기준으로 카운트 (실제 작성한 형식)
+        if (record.formats && Array.isArray(record.formats)) {
+          record.formats.forEach((format: string) => {
+            formatCounts[format] = (formatCounts[format] || 0) + 1;
+            console.log(`  → ${format} 카운트 증가: ${formatCounts[format]}`);
+          });
+        }
+        
+        // 각 형식별 SAYU 체크 (SAYU 완료 통계용)
+        formatPrefixes.forEach(({ name, prefix }) => {
+          const sayuKey = `${prefix}_sayu`;
+          if (record[sayuKey] && record[sayuKey].trim().length > 0) {
+            hasSayu = true;
+            hasPolished = true;  // SAYU 있으면 다듬기도 완료로 간주
+            formatSayuCounts[name] = (formatSayuCounts[name] || 0) + 1;
+            console.log(`  ✨ ${name} SAYU 발견! SAYU 카운트: ${formatSayuCounts[name]}`);
+          }
+        });
+        
+        // 기록당 1번만 카운트
+        if (hasSayu) {
+          sayuCount++;
+        }
+        if (hasPolished) {
+          polishedCount++;
+        }
+      });
+      
+      console.log('\n===== 📊 최종 통계 =====');
+      console.log('총 기록 개수:', totalRecords);
+      console.log('SAYU 완료 기록 수:', sayuCount);
+      console.log('형식별 작성 개수:', formatCounts);
+      console.log('형식별 SAYU 완료 개수:', formatSayuCounts);
+      console.log('=========================\n');
+      
+      return {
+        totalRecords,
+        polishedCount,
+        sayuCount,
+        formatCounts,      // ✅ 실제 작성한 형식 개수
+        formatSayuCounts,  // ✅ SAYU 완료 개수 (참고용)
+      };
+    } catch (error) {
+      console.error('통계 로딩 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 모든 데이터 JSON으로 내보내기
+   */
+  async exportData(userId: string): Promise<Blob> {
+    try {
+      const records = await this.getRecords(userId);
+      
+      // 내보낼 데이터 구조
+      const exportData = {
+        exportDate: new Date().toISOString(),
+        userId: userId,
+        totalRecords: records.length,
+        records: records,
+      };
+      
+      // JSON 문자열로 변환 (들여쓰기 2칸)
+      const jsonString = JSON.stringify(exportData, null, 2);
+      
+      // Blob 생성
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      
+      return blob;
+    } catch (error) {
+      console.error('데이터 내보내기 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 모든 데이터 삭제 (되돌릴 수 없음!)
+   */
+  async clearAllData(userId: string): Promise<void> {
+    try {
+      const recordsRef = collection(db, 'users', userId, 'records');
+      const querySnapshot = await getDocs(recordsRef);
+      
+      // 모든 문서 삭제
+      const deletePromises = querySnapshot.docs.map(doc => 
+        deleteDoc(doc.ref)
+      );
+      
+      await Promise.all(deletePromises);
+      
+      console.log(`${deletePromises.length}개의 기록이 삭제되었습니다.`);
+    } catch (error) {
+      console.error('데이터 삭제 실패:', error);
+      throw error;
+    }
   }
 }
 
