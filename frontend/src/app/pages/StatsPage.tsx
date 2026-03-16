@@ -30,6 +30,7 @@ const FORMAT_CATEGORIES = [
 type Stats = Awaited<ReturnType<typeof firestoreService.getStats>>;
 
 export function StatsPage() {
+  console.log('📍 StatsPage 렌더링됨!');
   const { user } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
