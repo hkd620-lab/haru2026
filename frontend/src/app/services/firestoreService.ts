@@ -107,7 +107,9 @@ export const firestoreService = {
 
   // 📊 통계 - 기록 통계 가져오기
   async getStats(uid: string) {
+    console.log('🔵 getStats() 시작됨, uid:', uid);
     const records = await this.getRecords(uid);
+    console.log('🔵 기록 데이터 로드됨:', records.length, '개');
     const totalRecords = records.length;
     const polishedCount = records.filter((r) => r.polished).length;
     const sayuCount = records.filter((r) => r.sayuSavedAt).length;
