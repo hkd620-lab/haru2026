@@ -23,6 +23,11 @@ export function useNotification() {
 
     if (Notification.permission === 'granted') {
       setPermission('granted');
+      // settings에 저장
+      const settingsStr = localStorage.getItem('settings');
+      const settings = settingsStr ? JSON.parse(settingsStr) : {};
+      settings.notification = 'granted';
+      localStorage.setItem('settings', JSON.stringify(settings));
       return true;
     }
 
@@ -30,6 +35,11 @@ export function useNotification() {
       try {
         const result = await Notification.requestPermission();
         setPermission(result);
+        // settings에 저장
+        const settingsStr = localStorage.getItem('settings');
+        const settings = settingsStr ? JSON.parse(settingsStr) : {};
+        settings.notification = result;
+        localStorage.setItem('settings', JSON.stringify(settings));
         return result === 'granted';
       } catch (error) {
         console.error('알림 권한 요청 실패:', error);

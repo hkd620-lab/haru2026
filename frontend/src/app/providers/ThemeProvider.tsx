@@ -13,7 +13,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   // 초기 테마 설정 (localStorage + OS 설정)
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    const settingsStr = localStorage.getItem('settings');
+    let savedTheme: 'light' | 'dark' | null = null;
+
+    if (settingsStr) {
+      try {
+        const settings = JSON.parse(settingsStr);
+        savedTheme = settings.theme;
+      } catch (e) {
+        console.error('Settings 파싱 실패:', e);
+      }
+    }
 
     if (savedTheme) {
       setTheme(savedTheme);
@@ -36,7 +46,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       htmlElement.classList.remove('dark');
     }
 
-    localStorage.setItem('theme', theme);
+    // settings 객체에 theme 저장
+    const settingsStr = localStorage.getItem('settings');
+    const settings = settingsStr ? JSON.parse(settingsStr) : {};
+    settings.theme = theme;
+    localStorage.setItem('settings', JSON.stringify(settings));
   }, [theme, mounted]);
 
   const toggleTheme = () => {
