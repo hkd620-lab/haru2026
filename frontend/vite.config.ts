@@ -60,6 +60,11 @@ export default defineConfig({
             handler: 'StaleWhileRevalidate',
             options: { cacheName: 'google-fonts-stylesheets' },
           },
+          {
+            // Firebase Storage - 항상 네트워크 직접 사용 (캐시 안 함)
+            urlPattern: /^https:\/\/firebasestorage\.googleapis\.com\/.*/i,
+            handler: 'NetworkOnly',
+          },
         ],
       },
     }),
