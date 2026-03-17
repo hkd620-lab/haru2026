@@ -92,17 +92,44 @@ export function LibraryPage() {
     }
 
     try {
-      await firestoreService.updateRecord(authUser.uid, selectedRecord.id, filteredData);
+      console.log('💾 ===== 형식 데이터 저장 시작 =====');
+      console.log('현재 선택된 형식:', modalState.format);
+      console.log('기존 formats 배열:', selectedRecord.formats);
+      
+      // ✅ formats 배열 업데이트 로직 추가
+      const currentFormats = selectedRecord.formats || [];
+      const formatToAdd = modalState.format!;
+      
+      // 이미 formats 배열에 있는지 확인
+      const updatedFormats = currentFormats.includes(formatToAdd)
+        ? currentFormats
+        : [...currentFormats, formatToAdd];
+      
+      console.log('업데이트될 formats 배열:', updatedFormats);
+      console.log('추가된 형식:', formatToAdd);
+      
+      // formats 배열도 함께 저장
+      const updateData = {
+        ...filteredData,
+        formats: updatedFormats  // ✅ formats 배열 업데이트!
+      };
+      
+      console.log('저장할 전체 데이터:', updateData);
 
-      const updated = { ...selectedRecord, ...filteredData };
+      await firestoreService.updateRecord(authUser.uid, selectedRecord.id, updateData);
+
+      const updated = { ...selectedRecord, ...updateData };
       setRecords((prev) => prev.map((r) => (r.id === selectedRecord.id ? updated : r)));
       setSelectedRecord(updated);
 
       toast.success('저장되었습니다!');
       
+      console.log('✅ 저장 완료! 새로운 formats:', updated.formats);
+      console.log('=====================================\n');
+      
       await fetchRecords();
     } catch (error) {
-      console.error('저장 실패:', error);
+      console.error('❌ 저장 실패:', error);
       toast.error('저장에 실패했습니다. 다시 시도해주세요.');
     }
   };
@@ -114,10 +141,7 @@ export function LibraryPage() {
       format === '에세이' ? 'essay_' :
       format === '선교보고' ? 'mission_' :
       format === '일반보고' ? 'report_' :
-      format === '업무일지' ? 'work_' :
-      format === '여행기록' ? 'travel_' :
-      format === '텃밭일지' ? 'garden_' :
-      format === '애완동물관찰일지' ? 'pet_' : 'child_';
+      format === '업무일지' ? 'work_' : 'travel_';
 
     const data: Record<string, string> = {};
     Object.keys(selectedRecord).forEach((key) => {
@@ -135,10 +159,7 @@ export function LibraryPage() {
       format === '에세이' ? 'essay' :
       format === '선교보고' ? 'mission' :
       format === '일반보고' ? 'report' :
-      format === '업무일지' ? 'work' :
-      format === '여행기록' ? 'travel' :
-      format === '텃밭일지' ? 'garden' :
-      format === '애완동물관찰일지' ? 'pet' : 'child';
+      format === '업무일지' ? 'work' : 'travel';
     
     const sayuKey = `${prefix}_sayu`;
     return selectedRecord[sayuKey] && selectedRecord[sayuKey].trim().length > 0;
@@ -150,7 +171,7 @@ export function LibraryPage() {
 
     try {
       const updateData: Record<string, any> = {};
-      const formatPrefixes = ['diary_', 'essay_', 'mission_', 'report_', 'work_', 'travel_', 'garden_', 'pet_', 'child_'];
+      const formatPrefixes = ['diary_', 'essay_', 'mission_', 'report_', 'work_', 'travel_'];
       
       Object.keys(selectedRecord).forEach((key) => {
         if (formatPrefixes.some(prefix => key.startsWith(prefix))) {

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { Toaster } from 'sonner';
 import { HomePage } from './pages/HomePage';
 import { RecordPage } from './pages/RecordPage';
@@ -16,9 +17,10 @@ import { BottomNav } from './components/BottomNav';
 
 function App() {
   return (
-    <AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
       <BrowserRouter>
-        <div className="min-h-screen" style={{ backgroundColor: '#FAF9F6' }}>
+        <div className="min-h-screen bg-[#FAF9F6] dark:bg-gray-900">
           <main style={{ paddingBottom: 'var(--content-pb)' }}>
             <Routes>
               {/* 홈 화면 */}
@@ -47,6 +49,7 @@ function App() {
         </div>
       </BrowserRouter>
     </AuthProvider>
+    </ThemeProvider>
   );
 }
 
