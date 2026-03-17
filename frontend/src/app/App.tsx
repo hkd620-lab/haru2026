@@ -2,6 +2,7 @@ import { RouterProvider } from 'react-router';
 import { router } from './routes';
 import { Toaster } from './components/ui/sonner';
 import { AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider } from './providers/ThemeProvider';
 import { Component, ReactNode } from 'react';
 
 // iOS/모바일 에러로 인한 무한 로딩 방지용 에러 바운더리
@@ -73,10 +74,12 @@ class ErrorBoundary extends Component<
 export default function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <RouterProvider router={router} />
-        <Toaster position="top-center" />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <RouterProvider router={router} />
+          <Toaster position="top-center" />
+        </AuthProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

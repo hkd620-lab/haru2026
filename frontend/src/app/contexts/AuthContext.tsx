@@ -36,6 +36,25 @@ const mapUser = (user: FirebaseUser): LocalUser => ({
   photoURL: user.photoURL ?? null,
 });
 
+// 알림 권한 요청
+const requestNotificationPermission = async () => {
+  if (!('Notification' in window)) {
+    return;
+  }
+
+  if (Notification.permission === 'granted') {
+    return;
+  }
+
+  if (Notification.permission !== 'denied') {
+    try {
+      await Notification.requestPermission();
+    } catch (error) {
+      console.warn('알림 권한 요청 실패:', error);
+    }
+  }
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<LocalUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,12 +70,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Redirect error:', error);
       }
     };
-    
+
     checkRedirect();
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         setUser(mapUser(firebaseUser));
+        // 로그인 후 알림 권한 요청
+        requestNotificationPermission();
       } else {
         setUser(null);
       }
