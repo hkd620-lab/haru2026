@@ -2,9 +2,13 @@ import { useState, useEffect } from 'react';
 import { Settings, Database, Download, Trash2, BarChart3, LogOut, User } from 'lucide-react';
 import { firestoreService } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../providers/ThemeProvider';
+import { useNotification } from '../hooks/useNotification';
 
 export function SettingsPage() {
   const { user, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const { permission, isSupported, requestPermission } = useNotification();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [stats, setStats] = useState({
     totalRecords: 0,
@@ -153,17 +157,51 @@ export function SettingsPage() {
             앱 설정
           </h2>
           <div className="space-y-3 text-sm">
+            {/* 다크 모드 토글 */}
             <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: '#e5e5e5' }}>
               <span style={{ color: '#666' }}>다크 모드</span>
-              <span style={{ color: '#999' }}>준비 중</span>
+              <button
+                onClick={toggleTheme}
+                className="px-3 py-1 rounded-full transition-all text-xs font-medium"
+                style={{
+                  backgroundColor: theme === 'dark' ? '#1A3C6E' : '#E5E7EB',
+                  color: theme === 'dark' ? '#fff' : '#666',
+                }}
+              >
+                {theme === 'dark' ? '활성' : '비활성'}
+              </button>
             </div>
+
+            {/* 알림 설정 토글 */}
             <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: '#e5e5e5' }}>
-              <span style={{ color: '#666' }}>알림 설정</span>
-              <span style={{ color: '#999' }}>준비 중</span>
+              <div className="flex-1">
+                <span style={{ color: '#666' }}>알림 설정</span>
+                {!isSupported && (
+                  <p className="text-xs mt-1" style={{ color: '#999' }}>지원하지 않는 브라우저</p>
+                )}
+              </div>
+              {isSupported && permission === 'granted' ? (
+                <span style={{ color: '#10B981' }}>✓ 활성화됨</span>
+              ) : (
+                <button
+                  onClick={requestPermission}
+                  className="px-3 py-1 rounded-full transition-all text-xs font-medium"
+                  style={{
+                    backgroundColor: '#F0F7FF',
+                    color: '#1A3C6E',
+                    border: '1px solid #d0dff0',
+                  }}
+                  disabled={!isSupported}
+                >
+                  허락하기
+                </button>
+              )}
             </div>
+
+            {/* 클라우드 동기화 */}
             <div className="flex items-center justify-between py-2">
               <span style={{ color: '#666' }}>클라우드 동기화</span>
-              <span style={{ color: '#999' }}>준비 중</span>
+              <span style={{ color: '#10B981' }}>✓ 자동 동기화 중</span>
             </div>
           </div>
         </section>
