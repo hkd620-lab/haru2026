@@ -6,6 +6,7 @@ import {
   getRedirectResult,
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  updateProfile as firebaseUpdateProfile,
   GoogleAuthProvider,
   User as FirebaseUser
 } from 'firebase/auth';
@@ -28,6 +29,7 @@ interface AuthContextType {
   kakaoSignIn: () => Promise<void>;
   naverSignIn: () => Promise<void>;
   signOut: () => Promise<void>;
+  updateUserProfile: (updates: { displayName?: string; photoURL?: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -208,6 +210,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateUserProfile = async (updates: { displayName?: string; photoURL?: string }) => {
+    if (!auth.currentUser) throw new Error('로그인이 필요합니다.');
+    await firebaseUpdateProfile(auth.currentUser, updates);
+    setUser(mapUser(auth.currentUser));
+  };
+
   const value = {
     user,
     loading,
@@ -217,6 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     kakaoSignIn,
     naverSignIn,
     signOut,
+    updateUserProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
