@@ -1,19 +1,8 @@
-<<<<<<< HEAD
-import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
-  GoogleAuthProvider, 
-  signInWithPopup 
-} from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getFunctions } from 'firebase/functions';
-=======
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getFunctions } from "firebase/functions";
 import { getStorage } from "firebase/storage";
->>>>>>> origin/claude/complete-image-compression-fF1Da
 
 // 🔹 Firebase 설정
 const firebaseConfig = {
@@ -30,17 +19,14 @@ const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const functions = getFunctions(app);
+export const functions = getFunctions(app, 'asia-northeast3');
 export const storage = getStorage(app);
 
 const provider = new GoogleAuthProvider();
 
-// 🔹 Google 로그인 함수 복구
+// 🔹 Google 로그인 함수
 export async function loginWithGoogle() {
   const provider = new GoogleAuthProvider();
   const result = await signInWithPopup(auth, provider);
   return result.user;
 }
-
-// 🔹 export
-export { auth, db, functions };
