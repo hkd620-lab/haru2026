@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { getTestData } from '../data/testData';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { compressImage } from '../services/imageService';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -358,12 +359,24 @@ ${contentValues}`,
           toast.error('로그인이 필요합니다.');
           continue;
         }
-        const imagePath = `users/${user.uid}/format_photos/${recordId}_${prefix}_${fileName}`;
-        
-        const storageRef = ref(storage, imagePath);
-        await uploadBytes(storageRef, file);
-        const downloadUrl = await getDownloadURL(storageRef);
-        
+        // 🖼️ 이미지 압축 시작
+console.log('🖼️ [이미지 압축 시작]');
+const originalSizeMB = (file.size / 1024 / 1024).toFixed(2);
+console.log(`📥 원본 크기: ${originalSizeMB}MB`);
+
+const compressed = await compressImage(file, 800, 0.85);
+
+const compressedSizeMB = (compressed.size / 1024 / 1024).toFixed(2);
+const compressionRate = ((1 - compressed.size / file.size) * 100).toFixed(1);
+console.log(`📤 압축 후 크기: ${compressedSizeMB}MB`);
+console.log(`✅ 압축률: ${compressionRate}%`);
+console.log('🎉 [이미지 압축 완료]\n');
+
+const imagePath = `users/${user.uid}/format_photos/${recordId}_${prefix}_${fileName}`;
+
+const storageRef = ref(storage, imagePath);
+await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
+const downloadUrl = await getDownloadURL(storageRef);
         newImageUrls.push(downloadUrl);
       }
 
