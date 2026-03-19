@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router';
 import { ChevronLeft, ChevronRight, Sparkles, X, Star, Info, Printer } from 'lucide-react';
-import { useReactToPrint } from 'react-to-print';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { SayuTitleAnimation } from '../components/SayuTitleAnimation';
@@ -51,92 +50,73 @@ function SayuModal({
 }: SayuModalProps) {
   const [editedContent, setEditedContent] = useState(content);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
   const [rating, setRating] = useState(currentRating || 1);
   const [viewMode, setViewMode] = useState<'ai' | 'original'>('ai');
   
-  const printRef = useRef<HTMLDivElement>(null);
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: `SAYU_${recordDate || formatDateToKorean(new Date().toISOString().split('T')[0])}_${format || '기록'}`,
-    pageStyle: `
-      @page {
-        size: A4;
-        margin: 10mm;
-      }
-      @media print {
-        body {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
+  // 인쇄 함수 - 프리로드 + 로딩 완료 대기 + 로딩 표시
+  const handlePrint = () => {
+    if (!editedContent || editedContent.trim().length === 0) {
+      toast.error('저장된 내용이 없습니다. 먼저 내용을 저장해주세요.');
+      return;
+    }
+    
+    setIsPrinting(true);
+    toast.info('PDF 준비 중입니다...');
+    
+    // 인쇄 전용 이미지 확인
+    const printImages = document.querySelectorAll('.print-show img');
+    
+    if (printImages.length === 0) {
+      // 이미지 없으면 바로 인쇄
+      setTimeout(() => {
+        window.print();
+        setIsPrinting(false);
+      }, 50);
+      return;
+    }
+    
+    // 모든 이미지 로딩 완료 확인 (캐시 있으면 즉시 완료, 없으면 대기)
+    const imagePromises = Array.from(printImages).map((img) => {
+      return new Promise((resolve) => {
+        const htmlImg = img as HTMLImageElement;
+        if (htmlImg.complete && htmlImg.naturalHeight > 0) {
+          // 이미 로드됨 (캐시에서 즉시 로드 완료)
+          resolve(true);
+        } else {
+          // 로딩 중 (캐시 없음 - 대기 필요)
+          htmlImg.addEventListener('load', () => resolve(true));
+          htmlImg.addEventListener('error', () => resolve(true));
         }
-        
-        .sayu-print-area {
-          font-size: 11px !important;
-          line-height: 1.5 !important;
-          page-break-inside: auto !important;
-        }
-        
-        .sayu-print-area img {
-          width: 100% !important;
-          height: 100% !important;
-          object-fit: contain !important;
-          display: block !important;
-          page-break-inside: avoid !important;
-        }
-        
-        .sayu-print-area > div > div > div > div {
-          height: 110px !important;
-          flex: 1 !important;
-          overflow: hidden !important;
-          border-radius: 8px !important;
-          border: 1px solid #e5e5e5 !important;
-          background-color: #f5f5f5 !important;
-        }
-        
-        .sayu-print-area h1 {
-          font-size: 18px !important;
-          font-weight: 700 !important;
-          padding-bottom: 8px !important;
-          margin-bottom: 8px !important;
-          border-bottom: 2px solid #1A3C6E !important;
-        }
-        
-        .sayu-print-area h2, 
-        .sayu-print-area h3 {
-          font-size: 14px !important;
-          font-weight: 600 !important;
-          padding-bottom: 5px !important;
-          margin-bottom: 6px !important;
-        }
-        
-        .sayu-print-area p {
-          text-indent: 10pt !important;
-          margin-top: 0 !important;
-          margin-bottom: 0px !important;
-          padding-bottom: 3px !important;
-          line-height: 1.6 !important;
-          font-size: 11px !important;
-        }
-        
-        .sayu-print-area > div {
-          margin-bottom: 5px !important;
-        }
-        
-        .sayu-print-area > div > div {
-          padding: 8px !important;
-        }
-      }
-    `,
-  });
+      });
+    });
+    
+    Promise.all(imagePromises).then(() => {
+      // 모든 이미지 준비 완료 → 인쇄
+      toast.success('PDF 저장 창이 열립니다!');
+      setTimeout(() => {
+        window.print();
+        setIsPrinting(false);
+      }, 50);
+    });
+  };
 
   useEffect(() => {
     if (isOpen) {
       setEditedContent(content);
       setRating(currentRating || 1);
       setViewMode('ai');
+      setIsPrinting(false);
+      
+      // 이미지 프리로드 - 브라우저 캐시 활용
+      if (images && images.length > 0) {
+        images.forEach((imageUrl) => {
+          const img = new Image();
+          img.src = imageUrl; // 캐시에 저장됨
+        });
+      }
     }
-  }, [isOpen, content, currentRating]);
-
-  if (!isOpen) return null;
+  }, [isOpen, content, currentRating, images]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -220,23 +200,170 @@ function SayuModal({
   };
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
-        padding: '20px',
-      }}
-      onClick={onClose}
-    >
+    <>
+      <style>{`
+        /* 인쇄 스타일 - 달력 제외, 환경+사진+본문만 출력, 2페이지 확장 허용 */
+        @media print {
+          /* 화면 전용 요소 완전 숨김 */
+          .no-print,
+          .no-print *,
+          .sayu-page-container {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            position: absolute !important;
+            left: -9999px !important;
+          }
+
+          /* 인쇄 전용만 표시 */
+          .print-show {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            position: relative !important;
+            left: 0 !important;
+            top: 0 !important;
+            z-index: 9999 !important;
+          }
+
+          body {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
+            height: auto !important;
+          }
+
+          html {
+            overflow: visible !important;
+            height: auto !important;
+          }
+
+          /* 모든 요소 overflow visible - 긴 텍스트 클리핑 방지 */
+          * {
+            overflow: visible !important;
+            max-height: none !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+          }
+
+          /* 인쇄 페이지 레이아웃 - 2페이지 확장 허용 */
+          .sayu-print-page {
+            width: 210mm !important;
+            min-height: auto !important;
+            padding: 15mm !important;
+            margin: 0 !important;
+            background: white !important;
+            display: block !important;
+            overflow: visible !important;
+            height: auto !important;
+            page-break-after: auto !important;
+            position: relative !important;
+          }
+
+          .sayu-print-header h2 {
+            font-size: 14pt !important;
+            font-weight: 600 !important;
+            color: #1A3C6E !important;
+            margin: 0 0 8px 0 !important;
+            padding: 0 !important;
+            border: none !important;
+          }
+
+          .sayu-print-env {
+            display: flex !important;
+            gap: 8px !important;
+            flex-wrap: wrap !important;
+            margin-bottom: 15px !important;
+          }
+
+          .sayu-print-env span {
+            font-size: 9pt !important;
+            padding: 3px 8px !important;
+            border-radius: 4px !important;
+            background-color: #F0F7FF !important;
+            color: #1A3C6E !important;
+          }
+
+          .print-photos {
+            margin-bottom: 15px !important;
+            page-break-inside: avoid !important;
+          }
+
+          .print-photos img {
+            border-radius: 8px !important;
+            page-break-inside: avoid !important;
+            max-width: 100% !important;
+            height: auto !important;
+          }
+
+          /* 본문 컨텐츠 - 스크롤 완전 제거, 2페이지 확장 허용 */
+          .sayu-print-content {
+            background: white !important;
+            padding: 15px !important;
+            border-radius: 8px !important;
+            border: 1px solid #e5e5e5 !important;
+            overflow: visible !important;
+            height: auto !important;
+            min-height: auto !important;
+            max-height: none !important;
+            page-break-inside: auto !important;
+            display: block !important;
+            position: relative !important;
+          }
+
+          .sayu-print-content p {
+            font-size: 11pt !important;
+            line-height: 1.8 !important;
+            color: #333 !important;
+            white-space: pre-wrap !important;
+            word-wrap: break-word !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
+            height: auto !important;
+            max-height: none !important;
+            display: block !important;
+            position: relative !important;
+          }
+        }
+
+        /* 화면 전용 */
+        @media screen {
+          .print-show {
+            position: fixed !important;
+            left: -9999px !important;
+            top: 0 !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            /* display: none 사용 안 함 → 미리 렌더링됨! */
+          }
+        }
+      `}</style>
+
+      {/* 화면 표시용 모달 - isOpen일 때만 렌더링 */}
+      {isOpen && (
       <div
+        className="no-print"
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px',
+        }}
+        onClick={onClose}
+      >
+      <div
+        className="no-print"
         style={{
           backgroundColor: '#FAF9F6',
           borderRadius: 12,
@@ -260,49 +387,34 @@ function SayuModal({
             backgroundColor: '#fff',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Sparkles style={{ width: 20, height: 20, color: '#1A3C6E' }} />
-            <h2 style={{ fontSize: 16, color: '#1A3C6E', fontWeight: 600, margin: 0 }}>
-              {viewMode === 'ai' ? '✨ AI 다듬기' : '📜 원본'}
+          <div style={{ flex: 1 }}>
+            <h2 style={{ fontSize: 20, color: '#1A3C6E', fontWeight: 600, margin: 0 }}>
+              ✨ {dateLabel}
             </h2>
-            <div className="no-print" style={{ display: 'flex', backgroundColor: '#f0f0f0', borderRadius: '6px', padding: '2px', marginLeft: 8 }}>
-              <button
-                onClick={() => setViewMode('ai')}
-                style={{
-                  padding: '4px 10px',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  border: 'none',
-                  borderRadius: '4px',
-                  backgroundColor: viewMode === 'ai' ? '#fff' : 'transparent',
-                  color: viewMode === 'ai' ? '#1A3C6E' : '#666',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
-              >
-                ✨ AI
-              </button>
-              <button
-                onClick={() => setViewMode('original')}
-                style={{
-                  padding: '4px 10px',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  border: 'none',
-                  borderRadius: '4px',
-                  backgroundColor: viewMode === 'original' ? '#fff' : 'transparent',
-                  color: viewMode === 'original' ? '#1A3C6E' : '#666',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
-              >
-                📜 원본
-              </button>
-            </div>
+            {format && (
+              <p style={{ fontSize: 13, color: '#999', marginTop: 6, marginBottom: 0 }}>
+                {format}
+              </p>
+            )}
           </div>
           <button
+            onClick={handlePrint}
+            disabled={isPrinting}
+            className="mr-2 p-2 rounded hover:bg-gray-100 transition-colors"
+            title={isPrinting ? "PDF 준비 중..." : "PDF 저장"}
+            style={{ 
+              marginRight: '8px',
+              opacity: isPrinting ? 0.6 : 1,
+              cursor: isPrinting ? 'not-allowed' : 'pointer'
+            }}
+          >
+            <Printer 
+              className={isPrinting ? "w-5 h-5 animate-pulse" : "w-5 h-5"} 
+              style={{ color: isPrinting ? '#F59E0B' : '#10b981' }} 
+            />
+          </button>
+          <button
             onClick={onClose}
-            className="no-print"
             style={{
               background: 'none',
               border: 'none',
@@ -317,77 +429,204 @@ function SayuModal({
           </button>
         </div>
 
+        {/* Tabs */}
+        <div
+          style={{
+            padding: '12px 20px',
+            borderBottom: '1px solid #e5e5e5',
+            display: 'flex',
+            gap: 8,
+            backgroundColor: '#fff',
+          }}
+        >
+          <button
+            onClick={() => setViewMode('ai')}
+            style={{
+              padding: '8px 16px',
+              fontSize: 13,
+              border: 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+              fontWeight: 500,
+              backgroundColor: viewMode === 'ai' ? '#1A3C6E' : '#f5f5f5',
+              color: viewMode === 'ai' ? '#FAF9F6' : '#666',
+              transition: 'all 0.2s',
+            }}
+          >
+            ✨ SAYU
+          </button>
+          <button
+            onClick={() => setViewMode('original')}
+            style={{
+              padding: '8px 16px',
+              fontSize: 13,
+              border: 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+              fontWeight: 500,
+              backgroundColor: viewMode === 'original' ? '#1A3C6E' : '#f5f5f5',
+              color: viewMode === 'original' ? '#FAF9F6' : '#666',
+              transition: 'all 0.2s',
+            }}
+          >
+            📝 원본
+          </button>
+        </div>
+
         {/* Content */}
         <div
-          ref={printRef}
           style={{
             flex: 1,
             overflowY: 'auto',
-            padding: '20px',
+            padding: '24px',
+            backgroundColor: '#fafafa',
           }}
-          className="sayu-print-area"
         >
           {viewMode === 'ai' ? (
-            <div
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '1px solid #1A3C6E',
-                borderRadius: 6,
-                backgroundColor: '#fff',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 8,
-              }}
-            >
+            <div>
+              {/* 환경 정보 */}
               {(recordDate || weather || temperature || mood) && (
-                <div
-                  style={{
-                    padding: '12px 16px',
-                    backgroundColor: '#F0F7FF',
-                    border: '1px solid #1A3C6E',
-                    borderRadius: 6,
-                    fontSize: 13,
-                    lineHeight: 1.6,
-                  }}
-                >
+                <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e5e5' }}>
                   {recordDate && (
-                    <div style={{ color: '#1A3C6E', fontWeight: 700, marginBottom: 6 }}>
+                    <p style={{ fontSize: '14px', fontWeight: '600', color: '#1A3C6E', marginBottom: '12px' }}>
                       📅 {formatDateToKorean(recordDate)}
-                    </div>
+                    </p>
                   )}
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', color: '#1A3C6E', fontWeight: 600 }}>
-                    {weather && <span>☀️ {weather}</span>}
-                    {temperature && <span>🌡️ {temperature}</span>}
-                    {mood && <span>😊 {mood}</span>}
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {weather && (
+                      <span style={{
+                        fontSize: '12px',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        backgroundColor: '#F0F7FF',
+                        color: '#1A3C6E',
+                        border: '1px solid #d0dff0'
+                      }}>
+                        날씨: {weather}
+                      </span>
+                    )}
+                    {temperature && (
+                      <span style={{
+                        fontSize: '12px',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        backgroundColor: '#F0F7FF',
+                        color: '#1A3C6E',
+                        border: '1px solid #d0dff0'
+                      }}>
+                        기온: {temperature}
+                      </span>
+                    )}
+                    {mood && (
+                      <span style={{
+                        fontSize: '12px',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        backgroundColor: '#F0F7FF',
+                        color: '#1A3C6E',
+                        border: '1px solid #d0dff0'
+                      }}>
+                        기분: {mood}
+                      </span>
+                    )}
                   </div>
                 </div>
               )}
 
-              {format && (
-                <h1 style={{ 
-                  fontSize: 18, 
-                  fontWeight: 700, 
-                  color: '#1A3C6E', 
-                  margin: 0,
-                  paddingBottom: 8,
-                  marginBottom: 12,
-                  borderBottom: '2px solid #1A3C6E'
-                }}>
-                  {format}
-                </h1>
+              {/* 사진 */}
+              {images && images.length > 0 && (
+                <div style={{ marginBottom: '20px' }}>
+                  {/* 1장: 가운데 정렬 */}
+                  {images.length === 1 && (
+                    <img
+                      src={images[0]}
+                      alt="사진"
+                      style={{
+                        width: '100%',
+                        maxWidth: '400px',
+                        height: 'auto',
+                        objectFit: 'cover',
+                        borderRadius: '8px',
+                        border: '1px solid #e5e5e5',
+                        display: 'block',
+                        margin: '0 auto'
+                      }}
+                    />
+                  )}
+
+                  {/* 2장: 나란히 정렬 */}
+                  {images.length === 2 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      {images.map((img, idx) => (
+                        <img
+                          key={idx}
+                          src={img}
+                          alt={`사진 ${idx + 1}`}
+                          style={{
+                            width: '100%',
+                            height: '200px',
+                            objectFit: 'cover',
+                            borderRadius: '8px',
+                            border: '1px solid #e5e5e5'
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 3장: 위에 큰 것 1장 + 아래 2장 */}
+                  {images.length === 3 && (
+                    <div>
+                      <img
+                        src={images[0]}
+                        alt="사진 1"
+                        style={{
+                          width: '100%',
+                          height: '300px',
+                          objectFit: 'cover',
+                          borderRadius: '8px',
+                          border: '1px solid #e5e5e5',
+                          marginBottom: '12px'
+                        }}
+                      />
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        <img
+                          src={images[1]}
+                          alt="사진 2"
+                          style={{
+                            width: '100%',
+                            height: '150px',
+                            objectFit: 'cover',
+                            borderRadius: '8px',
+                            border: '1px solid #e5e5e5'
+                          }}
+                        />
+                        <img
+                          src={images[2]}
+                          alt="사진 3"
+                          style={{
+                            width: '100%',
+                            height: '150px',
+                            objectFit: 'cover',
+                            borderRadius: '8px',
+                            border: '1px solid #e5e5e5'
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
 
-              {/* ✅ textarea로 변경하여 자유롭게 편집 가능 */}
+              {/* SAYU 텍스트 편집 영역 */}
               <textarea
                 value={editedContent}
                 onChange={(e) => setEditedContent(e.target.value)}
-                placeholder="AI가 다듬은 내용을 자유롭게 수정할 수 있습니다..."
                 style={{
                   width: '100%',
                   minHeight: '400px',
-                  padding: '16px',
-                  fontSize: 14,
+                  padding: '20px',
+                  fontSize: 15,
                   lineHeight: 1.8,
                   border: '1px solid #e5e5e5',
                   borderRadius: 8,
@@ -398,177 +637,115 @@ function SayuModal({
                   outline: 'none',
                   whiteSpace: 'pre-wrap',
                 }}
+                placeholder="SAYU 내용을 자유롭게 수정하세요..."
               />
-              <p style={{ fontSize: 12, color: '#999', marginTop: 8, marginBottom: 12 }}>
-                💡 AI가 생성한 내용을 자유롭게 수정하세요. 수정 후 "💾 최종 저장" 버튼을 눌러주세요!
-              </p>
-
-              {images && images.length > 0 && (
-                <div>
-                  <h3 style={{ fontSize: 13, color: '#1A3C6E', fontWeight: 600, marginBottom: 12 }}>
-                    📸 사진 {images.length}/3
-                  </h3>
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    {images.map((url, index) => (
-                      <div
-                        key={index}
-                        style={{
-                          flex: 1,
-                          height: '120px',
-                          borderRadius: 8,
-                          border: '1px solid #e5e5e5',
-                          backgroundColor: '#f5f5f5',
-                          overflow: 'hidden',
-                        }}
-                      >
-                        <img
-                          src={url}
-                          alt={`사진 ${index + 1}`}
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'contain',
-                          }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           ) : (
-            <div
-              style={{
-                width: '100%',
-                minHeight: 250,
-                padding: '16px',
-                backgroundColor: '#FAF9F6',
-                borderRadius: '8px',
-                border: '1px dashed #ccc',
-                overflowY: 'auto',
-              }}
-            >
-              {renderOriginalData()}
-            </div>
+            renderOriginalData()
           )}
         </div>
 
-        {/* Rating */}
+        {/* Footer - AI 탭일 때만 별점/저장 버튼 표시 */}
+        {viewMode === 'ai' && (
         <div
-          className="no-print"
-          style={{
-            padding: '12px 20px',
-            borderTop: '1px solid #e5e5e5',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            backgroundColor: '#fff',
-          }}
-        >
-          <p style={{ fontSize: 12, color: '#1A3C6E', fontWeight: 600, margin: 0 }}>
-            ⭐ 중요도
-          </p>
-          <div style={{ display: 'flex', gap: 4 }}>
-            {[1, 2, 3, 4, 5].map((star) => (
-              <Star
-                key={star}
-                fill={star <= rating ? '#FFD700' : 'none'}
-                style={{
-                  width: 20,
-                  height: 20,
-                  color: star <= rating ? '#FFD700' : '#D1D5DB',
-                  cursor: 'pointer',
-                }}
-                onClick={() => setRating(star)}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Footer Buttons */}
-        <div
-          className="no-print"
           style={{
             padding: '16px 20px',
             borderTop: '1px solid #e5e5e5',
-            display: 'flex',
-            gap: 10,
-            justifyContent: 'flex-end',
             backgroundColor: '#fff',
           }}
         >
-          <button
-            onClick={onClose}
-            style={{
-              padding: '10px 20px',
-              fontSize: 13,
-              border: '1px solid #e5e5e5',
-              borderRadius: 8,
-              backgroundColor: '#fff',
-              color: '#666',
-              cursor: 'pointer',
-              fontWeight: 500,
-            }}
-          >
-            취소
-          </button>
-          <button
-            onClick={handlePrint}
-            style={{
-              padding: '10px 20px',
-              fontSize: 13,
-              border: '1px solid #10b981',
-              borderRadius: 8,
-              backgroundColor: '#fff',
-              color: '#10b981',
-              cursor: 'pointer',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            <Printer style={{ width: 16, height: 16 }} />
-            PDF 인쇄
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            style={{
-              padding: '10px 24px',
-              fontSize: 13,
-              border: 'none',
-              borderRadius: 8,
-              backgroundColor: '#1A3C6E',
-              color: '#FAF9F6',
-              cursor: isSaving ? 'not-allowed' : 'pointer',
-              opacity: isSaving ? 0.7 : 1,
-              fontWeight: 600,
-            }}
-          >
-            {isSaving ? '저장 중...' : '💾 최종 저장'}
-          </button>
+          {/* 별점 */}
+          <div style={{ marginBottom: '16px' }}>
+            <p style={{ fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
+              오늘의 별점
+            </p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setRating(star)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 4,
+                  }}
+                >
+                  <Star
+                    style={{
+                      width: 28,
+                      height: 28,
+                      fill: star <= rating ? '#F59E0B' : 'transparent',
+                      stroke: star <= rating ? '#F59E0B' : '#d1d5db',
+                      transition: 'all 0.2s',
+                    }}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 버튼 */}
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <button
+              onClick={onClose}
+              disabled={isSaving}
+              style={{
+                padding: '10px 20px',
+                fontSize: 14,
+                border: '1px solid #e5e5e5',
+                borderRadius: 8,
+                backgroundColor: '#fff',
+                color: '#666',
+                cursor: isSaving ? 'not-allowed' : 'pointer',
+                opacity: isSaving ? 0.5 : 1,
+                fontWeight: 500,
+              }}
+            >
+              취소
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              style={{
+                padding: '10px 24px',
+                fontSize: 14,
+                border: 'none',
+                borderRadius: 8,
+                backgroundColor: '#10b981',
+                color: '#fff',
+                cursor: isSaving ? 'not-allowed' : 'pointer',
+                opacity: isSaving ? 0.7 : 1,
+                fontWeight: 600,
+              }}
+            >
+              {isSaving ? '저장 중...' : '💾 최종 저장'}
+            </button>
+          </div>
         </div>
+        )}
       </div>
-    </div>
+      </div>
+      )}
+    </>
   );
 }
 
 export function SayuPage() {
-  const { user: authUser } = useAuth();
+  const location = useLocation();
+  const { user } = useAuth();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [records, setRecords] = useState<HaruRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [selectedRecord, setSelectedRecord] = useState<HaruRecord | null>(null);
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string }[]>([]);
   const [sayuModalState, setSayuModalState] = useState<{
     isOpen: boolean;
     content: string;
     originalData?: Record<string, string>;
     format?: string;
-    formatKey?: string;  // ✅ 추가: 형식 키 (essay, diary 등)
     dateLabel: string;
-    currentRating: number;
+    currentRating?: number;
     recordDate?: string;
     weather?: string;
     temperature?: string;
@@ -578,7 +755,6 @@ export function SayuPage() {
     isOpen: false,
     content: '',
     dateLabel: '',
-    currentRating: 1,
   });
 
   const [showSayuGuide, setShowSayuGuide] = useState(() => {
@@ -590,22 +766,27 @@ export function SayuPage() {
     }
   });
 
-  const location = useLocation();
-
   useEffect(() => {
     fetchRecords();
-  }, [authUser?.uid, location]);
+  }, [user?.uid, currentMonth]);
+
+  const toggleSayuGuide = () => {
+    const newValue = !showSayuGuide;
+    setShowSayuGuide(newValue);
+    try {
+      localStorage.setItem('haru_sayu_guide_visible', String(newValue));
+    } catch { /* ignore */ }
+  };
 
   const fetchRecords = async () => {
-    if (!authUser?.uid) {
+    if (!user?.uid) {
       setLoading(false);
       return;
     }
 
     setLoading(true);
     try {
-      const uid = authUser.uid;
-      const data = await firestoreService.getRecords(uid);
+      const data = await firestoreService.getRecords(user.uid);
       setRecords(data);
     } catch (error) {
       console.error('기록 불러오기 실패:', error);
@@ -622,129 +803,10 @@ export function SayuPage() {
     return `${year}-${month}-${day}`;
   };
 
-  const getDaysInMonth = (date: Date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    const days: (Date | null)[] = [];
-    for (let i = 0; i < firstDay; i++) {
-      days.push(null);
-    }
-    for (let i = 1; i <= daysInMonth; i++) {
-      days.push(new Date(year, month, i));
-    }
-
-    return days;
-  };
-
-  const hasSayu = (day: Date | null): 'saved' | 'polished' | null => {
-    if (!day) return null;
-
-    const dateStr = formatDateString(day);
-    const record = records.find((r) => r.date === dateStr);
-    if (!record) return null;
-
-    const formats = ['diary', 'essay', 'mission', 'report', 'work', 'travel', 'garden', 'pet', 'child'];
-
-    const hasPolishedSayu = formats.some((fmt) => {
-      const sayuKey = `${fmt}_sayu`;
-      const polishedKey = `${fmt}_polished`;
-      return record[sayuKey] && record[polishedKey];
-    });
-
-    if (hasPolishedSayu) return 'polished';
-
-    const hasSayu = record.sayuContent || formats.some((fmt) => record[`${fmt}_sayu`]);
-    return hasSayu ? 'saved' : null;
-  };
-
-  const handleDateClick = (day: Date | null) => {
-    if (!day) return;
-    const dateStr = formatDateString(day);
-    setSelectedDate(dateStr);
-    const record = records.find((r) => r.date === dateStr);
-    setSelectedRecord(record || null);
-  };
-
-  const getFormatsForDate = (record: HaruRecord | null) => {
-    if (!record) return [];
-    
-    const formatMap: Record<string, string> = {
-      diary: '일기',
-      essay: '에세이',
-      mission: '선교보고',
-      report: '일반보고',
-      work: '업무일지',
-      travel: '여행기록',
-      garden: '텃밭일지',
-      pet: '애완동물관찰일지',
-      child: '육아일기',
-    };
-
-    const result: { key: string; label: string }[] = [];
-
-    Object.entries(formatMap).forEach(([key, label]) => {
-      const sayuKey = `${key}_sayu`;
-      if (record[sayuKey]) {
-        result.push({ key, label });
-      }
-    });
-
-    return result;
-  };
-
-  const handleFormatClick = async (formatKey: string, formatLabel: string) => {
-    if (!selectedRecord) return;
-
-    const sayuKey = `${formatKey}_sayu`;
-    const sayuContent = selectedRecord[sayuKey];
-
-    if (sayuContent) {
-      const originalDataKeys = Object.keys(selectedRecord).filter(
-        (k) => k.startsWith(`${formatKey}_`) && !k.includes('sayu') && !k.includes('polished') && !k.includes('images')
-      );
-      const originalData: Record<string, string> = {};
-      originalDataKeys.forEach((k) => {
-        originalData[k] = selectedRecord[k];
-      });
-
-      const imagesKey = `${formatKey}_images`;
-      let loadedImages: string[] = [];
-      
-      try {
-        const imagesData = selectedRecord[imagesKey];
-        if (imagesData) {
-          if (typeof imagesData === 'string') {
-            loadedImages = JSON.parse(imagesData);
-          } else if (Array.isArray(imagesData)) {
-            loadedImages = imagesData;
-          }
-        }
-      } catch (error) {
-        console.error('이미지 데이터 파싱 실패:', error);
-        loadedImages = [];
-      }
-
-      setSayuModalState({
-        isOpen: true,
-        content: String(sayuContent),
-        originalData,
-        format: formatLabel,
-        formatKey: formatKey,  // ✅ 추가: formatKey 저장
-        dateLabel: formatLabel,
-        currentRating: selectedRecord.mergeRating || 1,
-        recordDate: selectedRecord.date,
-        weather: selectedRecord.weather,
-        temperature: selectedRecord.temperature,
-        mood: selectedRecord.mood,
-        images: loadedImages,
-      });
-    } else {
-      toast.info(`${formatLabel}의 SAYU가 아직 없습니다.`);
-    }
-  };
+  const monthName = currentMonth.toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+  });
 
   const handlePrevMonth = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
@@ -754,94 +816,209 @@ export function SayuPage() {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
   };
 
-  const handleSaveSayu = async (content: string, rating: number) => {
-    if (!selectedRecord || !authUser?.uid) return;
+  const getDaysInMonth = () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startDayOfWeek = firstDay.getDay();
 
-    try {
-      const updateData: Record<string, any> = {
-        sayuContent: content,
-        sayuSavedAt: new Date().toISOString(),
-        mergeRating: rating,
-      };
-      
-      // ✅ 형식별 SAYU도 함께 저장!
-      if (sayuModalState.formatKey) {
-        const sayuKey = `${sayuModalState.formatKey}_sayu`;
-        updateData[sayuKey] = content;
-        console.log(`✅ ${sayuKey}도 함께 저장:`, content.substring(0, 50) + '...');
+    const days: (Date | null)[] = [];
+    for (let i = 0; i < startDayOfWeek; i++) {
+      days.push(null);
+    }
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push(new Date(year, month, i));
+    }
+
+    return days;
+  };
+
+  const days = getDaysInMonth();
+
+  const hasSayu = (date: Date | null): 'none' | 'saved' | 'polished' => {
+    if (!date) return 'none';
+    const dateStr = formatDateString(date);
+    const record = records.find((r) => r.date === dateStr);
+    if (!record || !record.formats || record.formats.length === 0) {
+      return 'none';
+    }
+
+    const formatPrefixes = {
+      '일기': 'diary',
+      '에세이': 'essay',
+      '선교보고': 'mission',
+      '일반보고': 'report',
+      '업무일지': 'work',
+      '여행기록': 'travel',
+      '텃밭일지': 'garden',
+      '애완동물관찰일지': 'pet',
+      '육아일기': 'child',
+    };
+
+    let hasAnyPolished = false;
+    let hasAnySaved = false;
+
+    record.formats.forEach((format) => {
+      const prefix = formatPrefixes[format as keyof typeof formatPrefixes];
+      if (prefix) {
+        const sayuKey = `${prefix}_sayu`;
+        const polishedKey = `${prefix}_polished`;
         
-        // ✅ formats 배열도 자동 업데이트 (통계를 위해)
-        const formatMap: Record<string, string> = {
-          diary: '일기',
-          essay: '에세이',
-          mission: '선교보고',
-          report: '일반보고',
-          work: '업무일지',
-          travel: '여행기록',
-          garden: '텃밭일지',
-          pet: '애완동물관찰일지',
-          child: '육아일기',
-        };
-        
-        const currentFormats = selectedRecord.formats || [];
-        const formatToAdd = formatMap[sayuModalState.formatKey];
-        
-        if (formatToAdd) {
-          const updatedFormats = currentFormats.includes(formatToAdd)
-            ? currentFormats
-            : [...currentFormats, formatToAdd];
-          
-          updateData.formats = updatedFormats;
-          console.log(`✅ formats 배열 업데이트: ${currentFormats} → ${updatedFormats}`);
+        if (record[sayuKey]) {
+          hasAnySaved = true;
+        }
+        if (record[polishedKey] === true) {
+          hasAnyPolished = true;
         }
       }
-      
-      await firestoreService.updateRecord(authUser.uid, selectedRecord.id, updateData);
+    });
 
-      const updated = { ...selectedRecord, ...updateData };
-      setRecords((prev) => prev.map((r) => (r.id === selectedRecord.id ? updated : r)));
-      setSelectedRecord(updated);
-      
-      // ✅ 모달 state도 함께 업데이트 (PDF 인쇄/미리보기에서 바로 반영)
-      setSayuModalState(prev => ({
-        ...prev,
-        content: content,
-        currentRating: rating,
-      }));
-      
-      console.log('✅ SAYU 저장 완료 + 모달 state 업데이트:', content.substring(0, 50) + '...');
-    } catch (error) {
-      console.error('SAYU 저장 실패:', error);
-      throw error;
+    if (hasAnyPolished) return 'polished';
+    if (hasAnySaved) return 'saved';
+    return 'none';
+  };
+
+  const handleDateClick = (date: Date | null) => {
+    if (!date) return;
+    const dateStr = formatDateString(date);
+    const record = records.find((r) => r.date === dateStr);
+
+    if (!record || !record.formats || record.formats.length === 0) {
+      toast.info('해당 날짜에 SAYU가 없습니다.');
+      return;
     }
+
+    setSelectedDate(dateStr);
+
+    const formatPrefixes = {
+      '일기': 'diary',
+      '에세이': 'essay',
+      '선교보고': 'mission',
+      '일반보고': 'report',
+      '업무일지': 'work',
+      '여행기록': 'travel',
+      '텃밭일지': 'garden',
+      '애완동물관찰일지': 'pet',
+      '육아일기': 'child',
+    };
+
+    const availableFormats = record.formats
+      .map((format) => {
+        const prefix = formatPrefixes[format as keyof typeof formatPrefixes];
+        if (!prefix) return null;
+        const sayuKey = `${prefix}_sayu`;
+        if (record[sayuKey]) {
+          return { key: prefix, label: format };
+        }
+        return null;
+      })
+      .filter((f) => f !== null) as { key: string; label: string }[];
+
+    setSelectedDateFormats(availableFormats);
+  };
+
+  const handleFormatClick = (formatKey: string, formatLabel: string) => {
+    if (!selectedDate) return;
+    const record = records.find((r) => r.date === selectedDate);
+    if (!record) return;
+
+    const sayuKey = `${formatKey}_sayu`;
+    const ratingKey = `${formatKey}_rating`;
+    const imagesKey = `${formatKey}_images`;
+
+    const sayuContent = record[sayuKey] || '내용 없음';
+    const sayuRating = record[ratingKey] || 0;
+
+    const originalData: Record<string, string> = {};
+    Object.keys(record).forEach((key) => {
+      if (key.startsWith(`${formatKey}_`) && !key.includes('sayu') && !key.includes('rating') && !key.includes('polished') && !key.includes('images')) {
+        originalData[key] = record[key];
+      }
+    });
+
+    let images: string[] = [];
+    const imagesData = record[imagesKey];
+    if (imagesData) {
+      try {
+        const parsed = JSON.parse(imagesData);
+        if (Array.isArray(parsed)) {
+          images = parsed.filter((url: any) => typeof url === 'string' && url.startsWith('http'));
+        }
+      } catch {
+        images = [];
+      }
+    }
+
+    setSayuModalState({
+      isOpen: true,
+      content: sayuContent,
+      originalData,
+      format: formatLabel,
+      dateLabel: new Date(selectedDate + 'T00:00:00').toLocaleDateString('ko-KR', {
+        month: 'long',
+        day: 'numeric',
+      }),
+      currentRating: sayuRating,
+      recordDate: selectedDate,
+      weather: record.weather,
+      temperature: record.temperature,
+      mood: record.mood,
+      images,
+    });
   };
 
   const handleModalClose = () => {
-    setSayuModalState({ isOpen: false, content: '', dateLabel: '', currentRating: 1 });
+    setSayuModalState((prev) => ({ ...prev, isOpen: false }));
   };
 
-  const toggleSayuGuide = () => {
-    const newValue = !showSayuGuide;
-    setShowSayuGuide(newValue);
+  const handleSaveSayu = async (content: string, rating: number) => {
+    if (!selectedDate || !user?.uid) return;
+    const record = records.find((r) => r.date === selectedDate);
+    if (!record) return;
+
+    const formatKey = selectedDateFormats.length > 0 ? selectedDateFormats[0].key : '';
+    if (!formatKey) return;
+
+    const sayuKey = `${formatKey}_sayu`;
+    const ratingKey = `${formatKey}_rating`;
+    const polishedKey = `${formatKey}_polished`;
+    const polishedAtKey = `${formatKey}_polishedAt`;
+
+    const updateData = {
+      [sayuKey]: content,
+      [ratingKey]: rating,
+      [polishedKey]: true,
+      [polishedAtKey]: new Date().toISOString(),
+    };
+
     try {
-      localStorage.setItem('haru_sayu_guide_visible', String(newValue));
-    } catch { /* ignore */ }
-  };
+      await firestoreService.updateRecord(user.uid, record.id, updateData);
+      
+      const updated = { ...record, ...updateData };
+      setRecords((prev) => prev.map((r) => (r.id === record.id ? updated : r)));
 
-  const days = getDaysInMonth(currentMonth);
-  const monthName = currentMonth.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long' });
-  const selectedDateFormats = getFormatsForDate(selectedRecord);
+      toast.success('✅ SAYU가 최종 저장되었습니다!');
+      await fetchRecords();
+    } catch (error) {
+      console.error('저장 실패:', error);
+      toast.error('❌ 저장에 실패했습니다.');
+    }
+  };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+    <>
+    <div className="sayu-page-container max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
       <div className="mb-6">
-        <div className="flex items-start justify-between mb-2">
-          <SayuTitleAnimation />
-        </div>
+        <SayuTitleAnimation />
+        <p className="text-sm mb-2" style={{ color: '#666666' }}>
+          AI가 다듬은 기록을 확인하고 저장하세요
+        </p>
         <div
-          className="bg-purple-50 border-l-4 border-purple-600 rounded transition-all"
+          className="bg-blue-50 border-l-4 border-blue-600 rounded transition-all"
           style={{
-            backgroundColor: '#F8F5FF',
+            backgroundColor: '#F0F7FF',
             borderColor: '#1A3C6E',
             overflow: 'hidden',
           }}
@@ -930,19 +1107,29 @@ export function SayuPage() {
                   {day && day.getDate()}
                   {sayuStatus === 'saved' && (
                     <div
-                      className="absolute bottom-1 w-3 h-3 rounded-full"
+                      className="absolute rounded-full"
                       style={{
+                        bottom: '-2px',
+                        left: '50%',
+                        transform: 'translateX(calc(-50% + 2px))',
+                        width: '8px',
+                        height: '8px',
                         backgroundColor: isSelected ? '#FAF9F6' : '#1A3C6E',
-                        boxShadow: isSelected ? 'none' : '0 0 0 2px rgba(26,60,110,0.25)',
+                        boxShadow: isSelected ? 'none' : '0 0 0 1.5px rgba(26,60,110,0.25)',
                       }}
                     />
                   )}
                   {sayuStatus === 'polished' && (
                     <div
-                      className="absolute bottom-1 w-3 h-3 rounded-full"
+                      className="absolute rounded-full"
                       style={{
+                        bottom: '-2px',
+                        left: '50%',
+                        transform: 'translateX(calc(-50% + 2px))',
+                        width: '8px',
+                        height: '8px',
                         backgroundColor: '#F59E0B',
-                        boxShadow: '0 0 0 2px rgba(245,158,11,0.3)',
+                        boxShadow: '0 0 0 1.5px rgba(245,158,11,0.3)',
                       }}
                     />
                   )}
@@ -984,11 +1171,11 @@ export function SayuPage() {
 
         <div className="mt-4 flex flex-col gap-2 text-sm" style={{ color: '#999' }}>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: '#1A3C6E', boxShadow: '0 0 0 2px rgba(26,60,110,0.25)' }} />
+            <div className="rounded-full flex-shrink-0" style={{ width: '8px', height: '8px', backgroundColor: '#1A3C6E', boxShadow: '0 0 0 1.5px rgba(26,60,110,0.25)' }} />
             <span>SAYU 저장</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: '#F59E0B', boxShadow: '0 0 0 2px rgba(245,158,11,0.3)' }} />
+            <div className="rounded-full flex-shrink-0" style={{ width: '8px', height: '8px', backgroundColor: '#F59E0B', boxShadow: '0 0 0 1.5px rgba(245,158,11,0.3)' }} />
             <span>다듬기 완료</span>
           </div>
         </div>
@@ -1009,5 +1196,152 @@ export function SayuPage() {
         images={sayuModalState.images}
       />
     </div>
+
+    {/* 인쇄 전용 레이아웃 - sayu-page-container 밖 (항상 렌더링) */}
+    <div className="print-show sayu-print-page">
+        <div className="sayu-print-header">
+          <h2>
+            {sayuModalState.recordDate && new Date(sayuModalState.recordDate + 'T00:00:00').toLocaleDateString('ko-KR', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              weekday: 'long',
+            })}
+          </h2>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
+            {sayuModalState.currentRating && sayuModalState.currentRating > 0 && (
+              <span style={{ 
+                fontSize: '10pt', 
+                padding: '4px 12px', 
+                borderRadius: '12px',
+                backgroundColor: '#FFF8F0',
+                color: '#F59E0B'
+              }}>
+                {'⭐'.repeat(sayuModalState.currentRating)}
+              </span>
+            )}
+            {sayuModalState.weather && (
+              <span style={{ 
+                fontSize: '9pt', 
+                padding: '3px 8px', 
+                borderRadius: '4px',
+                backgroundColor: '#F0F7FF',
+                color: '#1A3C6E'
+              }}>
+                {sayuModalState.weather}
+              </span>
+            )}
+            {sayuModalState.temperature && (
+              <span style={{ 
+                fontSize: '9pt', 
+                padding: '3px 8px', 
+                borderRadius: '4px',
+                backgroundColor: '#F0F7FF',
+                color: '#1A3C6E'
+              }}>
+                {sayuModalState.temperature}
+              </span>
+            )}
+            {sayuModalState.mood && (
+              <span style={{ 
+                fontSize: '9pt', 
+                padding: '3px 8px', 
+                borderRadius: '4px',
+                backgroundColor: '#F0F7FF',
+                color: '#1A3C6E'
+              }}>
+                {sayuModalState.mood}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* 사진 렌더링 - 30% 축소 적용 */}
+        {sayuModalState.images && sayuModalState.images.length > 0 && (
+          <div className="print-photos" style={{ marginBottom: '15px' }}>
+            {/* 1장: 가운데 정렬 - 63mm */}
+            {sayuModalState.images.length === 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <img 
+                  src={sayuModalState.images[0]} 
+                  alt="사진"
+                  style={{
+                    width: 'auto',
+                    maxWidth: '63mm',
+                    height: 'auto',
+                    borderRadius: '8px'
+                  }}
+                />
+              </div>
+            )}
+
+            {/* 2장: 나란히 정렬 - 각 60mm */}
+            {sayuModalState.images.length === 2 && (
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                {sayuModalState.images.map((img: string, idx: number) => (
+                  <img 
+                    key={idx}
+                    src={img} 
+                    alt={`사진 ${idx + 1}`}
+                    style={{
+                      width: 'auto',
+                      maxWidth: '60mm',
+                      height: 'auto',
+                      borderRadius: '8px'
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* 3장: 위에 큰 것 84mm + 아래 작은 것 각 38mm */}
+            {sayuModalState.images.length === 3 && (
+              <div>
+                {/* 큰 사진 - 84mm */}
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
+                  <img 
+                    src={sayuModalState.images[0]} 
+                    alt="사진 1"
+                    style={{
+                      width: 'auto',
+                      maxWidth: '84mm',
+                      height: 'auto',
+                      borderRadius: '8px'
+                    }}
+                  />
+                </div>
+                {/* 작은 사진 2개 - 각 38mm */}
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                  <img 
+                    src={sayuModalState.images[1]} 
+                    alt="사진 2"
+                    style={{
+                      width: 'auto',
+                      maxWidth: '38mm',
+                      height: 'auto',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <img 
+                    src={sayuModalState.images[2]} 
+                    alt="사진 3"
+                    style={{
+                      width: 'auto',
+                      maxWidth: '38mm',
+                      height: 'auto',
+                      borderRadius: '8px'
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="sayu-print-content">
+          <p>{sayuModalState.content}</p>
+        </div>
+      </div>
+    </>
   );
 }
