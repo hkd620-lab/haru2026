@@ -582,7 +582,7 @@ function SayuModal({
                         alt="사진 1"
                         style={{
                           width: '100%',
-                          height: '312px',
+                          height: '406px',
                           objectFit: 'cover',
                           borderRadius: '8px',
                           border: '1px solid #e5e5e5',
@@ -595,7 +595,7 @@ function SayuModal({
                           alt="사진 2"
                           style={{
                             width: '100%',
-                            height: '156px',
+                            height: '203px',
                             objectFit: 'cover',
                             borderRadius: '8px',
                             border: '1px solid #e5e5e5'
@@ -606,7 +606,7 @@ function SayuModal({
                           alt="사진 3"
                           style={{
                             width: '100%',
-                            height: '156px',
+                            height: '203px',
                             objectFit: 'cover',
                             borderRadius: '8px',
                             border: '1px solid #e5e5e5'
