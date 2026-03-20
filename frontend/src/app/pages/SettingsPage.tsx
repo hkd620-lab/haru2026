@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Settings, Database, Download, Trash2, BarChart3, LogOut, User } from 'lucide-react';
+import { Settings, Database, Download, Trash2, BarChart3, LogOut, User, Bell } from 'lucide-react';
 import { firestoreService } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
+import {
+  loadNotificationSettings,
+  saveNotificationSettings,
+  type NotificationSettings,
+} from '../services/notificationService';
 
 export function SettingsPage() {
   const { user, signOut } = useAuth();
@@ -13,9 +18,16 @@ export function SettingsPage() {
     formatCounts: {} as Record<string, number>
   });
   const [loadingStats, setLoadingStats] = useState(true);
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
+    notificationEnabled: false,
+    notificationTime: '21:00',
+  });
+  const [savingNotification, setSavingNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
 
   useEffect(() => {
     loadStats();
+    loadNotificationSettings(user.uid).then(setNotificationSettings).catch(console.error);
   }, [user.uid]);
 
   const loadStats = async () => {
@@ -52,6 +64,34 @@ export function SettingsPage() {
       window.location.reload();
     } catch (error) {
       alert('삭제에 실패했습니다.');
+    }
+  };
+
+  const handleNotificationToggle = async (enabled: boolean) => {
+    const updated = { ...notificationSettings, notificationEnabled: enabled };
+    setSavingNotification(true);
+    setNotificationMessage(null);
+    try {
+      await saveNotificationSettings(user.uid, updated);
+      setNotificationSettings(updated);
+      setNotificationMessage(enabled ? '알림이 활성화되었습니다.' : '알림이 비활성화되었습니다.');
+    } catch (error: any) {
+      setNotificationMessage(error?.message || '알림 설정에 실패했습니다.');
+    } finally {
+      setSavingNotification(false);
+      setTimeout(() => setNotificationMessage(null), 3000);
+    }
+  };
+
+  const handleNotificationTimeChange = async (time: string) => {
+    const updated = { ...notificationSettings, notificationTime: time };
+    setNotificationSettings(updated);
+    if (notificationSettings.notificationEnabled) {
+      try {
+        await saveNotificationSettings(user.uid, updated);
+      } catch (error) {
+        console.error('알림 시간 저장 실패:', error);
+      }
     }
   };
 
@@ -157,14 +197,97 @@ export function SettingsPage() {
               <span style={{ color: '#666' }}>다크 모드</span>
               <span style={{ color: '#999' }}>준비 중</span>
             </div>
-            <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: '#e5e5e5' }}>
-              <span style={{ color: '#666' }}>알림 설정</span>
-              <span style={{ color: '#999' }}>준비 중</span>
-            </div>
             <div className="flex items-center justify-between py-2">
               <span style={{ color: '#666' }}>클라우드 동기화</span>
               <span style={{ color: '#999' }}>준비 중</span>
             </div>
+          </div>
+        </section>
+
+        {/* 알림 설정 */}
+        <section className="bg-white rounded-lg p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-5">
+            <Bell className="w-5 h-5" style={{ color: '#1A3C6E' }} />
+            <h2 className="text-base tracking-wide" style={{ color: '#333' }}>
+              알림 설정
+            </h2>
+          </div>
+
+          <div className="space-y-4 text-sm">
+            {/* 알림 ON/OFF 토글 */}
+            <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: '#e5e5e5' }}>
+              <div>
+                <p style={{ color: '#333', fontWeight: 500 }}>기록 알림</p>
+                <p className="text-xs mt-0.5" style={{ color: '#999' }}>
+                  오늘의 이야기를 남겨주세요 📖
+                </p>
+              </div>
+              <button
+                onClick={() => handleNotificationToggle(!notificationSettings.notificationEnabled)}
+                disabled={savingNotification}
+                className="relative inline-flex items-center w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50"
+                style={{
+                  backgroundColor: notificationSettings.notificationEnabled ? '#1A3C6E' : '#D1D5DB',
+                }}
+                aria-label="알림 토글"
+              >
+                <span
+                  className="inline-block w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200"
+                  style={{
+                    transform: notificationSettings.notificationEnabled
+                      ? 'translateX(24px)'
+                      : 'translateX(4px)',
+                  }}
+                />
+              </button>
+            </div>
+
+            {/* 알림 시간 선택 */}
+            <div
+              className="flex items-center justify-between py-2"
+              style={{ opacity: notificationSettings.notificationEnabled ? 1 : 0.5 }}
+            >
+              <div>
+                <p style={{ color: '#333', fontWeight: 500 }}>알림 시간</p>
+                <p className="text-xs mt-0.5" style={{ color: '#999' }}>
+                  기록을 안 한 날 이 시간에 알림이 옵니다
+                </p>
+              </div>
+              <input
+                type="time"
+                value={notificationSettings.notificationTime}
+                onChange={(e) => handleNotificationTimeChange(e.target.value)}
+                disabled={!notificationSettings.notificationEnabled || savingNotification}
+                className="border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2"
+                style={{
+                  borderColor: '#d0dff0',
+                  color: '#1A3C6E',
+                  backgroundColor: notificationSettings.notificationEnabled ? '#F0F7FF' : '#F9FAFB',
+                }}
+              />
+            </div>
+
+            {/* 피드백 메시지 */}
+            {notificationMessage && (
+              <p
+                className="text-xs px-3 py-2 rounded-lg"
+                style={{
+                  backgroundColor: notificationMessage.includes('실패') || notificationMessage.includes('거부')
+                    ? '#FFF5F5'
+                    : '#F0FFF4',
+                  color: notificationMessage.includes('실패') || notificationMessage.includes('거부')
+                    ? '#dc2626'
+                    : '#16a34a',
+                }}
+              >
+                {notificationMessage}
+              </p>
+            )}
+
+            {/* 안내 */}
+            <p className="text-xs" style={{ color: '#bbb' }}>
+              알림을 켜면 브라우저 알림 권한이 요청됩니다. 당일 기록이 없을 때만 발송됩니다.
+            </p>
           </div>
         </section>
 

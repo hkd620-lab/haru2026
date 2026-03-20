@@ -33,9 +33,11 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.saveFinalSayu = exports.polishSayu = exports.kakaoCustomAuth = exports.generateSayu = exports.polishContent = void 0;
+exports.saveFinalSayu = exports.polishSayu = exports.kakaoCustomAuth = exports.generateSayu = exports.polishContent = exports.scheduledPushNotification = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const logger = __importStar(require("firebase-functions/logger"));
+var scheduledNotification_1 = require("./scheduledNotification");
+Object.defineProperty(exports, "scheduledPushNotification", { enumerable: true, get: function () { return scheduledNotification_1.scheduledPushNotification; } });
 // 🌏 서울 리전 설정
 const region = "asia-northeast3";
 // 1. 글 다듬기 함수 (SayuPage에서 사용)

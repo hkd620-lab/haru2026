@@ -1,6 +1,8 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 
+export { scheduledPushNotification } from "./scheduledNotification";
+
 // 🌏 서울 리전 설정
 const region = "asia-northeast3";
 
