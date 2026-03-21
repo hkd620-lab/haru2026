@@ -497,8 +497,8 @@ export function SayuPage() {
     </div>
 
     {/* 인쇄 전용 레이아웃 - sayu-page-container 밖 (항상 렌더링) */}
-    <div className="print-show sayu-print-page" style={{ backgroundColor: 'white' }}>
-        <div className="sayu-print-header" style={{ backgroundColor: 'white' }}>
+    <div className="print-show sayu-print-page">
+        <div className="sayu-print-header">
           <h2>
             {sayuModalState.recordDate && new Date(sayuModalState.recordDate + 'T00:00:00').toLocaleDateString('ko-KR', {
               year: 'numeric',

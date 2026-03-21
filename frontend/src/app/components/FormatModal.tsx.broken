@@ -113,7 +113,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [showPolishModal, setShowPolishModal] = useState(false);
   const [sayuMode, setSayuMode] = useState<SayuMode>('BASIC');
   const [showModeSelect, setShowModeSelect] = useState(false);
-  const [polishStats, setPolishStats] = useState<any>(null);
+  const [polishStats, setPolishStats] = useState<any>(null);  // 📊 AI 통계 데이터
   
   // 사진 관련 state
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
@@ -309,10 +309,11 @@ ${contentValues}`,
 
       const responseData = result.data as any;
       const polished = responseData.text;
-      const stats = responseData.stats;
+      const stats = responseData.stats;  // 📊 통계 데이터
       
+      // AI가 이미 제목을 포함해서 반환함
       setPolishedContent(polished);
-      setPolishStats(stats);
+      setPolishStats(stats);  // 통계 저장
       setShowPolishModal(true);
       toast.success('AI 다듬기 완료!');
     } catch (error: any) {
@@ -354,29 +355,28 @@ ${contentValues}`,
         const timestamp = Date.now();
         const randomId = Math.random().toString(36).substring(2, 9);
         const fileName = `${timestamp}_${randomId}.jpg`;
-        
         if (!user?.uid) {
           toast.error('로그인이 필요합니다.');
           continue;
         }
-        
-        // 이미지 압축
-        console.log('🖼️ [이미지 압축 시작]');
-        const originalSizeMB = (file.size / 1024 / 1024).toFixed(2);
-        console.log(`📥 원본 크기: ${originalSizeMB}MB`);
+        // 🖼️ 이미지 압축 시작
+console.log('🖼️ [이미지 압축 시작]');
+const originalSizeMB = (file.size / 1024 / 1024).toFixed(2);
+console.log(`📥 원본 크기: ${originalSizeMB}MB`);
 
-        const compressed = await compressImage(file, 800, 0.85);
+const compressed = await compressImage(file, 800, 0.85);
 
-        const compressedSizeMB = (compressed.size / 1024 / 1024).toFixed(2);
-        const compressionRate = ((1 - compressed.size / file.size) * 100).toFixed(1);
-        console.log(`📤 압축 후 크기: ${compressedSizeMB}MB`);
-        console.log(`✅ 압축률: ${compressionRate}%`);
-        console.log('🎉 [이미지 압축 완료]\n');
+const compressedSizeMB = (compressed.size / 1024 / 1024).toFixed(2);
+const compressionRate = ((1 - compressed.size / file.size) * 100).toFixed(1);
+console.log(`📤 압축 후 크기: ${compressedSizeMB}MB`);
+console.log(`✅ 압축률: ${compressionRate}%`);
+console.log('🎉 [이미지 압축 완료]\n');
 
-        const imagePath = `users/${user.uid}/format_photos/${recordId}_${prefix}_${fileName}`;
-        const storageRef = ref(storage, imagePath);
-        await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
-        const downloadUrl = await getDownloadURL(storageRef);
+const imagePath = `users/${user.uid}/format_photos/${recordId}_${prefix}_${fileName}`;
+
+const storageRef = ref(storage, imagePath);
+await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
+const downloadUrl = await getDownloadURL(storageRef);
         newImageUrls.push(downloadUrl);
       }
 
@@ -386,54 +386,70 @@ ${contentValues}`,
       console.error('이미지 업로드 실패:', error);
       toast.error('이미지 업로드에 실패했습니다.');
     } finally {
-      setIsUploading(false);
+  onsole.log('원본 URL:', imageUrl);
+    console.log('추출된 경로:', path);
+    
+    if (!path) throw new Error("Invalid image URL");
+    
+    const imageRef = ref(storage, path);
+    await deleteObject(imageRef);
+    
+    setUploadedImages(prev => prev.filter((_, i) => i !== index));
+    toast.success('사진이 삭제되었습니다.');
+  } catch (error: any) {
+    console.error('이미지 삭제 실패:', error);
+    
+    // ✅ object-not-found 에러면 이미 삭제된 것으로 간주
+    if (error?.code === 'storage/object-not-found') {
+      setUploadedImages(prev => prev.filter((_, i) => i !== index));
+      toast.success('사진이 제거되었습니다.');
+    } else {
+      toast.error('사진 삭제에 실패했습니다.');
+    }
+  }
+    setIsUploading(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     }
   };
 
-  // Firebase Storage URL에서 경로 추출
-  function getStoragePathFromDownloadUrl(url: string): string | null {
-    try {
-      const u = new URL(url);
-      const idx = u.pathname.indexOf("/o/");
-      if (idx === -1) return null;
-      const encodedPath = u.pathname.substring(idx + 3);
-      return decodeURIComponent(encodedPath);
-    } catch {
-      return null;
+  const handleDeleteImage = async (imageUrl: string, index: number) => {
+  try {
+    const storage = getStorage();
+    const path = imageUrl.startsWith("http") ? getStoragePathFromDownloadUrl(imageUrl) : imageUrl;
+    
+    console.log('🗑️ 이미지 삭제 시도');
+    console.log('원본 URL:', imageUrl);
+    console.log('추출된 경로:', path);
+    
+    if (!path) throw new Error("Invalid image URL");
+    
+    const imageRef = ref(storage, path);
+    await deleteObject(imageRef);
+    
+    setUploadedImages(prev => prev.filter((_, i) => i !== index));
+    toast.success('사진이 삭제되었습니다.');
+  } catch (error: any) {
+    console.error('이미지 삭제 실패:', error);
+    
+    // ✅ object-not-found 에러면 이미 삭제된 것으로 간주
+    if (error?.code === 'storage/object-not-found') {
+      setUploadedImages(prev => prev.filter((_, i) => i !== index));
+      toast.success('사진이 제거되었습니다.');
+    } else {
+      toast.error('사진 삭제에 실패했습니다.');
     }
   }
+};
 
   const handleDeleteImage = async (imageUrl: string, index: number) => {
-    try {
-      const storage = getStorage();
-      const path = imageUrl.startsWith("http") ? getStoragePathFromDownloadUrl(imageUrl) : imageUrl;
-      
-      console.log('🗑️ 이미지 삭제 시도');
-      console.log('원본 URL:', imageUrl);
-      console.log('추출된 경로:', path);
-      
-      if (!path) throw new Error("Invalid image URL");
-      
-      const imageRef = ref(storage, path);
-      await deleteObject(imageRef);
-      
-      setUploadedImages(prev => prev.filter((_, i) => i !== index));
-      toast.success('사진이 삭제되었습니다.');
-    } catch (error: any) {
-      console.error('이미지 삭제 실패:', error);
-      
-      // ✅ object-not-found 에러면 이미 삭제된 것으로 간주
-      if (error?.code === 'storage/object-not-found') {
-        setUploadedImages(prev => prev.filter((_, i) => i !== index));
-        toast.success('사진이 제거되었습니다.');
-      } else {
-        toast.error('사진 삭제에 실패했습니다.');
-      }
-    }
-  };
+  try {
+    const storage = getStorage();
+    const path = imageUrl.startsWith("http") ? getStoragePathFromDownloadUrl(imageUrl) : imageUrl;
+    
+    console.log('🗑️ 이미지 삭제 시도');
+    c};
 
   const handleSaveSayu = async () => {
     const updateData: Record<string, any> = {
@@ -445,6 +461,7 @@ ${contentValues}`,
       [`${prefix}_mode`]: sayuMode,
     };
 
+    // 📊 통계 데이터 저장 (모든 형식)
     if (polishStats) {
       updateData[`${prefix}_stats`] = polishStats;
     }
@@ -569,7 +586,7 @@ ${contentValues}`,
           {/* Content */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              {/* 📸 사진 업로드 섹션 */}
+              {/* 📸 사진 업로드 섹션 - 맨 위로 이동 */}
               <div>
                 <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
                   📸 사진 (최대 3장)
@@ -690,6 +707,7 @@ ${contentValues}`,
                     {/* 3장: 위 큰 1개 + 아래 작은 2개 */}
                     {uploadedImages.length === 3 && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {/* 큰 사진 */}
                         <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3' }}>
                           <img
                             src={uploadedImages[0]}
@@ -725,6 +743,7 @@ ${contentValues}`,
                           </button>
                         </div>
 
+                        {/* 작은 사진 2개 */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                           {uploadedImages.slice(1).map((url, index) => (
                             <div key={index + 1} style={{ position: 'relative', width: '100%', aspectRatio: '1/1' }}>
@@ -881,6 +900,7 @@ ${contentValues}`,
                   />
                 </div>
               ))}
+
             </div>
           </div>
 
@@ -1111,6 +1131,7 @@ ${contentValues}`,
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+              {/* ✅ 편집 가능한 textarea로 변경 */}
               <textarea
                 value={polishedContent}
                 onChange={(e) => setPolishedContent(e.target.value)}

@@ -36,12 +36,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.polishContent = void 0;
+exports.generateMergePDF = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.polishContent = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
 const params_1 = require("firebase-functions/params");
 const generative_ai_1 = require("@google/generative-ai");
 const admin = __importStar(require("firebase-admin"));
+const logger = __importStar(require("firebase-functions/logger"));
 const axios_1 = __importDefault(require("axios"));
 const crypto = __importStar(require("crypto"));
 // Firebase Admin 초기화
@@ -575,5 +576,64 @@ exports.googleCallback = (0, https_1.onRequest)({
     catch (error) {
         console.error('❌ 구글 콜백 실패:', error);
         res.redirect(`${FRONTEND_URL}/login?error=${encodeURIComponent(error.message)}`);
+    }
+});
+// ===== 🔔 알림 스케줄러 =====
+var scheduledNotification_1 = require("./scheduledNotification");
+Object.defineProperty(exports, "scheduledPushNotification", { enumerable: true, get: function () { return scheduledNotification_1.scheduledPushNotification; } });
+// ===== 📢 전체 알림 발송 =====
+var broadcastNotification_1 = require("./broadcastNotification");
+Object.defineProperty(exports, "sendBroadcastNotification", { enumerable: true, get: function () { return broadcastNotification_1.sendBroadcastNotification; } });
+// ========================================
+// 📄 PDF 생성 함수 (Android 전용)
+// ========================================
+exports.generateMergePDF = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    timeoutSeconds: 540,
+    memory: '2GiB',
+}, async (request) => {
+    const { htmlContent } = request.data;
+    if (!htmlContent) {
+        throw new https_2.HttpsError('invalid-argument', 'HTML content is required');
+    }
+    try {
+        const puppeteer = require('puppeteer');
+        // Puppeteer 실행
+        const browser = await puppeteer.launch({
+            headless: true,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+            ],
+        });
+        const page = await browser.newPage();
+        // HTML 설정
+        await page.setContent(htmlContent, {
+            waitUntil: 'networkidle0',
+        });
+        // PDF 생성
+        const pdfBuffer = await page.pdf({
+            format: 'A4',
+            printBackground: true,
+            margin: {
+                top: '0mm',
+                right: '0mm',
+                bottom: '0mm',
+                left: '0mm',
+            },
+        });
+        await browser.close();
+        // Base64로 인코딩하여 반환
+        const pdfBase64 = pdfBuffer.toString('base64');
+        return {
+            success: true,
+            pdf: pdfBase64,
+        };
+    }
+    catch (error) {
+        logger.error('PDF generation error:', error);
+        throw new https_2.HttpsError('internal', `PDF 생성 실패: ${error.message}`);
     }
 });

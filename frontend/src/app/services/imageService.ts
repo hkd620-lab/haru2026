@@ -67,7 +67,10 @@ export async function compressImage(
 
     img.onerror = () => {
       URL.revokeObjectURL(objectUrl);
-      reject(new Error('이미지를 불러올 수 없습니다.'));
+      reject(new Error(
+        '이미지를 불러올 수 없습니다.\n' +
+        '파일을 바탕화면에 내보내기(복사)한 후 복사한 파일을 불러주세요.'
+      ));
     };
 
     img.src = objectUrl;

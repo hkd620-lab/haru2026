@@ -3,7 +3,6 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as admin from 'firebase-admin';
-import * as logger from 'firebase-functions/logger';
 import axios from 'axios';
 import * as crypto from 'crypto';
 
@@ -677,68 +676,3 @@ export { scheduledPushNotification } from './scheduledNotification';
 
 // ===== 📢 전체 알림 발송 =====
 export { sendBroadcastNotification } from './broadcastNotification';
-
-// ========================================
-// 📄 PDF 생성 함수 (Android 전용)
-// ========================================
-export const generateMergePDF = onCall(
-  { 
-    region: 'asia-northeast3',
-    timeoutSeconds: 540,
-    memory: '2GiB',
-  },
-  async (request) => {
-    const { htmlContent } = request.data;
-
-    if (!htmlContent) {
-      throw new HttpsError('invalid-argument', 'HTML content is required');
-    }
-
-    try {
-      const puppeteer = require('puppeteer');
-      
-      // Puppeteer 실행
-      const browser = await puppeteer.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-        ],
-      });
-
-      const page = await browser.newPage();
-      
-      // HTML 설정
-      await page.setContent(htmlContent, {
-        waitUntil: 'networkidle0',
-      });
-
-      // PDF 생성
-      const pdfBuffer = await page.pdf({
-        format: 'A4',
-        printBackground: true,
-        margin: {
-          top: '0mm',
-          right: '0mm',
-          bottom: '0mm',
-          left: '0mm',
-        },
-      });
-
-      await browser.close();
-
-      // Base64로 인코딩하여 반환
-      const pdfBase64 = pdfBuffer.toString('base64');
-
-      return {
-        success: true,
-        pdf: pdfBase64,
-      };
-    } catch (error: any) {
-      logger.error('PDF generation error:', error);
-      throw new HttpsError('internal', `PDF 생성 실패: ${error.message}`);
-    }
-  }
-);

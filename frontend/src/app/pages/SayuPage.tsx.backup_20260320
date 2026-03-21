@@ -253,31 +253,25 @@ export function SayuPage() {
     });
   };
 
-  const handleSaveSayu = async (editedContent: string, rating: number) => {
-    if (!selectedDate) return;
+  const handleSaveSayu = async (content: string, rating: number) => {
+    if (!selectedDate || !user?.uid) return;
+
     const record = records.find((r) => r.date === selectedDate);
     if (!record) return;
 
-    const formatKey = selectedDateFormats.find((f) => record[`${f.key}_sayu`])?.key;
+    const formatKey = selectedDateFormats[0]?.key;
     if (!formatKey) return;
 
     const sayuKey = `${formatKey}_sayu`;
     const ratingKey = `${formatKey}_rating`;
 
     try {
-      await firestoreService.updateRecord(user!.uid, selectedDate, {
-        [sayuKey]: editedContent,
+      await firestoreService.updateRecord(user.uid, selectedDate, {
+        [sayuKey]: content,
         [ratingKey]: rating,
       });
 
-      setRecords((prev) =>
-        prev.map((r) =>
-          r.date === selectedDate
-            ? { ...r, [sayuKey]: editedContent, [ratingKey]: rating }
-            : r
-        )
-      );
-
+      await fetchRecords();
       toast.success('SAYU가 저장되었습니다!');
     } catch (error) {
       console.error('저장 실패:', error);
@@ -287,13 +281,26 @@ export function SayuPage() {
 
   return (
     <>
-    <div className="sayu-page-container no-print max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+    <div className="sayu-page-container max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
       <div className="mb-6">
         <div className="flex items-start justify-between mb-2">
           <SayuTitleAnimation />
+          <div className="flex gap-2 self-start mt-1 ml-auto">
+            <button
+              onClick={fetchRecords}
+              className="text-xs px-3 py-1.5 rounded-lg transition-all hover:opacity-80"
+              style={{
+                backgroundColor: '#F0F7FF',
+                color: '#1A3C6E',
+                border: '1px solid #d0dff0',
+              }}
+            >
+              🔄 새로고침
+            </button>
+          </div>
         </div>
         <p className="text-sm mb-2" style={{ color: '#666666' }}>
-          작성한 기록을 AI가 다듬은 결과를 확인하세요
+          SAYU가 완료된 날짜를 클릭하세요
         </p>
         <div
           className="bg-blue-50 border-l-4 border-blue-600 rounded transition-all"
@@ -327,22 +334,22 @@ export function SayuPage() {
           {showSayuGuide && (
             <div className="px-3 pb-3">
               <p className="text-xs leading-relaxed" style={{ color: '#1A3C6E' }}>
-                💡 달력에서 날짜를 선택하면 해당 날짜의 SAYU를 확인할 수 있습니다.
+                💡 SAYU가 저장된 날짜를 클릭하면 형식을 선택할 수 있습니다.
               </p>
               <p className="text-xs mt-1 leading-relaxed" style={{ color: '#666' }}>
-                파란 점: SAYU 저장 / 주황 점: 다듬기 완료
+                각 형식의 SAYU를 확인하고, 별점을 매기고, PDF로 저장할 수 있습니다.
               </p>
             </div>
           )}
         </div>
       </div>
 
-      <div>
-        <section className="bg-white rounded-lg p-4 shadow-sm mb-4">
+      <div className="bg-white rounded-lg shadow-sm p-4 md:p-6">
+        <section className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <button
               onClick={handlePrevMonth}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+              className="p-2 rounded-lg transition-all hover:bg-gray-100"
               style={{ color: '#1A3C6E' }}
             >
               <ChevronLeft className="w-5 h-5" />
@@ -352,55 +359,55 @@ export function SayuPage() {
             </h2>
             <button
               onClick={handleNextMonth}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+              className="p-2 rounded-lg transition-all hover:bg-gray-100"
               style={{ color: '#1A3C6E' }}
             >
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="grid grid-cols-7 gap-1 mb-2">
-            {['일', '월', '화', '수', '목', '금', '토'].map((day, idx) => (
+          <div className="grid grid-cols-7 gap-1 md:gap-2">
+            {['일', '월', '화', '수', '목', '금', '토'].map((day) => (
               <div
-                key={idx}
-                className="text-center text-xs font-semibold py-2"
-                style={{ color: idx === 0 ? '#ef4444' : idx === 6 ? '#3b82f6' : '#666' }}
+                key={day}
+                className="text-center text-xs font-medium py-2"
+                style={{ color: '#999' }}
               >
                 {day}
               </div>
             ))}
-          </div>
-
-          <div className="grid grid-cols-7 gap-1">
             {days.map((day, idx) => {
-              const dateStr = day ? formatDateString(day) : '';
-              const isToday = day && formatDateString(day) === formatDateString(new Date());
-              const isSelected = day && selectedDate === formatDateString(day);
               const sayuStatus = hasSayu(day);
+              const isSelected = day && selectedDate === formatDateString(day);
 
               return (
                 <button
                   key={idx}
                   onClick={() => handleDateClick(day)}
-                  disabled={!day}
-                  className="relative aspect-square flex items-center justify-center rounded-lg transition-all disabled:cursor-default"
+                  disabled={!day || sayuStatus === 'none'}
+                  className="relative aspect-square rounded-lg transition-all disabled:cursor-not-allowed"
                   style={{
                     backgroundColor: isSelected
                       ? '#1A3C6E'
-                      : isToday
-                      ? '#F0F7FF'
+                      : sayuStatus === 'polished'
+                      ? 'rgba(245, 158, 11, 0.1)'
+                      : sayuStatus === 'saved'
+                      ? 'rgba(26, 60, 110, 0.05)'
                       : 'transparent',
                     color: isSelected
                       ? '#FAF9F6'
-                      : isToday
-                      ? '#1A3C6E'
-                      : day
-                      ? '#333'
-                      : 'transparent',
-                    fontSize: '13px',
-                    fontWeight: isToday || isSelected ? 600 : 400,
-                    cursor: day ? 'pointer' : 'default',
-                    border: isToday && !isSelected ? '1.5px solid #1A3C6E' : 'none',
+                      : sayuStatus === 'none'
+                      ? '#ddd'
+                      : '#333',
+                    border: isSelected
+                      ? '2px solid #1A3C6E'
+                      : sayuStatus === 'polished'
+                      ? '1px solid rgba(245, 158, 11, 0.3)'
+                      : sayuStatus === 'saved'
+                      ? '1px solid rgba(26, 60, 110, 0.2)'
+                      : '1px solid transparent',
+                    fontSize: 13,
+                    fontWeight: 600,
                   }}
                 >
                   {day && day.getDate()}
@@ -497,8 +504,8 @@ export function SayuPage() {
     </div>
 
     {/* 인쇄 전용 레이아웃 - sayu-page-container 밖 (항상 렌더링) */}
-    <div className="print-show sayu-print-page" style={{ backgroundColor: 'white' }}>
-        <div className="sayu-print-header" style={{ backgroundColor: 'white' }}>
+    <div className="print-show sayu-print-page">
+        <div className="sayu-print-header">
           <h2>
             {sayuModalState.recordDate && new Date(sayuModalState.recordDate + 'T00:00:00').toLocaleDateString('ko-KR', {
               year: 'numeric',
@@ -555,31 +562,28 @@ export function SayuPage() {
           </div>
         </div>
 
-        {/* 사진 렌더링 - PDF 2:3 비율 최적화 */}
+        {/* 사진 렌더링 - maxHeight 추가로 세로 길이 제한 */}
         {sayuModalState.images && sayuModalState.images.length > 0 && (
-          <div className="print-photos" style={{ marginBottom: '15px', backgroundColor: 'white' }}>
-            {/* 1장: 가운데 정렬 - A4 기준 약 100mm 높이 */}
+          <div className="print-photos" style={{ marginBottom: '15px' }}>
+            {/* 1장: 가운데 정렬 - 50mm */}
             {sayuModalState.images.length === 1 && (
-              <div style={{ display: 'flex', justifyContent: 'center', backgroundColor: 'white' }}>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
                 <img 
                   src={sayuModalState.images[0]} 
                   alt="사진"
                   style={{
                     width: 'auto',
-                    maxWidth: '80mm',
-                    maxHeight: '100mm',
-                    objectFit: 'contain',
+                    maxWidth: '50mm',
                     height: 'auto',
-                    borderRadius: '8px',
-                    backgroundColor: 'white'
+                    borderRadius: '8px'
                   }}
                 />
               </div>
             )}
 
-            {/* 2장: 나란히 정렬 - 각 70mm 가로, 90mm 세로 */}
+            {/* 2장: 나란히 정렬 - 각 48mm */}
             {sayuModalState.images.length === 2 && (
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', backgroundColor: 'white' }}>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
                 {sayuModalState.images.map((img: string, idx: number) => (
                   <img 
                     key={idx}
@@ -587,50 +591,43 @@ export function SayuPage() {
                     alt={`사진 ${idx + 1}`}
                     style={{
                       width: 'auto',
-                      maxWidth: '70mm',
-                      maxHeight: '90mm',
-                      objectFit: 'contain',
+                      maxWidth: '48mm',
                       height: 'auto',
-                      borderRadius: '8px',
-                      backgroundColor: 'white'
+                      borderRadius: '8px'
                     }}
                   />
                 ))}
               </div>
             )}
 
-            {/* 3장: 위에 큰 것 110mm 가로 x 85mm 세로 + 아래 작은 것 각 50mm */}
+            {/* 3장: 위에 큰 것 67mm + 아래 작은 것 각 30mm */}
             {sayuModalState.images.length === 3 && (
-              <div style={{ backgroundColor: 'white' }}>
-                {/* 큰 사진 */}
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px', backgroundColor: 'white' }}>
+              <div>
+                {/* 큰 사진 - 67mm 가로 + 50mm 세로 제한 추가 */}
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
                   <img 
                     src={sayuModalState.images[0]} 
                     alt="사진 1"
                     style={{
                       width: 'auto',
-                      maxWidth: '110mm',
-                      maxHeight: '85mm',
-                      objectFit: 'contain',
+                      maxWidth: '67mm',
+                      maxHeight: '50mm',
+                      objectFit: 'cover',
                       height: 'auto',
-                      borderRadius: '8px',
-                      backgroundColor: 'white'
+                      borderRadius: '8px'
                     }}
                   />
                 </div>
-                {/* 작은 사진 2개 */}
-                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', backgroundColor: 'white' }}>
+                {/* 작은 사진 2개 - 각 30mm */}
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
                   <img 
                     src={sayuModalState.images[1]} 
                     alt="사진 2"
                     style={{
                       width: 'auto',
-                      maxWidth: '50mm',
-                      maxHeight: '50mm',
-                      objectFit: 'contain',
+                      maxWidth: '30mm',
                       height: 'auto',
-                      borderRadius: '8px',
-                      backgroundColor: 'white'
+                      borderRadius: '8px'
                     }}
                   />
                   <img 
@@ -638,12 +635,9 @@ export function SayuPage() {
                     alt="사진 3"
                     style={{
                       width: 'auto',
-                      maxWidth: '50mm',
-                      maxHeight: '50mm',
-                      objectFit: 'contain',
+                      maxWidth: '30mm',
                       height: 'auto',
-                      borderRadius: '8px',
-                      backgroundColor: 'white'
+                      borderRadius: '8px'
                     }}
                   />
                 </div>
@@ -652,7 +646,7 @@ export function SayuPage() {
           </div>
         )}
 
-        <div className="sayu-print-content" style={{ backgroundColor: 'white' }}>
+        <div className="sayu-print-content">
           <p>{sayuModalState.content}</p>
         </div>
       </div>

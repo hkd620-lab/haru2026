@@ -1,20 +1,31 @@
 import { useState, useEffect } from 'react';
-import { Settings, Database, Download, Trash2, BarChart3, LogOut, User, Moon, Sun, Bell, BellOff } from 'lucide-react';
+import { Settings, Database, Download, Trash2, BarChart3, LogOut, User, Moon, Sun, Bell, BellOff, Clock, Megaphone } from 'lucide-react';
 import { firestoreService } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';  // 👈 추가!
+import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { requestNotificationPermission, updateNotificationSettings } from '../services/notificationService';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../config/firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+
+const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
 export function SettingsPage() {
   const { user, signOut } = useAuth();
-  const { isDark, toggleTheme } = useTheme();  // 👈 ThemeContext 사용!
+  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   
   // 알림 관련 상태
-  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
-  const [isNotificationSupported, setIsNotificationSupported] = useState(false);
+  const [notificationEnabled, setNotificationEnabled] = useState(true);
+  const [notificationTime, setNotificationTime] = useState('21:00');
+  const [isLoadingNotification, setIsLoadingNotification] = useState(false);
+  
+  // 관리자 전체 알림 상태
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
   
   const [stats, setStats] = useState({
     totalRecords: 0,
@@ -24,17 +35,14 @@ export function SettingsPage() {
   });
   const [loadingStats, setLoadingStats] = useState(true);
 
+  const isAdmin = user?.uid === ADMIN_UID;
+
   useEffect(() => {
     if (user?.uid) {
       loadStats();
+      loadNotificationSettings();
     } else {
       setLoadingStats(false);
-    }
-    
-    // 알림 지원 여부 확인
-    if ('Notification' in window && 'serviceWorker' in navigator) {
-      setIsNotificationSupported(true);
-      setNotificationPermission(Notification.permission);
     }
   }, [user?.uid]);
 
@@ -55,43 +63,105 @@ export function SettingsPage() {
     }
   };
 
-  // 알림 권한 요청
-  const handleRequestNotification = async () => {
-    if (!isNotificationSupported) {
-      toast.error('이 브라우저는 알림을 지원하지 않습니다.');
-      return;
-    }
-
+  const loadNotificationSettings = async () => {
+    if (!user?.uid) return;
+    
     try {
-      const result = await Notification.requestPermission();
-      setNotificationPermission(result);
+      const settingsRef = doc(db, `users/${user.uid}/settings/settings`);
+      const settingsDoc = await getDoc(settingsRef);
       
-      if (result === 'granted') {
-        // 테스트 알림 보내기
-        new Notification('HARU 알림 설정 완료', {
-          body: '이제 중요한 알림을 받을 수 있습니다!',
-          icon: '/icon-192x192.png',
-        });
-        toast.success('알림 권한이 허용되었습니다!');
-      } else if (result === 'denied') {
-        toast.error('알림 권한이 차단되었습니다. 브라우저 설정에서 변경하세요.');
+      if (settingsDoc.exists()) {
+        const data = settingsDoc.data();
+        setNotificationEnabled(data.notificationEnabled ?? true);
+        setNotificationTime(data.notificationTime || '21:00');
       }
     } catch (error) {
-      console.error('알림 권한 요청 실패:', error);
-      toast.error('알림 권한 요청에 실패했습니다.');
+      console.error('알림 설정 로딩 실패:', error);
     }
   };
 
-  // 테스트 알림 보내기
-  const handleSendTestNotification = () => {
-    if (notificationPermission === 'granted') {
-      new Notification('테스트 알림', {
-        body: '알림이 정상적으로 작동하고 있습니다 ✅',
-        icon: '/icon-192x192.png',
-      });
-      toast.success('테스트 알림을 보냈습니다!');
-    } else {
-      toast.error('먼저 알림 권한을 허용해주세요.');
+  const handleToggleNotification = async () => {
+    if (!user?.uid) return;
+    
+    setIsLoadingNotification(true);
+    
+    try {
+      if (!notificationEnabled) {
+        const success = await requestNotificationPermission(user.uid);
+        
+        if (success) {
+          await updateNotificationSettings(user.uid, {
+            notificationEnabled: true,
+            notificationTime,
+          });
+          setNotificationEnabled(true);
+          toast.success('알림이 활성화되었습니다!');
+        } else {
+          toast.error('알림 권한을 허용해주세요.');
+        }
+      } else {
+        await updateNotificationSettings(user.uid, {
+          notificationEnabled: false,
+        });
+        setNotificationEnabled(false);
+        toast.success('알림이 비활성화되었습니다.');
+      }
+    } catch (error) {
+      console.error('알림 설정 변경 실패:', error);
+      toast.error('알림 설정 변경에 실패했습니다.');
+    } finally {
+      setIsLoadingNotification(false);
+    }
+  };
+
+  const handleTimeChange = async (newTime: string) => {
+    if (!user?.uid) return;
+    
+    setNotificationTime(newTime);
+    
+    if (notificationEnabled) {
+      try {
+        await updateNotificationSettings(user.uid, {
+          notificationTime: newTime,
+        });
+        toast.success(`알림 시간이 ${newTime}으로 변경되었습니다.`);
+      } catch (error) {
+        console.error('시간 변경 실패:', error);
+        toast.error('시간 변경에 실패했습니다.');
+      }
+    }
+  };
+
+  const handleSendBroadcast = async () => {
+    if (!broadcastMessage.trim()) {
+      toast.error('메시지를 입력해주세요.');
+      return;
+    }
+
+    if (!confirm(`전체 사용자에게 알림을 발송하시겠습니까?\n\n메시지: ${broadcastMessage}`)) {
+      return;
+    }
+
+    setIsSendingBroadcast(true);
+    
+    try {
+      const functions = getFunctions(undefined, 'asia-northeast3');
+      const sendBroadcast = httpsCallable(functions, 'sendBroadcastNotification');
+      
+      const result = await sendBroadcast({ message: broadcastMessage });
+      const data = result.data as { success: boolean; sentCount: number; message: string };
+      
+      if (data.success) {
+        toast.success(data.message);
+        setBroadcastMessage('');
+      } else {
+        toast.error('알림 발송에 실패했습니다.');
+      }
+    } catch (error: any) {
+      console.error('전체 알림 발송 실패:', error);
+      toast.error(error.message || '알림 발송 중 오류가 발생했습니다.');
+    } finally {
+      setIsSendingBroadcast(false);
     }
   };
 
@@ -106,21 +176,17 @@ export function SettingsPage() {
       
       const blob = await firestoreService.exportData(user.uid);
       
-      // 파일 이름 생성 (날짜 포함)
-      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const today = new Date().toISOString().split('T')[0];
       const filename = `HARU_백업_${today}.json`;
       
-      // Blob을 다운로드 링크로 변환
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.download = filename;
       
-      // 클릭 이벤트 트리거
       document.body.appendChild(link);
       link.click();
       
-      // 정리
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       
@@ -139,8 +205,6 @@ export function SettingsPage() {
     
     try {
       await firestoreService.clearAllData(user.uid);
-      
-      // 통계 다시 로드 (0으로 표시됨)
       await loadStats();
       
       setShowClearConfirm(false);
@@ -179,7 +243,6 @@ export function SettingsPage() {
       </div>
 
       <div className="space-y-4">
-        {/* 기록 통계 */}
         <section className="bg-white rounded-lg p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-5">
             <BarChart3 className="w-5 h-5" style={{ color: '#1A3C6E' }} />
@@ -193,47 +256,46 @@ export function SettingsPage() {
               <p className="text-sm" style={{ color: '#999' }}>통계를 불러오는 중...</p>
             </div>
           ) : (
-            <>
-              <div className="grid grid-cols-3 gap-3">
-                <div
-                  className="rounded-lg p-4 text-center"
-                  style={{ backgroundColor: '#F0F7FF', border: '1px solid #d0dff0' }}
-                >
-                  <p className="text-2xl mb-1" style={{ color: '#1A3C6E', fontWeight: 700 }}>
-                    {stats.totalRecords}
-                  </p>
-                  <p className="text-xs" style={{ color: '#666' }}>총 기록</p>
-                </div>
-                <div
-                  className="rounded-lg p-4 text-center"
-                  style={{ backgroundColor: '#F0F7FF', border: '1px solid #d0dff0' }}
-                >
-                  <p className="text-2xl mb-1" style={{ color: '#1A3C6E', fontWeight: 700 }}>
-                    {stats.polishedCount}
-                  </p>
-                  <p className="text-xs" style={{ color: '#666' }}>다듬기 완료</p>
-                </div>
-                <div
-                  className="rounded-lg p-4 text-center"
-                  style={{ backgroundColor: '#F0F7FF', border: '1px solid #d0dff0' }}
-                >
-                  <p className="text-2xl mb-1" style={{ color: '#1A3C6E', fontWeight: 700 }}>
-                    {stats.sayuCount}
-                  </p>
-                  <p className="text-xs" style={{ color: '#666' }}>SAYU 완성</p>
-                </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div
+                className="rounded-lg p-4 text-center"
+                style={{ backgroundColor: '#F0F7FF', border: '1px solid #d0dff0' }}
+              >
+                <p className="text-2xl mb-1" style={{ color: '#1A3C6E', fontWeight: 700 }}>
+                  {stats.totalRecords}
+                </p>
+                <p className="text-xs" style={{ color: '#666' }}>총 기록</p>
               </div>
-            </>
+              <div
+                className="rounded-lg p-4 text-center"
+                style={{ backgroundColor: '#F0F7FF', border: '1px solid #d0dff0' }}
+              >
+                <p className="text-2xl mb-1" style={{ color: '#1A3C6E', fontWeight: 700 }}>
+                  {stats.polishedCount}
+                </p>
+                <p className="text-xs" style={{ color: '#666' }}>다듬기 완료</p>
+              </div>
+              <div
+                className="rounded-lg p-4 text-center"
+                style={{ backgroundColor: '#F0F7FF', border: '1px solid #d0dff0' }}
+              >
+                <p className="text-2xl mb-1" style={{ color: '#1A3C6E', fontWeight: 700 }}>
+                  {stats.sayuCount}
+                </p>
+                <p className="text-xs" style={{ color: '#666' }}>SAYU 완성</p>
+              </div>
+            </div>
           )}
         </section>
 
-        {/* 앱 설정 - 이제 실제로 작동해요! */}
         <section className="bg-white rounded-lg p-6 shadow-sm">
-          <h2 className="text-base tracking-wide mb-4" style={{ color: '#333' }}>
-            앱 설정
-          </h2>
+          <div className="flex items-center gap-3 mb-5">
+            <Settings className="w-5 h-5" style={{ color: '#1A3C6E' }} />
+            <h2 className="text-base tracking-wide" style={{ color: '#333' }}>
+              앱 설정
+            </h2>
+          </div>
           <div className="space-y-3">
-            {/* 다크 모드 - 실제 작동! */}
             <div 
               className="flex items-center justify-between py-3 px-4 rounded-lg transition-all hover:bg-gray-50"
               style={{ border: '1px solid #e5e5e5' }}
@@ -252,7 +314,6 @@ export function SettingsPage() {
                 </div>
               </div>
               
-              {/* 토글 스위치 */}
               <button
                 onClick={toggleTheme}
                 className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
@@ -265,66 +326,65 @@ export function SettingsPage() {
               </button>
             </div>
 
-            {/* 알림 설정 - 실제 작동! */}
             <div 
-              className="flex items-center justify-between py-3 px-4 rounded-lg transition-all hover:bg-gray-50"
+              className="py-3 px-4 rounded-lg"
               style={{ border: '1px solid #e5e5e5' }}
             >
-              <div className="flex items-center gap-3">
-                {notificationPermission === 'granted' ? (
-                  <Bell className="w-5 h-5" style={{ color: '#10b981' }} />
-                ) : (
-                  <BellOff className="w-5 h-5" style={{ color: '#999' }} />
-                )}
-                <div>
-                  <span className="text-sm" style={{ color: '#333', fontWeight: 500 }}>알림 설정</span>
-                  <p className="text-xs" style={{ color: '#999' }}>
-                    {!isNotificationSupported && '브라우저가 지원하지 않음'}
-                    {isNotificationSupported && notificationPermission === 'granted' && '✓ 알림 허용됨'}
-                    {isNotificationSupported && notificationPermission === 'denied' && '✗ 알림 차단됨'}
-                    {isNotificationSupported && notificationPermission === 'default' && '알림 권한 필요'}
-                  </p>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  {notificationEnabled ? (
+                    <Bell className="w-5 h-5" style={{ color: '#10b981' }} />
+                  ) : (
+                    <BellOff className="w-5 h-5" style={{ color: '#999' }} />
+                  )}
+                  <div>
+                    <span className="text-sm" style={{ color: '#333', fontWeight: 500 }}>알림 받기</span>
+                    <p className="text-xs" style={{ color: '#999' }}>
+                      {notificationEnabled ? '✓ 활성화됨' : '비활성화'}
+                    </p>
+                  </div>
                 </div>
+                
+                <button
+                  onClick={handleToggleNotification}
+                  disabled={isLoadingNotification}
+                  className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50"
+                  style={{ backgroundColor: notificationEnabled ? '#10b981' : '#d1d5db' }}
+                >
+                  <span
+                    className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                    style={{ transform: notificationEnabled ? 'translateX(26px)' : 'translateX(4px)' }}
+                  />
+                </button>
               </div>
-              
-              {isNotificationSupported && notificationPermission !== 'granted' && (
-                <button
-                  onClick={handleRequestNotification}
-                  className="px-3 py-1 rounded-lg text-xs transition-all hover:opacity-80"
-                  style={{
-                    backgroundColor: '#1A3C6E',
-                    color: '#fff',
-                    fontWeight: 500,
-                  }}
-                >
-                  허용하기
-                </button>
-              )}
-              
-              {isNotificationSupported && notificationPermission === 'granted' && (
-                <button
-                  onClick={handleSendTestNotification}
-                  className="px-3 py-1 rounded-lg text-xs transition-all hover:opacity-80"
-                  style={{
-                    backgroundColor: '#10b981',
-                    color: '#fff',
-                    fontWeight: 500,
-                  }}
-                >
-                  테스트
-                </button>
-              )}
-            </div>
 
-            {/* 클라우드 동기화 */}
-            <div className="flex items-center justify-between py-2">
-              <span style={{ color: '#666' }}>클라우드 동기화</span>
-              <span style={{ color: '#10b981', fontWeight: 500 }}>✓ 자동 동기화 중</span>
+              {notificationEnabled && (
+                <div className="flex items-center gap-3 mt-3 pt-3 border-t border-gray-200">
+                  <Clock className="w-4 h-4" style={{ color: '#666' }} />
+                  <div className="flex-1">
+                    <label className="text-xs" style={{ color: '#666' }}>알림 시간</label>
+                    <input
+                      type="time"
+                      value={notificationTime}
+                      onChange={(e) => handleTimeChange(e.target.value)}
+                      className="w-full mt-1 px-3 py-2 rounded-lg text-sm"
+                      style={{
+                        border: '1px solid #e5e5e5',
+                        backgroundColor: '#F9FAFB',
+                        color: '#333',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <p className="text-xs mt-3" style={{ color: '#999' }}>
+                💡 {notificationEnabled ? '당일 기록이 없으면 설정한 시간에 알림을 보냅니다. 시간은 재설정이 가능합니다.' : '알림을 켜면 매일 기록을 권장하는 알림을 받을 수 있습니다.'}
+              </p>
             </div>
           </div>
         </section>
 
-        {/* 데이터 관리 */}
         <section className="bg-white rounded-lg p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-5">
             <Database className="w-5 h-5" style={{ color: '#1A3C6E' }} />
@@ -334,7 +394,6 @@ export function SettingsPage() {
           </div>
 
           <div className="space-y-3">
-            {/* 데이터 내보내기 */}
             <button
               onClick={handleExportData}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-80 text-left"
@@ -354,7 +413,6 @@ export function SettingsPage() {
               </div>
             </button>
 
-            {/* 데이터 삭제 */}
             {!showClearConfirm ? (
               <button
                 onClick={() => setShowClearConfirm(true)}
@@ -414,7 +472,58 @@ export function SettingsPage() {
           </div>
         </section>
 
-        {/* 계정 관리 */}
+        {isAdmin && (
+          <section 
+            className="bg-white rounded-lg p-6 shadow-sm"
+            style={{ border: '2px solid #10b981' }}
+          >
+            <div className="flex items-center gap-3 mb-5">
+              <Megaphone className="w-5 h-5" style={{ color: '#10b981' }} />
+              <h2 className="text-base tracking-wide" style={{ color: '#10b981' }}>
+                관리자 전체 알림
+              </h2>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs mb-2 block" style={{ color: '#666' }}>
+                  알림 메시지
+                </label>
+                <textarea
+                  value={broadcastMessage}
+                  onChange={(e) => setBroadcastMessage(e.target.value)}
+                  placeholder="전체 사용자에게 보낼 메시지를 입력하세요..."
+                  rows={4}
+                  className="w-full px-4 py-3 rounded-lg text-sm"
+                  style={{
+                    border: '1px solid #e5e5e5',
+                    backgroundColor: '#F9FAFB',
+                    color: '#333',
+                    resize: 'vertical',
+                  }}
+                />
+              </div>
+
+              <button
+                onClick={handleSendBroadcast}
+                disabled={isSendingBroadcast || !broadcastMessage.trim()}
+                className="w-full px-6 py-3 rounded-lg text-sm transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: '#10b981',
+                  color: '#fff',
+                  fontWeight: 600,
+                }}
+              >
+                {isSendingBroadcast ? '발송 중...' : '📢 전체 사용자에게 알림 보내기'}
+              </button>
+
+              <p className="text-xs text-center" style={{ color: '#999' }}>
+                ⚠️ 모든 사용자에게 푸시 알림이 전송됩니다
+              </p>
+            </div>
+          </section>
+        )}
+
         <section className="bg-white rounded-lg p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-5">
             <User className="w-5 h-5" style={{ color: '#1A3C6E' }} />
@@ -422,7 +531,7 @@ export function SettingsPage() {
               계정 관리
             </h2>
           </div>
-          
+
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-80 text-left"
@@ -443,7 +552,6 @@ export function SettingsPage() {
           </button>
         </section>
 
-        {/* Version Info */}
         <div className="text-center py-8">
           <p className="text-xs mb-1" style={{ color: '#999' }}>
             HARU v1.0 by JOYEL
