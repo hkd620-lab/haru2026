@@ -29,6 +29,9 @@ export async function requestNotificationPermission(userId: string): Promise<boo
     if (token) {
       console.log('FCM 토큰 생성 성공:', token.substring(0, 20) + '...');
       
+      // ✨ localStorage에도 저장 (디버깅 및 중복 방지용)
+      localStorage.setItem('fcm_token', token);
+      
       const settingsRef = doc(db, `users/${userId}/settings/settings`);
       await setDoc(settingsRef, {
         fcmToken: token,
