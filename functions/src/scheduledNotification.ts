@@ -5,7 +5,7 @@ const db = admin.firestore();
 
 export const scheduledPushNotification = onSchedule(
   {
-    schedule: '0 * * * *',
+    schedule: '0 21 * * *',  // ✅ 매일 21시 (오후 9시)에만 실행
     timeZone: 'Asia/Seoul',
     region: 'asia-northeast3',
   },
