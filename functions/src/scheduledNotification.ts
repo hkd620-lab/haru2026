@@ -1,91 +1,93 @@
-import * as admin from 'firebase-admin';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import * as admin from 'firebase-admin';
 
-const db = admin.firestore();
+admin.initializeApp();
 
 export const scheduledPushNotification = onSchedule(
   {
-    schedule: '0 21 * * *',  // ✅ 매일 21시 (오후 9시)에만 실행
+    schedule: '0 * * * *',
     timeZone: 'Asia/Seoul',
     region: 'asia-northeast3',
   },
   async (event) => {
-    try {
-      const now = new Date();
-      const currentHour = now.getHours();
-      const currentMinute = now.getMinutes();
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
 
-      console.log(`알림 스케줄러 실행: ${currentHour}:${currentMinute}`);
+    console.log(`알림 스케줄러 실행: ${currentHour}:${currentMinute}`);
 
-      const settingsSnapshot = await db.collectionGroup('settings').get();
+    const db = admin.firestore();
+    const usersSnapshot = await db.collection('users').get();
 
-      let sentCount = 0;
-      let skipCount = 0;
+    let sentCount = 0;
+    let skippedCount = 0;
 
-      for (const settingsDoc of settingsSnapshot.docs) {
-        const data = settingsDoc.data();
-        const userId = settingsDoc.ref.parent.parent?.id;
+    for (const userDoc of usersSnapshot.docs) {
+      const userId = userDoc.id;
 
-        if (!userId) continue;
+      const settingsDoc = await db
+        .collection('users')
+        .doc(userId)
+        .collection('settings')
+        .doc('settings')
+        .get();
 
-        const notificationEnabled = data.notificationEnabled || false;
-        const notificationTime = data.notificationTime || '21:00';
-        const fcmToken = data.fcmToken;
-
-        if (!notificationEnabled || !fcmToken) {
-          skipCount++;
-          continue;
-        }
-
-        const [targetHour, targetMinute] = notificationTime.split(':').map(Number);
-
-        if (currentHour !== targetHour || currentMinute !== 0) {
-          skipCount++;
-          continue;
-        }
-
-        const today = new Date();
-        const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-
-        const recordDoc = await db.collection(`users/${userId}/records`).doc(dateStr).get();
-
-        if (recordDoc.exists) {
-          skipCount++;
-          continue;
-        }
-
-        try {
-          await admin.messaging().send({
-            token: fcmToken,
-            notification: {
-              title: 'HARU 📖',
-              body: '오늘의 이야기를 남겨주세요',
-            },
-            webpush: {
-              fcmOptions: {
-                link: 'https://haru2026-8abb8.web.app/record',
-              },
-            },
-          });
-
-          sentCount++;
-          console.log(`사용자 ${userId}: 알림 발송 성공`);
-        } catch (error: any) {
-          console.error(`사용자 ${userId}: 알림 발송 실패`, error);
-
-          if (error.code === 'messaging/invalid-registration-token' ||
-              error.code === 'messaging/registration-token-not-registered') {
-            await settingsDoc.ref.update({
-              fcmToken: admin.firestore.FieldValue.delete(),
-            });
-            console.log(`사용자 ${userId}: 만료된 토큰 삭제됨`);
-          }
-        }
+      if (!settingsDoc.exists) {
+        skippedCount++;
+        continue;
       }
 
-      console.log(`알림 발송 완료 - 발송: ${sentCount}건, 생략: ${skipCount}건`);
-    } catch (error) {
-      console.error('알림 스케줄러 오류:', error);
+      const settings = settingsDoc.data();
+
+      if (!settings || !settings.notificationEnabled) {
+        skippedCount++;
+        continue;
+      }
+
+      const notificationTime = settings.notificationTime || '21:00';
+      const [targetHour, targetMinute] = notificationTime.split(':').map(Number);
+
+      if (currentHour !== targetHour || currentMinute !== 0) {
+        skippedCount++;
+        continue;
+      }
+
+      const today = now.toISOString().split('T')[0];
+
+      const recordDoc = await db
+        .collection('users')
+        .doc(userId)
+        .collection('records')
+        .doc(today)
+        .get();
+
+      if (recordDoc.exists) {
+        skippedCount++;
+        continue;
+      }
+
+      const fcmTokens = settings.fcmTokens || [];
+
+      if (fcmTokens.length > 0) {
+        for (const token of fcmTokens) {
+          try {
+            await admin.messaging().send({
+              token: token,
+              notification: {
+                title: '📝 HARU 기록 알림',
+                body: '오늘의 하루를 기록해보세요!',
+              },
+            });
+            sentCount++;
+          } catch (error) {
+            console.error(`토큰 전송 실패 (${token.substring(0, 20)}...):`, error);
+          }
+        }
+      } else {
+        skippedCount++;
+      }
     }
+
+    console.log(`알림 발송 완료 - 발송: ${sentCount}건, 생략: ${skippedCount}건`);
   }
 );

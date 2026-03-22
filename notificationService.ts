@@ -1,5 +1,5 @@
 import { getMessaging, getToken } from 'firebase/messaging';
-import { doc, setDoc, updateDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, getDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 export async function requestNotificationPermission(userId: string): Promise<boolean> {
@@ -28,7 +28,7 @@ export async function requestNotificationPermission(userId: string): Promise<boo
     if (token) {
       console.log('FCM 토큰 생성 성공:', token.substring(0, 20) + '...');
       
-      const settingsRef = doc(db, `users/${userId}/settings/settings`);
+      const settingsRef = doc(db, \`users/\${userId}/settings/settings\`);
       
       const settingsDoc = await getDoc(settingsRef);
       const existingTokens = settingsDoc.exists() ? (settingsDoc.data().fcmTokens || []) : [];
@@ -40,7 +40,7 @@ export async function requestNotificationPermission(userId: string): Promise<boo
         updatedAt: new Date().toISOString(),
       }, { merge: true });
 
-      console.log(`✅ 토큰 저장 완료! 총 ${updatedTokens.length}개 기기`);
+      console.log(\`✅ 토큰 저장 완료! 총 \${updatedTokens.length}개 기기\`);
       
       return true;
     } else {
@@ -60,7 +60,7 @@ export async function updateNotificationSettings(
     notificationTime?: string;
   }
 ): Promise<void> {
-  const settingsRef = doc(db, `users/${userId}/settings/settings`);
+  const settingsRef = doc(db, \`users/\${userId}/settings/settings\`);
   await updateDoc(settingsRef, {
     ...settings,
     updatedAt: new Date().toISOString(),
