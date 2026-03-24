@@ -1,4 +1,4 @@
-import { Home, BookOpen, Library, Sparkles, BarChart3, Settings, Layers } from 'lucide-react';
+import { Home, BookOpen, Sparkles, BarChart3, Settings, Layers } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
 
 export function BottomNav() {
@@ -7,7 +7,6 @@ export function BottomNav() {
   const navItems = [
     { path: '/', icon: Home, label: 'HARU' },
     { path: '/record', icon: BookOpen, label: '기록' },
-    { path: '/library', icon: Library, label: '서재' },
     { path: '/sayu', icon: Sparkles, label: 'SAYU' },
     { path: '/merge', icon: Layers, label: '기록합침' },
     { path: '/stats', icon: BarChart3, label: '통계' },
@@ -20,7 +19,7 @@ export function BottomNav() {
       style={{ borderColor: '#e5e5e5', paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="max-w-7xl mx-auto px-1 sm:px-3">
-        <div className="grid grid-cols-7 gap-0.5">{navItems.map((item) => {
+        <div className="grid grid-cols-6 gap-0.5">{navItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
             
