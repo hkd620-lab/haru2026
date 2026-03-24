@@ -1,11 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router';
-import { ChevronLeft, ChevronRight, Sparkles, Info } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { SayuTitleAnimation } from '../components/SayuTitleAnimation';
 import { toast } from 'sonner';
 import { SayuModal } from '../components/SayuModal';
+import { CATEGORY_FORMATS, FORMAT_PREFIX, FORMAT_EMOJI } from '../types/haruTypes';
+import type { RecordFormat } from '../types/haruTypes';
+
+// 목록 뷰에서 제목으로 쓸 첫 번째 필드 키
+const FORMAT_FIRST_FIELD: Record<string, string> = {
+  diary: 'diary_action',
+  essay: 'essay_observation',
+  mission: 'mission_place',
+  report: 'report_activity',
+  work: 'work_schedule',
+  travel: 'travel_journey',
+  garden: 'garden_crop',
+  pet: 'pet_name',
+  child: 'child_name',
+};
 
 export function SayuPage() {
   const location = useLocation();
@@ -15,6 +30,8 @@ export function SayuPage() {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string }[]>([]);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [sayuModalState, setSayuModalState] = useState<{
     isOpen: boolean;
     content: string;
@@ -84,12 +101,23 @@ export function SayuPage() {
     month: 'long',
   });
 
+  const today = new Date();
+  const isNextMonthDisabled =
+    currentMonth.getFullYear() > today.getFullYear() ||
+    (currentMonth.getFullYear() === today.getFullYear() &&
+      currentMonth.getMonth() >= today.getMonth());
+
   const handlePrevMonth = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+    setSelectedDate('');
+    setSelectedDateFormats([]);
   };
 
   const handleNextMonth = () => {
+    if (isNextMonthDisabled) return;
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+    setSelectedDate('');
+    setSelectedDateFormats([]);
   };
 
   const getDaysInMonth = () => {
@@ -121,33 +149,22 @@ export function SayuPage() {
       return 'none';
     }
 
-    const formatPrefixes = {
-      '일기': 'diary',
-      '에세이': 'essay',
-      '선교보고': 'mission',
-      '일반보고': 'report',
-      '업무일지': 'work',
-      '여행기록': 'travel',
-      '텃밭일지': 'garden',
-      '애완동물관찰일지': 'pet',
-      '육아일기': 'child',
+    const formatPrefixes: Record<string, string> = {
+      '일기': 'diary', '에세이': 'essay', '선교보고': 'mission',
+      '일반보고': 'report', '업무일지': 'work', '여행기록': 'travel',
+      '텃밭일지': 'garden', '애완동물관찰일지': 'pet', '육아일기': 'child',
     };
 
     let hasAnyPolished = false;
     let hasAnySaved = false;
 
     record.formats.forEach((format) => {
-      const prefix = formatPrefixes[format as keyof typeof formatPrefixes];
+      const prefix = formatPrefixes[format];
       if (prefix) {
         const sayuKey = `${prefix}_sayu`;
         const polishedKey = `${prefix}_polished`;
-        
-        if (record[sayuKey]) {
-          hasAnySaved = true;
-        }
-        if (record[polishedKey] === true) {
-          hasAnyPolished = true;
-        }
+        if (record[sayuKey]) hasAnySaved = true;
+        if (record[polishedKey] === true) hasAnyPolished = true;
       }
     });
 
@@ -168,21 +185,15 @@ export function SayuPage() {
 
     setSelectedDate(dateStr);
 
-    const formatPrefixes = {
-      '일기': 'diary',
-      '에세이': 'essay',
-      '선교보고': 'mission',
-      '일반보고': 'report',
-      '업무일지': 'work',
-      '여행기록': 'travel',
-      '텃밭일지': 'garden',
-      '애완동물관찰일지': 'pet',
-      '육아일기': 'child',
+    const formatPrefixes: Record<string, string> = {
+      '일기': 'diary', '에세이': 'essay', '선교보고': 'mission',
+      '일반보고': 'report', '업무일지': 'work', '여행기록': 'travel',
+      '텃밭일지': 'garden', '애완동물관찰일지': 'pet', '육아일기': 'child',
     };
 
     const availableFormats = record.formats
       .map((format) => {
-        const prefix = formatPrefixes[format as keyof typeof formatPrefixes];
+        const prefix = formatPrefixes[format];
         if (!prefix) return null;
         const sayuKey = `${prefix}_sayu`;
         if (record[sayuKey]) {
@@ -195,10 +206,12 @@ export function SayuPage() {
     setSelectedDateFormats(availableFormats);
   };
 
-  const handleFormatClick = (formatKey: string, formatLabel: string) => {
-    if (!selectedDate) return;
-    const record = records.find((r) => r.date === selectedDate);
+  const openFormatSayu = (dateStr: string, formatKey: string, formatLabel: string) => {
+    const record = records.find((r) => r.date === dateStr);
     if (!record) return;
+
+    setSelectedDate(dateStr);
+    setSelectedDateFormats([{ key: formatKey, label: formatLabel }]);
 
     const sayuKey = `${formatKey}_sayu`;
     const ratingKey = `${formatKey}_rating`;
@@ -209,7 +222,13 @@ export function SayuPage() {
 
     const originalData: Record<string, string> = {};
     Object.keys(record).forEach((key) => {
-      if (key.startsWith(`${formatKey}_`) && !key.includes('sayu') && !key.includes('rating') && !key.includes('polished') && !key.includes('images')) {
+      if (
+        key.startsWith(`${formatKey}_`) &&
+        !key.includes('sayu') &&
+        !key.includes('rating') &&
+        !key.includes('polished') &&
+        !key.includes('images')
+      ) {
         originalData[key] = record[key];
       }
     });
@@ -232,17 +251,22 @@ export function SayuPage() {
       content: sayuContent,
       originalData,
       format: formatLabel,
-      dateLabel: new Date(selectedDate + 'T00:00:00').toLocaleDateString('ko-KR', {
+      dateLabel: new Date(dateStr + 'T00:00:00').toLocaleDateString('ko-KR', {
         month: 'long',
         day: 'numeric',
       }),
       currentRating: sayuRating,
-      recordDate: selectedDate,
+      recordDate: dateStr,
       weather: record.weather,
       temperature: record.temperature,
       mood: record.mood,
       images,
     });
+  };
+
+  const handleFormatClick = (formatKey: string, formatLabel: string) => {
+    if (!selectedDate) return;
+    openFormatSayu(selectedDate, formatKey, formatLabel);
   };
 
   const handleModalClose = () => {
@@ -285,10 +309,84 @@ export function SayuPage() {
     }
   };
 
+  // ─── 목록 뷰 데이터 생성 ───
+  const getMonthListData = () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth() + 1;
+
+    const monthRecords = records.filter((r) => {
+      const [y, m] = r.date.split('-').map(Number);
+      return y === year && m === month;
+    });
+
+    type ListCategory = {
+      category: string;
+      formats: {
+        format: RecordFormat;
+        entries: { date: string; title: string; hasSayu: boolean; formatKey: string }[];
+      }[];
+    };
+
+    const result: ListCategory[] = [];
+
+    for (const category of ['생활', '업무'] as const) {
+      const formatsWithEntries: ListCategory['formats'] = [];
+
+      for (const format of CATEGORY_FORMATS[category]) {
+        const prefix = FORMAT_PREFIX[format];
+        const entries = monthRecords
+          .filter((r) => r.formats && r.formats.includes(format))
+          .map((r) => {
+            const firstFieldKey = FORMAT_FIRST_FIELD[prefix];
+            const rawTitle = firstFieldKey ? (r[firstFieldKey] || '') : '';
+            const title = rawTitle.slice(0, 20) || '(내용 없음)';
+            return {
+              date: r.date,
+              title,
+              hasSayu: !!r[`${prefix}_sayu`],
+              formatKey: prefix,
+            };
+          })
+          .sort((a, b) => b.date.localeCompare(a.date));
+
+        if (entries.length > 0) {
+          formatsWithEntries.push({ format, entries });
+        }
+      }
+
+      if (formatsWithEntries.length > 0) {
+        result.push({ category, formats: formatsWithEntries });
+      }
+    }
+
+    return result;
+  };
+
+  const formatListDate = (dateStr: string): string => {
+    const [, month, day] = dateStr.split('-').map(Number);
+    return `${month}/${day}`;
+  };
+
+  const toggleCategory = (category: string) => {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
+      }
+      return next;
+    });
+  };
+
+  const listData = getMonthListData();
+  const hasMonthRecords = listData.length > 0;
+
   return (
     <>
     <div className="sayu-page-container no-print max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
-      <div className="mb-6">
+      {/* 타이틀 + 가이드 */}
+      <div className="mb-4">
         <div className="flex items-start justify-between mb-2">
           <SayuTitleAnimation />
         </div>
@@ -296,15 +394,15 @@ export function SayuPage() {
           작성한 기록을 AI가 다듬은 결과를 확인하세요
         </p>
         <div
-          className="bg-blue-50 border-l-4 border-blue-600 rounded transition-all"
+          className="border-l-4 rounded transition-all"
           style={{
-            backgroundColor: '#F0F7FF',
+            backgroundColor: '#FDF6C3',
             borderColor: '#1A3C6E',
             overflow: 'hidden',
           }}
         >
           <div
-            className="flex items-center justify-between p-3 cursor-pointer hover:bg-opacity-80 transition-colors"
+            className="flex items-center justify-between p-3 cursor-pointer transition-colors"
             onClick={toggleSayuGuide}
             style={{ backgroundColor: showSayuGuide ? 'transparent' : 'rgba(26, 60, 110, 0.05)' }}
           >
@@ -327,7 +425,7 @@ export function SayuPage() {
           {showSayuGuide && (
             <div className="px-3 pb-3">
               <p className="text-xs leading-relaxed" style={{ color: '#1A3C6E' }}>
-                💡 달력에서 날짜를 선택하면 해당 날짜의 SAYU를 확인할 수 있습니다.
+                💡 목록에서 기록을 클릭하거나, 달력에서 날짜를 선택해 SAYU를 확인하세요.
               </p>
               <p className="text-xs mt-1 leading-relaxed" style={{ color: '#666' }}>
                 파란 점: SAYU 저장 / 주황 점: 다듬기 완료
@@ -337,148 +435,262 @@ export function SayuPage() {
         </div>
       </div>
 
-      <div>
-        <section className="bg-white rounded-lg p-4 shadow-sm mb-4">
-          <div className="flex items-center justify-between mb-4">
-            <button
-              onClick={handlePrevMonth}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-              style={{ color: '#1A3C6E' }}
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <h2 className="text-lg font-semibold" style={{ color: '#1A3C6E' }}>
-              {monthName}
-            </h2>
-            <button
-              onClick={handleNextMonth}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-              style={{ color: '#1A3C6E' }}
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
+      {/* 공통 월 네비게이션 + 뷰 전환 */}
+      <div className="bg-white rounded-lg p-3 shadow-sm mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <button
+            onClick={handlePrevMonth}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            style={{ color: '#1A3C6E' }}
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h2 className="text-lg font-semibold" style={{ color: '#1A3C6E' }}>
+            {monthName}
+          </h2>
+          <button
+            onClick={handleNextMonth}
+            disabled={isNextMonthDisabled}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            style={{ color: '#1A3C6E' }}
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
 
-          <div className="grid grid-cols-7 gap-1 mb-2">
-            {['일', '월', '화', '수', '목', '금', '토'].map((day, idx) => (
-              <div
-                key={idx}
-                className="text-center text-xs font-semibold py-2"
-                style={{ color: idx === 0 ? '#ef4444' : idx === 6 ? '#3b82f6' : '#666' }}
-              >
-                {day}
-              </div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-7 gap-1">
-            {days.map((day, idx) => {
-              const dateStr = day ? formatDateString(day) : '';
-              const isToday = day && formatDateString(day) === formatDateString(new Date());
-              const isSelected = day && selectedDate === formatDateString(day);
-              const sayuStatus = hasSayu(day);
-
-              return (
-                <button
-                  key={idx}
-                  onClick={() => handleDateClick(day)}
-                  disabled={!day}
-                  className="relative aspect-square flex items-center justify-center rounded-lg transition-all disabled:cursor-default"
-                  style={{
-                    backgroundColor: isSelected
-                      ? '#1A3C6E'
-                      : isToday
-                      ? '#F0F7FF'
-                      : 'transparent',
-                    color: isSelected
-                      ? '#FAF9F6'
-                      : isToday
-                      ? '#1A3C6E'
-                      : day
-                      ? '#333'
-                      : 'transparent',
-                    fontSize: '13px',
-                    fontWeight: isToday || isSelected ? 600 : 400,
-                    cursor: day ? 'pointer' : 'default',
-                    border: isToday && !isSelected ? '1.5px solid #1A3C6E' : 'none',
-                  }}
-                >
-                  {day && day.getDate()}
-                  {sayuStatus === 'saved' && (
-                    <div
-                      className="absolute rounded-full"
-                      style={{
-                        bottom: '-2px',
-                        left: '50%',
-                        transform: 'translateX(calc(-50% + 2px))',
-                        width: '8px',
-                        height: '8px',
-                        backgroundColor: isSelected ? '#FAF9F6' : '#1A3C6E',
-                        boxShadow: isSelected ? 'none' : '0 0 0 1.5px rgba(26,60,110,0.25)',
-                      }}
-                    />
-                  )}
-                  {sayuStatus === 'polished' && (
-                    <div
-                      className="absolute rounded-full"
-                      style={{
-                        bottom: '-2px',
-                        left: '50%',
-                        transform: 'translateX(calc(-50% + 2px))',
-                        width: '8px',
-                        height: '8px',
-                        backgroundColor: '#F59E0B',
-                        boxShadow: '0 0 0 1.5px rgba(245,158,11,0.3)',
-                      }}
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        {selectedDate && selectedDateFormats.length > 0 && (
-          <div className="mt-4 bg-white rounded-lg p-4 shadow-sm">
-            <p className="text-xs font-semibold mb-2" style={{ color: '#1A3C6E' }}>
-              {new Date(selectedDate + 'T00:00:00').toLocaleDateString('ko-KR', {
-                month: 'long',
-                day: 'numeric',
-              })}의 기록
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {selectedDateFormats.map((formatInfo, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleFormatClick(formatInfo.key, formatInfo.label)}
-                  className="px-3 py-1.5 rounded-full text-xs font-medium transition-all hover:opacity-80 hover:shadow-md cursor-pointer"
-                  style={{
-                    backgroundColor: '#F0F7FF',
-                    color: '#1A3C6E',
-                    border: '1px solid #1A3C6E'
-                  }}
-                >
-                  {formatInfo.label}
-                </button>
-              ))}
-            </div>
-            <p className="text-xs mt-2" style={{ color: '#999' }}>
-              💡 형식을 클릭하면 해당 SAYU를 볼 수 있습니다
-            </p>
-          </div>
-        )}
-
-        <div className="mt-4 flex flex-col gap-2 text-sm" style={{ color: '#999' }}>
-          <div className="flex items-center gap-2">
-            <div className="rounded-full flex-shrink-0" style={{ width: '8px', height: '8px', backgroundColor: '#1A3C6E', boxShadow: '0 0 0 1.5px rgba(26,60,110,0.25)' }} />
-            <span>SAYU 저장</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="rounded-full flex-shrink-0" style={{ width: '8px', height: '8px', backgroundColor: '#F59E0B', boxShadow: '0 0 0 1.5px rgba(245,158,11,0.3)' }} />
-            <span>다듬기 완료</span>
-          </div>
+        {/* 뷰 전환 버튼 */}
+        <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: '#1A3C6E' }}>
+          <button
+            onClick={() => setViewMode('list')}
+            className="flex-1 py-1.5 text-sm font-medium transition-all"
+            style={{
+              backgroundColor: viewMode === 'list' ? '#1A3C6E' : 'transparent',
+              color: viewMode === 'list' ? '#FAF9F6' : '#1A3C6E',
+            }}
+          >
+            목록
+          </button>
+          <button
+            onClick={() => setViewMode('calendar')}
+            className="flex-1 py-1.5 text-sm font-medium transition-all"
+            style={{
+              backgroundColor: viewMode === 'calendar' ? '#1A3C6E' : 'transparent',
+              color: viewMode === 'calendar' ? '#FAF9F6' : '#1A3C6E',
+            }}
+          >
+            달력
+          </button>
         </div>
       </div>
+
+      {/* ─── 목록 뷰 ─── */}
+      {viewMode === 'list' && (
+        <div>
+          {loading ? (
+            <p className="text-center py-8 text-sm" style={{ color: '#999' }}>불러오는 중...</p>
+          ) : !hasMonthRecords ? (
+            <div className="bg-white rounded-lg p-8 shadow-sm text-center">
+              <p className="text-sm" style={{ color: '#999' }}>이 달의 기록이 없습니다</p>
+            </div>
+          ) : (
+            listData.map(({ category, formats }) => (
+              <div key={category} className="mb-4">
+                {/* 카테고리 헤더 */}
+                <button
+                  onClick={() => toggleCategory(category)}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
+                  style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
+                >
+                  <span>{category}</span>
+                  <span style={{ fontSize: '10px' }}>
+                    {collapsedCategories.has(category) ? '▶' : '▼'}
+                  </span>
+                </button>
+
+                {!collapsedCategories.has(category) && (
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                    {formats.map(({ format, entries }, fIdx) => (
+                      <div
+                        key={format}
+                        className={fIdx > 0 ? 'border-t' : ''}
+                        style={{ borderColor: '#f0f0f0' }}
+                      >
+                        {/* 형식 헤더 */}
+                        <div
+                          className="flex items-center gap-2 px-3 py-2"
+                          style={{ backgroundColor: '#FEFBE8' }}
+                        >
+                          <span className="text-sm">{FORMAT_EMOJI[format]}</span>
+                          <span className="text-xs font-semibold" style={{ color: '#333' }}>{format}</span>
+                        </div>
+
+                        {/* 기록 목록 */}
+                        {entries.map((entry) => (
+                          <button
+                            key={`${entry.date}-${entry.formatKey}`}
+                            onClick={() => openFormatSayu(entry.date, entry.formatKey, format)}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-yellow-50 transition-colors border-t"
+                            style={{ borderColor: '#f5f5f5' }}
+                          >
+                            <span
+                              className="text-xs font-medium flex-shrink-0"
+                              style={{ color: '#1A3C6E', minWidth: '32px' }}
+                            >
+                              {formatListDate(entry.date)}
+                            </span>
+                            <span
+                              className="text-sm flex-1 truncate"
+                              style={{ color: '#333' }}
+                            >
+                              {entry.title}
+                            </span>
+                            {entry.hasSayu && (
+                              <span
+                                className="rounded-full flex-shrink-0"
+                                style={{
+                                  width: '8px',
+                                  height: '8px',
+                                  backgroundColor: '#10b981',
+                                  display: 'inline-block',
+                                }}
+                              />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* ─── 달력 뷰 ─── */}
+      {viewMode === 'calendar' && (
+        <div>
+          <section className="bg-white rounded-lg p-4 shadow-sm mb-4">
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              {['일', '월', '화', '수', '목', '금', '토'].map((day, idx) => (
+                <div
+                  key={idx}
+                  className="text-center text-xs font-semibold py-2"
+                  style={{ color: idx === 0 ? '#ef4444' : idx === 6 ? '#3b82f6' : '#666' }}
+                >
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-1">
+              {days.map((day, idx) => {
+                const isToday = day && formatDateString(day) === formatDateString(new Date());
+                const isSelected = day && selectedDate === formatDateString(day);
+                const sayuStatus = hasSayu(day);
+
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => handleDateClick(day)}
+                    disabled={!day}
+                    className="relative aspect-square flex items-center justify-center rounded-lg transition-all disabled:cursor-default"
+                    style={{
+                      backgroundColor: isSelected
+                        ? '#1A3C6E'
+                        : isToday
+                        ? '#FDF6C3'
+                        : 'transparent',
+                      color: isSelected
+                        ? '#FAF9F6'
+                        : isToday
+                        ? '#1A3C6E'
+                        : day
+                        ? '#333'
+                        : 'transparent',
+                      fontSize: '13px',
+                      fontWeight: isToday || isSelected ? 600 : 400,
+                      cursor: day ? 'pointer' : 'default',
+                      border: isToday && !isSelected ? '1.5px solid #1A3C6E' : 'none',
+                    }}
+                  >
+                    {day && day.getDate()}
+                    {sayuStatus === 'saved' && (
+                      <div
+                        className="absolute rounded-full"
+                        style={{
+                          bottom: '-2px',
+                          left: '50%',
+                          transform: 'translateX(calc(-50% + 2px))',
+                          width: '8px',
+                          height: '8px',
+                          backgroundColor: isSelected ? '#FAF9F6' : '#1A3C6E',
+                          boxShadow: isSelected ? 'none' : '0 0 0 1.5px rgba(26,60,110,0.25)',
+                        }}
+                      />
+                    )}
+                    {sayuStatus === 'polished' && (
+                      <div
+                        className="absolute rounded-full"
+                        style={{
+                          bottom: '-2px',
+                          left: '50%',
+                          transform: 'translateX(calc(-50% + 2px))',
+                          width: '8px',
+                          height: '8px',
+                          backgroundColor: '#F59E0B',
+                          boxShadow: '0 0 0 1.5px rgba(245,158,11,0.3)',
+                        }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {selectedDate && selectedDateFormats.length > 0 && (
+            <div className="mt-4 bg-white rounded-lg p-4 shadow-sm">
+              <p className="text-xs font-semibold mb-2" style={{ color: '#1A3C6E' }}>
+                {new Date(selectedDate + 'T00:00:00').toLocaleDateString('ko-KR', {
+                  month: 'long',
+                  day: 'numeric',
+                })}의 기록
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {selectedDateFormats.map((formatInfo, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleFormatClick(formatInfo.key, formatInfo.label)}
+                    className="px-3 py-1.5 rounded-full text-xs font-medium transition-all hover:opacity-80 hover:shadow-md cursor-pointer"
+                    style={{
+                      backgroundColor: '#FDF6C3',
+                      color: '#1A3C6E',
+                      border: '1px solid #1A3C6E',
+                    }}
+                  >
+                    {formatInfo.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs mt-2" style={{ color: '#999' }}>
+                💡 형식을 클릭하면 해당 SAYU를 볼 수 있습니다
+              </p>
+            </div>
+          )}
+
+          <div className="mt-4 flex flex-col gap-2 text-sm" style={{ color: '#999' }}>
+            <div className="flex items-center gap-2">
+              <div className="rounded-full flex-shrink-0" style={{ width: '8px', height: '8px', backgroundColor: '#1A3C6E', boxShadow: '0 0 0 1.5px rgba(26,60,110,0.25)' }} />
+              <span>SAYU 저장</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="rounded-full flex-shrink-0" style={{ width: '8px', height: '8px', backgroundColor: '#F59E0B', boxShadow: '0 0 0 1.5px rgba(245,158,11,0.3)' }} />
+              <span>다듬기 완료</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <SayuModal
         isOpen={sayuModalState.isOpen}
@@ -496,7 +708,7 @@ export function SayuPage() {
       />
     </div>
 
-    {/* 인쇄 전용 레이아웃 - sayu-page-container 밖 (항상 렌더링) */}
+    {/* 인쇄 전용 레이아웃 */}
     <div className="print-show sayu-print-page" style={{ backgroundColor: 'white' }}>
         <div className="sayu-print-header" style={{ backgroundColor: 'white' }}>
           <h2>
@@ -509,143 +721,50 @@ export function SayuPage() {
           </h2>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
             {sayuModalState.currentRating && sayuModalState.currentRating > 0 && (
-              <span style={{ 
-                fontSize: '10pt', 
-                padding: '4px 12px', 
-                borderRadius: '12px',
-                backgroundColor: '#FFF8F0',
-                color: '#F59E0B'
-              }}>
+              <span style={{ fontSize: '10pt', padding: '4px 12px', borderRadius: '12px', backgroundColor: '#FFF8F0', color: '#F59E0B' }}>
                 {'⭐'.repeat(sayuModalState.currentRating)}
               </span>
             )}
             {sayuModalState.weather && (
-              <span style={{ 
-                fontSize: '9pt', 
-                padding: '3px 8px', 
-                borderRadius: '4px',
-                backgroundColor: '#F0F7FF',
-                color: '#1A3C6E'
-              }}>
+              <span style={{ fontSize: '9pt', padding: '3px 8px', borderRadius: '4px', backgroundColor: '#FDF6C3', color: '#1A3C6E' }}>
                 {sayuModalState.weather}
               </span>
             )}
             {sayuModalState.temperature && (
-              <span style={{ 
-                fontSize: '9pt', 
-                padding: '3px 8px', 
-                borderRadius: '4px',
-                backgroundColor: '#F0F7FF',
-                color: '#1A3C6E'
-              }}>
+              <span style={{ fontSize: '9pt', padding: '3px 8px', borderRadius: '4px', backgroundColor: '#FDF6C3', color: '#1A3C6E' }}>
                 {sayuModalState.temperature}
               </span>
             )}
             {sayuModalState.mood && (
-              <span style={{ 
-                fontSize: '9pt', 
-                padding: '3px 8px', 
-                borderRadius: '4px',
-                backgroundColor: '#F0F7FF',
-                color: '#1A3C6E'
-              }}>
+              <span style={{ fontSize: '9pt', padding: '3px 8px', borderRadius: '4px', backgroundColor: '#FDF6C3', color: '#1A3C6E' }}>
                 {sayuModalState.mood}
               </span>
             )}
           </div>
         </div>
 
-        {/* 사진 렌더링 - PDF 2:3 비율 최적화 */}
         {sayuModalState.images && sayuModalState.images.length > 0 && (
           <div className="print-photos" style={{ marginBottom: '15px', backgroundColor: 'white' }}>
-            {/* 1장: 가운데 정렬 - A4 기준 약 100mm 높이 */}
             {sayuModalState.images.length === 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', backgroundColor: 'white' }}>
-                <img 
-                  src={sayuModalState.images[0]} 
-                  alt="사진"
-                  style={{
-                    width: 'auto',
-                    maxWidth: '80mm',
-                    maxHeight: '100mm',
-                    objectFit: 'contain',
-                    height: 'auto',
-                    borderRadius: '8px',
-                    backgroundColor: 'white'
-                  }}
-                />
+                <img src={sayuModalState.images[0]} alt="사진" style={{ width: 'auto', maxWidth: '80mm', maxHeight: '100mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
               </div>
             )}
-
-            {/* 2장: 나란히 정렬 - 각 70mm 가로, 90mm 세로 */}
             {sayuModalState.images.length === 2 && (
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', backgroundColor: 'white' }}>
                 {sayuModalState.images.map((img: string, idx: number) => (
-                  <img 
-                    key={idx}
-                    src={img} 
-                    alt={`사진 ${idx + 1}`}
-                    style={{
-                      width: 'auto',
-                      maxWidth: '70mm',
-                      maxHeight: '90mm',
-                      objectFit: 'contain',
-                      height: 'auto',
-                      borderRadius: '8px',
-                      backgroundColor: 'white'
-                    }}
-                  />
+                  <img key={idx} src={img} alt={`사진 ${idx + 1}`} style={{ width: 'auto', maxWidth: '70mm', maxHeight: '90mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
                 ))}
               </div>
             )}
-
-            {/* 3장: 위에 큰 것 110mm 가로 x 85mm 세로 + 아래 작은 것 각 50mm */}
             {sayuModalState.images.length === 3 && (
               <div style={{ backgroundColor: 'white' }}>
-                {/* 큰 사진 */}
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px', backgroundColor: 'white' }}>
-                  <img 
-                    src={sayuModalState.images[0]} 
-                    alt="사진 1"
-                    style={{
-                      width: 'auto',
-                      maxWidth: '110mm',
-                      maxHeight: '85mm',
-                      objectFit: 'contain',
-                      height: 'auto',
-                      borderRadius: '8px',
-                      backgroundColor: 'white'
-                    }}
-                  />
+                  <img src={sayuModalState.images[0]} alt="사진 1" style={{ width: 'auto', maxWidth: '110mm', maxHeight: '85mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
                 </div>
-                {/* 작은 사진 2개 */}
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', backgroundColor: 'white' }}>
-                  <img 
-                    src={sayuModalState.images[1]} 
-                    alt="사진 2"
-                    style={{
-                      width: 'auto',
-                      maxWidth: '50mm',
-                      maxHeight: '50mm',
-                      objectFit: 'contain',
-                      height: 'auto',
-                      borderRadius: '8px',
-                      backgroundColor: 'white'
-                    }}
-                  />
-                  <img 
-                    src={sayuModalState.images[2]} 
-                    alt="사진 3"
-                    style={{
-                      width: 'auto',
-                      maxWidth: '50mm',
-                      maxHeight: '50mm',
-                      objectFit: 'contain',
-                      height: 'auto',
-                      borderRadius: '8px',
-                      backgroundColor: 'white'
-                    }}
-                  />
+                  <img src={sayuModalState.images[1]} alt="사진 2" style={{ width: 'auto', maxWidth: '50mm', maxHeight: '50mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
+                  <img src={sayuModalState.images[2]} alt="사진 3" style={{ width: 'auto', maxWidth: '50mm', maxHeight: '50mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
                 </div>
               </div>
             )}
