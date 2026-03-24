@@ -75,7 +75,7 @@ export async function compressImage(
       img.src = e.target?.result as string;
     };
     reader.onerror = () => {
-      reject(new Error('파일 읽기에 실패했습니다.'));
+      reject(new Error('FILE_READER_ERROR'));
     };
     reader.readAsDataURL(file);
   });

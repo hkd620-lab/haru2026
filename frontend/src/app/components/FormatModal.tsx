@@ -398,24 +398,34 @@ ${contentValues}`,
           }
         }
 
-        // 이미지 압축
-        console.log('🖼️ [이미지 압축 시작]');
-        const originalSizeMB = (fileToProcess.size / 1024 / 1024).toFixed(2);
-        console.log(`📥 원본 크기: ${originalSizeMB}MB`);
+        // 이미지 압축 및 업로드
+        try {
+          console.log('🖼️ [이미지 압축 시작]');
+          const originalSizeMB = (fileToProcess.size / 1024 / 1024).toFixed(2);
+          console.log(`📥 원본 크기: ${originalSizeMB}MB`);
 
-        const compressed = await compressImage(fileToProcess as File, 800, 0.85);
+          const compressed = await compressImage(fileToProcess as File, 800, 0.85);
 
-        const compressedSizeMB = (compressed.size / 1024 / 1024).toFixed(2);
-        const compressionRate = ((1 - compressed.size / file.size) * 100).toFixed(1);
-        console.log(`📤 압축 후 크기: ${compressedSizeMB}MB`);
-        console.log(`✅ 압축률: ${compressionRate}%`);
-        console.log('🎉 [이미지 압축 완료]\n');
+          const compressedSizeMB = (compressed.size / 1024 / 1024).toFixed(2);
+          const compressionRate = ((1 - compressed.size / file.size) * 100).toFixed(1);
+          console.log(`📤 압축 후 크기: ${compressedSizeMB}MB`);
+          console.log(`✅ 압축률: ${compressionRate}%`);
+          console.log('🎉 [이미지 압축 완료]\n');
 
-        const imagePath = `users/${user.uid}/format_photos/${recordId}_${prefix}_${fileName}`;
-        const storageRef = ref(storage, imagePath);
-        await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
-        const downloadUrl = await getDownloadURL(storageRef);
-        newImageUrls.push(downloadUrl);
+          const imagePath = `users/${user.uid}/format_photos/${recordId}_${prefix}_${fileName}`;
+          const storageRef = ref(storage, imagePath);
+          await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
+          const downloadUrl = await getDownloadURL(storageRef);
+          newImageUrls.push(downloadUrl);
+        } catch (fileError: any) {
+          if (fileError?.message === 'FILE_READER_ERROR') {
+            toast.error(
+              '각종 클라우드에 있는 사진은 직접 업로드가 안 됩니다. 스마트폰에서 직접 업로드하거나 클라우드의 사진을 다운받은 후 추가해주세요.'
+            );
+            continue;
+          }
+          throw fileError;
+        }
       }
 
       setUploadedImages(prev => [...prev, ...newImageUrls]);
