@@ -6,7 +6,6 @@ import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'fire
 import { compressImage } from '../services/imageService';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
-import heic2any from 'heic2any';
 
 type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기';
 type SayuMode = 'BASIC' | 'PREMIUM';
@@ -365,13 +364,32 @@ ${contentValues}`,
           continue;
         }
 
-        // HEIC → JPG 변환
+        // HEIC → JPG 변환 (Firebase Functions 경유)
         let fileToProcess: File | Blob = file;
         if (isHeic) {
           try {
             toast.info('HEIC 파일을 변환 중...');
-            const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
-            fileToProcess = Array.isArray(converted) ? converted[0] : converted;
+            // 파일을 base64로 인코딩
+            const arrayBuffer = await file.arrayBuffer();
+            const bytes = new Uint8Array(arrayBuffer);
+            let binary = '';
+            const chunkSize = 8192;
+            for (let i = 0; i < bytes.length; i += chunkSize) {
+              binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+            }
+            const base64 = btoa(binary);
+            // Firebase Functions 호출
+            const functionsInstance = getFunctions(undefined, 'asia-northeast3');
+            const convertHeicFunc = httpsCallable(functionsInstance, 'convertHeic');
+            const result = await convertHeicFunc({ imageBase64: base64 });
+            const { jpgBase64 } = result.data as { jpgBase64: string };
+            // base64 → Blob 변환
+            const jpgBinary = atob(jpgBase64);
+            const jpgArray = new Uint8Array(jpgBinary.length);
+            for (let i = 0; i < jpgBinary.length; i++) {
+              jpgArray[i] = jpgBinary.charCodeAt(i);
+            }
+            fileToProcess = new Blob([jpgArray], { type: 'image/jpeg' });
           } catch (err) {
             console.error('HEIC 변환 실패:', err);
             toast.error(`${file.name} HEIC 변환에 실패했습니다.`);
@@ -591,7 +609,7 @@ ${contentValues}`,
               {/* 📸 사진 업로드 섹션 */}
               <div>
                 <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
-                  📸 사진 (최대 3장)
+                  📸 사진 (최대 3장 · PNG, JPG, JPEG, WEBP, HEIC)
                 </label>
                 <input
                   ref={fileInputRef}

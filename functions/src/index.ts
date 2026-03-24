@@ -6,6 +6,7 @@ import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
 import axios from 'axios';
 import * as crypto from 'crypto';
+import sharp from 'sharp';
 
 // Firebase Admin 초기화
 if (!admin.apps.length) {
@@ -739,6 +740,27 @@ export const generateMergePDF = onCall(
     } catch (error: any) {
       logger.error('PDF generation error:', error);
       throw new HttpsError('internal', `PDF 생성 실패: ${error.message}`);
+    }
+  }
+);
+
+// ===== 📷 HEIC → JPG 변환 =====
+export const convertHeic = onCall(
+  { region: 'asia-northeast3' },
+  async (request) => {
+    const { imageBase64 } = request.data;
+
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
+      throw new HttpsError('invalid-argument', '이미지 데이터가 필요합니다.');
+    }
+
+    try {
+      const buffer = Buffer.from(imageBase64, 'base64');
+      const jpgBuffer = await sharp(buffer).jpeg({ quality: 90 }).toBuffer();
+      return { jpgBase64: jpgBuffer.toString('base64') };
+    } catch (error: any) {
+      logger.error('HEIC 변환 오류:', error);
+      throw new HttpsError('internal', `HEIC 변환 실패: ${error.message}`);
     }
   }
 );
