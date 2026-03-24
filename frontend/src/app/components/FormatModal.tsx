@@ -6,6 +6,7 @@ import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'fire
 import { compressImage } from '../services/imageService';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
+import heic2any from 'heic2any';
 
 type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기';
 type SayuMode = 'BASIC' | 'PREMIUM';
@@ -364,31 +365,13 @@ ${contentValues}`,
           continue;
         }
 
-        // HEIC → JPG 변환 (Firebase Functions onRequest 경유, FormData)
+        // HEIC → JPEG 변환 (브라우저, heic2any)
         let fileToProcess: File | Blob = file;
         if (isHeic) {
           try {
             toast.info('HEIC 파일을 변환 중...');
-            const formData = new FormData();
-            formData.append('file', file);
-            const response = await fetch(
-              'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/convertHeic',
-              { method: 'POST', body: formData }
-            );
-            if (!response.ok) {
-              throw new Error(`변환 서버 오류: ${response.status}`);
-            }
-            const json = await response.json();
-            if (!json.success) {
-              throw new Error(json.error || '변환 실패');
-            }
-            // base64 → Blob 변환
-            const jpgBinary = atob(json.base64);
-            const jpgArray = new Uint8Array(jpgBinary.length);
-            for (let i = 0; i < jpgBinary.length; i++) {
-              jpgArray[i] = jpgBinary.charCodeAt(i);
-            }
-            fileToProcess = new Blob([jpgArray], { type: 'image/jpeg' });
+            const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 });
+            fileToProcess = Array.isArray(converted) ? converted[0] : converted;
           } catch (err) {
             console.error('HEIC 변환 실패:', err);
             toast.error(`${file.name} HEIC 변환에 실패했습니다.`);

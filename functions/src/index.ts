@@ -6,8 +6,6 @@ import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
 import axios from 'axios';
 import * as crypto from 'crypto';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const sharp = require('sharp');
 
 // Firebase Admin 초기화
 if (!admin.apps.length) {
@@ -745,69 +743,3 @@ export const generateMergePDF = onCall(
   }
 );
 
-// ===== 📷 HEIC → JPG 변환 (onRequest, multipart/form-data) =====
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const Busboy = require('busboy');
-import { Readable } from 'stream';
-
-export const convertHeic = onRequest(
-  {
-    region: 'asia-northeast3',
-    cors: ['https://haru2026-8abb8.web.app'],
-    memory: '512MiB',
-  },
-  async (req, res) => {
-    // CORS 프리플라이트 처리
-    res.set('Access-Control-Allow-Origin', 'https://haru2026-8abb8.web.app');
-    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type');
-    if (req.method === 'OPTIONS') {
-      res.status(204).send('');
-      return;
-    }
-
-    if (req.method !== 'POST') {
-      res.status(405).json({ success: false, error: 'Method not allowed' });
-      return;
-    }
-
-    try {
-      // multipart/form-data 파싱 — rawBody로 스트림 생성 (gen2 호환)
-      const fileBuffer = await new Promise<Buffer>((resolve, reject) => {
-        const bb = Busboy({ headers: req.headers });
-        const chunks: Buffer[] = [];
-        let found = false;
-
-        bb.on('file', (_field: string, stream: NodeJS.ReadableStream) => {
-          found = true;
-          stream.on('data', (chunk: Buffer) => chunks.push(chunk));
-          stream.on('end', () => resolve(Buffer.concat(chunks)));
-          stream.on('error', reject);
-        });
-
-        bb.on('finish', () => {
-          if (!found) reject(new Error('파일을 찾을 수 없습니다.'));
-        });
-
-        bb.on('error', reject);
-
-        // Firebase Functions v2(gen2)에서는 rawBody를 스트림으로 변환해서 사용
-        const readable = new Readable();
-        readable.push((req as any).rawBody);
-        readable.push(null);
-        readable.pipe(bb);
-      });
-
-      // sharp로 HEIC → JPEG 변환
-      const outputBuffer = await sharp(fileBuffer)
-        .jpeg({ quality: 85 })
-        .toBuffer();
-
-      const base64 = outputBuffer.toString('base64');
-      res.status(200).json({ success: true, base64 });
-    } catch (error: any) {
-      logger.error('HEIC 변환 오류:', error);
-      res.status(500).json({ success: false, error: error.message });
-    }
-  }
-);
