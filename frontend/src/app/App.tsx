@@ -20,7 +20,7 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
       <BrowserRouter>
-        <div className="min-h-screen bg-[#FAF9F6] dark:bg-gray-900">
+        <div className="min-h-screen bg-[#FEFBE8] dark:bg-gray-900">
           <main style={{ paddingBottom: 'var(--content-pb)' }}>
             <Routes>
               {/* 홈 화면 */}

@@ -602,7 +602,7 @@ export function SayuPage() {
                         ? '#FDF6C3'
                         : 'transparent',
                       color: isSelected
-                        ? '#FAF9F6'
+                        ? '#FEFBE8'
                         : isToday
                         ? '#1A3C6E'
                         : day
@@ -624,7 +624,7 @@ export function SayuPage() {
                           transform: 'translateX(calc(-50% + 2px))',
                           width: '8px',
                           height: '8px',
-                          backgroundColor: isSelected ? '#FAF9F6' : '#1A3C6E',
+                          backgroundColor: isSelected ? '#FEFBE8' : '#1A3C6E',
                           boxShadow: isSelected ? 'none' : '0 0 0 1.5px rgba(26,60,110,0.25)',
                         }}
                       />

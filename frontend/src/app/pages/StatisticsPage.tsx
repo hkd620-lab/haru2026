@@ -19,7 +19,7 @@ const categories: FormatCategory[] = [
     formats: ['일기', '에세이', '여행기록', '애완동물관찰일지', '육아일기', '텃밭일지'],
     icon: '🏡',
     color: '#1A3C6E',
-    bgColor: '#F0F7FF',
+    bgColor: '#FDF6C3',
     borderColor: '#d0dff0',
   },
   {
@@ -134,7 +134,7 @@ export function StatisticsPage() {
                         onClick={() => handleFormatClick(format)}
                         className="p-3 rounded-lg text-left transition-all hover:shadow-md"
                         style={{
-                          backgroundColor: '#FAF9F6',
+                          backgroundColor: '#FEFBE8',
                           border: `1px solid ${category.borderColor}`,
                         }}
                       >

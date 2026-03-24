@@ -1,15 +1,30 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Sparkles } from 'lucide-react';
 import { HaruLogoAnimation } from '../components/HaruLogoAnimation';
+import { firestoreService } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
-import { useEffect } from 'react';
 import { requestNotificationPermission } from '../services/notificationService';
 
 export function HomePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const today = new Date();
+  const [todayFormatCount, setTodayFormatCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+
+    firestoreService.getRecords(user.uid).then((records) => {
+      const todayRecord = records.find((r) => r.date === todayStr);
+      setTodayFormatCount(todayRecord?.formats?.length ?? 0);
+    }).catch(() => setTodayFormatCount(0));
+  }, [user?.uid]);
 
   // 🔔 FCM 초기화 (로그인 시 자동 실행)
   useEffect(() => {
@@ -45,7 +60,7 @@ export function HomePage() {
   }, [user?.uid]);
 
   return (
-    <div className="min-h-[calc(100vh-56px-80px)]" style={{ backgroundColor: '#FAF9F6' }}>
+    <div className="min-h-[calc(100vh-56px-80px)]" style={{ backgroundColor: '#FEFBE8' }}>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
         {/* Logo & Identity */}
         <header className="text-center mb-16 md:mb-20">
@@ -66,9 +81,9 @@ export function HomePage() {
           </motion.div>
         </header>
 
-        {/* Date Display */}
+        {/* Date & Record Status */}
         <section className="text-center mb-10">
-          <p className="text-lg tracking-wide" style={{ color: '#666666' }}>
+          <p className="text-lg tracking-wide mb-3" style={{ color: '#666666' }}>
             {today.toLocaleDateString('ko-KR', {
               year: 'numeric',
               month: 'long',
@@ -76,17 +91,32 @@ export function HomePage() {
               weekday: 'long',
             })}
           </p>
+          {todayFormatCount !== null && (
+            <p className="text-sm" style={{ color: todayFormatCount > 0 ? '#1A3C6E' : '#999999' }}>
+              {todayFormatCount > 0
+                ? `오늘 ${todayFormatCount}개 형식 기록 완료`
+                : '오늘 아직 기록이 없어요'}
+            </p>
+          )}
         </section>
 
-        {/* Write Button */}
-        <div className="flex justify-center">
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row justify-center gap-4">
           <button
             onClick={() => navigate('/record')}
-            className="flex items-center gap-2 px-10 py-4 rounded-lg transition-all hover:opacity-90 shadow-lg"
-            style={{ backgroundColor: '#1A3C6E', color: '#FAF9F6' }}
+            className="flex items-center justify-center gap-2 px-10 py-4 rounded-lg transition-all hover:opacity-90 shadow-lg"
+            style={{ backgroundColor: '#1A3C6E', color: '#FEFBE8' }}
           >
             <PlusCircle className="w-6 h-6" />
-            <span className="text-lg tracking-wide">오늘 기록 쓰기</span>
+            <span className="text-lg tracking-wide">오늘 기록하기</span>
+          </button>
+          <button
+            onClick={() => navigate('/sayu')}
+            className="flex items-center justify-center gap-2 px-10 py-4 rounded-lg transition-all hover:opacity-90 shadow-lg"
+            style={{ backgroundColor: '#FEFBE8', color: '#1A3C6E', border: '2px solid #1A3C6E' }}
+          >
+            <Sparkles className="w-6 h-6" />
+            <span className="text-lg tracking-wide">SAYU 보기</span>
           </button>
         </div>
       </div>

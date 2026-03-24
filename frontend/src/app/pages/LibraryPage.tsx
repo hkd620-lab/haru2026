@@ -281,7 +281,7 @@ export function LibraryPage() {
               onClick={fetchRecords}
               className="text-xs px-3 py-2.5 rounded-lg transition-all hover:opacity-80"
               style={{
-                backgroundColor: '#F0F7FF',
+                backgroundColor: '#FDF6C3',
                 color: '#1A3C6E',
                 border: '1px solid #d0dff0',
               }}
@@ -296,7 +296,7 @@ export function LibraryPage() {
         <div
           className="bg-blue-50 border-l-4 border-blue-600 rounded transition-all"
           style={{
-            backgroundColor: '#F0F7FF',
+            backgroundColor: '#FDF6C3',
             borderColor: '#1A3C6E',
             overflow: 'hidden',
           }}
@@ -362,7 +362,7 @@ export function LibraryPage() {
                 {selectedRecord.weather && (
                   <span
                     className="px-4 py-2 rounded-lg text-sm font-medium"
-                    style={{ backgroundColor: '#F0F7FF', color: '#1A3C6E', border: '1px solid #d0dff0' }}
+                    style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E', border: '1px solid #d0dff0' }}
                   >
                     날씨: {selectedRecord.weather}
                   </span>
@@ -370,7 +370,7 @@ export function LibraryPage() {
                 {selectedRecord.temperature && (
                   <span
                     className="px-4 py-2 rounded-lg text-sm font-medium"
-                    style={{ backgroundColor: '#F0F7FF', color: '#1A3C6E', border: '1px solid #d0dff0' }}
+                    style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E', border: '1px solid #d0dff0' }}
                   >
                     기온: {selectedRecord.temperature}
                   </span>
@@ -378,7 +378,7 @@ export function LibraryPage() {
                 {selectedRecord.mood && (
                   <span
                     className="px-4 py-2 rounded-lg text-sm font-medium"
-                    style={{ backgroundColor: '#F0F7FF', color: '#1A3C6E', border: '1px solid #d0dff0' }}
+                    style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E', border: '1px solid #d0dff0' }}
                   >
                     기분: {selectedRecord.mood}
                   </span>

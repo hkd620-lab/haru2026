@@ -39,7 +39,7 @@ export function MergeViewerPage() {
           <button
             onClick={() => navigate('/merge')}
             className="px-6 py-2 rounded-lg"
-            style={{ backgroundColor: '#1A3C6E', color: '#FAF9F6' }}
+            style={{ backgroundColor: '#1A3C6E', color: '#FEFBE8' }}
           >
             돌아가기
           </button>
@@ -257,9 +257,9 @@ export function MergeViewerPage() {
             </h2>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
               ${record.mergeRating ? `<span style="font-size: 10pt; padding: 4px 12px; border-radius: 12px; background: #FFF8F0; color: #F59E0B;">${'⭐'.repeat(record.mergeRating)}</span>` : ''}
-              ${record.weather ? `<span style="font-size: 9pt; padding: 3px 8px; border-radius: 4px; background: #F0F7FF; color: #1A3C6E;">${record.weather}</span>` : ''}
-              ${record.temperature ? `<span style="font-size: 9pt; padding: 3px 8px; border-radius: 4px; background: #F0F7FF; color: #1A3C6E;">${record.temperature}</span>` : ''}
-              ${record.mood ? `<span style="font-size: 9pt; padding: 3px 8px; border-radius: 4px; background: #F0F7FF; color: #1A3C6E;">${record.mood}</span>` : ''}
+              ${record.weather ? `<span style="font-size: 9pt; padding: 3px 8px; border-radius: 4px; background: #FDF6C3; color: #1A3C6E;">${record.weather}</span>` : ''}
+              ${record.temperature ? `<span style="font-size: 9pt; padding: 3px 8px; border-radius: 4px; background: #FDF6C3; color: #1A3C6E;">${record.temperature}</span>` : ''}
+              ${record.mood ? `<span style="font-size: 9pt; padding: 3px 8px; border-radius: 4px; background: #FDF6C3; color: #1A3C6E;">${record.mood}</span>` : ''}
             </div>
           </div>
           ${imagesHTML}
@@ -570,7 +570,7 @@ export function MergeViewerPage() {
             {record.weather && (
               <span
                 className="px-4 py-2 rounded-full text-sm font-medium"
-                style={{ backgroundColor: '#F0F7FF', color: '#1A3C6E' }}
+                style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
               >
                 {record.weather}
               </span>
@@ -578,7 +578,7 @@ export function MergeViewerPage() {
             {record.temperature && (
               <span
                 className="px-4 py-2 rounded-full text-sm font-medium"
-                style={{ backgroundColor: '#F0F7FF', color: '#1A3C6E' }}
+                style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
               >
                 {record.temperature}
               </span>
@@ -586,7 +586,7 @@ export function MergeViewerPage() {
             {record.mood && (
               <span
                 className="px-4 py-2 rounded-full text-sm font-medium"
-                style={{ backgroundColor: '#F0F7FF', color: '#1A3C6E' }}
+                style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
               >
                 {record.mood}
               </span>
@@ -890,7 +890,7 @@ export function MergeViewerPage() {
                       fontSize: '9pt', 
                       padding: '3px 8px', 
                       borderRadius: '4px',
-                      backgroundColor: '#F0F7FF',
+                      backgroundColor: '#FDF6C3',
                       color: '#1A3C6E'
                     }}>
                       {record.weather}
@@ -901,7 +901,7 @@ export function MergeViewerPage() {
                       fontSize: '9pt', 
                       padding: '3px 8px', 
                       borderRadius: '4px',
-                      backgroundColor: '#F0F7FF',
+                      backgroundColor: '#FDF6C3',
                       color: '#1A3C6E'
                     }}>
                       {record.temperature}
@@ -912,7 +912,7 @@ export function MergeViewerPage() {
                       fontSize: '9pt', 
                       padding: '3px 8px', 
                       borderRadius: '4px',
-                      backgroundColor: '#F0F7FF',
+                      backgroundColor: '#FDF6C3',
                       color: '#1A3C6E'
                     }}>
                       {record.mood}

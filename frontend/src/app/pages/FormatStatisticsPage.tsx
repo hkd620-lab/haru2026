@@ -246,7 +246,7 @@ export function FormatStatisticsPage() {
             onClick={() => setPeriodMode('week')}
             className="px-4 py-2 rounded-lg text-sm transition-all"
             style={{
-              backgroundColor: periodMode === 'week' ? '#1A3C6E' : '#FAF9F6',
+              backgroundColor: periodMode === 'week' ? '#1A3C6E' : '#FEFBE8',
               color: periodMode === 'week' ? '#FAF9F6' : '#333',
               border: periodMode === 'week' ? 'none' : '1px solid #e5e5e5',
             }}
@@ -257,7 +257,7 @@ export function FormatStatisticsPage() {
             onClick={() => setPeriodMode('month')}
             className="px-4 py-2 rounded-lg text-sm transition-all"
             style={{
-              backgroundColor: periodMode === 'month' ? '#1A3C6E' : '#FAF9F6',
+              backgroundColor: periodMode === 'month' ? '#1A3C6E' : '#FEFBE8',
               color: periodMode === 'month' ? '#FAF9F6' : '#333',
               border: periodMode === 'month' ? 'none' : '1px solid #e5e5e5',
             }}
@@ -268,7 +268,7 @@ export function FormatStatisticsPage() {
             onClick={() => setPeriodMode('custom')}
             className="px-4 py-2 rounded-lg text-sm transition-all"
             style={{
-              backgroundColor: periodMode === 'custom' ? '#1A3C6E' : '#FAF9F6',
+              backgroundColor: periodMode === 'custom' ? '#1A3C6E' : '#FEFBE8',
               color: periodMode === 'custom' ? '#FAF9F6' : '#333',
               border: periodMode === 'custom' ? 'none' : '1px solid #e5e5e5',
             }}

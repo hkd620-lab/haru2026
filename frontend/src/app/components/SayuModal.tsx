@@ -200,7 +200,7 @@ export function SayuModal({
       max-width: 800px;
       margin: 40px auto;
       padding: 20px;
-      background: #FAF9F6;
+      background: #FEFBE8;
       color: #333;
     }
     .container {
@@ -348,7 +348,7 @@ export function SayuModal({
                 fontSize: '11px', 
                 fontWeight: '600', 
                 color: '#1A3C6E', 
-                backgroundColor: '#F0F7FF', 
+                backgroundColor: '#FDF6C3', 
                 padding: '4px 8px', 
                 borderRadius: '4px',
                 marginBottom: '8px'
@@ -499,7 +499,7 @@ export function SayuModal({
       >
         <div
           style={{
-            backgroundColor: '#FAF9F6',
+            backgroundColor: '#FEFBE8',
             borderRadius: 12,
             maxWidth: 700,
             width: '100%',
@@ -634,7 +634,7 @@ export function SayuModal({
                 flex: 1,
                 padding: '12px',
                 border: 'none',
-                backgroundColor: viewMode === 'ai' ? '#F0F7FF' : 'transparent',
+                backgroundColor: viewMode === 'ai' ? '#FDF6C3' : 'transparent',
                 color: viewMode === 'ai' ? '#1A3C6E' : '#999',
                 fontSize: 14,
                 fontWeight: viewMode === 'ai' ? 600 : 400,
@@ -651,7 +651,7 @@ export function SayuModal({
                 flex: 1,
                 padding: '12px',
                 border: 'none',
-                backgroundColor: viewMode === 'original' ? '#F0F7FF' : 'transparent',
+                backgroundColor: viewMode === 'original' ? '#FDF6C3' : 'transparent',
                 color: viewMode === 'original' ? '#1A3C6E' : '#999',
                 fontSize: 14,
                 fontWeight: viewMode === 'original' ? 600 : 400,
@@ -689,7 +689,7 @@ export function SayuModal({
                         fontSize: '12px',
                         padding: '4px 10px',
                         borderRadius: '6px',
-                        backgroundColor: '#F0F7FF',
+                        backgroundColor: '#FDF6C3',
                         color: '#1A3C6E',
                         border: '1px solid #d0dff0'
                       }}>
@@ -701,7 +701,7 @@ export function SayuModal({
                         fontSize: '12px',
                         padding: '4px 10px',
                         borderRadius: '6px',
-                        backgroundColor: '#F0F7FF',
+                        backgroundColor: '#FDF6C3',
                         color: '#1A3C6E',
                         border: '1px solid #d0dff0'
                       }}>
@@ -713,7 +713,7 @@ export function SayuModal({
                         fontSize: '12px',
                         padding: '4px 10px',
                         borderRadius: '6px',
-                        backgroundColor: '#F0F7FF',
+                        backgroundColor: '#FDF6C3',
                         color: '#1A3C6E',
                         border: '1px solid #d0dff0'
                       }}>

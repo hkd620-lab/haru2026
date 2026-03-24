@@ -151,7 +151,7 @@ export function RecordPage() {
                     onClick={() => setWeather(w)}
                     className="px-2.5 py-1 rounded-lg text-xs transition-all"
                     style={{
-                      backgroundColor: weather === w ? '#1A3C6E' : '#FAF9F6',
+                      backgroundColor: weather === w ? '#1A3C6E' : '#FEFBE8',
                       color: weather === w ? '#FAF9F6' : '#333333',
                       border: weather === w ? 'none' : '1px solid #e5e5e5',
                     }}
@@ -174,7 +174,7 @@ export function RecordPage() {
                     onClick={() => setTemperature(t)}
                     className="px-2.5 py-1 rounded-lg text-xs transition-all"
                     style={{
-                      backgroundColor: temperature === t ? '#1A3C6E' : '#FAF9F6',
+                      backgroundColor: temperature === t ? '#1A3C6E' : '#FEFBE8',
                       color: temperature === t ? '#FAF9F6' : '#333333',
                       border: temperature === t ? 'none' : '1px solid #e5e5e5',
                     }}
@@ -197,7 +197,7 @@ export function RecordPage() {
                     onClick={() => setMood(m)}
                     className="px-2.5 py-1 rounded-lg text-xs transition-all"
                     style={{
-                      backgroundColor: mood === m ? '#1A3C6E' : '#FAF9F6',
+                      backgroundColor: mood === m ? '#1A3C6E' : '#FEFBE8',
                       color: mood === m ? '#FAF9F6' : '#333333',
                       border: mood === m ? 'none' : '1px solid #e5e5e5',
                     }}
@@ -229,7 +229,7 @@ export function RecordPage() {
                 onClick={() => setSelectedCategory(selectedCategory === category ? null : category)}
                 className="px-4 py-2 rounded-lg text-xs transition-all"
                 style={{
-                  backgroundColor: selectedCategory === category ? '#1A3C6E' : '#F0F7FF',
+                  backgroundColor: selectedCategory === category ? '#1A3C6E' : '#FDF6C3',
                   color: selectedCategory === category ? '#FAF9F6' : '#1A3C6E',
                   border: selectedCategory === category ? 'none' : '1px solid #d0dff0',
                   fontWeight: selectedCategory === category ? 600 : 500,
@@ -252,7 +252,7 @@ export function RecordPage() {
                     onClick={() => toggleFormat(format)}
                     className="p-2.5 rounded-lg text-center transition-all text-xs"
                     style={{
-                      backgroundColor: isSelected ? '#1A3C6E' : '#FAF9F6',
+                      backgroundColor: isSelected ? '#1A3C6E' : '#FEFBE8',
                       border: isSelected ? 'none' : '1px solid #e5e5e5',
                       color: isSelected ? '#FAF9F6' : '#333333',
                     }}
@@ -282,7 +282,7 @@ export function RecordPage() {
                     key={format}
                     className="px-2 py-1 rounded text-xs"
                     style={{
-                      backgroundColor: '#F0F7FF',
+                      backgroundColor: '#FDF6C3',
                       color: '#1A3C6E',
                       border: '1px solid #d0dff0',
                     }}
@@ -301,7 +301,7 @@ export function RecordPage() {
             onClick={handleSave}
             disabled={isSaving || selectedFormats.length === 0}
             className="px-6 py-2.5 rounded-lg flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 shadow-md"
-            style={{ backgroundColor: '#1A3C6E', color: '#FAF9F6' }}
+            style={{ backgroundColor: '#1A3C6E', color: '#FEFBE8' }}
           >
             <span className="tracking-wide text-sm">{isSaving ? '저장 중...' : '저장'}</span>
           </button>

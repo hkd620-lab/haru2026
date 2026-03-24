@@ -215,7 +215,7 @@ export function MergePage() {
                 onClick={() => setSelectedCategory(category)}
                 className="flex-1 p-3 rounded-lg text-center transition-all text-sm font-medium"
                 style={{
-                  backgroundColor: selectedCategory === category ? '#1A3C6E' : '#FAF9F6',
+                  backgroundColor: selectedCategory === category ? '#1A3C6E' : '#FEFBE8',
                   border: selectedCategory === category ? 'none' : '1px solid #e5e5e5',
                   color: selectedCategory === category ? '#FAF9F6' : '#333',
                 }}
@@ -238,7 +238,7 @@ export function MergePage() {
                     onClick={() => setSelectedFormat(format)}
                     className="py-2 px-3 rounded-lg text-sm transition-all"
                     style={{
-                      backgroundColor: isSelected ? '#1A3C6E' : '#FAF9F6',
+                      backgroundColor: isSelected ? '#1A3C6E' : '#FEFBE8',
                       color: isSelected ? '#FAF9F6' : '#333',
                       border: isSelected ? 'none' : '1px solid #e5e5e5',
                       fontWeight: isSelected ? 600 : 400,
@@ -272,7 +272,7 @@ export function MergePage() {
                 onClick={() => setStarThreshold(stars as StarThreshold)}
                 className="py-2 transition-all text-center"
                 style={{
-                  backgroundColor: isSelected ? '#1A3C6E' : '#FAF9F6',
+                  backgroundColor: isSelected ? '#1A3C6E' : '#FEFBE8',
                   color: isSelected ? '#FAF9F6' : '#333',
                   borderTop: `1px solid ${isSelected ? '#1A3C6E' : '#e5e5e5'}`,
                   borderBottom: `1px solid ${isSelected ? '#1A3C6E' : '#e5e5e5'}`,
@@ -321,7 +321,7 @@ export function MergePage() {
                 onClick={() => handlePeriodSelect(option.id)}
                 className="py-3 transition-all text-center"
                 style={{
-                  backgroundColor: isSelected ? '#F0F7FF' : '#FAF9F6',
+                  backgroundColor: isSelected ? '#FDF6C3' : '#FEFBE8',
                   borderTop: `1px solid #e5e5e5`,
                   borderBottom: isSelected ? `3px solid #1A3C6E` : `1px solid #e5e5e5`,
                   borderLeft: index === 0 ? `1px solid #e5e5e5` : 'none',
