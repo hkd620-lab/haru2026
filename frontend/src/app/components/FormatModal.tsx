@@ -161,7 +161,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
         }
       }
     }
-  }, [isOpen, initialData, format]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
