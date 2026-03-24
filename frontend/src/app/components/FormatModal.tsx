@@ -365,16 +365,35 @@ ${contentValues}`,
           continue;
         }
 
-        // HEIC → JPEG 변환 (브라우저, heic2any)
+        // HEIC → JPG 변환 (Cloudinary, Firebase Functions 경유)
         let fileToProcess: File | Blob = file;
         if (isHeic) {
           try {
             toast.info('HEIC 파일을 변환 중...');
-            const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 });
-            fileToProcess = Array.isArray(converted) ? converted[0] : converted;
+
+            // arrayBuffer로 읽기 (FileReader 미사용)
+            const arrayBuffer = await file.arrayBuffer();
+            const bytes = new Uint8Array(arrayBuffer);
+            let binary = '';
+            const chunkSize = 8192;
+            for (let i = 0; i < bytes.length; i += chunkSize) {
+              binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+            }
+            const imageBase64 = btoa(binary);
+
+            // convertHeic Function 호출 → Cloudinary JPG URL 반환
+            const functionsInstance = getFunctions(undefined, 'asia-northeast3');
+            const convertHeicFunc = httpsCallable(functionsInstance, 'convertHeic');
+            const result = await convertHeicFunc({ imageBase64 });
+            const { url } = result.data as { url: string };
+
+            // Cloudinary JPG URL → Blob
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('JPG 다운로드 실패');
+            fileToProcess = await response.blob();
           } catch (err) {
             console.error('HEIC 변환 실패:', err);
-            toast.error(`${file.name} HEIC 변환에 실패했습니다.`);
+            toast.error('HEIC 변환에 실패했습니다.');
             continue;
           }
         }
