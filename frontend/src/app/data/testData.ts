@@ -59,6 +59,7 @@ export function getTestData(format: RecordFormat): Record<string, string> | null
 
     case '텃밭일지':
       return {
+        garden_crop: '토마토, 상추, 오이, 고추',
         garden_work: '토마토 지주대 설치, 오이 순지르기, 상추 수확',
         garden_observation: '토마토 첫 꽃이 피었습니다. 오이 잎이 조금 시들어 보입니다.',
         garden_issue: '진딧물이 상추에 발견되었습니다. 천연 살충제 사용 예정입니다.',
@@ -67,23 +68,20 @@ export function getTestData(format: RecordFormat): Record<string, string> | null
 
     case '애완동물관찰일지':
       return {
-        pet_basic: '반려견 이름: 뭉치\n품종: 골든 리트리버\n나이: 3살',
+        pet_name: '반려견 뭉치 (골든 리트리버, 3살)',
         pet_health: '체중: 32kg (지난주 대비 0.5kg 증가)\n식욕: 양호\n배변: 정상',
         pet_behavior: '오늘 아침 산책 시 다른 강아지와 잘 어울려 놀았습니다. 평소보다 활동적인 모습을 보였습니다.',
+        pet_care: '산책 40분, 간식 2회 (오전/오후), 양치 1회',
         pet_special: '새로 산 장난감(공)에 큰 관심을 보이며 30분 이상 혼자 놀았습니다.',
-        pet_concern: '오른쪽 앞발을 가끔 핥는 행동이 관찰됩니다. 내일 동물병원 방문 예정입니다.',
-        pet_plan: '주말에 강아지 수영장 방문 계획\n다음 주 예방접종 일정 확인',
       };
 
     case '육아일기':
       return {
-        parenting_basic: '아이 이름: 지우\n나이: 15개월\n날짜: 2026년 2월 28일',
-        parenting_growth: '신체: 키 80cm, 몸무게 11kg\n발달: 혼자 걷기 시작 (3일째)',
-        parenting_meal: '아침: 미음 + 바나나 반 개\n점심: 소고기 야채죽\n저녁: 두부 계란찜 + 당근',
-        parenting_activity: '오전에 놀이터에서 그네를 탔습니다. 처음에는 무서워했지만 곧 웃으며 즐거워했습니다.',
-        parenting_sleep: '낮잠: 오후 2시~4시 (2시간)\n밤잠: 오후 8시 30분~다음날 오전 7시',
-        parenting_special: '\'엄마\'라는 단어를 명확하게 발음했습니다! 매우 기쁜 순간이었습니다.',
-        parenting_concern: '기저귀 발진이 조금 있어 연고를 발랐습니다.',
+        child_name: '하은 (15개월)',
+        child_growth: '키 80cm, 몸무게 11kg. 혼자 걷기 시작 (3일째). 오늘 처음으로 "엄마"를 명확하게 발음했습니다!',
+        child_meal: '아침: 미음 + 바나나 반 개\n점심: 소고기 야채죽\n저녁: 두부 계란찜 + 당근',
+        child_activity: '오전에 놀이터에서 그네를 탔습니다. 처음에는 무서워했지만 곧 웃으며 즐거워했습니다.',
+        child_emotion: '아이가 날 보며 웃는 모습에 오늘 하루의 피로가 사라졌습니다. 매 순간이 선물 같습니다.',
       };
 
     default:
