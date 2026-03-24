@@ -9,10 +9,10 @@ import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS } from '../types/haruTypes';
 
 type Mood = '기쁨' | '평온' | '무미' | '울적' | '번잡';
-type Weather = '쾌청' | '흐림' | '강우' | '굳음';
+type Weather = '쾌청' | '흐림' | '비' | '눈';
 type Temperature = '폭염' | '온난' | '쾌적' | '쌀쌀' | '혹한';
 
-const weatherOptions: Weather[] = ['쾌청', '흐림', '강우', '굳음'];
+const weatherOptions: Weather[] = ['쾌청', '흐림', '비', '눈'];
 const temperatureOptions: Temperature[] = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
 const moodOptions: Mood[] = ['기쁨', '평온', '무미', '울적', '번잡'];
 

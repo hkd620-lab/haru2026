@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateMergePDF = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.polishContent = void 0;
+exports.convertHeic = exports.generateMergePDF = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.polishContent = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
 const params_1 = require("firebase-functions/params");
@@ -635,5 +635,32 @@ exports.generateMergePDF = (0, https_2.onCall)({
     catch (error) {
         logger.error('PDF generation error:', error);
         throw new https_2.HttpsError('internal', `PDF 생성 실패: ${error.message}`);
+    }
+});
+// ===== 📷 HEIC → JPG 변환 (Cloudinary) =====
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { v2: cloudinary } = require('cloudinary');
+exports.convertHeic = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
+    const { imageBase64 } = request.data;
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
+        throw new https_2.HttpsError('invalid-argument', '이미지 데이터가 필요합니다.');
+    }
+    cloudinary.config({
+        cloud_name: 'dmhutjnpn',
+        api_key: '752573158646558',
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+    try {
+        const dataUri = `data:image/heic;base64,${imageBase64}`;
+        const result = await cloudinary.uploader.upload(dataUri, {
+            resource_type: 'image',
+            format: 'jpg',
+            folder: 'heic_temp',
+        });
+        return { url: result.secure_url };
+    }
+    catch (error) {
+        logger.error('Cloudinary HEIC 변환 오류:', error);
+        throw new https_2.HttpsError('internal', `변환 실패: ${error.message}`);
     }
 });
