@@ -6,6 +6,7 @@ import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'fire
 import { compressImage } from '../services/imageService';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
+import heic2any from 'heic2any';
 
 type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기';
 type SayuMode = 'BASIC' | 'PREMIUM';
@@ -346,7 +347,10 @@ ${contentValues}`,
           continue;
         }
 
-        if (!file.type.startsWith('image/')) {
+        const isHeic = file.type === 'image/heic' || file.type === 'image/heif' ||
+          file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
+
+        if (!file.type.startsWith('image/') && !isHeic) {
           toast.warning(`${file.name}은 이미지 파일이 아닙니다.`);
           continue;
         }
@@ -354,18 +358,32 @@ ${contentValues}`,
         const timestamp = Date.now();
         const randomId = Math.random().toString(36).substring(2, 9);
         const fileName = `${timestamp}_${randomId}.jpg`;
-        
+
         if (!user?.uid) {
           toast.error('로그인이 필요합니다.');
           continue;
         }
-        
+
+        // HEIC → JPG 변환
+        let fileToProcess: File | Blob = file;
+        if (isHeic) {
+          try {
+            toast.info('HEIC 파일을 변환 중...');
+            const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+            fileToProcess = Array.isArray(converted) ? converted[0] : converted;
+          } catch (err) {
+            console.error('HEIC 변환 실패:', err);
+            toast.error(`${file.name} HEIC 변환에 실패했습니다.`);
+            continue;
+          }
+        }
+
         // 이미지 압축
         console.log('🖼️ [이미지 압축 시작]');
-        const originalSizeMB = (file.size / 1024 / 1024).toFixed(2);
+        const originalSizeMB = (fileToProcess.size / 1024 / 1024).toFixed(2);
         console.log(`📥 원본 크기: ${originalSizeMB}MB`);
 
-        const compressed = await compressImage(file, 800, 0.85);
+        const compressed = await compressImage(fileToProcess as File, 800, 0.85);
 
         const compressedSizeMB = (compressed.size / 1024 / 1024).toFixed(2);
         const compressionRate = ((1 - compressed.size / file.size) * 100).toFixed(1);
@@ -577,7 +595,7 @@ ${contentValues}`,
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/*,.heic,.heif"
                   multiple
                   onChange={handleImageUpload}
                   style={{ display: 'none' }}

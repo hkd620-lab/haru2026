@@ -48,6 +48,7 @@
     "embla-carousel-react": "8.6.0",
     "firebase": "^10.14.1",
     "framer-motion": "^12.35.2",
+    "heic2any": "^0.0.4",
     "html2canvas": "^1.4.1",
     "input-otp": "1.4.2",
     "jspdf": "^4.2.0",
