@@ -4,7 +4,7 @@ import { BottomNav } from './components/BottomNav';
 
 export function Layout() {
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#FAF9F6' }}>
+    <div className="min-h-screen" style={{ backgroundColor: '#FEFBE8' }}>
       <TopBar />
       <main style={{ paddingTop: 'var(--content-pt)', paddingBottom: 'var(--content-pb)' }}>
         <Outlet />

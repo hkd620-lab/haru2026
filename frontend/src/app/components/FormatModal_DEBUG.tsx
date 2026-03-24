@@ -424,7 +424,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
         onClick={onClose}
       >
         <div
-          style={{ backgroundColor: '#FAF9F6', borderRadius: 12, maxWidth: 600, width: '100%', maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+          style={{ backgroundColor: '#FEFBE8', borderRadius: 12, maxWidth: 600, width: '100%', maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -448,7 +448,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
           </div>
 
           {/* Test Data Button */}
-          <div style={{ padding: '16px 24px', backgroundColor: '#f8f9fa', borderBottom: '1px solid #e5e5e5' }}>
+          <div style={{ padding: '16px 24px', backgroundColor: '#FDF6C3', borderBottom: '1px solid #e5e5e5' }}>
             <button
               onClick={handleFillTestData}
               style={{ width: '100%', padding: '10px 16px', fontSize: 13, border: '1px solid #1A3C6E', borderRadius: 8, backgroundColor: '#fff', color: '#1A3C6E', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontWeight: 500 }}
@@ -477,7 +477,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
                     fontSize: 14,
                     border: '2px dashed #1A3C6E',
                     borderRadius: 8,
-                    backgroundColor: '#F0F7FF',
+                    backgroundColor: '#FDF6C3',
                     color: '#1A3C6E',
                     cursor: 'pointer',
                     fontWeight: 500,
@@ -573,7 +573,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
           onClick={() => setShowPolishModal(false)}
         >
           <div
-            style={{ backgroundColor: '#FAF9F6', borderRadius: 12, maxWidth: 700, width: '100%', maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+            style={{ backgroundColor: '#FEFBE8', borderRadius: 12, maxWidth: 700, width: '100%', maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ padding: '24px', borderBottom: '1px solid #e5e5e5', backgroundColor: '#fff' }}>

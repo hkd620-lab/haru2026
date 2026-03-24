@@ -493,7 +493,7 @@ ${contentValues}`,
       >
         <div
           style={{
-            backgroundColor: '#FAF9F6',
+            backgroundColor: '#FEFBE8',
             borderRadius: 12,
             maxWidth: 600,
             width: '100%',
@@ -542,7 +542,7 @@ ${contentValues}`,
           </div>
 
           {/* Test Data Button */}
-          <div style={{ padding: '16px 24px', backgroundColor: '#f8f9fa', borderBottom: '1px solid #e5e5e5' }}>
+          <div style={{ padding: '16px 24px', backgroundColor: '#FDF6C3', borderBottom: '1px solid #e5e5e5' }}>
             <button
               onClick={handleFillTestData}
               style={{
@@ -987,7 +987,7 @@ ${contentValues}`,
         >
           <div
             style={{
-              backgroundColor: '#FAF9F6',
+              backgroundColor: '#FEFBE8',
               borderRadius: 12,
               maxWidth: 500,
               width: '100%',
@@ -1084,7 +1084,7 @@ ${contentValues}`,
         >
           <div
             style={{
-              backgroundColor: '#FAF9F6',
+              backgroundColor: '#FEFBE8',
               borderRadius: 12,
               maxWidth: 700,
               width: '100%',

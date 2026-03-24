@@ -123,7 +123,7 @@ export const polishContent = onCall(
 
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());  // 🔐 Secret 값 사용
       const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.1-flash-lite-preview",
         systemInstruction: systemPrompt
       });
 
@@ -330,7 +330,7 @@ ${text}`;
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash"
+      model: "gemini-3.1-flash-lite-preview"
     });
 
     const result = await model.generateContent(analysisPrompt);

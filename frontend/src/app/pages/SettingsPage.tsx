@@ -259,7 +259,7 @@ export function SettingsPage() {
             <div className="grid grid-cols-3 gap-3">
               <div
                 className="rounded-lg p-4 text-center"
-                style={{ backgroundColor: '#F0F7FF', border: '1px solid #d0dff0' }}
+                style={{ backgroundColor: '#FDF6C3', border: '1px solid #d0dff0' }}
               >
                 <p className="text-2xl mb-1" style={{ color: '#1A3C6E', fontWeight: 700 }}>
                   {stats.totalRecords}
@@ -268,7 +268,7 @@ export function SettingsPage() {
               </div>
               <div
                 className="rounded-lg p-4 text-center"
-                style={{ backgroundColor: '#F0F7FF', border: '1px solid #d0dff0' }}
+                style={{ backgroundColor: '#FDF6C3', border: '1px solid #d0dff0' }}
               >
                 <p className="text-2xl mb-1" style={{ color: '#1A3C6E', fontWeight: 700 }}>
                   {stats.polishedCount}
@@ -277,7 +277,7 @@ export function SettingsPage() {
               </div>
               <div
                 className="rounded-lg p-4 text-center"
-                style={{ backgroundColor: '#F0F7FF', border: '1px solid #d0dff0' }}
+                style={{ backgroundColor: '#FDF6C3', border: '1px solid #d0dff0' }}
               >
                 <p className="text-2xl mb-1" style={{ color: '#1A3C6E', fontWeight: 700 }}>
                   {stats.sayuCount}
@@ -398,7 +398,7 @@ export function SettingsPage() {
               onClick={handleExportData}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-80 text-left"
               style={{
-                backgroundColor: '#F0F7FF',
+                backgroundColor: '#FDF6C3',
                 border: '1px solid #d0dff0',
               }}
             >
