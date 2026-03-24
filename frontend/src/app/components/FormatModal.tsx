@@ -364,27 +364,26 @@ ${contentValues}`,
           continue;
         }
 
-        // HEIC → JPG 변환 (Firebase Functions 경유)
+        // HEIC → JPG 변환 (Firebase Functions onRequest 경유, FormData)
         let fileToProcess: File | Blob = file;
         if (isHeic) {
           try {
             toast.info('HEIC 파일을 변환 중...');
-            // 파일을 base64로 인코딩
-            const arrayBuffer = await file.arrayBuffer();
-            const bytes = new Uint8Array(arrayBuffer);
-            let binary = '';
-            const chunkSize = 8192;
-            for (let i = 0; i < bytes.length; i += chunkSize) {
-              binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+            const formData = new FormData();
+            formData.append('file', file);
+            const response = await fetch(
+              'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/convertHeic',
+              { method: 'POST', body: formData }
+            );
+            if (!response.ok) {
+              throw new Error(`변환 서버 오류: ${response.status}`);
             }
-            const base64 = btoa(binary);
-            // Firebase Functions 호출
-            const functionsInstance = getFunctions(undefined, 'asia-northeast3');
-            const convertHeicFunc = httpsCallable(functionsInstance, 'convertHeic');
-            const result = await convertHeicFunc({ imageBase64: base64 });
-            const { data: { image: jpgBase64 } } = result.data as { data: { image: string; mimeType: string } };
+            const json = await response.json();
+            if (!json.success) {
+              throw new Error(json.error || '변환 실패');
+            }
             // base64 → Blob 변환
-            const jpgBinary = atob(jpgBase64);
+            const jpgBinary = atob(json.base64);
             const jpgArray = new Uint8Array(jpgBinary.length);
             for (let i = 0; i < jpgBinary.length; i++) {
               jpgArray[i] = jpgBinary.charCodeAt(i);

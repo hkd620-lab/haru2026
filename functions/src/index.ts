@@ -745,28 +745,60 @@ export const generateMergePDF = onCall(
   }
 );
 
-// ===== 📷 HEIC → JPG 변환 =====
-export const convertHeic = onCall(
-  { region: 'asia-northeast3' },
-  async (request) => {
-    const { imageBase64 } = request.data;
+// ===== 📷 HEIC → JPG 변환 (onRequest, multipart/form-data) =====
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const Busboy = require('busboy');
 
-    if (!imageBase64 || typeof imageBase64 !== 'string') {
-      throw new HttpsError('invalid-argument', '이미지 데이터가 필요합니다.');
+export const convertHeic = onRequest(
+  { region: 'asia-northeast3', cors: ['https://haru2026-8abb8.web.app'] },
+  async (req, res) => {
+    // CORS 프리플라이트 처리
+    res.set('Access-Control-Allow-Origin', 'https://haru2026-8abb8.web.app');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('');
+      return;
+    }
+
+    if (req.method !== 'POST') {
+      res.status(405).json({ success: false, error: 'Method not allowed' });
+      return;
     }
 
     try {
-      const inputBuffer = Buffer.from(imageBase64, 'base64');
+      // multipart/form-data에서 파일 추출
+      const fileBuffer = await new Promise<Buffer>((resolve, reject) => {
+        const bb = Busboy({ headers: req.headers });
+        const chunks: Buffer[] = [];
+        let found = false;
+
+        bb.on('file', (_field: string, stream: NodeJS.ReadableStream) => {
+          found = true;
+          stream.on('data', (chunk: Buffer) => chunks.push(chunk));
+          stream.on('end', () => resolve(Buffer.concat(chunks)));
+          stream.on('error', reject);
+        });
+
+        bb.on('finish', () => {
+          if (!found) reject(new Error('파일을 찾을 수 없습니다.'));
+        });
+
+        bb.on('error', reject);
+        req.pipe(bb);
+      });
+
       const jpgBuffer = await heicConvert({
-        buffer: inputBuffer,
+        buffer: fileBuffer,
         format: 'JPEG',
         quality: 0.9,
       });
-      const base64String = Buffer.from(jpgBuffer).toString('base64');
-      return { data: { image: base64String, mimeType: 'image/jpeg' } };
+
+      const base64 = Buffer.from(jpgBuffer).toString('base64');
+      res.status(200).json({ success: true, base64 });
     } catch (error: any) {
       logger.error('HEIC 변환 오류:', error);
-      throw new HttpsError('internal', `HEIC 변환 실패: ${error.message}`);
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 );
