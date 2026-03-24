@@ -762,7 +762,8 @@ export const convertHeic = onCall(
         format: 'JPEG',
         quality: 0.9,
       });
-      return { jpgBase64: Buffer.from(jpgBuffer).toString('base64') };
+      const base64String = Buffer.from(jpgBuffer).toString('base64');
+      return { data: { image: base64String, mimeType: 'image/jpeg' } };
     } catch (error: any) {
       logger.error('HEIC 변환 오류:', error);
       throw new HttpsError('internal', `HEIC 변환 실패: ${error.message}`);

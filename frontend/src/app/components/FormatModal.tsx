@@ -382,7 +382,7 @@ ${contentValues}`,
             const functionsInstance = getFunctions(undefined, 'asia-northeast3');
             const convertHeicFunc = httpsCallable(functionsInstance, 'convertHeic');
             const result = await convertHeicFunc({ imageBase64: base64 });
-            const { jpgBase64 } = result.data as { jpgBase64: string };
+            const { data: { image: jpgBase64 } } = result.data as { data: { image: string; mimeType: string } };
             // base64 → Blob 변환
             const jpgBinary = atob(jpgBase64);
             const jpgArray = new Uint8Array(jpgBinary.length);
