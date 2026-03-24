@@ -6,7 +6,8 @@ import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
 import axios from 'axios';
 import * as crypto from 'crypto';
-import sharp from 'sharp';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const heicConvert = require('heic-convert');
 
 // Firebase Admin 초기화
 if (!admin.apps.length) {
@@ -755,9 +756,13 @@ export const convertHeic = onCall(
     }
 
     try {
-      const buffer = Buffer.from(imageBase64, 'base64');
-      const jpgBuffer = await sharp(buffer).jpeg({ quality: 90 }).toBuffer();
-      return { jpgBase64: jpgBuffer.toString('base64') };
+      const inputBuffer = Buffer.from(imageBase64, 'base64');
+      const jpgBuffer = await heicConvert({
+        buffer: inputBuffer,
+        format: 'JPEG',
+        quality: 0.9,
+      });
+      return { jpgBase64: Buffer.from(jpgBuffer).toString('base64') };
     } catch (error: any) {
       logger.error('HEIC 변환 오류:', error);
       throw new HttpsError('internal', `HEIC 변환 실패: ${error.message}`);

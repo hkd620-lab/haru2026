@@ -14,7 +14,6 @@ export async function compressImage(
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    const objectUrl = URL.createObjectURL(file);
 
     // 📊 압축 전 크기 출력
     const originalSizeMB = (file.size / 1024 / 1024).toFixed(2);
@@ -22,8 +21,6 @@ export async function compressImage(
     console.log(`📥 원본 크기: ${originalSizeMB}MB`);
 
     img.onload = () => {
-      URL.revokeObjectURL(objectUrl);
-
       let { width, height } = img;
       console.log(`📐 원본 해상도: ${img.width}x${img.height}`);
 
@@ -66,14 +63,21 @@ export async function compressImage(
     };
 
     img.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
       reject(new Error(
         '이미지를 불러올 수 없습니다.\n' +
         '파일을 바탕화면에 내보내기(복사)한 후 복사한 파일을 불러주세요.'
       ));
     };
 
-    img.src = objectUrl;
+    // blob URL 대신 FileReader로 DataURL 생성 (ERR_ACCESS_DENIED 방지)
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => {
+      reject(new Error('파일 읽기에 실패했습니다.'));
+    };
+    reader.readAsDataURL(file);
   });
 }
 
