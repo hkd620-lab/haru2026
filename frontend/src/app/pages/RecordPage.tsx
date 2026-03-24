@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Calendar, Library } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { firestoreService } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { RecordTitleAnimation } from '../components/RecordTitleAnimation';
+import { FormatModal } from '../components/FormatModal';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS } from '../types/haruTypes';
 
@@ -25,6 +26,9 @@ export function RecordPage() {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedFormats, setSelectedFormats] = useState<RecordFormat[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [formatModalOpen, setFormatModalOpen] = useState(false);
+  const [savedDateStr, setSavedDateStr] = useState('');
+  const [savedFormat, setSavedFormat] = useState<RecordFormat | null>(null);
 
   const formatDate = (date: Date) => {
     const year = date.getFullYear();
@@ -78,15 +82,9 @@ export function RecordPage() {
       });
 
       toast.success('기록이 저장되었습니다!');
-
-      setTimeout(() => {
-        navigate('/library', {
-          state: {
-            savedDate: dateStr,
-            justSaved: true,
-          },
-        });
-      }, 300);
+      setSavedDateStr(dateStr);
+      setSavedFormat(selectedFormats[0]);
+      setFormatModalOpen(true);
     } catch (error) {
       console.error('저장 실패:', error);
       toast.error('기록 저장에 실패했습니다.');
@@ -95,7 +93,31 @@ export function RecordPage() {
     }
   };
 
+  const handleSaveFormatData = async (formatData: Record<string, string>) => {
+    if (!user || !savedDateStr) return;
+    const updateData: Record<string, any> = {};
+    let hasContent = false;
+    Object.entries(formatData).forEach(([key, value]) => {
+      if (typeof value === 'string' && value.trim().length > 0) {
+        updateData[key] = value;
+        hasContent = true;
+      }
+    });
+    if (!hasContent) {
+      toast.warning('최소 1개 이상의 필드를 작성해주세요.');
+      return;
+    }
+    try {
+      await firestoreService.updateRecord(user.uid, savedDateStr, updateData);
+      toast.success('내용이 저장되었습니다!');
+    } catch (error) {
+      console.error('저장 실패:', error);
+      toast.error('내용 저장에 실패했습니다.');
+    }
+  };
+
   return (
+    <>
     <div className="max-w-3xl mx-auto px-4 py-3">
       <div className="space-y-3">
         {/* Title Animation */}
@@ -281,11 +303,21 @@ export function RecordPage() {
             className="px-6 py-2.5 rounded-lg flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 shadow-md"
             style={{ backgroundColor: '#1A3C6E', color: '#FAF9F6' }}
           >
-            <Library className="w-4 h-4" />
-            <span className="tracking-wide text-sm">{isSaving ? '저장 중...' : '서재로 이동'}</span>
+            <span className="tracking-wide text-sm">{isSaving ? '저장 중...' : '저장'}</span>
           </button>
         </div>
       </div>
     </div>
+
+    {savedFormat && (
+      <FormatModal
+        isOpen={formatModalOpen}
+        onClose={() => { setFormatModalOpen(false); navigate('/'); }}
+        format={savedFormat}
+        recordId={savedDateStr}
+        onSave={handleSaveFormatData}
+      />
+    )}
+    </>
   );
 }
