@@ -47,13 +47,16 @@ export interface GardenCrops {
 
 class FirestoreService {
   // 기존 기록 관련 함수들
-  async saveRecord(userId: string, recordData: Partial<HaruRecord>) {
-    const recordRef = doc(db, 'users', userId, 'records', recordData.date!);
+  async saveRecord(userId: string, recordData: Partial<HaruRecord>): Promise<string> {
+    // 수정 7: 같은 날 같은 형식 여러 개 작성 지원 — 고유 ID 생성
+    const recordId = `${recordData.date}_${Date.now()}`;
+    const recordRef = doc(db, 'users', userId, 'records', recordId);
     await setDoc(recordRef, {
       ...recordData,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }, { merge: true });
+    return recordId;
   }
 
   async getRecord(userId: string, date: string): Promise<HaruRecord | null> {

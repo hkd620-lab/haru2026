@@ -30,7 +30,7 @@ export function SayuPage() {
   const [records, setRecords] = useState<HaruRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState('');
-  const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string }[]>([]);
+  const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string; recordId?: string }[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무']));
   const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
@@ -148,83 +148,100 @@ export function SayuPage() {
 
   const days = getDaysInMonth();
 
-  const hasSayu = (date: Date | null): 'none' | 'saved' | 'polished' => {
+  // 모든 형식 prefix 매핑 (수정 4: 메모 추가)
+  const ALL_FORMAT_PREFIXES: Record<string, string> = {
+    '일기': 'diary', '에세이': 'essay', '선교보고': 'mission',
+    '일반보고': 'report', '업무일지': 'work', '여행기록': 'travel',
+    '텃밭일지': 'garden', '애완동물관찰일지': 'pet', '육아일기': 'child',
+    '메모': 'memo',
+  };
+
+  const META_SUFFIXES = ['_sayu', '_polished', '_polishedAt', '_mode', '_stats', '_images', '_rating'];
+
+  const hasSayu = (date: Date | null): 'none' | 'saved' | 'polished' | 'written' => {
     if (!date) return 'none';
     const dateStr = formatDateString(date);
-    const record = records.find((r) => r.date === dateStr);
-    if (!record || !record.formats || record.formats.length === 0) {
-      return 'none';
-    }
-
-    const formatPrefixes: Record<string, string> = {
-      '일기': 'diary', '에세이': 'essay', '선교보고': 'mission',
-      '일반보고': 'report', '업무일지': 'work', '여행기록': 'travel',
-      '텃밭일지': 'garden', '애완동물관찰일지': 'pet', '육아일기': 'child',
-    };
+    // 수정 7: 같은 날 여러 기록 지원 — filter로 모두 확인
+    const dayRecords = records.filter((r) => r.date === dateStr);
+    if (dayRecords.length === 0) return 'none';
 
     let hasAnyPolished = false;
     let hasAnySaved = false;
+    let hasAnyWritten = false;
 
-    record.formats.forEach((format) => {
-      const prefix = formatPrefixes[format];
-      if (prefix) {
+    dayRecords.forEach((record) => {
+      if (!record.formats || record.formats.length === 0) return;
+      record.formats.forEach((format) => {
+        const prefix = ALL_FORMAT_PREFIXES[format];
+        if (!prefix) return;
         const sayuKey = `${prefix}_sayu`;
         const polishedKey = `${prefix}_polished`;
-        if (record[sayuKey]) hasAnySaved = true;
         if (record[polishedKey] === true) hasAnyPolished = true;
-      }
+        if (record[sayuKey]) hasAnySaved = true;
+        // 수정 3: 원본 저장도 점 표시
+        if (!hasAnyWritten) {
+          hasAnyWritten = Object.keys(record).some(k =>
+            k.startsWith(`${prefix}_`) &&
+            !META_SUFFIXES.some(s => k.endsWith(s)) &&
+            typeof record[k] === 'string' && (record[k] as string).trim().length > 0
+          );
+        }
+      });
     });
 
     if (hasAnyPolished) return 'polished';
     if (hasAnySaved) return 'saved';
+    if (hasAnyWritten) return 'written';
     return 'none';
   };
 
   const handleDateClick = (date: Date | null) => {
     if (!date) return;
     const dateStr = formatDateString(date);
-    const record = records.find((r) => r.date === dateStr);
+    // 수정 7: 같은 날 여러 기록 지원
+    const dayRecords = records.filter((r) => r.date === dateStr);
 
-    if (!record || !record.formats || record.formats.length === 0) {
-      toast.info('해당 날짜에 SAYU가 없습니다.');
+    if (dayRecords.length === 0) {
+      toast.info('해당 날짜에 기록이 없습니다.');
       return;
     }
 
     setSelectedDate(dateStr);
 
-    const formatPrefixes: Record<string, string> = {
-      '일기': 'diary', '에세이': 'essay', '선교보고': 'mission',
-      '일반보고': 'report', '업무일지': 'work', '여행기록': 'travel',
-      '텃밭일지': 'garden', '애완동물관찰일지': 'pet', '육아일기': 'child',
-    };
-
-    const availableFormats = record.formats
-      .map((format) => {
-        const prefix = formatPrefixes[format];
-        if (!prefix) return null;
-        const sayuKey = `${prefix}_sayu`;
-        if (record[sayuKey]) {
-          return { key: prefix, label: format };
+    // 수정 3,4: 모든 형식 표시 (SAYU 없는 원본 포함, 메모 포함)
+    const seenFormatKeys = new Set<string>();
+    const availableFormats: { key: string; label: string; recordId: string }[] = [];
+    dayRecords.forEach((record) => {
+      if (!record.formats) return;
+      record.formats.forEach((format) => {
+        const prefix = ALL_FORMAT_PREFIXES[format];
+        if (!prefix) return;
+        // 같은 날 같은 형식 여러 개: recordId로 구분
+        const entryKey = `${prefix}_${record.id}`;
+        if (!seenFormatKeys.has(entryKey)) {
+          seenFormatKeys.add(entryKey);
+          availableFormats.push({ key: prefix, label: format, recordId: record.id });
         }
-        return null;
-      })
-      .filter((f) => f !== null) as { key: string; label: string }[];
+      });
+    });
 
     setSelectedDateFormats(availableFormats);
   };
 
-  const openFormatSayu = (dateStr: string, formatKey: string, formatLabel: string) => {
-    const record = records.find((r) => r.date === dateStr);
+  const openFormatSayu = (dateStr: string, formatKey: string, formatLabel: string, recordId?: string) => {
+    // 수정 7: recordId로 특정 기록 찾기, 없으면 날짜로 첫 번째 찾기
+    const record = recordId
+      ? records.find((r) => r.id === recordId)
+      : records.find((r) => r.date === dateStr);
     if (!record) return;
 
     setSelectedDate(dateStr);
-    setSelectedDateFormats([{ key: formatKey, label: formatLabel }]);
+    setSelectedDateFormats([{ key: formatKey, label: formatLabel, recordId: record.id }]);
 
     const sayuKey = `${formatKey}_sayu`;
     const ratingKey = `${formatKey}_rating`;
     const imagesKey = `${formatKey}_images`;
 
-    const sayuContent = record[sayuKey] || '내용 없음';
     const sayuRating = record[ratingKey] || 0;
 
     const originalData: Record<string, string> = {};
@@ -239,6 +256,19 @@ export function SayuPage() {
         originalData[key] = record[key];
       }
     });
+
+    // 수정 3: SAYU 없으면 원본 필드를 이어붙여 표시
+    let sayuContent = record[sayuKey] || '';
+    if (!sayuContent) {
+      const originalFields = Object.keys(record)
+        .filter(k =>
+          k.startsWith(`${formatKey}_`) &&
+          !META_SUFFIXES.some(s => k.endsWith(s)) &&
+          typeof record[k] === 'string' && (record[k] as string).trim()
+        )
+        .map(k => record[k] as string);
+      sayuContent = originalFields.length > 0 ? originalFields.join('\n\n') : '내용 없음';
+    }
 
     let images: string[] = [];
     const imagesData = record[imagesKey];
@@ -271,9 +301,9 @@ export function SayuPage() {
     });
   };
 
-  const handleFormatClick = (formatKey: string, formatLabel: string) => {
+  const handleFormatClick = (formatKey: string, formatLabel: string, recordId?: string) => {
     if (!selectedDate) return;
-    openFormatSayu(selectedDate, formatKey, formatLabel);
+    openFormatSayu(selectedDate, formatKey, formatLabel, recordId);
   };
 
   const handleModalClose = () => {
@@ -286,24 +316,29 @@ export function SayuPage() {
 
   const handleSaveSayu = async (editedContent: string, rating: number) => {
     if (!selectedDate) return;
-    const record = records.find((r) => r.date === selectedDate);
+    // 수정 7: recordId로 특정 기록 찾기
+    const currentFormatInfo = selectedDateFormats[0];
+    const record = currentFormatInfo?.recordId
+      ? records.find((r) => r.id === currentFormatInfo.recordId)
+      : records.find((r) => r.date === selectedDate);
     if (!record) return;
 
-    const formatKey = selectedDateFormats.find((f) => record[`${f.key}_sayu`])?.key;
+    const formatKey = currentFormatInfo?.key || selectedDateFormats.find((f) => record[`${f.key}_sayu`])?.key;
     if (!formatKey) return;
 
     const sayuKey = `${formatKey}_sayu`;
     const ratingKey = `${formatKey}_rating`;
 
     try {
-      await firestoreService.updateRecord(user!.uid, selectedDate, {
+      // 수정 7: record.id로 업데이트 (날짜 기반이 아닌 실제 문서 ID)
+      await firestoreService.updateRecord(user!.uid, record.id, {
         [sayuKey]: editedContent,
         [ratingKey]: rating,
       });
 
       setRecords((prev) =>
         prev.map((r) =>
-          r.date === selectedDate
+          r.id === record.id
             ? { ...r, [sayuKey]: editedContent, [ratingKey]: rating }
             : r
         )
@@ -330,7 +365,7 @@ export function SayuPage() {
       category: string;
       formats: {
         format: RecordFormat;
-        entries: { date: string; title: string; hasSayu: boolean; formatKey: string }[];
+        entries: { date: string; title: string; hasSayu: boolean; formatKey: string; recordId: string }[];
       }[];
     };
 
@@ -350,10 +385,10 @@ export function SayuPage() {
           .map((r) => {
             const firstFieldKey = FORMAT_FIRST_FIELD[prefix];
             let rawTitle = firstFieldKey ? (r[firstFieldKey] || '') : '';
-            // 첫 번째 필드가 비어있으면 같은 prefix의 다른 필드에서 폴백
+            // 첫 번째 필드가 비어있으면 같은 prefix의 다른 필드에서 폴백 (태그/여백 제외)
             if (!rawTitle) {
               const fallbackKey = Object.keys(r).find(
-                (k) => k.startsWith(`${prefix}_`) && !k.endsWith('_sayu') && !k.endsWith('_rating') && !k.endsWith('_polished') && !k.endsWith('_images') && !k.endsWith('_stats') && typeof r[k] === 'string' && r[k].trim()
+                (k) => k.startsWith(`${prefix}_`) && !k.endsWith('_sayu') && !k.endsWith('_rating') && !k.endsWith('_polished') && !k.endsWith('_images') && !k.endsWith('_stats') && !k.endsWith('_tags') && !k.endsWith('_space') && typeof r[k] === 'string' && r[k].trim()
               );
               rawTitle = fallbackKey ? r[fallbackKey] : '';
             }
@@ -363,6 +398,7 @@ export function SayuPage() {
               title,
               hasSayu: !!r[`${prefix}_sayu`],
               formatKey: prefix,
+              recordId: r.id,
             };
           })
           .sort((a, b) => b.date.localeCompare(a.date));
@@ -478,7 +514,7 @@ export function SayuPage() {
                 💡 목록에서 기록을 클릭하거나, 달력에서 날짜를 선택해 SAYU를 확인하세요.
               </p>
               <p className="text-xs mt-1 leading-relaxed" style={{ color: '#666' }}>
-                파란 점: SAYU 저장 / 주황 점: 다듬기 완료
+                초록 점: 원본 저장 / 파란 점: SAYU 저장 / 주황 점: 다듬기 완료
               </p>
             </div>
           )}
@@ -587,8 +623,8 @@ export function SayuPage() {
                         {/* 기록 목록 — 형식 펼쳤을 때만 표시 */}
                         {isFormatExpanded && entries.map((entry) => (
                           <button
-                            key={`${entry.date}-${entry.formatKey}`}
-                            onClick={() => openFormatSayu(entry.date, entry.formatKey, format)}
+                            key={`${entry.date}-${entry.formatKey}-${entry.recordId}`}
+                            onClick={() => openFormatSayu(entry.date, entry.formatKey, format, entry.recordId)}
                             className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-yellow-50 transition-colors border-t"
                             style={{ borderColor: '#f5f5f5' }}
                           >
@@ -704,6 +740,20 @@ export function SayuPage() {
                         }}
                       />
                     )}
+                    {sayuStatus === 'written' && (
+                      <div
+                        className="absolute rounded-full"
+                        style={{
+                          bottom: '-2px',
+                          left: '50%',
+                          transform: 'translateX(calc(-50% + 2px))',
+                          width: '8px',
+                          height: '8px',
+                          backgroundColor: isSelected ? '#FEFBE8' : '#10b981',
+                          boxShadow: isSelected ? 'none' : '0 0 0 1.5px rgba(16,185,129,0.3)',
+                        }}
+                      />
+                    )}
                   </button>
                 );
               })}
@@ -722,7 +772,7 @@ export function SayuPage() {
                 {selectedDateFormats.map((formatInfo, idx) => (
                   <button
                     key={idx}
-                    onClick={() => handleFormatClick(formatInfo.key, formatInfo.label)}
+                    onClick={() => handleFormatClick(formatInfo.key, formatInfo.label, formatInfo.recordId)}
                     className="px-3 py-1.5 rounded-full text-xs font-medium transition-all hover:opacity-80 hover:shadow-md cursor-pointer"
                     style={{
                       backgroundColor: '#FDF6C3',
@@ -741,6 +791,10 @@ export function SayuPage() {
           )}
 
           <div className="mt-4 flex flex-col gap-2 text-sm" style={{ color: '#999' }}>
+            <div className="flex items-center gap-2">
+              <div className="rounded-full flex-shrink-0" style={{ width: '8px', height: '8px', backgroundColor: '#10b981', boxShadow: '0 0 0 1.5px rgba(16,185,129,0.3)' }} />
+              <span>원본 저장</span>
+            </div>
             <div className="flex items-center gap-2">
               <div className="rounded-full flex-shrink-0" style={{ width: '8px', height: '8px', backgroundColor: '#1A3C6E', boxShadow: '0 0 0 1.5px rgba(26,60,110,0.25)' }} />
               <span>SAYU 저장</span>

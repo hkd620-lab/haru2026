@@ -28,6 +28,7 @@ export function RecordPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [formatModalOpen, setFormatModalOpen] = useState(false);
   const [savedDateStr, setSavedDateStr] = useState('');
+  const [savedRecordId, setSavedRecordId] = useState('');
   const [savedFormat, setSavedFormat] = useState<RecordFormat | null>(null);
 
   const formatDate = (date: Date) => {
@@ -72,7 +73,7 @@ export function RecordPage() {
       const dateStr = getLocalDateString(currentDate);
       const uid = user.uid;
 
-      await firestoreService.saveRecord(uid, {
+      const recordId = await firestoreService.saveRecord(uid, {
         date: dateStr,
         weather,
         temperature,
@@ -83,6 +84,7 @@ export function RecordPage() {
 
       toast.success('기록이 저장되었습니다!');
       setSavedDateStr(dateStr);
+      setSavedRecordId(recordId);
       setSavedFormat(selectedFormats[0]);
       setFormatModalOpen(true);
     } catch (error) {
@@ -94,7 +96,7 @@ export function RecordPage() {
   };
 
   const handleSaveFormatData = async (formatData: Record<string, string>) => {
-    if (!user || !savedDateStr) return;
+    if (!user || !savedRecordId) return;
     const updateData: Record<string, any> = {};
     let hasContent = false;
     Object.entries(formatData).forEach(([key, value]) => {
@@ -108,7 +110,7 @@ export function RecordPage() {
       return;
     }
     try {
-      await firestoreService.updateRecord(user.uid, savedDateStr, updateData);
+      await firestoreService.updateRecord(user.uid, savedRecordId, updateData);
       toast.success('내용이 저장되었습니다!');
     } catch (error) {
       console.error('저장 실패:', error);
@@ -303,7 +305,7 @@ export function RecordPage() {
             className="px-6 py-2.5 rounded-lg flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 shadow-md"
             style={{ backgroundColor: '#1A3C6E', color: '#FEFBE8' }}
           >
-            <span className="tracking-wide text-sm">{isSaving ? '저장 중...' : '저장'}</span>
+            <span className="tracking-wide text-sm">{isSaving ? '저장 중...' : '글쓰기'}</span>
           </button>
         </div>
       </div>
