@@ -131,7 +131,13 @@ export function MergePage() {
 
       const ratingKey = `${formatPrefix}_rating`;
       const starFiltered = formatFiltered.filter(record => {
-        const rating = record[ratingKey] || 0;
+        const rating = record[ratingKey];
+
+        // 별점이 없는(미설정) 기록은 항상 포함
+        if (rating === undefined || rating === null || rating === 0) {
+          console.log('   ✅ 통과(미설정):', record.date);
+          return true;
+        }
 
         if (rating < starThreshold) {
           console.log('   ❌ 별점 부족:', record.date, `(${rating}점 < ${starThreshold}점)`);
