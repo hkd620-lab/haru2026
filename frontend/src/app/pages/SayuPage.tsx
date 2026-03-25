@@ -31,7 +31,7 @@ export function SayuPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string }[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무']));
   const [sayuModalState, setSayuModalState] = useState<{
     isOpen: boolean;
     content: string;
@@ -62,6 +62,10 @@ export function SayuPage() {
   useEffect(() => {
     fetchRecords();
   }, [user?.uid, currentMonth]);
+
+  useEffect(() => {
+    setCollapsedCategories(new Set(['생활', '업무']));
+  }, [location.pathname]);
 
   const toggleSayuGuide = () => {
     const newValue = !showSayuGuide;
@@ -335,10 +339,21 @@ export function SayuPage() {
       for (const format of CATEGORY_FORMATS[category]) {
         const prefix = FORMAT_PREFIX[format];
         const entries = monthRecords
-          .filter((r) => r.formats && r.formats.includes(format))
+          .filter((r) => {
+            if (r.formats && r.formats.includes(format)) return true;
+            // formats 배열이 없거나 누락된 경우 field prefix로 폴백
+            return Object.keys(r).some((k) => k.startsWith(`${prefix}_`) && !k.endsWith('_sayu') && !k.endsWith('_rating') && !k.endsWith('_polished') && !k.endsWith('_images') && !k.endsWith('_stats'));
+          })
           .map((r) => {
             const firstFieldKey = FORMAT_FIRST_FIELD[prefix];
-            const rawTitle = firstFieldKey ? (r[firstFieldKey] || '') : '';
+            let rawTitle = firstFieldKey ? (r[firstFieldKey] || '') : '';
+            // 첫 번째 필드가 비어있으면 같은 prefix의 다른 필드에서 폴백
+            if (!rawTitle) {
+              const fallbackKey = Object.keys(r).find(
+                (k) => k.startsWith(`${prefix}_`) && !k.endsWith('_sayu') && !k.endsWith('_rating') && !k.endsWith('_polished') && !k.endsWith('_images') && !k.endsWith('_stats') && typeof r[k] === 'string' && r[k].trim()
+              );
+              rawTitle = fallbackKey ? r[fallbackKey] : '';
+            }
             const title = rawTitle.slice(0, 20) || '(내용 없음)';
             return {
               date: r.date,
