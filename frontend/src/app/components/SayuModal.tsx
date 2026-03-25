@@ -487,11 +487,27 @@ export function SayuModal({
             pointer-events: none !important;
           }
         }
+
+        .sayu-modal-overlay {
+          padding: 0;
+        }
+        .sayu-modal-inner {
+          max-width: 100%;
+          width: 100%;
+        }
+        @media (min-width: 640px) {
+          .sayu-modal-overlay {
+            padding: 20px;
+          }
+          .sayu-modal-inner {
+            max-width: 480px;
+          }
+        }
       `}</style>
 
       {isOpen && (
       <div
-        className="no-print"
+        className="no-print sayu-modal-overlay"
         style={{
           position: 'fixed',
           top: 0,
@@ -503,16 +519,14 @@ export function SayuModal({
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 1000,
-          padding: '20px',
         }}
         onClick={onClose}
       >
         <div
+          className="sayu-modal-inner"
           style={{
             backgroundColor: '#FEFBE8',
             borderRadius: 12,
-            maxWidth: 700,
-            width: '100%',
             maxHeight: '90vh',
             overflow: 'hidden',
             display: 'flex',
