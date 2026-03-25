@@ -3,7 +3,7 @@
   "description": "Cloud Functions for Firebase",
   "main": "lib/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && mkdir -p lib/fonts && cp src/fonts/*.ttf lib/fonts/",
     "deploy": "firebase deploy --only functions"
   },
   "engines": {

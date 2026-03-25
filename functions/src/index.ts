@@ -6,7 +6,8 @@ import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
 import axios from 'axios';
 import * as crypto from 'crypto';
-import * as pdfMake from 'pdfmake/build/pdfmake';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const PdfPrinter = require('pdfmake');
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -735,12 +736,11 @@ export const generateMergePDFFast = onCall({ region: 'asia-northeast3' }, async 
   const { title, dateRange, records } = request.data;
 
   const fontPath = path.join(__dirname, 'fonts', 'NotoSansKR.ttf');
-  const fontData = fs.readFileSync(fontPath).toString('base64');
 
   const fonts = {
     NotoSansKR: {
-      normal: Buffer.from(fontData, 'base64'),
-      bold: Buffer.from(fontData, 'base64'),
+      normal: fontPath,
+      bold: fontPath,
     }
   };
 
@@ -765,7 +765,7 @@ export const generateMergePDFFast = onCall({ region: 'asia-northeast3' }, async 
     }),
   };
 
-  const printer = new (pdfMake as any).default(fonts);
+  const printer = new PdfPrinter(fonts);
   const pdfDoc = printer.createPdfKitDocument(docDefinition);
 
   return new Promise((resolve, reject) => {

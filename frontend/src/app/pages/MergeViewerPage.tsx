@@ -191,6 +191,7 @@ export function MergeViewerPage() {
       URL.revokeObjectURL(url);
       toast.dismiss();
     } catch (error) {
+      console.error('PDF 생성 실패:', error);
       toast.dismiss();
       toast.error('PDF 생성에 실패했습니다.');
     }
