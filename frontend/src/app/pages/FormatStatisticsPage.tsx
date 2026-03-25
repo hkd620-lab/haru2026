@@ -3,10 +3,11 @@ import { ArrowLeft, TrendingUp, Brain, Sparkles, Activity, Calendar, Star } from
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService, RecordFormat } from '../services/firestoreService';
-import { 
-  statScoreToText, 
+import {
+  statScoreToText,
   statScoreToColor,
-  StatScore 
+  StatScore,
+  FORMAT_PREFIX,
 } from '../types/haruTypes';
 
 // 날짜 계산 함수들
@@ -154,6 +155,9 @@ export function FormatStatisticsPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  // 전체 기록 (그래프용)
+  const [allFormatRecords, setAllFormatRecords] = useState<any[]>([]);
+
   const formatType = format as RecordFormat;
   const metrics = FORMAT_METRICS[formatType] || [];
 
@@ -203,6 +207,14 @@ export function FormatStatisticsPage() {
 
     fetchData();
   }, [user?.uid, formatType, periodInfo.start, periodInfo.end]);
+
+  // 전체 기록 로드 (그래프용)
+  useEffect(() => {
+    if (!user?.uid) return;
+    firestoreService.getRecords(user.uid).then((records) => {
+      setAllFormatRecords(records.filter((r) => r.formats && r.formats.includes(formatType)));
+    }).catch(() => setAllFormatRecords([]));
+  }, [user?.uid, formatType]);
 
   const weeksInMonth = getWeeksInMonth(selectedYear, selectedMonth);
 
@@ -394,8 +406,153 @@ export function FormatStatisticsPage() {
       )}
 
       {/* 통계 표시 */}
-      {!loading && data && (
-        <>
+      {!loading && data && (() => {
+        const prefix = FORMAT_PREFIX[formatType] || '';
+        const totalCount = allFormatRecords.length;
+        const sayuCount = allFormatRecords.filter((r) => r[`${prefix}_sayu`]).length;
+        const completionRate = totalCount > 0 ? Math.round((sayuCount / totalCount) * 100) : 0;
+
+        // 최근 5개월 월별 기록 수
+        const now = new Date();
+        const last5Months = Array.from({ length: 5 }, (_, i) => {
+          const d = new Date(now.getFullYear(), now.getMonth() - (4 - i), 1);
+          const y = d.getFullYear();
+          const m = d.getMonth() + 1;
+          const count = allFormatRecords.filter((r) => {
+            const [ry, rm] = r.date.split('-').map(Number);
+            return ry === y && rm === m;
+          }).length;
+          const isCurrentMonth = y === now.getFullYear() && m === now.getMonth() + 1;
+          return { label: `${m}월`, count, isCurrentMonth };
+        });
+        const maxMonthCount = Math.max(...last5Months.map((m) => m.count), 1);
+
+        // 기분 분포
+        const moodColors: Record<string, string> = {
+          '기쁨': '#FAC775', '평온': '#85B7EB', '울적': '#AFA9EC',
+        };
+        const moodCounts: Record<string, number> = {};
+        allFormatRecords.forEach((r) => { if (r.mood) moodCounts[r.mood] = (moodCounts[r.mood] || 0) + 1; });
+        const moodEntries = Object.entries(moodCounts).sort((a, b) => b[1] - a[1]);
+        const maxMood = Math.max(...moodEntries.map((e) => e[1]), 1);
+
+        // 날씨 분포
+        const weatherEmoji: Record<string, string> = { '쾌청': '☀️', '흐림': '☁️', '비': '🌧️', '눈': '❄️' };
+        const weatherCounts: Record<string, number> = {};
+        allFormatRecords.forEach((r) => { if (r.weather) weatherCounts[r.weather] = (weatherCounts[r.weather] || 0) + 1; });
+        const weatherEntries = Object.entries(weatherCounts).sort((a, b) => b[1] - a[1]);
+
+        const cardStyle: React.CSSProperties = {
+          background: 'var(--color-background-primary, #FAF9F6)',
+          border: '0.5px solid var(--color-border-tertiary, #e5e5e5)',
+          borderRadius: 'var(--border-radius-lg, 12px)',
+          padding: 14,
+          marginBottom: 12,
+        };
+
+        return (
+          <>
+            {/* ── 1. 요약 카드 3개 ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 12 }}>
+              {[
+                { label: '총 기록', value: `${totalCount}건`, color: '#1A3C6E' },
+                { label: 'SAYU 완료', value: `${sayuCount}건`, color: '#1A3C6E' },
+                { label: '완료율', value: `${completionRate}%`, color: '#10b981' },
+              ].map(({ label, value, color }) => (
+                <div
+                  key={label}
+                  style={{
+                    background: 'var(--color-background-secondary, #f5f5f5)',
+                    borderRadius: 'var(--border-radius-md, 8px)',
+                    padding: 12,
+                    textAlign: 'center',
+                  }}
+                >
+                  <p style={{ fontSize: 11, color: 'var(--color-text-secondary, #999)', marginBottom: 6 }}>{label}</p>
+                  <p style={{ fontSize: 22, fontWeight: 500, color, margin: 0 }}>{value}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* ── 2. SAYU 완료율 진행 바 ── */}
+            <div style={cardStyle}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: '#333', marginBottom: 10 }}>SAYU 완료율</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ flex: 1, height: 10, background: 'var(--color-background-secondary, #f0f0f0)', borderRadius: 10, overflow: 'hidden' }}>
+                  <div style={{ width: `${completionRate}%`, height: '100%', background: '#1A3C6E', borderRadius: 10, transition: 'width 0.4s ease' }} />
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', minWidth: 36, textAlign: 'right' }}>{completionRate}%</span>
+              </div>
+            </div>
+
+            {/* ── 3. 월별 기록 횟수 막대 그래프 ── */}
+            <div style={cardStyle}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: '#333', marginBottom: 12 }}>월별 기록 횟수</p>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 80 }}>
+                {last5Months.map(({ label, count, isCurrentMonth }) => (
+                  <div key={label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <span style={{ fontSize: 10, color: '#999' }}>{count > 0 ? count : ''}</span>
+                    <div
+                      style={{
+                        width: '100%',
+                        height: count > 0 ? Math.max(Math.round((count / maxMonthCount) * 64), 4) : 4,
+                        background: isCurrentMonth ? '#10b981' : '#1A3C6E',
+                        borderRadius: '4px 4px 0 0',
+                        opacity: count === 0 ? 0.2 : 1,
+                        transition: 'height 0.4s ease',
+                      }}
+                    />
+                    <span style={{ fontSize: 10, color: '#666' }}>{label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── 4. 기분 분포 + 날씨 분포 ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+              {/* 기분 분포 */}
+              <div style={cardStyle}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: '#333', marginBottom: 10 }}>기분 분포</p>
+                {moodEntries.length === 0 ? (
+                  <p style={{ fontSize: 11, color: '#bbb' }}>데이터 없음</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                    {moodEntries.map(([mood, count]) => (
+                      <div key={mood}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                          <span style={{ fontSize: 11, color: '#555' }}>{mood}</span>
+                          <span style={{ fontSize: 11, color: '#999' }}>{count}</span>
+                        </div>
+                        <div style={{ height: 8, background: 'var(--color-background-secondary, #f0f0f0)', borderRadius: 8, overflow: 'hidden' }}>
+                          <div style={{ width: `${Math.round((count / maxMood) * 100)}%`, height: '100%', background: moodColors[mood] || 'var(--color-border-tertiary, #ccc)', borderRadius: 8 }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 날씨 분포 */}
+              <div style={cardStyle}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: '#333', marginBottom: 10 }}>날씨 분포</p>
+                {weatherEntries.length === 0 ? (
+                  <p style={{ fontSize: 11, color: '#bbb' }}>데이터 없음</p>
+                ) : (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {weatherEntries.map(([weather, count]) => (
+                      <div key={weather} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ fontSize: 16 }}>{weatherEmoji[weather] || '🌤️'}</span>
+                        <div>
+                          <p style={{ fontSize: 10, color: '#666', margin: 0 }}>{weather}</p>
+                          <p style={{ fontSize: 12, fontWeight: 600, color: '#1A3C6E', margin: 0 }}>{count}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
           {/* 기본 정보 */}
           <div className="bg-white rounded-lg p-5 shadow-sm mb-6">
             <div className="grid grid-cols-2 gap-4">
@@ -485,7 +642,8 @@ export function FormatStatisticsPage() {
             </div>
           )}
         </>
-      )}
+        );
+      })()}
     </div>
   );
 }
