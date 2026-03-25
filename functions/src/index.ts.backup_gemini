@@ -123,7 +123,7 @@ export const polishContent = onCall(
 
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());  // 🔐 Secret 값 사용
       const model = genAI.getGenerativeModel({
-        model: "gemini-3.1-flash-lite-preview",
+        model: "gemini-2.5-flash",
         systemInstruction: systemPrompt
       });
 
@@ -311,22 +311,6 @@ JSON만 출력:
   "emotional_understanding": 4,
   "learning_support": 5,
   "positivity_ratio": 5
-}`,
-
-  memo: `다음은 메모 내용입니다. 분석해서 JSON으로 반환하세요.
-
-분석 기준:
-1. idea_clarity: 아이디어 명확도 1~5 (1=모호, 3=보통, 5=명확)
-2. action_specificity: 행동 구체성 1~5 (1=없음, 3=일부, 5=구체적)
-3. content_richness: 내용 풍부도 1~5 (1=단순, 3=보통, 5=풍부)
-4. positivity_ratio: 긍정성 1~5 (1=부정, 3=혼합, 5=긍정)
-
-JSON만 출력:
-{
-  "idea_clarity": 4,
-  "action_specificity": 3,
-  "content_richness": 4,
-  "positivity_ratio": 4
 }`
 };
 
@@ -346,7 +330,7 @@ ${text}`;
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-3.1-flash-lite-preview"
+      model: "gemini-2.5-flash"
     });
 
     const result = await model.generateContent(analysisPrompt);
@@ -758,38 +742,3 @@ export const generateMergePDF = onCall(
     }
   }
 );
-
-// ===== 📷 HEIC → JPG 변환 (Cloudinary) =====
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { v2: cloudinary } = require('cloudinary');
-
-export const convertHeic = onCall(
-  { region: 'asia-northeast3' },
-  async (request) => {
-    const { imageBase64 } = request.data;
-
-    if (!imageBase64 || typeof imageBase64 !== 'string') {
-      throw new HttpsError('invalid-argument', '이미지 데이터가 필요합니다.');
-    }
-
-    cloudinary.config({
-      cloud_name: 'dmhutjnpn',
-      api_key: '752573158646558',
-      api_secret: process.env.CLOUDINARY_API_SECRET,
-    });
-
-    try {
-      const dataUri = `data:image/heic;base64,${imageBase64}`;
-      const result = await cloudinary.uploader.upload(dataUri, {
-        resource_type: 'image',
-        format: 'jpg',
-        folder: 'heic_temp',
-      });
-      return { url: result.secure_url };
-    } catch (error: any) {
-      logger.error('Cloudinary HEIC 변환 오류:', error);
-      throw new HttpsError('internal', `변환 실패: ${error.message}`);
-    }
-  }
-);
-

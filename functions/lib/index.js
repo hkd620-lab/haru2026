@@ -316,6 +316,21 @@ JSON만 출력:
   "emotional_understanding": 4,
   "learning_support": 5,
   "positivity_ratio": 5
+}`,
+    memo: `다음은 메모 내용입니다. 분석해서 JSON으로 반환하세요.
+
+분석 기준:
+1. idea_clarity: 아이디어 명확도 1~5 (1=모호, 3=보통, 5=명확)
+2. action_specificity: 행동 구체성 1~5 (1=없음, 3=일부, 5=구체적)
+3. content_richness: 내용 풍부도 1~5 (1=단순, 3=보통, 5=풍부)
+4. positivity_ratio: 긍정성 1~5 (1=부정, 3=혼합, 5=긍정)
+
+JSON만 출력:
+{
+  "idea_clarity": 4,
+  "action_specificity": 3,
+  "content_richness": 4,
+  "positivity_ratio": 4
 }`
 };
 // ===== 📊 범용 통계 분석 함수 =====

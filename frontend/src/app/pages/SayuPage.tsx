@@ -20,6 +20,7 @@ const FORMAT_FIRST_FIELD: Record<string, string> = {
   garden: 'garden_crop',
   pet: 'pet_name',
   child: 'child_name',
+  memo: 'memo_title',
 };
 
 export function SayuPage() {

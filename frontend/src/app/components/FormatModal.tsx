@@ -8,7 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
 import heic2any from 'heic2any';
 
-type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기';
+type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '메모';
 type SayuMode = 'BASIC' | 'PREMIUM';
 
 interface FormatModalProps {
@@ -90,6 +90,12 @@ const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placehol
     { key: 'child_activity', label: '활동', placeholder: '놀이터에서 친구들과 그네를 탔습니다.', rows: 3 },
     { key: 'child_emotion', label: '부모의 마음', placeholder: '아이가 자라는 모습을 보니 뿌듯하고 감사합니다.', rows: 3 },
   ],
+  메모: [
+    { key: 'memo_title', label: '제목', placeholder: '오늘의 메모 제목을 입력하세요.', rows: 1 },
+    { key: 'memo_content', label: '내용', placeholder: '메모할 내용을 자유롭게 작성하세요.', rows: 6 },
+    { key: 'memo_tags', label: '태그', placeholder: '키워드, 아이디어, 분류 등을 입력하세요.', rows: 2 },
+    { key: 'memo_action', label: '다음 행동', placeholder: '이 메모와 관련된 다음 할 일이 있다면 적어두세요.', rows: 2 },
+  ],
 };
 
 // 형식별 prefix 매핑
@@ -103,6 +109,7 @@ const FORMAT_PREFIX: Record<RecordFormat, string> = {
   '텃밭일지': 'garden',
   '애완동물관찰일지': 'pet',
   '육아일기': 'child',
+  '메모': 'memo',
 };
 
 export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, onSave }: FormatModalProps) {
