@@ -627,6 +627,12 @@ export function MergeViewerPage() {
             background-color: #e8f0fb !important;
           }
 
+          /* 모달 미리보기 박스 노란 배경 제거 */
+          .modal-preview-box {
+            background-color: transparent !important;
+            background: transparent !important;
+          }
+
           /* App Layout 래퍼 배경/높이 초기화 */
           .min-h-screen,
           .min-h-\[calc\(100vh-56px-80px\)\] {
@@ -774,7 +780,7 @@ export function MergeViewerPage() {
               </h3>
               {/* 미리보기 박스 */}
               <div
-                className="rounded-lg p-4 mb-5"
+                className="rounded-lg p-4 mb-5 modal-preview-box"
                 style={{ border: '1px solid #e5e5e5', backgroundColor: '#FEFBE8' }}
               >
                 <p className="text-sm font-semibold mb-2" style={{ color: '#1A3C6E' }}>{title}</p>
