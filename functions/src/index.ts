@@ -732,7 +732,7 @@ export const convertHeic = onCall(
   }
 );
 
-export const generateMergePDFFast = onCall({ region: 'asia-northeast3' }, async (request) => {
+export const generateMergePDFFast = onCall({ region: 'asia-northeast3', memory: '1GiB', timeoutSeconds: 300 }, async (request) => {
   const { title, dateRange, records } = request.data;
 
   const fontPath = path.join(__dirname, 'fonts', 'NotoSansKR.ttf');
