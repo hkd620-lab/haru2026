@@ -7,7 +7,7 @@ import * as logger from 'firebase-functions/logger';
 import axios from 'axios';
 import * as crypto from 'crypto';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const PdfPrinter = require('pdfmake');
+const PDFDocument = require('pdfkit');
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -737,46 +737,49 @@ export const generateMergePDFFast = onCall({ region: 'asia-northeast3' }, async 
 
   const fontPath = path.join(__dirname, 'fonts', 'NotoSansKR.ttf');
 
-  const fonts = {
-    NotoSansKR: {
-      normal: fontPath,
-      bold: fontPath,
-    }
-  };
-
-  const docDefinition: any = {
-    defaultStyle: { font: 'NotoSansKR', fontSize: 11, lineHeight: 1.6 },
-    pageMargins: [50, 60, 50, 60],
-    content: [
-      { text: title, fontSize: 20, bold: true, color: '#1A3C6E', margin: [0, 0, 0, 8] },
-      { text: dateRange, fontSize: 11, color: '#999999', margin: [0, 0, 0, 24] },
-      ...records.map((record: any) => ([
-        { text: record.date, fontSize: 12, bold: true, color: '#1A3C6E', margin: [0, 16, 0, 6] },
-        { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 495, y2: 0, lineWidth: 0.5, lineColor: '#E0E0E0' }], margin: [0, 0, 0, 8] },
-        { text: record.content || '', fontSize: 11, color: '#333333', lineHeight: 1.8, margin: [0, 0, 0, 8] },
-      ])).flat(),
-    ],
-    footer: (currentPage: number, pageCount: number) => ({
-      text: `HARU by JOYEL   ${currentPage} / ${pageCount}`,
-      alignment: 'center',
-      fontSize: 9,
-      color: '#CCCCCC',
-      margin: [0, 10, 0, 0],
-    }),
-  };
-
-  const printer = new PdfPrinter(fonts);
-  const pdfDoc = printer.createPdfKitDocument(docDefinition);
-
   return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    pdfDoc.on('data', (chunk: Buffer) => chunks.push(chunk));
-    pdfDoc.on('end', () => {
-      const pdfBuffer = Buffer.concat(chunks);
-      resolve({ pdf: pdfBuffer.toString('base64') });
-    });
-    pdfDoc.on('error', reject);
-    pdfDoc.end();
+    try {
+      const doc = new PDFDocument({ size: 'A4', margin: 50 });
+      const chunks: Buffer[] = [];
+
+      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+      doc.on('end', () => {
+        const pdfBuffer = Buffer.concat(chunks);
+        resolve({ pdf: pdfBuffer.toString('base64') });
+      });
+      doc.on('error', reject);
+
+      // 표지
+      doc.font(fontPath).fontSize(22).fillColor('#1A3C6E').text(title, { align: 'center' });
+      doc.moveDown(0.5);
+      doc.fontSize(11).fillColor('#999999').text(dateRange, { align: 'center' });
+      doc.moveDown(2);
+
+      // 각 기록
+      records.forEach((record: any, idx: number) => {
+        if (idx > 0) doc.moveDown(1);
+        // 날짜
+        doc.fontSize(12).fillColor('#1A3C6E').font(fontPath).text(record.date);
+        // 구분선
+        doc.moveDown(0.3);
+        const y = doc.y;
+        doc.moveTo(50, y).lineTo(545, y).strokeColor('#E0E0E0').lineWidth(0.5).stroke();
+        doc.moveDown(0.5);
+        // 본문
+        doc.fontSize(11).fillColor('#333333').font(fontPath).text(record.content || '', {
+          lineGap: 4,
+          paragraphGap: 4,
+        });
+      });
+
+      // 푸터 텍스트
+      doc.moveDown(2);
+      doc.fontSize(9).fillColor('#CCCCCC').text('HARU by JOYEL', { align: 'center' });
+
+      doc.end();
+    } catch (err) {
+      reject(err);
+    }
   });
 });
 
