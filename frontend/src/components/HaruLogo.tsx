@@ -130,7 +130,7 @@ export default function HaruLogo() {
           })}
           {showCheckMark && (
             <motion.div className="absolute flex items-center justify-center" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.6, ease: 'easeOut' }}>
-              <svg width="48" height="48" viewBox="0 0 24 24"><path d="M5 12 L10 17 L19 7" stroke="#ff6600" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              <svg width="48" height="48" viewBox="0 0 24 24"><path d="M5 12 L10 17 L19 7" stroke="#FFD700" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </motion.div>
           )}
         </div>
