@@ -753,13 +753,13 @@ export function MergeViewerPage() {
       `}</style>
 
       {/* 화면 표시용 뷰어 */}
-      <div className="print-hide fixed bg-gray-900 flex flex-col" 
-        style={{ 
-          top: 0, 
-          left: 0, 
-          right: 0, 
+      <div className="print-hide fixed bg-gray-900 flex flex-col"
+        style={{
+          top: '56px',
+          left: 0,
+          right: 0,
           bottom: '64px',
-          zIndex: 40 
+          zIndex: 40
         }}
       >
         {/* 상단 헤더 */}
