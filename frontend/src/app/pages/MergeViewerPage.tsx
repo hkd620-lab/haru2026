@@ -510,8 +510,6 @@ export function MergeViewerPage() {
             min-height: 297mm;
             padding: 20mm;
             margin: 0;
-            background: white !important;
-            background-color: #ffffff !important;
             page-break-after: always;
           }
 
@@ -564,7 +562,6 @@ export function MergeViewerPage() {
           .print-content {
             flex: 1;
             overflow: hidden;
-            background-color: #ffffff !important;
             padding: 20px;
             border-radius: 8px;
             border: 1px solid #e5e5e5;
@@ -603,27 +600,23 @@ export function MergeViewerPage() {
             text-shadow: none !important;
           }
 
-          /* ─── 배경색 완전 제거 ─── */
+          /* ─── 1단계: 모든 배경 투명 제거 ─── */
           * {
             background: transparent !important;
             background-color: transparent !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
           }
 
-          /* html / body / root 흰색 */
+          /* ─── 2단계: 흰색 필요한 영역만 복원 ─── */
           html, body, #root {
             background: white !important;
             background-color: white !important;
           }
 
-          /* 인쇄 페이지 흰색 유지 */
           .print-page {
             background: white !important;
             background-color: white !important;
           }
 
-          /* 본문 콘텐츠 박스 흰색 유지 */
           .print-content {
             background: white !important;
             background-color: white !important;
