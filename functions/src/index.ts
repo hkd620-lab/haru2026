@@ -737,6 +737,24 @@ export const generateMergePDFFast = onCall({ region: 'asia-northeast3' }, async 
 
   const fontPath = path.join(__dirname, 'fonts', 'NotoSansKR.ttf');
 
+  // 이미지 사전 다운로드
+  const recordsWithImages = await Promise.all(
+    records.map(async (record: any) => {
+      const imageBuffers: Buffer[] = [];
+      if (record.images && record.images.length > 0) {
+        for (const url of record.images) {
+          try {
+            const res = await axios.get(url, { responseType: 'arraybuffer', timeout: 10000 });
+            imageBuffers.push(Buffer.from(res.data));
+          } catch (e) {
+            logger.warn(`이미지 다운로드 실패: ${url}`);
+          }
+        }
+      }
+      return { ...record, imageBuffers };
+    })
+  );
+
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({ size: 'A4', margin: 50 });
@@ -756,7 +774,7 @@ export const generateMergePDFFast = onCall({ region: 'asia-northeast3' }, async 
       doc.moveDown(2);
 
       // 각 기록
-      records.forEach((record: any, idx: number) => {
+      recordsWithImages.forEach((record: any, idx: number) => {
         if (idx > 0) doc.moveDown(1);
         // 날짜
         doc.fontSize(12).fillColor('#1A3C6E').font(fontPath).text(record.date);
@@ -765,6 +783,13 @@ export const generateMergePDFFast = onCall({ region: 'asia-northeast3' }, async 
         const y = doc.y;
         doc.moveTo(50, y).lineTo(545, y).strokeColor('#E0E0E0').lineWidth(0.5).stroke();
         doc.moveDown(0.5);
+        // 이미지
+        if (record.imageBuffers && record.imageBuffers.length > 0) {
+          record.imageBuffers.forEach((imgBuffer: Buffer) => {
+            doc.image(imgBuffer, { width: 495, align: 'center' });
+            doc.moveDown(0.5);
+          });
+        }
         // 본문
         doc.fontSize(11).fillColor('#333333').font(fontPath).text(record.content || '', {
           lineGap: 4,

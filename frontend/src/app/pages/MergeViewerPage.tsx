@@ -168,13 +168,15 @@ export function MergeViewerPage() {
       const functions = getFunctions(undefined, 'asia-northeast3');
       const generatePDF = httpsCallable(functions, 'generateMergePDFFast');
 
-      const sayuKey = `${formatPrefix}_sayu`; // 예: 'diary_sayu', 'essay_sayu'
+      const sayuKey = `${formatPrefix}_sayu`;
+      const imagesKey = `${formatPrefix}_images`;
       const result: any = await generatePDF({
         title: `${format} 합본`,
         dateRange: `${startDate} ~ ${endDate}`,
         records: records.map(r => ({
           date: r.date,
           content: r[sayuKey] || '',
+          images: JSON.parse(r[imagesKey] || '[]'),
         })),
       });
 
