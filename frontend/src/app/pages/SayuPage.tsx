@@ -412,8 +412,28 @@ export function SayuPage() {
   const listData = getMonthListData();
   const hasMonthRecords = listData.length > 0;
 
+  const printStyle = `
+    @media print {
+      * {
+        background: transparent !important;
+        background-color: transparent !important;
+      }
+      html, body, #root {
+        background: white !important;
+        background-color: white !important;
+      }
+      .sayu-print-page,
+      .sayu-print-header,
+      .sayu-print-content {
+        background: white !important;
+        background-color: white !important;
+      }
+    }
+  `;
+
   return (
     <>
+    <style>{printStyle}</style>
     <div className="sayu-page-container no-print max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
       {/* 타이틀 + 가이드 */}
       <div className="mb-4">
