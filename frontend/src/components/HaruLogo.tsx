@@ -92,18 +92,8 @@ export default function HaruLogo() {
     return () => clearTimeout(timer);
   }, [animationKey]);
 
-  const resetAnimation = () => {
-    setAnimationKey(prevKey => prevKey + 1);
-    setShowComplete(false);
-    setShowCheckMark(false);
-  };
-
   return (
-    <div className="flex items-center justify-center w-full pt-2 pb-0" style={{ backgroundColor: '#F7F5F2' }}>
-      <button onClick={resetAnimation} className="fixed top-6 right-6 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 flex items-center gap-2 z-50" style={{ fontWeight: 600, fontSize: '14px' }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
-        애니메이션 다시보기
-      </button>
+    <div className="flex items-center justify-center w-full pt-16 pb-4" style={{ backgroundColor: '#F7F5F2' }}>
       <div className="flex flex-col items-center justify-center">
         <div key={animationKey} className="relative flex items-center justify-center" style={{ width: 'min(200px, 55vw)', height: 'min(200px, 55vw)', overflow: 'visible' }}>
           <div
