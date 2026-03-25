@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
 import { useNavigate } from 'react-router';
 import { PlusCircle, Sparkles } from 'lucide-react';
 // import { HaruLogoAnimation } from '../components/HaruLogoAnimation';
@@ -64,23 +63,11 @@ export function HomePage() {
     <div className="min-h-[calc(100vh-56px-80px)]" style={{ backgroundColor: '#FEFBE8' }}>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
         {/* Logo & Identity */}
-        <header className="text-center mb-16 md:mb-20">
+        <header className="text-center mb-10">
           {/* <HaruLogoAnimation /> */}
-          <HaruLogo />
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 2.0, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            className="max-w-md mx-auto mt-8 pt-8 border-t"
-            style={{ borderColor: '#e5e5e5' }}
-          >
-            <p className="text-base md:text-lg leading-relaxed mb-3" style={{ color: '#333333' }}>
-              간편하게 입력하고, 쓸모있게 남깁니다
-            </p>
-            <p className="text-sm leading-relaxed" style={{ color: '#999999' }}>
-              감성적인 일기장이 아닌, 체계적인 기록 도구
-            </p>
-          </motion.div>
+          <div style={{ maxHeight: '500px', overflow: 'hidden' }}>
+            <HaruLogo />
+          </div>
         </header>
 
         {/* Date & Record Status */}
