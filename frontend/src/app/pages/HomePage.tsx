@@ -93,19 +93,19 @@ export function HomePage() {
         <div className="flex flex-col sm:flex-row justify-center gap-4">
           <button
             onClick={() => navigate('/record')}
-            className="flex items-center justify-center gap-2 px-10 py-4 rounded-lg transition-all hover:opacity-90 shadow-lg"
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-all hover:opacity-90 shadow-lg"
             style={{ backgroundColor: '#1A3C6E', color: '#FEFBE8' }}
           >
             <PlusCircle className="w-6 h-6" />
-            <span className="text-lg tracking-wide">오늘 기록하기</span>
+            <span className="text-sm tracking-wide">오늘 기록하기</span>
           </button>
           <button
             onClick={() => navigate('/sayu')}
-            className="flex items-center justify-center gap-2 px-10 py-4 rounded-lg transition-all hover:opacity-90 shadow-lg"
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-all hover:opacity-90 shadow-lg"
             style={{ backgroundColor: '#FEFBE8', color: '#1A3C6E', border: '2px solid #1A3C6E' }}
           >
             <Sparkles className="w-6 h-6" />
-            <span className="text-lg tracking-wide">SAYU 보기</span>
+            <span className="text-sm tracking-wide">SAYU 보기</span>
           </button>
         </div>
       </div>
