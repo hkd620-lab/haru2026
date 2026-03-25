@@ -773,42 +773,12 @@ export function MergeViewerPage() {
             text-shadow: none !important;
           }
 
-          /* ─── 배경색 완전 제거 ─── */
-          * {
-            background: transparent !important;
-            background-color: transparent !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-
-          /* html / body / root 흰색 */
-          html, body, #root {
-            background: white !important;
-            background-color: white !important;
-          }
-
-          /* 인쇄 페이지 흰색 유지 */
-          .print-page {
-            background: white !important;
-            background-color: white !important;
-          }
-
-          /* 본문 콘텐츠 박스 흰색 유지 */
-          .print-content {
-            background: white !important;
-            background-color: white !important;
-          }
-
-          /* 환경 태그(날씨/기분/별점 뱃지) 배경 연하게 유지 */
-          .env-tag {
-            background-color: #e8f0fb !important;
-          }
-
-          /* App Layout 래퍼 배경/높이 초기화 */
+          /* ─── 빈 노란 박스 제거 ─── */
+          /* App Layout 래퍼(min-h-screen + #FEFBE8) 인쇄 시 배경 흰색으로 */
           .min-h-screen,
           .min-h-\[calc\(100vh-56px-80px\)\] {
-            background: white !important;
             background-color: white !important;
+            background: white !important;
             min-height: auto !important;
           }
 
@@ -816,6 +786,12 @@ export function MergeViewerPage() {
           div:empty,
           span:empty {
             display: none !important;
+          }
+
+          /* App 전체 배경 흰색 강제 */
+          html, body, #root {
+            background-color: white !important;
+            background: white !important;
           }
         }
 
@@ -1025,9 +1001,9 @@ export function MergeViewerPage() {
                 </h2>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
                   {record.mergeRating && (
-                    <span className="env-tag" style={{
-                      fontSize: '10pt',
-                      padding: '4px 12px',
+                    <span style={{ 
+                      fontSize: '10pt', 
+                      padding: '4px 12px', 
                       borderRadius: '12px',
                       backgroundColor: '#FFF8F0',
                       color: '#F59E0B'
@@ -1036,9 +1012,9 @@ export function MergeViewerPage() {
                     </span>
                   )}
                   {record.weather && (
-                    <span className="env-tag" style={{
-                      fontSize: '9pt',
-                      padding: '3px 8px',
+                    <span style={{ 
+                      fontSize: '9pt', 
+                      padding: '3px 8px', 
                       borderRadius: '4px',
                       backgroundColor: '#FDF6C3',
                       color: '#1A3C6E'
@@ -1047,9 +1023,9 @@ export function MergeViewerPage() {
                     </span>
                   )}
                   {record.temperature && (
-                    <span className="env-tag" style={{
-                      fontSize: '9pt',
-                      padding: '3px 8px',
+                    <span style={{ 
+                      fontSize: '9pt', 
+                      padding: '3px 8px', 
                       borderRadius: '4px',
                       backgroundColor: '#FDF6C3',
                       color: '#1A3C6E'
@@ -1058,9 +1034,9 @@ export function MergeViewerPage() {
                     </span>
                   )}
                   {record.mood && (
-                    <span className="env-tag" style={{
-                      fontSize: '9pt',
-                      padding: '3px 8px',
+                    <span style={{ 
+                      fontSize: '9pt', 
+                      padding: '3px 8px', 
                       borderRadius: '4px',
                       backgroundColor: '#FDF6C3',
                       color: '#1A3C6E'
