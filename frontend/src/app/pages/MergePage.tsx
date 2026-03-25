@@ -36,12 +36,19 @@ export function MergePage() {
     { id: 'custom', title: '직접선택', description: '기간 직접 입력' },
   ];
 
+  const getLocalDateString = (date: Date): string => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString(new Date());
     setEndDate(today);
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    setStartDate(thirtyDaysAgo.toISOString().split('T')[0]);
+    setStartDate(getLocalDateString(thirtyDaysAgo));
   }, []);
 
   const handlePeriodSelect = (period: MergePeriod) => {
@@ -49,10 +56,9 @@ export function MergePage() {
     
     // custom이 아닌 경우에만 날짜 자동 설정
     if (period !== 'custom') {
-      const today = new Date();
-      const end = today.toISOString().split('T')[0];
+      const end = getLocalDateString(new Date());
       setEndDate(end);
-      
+
       let start = new Date();
       switch (period) {
         case 'weekly':
@@ -68,7 +74,7 @@ export function MergePage() {
           start.setFullYear(start.getFullYear() - 1);
           break;
       }
-      setStartDate(start.toISOString().split('T')[0]);
+      setStartDate(getLocalDateString(start));
     }
   };
 
@@ -123,14 +129,15 @@ export function MergePage() {
       console.log('3. 형식 필터링 후 (SAYU 존재):', formatFiltered.length, '개');
       console.log('   선택 형식:', selectedFormat);
 
+      const ratingKey = `${formatPrefix}_rating`;
       const starFiltered = formatFiltered.filter(record => {
-        const rating = record.mergeRating || 0;
-        
+        const rating = record[ratingKey] || 0;
+
         if (rating < starThreshold) {
           console.log('   ❌ 별점 부족:', record.date, `(${rating}점 < ${starThreshold}점)`);
           return false;
         }
-        
+
         console.log('   ✅ 통과:', record.date, `(${rating}점)`);
         return true;
       });
