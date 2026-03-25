@@ -20,10 +20,12 @@
     "firebase-functions": "^6.3.1",
     "google-auth-library": "^10.5.0",
     "openai": "^6.22.0",
+    "pdfmake": "^0.3.7",
     "puppeteer": "^24.40.0",
     "sharp": "^0.34.5"
   },
   "devDependencies": {
+    "@types/pdfmake": "^0.3.2",
     "firebase-functions-test": "^3.1.0",
     "typescript": "^5.0.0"
   },

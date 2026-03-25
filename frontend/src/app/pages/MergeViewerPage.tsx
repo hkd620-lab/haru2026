@@ -202,52 +202,34 @@ export function MergeViewerPage() {
   };
 
   // ========================================
-  // 🚀 서버 PDF 생성 (Android용 Puppeteer)
+  // 🚀 서버 PDF 생성 (pdfmake 통일)
   // ========================================
   const handlePrintServer = async () => {
     try {
       const functions = getFunctions(undefined, 'asia-northeast3');
-      const generatePDF = httpsCallable(functions, 'generateMergePDF');
+      const generatePDF = httpsCallable(functions, 'generateMergePDFFast');
 
-      const printArea = document.querySelector('.print-container')
-        || document.querySelector('.print-page')
-        || document.body;
+      const result: any = await generatePDF({
+        title: `${format} 합본`,
+        dateRange: `${startDate} ~ ${endDate}`,
+        records: records.map(r => ({
+          date: r.date,
+          content: r[`${formatPrefix}_sayu`] || '',
+        })),
+      });
 
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html lang="ko">
-        <head>
-          <meta charset="UTF-8">
-          <style>
-            body {
-              font-family: -apple-system, sans-serif;
-              background: white;
-              margin: 0;
-              padding: 20px;
-            }
-            * { background-color: white !important; }
-          </style>
-        </head>
-        <body>${printArea?.innerHTML || ''}</body>
-        </html>
-      `;
-
-      const result: any = await generatePDF({ htmlContent });
-
-      if (result.data.success) {
-        const pdfData = atob(result.data.pdf);
-        const pdfArray = new Uint8Array(pdfData.length);
-        for (let i = 0; i < pdfData.length; i++) {
-          pdfArray[i] = pdfData.charCodeAt(i);
-        }
-        const blob = new Blob([pdfArray], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `HARU_${format}_${startDate}.pdf`;
-        a.click();
-        URL.revokeObjectURL(url);
+      const pdfData = atob(result.data.pdf);
+      const pdfArray = new Uint8Array(pdfData.length);
+      for (let i = 0; i < pdfData.length; i++) {
+        pdfArray[i] = pdfData.charCodeAt(i);
       }
+      const blob = new Blob([pdfArray], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `HARU_${format}_${startDate}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
     } catch (error) {
       console.error('PDF 생성 실패:', error);
       window.print();

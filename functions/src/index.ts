@@ -6,6 +6,9 @@ import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
 import axios from 'axios';
 import * as crypto from 'crypto';
+import * as pdfMake from 'pdfmake/build/pdfmake';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Firebase Admin 초기화
 if (!admin.apps.length) {
@@ -792,4 +795,53 @@ export const convertHeic = onCall(
     }
   }
 );
+
+export const generateMergePDFFast = onCall({ region: 'asia-northeast3' }, async (request) => {
+  const { title, dateRange, records } = request.data;
+
+  const fontPath = path.join(__dirname, 'fonts', 'NotoSansKR.ttf');
+  const fontData = fs.readFileSync(fontPath).toString('base64');
+
+  const fonts = {
+    NotoSansKR: {
+      normal: Buffer.from(fontData, 'base64'),
+      bold: Buffer.from(fontData, 'base64'),
+    }
+  };
+
+  const docDefinition: any = {
+    defaultStyle: { font: 'NotoSansKR', fontSize: 11, lineHeight: 1.6 },
+    pageMargins: [50, 60, 50, 60],
+    content: [
+      { text: title, fontSize: 20, bold: true, color: '#1A3C6E', margin: [0, 0, 0, 8] },
+      { text: dateRange, fontSize: 11, color: '#999999', margin: [0, 0, 0, 24] },
+      ...records.map((record: any) => ([
+        { text: record.date, fontSize: 12, bold: true, color: '#1A3C6E', margin: [0, 16, 0, 6] },
+        { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 495, y2: 0, lineWidth: 0.5, lineColor: '#E0E0E0' }], margin: [0, 0, 0, 8] },
+        { text: record.content || '', fontSize: 11, color: '#333333', lineHeight: 1.8, margin: [0, 0, 0, 8] },
+      ])).flat(),
+    ],
+    footer: (currentPage: number, pageCount: number) => ({
+      text: `HARU by JOYEL   ${currentPage} / ${pageCount}`,
+      alignment: 'center',
+      fontSize: 9,
+      color: '#CCCCCC',
+      margin: [0, 10, 0, 0],
+    }),
+  };
+
+  const printer = new (pdfMake as any).default(fonts);
+  const pdfDoc = printer.createPdfKitDocument(docDefinition);
+
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    pdfDoc.on('data', (chunk: Buffer) => chunks.push(chunk));
+    pdfDoc.on('end', () => {
+      const pdfBuffer = Buffer.concat(chunks);
+      resolve({ pdf: pdfBuffer.toString('base64') });
+    });
+    pdfDoc.on('error', reject);
+    pdfDoc.end();
+  });
+});
 
