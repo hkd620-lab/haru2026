@@ -3,31 +3,7 @@ import { useLocation, useNavigate } from 'react-router';
 import { ChevronLeft, ChevronRight, X, Printer, Download, FileText } from 'lucide-react';
 import { RecordFormat } from '../services/firestoreService';
 import { toast } from 'sonner';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { pdf, Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
 
-Font.register({
-  family: 'NotoSansKR',
-  src: '/fonts/NotoSansKR.ttf',
-});
-
-const pdfStyles = StyleSheet.create({
-  page: { fontFamily: 'NotoSansKR', padding: 40, backgroundColor: '#ffffff' },
-  coverTitle: { fontSize: 28, fontWeight: 'bold', color: '#1A3C6E', marginBottom: 16, textAlign: 'center' },
-  coverSub: { fontSize: 14, color: '#666666', marginBottom: 8, textAlign: 'center' },
-  coverNote: { fontSize: 12, color: '#999999', textAlign: 'center' },
-  coverCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  dateTitle: { fontSize: 16, fontWeight: 'bold', color: '#1A3C6E', marginBottom: 10 },
-  tagRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12, gap: 6 },
-  tag: { fontSize: 9, color: '#1A3C6E', backgroundColor: '#FDF6C3', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
-  contentBox: { borderWidth: 1, borderColor: '#e5e5e5', borderRadius: 6, padding: 16, backgroundColor: '#f9f9f9' },
-  contentText: { fontSize: 11, color: '#333333', lineHeight: 1.7 },
-  summaryCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  summaryTitle: { fontSize: 22, fontWeight: 'bold', color: '#1A3C6E', marginBottom: 30, textAlign: 'center' },
-  statBox: { borderWidth: 1, borderColor: '#e5e5e5', borderRadius: 6, padding: 24, marginBottom: 16, width: 240 },
-  statLabel: { fontSize: 10, color: '#999999', marginBottom: 6 },
-  statValue: { fontSize: 28, fontWeight: 'bold', color: '#1A3C6E' },
-});
 
 interface ViewerRecord {
   date: string;
@@ -160,44 +136,15 @@ export function MergeViewerPage() {
   }, [records]);
 
   // ========================================
-  // 💾 PDF 저장 (pdfmake 서버 방식)
+  // 💾 PDF 저장 (window.print 방식 — SayuModal과 동일)
   // ========================================
-  const handleSavePDF = async () => {
-    toast.loading('PDF 생성 중...');
-    try {
-      const functions = getFunctions(undefined, 'asia-northeast3');
-      const generatePDF = httpsCallable(functions, 'generateMergePDFFast');
-
-      const sayuKey = `${formatPrefix}_sayu`;
-      const imagesKey = `${formatPrefix}_images`;
-      const result: any = await generatePDF({
-        title: `${format} 합본`,
-        dateRange: `${startDate} ~ ${endDate}`,
-        records: records.map(r => ({
-          date: r.date,
-          content: r[sayuKey] || '',
-          images: JSON.parse(r[imagesKey] || '[]'),
-        })),
-      });
-
-      const pdfData = atob(result.data.pdf);
-      const pdfArray = new Uint8Array(pdfData.length);
-      for (let i = 0; i < pdfData.length; i++) {
-        pdfArray[i] = pdfData.charCodeAt(i);
-      }
-      const blob = new Blob([pdfArray], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `HARU_${format}_${startDate}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.dismiss();
-    } catch (error) {
-      console.error('PDF 생성 실패:', error);
-      toast.dismiss();
-      toast.error('PDF 생성에 실패했습니다.');
-    }
+  const handleSavePDF = () => {
+    const originalTitle = document.title;
+    document.title = `HARU_${format}_${startDate}.pdf`;
+    window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
   };
 
   // 사진 레이아웃 렌더링 (인쇄용)
