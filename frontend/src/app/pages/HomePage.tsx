@@ -90,7 +90,7 @@ export function HomePage() {
         </section>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row justify-center gap-4">
+        <div className="flex flex-col sm:flex-row justify-center gap-4 mt-2">
           <button
             onClick={() => navigate('/record')}
             className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-all hover:opacity-90 shadow-lg"
