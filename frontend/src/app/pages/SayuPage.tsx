@@ -31,7 +31,8 @@ export function SayuPage() {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string; recordId?: string }[]>([]);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'tag'>('list');
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무']));
   const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
   const [sayuModalState, setSayuModalState] = useState<{
@@ -566,6 +567,16 @@ export function SayuPage() {
           >
             달력
           </button>
+          <button
+            onClick={() => { setViewMode('tag'); setSelectedTag(null); }}
+            className="flex-1 py-1.5 text-sm font-medium transition-all"
+            style={{
+              backgroundColor: viewMode === 'tag' ? '#1A3C6E' : 'transparent',
+              color: viewMode === 'tag' ? '#FAF9F6' : '#1A3C6E',
+            }}
+          >
+            태그
+          </button>
         </div>
       </div>
 
@@ -806,6 +817,133 @@ export function SayuPage() {
           </div>
         </div>
       )}
+
+      {/* ─── 태그 뷰 ─── */}
+      {viewMode === 'tag' && (() => {
+        // 전체 records에서 태그 수집 및 그룹핑
+        type TagEntry = { date: string; formatKey: string; formatLabel: string; recordId: string; title: string };
+        const tagMap: Record<string, TagEntry[]> = {};
+
+        records.forEach((r) => {
+          if (!r.formats) return;
+          r.formats.forEach((format) => {
+            const prefix = ALL_FORMAT_PREFIXES[format];
+            if (!prefix) return;
+            const tagsRaw: string = r[`${prefix}_tags`] || '';
+            if (!tagsRaw.trim()) return;
+            const tags = tagsRaw.split(/[,，\s]+/).map((t: string) => t.trim()).filter((t: string) => t.length > 0);
+            tags.forEach((tag: string) => {
+              if (!tagMap[tag]) tagMap[tag] = [];
+              const firstFieldKey = FORMAT_FIRST_FIELD[prefix];
+              let rawTitle = firstFieldKey ? (r[firstFieldKey] || '') : '';
+              if (!rawTitle) {
+                const fallbackKey = Object.keys(r).find(
+                  (k) => k.startsWith(`${prefix}_`) && !k.endsWith('_sayu') && !k.endsWith('_rating') && !k.endsWith('_polished') && !k.endsWith('_images') && !k.endsWith('_stats') && !k.endsWith('_tags') && !k.endsWith('_space') && typeof r[k] === 'string' && r[k].trim()
+                );
+                rawTitle = fallbackKey ? r[fallbackKey] : '';
+              }
+              const title = rawTitle.slice(0, 20) || '(내용 없음)';
+              // 같은 날 같은 형식 중복 방지 (recordId 기준)
+              const alreadyAdded = tagMap[tag].some(e => e.recordId === r.id && e.formatKey === prefix);
+              if (!alreadyAdded) {
+                tagMap[tag].push({ date: r.date, formatKey: prefix, formatLabel: format, recordId: r.id, title });
+              }
+            });
+          });
+        });
+
+        const allTags = Object.keys(tagMap).sort((a, b) => tagMap[b].length - tagMap[a].length);
+
+        if (loading) {
+          return <p className="text-center py-8 text-sm" style={{ color: '#999' }}>불러오는 중...</p>;
+        }
+
+        if (allTags.length === 0) {
+          return (
+            <div className="bg-white rounded-lg p-8 shadow-sm text-center">
+              <p className="text-sm" style={{ color: '#999' }}>태그가 있는 기록이 없습니다</p>
+              <p className="text-xs mt-1" style={{ color: '#bbb' }}>기록 작성 시 태그 필드를 채워보세요</p>
+            </div>
+          );
+        }
+
+        return (
+          <div>
+            {/* 태그 목록 */}
+            {!selectedTag && (
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <p className="text-xs mb-3 font-semibold" style={{ color: '#666' }}>
+                  태그 목록 ({allTags.length}개)
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {allTags.map((tag) => (
+                    <button
+                      key={tag}
+                      onClick={() => setSelectedTag(tag)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all hover:opacity-80"
+                      style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E', border: '1px solid #d0dff0' }}
+                    >
+                      <span># {tag}</span>
+                      <span
+                        className="rounded-full flex items-center justify-center text-xs font-bold"
+                        style={{ backgroundColor: '#1A3C6E', color: '#FAF9F6', width: 18, height: 18, fontSize: 10 }}
+                      >
+                        {tagMap[tag].length}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 선택된 태그의 기록 목록 */}
+            {selectedTag && tagMap[selectedTag] && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <button
+                    onClick={() => setSelectedTag(null)}
+                    className="text-xs px-2 py-1 rounded transition-colors hover:opacity-80"
+                    style={{ backgroundColor: '#e5e7eb', color: '#374151' }}
+                  >
+                    ← 태그 목록
+                  </button>
+                  <span className="text-sm font-semibold" style={{ color: '#1A3C6E' }}>
+                    # {selectedTag}
+                    <span className="ml-1 text-xs font-normal" style={{ color: '#999' }}>
+                      ({tagMap[selectedTag].length}건)
+                    </span>
+                  </span>
+                </div>
+                <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                  {tagMap[selectedTag]
+                    .sort((a, b) => b.date.localeCompare(a.date))
+                    .map((entry, idx) => {
+                      const [, month, day] = entry.date.split('-').map(Number);
+                      return (
+                        <button
+                          key={`${entry.recordId}-${entry.formatKey}-${idx}`}
+                          onClick={() => openFormatSayu(entry.date, entry.formatKey, entry.formatLabel, entry.recordId)}
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-yellow-50 transition-colors${idx > 0 ? ' border-t' : ''}`}
+                          style={{ borderColor: '#f5f5f5' }}
+                        >
+                          <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: '32px' }}>
+                            {month}/{day}
+                          </span>
+                          <span className="text-xs flex-shrink-0" style={{ color: '#999' }}>
+                            {FORMAT_EMOJI[entry.formatLabel as RecordFormat] || ''} {entry.formatLabel}
+                          </span>
+                          <span className="text-sm flex-1 truncate" style={{ color: '#333' }}>
+                            {entry.title}
+                          </span>
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       <SayuModal
         isOpen={sayuModalState.isOpen}
