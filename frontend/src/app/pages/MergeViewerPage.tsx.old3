@@ -332,16 +332,6 @@ export function MergeViewerPage() {
     }
   };
 
-  // ========================================
-  // 💾 PDF 저장 (window.print + 파일명 설정)
-  // ========================================
-  const handleSavePDF = () => {
-    const originalTitle = document.title;
-    document.title = `HARU_${format}_${startDate}.pdf`;
-    window.print();
-    document.title = originalTitle;
-  };
-
   // 사진 레이아웃 렌더링 (인쇄용)
   const renderPhotosForPrint = (images: string[]) => {
     if (images.length === 0) return null;
@@ -936,14 +926,14 @@ export function MergeViewerPage() {
               {/* 인쇄 / 저장 버튼 */}
               <div className="flex gap-3 mb-3">
                 <button
-                  onClick={() => { setShowPreviewModal(false); setTimeout(handlePrintBrowser, 100); }}
+                  onClick={() => { setShowPreviewModal(false); handlePrintBrowser(); }}
                   className="flex-1 py-3 rounded-lg text-sm font-semibold transition-all hover:opacity-90"
                   style={{ backgroundColor: '#F0FFF4', color: '#10b981', border: '1.5px solid #10b981' }}
                 >
                   🖨️ 인쇄
                 </button>
                 <button
-                  onClick={() => { setShowPreviewModal(false); setTimeout(handleSavePDF, 100); }}
+                  onClick={() => { setShowPreviewModal(false); handlePrint(); }}
                   className="flex-1 py-3 rounded-lg text-sm font-semibold transition-all hover:opacity-90"
                   style={{ backgroundColor: '#1A3C6E', color: '#FEFBE8' }}
                 >
