@@ -33,6 +33,7 @@ export function SayuPage() {
   const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string }[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무']));
+  const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
   const [sayuModalState, setSayuModalState] = useState<{
     isOpen: boolean;
     content: string;
@@ -66,6 +67,7 @@ export function SayuPage() {
 
   useEffect(() => {
     setCollapsedCategories(new Set(['생활', '업무']));
+    setExpandedFormats(new Set());
   }, [location.pathname]);
 
   const toggleSayuGuide = () => {
@@ -395,6 +397,18 @@ export function SayuPage() {
     });
   };
 
+  const toggleFormat = (formatKey: string) => {
+    setExpandedFormats((prev) => {
+      const next = new Set(prev);
+      if (next.has(formatKey)) {
+        next.delete(formatKey);
+      } else {
+        next.add(formatKey);
+      }
+      return next;
+    });
+  };
+
   const listData = getMonthListData();
   const hasMonthRecords = listData.length > 0;
 
@@ -525,23 +539,33 @@ export function SayuPage() {
 
                 {!collapsedCategories.has(category) && (
                   <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-                    {formats.map(({ format, entries }, fIdx) => (
+                    {formats.map(({ format, entries }, fIdx) => {
+                      const prefix = FORMAT_PREFIX[format];
+                      const isFormatExpanded = expandedFormats.has(prefix);
+                      return (
                       <div
                         key={format}
                         className={fIdx > 0 ? 'border-t' : ''}
                         style={{ borderColor: '#f0f0f0' }}
                       >
-                        {/* 형식 헤더 */}
-                        <div
-                          className="flex items-center gap-2 px-3 py-2"
+                        {/* 형식 헤더 — 클릭 시 기록 목록 펼침/닫힘 */}
+                        <button
+                          onClick={() => toggleFormat(prefix)}
+                          className="w-full flex items-center justify-between px-3 py-2 hover:opacity-80 transition-opacity"
                           style={{ backgroundColor: '#FEFBE8' }}
                         >
-                          <span className="text-sm">{FORMAT_EMOJI[format]}</span>
-                          <span className="text-xs font-semibold" style={{ color: '#333' }}>{format}</span>
-                        </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm">{FORMAT_EMOJI[format]}</span>
+                            <span className="text-xs font-semibold" style={{ color: '#333' }}>{format}</span>
+                            <span className="text-xs" style={{ color: '#999' }}>({entries.length})</span>
+                          </div>
+                          <span style={{ fontSize: '10px', color: '#1A3C6E' }}>
+                            {isFormatExpanded ? '▼' : '▶'}
+                          </span>
+                        </button>
 
-                        {/* 기록 목록 */}
-                        {entries.map((entry) => (
+                        {/* 기록 목록 — 형식 펼쳤을 때만 표시 */}
+                        {isFormatExpanded && entries.map((entry) => (
                           <button
                             key={`${entry.date}-${entry.formatKey}`}
                             onClick={() => openFormatSayu(entry.date, entry.formatKey, format)}
@@ -574,7 +598,8 @@ export function SayuPage() {
                           </button>
                         ))}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
