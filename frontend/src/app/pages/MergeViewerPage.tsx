@@ -701,8 +701,8 @@ export function MergeViewerPage() {
 
           /* 모달 미리보기 박스 노란 배경 제거 */
           .modal-preview-box {
-            background-color: transparent !important;
-            background: transparent !important;
+            background: white !important;
+            background-color: white !important;
           }
 
           /* App Layout 래퍼 배경/높이 초기화 */
