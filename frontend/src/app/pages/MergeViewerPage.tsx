@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router';
 import { ChevronLeft, ChevronRight, X, Printer, Download } from 'lucide-react';
 import { RecordFormat } from '../services/firestoreService';
 import { toast } from 'sonner';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 interface ViewerRecord {
   date: string;
@@ -163,13 +164,84 @@ export function MergeViewerPage() {
   };
 
   // ========================================
-  // 💾 PDF 저장 (window.print + 파일명 설정)
+  // 📱 기기 감지 함수
   // ========================================
-  const handleSavePDF = () => {
-    const originalTitle = document.title;
-    document.title = `HARU_${format}_${startDate}.pdf`;
-    window.print();
-    setTimeout(() => { document.title = originalTitle; }, 1000);
+  const isAndroid = () => {
+    const ua = navigator.userAgent.toLowerCase();
+    return /android/.test(ua);
+  };
+
+  const isIOS = () => {
+    const ua = navigator.userAgent.toLowerCase();
+    return /iphone|ipad|ipod/.test(ua) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  };
+
+  // ========================================
+  // 🚀 서버 PDF 생성 (Android용 Puppeteer)
+  // ========================================
+  const handlePrintServer = async () => {
+    try {
+      const functions = getFunctions(undefined, 'asia-northeast3');
+      const generatePDF = httpsCallable(functions, 'generateMergePDF');
+
+      const printArea = document.querySelector('.print-container')
+        || document.querySelector('.print-page')
+        || document.body;
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html lang="ko">
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body {
+              font-family: -apple-system, sans-serif;
+              background: white;
+              margin: 0;
+              padding: 20px;
+            }
+            * { background-color: white !important; }
+          </style>
+        </head>
+        <body>${printArea?.innerHTML || ''}</body>
+        </html>
+      `;
+
+      const result: any = await generatePDF({ htmlContent });
+
+      if (result.data.success) {
+        const pdfData = atob(result.data.pdf);
+        const pdfArray = new Uint8Array(pdfData.length);
+        for (let i = 0; i < pdfData.length; i++) {
+          pdfArray[i] = pdfData.charCodeAt(i);
+        }
+        const blob = new Blob([pdfArray], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `HARU_${format}_${startDate}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('PDF 생성 실패:', error);
+      window.print();
+    }
+  };
+
+  // ========================================
+  // 💾 PDF 저장 (기기별 분기)
+  // ========================================
+  const handleSavePDF = async () => {
+    if (isAndroid()) {
+      await handlePrintServer();
+    } else {
+      const originalTitle = document.title;
+      document.title = `HARU_${format}_${startDate}.pdf`;
+      window.print();
+      setTimeout(() => { document.title = originalTitle; }, 1000);
+    }
   };
 
   // 사진 레이아웃 렌더링 (인쇄용)
