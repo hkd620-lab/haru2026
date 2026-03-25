@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
 import { RecordFormat } from '../types/haruTypes';
 import { LibraryTitleAnimation } from '../components/LibraryTitleAnimation';
+import HaruLogo from '../../components/HaruLogo';
 import { toast } from 'sonner';
 
 export function LibraryPage() {
@@ -275,6 +276,7 @@ export function LibraryPage() {
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-start justify-between mb-2">
+          <HaruLogo />
           <LibraryTitleAnimation />
           <div className="flex gap-2 self-start mt-1 ml-auto">
             <button
