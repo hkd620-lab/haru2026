@@ -97,6 +97,16 @@ export function SayuModal({
     });
   };
 
+  // 💾 PDF 저장 (파일명 지정 후 window.print)
+  const handleSavePDF = () => {
+    const originalTitle = document.title;
+    document.title = `HARU_SAYU_${recordDate || 'sayu'}.pdf`;
+    window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
+  };
+
   // 📋 복사 (Word/Gmail용 - HTML)
   const handleCopyWithImages = async () => {
     try {
@@ -566,9 +576,9 @@ export function SayuModal({
                 <Copy style={{ width: 20, height: 20, color: '#1A3C6E' }} />
               </button>
               
-              {/* 📄 HTML 다운로드 버튼 */}
+              {/* 💾 PDF 저장 버튼 */}
               <button
-                onClick={handleDownloadHTML}
+                onClick={handleSavePDF}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -578,12 +588,15 @@ export function SayuModal({
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
-                title="HTML 다운로드"
+                title="PDF 저장"
               >
-                <Download style={{ width: 20, height: 20, color: '#F59E0B' }} />
+                <Download style={{ width: 20, height: 20, color: 'currentColor' }} />
               </button>
-              
-              {/* 🖨️ PDF 저장 버튼 */}
+
+              {/* 구분선 */}
+              <div style={{ width: 1, height: 20, backgroundColor: '#e5e5e5', margin: '0 2px' }} />
+
+              {/* 🖨️ 인쇄 버튼 */}
               <button
                 onClick={handlePrint}
                 disabled={isPrinting}
@@ -597,9 +610,9 @@ export function SayuModal({
                   justifyContent: 'center',
                   opacity: isPrinting ? 0.5 : 1,
                 }}
-                title="PDF 저장"
+                title="인쇄"
               >
-                <Printer style={{ width: 20, height: 20, color: '#9333EA' }} />
+                <Printer style={{ width: 20, height: 20, color: 'currentColor' }} />
               </button>
               
               {/* ✕ 닫기 버튼 */}
