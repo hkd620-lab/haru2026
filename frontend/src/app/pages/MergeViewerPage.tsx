@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { ChevronLeft, ChevronRight, X, Printer } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Printer, Download } from 'lucide-react';
 import { RecordFormat } from '../services/firestoreService';
 import { toast } from 'sonner';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -28,6 +28,7 @@ export function MergeViewerPage() {
   const state = location.state as LocationState | null;
 
   const [currentPage, setCurrentPage] = useState(0);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   if (!state || !state.records || state.records.length === 0) {
     return (
@@ -459,6 +460,31 @@ export function MergeViewerPage() {
     );
   };
 
+  const getPreviewContent = () => {
+    if (currentPage === 0) {
+      return {
+        title: `${format} 합본`,
+        preview: `${startDate} ~ ${endDate}\n총 ${records.length}개의 기록 · 별점 ${threshold}점 이상`,
+      };
+    }
+    if (currentPage === totalPages - 1) {
+      const avg = (records.reduce((sum, r) => sum + (r.mergeRating || 0), 0) / records.length).toFixed(1);
+      return {
+        title: '기록 요약',
+        preview: `총 ${records.length}개 · 평균 별점 ${avg}점`,
+      };
+    }
+    const record = records[currentPage - 1];
+    const sayuContent = record[`${formatPrefix}_sayu`] || '내용 없음';
+    const dateLabel = new Date(record.date + 'T00:00:00').toLocaleDateString('ko-KR', {
+      year: 'numeric', month: 'long', day: 'numeric', weekday: 'long',
+    });
+    return {
+      title: dateLabel,
+      preview: sayuContent.length > 120 ? sayuContent.slice(0, 120) + '…' : sayuContent,
+    };
+  };
+
   const renderPage = () => {
     // 표지 페이지
     if (currentPage === 0) {
@@ -773,13 +799,23 @@ export function MergeViewerPage() {
           <div className="text-sm font-medium" style={{ color: '#1A3C6E' }}>
             {format} 합본
           </div>
-          <button
-            onClick={handlePrint}
-            className="p-2 rounded hover:bg-gray-100 transition-colors"
-            title="PDF 저장"
-          >
-            <Printer className="w-5 h-5" style={{ color: '#10b981' }} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowPreviewModal(true)}
+              className="p-2 rounded hover:bg-gray-100 transition-colors"
+              title="저장"
+            >
+              <Download className="w-5 h-5" style={{ color: '#10b981' }} />
+            </button>
+            <div style={{ width: 1, height: 20, backgroundColor: '#e5e5e5', margin: '0 2px' }} />
+            <button
+              onClick={() => setShowPreviewModal(true)}
+              className="p-2 rounded hover:bg-gray-100 transition-colors"
+              title="인쇄"
+            >
+              <Printer className="w-5 h-5" style={{ color: '#10b981' }} />
+            </button>
+          </div>
         </div>
 
         {/* 뷰어 영역 */}
@@ -836,6 +872,65 @@ export function MergeViewerPage() {
           </div>
         </div>
       </div>
+
+      {/* 미리보기 모달 */}
+      {showPreviewModal && (() => {
+        const { title, preview } = getPreviewContent();
+        return (
+          <>
+            {/* 반투명 오버레이 */}
+            <div
+              className="fixed inset-0 bg-black/50 z-50"
+              onClick={() => setShowPreviewModal(false)}
+            />
+            {/* 바텀 시트 */}
+            <div
+              className="fixed left-0 right-0 bottom-0 z-50 bg-white"
+              style={{ borderRadius: '20px 20px 0 0', padding: '16px 20px 32px' }}
+            >
+              {/* 핸들 바 */}
+              <div style={{ width: 40, height: 4, backgroundColor: '#d1d5db', borderRadius: 2, margin: '0 auto 20px' }} />
+              {/* 제목 */}
+              <h3 className="text-base font-semibold mb-4 text-center" style={{ color: '#1A3C6E' }}>
+                인쇄 / 저장 미리보기
+              </h3>
+              {/* 미리보기 박스 */}
+              <div
+                className="rounded-lg p-4 mb-5"
+                style={{ border: '1px solid #e5e5e5', backgroundColor: '#FEFBE8' }}
+              >
+                <p className="text-sm font-semibold mb-2" style={{ color: '#1A3C6E' }}>{title}</p>
+                <p className="text-xs whitespace-pre-line" style={{ color: '#555', lineHeight: 1.7 }}>{preview}</p>
+              </div>
+              {/* 인쇄 / 저장 버튼 */}
+              <div className="flex gap-3 mb-3">
+                <button
+                  onClick={() => { setShowPreviewModal(false); handlePrintBrowser(); }}
+                  className="flex-1 py-3 rounded-lg text-sm font-semibold transition-all hover:opacity-90"
+                  style={{ backgroundColor: '#F0FFF4', color: '#10b981', border: '1.5px solid #10b981' }}
+                >
+                  🖨️ 인쇄
+                </button>
+                <button
+                  onClick={() => { setShowPreviewModal(false); handlePrint(); }}
+                  className="flex-1 py-3 rounded-lg text-sm font-semibold transition-all hover:opacity-90"
+                  style={{ backgroundColor: '#1A3C6E', color: '#FEFBE8' }}
+                >
+                  💾 저장
+                </button>
+              </div>
+              {/* 취소 버튼 */}
+              <button
+                onClick={() => setShowPreviewModal(false)}
+                className="w-full py-3 rounded-lg text-sm transition-all hover:bg-gray-100"
+                style={{ color: '#999', border: '1px solid #e5e5e5' }}
+              >
+                취소
+              </button>
+            </div>
+          </>
+        );
+      })()}
 
       {/* 인쇄 전용 레이아웃 */}
       <div className="print-show">
