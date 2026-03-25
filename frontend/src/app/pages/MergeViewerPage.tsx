@@ -694,9 +694,17 @@ export function MergeViewerPage() {
             background-color: white !important;
           }
 
-          /* 환경 태그(날씨/기분/별점 뱃지) 배경 연하게 유지 */
+          /* 환경 태그(날씨/기분/별점 뱃지) 인쇄 시 흰색 처리 */
           .env-tag {
-            background-color: #e8f0fb !important;
+            background: white !important;
+            background-color: white !important;
+            border: 0.5px solid #ccc !important;
+          }
+
+          .print-day, .print-page, .print-cover,
+          .print-summary, .print-content {
+            background: white !important;
+            background-color: white !important;
           }
 
           /* 모달 미리보기 박스 노란 배경 제거 */
