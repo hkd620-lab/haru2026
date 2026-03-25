@@ -105,7 +105,26 @@ export default function HaruLogo() {
         애니메이션 다시보기
       </button>
       <div className="flex flex-col items-center justify-center">
-        <div key={animationKey} className="relative flex items-center justify-center" style={{ width: 'min(200px, 55vw)', height: 'min(200px, 55vw)' }}>
+        <div key={animationKey} className="relative flex items-center justify-center" style={{ width: 'min(200px, 55vw)', height: 'min(200px, 55vw)', overflow: 'visible' }}>
+          <div
+            style={{
+              position: 'absolute',
+              top: '-36px',
+              left: '50%',
+              transform: 'translateX(-50%) rotate(15deg)',
+              transformOrigin: 'bottom center',
+            }}
+          >
+            <svg width="30" height="46" viewBox="0 0 30 46" fill="none">
+              <path
+                d="M15 44 C15 34 15 22 15 14 C15 8 18 4 22 2"
+                stroke="#5a3a2a"
+                strokeWidth="7.5"
+                strokeLinecap="round"
+                fill="none"
+              />
+            </svg>
+          </div>
           {grapeLayout.map((grape, index) => {
             const randomPos = getRandomPosition();
             const isCenterGrape = index === 5;
@@ -121,7 +140,7 @@ export default function HaruLogo() {
           })}
           {showCheckMark && (
             <motion.div className="absolute flex items-center justify-center" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.6, ease: 'easeOut' }}>
-              <svg width="120" height="120" viewBox="0 0 24 24"><path d="M5 12 L10 17 L19 7" stroke="#ff6600" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              <svg width="48" height="48" viewBox="0 0 24 24"><path d="M5 12 L10 17 L19 7" stroke="#ff6600" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </motion.div>
           )}
         </div>
