@@ -255,16 +255,16 @@ export function MergeViewerPage() {
   };
 
   // ========================================
-  // 💾 PDF 저장 (기기별 분기)
+  // 💾 PDF 저장 (Puppeteer 서버 방식 통일)
   // ========================================
   const handleSavePDF = async () => {
-    if (isAndroid()) {
+    toast.loading('PDF 생성 중...');
+    try {
       await handlePrintServer();
-    } else {
-      const originalTitle = document.title;
-      document.title = `HARU_${format}_${startDate}.pdf`;
-      window.print();
-      setTimeout(() => { document.title = originalTitle; }, 1000);
+      toast.dismiss();
+    } catch (error) {
+      toast.dismiss();
+      toast.error('PDF 생성에 실패했습니다.');
     }
   };
 
