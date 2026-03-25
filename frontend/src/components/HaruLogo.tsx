@@ -125,12 +125,12 @@ export default function HaruLogo() {
             </motion.div>
           )}
         </div>
-        <div className="text-center" style={{ marginTop: '-15px' }}>
+        <div className="text-center" style={{ marginTop: '-10px', marginBottom: '4px' }}>
           {showComplete && (
             <div className="flex items-center justify-center gap-1" style={{ marginBottom: '-12px' }}>
               {['H', 'A', 'R', 'U'].map((letter, index) => (
                 <motion.span key={index} className="font-bold relative"
-                  style={{ fontSize: 'min(26px, 6vw)', backgroundImage: 'linear-gradient(135deg, #cc4400 0%, #ff6600 20%, #ffaa44 40%, #fff0dd 50%, #ffaa44 60%, #ff6600 80%, #cc4400 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', backgroundSize: '300% 100%', filter: 'drop-shadow(0 0 8px rgba(255,102,0,0.6)) drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}
+                  style={{ fontSize: 'clamp(48px, 10vw, 72px)', backgroundImage: 'linear-gradient(135deg, #cc4400 0%, #ff6600 20%, #ffaa44 40%, #fff0dd 50%, #ffaa44 60%, #ff6600 80%, #cc4400 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', backgroundSize: '300% 100%', filter: 'drop-shadow(0 0 8px rgba(255,102,0,0.6)) drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}
                   initial={{ opacity: 0, y: 20, scale: 0.5 }}
                   animate={{ opacity: 1, y: 0, backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
                   transition={{ opacity: { delay: 1.0 + index * 0.1, duration: 0.5 }, y: { delay: 1.0 + index * 0.1, duration: 0.5 }, backgroundPosition: { delay: 1.7 + index * 0.15, duration: 2.5, repeat: Infinity, repeatDelay: 1, ease: 'linear' } }}
@@ -139,7 +139,7 @@ export default function HaruLogo() {
             </div>
           )}
           {showComplete && (
-            <motion.p className="text-sm" style={{ color: '#2C2C2C', opacity: 0.7 }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 0.7, y: 0 }} transition={{ delay: 2.5, duration: 0.6 }}>
+            <motion.p className="text-base" style={{ fontSize: 'clamp(14px, 2.5vw, 18px)', color: '#2C2C2C', opacity: 0.7 }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 0.7, y: 0 }} transition={{ delay: 2.5, duration: 0.6 }}>
               하루를{' '}
               <motion.span className="font-semibold" style={{ color: '#ff6600' }} animate={{ scale: [1, 1.15, 1] }} transition={{ delay: 3.0, duration: 0.8 }}>간편하게</motion.span>{' '}
               입력하고{' '}
