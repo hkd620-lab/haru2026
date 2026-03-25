@@ -34,7 +34,7 @@ const categories: FormatCategory[] = [
 
 export function StatisticsPage() {
   const navigate = useNavigate();
-  const [expandedCategory, setExpandedCategory] = useState<string | null>('생활');
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
   const toggleCategory = (title: string) => {
     setExpandedCategory(expandedCategory === title ? null : title);
