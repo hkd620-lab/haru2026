@@ -93,7 +93,7 @@ export default function HaruLogo() {
   }, [animationKey]);
 
   return (
-    <div className="flex items-center justify-center w-full pt-8 pb-2" style={{ backgroundColor: '#F7F5F2' }}>
+    <div className="flex items-center justify-center w-full pt-16 pb-2" style={{ backgroundColor: '#F7F5F2' }}>
       <div className="flex flex-col items-center justify-center">
         <div key={animationKey} className="relative flex items-center justify-center" style={{ width: 'min(200px, 55vw)', height: 'min(200px, 55vw)', overflow: 'visible' }}>
           <div
