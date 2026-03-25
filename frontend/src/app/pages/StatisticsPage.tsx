@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart3, ChevronRight } from 'lucide-react';
 
-type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기';
+type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '메모';
 
 interface FormatCategory {
   title: string;
@@ -24,7 +24,7 @@ const categories: FormatCategory[] = [
   },
   {
     title: '업무',
-    formats: ['일반보고', '업무일지', '선교보고'],
+    formats: ['일반보고', '업무일지', '선교보고', '메모'],
     icon: '💼',
     color: '#2A5C3E',
     bgColor: '#F0FFF4',
