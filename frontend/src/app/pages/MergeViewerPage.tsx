@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router';
 import { ChevronLeft, ChevronRight, X, Printer, Download } from 'lucide-react';
 import { RecordFormat } from '../services/firestoreService';
 import { toast } from 'sonner';
-import { getFunctions, httpsCallable } from 'firebase/functions';
 
 interface ViewerRecord {
   date: string;
@@ -136,20 +135,6 @@ export function MergeViewerPage() {
   }, [records]);
 
   // ========================================
-  // 📱 기기 감지 함수
-  // ========================================
-  const isAndroid = () => {
-    const ua = navigator.userAgent.toLowerCase();
-    return /android/.test(ua);
-  };
-
-  const isIOS = () => {
-    const ua = navigator.userAgent.toLowerCase();
-    return /iphone|ipad|ipod/.test(ua) || 
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  };
-
-  // ========================================
   // 🖨️ 브라우저 인쇄 (iOS/데스크톱용)
   // ========================================
   const handlePrintBrowser = () => {
@@ -178,168 +163,13 @@ export function MergeViewerPage() {
   };
 
   // ========================================
-  // 🚀 서버 PDF 생성 (Android용)
-  // ========================================
-  const handlePrintServer = async () => {
-    toast.info('PDF 생성 중... (안드로이드 최적화)');
-
-    try {
-      // HTML 콘텐츠 생성
-      const htmlContent = generatePrintHTML();
-
-      const functions = getFunctions(undefined, 'asia-northeast3');
-      const generatePDF = httpsCallable(functions, 'generateMergePDF');
-
-      const result = await generatePDF({ htmlContent });
-      const data = result.data as { success: boolean; pdf: string };
-
-      if (data.success && data.pdf) {
-        // Base64 PDF를 Blob으로 변환
-        const pdfBlob = base64ToBlob(data.pdf, 'application/pdf');
-        
-        // 다운로드
-        const url = URL.createObjectURL(pdfBlob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${format}_합본_${startDate}_${endDate}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-
-        toast.success('PDF 다운로드 완료!');
-      }
-    } catch (error: any) {
-      console.error('서버 PDF 생성 실패:', error);
-      toast.error('PDF 생성에 실패했습니다. 다시 시도해주세요.');
-    }
-  };
-
-  // Base64 → Blob 변환
-  const base64ToBlob = (base64: string, mimeType: string) => {
-    const byteCharacters = atob(base64);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    return new Blob([byteArray], { type: mimeType });
-  };
-
-  // HTML 생성 (서버 전송용)
-  const generatePrintHTML = (): string => {
-    const coverImage = getCoverImage();
-    
-    // Day 페이지들 HTML 생성
-    const dayPagesHTML = records.map((record) => {
-      const sayuKey = `${formatPrefix}_sayu`;
-      const sayuContent = record[sayuKey] || '내용 없음';
-      const images = getImages(record);
-
-      const imagesHTML = images.length > 0 ? `
-        <div class="print-photos" style="margin-bottom: 16px;">
-          ${images.map((img, idx) => `
-            <img src="${img}" alt="기록 사진 ${idx + 1}" 
-              style="max-width: 100%; border-radius: 8px; margin-bottom: 8px;" />
-          `).join('')}
-        </div>
-      ` : '';
-
-      return `
-        <div class="print-page print-day" style="page-break-after: always; padding: 20mm;">
-          <div class="print-day-header" style="margin-bottom: 16px;">
-            <h2 style="font-size: 16pt; color: #1A3C6E; margin-bottom: 8px;">
-              ${new Date(record.date + 'T00:00:00').toLocaleDateString('ko-KR', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                weekday: 'long',
-              })}
-            </h2>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-              ${record.mergeRating ? `<span style="font-size: 10pt; padding: 4px 12px; border-radius: 12px; background: #FFF8F0; color: #F59E0B;">${'⭐'.repeat(record.mergeRating)}</span>` : ''}
-              ${record.weather ? `<span style="font-size: 9pt; padding: 3px 8px; border-radius: 4px; background: #FDF6C3; color: #1A3C6E;">${record.weather}</span>` : ''}
-              ${record.temperature ? `<span style="font-size: 9pt; padding: 3px 8px; border-radius: 4px; background: #FDF6C3; color: #1A3C6E;">${record.temperature}</span>` : ''}
-              ${record.mood ? `<span style="font-size: 9pt; padding: 3px 8px; border-radius: 4px; background: #FDF6C3; color: #1A3C6E;">${record.mood}</span>` : ''}
-            </div>
-          </div>
-          ${imagesHTML}
-          <div class="print-content" style="background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #e5e5e5;">
-            <p style="font-size: 11pt; line-height: 1.6; color: #333;">${sayuContent}</p>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    const avgRating = (records.reduce((sum, r) => sum + (r.mergeRating || 0), 0) / records.length).toFixed(1);
-
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <style>
-    @page { size: A4; margin: 0; }
-    body { margin: 0; padding: 0; font-family: 'Noto Sans KR', sans-serif; }
-    .print-page { width: 210mm; min-height: 297mm; background: white; }
-    .print-cover { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px; }
-    .print-cover h1 { font-size: 28pt; font-weight: bold; color: #1A3C6E; margin-bottom: 20px; }
-    .print-cover img { max-width: 150mm; max-height: 150mm; object-fit: cover; border-radius: 8px; margin-top: 30px; }
-  </style>
-</head>
-<body>
-  <!-- 표지 -->
-  <div class="print-page print-cover">
-    <h1>${format} 합본</h1>
-    <p style="font-size: 14pt; color: #666; margin-bottom: 10px;">${startDate} ~ ${endDate}</p>
-    <p style="font-size: 12pt; color: #999;">총 ${records.length}개의 기록</p>
-    <p style="font-size: 12pt; color: #999;">별점 ${threshold}점 이상</p>
-    ${coverImage ? `<img src="${coverImage}" alt="대표 사진" />` : ''}
-  </div>
-
-  <!-- Day 페이지들 -->
-  ${dayPagesHTML}
-
-  <!-- 요약 페이지 -->
-  <div class="print-page" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px;">
-    <h2 style="font-size: 24pt; color: #1A3C6E; margin-bottom: 40px;">기록 요약</h2>
-    <div style="width: 100%; max-width: 400px;">
-      <div style="background: white; padding: 30px; border-radius: 8px; border: 1px solid #e5e5e5; margin-bottom: 20px;">
-        <p style="font-size: 10pt; color: #999; margin-bottom: 10px;">총 기록 수</p>
-        <p style="font-size: 28pt; font-weight: bold; color: #1A3C6E;">${records.length}개</p>
-      </div>
-      <div style="background: white; padding: 30px; border-radius: 8px; border: 1px solid #e5e5e5;">
-        <p style="font-size: 10pt; color: #999; margin-bottom: 10px;">평균 별점</p>
-        <p style="font-size: 28pt; font-weight: bold; color: #1A3C6E;">${avgRating}점</p>
-      </div>
-    </div>
-  </div>
-</body>
-</html>
-    `;
-  };
-
-  // ========================================
-  // 🎯 통합 인쇄 함수 (기기별 분기)
-  // ========================================
-  const handlePrint = async () => {
-    if (isAndroid()) {
-      // 안드로이드: 서버 PDF
-      await handlePrintServer();
-    } else {
-      // iOS/데스크톱: 브라우저 인쇄
-      handlePrintBrowser();
-    }
-  };
-
-  // ========================================
   // 💾 PDF 저장 (window.print + 파일명 설정)
   // ========================================
   const handleSavePDF = () => {
     const originalTitle = document.title;
     document.title = `HARU_${format}_${startDate}.pdf`;
     window.print();
-    document.title = originalTitle;
+    setTimeout(() => { document.title = originalTitle; }, 1000);
   };
 
   // 사진 레이아웃 렌더링 (인쇄용)
@@ -856,7 +686,7 @@ export function MergeViewerPage() {
           </div>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => setShowPreviewModal(true)}
+              onClick={handleSavePDF}
               className="p-2 rounded hover:bg-gray-100 transition-colors"
               title="저장"
             >
