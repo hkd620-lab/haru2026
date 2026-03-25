@@ -1,9 +1,33 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { ChevronLeft, ChevronRight, X, Printer, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Printer, Download, FileText } from 'lucide-react';
 import { RecordFormat } from '../services/firestoreService';
 import { toast } from 'sonner';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { pdf, Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
+
+Font.register({
+  family: 'NotoSansKR',
+  src: '/fonts/NotoSansKR.ttf',
+});
+
+const pdfStyles = StyleSheet.create({
+  page: { fontFamily: 'NotoSansKR', padding: 40, backgroundColor: '#ffffff' },
+  coverTitle: { fontSize: 28, fontWeight: 'bold', color: '#1A3C6E', marginBottom: 16, textAlign: 'center' },
+  coverSub: { fontSize: 14, color: '#666666', marginBottom: 8, textAlign: 'center' },
+  coverNote: { fontSize: 12, color: '#999999', textAlign: 'center' },
+  coverCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  dateTitle: { fontSize: 16, fontWeight: 'bold', color: '#1A3C6E', marginBottom: 10 },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12, gap: 6 },
+  tag: { fontSize: 9, color: '#1A3C6E', backgroundColor: '#FDF6C3', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
+  contentBox: { borderWidth: 1, borderColor: '#e5e5e5', borderRadius: 6, padding: 16, backgroundColor: '#f9f9f9' },
+  contentText: { fontSize: 11, color: '#333333', lineHeight: 1.7 },
+  summaryCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  summaryTitle: { fontSize: 22, fontWeight: 'bold', color: '#1A3C6E', marginBottom: 30, textAlign: 'center' },
+  statBox: { borderWidth: 1, borderColor: '#e5e5e5', borderRadius: 6, padding: 24, marginBottom: 16, width: 240 },
+  statLabel: { fontSize: 10, color: '#999999', marginBottom: 6 },
+  statValue: { fontSize: 28, fontWeight: 'bold', color: '#1A3C6E' },
+});
 
 interface ViewerRecord {
   date: string;
@@ -241,6 +265,81 @@ export function MergeViewerPage() {
       document.title = `HARU_${format}_${startDate}.pdf`;
       window.print();
       setTimeout(() => { document.title = originalTitle; }, 1000);
+    }
+  };
+
+  // ========================================
+  // 📄 @react-pdf/renderer PDF 다운로드
+  // ========================================
+  const handleDownloadPdf = async () => {
+    try {
+      toast.loading('PDF 생성 중...');
+      const avg = (records.reduce((sum, r) => sum + (r.mergeRating || 0), 0) / records.length).toFixed(1);
+
+      const PdfDoc = (
+        <Document>
+          {/* 표지 */}
+          <Page size="A4" style={pdfStyles.page}>
+            <View style={pdfStyles.coverCenter}>
+              <Text style={pdfStyles.coverTitle}>{format} 합본</Text>
+              <Text style={pdfStyles.coverSub}>{startDate} ~ {endDate}</Text>
+              <Text style={pdfStyles.coverNote}>총 {records.length}개의 기록 · 별점 {threshold}점 이상</Text>
+            </View>
+          </Page>
+
+          {/* Day 페이지 */}
+          {records.map((record, idx) => {
+            const sayuKey = `${formatPrefix}_sayu`;
+            const sayuContent = record[sayuKey] || '내용 없음';
+            const dateLabel = new Date(record.date + 'T00:00:00').toLocaleDateString('ko-KR', {
+              year: 'numeric', month: 'long', day: 'numeric', weekday: 'long',
+            });
+            return (
+              <Page key={idx} size="A4" style={pdfStyles.page}>
+                <Text style={pdfStyles.dateTitle}>{dateLabel}</Text>
+                <View style={pdfStyles.tagRow}>
+                  {record.mergeRating ? <Text style={pdfStyles.tag}>{'★'.repeat(record.mergeRating)}</Text> : null}
+                  {record.weather ? <Text style={pdfStyles.tag}>{record.weather}</Text> : null}
+                  {record.temperature ? <Text style={pdfStyles.tag}>{record.temperature}</Text> : null}
+                  {record.mood ? <Text style={pdfStyles.tag}>{record.mood}</Text> : null}
+                </View>
+                <View style={pdfStyles.contentBox}>
+                  <Text style={pdfStyles.contentText}>{sayuContent}</Text>
+                </View>
+              </Page>
+            );
+          })}
+
+          {/* 요약 페이지 */}
+          <Page size="A4" style={pdfStyles.page}>
+            <View style={pdfStyles.summaryCenter}>
+              <Text style={pdfStyles.summaryTitle}>기록 요약</Text>
+              <View style={pdfStyles.statBox}>
+                <Text style={pdfStyles.statLabel}>총 기록 수</Text>
+                <Text style={pdfStyles.statValue}>{records.length}개</Text>
+              </View>
+              <View style={pdfStyles.statBox}>
+                <Text style={pdfStyles.statLabel}>평균 별점</Text>
+                <Text style={pdfStyles.statValue}>{avg}점</Text>
+              </View>
+            </View>
+          </Page>
+        </Document>
+      );
+
+      const blob = await pdf(PdfDoc).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `HARU_${format}_${startDate}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.dismiss();
+      toast.success('PDF가 저장되었습니다!');
+    } catch (error) {
+      console.error('PDF 생성 실패:', error);
+      toast.dismiss();
+      toast.error('PDF 생성에 실패했습니다.');
     }
   };
 
@@ -883,6 +982,14 @@ export function MergeViewerPage() {
                   💾 저장
                 </button>
               </div>
+              <button
+                onClick={() => { setShowPreviewModal(false); setTimeout(handleDownloadPdf, 100); }}
+                className="w-full py-3 rounded-lg text-sm font-semibold transition-all hover:opacity-90 flex items-center justify-center gap-2 mb-3"
+                style={{ backgroundColor: '#4F46E5', color: '#FEFBE8' }}
+              >
+                <FileText className="w-4 h-4" />
+                PDF 저장
+              </button>
               {/* 취소 버튼 */}
               <button
                 onClick={() => setShowPreviewModal(false)}
