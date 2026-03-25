@@ -160,51 +160,10 @@ export function MergeViewerPage() {
   }, [records]);
 
   // ========================================
-  // 🖨️ 브라우저 인쇄 (iOS/데스크톱용)
+  // 💾 PDF 저장 (pdfmake 서버 방식)
   // ========================================
-  const handlePrintBrowser = () => {
-    const printImages = document.querySelectorAll('.print-show img');
-    
-    if (printImages.length === 0) {
-      setTimeout(() => window.print(), 50);
-      return;
-    }
-    
-    const imagePromises = Array.from(printImages).map((img) => {
-      return new Promise((resolve) => {
-        const htmlImg = img as HTMLImageElement;
-        if (htmlImg.complete && htmlImg.naturalHeight > 0) {
-          resolve(true);
-        } else {
-          htmlImg.addEventListener('load', () => resolve(true));
-          htmlImg.addEventListener('error', () => resolve(true));
-        }
-      });
-    });
-    
-    Promise.all(imagePromises).then(() => {
-      setTimeout(() => window.print(), 50);
-    });
-  };
-
-  // ========================================
-  // 📱 기기 감지 함수
-  // ========================================
-  const isAndroid = () => {
-    const ua = navigator.userAgent.toLowerCase();
-    return /android/.test(ua);
-  };
-
-  const isIOS = () => {
-    const ua = navigator.userAgent.toLowerCase();
-    return /iphone|ipad|ipod/.test(ua) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  };
-
-  // ========================================
-  // 🚀 서버 PDF 생성 (pdfmake 통일)
-  // ========================================
-  const handlePrintServer = async () => {
+  const handleSavePDF = async () => {
+    toast.loading('PDF 생성 중...');
     try {
       const functions = getFunctions(undefined, 'asia-northeast3');
       const generatePDF = httpsCallable(functions, 'generateMergePDFFast');
@@ -230,19 +189,6 @@ export function MergeViewerPage() {
       a.download = `HARU_${format}_${startDate}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('PDF 생성 실패:', error);
-      window.print();
-    }
-  };
-
-  // ========================================
-  // 💾 PDF 저장 (Puppeteer 서버 방식 통일)
-  // ========================================
-  const handleSavePDF = async () => {
-    toast.loading('PDF 생성 중...');
-    try {
-      await handlePrintServer();
       toast.dismiss();
     } catch (error) {
       toast.dismiss();
@@ -250,9 +196,6 @@ export function MergeViewerPage() {
     }
   };
 
-  // ========================================
-  // 📄 @react-pdf/renderer PDF 다운로드
-  // ========================================
   // 사진 레이아웃 렌더링 (인쇄용)
   const renderPhotosForPrint = (images: string[]) => {
     if (images.length === 0) return null;
@@ -875,30 +818,13 @@ export function MergeViewerPage() {
                 <p className="text-sm font-semibold mb-2" style={{ color: '#1A3C6E' }}>{title}</p>
                 <p className="text-xs whitespace-pre-line" style={{ color: '#555', lineHeight: 1.7 }}>{preview}</p>
               </div>
-              {/* 인쇄 / 저장 버튼 */}
-              <div className="flex gap-3 mb-3">
-                <button
-                  onClick={() => { setShowPreviewModal(false); setTimeout(handlePrintBrowser, 100); }}
-                  className="flex-1 py-3 rounded-lg text-sm font-semibold transition-all hover:opacity-90"
-                  style={{ backgroundColor: '#1A3C6E', color: '#FEFBE8' }}
-                >
-                  🖨️ 인쇄
-                </button>
-                <button
-                  onClick={() => { setShowPreviewModal(false); setTimeout(handleSavePDF, 100); }}
-                  className="flex-1 py-3 rounded-lg text-sm font-semibold transition-all hover:opacity-90"
-                  style={{ backgroundColor: '#10b981', color: '#FEFBE8' }}
-                >
-                  💾 저장
-                </button>
-              </div>
+              {/* PDF 저장 버튼 */}
               <button
                 onClick={() => { setShowPreviewModal(false); setTimeout(handleSavePDF, 100); }}
                 className="w-full py-3 rounded-lg text-sm font-semibold transition-all hover:opacity-90 flex items-center justify-center gap-2 mb-3"
-                style={{ backgroundColor: '#4F46E5', color: '#FEFBE8' }}
+                style={{ backgroundColor: '#10b981', color: '#FEFBE8' }}
               >
-                <FileText className="w-4 h-4" />
-                PDF 저장
+                💾 PDF 저장
               </button>
               {/* 취소 버튼 */}
               <button
