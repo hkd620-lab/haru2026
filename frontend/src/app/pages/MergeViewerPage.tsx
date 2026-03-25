@@ -686,7 +686,7 @@ export function MergeViewerPage() {
           </div>
           <div className="flex items-center gap-1">
             <button
-              onClick={handleSavePDF}
+              onClick={() => setShowPreviewModal(true)}
               className="p-2 rounded hover:bg-gray-100 transition-colors"
               title="저장"
             >
@@ -792,14 +792,14 @@ export function MergeViewerPage() {
                 <button
                   onClick={() => { setShowPreviewModal(false); setTimeout(handlePrintBrowser, 100); }}
                   className="flex-1 py-3 rounded-lg text-sm font-semibold transition-all hover:opacity-90"
-                  style={{ backgroundColor: '#F0FFF4', color: '#10b981', border: '1.5px solid #10b981' }}
+                  style={{ backgroundColor: '#1A3C6E', color: '#FEFBE8' }}
                 >
                   🖨️ 인쇄
                 </button>
                 <button
                   onClick={() => { setShowPreviewModal(false); setTimeout(handleSavePDF, 100); }}
                   className="flex-1 py-3 rounded-lg text-sm font-semibold transition-all hover:opacity-90"
-                  style={{ backgroundColor: '#1A3C6E', color: '#FEFBE8' }}
+                  style={{ backgroundColor: '#10b981', color: '#FEFBE8' }}
                 >
                   💾 저장
                 </button>
