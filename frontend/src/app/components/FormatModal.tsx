@@ -128,6 +128,9 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 📝 메모 형식 안내 메시지
+  const [showMemoGuide, setShowMemoGuide] = useState(true);
+
   // 🌱 텃밭일지 전용: 작물 목록 관리
   const [crops, setCrops] = useState<string[]>([]);
   const [newCropName, setNewCropName] = useState('');
@@ -170,6 +173,12 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen && format === '메모') {
+      setShowMemoGuide(true);
+    }
+  }, [isOpen, format]);
 
   if (!isOpen) return null;
 
@@ -899,6 +908,44 @@ ${contentValues}`,
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* 메모 형식 AI 제목 안내 */}
+              {format === '메모' && showMemoGuide && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: 8,
+                  backgroundColor: '#F0FDF4',
+                  border: '1px solid #10b981',
+                  borderRadius: 8,
+                  padding: '10px 14px',
+                  marginBottom: 12,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 14 }}>✨</span>
+                    <p style={{ fontSize: 12, color: '#065f46', margin: 0, lineHeight: 1.6 }}>
+                      <strong style={{ color: '#10b981' }}>AI 제목 자동 추출</strong> —
+                      제목을 비워두면 저장 시 AI가 내용을 분석해 자동으로 제목을 달아드립니다.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowMemoGuide(false)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#10b981',
+                      fontSize: 16,
+                      padding: 0,
+                      lineHeight: 1,
+                      flexShrink: 0,
+                    }}
+                  >
+                    ×
+                  </button>
                 </div>
               )}
 
