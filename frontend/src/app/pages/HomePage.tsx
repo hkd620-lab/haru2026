@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router';
 import { PlusCircle, Sparkles } from 'lucide-react';
-import { HaruLogoAnimation } from '../components/HaruLogoAnimation';
+// import { HaruLogoAnimation } from '../components/HaruLogoAnimation';
+import HaruLogo from '../../components/HaruLogo';
 import { firestoreService } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { requestNotificationPermission } from '../services/notificationService';
@@ -64,7 +65,8 @@ export function HomePage() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
         {/* Logo & Identity */}
         <header className="text-center mb-16 md:mb-20">
-          <HaruLogoAnimation />
+          {/* <HaruLogoAnimation /> */}
+          <HaruLogo />
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
