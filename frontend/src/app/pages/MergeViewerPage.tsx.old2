@@ -762,27 +762,6 @@ export function MergeViewerPage() {
             box-shadow: none !important;
             text-shadow: none !important;
           }
-
-          /* ─── 빈 노란 박스 제거 ─── */
-          /* App Layout 래퍼(min-h-screen + #FEFBE8) 인쇄 시 배경 흰색으로 */
-          .min-h-screen,
-          .min-h-\[calc\(100vh-56px-80px\)\] {
-            background-color: white !important;
-            background: white !important;
-            min-height: auto !important;
-          }
-
-          /* 빈 컨테이너 숨기기 */
-          div:empty,
-          span:empty {
-            display: none !important;
-          }
-
-          /* App 전체 배경 흰색 강제 */
-          html, body, #root {
-            background-color: white !important;
-            background: white !important;
-          }
         }
 
         /* 화면 전용 - 인쇄 시 숨김 */
