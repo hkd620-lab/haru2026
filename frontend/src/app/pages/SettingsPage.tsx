@@ -26,6 +26,12 @@ export function SettingsPage() {
   // 관리자 전체 알림 상태
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
+
+  // 개발자 도구 상태
+  const [fcmTokens, setFcmTokens] = useState<string[]>([]);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [isSendingTest, setIsSendingTest] = useState(false);
+  const [testResult, setTestResult] = useState('');
   
   const [stats, setStats] = useState({
     totalRecords: 0,
@@ -36,11 +42,15 @@ export function SettingsPage() {
   const [loadingStats, setLoadingStats] = useState(true);
 
   const isAdmin = user?.uid === ADMIN_UID;
+  const isDevUser = user?.email === 'hkd620@gmail.com';
 
   useEffect(() => {
     if (user?.uid) {
       loadStats();
       loadNotificationSettings();
+      if (user.email === 'hkd620@gmail.com') {
+        loadFcmTokens();
+      }
     } else {
       setLoadingStats(false);
     }
@@ -162,6 +172,45 @@ export function SettingsPage() {
       toast.error(error.message || '알림 발송 중 오류가 발생했습니다.');
     } finally {
       setIsSendingBroadcast(false);
+    }
+  };
+
+  const loadFcmTokens = async () => {
+    if (!user?.uid) return;
+    try {
+      const settingsRef = doc(db, `users/${user.uid}/settings/settings`);
+      const snap = await getDoc(settingsRef);
+      if (snap.exists()) {
+        setFcmTokens(snap.data().fcmTokens || []);
+      }
+    } catch (e) {
+      console.error('FCM 토큰 로딩 실패:', e);
+    }
+  };
+
+  const handleCopyToken = async (token: string, index: number) => {
+    try {
+      await navigator.clipboard.writeText(token);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    } catch (e) {
+      toast.error('복사 실패');
+    }
+  };
+
+  const handleSendTestNotification = async () => {
+    setIsSendingTest(true);
+    setTestResult('');
+    try {
+      const functions = getFunctions(undefined, 'asia-northeast3');
+      const sendTest = httpsCallable(functions, 'sendTestNotification');
+      const result = await sendTest({});
+      const data = result.data as { success: boolean; total: number; succeeded: number; failed: number };
+      setTestResult(`발송 완료! 총 ${data.total}개 기기 중 ${data.succeeded}개 성공, ${data.failed}개 실패`);
+    } catch (e: any) {
+      setTestResult(`오류: ${e.message}`);
+    } finally {
+      setIsSendingTest(false);
     }
   };
 
@@ -521,6 +570,77 @@ export function SettingsPage() {
                 ⚠️ 모든 사용자에게 푸시 알림이 전송됩니다
               </p>
             </div>
+          </section>
+        )}
+
+        {isDevUser && (
+          <section
+            className="bg-white rounded-lg p-6 shadow-sm"
+            style={{ border: '2px dashed #1A3C6E' }}
+          >
+            <div className="flex items-center gap-3 mb-5">
+              <span className="text-lg">🔧</span>
+              <h2 className="text-base tracking-wide" style={{ color: '#1A3C6E' }}>
+                개발자 도구
+              </h2>
+              <span
+                className="text-xs px-2 py-0.5 rounded-full font-bold"
+                style={{ backgroundColor: '#1A3C6E', color: '#fff' }}
+              >
+                개발자 전용
+              </span>
+            </div>
+
+            {/* FCM 토큰 목록 */}
+            <div className="mb-5">
+              <p className="text-xs font-semibold mb-2" style={{ color: '#666' }}>
+                FCM 토큰 목록 ({fcmTokens.length}개)
+              </p>
+              {fcmTokens.length === 0 ? (
+                <p className="text-xs" style={{ color: '#999' }}>토큰 없음</p>
+              ) : (
+                <div className="space-y-2">
+                  {fcmTokens.map((token, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                      style={{ backgroundColor: '#F9FAFB', border: '1px solid #e5e5e5' }}
+                    >
+                      <span className="text-xs font-mono flex-1" style={{ color: '#333' }}>
+                        [{i + 1}] {token.substring(0, 20)}...
+                      </span>
+                      <button
+                        onClick={() => handleCopyToken(token, i)}
+                        className="text-xs px-2 py-1 rounded transition-all"
+                        style={{
+                          backgroundColor: copiedIndex === i ? '#10b981' : '#1A3C6E',
+                          color: '#fff',
+                          minWidth: '52px',
+                        }}
+                      >
+                        {copiedIndex === i ? '복사됨!' : '복사'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 테스트 알림 버튼 */}
+            <button
+              onClick={handleSendTestNotification}
+              disabled={isSendingTest || fcmTokens.length === 0}
+              className="w-full px-4 py-3 rounded-lg text-sm font-bold transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: '#10b981', color: '#fff' }}
+            >
+              {isSendingTest ? '발송 중...' : '전체 기기에 테스트 알림 발송'}
+            </button>
+
+            {testResult && (
+              <p className="text-xs mt-2 text-center" style={{ color: testResult.startsWith('오류') ? '#dc2626' : '#10b981' }}>
+                {testResult}
+              </p>
+            )}
           </section>
         )}
 
