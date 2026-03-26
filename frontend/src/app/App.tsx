@@ -13,6 +13,7 @@ import { MergeViewerPage } from './pages/MergeViewerPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { StatisticsPage } from './pages/StatisticsPage';
 import { FormatStatisticsPage } from './pages/FormatStatisticsPage';
+import SubscriptionPage from './pages/SubscriptionPage';
 import { BottomNav } from './components/BottomNav';
 
 function App() {
@@ -41,6 +42,9 @@ function App() {
               {/* 통계 페이지 */}
               <Route path="/stats" element={<StatisticsPage />} />
               <Route path="/stats/:format" element={<FormatStatisticsPage />} />
+
+              {/* 구독 페이지 */}
+              <Route path="/subscription" element={<SubscriptionPage />} />
             </Routes>
           </main>
           
