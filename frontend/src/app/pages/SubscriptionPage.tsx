@@ -80,9 +80,9 @@ export default function SubscriptionPage() {
 
           {/* FREE */}
           <div className="bg-white rounded-2xl p-4 border border-gray-200">
-            <div className="text-sm font-bold text-gray-400 mb-1">FREE</div>
-            <div className="text-2xl font-black text-gray-800 mb-3">₩0</div>
-            <ul className="space-y-1 text-xs text-gray-600">
+            <div className="text-base font-bold text-gray-400 mb-1">FREE</div>
+            <div className="text-3xl font-black text-gray-800 mb-3">₩0</div>
+            <ul className="space-y-1 text-sm text-gray-600">
               <li>✅ 기록 형식 10개</li>
               <li>✅ SAYU 다듬기 전체</li>
               <li>✅ TEXT/HTML 출력</li>
