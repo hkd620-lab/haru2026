@@ -9,6 +9,7 @@ import {
   StatScore,
   FORMAT_PREFIX,
 } from '../types/haruTypes';
+import { useSubscription } from '../hooks/useSubscription';
 
 // 날짜 계산 함수들
 function getWeekRange(year: number, month: number, week: number) {
@@ -140,6 +141,7 @@ export function FormatStatisticsPage() {
   const { format } = useParams<{ format: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isPremium } = useSubscription();
 
   // 기간 선택 상태
   const [periodMode, setPeriodMode] = useState<'week' | 'month' | 'custom'>('month');
@@ -266,26 +268,42 @@ export function FormatStatisticsPage() {
             주간
           </button>
           <button
-            onClick={() => setPeriodMode('month')}
+            onClick={() => {
+              if (!isPremium) {
+                alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 3,000원으로 시작해 보세요!');
+                window.location.href = '/subscription';
+                return;
+              }
+              setPeriodMode('month');
+            }}
             className="px-4 py-2 rounded-lg text-sm transition-all"
             style={{
               backgroundColor: periodMode === 'month' ? '#1A3C6E' : '#FEFBE8',
               color: periodMode === 'month' ? '#FAF9F6' : '#333',
               border: periodMode === 'month' ? 'none' : '1px solid #e5e5e5',
+              opacity: isPremium ? 1 : 0.7,
             }}
           >
-            월간
+            월간{!isPremium && ' 🔒'}
           </button>
           <button
-            onClick={() => setPeriodMode('custom')}
+            onClick={() => {
+              if (!isPremium) {
+                alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 3,000원으로 시작해 보세요!');
+                window.location.href = '/subscription';
+                return;
+              }
+              setPeriodMode('custom');
+            }}
             className="px-4 py-2 rounded-lg text-sm transition-all"
             style={{
               backgroundColor: periodMode === 'custom' ? '#1A3C6E' : '#FEFBE8',
               color: periodMode === 'custom' ? '#FAF9F6' : '#333',
               border: periodMode === 'custom' ? 'none' : '1px solid #e5e5e5',
+              opacity: isPremium ? 1 : 0.7,
             }}
           >
-            사용자 정의
+            사용자 정의{!isPremium && ' 🔒'}
           </button>
         </div>
 

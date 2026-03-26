@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Star, Printer, Copy, Download, FileText } from 'lucide-react';
 import { toast } from 'sonner';
+import { useSubscription } from '../hooks/useSubscription';
 
 export interface SayuModalProps {
   isOpen: boolean;
@@ -44,6 +45,7 @@ export function SayuModal({
   mood,
   images = []
 }: SayuModalProps) {
+  const { isPremium } = useSubscription();
   const [editedContent, setEditedContent] = useState(content);
   const [isSaving, setIsSaving] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
@@ -99,6 +101,11 @@ export function SayuModal({
 
   // 💾 PDF 저장 (파일명 지정 후 window.print)
   const handleSavePDF = () => {
+    if (!isPremium) {
+      alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 3,000원으로 시작해 보세요!');
+      window.location.href = '/subscription';
+      return;
+    }
     const originalTitle = document.title;
     document.title = `HARU_SAYU_${recordDate || 'sayu'}.pdf`;
     window.print();
@@ -601,10 +608,12 @@ export function SayuModal({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  opacity: isPremium ? 1 : 0.6,
                 }}
-                title="PDF 저장"
+                title={isPremium ? 'PDF 저장' : '🔒 PREMIUM 전용 기능'}
               >
                 <Download style={{ width: 20, height: 20, color: 'currentColor' }} />
+                {!isPremium && <span className="ml-1 text-xs">🔒</span>}
               </button>
 
               {/* 구분선 */}

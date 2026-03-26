@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../services/firestoreService';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS, FORMAT_PREFIX } from '../types/haruTypes';
+import { useSubscription } from '../hooks/useSubscription';
 
 type StarThreshold = 1 | 2 | 3 | 4 | 5;
 type MergePeriod = 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'custom';
@@ -18,6 +19,7 @@ interface PeriodOption {
 
 export function MergePage() {
   const { user } = useAuth();
+  const { isPremium } = useSubscription();
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<RecordFormat | null>(null);
@@ -328,10 +330,19 @@ export function MergePage() {
         <div className="grid grid-cols-5 gap-0 px-3">
           {periodOptions.map((option, index) => {
             const isSelected = selectedPeriod === option.id;
+            const isPremiumRequired = ['monthly', 'quarterly', 'yearly'].includes(option.id);
+            const isLocked = isPremiumRequired && !isPremium;
             return (
               <button
                 key={option.id}
-                onClick={() => handlePeriodSelect(option.id)}
+                onClick={() => {
+                  if (isLocked) {
+                    alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 3,000원으로 시작해 보세요!');
+                    window.location.href = '/subscription';
+                    return;
+                  }
+                  handlePeriodSelect(option.id);
+                }}
                 className="py-3 transition-all text-center"
                 style={{
                   backgroundColor: isSelected ? '#FDF6C3' : '#FEFBE8',
@@ -347,6 +358,7 @@ export function MergePage() {
                       : '0',
                   fontWeight: isSelected ? 600 : 400,
                   boxShadow: isSelected ? '0 2px 8px rgba(26,60,110,0.12)' : 'none',
+                  opacity: isLocked ? 0.7 : 1,
                 }}
               >
                 <div
@@ -356,7 +368,7 @@ export function MergePage() {
                     marginBottom: '3px',
                   }}
                 >
-                  {option.title}
+                  {option.title}{isLocked && ' 🔒'}
                 </div>
                 <div style={{ fontSize: '10px', color: isSelected ? '#555' : '#999' }}>
                   {option.description}
