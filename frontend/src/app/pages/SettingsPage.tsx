@@ -32,6 +32,8 @@ export function SettingsPage() {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [testResult, setTestResult] = useState('');
+  const [testTitle, setTestTitle] = useState('HARU 테스트 알림');
+  const [testBody, setTestBody] = useState('알림이 정상적으로 작동합니다! ✅');
   
   const [stats, setStats] = useState({
     totalRecords: 0,
@@ -204,7 +206,10 @@ export function SettingsPage() {
     try {
       const functions = getFunctions(undefined, 'asia-northeast3');
       const sendTest = httpsCallable(functions, 'sendTestNotification');
-      const result = await sendTest({});
+      const result = await sendTest({
+        title: testTitle.trim() || 'HARU 테스트 알림',
+        body: testBody.trim() || '알림이 정상적으로 작동합니다! ✅',
+      });
       const data = result.data as { success: boolean; total: number; succeeded: number; failed: number };
       setTestResult(`발송 완료! 총 ${data.total}개 기기 중 ${data.succeeded}개 성공, ${data.failed}개 실패`);
     } catch (e: any) {
@@ -624,6 +629,32 @@ export function SettingsPage() {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* 알림 제목 / 내용 입력창 */}
+            <div className="space-y-3 mb-3">
+              <div>
+                <label className="text-xs font-semibold block mb-1" style={{ color: '#666' }}>알림 제목</label>
+                <input
+                  type="text"
+                  value={testTitle}
+                  onChange={(e) => setTestTitle(e.target.value)}
+                  placeholder="예) HARU 새 기능 안내"
+                  className="w-full px-3 py-2 rounded-lg text-sm"
+                  style={{ border: '1px solid #e5e5e5', backgroundColor: '#F9FAFB', color: '#333' }}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold block mb-1" style={{ color: '#666' }}>알림 내용</label>
+                <textarea
+                  value={testBody}
+                  onChange={(e) => setTestBody(e.target.value)}
+                  placeholder="예) 새로운 기능이 추가되었습니다!"
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-lg text-sm"
+                  style={{ border: '1px solid #e5e5e5', backgroundColor: '#F9FAFB', color: '#333', resize: 'vertical' }}
+                />
+              </div>
             </div>
 
             {/* 테스트 알림 버튼 */}

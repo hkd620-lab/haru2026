@@ -8,6 +8,7 @@ import axios from 'axios';
 import * as crypto from 'crypto';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const PDFDocument = require('pdfkit');
+const sharp = require('sharp');
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -692,6 +693,60 @@ export const googleCallback = onRequest(
   }
 );
 
+// ===== 🔔 테스트 알림 발송 =====
+export const sendTestNotification = onCall(
+  { region: 'asia-northeast3' },
+  async (request) => {
+    // 로그인 여부 확인
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const uid = request.auth.uid;
+
+    // 본인 토큰만 조회
+    const settingsRef = db.doc(`users/${uid}/settings/settings`);
+    const settingsSnap = await settingsRef.get();
+
+    if (!settingsSnap.exists) {
+      throw new HttpsError('not-found', 'FCM 토큰이 없습니다. 알림 권한을 허용해주세요.');
+    }
+
+    const fcmTokens: string[] = settingsSnap.data()?.fcmTokens || [];
+
+    if (fcmTokens.length === 0) {
+      throw new HttpsError('not-found', 'FCM 토큰이 없습니다. 알림 권한을 허용해주세요.');
+    }
+
+    const { title, body } = request.data;
+
+    const message = {
+      notification: {
+        title: (title && typeof title === 'string' && title.trim()) || 'HARU 테스트 알림',
+        body: (body && typeof body === 'string' && body.trim()) || '알림이 정상적으로 작동합니다! ✅',
+      },
+    };
+
+    const results = await Promise.allSettled(
+      fcmTokens.map((token) =>
+        admin.messaging().send({ ...message, token })
+      )
+    );
+
+    const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+    const failed = results.filter((r) => r.status === 'rejected').length;
+
+    logger.info(`테스트 알림 발송 완료 — uid: ${uid}, 성공: ${succeeded}, 실패: ${failed}`);
+
+    return {
+      success: true,
+      total: fcmTokens.length,
+      succeeded,
+      failed,
+    };
+  }
+);
+
 // ===== 🔔 알림 스케줄러 =====
 export { scheduledPushNotification } from './scheduledNotification';
 
@@ -745,9 +800,14 @@ export const generateMergePDFFast = onCall({ region: 'asia-northeast3', memory: 
         for (const url of record.images) {
           try {
             const res = await axios.get(url, { responseType: 'arraybuffer', timeout: 10000 });
-            imageBuffers.push(Buffer.from(res.data));
+            // sharp로 리사이징: 최대 800px, JPEG 품질 70% → 응답 크기 축소
+            const resized = await sharp(Buffer.from(res.data))
+              .resize({ width: 800, withoutEnlargement: true })
+              .jpeg({ quality: 70 })
+              .toBuffer();
+            imageBuffers.push(resized);
           } catch (e) {
-            logger.warn(`이미지 다운로드 실패: ${url}`);
+            logger.warn(`이미지 다운로드/리사이징 실패: ${url}`);
           }
         }
       }
