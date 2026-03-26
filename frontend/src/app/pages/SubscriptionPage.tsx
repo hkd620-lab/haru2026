@@ -8,7 +8,7 @@ export default function SubscriptionPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  const handleSubscribe = async () => {
+  const handleSubscribe = async (method: 'kakao' | 'toss' = 'kakao') => {
     if (!user) {
       alert('로그인이 필요합니다.');
       return;
@@ -21,12 +21,14 @@ export default function SubscriptionPage() {
 
       const response = await PortOne.requestPayment({
         storeId: import.meta.env.VITE_PORTONE_STORE_ID,
-        channelKey: import.meta.env.VITE_PORTONE_CHANNEL_KEY,
+        channelKey: method === 'kakao'
+          ? import.meta.env.VITE_PORTONE_CHANNEL_KEY
+          : import.meta.env.VITE_PORTONE_TOSS_CHANNEL_KEY,
         paymentId: paymentId,
         orderName: 'HARU PREMIUM 월 구독',
         totalAmount: 3000,
         currency: 'KRW',
-        payMethod: 'EASY_PAY',
+        payMethod: method === 'kakao' ? 'EASY_PAY' : 'CARD',
         customer: {
           email: user.email || '',
         },
@@ -114,11 +116,19 @@ export default function SubscriptionPage() {
 
         {/* 결제 버튼 */}
         <button
-          onClick={handleSubscribe}
+          onClick={() => handleSubscribe('kakao')}
           disabled={loading}
           className="w-full bg-[#1A3C6E] hover:bg-[#10b981] text-white font-black text-lg py-4 rounded-2xl transition-colors disabled:opacity-50"
         >
           {loading ? '결제 처리 중...' : '월 3,000원으로 시작하기 🚀'}
+        </button>
+
+        <button
+          onClick={() => handleSubscribe('toss')}
+          disabled={loading}
+          className="w-full bg-[#10b981] hover:bg-[#059669] text-white font-black text-lg py-4 rounded-2xl transition-colors disabled:opacity-50 mt-3"
+        >
+          {loading ? '결제 처리 중...' : '토스페이먼츠로 결제하기 💳'}
         </button>
 
         <p className="text-center text-xs text-gray-400 mt-3">
