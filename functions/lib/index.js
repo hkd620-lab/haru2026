@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.convertHeic = exports.generateMergePDF = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.polishContent = void 0;
+exports.removeAllTags = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.polishContent = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
 const params_1 = require("firebase-functions/params");
@@ -45,6 +45,10 @@ const admin = __importStar(require("firebase-admin"));
 const logger = __importStar(require("firebase-functions/logger"));
 const axios_1 = __importDefault(require("axios"));
 const crypto = __importStar(require("crypto"));
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const PDFDocument = require('pdfkit');
+const sharp = require('sharp');
+const path = __importStar(require("path"));
 // Firebase Admin 초기화
 if (!admin.apps.length) {
     admin.initializeApp();
@@ -593,65 +597,48 @@ exports.googleCallback = (0, https_1.onRequest)({
         res.redirect(`${FRONTEND_URL}/login?error=${encodeURIComponent(error.message)}`);
     }
 });
+// ===== 🔔 테스트 알림 발송 =====
+exports.sendTestNotification = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
+    var _a;
+    // 로그인 여부 확인
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    // 본인 토큰만 조회
+    const settingsRef = db.doc(`users/${uid}/settings/settings`);
+    const settingsSnap = await settingsRef.get();
+    if (!settingsSnap.exists) {
+        throw new https_2.HttpsError('not-found', 'FCM 토큰이 없습니다. 알림 권한을 허용해주세요.');
+    }
+    const fcmTokens = ((_a = settingsSnap.data()) === null || _a === void 0 ? void 0 : _a.fcmTokens) || [];
+    if (fcmTokens.length === 0) {
+        throw new https_2.HttpsError('not-found', 'FCM 토큰이 없습니다. 알림 권한을 허용해주세요.');
+    }
+    const { title, body } = request.data;
+    const message = {
+        notification: {
+            title: (title && typeof title === 'string' && title.trim()) || 'HARU 테스트 알림',
+            body: (body && typeof body === 'string' && body.trim()) || '알림이 정상적으로 작동합니다! ✅',
+        },
+    };
+    const results = await Promise.allSettled(fcmTokens.map((token) => admin.messaging().send({ ...message, token })));
+    const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+    const failed = results.filter((r) => r.status === 'rejected').length;
+    logger.info(`테스트 알림 발송 완료 — uid: ${uid}, 성공: ${succeeded}, 실패: ${failed}`);
+    return {
+        success: true,
+        total: fcmTokens.length,
+        succeeded,
+        failed,
+    };
+});
 // ===== 🔔 알림 스케줄러 =====
 var scheduledNotification_1 = require("./scheduledNotification");
 Object.defineProperty(exports, "scheduledPushNotification", { enumerable: true, get: function () { return scheduledNotification_1.scheduledPushNotification; } });
 // ===== 📢 전체 알림 발송 =====
 var broadcastNotification_1 = require("./broadcastNotification");
 Object.defineProperty(exports, "sendBroadcastNotification", { enumerable: true, get: function () { return broadcastNotification_1.sendBroadcastNotification; } });
-// ========================================
-// 📄 PDF 생성 함수 (Android 전용)
-// ========================================
-exports.generateMergePDF = (0, https_2.onCall)({
-    region: 'asia-northeast3',
-    timeoutSeconds: 540,
-    memory: '2GiB',
-}, async (request) => {
-    const { htmlContent } = request.data;
-    if (!htmlContent) {
-        throw new https_2.HttpsError('invalid-argument', 'HTML content is required');
-    }
-    try {
-        const puppeteer = require('puppeteer');
-        // Puppeteer 실행
-        const browser = await puppeteer.launch({
-            headless: true,
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-gpu',
-            ],
-        });
-        const page = await browser.newPage();
-        // HTML 설정
-        await page.setContent(htmlContent, {
-            waitUntil: 'networkidle0',
-        });
-        // PDF 생성
-        const pdfBuffer = await page.pdf({
-            format: 'A4',
-            printBackground: true,
-            margin: {
-                top: '0mm',
-                right: '0mm',
-                bottom: '0mm',
-                left: '0mm',
-            },
-        });
-        await browser.close();
-        // Base64로 인코딩하여 반환
-        const pdfBase64 = pdfBuffer.toString('base64');
-        return {
-            success: true,
-            pdf: pdfBase64,
-        };
-    }
-    catch (error) {
-        logger.error('PDF generation error:', error);
-        throw new https_2.HttpsError('internal', `PDF 생성 실패: ${error.message}`);
-    }
-});
 // ===== 📷 HEIC → JPG 변환 (Cloudinary) =====
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { v2: cloudinary } = require('cloudinary');
@@ -678,4 +665,99 @@ exports.convertHeic = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (
         logger.error('Cloudinary HEIC 변환 오류:', error);
         throw new https_2.HttpsError('internal', `변환 실패: ${error.message}`);
     }
+});
+exports.generateMergePDFFast = (0, https_2.onCall)({ region: 'asia-northeast3', memory: '1GiB', timeoutSeconds: 300 }, async (request) => {
+    const { title, dateRange, records } = request.data;
+    const fontPath = path.join(__dirname, 'fonts', 'NotoSansKR.ttf');
+    // 이미지 사전 다운로드
+    const recordsWithImages = await Promise.all(records.map(async (record) => {
+        const imageBuffers = [];
+        if (record.images && record.images.length > 0) {
+            for (const url of record.images) {
+                try {
+                    const res = await axios_1.default.get(url, { responseType: 'arraybuffer', timeout: 10000 });
+                    // sharp로 리사이징: 최대 800px, JPEG 품질 70% → 응답 크기 축소
+                    const resized = await sharp(Buffer.from(res.data))
+                        .resize({ width: 800, withoutEnlargement: true })
+                        .jpeg({ quality: 70 })
+                        .toBuffer();
+                    imageBuffers.push(resized);
+                }
+                catch (e) {
+                    logger.warn(`이미지 다운로드/리사이징 실패: ${url}`);
+                }
+            }
+        }
+        return { ...record, imageBuffers };
+    }));
+    return new Promise((resolve, reject) => {
+        try {
+            const doc = new PDFDocument({ size: 'A4', margin: 50 });
+            const chunks = [];
+            doc.on('data', (chunk) => chunks.push(chunk));
+            doc.on('end', () => {
+                const pdfBuffer = Buffer.concat(chunks);
+                resolve({ pdf: pdfBuffer.toString('base64') });
+            });
+            doc.on('error', reject);
+            // 표지
+            doc.font(fontPath).fontSize(22).fillColor('#1A3C6E').text(title, { align: 'center' });
+            doc.moveDown(0.5);
+            doc.fontSize(11).fillColor('#999999').text(dateRange, { align: 'center' });
+            doc.moveDown(2);
+            // 각 기록
+            recordsWithImages.forEach((record, idx) => {
+                if (idx > 0)
+                    doc.moveDown(1);
+                // 날짜
+                doc.fontSize(12).fillColor('#1A3C6E').font(fontPath).text(record.date);
+                // 구분선
+                doc.moveDown(0.3);
+                const y = doc.y;
+                doc.moveTo(50, y).lineTo(545, y).strokeColor('#E0E0E0').lineWidth(0.5).stroke();
+                doc.moveDown(0.5);
+                // 이미지
+                if (record.imageBuffers && record.imageBuffers.length > 0) {
+                    record.imageBuffers.forEach((imgBuffer) => {
+                        doc.image(imgBuffer, { width: 495, align: 'center' });
+                        doc.moveDown(0.5);
+                    });
+                }
+                // 본문
+                doc.fontSize(11).fillColor('#333333').font(fontPath).text(record.content || '', {
+                    lineGap: 4,
+                    paragraphGap: 4,
+                });
+            });
+            // 푸터 텍스트
+            doc.moveDown(2);
+            doc.fontSize(9).fillColor('#CCCCCC').text('HARU by JOYEL', { align: 'center' });
+            doc.end();
+        }
+        catch (err) {
+            reject(err);
+        }
+    });
+});
+// ===== 🗑️ 일회성 마이그레이션: 모든 사용자 _tags 필드 일괄 삭제 =====
+exports.removeAllTags = (0, https_1.onRequest)({ region: 'asia-northeast3' }, async (req, res) => {
+    const db = admin.firestore();
+    const usersSnap = await db.collection('users').get();
+    let count = 0;
+    for (const userDoc of usersSnap.docs) {
+        const recordsSnap = await userDoc.ref.collection('records').get();
+        for (const recordDoc of recordsSnap.docs) {
+            const data = recordDoc.data();
+            const tagFields = Object.keys(data).filter((k) => k.endsWith('_tags'));
+            if (tagFields.length > 0) {
+                const updateData = {};
+                tagFields.forEach((f) => {
+                    updateData[f] = admin.firestore.FieldValue.delete();
+                });
+                await recordDoc.ref.update(updateData);
+                count++;
+            }
+        }
+    }
+    res.send(`완료: ${count}개 문서에서 _tags 필드 삭제`);
 });

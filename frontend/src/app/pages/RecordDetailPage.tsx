@@ -18,7 +18,6 @@ const FIELD_LABELS: Record<string, string> = {
   diary_conflict: '갈등',
   diary_regret: '아쉬움',
   diary_learning: '배움',
-  diary_tags: '태그',
   diary_space: '여백',
   // 에세이
   essay_observation: '관찰',
@@ -26,7 +25,6 @@ const FIELD_LABELS: Record<string, string> = {
   essay_comparison: '비교',
   essay_essence: '핵심',
   essay_closing: '끝인사',
-  essay_tags: '태그',
   essay_space: '여백',
   // 선교보고
   mission_place: 'Place',
@@ -34,7 +32,6 @@ const FIELD_LABELS: Record<string, string> = {
   mission_grace: 'Grace',
   mission_heart: 'Heart',
   mission_prayer: 'Prayer',
-  mission_tags: '태그',
   mission_space: '여백',
   // 일반보고
   report_activity: '활동 명칭',
@@ -42,7 +39,6 @@ const FIELD_LABELS: Record<string, string> = {
   report_achievement: '핵심 성과',
   report_notes: '특이 사항',
   report_future: '향후 계획',
-  report_tags: '태그',
   report_space: '여백',
   // 업무일지
   work_schedule: 'Schedule',
@@ -50,7 +46,6 @@ const FIELD_LABELS: Record<string, string> = {
   work_pending: 'Pending',
   work_metric: 'Key Metric',
   work_rating: 'Rating',
-  work_tags: '태그',
   work_space: '여백',
   // 여행기록
   travel_journey: '여정',
@@ -58,7 +53,6 @@ const FIELD_LABELS: Record<string, string> = {
   travel_food: '미식',
   travel_thought: '단상',
   travel_gratitude: '감사',
-  travel_tags: '태그',
   travel_space: '여백',
   // 텃밭일지
   garden_crop: '작물',
@@ -66,7 +60,6 @@ const FIELD_LABELS: Record<string, string> = {
   garden_observation: '관찰',
   garden_issue: '문제점',
   garden_plan: '다음 계획',
-  garden_tags: '태그',
   garden_space: '여백',
   // 애완동물관찰일지
   pet_name: '반려동물 이름',
@@ -74,7 +67,6 @@ const FIELD_LABELS: Record<string, string> = {
   pet_behavior: '행동 관찰',
   pet_care: '돌봄 기록',
   pet_special: '특별한 일',
-  pet_tags: '태그',
   pet_space: '여백',
   // 육아일기
   child_name: '아이 이름',
@@ -82,28 +74,26 @@ const FIELD_LABELS: Record<string, string> = {
   child_meal: '식사',
   child_activity: '활동',
   child_emotion: '부모의 마음',
-  child_tags: '태그',
   child_space: '여백',
   // 메모
   memo_title: '제목',
   memo_content: '내용',
-  memo_tags: '태그',
   memo_action: '다음 행동',
   memo_space: '여백',
 };
 
 // 필드 표시 순서 (형식별)
 const FIELD_ORDER: Record<string, string[]> = {
-  diary: ['diary_action', 'diary_good', 'diary_conflict', 'diary_regret', 'diary_learning', 'diary_tags', 'diary_space'],
-  essay: ['essay_observation', 'essay_impression', 'essay_comparison', 'essay_essence', 'essay_closing', 'essay_tags', 'essay_space'],
-  mission: ['mission_place', 'mission_action', 'mission_grace', 'mission_heart', 'mission_prayer', 'mission_tags', 'mission_space'],
-  report: ['report_activity', 'report_progress', 'report_achievement', 'report_notes', 'report_future', 'report_tags', 'report_space'],
-  work: ['work_schedule', 'work_result', 'work_pending', 'work_metric', 'work_rating', 'work_tags', 'work_space'],
-  travel: ['travel_journey', 'travel_scenery', 'travel_food', 'travel_thought', 'travel_gratitude', 'travel_tags', 'travel_space'],
-  garden: ['garden_crop', 'garden_work', 'garden_observation', 'garden_issue', 'garden_plan', 'garden_tags', 'garden_space'],
-  pet: ['pet_name', 'pet_health', 'pet_behavior', 'pet_care', 'pet_special', 'pet_tags', 'pet_space'],
-  child: ['child_name', 'child_growth', 'child_meal', 'child_activity', 'child_emotion', 'child_tags', 'child_space'],
-  memo: ['memo_title', 'memo_content', 'memo_tags', 'memo_action', 'memo_space'],
+  diary: ['diary_action', 'diary_good', 'diary_conflict', 'diary_regret', 'diary_learning', 'diary_space'],
+  essay: ['essay_observation', 'essay_impression', 'essay_comparison', 'essay_essence', 'essay_closing', 'essay_space'],
+  mission: ['mission_place', 'mission_action', 'mission_grace', 'mission_heart', 'mission_prayer', 'mission_space'],
+  report: ['report_activity', 'report_progress', 'report_achievement', 'report_notes', 'report_future', 'report_space'],
+  work: ['work_schedule', 'work_result', 'work_pending', 'work_metric', 'work_rating', 'work_space'],
+  travel: ['travel_journey', 'travel_scenery', 'travel_food', 'travel_thought', 'travel_gratitude', 'travel_space'],
+  garden: ['garden_crop', 'garden_work', 'garden_observation', 'garden_issue', 'garden_plan', 'garden_space'],
+  pet: ['pet_name', 'pet_health', 'pet_behavior', 'pet_care', 'pet_special', 'pet_space'],
+  child: ['child_name', 'child_growth', 'child_meal', 'child_activity', 'child_emotion', 'child_space'],
+  memo: ['memo_title', 'memo_content', 'memo_action', 'memo_space'],
 };
 
 export function RecordDetailPage() {

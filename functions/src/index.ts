@@ -868,3 +868,29 @@ export const generateMergePDFFast = onCall({ region: 'asia-northeast3', memory: 
   });
 });
 
+// ===== 🗑️ 일회성 마이그레이션: 모든 사용자 _tags 필드 일괄 삭제 =====
+export const removeAllTags = onRequest(
+  { region: 'asia-northeast3' },
+  async (req, res) => {
+    const db = admin.firestore();
+    const usersSnap = await db.collection('users').get();
+    let count = 0;
+    for (const userDoc of usersSnap.docs) {
+      const recordsSnap = await userDoc.ref.collection('records').get();
+      for (const recordDoc of recordsSnap.docs) {
+        const data = recordDoc.data();
+        const tagFields = Object.keys(data).filter((k) => k.endsWith('_tags'));
+        if (tagFields.length > 0) {
+          const updateData: Record<string, admin.firestore.FieldValue> = {};
+          tagFields.forEach((f) => {
+            updateData[f] = admin.firestore.FieldValue.delete();
+          });
+          await recordDoc.ref.update(updateData);
+          count++;
+        }
+      }
+    }
+    res.send(`완료: ${count}개 문서에서 _tags 필드 삭제`);
+  }
+);
+

@@ -31,9 +31,7 @@ export function SayuPage() {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string; recordId?: string }[]>([]);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'tag'>('list');
-  const [expandedTagCategories, setExpandedTagCategories] = useState<Set<string>>(new Set());
-  const [expandedTagFormats, setExpandedTagFormats] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무']));
   const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
   const [sayuModalState, setSayuModalState] = useState<{
@@ -568,16 +566,6 @@ export function SayuPage() {
           >
             달력
           </button>
-          <button
-            onClick={() => setViewMode('tag')}
-            className="flex-1 py-1.5 text-sm font-medium transition-all"
-            style={{
-              backgroundColor: viewMode === 'tag' ? '#1A3C6E' : 'transparent',
-              color: viewMode === 'tag' ? '#FAF9F6' : '#1A3C6E',
-            }}
-          >
-            태그
-          </button>
         </div>
       </div>
 
@@ -819,161 +807,6 @@ export function SayuPage() {
         </div>
       )}
 
-      {/* ─── 태그 뷰 ─── */}
-      {viewMode === 'tag' && (() => {
-        // getTagData: 카테고리 → 형식 → 태그 구조로 수집
-        type TagFormatEntry = { format: RecordFormat; prefix: string; tags: { name: string; count: number }[] };
-        type TagCategoryEntry = { category: '생활' | '업무'; formats: TagFormatEntry[] };
-
-        const getTagData = (): TagCategoryEntry[] => {
-          const result: TagCategoryEntry[] = [];
-          for (const category of ['생활', '업무'] as const) {
-            const formatsWithTags: TagFormatEntry[] = [];
-            for (const format of CATEGORY_FORMATS[category]) {
-              const prefix = FORMAT_PREFIX[format];
-              const tagCountMap: Record<string, number> = {};
-              records.forEach((r) => {
-                if (!r.formats || !r.formats.includes(format)) return;
-                const tagsRaw: string = r[`${prefix}_tags`] || '';
-                if (!tagsRaw.trim()) return;
-                const tags = tagsRaw
-                  .split(/[,，]+/)
-                  .map((t: string) => t.trim())
-                  .filter((t: string) => t.length > 0);
-                tags.forEach((tag: string) => {
-                  tagCountMap[tag] = (tagCountMap[tag] || 0) + 1;
-                });
-              });
-              const tags = Object.entries(tagCountMap)
-                .map(([name, count]) => ({ name, count }))
-                .sort((a, b) => b.count - a.count);
-              if (tags.length > 0) {
-                formatsWithTags.push({ format, prefix, tags });
-              }
-            }
-            if (formatsWithTags.length > 0) {
-              result.push({ category, formats: formatsWithTags });
-            }
-          }
-          return result;
-        };
-
-        const toggleTagCategory = (category: string) => {
-          setExpandedTagCategories((prev) => {
-            const next = new Set(prev);
-            next.has(category) ? next.delete(category) : next.add(category);
-            return next;
-          });
-        };
-
-        const toggleTagFormat = (key: string) => {
-          setExpandedTagFormats((prev) => {
-            const next = new Set(prev);
-            next.has(key) ? next.delete(key) : next.add(key);
-            return next;
-          });
-        };
-
-        if (loading) {
-          return <p className="text-center py-8 text-sm" style={{ color: '#999' }}>불러오는 중...</p>;
-        }
-
-        const tagData = getTagData();
-
-        if (tagData.length === 0) {
-          return (
-            <div className="bg-white rounded-lg p-8 shadow-sm text-center">
-              <p className="text-sm" style={{ color: '#999' }}>태그가 있는 기록이 없습니다</p>
-              <p className="text-xs mt-1" style={{ color: '#bbb' }}>기록 작성 시 태그 필드를 채워보세요</p>
-            </div>
-          );
-        }
-
-        return (
-          <div>
-            {tagData.map(({ category, formats }) => {
-              const isCategoryOpen = expandedTagCategories.has(category);
-              const catStyle = category === '생활'
-                ? { backgroundColor: '#FDF6C3', color: '#1A3C6E' }
-                : { backgroundColor: '#F0FFF4', color: '#2A5C3E' };
-              return (
-                <div key={category} className="mb-3">
-                  {/* 카테고리 버튼 */}
-                  <button
-                    onClick={() => toggleTagCategory(category)}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-semibold transition-colors hover:opacity-80"
-                    style={catStyle}
-                  >
-                    <span>{category}</span>
-                    <span style={{ fontSize: '10px' }}>{isCategoryOpen ? '▼' : '▶'}</span>
-                  </button>
-
-                  {/* 형식 목록 */}
-                  {isCategoryOpen && (
-                    <div style={{ paddingLeft: 12, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      {formats.map(({ format, prefix, tags }) => {
-                        const formatKey = `tag_${prefix}`;
-                        const isFormatOpen = expandedTagFormats.has(formatKey);
-                        return (
-                          <div key={prefix}>
-                            {/* 형식 버튼 */}
-                            <button
-                              onClick={() => toggleTagFormat(formatKey)}
-                              className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors hover:opacity-80"
-                              style={{ backgroundColor: '#FEFBE8', border: '1px solid #e5e5e5', color: '#333' }}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span>{FORMAT_EMOJI[format]}</span>
-                                <span>{format}</span>
-                                <span style={{ color: '#999' }}>({tags.length}개 태그)</span>
-                              </div>
-                              <span style={{ fontSize: '10px', color: '#1A3C6E' }}>{isFormatOpen ? '▼' : '▶'}</span>
-                            </button>
-
-                            {/* 태그 pill 목록 */}
-                            {isFormatOpen && (
-                              <div
-                                style={{
-                                  paddingLeft: 12,
-                                  paddingTop: 8,
-                                  paddingBottom: 8,
-                                  display: 'flex',
-                                  flexWrap: 'wrap',
-                                  gap: 8,
-                                }}
-                              >
-                                {tags.map(({ name, count }) => (
-                                  <span
-                                    key={name}
-                                    style={{
-                                      backgroundColor: '#E6F1FB',
-                                      color: '#0C447C',
-                                      border: '1px solid #B5D4F4',
-                                      borderRadius: 20,
-                                      padding: '4px 12px',
-                                      fontSize: 12,
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: 4,
-                                    }}
-                                  >
-                                    # {name}
-                                    <span style={{ fontWeight: 600 }}>{count}</span>
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        );
-      })()}
 
       <SayuModal
         isOpen={sayuModalState.isOpen}
