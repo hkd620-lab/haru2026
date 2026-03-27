@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react';
 import { X, Star, Printer, Copy, Download, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSubscription } from '../hooks/useSubscription';
+import { doc, getDoc, updateDoc, deleteDoc, deleteField } from 'firebase/firestore';
+import { ref, listAll, deleteObject } from 'firebase/storage';
+import { db, storage } from '../../firebase';
+import { useAuth } from '../contexts/AuthContext';
 
 export interface SayuModalProps {
   isOpen: boolean;
@@ -17,6 +21,8 @@ export interface SayuModalProps {
   temperature?: string;
   mood?: string;
   images?: string[];
+  formatKey?: string;
+  onRefresh?: () => void;
 }
 
 export function formatDateToKorean(dateStr: string): string {
@@ -30,28 +36,82 @@ export function formatDateToKorean(dateStr: string): string {
   return `${year}년 ${month}월 ${day}일 ${dayOfWeek}요일`;
 }
 
-export function SayuModal({ 
-  isOpen, 
-  onClose, 
-  content, 
-  originalData, 
-  format, 
-  dateLabel, 
-  currentRating, 
+export function SayuModal({
+  isOpen,
+  onClose,
+  content,
+  originalData,
+  format,
+  dateLabel,
+  currentRating,
   onSave,
   recordDate,
   weather,
   temperature,
   mood,
-  images = []
+  images = [],
+  formatKey,
+  onRefresh,
 }: SayuModalProps) {
   const { isPremium } = useSubscription();
+  const { currentUser } = useAuth();
   const [editedContent, setEditedContent] = useState(content);
   const [isSaving, setIsSaving] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [rating, setRating] = useState(currentRating || 1);
   const [viewMode, setViewMode] = useState<'ai' | 'original'>('ai');
   
+  // 🗑 형식 삭제
+  const handleDeleteFormat = async () => {
+    if (!currentUser || !recordDate || !formatKey) return;
+    setIsDeleting(true);
+    try {
+      // 1. Storage: {date}_{formatKey}_ 접두사 파일 삭제
+      const storageRef = ref(storage, `users/${currentUser.uid}/format_photos/`);
+      const listResult = await listAll(storageRef);
+      const filesToDelete = listResult.items.filter((item) =>
+        item.name.startsWith(`${recordDate}_${formatKey}_`)
+      );
+      await Promise.allSettled(filesToDelete.map((file) => deleteObject(file)));
+
+      // 2. Firestore: 해당 형식 필드 삭제
+      const recordRef = doc(db, 'users', currentUser.uid, 'records', recordDate);
+      const recordSnap = await getDoc(recordRef);
+      if (recordSnap.exists()) {
+        const data = recordSnap.data();
+        const fieldsToDelete = Object.keys(data).filter(
+          (k) => k === formatKey || k.startsWith(`${formatKey}_`)
+        );
+        const remainingFormatFields = Object.keys(data).filter(
+          (k) =>
+            !fieldsToDelete.includes(k) &&
+            !['weather', 'temperature', 'mood', 'date', 'formats'].includes(k)
+        );
+        if (remainingFormatFields.length === 0) {
+          await deleteDoc(recordRef);
+        } else {
+          const updateData: Record<string, ReturnType<typeof deleteField>> = {};
+          fieldsToDelete.forEach((f) => {
+            updateData[f] = deleteField();
+          });
+          await updateDoc(recordRef, updateData);
+        }
+      }
+
+      toast.success('삭제되었습니다.');
+      onClose();
+      onRefresh?.();
+    } catch (error) {
+      console.error('삭제 실패:', error);
+      toast.error('삭제에 실패했습니다.');
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+    }
+  };
+
   // 인쇄 함수 - 프리로드 + 로딩 완료 대기 + 로딩 표시
   const handlePrint = () => {
     if (!editedContent || editedContent.trim().length === 0) {
@@ -290,6 +350,7 @@ export function SayuModal({
       setRating(currentRating || 1);
       setViewMode('ai');
       setIsPrinting(false);
+      setShowDeleteDialog(false);
       
       // 이미지 프리로드 - 브라우저 캐시 활용
       if (images && images.length > 0) {
@@ -638,6 +699,28 @@ export function SayuModal({
                 <Printer style={{ width: 20, height: 20, color: 'currentColor' }} />
               </button>
               
+              {/* 🗑 삭제 버튼 */}
+              {formatKey && recordDate && (
+                <button
+                  onClick={() => setShowDeleteDialog(true)}
+                  style={{
+                    background: 'rgba(220,50,50,0.22)',
+                    border: '1px solid rgba(220,80,80,0.5)',
+                    color: '#f87171',
+                    borderRadius: 8,
+                    padding: '5px 12px',
+                    fontSize: 13,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                  title="이 형식 기록 삭제"
+                >
+                  🗑 삭제
+                </button>
+              )}
+
               {/* ✕ 닫기 버튼 */}
               <button
                 onClick={onClose}
@@ -845,6 +928,15 @@ export function SayuModal({
                 </div>
               )}
 
+              {/* 내용 없음 안내 */}
+              {(!editedContent || editedContent.trim().length === 0) && (
+                <div style={{ textAlign: 'center', padding: '32px 0', color: '#f87171' }}>
+                  <div style={{ fontSize: 40, marginBottom: 12 }}>📄</div>
+                  <p style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>내용이 없는 기록입니다.</p>
+                  <p style={{ fontSize: 13, marginTop: 8, color: '#f87171' }}>삭제 버튼을 눌러 정리하세요.</p>
+                </div>
+              )}
+
               {/* SAYU 텍스트 편집 영역 */}
               <textarea
                 value={editedContent}
@@ -953,6 +1045,86 @@ export function SayuModal({
         )}
       </div>
       </div>
+      )}
+
+      {/* 삭제 확인 다이얼로그 */}
+      {isOpen && showDeleteDialog && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+          }}
+          onClick={() => !isDeleting && setShowDeleteDialog(false)}
+        >
+          <div
+            style={{
+              backgroundColor: '#fff',
+              borderRadius: 12,
+              padding: '28px 24px',
+              maxWidth: 320,
+              width: '90%',
+              textAlign: 'center',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 36, marginBottom: 12 }}>🗑</div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1A3C6E', margin: '0 0 8px' }}>
+              기록 삭제
+            </h3>
+            <p style={{ fontSize: 14, color: '#555', lineHeight: 1.6, margin: '0 0 8px' }}>
+              정말로 이 기록을 삭제하시겠습니까?
+            </p>
+            <p style={{ fontSize: 13, color: '#f87171', margin: '0 0 24px' }}>
+              삭제된 기록은 복구할 수 없습니다.
+            </p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                onClick={() => setShowDeleteDialog(false)}
+                disabled={isDeleting}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  fontSize: 14,
+                  border: '1px solid #e5e5e5',
+                  borderRadius: 8,
+                  backgroundColor: '#fff',
+                  color: '#666',
+                  cursor: isDeleting ? 'not-allowed' : 'pointer',
+                  opacity: isDeleting ? 0.5 : 1,
+                  fontWeight: 500,
+                }}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleDeleteFormat}
+                disabled={isDeleting}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  fontSize: 14,
+                  border: 'none',
+                  borderRadius: 8,
+                  backgroundColor: '#ef4444',
+                  color: '#fff',
+                  cursor: isDeleting ? 'not-allowed' : 'pointer',
+                  opacity: isDeleting ? 0.7 : 1,
+                  fontWeight: 600,
+                }}
+              >
+                {isDeleting ? '삭제 중...' : '삭제'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
