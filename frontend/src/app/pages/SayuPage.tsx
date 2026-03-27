@@ -40,6 +40,7 @@ export function SayuPage() {
     originalData?: Record<string, string>;
     format?: string;
     formatKey?: string;
+    firestoreId?: string;
     dateLabel: string;
     currentRating?: number;
     recordDate?: string;
@@ -290,6 +291,7 @@ export function SayuPage() {
       originalData,
       format: formatLabel,
       formatKey,
+      firestoreId: record.id,
       dateLabel: new Date(dateStr + 'T00:00:00').toLocaleDateString('ko-KR', {
         month: 'long',
         day: 'numeric',
@@ -824,7 +826,8 @@ export function SayuPage() {
         mood={sayuModalState.mood}
         images={sayuModalState.images}
         formatKey={sayuModalState.formatKey}
-        onRefresh={fetchRecords}
+        firestoreId={sayuModalState.firestoreId}
+        onRefresh={() => window.location.reload()}
       />
     </div>
 

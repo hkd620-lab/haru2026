@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Star, Printer, Copy, Download, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSubscription } from '../hooks/useSubscription';
-import { doc, getDoc, updateDoc, deleteDoc, deleteField } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, deleteDoc, deleteField, arrayRemove } from 'firebase/firestore';
 import { ref, listAll, deleteObject } from 'firebase/storage';
 import { db, storage } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,6 +23,7 @@ export interface SayuModalProps {
   images?: string[];
   formatKey?: string;
   onRefresh?: () => void;
+  firestoreId?: string;
 }
 
 export function formatDateToKorean(dateStr: string): string {
@@ -52,9 +53,10 @@ export function SayuModal({
   images = [],
   formatKey,
   onRefresh,
+  firestoreId,
 }: SayuModalProps) {
   const { isPremium } = useSubscription();
-  const { currentUser } = useAuth();
+  const { user: currentUser } = useAuth();
   const [editedContent, setEditedContent] = useState(content);
   const [isSaving, setIsSaving] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
@@ -65,7 +67,11 @@ export function SayuModal({
   
   // 🗑 형식 삭제
   const handleDeleteFormat = async () => {
-    if (!currentUser || !recordDate || !formatKey) return;
+    console.log('🗑️ 삭제 시도:', { currentUser: currentUser?.uid, recordDate, firestoreId, formatKey });
+    if (!currentUser || (!recordDate && !firestoreId) || !formatKey) {
+      console.log('❌ 가드 조건 실패 - 삭제 중단');
+      return;
+    }
     setIsDeleting(true);
     try {
       // 1. Storage: {date}_{formatKey}_ 접두사 파일 삭제
@@ -76,26 +82,47 @@ export function SayuModal({
       );
       await Promise.allSettled(filesToDelete.map((file) => deleteObject(file)));
 
-      // 2. Firestore: 해당 형식 필드 삭제
-      const recordRef = doc(db, 'users', currentUser.uid, 'records', recordDate);
+      // 2. Firestore: 해당 형식 필드 삭제 (firestoreId 우선, 없으면 recordDate 폴백)
+      const docId = firestoreId || recordDate!;
+      const recordRef = doc(db, 'users', currentUser.uid, 'records', docId);
       const recordSnap = await getDoc(recordRef);
       if (recordSnap.exists()) {
         const data = recordSnap.data();
+        console.log('[DELETE] recordDate:', recordDate);
+        console.log('[DELETE] formatKey:', formatKey);
+        console.log('[DELETE] all fields:', Object.keys(data));
         const fieldsToDelete = Object.keys(data).filter(
           (k) => k === formatKey || k.startsWith(`${formatKey}_`)
         );
+        console.log('[DELETE] fieldsToDelete:', fieldsToDelete);
         const remainingFormatFields = Object.keys(data).filter(
           (k) =>
             !fieldsToDelete.includes(k) &&
             !['weather', 'temperature', 'mood', 'date', 'formats'].includes(k)
         );
+
+        const formatLabelMap: Record<string, string> = {
+          diary: '일기',
+          essay: '에세이',
+          travel: '여행기록',
+          garden: '텃밭일지',
+          pet: '애완동물관찰일지',
+          child: '육아일기',
+          mission: '선교보고',
+          report: '일반보고',
+          work: '업무일지',
+          memo: '메모',
+        };
+        const formatLabel = formatLabelMap[formatKey] ?? formatKey;
+
         if (remainingFormatFields.length === 0) {
           await deleteDoc(recordRef);
         } else {
-          const updateData: Record<string, ReturnType<typeof deleteField>> = {};
+          const updateData: Record<string, ReturnType<typeof deleteField> | ReturnType<typeof arrayRemove>> = {};
           fieldsToDelete.forEach((f) => {
             updateData[f] = deleteField();
           });
+          updateData['formats'] = arrayRemove(formatLabel);
           await updateDoc(recordRef, updateData);
         }
       }
@@ -346,6 +373,7 @@ export function SayuModal({
 
   useEffect(() => {
     if (isOpen) {
+      console.log('📌 formatKey:', formatKey, 'recordDate:', recordDate);
       setEditedContent(content);
       setRating(currentRating || 1);
       setViewMode('ai');

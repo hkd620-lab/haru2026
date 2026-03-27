@@ -4,6 +4,8 @@ import { db } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { SubscriptionInfo, DEFAULT_SUBSCRIPTION } from '../types/subscription';
 
+const DEVELOPER_UIDS = ['naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8'];
+
 export function useSubscription() {
   const { user } = useAuth();
   const [subscription, setSubscription] = useState<SubscriptionInfo>(DEFAULT_SUBSCRIPTION);
@@ -12,6 +14,12 @@ export function useSubscription() {
   useEffect(() => {
     if (!user) {
       setSubscription(DEFAULT_SUBSCRIPTION);
+      setLoading(false);
+      return;
+    }
+
+    if (DEVELOPER_UIDS.includes(user.uid)) {
+      setSubscription({ ...DEFAULT_SUBSCRIPTION, plan: 'premium' });
       setLoading(false);
       return;
     }
