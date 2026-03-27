@@ -39,6 +39,7 @@ export function SayuPage() {
     content: string;
     originalData?: Record<string, string>;
     format?: string;
+    formatKey?: string;
     dateLabel: string;
     currentRating?: number;
     recordDate?: string;
@@ -288,6 +289,7 @@ export function SayuPage() {
       content: sayuContent,
       originalData,
       format: formatLabel,
+      formatKey,
       dateLabel: new Date(dateStr + 'T00:00:00').toLocaleDateString('ko-KR', {
         month: 'long',
         day: 'numeric',
@@ -821,6 +823,8 @@ export function SayuPage() {
         temperature={sayuModalState.temperature}
         mood={sayuModalState.mood}
         images={sayuModalState.images}
+        formatKey={sayuModalState.formatKey}
+        onRefresh={fetchRecords}
       />
     </div>
 
