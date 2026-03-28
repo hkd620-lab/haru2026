@@ -57,8 +57,9 @@ export function RecordPage() {
   };
 
   const handleSave = async () => {
-    if (selectedFormats.length === 0) {
-      toast.warning('최소 1개의 형식을 선택해주세요.');
+    // 선택된 형식이 없으면 저장 안 함
+    if (!selectedFormats || selectedFormats.length === 0) {
+      toast.error('형식을 선택해 주세요.');
       return;
     }
 
