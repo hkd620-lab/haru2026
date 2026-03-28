@@ -57,47 +57,25 @@ export function RecordPage() {
   };
 
   const handleSave = async () => {
-    // 선택된 형식이 없으면 저장 안 함
     if (!selectedFormats || selectedFormats.length === 0) {
       toast.error('형식을 선택해 주세요.');
       return;
     }
-
     if (!user) {
       toast.error('로그인이 필요합니다.');
       navigate('/login');
       return;
     }
-
-    setIsSaving(true);
-    try {
-      const dateStr = getLocalDateString(currentDate);
-      const uid = user.uid;
-
-      const recordId = await firestoreService.saveRecord(uid, {
-        date: dateStr,
-        weather,
-        temperature,
-        mood,
-        formats: selectedFormats,
-        content: '',
-      });
-
-      toast.success('기록이 저장되었습니다!');
-      setSavedDateStr(dateStr);
-      setSavedRecordId(recordId);
-      setSavedFormat(selectedFormats[0]);
-      setFormatModalOpen(true);
-    } catch (error) {
-      console.error('저장 실패:', error);
-      toast.error('기록 저장에 실패했습니다.');
-    } finally {
-      setIsSaving(false);
-    }
+    // Firestore 저장 없이 FormatModal만 열기
+    const dateStr = getLocalDateString(currentDate);
+    setSavedDateStr(dateStr);
+    setSavedRecordId('');
+    setSavedFormat(selectedFormats[0]);
+    setFormatModalOpen(true);
   };
 
   const handleSaveFormatData = async (formatData: Record<string, string>) => {
-    if (!user || !savedRecordId) return;
+    if (!user) return;
     const updateData: Record<string, any> = {};
     let hasContent = false;
     Object.entries(formatData).forEach(([key, value]) => {
@@ -111,7 +89,16 @@ export function RecordPage() {
       return;
     }
     try {
-      await firestoreService.updateRecord(user.uid, savedRecordId, updateData);
+      const recordId = await firestoreService.saveRecord(user.uid, {
+        date: savedDateStr,
+        weather,
+        temperature,
+        mood,
+        formats: selectedFormats,
+        content: '',
+        ...updateData,
+      });
+      setSavedRecordId(recordId);
       toast.success('내용이 저장되었습니다!');
     } catch (error) {
       console.error('저장 실패:', error);
