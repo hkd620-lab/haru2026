@@ -9,7 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 export interface SayuModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onClose: (deleted?: boolean) => void;
   content: string;
   originalData?: Record<string, string>;
   format?: string;
@@ -128,7 +128,7 @@ export function SayuModal({
       }
 
       toast.success('삭제되었습니다.');
-      onClose();
+      onClose(true);
       onRefresh?.();
     } catch (error) {
       console.error('삭제 실패:', error);

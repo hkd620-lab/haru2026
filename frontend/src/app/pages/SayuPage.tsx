@@ -310,12 +310,18 @@ export function SayuPage() {
     openFormatSayu(selectedDate, formatKey, formatLabel, recordId);
   };
 
-  const handleModalClose = () => {
+  const handleModalClose = async (deleted?: boolean) => {
     setSayuModalState({
       isOpen: false,
       content: '',
       dateLabel: '',
     });
+    if (deleted) {
+      // 삭제된 경우: 목록 새로고침 후 현재 날짜 유지
+      const currentDate = selectedDate;
+      await fetchRecords();
+      setSelectedDate(currentDate);
+    }
   };
 
   const handleSaveSayu = async (editedContent: string, rating: number) => {
@@ -814,7 +820,7 @@ export function SayuPage() {
 
       <SayuModal
         isOpen={sayuModalState.isOpen}
-        onClose={handleModalClose}
+        onClose={(deleted?: boolean) => handleModalClose(deleted)}
         content={sayuModalState.content}
         originalData={sayuModalState.originalData}
         dateLabel={sayuModalState.dateLabel}
