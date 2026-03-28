@@ -703,6 +703,35 @@ export function SettingsPage() {
           </button>
         </section>
 
+        {/* 법적 링크 */}
+        <section style={{ borderTop: '1px solid #e5e5e5', marginTop: 8 }}>
+          {[
+            { label: '사업자 정보', path: '/business-info' },
+            { label: '이용약관', path: '/terms' },
+            { label: '개인정보처리방침', path: '/privacy' },
+            { label: '환불 정책', path: '/refund' },
+          ].map(({ label, path }) => (
+            <button
+              key={path}
+              onClick={() => navigate(path)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                width: '100%',
+                padding: '14px 0',
+                background: 'none',
+                border: 'none',
+                borderBottom: '1px solid #f0f0f0',
+                cursor: 'pointer',
+              }}
+            >
+              <span className="text-sm" style={{ color: '#1A3C6E' }}>{label}</span>
+              <span style={{ color: '#1A3C6E', fontSize: 14 }}>{'>'}</span>
+            </button>
+          ))}
+        </section>
+
         <div className="text-center py-8">
           <p className="text-xs mb-1" style={{ color: '#999' }}>
             HARU v1.0 by JOYEL

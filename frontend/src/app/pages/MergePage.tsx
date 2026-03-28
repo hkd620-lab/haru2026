@@ -330,7 +330,7 @@ export function MergePage() {
         <div className="grid grid-cols-5 gap-0 px-3">
           {periodOptions.map((option, index) => {
             const isSelected = selectedPeriod === option.id;
-            const isPremiumRequired = ['monthly', 'quarterly', 'yearly'].includes(option.id);
+            const isPremiumRequired = ['monthly', 'quarterly', 'yearly', 'custom'].includes(option.id);
             const isLocked = isPremiumRequired && !isPremium;
             return (
               <button

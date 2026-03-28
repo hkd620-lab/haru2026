@@ -14,6 +14,10 @@ import { SettingsPage } from './pages/SettingsPage';
 import { StatisticsPage } from './pages/StatisticsPage';
 import { FormatStatisticsPage } from './pages/FormatStatisticsPage';
 import SubscriptionPage from './pages/SubscriptionPage';
+import { BusinessInfoPage } from './pages/BusinessInfoPage';
+import { TermsPage } from './pages/TermsPage';
+import { PrivacyPage } from './pages/PrivacyPage';
+import { RefundPage } from './pages/RefundPage';
 import { BottomNav } from './components/BottomNav';
 
 function App() {
@@ -45,6 +49,12 @@ function App() {
 
               {/* 구독 페이지 */}
               <Route path="/subscription" element={<SubscriptionPage />} />
+
+              {/* 법적 페이지 */}
+              <Route path="/business-info" element={<BusinessInfoPage />} />
+              <Route path="/terms" element={<TermsPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/refund" element={<RefundPage />} />
             </Routes>
           </main>
           
