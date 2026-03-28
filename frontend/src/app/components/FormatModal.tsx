@@ -120,31 +120,17 @@ const FORMAT_PREFIX: Record<RecordFormat, string> = {
   '메모': 'memo',
 };
 
-// 일기 타입별 입력 필드 정의
-type DiaryType = 'quick' | 'today' | 'growth';
+// 기록 스타일 타입
+type RecordStyle = 'simple' | 'premium';
 
-const DIARY_QUICK_FIELDS = [
-  { key: 'quickDid', label: '오늘 한 일', placeholder: '오늘 무엇을 했나요?', rows: 3 },
-  { key: 'quickThought', label: '한 줄 생각', placeholder: '오늘을 한 줄로 표현한다면?', rows: 2 },
+const DIARY_PREMIUM_FIELDS = [
+  { key: 'diary_action', label: '행동' },
+  { key: 'diary_good', label: '좋았던 일' },
+  { key: 'diary_conflict', label: '갈등' },
+  { key: 'diary_regret', label: '아쉬움' },
+  { key: 'diary_learning', label: '배움' },
+  { key: 'diary_space', label: '여백' },
 ];
-const DIARY_TODAY_FIELDS = [
-  { key: 'todayAction', label: '행동', placeholder: '오늘 어떤 행동을 했나요?', rows: 2 },
-  { key: 'todayGood', label: '좋았던 일', placeholder: '오늘 좋았던 일은 무엇인가요?', rows: 3 },
-  { key: 'todayConflict', label: '갈등', placeholder: '오늘 겪은 갈등이 있었나요?', rows: 3 },
-  { key: 'todayRegret', label: '아쉬움', placeholder: '오늘 아쉬웠던 점은 무엇인가요?', rows: 3 },
-  { key: 'todayLesson', label: '배움', placeholder: '오늘 배운 것은 무엇인가요?', rows: 3 },
-  { key: 'todayFree', label: '여백', placeholder: '자유롭게 작성하세요.', rows: 2 },
-];
-const DIARY_GROWTH_FIELDS = [
-  { key: 'growthChoice', label: '오늘의 선택', placeholder: '오늘 어떤 선택을 했나요?', rows: 2 },
-  { key: 'growthProblem', label: '문제 상황', placeholder: '어떤 문제 상황이 있었나요?', rows: 3 },
-  { key: 'growthTry', label: '해결 시도', placeholder: '어떻게 해결하려 했나요?', rows: 3 },
-  { key: 'growthResult', label: '결과', placeholder: '결과는 어떠했나요?', rows: 3 },
-  { key: 'growthLearn', label: '배운 점', placeholder: '이 경험에서 무엇을 배웠나요?', rows: 3 },
-];
-const ALL_DIARY_TYPE_FIELD_KEYS = [
-  ...DIARY_QUICK_FIELDS, ...DIARY_TODAY_FIELDS, ...DIARY_GROWTH_FIELDS
-].map(f => f.key);
 
 export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, onSave }: FormatModalProps) {
   const { user } = useAuth();
@@ -165,9 +151,9 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   // 📝 메모 형식 안내 메시지
   const [showMemoGuide, setShowMemoGuide] = useState(true);
 
-  // 일기 타입 선택
-  const [diaryType, setDiaryType] = useState<DiaryType>('quick');
-  const [diaryStep, setDiaryStep] = useState<'select' | 'input'>('select');
+  // 기록 스타일 선택
+  const [recordStyle, setRecordStyle] = useState<RecordStyle>('simple');
+  const [recordStep, setRecordStep] = useState<'select' | 'input'>('select');
 
   // 🌱 텃밭일지 전용: 작물 목록 관리
   const [crops, setCrops] = useState<string[]>([]);
@@ -180,13 +166,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       setShowPolishModal(false);
       setShowModeSelect(false);
 
-      // 일기 타입 초기화
-      if (format === '일기') {
-        const savedType = (initialData.diaryType as DiaryType) || 'quick';
-        setDiaryType(savedType);
-        // 기존 데이터가 있으면 입력 화면으로, 신규면 타입 선택 화면으로
-        setDiaryStep(initialData.diaryType ? 'input' : 'select');
-      }
+      setRecordStyle('simple');
+      setRecordStep('select');
 
       // 기존 이미지 불러오기
       const prefix = FORMAT_PREFIX[format];
@@ -286,6 +267,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   };
 
   const handleSubmit = async () => {
+    if (recordStep === 'select') return;
     setIsSaving(true);
     try {
       const dataToSave = { ...formData };
@@ -293,17 +275,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
         dataToSave.garden_crop = crops.join(', ');
       }
 
-      // 일기: 선택된 타입 필드만 저장, 나머지 타입 필드 제거
-      if (format === '일기') {
-        const activeKeys = diaryType === 'quick' ? DIARY_QUICK_FIELDS.map(f => f.key) :
-                           diaryType === 'today' ? DIARY_TODAY_FIELDS.map(f => f.key) :
-                           DIARY_GROWTH_FIELDS.map(f => f.key);
-        for (const key of ALL_DIARY_TYPE_FIELD_KEYS) {
-          if (!activeKeys.includes(key)) delete dataToSave[key];
-        }
-        dataToSave.diaryType = diaryType;
-      }
-
+      dataToSave[`${prefix}_style`] = recordStyle;
       dataToSave[imagesKey] = JSON.stringify(uploadedImages);
 
       await onSave(dataToSave);
@@ -332,10 +304,10 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       const polishContentFunc = httpsCallable(functions, 'polishContent');
 
       let contentValues: string;
-      if (format === '일기') {
-        const activeFields = diaryType === 'quick' ? DIARY_QUICK_FIELDS :
-                             diaryType === 'today' ? DIARY_TODAY_FIELDS : DIARY_GROWTH_FIELDS;
-        contentValues = activeFields
+      if (recordStyle === 'simple') {
+        contentValues = formData[`${prefix}_simple`] || '';
+      } else if (format === '일기') {
+        contentValues = DIARY_PREMIUM_FIELDS
           .map(field => formData[field.key])
           .filter(v => typeof v === "string" && v.trim())
           .join('\n\n');
@@ -583,16 +555,7 @@ ${contentValues}`,
       updateData.garden_crop = crops.join(', ');
     }
 
-    // 일기: 선택된 타입 필드만 저장
-    if (format === '일기') {
-      const activeKeys = diaryType === 'quick' ? DIARY_QUICK_FIELDS.map(f => f.key) :
-                         diaryType === 'today' ? DIARY_TODAY_FIELDS.map(f => f.key) :
-                         DIARY_GROWTH_FIELDS.map(f => f.key);
-      for (const key of ALL_DIARY_TYPE_FIELD_KEYS) {
-        if (!activeKeys.includes(key)) delete updateData[key];
-      }
-      updateData.diaryType = diaryType;
-    }
+    updateData[`${prefix}_style`] = recordStyle;
 
     // 수정 5: 메모 형식 — AI가 추출한 제목을 memo_title 필드에도 저장
     if (format === '메모') {
@@ -617,10 +580,11 @@ ${contentValues}`,
   };
 
   const hasContent = (() => {
+    if (recordStyle === 'simple') {
+      return typeof formData[`${prefix}_simple`] === "string" && formData[`${prefix}_simple`].trim().length > 0;
+    }
     if (format === '일기') {
-      const activeFields = diaryType === 'quick' ? DIARY_QUICK_FIELDS :
-                           diaryType === 'today' ? DIARY_TODAY_FIELDS : DIARY_GROWTH_FIELDS;
-      return activeFields.some(f => typeof formData[f.key] === "string" && formData[f.key].trim().length > 0);
+      return DIARY_PREMIUM_FIELDS.some(f => typeof formData[f.key] === "string" && formData[f.key].trim().length > 0);
     }
     return fields.some(field => {
       const value = formData[field.key];
@@ -697,8 +661,8 @@ ${contentValues}`,
             </button>
           </div>
 
-          {/* Test Data Button — 일기 타입 선택 화면에서 숨김 */}
-          {!(format === '일기' && diaryStep === 'select') && (
+          {/* Test Data Button — 선택 화면에서 숨김 */}
+          {recordStep === 'input' && (
           <div style={{ padding: '16px 24px', backgroundColor: '#f8f9fa', borderBottom: '1px solid #e5e5e5' }}>
             <button
               onClick={handleFillTestData}
@@ -725,82 +689,79 @@ ${contentValues}`,
           )}
 
           {/* Content */}
-          {/* 일기: Step 1 — 타입 선택 화면 */}
-          {format === '일기' && diaryStep === 'select' ? (
+          {/* Step 1 — 공통 선택 화면 */}
+          {recordStep === 'select' && (
             <div style={{ flex: 1, overflowY: 'auto', padding: '32px 24px' }}>
-              <p style={{ textAlign: 'center', fontSize: 16, color: '#444', marginBottom: 8, fontWeight: 500 }}>
-                오늘의 일기 방식을 선택하세요
+              <p style={{ textAlign: 'center', fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: '4px' }}>
+                기록 방식을 선택하세요
               </p>
-              <p style={{ textAlign: 'center', fontSize: 13, color: '#999', marginBottom: 28 }}>
+              <p style={{ textAlign: 'center', fontSize: '11px', color: 'var(--color-text-secondary)', marginBottom: '20px' }}>
                 선택하면 바로 입력 화면으로 이동합니다
               </p>
-              <div style={{ display: 'flex', gap: 10 }}>
-                {/* ⚡ 빠르게 기록 */}
-                <button
-                  onClick={() => { setDiaryType('quick'); setDiaryStep('input'); }}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                {/* 간편 기록 카드 */}
+                <div
+                  onClick={() => { setRecordStyle('simple'); setRecordStep('input'); }}
                   style={{
-                    flex: 1,
-                    padding: '20px 10px',
-                    border: diaryType === 'quick' ? '2px solid #1A3C6E' : '1px solid #e5e5e5',
-                    borderRadius: 12,
-                    backgroundColor: diaryType === 'quick' ? '#EEF3FA' : '#fff',
-                    cursor: 'pointer',
+                    border: '0.5px solid #10b981',
+                    borderRadius: '12px',
+                    padding: '20px 14px',
                     textAlign: 'center',
-                    position: 'relative',
+                    cursor: 'pointer',
+                    background: '#f0fdf8',
                   }}
                 >
-                  <div style={{ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)' }}>
-                    <span style={{
-                      fontSize: 10, fontWeight: 700, color: '#fff',
-                      backgroundColor: '#1A3C6E', borderRadius: 10,
-                      padding: '2px 7px', whiteSpace: 'nowrap',
-                    }}>추천</span>
+                  <div style={{ display: 'inline-block', fontSize: '10px', padding: '2px 10px', borderRadius: '20px', background: '#dcfce7', color: '#166534', fontWeight: 500, marginBottom: '8px' }}>
+                    간편
                   </div>
-                  <div style={{ fontSize: 24, marginTop: 16, marginBottom: 8 }}>⚡</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#1A3C6E', marginBottom: 6 }}>빠르게 기록</div>
-                  <div style={{ fontSize: 11, color: '#888', lineHeight: 1.5 }}>한 일 + 한 줄 생각<br/>2가지 질문</div>
-                </button>
-
-                {/* 📔 오늘 정리 */}
-                <button
-                  onClick={() => { setDiaryType('today'); setDiaryStep('input'); }}
+                  <div style={{ fontSize: '26px', marginBottom: '8px' }}>✏️</div>
+                  <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: '6px' }}>간편 기록</div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>자유롭게 한 번에<br />부담 없이 기록</div>
+                </div>
+                {/* 프리미엄 기록 카드 */}
+                <div
+                  onClick={() => { setRecordStyle('premium'); setRecordStep('input'); }}
                   style={{
-                    flex: 1,
-                    padding: '20px 10px',
-                    border: diaryType === 'today' ? '2px solid #1A3C6E' : '1px solid #e5e5e5',
-                    borderRadius: 12,
-                    backgroundColor: diaryType === 'today' ? '#EEF3FA' : '#fff',
-                    cursor: 'pointer',
+                    border: '0.5px solid #1A3C6E',
+                    borderRadius: '12px',
+                    padding: '20px 14px',
                     textAlign: 'center',
+                    cursor: 'pointer',
+                    background: '#EEF3FA',
                   }}
                 >
-                  <div style={{ fontSize: 24, marginBottom: 8, marginTop: 8 }}>📔</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#1A3C6E', marginBottom: 6 }}>오늘 정리</div>
-                  <div style={{ fontSize: 11, color: '#888', lineHeight: 1.5 }}>행동·좋았던일·갈등<br/>아쉬움·배움·여백</div>
-                </button>
-
-                {/* 📈 성장 기록 */}
-                <button
-                  onClick={() => { setDiaryType('growth'); setDiaryStep('input'); }}
-                  style={{
-                    flex: 1,
-                    padding: '20px 10px',
-                    border: diaryType === 'growth' ? '2px solid #1A3C6E' : '1px solid #e5e5e5',
-                    borderRadius: 12,
-                    backgroundColor: diaryType === 'growth' ? '#EEF3FA' : '#fff',
-                    cursor: 'pointer',
-                    textAlign: 'center',
-                  }}
-                >
-                  <div style={{ fontSize: 24, marginBottom: 8, marginTop: 8 }}>📈</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#1A3C6E', marginBottom: 6 }}>성장 기록</div>
-                  <div style={{ fontSize: 11, color: '#888', lineHeight: 1.5 }}>선택·문제·시도<br/>결과·배움</div>
-                </button>
+                  <div style={{ display: 'inline-block', fontSize: '10px', padding: '2px 10px', borderRadius: '20px', background: '#dbeafe', color: '#1e3a8a', fontWeight: 500, marginBottom: '8px' }}>
+                    프리미엄
+                  </div>
+                  <div style={{ fontSize: '26px', marginBottom: '8px' }}>📋</div>
+                  <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: '6px' }}>프리미엄 기록</div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>항목별로 꼼꼼하게<br />체계적으로 기록</div>
+                </div>
               </div>
             </div>
-          ) : (
+          )}
+
+          {/* Step 2 — 입력 화면 */}
+          {recordStep === 'input' && (
           <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {/* 뒤로가기 + 모드 배지 */}
+              <div>
+                <button
+                  onClick={() => setRecordStep('select')}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--color-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', marginBottom: '14px', padding: 0 }}
+                >
+                  ← 방식 다시 선택
+                </button>
+                <span style={{
+                  display: 'inline-block', fontSize: '11px', padding: '3px 10px', borderRadius: '20px', fontWeight: 500,
+                  background: recordStyle === 'simple' ? '#dcfce7' : '#dbeafe',
+                  color: recordStyle === 'simple' ? '#166534' : '#1e3a8a',
+                }}>
+                  {recordStyle === 'simple' ? '✏️ 간편 기록' : '📋 프리미엄 기록'}
+                </span>
+              </div>
+
               {/* 📸 사진 업로드 섹션 */}
               <div>
                 <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
@@ -1117,94 +1078,71 @@ ${contentValues}`,
                 </div>
               )}
 
-              {/* 일기: 타입 인디케이터 + 타입별 필드 */}
-              {format === '일기' ? (
-                <>
-                  {/* 타입 변경 인디케이터 */}
-                  <div style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    backgroundColor: '#EEF3FA', borderRadius: 8, padding: '10px 14px',
-                  }}>
-                    <span style={{ fontSize: 14, color: '#1A3C6E', fontWeight: 600 }}>
-                      {diaryType === 'quick' ? '⚡ 빠르게 기록' : diaryType === 'today' ? '📔 오늘 정리' : '📈 성장 기록'}
-                    </span>
-                    <button
-                      onClick={() => setDiaryStep('select')}
-                      style={{
-                        fontSize: 12, color: '#1A3C6E', background: 'none',
-                        border: '1px solid #1A3C6E', borderRadius: 6,
-                        padding: '4px 10px', cursor: 'pointer',
-                      }}
-                    >
-                      변경
-                    </button>
-                  </div>
+              {/* 간편 스타일: 자유 텍스트 1개 */}
+              {recordStyle === 'simple' && (
+                <textarea
+                  rows={8}
+                  placeholder="자유롭게 기록해 주세요..."
+                  value={formData[`${prefix}_simple`] || ''}
+                  onChange={(e) => handleChange(`${prefix}_simple`, e.target.value)}
+                  style={{
+                    width: '100%', padding: '12px 16px', fontSize: 16,
+                    border: '1px solid #e5e5e5', borderRadius: 8,
+                    backgroundColor: '#fff', color: '#333',
+                    resize: 'vertical', fontFamily: 'inherit', outline: 'none',
+                  }}
+                />
+              )}
 
-                  {/* 타입별 입력 필드 */}
-                  {(diaryType === 'quick' ? DIARY_QUICK_FIELDS :
-                    diaryType === 'today' ? DIARY_TODAY_FIELDS : DIARY_GROWTH_FIELDS
-                  ).map((field) => (
-                    <div key={field.key}>
-                      <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
-                        {field.label}
-                      </label>
-                      <textarea
-                        value={formData[field.key] || ''}
-                        onChange={(e) => handleChange(field.key, e.target.value)}
-                        placeholder={field.placeholder}
-                        rows={field.rows || 4}
-                        style={{
-                          width: '100%', padding: '12px 16px', fontSize: 16,
-                          border: '1px solid #e5e5e5', borderRadius: 8,
-                          backgroundColor: '#fff', color: '#333',
-                          resize: 'vertical', fontFamily: 'inherit', outline: 'none',
-                        }}
-                      />
-                    </div>
-                  ))}
+              {/* 프리미엄 스타일: FORMAT_FIELDS 그대로 */}
+              {recordStyle === 'premium' && (
+                <>
+                  {format === '일기'
+                    ? DIARY_PREMIUM_FIELDS.map((f) => (
+                        <div key={f.key} style={{ marginBottom: '13px' }}>
+                          <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '5px' }}>{f.label}</div>
+                          <textarea
+                            rows={2}
+                            placeholder={`${f.label}을(를) 입력하세요`}
+                            value={formData[f.key] || ''}
+                            onChange={(e) => handleChange(f.key, e.target.value)}
+                            style={{
+                              width: '100%', padding: '12px 16px', fontSize: 16,
+                              border: '1px solid #e5e5e5', borderRadius: 8,
+                              backgroundColor: '#fff', color: '#333',
+                              resize: 'vertical', fontFamily: 'inherit', outline: 'none',
+                            }}
+                          />
+                        </div>
+                      ))
+                    : fields.map((field) => (
+                        <div key={field.key}>
+                          <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
+                            {field.label}
+                          </label>
+                          <textarea
+                            value={formData[field.key] || ''}
+                            onChange={(e) => handleChange(field.key, e.target.value)}
+                            placeholder={field.placeholder}
+                            rows={field.rows || 4}
+                            style={{
+                              width: '100%', padding: '12px 16px', fontSize: 14,
+                              border: '1px solid #e5e5e5', borderRadius: 8,
+                              backgroundColor: '#fff', color: '#333',
+                              resize: 'vertical', fontFamily: 'inherit', outline: 'none',
+                            }}
+                          />
+                        </div>
+                      ))
+                  }
                 </>
-              ) : (
-                /* 기존 필드들 (일기 외 형식) */
-                fields.map((field) => (
-                  <div key={field.key}>
-                    <label
-                      style={{
-                        display: 'block',
-                        fontSize: 13,
-                        color: '#666',
-                        marginBottom: 8,
-                        fontWeight: 500,
-                      }}
-                    >
-                      {field.label}
-                    </label>
-                    <textarea
-                      value={formData[field.key] || ''}
-                      onChange={(e) => handleChange(field.key, e.target.value)}
-                      placeholder={field.placeholder}
-                      rows={field.rows || 4}
-                      style={{
-                        width: '100%',
-                        padding: '12px 16px',
-                        fontSize: 14,
-                        border: '1px solid #e5e5e5',
-                        borderRadius: 8,
-                        backgroundColor: '#fff',
-                        color: '#333',
-                        resize: 'vertical',
-                        fontFamily: 'inherit',
-                        outline: 'none',
-                      }}
-                    />
-                  </div>
-                ))
               )}
             </div>
           </div>
-          )}{/* end diary step 2 / other formats */}
+          )}{/* end input step */}
 
-          {/* Footer — 일기 타입 선택 화면에서 숨김 */}
-          {!(format === '일기' && diaryStep === 'select') && (
+          {/* Footer — 선택 화면에서 숨김 */}
+          {recordStep === 'input' && (
           <div
             style={{
               padding: '16px 24px',
