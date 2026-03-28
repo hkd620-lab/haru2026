@@ -703,34 +703,42 @@ export function SettingsPage() {
           </button>
         </section>
 
-        {/* 법적 링크 */}
-        <section style={{ borderTop: '1px solid #e5e5e5', marginTop: 8 }}>
-          {[
-            { label: '사업자 정보', path: '/business-info' },
-            { label: '이용약관', path: '/terms' },
-            { label: '개인정보처리방침', path: '/privacy' },
-            { label: '환불 정책', path: '/refund' },
-          ].map(({ label, path }) => (
-            <button
-              key={path}
-              onClick={() => navigate(path)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                width: '100%',
-                padding: '14px 0',
-                background: 'none',
-                border: 'none',
-                borderBottom: '1px solid #f0f0f0',
-                cursor: 'pointer',
-              }}
-            >
-              <span className="text-sm" style={{ color: '#1A3C6E' }}>{label}</span>
-              <span style={{ color: '#1A3C6E', fontSize: 14 }}>{'>'}</span>
-            </button>
-          ))}
-        </section>
+        {/* 서비스 정보 */}
+        <div style={{ marginTop: '8px' }}>
+          <p style={{ fontSize: '11px', color: '#888', fontWeight: 500, letterSpacing: '0.04em', marginBottom: '8px', paddingLeft: '2px' }}>
+            서비스 정보
+          </p>
+          <div style={{ background: '#FAF9F6', border: '0.5px solid #d8d5ce', borderRadius: '14px', overflow: 'hidden' }}>
+            {[
+              { icon: '🏢', label: '사업자 정보', onClick: () => navigate('/business-info') },
+              { icon: '📄', label: '이용약관', onClick: () => navigate('/terms') },
+              { icon: '🔒', label: '개인정보처리방침', onClick: () => navigate('/privacy') },
+              { icon: '💳', label: '환불 정책', onClick: () => navigate('/refund') },
+            ].map((item, idx) => (
+              <div
+                key={item.label}
+                onClick={item.onClick}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '15px 16px', cursor: 'pointer',
+                  borderTop: idx === 0 ? 'none' : '0.5px solid #e8e5de',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '11px' }}>
+                  <div style={{
+                    width: '30px', height: '30px', borderRadius: '8px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '14px', border: '0.5px solid #e8e5de', background: '#fff', flexShrink: 0,
+                  }}>
+                    {item.icon}
+                  </div>
+                  <span style={{ fontSize: '14px', color: '#2a2a2a' }}>{item.label}</span>
+                </div>
+                <span style={{ fontSize: '16px', color: '#bbb' }}>›</span>
+              </div>
+            ))}
+          </div>
+        </div>
 
         <div className="text-center py-8">
           <p className="text-xs mb-1" style={{ color: '#999' }}>
