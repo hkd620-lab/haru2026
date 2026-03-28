@@ -317,10 +317,45 @@ export function SayuPage() {
       dateLabel: '',
     });
     if (deleted) {
-      // 삭제된 경우: 목록 새로고침 후 현재 날짜 유지
       const currentDate = selectedDate;
-      await fetchRecords();
-      setSelectedDate(currentDate);
+
+      // 1. Firestore에서 최신 records 가져오기
+      setLoading(true);
+      try {
+        const data = await firestoreService.getRecords(user!.uid);
+        setRecords(data);
+
+        // 2. 새 records 기준으로 selectedDateFormats 재계산
+        const dayRecords = data.filter((r) => r.date === currentDate);
+
+        if (dayRecords.length === 0) {
+          // 해당 날짜 기록이 모두 삭제된 경우 → 날짜 선택 해제
+          setSelectedDate('');
+          setSelectedDateFormats([]);
+        } else {
+          // 남은 기록으로 형식 목록 재구성
+          const seenFormatKeys = new Set<string>();
+          const availableFormats: { key: string; label: string; recordId?: string }[] = [];
+          dayRecords.forEach((record) => {
+            if (!record.formats) return;
+            record.formats.forEach((format) => {
+              const prefix = ALL_FORMAT_PREFIXES[format];
+              if (!prefix) return;
+              const entryKey = `${prefix}_${record.id}`;
+              if (!seenFormatKeys.has(entryKey)) {
+                seenFormatKeys.add(entryKey);
+                availableFormats.push({ key: prefix, label: format, recordId: record.id });
+              }
+            });
+          });
+          setSelectedDate(currentDate);
+          setSelectedDateFormats(availableFormats);
+        }
+      } catch (error) {
+        console.error('새로고침 실패:', error);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
