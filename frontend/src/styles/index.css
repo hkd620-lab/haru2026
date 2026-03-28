@@ -1,3 +1,12 @@
+:root {
+  color-scheme: light only;
+}
+
+html, body {
+  background-color: #FAF9F6 !important;
+  color: #1a1a1a !important;
+}
+
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
