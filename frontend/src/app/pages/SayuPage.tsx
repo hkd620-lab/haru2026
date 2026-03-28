@@ -868,7 +868,7 @@ export function SayuPage() {
         images={sayuModalState.images}
         formatKey={sayuModalState.formatKey}
         firestoreId={sayuModalState.firestoreId}
-        onRefresh={() => window.location.reload()}
+        onRefresh={undefined}
       />
     </div>
 
