@@ -515,7 +515,7 @@ export function SayuPage() {
   return (
     <>
     <style>{printStyle}</style>
-    <div className="sayu-page-container no-print max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+    <div className="sayu-page-container no-print max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
       {/* 타이틀 + 가이드 */}
       <div className="mb-4">
         <div className="flex items-start justify-between mb-2">

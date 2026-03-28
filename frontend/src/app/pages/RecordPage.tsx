@@ -108,7 +108,7 @@ export function RecordPage() {
 
   return (
     <>
-    <div className="max-w-3xl mx-auto px-4 py-3">
+    <div className="max-w-3xl mx-auto px-4 py-3" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
       <div className="space-y-3">
         {/* Title Animation */}
         <section className="flex items-center justify-center py-1">

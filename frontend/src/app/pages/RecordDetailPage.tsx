@@ -230,7 +230,7 @@ export function RecordDetailPage() {
   }
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 56px - 80px)', backgroundColor: '#FAF9F6' }}>
+    <div style={{ minHeight: 'calc(100vh - 56px - 80px)', backgroundColor: '#EDE9F5' }}>
       {/* 헤더 */}
       <div
         style={{

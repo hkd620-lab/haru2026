@@ -283,7 +283,7 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4">
           <Settings className="w-7 h-7" style={{ color: '#1A3C6E' }} />
