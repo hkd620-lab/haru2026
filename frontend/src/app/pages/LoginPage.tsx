@@ -23,7 +23,7 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#FEFBE8' }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#EDE9F5' }}>
       <div className="max-w-md w-full px-6">
         <div className="text-center mb-8">
           <BookOpen className="w-16 h-16 mx-auto mb-4" style={{ color: '#1A3C6E' }} />

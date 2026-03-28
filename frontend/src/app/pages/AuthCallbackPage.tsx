@@ -45,7 +45,7 @@ export function AuthCallbackPage() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#FEFBE8' }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#EDE9F5' }}>
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: '#1A3C6E' }}></div>
         <p className="text-lg" style={{ color: '#1A3C6E' }}>로그인 중...</p>
