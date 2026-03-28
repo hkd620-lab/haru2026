@@ -60,7 +60,7 @@ export function HomePage() {
   }, [user?.uid]);
 
   return (
-    <div className="min-h-[calc(100vh-56px-80px)]" style={{ backgroundColor: '#FEFBE8' }}>
+    <div className="min-h-[calc(100vh-56px-80px)]" style={{ backgroundColor: '#EDE9F5' }}>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
         {/* Logo & Identity */}
         <header className="text-center mb-10">

@@ -25,7 +25,7 @@ function PageLoader() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#FEFBE8',
+        backgroundColor: '#EDE9F5',
       }}
     >
       <div style={{ textAlign: 'center' }}>
