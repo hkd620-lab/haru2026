@@ -290,7 +290,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   };
 
   const handlePolishClick = () => {
-    setShowModeSelect(true);
+    handlePolishWithMode('PREMIUM');
   };
 
   const handlePolishWithMode = async (mode: SayuMode) => {
@@ -534,6 +534,54 @@ ${contentValues}`,
       } else {
         toast.error('사진 삭제에 실패했습니다.');
       }
+    }
+  };
+
+  const handleSaveOriginalAsSayu = async () => {
+    let originalContent: string;
+    if (recordStyle === 'simple') {
+      originalContent = formData[`${prefix}_simple`] || '';
+    } else if (format === '일기') {
+      originalContent = DIARY_PREMIUM_FIELDS
+        .map(field => formData[field.key])
+        .filter(v => typeof v === 'string' && v.trim())
+        .join('\n\n');
+    } else {
+      originalContent = fields
+        .map(field => formData[field.key])
+        .filter(v => typeof v === 'string' && v.trim())
+        .join('\n\n');
+      if (format === '텃밭일지' && crops.length > 0) {
+        originalContent = `작물: ${crops.join(', ')}\n\n${originalContent}`;
+      }
+    }
+
+    if (!originalContent.trim()) {
+      toast.error('저장할 내용이 없습니다. 먼저 작성해주세요.');
+      return;
+    }
+
+    const dataToSave: Record<string, any> = {
+      ...formData,
+      [sayuKey]: originalContent,
+      [imagesKey]: JSON.stringify(uploadedImages),
+      [`${prefix}_style`]: recordStyle,
+    };
+
+    if (format === '텃밭일지' && crops.length > 0) {
+      dataToSave.garden_crop = crops.join(', ');
+    }
+
+    setIsSaving(true);
+    try {
+      await onSave(dataToSave);
+      toast.success('SAYU에 저장되었습니다!');
+      onClose();
+    } catch (error) {
+      console.error('저장 중 오류:', error);
+      toast.error('저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1181,12 +1229,12 @@ ${contentValues}`,
                 ) : (
                   <>
                     <Wand2 style={{ width: 15, height: 15 }} />
-                    AI 다듬은 글 저장
+                    AI 다듬은 후 SAYU 저장
                   </>
                 )}
               </button>
               <button
-                onClick={handleSubmit}
+                onClick={handleSaveOriginalAsSayu}
                 disabled={isSaving || isPolishing}
                 style={{
                   padding: '12px 16px',
@@ -1203,110 +1251,13 @@ ${contentValues}`,
                   justifyContent: 'center',
                 }}
               >
-                {isSaving ? '저장 중...' : '원본 저장'}
+                {isSaving ? '저장 중...' : '다듬지 않고 SAYU 저장'}
               </button>
             </div>
           </div>
           )}{/* end footer conditional */}
         </div>
       </div>
-
-      {/* 모드 선택 모달 */}
-      {showModeSelect && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100,
-            padding: '20px',
-          }}
-          onClick={() => setShowModeSelect(false)}
-        >
-          <div
-            style={{
-              backgroundColor: '#FAF9F6',
-              borderRadius: 12,
-              maxWidth: 500,
-              width: '100%',
-              padding: '32px',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ fontSize: 20, color: '#1A3C6E', fontWeight: 600, marginBottom: 8 }}>
-              SAYU 모드 선택
-            </h3>
-            <p style={{ fontSize: 14, color: '#666', marginBottom: 24 }}>
-              원하는 다듬기 모드를 선택하세요
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <button
-                onClick={() => handlePolishWithMode('BASIC')}
-                style={{
-                  padding: '20px',
-                  fontSize: 15,
-                  border: '2px solid #3b82f6',
-                  borderRadius: 10,
-                  backgroundColor: '#eff6ff',
-                  color: '#1e40af',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  fontWeight: 500,
-                }}
-              >
-                <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>⚡ 사실 보존형 교정</div>
-                <div style={{ fontSize: 13, opacity: 0.8 }}>
-                  원문의 사실만 유지하며 맞춤법·표현을 교정합니다
-                </div>
-              </button>
-
-              <button
-                onClick={() => handlePolishWithMode('PREMIUM')}
-                style={{
-                  padding: '20px',
-                  fontSize: 15,
-                  border: '2px solid #8b5cf6',
-                  borderRadius: 10,
-                  backgroundColor: '#f5f3ff',
-                  color: '#6d28d9',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  fontWeight: 500,
-                }}
-              >
-                <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>✨ PREMIUM 모드</div>
-                <div style={{ fontSize: 13, opacity: 0.8 }}>
-                  내용을 완전히 재구성하여 세련되게 다듬습니다
-                </div>
-              </button>
-            </div>
-
-            <button
-              onClick={() => setShowModeSelect(false)}
-              style={{
-                marginTop: 20,
-                width: '100%',
-                padding: '12px',
-                fontSize: 14,
-                border: '1px solid #e5e5e5',
-                borderRadius: 8,
-                backgroundColor: '#fff',
-                color: '#666',
-                cursor: 'pointer',
-              }}
-            >
-              취소
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* SAYU 미리보기 모달 */}
       {showPolishModal && (
