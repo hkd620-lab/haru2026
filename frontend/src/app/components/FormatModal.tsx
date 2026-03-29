@@ -558,7 +558,8 @@ ${contentValues}`,
     updateData[`${prefix}_style`] = recordStyle;
 
     // SAYU 다듬기 결과에서 AI 제목 추출 (모든 형식)
-    const titleMatch = polishedContent.match(/^\*\*(.+?)\*\*/);
+    // .trim()으로 앞뒤 공백·줄바꿈 제거 후 매칭 (Gemini 응답에 앞 공백이 붙는 경우 대비)
+    const titleMatch = polishedContent.trim().match(/^\*\*(.+?)\*\*/);
     if (titleMatch && titleMatch[1]) {
       updateData[`${prefix}_title`] = titleMatch[1].trim();
     }
