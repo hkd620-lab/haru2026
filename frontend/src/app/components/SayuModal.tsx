@@ -872,89 +872,93 @@ export function SayuModal({
               )}
 
               {/* 사진 - 높이 69% 증가 (240→406px, 120→203px) */}
-              {images && images.length > 0 && (
-                <div style={{ marginBottom: '20px' }}>
-                  {/* 1장: 가운데 정렬 */}
-                  {images.length === 1 && (
-                    <img
-                      src={images[0]}
-                      alt="사진"
-                      style={{
-                        width: '100%',
-                        maxWidth: '320px',
-                        height: 'auto',
-                        objectFit: 'cover',
-                        borderRadius: '8px',
-                        border: '1px solid #e5e5e5',
-                        display: 'block',
-                        margin: '0 auto'
-                      }}
-                    />
-                  )}
-
-                  {/* 2장: 나란히 정렬 */}
-                  {images.length === 2 && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                      {images.map((img, idx) => (
-                        <img
-                          key={idx}
-                          src={img}
-                          alt={`사진 ${idx + 1}`}
-                          style={{
-                            width: '100%',
-                            height: '160px',
-                            objectFit: 'cover',
-                            borderRadius: '8px',
-                            border: '1px solid #e5e5e5'
-                          }}
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  {/* 3장: 위에 큰 것 1장 + 아래 2장 - 높이 69% 증가 */}
-                  {images.length === 3 && (
-                    <div>
+              {(() => {
+                const validImages = (images || []).filter(img => img && img !== '');
+                if (validImages.length === 0) return null;
+                return (
+                  <div style={{ marginBottom: '20px' }}>
+                    {/* 1장: 가운데 정렬 */}
+                    {validImages.length === 1 && (
                       <img
-                        src={images[0]}
-                        alt="사진 1"
+                        src={validImages[0]}
+                        alt="사진"
                         style={{
                           width: '100%',
-                          height: '406px',
+                          maxWidth: '320px',
+                          height: 'auto',
                           objectFit: 'cover',
                           borderRadius: '8px',
                           border: '1px solid #e5e5e5',
-                          marginBottom: '12px'
+                          display: 'block',
+                          margin: '0 auto'
                         }}
                       />
+                    )}
+
+                    {/* 2장: 나란히 정렬 */}
+                    {validImages.length === 2 && (
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                        <img
-                          src={images[1]}
-                          alt="사진 2"
-                          style={{
-                            width: '100%',
-                            height: '203px',
-                            objectFit: 'cover',
-                            borderRadius: '8px',
-                            border: '1px solid #e5e5e5'
-                          }}
-                        />
-                        <img
-                          src={images[2]}
-                          alt="사진 3"
-                          style={{
-                            width: '100%',
-                            height: '203px',
-                            objectFit: 'cover',
-                            borderRadius: '8px',
-                            border: '1px solid #e5e5e5'
-                          }}
-                        />
+                        {validImages.map((img, idx) => (
+                          <img
+                            key={idx}
+                            src={img}
+                            alt={`사진 ${idx + 1}`}
+                            style={{
+                              width: '100%',
+                              height: '160px',
+                              objectFit: 'cover',
+                              borderRadius: '8px',
+                              border: '1px solid #e5e5e5'
+                            }}
+                          />
+                        ))}
                       </div>
-                    </div>
-                  )}
-                </div>
-              )}
+                    )}
+
+                    {/* 3장: 위에 큰 것 1장 + 아래 2장 - 높이 69% 증가 */}
+                    {validImages.length === 3 && (
+                      <div>
+                        <img
+                          src={validImages[0]}
+                          alt="사진 1"
+                          style={{
+                            width: '100%',
+                            height: '406px',
+                            objectFit: 'cover',
+                            borderRadius: '8px',
+                            border: '1px solid #e5e5e5',
+                            marginBottom: '12px'
+                          }}
+                        />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                          <img
+                            src={validImages[1]}
+                            alt="사진 2"
+                            style={{
+                              width: '100%',
+                              height: '203px',
+                              objectFit: 'cover',
+                              borderRadius: '8px',
+                              border: '1px solid #e5e5e5'
+                            }}
+                          />
+                          <img
+                            src={validImages[2]}
+                            alt="사진 3"
+                            style={{
+                              width: '100%',
+                              height: '203px',
+                              objectFit: 'cover',
+                              borderRadius: '8px',
+                              border: '1px solid #e5e5e5'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* 내용 없음 안내 */}
               {(!editedContent || editedContent.trim().length === 0) && (
