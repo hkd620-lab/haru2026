@@ -813,6 +813,182 @@ ${contentValues}`,
                 </span>
               </div>
 
+              {/* 🌱 텃밭일지: 작물 목록 UI */}
+              {format === '텃밭일지' && (
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
+                    🌱 작물 목록
+                  </label>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                    <input
+                      type="text"
+                      value={newCropName}
+                      onChange={(e) => setNewCropName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddCrop()}
+                      placeholder="작물 이름 입력 (예: 토마토)"
+                      style={{
+                        flex: 1,
+                        padding: '8px 12px',
+                        fontSize: 13,
+                        border: '1px solid #e5e5e5',
+                        borderRadius: 6,
+                        outline: 'none',
+                      }}
+                    />
+                    <button
+                      onClick={handleAddCrop}
+                      style={{
+                        padding: '8px 16px',
+                        fontSize: 13,
+                        border: 'none',
+                        borderRadius: 6,
+                        backgroundColor: '#10b981',
+                        color: '#fff',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      <Plus style={{ width: 14, height: 14 }} />
+                      추가
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {crops.map((crop) => (
+                      <div
+                        key={crop}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          padding: '4px 10px',
+                          fontSize: 12,
+                          backgroundColor: '#f0f9ff',
+                          color: '#1A3C6E',
+                          borderRadius: 6,
+                          border: '1px solid #bfdbfe',
+                        }}
+                      >
+                        {crop}
+                        <button
+                          onClick={() => handleRemoveCrop(crop)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            color: '#ef4444',
+                          }}
+                        >
+                          <X style={{ width: 12, height: 12 }} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 메모 형식 AI 제목 안내 */}
+              {format === '메모' && showMemoGuide && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: 8,
+                  backgroundColor: '#F0FDF4',
+                  border: '1px solid #10b981',
+                  borderRadius: 8,
+                  padding: '10px 14px',
+                  marginBottom: 12,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 14 }}>✨</span>
+                    <p style={{ fontSize: 12, color: '#065f46', margin: 0, lineHeight: 1.6 }}>
+                      <strong style={{ color: '#10b981' }}>AI 제목 자동 추출</strong> —
+                      제목을 비워두면 저장 시 AI가 내용을 분석해 자동으로 제목을 달아드립니다.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowMemoGuide(false)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#10b981',
+                      fontSize: 16,
+                      padding: 0,
+                      lineHeight: 1,
+                      flexShrink: 0,
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+
+              {/* 간편 스타일: 자유 텍스트 1개 */}
+              {recordStyle === 'simple' && (
+                <textarea
+                  rows={8}
+                  placeholder="자유롭게 기록해 주세요..."
+                  value={formData[`${prefix}_simple`] || ''}
+                  onChange={(e) => handleChange(`${prefix}_simple`, e.target.value)}
+                  style={{
+                    width: '100%', padding: '12px 16px', fontSize: 16,
+                    border: '1px solid #e5e5e5', borderRadius: 8,
+                    backgroundColor: '#fff', color: '#333',
+                    resize: 'vertical', fontFamily: 'inherit', outline: 'none',
+                  }}
+                />
+              )}
+
+              {/* 프리미엄 스타일: FORMAT_FIELDS 그대로 */}
+              {recordStyle === 'premium' && (
+                <>
+                  {format === '일기'
+                    ? DIARY_PREMIUM_FIELDS.map((f) => (
+                        <div key={f.key} style={{ marginBottom: '13px' }}>
+                          <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '5px' }}>{f.label}</div>
+                          <textarea
+                            rows={2}
+                            placeholder={`${f.label}을(를) 입력하세요`}
+                            value={formData[f.key] || ''}
+                            onChange={(e) => handleChange(f.key, e.target.value)}
+                            style={{
+                              width: '100%', padding: '12px 16px', fontSize: 16,
+                              border: '1px solid #e5e5e5', borderRadius: 8,
+                              backgroundColor: '#fff', color: '#333',
+                              resize: 'vertical', fontFamily: 'inherit', outline: 'none',
+                            }}
+                          />
+                        </div>
+                      ))
+                    : fields.map((field) => (
+                        <div key={field.key}>
+                          <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
+                            {field.label}
+                          </label>
+                          <textarea
+                            value={formData[field.key] || ''}
+                            onChange={(e) => handleChange(field.key, e.target.value)}
+                            placeholder={field.placeholder}
+                            rows={field.rows || 4}
+                            style={{
+                              width: '100%', padding: '12px 16px', fontSize: 14,
+                              border: '1px solid #e5e5e5', borderRadius: 8,
+                              backgroundColor: '#fff', color: '#333',
+                              resize: 'vertical', fontFamily: 'inherit', outline: 'none',
+                            }}
+                          />
+                        </div>
+                      ))
+                  }
+                </>
+              )}
+
               {/* 📸 사진 업로드 섹션 */}
               <div>
                 <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
@@ -1012,182 +1188,6 @@ ${contentValues}`,
                   </div>
                 )}
               </div>
-
-              {/* 🌱 텃밭일지: 작물 목록 UI */}
-              {format === '텃밭일지' && (
-                <div>
-                  <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
-                    🌱 작물 목록
-                  </label>
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                    <input
-                      type="text"
-                      value={newCropName}
-                      onChange={(e) => setNewCropName(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleAddCrop()}
-                      placeholder="작물 이름 입력 (예: 토마토)"
-                      style={{
-                        flex: 1,
-                        padding: '8px 12px',
-                        fontSize: 13,
-                        border: '1px solid #e5e5e5',
-                        borderRadius: 6,
-                        outline: 'none',
-                      }}
-                    />
-                    <button
-                      onClick={handleAddCrop}
-                      style={{
-                        padding: '8px 16px',
-                        fontSize: 13,
-                        border: 'none',
-                        borderRadius: 6,
-                        backgroundColor: '#10b981',
-                        color: '#fff',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 4,
-                      }}
-                    >
-                      <Plus style={{ width: 14, height: 14 }} />
-                      추가
-                    </button>
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {crops.map((crop) => (
-                      <div
-                        key={crop}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          padding: '4px 10px',
-                          fontSize: 12,
-                          backgroundColor: '#f0f9ff',
-                          color: '#1A3C6E',
-                          borderRadius: 6,
-                          border: '1px solid #bfdbfe',
-                        }}
-                      >
-                        {crop}
-                        <button
-                          onClick={() => handleRemoveCrop(crop)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: 0,
-                            display: 'flex',
-                            alignItems: 'center',
-                            color: '#ef4444',
-                          }}
-                        >
-                          <X style={{ width: 12, height: 12 }} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 메모 형식 AI 제목 안내 */}
-              {format === '메모' && showMemoGuide && (
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  justifyContent: 'space-between',
-                  gap: 8,
-                  backgroundColor: '#F0FDF4',
-                  border: '1px solid #10b981',
-                  borderRadius: 8,
-                  padding: '10px 14px',
-                  marginBottom: 12,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 14 }}>✨</span>
-                    <p style={{ fontSize: 12, color: '#065f46', margin: 0, lineHeight: 1.6 }}>
-                      <strong style={{ color: '#10b981' }}>AI 제목 자동 추출</strong> —
-                      제목을 비워두면 저장 시 AI가 내용을 분석해 자동으로 제목을 달아드립니다.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setShowMemoGuide(false)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      color: '#10b981',
-                      fontSize: 16,
-                      padding: 0,
-                      lineHeight: 1,
-                      flexShrink: 0,
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-              )}
-
-              {/* 간편 스타일: 자유 텍스트 1개 */}
-              {recordStyle === 'simple' && (
-                <textarea
-                  rows={8}
-                  placeholder="자유롭게 기록해 주세요..."
-                  value={formData[`${prefix}_simple`] || ''}
-                  onChange={(e) => handleChange(`${prefix}_simple`, e.target.value)}
-                  style={{
-                    width: '100%', padding: '12px 16px', fontSize: 16,
-                    border: '1px solid #e5e5e5', borderRadius: 8,
-                    backgroundColor: '#fff', color: '#333',
-                    resize: 'vertical', fontFamily: 'inherit', outline: 'none',
-                  }}
-                />
-              )}
-
-              {/* 프리미엄 스타일: FORMAT_FIELDS 그대로 */}
-              {recordStyle === 'premium' && (
-                <>
-                  {format === '일기'
-                    ? DIARY_PREMIUM_FIELDS.map((f) => (
-                        <div key={f.key} style={{ marginBottom: '13px' }}>
-                          <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '5px' }}>{f.label}</div>
-                          <textarea
-                            rows={2}
-                            placeholder={`${f.label}을(를) 입력하세요`}
-                            value={formData[f.key] || ''}
-                            onChange={(e) => handleChange(f.key, e.target.value)}
-                            style={{
-                              width: '100%', padding: '12px 16px', fontSize: 16,
-                              border: '1px solid #e5e5e5', borderRadius: 8,
-                              backgroundColor: '#fff', color: '#333',
-                              resize: 'vertical', fontFamily: 'inherit', outline: 'none',
-                            }}
-                          />
-                        </div>
-                      ))
-                    : fields.map((field) => (
-                        <div key={field.key}>
-                          <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
-                            {field.label}
-                          </label>
-                          <textarea
-                            value={formData[field.key] || ''}
-                            onChange={(e) => handleChange(field.key, e.target.value)}
-                            placeholder={field.placeholder}
-                            rows={field.rows || 4}
-                            style={{
-                              width: '100%', padding: '12px 16px', fontSize: 14,
-                              border: '1px solid #e5e5e5', borderRadius: 8,
-                              backgroundColor: '#fff', color: '#333',
-                              resize: 'vertical', fontFamily: 'inherit', outline: 'none',
-                            }}
-                          />
-                        </div>
-                      ))
-                  }
-                </>
-              )}
             </div>
           </div>
           )}{/* end input step */}
