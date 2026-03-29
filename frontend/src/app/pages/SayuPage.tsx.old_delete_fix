@@ -310,53 +310,12 @@ export function SayuPage() {
     openFormatSayu(selectedDate, formatKey, formatLabel, recordId);
   };
 
-  const handleModalClose = async (deleted?: boolean) => {
+  const handleModalClose = () => {
     setSayuModalState({
       isOpen: false,
       content: '',
       dateLabel: '',
     });
-    if (deleted) {
-      const currentDate = selectedDate;
-
-      // 1. Firestore에서 최신 records 가져오기
-      setLoading(true);
-      try {
-        const data = await firestoreService.getRecords(user!.uid);
-        setRecords(data);
-
-        // 2. 새 records 기준으로 selectedDateFormats 재계산
-        const dayRecords = data.filter((r) => r.date === currentDate);
-
-        if (dayRecords.length === 0) {
-          // 해당 날짜 기록이 모두 삭제된 경우 → 날짜 선택 해제
-          setSelectedDate('');
-          setSelectedDateFormats([]);
-        } else {
-          // 남은 기록으로 형식 목록 재구성
-          const seenFormatKeys = new Set<string>();
-          const availableFormats: { key: string; label: string; recordId?: string }[] = [];
-          dayRecords.forEach((record) => {
-            if (!record.formats) return;
-            record.formats.forEach((format) => {
-              const prefix = ALL_FORMAT_PREFIXES[format];
-              if (!prefix) return;
-              const entryKey = `${prefix}_${record.id}`;
-              if (!seenFormatKeys.has(entryKey)) {
-                seenFormatKeys.add(entryKey);
-                availableFormats.push({ key: prefix, label: format, recordId: record.id });
-              }
-            });
-          });
-          setSelectedDate(currentDate);
-          setSelectedDateFormats(availableFormats);
-        }
-      } catch (error) {
-        console.error('새로고침 실패:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
   };
 
   const handleSaveSayu = async (editedContent: string, rating: number) => {
@@ -429,14 +388,11 @@ export function SayuPage() {
           })
           .map((r) => {
             const firstFieldKey = FORMAT_FIRST_FIELD[prefix];
-            // AI 추출 제목 우선 (숫자·기호만인 잘못된 제목은 무시), 없으면 첫 번째 필드 내용 사용
-            const aiTitle = r[`${prefix}_title`] as string | undefined;
-            const validAiTitle = aiTitle && !/^[\d\s:.,\-\/]+$/.test(aiTitle.trim()) && aiTitle.trim().length >= 2 ? aiTitle : '';
-            let rawTitle = validAiTitle || (firstFieldKey ? (r[firstFieldKey] || '') : '');
-            // 첫 번째 필드도 비어있으면 같은 prefix의 다른 필드에서 폴백 (태그/여백 제외)
+            let rawTitle = firstFieldKey ? (r[firstFieldKey] || '') : '';
+            // 첫 번째 필드가 비어있으면 같은 prefix의 다른 필드에서 폴백 (태그/여백 제외)
             if (!rawTitle) {
               const fallbackKey = Object.keys(r).find(
-                (k) => k.startsWith(`${prefix}_`) && !k.endsWith('_sayu') && !k.endsWith('_rating') && !k.endsWith('_polished') && !k.endsWith('_images') && !k.endsWith('_stats') && !k.endsWith('_tags') && !k.endsWith('_space') && !k.endsWith('_title') && typeof r[k] === 'string' && r[k].trim()
+                (k) => k.startsWith(`${prefix}_`) && !k.endsWith('_sayu') && !k.endsWith('_rating') && !k.endsWith('_polished') && !k.endsWith('_images') && !k.endsWith('_stats') && !k.endsWith('_tags') && !k.endsWith('_space') && typeof r[k] === 'string' && r[k].trim()
               );
               rawTitle = fallbackKey ? r[fallbackKey] : '';
             }
@@ -518,7 +474,7 @@ export function SayuPage() {
   return (
     <>
     <style>{printStyle}</style>
-    <div className="sayu-page-container no-print max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
+    <div className="sayu-page-container no-print max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
       {/* 타이틀 + 가이드 */}
       <div className="mb-4">
         <div className="flex items-start justify-between mb-2">
@@ -858,7 +814,7 @@ export function SayuPage() {
 
       <SayuModal
         isOpen={sayuModalState.isOpen}
-        onClose={(deleted?: boolean) => handleModalClose(deleted)}
+        onClose={handleModalClose}
         content={sayuModalState.content}
         originalData={sayuModalState.originalData}
         dateLabel={sayuModalState.dateLabel}
@@ -871,7 +827,7 @@ export function SayuPage() {
         images={sayuModalState.images}
         formatKey={sayuModalState.formatKey}
         firestoreId={sayuModalState.firestoreId}
-        onRefresh={undefined}
+        onRefresh={() => window.location.reload()}
       />
     </div>
 
@@ -910,37 +866,33 @@ export function SayuPage() {
           </div>
         </div>
 
-        {(() => {
-          const validImages = (sayuModalState.images || []).filter((img: string) => img && img !== '');
-          if (validImages.length === 0) return null;
-          return (
-            <div className="print-photos" style={{ marginBottom: '15px', backgroundColor: 'white' }}>
-              {validImages.length === 1 && (
-                <div style={{ display: 'flex', justifyContent: 'center', backgroundColor: 'white' }}>
-                  <img src={validImages[0]} alt="사진" style={{ width: 'auto', maxWidth: '80mm', maxHeight: '100mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
+        {sayuModalState.images && sayuModalState.images.length > 0 && (
+          <div className="print-photos" style={{ marginBottom: '15px', backgroundColor: 'white' }}>
+            {sayuModalState.images.length === 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', backgroundColor: 'white' }}>
+                <img src={sayuModalState.images[0]} alt="사진" style={{ width: 'auto', maxWidth: '80mm', maxHeight: '100mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
+              </div>
+            )}
+            {sayuModalState.images.length === 2 && (
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', backgroundColor: 'white' }}>
+                {sayuModalState.images.map((img: string, idx: number) => (
+                  <img key={idx} src={img} alt={`사진 ${idx + 1}`} style={{ width: 'auto', maxWidth: '70mm', maxHeight: '90mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
+                ))}
+              </div>
+            )}
+            {sayuModalState.images.length === 3 && (
+              <div style={{ backgroundColor: 'white' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px', backgroundColor: 'white' }}>
+                  <img src={sayuModalState.images[0]} alt="사진 1" style={{ width: 'auto', maxWidth: '110mm', maxHeight: '85mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
                 </div>
-              )}
-              {validImages.length === 2 && (
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', backgroundColor: 'white' }}>
-                  {validImages.map((img: string, idx: number) => (
-                    <img key={idx} src={img} alt={`사진 ${idx + 1}`} style={{ width: 'auto', maxWidth: '70mm', maxHeight: '90mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
-                  ))}
+                  <img src={sayuModalState.images[1]} alt="사진 2" style={{ width: 'auto', maxWidth: '50mm', maxHeight: '50mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
+                  <img src={sayuModalState.images[2]} alt="사진 3" style={{ width: 'auto', maxWidth: '50mm', maxHeight: '50mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
                 </div>
-              )}
-              {validImages.length >= 3 && (
-                <div style={{ backgroundColor: 'white' }}>
-                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px', backgroundColor: 'white' }}>
-                    <img src={validImages[0]} alt="사진 1" style={{ width: 'auto', maxWidth: '110mm', maxHeight: '85mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
-                  </div>
-                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', backgroundColor: 'white' }}>
-                    <img src={validImages[1]} alt="사진 2" style={{ width: 'auto', maxWidth: '50mm', maxHeight: '50mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
-                    <img src={validImages[2]} alt="사진 3" style={{ width: 'auto', maxWidth: '50mm', maxHeight: '50mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })()}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="sayu-print-content" style={{ backgroundColor: 'white' }}>
           <p>{sayuModalState.content}</p>

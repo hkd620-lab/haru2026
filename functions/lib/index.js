@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.removeAllTags = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.polishContent = void 0;
+exports.removeAllTags = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
 const params_1 = require("firebase-functions/params");
@@ -164,6 +164,125 @@ exports.polishContent = (0, https_2.onCall)({
         console.error('AI 처리 실패:', error);
         throw new https_2.HttpsError('internal', 'AI 처리에 실패했습니다.');
     }
+});
+// 숫자·기호만으로 이뤄진 제목인지 검사 (의미 없는 제목 걸러냄)
+function isValidTitle(title) {
+    if (!title || title.trim().length < 2)
+        return false;
+    // 숫자, 공백, 콜론, 점, 쉼표, 대시, 슬래시만으로 구성된 경우 거부
+    // 예: "09:00", "1,234", "123", "12.5", "2026-03-28"
+    return !/^[\d\s:.,\-\/]+$/.test(title.trim());
+}
+// ===== 🏷️ AI 제목 추출 =====
+exports.extractTitle = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET]
+}, async (request) => {
+    try {
+        const { text, format } = request.data;
+        if (!text || typeof text !== 'string') {
+            throw new https_2.HttpsError('invalid-argument', '텍스트가 필요합니다.');
+        }
+        const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+        const prompt = `다음 기록의 핵심을 담은 짧은 제목을 만들어주세요.
+제목만 한 줄로 출력하세요. 10자 이내. 따옴표·마크다운 기호(*, #) 없이 텍스트만.
+
+기록 형식: ${format || '일반'}
+기록 내용:
+${text.slice(0, 600)}`;
+        const result = await model.generateContent(prompt);
+        const raw = result.response.text().trim();
+        const title = raw
+            .replace(/^\*\*(.+)\*\*$/, '$1')
+            .replace(/^["']|["']$/g, '')
+            .trim()
+            .slice(0, 20);
+        // 숫자·기호만으로 구성된 제목은 빈 문자열 반환
+        return { title: isValidTitle(title) ? title : '' };
+    }
+    catch (error) {
+        console.error('제목 추출 실패:', error);
+        throw new https_2.HttpsError('internal', '제목 추출에 실패했습니다.');
+    }
+});
+// ===== 🏷️ 기존 기록 AI 제목 일괄 생성 =====
+exports.generateTitlesForAll = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+    timeoutSeconds: 300,
+}, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    const FORMAT_PREFIX_MAP = {
+        '일기': 'diary', '에세이': 'essay', '선교보고': 'mission',
+        '일반보고': 'report', '업무일지': 'work', '여행기록': 'travel',
+        '텃밭일지': 'garden', '애완동물관찰일지': 'pet', '육아일기': 'child', '메모': 'memo',
+    };
+    const EXCLUDE_ENDINGS = [
+        '_images', '_style', '_sayu', '_rating', '_polished',
+        '_polishedAt', '_mode', '_stats', '_space', '_title', '_tags',
+    ];
+    const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+    const snapshot = await db
+        .collection('users').doc(uid).collection('records')
+        .limit(500)
+        .get();
+    let count = 0;
+    for (const docSnap of snapshot.docs) {
+        const record = docSnap.data();
+        const formats = record.formats || [];
+        const updates = {};
+        for (const format of formats) {
+            const prefix = FORMAT_PREFIX_MAP[format];
+            if (!prefix)
+                continue;
+            const existingTitle = record[`${prefix}_title`];
+            // 유효한 제목이 이미 있으면 스킵, 숫자·기호만인 잘못된 제목은 덮어씀
+            if (existingTitle && isValidTitle(existingTitle))
+                continue;
+            const simpleContent = record[`${prefix}_simple`] || '';
+            const fieldContent = Object.entries(record)
+                .filter(([key]) => key.startsWith(`${prefix}_`) &&
+                !EXCLUDE_ENDINGS.some((s) => key.endsWith(s)) &&
+                key !== `${prefix}_simple`)
+                .map(([, v]) => v)
+                .filter((v) => typeof v === 'string' && v.trim())
+                .join(' ');
+            const contentForTitle = (simpleContent || fieldContent).trim();
+            if (!contentForTitle)
+                continue;
+            try {
+                const prompt = `다음 기록의 핵심을 담은 짧은 제목을 만들어주세요.
+제목만 한 줄로 출력하세요. 10자 이내. 따옴표·마크다운 기호(*, #) 없이 텍스트만.
+
+기록 형식: ${format}
+기록 내용:
+${contentForTitle.slice(0, 600)}`;
+                const result = await model.generateContent(prompt);
+                const raw = result.response.text().trim();
+                const title = raw
+                    .replace(/^\*\*(.+)\*\*$/, '$1')
+                    .replace(/^["']|["']$/g, '')
+                    .trim()
+                    .slice(0, 20);
+                if (isValidTitle(title)) {
+                    updates[`${prefix}_title`] = title;
+                    count++;
+                }
+            }
+            catch (err) {
+                logger.error(`제목 추출 실패 (${docSnap.id}, ${format}):`, err);
+            }
+        }
+        if (Object.keys(updates).length > 0) {
+            await docSnap.ref.update({ ...updates, updatedAt: new Date().toISOString() });
+        }
+    }
+    return { count };
 });
 // ===== 📊 형식별 통계 분석 프롬프트 정의 =====
 const STATS_PROMPTS = {
