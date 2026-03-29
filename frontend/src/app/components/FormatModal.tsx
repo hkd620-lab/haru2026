@@ -991,9 +991,12 @@ ${contentValues}`,
 
               {/* 📸 사진 업로드 섹션 */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
-                  📸 사진 (최대 3장 · PNG, JPG, JPEG, WEBP, HEIC)
+                <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 4, fontWeight: 500 }}>
+                  📸 사진 <span style={{ fontWeight: 400, color: '#9ca3af' }}>(선택사항)</span>
                 </label>
+                <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 8, marginTop: 0 }}>
+                  사진 없이도 저장할 수 있습니다 · 최대 3장 · PNG, JPG, JPEG, WEBP, HEIC
+                </p>
                 <input
                   ref={fileInputRef}
                   type="file"
