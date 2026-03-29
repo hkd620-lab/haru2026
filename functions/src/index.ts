@@ -153,6 +153,14 @@ export const polishContent = onCall(
   }
 );
 
+// 숫자·기호만으로 이뤄진 제목인지 검사 (의미 없는 제목 걸러냄)
+function isValidTitle(title: string): boolean {
+  if (!title || title.trim().length < 2) return false;
+  // 숫자, 공백, 콜론, 점, 쉼표, 대시, 슬래시만으로 구성된 경우 거부
+  // 예: "09:00", "1,234", "123", "12.5", "2026-03-28"
+  return !/^[\d\s:.,\-\/]+$/.test(title.trim());
+}
+
 // ===== 🏷️ AI 제목 추출 =====
 export const extractTitle = onCall(
   {
@@ -178,14 +186,14 @@ ${text.slice(0, 600)}`;
 
       const result = await model.generateContent(prompt);
       const raw = result.response.text().trim();
-      // **bold** 또는 따옴표 제거 후 20자 제한
       const title = raw
         .replace(/^\*\*(.+)\*\*$/, '$1')
         .replace(/^["']|["']$/g, '')
         .trim()
         .slice(0, 20);
 
-      return { title };
+      // 숫자·기호만으로 구성된 제목은 빈 문자열 반환
+      return { title: isValidTitle(title) ? title : '' };
     } catch (error: any) {
       console.error('제목 추출 실패:', error);
       throw new HttpsError('internal', '제목 추출에 실패했습니다.');
@@ -234,7 +242,9 @@ export const generateTitlesForAll = onCall(
       for (const format of formats) {
         const prefix = FORMAT_PREFIX_MAP[format];
         if (!prefix) continue;
-        if (record[`${prefix}_title`]) continue; // 이미 제목 있으면 스킵
+        const existingTitle = record[`${prefix}_title`] as string | undefined;
+        // 유효한 제목이 이미 있으면 스킵, 숫자·기호만인 잘못된 제목은 덮어씀
+        if (existingTitle && isValidTitle(existingTitle)) continue;
 
         const simpleContent: string = record[`${prefix}_simple`] || '';
         const fieldContent = Object.entries(record)
@@ -266,7 +276,7 @@ ${contentForTitle.slice(0, 600)}`;
             .trim()
             .slice(0, 20);
 
-          if (title) {
+          if (isValidTitle(title)) {
             updates[`${prefix}_title`] = title;
             count++;
           }

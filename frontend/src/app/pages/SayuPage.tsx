@@ -429,8 +429,10 @@ export function SayuPage() {
           })
           .map((r) => {
             const firstFieldKey = FORMAT_FIRST_FIELD[prefix];
-            // AI 추출 제목 우선, 없으면 첫 번째 필드 내용 사용
-            let rawTitle = (r[`${prefix}_title`] as string) || (firstFieldKey ? (r[firstFieldKey] || '') : '');
+            // AI 추출 제목 우선 (숫자·기호만인 잘못된 제목은 무시), 없으면 첫 번째 필드 내용 사용
+            const aiTitle = r[`${prefix}_title`] as string | undefined;
+            const validAiTitle = aiTitle && !/^[\d\s:.,\-\/]+$/.test(aiTitle.trim()) && aiTitle.trim().length >= 2 ? aiTitle : '';
+            let rawTitle = validAiTitle || (firstFieldKey ? (r[firstFieldKey] || '') : '');
             // 첫 번째 필드도 비어있으면 같은 prefix의 다른 필드에서 폴백 (태그/여백 제외)
             if (!rawTitle) {
               const fallbackKey = Object.keys(r).find(
