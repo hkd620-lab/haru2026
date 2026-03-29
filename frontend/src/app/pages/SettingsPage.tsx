@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, Database, Download, Trash2, BarChart3, LogOut, User, Moon, Sun, Bell, BellOff, Clock, Megaphone } from 'lucide-react';
+import { Settings, Database, Download, Trash2, BarChart3, LogOut, User, Moon, Sun, Bell, BellOff, Clock, Megaphone, Sparkles } from 'lucide-react';
 import { firestoreService } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -17,6 +17,7 @@ export function SettingsPage() {
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
   
   // 알림 관련 상태
   const [notificationEnabled, setNotificationEnabled] = useState(true);
@@ -251,6 +252,23 @@ export function SettingsPage() {
     }
   };
 
+  const handleGenerateTitles = async () => {
+    if (!user?.uid) return;
+    setIsGeneratingTitles(true);
+    try {
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const generateTitlesFunc = httpsCallable(fns, 'generateTitlesForAll');
+      const res = await generateTitlesFunc({});
+      const { count } = res.data as { count: number };
+      toast.success(count > 0 ? `AI 제목 ${count}개 생성 완료!` : '새로 생성할 제목이 없습니다.');
+    } catch (err) {
+      console.error('일괄 제목 생성 실패:', err);
+      toast.error('AI 제목 생성에 실패했습니다.');
+    } finally {
+      setIsGeneratingTitles(false);
+    }
+  };
+
   const handleClearData = async () => {
     if (!user?.uid) {
       toast.error('로그인이 필요합니다.');
@@ -463,6 +481,26 @@ export function SettingsPage() {
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: '#999' }}>
                   모든 기록을 JSON 파일로 저장합니다
+                </p>
+              </div>
+            </button>
+
+            <button
+              onClick={handleGenerateTitles}
+              disabled={isGeneratingTitles}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-80 text-left disabled:opacity-50"
+              style={{
+                backgroundColor: '#F0EBF9',
+                border: '1px solid #c4b5e8',
+              }}
+            >
+              <Sparkles className="w-4 h-4 flex-shrink-0" style={{ color: '#6B3FA0' }} />
+              <div>
+                <p className="text-sm" style={{ color: '#6B3FA0', fontWeight: 500 }}>
+                  {isGeneratingTitles ? 'AI 제목 생성 중...' : '기존 기록 AI 제목 일괄 생성'}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: '#999' }}>
+                  제목이 없는 기존 기록에 AI가 제목을 자동 생성합니다
                 </p>
               </div>
             </button>

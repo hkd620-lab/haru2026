@@ -193,6 +193,97 @@ ${text.slice(0, 600)}`;
   }
 );
 
+// ===== 🏷️ 기존 기록 AI 제목 일괄 생성 =====
+export const generateTitlesForAll = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+    timeoutSeconds: 300,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+
+    const FORMAT_PREFIX_MAP: Record<string, string> = {
+      '일기': 'diary', '에세이': 'essay', '선교보고': 'mission',
+      '일반보고': 'report', '업무일지': 'work', '여행기록': 'travel',
+      '텃밭일지': 'garden', '애완동물관찰일지': 'pet', '육아일기': 'child', '메모': 'memo',
+    };
+    const EXCLUDE_ENDINGS = [
+      '_images', '_style', '_sayu', '_rating', '_polished',
+      '_polishedAt', '_mode', '_stats', '_space', '_title', '_tags',
+    ];
+
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+
+    const snapshot = await db
+      .collection('users').doc(uid).collection('records')
+      .limit(500)
+      .get();
+
+    let count = 0;
+
+    for (const docSnap of snapshot.docs) {
+      const record = docSnap.data();
+      const formats: string[] = record.formats || [];
+      const updates: Record<string, string> = {};
+
+      for (const format of formats) {
+        const prefix = FORMAT_PREFIX_MAP[format];
+        if (!prefix) continue;
+        if (record[`${prefix}_title`]) continue; // 이미 제목 있으면 스킵
+
+        const simpleContent: string = record[`${prefix}_simple`] || '';
+        const fieldContent = Object.entries(record)
+          .filter(([key]) =>
+            key.startsWith(`${prefix}_`) &&
+            !EXCLUDE_ENDINGS.some((s) => key.endsWith(s)) &&
+            key !== `${prefix}_simple`
+          )
+          .map(([, v]) => v)
+          .filter((v) => typeof v === 'string' && (v as string).trim())
+          .join(' ');
+
+        const contentForTitle = (simpleContent || fieldContent).trim();
+        if (!contentForTitle) continue;
+
+        try {
+          const prompt = `다음 기록의 핵심을 담은 짧은 제목을 만들어주세요.
+제목만 한 줄로 출력하세요. 10자 이내. 따옴표·마크다운 기호(*, #) 없이 텍스트만.
+
+기록 형식: ${format}
+기록 내용:
+${contentForTitle.slice(0, 600)}`;
+
+          const result = await model.generateContent(prompt);
+          const raw = result.response.text().trim();
+          const title = raw
+            .replace(/^\*\*(.+)\*\*$/, '$1')
+            .replace(/^["']|["']$/g, '')
+            .trim()
+            .slice(0, 20);
+
+          if (title) {
+            updates[`${prefix}_title`] = title;
+            count++;
+          }
+        } catch (err) {
+          logger.error(`제목 추출 실패 (${docSnap.id}, ${format}):`, err);
+        }
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await docSnap.ref.update({ ...updates, updatedAt: new Date().toISOString() });
+      }
+    }
+
+    return { count };
+  }
+);
+
 // ===== 📊 형식별 통계 분석 프롬프트 정의 =====
 const STATS_PROMPTS: Record<string, string> = {
   // Type 1: 숫자형 (0~1 비율)
