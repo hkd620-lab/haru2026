@@ -875,6 +875,9 @@ export function SayuModal({
               {(() => {
                 const validImages = (images || []).filter(img => img && img !== '');
                 if (validImages.length === 0) return null;
+                const hideOnError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                };
                 return (
                   <div style={{ marginBottom: '20px' }}>
                     {/* 1장: 가운데 정렬 */}
@@ -882,6 +885,7 @@ export function SayuModal({
                       <img
                         src={validImages[0]}
                         alt="사진"
+                        onError={hideOnError}
                         style={{
                           width: '100%',
                           maxWidth: '320px',
@@ -903,6 +907,7 @@ export function SayuModal({
                             key={idx}
                             src={img}
                             alt={`사진 ${idx + 1}`}
+                            onError={hideOnError}
                             style={{
                               width: '100%',
                               height: '160px',
@@ -916,11 +921,12 @@ export function SayuModal({
                     )}
 
                     {/* 3장: 위에 큰 것 1장 + 아래 2장 - 높이 69% 증가 */}
-                    {validImages.length === 3 && (
+                    {validImages.length >= 3 && (
                       <div>
                         <img
                           src={validImages[0]}
                           alt="사진 1"
+                          onError={hideOnError}
                           style={{
                             width: '100%',
                             height: '406px',
@@ -934,6 +940,7 @@ export function SayuModal({
                           <img
                             src={validImages[1]}
                             alt="사진 2"
+                            onError={hideOnError}
                             style={{
                               width: '100%',
                               height: '203px',
@@ -945,6 +952,7 @@ export function SayuModal({
                           <img
                             src={validImages[2]}
                             alt="사진 3"
+                            onError={hideOnError}
                             style={{
                               width: '100%',
                               height: '203px',
