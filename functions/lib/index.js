@@ -507,7 +507,7 @@ exports.kakaoLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3', se
             expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
         });
         const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?` +
-            `client_id=${KAKAO_CLIENT_ID_SECRET.value()}&` +
+            `client_id=${KAKAO_CLIENT_ID_SECRET.value().trim()}&` +
             `redirect_uri=${encodeURIComponent(KAKAO_REDIRECT_URI)}&` +
             `response_type=code&` +
             `scope=account_email&` +
@@ -537,8 +537,8 @@ exports.kakaoCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', secr
         const tokenResponse = await axios_1.default.post('https://kauth.kakao.com/oauth/token', null, {
             params: {
                 grant_type: 'authorization_code',
-                client_id: KAKAO_CLIENT_ID_SECRET.value(),
-                client_secret: KAKAO_CLIENT_SECRET_SECRET.value(),
+                client_id: KAKAO_CLIENT_ID_SECRET.value().trim(),
+                client_secret: KAKAO_CLIENT_SECRET_SECRET.value().trim(),
                 redirect_uri: KAKAO_REDIRECT_URI,
                 code,
             },
@@ -585,7 +585,7 @@ exports.naverLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3', se
             expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
         });
         const naverAuthUrl = `https://nid.naver.com/oauth2.0/authorize?` +
-            `client_id=${NAVER_CLIENT_ID_SECRET.value()}&` +
+            `client_id=${NAVER_CLIENT_ID_SECRET.value().trim()}&` +
             `redirect_uri=${encodeURIComponent(NAVER_REDIRECT_URI)}&` +
             `response_type=code&` +
             `state=${state}`;
@@ -613,8 +613,8 @@ exports.naverCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', secr
         const tokenResponse = await axios_1.default.post('https://nid.naver.com/oauth2.0/token', null, {
             params: {
                 grant_type: 'authorization_code',
-                client_id: NAVER_CLIENT_ID_SECRET.value(),
-                client_secret: NAVER_CLIENT_SECRET_SECRET.value(),
+                client_id: NAVER_CLIENT_ID_SECRET.value().trim(),
+                client_secret: NAVER_CLIENT_SECRET_SECRET.value().trim(),
                 redirect_uri: NAVER_REDIRECT_URI,
                 code,
                 state,

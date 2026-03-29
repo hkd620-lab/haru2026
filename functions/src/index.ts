@@ -537,7 +537,7 @@ export const kakaoLoginStart = onRequest(
 
       const kakaoAuthUrl =
         `https://kauth.kakao.com/oauth/authorize?` +
-        `client_id=${KAKAO_CLIENT_ID_SECRET.value()}&` +
+        `client_id=${KAKAO_CLIENT_ID_SECRET.value().trim()}&` +
         `redirect_uri=${encodeURIComponent(KAKAO_REDIRECT_URI)}&` +
         `response_type=code&` +
         `scope=account_email&` +
@@ -576,8 +576,8 @@ export const kakaoCallback = onRequest(
         {
           params: {
             grant_type: 'authorization_code',
-            client_id: KAKAO_CLIENT_ID_SECRET.value(),
-            client_secret: KAKAO_CLIENT_SECRET_SECRET.value(),
+            client_id: KAKAO_CLIENT_ID_SECRET.value().trim(),
+            client_secret: KAKAO_CLIENT_SECRET_SECRET.value().trim(),
             redirect_uri: KAKAO_REDIRECT_URI,
             code,
           },
@@ -646,7 +646,7 @@ export const naverLoginStart = onRequest(
 
       const naverAuthUrl =
         `https://nid.naver.com/oauth2.0/authorize?` +
-        `client_id=${NAVER_CLIENT_ID_SECRET.value()}&` +
+        `client_id=${NAVER_CLIENT_ID_SECRET.value().trim()}&` +
         `redirect_uri=${encodeURIComponent(NAVER_REDIRECT_URI)}&` +
         `response_type=code&` +
         `state=${state}`;
@@ -684,8 +684,8 @@ export const naverCallback = onRequest(
         {
           params: {
             grant_type: 'authorization_code',
-            client_id: NAVER_CLIENT_ID_SECRET.value(),
-            client_secret: NAVER_CLIENT_SECRET_SECRET.value(),
+            client_id: NAVER_CLIENT_ID_SECRET.value().trim(),
+            client_secret: NAVER_CLIENT_SECRET_SECRET.value().trim(),
             redirect_uri: NAVER_REDIRECT_URI,
             code,
             state,
