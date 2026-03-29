@@ -429,11 +429,12 @@ export function SayuPage() {
           })
           .map((r) => {
             const firstFieldKey = FORMAT_FIRST_FIELD[prefix];
-            let rawTitle = firstFieldKey ? (r[firstFieldKey] || '') : '';
-            // 첫 번째 필드가 비어있으면 같은 prefix의 다른 필드에서 폴백 (태그/여백 제외)
+            // AI 추출 제목 우선, 없으면 첫 번째 필드 내용 사용
+            let rawTitle = (r[`${prefix}_title`] as string) || (firstFieldKey ? (r[firstFieldKey] || '') : '');
+            // 첫 번째 필드도 비어있으면 같은 prefix의 다른 필드에서 폴백 (태그/여백 제외)
             if (!rawTitle) {
               const fallbackKey = Object.keys(r).find(
-                (k) => k.startsWith(`${prefix}_`) && !k.endsWith('_sayu') && !k.endsWith('_rating') && !k.endsWith('_polished') && !k.endsWith('_images') && !k.endsWith('_stats') && !k.endsWith('_tags') && !k.endsWith('_space') && typeof r[k] === 'string' && r[k].trim()
+                (k) => k.startsWith(`${prefix}_`) && !k.endsWith('_sayu') && !k.endsWith('_rating') && !k.endsWith('_polished') && !k.endsWith('_images') && !k.endsWith('_stats') && !k.endsWith('_tags') && !k.endsWith('_space') && !k.endsWith('_title') && typeof r[k] === 'string' && r[k].trim()
               );
               rawTitle = fallbackKey ? r[fallbackKey] : '';
             }

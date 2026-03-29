@@ -153,6 +153,46 @@ export const polishContent = onCall(
   }
 );
 
+// ===== 🏷️ AI 제목 추출 =====
+export const extractTitle = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET]
+  },
+  async (request) => {
+    try {
+      const { text, format } = request.data;
+      if (!text || typeof text !== 'string') {
+        throw new HttpsError('invalid-argument', '텍스트가 필요합니다.');
+      }
+
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+
+      const prompt = `다음 기록의 핵심을 담은 짧은 제목을 만들어주세요.
+제목만 한 줄로 출력하세요. 10자 이내. 따옴표·마크다운 기호(*, #) 없이 텍스트만.
+
+기록 형식: ${format || '일반'}
+기록 내용:
+${text.slice(0, 600)}`;
+
+      const result = await model.generateContent(prompt);
+      const raw = result.response.text().trim();
+      // **bold** 또는 따옴표 제거 후 20자 제한
+      const title = raw
+        .replace(/^\*\*(.+)\*\*$/, '$1')
+        .replace(/^["']|["']$/g, '')
+        .trim()
+        .slice(0, 20);
+
+      return { title };
+    } catch (error: any) {
+      console.error('제목 추출 실패:', error);
+      throw new HttpsError('internal', '제목 추출에 실패했습니다.');
+    }
+  }
+);
+
 // ===== 📊 형식별 통계 분석 프롬프트 정의 =====
 const STATS_PROMPTS: Record<string, string> = {
   // Type 1: 숫자형 (0~1 비율)

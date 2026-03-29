@@ -6,7 +6,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { RecordTitleAnimation } from '../components/RecordTitleAnimation';
 import { FormatModal } from '../components/FormatModal';
 import { toast } from 'sonner';
-import { RecordFormat, Category, CATEGORY_FORMATS } from '../types/haruTypes';
+import { RecordFormat, Category, CATEGORY_FORMATS, FORMAT_PREFIX } from '../types/haruTypes';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 type Mood = '기쁨' | '평온' | '무미' | '울적' | '번잡';
 type Weather = '쾌청' | '흐림' | '비' | '눈';
@@ -100,6 +101,38 @@ export function RecordPage() {
       });
       setSavedRecordId(recordId);
       toast.success('내용이 저장되었습니다!');
+
+      // AI 제목 자동 추출 (백그라운드, 비차단)
+      if (savedFormat) {
+        const prefix = FORMAT_PREFIX[savedFormat];
+        const excludeSuffixes = ['_images', '_style', '_sayu', '_rating', '_polished', '_stats', '_space', '_title'];
+        const simpleContent = (updateData[`${prefix}_simple`] as string) || '';
+        const fieldContent = Object.entries(updateData)
+          .filter(([key]) =>
+            key.startsWith(`${prefix}_`) &&
+            !excludeSuffixes.some((s) => key.endsWith(s))
+          )
+          .map(([, v]) => v)
+          .filter((v) => typeof v === 'string' && (v as string).trim())
+          .join(' ');
+        const contentForTitle = simpleContent || fieldContent;
+
+        if (contentForTitle.trim()) {
+          (async () => {
+            try {
+              const fns = getFunctions(undefined, 'asia-northeast3');
+              const extractTitleFunc = httpsCallable(fns, 'extractTitle');
+              const res = await extractTitleFunc({ text: contentForTitle, format: savedFormat });
+              const { title } = res.data as { title: string };
+              if (title) {
+                await firestoreService.updateRecord(user.uid, recordId, { [`${prefix}_title`]: title });
+              }
+            } catch (err) {
+              console.error('AI 제목 추출 실패 (무시):', err);
+            }
+          })();
+        }
+      }
     } catch (error) {
       console.error('저장 실패:', error);
       toast.error('내용 저장에 실패했습니다.');

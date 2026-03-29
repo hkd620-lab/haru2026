@@ -557,12 +557,14 @@ ${contentValues}`,
 
     updateData[`${prefix}_style`] = recordStyle;
 
-    // 수정 5: 메모 형식 — AI가 추출한 제목을 memo_title 필드에도 저장
-    if (format === '메모') {
-      const titleMatch = polishedContent.match(/^\*\*(.+?)\*\*/);
-      if (titleMatch && titleMatch[1] && !formData['memo_title']?.trim()) {
-        updateData['memo_title'] = titleMatch[1].trim();
-      }
+    // SAYU 다듬기 결과에서 AI 제목 추출 (모든 형식)
+    const titleMatch = polishedContent.match(/^\*\*(.+?)\*\*/);
+    if (titleMatch && titleMatch[1]) {
+      updateData[`${prefix}_title`] = titleMatch[1].trim();
+    }
+    // 메모 형식은 memo_title 필드도 함께 업데이트
+    if (format === '메모' && titleMatch?.[1] && !formData['memo_title']?.trim()) {
+      updateData['memo_title'] = titleMatch[1].trim();
     }
 
     setIsSaving(true);
