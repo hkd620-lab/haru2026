@@ -485,25 +485,27 @@ export function SettingsPage() {
               </div>
             </button>
 
-            <button
-              onClick={handleGenerateTitles}
-              disabled={isGeneratingTitles}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-80 text-left disabled:opacity-50"
-              style={{
-                backgroundColor: '#F0EBF9',
-                border: '1px solid #c4b5e8',
-              }}
-            >
-              <Sparkles className="w-4 h-4 flex-shrink-0" style={{ color: '#6B3FA0' }} />
-              <div>
-                <p className="text-sm" style={{ color: '#6B3FA0', fontWeight: 500 }}>
-                  {isGeneratingTitles ? 'AI 제목 생성 중...' : '기존 기록 AI 제목 일괄 생성'}
-                </p>
-                <p className="text-xs mt-0.5" style={{ color: '#999' }}>
-                  제목이 없는 기존 기록에 AI가 제목을 자동 생성합니다
-                </p>
-              </div>
-            </button>
+            {isDevUser && (
+              <button
+                onClick={handleGenerateTitles}
+                disabled={isGeneratingTitles}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-80 text-left disabled:opacity-50"
+                style={{
+                  backgroundColor: '#F0EBF9',
+                  border: '1px solid #c4b5e8',
+                }}
+              >
+                <Sparkles className="w-4 h-4 flex-shrink-0" style={{ color: '#6B3FA0' }} />
+                <div>
+                  <p className="text-sm" style={{ color: '#6B3FA0', fontWeight: 500 }}>
+                    {isGeneratingTitles ? 'AI 제목 생성 중...' : '기존 기록 AI 제목 일괄 생성'}
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: '#999' }}>
+                    제목이 없는 기존 기록에 AI가 제목을 자동 생성합니다
+                  </p>
+                </div>
+              </button>
+            )}
 
             {!showClearConfirm ? (
               <button
