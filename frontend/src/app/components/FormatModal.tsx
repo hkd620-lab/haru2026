@@ -354,9 +354,9 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
 **중요: PDF 1페이지 출력을 위해 다듬은 결과는 반드시 공백 제외 2500자 이내로 작성해주세요.**
 
 **응답 형식 예시:**
-**봄날의 첫 수확**
+**제목 (10자 이내)**
 
-오늘 토마토를 처음 수확했다...
+본문 내용...
 
 ${contentValues}`,
         format: prefix,
