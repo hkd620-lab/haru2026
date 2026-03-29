@@ -5,14 +5,14 @@ service firebase.storage {
 
     // 사용자별 이미지 업로드 허용 (records 내부)
     match /users/{userId}/records/{recordId}/{format}/images/{imageId} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && request.auth.uid == userId;
       allow write: if request.auth != null && request.auth.uid == userId;
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
     // ✅ FormatModal 업로드 경로(users/{uid}/format_photos/...) 허용
     match /users/{userId}/format_photos/{fileName} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && request.auth.uid == userId;
       allow write, delete: if request.auth != null && request.auth.uid == userId;
     }
   }

@@ -57,11 +57,10 @@ if (!admin.apps.length) {
 const GEMINI_API_KEY_SECRET = (0, params_1.defineSecret)('GEMINI_API_KEY');
 const GOOGLE_CLIENT_ID_SECRET = (0, params_1.defineSecret)('GOOGLE_CLIENT_ID');
 const GOOGLE_CLIENT_SECRET_SECRET = (0, params_1.defineSecret)('GOOGLE_CLIENT_SECRET');
-// ===== 환경변수 직접 설정 (카카오/네이버는 비공개 아님) =====
-const KAKAO_CLIENT_ID = 'b910c15fde12b678e612c23aa56fe27f';
-const KAKAO_CLIENT_SECRET = 'a2wUyOK1MK9TcfSYw6e7BET7aU8Gn1au';
-const NAVER_CLIENT_ID = 'mRSWCHU_IHbPE7teR4P5';
-const NAVER_CLIENT_SECRET = 'EpEDTAjryH';
+const KAKAO_CLIENT_ID_SECRET = (0, params_1.defineSecret)('KAKAO_CLIENT_ID');
+const KAKAO_CLIENT_SECRET_SECRET = (0, params_1.defineSecret)('KAKAO_CLIENT_SECRET');
+const NAVER_CLIENT_ID_SECRET = (0, params_1.defineSecret)('NAVER_CLIENT_ID');
+const NAVER_CLIENT_SECRET_SECRET = (0, params_1.defineSecret)('NAVER_CLIENT_SECRET');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
 const KAKAO_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/kakaoCallback';
 const NAVER_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/naverCallback';
@@ -127,10 +126,16 @@ exports.polishContent = (0, https_2.onCall)({
     region: 'asia-northeast3',
     secrets: [GEMINI_API_KEY_SECRET] // 🔐 Secret 연결
 }, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
     try {
         const { text, mode = 'premium', format } = request.data;
         if (!text || typeof text !== 'string') {
             throw new https_2.HttpsError('invalid-argument', '텍스트가 필요합니다.');
+        }
+        if (text.length > 5000) {
+            throw new https_2.HttpsError('invalid-argument', '텍스트는 5000자 이내여야 합니다.');
         }
         let systemPrompt = '';
         if (mode === 'BASIC') {
@@ -178,6 +183,9 @@ exports.extractTitle = (0, https_2.onCall)({
     region: 'asia-northeast3',
     secrets: [GEMINI_API_KEY_SECRET]
 }, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
     try {
         const { text, format } = request.data;
         if (!text || typeof text !== 'string') {
@@ -490,7 +498,7 @@ ${text}`;
     }
 }
 // ===== 🟡 카카오 로그인 시작 =====
-exports.kakaoLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3' }, async (req, res) => {
+exports.kakaoLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3', secrets: [KAKAO_CLIENT_ID_SECRET, KAKAO_CLIENT_SECRET_SECRET] }, async (req, res) => {
     try {
         const state = crypto.randomBytes(32).toString('hex');
         await db.collection('oauth_states').doc(state).set({
@@ -499,7 +507,7 @@ exports.kakaoLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3' }, 
             expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
         });
         const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?` +
-            `client_id=${KAKAO_CLIENT_ID}&` +
+            `client_id=${KAKAO_CLIENT_ID_SECRET.value()}&` +
             `redirect_uri=${encodeURIComponent(KAKAO_REDIRECT_URI)}&` +
             `response_type=code&` +
             `scope=account_email&` +
@@ -507,12 +515,12 @@ exports.kakaoLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3' }, 
         res.redirect(kakaoAuthUrl);
     }
     catch (error) {
-        console.error('❌ 카카오 로그인 시작 실패:', error);
+        logger.error('❌ 카카오 로그인 시작 실패:', error);
         res.redirect(`${FRONTEND_URL}/login?error=start_failed`);
     }
 });
 // ===== 🟡 카카오 콜백 (통합 UID 적용) =====
-exports.kakaoCallback = (0, https_1.onRequest)({ region: 'asia-northeast3' }, async (req, res) => {
+exports.kakaoCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', secrets: [KAKAO_CLIENT_ID_SECRET, KAKAO_CLIENT_SECRET_SECRET] }, async (req, res) => {
     var _a, _b, _c;
     try {
         const { code, state } = req.query;
@@ -529,8 +537,8 @@ exports.kakaoCallback = (0, https_1.onRequest)({ region: 'asia-northeast3' }, as
         const tokenResponse = await axios_1.default.post('https://kauth.kakao.com/oauth/token', null, {
             params: {
                 grant_type: 'authorization_code',
-                client_id: KAKAO_CLIENT_ID,
-                client_secret: KAKAO_CLIENT_SECRET,
+                client_id: KAKAO_CLIENT_ID_SECRET.value(),
+                client_secret: KAKAO_CLIENT_SECRET_SECRET.value(),
                 redirect_uri: KAKAO_REDIRECT_URI,
                 code,
             },
@@ -568,7 +576,7 @@ exports.kakaoCallback = (0, https_1.onRequest)({ region: 'asia-northeast3' }, as
     }
 });
 // ===== 🟢 네이버 로그인 시작 =====
-exports.naverLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3' }, async (req, res) => {
+exports.naverLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3', secrets: [NAVER_CLIENT_ID_SECRET, NAVER_CLIENT_SECRET_SECRET] }, async (req, res) => {
     try {
         const state = crypto.randomBytes(32).toString('hex');
         await db.collection('oauth_states').doc(state).set({
@@ -577,19 +585,19 @@ exports.naverLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3' }, 
             expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
         });
         const naverAuthUrl = `https://nid.naver.com/oauth2.0/authorize?` +
-            `client_id=${NAVER_CLIENT_ID}&` +
+            `client_id=${NAVER_CLIENT_ID_SECRET.value()}&` +
             `redirect_uri=${encodeURIComponent(NAVER_REDIRECT_URI)}&` +
             `response_type=code&` +
             `state=${state}`;
         res.redirect(naverAuthUrl);
     }
     catch (error) {
-        console.error('❌ 네이버 로그인 시작 실패:', error);
+        logger.error('❌ 네이버 로그인 시작 실패:', error);
         res.redirect(`${FRONTEND_URL}/login?error=start_failed`);
     }
 });
 // ===== 🟢 네이버 콜백 (통합 UID 적용) =====
-exports.naverCallback = (0, https_1.onRequest)({ region: 'asia-northeast3' }, async (req, res) => {
+exports.naverCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', secrets: [NAVER_CLIENT_ID_SECRET, NAVER_CLIENT_SECRET_SECRET] }, async (req, res) => {
     try {
         const { code, state } = req.query;
         if (!state || typeof state !== 'string')
@@ -605,8 +613,8 @@ exports.naverCallback = (0, https_1.onRequest)({ region: 'asia-northeast3' }, as
         const tokenResponse = await axios_1.default.post('https://nid.naver.com/oauth2.0/token', null, {
             params: {
                 grant_type: 'authorization_code',
-                client_id: NAVER_CLIENT_ID,
-                client_secret: NAVER_CLIENT_SECRET,
+                client_id: NAVER_CLIENT_ID_SECRET.value(),
+                client_secret: NAVER_CLIENT_SECRET_SECRET.value(),
                 redirect_uri: NAVER_REDIRECT_URI,
                 code,
                 state,
