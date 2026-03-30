@@ -929,8 +929,8 @@ ${contentValues}`,
                 </div>
               )}
 
-              {/* 간편 스타일: 자유 텍스트 1개 */}
-              {recordStyle === 'simple' && (
+              {/* 간편 스타일: 일기는 Figma 개별 필드, 나머지는 자유 텍스트 1개 */}
+              {recordStyle === 'simple' && format !== '일기' && (
                 <textarea
                   rows={8}
                   placeholder="자유롭게 기록해 주세요..."
@@ -944,28 +944,74 @@ ${contentValues}`,
                   }}
                 />
               )}
+              {/* 일기 간편기록 — Figma 디자인 (개별 필드) */}
+              {recordStyle === 'simple' && format === '일기' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {DIARY_PREMIUM_FIELDS.map((f) => (
+                    <div key={f.key} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <label style={{ fontWeight: 500, fontSize: '13px', color: '#444', letterSpacing: '0.3px' }}>
+                        {f.label}
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <textarea
+                          placeholder={FORMAT_FIELDS['일기'].find(ff => ff.key === f.key)?.placeholder || `${f.label}을(를) 입력하세요`}
+                          value={formData[f.key] || ''}
+                          onChange={(e) => handleChange(f.key, e.target.value)}
+                          style={{
+                            width: '100%', boxSizing: 'border-box',
+                            padding: '17px', paddingRight: '46px',
+                            fontSize: '16px', lineHeight: '1.5',
+                            border: '1px solid #e4e4e4', borderRadius: '20px',
+                            backgroundColor: '#fff', color: '#333',
+                            resize: 'none', fontFamily: 'inherit', outline: 'none',
+                            minHeight: '56px',
+                          }}
+                        />
+                        <div style={{
+                          position: 'absolute', top: '17px', right: '17px',
+                          width: '20px', height: '20px', borderRadius: '50%',
+                          backgroundColor: '#999', pointerEvents: 'none',
+                        }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* 프리미엄 스타일: FORMAT_FIELDS 그대로 */}
               {recordStyle === 'premium' && (
                 <>
                   {format === '일기'
-                    ? DIARY_PREMIUM_FIELDS.map((f) => (
-                        <div key={f.key} style={{ marginBottom: '13px' }}>
-                          <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '5px' }}>{f.label}</div>
-                          <textarea
-                            rows={2}
-                            placeholder={`${f.label}을(를) 입력하세요`}
-                            value={formData[f.key] || ''}
-                            onChange={(e) => handleChange(f.key, e.target.value)}
-                            style={{
-                              width: '100%', padding: '12px 16px', fontSize: 16,
-                              border: '1px solid #e5e5e5', borderRadius: 8,
-                              backgroundColor: '#fff', color: '#333',
-                              resize: 'vertical', fontFamily: 'inherit', outline: 'none',
-                            }}
-                          />
-                        </div>
-                      ))
+                    ? <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {DIARY_PREMIUM_FIELDS.map((f) => (
+                          <div key={f.key} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <label style={{ fontWeight: 500, fontSize: '13px', color: '#444', letterSpacing: '0.3px' }}>
+                              {f.label}
+                            </label>
+                            <div style={{ position: 'relative' }}>
+                              <textarea
+                                placeholder={FORMAT_FIELDS['일기'].find(ff => ff.key === f.key)?.placeholder || `${f.label}을(를) 입력하세요`}
+                                value={formData[f.key] || ''}
+                                onChange={(e) => handleChange(f.key, e.target.value)}
+                                style={{
+                                  width: '100%', boxSizing: 'border-box',
+                                  padding: '17px', paddingRight: '46px',
+                                  fontSize: '16px', lineHeight: '1.5',
+                                  border: '1px solid #e4e4e4', borderRadius: '20px',
+                                  backgroundColor: '#fff', color: '#333',
+                                  resize: 'none', fontFamily: 'inherit', outline: 'none',
+                                  minHeight: '56px',
+                                }}
+                              />
+                              <div style={{
+                                position: 'absolute', top: '17px', right: '17px',
+                                width: '20px', height: '20px', borderRadius: '50%',
+                                backgroundColor: '#999', pointerEvents: 'none',
+                              }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     : fields.map((field) => (
                         <div key={field.key}>
                           <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
@@ -1005,28 +1051,52 @@ ${contentValues}`,
                   onChange={handleImageUpload}
                   style={{ display: 'none' }}
                 />
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading || uploadedImages.length >= 3}
-                  style={{
-                    width: '100%',
-                    padding: '10px 16px',
-                    fontSize: 13,
-                    border: '1px dashed #d1d5db',
-                    borderRadius: 8,
-                    backgroundColor: '#f9fafb',
-                    color: '#6b7280',
-                    cursor: isUploading || uploadedImages.length >= 3 ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    opacity: isUploading || uploadedImages.length >= 3 ? 0.5 : 1,
-                  }}
-                >
-                  <Upload style={{ width: 16, height: 16 }} />
-                  {isUploading ? '업로드 중...' : `사진 추가 (${uploadedImages.length}/3)`}
-                </button>
+                {format === '일기' ? (
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading || uploadedImages.length >= 3}
+                    style={{
+                      width: '100%',
+                      padding: '17px',
+                      border: '1px solid #e4e4e4',
+                      borderRadius: '20px',
+                      backgroundColor: '#f7f7f7',
+                      cursor: isUploading || uploadedImages.length >= 3 ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: isUploading || uploadedImages.length >= 3 ? 0.5 : 1,
+                    }}
+                  >
+                    {isUploading
+                      ? <span style={{ fontSize: 13, color: '#999' }}>업로드 중...</span>
+                      : <Plus style={{ width: 24, height: 24, color: '#999', strokeWidth: 1.5 }} />
+                    }
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading || uploadedImages.length >= 3}
+                    style={{
+                      width: '100%',
+                      padding: '10px 16px',
+                      fontSize: 13,
+                      border: '1px dashed #d1d5db',
+                      borderRadius: 8,
+                      backgroundColor: '#f9fafb',
+                      color: '#6b7280',
+                      cursor: isUploading || uploadedImages.length >= 3 ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      opacity: isUploading || uploadedImages.length >= 3 ? 0.5 : 1,
+                    }}
+                  >
+                    <Upload style={{ width: 16, height: 16 }} />
+                    {isUploading ? '업로드 중...' : `사진 추가 (${uploadedImages.length}/3)`}
+                  </button>
+                )}
 
                 {uploadedImages.length > 0 && (
                   <div style={{ marginTop: 12 }}>
@@ -1204,59 +1274,100 @@ ${contentValues}`,
               backgroundColor: '#fff',
             }}
           >
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <button
-                onClick={handlePolishClick}
-                disabled={isPolishing || isSaving}
-                style={{
-                  padding: '12px 16px',
-                  fontSize: 14,
-                  border: 'none',
-                  borderRadius: 8,
-                  backgroundColor: '#10b981',
-                  color: '#fff',
-                  cursor: (isPolishing || isSaving) ? 'not-allowed' : 'pointer',
-                  opacity: (isPolishing || isSaving) ? 0.7 : 1,
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                }}
-              >
-                {isPolishing ? (
-                  <>
-                    <Wand2 className="animate-spin" style={{ width: 15, height: 15 }} />
-                    AI 다듬는 중...
-                  </>
-                ) : (
-                  <>
-                    <Wand2 style={{ width: 15, height: 15 }} />
-                    AI 다듬은 후 SAYU 저장
-                  </>
-                )}
-              </button>
-              <button
-                onClick={handleSaveOriginalAsSayu}
-                disabled={isSaving || isPolishing}
-                style={{
-                  padding: '12px 16px',
-                  fontSize: 14,
-                  border: 'none',
-                  borderRadius: 8,
-                  backgroundColor: '#1A3C6E',
-                  color: '#FAF9F6',
-                  cursor: (isSaving || isPolishing) ? 'not-allowed' : 'pointer',
-                  opacity: (isSaving || isPolishing) ? 0.7 : 1,
-                  fontWeight: 500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {isSaving ? '저장 중...' : '다듬지 않고 SAYU 저장'}
-              </button>
-            </div>
+            {format === '일기' ? (
+              <div style={{ display: 'flex', flexDirection: 'row', gap: '10px' }}>
+                <button
+                  onClick={handlePolishClick}
+                  disabled={isPolishing || isSaving}
+                  style={{
+                    flex: 1, height: '56px',
+                    fontSize: '14px', fontWeight: 500,
+                    letterSpacing: '0.45px',
+                    border: 'none', borderRadius: '20px',
+                    backgroundColor: '#bbe8ee', color: '#000',
+                    cursor: (isPolishing || isSaving) ? 'not-allowed' : 'pointer',
+                    opacity: (isPolishing || isSaving) ? 0.7 : 1,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  }}
+                >
+                  {isPolishing ? (
+                    <>
+                      <Wand2 className="animate-spin" style={{ width: 15, height: 15 }} />
+                      AI 다듬는 중...
+                    </>
+                  ) : 'AI 다듬은 글 저장'}
+                </button>
+                <button
+                  onClick={handleSaveOriginalAsSayu}
+                  disabled={isSaving || isPolishing}
+                  style={{
+                    flex: 1, height: '56px',
+                    fontSize: '14px', fontWeight: 500,
+                    letterSpacing: '0.45px',
+                    border: 'none', borderRadius: '20px',
+                    backgroundColor: '#fae385', color: '#000',
+                    cursor: (isSaving || isPolishing) ? 'not-allowed' : 'pointer',
+                    opacity: (isSaving || isPolishing) ? 0.7 : 1,
+                  }}
+                >
+                  {isSaving ? '저장 중...' : '원본 저장'}
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <button
+                  onClick={handlePolishClick}
+                  disabled={isPolishing || isSaving}
+                  style={{
+                    padding: '12px 16px',
+                    fontSize: 14,
+                    border: 'none',
+                    borderRadius: 8,
+                    backgroundColor: '#10b981',
+                    color: '#fff',
+                    cursor: (isPolishing || isSaving) ? 'not-allowed' : 'pointer',
+                    opacity: (isPolishing || isSaving) ? 0.7 : 1,
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                  }}
+                >
+                  {isPolishing ? (
+                    <>
+                      <Wand2 className="animate-spin" style={{ width: 15, height: 15 }} />
+                      AI 다듬는 중...
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 style={{ width: 15, height: 15 }} />
+                      AI 다듬은 후 SAYU 저장
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={handleSaveOriginalAsSayu}
+                  disabled={isSaving || isPolishing}
+                  style={{
+                    padding: '12px 16px',
+                    fontSize: 14,
+                    border: 'none',
+                    borderRadius: 8,
+                    backgroundColor: '#1A3C6E',
+                    color: '#FAF9F6',
+                    cursor: (isSaving || isPolishing) ? 'not-allowed' : 'pointer',
+                    opacity: (isSaving || isPolishing) ? 0.7 : 1,
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {isSaving ? '저장 중...' : '다듬지 않고 SAYU 저장'}
+                </button>
+              </div>
+            )}
           </div>
           )}{/* end footer conditional */}
         </div>
