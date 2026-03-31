@@ -8,6 +8,7 @@ export function BusinessInfoPage() {
     { label: '대표자', value: '허찬미' },
     { label: '사업자등록번호', value: '455-87-03270' },
     { label: '주소', value: '서울특별시 구로구 디지털로31길 41, 611-2-4호(구로동, 이앤씨벤처드림타워6차)' },
+    { label: '연락처', value: '0502-1916-8643' },
     { label: '이메일', value: 'hkd620@gmail.com' },
     { label: '서비스 URL', value: 'https://haru2026.com' },
   ];
