@@ -29,6 +29,7 @@ export function MergeViewerPage() {
 
   const [currentPage, setCurrentPage] = useState(0);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [coverImage, setCoverImage] = useState<string | null>(null);
 
   if (!state || !state.records || state.records.length === 0) {
     return (
@@ -84,15 +85,16 @@ export function MergeViewerPage() {
     return [];
   };
 
-  // 대표 사진 가져오기
-  const getCoverImage = (): string | null => {
+  // 대표 사진 후보 목록 (records 순서대로 각 레코드 첫 번째 이미지)
+  const getCoverCandidates = (): string[] => {
+    const candidates: string[] = [];
     for (const record of records) {
       const images = getImages(record);
       if (images.length > 0) {
-        return images[0];
+        candidates.push(images[0]);
       }
     }
-    return null;
+    return candidates;
   };
 
   const handlePrevPage = () => {
@@ -111,28 +113,28 @@ export function MergeViewerPage() {
     navigate('/merge');
   };
 
-  // 모든 이미지 프리로드 - 브라우저 캐시 활용
+  // 대표 사진: 로드 가능한 첫 번째 이미지를 비동기로 탐색
   useEffect(() => {
-    const allImages: string[] = [];
-    
-    // 모든 레코드의 이미지 수집
-    records.forEach((record) => {
-      const images = getImages(record);
-      allImages.push(...images);
-    });
-    
-    // 대표 이미지도 추가
-    const coverImage = getCoverImage();
-    if (coverImage) {
-      allImages.push(coverImage);
+    const candidates = getCoverCandidates();
+    if (candidates.length === 0) {
+      setCoverImage(null);
+      return;
     }
-    
-    // 중복 제거 후 프리로드
-    const uniqueImages = [...new Set(allImages)];
-    uniqueImages.forEach((imageUrl) => {
+
+    let cancelled = false;
+    const tryNext = (index: number) => {
+      if (cancelled || index >= candidates.length) {
+        if (!cancelled) setCoverImage(null);
+        return;
+      }
       const img = new Image();
-      img.src = imageUrl; // 캐시에 저장됨
-    });
+      img.onload = () => { if (!cancelled) setCoverImage(candidates[index]); };
+      img.onerror = () => { tryNext(index + 1); };
+      img.src = candidates[index];
+    };
+    tryNext(0);
+
+    return () => { cancelled = true; };
   }, [records]);
 
   // ========================================
@@ -313,8 +315,6 @@ export function MergeViewerPage() {
   const renderPage = () => {
     // 표지 페이지
     if (currentPage === 0) {
-      const coverImage = getCoverImage();
-      
       return (
         <div className="h-full flex flex-col items-center justify-center p-8 bg-gradient-to-br from-blue-50 to-purple-50">
           <h1 className="text-3xl font-bold mb-4" style={{ color: '#1A3C6E' }}>
@@ -815,8 +815,8 @@ export function MergeViewerPage() {
           <p style={{ fontSize: '12pt', color: '#999' }}>
             별점 {threshold}점 이상
           </p>
-          {getCoverImage() && (
-            <img src={getCoverImage()!} alt="대표 사진" />
+          {coverImage && (
+            <img src={coverImage} alt="대표 사진" />
           )}
         </div>
 
