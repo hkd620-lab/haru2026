@@ -4,7 +4,8 @@ import { toast } from 'sonner';
 import { useSubscription } from '../hooks/useSubscription';
 import { doc, getDoc, updateDoc, deleteDoc, deleteField, arrayRemove } from 'firebase/firestore';
 import { ref, listAll, deleteObject } from 'firebase/storage';
-import { db, storage } from '../../firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, storage, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 
 export interface SayuModalProps {
@@ -64,6 +65,9 @@ export function SayuModal({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [rating, setRating] = useState(currentRating || 1);
   const [viewMode, setViewMode] = useState<'ai' | 'original'>('ai');
+  const [editedOriginalData, setEditedOriginalData] = useState<Record<string, string>>(originalData || {});
+  const [isSavingOriginal, setIsSavingOriginal] = useState(false);
+  const [isRefining, setIsRefining] = useState(false);
   
   // 🗑 형식 삭제
   const handleDeleteFormat = async () => {
@@ -379,6 +383,7 @@ export function SayuModal({
       setViewMode('ai');
       setIsPrinting(false);
       setShowDeleteDialog(false);
+      setEditedOriginalData(originalData || {});
       
       // 이미지 프리로드 - 브라우저 캐시 활용
       if (images && images.length > 0) {
@@ -404,6 +409,57 @@ export function SayuModal({
     }
   };
 
+  // 💾 원본 저장
+  const handleSaveOriginal = async () => {
+    if (!currentUser || !editedOriginalData || Object.keys(editedOriginalData).length === 0 || (!recordDate && !firestoreId)) return;
+    setIsSavingOriginal(true);
+    try {
+      const docId = firestoreId || recordDate!;
+      const recordRef = doc(db, 'users', currentUser.uid, 'records', docId);
+      await updateDoc(recordRef, editedOriginalData);
+      toast.success('저장되었습니다 ✓');
+    } catch (error) {
+      console.error('원본 저장 실패:', error);
+      toast.error('저장 실패. 다시 시도해주세요.');
+    } finally {
+      setIsSavingOriginal(false);
+    }
+  };
+
+  // ✨ 다시 다듬기
+  const handleRepolish = async () => {
+    if (!currentUser || !formatKey || (!recordDate && !firestoreId)) return;
+    setIsRefining(true);
+    try {
+      const contentValues = Object.values(editedOriginalData)
+        .filter(v => v && v.trim())
+        .join('\n\n');
+      if (!contentValues.trim()) {
+        toast.error('다듬을 내용이 없습니다.');
+        return;
+      }
+      const polishContentFunc = httpsCallable(functions, 'polishContent');
+      const result = await polishContentFunc({
+        text: `다음은 "${format || formatKey}" 형식으로 작성된 기록입니다. 이 내용을 자연스럽고 읽기 좋게 교정해주세요.\n\n${contentValues}`,
+        format: formatKey,
+        mode: 'PREMIUM',
+      });
+      const responseData = result.data as { text: string };
+      const polished = responseData.text;
+      const docId = firestoreId || recordDate!;
+      const recordRef = doc(db, 'users', currentUser.uid, 'records', docId);
+      await updateDoc(recordRef, { [`${formatKey}_sayu`]: polished });
+      setEditedContent(polished);
+      setViewMode('ai');
+      toast.success('✨ 다시 다듬기가 완료되었습니다!');
+    } catch (error) {
+      console.error('다시 다듬기 실패:', error);
+      toast.error('다시 다듬기에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsRefining(false);
+    }
+  };
+
   const getEnvironmentHeader = () => {
     if (!recordDate) return '';
 
@@ -422,7 +478,7 @@ export function SayuModal({
   };
 
   const renderOriginalData = () => {
-    if (!originalData || Object.keys(originalData).length === 0) {
+    if (!editedOriginalData || Object.keys(editedOriginalData).length === 0) {
       return (
         <div style={{ padding: '40px', textAlign: 'center', color: '#999' }}>
           <p>저장된 원본 데이터가 없습니다.</p>
@@ -435,7 +491,7 @@ export function SayuModal({
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        {Object.entries(originalData).map(([key, value]) => {
+        {Object.entries(editedOriginalData).map(([key, value]) => {
           let displayLabel = key;
           if (key.includes('_')) {
             const parts = key.split('_');
@@ -447,23 +503,74 @@ export function SayuModal({
             displayLabel = key.charAt(0).toUpperCase() + key.slice(1);
           }
 
+          const isTitle = key.endsWith('_title');
+
           return (
             <div key={key} style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '8px', border: '1px solid #eee' }}>
-              <span style={{ 
-                display: 'inline-block', 
-                fontSize: '11px', 
-                fontWeight: '600', 
-                color: '#1A3C6E', 
-                backgroundColor: '#FDF6C3', 
-                padding: '4px 8px', 
+              <span style={{
+                display: 'inline-block',
+                fontSize: '11px',
+                fontWeight: '600',
+                color: '#1A3C6E',
+                backgroundColor: '#FDF6C3',
+                padding: '4px 8px',
                 borderRadius: '4px',
                 marginBottom: '8px'
               }}>
                 {displayLabel}
               </span>
-              <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.6', color: '#333', whiteSpace: 'pre-wrap' }}>
-                {value}
-              </p>
+              {isTitle ? (
+                <input
+                  value={value}
+                  onChange={(e) => setEditedOriginalData(prev => ({ ...prev, [key]: e.target.value }))}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    fontSize: '16px',
+                    lineHeight: '1.6',
+                    color: '#333',
+                    border: '1px solid #d0dff0',
+                    borderRadius: '6px',
+                    padding: '8px 10px',
+                    backgroundColor: '#fafcff',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    fontFamily: 'inherit',
+                  }}
+                />
+              ) : (
+                <textarea
+                  value={value}
+                  onChange={(e) => {
+                    setEditedOriginalData(prev => ({ ...prev, [key]: e.target.value }));
+                    e.target.style.height = 'auto';
+                    e.target.style.height = e.target.scrollHeight + 'px';
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.height = 'auto';
+                    e.target.style.height = e.target.scrollHeight + 'px';
+                  }}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    fontSize: '16px',
+                    lineHeight: '1.6',
+                    color: '#333',
+                    border: '1px solid #d0dff0',
+                    borderRadius: '6px',
+                    padding: '8px 10px',
+                    backgroundColor: '#fafcff',
+                    outline: 'none',
+                    resize: 'none',
+                    overflow: 'hidden',
+                    minHeight: '72px',
+                    boxSizing: 'border-box',
+                    fontFamily: 'inherit',
+                    whiteSpace: 'pre-wrap',
+                  }}
+                  rows={3}
+                />
+              )}
             </div>
           );
         })}
@@ -582,6 +689,10 @@ export function SayuModal({
             opacity: 0 !important;
             pointer-events: none !important;
           }
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
 
         .sayu-modal-overlay {
@@ -1082,6 +1193,72 @@ export function SayuModal({
             </button>
           </div>
         </div>
+        )}
+
+        {/* Footer - 원본 탭: 저장 + 다시 다듬기 */}
+        {viewMode === 'original' && editedOriginalData && Object.keys(editedOriginalData).length > 0 && (
+          <div
+            style={{
+              padding: '16px 20px',
+              borderTop: '1px solid #e5e5e5',
+              backgroundColor: '#fff',
+            }}
+          >
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button
+                onClick={handleSaveOriginal}
+                disabled={isSavingOriginal || isRefining}
+                style={{
+                  padding: '10px 20px',
+                  fontSize: 14,
+                  border: 'none',
+                  borderRadius: 8,
+                  backgroundColor: '#1A3C6E',
+                  color: '#fff',
+                  cursor: (isSavingOriginal || isRefining) ? 'not-allowed' : 'pointer',
+                  opacity: (isSavingOriginal || isRefining) ? 0.6 : 1,
+                  fontWeight: 600,
+                }}
+              >
+                {isSavingOriginal ? '저장 중...' : '💾 저장'}
+              </button>
+              <button
+                onClick={handleRepolish}
+                disabled={isSavingOriginal || isRefining}
+                style={{
+                  padding: '10px 20px',
+                  fontSize: 14,
+                  border: 'none',
+                  borderRadius: 8,
+                  backgroundColor: '#10b981',
+                  color: '#fff',
+                  cursor: (isSavingOriginal || isRefining) ? 'not-allowed' : 'pointer',
+                  opacity: (isSavingOriginal || isRefining) ? 0.6 : 1,
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                {isRefining ? (
+                  <>
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        width: 14,
+                        height: 14,
+                        border: '2px solid rgba(255,255,255,0.4)',
+                        borderTopColor: '#fff',
+                        borderRadius: '50%',
+                        animation: 'spin 0.8s linear infinite',
+                      }}
+                    />
+                    다듬는 중...
+                  </>
+                ) : '✨ 다시 다듬기'}
+              </button>
+            </div>
+          </div>
         )}
       </div>
       </div>
