@@ -1,0 +1,84 @@
+const { VertexAI } = require('@google-cloud/vertexai');
+const admin = require('firebase-admin');
+const fetch = require('node-fetch');
+const fs = require('fs');
+
+admin.initializeApp();
+const storage = admin.storage();
+const bucket = storage.bucket('haru2026-8abb8.appspot.com');
+
+const vertexAI = new VertexAI({
+  project: 'haru2026-8abb8',
+  location: 'us-central1'
+});
+
+const prompts = [
+  {
+    id: 'hero',
+    prompt: 'A warm, minimalist illustration of an open diary with a pen, soft morning light, pastel colors, flat design style, no text'
+  },
+  {
+    id: 'feature_record',
+    prompt: 'A clean flat illustration of notebook pages with colorful category tabs, soft blue and green tones, minimal style, no text'
+  },
+  {
+    id: 'feature_sayu',
+    prompt: 'Abstract illustration of glowing text transforming into polished words, soft light particles, deep blue background, flat minimal style'
+  },
+  {
+    id: 'feature_stats',
+    prompt: 'Clean flat illustration of colorful bar charts and statistics on a light background, minimal modern style, no text'
+  },
+  {
+    id: 'sayu_premium',
+    prompt: 'Elegant abstract illustration of AI neural network with soft golden and teal light, premium minimal flat design, no text'
+  }
+];
+
+async function generateAndUpload() {
+  const model = vertexAI.preview.getGenerativeModel({
+    model: 'imagegeneration@006',
+  });
+
+  const urls = {};
+
+  for (const item of prompts) {
+    console.log(`생성 중: ${item.id}`);
+    try {
+      const response = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: item.prompt }] }],
+      });
+      // Imagen 전용 모델 사용
+      const imageResponse = await fetch(
+        `https://us-central1-aiplatform.googleapis.com/v1/projects/haru2026-8abb8/locations/us-central1/publishers/google/models/imagegeneration@006:predict`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${await admin.app().options.credential.getAccessToken().then(t => t.access_token)}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            instances: [{ prompt: item.prompt }],
+            parameters: { sampleCount: 1, aspectRatio: '4:3' }
+          })
+        }
+      );
+      const data = await imageResponse.json();
+      const base64 = data.predictions[0].bytesBase64Encoded;
+      const buffer = Buffer.from(base64, 'base64');
+      const filePath = `landing/${item.id}.png`;
+      const file = bucket.file(filePath);
+      await file.save(buffer, { contentType: 'image/png', public: true });
+      const url = `https://storage.googleapis.com/haru2026-8abb8.appspot.com/${filePath}`;
+      urls[item.id] = url;
+      console.log(`✅ ${item.id}: ${url}`);
+    } catch (e) {
+      console.error(`❌ ${item.id} 실패:`, e.message);
+    }
+  }
+
+  fs.writeFileSync('landing-image-urls.json', JSON.stringify(urls, null, 2));
+  console.log('\n📄 landing-image-urls.json 저장 완료');
+}
+
+generateAndUpload();

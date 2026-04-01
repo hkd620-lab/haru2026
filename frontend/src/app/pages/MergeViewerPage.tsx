@@ -160,6 +160,7 @@ export function MergeViewerPage() {
             alt="기록 사진"
             className="w-full rounded-lg object-contain"
             style={{ maxHeight: '200px', backgroundColor: '#f5f5f5' }}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
         </div>
       );
@@ -176,6 +177,7 @@ export function MergeViewerPage() {
               alt={`기록 사진 ${idx + 1}`}
               className="w-full rounded-lg object-contain"
               style={{ height: '120px', backgroundColor: '#f5f5f5' }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />
           ))}
         </div>
@@ -191,6 +193,7 @@ export function MergeViewerPage() {
             alt="기록 사진 1"
             className="w-full rounded-lg object-contain"
             style={{ maxHeight: '150px', backgroundColor: '#f5f5f5' }}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -199,12 +202,14 @@ export function MergeViewerPage() {
             alt="기록 사진 2"
             className="w-full rounded-lg object-contain"
             style={{ height: '80px', backgroundColor: '#f5f5f5' }}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
           <img
             src={images[2]}
             alt="기록 사진 3"
             className="w-full rounded-lg object-contain"
             style={{ height: '80px', backgroundColor: '#f5f5f5' }}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
         </div>
       </div>
@@ -224,6 +229,7 @@ export function MergeViewerPage() {
             alt="기록 사진"
             className="w-full rounded-lg shadow-md object-contain"
             style={{ maxHeight: '400px', backgroundColor: '#f5f5f5' }}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
         </div>
       );
@@ -240,6 +246,7 @@ export function MergeViewerPage() {
               alt={`기록 사진 ${idx + 1}`}
               className="w-full rounded-lg shadow-md object-contain"
               style={{ height: '200px', backgroundColor: '#f5f5f5' }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />
           ))}
         </div>
@@ -255,6 +262,7 @@ export function MergeViewerPage() {
             alt="기록 사진 1"
             className="w-full rounded-lg shadow-md object-contain"
             style={{ maxHeight: '300px', backgroundColor: '#f5f5f5' }}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -263,12 +271,14 @@ export function MergeViewerPage() {
             alt="기록 사진 2"
             className="w-full rounded-lg shadow-sm object-contain"
             style={{ height: '150px', backgroundColor: '#f5f5f5' }}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
           <img
             src={images[2]}
             alt="기록 사진 3"
             className="w-full rounded-lg shadow-sm object-contain"
             style={{ height: '150px', backgroundColor: '#f5f5f5' }}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
         </div>
       </div>
@@ -330,6 +340,7 @@ export function MergeViewerPage() {
                 alt="대표 사진"
                 className="rounded-lg shadow-2xl"
                 style={{ maxWidth: '400px', maxHeight: '400px', objectFit: 'cover' }}
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
             ) : (
               <div
