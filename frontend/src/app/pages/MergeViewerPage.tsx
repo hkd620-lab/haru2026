@@ -640,6 +640,30 @@ export function MergeViewerPage() {
           span:empty {
             display: none !important;
           }
+
+          /* 이미지 깨짐 방지 */
+          img {
+            max-width: 100% !important;
+            height: auto !important;
+            display: block !important;
+            background-attachment: initial !important;
+            transform: none !important;
+            filter: none !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+
+          /* background-image로 처리된 이미지 컨테이너 */
+          [style*="background-image"] {
+            background-attachment: initial !important;
+            transform: none !important;
+          }
+
+          /* 애니메이션 정지 */
+          * {
+            animation: none !important;
+            transition: none !important;
+          }
         }
 
         /* 화면 전용 - 인쇄 시 숨김 */
