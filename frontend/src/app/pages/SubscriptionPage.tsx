@@ -134,6 +134,11 @@ export default function SubscriptionPage() {
           </div>
         </div>
 
+        {/* 서비스 제공기간 안내 */}
+        <p className="text-center text-xs mb-3" style={{ color: '#10b981' }}>
+          ✓ 구독 결제 완료 후 즉시 서비스 이용 가능합니다
+        </p>
+
         {/* 카카오페이 버튼 */}
         <button
           onClick={() => handleSubscribe('kakao')}

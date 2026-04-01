@@ -21,6 +21,7 @@ import { TermsPage } from './pages/TermsPage';
 import { PrivacyPage } from './pages/PrivacyPage';
 import { RefundPage } from './pages/RefundPage';
 import { BottomNav } from './components/BottomNav';
+import { Footer } from './components/Footer';
 
 function HomeOrLanding() {
   const { user, loading } = useAuth();
@@ -65,7 +66,7 @@ function App() {
               <Route path="/refund" element={<RefundPage />} />
             </Routes>
           </main>
-          
+          <Footer />
           <BottomNav />
           <Toaster position="top-center" toastOptions={{ className: 'no-print' }} />
         </div>
