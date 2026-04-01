@@ -2,7 +2,9 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { Toaster } from 'sonner';
+import { useAuth } from './contexts/AuthContext';
 import { HomePage } from './pages/HomePage';
+import { LandingPage } from './pages/LandingPage';
 import { RecordPage } from './pages/RecordPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { LoginPage } from './pages/LoginPage';
@@ -20,6 +22,12 @@ import { PrivacyPage } from './pages/PrivacyPage';
 import { RefundPage } from './pages/RefundPage';
 import { BottomNav } from './components/BottomNav';
 
+function HomeOrLanding() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  return user ? <HomePage /> : <LandingPage />;
+}
+
 function App() {
   return (
     <ThemeProvider>
@@ -28,8 +36,8 @@ function App() {
         <div className="min-h-screen bg-[#FEFBE8] dark:bg-gray-900">
           <main style={{ paddingBottom: 'var(--content-pb)' }}>
             <Routes>
-              {/* 홈 화면 */}
-              <Route path="/" element={<HomePage />} />
+              {/* 홈 화면 — 비로그인 시 랜딩, 로그인 시 홈 */}
+              <Route path="/" element={<HomeOrLanding />} />
               
               {/* 인증 */}
               <Route path="/login" element={<LoginPage />} />
