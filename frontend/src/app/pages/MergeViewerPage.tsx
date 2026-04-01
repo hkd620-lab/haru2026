@@ -64,7 +64,8 @@ export function MergeViewerPage() {
     '텃밭일지': 'garden',
     '애완동물관찰일지': 'pet',
     '육아일기': 'child',
-  }[format] || 'diary';
+    '메모': 'memo',
+  }[format as string] || 'diary';
 
   // 사진 파싱 함수
   const getImages = (record: ViewerRecord): string[] => {
@@ -480,32 +481,66 @@ export function MergeViewerPage() {
             display: block !important;
           }
 
-          body {
+          /* ─── 1단계: 모든 배경 투명 제거 (커밋 7adc622a 방식) ─── */
+          * {
+            background: transparent !important;
+            background-color: transparent !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
-            color-adjust: exact !important;
-            margin: 0 !important;
-            padding: 0 !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+          }
+
+          /* ─── 2단계: 흰색 필요한 영역만 복원 ─── */
+          html, body, #root, .print-page, .print-content {
             background: white !important;
-            background-color: #ffffff !important;
+            background-color: white !important;
+          }
+
+          /* 환경 태그(날씨/기분/별점 뱃지) 인쇄 시 흰색 처리 */
+          .env-tag {
+            background: white !important;
+            background-color: white !important;
+            border: 0.5px solid #ccc !important;
+          }
+
+          /* App Layout 래퍼 배경/높이 초기화 */
+          .min-h-screen,
+          [class*="min-h-screen"],
+          .App, main {
+            background: white !important;
+            background-color: white !important;
+            min-height: auto !important;
+          }
+
+          /* 페이지 규격 고정 */
+          .print-page {
+            width: 210mm !important;
+            min-height: 297mm !important;
+            margin: 0 auto !important;
+            page-break-after: always !important;
+            box-sizing: border-box !important;
+          }
+
+          @page {
+            size: A4;
+            margin: 20mm;
           }
 
           /* 페이지 레이아웃 */
           .print-page {
-            width: 210mm;
-            min-height: 297mm;
-            padding: 20mm;
-            margin: 0;
-            page-break-after: always;
+            width: 210mm !important;
+            min-height: 297mm !important;
+            margin: 0 auto !important;
+            page-break-after: always !important;
+            box-sizing: border-box !important;
           }
 
           /* 표지 페이지 */
           .print-cover {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            display: block;
             text-align: center;
+            padding-top: 100mm;
           }
 
           .print-cover h1 {
@@ -516,62 +551,72 @@ export function MergeViewerPage() {
           }
 
           .print-cover img {
-            max-width: 150mm;
-            max-height: 150mm;
+            max-width: 120mm;
+            max-height: 120mm;
             object-fit: cover;
             border-radius: 8px;
-            margin-top: 30px;
+            margin: 30px auto 0;
+            display: block;
           }
 
           /* Day 페이지 */
           .print-day {
-            display: flex;
-            flex-direction: column;
+            display: block;
+            padding: 10mm 0;
+          }
+
+          .print-day-header {
+            margin-bottom: 20px;
           }
 
           .print-day-header h2 {
-            font-size: 14pt;
+            font-size: 16pt;
             font-weight: 600;
             color: #1A3C6E;
-            margin: 0 0 8px 0;
+            margin: 0 0 12px 0;
+          }
+
+          .env-tag {
+            background: #f3f4f6 !important;
+            border: 1px solid #e5e5e5 !important;
+            display: inline-block;
+            margin-bottom: 4px;
           }
 
           .print-photos {
-            flex-shrink: 0;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
           }
 
           .print-photos img {
             border-radius: 8px;
+            max-width: 100% !important;
+            height: auto !important;
+            display: block;
+            page-break-inside: avoid;
+            break-inside: avoid;
           }
 
           .print-content {
-            flex: 1;
-            overflow: hidden;
             padding: 20px;
             border-radius: 8px;
             border: 1px solid #e5e5e5;
+            background: white !important;
+            display: block;
           }
 
           .print-content p {
             font-size: 11pt;
-            line-height: 1.6;
+            line-height: 1.7;
             color: #333;
-            /* 구형 브라우저 호환: 검은 블록 제거 */
-            max-height: 440pt; /* 25줄 * 1.6 line-height * 11pt */
-            overflow: hidden;
-            text-overflow: ellipsis;
-            background: transparent !important;
+            white-space: pre-wrap;
+            word-break: break-word;
           }
 
           /* 요약 페이지 */
           .print-summary {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 40px;
-            height: 100%;
+            display: block;
+            text-align: center;
+            padding-top: 80mm;
           }
 
           .print-summary h2 {
@@ -584,85 +629,14 @@ export function MergeViewerPage() {
           * {
             box-shadow: none !important;
             text-shadow: none !important;
-          }
-
-          /* ─── 1단계: 모든 배경 투명 제거 ─── */
-          * {
-            background: transparent !important;
-            background-color: transparent !important;
-          }
-
-          /* ─── 2단계: 흰색 필요한 영역만 복원 ─── */
-          html, body, #root {
-            background: white !important;
-            background-color: white !important;
-          }
-
-          .print-page {
-            background: white !important;
-            background-color: white !important;
-          }
-
-          .print-content {
-            background: white !important;
-            background-color: white !important;
-          }
-
-          /* 환경 태그(날씨/기분/별점 뱃지) 인쇄 시 흰색 처리 */
-          .env-tag {
-            background: white !important;
-            background-color: white !important;
-            border: 0.5px solid #ccc !important;
-          }
-
-          .print-day, .print-page, .print-cover,
-          .print-summary, .print-content {
-            background: white !important;
-            background-color: white !important;
-          }
-
-          /* 모달 미리보기 박스 노란 배경 제거 */
-          .modal-preview-box {
-            background: white !important;
-            background-color: white !important;
-          }
-
-          /* App Layout 래퍼 배경/높이 초기화 */
-          .min-h-screen,
-          .min-h-\[calc\(100vh-56px-80px\)\] {
-            background: white !important;
-            background-color: white !important;
-            min-height: auto !important;
+            animation: none !important;
+            transition: none !important;
           }
 
           /* 빈 컨테이너 숨기기 */
           div:empty,
           span:empty {
             display: none !important;
-          }
-
-          /* 이미지 깨짐 방지 */
-          img {
-            max-width: 100% !important;
-            height: auto !important;
-            display: block !important;
-            background-attachment: initial !important;
-            transform: none !important;
-            filter: none !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-
-          /* background-image로 처리된 이미지 컨테이너 */
-          [style*="background-image"] {
-            background-attachment: initial !important;
-            transform: none !important;
-          }
-
-          /* 애니메이션 정지 */
-          * {
-            animation: none !important;
-            transition: none !important;
           }
         }
 
@@ -675,7 +649,6 @@ export function MergeViewerPage() {
             visibility: hidden !important;
             opacity: 0 !important;
             pointer-events: none !important;
-            /* display: none 사용 안 함 → 미리 렌더링됨! */
           }
         }
       `}</style>

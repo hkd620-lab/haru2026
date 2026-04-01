@@ -632,7 +632,7 @@ export function SayuModal({
 
           /* 인쇄 페이지 레이아웃 - 2페이지 확장 허용 */
           .sayu-print-page {
-            width: 210mm !important;
+            width: 100% !important;
             min-height: auto !important;
             padding: 15mm !important;
             page-break-after: auto !important;
@@ -727,7 +727,7 @@ export function SayuModal({
           justifyContent: 'center',
           zIndex: 1000,
         }}
-        onClick={onClose}
+        onClick={() => onClose()}
       >
         <div
           className="sayu-modal-inner"
@@ -862,7 +862,7 @@ export function SayuModal({
 
               {/* ✕ 닫기 버튼 */}
               <button
-                onClick={onClose}
+                onClick={() => onClose()}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -1158,7 +1158,7 @@ export function SayuModal({
           {/* 버튼 */}
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
             <button
-              onClick={onClose}
+              onClick={() => onClose()}
               disabled={isSaving}
               style={{
                 padding: '10px 20px',

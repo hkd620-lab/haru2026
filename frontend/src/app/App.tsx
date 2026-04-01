@@ -34,7 +34,7 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
       <BrowserRouter>
-        <div className="min-h-screen bg-[#FEFBE8] dark:bg-gray-900">
+        <div className="min-h-screen bg-[#FEFBE8] dark:bg-gray-900 print:bg-white">
           <main style={{ paddingBottom: 'var(--content-pb)' }}>
             <Routes>
               {/* 홈 화면 — 비로그인 시 랜딩, 로그인 시 홈 */}
