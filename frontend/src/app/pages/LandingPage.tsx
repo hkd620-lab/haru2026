@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 const IMAGES = {
   hero: 'https://storage.googleapis.com/haru2026-8abb8.firebasestorage.app/landing/hero.png',
@@ -65,6 +65,7 @@ export function LandingPage() {
   }
 
   const goToLogin = () => navigate('/login');
+  const [mediaTab, setMediaTab] = useState<'image' | 'video'>('image');
 
   return (
     <div style={{ fontFamily: 'inherit', background: '#FAF9F6', overflowX: 'hidden' }}>
@@ -152,32 +153,81 @@ export function LandingPage() {
       </section>
 
       {/* ══════════════════════════════
-          섹션 2: 홍보 영상
+          섹션 2: 이미지 / 영상 토글
       ══════════════════════════════ */}
       <section id="video-section" style={{ background: '#FAF9F6', padding: '64px 24px', textAlign: 'center' }}>
         <h2 style={{ fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: 800, color: '#1A3C6E', marginBottom: '8px' }}>
-          HARU2026 소개 영상
+          HARU2026 소개
         </h2>
-        <p style={{ color: '#666', fontSize: '16px', marginBottom: '40px' }}>
+        <p style={{ color: '#666', fontSize: '16px', marginBottom: '28px' }}>
           직접 보고 느껴보세요
         </p>
 
-        {/* 가로형 영상 */}
-        <div style={{ maxWidth: '720px', margin: '0 auto 32px' }}>
-          <video
-            src={VIDEOS.horizontal}
-            autoPlay muted loop playsInline
-            style={{ width: '100%', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}
-          />
+        {/* 토글 버튼 */}
+        <div style={{ display: 'inline-flex', borderRadius: '12px', overflow: 'hidden', border: '2px solid #1A3C6E', marginBottom: '36px' }}>
+          {(['image', 'video'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setMediaTab(tab)}
+              style={{
+                padding: '10px 28px',
+                fontSize: '16px', fontWeight: 700,
+                cursor: 'pointer', border: 'none',
+                background: mediaTab === tab ? '#1A3C6E' : '#fff',
+                color: mediaTab === tab ? '#fff' : '#1A3C6E',
+                transition: 'background 0.2s, color 0.2s',
+              }}
+            >
+              {tab === 'image' ? '🖼 이미지' : '🎬 영상'}
+            </button>
+          ))}
         </div>
 
-        {/* 세로형 영상 */}
-        <div style={{ maxWidth: '360px', margin: '0 auto' }}>
-          <video
-            src={VIDEOS.vertical}
-            autoPlay muted loop playsInline
-            style={{ width: '100%', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}
-          />
+        {/* 콘텐츠 — fade 전환 */}
+        <div style={{ transition: 'opacity 0.3s ease', opacity: 1 }}>
+
+          {mediaTab === 'image' && (
+            <>
+              {/* hero 이미지 (가로형) */}
+              <div style={{ maxWidth: '720px', margin: '0 auto 32px' }}>
+                <img
+                  src={IMAGES.hero}
+                  alt="HARU 앱 소개"
+                  style={{ width: '100%', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}
+                />
+              </div>
+              {/* feature_sayu 이미지 (좁은 폭) */}
+              <div style={{ maxWidth: '360px', margin: '0 auto' }}>
+                <img
+                  src={IMAGES.feature_sayu}
+                  alt="SAYU 다듬기 기능"
+                  style={{ width: '100%', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}
+                />
+              </div>
+            </>
+          )}
+
+          {mediaTab === 'video' && (
+            <>
+              {/* 가로형 영상 */}
+              <div style={{ maxWidth: '720px', margin: '0 auto 32px' }}>
+                <video
+                  src={VIDEOS.horizontal}
+                  autoPlay muted loop playsInline
+                  style={{ width: '100%', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}
+                />
+              </div>
+              {/* 세로형 영상 */}
+              <div style={{ maxWidth: '360px', margin: '0 auto' }}>
+                <video
+                  src={VIDEOS.vertical}
+                  autoPlay muted loop playsInline
+                  style={{ width: '100%', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}
+                />
+              </div>
+            </>
+          )}
+
         </div>
       </section>
 
