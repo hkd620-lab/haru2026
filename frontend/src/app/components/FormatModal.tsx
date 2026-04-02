@@ -929,8 +929,8 @@ ${contentValues}`,
                 </div>
               )}
 
-              {/* 간편 스타일: 일기는 Figma 개별 필드, 나머지는 자유 텍스트 1개 */}
-              {recordStyle === 'simple' && format !== '일기' && (
+              {/* 간편 스타일: 자유 텍스트 1개 */}
+              {recordStyle === 'simple' && (
                 <textarea
                   rows={8}
                   placeholder="자유롭게 기록해 주세요..."
@@ -943,39 +943,6 @@ ${contentValues}`,
                     resize: 'vertical', fontFamily: 'inherit', outline: 'none',
                   }}
                 />
-              )}
-              {/* 일기 간편기록 — Figma 디자인 (개별 필드) */}
-              {recordStyle === 'simple' && format === '일기' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {DIARY_PREMIUM_FIELDS.map((f) => (
-                    <div key={f.key} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      <label style={{ fontWeight: 500, fontSize: '13px', color: '#444', letterSpacing: '0.3px' }}>
-                        {f.label}
-                      </label>
-                      <div style={{ position: 'relative' }}>
-                        <textarea
-                          placeholder={FORMAT_FIELDS['일기'].find(ff => ff.key === f.key)?.placeholder || `${f.label}을(를) 입력하세요`}
-                          value={formData[f.key] || ''}
-                          onChange={(e) => handleChange(f.key, e.target.value)}
-                          style={{
-                            width: '100%', boxSizing: 'border-box',
-                            padding: '17px', paddingRight: '46px',
-                            fontSize: '16px', lineHeight: '1.5',
-                            border: '1px solid #e4e4e4', borderRadius: '20px',
-                            backgroundColor: '#fff', color: '#333',
-                            resize: 'none', fontFamily: 'inherit', outline: 'none',
-                            minHeight: '56px',
-                          }}
-                        />
-                        <div style={{
-                          position: 'absolute', top: '17px', right: '17px',
-                          width: '20px', height: '20px', borderRadius: '50%',
-                          backgroundColor: '#999', pointerEvents: 'none',
-                        }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
               )}
 
               {/* 프리미엄 스타일: FORMAT_FIELDS 그대로 */}
