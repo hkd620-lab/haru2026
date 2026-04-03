@@ -42,7 +42,7 @@ export function GrapeAnimation() {
   }, [animationStage]);
 
   const getGrapePosition = (grape: typeof grapeImages[0]) => {
-    const spacing = 76;
+    const spacing = 38;
     return { x: grape.col * spacing + 28, y: grape.row * spacing };
   };
 
@@ -53,7 +53,7 @@ export function GrapeAnimation() {
 
   return (
     <div className="relative w-full h-full flex items-center justify-center overflow-hidden" style={{ minHeight: 400 }}>
-      <div className="relative" style={{ transform: 'translate(-80px, -100px)' }}>
+      <div className="relative" style={{ transform: 'translate(-50%, -50%)' }}>
         <motion.div
           className="absolute"
           style={{ left: 65.5, top: -140, width: 150, height: 140 }}
@@ -93,7 +93,7 @@ export function GrapeAnimation() {
                 scale: animationStage === 'scattered' ? 0.5 : 1,
               }}
               transition={{ duration: animationStage === 'scattered' ? 0 : 1.5, delay: animationStage === 'gathering' ? grape.id * 0.1 : 0, type: 'spring', stiffness: 100, damping: 15 }}
-              style={{ width: 80, height: 80, left: -40, top: -40 }}
+              style={{ width: 40, height: 40, left: -20, top: -20 }}
             >
               <motion.div
                 className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-400 via-purple-500 to-purple-600 shadow-lg"
@@ -106,7 +106,7 @@ export function GrapeAnimation() {
               <div className="absolute inset-2 rounded-full overflow-hidden flex items-center justify-center bg-white/10 backdrop-blur-sm">
                 <img src={grape.src} alt={`Grape ${grape.id + 1}`} className="w-full h-full object-cover rounded-full" />
               </div>
-              <div className="absolute top-2 left-2 w-5 h-5 bg-white/40 rounded-full blur-sm" />
+              <div className="absolute top-2 left-2 w-3 h-3 bg-white/40 rounded-full blur-sm" />
             </motion.div>
           );
         })}
