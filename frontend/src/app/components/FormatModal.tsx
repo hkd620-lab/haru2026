@@ -139,7 +139,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [isPolishing, setIsPolishing] = useState(false);
   const [polishedContent, setPolishedContent] = useState('');
   const [showPolishModal, setShowPolishModal] = useState(false);
-  const [sayuMode, setSayuMode] = useState<SayuMode>('BASIC');
+  const [sayuMode, setSayuMode] = useState<SayuMode>('PREMIUM');
   const [showModeSelect, setShowModeSelect] = useState(false);
   const [polishStats, setPolishStats] = useState<any>(null);
   

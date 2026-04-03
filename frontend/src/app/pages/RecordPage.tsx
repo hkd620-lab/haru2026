@@ -106,6 +106,7 @@ export function RecordPage() {
       if (savedFormat) {
         const prefix = FORMAT_PREFIX[savedFormat];
         const excludeSuffixes = ['_images', '_style', '_sayu', '_rating', '_polished', '_stats', '_space', '_title'];
+        const sayuContent = (updateData[`${prefix}_sayu`] as string) || '';
         const simpleContent = (updateData[`${prefix}_simple`] as string) || '';
         const fieldContent = Object.entries(updateData)
           .filter(([key]) =>
@@ -115,7 +116,7 @@ export function RecordPage() {
           .map(([, v]) => v)
           .filter((v) => typeof v === 'string' && (v as string).trim())
           .join(' ');
-        const contentForTitle = simpleContent || fieldContent;
+        const contentForTitle = sayuContent || simpleContent || fieldContent;
 
         if (contentForTitle.trim()) {
           (async () => {
