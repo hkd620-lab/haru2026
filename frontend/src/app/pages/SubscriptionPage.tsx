@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import * as PortOne from '@portone/browser-sdk/v2';
-import { doc, setDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function SubscriptionPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const handleSubscribe = async (method: 'kakao' | 'toss') => {
+    if (authLoading) return;
     if (!user) {
       alert('로그인이 필요합니다.');
       return;
@@ -39,27 +39,18 @@ export default function SubscriptionPage() {
         return;
       }
 
-      const now = new Date();
-      const endDate = new Date();
-      endDate.setMonth(endDate.getMonth() + 1);
-
-      await setDoc(
-        doc(db, 'users', user.uid, 'subscription', 'info'),
-        {
-          plan: 'premium',
-          startDate: now.toISOString(),
-          endDate: endDate.toISOString(),
-          paymentId: paymentId,
-          updatedAt: now.toISOString(),
-        }
-      );
+      // 서버에서 결제 검증 후 Firestore 저장
+      const functions = getFunctions(undefined, 'asia-northeast3');
+      const verifyPayment = httpsCallable(functions, 'verifyPayment');
+      await verifyPayment({ paymentId });
 
       alert('🎉 PREMIUM 구독이 완료되었습니다!');
       window.location.href = '/';
 
-    } catch (e) {
+    } catch (e: any) {
       console.error('결제 오류:', e);
-      alert('결제 중 오류가 발생했습니다. 다시 시도해 주세요.');
+      const msg = e?.message || '결제 중 오류가 발생했습니다. 다시 시도해 주세요.';
+      alert(msg);
     } finally {
       setLoading(false);
     }
@@ -95,34 +86,11 @@ export default function SubscriptionPage() {
 
           {/* PREMIUM */}
           <div className="bg-[#1A3C6E] rounded-2xl p-4 relative">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#10b981] text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
-              2개월 무료
+            <div className="text-sm font-bold text-[#10b981] mb-1 mt-1">PREMIUM</div>
+            <div className="text-3xl font-black text-white mb-1">
+              ₩3,000
             </div>
-
-            {/* 중앙정렬: 타이틀 + 가격 */}
-            <div className="text-center">
-              <div className="text-sm font-bold text-[#10b981] mb-2 mt-1">PREMIUM</div>
-
-              {/* 월간 */}
-              <div className="border-b border-white/15 pb-2 mb-2">
-                <div className="text-xs text-gray-400 mb-1">월간</div>
-                <div className="text-lg font-black text-white">
-                  ₩3,000 <span className="text-xs text-gray-400 font-normal">/ 월</span>
-                </div>
-              </div>
-
-              {/* 연간 */}
-              <div className="pb-3 mb-3">
-                <div className="text-xs text-gray-400 mb-1">연간</div>
-                <div className="text-xs text-red-400 line-through mb-1">❌ ₩36,000</div>
-                <div className="text-lg font-black text-white">
-                  ₩30,000 <span className="text-xs text-gray-400 font-normal">/ 년</span>
-                </div>
-                <div className="text-xs text-[#10b981] mt-1">월 2,500원</div>
-              </div>
-            </div>
-
-            {/* 왼쪽정렬: 체크 항목 */}
+            <div className="text-xs text-gray-400 mb-3">/ 월</div>
             <ul className="space-y-1 text-xs text-gray-200 text-left">
               <li>✅ FREE 모든 기능</li>
               <li>✅ SAYU PDF 저장</li>
@@ -142,7 +110,7 @@ export default function SubscriptionPage() {
         {/* 카카오페이 버튼 */}
         <button
           onClick={() => handleSubscribe('kakao')}
-          disabled={loading}
+          disabled={loading || authLoading}
           className="w-full bg-[#FEE500] hover:bg-[#F6D800] text-[#3C1E1E] font-black text-base py-4 rounded-2xl transition-colors disabled:opacity-50 mb-3"
         >
           {loading ? '결제 처리 중...' : '💛 카카오페이로 결제하기'}
@@ -151,7 +119,7 @@ export default function SubscriptionPage() {
         {/* 토스페이먼츠 버튼 */}
         <button
           onClick={() => handleSubscribe('toss')}
-          disabled={loading}
+          disabled={loading || authLoading}
           className="w-full bg-[#10b981] hover:bg-[#059669] text-white font-black text-base py-4 rounded-2xl transition-colors disabled:opacity-50 mb-3"
         >
           {loading ? '결제 처리 중...' : '💳 토스페이먼츠로 결제하기'}
