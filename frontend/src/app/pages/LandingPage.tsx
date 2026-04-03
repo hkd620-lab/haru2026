@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
 const IMAGES = {
   hero: 'https://storage.googleapis.com/haru2026-8abb8.firebasestorage.app/landing/hero.png',
@@ -10,10 +10,6 @@ const IMAGES = {
   sayu_premium: 'https://storage.googleapis.com/haru2026-8abb8.firebasestorage.app/landing/sayu_premium.png',
 };
 
-const VIDEOS = {
-  horizontal: 'https://storage.googleapis.com/haru2026-8abb8.firebasestorage.app/landing/videos/promo_horizontal.mp4',
-  vertical: 'https://storage.googleapis.com/haru2026-8abb8.firebasestorage.app/landing/videos/promo_vertical.mp4',
-};
 
 const FORMATS = [
   { name: '일기',           emoji: '📔', category: '생활' },
@@ -65,7 +61,6 @@ export function LandingPage() {
   }
 
   const goToLogin = () => navigate('/login');
-  const [mediaTab, setMediaTab] = useState<'image' | 'video'>('image');
 
   return (
     <div style={{ fontFamily: 'inherit', background: '#FAF9F6', overflowX: 'hidden' }}>
@@ -98,30 +93,6 @@ export function LandingPage() {
               AI가 다듬어 드립니다
             </p>
 
-            {/* CTA 버튼 */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '24px' }}>
-              <button
-                onClick={goToLogin}
-                style={{
-                  background: '#10b981', color: '#fff', border: 'none',
-                  borderRadius: '12px', padding: '14px 28px',
-                  fontSize: '17px', fontWeight: 700, cursor: 'pointer',
-                }}
-              >
-                지금 시작하기 →
-              </button>
-              <button
-                onClick={() => document.getElementById('video-section')?.scrollIntoView({ behavior: 'smooth' })}
-                style={{
-                  background: 'transparent', color: '#FAF9F6',
-                  border: '2px solid rgba(250,249,246,0.5)',
-                  borderRadius: '12px', padding: '14px 28px',
-                  fontSize: '17px', fontWeight: 600, cursor: 'pointer',
-                }}
-              >
-                영상 보기
-              </button>
-            </div>
 
             {/* 소셜 로그인 뱃지 */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
@@ -152,84 +123,6 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ══════════════════════════════
-          섹션 2: 이미지 / 영상 토글
-      ══════════════════════════════ */}
-      <section id="video-section" style={{ background: '#FAF9F6', padding: '64px 24px', textAlign: 'center' }}>
-        <h2 style={{ fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: 800, color: '#1A3C6E', marginBottom: '8px' }}>
-          HARU2026 소개
-        </h2>
-        <p style={{ color: '#666', fontSize: '16px', marginBottom: '28px' }}>
-          직접 보고 느껴보세요
-        </p>
-
-        {/* 토글 버튼 */}
-        <div style={{ display: 'inline-flex', borderRadius: '12px', overflow: 'hidden', border: '2px solid #1A3C6E', marginBottom: '36px' }}>
-          {(['image', 'video'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setMediaTab(tab)}
-              style={{
-                padding: '10px 28px',
-                fontSize: '16px', fontWeight: 700,
-                cursor: 'pointer', border: 'none',
-                background: mediaTab === tab ? '#1A3C6E' : '#fff',
-                color: mediaTab === tab ? '#fff' : '#1A3C6E',
-                transition: 'background 0.2s, color 0.2s',
-              }}
-            >
-              {tab === 'image' ? '🖼 이미지' : '🎬 영상'}
-            </button>
-          ))}
-        </div>
-
-        {/* 콘텐츠 — fade 전환 */}
-        <div style={{ transition: 'opacity 0.3s ease', opacity: 1 }}>
-
-          {mediaTab === 'image' && (
-            <>
-              {/* hero 이미지 (가로형) */}
-              <div style={{ maxWidth: '720px', margin: '0 auto 32px' }}>
-                <img
-                  src={IMAGES.hero}
-                  alt="HARU 앱 소개"
-                  style={{ width: '100%', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}
-                />
-              </div>
-              {/* feature_sayu 이미지 (좁은 폭) */}
-              <div style={{ maxWidth: '360px', margin: '0 auto' }}>
-                <img
-                  src={IMAGES.feature_sayu}
-                  alt="SAYU 다듬기 기능"
-                  style={{ width: '100%', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}
-                />
-              </div>
-            </>
-          )}
-
-          {mediaTab === 'video' && (
-            <>
-              {/* 가로형 영상 */}
-              <div style={{ maxWidth: '720px', margin: '0 auto 32px' }}>
-                <video
-                  src={VIDEOS.horizontal}
-                  autoPlay muted loop playsInline
-                  style={{ width: '100%', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}
-                />
-              </div>
-              {/* 세로형 영상 */}
-              <div style={{ maxWidth: '360px', margin: '0 auto' }}>
-                <video
-                  src={VIDEOS.vertical}
-                  autoPlay muted loop playsInline
-                  style={{ width: '100%', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}
-                />
-              </div>
-            </>
-          )}
-
-        </div>
-      </section>
 
       {/* ══════════════════════════════
           섹션 3: 주요 기능 3개 카드
