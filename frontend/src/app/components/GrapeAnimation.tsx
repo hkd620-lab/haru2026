@@ -53,7 +53,7 @@ export function GrapeAnimation() {
 
   return (
     <div className="relative w-full h-full flex items-center justify-center overflow-hidden" style={{ minHeight: 400 }}>
-      <div className="relative" style={{ transform: 'translate(-50%, -50%)' }}>
+      <div className="relative" style={{ transform: 'translate(calc(-50% + 50px), calc(-50% - 80px))' }}>
         <motion.div
           className="absolute"
           style={{ left: 65.5, top: -140, width: 150, height: 140 }}
