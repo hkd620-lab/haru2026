@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEffect } from 'react';
+import { GrapeAnimation } from '../components/GrapeAnimation';
 
 const IMAGES = {
   hero: 'https://storage.googleapis.com/haru2026-8abb8.firebasestorage.app/landing/hero.png',
@@ -108,17 +109,11 @@ export function LandingPage() {
             </div>
           </div>
 
-          {/* 오른쪽 hero 이미지 */}
+          {/* 오른쪽 GrapeAnimation */}
           <div style={{ flex: '1 1 260px', minWidth: '240px', textAlign: 'center' }}>
-            <img
-              src={IMAGES.hero}
-              alt="HARU 일기 앱"
-              style={{
-                width: '100%', maxWidth: '300px',
-                borderRadius: '16px',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
-              }}
-            />
+            <div style={{ width: '100%', height: '100%', minHeight: 400, borderRadius: '24px', overflow: 'hidden', background: '#1A3C6E' }}>
+              <GrapeAnimation />
+            </div>
           </div>
         </div>
       </section>
