@@ -917,24 +917,24 @@ export function SayuPage() {
             <div className="print-photos" style={{ marginBottom: '15px', backgroundColor: 'white' }}>
               {validImages.length === 1 && (
                 <div style={{ display: 'flex', justifyContent: 'center', backgroundColor: 'white' }}>
-                  <img src={validImages[0]} alt="사진" style={{ width: 'auto', maxWidth: '80mm', maxHeight: '100mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
+                  <img src={validImages[0]} alt="사진" style={{ width: 'auto', maxWidth: '63mm', maxHeight: '80mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
                 </div>
               )}
               {validImages.length === 2 && (
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', backgroundColor: 'white' }}>
                   {validImages.map((img: string, idx: number) => (
-                    <img key={idx} src={img} alt={`사진 ${idx + 1}`} style={{ width: 'auto', maxWidth: '70mm', maxHeight: '90mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
+                    <img key={idx} src={img} alt={`사진 ${idx + 1}`} style={{ width: 'auto', maxWidth: '60mm', maxHeight: '75mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
                   ))}
                 </div>
               )}
               {validImages.length >= 3 && (
                 <div style={{ backgroundColor: 'white' }}>
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px', backgroundColor: 'white' }}>
-                    <img src={validImages[0]} alt="사진 1" style={{ width: 'auto', maxWidth: '110mm', maxHeight: '85mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
+                    <img src={validImages[0]} alt="사진 1" style={{ width: 'auto', maxWidth: '84mm', maxHeight: '65mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
                   </div>
                   <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', backgroundColor: 'white' }}>
-                    <img src={validImages[1]} alt="사진 2" style={{ width: 'auto', maxWidth: '50mm', maxHeight: '50mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
-                    <img src={validImages[2]} alt="사진 3" style={{ width: 'auto', maxWidth: '50mm', maxHeight: '50mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
+                    <img src={validImages[1]} alt="사진 2" style={{ width: 'auto', maxWidth: '38mm', maxHeight: '38mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
+                    <img src={validImages[2]} alt="사진 3" style={{ width: 'auto', maxWidth: '38mm', maxHeight: '38mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
                   </div>
                 </div>
               )}
