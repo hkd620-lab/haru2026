@@ -162,11 +162,11 @@ export function LandingPage() {
       ══════════════════════════════ */}
       <section style={{ background: '#f0f4ff', padding: '64px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <h2 style={{ textAlign: 'center', fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: 800, color: '#1A3C6E', marginBottom: '8px' }}>
-            SAYU(사유:私有)는 단순한 기록을 넘어, 당신의 소중한 일상을 당신만의 자산으로 남기는 공간입니다.
+          <h2 style={{ textAlign: 'left', fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: 800, color: '#1A3C6E', marginBottom: '8px' }}>
+            SAYU(사유:私有)는 단순한 기록을 넘어,<br />당신의 소중한 일상을 당신만의 자산으로 남기는 공간입니다.
           </h2>
-          <p style={{ textAlign: 'center', color: '#666', fontSize: '16px', marginBottom: '40px' }}>
-            , 내 기록을 한 단계 끌어올려 드립니다.
+          <p style={{ textAlign: 'left', color: '#666', fontSize: '16px', marginBottom: '40px' }}>
+            내 기록을 한 단계 끌어올려 드립니다.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'center' }}>
 
