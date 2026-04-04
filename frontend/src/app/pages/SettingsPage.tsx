@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { requestNotificationPermission, updateNotificationSettings } from '../services/notificationService';
+import { requestNotificationPermission, updateNotificationSettings, cleanupDuplicateTokens, removeCurrentToken } from '../services/notificationService';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -51,6 +51,7 @@ export function SettingsPage() {
     if (user?.uid) {
       loadStats();
       loadNotificationSettings();
+      cleanupDuplicateTokens(user.uid); // 앱 마운트 시 기존 중복 토큰 1회 정리
       if (user.email === 'hkd620@gmail.com') {
         loadFcmTokens();
       }
@@ -113,6 +114,7 @@ export function SettingsPage() {
           toast.error('알림 권한을 허용해주세요.');
         }
       } else {
+        await removeCurrentToken(user.uid);
         await updateNotificationSettings(user.uid, {
           notificationEnabled: false,
         });
