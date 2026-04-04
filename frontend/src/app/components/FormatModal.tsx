@@ -5,6 +5,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { compressImage } from '../services/imageService';
 import { useAuth } from '../contexts/AuthContext';
+import { useSubscription } from '../hooks/useSubscription';
 import { toast } from 'sonner';
 import heic2any from 'heic2any';
 
@@ -134,6 +135,7 @@ const DIARY_PREMIUM_FIELDS = [
 
 export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, onSave }: FormatModalProps) {
   const { user } = useAuth();
+  const { isPremium } = useSubscription();
   const [formData, setFormData] = useState<Record<string, string>>(initialData);
   const [isSaving, setIsSaving] = useState(false);
   const [isPolishing, setIsPolishing] = useState(false);
@@ -290,6 +292,10 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   };
 
   const handlePolishClick = () => {
+    if (!isPremium) {
+      alert('PREMIUM 구독 후 이용 가능한 기능입니다.');
+      return;
+    }
     handlePolishWithMode('PREMIUM');
   };
 
@@ -566,6 +572,7 @@ ${contentValues}`,
       [sayuKey]: originalContent,
       [imagesKey]: JSON.stringify(uploadedImages),
       [`${prefix}_style`]: recordStyle,
+      [`${prefix}_mode`]: 'ORIGINAL',
     };
 
     if (format === '텃밭일지' && crops.length > 0) {

@@ -489,11 +489,20 @@ export function SayuModal({
       );
     }
 
+    // garden_crop을 상단에 먼저 표시하기 위해 정렬
+    const sortedEntries = Object.entries(editedOriginalData).sort(([keyA], [keyB]) => {
+      if (keyA === 'garden_crop') return -1;
+      if (keyB === 'garden_crop') return 1;
+      return 0;
+    });
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        {Object.entries(editedOriginalData).map(([key, value]) => {
+        {sortedEntries.map(([key, value]) => {
           let displayLabel = key;
-          if (key.includes('_')) {
+          if (key === 'garden_crop') {
+            displayLabel = '🌱 식물종류';
+          } else if (key.includes('_')) {
             const parts = key.split('_');
             if (parts.length > 1) {
               const label = parts[1];

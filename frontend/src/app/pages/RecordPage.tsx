@@ -118,7 +118,10 @@ export function RecordPage() {
           .join(' ');
         const contentForTitle = sayuContent || simpleContent || fieldContent;
 
-        if (contentForTitle.trim()) {
+        // 이미 title이 있으면 extractTitle 호출 건너뜀
+        const existingTitle = (updateData[`${prefix}_title`] as string) || '';
+
+        if (contentForTitle.trim() && !existingTitle.trim()) {
           (async () => {
             try {
               const fns = getFunctions(undefined, 'asia-northeast3');
