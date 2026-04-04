@@ -23,31 +23,8 @@ export const db = getFirestore(app);
 export const functions = getFunctions(app, 'asia-northeast3');
 export const storage = getStorage(app);
 
-// 🔔 Firebase Messaging 초기화 (Service Worker 등록)
-let messaging: ReturnType<typeof getMessaging> | null = null;
-
-// Service Worker 등록 및 Messaging 초기화
-if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-  isSupported().then((supported) => {
-    if (supported) {
-      // Service Worker 등록
-      navigator.serviceWorker
-        .register('/firebase-messaging-sw.js')
-        .then((registration) => {
-          console.log('✅ Service Worker 등록 성공:', registration);
-          
-          // Messaging 초기화
-          messaging = getMessaging(app);
-          console.log('✅ Firebase Messaging 초기화 완료');
-        })
-        .catch((error) => {
-          console.error('❌ Service Worker 등록 실패:', error);
-        });
-    }
-  });
-}
-
-export { messaging };
+// 🔔 Firebase Messaging 인스턴스 (SW 등록은 notificationService에서 명시적으로 처리)
+export const messaging = getMessaging(app);
 
 const provider = new GoogleAuthProvider();
 
