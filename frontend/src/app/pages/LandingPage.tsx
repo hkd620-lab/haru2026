@@ -69,10 +69,10 @@ export function LandingPage() {
       {/* ══════════════════════════════
           섹션 1: 히어로
       ══════════════════════════════ */}
-      <section style={{ background: '#1A3C6E', color: '#FAF9F6', padding: '64px 24px' }}>
+      <section style={{ background: '#1A3C6E', color: '#FAF9F6', padding: '12px 24px', maxHeight: '80vh', overflow: 'hidden' }}>
         <div style={{
           maxWidth: '1100px', margin: '0 auto',
-          display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '48px',
+          display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px',
         }}>
           {/* 왼쪽 텍스트 */}
           <div style={{ flex: '1 1 300px', minWidth: '280px' }}>
@@ -111,7 +111,7 @@ export function LandingPage() {
 
           {/* 오른쪽 GrapeAnimation */}
           <div style={{ flex: '1 1 260px', minWidth: '240px', textAlign: 'center' }}>
-            <div style={{ width: '100%', height: '100%', minHeight: 400, borderRadius: '24px', overflow: 'hidden', background: '#1A3C6E' }}>
+            <div style={{ width: '100%', height: '100%', minHeight: 100, borderRadius: '24px', background: '#1A3C6E' }}>
               <GrapeAnimation />
             </div>
           </div>
