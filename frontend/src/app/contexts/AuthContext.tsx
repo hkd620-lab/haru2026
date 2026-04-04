@@ -11,6 +11,7 @@ import {
   User as FirebaseUser
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
+import { cleanupDuplicateTokens } from '../services/notificationService';
 
 export interface LocalUser {
   uid: string;
@@ -112,6 +113,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => unsubscribe();
   }, []);
+
+  // 로그인 시 FCM 토큰 중복 정리
+  useEffect(() => {
+    if (user?.uid) {
+      cleanupDuplicateTokens(user.uid);
+    }
+  }, [user?.uid]);
 
   const signIn = async (email: string, password: string) => {
     try {
