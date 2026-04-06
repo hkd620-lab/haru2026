@@ -17,7 +17,7 @@ export default function SubscriptionPage() {
     setLoading(true);
 
     try {
-      const paymentId = `haru-${user.uid}-${Date.now()}`;
+      const paymentId = `haru-${Date.now()}`;
 
       const response = await PortOne.requestPayment({
         storeId: import.meta.env.VITE_PORTONE_STORE_ID,
@@ -28,7 +28,8 @@ export default function SubscriptionPage() {
         orderName: 'HARU PREMIUM 월 구독',
         totalAmount: 3000,
         currency: 'KRW',
-        payMethod: method === 'kakao' ? 'EASY_PAY' : 'CARD',
+        payMethod: 'EASY_PAY',
+        easyPay: method === 'toss' ? { easyPayProvider: 'TOSSPAY' } : undefined,
         customer: {
           email: user.email || '',
         },
@@ -122,7 +123,7 @@ export default function SubscriptionPage() {
           disabled={loading || authLoading}
           className="w-full bg-[#10b981] hover:bg-[#059669] text-white font-black text-base py-4 rounded-2xl transition-colors disabled:opacity-50 mb-3"
         >
-          {loading ? '결제 처리 중...' : '💳 토스페이먼츠로 결제하기'}
+          {loading ? '결제 처리 중...' : '💳 토스페이로 결제하기'}
         </button>
 
         <p className="text-center text-xs text-gray-400 mb-2">
