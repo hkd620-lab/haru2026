@@ -26,39 +26,6 @@ export function HomePage() {
     }).catch(() => setTodayFormatCount(0));
   }, [user?.uid]);
 
-  // 🔔 FCM 초기화 (로그인 시 자동 실행)
-  useEffect(() => {
-    const initializeFCM = async () => {
-      if (!user?.uid) {
-        console.log('로그인 필요 - FCM 초기화 건너뜀');
-        return;
-      }
-
-      // localStorage에 토큰이 이미 있는지 확인
-      const existingToken = localStorage.getItem('fcm_token');
-      if (existingToken) {
-        console.log('FCM 토큰이 이미 존재합니다.');
-        return;
-      }
-
-      console.log('FCM 초기화 시작...');
-      try {
-        const success = await requestNotificationPermission(user.uid);
-        if (success) {
-          console.log('✅ FCM 초기화 성공!');
-          // 토큰을 localStorage에도 저장 (중복 초기화 방지)
-          localStorage.setItem('fcm_initialized', 'true');
-        } else {
-          console.log('⚠️ FCM 초기화 실패 (권한 거부 또는 VAPID 키 문제)');
-        }
-      } catch (error) {
-        console.error('FCM 초기화 오류:', error);
-      }
-    };
-
-    initializeFCM();
-  }, [user?.uid]);
-
   return (
     <div className="min-h-[calc(100vh-56px-80px)]" style={{ backgroundColor: '#EDE9F5' }}>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">

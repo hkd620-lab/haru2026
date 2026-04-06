@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.removeAllTags = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
+exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
 const params_1 = require("firebase-functions/params");
@@ -61,6 +61,7 @@ const KAKAO_CLIENT_ID_SECRET = (0, params_1.defineSecret)('KAKAO_CLIENT_ID');
 const KAKAO_CLIENT_SECRET_SECRET = (0, params_1.defineSecret)('KAKAO_CLIENT_SECRET');
 const NAVER_CLIENT_ID_SECRET = (0, params_1.defineSecret)('NAVER_CLIENT_ID');
 const NAVER_CLIENT_SECRET_SECRET = (0, params_1.defineSecret)('NAVER_CLIENT_SECRET');
+const PORTONE_API_SECRET = (0, params_1.defineSecret)('PORTONE_API_SECRET');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
 const KAKAO_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/kakaoCallback';
 const NAVER_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/naverCallback';
@@ -752,6 +753,11 @@ exports.sendTestNotification = (0, https_2.onCall)({ region: 'asia-northeast3' }
     const results = await Promise.allSettled(fcmTokens.map((token) => admin.messaging().send({ ...message, token })));
     const succeeded = results.filter((r) => r.status === 'fulfilled').length;
     const failed = results.filter((r) => r.status === 'rejected').length;
+    results.forEach((result, i) => {
+        if (result.status === 'rejected') {
+            logger.error(`FCM 발송 실패 — 토큰[${i}]: ${result.reason}`);
+        }
+    });
     logger.info(`테스트 알림 발송 완료 — uid: ${uid}, 성공: ${succeeded}, 실패: ${failed}`);
     return {
         success: true,
@@ -865,6 +871,57 @@ exports.generateMergePDFFast = (0, https_2.onCall)({ region: 'asia-northeast3', 
             reject(err);
         }
     });
+});
+// ===== 💳 결제 검증 (PortOne V2) =====
+exports.verifyPayment = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] }, async (request) => {
+    var _a, _b, _c, _d;
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const { paymentId } = request.data;
+    const uid = request.auth.uid;
+    if (!paymentId || typeof paymentId !== 'string') {
+        throw new https_2.HttpsError('invalid-argument', 'paymentId가 필요합니다.');
+    }
+    // PortOne V2 결제 조회
+    let payment;
+    try {
+        const portoneRes = await axios_1.default.get(`https://api.portone.io/payments/${encodeURIComponent(paymentId)}`, { headers: { Authorization: `PortOne ${PORTONE_API_SECRET.value().trim()}` } });
+        payment = portoneRes.data;
+    }
+    catch (e) {
+        logger.error('PortOne 결제 조회 실패:', ((_a = e === null || e === void 0 ? void 0 : e.response) === null || _a === void 0 ? void 0 : _a.data) || e.message);
+        throw new https_2.HttpsError('internal', '결제 정보를 조회할 수 없습니다.');
+    }
+    // 결제 상태 검증
+    if (payment.status !== 'PAID') {
+        throw new https_2.HttpsError('failed-precondition', '결제가 완료되지 않았습니다.');
+    }
+    // 금액 검증 (월 3,000원 고정)
+    const paidAmount = (_c = (_b = payment.amount) === null || _b === void 0 ? void 0 : _b.total) !== null && _c !== void 0 ? _c : payment.totalAmount;
+    if (paidAmount !== 3000) {
+        logger.error(`금액 불일치: 기대 3000, 실제 ${paidAmount}`);
+        throw new https_2.HttpsError('invalid-argument', '결제 금액이 올바르지 않습니다.');
+    }
+    // 중복 처리 방지
+    const subRef = db.doc(`users/${uid}/subscription/info`);
+    const existing = await subRef.get();
+    if (existing.exists && ((_d = existing.data()) === null || _d === void 0 ? void 0 : _d.paymentId) === paymentId) {
+        return { success: true, alreadyProcessed: true };
+    }
+    // Firestore 저장
+    const now = new Date();
+    const endDate = new Date();
+    endDate.setMonth(endDate.getMonth() + 1);
+    await subRef.set({
+        plan: 'premium',
+        startDate: now.toISOString(),
+        endDate: endDate.toISOString(),
+        paymentId,
+        updatedAt: now.toISOString(),
+    });
+    logger.info(`✅ 결제 검증 완료 — uid: ${uid}, paymentId: ${paymentId}`);
+    return { success: true };
 });
 // ===== 🗑️ 일회성 마이그레이션: 모든 사용자 _tags 필드 일괄 삭제 =====
 exports.removeAllTags = (0, https_1.onRequest)({ region: 'asia-northeast3' }, async (req, res) => {

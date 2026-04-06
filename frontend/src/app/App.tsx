@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -22,6 +23,49 @@ import { PrivacyPage } from './pages/PrivacyPage';
 import { RefundPage } from './pages/RefundPage';
 import { BottomNav } from './components/BottomNav';
 import { Footer } from './components/Footer';
+import { setupForegroundMessageListener, requestNotificationPermission } from './services/notificationService';
+
+function AppInitializer() {
+  const { user } = useAuth();
+
+  useEffect(() => {
+    // 🔔 FCM 포그라운드 리스너 등록
+    setupForegroundMessageListener();
+  }, []);
+
+  useEffect(() => {
+    const initializeFCM = async () => {
+      if (!user?.uid) return;
+
+      // localStorage에 토큰이 이미 있는지 확인
+      const FCM_TOKEN_KEY = "haru_fcm_token";
+      const existingToken = localStorage.getItem(FCM_TOKEN_KEY);
+      
+      if (existingToken) {
+        console.log("FCM 토큰이 이미 존재합니다. (복사용):");
+        console.log(existingToken);
+        return;
+      }
+
+      console.log('FCM 초기화 시작...');
+      try {
+        const success = await requestNotificationPermission(user.uid);
+        if (success) {
+          console.log('✅ FCM 초기화 성공!');
+          localStorage.setItem('fcm_initialized', 'true');
+        } else {
+          console.log('⚠️ FCM 초기화 실패 (권한 거부 또는 VAPID 키 문제)');
+        }
+      } catch (error) {
+        console.error('FCM 초기화 오류:', error);
+      }
+    };
+
+    initializeFCM();
+  }, [user?.uid]);
+
+  return null; // UI는 렌더링하지 않음
+}
 
 function HomeOrLanding() {
   const { user, loading } = useAuth();
@@ -33,7 +77,8 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-      <BrowserRouter>
+        <AppInitializer />
+        <BrowserRouter>
         <div className="min-h-screen bg-[#FEFBE8] dark:bg-gray-900 print:bg-white">
           <main style={{ paddingBottom: 'var(--content-pb)' }}>
             <Routes>

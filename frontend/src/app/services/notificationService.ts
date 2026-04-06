@@ -1,4 +1,4 @@
-import { getMessaging, getToken } from 'firebase/messaging';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { doc, setDoc, updateDoc, getDoc, arrayRemove } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
@@ -6,12 +6,20 @@ const FCM_TOKEN_KEY = 'haru_fcm_token';
 const FCM_SW_URL = '/firebase-messaging-sw.js';
 
 // firebase-messaging-sw.js registration을 가져오거나 새로 등록
+// getRegistration(url)은 해당 URL을 제어하는 SW(= workbox SW)를 반환하므로
+// 반드시 scriptURL로 직접 찾아야 함
 async function getFcmSwRegistration(): Promise<ServiceWorkerRegistration | undefined> {
   if (!('serviceWorker' in navigator)) return undefined;
   try {
-    const existing = await navigator.serviceWorker.getRegistration(FCM_SW_URL);
+    // 등록된 모든 SW 중 firebase-messaging-sw.js 를 scriptURL로 찾기
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    const existing = registrations.find(r =>
+      (r.active?.scriptURL ?? r.installing?.scriptURL ?? r.waiting?.scriptURL ?? '')
+        .includes('firebase-messaging-sw.js')
+    );
     if (existing) return existing;
-    return await navigator.serviceWorker.register(FCM_SW_URL);
+    // 없으면 Firebase 표준 scope로 등록 (workbox SW scope '/'와 충돌 방지)
+    return await navigator.serviceWorker.register(FCM_SW_URL, { scope: '/firebase-cloud-messaging-push-scope' });
   } catch (error) {
     console.error('FCM SW 등록 실패:', error);
     return undefined;
@@ -69,9 +77,8 @@ export async function requestNotificationPermission(userId: string): Promise<boo
       return false;
     }
 
-    console.log('FCM 토큰 생성 성공:', token.substring(0, 20) + '...');
-
-    const cachedToken = localStorage.getItem(FCM_TOKEN_KEY);
+    console.log('FCM 토큰 생성 성공! (아래 토큰을 복사하세요):');
+    console.log(token);
 
     const settingsRef = doc(db, `users/${userId}/settings/settings`);
     const settingsDoc = await getDoc(settingsRef);
@@ -79,29 +86,20 @@ export async function requestNotificationPermission(userId: string): Promise<boo
       ? (settingsDoc.data().fcmTokens || [])
       : [];
 
-    if (existingTokens.includes(token)) {
-      console.log('토큰 이미 등록됨, 저장 생략');
-      localStorage.setItem(FCM_TOKEN_KEY, token);
-      return true;
-    }
+    // 중복 완전 제거
+    const uniqueTokens = Array.from(new Set([...existingTokens, token]));
 
-    // 이전 캐시 토큰이 있으면 배열에서 먼저 제거 (기기 토큰 교체 처리)
-    let baseTokens = existingTokens;
-    if (cachedToken && cachedToken !== token && existingTokens.includes(cachedToken)) {
-      baseTokens = existingTokens.filter(t => t !== cachedToken);
-      console.log('🔄 기기 이전 토큰 교체:', cachedToken.substring(0, 20) + '...');
-    }
-
-    const newTokens = [...baseTokens, token].slice(-4);
+    // 최대 5개 유지
+    const finalTokens = uniqueTokens.slice(-5);
 
     await setDoc(settingsRef, {
-      fcmTokens: newTokens,
+      fcmTokens: finalTokens,
       updatedAt: new Date().toISOString(),
     }, { merge: true });
 
     localStorage.setItem(FCM_TOKEN_KEY, token);
 
-    console.log(`✅ 토큰 저장 완료! 총 ${newTokens.length}개 기기`);
+    console.log(`✅ 토큰 저장 완료! 총 ${finalTokens.length}개 기기`);
     return true;
   } catch (error) {
     console.error('알림 권한 요청 실패:', error);
@@ -144,3 +142,20 @@ export async function removeCurrentToken(userId: string): Promise<void> {
     console.error('토큰 제거 실패:', error);
   }
 }
+
+// 포그라운드 메시지 수신 리스너 (앱이 켜져 있을 때)
+export function setupForegroundMessageListener(): void {
+  const messaging = getMessaging();
+  onMessage(messaging, (payload) => {
+    console.log('[FCM] 포그라운드 메시지 수신:', payload);
+    
+    const { title, body } = payload.notification || {};
+    if (Notification.permission === 'granted' && title) {
+      new Notification(title, {
+        body: body,
+        icon: '/favicon.ico', // 아이콘 경로 확인 필요
+      });
+    }
+  });
+}
+

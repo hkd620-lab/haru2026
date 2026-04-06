@@ -21,12 +21,11 @@ if (!admin.apps.length) {
 const GEMINI_API_KEY_SECRET = defineSecret('GEMINI_API_KEY');
 const GOOGLE_CLIENT_ID_SECRET = defineSecret('GOOGLE_CLIENT_ID');
 const GOOGLE_CLIENT_SECRET_SECRET = defineSecret('GOOGLE_CLIENT_SECRET');
-
-// ===== 환경변수 직접 설정 (카카오/네이버는 비공개 아님) =====
-const KAKAO_CLIENT_ID = 'b910c15fde12b678e612c23aa56fe27f';
-const KAKAO_CLIENT_SECRET = 'a2wUyOK1MK9TcfSYw6e7BET7aU8Gn1au';
-const NAVER_CLIENT_ID = 'mRSWCHU_IHbPE7teR4P5';
-const NAVER_CLIENT_SECRET = 'EpEDTAjryH';
+const KAKAO_CLIENT_ID_SECRET = defineSecret('KAKAO_CLIENT_ID');
+const KAKAO_CLIENT_SECRET_SECRET = defineSecret('KAKAO_CLIENT_SECRET');
+const NAVER_CLIENT_ID_SECRET = defineSecret('NAVER_CLIENT_ID');
+const NAVER_CLIENT_SECRET_SECRET = defineSecret('NAVER_CLIENT_SECRET');
+const PORTONE_API_SECRET = defineSecret('PORTONE_API_SECRET');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
 
 const KAKAO_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/kakaoCallback';
@@ -107,11 +106,17 @@ export const polishContent = onCall(
     secrets: [GEMINI_API_KEY_SECRET]  // 🔐 Secret 연결
   },
   async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
     try {
       const { text, mode = 'premium', format } = request.data;
 
       if (!text || typeof text !== 'string') {
         throw new HttpsError('invalid-argument', '텍스트가 필요합니다.');
+      }
+      if (text.length > 5000) {
+        throw new HttpsError('invalid-argument', '텍스트는 5000자 이내여야 합니다.');
       }
 
       let systemPrompt = '';
@@ -150,6 +155,150 @@ export const polishContent = onCall(
       console.error('AI 처리 실패:', error);
       throw new HttpsError('internal', 'AI 처리에 실패했습니다.');
     }
+  }
+);
+
+// 숫자·기호만으로 이뤄진 제목인지 검사 (의미 없는 제목 걸러냄)
+function isValidTitle(title: string): boolean {
+  if (!title || title.trim().length < 2) return false;
+  // 숫자, 공백, 콜론, 점, 쉼표, 대시, 슬래시만으로 구성된 경우 거부
+  // 예: "09:00", "1,234", "123", "12.5", "2026-03-28"
+  return !/^[\d\s:.,\-\/]+$/.test(title.trim());
+}
+
+// ===== 🏷️ AI 제목 추출 =====
+export const extractTitle = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET]
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    try {
+      const { text, format } = request.data;
+      if (!text || typeof text !== 'string') {
+        throw new HttpsError('invalid-argument', '텍스트가 필요합니다.');
+      }
+
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+
+      const prompt = `다음 기록의 핵심을 담은 짧은 제목을 만들어주세요.
+제목만 한 줄로 출력하세요. 10자 이내. 따옴표·마크다운 기호(*, #) 없이 텍스트만.
+
+기록 형식: ${format || '일반'}
+기록 내용:
+${text.slice(0, 600)}`;
+
+      const result = await model.generateContent(prompt);
+      const raw = result.response.text().trim();
+      const title = raw
+        .replace(/^\*\*(.+)\*\*$/, '$1')
+        .replace(/^["']|["']$/g, '')
+        .trim()
+        .slice(0, 20);
+
+      // 숫자·기호만으로 구성된 제목은 빈 문자열 반환
+      return { title: isValidTitle(title) ? title : '' };
+    } catch (error: any) {
+      console.error('제목 추출 실패:', error);
+      throw new HttpsError('internal', '제목 추출에 실패했습니다.');
+    }
+  }
+);
+
+// ===== 🏷️ 기존 기록 AI 제목 일괄 생성 =====
+export const generateTitlesForAll = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+    timeoutSeconds: 300,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+
+    const FORMAT_PREFIX_MAP: Record<string, string> = {
+      '일기': 'diary', '에세이': 'essay', '선교보고': 'mission',
+      '일반보고': 'report', '업무일지': 'work', '여행기록': 'travel',
+      '텃밭일지': 'garden', '애완동물관찰일지': 'pet', '육아일기': 'child', '메모': 'memo',
+    };
+    const EXCLUDE_ENDINGS = [
+      '_images', '_style', '_sayu', '_rating', '_polished',
+      '_polishedAt', '_mode', '_stats', '_space', '_title', '_tags',
+    ];
+
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+
+    const snapshot = await db
+      .collection('users').doc(uid).collection('records')
+      .limit(500)
+      .get();
+
+    let count = 0;
+
+    for (const docSnap of snapshot.docs) {
+      const record = docSnap.data();
+      const formats: string[] = record.formats || [];
+      const updates: Record<string, string> = {};
+
+      for (const format of formats) {
+        const prefix = FORMAT_PREFIX_MAP[format];
+        if (!prefix) continue;
+        const existingTitle = record[`${prefix}_title`] as string | undefined;
+        // 유효한 제목이 이미 있으면 스킵, 숫자·기호만인 잘못된 제목은 덮어씀
+        if (existingTitle && isValidTitle(existingTitle)) continue;
+
+        const simpleContent: string = record[`${prefix}_simple`] || '';
+        const fieldContent = Object.entries(record)
+          .filter(([key]) =>
+            key.startsWith(`${prefix}_`) &&
+            !EXCLUDE_ENDINGS.some((s) => key.endsWith(s)) &&
+            key !== `${prefix}_simple`
+          )
+          .map(([, v]) => v)
+          .filter((v) => typeof v === 'string' && (v as string).trim())
+          .join(' ');
+
+        const contentForTitle = (simpleContent || fieldContent).trim();
+        if (!contentForTitle) continue;
+
+        try {
+          const prompt = `다음 기록의 핵심을 담은 짧은 제목을 만들어주세요.
+제목만 한 줄로 출력하세요. 10자 이내. 따옴표·마크다운 기호(*, #) 없이 텍스트만.
+
+기록 형식: ${format}
+기록 내용:
+${contentForTitle.slice(0, 600)}`;
+
+          const result = await model.generateContent(prompt);
+          const raw = result.response.text().trim();
+          const title = raw
+            .replace(/^\*\*(.+)\*\*$/, '$1')
+            .replace(/^["']|["']$/g, '')
+            .trim()
+            .slice(0, 20);
+
+          if (isValidTitle(title)) {
+            updates[`${prefix}_title`] = title;
+            count++;
+          }
+        } catch (err) {
+          logger.error(`제목 추출 실패 (${docSnap.id}, ${format}):`, err);
+        }
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await docSnap.ref.update({ ...updates, updatedAt: new Date().toISOString() });
+      }
+    }
+
+    return { count };
   }
 );
 
@@ -376,7 +525,7 @@ ${text}`;
 
 // ===== 🟡 카카오 로그인 시작 =====
 export const kakaoLoginStart = onRequest(
-  { region: 'asia-northeast3' },
+  { region: 'asia-northeast3', secrets: [KAKAO_CLIENT_ID_SECRET, KAKAO_CLIENT_SECRET_SECRET] },
   async (req, res) => {
     try {
       const state = crypto.randomBytes(32).toString('hex');
@@ -389,7 +538,7 @@ export const kakaoLoginStart = onRequest(
 
       const kakaoAuthUrl =
         `https://kauth.kakao.com/oauth/authorize?` +
-        `client_id=${KAKAO_CLIENT_ID}&` +
+        `client_id=${KAKAO_CLIENT_ID_SECRET.value().trim()}&` +
         `redirect_uri=${encodeURIComponent(KAKAO_REDIRECT_URI)}&` +
         `response_type=code&` +
         `scope=account_email&` +
@@ -397,7 +546,7 @@ export const kakaoLoginStart = onRequest(
 
       res.redirect(kakaoAuthUrl);
     } catch (error) {
-      console.error('❌ 카카오 로그인 시작 실패:', error);
+      logger.error('❌ 카카오 로그인 시작 실패:', error);
       res.redirect(`${FRONTEND_URL}/login?error=start_failed`);
     }
   }
@@ -405,7 +554,7 @@ export const kakaoLoginStart = onRequest(
 
 // ===== 🟡 카카오 콜백 (통합 UID 적용) =====
 export const kakaoCallback = onRequest(
-  { region: 'asia-northeast3' },
+  { region: 'asia-northeast3', secrets: [KAKAO_CLIENT_ID_SECRET, KAKAO_CLIENT_SECRET_SECRET] },
   async (req, res) => {
     try {
       const { code, state } = req.query;
@@ -428,8 +577,8 @@ export const kakaoCallback = onRequest(
         {
           params: {
             grant_type: 'authorization_code',
-            client_id: KAKAO_CLIENT_ID,
-            client_secret: KAKAO_CLIENT_SECRET,
+            client_id: KAKAO_CLIENT_ID_SECRET.value().trim(),
+            client_secret: KAKAO_CLIENT_SECRET_SECRET.value().trim(),
             redirect_uri: KAKAO_REDIRECT_URI,
             code,
           },
@@ -485,7 +634,7 @@ export const kakaoCallback = onRequest(
 
 // ===== 🟢 네이버 로그인 시작 =====
 export const naverLoginStart = onRequest(
-  { region: 'asia-northeast3' },
+  { region: 'asia-northeast3', secrets: [NAVER_CLIENT_ID_SECRET, NAVER_CLIENT_SECRET_SECRET] },
   async (req, res) => {
     try {
       const state = crypto.randomBytes(32).toString('hex');
@@ -498,14 +647,14 @@ export const naverLoginStart = onRequest(
 
       const naverAuthUrl =
         `https://nid.naver.com/oauth2.0/authorize?` +
-        `client_id=${NAVER_CLIENT_ID}&` +
+        `client_id=${NAVER_CLIENT_ID_SECRET.value().trim()}&` +
         `redirect_uri=${encodeURIComponent(NAVER_REDIRECT_URI)}&` +
         `response_type=code&` +
         `state=${state}`;
 
       res.redirect(naverAuthUrl);
     } catch (error) {
-      console.error('❌ 네이버 로그인 시작 실패:', error);
+      logger.error('❌ 네이버 로그인 시작 실패:', error);
       res.redirect(`${FRONTEND_URL}/login?error=start_failed`);
     }
   }
@@ -513,7 +662,7 @@ export const naverLoginStart = onRequest(
 
 // ===== 🟢 네이버 콜백 (통합 UID 적용) =====
 export const naverCallback = onRequest(
-  { region: 'asia-northeast3' },
+  { region: 'asia-northeast3', secrets: [NAVER_CLIENT_ID_SECRET, NAVER_CLIENT_SECRET_SECRET] },
   async (req, res) => {
     try {
       const { code, state } = req.query;
@@ -536,8 +685,8 @@ export const naverCallback = onRequest(
         {
           params: {
             grant_type: 'authorization_code',
-            client_id: NAVER_CLIENT_ID,
-            client_secret: NAVER_CLIENT_SECRET,
+            client_id: NAVER_CLIENT_ID_SECRET.value().trim(),
+            client_secret: NAVER_CLIENT_SECRET_SECRET.value().trim(),
             redirect_uri: NAVER_REDIRECT_URI,
             code,
             state,
@@ -693,6 +842,60 @@ export const googleCallback = onRequest(
   }
 );
 
+// ===== 🔔 테스트 알림 발송 =====
+export const sendTestNotification = onCall(
+  { region: 'asia-northeast3' },
+  async (request) => {
+    // 로그인 여부 확인
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const uid = request.auth.uid;
+
+    // 본인 토큰만 조회
+    const settingsRef = db.doc(`users/${uid}/settings/settings`);
+    const settingsSnap = await settingsRef.get();
+
+    if (!settingsSnap.exists) {
+      throw new HttpsError('not-found', 'FCM 토큰이 없습니다. 알림 권한을 허용해주세요.');
+    }
+
+    const fcmTokens: string[] = settingsSnap.data()?.fcmTokens || [];
+
+    if (fcmTokens.length === 0) {
+      throw new HttpsError('not-found', 'FCM 토큰이 없습니다. 알림 권한을 허용해주세요.');
+    }
+
+    const { title, body } = request.data;
+
+    const message = {
+      notification: {
+        title: (title && typeof title === 'string' && title.trim()) || 'HARU 테스트 알림',
+        body: (body && typeof body === 'string' && body.trim()) || '알림이 정상적으로 작동합니다! ✅',
+      },
+    };
+
+    const results = await Promise.allSettled(
+      fcmTokens.map((token) =>
+        admin.messaging().send({ ...message, token })
+      )
+    );
+
+    const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+    const failed = results.filter((r) => r.status === 'rejected').length;
+
+    logger.info(`테스트 알림 발송 완료 — uid: ${uid}, 성공: ${succeeded}, 실패: ${failed}`);
+
+    return {
+      success: true,
+      total: fcmTokens.length,
+      succeeded,
+      failed,
+    };
+  }
+);
+
 // ===== 🔔 알림 스케줄러 =====
 export { scheduledPushNotification } from './scheduledNotification';
 
@@ -813,4 +1016,95 @@ export const generateMergePDFFast = onCall({ region: 'asia-northeast3', memory: 
     }
   });
 });
+
+// ===== 💳 결제 검증 (PortOne V2) =====
+export const verifyPayment = onCall(
+  { region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const { paymentId } = request.data;
+    const uid = request.auth.uid;
+
+    if (!paymentId || typeof paymentId !== 'string') {
+      throw new HttpsError('invalid-argument', 'paymentId가 필요합니다.');
+    }
+
+    // PortOne V2 결제 조회
+    let payment: any;
+    try {
+      const portoneRes = await axios.get(
+        `https://api.portone.io/payments/${encodeURIComponent(paymentId)}`,
+        { headers: { Authorization: `PortOne ${PORTONE_API_SECRET.value().trim()}` } }
+      );
+      payment = portoneRes.data;
+    } catch (e: any) {
+      logger.error('PortOne 결제 조회 실패:', e?.response?.data || e.message);
+      throw new HttpsError('internal', '결제 정보를 조회할 수 없습니다.');
+    }
+
+    // 결제 상태 검증
+    if (payment.status !== 'PAID') {
+      throw new HttpsError('failed-precondition', '결제가 완료되지 않았습니다.');
+    }
+
+    // 금액 검증 (월 3,000원 고정)
+    const paidAmount = payment.amount?.total ?? payment.totalAmount;
+    if (paidAmount !== 3000) {
+      logger.error(`금액 불일치: 기대 3000, 실제 ${paidAmount}`);
+      throw new HttpsError('invalid-argument', '결제 금액이 올바르지 않습니다.');
+    }
+
+    // 중복 처리 방지
+    const subRef = db.doc(`users/${uid}/subscription/info`);
+    const existing = await subRef.get();
+    if (existing.exists && existing.data()?.paymentId === paymentId) {
+      return { success: true, alreadyProcessed: true };
+    }
+
+    // Firestore 저장
+    const now = new Date();
+    const endDate = new Date();
+    endDate.setMonth(endDate.getMonth() + 1);
+
+    await subRef.set({
+      plan: 'premium',
+      startDate: now.toISOString(),
+      endDate: endDate.toISOString(),
+      paymentId,
+      updatedAt: now.toISOString(),
+    });
+
+    logger.info(`✅ 결제 검증 완료 — uid: ${uid}, paymentId: ${paymentId}`);
+    return { success: true };
+  }
+);
+
+// ===== 🗑️ 일회성 마이그레이션: 모든 사용자 _tags 필드 일괄 삭제 =====
+export const removeAllTags = onRequest(
+  { region: 'asia-northeast3' },
+  async (req, res) => {
+    const db = admin.firestore();
+    const usersSnap = await db.collection('users').get();
+    let count = 0;
+    for (const userDoc of usersSnap.docs) {
+      const recordsSnap = await userDoc.ref.collection('records').get();
+      for (const recordDoc of recordsSnap.docs) {
+        const data = recordDoc.data();
+        const tagFields = Object.keys(data).filter((k) => k.endsWith('_tags'));
+        if (tagFields.length > 0) {
+          const updateData: Record<string, admin.firestore.FieldValue> = {};
+          tagFields.forEach((f) => {
+            updateData[f] = admin.firestore.FieldValue.delete();
+          });
+          await recordDoc.ref.update(updateData);
+          count++;
+        }
+      }
+    }
+    res.send(`완료: ${count}개 문서에서 _tags 필드 삭제`);
+  }
+);
 

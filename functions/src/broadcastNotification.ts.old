@@ -30,8 +30,8 @@ export const sendBroadcastNotification = onCall(
 
       for (const doc of settingsSnapshot.docs) {
         const data = doc.data();
-        if (data.fcmTokens && data.fcmTokens.length > 0 && data.notificationEnabled) {
-          tokens.push(...data.fcmTokens);
+        if (data.fcmToken && data.notificationEnabled) {
+          tokens.push(data.fcmToken);
           userCount++;
         }
       }

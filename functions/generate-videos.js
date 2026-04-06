@@ -12,21 +12,49 @@ const PROJECT_ID = 'haru2026-8abb8';
 const LOCATION = 'us-central1';
 
 const videos = [
+  /* 이미 생성 완료된 장면들 (다시 생성하려면 주석 해제)
   {
-    id: 'promo_vertical',
+    id: '01_intro',
     model: 'veo-3.0-generate-preview',
-    prompt: 'A beautiful app introduction video for HARU2026 daily journal app. Show a person peacefully writing in a digital diary, soft morning light, warm pastel colors, minimal clean UI screens floating, Korean lifestyle feel, smooth cinematic motion, no text overlay',
-    aspectRatio: '9:16',
-    resolution: '720p',
-    firstFrameUrl: 'https://storage.googleapis.com/haru2026-8abb8.firebasestorage.app/landing/hero.png'
+    prompt: 'A cozy morning scene, coffee mug on a wooden table, warm sunlight filtering through a window, smartphone next to the mug with HARU app visible on screen, high-quality cinematic bokeh style, 4k background, calm and peaceful mood',
+    aspectRatio: '16:9',
+    durationSeconds: 6
   },
   {
-    id: 'promo_horizontal',
+    id: '02_problem',
     model: 'veo-3.0-generate-preview',
-    prompt: 'Elegant promotional video for HARU2026 journal app. Beautiful notebook pages turning, AI sparkles transforming text, soft blue and mint color palette, modern minimal aesthetic, smooth transitions, no text overlay',
+    prompt: 'Cinematic close-up of fingers typing quickly and roughly on a smartphone in a moving subway, slightly chaotic or busy vibe, urban lighting with light streaks passing by, focus on the screen reflecting hurried motion',
     aspectRatio: '16:9',
-    resolution: '720p',
-    firstFrameUrl: 'https://storage.googleapis.com/haru2026-8abb8.firebasestorage.app/landing/feature_sayu.png'
+    durationSeconds: 6
+  },
+  {
+    id: '03_sayu_magic',
+    model: 'veo-3.0-generate-preview',
+    prompt: 'Magical transformation on a smartphone screen, rough text turning into glowing golden particles and reforming into beautiful, flowing Korean calligraphy and poetic sentences, premium look, clean UI background, cinematic slow motion',
+    aspectRatio: '16:9',
+    durationSeconds: 8
+  },
+  {
+    id: '04_multiformat',
+    model: 'veo-3.0-generate-preview',
+    prompt: 'Rapid but smooth montage of various diary styles: a traveler beside mountains, a mother hugging a baby, a gardener with blooming flowers, all shown as digital screens or layouts in a consistent premium navy and cream aesthetic',
+    aspectRatio: '16:9',
+    durationSeconds: 8
+  },
+  {
+    id: '05_result_pdf',
+    model: 'veo-3.0-generate-preview',
+    prompt: 'A high-end leather-bound diary book on a dark wooden shelf with "HARU 2026" embossed in silver on the spine, soft warm spotlight hitting the book, turning pages inside showing beautiful layouts, cinematic feel',
+    aspectRatio: '16:9',
+    durationSeconds: 8
+  },
+  */
+  {
+    id: '06_outro_final',
+    model: 'veo-3.0-generate-preview',
+    prompt: 'A cinematic reimagining of the HARU app login splash screen. In the center, artistic grape grains gather to form a premium bunch of grapes with a vibrant purple and golden shimmer. Below the logo, a minimalist layout for the main title "HARU2026" and subtitle. Consistent navy blue and cream color palette, soft glowing particles, smooth 4k animation, high-end mobile app landing page vibe.',
+    aspectRatio: '16:9',
+    durationSeconds: 8
   }
 ];
 
