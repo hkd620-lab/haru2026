@@ -302,6 +302,10 @@ export function SettingsPage() {
     }
   };
 
+  const handleGoToSubscription = () => {
+    navigate('/subscription');
+  };
+
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
       <div className="mb-8">
@@ -317,6 +321,31 @@ export function SettingsPage() {
       </div>
 
       <div className="space-y-4">
+        {/* ⭐ 프리미엄 구독 섹션 (심사용) */}
+        <section 
+          className="bg-[#1A3C6E] rounded-xl p-5 shadow-md border-2 border-[#10b981]/30 overflow-hidden relative"
+          onClick={handleGoToSubscription}
+          style={{ cursor: 'pointer' }}
+        >
+          <div className="flex items-center justify-between relative z-10">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Sparkles className="w-5 h-5 text-[#fbbf24]" />
+                <h2 className="text-lg font-black text-white">HARU PREMIUM</h2>
+              </div>
+              <p className="text-xs text-gray-300 leading-relaxed">
+                SAYU PDF 저장, 데이터 무제한 합침 등<br />
+                강력한 프리미엄 기능을 사용해 보세요!
+              </p>
+            </div>
+            <div className="bg-[#fbbf24] text-[#1A3C6E] text-xs font-black px-4 py-2 rounded-full shadow-sm">
+              구독하기 ›
+            </div>
+          </div>
+          {/* 장식용 원 */}
+          <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/5 rounded-full blur-2xl"></div>
+        </section>
+
         <section className="bg-white rounded-lg p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-5">
             <BarChart3 className="w-5 h-5" style={{ color: '#1A3C6E' }} />

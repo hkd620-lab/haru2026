@@ -1,3 +1,11 @@
+## 2026-04-06
+
+### PortOne 결제 심사 준비
+- Toss Payments PG 심사를 위한 테스트 모드 설정 완료
+- Firebase Secret (`PORTONE_API_SECRET`) 등록 및 결제 검증 함수(`verifyPayment`) 재배포
+- 설정(Settings) 페이지 상단에 "HARU PREMIUM" 구독 배너 및 버튼 추가 (심사관 접근성 개선)
+- Gmail 심사 회신 가이드 및 테스트 계정 정보 정리
+
 ## 2026-04-04
 
 ### 홍보 페이지 개선

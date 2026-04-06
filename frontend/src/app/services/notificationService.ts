@@ -100,6 +100,19 @@ export async function requestNotificationPermission(userId: string): Promise<boo
     localStorage.setItem(FCM_TOKEN_KEY, token);
 
     console.log(`✅ 토큰 저장 완료! 총 ${finalTokens.length}개 기기`);
+
+    onMessage(messaging, (payload) => {
+      console.log('[포그라운드] 메시지 수신:', payload);
+      const title = payload.notification?.title || 'HARU';
+      const body = payload.notification?.body || '';
+      new Notification(title, {
+        body: body,
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        tag: 'haru-notification',
+      });
+    });
+
     return true;
   } catch (error) {
     console.error('알림 권한 요청 실패:', error);
