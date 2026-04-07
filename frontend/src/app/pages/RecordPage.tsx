@@ -8,6 +8,9 @@ import { FormatModal } from '../components/FormatModal';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS, FORMAT_PREFIX } from '../types/haruTypes';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { AiLibraryPage } from './AiLibraryPage';
+
+type ActiveTab = 'record' | 'ai-library';
 
 type Mood = '기쁨' | '평온' | '무미' | '울적' | '번잡';
 type Weather = '쾌청' | '흐림' | '비' | '눈';
@@ -20,6 +23,7 @@ const moodOptions: Mood[] = ['기쁨', '평온', '무미', '울적', '번잡'];
 export function RecordPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<ActiveTab>('record');
   const [currentDate] = useState(new Date());
   const [mood, setMood] = useState<Mood>('평온');
   const [weather, setWeather] = useState<Weather>('쾌청');
@@ -145,6 +149,30 @@ export function RecordPage() {
 
   return (
     <>
+    {/* 상단 탭 */}
+    <div className="flex border-b bg-white" style={{ borderColor: '#e5e5e5' }}>
+      {([
+        { value: 'record', label: '📝 기록' },
+        { value: 'ai-library', label: '🧠 AI학습함' },
+      ] as { value: ActiveTab; label: string }[]).map((tab) => (
+        <button
+          key={tab.value}
+          onClick={() => setActiveTab(tab.value)}
+          className="flex-1 py-3 text-sm font-medium transition-all"
+          style={{
+            color: activeTab === tab.value ? '#1A3C6E' : '#999',
+            borderBottom: activeTab === tab.value ? '2px solid #1A3C6E' : '2px solid transparent',
+            background: 'none',
+          }}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+
+    {activeTab === 'ai-library' ? (
+      <AiLibraryPage />
+    ) : (
     <div className="max-w-3xl mx-auto px-4 py-3" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
       <div className="space-y-3">
         {/* Title Animation */}
@@ -335,6 +363,7 @@ export function RecordPage() {
         </div>
       </div>
     </div>
+    )}
 
     {savedFormat && (
       <FormatModal

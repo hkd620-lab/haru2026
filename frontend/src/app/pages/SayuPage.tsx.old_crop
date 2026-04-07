@@ -861,7 +861,6 @@ export function SayuPage() {
         onClose={(deleted?: boolean) => handleModalClose(deleted)}
         content={sayuModalState.content}
         originalData={sayuModalState.originalData}
-        format={sayuModalState.format}
         dateLabel={sayuModalState.dateLabel}
         currentRating={sayuModalState.currentRating}
         onSave={handleSaveSayu}

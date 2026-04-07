@@ -387,7 +387,7 @@ export function SayuModal({
       setEditedOriginalData(baseData);
 
       // 🌱 텃밭일지: garden_crop 없으면 Firestore에서 작물목록 보완
-      if ((format === '텃밭일지' || formatKey === 'garden') && !baseData['garden_crop']?.trim() && currentUser?.uid) {
+      if (format === '텃밭일지' && !baseData['garden_crop']?.trim() && currentUser?.uid) {
         (async () => {
           try {
             const gardenRef = doc(db, 'users', currentUser.uid, 'settings', 'garden');

@@ -1039,11 +1039,74 @@ class FirestoreService {
       );
       
       await Promise.all(deletePromises);
-      
+
       console.log(`${deletePromises.length}개의 기록이 삭제되었습니다.`);
     } catch (error) {
       console.error('데이터 삭제 실패:', error);
       throw error;
+    }
+  }
+
+  async getUnifiedUid(email: string): Promise<string | null> {
+    try {
+      const docRef = doc(db, 'email_to_uid', email);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const uid = docSnap.data().uid as string;
+        console.log('[getUnifiedUid] email:', email, '→ uid:', uid);
+        return uid;
+      }
+      console.warn('[getUnifiedUid] email_to_uid 문서 없음:', email);
+      return null;
+    } catch (error) {
+      console.error('[getUnifiedUid] 조회 실패:', error);
+      return null;
+    }
+  }
+
+  async getAiLogs(userEmail: string): Promise<HaruRecord[]> {
+    console.log('[getAiLogs] userEmail:', userEmail);
+    const unifiedUid = await this.getUnifiedUid(userEmail);
+    if (!unifiedUid) {
+      console.error('[getAiLogs] unified_uid 조회 실패 — 데이터를 불러올 수 없습니다.');
+      return [];
+    }
+    console.log('[getAiLogs] unified_uid:', unifiedUid);
+    try {
+      const recordsRef = collection(db, 'users', unifiedUid, 'records');
+      const q = query(
+        recordsRef,
+        where('type', '==', 'ai_log'),
+        orderBy('createdAt', 'desc')
+      );
+      const querySnapshot = await getDocs(q);
+      console.log('[getAiLogs] 가져온 문서 수:', querySnapshot.docs.length);
+      if (querySnapshot.docs.length > 0) {
+        console.log('[getAiLogs] 첫 번째 문서 전체 필드:', querySnapshot.docs[0].data());
+      }
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as HaruRecord[];
+    } catch (error) {
+      console.error('[getAiLogs] 쿼리 실패 (인덱스 없을 가능성):', error);
+      console.log('[getAiLogs] orderBy 없이 재시도...');
+      try {
+        const recordsRef = collection(db, 'users', unifiedUid, 'records');
+        const fallbackQ = query(recordsRef, where('type', '==', 'ai_log'));
+        const fallbackSnap = await getDocs(fallbackQ);
+        console.log('[getAiLogs] 재시도 결과 문서 수:', fallbackSnap.docs.length);
+        if (fallbackSnap.docs.length > 0) {
+          console.log('[getAiLogs] 첫 번째 문서 전체 필드:', fallbackSnap.docs[0].data());
+        }
+        return fallbackSnap.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as HaruRecord[];
+      } catch (fallbackError) {
+        console.error('[getAiLogs] 재시도도 실패:', fallbackError);
+        return [];
+      }
     }
   }
 }

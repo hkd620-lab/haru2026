@@ -1,10 +1,9 @@
-type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '메모';
+type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기';
 
 export function getTestData(format: RecordFormat): Record<string, string> | null {
   switch (format) {
     case '일기':
       return {
-        diary_simple: '오전 산책 후 업무 집중. 저녁엔 독서함.',
         diary_오늘한일: '뒷산 산책로 끝까지 완주했음',
         diary_좋았던일: '낙엽소리가 기분전환에 도움이 되었음',
         diary_아쉬웠던일: '이웃에게 인사 못 건넨 점이 아쉬웠음',
@@ -13,7 +12,6 @@ export function getTestData(format: RecordFormat): Record<string, string> | null
 
     case '에세이':
       return {
-        essay_simple: '요즘 시간의 흐름이 빠르게 느껴짐.',
         essay_observation: '보도블록 틈새 노란 민들레를 발견했음',
         essay_impression: '작지만 색이 진하고 아름다웠음',
         essay_comparison: '딱딱한 돌 사이의 모습이 작은 영웅 같았음',
@@ -23,7 +21,6 @@ export function getTestData(format: RecordFormat): Record<string, string> | null
 
     case '선교보고':
       return {
-        mission_simple: '오전 예배 후 심방 2가정 방문함.',
         mission_place: '오전 10시, ○○마을 우물가에서 주민 5명과 인사 나눔',
         mission_action: '어린이 10명 대상 성경 동화 구연 및 위생 교육 실시',
         mission_grace: '추장님이 먼저 다가와 차를 대접하고 재방문을 환영함',
@@ -33,7 +30,6 @@ export function getTestData(format: RecordFormat): Record<string, string> | null
 
     case '일반보고':
       return {
-        report_simple: '주간 업무 완료. 이슈 없이 마감함.',
         report_activity: '본관 2층 인문학 코너 신간 도서 분류 및 배가 작업 수행',
         report_progress: '500권 중 350권 완료, 공정률 약 70%',
         report_achievement: '철학·역사 분야 정리 완료로 도서 검색 효율 향상됨',
@@ -43,7 +39,6 @@ export function getTestData(format: RecordFormat): Record<string, string> | null
 
     case '업무일지':
       return {
-        work_simple: '기획안 작성 및 팀 미팅 참석함.',
         work_schedule: '09:00 주간 회의 주관\n13:00 신입 사원 직무 교육',
         work_result: '회의록 배포 완료\n교육 만족도 매우 만족 90% 이상 기록',
         work_pending: '예산 결산 보고서 초안 작성 내일 오전 완료 예정',
@@ -53,7 +48,6 @@ export function getTestData(format: RecordFormat): Record<string, string> | null
 
     case '여행기록':
       return {
-        travel_simple: '경복궁 방문. 날씨 맑고 사람 많았음.',
         travel_journey: '오전 10시 산사 도착, 숲길 산책함',
         travel_scenery: '처마 끝 풍경이 맑은 소리를 냈음\n바랜 단청이 편안했음',
         travel_food: '산채비빔밥 섭취, 나물 향이 오래 남았음',
@@ -63,7 +57,6 @@ export function getTestData(format: RecordFormat): Record<string, string> | null
 
     case '텃밭일지':
       return {
-        garden_simple: '토마토 물 주고 잡초 제거함.',
         garden_crop: '토마토, 상추, 오이, 고추',
         garden_work: '토마토 지주대 설치, 오이 순지르기, 상추 수확',
         garden_observation: '토마토 첫 꽃 핌, 오이 잎 시들어 보임',
@@ -73,7 +66,6 @@ export function getTestData(format: RecordFormat): Record<string, string> | null
 
     case '애완동물관찰일지':
       return {
-        pet_simple: '산책 30분. 밥 잘 먹고 활발함.',
         pet_name: '반려견 뭉치 (골든 리트리버, 3살)',
         pet_health: '체중 32kg, 식욕 양호, 배변 정상',
         pet_behavior: '다른 강아지와 잘 어울렸음, 평소보다 활발했음',
@@ -83,17 +75,11 @@ export function getTestData(format: RecordFormat): Record<string, string> | null
 
     case '육아일기':
       return {
-        parenting_simple: '아이와 공원 나들이. 신나게 뛰어놀았음.',
         child_name: '하은 (15개월)',
         child_growth: '키 80cm, 체중 11kg, 혼자 걷기 3일째, 오늘 "엄마" 첫 발음함',
         child_meal: '아침: 미음+바나나\n점심: 소고기 야채죽\n저녁: 두부 계란찜+당근',
         child_activity: '놀이터 그네 탐, 처음엔 무서워하다 곧 웃으며 즐거워했음',
         child_emotion: '아이 웃는 모습에 하루 피로가 사라졌음, 매 순간이 선물임',
-      };
-
-    case '메모':
-      return {
-        memo_simple: '내일 오전 10시 회의 준비 필요.',
       };
 
     default:

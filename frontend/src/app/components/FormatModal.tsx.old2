@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from 'react';
 import { getTestData } from '../data/testData';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
 import { compressImage } from '../services/imageService';
 import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
@@ -183,23 +182,18 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
         setUploadedImages([]);
       }
 
-      // 🌱 텃밭일지: Firestore에서 작물 목록 불러오기
-      if (format === '텃밭일지' && user?.uid) {
-        (async () => {
-          try {
-            const db = getFirestore();
-            const gardenRef = doc(db, 'users', user.uid, 'settings', 'garden');
-            const snap = await getDoc(gardenRef);
-            if (snap.exists()) {
-              const data = snap.data();
-              setCrops(Array.isArray(data.crops) ? data.crops : []);
-            } else {
-              setCrops([]);
-            }
-          } catch {
+      // 🌱 텃밭일지: localStorage에서 작물 목록 불러오기
+      if (format === '텃밭일지') {
+        try {
+          const saved = localStorage.getItem('haru_garden_crops');
+          if (saved) {
+            setCrops(JSON.parse(saved));
+          } else {
             setCrops([]);
           }
-        })();
+        } catch {
+          setCrops([]);
+        }
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -231,7 +225,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   };
 
   // 🌱 작물 추가
-  const handleAddCrop = async () => {
+  const handleAddCrop = () => {
     if (!newCropName.trim()) {
       toast.warning('작물 이름을 입력해주세요.');
       return;
@@ -250,9 +244,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     setNewCropName('');
 
     try {
-      const db = getFirestore();
-      const gardenRef = doc(db, 'users', user!.uid, 'settings', 'garden');
-      await setDoc(gardenRef, { crops: updated }, { merge: true });
+      localStorage.setItem('haru_garden_crops', JSON.stringify(updated));
       toast.success(`${newCropName} 추가!`);
     } catch {
       toast.error('저장 실패');
@@ -260,14 +252,12 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   };
 
   // 🌱 작물 삭제
-  const handleRemoveCrop = async (cropToRemove: string) => {
+  const handleRemoveCrop = (cropToRemove: string) => {
     const updated = crops.filter(c => c !== cropToRemove);
     setCrops(updated);
 
     try {
-      const db = getFirestore();
-      const gardenRef = doc(db, 'users', user!.uid, 'settings', 'garden');
-      await setDoc(gardenRef, { crops: updated }, { merge: true });
+      localStorage.setItem('haru_garden_crops', JSON.stringify(updated));
       toast.success(`${cropToRemove} 삭제!`);
     } catch {
       toast.error('저장 실패');
