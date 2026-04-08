@@ -1,21 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 
-type SourceFilter = 'all' | 'claude' | 'gemini' | 'chatgpt';
+type SourceFilter = string;
 
 const SOURCE_LABELS: Record<string, string> = {
   'claude.ai': 'Claude',
   'gemini.google.com': 'Gemini',
   'chatgpt.com': 'ChatGPT',
 };
-
-const FILTER_BUTTONS: { value: SourceFilter; label: string }[] = [
-  { value: 'all', label: '전체' },
-  { value: 'claude', label: 'Claude' },
-  { value: 'gemini', label: 'Gemini' },
-  { value: 'chatgpt', label: 'ChatGPT' },
-];
 
 export function AiLibraryPage() {
   const { user } = useAuth();
@@ -46,8 +39,26 @@ export function AiLibraryPage() {
     return match ? match[1] : '';
   };
 
+  // 동적 필터 버튼 생성
+  const filterButtons = useMemo(() => {
+    const sources = new Set<string>();
+    logs.forEach(log => {
+      const source = getSource(log);
+      if (source) sources.add(source);
+    });
+
+    const buttons = [{ value: 'all', label: '전체' }];
+
+    Array.from(sources).sort().forEach(source => {
+      const label = SOURCE_LABELS[source] || source;
+      buttons.push({ value: source, label });
+    });
+
+    return buttons;
+  }, [logs]);
+
   const filtered = logs.filter((r) => {
-    const matchTab = filter === 'all' || getSource(r).includes(filter);
+    const matchTab = filter === 'all' || getSource(r) === filter;
     const kw = keyword.trim().toLowerCase();
     const matchKeyword = !kw
       || r.content?.toLowerCase().includes(kw)
@@ -70,7 +81,7 @@ export function AiLibraryPage() {
 
       {/* 필터 버튼 */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-        {FILTER_BUTTONS.map((btn) => (
+        {filterButtons.map((btn) => (
           <button
             key={btn.value}
             onClick={() => setFilter(btn.value)}
