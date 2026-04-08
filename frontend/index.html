@@ -1,6 +1,25 @@
 <!DOCTYPE html>
 <html lang="ko">
   <head>
+    <script>
+  (function() {
+    var ua = window.navigator.userAgent.toLowerCase();
+    var isKakao = ua.indexOf('kakaotalk') !== -1;
+    var isAndroid = ua.indexOf('android') !== -1;
+    if (isKakao) {
+      if (isAndroid) {
+        window.location.href =
+          'intent://' + location.host + location.pathname +
+          '#Intent;scheme=https;package=com.android.chrome;end';
+      } else {
+        document.addEventListener('DOMContentLoaded', function() {
+          var el = document.getElementById('kakao-guide');
+          if (el) el.style.display = 'flex';
+        });
+      }
+    }
+  })();
+</script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -21,6 +40,60 @@
     <script src="https://developers.kakao.com/sdk/js/kakao.js"></script>
   </head>
   <body>
+  <div id="kakao-guide" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#FAF9F6;z-index:99999;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;font-family:-apple-system,sans-serif;">
+
+    <!-- 포도송이 컨테이너 -->
+    <div style="position:relative;width:180px;height:200px;margin-bottom:16px;">
+
+      <!-- 줄기 (15도 회전) -->
+      <div style="position:absolute;top:-36px;left:50%;transform:translateX(-50%) rotate(15deg);transform-origin:bottom center;">
+        <svg width="30" height="46" viewBox="0 0 30 46" fill="none">
+          <path d="M15 44 C15 34 15 22 15 14 C15 8 18 4 22 2" stroke="#5a3a2a" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        </svg>
+      </div>
+
+      <!-- 4알 (1줄) -->
+      <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;gap:8px;">
+        <div style="width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#8B4789 0%,#6B3767 30%,#4a2349 60%,#2a1329 100%);box-shadow:0 10px 25px rgba(0,0,0,0.5),0 5px 10px rgba(0,0,0,0.3),inset -6px -6px 15px rgba(0,0,0,0.6),inset 6px 6px 15px rgba(255,255,255,0.15);"></div>
+        <div style="width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#8B4789 0%,#6B3767 30%,#4a2349 60%,#2a1329 100%);box-shadow:0 10px 25px rgba(0,0,0,0.5),0 5px 10px rgba(0,0,0,0.3),inset -6px -6px 15px rgba(0,0,0,0.6),inset 6px 6px 15px rgba(255,255,255,0.15);"></div>
+        <div style="width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#8B4789 0%,#6B3767 30%,#4a2349 60%,#2a1329 100%);box-shadow:0 10px 25px rgba(0,0,0,0.5),0 5px 10px rgba(0,0,0,0.3),inset -6px -6px 15px rgba(0,0,0,0.6),inset 6px 6px 15px rgba(255,255,255,0.15);"></div>
+        <div style="width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#8B4789 0%,#6B3767 30%,#4a2349 60%,#2a1329 100%);box-shadow:0 10px 25px rgba(0,0,0,0.5),0 5px 10px rgba(0,0,0,0.3),inset -6px -6px 15px rgba(0,0,0,0.6),inset 6px 6px 15px rgba(255,255,255,0.15);"></div>
+      </div>
+
+      <!-- 3알 (2줄) -->
+      <div style="position:absolute;top:54px;left:50%;transform:translateX(-50%);display:flex;gap:8px;">
+        <div style="width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#8B4789 0%,#6B3767 30%,#4a2349 60%,#2a1329 100%);box-shadow:0 10px 25px rgba(0,0,0,0.5),0 5px 10px rgba(0,0,0,0.3),inset -6px -6px 15px rgba(0,0,0,0.6),inset 6px 6px 15px rgba(255,255,255,0.15);"></div>
+        <div style="width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#8B4789 0%,#6B3767 30%,#4a2349 60%,#2a1329 100%);box-shadow:0 10px 25px rgba(0,0,0,0.5),0 5px 10px rgba(0,0,0,0.3),inset -6px -6px 15px rgba(0,0,0,0.6),inset 6px 6px 15px rgba(255,255,255,0.15);"></div>
+        <div style="width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#8B4789 0%,#6B3767 30%,#4a2349 60%,#2a1329 100%);box-shadow:0 10px 25px rgba(0,0,0,0.5),0 5px 10px rgba(0,0,0,0.3),inset -6px -6px 15px rgba(0,0,0,0.6),inset 6px 6px 15px rgba(255,255,255,0.15);"></div>
+      </div>
+
+      <!-- 2알 (3줄) -->
+      <div style="position:absolute;top:98px;left:50%;transform:translateX(-50%);display:flex;gap:8px;">
+        <div style="width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#8B4789 0%,#6B3767 30%,#4a2349 60%,#2a1329 100%);box-shadow:0 10px 25px rgba(0,0,0,0.5),0 5px 10px rgba(0,0,0,0.3),inset -6px -6px 15px rgba(0,0,0,0.6),inset 6px 6px 15px rgba(255,255,255,0.15);"></div>
+        <div style="width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#8B4789 0%,#6B3767 30%,#4a2349 60%,#2a1329 100%);box-shadow:0 10px 25px rgba(0,0,0,0.5),0 5px 10px rgba(0,0,0,0.3),inset -6px -6px 15px rgba(0,0,0,0.6),inset 6px 6px 15px rgba(255,255,255,0.15);"></div>
+      </div>
+
+      <!-- 1알 (4줄) -->
+      <div style="position:absolute;top:142px;left:50%;transform:translateX(-50%);display:flex;">
+        <div style="width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#8B4789 0%,#6B3767 30%,#4a2349 60%,#2a1329 100%);box-shadow:0 10px 25px rgba(0,0,0,0.5),0 5px 10px rgba(0,0,0,0.3),inset -6px -6px 15px rgba(0,0,0,0.6),inset 6px 6px 15px rgba(255,255,255,0.15);"></div>
+      </div>
+
+      <!-- 체크마크 -->
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);">
+        <svg width="48" height="48" viewBox="0 0 24 24">
+          <path d="M5 12 L10 17 L19 7" stroke="#00E676" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </div>
+
+    <div style="font-size:22px;font-weight:700;color:#1A3C6E;margin-bottom:8px;">HARU 2026</div>
+    <div style="font-size:15px;color:#666;margin-bottom:32px;line-height:1.6;">카카오톡에서는 바로 열리지 않아요.<br>아래 버튼을 눌러 Safari로 열어주세요.</div>
+
+    <button onclick="location.href='kakaotalk://web/openExternal?url=https%3A%2F%2Fharu2026.com'" style="background:#1A3C6E;color:#fff;padding:16px 40px;border-radius:12px;font-size:17px;font-weight:600;border:none;cursor:pointer;">
+      Safari로 열기
+    </button>
+  </div>
+
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
