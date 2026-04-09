@@ -1,6 +1,11 @@
 # HARU2026 — Frontend CLAUDE.md
 > CC(Claude Code)가 웹 프론트엔드 작업 시 반드시 참조하는 지침서
 
+## 작업 규칙
+- 각 단계 완료시 반드시 /compact 입력 안내
+- 전체 작업 완료시 /clear 입력 안내
+- MCP 도구는 10개 이하 유지
+
 ---
 
 ## 🤖 CC 자동 규칙 (항상 적용)
@@ -156,6 +161,55 @@ PortOne Store ID: store-7a100ca2-8d9f-4015-8fdb-723e4527e2c2
 
 GitHub: hkd620-lab/haru2026
 작업 브랜치: feature/new-formats
+
+---
+
+## 📝 완료된 작업 이력
+
+### 2026-04-09 (1차)
+- 완료: AiLibraryPage.tsx 필터 버튼 동적 생성 및 카드 레이아웃 개선
+- 수정파일: frontend/src/app/pages/AiLibraryPage.tsx
+- 다음할일: 사용자 테스트 및 피드백 반영
+
+### 2026-04-09 (2차)
+- 완료: AiLibraryPage.tsx 날짜별 삭제 기능 추가
+- 수정파일: frontend/src/app/pages/AiLibraryPage.tsx, frontend/src/app/services/firestoreService.ts
+- 다음할일: 삭제 기능 테스트 및 사용자 피드백 확인
+
+### 2026-04-09 (3차)
+- 완료: 삭제 로직 conversations 컬렉션 구조로 수정 (source, timestamp 필드 사용)
+- 수정파일: frontend/src/app/services/firestoreService.ts
+- 다음할일: 별도 Firebase 프로젝트 연결 확인 필요
+
+### 2026-04-09 (4차)
+- 완료: my-ai-library-74805 Firebase 프로젝트 연결 추가 및 AI학습함 데이터 소스 변경
+- 수정파일: frontend/src/firebase.ts, frontend/src/app/services/firestoreService.ts
+- 다음할일: AI학습함 페이지 기능 테스트
+
+### 2026-04-09 (5차)
+- 완료: AI학습함 작업 관련 3개 파일 git 복귀 및 안정화
+- 수정파일: frontend/src/app/pages/AiLibraryPage.tsx, frontend/src/app/services/firestoreService.ts, frontend/src/firebase.ts (복귀)
+- 다음할일: 기존 안정 버전 유지
+
+### 2026-04-09 (6차)
+- 완료: AI학습함 my-ai-library-74805 프로젝트 연결 및 conversations 컬렉션 접근
+- 수정파일: frontend/src/firebase.ts, frontend/src/app/services/firestoreService.ts, frontend/src/app/pages/AiLibraryPage.tsx
+- 다음할일: 사용자 이메일로 conversations 조회 테스트
+
+### 2026-04-09 (7차)
+- 완료: AI학습함 선택 삭제 기능 구현 (체크박스, 일괄 삭제, UI/UX 개선)
+- 수정파일: frontend/src/app/pages/AiLibraryPage.tsx, frontend/src/app/services/firestoreService.ts
+- 다음할일: 선택 삭제 기능 테스트 및 사용자 피드백 수집
+
+### 2026-04-09 (8차)
+- 완료: 기록 페이지에 'AI대화' 카테고리 추가 (ChatGPT, Claude, Gemini, 기타)
+- 수정파일: frontend/src/app/types/haruTypes.ts, frontend/src/app/pages/RecordPage.tsx
+- 다음할일: AI대화 기록 기능 개발 준비
+
+### 2026-04-09 (9차)
+- 완료: Footer 하단 네비게이션 바 겹침 문제 해결 (margin-bottom 추가)
+- 수정파일: frontend/src/app/components/Footer.tsx
+- 다음할일: 모바일/데스크톱 Footer 표시 테스트
 
 ---
 
