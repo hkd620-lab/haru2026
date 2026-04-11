@@ -1085,6 +1085,15 @@ class FirestoreService {
       return [];
     }
   }
+
+  async deleteAiLogs(ids: Set<string>): Promise<void> {
+    const { aiLibraryDb } = await import('../../firebase');
+    const { doc, deleteDoc } = await import('firebase/firestore');
+    const promises = Array.from(ids).map(id =>
+      deleteDoc(doc(aiLibraryDb, 'conversations', id))
+    );
+    await Promise.all(promises);
+  }
 }
 
 export const firestoreService = new FirestoreService();

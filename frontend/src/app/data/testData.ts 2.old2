@@ -1,0 +1,88 @@
+type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기';
+
+export function getTestData(format: RecordFormat): Record<string, string> | null {
+  switch (format) {
+    case '일기':
+      return {
+        diary_오늘한일: '뒷산 산책로 끝까지 완주했음',
+        diary_좋았던일: '낙엽소리가 기분전환에 도움이 되었음',
+        diary_아쉬웠던일: '이웃에게 인사 못 건넨 점이 아쉬웠음',
+        diary_여백: '내일은 천천히 걷고 싶음',
+      };
+
+    case '에세이':
+      return {
+        essay_observation: '보도블록 틈새 노란 민들레를 발견했음',
+        essay_impression: '작지만 색이 진하고 아름다웠음',
+        essay_comparison: '딱딱한 돌 사이의 모습이 작은 영웅 같았음',
+        essay_essence: '힘든 환경에서도 꽃은 피어날 수 있음을 깨달았음',
+        essay_closing: '어려움 속에서도 포기하지 않으면 꽃을 피울 수 있음',
+      };
+
+    case '선교보고':
+      return {
+        mission_place: '오전 10시, ○○마을 우물가에서 주민 5명과 인사 나눔',
+        mission_action: '어린이 10명 대상 성경 동화 구연 및 위생 교육 실시',
+        mission_grace: '추장님이 먼저 다가와 차를 대접하고 재방문을 환영함',
+        mission_heart: '언어 장벽이 있었지만 웃음이 최고의 언어임을 확인했음',
+        mission_prayer: '우물 파기 사역이 순조롭게 진행되기를 기도함',
+      };
+
+    case '일반보고':
+      return {
+        report_activity: '본관 2층 인문학 코너 신간 도서 분류 및 배가 작업 수행',
+        report_progress: '500권 중 350권 완료, 공정률 약 70%',
+        report_achievement: '철학·역사 분야 정리 완료로 도서 검색 효율 향상됨',
+        report_notes: '서가 공간 부족으로 구권 서적 재배치 검토 필요',
+        report_future: '내일 오전 중 남은 150권 정리 및 재배치 기획안 작성 예정',
+      };
+
+    case '업무일지':
+      return {
+        work_schedule: '09:00 주간 회의 주관\n13:00 신입 사원 직무 교육',
+        work_result: '회의록 배포 완료\n교육 만족도 매우 만족 90% 이상 기록',
+        work_pending: '예산 결산 보고서 초안 작성 내일 오전 완료 예정',
+        work_metric: '걸음 수 8,500보\n점심 식대 12,000원',
+        work_rating: '★★★★☆ 핵심 업무 대부분 완수',
+      };
+
+    case '여행기록':
+      return {
+        travel_journey: '오전 10시 산사 도착, 숲길 산책함',
+        travel_scenery: '처마 끝 풍경이 맑은 소리를 냈음\n바랜 단청이 편안했음',
+        travel_food: '산채비빔밥 섭취, 나물 향이 오래 남았음',
+        travel_thought: '멈추니 비로소 보였음, 속도를 늦추는 것이 깊어짐임',
+        travel_gratitude: '길 안내해 주신 노스님 미소에 감사했음',
+      };
+
+    case '텃밭일지':
+      return {
+        garden_crop: '토마토, 상추, 오이, 고추',
+        garden_work: '토마토 지주대 설치, 오이 순지르기, 상추 수확',
+        garden_observation: '토마토 첫 꽃 핌, 오이 잎 시들어 보임',
+        garden_issue: '상추에 진딧물 발견, 천연 살충제 사용 예정',
+        garden_plan: '내일 토마토 물주기, 진딧물 제거 작업 예정',
+      };
+
+    case '애완동물관찰일지':
+      return {
+        pet_name: '반려견 뭉치 (골든 리트리버, 3살)',
+        pet_health: '체중 32kg, 식욕 양호, 배변 정상',
+        pet_behavior: '다른 강아지와 잘 어울렸음, 평소보다 활발했음',
+        pet_care: '산책 40분, 간식 2회, 양치 1회',
+        pet_special: '새 장난감 공에 큰 관심 보이며 30분 혼자 놀았음',
+      };
+
+    case '육아일기':
+      return {
+        child_name: '하은 (15개월)',
+        child_growth: '키 80cm, 체중 11kg, 혼자 걷기 3일째, 오늘 "엄마" 첫 발음함',
+        child_meal: '아침: 미음+바나나\n점심: 소고기 야채죽\n저녁: 두부 계란찜+당근',
+        child_activity: '놀이터 그네 탐, 처음엔 무서워하다 곧 웃으며 즐거워했음',
+        child_emotion: '아이 웃는 모습에 하루 피로가 사라졌음, 매 순간이 선물임',
+      };
+
+    default:
+      return null;
+  }
+}

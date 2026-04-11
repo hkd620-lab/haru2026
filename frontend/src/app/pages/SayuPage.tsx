@@ -278,7 +278,12 @@ export function SayuPage() {
       try {
         const parsed = JSON.parse(imagesData);
         if (Array.isArray(parsed)) {
-          images = parsed.filter((url: any) => typeof url === 'string' && url.startsWith('http'));
+          images = parsed.filter(
+            (url: any) =>
+              typeof url === 'string' &&
+              url.trim().length > 0 &&
+              url.startsWith('http')
+          );
         }
       } catch {
         images = [];
@@ -316,24 +321,20 @@ export function SayuPage() {
       content: '',
       dateLabel: '',
     });
-    if (deleted) {
-      const currentDate = selectedDate;
 
-      // 1. Firestore에서 최신 records 가져오기
-      setLoading(true);
-      try {
-        const data = await firestoreService.getRecords(user!.uid);
-        setRecords(data);
+    // 항상 records 새로고침 (사진 추가/삭제/환경변경 반영)
+    const currentDate = selectedDate;
+    setLoading(true);
+    try {
+      const data = await firestoreService.getRecords(user!.uid);
+      setRecords(data);
 
-        // 2. 새 records 기준으로 selectedDateFormats 재계산
+      if (deleted) {
         const dayRecords = data.filter((r) => r.date === currentDate);
-
         if (dayRecords.length === 0) {
-          // 해당 날짜 기록이 모두 삭제된 경우 → 날짜 선택 해제
           setSelectedDate('');
           setSelectedDateFormats([]);
         } else {
-          // 남은 기록으로 형식 목록 재구성
           const seenFormatKeys = new Set<string>();
           const availableFormats: { key: string; label: string; recordId?: string }[] = [];
           dayRecords.forEach((record) => {
@@ -351,11 +352,11 @@ export function SayuPage() {
           setSelectedDate(currentDate);
           setSelectedDateFormats(availableFormats);
         }
-      } catch (error) {
-        console.error('새로고침 실패:', error);
-      } finally {
-        setLoading(false);
       }
+    } catch (error) {
+      console.error('새로고침 실패:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -889,8 +890,9 @@ export function SayuPage() {
           </h2>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
             {sayuModalState.currentRating && sayuModalState.currentRating > 0 && (
-              <span style={{ fontSize: '10pt', padding: '4px 12px', borderRadius: '12px', backgroundColor: '#FFF8F0', color: '#F59E0B' }}>
-                {'⭐'.repeat(sayuModalState.currentRating)}
+              <span style={{ fontSize: '10pt', padding: '4px 12px',
+                borderRadius: '12px', backgroundColor: '#FFF8F0', color: '#F59E0B' }}>
+                ✨ 특별한 날
               </span>
             )}
             {sayuModalState.weather && (

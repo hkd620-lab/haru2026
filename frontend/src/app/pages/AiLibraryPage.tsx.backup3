@@ -1,0 +1,288 @@
+import { useEffect, useState, useMemo } from 'react';
+import { firestoreService, HaruRecord } from '../services/firestoreService';
+import { useAuth } from '../contexts/AuthContext';
+
+type SourceFilter = string;
+
+const SOURCE_LABELS: Record<string, string> = {
+  'claude.ai': 'Claude',
+  'gemini.google.com': 'Gemini',
+  'chatgpt.com': 'ChatGPT',
+};
+
+export function AiLibraryPage() {
+  const { user } = useAuth();
+  const [logs, setLogs] = useState<HaruRecord[]>([]);
+  const [filter, setFilter] = useState<SourceFilter>('all');
+  const [keyword, setKeyword] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  const loadData = async () => {
+    if (!user || !user.email) {
+      console.warn('[AiLibraryPage] user 또는 email 없음 — 로그인 필요');
+      setLoading(false);
+      return;
+    }
+    console.log('[AiLibraryPage] getAiLogs 호출, email:', user.email);
+    try {
+      const data = await firestoreService.getAiLogs(user.email);
+      console.log('[AiLibraryPage] 받은 데이터:', data);
+      setLogs(data);
+    } catch (error) {
+      console.error('[AiLibraryPage] 데이터 로드 실패:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    console.log('[AiLibraryPage] user 상태:', user);
+    loadData();
+  }, [user]);
+
+  const getSource = (r: HaruRecord): string => {
+    if (r.source) return r.source;
+    const match = r.title?.match(/^\[([^\]]+)\]/);
+    return match ? match[1] : '기타';
+  };
+
+  // 동적 필터 버튼 생성
+  const filterButtons = useMemo(() => {
+    const sources = new Set<string>();
+    logs.forEach(log => {
+      const source = getSource(log);
+      if (source) sources.add(source);
+    });
+
+    const buttons = [{ value: 'all', label: '전체' }];
+
+    Array.from(sources).sort().forEach(source => {
+      const label = SOURCE_LABELS[source] || source;
+      buttons.push({ value: source, label });
+    });
+
+    return buttons;
+  }, [logs]);
+
+  const filtered = logs.filter((r) => {
+    const matchTab = filter === 'all' || getSource(r) === filter;
+    const kw = keyword.trim().toLowerCase();
+    const matchKeyword = !kw
+      || r.content?.toLowerCase().includes(kw)
+      || r.title?.toLowerCase().includes(kw);
+    return matchTab && matchKeyword;
+  });
+
+  // 날짜별 그룹핑
+  const groupedByDate = useMemo(() => {
+    const groups: { [date: string]: HaruRecord[] } = {};
+
+    filtered.forEach(log => {
+      if (!log.createdAt) return;
+      const date = new Date(log.createdAt).toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      if (!groups[date]) groups[date] = [];
+      groups[date].push(log);
+    });
+
+    // 날짜순 정렬 (최신순)
+    const sortedDates = Object.keys(groups).sort((a, b) => {
+      const dateA = new Date(a.replace(/\./g, '-'));
+      const dateB = new Date(b.replace(/\./g, '-'));
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    return sortedDates.map(date => ({
+      date,
+      logs: groups[date].sort((a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )
+    }));
+  }, [filtered]);
+
+  const handleDeleteDate = async (dateStr: string) => {
+    if (!user?.email || filter === 'all') return;
+
+    const logsInDate = groupedByDate.find(group => group.date === dateStr)?.logs || [];
+    const sourceLabel = SOURCE_LABELS[filter] || filter;
+
+    if (!confirm(`${dateStr}의 ${sourceLabel} 기록 ${logsInDate.length}개를 삭제할까요?`)) {
+      return;
+    }
+
+    try {
+      setDeleting(dateStr);
+      // 날짜 문자열을 YYYY-MM-DD 형식으로 변환
+      const formattedDate = dateStr.replace(/\./g, '-');
+      await firestoreService.deleteAiLogsByDate(user.email, filter, formattedDate);
+
+      // 데이터 새로고침
+      await loadData();
+      alert('삭제되었습니다.');
+    } catch (error) {
+      console.error('[handleDeleteDate] 삭제 실패:', error);
+      alert('삭제 중 오류가 발생했습니다.');
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  return (
+    <div style={{ padding: '16px', maxWidth: '640px', margin: '0 auto', paddingBottom: '100px' }}>
+      <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1A3C6E', marginBottom: '16px' }}>
+        AI 학습함
+      </h2>
+
+      {/* 필터 버튼 */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        {filterButtons.map((btn) => (
+          <button
+            key={btn.value}
+            onClick={() => setFilter(btn.value)}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '20px',
+              border: '1px solid',
+              borderColor: filter === btn.value ? '#1A3C6E' : '#ddd',
+              background: filter === btn.value ? '#1A3C6E' : '#fff',
+              color: filter === btn.value ? '#fff' : '#555',
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            {btn.label}
+          </button>
+        ))}
+      </div>
+
+      {/* 검색창 */}
+      <input
+        type="text"
+        placeholder="키워드 검색 (제목, 내용)"
+        value={keyword}
+        onChange={(e) => setKeyword(e.target.value)}
+        style={{
+          width: '100%', boxSizing: 'border-box',
+          padding: '8px 12px', marginBottom: '16px',
+          border: '1px solid #ddd', borderRadius: '20px',
+          fontSize: '13px', outline: 'none',
+        }}
+      />
+
+      {/* 목록 */}
+      {loading ? (
+        <p style={{ color: '#999', fontSize: '14px' }}>불러오는 중...</p>
+      ) : groupedByDate.length === 0 ? (
+        <p style={{ color: '#999', fontSize: '14px' }}>저장된 AI 학습 기록이 없습니다.</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {groupedByDate.map(({ date, logs: dateLogsGroup }) => (
+            <div key={date}>
+              {/* 날짜 헤더 */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '12px',
+                padding: '8px 0',
+                borderBottom: '1px solid #e5e5e5'
+              }}>
+                <h3 style={{
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  color: '#1A3C6E',
+                  margin: 0
+                }}>
+                  {date} ({dateLogsGroup.length}개)
+                </h3>
+
+                {/* 삭제 버튼 (필터가 '전체'가 아닐 때만 표시) */}
+                {filter !== 'all' && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteDate(date);
+                    }}
+                    disabled={deleting === date}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: deleting === date ? '#fca5a5' : '#fee2e2',
+                      color: '#dc2626',
+                      cursor: deleting === date ? 'not-allowed' : 'pointer',
+                      fontSize: '14px',
+                      opacity: deleting === date ? 0.6 : 1,
+                      transition: 'all 0.2s'
+                    }}
+                    title={`${date} ${SOURCE_LABELS[filter] || filter} 기록 삭제`}
+                  >
+                    {deleting === date ? '⏳' : '🗑️'}
+                  </button>
+                )}
+              </div>
+
+              {/* 해당 날짜의 로그들 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {dateLogsGroup.map((log) => (
+                  <div
+                    key={log.id}
+                    onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
+                    style={{
+                      border: '1px solid #e5e5e5',
+                      borderRadius: '10px',
+                      padding: '16px',
+                      background: '#fff',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '6px' }}>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          padding: '2px 8px',
+                          borderRadius: '10px',
+                          background: '#EEF3FB',
+                          color: '#1A3C6E',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {SOURCE_LABELS[log.source] ?? getSource(log)}
+                      </span>
+                    </div>
+                    {log.title && (
+                      <p style={{ fontSize: '14px', fontWeight: 600, color: '#222', marginBottom: '4px' }}>
+                        {log.title}
+                      </p>
+                    )}
+                    <p style={{ fontSize: '13px', color: '#555', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                      {expandedId === log.id
+                        ? log.content
+                        : log.content
+                          ? log.content.slice(0, 100) + (log.content.length > 100 ? '...' : '')
+                          : ''}
+                    </p>
+                    {log.content && log.content.length > 100 && (
+                      <p style={{ fontSize: '11px', color: '#1A3C6E', marginTop: '6px', textAlign: 'right' }}>
+                        {expandedId === log.id ? '▲ 접기' : '▼ 전체보기'}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

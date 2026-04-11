@@ -17,6 +17,8 @@ export function AiLibraryPage() {
   const [keyword, setKeyword] = useState('');
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [deleteMode, setDeleteMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     console.log('[AiLibraryPage] user 상태:', user);
@@ -73,11 +75,114 @@ export function AiLibraryPage() {
     });
   };
 
+  const handleToggleDeleteMode = () => {
+    if (deleteMode) {
+      setSelectedIds(new Set());
+    }
+    setDeleteMode(!deleteMode);
+  };
+
+  const handleSelectCard = (id: string, e: React.MouseEvent) => {
+    if (!deleteMode) return;
+    e.stopPropagation();
+
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleCardClick = (id: string) => {
+    if (deleteMode) return;
+    setExpandedId(expandedId === id ? null : id);
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0) {
+      alert('삭제할 항목을 선택해주세요.');
+      return;
+    }
+
+    if (!confirm(`선택한 ${selectedIds.size}개를 삭제하시겠습니까?`)) {
+      return;
+    }
+
+    try {
+      await firestoreService.deleteAiLogs(selectedIds);
+
+      // logs 상태에서 삭제된 항목들 제거
+      setLogs(prevLogs => prevLogs.filter(log => !selectedIds.has(log.id)));
+
+      // 삭제 모드 종료 및 선택 초기화
+      setDeleteMode(false);
+      setSelectedIds(new Set());
+
+      alert('삭제되었습니다.');
+    } catch (error) {
+      console.error('[handleDeleteSelected] 삭제 실패:', error);
+      alert('삭제 중 오류가 발생했습니다.');
+    }
+  };
+
   return (
     <div style={{ padding: '16px', maxWidth: '640px', margin: '0 auto', paddingBottom: '100px' }}>
-      <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1A3C6E', marginBottom: '16px' }}>
-        AI 학습함
-      </h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1A3C6E', margin: 0 }}>
+          AI 학습함
+        </h2>
+        <button
+          onClick={handleToggleDeleteMode}
+          style={{
+            padding: '6px 12px',
+            borderRadius: '16px',
+            border: deleteMode ? '1px solid #e24b4a' : '1px solid #1A3C6E',
+            background: deleteMode ? '#e24b4a' : '#1A3C6E',
+            color: '#fff',
+            fontSize: '12px',
+            cursor: 'pointer',
+            fontWeight: 500,
+          }}
+        >
+          {deleteMode ? '취소' : '선택 삭제'}
+        </button>
+      </div>
+
+      {/* 선택 삭제 모드일 때 선택 바 */}
+      {deleteMode && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '12px 16px',
+          marginBottom: '16px',
+          background: '#f8f9fa',
+          borderRadius: '8px',
+          border: '1px solid #e9ecef',
+        }}>
+          <span style={{ fontSize: '14px', color: '#555' }}>
+            {selectedIds.size}개 선택됨
+          </span>
+          <button
+            onClick={handleDeleteSelected}
+            disabled={selectedIds.size === 0}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '6px',
+              border: 'none',
+              background: selectedIds.size > 0 ? '#e24b4a' : '#ccc',
+              color: '#fff',
+              fontSize: '12px',
+              cursor: selectedIds.size > 0 ? 'pointer' : 'not-allowed',
+              fontWeight: 500,
+            }}
+          >
+            삭제
+          </button>
+        </div>
+      )}
 
       {/* 필터 버튼 */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
@@ -125,16 +230,42 @@ export function AiLibraryPage() {
           {filtered.map((log) => (
             <div
               key={log.id}
-              onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
+              onClick={() => handleCardClick(log.id)}
               style={{
-                border: '1px solid #e5e5e5',
+                border: `1px solid ${deleteMode && selectedIds.has(log.id) ? '#1A3C6E' : '#e5e5e5'}`,
                 borderRadius: '10px',
                 padding: '14px',
-                background: '#fff',
+                background: deleteMode && selectedIds.has(log.id) ? '#f8f9ff' : '#fff',
                 cursor: 'pointer',
+                position: 'relative',
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+              {/* 삭제 모드일 때 체크박스 */}
+              {deleteMode && (
+                <div
+                  onClick={(e) => handleSelectCard(log.id, e)}
+                  style={{
+                    position: 'absolute',
+                    top: '10px',
+                    right: '10px',
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: '4px',
+                    border: `2px solid ${selectedIds.has(log.id) ? '#1A3C6E' : '#ddd'}`,
+                    background: selectedIds.has(log.id) ? '#1A3C6E' : '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {selectedIds.has(log.id) && (
+                    <span style={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}>✓</span>
+                  )}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', paddingRight: deleteMode ? '30px' : '0' }}>
                 <span
                   style={{
                     fontSize: '11px',

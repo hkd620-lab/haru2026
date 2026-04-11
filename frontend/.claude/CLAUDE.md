@@ -211,6 +211,11 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/src/app/components/Footer.tsx
 - 다음할일: 모바일/데스크톱 Footer 표시 테스트
 
+### 2026-04-11 (10차)
+- 완료: SayuModal 사진 기능 개선 (localImages 기반 표시, 개별 삭제 버튼, 위치 조정)
+- 수정파일: frontend/src/app/components/SayuModal.tsx
+- 다음할일: 사진 삭제 기능 테스트 및 사용자 피드백 확인
+
 ---
 
 최종 업데이트: 2026.04

@@ -2,6 +2,11 @@
 > CC(Claude Code)가 Flutter 모바일 앱 작업 시 반드시 참조하는 지침서
 > 경로: ~/HARU2026/mobile/CLAUDE.md
 
+## 작업 규칙
+- 각 단계 완료시 반드시 /compact 입력 안내
+- 전체 작업 완료시 /clear 입력 안내
+- MCP 도구는 10개 이하 유지
+
 ---
 
 ## 📌 프로젝트 기본 정보

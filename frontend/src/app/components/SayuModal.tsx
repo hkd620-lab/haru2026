@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
-import { X, Star, Printer, Copy, Download, FileText } from 'lucide-react';
+import { X, Printer, Copy, Download, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSubscription } from '../hooks/useSubscription';
 import { doc, getDoc, updateDoc, deleteDoc, deleteField, arrayRemove } from 'firebase/firestore';
-import { ref, listAll, deleteObject } from 'firebase/storage';
+import { ref, listAll, deleteObject, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { db, storage, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
+
+const WEATHER_OPTIONS = ['쾌청', '흐림', '비', '눈'];
+const TEMPERATURE_OPTIONS = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
 
 export interface SayuModalProps {
   isOpen: boolean;
@@ -63,12 +66,16 @@ export function SayuModal({
   const [isPrinting, setIsPrinting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [rating, setRating] = useState(currentRating || 1);
+  const [isSpecialDay, setIsSpecialDay] = useState(false);
   const [viewMode, setViewMode] = useState<'ai' | 'original'>('ai');
   const [editedOriginalData, setEditedOriginalData] = useState<Record<string, string>>(originalData || {});
   const [isSavingOriginal, setIsSavingOriginal] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
-  
+  const [editedWeather, setEditedWeather] = useState(weather || '');
+  const [editedTemperature, setEditedTemperature] = useState(temperature || '');
+  const [localImages, setLocalImages] = useState<string[]>(images || []);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
   // 🗑 형식 삭제
   const handleDeleteFormat = async () => {
     console.log('🗑️ 삭제 시도:', { currentUser: currentUser?.uid, recordDate, firestoreId, formatKey });
@@ -379,7 +386,10 @@ export function SayuModal({
     if (isOpen) {
       console.log('📌 formatKey:', formatKey, 'recordDate:', recordDate);
       setEditedContent(content);
-      setRating(currentRating || 1);
+      setEditedWeather(weather || '');
+      setEditedTemperature(temperature || '');
+      setLocalImages((images || []).filter(url => typeof url === 'string' && url.trim().length > 0 && url.startsWith('http')));
+      setIsSpecialDay((currentRating || 0) > 0);
       setViewMode('ai');
       setIsPrinting(false);
       setShowDeleteDialog(false);
@@ -418,7 +428,14 @@ export function SayuModal({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      onSave(editedContent, rating);
+      if (currentUser && firestoreId && (editedWeather !== weather || editedTemperature !== temperature)) {
+        const recordRef = doc(db, 'users', currentUser.uid, 'records', firestoreId);
+        await updateDoc(recordRef, {
+          weather: editedWeather,
+          temperature: editedTemperature,
+        });
+      }
+      onSave(editedContent, isSpecialDay ? 1 : 0);
       toast.success('✅ SAYU가 최종 저장되었습니다!');
       onClose();
     } catch (error) {
@@ -426,6 +443,67 @@ export function SayuModal({
       toast.error('❌ 저장에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDeleteImage = async (imageUrl: string, index: number) => {
+    if (!currentUser || !firestoreId || !formatKey) return;
+    try {
+      // Storage에서 삭제 (URL에서 파일명 추출)
+      try {
+        const decodedUrl = decodeURIComponent(imageUrl);
+        const fileName = decodedUrl.split('/format_photos/')[1]?.split('?')[0];
+        if (fileName) {
+          const imageRef = ref(storage, `users/${currentUser.uid}/format_photos/${fileName}`);
+          await deleteObject(imageRef);
+        }
+      } catch {
+        // Storage 삭제 실패해도 Firestore는 업데이트
+      }
+      // Firestore 업데이트
+      const newImages = localImages
+        .filter((_, i) => i !== index)
+        .filter(url => typeof url === 'string' && url.trim().length > 0 && url.startsWith('http'));
+      setLocalImages(newImages);
+      const recordRef = doc(db, 'users', currentUser.uid, 'records', firestoreId);
+      await updateDoc(recordRef, {
+        [`${formatKey}_images`]: JSON.stringify(newImages),
+      });
+      toast.success('사진이 삭제되었습니다.');
+    } catch (err) {
+      console.error('사진 삭제 실패:', err);
+      toast.error('사진 삭제에 실패했습니다.');
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentUser || !firestoreId || !formatKey) return;
+    if (localImages.length >= 3) {
+      toast.error('사진은 최대 3장까지 추가할 수 있습니다.');
+      return;
+    }
+    setIsUploadingImage(true);
+    try {
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 8);
+      const fileName = `${recordDate}_${formatKey}_${timestamp}_${randomId}.jpg`;
+      const imageRef = ref(storage, `users/${currentUser.uid}/format_photos/${fileName}`);
+      await uploadBytes(imageRef, file);
+      const url = await getDownloadURL(imageRef);
+      const newImages = [...localImages, url];
+      setLocalImages(newImages);
+      const recordRef = doc(db, 'users', currentUser.uid, 'records', firestoreId);
+      await updateDoc(recordRef, {
+        [`${formatKey}_images`]: JSON.stringify(newImages),
+      });
+      toast.success('사진이 추가되었습니다!');
+    } catch (err) {
+      console.error('사진 업로드 실패:', err);
+      toast.error('사진 업로드에 실패했습니다.');
+    } finally {
+      setIsUploadingImage(false);
+      e.target.value = '';
     }
   };
 
@@ -970,143 +1048,332 @@ export function SayuModal({
                       📅 {formatDateToKorean(recordDate)}
                     </p>
                   )}
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    {weather && (
-                      <span style={{
-                        fontSize: '12px',
-                        padding: '4px 10px',
-                        borderRadius: '6px',
-                        backgroundColor: '#FDF6C3',
-                        color: '#1A3C6E',
-                        border: '1px solid #d0dff0'
-                      }}>
-                        날씨: {weather}
-                      </span>
-                    )}
-                    {temperature && (
-                      <span style={{
-                        fontSize: '12px',
-                        padding: '4px 10px',
-                        borderRadius: '6px',
-                        backgroundColor: '#FDF6C3',
-                        color: '#1A3C6E',
-                        border: '1px solid #d0dff0'
-                      }}>
-                        기온: {temperature}
-                      </span>
-                    )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {/* 날씨 선택 */}
+                    <div>
+                      <p style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>날씨</p>
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                        {WEATHER_OPTIONS.map((w) => (
+                          <button
+                            key={w}
+                            onClick={() => setEditedWeather(w)}
+                            style={{
+                              fontSize: 11,
+                              padding: '3px 8px',
+                              borderRadius: 6,
+                              border: editedWeather === w ? 'none' : '1px solid #d0dff0',
+                              backgroundColor: editedWeather === w ? '#1A3C6E' : '#FDF6C3',
+                              color: editedWeather === w ? '#FAF9F6' : '#1A3C6E',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {w}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 기온 선택 */}
+                    <div>
+                      <p style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>기온</p>
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                        {TEMPERATURE_OPTIONS.map((t) => (
+                          <button
+                            key={t}
+                            onClick={() => setEditedTemperature(t)}
+                            style={{
+                              fontSize: 11,
+                              padding: '3px 8px',
+                              borderRadius: 6,
+                              border: editedTemperature === t ? 'none' : '1px solid #d0dff0',
+                              backgroundColor: editedTemperature === t ? '#1A3C6E' : '#FDF6C3',
+                              color: editedTemperature === t ? '#FAF9F6' : '#1A3C6E',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {t}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 기분 */}
                     {mood && (
-                      <span style={{
-                        fontSize: '12px',
-                        padding: '4px 10px',
-                        borderRadius: '6px',
-                        backgroundColor: '#FDF6C3',
-                        color: '#1A3C6E',
-                        border: '1px solid #d0dff0'
-                      }}>
-                        기분: {mood}
-                      </span>
+                      <div>
+                        <p style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>기분</p>
+                        <span style={{
+                          fontSize: '12px',
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          backgroundColor: '#FDF6C3',
+                          color: '#1A3C6E',
+                          border: '1px solid #d0dff0'
+                        }}>
+                          {mood}
+                        </span>
+                      </div>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* 사진 - 높이 69% 증가 (240→406px, 120→203px) */}
+              {/* 사진 표시 블록 */}
               {(() => {
-                const validImages = (images || []).filter(img => img && img !== '');
+                const validImages = (localImages || []).filter(img => img && img !== '');
                 if (validImages.length === 0) return null;
                 const hideOnError = (e: React.SyntheticEvent<HTMLImageElement>) => {
                   (e.target as HTMLImageElement).style.display = 'none';
                 };
                 return (
-                  <div style={{ marginBottom: '20px' }}>
-                    {/* 1장: 가운데 정렬 */}
+                  <div style={{ marginBottom: '12px' }}>
+                    {/* 1장 */}
                     {validImages.length === 1 && (
-                      <img
-                        src={validImages[0]}
-                        alt="사진"
-                        onError={hideOnError}
-                        style={{
-                          width: '100%',
-                          maxWidth: '320px',
-                          height: 'auto',
-                          objectFit: 'cover',
-                          borderRadius: '8px',
-                          border: '1px solid #e5e5e5',
-                          display: 'block',
-                          margin: '0 auto'
-                        }}
-                      />
+                      <div style={{ position: 'relative', display: 'block', margin: '0 auto', maxWidth: '320px' }}>
+                        <img
+                          src={validImages[0]}
+                          alt="사진"
+                          onError={hideOnError}
+                          style={{
+                            width: '100%',
+                            height: 'auto',
+                            objectFit: 'cover',
+                            borderRadius: '8px',
+                            border: '1px solid #e5e5e5'
+                          }}
+                        />
+                        <button
+                          onClick={() => handleDeleteImage(validImages[0], 0)}
+                          style={{
+                            position: 'absolute',
+                            top: 6,
+                            right: 6,
+                            background: '#000000',
+                            boxShadow: '0 0 0 2px #fff',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: 28,
+                            height: 28,
+                            color: '#fff',
+                            fontSize: 14,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                          title="사진 삭제"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     )}
 
-                    {/* 2장: 나란히 정렬 */}
+                    {/* 2장 */}
                     {validImages.length === 2 && (
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                         {validImages.map((img, idx) => (
-                          <img
-                            key={idx}
-                            src={img}
-                            alt={`사진 ${idx + 1}`}
-                            onError={hideOnError}
-                            style={{
-                              width: '100%',
-                              height: '160px',
-                              objectFit: 'cover',
-                              borderRadius: '8px',
-                              border: '1px solid #e5e5e5'
-                            }}
-                          />
+                          <div key={idx} style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
+                            <img
+                              src={img}
+                              alt={`사진 ${idx + 1}`}
+                              onError={hideOnError}
+                              style={{
+                                width: '100%',
+                                height: '160px',
+                                objectFit: 'cover',
+                                borderRadius: '8px',
+                                border: '1px solid #e5e5e5'
+                              }}
+                            />
+                            <button
+                              onClick={() => handleDeleteImage(validImages[idx], idx)}
+                              style={{
+                                position: 'absolute',
+                                top: 6,
+                                right: 6,
+                                background: '#000000',
+                            boxShadow: '0 0 0 2px #fff',
+                                border: 'none',
+                                borderRadius: '50%',
+                                width: 28,
+                                height: 28,
+                                color: '#fff',
+                                fontSize: 14,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                              title="사진 삭제"
+                            >
+                              ✕
+                            </button>
+                          </div>
                         ))}
                       </div>
                     )}
 
-                    {/* 3장: 위에 큰 것 1장 + 아래 2장 - 높이 69% 증가 */}
+                    {/* 3장 이상 */}
                     {validImages.length >= 3 && (
                       <div>
-                        <img
-                          src={validImages[0]}
-                          alt="사진 1"
-                          onError={hideOnError}
-                          style={{
-                            width: '100%',
-                            height: '406px',
-                            objectFit: 'cover',
-                            borderRadius: '8px',
-                            border: '1px solid #e5e5e5',
-                            marginBottom: '12px'
-                          }}
-                        />
+                        <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
+                          <img
+                            src={validImages[0]}
+                            alt="사진 1"
+                            onError={hideOnError}
+                            style={{
+                              width: '100%',
+                              height: '406px',
+                              objectFit: 'cover',
+                              borderRadius: '8px',
+                              border: '1px solid #e5e5e5',
+                              marginBottom: '12px'
+                            }}
+                          />
+                          <button
+                            onClick={() => handleDeleteImage(validImages[0], 0)}
+                            style={{
+                              position: 'absolute',
+                              top: 6,
+                              right: 6,
+                              background: '#000000',
+                            boxShadow: '0 0 0 2px #fff',
+                              border: 'none',
+                              borderRadius: '50%',
+                              width: 28,
+                              height: 28,
+                              color: '#fff',
+                              fontSize: 14,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                            title="사진 삭제"
+                          >
+                            ✕
+                          </button>
+                        </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                          <img
-                            src={validImages[1]}
-                            alt="사진 2"
-                            onError={hideOnError}
-                            style={{
-                              width: '100%',
-                              height: '203px',
-                              objectFit: 'cover',
-                              borderRadius: '8px',
-                              border: '1px solid #e5e5e5'
-                            }}
-                          />
-                          <img
-                            src={validImages[2]}
-                            alt="사진 3"
-                            onError={hideOnError}
-                            style={{
-                              width: '100%',
-                              height: '203px',
-                              objectFit: 'cover',
-                              borderRadius: '8px',
-                              border: '1px solid #e5e5e5'
-                            }}
-                          />
+                          <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
+                            <img
+                              src={validImages[1]}
+                              alt="사진 2"
+                              onError={hideOnError}
+                              style={{
+                                width: '100%',
+                                height: '203px',
+                                objectFit: 'cover',
+                                borderRadius: '8px',
+                                border: '1px solid #e5e5e5'
+                              }}
+                            />
+                            <button
+                              onClick={() => handleDeleteImage(validImages[1], 1)}
+                              style={{
+                                position: 'absolute',
+                                top: 6,
+                                right: 6,
+                                background: '#000000',
+                            boxShadow: '0 0 0 2px #fff',
+                                border: 'none',
+                                borderRadius: '50%',
+                                width: 28,
+                                height: 28,
+                                color: '#fff',
+                                fontSize: 14,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                              title="사진 삭제"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                          <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
+                            <img
+                              src={validImages[2]}
+                              alt="사진 3"
+                              onError={hideOnError}
+                              style={{
+                                width: '100%',
+                                height: '203px',
+                                objectFit: 'cover',
+                                borderRadius: '8px',
+                                border: '1px solid #e5e5e5'
+                              }}
+                            />
+                            <button
+                              onClick={() => handleDeleteImage(validImages[2], 2)}
+                              style={{
+                                position: 'absolute',
+                                top: 6,
+                                right: 6,
+                                background: '#000000',
+                            boxShadow: '0 0 0 2px #fff',
+                                border: 'none',
+                                borderRadius: '50%',
+                                width: 28,
+                                height: 28,
+                                color: '#fff',
+                                fontSize: 14,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                              title="사진 삭제"
+                            >
+                              ✕
+                            </button>
+                          </div>
                         </div>
                       </div>
                     )}
+
                   </div>
                 );
               })()}
+
+              {/* 사진 추가 버튼 - IIFE 블록 완전 밖에 위치, 항상 표시 */}
+              <input
+                type="file"
+                accept="image/*"
+                id="sayu-image-upload"
+                style={{
+                  position: 'absolute',
+                  width: 0,
+                  height: 0,
+                  opacity: 0,
+                  overflow: 'hidden',
+                  pointerEvents: 'none',
+                }}
+                onChange={handleImageUpload}
+              />
+              {localImages.length < 3 && (
+                <div style={{ marginBottom: '16px' }}>
+                  <button
+                    onClick={() => document.getElementById('sayu-image-upload')?.click()}
+                    disabled={isUploadingImage}
+                    style={{
+                      padding: '8px 20px',
+                      fontSize: 13,
+                      borderRadius: 8,
+                      border: '1px dashed #1A3C6E',
+                      backgroundColor: '#FDF6C3',
+                      color: '#1A3C6E',
+                      cursor: isUploadingImage ? 'not-allowed' : 'pointer',
+                      opacity: isUploadingImage ? 0.5 : 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    {isUploadingImage ? '⏳ 업로드 중...' : `📷 사진 추가 (${localImages.length}/3)`}
+                  </button>
+                </div>
+              )}
 
               {/* 내용 없음 안내 */}
               {(!editedContent || editedContent.trim().length === 0) && (
@@ -1153,35 +1420,30 @@ export function SayuModal({
             backgroundColor: '#fff',
           }}
         >
-          {/* 별점 */}
           <div style={{ marginBottom: '16px' }}>
-            <p style={{ fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
-              오늘의 별점
-            </p>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  onClick={() => setRating(star)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: 4,
-                  }}
-                >
-                  <Star
-                    style={{
-                      width: 28,
-                      height: 28,
-                      fill: star <= rating ? '#F59E0B' : 'transparent',
-                      stroke: star <= rating ? '#F59E0B' : '#d1d5db',
-                      transition: 'all 0.2s',
-                    }}
-                  />
-                </button>
-              ))}
-            </div>
+            <button
+              onClick={() => setIsSpecialDay(!isSpecialDay)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '10px 20px',
+                borderRadius: 10,
+                border: `2px solid ${isSpecialDay ? '#F59E0B' : '#e5e5e5'}`,
+                backgroundColor: isSpecialDay ? '#FFF8F0' : '#fff',
+                color: isSpecialDay ? '#F59E0B' : '#aaa',
+                cursor: 'pointer',
+                fontSize: 14,
+                fontWeight: 600,
+                transition: 'all 0.2s',
+              }}
+            >
+              <span style={{ fontSize: 20 }}>✨</span>
+              특별한 날
+              {isSpecialDay && (
+                <span style={{ fontSize: 12, color: '#10b981', marginLeft: 4 }}>✓ 체크됨</span>
+              )}
+            </button>
           </div>
 
           {/* 버튼 */}

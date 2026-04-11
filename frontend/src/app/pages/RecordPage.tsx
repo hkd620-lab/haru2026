@@ -52,13 +52,22 @@ export function RecordPage() {
     return `${year}-${month}-${day}`;
   };
 
-  const toggleFormat = (format: RecordFormat) => {
-    if (selectedFormats.includes(format)) {
-      setSelectedFormats(selectedFormats.filter((f) => f !== format));
-    } else {
-      // 제한 없이 추가 가능!
-      setSelectedFormats([...selectedFormats, format]);
+  const openFormatDirectly = (format: RecordFormat) => {
+    if (selectedCategory === 'AI대화') {
+      alert('준비 중입니다.');
+      return;
     }
+    if (!user) {
+      toast.error('로그인이 필요합니다.');
+      navigate('/login');
+      return;
+    }
+    const dateStr = getLocalDateString(currentDate);
+    setSavedDateStr(dateStr);
+    setSavedRecordId('');
+    setSavedFormat(format);
+    setSelectedFormats([format]);
+    setFormatModalOpen(true);
   };
 
   const handleSave = async () => {
@@ -272,13 +281,13 @@ export function RecordPage() {
               형식 선택
             </h2>
             <p className="text-xs mt-0.5" style={{ color: '#999999' }}>
-              원하는 만큼 선택 가능
+              형식을 선택하면 바로 글쓰기
             </p>
           </div>
 
           {/* 카테고리 선택 */}
           <div className="flex gap-2 mb-3">
-            {(['생활', '업무'] as Category[]).map((category) => (
+            {(['생활', '업무', 'AI대화'] as Category[]).map((category) => (
               <button
                 key={category}
                 onClick={() => setSelectedCategory(selectedCategory === category ? null : category)}
@@ -299,17 +308,15 @@ export function RecordPage() {
           {selectedCategory ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {CATEGORY_FORMATS[selectedCategory].map((format) => {
-                const isSelected = selectedFormats.includes(format);
-
                 return (
                   <button
                     key={format}
-                    onClick={() => toggleFormat(format)}
+                    onClick={() => openFormatDirectly(format)}
                     className="p-2.5 rounded-lg text-center transition-all text-xs"
                     style={{
-                      backgroundColor: isSelected ? '#1A3C6E' : '#FEFBE8',
-                      border: isSelected ? 'none' : '1px solid #e5e5e5',
-                      color: isSelected ? '#FAF9F6' : '#333333',
+                      backgroundColor: '#FEFBE8',
+                      border: '1px solid #e5e5e5',
+                      color: '#333333',
                     }}
                   >
                     {format}
@@ -325,42 +332,8 @@ export function RecordPage() {
             </div>
           )}
 
-          {/* 선택된 형식 표시 */}
-          {selectedFormats.length > 0 && (
-            <div className="mt-3 pt-3 border-t" style={{ borderColor: '#e5e5e5' }}>
-              <p className="text-xs mb-2" style={{ color: '#666' }}>
-                선택된 형식: {selectedFormats.length}개
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {selectedFormats.map((format) => (
-                  <span
-                    key={format}
-                    className="px-2 py-1 rounded text-xs"
-                    style={{
-                      backgroundColor: '#FDF6C3',
-                      color: '#1A3C6E',
-                      border: '1px solid #d0dff0',
-                    }}
-                  >
-                    {format}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
         </section>
 
-        {/* Save Button */}
-        <div className="flex justify-center pt-2 pb-2">
-          <button
-            onClick={handleSave}
-            disabled={isSaving || selectedFormats.length === 0}
-            className="px-6 py-2.5 rounded-lg flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 shadow-md"
-            style={{ backgroundColor: '#1A3C6E', color: '#FEFBE8' }}
-          >
-            <span className="tracking-wide text-sm">{isSaving ? '저장 중...' : '글쓰기'}</span>
-          </button>
-        </div>
       </div>
     </div>
     )}
