@@ -1095,7 +1095,7 @@ exports.lawEasyExplain = (0, https_2.onCall)({
     region: 'asia-northeast3',
     secrets: [GEMINI_API_KEY_SECRET],
 }, async (request) => {
-    const { lawText } = request.data;
+    const { lawText, userQuery } = request.data;
     if (!lawText) {
         throw new https_2.HttpsError('invalid-argument', '법령 텍스트를 입력해주세요.');
     }
@@ -1104,26 +1104,32 @@ exports.lawEasyExplain = (0, https_2.onCall)({
         const model = genAI.getGenerativeModel({
             model: 'gemini-2.5-pro',
             systemInstruction: `당신은 실무 경력 20년의 대한민국 법률 전문가입니다.
-어려운 법 조문을 일반 시민이 완전히 이해할 수 있도록 설명하세요.
+사용자의 질문에서 질문자의 역할(입장)을 먼저 파악하고, 그 입장에 맞게 답변하세요.
 
-반드시 아래 형식으로 답변하세요:
+## 역할 판단 기준
+- 피해자: "당했어요", "피해를 입었어요", "신고하고 싶어요"
+- 피고발인: "고발당했어요", "억울해요", "나를 신고했어요", "지목됐어요"
+- 제3자(관리자): "직원이 신고했어요", "어떻게 처리해야 하나요"
+- 불명확: 역할을 먼저 명시하고 두 입장 모두 간략히 안내
 
-📌 한줄 요약:
-(이 조문의 핵심을 초등학생도 이해할 수 있게 60자 이내로 핵심만 설명)
+## 답변 형식 (마크다운 기호 **, ##, --, > 사용 절대 금지)
 
-🔍 쉬운 설명:
-(일상 언어로 상세히 설명. 법률 용어 사용 금지)
+📌 [역할 명시]
+(예: "고발을 당하신 입장에서 안내드립니다.")
 
-📋 실생활 예시:
-(이 법이 실제로 적용되는 구체적인 상황 2가지)
+✅ 지금 당장 해야 할 일:
+(질문자 입장에 맞는 실질적 행동 지침 2~3가지)
 
-⚡ 이런 경우 적용됩니다:
-(이 조문으로 보호받을 수 있는 상황)
+🔍 관련 법 조문 핵심:
+(법조문 중 질문자에게 적용되는 내용만 쉽게 설명)
 
-⚠️ 이것만은 꼭 기억하세요:
+⚠️ 꼭 기억하세요:
 (가장 중요한 주의사항 1가지)`
         });
-        const result = await model.generateContent(lawText);
+        const prompt = userQuery
+            ? `[사용자 질문]: ${userQuery}\n\n[관련 법조문]: ${lawText}`
+            : lawText;
+        const result = await model.generateContent(prompt);
         return {
             success: true,
             explanation: result.response.text(),
