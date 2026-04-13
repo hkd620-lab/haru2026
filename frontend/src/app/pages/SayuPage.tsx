@@ -32,7 +32,7 @@ export function SayuPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string; recordId?: string }[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무']));
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', 'HARUraw']));
   const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
   const [sayuModalState, setSayuModalState] = useState<{
     isOpen: boolean;
@@ -54,6 +54,13 @@ export function SayuPage() {
     dateLabel: '',
   });
 
+  const [harurawModal, setHarurawModal] = useState<{
+    isOpen: boolean;
+    query: string;
+    summary: string;
+    articles: string;
+  }>({ isOpen: false, query: '', summary: '', articles: '' });
+
   const [showSayuGuide, setShowSayuGuide] = useState(() => {
     try {
       const saved = localStorage.getItem('haru_sayu_guide_visible');
@@ -68,7 +75,7 @@ export function SayuPage() {
   }, [user?.uid, currentMonth]);
 
   useEffect(() => {
-    setCollapsedCategories(new Set(['생활', '업무']));
+    setCollapsedCategories(new Set(['생활', '업무', 'HARUraw']));
     setExpandedFormats(new Set());
   }, [location.pathname]);
 
@@ -236,6 +243,17 @@ export function SayuPage() {
       ? records.find((r) => r.id === recordId)
       : records.find((r) => r.date === dateStr);
     if (!record) return;
+
+    // HARUraw 처리
+    if (formatKey === 'haruraw') {
+      setHarurawModal({
+        isOpen: true,
+        query: (record as any).haruraw_query || '',
+        summary: (record as any).haruraw_summary || '',
+        articles: (record as any).haruraw_articles || '',
+      });
+      return;
+    }
 
     setSelectedDate(dateStr);
     setSelectedDateFormats([{ key: formatKey, label: formatLabel, recordId: record.id }]);
@@ -416,6 +434,27 @@ export function SayuPage() {
     };
 
     const result: ListCategory[] = [];
+
+    // HARUraw 카테고리 별도 처리
+    const harurawEntries = monthRecords
+      .filter((r) => r.formats && r.formats.includes('HARUraw' as any))
+      .map((r) => ({
+        date: r.date,
+        title: ((r as any).haruraw_query || '').slice(0, 20) || '(질문 없음)',
+        hasSayu: false,
+        formatKey: 'haruraw',
+        recordId: r.id,
+      }));
+
+    if (harurawEntries.length > 0) {
+      result.push({
+        category: 'HARUraw',
+        formats: [{
+          format: 'HARUraw' as any,
+          entries: harurawEntries,
+        }],
+      });
+    }
 
     for (const category of ['생활', '업무'] as const) {
       const formatsWithEntries: ListCategory['formats'] = [];
@@ -949,6 +988,63 @@ export function SayuPage() {
           <p>{sayuModalState.content}</p>
         </div>
       </div>
+
+      {harurawModal.isOpen && (
+        <div
+          onClick={() => setHarurawModal({ isOpen: false, query: '', summary: '', articles: '' })}
+          style={{
+            position: 'fixed', inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            zIndex: 1000, display: 'flex',
+            alignItems: 'flex-end',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxHeight: '80vh',
+              backgroundColor: '#fff',
+              borderRadius: '16px 16px 0 0',
+              padding: 20, overflowY: 'auto',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E' }}>⚖️ HARUraw 검색 기록</p>
+              <button
+                onClick={() => setHarurawModal({ isOpen: false, query: '', summary: '', articles: '' })}
+                style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#999' }}
+              >✕</button>
+            </div>
+
+            <div style={{ padding: 12, backgroundColor: '#f0f4ff', borderRadius: 8, marginBottom: 12 }}>
+              <p style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>검색 질문</p>
+              <p style={{ fontSize: 14, color: '#1A3C6E', fontWeight: 600 }}>{harurawModal.query}</p>
+            </div>
+
+            {harurawModal.summary && (
+              <div style={{ padding: 12, backgroundColor: '#EEF4FF', border: '1px solid #c7d9f8', borderRadius: 8, marginBottom: 12 }}>
+                <p style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>💡 AI 분석</p>
+                <p style={{ fontSize: 13, color: '#333', lineHeight: 1.7 }}>{harurawModal.summary}</p>
+              </div>
+            )}
+
+            {harurawModal.articles && (
+              <div style={{ marginBottom: 16 }}>
+                <p style={{ fontSize: 11, color: '#888', marginBottom: 8 }}>📋 관련 법조문</p>
+                {harurawModal.articles.split('\n\n').map((article, i) => (
+                  <div key={i} style={{ padding: 12, backgroundColor: '#fafafa', border: '1px solid #e0e0e0', borderRadius: 8, marginBottom: 8 }}>
+                    <p style={{ fontSize: 12, color: '#444', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{article}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <p style={{ fontSize: 10, color: '#bbb', textAlign: 'center', marginTop: 8 }}>
+              본 내용은 법령 정보 제공 목적이며, 전문적인 법률 자문을 대체할 수 없습니다.
+            </p>
+          </div>
+        </div>
+      )}
     </>
   );
 }

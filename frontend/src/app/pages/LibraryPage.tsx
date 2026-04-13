@@ -22,6 +22,13 @@ export function LibraryPage() {
     format: RecordFormat | null;
   }>({ isOpen: false, format: null });
 
+  const [harurawModal, setHarurawModal] = useState<{
+    isOpen: boolean;
+    query: string;
+    summary: string;
+    articles: string;
+  }>({ isOpen: false, query: '', summary: '', articles: '' });
+
   const [showLibraryGuide, setShowLibraryGuide] = useState(() => {
     try {
       const saved = localStorage.getItem('haru_library_guide_visible');
@@ -48,6 +55,7 @@ export function LibraryPage() {
     ensure('텃밭일지', 'garden_');
     ensure('애완동물관찰일지', 'pet_');
     ensure('육아일기', 'child_');
+    ensure('HARUraw' as any, 'haruraw_');
 
     // ✅ 제한 없이 모든 형식 표시
     return base;
@@ -93,8 +101,18 @@ export function LibraryPage() {
     return `${year}-${month}-${day}`;
   };
 
-  const handleFormatClick = (format: RecordFormat) => {
-    setModalState({ isOpen: true, format });
+  const handleFormatClick = (format: RecordFormat | 'HARUraw') => {
+    if (format === 'HARUraw') {
+      if (!selectedRecord) return;
+      setHarurawModal({
+        isOpen: true,
+        query: (selectedRecord as any).haruraw_query || '',
+        summary: (selectedRecord as any).haruraw_summary || '',
+        articles: (selectedRecord as any).haruraw_articles || '',
+      });
+      return;
+    }
+    setModalState({ isOpen: true, format: format as RecordFormat });
   };
 
   const handleModalClose = () => {
@@ -401,30 +419,22 @@ export function LibraryPage() {
                   return (
                     <button
                       key={format}
-                      onClick={() => handleFormatClick(format)}
+                      onClick={() => handleFormatClick(format as any)}
                       className="px-6 py-3 rounded-lg text-sm transition-all hover:opacity-90 hover:shadow-lg shadow-md relative"
                       style={{
-                        backgroundColor: hasPolished ? '#10b981' : '#1A3C6E',
+                        backgroundColor: format === 'HARUraw'
+                          ? '#1A3C6E'
+                          : hasPolished ? '#10b981' : '#1A3C6E',
                         color: '#FAF9F6',
-                        border: hasPolished ? '3px solid #059669' : '3px solid #2A4C7E',
+                        border: format === 'HARUraw'
+                          ? '3px solid #c7d9f8'
+                          : hasPolished ? '3px solid #059669' : '3px solid #2A4C7E',
                         fontWeight: 600,
                         letterSpacing: '0.05em',
                       }}
                     >
-                      {hasPolished && (
-                        <span
-                          style={{
-                            position: 'absolute',
-                            top: -8,
-                            right: -8,
-                            fontSize: 16,
-                          }}
-                        >
-                          ✨
-                        </span>
-                      )}
-                      🎹 {format}
-                      {hasPolished && (
+                      {format === 'HARUraw' ? '⚖️' : hasPolished ? '✨' : '🎹'} {format}
+                      {format !== 'HARUraw' && hasPolished && (
                         <span style={{ marginLeft: 4, fontSize: 11 }}>
                           (SAYU ✓)
                         </span>
@@ -500,6 +510,87 @@ export function LibraryPage() {
           initialData={getFormatData(modalState.format)}
           onSave={handleSaveFormatData}
         />
+      )}
+
+      {harurawModal.isOpen && (
+        <div
+          onClick={() => setHarurawModal({ isOpen: false, query: '', summary: '', articles: '' })}
+          style={{
+            position: 'fixed', inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            zIndex: 1000, display: 'flex',
+            alignItems: 'flex-end',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxHeight: '80vh',
+              backgroundColor: '#fff',
+              borderRadius: '16px 16px 0 0',
+              padding: 20, overflowY: 'auto',
+            }}
+          >
+            {/* 헤더 */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E' }}>⚖️ HARUraw 검색 기록</p>
+              <button
+                onClick={() => setHarurawModal({ isOpen: false, query: '', summary: '', articles: '' })}
+                style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#999' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 질문 */}
+            <div style={{
+              padding: 12, backgroundColor: '#f0f4ff',
+              borderRadius: 8, marginBottom: 12,
+            }}>
+              <p style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>검색 질문</p>
+              <p style={{ fontSize: 14, color: '#1A3C6E', fontWeight: 600 }}>
+                {harurawModal.query}
+              </p>
+            </div>
+
+            {/* AI 요약 */}
+            {harurawModal.summary && (
+              <div style={{
+                padding: 12, backgroundColor: '#EEF4FF',
+                border: '1px solid #c7d9f8',
+                borderRadius: 8, marginBottom: 12,
+              }}>
+                <p style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>💡 AI 분석</p>
+                <p style={{ fontSize: 13, color: '#333', lineHeight: 1.7 }}>
+                  {harurawModal.summary}
+                </p>
+              </div>
+            )}
+
+            {/* 법조문 */}
+            {harurawModal.articles && (
+              <div style={{ marginBottom: 16 }}>
+                <p style={{ fontSize: 11, color: '#888', marginBottom: 8 }}>📋 관련 법조문</p>
+                {harurawModal.articles.split('\n\n').map((article, i) => (
+                  <div key={i} style={{
+                    padding: 12, backgroundColor: '#fafafa',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: 8, marginBottom: 8,
+                  }}>
+                    <p style={{ fontSize: 12, color: '#444', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+                      {article}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 면책 */}
+            <p style={{ fontSize: 10, color: '#bbb', textAlign: 'center', marginTop: 8 }}>
+              본 내용은 법령 정보 제공 목적이며, 전문적인 법률 자문을 대체할 수 없습니다.
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );

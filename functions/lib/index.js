@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
+exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
 const params_1 = require("firebase-functions/params");
@@ -62,6 +62,7 @@ const KAKAO_CLIENT_SECRET_SECRET = (0, params_1.defineSecret)('KAKAO_CLIENT_SECR
 const NAVER_CLIENT_ID_SECRET = (0, params_1.defineSecret)('NAVER_CLIENT_ID');
 const NAVER_CLIENT_SECRET_SECRET = (0, params_1.defineSecret)('NAVER_CLIENT_SECRET');
 const PORTONE_API_SECRET = (0, params_1.defineSecret)('PORTONE_API_SECRET');
+const LAW_API_KEY_SECRET = (0, params_1.defineSecret)('LAW_API_KEY');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
 const KAKAO_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/kakaoCallback';
 const NAVER_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/naverCallback';
@@ -944,4 +945,237 @@ exports.removeAllTags = (0, https_1.onRequest)({ region: 'asia-northeast3' }, as
         }
     }
     res.send(`완료: ${count}개 문서에서 _tags 필드 삭제`);
+});
+// ===== ⚖️ HARUraw — 법령 검색 + Gemini 해석 =====
+exports.lawSearch = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    secrets: [LAW_API_KEY_SECRET, GEMINI_API_KEY_SECRET],
+}, async (request) => {
+    var _a, _b, _c, _d, _e;
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const { query } = request.data;
+    if (!query || typeof query !== 'string' || !query.trim()) {
+        throw new https_2.HttpsError('invalid-argument', '검색어가 필요합니다.');
+    }
+    const { XMLParser } = await Promise.resolve().then(() => __importStar(require('fast-xml-parser')));
+    const LAW_API_KEY = LAW_API_KEY_SECRET.value();
+    const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
+    const axiosConfig = {
+        headers: {
+            Referer: 'https://haru2026.com/',
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+        },
+        timeout: 10000,
+    };
+    try {
+        const { XMLParser } = await Promise.resolve().then(() => __importStar(require('fast-xml-parser')));
+        const LAW_API_KEY = LAW_API_KEY_SECRET.value();
+        const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
+        const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
+        const axiosConfig = {
+            headers: {
+                Referer: 'https://haru2026.com/',
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+            },
+            timeout: 10000,
+        };
+        // 0단계: Gemini로 정확한 법령 이름 추출
+        const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_KEY);
+        const kwModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+        const kwResult = await kwModel.generateContent(`다음 질문과 가장 관련된 대한민국 공식 법령 이름 1개만 출력하세요.
+반드시 법령 이름만, 다른 설명 없이.
+
+예시:
+"욕설한 사람 처벌" → 형법
+"돈 안 갚아요" → 민법
+"부당해고" → 근로기준법
+"외국인 고용" → 외국인근로자의 고용 등에 관한 법률
+"상속" → 민법
+"이혼" → 민법
+"음주운전" → 도로교통법
+"사기" → 형법
+"폭행" → 형법
+
+질문: ${query}`);
+        const lawKeyword = kwResult.response.text().trim().split('\n')[0].trim();
+        console.log('HARUraw 추출 키워드:', lawKeyword);
+        // 1단계: 법제처 검색
+        const searchUrl = `https://www.law.go.kr/DRF/lawSearch.do?OC=${LAW_API_KEY}&target=law&type=XML&query=${encodeURIComponent(lawKeyword)}`;
+        const searchRes = await axios_1.default.get(searchUrl, axiosConfig);
+        const searchJson = parser.parse(searchRes.data);
+        const laws = ((_a = searchJson === null || searchJson === void 0 ? void 0 : searchJson.LawSearch) === null || _a === void 0 ? void 0 : _a.law) || ((_b = searchJson === null || searchJson === void 0 ? void 0 : searchJson.Law) === null || _b === void 0 ? void 0 : _b.law) || ((_c = searchJson === null || searchJson === void 0 ? void 0 : searchJson.LawList) === null || _c === void 0 ? void 0 : _c.law);
+        if (!laws) {
+            return { success: false, message: '관련 법령을 찾지 못했습니다.', data: [], aiSummary: '' };
+        }
+        const lawList = Array.isArray(laws) ? laws : [laws];
+        // 정확한 법령명 우선 매칭
+        const exactMatch = lawList.find((l) => (l === null || l === void 0 ? void 0 : l.법령명한글) === lawKeyword || (l === null || l === void 0 ? void 0 : l.법령명) === lawKeyword);
+        const targetLaw = exactMatch || lawList[0];
+        const mstId = targetLaw === null || targetLaw === void 0 ? void 0 : targetLaw.법령일련번호;
+        const lawName = (targetLaw === null || targetLaw === void 0 ? void 0 : targetLaw.법령명한글) || lawKeyword;
+        console.log('HARUraw 선택 법령:', lawName, 'MST:', mstId);
+        if (!mstId) {
+            return { success: false, message: '법령 정보를 가져올 수 없습니다.', data: [], aiSummary: '' };
+        }
+        // 2단계: 법령 전문 조회
+        const serviceUrl = `https://www.law.go.kr/DRF/lawService.do?OC=${LAW_API_KEY}&target=law&MST=${mstId}&type=XML`;
+        const serviceRes = await axios_1.default.get(serviceUrl, axiosConfig);
+        const lawJson = parser.parse(serviceRes.data);
+        const jomuns = ((_e = (_d = lawJson === null || lawJson === void 0 ? void 0 : lawJson.법령) === null || _d === void 0 ? void 0 : _d.조문) === null || _e === void 0 ? void 0 : _e.조문단위) || [];
+        const arrayJomuns = Array.isArray(jomuns) ? jomuns : [jomuns];
+        // 전체 조문 정제
+        const allJomuns = arrayJomuns
+            .map((j) => ({
+            articleStr: `제${j === null || j === void 0 ? void 0 : j.조문번호}조`,
+            title: String((j === null || j === void 0 ? void 0 : j.조문제목) || '제목 없음'),
+            content: String((j === null || j === void 0 ? void 0 : j.조문내용) || ''),
+            lawName,
+            isPrecLinked: true,
+        }))
+            .filter((j) => j.articleStr !== '제undefined조' && j.content.length > 5);
+        // 3단계: Gemini로 관련 조문만 선별 (최대 5개)
+        const allText = allJomuns
+            .map((j) => `${j.articleStr}(${j.title}): ${j.content}`)
+            .join('\n');
+        const selectModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+        const selectResult = await selectModel.generateContent(`다음은 ${lawName}의 조문 목록입니다.
+사용자 질문 "${query}"과 가장 관련된 조문 번호를 최대 5개만 골라서
+쉼표로 구분하여 출력하세요. 조문 번호만 (예: 제311조,제312조,제307조)
+
+조문 목록:
+${allText.slice(0, 8000)}`);
+        const selectedNums = selectResult.response.text()
+            .trim()
+            .split(',')
+            .map((s) => s.trim());
+        const cleanedJomuns = allJomuns
+            .filter((j) => selectedNums.includes(j.articleStr))
+            .slice(0, 5);
+        // 선별 실패 시 상위 3개
+        const finalJomuns = cleanedJomuns.length > 0 ? cleanedJomuns : allJomuns.slice(0, 3);
+        // 4단계: Gemini로 전체 요약 생성
+        const summaryModel = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
+        const lawText = finalJomuns
+            .map((j) => `${j.articleStr}(${j.title}): ${j.content}`)
+            .join('\n');
+        const summaryResult = await summaryModel.generateContent(`당신은 실무 경력 20년의 대한민국 법률 전문가입니다.
+다음 원칙을 반드시 지키세요:
+
+1. 사용자 질문을 정확히 이해하고 핵심 법적 쟁점을 파악하세요.
+2. 관련 법 조문을 근거로 명확한 법적 판단을 내려주세요.
+3. 어려운 법률 용어는 반드시 쉬운 말로 풀어 설명하세요.
+4. 실무적 행동 지침을 구체적으로 안내하세요.
+   (예: "경찰서에 고소장을 제출하세요", "내용증명을 보내세요")
+5. 답변 구조:
+   ⚖️ 법적 판단: (핵심 결론 1~2문장)
+   📌 근거 조문: (관련 법 조문 언급)
+   💡 실무 조언: (당장 할 수 있는 행동)
+   ⚠️ 주의사항: (놓치기 쉬운 점)
+6. 마지막에 반드시 추가:
+   "본 내용은 법령 정보 제공 목적이며, 전문적인 법률 자문을 대체할 수 없습니다."
+
+사용자 질문: ${query}
+관련 법령(${lawName}):
+${lawText}`);
+        return {
+            success: true,
+            data: finalJomuns,
+            aiSummary: summaryResult.response.text(),
+        };
+    }
+    catch (error) {
+        logger.error('HARUraw 법령 검색 실패:', error);
+        throw new https_2.HttpsError('internal', '법령 검색에 실패했습니다.');
+    }
+});
+// ===== 법령 쉬운 해설 =====
+exports.lawEasyExplain = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+}, async (request) => {
+    const { lawText } = request.data;
+    if (!lawText) {
+        throw new https_2.HttpsError('invalid-argument', '법령 텍스트를 입력해주세요.');
+    }
+    try {
+        const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+        const model = genAI.getGenerativeModel({
+            model: 'gemini-2.5-pro',
+            systemInstruction: `당신은 실무 경력 20년의 대한민국 법률 전문가입니다.
+어려운 법 조문을 일반 시민이 완전히 이해할 수 있도록 설명하세요.
+
+반드시 아래 형식으로 답변하세요:
+
+📌 한줄 요약:
+(이 조문의 핵심을 초등학생도 이해할 수 있게 60자 이내로 핵심만 설명)
+
+🔍 쉬운 설명:
+(일상 언어로 상세히 설명. 법률 용어 사용 금지)
+
+📋 실생활 예시:
+(이 법이 실제로 적용되는 구체적인 상황 2가지)
+
+⚡ 이런 경우 적용됩니다:
+(이 조문으로 보호받을 수 있는 상황)
+
+⚠️ 이것만은 꼭 기억하세요:
+(가장 중요한 주의사항 1가지)`
+        });
+        const result = await model.generateContent(lawText);
+        return {
+            success: true,
+            explanation: result.response.text(),
+        };
+    }
+    catch (error) {
+        logger.error('법령 해설 실패:', error);
+        throw new https_2.HttpsError('internal', '법령 해설에 실패했습니다.');
+    }
+});
+// ===== 법령 관련 판례 검색 =====
+exports.lawPrecedent = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+}, async (request) => {
+    const { lawText, userQuery } = request.data;
+    if (!lawText) {
+        throw new https_2.HttpsError('invalid-argument', '법령 텍스트를 입력해주세요.');
+    }
+    try {
+        const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+        const model = genAI.getGenerativeModel({
+            model: 'gemini-2.5-pro',
+            systemInstruction: `당신은 실무 경력 20년의 대한민국 법률 전문가입니다.
+해당 법 조문과 사용자 질문에 맞는 실제 대법원 판례를 2개 제시하세요.
+반드시 JSON 배열 형식으로만 출력하세요. 다른 텍스트 없이.
+형식:
+[
+  {
+    "caseName": "사건명 (예: 모욕죄 성립 여부)",
+    "caseNum": "대법원 연도. 월. 일. 선고 사건번호",
+    "summary": "summary는 60자 이내, 마크다운 기호 절대 금지, 줄바꿈 없이 한 문장으로"
+  }
+]`
+        });
+        const prompt = `법령: ${lawText}\n사용자 질문: ${userQuery || ''}`;
+        const result = await model.generateContent(prompt);
+        // JSON 파싱 시도
+        let precedents;
+        try {
+            precedents = JSON.parse(result.response.text());
+        }
+        catch (parseError) {
+            throw new https_2.HttpsError('internal', '판례 정보 파싱에 실패했습니다.');
+        }
+        return {
+            success: true,
+            precedents: precedents,
+        };
+    }
+    catch (error) {
+        logger.error('판례 검색 실패:', error);
+        throw new https_2.HttpsError('internal', '판례 검색에 실패했습니다.');
+    }
 });

@@ -28,6 +28,7 @@ export interface SayuModalProps {
   formatKey?: string;
   onRefresh?: () => void;
   firestoreId?: string;
+  title?: string;
 }
 
 export function formatDateToKorean(dateStr: string): string {
@@ -58,6 +59,7 @@ export function SayuModal({
   formatKey,
   onRefresh,
   firestoreId,
+  title,
 }: SayuModalProps) {
   const { isPremium } = useSubscription();
   const { user: currentUser } = useAuth();
@@ -75,6 +77,7 @@ export function SayuModal({
   const [editedTemperature, setEditedTemperature] = useState(temperature || '');
   const [localImages, setLocalImages] = useState<string[]>(images || []);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(title || '');
 
   // 🗑 형식 삭제
   const handleDeleteFormat = async () => {
@@ -388,6 +391,7 @@ export function SayuModal({
       setEditedContent(content);
       setEditedWeather(weather || '');
       setEditedTemperature(temperature || '');
+      setEditedTitle(title || '');
       setLocalImages((images || []).filter(url => typeof url === 'string' && url.trim().length > 0 && url.startsWith('http')));
       setIsSpecialDay((currentRating || 0) > 0);
       setViewMode('ai');
@@ -428,12 +432,16 @@ export function SayuModal({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      if (currentUser && firestoreId && (editedWeather !== weather || editedTemperature !== temperature)) {
+      if (currentUser && firestoreId) {
         const recordRef = doc(db, 'users', currentUser.uid, 'records', firestoreId);
-        await updateDoc(recordRef, {
+        const titleUpdate: Record<string, string> = {
           weather: editedWeather,
           temperature: editedTemperature,
-        });
+        };
+        if (editedTitle.trim() && formatKey) {
+          titleUpdate[`${formatKey}_title`] = editedTitle.trim();
+        }
+        await updateDoc(recordRef, titleUpdate);
       }
       onSave(editedContent, isSpecialDay ? 1 : 0);
       toast.success('✅ SAYU가 최종 저장되었습니다!');
@@ -1040,6 +1048,26 @@ export function SayuModal({
         >
           {viewMode === 'ai' ? (
             <div>
+              {/* 제목 입력 */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 6, fontWeight: 600 }}>
+                  📌 제목
+                </label>
+                <input
+                  type="text"
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  placeholder="제목을 입력하세요"
+                  style={{
+                    width: '100%', boxSizing: 'border-box',
+                    padding: '10px 14px', fontSize: 16,
+                    border: '1px solid #d0dff0', borderRadius: 8,
+                    backgroundColor: '#fff', color: '#333',
+                    fontFamily: 'inherit', outline: 'none',
+                  }}
+                />
+              </div>
+
               {/* 환경 정보 */}
               {(recordDate || weather || temperature || mood) && (
                 <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e5e5' }}>

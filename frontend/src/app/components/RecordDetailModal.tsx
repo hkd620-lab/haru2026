@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+import { X, Copy } from 'lucide-react';
 
 type RecordFormat = 'diary' | 'essay' | 'mission-report' | 'general-report' | 'work-log' | 'travel-record';
 
@@ -39,6 +39,15 @@ export function RecordDetailModal({ record, onClose }: RecordDetailModalProps) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       onClose();
+    }
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(record.content);
+      alert('복사되었습니다!');
+    } catch {
+      alert('복사에 실패했습니다.');
     }
   };
 
@@ -105,13 +114,23 @@ export function RecordDetailModal({ record, onClose }: RecordDetailModalProps) {
           <span className="text-xs" style={{ color: '#999999' }}>
             {record.content.length}자
           </span>
-          <button
-            onClick={onClose}
-            className="px-5 py-2 rounded-lg text-sm transition-all hover:opacity-90"
-            style={{ backgroundColor: '#003366', color: '#F9F8F3' }}
-          >
-            닫기
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={handleCopy}
+              className="px-5 py-2 rounded-lg text-sm flex items-center gap-2 transition-all hover:opacity-90"
+              style={{ backgroundColor: '#F9F8F3', color: '#1A3C6E', border: '1px solid #e5e5e5' }}
+            >
+              <Copy className="w-4 h-4" />
+              복사
+            </button>
+            <button
+              onClick={onClose}
+              className="px-5 py-2 rounded-lg text-sm transition-all hover:opacity-90"
+              style={{ backgroundColor: '#003366', color: '#F9F8F3' }}
+            >
+              닫기
+            </button>
+          </div>
         </div>
       </div>
     </div>

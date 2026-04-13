@@ -299,6 +299,27 @@ export function AiLibraryPage() {
                   {expandedId === log.id ? '▲ 접기' : '▼ 전체보기'}
                 </p>
               )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    try {
+                      await navigator.clipboard.writeText(log.content || '');
+                      alert('복사되었습니다!');
+                    } catch {
+                      alert('복사에 실패했습니다.');
+                    }
+                  }}
+                  style={{
+                    background: 'none', border: '1px solid #ddd',
+                    borderRadius: 6, padding: '4px 10px',
+                    fontSize: 12, color: '#666',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                  }}
+                >
+                  📋 복사
+                </button>
+              </div>
             </div>
           ))}
         </div>
