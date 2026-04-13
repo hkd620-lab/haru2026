@@ -20,3 +20,6 @@ build/
 *.old
 *.bak
 *. 3.*
+*.old
+*.bak
+*. 3.*
