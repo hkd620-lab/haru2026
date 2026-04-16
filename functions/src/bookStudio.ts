@@ -82,7 +82,7 @@ export const generateBook = onCall(
 6. 마지막 줄: 📚 근거: 노트북LM 분석 — ${sourceTitle || title}`;
 
       const message = await client.messages.create({
-        model: "claude-opus-4-6",
+        model: "claude-opus-4-5-20251101",
         max_tokens: 2000,
         messages: [{ role: "user", content: prompt }],
       });
@@ -127,7 +127,7 @@ export const generateBook = onCall(
 [다룬 인물/소스]: ${sources.map((s, i) => s.sourceTitle || `소스 ${i + 1}`).join(', ')}`;
 
     const psychMsg = await client.messages.create({
-      model: "claude-opus-4-6",
+      model: "claude-opus-4-5-20251101",
       max_tokens: 800,
       messages: [{ role: "user", content: psychPrompt }],
     });
