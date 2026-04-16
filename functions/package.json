@@ -10,6 +10,7 @@
     "node": "20"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.89.0",
     "@google-cloud/secret-manager": "^6.1.1",
     "@google-cloud/vertexai": "^1.10.4",
     "@google/generative-ai": "^0.24.1",
