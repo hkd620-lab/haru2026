@@ -8,6 +8,9 @@ import { toast } from 'sonner';
 import { SayuModal } from '../components/SayuModal';
 import { CATEGORY_FORMATS, FORMAT_PREFIX, FORMAT_EMOJI } from '../types/haruTypes';
 import type { RecordFormat } from '../types/haruTypes';
+import { AiLibraryPage } from './AiLibraryPage';
+import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { db } from '../../firebase';
 
 // 목록 뷰에서 제목으로 쓸 첫 번째 필드 키
 const FORMAT_FIRST_FIELD: Record<string, string> = {
@@ -70,9 +73,59 @@ export function SayuPage() {
     }
   });
 
+  type SayuTab = '기록' | 'AI대화' | '읽을거리';
+  const [activeTab, setActiveTab] = useState<SayuTab>('기록');
+
+  interface BookChapter {
+    bookId: string;
+    bookTitle: string;
+    chapterId: string;
+    chapterTitle: string;
+    sourceTitle: string;
+    content: string;
+    order: number;
+  }
+  const [bookChapters, setBookChapters] = useState<BookChapter[]>([]);
+  const [bookChaptersLoading, setBookChaptersLoading] = useState(false);
+  const [expandedChapterId, setExpandedChapterId] = useState<string | null>(null);
+
   useEffect(() => {
     fetchRecords();
   }, [user?.uid, currentMonth]);
+
+  useEffect(() => {
+    if (activeTab !== '읽을거리') return;
+    setBookChaptersLoading(true);
+    (async () => {
+      try {
+        const booksSnap = await getDocs(collection(db, 'books'));
+        const chapters: BookChapter[] = [];
+        for (const bookDoc of booksSnap.docs) {
+          const bookData = bookDoc.data();
+          const chaptersSnap = await getDocs(
+            query(collection(db, 'books', bookDoc.id, 'chapters'), orderBy('order'))
+          );
+          chaptersSnap.docs.forEach((chDoc) => {
+            const ch = chDoc.data();
+            chapters.push({
+              bookId: bookDoc.id,
+              bookTitle: bookData.title || '제목 없음',
+              chapterId: chDoc.id,
+              chapterTitle: ch.title || '',
+              sourceTitle: ch.sourceTitle || '',
+              content: ch.content || '',
+              order: ch.order ?? 0,
+            });
+          });
+        }
+        setBookChapters(chapters);
+      } catch (e) {
+        console.error('읽을거리 불러오기 실패:', e);
+      } finally {
+        setBookChaptersLoading(false);
+      }
+    })();
+  }, [activeTab]);
 
   useEffect(() => {
     setCollapsedCategories(new Set(['생활', '업무', 'HARUraw']));
@@ -567,6 +620,24 @@ export function SayuPage() {
         <p className="text-sm mb-2" style={{ color: '#666666' }}>
           작성한 기록을 AI가 다듬은 결과를 확인하세요
         </p>
+
+        {/* 탭 */}
+        <div className="flex gap-2 mb-3">
+          {(['기록', 'AI대화', '읽을거리'] as SayuTab[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className="px-4 py-1.5 rounded-full text-xs font-semibold transition-all"
+              style={{
+                backgroundColor: activeTab === tab ? '#1A3C6E' : '#FDF6C3',
+                color: activeTab === tab ? '#FAF9F6' : '#1A3C6E',
+                border: activeTab === tab ? 'none' : '1px solid #d0dff0',
+              }}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
         <div
           className="border-l-4 rounded transition-all"
           style={{
@@ -609,7 +680,80 @@ export function SayuPage() {
         </div>
       </div>
 
-      {/* 공통 월 네비게이션 + 뷰 전환 */}
+      {/* ─── AI대화 탭 ─── */}
+      {activeTab === 'AI대화' && (
+        <div className="mt-2">
+          <AiLibraryPage />
+        </div>
+      )}
+
+      {/* ─── 읽을거리 탭 ─── */}
+      {activeTab === '읽을거리' && (
+        <div className="mt-2">
+          {bookChaptersLoading ? (
+            <p className="text-center py-8 text-sm" style={{ color: '#999' }}>불러오는 중...</p>
+          ) : bookChapters.length === 0 ? (
+            <div className="bg-white rounded-lg p-8 shadow-sm text-center">
+              <p className="text-sm" style={{ color: '#999' }}>생성된 챕터가 없습니다</p>
+            </div>
+          ) : (
+            (() => {
+              const byBook: Record<string, { title: string; chapters: BookChapter[] }> = {};
+              bookChapters.forEach((ch) => {
+                if (!byBook[ch.bookId]) byBook[ch.bookId] = { title: ch.bookTitle, chapters: [] };
+                byBook[ch.bookId].chapters.push(ch);
+              });
+              return Object.entries(byBook).map(([bookId, book]) => (
+                <div key={bookId} className="mb-4">
+                  <div
+                    className="px-3 py-2 rounded-lg mb-1 text-sm font-semibold"
+                    style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
+                  >
+                    📖 {book.title}
+                  </div>
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                    {book.chapters.map((ch, idx) => (
+                      <div
+                        key={ch.chapterId}
+                        className={idx > 0 ? 'border-t' : ''}
+                        style={{ borderColor: '#f0f0f0' }}
+                      >
+                        <button
+                          onClick={() => setExpandedChapterId(expandedChapterId === ch.chapterId ? null : ch.chapterId)}
+                          className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-yellow-50 transition-colors"
+                        >
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-xs font-semibold" style={{ color: '#333' }}>
+                              {ch.chapterTitle}
+                            </span>
+                            {ch.sourceTitle && (
+                              <span className="text-xs" style={{ color: '#999' }}>{ch.sourceTitle}</span>
+                            )}
+                          </div>
+                          <span style={{ fontSize: '10px', color: '#1A3C6E', flexShrink: 0 }}>
+                            {expandedChapterId === ch.chapterId ? '▼' : '▶'}
+                          </span>
+                        </button>
+                        {expandedChapterId === ch.chapterId && (
+                          <div
+                            className="px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap border-t"
+                            style={{ color: '#374151', borderColor: '#f0f0f0', backgroundColor: '#fafafa' }}
+                          >
+                            {ch.content}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ));
+            })()
+          )}
+        </div>
+      )}
+
+      {/* ─── 기록 탭 ─── */}
+      {activeTab === '기록' && <>{/* 공통 월 네비게이션 + 뷰 전환 */}
       <div className="bg-white rounded-lg p-3 shadow-sm mb-4">
         <div className="flex items-center justify-between mb-3">
           <button
@@ -895,6 +1039,8 @@ export function SayuPage() {
         </div>
       )}
 
+
+      </>}
 
       <SayuModal
         isOpen={sayuModalState.isOpen}

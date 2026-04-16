@@ -8,7 +8,6 @@ import { RecordTitleAnimation } from '../components/RecordTitleAnimation';
 import { FormatModal } from '../components/FormatModal';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS, FORMAT_PREFIX } from '../types/haruTypes';
-import { AiLibraryPage } from './AiLibraryPage';
 
 type Mood = '기쁨' | '평온' | '무미' | '울적' | '번잡';
 type Weather = '쾌청' | '흐림' | '비' | '눈';
@@ -337,7 +336,7 @@ export function RecordPage() {
 
           {/* 카테고리 선택 */}
           <div className="flex gap-2 mb-3">
-            {(['생활', '업무', 'AI대화', 'HARUraw'] as (Category | 'HARUraw')[]).map((category) => (
+            {(['생활', '업무', 'HARUraw'] as (Category | 'HARUraw')[]).map((category) => (
               <button
                 key={category}
                 onClick={() => setSelectedCategory(selectedCategory === category ? null : category)}
@@ -355,9 +354,7 @@ export function RecordPage() {
           </div>
 
           {/* 형식 버튼 */}
-          {selectedCategory === 'AI대화' ? (
-            <AiLibraryPage />
-          ) : selectedCategory === 'HARUraw' ? (
+          {selectedCategory === 'HARUraw' ? (
             <div>
               {/* 검색창 */}
               <form onSubmit={handleLawSearch} style={{ marginBottom: 12 }}>
@@ -565,7 +562,7 @@ export function RecordPage() {
           ) : (
             <div className="text-center py-4">
               <p className="text-xs" style={{ color: '#999' }}>
-                생활 또는 업무 카테고리를 선택하세요
+                카테고리를 선택하세요
               </p>
             </div>
           )}

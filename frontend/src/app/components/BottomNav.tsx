@@ -1,18 +1,30 @@
 import { Home, BookOpen, Sparkles, BarChart3, Settings, Layers, Library } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
+import { useAuth } from '../contexts/AuthContext';
+
+const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
 export function BottomNav() {
   const location = useLocation();
+  const { user } = useAuth();
+  const isDeveloper = user?.uid === DEVELOPER_UID;
 
-  const navItems = [
+  const baseItems = [
     { path: '/', icon: Home, label: 'HARU' },
     { path: '/record', icon: BookOpen, label: '기록' },
     { path: '/sayu', icon: Sparkles, label: 'SAYU' },
     { path: '/merge', icon: Layers, label: '기록합침' },
-    { path: '/book-studio', icon: Library, label: '책스튜디오' },
     { path: '/stats', icon: BarChart3, label: '통계' },
     { path: '/settings', icon: Settings, label: '설정' },
   ];
+
+  const navItems = isDeveloper
+    ? [
+        ...baseItems.slice(0, 4),
+        { path: '/book-studio', icon: Library, label: '책스튜디오' },
+        ...baseItems.slice(4),
+      ]
+    : baseItems;
 
   return (
     <nav
@@ -20,7 +32,7 @@ export function BottomNav() {
       style={{ borderColor: '#e5e5e5', paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="max-w-7xl mx-auto px-1 sm:px-3">
-        <div className="grid grid-cols-7 gap-0.5">{navItems.map((item) => {
+        <div className={`grid gap-0.5`} style={{ gridTemplateColumns: `repeat(${navItems.length}, minmax(0, 1fr))` }}>{navItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
             
