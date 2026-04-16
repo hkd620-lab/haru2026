@@ -1114,3 +1114,5 @@ export const removeAllTags = onRequest(
   }
 );
 
+
+export { generateBook } from "./bookStudio";
