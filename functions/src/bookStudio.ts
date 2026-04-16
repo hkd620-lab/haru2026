@@ -87,7 +87,7 @@ export const generateBook = onCall(
 5. 결과 + 교훈 (자연스럽게)
 6. 마지막 줄: 📚 근거: 노트북LM 분석 — ${sourceTitle || title}`;
 
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+      const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
       const result = await model.generateContent(prompt);
       const content = result.response.text();
 
@@ -125,7 +125,7 @@ export const generateBook = onCall(
 [책 주제]: ${title}
 [다룬 인물/소스]: ${sources.map((s, i) => s.sourceTitle || `소스 ${i + 1}`).join(', ')}`;
 
-    const psychModel = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+    const psychModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
     const psychResult = await psychModel.generateContent(psychPrompt);
     const psychContent = psychResult.response.text();
 
