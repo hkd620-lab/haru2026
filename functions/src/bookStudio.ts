@@ -1,25 +1,33 @@
-import * as functions from "firebase-functions";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 import Anthropic from "@anthropic-ai/sdk";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
 
 const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY");
 
-export const generateBook = functions
-  .runWith({ secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 120 })
-  .https.onCall(async (data, context) => {
+const DEVELOPER_UID = "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
 
+export const generateBook = onCall(
+  {
+    region: "asia-northeast3",
+    secrets: [ANTHROPIC_API_KEY],
+    timeoutSeconds: 120,
+  },
+  async (request) => {
     // 개발자 UID 체크
-    const DEVELOPER_UID = "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
-    if (!context.auth || context.auth.uid !== DEVELOPER_UID) {
-      throw new functions.https.HttpsError("permission-denied", "권한 없음");
+    if (!request.auth || request.auth.uid !== DEVELOPER_UID) {
+      throw new HttpsError("permission-denied", "권한 없음");
     }
 
-    const { bookId, title, sourceText } = data;
+    const { bookId, title, sourceText } = request.data as {
+      bookId: string;
+      title: string;
+      sourceText: string;
+    };
 
     // 입력값 검증
     if (!bookId || !title || !sourceText) {
-      throw new functions.https.HttpsError("invalid-argument", "필수값 누락");
+      throw new HttpsError("invalid-argument", "필수값 누락");
     }
 
     const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
@@ -50,14 +58,16 @@ export const generateBook = functions
       messages: [{ role: "user", content: prompt }],
     });
 
-    const content = message.content[0].type === "text"
-      ? message.content[0].text : "";
+    const content =
+      message.content[0].type === "text" ? message.content[0].text : "";
 
     // Firestore에 챕터 저장
     const db = admin.firestore();
     const chapterRef = db
-      .collection("books").doc(bookId)
-      .collection("chapters").doc();
+      .collection("books")
+      .doc(bookId)
+      .collection("chapters")
+      .doc();
 
     await chapterRef.set({
       chapterId: chapterRef.id,
@@ -73,7 +83,10 @@ export const generateBook = functions
     });
 
     // 비용 모니터링 로그
-    console.log(`[generateBook] tokens: ${message.usage.input_tokens} in / ${message.usage.output_tokens} out`);
+    console.log(
+      `[generateBook] tokens: ${message.usage.input_tokens} in / ${message.usage.output_tokens} out`
+    );
 
     return { success: true, chapterId: chapterRef.id, content };
-  });
+  }
+);
