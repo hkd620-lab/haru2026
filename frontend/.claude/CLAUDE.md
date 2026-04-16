@@ -303,6 +303,11 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: firestore.rules, frontend/src/app/pages/BookStudio.tsx, frontend/src/app/components/BottomNav.tsx, frontend/src/app/App.tsx
 - 다음할일: 빌드+배포 후 haru2026.com에서 책 스튜디오 메뉴 확인
 
+### 2026-04-16 (12차)
+- 완료: 책 스튜디오 Stage 2 구현 (generateBook Cloud Function, BookCreate 페이지)
+- 수정파일: functions/src/bookStudio.ts (신규), functions/src/index.ts, frontend/src/app/pages/BookCreate.tsx (신규), frontend/src/app/pages/BookStudio.tsx, frontend/src/app/App.tsx
+- 다음할일: ANTHROPIC_API_KEY Secret 설정 확인 후 실제 챕터 생성 테스트
+
 ---
 
 최종 업데이트: 2026.04.13
