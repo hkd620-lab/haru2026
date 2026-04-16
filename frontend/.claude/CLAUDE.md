@@ -226,6 +226,11 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: functions/src/bookStudio.ts (신규), functions/src/index.ts, frontend/src/app/pages/BookCreate.tsx (신규), frontend/src/app/pages/BookStudio.tsx, frontend/src/app/App.tsx
 - 다음할일: ANTHROPIC_API_KEY Secret 설정 확인 후 실제 챕터 생성 테스트
 
+### 2026-04-16 (13차)
+- 완료: BookCreate 다중 소스 입력 UI, generateBook 소스 배열 처리 + 심리 레이어 챕터 자동 생성
+- 수정파일: frontend/src/app/pages/BookCreate.tsx, functions/src/bookStudio.ts
+- 다음할일: 소스 2개 이상 입력 후 챕터 생성 테스트, Firestore books/{bookId}/chapters 확인
+
 ---
 
 최종 업데이트: 2026.04
