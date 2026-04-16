@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -30,6 +31,7 @@ export function BookStudio() {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const navigate = useNavigate();
   const isDeveloper = user?.uid === DEVELOPER_UID;
 
   useEffect(() => {
@@ -72,7 +74,7 @@ export function BookStudio() {
             <button
               className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: '#1A3C6E' }}
-              onClick={() => alert('새 책 만들기 — 준비 중')}
+              onClick={() => navigate('/book-create')}
             >
               + 새 책 만들기
             </button>

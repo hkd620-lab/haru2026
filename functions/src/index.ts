@@ -1402,3 +1402,4 @@ export const lawPrecedent = onCall(
   }
 );
 
+export { generateBook } from "./bookStudio";
