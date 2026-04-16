@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -26,10 +26,51 @@ const STATUS_COLOR: Record<Book['status'], string> = {
   private: '#9ca3af',
 };
 
+const NOTEBOOK_PROMPT = `아래 구조로 [인물 이름]을 분석해줘.
+소스에 있는 내용만 사용하고
+없는 내용은 "소스 없음"으로 표시해줘.
+
+■ 한 줄 요약
+이 사람을 한 문장으로 표현하면?
+
+1. 출발 (배경)
+   태어난 환경, 가족, 가난/부, 초기 상황
+   (3~5문장)
+
+2. SWOT 분석
+   - 강점: 이 사람만의 특별한 능력이나 성격
+   - 약점: 가장 큰 한계나 단점
+   - 위기: 가장 힘들었던 외부 상황
+   - 기회: 삶을 바꾼 결정적 기회
+
+3. 결혼과 부부관계
+   - 배우자는 어떤 사람?
+   - 부부관계가 성공에 어떤 영향을 줬나?
+   - 가정생활은 어땠나?
+
+4. 결과
+   말년 포함 최종 결과, 사회적 평가
+   (3~5문장)
+
+5. 출처
+   위 내용의 근거 소스 제목들`;
+
 export function BookStudio() {
   const { user } = useAuth();
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
+  const [notebookOpen, setNotebookOpen] = useState(false);
+  const [humanResearchOpen, setHumanResearchOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(NOTEBOOK_PROMPT).then(() => {
+      setCopied(true);
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+      copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   const navigate = useNavigate();
   const isDeveloper = user?.uid === DEVELOPER_UID;
@@ -84,6 +125,57 @@ export function BookStudio() {
 
       {/* 본문 */}
       <div className="max-w-2xl mx-auto px-4 py-6">
+
+        {/* 노트북LM 질문 모음 */}
+        <div className="mb-6">
+          {/* 섹션 헤더 */}
+          <button
+            onClick={() => setNotebookOpen((v) => !v)}
+            className="w-full flex items-center justify-between rounded-xl border p-5 transition-shadow hover:shadow-md"
+            style={{ backgroundColor: '#ffffff', borderColor: '#e5e5e5', color: '#1A3C6E' }}
+          >
+            <span className="text-base font-semibold">🗂 노트북LM 질문 모음</span>
+            <span style={{ fontSize: '11px' }}>{notebookOpen ? '▼' : '▶'}</span>
+          </button>
+
+          {notebookOpen && (
+            <div className="mt-2 rounded-xl border overflow-hidden" style={{ borderColor: '#e5e5e5', backgroundColor: '#ffffff' }}>
+              {/* 인간 연구 항목 */}
+              <button
+                onClick={() => setHumanResearchOpen((v) => !v)}
+                className="w-full flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors"
+                style={{ color: '#1A3C6E' }}
+              >
+                <span className="text-sm font-semibold">인간 연구</span>
+                <span style={{ fontSize: '11px', color: '#999' }}>{humanResearchOpen ? '▼' : '▶'}</span>
+              </button>
+
+              {humanResearchOpen && (
+                <div className="border-t px-5 pb-4 pt-3" style={{ borderColor: '#f0f0f0' }}>
+                  <pre
+                    className="text-xs leading-relaxed whitespace-pre-wrap rounded-lg p-3 overflow-y-auto"
+                    style={{
+                      backgroundColor: '#f3f4f6',
+                      fontFamily: 'monospace',
+                      color: '#374151',
+                      maxHeight: '200px',
+                    }}
+                  >
+                    {NOTEBOOK_PROMPT}
+                  </pre>
+                  <button
+                    onClick={handleCopy}
+                    className="mt-3 w-full py-2 rounded-lg text-sm font-semibold text-white transition-colors"
+                    style={{ backgroundColor: copied ? '#10b981' : '#1A3C6E' }}
+                  >
+                    {copied ? '복사 완료!' : '복사하기'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {loading ? (
           <div className="flex justify-center py-20">
             <div
