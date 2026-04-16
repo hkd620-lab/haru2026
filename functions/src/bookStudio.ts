@@ -1,3 +1,4 @@
+// redeploy: secret updated
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import Anthropic from "@anthropic-ai/sdk";
 import { defineSecret } from "firebase-functions/params";
@@ -24,19 +25,35 @@ export const generateBook = onCall(
       throw new HttpsError("permission-denied", "권한 없음");
     }
 
-    const { bookId, title, sources } = request.data as {
-      bookId: string;
+    const { title, sources, authorUid } = request.data as {
       title: string;
       sources: Source[];
+      authorUid: string;
     };
 
     // 입력값 검증
-    if (!bookId || !title || !Array.isArray(sources) || sources.length === 0) {
+    if (!title || !Array.isArray(sources) || sources.length === 0) {
       throw new HttpsError("invalid-argument", "필수값 누락");
     }
 
     const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
     const db = admin.firestore();
+
+    // Admin SDK로 책 문서 생성 (보안 규칙 우회)
+    const bookRef = db.collection("books").doc();
+    await bookRef.set({
+      bookId: bookRef.id,
+      title,
+      authorUid: authorUid || request.auth.uid,
+      status: "draft",
+      coverColor: "#1A3C6E",
+      totalChapters: 0,
+      totalReaders: 0,
+      promptVersion: "v1.0",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    const bookId = bookRef.id;
+
     const chapters: Array<{ chapterId: string; content: string; sourceTitle: string }> = [];
 
     // 소스별 챕터 생성
@@ -65,7 +82,7 @@ export const generateBook = onCall(
 6. 마지막 줄: 📚 근거: 노트북LM 분석 — ${sourceTitle || title}`;
 
       const message = await client.messages.create({
-        model: "claude-sonnet-4-5",
+        model: "claude-opus-4-6",
         max_tokens: 2000,
         messages: [{ role: "user", content: prompt }],
       });
@@ -110,7 +127,7 @@ export const generateBook = onCall(
 [다룬 인물/소스]: ${sources.map((s, i) => s.sourceTitle || `소스 ${i + 1}`).join(', ')}`;
 
     const psychMsg = await client.messages.create({
-      model: "claude-sonnet-4-5",
+      model: "claude-opus-4-6",
       max_tokens: 800,
       messages: [{ role: "user", content: psychPrompt }],
     });
@@ -148,6 +165,6 @@ export const generateBook = onCall(
     const totalChapters = chapters.length;
     await db.collection("books").doc(bookId).update({ totalChapters });
 
-    return { success: true, chapters, totalChapters };
+    return { success: true, bookId, chapters, totalChapters };
   }
 );
