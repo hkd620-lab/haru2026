@@ -298,6 +298,11 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: CLAUDE.md
 - 다음할일: HARUraw 구독 정책 적용 및 일일 횟수 제한 구현
 
+### 2026-04-16 (11차)
+- 완료: 책 스튜디오 Stage 1 구현 (Firestore 규칙, BookStudio 페이지, 네비게이션 추가)
+- 수정파일: firestore.rules, frontend/src/app/pages/BookStudio.tsx, frontend/src/app/components/BottomNav.tsx, frontend/src/app/App.tsx
+- 다음할일: 빌드+배포 후 haru2026.com에서 책 스튜디오 메뉴 확인
+
 ---
 
 최종 업데이트: 2026.04.13
