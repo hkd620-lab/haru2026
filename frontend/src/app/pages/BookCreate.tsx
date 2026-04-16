@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { db, functions } from '../../firebase';
+import { functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router';
 
@@ -12,6 +11,7 @@ interface Source {
 
 interface GenerateResult {
   success: boolean;
+  bookId: string;
   chapters: Array<{ chapterId: string; content: string; sourceTitle: string }>;
   totalChapters: number;
 }
@@ -63,22 +63,9 @@ export function BookCreate() {
     setProgressMsg('');
 
     try {
-      // 책 기본 정보 먼저 저장
-      setProgressMsg('책 정보를 저장하는 중...');
-      const bookRef = await addDoc(collection(db, 'books'), {
-        title: title.trim(),
-        authorUid: user?.uid ?? '',
-        status: 'draft',
-        coverColor: '#1A3C6E',
-        totalChapters: 0,
-        totalReaders: 0,
-        promptVersion: 'v1.0',
-        createdAt: serverTimestamp(),
-      });
-
-      // 진행 상태 메시지를 UI에 표시하면서 Function 호출
+      // 진행 상태 메시지 시뮬레이션
+      setProgressMsg('AI가 챕터를 작성하는 중...');
       const total = validSources.length;
-      // 프로그레스 메시지 시뮬레이션 (실제 처리는 서버에서 순차 진행)
       let tick = 0;
       const progressInterval = setInterval(() => {
         if (tick < total) {
@@ -90,11 +77,12 @@ export function BookCreate() {
         }
       }, 8000);
 
+      // 책 문서 생성 + 챕터 생성을 Function에서 일괄 처리 (Admin SDK 사용)
       const generateBook = httpsCallable(functions, 'generateBook');
       const response = await generateBook({
-        bookId: bookRef.id,
         title: title.trim(),
         sources: validSources,
+        authorUid: user?.uid ?? '',
       });
 
       clearInterval(progressInterval);
