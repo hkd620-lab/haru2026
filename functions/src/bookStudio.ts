@@ -1,9 +1,9 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
 
-const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY");
+const GEMINI_API_KEY_SECRET = defineSecret("GEMINI_API_KEY");
 
 const DEVELOPER_UID = "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
 
@@ -15,7 +15,7 @@ interface Source {
 export const generateBook = onCall(
   {
     region: "asia-northeast3",
-    secrets: [ANTHROPIC_API_KEY],
+    secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 300,
   },
   async (request) => {
@@ -35,7 +35,7 @@ export const generateBook = onCall(
       throw new HttpsError("invalid-argument", "필수값 누락");
     }
 
-    const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
     const db = admin.firestore();
     const chapters: Array<{ chapterId: string; content: string; sourceTitle: string }> = [];
 
@@ -64,14 +64,9 @@ export const generateBook = onCall(
 5. 결과 + 교훈 (자연스럽게)
 6. 마지막 줄: 📚 근거: 노트북LM 분석 — ${sourceTitle || title}`;
 
-      const message = await client.messages.create({
-        model: "claude-opus-4-5-20251101",
-        max_tokens: 2000,
-        messages: [{ role: "user", content: prompt }],
-      });
-
-      const content =
-        message.content[0].type === "text" ? message.content[0].text : "";
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+      const result = await model.generateContent(prompt);
+      const content = result.response.text();
 
       const chapterRef = db
         .collection("books")
@@ -95,9 +90,7 @@ export const generateBook = onCall(
 
       chapters.push({ chapterId: chapterRef.id, content, sourceTitle: sourceTitle || `소스 ${i + 1}` });
 
-      console.log(
-        `[generateBook] 챕터 ${i + 1}/${sources.length} 완료 — tokens: ${message.usage.input_tokens} in / ${message.usage.output_tokens} out`
-      );
+      console.log(`[generateBook] 챕터 ${i + 1}/${sources.length} 완료`);
     }
 
     // 심리 레이어 챕터 생성
@@ -109,14 +102,9 @@ export const generateBook = onCall(
 [책 주제]: ${title}
 [다룬 인물/소스]: ${sources.map((s, i) => s.sourceTitle || `소스 ${i + 1}`).join(', ')}`;
 
-    const psychMsg = await client.messages.create({
-      model: "claude-opus-4-5-20251101",
-      max_tokens: 800,
-      messages: [{ role: "user", content: psychPrompt }],
-    });
-
-    const psychContent =
-      psychMsg.content[0].type === "text" ? psychMsg.content[0].text : "";
+    const psychModel = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+    const psychResult = await psychModel.generateContent(psychPrompt);
+    const psychContent = psychResult.response.text();
 
     const psychRef = db
       .collection("books")
@@ -140,9 +128,7 @@ export const generateBook = onCall(
 
     chapters.push({ chapterId: psychRef.id, content: psychContent, sourceTitle: "공통점 분석" });
 
-    console.log(
-      `[generateBook] 심리 레이어 완료 — tokens: ${psychMsg.usage.input_tokens} in / ${psychMsg.usage.output_tokens} out`
-    );
+    console.log(`[generateBook] 심리 레이어 완료`);
 
     // books/{bookId} totalChapters 업데이트
     const totalChapters = chapters.length;
