@@ -24,19 +24,42 @@ export const generateBook = onCall(
       throw new HttpsError("permission-denied", "권한 없음");
     }
 
-    const { bookId, title, sources } = request.data as {
-      bookId: string;
+    const { title, sources } = request.data as {
       title: string;
       sources: Source[];
     };
 
     // 입력값 검증
-    if (!bookId || !title || !Array.isArray(sources) || sources.length === 0) {
-      throw new HttpsError("invalid-argument", "필수값 누락");
+    if (!title) {
+      throw new HttpsError("invalid-argument", "책 주제를 입력해주세요.");
+    }
+    if (!Array.isArray(sources) || sources.length === 0) {
+      throw new HttpsError("invalid-argument", "소스를 하나 이상 입력해주세요.");
+    }
+    for (let i = 0; i < sources.length; i++) {
+      if (!sources[i].sourceText?.trim()) {
+        throw new HttpsError("invalid-argument", `소스 ${i + 1}의 내용을 입력해주세요.`);
+      }
     }
 
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
     const db = admin.firestore();
+
+    // 책 문서 생성 (Admin SDK)
+    const bookRef = db.collection("books").doc();
+    await bookRef.set({
+      bookId: bookRef.id,
+      title,
+      authorUid: request.auth.uid,
+      status: "draft",
+      coverColor: "#1A3C6E",
+      totalChapters: 0,
+      totalReaders: 0,
+      promptVersion: "v1.0",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    const bookId = bookRef.id;
+
     const chapters: Array<{ chapterId: string; content: string; sourceTitle: string }> = [];
 
     // 소스별 챕터 생성
@@ -134,6 +157,6 @@ export const generateBook = onCall(
     const totalChapters = chapters.length;
     await db.collection("books").doc(bookId).update({ totalChapters });
 
-    return { success: true, chapters, totalChapters };
+    return { success: true, bookId, chapters, totalChapters };
   }
 );
