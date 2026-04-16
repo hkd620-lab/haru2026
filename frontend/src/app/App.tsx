@@ -21,6 +21,7 @@ import { BusinessInfoPage } from './pages/BusinessInfoPage';
 import { TermsPage } from './pages/TermsPage';
 import { PrivacyPage } from './pages/PrivacyPage';
 import { RefundPage } from './pages/RefundPage';
+import { BookStudio } from './pages/BookStudio';
 import { BottomNav } from './components/BottomNav';
 import { Footer } from './components/Footer';
 import { setupForegroundMessageListener, requestNotificationPermission } from './services/notificationService';
@@ -100,6 +101,9 @@ function App() {
               {/* 통계 페이지 */}
               <Route path="/stats" element={<StatisticsPage />} />
               <Route path="/stats/:format" element={<FormatStatisticsPage />} />
+
+              {/* 책 스튜디오 */}
+              <Route path="/book-studio" element={<BookStudio />} />
 
               {/* 구독 페이지 */}
               <Route path="/subscription" element={<SubscriptionPage />} />
