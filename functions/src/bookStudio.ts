@@ -1,10 +1,10 @@
 // redeploy: secret updated
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
 
-const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY");
+const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
 
 const DEVELOPER_UID = "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
 
@@ -16,7 +16,7 @@ interface Source {
 export const generateBook = onCall(
   {
     region: "asia-northeast3",
-    secrets: [ANTHROPIC_API_KEY],
+    secrets: [OPENAI_API_KEY],
     timeoutSeconds: 300,
   },
   async (request) => {
@@ -36,7 +36,7 @@ export const generateBook = onCall(
       throw new HttpsError("invalid-argument", "필수값 누락");
     }
 
-    const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+    const client = new OpenAI({ apiKey: OPENAI_API_KEY.value() });
     const db = admin.firestore();
 
     // Admin SDK로 책 문서 생성 (보안 규칙 우회)
@@ -81,14 +81,13 @@ export const generateBook = onCall(
 5. 결과 + 교훈 (자연스럽게)
 6. 마지막 줄: 📚 근거: 노트북LM 분석 — ${sourceTitle || title}`;
 
-      const message = await client.messages.create({
-        model: "claude-opus-4-5-20251101",
+      const message = await client.chat.completions.create({
+        model: "gpt-4o",
         max_tokens: 2000,
         messages: [{ role: "user", content: prompt }],
       });
 
-      const content =
-        message.content[0].type === "text" ? message.content[0].text : "";
+      const content = message.choices[0]?.message?.content || "";
 
       const chapterRef = db
         .collection("books")
@@ -113,7 +112,7 @@ export const generateBook = onCall(
       chapters.push({ chapterId: chapterRef.id, content, sourceTitle: sourceTitle || `소스 ${i + 1}` });
 
       console.log(
-        `[generateBook] 챕터 ${i + 1}/${sources.length} 완료 — tokens: ${message.usage.input_tokens} in / ${message.usage.output_tokens} out`
+        `[generateBook] 챕터 ${i + 1}/${sources.length} 완료`
       );
     }
 
@@ -126,14 +125,13 @@ export const generateBook = onCall(
 [책 주제]: ${title}
 [다룬 인물/소스]: ${sources.map((s, i) => s.sourceTitle || `소스 ${i + 1}`).join(', ')}`;
 
-    const psychMsg = await client.messages.create({
-      model: "claude-opus-4-5-20251101",
+    const psychMsg = await client.chat.completions.create({
+      model: "gpt-4o",
       max_tokens: 800,
       messages: [{ role: "user", content: psychPrompt }],
     });
 
-    const psychContent =
-      psychMsg.content[0].type === "text" ? psychMsg.content[0].text : "";
+    const psychContent = psychMsg.choices[0]?.message?.content || "";
 
     const psychRef = db
       .collection("books")
@@ -158,7 +156,7 @@ export const generateBook = onCall(
     chapters.push({ chapterId: psychRef.id, content: psychContent, sourceTitle: "공통점 분석" });
 
     console.log(
-      `[generateBook] 심리 레이어 완료 — tokens: ${psychMsg.usage.input_tokens} in / ${psychMsg.usage.output_tokens} out`
+      `[generateBook] 심리 레이어 완료`
     );
 
     // books/{bookId} totalChapters 업데이트

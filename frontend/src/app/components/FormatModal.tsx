@@ -227,8 +227,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       toast.warning('작물 이름을 입력해주세요.');
       return;
     }
-    if (crops.length >= 10) {
-      toast.warning('최대 10개까지만 추가할 수 있습니다.');
+    if (crops.length >= 50) {
+      toast.warning('최대 50개까지만 추가할 수 있습니다.');
       return;
     }
     if (crops.includes(newCropName.trim())) {
