@@ -147,9 +147,6 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 📝 메모 형식 안내 메시지
-  const [showMemoGuide, setShowMemoGuide] = useState(true);
-
   // 기록 스타일 선택
   const [recordStyle, setRecordStyle] = useState<RecordStyle>('simple');
   const [recordStep, setRecordStep] = useState<'select' | 'input'>('select');
@@ -204,12 +201,6 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
-
-  useEffect(() => {
-    if (isOpen && format === '메모') {
-      setShowMemoGuide(true);
-    }
-  }, [isOpen, format]);
 
   if (!isOpen) return null;
 
@@ -298,6 +289,12 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   };
 
   const handlePolishClick = () => {
+    const currentTitle = (formData[`${prefix}_title`] || '').trim();
+    if (!currentTitle) {
+      toast.warning('제목을 입력해 주세요. 제목이 있어야 나중에 목록에서 내용을 확인하기 편합니다.');
+      return;
+    }
+
     if (!isPremium) {
       alert('PREMIUM 구독 후 이용 가능한 기능입니다.');
       return;
@@ -341,12 +338,6 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
 
       const result = await polishContentFunc({
         text: `다음은 "${format}" 형식으로 작성된 기록입니다. 이 내용을 자연스럽고 읽기 좋게 교정해주세요.
-
-**제목 생성:**
-1. 먼저 내용을 읽고 핵심을 파악하세요.
-2. 내용을 대표하는 짧고 인상적인 제목을 만드세요 (10자 이내 권장).
-3. 제목은 **제목내용** 형식으로 첫 줄에 작성하세요.
-4. 제목 다음 줄은 비우고, 그 다음부터 본문을 시작하세요.
 
 **절대 준수 사항:**
 1. 말투는 무조건 "~다", "~했다", "~이다" 체로만 작성하세요.
@@ -550,6 +541,12 @@ ${contentValues}`,
   };
 
   const handleSaveOriginalAsSayu = async () => {
+    const currentTitle = (formData[`${prefix}_title`] || '').trim();
+    if (!currentTitle) {
+      toast.warning('제목을 입력해 주세요. 제목이 있어야 나중에 목록에서 내용을 확인하기 편합니다.');
+      return;
+    }
+
     let originalContent: string;
     if (recordStyle === 'simple') {
       originalContent = formData[`${prefix}_simple`] || '';
@@ -618,15 +615,9 @@ ${contentValues}`,
 
     updateData[`${prefix}_style`] = recordStyle;
 
-    // SAYU 다듬기 결과에서 AI 제목 추출 (모든 형식)
-    // .trim()으로 앞뒤 공백·줄바꿈 제거 후 매칭 (Gemini 응답에 앞 공백이 붙는 경우 대비)
-    const titleMatch = polishedContent.trim().match(/^\*\*(.+?)\*\*/);
-    if (titleMatch && titleMatch[1]) {
-      updateData[`${prefix}_title`] = titleMatch[1].trim();
-    }
-    // 메모 형식은 memo_title 필드도 함께 업데이트
-    if (format === '메모' && titleMatch?.[1] && !formData['memo_title']?.trim()) {
-      updateData['memo_title'] = titleMatch[1].trim();
+    // 사용자 입력 제목 포함
+    if (formData[`${prefix}_title`]?.trim()) {
+      updateData[`${prefix}_title`] = formData[`${prefix}_title`].trim();
     }
 
     setIsSaving(true);
@@ -826,6 +817,26 @@ ${contentValues}`,
                 </span>
               </div>
 
+              {/* 제목 입력 필드 */}
+              <div>
+                <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 6, fontWeight: 600 }}>
+                  📌 제목 <span style={{ color: '#ef4444', fontSize: 11 }}>*필수</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData[`${prefix}_title`] || ''}
+                  onChange={(e) => handleChange(`${prefix}_title`, e.target.value)}
+                  placeholder="제목을 입력해 주세요 (예: 오늘의 산책)"
+                  style={{
+                    width: '100%', boxSizing: 'border-box',
+                    padding: '10px 14px', fontSize: 16,
+                    border: '1px solid #d0dff0', borderRadius: 8,
+                    backgroundColor: '#fff', color: '#333',
+                    fontFamily: 'inherit', outline: 'none',
+                  }}
+                />
+              </div>
+
               {/* 🌱 텃밭일지: 작물 목록 UI */}
               {format === '텃밭일지' && (
                 <div>
@@ -901,44 +912,6 @@ ${contentValues}`,
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
-
-              {/* 메모 형식 AI 제목 안내 */}
-              {format === '메모' && showMemoGuide && (
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  justifyContent: 'space-between',
-                  gap: 8,
-                  backgroundColor: '#F0FDF4',
-                  border: '1px solid #10b981',
-                  borderRadius: 8,
-                  padding: '10px 14px',
-                  marginBottom: 12,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 14 }}>✨</span>
-                    <p style={{ fontSize: 12, color: '#065f46', margin: 0, lineHeight: 1.6 }}>
-                      <strong style={{ color: '#10b981' }}>AI 제목 자동 추출</strong> —
-                      제목을 비워두면 저장 시 AI가 내용을 분석해 자동으로 제목을 달아드립니다.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setShowMemoGuide(false)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      color: '#10b981',
-                      fontSize: 16,
-                      padding: 0,
-                      lineHeight: 1,
-                      flexShrink: 0,
-                    }}
-                  >
-                    ×
-                  </button>
                 </div>
               )}
 

@@ -17,3 +17,10 @@ frontend/dist/
 dist/
 build/
 참고자료/
+*.old
+*.bak
+*. 3.*
+*.old
+*.bak
+*. 3.*
+.claude/

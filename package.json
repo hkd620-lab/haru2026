@@ -2,9 +2,11 @@
   "name": "haru2026",
   "version": "1.0.0",
   "scripts": {
-    "dev": "echo \"실행 성공! 정상적으로 dev 스크립트가 작동합니다.\""
+    "dev": "echo \"실행 성공! 정상적으로 dev 스크립트가 작동합니다.\"",
+    "export-logs": "node functions/export_logs.js"
   },
   "dependencies": {
-    "firebase": "^12.9.0"
+    "firebase": "^12.9.0",
+    "firebase-admin": "^12.0.0"
   }
 }

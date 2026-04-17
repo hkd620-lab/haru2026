@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router';
 import { ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
@@ -8,6 +8,8 @@ import { toast } from 'sonner';
 import { SayuModal } from '../components/SayuModal';
 import { CATEGORY_FORMATS, FORMAT_PREFIX, FORMAT_EMOJI } from '../types/haruTypes';
 import type { RecordFormat } from '../types/haruTypes';
+import { collection, getDocs, orderBy, query, deleteDoc, doc, writeBatch } from 'firebase/firestore';
+import { db } from '../../firebase';
 
 // 목록 뷰에서 제목으로 쓸 첫 번째 필드 키
 const FORMAT_FIRST_FIELD: Record<string, string> = {
@@ -23,7 +25,194 @@ const FORMAT_FIRST_FIELD: Record<string, string> = {
   memo: 'memo_title',
 };
 
+const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+const PAGE_SIZE = 10;
+
+interface AiLog { id: string; title?: string; source?: string; createdAt?: string; [key: string]: any; }
+interface Chapter { id: string; bookId: string; title: string; sourceTitle: string; content: string; order: number; }
+interface Book { id: string; title: string; totalChapters: number; order?: number; chapters: Chapter[]; }
+
 export function SayuPage() {
+  const handleTTS = async (text: string, key: string) => {
+    // 재생 중이면 정지
+    if (ttsPlaying === key) {
+      audioRef.current?.pause();
+      setTtsPlaying(null);
+      return;
+    }
+
+    setTtsLoading(key);
+    try {
+      // 마크다운 제거한 순수 텍스트
+      const cleanText = text
+        .replace(/#{1,3}\s*/g, '')
+        .replace(/\*\*/g, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .slice(0, 3000); // 최대 3000자
+
+      const cacheKey = key.replace(/[^a-zA-Z0-9가-힣]/g, '_').slice(0, 80);
+
+      const { getFunctions, httpsCallable } = await import('firebase/functions');
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const fn = httpsCallable(fns, 'generateTTS');
+      const res: any = await fn({ text: cleanText, cacheKey });
+
+      if (res.data.audioUrl) {
+        if (audioRef.current) {
+          audioRef.current.pause();
+        }
+        try {
+          await new Promise<void>((resolve, reject) => {
+            const audio = new Audio(res.data.audioUrl);
+            audio.onloadeddata = () => {
+              audio.play().then(resolve).catch(reject);
+            };
+            audio.onerror = () => reject(new Error('오디오 로드 실패'));
+            audio.onended = () => setTtsPlaying(null);
+            audioRef.current = audio;
+            audio.load();
+          });
+          setTtsPlaying(key);
+        } catch (err) {
+          console.error('TTS 재생 오류:', err);
+          toast.error('음성 재생에 실패했습니다.');
+          setTtsPlaying(null);
+        }
+      } else {
+        console.error('TTS 응답에 audioUrl 없음:', res.data);
+        toast.error('음성 데이터를 받지 못했습니다.');
+      }
+    } catch (err) {
+      toast.error('음성 생성에 실패했습니다.');
+    } finally {
+      setTtsLoading(null);
+    }
+  };
+
+  const renderStyledContent = (text: string) => {
+  // AI 불필요한 서두 제거 (물론이죠, 안녕하세요 등)
+  const skipPrefixes = ['물론이죠', '안녕하세요', '네,', '네.', '알겠습니다', '주어진 자료'];
+  const lines = text.split('\n');
+  const firstMeaningfulIdx = lines.findIndex(line => {
+    const t = line.trim();
+    if (!t) return false;
+    return !skipPrefixes.some(prefix => t.startsWith(prefix));
+  });
+  const cleanedLines = firstMeaningfulIdx >= 0 ? lines.slice(firstMeaningfulIdx) : lines;
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, #fdf6ff 0%, #f0f7ff 50%, #f6fff0 100%)',
+      padding: '24px 24px 28px 24px',
+      borderRadius: 8,
+    }}>
+      {/* 상단 장식 라인 */}
+      <div style={{
+        width: 40, height: 3,
+        background: 'linear-gradient(90deg, #8B4789, #4a90d9)',
+        borderRadius: 2, marginBottom: 20,
+      }} />
+
+      {cleanedLines.map((line, lineIdx) => {
+        const trimmed = line.trim();
+
+        // 빈 줄
+        if (!trimmed) return <div key={lineIdx} style={{ height: 10 }} />;
+
+        // ### 소제목 (### 으로 시작)
+        if (trimmed.startsWith('### ')) {
+          const clean = trimmed.replace(/^###\s*/, '').replace(/\*\*/g, '');
+          return (
+            <p key={lineIdx} style={{
+              fontSize: 13, fontWeight: 700, color: '#4a2d7a',
+              marginBottom: 6, marginTop: lineIdx > 0 ? 16 : 0,
+              lineHeight: 1.6,
+            }}>{clean}</p>
+          );
+        }
+
+        // ## 중제목
+        if (trimmed.startsWith('## ')) {
+          const clean = trimmed.replace(/^##\s*/, '').replace(/\*\*/g, '');
+          return (
+            <p key={lineIdx} style={{
+              fontSize: 14, fontWeight: 800, color: '#2d1b4e',
+              marginBottom: 8, marginTop: lineIdx > 0 ? 20 : 0,
+              paddingLeft: 10, borderLeft: '3px solid #4a90d9',
+              lineHeight: 1.5,
+            }}>{clean}</p>
+          );
+        }
+
+        // # 대제목
+        if (trimmed.startsWith('# ')) {
+          const clean = trimmed.replace(/^#\s*/, '').replace(/\*\*/g, '');
+          return (
+            <p key={lineIdx} style={{
+              fontSize: 16, fontWeight: 900, color: '#1a0a2e',
+              marginBottom: 10, marginTop: lineIdx > 0 ? 22 : 0,
+              paddingLeft: 12, borderLeft: '4px solid #8B4789',
+              lineHeight: 1.5,
+            }}>{clean}</p>
+          );
+        }
+
+        // **굵은 제목** (** 로 감싸인 줄 전체)
+        if (trimmed.startsWith('**') && trimmed.endsWith('**') && trimmed.length > 4) {
+          const clean = trimmed.replace(/\*\*/g, '');
+          return (
+            <p key={lineIdx} style={{
+              fontSize: 15, fontWeight: 800, color: '#2d1b4e',
+              marginBottom: 10, marginTop: lineIdx > 0 ? 18 : 0,
+              paddingLeft: 10, borderLeft: '3px solid #8B4789',
+              lineHeight: 1.5,
+            }}>{clean}</p>
+          );
+        }
+
+        // 숫자 목록 (1. 2. 3.)
+        if (/^\d+\./.test(trimmed)) {
+          const clean = trimmed.replace(/\*\*/g, '');
+          return (
+            <p key={lineIdx} style={{
+              fontSize: 13, fontWeight: 700, color: '#4a2d7a',
+              marginBottom: 6, marginTop: 14, lineHeight: 1.6,
+            }}>{clean}</p>
+          );
+        }
+
+        // 이모지로 시작하는 줄 (⚖️ 📌 💡 ✅ ⚠️ 등) — 강조 처리
+        if (/^[⚖️📌💡✅⚠️🔍📋]/.test(trimmed)) {
+          const clean = trimmed.replace(/\*\*/g, '');
+          return (
+            <p key={lineIdx} style={{
+              fontSize: 13, fontWeight: 600, color: '#2d1b4e',
+              marginBottom: 8, marginTop: lineIdx > 0 ? 14 : 0,
+              lineHeight: 1.7,
+            }}>{clean}</p>
+          );
+        }
+
+        // 일반 본문 (**인라인 볼드** 처리 포함)
+        const clean = trimmed.replace(/\*\*/g, '');
+        return (
+          <p key={lineIdx} style={{
+            fontSize: 13, color: '#3a3a4a',
+            lineHeight: 1.9, marginBottom: 4,
+            letterSpacing: '0.01em',
+          }}>{clean}</p>
+        );
+      })}
+
+      {/* 하단 장식 */}
+      <div style={{
+        marginTop: 24, textAlign: 'center' as const,
+        fontSize: 16, color: '#c9b8e0', letterSpacing: 8,
+      }}>✦ ✦ ✦</div>
+    </div>
+  );
+};
+
   const location = useLocation();
   const { user } = useAuth();
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -32,7 +221,7 @@ export function SayuPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string; recordId?: string }[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무']));
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루LAW', 'AI지식모음', '읽을거리']));
   const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
   const [sayuModalState, setSayuModalState] = useState<{
     isOpen: boolean;
@@ -63,14 +252,89 @@ export function SayuPage() {
     }
   });
 
+  const isDeveloper = user?.uid === DEVELOPER_UID;
+
+  // HARUraw modal
+  const [harurawModal, setHarurawModal] = useState<{ isOpen: boolean; query: string; summary: string; articles: string; }>({
+    isOpen: false, query: '', summary: '', articles: '',
+  });
+
+  // 생활/업무 per-format pagination: maps "formatKey_categoryKey" -> page number
+  const [formatPages, setFormatPages] = useState<Record<string, number>>({});
+  // per-category search
+  const [categorySearch, setCategorySearch] = useState<Record<string, string>>({});
+
+  // AI지식모음
+  const [aiLogs, setAiLogs] = useState<AiLog[]>([]);
+  const [aiLogsLoaded, setAiLogsLoaded] = useState(false);
+  const [aiLogsLoading, setAiLogsLoading] = useState(false);
+  const [aiSearch, setAiSearch] = useState('');
+  const [aiPage, setAiPage] = useState(1);
+
+  // 읽을거리
+  const [books, setBooks] = useState<Book[]>([]);
+  const [booksLoaded, setBooksLoaded] = useState(false);
+  const [booksLoading, setBooksLoading] = useState(false);
+  const [bookSearch, setBookSearch] = useState('');
+  const [bookPage, setBookPage] = useState(1);
+  const [expandedBookIds, setExpandedBookIds] = useState<Set<string>>(new Set());
+  const [expandedChapterIds, setExpandedChapterIds] = useState<Set<string>>(new Set());
+  const [ttsPlaying, setTtsPlaying] = useState<string | null>(null);
+  const [ttsLoading, setTtsLoading] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [draggingBookIdx, setDraggingBookIdx] = useState<number | null>(null);
+  const [draggingChapterInfo, setDraggingChapterInfo] = useState<{ bookId: string; idx: number } | null>(null);
+
   useEffect(() => {
     fetchRecords();
   }, [user?.uid, currentMonth]);
 
   useEffect(() => {
-    setCollapsedCategories(new Set(['생활', '업무']));
+    setCollapsedCategories(new Set(['생활', '업무', '하루LAW', 'AI지식모음', '읽을거리']));
     setExpandedFormats(new Set());
   }, [location.pathname]);
+
+  // Fetch AI logs when AI지식모음 is expanded
+  useEffect(() => {
+    if (!collapsedCategories.has('AI지식모음') && !aiLogsLoaded && user?.email) {
+      setAiLogsLoading(true);
+      firestoreService.getAiLogs(user.email).then((data: any[]) => {
+        setAiLogs(data);
+        setAiLogsLoaded(true);
+        setAiLogsLoading(false);
+      }).catch(() => setAiLogsLoading(false));
+    }
+  }, [collapsedCategories, aiLogsLoaded, user?.email]);
+
+  // Fetch books when 읽을거리 is expanded
+  useEffect(() => {
+    if (!collapsedCategories.has('읽을거리') && !booksLoaded) {
+      setBooksLoading(true);
+      (async () => {
+        try {
+          const booksSnap = await getDocs(query(collection(db, 'books'), orderBy('createdAt', 'desc')));
+          const booksData: Book[] = [];
+          for (const bookDoc of booksSnap.docs) {
+            const bd = bookDoc.data();
+            const chapSnap = await getDocs(query(collection(db, 'books', bookDoc.id, 'chapters'), orderBy('order')));
+            const chapters: Chapter[] = chapSnap.docs.map(cd => ({
+              id: cd.id, bookId: bookDoc.id,
+              title: cd.data().title || '', sourceTitle: cd.data().sourceTitle || '',
+              content: cd.data().content || '', order: cd.data().order ?? 0,
+            }));
+            booksData.push({
+              id: bookDoc.id, title: bd.title || '(제목 없음)',
+              totalChapters: bd.totalChapters ?? chapters.length,
+              order: bd.order, chapters,
+            });
+          }
+          setBooks(booksData);
+          setBooksLoaded(true);
+        } catch (e) { console.error('books fetch error:', e); }
+        finally { setBooksLoading(false); }
+      })();
+    }
+  }, [collapsedCategories, booksLoaded]);
 
   const toggleSayuGuide = () => {
     const newValue = !showSayuGuide;
@@ -150,7 +414,7 @@ export function SayuPage() {
 
   const days = getDaysInMonth();
 
-  // 모든 형식 prefix 매핑 (수정 4: 메모 추가)
+  // 모든 형식 prefix 매핑
   const ALL_FORMAT_PREFIXES: Record<string, string> = {
     '일기': 'diary', '에세이': 'essay', '선교보고': 'mission',
     '일반보고': 'report', '업무일지': 'work', '여행기록': 'travel',
@@ -163,7 +427,6 @@ export function SayuPage() {
   const hasSayu = (date: Date | null): 'none' | 'saved' | 'polished' | 'written' => {
     if (!date) return 'none';
     const dateStr = formatDateString(date);
-    // 수정 7: 같은 날 여러 기록 지원 — filter로 모두 확인
     const dayRecords = records.filter((r) => r.date === dateStr);
     if (dayRecords.length === 0) return 'none';
 
@@ -180,7 +443,6 @@ export function SayuPage() {
         const polishedKey = `${prefix}_polished`;
         if (record[polishedKey] === true) hasAnyPolished = true;
         if (record[sayuKey]) hasAnySaved = true;
-        // 수정 3: 원본 저장도 점 표시
         if (!hasAnyWritten) {
           hasAnyWritten = Object.keys(record).some(k =>
             k.startsWith(`${prefix}_`) &&
@@ -200,7 +462,6 @@ export function SayuPage() {
   const handleDateClick = (date: Date | null) => {
     if (!date) return;
     const dateStr = formatDateString(date);
-    // 수정 7: 같은 날 여러 기록 지원
     const dayRecords = records.filter((r) => r.date === dateStr);
 
     if (dayRecords.length === 0) {
@@ -210,7 +471,6 @@ export function SayuPage() {
 
     setSelectedDate(dateStr);
 
-    // 수정 3,4: 모든 형식 표시 (SAYU 없는 원본 포함, 메모 포함)
     const seenFormatKeys = new Set<string>();
     const availableFormats: { key: string; label: string; recordId: string }[] = [];
     dayRecords.forEach((record) => {
@@ -218,7 +478,6 @@ export function SayuPage() {
       record.formats.forEach((format) => {
         const prefix = ALL_FORMAT_PREFIXES[format];
         if (!prefix) return;
-        // 같은 날 같은 형식 여러 개: recordId로 구분
         const entryKey = `${prefix}_${record.id}`;
         if (!seenFormatKeys.has(entryKey)) {
           seenFormatKeys.add(entryKey);
@@ -231,11 +490,21 @@ export function SayuPage() {
   };
 
   const openFormatSayu = (dateStr: string, formatKey: string, formatLabel: string, recordId?: string) => {
-    // 수정 7: recordId로 특정 기록 찾기, 없으면 날짜로 첫 번째 찾기
     const record = recordId
       ? records.find((r) => r.id === recordId)
       : records.find((r) => r.date === dateStr);
     if (!record) return;
+
+    // HARUraw handling
+    if (formatKey === 'haruraw') {
+      setHarurawModal({
+        isOpen: true,
+        query: (record as any).haruraw_query || '',
+        summary: (record as any).haruraw_summary || '',
+        articles: (record as any).haruraw_articles || '',
+      });
+      return;
+    }
 
     setSelectedDate(dateStr);
     setSelectedDateFormats([{ key: formatKey, label: formatLabel, recordId: record.id }]);
@@ -259,7 +528,6 @@ export function SayuPage() {
       }
     });
 
-    // 수정 3: SAYU 없으면 원본 필드를 이어붙여 표시
     let sayuContent = record[sayuKey] || '';
     if (!sayuContent) {
       const originalFields = Object.keys(record)
@@ -278,7 +546,12 @@ export function SayuPage() {
       try {
         const parsed = JSON.parse(imagesData);
         if (Array.isArray(parsed)) {
-          images = parsed.filter((url: any) => typeof url === 'string' && url.startsWith('http'));
+          images = parsed.filter(
+            (url: any) =>
+              typeof url === 'string' &&
+              url.trim().length > 0 &&
+              url.startsWith('http')
+          );
         }
       } catch {
         images = [];
@@ -316,24 +589,19 @@ export function SayuPage() {
       content: '',
       dateLabel: '',
     });
-    if (deleted) {
-      const currentDate = selectedDate;
 
-      // 1. Firestore에서 최신 records 가져오기
-      setLoading(true);
-      try {
-        const data = await firestoreService.getRecords(user!.uid);
-        setRecords(data);
+    const currentDate = selectedDate;
+    setLoading(true);
+    try {
+      const data = await firestoreService.getRecords(user!.uid);
+      setRecords(data);
 
-        // 2. 새 records 기준으로 selectedDateFormats 재계산
+      if (deleted) {
         const dayRecords = data.filter((r) => r.date === currentDate);
-
         if (dayRecords.length === 0) {
-          // 해당 날짜 기록이 모두 삭제된 경우 → 날짜 선택 해제
           setSelectedDate('');
           setSelectedDateFormats([]);
         } else {
-          // 남은 기록으로 형식 목록 재구성
           const seenFormatKeys = new Set<string>();
           const availableFormats: { key: string; label: string; recordId?: string }[] = [];
           dayRecords.forEach((record) => {
@@ -351,17 +619,16 @@ export function SayuPage() {
           setSelectedDate(currentDate);
           setSelectedDateFormats(availableFormats);
         }
-      } catch (error) {
-        console.error('새로고침 실패:', error);
-      } finally {
-        setLoading(false);
       }
+    } catch (error) {
+      console.error('새로고침 실패:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSaveSayu = async (editedContent: string, rating: number) => {
     if (!selectedDate) return;
-    // 수정 7: recordId로 특정 기록 찾기
     const currentFormatInfo = selectedDateFormats[0];
     const record = currentFormatInfo?.recordId
       ? records.find((r) => r.id === currentFormatInfo.recordId)
@@ -375,7 +642,6 @@ export function SayuPage() {
     const ratingKey = `${formatKey}_rating`;
 
     try {
-      // 수정 7: record.id로 업데이트 (날짜 기반이 아닌 실제 문서 ID)
       await firestoreService.updateRecord(user!.uid, record.id, {
         [sayuKey]: editedContent,
         [ratingKey]: rating,
@@ -396,6 +662,69 @@ export function SayuPage() {
     }
   };
 
+  // Delete a record from 생활/업무/HARUraw list
+  const handleDeleteRecord = async (recordId: string) => {
+    if (!user?.uid) return;
+    try {
+      await firestoreService.deleteRecord(user.uid, recordId);
+      setRecords(prev => prev.filter(r => r.id !== recordId));
+      toast.success('삭제되었습니다');
+    } catch { toast.error('삭제 실패'); }
+  };
+
+  // Delete an AI log
+  const handleDeleteAiLog = async (id: string) => {
+    try {
+      await firestoreService.deleteAiLogs(new Set([id]));
+      setAiLogs(prev => prev.filter(l => l.id !== id));
+      toast.success('삭제되었습니다');
+    } catch { toast.error('삭제 실패'); }
+  };
+
+  // Delete a chapter (developer only)
+  const handleDeleteChapter = async (bookId: string, chapterId: string) => {
+    if (!isDeveloper) return;
+    try {
+      await deleteDoc(doc(db, 'books', bookId, 'chapters', chapterId));
+      setBooks(prev => prev.map(b =>
+        b.id === bookId ? { ...b, chapters: b.chapters.filter(c => c.id !== chapterId), totalChapters: b.chapters.length - 1 } : b
+      ));
+      toast.success('삭제되었습니다');
+    } catch { toast.error('삭제 실패'); }
+  };
+
+  // Delete a book and all its chapters (developer only)
+  const handleDeleteBook = async (bookId: string) => {
+    if (!isDeveloper) return;
+    try {
+      const chapSnap = await getDocs(collection(db, 'books', bookId, 'chapters'));
+      const batch = writeBatch(db);
+      chapSnap.docs.forEach(d => batch.delete(d.ref));
+      batch.delete(doc(db, 'books', bookId));
+      await batch.commit();
+      setBooks(prev => prev.filter(b => b.id !== bookId));
+      toast.success('책이 삭제되었습니다');
+    } catch { toast.error('삭제 실패'); }
+  };
+
+  // Update book order in Firestore
+  const updateBookOrderInFirestore = async (newBooks: Book[]) => {
+    const batch = writeBatch(db);
+    newBooks.forEach((b, idx) => {
+      batch.update(doc(db, 'books', b.id), { order: idx });
+    });
+    await batch.commit();
+  };
+
+  // Update chapter order in Firestore
+  const updateChapterOrderInFirestore = async (bookId: string, chapters: Chapter[]) => {
+    const batch = writeBatch(db);
+    chapters.forEach((c, idx) => {
+      batch.update(doc(db, 'books', bookId, 'chapters', c.id), { order: idx });
+    });
+    await batch.commit();
+  };
+
   // ─── 목록 뷰 데이터 생성 ───
   const getMonthListData = () => {
     const year = currentMonth.getFullYear();
@@ -409,12 +738,26 @@ export function SayuPage() {
     type ListCategory = {
       category: string;
       formats: {
-        format: RecordFormat;
+        format: RecordFormat | any;
         entries: { date: string; title: string; hasSayu: boolean; formatKey: string; recordId: string }[];
       }[];
     };
 
     const result: ListCategory[] = [];
+
+    // HARUraw
+    const harurawEntries = monthRecords
+      .filter(r => r.formats && r.formats.includes('HARUraw' as any))
+      .map(r => ({
+        date: r.date,
+        title: ((r as any).haruraw_query || '').slice(0, 20) || '(질문 없음)',
+        hasSayu: false,
+        formatKey: 'haruraw',
+        recordId: r.id,
+      }));
+    if (harurawEntries.length > 0) {
+      result.push({ category: '하루LAW', formats: [{ format: 'HARUraw' as any, entries: harurawEntries }] });
+    }
 
     for (const category of ['생활', '업무'] as const) {
       const formatsWithEntries: ListCategory['formats'] = [];
@@ -424,16 +767,13 @@ export function SayuPage() {
         const entries = monthRecords
           .filter((r) => {
             if (r.formats && r.formats.includes(format)) return true;
-            // formats 배열이 없거나 누락된 경우 field prefix로 폴백
             return Object.keys(r).some((k) => k.startsWith(`${prefix}_`) && !k.endsWith('_sayu') && !k.endsWith('_rating') && !k.endsWith('_polished') && !k.endsWith('_images') && !k.endsWith('_stats'));
           })
           .map((r) => {
             const firstFieldKey = FORMAT_FIRST_FIELD[prefix];
-            // AI 추출 제목 우선 (숫자·기호만인 잘못된 제목은 무시), 없으면 첫 번째 필드 내용 사용
             const aiTitle = r[`${prefix}_title`] as string | undefined;
             const validAiTitle = aiTitle && !/^[\d\s:.,\-\/]+$/.test(aiTitle.trim()) && aiTitle.trim().length >= 2 ? aiTitle : '';
             let rawTitle = validAiTitle || (firstFieldKey ? (r[firstFieldKey] || '') : '');
-            // 첫 번째 필드도 비어있으면 같은 prefix의 다른 필드에서 폴백 (태그/여백 제외)
             if (!rawTitle) {
               const fallbackKey = Object.keys(r).find(
                 (k) => k.startsWith(`${prefix}_`) && !k.endsWith('_sayu') && !k.endsWith('_rating') && !k.endsWith('_polished') && !k.endsWith('_images') && !k.endsWith('_stats') && !k.endsWith('_tags') && !k.endsWith('_space') && !k.endsWith('_title') && typeof r[k] === 'string' && r[k].trim()
@@ -627,7 +967,9 @@ export function SayuPage() {
               <p className="text-sm" style={{ color: '#999' }}>이 달의 기록이 없습니다</p>
             </div>
           ) : (
-            listData.map(({ category, formats }) => (
+            listData.map(({ category, formats }) => {
+              if (category === '하루LAW') return null;
+              return (
               <div key={category} className="mb-4">
                 {/* 카테고리 헤더 */}
                 <button
@@ -643,72 +985,413 @@ export function SayuPage() {
 
                 {!collapsedCategories.has(category) && (
                   <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                    {/* search */}
+                    <div className="px-3 py-2" style={{ backgroundColor: '#f9fafb' }}>
+                      <input
+                        type="text"
+                        value={categorySearch[category] || ''}
+                        onChange={e => setCategorySearch(prev => ({ ...prev, [category]: e.target.value }))}
+                        placeholder="제목으로 검색..."
+                        className="w-full px-3 py-1.5 text-xs rounded border outline-none"
+                        style={{ borderColor: '#d1d5db', backgroundColor: '#fff', fontSize: 14 }}
+                      />
+                    </div>
                     {formats.map(({ format, entries }, fIdx) => {
-                      const prefix = FORMAT_PREFIX[format];
+                      const prefix = category === '하루LAW' ? 'haruraw' : FORMAT_PREFIX[format as RecordFormat];
                       const isFormatExpanded = expandedFormats.has(prefix);
-                      return (
-                      <div
-                        key={format}
-                        className={fIdx > 0 ? 'border-t' : ''}
-                        style={{ borderColor: '#f0f0f0' }}
-                      >
-                        {/* 형식 헤더 — 클릭 시 기록 목록 펼침/닫힘 */}
-                        <button
-                          onClick={() => toggleFormat(prefix)}
-                          className="w-full flex items-center justify-between px-3 py-2 hover:opacity-80 transition-opacity"
-                          style={{ backgroundColor: '#FEFBE8' }}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm">{FORMAT_EMOJI[format]}</span>
-                            <span className="text-xs font-semibold" style={{ color: '#333' }}>{format}</span>
-                            <span className="text-xs" style={{ color: '#999' }}>({entries.length})</span>
-                          </div>
-                          <span style={{ fontSize: '10px', color: '#1A3C6E' }}>
-                            {isFormatExpanded ? '▼' : '▶'}
-                          </span>
-                        </button>
 
-                        {/* 기록 목록 — 형식 펼쳤을 때만 표시 */}
-                        {isFormatExpanded && entries.map((entry) => (
+                      const searchTerm = (categorySearch[category] || '').toLowerCase();
+                      const filteredEntries = searchTerm
+                        ? entries.filter(e => e.title.toLowerCase().includes(searchTerm))
+                        : entries;
+                      const pageKey = `${prefix}_${category}`;
+                      const page = formatPages[pageKey] || 1;
+                      const totalPages = Math.ceil(filteredEntries.length / PAGE_SIZE);
+                      const pagedEntries = filteredEntries.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+                      return (
+                        <div
+                          key={String(format)}
+                          className={fIdx > 0 ? 'border-t' : ''}
+                          style={{ borderColor: '#f0f0f0' }}
+                        >
+                          {/* 형식 헤더 — 클릭 시 기록 목록 펼침/닫힘 */}
                           <button
-                            key={`${entry.date}-${entry.formatKey}-${entry.recordId}`}
-                            onClick={() => openFormatSayu(entry.date, entry.formatKey, format, entry.recordId)}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-yellow-50 transition-colors border-t"
-                            style={{ borderColor: '#f5f5f5' }}
+                            onClick={() => toggleFormat(prefix)}
+                            className="w-full flex items-center justify-between px-3 py-2 hover:opacity-80 transition-opacity"
+                            style={{ backgroundColor: '#FEFBE8' }}
                           >
-                            <span
-                              className="text-xs font-medium flex-shrink-0"
-                              style={{ color: '#1A3C6E', minWidth: '32px' }}
-                            >
-                              {formatListDate(entry.date)}
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm">{category === '하루LAW' ? '⚖️' : FORMAT_EMOJI[format as RecordFormat]}</span>
+                              <span className="text-xs font-semibold" style={{ color: '#333' }}>{String(format)}</span>
+                              <span className="text-xs" style={{ color: '#999' }}>({entries.length})</span>
+                            </div>
+                            <span style={{ fontSize: '10px', color: '#1A3C6E' }}>
+                              {isFormatExpanded ? '▼' : '▶'}
                             </span>
-                            <span
-                              className="text-sm flex-1 truncate"
-                              style={{ color: '#333' }}
-                            >
-                              {entry.title}
-                            </span>
-                            {entry.hasSayu && (
-                              <span
-                                className="rounded-full flex-shrink-0"
-                                style={{
-                                  width: '8px',
-                                  height: '8px',
-                                  backgroundColor: '#10b981',
-                                  display: 'inline-block',
-                                }}
-                              />
-                            )}
                           </button>
-                        ))}
-                      </div>
+
+                          {/* 기록 목록 — 형식 펼쳤을 때만 표시 */}
+                          {isFormatExpanded && (
+                            <>
+                              {pagedEntries.map((entry) => (
+                                <div key={`${entry.date}-${entry.formatKey}-${entry.recordId}`} className="w-full flex items-center gap-1 border-t" style={{ borderColor: '#f5f5f5' }}>
+                                  <button
+                                    className="flex items-center gap-3 flex-1 px-4 py-2.5 text-left hover:bg-yellow-50 transition-colors"
+                                    onClick={() => openFormatSayu(entry.date, entry.formatKey, format as any, entry.recordId)}
+                                  >
+                                    <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: '32px' }}>{formatListDate(entry.date)}</span>
+                                    <span className="text-sm flex-1 truncate" style={{ color: '#333' }}>{entry.title}</span>
+                                    {entry.hasSayu && (
+                                      <span className="rounded-full flex-shrink-0" style={{ width: '8px', height: '8px', backgroundColor: '#10b981', display: 'inline-block' }} />
+                                    )}
+                                  </button>
+                                  <button
+                                    onClick={e => { e.stopPropagation(); handleDeleteRecord(entry.recordId); }}
+                                    className="px-3 py-2.5 text-xs flex-shrink-0 hover:text-red-600 transition-colors"
+                                    style={{ color: '#ccc' }}
+                                    title="삭제"
+                                  >✕</button>
+                                </div>
+                              ))}
+                              {totalPages > 1 && (
+                                <div className="flex justify-center gap-1 py-2 px-3 border-t" style={{ borderColor: '#f0f0f0' }}>
+                                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                                    <button
+                                      key={p}
+                                      onClick={() => setFormatPages(prev => ({ ...prev, [pageKey]: p }))}
+                                      className="w-7 h-7 rounded text-xs font-medium transition-all"
+                                      style={{ backgroundColor: page === p ? '#1A3C6E' : '#f3f4f6', color: page === p ? '#fff' : '#333' }}
+                                    >{p}</button>
+                                  ))}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
                 )}
               </div>
-            ))
+              );
+            })
           )}
+
+          {/* 구분선 */}
+          <hr className="my-4" style={{ borderColor: '#d1d5db' }} />
+
+          {/* AI지식모음 */}
+          <div className="mb-4">
+            <button
+              onClick={() => toggleCategory('AI지식모음')}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
+              style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
+            >
+              <span>💬 AI지식모음</span>
+              <span style={{ fontSize: '10px' }}>{collapsedCategories.has('AI지식모음') ? '▶' : '▼'}</span>
+            </button>
+            {!collapsedCategories.has('AI지식모음') && (
+              <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                {/* search */}
+                <div className="px-3 py-2" style={{ backgroundColor: '#f9fafb' }}>
+                  <input type="text" value={aiSearch} onChange={e => { setAiSearch(e.target.value); setAiPage(1); }}
+                    placeholder="제목으로 검색..." className="w-full px-3 py-1.5 text-xs rounded border outline-none"
+                    style={{ borderColor: '#d1d5db', backgroundColor: '#fff', fontSize: 14 }} />
+                </div>
+                {aiLogsLoading ? (
+                  <p className="text-center py-4 text-xs" style={{ color: '#999' }}>불러오는 중...</p>
+                ) : (() => {
+                  const filtered = aiSearch ? aiLogs.filter(l => (l.title || '').toLowerCase().includes(aiSearch.toLowerCase())) : aiLogs;
+                  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+                  const paged = filtered.slice((aiPage - 1) * PAGE_SIZE, aiPage * PAGE_SIZE);
+                  if (filtered.length === 0) return <p className="text-center py-4 text-xs" style={{ color: '#999' }}>기록이 없습니다</p>;
+                  return (
+                    <>
+                      {paged.map((log) => (
+                        <div key={log.id} className="flex items-center border-t" style={{ borderColor: '#f5f5f5' }}>
+                          <div className="flex-1 px-4 py-2.5">
+                            <p className="text-sm truncate" style={{ color: '#333' }}>{log.title || '(제목 없음)'}</p>
+                            {log.source && <p className="text-xs mt-0.5" style={{ color: '#999' }}>{log.source}</p>}
+                          </div>
+                          <button
+                            onClick={() => handleDeleteAiLog(log.id)}
+                            className="px-3 py-2.5 text-xs flex-shrink-0 hover:text-red-600 transition-colors"
+                            style={{ color: '#ccc' }} title="삭제"
+                          >✕</button>
+                        </div>
+                      ))}
+                      {totalPages > 1 && (
+                        <div className="flex justify-center gap-1 py-2 px-3 border-t" style={{ borderColor: '#f0f0f0' }}>
+                          {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                            <button key={p} onClick={() => setAiPage(p)}
+                              className="w-7 h-7 rounded text-xs font-medium transition-all"
+                              style={{ backgroundColor: aiPage === p ? '#1A3C6E' : '#f3f4f6', color: aiPage === p ? '#fff' : '#333' }}
+                            >{p}</button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
+
+          {/* 읽을거리 */}
+          <div className="mb-4">
+            <button
+              onClick={() => toggleCategory('읽을거리')}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
+              style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
+            >
+              <span>📖 읽을거리</span>
+              <span style={{ fontSize: '10px' }}>{collapsedCategories.has('읽을거리') ? '▶' : '▼'}</span>
+            </button>
+            {!collapsedCategories.has('읽을거리') && (
+              <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                {/* search */}
+                <div className="px-3 py-2" style={{ backgroundColor: '#f9fafb' }}>
+                  <input type="text" value={bookSearch} onChange={e => { setBookSearch(e.target.value); setBookPage(1); }}
+                    placeholder="책 제목으로 검색..." className="w-full px-3 py-1.5 text-xs rounded border outline-none"
+                    style={{ borderColor: '#d1d5db', backgroundColor: '#fff', fontSize: 14 }} />
+                </div>
+                {booksLoading ? (
+                  <p className="text-center py-4 text-xs" style={{ color: '#999' }}>불러오는 중...</p>
+                ) : (() => {
+                  const filtered = bookSearch ? books.filter(b => b.title.toLowerCase().includes(bookSearch.toLowerCase())) : books;
+                  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+                  const paged = filtered.slice((bookPage - 1) * PAGE_SIZE, bookPage * PAGE_SIZE);
+                  if (filtered.length === 0) return <p className="text-center py-4 text-xs" style={{ color: '#999' }}>책이 없습니다</p>;
+                  return (
+                    <>
+                      {paged.map((book, bookDisplayIdx) => {
+                        const actualIdx = books.findIndex(b => b.id === book.id);
+                        const isExpanded = expandedBookIds.has(book.id);
+                        return (
+                          <div key={book.id}
+                            className={bookDisplayIdx > 0 ? 'border-t' : ''}
+                            style={{ borderColor: '#f0f0f0' }}
+                            draggable={isDeveloper}
+                            onDragStart={isDeveloper ? () => setDraggingBookIdx(actualIdx) : undefined}
+                            onDragOver={isDeveloper ? (e) => e.preventDefault() : undefined}
+                            onDrop={isDeveloper ? () => {
+                              if (draggingBookIdx === null || draggingBookIdx === actualIdx) return;
+                              const newBooks = [...books];
+                              const [moved] = newBooks.splice(draggingBookIdx, 1);
+                              newBooks.splice(actualIdx, 0, moved);
+                              setBooks(newBooks);
+                              setDraggingBookIdx(null);
+                              updateBookOrderInFirestore(newBooks).catch(console.error);
+                            } : undefined}
+                          >
+                            <div className="flex items-center px-3 py-2.5">
+                              {isDeveloper && <span className="text-gray-300 mr-2 cursor-grab select-none text-sm">☰</span>}
+                              <button
+                                className="flex-1 flex items-center justify-between text-left"
+                                onClick={() => setExpandedBookIds(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(book.id)) next.delete(book.id); else next.add(book.id);
+                                  return next;
+                                })}
+                              >
+                                <div>
+                                  <p className="text-xs font-semibold" style={{ color: '#333' }}>{book.title}</p>
+                                  <p className="text-xs mt-0.5" style={{ color: '#999' }}>챕터 {book.totalChapters}개</p>
+                                </div>
+                                <span style={{ fontSize: '10px', color: '#1A3C6E' }}>{isExpanded ? '▼' : '▶'}</span>
+                              </button>
+                              {isDeveloper && (
+                                <button
+                                  onClick={e => { e.stopPropagation(); handleDeleteBook(book.id); }}
+                                  className="ml-2 text-xs flex-shrink-0 hover:text-red-600 transition-colors"
+                                  style={{ color: '#ccc' }}
+                                  title="책 삭제"
+                                >✕</button>
+                              )}
+                            </div>
+                            {isExpanded && (
+                              <div className="border-t" style={{ borderColor: '#f0f0f0' }}>
+                                {book.chapters.length === 0 ? (
+                                  <p className="px-4 py-2 text-xs" style={{ color: '#999' }}>챕터가 없습니다</p>
+                                ) : book.chapters.map((ch, chIdx) => (
+                                  <div key={ch.id}
+                                    style={{ borderColor: '#f5f5f5' }}
+                                    draggable={isDeveloper}
+                                    onDragStart={isDeveloper ? () => setDraggingChapterInfo({ bookId: book.id, idx: chIdx }) : undefined}
+                                    onDragOver={isDeveloper ? (e) => e.preventDefault() : undefined}
+                                    onDrop={isDeveloper ? () => {
+                                      if (!draggingChapterInfo || draggingChapterInfo.bookId !== book.id || draggingChapterInfo.idx === chIdx) return;
+                                      const newChapters = [...book.chapters];
+                                      const [moved] = newChapters.splice(draggingChapterInfo.idx, 1);
+                                      newChapters.splice(chIdx, 0, moved);
+                                      setBooks(prev => prev.map(b => b.id === book.id ? { ...b, chapters: newChapters } : b));
+                                      setDraggingChapterInfo(null);
+                                      updateChapterOrderInFirestore(book.id, newChapters).catch(console.error);
+                                    } : undefined}
+                                  >
+                                    <div
+                                      className="flex items-center border-t px-4 py-2 cursor-pointer hover:bg-yellow-50"
+                                      style={{ borderColor: '#f5f5f5', backgroundColor: '#fafafa' }}
+                                      onClick={() => setExpandedChapterIds(prev => {
+                                        const next = new Set(prev);
+                                        if (next.has(ch.id)) next.delete(ch.id); else next.add(ch.id);
+                                        return next;
+                                      })}
+                                    >
+                                      {isDeveloper && <span className="text-gray-300 mr-2 cursor-grab select-none text-xs">☰</span>}
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-medium truncate" style={{ color: '#333' }}>{ch.title}</p>
+                                        {ch.sourceTitle && <p className="text-xs" style={{ color: '#999' }}>{ch.sourceTitle}</p>}
+                                      </div>
+                                      <span style={{ fontSize: '10px', color: '#1A3C6E' }}>
+                                        {expandedChapterIds.has(ch.id) ? '▼' : '▶'}
+                                      </span>
+                                      {isDeveloper && (
+                                        <button
+                                          onClick={e => { e.stopPropagation(); handleDeleteChapter(book.id, ch.id); }}
+                                          className="ml-2 text-xs flex-shrink-0 hover:text-red-600 transition-colors"
+                                          style={{ color: '#ccc' }} title="챕터 삭제"
+                                        >✕</button>
+                                      )}
+                                    </div>
+                                    {expandedChapterIds.has(ch.id) && ch.content && (
+                                      <div style={{ borderTop: '1px solid #e8e0f0' }}>
+                                        {/* 🔊 TTS 버튼 */}
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 16px 0 16px' }}>
+                                          <button
+                                            onClick={e => { e.stopPropagation(); handleTTS(ch.content, `chapter_${ch.id}`); }}
+                                            style={{
+                                              display: 'flex', alignItems: 'center', gap: 4,
+                                              padding: '4px 12px', borderRadius: 20, border: 'none',
+                                              backgroundColor: ttsPlaying === `chapter_${ch.id}` ? '#8B4789' : '#e8e0f0',
+                                              color: ttsPlaying === `chapter_${ch.id}` ? '#fff' : '#8B4789',
+                                              fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                                            }}
+                                          >
+                                            {ttsLoading === `chapter_${ch.id}` ? '⏳' : ttsPlaying === `chapter_${ch.id}` ? '⏸ 정지' : '🔊 듣기'}
+                                          </button>
+                                        </div>
+                                        {renderStyledContent(ch.content)}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {totalPages > 1 && (
+                        <div className="flex justify-center gap-1 py-2 px-3 border-t" style={{ borderColor: '#f0f0f0' }}>
+                          {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                            <button key={p} onClick={() => setBookPage(p)}
+                              className="w-7 h-7 rounded text-xs font-medium transition-all"
+                              style={{ backgroundColor: bookPage === p ? '#1A3C6E' : '#f3f4f6', color: bookPage === p ? '#fff' : '#333' }}
+                            >{p}</button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
+
+          {/* 하루LAW */}
+          {(() => {
+            const haruLawCategory = listData.find(d => d.category === '하루LAW');
+            if (!haruLawCategory) return null;
+            const { category, formats } = haruLawCategory;
+            return (
+              <div key={category} className="mb-4">
+                <button
+                  onClick={() => toggleCategory(category)}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
+                  style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
+                >
+                  <span>{category}</span>
+                  <span style={{ fontSize: '10px' }}>
+                    {collapsedCategories.has(category) ? '▶' : '▼'}
+                  </span>
+                </button>
+                {!collapsedCategories.has(category) && (
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div className="px-3 py-2" style={{ backgroundColor: '#f9fafb' }}>
+                      <input
+                        type="text"
+                        value={categorySearch[category] || ''}
+                        onChange={e => setCategorySearch(prev => ({ ...prev, [category]: e.target.value }))}
+                        placeholder="제목으로 검색..."
+                        className="w-full px-3 py-1.5 text-xs rounded border outline-none"
+                        style={{ borderColor: '#d1d5db', backgroundColor: '#fff', fontSize: 14 }}
+                      />
+                    </div>
+                    {formats.map(({ format, entries }, fIdx) => {
+                      const prefix = 'haruraw';
+                      const isFormatExpanded = expandedFormats.has(prefix);
+                      const searchTerm = (categorySearch[category] || '').toLowerCase();
+                      const filteredEntries = searchTerm ? entries.filter(e => e.title.toLowerCase().includes(searchTerm)) : entries;
+                      const pageKey = `${prefix}_${category}`;
+                      const page = formatPages[pageKey] || 1;
+                      const totalPages = Math.ceil(filteredEntries.length / PAGE_SIZE);
+                      const pagedEntries = filteredEntries.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+                      return (
+                        <div key={String(format)} className={fIdx > 0 ? 'border-t' : ''} style={{ borderColor: '#f0f0f0' }}>
+                          <button
+                            onClick={() => toggleFormat(prefix)}
+                            className="w-full flex items-center justify-between px-3 py-2 hover:opacity-80 transition-opacity"
+                            style={{ backgroundColor: '#FEFBE8' }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm">⚖️</span>
+                              <span className="text-xs font-semibold" style={{ color: '#333' }}>{String(format)}</span>
+                              <span className="text-xs" style={{ color: '#999' }}>({entries.length})</span>
+                            </div>
+                            <span style={{ fontSize: '10px', color: '#1A3C6E' }}>{isFormatExpanded ? '▼' : '▶'}</span>
+                          </button>
+                          {isFormatExpanded && (
+                            <>
+                              {pagedEntries.map((entry) => (
+                                <div key={`${entry.date}-${entry.formatKey}-${entry.recordId}`} className="w-full flex items-center gap-1 border-t" style={{ borderColor: '#f5f5f5' }}>
+                                  <button
+                                    className="flex items-center gap-3 flex-1 px-4 py-2.5 text-left hover:bg-yellow-50 transition-colors"
+                                    onClick={() => openFormatSayu(entry.date, entry.formatKey, format as any, entry.recordId)}
+                                  >
+                                    <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: '32px' }}>{formatListDate(entry.date)}</span>
+                                    <span className="text-sm flex-1 truncate" style={{ color: '#333' }}>{entry.title}</span>
+                                  </button>
+                                  <button
+                                    onClick={e => { e.stopPropagation(); handleDeleteRecord(entry.recordId); }}
+                                    className="px-3 py-2.5 text-xs flex-shrink-0 hover:text-red-600 transition-colors"
+                                    style={{ color: '#ccc' }}
+                                    title="삭제"
+                                  >✕</button>
+                                </div>
+                              ))}
+                              {totalPages > 1 && (
+                                <div className="flex justify-center gap-1 py-2 px-3 border-t" style={{ borderColor: '#f0f0f0' }}>
+                                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                                    <button
+                                      key={p}
+                                      onClick={() => setFormatPages(prev => ({ ...prev, [pageKey]: p }))}
+                                      className="w-7 h-7 rounded text-xs font-medium transition-all"
+                                      style={{ backgroundColor: page === p ? '#1A3C6E' : '#f3f4f6', color: page === p ? '#fff' : '#333' }}
+                                    >{p}</button>
+                                  ))}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -874,6 +1557,46 @@ export function SayuPage() {
         firestoreId={sayuModalState.firestoreId}
         onRefresh={undefined}
       />
+
+      {/* HARUraw 모달 */}
+      {harurawModal.isOpen && (
+        <div
+          onClick={() => setHarurawModal({ isOpen: false, query: '', summary: '', articles: '' })}
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-end' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ width: '100%', maxHeight: '80vh', backgroundColor: '#fff', borderRadius: '16px 16px 0 0', padding: 20, overflowY: 'auto' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E' }}>⚖️ 하루LAW 검색 기록</p>
+              <button onClick={() => setHarurawModal({ isOpen: false, query: '', summary: '', articles: '' })}
+                style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#999' }}>✕</button>
+            </div>
+            <div style={{ padding: 12, backgroundColor: '#f0f4ff', borderRadius: 8, marginBottom: 12 }}>
+              <p style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>검색 질문</p>
+              <p style={{ fontSize: 14, color: '#1A3C6E', fontWeight: 600 }}>{harurawModal.query}</p>
+            </div>
+            {harurawModal.summary && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ marginBottom: 6 }}>
+                  <p style={{ fontSize: 11, color: '#888' }}>💡 AI 분석</p>
+                </div>
+                {renderStyledContent(harurawModal.summary)}
+              </div>
+            )}
+            {harurawModal.articles && (
+              <div style={{ marginBottom: 16 }}>
+                <p style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>📋 관련 법조문</p>
+                {renderStyledContent(harurawModal.articles)}
+              </div>
+            )}
+            <p style={{ fontSize: 10, color: '#bbb', textAlign: 'center', marginTop: 8 }}>
+              본 내용은 법령 정보 제공 목적이며, 전문적인 법률 자문을 대체할 수 없습니다.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
 
     {/* 인쇄 전용 레이아웃 */}
@@ -889,8 +1612,9 @@ export function SayuPage() {
           </h2>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
             {sayuModalState.currentRating && sayuModalState.currentRating > 0 && (
-              <span style={{ fontSize: '10pt', padding: '4px 12px', borderRadius: '12px', backgroundColor: '#FFF8F0', color: '#F59E0B' }}>
-                {'⭐'.repeat(sayuModalState.currentRating)}
+              <span style={{ fontSize: '10pt', padding: '4px 12px',
+                borderRadius: '12px', backgroundColor: '#FFF8F0', color: '#F59E0B' }}>
+                ✨ 특별한 날
               </span>
             )}
             {sayuModalState.weather && (

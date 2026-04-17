@@ -20,13 +20,14 @@ export type RecordFormat =
   | '텃밭일지'
   | '애완동물관찰일지'
   | '육아일기'
-  | '메모';
+  | '메모'
+  | 'HARUraw';
 
 // 기존 코드 호환성을 위한 alias
 export type RecordFormatKorean = RecordFormat;
 
 // 카테고리
-export type Category = '생활' | '업무';
+export type Category = '생활' | '업무' | 'AI대화';
 
 // ===========================================
 // 형식 상수
@@ -35,7 +36,8 @@ export type Category = '생활' | '업무';
 // 카테고리별 형식 분류
 export const CATEGORY_FORMATS: Record<Category, RecordFormat[]> = {
   '생활': ['일기', '에세이', '여행기록', '텃밭일지', '애완동물관찰일지', '육아일기'],
-  '업무': ['선교보고', '일반보고', '업무일지', '메모']
+  '업무': ['선교보고', '일반보고', '업무일지', '메모'],
+  'AI대화': ['ChatGPT', 'Claude', 'Gemini', '기타'] as any[]
 };
 
 // 전체 형식 목록 (순서대로)
@@ -50,6 +52,7 @@ export const ALL_FORMATS: RecordFormat[] = [
   '애완동물관찰일지',
   '육아일기',
   '메모',
+  'HARUraw',
 ];
 
 // 형식별 Firestore prefix 매핑
@@ -64,6 +67,7 @@ export const FORMAT_PREFIX: Record<RecordFormat, string> = {
   '애완동물관찰일지': 'pet',
   '육아일기': 'child',
   '메모': 'memo',
+  'HARUraw': 'haruraw',
 };
 
 // prefix에서 형식명 찾기 (역매핑)
@@ -78,6 +82,7 @@ export const PREFIX_TO_FORMAT: Record<string, RecordFormat> = {
   'pet': '애완동물관찰일지',
   'child': '육아일기',
   'memo': '메모',
+  'haruraw': 'HARUraw',
 };
 
 // 형식별 이모지 (선택사항)
@@ -92,6 +97,7 @@ export const FORMAT_EMOJI: Record<RecordFormat, string> = {
   '애완동물관찰일지': '🐾',
   '육아일기': '👶',
   '메모': '📝',
+  'HARUraw': '⚖️',
 };
 
 // ===========================================

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { firestoreService } from '../services/firestoreService';
@@ -7,10 +8,8 @@ import { RecordTitleAnimation } from '../components/RecordTitleAnimation';
 import { FormatModal } from '../components/FormatModal';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS, FORMAT_PREFIX } from '../types/haruTypes';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { AiLibraryPage } from './AiLibraryPage';
-
-type ActiveTab = 'record' | 'ai-library';
+import { db } from '../../firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 type Mood = '기쁨' | '평온' | '무미' | '울적' | '번잡';
 type Weather = '쾌청' | '흐림' | '비' | '눈';
@@ -21,9 +20,54 @@ const temperatureOptions: Temperature[] = ['폭염', '온난', '쾌적', '쌀쌀
 const moodOptions: Mood[] = ['기쁨', '평온', '무미', '울적', '번잡'];
 
 export function RecordPage() {
+  const renderStyledContent = (text: string) => (
+    <div style={{
+      background: 'linear-gradient(135deg, #fdf6ff 0%, #f0f7ff 50%, #f6fff0 100%)',
+      padding: '20px 20px 24px 20px',
+      borderRadius: 8,
+    }}>
+      <div style={{
+        width: 40, height: 3,
+        background: 'linear-gradient(90deg, #8B4789, #4a90d9)',
+        borderRadius: 2, marginBottom: 16,
+      }} />
+      {text.split('\n').map((line, lineIdx) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={lineIdx} style={{ height: 8 }} />;
+        const cleanLine = trimmed.replace(/\*\*/g, '');
+        if (trimmed.startsWith('**') && trimmed.endsWith('**') && trimmed.length > 4) {
+          return (
+            <p key={lineIdx} style={{
+              fontSize: 15, fontWeight: 800, color: '#2d1b4e',
+              marginBottom: 10, marginTop: lineIdx > 0 ? 18 : 0,
+              paddingLeft: 10, borderLeft: '3px solid #8B4789', lineHeight: 1.5,
+            }}>{cleanLine}</p>
+          );
+        }
+        if (/^\*\*\d+\./.test(trimmed) || /^\d+\./.test(trimmed)) {
+          return (
+            <p key={lineIdx} style={{
+              fontSize: 13, fontWeight: 700, color: '#4a2d7a',
+              marginBottom: 6, marginTop: 14, lineHeight: 1.6,
+            }}>{cleanLine}</p>
+          );
+        }
+        return (
+          <p key={lineIdx} style={{
+            fontSize: 13, color: '#3a3a4a',
+            lineHeight: 1.85, marginBottom: 4, letterSpacing: '0.01em',
+          }}>{cleanLine}</p>
+        );
+      })}
+      <div style={{
+        marginTop: 20, textAlign: 'center' as const,
+        fontSize: 16, color: '#c9b8e0', letterSpacing: 8,
+      }}>✦ ✦ ✦</div>
+    </div>
+  );
+
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<ActiveTab>('record');
   const [currentDate] = useState(new Date());
   const [mood, setMood] = useState<Mood>('평온');
   const [weather, setWeather] = useState<Weather>('쾌청');
@@ -35,6 +79,22 @@ export function RecordPage() {
   const [savedDateStr, setSavedDateStr] = useState('');
   const [savedRecordId, setSavedRecordId] = useState('');
   const [savedFormat, setSavedFormat] = useState<RecordFormat | null>(null);
+  const [lawQuery, setLawQuery] = useState('');
+  const [lawGuideConfirmed, setLawGuideConfirmed] = useState(false);
+  const [lawLoading, setLawLoading] = useState(false);
+  const [lawResults, setLawResults] = useState<any[]>([]);
+  const [lawSummary, setLawSummary] = useState('');
+  const [lawError, setLawError] = useState('');
+  const lawSearchHistory = useRef<{query: string, summary: string, articles: any[]}[]>([]);
+  const [activeLawQuery, setActiveLawQuery] = useState('');
+  const [isSavingLaw, setIsSavingLaw] = useState(false);
+  const [lawSaved, setLawSaved] = useState(false);
+  const [openCard, setOpenCard] = useState<{
+    idx: number;
+    type: 'explain' | 'prec';
+    content: string;
+    loading: boolean;
+  } | null>(null);
 
   const formatDate = (date: Date) => {
     const year = date.getFullYear();
@@ -52,13 +112,18 @@ export function RecordPage() {
     return `${year}-${month}-${day}`;
   };
 
-  const toggleFormat = (format: RecordFormat) => {
-    if (selectedFormats.includes(format)) {
-      setSelectedFormats(selectedFormats.filter((f) => f !== format));
-    } else {
-      // 제한 없이 추가 가능!
-      setSelectedFormats([...selectedFormats, format]);
+  const openFormatDirectly = (format: RecordFormat) => {
+    if (!user) {
+      toast.error('로그인이 필요합니다.');
+      navigate('/login');
+      return;
     }
+    const dateStr = getLocalDateString(currentDate);
+    setSavedDateStr(dateStr);
+    setSavedRecordId('');
+    setSavedFormat(format);
+    setSelectedFormats([format]);
+    setFormatModalOpen(true);
   };
 
   const handleSave = async () => {
@@ -77,6 +142,143 @@ export function RecordPage() {
     setSavedRecordId('');
     setSavedFormat(selectedFormats[0]);
     setFormatModalOpen(true);
+  };
+
+  const handleLawSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lawQuery.trim()) return;
+    setLawLoading(true);
+    setLawResults([]);
+    setLawSummary('');
+    setLawError('');
+    try {
+      const functions = getFunctions(undefined, 'asia-northeast3');
+      const lawSearch = httpsCallable(functions, 'lawSearch');
+      const res: any = await lawSearch({ query: lawQuery });
+      const data = res.data;
+      if (!data.success) {
+        setLawError(data.message || '검색 결과가 없습니다.');
+        return;
+      }
+      setLawSaved(false);
+      setActiveLawQuery(lawQuery);
+      setLawResults(data.data);
+      setLawSummary(data.aiSummary);
+      // 검색 이력 저장
+      lawSearchHistory.current = [
+        { query: lawQuery, summary: data.aiSummary, articles: data.data },
+        ...lawSearchHistory.current,
+      ].slice(0, 10);
+    } catch {
+      setLawError('법령 검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setLawLoading(false);
+    }
+  };
+
+  const handleSaveLawResult = async () => {
+    if (!user || !lawResults.length) return;
+    setIsSavingLaw(true);
+    try {
+      const dateStr = getLocalDateString(currentDate);
+      const articlesText = lawResults
+        .map((a: any) => `[${a.lawName}] ${a.articleStr}(${a.title})\n${a.content}`)
+        .join('\n\n');
+      await firestoreService.saveRecord(user.uid, {
+        date: dateStr,
+        weather,
+        temperature,
+        mood,
+        formats: ['HARUraw'],
+        content: '',
+        haruraw_query: activeLawQuery,
+        haruraw_summary: lawSummary,
+        haruraw_articles: articlesText,
+        haruraw_simple: `${activeLawQuery}\n\n${lawSummary}`,
+      });
+      setLawSaved(true);
+      toast.success('하루LAW 자문 결과가 저장되었습니다!');
+      setTimeout(() => navigate('/sayu'), 1000);
+    } catch (err) {
+      toast.error('저장에 실패했습니다.');
+    } finally {
+      setIsSavingLaw(false);
+    }
+  };
+
+  const handleEasyExplain = async (article: any, idx: number) => {
+    if (openCard?.idx === idx && openCard?.type === 'explain') {
+      setOpenCard(null);
+      return;
+    }
+    setOpenCard({ idx, type: 'explain', content: '', loading: true });
+
+    const cacheKey = `${article.lawName}_${article.articleStr}`
+      .replace(/[^a-zA-Z0-9가-힣]/g, '_')
+      .slice(0, 100);
+
+    // 1. 캐시 조회 (실패해도 계속 진행)
+    try {
+      const cacheRef = doc(db, 'lawConsultCache', cacheKey);
+      const cacheSnap = await getDoc(cacheRef);
+      if (cacheSnap.exists()) {
+        const cached = cacheSnap.data();
+        setOpenCard({ idx, type: 'explain', content: cached.explanation, loading: false });
+        return;
+      }
+    } catch (cacheError) {
+      console.warn('캐시 조회 실패, API 직접 호출:', cacheError);
+    }
+
+    // 2. API 호출
+    try {
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const fn = httpsCallable(fns, 'lawEasyExplain');
+      const res: any = await fn({
+        lawText: `${article.articleStr}(${article.title}): ${article.content}`,
+        userQuery: activeLawQuery,
+      });
+      const explanation = res.data.explanation;
+      setOpenCard({ idx, type: 'explain', content: explanation, loading: false });
+
+      // 3. 캐시 저장 시도 (실패해도 무시)
+      try {
+        const cacheRef = doc(db, 'lawConsultCache', cacheKey);
+        await setDoc(cacheRef, {
+          explanation,
+          lawName: article.lawName,
+          articleStr: article.articleStr,
+          createdAt: new Date().toISOString(),
+        });
+      } catch (saveError) {
+        console.warn('캐시 저장 실패:', saveError);
+      }
+    } catch {
+      setOpenCard({ idx, type: 'explain', content: 'AI자문을 불러오지 못했습니다.', loading: false });
+    }
+  };
+
+  const handlePrecedent = async (article: any, idx: number) => {
+    if (openCard?.idx === idx && openCard?.type === 'prec') {
+      setOpenCard(null);
+      return;
+    }
+    setOpenCard({ idx, type: 'prec', content: '', loading: true });
+    try {
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const fn = httpsCallable(fns, 'lawPrecedent');
+      const res: any = await fn({
+        lawText: `${article.articleStr}(${article.title}): ${article.content}`,
+        userQuery: activeLawQuery,
+      });
+      const precs = res.data.precedents;
+      const body = precs.map((p: any) =>
+        `📌 ${p.caseName}\n${p.caseNum}\n${p.summary}`
+      ).join('\n\n');
+      setOpenCard({ idx, type: 'prec', content: body, loading: false });
+    } catch {
+      setOpenCard({ idx, type: 'prec', content: '판례를 불러오지 못했습니다.', loading: false });
+    }
   };
 
   const handleSaveFormatData = async (formatData: Record<string, string>) => {
@@ -105,42 +307,6 @@ export function RecordPage() {
       });
       setSavedRecordId(recordId);
       toast.success('내용이 저장되었습니다!');
-
-      // AI 제목 자동 추출 (백그라운드, 비차단)
-      if (savedFormat) {
-        const prefix = FORMAT_PREFIX[savedFormat];
-        const excludeSuffixes = ['_images', '_style', '_sayu', '_rating', '_polished', '_stats', '_space', '_title'];
-        const sayuContent = (updateData[`${prefix}_sayu`] as string) || '';
-        const simpleContent = (updateData[`${prefix}_simple`] as string) || '';
-        const fieldContent = Object.entries(updateData)
-          .filter(([key]) =>
-            key.startsWith(`${prefix}_`) &&
-            !excludeSuffixes.some((s) => key.endsWith(s))
-          )
-          .map(([, v]) => v)
-          .filter((v) => typeof v === 'string' && (v as string).trim())
-          .join(' ');
-        const contentForTitle = sayuContent || simpleContent || fieldContent;
-
-        // 이미 title이 있으면 extractTitle 호출 건너뜀
-        const existingTitle = (updateData[`${prefix}_title`] as string) || '';
-
-        if (contentForTitle.trim() && !existingTitle.trim()) {
-          (async () => {
-            try {
-              const fns = getFunctions(undefined, 'asia-northeast3');
-              const extractTitleFunc = httpsCallable(fns, 'extractTitle');
-              const res = await extractTitleFunc({ text: contentForTitle, format: savedFormat });
-              const { title } = res.data as { title: string };
-              if (title) {
-                await firestoreService.updateRecord(user.uid, recordId, { [`${prefix}_title`]: title });
-              }
-            } catch (err) {
-              console.error('AI 제목 추출 실패 (무시):', err);
-            }
-          })();
-        }
-      }
     } catch (error) {
       console.error('저장 실패:', error);
       toast.error('내용 저장에 실패했습니다.');
@@ -149,30 +315,6 @@ export function RecordPage() {
 
   return (
     <>
-    {/* 상단 탭 */}
-    <div className="flex border-b bg-white" style={{ borderColor: '#e5e5e5' }}>
-      {([
-        { value: 'record', label: '📝 기록' },
-        { value: 'ai-library', label: '🧠 AI학습함' },
-      ] as { value: ActiveTab; label: string }[]).map((tab) => (
-        <button
-          key={tab.value}
-          onClick={() => setActiveTab(tab.value)}
-          className="flex-1 py-3 text-sm font-medium transition-all"
-          style={{
-            color: activeTab === tab.value ? '#1A3C6E' : '#999',
-            borderBottom: activeTab === tab.value ? '2px solid #1A3C6E' : '2px solid transparent',
-            background: 'none',
-          }}
-        >
-          {tab.label}
-        </button>
-      ))}
-    </div>
-
-    {activeTab === 'ai-library' ? (
-      <AiLibraryPage />
-    ) : (
     <div className="max-w-3xl mx-auto px-4 py-3" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
       <div className="space-y-3">
         {/* Title Animation */}
@@ -272,16 +414,24 @@ export function RecordPage() {
               형식 선택
             </h2>
             <p className="text-xs mt-0.5" style={{ color: '#999999' }}>
-              원하는 만큼 선택 가능
+              형식을 선택하면 바로 글쓰기
             </p>
           </div>
 
           {/* 카테고리 선택 */}
           <div className="flex gap-2 mb-3">
-            {(['생활', '업무'] as Category[]).map((category) => (
+            {(['생활', '업무', '하루LAW'] as (Category | 'HARUraw')[]).map((category) => (
               <button
                 key={category}
-                onClick={() => setSelectedCategory(selectedCategory === category ? null : category)}
+                onClick={() => {
+                  if (selectedCategory === category) {
+                    setSelectedCategory(null);
+                    setLawGuideConfirmed(false);
+                  } else {
+                    setSelectedCategory(category as any);
+                    setLawGuideConfirmed(false);
+                  }
+                }}
                 className="px-4 py-2 rounded-lg text-xs transition-all"
                 style={{
                   backgroundColor: selectedCategory === category ? '#1A3C6E' : '#FDF6C3',
@@ -296,20 +446,240 @@ export function RecordPage() {
           </div>
 
           {/* 형식 버튼 */}
-          {selectedCategory ? (
+          {selectedCategory === '하루LAW' ? (
+  !lawGuideConfirmed ? (
+    <div style={{
+      backgroundColor: '#f0f4ff',
+      border: '1px solid #c7d9f8',
+      borderRadius: 12,
+      padding: 20,
+      marginTop: 4,
+    }}>
+      <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E', marginBottom: 12 }}>
+        ⚖️ 하루LAW 법률 자문 서비스
+      </p>
+      <div style={{ fontSize: 13, color: '#444', lineHeight: 1.8, marginBottom: 16 }}>
+        <p style={{ marginBottom: 8 }}>
+          📌 국가 법령정보센터 공식 API로 실제 법령을 검색하고, AI가 분석하여 자문을 제공합니다.
+        </p>
+        <p style={{ marginBottom: 8 }}>
+          ✅ 실제 법령 데이터 기반으로 분석하기 때문에 AI가 법령을 임의로 만들어내는 환각(Hallucination) 현상이 없습니다.
+        </p>
+        <p style={{ marginBottom: 8 }}>
+          💡 가해자·피해자 두 가지 관점에서 가상 시나리오로 자문을 드립니다.
+        </p>
+        <p style={{ color: '#cc4444', fontWeight: 600 }}>
+          ⚠️ 본 서비스는 참고용 자문이며, 실제 법적 조치는 반드시 변호사와 상담하시기 바랍니다.
+        </p>
+      </div>
+      <button
+        onClick={() => setLawGuideConfirmed(true)}
+        style={{
+          width: '100%',
+          padding: '12px 0',
+          backgroundColor: '#1A3C6E',
+          color: '#fff',
+          border: 'none',
+          borderRadius: 8,
+          fontWeight: 700,
+          fontSize: 14,
+          cursor: 'pointer',
+        }}
+      >
+        확인했습니다, 자문 받기 →
+      </button>
+    </div>
+  ) : (
+            <div>
+              {/* 검색창 */}
+              <form onSubmit={handleLawSearch} style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    type="text"
+                    value={lawQuery}
+                    onChange={(e) => setLawQuery(e.target.value)}
+                    placeholder="예: 내 딸아이가 친구로부터 사이버 괴롭힘을 당하고 있어요 어떻게 하면 좋을까요?"
+                    style={{
+                      flex: 1, padding: '10px 12px', fontSize: 16,
+                      border: '1.5px solid #1A3C6E', borderRadius: 8,
+                      outline: 'none', backgroundColor: '#FEFBE8',
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={lawLoading}
+                    style={{
+                      padding: '10px 14px', backgroundColor: '#1A3C6E',
+                      color: '#fff', border: 'none', borderRadius: 8,
+                      fontWeight: 600, fontSize: 13, cursor: 'pointer',
+                    }}
+                  >
+                    법률자문
+                  </button>
+                </div>
+              </form>
+
+              {/* 로딩 */}
+              {lawLoading && (
+                <p style={{ textAlign: 'center', color: '#1A3C6E', fontSize: 13, padding: '16px 0' }}>
+                  ⚖️ 법령 분석 중...
+                </p>
+              )}
+
+              {/* 에러 */}
+              {lawError && (
+                <div style={{
+                  padding: 12, backgroundColor: '#fff3f3',
+                  border: '1px solid #ffcccc', borderRadius: 8,
+                  color: '#cc0000', fontSize: 13, marginBottom: 8,
+                }}>
+                  {lawError}
+                </div>
+              )}
+
+
+              {/* 법령 카드 목록 */}
+              {lawResults.map((article, idx) => (
+                <div key={idx} style={{
+                  backgroundColor: '#fff', border: '1px solid #e0e0e0',
+                  borderRadius: 8, padding: 12, marginBottom: 8,
+                }}>
+                  {/* 법령 뱃지 + 법령명 */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                    <span style={{
+                      backgroundColor: '#1A3C6E', color: '#fff',
+                      borderRadius: 4, padding: '1px 7px', fontSize: 11, fontWeight: 700,
+                    }}>
+                      {article.articleStr}
+                    </span>
+                    <span style={{ fontSize: 11, color: '#777' }}>{article.lawName}</span>
+                  </div>
+
+                  {/* 조문 제목 */}
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#222', marginBottom: 4 }}>
+                    {article.title}
+                  </p>
+
+                  {/* 조문 내용 */}
+                  <p style={{ fontSize: 12, color: '#555', lineHeight: 1.6, marginBottom: 10 }}>
+                    {article.content}
+                  </p>
+
+                  {/* 버튼 */}
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      onClick={() => handleEasyExplain(article, idx)}
+                      style={{
+                        flex: 1, padding: '6px 0', fontSize: 11, fontWeight: 600,
+                        backgroundColor: openCard?.idx === idx && openCard?.type === 'explain'
+                          ? '#1A3C6E' : '#EEF4FF',
+                        color: openCard?.idx === idx && openCard?.type === 'explain'
+                          ? '#fff' : '#1A3C6E',
+                        border: '1px solid #c7d9f8', borderRadius: 6, cursor: 'pointer',
+                      }}
+                    >
+                      💡 AI자문
+                    </button>
+                    <button
+                      onClick={() => handlePrecedent(article, idx)}
+                      style={{
+                        flex: 1, padding: '6px 0', fontSize: 11, fontWeight: 600,
+                        backgroundColor: openCard?.idx === idx && openCard?.type === 'prec'
+                          ? '#166534' : '#f0fdf4',
+                        color: openCard?.idx === idx && openCard?.type === 'prec'
+                          ? '#fff' : '#166534',
+                        border: '1px solid #bbf7d0', borderRadius: 6, cursor: 'pointer',
+                      }}
+                    >
+                      ⚖️ 판례
+                    </button>
+                  </div>
+
+                  {/* 인라인 결과 펼침 */}
+                  {openCard?.idx === idx && (
+                    <div style={{ marginTop: 10, borderRadius: 8, overflow: 'hidden' }}>
+                      {openCard.loading ? (
+                        <p style={{ fontSize: 12, color: '#999', textAlign: 'center', padding: 16 }}>분석 중...</p>
+                      ) : (
+                        renderStyledContent(openCard.content)
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* 저장 버튼 */}
+              {lawResults.length > 0 && (
+                <button
+                  onClick={handleSaveLawResult}
+                  disabled={isSavingLaw || lawSaved}
+                  style={{
+                    width: '100%',
+                    padding: '10px 0',
+                    marginTop: 4,
+                    marginBottom: 12,
+                    backgroundColor: lawSaved ? '#10b981' : '#1A3C6E',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 8,
+                    fontWeight: 600,
+                    fontSize: 13,
+                    cursor: lawSaved ? 'default' : 'pointer',
+                  }}
+                >
+                  {lawSaved ? '✅ 저장 완료!' : isSavingLaw ? '저장 중...' : '💾 이 검색 결과 저장하기'}
+                </button>
+              )}
+
+              {/* 검색 이력 목록 */}
+              {lawSearchHistory.current.length > 0 && lawResults.length === 0 && !lawLoading && (
+                <div>
+                  <p style={{ fontSize: 11, color: '#999', marginBottom: 8 }}>최근 검색 이력</p>
+                  {lawSearchHistory.current.map((item, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => {
+                        setLawQuery(item.query);
+                        setLawResults(item.articles);
+                        setLawSummary(item.summary);
+                      }}
+                      style={{
+                        padding: '8px 12px', backgroundColor: '#fff',
+                        border: '1px solid #e5e5e5', borderRadius: 8,
+                        marginBottom: 6, cursor: 'pointer', fontSize: 13, color: '#333',
+                      }}
+                    >
+                      ⚖️ {item.query}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* 초기 안내 */}
+              {!lawLoading && lawResults.length === 0 && !lawError && lawSearchHistory.current.length === 0 && (
+                <p style={{ textAlign: 'center', color: '#999', fontSize: 13, padding: '16px 0' }}>
+                  일상어로 질문하시면 관련 법령을 찾아드립니다
+                </p>
+              )}
+
+              {/* 면책 문구 */}
+              <p style={{ fontSize: 10, color: '#bbb', textAlign: 'center', marginTop: 12 }}>
+                본 서비스는 법령 정보 제공 목적이며, 법률 자문을 대체하지 않습니다.
+              </p>
+            </div>
+  )
+          ) : selectedCategory ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {CATEGORY_FORMATS[selectedCategory].map((format) => {
-                const isSelected = selectedFormats.includes(format);
-
                 return (
                   <button
                     key={format}
-                    onClick={() => toggleFormat(format)}
+                    onClick={() => openFormatDirectly(format)}
                     className="p-2.5 rounded-lg text-center transition-all text-xs"
                     style={{
-                      backgroundColor: isSelected ? '#1A3C6E' : '#FEFBE8',
-                      border: isSelected ? 'none' : '1px solid #e5e5e5',
-                      color: isSelected ? '#FAF9F6' : '#333333',
+                      backgroundColor: '#FEFBE8',
+                      border: '1px solid #e5e5e5',
+                      color: '#333333',
                     }}
                   >
                     {format}
@@ -320,50 +690,15 @@ export function RecordPage() {
           ) : (
             <div className="text-center py-4">
               <p className="text-xs" style={{ color: '#999' }}>
-                생활 또는 업무 카테고리를 선택하세요
+                카테고리를 선택하세요
               </p>
             </div>
           )}
 
-          {/* 선택된 형식 표시 */}
-          {selectedFormats.length > 0 && (
-            <div className="mt-3 pt-3 border-t" style={{ borderColor: '#e5e5e5' }}>
-              <p className="text-xs mb-2" style={{ color: '#666' }}>
-                선택된 형식: {selectedFormats.length}개
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {selectedFormats.map((format) => (
-                  <span
-                    key={format}
-                    className="px-2 py-1 rounded text-xs"
-                    style={{
-                      backgroundColor: '#FDF6C3',
-                      color: '#1A3C6E',
-                      border: '1px solid #d0dff0',
-                    }}
-                  >
-                    {format}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
         </section>
 
-        {/* Save Button */}
-        <div className="flex justify-center pt-2 pb-2">
-          <button
-            onClick={handleSave}
-            disabled={isSaving || selectedFormats.length === 0}
-            className="px-6 py-2.5 rounded-lg flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 shadow-md"
-            style={{ backgroundColor: '#1A3C6E', color: '#FEFBE8' }}
-          >
-            <span className="tracking-wide text-sm">{isSaving ? '저장 중...' : '글쓰기'}</span>
-          </button>
-        </div>
       </div>
     </div>
-    )}
 
     {savedFormat && (
       <FormatModal

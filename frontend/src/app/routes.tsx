@@ -14,6 +14,7 @@ const MergePage = lazy(() => import('./pages/MergePage').then((m) => ({ default:
 const StatsPage = lazy(() => import('./pages/StatsPage').then((m) => ({ default: m.StatsPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 const RecordDetailPage = lazy(() => import('./pages/RecordDetailPage').then((m) => ({ default: m.RecordDetailPage })));
+const HaruRawPage = lazy(() => import('./pages/HaruRawPage').then((m) => ({ default: m.HaruRawPage })));
 
 // iOS 안전 로딩 인디케이터 (간단하고 블로킹 없음)
 function PageLoader() {
@@ -61,6 +62,7 @@ export const router = createBrowserRouter([
           { path: 'merge', element: withSuspense(<MergePage />) },
           { path: 'stats', element: withSuspense(<StatsPage />) },
           { path: 'settings', element: withSuspense(<SettingsPage />) },
+          { path: 'haruraw', element: withSuspense(<HaruRawPage />) },
           { path: 'record-detail/:date/:formatKey', element: withSuspense(<RecordDetailPage />) },
         ],
       },
