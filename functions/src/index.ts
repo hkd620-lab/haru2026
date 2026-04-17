@@ -1,5 +1,6 @@
 import { onRequest } from 'firebase-functions/v2/https';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { getStorage } from 'firebase-admin/storage';
 import { defineSecret } from 'firebase-functions/params';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as admin from 'firebase-admin';
@@ -27,7 +28,12 @@ const NAVER_CLIENT_ID_SECRET = defineSecret('NAVER_CLIENT_ID');
 const NAVER_CLIENT_SECRET_SECRET = defineSecret('NAVER_CLIENT_SECRET');
 const PORTONE_API_SECRET = defineSecret('PORTONE_API_SECRET');
 const LAW_API_KEY_SECRET = defineSecret('LAW_API_KEY');
+const GOOGLE_CLOUD_API_KEY_SECRET = defineSecret('GOOGLE_CLOUD_API_KEY');
+const OPENAI_API_KEY_SECRET = defineSecret('OPENAI_API_KEY');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
+
+// Storage 버킷
+const bucket = () => getStorage().bucket();
 
 const KAKAO_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/kakaoCallback';
 const NAVER_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/naverCallback';
@@ -1406,6 +1412,96 @@ export const lawPrecedent = onCall(
     } catch (error: any) {
       logger.error('판례 검색 실패:', error);
       throw new HttpsError('internal', '판례 검색에 실패했습니다.');
+    }
+  }
+);
+
+// ===== TTS 음성 생성 =====
+export const generateTTS = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET, GOOGLE_CLOUD_API_KEY_SECRET, OPENAI_API_KEY_SECRET],
+    timeoutSeconds: 120,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const { text, cacheKey } = request.data;
+    if (!text || !cacheKey) {
+      throw new HttpsError('invalid-argument', '텍스트와 캐시키가 필요합니다.');
+    }
+
+    const filePath = `ttsCache/${cacheKey}.mp3`;
+    const file = bucket().file(filePath);
+
+    try {
+      // 1. Storage 캐시 확인 — 캐시된 경우 서명된 URL 반환
+      const [exists] = await file.exists();
+      if (exists) {
+        const [signedUrl] = await file.getSignedUrl({
+          action: 'read',
+          expires: Date.now() + 3600 * 1000, // 1시간
+        });
+        return { success: true, audioUrl: signedUrl, cached: true };
+      }
+
+      // 2. OpenAI TTS 생성
+      const OPENAI_KEY = OPENAI_API_KEY_SECRET.value();
+
+      // 텍스트 정제 — 한글, 영문만 남기기
+      const cleanedText = text
+        .replace(/#{1,3}\s*/g, '')
+        .replace(/\*\*/g, '')
+        .replace(/\*/g, '')
+        .replace(/[`~^|\\[\]{}]/g, '')
+        .replace(/https?:\/\/\S+/g, '')
+        .replace(/[0-9]+\./g, '')
+        .replace(/[①②③④⑤⑥⑦⑧⑨⑩]/g, '')
+        .replace(/[^\uAC00-\uD7A3a-zA-Z\s.,!?]/g, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim()
+        .slice(0, 4000);
+
+      const ttsResponse = await axios.post(
+        'https://api.openai.com/v1/audio/speech',
+        {
+          model: 'tts-1',
+          input: cleanedText,
+          voice: 'nova',
+          response_format: 'mp3',
+          speed: 0.95,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${OPENAI_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          responseType: 'arraybuffer',
+          timeout: 60000,
+        }
+      );
+
+      const audioBuffer = Buffer.from(ttsResponse.data);
+      if (!audioBuffer.length) {
+        throw new HttpsError('internal', 'TTS 생성에 실패했습니다.');
+      }
+
+      await file.save(audioBuffer, {
+        metadata: { contentType: 'audio/mpeg' },
+      });
+
+      // 서명된 URL 반환 (긴 텍스트도 안전하게 처리)
+      const [signedUrl] = await file.getSignedUrl({
+        action: 'read',
+        expires: Date.now() + 3600 * 1000, // 1시간
+      });
+      return { success: true, audioUrl: signedUrl, cached: false };
+
+    } catch (error: any) {
+      logger.error('TTS 생성 실패:', error);
+      throw new HttpsError('internal', 'TTS 생성에 실패했습니다.');
     }
   }
 );

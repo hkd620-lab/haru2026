@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router';
 import { ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
@@ -33,6 +33,62 @@ interface Chapter { id: string; bookId: string; title: string; sourceTitle: stri
 interface Book { id: string; title: string; totalChapters: number; order?: number; chapters: Chapter[]; }
 
 export function SayuPage() {
+  const handleTTS = async (text: string, key: string) => {
+    // 재생 중이면 정지
+    if (ttsPlaying === key) {
+      audioRef.current?.pause();
+      setTtsPlaying(null);
+      return;
+    }
+
+    setTtsLoading(key);
+    try {
+      // 마크다운 제거한 순수 텍스트
+      const cleanText = text
+        .replace(/#{1,3}\s*/g, '')
+        .replace(/\*\*/g, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .slice(0, 3000); // 최대 3000자
+
+      const cacheKey = key.replace(/[^a-zA-Z0-9가-힣]/g, '_').slice(0, 80);
+
+      const { getFunctions, httpsCallable } = await import('firebase/functions');
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const fn = httpsCallable(fns, 'generateTTS');
+      const res: any = await fn({ text: cleanText, cacheKey });
+
+      if (res.data.audioUrl) {
+        if (audioRef.current) {
+          audioRef.current.pause();
+        }
+        try {
+          await new Promise<void>((resolve, reject) => {
+            const audio = new Audio(res.data.audioUrl);
+            audio.onloadeddata = () => {
+              audio.play().then(resolve).catch(reject);
+            };
+            audio.onerror = () => reject(new Error('오디오 로드 실패'));
+            audio.onended = () => setTtsPlaying(null);
+            audioRef.current = audio;
+            audio.load();
+          });
+          setTtsPlaying(key);
+        } catch (err) {
+          console.error('TTS 재생 오류:', err);
+          toast.error('음성 재생에 실패했습니다.');
+          setTtsPlaying(null);
+        }
+      } else {
+        console.error('TTS 응답에 audioUrl 없음:', res.data);
+        toast.error('음성 데이터를 받지 못했습니다.');
+      }
+    } catch (err) {
+      toast.error('음성 생성에 실패했습니다.');
+    } finally {
+      setTtsLoading(null);
+    }
+  };
+
   const renderStyledContent = (text: string) => {
   // AI 불필요한 서두 제거 (물론이죠, 안녕하세요 등)
   const skipPrefixes = ['물론이죠', '안녕하세요', '네,', '네.', '알겠습니다', '주어진 자료'];
@@ -223,6 +279,9 @@ export function SayuPage() {
   const [bookPage, setBookPage] = useState(1);
   const [expandedBookIds, setExpandedBookIds] = useState<Set<string>>(new Set());
   const [expandedChapterIds, setExpandedChapterIds] = useState<Set<string>>(new Set());
+  const [ttsPlaying, setTtsPlaying] = useState<string | null>(null);
+  const [ttsLoading, setTtsLoading] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [draggingBookIdx, setDraggingBookIdx] = useState<number | null>(null);
   const [draggingChapterInfo, setDraggingChapterInfo] = useState<{ bookId: string; idx: number } | null>(null);
 
@@ -1198,6 +1257,21 @@ export function SayuPage() {
                                     </div>
                                     {expandedChapterIds.has(ch.id) && ch.content && (
                                       <div style={{ borderTop: '1px solid #e8e0f0' }}>
+                                        {/* 🔊 TTS 버튼 */}
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 16px 0 16px' }}>
+                                          <button
+                                            onClick={e => { e.stopPropagation(); handleTTS(ch.content, `chapter_${ch.id}`); }}
+                                            style={{
+                                              display: 'flex', alignItems: 'center', gap: 4,
+                                              padding: '4px 12px', borderRadius: 20, border: 'none',
+                                              backgroundColor: ttsPlaying === `chapter_${ch.id}` ? '#8B4789' : '#e8e0f0',
+                                              color: ttsPlaying === `chapter_${ch.id}` ? '#fff' : '#8B4789',
+                                              fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                                            }}
+                                          >
+                                            {ttsLoading === `chapter_${ch.id}` ? '⏳' : ttsPlaying === `chapter_${ch.id}` ? '⏸ 정지' : '🔊 듣기'}
+                                          </button>
+                                        </div>
                                         {renderStyledContent(ch.content)}
                                       </div>
                                     )}
@@ -1505,7 +1579,9 @@ export function SayuPage() {
             </div>
             {harurawModal.summary && (
               <div style={{ marginBottom: 12 }}>
-                <p style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>💡 AI 분석</p>
+                <div style={{ marginBottom: 6 }}>
+                  <p style={{ fontSize: 11, color: '#888' }}>💡 AI 분석</p>
+                </div>
                 {renderStyledContent(harurawModal.summary)}
               </div>
             )}

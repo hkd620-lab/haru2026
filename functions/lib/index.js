@@ -36,9 +36,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateBook = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
+exports.generateBook = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
+const storage_1 = require("firebase-admin/storage");
 const params_1 = require("firebase-functions/params");
 const generative_ai_1 = require("@google/generative-ai");
 const admin = __importStar(require("firebase-admin"));
@@ -63,7 +64,11 @@ const NAVER_CLIENT_ID_SECRET = (0, params_1.defineSecret)('NAVER_CLIENT_ID');
 const NAVER_CLIENT_SECRET_SECRET = (0, params_1.defineSecret)('NAVER_CLIENT_SECRET');
 const PORTONE_API_SECRET = (0, params_1.defineSecret)('PORTONE_API_SECRET');
 const LAW_API_KEY_SECRET = (0, params_1.defineSecret)('LAW_API_KEY');
+const GOOGLE_CLOUD_API_KEY_SECRET = (0, params_1.defineSecret)('GOOGLE_CLOUD_API_KEY');
+const OPENAI_API_KEY_SECRET = (0, params_1.defineSecret)('OPENAI_API_KEY');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
+// Storage 버킷
+const bucket = () => (0, storage_1.getStorage)().bucket();
 const KAKAO_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/kakaoCallback';
 const NAVER_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/naverCallback';
 const GOOGLE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/googleCallback';
@@ -1191,6 +1196,79 @@ exports.lawPrecedent = (0, https_2.onCall)({
     catch (error) {
         logger.error('판례 검색 실패:', error);
         throw new https_2.HttpsError('internal', '판례 검색에 실패했습니다.');
+    }
+});
+// ===== TTS 음성 생성 =====
+exports.generateTTS = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET, GOOGLE_CLOUD_API_KEY_SECRET, OPENAI_API_KEY_SECRET],
+    timeoutSeconds: 120,
+}, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const { text, cacheKey } = request.data;
+    if (!text || !cacheKey) {
+        throw new https_2.HttpsError('invalid-argument', '텍스트와 캐시키가 필요합니다.');
+    }
+    const filePath = `ttsCache/${cacheKey}.mp3`;
+    const file = bucket().file(filePath);
+    try {
+        // 1. Storage 캐시 확인 — 캐시된 경우 서명된 URL 반환
+        const [exists] = await file.exists();
+        if (exists) {
+            const [signedUrl] = await file.getSignedUrl({
+                action: 'read',
+                expires: Date.now() + 3600 * 1000, // 1시간
+            });
+            return { success: true, audioUrl: signedUrl, cached: true };
+        }
+        // 2. OpenAI TTS 생성
+        const OPENAI_KEY = OPENAI_API_KEY_SECRET.value();
+        // 텍스트 정제 — 한글, 영문만 남기기
+        const cleanedText = text
+            .replace(/#{1,3}\s*/g, '')
+            .replace(/\*\*/g, '')
+            .replace(/\*/g, '')
+            .replace(/[`~^|\\[\]{}]/g, '')
+            .replace(/https?:\/\/\S+/g, '')
+            .replace(/[0-9]+\./g, '')
+            .replace(/[①②③④⑤⑥⑦⑧⑨⑩]/g, '')
+            .replace(/[^\uAC00-\uD7A3a-zA-Z\s.,!?]/g, ' ')
+            .replace(/\s{2,}/g, ' ')
+            .trim()
+            .slice(0, 4000);
+        const ttsResponse = await axios_1.default.post('https://api.openai.com/v1/audio/speech', {
+            model: 'tts-1',
+            input: cleanedText,
+            voice: 'nova',
+            response_format: 'mp3',
+            speed: 0.95,
+        }, {
+            headers: {
+                'Authorization': `Bearer ${OPENAI_KEY}`,
+                'Content-Type': 'application/json',
+            },
+            responseType: 'arraybuffer',
+            timeout: 60000,
+        });
+        const audioBuffer = Buffer.from(ttsResponse.data);
+        if (!audioBuffer.length) {
+            throw new https_2.HttpsError('internal', 'TTS 생성에 실패했습니다.');
+        }
+        await file.save(audioBuffer, {
+            metadata: { contentType: 'audio/mpeg' },
+        });
+        // 서명된 URL 반환 (긴 텍스트도 안전하게 처리)
+        const [signedUrl] = await file.getSignedUrl({
+            action: 'read',
+            expires: Date.now() + 3600 * 1000, // 1시간
+        });
+        return { success: true, audioUrl: signedUrl, cached: false };
+    }
+    catch (error) {
+        logger.error('TTS 생성 실패:', error);
+        throw new https_2.HttpsError('internal', 'TTS 생성에 실패했습니다.');
     }
 });
 var bookStudio_1 = require("./bookStudio");
