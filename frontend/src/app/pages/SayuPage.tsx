@@ -33,6 +33,130 @@ interface Chapter { id: string; bookId: string; title: string; sourceTitle: stri
 interface Book { id: string; title: string; totalChapters: number; order?: number; chapters: Chapter[]; }
 
 export function SayuPage() {
+  const renderStyledContent = (text: string) => {
+  // AI 불필요한 서두 제거 (물론이죠, 안녕하세요 등)
+  const skipPrefixes = ['물론이죠', '안녕하세요', '네,', '네.', '알겠습니다', '주어진 자료'];
+  const lines = text.split('\n');
+  const firstMeaningfulIdx = lines.findIndex(line => {
+    const t = line.trim();
+    if (!t) return false;
+    return !skipPrefixes.some(prefix => t.startsWith(prefix));
+  });
+  const cleanedLines = firstMeaningfulIdx >= 0 ? lines.slice(firstMeaningfulIdx) : lines;
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, #fdf6ff 0%, #f0f7ff 50%, #f6fff0 100%)',
+      padding: '24px 24px 28px 24px',
+      borderRadius: 8,
+    }}>
+      {/* 상단 장식 라인 */}
+      <div style={{
+        width: 40, height: 3,
+        background: 'linear-gradient(90deg, #8B4789, #4a90d9)',
+        borderRadius: 2, marginBottom: 20,
+      }} />
+
+      {cleanedLines.map((line, lineIdx) => {
+        const trimmed = line.trim();
+
+        // 빈 줄
+        if (!trimmed) return <div key={lineIdx} style={{ height: 10 }} />;
+
+        // ### 소제목 (### 으로 시작)
+        if (trimmed.startsWith('### ')) {
+          const clean = trimmed.replace(/^###\s*/, '').replace(/\*\*/g, '');
+          return (
+            <p key={lineIdx} style={{
+              fontSize: 13, fontWeight: 700, color: '#4a2d7a',
+              marginBottom: 6, marginTop: lineIdx > 0 ? 16 : 0,
+              lineHeight: 1.6,
+            }}>{clean}</p>
+          );
+        }
+
+        // ## 중제목
+        if (trimmed.startsWith('## ')) {
+          const clean = trimmed.replace(/^##\s*/, '').replace(/\*\*/g, '');
+          return (
+            <p key={lineIdx} style={{
+              fontSize: 14, fontWeight: 800, color: '#2d1b4e',
+              marginBottom: 8, marginTop: lineIdx > 0 ? 20 : 0,
+              paddingLeft: 10, borderLeft: '3px solid #4a90d9',
+              lineHeight: 1.5,
+            }}>{clean}</p>
+          );
+        }
+
+        // # 대제목
+        if (trimmed.startsWith('# ')) {
+          const clean = trimmed.replace(/^#\s*/, '').replace(/\*\*/g, '');
+          return (
+            <p key={lineIdx} style={{
+              fontSize: 16, fontWeight: 900, color: '#1a0a2e',
+              marginBottom: 10, marginTop: lineIdx > 0 ? 22 : 0,
+              paddingLeft: 12, borderLeft: '4px solid #8B4789',
+              lineHeight: 1.5,
+            }}>{clean}</p>
+          );
+        }
+
+        // **굵은 제목** (** 로 감싸인 줄 전체)
+        if (trimmed.startsWith('**') && trimmed.endsWith('**') && trimmed.length > 4) {
+          const clean = trimmed.replace(/\*\*/g, '');
+          return (
+            <p key={lineIdx} style={{
+              fontSize: 15, fontWeight: 800, color: '#2d1b4e',
+              marginBottom: 10, marginTop: lineIdx > 0 ? 18 : 0,
+              paddingLeft: 10, borderLeft: '3px solid #8B4789',
+              lineHeight: 1.5,
+            }}>{clean}</p>
+          );
+        }
+
+        // 숫자 목록 (1. 2. 3.)
+        if (/^\d+\./.test(trimmed)) {
+          const clean = trimmed.replace(/\*\*/g, '');
+          return (
+            <p key={lineIdx} style={{
+              fontSize: 13, fontWeight: 700, color: '#4a2d7a',
+              marginBottom: 6, marginTop: 14, lineHeight: 1.6,
+            }}>{clean}</p>
+          );
+        }
+
+        // 이모지로 시작하는 줄 (⚖️ 📌 💡 ✅ ⚠️ 등) — 강조 처리
+        if (/^[⚖️📌💡✅⚠️🔍📋]/.test(trimmed)) {
+          const clean = trimmed.replace(/\*\*/g, '');
+          return (
+            <p key={lineIdx} style={{
+              fontSize: 13, fontWeight: 600, color: '#2d1b4e',
+              marginBottom: 8, marginTop: lineIdx > 0 ? 14 : 0,
+              lineHeight: 1.7,
+            }}>{clean}</p>
+          );
+        }
+
+        // 일반 본문 (**인라인 볼드** 처리 포함)
+        const clean = trimmed.replace(/\*\*/g, '');
+        return (
+          <p key={lineIdx} style={{
+            fontSize: 13, color: '#3a3a4a',
+            lineHeight: 1.9, marginBottom: 4,
+            letterSpacing: '0.01em',
+          }}>{clean}</p>
+        );
+      })}
+
+      {/* 하단 장식 */}
+      <div style={{
+        marginTop: 24, textAlign: 'center' as const,
+        fontSize: 16, color: '#c9b8e0', letterSpacing: 8,
+      }}>✦ ✦ ✦</div>
+    </div>
+  );
+};
+
   const location = useLocation();
   const { user } = useAuth();
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -41,7 +165,7 @@ export function SayuPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string; recordId?: string }[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', 'HARUraw', 'AI지식모음', '읽을거리']));
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루LAW', 'AI지식모음', '읽을거리']));
   const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
   const [sayuModalState, setSayuModalState] = useState<{
     isOpen: boolean;
@@ -98,6 +222,7 @@ export function SayuPage() {
   const [bookSearch, setBookSearch] = useState('');
   const [bookPage, setBookPage] = useState(1);
   const [expandedBookIds, setExpandedBookIds] = useState<Set<string>>(new Set());
+  const [expandedChapterIds, setExpandedChapterIds] = useState<Set<string>>(new Set());
   const [draggingBookIdx, setDraggingBookIdx] = useState<number | null>(null);
   const [draggingChapterInfo, setDraggingChapterInfo] = useState<{ bookId: string; idx: number } | null>(null);
 
@@ -106,7 +231,7 @@ export function SayuPage() {
   }, [user?.uid, currentMonth]);
 
   useEffect(() => {
-    setCollapsedCategories(new Set(['생활', '업무', 'HARUraw', 'AI지식모음', '읽을거리']));
+    setCollapsedCategories(new Set(['생활', '업무', '하루LAW', 'AI지식모음', '읽을거리']));
     setExpandedFormats(new Set());
   }, [location.pathname]);
 
@@ -509,6 +634,20 @@ export function SayuPage() {
     } catch { toast.error('삭제 실패'); }
   };
 
+  // Delete a book and all its chapters (developer only)
+  const handleDeleteBook = async (bookId: string) => {
+    if (!isDeveloper) return;
+    try {
+      const chapSnap = await getDocs(collection(db, 'books', bookId, 'chapters'));
+      const batch = writeBatch(db);
+      chapSnap.docs.forEach(d => batch.delete(d.ref));
+      batch.delete(doc(db, 'books', bookId));
+      await batch.commit();
+      setBooks(prev => prev.filter(b => b.id !== bookId));
+      toast.success('책이 삭제되었습니다');
+    } catch { toast.error('삭제 실패'); }
+  };
+
   // Update book order in Firestore
   const updateBookOrderInFirestore = async (newBooks: Book[]) => {
     const batch = writeBatch(db);
@@ -558,7 +697,7 @@ export function SayuPage() {
         recordId: r.id,
       }));
     if (harurawEntries.length > 0) {
-      result.push({ category: 'HARUraw', formats: [{ format: 'HARUraw' as any, entries: harurawEntries }] });
+      result.push({ category: '하루LAW', formats: [{ format: 'HARUraw' as any, entries: harurawEntries }] });
     }
 
     for (const category of ['생활', '업무'] as const) {
@@ -769,7 +908,9 @@ export function SayuPage() {
               <p className="text-sm" style={{ color: '#999' }}>이 달의 기록이 없습니다</p>
             </div>
           ) : (
-            listData.map(({ category, formats }) => (
+            listData.map(({ category, formats }) => {
+              if (category === '하루LAW') return null;
+              return (
               <div key={category} className="mb-4">
                 {/* 카테고리 헤더 */}
                 <button
@@ -797,7 +938,7 @@ export function SayuPage() {
                       />
                     </div>
                     {formats.map(({ format, entries }, fIdx) => {
-                      const prefix = category === 'HARUraw' ? 'haruraw' : FORMAT_PREFIX[format as RecordFormat];
+                      const prefix = category === '하루LAW' ? 'haruraw' : FORMAT_PREFIX[format as RecordFormat];
                       const isFormatExpanded = expandedFormats.has(prefix);
 
                       const searchTerm = (categorySearch[category] || '').toLowerCase();
@@ -822,7 +963,7 @@ export function SayuPage() {
                             style={{ backgroundColor: '#FEFBE8' }}
                           >
                             <div className="flex items-center gap-2">
-                              <span className="text-sm">{category === 'HARUraw' ? '⚖️' : FORMAT_EMOJI[format as RecordFormat]}</span>
+                              <span className="text-sm">{category === '하루LAW' ? '⚖️' : FORMAT_EMOJI[format as RecordFormat]}</span>
                               <span className="text-xs font-semibold" style={{ color: '#333' }}>{String(format)}</span>
                               <span className="text-xs" style={{ color: '#999' }}>({entries.length})</span>
                             </div>
@@ -874,7 +1015,8 @@ export function SayuPage() {
                   </div>
                 )}
               </div>
-            ))
+              );
+            })
           )}
 
           {/* 구분선 */}
@@ -1000,6 +1142,14 @@ export function SayuPage() {
                                 </div>
                                 <span style={{ fontSize: '10px', color: '#1A3C6E' }}>{isExpanded ? '▼' : '▶'}</span>
                               </button>
+                              {isDeveloper && (
+                                <button
+                                  onClick={e => { e.stopPropagation(); handleDeleteBook(book.id); }}
+                                  className="ml-2 text-xs flex-shrink-0 hover:text-red-600 transition-colors"
+                                  style={{ color: '#ccc' }}
+                                  title="책 삭제"
+                                >✕</button>
+                              )}
                             </div>
                             {isExpanded && (
                               <div className="border-t" style={{ borderColor: '#f0f0f0' }}>
@@ -1007,8 +1157,7 @@ export function SayuPage() {
                                   <p className="px-4 py-2 text-xs" style={{ color: '#999' }}>챕터가 없습니다</p>
                                 ) : book.chapters.map((ch, chIdx) => (
                                   <div key={ch.id}
-                                    className="flex items-center border-t px-4 py-2"
-                                    style={{ borderColor: '#f5f5f5', backgroundColor: '#fafafa' }}
+                                    style={{ borderColor: '#f5f5f5' }}
                                     draggable={isDeveloper}
                                     onDragStart={isDeveloper ? () => setDraggingChapterInfo({ bookId: book.id, idx: chIdx }) : undefined}
                                     onDragOver={isDeveloper ? (e) => e.preventDefault() : undefined}
@@ -1022,17 +1171,35 @@ export function SayuPage() {
                                       updateChapterOrderInFirestore(book.id, newChapters).catch(console.error);
                                     } : undefined}
                                   >
-                                    {isDeveloper && <span className="text-gray-300 mr-2 cursor-grab select-none text-xs">☰</span>}
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-xs font-medium truncate" style={{ color: '#333' }}>{ch.title}</p>
-                                      {ch.sourceTitle && <p className="text-xs" style={{ color: '#999' }}>{ch.sourceTitle}</p>}
+                                    <div
+                                      className="flex items-center border-t px-4 py-2 cursor-pointer hover:bg-yellow-50"
+                                      style={{ borderColor: '#f5f5f5', backgroundColor: '#fafafa' }}
+                                      onClick={() => setExpandedChapterIds(prev => {
+                                        const next = new Set(prev);
+                                        if (next.has(ch.id)) next.delete(ch.id); else next.add(ch.id);
+                                        return next;
+                                      })}
+                                    >
+                                      {isDeveloper && <span className="text-gray-300 mr-2 cursor-grab select-none text-xs">☰</span>}
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-medium truncate" style={{ color: '#333' }}>{ch.title}</p>
+                                        {ch.sourceTitle && <p className="text-xs" style={{ color: '#999' }}>{ch.sourceTitle}</p>}
+                                      </div>
+                                      <span style={{ fontSize: '10px', color: '#1A3C6E' }}>
+                                        {expandedChapterIds.has(ch.id) ? '▼' : '▶'}
+                                      </span>
+                                      {isDeveloper && (
+                                        <button
+                                          onClick={e => { e.stopPropagation(); handleDeleteChapter(book.id, ch.id); }}
+                                          className="ml-2 text-xs flex-shrink-0 hover:text-red-600 transition-colors"
+                                          style={{ color: '#ccc' }} title="챕터 삭제"
+                                        >✕</button>
+                                      )}
                                     </div>
-                                    {isDeveloper && (
-                                      <button
-                                        onClick={() => handleDeleteChapter(book.id, ch.id)}
-                                        className="ml-2 text-xs flex-shrink-0 hover:text-red-600 transition-colors"
-                                        style={{ color: '#ccc' }} title="챕터 삭제"
-                                      >✕</button>
+                                    {expandedChapterIds.has(ch.id) && ch.content && (
+                                      <div style={{ borderTop: '1px solid #e8e0f0' }}>
+                                        {renderStyledContent(ch.content)}
+                                      </div>
                                     )}
                                   </div>
                                 ))}
@@ -1057,6 +1224,100 @@ export function SayuPage() {
               </div>
             )}
           </div>
+
+          {/* 하루LAW */}
+          {(() => {
+            const haruLawCategory = listData.find(d => d.category === '하루LAW');
+            if (!haruLawCategory) return null;
+            const { category, formats } = haruLawCategory;
+            return (
+              <div key={category} className="mb-4">
+                <button
+                  onClick={() => toggleCategory(category)}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
+                  style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
+                >
+                  <span>{category}</span>
+                  <span style={{ fontSize: '10px' }}>
+                    {collapsedCategories.has(category) ? '▶' : '▼'}
+                  </span>
+                </button>
+                {!collapsedCategories.has(category) && (
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div className="px-3 py-2" style={{ backgroundColor: '#f9fafb' }}>
+                      <input
+                        type="text"
+                        value={categorySearch[category] || ''}
+                        onChange={e => setCategorySearch(prev => ({ ...prev, [category]: e.target.value }))}
+                        placeholder="제목으로 검색..."
+                        className="w-full px-3 py-1.5 text-xs rounded border outline-none"
+                        style={{ borderColor: '#d1d5db', backgroundColor: '#fff', fontSize: 14 }}
+                      />
+                    </div>
+                    {formats.map(({ format, entries }, fIdx) => {
+                      const prefix = 'haruraw';
+                      const isFormatExpanded = expandedFormats.has(prefix);
+                      const searchTerm = (categorySearch[category] || '').toLowerCase();
+                      const filteredEntries = searchTerm ? entries.filter(e => e.title.toLowerCase().includes(searchTerm)) : entries;
+                      const pageKey = `${prefix}_${category}`;
+                      const page = formatPages[pageKey] || 1;
+                      const totalPages = Math.ceil(filteredEntries.length / PAGE_SIZE);
+                      const pagedEntries = filteredEntries.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+                      return (
+                        <div key={String(format)} className={fIdx > 0 ? 'border-t' : ''} style={{ borderColor: '#f0f0f0' }}>
+                          <button
+                            onClick={() => toggleFormat(prefix)}
+                            className="w-full flex items-center justify-between px-3 py-2 hover:opacity-80 transition-opacity"
+                            style={{ backgroundColor: '#FEFBE8' }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm">⚖️</span>
+                              <span className="text-xs font-semibold" style={{ color: '#333' }}>{String(format)}</span>
+                              <span className="text-xs" style={{ color: '#999' }}>({entries.length})</span>
+                            </div>
+                            <span style={{ fontSize: '10px', color: '#1A3C6E' }}>{isFormatExpanded ? '▼' : '▶'}</span>
+                          </button>
+                          {isFormatExpanded && (
+                            <>
+                              {pagedEntries.map((entry) => (
+                                <div key={`${entry.date}-${entry.formatKey}-${entry.recordId}`} className="w-full flex items-center gap-1 border-t" style={{ borderColor: '#f5f5f5' }}>
+                                  <button
+                                    className="flex items-center gap-3 flex-1 px-4 py-2.5 text-left hover:bg-yellow-50 transition-colors"
+                                    onClick={() => openFormatSayu(entry.date, entry.formatKey, format as any, entry.recordId)}
+                                  >
+                                    <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: '32px' }}>{formatListDate(entry.date)}</span>
+                                    <span className="text-sm flex-1 truncate" style={{ color: '#333' }}>{entry.title}</span>
+                                  </button>
+                                  <button
+                                    onClick={e => { e.stopPropagation(); handleDeleteRecord(entry.recordId); }}
+                                    className="px-3 py-2.5 text-xs flex-shrink-0 hover:text-red-600 transition-colors"
+                                    style={{ color: '#ccc' }}
+                                    title="삭제"
+                                  >✕</button>
+                                </div>
+                              ))}
+                              {totalPages > 1 && (
+                                <div className="flex justify-center gap-1 py-2 px-3 border-t" style={{ borderColor: '#f0f0f0' }}>
+                                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                                    <button
+                                      key={p}
+                                      onClick={() => setFormatPages(prev => ({ ...prev, [pageKey]: p }))}
+                                      className="w-7 h-7 rounded text-xs font-medium transition-all"
+                                      style={{ backgroundColor: page === p ? '#1A3C6E' : '#f3f4f6', color: page === p ? '#fff' : '#333' }}
+                                    >{p}</button>
+                                  ))}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -1234,7 +1495,7 @@ export function SayuPage() {
             style={{ width: '100%', maxHeight: '80vh', backgroundColor: '#fff', borderRadius: '16px 16px 0 0', padding: 20, overflowY: 'auto' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E' }}>⚖️ HARUraw 검색 기록</p>
+              <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E' }}>⚖️ 하루LAW 검색 기록</p>
               <button onClick={() => setHarurawModal({ isOpen: false, query: '', summary: '', articles: '' })}
                 style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#999' }}>✕</button>
             </div>
@@ -1243,19 +1504,15 @@ export function SayuPage() {
               <p style={{ fontSize: 14, color: '#1A3C6E', fontWeight: 600 }}>{harurawModal.query}</p>
             </div>
             {harurawModal.summary && (
-              <div style={{ padding: 12, backgroundColor: '#EEF4FF', border: '1px solid #c7d9f8', borderRadius: 8, marginBottom: 12 }}>
-                <p style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>💡 AI 분석</p>
-                <p style={{ fontSize: 13, color: '#333', lineHeight: 1.7 }}>{harurawModal.summary}</p>
+              <div style={{ marginBottom: 12 }}>
+                <p style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>💡 AI 분석</p>
+                {renderStyledContent(harurawModal.summary)}
               </div>
             )}
             {harurawModal.articles && (
               <div style={{ marginBottom: 16 }}>
-                <p style={{ fontSize: 11, color: '#888', marginBottom: 8 }}>📋 관련 법조문</p>
-                {harurawModal.articles.split('\n\n').map((article, i) => (
-                  <div key={i} style={{ padding: 12, backgroundColor: '#fafafa', border: '1px solid #e0e0e0', borderRadius: 8, marginBottom: 8 }}>
-                    <p style={{ fontSize: 12, color: '#444', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{article}</p>
-                  </div>
-                ))}
+                <p style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>📋 관련 법조문</p>
+                {renderStyledContent(harurawModal.articles)}
               </div>
             )}
             <p style={{ fontSize: 10, color: '#bbb', textAlign: 'center', marginTop: 8 }}>

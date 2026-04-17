@@ -1232,7 +1232,7 @@ export const lawSearch = onCall(
       const selectModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
       const selectResult = await selectModel.generateContent(
         `다음은 ${lawName}의 조문 목록입니다.
-사용자 질문 "${query}"과 가장 관련된 조문 번호를 최대 5개만 골라서
+사용자 질문 "${query}"과 가장 관련된 조문 번호를 최대 3개만 골라서
 쉼표로 구분하여 출력하세요. 조문 번호만 (예: 제311조,제312조,제307조)
 
 조문 목록:
@@ -1246,7 +1246,7 @@ ${allText.slice(0, 8000)}`
 
       const cleanedJomuns = allJomuns
         .filter((j: any) => selectedNums.includes(j.articleStr))
-        .slice(0, 5);
+        .slice(0, 3);
 
       // 선별 실패 시 상위 3개
       const finalJomuns = cleanedJomuns.length > 0 ? cleanedJomuns : allJomuns.slice(0, 3);
@@ -1297,6 +1297,7 @@ export const lawEasyExplain = onCall(
   {
     region: 'asia-northeast3',
     secrets: [GEMINI_API_KEY_SECRET],
+    timeoutSeconds: 300,
   },
   async (request) => {
     const { lawText, userQuery } = request.data;
@@ -1308,29 +1309,32 @@ export const lawEasyExplain = onCall(
     try {
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
       const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-pro',
+        model: 'gemini-2.5-flash',
         systemInstruction: `당신은 실무 경력 20년의 대한민국 법률 전문가입니다.
-사용자의 질문에서 질문자의 역할(입장)을 먼저 파악하고, 그 입장에 맞게 답변하세요.
+사용자의 질문과 관련 법조문을 바탕으로, 반드시 아래 형식으로만 답변하세요.
+마크다운 기호(**, ##, --, >, __)는 절대 사용하지 마세요.
 
-## 역할 판단 기준
-- 피해자: "당했어요", "피해를 입었어요", "신고하고 싶어요"
-- 피고발인: "고발당했어요", "억울해요", "나를 신고했어요", "지목됐어요"
-- 제3자(관리자): "직원이 신고했어요", "어떻게 처리해야 하나요"
-- 불명확: 역할을 먼저 명시하고 두 입장 모두 간략히 안내
+⚖️ 관련 법조문 핵심 요약:
+(이 조문이 다루는 내용을 2문장 이내로 쉽게 설명)
 
-## 답변 형식 (마크다운 기호 **, ##, --, > 사용 절대 금지)
+📌 Case 1 — 내가 가해자라면 (가상 시나리오)
+예상 처벌:
+(이 법조문 기준으로 받을 수 있는 최대 처벌을 구체적으로 설명. 예: 징역 OO년 또는 벌금 OOO만원)
 
-📌 [역할 명시]
-(예: "고발을 당하신 입장에서 안내드립니다.")
+처벌을 낮추려면:
+(실질적으로 할 수 있는 행동 2~3가지. 예: 합의, 자수, 반성문 등)
 
-✅ 지금 당장 해야 할 일:
-(질문자 입장에 맞는 실질적 행동 지침 2~3가지)
+📌 Case 2 — 내가 피해자라면 (가상 시나리오)
+가해자를 처벌하려면:
+(신고 방법, 고소장 제출 등 구체적 행동 2~3가지)
 
-🔍 관련 법 조문 핵심:
-(법조문 중 질문자에게 적용되는 내용만 쉽게 설명)
+AI 의견:
+(이 상황에서 피해자가 가장 현명하게 대처하는 방법에 대한 전문가 소견 2~3문장)
 
-⚠️ 꼭 기억하세요:
-(가장 중요한 주의사항 1가지)`
+⚠️ 주의사항:
+(놓치기 쉬운 중요한 점 1가지)
+
+본 내용은 법령 정보 제공 목적이며, 전문적인 법률 자문을 대체할 수 없습니다.`
       });
 
       const prompt = userQuery
@@ -1354,6 +1358,7 @@ export const lawPrecedent = onCall(
   {
     region: 'asia-northeast3',
     secrets: [GEMINI_API_KEY_SECRET],
+    timeoutSeconds: 300,
   },
   async (request) => {
     const { lawText, userQuery } = request.data;
@@ -1365,7 +1370,7 @@ export const lawPrecedent = onCall(
     try {
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
       const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-pro',
+        model: 'gemini-2.5-flash',
         systemInstruction: `당신은 실무 경력 20년의 대한민국 법률 전문가입니다.
 해당 법 조문과 사용자 질문에 맞는 실제 대법원 판례를 2개 제시하세요.
 반드시 JSON 배열 형식으로만 출력하세요. 다른 텍스트 없이.
@@ -1385,8 +1390,11 @@ export const lawPrecedent = onCall(
       // JSON 파싱 시도
       let precedents;
       try {
-        precedents = JSON.parse(result.response.text());
+        let rawText = result.response.text().trim();
+        rawText = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+        precedents = JSON.parse(rawText);
       } catch (parseError) {
+        logger.error('판례 JSON 파싱 실패, 원문:', result.response.text());
         throw new HttpsError('internal', '판례 정보 파싱에 실패했습니다.');
       }
 
