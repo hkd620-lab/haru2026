@@ -438,7 +438,7 @@ export function SayuModal({
           weather: editedWeather,
           temperature: editedTemperature,
         };
-        if (editedTitle.trim() && formatKey) {
+        if (formatKey) {
           titleUpdate[`${formatKey}_title`] = editedTitle.trim();
         }
         await updateDoc(recordRef, titleUpdate);

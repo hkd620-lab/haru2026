@@ -237,10 +237,14 @@ export function SayuPage() {
     temperature?: string;
     mood?: string;
     images?: string[];
+    title?: string;
+    aiTitle?: string;
   }>({
     isOpen: false,
     content: '',
     dateLabel: '',
+    title: '',
+    aiTitle: '',
   });
 
   const [showSayuGuide, setShowSayuGuide] = useState(() => {
@@ -565,6 +569,8 @@ export function SayuPage() {
       format: formatLabel,
       formatKey,
       firestoreId: record.id,
+      title: (record[`${formatKey}_title`] as string) || '',
+      aiTitle: (record[`${formatKey}_ai_title`] as string) || '',
       dateLabel: new Date(dateStr + 'T00:00:00').toLocaleDateString('ko-KR', {
         month: 'long',
         day: 'numeric',
@@ -739,7 +745,7 @@ export function SayuPage() {
       category: string;
       formats: {
         format: RecordFormat | any;
-        entries: { date: string; title: string; hasSayu: boolean; formatKey: string; recordId: string }[];
+        entries: { date: string; title: string; aiTitle?: string; hasSayu: boolean; formatKey: string; recordId: string }[];
       }[];
     };
 
@@ -771,19 +777,22 @@ export function SayuPage() {
           })
           .map((r) => {
             const firstFieldKey = FORMAT_FIRST_FIELD[prefix];
-            const aiTitle = r[`${prefix}_title`] as string | undefined;
+            const aiTitle = r[`${prefix}_ai_title`] as string | undefined;
             const validAiTitle = aiTitle && !/^[\d\s:.,\-\/]+$/.test(aiTitle.trim()) && aiTitle.trim().length >= 2 ? aiTitle : '';
-            let rawTitle = validAiTitle || (firstFieldKey ? (r[firstFieldKey] || '') : '');
+            let rawTitle = (r[`${prefix}_title`] as string || '') || validAiTitle || (firstFieldKey ? (r[firstFieldKey] || '') : '');
             if (!rawTitle) {
               const fallbackKey = Object.keys(r).find(
                 (k) => k.startsWith(`${prefix}_`) && !k.endsWith('_sayu') && !k.endsWith('_rating') && !k.endsWith('_polished') && !k.endsWith('_images') && !k.endsWith('_stats') && !k.endsWith('_tags') && !k.endsWith('_space') && !k.endsWith('_title') && typeof r[k] === 'string' && r[k].trim()
               );
               rawTitle = fallbackKey ? r[fallbackKey] : '';
             }
-            const title = rawTitle.slice(0, 20) || '(내용 없음)';
+            const userTitle = (r[`${prefix}_title`] as string || '').slice(0, 20);
+            const displayAiTitle = validAiTitle ? validAiTitle.slice(0, 20) : '';
+            const title = userTitle || rawTitle.slice(0, 20) || '(내용 없음)';
             return {
               date: r.date,
               title,
+              aiTitle: (displayAiTitle && displayAiTitle !== title) ? displayAiTitle : '',
               hasSayu: !!r[`${prefix}_sayu`],
               formatKey: prefix,
               recordId: r.id,
@@ -1041,7 +1050,12 @@ export function SayuPage() {
                                     onClick={() => openFormatSayu(entry.date, entry.formatKey, format as any, entry.recordId)}
                                   >
                                     <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: '32px' }}>{formatListDate(entry.date)}</span>
-                                    <span className="text-sm flex-1 truncate" style={{ color: '#333' }}>{entry.title}</span>
+                                    <span className="text-sm flex-1" style={{ color: '#333', overflow: 'hidden' }}>
+                                      <span className="truncate" style={{ display: 'inline' }}>{entry.title}</span>
+                                      {entry.aiTitle && entry.aiTitle !== entry.title && (
+                                        <span style={{ color: '#999', fontSize: 11, marginLeft: 4, whiteSpace: 'nowrap' }}>({entry.aiTitle})</span>
+                                      )}
+                                    </span>
                                     {entry.hasSayu && (
                                       <span className="rounded-full flex-shrink-0" style={{ width: '8px', height: '8px', backgroundColor: '#10b981', display: 'inline-block' }} />
                                     )}
@@ -1360,7 +1374,12 @@ export function SayuPage() {
                                     onClick={() => openFormatSayu(entry.date, entry.formatKey, format as any, entry.recordId)}
                                   >
                                     <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: '32px' }}>{formatListDate(entry.date)}</span>
-                                    <span className="text-sm flex-1 truncate" style={{ color: '#333' }}>{entry.title}</span>
+                                    <span className="text-sm flex-1" style={{ color: '#333', overflow: 'hidden' }}>
+                                      <span className="truncate" style={{ display: 'inline' }}>{entry.title}</span>
+                                      {entry.aiTitle && entry.aiTitle !== entry.title && (
+                                        <span style={{ color: '#999', fontSize: 11, marginLeft: 4, whiteSpace: 'nowrap' }}>({entry.aiTitle})</span>
+                                      )}
+                                    </span>
                                   </button>
                                   <button
                                     onClick={e => { e.stopPropagation(); handleDeleteRecord(entry.recordId); }}
@@ -1555,6 +1574,7 @@ export function SayuPage() {
         images={sayuModalState.images}
         formatKey={sayuModalState.formatKey}
         firestoreId={sayuModalState.firestoreId}
+        title={sayuModalState.title}
         onRefresh={undefined}
       />
 

@@ -285,7 +285,7 @@ ${contentForTitle.slice(0, 600)}`;
                     .trim()
                     .slice(0, 20);
                 if (isValidTitle(title)) {
-                    updates[`${prefix}_title`] = title;
+                    updates[`${prefix}_ai_title`] = title;
                     count++;
                 }
             }
@@ -1234,7 +1234,7 @@ exports.generateTTS = (0, https_2.onCall)({
             .replace(/https?:\/\/\S+/g, '')
             .replace(/[0-9]+\./g, '')
             .replace(/[①②③④⑤⑥⑦⑧⑨⑩]/g, '')
-            .replace(/[^\uAC00-\uD7A3a-zA-Z\s.,!?]/g, ' ')
+            .replace(/[^\uAC00-\uD7A3a-zA-Z0-9\s.,!?]/g, ' ')
             .replace(/\s{2,}/g, ' ')
             .trim()
             .slice(0, 4000);
