@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../../firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { firestoreService } from '../services/firestoreService';
 
 interface DiaryItem {
   id: string;
@@ -71,27 +71,24 @@ export function DiaryLearnPage() {
     if (!user) return;
     const load = async () => {
       try {
-        const ref = collection(db, 'users', user.uid, 'records');
-        const snap = await getDocs(ref);
+        const records = await firestoreService.getRecords(user.uid);
         const items: DiaryItem[] = [];
-        snap.forEach(dateDoc => {
-          const data = dateDoc.data();
-          Object.entries(data).forEach(([key, val]: any) => {
+        records.forEach((record: any) => {
+          Object.entries(record).forEach(([key, val]: any) => {
             if (
               (key.startsWith('diary_') || key.startsWith('essay_')) &&
               !key.endsWith('_sayu') &&
               val?.content
             ) {
               items.push({
-                id: `${dateDoc.id}_${key}`,
-                date: dateDoc.id,
+                id: `${record.id}_${key}`,
+                date: record.id,
                 title: val.title || '제목 없음',
                 content: val.content,
               });
             }
           });
         });
-        items.sort((a, b) => b.date.localeCompare(a.date));
         setDiaries(items);
       } catch (e) {
         console.error(e);
