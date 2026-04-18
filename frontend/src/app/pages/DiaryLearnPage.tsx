@@ -45,7 +45,14 @@ export function DiaryLearnPage() {
   const [ttsPlaying, setTtsPlaying] = useState<string | null>(null);
   const [ttsLoading, setTtsLoading] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [wordPopup, setWordPopup] = useState<{ word: string; meaning: string; pos: string } | null>(null);
+  const [wordPopup, setWordPopup] = useState<{
+    word: string;
+    meaning: string;
+    partOfSpeech: string;
+    phonetic: string;
+    koreanPronunciation: string;
+    loading: boolean;
+  } | null>(null);
   const [wordMode, setWordMode] = useState<number | null>(null);
   const [grammarPopup, setGrammarPopup] = useState<GrammarPopup | null>(null);
   const [quizPopup, setQuizPopup] = useState<QuizPopup | null>(null);
@@ -216,17 +223,25 @@ export function DiaryLearnPage() {
   }, [fns]);
 
   // 단어 클릭
-  const handleWordClick = async (word: string) => {
-    const clean = word.replace(/[^a-zA-Z]/g, '');
-    if (!clean) return;
+  const handleWordClick = useCallback(async (word: string) => {
+    const cleanWord = word.replace(/[^a-zA-Z]/g, '');
+    if (!cleanWord) return;
+    setWordPopup({ word: cleanWord, meaning: '', partOfSpeech: '', phonetic: '', koreanPronunciation: '', loading: true });
     try {
       const fn = httpsCallable(fns, 'getWordMeaning');
-      const res: any = await fn({ word: clean });
-      setWordPopup({ word: clean, meaning: res.data.meaning, pos: res.data.partOfSpeech || '' });
+      const res: any = await fn({ word: cleanWord });
+      setWordPopup({
+        word: cleanWord,
+        meaning: res.data.meaning || '뜻을 찾을 수 없습니다.',
+        partOfSpeech: res.data.partOfSpeech || '',
+        phonetic: res.data.phonetic || '',
+        koreanPronunciation: res.data.koreanPronunciation || '',
+        loading: false,
+      });
     } catch {
-      setWordPopup({ word: clean, meaning: '뜻을 가져오지 못했습니다', pos: '' });
+      setWordPopup({ word: cleanWord, meaning: '오류가 발생했습니다.', partOfSpeech: '', phonetic: '', koreanPronunciation: '', loading: false });
     }
-  };
+  }, [fns]);
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#FAF9F6' }}>
@@ -468,17 +483,48 @@ export function DiaryLearnPage() {
         )}
       </div>
 
-      {/* 단어 팝업 */}
+      {/* 단어 팝업 — 성경과 완전 동일 */}
       {wordPopup && (
         <div onClick={() => setWordPopup(null)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
           <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, backgroundColor: '#fff', borderRadius: '20px 20px 0 0', padding: '24px 24px 40px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <p style={{ fontSize: 15, fontWeight: 800, color: '#1A3C6E', margin: 0 }}>📖 단어 뜻</p>
+              <p style={{ fontSize: 22, fontWeight: 800, color: '#1A3C6E', margin: 0 }}>{wordPopup.word}</p>
               <button onClick={() => setWordPopup(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999' }}>✕</button>
             </div>
-            <p style={{ fontSize: 20, fontWeight: 800, color: '#1A3C6E', marginBottom: 4 }}>{wordPopup.word}</p>
-            {wordPopup.pos && <p style={{ fontSize: 12, color: '#8B4789', marginBottom: 8 }}>{wordPopup.pos}</p>}
-            <p style={{ fontSize: 15, color: '#333', lineHeight: 1.7 }}>{wordPopup.meaning}</p>
+            {wordPopup.loading ? (
+              <p style={{ color: '#999', fontSize: 14 }}>뜻을 찾는 중...</p>
+            ) : (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                  {wordPopup.partOfSpeech && (
+                    <span style={{ fontSize: 11, fontWeight: 600, color: '#8B4789', backgroundColor: '#f0e6f6', padding: '3px 8px', borderRadius: 10 }}>
+                      {wordPopup.partOfSpeech}
+                    </span>
+                  )}
+                  {wordPopup.phonetic && (
+                    <span style={{ fontSize: 13, color: '#666', backgroundColor: '#f5f5f5', padding: '3px 8px', borderRadius: 10 }}>
+                      {wordPopup.phonetic}
+                    </span>
+                  )}
+                  {wordPopup.koreanPronunciation && (
+                    <span style={{ fontSize: 13, color: '#1A3C6E', backgroundColor: '#EDE9F5', padding: '3px 8px', borderRadius: 10 }}>
+                      [{wordPopup.koreanPronunciation}]
+                    </span>
+                  )}
+                </div>
+                <p style={{ fontSize: 18, color: '#333', fontWeight: 600, margin: '8px 0 16px' }}>{wordPopup.meaning}</p>
+                <button
+                  onClick={() => handleTTS(wordPopup.word, `word_${wordPopup.word}`)}
+                  style={{
+                    padding: '8px 20px', borderRadius: 20, border: 'none',
+                    backgroundColor: ttsPlaying === `word_${wordPopup.word}` ? '#8B4789' : '#1A3C6E',
+                    color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  {ttsLoading === `word_${wordPopup.word}` ? '⏳' : '🔊 발음 듣기'}
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
