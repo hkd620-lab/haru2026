@@ -84,11 +84,14 @@ export function DiaryLearnPage() {
             const title = record[`${prefix}_title`] || record.title || '제목 없음';
 
             const contentFields = Object.entries(record)
-              .filter(([key]) => key.startsWith(`${prefix}_`) && !key.endsWith('_title') && !key.endsWith('_sayu'))
-              .map(([key, val]) => {
-                const label = key.replace(`${prefix}_`, '');
-                return `[${label}]\n${val}`;
-              })
+              .filter(([key]) =>
+                key.startsWith(`${prefix}_`) &&
+                !key.endsWith('_title') &&
+                !key.endsWith('_sayu')
+              )
+              .filter(([, val]) => typeof val === 'string')
+              .map(([, val]) => (val as string).trim())
+              .filter(v => v.length > 0)
               .join('\n\n');
 
             return {
