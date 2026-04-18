@@ -188,7 +188,7 @@ export function DiaryLearnPage() {
     setGrammarPopup({ text, loading: true });
     try {
       const fn = httpsCallable(fns, 'getGrammarExplain');
-      const res: any = await fn({ text });
+      const res: any = await fn({ verseText: text });
       setGrammarPopup({
         text,
         loading: false,
@@ -206,7 +206,7 @@ export function DiaryLearnPage() {
     setQuizPopup({ text, loading: true });
     try {
       const fn = httpsCallable(fns, 'getVerseQuiz');
-      const res: any = await fn({ text });
+      const res: any = await fn({ verseText: text });
       setQuizPopup({
         text,
         loading: false,
