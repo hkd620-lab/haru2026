@@ -484,7 +484,7 @@ export function RecordPage() {
                     backgroundColor: '#f8faff',
                     cursor: 'pointer', textAlign: 'left',
                   }}
-                  onClick={() => setDiaryLearnOpen(true)}
+                  onClick={() => navigate('/diary-learn')}
                 >
                   <span style={{ fontSize: 32 }}>✍️</span>
                   <div>

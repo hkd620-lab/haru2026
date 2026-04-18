@@ -24,6 +24,7 @@ import { RefundPage } from './pages/RefundPage';
 import { BookStudio } from './pages/BookStudio';
 import { BookCreate } from './pages/BookCreate';
 import { BiblePage } from './pages/BiblePage';
+import { DiaryLearnPage } from './pages/DiaryLearnPage';
 import { BottomNav } from './components/BottomNav';
 import { Footer } from './components/Footer';
 import { setupForegroundMessageListener, requestNotificationPermission } from './services/notificationService';
@@ -110,6 +111,7 @@ function App() {
 
               {/* 영어성경학습 */}
               <Route path="/bible" element={<BiblePage />} />
+              <Route path="/diary-learn" element={<DiaryLearnPage />} />
 
               {/* 구독 페이지 */}
               <Route path="/subscription" element={<SubscriptionPage />} />
