@@ -154,6 +154,15 @@ export function BiblePage() {
               e.currentTarget.style.backgroundColor = 'transparent';
               e.currentTarget.style.color = '#333';
             }}
+            onTouchStart={e => {
+              e.currentTarget.style.backgroundColor = '#1A3C6E';
+              e.currentTarget.style.color = '#fff';
+              e.currentTarget.style.borderRadius = '4px';
+            }}
+            onTouchEnd={e => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.color = '#333';
+            }}
           >
             {word}
           </span>
