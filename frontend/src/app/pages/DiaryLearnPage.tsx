@@ -74,7 +74,8 @@ export function DiaryLearnPage() {
         const records = await firestoreService.getRecords(user.uid);
         const items: DiaryItem[] = records
           .filter((record: any) =>
-            record.format === 'diary' || record.format === 'essay'
+            Array.isArray(record.formats) &&
+            (record.formats.includes('일기') || record.formats.includes('에세이'))
           )
           .map((record: any) => ({
             id: record.id,
