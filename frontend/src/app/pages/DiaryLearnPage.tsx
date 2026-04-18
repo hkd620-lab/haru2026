@@ -77,12 +77,27 @@ export function DiaryLearnPage() {
             Array.isArray(record.formats) &&
             (record.formats.includes('일기') || record.formats.includes('에세이'))
           )
-          .map((record: any) => ({
-            id: record.id,
-            date: record.date || record.id.split('_')[0],
-            title: record.title || '제목 없음',
-            content: record.content || '',
-          }));
+          .map((record: any) => {
+            const format = record.formats?.find((f: string) => f === '일기' || f === '에세이');
+            const prefix = format === '일기' ? 'diary' : 'essay';
+
+            const title = record[`${prefix}_title`] || record.title || '제목 없음';
+
+            const contentFields = Object.entries(record)
+              .filter(([key]) => key.startsWith(`${prefix}_`) && !key.endsWith('_title') && !key.endsWith('_sayu'))
+              .map(([key, val]) => {
+                const label = key.replace(`${prefix}_`, '');
+                return `[${label}]\n${val}`;
+              })
+              .join('\n\n');
+
+            return {
+              id: record.id,
+              date: record.date || record.id.split('_')[0],
+              title,
+              content: contentFields || '내용 없음',
+            };
+          });
         setDiaries(items);
       } catch (e) {
         console.error(e);
