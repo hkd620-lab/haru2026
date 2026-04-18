@@ -72,23 +72,16 @@ export function DiaryLearnPage() {
     const load = async () => {
       try {
         const records = await firestoreService.getRecords(user.uid);
-        const items: DiaryItem[] = [];
-        records.forEach((record: any) => {
-          Object.entries(record).forEach(([key, val]: any) => {
-            if (
-              (key.startsWith('diary_') || key.startsWith('essay_')) &&
-              !key.endsWith('_sayu') &&
-              val?.content
-            ) {
-              items.push({
-                id: `${record.id}_${key}`,
-                date: record.id,
-                title: val.title || '제목 없음',
-                content: val.content,
-              });
-            }
-          });
-        });
+        const items: DiaryItem[] = records
+          .filter((record: any) =>
+            record.format === 'diary' || record.format === 'essay'
+          )
+          .map((record: any) => ({
+            id: record.id,
+            date: record.date || record.id.split('_')[0],
+            title: record.title || '제목 없음',
+            content: record.content || '',
+          }));
         setDiaries(items);
       } catch (e) {
         console.error(e);
