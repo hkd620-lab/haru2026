@@ -91,7 +91,7 @@ export function DiaryLearnPage() {
 
             const title = record[`${prefix}_title`] || record.title || '제목 없음';
 
-            const excludeKeys = ['_title', '_sayu', '_simple', '_mode', '_rating', '_style', '_polishedAt', '_images', 'images'];
+            const excludeKeys = ['_title', '_sayu', '_mode', '_rating', '_style', '_polishedAt', '_images'];
             const contentFields = Object.entries(record)
               .filter(([key]) =>
                 key.startsWith(`${prefix}_`) &&
@@ -102,7 +102,6 @@ export function DiaryLearnPage() {
                 typeof val === 'string' &&
                 !(val as string).startsWith('http') &&
                 !(val as string).startsWith('PREMIUM') &&
-                !(val as string).startsWith('simple') &&
                 !(val as string).startsWith('[')
               )
               .map(([, val]) => (val as string).trim())
