@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { DiaryLearnModal } from '../components/DiaryLearnModal';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router';
@@ -20,6 +21,7 @@ const temperatureOptions: Temperature[] = ['폭염', '온난', '쾌적', '쌀쌀
 const moodOptions: Mood[] = ['기쁨', '평온', '무미', '울적', '번잡'];
 
 export function RecordPage() {
+  const [diaryLearnOpen, setDiaryLearnOpen] = useState(false);
   const renderStyledContent = (text: string) => (
     <div style={{
       background: 'linear-gradient(135deg, #fdf6ff 0%, #f0f7ff 50%, #f6fff0 100%)',
@@ -482,7 +484,7 @@ export function RecordPage() {
                     backgroundColor: '#f8faff',
                     cursor: 'pointer', textAlign: 'left',
                   }}
-                  onClick={() => {}}
+                  onClick={() => setDiaryLearnOpen(true)}
                 >
                   <span style={{ fontSize: 32 }}>✍️</span>
                   <div>
@@ -750,6 +752,7 @@ export function RecordPage() {
       </div>
     </div>
 
+    {diaryLearnOpen && <DiaryLearnModal onClose={() => setDiaryLearnOpen(false)} />}
     {savedFormat && (
       <FormatModal
         isOpen={formatModalOpen}
