@@ -485,7 +485,7 @@ export function DiaryLearnPage() {
       {/* 단어 팝업 — 성경과 완전 동일 */}
       {wordPopup && (
         <div onClick={() => setWordPopup(null)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, backgroundColor: '#fff', borderRadius: '20px', margin: '0 16px', padding: '24px 24px 40px' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, backgroundColor: '#fff', borderRadius: '20px', margin: '0 16px', padding: '24px 24px 40px', maxHeight: '80vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <p style={{ fontSize: 22, fontWeight: 800, color: '#1A3C6E', margin: 0 }}>{wordPopup.word}</p>
               <button onClick={() => setWordPopup(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999' }}>✕</button>
