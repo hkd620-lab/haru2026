@@ -1679,3 +1679,35 @@ JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
     return parsed;
   }
 );
+
+// 영어 일기 학습 — 한국어 → 영어 번역
+export const translateToEnglish = onCall(
+  { region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] },
+  async (request) => {
+    const text: string = request.data.text || '';
+    if (!text) throw new Error('텍스트가 없습니다');
+
+    const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
+    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(GEMINI_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+
+    const prompt = `다음 한국어 일기를 자연스러운 영어로 번역해주세요.
+문장 단위로 나눠서 배열로 반환하세요.
+원문의 감정과 표현을 최대한 살려주세요.
+
+한국어 일기:
+"${text}"
+
+JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
+{
+  "sentences": ["영어 문장1", "영어 문장2", "영어 문장3"]
+}`;
+
+    const result = await model.generateContent(prompt);
+    const raw = result.response.text().trim();
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    return parsed;
+  }
+);

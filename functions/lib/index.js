@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getVerseQuiz = exports.getGrammarExplain = exports.getWordMeaning = exports.generateBook = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
+exports.translateToEnglish = exports.getVerseQuiz = exports.getGrammarExplain = exports.getWordMeaning = exports.generateBook = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
 const storage_1 = require("firebase-admin/storage");
@@ -1413,5 +1413,31 @@ JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     logger.info(`[getVerseQuiz] 캐시 저장: ${verseKey}`);
+    return parsed;
+});
+// 영어 일기 학습 — 한국어 → 영어 번역
+exports.translateToEnglish = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] }, async (request) => {
+    const text = request.data.text || '';
+    if (!text)
+        throw new Error('텍스트가 없습니다');
+    const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
+    const { GoogleGenerativeAI } = await Promise.resolve().then(() => __importStar(require('@google/generative-ai')));
+    const genAI = new GoogleGenerativeAI(GEMINI_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+    const prompt = `다음 한국어 일기를 자연스러운 영어로 번역해주세요.
+문장 단위로 나눠서 배열로 반환하세요.
+원문의 감정과 표현을 최대한 살려주세요.
+
+한국어 일기:
+"${text}"
+
+JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
+{
+  "sentences": ["영어 문장1", "영어 문장2", "영어 문장3"]
+}`;
+    const result = await model.generateContent(prompt);
+    const raw = result.response.text().trim();
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
     return parsed;
 });
