@@ -145,8 +145,15 @@ export function BiblePage() {
               transition: 'background 0.15s',
               backgroundColor: 'transparent',
             }}
-            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#EDE9F5')}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+            onMouseEnter={e => {
+              e.currentTarget.style.backgroundColor = '#1A3C6E';
+              e.currentTarget.style.color = '#fff';
+              e.currentTarget.style.borderRadius = '4px';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.color = '#333';
+            }}
           >
             {word}
           </span>
