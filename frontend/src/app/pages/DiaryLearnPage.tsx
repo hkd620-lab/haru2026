@@ -571,9 +571,9 @@ export function DiaryLearnPage() {
                   <div>
                     <p style={{ fontSize: 13, fontWeight: 700, color: '#1A3C6E', marginBottom: 8 }}>핵심 포인트</p>
                     {grammarPopup.keyPoints.map((kp, i) => (
-                      <div key={i} style={{ marginBottom: 8, backgroundColor: '#f0e6f6', borderRadius: 8, padding: '8px 12px' }}>
-                        <p style={{ fontSize: 13, fontWeight: 700, color: '#8B4789', marginBottom: 2 }}>{kp.point}</p>
-                        <p style={{ fontSize: 12, color: '#555' }}>{kp.description}</p>
+                      <div key={i} style={{ marginBottom: 8, backgroundColor: '#f0e6f6', borderRadius: 8, padding: '10px 14px', border: '1px solid #d9c2f0' }}>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: '#5a1e8c', marginBottom: 4 }}>{kp.point}</p>
+                        <p style={{ fontSize: 13, color: '#333', lineHeight: 1.6 }}>{kp.description}</p>
                       </div>
                     ))}
                   </div>
