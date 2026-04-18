@@ -484,8 +484,8 @@ export function DiaryLearnPage() {
 
       {/* 단어 팝업 — 성경과 완전 동일 */}
       {wordPopup && (
-        <div onClick={() => setWordPopup(null)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, backgroundColor: '#fff', borderRadius: '20px 20px 0 0', padding: '24px 24px 40px' }}>
+        <div onClick={() => setWordPopup(null)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, backgroundColor: '#fff', borderRadius: '20px', margin: '0 16px', padding: '24px 24px 40px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <p style={{ fontSize: 22, fontWeight: 800, color: '#1A3C6E', margin: 0 }}>{wordPopup.word}</p>
               <button onClick={() => setWordPopup(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999' }}>✕</button>
@@ -530,8 +530,8 @@ export function DiaryLearnPage() {
 
       {/* 문법 팝업 */}
       {grammarPopup && (
-        <div onClick={() => setGrammarPopup(null)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, backgroundColor: '#fff', borderRadius: '20px 20px 0 0', padding: '24px 24px 40px', maxHeight: '80vh', overflowY: 'auto' }}>
+        <div onClick={() => setGrammarPopup(null)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, backgroundColor: '#fff', borderRadius: '20px', margin: '0 16px', padding: '24px 24px 40px', maxHeight: '80vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <p style={{ fontSize: 15, fontWeight: 800, color: '#1A3C6E', margin: 0 }}>✏️ 문법 설명</p>
               <button onClick={() => setGrammarPopup(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999' }}>✕</button>
@@ -584,8 +584,8 @@ export function DiaryLearnPage() {
 
       {/* 퀴즈 팝업 */}
       {quizPopup && (
-        <div onClick={() => setQuizPopup(null)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, backgroundColor: '#fff', borderRadius: '20px 20px 0 0', padding: '24px 24px 40px', maxHeight: '80vh', overflowY: 'auto' }}>
+        <div onClick={() => setQuizPopup(null)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, backgroundColor: '#fff', borderRadius: '20px', margin: '0 16px', padding: '24px 24px 40px', maxHeight: '80vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <p style={{ fontSize: 15, fontWeight: 800, color: '#1A3C6E', margin: 0 }}>🎯 빈칸 채우기 퀴즈</p>
               <button onClick={() => setQuizPopup(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999' }}>✕</button>
