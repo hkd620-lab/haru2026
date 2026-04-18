@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateBook = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
+exports.getVerseQuiz = exports.getGrammarExplain = exports.getWordMeaning = exports.generateBook = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
 const storage_1 = require("firebase-admin/storage");
@@ -1273,3 +1273,145 @@ exports.generateTTS = (0, https_2.onCall)({
 });
 var bookStudio_1 = require("./bookStudio");
 Object.defineProperty(exports, "generateBook", { enumerable: true, get: function () { return bookStudio_1.generateBook; } });
+// ===== 단어 뜻 조회 =====
+exports.getWordMeaning = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] }, async (request) => {
+    const { word } = request.data;
+    if (!word)
+        throw new https_2.HttpsError('invalid-argument', '단어가 필요합니다.');
+    const db = admin.firestore();
+    const cacheRef = db.collection('wordCache').doc(word.toLowerCase());
+    // 1. 캐시 확인
+    const cacheSnap = await cacheRef.get();
+    if (cacheSnap.exists) {
+        logger.info(`[getWordMeaning] 캐시 히트: ${word}`);
+        return cacheSnap.data();
+    }
+    // 2. Gemini API 호출
+    const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
+    const { GoogleGenerativeAI } = await Promise.resolve().then(() => __importStar(require('@google/generative-ai')));
+    const genAI = new GoogleGenerativeAI(GEMINI_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+    const prompt = `영어 단어 "${word}"의 정보를 알려주세요.
+JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
+{"meaning": "한국어 뜻 (짧게 1~3개)", "partOfSpeech": "품사 (명사/동사/형용사/부사/전치사/접속사/관사 중)", "phonetic": "미국식 발음기호 (예: /ɪn/)", "koreanPronunciation": "한국어 발음 (예: 인)"}`;
+    const result = await model.generateContent(prompt);
+    const raw = result.response.text().trim();
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    // 3. Firestore에 캐시 저장
+    await cacheRef.set({
+        ...parsed,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    logger.info(`[getWordMeaning] 캐시 저장: ${word}`);
+    return parsed;
+});
+// ===== 문법 해설 =====
+exports.getGrammarExplain = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] }, async (request) => {
+    const { verseKey, verseText } = request.data;
+    if (!verseText)
+        throw new https_2.HttpsError('invalid-argument', '절 내용이 필요합니다.');
+    const db = admin.firestore();
+    const cacheRef = db.collection('grammarCache').doc(verseKey);
+    // 1. 캐시 확인
+    const cacheSnap = await cacheRef.get();
+    if (cacheSnap.exists) {
+        logger.info(`[getGrammarExplain] 캐시 히트: ${verseKey}`);
+        return cacheSnap.data();
+    }
+    // 2. Gemini API 호출
+    const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
+    const { GoogleGenerativeAI } = await Promise.resolve().then(() => __importStar(require('@google/generative-ai')));
+    const genAI = new GoogleGenerativeAI(GEMINI_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+    const prompt = `다음 영어 성경 구절을 아래 형식으로 상세히 문법 분석해주세요.
+
+구절: "${verseText}"
+
+JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
+{
+  "sentenceStructure": {
+    "subject": "주어(S) 해당 부분",
+    "verb": "동사(V) 해당 부분",
+    "object": "목적어(O) 해당 부분 (없으면 빈 문자열)",
+    "complement": "보어/부사구 해당 부분 (없으면 빈 문자열)",
+    "pattern": "문장 패턴 (예: S + V + O + 부사구)"
+  },
+  "details": [
+    {
+      "word": "분석할 단어 또는 구",
+      "role": "품사 및 역할 (예: 명사, 주어 역할)",
+      "explanation": "상세 설명"
+    }
+  ],
+  "keyPoints": [
+    {
+      "title": "핵심 문법 포인트 제목",
+      "explanation": "상세 설명"
+    }
+  ]
+}`;
+    const result = await model.generateContent(prompt);
+    const raw = result.response.text().trim();
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    // 3. 캐시 저장
+    await cacheRef.set({
+        ...parsed,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    logger.info(`[getGrammarExplain] 캐시 저장: ${verseKey}`);
+    return parsed;
+});
+// ===== 퀴즈 생성 =====
+exports.getVerseQuiz = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] }, async (request) => {
+    const { verseKey, verseText } = request.data;
+    if (!verseText)
+        throw new https_2.HttpsError('invalid-argument', '절 내용이 필요합니다.');
+    const db = admin.firestore();
+    const cacheRef = db.collection('quizCache').doc(verseKey);
+    // 1. 캐시 확인
+    const cacheSnap = await cacheRef.get();
+    if (cacheSnap.exists) {
+        logger.info(`[getVerseQuiz] 캐시 히트: ${verseKey}`);
+        return cacheSnap.data();
+    }
+    // 2. Gemini API 호출
+    const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
+    const { GoogleGenerativeAI } = await Promise.resolve().then(() => __importStar(require('@google/generative-ai')));
+    const genAI = new GoogleGenerativeAI(GEMINI_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+    const prompt = `다음 영어 성경 구절에서 수능 또는 고등학교 수준의 단어만 골라 빈칸 퀴즈를 만들어주세요.
+
+구절: "${verseText}"
+
+규칙:
+- 빈칸은 2~4개 (수능/고등학교 수준 단어만)
+- 보기는 빈칸 수 × 2개 (정답 + 헷갈리는 유사 단어)
+- 보기는 무작위 순서로 섞기
+- 쉬운 관사(a, the, an)나 접속사(and, or)는 빈칸 제외
+
+JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
+{
+  "blankedText": "빈칸을 ___로 표시한 전체 구절 (예: In the _____ God _____ the heaven)",
+  "blanks": [
+    {
+      "index": 0,
+      "answer": "정답 단어",
+      "hint": "힌트 (한국어 뜻)"
+    }
+  ],
+  "options": ["보기1", "보기2", "보기3", "보기4", "보기5", "보기6"]
+}`;
+    const result = await model.generateContent(prompt);
+    const raw = result.response.text().trim();
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    // 3. 캐시 저장
+    await cacheRef.set({
+        ...parsed,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    logger.info(`[getVerseQuiz] 캐시 저장: ${verseKey}`);
+    return parsed;
+});

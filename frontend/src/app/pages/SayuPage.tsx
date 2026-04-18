@@ -221,7 +221,7 @@ export function SayuPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string; recordId?: string }[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루LAW', 'AI지식모음', '읽을거리']));
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고']));
   const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
   const [sayuModalState, setSayuModalState] = useState<{
     isOpen: boolean;
@@ -294,13 +294,13 @@ export function SayuPage() {
   }, [user?.uid, currentMonth]);
 
   useEffect(() => {
-    setCollapsedCategories(new Set(['생활', '업무', '하루LAW', 'AI지식모음', '읽을거리']));
+    setCollapsedCategories(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고']));
     setExpandedFormats(new Set());
   }, [location.pathname]);
 
   // Fetch AI logs when AI지식모음 is expanded
   useEffect(() => {
-    if (!collapsedCategories.has('AI지식모음') && !aiLogsLoaded && user?.email) {
+    if (!collapsedCategories.has('하루AI지식창고') && !aiLogsLoaded && user?.email) {
       setAiLogsLoading(true);
       firestoreService.getAiLogs(user.email).then((data: any[]) => {
         setAiLogs(data);
@@ -312,7 +312,7 @@ export function SayuPage() {
 
   // Fetch books when 읽을거리 is expanded
   useEffect(() => {
-    if (!collapsedCategories.has('읽을거리') && !booksLoaded) {
+    if (!collapsedCategories.has('하루충전소') && !booksLoaded) {
       setBooksLoading(true);
       (async () => {
         try {
@@ -986,7 +986,7 @@ export function SayuPage() {
                   className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
                   style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
                 >
-                  <span>{category}</span>
+                  <span>{category === '생활' ? '🌸 생활' : category === '업무' ? '💼 업무' : category}</span>
                   <span style={{ fontSize: '10px' }}>
                     {collapsedCategories.has(category) ? '▶' : '▼'}
                   </span>
@@ -1095,74 +1095,17 @@ export function SayuPage() {
           {/* 구분선 */}
           <hr className="my-4" style={{ borderColor: '#d1d5db' }} />
 
-          {/* AI지식모음 */}
+          {/* 하루충전소 */}
           <div className="mb-4">
             <button
-              onClick={() => toggleCategory('AI지식모음')}
+              onClick={() => toggleCategory('하루충전소')}
               className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
               style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
             >
-              <span>💬 AI지식모음</span>
-              <span style={{ fontSize: '10px' }}>{collapsedCategories.has('AI지식모음') ? '▶' : '▼'}</span>
+              <span>📖 하루충전소</span>
+              <span style={{ fontSize: '10px' }}>{collapsedCategories.has('하루충전소') ? '▶' : '▼'}</span>
             </button>
-            {!collapsedCategories.has('AI지식모음') && (
-              <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-                {/* search */}
-                <div className="px-3 py-2" style={{ backgroundColor: '#f9fafb' }}>
-                  <input type="text" value={aiSearch} onChange={e => { setAiSearch(e.target.value); setAiPage(1); }}
-                    placeholder="제목으로 검색..." className="w-full px-3 py-1.5 text-xs rounded border outline-none"
-                    style={{ borderColor: '#d1d5db', backgroundColor: '#fff', fontSize: 14 }} />
-                </div>
-                {aiLogsLoading ? (
-                  <p className="text-center py-4 text-xs" style={{ color: '#999' }}>불러오는 중...</p>
-                ) : (() => {
-                  const filtered = aiSearch ? aiLogs.filter(l => (l.title || '').toLowerCase().includes(aiSearch.toLowerCase())) : aiLogs;
-                  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-                  const paged = filtered.slice((aiPage - 1) * PAGE_SIZE, aiPage * PAGE_SIZE);
-                  if (filtered.length === 0) return <p className="text-center py-4 text-xs" style={{ color: '#999' }}>기록이 없습니다</p>;
-                  return (
-                    <>
-                      {paged.map((log) => (
-                        <div key={log.id} className="flex items-center border-t" style={{ borderColor: '#f5f5f5' }}>
-                          <div className="flex-1 px-4 py-2.5">
-                            <p className="text-sm truncate" style={{ color: '#333' }}>{log.title || '(제목 없음)'}</p>
-                            {log.source && <p className="text-xs mt-0.5" style={{ color: '#999' }}>{log.source}</p>}
-                          </div>
-                          <button
-                            onClick={() => handleDeleteAiLog(log.id)}
-                            className="px-3 py-2.5 text-xs flex-shrink-0 hover:text-red-600 transition-colors"
-                            style={{ color: '#ccc' }} title="삭제"
-                          >✕</button>
-                        </div>
-                      ))}
-                      {totalPages > 1 && (
-                        <div className="flex justify-center gap-1 py-2 px-3 border-t" style={{ borderColor: '#f0f0f0' }}>
-                          {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                            <button key={p} onClick={() => setAiPage(p)}
-                              className="w-7 h-7 rounded text-xs font-medium transition-all"
-                              style={{ backgroundColor: aiPage === p ? '#1A3C6E' : '#f3f4f6', color: aiPage === p ? '#fff' : '#333' }}
-                            >{p}</button>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
-            )}
-          </div>
-
-          {/* 읽을거리 */}
-          <div className="mb-4">
-            <button
-              onClick={() => toggleCategory('읽을거리')}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
-              style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
-            >
-              <span>📖 읽을거리</span>
-              <span style={{ fontSize: '10px' }}>{collapsedCategories.has('읽을거리') ? '▶' : '▼'}</span>
-            </button>
-            {!collapsedCategories.has('읽을거리') && (
+            {!collapsedCategories.has('하루충전소') && (
               <div className="bg-white rounded-lg shadow-sm overflow-hidden">
                 {/* search */}
                 <div className="px-3 py-2" style={{ backgroundColor: '#f9fafb' }}>
@@ -1325,7 +1268,7 @@ export function SayuPage() {
                   className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
                   style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
                 >
-                  <span>{category}</span>
+                  <span>⚖️ 하루LAW</span>
                   <span style={{ fontSize: '10px' }}>
                     {collapsedCategories.has(category) ? '▶' : '▼'}
                   </span>
@@ -1411,6 +1354,63 @@ export function SayuPage() {
               </div>
             );
           })()}
+
+          {/* 하루AI지식창고 */}
+          <div className="mb-4">
+            <button
+              onClick={() => toggleCategory('하루AI지식창고')}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
+              style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
+            >
+              <span>💬 하루AI지식창고</span>
+              <span style={{ fontSize: '10px' }}>{collapsedCategories.has('하루AI지식창고') ? '▶' : '▼'}</span>
+            </button>
+            {!collapsedCategories.has('하루AI지식창고') && (
+              <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                {/* search */}
+                <div className="px-3 py-2" style={{ backgroundColor: '#f9fafb' }}>
+                  <input type="text" value={aiSearch} onChange={e => { setAiSearch(e.target.value); setAiPage(1); }}
+                    placeholder="제목으로 검색..." className="w-full px-3 py-1.5 text-xs rounded border outline-none"
+                    style={{ borderColor: '#d1d5db', backgroundColor: '#fff', fontSize: 14 }} />
+                </div>
+                {aiLogsLoading ? (
+                  <p className="text-center py-4 text-xs" style={{ color: '#999' }}>불러오는 중...</p>
+                ) : (() => {
+                  const filtered = aiSearch ? aiLogs.filter(l => (l.title || '').toLowerCase().includes(aiSearch.toLowerCase())) : aiLogs;
+                  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+                  const paged = filtered.slice((aiPage - 1) * PAGE_SIZE, aiPage * PAGE_SIZE);
+                  if (filtered.length === 0) return <p className="text-center py-4 text-xs" style={{ color: '#999' }}>기록이 없습니다</p>;
+                  return (
+                    <>
+                      {paged.map((log) => (
+                        <div key={log.id} className="flex items-center border-t" style={{ borderColor: '#f5f5f5' }}>
+                          <div className="flex-1 px-4 py-2.5">
+                            <p className="text-sm truncate" style={{ color: '#333' }}>{log.title || '(제목 없음)'}</p>
+                            {log.source && <p className="text-xs mt-0.5" style={{ color: '#999' }}>{log.source}</p>}
+                          </div>
+                          <button
+                            onClick={() => handleDeleteAiLog(log.id)}
+                            className="px-3 py-2.5 text-xs flex-shrink-0 hover:text-red-600 transition-colors"
+                            style={{ color: '#ccc' }} title="삭제"
+                          >✕</button>
+                        </div>
+                      ))}
+                      {totalPages > 1 && (
+                        <div className="flex justify-center gap-1 py-2 px-3 border-t" style={{ borderColor: '#f0f0f0' }}>
+                          {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                            <button key={p} onClick={() => setAiPage(p)}
+                              className="w-7 h-7 rounded text-xs font-medium transition-all"
+                              style={{ backgroundColor: aiPage === p ? '#1A3C6E' : '#f3f4f6', color: aiPage === p ? '#fff' : '#333' }}
+                            >{p}</button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

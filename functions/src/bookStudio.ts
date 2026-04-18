@@ -25,10 +25,11 @@ export const generateBook = onCall(
       throw new HttpsError("permission-denied", "권한 없음");
     }
 
-    const { title, sources, authorUid } = request.data as {
+    const { title, sources, authorUid, existingBookId } = request.data as {
       title: string;
       sources: Source[];
       authorUid: string;
+      existingBookId?: string;
     };
 
     // 입력값 검증
@@ -39,20 +40,37 @@ export const generateBook = onCall(
     const client = new OpenAI({ apiKey: OPENAI_API_KEY.value() });
     const db = admin.firestore();
 
-    // Admin SDK로 책 문서 생성 (보안 규칙 우회)
-    const bookRef = db.collection("books").doc();
-    await bookRef.set({
-      bookId: bookRef.id,
-      title,
-      authorUid: authorUid || request.auth.uid,
-      status: "draft",
-      coverColor: "#1A3C6E",
-      totalChapters: 0,
-      totalReaders: 0,
-      promptVersion: "v1.0",
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-    const bookId = bookRef.id;
+    // 기존 책이 있으면 재사용, 없으면 새로 생성
+    let bookId: string;
+    if (existingBookId) {
+      bookId = existingBookId;
+    } else {
+      const bookRef = db.collection("books").doc();
+      await bookRef.set({
+        bookId: bookRef.id,
+        title,
+        authorUid: authorUid || request.auth.uid,
+        status: "draft",
+        coverColor: "#1A3C6E",
+        totalChapters: 0,
+        totalReaders: 0,
+        promptVersion: "v1.0",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      bookId = bookRef.id;
+    }
+
+    // 기존 챕터 수 확인 (순서 이어받기)
+    const existingChaps = await db.collection("books").doc(bookId).collection("chapters").get();
+
+    // 기존 심리레이어 삭제 (새로 생성 예정)
+    const psychChaps = existingChaps.docs.filter(d => String(d.data().title).includes('심리 레이어'));
+    for (const pc of psychChaps) {
+      await pc.ref.delete();
+    }
+
+    // 심리레이어 제외한 실제 챕터 수
+    const existingCount = existingChaps.size - psychChaps.length;
 
     const chapters: Array<{ chapterId: string; content: string; sourceTitle: string }> = [];
 
@@ -98,10 +116,10 @@ export const generateBook = onCall(
       await chapterRef.set({
         chapterId: chapterRef.id,
         bookId,
-        title: `${i + 1}장`,
+        title: `${existingCount + i + 1}장`,
         sourceTitle: sourceTitle || `소스 ${i + 1}`,
         content,
-        order: i + 1,
+        order: existingCount + i + 1,
         status: "draft",
         wordCount: content.length,
         promptVersion: "v1.0",
@@ -142,10 +160,10 @@ export const generateBook = onCall(
     await psychRef.set({
       chapterId: psychRef.id,
       bookId,
-      title: "심리 레이어",
+      title: `${existingCount + sources.length + 1}장 심리 레이어`,
       sourceTitle: "공통점 분석",
       content: psychContent,
-      order: sources.length + 1,
+      order: existingCount + sources.length + 1,
       status: "draft",
       wordCount: psychContent.length,
       promptVersion: "v1.0",
@@ -160,7 +178,7 @@ export const generateBook = onCall(
     );
 
     // books/{bookId} totalChapters 업데이트
-    const totalChapters = chapters.length;
+    const totalChapters = existingCount + chapters.length;
     await db.collection("books").doc(bookId).update({ totalChapters });
 
     return { success: true, bookId, chapters, totalChapters };

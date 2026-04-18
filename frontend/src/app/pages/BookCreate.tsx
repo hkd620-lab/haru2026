@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 
 interface Source {
   sourceTitle: string;
@@ -19,8 +19,11 @@ interface GenerateResult {
 export function BookCreate() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const existingBookId = searchParams.get('bookId');
+  const existingBookTitle = searchParams.get('bookTitle') || '';
 
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(existingBookTitle);
   const [sources, setSources] = useState<Source[]>([
     { sourceTitle: '', sourceText: '' },
   ]);
@@ -83,6 +86,7 @@ export function BookCreate() {
         title: title.trim(),
         sources: validSources,
         authorUid: user?.uid ?? '',
+        existingBookId: existingBookId || undefined,
       });
 
       clearInterval(progressInterval);
@@ -117,7 +121,7 @@ export function BookCreate() {
             ← 뒤로
           </button>
           <h1 className="text-xl font-bold" style={{ color: '#1A3C6E' }}>
-            새 책 만들기
+            {existingBookId ? '챕터 추가' : '새 책 만들기'}
           </h1>
         </div>
       </div>

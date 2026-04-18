@@ -420,7 +420,7 @@ export function RecordPage() {
 
           {/* 카테고리 선택 */}
           <div className="flex gap-2 mb-3">
-            {(['생활', '업무', '하루LAW'] as (Category | 'HARUraw')[]).map((category) => (
+            {(['생활', '업무', '하루LAW', '하루학습'] as (Category | 'HARUraw' | '하루학습')[]).map((category) => (
               <button
                 key={category}
                 onClick={() => {
@@ -446,7 +446,57 @@ export function RecordPage() {
           </div>
 
           {/* 형식 버튼 */}
-          {selectedCategory === '하루LAW' ? (
+          {selectedCategory === '하루학습' ? (
+            <div style={{ padding: '20px 0' }}>
+              <p style={{ fontSize: 13, color: '#999', marginBottom: 16, textAlign: 'center' }}>
+                학습할 형식을 선택하세요
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* 영어성경학습 */}
+                <button
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 16,
+                    padding: '20px', borderRadius: 12,
+                    border: '1.5px solid #d0dff0',
+                    backgroundColor: '#f8faff',
+                    cursor: 'pointer', textAlign: 'left',
+                  }}
+                  onClick={() => navigate('/bible')}
+                >
+                  <span style={{ fontSize: 32 }}>📖</span>
+                  <div>
+                    <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E', marginBottom: 4 }}>
+                      영어성경학습
+                    </p>
+                    <p style={{ fontSize: 12, color: '#999' }}>
+                      영어 성경 읽기 · TTS 듣기 · AI 번역/해설
+                    </p>
+                  </div>
+                </button>
+                {/* 영어일기작성 */}
+                <button
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 16,
+                    padding: '20px', borderRadius: 12,
+                    border: '1.5px solid #d0dff0',
+                    backgroundColor: '#f8faff',
+                    cursor: 'pointer', textAlign: 'left',
+                  }}
+                  onClick={() => {}}
+                >
+                  <span style={{ fontSize: 32 }}>✍️</span>
+                  <div>
+                    <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E', marginBottom: 4 }}>
+                      영어일기작성
+                    </p>
+                    <p style={{ fontSize: 12, color: '#999' }}>
+                      영어로 일기 작성 · AI 교정/피드백
+                    </p>
+                  </div>
+                </button>
+              </div>
+            </div>
+          ) : selectedCategory === '하루LAW' ? (
   !lawGuideConfirmed ? (
     <div style={{
       backgroundColor: '#f0f4ff',

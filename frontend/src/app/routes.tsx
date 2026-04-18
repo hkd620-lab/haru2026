@@ -15,6 +15,7 @@ const StatsPage = lazy(() => import('./pages/StatsPage').then((m) => ({ default:
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 const RecordDetailPage = lazy(() => import('./pages/RecordDetailPage').then((m) => ({ default: m.RecordDetailPage })));
 const HaruRawPage = lazy(() => import('./pages/HaruRawPage').then((m) => ({ default: m.HaruRawPage })));
+const BiblePage = lazy(() => import('./pages/BiblePage').then((m) => ({ default: m.BiblePage })));
 
 // iOS 안전 로딩 인디케이터 (간단하고 블로킹 없음)
 function PageLoader() {
@@ -63,6 +64,7 @@ export const router = createBrowserRouter([
           { path: 'stats', element: withSuspense(<StatsPage />) },
           { path: 'settings', element: withSuspense(<SettingsPage />) },
           { path: 'haruraw', element: withSuspense(<HaruRawPage />) },
+          { path: 'bible', element: withSuspense(<BiblePage />) },
           { path: 'record-detail/:date/:formatKey', element: withSuspense(<RecordDetailPage />) },
         ],
       },
