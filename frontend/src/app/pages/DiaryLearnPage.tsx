@@ -558,10 +558,15 @@ export function DiaryLearnPage() {
                 {grammarPopup.details && grammarPopup.details.length > 0 && (
                   <div style={{ marginBottom: 16 }}>
                     <p style={{ fontSize: 13, fontWeight: 700, color: '#1A3C6E', marginBottom: 8 }}>상세 설명</p>
-                    {grammarPopup.details.map((d, i) => (
+                    {grammarPopup.details.map((d: any, i: number) => (
                       <div key={i} style={{ marginBottom: 10, paddingLeft: 10, borderLeft: '3px solid #EDE9F5' }}>
-                        <p style={{ fontSize: 13, fontWeight: 700, color: '#333', marginBottom: 2 }}>{d.title}</p>
-                        <p style={{ fontSize: 13, color: '#555', lineHeight: 1.7 }}>{d.explanation}</p>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: '#333', marginBottom: 2 }}>
+                          {d.title || d.word || ''}
+                        </p>
+                        <p style={{ fontSize: 13, color: '#555', lineHeight: 1.7 }}>
+                          {d.explanation || ''}
+                        </p>
+                        {d.role && <p style={{ fontSize: 12, color: '#8B4789', marginTop: 4 }}>역할: {d.role}</p>}
                         {d.example && <p style={{ fontSize: 12, color: '#8B4789', marginTop: 4 }}>예: {d.example}</p>}
                       </div>
                     ))}
@@ -570,10 +575,14 @@ export function DiaryLearnPage() {
                 {grammarPopup.keyPoints && grammarPopup.keyPoints.length > 0 && (
                   <div>
                     <p style={{ fontSize: 13, fontWeight: 700, color: '#1A3C6E', marginBottom: 8 }}>핵심 포인트</p>
-                    {grammarPopup.keyPoints.map((kp, i) => (
+                    {grammarPopup.keyPoints.map((kp: any, i: number) => (
                       <div key={i} style={{ marginBottom: 8, backgroundColor: '#f0e6f6', borderRadius: 8, padding: '10px 14px', border: '1px solid #d9c2f0' }}>
-                        <p style={{ fontSize: 13, fontWeight: 700, color: '#5a1e8c', marginBottom: 4 }}>{kp.point}</p>
-                        <p style={{ fontSize: 13, color: '#333', lineHeight: 1.6 }}>{kp.description}</p>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: '#5a1e8c', marginBottom: 4 }}>
+                          {kp.point || kp.title || ''}
+                        </p>
+                        <p style={{ fontSize: 13, color: '#333', lineHeight: 1.6 }}>
+                          {kp.description || kp.explanation || ''}
+                        </p>
                       </div>
                     ))}
                   </div>
