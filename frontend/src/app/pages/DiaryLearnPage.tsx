@@ -150,7 +150,8 @@ export function DiaryLearnPage() {
       audio.play().catch(() => {});
       audioRef.current = audio;
       const fn = httpsCallable(fns, 'generateTTS');
-      const res: any = await fn({ text });
+      const cacheKey = `diary_${key}_${text.slice(0, 20)}`;
+      const res: any = await fn({ text, cacheKey });
       let audioSrc = '';
       if (res.data.audioUrl) {
         audioSrc = res.data.audioUrl;
