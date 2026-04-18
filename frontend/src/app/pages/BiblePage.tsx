@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import genesisData from '../../data/genesis_1.json';
@@ -12,6 +12,23 @@ export function BiblePage() {
   const navigate = useNavigate();
   const [ttsPlaying, setTtsPlaying] = useState<string | null>(null);
   const [ttsLoading, setTtsLoading] = useState<string | null>(null);
+
+  // 안드로이드 오디오 잠금 해제
+  useEffect(() => {
+    const unlock = () => {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioContext) {
+        const ctx = new AudioContext();
+        ctx.resume().then(() => ctx.close());
+      }
+    };
+    document.addEventListener('touchstart', unlock, { once: true });
+    document.addEventListener('click', unlock, { once: true });
+    return () => {
+      document.removeEventListener('touchstart', unlock);
+      document.removeEventListener('click', unlock);
+    };
+  }, []);
   const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
