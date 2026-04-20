@@ -25,6 +25,7 @@ import { BookStudio } from './pages/BookStudio';
 import { BookCreate } from './pages/BookCreate';
 import { BiblePage } from './pages/BiblePage';
 import { DiaryLearnPage } from './pages/DiaryLearnPage';
+import { NovelStudio } from './pages/NovelStudio';
 import { BottomNav } from './components/BottomNav';
 import { Footer } from './components/Footer';
 import { setupForegroundMessageListener, requestNotificationPermission } from './services/notificationService';
@@ -108,6 +109,7 @@ function App() {
               {/* 책 스튜디오 */}
               <Route path="/book-studio" element={<BookStudio />} />
               <Route path="/book-create" element={<BookCreate />} />
+              <Route path="/novel-studio" element={<NovelStudio />} />
 
               {/* 영어성경학습 */}
               <Route path="/bible" element={<BiblePage />} />
