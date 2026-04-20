@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
@@ -487,6 +487,7 @@ function CharDetail({
   onUpdate: (i: number, field: keyof Character, v: any) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [charSaved, setCharSaved] = useState(false);
 
   const toggleItem = (field: 'personalities' | 'desires' | 'shackles', v: string) => {
     const arr = c[field] as string[];
@@ -619,6 +620,25 @@ function CharDetail({
               }}
             />
           </div>
+
+          {/* 인물 저장 버튼 */}
+          <button
+            onClick={() => {
+              setCharSaved(true);
+              setTimeout(() => setCharSaved(false), 2000);
+            }}
+            style={{
+              width: '100%', padding: '10px',
+              borderRadius: 8, border: 'none',
+              background: charSaved ? '#10b981' : '#1A3C6E',
+              color: '#fff', fontSize: 13,
+              fontWeight: 500, cursor: 'pointer',
+              transition: 'background 0.3s',
+              marginTop: 4,
+            }}
+          >
+            {charSaved ? '✓ 인물 설정 저장됨' : '이 인물 설정 저장'}
+          </button>
 
         </div>
       )}
@@ -970,50 +990,49 @@ export function NovelStudio() {
   const [visitedTabs, setVisitedTabs] = useState<Tab[]>(['birth']);
   const [settings, setSettings] = useState<NovelSettings>(defaultSettings);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
-  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 앱 시작 시 Firestore에서 불러오기
+  // 앱 시작 시 불러오기
   useEffect(() => {
-    if (!user) return;
-    const load = async () => {
+    if (!user?.uid) return;
+    (async () => {
       try {
         const snap = await getDoc(doc(db, 'users', user.uid, 'novelSettings', 'draft'));
         if (snap.exists()) {
-          setSettings(prev => ({ ...prev, ...snap.data() }));
+          const data = snap.data();
+          delete data.updatedAt;
+          setSettings(prev => ({ ...prev, ...data }));
           setSaveStatus('saved');
         }
-      } catch (e) {
-        console.error('불러오기 실패', e);
-      }
-    };
-    load();
-  }, [user]);
+      } catch(e) { console.error(e); }
+    })();
+  }, [user?.uid]);
 
-  // 자동저장: 입력 후 2초 뒤 저장
-  const autoSave = async (newSettings: NovelSettings) => {
-    if (!user) return;
+  // 수동 저장 함수
+  const saveNow = useCallback(async (data: NovelSettings) => {
+    if (!user?.uid) return;
     setSaveStatus('saving');
     try {
       await setDoc(
         doc(db, 'users', user.uid, 'novelSettings', 'draft'),
-        { ...newSettings, updatedAt: serverTimestamp() },
+        { ...data, updatedAt: serverTimestamp() },
         { merge: true }
       );
       setSaveStatus('saved');
-    } catch (e) {
-      console.error('저장 실패', e);
+    } catch(e) {
+      console.error(e);
       setSaveStatus('unsaved');
     }
-  };
+  }, [user?.uid]);
 
   const upd = (key: keyof NovelSettings, value: any) => {
-    const newSettings = { ...settings, [key]: value };
-    setSettings(newSettings);
-    setSaveStatus('unsaved');
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(() => {
-      autoSave(newSettings);
-    }, 2000);
+    setSettings(prev => {
+      const next = { ...prev, [key]: value };
+      setSaveStatus('unsaved');
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => saveNow(next), 2500);
+      return next;
+    });
   };
 
   if (!user) {
@@ -1043,14 +1062,22 @@ export function NovelStudio() {
             <span style={{ fontSize: 20 }}>✍️</span>
             <h1 style={{ fontSize: 18, fontWeight: 700, color: '#1A3C6E' }}>소설 스튜디오</h1>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{
-              fontSize: 11,
-              color: saveStatus === 'saved' ? '#10b981' : saveStatus === 'saving' ? '#F9CB42' : '#E24B4A',
-            }}>
-              {saveStatus === 'saved' ? '✓ 저장됨' : saveStatus === 'saving' ? '저장 중...' : '미저장'}
-            </span>
-            <span style={{ fontSize: 11, color: '#9ca3af' }}>v0.1</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              onClick={() => saveNow(settings)}
+              style={{
+                padding: '5px 12px', borderRadius: 99,
+                border: 'none',
+                background: saveStatus === 'saved' ? '#10b981'
+                  : saveStatus === 'saving' ? '#F9CB42' : '#E24B4A',
+                color: '#fff', fontSize: 11,
+                cursor: 'pointer', fontWeight: 500,
+              }}
+            >
+              {saveStatus === 'saved' ? '✓ 저장됨'
+                : saveStatus === 'saving' ? '저장 중...' : '💾 저장하기'}
+            </button>
+            <span style={{ fontSize: 10, color: '#9ca3af' }}>v0.1</span>
           </div>
         </div>
       </div>
