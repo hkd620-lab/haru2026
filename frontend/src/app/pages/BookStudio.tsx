@@ -186,7 +186,7 @@ export function BookStudio() {
                   </p>
                   {isDeveloper && (
                     <button
-                      onClick={() => navigate(`/book-create?bookId=${book.id}&bookTitle=${encodeURIComponent(book.title)}`)}
+                      onClick={(e) => { e.stopPropagation(); navigate(`/book-create?bookId=${book.id}&bookTitle=${encodeURIComponent(book.title)}`); }}
                       className="text-xs font-semibold px-3 py-1 rounded-lg text-white"
                       style={{ backgroundColor: '#1A3C6E' }}
                     >+ 챕터 추가</button>
