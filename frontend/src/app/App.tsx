@@ -23,7 +23,6 @@ import { PrivacyPage } from './pages/PrivacyPage';
 import { RefundPage } from './pages/RefundPage';
 import { BookStudio } from './pages/BookStudio';
 import { BookCreate } from './pages/BookCreate';
-import { BookReader } from './pages/BookReader';
 import { BiblePage } from './pages/BiblePage';
 import { DiaryLearnPage } from './pages/DiaryLearnPage';
 import { NovelStudio } from './pages/NovelStudio';
@@ -110,7 +109,6 @@ function App() {
               {/* 책 스튜디오 */}
               <Route path="/book-studio" element={<BookStudio />} />
               <Route path="/book-create" element={<BookCreate />} />
-              <Route path="/book-reader/:bookId" element={<BookReader />} />
               <Route path="/novel-studio" element={<NovelStudio />} />
 
               {/* 영어성경학습 */}
