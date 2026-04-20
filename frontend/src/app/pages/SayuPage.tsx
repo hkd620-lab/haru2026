@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
@@ -215,6 +215,7 @@ export function SayuPage() {
 
   const location = useLocation();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [records, setRecords] = useState<HaruRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1107,6 +1108,34 @@ export function SayuPage() {
             </button>
             {!collapsedCategories.has('하루충전소') && (
               <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                {/* 개발자 전용: 사람속으로 / 나도작가 버튼 */}
+                {isDeveloper && (
+                  <div style={{ display: 'flex', gap: 10, padding: '12px 16px', borderBottom: '1px solid #f0f0f0' }}>
+                    <button
+                      onClick={() => navigate('/book-studio')}
+                      style={{
+                        flex: 1, padding: '10px',
+                        borderRadius: 10, border: 'none',
+                        backgroundColor: '#1A3C6E', color: '#fff',
+                        fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                      }}
+                    >
+                      📖 사람속으로
+                    </button>
+                    <button
+                      onClick={() => navigate('/novel-studio')}
+                      style={{
+                        flex: 1, padding: '10px',
+                        borderRadius: 10,
+                        border: '1.5px solid #10b981',
+                        backgroundColor: 'transparent', color: '#10b981',
+                        fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                      }}
+                    >
+                      ✍️ 나도작가
+                    </button>
+                  </div>
+                )}
                 {/* search */}
                 <div className="px-3 py-2" style={{ backgroundColor: '#f9fafb' }}>
                   <input type="text" value={bookSearch} onChange={e => { setBookSearch(e.target.value); setBookPage(1); }}

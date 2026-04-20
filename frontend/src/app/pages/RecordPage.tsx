@@ -70,6 +70,8 @@ export function RecordPage() {
 
   const navigate = useNavigate();
   const { user } = useAuth();
+  const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+  const isDeveloper = user?.uid === DEVELOPER_UID;
   const [currentDate] = useState(new Date());
   const [mood, setMood] = useState<Mood>('평온');
   const [weather, setWeather] = useState<Weather>('쾌청');
@@ -422,7 +424,7 @@ export function RecordPage() {
 
           {/* 카테고리 선택 */}
           <div className="flex gap-2 mb-3">
-            {(['생활', '업무', '하루LAW', '하루학습'] as (Category | 'HARUraw' | '하루학습')[]).map((category) => (
+            {(['생활', '업무', '하루학습', '하루LAW'] as (Category | 'HARUraw' | '하루학습')[]).map((category) => (
               <button
                 key={category}
                 onClick={() => {
@@ -445,6 +447,21 @@ export function RecordPage() {
                 {category}
               </button>
             ))}
+            {/* 나도작가 버튼 — 개발자 전용 */}
+            {isDeveloper && (
+              <button
+                onClick={() => navigate('/novel-studio')}
+                className="px-4 py-2 rounded-lg text-xs transition-all"
+                style={{
+                  backgroundColor: '#10b981',
+                  color: '#fff',
+                  border: 'none',
+                  fontWeight: 600,
+                }}
+              >
+                ✍️ 나도작가
+              </button>
+            )}
           </div>
 
           {/* 형식 버튼 */}

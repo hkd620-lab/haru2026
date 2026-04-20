@@ -97,7 +97,7 @@ export function BookStudio() {
                 style={{ borderColor: '#10b981', color: '#10b981', backgroundColor: 'transparent' }}
                 onClick={() => navigate('/novel-studio')}
               >
-                ✍️ 창작소설
+                ✍️ 나도작가
               </button>
             </div>
           )}
