@@ -194,12 +194,23 @@ export function BiblePage() {
       setTtsPlaying(null);
       return;
     }
+
     setTtsLoading(key);
+
     try {
-      const cacheKey = `bible_genesis_1_${key}`.slice(0, 80);
+      // ① 버튼 클릭 직후 즉시 무음 재생 — 안드로이드 제스처 잠금해제
+      const silentAudio = new Audio(
+        'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA'
+      );
+      silentAudio.volume = 0.01;
+      try { await silentAudio.play(); } catch(_) {}
+
+      // ② Firebase Function 호출
       const fns = getFunctions(undefined, 'asia-northeast3');
       const fn = httpsCallable(fns, 'generateTTS');
+      const cacheKey = `bible_genesis_1_${key}`.slice(0, 80);
       const res: any = await fn({ text, cacheKey });
+
       if (audioRef.current) audioRef.current.pause();
 
       let audioSrc = '';
@@ -214,13 +225,38 @@ export function BiblePage() {
       }
 
       if (audioSrc) {
+        // ③ AudioContext 잠금해제 재시도
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtx) {
+          try {
+            const ctx = new AudioCtx();
+            if (ctx.state === 'suspended') await ctx.resume();
+          } catch(_) {}
+        }
+
         audioRef.current = new Audio(audioSrc);
-        audioRef.current.onended = () => { setTtsPlaying(null); };
-        await audioRef.current.play();
-        setTtsPlaying(key);
+        audioRef.current.onended = () => setTtsPlaying(null);
+
+        // ④ play 실패 시 재시도 1회
+        try {
+          await audioRef.current.play();
+          setTtsPlaying(key);
+        } catch (playErr) {
+          console.warn('TTS play 재시도:', playErr);
+          setTimeout(async () => {
+            try {
+              await audioRef.current?.play();
+              setTtsPlaying(key);
+            } catch(e) {
+              console.error('TTS play 최종 실패:', e);
+              setTtsPlaying(null);
+            }
+          }, 300);
+        }
       }
     } catch (err) {
       console.error('TTS 오류:', err);
+      setTtsPlaying(null);
     } finally {
       setTtsLoading(null);
     }
