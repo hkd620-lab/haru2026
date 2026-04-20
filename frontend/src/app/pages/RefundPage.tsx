@@ -1,11 +1,19 @@
 const sections = [
   {
-    title: '환불 가능 조건',
+    title: '전액 환불 조건',
     content: '구독 결제 후 7일 이내이며, 서비스 이용 이력(기록 작성, AI 다듬기, 합본 출력 등)이 없는 경우 전액 환불이 가능합니다.',
   },
   {
+    title: '부분 환불 조건 (연간 구독)',
+    content: '연간 구독권의 경우, 결제일로부터 7일 초과 후 환불 요청 시 잔여 이용 기간에 비례한 부분 환불이 가능합니다.\n\n· 부분 환불 금액 = 결제 금액 × (잔여 일수 ÷ 365)\n· 단, 서비스 이용 이력이 있는 경우에도 부분 환불 신청이 가능합니다.',
+  },
+  {
+    title: '부분 환불 조건 (월간 구독)',
+    content: '월간 구독권의 경우, 결제일로부터 7일 초과 후 환불 요청 시 잔여 이용 기간에 비례한 부분 환불이 가능합니다.\n\n· 부분 환불 금액 = 결제 금액 × (잔여 일수 ÷ 30)\n· 단, 서비스 이용 이력이 있는 경우에도 부분 환불 신청이 가능합니다.',
+  },
+  {
     title: '환불 불가 조건',
-    content: '서비스 이용 이력이 확인된 경우 환불이 불가합니다.',
+    content: '구독 만료일이 7일 미만으로 남은 경우 환불이 불가합니다.',
   },
   {
     title: '환불 문의',
@@ -47,7 +55,7 @@ export function RefundPage() {
           <h2 style={{ fontSize: 14, fontWeight: 700, color: '#1A3C6E', marginBottom: 6 }}>
             {section.title}
           </h2>
-          <p style={{ fontSize: 14, color: '#333', lineHeight: 1.8, margin: 0 }}>
+          <p style={{ fontSize: 14, color: '#333', lineHeight: 1.8, margin: 0, whiteSpace: 'pre-line' }}>
             {section.content}
           </p>
         </div>
