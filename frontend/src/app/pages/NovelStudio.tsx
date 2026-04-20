@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../firebase';
 
 
 type Tab = 'birth' | 'desire' | 'shackle' | 'luck' | 'narrative' | 'chars' | 'events';
@@ -792,9 +794,52 @@ export function NovelStudio() {
   const [activeTab, setActiveTab] = useState<Tab>('birth');
   const [visitedTabs, setVisitedTabs] = useState<Tab[]>(['birth']);
   const [settings, setSettings] = useState<NovelSettings>(defaultSettings);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const upd = (k: keyof NovelSettings, v: any) =>
-    setSettings(prev => ({ ...prev, [k]: v }));
+  // 앱 시작 시 Firestore에서 불러오기
+  useEffect(() => {
+    if (!user) return;
+    const load = async () => {
+      try {
+        const snap = await getDoc(doc(db, 'users', user.uid, 'novelSettings', 'draft'));
+        if (snap.exists()) {
+          setSettings(prev => ({ ...prev, ...snap.data() }));
+          setSaveStatus('saved');
+        }
+      } catch (e) {
+        console.error('불러오기 실패', e);
+      }
+    };
+    load();
+  }, [user]);
+
+  // 자동저장: 입력 후 2초 뒤 저장
+  const autoSave = async (newSettings: NovelSettings) => {
+    if (!user) return;
+    setSaveStatus('saving');
+    try {
+      await setDoc(
+        doc(db, 'users', user.uid, 'novelSettings', 'draft'),
+        { ...newSettings, updatedAt: serverTimestamp() },
+        { merge: true }
+      );
+      setSaveStatus('saved');
+    } catch (e) {
+      console.error('저장 실패', e);
+      setSaveStatus('unsaved');
+    }
+  };
+
+  const upd = (key: keyof NovelSettings, value: any) => {
+    const newSettings = { ...settings, [key]: value };
+    setSettings(newSettings);
+    setSaveStatus('unsaved');
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(() => {
+      autoSave(newSettings);
+    }, 2000);
+  };
 
   if (!user) {
     return (
@@ -823,7 +868,15 @@ export function NovelStudio() {
             <span style={{ fontSize: 20 }}>✍️</span>
             <h1 style={{ fontSize: 18, fontWeight: 700, color: '#1A3C6E' }}>소설 스튜디오</h1>
           </div>
-          <span style={{ fontSize: 11, color: '#10b981' }}>초본 v0.1</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{
+              fontSize: 11,
+              color: saveStatus === 'saved' ? '#10b981' : saveStatus === 'saving' ? '#F9CB42' : '#E24B4A',
+            }}>
+              {saveStatus === 'saved' ? '✓ 저장됨' : saveStatus === 'saving' ? '저장 중...' : '미저장'}
+            </span>
+            <span style={{ fontSize: 11, color: '#9ca3af' }}>v0.1</span>
+          </div>
         </div>
       </div>
 
