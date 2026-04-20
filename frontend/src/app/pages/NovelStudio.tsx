@@ -95,22 +95,27 @@ function Card({ children }: { children: React.ReactNode }) {
 }
 
 function BirthTab() {
-  const gender   = useSingle('남성');
-  const spoon    = useSingle('흙수저');
-  const looks    = useSingle('평범함');
-  const era      = useMultiSelect(['일제강점기']);
-  const region   = useMultiSelect(['어촌·섬']);
-  const family   = useMultiSelect(['가부장적 가정']);
-  const social   = useMultiSelect(['식민·지배 체제']);
-  const [memo1, setMemo1] = useState('');
-  const [memo2, setMemo2] = useState('');
-  const [memo3, setMemo3] = useState('');
+  const gender  = useSingle('남성');
+  const spoon   = useSingle('흙수저');
+  const looks   = useSingle('평범함');
+  const era     = useMultiSelect(['일제강점기']);
+  const region  = useMultiSelect(['어촌·섬']);
+  const family  = useMultiSelect(['가부장적 가정']);
+  const social  = useMultiSelect(['식민·지배 체제']);
 
-  const genders = ['남성', '여성', '직접 정의'];
-  const spoons  = ['흙수저', '동수저', '은수저', '금수저'];
-  const looksList = ['매우 추함', '추함', '평범함', '준수함', '미남/미녀'];
-  const eras    = ['조선시대', '일제강점기', '한국전쟁', '산업화시대', '현대', '직접 설정'];
-  const regions = ['어촌·섬', '농촌', '산촌', '소도시', '대도시', '변방·국경', '해외 이민'];
+  const [memoGender,  setMemoGender]  = useState('');
+  const [memoSpoon,   setMemoSpoon]   = useState('');
+  const [memoLooks,   setMemoLooks]   = useState('');
+  const [memoEra,     setMemoEra]     = useState('');
+  const [memoRegion,  setMemoRegion]  = useState('');
+  const [memoFamily,  setMemoFamily]  = useState('');
+  const [memoSocial,  setMemoSocial]  = useState('');
+
+  const genders  = ['남성', '여성', '직접 정의'];
+  const spoons   = ['흙수저', '동수저', '은수저', '금수저'];
+  const looksList= ['매우 추함', '추함', '평범함', '준수함', '미남/미녀'];
+  const eras     = ['조선시대', '일제강점기', '한국전쟁', '산업화시대', '현대', '직접 설정'];
+  const regions  = ['어촌·섬', '농촌', '산촌', '소도시', '대도시', '변방·국경', '해외 이민', '직접 입력'];
   const families = ['결손가정', '가부장적 가정', '다자녀 빈곤', '상실의 가정', '명예를 중시', '직접 입력'];
   const socials  = ['식민·지배 체제', '전쟁·분쟁', '경제 공황', '신분·계급 사회', '재난·자연재해', '직접 입력'];
 
@@ -118,12 +123,14 @@ function BirthTab() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <Card>
         <SectionLabel>성별</SectionLabel>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {genders.map(g => (
             <Pill key={g} label={g} on={gender.selected === g} onClick={() => gender.set(g)} />
           ))}
         </div>
-        <Memo placeholder="직접 입력: 성별 관련 특이사항..." value={memo1} onChange={setMemo1} />
+        {gender.selected === '직접 정의' && (
+          <Memo placeholder="직접 입력: 성별 관련 특이사항..." value={memoGender} onChange={setMemoGender} />
+        )}
       </Card>
 
       <Card>
@@ -133,7 +140,7 @@ function BirthTab() {
             <Pill key={s} label={s} on={spoon.selected === s} onClick={() => spoon.set(s)} />
           ))}
         </div>
-        <Memo placeholder="직접 입력: 가정 경제 상황..." value={memo2} onChange={setMemo2} />
+        <Memo placeholder="직접 입력: 가정 경제 상황 상세..." value={memoSpoon} onChange={setMemoSpoon} />
       </Card>
 
       <Card>
@@ -143,7 +150,7 @@ function BirthTab() {
             <Pill key={l} label={l} on={looks.selected === l} onClick={() => looks.set(l)} />
           ))}
         </div>
-        <Memo placeholder="직접 입력: 외모 특징..." value={memo3} onChange={setMemo3} />
+        <Memo placeholder="직접 입력: 외모 특징 상세..." value={memoLooks} onChange={setMemoLooks} />
       </Card>
 
       <Card>
@@ -153,6 +160,9 @@ function BirthTab() {
             <Pill key={e} label={e} on={era.selected.includes(e)} onClick={() => era.toggle(e)} />
           ))}
         </div>
+        {era.selected.includes('직접 설정') && (
+          <Memo placeholder="직접 입력: 시대적 배경 설명..." value={memoEra} onChange={setMemoEra} />
+        )}
       </Card>
 
       <Card>
@@ -162,6 +172,9 @@ function BirthTab() {
             <Pill key={r} label={r} on={region.selected.includes(r)} onClick={() => region.toggle(r)} />
           ))}
         </div>
+        {region.selected.includes('직접 입력') && (
+          <Memo placeholder="직접 입력: 지역 특성 설명..." value={memoRegion} onChange={setMemoRegion} />
+        )}
       </Card>
 
       <Card>
@@ -171,6 +184,9 @@ function BirthTab() {
             <Pill key={f} label={f} on={family.selected.includes(f)} onClick={() => family.toggle(f)} />
           ))}
         </div>
+        {family.selected.includes('직접 입력') && (
+          <Memo placeholder="직접 입력: 가정환경 상세 설명..." value={memoFamily} onChange={setMemoFamily} />
+        )}
       </Card>
 
       <Card>
@@ -180,6 +196,9 @@ function BirthTab() {
             <Pill key={s} label={s} on={social.selected.includes(s)} onClick={() => social.toggle(s)} />
           ))}
         </div>
+        {social.selected.includes('직접 입력') && (
+          <Memo placeholder="직접 입력: 사회환경 상세 설명..." value={memoSocial} onChange={setMemoSocial} />
+        )}
       </Card>
     </div>
   );
@@ -212,7 +231,9 @@ function DesireTab() {
             style={{ width: '100%' }}
           />
         </div>
-        <Memo placeholder="직접 입력: 욕망의 구체적 내용..." value={memo} onChange={setMemo} />
+        {desire.selected.includes('직접 입력') && (
+          <Memo placeholder="직접 입력: 욕망의 구체적 내용..." value={memo} onChange={setMemo} />
+        )}
       </Card>
 
       <Card>
@@ -222,7 +243,9 @@ function DesireTab() {
             <Pill key={l} label={l} on={limit.selected.includes(l)} onClick={() => limit.toggle(l)} />
           ))}
         </div>
-        <Memo placeholder="직접 입력: 한계의 구체적 내용..." value={memoL} onChange={setMemoL} />
+        {limit.selected.includes('직접 입력') && (
+          <Memo placeholder="직접 입력: 한계의 구체적 내용..." value={memoL} onChange={setMemoL} />
+        )}
       </Card>
     </div>
   );
@@ -247,7 +270,9 @@ function ShackleTab() {
             <Pill key={s} label={s} on={shackle.selected.includes(s)} onClick={() => shackle.toggle(s)} />
           ))}
         </div>
-        <Memo placeholder="직접 입력: 족쇄의 구체적 내용..." value={memo} onChange={setMemo} />
+        {shackle.selected.includes('직접 입력') && (
+          <Memo placeholder="직접 입력: 족쇄의 구체적 내용..." value={memo} onChange={setMemo} />
+        )}
       </Card>
 
       <Card>
