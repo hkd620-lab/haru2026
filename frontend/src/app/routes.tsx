@@ -16,6 +16,10 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ de
 const RecordDetailPage = lazy(() => import('./pages/RecordDetailPage').then((m) => ({ default: m.RecordDetailPage })));
 const HaruRawPage = lazy(() => import('./pages/HaruRawPage').then((m) => ({ default: m.HaruRawPage })));
 const BiblePage = lazy(() => import('./pages/BiblePage').then((m) => ({ default: m.BiblePage })));
+const BookStudio = lazy(() => import('./pages/BookStudio').then((m) => ({ default: m.BookStudio })));
+const BookCreate = lazy(() => import('./pages/BookCreate').then((m) => ({ default: m.BookCreate })));
+const NovelStudio = lazy(() => import('./pages/NovelStudio').then((m) => ({ default: m.NovelStudio })));
+const DiaryLearnPage = lazy(() => import('./pages/DiaryLearnPage').then((m) => ({ default: m.DiaryLearnPage })));
 
 // iOS 안전 로딩 인디케이터 (간단하고 블로킹 없음)
 function PageLoader() {
@@ -65,6 +69,10 @@ export const router = createBrowserRouter([
           { path: 'settings', element: withSuspense(<SettingsPage />) },
           { path: 'haruraw', element: withSuspense(<HaruRawPage />) },
           { path: 'bible', element: withSuspense(<BiblePage />) },
+          { path: 'book-studio', element: withSuspense(<BookStudio />) },
+          { path: 'book-create', element: withSuspense(<BookCreate />) },
+          { path: 'novel-studio', element: withSuspense(<NovelStudio />) },
+          { path: 'diary-learn', element: withSuspense(<DiaryLearnPage />) },
           { path: 'record-detail/:date/:formatKey', element: withSuspense(<RecordDetailPage />) },
         ],
       },
