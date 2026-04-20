@@ -1,4 +1,4 @@
-import { Home, BookOpen, Sparkles, BarChart3, Settings, Layers, Library, PenLine } from 'lucide-react';
+import { Home, BookOpen, Sparkles, BarChart3, Settings, Layers, Library } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -22,7 +22,6 @@ export function BottomNav() {
     ? [
         ...baseItems.slice(0, 4),
         { path: '/book-studio', icon: Library, label: '책스튜디오' },
-        { path: '/novel-studio', icon: PenLine, label: '소설' },
         ...baseItems.slice(4),
       ]
     : baseItems;

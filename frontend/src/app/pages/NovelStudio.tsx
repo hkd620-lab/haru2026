@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 
-const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
 type Tab = 'birth' | 'desire' | 'shackle' | 'luck' | 'narrative' | 'chars';
 
@@ -502,14 +501,13 @@ function ProgressBar({ tabs }: { tabs: Tab[] }) {
 export function NovelStudio() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const isDeveloper = user?.uid === DEVELOPER_UID;
   const [activeTab, setActiveTab] = useState<Tab>('birth');
   const [visitedTabs, setVisitedTabs] = useState<Tab[]>(['birth']);
 
-  if (!isDeveloper) {
+  if (!user) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAF9F6' }}>
-        <p style={{ color: '#9ca3af', fontSize: 14 }}>개발자 전용 페이지입니다.</p>
+        <p style={{ color: '#9ca3af', fontSize: 14 }}>로그인이 필요합니다.</p>
       </div>
     );
   }
