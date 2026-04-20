@@ -16,10 +16,11 @@ export function BiblePage() {
   // 안드로이드 오디오 잠금 해제
   useEffect(() => {
     const unlock = () => {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (AudioContext) {
-        const ctx = new AudioContext();
-        ctx.resume().then(() => ctx.close());
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx && !audioCtxRef.current) {
+        const ctx = new AudioCtx();
+        ctx.resume();
+        audioCtxRef.current = ctx;
       }
     };
     document.addEventListener('touchstart', unlock, { once: true });
@@ -31,6 +32,7 @@ export function BiblePage() {
   }, []);
   const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
 
   // 문법 팝업
   const [grammarPopup, setGrammarPopup] = useState<{
@@ -226,13 +228,17 @@ export function BiblePage() {
 
       if (audioSrc) {
         // ③ AudioContext 잠금해제 재시도
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioCtx) {
-          try {
-            const ctx = new AudioCtx();
-            if (ctx.state === 'suspended') await ctx.resume();
-          } catch(_) {}
-        }
+        try {
+          const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+          if (AudioCtx) {
+            if (!audioCtxRef.current) {
+              audioCtxRef.current = new AudioCtx();
+            }
+            if (audioCtxRef.current.state === 'suspended') {
+              await audioCtxRef.current.resume();
+            }
+          }
+        } catch(_) {}
 
         audioRef.current = new Audio(audioSrc);
         audioRef.current.onended = () => setTtsPlaying(null);
