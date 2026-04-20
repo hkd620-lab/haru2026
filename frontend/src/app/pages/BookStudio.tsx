@@ -90,7 +90,7 @@ export function BookStudio() {
                 style={{ backgroundColor: '#1A3C6E' }}
                 onClick={() => navigate('/book-create')}
               >
-                + 새 책 만들기
+                📖 사람속으로
               </button>
               <button
                 className="px-4 py-2 rounded-lg text-sm font-medium border transition-opacity hover:opacity-90"
