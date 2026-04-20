@@ -50,8 +50,8 @@ export function NewsPage() {
       <div style={{ backgroundColor: '#1A3C6E', padding: '16px', display: 'flex', alignItems: 'center', gap: 12 }}>
         <button onClick={() => navigate('/')} style={{ color: '#fff', background: 'none', border: 'none', fontSize: 20, cursor: 'pointer' }}>←</button>
         <div style={{ flex: 1 }}>
-          <p style={{ color: '#fff', fontSize: 16, fontWeight: 700, margin: 0 }}>🌍 가장 빠른 해외뉴스</p>
-          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, margin: 0 }}>BBC · Sky News 실시간 — AI 선별</p>
+          <p style={{ color: '#fff', fontSize: 16, fontWeight: 700, margin: 0 }}>🌍 YTN보다 빠른 국제뉴스</p>
+          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, margin: 0 }}>Reuters · AP 직접 수신 — AI 선별</p>
         </div>
         <button
           onClick={handleRefresh}
@@ -95,7 +95,7 @@ export function NewsPage() {
               </div>
             </div>
             <p style={{ fontSize: 11, color: '#bbb', textAlign: 'center' }}>마지막 업데이트: {formatTime(news.updatedAt?.seconds)}</p>
-            <p style={{ fontSize: 11, color: '#bbb', textAlign: 'center', marginTop: 4 }}>30분마다 자동 업데이트 · BBC · Sky News</p>
+            <p style={{ fontSize: 11, color: '#bbb', textAlign: 'center', marginTop: 4 }}>30분마다 자동 업데이트 · 출처: Reuters · Associated Press(AP)</p>
           </div>
         )}
       </div>

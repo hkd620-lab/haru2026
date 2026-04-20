@@ -87,7 +87,7 @@ export function HomePage() {
               style={{ backgroundColor: 'transparent', color: '#10b981', border: '2px solid #10b981' }}
             >
               <span style={{ fontSize: 16 }}>🌍</span>
-              <span className="text-sm tracking-wide">가장 빠른 해외뉴스</span>
+              <span className="text-sm tracking-wide">YTN보다 빠른 국제뉴스</span>
             </button>
           </div>
         )}
