@@ -84,13 +84,22 @@ export function BookStudio() {
             </h1>
           </div>
           {isDeveloper && (
-            <button
-              className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: '#1A3C6E' }}
-              onClick={() => navigate('/book-create')}
-            >
-              + 새 책 만들기
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: '#1A3C6E' }}
+                onClick={() => navigate('/book-create')}
+              >
+                + 새 책 만들기
+              </button>
+              <button
+                className="px-4 py-2 rounded-lg text-sm font-medium border transition-opacity hover:opacity-90"
+                style={{ borderColor: '#10b981', color: '#10b981', backgroundColor: 'transparent' }}
+                onClick={() => navigate('/novel-studio')}
+              >
+                ✍️ 창작소설
+              </button>
+            </div>
           )}
         </div>
       </div>
