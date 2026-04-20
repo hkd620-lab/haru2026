@@ -1724,8 +1724,9 @@ export const fetchTopNews = onSchedule(
   async () => {
     try {
       const RSS_URLS = [
-        'https://feeds.bbci.co.uk/news/world/rss.xml',
-        'https://feeds.skynews.com/feeds/rss/world.xml',
+        'https://www.aljazeera.com/xml/rss/all.xml',
+        'https://www.theguardian.com/world/rss',
+        'https://rss.nytimes.com/services/xml/rss/nyt/World.xml',
       ];
       let allItems: string[] = [];
       for (const url of RSS_URLS) {
@@ -1781,8 +1782,9 @@ export const refreshNews = onCall(
   async () => {
     try {
       const RSS_URLS = [
-        'https://feeds.bbci.co.uk/news/world/rss.xml',
-        'https://feeds.skynews.com/feeds/rss/world.xml',
+        'https://www.aljazeera.com/xml/rss/all.xml',
+        'https://www.theguardian.com/world/rss',
+        'https://rss.nytimes.com/services/xml/rss/nyt/World.xml',
       ];
       let allItems: string[] = [];
       for (const url of RSS_URLS) {
