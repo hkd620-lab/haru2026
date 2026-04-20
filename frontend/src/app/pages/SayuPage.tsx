@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Info, Leaf, Briefcase, BookOpen, Scale, Cpu, Volume2, Pause } from 'lucide-react';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { SayuTitleAnimation } from '../components/SayuTitleAnimation';
@@ -987,7 +987,9 @@ export function SayuPage() {
                   className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
                   style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
                 >
-                  <span>{category === '생활' ? '🌸 생활' : category === '업무' ? '💼 업무' : category}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {category === '생활' ? <><Leaf className="w-4 h-4" /> 생활</> : category === '업무' ? <><Briefcase className="w-4 h-4" /> 업무</> : category}
+                  </span>
                   <span style={{ fontSize: '10px' }}>
                     {collapsedCategories.has(category) ? '▶' : '▼'}
                   </span>
@@ -1103,7 +1105,7 @@ export function SayuPage() {
               className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
               style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
             >
-              <span>📖 하루충전소</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><BookOpen className="w-4 h-4" /> 하루충전소</span>
               <span style={{ fontSize: '10px' }}>{collapsedCategories.has('하루충전소') ? '▶' : '▼'}</span>
             </button>
             {!collapsedCategories.has('하루충전소') && (
@@ -1255,7 +1257,7 @@ export function SayuPage() {
                                               fontSize: 11, fontWeight: 600, cursor: 'pointer',
                                             }}
                                           >
-                                            {ttsLoading === `chapter_${ch.id}` ? '⏳' : ttsPlaying === `chapter_${ch.id}` ? '⏸ 정지' : '🔊 듣기'}
+                                            {ttsLoading === `chapter_${ch.id}` ? '로딩 중...' : ttsPlaying === `chapter_${ch.id}` ? <><Pause className="w-3 h-3" /> 정지</> : <><Volume2 className="w-3 h-3" /> 듣기</>}
                                           </button>
                                         </div>
                                         {renderStyledContent(ch.content)}
@@ -1297,7 +1299,7 @@ export function SayuPage() {
                   className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
                   style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
                 >
-                  <span>⚖️ 하루LAW</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Scale className="w-4 h-4" /> 하루LAW</span>
                   <span style={{ fontSize: '10px' }}>
                     {collapsedCategories.has(category) ? '▶' : '▼'}
                   </span>
@@ -1391,7 +1393,7 @@ export function SayuPage() {
               className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
               style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
             >
-              <span>💬 하루AI지식창고</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Cpu className="w-4 h-4" /> 하루AI지식창고</span>
               <span style={{ fontSize: '10px' }}>{collapsedCategories.has('하루AI지식창고') ? '▶' : '▼'}</span>
             </button>
             {!collapsedCategories.has('하루AI지식창고') && (
@@ -1618,7 +1620,7 @@ export function SayuPage() {
             style={{ width: '100%', maxHeight: '80vh', backgroundColor: '#fff', borderRadius: '16px 16px 0 0', padding: 20, overflowY: 'auto' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E' }}>⚖️ 하루LAW 검색 기록</p>
+              <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E', display: 'flex', alignItems: 'center', gap: 6 }}><Scale className="w-4 h-4" /> 하루LAW 검색 기록</p>
               <button onClick={() => setHarurawModal({ isOpen: false, query: '', summary: '', articles: '' })}
                 style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#999' }}>✕</button>
             </div>
