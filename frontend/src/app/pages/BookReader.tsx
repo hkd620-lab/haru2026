@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 interface Chapter {
   id: string;
@@ -19,6 +20,10 @@ export function BookReader() {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [ttsPlaying, setTtsPlaying] = useState<string | null>(null);
+  const [ttsLoading, setTtsLoading] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const fns = getFunctions(undefined, 'asia-northeast3');
 
   useEffect(() => {
     if (!bookId) return;
@@ -36,6 +41,50 @@ export function BookReader() {
     });
     return () => unsub();
   }, [bookId]);
+
+  const handleTTS = async (text: string, key: string) => {
+    if (ttsPlaying === key) {
+      audioRef.current?.pause();
+      setTtsPlaying(null);
+      return;
+    }
+    try {
+      setTtsLoading(key);
+      const silentAudio = new Audio(
+        'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA'
+      );
+      await silentAudio.play().catch(() => {});
+      const fn = httpsCallable(fns, 'generateTTS');
+      const res: any = await fn({ text, cacheKey: key });
+      if (audioRef.current) audioRef.current.pause();
+      let audioSrc = '';
+      if (res.data.audioUrl) {
+        audioSrc = res.data.audioUrl;
+      } else if (res.data.audioBase64) {
+        const binary = atob(res.data.audioBase64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const blob = new Blob([bytes], { type: 'audio/mp3' });
+        audioSrc = URL.createObjectURL(blob);
+      }
+      if (audioSrc) {
+        setTtsLoading(null);
+        setTtsPlaying(key);
+        audioRef.current = new Audio(audioSrc);
+        audioRef.current.onended = () => setTtsPlaying(null);
+        try {
+          await audioRef.current.play();
+        } catch {
+          setTimeout(async () => {
+            try { await audioRef.current?.play(); } catch {}
+          }, 300);
+        }
+      }
+    } catch {
+      setTtsLoading(null);
+      setTtsPlaying(null);
+    }
+  };
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#FAF9F6' }}>
@@ -118,8 +167,24 @@ export function BookReader() {
                       className="px-5 pb-6"
                       style={{ borderTop: '1px solid #e5e5e5' }}
                     >
+                      <button
+                        className="mt-4 mb-3 px-4 py-2 rounded-lg text-sm font-medium text-white"
+                        style={{
+                          backgroundColor:
+                            ttsPlaying === `chapter_${chapter.id}`
+                              ? '#8B4789'
+                              : '#1A3C6E',
+                        }}
+                        onClick={() => handleTTS(chapter.content, `chapter_${chapter.id}`)}
+                      >
+                        {ttsLoading === `chapter_${chapter.id}`
+                          ? '⏳ 로딩 중...'
+                          : ttsPlaying === `chapter_${chapter.id}`
+                          ? '⏸ 정지'
+                          : '🔊 듣기'}
+                      </button>
                       <p
-                        className="mt-4 leading-8 whitespace-pre-wrap"
+                        className="leading-8 whitespace-pre-wrap"
                         style={{ color: '#333333', fontSize: 15 }}
                       >
                         {chapter.content || '내용이 없습니다.'}
