@@ -137,6 +137,7 @@ export function BookStudio() {
                   backgroundColor: '#ffffff',
                   borderColor: '#e5e5e5',
                 }}
+                onClick={() => navigate(`/book-reader/${book.id}?bookTitle=${encodeURIComponent(book.title)}`)}
               >
                 <div className="flex items-start justify-between gap-3">
                   {editingBookId === book.id ? (
