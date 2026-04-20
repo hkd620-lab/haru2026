@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, orderBy, query, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, orderBy, query, doc, updateDoc, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router';
@@ -51,11 +51,20 @@ export function BookStudio() {
     const q = query(collection(db, 'books'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(
       q,
-      (snapshot) => {
-        const list = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...(doc.data() as Omit<Book, 'id'>),
-        }));
+      async (snapshot) => {
+        const list = await Promise.all(
+          snapshot.docs.map(async (d) => {
+            const data = d.data() as Omit<Book, 'id'>;
+            const chapSnap = await getDocs(
+              collection(db, 'books', d.id, 'chapters')
+            );
+            return {
+              id: d.id,
+              ...data,
+              chapterCount: chapSnap.size,
+            };
+          })
+        );
         setBooks(list);
         setLoading(false);
       },
