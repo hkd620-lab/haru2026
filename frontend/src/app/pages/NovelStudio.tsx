@@ -427,7 +427,17 @@ type CharRole = '시동자' | '반대자' | '동조자' | '방관자';
 interface Character {
   name: string;
   role: CharRole;
-  desc: string;
+  // 성격
+  personalities: string[];
+  personalityMemo: string;
+  // 욕망
+  desires: string[];
+  desireMemo: string;
+  // 족쇄
+  shackles: string[];
+  shackleMemo: string;
+  // 역할 설명
+  roleDesc: string;
 }
 
 interface NovelSettings {
@@ -437,8 +447,8 @@ interface NovelSettings {
 
 const defaultSettings: NovelSettings = {
   chars: [
-    { name: '', role: '시동자', desc: '' },
-    { name: '', role: '반대자', desc: '' },
+    { name: '', role: '시동자', personalities: [], personalityMemo: '', desires: [], desireMemo: '', shackles: [], shackleMemo: '', roleDesc: '' },
+    { name: '', role: '반대자', personalities: [], personalityMemo: '', desires: [], desireMemo: '', shackles: [], shackleMemo: '', roleDesc: '' },
   ],
   events: [],
 };
@@ -450,20 +460,195 @@ const ROLE_COLOR: Record<CharRole, string> = {
   '방관자': '#5F5E5A',
 };
 
-function CharsTab({ s, upd }: { s: NovelSettings; upd: (k: keyof NovelSettings, v: any) => void }) {
-  const addChar = () =>
-    upd('chars', [...s.chars, { name: '', role: '방관자', desc: '' }]);
+const CHAR_PERSONALITIES = [
+  '내성적', '외향적', '충동적', '신중한', '낙천적', '비관적',
+  '고집스러운', '유연한', '냉정한', '감성적', '야망가', '순종적',
+  '반항아', '이상주의자', '현실주의자', '완벽주의자',
+];
 
-  const update = (i: number, field: keyof Character, v: string) =>
-    upd('chars', s.chars.map((c, idx) => idx === i ? { ...c, [field]: v } : c));
+const CHAR_DESIRES = [
+  '인정받고 싶다', '사랑받고 싶다', '자유롭고 싶다',
+  '복수하고 싶다', '살아남고 싶다', '뭔가를 증명하고 싶다',
+  '가족을 지키고 싶다', '도망치고 싶다', '잊혀지고 싶다',
+  '최고가 되고 싶다', '평화롭게 살고 싶다', '의미있게 살고 싶다',
+];
+
+const CHAR_SHACKLES = [
+  '과거의 실패', '트라우마', '가족에 대한 죄책감', '두려움',
+  '타인의 시선', '자기불신', '빚 또는 약속', '신체적 한계',
+  '신분·계급', '사랑하는 사람', '복수심', '전통과 관습',
+];
+
+function CharDetail({
+  c, i, onUpdate,
+}: {
+  c: Character;
+  i: number;
+  onUpdate: (i: number, field: keyof Character, v: any) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const toggleItem = (field: 'personalities' | 'desires' | 'shackles', v: string) => {
+    const arr = c[field] as string[];
+    onUpdate(i, field, arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]);
+  };
+
+  const SubPill = ({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) => (
+    <button onClick={onClick} style={{
+      padding: '3px 9px', borderRadius: 99, fontSize: 11,
+      border: `1px solid ${on ? '#1A3C6E' : '#e5e7eb'}`,
+      background: on ? '#EEF3FA' : '#fff',
+      color: on ? '#1A3C6E' : '#9ca3af',
+      cursor: 'pointer', transition: 'all 0.15s',
+    }}>{on ? '✓ ' : ''}{label}</button>
+  );
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          width: '100%', padding: '7px 10px',
+          border: '1px dashed #c7d6ea', borderRadius: 8,
+          background: open ? '#f4f8fc' : '#fff',
+          color: '#1A3C6E', fontSize: 12,
+          cursor: 'pointer', textAlign: 'left',
+          display: 'flex', justifyContent: 'space-between',
+        }}
+      >
+        <span>상세 설정 (성격·욕망·족쇄·역할)</span>
+        <span>{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+          {/* 성격 */}
+          <div style={{ background: '#f9fbfd', borderRadius: 8, padding: 10 }}>
+            <p style={{ fontSize: 11, fontWeight: 500, color: '#1A3C6E', marginBottom: 6 }}>
+              성격 <span style={{ fontWeight: 400, color: '#9ca3af' }}>(복수 선택 가능)</span>
+            </p>
+            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 6 }}>
+              {CHAR_PERSONALITIES.map(p => (
+                <SubPill key={p} label={p}
+                  on={c.personalities.includes(p)}
+                  onClick={() => toggleItem('personalities', p)} />
+              ))}
+            </div>
+            <textarea
+              value={c.personalityMemo}
+              onChange={e => onUpdate(i, 'personalityMemo', e.target.value)}
+              placeholder="추가 성격 설명... (예: 겉은 강해 보이지만 속은 여린)"
+              rows={2}
+              style={{
+                width: '100%', border: '1px dashed #c7d6ea', borderRadius: 7,
+                padding: '6px 9px', fontSize: 11, color: '#374151',
+                background: '#fff', resize: 'none', outline: 'none',
+                lineHeight: 1.6, fontFamily: 'inherit',
+              }}
+            />
+          </div>
+
+          {/* 욕망 */}
+          <div style={{ background: '#FFF8E8', borderRadius: 8, padding: 10 }}>
+            <p style={{ fontSize: 11, fontWeight: 500, color: '#633806', marginBottom: 6 }}>
+              🔥 욕망 <span style={{ fontWeight: 400, color: '#9ca3af' }}>(복수 선택 가능)</span>
+            </p>
+            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 6 }}>
+              {CHAR_DESIRES.map(d => (
+                <SubPill key={d} label={d}
+                  on={c.desires.includes(d)}
+                  onClick={() => toggleItem('desires', d)} />
+              ))}
+            </div>
+            <textarea
+              value={c.desireMemo}
+              onChange={e => onUpdate(i, 'desireMemo', e.target.value)}
+              placeholder="이 인물만의 욕망 설명... (예: 아버지보다 더 나은 사람이 되고 싶다)"
+              rows={2}
+              style={{
+                width: '100%', border: '1px dashed #F9CB42', borderRadius: 7,
+                padding: '6px 9px', fontSize: 11, color: '#374151',
+                background: '#fff', resize: 'none', outline: 'none',
+                lineHeight: 1.6, fontFamily: 'inherit',
+              }}
+            />
+          </div>
+
+          {/* 족쇄 */}
+          <div style={{ background: '#FFF0F0', borderRadius: 8, padding: 10 }}>
+            <p style={{ fontSize: 11, fontWeight: 500, color: '#7F1D1D', marginBottom: 6 }}>
+              ⛓ 족쇄 <span style={{ fontWeight: 400, color: '#9ca3af' }}>(복수 선택 가능)</span>
+            </p>
+            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 6 }}>
+              {CHAR_SHACKLES.map(sh => (
+                <SubPill key={sh} label={sh}
+                  on={c.shackles.includes(sh)}
+                  onClick={() => toggleItem('shackles', sh)} />
+              ))}
+            </div>
+            <textarea
+              value={c.shackleMemo}
+              onChange={e => onUpdate(i, 'shackleMemo', e.target.value)}
+              placeholder="이 인물만의 족쇄 설명... (예: 형의 죽음에 대한 죄책감)"
+              rows={2}
+              style={{
+                width: '100%', border: '1px dashed #FCA5A5', borderRadius: 7,
+                padding: '6px 9px', fontSize: 11, color: '#374151',
+                background: '#fff', resize: 'none', outline: 'none',
+                lineHeight: 1.6, fontFamily: 'inherit',
+              }}
+            />
+          </div>
+
+          {/* 역할 설명 */}
+          <div style={{ background: '#F0F4FF', borderRadius: 8, padding: 10 }}>
+            <p style={{ fontSize: 11, fontWeight: 500, color: '#0C447C', marginBottom: 6 }}>
+              📌 이야기에서의 역할
+            </p>
+            <textarea
+              value={c.roleDesc}
+              onChange={e => onUpdate(i, 'roleDesc', e.target.value)}
+              placeholder="이 인물이 이야기에서 하는 역할... (예: 주인공의 출발을 막는 존재이나 결말에서 조력자로 전환)"
+              rows={3}
+              style={{
+                width: '100%', border: '1px dashed #85B7EB', borderRadius: 7,
+                padding: '6px 9px', fontSize: 11, color: '#374151',
+                background: '#fff', resize: 'none', outline: 'none',
+                lineHeight: 1.6, fontFamily: 'inherit',
+              }}
+            />
+          </div>
+
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CharsTab({ s, upd }: { s: NovelSettings; upd: (k: keyof NovelSettings, v: any) => void }) {
+  const addChar = () => upd('chars', [...s.chars, {
+    name: '', role: '방관자' as CharRole,
+    personalities: [], personalityMemo: '',
+    desires: [], desireMemo: '',
+    shackles: [], shackleMemo: '',
+    roleDesc: '',
+  }]);
+
+  const updateChar = (i: number, field: keyof Character, v: any) => {
+    const arr = s.chars.map((c, idx) => idx === i ? { ...c, [field]: v } : c);
+    upd('chars', arr);
+  };
+
+  const removeChar = (i: number) => upd('chars', s.chars.filter((_, idx) => idx !== i));
 
   const roles: CharRole[] = ['시동자', '반대자', '동조자', '방관자'];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ background: '#f4f8fc', borderRadius: 8, padding: '8px 10px', fontSize: 10, color: '#1A3C6E', lineHeight: 1.6 }}>
-        🟦 시동자: 이야기를 시작하는 힘 &nbsp;|&nbsp; 🟥 반대자: 저항하는 힘<br />
-        🟩 동조자: 함께하는 힘 &nbsp;|&nbsp; ⬜ 방관자: 침묵하는 힘
+        🟦 시동자: 이야기를 시작하는 힘 | 🟥 반대자: 저항하는 힘<br />
+        🟩 동조자: 함께하는 힘 | ⬜ 방관자: 침묵하는 힘
       </div>
       {s.chars.map((c, i) => (
         <div key={i} style={{
@@ -471,56 +656,46 @@ function CharsTab({ s, upd }: { s: NovelSettings; upd: (k: keyof NovelSettings, 
           border: `1px solid ${ROLE_COLOR[c.role]}33`,
           borderRadius: 10, padding: 11,
         }}>
-          <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
-            {roles.map(r => (
-              <button
-                key={r}
-                onClick={() => update(i, 'role', r)}
-                style={{
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {roles.map(r => (
+                <button key={r} onClick={() => updateChar(i, 'role', r)} style={{
                   padding: '3px 10px', borderRadius: 99, fontSize: 10,
                   border: `1px solid ${ROLE_COLOR[r]}`,
                   background: c.role === r ? ROLE_COLOR[r] : '#fff',
                   color: c.role === r ? '#fff' : ROLE_COLOR[r],
                   cursor: 'pointer',
-                }}
-              >{r}</button>
-            ))}
+                }}>{r}</button>
+              ))}
+            </div>
+            {s.chars.length > 1 && (
+              <button onClick={() => removeChar(i)} style={{
+                fontSize: 11, color: '#dc2626',
+                background: 'none', border: 'none', cursor: 'pointer',
+              }}>삭제</button>
+            )}
           </div>
           <input
             value={c.name}
-            onChange={e => update(i, 'name', e.target.value)}
+            onChange={e => updateChar(i, 'name', e.target.value)}
             placeholder="인물 이름"
             style={{
               width: '100%', border: 'none',
               borderBottom: `0.5px solid ${ROLE_COLOR[c.role]}`,
-              padding: '4px 0',
-              color: '#1A3C6E', background: 'transparent',
-              outline: 'none', marginBottom: 6, fontSize: 16,
+              padding: '4px 0', color: '#1A3C6E',
+              background: 'transparent', outline: 'none',
+              marginBottom: 4, fontSize: 16,
             }}
           />
-          <textarea
-            value={c.desc}
-            onChange={e => update(i, 'desc', e.target.value)}
-            placeholder="성격, 욕망, 족쇄, 역할 설명..."
-            rows={2}
-            style={{
-              width: '100%', border: 'none',
-              fontSize: 12, color: '#6b7280',
-              background: 'transparent', resize: 'none',
-              outline: 'none', lineHeight: 1.6, fontFamily: 'inherit',
-            }}
-          />
+          <CharDetail c={c} i={i} onUpdate={updateChar} />
         </div>
       ))}
-      <button
-        onClick={addChar}
-        style={{
-          width: '100%', padding: 8,
-          border: '1px dashed #c7d6ea',
-          borderRadius: 8, background: 'transparent',
-          color: '#1A3C6E', fontSize: 12, cursor: 'pointer',
-        }}
-      >+ 인물 추가</button>
+      <button onClick={addChar} style={{
+        width: '100%', padding: 8,
+        border: '1px dashed #c7d6ea', borderRadius: 8,
+        background: 'transparent', color: '#1A3C6E',
+        fontSize: 12, cursor: 'pointer',
+      }}>+ 인물 추가</button>
     </div>
   );
 }
