@@ -1750,28 +1750,48 @@ export const fetchTopNews = onSchedule(
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
       const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
       const prompt = `다음은 오늘의 해외 주요 뉴스 목록입니다.
-미국과 이란 관계, 중동 정세, 국제 분쟁, 외교 관련 뉴스 중 가장 중요한 뉴스 1개를 선택해서 한국어로 번역 요약해주세요.
+미국과 이란 관계, 중동 정세, 국제 분쟁, 외교 관련 뉴스 중 가장 중요한 순서대로 3개를 선택해서 한국어로 번역 요약해주세요.
 
 뉴스 목록:
 ${allItems.join('\n\n---\n\n')}
 
-반드시 아래 JSON 형식으로만 답하세요:
-{
-  "title": "한국어 제목",
-  "summary": "한국어 요약 (3~4문장)",
-  "originalTitle": "원문 제목",
-  "link": "원문 링크",
-  "category": "미국-이란 or 중동 or 국제분쟁 or 외교"
-}
-미국-이란 관련 뉴스가 없으면 가장 긴박한 국제 뉴스 1개를 선택하세요.`;
+반드시 아래 JSON 배열 형식으로만 답하세요 (다른 텍스트 없이):
+[
+  {
+    "rank": 1,
+    "title": "한국어 제목",
+    "summary": "한국어 요약 (3~4문장)",
+    "originalTitle": "원문 제목",
+    "link": "원문 링크",
+    "category": "미국-이란 or 중동 or 국제분쟁 or 외교"
+  },
+  {
+    "rank": 2,
+    "title": "한국어 제목",
+    "summary": "한국어 요약 (3~4문장)",
+    "originalTitle": "원문 제목",
+    "link": "원문 링크",
+    "category": "미국-이란 or 중동 or 국제분쟁 or 외교"
+  },
+  {
+    "rank": 3,
+    "title": "한국어 제목",
+    "summary": "한국어 요약 (3~4문장)",
+    "originalTitle": "원문 제목",
+    "link": "원문 링크",
+    "category": "미국-이란 or 중동 or 국제분쟁 or 외교"
+  }
+]`;
       const result = await model.generateContent(prompt);
       const text = result.response.text().replace(/```json|```/g, '').trim();
-      const newsData = JSON.parse(text);
-      await db.collection('news').doc('top').set({
-        ...newsData,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-      logger.info('✅ 뉴스 저장 완료:', newsData.title);
+      const newsArray = JSON.parse(text);
+      const batch = db.batch();
+      for (const item of newsArray) {
+        const ref = db.collection('news').doc(`rank${item.rank}`);
+        batch.set(ref, { ...item, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      }
+      await batch.commit();
+      logger.info('✅ 뉴스 3건 저장 완료');
     } catch (err) { logger.error('뉴스 수집 오류:', err); }
   }
 );
@@ -1808,27 +1828,48 @@ export const refreshNews = onCall(
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
       const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
       const prompt = `다음은 오늘의 해외 주요 뉴스 목록입니다.
-미국과 이란 관계, 중동 정세, 국제 분쟁, 외교 관련 뉴스 중 가장 중요한 뉴스 1개를 선택해서 한국어로 번역 요약해주세요.
+미국과 이란 관계, 중동 정세, 국제 분쟁, 외교 관련 뉴스 중 가장 중요한 순서대로 3개를 선택해서 한국어로 번역 요약해주세요.
 
 뉴스 목록:
 ${allItems.join('\n\n---\n\n')}
 
-반드시 아래 JSON 형식으로만 답하세요:
-{
-  "title": "한국어 제목",
-  "summary": "한국어 요약 (3~4문장)",
-  "originalTitle": "원문 제목",
-  "link": "원문 링크",
-  "category": "미국-이란 or 중동 or 국제분쟁 or 외교"
-}`;
+반드시 아래 JSON 배열 형식으로만 답하세요 (다른 텍스트 없이):
+[
+  {
+    "rank": 1,
+    "title": "한국어 제목",
+    "summary": "한국어 요약 (3~4문장)",
+    "originalTitle": "원문 제목",
+    "link": "원문 링크",
+    "category": "미국-이란 or 중동 or 국제분쟁 or 외교"
+  },
+  {
+    "rank": 2,
+    "title": "한국어 제목",
+    "summary": "한국어 요약 (3~4문장)",
+    "originalTitle": "원문 제목",
+    "link": "원문 링크",
+    "category": "미국-이란 or 중동 or 국제분쟁 or 외교"
+  },
+  {
+    "rank": 3,
+    "title": "한국어 제목",
+    "summary": "한국어 요약 (3~4문장)",
+    "originalTitle": "원문 제목",
+    "link": "원문 링크",
+    "category": "미국-이란 or 중동 or 국제분쟁 or 외교"
+  }
+]`;
       const result = await model.generateContent(prompt);
       const text = result.response.text().replace(/```json|```/g, '').trim();
-      const newsData = JSON.parse(text);
-      await db.collection('news').doc('top').set({
-        ...newsData,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-      return { success: true, news: newsData };
+      const newsArray = JSON.parse(text);
+      const batch = db.batch();
+      for (const item of newsArray) {
+        const ref = db.collection('news').doc(`rank${item.rank}`);
+        batch.set(ref, { ...item, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      }
+      await batch.commit();
+      return { success: true, count: newsArray.length };
     } catch (err) {
       logger.error('뉴스 새로고침 오류:', err);
       return { success: false };
