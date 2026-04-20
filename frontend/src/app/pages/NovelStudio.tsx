@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 
 
-type Tab = 'birth' | 'desire' | 'shackle' | 'luck' | 'narrative' | 'chars';
+type Tab = 'birth' | 'desire' | 'shackle' | 'luck' | 'narrative' | 'chars' | 'events';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'birth',     label: '탄생',   icon: '🌱' },
@@ -12,6 +12,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'luck',      label: '운',     icon: '🍀' },
   { id: 'narrative', label: '서사',   icon: '📖' },
   { id: 'chars',     label: '인물',   icon: '👥' },
+  { id: 'events',    label: '사건',   icon: '⚡' },
 ];
 
 function useMultiSelect(init: string[] = []) {
@@ -411,12 +412,34 @@ function NarrativeTab() {
   );
 }
 
+interface NovelEvent {
+  id: string;
+  category: string;
+  title: string;
+  timing: string;
+  impact: string;
+  isCore: boolean;
+}
+
 type CharRole = '시동자' | '반대자' | '동조자' | '방관자';
 interface Character {
   name: string;
   role: CharRole;
   desc: string;
 }
+
+interface NovelSettings {
+  chars: Character[];
+  events: NovelEvent[];
+}
+
+const defaultSettings: NovelSettings = {
+  chars: [
+    { name: '', role: '시동자', desc: '' },
+    { name: '', role: '반대자', desc: '' },
+  ],
+  events: [],
+};
 
 const ROLE_COLOR: Record<CharRole, string> = {
   '시동자': '#185FA5',
@@ -425,17 +448,12 @@ const ROLE_COLOR: Record<CharRole, string> = {
   '방관자': '#5F5E5A',
 };
 
-function CharsTab() {
-  const [chars, setChars] = useState<Character[]>([
-    { name: '', role: '시동자', desc: '' },
-    { name: '', role: '반대자', desc: '' },
-  ]);
-
+function CharsTab({ s, upd }: { s: NovelSettings; upd: (k: keyof NovelSettings, v: any) => void }) {
   const addChar = () =>
-    setChars(p => [...p, { name: '', role: '방관자', desc: '' }]);
+    upd('chars', [...s.chars, { name: '', role: '방관자', desc: '' }]);
 
   const update = (i: number, field: keyof Character, v: string) =>
-    setChars(p => p.map((c, idx) => idx === i ? { ...c, [field]: v } : c));
+    upd('chars', s.chars.map((c, idx) => idx === i ? { ...c, [field]: v } : c));
 
   const roles: CharRole[] = ['시동자', '반대자', '동조자', '방관자'];
 
@@ -445,7 +463,7 @@ function CharsTab() {
         🟦 시동자: 이야기를 시작하는 힘 &nbsp;|&nbsp; 🟥 반대자: 저항하는 힘<br />
         🟩 동조자: 함께하는 힘 &nbsp;|&nbsp; ⬜ 방관자: 침묵하는 힘
       </div>
-      {chars.map((c, i) => (
+      {s.chars.map((c, i) => (
         <div key={i} style={{
           background: '#fff',
           border: `1px solid ${ROLE_COLOR[c.role]}33`,
@@ -505,8 +523,253 @@ function CharsTab() {
   );
 }
 
-function ProgressBar({ tabs }: { tabs: Tab[] }) {
-  const pct = Math.round((tabs.length / 6) * 100);
+const EVENT_CATEGORIES = [
+  {
+    group: '🌹 첫 경험',
+    items: ['첫사랑', '첫 이별·실연', '첫 성적 경험', '첫 친구', '첫 배신', '첫 죽음 목격'],
+  },
+  {
+    group: '💔 관계의 상처',
+    items: ['배신', '버려짐', '폭력·학대', '굴욕', '오해와 단절', '가족의 죽음'],
+  },
+  {
+    group: '🏆 결정적 성취',
+    items: ['인생 첫 성공', '인정받는 순간', '꿈의 실현', '오랜 노력의 결실'],
+  },
+  {
+    group: '💀 실패와 추락',
+    items: ['사업 실패', '시험·경쟁 탈락', '직장 해고', '큰 실수·사고', '파산'],
+  },
+  {
+    group: '🌊 운명적 만남',
+    items: ['평생의 스승', '운명적 연인', '진정한 친구', '라이벌과의 만남'],
+  },
+  {
+    group: '⚡ 사회·역사적 사건',
+    items: ['전쟁 경험', '재난·재해', '차별·박해', '역사적 격변 목격'],
+  },
+];
+
+function EventsTab({ s, upd }: { s: NovelSettings; upd: (k: keyof NovelSettings, v: any) => void }) {
+  const [showForm, setShowForm] = useState(false);
+  const [newEvent, setNewEvent] = useState<NovelEvent>({
+    id: '', category: '', title: '', timing: '', impact: '', isCore: false,
+  });
+
+  const addEvent = () => {
+    if (!newEvent.title.trim()) return;
+    const ev: NovelEvent = { ...newEvent, id: Date.now().toString() };
+    upd('events', [...s.events, ev]);
+    setNewEvent({ id: '', category: '', title: '', timing: '', impact: '', isCore: false });
+    setShowForm(false);
+  };
+
+  const removeEvent = (id: string) => {
+    upd('events', s.events.filter(e => e.id !== id));
+  };
+
+  const toggleCore = (id: string) => {
+    upd('events', s.events.map(e => e.id === id ? { ...e, isCore: !e.isCore } : e));
+  };
+
+  const selectPreset = (category: string, item: string) => {
+    setNewEvent(prev => ({ ...prev, category, title: item }));
+    setShowForm(true);
+  };
+
+  const coreCount = s.events.filter(e => e.isCore).length;
+  const total = s.events.length;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+      {/* 추천 안내 */}
+      <div style={{ background: '#FFFBF0', border: '0.5px solid #F9CB42', borderRadius: 10, padding: 11 }}>
+        <p style={{ fontSize: 12, fontWeight: 500, color: '#633806', marginBottom: 4 }}>⚡ 사건이란?</p>
+        <p style={{ fontSize: 10, color: '#854F0B', lineHeight: 1.7 }}>
+          시간이 지나도 잊히지 않는 것.<br />
+          첫사랑, 첫 실패, 배신, 죽음 목격...<br />
+          이런 사건들이 인물의 족쇄가 되거나 욕망의 씨앗이 됩니다.
+        </p>
+        <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+          <div style={{ flex: 1, background: '#fff', borderRadius: 8, padding: '6px 10px', textAlign: 'center' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#1A3C6E' }}>{total}</div>
+            <div style={{ fontSize: 9, color: '#9ca3af' }}>등록된 사건</div>
+          </div>
+          <div style={{ flex: 1, background: '#fff', borderRadius: 8, padding: '6px 10px', textAlign: 'center' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#E24B4A' }}>{coreCount}</div>
+            <div style={{ fontSize: 9, color: '#9ca3af' }}>핵심 사건</div>
+          </div>
+          <div style={{ flex: 1, background: '#fff', borderRadius: 8, padding: '6px 10px', textAlign: 'center' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#10b981' }}>2~3</div>
+            <div style={{ fontSize: 9, color: '#9ca3af' }}>단편 권장</div>
+          </div>
+        </div>
+      </div>
+
+      {/* 사건 유형 선택 */}
+      <div style={{ background: '#fff', border: '0.5px solid #e5e7eb', borderRadius: 10, padding: 11 }}>
+        <p style={{ fontSize: 12, fontWeight: 500, color: '#1A3C6E', marginBottom: 8 }}>사건 유형 선택</p>
+        {EVENT_CATEGORIES.map(cat => (
+          <div key={cat.group} style={{ marginBottom: 10 }}>
+            <p style={{ fontSize: 10, color: '#9ca3af', marginBottom: 5 }}>{cat.group}</p>
+            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+              {cat.items.map(item => {
+                const already = s.events.some(e => e.title === item);
+                return (
+                  <button
+                    key={item}
+                    onClick={() => !already && selectPreset(cat.group, item)}
+                    style={{
+                      padding: '4px 10px', borderRadius: 99, fontSize: 11,
+                      border: `1px solid ${already ? '#10b981' : '#c7d6ea'}`,
+                      background: already ? '#e1f5ee' : '#fff',
+                      color: already ? '#085041' : '#1A3C6E',
+                      cursor: already ? 'default' : 'pointer',
+                    }}
+                  >{already ? '✓ ' : ''}{item}</button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        <button
+          onClick={() => { setNewEvent({ id: '', category: '직접 입력', title: '', timing: '', impact: '', isCore: false }); setShowForm(true); }}
+          style={{
+            marginTop: 4, padding: '6px 14px', borderRadius: 99,
+            border: '1px dashed #1A3C6E', background: 'transparent',
+            color: '#1A3C6E', fontSize: 11, cursor: 'pointer',
+          }}
+        >+ 직접 입력</button>
+      </div>
+
+      {/* 사건 입력 폼 */}
+      {showForm && (
+        <div style={{ background: '#f4f8fc', border: '1px solid #c7d6ea', borderRadius: 10, padding: 12 }}>
+          <p style={{ fontSize: 12, fontWeight: 500, color: '#1A3C6E', marginBottom: 10 }}>
+            {newEvent.title || '새 사건'} 상세 입력
+          </p>
+
+          {newEvent.category === '직접 입력' && (
+            <input
+              value={newEvent.title}
+              onChange={e => setNewEvent(prev => ({ ...prev, title: e.target.value }))}
+              placeholder="사건 이름 (예: 어머니의 죽음)"
+              style={{
+                width: '100%', border: 'none', borderBottom: '0.5px solid #1A3C6E',
+                padding: '6px 0', color: '#1A3C6E',
+                background: 'transparent', outline: 'none',
+                marginBottom: 10, fontSize: 16,
+              }}
+            />
+          )}
+
+          <div style={{ marginBottom: 8 }}>
+            <p style={{ fontSize: 10, color: '#9ca3af', marginBottom: 4 }}>언제 일어났나요?</p>
+            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+              {['유년기 (0~12세)', '청소년기 (13~19세)', '청년기 (20~30대)', '중년기 (40~50대)', '이야기 시작 직전', '이야기 중'].map(t => (
+                <button key={t} onClick={() => setNewEvent(prev => ({ ...prev, timing: t }))}
+                  style={{
+                    padding: '3px 8px', borderRadius: 99, fontSize: 10,
+                    border: `1px solid ${newEvent.timing === t ? '#1A3C6E' : '#c7d6ea'}`,
+                    background: newEvent.timing === t ? '#1A3C6E' : '#fff',
+                    color: newEvent.timing === t ? '#fff' : '#1A3C6E',
+                    cursor: 'pointer',
+                  }}>{t}</button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 10 }}>
+            <p style={{ fontSize: 10, color: '#9ca3af', marginBottom: 4 }}>이 사건이 주인공에게 미친 영향</p>
+            <textarea
+              value={newEvent.impact}
+              onChange={e => setNewEvent(prev => ({ ...prev, impact: e.target.value }))}
+              placeholder="예: 이후 바다를 두려워하게 됨. 형에 대한 죄책감의 시작."
+              rows={3}
+              style={{
+                width: '100%', border: '1px dashed #c7d6ea', borderRadius: 8,
+                padding: '7px 10px', fontSize: 12, color: '#374151',
+                background: '#fff', resize: 'none', outline: 'none',
+                lineHeight: 1.6, fontFamily: 'inherit',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <button
+              onClick={() => setNewEvent(prev => ({ ...prev, isCore: !prev.isCore }))}
+              style={{
+                padding: '4px 12px', borderRadius: 99, fontSize: 11,
+                border: `1px solid ${newEvent.isCore ? '#E24B4A' : '#c7d6ea'}`,
+                background: newEvent.isCore ? '#FCEBEB' : '#fff',
+                color: newEvent.isCore ? '#A32D2D' : '#9ca3af',
+                cursor: 'pointer',
+              }}
+            >{newEvent.isCore ? '🔴 핵심 사건' : '핵심 사건으로 지정'}</button>
+            <span style={{ fontSize: 10, color: '#9ca3af' }}>단편 기준 1~2개 권장</span>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={addEvent} style={{
+              flex: 1, padding: '9px', borderRadius: 8, border: 'none',
+              background: '#1A3C6E', color: '#fff', fontSize: 13, cursor: 'pointer',
+            }}>사건 추가</button>
+            <button onClick={() => setShowForm(false)} style={{
+              padding: '9px 16px', borderRadius: 8,
+              border: '0.5px solid #e5e7eb', background: '#fff',
+              color: '#9ca3af', fontSize: 12, cursor: 'pointer',
+            }}>취소</button>
+          </div>
+        </div>
+      )}
+
+      {/* 등록된 사건 목록 */}
+      {s.events.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <p style={{ fontSize: 12, fontWeight: 500, color: '#1A3C6E' }}>등록된 사건</p>
+          {s.events.map((ev, i) => (
+            <div key={ev.id} style={{
+              background: '#fff',
+              border: `1px solid ${ev.isCore ? '#E24B4A' : '#e5e7eb'}`,
+              borderRadius: 10, padding: 11,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    {ev.isCore && <span style={{ fontSize: 10, background: '#FCEBEB', color: '#A32D2D', padding: '2px 7px', borderRadius: 99 }}>핵심</span>}
+                    <span style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E' }}>
+                      {i + 1}. {ev.title}
+                    </span>
+                  </div>
+                  {ev.timing && <p style={{ fontSize: 10, color: '#9ca3af', marginBottom: 3 }}>⏱ {ev.timing}</p>}
+                  {ev.impact && <p style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.6 }}>{ev.impact}</p>}
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0, marginLeft: 8 }}>
+                  <button onClick={() => toggleCore(ev.id)} style={{
+                    fontSize: 10, padding: '2px 7px', borderRadius: 99,
+                    border: '0.5px solid #e5e7eb', background: '#fff',
+                    color: ev.isCore ? '#A32D2D' : '#9ca3af', cursor: 'pointer',
+                  }}>{ev.isCore ? '핵심해제' : '핵심'}</button>
+                  <button onClick={() => removeEvent(ev.id)} style={{
+                    fontSize: 10, color: '#dc2626', background: 'none',
+                    border: 'none', cursor: 'pointer',
+                  }}>삭제</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProgressBar({ tabs, s }: { tabs: Tab[]; s: NovelSettings }) {
+  let score = tabs.length;
+  if (s.events.length > 0) score += 1;
+  if (s.events.some(e => e.isCore)) score += 1;
+  const pct = Math.min(100, Math.round((score / 9) * 100));
   return (
     <div style={{ background: '#fff', border: '0.5px solid #e5e7eb', borderRadius: 10, padding: 10, marginTop: 4 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -528,6 +791,10 @@ export function NovelStudio() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>('birth');
   const [visitedTabs, setVisitedTabs] = useState<Tab[]>(['birth']);
+  const [settings, setSettings] = useState<NovelSettings>(defaultSettings);
+
+  const upd = (k: keyof NovelSettings, v: any) =>
+    setSettings(prev => ({ ...prev, [k]: v }));
 
   if (!user) {
     return (
@@ -593,10 +860,11 @@ export function NovelStudio() {
         {activeTab === 'shackle'   && <ShackleTab />}
         {activeTab === 'luck'      && <LuckTab />}
         {activeTab === 'narrative' && <NarrativeTab />}
-        {activeTab === 'chars'     && <CharsTab />}
+        {activeTab === 'chars'     && <CharsTab     s={settings} upd={upd} />}
+        {activeTab === 'events'    && <EventsTab    s={settings} upd={upd} />}
 
         <div style={{ marginTop: 16 }}>
-          <ProgressBar tabs={visitedTabs} />
+          <ProgressBar tabs={visitedTabs} s={settings} />
         </div>
 
         <button
