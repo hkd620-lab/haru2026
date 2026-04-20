@@ -31,6 +31,7 @@ export function BiblePage() {
   }, []);
   const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const domAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // 문법 팝업
   const [grammarPopup, setGrammarPopup] = useState<{
@@ -190,7 +191,10 @@ export function BiblePage() {
 
   const handleTTS = async (text: string, key: string) => {
     if (ttsPlaying === key) {
-      audioRef.current?.pause();
+      if (domAudioRef.current) {
+        domAudioRef.current.pause();
+        domAudioRef.current.src = '';
+      }
       setTtsPlaying(null);
       return;
     }
@@ -198,62 +202,29 @@ export function BiblePage() {
     setTtsLoading(key);
 
     try {
-      // ① 버튼 클릭 직후 즉시 무음 재생 — 안드로이드 제스처 잠금해제
-      const silentAudio = new Audio(
-        'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA'
-      );
-      silentAudio.volume = 0.01;
-      try { await silentAudio.play(); } catch(_) {}
-
-      // ② Firebase Function 호출
       const fns = getFunctions(undefined, 'asia-northeast3');
       const fn = httpsCallable(fns, 'generateTTS');
-      const cacheKey = `bible_genesis_1_${key}`.slice(0, 80);
-      const res: any = await fn({ text, cacheKey });
+      const res: any = await fn({ text });
 
-      if (audioRef.current) audioRef.current.pause();
+      const audioSrc = res.data.audioUrl || '';
+      if (!audioSrc) throw new Error('audioUrl 없음');
 
-      let audioSrc = '';
-      if (res.data.audioUrl) {
-        audioSrc = res.data.audioUrl;
-      } else if (res.data.audioBase64) {
-        const binary = atob(res.data.audioBase64);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-        const blob = new Blob([bytes], { type: 'audio/mp3' });
-        audioSrc = URL.createObjectURL(blob);
-      }
+      const el = domAudioRef.current;
+      if (!el) throw new Error('audio 엘리먼트 없음');
 
-      if (audioSrc) {
-        // ③ AudioContext 잠금해제 재시도
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioCtx) {
-          try {
-            const ctx = new AudioCtx();
-            if (ctx.state === 'suspended') await ctx.resume();
-          } catch(_) {}
-        }
+      el.pause();
+      el.src = audioSrc;
+      el.load();
 
-        audioRef.current = new Audio(audioSrc);
-        audioRef.current.onended = () => setTtsPlaying(null);
+      el.onended = () => setTtsPlaying(null);
+      el.onerror = () => {
+        setTtsPlaying(null);
+        setTtsLoading(null);
+      };
 
-        // ④ play 실패 시 재시도 1회
-        try {
-          await audioRef.current.play();
-          setTtsPlaying(key);
-        } catch (playErr) {
-          console.warn('TTS play 재시도:', playErr);
-          setTimeout(async () => {
-            try {
-              await audioRef.current?.play();
-              setTtsPlaying(key);
-            } catch(e) {
-              console.error('TTS play 최종 실패:', e);
-              setTtsPlaying(null);
-            }
-          }, 300);
-        }
-      }
+      await el.play();
+      setTtsPlaying(key);
+
     } catch (err) {
       console.error('TTS 오류:', err);
       setTtsPlaying(null);
@@ -270,6 +241,13 @@ export function BiblePage() {
   return (
     <>
     <div style={{ backgroundColor: '#FAF9F6', minHeight: '100vh', paddingBottom: 80 }}>
+      {/* 안드로이드 TTS 오디오 — DOM에 고정 */}
+      <audio
+        ref={domAudioRef}
+        preload="none"
+        playsInline
+        style={{ display: 'none' }}
+      />
       {/* 페이지 제목 */}
       <div style={{ padding: '16px 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
         <button onClick={() => navigate('/record')} style={{ color: '#1A3C6E', background: 'none', border: 'none', fontSize: 14, cursor: 'pointer', padding: 0 }}>
