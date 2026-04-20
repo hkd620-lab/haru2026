@@ -1,3 +1,4 @@
+import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onRequest } from 'firebase-functions/v2/https';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getStorage } from 'firebase-admin/storage';
@@ -1709,5 +1710,126 @@ JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
     const clean = raw.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
     return parsed;
+  }
+);
+
+// ===== 🌍 해외 뉴스 자동 수집 (30분마다) =====
+export const fetchTopNews = onSchedule(
+  {
+    schedule: 'every 30 minutes',
+    timeZone: 'Asia/Seoul',
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+  },
+  async () => {
+    try {
+      const RSS_URLS = [
+        'https://feeds.reuters.com/reuters/worldNews',
+        'https://rss.ap.org/rss/apf-topnews',
+      ];
+      let allItems: string[] = [];
+      for (const url of RSS_URLS) {
+        try {
+          const res = await axios.get(url, { timeout: 8000, responseType: 'text' });
+          const xml = res.data as string;
+          const titleMatches = xml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>|<title>(.*?)<\/title>/g) || [];
+          const descMatches = xml.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>|<description>(.*?)<\/description>/g) || [];
+          const linkMatches = xml.match(/<link>(.*?)<\/link>|<link\s+href="(.*?)"/g) || [];
+          for (let i = 1; i < Math.min(titleMatches.length, 8); i++) {
+            const title = (titleMatches[i] || '').replace(/<\/?[^>]+(>|$)/g, '').replace(/\[CDATA\[|\]\]/g, '').trim();
+            const desc = (descMatches[i] || '').replace(/<\/?[^>]+(>|$)/g, '').replace(/\[CDATA\[|\]\]/g, '').trim();
+            const link = (linkMatches[i] || '').replace(/<link>|<\/link>|<link\s+href="|"/g, '').trim();
+            if (title && title.length > 10) {
+              allItems.push(`제목: ${title}\n요약: ${desc.slice(0, 200)}\n링크: ${link}`);
+            }
+          }
+        } catch (e) { logger.warn('RSS 수집 실패:', url); }
+      }
+      if (allItems.length === 0) { logger.warn('수집된 뉴스 없음'); return; }
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      const prompt = `다음은 오늘의 해외 주요 뉴스 목록입니다.
+미국과 이란 관계, 중동 정세, 국제 분쟁, 외교 관련 뉴스 중 가장 중요한 뉴스 1개를 선택해서 한국어로 번역 요약해주세요.
+
+뉴스 목록:
+${allItems.join('\n\n---\n\n')}
+
+반드시 아래 JSON 형식으로만 답하세요:
+{
+  "title": "한국어 제목",
+  "summary": "한국어 요약 (3~4문장)",
+  "originalTitle": "원문 제목",
+  "link": "원문 링크",
+  "category": "미국-이란 or 중동 or 국제분쟁 or 외교"
+}
+미국-이란 관련 뉴스가 없으면 가장 긴박한 국제 뉴스 1개를 선택하세요.`;
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().replace(/```json|```/g, '').trim();
+      const newsData = JSON.parse(text);
+      await db.collection('news').doc('top').set({
+        ...newsData,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      logger.info('✅ 뉴스 저장 완료:', newsData.title);
+    } catch (err) { logger.error('뉴스 수집 오류:', err); }
+  }
+);
+
+// ===== 뉴스 수동 새로고침 (개발자용) =====
+export const refreshNews = onCall(
+  { secrets: [GEMINI_API_KEY_SECRET], region: 'asia-northeast3' },
+  async () => {
+    try {
+      const RSS_URLS = [
+        'https://feeds.reuters.com/reuters/worldNews',
+        'https://rss.ap.org/rss/apf-topnews',
+      ];
+      let allItems: string[] = [];
+      for (const url of RSS_URLS) {
+        try {
+          const res = await axios.get(url, { timeout: 8000, responseType: 'text' });
+          const xml = res.data as string;
+          const titleMatches = xml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>|<title>(.*?)<\/title>/g) || [];
+          const descMatches = xml.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>|<description>(.*?)<\/description>/g) || [];
+          const linkMatches = xml.match(/<link>(.*?)<\/link>|<link\s+href="(.*?)"/g) || [];
+          for (let i = 1; i < Math.min(titleMatches.length, 8); i++) {
+            const title = (titleMatches[i] || '').replace(/<\/?[^>]+(>|$)/g, '').replace(/\[CDATA\[|\]\]/g, '').trim();
+            const desc = (descMatches[i] || '').replace(/<\/?[^>]+(>|$)/g, '').replace(/\[CDATA\[|\]\]/g, '').trim();
+            const link = (linkMatches[i] || '').replace(/<link>|<\/link>|<link\s+href="|"/g, '').trim();
+            if (title && title.length > 10) {
+              allItems.push(`제목: ${title}\n요약: ${desc.slice(0, 200)}\n링크: ${link}`);
+            }
+          }
+        } catch (e) { logger.warn('RSS 수집 실패:', url); }
+      }
+      if (allItems.length === 0) return { success: false, message: '뉴스 없음' };
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      const prompt = `다음은 오늘의 해외 주요 뉴스 목록입니다.
+미국과 이란 관계, 중동 정세, 국제 분쟁, 외교 관련 뉴스 중 가장 중요한 뉴스 1개를 선택해서 한국어로 번역 요약해주세요.
+
+뉴스 목록:
+${allItems.join('\n\n---\n\n')}
+
+반드시 아래 JSON 형식으로만 답하세요:
+{
+  "title": "한국어 제목",
+  "summary": "한국어 요약 (3~4문장)",
+  "originalTitle": "원문 제목",
+  "link": "원문 링크",
+  "category": "미국-이란 or 중동 or 국제분쟁 or 외교"
+}`;
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().replace(/```json|```/g, '').trim();
+      const newsData = JSON.parse(text);
+      await db.collection('news').doc('top').set({
+        ...newsData,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      return { success: true, news: newsData };
+    } catch (err) {
+      logger.error('뉴스 새로고침 오류:', err);
+      return { success: false };
+    }
   }
 );

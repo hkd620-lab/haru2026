@@ -20,6 +20,7 @@ const BookStudio = lazy(() => import('./pages/BookStudio').then((m) => ({ defaul
 const BookCreate = lazy(() => import('./pages/BookCreate').then((m) => ({ default: m.BookCreate })));
 const NovelStudio = lazy(() => import('./pages/NovelStudio').then((m) => ({ default: m.NovelStudio })));
 const DiaryLearnPage = lazy(() => import('./pages/DiaryLearnPage').then((m) => ({ default: m.DiaryLearnPage })));
+const NewsPage = lazy(() => import('./pages/NewsPage').then((m) => ({ default: m.NewsPage })));
 
 // iOS 안전 로딩 인디케이터 (간단하고 블로킹 없음)
 function PageLoader() {
@@ -73,6 +74,7 @@ export const router = createBrowserRouter([
           { path: 'book-create', element: withSuspense(<BookCreate />) },
           { path: 'novel-studio', element: withSuspense(<NovelStudio />) },
           { path: 'diary-learn', element: withSuspense(<DiaryLearnPage />) },
+          { path: 'news', element: withSuspense(<NewsPage />) },
           { path: 'record-detail/:date/:formatKey', element: withSuspense(<RecordDetailPage />) },
         ],
       },
