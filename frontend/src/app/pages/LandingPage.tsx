@@ -118,6 +118,74 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* ══════════════════════════════
+          섹션 2: 왜 기록인가? (뇌과학)
+      ══════════════════════════════ */}
+      <section style={{ background: 'linear-gradient(160deg, #0d2347 0%, #1A3C6E 100%)', padding: '72px 24px' }}>
+        <div style={{ maxWidth: '860px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+            <span style={{
+              border: '1px solid rgba(16,185,129,0.5)', color: '#10b981',
+              fontSize: '11px', letterSpacing: '3px', padding: '5px 18px', borderRadius: '20px'
+            }}>
+              BRAIN SCIENCE × DAILY RECORD
+            </span>
+          </div>
+          <h2 style={{ color: '#FAF9F6', fontSize: 'clamp(22px,4vw,36px)', textAlign: 'center', fontWeight: 400, margin: '0 0 8px' }}>
+            왜 <em style={{ color: '#10b981' }}>기록</em>인가?
+          </h2>
+          <p style={{ color: 'rgba(250,249,246,0.5)', textAlign: 'center', fontSize: '14px', marginBottom: '40px' }}>
+            세계적인 연구자들이 임상으로 입증한 기록의 과학
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '36px' }}>
+            {[
+              { emoji: '🧠', name: '릭 핸슨', role: '심리학자', quote: '뇌는 부정적 경험엔 벨크로처럼, 긍정적 경험엔 테플론처럼 작동한다' },
+              { emoji: '✍️', name: '페니베이커 박사', role: '임상심리학자', quote: '하루 15분, 감정을 글로 쓰는 것만으로 스트레스 호르몬이 감소한다' },
+              { emoji: '💚', name: '맥크러티 박사', role: 'HeartMath 연구소', quote: '감사 일기는 심박·혈압·호흡을 동기화하여 신체를 최적 상태로 만든다' },
+            ].map((r, i) => (
+              <div key={i} style={{
+                background: 'rgba(250,249,246,0.04)',
+                border: '1px solid rgba(250,249,246,0.1)',
+                borderRadius: '14px', padding: '22px 24px',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+                  <div style={{
+                    fontSize: '22px', background: 'rgba(16,185,129,0.1)',
+                    borderRadius: '10px', width: '44px', height: '44px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                  }}>
+                    {r.emoji}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                      <span style={{ color: '#FAF9F6', fontSize: '16px', fontWeight: 700 }}>{r.name}</span>
+                      <span style={{ color: '#10b981', fontSize: '11px', background: 'rgba(16,185,129,0.1)', padding: '2px 10px', borderRadius: '10px' }}>{r.role}</span>
+                    </div>
+                    <blockquote style={{
+                      margin: 0, color: 'rgba(250,249,246,0.8)', fontSize: '14px',
+                      lineHeight: 1.8, fontStyle: 'italic',
+                      borderLeft: '2px solid rgba(16,185,129,0.4)', paddingLeft: '12px'
+                    }}>
+                      "{r.quote}"
+                    </blockquote>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{
+            background: 'rgba(16,185,129,0.06)',
+            border: '1px solid rgba(16,185,129,0.15)',
+            borderRadius: '14px', padding: '28px', textAlign: 'center'
+          }}>
+            <p style={{ color: 'rgba(250,249,246,0.75)', fontSize: '15px', lineHeight: 1.9, margin: 0 }}>
+              기록은 단순한 메모가 아닙니다.<br />
+              감정을 객관화하고, 삶을 데이터로 편집하는<br />
+              <strong style={{ color: '#FAF9F6' }}>'인지 재구조화'</strong> 전략입니다.
+            </p>
+          </div>
+        </div>
+      </section>
 
       {/* ══════════════════════════════
           섹션 3: 주요 기능 3개 카드
@@ -158,7 +226,7 @@ export function LandingPage() {
       <section style={{ background: '#f0f4ff', padding: '64px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <h2 style={{ textAlign: 'left', fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: 800, color: '#1A3C6E', marginBottom: '8px' }}>
-            SAYU(사유:私有)는 단순한 기록을 넘어,<br />당신의 소중한 일상을 당신만의 자산으로 남기는 공간입니다.
+            SAYU(사유:思惟)는 단순한 기록을 넘어,<br />당신의 소중한 일상을 당신만의 자산으로 남기는 공간입니다.
           </h2>
           <p style={{ textAlign: 'left', color: '#666', fontSize: '16px', marginBottom: '40px' }}>
             내 기록을 한 단계 끌어올려 드립니다.
@@ -264,6 +332,147 @@ export function LandingPage() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════
+          섹션 5-1: HARU의 날개 (신기능)
+      ══════════════════════════════ */}
+      <section style={{ background: '#0f1f3d', padding: '80px 24px' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+            <span style={{
+              border: '1px solid rgba(16,185,129,0.4)', color: '#10b981',
+              fontSize: '11px', letterSpacing: '3px', padding: '5px 18px', borderRadius: '20px'
+            }}>
+              HARU EXCLUSIVE
+            </span>
+          </div>
+          <h2 style={{
+            textAlign: 'center', fontSize: 'clamp(26px,5vw,44px)',
+            fontWeight: 800, color: '#FAF9F6', margin: '12px 0 8px', letterSpacing: '-0.5px'
+          }}>
+            🪶 HARU의 날개
+          </h2>
+          <p style={{ textAlign: 'center', color: 'rgba(250,249,246,0.5)', fontSize: '16px', marginBottom: '56px' }}>
+            기록을 넘어, 배움과 창작까지
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'center' }}>
+            {[
+              {
+                emoji: '⚖️',
+                title: '하루LAW',
+                sub: '법령 AI 검색',
+                desc: '법령 키워드로 검색하면 AI가 60자로 쉽게 설명하고, 관련 판례까지 안내합니다.',
+                color: '#f59e0b',
+                glow: 'rgba(245,158,11,0.15)',
+              },
+              {
+                emoji: '📚',
+                title: '나도작가',
+                sub: 'Book Studio',
+                desc: 'AI와 함께 시놉시스를 쓰고 챕터를 구성해 나만의 책을 완성하세요.',
+                color: '#a78bfa',
+                glow: 'rgba(167,139,250,0.15)',
+              },
+              {
+                emoji: '🎓',
+                title: '하루학습',
+                sub: '영어 · 뉴스',
+                desc: '영어성경, 영어일기쓰기, 국제뉴스를 TTS 음성과 함께 매일 학습하세요.',
+                color: '#38bdf8',
+                glow: 'rgba(56,189,248,0.15)',
+              },
+            ].map((f) => (
+              <div key={f.title} style={{
+                flex: '1 1 280px', maxWidth: '320px',
+                background: `linear-gradient(135deg, rgba(255,255,255,0.05) 0%, ${f.glow} 100%)`,
+                border: `1.5px solid ${f.color}44`,
+                borderRadius: '20px', padding: '36px 28px',
+                position: 'relative', overflow: 'hidden',
+              }}>
+                <div style={{
+                  position: 'absolute', top: '-20px', right: '-20px',
+                  width: '100px', height: '100px', borderRadius: '50%',
+                  background: `radial-gradient(circle, ${f.color}22 0%, transparent 70%)`,
+                  pointerEvents: 'none',
+                }} />
+                <div style={{ fontSize: '44px', marginBottom: '16px' }}>{f.emoji}</div>
+                <span style={{
+                  background: `${f.color}22`, color: f.color,
+                  fontSize: '11px', fontWeight: 700, padding: '3px 10px',
+                  borderRadius: '10px', letterSpacing: '1px'
+                }}>
+                  {f.sub}
+                </span>
+                <h3 style={{
+                  fontSize: '22px', fontWeight: 800, color: '#FAF9F6',
+                  margin: '12px 0 10px'
+                }}>
+                  {f.title}
+                </h3>
+                <p style={{
+                  fontSize: '14px', color: 'rgba(250,249,246,0.6)',
+                  lineHeight: 1.8, margin: 0
+                }}>
+                  {f.desc}
+                </p>
+                <div style={{
+                  marginTop: '24px', display: 'inline-flex',
+                  alignItems: 'center', gap: '6px',
+                  color: f.color, fontSize: '13px', fontWeight: 600
+                }}>
+                  자세히 보기 →
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════
+          섹션 5-2: 구독 요금 안내
+      ══════════════════════════════ */}
+      <section style={{ background: '#f0f4ff', padding: '72px 24px' }}>
+        <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'center' }}>
+          <h2 style={{ fontSize: 'clamp(22px,4vw,32px)', fontWeight: 800, color: '#1A3C6E', marginBottom: '8px' }}>
+            구독 요금 안내
+          </h2>
+          <p style={{ color: '#666', fontSize: '16px', marginBottom: '48px' }}>
+            하루의 기록이 쌓여 인생의 빅데이터가 됩니다
+          </p>
+          <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            {[
+              { plan: '월간 구독', price: '₩3,000', period: '/월', note: '언제든 해지 가능', highlight: false },
+              { plan: '연간 구독', price: '₩30,000', period: '/년', note: '2개월 무료 혜택 🎉', highlight: true },
+            ].map((p) => (
+              <div key={p.plan} style={{
+                flex: '1 1 200px', maxWidth: '280px',
+                background: p.highlight ? '#1A3C6E' : '#fff',
+                border: p.highlight ? 'none' : '2px solid #e0e7ff',
+                borderRadius: '20px', padding: '36px 28px',
+                boxShadow: p.highlight ? '0 12px 40px rgba(26,60,110,0.25)' : '0 4px 16px rgba(0,0,0,0.06)',
+              }}>
+                <p style={{ color: p.highlight ? 'rgba(250,249,246,0.6)' : '#888', fontSize: '13px', margin: '0 0 12px', letterSpacing: '1px' }}>
+                  {p.plan}
+                </p>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '6px', justifyContent: 'center' }}>
+                  <span style={{ color: p.highlight ? '#FAF9F6' : '#1A3C6E', fontSize: '38px', fontWeight: 800 }}>{p.price}</span>
+                  <span style={{ color: p.highlight ? 'rgba(250,249,246,0.5)' : '#999', fontSize: '14px' }}>{p.period}</span>
+                </div>
+                <p style={{ color: p.highlight ? 'rgba(250,249,246,0.5)' : '#aaa', fontSize: '12px', margin: '0 0 24px' }}>{p.note}</p>
+                <button style={{
+                  background: p.highlight ? '#10b981' : '#1A3C6E',
+                  color: '#fff', border: 'none',
+                  borderRadius: '50px', padding: '12px 0',
+                  fontSize: '14px', fontWeight: 700,
+                  cursor: 'pointer', width: '100%',
+                }}>
+                  구독 시작
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       </section>

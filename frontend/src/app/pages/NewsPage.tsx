@@ -23,18 +23,14 @@ export function NewsPage() {
   useEffect(() => {
     const docs = ['rank1', 'rank2', 'rank3'];
     const results: (NewsData | null)[] = [null, null, null];
-    let loaded = 0;
 
     const unsubscribers = docs.map((docId, idx) =>
       onSnapshot(doc(db, 'news', docId), (s) => {
         results[idx] = s.exists() ? (s.data() as NewsData) : null;
-        loaded++;
-        if (loaded === 3) {
-          setNewsList(
-            (results.filter(Boolean) as NewsData[]).sort((a, b) => a.rank - b.rank)
-          );
-          setLoading(false);
-        }
+        setNewsList(
+          (results.filter(Boolean) as NewsData[]).sort((a, b) => a.rank - b.rank)
+        );
+        setLoading(false);
       })
     );
 
