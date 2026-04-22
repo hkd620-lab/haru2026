@@ -401,7 +401,7 @@ export function MergeViewerPage() {
       <div className="h-full overflow-y-auto p-8 bg-white">
         <div className="max-w-3xl mx-auto">
           {/* 날짜 */}
-          <h2 className="text-2xl font-bold mb-4" style={{ color: '#1A3C6E' }}>
+          <h2 className="text-2xl font-bold mb-2" style={{ color: '#1A3C6E' }}>
             {new Date(record.date + 'T00:00:00').toLocaleDateString('ko-KR', {
               year: 'numeric',
               month: 'long',
@@ -409,7 +409,6 @@ export function MergeViewerPage() {
               weekday: 'long',
             })}
           </h2>
-
           {/* 환경 정보 */}
           <div className="flex gap-2 flex-wrap mb-6">
             {record.mergeRating && (
@@ -445,7 +444,18 @@ export function MergeViewerPage() {
               </span>
             )}
           </div>
-
+          {/* 제목 병기 */}
+          {(record[`${formatPrefix}_title`] || record[`${formatPrefix}_ai_title`]) && (
+            <div className="mt-3 mb-4" style={{ fontSize: '15px', fontWeight: 600, color: '#333' }}>
+              {record[`${formatPrefix}_title`] || record[`${formatPrefix}_ai_title`]}
+              {record[`${formatPrefix}_ai_title`] && record[`${formatPrefix}_title`] &&
+                record[`${formatPrefix}_ai_title`] !== record[`${formatPrefix}_title`] && (
+                <span style={{ fontSize: '12px', color: '#999', fontWeight: 400, marginLeft: '6px' }}>
+                  ({record[`${formatPrefix}_ai_title`]})
+                </span>
+              )}
+            </div>
+          )}
           {/* 사진 */}
           {renderPhotosForScreen(images)}
 

@@ -280,6 +280,23 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       await onSave(dataToSave);
       toast.success('저장되었습니다!');
       onClose();
+
+      // 백그라운드 AI 제목 추출
+      try {
+        const textForTitle = recordStyle === 'simple'
+          ? (formData[`${prefix}_simple`] || '')
+          : Object.keys(formData)
+              .filter(k => k.startsWith(`${prefix}_`) && typeof formData[k] === 'string' && (formData[k] as string).trim())
+              .map(k => formData[k] as string)
+              .join(' ');
+        if (textForTitle.trim().length > 5) {
+          const functions = getFunctions(undefined, 'asia-northeast3');
+          const extractTitleFn = httpsCallable(functions, 'extractTitle');
+          extractTitleFn({ text: textForTitle, format });
+        }
+      } catch (e) {
+        console.warn('AI 제목 추출 실패:', e);
+      }
     } catch (error) {
       console.error('저장 중 오류:', error);
       toast.error('저장에 실패했습니다.');

@@ -8,8 +8,9 @@ import { toast } from 'sonner';
 import { SayuModal } from '../components/SayuModal';
 import { CATEGORY_FORMATS, FORMAT_PREFIX, FORMAT_EMOJI } from '../types/haruTypes';
 import type { RecordFormat } from '../types/haruTypes';
-import { collection, getDocs, orderBy, query, deleteDoc, doc, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, orderBy, query, deleteDoc, doc, writeBatch, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 // 목록 뷰에서 제목으로 쓸 첫 번째 필드 키
 const FORMAT_FIRST_FIELD: Record<string, string> = {
@@ -1051,7 +1052,38 @@ export function SayuPage() {
                                 <div key={`${entry.date}-${entry.formatKey}-${entry.recordId}`} className="w-full flex items-center gap-1 border-t" style={{ borderColor: '#f5f5f5' }}>
                                   <button
                                     className="flex items-center gap-3 flex-1 px-4 py-2.5 text-left hover:bg-yellow-50 transition-colors"
-                                    onClick={() => openFormatSayu(entry.date, entry.formatKey, format as any, entry.recordId)}
+                                    onClick={async () => {
+                                      openFormatSayu(entry.date, entry.formatKey, format as any, entry.recordId);
+                                      // ai_title 없으면 백그라운드 추출
+                                      if (!entry.aiTitle) {
+                                        try {
+                                          const record = records.find(r => r.id === entry.recordId);
+                                          if (record) {
+                                            const prefix = entry.formatKey;
+                                            const textForTitle = Object.keys(record)
+                                              .filter(k => k.startsWith(`${prefix}_`) && typeof record[k] === 'string' && (record[k] as string).trim() && !k.endsWith('_sayu') && !k.endsWith('_title') && !k.endsWith('_style') && !k.endsWith('_images'))
+                                              .map(k => record[k] as string)
+                                              .join(' ');
+                                            if (textForTitle.trim().length > 5) {
+                                              const functions = getFunctions(undefined, 'asia-northeast3');
+                                              const extractTitleFn = httpsCallable(functions, 'extractTitle');
+                                              const result = await extractTitleFn({ text: textForTitle, format: entry.formatKey });
+                                              const aiTitle = (result.data as any)?.title;
+                                              if (aiTitle) {
+                                                await updateDoc(doc(db, `users/${user!.uid}/records`, entry.recordId), {
+                                                  [`${entry.formatKey}_ai_title`]: aiTitle
+                                                });
+                                                setRecords(prev => prev.map(r =>
+                                                  r.id === entry.recordId ? { ...r, [`${entry.formatKey}_ai_title`]: aiTitle } : r
+                                                ));
+                                              }
+                                            }
+                                          }
+                                        } catch (e) {
+                                          console.warn('AI 제목 자동 추출 실패:', e);
+                                        }
+                                      }
+                                    }}
                                   >
                                     <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: '32px' }}>{formatListDate(entry.date)}</span>
                                     <span className="text-sm flex-1" style={{ color: '#333', overflow: 'hidden' }}>
@@ -1346,7 +1378,38 @@ export function SayuPage() {
                                 <div key={`${entry.date}-${entry.formatKey}-${entry.recordId}`} className="w-full flex items-center gap-1 border-t" style={{ borderColor: '#f5f5f5' }}>
                                   <button
                                     className="flex items-center gap-3 flex-1 px-4 py-2.5 text-left hover:bg-yellow-50 transition-colors"
-                                    onClick={() => openFormatSayu(entry.date, entry.formatKey, format as any, entry.recordId)}
+                                    onClick={async () => {
+                                      openFormatSayu(entry.date, entry.formatKey, format as any, entry.recordId);
+                                      // ai_title 없으면 백그라운드 추출
+                                      if (!entry.aiTitle) {
+                                        try {
+                                          const record = records.find(r => r.id === entry.recordId);
+                                          if (record) {
+                                            const prefix = entry.formatKey;
+                                            const textForTitle = Object.keys(record)
+                                              .filter(k => k.startsWith(`${prefix}_`) && typeof record[k] === 'string' && (record[k] as string).trim() && !k.endsWith('_sayu') && !k.endsWith('_title') && !k.endsWith('_style') && !k.endsWith('_images'))
+                                              .map(k => record[k] as string)
+                                              .join(' ');
+                                            if (textForTitle.trim().length > 5) {
+                                              const functions = getFunctions(undefined, 'asia-northeast3');
+                                              const extractTitleFn = httpsCallable(functions, 'extractTitle');
+                                              const result = await extractTitleFn({ text: textForTitle, format: entry.formatKey });
+                                              const aiTitle = (result.data as any)?.title;
+                                              if (aiTitle) {
+                                                await updateDoc(doc(db, `users/${user!.uid}/records`, entry.recordId), {
+                                                  [`${entry.formatKey}_ai_title`]: aiTitle
+                                                });
+                                                setRecords(prev => prev.map(r =>
+                                                  r.id === entry.recordId ? { ...r, [`${entry.formatKey}_ai_title`]: aiTitle } : r
+                                                ));
+                                              }
+                                            }
+                                          }
+                                        } catch (e) {
+                                          console.warn('AI 제목 자동 추출 실패:', e);
+                                        }
+                                      }
+                                    }}
                                   >
                                     <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: '32px' }}>{formatListDate(entry.date)}</span>
                                     <span className="text-sm flex-1" style={{ color: '#333', overflow: 'hidden' }}>
@@ -1677,6 +1740,16 @@ export function SayuPage() {
               weekday: 'long',
             })}
           </h2>
+          {(sayuModalState.title || sayuModalState.aiTitle) && (
+            <div style={{ marginTop: '6px', fontSize: '13pt', fontWeight: 600, color: '#1A3C6E' }}>
+              {sayuModalState.title || sayuModalState.aiTitle}
+              {sayuModalState.aiTitle && sayuModalState.title && sayuModalState.aiTitle !== sayuModalState.title && (
+                <span style={{ fontSize: '10pt', color: '#999', fontWeight: 400, marginLeft: '6px' }}>
+                  ({sayuModalState.aiTitle})
+                </span>
+              )}
+            </div>
+          )}
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
             {sayuModalState.currentRating && sayuModalState.currentRating > 0 && (
               <span style={{ fontSize: '10pt', padding: '4px 12px',

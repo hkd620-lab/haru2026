@@ -154,7 +154,9 @@ exports.polishContent = (0, https_2.onCall)({
         else { // 이건 PREMIUM 모드
             systemPrompt = `당신은 재능있는 에세이 작가입니다.
 감동적인 글로 재구성하되 존댓말 유지.
-새로운 사건 추가 금지.`;
+새로운 사건 추가 금지.
+소제목 추가 금지. 마크다운 기호(**, ##, __, --, >) 절대 사용 금지.
+본문만 자연스럽게 이어지는 문단으로 작성하세요.`;
         }
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value()); // 🔐 Secret 값 사용
         const model = genAI.getGenerativeModel({

@@ -22,6 +22,7 @@ const moodOptions: Mood[] = ['기쁨', '평온', '무미', '울적', '번잡'];
 
 export function RecordPage() {
   const [diaryLearnOpen, setDiaryLearnOpen] = useState(false);
+  const [showNovelIntro, setShowNovelIntro] = useState(false);
   const renderStyledContent = (text: string) => (
     <div style={{
       background: 'linear-gradient(135deg, #fdf6ff 0%, #f0f7ff 50%, #f6fff0 100%)',
@@ -450,7 +451,7 @@ export function RecordPage() {
             {/* 나도작가 버튼 — 개발자 전용 */}
             {isDeveloper && (
               <button
-                onClick={() => navigate('/novel-studio')}
+                onClick={() => setShowNovelIntro(true)}
                 className="px-4 py-2 rounded-lg text-xs transition-all"
                 style={{
                   backgroundColor: '#10b981',
@@ -779,6 +780,93 @@ export function RecordPage() {
         onSave={handleSaveFormatData}
       />
     )}
+      {/* 나도작가 안내 모달 */}
+      {showNovelIntro && (
+        <div
+          onClick={() => setShowNovelIntro(false)}
+          style={{
+            position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
+            zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              backgroundColor: '#fff', borderRadius: '20px 20px 0 0',
+              padding: '28px 24px 40px', width: '100%', maxWidth: 480,
+            }}
+          >
+            {/* 핸들 */}
+            <div style={{ width: 40, height: 4, backgroundColor: '#d1d5db', borderRadius: 2, margin: '0 auto 20px' }} />
+            {/* 타이틀 */}
+            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+              <div style={{ fontSize: 40, marginBottom: 8 }}>✍️</div>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1A3C6E', marginBottom: 6 }}>
+                나도작가 — 소설 스튜디오
+              </h2>
+              <p style={{ fontSize: 13, color: '#999' }}>AI와 함께 나만의 이야기를 완성하세요</p>
+            </div>
+
+            {/* 트랙 1 — 내 기록으로 창작 */}
+            <div style={{
+              borderRadius: 12, border: '1.5px solid #bfdbfe',
+              backgroundColor: '#eff6ff', padding: '16px 18px', marginBottom: 12,
+            }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: '#1A3C6E', marginBottom: 6 }}>
+                🔵 내 기록으로 창작
+              </p>
+              <p style={{ fontSize: 12, color: '#555', lineHeight: 1.7, marginBottom: 10 }}>
+                일기·에세이·육아일기 등 내가 쓴 기록 중<br />
+                특별한 날을 선택해 단편소설이나 회고록으로<br />
+                AI가 확장·완성해 드려요.
+              </p>
+              <div style={{
+                display: 'inline-block', fontSize: 11, color: '#93c5fd',
+                backgroundColor: '#dbeafe', borderRadius: 6, padding: '3px 10px',
+              }}>
+                🔒 곧 공개 예정
+              </div>
+            </div>
+
+            {/* 트랙 2 — 순수 창작 */}
+            <div style={{
+              borderRadius: 12, border: '1.5px solid #a7f3d0',
+              backgroundColor: '#f0fdf4', padding: '16px 18px', marginBottom: 20,
+            }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: '#065f46', marginBottom: 6 }}>
+                🟢 순수 창작
+              </p>
+              <p style={{ fontSize: 12, color: '#555', lineHeight: 1.7 }}>
+                탄생부터 사건까지 나만의 설정으로<br />
+                처음부터 새로운 이야기를 만들어보세요.
+              </p>
+            </div>
+
+            {/* 입장 버튼 */}
+            <button
+              onClick={() => { setShowNovelIntro(false); navigate('/novel-studio'); }}
+              style={{
+                width: '100%', padding: '14px', borderRadius: 10,
+                backgroundColor: '#10b981', color: '#fff',
+                fontSize: 15, fontWeight: 700, border: 'none', cursor: 'pointer',
+                marginBottom: 10,
+              }}
+            >
+              🟢 순수 창작 시작하기
+            </button>
+            <button
+              onClick={() => setShowNovelIntro(false)}
+              style={{
+                width: '100%', padding: '12px', borderRadius: 10,
+                backgroundColor: 'transparent', color: '#999',
+                fontSize: 14, border: '1px solid #e5e5e5', cursor: 'pointer',
+              }}
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
