@@ -173,10 +173,20 @@ export function RecordPage() {
       {showInput[type] ? (
         <div className="flex items-center gap-1">
           <input
-            type="text" value={inputValue}
-            onChange={(e) => setInputValue(e.target.value.slice(0, 3))}
+            type="text"
+            defaultValue=""
+            onCompositionEnd={(e) => {
+              const val = (e.target as HTMLInputElement).value.slice(0, 3);
+              setInputValue(val);
+              (e.target as HTMLInputElement).value = val;
+            }}
+            onChange={(e) => {
+              if (!(e.nativeEvent as any).isComposing) {
+                setInputValue(e.target.value.slice(0, 3));
+              }
+            }}
             placeholder="3자" maxLength={3}
-            style={{ fontSize: 14 }}
+            style={{ fontSize: 16 }}
             className="w-12 px-2 py-1 border rounded-lg text-xs text-center"
             autoFocus
             onKeyDown={(e) => { if (e.key === 'Enter') handleAddCustomTag(type); if (e.key === 'Escape') setShowInput({ ...showInput, [type]: false }); }}
