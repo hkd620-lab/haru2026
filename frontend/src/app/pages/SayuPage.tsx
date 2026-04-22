@@ -222,7 +222,7 @@ export function SayuPage() {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string; recordId?: string }[]>([]);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고']));
   const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
   const [sayuModalState, setSayuModalState] = useState<{
@@ -464,6 +464,48 @@ export function SayuPage() {
     if (hasAnySaved) return 'saved';
     if (hasAnyWritten) return 'written';
     return 'none';
+  };
+
+  const FORMAT_COLORS: Record<string, string> = {
+    diary:   '#1A3C6E',
+    essay:   '#7C3AED',
+    travel:  '#0EA5E9',
+    garden:  '#16A34A',
+    pet:     '#F59E0B',
+    child:   '#EC4899',
+    mission: '#DC2626',
+    report:  '#6B7280',
+    work:    '#0D9488',
+    memo:    '#D97706',
+    haruraw: '#10b981',
+  };
+
+  const getFormatDotsForDay = (date: Date | null): { prefix: string; color: string }[] => {
+    if (!date) return [];
+    const dateStr = formatDateString(date);
+    const dayRecords = records.filter((r) => r.date === dateStr);
+    const seen = new Set<string>();
+    const dots: { prefix: string; color: string }[] = [];
+    dayRecords.forEach((record) => {
+      if (record.formats?.includes('HARUraw' as any) && !seen.has('haruraw')) {
+        seen.add('haruraw');
+        dots.push({ prefix: 'haruraw', color: FORMAT_COLORS['haruraw'] });
+      }
+      record.formats?.forEach((format) => {
+        const prefix = ALL_FORMAT_PREFIXES[format as string];
+        if (!prefix || seen.has(prefix)) return;
+        const hasContent = Object.keys(record).some(k =>
+          k.startsWith(`${prefix}_`) &&
+          !META_SUFFIXES.some(s => k.endsWith(s)) &&
+          typeof record[k] === 'string' && (record[k] as string).trim().length > 0
+        );
+        if (hasContent) {
+          seen.add(prefix);
+          dots.push({ prefix, color: FORMAT_COLORS[prefix] ?? '#10b981' });
+        }
+      });
+    });
+    return dots;
   };
 
   const handleDateClick = (date: Date | null) => {
@@ -1544,7 +1586,7 @@ export function SayuPage() {
               {days.map((day, idx) => {
                 const isToday = day && formatDateString(day) === formatDateString(new Date());
                 const isSelected = day && selectedDate === formatDateString(day);
-                const sayuStatus = hasSayu(day);
+                const formatDots = getFormatDotsForDay(day);
 
                 return (
                   <button
@@ -1572,47 +1614,25 @@ export function SayuPage() {
                     }}
                   >
                     {day && day.getDate()}
-                    {sayuStatus === 'saved' && (
+                    {formatDots.length > 0 && (
                       <div
-                        className="absolute rounded-full"
-                        style={{
-                          bottom: '-2px',
-                          left: '50%',
-                          transform: 'translateX(calc(-50% + 2px))',
-                          width: '8px',
-                          height: '8px',
-                          backgroundColor: isSelected ? '#FEFBE8' : '#1A3C6E',
-                          boxShadow: isSelected ? 'none' : '0 0 0 1.5px rgba(26,60,110,0.25)',
-                        }}
-                      />
-                    )}
-                    {sayuStatus === 'polished' && (
-                      <div
-                        className="absolute rounded-full"
-                        style={{
-                          bottom: '-2px',
-                          left: '50%',
-                          transform: 'translateX(calc(-50% + 2px))',
-                          width: '8px',
-                          height: '8px',
-                          backgroundColor: '#F59E0B',
-                          boxShadow: '0 0 0 1.5px rgba(245,158,11,0.3)',
-                        }}
-                      />
-                    )}
-                    {sayuStatus === 'written' && (
-                      <div
-                        className="absolute rounded-full"
-                        style={{
-                          bottom: '-2px',
-                          left: '50%',
-                          transform: 'translateX(calc(-50% + 2px))',
-                          width: '8px',
-                          height: '8px',
-                          backgroundColor: isSelected ? '#FEFBE8' : '#10b981',
-                          boxShadow: isSelected ? 'none' : '0 0 0 1.5px rgba(16,185,129,0.3)',
-                        }}
-                      />
+                        className="absolute flex gap-0.5 justify-center flex-wrap"
+                        style={{ bottom: '2px', left: 0, right: 0, maxWidth: '100%', padding: '0 2px' }}
+                      >
+                        {formatDots.slice(0, 5).map((dot, i) => (
+                          <span
+                            key={i}
+                            style={{
+                              width: '5px',
+                              height: '5px',
+                              borderRadius: '50%',
+                              backgroundColor: isSelected ? '#FEFBE8' : dot.color,
+                              display: 'inline-block',
+                              flexShrink: 0,
+                            }}
+                          />
+                        ))}
+                      </div>
                     )}
                   </button>
                 );
