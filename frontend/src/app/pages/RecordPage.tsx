@@ -28,20 +28,25 @@ const SortableTag = ({ id, label, isSelected, onClick }: {
   return (
     <div
       ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, cursor: 'grab' }}
-      {...attributes} {...listeners}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        touchAction: 'none',
+        backgroundColor: isSelected ? '#1A3C6E' : '#FEFBE8',
+        color: isSelected ? '#FAF9F6' : '#333333',
+        border: isSelected ? 'none' : '1px solid #e5e5e5',
+        padding: '4px 10px',
+        borderRadius: '8px',
+        fontSize: '12px',
+        userSelect: 'none',
+        cursor: 'grab',
+      }}
+      onClick={onClick}
+      {...attributes}
+      {...listeners}
     >
-      <button
-        onClick={onClick}
-        className="px-2.5 py-1 rounded-lg text-xs transition-all"
-        style={{
-          backgroundColor: isSelected ? '#1A3C6E' : '#FEFBE8',
-          color: isSelected ? '#FAF9F6' : '#333333',
-          border: isSelected ? 'none' : '1px solid #e5e5e5',
-        }}
-      >
-        {label}
-      </button>
+      {label}
     </div>
   );
 };
@@ -159,7 +164,7 @@ export function RecordPage() {
     loadCustomTags();
   }, [user]);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { delay: 150, tolerance: 5 } }));
 
   const handleDragEnd = async (event: DragEndEvent, type: 'weather' | 'temperature' | 'mood') => {
     const { active, over } = event;
