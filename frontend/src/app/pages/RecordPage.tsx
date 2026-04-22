@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { DiaryLearnModal } from '../components/DiaryLearnModal';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Calendar } from 'lucide-react';
@@ -75,6 +75,7 @@ export function RecordPage() {
   const isDeveloper = user?.uid === DEVELOPER_UID;
   const [currentDate] = useState(new Date());
   const [mood, setMood] = useState<Mood>('평온');
+  const [showEnvToast, setShowEnvToast] = useState(false);
   const [weather, setWeather] = useState<Weather>('쾌청');
   const [temperature, setTemperature] = useState<Temperature>('쾌적');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>('생활' as Category);
@@ -100,6 +101,16 @@ export function RecordPage() {
     content: string;
     loading: boolean;
   } | null>(null);
+
+  useEffect(() => {
+    const count = parseInt(localStorage.getItem('envToastCount') || '0');
+    if (count < 3) {
+      setShowEnvToast(true);
+      localStorage.setItem('envToastCount', String(count + 1));
+      const timer = setTimeout(() => setShowEnvToast(false), 2500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   const formatDate = (date: Date) => {
     const year = date.getFullYear();
@@ -340,6 +351,13 @@ export function RecordPage() {
           <h2 className="text-xs mb-2 tracking-wider" style={{ color: '#666666' }}>
             오늘의 환경
           </h2>
+          <div
+            className={`transition-all duration-500 overflow-hidden ${showEnvToast ? 'max-h-10 opacity-100 mb-2' : 'max-h-0 opacity-0 mb-0'}`}
+          >
+            <p className="text-xs flex items-center gap-1" style={{ color: '#10b981' }}>
+              💡 + 버튼으로 나만의 태그를 추가할 수 있어요
+            </p>
+          </div>
           <div className="space-y-2">
             {/* Weather */}
             <div>
