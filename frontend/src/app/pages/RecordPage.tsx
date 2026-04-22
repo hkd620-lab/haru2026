@@ -1,4 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
+import {
+  DndContext, closestCenter, PointerSensor,
+  useSensor, useSensors, DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext, horizontalListSortingStrategy,
+  useSortable, arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { DiaryLearnModal } from '../components/DiaryLearnModal';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Calendar } from 'lucide-react';
@@ -11,6 +20,31 @@ import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS, FORMAT_PREFIX } from '../types/haruTypes';
 import { db } from '../../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+
+const SortableTag = ({ id, label, isSelected, onClick }: {
+  id: string; label: string; isSelected: boolean; onClick: () => void;
+}) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, cursor: 'grab' }}
+      {...attributes} {...listeners}
+    >
+      <button
+        onClick={onClick}
+        className="px-2.5 py-1 rounded-lg text-xs transition-all"
+        style={{
+          backgroundColor: isSelected ? '#1A3C6E' : '#FEFBE8',
+          color: isSelected ? '#FAF9F6' : '#333333',
+          border: isSelected ? 'none' : '1px solid #e5e5e5',
+        }}
+      >
+        {label}
+      </button>
+    </div>
+  );
+};
 
 type Mood = '기쁨' | '평온' | '무미' | '울적' | '번잡';
 type Weather = '쾌청' | '흐림' | '비' | '눈';
@@ -125,6 +159,19 @@ export function RecordPage() {
     loadCustomTags();
   }, [user]);
 
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const handleDragEnd = async (event: DragEndEvent, type: 'weather' | 'temperature' | 'mood') => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = customTags[type].indexOf(active.id as string);
+    const newIndex = customTags[type].indexOf(over.id as string);
+    const reordered = arrayMove(customTags[type], oldIndex, newIndex);
+    const updated = { ...customTags, [type]: reordered };
+    setCustomTags(updated);
+    if (user) await setDoc(doc(db, 'users', user.uid, 'settings', 'customTags'), updated, { merge: true });
+  };
+
   const handleAddCustomTag = async (type: 'weather' | 'temperature' | 'mood') => {
     const inputEl = document.getElementById(`custom-input-${type}`) as HTMLInputElement;
     const trimmed = inputEl?.value?.trim() || '';
@@ -141,36 +188,27 @@ export function RecordPage() {
 
   const CustomTagInput = ({ type }: { type: 'weather' | 'temperature' | 'mood' }) => (
     <>
-      {customTags[type].map((tag) => (
-        <button
-          key={tag}
-          onClick={() => {
-            if (type === 'weather') setWeather(tag as Weather);
-            else if (type === 'temperature') setTemperature(tag as Temperature);
-            else setMood(tag as Mood);
-          }}
-          className="px-2.5 py-1 rounded-lg text-xs transition-all"
-          style={{
-            backgroundColor:
-              (type === 'weather' && weather === tag) ||
-              (type === 'temperature' && temperature === tag) ||
-              (type === 'mood' && mood === tag)
-                ? '#1A3C6E' : '#FEFBE8',
-            color:
-              (type === 'weather' && weather === tag) ||
-              (type === 'temperature' && temperature === tag) ||
-              (type === 'mood' && mood === tag)
-                ? '#FAF9F6' : '#333333',
-            border:
-              (type === 'weather' && weather === tag) ||
-              (type === 'temperature' && temperature === tag) ||
-              (type === 'mood' && mood === tag)
-                ? 'none' : '1px solid #e5e5e5',
-          }}
-        >
-          {tag}
-        </button>
-      ))}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleDragEnd(e, type)}>
+        <SortableContext items={customTags[type]} strategy={horizontalListSortingStrategy}>
+          {customTags[type].map((tag) => (
+            <SortableTag
+              key={tag}
+              id={tag}
+              label={tag}
+              isSelected={
+                (type === 'weather' && weather === tag) ||
+                (type === 'temperature' && temperature === tag) ||
+                (type === 'mood' && mood === tag)
+              }
+              onClick={() => {
+                if (type === 'weather') setWeather(tag as Weather);
+                else if (type === 'temperature') setTemperature(tag as Temperature);
+                else setMood(tag as Mood);
+              }}
+            />
+          ))}
+        </SortableContext>
+      </DndContext>
       {showInput[type] ? (
         <div className="flex items-center gap-1">
           <input
@@ -187,7 +225,7 @@ export function RecordPage() {
         </div>
       ) : customTags[type].length < 4 ? (
         <button
-          onClick={() => { setShowInput({ ...showInput, [type]: true }); setInputValue(''); }}
+          onClick={() => setShowInput({ ...showInput, [type]: true })}
           className="w-7 h-7 rounded-full flex items-center justify-center text-base font-bold transition-all"
           style={{ backgroundColor: '#e5e7eb', color: '#555' }}
         >
