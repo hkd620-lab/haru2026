@@ -1066,19 +1066,22 @@ class FirestoreService {
 
   async getAiLogs(userEmail: string): Promise<HaruRecord[]> {
     try {
-      const { aiLibraryDb } = await import('../../firebase');
+      const { db, auth } = await import('../../firebase');
       const { collection, query, where, orderBy, getDocs } = await import('firebase/firestore');
-      const ref = collection(aiLibraryDb, 'conversations');
+      const uid = auth.currentUser?.uid;
+      if (!uid) return [];
+      const ref = collection(db, `users/${uid}/records`);
       const q = query(
         ref,
-        where('email', '==', userEmail),
-        orderBy('timestamp', 'desc')
+        where('type', '==', 'ai_log'),
+        orderBy('createdAt', 'desc')
       );
       const snap = await getDocs(q);
       return snap.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: doc.data().timestamp?.toDate?.().toISOString() ?? '',
+        createdAt: doc.data().createdAt?.toDate?.().toISOString()
+          ?? doc.data().createdAt ?? '',
       })) as HaruRecord[];
     } catch (error) {
       console.error('[getAiLogs] 실패:', error);
