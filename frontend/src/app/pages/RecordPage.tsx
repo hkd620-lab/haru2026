@@ -176,16 +176,15 @@ export function RecordPage() {
             type="text"
             defaultValue=""
             onCompositionEnd={(e) => {
-              const val = (e.target as HTMLInputElement).value.slice(0, 3);
+              const val = (e.target as HTMLInputElement).value;
               setInputValue(val);
-              (e.target as HTMLInputElement).value = val;
             }}
             onChange={(e) => {
               if (!(e.nativeEvent as any).isComposing) {
-                setInputValue(e.target.value.slice(0, 3));
+                setInputValue(e.target.value);
               }
             }}
-            placeholder="3자" maxLength={3}
+            placeholder="3자"
             style={{ fontSize: 16 }}
             className="w-12 px-2 py-1 border rounded-lg text-xs text-center"
             autoFocus
