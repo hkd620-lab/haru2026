@@ -124,9 +124,9 @@ export function RecordPage() {
         if (docSnap.exists()) {
           const data = docSnap.data();
           setCustomTags({
-            weather: data.weather || [],
-            temperature: data.temperature || [],
-            mood: data.mood || [],
+            weather: Array.isArray(data.weather) ? data.weather : [],
+            temperature: Array.isArray(data.temperature) ? data.temperature : [],
+            mood: Array.isArray(data.mood) ? data.mood : [],
           });
         }
       } catch (e) {
