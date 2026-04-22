@@ -77,7 +77,7 @@ export function RecordPage() {
   const [mood, setMood] = useState<Mood>('평온');
   const [weather, setWeather] = useState<Weather>('쾌청');
   const [temperature, setTemperature] = useState<Temperature>('쾌적');
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>('생활' as Category);
   const [selectedFormats, setSelectedFormats] = useState<RecordFormat[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [formatModalOpen, setFormatModalOpen] = useState(false);
@@ -424,7 +424,7 @@ export function RecordPage() {
           </div>
 
           {/* 카테고리 선택 */}
-          <div className="flex gap-2 mb-3">
+          <div className="flex gap-2 mb-3 overflow-x-auto">
             {(['생활', '업무', '하루학습', '하루LAW'] as (Category | 'HARUraw' | '하루학습')[]).map((category) => (
               <button
                 key={category}
@@ -437,7 +437,7 @@ export function RecordPage() {
                     setLawGuideConfirmed(false);
                   }
                 }}
-                className="px-4 py-2 rounded-lg text-xs transition-all"
+                className="px-4 py-2 rounded-lg text-xs transition-all whitespace-nowrap flex-shrink-0"
                 style={{
                   backgroundColor: selectedCategory === category ? '#1A3C6E' : '#FDF6C3',
                   color: selectedCategory === category ? '#FAF9F6' : '#1A3C6E',
@@ -452,7 +452,7 @@ export function RecordPage() {
             {isDeveloper && (
               <button
                 onClick={() => setShowNovelIntro(true)}
-                className="px-4 py-2 rounded-lg text-xs transition-all"
+                className="px-4 py-2 rounded-lg text-xs transition-all whitespace-nowrap flex-shrink-0"
                 style={{
                   backgroundColor: '#10b981',
                   color: '#fff',
