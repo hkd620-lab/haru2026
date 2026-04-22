@@ -85,8 +85,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        // 4. 아무 로그인 정보 없음
-        setLoading(false);
+        // 4. Firebase 유저는 onAuthStateChanged가 loading=false 담당
+        //    (이 시점에 setLoading(false)를 호출하면 onAuthStateChanged보다
+        //     먼저 실행돼 user=null로 로그아웃된 것처럼 보이는 타이밍 버그 발생)
       } catch (error) {
         console.error('Auth init error:', error);
         setLoading(false);
