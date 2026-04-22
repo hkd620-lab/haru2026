@@ -128,6 +128,9 @@ export function RecordPage() {
             temperature: Array.isArray(data.temperature) ? data.temperature : [],
             mood: Array.isArray(data.mood) ? data.mood : [],
           });
+          console.log('커스텀 태그 로드 성공:', data);
+        } else {
+          console.log('커스텀 태그 문서 없음');
         }
       } catch (e) {
         console.error('커스텀 태그 로드 실패:', e);
@@ -160,7 +163,7 @@ export function RecordPage() {
     setShowInput({ ...showInput, [type]: false });
   };
 
-  const CustomTagInput = ({ type }: { type: 'weather' | 'temperature' | 'mood' }) => (
+  const renderCustomTags = (type: 'weather' | 'temperature' | 'mood') => (
     <>
       {customTags[type].map((tag, index) => {
         const isSelected =
@@ -202,7 +205,10 @@ export function RecordPage() {
             style={{ fontSize: 16 }}
             className="w-16 px-2 py-1 border rounded-lg text-xs text-center"
             autoFocus
-            onKeyDown={(e) => { if (e.key === 'Enter') handleAddCustomTag(type); if (e.key === 'Escape') setShowInput({ ...showInput, [type]: false }); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleAddCustomTag(type);
+              if (e.key === 'Escape') setShowInput({ ...showInput, [type]: false });
+            }}
           />
           <button onClick={() => handleAddCustomTag(type)} className="text-xs font-bold" style={{ color: '#1A3C6E' }}>확인</button>
           <button onClick={() => setShowInput({ ...showInput, [type]: false })} className="text-xs" style={{ color: '#999' }}>취소</button>
@@ -210,11 +216,9 @@ export function RecordPage() {
       ) : customTags[type].length < 4 ? (
         <button
           onClick={() => setShowInput({ ...showInput, [type]: true })}
-          className="w-7 h-7 rounded-full flex items-center justify-center text-base font-bold transition-all"
+          className="w-7 h-7 rounded-full flex items-center justify-center text-base font-bold"
           style={{ backgroundColor: '#e5e7eb', color: '#555' }}
-        >
-          +
-        </button>
+        >+</button>
       ) : null}
     </>
   );
@@ -486,7 +490,7 @@ export function RecordPage() {
                     {w}
                   </button>
                 ))}
-                <CustomTagInput type="weather" />
+                {renderCustomTags('weather')}
               </div>
             </div>
 
@@ -510,7 +514,7 @@ export function RecordPage() {
                     {t}
                   </button>
                 ))}
-                <CustomTagInput type="temperature" />
+                {renderCustomTags('temperature')}
               </div>
             </div>
 
@@ -534,7 +538,7 @@ export function RecordPage() {
                     {m}
                   </button>
                 ))}
-                <CustomTagInput type="mood" />
+                {renderCustomTags('mood')}
               </div>
             </div>
           </div>
