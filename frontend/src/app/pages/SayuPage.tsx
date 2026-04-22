@@ -989,16 +989,6 @@ export function SayuPage() {
         {/* 뷰 전환 버튼 */}
         <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: '#1A3C6E' }}>
           <button
-            onClick={() => setViewMode('list')}
-            className="flex-1 py-1.5 text-sm font-medium transition-all"
-            style={{
-              backgroundColor: viewMode === 'list' ? '#1A3C6E' : 'transparent',
-              color: viewMode === 'list' ? '#FAF9F6' : '#1A3C6E',
-            }}
-          >
-            목록
-          </button>
-          <button
             onClick={() => setViewMode('calendar')}
             className="flex-1 py-1.5 text-sm font-medium transition-all"
             style={{
@@ -1007,6 +997,16 @@ export function SayuPage() {
             }}
           >
             달력
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className="flex-1 py-1.5 text-sm font-medium transition-all"
+            style={{
+              backgroundColor: viewMode === 'list' ? '#1A3C6E' : 'transparent',
+              color: viewMode === 'list' ? '#FAF9F6' : '#1A3C6E',
+            }}
+          >
+            목록
           </button>
         </div>
       </div>
