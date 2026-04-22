@@ -76,6 +76,9 @@ export function RecordPage() {
   const [currentDate] = useState(new Date());
   const [mood, setMood] = useState<Mood>('평온');
   const [showEnvToast, setShowEnvToast] = useState(false);
+  const [customTags, setCustomTags] = useState<{ weather: string[]; temperature: string[]; mood: string[] }>({ weather: [], temperature: [], mood: [] });
+  const [showInput, setShowInput] = useState<{ weather: boolean; temperature: boolean; mood: boolean }>({ weather: false, temperature: false, mood: false });
+  const [inputValue, setInputValue] = useState('');
   const [weather, setWeather] = useState<Weather>('쾌청');
   const [temperature, setTemperature] = useState<Temperature>('쾌적');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>('생활' as Category);
@@ -111,6 +114,87 @@ export function RecordPage() {
       return () => clearTimeout(timer);
     }
   }, []);
+
+  useEffect(() => {
+    const loadCustomTags = async () => {
+      if (!user) return;
+      const docRef = doc(db, 'users', user.uid, 'settings', 'customTags');
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) setCustomTags(docSnap.data() as typeof customTags);
+    };
+    loadCustomTags();
+  }, [user]);
+
+  const handleAddCustomTag = async (type: 'weather' | 'temperature' | 'mood') => {
+    const trimmed = inputValue.trim();
+    if (!trimmed) return;
+    if (trimmed.length > 3) { toast.error('3글자 이하로 입력해주세요'); return; }
+    if (customTags[type].length >= 4) { toast.error('최대 4개까지 추가 가능합니다'); return; }
+    if (customTags[type].includes(trimmed)) { toast.error('이미 추가된 태그입니다'); return; }
+    const updated = { ...customTags, [type]: [...customTags[type], trimmed] };
+    setCustomTags(updated);
+    if (user) await setDoc(doc(db, 'users', user.uid, 'settings', 'customTags'), updated, { merge: true });
+    setInputValue('');
+    setShowInput({ ...showInput, [type]: false });
+  };
+
+  const CustomTagInput = ({ type }: { type: 'weather' | 'temperature' | 'mood' }) => (
+    <>
+      {customTags[type].map((tag) => (
+        <button
+          key={tag}
+          onClick={() => {
+            if (type === 'weather') setWeather(tag as Weather);
+            else if (type === 'temperature') setTemperature(tag as Temperature);
+            else setMood(tag as Mood);
+          }}
+          className="px-2.5 py-1 rounded-lg text-xs transition-all"
+          style={{
+            backgroundColor:
+              (type === 'weather' && weather === tag) ||
+              (type === 'temperature' && temperature === tag) ||
+              (type === 'mood' && mood === tag)
+                ? '#1A3C6E' : '#FEFBE8',
+            color:
+              (type === 'weather' && weather === tag) ||
+              (type === 'temperature' && temperature === tag) ||
+              (type === 'mood' && mood === tag)
+                ? '#FAF9F6' : '#333333',
+            border:
+              (type === 'weather' && weather === tag) ||
+              (type === 'temperature' && temperature === tag) ||
+              (type === 'mood' && mood === tag)
+                ? 'none' : '1px solid #e5e5e5',
+          }}
+        >
+          {tag}
+        </button>
+      ))}
+      {showInput[type] ? (
+        <div className="flex items-center gap-1">
+          <input
+            type="text" value={inputValue}
+            onChange={(e) => setInputValue(e.target.value.slice(0, 3))}
+            placeholder="3자" maxLength={3}
+            style={{ fontSize: 14 }}
+            className="w-12 px-2 py-1 border rounded-lg text-xs text-center"
+            autoFocus
+            onKeyDown={(e) => { if (e.key === 'Enter') handleAddCustomTag(type); if (e.key === 'Escape') setShowInput({ ...showInput, [type]: false }); }}
+          />
+          <button onClick={() => handleAddCustomTag(type)} className="text-xs font-bold" style={{ color: '#1A3C6E' }}>확인</button>
+          <button onClick={() => setShowInput({ ...showInput, [type]: false })} className="text-xs" style={{ color: '#999' }}>취소</button>
+        </div>
+      ) : customTags[type].length < 4 ? (
+        <button
+          onClick={() => { setShowInput({ ...showInput, [type]: true }); setInputValue(''); }}
+          className="w-7 h-7 rounded-full flex items-center justify-center text-base font-bold transition-all"
+          style={{ backgroundColor: '#e5e7eb', color: '#555' }}
+        >
+          +
+        </button>
+      ) : null}
+    </>
+  );
 
   const formatDate = (date: Date) => {
     const year = date.getFullYear();
@@ -379,6 +463,7 @@ export function RecordPage() {
                     {w}
                   </button>
                 ))}
+                <CustomTagInput type="weather" />
               </div>
             </div>
 
@@ -402,6 +487,7 @@ export function RecordPage() {
                     {t}
                   </button>
                 ))}
+                <CustomTagInput type="temperature" />
               </div>
             </div>
 
@@ -425,6 +511,7 @@ export function RecordPage() {
                     {m}
                   </button>
                 ))}
+                <CustomTagInput type="mood" />
               </div>
             </div>
           </div>
