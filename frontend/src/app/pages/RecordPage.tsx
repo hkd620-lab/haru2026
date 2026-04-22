@@ -129,7 +129,7 @@ export function RecordPage() {
     const inputEl = document.getElementById(`custom-input-${type}`) as HTMLInputElement;
     const trimmed = inputEl?.value?.trim() || '';
     if (!trimmed) return;
-    if ([...trimmed].length > 3) { toast.error('3글자 이하로 입력해주세요'); return; }
+    if ([...trimmed].length > 4) { toast.error('4글자 이하로 입력해주세요'); return; }
     if (customTags[type].length >= 4) { toast.error('최대 4개까지 추가 가능합니다'); return; }
     if (customTags[type].includes(trimmed)) { toast.error('이미 추가된 태그입니다'); return; }
     const updated = { ...customTags, [type]: [...customTags[type], trimmed] };
@@ -176,7 +176,7 @@ export function RecordPage() {
           <input
             id={`custom-input-${type}`}
             type="text"
-            placeholder="최대 3자"
+            placeholder="최대 4자"
             style={{ fontSize: 16 }}
             className="w-16 px-2 py-1 border rounded-lg text-xs text-center"
             autoFocus
