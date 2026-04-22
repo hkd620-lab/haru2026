@@ -273,6 +273,7 @@ export function SayuPage() {
   const [aiLogs, setAiLogs] = useState<AiLog[]>([]);
   const [aiLogsLoaded, setAiLogsLoaded] = useState(false);
   const [aiLogsLoading, setAiLogsLoading] = useState(false);
+  const [selectedAiLog, setSelectedAiLog] = useState<AiLog | null>(null);
   const [aiSearch, setAiSearch] = useState('');
   const [aiPage, setAiPage] = useState(1);
 
@@ -1414,16 +1415,31 @@ export function SayuPage() {
                   return (
                     <>
                       {paged.map((log) => (
-                        <div key={log.id} className="flex items-center border-t" style={{ borderColor: '#f5f5f5' }}>
-                          <div className="flex-1 px-4 py-2.5">
-                            <p className="text-sm truncate" style={{ color: '#333' }}>{log.title || '(제목 없음)'}</p>
-                            {log.source && <p className="text-xs mt-0.5" style={{ color: '#999' }}>{log.source}</p>}
+                        <div key={log.id} className="border-t" style={{ borderColor: '#f5f5f5' }}>
+                          <div
+                            className="flex items-center cursor-pointer"
+                            style={{ backgroundColor: selectedAiLog?.id === log.id ? '#f0f4ff' : 'transparent' }}
+                            onClick={() => setSelectedAiLog(selectedAiLog?.id === log.id ? null : log)}
+                          >
+                            <div className="flex-1 px-4 py-2.5">
+                              <p className="text-sm truncate" style={{ color: '#333' }}>{log.title || '(제목 없음)'}</p>
+                              {log.source && <p className="text-xs mt-0.5" style={{ color: '#999' }}>{log.source}</p>}
+                            </div>
+                            <span className="px-2 text-xs" style={{ color: '#aaa' }}>
+                              {selectedAiLog?.id === log.id ? '▲' : '▼'}
+                            </span>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteAiLog(log.id); }}
+                              className="px-3 py-2.5 text-xs flex-shrink-0 hover:text-red-600 transition-colors"
+                              style={{ color: '#ccc' }} title="삭제"
+                            >✕</button>
                           </div>
-                          <button
-                            onClick={() => handleDeleteAiLog(log.id)}
-                            className="px-3 py-2.5 text-xs flex-shrink-0 hover:text-red-600 transition-colors"
-                            style={{ color: '#ccc' }} title="삭제"
-                          >✕</button>
+                          {selectedAiLog?.id === log.id && (
+                            <div className="px-4 py-3 text-xs leading-relaxed whitespace-pre-wrap"
+                              style={{ backgroundColor: '#f8faff', color: '#333', borderTop: '1px solid #eef2ff' }}>
+                              {(log as any).content || '내용 없음'}
+                            </div>
+                          )}
                         </div>
                       ))}
                       {totalPages > 1 && (
