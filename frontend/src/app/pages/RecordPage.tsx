@@ -166,15 +166,18 @@ export function RecordPage() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { delay: 150, tolerance: 5 } }));
 
-  const handleDragEnd = async (event: DragEndEvent, type: 'weather' | 'temperature' | 'mood') => {
+  const handleDragEnd = (event: DragEndEvent, type: 'weather' | 'temperature' | 'mood') => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const oldIndex = customTags[type].indexOf(active.id as string);
-    const newIndex = customTags[type].indexOf(over.id as string);
-    const reordered = arrayMove(customTags[type], oldIndex, newIndex);
-    const updated = { ...customTags, [type]: reordered };
-    setCustomTags(updated);
-    if (user) await setDoc(doc(db, 'users', user.uid, 'settings', 'customTags'), updated, { merge: true });
+    setCustomTags((prev) => {
+      const oldIndex = prev[type].indexOf(active.id as string);
+      const newIndex = prev[type].indexOf(over.id as string);
+      if (oldIndex === -1 || newIndex === -1) return prev;
+      const reordered = arrayMove(prev[type], oldIndex, newIndex);
+      const updated = { ...prev, [type]: reordered };
+      if (user) setDoc(doc(db, 'users', user.uid, 'settings', 'customTags'), updated, { merge: true });
+      return updated;
+    });
   };
 
   const handleAddCustomTag = async (type: 'weather' | 'temperature' | 'mood') => {
