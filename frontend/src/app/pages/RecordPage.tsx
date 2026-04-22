@@ -116,6 +116,7 @@ export function RecordPage() {
   const [mood, setMood] = useState<Mood>('평온');
   const [showEnvToast, setShowEnvToast] = useState(false);
   const [customTags, setCustomTags] = useState<{ weather: string[]; temperature: string[]; mood: string[] }>({ weather: [], temperature: [], mood: [] });
+  const [dragItems, setDragItems] = useState<{ weather: string[]; temperature: string[]; mood: string[] }>({ weather: [], temperature: [], mood: [] });
   const [showInput, setShowInput] = useState<{ weather: boolean; temperature: boolean; mood: boolean }>({ weather: false, temperature: false, mood: false });
 
   const [weather, setWeather] = useState<Weather>('쾌청');
@@ -159,25 +160,29 @@ export function RecordPage() {
       if (!user) return;
       const docRef = doc(db, 'users', user.uid, 'settings', 'customTags');
       const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) setCustomTags(docSnap.data() as typeof customTags);
+      if (docSnap.exists()) {
+        const data = docSnap.data() as typeof customTags;
+        setCustomTags(data);
+        setDragItems(data);
+      }
     };
     loadCustomTags();
   }, [user]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { delay: 150, tolerance: 5 } }));
 
-  const handleDragEnd = (event: DragEndEvent, type: 'weather' | 'temperature' | 'mood') => {
+  const handleDragEnd = async (event: DragEndEvent, type: 'weather' | 'temperature' | 'mood') => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    setCustomTags((prev) => {
-      const oldIndex = prev[type].indexOf(active.id as string);
-      const newIndex = prev[type].indexOf(over.id as string);
-      if (oldIndex === -1 || newIndex === -1) return prev;
-      const reordered = arrayMove(prev[type], oldIndex, newIndex);
-      const updated = { ...prev, [type]: reordered };
-      if (user) setDoc(doc(db, 'users', user.uid, 'settings', 'customTags'), updated, { merge: true });
-      return updated;
-    });
+    const oldIndex = dragItems[type].indexOf(active.id as string);
+    const newIndex = dragItems[type].indexOf(over.id as string);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(dragItems[type], oldIndex, newIndex);
+    const updatedDrag = { ...dragItems, [type]: reordered };
+    setDragItems(updatedDrag);
+    const updatedCustom = { ...customTags, [type]: reordered };
+    setCustomTags(updatedCustom);
+    if (user) await setDoc(doc(db, 'users', user.uid, 'settings', 'customTags'), updatedCustom, { merge: true });
   };
 
   const handleAddCustomTag = async (type: 'weather' | 'temperature' | 'mood') => {
@@ -189,6 +194,7 @@ export function RecordPage() {
     if (customTags[type].includes(trimmed)) { toast.error('이미 추가된 태그입니다'); return; }
     const updated = { ...customTags, [type]: [...customTags[type], trimmed] };
     setCustomTags(updated);
+    setDragItems(updated);
     if (user) await setDoc(doc(db, 'users', user.uid, 'settings', 'customTags'), updated, { merge: true });
     if (inputEl) inputEl.value = '';
     setShowInput({ ...showInput, [type]: false });
@@ -197,8 +203,8 @@ export function RecordPage() {
   const CustomTagInput = ({ type }: { type: 'weather' | 'temperature' | 'mood' }) => (
     <>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleDragEnd(e, type)}>
-        <SortableContext items={customTags[type]} strategy={horizontalListSortingStrategy}>
-          {customTags[type].map((tag) => (
+        <SortableContext items={dragItems[type]} strategy={horizontalListSortingStrategy}>
+          {dragItems[type].map((tag) => (
             <SortableTag
               key={tag}
               id={tag}
