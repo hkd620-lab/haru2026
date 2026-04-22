@@ -128,7 +128,7 @@ export function RecordPage() {
   const handleAddCustomTag = async (type: 'weather' | 'temperature' | 'mood') => {
     const trimmed = inputValue.trim();
     if (!trimmed) return;
-    if (trimmed.length > 3) { toast.error('3글자 이하로 입력해주세요'); return; }
+    if ([...trimmed].length > 3) { toast.error('3글자 이하로 입력해주세요'); return; }
     if (customTags[type].length >= 4) { toast.error('최대 4개까지 추가 가능합니다'); return; }
     if (customTags[type].includes(trimmed)) { toast.error('이미 추가된 태그입니다'); return; }
     const updated = { ...customTags, [type]: [...customTags[type], trimmed] };
@@ -174,19 +174,11 @@ export function RecordPage() {
         <div className="flex items-center gap-1">
           <input
             type="text"
-            defaultValue=""
-            onCompositionEnd={(e) => {
-              const val = (e.target as HTMLInputElement).value;
-              setInputValue(val);
-            }}
-            onChange={(e) => {
-              if (!(e.nativeEvent as any).isComposing) {
-                setInputValue(e.target.value);
-              }
-            }}
-            placeholder="3자"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder="최대 3자"
             style={{ fontSize: 16 }}
-            className="w-12 px-2 py-1 border rounded-lg text-xs text-center"
+            className="w-16 px-2 py-1 border rounded-lg text-xs text-center"
             autoFocus
             onKeyDown={(e) => { if (e.key === 'Enter') handleAddCustomTag(type); if (e.key === 'Escape') setShowInput({ ...showInput, [type]: false }); }}
           />
