@@ -78,7 +78,7 @@ export function RecordPage() {
   const [showEnvToast, setShowEnvToast] = useState(false);
   const [customTags, setCustomTags] = useState<{ weather: string[]; temperature: string[]; mood: string[] }>({ weather: [], temperature: [], mood: [] });
   const [showInput, setShowInput] = useState<{ weather: boolean; temperature: boolean; mood: boolean }>({ weather: false, temperature: false, mood: false });
-  const [inputValue, setInputValue] = useState('');
+
   const [weather, setWeather] = useState<Weather>('쾌청');
   const [temperature, setTemperature] = useState<Temperature>('쾌적');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>('생활' as Category);
@@ -126,7 +126,8 @@ export function RecordPage() {
   }, [user]);
 
   const handleAddCustomTag = async (type: 'weather' | 'temperature' | 'mood') => {
-    const trimmed = inputValue.trim();
+    const inputEl = document.getElementById(`custom-input-${type}`) as HTMLInputElement;
+    const trimmed = inputEl?.value?.trim() || '';
     if (!trimmed) return;
     if ([...trimmed].length > 3) { toast.error('3글자 이하로 입력해주세요'); return; }
     if (customTags[type].length >= 4) { toast.error('최대 4개까지 추가 가능합니다'); return; }
@@ -134,7 +135,7 @@ export function RecordPage() {
     const updated = { ...customTags, [type]: [...customTags[type], trimmed] };
     setCustomTags(updated);
     if (user) await setDoc(doc(db, 'users', user.uid, 'settings', 'customTags'), updated, { merge: true });
-    setInputValue('');
+    if (inputEl) inputEl.value = '';
     setShowInput({ ...showInput, [type]: false });
   };
 
@@ -173,9 +174,8 @@ export function RecordPage() {
       {showInput[type] ? (
         <div className="flex items-center gap-1">
           <input
+            id={`custom-input-${type}`}
             type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
             placeholder="최대 3자"
             style={{ fontSize: 16 }}
             className="w-16 px-2 py-1 border rounded-lg text-xs text-center"
