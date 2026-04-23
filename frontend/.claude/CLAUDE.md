@@ -494,6 +494,11 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/src/app/components/PDFPreviewModal.tsx
 - 다음할일: 인쇄 버튼/PDF 저장 버튼 클릭 시 토스트 + 포도송이 동시 표시 후 인쇄 다이얼로그 연동 확인
 
+### 2026-04-24 (42차)
+- 완료: 하단 네비게이션 정리. 기록합침(/merge)·통계(/stats) 메뉴 제거, 책스튜디오(/book-studio)는 isDeveloper 게이트 해제하고 전체 공개. Layers/BarChart3 아이콘 import도 제거. isDeveloper/useAuth/DEVELOPER_UID 상수는 유지(추후 재사용 대비). navItems 5개(HARU·기록·SAYU·책스튜디오·설정)
+- 수정파일: frontend/src/app/components/BottomNav.tsx
+- 다음할일: 5개 탭 표시 확인, 통계 기능은 각 형식 안으로 이동하는 별도 작업 진행
+
 ---
 
 최종 업데이트: 2026.04.24

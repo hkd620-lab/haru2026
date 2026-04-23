@@ -1,4 +1,4 @@
-import { Home, BookOpen, Sparkles, BarChart3, Settings, Layers, Library } from 'lucide-react';
+import { Home, BookOpen, Sparkles, Settings, Library } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -9,22 +9,13 @@ export function BottomNav() {
   const { user } = useAuth();
   const isDeveloper = user?.uid === DEVELOPER_UID;
 
-  const baseItems = [
+  const navItems = [
     { path: '/', icon: Home, label: 'HARU' },
     { path: '/record', icon: BookOpen, label: '기록' },
     { path: '/sayu', icon: Sparkles, label: 'SAYU' },
-    { path: '/merge', icon: Layers, label: '기록합침' },
-    { path: '/stats', icon: BarChart3, label: '통계' },
+    { path: '/book-studio', icon: Library, label: '책스튜디오' },
     { path: '/settings', icon: Settings, label: '설정' },
   ];
-
-  const navItems = isDeveloper
-    ? [
-        ...baseItems.slice(0, 4),
-        { path: '/book-studio', icon: Library, label: '책스튜디오' },
-        ...baseItems.slice(4),
-      ]
-    : baseItems;
 
   return (
     <nav
