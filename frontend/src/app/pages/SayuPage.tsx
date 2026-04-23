@@ -723,6 +723,37 @@ export function SayuPage() {
     } catch { toast.error('삭제 실패'); }
   };
 
+  const handleCopyRecord = async (recordId: string, formatKey: string) => {
+    try {
+      const record = records.find(r => r.id === recordId);
+      if (!record) return;
+
+      const textParts = Object.keys(record)
+        .filter(k =>
+          k.startsWith(`${formatKey}_`) &&
+          typeof (record as any)[k] === 'string' &&
+          ((record as any)[k] as string).trim() &&
+          !k.endsWith('_sayu') &&
+          !k.endsWith('_ai_title') &&
+          !k.endsWith('_style') &&
+          !k.endsWith('_images') &&
+          !k.endsWith('_title')
+        )
+        .map(k => (record as any)[k] as string);
+
+      const fullText = textParts.join('\n\n');
+      if (!fullText.trim()) {
+        toast.error('복사할 내용이 없습니다.');
+        return;
+      }
+
+      await navigator.clipboard.writeText(fullText);
+      toast.success('📋 클립보드에 복사되었습니다!');
+    } catch {
+      toast.error('복사에 실패했습니다.');
+    }
+  };
+
   // Delete an AI log
   const handleDeleteAiLog = async (id: string) => {
     try {
@@ -730,6 +761,22 @@ export function SayuPage() {
       setAiLogs(prev => prev.filter(l => l.id !== id));
       toast.success('삭제되었습니다');
     } catch { toast.error('삭제 실패'); }
+  };
+
+  const handleCopyAiLog = async (id: string) => {
+    try {
+      const log = aiLogs.find(l => l.id === id);
+      if (!log) return;
+      const content = (log as any).content as string | undefined;
+      if (!content || !content.trim()) {
+        toast.error('복사할 내용이 없습니다.');
+        return;
+      }
+      await navigator.clipboard.writeText(content);
+      toast.success('📋 클립보드에 복사되었습니다!');
+    } catch {
+      toast.error('복사에 실패했습니다.');
+    }
   };
 
   // Delete a chapter (developer only)
@@ -1139,6 +1186,15 @@ export function SayuPage() {
                                     )}
                                   </button>
                                   <button
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      handleCopyRecord(entry.recordId, entry.formatKey);
+                                    }}
+                                    className="px-3 py-2.5 text-xs flex-shrink-0 hover:text-blue-500 transition-colors"
+                                    style={{ color: '#ccc' }}
+                                    title="복사"
+                                  >📋</button>
+                                  <button
                                     onClick={e => { e.stopPropagation(); handleDeleteRecord(entry.recordId); }}
                                     className="px-3 py-2.5 text-xs flex-shrink-0 hover:text-red-600 transition-colors"
                                     style={{ color: '#ccc' }}
@@ -1462,6 +1518,15 @@ export function SayuPage() {
                                     </span>
                                   </button>
                                   <button
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      handleCopyRecord(entry.recordId, entry.formatKey);
+                                    }}
+                                    className="px-3 py-2.5 text-xs flex-shrink-0 hover:text-blue-500 transition-colors"
+                                    style={{ color: '#ccc' }}
+                                    title="복사"
+                                  >📋</button>
+                                  <button
                                     onClick={e => { e.stopPropagation(); handleDeleteRecord(entry.recordId); }}
                                     className="px-3 py-2.5 text-xs flex-shrink-0 hover:text-red-600 transition-colors"
                                     style={{ color: '#ccc' }}
@@ -1533,6 +1598,11 @@ export function SayuPage() {
                             <span className="px-2 text-xs" style={{ color: '#aaa' }}>
                               {selectedAiLog?.id === log.id ? '▲' : '▼'}
                             </span>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleCopyAiLog(log.id); }}
+                              className="px-3 py-2.5 text-xs flex-shrink-0 hover:text-blue-500 transition-colors"
+                              style={{ color: '#ccc' }} title="복사"
+                            >📋</button>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDeleteAiLog(log.id); }}
                               className="px-3 py-2.5 text-xs flex-shrink-0 hover:text-red-600 transition-colors"
