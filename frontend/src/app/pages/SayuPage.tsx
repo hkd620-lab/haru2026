@@ -277,6 +277,7 @@ export function SayuPage() {
   const [selectedAiLog, setSelectedAiLog] = useState<AiLog | null>(null);
   const [aiSearch, setAiSearch] = useState('');
   const [aiPage, setAiPage] = useState(1);
+  const [aiSearchMode, setAiSearchMode] = useState<'title' | 'content'>('title');
 
   // 읽을거리
   const [books, setBooks] = useState<Book[]>([]);
@@ -305,10 +306,37 @@ export function SayuPage() {
   useEffect(() => {
     if (!collapsedCategories.has('하루AI지식창고') && !aiLogsLoaded && user?.email) {
       setAiLogsLoading(true);
-      firestoreService.getAiLogs(user.email).then((data: any[]) => {
+      firestoreService.getAiLogs(user.email).then(async (data: any[]) => {
         setAiLogs(data);
         setAiLogsLoaded(true);
         setAiLogsLoading(false);
+
+        // ai_title 없는 항목 일괄 추출 (백그라운드)
+        const needsTitle = data.filter(l => !l.ai_title && l.content && (l.content as string).trim().length > 5);
+        if (needsTitle.length === 0) return;
+
+        try {
+          const fns = getFunctions(undefined, 'asia-northeast3');
+          const extractTitleFn = httpsCallable(fns, 'extractTitle');
+
+          for (const log of needsTitle) {
+            try {
+              const result = await extractTitleFn({
+                text: (log.content as string).slice(0, 500),
+                format: 'ai_log',
+              });
+              const aiTitle = (result.data as any)?.title;
+              if (aiTitle) {
+                await updateDoc(doc(db, `users/${user!.uid}/records`, log.id), { ai_title: aiTitle });
+                setAiLogs(prev => prev.map(l => l.id === log.id ? { ...l, ai_title: aiTitle } : l));
+              }
+            } catch (e) {
+              console.warn('제목 추출 실패 (개별):', log.id, e);
+            }
+          }
+        } catch (e) {
+          console.warn('일괄 제목 추출 실패:', e);
+        }
       }).catch(() => setAiLogsLoading(false));
     }
   }, [collapsedCategories, aiLogsLoaded, user?.email]);
@@ -1599,14 +1627,47 @@ export function SayuPage() {
               <div className="bg-white rounded-lg shadow-sm overflow-hidden">
                 {/* search */}
                 <div className="px-3 py-2" style={{ backgroundColor: '#f9fafb' }}>
-                  <input type="text" value={aiSearch} onChange={e => { setAiSearch(e.target.value); setAiPage(1); }}
-                    placeholder="제목으로 검색..." className="w-full px-3 py-1.5 text-xs rounded border outline-none"
-                    style={{ borderColor: '#d1d5db', backgroundColor: '#fff', fontSize: 14 }} />
+                  <input
+                    type="text"
+                    value={aiSearch}
+                    onChange={e => { setAiSearch(e.target.value); setAiPage(1); }}
+                    placeholder={aiSearchMode === 'title' ? '제목으로 검색...' : '본문 키워드로 검색...'}
+                    className="w-full px-3 py-1.5 text-xs rounded border outline-none"
+                    style={{ borderColor: '#d1d5db', backgroundColor: '#fff', fontSize: 14 }}
+                  />
+                  <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                    <button
+                      onClick={() => { setAiSearchMode('title'); setAiSearch(''); setAiPage(1); }}
+                      style={{
+                        flex: 1, padding: '5px 0', borderRadius: 8, fontSize: 11, fontWeight: 600,
+                        border: 'none', cursor: 'pointer',
+                        backgroundColor: aiSearchMode === 'title' ? '#1A3C6E' : '#e5e7eb',
+                        color: aiSearchMode === 'title' ? '#fff' : '#6B7280',
+                      }}
+                    >📌 제목 검색</button>
+                    <button
+                      onClick={() => { setAiSearchMode('content'); setAiSearch(''); setAiPage(1); }}
+                      style={{
+                        flex: 1, padding: '5px 0', borderRadius: 8, fontSize: 11, fontWeight: 600,
+                        border: 'none', cursor: 'pointer',
+                        backgroundColor: aiSearchMode === 'content' ? '#1A3C6E' : '#e5e7eb',
+                        color: aiSearchMode === 'content' ? '#fff' : '#6B7280',
+                      }}
+                    >🔍 본문 검색</button>
+                  </div>
                 </div>
                 {aiLogsLoading ? (
                   <p className="text-center py-4 text-xs" style={{ color: '#999' }}>불러오는 중...</p>
                 ) : (() => {
-                  const filtered = aiSearch ? aiLogs.filter(l => (l.title || '').toLowerCase().includes(aiSearch.toLowerCase())) : aiLogs;
+                  const filtered = aiSearch
+                    ? aiLogs.filter(l => {
+                        const term = aiSearch.toLowerCase();
+                        if (aiSearchMode === 'content') {
+                          return (l.content || '').toLowerCase().includes(term);
+                        }
+                        return (l.ai_title || l.title || '').toLowerCase().includes(term);
+                      })
+                    : aiLogs;
                   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
                   const paged = filtered.slice((aiPage - 1) * PAGE_SIZE, aiPage * PAGE_SIZE);
                   if (filtered.length === 0) return <p className="text-center py-4 text-xs" style={{ color: '#999' }}>기록이 없습니다</p>;
@@ -1617,10 +1678,29 @@ export function SayuPage() {
                           <div
                             className="flex items-center cursor-pointer"
                             style={{ backgroundColor: selectedAiLog?.id === log.id ? '#f0f4ff' : 'transparent' }}
-                            onClick={() => setSelectedAiLog(selectedAiLog?.id === log.id ? null : log)}
+                            onClick={async () => {
+                              setSelectedAiLog(selectedAiLog?.id === log.id ? null : log);
+                              // ai_title 없으면 백그라운드 자동 추출
+                              if (!log.ai_title && log.content && (log.content as string).trim().length > 5) {
+                                try {
+                                  const fns = getFunctions(undefined, 'asia-northeast3');
+                                  const extractTitleFn = httpsCallable(fns, 'extractTitle');
+                                  const result = await extractTitleFn({ text: (log.content as string).slice(0, 500), format: 'ai_log' });
+                                  const aiTitle = (result.data as any)?.title;
+                                  if (aiTitle) {
+                                    await updateDoc(doc(db, `users/${user!.uid}/records`, log.id), { ai_title: aiTitle });
+                                    setAiLogs(prev => prev.map(l => l.id === log.id ? { ...l, ai_title: aiTitle } : l));
+                                  }
+                                } catch (e) {
+                                  console.warn('AI지식창고 제목 추출 실패:', e);
+                                }
+                              }
+                            }}
                           >
                             <div className="flex-1 px-4 py-2.5">
-                              <p className="text-sm truncate" style={{ color: '#333' }}>{log.title || '(제목 없음)'}</p>
+                              <p className="text-sm truncate" style={{ color: '#333' }}>
+                                {log.ai_title || log.title || '(제목 없음)'}
+                              </p>
                               {log.source && <p className="text-xs mt-0.5" style={{ color: '#999' }}>{log.source}</p>}
                             </div>
                             <span className="px-2 text-xs" style={{ color: '#aaa' }}>

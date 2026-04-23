@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { toast } from 'sonner';
 import heic2any from 'heic2any';
+import { LoadingOverlay } from './LoadingOverlay';
 
 type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | 'HARU주식관리' | '메모';
 type SayuMode = 'BASIC' | 'PREMIUM';
@@ -1759,6 +1760,12 @@ ${contentValues}`,
           </div>
         </div>
       )}
+
+      {/* 사진 업로드 중 포도송이 오버레이 */}
+      <LoadingOverlay
+        visible={isUploading}
+        message="사진 업로드 중..."
+      />
     </>
   );
 }

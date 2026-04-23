@@ -469,5 +469,22 @@ GitHub: hkd620-lab/haru2026
 
 ---
 
-최종 업데이트: 2026.04.23
+### 2026-04-24 (37차)
+- 완료: 하루AI지식창고 검색/제목 개선. aiSearchMode('title'|'content') state 신규. 검색창에 📌 제목 / 🔍 본문 토글 버튼 추가(모드 전환 시 검색어 리셋). 필터 로직: 제목 모드는 ai_title || title, 본문 모드는 content 부분 일치. 카드 클릭 시 ai_title 없으면 Cloud Function 'extractTitle' 호출(content 앞 500자, format 'ai_log')해 Firestore users/{uid}/records/{logId} 문서에 ai_title 업데이트 + 로컬 aiLogs state도 반영. 이미 import되어 있는 getFunctions/httpsCallable/doc/updateDoc/db 재사용(동적 import 대신)
+- 수정파일: frontend/src/app/pages/SayuPage.tsx
+- 다음할일: AI지식창고 카드 클릭 → 제목 자동 생성 후 목록에 반영, 본문 검색으로 키워드 조회 동작 확인
+
+### 2026-04-24 (38차)
+- 완료: 하루AI지식창고 일괄 AI 제목 추출. aiLogs 로드 완료 후 ai_title 없는 항목(content 6자 이상)을 순차 extractTitle 호출해 Firestore + 로컬 state 동시 업데이트. 개별 실패는 console.warn으로 스킵, 전체 실패도 워닝만. 카드 클릭 대기 없이 첫 조회 시 자동 제목 일괄 완성
+- 수정파일: frontend/src/app/pages/SayuPage.tsx
+- 다음할일: AI지식창고 열기 즉시 기존 항목들 제목이 순차 생성되는지, 새로고침 후 저장된 ai_title이 유지되는지 확인
+
+### 2026-04-24 (39차)
+- 완료: FormatModal 사진 업로드 중 포도송이 LoadingOverlay 적용 (isUploading=true일 때 visible). PDF 오버레이는 FormatModal에 isPrinting state 없어 제외(인쇄는 SayuPage 쪽이라 별도 처리 필요)
+- 수정파일: frontend/src/app/components/FormatModal.tsx
+- 다음할일: 사진 업로드 시 포도송이 오버레이 노출 확인, PDF 오버레이는 SayuPage/PrintModal 등 인쇄 경로에서 별도 적용
+
+---
+
+최종 업데이트: 2026.04.24
 HARU2026 by JOYEL — 허 교장님 전용
