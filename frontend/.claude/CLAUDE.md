@@ -499,6 +499,11 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/src/app/components/BottomNav.tsx
 - 다음할일: 5개 탭 표시 확인, 통계 기능은 각 형식 안으로 이동하는 별도 작업 진행
 
+### 2026-04-24 (43차)
+- 완료: 하단 SAYU 탭 라벨을 'SAYU·다듬기'로 변경 (다듬기 기능 강조)
+- 수정파일: frontend/src/app/components/BottomNav.tsx
+- 다음할일: 모바일 좁은 화면에서도 'SAYU·다듬기' 2줄 안 넘치는지 표시 확인
+
 ---
 
 최종 업데이트: 2026.04.24

@@ -12,7 +12,7 @@ export function BottomNav() {
   const navItems = [
     { path: '/', icon: Home, label: 'HARU' },
     { path: '/record', icon: BookOpen, label: '기록' },
-    { path: '/sayu', icon: Sparkles, label: 'SAYU' },
+    { path: '/sayu', icon: Sparkles, label: 'SAYU·다듬기' },
     { path: '/book-studio', icon: Library, label: '책스튜디오' },
     { path: '/settings', icon: Settings, label: '설정' },
   ];
