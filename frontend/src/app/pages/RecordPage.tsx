@@ -144,6 +144,16 @@ export function RecordPage() {
   const [moodTags, setMoodTags] = useState<string[]>(DEFAULT_MOOD);
   const [showInput, setShowInput] = useState<{ weather: boolean; temperature: boolean; mood: boolean }>({ weather: false, temperature: false, mood: false });
 
+  // 항상 최신 태그값 참조용 ref
+  const weatherTagsRef = useRef<string[]>([]);
+  const temperatureTagsRef = useRef<string[]>([]);
+  const moodTagsRef = useRef<string[]>([]);
+
+  // ref 동기화
+  useEffect(() => { weatherTagsRef.current = weatherTags; }, [weatherTags]);
+  useEffect(() => { temperatureTagsRef.current = temperatureTags; }, [temperatureTags]);
+  useEffect(() => { moodTagsRef.current = moodTags; }, [moodTags]);
+
   const [weather, setWeather] = useState<Weather>('쾌청');
   const [temperature, setTemperature] = useState<Temperature>('쾌적');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>('생활' as Category);
@@ -248,21 +258,25 @@ export function RecordPage() {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const tags = type === 'weather' ? weatherTags
-      : type === 'temperature' ? temperatureTags : moodTags;
+    // ref에서 항상 최신값 읽기 (stale closure 방지)
+    const tags = type === 'weather' ? weatherTagsRef.current
+      : type === 'temperature' ? temperatureTagsRef.current
+      : moodTagsRef.current;
+
     const setArr = type === 'weather' ? setWeatherTags
-      : type === 'temperature' ? setTemperatureTags : setMoodTags;
+      : type === 'temperature' ? setTemperatureTags
+      : setMoodTags;
 
     const oldIndex = tags.indexOf(active.id as string);
     const newIndex = tags.indexOf(over.id as string);
     if (oldIndex === -1 || newIndex === -1) return;
 
-    const reordered = arrayMove(tags, oldIndex, newIndex);
+    const reordered = arrayMove([...tags], oldIndex, newIndex);
     setArr(reordered);
 
-    const newWeather = type === 'weather' ? reordered : weatherTags;
-    const newTemperature = type === 'temperature' ? reordered : temperatureTags;
-    const newMood = type === 'mood' ? reordered : moodTags;
+    const newWeather = type === 'weather' ? reordered : weatherTagsRef.current;
+    const newTemperature = type === 'temperature' ? reordered : temperatureTagsRef.current;
+    const newMood = type === 'mood' ? reordered : moodTagsRef.current;
     await saveTags(newWeather, newTemperature, newMood);
   };
 
