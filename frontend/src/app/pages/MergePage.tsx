@@ -170,6 +170,22 @@ export function MergePage() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col gap-3" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
       <div className="flex items-center justify-between">
         <MergeTitleAnimation />
+        <button
+          onClick={() => navigate('/sayu')}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '6px',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          title="닫기"
+        >
+          <X style={{ width: 22, height: 22, color: '#6B7280' }} />
+        </button>
       </div>
 
       {showNotice && (

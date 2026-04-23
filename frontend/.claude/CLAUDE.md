@@ -529,6 +529,11 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/src/app/routes.tsx, frontend/src/app/pages/FormatStatisticsPage.tsx
 - 다음할일: /stats/일기 진입 + 뒤로가기로 SAYU 복귀 확인
 
+### 2026-04-24 (49차)
+- 완료: MergePage 헤더 오른쪽에 닫기(X) 버튼 추가 → navigate('/sayu')로 SAYU 복귀. X 아이콘/navigate 기존 import 재사용. 22px 회색(#6B7280), padding 6, 원형 hover 영역
+- 수정파일: frontend/src/app/pages/MergePage.tsx
+- 다음할일: 기록합치기 페이지에서 X 버튼으로 SAYU 복귀 동작 확인
+
 ---
 
 최종 업데이트: 2026.04.24
