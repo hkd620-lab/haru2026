@@ -1191,7 +1191,7 @@ export function SayuPage() {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setFormatStatModal({ isOpen: true, format: String(format), prefix, entries, tab: 'stat' });
+                                    navigate(`/stats/${String(format)}`);
                                   }}
                                   style={{
                                     padding: '4px 10px', borderRadius: 20, border: '1px solid #1A3C6E',
@@ -1202,7 +1202,7 @@ export function SayuPage() {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setFormatStatModal({ isOpen: true, format: String(format), prefix, entries, tab: 'merge' });
+                                    navigate('/merge');
                                   }}
                                   style={{
                                     padding: '4px 10px', borderRadius: 20, border: 'none',

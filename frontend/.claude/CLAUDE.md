@@ -519,6 +519,11 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/src/app/pages/SayuPage.tsx
 - 다음할일: 리스트 뷰 헤더에서 [통계]/[기록합치기] pill 표시 + 각각 해당 탭으로 모달 오픈 확인
 
+### 2026-04-24 (47차)
+- 완료: [통계]/[기록합치기] 버튼을 모달 열지 말고 기존 페이지로 라우팅. 통계 → navigate(`/stats/${format}`), 기록합치기 → navigate('/merge'). useNavigate/navigate는 이미 상단(line 2, 219)에 존재. formatStatModal state 및 바텀시트 모달 JSX는 남겨두되 헤더 버튼은 페이지 이동만
+- 수정파일: frontend/src/app/pages/SayuPage.tsx
+- 다음할일: 통계 pill 클릭 시 /stats/일기 형식 페이지 진입, 기록합치기 pill 클릭 시 /merge 페이지 진입 확인. 미사용 formatStatModal 모달 JSX는 필요 시 추후 제거
+
 ---
 
 최종 업데이트: 2026.04.24
