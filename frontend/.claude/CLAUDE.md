@@ -489,6 +489,11 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/src/app/components/PDFPreviewModal.tsx
 - 다음할일: 인쇄/PDF 저장 버튼 클릭 시 800ms 포도송이 표시 후 인쇄 다이얼로그 연동 확인
 
+### 2026-04-24 (41차)
+- 완료: PDFPreviewModal 인쇄/PDF 저장 시 안내 토스트 추가(sonner). 🖨️/📄 이모지 + '인쇄 화면이 열릴 때까지 기다려 주세요' 5초 표시, 딥블루(#1A3C6E) 배경 + 흰 글씨 + 10px radius 스타일. react-hot-toast 대신 프로젝트 기본 sonner 사용
+- 수정파일: frontend/src/app/components/PDFPreviewModal.tsx
+- 다음할일: 인쇄 버튼/PDF 저장 버튼 클릭 시 토스트 + 포도송이 동시 표시 후 인쇄 다이얼로그 연동 확인
+
 ---
 
 최종 업데이트: 2026.04.24
