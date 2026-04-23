@@ -572,9 +572,17 @@ export function RecordPage() {
 
   const handleSaveFormatData = async (formatData: Record<string, string>) => {
     if (!user) return;
+    const customRecordId =
+      typeof (formatData as any)._recordId === 'string' && (formatData as any)._recordId
+        ? ((formatData as any)._recordId as string)
+        : undefined;
+    const formatsOverride = Array.isArray((formatData as any).formats)
+      ? ((formatData as any).formats as string[])
+      : undefined;
     const updateData: Record<string, any> = {};
     let hasContent = false;
     Object.entries(formatData).forEach(([key, value]) => {
+      if (key === '_recordId' || key === 'formats') return;
       if (typeof value === 'string' && value.trim().length > 0) {
         updateData[key] = value;
         hasContent = true;
@@ -586,11 +594,12 @@ export function RecordPage() {
     }
     try {
       const recordId = await firestoreService.saveRecord(user.uid, {
+        ...(customRecordId ? { id: customRecordId } : {}),
         date: savedDateStr,
         weather,
         temperature,
         mood,
-        formats: selectedFormats,
+        formats: formatsOverride ?? selectedFormats,
         content: '',
         ...updateData,
       });
@@ -677,10 +686,25 @@ export function RecordPage() {
 
           {/* 카테고리 선택 */}
           <div className="flex gap-2 mb-3 overflow-x-auto">
-            {(['생활', '업무', '하루학습', '하루LAW'] as (Category | 'HARUraw' | '하루학습')[]).map((category) => (
+            {(['생활', '업무', '하루학습', '하루LAW', 'HARU주식관리', '나도작가'] as (Category | 'HARUraw' | '하루학습')[]).map((category) => (
               <button
                 key={category}
                 onClick={() => {
+                  // 📈 HARU주식관리 클릭 시 바로 모달 열기
+                  if (category === 'HARU주식관리') {
+                    const dateStr = getLocalDateString(currentDate);
+                    setSavedDateStr(dateStr);
+                    setSavedRecordId('');
+                    setSavedFormat('HARU주식관리');
+                    setSelectedFormats(['HARU주식관리']);
+                    setFormatModalOpen(true);
+                    return;
+                  }
+                  // 🪶 나도작가 클릭 시 노벨 인트로 모달 열기
+                  if (category === '나도작가') {
+                    setShowNovelIntro(true);
+                    return;
+                  }
                   if (selectedCategory === category) {
                     setSelectedCategory(null);
                     setLawGuideConfirmed(false);
@@ -697,24 +721,11 @@ export function RecordPage() {
                   fontWeight: selectedCategory === category ? 600 : 500,
                 }}
               >
-                {category}
+                {category === 'HARU주식관리' ? '📈 HARU주식관리' :
+                 category === '나도작가' ? '🪶 나도작가' :
+                 category}
               </button>
             ))}
-            {/* 나도작가 버튼 — 개발자 전용 */}
-            {isDeveloper && (
-              <button
-                onClick={() => setShowNovelIntro(true)}
-                className="px-4 py-2 rounded-lg text-xs transition-all whitespace-nowrap flex-shrink-0"
-                style={{
-                  backgroundColor: '#10b981',
-                  color: '#fff',
-                  border: 'none',
-                  fontWeight: 600,
-                }}
-              >
-                ✍️ 나도작가
-              </button>
-            )}
           </div>
 
           {/* 형식 버튼 */}

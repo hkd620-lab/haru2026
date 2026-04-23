@@ -857,6 +857,25 @@ export function SayuPage() {
       result.push({ category: '하루LAW', formats: [{ format: 'HARUraw' as any, entries: harurawEntries }] });
     }
 
+    // 📈 HARU주식관리 — 전체 기간 기준 (월 필터 미적용)
+    const stockEntries = records
+      .filter((r: any) =>
+        (r.formats && r.formats.includes('HARU주식관리')) || !!r.stock_name,
+      )
+      .map((r: any) => ({
+        date: r.date,
+        title: `${r.stock_name || ''} ${r.stock_type || ''} ${r.stock_quantity || ''}`.trim() || '(종목 없음)',
+        hasSayu: false,
+        formatKey: 'stock',
+        recordId: r.id,
+      }));
+    if (stockEntries.length > 0) {
+      result.push({
+        category: 'HARU주식관리',
+        formats: [{ format: 'HARU주식관리' as RecordFormat, entries: stockEntries }],
+      });
+    }
+
     for (const category of ['생활', '업무'] as const) {
       const formatsWithEntries: ListCategory['formats'] = [];
 
@@ -1134,8 +1153,16 @@ export function SayuPage() {
                             </span>
                           </button>
 
+                          {/* 📈 HARU주식관리 대시보드 — 주식만 전용 화면 */}
+                          {isFormatExpanded && format === 'HARU주식관리' && (
+                            <StockDashboard
+                              records={entries
+                                .map((e) => records.find((r) => r.id === e.recordId))
+                                .filter(Boolean) as any[]}
+                            />
+                          )}
                           {/* 기록 목록 — 형식 펼쳤을 때만 표시 */}
-                          {isFormatExpanded && (
+                          {isFormatExpanded && format !== 'HARU주식관리' && (
                             <>
                               {pagedEntries.map((entry) => (
                                 <div key={`${entry.date}-${entry.formatKey}-${entry.recordId}`} className="w-full flex items-center gap-1 border-t" style={{ borderColor: '#f5f5f5' }}>
@@ -1557,7 +1584,8 @@ export function SayuPage() {
             );
           })()}
 
-          {/* 하루AI지식창고 */}
+          {/* 하루AI지식창고 (개발자 전용) */}
+          {isDeveloper && (
           <div className="mb-4">
             <button
               onClick={() => toggleCategory('하루AI지식창고')}
@@ -1633,6 +1661,7 @@ export function SayuPage() {
               </div>
             )}
           </div>
+          )}
         </div>
       )}
 
@@ -1902,5 +1931,204 @@ export function SayuPage() {
         </div>
       </div>
     </>
+  );
+}
+
+// ===== 📈 HARU주식관리 대시보드 =====
+function StockDashboard({ records }: { records: any[] }) {
+  const [filter, setFilter] = useState<'전체' | '매수' | '매도' | '실현이익' | '실현손실'>('전체');
+  const [sort, setSort] = useState<'최신순' | '오래된순' | '금액높은순' | '금액낮은순'>('최신순');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [nameFilter, setNameFilter] = useState('전체');
+
+  // 레코드 → 거래 객체 (각 레코드가 1건의 거래를 보유)
+  const allTrades: any[] = records
+    .map((r) => ({
+      stock_type: r?.stock_type || '',
+      stock_name: r?.stock_name || '',
+      stock_price: r?.stock_price || '',
+      stock_quantity: r?.stock_quantity || '',
+      stock_total: r?.stock_total || '',
+      stock_date: r?.stock_date || r?.date || '',
+    }))
+    .filter((t) => t.stock_name);
+
+  const stockNames = ['전체', ...Array.from(new Set(allTrades.map((t: any) => t.stock_name).filter(Boolean)))];
+
+  let filtered = allTrades.filter((t: any) => {
+    if (nameFilter !== '전체' && t.stock_name !== nameFilter) return false;
+    if (filter === '매수' && t.stock_type !== '매수') return false;
+    if (filter === '매도' && t.stock_type !== '매도') return false;
+    if (dateFrom && t.stock_date.slice(0, 10) < dateFrom) return false;
+    if (dateTo && t.stock_date.slice(0, 10) > dateTo) return false;
+    return true;
+  });
+
+  filtered = [...filtered].sort((a: any, b: any) => {
+    const aAmt = parseInt((a.stock_total || '0').replace(/[^0-9]/g, '')) || 0;
+    const bAmt = parseInt((b.stock_total || '0').replace(/[^0-9]/g, '')) || 0;
+    if (sort === '최신순') return (b.stock_date || '').slice(0, 16).localeCompare((a.stock_date || '').slice(0, 16));
+    if (sort === '오래된순') return (a.stock_date || '').slice(0, 16).localeCompare((b.stock_date || '').slice(0, 16));
+    if (sort === '금액높은순') return bAmt - aAmt;
+    if (sort === '금액낮은순') return aAmt - bAmt;
+    return 0;
+  });
+
+  const buyCount = allTrades.filter((t: any) => t.stock_type === '매수').length;
+  const sellCount = allTrades.filter((t: any) => t.stock_type === '매도').length;
+  const totalAmt = allTrades.reduce(
+    (sum: number, t: any) => sum + (parseInt((t.stock_total || '0').replace(/[^0-9]/g, '')) || 0),
+    0,
+  );
+
+  const chip = (label: string, active: boolean, onClick: () => void, color?: string) => (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'inline-flex', alignItems: 'center', fontSize: 11,
+        padding: '5px 10px', borderRadius: 20, margin: 3, cursor: 'pointer',
+        border: `0.5px solid ${active ? '#1A3C6E' : '#e5e7eb'}`,
+        background: active ? '#1A3C6E' : '#fff',
+        color: active ? '#fff' : color || '#6B7280',
+      }}
+    >{label}</button>
+  );
+
+  const donutTotal = buyCount + sellCount || 1;
+
+  return (
+    <div style={{ padding: '12px', background: '#f9fafb' }}>
+      {/* 통계 카드 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 8, marginBottom: 12 }}>
+        {[
+          { label: '산 거래', term: '매수', val: `${buyCount}건`, color: '#27500A' },
+          { label: '판 거래', term: '매도', val: `${sellCount}건`, color: '#A32D2D' },
+          { label: '거래 종목', term: '', val: `${stockNames.length - 1}개`, color: '#1A3C6E' },
+          { label: '총 거래금액', term: '', val: `${Math.round(totalAmt / 10000).toLocaleString()}만원`, color: '#1A3C6E' },
+        ].map((s) => (
+          <div key={s.label} style={{ background: '#fff', border: '0.5px solid #e5e7eb', borderRadius: 8, padding: '10px 12px' }}>
+            <div style={{ fontSize: 11, color: '#6B7280' }}>
+              {s.label} {s.term && <span style={{ fontSize: 10, opacity: 0.6 }}>{s.term}</span>}
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 500, color: s.color, marginTop: 2 }}>{s.val}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* 도넛차트 */}
+      <div style={{ background: '#fff', border: '0.5px solid #e5e7eb', borderRadius: 12, padding: 14, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 16 }}>
+        <svg width="80" height="80" viewBox="0 0 80 80">
+          <circle cx="40" cy="40" r="30" fill="none" stroke="#27500A" strokeWidth="18"
+            strokeDasharray={`${(buyCount / donutTotal) * 188.4} 188.4`}
+            strokeDashoffset="47.1" />
+          <circle cx="40" cy="40" r="30" fill="none" stroke="#A32D2D" strokeWidth="18"
+            strokeDasharray={`${(sellCount / donutTotal) * 188.4} 188.4`}
+            strokeDashoffset={`${-((buyCount / donutTotal) * 188.4) + 47.1}`} />
+          <circle cx="40" cy="40" r="21" fill="#f9fafb" />
+          <text x="40" y="37" textAnchor="middle" fontSize="11" fontWeight="500" fill="#1A3C6E">
+            {buyCount + sellCount}건
+          </text>
+          <text x="40" y="50" textAnchor="middle" fontSize="9" fill="#6B7280">전체</text>
+        </svg>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#27500A', flexShrink: 0 }} />
+            <div>
+              <div style={{ fontSize: 12, color: '#374151' }}>산 거래 <span style={{ fontSize: 10, color: '#9CA3AF' }}>매수</span></div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: '#27500A' }}>
+                {buyCount}건 · {buyCount + sellCount > 0 ? Math.round((buyCount / (buyCount + sellCount)) * 100) : 0}%
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#A32D2D', flexShrink: 0 }} />
+            <div>
+              <div style={{ fontSize: 12, color: '#374151' }}>판 거래 <span style={{ fontSize: 10, color: '#9CA3AF' }}>매도</span></div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: '#A32D2D' }}>
+                {sellCount}건 · {buyCount + sellCount > 0 ? Math.round((sellCount / (buyCount + sellCount)) * 100) : 0}%
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 날짜 검색 */}
+      <div style={{ fontSize: 11, fontWeight: 500, color: '#6B7280', margin: '12px 0 6px' }}>날짜·기간으로 찾기</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 6, marginBottom: 8 }}>
+        <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+          style={{ fontSize: 12, padding: '7px 10px', borderRadius: 8, border: '0.5px solid #d1d5db', width: '100%', boxSizing: 'border-box' }} />
+        <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+          style={{ fontSize: 12, padding: '7px 10px', borderRadius: 8, border: '0.5px solid #d1d5db', width: '100%', boxSizing: 'border-box' }} />
+      </div>
+      <div style={{ marginBottom: 8 }}>
+        {['전체기간', '오늘', '이번 주', '이번 달', '3개월'].map((p) => {
+          const applyRange = () => {
+            const now = new Date();
+            const fmt = (d: Date) => d.toISOString().slice(0, 10);
+            if (p === '오늘') { setDateFrom(fmt(now)); setDateTo(fmt(now)); }
+            else if (p === '이번 주') { const d = new Date(now); d.setDate(d.getDate() - 7); setDateFrom(fmt(d)); setDateTo(fmt(now)); }
+            else if (p === '이번 달') { const d = new Date(now.getFullYear(), now.getMonth(), 1); setDateFrom(fmt(d)); setDateTo(fmt(now)); }
+            else if (p === '3개월') { const d = new Date(now); d.setMonth(d.getMonth() - 3); setDateFrom(fmt(d)); setDateTo(fmt(now)); }
+            else { setDateFrom(''); setDateTo(''); }
+          };
+          return (
+            <button
+              key={p}
+              onClick={applyRange}
+              style={{ fontSize: 11, padding: '5px 10px', borderRadius: 20, margin: 3, cursor: 'pointer', border: '0.5px solid #e5e7eb', background: '#fff', color: '#6B7280' }}
+            >{p}</button>
+          );
+        })}
+      </div>
+
+      {/* 거래종류 필터 */}
+      <div style={{ fontSize: 11, fontWeight: 500, color: '#6B7280', margin: '12px 0 6px' }}>거래 종류로 찾기</div>
+      <div style={{ marginBottom: 8 }}>
+        {chip('전체', filter === '전체', () => setFilter('전체'))}
+        {chip('산 것만 매수', filter === '매수', () => setFilter('매수'))}
+        {chip('판 것만 매도', filter === '매도', () => setFilter('매도'))}
+      </div>
+
+      {/* 종목 필터 */}
+      <div style={{ fontSize: 11, fontWeight: 500, color: '#6B7280', margin: '12px 0 6px' }}>종목으로 찾기</div>
+      <div style={{ marginBottom: 8 }}>
+        {stockNames.map((n) => chip(n, nameFilter === n, () => setNameFilter(n)))}
+      </div>
+
+      {/* 정렬 */}
+      <div style={{ fontSize: 11, fontWeight: 500, color: '#6B7280', margin: '12px 0 6px' }}>순서 정렬</div>
+      <div style={{ marginBottom: 12 }}>
+        {(['최신순', '오래된순', '금액높은순', '금액낮은순'] as const).map((s) =>
+          chip(s, sort === s, () => setSort(s)),
+        )}
+      </div>
+
+      {/* 거래 목록 */}
+      <div style={{ fontSize: 11, fontWeight: 500, color: '#6B7280', margin: '12px 0 6px' }}>
+        거래 내역 ({filtered.length}건)
+      </div>
+      {filtered.length === 0 && (
+        <div style={{ textAlign: 'center', padding: 20, fontSize: 13, color: '#9CA3AF' }}>거래 내역이 없습니다</div>
+      )}
+      {filtered.map((t: any, i: number) => (
+        <div key={i} style={{ background: '#fff', border: '0.5px solid #e5e7eb', borderRadius: 10, padding: '12px 14px', marginBottom: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>{t.stock_name}</span>
+            <span style={{
+              fontSize: 10, padding: '2px 8px', borderRadius: 20, fontWeight: 500,
+              background: t.stock_type === '매수' ? '#EAF3DE' : '#FCEBEB',
+              color: t.stock_type === '매수' ? '#27500A' : '#A32D2D',
+            }}>
+              {t.stock_type === '매수' ? '산 것 · 매수' : '판 것 · 매도'}
+            </span>
+          </div>
+          <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3 }}>
+            {t.stock_quantity} · {t.stock_price} · 총 {t.stock_total}
+          </div>
+          <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>{t.stock_date}</div>
+        </div>
+      ))}
+    </div>
   );
 }

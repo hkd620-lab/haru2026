@@ -49,7 +49,8 @@ class FirestoreService {
   // 기존 기록 관련 함수들
   async saveRecord(userId: string, recordData: Partial<HaruRecord>): Promise<string> {
     // 수정 7: 같은 날 같은 형식 여러 개 작성 지원 — 고유 ID 생성
-    const recordId = `${recordData.date}_${Date.now()}`;
+    // recordData.id가 명시되면 해당 ID 사용 (주식관리 개별 저장 등)
+    const recordId = recordData.id ?? `${recordData.date}_${Date.now()}`;
     const recordRef = doc(db, 'users', userId, 'records', recordId);
     await setDoc(recordRef, {
       ...recordData,

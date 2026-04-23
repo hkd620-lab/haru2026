@@ -80,6 +80,14 @@ const FIELD_LABELS: Record<string, string> = {
   memo_content: '내용',
   memo_action: '다음 행동',
   memo_space: '여백',
+  // HARU주식관리
+  stock_type: '거래유형',
+  stock_name: '종목명',
+  stock_price: '거래단가',
+  stock_quantity: '수량',
+  stock_total: '거래금액',
+  stock_date: '거래일시',
+  stock_memo: '메모',
 };
 
 // 필드 표시 순서 (형식별)
@@ -94,6 +102,7 @@ const FIELD_ORDER: Record<string, string[]> = {
   pet: ['pet_name', 'pet_health', 'pet_behavior', 'pet_care', 'pet_special', 'pet_space'],
   child: ['child_name', 'child_growth', 'child_meal', 'child_activity', 'child_emotion', 'child_space'],
   memo: ['memo_title', 'memo_content', 'memo_action', 'memo_space'],
+  stock: ['stock_type', 'stock_name', 'stock_price', 'stock_quantity', 'stock_total', 'stock_date', 'stock_memo'],
 };
 
 export function RecordDetailPage() {

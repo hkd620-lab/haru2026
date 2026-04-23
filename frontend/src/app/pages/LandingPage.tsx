@@ -177,6 +177,10 @@ export function LandingPage() {
                     <span style={{ color: '#10b981', fontWeight: 600 }}>쓸모있게</span>{' '}
                     완성
                   </div>
+                  <div style={{ marginTop: '4px', borderTop: '1px solid rgba(26,60,110,0.15)', paddingTop: '6px' }}>
+                    🪶 나도작가 —{' '}
+                    <span style={{ color: '#a78bfa', fontWeight: 600 }}>AI가 당신의 과거로 미래를 씁니다</span>
+                  </div>
                 </div>
               </div>
               <button
@@ -587,7 +591,7 @@ export function LandingPage() {
                 emoji: '📚',
                 title: '나도작가',
                 sub: 'Book Studio',
-                desc: 'AI와 함께 시놉시스를 쓰고 챕터를 구성해 나만의 책을 완성하세요.',
+                desc: 'AI가 당신의 과거로 미래를 씁니다. 내가 선택한 가치관과 삶의 조각들로 AI가 나만의 서사를 완성합니다.',
                 color: '#a78bfa',
                 glow: 'rgba(167,139,250,0.15)',
               },

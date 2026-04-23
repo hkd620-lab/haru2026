@@ -373,6 +373,61 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/src/app/pages/LandingPage.tsx
 - 다음할일: 모바일/데스크탑 HARU·포도송이 간격 최종 확인
 
+### 2026-04-23 (26차)
+- 완료: HARU주식관리 형식 신규 추가 (카테고리: 생활 / prefix: stock / 이모지: 📈), 거래유형·종목명·가격·수량·금액·일시·메모 7개 필드, 캡처 이미지 자동 분석 버튼 + analyzeStockImage Functions (gemini-2.5-flash 비전)
+- 수정파일: haruTypes.ts, FormatModal.tsx, RecordDetailPage.tsx, functions/src/index.ts
+- 다음할일: 키움증권 카카오 캡처 업로드 → 자동 분석 → 필드 자동 입력 동작 확인
+
+### 2026-04-23 (27차)
+- 완료: HARU주식관리 자동 분석 다중 거래 지원 (analyzeStockImage → {trades: [...]} 배열 반환, stockCandidates/showCandidates state + handleSelectTrade, 후보 선택 모달 UI, 거래가격→거래단가 라벨/플레이스홀더 수정, Gemini 프롬프트에 단가×수량=거래금액 자동계산 지시)
+- 수정파일: functions/src/index.ts, FormatModal.tsx, RecordDetailPage.tsx
+- 다음할일: 캡처 1장에 여러 건 있을 때 후보 목록 표시 + 선택 1건 필드 자동 채움 동작 확인
+
+### 2026-04-23 (28차)
+- 완료: 주식 OCR 이미지 전달 방식 변경 (서버 fetch 대신 클라이언트에서 FileReader → base64 변환 후 {base64Data, mimeType} 직접 전송). Firebase Storage URL CORS/인증 우회
+- 수정파일: frontend/src/app/components/FormatModal.tsx, functions/src/index.ts
+- 다음할일: 클라이언트 base64 변환 + 서버 분석 플로우 동작 확인
+
+### 2026-04-23 (29차)
+- 완료: HARU주식관리 입력 방식 전환 (Gemini Vision OCR → 카톡 '대화 내용 내보내기' TXT/CSV 파싱). 프론트에서 [키움]체결통보 블록 분리해 종목명·매수매도·수량·평균단가·날짜시각 추출 → 거래금액 자동 계산. 캡처 버튼을 파일 업로드 라벨로 교체, isAnalyzing→isCsvParsing, handleOcrAnalyze→handleKakaoTxtUpload. 저장 버튼은 '저장' 1개로 단순화(AI 다듬기 생략). analyzeStockImage Cloud Function 소스 제거(orphan 배포본은 남아 있음, 필요 시 firebase functions:delete)
+- 수정파일: frontend/src/app/components/FormatModal.tsx, functions/src/index.ts
+- 다음할일: 키움증권 카톡 내보내기 TXT 업로드 → 거래 리스트 파싱 + 1건 선택 → 필드 자동 채움 + 저장 1개 버튼 확인
+
+### 2026-04-23 (30차)
+- 완료: HARU주식관리 작성창 완전 단순화. 모드 선택 단계 자동 스킵(format === 'HARU주식관리' ? 'input' : 'select'). 제목 input·간편/프리미엄 본문·사진 업로드 섹션 모두 HARU주식관리에서 숨김. 전용 UI 블록(안내문구 + 📂 파일 업로드 라벨 + "N건 분석 완료" 표시)을 별도 영역으로 분리. handleKakaoTxtUpload가 자동 제목 생성(stock_title = "YYYY-MM-DD ~ YYYY-MM-DD 매수N건·매도N건"). handleSaveAllTrades 신규 — 전체 거래 배열을 stock_trades(JSON) + 요약 통계(stock_count/buy_count/sell_count/date_from/date_to) + sayu 요약 텍스트로 한 번에 저장. 저장 버튼은 후보 없을 때 비활성 + "저장 (N건)" 라벨
+- 수정파일: frontend/src/app/components/FormatModal.tsx
+- 다음할일: 주식관리 작성창에 파일 업로드/저장만 보이는지, 28건 파일 업로드→자동 제목·건수 표시·저장 후 재조회 확인
+
+### 2026-04-23 (31차)
+- 완료: 랜딩 상단 배너에 '🪶 나도작가 — AI가 당신의 과거로 미래를 씁니다' 3번째 라인 추가(상단 구분선 + 퍼플 #a78bfa 강조). 나도작가 섹션 desc 카피 교체("AI가 당신의 과거로 미래를 씁니다. 내가 선택한 가치관과 삶의 조각들로 AI가 나만의 서사를 완성합니다.")
+- 수정파일: frontend/src/app/pages/LandingPage.tsx
+- 다음할일: 배너에 나도작가 문구·구분선 표시 + 나도작가 섹션 새 desc 확인
+
+### 2026-04-23 (32차)
+- 완료: SAYU 페이지 HARU주식관리 형식 펼침 시 전용 대시보드 표시 (StockDashboard 컴포넌트 신규). 통계 카드(매수/매도/종목/총금액) + SVG 도넛차트 + 날짜 범위 + 빠른기간 프리셋 + 거래종류·종목·정렬 칩 필터 + 거래 리스트. records→stock_trades JSON 평탄화(폴백으로 단일 stock_* 필드). 형식 목록 렌더 분기: format === 'HARU주식관리'면 대시보드, 아니면 기존 pagedEntries
+- 수정파일: frontend/src/app/pages/SayuPage.tsx
+- 다음할일: SAYU→생활→HARU주식관리 클릭 시 대시보드 표시 + 필터 동작 확인
+
+### 2026-04-23 (33차)
+- 완료: HARU주식관리 저장 모델 전환 — 거래 1건당 독립 레코드(recordId = stock_{YYYYMMDDhhmm}_{index})로 개별 저장. firestoreService.saveRecord가 recordData.id 있으면 사용하도록 개선. RecordPage.handleSaveFormatData는 formatData._recordId를 추출해 saveRecord id로 전달. FormatModal.handleSaveAllTrades는 for 루프로 stockCandidates를 각각 onSave 호출(stock_trades JSON 폐기, 대신 stock_type/stock_name/stock_price/stock_quantity/stock_total/stock_date 필드 직접 저장). SayuPage.StockDashboard는 JSON 파싱 제거하고 r.stock_* 필드를 1:1 매핑으로 평탄화. 같은 분에 여러 거래 있을 때 충돌 방지 위해 recordId에 _{i} 접미사 추가
+- 수정파일: firestoreService.ts, RecordPage.tsx, FormatModal.tsx, SayuPage.tsx
+- 다음할일: 28건 업로드→Firestore에 28개 stock_YYYYMMDDhhmm_i 문서 생성 + SAYU 대시보드에 28건 모두 표시·필터 동작 확인
+
+### 2026-04-23 (34차)
+- 완료: HARU주식관리 저장 시 formats 필드 누락 문제 수정. FormatModal.handleSaveAllTrades dataToSave에 formats: ['HARU주식관리'] 명시 추가 + bracket notation → 고정 stock_* 이름으로 교체. RecordPage.handleSaveFormatData가 formatData.formats 배열을 감지해 selectedFormats를 override하도록 확장(Object.entries 루프에서 'formats' 키 스킵). SAYU 페이지의 getMonthListData 필터(r.formats.includes(format))가 저장 레코드를 정확히 HARU주식관리로 인식 가능
+- 수정파일: FormatModal.tsx, RecordPage.tsx
+- 다음할일: 기존 주식 기록 삭제 → 재업로드 → SAYU→HARU주식관리 확장 시 거래 리스트 정상 표시 확인
+
+### 2026-04-23 (35차)
+- 완료: StockDashboard 날짜 필터/정렬 형식 불일치 수정. stock_date는 'YYYY-MM-DD HH:MM:SS' 형식인데 필터는 'YYYY-MM-DD'로 비교해 모든 항목이 제외되던 문제. 필터는 .slice(0,10)로 날짜만 비교, 정렬은 .slice(0,16)로 분 단위까지 비교
+- 수정파일: frontend/src/app/pages/SayuPage.tsx
+- 다음할일: 전체기간 선택 시 28건 전체 표시 + 오늘/이번주/이번달 프리셋 동작 확인
+
+### 2026-04-23 (36차)
+- 완료: HARU주식관리·나도작가 독립 카테고리 분리. Category 타입에 'HARU주식관리'·'나도작가' 추가. CATEGORY_FORMATS에서 생활 배열에서 HARU주식관리 제거 후 독립 키로 분리. RecordPage 카테고리 네비에 📈/🪶 이모지 추가 + 클릭 시 각각 FormatModal/NovelIntro 바로 오픈(기존 isDeveloper 중복 버튼 제거). SayuPage.getMonthListData에 HARU주식관리 섹션 추가(records 기반 전체기간, 하루LAW 다음 위치). SayuPage 하루AI지식창고 섹션을 isDeveloper 게이트로 감쌈
+- 수정파일: haruTypes.ts, RecordPage.tsx, SayuPage.tsx
+- 다음할일: 기록 페이지 카테고리 6개 노출(생활·업무·하루학습·하루LAW·📈HARU주식관리·🪶나도작가), HARU주식관리 클릭 시 작성 모달, SAYU에 하루충전소→하루LAW→HARU주식관리→(개발자만)AI지식창고 순서 확인
+
 ---
 
 최종 업데이트: 2026.04.23

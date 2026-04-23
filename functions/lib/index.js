@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.refreshNews = exports.fetchTopNews = exports.translateToEnglish = exports.getVerseQuiz = exports.getGrammarExplain = exports.getWordMeaning = exports.generateBook = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
+exports.analyzeStockImage = exports.refreshNews = exports.fetchTopNews = exports.translateToEnglish = exports.getVerseQuiz = exports.getGrammarExplain = exports.getWordMeaning = exports.generateBook = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -1612,5 +1612,77 @@ ${allItems.join('\n\n---\n\n')}
     catch (err) {
         logger.error('뉴스 새로고침 오류:', err);
         return { success: false };
+    }
+});
+// ===== 📈 HARU주식관리: 캡처 이미지 자동 분석 (다중 거래) =====
+exports.analyzeStockImage = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+}, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const { base64Data, mimeType } = request.data || {};
+    if (!base64Data || typeof base64Data !== 'string') {
+        throw new https_2.HttpsError('invalid-argument', 'base64Data 필요');
+    }
+    const effectiveMime = typeof mimeType === 'string' && mimeType ? mimeType : 'image/jpeg';
+    try {
+        const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const prompt = `이 이미지는 키움증권 카카오 알림 스크린샷입니다.
+거래 내역을 모두 찾아서 아래 JSON 배열로만 응답하세요.
+다른 텍스트, 마크다운 기호(\`\`\`, **, # 등), 설명 없이 JSON 배열만 출력하세요.
+없는 항목은 빈 문자열로 처리하세요.
+거래금액(stock_total)은 단가 × 수량으로 계산해서 채우세요.
+
+[
+  {
+    "stock_type": "매수 또는 매도",
+    "stock_name": "종목명",
+    "stock_price": "단가 (예: 227,500원)",
+    "stock_quantity": "수량 (예: 3주)",
+    "stock_total": "거래금액 (예: 682,500원)",
+    "stock_date": "거래시각 (예: 10:23)"
+  }
+]`;
+        const result = await model.generateContent([
+            { text: prompt },
+            { inlineData: { mimeType: effectiveMime, data: base64Data } },
+        ]);
+        const rawText = result.response.text().trim();
+        const jsonText = rawText
+            .replace(/```json/gi, '')
+            .replace(/```/g, '')
+            .trim();
+        let trades = [];
+        try {
+            const parsed = JSON.parse(jsonText);
+            if (Array.isArray(parsed)) {
+                trades = parsed;
+            }
+            else if (parsed && typeof parsed === 'object') {
+                trades = [parsed];
+            }
+        }
+        catch (parseErr) {
+            logger.error('주식 이미지 JSON 파싱 실패:', rawText);
+            throw new https_2.HttpsError('internal', '분석 결과 파싱에 실패했습니다.');
+        }
+        const normalized = trades.map((t) => ({
+            stock_type: (t === null || t === void 0 ? void 0 : t.stock_type) || '',
+            stock_name: (t === null || t === void 0 ? void 0 : t.stock_name) || '',
+            stock_price: (t === null || t === void 0 ? void 0 : t.stock_price) || '',
+            stock_quantity: (t === null || t === void 0 ? void 0 : t.stock_quantity) || '',
+            stock_total: (t === null || t === void 0 ? void 0 : t.stock_total) || '',
+            stock_date: (t === null || t === void 0 ? void 0 : t.stock_date) || '',
+        }));
+        return { trades: normalized };
+    }
+    catch (error) {
+        if (error instanceof https_2.HttpsError)
+            throw error;
+        logger.error('주식 이미지 분석 실패:', error);
+        throw new https_2.HttpsError('internal', '이미지 분석에 실패했습니다.');
     }
 });
