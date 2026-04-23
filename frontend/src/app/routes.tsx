@@ -12,6 +12,7 @@ const LibraryPage = lazy(() => import('./pages/LibraryPage').then((m) => ({ defa
 const SayuPage = lazy(() => import('./pages/SayuPage').then((m) => ({ default: m.SayuPage })));
 const MergePage = lazy(() => import('./pages/MergePage').then((m) => ({ default: m.MergePage })));
 const StatsPage = lazy(() => import('./pages/StatsPage').then((m) => ({ default: m.StatsPage })));
+const FormatStatisticsPage = lazy(() => import('./pages/FormatStatisticsPage').then((m) => ({ default: m.FormatStatisticsPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 const RecordDetailPage = lazy(() => import('./pages/RecordDetailPage').then((m) => ({ default: m.RecordDetailPage })));
 const HaruRawPage = lazy(() => import('./pages/HaruRawPage').then((m) => ({ default: m.HaruRawPage })));
@@ -67,6 +68,7 @@ export const router = createBrowserRouter([
           { path: 'sayu', element: withSuspense(<SayuPage />) },
           { path: 'merge', element: withSuspense(<MergePage />) },
           { path: 'stats', element: withSuspense(<StatsPage />) },
+          { path: 'stats/:format', element: withSuspense(<FormatStatisticsPage />) },
           { path: 'settings', element: withSuspense(<SettingsPage />) },
           { path: 'haruraw', element: withSuspense(<HaruRawPage />) },
           { path: 'bible', element: withSuspense(<BiblePage />) },

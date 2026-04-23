@@ -524,6 +524,11 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/src/app/pages/SayuPage.tsx
 - 다음할일: 통계 pill 클릭 시 /stats/일기 형식 페이지 진입, 기록합치기 pill 클릭 시 /merge 페이지 진입 확인. 미사용 formatStatModal 모달 JSX는 필요 시 추후 제거
 
+### 2026-04-24 (48차)
+- 완료: /stats/:format 라우트 신규 등록(FormatStatisticsPage lazy import). FormatStatisticsPage 뒤로가기 버튼을 '/stats' → '/sayu'로 변경(SAYU로 돌아가기 라벨). MergePage는 뒤로가기 버튼 미존재라 스킵
+- 수정파일: frontend/src/app/routes.tsx, frontend/src/app/pages/FormatStatisticsPage.tsx
+- 다음할일: /stats/일기 진입 + 뒤로가기로 SAYU 복귀 확인
+
 ---
 
 최종 업데이트: 2026.04.24
