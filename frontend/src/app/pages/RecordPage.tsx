@@ -11,6 +11,22 @@ import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS, FORMAT_PREFIX } from '../types/haruTypes';
 import { db } from '../../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 type Mood = '기쁨' | '평온' | '무미' | '울적' | '번잡';
 type Weather = '쾌청' | '흐림' | '비' | '눈';
@@ -19,6 +35,53 @@ type Temperature = '폭염' | '온난' | '쾌적' | '쌀쌀' | '혹한';
 const DEFAULT_WEATHER = ['쾌청', '흐림', '비', '눈'];
 const DEFAULT_TEMPERATURE = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
 const DEFAULT_MOOD = ['기쁨', '평온', '무미', '울적', '번잡'];
+
+function SortableTagItem({
+  id,
+  isSelected,
+  onClick,
+}: {
+  id: string;
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        touchAction: 'none',
+        zIndex: isDragging ? 999 : 'auto',
+      }}
+    >
+      <button
+        onClick={onClick}
+        {...attributes}
+        {...listeners}
+        className="px-2.5 py-1 rounded-lg text-xs transition-all select-none"
+        style={{
+          backgroundColor: isSelected ? '#1A3C6E' : '#FEFBE8',
+          color: isSelected ? '#FAF9F6' : '#333333',
+          border: isSelected ? 'none' : '1px solid #e5e5e5',
+          cursor: 'grab',
+        }}
+      >
+        {id}
+      </button>
+    </div>
+  );
+}
 
 export function RecordPage() {
   const [diaryLearnOpen, setDiaryLearnOpen] = useState(false);
@@ -125,9 +188,37 @@ export function RecordPage() {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
-          setWeatherTags(Array.isArray(data.weather) && data.weather.length > 0 ? data.weather : DEFAULT_WEATHER);
-          setTemperatureTags(Array.isArray(data.temperature) && data.temperature.length > 0 ? data.temperature : DEFAULT_TEMPERATURE);
-          setMoodTags(Array.isArray(data.mood) && data.mood.length > 0 ? data.mood : DEFAULT_MOOD);
+
+          // 기본 태그가 없으면 앞에 추가하여 병합
+          const mergeWithDefaults = (saved: string[], defaults: string[]) => {
+            const missing = defaults.filter(d => !saved.includes(d));
+            return [...missing, ...saved];
+          };
+
+          const mergedWeather = mergeWithDefaults(
+            Array.isArray(data.weather) ? data.weather : [],
+            DEFAULT_WEATHER
+          );
+          const mergedTemperature = mergeWithDefaults(
+            Array.isArray(data.temperature) ? data.temperature : [],
+            DEFAULT_TEMPERATURE
+          );
+          const mergedMood = mergeWithDefaults(
+            Array.isArray(data.mood) ? data.mood : [],
+            DEFAULT_MOOD
+          );
+
+          setWeatherTags(mergedWeather);
+          setTemperatureTags(mergedTemperature);
+          setMoodTags(mergedMood);
+
+          // 병합된 데이터 Firestore에 다시 저장
+          await setDoc(docRef, {
+            weather: mergedWeather,
+            temperature: mergedTemperature,
+            mood: mergedMood,
+          }, { merge: true });
+
         }
       } catch (e) {
         console.error('태그 로드 실패:', e);
@@ -139,6 +230,40 @@ export function RecordPage() {
   const saveTags = async (weather: string[], temperature: string[], mood: string[]) => {
     if (!user) return;
     await setDoc(doc(db, 'users', user.uid, 'settings', 'customTags'), { weather, temperature, mood }, { merge: true });
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { delay: 200, tolerance: 5 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 5 },
+    })
+  );
+
+  const handleDragEnd = async (
+    event: DragEndEvent,
+    type: 'weather' | 'temperature' | 'mood'
+  ) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const tags = type === 'weather' ? weatherTags
+      : type === 'temperature' ? temperatureTags : moodTags;
+    const setArr = type === 'weather' ? setWeatherTags
+      : type === 'temperature' ? setTemperatureTags : setMoodTags;
+
+    const oldIndex = tags.indexOf(active.id as string);
+    const newIndex = tags.indexOf(over.id as string);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(tags, oldIndex, newIndex);
+    setArr(reordered);
+
+    const newWeather = type === 'weather' ? reordered : weatherTags;
+    const newTemperature = type === 'temperature' ? reordered : temperatureTags;
+    const newMood = type === 'mood' ? reordered : moodTags;
+    await saveTags(newWeather, newTemperature, newMood);
   };
 
   const handleMoveTag = async (type: 'weather' | 'temperature' | 'mood', index: number, direction: 'left' | 'right') => {
@@ -178,42 +303,44 @@ export function RecordPage() {
   };
 
   const renderCustomTags = (type: 'weather' | 'temperature' | 'mood') => {
-    const tags = type === 'weather' ? weatherTags : type === 'temperature' ? temperatureTags : moodTags;
-    const defaultArr = type === 'weather' ? DEFAULT_WEATHER : type === 'temperature' ? DEFAULT_TEMPERATURE : DEFAULT_MOOD;
-    const customCount = tags.length - defaultArr.length;
+    const tags = type === 'weather' ? weatherTags
+      : type === 'temperature' ? temperatureTags : moodTags;
+    const defaultCount = type === 'weather' ? DEFAULT_WEATHER.length
+      : type === 'temperature' ? DEFAULT_TEMPERATURE.length : DEFAULT_MOOD.length;
+    const customCount = tags.length - defaultCount;
+
     return (
       <>
-        {tags.map((tag, index) => {
-          const isSelected =
-            (type === 'weather' && weather === tag) ||
-            (type === 'temperature' && temperature === tag) ||
-            (type === 'mood' && mood === tag);
-          return (
-            <div key={tag} className="flex items-center gap-0.5">
-              {index > 0 && (
-                <button onClick={() => handleMoveTag(type, index, 'left')} className="text-gray-400 text-xs px-0.5">←</button>
-              )}
-              <button
-                onClick={() => {
-                  if (type === 'weather') setWeather(tag as Weather);
-                  else if (type === 'temperature') setTemperature(tag as Temperature);
-                  else setMood(tag as Mood);
-                }}
-                className="px-2.5 py-1 rounded-lg text-xs transition-all"
-                style={{
-                  backgroundColor: isSelected ? '#1A3C6E' : '#FEFBE8',
-                  color: isSelected ? '#FAF9F6' : '#333333',
-                  border: isSelected ? 'none' : '1px solid #e5e5e5',
-                }}
-              >
-                {tag}
-              </button>
-              {index < tags.length - 1 && (
-                <button onClick={() => handleMoveTag(type, index, 'right')} className="text-gray-400 text-xs px-0.5">→</button>
-              )}
-            </div>
-          );
-        })}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={(e) => handleDragEnd(e, type)}
+        >
+          <SortableContext
+            items={tags}
+            strategy={horizontalListSortingStrategy}
+          >
+            {tags.map((tag) => {
+              const isSelected =
+                (type === 'weather' && weather === tag) ||
+                (type === 'temperature' && temperature === tag) ||
+                (type === 'mood' && mood === tag);
+              return (
+                <SortableTagItem
+                  key={tag}
+                  id={tag}
+                  isSelected={isSelected}
+                  onClick={() => {
+                    if (type === 'weather') setWeather(tag as Weather);
+                    else if (type === 'temperature') setTemperature(tag as Temperature);
+                    else setMood(tag as Mood);
+                  }}
+                />
+              );
+            })}
+          </SortableContext>
+        </DndContext>
+
         {showInput[type] ? (
           <div className="flex items-center gap-1">
             <input
@@ -228,8 +355,10 @@ export function RecordPage() {
                 if (e.key === 'Escape') setShowInput({ ...showInput, [type]: false });
               }}
             />
-            <button onClick={() => handleAddCustomTag(type)} className="text-xs font-bold" style={{ color: '#1A3C6E' }}>확인</button>
-            <button onClick={() => setShowInput({ ...showInput, [type]: false })} className="text-xs" style={{ color: '#999' }}>취소</button>
+            <button onClick={() => handleAddCustomTag(type)}
+              className="text-xs font-bold" style={{ color: '#1A3C6E' }}>확인</button>
+            <button onClick={() => setShowInput({ ...showInput, [type]: false })}
+              className="text-xs" style={{ color: '#999' }}>취소</button>
           </div>
         ) : customCount < 4 ? (
           <button
