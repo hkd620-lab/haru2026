@@ -5,9 +5,10 @@ import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
 
 
-type Tab = 'birth' | 'desire' | 'shackle' | 'luck' | 'narrative' | 'chars' | 'events';
+type Tab = 'motive' | 'birth' | 'desire' | 'shackle' | 'luck' | 'narrative' | 'chars' | 'events';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
+  { id: 'motive',    label: '예언 모티브', icon: '🔮' },
   { id: 'birth',     label: '탄생',   icon: '🌱' },
   { id: 'desire',    label: '욕망',   icon: '🔥' },
   { id: 'shackle',   label: '족쇄',   icon: '⛓' },
@@ -93,6 +94,56 @@ function Card({ children }: { children: React.ReactNode }) {
       padding: 11,
     }}>
       {children}
+    </div>
+  );
+}
+
+function MotiveTab({ s, upd }: { s: NovelSettings; upd: (k: keyof NovelSettings, v: any) => void }) {
+  const OPTIONS = [
+    { id: 'daughter_future', label: '👧 나 딸의 미래는' },
+    { id: 'my_future',       label: '🌟 나의 미래는' },
+    { id: 'what_if',         label: '⏪ 그때 이랬다면' },
+    { id: 'lottery',         label: '🎰 로또 1등 당첨이 되었다면' },
+    { id: 'custom',          label: '✏️ 직접설정' },
+  ];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <Card>
+        <SectionLabel>🔮 예언 모티브 — 어떤 미래를 예언받고 싶으신가요?</SectionLabel>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {OPTIONS.map(opt => (
+            <button
+              key={opt.id}
+              onClick={() => upd('motive', opt.id)}
+              style={{
+                padding: '14px 18px',
+                borderRadius: 12,
+                border: `2px solid ${s.motive === opt.id ? '#1A3C6E' : '#e5e7eb'}`,
+                backgroundColor: s.motive === opt.id ? '#1A3C6E' : '#fff',
+                color: s.motive === opt.id ? '#fff' : '#374151',
+                fontSize: 14,
+                fontWeight: s.motive === opt.id ? 700 : 400,
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+          {s.motive === 'custom' && (
+            <textarea
+              placeholder="예언받고 싶은 상황을 자유롭게 입력하세요..."
+              value={s.motiveCustom || ''}
+              onChange={e => upd('motiveCustom', e.target.value)}
+              style={{
+                width: '100%', minHeight: 80, padding: '10px 12px',
+                borderRadius: 8, border: '1.5px solid #d1d5db',
+                fontSize: 13, resize: 'none', boxSizing: 'border-box',
+              }}
+            />
+          )}
+        </div>
+      </Card>
     </div>
   );
 }
@@ -443,6 +494,8 @@ interface Character {
 interface NovelSettings {
   chars: Character[];
   events: NovelEvent[];
+  motive?: string;
+  motiveCustom?: string;
 }
 
 const defaultSettings: NovelSettings = {
@@ -451,6 +504,8 @@ const defaultSettings: NovelSettings = {
     { name: '', role: '반대자', personalities: [], personalityMemo: '', desires: [], desireMemo: '', shackles: [], shackleMemo: '', roleDesc: '' },
   ],
   events: [],
+  motive: '',
+  motiveCustom: '',
 };
 
 const ROLE_COLOR: Record<CharRole, string> = {
@@ -1059,8 +1114,8 @@ export function NovelStudio() {
       }}>
         <div style={{ maxWidth: 640, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 20 }}>✍️</span>
-            <h1 style={{ fontSize: 18, fontWeight: 700, color: '#1A3C6E' }}>소설 스튜디오</h1>
+            <span style={{ fontSize: 20 }}>🔮</span>
+            <h1 style={{ fontSize: 18, fontWeight: 700, color: '#1A3C6E' }}>HARU예언</h1>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button
@@ -1110,6 +1165,7 @@ export function NovelStudio() {
 
       {/* 탭 내용 */}
       <div style={{ maxWidth: 640, margin: '0 auto', padding: '16px 16px 0' }}>
+        {activeTab === 'motive'    && <MotiveTab    s={settings} upd={upd} />}
         {activeTab === 'birth'     && <BirthTab />}
         {activeTab === 'desire'    && <DesireTab />}
         {activeTab === 'shackle'   && <ShackleTab />}

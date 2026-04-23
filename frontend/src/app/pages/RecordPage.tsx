@@ -686,7 +686,7 @@ export function RecordPage() {
 
           {/* 카테고리 선택 */}
           <div className="flex gap-2 mb-3 overflow-x-auto">
-            {(['생활', '업무', '하루학습', '하루LAW', 'HARU주식관리', '나도작가'] as (Category | 'HARUraw' | '하루학습')[]).map((category) => (
+            {(['생활', '업무', '하루학습', '하루LAW', 'HARU주식관리', 'HARU예언'] as (Category | 'HARUraw' | '하루학습')[]).map((category) => (
               <button
                 key={category}
                 onClick={() => {
@@ -700,8 +700,8 @@ export function RecordPage() {
                     setFormatModalOpen(true);
                     return;
                   }
-                  // 🪶 나도작가 클릭 시 노벨 인트로 모달 열기
-                  if (category === '나도작가') {
+                  // 🔮 HARU예언 클릭 시 노벨 인트로 모달 열기
+                  if (category === 'HARU예언') {
                     setShowNovelIntro(true);
                     return;
                   }
@@ -722,7 +722,7 @@ export function RecordPage() {
                 }}
               >
                 {category === 'HARU주식관리' ? '📈 HARU주식관리' :
-                 category === '나도작가' ? '🪶 나도작가' :
+                 category === 'HARU예언' ? '🔮 HARU예언' :
                  category}
               </button>
             ))}
@@ -1063,11 +1063,11 @@ export function RecordPage() {
             <div style={{ width: 40, height: 4, backgroundColor: '#d1d5db', borderRadius: 2, margin: '0 auto 20px' }} />
             {/* 타이틀 */}
             <div style={{ textAlign: 'center', marginBottom: 24 }}>
-              <div style={{ fontSize: 40, marginBottom: 8 }}>✍️</div>
+              <div style={{ fontSize: 40, marginBottom: 8 }}>🔮</div>
               <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1A3C6E', marginBottom: 6 }}>
-                나도작가 — 소설 스튜디오
+                🔮 HARU예언
               </h2>
-              <p style={{ fontSize: 13, color: '#999' }}>AI와 함께 나만의 이야기를 완성하세요</p>
+              <p style={{ fontSize: 13, color: '#999' }}>사주보다 정확한 AI 예언 — 내 기록이 미래를 말합니다</p>
             </div>
 
             {/* 트랙 1 — 내 기록으로 창작 */}

@@ -534,6 +534,11 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/src/app/pages/MergePage.tsx
 - 다음할일: 기록합치기 페이지에서 X 버튼으로 SAYU 복귀 동작 확인
 
+### 2026-04-24 (50차)
+- 완료: '나도작가' → 'HARU예언' 리브랜딩. RecordPage 카테고리 배열/클릭분기/라벨/인트로모달(이모지 ✍️→🔮, 제목 'HARU예언', 부제 '사주보다 정확한 AI 예언 — 내 기록이 미래를 말합니다') 전부 교체. NovelStudio 헤더 아이콘/제목 '소설 스튜디오' → '🔮 HARU예언'. Tab 유니온에 'motive' 추가, TABS 배열 맨 앞에 { id: 'motive', icon: '🔮', label: '예언 모티브' } 삽입. NovelSettings에 motive?/motiveCustom? 추가, defaultSettings에 빈 문자열 기본값. MotiveTab 신규 컴포넌트(5옵션: 딸의 미래/나의 미래/그때 이랬다면/로또 1등/직접설정, custom 선택 시 textarea). 탭 렌더 분기에 motive 라인 추가
+- 수정파일: frontend/src/app/pages/RecordPage.tsx, frontend/src/app/pages/NovelStudio.tsx
+- 다음할일: 기록 페이지 🔮 HARU예언 버튼 → 인트로 모달 → 스튜디오 진입 → 예언 모티브 탭 5개 옵션 선택 + custom 입력 동작 확인
+
 ---
 
 최종 업데이트: 2026.04.24
