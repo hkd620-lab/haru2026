@@ -1178,17 +1178,36 @@ export function NovelStudio() {
           <ProgressBar tabs={visitedTabs} s={settings} />
         </div>
 
-        <button
-          onClick={() => navigate('/novel-synopsis')}
-          style={{
-            width: '100%', marginTop: 12, padding: '14px',
-            borderRadius: 10, border: 'none',
-            background: '#1A3C6E', color: '#fff',
-            fontSize: 15, fontWeight: 600, cursor: 'pointer',
-          }}
-        >
-          시놉시스 생성 →
-        </button>
+        {(() => {
+          const currentIndex = TABS.findIndex(t => t.id === activeTab);
+          const isLastTab = currentIndex === TABS.length - 1;
+          const nextTab = TABS[currentIndex + 1];
+          return isLastTab ? (
+            <button
+              onClick={() => navigate('/novel-synopsis')}
+              style={{
+                width: '100%', marginTop: 12, padding: '14px',
+                borderRadius: 10, border: 'none',
+                background: '#1A3C6E', color: '#fff',
+                fontSize: 15, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              🔮 시놉시스 생성 →
+            </button>
+          ) : (
+            <button
+              onClick={() => setActiveTab(nextTab.id)}
+              style={{
+                width: '100%', marginTop: 12, padding: '14px',
+                borderRadius: 10, border: 'none',
+                background: '#1A3C6E', color: '#fff',
+                fontSize: 15, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              다음 단계 ({currentIndex + 1}/{TABS.length}) — {nextTab.icon} {nextTab.label} →
+            </button>
+          );
+        })()}
       </div>
     </div>
   );

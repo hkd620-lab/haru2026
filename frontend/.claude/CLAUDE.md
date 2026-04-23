@@ -539,6 +539,11 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/src/app/pages/RecordPage.tsx, frontend/src/app/pages/NovelStudio.tsx
 - 다음할일: 기록 페이지 🔮 HARU예언 버튼 → 인트로 모달 → 스튜디오 진입 → 예언 모티브 탭 5개 옵션 선택 + custom 입력 동작 확인
 
+### 2026-04-24 (51차)
+- 완료: HARU예언 스튜디오 하단 버튼 동적 교체. 마지막 탭(events)이면 '🔮 시놉시스 생성 →', 그 외엔 '다음 단계 (N/8) — {nextTab.icon} {nextTab.label} →' 텍스트 + setActiveTab으로 진행. IIFE로 currentIndex/isLastTab/nextTab 계산
+- 수정파일: frontend/src/app/pages/NovelStudio.tsx
+- 다음할일: 각 탭에서 하단 버튼 라벨(1/8~8/8) 확인 + 마지막 탭에서 시놉시스 페이지 진입 확인
+
 ---
 
 최종 업데이트: 2026.04.24
