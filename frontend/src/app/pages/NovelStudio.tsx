@@ -9,13 +9,13 @@ type Tab = 'motive' | 'birth' | 'desire' | 'shackle' | 'luck' | 'narrative' | 'c
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'motive',    label: '예언 모티브', icon: '🔮' },
+  { id: 'chars',     label: '인물',   icon: '👥' },
   { id: 'birth',     label: '탄생',   icon: '🌱' },
   { id: 'desire',    label: '욕망',   icon: '🔥' },
   { id: 'shackle',   label: '족쇄',   icon: '⛓' },
+  { id: 'events',    label: '사건',   icon: '⚡' },
   { id: 'luck',      label: '운',     icon: '🍀' },
   { id: 'narrative', label: '서사',   icon: '📖' },
-  { id: 'chars',     label: '인물',   icon: '👥' },
-  { id: 'events',    label: '사건',   icon: '⚡' },
 ];
 
 function useMultiSelect(init: string[] = []) {
