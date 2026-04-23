@@ -1173,36 +1173,53 @@ export function SayuPage() {
                           className={fIdx > 0 ? 'border-t' : ''}
                           style={{ borderColor: '#f0f0f0' }}
                         >
-                          {/* 형식 헤더 — 클릭 시 기록 목록 펼침/닫힘 */}
-                          <div className="flex items-center" style={{ backgroundColor: '#FEFBE8' }}>
+                          {/* 형식 헤더 — 아이콘/형식명 + 통계/기록합치기 + 화살표 */}
+                          <div className="flex items-center px-3 py-2" style={{ backgroundColor: '#f9fafb' }}>
+                            {/* 아이콘 + 형식명 — 클릭 시 펼침/접힘 */}
                             <button
                               onClick={() => toggleFormat(prefix)}
-                              className="flex-1 flex items-center justify-between px-3 py-2 hover:opacity-80 transition-opacity"
-                              style={{ backgroundColor: '#FEFBE8' }}
+                              className="flex items-center gap-2 flex-1 text-left hover:opacity-80 transition-opacity"
                             >
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm">{category === '하루LAW' ? '⚖️' : FORMAT_EMOJI[format as RecordFormat]}</span>
-                                <span className="text-xs font-semibold" style={{ color: '#333' }}>{String(format)}</span>
-                                <span className="text-xs" style={{ color: '#999' }}>({entries.length})</span>
-                              </div>
-                              <span style={{ fontSize: '10px', color: '#1A3C6E' }}>
-                                {isFormatExpanded ? '▼' : '▶'}
-                              </span>
+                              <span className="text-sm">{category === '하루LAW' ? '⚖️' : FORMAT_EMOJI[format as RecordFormat]}</span>
+                              <span className="text-xs font-semibold" style={{ color: '#333' }}>{String(format)}</span>
+                              <span className="text-xs" style={{ color: '#999' }}>({entries.length})</span>
                             </button>
-                            {/* 📊 통계/합치기 — 하루LAW·HARU주식관리 제외 */}
+
+                            {/* 통계 / 기록합치기 — 하루LAW·HARU주식관리 제외 */}
                             {category !== '하루LAW' && category !== 'HARU주식관리' && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setFormatStatModal({ isOpen: true, format: String(format), prefix, entries, tab: 'stat' });
-                                }}
-                                style={{
-                                  padding: '6px 10px', background: 'none', border: 'none',
-                                  cursor: 'pointer', fontSize: 14, color: '#1A3C6E', flexShrink: 0,
-                                }}
-                                title="통계 / 합치기"
-                              >📊</button>
+                              <>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setFormatStatModal({ isOpen: true, format: String(format), prefix, entries, tab: 'stat' });
+                                  }}
+                                  style={{
+                                    padding: '4px 10px', borderRadius: 20, border: '1px solid #1A3C6E',
+                                    backgroundColor: 'transparent', color: '#1A3C6E',
+                                    fontSize: 11, fontWeight: 600, cursor: 'pointer', marginRight: 6, flexShrink: 0,
+                                  }}
+                                >통계</button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setFormatStatModal({ isOpen: true, format: String(format), prefix, entries, tab: 'merge' });
+                                  }}
+                                  style={{
+                                    padding: '4px 10px', borderRadius: 20, border: 'none',
+                                    backgroundColor: '#1A3C6E', color: '#fff',
+                                    fontSize: 11, fontWeight: 600, cursor: 'pointer', marginRight: 8, flexShrink: 0,
+                                  }}
+                                >기록합치기</button>
+                              </>
                             )}
+
+                            {/* 펼침 화살표 */}
+                            <button
+                              onClick={() => toggleFormat(prefix)}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
+                            >
+                              <span style={{ fontSize: '10px', color: '#1A3C6E' }}>{isFormatExpanded ? '▼' : '▶'}</span>
+                            </button>
                           </div>
 
                           {/* 📈 HARU주식관리 대시보드 — 주식만 전용 화면 */}
