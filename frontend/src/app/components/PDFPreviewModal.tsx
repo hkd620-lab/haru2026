@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { X, Download, Printer } from 'lucide-react';
 import { PDFDigest } from './PDFDigest';
+import { LoadingOverlay } from './LoadingOverlay';
 
 interface PDFPreviewModalProps {
   open: boolean;
@@ -25,13 +27,22 @@ interface PDFPreviewModalProps {
 }
 
 export function PDFPreviewModal({ open, onClose, data }: PDFPreviewModalProps) {
+  const [isPrinting, setIsPrinting] = useState(false);
+
   const handlePrint = () => {
-    window.print();
+    setIsPrinting(true);
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => setIsPrinting(false), 1000);
+    }, 800);
   };
 
   const handleDownload = () => {
-    // Open print dialog which allows saving as PDF
-    window.print();
+    setIsPrinting(true);
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => setIsPrinting(false), 1000);
+    }, 800);
   };
 
   if (!open) return null;
@@ -114,6 +125,9 @@ export function PDFPreviewModal({ open, onClose, data }: PDFPreviewModalProps) {
           }
         }
       `}</style>
+
+      {/* PDF 생성 중 포도송이 오버레이 */}
+      <LoadingOverlay visible={isPrinting} message="PDF 생성 중..." />
     </div>
   );
 }

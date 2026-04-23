@@ -484,6 +484,11 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/src/app/components/FormatModal.tsx
 - 다음할일: 사진 업로드 시 포도송이 오버레이 노출 확인, PDF 오버레이는 SayuPage/PrintModal 등 인쇄 경로에서 별도 적용
 
+### 2026-04-24 (40차)
+- 완료: PDFPreviewModal 인쇄/PDF 저장 시 포도송이 LoadingOverlay 적용. isPrinting state 신규, handlePrint/handleDownload 모두 800ms 오버레이 → window.print() → 1초 후 오버레이 해제. 모달 return 최상단 div 끝에 LoadingOverlay(message='PDF 생성 중...') 추가
+- 수정파일: frontend/src/app/components/PDFPreviewModal.tsx
+- 다음할일: 인쇄/PDF 저장 버튼 클릭 시 800ms 포도송이 표시 후 인쇄 다이얼로그 연동 확인
+
 ---
 
 최종 업데이트: 2026.04.24
