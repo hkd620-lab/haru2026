@@ -9,13 +9,20 @@ export function BottomNav() {
   const { user } = useAuth();
   const isDeveloper = user?.uid === DEVELOPER_UID;
 
-  const navItems = [
+  const baseItems = [
     { path: '/', icon: Home, label: 'HARU' },
     { path: '/record', icon: BookOpen, label: '기록' },
     { path: '/sayu', icon: Sparkles, label: 'SAYU·다듬기' },
-    { path: '/book-studio', icon: Library, label: '책스튜디오' },
     { path: '/settings', icon: Settings, label: '설정' },
   ];
+
+  const navItems = isDeveloper
+    ? [
+        ...baseItems.slice(0, 3),
+        { path: '/book-studio', icon: Library, label: '책스튜디오' },
+        ...baseItems.slice(3),
+      ]
+    : baseItems;
 
   return (
     <nav

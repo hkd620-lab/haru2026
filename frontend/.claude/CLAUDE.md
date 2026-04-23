@@ -504,6 +504,11 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/src/app/components/BottomNav.tsx
 - 다음할일: 모바일 좁은 화면에서도 'SAYU·다듬기' 2줄 안 넘치는지 표시 확인
 
+### 2026-04-24 (44차)
+- 완료: 책스튜디오 개발자 전용으로 복구(42차 전체공개 되돌림). baseItems 4개(HARU·기록·SAYU·다듬기·설정), isDeveloper면 3번째 뒤(설정 앞)에 책스튜디오 삽입해 5개
+- 수정파일: frontend/src/app/components/BottomNav.tsx
+- 다음할일: 일반 사용자 4개 탭, 개발자 5개 탭 표시 확인
+
 ---
 
 최종 업데이트: 2026.04.24
