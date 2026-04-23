@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 import { GrapeAnimation } from '../components/GrapeAnimation';
 
 const IMAGES = {
@@ -46,6 +47,19 @@ function GrapeLogo() {
 export function LandingPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const [showBanner, setShowBanner] = useState(true);
+
+  useEffect(() => {
+    const dismissed = localStorage.getItem('haru_tip_banner_dismissed');
+    if (dismissed === 'true') {
+      setShowBanner(false);
+    }
+  }, []);
+
+  const handleCloseBanner = () => {
+    localStorage.setItem('haru_tip_banner_dismissed', 'true');
+    setShowBanner(false);
+  };
 
   useEffect(() => {
     if (!loading && user) {
@@ -66,10 +80,132 @@ export function LandingPage() {
   return (
     <div style={{ fontFamily: 'inherit', background: '#FAF9F6', overflowX: 'hidden' }}>
 
+      <style>{`
+        @media (max-width: 640px) {
+          .hero-section {
+            padding-bottom: 24px !important;
+            min-height: auto !important;
+          }
+          .grape-animation-container {
+            margin-bottom: 0 !important;
+            padding-bottom: 0 !important;
+          }
+          .next-section-after-hero {
+            padding-top: 24px !important;
+            margin-top: 0 !important;
+          }
+        }
+      `}</style>
+
+      {showBanner && (
+        <>
+          <style>{`
+            @media (max-width: 640px) {
+              .haru-tip-banner-icon {
+                width: 28px !important;
+                height: 28px !important;
+                font-size: 14px !important;
+              }
+              .haru-tip-banner-title {
+                font-size: 13px !important;
+              }
+              .haru-tip-banner-content {
+                font-size: 12px !important;
+                line-height: 1.4 !important;
+              }
+            }
+          `}</style>
+          <div
+            style={{
+              background: 'linear-gradient(90deg, #E8F7F1 0%, #F0FBF6 100%)',
+              borderBottom: '1px solid #10b981',
+              padding: '14px 20px',
+              paddingTop: 'calc(14px + env(safe-area-inset-top, 0px))',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '16px',
+              position: 'relative',
+              zIndex: 10,
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '14px',
+                flex: 1,
+                maxWidth: '900px',
+                margin: '0 auto',
+              }}
+            >
+              <div
+                className="haru-tip-banner-icon"
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  background: '#10b981',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  color: 'white',
+                  fontSize: '18px',
+                  fontWeight: 500,
+                }}
+              >
+                ✦
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  className="haru-tip-banner-content"
+                  style={{
+                    color: '#1A3C6E',
+                    fontSize: '13px',
+                    lineHeight: '1.6',
+                    opacity: 0.85,
+                  }}
+                >
+                  <div>
+                    📱 스마트폰으로{' '}
+                    <span style={{ color: '#10b981', fontWeight: 600 }}>간편하게</span>{' '}
+                    입력
+                  </div>
+                  <div>
+                    💻 웹브라우저에서{' '}
+                    <span style={{ color: '#10b981', fontWeight: 600 }}>쓸모있게</span>{' '}
+                    완성
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={handleCloseBanner}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#1A3C6E',
+                  opacity: 0.5,
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                  lineHeight: 1,
+                  flexShrink: 0,
+                  alignSelf: 'flex-start',
+                }}
+                aria-label="배너 닫기"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* ══════════════════════════════
           섹션 1: 히어로
       ══════════════════════════════ */}
-      <section style={{ background: '#1A3C6E', color: '#FAF9F6', padding: '12px 24px', maxHeight: '100dvh', overflow: 'hidden' }}>
+      <section className="hero-section" style={{ background: '#1A3C6E', color: '#FAF9F6', padding: '12px 24px', paddingTop: 'max(32px, env(safe-area-inset-top, 32px))', maxHeight: '100dvh', overflow: 'hidden' }}>
         <div style={{
           maxWidth: '1100px', margin: '0 auto',
           display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px',
@@ -109,10 +245,89 @@ export function LandingPage() {
             </div>
           </div>
 
-          {/* 오른쪽 GrapeAnimation */}
-          <div style={{ flex: '1 1 260px', minWidth: '240px', textAlign: 'center' }}>
-            <div style={{ width: '100%', height: '100%', minHeight: 100, borderRadius: '24px', background: '#1A3C6E' }}>
+          {/* 오른쪽 GrapeAnimation + HARU 타이틀 + 서브타이틀 */}
+          <div className="grape-animation-container" style={{ flex: '1 1 260px', minWidth: '240px', textAlign: 'center' }}>
+            <div style={{
+              width: '100%',
+              borderRadius: '24px',
+              background: '#1A3C6E',
+              padding: '8px 20px 16px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+            }}>
+              {/* 포도송이 애니메이션 */}
               <GrapeAnimation />
+
+              {/* HARU 타이틀 - 포도송이 바로 아래 바짝 */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px',
+                marginTop: '-240px',
+              }}>
+                {['H', 'A', 'R', 'U'].map((letter, index) => (
+                  <motion.span
+                    key={index}
+                    className="font-bold"
+                    style={{
+                      fontSize: 'clamp(40px, 8vw, 64px)',
+                      backgroundImage: 'linear-gradient(135deg, #cc4400 0%, #ff6600 20%, #ffaa44 40%, #fff0dd 50%, #ffaa44 60%, #ff6600 80%, #cc4400 100%)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                      backgroundSize: '300% 100%',
+                      filter: 'drop-shadow(0 0 8px rgba(255,102,0,0.6)) drop-shadow(0 2px 4px rgba(0,0,0,0.5))',
+                    }}
+                    initial={{ opacity: 0, y: 20, scale: 0.5 }}
+                    animate={{ opacity: 1, y: 0, backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
+                    transition={{
+                      opacity: { delay: 1.0 + index * 0.1, duration: 0.5 },
+                      y: { delay: 1.0 + index * 0.1, duration: 0.5 },
+                      backgroundPosition: { delay: 1.7 + index * 0.15, duration: 2.5, repeat: Infinity, repeatDelay: 1, ease: 'linear' },
+                    }}
+                  >
+                    {letter}
+                  </motion.span>
+                ))}
+              </div>
+
+              {/* 서브타이틀 - HARU 바로 아래 바짝 */}
+              <motion.p
+                style={{
+                  fontSize: 'clamp(13px, 2.2vw, 16px)',
+                  color: '#FAF9F6',
+                  opacity: 0.85,
+                  marginTop: '-8px',
+                  marginBottom: '0',
+                  textAlign: 'center',
+                  lineHeight: '1.5',
+                }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 0.85, y: 0 }}
+                transition={{ delay: 2.5, duration: 0.6 }}
+              >
+                하루를{' '}
+                <motion.span
+                  className="font-semibold"
+                  style={{ color: '#ff6600' }}
+                  animate={{ scale: [1, 1.15, 1] }}
+                  transition={{ delay: 3.0, duration: 0.8 }}
+                >
+                  간편하게
+                </motion.span>{' '}
+                입력하고{' '}
+                <motion.span
+                  className="font-semibold"
+                  style={{ color: '#ff6600' }}
+                  animate={{ scale: [1, 1.15, 1] }}
+                  transition={{ delay: 3.5, duration: 0.8 }}
+                >
+                  쓸모있게
+                </motion.span>{' '}
+                남기는 앱
+              </motion.p>
             </div>
           </div>
         </div>
@@ -121,7 +336,7 @@ export function LandingPage() {
       {/* ══════════════════════════════
           섹션 2: 왜 기록인가? (뇌과학)
       ══════════════════════════════ */}
-      <section style={{ background: 'linear-gradient(160deg, #0d2347 0%, #1A3C6E 100%)', padding: '72px 24px' }}>
+      <section className="next-section-after-hero" style={{ background: 'linear-gradient(160deg, #0d2347 0%, #1A3C6E 100%)', padding: '72px 24px' }}>
         <div style={{ maxWidth: '860px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '12px' }}>
             <span style={{

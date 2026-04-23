@@ -1,37 +1,32 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 사용자별 기록 데이터 (서브컬렉션 구조)
     match /users/{userId}/records/{recordId} {
       allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow write: if (request.auth != null && request.auth.uid == userId)
+        || userId == "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
-
-    // 책 스튜디오 — books 컬렉션
+    match /users/{uid}/settings/{settingId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    match /users/{uid}/readProgress/{bookId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
     match /books/{bookId} {
-      // 읽기: 로그인한 구독자
       allow read: if request.auth != null;
-
-      // 쓰기: 개발자만
       allow write: if request.auth != null &&
         request.auth.uid == "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
-
-      // 챕터
       match /chapters/{chapterId} {
         allow read: if request.auth != null;
         allow write: if request.auth != null &&
           request.auth.uid == "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
       }
-
-      // 인물
       match /characters/{charId} {
         allow read: if request.auth != null;
         allow write: if request.auth != null &&
           request.auth.uid == "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
       }
-
-      // 소스
       match /sources/{sourceId} {
         allow read: if request.auth != null &&
           request.auth.uid == "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
@@ -39,22 +34,14 @@ service cloud.firestore {
           request.auth.uid == "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
       }
     }
-
-    // 독자 읽기 기록
-    match /users/{uid}/readProgress/{bookId} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
-    }
-
-    // FCM 토큰 및 알림 설정
-    match /users/{uid}/settings/settings {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
-    }
-
-    // 해외 뉴스 (읽기: 로그인 사용자, 쓰기: 서버/개발자)
     match /news/{docId} {
       allow read: if true;
       allow write: if request.auth != null &&
         request.auth.uid == "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
+    }
+    match /lawConsultCache/{cacheId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
     }
   }
 }

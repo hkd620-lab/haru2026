@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { X, Printer, Copy, Download, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSubscription } from '../hooks/useSubscription';
+import { useLoading } from '../contexts/LoadingContext';
+import { HaruLogoAnimation } from './HaruLogoAnimation';
 import { doc, getDoc, updateDoc, deleteDoc, deleteField, arrayRemove } from 'firebase/firestore';
 import { ref, listAll, deleteObject, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
@@ -63,9 +65,11 @@ export function SayuModal({
 }: SayuModalProps) {
   const { isPremium } = useSubscription();
   const { user: currentUser } = useAuth();
+  const { showLoading, showLoadingWithProgress, updateProgress, hideLoading } = useLoading();
   const [editedContent, setEditedContent] = useState(content);
   const [isSaving, setIsSaving] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isSpecialDay, setIsSpecialDay] = useState(false);
@@ -153,50 +157,57 @@ export function SayuModal({
     }
   };
 
-  // 인쇄 함수 - 프리로드 + 로딩 완료 대기 + 로딩 표시
+  // 인쇄 함수 - 포도송이 최대한 길게 + 안내 메시지
   const handlePrint = () => {
     if (!editedContent || editedContent.trim().length === 0) {
       toast.error('저장된 내용이 없습니다. 먼저 내용을 저장해주세요.');
       return;
     }
-    
+
+    showLoading('인쇄 준비 중');
     setIsPrinting(true);
-    toast.info('PDF 준비 중입니다...');
-    
-    // 인쇄 전용 이미지 확인
-    const printImages = document.querySelectorAll('.print-show img');
-    
-    if (printImages.length === 0) {
-      // 이미지 없으면 바로 인쇄
-      setTimeout(() => {
-        window.print();
-        setIsPrinting(false);
-      }, 50);
-      return;
-    }
-    
-    // 모든 이미지 로딩 완료 확인 (캐시 있으면 즉시 완료, 없으면 대기)
-    const imagePromises = Array.from(printImages).map((img) => {
-      return new Promise((resolve) => {
-        const htmlImg = img as HTMLImageElement;
-        if (htmlImg.complete && htmlImg.naturalHeight > 0) {
-          // 이미 로드됨 (캐시에서 즉시 로드 완료)
-          resolve(true);
-        } else {
-          // 로딩 중 (캐시 없음 - 대기 필요)
-          htmlImg.addEventListener('load', () => resolve(true));
-          htmlImg.addEventListener('error', () => resolve(true));
+    setProgress(0);
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const validImages = (localImages || []).filter((src) => src && src !== '');
+
+        const doPrint = () => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              window.print();
+              setTimeout(() => {
+                hideLoading();
+                setIsPrinting(false);
+              }, 800);
+            });
+          });
+        };
+
+        if (validImages.length === 0) {
+          // 이미지 없어도 포도송이 2초 보여주기
+          setTimeout(doPrint, 2000);
+          return;
         }
+
+        let loaded = 0;
+        validImages.forEach((src) => {
+          const img = new Image();
+          const done = () => {
+            loaded++;
+            const pct = Math.round((loaded / validImages.length) * 100);
+            setProgress(pct);
+            updateProgress(pct);
+            if (loaded === validImages.length) {
+              // 이미지 로딩 완료 후 포도송이 추가 2초 더 보여주기
+              setTimeout(doPrint, 2000);
+            }
+          };
+          img.onload = done;
+          img.onerror = done;
+          img.src = src;
+        });
       });
-    });
-    
-    Promise.all(imagePromises).then(() => {
-      // 모든 이미지 준비 완료 → 인쇄
-      toast.success('PDF 저장 창이 열립니다!');
-      setTimeout(() => {
-        window.print();
-        setIsPrinting(false);
-      }, 50);
     });
   };
 
@@ -536,6 +547,7 @@ export function SayuModal({
   const handleRepolish = async () => {
     if (!currentUser || !formatKey || (!recordDate && !firestoreId)) return;
     setIsRefining(true);
+    showLoading('AI가 다듬고 있습니다');
     try {
       const contentValues = Object.values(editedOriginalData)
         .filter(v => v && v.trim())
@@ -563,6 +575,7 @@ export function SayuModal({
       toast.error('다시 다듬기에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsRefining(false);
+      hideLoading();
     }
   };
 
@@ -695,13 +708,86 @@ export function SayuModal({
 
   return (
     <>
+      {isPrinting && (
+        <div
+          className="print-loading-overlay"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(250, 249, 246, 0.97)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 99999,
+            willChange: 'opacity',
+            pointerEvents: 'all',
+          }}
+        >
+          {/* 포도송이 애니메이션 */}
+          <HaruLogoAnimation />
+
+          {/* 메인 메시지 */}
+          <p
+            style={{
+              color: '#1A3C6E',
+              fontSize: '17px',
+              fontWeight: 600,
+              letterSpacing: '0.5px',
+              margin: '40px 0 12px 0',
+            }}
+          >
+            PDF 준비 중입니다
+          </p>
+
+          {/* 안내 메시지 */}
+          <p
+            style={{
+              color: '#666',
+              fontSize: '13px',
+              fontWeight: 400,
+              lineHeight: '1.6',
+              textAlign: 'center',
+              margin: '0 0 24px 0',
+              padding: '0 24px',
+            }}
+          >
+            사진이 많은 경우 최대 2~3분 정도<br />
+            소요될 수 있습니다. 잠시만 기다려 주세요.
+          </p>
+
+          {/* 진행률 표시 (이미지가 있을 때만) */}
+          {(localImages || []).filter((s) => s && s !== '').length > 0 && (
+            <div
+              style={{
+                width: '200px',
+                height: '6px',
+                background: '#E5E7EB',
+                borderRadius: '3px',
+                overflow: 'hidden',
+                marginTop: '8px',
+              }}
+            >
+              <div
+                style={{
+                  width: `${progress || 0}%`,
+                  height: '100%',
+                  background: '#10b981',
+                  transition: 'width 0.3s ease',
+                }}
+              />
+            </div>
+          )}
+        </div>
+      )}
       <style>{`
         /* 인쇄 스타일 - 달력 제외, 환경+사진+본문만 출력, 2페이지 확장 허용 */
         @media print {
           /* 화면 전용 요소 완전 숨김 */
           .no-print,
           .no-print *,
-          .sayu-page-container {
+          .sayu-page-container,
+          .print-loading-overlay {
             display: none !important;
             visibility: hidden !important;
             opacity: 0 !important;

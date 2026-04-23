@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { LoadingProvider } from './contexts/LoadingContext';
 import { Toaster } from 'sonner';
 import { useAuth } from './contexts/AuthContext';
 import { HomePage } from './pages/HomePage';
@@ -84,6 +85,7 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
+        <LoadingProvider>
         <AppInitializer />
         <BrowserRouter>
         <div className="min-h-screen bg-[#FEFBE8] dark:bg-gray-900 print:bg-white">
@@ -134,6 +136,7 @@ function App() {
           <Toaster position="top-center" toastOptions={{ className: 'no-print' }} />
         </div>
       </BrowserRouter>
+        </LoadingProvider>
     </AuthProvider>
     </ThemeProvider>
   );

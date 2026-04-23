@@ -313,7 +313,67 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/src/app/pages/BookCreate.tsx, functions/src/bookStudio.ts
 - 다음할일: 소스 2개 이상 입력 후 챕터 생성 테스트, Firestore books/{bookId}/chapters 확인
 
+### 2026-04-23 (14차)
+- 완료: LandingPage 상단 HARU 활용 팁 배너 추가 (스마트폰 기록 → 노트북 완성 안내, 닫기 버튼 + localStorage 기억, 민트그린/딥블루 컬러)
+- 수정파일: frontend/src/app/pages/LandingPage.tsx
+- 다음할일: 배포된 랜딩페이지에서 배너 표시 및 닫기 동작 확인
+
+### 2026-04-23 (15차)
+- 완료: 랜딩 배너 모바일 반응형 개선 (safe-area-inset-top 적용, 모바일 전용 짧은 문구, 아이콘·폰트 크기 축소)
+- 수정파일: frontend/src/app/pages/LandingPage.tsx
+- 다음할일: PWA 모바일에서 상태표시줄 겹침 해소 및 한 줄 표시 확인
+
+### 2026-04-23 (16차)
+- 완료: 랜딩 히어로 섹션 safe-area-inset-top 적용 + 모바일 포도송이↔BRAIN SCIENCE 섹션 간격 축소 (hero-section/grape-animation-container/next-section-after-hero 클래스 추가, @media 640px 분기)
+- 수정파일: frontend/src/app/pages/LandingPage.tsx
+- 다음할일: 모바일 PWA에서 상태표시줄 겹침 및 섹션 간 여백 확인
+
+### 2026-04-23 (17차)
+- 완료: 랜딩 배너 문구 3단 구조 교체 (제목: 💻 노트북에서 더 빠르게 완성하세요 / 본문: 📱 스마트폰으로 간편하게 입력 + 💻 웹브라우저에서 쓸모있게 완성, '간편하게'·'쓸모있게' 민트그린 강조), 데스크탑/모바일 문구 전환 클래스 제거
+- 수정파일: frontend/src/app/pages/LandingPage.tsx
+- 다음할일: 배포본에서 3단 문구 표시 및 민트그린 강조 확인
+
+### 2026-04-23 (18차)
+- 완료: 랜딩 히어로 오른쪽 딥블루 박스에 HARU 3D 오렌지 타이틀 + 서브타이틀 복원 (motion 임포트, H·A·R·U 글자별 오렌지 그라데이션 + shimmer 애니메이션, '하루를 간편하게 입력하고 쓸모있게 남기는 앱' 서브타이틀 + '간편하게'·'쓸모있게' scale 애니메이션)
+- 수정파일: frontend/src/app/pages/LandingPage.tsx
+- 다음할일: 하드 새로고침 후 HARU 타이틀 등장/shimmer/서브타이틀 bounce 동작 확인
+
+### 2026-04-23 (19차)
+- 완료: HARU 타이틀·서브타이틀 간격 축소 (justifyContent·minHeight 제거, padding 24/28로 축소, HARU marginTop -8px로 포도송이와 겹침, 서브타이틀 marginTop 4px로 바짝 붙임)
+- 수정파일: frontend/src/app/pages/LandingPage.tsx
+- 다음할일: 포도송이·HARU·서브타이틀이 한 박스 안에 컴팩트하게 보이는지 확인
+
+### 2026-04-23 (20차)
+- 완료: HARU 타이틀·서브타이틀 추가 간격 축소 (HARU marginTop -8→-60px로 포도송이 쪽으로 대폭 끌어올림, 서브타이틀 marginTop 4→-8px, 박스 하단 padding 28→20px)
+- 수정파일: frontend/src/app/pages/LandingPage.tsx
+- 다음할일: 포도송이 바로 아래 HARU·서브타이틀 붙는 정도 확인
+
+### 2026-04-23 (21차)
+- 완료: HARU 타이틀 추가로 끌어올림 (marginTop -60→-120px), 박스 padding 24/20 → 8/16 으로 상하 축소
+- 수정파일: frontend/src/app/pages/LandingPage.tsx
+- 다음할일: 포도송이 바로 아래 HARU 붙는지 재확인, 과도하면 -90~-100px로 미세 조정
+
+### 2026-04-23 (22차)
+- 완료: HARU 타이틀 marginTop 미세 조정 (-120 → -150px, 30px 추가 상승)
+- 수정파일: frontend/src/app/pages/LandingPage.tsx
+- 다음할일: 포도송이 바로 아래 HARU 위치 최종 확인, 과하면 -135px / 부족하면 -180px
+
+### 2026-04-23 (23차)
+- 완료: HARU 타이틀 marginTop 대폭 조정 (-150 → -280px, 포도송이 박스가 예상보다 커서 130px 추가 상승)
+- 수정파일: frontend/src/app/pages/LandingPage.tsx
+- 다음할일: HARU·포도송이 겹침 여부 최종 확인, 과하면 -240px / 부족하면 -320px
+
+### 2026-04-23 (24차)
+- 완료: 랜딩 배너 제목 div 삭제 (본문 2줄만 유지), HARU marginTop 겹침 해소 (-280 → -260px)
+- 수정파일: frontend/src/app/pages/LandingPage.tsx
+- 다음할일: 배너 본문 표시 + HARU·포도송이 겹침 해소 확인
+
+### 2026-04-23 (25차)
+- 완료: HARU 타이틀 marginTop 추가 20px 하강 (-260 → -240px, 모바일 겹침 해소)
+- 수정파일: frontend/src/app/pages/LandingPage.tsx
+- 다음할일: 모바일/데스크탑 HARU·포도송이 간격 최종 확인
+
 ---
 
-최종 업데이트: 2026.04.13
+최종 업데이트: 2026.04.23
 HARU2026 by JOYEL — 허 교장님 전용
