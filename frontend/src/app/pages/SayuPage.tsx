@@ -225,6 +225,14 @@ export function SayuPage() {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고']));
   const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
+  // 📊 통계/합치기 모달
+  const [formatStatModal, setFormatStatModal] = useState<{
+    isOpen: boolean;
+    format: string;
+    prefix: string;
+    entries: any[];
+    tab: 'stat' | 'merge';
+  }>({ isOpen: false, format: '', prefix: '', entries: [], tab: 'stat' });
   const [sayuModalState, setSayuModalState] = useState<{
     isOpen: boolean;
     content: string;
@@ -1166,20 +1174,36 @@ export function SayuPage() {
                           style={{ borderColor: '#f0f0f0' }}
                         >
                           {/* 형식 헤더 — 클릭 시 기록 목록 펼침/닫힘 */}
-                          <button
-                            onClick={() => toggleFormat(prefix)}
-                            className="w-full flex items-center justify-between px-3 py-2 hover:opacity-80 transition-opacity"
-                            style={{ backgroundColor: '#FEFBE8' }}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm">{category === '하루LAW' ? '⚖️' : FORMAT_EMOJI[format as RecordFormat]}</span>
-                              <span className="text-xs font-semibold" style={{ color: '#333' }}>{String(format)}</span>
-                              <span className="text-xs" style={{ color: '#999' }}>({entries.length})</span>
-                            </div>
-                            <span style={{ fontSize: '10px', color: '#1A3C6E' }}>
-                              {isFormatExpanded ? '▼' : '▶'}
-                            </span>
-                          </button>
+                          <div className="flex items-center" style={{ backgroundColor: '#FEFBE8' }}>
+                            <button
+                              onClick={() => toggleFormat(prefix)}
+                              className="flex-1 flex items-center justify-between px-3 py-2 hover:opacity-80 transition-opacity"
+                              style={{ backgroundColor: '#FEFBE8' }}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm">{category === '하루LAW' ? '⚖️' : FORMAT_EMOJI[format as RecordFormat]}</span>
+                                <span className="text-xs font-semibold" style={{ color: '#333' }}>{String(format)}</span>
+                                <span className="text-xs" style={{ color: '#999' }}>({entries.length})</span>
+                              </div>
+                              <span style={{ fontSize: '10px', color: '#1A3C6E' }}>
+                                {isFormatExpanded ? '▼' : '▶'}
+                              </span>
+                            </button>
+                            {/* 📊 통계/합치기 — 하루LAW·HARU주식관리 제외 */}
+                            {category !== '하루LAW' && category !== 'HARU주식관리' && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFormatStatModal({ isOpen: true, format: String(format), prefix, entries, tab: 'stat' });
+                                }}
+                                style={{
+                                  padding: '6px 10px', background: 'none', border: 'none',
+                                  cursor: 'pointer', fontSize: 14, color: '#1A3C6E', flexShrink: 0,
+                                }}
+                                title="통계 / 합치기"
+                              >📊</button>
+                            )}
+                          </div>
 
                           {/* 📈 HARU주식관리 대시보드 — 주식만 전용 화면 */}
                           {isFormatExpanded && format === 'HARU주식관리' && (
@@ -1866,6 +1890,153 @@ export function SayuPage() {
         </div>
       )}
 
+
+      {/* 📊 통계/합치기 모달 */}
+      {formatStatModal.isOpen && (
+        <div
+          onClick={() => setFormatStatModal(prev => ({ ...prev, isOpen: false }))}
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-end' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ width: '100%', maxHeight: '80vh', backgroundColor: '#fff', borderRadius: '16px 16px 0 0', padding: 20, overflowY: 'auto' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E' }}>
+                📋 {formatStatModal.format} 기록 관리
+              </p>
+              <button
+                onClick={() => setFormatStatModal(prev => ({ ...prev, isOpen: false }))}
+                style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#999' }}
+              >✕</button>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+              {(['stat', 'merge'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setFormatStatModal(prev => ({ ...prev, tab }))}
+                  style={{
+                    flex: 1, padding: '10px 0', borderRadius: 10, border: 'none',
+                    fontWeight: 600, fontSize: 13, cursor: 'pointer',
+                    backgroundColor: formatStatModal.tab === tab ? '#1A3C6E' : '#f3f4f6',
+                    color: formatStatModal.tab === tab ? '#fff' : '#6B7280',
+                  }}
+                >
+                  {tab === 'stat' ? '📊 통계' : '📎 합치기'}
+                </button>
+              ))}
+            </div>
+
+            {formatStatModal.tab === 'stat' && (() => {
+              const entries = formatStatModal.entries;
+              const total = entries.length;
+              const withSayu = entries.filter(e => {
+                const r = records.find(r => r.id === e.recordId);
+                return r && (r as any)[`${formatStatModal.prefix}_sayu`];
+              }).length;
+              const months: Record<string, number> = {};
+              entries.forEach(e => {
+                const m = (e.date || '').slice(0, 7);
+                if (m) months[m] = (months[m] || 0) + 1;
+              });
+              const sortedMonths = Object.entries(months).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 6);
+              const maxCount = Math.max(...sortedMonths.map(([, c]) => c), 1);
+
+              return (
+                <div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+                    {[
+                      { label: '전체 기록', value: `${total}건`, color: '#1A3C6E' },
+                      { label: 'SAYU 완료', value: `${withSayu}건`, color: '#10b981' },
+                      { label: 'SAYU 비율', value: total > 0 ? `${Math.round(withSayu / total * 100)}%` : '0%', color: '#7C3AED' },
+                      { label: '기록 월수', value: `${Object.keys(months).length}개월`, color: '#F59E0B' },
+                    ].map(card => (
+                      <div key={card.label} style={{ backgroundColor: '#f9fafb', borderRadius: 10, padding: '12px 14px', border: '1px solid #f0f0f0' }}>
+                        <div style={{ fontSize: 11, color: '#999', marginBottom: 4 }}>{card.label}</div>
+                        <div style={{ fontSize: 20, fontWeight: 700, color: card.color }}>{card.value}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {sortedMonths.length > 0 && (
+                    <div>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: '#333', marginBottom: 10 }}>📅 월별 기록 수</p>
+                      {sortedMonths.map(([month, count]) => (
+                        <div key={month} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                          <span style={{ fontSize: 11, color: '#666', width: 52, flexShrink: 0 }}>{month.slice(5)}월</span>
+                          <div style={{ flex: 1, backgroundColor: '#f3f4f6', borderRadius: 4, height: 18, overflow: 'hidden' }}>
+                            <div style={{
+                              width: `${(count / maxCount) * 100}%`,
+                              backgroundColor: '#1A3C6E', height: '100%', borderRadius: 4,
+                              transition: 'width 0.4s ease',
+                            }} />
+                          </div>
+                          <span style={{ fontSize: 11, color: '#1A3C6E', fontWeight: 600, width: 24, textAlign: 'right' }}>{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {formatStatModal.tab === 'merge' && (() => {
+              const entries = formatStatModal.entries;
+              const sorted = [...entries].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+              const handleMerge = async () => {
+                const parts: string[] = [];
+                sorted.forEach(e => {
+                  const r = records.find(r => r.id === e.recordId);
+                  if (!r) return;
+                  const dateStr = new Date(e.date + 'T00:00:00').toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+                  const title = e.aiTitle || e.title || '';
+                  parts.push(`[ ${dateStr}${title ? ' — ' + title : ''} ]`);
+                  const content = Object.keys(r)
+                    .filter(k => k.startsWith(`${formatStatModal.prefix}_`) && typeof (r as any)[k] === 'string' && ((r as any)[k] as string).trim()
+                      && !k.endsWith('_sayu') && !k.endsWith('_ai_title') && !k.endsWith('_images') && !k.endsWith('_title'))
+                    .map(k => (r as any)[k] as string)
+                    .join('\n');
+                  parts.push(content);
+                  parts.push('');
+                });
+                const fullText = parts.join('\n');
+                try {
+                  await navigator.clipboard.writeText(fullText);
+                  toast.success(`📎 ${sorted.length}개 기록이 클립보드에 합쳐졌습니다!`);
+                } catch {
+                  toast.error('복사에 실패했습니다.');
+                }
+              };
+
+              return (
+                <div>
+                  <p style={{ fontSize: 13, color: '#666', marginBottom: 16, lineHeight: 1.6 }}>
+                    <strong style={{ color: '#1A3C6E' }}>{formatStatModal.format}</strong> 기록 {sorted.length}개를 날짜순으로 합쳐서 클립보드에 복사합니다.
+                  </p>
+                  <div style={{ backgroundColor: '#f0f4ff', borderRadius: 10, padding: 14, marginBottom: 16, fontSize: 12, color: '#4B5563', lineHeight: 1.7 }}>
+                    📌 합치기 형식 예시:<br />
+                    <span style={{ color: '#1A3C6E', fontWeight: 600 }}>[ 2026년 1월 1일 — AI제목 ]</span><br />
+                    본문 내용...<br /><br />
+                    <span style={{ color: '#1A3C6E', fontWeight: 600 }}>[ 2026년 1월 2일 ]</span><br />
+                    본문 내용...
+                  </div>
+                  <button
+                    onClick={handleMerge}
+                    style={{
+                      width: '100%', padding: '14px 0', borderRadius: 12, border: 'none',
+                      backgroundColor: '#1A3C6E', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                    }}
+                  >
+                    📎 {sorted.length}개 기록 합쳐서 복사하기
+                  </button>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
 
       <SayuModal
         isOpen={sayuModalState.isOpen}

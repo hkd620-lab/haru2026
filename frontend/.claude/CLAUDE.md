@@ -509,6 +509,11 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/src/app/components/BottomNav.tsx
 - 다음할일: 일반 사용자 4개 탭, 개발자 5개 탭 표시 확인
 
+### 2026-04-24 (45차)
+- 완료: SAYU 리스트 뷰 형식 헤더에 📊 통계/합치기 모달 추가. formatStatModal state(isOpen/format/prefix/entries/tab) 신규. 형식 헤더를 flex div로 래핑 후 펼침 버튼 우측에 📊 버튼 추가(하루LAW·HARU주식관리 제외). 바텀시트 모달에 [📊 통계] 탭(전체/SAYU완료/SAYU비율/기록월수 4카드 + 월별 바 차트 최근 6개월)과 [📎 합치기] 탭(날짜순 정렬 후 각 기록을 '[YYYY년 M월 D일 — 제목]\n본문' 포맷으로 조합 → 클립보드 복사, sonner 토스트)
+- 수정파일: frontend/src/app/pages/SayuPage.tsx
+- 다음할일: 생활/업무 형식 헤더에서 📊 클릭 → 통계/합치기 동작 확인, 하루LAW·HARU주식관리는 📊 버튼 미노출 확인
+
 ---
 
 최종 업데이트: 2026.04.24
