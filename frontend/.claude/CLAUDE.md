@@ -554,6 +554,11 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/src/app/pages/NovelStudio.tsx
 - 다음할일: 운 탭 다음 '불운' 탭 노출 + 복수 선택·직접입력 동작 확인. 다음단계 버튼 N/9 증가 표시 확인
 
+### 2026-04-24 (54차)
+- 완료: NovelSynopsisPage 신규 페이지(/novel-synopsis) 생성. 헤더(🔮 HARU예언 + ← 설정으로), 안내 카드(인디고 팔레트 #EEF2FF/#C7D2FE), '예언 시작하기' 버튼(placeholder alert로 Gemini API 연동 대기), '설정 수정하기' 버튼. routes.tsx에 NovelSynopsisPage lazy import + novel-synopsis 라우트 등록
+- 수정파일: frontend/src/app/pages/NovelSynopsisPage.tsx (신규), frontend/src/app/routes.tsx
+- 다음할일: HARU예언 스튜디오 마지막 탭 → 시놉시스 생성 버튼 → /novel-synopsis 라우팅 확인. Gemini API 연동 시 placeholder alert 제거 필요
+
 ---
 
 최종 업데이트: 2026.04.24
