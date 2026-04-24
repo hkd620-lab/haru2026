@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { toast } from 'sonner';
 import { db } from '../../firebase';
 
 
@@ -99,7 +100,7 @@ function Card({ children }: { children: React.ReactNode }) {
   );
 }
 
-function MotiveTab({ s, upd }: { s: NovelSettings; upd: (k: keyof NovelSettings, v: any) => void }) {
+function MotiveTab({ s, upd, onNext }: { s: NovelSettings; upd: (k: keyof NovelSettings, v: any) => void; onNext: () => void }) {
   const OPTIONS = [
     { id: 'daughter_future', label: '👧 나 딸의 미래는' },
     { id: 'my_future',       label: '🌟 나의 미래는' },
@@ -115,7 +116,12 @@ function MotiveTab({ s, upd }: { s: NovelSettings; upd: (k: keyof NovelSettings,
           {OPTIONS.map(opt => (
             <button
               key={opt.id}
-              onClick={() => upd('motive', opt.id)}
+              onClick={() => {
+                upd('motive', opt.id);
+                if (opt.id !== 'custom') {
+                  setTimeout(() => onNext(), 300);
+                }
+              }}
               style={{
                 padding: '14px 18px',
                 borderRadius: 12,
@@ -149,7 +155,10 @@ function MotiveTab({ s, upd }: { s: NovelSettings; upd: (k: keyof NovelSettings,
   );
 }
 
-function BirthTab() {
+function BirthTab({ s, upd }: { s: NovelSettings; upd: (k: keyof NovelSettings, v: any) => void }) {
+  const ownerOptions = s.chars.length > 0
+    ? s.chars.map((c, i) => c.name || `${c.role} ${i + 1}`)
+    : ['시동자', '반대자', '동조자', '방관자'];
   const gender  = useSingle('남성');
   const spoon   = useSingle('흙수저');
   const looks   = useSingle('평범함');
@@ -176,6 +185,20 @@ function BirthTab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <Card>
+        <SectionLabel>누구의 탄생 설정인가요?</SectionLabel>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {ownerOptions.map(name => (
+            <Pill
+              key={name}
+              label={name}
+              on={s.birthOwner === name}
+              onClick={() => upd('birthOwner', name)}
+            />
+          ))}
+        </div>
+      </Card>
+
       <Card>
         <SectionLabel>성별</SectionLabel>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -566,6 +589,8 @@ interface NovelSettings {
   events: NovelEvent[];
   motive?: string;
   motiveCustom?: string;
+  testMode?: boolean;
+  birthOwner?: string; // 누구의 탄생인지
 }
 
 const defaultSettings: NovelSettings = {
@@ -1205,6 +1230,44 @@ export function NovelStudio() {
               {saveStatus === 'saved' ? '✓ 저장됨'
                 : saveStatus === 'saving' ? '저장 중...' : '💾 저장하기'}
             </button>
+            {isDeveloper && (
+              <button
+                onClick={() => {
+                  upd('motive', 'what_if');
+                  upd('birthOwner', '시동자');
+                  upd('chars', [
+                    {
+                      name: '김철수', role: '시동자',
+                      personalities: ['고집스러운', '야망가'],
+                      personalityMemo: '', desires: ['성공'], desireMemo: '',
+                      shackles: ['가난'], shackleMemo: '', roleDesc: '주인공',
+                    },
+                    {
+                      name: '이영희', role: '반대자',
+                      personalities: ['냉정한'],
+                      personalityMemo: '', desires: ['권력'], desireMemo: '',
+                      shackles: ['편견'], shackleMemo: '', roleDesc: '방해자',
+                    },
+                  ]);
+                  upd('events', [
+                    { id: '1', category: '💔 관계의 상처', title: '배신', timing: '청년기', impact: '인생의 전환점', isCore: true },
+                    { id: '2', category: '🏆 결정적 성취', title: '인생 첫 성공', timing: '중년기', impact: '자신감 회복', isCore: false },
+                  ]);
+                  setVisitedTabs(TABS.map(t => t.id) as Tab[]);
+                  setActiveTab('narrative');
+                  toast.success('🧪 테스트 데이터가 채워졌습니다!');
+                }}
+                style={{
+                  padding: '5px 10px', borderRadius: 99,
+                  border: '1px dashed #10b981',
+                  background: 'transparent',
+                  color: '#10b981', fontSize: 10,
+                  cursor: 'pointer', fontWeight: 500,
+                }}
+              >
+                🧪 테스트 채우기
+              </button>
+            )}
             <span style={{ fontSize: 10, color: '#9ca3af' }}>v0.1</span>
           </div>
         </div>
@@ -1235,8 +1298,14 @@ export function NovelStudio() {
 
       {/* 탭 내용 */}
       <div style={{ maxWidth: 640, margin: '0 auto', padding: '16px 16px 0' }}>
-        {activeTab === 'motive'    && <MotiveTab    s={settings} upd={upd} />}
-        {activeTab === 'birth'     && <BirthTab />}
+        {activeTab === 'motive'    && <MotiveTab s={settings} upd={upd} onNext={() => {
+          const next = TABS[TABS.findIndex(t => t.id === 'motive') + 1];
+          if (next) {
+            setActiveTab(next.id);
+            setVisitedTabs(p => p.includes(next.id) ? p : [...p, next.id]);
+          }
+        }} />}
+        {activeTab === 'birth'     && <BirthTab s={settings} upd={upd} />}
         {activeTab === 'desire'    && <DesireTab />}
         {activeTab === 'shackle'   && <ShackleTab />}
         {activeTab === 'luck'      && (
@@ -1285,6 +1354,7 @@ export function NovelStudio() {
           const currentIndex = TABS.findIndex(t => t.id === activeTab);
           const isLastTab = currentIndex === TABS.length - 1;
           const nextTab = TABS[currentIndex + 1];
+          if (activeTab === 'motive') return null;
           return isLastTab ? (
             <button
               onClick={() => {

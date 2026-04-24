@@ -569,6 +569,11 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/src/app/pages/NovelStudio.tsx
 - 다음할일: 탭 네비 숨김 + 진행 표시 확인, 시놉시스 페이지에서 location.state.settings 수신 후 generateHaruProphecy 호출 구현
 
+### 2026-04-24 (57차)
+- 완료: (1) NovelSettings에 testMode?/birthOwner? 추가. (2) BirthTab이 s/upd 받아 최상단 '누구의 탄생 설정인가요?' 카드 추가(인물 배열이 있으면 이름/역할, 없으면 기본 4역할). (3) 탭 렌더 BirthTab에 s/upd 전달. (4) 헤더 저장버튼 옆 개발자 전용 🧪 테스트 채우기 버튼 — motive/birthOwner/chars(2명)/events(2건) 자동 채우고 모든 탭 방문 처리 + activeTab='narrative' 이동 + sonner 토스트. toast 'sonner' import 추가. (5) MotiveTab에 onNext prop 추가, 'custom' 외 옵션 클릭 시 300ms 후 자동 다음 탭. 탭 렌더에 onNext 주입(이동 시 visitedTabs 갱신). motive 탭 활성일 땐 하단 다음단계 버튼 숨김(return null). (6) NovelSynopsisPage 전면 교체 — useLoading/sonner/httpsCallable 연결, generateHaruProphecy 호출해 type='synopsis' 800~1200자 본문 받아 화면 표시, 결과 후엔 '서사 수정하기'/'다시 생성'/'이야기 생성하기(type=story)'/'PDF 저장' 버튼 노출. 이야기 생성 시 /novel-story 라우트로 state 전달(다음 단계에서 페이지 구현 필요)
+- 수정파일: frontend/src/app/pages/NovelStudio.tsx, frontend/src/app/pages/NovelSynopsisPage.tsx
+- 다음할일: (a) '누구의 탄생' 선택 후 나머지 필드가 해당 인물과 매핑되도록 로직 확장 (b) /novel-story 페이지/라우트 구현 + generateHaruProphecy(type='story') 결과 렌더 (c) prophecyUsage 남은 횟수 UI 표시
+
 ---
 
 최종 업데이트: 2026.04.24
