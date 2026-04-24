@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.analyzeStockImage = exports.refreshNews = exports.fetchTopNews = exports.translateToEnglish = exports.getVerseQuiz = exports.getGrammarExplain = exports.getWordMeaning = exports.generateBook = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
+exports.generateHaruProphecy = exports.refreshNews = exports.fetchTopNews = exports.translateToEnglish = exports.getVerseQuiz = exports.getGrammarExplain = exports.getWordMeaning = exports.generateBook = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -1614,75 +1614,116 @@ ${allItems.join('\n\n---\n\n')}
         return { success: false };
     }
 });
-// ===== 📈 HARU주식관리: 캡처 이미지 자동 분석 (다중 거래) =====
-exports.analyzeStockImage = (0, https_2.onCall)({
+// ===== 🔮 HARU예언 시놉시스 생성 =====
+exports.generateHaruProphecy = (0, https_2.onCall)({
     region: 'asia-northeast3',
     secrets: [GEMINI_API_KEY_SECRET],
+    timeoutSeconds: 120,
 }, async (request) => {
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
-    const { base64Data, mimeType } = request.data || {};
-    if (!base64Data || typeof base64Data !== 'string') {
-        throw new https_2.HttpsError('invalid-argument', 'base64Data 필요');
+    const { motive, motiveCustom, chars, birth, desire, shackle, events, luck, unluck, narrative, type } = request.data;
+    // type: 'synopsis' | 'story'
+    if (!motive) {
+        throw new https_2.HttpsError('invalid-argument', '예언 모티브가 필요합니다.');
     }
-    const effectiveMime = typeof mimeType === 'string' && mimeType ? mimeType : 'image/jpeg';
+    // ── 사용량 체크 (하루 1회 / 월 30회) ──
+    const uid = request.auth.uid;
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const thisMonth = today.slice(0, 7); // YYYY-MM
+    const usageRef = db.collection('prophecyUsage').doc(uid);
+    const usageSnap = await usageRef.get();
+    const usage = usageSnap.exists
+        ? usageSnap.data()
+        : { daily: '', dailyCount: 0, monthly: '', monthlyCount: 0 };
+    // 하루 1회 체크
+    if (usage.daily === today && usage.dailyCount >= 1) {
+        throw new https_2.HttpsError('resource-exhausted', '오늘은 이미 예언을 생성했습니다. 내일 다시 시도해주세요.');
+    }
+    // 월 30회 체크
+    if (usage.monthly === thisMonth && usage.monthlyCount >= 30) {
+        throw new https_2.HttpsError('resource-exhausted', '이번 달 예언 횟수(30회)를 모두 사용했습니다.');
+    }
     try {
-        const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-        const prompt = `이 이미지는 키움증권 카카오 알림 스크린샷입니다.
-거래 내역을 모두 찾아서 아래 JSON 배열로만 응답하세요.
-다른 텍스트, 마크다운 기호(\`\`\`, **, # 등), 설명 없이 JSON 배열만 출력하세요.
-없는 항목은 빈 문자열로 처리하세요.
-거래금액(stock_total)은 단가 × 수량으로 계산해서 채우세요.
+        const motiveLabel = motiveCustom || motive;
+        const systemPrompt = `당신은 한국 최고의 소설가이자 인생 예언가입니다.
+아래 [HARU예언 인생 법칙]을 이야기 속에 직접 언급하지 말고 자연스럽게 녹여서 생성하세요.
 
-[
-  {
-    "stock_type": "매수 또는 매도",
-    "stock_name": "종목명",
-    "stock_price": "단가 (예: 227,500원)",
-    "stock_quantity": "수량 (예: 3주)",
-    "stock_total": "거래금액 (예: 682,500원)",
-    "stock_date": "거래시각 (예: 10:23)"
-  }
-]`;
-        const result = await model.generateContent([
-            { text: prompt },
-            { inlineData: { mimeType: effectiveMime, data: base64Data } },
-        ]);
-        const rawText = result.response.text().trim();
-        const jsonText = rawText
-            .replace(/```json/gi, '')
-            .replace(/```/g, '')
-            .trim();
-        let trades = [];
-        try {
-            const parsed = JSON.parse(jsonText);
-            if (Array.isArray(parsed)) {
-                trades = parsed;
-            }
-            else if (parsed && typeof parsed === 'object') {
-                trades = [parsed];
-            }
-        }
-        catch (parseErr) {
-            logger.error('주식 이미지 JSON 파싱 실패:', rawText);
-            throw new https_2.HttpsError('internal', '분석 결과 파싱에 실패했습니다.');
-        }
-        const normalized = trades.map((t) => ({
-            stock_type: (t === null || t === void 0 ? void 0 : t.stock_type) || '',
-            stock_name: (t === null || t === void 0 ? void 0 : t.stock_name) || '',
-            stock_price: (t === null || t === void 0 ? void 0 : t.stock_price) || '',
-            stock_quantity: (t === null || t === void 0 ? void 0 : t.stock_quantity) || '',
-            stock_total: (t === null || t === void 0 ? void 0 : t.stock_total) || '',
-            stock_date: (t === null || t === void 0 ? void 0 : t.stock_date) || '',
-        }));
-        return { trades: normalized };
+━━━━━━━━━━━━━━━━━━━━━━
+[HARU예언 인생 법칙 — 반드시 적용]
+
+자연 법칙:
+- 노력은 절대 사라지지 않고 반드시 쓸모가 생긴다
+- 사람은 누구나 늙고 연약해진다. 영원한 것은 없다
+- 젊을 때 심고 강할 때 나누는 자가 지혜롭다
+
+인과 법칙:
+- 행위대로 받되, 준 것보다 항상 적게 받는다
+- 불운의 대부분은 내가 만든 결과다
+- 단, 피할 수 없는 천재지변도 존재한다
+- 불운에 반응하는 방식이 다음 단계를 결정한다
+
+관계 법칙:
+- 나를 좋아하는 사람과 미워하는 사람은 반드시 공존한다
+- 강한 자 주위에는 사람이 모이고, 약해지면 고독해진다
+- 사랑의 열정은 300일을 넘기기 힘들다
+- 열정이 식은 후 남는 것이 진짜 관계다
+
+유전과 환경:
+- 부모의 성격·재능·습관은 자식에게 대물림된다
+- 그러나 환경과 노력으로 방향은 바꿀 수 있다
+
+보편 원리 (자율 적용):
+- 편안함은 성장을 멈추고, 위기는 기회와 함께 온다
+- 습관이 운명을 만든다
+- 비슷한 사람끼리 모인다
+- 두려움은 대부분 실제보다 크다
+- 그 외 인간 삶의 보편적 진리를 자유롭게 적용할 것
+━━━━━━━━━━━━━━━━━━━━━━
+
+[생성 규칙]
+1. 소설 형식 (3인칭)
+2. 기승전결 구조
+3. 법칙을 직접 언급하지 말고 이야기로 보여줄 것
+4. 한국어로 작성
+5. 마지막 문장은 반드시 희망적으로 마무리
+6. 독자가 "내 이야기 같다"고 느끼게 쓸 것`;
+        const userPrompt = `
+[예언 모티브]: ${motiveLabel}
+[인물 설정]: ${JSON.stringify(chars || [])}
+[탄생 배경]: ${birth || ''}
+[욕망]: ${desire || ''}
+[족쇄]: ${shackle || ''}
+[사건]: ${JSON.stringify(events || [])}
+[운]: ${luck || ''}
+[불운]: ${unluck || ''}
+[서사 스타일]: ${narrative || ''}
+
+${type === 'story'
+            ? '위 설정을 바탕으로 A4 5페이지 분량(4000~6000자)의 이야기를 소설 형식으로 작성해주세요.'
+            : '위 설정을 바탕으로 A4 1페이지 분량(800~1200자)의 시놉시스를 작성해주세요.'}
+`;
+        const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+        const model = genAI.getGenerativeModel({
+            model: 'gemini-3.1-flash-lite-preview',
+            systemInstruction: systemPrompt,
+        });
+        const result = await model.generateContent(userPrompt);
+        const text = result.response.text();
+        // ── 사용량 업데이트 ──
+        await usageRef.set({
+            daily: today,
+            dailyCount: usage.daily === today ? usage.dailyCount + 1 : 1,
+            monthly: thisMonth,
+            monthlyCount: usage.monthly === thisMonth ? usage.monthlyCount + 1 : 1,
+        });
+        return { text };
     }
     catch (error) {
+        console.error('HARU예언 생성 실패:', error);
         if (error instanceof https_2.HttpsError)
             throw error;
-        logger.error('주식 이미지 분석 실패:', error);
-        throw new https_2.HttpsError('internal', '이미지 분석에 실패했습니다.');
+        throw new https_2.HttpsError('internal', 'HARU예언 생성에 실패했습니다.');
     }
 });

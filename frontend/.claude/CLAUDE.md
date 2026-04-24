@@ -559,6 +559,11 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/src/app/pages/NovelSynopsisPage.tsx (신규), frontend/src/app/routes.tsx
 - 다음할일: HARU예언 스튜디오 마지막 탭 → 시놉시스 생성 버튼 → /novel-synopsis 라우팅 확인. Gemini API 연동 시 placeholder alert 제거 필요
 
+### 2026-04-24 (55차)
+- 완료: generateHaruProphecy Cloud Function(asia-northeast3) 신규. type='synopsis'는 800~1200자 시놉시스, type='story'는 4000~6000자 소설. 시스템 프롬프트에 HARU예언 5대 법칙(자연/인과/관계/유전과환경/보편원리) 삽입, 독자가 자기 이야기처럼 느끼도록 3인칭 기승전결 + 희망적 마무리 규칙. 사용량은 prophecyUsage/{uid} 문서에 daily/dailyCount/monthly/monthlyCount로 기록, 하루 1회 + 월 30회 제한. 기존 admin.firestore() 전역 db 재사용, gemini-3.1-flash-lite-preview 모델
+- 수정파일: functions/src/index.ts
+- 다음할일: 프론트(NovelSynopsisPage) → generateHaruProphecy httpsCallable 연결, type 인자로 시놉시스/스토리 분기, 제한 초과 에러 토스트 처리
+
 ---
 
 최종 업데이트: 2026.04.24

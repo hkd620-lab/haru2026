@@ -1879,3 +1879,130 @@ ${allItems.join('\n\n---\n\n')}
   }
 );
 
+// ===== 🔮 HARU예언 시놉시스 생성 =====
+export const generateHaruProphecy = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+    timeoutSeconds: 120,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const { motive, motiveCustom, chars, birth, desire, shackle, events, luck, unluck, narrative, type } = request.data;
+    // type: 'synopsis' | 'story'
+
+    if (!motive) {
+      throw new HttpsError('invalid-argument', '예언 모티브가 필요합니다.');
+    }
+
+    // ── 사용량 체크 (하루 1회 / 월 30회) ──
+    const uid = request.auth.uid;
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const thisMonth = today.slice(0, 7); // YYYY-MM
+
+    const usageRef = db.collection('prophecyUsage').doc(uid);
+    const usageSnap = await usageRef.get();
+    const usage = usageSnap.exists
+      ? usageSnap.data()!
+      : { daily: '', dailyCount: 0, monthly: '', monthlyCount: 0 };
+
+    // 하루 1회 체크
+    if (usage.daily === today && usage.dailyCount >= 1) {
+      throw new HttpsError('resource-exhausted', '오늘은 이미 예언을 생성했습니다. 내일 다시 시도해주세요.');
+    }
+    // 월 30회 체크
+    if (usage.monthly === thisMonth && usage.monthlyCount >= 30) {
+      throw new HttpsError('resource-exhausted', '이번 달 예언 횟수(30회)를 모두 사용했습니다.');
+    }
+
+    try {
+      const motiveLabel = motiveCustom || motive;
+
+      const systemPrompt = `당신은 한국 최고의 소설가이자 인생 예언가입니다.
+아래 [HARU예언 인생 법칙]을 이야기 속에 직접 언급하지 말고 자연스럽게 녹여서 생성하세요.
+
+━━━━━━━━━━━━━━━━━━━━━━
+[HARU예언 인생 법칙 — 반드시 적용]
+
+자연 법칙:
+- 노력은 절대 사라지지 않고 반드시 쓸모가 생긴다
+- 사람은 누구나 늙고 연약해진다. 영원한 것은 없다
+- 젊을 때 심고 강할 때 나누는 자가 지혜롭다
+
+인과 법칙:
+- 행위대로 받되, 준 것보다 항상 적게 받는다
+- 불운의 대부분은 내가 만든 결과다
+- 단, 피할 수 없는 천재지변도 존재한다
+- 불운에 반응하는 방식이 다음 단계를 결정한다
+
+관계 법칙:
+- 나를 좋아하는 사람과 미워하는 사람은 반드시 공존한다
+- 강한 자 주위에는 사람이 모이고, 약해지면 고독해진다
+- 사랑의 열정은 300일을 넘기기 힘들다
+- 열정이 식은 후 남는 것이 진짜 관계다
+
+유전과 환경:
+- 부모의 성격·재능·습관은 자식에게 대물림된다
+- 그러나 환경과 노력으로 방향은 바꿀 수 있다
+
+보편 원리 (자율 적용):
+- 편안함은 성장을 멈추고, 위기는 기회와 함께 온다
+- 습관이 운명을 만든다
+- 비슷한 사람끼리 모인다
+- 두려움은 대부분 실제보다 크다
+- 그 외 인간 삶의 보편적 진리를 자유롭게 적용할 것
+━━━━━━━━━━━━━━━━━━━━━━
+
+[생성 규칙]
+1. 소설 형식 (3인칭)
+2. 기승전결 구조
+3. 법칙을 직접 언급하지 말고 이야기로 보여줄 것
+4. 한국어로 작성
+5. 마지막 문장은 반드시 희망적으로 마무리
+6. 독자가 "내 이야기 같다"고 느끼게 쓸 것`;
+
+      const userPrompt = `
+[예언 모티브]: ${motiveLabel}
+[인물 설정]: ${JSON.stringify(chars || [])}
+[탄생 배경]: ${birth || ''}
+[욕망]: ${desire || ''}
+[족쇄]: ${shackle || ''}
+[사건]: ${JSON.stringify(events || [])}
+[운]: ${luck || ''}
+[불운]: ${unluck || ''}
+[서사 스타일]: ${narrative || ''}
+
+${type === 'story'
+  ? '위 설정을 바탕으로 A4 5페이지 분량(4000~6000자)의 이야기를 소설 형식으로 작성해주세요.'
+  : '위 설정을 바탕으로 A4 1페이지 분량(800~1200자)의 시놉시스를 작성해주세요.'}
+`;
+
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-3.1-flash-lite-preview',
+        systemInstruction: systemPrompt,
+      });
+
+      const result = await model.generateContent(userPrompt);
+      const text = result.response.text();
+
+      // ── 사용량 업데이트 ──
+      await usageRef.set({
+        daily: today,
+        dailyCount: usage.daily === today ? usage.dailyCount + 1 : 1,
+        monthly: thisMonth,
+        monthlyCount: usage.monthly === thisMonth ? usage.monthlyCount + 1 : 1,
+      });
+
+      return { text };
+    } catch (error: any) {
+      console.error('HARU예언 생성 실패:', error);
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError('internal', 'HARU예언 생성에 실패했습니다.');
+    }
+  }
+);
+
