@@ -5,7 +5,7 @@ import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
 
 
-type Tab = 'motive' | 'birth' | 'desire' | 'shackle' | 'luck' | 'narrative' | 'chars' | 'events';
+type Tab = 'motive' | 'birth' | 'desire' | 'shackle' | 'luck' | 'unluck' | 'narrative' | 'chars' | 'events';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'motive',    label: '예언 모티브', icon: '🔮' },
@@ -15,6 +15,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'shackle',   label: '족쇄',   icon: '⛓' },
   { id: 'events',    label: '사건',   icon: '⚡' },
   { id: 'luck',      label: '운',     icon: '🍀' },
+  { id: 'unluck',    label: '불운',   icon: '🌧' },
   { id: 'narrative', label: '서사',   icon: '📖' },
 ];
 
@@ -407,6 +408,75 @@ function LuckTab() {
           }}
         >+ 전환점 추가</button>
         <Memo placeholder="직접 입력: 운에 대한 작가의 생각..." value={memo} onChange={setMemo} />
+      </Card>
+    </div>
+  );
+}
+
+function UnluckTab() {
+  const OPTIONS = [
+    '흙수저로 탄생',
+    '장애',
+    '사고',
+    '자연재해',
+    '투자 실패',
+    '잘못된 만남',
+  ];
+  const [selected, setSelected] = useState<string[]>([]);
+  const [custom, setCustom] = useState('');
+
+  const toggle = (opt: string) => {
+    setSelected(p => p.includes(opt) ? p.filter(x => x !== opt) : [...p, opt]);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ background: '#FFF1F2', border: '0.5px solid #FDA4AF', borderRadius: 10, padding: 11 }}>
+        <p style={{ fontSize: 12, fontWeight: 500, color: '#9F1239', marginBottom: 4 }}>🌧 불운(不運)의 법칙</p>
+        <p style={{ fontSize: 10, color: '#BE123C', lineHeight: 1.6 }}>
+          불운은 인생을 단련시킵니다.<br />
+          고난이 깊을수록 이야기는 더 빛납니다.<br />
+          주인공이 겪을 불운을 선택하세요.
+        </p>
+      </div>
+      <Card>
+        <SectionLabel>불운의 종류</SectionLabel>
+        <p style={{ fontSize: 10, color: '#9ca3af', marginBottom: 10 }}>복수 선택 가능합니다</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {OPTIONS.map(opt => (
+            <button
+              key={opt}
+              onClick={() => toggle(opt)}
+              style={{
+                padding: '12px 16px',
+                borderRadius: 10,
+                border: `2px solid ${selected.includes(opt) ? '#E11D48' : '#e5e7eb'}`,
+                backgroundColor: selected.includes(opt) ? '#FFF1F2' : '#fff',
+                color: selected.includes(opt) ? '#9F1239' : '#374151',
+                fontSize: 13,
+                fontWeight: selected.includes(opt) ? 700 : 400,
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+            >
+              {selected.includes(opt) ? '✓ ' : ''}{opt}
+            </button>
+          ))}
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <SectionLabel>직접 입력</SectionLabel>
+          <textarea
+            placeholder="위에 없는 불운을 직접 입력하세요..."
+            value={custom}
+            onChange={e => setCustom(e.target.value)}
+            style={{
+              width: '100%', minHeight: 72, padding: '10px 12px',
+              borderRadius: 8, border: '1.5px solid #FDA4AF',
+              fontSize: 13, resize: 'none',
+              boxSizing: 'border-box', marginTop: 6,
+            }}
+          />
+        </div>
       </Card>
     </div>
   );
@@ -1170,6 +1240,7 @@ export function NovelStudio() {
         {activeTab === 'desire'    && <DesireTab />}
         {activeTab === 'shackle'   && <ShackleTab />}
         {activeTab === 'luck'      && <LuckTab />}
+        {activeTab === 'unluck'    && <UnluckTab />}
         {activeTab === 'narrative' && <NarrativeTab />}
         {activeTab === 'chars'     && <CharsTab     s={settings} upd={upd} />}
         {activeTab === 'events'    && <EventsTab    s={settings} upd={upd} />}

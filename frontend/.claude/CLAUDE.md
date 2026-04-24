@@ -549,6 +549,11 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/src/app/pages/NovelStudio.tsx
 - 다음할일: 새 순서로 탭 진행 + 서사 탭 마지막에서 시놉시스 페이지 연결 확인
 
+### 2026-04-24 (53차)
+- 완료: HARU예언 '불운' 탭 신규 추가. Tab 유니온 'unluck' 추가, TABS에 🌧 불운 항목을 '운' 바로 뒤에 삽입해 총 9탭. UnluckTab 컴포넌트(로즈 팔레트 #FFF1F2/#FDA4AF/#9F1239/#E11D48, 불운의 법칙 안내 카드 + 복수 선택 옵션 6개(흙수저로 탄생·장애·사고·자연재해·투자 실패·잘못된 만남) + 직접 입력 textarea). 탭 렌더에 unluck 라인 추가
+- 수정파일: frontend/src/app/pages/NovelStudio.tsx
+- 다음할일: 운 탭 다음 '불운' 탭 노출 + 복수 선택·직접입력 동작 확인. 다음단계 버튼 N/9 증가 표시 확인
+
 ---
 
 최종 업데이트: 2026.04.24
