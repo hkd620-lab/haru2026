@@ -1909,12 +1909,15 @@ export const generateHaruProphecy = onCall(
       ? usageSnap.data()!
       : { daily: '', dailyCount: 0, monthly: '', monthlyCount: 0 };
 
-    // 하루 1회 체크
-    if (usage.daily === today && usage.dailyCount >= 1) {
+    const DEV_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+    const isDeveloper = uid === DEV_UID;
+
+    // 하루 1회 체크 (개발자 제외)
+    if (!isDeveloper && usage.daily === today && usage.dailyCount >= 1) {
       throw new HttpsError('resource-exhausted', '오늘은 이미 예언을 생성했습니다. 내일 다시 시도해주세요.');
     }
-    // 월 30회 체크
-    if (usage.monthly === thisMonth && usage.monthlyCount >= 30) {
+    // 월 30회 체크 (개발자 제외)
+    if (!isDeveloper && usage.monthly === thisMonth && usage.monthlyCount >= 30) {
       throw new HttpsError('resource-exhausted', '이번 달 예언 횟수(30회)를 모두 사용했습니다.');
     }
 

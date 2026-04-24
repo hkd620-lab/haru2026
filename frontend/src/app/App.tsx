@@ -29,6 +29,7 @@ import { NewsPage } from './pages/NewsPage';
 import { BiblePage } from './pages/BiblePage';
 import { DiaryLearnPage } from './pages/DiaryLearnPage';
 import { NovelStudio } from './pages/NovelStudio';
+import { NovelSynopsisPage } from './pages/NovelSynopsisPage';
 import { BottomNav } from './components/BottomNav';
 import { Footer } from './components/Footer';
 import { setupForegroundMessageListener, requestNotificationPermission } from './services/notificationService';
@@ -116,6 +117,7 @@ function App() {
               <Route path="/book-reader/:bookId" element={<BookReader />} />
               <Route path="/news" element={<NewsPage />} />
               <Route path="/novel-studio" element={<NovelStudio />} />
+              <Route path="/novel-synopsis" element={<NovelSynopsisPage />} />
 
               {/* 영어성경학습 */}
               <Route path="/bible" element={<BiblePage />} />
