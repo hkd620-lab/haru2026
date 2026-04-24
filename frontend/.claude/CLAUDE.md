@@ -564,6 +564,11 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: functions/src/index.ts
 - 다음할일: 프론트(NovelSynopsisPage) → generateHaruProphecy httpsCallable 연결, type 인자로 시놉시스/스토리 분기, 제한 초과 에러 토스트 처리
 
+### 2026-04-24 (56차)
+- 완료: NovelStudio 상단 탭 네비게이션 숨김 → "N/9 단계 · 현재탭 · 완료수/9 + 진행바" UI로 교체. activeTab/visitedTabs 초기값 'motive'로 통일. tabDataRef + isDeveloper(DEV_UID naver_lGu8c7z0B13JzA5ZCn...) 추가. 🔮 시놉시스 생성 버튼: 개발자일 때만 saveNow(settings), navigate('/novel-synopsis', { state: { settings, tabData }}). luck/unluck 탭 렌더에 '신의 영역' 안내 카드 추가(luck: amber 팔레트 #FFF8F0/#F59E0B, unluck: rose 팔레트 #FFF1F2/#FDA4AF)
+- 수정파일: frontend/src/app/pages/NovelStudio.tsx
+- 다음할일: 탭 네비 숨김 + 진행 표시 확인, 시놉시스 페이지에서 location.state.settings 수신 후 generateHaruProphecy 호출 구현
+
 ---
 
 최종 업데이트: 2026.04.24

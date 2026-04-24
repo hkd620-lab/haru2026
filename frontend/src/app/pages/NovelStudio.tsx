@@ -1111,8 +1111,11 @@ function ProgressBar({ tabs, s }: { tabs: Tab[]; s: NovelSettings }) {
 export function NovelStudio() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<Tab>('birth');
-  const [visitedTabs, setVisitedTabs] = useState<Tab[]>(['birth']);
+  const [activeTab, setActiveTab] = useState<Tab>('motive');
+  const [visitedTabs, setVisitedTabs] = useState<Tab[]>(['motive']);
+  const tabDataRef = useRef<Record<string, any>>({});
+  const DEV_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+  const isDeveloper = user?.uid === DEV_UID;
   const [settings, setSettings] = useState<NovelSettings>(defaultSettings);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1207,29 +1210,26 @@ export function NovelStudio() {
         </div>
       </div>
 
-      {/* 탭 네비게이션 */}
-      <div style={{ overflowX: 'auto', borderBottom: '0.5px solid #e5e5e5', background: '#fff' }}>
-        <div style={{ display: 'flex', maxWidth: 640, margin: '0 auto' }}>
-          {TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => handleTabChange(t.id)}
-              style={{
-                flexShrink: 0,
-                padding: '10px 14px',
-                fontSize: 12,
-                border: 'none',
-                borderBottom: `2px solid ${activeTab === t.id ? '#1A3C6E' : 'transparent'}`,
-                background: 'transparent',
-                color: activeTab === t.id ? '#1A3C6E' : '#9ca3af',
-                fontWeight: activeTab === t.id ? 500 : 400,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {t.icon} {t.label}
-            </button>
-          ))}
+      {/* 탭 진행 표시 (숫자만) */}
+      <div style={{ background: '#fff', borderBottom: '0.5px solid #e5e5e5', padding: '8px 16px' }}>
+        <div style={{ maxWidth: 640, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 12, color: '#9ca3af' }}>
+            {TABS.findIndex(t => t.id === activeTab) + 1} / {TABS.length} 단계
+          </span>
+          <span style={{ fontSize: 13, color: '#1A3C6E', fontWeight: 600 }}>
+            {TABS.find(t => t.id === activeTab)?.icon} {TABS.find(t => t.id === activeTab)?.label}
+          </span>
+          <span style={{ fontSize: 11, color: '#9ca3af' }}>
+            {visitedTabs.length}/{TABS.length} 완료
+          </span>
+        </div>
+        {/* 진행 바 */}
+        <div style={{ maxWidth: 640, margin: '6px auto 0', height: 3, background: '#e5e7eb', borderRadius: 99 }}>
+          <div style={{
+            height: 3, borderRadius: 99, background: '#1A3C6E',
+            width: `${(visitedTabs.length / TABS.length) * 100}%`,
+            transition: 'width 0.3s',
+          }} />
         </div>
       </div>
 
@@ -1239,8 +1239,40 @@ export function NovelStudio() {
         {activeTab === 'birth'     && <BirthTab />}
         {activeTab === 'desire'    && <DesireTab />}
         {activeTab === 'shackle'   && <ShackleTab />}
-        {activeTab === 'luck'      && <LuckTab />}
-        {activeTab === 'unluck'    && <UnluckTab />}
+        {activeTab === 'luck'      && (
+          <div>
+            <LuckTab />
+            <div style={{
+              marginTop: 16, padding: '16px',
+              background: '#FFF8F0', border: '1.5px solid #F59E0B',
+              borderRadius: 12, textAlign: 'center',
+            }}>
+              <p style={{ fontSize: 13, color: '#92400E', fontWeight: 600, margin: 0 }}>
+                🍀 운은 신의 영역입니다
+              </p>
+              <p style={{ fontSize: 12, color: '#B45309', marginTop: 4 }}>
+                운은 선택하는 것이 아니라 살아온 결과입니다.
+              </p>
+            </div>
+          </div>
+        )}
+        {activeTab === 'unluck'    && (
+          <div>
+            <UnluckTab />
+            <div style={{
+              marginTop: 16, padding: '16px',
+              background: '#FFF1F2', border: '1.5px solid #FDA4AF',
+              borderRadius: 12, textAlign: 'center',
+            }}>
+              <p style={{ fontSize: 13, color: '#9F1239', fontWeight: 600, margin: 0 }}>
+                🌧 불운도 신의 영역입니다
+              </p>
+              <p style={{ fontSize: 12, color: '#BE123C', marginTop: 4 }}>
+                불운은 선택하는 것이 아니라 살아온 결과입니다.
+              </p>
+            </div>
+          </div>
+        )}
         {activeTab === 'narrative' && <NarrativeTab />}
         {activeTab === 'chars'     && <CharsTab     s={settings} upd={upd} />}
         {activeTab === 'events'    && <EventsTab    s={settings} upd={upd} />}
@@ -1255,7 +1287,19 @@ export function NovelStudio() {
           const nextTab = TABS[currentIndex + 1];
           return isLastTab ? (
             <button
-              onClick={() => navigate('/novel-synopsis')}
+              onClick={() => {
+                // 개발자만 Firestore 저장
+                if (isDeveloper) {
+                  saveNow(settings);
+                }
+                // 탭 데이터 수집 후 navigate
+                navigate('/novel-synopsis', {
+                  state: {
+                    settings,
+                    tabData: tabDataRef.current,
+                  },
+                });
+              }}
               style={{
                 width: '100%', marginTop: 12, padding: '14px',
                 borderRadius: 10, border: 'none',
