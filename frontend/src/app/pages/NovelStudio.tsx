@@ -100,6 +100,23 @@ function Card({ children }: { children: React.ReactNode }) {
   );
 }
 
+function CompleteButton({ onClick, label, color = '#10b981' }: { onClick: () => void; label: string; color?: string }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        width: '100%', marginTop: 20, marginBottom: 8,
+        padding: '15px', borderRadius: 12, border: 'none',
+        background: color, color: '#fff',
+        fontSize: 15, fontWeight: 700, cursor: 'pointer',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+      }}
+    >
+      {label} →
+    </button>
+  );
+}
+
 function MotiveTab({ s, upd, onNext }: { s: NovelSettings; upd: (k: keyof NovelSettings, v: any) => void; onNext: () => void }) {
   const OPTIONS = [
     { id: 'daughter_future', label: '👧 나 딸의 미래는' },
@@ -1178,6 +1195,16 @@ export function NovelStudio() {
     }
   }, [user?.uid]);
 
+  const goNext = () => {
+    const currentIndex = TABS.findIndex(t => t.id === activeTab);
+    const next = TABS[currentIndex + 1];
+    if (next) {
+      setActiveTab(next.id);
+      setVisitedTabs(p => p.includes(next.id) ? p : [...p, next.id]);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   const upd = (key: keyof NovelSettings, value: any) => {
     setSettings(prev => {
       const next = { ...prev, [key]: value };
@@ -1298,16 +1325,37 @@ export function NovelStudio() {
 
       {/* 탭 내용 */}
       <div style={{ maxWidth: 640, margin: '0 auto', padding: '16px 16px 0' }}>
-        {activeTab === 'motive'    && <MotiveTab s={settings} upd={upd} onNext={() => {
-          const next = TABS[TABS.findIndex(t => t.id === 'motive') + 1];
-          if (next) {
-            setActiveTab(next.id);
-            setVisitedTabs(p => p.includes(next.id) ? p : [...p, next.id]);
-          }
-        }} />}
-        {activeTab === 'birth'     && <BirthTab s={settings} upd={upd} />}
-        {activeTab === 'desire'    && <DesireTab />}
-        {activeTab === 'shackle'   && <ShackleTab />}
+        {activeTab === 'motive'    && <MotiveTab s={settings} upd={upd} onNext={goNext} />}
+        {activeTab === 'chars'     && (
+          <div>
+            <CharsTab s={settings} upd={upd} />
+            <CompleteButton onClick={goNext} label="인물 설정 완료" />
+          </div>
+        )}
+        {activeTab === 'birth'     && (
+          <div>
+            <BirthTab s={settings} upd={upd} />
+            <CompleteButton onClick={goNext} label="탄생 설정 완료" />
+          </div>
+        )}
+        {activeTab === 'desire'    && (
+          <div>
+            <DesireTab />
+            <CompleteButton onClick={goNext} label="욕망 설정 완료" />
+          </div>
+        )}
+        {activeTab === 'shackle'   && (
+          <div>
+            <ShackleTab />
+            <CompleteButton onClick={goNext} label="족쇄 설정 완료" />
+          </div>
+        )}
+        {activeTab === 'events'    && (
+          <div>
+            <EventsTab s={settings} upd={upd} />
+            <CompleteButton onClick={goNext} label="사건 설정 완료" />
+          </div>
+        )}
         {activeTab === 'luck'      && (
           <div>
             <LuckTab />
@@ -1323,6 +1371,7 @@ export function NovelStudio() {
                 운은 선택하는 것이 아니라 살아온 결과입니다.
               </p>
             </div>
+            <CompleteButton onClick={goNext} label="확인했습니다" color="#F59E0B" />
           </div>
         )}
         {activeTab === 'unluck'    && (
@@ -1340,59 +1389,27 @@ export function NovelStudio() {
                 불운은 선택하는 것이 아니라 살아온 결과입니다.
               </p>
             </div>
+            <CompleteButton onClick={goNext} label="확인했습니다" color="#FDA4AF" />
           </div>
         )}
-        {activeTab === 'narrative' && <NarrativeTab />}
-        {activeTab === 'chars'     && <CharsTab     s={settings} upd={upd} />}
-        {activeTab === 'events'    && <EventsTab    s={settings} upd={upd} />}
+        {activeTab === 'narrative' && (
+          <div>
+            <NarrativeTab />
+            <CompleteButton
+              onClick={() => {
+                if (isDeveloper) saveNow(settings);
+                navigate('/novel-synopsis', { state: { settings, tabData: tabDataRef.current } });
+              }}
+              label="🔮 시놉시스 생성"
+              color="#1A3C6E"
+            />
+          </div>
+        )}
 
         <div style={{ marginTop: 16 }}>
           <ProgressBar tabs={visitedTabs} s={settings} />
         </div>
 
-        {(() => {
-          const currentIndex = TABS.findIndex(t => t.id === activeTab);
-          const isLastTab = currentIndex === TABS.length - 1;
-          const nextTab = TABS[currentIndex + 1];
-          if (activeTab === 'motive') return null;
-          return isLastTab ? (
-            <button
-              onClick={() => {
-                // 개발자만 Firestore 저장
-                if (isDeveloper) {
-                  saveNow(settings);
-                }
-                // 탭 데이터 수집 후 navigate
-                navigate('/novel-synopsis', {
-                  state: {
-                    settings,
-                    tabData: tabDataRef.current,
-                  },
-                });
-              }}
-              style={{
-                width: '100%', marginTop: 12, padding: '14px',
-                borderRadius: 10, border: 'none',
-                background: '#1A3C6E', color: '#fff',
-                fontSize: 15, fontWeight: 600, cursor: 'pointer',
-              }}
-            >
-              🔮 시놉시스 생성 →
-            </button>
-          ) : (
-            <button
-              onClick={() => setActiveTab(nextTab.id)}
-              style={{
-                width: '100%', marginTop: 12, padding: '14px',
-                borderRadius: 10, border: 'none',
-                background: '#1A3C6E', color: '#fff',
-                fontSize: 15, fontWeight: 600, cursor: 'pointer',
-              }}
-            >
-              다음 단계 ({currentIndex + 1}/{TABS.length}) — {nextTab.icon} {nextTab.label} →
-            </button>
-          );
-        })()}
       </div>
     </div>
   );

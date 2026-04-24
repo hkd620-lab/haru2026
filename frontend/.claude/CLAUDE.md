@@ -574,6 +574,11 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/src/app/pages/NovelStudio.tsx, frontend/src/app/pages/NovelSynopsisPage.tsx
 - 다음할일: (a) '누구의 탄생' 선택 후 나머지 필드가 해당 인물과 매핑되도록 로직 확장 (b) /novel-story 페이지/라우트 구현 + generateHaruProphecy(type='story') 결과 렌더 (c) prophecyUsage 남은 횟수 UI 표시
 
+### 2026-04-24 (58차)
+- 완료: HARU예언 탭마다 하단 '완료' 버튼 패턴으로 전환. CompleteButton 컴포넌트 신규(민트그린 기본, props로 color 재정의 가능). goNext() — 다음 탭 활성화 + visitedTabs 갱신 + window.scrollTo top. 각 탭 렌더를 div로 감싸 Tab 본문 뒤에 CompleteButton 배치: chars/birth/desire/shackle/events는 민트그린 '설정 완료', luck은 amber '#F59E0B 확인했습니다', unluck은 rose '#FDA4AF 확인했습니다', narrative는 딥블루 '#1A3C6E 🔮 시놉시스 생성'(saveNow + navigate /novel-synopsis). motive 탭은 자동 진행이라 CompleteButton 없음. 기존 IIFE 하단 다음단계/시놉시스 버튼 블록 완전 삭제
+- 수정파일: frontend/src/app/pages/NovelStudio.tsx
+- 다음할일: 각 탭 본문 아래 완료 버튼 동작 + narrative 에서 시놉시스 페이지 라우팅 확인
+
 ---
 
 최종 업데이트: 2026.04.24
