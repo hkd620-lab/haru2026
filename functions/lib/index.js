@@ -1311,6 +1311,7 @@ JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
 });
 // ===== 문법 해설 =====
 exports.getGrammarExplain = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET, OPENAI_API_KEY_SECRET] }, async (request) => {
+    var _a, _b;
     const { verseKey, verseText } = request.data;
     if (!verseText)
         throw new https_2.HttpsError('invalid-argument', '절 내용이 필요합니다.');
@@ -1369,11 +1370,74 @@ mysentence와 korean은 반드시 채워야 합니다.
     const parsed = JSON.parse(clean);
     // 3. GPT-4o 검증
     let verified = parsed;
+    let gptChanges = [];
     try {
         const OPENAI_KEY = OPENAI_API_KEY_SECRET.value();
-        const gptPrompt = `아래는 영어 성경 구절 문법 분석 JSON입니다. 문법적으로 잘못된 설명이 있으면 수정하고, 올바르면 그대로 반환하세요. 반드시 동일한 JSON 구조로만 응답하세요. 마크다운 없이 순수 JSON만.
+        const gptPrompt = `당신은 영어 문법 전문가입니다. 아래 영어 성경 구절의 문법 분석 JSON을 능동적으로 검토하고 개선하세요.
 
 구절: "${verseText}"
+
+★ 가장 중요한 검토 원칙 — 설명과 예문의 일관성:
+각 항목의 설명과 예문(_example_en, _example_ko)은 반드시 동일한 용법을 가리켜야 합니다.
+
+예시 (잘못된 경우):
+- 설명: "which = 무엇 무엇 하는 것 (명사절)"
+- 예문: "The book which I read is good." (관계대명사절) ← 용법이 다름 → 반드시 수정
+
+예시 (올바른 경우):
+- 설명: "which = 앞에 나온 것을 더 설명해주는 연결 표현 (관계대명사)"
+- 예문: "The light which God made was good." (동일한 관계대명사 용법) ← 일치함
+
+검토 항목별 기준:
+
+1. relative (관계사 — which/that/who/whom/whose):
+   - 설명에서 밝힌 용법(관계대명사/관계부사/명사절 등)과 예문이 반드시 일치
+   - 설명이 "앞 명사를 꾸미는 표현"이면 예문도 반드시 그 구조여야 함
+
+2. verb (동사):
+   - 설명에서 밝힌 시제·형태(과거/현재/명령형 등)와 예문이 일치
+   - 부정사(to+동사) 설명이면 예문도 부정사 구조
+
+3. phrasal (구동사):
+   - 설명한 구동사(예: bring forth)가 예문에 그대로 사용되어야 함
+   - 다른 구동사로 예문을 만들면 안 됨
+
+4. preposition (전치사):
+   - 설명한 전치사(예: in/of/with)와 예문의 전치사가 반드시 동일
+
+5. question (의문사):
+   - 설명한 의문사(what/where/who 등)와 예문의 의문사가 반드시 동일
+
+6. exclamation (감탄/명령):
+   - 설명한 표현(예: Let there be)이 예문에 그대로 사용되어야 함
+
+추가 검토 기준:
+
+7. 모든 설명:
+   - 문법 용어(주어/동사/목적어/3형식 등) 사용 금지
+   - 영어 초보자가 이해할 수 있는 쉬운 한국어
+   - 성경 구절의 실제 맥락과 맞는지 확인
+
+8. _example_en:
+   - 자연스러운 영어 문장인지 확인
+   - 너무 복잡하면 더 쉬운 문장으로 개선
+
+9. _example_ko:
+   - 위 영어 예문의 정확한 한국어 번역인지 확인
+
+10. mysentence:
+    - 비어있으면 구절의 핵심 단어 활용한 짧은 영어 문장 직접 생성 (I/We/God 주어)
+    - 있으면 자연스러운 영어인지 확인 후 필요시 수정
+
+11. korean:
+    - 비어있으면 mysentence의 한국어 번역 직접 생성
+    - 있으면 정확한 번역인지 확인 후 필요시 수정
+
+규칙:
+- mysentence/korean이 비어있으면 반드시 채울 것
+- 다른 빈 필드는 해당 문법 요소가 없으면 빈 문자열 유지
+- 반드시 동일한 JSON 구조로만 응답
+- 마크다운 없이 순수 JSON만
 
 분석 JSON:
 ${JSON.stringify(parsed, null, 2)}`;
@@ -1386,12 +1450,19 @@ ${JSON.stringify(parsed, null, 2)}`;
                 Authorization: `Bearer ${OPENAI_KEY}`,
                 'Content-Type': 'application/json',
             },
-            timeout: 15000,
+            timeout: 25000,
         });
         const gptRaw = gptRes.data.choices[0].message.content.trim();
         const gptClean = gptRaw.replace(/```json|```/g, '').trim();
-        verified = JSON.parse(gptClean);
-        logger.info(`[getGrammarExplain] GPT-4o 검증 완료: ${verseKey}`);
+        const gptParsed = JSON.parse(gptClean);
+        verified = (_a = gptParsed.result) !== null && _a !== void 0 ? _a : gptParsed;
+        gptChanges = (_b = gptParsed.changes) !== null && _b !== void 0 ? _b : [];
+        if (gptChanges.length > 0) {
+            logger.info(`[getGrammarExplain] GPT-4o 수정 내역 (${verseKey}): ${JSON.stringify(gptChanges)}`);
+        }
+        else {
+            logger.info(`[getGrammarExplain] GPT-4o 수정 없음: ${verseKey}`);
+        }
     }
     catch (gptErr) {
         logger.warn(`[getGrammarExplain] GPT-4o 검증 실패, Gemini 결과 사용: ${verseKey}`, gptErr);
@@ -1402,6 +1473,7 @@ ${JSON.stringify(parsed, null, 2)}`;
         ...verified,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         verifiedByGPT: true,
+        gptChanges: gptChanges,
     });
     logger.info(`[getGrammarExplain] 캐시 저장: ${verseKey}`);
     return verified;
