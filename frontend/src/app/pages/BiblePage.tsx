@@ -1,0 +1,885 @@
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import genesisData from '../../data/genesis_1.json';
+
+interface Verse {
+  verse: number;
+  text: string;
+}
+
+export function BiblePage() {
+  const navigate = useNavigate();
+  const [ttsPlaying, setTtsPlaying] = useState<string | null>(null);
+  const [ttsLoading, setTtsLoading] = useState<string | null>(null);
+  const [ttsSpeed, setTtsSpeed] = useState<number>(1.0);
+  const [highlightedWord, setHighlightedWord] = useState<{ key: string; index: number } | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // 안드로이드 오디오 잠금 해제
+  useEffect(() => {
+    const unlock = () => {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx && !audioCtxRef.current) {
+        const ctx = new AudioCtx();
+        ctx.resume();
+        audioCtxRef.current = ctx;
+      }
+    };
+    document.addEventListener('touchstart', unlock, { once: true });
+    document.addEventListener('click', unlock, { once: true });
+    return () => {
+      document.removeEventListener('touchstart', unlock);
+      document.removeEventListener('click', unlock);
+    };
+  }, []);
+  const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  // 문법 팝업
+  const [grammarPopup, setGrammarPopup] = useState<{
+    verseText: string;
+    loading: boolean;
+    verb?: string;
+    verb_example_en?: string;
+    verb_example_ko?: string;
+    preposition?: string;
+    preposition_example_en?: string;
+    preposition_example_ko?: string;
+    phrasal?: string;
+    phrasal_example_en?: string;
+    phrasal_example_ko?: string;
+    relative?: string;
+    relative_example_en?: string;
+    relative_example_ko?: string;
+    question?: string;
+    question_example_en?: string;
+    question_example_ko?: string;
+    exclamation?: string;
+    exclamation_example_en?: string;
+    exclamation_example_ko?: string;
+    mysentence?: string;
+    korean?: string;
+  } | null>(null);
+
+  const handleGrammarClick = useCallback(async (verse: Verse) => {
+    setGrammarPopup({ verseText: verse.text, loading: true });
+    try {
+      const { getFunctions: gf, httpsCallable: hc } = await import('firebase/functions');
+      const fns = gf(undefined, 'asia-northeast3');
+      const fn = hc(fns, 'getGrammarExplain');
+      const res: any = await fn({
+        verseKey: `genesis_1_${verse.verse}`,
+        verseText: verse.text,
+      });
+      const result = res.data;
+      setGrammarPopup(prev => prev && ({
+        ...prev,
+        loading: false,
+        verb: result.verb || '',
+        verb_example_en: result.verb_example_en || '',
+        verb_example_ko: result.verb_example_ko || '',
+        preposition: result.preposition || '',
+        preposition_example_en: result.preposition_example_en || '',
+        preposition_example_ko: result.preposition_example_ko || '',
+        phrasal: result.phrasal || '',
+        phrasal_example_en: result.phrasal_example_en || '',
+        phrasal_example_ko: result.phrasal_example_ko || '',
+        relative: result.relative || '',
+        relative_example_en: result.relative_example_en || '',
+        relative_example_ko: result.relative_example_ko || '',
+        question: result.question || '',
+        question_example_en: result.question_example_en || '',
+        question_example_ko: result.question_example_ko || '',
+        exclamation: result.exclamation || '',
+        exclamation_example_en: result.exclamation_example_en || '',
+        exclamation_example_ko: result.exclamation_example_ko || '',
+        mysentence: result.mysentence || '',
+        korean: result.korean || '',
+      }));
+    } catch {
+      setGrammarPopup({ verseText: verse.text, loading: false });
+    }
+  }, []);
+
+  // 퀴즈 팝업
+  const [quizPopup, setQuizPopup] = useState<{
+    verseText: string;
+    blankedText: string;
+    blanks: Array<{ index: number; answer: string; hint: string }>;
+    options: string[];
+    selectedAnswers: string[];
+    submitted: boolean;
+    loading: boolean;
+  } | null>(null);
+
+  const handleQuizClick = useCallback(async (verse: Verse) => {
+    setQuizPopup({
+      verseText: verse.text,
+      blankedText: '',
+      blanks: [],
+      options: [],
+      selectedAnswers: [],
+      submitted: false,
+      loading: true,
+    });
+    try {
+      const { getFunctions: gf, httpsCallable: hc } = await import('firebase/functions');
+      const fns = gf(undefined, 'asia-northeast3');
+      const fn = hc(fns, 'getVerseQuiz');
+      const res: any = await fn({
+        verseKey: `genesis_1_${verse.verse}`,
+        verseText: verse.text,
+      });
+      setQuizPopup({
+        verseText: verse.text,
+        blankedText: res.data.blankedText || '',
+        blanks: res.data.blanks || [],
+        options: res.data.options || [],
+        selectedAnswers: new Array(res.data.blanks?.length || 0).fill(''),
+        submitted: false,
+        loading: false,
+      });
+    } catch {
+      setQuizPopup(null);
+    }
+  }, []);
+
+  // 단어 팝업
+  const [wordPopup, setWordPopup] = useState<{
+    word: string;
+    meaning: string;
+    partOfSpeech: string;
+    phonetic: string;
+    koreanPronunciation: string;
+    loading: boolean;
+  } | null>(null);
+
+  const handleWordClick = useCallback(async (word: string) => {
+    // 특수문자 제거
+    const cleanWord = word.replace(/[^a-zA-Z]/g, '');
+    if (!cleanWord) return;
+
+    setWordPopup({ word: cleanWord, meaning: '', partOfSpeech: '', phonetic: '', koreanPronunciation: '', loading: true });
+
+    try {
+      const { getFunctions: gf, httpsCallable: hc } = await import('firebase/functions');
+      const fns = gf(undefined, 'asia-northeast3');
+      const fn = hc(fns, 'getWordMeaning');
+      const res: any = await fn({ word: cleanWord });
+      setWordPopup({
+        word: cleanWord,
+        meaning: res.data.meaning || '뜻을 찾을 수 없습니다.',
+        partOfSpeech: res.data.partOfSpeech || '',
+        phonetic: res.data.phonetic || '',
+        koreanPronunciation: res.data.koreanPronunciation || '',
+        loading: false,
+      });
+    } catch {
+      setWordPopup({ word: cleanWord, meaning: '오류가 발생했습니다.', partOfSpeech: '', phonetic: '', koreanPronunciation: '', loading: false });
+    }
+  }, []);
+
+  const renderVerseWithWords = (text: string, verseKey?: string) => {
+    const words = text.trim().split(/\s+/);
+    return (
+      <p style={{ fontSize: 13, color: '#333', lineHeight: 1.8, margin: 0, flexWrap: 'wrap', display: 'flex', gap: '4px' }}>
+        {words.map((word, idx) => {
+          const isHighlighted = verseKey && highlightedWord?.key === verseKey && highlightedWord?.index === idx;
+          return (
+            <span
+              key={idx}
+              onClick={(e) => { e.stopPropagation(); handleWordClick(word); }}
+              style={{
+                cursor: 'pointer',
+                borderRadius: 4,
+                padding: '0 2px',
+                transition: 'all 0.1s ease',
+                backgroundColor: isHighlighted ? '#D1FAE5' : 'transparent',
+                color: isHighlighted ? '#065F46' : '#333',
+                fontWeight: isHighlighted ? 700 : 400,
+              }}
+              onMouseEnter={e => {
+                if (!isHighlighted) {
+                  e.currentTarget.style.backgroundColor = '#1A3C6E';
+                  e.currentTarget.style.color = '#fff';
+                }
+              }}
+              onMouseLeave={e => {
+                if (!isHighlighted) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = '#333';
+                }
+              }}
+              onTouchStart={e => {
+                if (!isHighlighted) {
+                  e.currentTarget.style.backgroundColor = '#1A3C6E';
+                  e.currentTarget.style.color = '#fff';
+                }
+              }}
+              onTouchEnd={e => {
+                if (!isHighlighted) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = '#333';
+                }
+              }}
+            >
+              {word}
+            </span>
+          );
+        })}
+      </p>
+    );
+  };
+
+  const handleTTS = async (text: string, key: string) => {
+    if (ttsPlaying === key) {
+      audioRef.current?.pause();
+      setHighlightedWord(null);
+      if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+      setTtsPlaying(null);
+      return;
+    }
+
+    setTtsLoading(key);
+
+    try {
+      // ① 버튼 클릭 직후 즉시 무음 재생 — 안드로이드 제스처 잠금해제
+      const silentAudio = new Audio(
+        'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA'
+      );
+      silentAudio.volume = 0.01;
+      try { await silentAudio.play(); } catch(_) {}
+
+      // ② Firebase Function 호출
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const fn = httpsCallable(fns, 'generateTTS');
+      const cacheKey = `bible_genesis_1_${key}`.slice(0, 80);
+      const res: any = await fn({ text, cacheKey });
+
+      if (audioRef.current) audioRef.current.pause();
+
+      let audioSrc = '';
+      if (res.data.audioUrl) {
+        audioSrc = res.data.audioUrl;
+      } else if (res.data.audioBase64) {
+        const binary = atob(res.data.audioBase64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const blob = new Blob([bytes], { type: 'audio/mp3' });
+        audioSrc = URL.createObjectURL(blob);
+      }
+
+      if (audioSrc) {
+        // ③ AudioContext 잠금해제 재시도
+        try {
+          const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+          if (AudioCtx) {
+            if (!audioCtxRef.current) {
+              audioCtxRef.current = new AudioCtx();
+            }
+            if (audioCtxRef.current.state === 'suspended') {
+              await audioCtxRef.current.resume();
+            }
+          }
+        } catch(_) {}
+
+        audioRef.current = new Audio(audioSrc);
+        audioRef.current.playbackRate = ttsSpeed;
+        audioRef.current.onended = () => {
+          setTtsPlaying(null);
+          setHighlightedWord(null);
+          if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+        };
+
+        // ④ play 실패 시 재시도 1회
+        try {
+          await audioRef.current.play();
+          setTtsPlaying(key);
+
+          // 단어 하이라이트 (절별만, 전체 듣기 제외)
+          if (key.startsWith('verse_')) {
+            const words = text.trim().split(/\s+/);
+            let wordIndex = 0;
+            if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+            const audio = audioRef.current!;
+            const startLoop = () => {
+              const duration = audio.duration || words.length * 0.45;
+              const interval = (duration * 1000) / words.length;
+              highlightTimerRef.current = setInterval(() => {
+                if (wordIndex >= words.length) {
+                  clearInterval(highlightTimerRef.current!);
+                  setHighlightedWord(null);
+                  return;
+                }
+                setHighlightedWord({ key, index: wordIndex });
+                wordIndex++;
+              }, interval);
+            };
+            if (audio.duration) {
+              startLoop();
+            } else {
+              audio.addEventListener('loadedmetadata', startLoop, { once: true });
+            }
+          }
+        } catch (playErr) {
+          console.warn('TTS play 재시도:', playErr);
+          setTimeout(async () => {
+            try {
+              await audioRef.current?.play();
+              setTtsPlaying(key);
+            } catch(e) {
+              console.error('TTS play 최종 실패:', e);
+              setTtsPlaying(null);
+            }
+          }, 300);
+        }
+      }
+    } catch (err) {
+      console.error('TTS 오류:', err);
+      setTtsPlaying(null);
+    } finally {
+      setTtsLoading(null);
+    }
+  };
+
+  const handleFullChapterTTS = () => {
+    const fullText = genesisData.verses.map(v => v.text).join(' ');
+    handleTTS(fullText, 'full_chapter');
+  };
+
+  return (
+    <>
+    <div style={{ backgroundColor: '#FAF9F6', minHeight: '100vh', paddingBottom: 80 }}>
+      {/* 페이지 제목 */}
+      <div style={{ padding: '16px 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <button onClick={() => navigate('/record')} style={{ color: '#1A3C6E', background: 'none', border: 'none', fontSize: 14, cursor: 'pointer', padding: 0 }}>
+          ← 뒤로
+        </button>
+        <div>
+          <p style={{ color: '#1A3C6E', fontSize: 16, fontWeight: 700, margin: 0 }}>📖 창세기 1장</p>
+          <p style={{ color: '#999', fontSize: 11, margin: 0 }}>Genesis Chapter 1 · KJV</p>
+        </div>
+      </div>
+
+      {/* 듣기 속도 선택 */}
+      <div style={{ display: 'flex', gap: 6, padding: '8px 16px 0', justifyContent: 'flex-end' }}>
+        {[0.75, 1.0, 1.25, 1.5].map(s => (
+          <button
+            key={s}
+            onClick={() => setTtsSpeed(s)}
+            style={{
+              padding: '4px 10px', borderRadius: 12, fontSize: 11,
+              fontWeight: ttsSpeed === s ? 700 : 400,
+              backgroundColor: ttsSpeed === s ? '#1A3C6E' : '#f3f4f6',
+              color: ttsSpeed === s ? '#fff' : '#555',
+              border: 'none', cursor: 'pointer',
+            }}
+          >{s}x</button>
+        ))}
+      </div>
+
+      {/* 1장 전체 듣기 버튼 */}
+      <div style={{ padding: '16px', backgroundColor: '#EDE9F5' }}>
+        <button
+          onClick={handleFullChapterTTS}
+          style={{
+            width: '100%', padding: '14px',
+            borderRadius: 12, border: 'none',
+            backgroundColor: ttsPlaying === 'full_chapter' ? '#8B4789' : '#1A3C6E',
+            color: '#FAF9F6', fontSize: 15, fontWeight: 700,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}
+        >
+          {ttsLoading === 'full_chapter' ? '⏳ 로딩 중...' : ttsPlaying === 'full_chapter' ? '⏸ 정지' : '🔊 1장 전체 듣기'}
+        </button>
+      </div>
+
+      {/* 절 목록 */}
+      <div style={{ padding: '0 16px 16px' }}>
+        {genesisData.verses.map((verse: Verse) => (
+          <div
+            key={verse.verse}
+            style={{
+              backgroundColor: selectedVerse === verse.verse ? '#EDE9F5' : '#fff',
+              borderRadius: 12, marginBottom: 10,
+              border: selectedVerse === verse.verse ? '1.5px solid #1A3C6E' : '1px solid #e5e5e5',
+              overflow: 'hidden',
+            }}
+          >
+            {/* 절 헤더 */}
+            <div
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '12px 16px', cursor: 'pointer',
+              }}
+              onClick={() => setSelectedVerse(selectedVerse === verse.verse ? null : verse.verse)}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{
+                  backgroundColor: '#1A3C6E', color: '#FAF9F6',
+                  borderRadius: '50%', width: 28, height: 28,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 12, fontWeight: 700, flexShrink: 0,
+                }}>
+                  {verse.verse}
+                </span>
+                {selectedVerse === verse.verse ? (
+                  renderVerseWithWords(verse.text, `verse_${verse.verse}`)
+                ) : (
+                  <p style={{
+                    fontSize: 13, color: '#333', lineHeight: 1.6, margin: 0,
+                    display: '-webkit-box', WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                  }}>
+                    {verse.text}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* 절 펼쳤을 때 버튼들 */}
+            {selectedVerse === verse.verse && (
+              <div style={{ padding: '8px 16px 14px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {/* 절 듣기 */}
+                <button
+                  onClick={() => handleTTS(verse.text, `verse_${verse.verse}`)}
+                  style={{
+                    padding: '6px 14px', borderRadius: 20, border: 'none',
+                    backgroundColor: ttsPlaying === `verse_${verse.verse}` ? '#8B4789' : '#EDE9F5',
+                    color: ttsPlaying === `verse_${verse.verse}` ? '#fff' : '#1A3C6E',
+                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  {ttsLoading === `verse_${verse.verse}` ? '⏳' : ttsPlaying === `verse_${verse.verse}` ? '⏸ 정지' : '🔊 듣기'}
+                </button>
+                {/* 단어 학습 (준비 중) */}
+                <button style={{
+                  padding: '6px 14px', borderRadius: 20,
+                  border: '1px solid #d0dff0', backgroundColor: '#f8faff',
+                  color: '#1A3C6E', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                }}>
+                  📝 단어
+                </button>
+                {/* 문법 */}
+                <button
+                  onClick={() => handleGrammarClick(verse)}
+                  style={{
+                    padding: '6px 14px', borderRadius: 20,
+                    border: '1px solid #d0dff0', backgroundColor: '#f8faff',
+                    color: '#1A3C6E', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  📚 문법
+                </button>
+                {/* 퀴즈 */}
+                <button
+                  onClick={() => handleQuizClick(verse)}
+                  style={{
+                    padding: '6px 14px', borderRadius: 20,
+                    border: '1px solid #d0dff0', backgroundColor: '#f8faff',
+                    color: '#1A3C6E', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  🎯 퀴즈
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+
+      {/* 단어 뜻 팝업 */}
+      {wordPopup && (
+        <div
+          onClick={() => setWordPopup(null)}
+          style={{
+            position: 'fixed', inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.4)',
+            zIndex: 100, display: 'flex',
+            alignItems: 'flex-end', justifyContent: 'center',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 480,
+              backgroundColor: '#fff',
+              borderRadius: '20px 20px 0 0',
+              padding: '24px 24px 40px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <p style={{ fontSize: 22, fontWeight: 800, color: '#1A3C6E', margin: 0 }}>
+                {wordPopup.word}
+              </p>
+              <button
+                onClick={() => setWordPopup(null)}
+                style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999' }}
+              >✕</button>
+            </div>
+            {wordPopup.loading ? (
+              <p style={{ color: '#999', fontSize: 14 }}>뜻을 찾는 중...</p>
+            ) : (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                  {wordPopup.partOfSpeech && (
+                    <span style={{
+                      fontSize: 11, fontWeight: 600, color: '#8B4789',
+                      backgroundColor: '#f0e6f6', padding: '3px 8px', borderRadius: 10,
+                    }}>
+                      {wordPopup.partOfSpeech}
+                    </span>
+                  )}
+                  {wordPopup.phonetic && (
+                    <span style={{
+                      fontSize: 13, color: '#666',
+                      backgroundColor: '#f5f5f5', padding: '3px 8px', borderRadius: 10,
+                    }}>
+                      {wordPopup.phonetic}
+                    </span>
+                  )}
+                  {wordPopup.koreanPronunciation && (
+                    <span style={{
+                      fontSize: 13, color: '#1A3C6E',
+                      backgroundColor: '#EDE9F5', padding: '3px 8px', borderRadius: 10,
+                    }}>
+                      [{wordPopup.koreanPronunciation}]
+                    </span>
+                  )}
+                </div>
+                <p style={{ fontSize: 18, color: '#333', fontWeight: 600, margin: '8px 0 16px' }}>
+                  {wordPopup.meaning}
+                </p>
+                <button
+                  onClick={() => handleTTS(wordPopup.word, `word_${wordPopup.word}`)}
+                  style={{
+                    padding: '8px 20px', borderRadius: 20, border: 'none',
+                    backgroundColor: ttsPlaying === `word_${wordPopup.word}` ? '#8B4789' : '#1A3C6E',
+                    color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  {ttsLoading === `word_${wordPopup.word}` ? '⏳' : '🔊 발음 듣기'}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 문법 해설 팝업 */}
+      {grammarPopup && (
+        <div
+          onClick={() => setGrammarPopup(null)}
+          style={{
+            position: 'fixed', inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.4)',
+            zIndex: 100, display: 'flex',
+            alignItems: 'center', justifyContent: 'center',
+            padding: '16px',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 480,
+              backgroundColor: '#fff',
+              borderRadius: '20px',
+              padding: '24px 24px 32px',
+              maxHeight: '85vh', overflowY: 'auto',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <p style={{ fontSize: 15, fontWeight: 800, color: '#1A3C6E', margin: 0 }}>
+                ✏️ 오늘의 표현
+              </p>
+              <button
+                onClick={() => setGrammarPopup(null)}
+                style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999' }}
+              >✕</button>
+            </div>
+
+            {/* 구절 원문 */}
+            <div style={{
+              padding: '10px 14px', backgroundColor: '#f8faff',
+              borderRadius: 8, marginBottom: 16, fontSize: 12,
+              color: '#555', lineHeight: 1.6,
+            }}>
+              {grammarPopup.verseText}
+            </div>
+
+            {grammarPopup.loading ? (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <p style={{ color: '#999', fontSize: 14 }}>분석 중... ✨</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+                {[
+                  { key: 'verb',        exKey: 'verb_example',        icon: '🔵', label: '핵심 동사',   color: '#EFF6FF', border: '#BFDBFE', text: '#1e40af' },
+                  { key: 'preposition', exKey: 'preposition_example',  icon: '🟡', label: '전치사',      color: '#FFFBEB', border: '#FDE68A', text: '#92400e' },
+                  { key: 'phrasal',     exKey: 'phrasal_example',      icon: '🟠', label: '구동사',      color: '#FFF7ED', border: '#FDBA74', text: '#9a3412' },
+                  { key: 'relative',    exKey: 'relative_example',     icon: '🟣', label: '관계사',      color: '#F5F3FF', border: '#C4B5FD', text: '#6d28d9' },
+                  { key: 'question',    exKey: 'question_example',     icon: '🔴', label: '의문사',      color: '#FFF1F2', border: '#FECDD3', text: '#9f1239' },
+                  { key: 'exclamation', exKey: 'exclamation_example',  icon: '🟢', label: '감탄사/명령', color: '#F0FDF4', border: '#86EFAC', text: '#166534' },
+                ].map(({ key, exKey, icon, label, color, border, text }) => {
+                  const val = grammarPopup[key as keyof typeof grammarPopup] as string | undefined;
+                  if (!val) return null;
+                  const exEn = grammarPopup[`${exKey}_en` as keyof typeof grammarPopup] as string | undefined;
+                  const exKo = grammarPopup[`${exKey}_ko` as keyof typeof grammarPopup] as string | undefined;
+                  return (
+                    <div key={key} style={{
+                      backgroundColor: color, borderRadius: 10,
+                      padding: '12px 14px', border: `1px solid ${border}`,
+                    }}>
+                      <p style={{ fontSize: 12, fontWeight: 700, color: text, marginBottom: 4 }}>
+                        {icon} {label}
+                      </p>
+                      <p style={{ fontSize: 13, color: '#333', lineHeight: 1.7, margin: '0 0 8px' }}>
+                        {val}
+                      </p>
+                      {exEn && (
+                        <div style={{
+                          backgroundColor: 'rgba(255,255,255,0.7)',
+                          borderRadius: 8, padding: '8px 10px',
+                          borderLeft: `3px solid ${border}`,
+                        }}>
+                          <p style={{ fontSize: 12, fontWeight: 600, color: text, margin: '0 0 2px' }}>
+                            📝 예문
+                          </p>
+                          <p style={{ fontSize: 12, color: '#1A3C6E', fontWeight: 600, margin: '0 0 2px' }}>
+                            {exEn}
+                          </p>
+                          {exKo && (
+                            <p style={{ fontSize: 11, color: '#666', margin: 0 }}>
+                              → {exKo}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* 내 문장 만들기 */}
+                {grammarPopup.mysentence && (
+                  <div style={{
+                    backgroundColor: '#D1FAE5', borderRadius: 10,
+                    padding: '12px 14px', border: '1px solid #6EE7B7',
+                    marginTop: 4,
+                  }}>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: '#065F46', marginBottom: 4 }}>
+                      ✏️ 나도 써볼게요
+                    </p>
+                    <p style={{ fontSize: 14, fontWeight: 700, color: '#333', margin: '0 0 4px' }}>
+                      {grammarPopup.mysentence}
+                    </p>
+                    {grammarPopup.korean && (
+                      <p style={{ fontSize: 12, color: '#555', margin: 0 }}>
+                        → {grammarPopup.korean}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 퀴즈 팝업 */}
+      {quizPopup && (
+        <div
+          onClick={() => setQuizPopup(null)}
+          style={{
+            position: 'fixed', inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.4)',
+            zIndex: 100, display: 'flex',
+            alignItems: 'flex-end', justifyContent: 'center',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 480,
+              backgroundColor: '#fff',
+              borderRadius: '20px 20px 0 0',
+              padding: '24px 24px 40px',
+              maxHeight: '80vh', overflowY: 'auto',
+            }}
+          >
+            {/* 헤더 */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <p style={{ fontSize: 15, fontWeight: 800, color: '#1A3C6E', margin: 0 }}>
+                🎯 빈칸 채우기 퀴즈
+              </p>
+              <button
+                onClick={() => setQuizPopup(null)}
+                style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999' }}
+              >✕</button>
+            </div>
+
+            {quizPopup.loading ? (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <p style={{ color: '#999', fontSize: 14 }}>퀴즈 생성 중... 🎯</p>
+              </div>
+            ) : (
+              <div>
+                {/* 빈칸 구절 */}
+                <div style={{
+                  backgroundColor: '#f8faff', borderRadius: 12,
+                  padding: 16, marginBottom: 20,
+                  border: '1.5px solid #d0dff0', lineHeight: 2,
+                  fontSize: 14, color: '#333',
+                }}>
+                  {quizPopup.blankedText.split('_____').map((part, idx) => (
+                    <span key={idx}>
+                      {part}
+                      {idx < quizPopup.blanks.length && (
+                        <span style={{
+                          display: 'inline-block',
+                          minWidth: 80, borderBottom: '2px solid #1A3C6E',
+                          textAlign: 'center', color: '#1A3C6E', fontWeight: 700,
+                          backgroundColor: quizPopup.selectedAnswers[idx] ? '#EDE9F5' : 'transparent',
+                          padding: '0 8px', marginBottom: -4,
+                        }}>
+                          {quizPopup.selectedAnswers[idx] || ' '}
+                        </span>
+                      )}
+                    </span>
+                  ))}
+                </div>
+
+                {/* 힌트 */}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                  {quizPopup.blanks.map((blank, idx) => (
+                    <span key={idx} style={{
+                      fontSize: 11, color: '#8B4789',
+                      backgroundColor: '#f0e6f6', padding: '3px 8px', borderRadius: 10,
+                    }}>
+                      빈칸{idx + 1}: {blank.hint}
+                    </span>
+                  ))}
+                </div>
+
+                {/* 보기 */}
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#1A3C6E', marginBottom: 10 }}>
+                  보기에서 선택하세요:
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+                  {quizPopup.options.map((option, idx) => {
+                    const isUsed = quizPopup.selectedAnswers.includes(option);
+                    const isCorrect = quizPopup.submitted && quizPopup.blanks.some(b => b.answer === option);
+                    const isWrong = quizPopup.submitted && isUsed && !isCorrect;
+                    return (
+                      <button
+                        key={idx}
+                        disabled={isUsed || quizPopup.submitted}
+                        onClick={() => {
+                          const emptyIdx = quizPopup.selectedAnswers.findIndex(a => a === '');
+                          if (emptyIdx === -1) return;
+                          const newAnswers = [...quizPopup.selectedAnswers];
+                          newAnswers[emptyIdx] = option;
+                          setQuizPopup(prev => prev ? { ...prev, selectedAnswers: newAnswers } : null);
+                        }}
+                        style={{
+                          padding: '8px 16px', borderRadius: 20,
+                          border: '1.5px solid',
+                          borderColor: isCorrect ? '#10b981' : isWrong ? '#ef4444' : '#d0dff0',
+                          backgroundColor: isCorrect ? '#d1fae5' : isWrong ? '#fee2e2' : isUsed ? '#f3f4f6' : '#f8faff',
+                          color: isCorrect ? '#10b981' : isWrong ? '#ef4444' : isUsed ? '#999' : '#1A3C6E',
+                          fontSize: 13, fontWeight: 600,
+                          cursor: isUsed || quizPopup.submitted ? 'default' : 'pointer',
+                          opacity: isUsed ? 0.5 : 1,
+                        }}
+                      >
+                        {option}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* 선택 취소 버튼 */}
+                {!quizPopup.submitted && quizPopup.selectedAnswers.some(a => a !== '') && (
+                  <button
+                    onClick={() => setQuizPopup(prev => prev ? {
+                      ...prev,
+                      selectedAnswers: new Array(prev.blanks.length).fill('')
+                    } : null)}
+                    style={{
+                      padding: '6px 14px', borderRadius: 20,
+                      border: '1px solid #d0dff0', backgroundColor: '#f8faff',
+                      color: '#999', fontSize: 12, cursor: 'pointer', marginBottom: 12,
+                    }}
+                  >
+                    🔄 다시 선택
+                  </button>
+                )}
+
+                {/* 제출 버튼 */}
+                {!quizPopup.submitted && (
+                  <button
+                    disabled={quizPopup.selectedAnswers.some(a => a === '')}
+                    onClick={() => setQuizPopup(prev => prev ? { ...prev, submitted: true } : null)}
+                    style={{
+                      width: '100%', padding: '12px',
+                      borderRadius: 12, border: 'none',
+                      backgroundColor: quizPopup.selectedAnswers.some(a => a === '') ? '#d1d5db' : '#1A3C6E',
+                      color: '#fff', fontSize: 14, fontWeight: 700,
+                      cursor: quizPopup.selectedAnswers.some(a => a === '') ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    정답 확인
+                  </button>
+                )}
+
+                {/* 결과 */}
+                {quizPopup.submitted && (() => {
+                  const correct = quizPopup.blanks.filter(
+                    (b, idx) => b.answer === quizPopup.selectedAnswers[idx]
+                  ).length;
+                  const total = quizPopup.blanks.length;
+                  const allCorrect = correct === total;
+                  return (
+                    <div style={{
+                      textAlign: 'center', padding: '16px',
+                      backgroundColor: allCorrect ? '#d1fae5' : '#FDF6C3',
+                      borderRadius: 12, marginTop: 8,
+                    }}>
+                      <p style={{ fontSize: 22, margin: '0 0 8px' }}>
+                        {allCorrect ? '🎉' : '💪'}
+                      </p>
+                      <p style={{ fontSize: 16, fontWeight: 800, color: allCorrect ? '#10b981' : '#f59e0b', margin: '0 0 4px' }}>
+                        {correct}/{total} 정답!
+                      </p>
+                      <p style={{ fontSize: 13, color: '#666', margin: '0 0 12px' }}>
+                        {allCorrect ? '완벽합니다!' : '정답: ' + quizPopup.blanks.map(b => b.answer).join(', ')}
+                      </p>
+                      <button
+                        onClick={() => setQuizPopup(prev => prev ? {
+                          ...prev,
+                          selectedAnswers: new Array(prev.blanks.length).fill(''),
+                          submitted: false,
+                        } : null)}
+                        style={{
+                          padding: '8px 20px', borderRadius: 20,
+                          border: 'none', backgroundColor: '#1A3C6E',
+                          color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                        }}
+                      >
+                        🔄 다시 풀기
+                      </button>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

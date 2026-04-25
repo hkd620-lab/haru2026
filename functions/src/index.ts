@@ -1,3 +1,4 @@
+import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onRequest } from 'firebase-functions/v2/https';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getStorage } from 'firebase-admin/storage';
@@ -135,7 +136,9 @@ export const polishContent = onCall(
       } else {  // 이건 PREMIUM 모드
         systemPrompt = `당신은 재능있는 에세이 작가입니다.
 감동적인 글로 재구성하되 존댓말 유지.
-새로운 사건 추가 금지.`;
+새로운 사건 추가 금지.
+소제목 추가 금지. 마크다운 기호(**, ##, __, --, >) 절대 사용 금지.
+본문만 자연스럽게 이어지는 문단으로 작성하세요.`;
       }
 
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());  // 🔐 Secret 값 사용
@@ -1507,3 +1510,665 @@ export const generateTTS = onCall(
 );
 
 export { generateBook } from "./bookStudio";
+
+// ===== 단어 뜻 조회 =====
+export const getWordMeaning = onCall(
+  { region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] },
+  async (request) => {
+    const { word } = request.data;
+    if (!word) throw new HttpsError('invalid-argument', '단어가 필요합니다.');
+
+    const db = admin.firestore();
+    const cacheRef = db.collection('wordCache').doc(word.toLowerCase());
+
+    // 1. 캐시 확인
+    const cacheSnap = await cacheRef.get();
+    if (cacheSnap.exists) {
+      logger.info(`[getWordMeaning] 캐시 히트: ${word}`);
+      return cacheSnap.data();
+    }
+
+    // 2. Gemini API 호출
+    const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
+    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(GEMINI_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+
+    const prompt = `영어 단어 "${word}"의 정보를 알려주세요.
+JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
+{"meaning": "한국어 뜻 (짧게 1~3개)", "partOfSpeech": "품사 (명사/동사/형용사/부사/전치사/접속사/관사 중)", "phonetic": "미국식 발음기호 (예: /ɪn/)", "koreanPronunciation": "한국어 발음 (예: 인)"}`;
+
+    const result = await model.generateContent(prompt);
+    const raw = result.response.text().trim();
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    // 3. Firestore에 캐시 저장
+    await cacheRef.set({
+      ...parsed,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    logger.info(`[getWordMeaning] 캐시 저장: ${word}`);
+    return parsed;
+  }
+);
+
+// ===== 문법 해설 =====
+export const getGrammarExplain = onCall(
+  { region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET, OPENAI_API_KEY_SECRET] },
+  async (request) => {
+    const { verseKey, verseText } = request.data;
+    if (!verseText) throw new HttpsError('invalid-argument', '절 내용이 필요합니다.');
+
+    const db = admin.firestore();
+    const cacheRef = db.collection('grammarCache').doc(verseKey);
+
+    // 1. 캐시 확인
+    const cacheSnap = await cacheRef.get();
+    if (cacheSnap.exists) {
+      logger.info(`[getGrammarExplain] 캐시 히트: ${verseKey}`);
+      return cacheSnap.data();
+    }
+
+    // 2. Gemini API 호출
+    const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
+    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(GEMINI_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+
+    const prompt = `다음 영어 성경 구절에서 문법 요소를 분석해주세요.
+
+구절: "${verseText}"
+
+규칙:
+- 문법 용어 절대 사용 금지 (주어/동사/목적어/3형식 등 금지)
+- 쉬운 한국어로만 설명 (영어 초보자 기준)
+- 각 설명은 1~2문장 이내
+- 마크다운 없이 순수 JSON으로만 응답
+
+아래 6가지 항목: 해당하는 것만 채우고, 없으면 빈 문자열 "".
+mysentence와 korean은 반드시 채워야 합니다.
+예문(example_en, example_ko)은 해당 항목이 있을 때만 채우고, 없으면 빈 문자열 "".
+
+{
+  "verb": "핵심 동사 설명 (예: created = 하나님이 무언가를 만들었어요)",
+  "verb_example_en": "동사 활용 예문 영어 (예: God created the light.)",
+  "verb_example_ko": "위 예문 한국어 번역 (예: 하나님이 빛을 만드셨습니다.)",
+  "preposition": "전치사 설명 (예: in = ~안에, ~속에서)",
+  "preposition_example_en": "전치사 활용 예문 영어 (예: The fish lives in the sea.)",
+  "preposition_example_ko": "위 예문 한국어 번역 (예: 물고기는 바다 안에 삽니다.)",
+  "phrasal": "구동사 설명 (예: bring forth = 앞으로 꺼내오다, 나오게 하다)",
+  "phrasal_example_en": "구동사 활용 예문 영어 (예: The earth brought forth many plants.)",
+  "phrasal_example_ko": "위 예문 한국어 번역 (예: 땅이 많은 식물을 나오게 했습니다.)",
+  "relative": "관계사 설명 (예: that = 앞에 나온 것을 더 설명해주는 연결 표현)",
+  "relative_example_en": "관계사 활용 예문 영어 (예: The bird that flies is free.)",
+  "relative_example_ko": "위 예문 한국어 번역 (예: 나는 날아다니는 새는 자유롭습니다.)",
+  "question": "의문사 설명 (예: what = 무엇, 어떤 것)",
+  "question_example_en": "의문사 활용 예문 영어 (예: What did God see?)",
+  "question_example_ko": "위 예문 한국어 번역 (예: 하나님은 무엇을 보셨나요?)",
+  "exclamation": "감탄사/명령 설명 (예: Let there be = ~이 있으라! 명령하는 표현)",
+  "exclamation_example_en": "감탄사/명령 활용 예문 영어 (예: Let there be peace!)",
+  "exclamation_example_ko": "위 예문 한국어 번역 (예: 평화가 있으라!)",
+  "mysentence": "이 구절의 핵심 단어를 활용한 짧은 영어 예문 (I/We/God 주어로 시작, 반드시 입력)",
+  "korean": "위 예문의 한국어 번역 (반드시 입력)"
+}`;
+
+    const result = await model.generateContent(prompt);
+    const raw = result.response.text().trim();
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    // 3. GPT-4o 검증
+    let verified = parsed;
+    try {
+      const OPENAI_KEY = OPENAI_API_KEY_SECRET.value();
+      const gptPrompt = `아래는 영어 성경 구절 문법 분석 JSON입니다. 문법적으로 잘못된 설명이 있으면 수정하고, 올바르면 그대로 반환하세요. 반드시 동일한 JSON 구조로만 응답하세요. 마크다운 없이 순수 JSON만.
+
+구절: "${verseText}"
+
+분석 JSON:
+${JSON.stringify(parsed, null, 2)}`;
+
+      const gptRes = await axios.post(
+        'https://api.openai.com/v1/chat/completions',
+        {
+          model: 'gpt-4o',
+          messages: [{ role: 'user', content: gptPrompt }],
+          temperature: 0.2,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${OPENAI_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 15000,
+        }
+      );
+      const gptRaw = gptRes.data.choices[0].message.content.trim();
+      const gptClean = gptRaw.replace(/```json|```/g, '').trim();
+      verified = JSON.parse(gptClean);
+      logger.info(`[getGrammarExplain] GPT-4o 검증 완료: ${verseKey}`);
+    } catch (gptErr) {
+      logger.warn(`[getGrammarExplain] GPT-4o 검증 실패, Gemini 결과 사용: ${verseKey}`, gptErr);
+      // GPT 실패 시 Gemini 결과 그대로 사용 (서비스 중단 없음)
+    }
+
+    // 4. 캐시 저장
+    await cacheRef.set({
+      ...verified,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      verifiedByGPT: true,
+    });
+
+    logger.info(`[getGrammarExplain] 캐시 저장: ${verseKey}`);
+    return verified;
+  }
+);
+
+// ===== 퀴즈 생성 =====
+export const getVerseQuiz = onCall(
+  { region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] },
+  async (request) => {
+    const { verseKey, verseText } = request.data;
+    if (!verseText) throw new HttpsError('invalid-argument', '절 내용이 필요합니다.');
+
+    const db = admin.firestore();
+    const cacheRef = db.collection('quizCache').doc(verseKey);
+
+    // 1. 캐시 확인
+    const cacheSnap = await cacheRef.get();
+    if (cacheSnap.exists) {
+      logger.info(`[getVerseQuiz] 캐시 히트: ${verseKey}`);
+      return cacheSnap.data();
+    }
+
+    // 2. Gemini API 호출
+    const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
+    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(GEMINI_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+
+    const prompt = `다음 영어 성경 구절에서 수능 또는 고등학교 수준의 단어만 골라 빈칸 퀴즈를 만들어주세요.
+
+구절: "${verseText}"
+
+규칙:
+- 빈칸은 2~4개 (수능/고등학교 수준 단어만)
+- 보기는 빈칸 수 × 2개 (정답 + 헷갈리는 유사 단어)
+- 보기는 무작위 순서로 섞기
+- 쉬운 관사(a, the, an)나 접속사(and, or)는 빈칸 제외
+
+JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
+{
+  "blankedText": "빈칸을 ___로 표시한 전체 구절 (예: In the _____ God _____ the heaven)",
+  "blanks": [
+    {
+      "index": 0,
+      "answer": "정답 단어",
+      "hint": "힌트 (한국어 뜻)"
+    }
+  ],
+  "options": ["보기1", "보기2", "보기3", "보기4", "보기5", "보기6"]
+}`;
+
+    const result = await model.generateContent(prompt);
+    const raw = result.response.text().trim();
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    // 3. 캐시 저장
+    await cacheRef.set({
+      ...parsed,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    logger.info(`[getVerseQuiz] 캐시 저장: ${verseKey}`);
+    return parsed;
+  }
+);
+
+// 영어 일기 학습 — 한국어 → 영어 번역
+export const translateToEnglish = onCall(
+  { region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] },
+  async (request) => {
+    const text: string = request.data.text || '';
+    if (!text) throw new Error('텍스트가 없습니다');
+
+    const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
+    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(GEMINI_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+
+    const prompt = `다음 한국어 일기를 자연스러운 영어로 번역해주세요.
+문장 단위로 나눠서 배열로 반환하세요.
+원문의 감정과 표현을 최대한 살려주세요.
+
+한국어 일기:
+"${text}"
+
+JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
+{
+  "sentences": ["영어 문장1", "영어 문장2", "영어 문장3"]
+}`;
+
+    const result = await model.generateContent(prompt);
+    const raw = result.response.text().trim();
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    return parsed;
+  }
+);
+
+// ===== 🌍 해외 뉴스 자동 수집 (30분마다) =====
+export const fetchTopNews = onSchedule(
+  {
+    schedule: 'every 30 minutes',
+    timeZone: 'Asia/Seoul',
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+  },
+  async () => {
+    try {
+      const RSS_URLS = [
+        'https://www.aljazeera.com/xml/rss/all.xml',
+        'https://www.theguardian.com/world/rss',
+        'https://rss.nytimes.com/services/xml/rss/nyt/World.xml',
+      ];
+      let allItems: string[] = [];
+      for (const url of RSS_URLS) {
+        try {
+          const res = await axios.get(url, { timeout: 8000, responseType: 'text' });
+          const xml = res.data as string;
+          const titleMatches = xml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>|<title>(.*?)<\/title>/g) || [];
+          const descMatches = xml.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>|<description>(.*?)<\/description>/g) || [];
+          const linkMatches = xml.match(/<link>(.*?)<\/link>|<link\s+href="(.*?)"/g) || [];
+          for (let i = 1; i < Math.min(titleMatches.length, 8); i++) {
+            const title = (titleMatches[i] || '').replace(/<\/?[^>]+(>|$)/g, '').replace(/\[CDATA\[|\]\]/g, '').trim();
+            const desc = (descMatches[i] || '').replace(/<\/?[^>]+(>|$)/g, '').replace(/\[CDATA\[|\]\]/g, '').trim();
+            const link = (linkMatches[i] || '').replace(/<link>|<\/link>|<link\s+href="|"/g, '').trim();
+            if (title && title.length > 10) {
+              allItems.push(`제목: ${title}\n요약: ${desc.slice(0, 200)}\n링크: ${link}`);
+            }
+          }
+        } catch (e) { logger.warn('RSS 수집 실패:', url); }
+      }
+      if (allItems.length === 0) { logger.warn('수집된 뉴스 없음'); return; }
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      const prompt = `다음은 오늘의 해외 주요 뉴스 목록입니다.
+미국과 이란 관계, 중동 정세, 국제 분쟁, 외교 관련 뉴스 중 가장 중요한 순서대로 3개를 선택해서 한국어로 번역 요약해주세요.
+
+뉴스 목록:
+${allItems.join('\n\n---\n\n')}
+
+반드시 아래 JSON 배열 형식으로만 답하세요 (다른 텍스트 없이):
+[
+  {
+    "rank": 1,
+    "title": "한국어 제목",
+    "summary": "한국어 요약 (3~4문장)",
+    "originalTitle": "원문 제목",
+    "link": "원문 링크",
+    "category": "미국-이란 or 중동 or 국제분쟁 or 외교"
+  },
+  {
+    "rank": 2,
+    "title": "한국어 제목",
+    "summary": "한국어 요약 (3~4문장)",
+    "originalTitle": "원문 제목",
+    "link": "원문 링크",
+    "category": "미국-이란 or 중동 or 국제분쟁 or 외교"
+  },
+  {
+    "rank": 3,
+    "title": "한국어 제목",
+    "summary": "한국어 요약 (3~4문장)",
+    "originalTitle": "원문 제목",
+    "link": "원문 링크",
+    "category": "미국-이란 or 중동 or 국제분쟁 or 외교"
+  }
+]`;
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().replace(/```json|```/g, '').trim();
+      const newsArray = JSON.parse(text);
+      const batch = db.batch();
+      for (const item of newsArray) {
+        const ref = db.collection('news').doc(`rank${item.rank}`);
+        batch.set(ref, { ...item, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      }
+      await batch.commit();
+      logger.info('✅ 뉴스 3건 저장 완료');
+    } catch (err) { logger.error('뉴스 수집 오류:', err); }
+  }
+);
+
+// ===== 뉴스 수동 새로고침 (개발자용) =====
+export const refreshNews = onCall(
+  { secrets: [GEMINI_API_KEY_SECRET], region: 'asia-northeast3' },
+  async () => {
+    try {
+      const RSS_URLS = [
+        'https://www.aljazeera.com/xml/rss/all.xml',
+        'https://www.theguardian.com/world/rss',
+        'https://rss.nytimes.com/services/xml/rss/nyt/World.xml',
+      ];
+      let allItems: string[] = [];
+      for (const url of RSS_URLS) {
+        try {
+          const res = await axios.get(url, { timeout: 8000, responseType: 'text' });
+          const xml = res.data as string;
+          const titleMatches = xml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>|<title>(.*?)<\/title>/g) || [];
+          const descMatches = xml.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>|<description>(.*?)<\/description>/g) || [];
+          const linkMatches = xml.match(/<link>(.*?)<\/link>|<link\s+href="(.*?)"/g) || [];
+          for (let i = 1; i < Math.min(titleMatches.length, 8); i++) {
+            const title = (titleMatches[i] || '').replace(/<\/?[^>]+(>|$)/g, '').replace(/\[CDATA\[|\]\]/g, '').trim();
+            const desc = (descMatches[i] || '').replace(/<\/?[^>]+(>|$)/g, '').replace(/\[CDATA\[|\]\]/g, '').trim();
+            const link = (linkMatches[i] || '').replace(/<link>|<\/link>|<link\s+href="|"/g, '').trim();
+            if (title && title.length > 10) {
+              allItems.push(`제목: ${title}\n요약: ${desc.slice(0, 200)}\n링크: ${link}`);
+            }
+          }
+        } catch (e) { logger.warn('RSS 수집 실패:', url); }
+      }
+      if (allItems.length === 0) return { success: false, message: '뉴스 없음' };
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      const prompt = `다음은 오늘의 해외 주요 뉴스 목록입니다.
+미국과 이란 관계, 중동 정세, 국제 분쟁, 외교 관련 뉴스 중 가장 중요한 순서대로 3개를 선택해서 한국어로 번역 요약해주세요.
+
+뉴스 목록:
+${allItems.join('\n\n---\n\n')}
+
+반드시 아래 JSON 배열 형식으로만 답하세요 (다른 텍스트 없이):
+[
+  {
+    "rank": 1,
+    "title": "한국어 제목",
+    "summary": "한국어 요약 (3~4문장)",
+    "originalTitle": "원문 제목",
+    "link": "원문 링크",
+    "category": "미국-이란 or 중동 or 국제분쟁 or 외교"
+  },
+  {
+    "rank": 2,
+    "title": "한국어 제목",
+    "summary": "한국어 요약 (3~4문장)",
+    "originalTitle": "원문 제목",
+    "link": "원문 링크",
+    "category": "미국-이란 or 중동 or 국제분쟁 or 외교"
+  },
+  {
+    "rank": 3,
+    "title": "한국어 제목",
+    "summary": "한국어 요약 (3~4문장)",
+    "originalTitle": "원문 제목",
+    "link": "원문 링크",
+    "category": "미국-이란 or 중동 or 국제분쟁 or 외교"
+  }
+]`;
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().replace(/```json|```/g, '').trim();
+      const newsArray = JSON.parse(text);
+      const batch = db.batch();
+      for (const item of newsArray) {
+        const ref = db.collection('news').doc(`rank${item.rank}`);
+        batch.set(ref, { ...item, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      }
+      await batch.commit();
+      return { success: true, count: newsArray.length };
+    } catch (err) {
+      logger.error('뉴스 새로고침 오류:', err);
+      return { success: false };
+    }
+  }
+);
+
+// ===== 🔮 HARU예언 — 기록 자동 분석 (인물·욕망·족쇄·사건 추출) =====
+export const analyzeRecordForProphecy = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+    timeoutSeconds: 60,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const { content } = request.data;
+    if (!content || typeof content !== 'string' || content.trim().length < 10) {
+      throw new HttpsError('invalid-argument', '분석할 기록 내용이 너무 짧습니다.');
+    }
+
+    const systemPrompt = `당신은 HARU예언 분석가입니다.
+사용자가 작성한 기록(일기·에세이·여행기 등)에서 미래 예언 소설 생성에 필요한 핵심 항목을 추출합니다.
+
+[추출 항목 — 4가지]
+1. chars (등장인물): 기록에 등장한 사람들. 쉼표로 구분된 한 줄 문자열. 본인은 "나"로 표기. 최대 5명.
+2. desire (소망): 작성자가 지금 가장 원하는 것·이루고 싶은 것. 짧은 한 문장.
+3. shackle (극복할 것): 작성자를 막고 있는 것·두려움·제약. 짧은 한 문장.
+4. events (주요 사건): 기록에 나타난 의미 있는 사건/장면. 쉼표로 구분된 짧은 문구들. 최대 5개.
+
+[출력 규칙]
+- 반드시 JSON 한 덩어리만 출력. 마크다운/설명 절대 금지.
+- 모든 필드는 string. 명확히 읽히지 않으면 빈 문자열("")로.
+- 추측하거나 만들어내지 말 것. 빈 칸으로 두고 사용자가 직접 채우게 한다.
+
+출력 형식 (필드 4개 모두 string):
+{
+  "chars": "나, 아내, 딸 찬미",
+  "desire": "Flutter 앱 출시",
+  "shackle": "두려움, 게으름",
+  "events": "앱 개발 시작, 사업자 등록"
+}`;
+
+    const userPrompt = `[기록 내용]\n${content.slice(0, 4000)}\n\n위 기록에서 4개 항목을 추출해 JSON으로만 답하세요.`;
+
+    try {
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-3.1-flash-lite-preview',
+        systemInstruction: systemPrompt,
+      });
+      const result = await model.generateContent(userPrompt);
+      let text = result.response.text().trim();
+      text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+
+      let parsed: any = { chars: '', desire: '', shackle: '', events: '' };
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        const m = text.match(/\{[\s\S]*\}/);
+        if (m) {
+          try { parsed = JSON.parse(m[0]); } catch {/* keep defaults */}
+        }
+      }
+
+      const toStr = (v: any): string => {
+        if (typeof v === 'string') return v;
+        if (Array.isArray(v)) return v.join(', ');
+        return '';
+      };
+
+      return {
+        chars: toStr(parsed.chars),
+        desire: toStr(parsed.desire),
+        shackle: toStr(parsed.shackle),
+        events: toStr(parsed.events),
+      };
+    } catch (error) {
+      console.error('analyzeRecordForProphecy 실패:', error);
+      throw new HttpsError('internal', '기록 분석에 실패했습니다.');
+    }
+  }
+);
+
+// ===== 🔮 HARU예언 시놉시스 생성 =====
+export const generateHaruProphecy = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+    timeoutSeconds: 120,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const { motive, motiveCustom, chars, birth, desire, shackle, events, luck, unluck, narrative, type,
+            fromRecord, recordContent, recordTitle, recordDate, recordFormat, prophecyType, timeOption, question,
+            extractedChars, extractedDesire, extractedShackle, extractedEvents } = request.data;
+    // type: 'synopsis' | 'story'
+
+    if (!fromRecord && !motive) {
+      throw new HttpsError('invalid-argument', '예언 모티브가 필요합니다.');
+    }
+
+    // ── 사용량 체크 (하루 1회 / 월 30회) ──
+    const uid = request.auth.uid;
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const thisMonth = today.slice(0, 7); // YYYY-MM
+
+    const usageRef = db.collection('prophecyUsage').doc(uid);
+    const usageSnap = await usageRef.get();
+    const usage = usageSnap.exists
+      ? usageSnap.data()!
+      : { daily: '', dailyCount: 0, monthly: '', monthlyCount: 0 };
+
+    const DEV_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+    const isDeveloper = uid === DEV_UID;
+
+    // 하루 1회 체크 (개발자 제외)
+    if (!isDeveloper && usage.daily === today && usage.dailyCount >= 1) {
+      throw new HttpsError('resource-exhausted', '오늘은 이미 예언을 생성했습니다. 내일 다시 시도해주세요.');
+    }
+    // 월 30회 체크 (개발자 제외)
+    if (!isDeveloper && usage.monthly === thisMonth && usage.monthlyCount >= 30) {
+      throw new HttpsError('resource-exhausted', '이번 달 예언 횟수(30회)를 모두 사용했습니다.');
+    }
+
+    try {
+      const systemPrompt = `당신은 한국 최고의 소설가이자 인생 예언가입니다.
+아래 [HARU예언 인생 법칙]을 이야기 속에 직접 언급하지 말고 자연스럽게 녹여서 생성하세요.
+
+━━━━━━━━━━━━━━━━━━━━━━
+[HARU예언 인생 법칙 — 반드시 적용]
+
+자연 법칙:
+- 노력은 절대 사라지지 않고 반드시 쓸모가 생긴다
+- 사람은 누구나 늙고 연약해진다. 영원한 것은 없다
+- 젊을 때 심고 강할 때 나누는 자가 지혜롭다
+
+인과 법칙:
+- 행위대로 받되, 준 것보다 항상 적게 받는다
+- 불운의 대부분은 내가 만든 결과다
+- 단, 피할 수 없는 천재지변도 존재한다
+- 불운에 반응하는 방식이 다음 단계를 결정한다
+
+관계 법칙:
+- 나를 좋아하는 사람과 미워하는 사람은 반드시 공존한다
+- 강한 자 주위에는 사람이 모이고, 약해지면 고독해진다
+- 사랑의 열정은 300일을 넘기기 힘들다
+- 열정이 식은 후 남는 것이 진짜 관계다
+
+유전과 환경:
+- 부모의 성격·재능·습관은 자식에게 대물림된다
+- 그러나 환경과 노력으로 방향은 바꿀 수 있다
+
+보편 원리 (자율 적용):
+- 편안함은 성장을 멈추고, 위기는 기회와 함께 온다
+- 습관이 운명을 만든다
+- 비슷한 사람끼리 모인다
+- 두려움은 대부분 실제보다 크다
+- 그 외 인간 삶의 보편적 진리를 자유롭게 적용할 것
+━━━━━━━━━━━━━━━━━━━━━━
+
+[생성 규칙]
+1. 소설 형식 (3인칭)
+2. 기승전결 구조
+3. 법칙을 직접 언급하지 말고 이야기로 보여줄 것
+4. 한국어로 작성
+5. 마지막 문장은 반드시 희망적으로 마무리
+6. 독자가 "내 이야기 같다"고 느끼게 쓸 것`;
+
+      let userPrompt: string;
+      if (fromRecord) {
+        const toLine = (v: any): string => {
+          if (!v) return '';
+          if (Array.isArray(v)) return v.filter(Boolean).join(', ');
+          return String(v).trim();
+        };
+        const charsStr = toLine(extractedChars);
+        const desireStr = toLine(extractedDesire);
+        const shackleStr = toLine(extractedShackle);
+        const eventsStr = toLine(extractedEvents);
+        const charsLine = charsStr ? `[등장 인물]: ${charsStr}` : '';
+        const desireLine = desireStr ? `[작성자의 소망]: ${desireStr}` : '';
+        const shackleLine = shackleStr ? `[극복할 것]: ${shackleStr}` : '';
+        const eventsLine = eventsStr ? `[주요 사건]: ${eventsStr}` : '';
+        const extractedBlock = [charsLine, desireLine, shackleLine, eventsLine].filter(Boolean).join('\n');
+        userPrompt = `
+[창작 모드]: 내 기록으로 창작
+[기록 제목]: ${recordTitle}
+[기록 날짜]: ${recordDate}
+[기록 형식]: ${recordFormat}
+[예언 종류]: ${prophecyType}
+[시간 배경]: ${timeOption}
+[핵심 질문]: ${question}
+${extractedBlock ? '\n[AI가 기록에서 추출한 핵심 요소]:\n' + extractedBlock + '\n' : ''}
+[실제 기록 내용]:
+${recordContent}
+
+위 실제 기록과 추출된 핵심 요소를 바탕으로 ${timeOption} 뒤의 이야기를 예언 소설 형식으로 작성해주세요.
+기록 속 인물, 감정, 사건을 최대한 살려서 "내 이야기 같다"는 느낌이 들게 해주세요.
+예언 종류: ${prophecyType}
+
+${type === 'story'
+  ? '분량: A4 5페이지 분량 (4000~6000자). 기승전결 구조로 작성.'
+  : '분량: A4 1페이지 분량 시놉시스 (800~1200자). 핵심 줄거리만 간결하게.'}
+`;
+      } else {
+        const motiveLabel = motiveCustom || motive;
+        userPrompt = `
+[예언 모티브]: ${motiveLabel}
+[인물 설정]: ${JSON.stringify(chars || [])}
+[탄생 배경]: ${birth || ''}
+[욕망]: ${desire || ''}
+[족쇄]: ${shackle || ''}
+[사건]: ${JSON.stringify(events || [])}
+[운]: ${luck || ''}
+[불운]: ${unluck || ''}
+[서사 스타일]: ${narrative || ''}
+
+${type === 'story'
+  ? '위 설정을 바탕으로 A4 5페이지 분량(4000~6000자)의 이야기를 소설 형식으로 작성해주세요.'
+  : '위 설정을 바탕으로 A4 1페이지 분량(800~1200자)의 시놉시스를 작성해주세요.'}
+`;
+      }
+
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-3.1-flash-lite-preview',
+        systemInstruction: systemPrompt,
+      });
+
+      const result = await model.generateContent(userPrompt);
+      const text = result.response.text();
+
+      // ── 사용량 업데이트 ──
+      await usageRef.set({
+        daily: today,
+        dailyCount: usage.daily === today ? usage.dailyCount + 1 : 1,
+        monthly: thisMonth,
+        monthlyCount: usage.monthly === thisMonth ? usage.monthlyCount + 1 : 1,
+      });
+
+      return { text };
+    } catch (error: any) {
+      console.error('HARU예언 생성 실패:', error);
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError('internal', 'HARU예언 생성에 실패했습니다.');
+    }
+  }
+);
+
