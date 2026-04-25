@@ -1048,82 +1048,108 @@ export function RecordPage() {
         <div
           onClick={() => setShowNovelIntro(false)}
           style={{
-            position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
-            zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000, padding: '16px',
           }}
         >
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              backgroundColor: '#fff', borderRadius: '20px 20px 0 0',
-              padding: '28px 24px 40px', width: '100%', maxWidth: 480,
+              backgroundColor: '#fff', borderRadius: 20,
+              padding: '24px 22px 28px', width: '100%', maxWidth: 440,
+              maxHeight: '90vh', overflowY: 'auto',
             }}
           >
             {/* 핸들 */}
-            <div style={{ width: 40, height: 4, backgroundColor: '#d1d5db', borderRadius: 2, margin: '0 auto 20px' }} />
+            <div style={{ width: 36, height: 4, backgroundColor: '#d1d5db', borderRadius: 2, margin: '0 auto 20px' }} />
+
             {/* 타이틀 */}
-            <div style={{ textAlign: 'center', marginBottom: 24 }}>
-              <div style={{ fontSize: 40, marginBottom: 8 }}>🔮</div>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1A3C6E', marginBottom: 6 }}>
-                🔮 HARU예언
-              </h2>
-              <p style={{ fontSize: 13, color: '#999' }}>사주보다 정확한 AI 예언 — 내 기록이 미래를 말합니다</p>
+            <div style={{ textAlign: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 36, marginBottom: 8, lineHeight: 1 }}>🔮</div>
+              <div style={{ fontSize: 20, fontWeight: 500, color: '#1A3C6E', marginBottom: 6 }}>HARU예언</div>
+              <div style={{ display: 'inline-block', background: '#E6F1FB', borderRadius: 99, padding: '3px 14px', marginBottom: 6 }}>
+                <span style={{ fontSize: 11, color: '#0C447C', fontWeight: 500 }}>사주보다 과학적인 접근</span>
+              </div>
+              <div style={{ fontSize: 12, color: '#999', lineHeight: 1.7 }}>내 기록과 내 선택이 미래를 말합니다</div>
             </div>
 
             {/* 트랙 1 — 내 기록으로 창작 */}
-            <div style={{
-              borderRadius: 12, border: '1.5px solid #bfdbfe',
-              backgroundColor: '#eff6ff', padding: '16px 18px', marginBottom: 12,
-            }}>
-              <p style={{ fontSize: 14, fontWeight: 700, color: '#1A3C6E', marginBottom: 6 }}>
-                🔵 내 기록으로 창작
-              </p>
-              <p style={{ fontSize: 12, color: '#555', lineHeight: 1.7, marginBottom: 10 }}>
-                일기·에세이·육아일기 등 내가 쓴 기록 중<br />
-                특별한 날을 선택해 단편소설이나 회고록으로<br />
-                AI가 확장·완성해 드려요.
-              </p>
-              <div style={{
-                display: 'inline-block', fontSize: 11, color: '#93c5fd',
-                backgroundColor: '#dbeafe', borderRadius: 6, padding: '3px 10px',
-              }}>
-                🔒 곧 공개 예정
+            <div
+              onClick={() => { setShowNovelIntro(false); navigate('/record-prophecy'); }}
+              style={{ borderRadius: 14, border: '2px solid #185FA5', backgroundColor: '#1A3C6E', padding: '14px 16px', marginBottom: 8, cursor: 'pointer', transition: 'all 0.2s' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = '#0C447C'; (e.currentTarget as HTMLDivElement).style.borderColor = '#378ADD'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = '#1A3C6E'; (e.currentTarget as HTMLDivElement).style.borderColor = '#185FA5'; }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 7 }}>
+                <span style={{ fontSize: 13 }}>🔵</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>내 기록으로 창작</span>
               </div>
+              <p style={{ fontSize: 11, color: '#B5D4F4', lineHeight: 1.9, marginBottom: 7 }}>
+                일기, 에세이, 육아일기 ···<br />
+                한 기록을 선택하거나 합친 기록을 선택하여
+              </p>
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 7 }}>
+                <span style={{ fontSize: 10, background: '#fff', color: '#1A3C6E', borderRadius: 99, padding: '3px 10px', fontWeight: 500 }}>예언서</span>
+                <span style={{ fontSize: 10, background: 'transparent', color: '#B5D4F4', border: '0.5px solid #378ADD', borderRadius: 99, padding: '3px 10px' }}>나의 미래</span>
+                <span style={{ fontSize: 10, background: 'transparent', color: '#B5D4F4', border: '0.5px solid #378ADD', borderRadius: 99, padding: '3px 10px' }}>자녀의 미래</span>
+                <span style={{ fontSize: 10, background: '#fff', color: '#1A3C6E', borderRadius: 99, padding: '3px 10px', fontWeight: 500 }}>나의 회고록</span>
+              </div>
+              <p style={{ fontSize: 11, color: '#B5D4F4' }}>으로 확장합니다.</p>
             </div>
 
             {/* 트랙 2 — 순수 창작 */}
-            <div style={{
-              borderRadius: 12, border: '1.5px solid #a7f3d0',
-              backgroundColor: '#f0fdf4', padding: '16px 18px', marginBottom: 20,
-            }}>
-              <p style={{ fontSize: 14, fontWeight: 700, color: '#065f46', marginBottom: 6 }}>
-                🟢 순수 창작
+            <div
+              onClick={() => { setShowNovelIntro(false); navigate('/novel-studio'); }}
+              style={{ borderRadius: 14, border: '2px solid #0F6E56', backgroundColor: '#065f46', padding: '14px 16px', marginBottom: 14, cursor: 'pointer', transition: 'all 0.2s' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = '#085041'; (e.currentTarget as HTMLDivElement).style.borderColor = '#1D9E75'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = '#065f46'; (e.currentTarget as HTMLDivElement).style.borderColor = '#0F6E56'; }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 7 }}>
+                <span style={{ fontSize: 13 }}>🟢</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>순수 창작</span>
+              </div>
+              <p style={{ fontSize: 11, color: '#9FE1CB', lineHeight: 1.9, marginBottom: 7 }}>
+                9가지 나만의 선택으로
               </p>
-              <p style={{ fontSize: 12, color: '#555', lineHeight: 1.7 }}>
-                탄생부터 사건까지 나만의 설정으로<br />
-                처음부터 새로운 이야기를 만들어보세요.
-              </p>
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 7 }}>
+                <span style={{ fontSize: 10, background: '#fff', color: '#065f46', borderRadius: 99, padding: '3px 10px', fontWeight: 500 }}>예언서</span>
+                <span style={{ fontSize: 10, background: 'transparent', color: '#9FE1CB', border: '0.5px solid #5DCAA5', borderRadius: 99, padding: '3px 10px' }}>나의 미래</span>
+                <span style={{ fontSize: 10, background: 'transparent', color: '#9FE1CB', border: '0.5px solid #5DCAA5', borderRadius: 99, padding: '3px 10px' }}>자식의 미래</span>
+                <span style={{ fontSize: 10, background: '#fff', color: '#065f46', borderRadius: 99, padding: '3px 10px', fontWeight: 500 }}>창작소설</span>
+              </div>
+              <p style={{ fontSize: 11, color: '#9FE1CB' }}>나만의 소설가가 되어보세요.</p>
             </div>
 
-            {/* 입장 버튼 */}
-            <button
-              onClick={() => { setShowNovelIntro(false); navigate('/novel-studio'); }}
-              style={{
-                width: '100%', padding: '14px', borderRadius: 10,
-                backgroundColor: '#10b981', color: '#fff',
-                fontSize: 15, fontWeight: 700, border: 'none', cursor: 'pointer',
-                marginBottom: 10,
-              }}
-            >
-              🟢 순수 창작 시작하기
-            </button>
+            {/* 소개 박스 — 하단 */}
+            <div style={{ border: '0.5px solid #B5D4F4', borderRadius: 14, padding: 14, marginBottom: 12, backgroundColor: '#f8fbff' }}>
+              <div style={{ fontSize: 12, color: '#1A3C6E', lineHeight: 2.0, textAlign: 'center', marginBottom: 12 }}>
+                <div>내 과거의 선택을 <strong>다시</strong> 하고 싶나요?</div>
+                <div>내 인생을 <strong>다시 시작</strong>하고 싶나요?</div>
+                <div>내 자식의 <strong>미래</strong>가 궁금하나요?</div>
+                <div>소설가가 되어 <strong>이야기를 창작</strong>하고 싶나요?</div>
+              </div>
+              <div style={{ borderTop: '0.5px solid #B5D4F4', paddingTop: 12 }}>
+                <p style={{ fontSize: 10, color: '#185FA5', textAlign: 'center', marginBottom: 8, fontWeight: 500, letterSpacing: '0.5px' }}>9 가 지 설 정</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, marginBottom: 10 }}>
+                  {[['01','모티브'],['02','인물'],['03','탄생'],['04','욕망'],['05','족쇄'],['06','사건'],['07','운'],['08','불운'],['09','서사']].map(([num, label]) => (
+                    <div key={num} style={{ background: num === '09' ? '#E1F5EE' : '#E6F1FB', borderRadius: 6, padding: '4px 2px', textAlign: 'center' }}>
+                      <div style={{ fontSize: 8, color: num === '09' ? '#1D9E75' : '#378ADD', marginBottom: 1 }}>{num}</div>
+                      <div style={{ fontSize: 10, color: num === '09' ? '#085041' : '#185FA5', fontWeight: 500 }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+                <p style={{ fontSize: 11, color: '#185FA5', textAlign: 'center', lineHeight: 1.7 }}>
+                  9가지 설정으로 <strong>미래를 예측</strong>하고<br /><strong>소설가</strong>도 되어 보세요
+                </p>
+              </div>
+            </div>
+
+            {/* 닫기 */}
             <button
               onClick={() => setShowNovelIntro(false)}
-              style={{
-                width: '100%', padding: '12px', borderRadius: 10,
-                backgroundColor: 'transparent', color: '#999',
-                fontSize: 14, border: '1px solid #e5e5e5', cursor: 'pointer',
-              }}
+              style={{ width: '100%', padding: '12px', borderRadius: 10, backgroundColor: 'transparent', color: '#999', fontSize: 13, border: '0.5px solid #e5e5e5', cursor: 'pointer' }}
             >
               닫기
             </button>

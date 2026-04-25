@@ -4,6 +4,7 @@ import { Layout } from './Layout';
 import { LoginPage } from './pages/LoginPage';
 import { AuthCallbackPage } from "./pages/AuthCallbackPage";
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { RecordProphecyPage } from './pages/ProphecyFromRecord';
 
 // 초기 번들 크기 최소화를 위한 Lazy 로딩 (iOS 모바일 초기 로딩 속도 개선)
 const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));
@@ -77,6 +78,7 @@ export const router = createBrowserRouter([
           { path: 'book-create', element: withSuspense(<BookCreate />) },
           { path: 'novel-studio', element: withSuspense(<NovelStudio />) },
           { path: 'novel-synopsis', element: withSuspense(<NovelSynopsisPage />) },
+          { path: 'record-prophecy', element: <RecordProphecyPage /> },
           { path: 'diary-learn', element: withSuspense(<DiaryLearnPage />) },
           { path: 'news', element: withSuspense(<NewsPage />) },
           { path: 'record-detail/:date/:formatKey', element: withSuspense(<RecordDetailPage />) },

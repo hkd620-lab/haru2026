@@ -1623,9 +1623,9 @@ exports.generateHaruProphecy = (0, https_2.onCall)({
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
-    const { motive, motiveCustom, chars, birth, desire, shackle, events, luck, unluck, narrative, type } = request.data;
+    const { motive, motiveCustom, chars, birth, desire, shackle, events, luck, unluck, narrative, type, fromRecord, recordContent, recordTitle, recordDate, recordFormat, prophecyType, timeOption, question } = request.data;
     // type: 'synopsis' | 'story'
-    if (!motive) {
+    if (!fromRecord && !motive) {
         throw new https_2.HttpsError('invalid-argument', '예언 모티브가 필요합니다.');
     }
     // ── 사용량 체크 (하루 1회 / 월 30회) ──
@@ -1648,7 +1648,6 @@ exports.generateHaruProphecy = (0, https_2.onCall)({
         throw new https_2.HttpsError('resource-exhausted', '이번 달 예언 횟수(30회)를 모두 사용했습니다.');
     }
     try {
-        const motiveLabel = motiveCustom || motive;
         const systemPrompt = `당신은 한국 최고의 소설가이자 인생 예언가입니다.
 아래 [HARU예언 인생 법칙]을 이야기 속에 직접 언급하지 말고 자연스럽게 녹여서 생성하세요.
 
@@ -1691,7 +1690,32 @@ exports.generateHaruProphecy = (0, https_2.onCall)({
 4. 한국어로 작성
 5. 마지막 문장은 반드시 희망적으로 마무리
 6. 독자가 "내 이야기 같다"고 느끼게 쓸 것`;
-        const userPrompt = `
+        let userPrompt;
+        if (fromRecord) {
+            userPrompt = `
+[창작 모드]: 내 기록으로 창작
+[기록 제목]: ${recordTitle}
+[기록 날짜]: ${recordDate}
+[기록 형식]: ${recordFormat}
+[예언 종류]: ${prophecyType}
+[시간 배경]: ${timeOption}
+[핵심 질문]: ${question}
+
+[실제 기록 내용]:
+${recordContent}
+
+위 실제 기록을 바탕으로 ${timeOption} 뒤의 이야기를 예언 소설 형식으로 작성해주세요.
+기록 속 인물, 감정, 사건을 최대한 살려서 "내 이야기 같다"는 느낌이 들게 해주세요.
+예언 종류: ${prophecyType}
+
+${type === 'story'
+                ? '분량: A4 5페이지 분량 (4000~6000자). 기승전결 구조로 작성.'
+                : '분량: A4 1페이지 분량 시놉시스 (800~1200자). 핵심 줄거리만 간결하게.'}
+`;
+        }
+        else {
+            const motiveLabel = motiveCustom || motive;
+            userPrompt = `
 [예언 모티브]: ${motiveLabel}
 [인물 설정]: ${JSON.stringify(chars || [])}
 [탄생 배경]: ${birth || ''}
@@ -1703,9 +1727,10 @@ exports.generateHaruProphecy = (0, https_2.onCall)({
 [서사 스타일]: ${narrative || ''}
 
 ${type === 'story'
-            ? '위 설정을 바탕으로 A4 5페이지 분량(4000~6000자)의 이야기를 소설 형식으로 작성해주세요.'
-            : '위 설정을 바탕으로 A4 1페이지 분량(800~1200자)의 시놉시스를 작성해주세요.'}
+                ? '위 설정을 바탕으로 A4 5페이지 분량(4000~6000자)의 이야기를 소설 형식으로 작성해주세요.'
+                : '위 설정을 바탕으로 A4 1페이지 분량(800~1200자)의 시놉시스를 작성해주세요.'}
 `;
+        }
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
         const model = genAI.getGenerativeModel({
             model: 'gemini-3.1-flash-lite-preview',

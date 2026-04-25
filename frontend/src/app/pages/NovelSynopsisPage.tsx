@@ -12,6 +12,14 @@ export function NovelSynopsisPage() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const settings = location.state?.settings || {};
+  const fromRecord = location.state?.fromRecord || false;
+  const recordContent = location.state?.recordContent || '';
+  const recordTitle = location.state?.recordTitle || '';
+  const recordDate = location.state?.recordDate || '';
+  const recordFormat = location.state?.recordFormat || '';
+  const prophecyType = location.state?.prophecyType || '나의 미래';
+  const timeOption = location.state?.timeOption || '3년 후';
+  const question = location.state?.question || '';
 
   const handleGenerateSynopsis = async () => {
     setIsGenerating(true);
@@ -19,7 +27,10 @@ export function NovelSynopsisPage() {
     try {
       const functions = getFunctions(undefined, 'asia-northeast3');
       const fn = httpsCallable(functions, 'generateHaruProphecy');
-      const result: any = await fn({ ...settings, type: 'synopsis' });
+      const payload = fromRecord
+        ? { fromRecord: true, recordContent, recordTitle, recordDate, recordFormat, prophecyType, timeOption, question, type: 'synopsis' }
+        : { ...settings, type: 'synopsis' };
+      const result: any = await fn(payload);
       setSynopsis(result.data.text);
       toast.success('시놉시스가 생성되었습니다!');
     } catch (error: any) {
@@ -37,8 +48,11 @@ export function NovelSynopsisPage() {
     try {
       const functions = getFunctions(undefined, 'asia-northeast3');
       const fn = httpsCallable(functions, 'generateHaruProphecy');
-      const result: any = await fn({ ...settings, type: 'story' });
-      navigate('/novel-story', { state: { story: result.data.text, settings } });
+      const payload = fromRecord
+        ? { fromRecord: true, recordContent, recordTitle, recordDate, recordFormat, prophecyType, timeOption, question, type: 'story' }
+        : { ...settings, type: 'story' };
+      const result: any = await fn(payload);
+      navigate('/novel-story', { state: { story: result.data.text, settings, fromRecord } });
     } catch (error: any) {
       const msg = error?.message || '생성에 실패했습니다. 다시 시도해주세요.';
       toast.error(msg);
@@ -61,7 +75,7 @@ export function NovelSynopsisPage() {
           <h1 style={{ fontSize: 18, fontWeight: 700, color: '#1A3C6E', margin: 0 }}>HARU예언</h1>
         </div>
         <button
-          onClick={() => navigate('/novel-studio')}
+          onClick={() => fromRecord ? navigate('/record-prophecy') : navigate('/novel-studio')}
           style={{
             background: 'none', border: 'none', cursor: 'pointer',
             fontSize: 13, color: '#6B7280', padding: '6px 10px', borderRadius: 8,

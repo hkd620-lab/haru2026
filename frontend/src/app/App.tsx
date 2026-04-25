@@ -30,6 +30,7 @@ import { BiblePage } from './pages/BiblePage';
 import { DiaryLearnPage } from './pages/DiaryLearnPage';
 import { NovelStudio } from './pages/NovelStudio';
 import { NovelSynopsisPage } from './pages/NovelSynopsisPage';
+import { RecordProphecyPage } from './pages/ProphecyFromRecord';
 import { BottomNav } from './components/BottomNav';
 import { Footer } from './components/Footer';
 import { setupForegroundMessageListener, requestNotificationPermission } from './services/notificationService';
@@ -118,6 +119,7 @@ function App() {
               <Route path="/news" element={<NewsPage />} />
               <Route path="/novel-studio" element={<NovelStudio />} />
               <Route path="/novel-synopsis" element={<NovelSynopsisPage />} />
+              <Route path="/record-prophecy" element={<RecordProphecyPage />} />
 
               {/* 영어성경학습 */}
               <Route path="/bible" element={<BiblePage />} />
