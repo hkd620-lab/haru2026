@@ -24,3 +24,7 @@ build/
 *.bak
 *. 3.*
 .claude/
+*.bak
+*.old
+*.old2
+*.backup_*
