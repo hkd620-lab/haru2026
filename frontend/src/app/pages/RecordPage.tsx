@@ -420,10 +420,14 @@ export function RecordPage() {
 
           {/* 카테고리 선택 */}
           <div className="flex gap-2 mb-3">
-            {(['생활', '업무', '하루LAW'] as (Category | 'HARUraw')[]).map((category) => (
+            {(['생활', '업무', '하루LAW', 'HARU예언'] as (Category | 'HARUraw' | 'HARU예언')[]).map((category) => (
               <button
                 key={category}
                 onClick={() => {
+                  if (category === 'HARU예언') {
+                    navigate('/prophecy');
+                    return;
+                  }
                   if (selectedCategory === category) {
                     setSelectedCategory(null);
                     setLawGuideConfirmed(false);
