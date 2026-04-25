@@ -22,6 +22,7 @@ const BookStudio = lazy(() => import('./pages/BookStudio').then((m) => ({ defaul
 const BookCreate = lazy(() => import('./pages/BookCreate').then((m) => ({ default: m.BookCreate })));
 const NovelStudio = lazy(() => import('./pages/NovelStudio').then((m) => ({ default: m.NovelStudio })));
 const NovelSynopsisPage = lazy(() => import('./pages/NovelSynopsisPage').then((m) => ({ default: m.NovelSynopsisPage })));
+const NovelStoryPage = lazy(() => import('./pages/NovelStoryPage').then((m) => ({ default: m.NovelStoryPage })));
 const DiaryLearnPage = lazy(() => import('./pages/DiaryLearnPage').then((m) => ({ default: m.DiaryLearnPage })));
 const NewsPage = lazy(() => import('./pages/NewsPage').then((m) => ({ default: m.NewsPage })));
 
@@ -78,6 +79,7 @@ export const router = createBrowserRouter([
           { path: 'book-create', element: withSuspense(<BookCreate />) },
           { path: 'novel-studio', element: withSuspense(<NovelStudio />) },
           { path: 'novel-synopsis', element: withSuspense(<NovelSynopsisPage />) },
+          { path: 'novel-story', element: withSuspense(<NovelStoryPage />) },
           { path: 'record-prophecy', element: <RecordProphecyPage /> },
           { path: 'diary-learn', element: withSuspense(<DiaryLearnPage />) },
           { path: 'news', element: withSuspense(<NewsPage />) },

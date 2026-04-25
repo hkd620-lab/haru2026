@@ -18,9 +18,6 @@ dist/
 build/
 참고자료/
 *.old
-*.bak
-*. 3.*
-*.old
-*.bak
+*.bak*
 *. 3.*
 .claude/

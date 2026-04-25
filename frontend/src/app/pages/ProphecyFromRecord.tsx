@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../services/firestoreService';
 import { ChevronLeft } from 'lucide-react';
@@ -11,7 +13,7 @@ const FORMAT_PREFIX: Record<string, string> = {
 };
 
 type TrackType = 'single' | 'merge';
-type Step = 'track' | 'list' | 'formatList' | 'preview' | 'items';
+type Step = 'track' | 'list' | 'formatList' | 'preview' | 'analyze' | 'items';
 
 interface RecordItem {
   date: string;
@@ -27,6 +29,7 @@ const TIME_OPTIONS = ['1년 후', '3년 후', '5년 후', '10년 후'];
 export function RecordProphecyPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [track, setTrack] = useState<TrackType>('single');
   const [step, setStep] = useState<Step>('track');
@@ -45,6 +48,14 @@ export function RecordProphecyPage() {
   const [prophecyType, setProphecyType] = useState('나의 미래');
   const [timeOption, setTimeOption] = useState('3년 후');
   const [question, setQuestion] = useState('');
+
+  // analyze step 관련
+  const [analyzing, setAnalyzing] = useState(false);
+  const [extractedChars, setExtractedChars] = useState('');
+  const [extractedDesire, setExtractedDesire] = useState('');
+  const [extractedShackle, setExtractedShackle] = useState('');
+  const [extractedEvents, setExtractedEvents] = useState('');
+  const analyzeCalledRef = useRef(false);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -114,6 +125,37 @@ export function RecordProphecyPage() {
     }
   };
 
+  // 외부에서 들어온 단일 기록(예: SayuModal "이 기록으로 예언하기")
+  useEffect(() => {
+    const incoming = location.state?.incomingRecord as RecordItem | undefined;
+    if (incoming && incoming.content) {
+      setTrack('single');
+      setSelectedRecord(incoming);
+      setSelectedFormat(incoming.format);
+      setStep('preview');
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const analyzeRecord = async () => {
+    if (!selectedRecord || analyzing) return;
+    setAnalyzing(true);
+    try {
+      const fn = httpsCallable(functions, 'analyzeRecordForProphecy');
+      const res: any = await fn({ content: selectedRecord.content });
+      const d = res.data;
+      setExtractedChars(d.chars || '');
+      setExtractedDesire(d.desire || '');
+      setExtractedShackle(d.shackle || '');
+      setExtractedEvents(d.events || '');
+    } catch (e) {
+      console.error('분석 실패', e);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   const goToSynopsis = () => {
     if (!selectedRecord) return;
     navigate('/novel-synopsis', {
@@ -126,6 +168,10 @@ export function RecordProphecyPage() {
         prophecyType,
         timeOption,
         question,
+        extractedChars,
+        extractedDesire,
+        extractedShackle,
+        extractedEvents,
       }
     });
   };
@@ -180,7 +226,8 @@ export function RecordProphecyPage() {
     <div style={styles.container}>
       <div style={styles.header}>
         <button onClick={() => step === 'track' ? navigate(-1) : setStep(
-          step === 'items' ? 'preview' :
+          step === 'items' ? 'analyze' :
+          step === 'analyze' ? 'preview' :
           step === 'preview' ? 'formatList' :
           step === 'formatList' ? 'list' :
           step === 'list' ? 'track' : 'track'
@@ -336,9 +383,98 @@ export function RecordProphecyPage() {
             <button style={styles.btnSecondary} onClick={() => setStep('list')}>
               ← 다른 기록 보기
             </button>
-            <button style={styles.btnPrimary} onClick={() => setStep('items')}>
-              🔮 시놉시스로 확정
+            <button style={styles.btnPrimary} onClick={() => { analyzeCalledRef.current = false; setStep('analyze'); }}>
+              🤖 AI로 항목 자동분석
             </button>
+          </>
+        )}
+
+        {step === 'analyze' && (
+          <>
+            <div style={{ ...styles.card, background: '#EEF3FA', border: '0.5px solid #B5D4F4' }}>
+              <p style={{ fontSize: 11, color: '#9ca3af', marginBottom: 4 }}>선택된 기록</p>
+              <p style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E' }}>{selectedRecord?.title}</p>
+            </div>
+
+            {!analyzing && !extractedChars && !extractedDesire && !extractedShackle && !extractedEvents && (
+              <button style={styles.btnPrimary} onClick={async () => { analyzeCalledRef.current = true; await analyzeRecord(); }}>
+                🤖 AI로 기록 분석하기
+              </button>
+            )}
+
+            {analyzing && (
+              <div style={{ textAlign: 'center', padding: 32, color: '#1A3C6E', fontSize: 14 }}>
+                ⏳ AI가 기록을 분석 중입니다...
+              </div>
+            )}
+
+            {!analyzing && (extractedChars || extractedDesire || extractedShackle || extractedEvents) && (
+              <>
+                <div style={styles.card}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginBottom: 12 }}>📊 AI 분석 결과</p>
+
+                  {/* 등장인물 */}
+                  <div style={{ marginBottom: 12 }}>
+                    <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
+                      👤 등장인물 {extractedChars ? <span style={{ color: '#10b981' }}>✅</span> : <span style={{ color: '#f59e0b' }}>✏️ 입력 필요</span>}
+                    </p>
+                    <input
+                      value={extractedChars}
+                      onChange={e => setExtractedChars(e.target.value)}
+                      placeholder="예: 나, 아내, 딸 찬미"
+                      style={{ width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: '#374151', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  {/* 소망 */}
+                  <div style={{ marginBottom: 12 }}>
+                    <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
+                      🌱 소망 {extractedDesire ? <span style={{ color: '#10b981' }}>✅</span> : <span style={{ color: '#f59e0b' }}>✏️ 입력 필요</span>}
+                    </p>
+                    <input
+                      value={extractedDesire}
+                      onChange={e => setExtractedDesire(e.target.value)}
+                      placeholder="예: Flutter 앱 출시, 건강 회복"
+                      style={{ width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: '#374151', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  {/* 족쇄 */}
+                  <div style={{ marginBottom: 12 }}>
+                    <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
+                      ⛓️ 극복할 것 {extractedShackle ? <span style={{ color: '#10b981' }}>✅</span> : <span style={{ color: '#f59e0b' }}>✏️ 입력 필요</span>}
+                    </p>
+                    <input
+                      value={extractedShackle}
+                      onChange={e => setExtractedShackle(e.target.value)}
+                      placeholder="예: 게으름, 두려움, 경제적 어려움"
+                      style={{ width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: '#374151', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  {/* 주요 사건 */}
+                  <div style={{ marginBottom: 4 }}>
+                    <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
+                      📌 주요 사건 {extractedEvents ? <span style={{ color: '#10b981' }}>✅</span> : <span style={{ color: '#f59e0b' }}>✏️ 입력 필요</span>}
+                    </p>
+                    <textarea
+                      value={extractedEvents}
+                      onChange={e => setExtractedEvents(e.target.value)}
+                      placeholder="예: 앱 개발 시작, 사업자 등록, 첫 유료 구독자"
+                      rows={3}
+                      style={{ width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: '#374151', outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                <button style={styles.btnPrimary} onClick={() => setStep('items')}>
+                  ✅ 항목 확인 완료 — 예언 설정으로
+                </button>
+                <button style={styles.btnSecondary} onClick={() => { setExtractedChars(''); setExtractedDesire(''); setExtractedShackle(''); setExtractedEvents(''); }}>
+                  🔄 다시 분석하기
+                </button>
+              </>
+            )}
           </>
         )}
 

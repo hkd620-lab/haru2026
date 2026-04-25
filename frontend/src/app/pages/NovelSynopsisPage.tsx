@@ -20,6 +20,10 @@ export function NovelSynopsisPage() {
   const prophecyType = location.state?.prophecyType || '나의 미래';
   const timeOption = location.state?.timeOption || '3년 후';
   const question = location.state?.question || '';
+  const extractedChars = location.state?.extractedChars || '';
+  const extractedDesire = location.state?.extractedDesire || '';
+  const extractedShackle = location.state?.extractedShackle || '';
+  const extractedEvents = location.state?.extractedEvents || '';
 
   const handleGenerateSynopsis = async () => {
     setIsGenerating(true);
@@ -28,7 +32,8 @@ export function NovelSynopsisPage() {
       const functions = getFunctions(undefined, 'asia-northeast3');
       const fn = httpsCallable(functions, 'generateHaruProphecy');
       const payload = fromRecord
-        ? { fromRecord: true, recordContent, recordTitle, recordDate, recordFormat, prophecyType, timeOption, question, type: 'synopsis' }
+        ? { fromRecord: true, recordContent, recordTitle, recordDate, recordFormat, prophecyType, timeOption, question,
+            extractedChars, extractedDesire, extractedShackle, extractedEvents, type: 'synopsis' }
         : { ...settings, type: 'synopsis' };
       const result: any = await fn(payload);
       setSynopsis(result.data.text);
@@ -49,7 +54,8 @@ export function NovelSynopsisPage() {
       const functions = getFunctions(undefined, 'asia-northeast3');
       const fn = httpsCallable(functions, 'generateHaruProphecy');
       const payload = fromRecord
-        ? { fromRecord: true, recordContent, recordTitle, recordDate, recordFormat, prophecyType, timeOption, question, type: 'story' }
+        ? { fromRecord: true, recordContent, recordTitle, recordDate, recordFormat, prophecyType, timeOption, question,
+            extractedChars, extractedDesire, extractedShackle, extractedEvents, type: 'story' }
         : { ...settings, type: 'story' };
       const result: any = await fn(payload);
       navigate('/novel-story', { state: { story: result.data.text, settings, fromRecord } });

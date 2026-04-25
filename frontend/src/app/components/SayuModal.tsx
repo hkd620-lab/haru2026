@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
 import { X, Printer, Copy, Download, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSubscription } from '../hooks/useSubscription';
@@ -65,6 +66,7 @@ export function SayuModal({
 }: SayuModalProps) {
   const { isPremium } = useSubscription();
   const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
   const { showLoading, showLoadingWithProgress, updateProgress, hideLoading } = useLoading();
   const [editedContent, setEditedContent] = useState(content);
   const [isSaving, setIsSaving] = useState(false);
@@ -1559,6 +1561,49 @@ export function SayuModal({
               )}
             </button>
           </div>
+
+          {/* 🔮 이 기록으로 예언하기 — 본문 있을 때만 노출 */}
+          {(editedContent?.trim() || content?.trim()) && (
+            <div style={{ marginBottom: 12 }}>
+              <button
+                onClick={() => {
+                  const recordContent = editedContent?.trim() || content?.trim() || '';
+                  if (!recordContent) {
+                    toast.error('예언할 기록 내용이 없습니다.');
+                    return;
+                  }
+                  onClose();
+                  navigate('/record-prophecy', {
+                    state: {
+                      incomingRecord: {
+                        date: recordDate || '',
+                        format: format || formatKey || '',
+                        title: editedTitle || title || `${format || ''} — ${recordDate || ''}`,
+                        content: recordContent,
+                        rawData: originalData || {},
+                      },
+                    },
+                  });
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1.5px solid #1A3C6E',
+                  borderRadius: 10,
+                  background: 'linear-gradient(90deg, #EEF3FA 0%, #fff 100%)',
+                  color: '#1A3C6E',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                🔮 이 기록으로 예언하기
+              </button>
+              <p style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', marginTop: 6 }}>
+                AI가 이 기록을 분석해 미래 서사를 만들어줍니다
+              </p>
+            </div>
+          )}
 
           {/* 버튼 */}
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
