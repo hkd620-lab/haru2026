@@ -1621,6 +1621,7 @@ mysentence와 korean은 반드시 채워야 합니다.
 
     // 3. GPT-4o 검증
     let verified = parsed;
+    let gptChanges: string[] = [];
     try {
       const OPENAI_KEY = OPENAI_API_KEY_SECRET.value();
       const gptPrompt = `당신은 영어 문법 전문가입니다. 아래 영어 성경 구절의 문법 분석 JSON을 능동적으로 검토하고 개선하세요.
@@ -1709,8 +1710,14 @@ ${JSON.stringify(parsed, null, 2)}`;
       );
       const gptRaw = gptRes.data.choices[0].message.content.trim();
       const gptClean = gptRaw.replace(/```json|```/g, '').trim();
-      verified = JSON.parse(gptClean);
-      logger.info(`[getGrammarExplain] GPT-4o 검증 완료: ${verseKey}`);
+      const gptParsed = JSON.parse(gptClean);
+      verified = gptParsed.result ?? gptParsed;
+      gptChanges = gptParsed.changes ?? [];
+      if (gptChanges.length > 0) {
+        logger.info(`[getGrammarExplain] GPT-4o 수정 내역 (${verseKey}): ${JSON.stringify(gptChanges)}`);
+      } else {
+        logger.info(`[getGrammarExplain] GPT-4o 수정 없음: ${verseKey}`);
+      }
     } catch (gptErr) {
       logger.warn(`[getGrammarExplain] GPT-4o 검증 실패, Gemini 결과 사용: ${verseKey}`, gptErr);
       // GPT 실패 시 Gemini 결과 그대로 사용 (서비스 중단 없음)
@@ -1721,6 +1728,7 @@ ${JSON.stringify(parsed, null, 2)}`;
       ...verified,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       verifiedByGPT: true,
+      gptChanges: gptChanges,
     });
 
     logger.info(`[getGrammarExplain] 캐시 저장: ${verseKey}`);
