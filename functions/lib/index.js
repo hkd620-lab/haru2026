@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateHaruProphecy = exports.refreshNews = exports.fetchTopNews = exports.translateToEnglish = exports.getVerseQuiz = exports.getGrammarExplain = exports.getWordMeaning = exports.generateBook = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
+exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.fetchTopNews = exports.translateToEnglish = exports.getVerseQuiz = exports.getGrammarExplain = exports.getWordMeaning = exports.generateBook = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -1614,6 +1614,82 @@ ${allItems.join('\n\n---\n\n')}
         return { success: false };
     }
 });
+// ===== 🔮 HARU예언 — 기록 자동 분석 (인물·욕망·족쇄·사건 추출) =====
+exports.analyzeRecordForProphecy = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+    timeoutSeconds: 60,
+}, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const { content } = request.data;
+    if (!content || typeof content !== 'string' || content.trim().length < 10) {
+        throw new https_2.HttpsError('invalid-argument', '분석할 기록 내용이 너무 짧습니다.');
+    }
+    const systemPrompt = `당신은 HARU예언 분석가입니다.
+사용자가 작성한 기록(일기·에세이·여행기 등)에서 미래 예언 소설 생성에 필요한 핵심 항목을 추출합니다.
+
+[추출 항목 — 4가지]
+1. chars (등장인물): 기록에 등장한 사람들. 쉼표로 구분된 한 줄 문자열. 본인은 "나"로 표기. 최대 5명.
+2. desire (소망): 작성자가 지금 가장 원하는 것·이루고 싶은 것. 짧은 한 문장.
+3. shackle (극복할 것): 작성자를 막고 있는 것·두려움·제약. 짧은 한 문장.
+4. events (주요 사건): 기록에 나타난 의미 있는 사건/장면. 쉼표로 구분된 짧은 문구들. 최대 5개.
+
+[출력 규칙]
+- 반드시 JSON 한 덩어리만 출력. 마크다운/설명 절대 금지.
+- 모든 필드는 string. 명확히 읽히지 않으면 빈 문자열("")로.
+- 추측하거나 만들어내지 말 것. 빈 칸으로 두고 사용자가 직접 채우게 한다.
+
+출력 형식 (필드 4개 모두 string):
+{
+  "chars": "나, 아내, 딸 찬미",
+  "desire": "Flutter 앱 출시",
+  "shackle": "두려움, 게으름",
+  "events": "앱 개발 시작, 사업자 등록"
+}`;
+    const userPrompt = `[기록 내용]\n${content.slice(0, 4000)}\n\n위 기록에서 4개 항목을 추출해 JSON으로만 답하세요.`;
+    try {
+        const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+        const model = genAI.getGenerativeModel({
+            model: 'gemini-3.1-flash-lite-preview',
+            systemInstruction: systemPrompt,
+        });
+        const result = await model.generateContent(userPrompt);
+        let text = result.response.text().trim();
+        text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+        let parsed = { chars: '', desire: '', shackle: '', events: '' };
+        try {
+            parsed = JSON.parse(text);
+        }
+        catch {
+            const m = text.match(/\{[\s\S]*\}/);
+            if (m) {
+                try {
+                    parsed = JSON.parse(m[0]);
+                }
+                catch { /* keep defaults */ }
+            }
+        }
+        const toStr = (v) => {
+            if (typeof v === 'string')
+                return v;
+            if (Array.isArray(v))
+                return v.join(', ');
+            return '';
+        };
+        return {
+            chars: toStr(parsed.chars),
+            desire: toStr(parsed.desire),
+            shackle: toStr(parsed.shackle),
+            events: toStr(parsed.events),
+        };
+    }
+    catch (error) {
+        console.error('analyzeRecordForProphecy 실패:', error);
+        throw new https_2.HttpsError('internal', '기록 분석에 실패했습니다.');
+    }
+});
 // ===== 🔮 HARU예언 시놉시스 생성 =====
 exports.generateHaruProphecy = (0, https_2.onCall)({
     region: 'asia-northeast3',
@@ -1623,7 +1699,7 @@ exports.generateHaruProphecy = (0, https_2.onCall)({
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
-    const { motive, motiveCustom, chars, birth, desire, shackle, events, luck, unluck, narrative, type, fromRecord, recordContent, recordTitle, recordDate, recordFormat, prophecyType, timeOption, question } = request.data;
+    const { motive, motiveCustom, chars, birth, desire, shackle, events, luck, unluck, narrative, type, fromRecord, recordContent, recordTitle, recordDate, recordFormat, prophecyType, timeOption, question, extractedChars, extractedDesire, extractedShackle, extractedEvents } = request.data;
     // type: 'synopsis' | 'story'
     if (!fromRecord && !motive) {
         throw new https_2.HttpsError('invalid-argument', '예언 모티브가 필요합니다.');
@@ -1692,6 +1768,22 @@ exports.generateHaruProphecy = (0, https_2.onCall)({
 6. 독자가 "내 이야기 같다"고 느끼게 쓸 것`;
         let userPrompt;
         if (fromRecord) {
+            const toLine = (v) => {
+                if (!v)
+                    return '';
+                if (Array.isArray(v))
+                    return v.filter(Boolean).join(', ');
+                return String(v).trim();
+            };
+            const charsStr = toLine(extractedChars);
+            const desireStr = toLine(extractedDesire);
+            const shackleStr = toLine(extractedShackle);
+            const eventsStr = toLine(extractedEvents);
+            const charsLine = charsStr ? `[등장 인물]: ${charsStr}` : '';
+            const desireLine = desireStr ? `[작성자의 소망]: ${desireStr}` : '';
+            const shackleLine = shackleStr ? `[극복할 것]: ${shackleStr}` : '';
+            const eventsLine = eventsStr ? `[주요 사건]: ${eventsStr}` : '';
+            const extractedBlock = [charsLine, desireLine, shackleLine, eventsLine].filter(Boolean).join('\n');
             userPrompt = `
 [창작 모드]: 내 기록으로 창작
 [기록 제목]: ${recordTitle}
@@ -1700,11 +1792,11 @@ exports.generateHaruProphecy = (0, https_2.onCall)({
 [예언 종류]: ${prophecyType}
 [시간 배경]: ${timeOption}
 [핵심 질문]: ${question}
-
+${extractedBlock ? '\n[AI가 기록에서 추출한 핵심 요소]:\n' + extractedBlock + '\n' : ''}
 [실제 기록 내용]:
 ${recordContent}
 
-위 실제 기록을 바탕으로 ${timeOption} 뒤의 이야기를 예언 소설 형식으로 작성해주세요.
+위 실제 기록과 추출된 핵심 요소를 바탕으로 ${timeOption} 뒤의 이야기를 예언 소설 형식으로 작성해주세요.
 기록 속 인물, 감정, 사건을 최대한 살려서 "내 이야기 같다"는 느낌이 들게 해주세요.
 예언 종류: ${prophecyType}
 

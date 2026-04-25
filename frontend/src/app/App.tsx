@@ -30,6 +30,7 @@ import { BiblePage } from './pages/BiblePage';
 import { DiaryLearnPage } from './pages/DiaryLearnPage';
 import { NovelStudio } from './pages/NovelStudio';
 import { NovelSynopsisPage } from './pages/NovelSynopsisPage';
+import { NovelStoryPage } from './pages/NovelStoryPage';
 import { RecordProphecyPage } from './pages/ProphecyFromRecord';
 import { BottomNav } from './components/BottomNav';
 import { Footer } from './components/Footer';
@@ -119,6 +120,7 @@ function App() {
               <Route path="/news" element={<NewsPage />} />
               <Route path="/novel-studio" element={<NovelStudio />} />
               <Route path="/novel-synopsis" element={<NovelSynopsisPage />} />
+              <Route path="/novel-story" element={<NovelStoryPage />} />
               <Route path="/record-prophecy" element={<RecordProphecyPage />} />
 
               {/* 영어성경학습 */}
