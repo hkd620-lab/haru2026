@@ -579,7 +579,12 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/src/app/pages/NovelStudio.tsx
 - 다음할일: 각 탭 본문 아래 완료 버튼 동작 + narrative 에서 시놉시스 페이지 라우팅 확인
 
+### 2026-04-26 (59차)
+- 완료: 하루AI지식창고 별점(★★★) 기능 추가. handleStarRating(logId, star) — 동일 별 재클릭 시 0(취소), 다르면 해당 별점 저장. Firestore users/{uid}/records/{logId}.star_rating 업데이트 + 로컬 aiLogs state 즉시 반영. 카드 헤더 📋 복사 버튼 왼쪽에 3개 별 버튼 배치(활성 앰버 #F59E0B / 비활성 그레이 #e5e7eb, 14px, 카드 클릭 버블링 차단)
+- 수정파일: frontend/src/app/pages/SayuPage.tsx
+- 다음할일: 배포 후 별점 클릭 → 색 변경 + Firestore 저장/새로고침 유지 확인. 별점 기준 정렬·필터 기능 추가 검토
+
 ---
 
-최종 업데이트: 2026.04.24
+최종 업데이트: 2026.04.26
 HARU2026 by JOYEL — 허 교장님 전용
