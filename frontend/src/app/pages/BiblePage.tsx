@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { getAuth } from 'firebase/auth';
 import genesisData from '../../data/genesis_1.json';
 
 interface Verse {
@@ -8,8 +9,17 @@ interface Verse {
   text: string;
 }
 
+const DEV_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+
 export function BiblePage() {
   const navigate = useNavigate();
+  const currentUid = getAuth().currentUser?.uid ?? '';
+  const isDev = currentUid === DEV_UID;
+  const [errorPopup, setErrorPopup] = useState<{
+    verseText: string;
+    loading: boolean;
+    changes?: string[];
+  } | null>(null);
   const [ttsPlaying, setTtsPlaying] = useState<string | null>(null);
   const [ttsLoading, setTtsLoading] = useState<string | null>(null);
   const [ttsSpeed, setTtsSpeed] = useState<number>(1.0);
@@ -143,6 +153,33 @@ export function BiblePage() {
       });
     } catch {
       setQuizPopup(null);
+    }
+  }, []);
+
+  const handleErrorClick = useCallback(async (verse: Verse) => {
+    setErrorPopup({ verseText: verse.text, loading: true });
+    try {
+      const db = (await import('firebase/firestore')).getFirestore();
+      const { doc, getDoc } = await import('firebase/firestore');
+      const verseKey = `genesis_1_${verse.verse}`;
+      const cacheRef = doc(db, 'grammarCache', verseKey);
+      const snap = await getDoc(cacheRef);
+      if (snap.exists()) {
+        const data = snap.data();
+        setErrorPopup({
+          verseText: verse.text,
+          loading: false,
+          changes: data.gptChanges ?? [],
+        });
+      } else {
+        setErrorPopup({
+          verseText: verse.text,
+          loading: false,
+          changes: [],
+        });
+      }
+    } catch (e) {
+      setErrorPopup({ verseText: verse.text, loading: false, changes: [] });
     }
   }, []);
 
@@ -484,12 +521,104 @@ export function BiblePage() {
                 >
                   🎯 퀴즈
                 </button>
+                {/* 오류수정 — 개발자 전용 */}
+                {isDev && (
+                  <button
+                    onClick={() => handleErrorClick(verse)}
+                    style={{
+                      padding: '6px 14px', borderRadius: 20,
+                      border: '2px solid #534AB7', backgroundColor: '#EEEDFE',
+                      color: '#3C3489', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    🔍 오류수정
+                  </button>
+                )}
               </div>
             )}
           </div>
         ))}
       </div>
     </div>
+
+      {/* 오류수정 팝업 — 개발자 전용 */}
+      {errorPopup && (
+        <div
+          onClick={() => setErrorPopup(null)}
+          style={{
+            position: 'fixed', inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              backgroundColor: '#fff', borderRadius: 20,
+              padding: 16, width: '90%', maxWidth: 400,
+              maxHeight: '80vh', overflowY: 'auto',
+            }}
+          >
+            <div style={{
+              display: 'flex', justifyContent: 'space-between',
+              alignItems: 'center', marginBottom: 12,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 16, fontWeight: 600, color: '#1A3C6E' }}>GPT 오류수정 내역</span>
+                <span style={{
+                  fontSize: 11, background: '#EEEDFE', color: '#3C3489',
+                  padding: '2px 8px', borderRadius: 99, fontWeight: 500,
+                }}>개발자 전용</span>
+              </div>
+              <button onClick={() => setErrorPopup(null)} style={{
+                background: 'none', border: 'none', fontSize: 20,
+                color: '#999', cursor: 'pointer',
+              }}>×</button>
+            </div>
+
+            <p style={{ fontSize: 12, color: '#888', marginBottom: 12 }}>
+              {errorPopup.verseText.slice(0, 40)}...
+            </p>
+
+            {errorPopup.loading ? (
+              <p style={{ color: '#999', fontSize: 14, textAlign: 'center' }}>불러오는 중... 🔍</p>
+            ) : errorPopup.changes && errorPopup.changes.length > 0 ? (
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {errorPopup.changes.map((change, idx) => {
+                    const isPass = change.includes('수정 없음');
+                    return (
+                      <div key={idx} style={{
+                        background: '#f8f8f8', borderRadius: 8, padding: 12,
+                        borderLeft: `3px solid ${isPass ? '#1D9E75' : '#534AB7'}`,
+                      }}>
+                        <p style={{ fontSize: 13, color: '#333', margin: 0 }}>{change}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{
+                  marginTop: 16, padding: 10,
+                  background: '#EAF3DE', borderRadius: 8,
+                }}>
+                  <p style={{ fontSize: 12, color: '#3B6D11', margin: 0 }}>
+                    총 {errorPopup.changes.filter(c => !c.includes('수정 없음')).length}개 수정 ·{' '}
+                    {errorPopup.changes.filter(c => c.includes('수정 없음')).length}개 통과
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div style={{ padding: 16, textAlign: 'center' }}>
+                <p style={{ fontSize: 14, color: '#888' }}>수정 내역이 없습니다.</p>
+                <p style={{ fontSize: 12, color: '#aaa', marginTop: 4 }}>
+                  아직 GPT 검증이 실행되지 않았거나 수정 사항이 없습니다.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 단어 뜻 팝업 */}
       {wordPopup && (
