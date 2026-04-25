@@ -208,6 +208,36 @@ PortOne Store ID: store-7a100ca2-8d9f-4015-8fdb-723e4527e2c2
 
 ---
 
+## 🛡️ 작업 전 필수 안전 수칙 (매번 반드시 실행)
+
+### 1. Git 안전 저장 (작업 시작 전)
+```bash
+cd ~/HARU2026 && git add -A && git commit -m "작업 전 안전 저장"
+```
+
+### 2. 수정할 파일 백업
+```bash
+# Functions 수정 시
+cp ~/HARU2026/functions/src/index.ts ~/HARU2026/functions/src/index.ts.bak
+
+# 프론트엔드 페이지 수정 시 (파일명 맞게 변경)
+cp ~/HARU2026/frontend/src/app/pages/[파일명].tsx ~/HARU2026/frontend/src/app/pages/[파일명].tsx.bak
+```
+
+> ⚠️ .bak / .old / .old2 / .backup_* 파일은 .gitignore 등록됨 — Git에 올라가지 않음
+
+### 3. 문제 발생 시 복구 방법
+```bash
+# 파일 직접 복구
+cp ~/HARU2026/functions/src/index.ts.bak ~/HARU2026/functions/src/index.ts
+
+# Git으로 특정 시점 복구
+git log --oneline -10                                      # 커밋 목록 확인
+git checkout 커밋ID -- functions/src/index.ts             # 해당 파일만 복구
+```
+
+---
+
 ## 🔧 CC 작업 원칙
 
 1. 요청된 것만 수정 — 임의 변경 절대 금지
@@ -313,7 +343,12 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/src/app/pages/BookCreate.tsx, functions/src/bookStudio.ts
 - 다음할일: 소스 2개 이상 입력 후 챕터 생성 테스트, Firestore books/{bookId}/chapters 확인
 
+### 2026-04-26
+- 완료: 작업 전 안전 수칙 추가 / 불필요한 CLAUDE-2.md 정리 / .gitignore 백업파일 제외 등록
+- 수정파일: frontend/.claude/CLAUDE.md, .gitignore
+- 다음할일: GPT-4o 검증 프롬프트 강화 (getGrammarExplain)
+
 ---
 
-최종 업데이트: 2026.04.13
+최종 업데이트: 2026.04.26
 HARU2026 by JOYEL — 허 교장님 전용
