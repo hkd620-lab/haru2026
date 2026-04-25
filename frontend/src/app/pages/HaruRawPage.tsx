@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { useLoading } from '../contexts/LoadingContext';
 
 interface LawArticle {
   articleStr: string;
@@ -15,6 +16,7 @@ export function HaruRawPage() {
   const [results, setResults] = useState<LawArticle[] | null>(null);
   const [aiSummary, setAiSummary] = useState('');
   const [error, setError] = useState('');
+  const { showLoading, hideLoading } = useLoading();
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,6 +26,7 @@ export function HaruRawPage() {
     setResults(null);
     setAiSummary('');
     setError('');
+    showLoading('AI가 법령을 검색 중입니다');
 
     try {
       const functions = getFunctions(undefined, 'asia-northeast3');
@@ -41,6 +44,7 @@ export function HaruRawPage() {
       setError('법령 검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
       setIsLoading(false);
+      hideLoading();
     }
   };
 

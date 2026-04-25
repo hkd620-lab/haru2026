@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../services/firestoreService';
 import { ChevronLeft } from 'lucide-react';
@@ -11,7 +13,7 @@ const FORMAT_PREFIX: Record<string, string> = {
 };
 
 type TrackType = 'single' | 'merge';
-type Step = 'track' | 'list' | 'preview' | 'items';
+type Step = 'track' | 'list' | 'formatList' | 'preview' | 'analyze' | 'items';
 
 interface RecordItem {
   date: string;
@@ -27,6 +29,7 @@ const TIME_OPTIONS = ['1년 후', '3년 후', '5년 후', '10년 후'];
 export function RecordProphecyPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [track, setTrack] = useState<TrackType>('single');
   const [step, setStep] = useState<Step>('track');
@@ -34,6 +37,7 @@ export function RecordProphecyPage() {
   const [records, setRecords] = useState<RecordItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<RecordItem | null>(null);
+  const [selectedFormat, setSelectedFormat] = useState<string>('');
 
   const [mergeFormat, setMergeFormat] = useState('일기');
   const [mergeStartDate, setMergeStartDate] = useState('');
@@ -45,28 +49,48 @@ export function RecordProphecyPage() {
   const [timeOption, setTimeOption] = useState('3년 후');
   const [question, setQuestion] = useState('');
 
+  // analyze step 관련
+  const [analyzing, setAnalyzing] = useState(false);
+  const [extractedChars, setExtractedChars] = useState('');
+  const [extractedDesire, setExtractedDesire] = useState('');
+  const [extractedShackle, setExtractedShackle] = useState('');
+  const [extractedEvents, setExtractedEvents] = useState('');
+  const analyzeCalledRef = useRef(false);
+
   useEffect(() => {
-    if (!user?.uid || track !== 'single') return;
+    if (!user?.uid) return;
     setLoading(true);
     firestoreService.getRecords(user.uid).then(all => {
       const items: RecordItem[] = [];
       all.forEach((rec: any) => {
         Object.entries(FORMAT_PREFIX).forEach(([fmt, prefix]) => {
-          const contentKey = `${prefix}_content`;
           const titleKey = `${prefix}_ai_title`;
-          if (rec[contentKey]) {
-            items.push({
-              date: rec.date,
-              format: fmt,
-              title: rec[titleKey] || `${fmt} — ${rec.date}`,
-              content: rec[contentKey],
-              rawData: rec,
-            });
-          }
+          // _content 키 또는 해당 prefix로 시작하는 아무 텍스트 필드 수집
+          const contentKey = `${prefix}_content`;
+          const recKeys = Object.keys(rec);
+          const prefixKeys = recKeys.filter(k =>
+            k.startsWith(`${prefix}_`) &&
+            !k.endsWith('_sayu') &&
+            !k.endsWith('_rating') &&
+            !k.endsWith('_images') &&
+            !k.endsWith('_ai_title') &&
+            typeof rec[k] === 'string' &&
+            (rec[k] as string).trim().length > 0
+          );
+          if (prefixKeys.length === 0) return;
+          const content = rec[contentKey] ||
+            prefixKeys.map(k => rec[k]).join('\n\n');
+          items.push({
+            date: rec.date,
+            format: fmt,
+            title: rec[titleKey] || `${fmt} — ${rec.date}`,
+            content,
+            rawData: rec,
+          });
         });
       });
       items.sort((a, b) => b.date.localeCompare(a.date));
-      setRecords(items.slice(0, 30));
+      setRecords(items);
       setLoading(false);
     });
   }, [user?.uid, track]);
@@ -101,6 +125,37 @@ export function RecordProphecyPage() {
     }
   };
 
+  // 외부에서 들어온 단일 기록(예: SayuModal "이 기록으로 예언하기")
+  useEffect(() => {
+    const incoming = location.state?.incomingRecord as RecordItem | undefined;
+    if (incoming && incoming.content) {
+      setTrack('single');
+      setSelectedRecord(incoming);
+      setSelectedFormat(incoming.format);
+      setStep('preview');
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const analyzeRecord = async () => {
+    if (!selectedRecord || analyzing) return;
+    setAnalyzing(true);
+    try {
+      const fn = httpsCallable(functions, 'analyzeRecordForProphecy');
+      const res: any = await fn({ content: selectedRecord.content });
+      const d = res.data;
+      setExtractedChars(d.chars || '');
+      setExtractedDesire(d.desire || '');
+      setExtractedShackle(d.shackle || '');
+      setExtractedEvents(d.events || '');
+    } catch (e) {
+      console.error('분석 실패', e);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   const goToSynopsis = () => {
     if (!selectedRecord) return;
     navigate('/novel-synopsis', {
@@ -113,6 +168,10 @@ export function RecordProphecyPage() {
         prophecyType,
         timeOption,
         question,
+        extractedChars,
+        extractedDesire,
+        extractedShackle,
+        extractedEvents,
       }
     });
   };
@@ -166,7 +225,13 @@ export function RecordProphecyPage() {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <button onClick={() => step === 'track' ? navigate(-1) : setStep(step === 'items' ? 'preview' : step === 'preview' ? 'list' : 'track')}
+        <button onClick={() => step === 'track' ? navigate(-1) : setStep(
+          step === 'items' ? 'analyze' :
+          step === 'analyze' ? 'preview' :
+          step === 'preview' ? 'formatList' :
+          step === 'formatList' ? 'list' :
+          step === 'list' ? 'track' : 'track'
+        )}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
           <ChevronLeft size={22} color="#1A3C6E" />
         </button>
@@ -179,12 +244,12 @@ export function RecordProphecyPage() {
           <>
             <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>어떤 기록으로 창작할까요?</p>
             <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-              <div style={styles.trackCard(track === 'single')} onClick={() => setTrack('single')}>
+              <div style={styles.trackCard(track === 'single')} onClick={() => { setTrack('single'); setStep('list'); }}>
                 <div style={{ fontSize: 28, marginBottom: 6 }}>📄</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E' }}>단일 기록</div>
                 <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>하루의 기록 한 편</div>
               </div>
-              <div style={styles.trackCard(track === 'merge')} onClick={() => setTrack('merge')}>
+              <div style={styles.trackCard(track === 'merge')} onClick={() => { setTrack('merge'); setStep('list'); }}>
                 <div style={{ fontSize: 28, marginBottom: 6 }}>📚</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E' }}>기록 합치기</div>
                 <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>여러 날의 합본</div>
@@ -195,18 +260,54 @@ export function RecordProphecyPage() {
                 💡 기록합치기는 SAYU 페이지에서 합본이 있는 기록을 날짜 범위로 선택합니다. SAYU 다듬기가 완료된 기록만 포함됩니다.
               </div>
             )}
-            <button style={styles.btnPrimary} onClick={() => setStep('list')}>
-              다음 — 기록 선택하기
-            </button>
           </>
         )}
 
         {step === 'list' && track === 'single' && (
           <>
-            <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>창작에 사용할 기록을 선택하세요</p>
-            {loading && <p style={{ color: '#9ca3af', textAlign: 'center', padding: 40 }}>불러오는 중...</p>}
-            {records.map((rec, i) => (
-              <div key={i} style={styles.recordItem(selectedRecord?.date === rec.date && selectedRecord?.format === rec.format)}
+            <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>
+              형식을 선택하세요
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {['일기', '에세이', '여행기록', '텃밭일지', '애완동물관찰일지', '육아일기', '선교보고', '일반보고', '업무일지', '메모'].map(fmt => (
+                <div
+                  key={fmt}
+                  onClick={() => {
+                    const fmtRecords = records.filter(r => r.format === fmt);
+                    if (fmtRecords.length === 0) {
+                      return;
+                    }
+                    setSelectedFormat(fmt);
+                    setStep('formatList');
+                  }}
+                  style={{
+                    border: '0.5px solid #e5e7eb',
+                    background: '#fff',
+                    borderRadius: 10,
+                    padding: '12px 16px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <span style={{ fontSize: 14, color: '#1A3C6E', fontWeight: 500 }}>{fmt}</span>
+                  <span style={{ fontSize: 12, color: '#9ca3af' }}>
+                    {records.filter(r => r.format === fmt).length}편
+                  </span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {step === 'formatList' && (
+          <>
+            <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>
+              {selectedFormat} 기록을 선택하세요
+            </p>
+            {records.filter(r => r.format === selectedFormat).map((rec, i) => (
+              <div key={i} style={styles.recordItem(false)}
                 onClick={() => { setSelectedRecord(rec); setStep('preview'); }}>
                 <div style={{ fontSize: 10, color: '#9ca3af' }}>{rec.date} · {rec.format}</div>
                 <div style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E', margin: '3px 0' }}>{rec.title}</div>
@@ -282,9 +383,98 @@ export function RecordProphecyPage() {
             <button style={styles.btnSecondary} onClick={() => setStep('list')}>
               ← 다른 기록 보기
             </button>
-            <button style={styles.btnPrimary} onClick={() => setStep('items')}>
-              🔮 시놉시스로 확정
+            <button style={styles.btnPrimary} onClick={() => { analyzeCalledRef.current = false; setStep('analyze'); }}>
+              🤖 AI로 항목 자동분석
             </button>
+          </>
+        )}
+
+        {step === 'analyze' && (
+          <>
+            <div style={{ ...styles.card, background: '#EEF3FA', border: '0.5px solid #B5D4F4' }}>
+              <p style={{ fontSize: 11, color: '#9ca3af', marginBottom: 4 }}>선택된 기록</p>
+              <p style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E' }}>{selectedRecord?.title}</p>
+            </div>
+
+            {!analyzing && !extractedChars && !extractedDesire && !extractedShackle && !extractedEvents && (
+              <button style={styles.btnPrimary} onClick={async () => { analyzeCalledRef.current = true; await analyzeRecord(); }}>
+                🤖 AI로 기록 분석하기
+              </button>
+            )}
+
+            {analyzing && (
+              <div style={{ textAlign: 'center', padding: 32, color: '#1A3C6E', fontSize: 14 }}>
+                ⏳ AI가 기록을 분석 중입니다...
+              </div>
+            )}
+
+            {!analyzing && (extractedChars || extractedDesire || extractedShackle || extractedEvents) && (
+              <>
+                <div style={styles.card}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginBottom: 12 }}>📊 AI 분석 결과</p>
+
+                  {/* 등장인물 */}
+                  <div style={{ marginBottom: 12 }}>
+                    <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
+                      👤 등장인물 {extractedChars ? <span style={{ color: '#10b981' }}>✅</span> : <span style={{ color: '#f59e0b' }}>✏️ 입력 필요</span>}
+                    </p>
+                    <input
+                      value={extractedChars}
+                      onChange={e => setExtractedChars(e.target.value)}
+                      placeholder="예: 나, 아내, 딸 찬미"
+                      style={{ width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: '#374151', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  {/* 소망 */}
+                  <div style={{ marginBottom: 12 }}>
+                    <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
+                      🌱 소망 {extractedDesire ? <span style={{ color: '#10b981' }}>✅</span> : <span style={{ color: '#f59e0b' }}>✏️ 입력 필요</span>}
+                    </p>
+                    <input
+                      value={extractedDesire}
+                      onChange={e => setExtractedDesire(e.target.value)}
+                      placeholder="예: Flutter 앱 출시, 건강 회복"
+                      style={{ width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: '#374151', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  {/* 족쇄 */}
+                  <div style={{ marginBottom: 12 }}>
+                    <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
+                      ⛓️ 극복할 것 {extractedShackle ? <span style={{ color: '#10b981' }}>✅</span> : <span style={{ color: '#f59e0b' }}>✏️ 입력 필요</span>}
+                    </p>
+                    <input
+                      value={extractedShackle}
+                      onChange={e => setExtractedShackle(e.target.value)}
+                      placeholder="예: 게으름, 두려움, 경제적 어려움"
+                      style={{ width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: '#374151', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  {/* 주요 사건 */}
+                  <div style={{ marginBottom: 4 }}>
+                    <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
+                      📌 주요 사건 {extractedEvents ? <span style={{ color: '#10b981' }}>✅</span> : <span style={{ color: '#f59e0b' }}>✏️ 입력 필요</span>}
+                    </p>
+                    <textarea
+                      value={extractedEvents}
+                      onChange={e => setExtractedEvents(e.target.value)}
+                      placeholder="예: 앱 개발 시작, 사업자 등록, 첫 유료 구독자"
+                      rows={3}
+                      style={{ width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: '#374151', outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                <button style={styles.btnPrimary} onClick={() => setStep('items')}>
+                  ✅ 항목 확인 완료 — 예언 설정으로
+                </button>
+                <button style={styles.btnSecondary} onClick={() => { setExtractedChars(''); setExtractedDesire(''); setExtractedShackle(''); setExtractedEvents(''); }}>
+                  🔄 다시 분석하기
+                </button>
+              </>
+            )}
           </>
         )}
 

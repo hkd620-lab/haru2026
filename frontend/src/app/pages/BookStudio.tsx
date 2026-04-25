@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { collection, onSnapshot, orderBy, query, doc, updateDoc, getDocs } from 'firebase/firestore';
+import { db } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router';
 
@@ -33,16 +33,38 @@ export function BookStudio() {
 
   const navigate = useNavigate();
   const isDeveloper = user?.uid === DEVELOPER_UID;
+  const [editingBookId, setEditingBookId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
+
+  const handleTitleEdit = (book: Book) => {
+    setEditingBookId(book.id);
+    setEditingTitle(book.title);
+  };
+
+  const handleTitleSave = async (bookId: string) => {
+    if (!editingTitle.trim()) return;
+    await updateDoc(doc(db, 'books', bookId), { title: editingTitle.trim() });
+    setEditingBookId(null);
+  };
 
   useEffect(() => {
     const q = query(collection(db, 'books'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(
       q,
-      (snapshot) => {
-        const list = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...(doc.data() as Omit<Book, 'id'>),
-        }));
+      async (snapshot) => {
+        const list = await Promise.all(
+          snapshot.docs.map(async (d) => {
+            const data = d.data() as Omit<Book, 'id'>;
+            const chapSnap = await getDocs(
+              collection(db, 'books', d.id, 'chapters')
+            );
+            return {
+              id: d.id,
+              ...data,
+              chapterCount: chapSnap.size,
+            };
+          })
+        );
         setBooks(list);
         setLoading(false);
       },
@@ -71,13 +93,22 @@ export function BookStudio() {
             </h1>
           </div>
           {isDeveloper && (
-            <button
-              className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: '#1A3C6E' }}
-              onClick={() => navigate('/book-create')}
-            >
-              + 새 책 만들기
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: '#1A3C6E' }}
+                onClick={() => navigate('/book-create')}
+              >
+                📖 사람속으로
+              </button>
+              <button
+                className="px-4 py-2 rounded-lg text-sm font-medium border transition-opacity hover:opacity-90"
+                style={{ borderColor: '#10b981', color: '#10b981', backgroundColor: 'transparent' }}
+                onClick={() => navigate('/novel-studio')}
+              >
+                ✍️ 나도작가
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -106,28 +137,61 @@ export function BookStudio() {
                   backgroundColor: '#ffffff',
                   borderColor: '#e5e5e5',
                 }}
+                onClick={() => navigate(`/book-reader/${book.id}?bookTitle=${encodeURIComponent(book.title)}`)}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <h2
-                    className="text-base font-semibold leading-snug"
-                    style={{ color: '#1A3C6E' }}
-                  >
-                    {book.title || '(제목 없음)'}
-                  </h2>
+                  {editingBookId === book.id ? (
+                    <div className="flex items-center gap-2 flex-1">
+                      <input
+                        value={editingTitle}
+                        onChange={e => setEditingTitle(e.target.value)}
+                        className="flex-1 border rounded px-2 py-1 text-sm outline-none"
+                        style={{ borderColor: '#1A3C6E', fontSize: 16 }}
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => handleTitleSave(book.id)}
+                        className="text-xs font-semibold px-2 py-1 rounded text-white"
+                        style={{ backgroundColor: '#10b981' }}
+                      >저장</button>
+                      <button
+                        onClick={() => setEditingBookId(null)}
+                        className="text-xs font-semibold px-2 py-1 rounded"
+                        style={{ backgroundColor: '#f3f4f6', color: '#666' }}
+                      >취소</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 flex-1">
+                      <h2 className="text-base font-semibold leading-snug" style={{ color: '#1A3C6E' }}>
+                        {book.title || '(제목 없음)'}
+                      </h2>
+                      {isDeveloper && (
+                        <button onClick={() => handleTitleEdit(book)} style={{ fontSize: 14, color: '#999' }}>✏️</button>
+                      )}
+                    </div>
+                  )}
                   <span
                     className="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full"
                     style={{
-                      backgroundColor:
-                        STATUS_COLOR[book.status] + '22',
+                      backgroundColor: STATUS_COLOR[book.status] + '22',
                       color: STATUS_COLOR[book.status],
                     }}
                   >
                     {STATUS_LABEL[book.status] ?? book.status}
                   </span>
                 </div>
-                <p className="mt-2 text-sm" style={{ color: '#6b7280' }}>
-                  챕터 {book.chapterCount ?? 0}개
-                </p>
+                <div className="mt-2 flex items-center justify-between">
+                  <p className="text-sm" style={{ color: '#6b7280' }}>
+                    챕터 {book.chapterCount ?? 0}개
+                  </p>
+                  {isDeveloper && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); navigate(`/book-create?bookId=${book.id}&bookTitle=${encodeURIComponent(book.title)}`); }}
+                      className="text-xs font-semibold px-3 py-1 rounded-lg text-white"
+                      style={{ backgroundColor: '#1A3C6E' }}
+                    >+ 챕터 추가</button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

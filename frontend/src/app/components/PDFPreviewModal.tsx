@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { X, Download, Printer } from 'lucide-react';
+import { toast } from 'sonner';
 import { PDFDigest } from './PDFDigest';
+import { LoadingOverlay } from './LoadingOverlay';
 
 interface PDFPreviewModalProps {
   open: boolean;
@@ -25,13 +28,40 @@ interface PDFPreviewModalProps {
 }
 
 export function PDFPreviewModal({ open, onClose, data }: PDFPreviewModalProps) {
+  const [isPrinting, setIsPrinting] = useState(false);
+
   const handlePrint = () => {
-    window.print();
+    setIsPrinting(true);
+    toast('🖨️ 인쇄 화면이 열릴 때까지 기다려 주세요', {
+      duration: 5000,
+      style: {
+        background: '#1A3C6E',
+        color: '#fff',
+        fontSize: '14px',
+        borderRadius: '10px',
+      },
+    });
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => setIsPrinting(false), 1000);
+    }, 800);
   };
 
   const handleDownload = () => {
-    // Open print dialog which allows saving as PDF
-    window.print();
+    setIsPrinting(true);
+    toast('📄 인쇄 화면이 열릴 때까지 기다려 주세요', {
+      duration: 5000,
+      style: {
+        background: '#1A3C6E',
+        color: '#fff',
+        fontSize: '14px',
+        borderRadius: '10px',
+      },
+    });
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => setIsPrinting(false), 1000);
+    }, 800);
   };
 
   if (!open) return null;
@@ -114,6 +144,9 @@ export function PDFPreviewModal({ open, onClose, data }: PDFPreviewModalProps) {
           }
         }
       `}</style>
+
+      {/* PDF 생성 중 포도송이 오버레이 */}
+      <LoadingOverlay visible={isPrinting} message="PDF 생성 중..." />
     </div>
   );
 }

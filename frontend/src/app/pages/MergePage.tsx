@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS, FORMAT_PREFIX } from '../types/haruTypes';
 import { useSubscription } from '../hooks/useSubscription';
 
-type StarThreshold = 1 | 2 | 3 | 4 | 5;
+type MergeFilter = 'special' | 'all';
 type MergePeriod = 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'custom';
 
 interface PeriodOption {
@@ -23,7 +23,7 @@ export function MergePage() {
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<RecordFormat | null>(null);
-  const [starThreshold, setStarThreshold] = useState<StarThreshold>(3);
+  const [mergeFilter, setMergeFilter] = useState<MergeFilter>('all');
   const [selectedPeriod, setSelectedPeriod] = useState<MergePeriod | null>(null);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -133,21 +133,10 @@ export function MergePage() {
 
       const ratingKey = `${formatPrefix}_rating`;
       const starFiltered = formatFiltered.filter(record => {
+        if (mergeFilter === 'all') return true;
+        // 'special': rating > 0 인 기록만 (특별한 날 체크된 것)
         const rating = record[ratingKey];
-
-        // 별점이 없는(미설정) 기록은 항상 포함
-        if (rating === undefined || rating === null || rating === 0) {
-          console.log('   ✅ 통과(미설정):', record.date);
-          return true;
-        }
-
-        if (rating < starThreshold) {
-          console.log('   ❌ 별점 부족:', record.date, `(${rating}점 < ${starThreshold}점)`);
-          return false;
-        }
-
-        console.log('   ✅ 통과:', record.date, `(${rating}점)`);
-        return true;
+        return rating !== undefined && rating !== null && rating > 0;
       });
       
       console.log('4. 최종 병합 대상:', starFiltered.length, '개');
@@ -166,7 +155,7 @@ export function MergePage() {
           format: selectedFormat,
           startDate,
           endDate,
-          threshold: starThreshold,
+          filter: mergeFilter,
         },
       });
     } catch (error) {
@@ -181,6 +170,22 @@ export function MergePage() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col gap-3" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
       <div className="flex items-center justify-between">
         <MergeTitleAnimation />
+        <button
+          onClick={() => navigate('/sayu')}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '6px',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          title="닫기"
+        >
+          <X style={{ width: 22, height: 22, color: '#6B7280' }} />
+        </button>
       </div>
 
       {showNotice && (
@@ -271,45 +276,33 @@ export function MergePage() {
       <section className="bg-white rounded-lg shadow-sm overflow-hidden">
         <div className="px-4 pt-3 pb-2 flex items-center gap-2">
           <span style={{ fontSize: '13px', color: '#1A3C6E', fontWeight: 600 }}>
-            ⭐ 병합 기준 별점 선택
+            ✨ 병합 기준 선택
           </span>
           <span className="text-xs" style={{ color: '#999' }}>
-            — 최소 별점을 선택하세요
+            — 포함할 기록을 선택하세요
           </span>
         </div>
-
-        <div className="grid grid-cols-5 gap-0 px-3 pb-3">
-          {[1, 2, 3, 4, 5].map((stars, index) => {
-            const isSelected = starThreshold === stars;
+        <div className="grid grid-cols-2 gap-0 px-3 pb-3">
+          {([
+            { id: 'all', label: '📄 전체 기록', desc: '모든 기록 포함' },
+            { id: 'special', label: '✨ 특별한 날만', desc: '특별한 날 체크된 기록만' },
+          ] as { id: MergeFilter; label: string; desc: string }[]).map((opt, index) => {
+            const isSelected = mergeFilter === opt.id;
             return (
               <button
-                key={stars}
-                onClick={() => setStarThreshold(stars as StarThreshold)}
-                className="py-2 transition-all text-center"
+                key={opt.id}
+                onClick={() => setMergeFilter(opt.id)}
+                className="py-3 transition-all text-center"
                 style={{
                   backgroundColor: isSelected ? '#1A3C6E' : '#FEFBE8',
                   color: isSelected ? '#FAF9F6' : '#333',
-                  borderTop: `1px solid ${isSelected ? '#1A3C6E' : '#e5e5e5'}`,
-                  borderBottom: `1px solid ${isSelected ? '#1A3C6E' : '#e5e5e5'}`,
-                  borderLeft: index === 0
-                    ? `1px solid ${isSelected ? '#1A3C6E' : '#e5e5e5'}`
-                    : 'none',
-                  borderRight: `1px solid ${isSelected ? '#1A3C6E' : '#e5e5e5'}`,
-                  borderRadius:
-                    index === 0
-                      ? '6px 0 0 6px'
-                      : index === 4
-                      ? '0 6px 6px 0'
-                      : '0',
+                  border: `1px solid ${isSelected ? '#1A3C6E' : '#e5e5e5'}`,
+                  borderRadius: index === 0 ? '6px 0 0 6px' : '0 6px 6px 0',
                   fontWeight: isSelected ? 600 : 400,
                 }}
               >
-                <div style={{ fontSize: '10px', lineHeight: 1.3 }}>
-                  {'⭐'.repeat(stars)}
-                </div>
-                <div style={{ fontSize: '10px', marginTop: '2px' }}>
-                  {stars === 5 ? '5점만' : `${stars}점↑`}
-                </div>
+                <div style={{ fontSize: '13px' }}>{opt.label}</div>
+                <div style={{ fontSize: '10px', marginTop: '2px', opacity: 0.8 }}>{opt.desc}</div>
               </button>
             );
           })}

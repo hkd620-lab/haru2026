@@ -351,7 +351,6 @@ export function SayuPage() {
 
   // Fetch books when 읽을거리 is expanded
   useEffect(() => {
-    if (!user) return;
     if (!collapsedCategories.has('하루충전소') && !booksLoaded) {
       setBooksLoading(true);
       (async () => {

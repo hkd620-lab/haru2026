@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { LoadingProvider } from './contexts/LoadingContext';
 import { Toaster } from 'sonner';
 import { useAuth } from './contexts/AuthContext';
 import { HomePage } from './pages/HomePage';
@@ -23,6 +24,13 @@ import { PrivacyPage } from './pages/PrivacyPage';
 import { RefundPage } from './pages/RefundPage';
 import { BookStudio } from './pages/BookStudio';
 import { BookCreate } from './pages/BookCreate';
+import { BookReader } from './pages/BookReader';
+import { NewsPage } from './pages/NewsPage';
+import { BiblePage } from './pages/BiblePage';
+import { DiaryLearnPage } from './pages/DiaryLearnPage';
+import { NovelStudio } from './pages/NovelStudio';
+import { NovelSynopsisPage } from './pages/NovelSynopsisPage';
+import { NovelStoryPage } from './pages/NovelStoryPage';
 import { RecordProphecyPage } from './pages/ProphecyFromRecord';
 import { BottomNav } from './components/BottomNav';
 import { Footer } from './components/Footer';
@@ -80,6 +88,7 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
+        <LoadingProvider>
         <AppInitializer />
         <BrowserRouter>
         <div className="min-h-screen bg-[#FEFBE8] dark:bg-gray-900 print:bg-white">
@@ -104,12 +113,19 @@ function App() {
               <Route path="/stats" element={<StatisticsPage />} />
               <Route path="/stats/:format" element={<FormatStatisticsPage />} />
 
-              {/* HARU예언 */}
-              <Route path="/prophecy" element={<RecordProphecyPage />} />
-
               {/* 책 스튜디오 */}
               <Route path="/book-studio" element={<BookStudio />} />
               <Route path="/book-create" element={<BookCreate />} />
+              <Route path="/book-reader/:bookId" element={<BookReader />} />
+              <Route path="/news" element={<NewsPage />} />
+              <Route path="/novel-studio" element={<NovelStudio />} />
+              <Route path="/novel-synopsis" element={<NovelSynopsisPage />} />
+              <Route path="/novel-story" element={<NovelStoryPage />} />
+              <Route path="/record-prophecy" element={<RecordProphecyPage />} />
+
+              {/* 영어성경학습 */}
+              <Route path="/bible" element={<BiblePage />} />
+              <Route path="/diary-learn" element={<DiaryLearnPage />} />
 
               {/* 구독 페이지 */}
               <Route path="/subscription" element={<SubscriptionPage />} />
@@ -126,6 +142,7 @@ function App() {
           <Toaster position="top-center" toastOptions={{ className: 'no-print' }} />
         </div>
       </BrowserRouter>
+        </LoadingProvider>
     </AuthProvider>
     </ThemeProvider>
   );

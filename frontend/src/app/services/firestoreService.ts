@@ -49,7 +49,8 @@ class FirestoreService {
   // 기존 기록 관련 함수들
   async saveRecord(userId: string, recordData: Partial<HaruRecord>): Promise<string> {
     // 수정 7: 같은 날 같은 형식 여러 개 작성 지원 — 고유 ID 생성
-    const recordId = `${recordData.date}_${Date.now()}`;
+    // recordData.id가 명시되면 해당 ID 사용 (주식관리 개별 저장 등)
+    const recordId = recordData.id ?? `${recordData.date}_${Date.now()}`;
     const recordRef = doc(db, 'users', userId, 'records', recordId);
     await setDoc(recordRef, {
       ...recordData,
@@ -1066,19 +1067,22 @@ class FirestoreService {
 
   async getAiLogs(userEmail: string): Promise<HaruRecord[]> {
     try {
-      const { aiLibraryDb } = await import('../../firebase');
+      const { db, auth } = await import('../../firebase');
       const { collection, query, where, orderBy, getDocs } = await import('firebase/firestore');
-      const ref = collection(aiLibraryDb, 'conversations');
+      const uid = auth.currentUser?.uid;
+      if (!uid) return [];
+      const ref = collection(db, `users/${uid}/records`);
       const q = query(
         ref,
-        where('email', '==', userEmail),
-        orderBy('timestamp', 'desc')
+        where('type', '==', 'ai_log'),
+        orderBy('createdAt', 'desc')
       );
       const snap = await getDocs(q);
       return snap.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: doc.data().timestamp?.toDate?.().toISOString() ?? '',
+        createdAt: doc.data().createdAt?.toDate?.().toISOString()
+          ?? doc.data().createdAt ?? '',
       })) as HaruRecord[];
     } catch (error) {
       console.error('[getAiLogs] 실패:', error);

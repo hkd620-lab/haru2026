@@ -7,6 +7,8 @@ import { firestoreService } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { requestNotificationPermission } from '../services/notificationService';
 
+const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+
 export function HomePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -75,6 +77,20 @@ export function HomePage() {
             <span className="text-sm tracking-wide">SAYU 보기</span>
           </button>
         </div>
+
+        {/* 개발자 전용 — 해외뉴스 버튼 */}
+        {user?.uid === DEVELOPER_UID && (
+          <div className="flex justify-center mt-4">
+            <button
+              onClick={() => navigate('/news')}
+              className="flex items-center justify-center gap-2 px-6 py-2 rounded-lg transition-all hover:opacity-90 shadow-lg"
+              style={{ backgroundColor: 'transparent', color: '#10b981', border: '2px solid #10b981' }}
+            >
+              <span style={{ fontSize: 16 }}>🌍</span>
+              <span className="text-sm tracking-wide">YTN보다 빠른 국제뉴스</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

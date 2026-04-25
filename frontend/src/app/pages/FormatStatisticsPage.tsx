@@ -229,12 +229,12 @@ export function FormatStatisticsPage() {
       {/* Header */}
       <div className="mb-6">
         <button
-          onClick={() => navigate('/stats')}
+          onClick={() => navigate('/sayu')}
           className="flex items-center gap-2 mb-4 text-sm transition-opacity hover:opacity-70"
           style={{ color: '#1A3C6E' }}
         >
           <ArrowLeft className="w-4 h-4" />
-          통계 홈으로
+          SAYU로 돌아가기
         </button>
 
         <div className="flex items-center justify-between mb-2">

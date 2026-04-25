@@ -9,8 +9,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { toast } from 'sonner';
 import heic2any from 'heic2any';
+import { LoadingOverlay } from './LoadingOverlay';
 
-type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '메모';
+type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | 'HARU주식관리' | '메모';
 type SayuMode = 'BASIC' | 'PREMIUM';
 
 interface FormatModalProps {
@@ -104,6 +105,15 @@ const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placehol
     { key: 'memo_action', label: '다음 행동', placeholder: '이 메모와 관련된 다음 할 일이 있다면 적어두세요.', rows: 2 },
     { key: 'memo_space', label: '여백', placeholder: '자유롭게 작성하세요.', rows: 2 },
   ],
+  'HARU주식관리': [
+    { key: 'stock_type', label: '거래유형', placeholder: '예: 매수 / 매도', rows: 1 },
+    { key: 'stock_name', label: '종목명', placeholder: '예: 삼성전자', rows: 1 },
+    { key: 'stock_price', label: '거래단가', placeholder: '예: 227,500원', rows: 1 },
+    { key: 'stock_quantity', label: '수량', placeholder: '예: 3주', rows: 1 },
+    { key: 'stock_total', label: '거래금액', placeholder: '단가×수량 자동계산', rows: 1 },
+    { key: 'stock_date', label: '거래일시', placeholder: '예: 2026.04.23 10:23', rows: 1 },
+    { key: 'stock_memo', label: '메모', placeholder: '추가로 기록할 내용', rows: 3 },
+  ],
 };
 
 // 형식별 prefix 매핑
@@ -117,6 +127,7 @@ const FORMAT_PREFIX: Record<RecordFormat, string> = {
   '텃밭일지': 'garden',
   '애완동물관찰일지': 'pet',
   '육아일기': 'child',
+  'HARU주식관리': 'stock',
   '메모': 'memo',
 };
 
@@ -147,6 +158,19 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 📈 HARU주식관리: 카톡 TXT 내보내기 파싱 state
+  const [isCsvParsing, setIsCsvParsing] = useState(false);
+  type StockTrade = {
+    stock_type: string;
+    stock_name: string;
+    stock_price: string;
+    stock_quantity: string;
+    stock_total: string;
+    stock_date: string;
+  };
+  const [stockCandidates, setStockCandidates] = useState<StockTrade[]>([]);
+  const [showCandidates, setShowCandidates] = useState(false);
+
   // 기록 스타일 선택
   const [recordStyle, setRecordStyle] = useState<RecordStyle>('simple');
   const [recordStep, setRecordStep] = useState<'select' | 'input'>('select');
@@ -163,7 +187,9 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       setShowModeSelect(false);
 
       setRecordStyle('simple');
-      setRecordStep('select');
+      setRecordStep(format === 'HARU주식관리' ? 'input' : 'select');
+      setStockCandidates([]);
+      setShowCandidates(false);
 
       // 기존 이미지 불러오기
       const prefix = FORMAT_PREFIX[format];
@@ -212,6 +238,122 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
 
   const handleChange = (key: string, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
+  };
+
+  // 📈 HARU주식관리: 카톡 내보내기 TXT 파싱 (키움증권 체결통보)
+  const handleKakaoTxtUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsCsvParsing(true);
+    try {
+      const text = await file.text();
+      const trades: StockTrade[] = [];
+      const blocks = text.split('[키움]체결통보');
+      for (let i = 1; i < blocks.length; i++) {
+        const lines = blocks[i].trim().split('\n').map(l => l.trim()).filter(Boolean);
+        if (lines.length < 3) continue;
+        const stock_name = lines[0];
+        const typeAndQty = lines[1];
+        const priceStr = lines[2];
+        const typeMatch = typeAndQty.match(/^(매수|매도)/);
+        const qtyMatch = typeAndQty.match(/(\d+)주/);
+        const priceMatch = priceStr.match(/평균단가([\d,]+)원/);
+        if (!typeMatch || !qtyMatch || !priceMatch) continue;
+        const stock_type = typeMatch[1];
+        const qty = parseInt(qtyMatch[1]);
+        const price = parseInt(priceMatch[1].replace(/,/g, ''));
+        const total = qty * price;
+        const prevText = blocks[i - 1];
+        const dateMatch = prevText.match(/(\d{4}[.\-]\d{1,2}[.\-]\d{1,2}[^\n]*\d{2}:\d{2})/g);
+        const stock_date = dateMatch ? dateMatch[dateMatch.length - 1].trim() : '';
+        trades.push({
+          stock_type,
+          stock_name,
+          stock_price: price.toLocaleString() + '원',
+          stock_quantity: qty + '주',
+          stock_total: total.toLocaleString() + '원',
+          stock_date,
+        });
+      }
+      if (trades.length === 0) {
+        toast.error('키움증권 거래 내역을 찾을 수 없습니다.');
+        return;
+      }
+      setStockCandidates(trades);
+
+      // AI 자동 제목 생성
+      const dates = trades.map(t => t.stock_date).filter(Boolean).sort();
+      const from = dates[0]?.slice(0, 10) ?? '';
+      const to = dates[dates.length - 1]?.slice(0, 10) ?? '';
+      const buyCount = trades.filter(t => t.stock_type === '매수').length;
+      const sellCount = trades.filter(t => t.stock_type === '매도').length;
+      const autoTitle = `${from}${from && to && from !== to ? ` ~ ${to}` : ''} 매수${buyCount}건·매도${sellCount}건`;
+      handleChange(`${prefix}_title`, autoTitle);
+
+      toast.success(`${trades.length}건의 거래 내역을 찾았습니다.`);
+    } catch (err) {
+      console.error('카톡 TXT 파싱 오류:', err);
+      toast.error('파일 읽기에 실패했습니다.');
+    } finally {
+      setIsCsvParsing(false);
+      e.target.value = '';
+    }
+  };
+
+  // 📈 거래 1건 선택 → 필드 자동 채움
+  const handleSelectTrade = (trade: StockTrade) => {
+    setFormData((prev) => ({
+      ...prev,
+      stock_type: trade.stock_type || prev.stock_type || '',
+      stock_name: trade.stock_name || prev.stock_name || '',
+      stock_price: trade.stock_price || prev.stock_price || '',
+      stock_quantity: trade.stock_quantity || prev.stock_quantity || '',
+      stock_total: trade.stock_total || prev.stock_total || '',
+      stock_date: trade.stock_date || prev.stock_date || '',
+    }));
+    setShowCandidates(false);
+    toast.success('선택한 거래가 입력되었습니다. 내용을 확인해주세요.');
+  };
+
+  // 📈 HARU주식관리: 파싱된 거래를 각각 개별 레코드로 저장
+  const handleSaveAllTrades = async () => {
+    if (stockCandidates.length === 0) {
+      toast.error('먼저 파일을 업로드해주세요.');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      let savedCount = 0;
+      for (let i = 0; i < stockCandidates.length; i++) {
+        const t = stockCandidates[i];
+        const rawDate = t.stock_date?.replace(/[^0-9]/g, '') ?? '';
+        const recordId = `stock_${rawDate || Date.now()}_${i}`;
+
+        const dataToSave: Record<string, any> = {
+          formats: ['HARU주식관리'],
+          [`${prefix}_title`]: `${t.stock_name} ${t.stock_type} ${t.stock_quantity}`,
+          stock_type: t.stock_type,
+          stock_name: t.stock_name,
+          stock_price: t.stock_price,
+          stock_quantity: t.stock_quantity,
+          stock_total: t.stock_total,
+          stock_date: t.stock_date,
+          [`${prefix}_style`]: 'simple',
+          [`${prefix}_mode`]: 'ORIGINAL',
+          [imagesKey]: JSON.stringify([]),
+        };
+
+        await onSave({ ...dataToSave, _recordId: recordId });
+        savedCount++;
+      }
+      toast.success(`${savedCount}건의 거래가 각각 저장되었습니다!`);
+      onClose();
+    } catch (error) {
+      console.error('주식 거래 저장 실패:', error);
+      toast.error('저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleFillTestData = () => {
@@ -280,6 +422,23 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       await onSave(dataToSave);
       toast.success('저장되었습니다!');
       onClose();
+
+      // 백그라운드 AI 제목 추출
+      try {
+        const textForTitle = recordStyle === 'simple'
+          ? (formData[`${prefix}_simple`] || '')
+          : Object.keys(formData)
+              .filter(k => k.startsWith(`${prefix}_`) && typeof formData[k] === 'string' && (formData[k] as string).trim())
+              .map(k => formData[k] as string)
+              .join(' ');
+        if (textForTitle.trim().length > 5) {
+          const functions = getFunctions(undefined, 'asia-northeast3');
+          const extractTitleFn = httpsCallable(functions, 'extractTitle');
+          extractTitleFn({ text: textForTitle, format });
+        }
+      } catch (e) {
+        console.warn('AI 제목 추출 실패:', e);
+      }
     } catch (error) {
       console.error('저장 중 오류:', error);
       toast.error('저장에 실패했습니다.');
@@ -818,24 +977,26 @@ ${contentValues}`,
               </div>
 
               {/* 제목 입력 필드 */}
-              <div>
-                <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 6, fontWeight: 600 }}>
-                  📌 제목 <span style={{ color: '#ef4444', fontSize: 11 }}>*필수</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData[`${prefix}_title`] || ''}
-                  onChange={(e) => handleChange(`${prefix}_title`, e.target.value)}
-                  placeholder="제목을 입력해 주세요 (예: 오늘의 산책)"
-                  style={{
-                    width: '100%', boxSizing: 'border-box',
-                    padding: '10px 14px', fontSize: 16,
-                    border: '1px solid #d0dff0', borderRadius: 8,
-                    backgroundColor: '#fff', color: '#333',
-                    fontFamily: 'inherit', outline: 'none',
-                  }}
-                />
-              </div>
+              {format !== 'HARU주식관리' && (
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 6, fontWeight: 600 }}>
+                    📌 제목 <span style={{ color: '#ef4444', fontSize: 11 }}>*필수</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData[`${prefix}_title`] || ''}
+                    onChange={(e) => handleChange(`${prefix}_title`, e.target.value)}
+                    placeholder="제목을 입력해 주세요 (예: 오늘의 산책)"
+                    style={{
+                      width: '100%', boxSizing: 'border-box',
+                      padding: '10px 14px', fontSize: 16,
+                      border: '1px solid #d0dff0', borderRadius: 8,
+                      backgroundColor: '#fff', color: '#333',
+                      fontFamily: 'inherit', outline: 'none',
+                    }}
+                  />
+                </div>
+              )}
 
               {/* 🌱 텃밭일지: 작물 목록 UI */}
               {format === '텃밭일지' && (
@@ -916,7 +1077,7 @@ ${contentValues}`,
               )}
 
               {/* 간편 스타일: 자유 텍스트 1개 */}
-              {recordStyle === 'simple' && (
+              {recordStyle === 'simple' && format !== 'HARU주식관리' && (
                 <textarea
                   rows={8}
                   placeholder="자유롭게 기록해 주세요..."
@@ -932,7 +1093,7 @@ ${contentValues}`,
               )}
 
               {/* 프리미엄 스타일: FORMAT_FIELDS 그대로 */}
-              {recordStyle === 'premium' && (
+              {recordStyle === 'premium' && format !== 'HARU주식관리' && (
                 <>
                   {format === '일기'
                     ? <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -988,7 +1149,61 @@ ${contentValues}`,
                 </>
               )}
 
+              {/* 📈 HARU주식관리 전용: 카톡 내보내기 파일 업로드 */}
+              {format === 'HARU주식관리' && (
+                <div style={{ padding: '8px 0' }}>
+                  <p
+                    style={{
+                      fontSize: 13,
+                      color: '#6B7280',
+                      marginBottom: 12,
+                      lineHeight: 1.6,
+                      whiteSpace: 'pre-line',
+                    }}
+                  >
+                    {'카카오톡 → 키움증권 채팅방 → 메뉴 →\n대화 내용 내보내기 → 파일 업로드'}
+                  </p>
+                  <label
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: '14px',
+                      background: '#1A3C6E',
+                      color: '#fff',
+                      borderRadius: 8,
+                      fontSize: 15,
+                      textAlign: 'center',
+                      cursor: isCsvParsing ? 'not-allowed' : 'pointer',
+                      opacity: isCsvParsing ? 0.6 : 1,
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    {isCsvParsing ? '⏳ 분석 중...' : '📂 카톡 내보내기 파일 업로드'}
+                    <input
+                      type="file"
+                      accept=".txt,.csv"
+                      style={{ display: 'none' }}
+                      onChange={handleKakaoTxtUpload}
+                      disabled={isCsvParsing}
+                    />
+                  </label>
+                  {stockCandidates.length > 0 && (
+                    <p
+                      style={{
+                        fontSize: 13,
+                        color: '#10b981',
+                        marginTop: 10,
+                        textAlign: 'center',
+                      }}
+                    >
+                      ✅ {stockCandidates.length}건 분석 완료 — 저장 버튼을 눌러주세요
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* 📸 사진 업로드 섹션 */}
+              {format !== 'HARU주식관리' && (
               <div>
                 <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 4, fontWeight: 500 }}>
                   📸 사진 <span style={{ fontWeight: 400, color: '#9ca3af' }}>(선택사항)</span>
@@ -1214,6 +1429,7 @@ ${contentValues}`,
                   </div>
                 )}
               </div>
+              )}
             </div>
           </div>
           )}{/* end input step */}
@@ -1266,6 +1482,28 @@ ${contentValues}`,
                   {isSaving ? '저장 중...' : '원본 저장'}
                 </button>
               </div>
+            ) : format === 'HARU주식관리' ? (
+              <button
+                onClick={handleSaveAllTrades}
+                disabled={isSaving || stockCandidates.length === 0}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  background: stockCandidates.length === 0 ? '#9CA3AF' : '#1A3C6E',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  fontSize: 15,
+                  fontWeight: 'bold',
+                  cursor: stockCandidates.length === 0 || isSaving ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {isSaving
+                  ? '저장 중...'
+                  : stockCandidates.length === 0
+                    ? '파일을 먼저 업로드해주세요'
+                    : `저장 (${stockCandidates.length}건)`}
+              </button>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <button
@@ -1445,6 +1683,89 @@ ${contentValues}`,
           </div>
         </div>
       )}
+
+      {/* 📋 주식 거래 후보 선택 모달 */}
+      {showCandidates && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+          }}
+        >
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: 12,
+              padding: 20,
+              width: '90%',
+              maxWidth: 400,
+              maxHeight: '80vh',
+              overflowY: 'auto',
+            }}
+          >
+            <h3 style={{ fontWeight: 'bold', marginBottom: 12, fontSize: 16, color: '#1A3C6E' }}>
+              📋 거래 선택 ({stockCandidates.length}건 발견)
+            </h3>
+            {stockCandidates.map((trade, i) => (
+              <button
+                key={i}
+                onClick={() => handleSelectTrade(trade)}
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '12px',
+                  marginBottom: 8,
+                  border: '1px solid #E5E7EB',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  background: '#F9FAFB',
+                }}
+              >
+                <div style={{ fontWeight: 'bold', color: '#1A3C6E' }}>
+                  {trade.stock_name || '(종목명 없음)'}
+                </div>
+                <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>
+                  {[
+                    trade.stock_type,
+                    trade.stock_quantity,
+                    trade.stock_price,
+                    trade.stock_total ? `총 ${trade.stock_total}` : '',
+                    trade.stock_date,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </div>
+              </button>
+            ))}
+            <button
+              onClick={() => setShowCandidates(false)}
+              style={{
+                width: '100%',
+                padding: '10px',
+                marginTop: 4,
+                border: '1px solid #D1D5DB',
+                borderRadius: 8,
+                cursor: 'pointer',
+                background: '#fff',
+                color: '#6B7280',
+              }}
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 사진 업로드 중 포도송이 오버레이 */}
+      <LoadingOverlay
+        visible={isUploading}
+        message="사진 업로드 중..."
+      />
     </>
   );
 }

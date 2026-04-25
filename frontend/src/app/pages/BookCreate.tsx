@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 
 interface Source {
   sourceTitle: string;
@@ -19,8 +19,12 @@ interface GenerateResult {
 export function BookCreate() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const existingBookId = searchParams.get('bookId');
+  const existingBookTitle = searchParams.get('bookTitle') || '';
 
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(existingBookTitle);
+  const [sourceType, setSourceType] = useState<'nonfiction' | 'fiction' | 'mixed'>('nonfiction');
   const [sources, setSources] = useState<Source[]>([
     { sourceTitle: '', sourceText: '' },
   ]);
@@ -83,6 +87,8 @@ export function BookCreate() {
         title: title.trim(),
         sources: validSources,
         authorUid: user?.uid ?? '',
+        existingBookId: existingBookId || undefined,
+        sourceType,
       });
 
       clearInterval(progressInterval);
@@ -117,13 +123,40 @@ export function BookCreate() {
             ← 뒤로
           </button>
           <h1 className="text-xl font-bold" style={{ color: '#1A3C6E' }}>
-            새 책 만들기
+            {existingBookId ? '챕터 추가' : '새 책 만들기'}
           </h1>
         </div>
       </div>
 
       {/* 본문 */}
       <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col gap-5">
+
+        {/* 소재 유형 선택 */}
+        <div className="mb-4">
+          <label className="block text-sm font-semibold mb-2" style={{ color: '#1A3C6E' }}>
+            소재 유형
+          </label>
+          <div className="flex gap-2">
+            {([
+              { key: 'nonfiction', label: '논픽션' },
+              { key: 'fiction', label: '허구 창작' },
+              { key: 'mixed', label: '혼합' },
+            ] as const).map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setSourceType(key)}
+                className="px-4 py-2 rounded-full text-sm font-medium border transition-all"
+                style={{
+                  backgroundColor: sourceType === key ? '#1A3C6E' : 'transparent',
+                  color: sourceType === key ? '#ffffff' : '#1A3C6E',
+                  borderColor: '#1A3C6E',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* 책 주제 입력 */}
         <div>
@@ -238,13 +271,52 @@ export function BookCreate() {
 
         {/* 진행 상태 */}
         {loading && (
-          <div className="flex flex-col items-center gap-3 py-4">
-            <div
-              className="w-8 h-8 border-4 rounded-full animate-spin"
-              style={{ borderColor: '#1A3C6E', borderTopColor: 'transparent' }}
-            />
+          <div className="flex flex-col gap-3 py-4">
+            {[
+              '소스 분석 중',
+              '데이터 구조화',
+              '인물 추출',
+              '이야기 생성',
+              '심리 해석',
+              '최종 정리',
+            ].map((stepLabel, i) => {
+              const stepNum = i + 1;
+              const currentStepNum = sources.filter(s => s.sourceText.trim()).length > 0
+                ? Math.min(
+                    Math.floor((Date.now() % 50000) / 8000) + 1,
+                    6
+                  )
+                : 1;
+              const isDone = stepNum < currentStepNum;
+              const isCurrent = stepNum === currentStepNum;
+              return (
+                <div key={i} className="flex items-center gap-3">
+                  <div
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                    style={{
+                      backgroundColor: isDone ? '#10b981' : isCurrent ? '#1A3C6E' : '#e5e7eb',
+                      color: isDone || isCurrent ? '#ffffff' : '#9ca3af',
+                    }}
+                  >
+                    {isDone ? '✓' : stepNum}
+                  </div>
+                  <span
+                    className="text-sm font-medium"
+                    style={{ color: isCurrent ? '#1A3C6E' : isDone ? '#10b981' : '#9ca3af' }}
+                  >
+                    {stepLabel}
+                  </span>
+                  {isCurrent && (
+                    <div
+                      className="w-4 h-4 border-2 rounded-full animate-spin ml-auto"
+                      style={{ borderColor: '#1A3C6E', borderTopColor: 'transparent' }}
+                    />
+                  )}
+                </div>
+              );
+            })}
             {progressMsg && (
-              <p className="text-sm font-medium text-center" style={{ color: '#1A3C6E' }}>
+              <p className="text-xs text-center mt-2" style={{ color: '#6b7280' }}>
                 {progressMsg}
               </p>
             )}
