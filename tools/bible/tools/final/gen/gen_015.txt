@@ -1,0 +1,23 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=15|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 15|KO=창세기 15장
+V|N=1|EN=After these things the word of the LORD came unto Abram in a vision, saying, Fear not, Abram: I am thy shield, and thy exceeding great reward.|KO=이 일 후에 여호와의 말씀이 환상 중에 아브람에게 임하여 이르시되, 두려워하지 말라 아브람아, 나는 네 방패요, 네 지극히 큰 상급이니라.
+V|N=2|EN=And Abram said, LORD God, what wilt thou give me, seeing I go childless, and the steward of my house is this Eliezer of Damascus?|KO=아브람이 이르되, 주 여호와여, 내가 무엇을 받겠습니까? 내가 자식이 없고, 내 집의 상속자는 다메섹 엘리에셀이니이다.
+V|N=3|EN=And Abram said, Behold, to me thou hast given no seed: and, lo, one born in my house is mine heir.|KO=아브람이 또 이르되, 주께서 내게 씨를 주지 아니하셨으니, 내 집에서 난 자가 내 상속자가 되리이다.
+V|N=4|EN=And, behold, the word of the LORD came unto him, saying, This shall not be thine heir; but he that shall come forth out of thine own bowels shall be thine heir.|KO=여호와의 말씀이 그에게 임하여 이르시되, 그 사람이 네 상속자가 아니라, 네 몸에서 난 자가 네 상속자가 되리라.
+V|N=5|EN=And he brought him forth abroad, and said, Look now toward heaven, and tell the stars, if thou be able to number them: and he said unto him, So shall thy seed be.|KO=그를 밖으로 인도하여 이르시되, 하늘을 바라보라, 별들을 셀 수 있으면 세어보라. 또 그에게 이르시되, 네 자손이 이와 같으리라.
+V|N=6|EN=And he believed in the LORD; and he counted it to him for righteousness.|KO=아브람이 여호와를 믿으니, 여호와께서 그것을 그의 의로 여기시니라.
+V|N=7|EN=And he said unto him, I am the LORD that brought thee out of Ur of the Chaldees, to give thee this land to inherit it.|KO=그가 아브람에게 이르시되, 나는 너를 갈대아 우르에서 인도하여 이 땅을 주어 유산을 삼게 한 여호와니라.
+V|N=8|EN=And he said, LORD God, whereby shall I know that I shall inherit it?|KO=아브람이 이르되, 주 여호와여, 내가 어떻게 이 땅을 유산으로 받을 것을 알리이까?
+V|N=9|EN=And he said unto him, Take me an heifer of three years old, and a she goat of three years old, and a ram of three years old, and a turtledove, and a young pigeon.|KO=여호와께서 그에게 이르시되, 삼 년 된 암소와 삼 년 된 암염소와 삼 년 된 수양과 비둘기 한 마리와 어린 비둘기 한 마리를 내게 가져오라.
+V|N=10|EN=And he took unto him all these, and divided them in the midst, and laid each piece one against another: but the birds divided he not.|KO=그가 이 모든 것을 가져다가 중간에서 나누고, 각 부분을 서로 마주 대게 하였으나, 새들은 나누지 아니하였더라.
+V|N=11|EN=And when the fowls came down upon the carcases, Abram drove them away.|KO=새들이 시체 위에 내려오매 아브람이 쫓아내었더라.
+V|N=12|EN=And when the sun was going down, a deep sleep fell upon Abram; and, lo, an horror of great darkness fell upon him.|KO=해가 질 때에 깊은 잠이 아브람에게 임하였고, 큰 어둠이 그를 덮었더라.
+V|N=13|EN=And he said unto Abram, Know of a surety that thy seed shall be a stranger in a land that is not theirs, and shall serve them; and they shall afflict them four hundred years;|KO=여호와께서 아브람에게 이르시되, 너는 확실히 알라, 네 자손이 이방 땅에서 낯선 자가 되어 그들을 섬기겠고, 그들이 사백 년 동안 그들을 괴롭히리라.
+V|N=14|EN=And also that nation, whom they shall serve, will I judge: and afterward shall they come out with great substance.|KO=또 그 나라를 내가 심판할 것이요, 그 후에 그들은 큰 재물을 가지고 나올 것이라.
+V|N=15|EN=And thou shalt go to thy fathers in peace; thou shalt be buried in a good old age.|KO=너는 평안히 네 조상에게로 돌아가리니, 너는 좋은 노년을 누리고 장사될 것이라.
+V|N=16|EN=But in the fourth generation they shall come hither again: for the iniquity of the Amorites is not yet full.|KO=그러나 네 자손은 사대에 이르러 다시 이곳에 오리니, 아모리 족속의 죄악이 아직 가득 차지 아니하였음이라.
+V|N=17|EN=And it came to pass, that, when the sun went down, and it was dark, behold a smoking furnace, and a burning lamp that passed between those pieces.|KO=해가 지고 어두울 때에 연기 나는 화로와 타는 등불이 그 나뉜 고기 사이로 지나더라.
+V|N=18|EN=In the same day the LORD made a covenant with Abram, saying, Unto thy seed have I given this land, from the river of Egypt unto the great river, the river Euphrates:|KO=그 날에 여호와께서 아브람과 언약을 세우시며 이르시되, 내가 이 땅을 네 자손에게 주었으니, 애굽 강에서부터 큰 강 유프라테스까지니라.
+V|N=19|EN=The Kenites, and the Kenizzites, and the Kadmonites,|KO=그 땅의 거민은 그니와 그 기스와 그 가드몬과
+V|N=20|EN=And the Hittites, and the Perizzites, and the Rephaims,|KO=그 헷과 그 브리스와 그 레바임과
+V|N=21|EN=And the Amorites, and the Canaanites, and the Girgashites, and the Jebusites.|KO=그 아모리와 그 가나안과 그 기르가스와 그 여부스 족속이니라.

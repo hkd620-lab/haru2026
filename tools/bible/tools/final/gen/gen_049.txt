@@ -1,0 +1,35 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=49|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 49|KO=창세기 49장
+V|N=1|EN=And Jacob called unto his sons, and said, Gather yourselves together, that I may tell you that which shall befall you in the last days.|KO=야곱이 그의 아들들을 불러서 그들에게 이르되, 너희는 모여서 내가 너희에게 마지막 날에 일어날 일을 말하리라.
+V|N=2|EN=Gather yourselves together, and hear, ye sons of Jacob; and hearken unto Israel your father.|KO=너희는 모여서 들으라, 야곱의 아들들아; 너희 아버지 이스라엘의 말씀을 귀 기울여 들으라.
+V|N=3|EN=Reuben, thou art my firstborn, my might, and the beginning of my strength, the excellency of dignity, and the excellency of power:|KO=르우벤아, 너는 내 장자요, 내 힘이요, 내 능력의 시작이요, 존귀와 권세의 탁월함이로다.
+V|N=4|EN=Unstable as water, thou shalt not excel; because thou wentest up to thy father’s bed; then defiledst thou it: he went up to my couch.|KO=너는 물같이 불안정하니, 너는 뛰어나지 못하리라; 네가 아버지의 침상에 올라가서 더럽혔으므로, 그는 내 침상에 올라갔느니라.
+V|N=5|EN=Simeon and Levi are brethren; instruments of cruelty are in their habitations.|KO=시므온과 레위는 형제요; 그들의 거처에는 잔인한 도구가 있도다.
+V|N=6|EN=O my soul, come not thou into their secret; unto their assembly, mine honour, be not thou united: for in their anger they slew a man, and in their selfwill they digged down a wall.|KO=내 영혼아, 그들의 비밀에 들어가지 말라; 그들의 모임에 내 영광이 연합하지 말라; 그들이 분노 중에 한 사람을 죽였고, 그들의 자의로 성벽을 허물었음이니라.
+V|N=7|EN=Cursed be their anger, for it was fierce; and their wrath, for it was cruel: I will divide them in Jacob, and scatter them in Israel.|KO=그들의 분노는 저주를 받을지어다; 그것은 격렬하였고, 그들의 노여움은 잔인하였도다; 내가 그들을 야곱 중에 나누고 이스라엘 중에 흩어지게 하리라.
+V|N=8|EN=Judah, thou art he whom thy brethren shall praise: thy hand shall be in the neck of thine enemies; thy father’s children shall bow down before thee.|KO=유다야, 너는 네 형제들이 찬양할 자니라; 네 손이 네 원수의 목에 있을 것이요; 네 아버지의 자녀들이 너에게 절하리라.
+V|N=9|EN=Judah is a lion’s whelp: from the prey, my son, thou art gone up: he stooped down, he couched as a lion, and as an old lion; who shall rouse him up?|KO=유다는 사자의 새끼라; 내 아들아, 너는 사냥감에서 올라갔도다; 그는 굽히고 누워서 사자 같고, 늙은 사자 같으니, 누가 그를 일으키겠느냐?
+V|N=10|EN=The sceptre shall not depart from Judah, nor a lawgiver from between his feet, until Shiloh come; and unto him shall the gathering of the people be.|KO=권세가 유다에게서 떠나지 아니하고, 법giver가 그의 발 사이에서 떠나지 아니하리니, 실로가 오기까지라; 그에게는 백성의 모임이 있으리라.
+V|N=11|EN=Binding his foal unto the vine, and his ass’s colt unto the choice vine; he washed his garments in wine, and his clothes in the blood of grapes:|KO=그의 나귀를 포도나무에 묶고, 그의 나귀 새끼를 선택한 포도나무에 묶으리라; 그는 포도주에 그의 의복을 씻고, 포도즙의 피에 그의 옷을 씻으리라.
+V|N=12|EN=His eyes shall be red with wine, and his teeth white with milk.|KO=그의 눈은 포도주로 붉고, 그의 이는 우유로 희리라.
+V|N=13|EN=Zebulun shall dwell at the haven of the sea; and he shall be for an haven of ships; and his border shall be unto Zidon.|KO=스불론은 바다의 항구에 거주할 것이며, 그는 배의 항구가 될 것이요; 그의 경계는 시돈에 이를 것이니라.
+V|N=14|EN=Issachar is a strong ass couching down between two burdens:|KO=잇사갈은 두 짐 사이에 누워 있는 강한 나귀라.
+V|N=15|EN=And he saw that rest was good, and the land that it was pleasant; and bowed his shoulder to bear, and became a servant unto tribute.|KO=그가 쉼이 좋고, 그 땅이 아름다움을 보았으므로, 그는 어깨를 굽혀 세금을 지고 종이 되었도다.
+V|N=16|EN=Dan shall judge his people, as one of the tribes of Israel.|KO=단은 그의 백성을 판단할 것이며, 이스라엘의 지파 중 하나가 되리라.
+V|N=17|EN=Dan shall be a serpent by the way, an adder in the path, that biteth the horse heels, so that his rider shall fall backward.|KO=단은 길가에 있는 뱀 같고, 길에 있는 독사 같아서, 말의 발꿈치를 물어 그의 타는 자가 뒤로 넘어지게 하리라.
+V|N=18|EN=I have waited for thy salvation, O LORD.|KO=여호와여, 나는 주의 구원을 기다리나이다.
+V|N=19|EN=Gad, a troop shall overcome him: but he shall overcome at the last.|KO=갓은 무리가 그를 치겠으나, 그는 마지막에 이기리라.
+V|N=20|EN=Out of Asher his bread shall be fat, and he shall yield royal dainties.|KO=아셀에게서 그의 떡은 기름지며, 그는 왕의 진미를 내리라.
+V|N=21|EN=Naphtali is a hind let loose: he giveth goodly words.|KO=납달리는 놓인 암사슴 같아서, 아름다운 말을 하리라.
+V|N=22|EN=Joseph is a fruitful bough, even a fruitful bough by a well; whose branches run over the wall:|KO=요셉은 열매 맺는 가지요, 샘 곁의 열매 맺는 가지라; 그의 가지는 담을 넘치리라.
+V|N=23|EN=The archers have sorely grieved him, and shot at him, and hated him:|KO=활 쏘는 자들이 그를 심히 괴롭히고, 그를 쏘고, 그를 미워하였도다.
+V|N=24|EN=But his bow abode in strength, and the arms of his hands were made strong by the hands of the mighty God of Jacob; (from thence is the shepherd, the stone of Israel:)|KO=그러나 그의 활은 힘을 유지하였고, 그의 손의 팔은 야곱의 전능하신 하나님 손에 의해 강하게 되었으니, (거기서 목자, 이스라엘의 돌이 있도다.)
+V|N=25|EN=Even by the God of thy father, who shall help thee; and by the Almighty, who shall bless thee with blessings of heaven above, blessings of the deep that lieth under, blessings of the breasts, and of the womb:|KO=너의 아버지의 하나님이 너를 도와주실 것이요; 전능하신 자가 하늘 위의 복과, 아래 깊은 곳의 복과, 젖과 태의 복으로 너를 축복하실 것이니라.
+V|N=26|EN=The blessings of thy father have prevailed above the blessings of my progenitors unto the utmost bound of the everlasting hills: they shall be on the head of Joseph, and on the crown of the head of him that was separate from his brethren.|KO=너의 아버지의 축복이 내 조상들의 축복보다 더 나아가서 영원한 산의 극한에 이르렀으니, 그것이 요셉의 머리 위에, 그의 형제들 중에서 구별된 자의 머리 위에 있을 것이니라.
+V|N=27|EN=Benjamin shall ravin as a wolf: in the morning he shall devour the prey, and at night he shall divide the spoil.|KO=베냐민은 늑대처럼 포악하리니, 아침에는 먹이를 삼키고, 저녁에는 탈취물을 나누리라.
+V|N=28|EN=All these are the twelve tribes of Israel: and this is it that their father spake unto them, and blessed them; every one according to his blessing he blessed them.|KO=이 모든 것은 이스라엘의 열두 지파라; 이것이 그들의 아버지가 그들에게 말한 것이요, 그들을 축복한 것이니, 각 사람에게 그의 축복대로 축복하였느니라.
+V|N=29|EN=And he charged them, and said unto them, I am to be gathered unto my people: bury me with my fathers in the cave that is in the field of Ephron the Hittite,|KO=그가 그들에게 명령하며 이르되, 나는 내 백성에게로 모여질 것이라; 나를 헷 사람 에브론의 밭에 있는 동굴에 장사하라.
+V|N=30|EN=In the cave that is in the field of Machpelah, which is before Mamre, in the land of Canaan, which Abraham bought with the field of Ephron the Hittite for a possession of a buryingplace.|KO=마흔의 동굴에 장사하리니, 그것은 마므레 앞에 있는 가나안 땅의 마흔의 밭이라; 아브라함이 헷 사람 에브론의 밭을 매입하여 장사할 소유로 삼았느니라.
+V|N=31|EN=There they buried Abraham and Sarah his wife; there they buried Isaac and Rebekah his wife; and there I buried Leah.|KO=거기서 아브라함과 그의 아내 사라를 장사하였고, 거기서 이삭과 그의 아내 리브가를 장사하였으며, 거기서 내가 레아를 장사하였노라.
+V|N=32|EN=The purchase of the field and of the cave that is therein was from the children of Heth.|KO=그 밭과 그 안에 있는 동굴의 매입은 헷 자손에게서 이루어진 것이니라.
+V|N=33|EN=And when Jacob had made an end of commanding his sons, he gathered up his feet into the bed, and yielded up the ghost, and was gathered unto his people.|KO=야곱이 그의 아들들에게 명령을 마치고, 그의 발을 침대에 모으고, 숨을 거두고, 그의 백성에게로 모여졌더라.

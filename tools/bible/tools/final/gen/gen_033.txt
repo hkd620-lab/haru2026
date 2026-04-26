@@ -1,0 +1,22 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=33|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 33|KO=창세기 33장
+V|N=1|EN=And Jacob lifted up his eyes, and looked, and, behold, Esau came, and with him four hundred men. And he divided the children unto Leah, and unto Rachel, and unto the two handmaids.|KO=야곱이 눈을 들어 보니 에서가 오고, 그와 함께 사백 명이 있더라. 그래서 그는 자녀들을 레아와 라헬과 두 여종에게 나누어 주었다.
+V|N=2|EN=And he put the handmaids and their children foremost, and Leah and her children after, and Rachel and Joseph hindermost.|KO=그는 여종들과 그들의 자녀들을 앞에 두고, 레아와 그녀의 자녀들을 그 뒤에 두고, 라헬과 요셉을 가장 뒤에 두었다.
+V|N=3|EN=And he passed over before them, and bowed himself to the ground seven times, until he came near to his brother.|KO=그가 그들 앞서서 지나가며 땅에 일곱 번 절하고 그의 형에게 가까이 나아갔다.
+V|N=4|EN=And Esau ran to meet him, and embraced him, and fell on his neck, and kissed him: and they wept.|KO=에서가 그를 맞으러 달려와서 그를 안고 목을 껴안고 입을 맞추니 그들이 울더라.
+V|N=5|EN=And he lifted up his eyes, and saw the women and the children; and said, Who are those with thee? And he said, The children which God hath graciously given thy servant.|KO=그가 눈을 들어 여자들과 자녀들을 보고, 그에게 말하되, 너와 함께 있는 이들은 누구냐? 그가 대답하되, 하나님이 당신의 종에게 은혜로 주신 자녀들입니다.
+V|N=6|EN=Then the handmaidens came near, they and their children, and they bowed themselves.|KO=그때 여종들이 가까이 나아오고 그들과 그 자녀들이 절하였다.
+V|N=7|EN=And Leah also with her children came near, and bowed themselves: and after came Joseph near and Rachel, and they bowed themselves.|KO=레아도 그녀의 자녀들과 함께 가까이 나아와서 절하였고, 그 뒤에 요셉과 라헬이 가까이 나아와서 절하였다.
+V|N=8|EN=And he said, What meanest thou by all this drove which I met? And he said, These are to find grace in the sight of my lord.|KO=그가 말하되, 내가 만난 이 모든 떼는 무엇이냐? 그가 대답하되, 이는 내 주의 눈에 은혜를 얻기 위함입니다.
+V|N=9|EN=And Esau said, I have enough, my brother; keep that thou hast unto thyself.|KO=에서가 말하되, 나는 내 형이여, 충분하다. 내가 가진 것을 너에게 두지 않겠다.
+V|N=10|EN=And Jacob said, Nay, I pray thee, if now I have found grace in thy sight, then receive my present at my hand: for therefore I have seen thy face, as though I had seen the face of God, and thou wast pleased with me.|KO=야곱이 말하되, 아니오, 내가 만일 이제 당신의 눈에 은혜를 얻었다면, 내 손에서 당신의 선물을 받으소서. 내가 당신의 얼굴을 보았으니, 마치 하나님의 얼굴을 본 것 같고, 당신이 나를 기쁘게 여기셨습니다.
+V|N=11|EN=Take, I pray thee, my blessing that is brought to thee; because God hath dealt graciously with me, and because I have enough. And he urged him, and he took it.|KO=내가 당신에게 가져온 축복을 받으소서. 하나님이 나에게 은혜를 베푸셨고, 내가 충분하니, 그를 강권하였고, 그는 그것을 받았다.
+V|N=12|EN=And he said, Let us take our journey, and let us go, and I will go before thee.|KO=그가 말하되, 우리 여행을 시작하자. 내가 당신보다 먼저 가리라.
+V|N=13|EN=And he said unto him, My lord knoweth that the children are tender, and the flocks and herds with young are with me: and if men should overdrive them one day, all the flock will die.|KO=그가 그에게 말하되, 내 주는 아는 바와 같이 자녀들이 연약하고, 젖을 먹이는 양과 소가 나와 함께 있으니, 만일 사람들이 하루에 그들을 몰아가면 모든 가축이 죽을 것입니다.
+V|N=14|EN=Let my lord, I pray thee, pass over before his servant: and I will lead on softly, according as the cattle that goeth before me and the children be able to endure, until I come unto my lord unto Seir.|KO=내 주여, 내가 당신의 종보다 먼저 가게 하소서. 내가 가축과 자녀들이 견딜 수 있는 대로 부드럽게 인도하리니, 내가 내 주에게 세일에 이르기까지 가겠습니다.
+V|N=15|EN=And Esau said, Let me now leave with thee some of the folk that are with me. And he said, What needeth it? let me find grace in the sight of my lord.|KO=에서가 말하되, 이제 내가 당신과 함께 있는 사람들 중 일부를 당신에게 남기게 하리라. 그가 말하되, 무슨 필요가 있습니까? 내 주의 눈에 은혜를 얻게 하소서.
+V|N=16|EN=So Esau returned that day on his way unto Seir.|KO=그래서 에서가 그날 세일로 돌아갔다.
+V|N=17|EN=And Jacob journeyed to Succoth, and built him an house, and made booths for his cattle: therefore the name of the place is called Succoth.|KO=야곱은 수곳으로 여행하여 집을 짓고 그의 가축을 위하여 오두막을 만들었으므로 그곳의 이름을 수곳이라 하였다.
+V|N=18|EN=And Jacob came to Shalem, a city of Shechem, which is in the land of Canaan, when he came from Padanaram; and pitched his tent before the city.|KO=야곱이 가나안 땅의 세겜 성에 이르렀을 때, 그는 바단아람에서 돌아와서 성 앞에 장막을 쳤다.
+V|N=19|EN=And he bought a parcel of a field, where he had spread his tent, at the hand of the children of Hamor, Shechem’s father, for an hundred pieces of money.|KO=그가 하몰의 자녀들의 손에서 그가 장막을 친 밭의 일부를 샀으니, 백 세겔에 샀다.
+V|N=20|EN=And he erected there an altar, and called it EleloheIsrael.|KO=그가 거기서 제단을 쌓고 그것을 엘로헤이스라엘이라 불렀다.

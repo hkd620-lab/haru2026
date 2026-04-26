@@ -1,0 +1,18 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=16|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 16|KO=창세기 16장
+V|N=1|EN=Now Sarai Abram’s wife bare him no children: and she had an handmaid, an Egyptian, whose name was Hagar.|KO=아브람의 아내 사라가 그에게 자식을 낳지 못하였고, 그녀에게는 이집트 사람인 하갈이라는 여종이 있었습니다.
+V|N=2|EN=And Sarai said unto Abram, Behold now, the LORD hath restrained me from bearing: I pray thee, go in unto my maid; it may be that I may obtain children by her. And Abram hearkened to the voice of Sarai.|KO=사라가 아브람에게 말했습니다. 이제 여호와께서 나를 자식을 낳지 못하게 하셨으니, 제발 내 여종에게 들어가소서. 아마도 그녀를 통해 자식을 얻을 수 있을 것입니다. 아브람은 사라의 말을 듣고 따랐습니다.
+V|N=3|EN=And Sarai Abram’s wife took Hagar her maid the Egyptian, after Abram had dwelt ten years in the land of Canaan, and gave her to her husband Abram to be his wife.|KO=아브람이 가나안 땅에 거주한 지 열 년이 지나자, 아브람의 아내 사라가 이집트 사람 하갈을 자기 여종으로 삼아 아브람에게 아내로 주었습니다.
+V|N=4|EN=And he went in unto Hagar, and she conceived: and when she saw that she had conceived, her mistress was despised in her eyes.|KO=그가 하갈에게 들어가니, 하갈이 임신하게 되었습니다. 하갈이 임신한 것을 보았을 때, 그녀의 주인이 자기 눈에 경시되었습니다.
+V|N=5|EN=And Sarai said unto Abram, My wrong be upon thee: I have given my maid into thy bosom; and when she saw that she had conceived, I was despised in her eyes: the LORD judge between me and thee.|KO=사라가 아브람에게 말했습니다. 내 잘못이 당신에게 있습니다. 내가 내 여종을 당신의 품에 주었고, 그녀가 임신한 것을 보았을 때, 나는 그녀의 눈에 경시되었습니다. 여호와께서 나와 당신 사이를 판단하시기를 바랍니다.
+V|N=6|EN=But Abram said unto Sarai, Behold, thy maid is in thine hand; do to her as it pleaseth thee. And when Sarai dealt hardly with her, she fled from her face.|KO=그러나 아브람이 사라에게 말했습니다. 보라, 당신의 여종은 당신의 손에 있습니다. 당신이 원하는 대로 그녀에게 행하십시오. 사라가 그녀에게 가혹하게 대하자, 하갈은 그녀의 얼굴을 피하여 도망쳤습니다.
+V|N=7|EN=And the angel of the LORD found her by a fountain of water in the wilderness, by the fountain in the way to Shur.|KO=여호와의 사자가 광야의 물가, 수르로 가는 길의 샘 곁에서 그녀를 발견했습니다.
+V|N=8|EN=And he said, Hagar, Sarai’s maid, whence camest thou? and whither wilt thou go? And she said, I flee from the face of my mistress Sarai.|KO=그가 말했습니다. 하갈, 사라의 여종이여, 네가 어디서 왔느냐? 어디로 가려 하느냐? 그녀가 대답했습니다. 나는 내 주인 사라의 얼굴을 피하여 도망쳤습니다.
+V|N=9|EN=And the angel of the LORD said unto her, Return to thy mistress, and submit thyself under her hands.|KO=여호와의 사자가 그녀에게 말했습니다. 네 주인에게 돌아가서 그녀의 손 아래에 복종하라.
+V|N=10|EN=And the angel of the LORD said unto her, I will multiply thy seed exceedingly, that it shall not be numbered for multitude.|KO=여호와의 사자가 그녀에게 말했습니다. 내가 네 자손을 심히 번성하게 하여, 그 수가 많아지지 않게 하리라.
+V|N=11|EN=And the angel of the LORD said unto her, Behold, thou art with child and shalt bear a son, and shalt call his name Ishmael; because the LORD hath heard thy affliction.|KO=여호와의 사자가 그녀에게 말했습니다. 보라, 네가 임신하였고 아들을 낳을 것이며, 그의 이름을 이스마엘이라 하라. 여호와께서 네 고통을 들으셨기 때문입니다.
+V|N=12|EN=And he will be a wild man; his hand will be against every man, and every man’s hand against him; and he shall dwell in the presence of all his brethren.|KO=그는 들짐승과 같은 사람이 될 것이며, 그의 손은 모든 사람을 대적할 것이고, 모든 사람의 손이 그를 대적할 것입니다. 그는 그의 모든 형제의 앞에서 거주할 것입니다.
+V|N=13|EN=And she called the name of the LORD that spake unto her, Thou God seest me: for she said, Have I also here looked after him that seeth me?|KO=그녀가 여호와께서 자기에게 말씀하신 이름을 부르며 말했습니다. 주님, 주께서 나를 보셨습니다. 내가 여기서 나를 보시는 분을 보았습니까?
+V|N=14|EN=Wherefore the well was called Beerlahairoi; behold, it is between Kadesh and Bered.|KO=그러므로 그 우물의 이름을 브엘라해로이라 하였으니, 이는 가데스와 베레드 사이에 있습니다.
+V|N=15|EN=And Hagar bare Abram a son: and Abram called his son’s name, which Hagar bare, Ishmael.|KO=하갈이 아브람에게 아들을 낳았고, 아브람은 하갈이 낳은 아들의 이름을 이스마엘이라 하였습니다.
+V|N=16|EN=And Abram was fourscore and six years old, when Hagar bare Ishmael to Abram.|KO=하갈이 이스마엘을 아브람에게 낳았을 때, 아브람은 여든여섯 세였습니다.

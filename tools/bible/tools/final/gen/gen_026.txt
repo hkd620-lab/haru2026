@@ -1,0 +1,37 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=26|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 26|KO=창세기 26장
+V|N=1|EN=And there was a famine in the land, beside the first famine that was in the days of Abraham. And Isaac went unto Abimelech king of the Philistines unto Gerar.|KO=그 땅에 기근이 있었으니, 이는 아브라함의 날에 있었던 첫 기근 외에 또 다른 기근이었더라. 이삭이 블레셋 사람의 왕 아비멜렉에게로 갔더라.
+V|N=2|EN=And the LORD appeared unto him, and said, Go not down into Egypt; dwell in the land which I shall tell thee of:|KO=여호와께서 그에게 나타나시고 말씀하시기를, 애굽으로 내려가지 말고 내가 네게 지시하는 땅에 거주하라 하시고,
+V|N=3|EN=Sojourn in this land, and I will be with thee, and will bless thee; for unto thee, and unto thy seed, I will give all these countries, and I will perform the oath which I sware unto Abraham thy father;|KO=이 땅에 거주하라. 내가 너와 함께하여 너를 축복하리니, 내가 이 모든 나라를 네게 주고, 네 자손에게도 주리라. 내가 아브라함 네 아버지에게 맹세한 그 맹세를 이루리라.
+V|N=4|EN=And I will make thy seed to multiply as the stars of heaven, and will give unto thy seed all these countries; and in thy seed shall all the nations of the earth be blessed;|KO=내가 네 자손을 하늘의 별처럼 많게 하여, 네 자손에게 이 모든 나라를 주리니, 네 자손으로 말미암아 땅의 모든 민족이 복을 받으리라.
+V|N=5|EN=Because that Abraham obeyed my voice, and kept my charge, my commandments, my statutes, and my laws.|KO=이는 아브라함이 내 목소리를 순종하고, 내 명령과 내 규례와 내 법도를 지켰음이라.
+V|N=6|EN=And Isaac dwelt in Gerar:|KO=이삭이 그곳에 거주하였더라.
+V|N=7|EN=And the men of the place asked him of his wife; and he said, She is my sister: for he feared to say, She is my wife; lest, said he, the men of the place should kill me for Rebekah; because she was fair to look upon.|KO=그곳의 사람들이 그의 아내에 대하여 물으므로, 이삭이 대답하되, 그녀는 내 누이이다 하였으니, 이는 그가 그녀가 아내라고 말하기를 두려워하였음이라. 그가 이르기를, 사람들이 그 여인을 인하여 나를 죽일까 두려워하였더라.
+V|N=8|EN=And it came to pass, when he had been there a long time, that Abimelech king of the Philistines looked out at a window, and saw, and, behold, Isaac was sporting with Rebekah his wife.|KO=그가 거기 오래 거주하였더니, 블레셋 사람의 왕 아비멜렉이 창문으로 내려다보다가, 보니 이삭이 그의 아내 리브가와 함께 놀고 있더라.
+V|N=9|EN=And Abimelech called Isaac, and said, Behold, of a surety she is thy wife; and how saidst thou, She is my sister? And Isaac said unto him, Because I said, Lest I die for her.|KO=아비멜렉이 이삭을 불러서 이르되, 분명히 그녀는 네 아내가 아니냐? 네가 어찌하여 그녀를 내 누이라고 하였느냐? 이삭이 그에게 대답하되, 내가 그녀를 인하여 죽을까 두려워하였음이라.
+V|N=10|EN=And Abimelech said, What is this thou hast done unto us? one of the people might lightly have lien with thy wife, and thou shouldest have brought guiltiness upon us.|KO=아비멜렉이 이르되, 네가 우리에게 무슨 일을 하였느냐? 만일 한 백성이 네 아내와 동침하였더라면, 네가 우리에게 죄를 가져왔을 것이라.
+V|N=11|EN=And Abimelech charged all his people, saying, He that toucheth this man or his wife shall surely be put to death.|KO=아비멜렉이 그의 모든 백성에게 명령하여 이르되, 이 사람이나 그의 아내를 만지는 자는 반드시 죽임을 당할 것이라 하였더라.
+V|N=12|EN=Then Isaac sowed in that land, and received in the same year an hundredfold: and the LORD blessed him.|KO=이삭이 그 땅에 씨를 뿌리매, 그 해에 백 배의 수확을 얻었고, 여호와께서 그를 축복하셨더라.
+V|N=13|EN=And the man waxed great, and went forward, and grew until he became very great:|KO=그 사람이 창대하고, 더욱 번성하여 매우 창대하게 되니,
+V|N=14|EN=For he had possession of flocks, and possession of herds, and great store of servants: and the Philistines envied him.|KO=그에게 양떼와 소떼와 종들이 많았더라. 블레셋 사람들이 그를 시기하였더라.
+V|N=15|EN=For all the wells which his father’s servants had digged in the days of Abraham his father, the Philistines had stopped them, and filled them with earth.|KO=그의 아버지 아브라함의 날에 그의 종들이 판 모든 우물들을 블레셋 사람들이 막고, 흙으로 메웠더라.
+V|N=16|EN=And Abimelech said unto Isaac, Go from us; for thou art much mightier than we.|KO=아비멜렉이 이삭에게 이르되, 너는 우리에게서 떠나라. 네가 우리보다 훨씬 강하니라 하였더라.
+V|N=17|EN=And Isaac departed thence, and pitched his tent in the valley of Gerar, and dwelt there.|KO=이삭이 그곳을 떠나서 그랄 골짜기에 장막을 치고 거기 거주하였더라.
+V|N=18|EN=And Isaac digged again the wells of water, which they had digged in the days of Abraham his father; for the Philistines had stopped them after the death of Abraham: and he called their names after the names by which his father had called them.|KO=이삭이 그의 아버지 아브라함의 날에 판 우물들을 다시 팠으니, 블레셋 사람들이 아브라함이 죽은 후에 그 우물들을 막았더라. 이삭이 그 우물들의 이름을 그의 아버지가 지은 이름으로 불렀더라.
+V|N=19|EN=And Isaac’s servants digged in the valley, and found there a well of springing water.|KO=이삭의 종들이 골짜기에서 우물을 팠더니, 거기에서 샘물이 나더라.
+V|N=20|EN=And the herdmen of Gerar did strive with Isaac’s herdmen, saying, The water is ours: and he called the name of the well Esek; because they strove with him.|KO=그랄의 목자들이 이삭의 목자들과 다투어 이르되, 이 물은 우리의 것이라 하므로, 이삭이 그 우물의 이름을 에섹이라 하였으니, 이는 그들이 그와 다투었음이라.
+V|N=21|EN=And they digged another well, and strove for that also: and he called the name of it Sitnah.|KO=그들이 또 다른 우물을 팠으나, 그 우물에 대하여도 다투므로, 이삭이 그 이름을 싯나라 하였더라.
+V|N=22|EN=And he removed from thence, and digged another well; and for that they strove not: and he called the name of it Rehoboth; and he said, For now the LORD hath made room for us, and we shall be fruitful in the land.|KO=그가 거기서 떠나서 또 다른 우물을 팠으나, 그에 대하여는 다투지 아니하였으므로, 그 이름을 르호봇이라 하였고, 그가 이르기를, 이제 여호와께서 우리를 위하여 넓히시고, 우리가 이 땅에서 번성하리라 하였더라.
+V|N=23|EN=And he went up from thence to Beersheba.|KO=그가 거기서부터 브엘세바로 올라갔더라.
+V|N=24|EN=And the LORD appeared unto him the same night, and said, I am the God of Abraham thy father: fear not, for I am with thee, and will bless thee, and multiply thy seed for my servant Abraham’s sake.|KO=여호와께서 그 밤에 그에게 나타나시고 이르시되, 나는 네 아버지 아브라함의 하나님이라. 두려워하지 말라. 내가 너와 함께하여 너를 축복하고, 내 종 아브라함을 위하여 네 자손을 번성하게 하리라 하신지라.
+V|N=25|EN=And he builded an altar there, and called upon the name of the LORD, and pitched his tent there: and there Isaac’s servants digged a well.|KO=그가 거기서 제단을 쌓고 여호와의 이름을 부르며, 그곳에 장막을 치고, 이삭의 종들이 거기서 우물을 팠더라.
+V|N=26|EN=Then Abimelech went to him from Gerar, and Ahuzzath one of his friends, and Phichol the chief captain of his army.|KO=아비멜렉이 그랄에서 그에게로 오고, 그의 친구 아후사드와 그의 군대의 주관자 비골을 데리고 그에게로 갔더라.
+V|N=27|EN=And Isaac said unto them, Wherefore come ye to me, seeing ye hate me, and have sent me away from you?|KO=이삭이 그들에게 이르되, 너희가 어찌하여 나에게 왔느냐? 너희가 나를 미워하고 나를 너희에게서 쫓아내었거늘.
+V|N=28|EN=And they said, We saw certainly that the LORD was with thee: and we said, Let there be now an oath betwixt us, even betwixt us and thee, and let us make a covenant with thee;|KO=그들이 이르되, 우리가 분명히 여호와께서 너와 함께 하신 것을 보았으므로, 이제 우리와 너 사이에 맹세를 세우고, 너와 언약을 맺자 하였더라.
+V|N=29|EN=That thou wilt do us no hurt, as we have not touched thee, and as we have done unto thee nothing but good, and have sent thee away in peace: thou art now the blessed of the LORD.|KO=너는 우리에게 해를 끼치지 아니할 것이라. 우리가 너를 만지지 아니하고, 너에게 선한 것만을 행하였고, 평안히 너를 보냈으니, 너는 이제 여호와의 복을 받은 자니라.
+V|N=30|EN=And he made them a feast, and they did eat and drink.|KO=그가 그들을 위하여 잔치를 베풀고, 그들이 먹고 마셨더라.
+V|N=31|EN=And they rose up betimes in the morning, and sware one to another: and Isaac sent them away, and they departed from him in peace.|KO=그들이 아침에 일찍 일어나 서로 맹세하고, 이삭이 그들을 보내매 그들이 그에게서 평안히 떠나갔더라.
+V|N=32|EN=And it came to pass the same day, that Isaac’s servants came, and told him concerning the well which they had digged, and said unto him, We have found water.|KO=그날에 이삭의 종들이 와서 그들이 판 우물에 대하여 그에게 말하되, 우리가 물을 찾았나이다 하니,
+V|N=33|EN=And he called it Shebah: therefore the name of the city is Beersheba unto this day.|KO=그가 그 이름을 세바라 하였으므로, 이 성의 이름이 오늘날까지 브엘세바라 하더라.
+V|N=34|EN=And Esau was forty years old when he took to wife Judith the daughter of Beeri the Hittite, and Bashemath the daughter of Elon the Hittite:|KO=이삭이 사십 세에 헷 사람 베리의 딸 유딧과 헷 사람 엘론의 딸 바스맛을 아내로 맞이하였더라.
+V|N=35|EN=Which were a grief of mind unto Isaac and to Rebekah.|KO=그들이 이삭과 리브가에게 마음의 근심이 되었더라.

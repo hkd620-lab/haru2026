@@ -1,0 +1,27 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=2|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 2|KO=창세기 2장
+V|N=1|EN=Thus the heavens and the earth were finished, and all the host of them.|KO=하늘과 땅이 다 이루어졌고, 그 모든 군대가 완성되었다.
+V|N=2|EN=And on the seventh day God ended his work which he had made; and he rested on the seventh day from all his work which he had made.|KO=일곱째 날에 하나님이 그가 하신 일을 마치시고, 일곱째 날에 그의 모든 일을 쉬셨다.
+V|N=3|EN=And God blessed the seventh day, and sanctified it: because that in it he had rested from all his work which God created and made.|KO=하나님이 일곱째 날을 복 주시고 거룩하게 하셨으니, 이는 그 날에 하나님이 그의 모든 창조의 일을 쉬셨기 때문이다.
+V|N=4|EN=These are the generations of the heavens and of the earth when they were created, in the day that the LORD God made the earth and the heavens,|KO=이것은 여호와 하나님이 땅과 하늘을 창조하실 때의 천지의 족보이다.
+V|N=5|EN=And every plant of the field before it was in the earth, and every herb of the field before it grew: for the LORD God had not caused it to rain upon the earth, and there was not a man to till the ground.|KO=땅에 나기 전에 들의 모든 식물과 자라기 전에 들의 모든 풀은 여호와 하나님이 비를 내리지 않으셨고, 땅을 갈 사람이 없었기 때문이다.
+V|N=6|EN=But there went up a mist from the earth, and watered the whole face of the ground.|KO=그러나 땅에서 안개가 올라와서 온 지면을 적셨다.
+V|N=7|EN=And the LORD God formed man of the dust of the ground, and breathed into his nostrils the breath of life; and man became a living soul.|KO=여호와 하나님이 흙으로 사람을 지으시고, 그의 코에 생명의 숨을 불어넣으시니, 사람이 생령이 되었다.
+V|N=8|EN=And the LORD God planted a garden eastward in Eden; and there he put the man whom he had formed.|KO=여호와 하나님이 동쪽 에덴에 동산을 심으시고, 그 지으신 사람을 거기 두셨다.
+V|N=9|EN=And out of the ground made the LORD God to grow every tree that is pleasant to the sight, and good for food; the tree of life also in the midst of the garden, and the tree of knowledge of good and evil.|KO=여호와 하나님이 땅에서 보기에 아름답고 먹기에 좋은 모든 나무를 자라게 하셨고, 동산 한가운데에는 생명나무와 선악을 알게 하는 나무가 있었다.
+V|N=10|EN=And a river went out of Eden to water the garden; and from thence it was parted, and became into four heads.|KO=에덴에서 동산을 적시기 위하여 강이 흘러나오고, 그곳에서 갈라져 네 근원으로 나뉘었다.
+V|N=11|EN=The name of the first is Pison: that is it which compasseth the whole land of Havilah, where there is gold;|KO=첫째 이름은 비손이라, 이는 하윌라 온 땅을 둘러싸고 있는 강이다. 그곳에는 금이 있다.
+V|N=12|EN=And the gold of that land is good: there is bdellium and the onyx stone.|KO=그 땅의 금은 좋고, 그곳에는 베델리엄과 호마노가 있다.
+V|N=13|EN=And the name of the second river is Gihon: the same is it that compasseth the whole land of Ethiopia.|KO=둘째 강의 이름은 기혼이라, 이는 에티오피아 온 땅을 둘러싸고 있는 강이다.
+V|N=14|EN=And the name of the third river is Hiddekel: that is it which goeth toward the east of Assyria. And the fourth river is Euphrates.|KO=셋째 강의 이름은 히데겔이라, 이는 아시리아 동쪽으로 흐르는 강이다. 넷째 강은 유프라테스이다.
+V|N=15|EN=And the LORD God took the man, and put him into the garden of Eden to dress it and to keep it.|KO=여호와 하나님이 그 사람을 데려다가 에덴 동산을 경작하고 지키게 하셨다.
+V|N=16|EN=And the LORD God commanded the man, saying, Of every tree of the garden thou mayest freely eat:|KO=여호와 하나님이 그 사람에게 명령하여 말씀하시기를, 동산의 모든 나무에서 너는 마음대로 먹어도 된다.
+V|N=17|EN=But of the tree of the knowledge of good and evil, thou shalt not eat of it: for in the day that thou eatest thereof thou shalt surely die.|KO=그러나 선악을 알게 하는 나무에서는 먹지 말라. 네가 먹는 날에는 반드시 죽으리라 하셨다.
+V|N=18|EN=And the LORD God said, It is not good that the man should be alone; I will make him an help meet for him.|KO=여호와 하나님이 말씀하시기를, 사람이 혼자 있는 것이 좋지 아니하니, 내가 그를 위하여 돕는 배필을 지으리라 하셨다.
+V|N=19|EN=And out of the ground the LORD God formed every beast of the field, and every fowl of the air; and brought them unto Adam to see what he would call them: and whatsoever Adam called every living creature, that was the name thereof.|KO=여호와 하나님이 땅에서 모든 들짐승과 공중의 모든 새를 지으시고, 그것들을 아담에게로 가져가서 그가 무엇이라 부를지를 보셨다. 아담이 모든 생물을 부르는 것이 그 이름이 되었다.
+V|N=20|EN=And Adam gave names to all cattle, and to the fowl of the air, and to every beast of the field; but for Adam there was not found an help meet for him.|KO=아담이 모든 가축과 공중의 새와 모든 들짐승에게 이름을 주었으나, 아담을 위하여는 돕는 배필이 없었다.
+V|N=21|EN=And the LORD God caused a deep sleep to fall upon Adam, and he slept: and he took one of his ribs, and closed up the flesh instead thereof;|KO=여호와 하나님이 아담에게 깊은 잠을 주시니, 그가 잠들었고, 그의 갈비뼈 하나를 취하여 그 자리에 살로 채우셨다.
+V|N=22|EN=And the rib, which the LORD God had taken from man, made he a woman, and brought her unto the man.|KO=여호와 하나님이 아담에게서 취하신 갈비로 여자를 만드시고, 그를 아담에게로 데려오셨다.
+V|N=23|EN=And Adam said, This is now bone of my bones, and flesh of my flesh: she shall be called Woman, because she was taken out of Man.|KO=아담이 이르되, 이는 내 뼈 중의 뼈요, 내 살 중의 살이라. 그녀는 여자라 불릴 것이니, 이는 남자에게서 취하였음이라 하였다.
+V|N=24|EN=Therefore shall a man leave his father and his mother, and shall cleave unto his wife: and they shall be one flesh.|KO=그러므로 남자가 부모를 떠나 그의 아내와 연합하여 둘이 한 몸이 될지니라.
+V|N=25|EN=And they were both naked, the man and his wife, and were not ashamed.|KO=아담과 그의 아내가 벌거벗었으나, 부끄러워하지 아니하더라.

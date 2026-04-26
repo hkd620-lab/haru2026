@@ -1,0 +1,29 @@
+#BOOK=Proverbs|BOOKCODE=pro|CHAPTER=29|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Proverbs 29|KO=
+V|N=1|EN=He, that being often reproved hardeneth his neck, shall suddenly be destroyed, and that without remedy.|KO=
+V|N=2|EN=When the righteous are in authority, the people rejoice: but when the wicked beareth rule, the people mourn.|KO=
+V|N=3|EN=Whoso loveth wisdom rejoiceth his father: but he that keepeth company with harlots spendeth his substance.|KO=
+V|N=4|EN=The king by judgment establisheth the land: but he that receiveth gifts overthroweth it.|KO=
+V|N=5|EN=A man that flattereth his neighbour spreadeth a net for his feet.|KO=
+V|N=6|EN=In the transgression of an evil man there is a snare: but the righteous doth sing and rejoice.|KO=
+V|N=7|EN=The righteous considereth the cause of the poor: but the wicked regardeth not to know it.|KO=
+V|N=8|EN=Scornful men bring a city into a snare: but wise men turn away wrath.|KO=
+V|N=9|EN=If a wise man contendeth with a foolish man, whether he rage or laugh, there is no rest.|KO=
+V|N=10|EN=The bloodthirsty hate the upright: but the just seek his soul.|KO=
+V|N=11|EN=A fool uttereth all his mind: but a wise man keepeth it in till afterwards.|KO=
+V|N=12|EN=If a ruler hearken to lies, all his servants are wicked.|KO=
+V|N=13|EN=The poor and the deceitful man meet together: the LORD lighteneth both their eyes.|KO=
+V|N=14|EN=The king that faithfully judgeth the poor, his throne shall be established for ever.|KO=
+V|N=15|EN=The rod and reproof give wisdom: but a child left to himself bringeth his mother to shame.|KO=
+V|N=16|EN=When the wicked are multiplied, transgression increaseth: but the righteous shall see their fall.|KO=
+V|N=17|EN=Correct thy son, and he shall give thee rest; yea, he shall give delight unto thy soul.|KO=
+V|N=18|EN=Where there is no vision, the people perish: but he that keepeth the law, happy is he.|KO=
+V|N=19|EN=A servant will not be corrected by words: for though he understand he will not answer.|KO=
+V|N=20|EN=Seest thou a man that is hasty in his words? there is more hope of a fool than of him.|KO=
+V|N=21|EN=He that delicately bringeth up his servant from a child shall have him become his son at the length.|KO=
+V|N=22|EN=An angry man stirreth up strife, and a furious man aboundeth in transgression.|KO=
+V|N=23|EN=A man’s pride shall bring him low: but honour shall uphold the humble in spirit.|KO=
+V|N=24|EN=Whoso is partner with a thief hateth his own soul: he heareth cursing, and bewrayeth it not.|KO=
+V|N=25|EN=The fear of man bringeth a snare: but whoso putteth his trust in the LORD shall be safe.|KO=
+V|N=26|EN=Many seek the ruler’s favour; but every man’s judgment cometh from the LORD.|KO=
+V|N=27|EN=An unjust man is an abomination to the just: and he that is upright in the way is abomination to the wicked.|KO=

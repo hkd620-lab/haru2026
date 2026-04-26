@@ -1,0 +1,34 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=10|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 10|KO=창세기 10장
+V|N=1|EN=Now these are the generations of the sons of Noah, Shem, Ham, and Japheth: and unto them were sons born after the flood.|KO=노아의 아들들, 셈과 함과 야벳의 후대는 이러하니라. 홍수 후에 그들에게 아들이 태어났더라.
+V|N=2|EN=The sons of Japheth; Gomer, and Magog, and Madai, and Javan, and Tubal, and Meshech, and Tiras.|KO=야벳의 아들들은 고멜과 마곡과 마다이와 야완과 두발과 메섹과 티라스라.
+V|N=3|EN=And the sons of Gomer; Ashkenaz, and Riphath, and Togarmah.|KO=고멜의 아들들은 아스겐스와 리바스와 도가르마라.
+V|N=4|EN=And the sons of Javan; Elishah, and Tarshish, Kittim, and Dodanim.|KO=야완의 아들들은 엘리사와 다르시스와 기띔과 도다님이라.
+V|N=5|EN=By these were the isles of the Gentiles divided in their lands; every one after his tongue, after their families, in their nations.|KO=이들로 말미암아 이방의 섬들이 그들의 땅에서 나뉘었으니, 각기 그들의 언어와 가족과 민족에 따라 나뉘었더라.
+V|N=6|EN=And the sons of Ham; Cush, and Mizraim, and Phut, and Canaan.|KO=함의 아들들은 구스와 미스라임과 풋과 가나안이라.
+V|N=7|EN=And the sons of Cush; Seba, and Havilah, and Sabtah, and Raamah, and Sabtechah: and the sons of Raamah; Sheba, and Dedan.|KO=구스의 아들들은 세바와 하윌라와 삽다와 라아마와 삽댁이라. 라아마의 아들들은 세바와 느다니라.
+V|N=8|EN=And Cush begat Nimrod: he began to be a mighty one in the earth.|KO=구스는 님롯을 낳았으니, 그는 땅에서 강한 자가 되었더라.
+V|N=9|EN=He was a mighty hunter before the LORD: wherefore it is said, Even as Nimrod the mighty hunter before the LORD.|KO=그는 여호와 앞에서 강한 사냥꾼이었으므로, 사람들이 말하기를 "여호와 앞에서 강한 사냥꾼 님롯과 같으니라" 하였더라.
+V|N=10|EN=And the beginning of his kingdom was Babel, and Erech, and Accad, and Calneh, in the land of Shinar.|KO=그의 왕국의 시작은 바벨과 에렉과 아카드와 갈네였으니, 이는 신할 땅에 있더라.
+V|N=11|EN=Out of that land went forth Asshur, and builded Nineveh, and the city Rehoboth, and Calah,|KO=그 땅에서 아수르가 나와서 니느웨와 르호봇 성과 갈라를 건설하였고,
+V|N=12|EN=And Resen between Nineveh and Calah: the same is a great city.|KO=니느웨와 갈라 사이에 레센이 있었으니, 이는 큰 성이라.
+V|N=13|EN=And Mizraim begat Ludim, and Anamim, and Lehabim, and Naphtuhim,|KO=미스라임은 루딤과 아나밈과 레하빔과 납두힘을 낳았고,
+V|N=14|EN=And Pathrusim, and Casluhim, (out of whom came Philistim,) and Caphtorim.|KO=밭루심과 카슬루힘을 낳았으니, 그들 중에서 블레셋이 나왔고, 캅도르를 낳았더라.
+V|N=15|EN=And Canaan begat Sidon his first born, and Heth,|KO=가나안은 그의 맏아들 시돈과 헷을 낳았고,
+V|N=16|EN=And the Jebusite, and the Amorite, and the Girgasite,|KO=여부스 족속과 아모리 족속과 기르가스 족속과
+V|N=17|EN=And the Hivite, and the Arkite, and the Sinite,|KO=히위 족속과 아르가 족속과 신 족속과
+V|N=18|EN=And the Arvadite, and the Zemarite, and the Hamathite: and afterward were the families of the Canaanites spread abroad.|KO=아르바딧 족속과 제마르 족속과 하맛 족속이 있었으니, 그 후에 가나안 자손의 가족들이 퍼져 나갔더라.
+V|N=19|EN=And the border of the Canaanites was from Sidon, as thou comest to Gerar, unto Gaza; as thou goest, unto Sodom, and Gomorrah, and Admah, and Zeboim, even unto Lasha.|KO=가나안의 경계는 시돈에서부터 그라르에 이르고, 가자에 이르며, 소돔과 고모라와 아드마와 제보임에 이르기까지, 라샤에 이르렀더라.
+V|N=20|EN=These are the sons of Ham, after their families, after their tongues, in their countries, and in their nations.|KO=이들은 함의 아들들이니, 그들의 가족과 언어와 나라와 민족에 따라 나뉘었더라.
+V|N=21|EN=Unto Shem also, the father of all the children of Eber, the brother of Japheth the elder, even to him were children born.|KO=셈에게도, 모든 에벨의 자녀의 아버지인 셈에게, 장자 야벳의 형제인 그에게 자녀들이 태어났더라.
+V|N=22|EN=The children of Shem; Elam, and Asshur, and Arphaxad, and Lud, and Aram.|KO=셈의 자녀들은 엘람과 아수르와 아르박삿과 룻과 아람이라.
+V|N=23|EN=And the children of Aram; Uz, and Hul, and Gether, and Mash.|KO=아람의 자녀들은 우스와 훌과 게델과 마스라.
+V|N=24|EN=And Arphaxad begat Salah; and Salah begat Eber.|KO=아르박삿은 살라를 낳았고, 살라는 에벨을 낳았더라.
+V|N=25|EN=And unto Eber were born two sons: the name of one was Peleg; for in his days was the earth divided; and his brother’s name was Joktan.|KO=에벨에게는 두 아들이 태어났으니, 그 중 하나의 이름은 벨렉이라. 그의 날에 땅이 나뉘었고, 그의 형의 이름은 욕단이라.
+V|N=26|EN=And Joktan begat Almodad, and Sheleph, and Hazarmaveth, and Jerah,|KO=욕단은 알모닷과 셀레프와 하사르마벳과 예라를 낳았고,
+V|N=27|EN=And Hadoram, and Uzal, and Diklah,|KO=하도람과 우살과 디클라를 낳았고,
+V|N=28|EN=And Obal, and Abimael, and Sheba,|KO=오발과 아비멜렉과 세바를 낳았고,
+V|N=29|EN=And Ophir, and Havilah, and Jobab: all these were the sons of Joktan.|KO=오빌과 하윌라와 요밥을 낳았으니, 이들은 모두 욕단의 아들이더라.
+V|N=30|EN=And their dwelling was from Mesha, as thou goest unto Sephar a mount of the east.|KO=그들의 거처는 메사에서부터 동쪽의 세발 산에 이르렀더라.
+V|N=31|EN=These are the sons of Shem, after their families, after their tongues, in their lands, after their nations.|KO=이들은 셈의 아들들이니, 그들의 가족과 언어와 땅과 민족에 따라 나뉘었더라.
+V|N=32|EN=These are the families of the sons of Noah, after their generations, in their nations: and by these were the nations divided in the earth after the flood.|KO=이들은 노아의 아들들의 가족들이니, 그들의 후대에 따라 민족들이 나뉘었고, 홍수 후에 땅에서 민족들이 나뉘었더라.

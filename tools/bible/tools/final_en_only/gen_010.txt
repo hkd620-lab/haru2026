@@ -1,0 +1,34 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=10|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 10|KO=창세기 10장
+V|N=1|EN=Now these are the generations of the sons of Noah, Shem, Ham, and Japheth: and unto them were sons born after the flood.|KO=
+V|N=2|EN=The sons of Japheth; Gomer, and Magog, and Madai, and Javan, and Tubal, and Meshech, and Tiras.|KO=
+V|N=3|EN=And the sons of Gomer; Ashkenaz, and Riphath, and Togarmah.|KO=
+V|N=4|EN=And the sons of Javan; Elishah, and Tarshish, Kittim, and Dodanim.|KO=
+V|N=5|EN=By these were the isles of the Gentiles divided in their lands; every one after his tongue, after their families, in their nations.|KO=
+V|N=6|EN=And the sons of Ham; Cush, and Mizraim, and Phut, and Canaan.|KO=
+V|N=7|EN=And the sons of Cush; Seba, and Havilah, and Sabtah, and Raamah, and Sabtechah: and the sons of Raamah; Sheba, and Dedan.|KO=
+V|N=8|EN=And Cush begat Nimrod: he began to be a mighty one in the earth.|KO=
+V|N=9|EN=He was a mighty hunter before the LORD: wherefore it is said, Even as Nimrod the mighty hunter before the LORD.|KO=
+V|N=10|EN=And the beginning of his kingdom was Babel, and Erech, and Accad, and Calneh, in the land of Shinar.|KO=
+V|N=11|EN=Out of that land went forth Asshur, and builded Nineveh, and the city Rehoboth, and Calah,|KO=
+V|N=12|EN=And Resen between Nineveh and Calah: the same is a great city.|KO=
+V|N=13|EN=And Mizraim begat Ludim, and Anamim, and Lehabim, and Naphtuhim,|KO=
+V|N=14|EN=And Pathrusim, and Casluhim, (out of whom came Philistim,) and Caphtorim.|KO=
+V|N=15|EN=And Canaan begat Sidon his first born, and Heth,|KO=
+V|N=16|EN=And the Jebusite, and the Amorite, and the Girgasite,|KO=
+V|N=17|EN=And the Hivite, and the Arkite, and the Sinite,|KO=
+V|N=18|EN=And the Arvadite, and the Zemarite, and the Hamathite: and afterward were the families of the Canaanites spread abroad.|KO=
+V|N=19|EN=And the border of the Canaanites was from Sidon, as thou comest to Gerar, unto Gaza; as thou goest, unto Sodom, and Gomorrah, and Admah, and Zeboim, even unto Lasha.|KO=
+V|N=20|EN=These are the sons of Ham, after their families, after their tongues, in their countries, and in their nations.|KO=
+V|N=21|EN=Unto Shem also, the father of all the children of Eber, the brother of Japheth the elder, even to him were children born.|KO=
+V|N=22|EN=The children of Shem; Elam, and Asshur, and Arphaxad, and Lud, and Aram.|KO=
+V|N=23|EN=And the children of Aram; Uz, and Hul, and Gether, and Mash.|KO=
+V|N=24|EN=And Arphaxad begat Salah; and Salah begat Eber.|KO=
+V|N=25|EN=And unto Eber were born two sons: the name of one was Peleg; for in his days was the earth divided; and his brother’s name was Joktan.|KO=
+V|N=26|EN=And Joktan begat Almodad, and Sheleph, and Hazarmaveth, and Jerah,|KO=
+V|N=27|EN=And Hadoram, and Uzal, and Diklah,|KO=
+V|N=28|EN=And Obal, and Abimael, and Sheba,|KO=
+V|N=29|EN=And Ophir, and Havilah, and Jobab: all these were the sons of Joktan.|KO=
+V|N=30|EN=And their dwelling was from Mesha, as thou goest unto Sephar a mount of the east.|KO=
+V|N=31|EN=These are the sons of Shem, after their families, after their tongues, in their lands, after their nations.|KO=
+V|N=32|EN=These are the families of the sons of Noah, after their generations, in their nations: and by these were the nations divided in the earth after the flood.|KO=

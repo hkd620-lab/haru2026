@@ -1,0 +1,45 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=36|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 36|KO=창세기 36장
+V|N=1|EN=Now these are the generations of Esau, who is Edom.|KO=이것은 에서의 후대니, 그는 에돔이라.
+V|N=2|EN=Esau took his wives of the daughters of Canaan; Adah the daughter of Elon the Hittite, and Aholibamah the daughter of Anah the daughter of Zibeon the Hivite;|KO=에서가 가나안의 딸들 중에서 아내를 취하였으니, 히타이트의 엘론의 딸 아다와, 시브온의 히위 사람 아나의 딸 아홀리바마라.
+V|N=3|EN=And Bashemath Ishmael’s daughter, sister of Nebajoth.|KO=그리고 바스마스는 이스마엘의 딸로 네바욧의 자매라.
+V|N=4|EN=And Adah bare to Esau Eliphaz; and Bashemath bare Reuel;|KO=아다는 에서에게 엘리바스를 낳았고, 바스마스는 르우엘을 낳았으며,
+V|N=5|EN=And Aholibamah bare Jeush, and Jaalam, and Korah: these are the sons of Esau, which were born unto him in the land of Canaan.|KO=아홀리바마는 여우스와 야알람과 고라를 낳았으니, 이들은 가나안 땅에서 에서에게 태어난 아들들이라.
+V|N=6|EN=And Esau took his wives, and his sons, and his daughters, and all the persons of his house, and his cattle, and all his beasts, and all his substance, which he had got in the land of Canaan; and went into the country from the face of his brother Jacob.|KO=에서가 그의 아내들과 아들들과 딸들과 그의 집의 모든 사람들과 그의 가축과 그의 모든 짐승과 그가 가나안 땅에서 얻은 모든 재산을 취하고 그의 형 야곱의 얼굴을 피하여 그 땅으로 갔더라.
+V|N=7|EN=For their riches were more than that they might dwell together; and the land wherein they were strangers could not bear them because of their cattle.|KO=그들의 재산이 함께 거주하기에는 너무 많았으므로, 그들이 거주하는 땅이 그들의 가축으로 인하여 그들을 견딜 수 없었더라.
+V|N=8|EN=Thus dwelt Esau in mount Seir: Esau is Edom.|KO=그래서 에서는 세일 산에 거주하였으니, 에서가 에돔이라.
+V|N=9|EN=And these are the generations of Esau the father of the Edomites in mount Seir:|KO=이것은 세일 산에서 에서의 후대, 곧 에돔 사람의 후대라.
+V|N=10|EN=These are the names of Esau’s sons; Eliphaz the son of Adah the wife of Esau, Reuel the son of Bashemath the wife of Esau.|KO=이것은 에서의 아들들의 이름이니, 에서의 아내 아다의 아들 엘리바스와 에서의 아내 바스마스의 아들 르우엘이라.
+V|N=11|EN=And the sons of Eliphaz were Teman, Omar, Zepho, and Gatam, and Kenaz.|KO=엘리바스의 아들은 데만과 오마르와 제보와 가탐과 케나스라.
+V|N=12|EN=And Timna was concubine to Eliphaz Esau’s son; and she bare to Eliphaz Amalek: these were the sons of Adah Esau’s wife.|KO=그리고 팀나는 에서의 아들 엘리바스의 첩이었고, 그녀가 엘리바스에게 아말렉을 낳았으니, 이들은 에서의 아내 아다의 아들들이라.
+V|N=13|EN=And these are the sons of Reuel; Nahath, and Zerah, Shammah, and Mizzah: these were the sons of Bashemath Esau’s wife.|KO=이것은 르우엘의 아들들이니, 나핫과 세라와 삼마와 미짜라. 이들은 에서의 아내 바스마스의 아들들이라.
+V|N=14|EN=And these were the sons of Aholibamah, the daughter of Anah the daughter of Zibeon, Esau’s wife: and she bare to Esau Jeush, and Jaalam, and Korah.|KO=이것은 에서의 아내 아홀리바마의 아들들이니, 아나의 딸 아홀리바마가 에서에게 여우스와 야알람과 고라를 낳았더라.
+V|N=15|EN=These were dukes of the sons of Esau: the sons of Eliphaz the firstborn son of Esau; duke Teman, duke Omar, duke Zepho, duke Kenaz,|KO=이들은 에서의 아들들의 족장들이니, 에서의 맏아들 엘리바스의 아들들로서, 족장 데만, 족장 오마르, 족장 제보, 족장 케나스,
+V|N=16|EN=Duke Korah, duke Gatam, and duke Amalek: these are the dukes that came of Eliphaz in the land of Edom; these were the sons of Adah.|KO=족장 고라, 족장 가탐, 족장 아말렉이라. 이들은 아다에게서 태어난 엘리바스의 족장들이라.
+V|N=17|EN=And these are the sons of Reuel Esau’s son; duke Nahath, duke Zerah, duke Shammah, duke Mizzah: these are the dukes that came of Reuel in the land of Edom; these are the sons of Bashemath Esau’s wife.|KO=이것은 에서의 아들 르우엘의 아들들이니, 족장 나핫, 족장 세라, 족장 삼마, 족장 미짜라. 이들은 에서의 아내 바스마스에게서 태어난 족장들이라.
+V|N=18|EN=And these are the sons of Aholibamah Esau’s wife; duke Jeush, duke Jaalam, duke Korah: these were the dukes that came of Aholibamah the daughter of Anah, Esau’s wife.|KO=이것은 에서의 아내 아홀리바마의 아들들이니, 족장 여우스, 족장 야알람, 족장 고라라. 이들은 에서의 아내 아홀리바마에게서 태어난 족장들이라.
+V|N=19|EN=These are the sons of Esau, who is Edom, and these are their dukes.|KO=이것은 에서, 곧 에돔의 아들들이며, 이들은 그들의 족장들이라.
+V|N=20|EN=These are the sons of Seir the Horite, who inhabited the land; Lotan, and Shobal, and Zibeon, and Anah,|KO=이것은 에돔 땅에 거주하던 호리 사람 세일의 아들들이니, 롯안과 쇼발과 시브온과 아나,
+V|N=21|EN=And Dishon, and Ezer, and Dishan: these are the dukes of the Horites, the children of Seir in the land of Edom.|KO=디손과 에셀과 디산이라. 이들은 에돔 땅의 세일의 호리 사람들의 족장들이라.
+V|N=22|EN=And the children of Lotan were Hori and Hemam; and Lotan’s sister was Timna.|KO=롯안의 자녀는 호리와 헤맘이며, 롯안의 누이는 팀나라.
+V|N=23|EN=And the children of Shobal were these; Alvan, and Manahath, and Ebal, Shepho, and Onam.|KO=쇼발의 자녀는 알반과 마나핫과 에발과 세포와 오남이라.
+V|N=24|EN=And these are the children of Zibeon; both Ajah, and Anah: this was that Anah that found the mules in the wilderness, as he fed the asses of Zibeon his father.|KO=이것은 시브온의 자녀들이니, 아자와 아나라. 이 아나는 광야에서 그의 아버지 시브온의 나귀를 먹이던 중에 망아지를 발견한 자라.
+V|N=25|EN=And the children of Anah were these; Dishon, and Aholibamah the daughter of Anah.|KO=아나의 자녀는 디손과 아홀리바마, 아나의 딸이라.
+V|N=26|EN=And these are the children of Dishon; Hemdan, and Eshban, and Ithran, and Cheran.|KO=디손의 자녀는 헴단과 에스반과 이트란과 헤란이라.
+V|N=27|EN=The children of Ezer are these; Bilhan, and Zaavan, and Akan.|KO=에셀의 자녀는 빌한과 자반과 아칸이라.
+V|N=28|EN=The children of Dishan are these; Uz, and Aran.|KO=디산의 자녀는 우스와 아란이라.
+V|N=29|EN=These are the dukes that came of the Horites; duke Lotan, duke Shobal, duke Zibeon, duke Anah,|KO=이것은 호리 사람들의 족장들이니, 족장 롯안, 족장 쇼발, 족장 시브온, 족장 아나,
+V|N=30|EN=Duke Dishon, duke Ezer, duke Dishan: these are the dukes that came of Hori, among their dukes in the land of Seir.|KO=족장 디손, 족장 에셀, 족장 디산이라. 이들은 세일 땅의 호리 사람들 중에서 나온 족장들이라.
+V|N=31|EN=And these are the kings that reigned in the land of Edom, before there reigned any king over the children of Israel.|KO=이것은 이스라엘 자손 위에 왕이 세워지기 전에 에돔 땅에서 왕으로 다스린 왕들이라.
+V|N=32|EN=And Bela the son of Beor reigned in Edom: and the name of his city was Dinhabah.|KO=베올의 아들 벨라가 에돔에서 왕이 되었고, 그의 성의 이름은 딘하바라.
+V|N=33|EN=And Bela died, and Jobab the son of Zerah of Bozrah reigned in his stead.|KO=벨라가 죽고, 보스라의 세라의 아들 요바브가 그의 대신 왕이 되었더라.
+V|N=34|EN=And Jobab died, and Husham of the land of Temani reigned in his stead.|KO=요바브가 죽고, 테마 땅의 후샴이 그의 대신 왕이 되었더라.
+V|N=35|EN=And Husham died, and Hadad the son of Bedad, who smote Midian in the field of Moab, reigned in his stead: and the name of his city was Avith.|KO=후샴이 죽고, 미디안을 쳐서 모압의 들에서 왕이 된 베닷의 아들 하닷이 그의 대신 왕이 되었고, 그의 성의 이름은 아비드라.
+V|N=36|EN=And Hadad died, and Samlah of Masrekah reigned in his stead.|KO=하닷이 죽고, 마스렉의 사말라가 그의 대신 왕이 되었더라.
+V|N=37|EN=And Samlah died, and Saul of Rehoboth by the river reigned in his stead.|KO=사울이 죽고, 강가의 르호봇의 사울이 그의 대신 왕이 되었더라.
+V|N=38|EN=And Saul died, and Baalhanan the son of Achbor reigned in his stead.|KO=사울이 죽고, 아흘란의 아들 바알하난이 그의 대신 왕이 되었더라.
+V|N=39|EN=And Baalhanan the son of Achbor died, and Hadar reigned in his stead: and the name of his city was Pau; and his wife’s name was Mehetabel, the daughter of Matred, the daughter of Mezahab.|KO=바알하난의 아들 아흘란이 죽고, 하닷이 그의 대신 왕이 되었고, 그의 성의 이름은 파우라. 그의 아내의 이름은 메헤다벨이라. 그녀는 마트레드의 딸이요, 메자합의 딸이라.
+V|N=40|EN=And these are the names of the dukes that came of Esau, according to their families, after their places, by their names; duke Timnah, duke Alvah, duke Jetheth,|KO=이것은 에서에게서 난 족장들의 이름이니, 그들의 가족에 따라, 그들의 거주지에 따라, 그들의 이름에 따라 족장 팀나, 족장 알바, 족장 제텟,
+V|N=41|EN=Duke Aholibamah, duke Elah, duke Pinon,|KO=족장 아홀리바마, 족장 엘라, 족장 비논,
+V|N=42|EN=Duke Kenaz, duke Teman, duke Mibzar,|KO=족장 케나스, 족장 데만, 족장 밉사르,
+V|N=43|EN=Duke Magdiel, duke Iram: these be the dukes of Edom, according to their habitations in the land of their possession: he is Esau the father of the Edomites.|KO=족장 막디엘, 족장 이람이라. 이들은 에돔 땅의 그들의 거주지에 따라 에돔의 족장들이라. 그는 에서, 곧 에돔의 아들이라.

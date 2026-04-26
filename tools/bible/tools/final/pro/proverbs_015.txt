@@ -1,0 +1,35 @@
+#BOOK=Proverbs|BOOKCODE=pro|CHAPTER=15|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Proverbs 15|KO=
+V|N=1|EN=A soft answer turneth away wrath: but grievous words stir up anger.|KO=
+V|N=2|EN=The tongue of the wise useth knowledge aright: but the mouth of fools poureth out foolishness.|KO=
+V|N=3|EN=The eyes of the LORD are in every place, beholding the evil and the good.|KO=
+V|N=4|EN=A wholesome tongue is a tree of life: but perverseness therein is a breach in the spirit.|KO=
+V|N=5|EN=A fool despiseth his father’s instruction: but he that regardeth reproof is prudent.|KO=
+V|N=6|EN=In the house of the righteous is much treasure: but in the revenues of the wicked is trouble.|KO=
+V|N=7|EN=The lips of the wise disperse knowledge: but the heart of the foolish doeth not so.|KO=
+V|N=8|EN=The sacrifice of the wicked is an abomination to the LORD: but the prayer of the upright is his delight.|KO=
+V|N=9|EN=The way of the wicked is an abomination unto the LORD: but he loveth him that followeth after righteousness.|KO=
+V|N=10|EN=Correction is grievous unto him that forsaketh the way: and he that hateth reproof shall die.|KO=
+V|N=11|EN=Hell and destruction are before the LORD: how much more then the hearts of the children of men?|KO=
+V|N=12|EN=A scorner loveth not one that reproveth him: neither will he go unto the wise.|KO=
+V|N=13|EN=A merry heart maketh a cheerful countenance: but by sorrow of the heart the spirit is broken.|KO=
+V|N=14|EN=The heart of him that hath understanding seeketh knowledge: but the mouth of fools feedeth on foolishness.|KO=
+V|N=15|EN=All the days of the afflicted are evil: but he that is of a merry heart hath a continual feast.|KO=
+V|N=16|EN=Better is little with the fear of the LORD than great treasure and trouble therewith.|KO=
+V|N=17|EN=Better is a dinner of herbs where love is, than a stalled ox and hatred therewith.|KO=
+V|N=18|EN=A wrathful man stirreth up strife: but he that is slow to anger appeaseth strife.|KO=
+V|N=19|EN=The way of the slothful man is as an hedge of thorns: but the way of the righteous is made plain.|KO=
+V|N=20|EN=A wise son maketh a glad father: but a foolish man despiseth his mother.|KO=
+V|N=21|EN=Folly is joy to him that is destitute of wisdom: but a man of understanding walketh uprightly.|KO=
+V|N=22|EN=Without counsel purposes are disappointed: but in the multitude of counsellors they are established.|KO=
+V|N=23|EN=A man hath joy by the answer of his mouth: and a word spoken in due season, how good is it!|KO=
+V|N=24|EN=The way of life is above to the wise, that he may depart from hell beneath.|KO=
+V|N=25|EN=The LORD will destroy the house of the proud: but he will establish the border of the widow.|KO=
+V|N=26|EN=The thoughts of the wicked are an abomination to the LORD: but the words of the pure are pleasant words.|KO=
+V|N=27|EN=He that is greedy of gain troubleth his own house; but he that hateth gifts shall live.|KO=
+V|N=28|EN=The heart of the righteous studieth to answer: but the mouth of the wicked poureth out evil things.|KO=
+V|N=29|EN=The LORD is far from the wicked: but he heareth the prayer of the righteous.|KO=
+V|N=30|EN=The light of the eyes rejoiceth the heart: and a good report maketh the bones fat.|KO=
+V|N=31|EN=The ear that heareth the reproof of life abideth among the wise.|KO=
+V|N=32|EN=He that refuseth instruction despiseth his own soul: but he that heareth reproof getteth understanding.|KO=
+V|N=33|EN=The fear of the LORD is the instruction of wisdom; and before honour is humility.|KO=

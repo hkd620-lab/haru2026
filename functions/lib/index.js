@@ -762,11 +762,25 @@ exports.sendTestNotification = (0, https_2.onCall)({ region: 'asia-northeast3' }
     const results = await Promise.allSettled(fcmTokens.map((token) => admin.messaging().send({ ...message, token })));
     const succeeded = results.filter((r) => r.status === 'fulfilled').length;
     const failed = results.filter((r) => r.status === 'rejected').length;
+    // NotRegistered 만료 토큰 자동 삭제
+    const expiredTokens = [];
     results.forEach((result, i) => {
         if (result.status === 'rejected') {
+            const reason = String(result.reason);
             logger.error(`FCM 발송 실패 — 토큰[${i}]: ${result.reason}`);
+            if (reason.includes('NotRegistered') || reason.includes('registration-token-not-registered')) {
+                expiredTokens.push(fcmTokens[i]);
+            }
         }
     });
+    if (expiredTokens.length > 0) {
+        const { FieldValue } = await Promise.resolve().then(() => __importStar(require('firebase-admin/firestore')));
+        const settingsRef = admin.firestore().doc(`users/${uid}/settings/settings`);
+        await settingsRef.update({
+            fcmTokens: FieldValue.arrayRemove(...expiredTokens),
+        });
+        logger.info(`🧹 만료 토큰 자동 삭제 완료: ${expiredTokens.length}개`);
+    }
     logger.info(`테스트 알림 발송 완료 — uid: ${uid}, 성공: ${succeeded}, 실패: ${failed}`);
     return {
         success: true,
@@ -1529,6 +1543,8 @@ verseKey: "${verseKey}"
             const geminiJson = await geminiRes.json();
             let geminiText = ((_e = (_d = (_c = (_b = (_a = geminiJson === null || geminiJson === void 0 ? void 0 : geminiJson.candidates) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.content) === null || _c === void 0 ? void 0 : _c.parts) === null || _d === void 0 ? void 0 : _d[0]) === null || _e === void 0 ? void 0 : _e.text) || '';
             geminiText = geminiText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            // 제어문자 제거 (JSON 파싱 오류 방지)
+            geminiText = geminiText.replace(/[\x00-\x1F\x7F]/g, (c) => c === '\n' || c === '\r' || c === '\t' ? c : '');
             const geminiData = JSON.parse(geminiText);
             // 3. GPT-4o 검증
             let finalData = geminiData;

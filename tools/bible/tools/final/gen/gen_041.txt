@@ -1,0 +1,59 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=41|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 41|KO=창세기 41장
+V|N=1|EN=And it came to pass at the end of two full years, that Pharaoh dreamed: and, behold, he stood by the river.|KO=두 해가 끝날 때에 바로가 꿈을 꾸었는데, 그가 강가에 서 있는 것을 보았다.
+V|N=2|EN=And, behold, there came up out of the river seven well favoured kine and fatfleshed; and they fed in a meadow.|KO=보라, 강에서 잘 생기고 살찐 일곱 마리 소가 올라왔고, 그들이 초원에서 풀을 먹었다.
+V|N=3|EN=And, behold, seven other kine came up after them out of the river, ill favoured and leanfleshed; and stood by the other kine upon the brink of the river.|KO=보라, 그 뒤에 다른 일곱 마리 소가 강에서 올라왔는데, 형편없이 여위고 못생긴 소들이었고, 그들이 강가의 다른 소들 곁에 서 있었다.
+V|N=4|EN=And the ill favoured and leanfleshed kine did eat up the seven well favoured and fat kine. So Pharaoh awoke.|KO=여위고 못생긴 소들이 잘 생기고 살찐 일곱 마리 소를 먹어 치웠다. 그래서 바로가 깨어났다.
+V|N=5|EN=And he slept and dreamed the second time: and, behold, seven ears of corn came up upon one stalk, rank and good.|KO=그가 다시 잠을 자고 꿈을 꾸었는데, 보라, 한 줄기에 일곱 개의 이삭이 올라왔고, 그 이삭은 무성하고 좋았다.
+V|N=6|EN=And, behold, seven thin ears and blasted with the east wind sprung up after them.|KO=보라, 그 뒤에 여위고 동풍에 말라버린 일곱 개의 이삭이 올라왔다.
+V|N=7|EN=And the seven thin ears devoured the seven rank and full ears. And Pharaoh awoke, and, behold, it was a dream.|KO=여위고 마른 이삭이 무성하고 좋은 일곱 개의 이삭을 삼켜버렸다. 바로가 깨어났고, 보라, 그것은 꿈이었다.
+V|N=8|EN=And it came to pass in the morning that his spirit was troubled; and he sent and called for all the magicians of Egypt, and all the wise men thereof: and Pharaoh told them his dream; but there was none that could interpret them unto Pharaoh.|KO=아침이 되어 그의 마음이 괴로워지자, 그는 이집트의 모든 술사와 지혜자들을 불러서 그들에게 꿈을 이야기했으나, 그를 해석할 수 있는 자가 없었다.
+V|N=9|EN=Then spake the chief butler unto Pharaoh, saying, I do remember my faults this day:|KO=그때 술 맡은 관원이 바로에게 말하였다. "오늘 내가 내 잘못을 기억합니다."
+V|N=10|EN=Pharaoh was wroth with his servants, and put me in ward in the captain of the guard’s house, both me and the chief baker:|KO=바로가 그의 신하들에게 화를 내어 나를 경비대장 집에 가두었고, 나와 제빵사도 함께 있었습니다.
+V|N=11|EN=And we dreamed a dream in one night, I and he; we dreamed each man according to the interpretation of his dream.|KO=우리는 한 밤에 꿈을 꾸었고, 각자는 그의 꿈의 해석에 따라 꿈을 꾸었습니다.
+V|N=12|EN=And there was there with us a young man, an Hebrew, servant to the captain of the guard; and we told him, and he interpreted to us our dreams; to each man according to his dream he did interpret.|KO=그곳에 한 젊은 히브리 사람, 경비대장의 종이 있었고, 우리는 그에게 꿈을 이야기하였고, 그는 우리 꿈을 해석해 주었습니다. 각자는 그의 꿈에 따라 해석하였습니다.
+V|N=13|EN=And it came to pass, as he interpreted to us, so it was; me he restored unto mine office, and him he hanged.|KO=그가 우리에게 해석한 대로 되었고, 나를 내 직위로 회복시켰고, 그를 교수형에 처하였습니다.
+V|N=14|EN=Then Pharaoh sent and called Joseph, and they brought him hastily out of the dungeon: and he shaved himself, and changed his raiment, and came in unto Pharaoh.|KO=그때 바로가 사람을 보내어 요셉을 부르니, 그들이 급히 감옥에서 그를 데리고 나왔다. 그는 면도하고 옷을 갈아입고 바로에게 나아갔다.
+V|N=15|EN=And Pharaoh said unto Joseph, I have dreamed a dream, and there is none that can interpret it: and I have heard say of thee, that thou canst understand a dream to interpret it.|KO=바로가 요셉에게 말하였다. "내가 꿈을 꾸었으나, 해석할 자가 없다. 내가 너에 대해 들은 바가 있는데, 너는 꿈을 해석할 수 있다고 하더라."
+V|N=16|EN=And Joseph answered Pharaoh, saying, It is not in me: God shall give Pharaoh an answer of peace.|KO=요셉이 바로에게 대답하였다. "내게 있지 않으니, 하나님이 바로에게 평안한 대답을 주실 것입니다."
+V|N=17|EN=And Pharaoh said unto Joseph, In my dream, behold, I stood upon the bank of the river:|KO=바로가 요셉에게 말하였다. "내 꿈에 보라, 내가 강가에 서 있었는데,
+V|N=18|EN=And, behold, there came up out of the river seven kine, fatfleshed and well favoured; and they fed in a meadow:|KO=보라, 강에서 일곱 마리 소가 올라왔고, 그들은 살찌고 잘 생겼으며, 초원에서 풀을 먹었다.
+V|N=19|EN=And, behold, seven other kine came up after them, poor and very ill favoured and leanfleshed, such as I never saw in all the land of Egypt for badness:|KO=보라, 그 뒤에 다른 일곱 마리 소가 올라왔는데, 가난하고 매우 못생기고 여위었으며, 이집트 전역에서 내가 본 것 중 가장 나쁜 것이었다.
+V|N=20|EN=And the lean and the ill favoured kine did eat up the first seven fat kine:|KO=여위고 못생긴 소들이 처음의 일곱 마리 살찐 소를 먹어 치웠다.
+V|N=21|EN=And when they had eaten them up, it could not be known that they had eaten them; but they were still ill favoured, as at the beginning. So I awoke.|KO=그들이 그것을 먹어 치웠으나, 그들이 먹은 것을 알 수 없었고, 여전히 처음과 같이 못생겼다. 그래서 내가 깨어났다.
+V|N=22|EN=And I saw in my dream, and, behold, seven ears came up in one stalk, full and good:|KO=내 꿈에서 보니, 보라, 일곱 개의 이삭이 한 줄기에 올라왔고, 그 이삭은 무성하고 좋았다.
+V|N=23|EN=And, behold, seven ears, withered, thin, and blasted with the east wind, sprung up after them:|KO=보라, 그 뒤에 여위고 동풍에 말라버린 일곱 개의 이삭이 올라왔다.
+V|N=24|EN=And the thin ears devoured the seven good ears: and I told this unto the magicians; but there was none that could declare it to me.|KO=여위고 마른 이삭이 좋은 일곱 개의 이삭을 삼켜버렸다. 내가 이것을 술사들에게 이야기하였으나, 나에게 그것을 해석할 자가 없었다.
+V|N=25|EN=And Joseph said unto Pharaoh, The dream of Pharaoh is one: God hath shewed Pharaoh what he is about to do.|KO=요셉이 바로에게 말하였다. "바로의 꿈은 하나입니다. 하나님이 바로에게 하실 일을 보여주셨습니다."
+V|N=26|EN=The seven good kine are seven years; and the seven good ears are seven years: the dream is one.|KO=일곱 마리 좋은 소는 일곱 해요, 일곱 개의 좋은 이삭도 일곱 해입니다. 꿈은 하나입니다.
+V|N=27|EN=And the seven thin and ill favoured kine that came up after them are seven years; and the seven empty ears blasted with the east wind shall be seven years of famine.|KO=그리고 그 뒤에 올라온 일곱 마리 여위고 못생긴 소는 일곱 해이며, 동풍에 말라버린 일곱 개의 빈 이삭은 일곱 해의 기근이 될 것입니다.
+V|N=28|EN=This is the thing which I have spoken unto Pharaoh: What God is about to do he sheweth unto Pharaoh.|KO=내가 바로에게 말한 것은 이것입니다. 하나님이 하실 일을 바로에게 보여주셨습니다.
+V|N=29|EN=Behold, there come seven years of great plenty throughout all the land of Egypt:|KO=보라, 이집트 전역에 큰 풍년이 일곱 해가 올 것입니다.
+V|N=30|EN=And there shall arise after them seven years of famine; and all the plenty shall be forgotten in the land of Egypt; and the famine shall consume the land;|KO=그 뒤에 일곱 해의 기근이 일어날 것이며, 모든 풍년은 이집트 땅에서 잊혀질 것이고, 기근이 그 땅을 소멸시킬 것입니다.
+V|N=31|EN=And the plenty shall not be known in the land by reason of that famine following; for it shall be very grievous.|KO=풍년이 기근으로 인해 그 땅에서 알려지지 않을 것이며, 그것은 매우 심각할 것입니다.
+V|N=32|EN=And for that the dream was doubled unto Pharaoh twice; it is because the thing is established by God, and God will shortly bring it to pass.|KO=바로의 꿈이 두 번이나 반복된 것은 하나님이 이 일을 확정하셨고, 하나님이 곧 이루실 것이기 때문입니다.
+V|N=33|EN=Now therefore let Pharaoh look out a man discreet and wise, and set him over the land of Egypt.|KO=그러므로 바로는 지혜롭고 분별 있는 사람을 뽑아 이집트 땅을 다스리게 하십시오.
+V|N=34|EN=Let Pharaoh do this, and let him appoint officers over the land, and take up the fifth part of the land of Egypt in the seven plenteous years.|KO=바로는 이렇게 하시고, 땅에 관리들을 임명하여, 일곱 해의 풍년 동안 이집트 땅의 오분의 일을 거두게 하십시오.
+V|N=35|EN=And let them gather all the food of those good years that come, and lay up corn under the hand of Pharaoh, and let them keep food in the cities.|KO=그들이 그 좋은 해의 모든 곡식을 모아, 바로의 손 아래 곡식을 쌓아두고, 도시들에 식량을 보관하게 하십시오.
+V|N=36|EN=And that food shall be for store to the land against the seven years of famine, which shall be in the land of Egypt; that the land perish not through the famine.|KO=그 식량은 이집트 땅의 일곱 해의 기근에 대비하여 저장될 것이며, 그 땅이 기근으로 인해 멸망하지 않게 할 것입니다.
+V|N=37|EN=And the thing was good in the eyes of Pharaoh, and in the eyes of all his servants.|KO=이 일이 바로의 눈에 좋았고, 그의 모든 신하의 눈에도 좋았다.
+V|N=38|EN=And Pharaoh said unto his servants, Can we find such a one as this is, a man in whom the Spirit of God is?|KO=바로가 그의 신하들에게 말하였다. "이런 사람을 찾을 수 있겠느냐? 하나님이 함께 하시는 사람인가?"
+V|N=39|EN=And Pharaoh said unto Joseph, Forasmuch as God hath shewed thee all this, there is none so discreet and wise as thou art:|KO=바로가 요셉에게 말하였다. "하나님이 이 모든 것을 너에게 보여주셨으니, 너처럼 분별 있고 지혜로운 자가 없다."
+V|N=40|EN=Thou shalt be over my house, and according unto thy word shall all my people be ruled: only in the throne will I be greater than thou.|KO=너는 내 집을 다스릴 것이고, 너의 말에 따라 내 모든 백성이 다스려질 것이다. 오직 왕좌에서만 내가 너보다 더 클 것이다.
+V|N=41|EN=And Pharaoh said unto Joseph, See, I have set thee over all the land of Egypt.|KO=바로가 요셉에게 말하였다. "보라, 내가 너를 이집트 전역에 세웠다."
+V|N=42|EN=And Pharaoh took off his ring from his hand, and put it upon Joseph’s hand, and arrayed him in vestures of fine linen, and put a gold chain about his neck;|KO=바로가 그의 손에서 반지를 빼어 요셉의 손에 끼우고, 고운 세마포 옷을 입히고, 그의 목에 금 사슬을 걸었다.
+V|N=43|EN=And he made him to ride in the second chariot which he had; and they cried before him, Bow the knee: and he made him ruler over all the land of Egypt.|KO=그를 그가 가진 두 번째 수레에 태우고, 그 앞에서 무릎을 꿇으라고 외치게 하였으며, 그를 이집트 전역의 통치자로 삼았다.
+V|N=44|EN=And Pharaoh said unto Joseph, I am Pharaoh, and without thee shall no man lift up his hand or foot in all the land of Egypt.|KO=바로가 요셉에게 말하였다. "나는 바로이니, 너 없이는 이집트 땅에서 아무도 손이나 발을 들 수 없다."
+V|N=45|EN=And Pharaoh called Joseph’s name Zaphnathpaaneah; and he gave him to wife Asenath the daughter of Potipherah priest of On. And Joseph went out over all the land of Egypt.|KO=바로가 요셉의 이름을 사브낫바네아라 하였고, 그에게 온의 제사장 보디발의 딸 아세낫을 아내로 주었다. 요셉은 이집트 전역을 다스리러 나갔다.
+V|N=46|EN=And Joseph was thirty years old when he stood before Pharaoh king of Egypt. And Joseph went out from the presence of Pharaoh, and went throughout all the land of Egypt.|KO=요셉이 바로 왕 앞에 섰을 때, 그는 삼십 세였고, 요셉은 바로의 얼굴을 떠나 이집트 전역을 두루 다녔다.
+V|N=47|EN=And in the seven plenteous years the earth brought forth by handfuls.|KO=일곱 해의 풍년 동안 땅이 손으로 거두어들였다.
+V|N=48|EN=And he gathered up all the food of the seven years, which were in the land of Egypt, and laid up the food in the cities: the food of the field, which was round about every city, laid he up in the same.|KO=그는 이집트 땅의 일곱 해 동안의 모든 곡식을 모아 도시들에 저장하였고, 각 도시 주변의 밭에서 거둔 곡식을 같은 곳에 저장하였다.
+V|N=49|EN=And Joseph gathered corn as the sand of the sea, very much, until he left numbering; for it was without number.|KO=요셉이 바다의 모래처럼 많은 곡식을 모았고, 그 수를 세지 못할 정도로 많았다.
+V|N=50|EN=And unto Joseph were born two sons before the years of famine came, which Asenath the daughter of Potipherah priest of On bare unto him.|KO=기근이 오기 전에 요셉에게 두 아들이 태어났는데, 아세낫이 그에게 낳은 아들이다.
+V|N=51|EN=And Joseph called the name of the firstborn Manasseh: For God, said he, hath made me forget all my toil, and all my father’s house.|KO=요셉이 첫째 아들의 이름을 므낫세라 하였으니, 하나님이 나의 모든 수고와 아버지의 집을 잊게 하셨다고 하였다.
+V|N=52|EN=And the name of the second called he Ephraim: For God hath caused me to be fruitful in the land of my affliction.|KO=둘째 아들의 이름을 에브라임이라 하였으니, 하나님이 나를 고난의 땅에서 열매 맺게 하셨다고 하였다.
+V|N=53|EN=And the seven years of plenteousness, that was in the land of Egypt, were ended.|KO=이집트 땅의 풍년이 끝났다.
+V|N=54|EN=And the seven years of dearth began to come, according as Joseph had said: and the dearth was in all lands; but in all the land of Egypt there was bread.|KO=요셉이 말한 대로 기근이 시작되었고, 기근이 모든 땅에 임하였으나, 이집트 땅에는 빵이 있었다.
+V|N=55|EN=And when all the land of Egypt was famished, the people cried to Pharaoh for bread: and Pharaoh said unto all the Egyptians, Go unto Joseph; what he saith to you, do.|KO=이집트 땅이 기근으로 인해 굶주리자, 백성이 바로에게 빵을 달라고 외쳤고, 바로가 모든 이집트 사람에게 말하였다. "요셉에게 가서 그가 너희에게 말하는 대로 하라."
+V|N=56|EN=And the famine was over all the face of the earth: and Joseph opened all the storehouses, and sold unto the Egyptians; and the famine waxed sore in the land of Egypt.|KO=기근이 온 땅에 퍼졌고, 요셉이 모든 곡식 창고를 열어 이집트 사람들에게 팔았으며, 기근이 이집트 땅에서 심각해졌다.
+V|N=57|EN=And all countries came into Egypt to Joseph for to buy corn; because that the famine was so sore in all lands.|KO=모든 나라가 요셉에게 곡식을 사기 위해 이집트로 왔으니, 기근이 모든 땅에서 심각하였기 때문이다.

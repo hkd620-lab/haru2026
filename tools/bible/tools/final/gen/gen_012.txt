@@ -1,0 +1,22 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=12|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 12|KO=창세기 12장
+V|N=1|EN=Now the LORD had said unto Abram, Get thee out of thy country, and from thy kindred, and from thy father’s house, unto a land that I will shew thee:|KO=여호와께서 아브람에게 말씀하신 이래, 너는 너의 고향과 친척과 아버지의 집을 떠나 내가 네게 보여 줄 땅으로 가라.
+V|N=2|EN=And I will make of thee a great nation, and I will bless thee, and make thy name great; and thou shalt be a blessing:|KO=내가 너로 큰 민족을 이루게 하고, 너를 축복하며, 너의 이름을 크게 하리니 너는 복이 될지라.
+V|N=3|EN=And I will bless them that bless thee, and curse him that curseth thee: and in thee shall all families of the earth be blessed.|KO=너를 축복하는 자를 내가 축복하고, 너를 저주하는 자를 내가 저주하리니, 땅의 모든 족속이 너로 말미암아 복을 얻으리라.
+V|N=4|EN=So Abram departed, as the LORD had spoken unto him; and Lot went with him: and Abram was seventy and five years old when he departed out of Haran.|KO=아브람이 여호와의 말씀대로 떠나고, 롯도 그와 함께 하였으며, 아브람이 하란을 떠날 때에 칠십오 세였더라.
+V|N=5|EN=And Abram took Sarai his wife, and Lot his brother’s son, and all their substance that they had gathered, and the souls that they had gotten in Haran; and they went forth to go into the land of Canaan; and into the land of Canaan they came.|KO=아브람이 그의 아내 사래와 그의 형제의 아들 롯과 그들이 하란에서 모은 모든 재물과 그들이 얻은 사람들을 데리고 가나안 땅으로 나아가니, 가나안 땅에 이르렀더라.
+V|N=6|EN=And Abram passed through the land unto the place of Sichem, unto the plain of Moreh. And the Canaanite was then in the land.|KO=아브람이 그 땅을 지나 시겜의 땅에 이르러 모레의 상수리나무에 이르렀고, 그때 가나안 사람이 그 땅에 거주하고 있었더라.
+V|N=7|EN=And the LORD appeared unto Abram, and said, Unto thy seed will I give this land: and there builded he an altar unto the LORD, who appeared unto him.|KO=여호와께서 아브람에게 나타나 이르시되, 내가 이 땅을 네 자손에게 주리라 하시니, 아브람이 여호와를 위하여 그에게 나타나신 곳에 단을 쌓았더라.
+V|N=8|EN=And he removed from thence unto a mountain on the east of Bethel, and pitched his tent, having Bethel on the west, and Hai on the east: and there he builded an altar unto the LORD, and called upon the name of the LORD.|KO=그가 거기서 베델 동쪽 산으로 옮겨 장막을 치고, 베델은 서쪽에, 아이는 동쪽에 있었으며, 거기서 여호와를 위하여 단을 쌓고 여호와의 이름을 부르니라.
+V|N=9|EN=And Abram journeyed, going on still toward the south.|KO=아브람이 점점 남쪽으로 나아갔더라.
+V|N=10|EN=And there was a famine in the land: and Abram went down into Egypt to sojourn there; for the famine was grievous in the land.|KO=그 땅에 기근이 들어 아브람이 애굽으로 내려가 거기서 거류하려 하였으니, 그 땅의 기근이 심하였더라.
+V|N=11|EN=And it came to pass, when he was come near to enter into Egypt, that he said unto Sarai his wife, Behold now, I know that thou art a fair woman to look upon:|KO=그가 애굽에 가까이 이르렀을 때에 그의 아내 사래에게 이르되, 내가 아는 것은 너는 아름다운 여인이라.
+V|N=12|EN=Therefore it shall come to pass, when the Egyptians shall see thee, that they shall say, This is his wife: and they will kill me, but they will save thee alive.|KO=애굽 사람들이 너를 볼 때에 이르기를, 이는 그의 아내라 하리니, 그들이 나를 죽이고 너를 살리리라.
+V|N=13|EN=Say, I pray thee, thou art my sister: that it may be well with me for thy sake; and my soul shall live because of thee.|KO=내가 너에게 간구하노니, 너는 내 누이라 하라. 그리하면 나로 말미암아 너에게 좋을 것이요, 내 생명도 너로 말미암아 보존되리라.
+V|N=14|EN=And it came to pass, that, when Abram was come into Egypt, the Egyptians beheld the woman that she was very fair.|KO=아브람이 애굽에 들어가니, 애굽 사람들이 그 여인을 보았고, 그녀가 매우 아름다움이었더라.
+V|N=15|EN=The princes also of Pharaoh saw her, and commended her before Pharaoh: and the woman was taken into Pharaoh’s house.|KO=바로의 고관들이 그녀를 보고 바로 앞에서 칭찬하였고, 그 여인은 바로의 집으로 끌려갔더라.
+V|N=16|EN=And he entreated Abram well for her sake: and he had sheep, and oxen, and he asses, and menservants, and maidservants, and she asses, and camels.|KO=그가 그녀로 인하여 아브람을 잘 대우하였고, 양과 소와 나귀와 남종과 여종과 암나귀와 낙타를 주었더라.
+V|N=17|EN=And the LORD plagued Pharaoh and his house with great plagues because of Sarai Abram’s wife.|KO=여호와께서 아브람의 아내 사래로 인하여 바로와 그의 집에 큰 재앙을 내리시니라.
+V|N=18|EN=And Pharaoh called Abram and said, What is this that thou hast done unto me? why didst thou not tell me that she was thy wife?|KO=바로가 아브람을 불러 이르되, 네가 나에게 무슨 일을 하였느냐? 네가 왜 그녀가 네 아내라고 내게 말하지 아니하였느냐?
+V|N=19|EN=Why saidst thou, She is my sister? so I might have taken her to me to wife: now therefore behold thy wife, take her, and go thy way.|KO=너는 왜 그녀가 내 누이라 하였느냐? 내가 그녀를 아내로 삼으려 하였으니, 이제 네 아내를 보라. 데리고 가라.
+V|N=20|EN=And Pharaoh commanded his men concerning him: and they sent him away, and his wife, and all that he had.|KO=바로가 그의 사람들에게 아브람을 위하여 명령하였고, 그들이 그와 그의 아내와 그가 가진 모든 것을 보내었더라.

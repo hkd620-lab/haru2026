@@ -1,0 +1,32 @@
+#BOOK=Proverbs|BOOKCODE=pro|CHAPTER=20|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Proverbs 20|KO=
+V|N=1|EN=Wine is a mocker, strong drink is raging: and whosoever is deceived thereby is not wise.|KO=
+V|N=2|EN=The fear of a king is as the roaring of a lion: whoso provoketh him to anger sinneth against his own soul.|KO=
+V|N=3|EN=It is an honour for a man to cease from strife: but every fool will be meddling.|KO=
+V|N=4|EN=The sluggard will not plow by reason of the cold; therefore shall he beg in harvest, and have nothing.|KO=
+V|N=5|EN=Counsel in the heart of man is like deep water; but a man of understanding will draw it out.|KO=
+V|N=6|EN=Most men will proclaim every one his own goodness: but a faithful man who can find?|KO=
+V|N=7|EN=The just man walketh in his integrity: his children are blessed after him.|KO=
+V|N=8|EN=A king that sitteth in the throne of judgment scattereth away all evil with his eyes.|KO=
+V|N=9|EN=Who can say, I have made my heart clean, I am pure from my sin?|KO=
+V|N=10|EN=Divers weights, and divers measures, both of them are alike abomination to the LORD.|KO=
+V|N=11|EN=Even a child is known by his doings, whether his work be pure, and whether it be right.|KO=
+V|N=12|EN=The hearing ear, and the seeing eye, the LORD hath made even both of them.|KO=
+V|N=13|EN=Love not sleep, lest thou come to poverty; open thine eyes, and thou shalt be satisfied with bread.|KO=
+V|N=14|EN=It is naught, it is naught, saith the buyer: but when he is gone his way, then he boasteth.|KO=
+V|N=15|EN=There is gold, and a multitude of rubies: but the lips of knowledge are a precious jewel.|KO=
+V|N=16|EN=Take his garment that is surety for a stranger: and take a pledge of him for a strange woman.|KO=
+V|N=17|EN=Bread of deceit is sweet to a man; but afterwards his mouth shall be filled with gravel.|KO=
+V|N=18|EN=Every purpose is established by counsel: and with good advice make war.|KO=
+V|N=19|EN=He that goeth about as a talebearer revealeth secrets: therefore meddle not with him that flattereth with his lips.|KO=
+V|N=20|EN=Whoso curseth his father or his mother, his lamp shall be put out in obscure darkness.|KO=
+V|N=21|EN=An inheritance may be gotten hastily at the beginning; but the end thereof shall not be blessed.|KO=
+V|N=22|EN=Say not thou, I will recompense evil; but wait on the LORD, and he shall save thee.|KO=
+V|N=23|EN=Divers weights are an abomination unto the LORD; and a false balance is not good.|KO=
+V|N=24|EN=Man’s goings are of the LORD; how can a man then understand his own way?|KO=
+V|N=25|EN=It is a snare to the man who devoureth that which is holy, and after vows to make enquiry.|KO=
+V|N=26|EN=A wise king scattereth the wicked, and bringeth the wheel over them.|KO=
+V|N=27|EN=The spirit of man is the candle of the LORD, searching all the inward parts of the belly.|KO=
+V|N=28|EN=Mercy and truth preserve the king: and his throne is upholden by mercy.|KO=
+V|N=29|EN=The glory of young men is their strength: and the beauty of old men is the grey head.|KO=
+V|N=30|EN=The blueness of a wound cleanseth away evil: so do stripes the inward parts of the belly.|KO=

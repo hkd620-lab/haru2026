@@ -1,0 +1,25 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=40|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 40|KO=창세기 40장
+V|N=1|EN=And it came to pass after these things, that the butler of the king of Egypt and his baker had offended their lord the king of Egypt.|KO=이 일 후에 애굽 왕의 술 맡은 관원과 떡 굽는 자가 그들의 주 애굽 왕에게 범죄하였더라.
+V|N=2|EN=And Pharaoh was wroth against two of his officers, against the chief of the butlers, and against the chief of the bakers.|KO=바로가 그의 신하 중 두 사람, 곧 술 맡은 관원장과 떡 맡은 관원장에게 노하였더라.
+V|N=3|EN=And he put them in ward in the house of the captain of the guard, into the prison, the place where Joseph was bound.|KO=그가 그들을 경비대장 집의 옥에 가두었으니, 그곳은 요셉이 갇힌 곳이라.
+V|N=4|EN=And the captain of the guard charged Joseph with them, and he served them: and they continued a season in ward.|KO=경비대장이 요셉에게 그들과 함께 섬기게 하였고, 그들은 일정한 기간 동안 옥에 갇혔더라.
+V|N=5|EN=And they dreamed a dream both of them, each man his dream in one night, each man according to the interpretation of his dream, the butler and the baker of the king of Egypt, which were bound in the prison.|KO=그들이 같은 날 밤에 꿈을 꾸었으니, 각 사람이 자기의 꿈을 꾸었고, 애굽 왕의 술 맡은 관원과 떡 맡은 관원이 옥에 갇혔더라.
+V|N=6|EN=And Joseph came in unto them in the morning, and looked upon them, and, behold, they were sad.|KO=요셉이 아침에 그들에게 들어가서 그들을 보니, 그들이 슬퍼하더라.
+V|N=7|EN=And he asked Pharaoh’s officers that were with him in the ward of his lord’s house, saying, Wherefore look ye so sadly to day?|KO=그가 그의 주인의 집의 옥에 함께 있는 바로의 신하들에게 물어 이르되, 오늘 어찌하여 그렇게 슬프게 보이느냐?
+V|N=8|EN=And they said unto him, We have dreamed a dream, and there is no interpreter of it. And Joseph said unto them, Do not interpretations belong to God? tell me them, I pray you.|KO=그들이 그에게 이르되, 우리가 꿈을 꾸었으나 해석할 자가 없더라. 요셉이 그들에게 이르되, 해석은 하나님께 속한 것이 아니냐? 내게 말하라.
+V|N=9|EN=And the chief butler told his dream to Joseph, and said to him, In my dream, behold, a vine was before me;|KO=술 맡은 관원이 요셉에게 자기의 꿈을 말하여 이르되, 내가 꿈에 보니, 내 앞에 포도나무가 있더라.
+V|N=10|EN=And in the vine were three branches: and it was as though it budded, and her blossoms shot forth; and the clusters thereof brought forth ripe grapes:|KO=그 포도나무에 세 개의 가지가 있었고, 그것이 꽃이 피고 열매가 익었더라.
+V|N=11|EN=And Pharaoh’s cup was in my hand: and I took the grapes, and pressed them into Pharaoh’s cup, and I gave the cup into Pharaoh’s hand.|KO=내 손에 바로의 잔이 있었고, 내가 그 포도의 열매를 짜서 바로의 잔에 담고, 잔을 바로의 손에 드렸더라.
+V|N=12|EN=And Joseph said unto him, This is the interpretation of it: The three branches are three days:|KO=요셉이 그에게 이르되, 이것이 그 꿈의 해석이라. 세 가지는 세 날이라.
+V|N=13|EN=Yet within three days shall Pharaoh lift up thine head, and restore thee unto thy place: and thou shalt deliver Pharaoh’s cup into his hand, after the former manner when thou wast his butler.|KO=내가 말하노니, 세 날이 지나면 바로가 네 머리를 높이 들고, 너를 네 자리로 도로 세울 것이요, 네가 전에 술 맡은 관원으로서 바로의 손에 잔을 드리게 될 것이니라.
+V|N=14|EN=But think on me when it shall be well with thee, and shew kindness, I pray thee, unto me, and make mention of me unto Pharaoh, and bring me out of this house:|KO=그러나 네게 좋을 때에 나를 기억하고, 나에게 은혜를 베풀어 바로에게 내게 말하여 이 집에서 나를 끌어내라.
+V|N=15|EN=For indeed I was stolen away out of the land of the Hebrews: and here also have I done nothing that they should put me into the dungeon.|KO=내가 히브리 땅에서 도둑맞아 여기까지 왔고, 여기서도 내가 감옥에 갇힐 만한 악을 행한 것이 없나이다.
+V|N=16|EN=When the chief baker saw that the interpretation was good, he said unto Joseph, I also was in my dream, and, behold, I had three white baskets on my head:|KO=떡 맡은 관원이 해석이 좋음을 보고 요셉에게 이르되, 나도 꿈을 꾸었는데, 내 머리에 흰 바구니가 셋 있었더라.
+V|N=17|EN=And in the uppermost basket there was of all manner of bakemeats for Pharaoh; and the birds did eat them out of the basket upon my head.|KO=그 중 가장 높은 바구니에는 바로를 위하여 각종 제과가 있었고, 새들이 내 머리 위의 바구니에서 그것을 먹더라.
+V|N=18|EN=And Joseph answered and said, This is the interpretation thereof: The three baskets are three days:|KO=요셉이 대답하여 이르되, 이것이 그 꿈의 해석이라. 세 바구니는 세 날이라.
+V|N=19|EN=Yet within three days shall Pharaoh lift up thy head from off thee, and shall hang thee on a tree; and the birds shall eat thy flesh from off thee.|KO=내가 말하노니, 세 날이 지나면 바로가 네 머리를 너에게서 치고, 너를 나무에 달고, 새들이 네 살을 먹으리라.
+V|N=20|EN=And it came to pass the third day, which was Pharaoh’s birthday, that he made a feast unto all his servants: and he lifted up the head of the chief butler and of the chief baker among his servants.|KO=제삼일에 바로의 생일이 되어, 그가 모든 신하를 위하여 잔치를 베풀고, 술 맡은 관원과 떡 맡은 관원의 머리를 높이 들었더라.
+V|N=21|EN=And he restored the chief butler unto his butlership again; and he gave the cup into Pharaoh’s hand:|KO=그가 술 맡은 관원을 본래의 직위로 도로 세우고, 잔을 바로의 손에 드리게 하였고,
+V|N=22|EN=But he hanged the chief baker: as Joseph had interpreted to them.|KO=떡 맡은 관원은 교수한 대로 그를 달아 죽였더라.
+V|N=23|EN=Yet did not the chief butler remember Joseph, but forgat him.|KO=술 맡은 관원이 요셉을 기억하지 못하고 그를 잊었더라.

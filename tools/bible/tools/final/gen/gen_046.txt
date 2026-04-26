@@ -1,0 +1,36 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=46|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 46|KO=창세기 46장
+V|N=1|EN=And Israel took his journey with all that he had, and came to Beersheba, and offered sacrifices unto the God of his father Isaac.|KO=이스라엘이 그의 모든 것을 가지고 여행을 떠나 브엘세바에 이르러 그의 아버지 이삭의 하나님께 제사를 드리니라.
+V|N=2|EN=And God spake unto Israel in the visions of the night, and said, Jacob, Jacob. And he said, Here am I.|KO=하나님이 밤의 환상 중에 이스라엘에게 말씀하시되, 야곱아, 야곱아 하시니 그가 대답하되, 내가 여기 있나이다.
+V|N=3|EN=And he said, I am God, the God of thy father: fear not to go down into Egypt; for I will there make of thee a great nation:|KO=하나님이 말씀하시되, 나는 네 아버지의 하나님이라. 애굽으로 내려가는 것을 두려워하지 말라. 내가 거기서 너로 큰 민족을 이루게 하리라.
+V|N=4|EN=I will go down with thee into Egypt; and I will also surely bring thee up again: and Joseph shall put his hand upon thine eyes.|KO=내가 너와 함께 애굽으로 내려가고, 반드시 너를 인도하여 다시 올라오게 하리니, 요셉이 네 눈을 감기리라.
+V|N=5|EN=And Jacob rose up from Beersheba: and the sons of Israel carried Jacob their father, and their little ones, and their wives, in the wagons which Pharaoh had sent to carry him.|KO=야곱이 브엘세바에서 일어나, 이스라엘의 아들들이 그들의 아버지 야곱과 그들의 어린 자녀들과 아내들을 바로가 보낸 수레에 태워 애굽으로 갔더라.
+V|N=6|EN=And they took their cattle, and their goods, which they had gotten in the land of Canaan, and came into Egypt, Jacob, and all his seed with him:|KO=그들이 가나안 땅에서 얻은 그들의 가축과 재물을 가지고 애굽으로 갔고, 야곱과 그의 모든 자손이 그와 함께 하였더라.
+V|N=7|EN=His sons, and his sons’ sons with him, his daughters, and his sons’ daughters, and all his seed brought he with him into Egypt.|KO=그의 아들들과 그의 아들들의 아들들, 그의 딸들과 그의 아들들의 딸들, 그리고 그의 모든 자손이 그와 함께 애굽으로 갔더라.
+V|N=8|EN=And these are the names of the children of Israel, which came into Egypt, Jacob and his sons: Reuben, Jacob’s firstborn.|KO=애굽으로 간 이스라엘의 자녀들의 이름은 이러하니, 야곱과 그의 아들들, 루벤은 야곱의 장자라.
+V|N=9|EN=And the sons of Reuben; Hanoch, and Phallu, and Hezron, and Carmi.|KO=루벤의 아들들은 하녹과 발루와 헤스론과 갈미라.
+V|N=10|EN=And the sons of Simeon; Jemuel, and Jamin, and Ohad, and Jachin, and Zohar, and Shaul the son of a Canaanitish woman.|KO=시므온의 아들들은 예무엘과 야민과 오하드와 야긴과 소할과 가나안 여인의 아들 사울이라.
+V|N=11|EN=And the sons of Levi; Gershon, Kohath, and Merari.|KO=레위의 아들들은 게르손과 고핫과 므라리라.
+V|N=12|EN=And the sons of Judah; Er, and Onan, and Shelah, and Pharez, and Zarah: but Er and Onan died in the land of Canaan. And the sons of Pharez were Hezron and Hamul.|KO=유다의 아들들은 에르와 오난과 셀라와 베레스와 세라라. 에르와 오난은 가나안 땅에서 죽었고, 베레스의 아들은 헤스론과 하물이라.
+V|N=13|EN=And the sons of Issachar; Tola, and Phuvah, and Job, and Shimron.|KO=잇사갈의 아들들은 돌라와 부바와 욥과 시므론이라.
+V|N=14|EN=And the sons of Zebulun; Sered, and Elon, and Jahleel.|KO=스불론의 아들들은 세레드와 엘론과 야흘엘이라.
+V|N=15|EN=These be the sons of Leah, which she bare unto Jacob in Padanaram, with his daughter Dinah: all the souls of his sons and his daughters were thirty and three.|KO=이들은 야곱이 바단아람에서 낳은 레아의 아들들이요, 그의 딸 디나가 있더라. 그의 아들과 딸의 영혼은 모두 삼십삼 명이었더라.
+V|N=16|EN=And the sons of Gad; Ziphion, and Haggi, Shuni, and Ezbon, Eri, and Arodi, and Areli.|KO=갓의 아들들은 시브온과 하기를, 수니와 에스본과 에리와 아로디와 아렐이라.
+V|N=17|EN=And the sons of Asher; Jimnah, and Ishuah, and Isui, and Beriah, and Serah their sister: and the sons of Beriah; Heber, and Malchiel.|KO=아셀의 아들들은 힘나와 이슈아와 이수이와 베리아와 그들의 누이 세라라. 베리아의 아들은 헤벨과 말기엘이라.
+V|N=18|EN=These are the sons of Zilpah, whom Laban gave to Leah his daughter, and these she bare unto Jacob, even sixteen souls.|KO=실바가 그의 딸 레아에게 준 자녀들은 이러하니, 그가 야곱에게 낳은 영혼은 모두 열여섯 명이었더라.
+V|N=19|EN=The sons of Rachel Jacob’s wife; Joseph, and Benjamin.|KO=야곱의 아내 라헬의 아들들은 요셉과 베냐민이라.
+V|N=20|EN=And unto Joseph in the land of Egypt were born Manasseh and Ephraim, which Asenath the daughter of Potipherah priest of On bare unto him.|KO=애굽 땅에서 요셉에게 태어난 아들은 므낫세와 에브라임이라. 이는 온의 제사장 보디발의 딸 아세낫이 그에게 낳은 자라.
+V|N=21|EN=And the sons of Benjamin were Belah, and Becher, and Ashbel, Gera, and Naaman, Ehi, and Rosh, Muppim, and Huppim, and Ard.|KO=베냐민의 아들들은 벨라와 베겔과 아스벨과 게라와 나아만과 에히와 로스와 무빔과 후빔과 아르드라.
+V|N=22|EN=These are the sons of Rachel, which were born to Jacob: all the souls were fourteen.|KO=라헬이 야곱에게 낳은 아들들은 이러하니, 영혼은 모두 열네 명이었더라.
+V|N=23|EN=And the sons of Dan; Hushim.|KO=단의 아들은 후심이라.
+V|N=24|EN=And the sons of Naphtali; Jahzeel, and Guni, and Jezer, and Shillem.|KO=납달리의 아들들은 야아세엘과 구니와 예셀과 실렘이라.
+V|N=25|EN=These are the sons of Bilhah, which Laban gave unto Rachel his daughter, and she bare these unto Jacob: all the souls were seven.|KO=빌하가 라헬에게 준 아들들은 이러하니, 그가 야곱에게 낳은 영혼은 모두 일곱 명이었더라.
+V|N=26|EN=All the souls that came with Jacob into Egypt, which came out of his loins, besides Jacob’s sons’ wives, all the souls were threescore and six;|KO=야곱과 함께 애굽으로 간 영혼은 그의 허리에서 난 자들로, 야곱의 아내들의 아들은 제외하고, 모두 육십육 명이었더라.
+V|N=27|EN=And the sons of Joseph, which were born him in Egypt, were two souls: all the souls of the house of Jacob, which came into Egypt, were threescore and ten.|KO=애굽에서 요셉에게 태어난 아들은 두 명이라. 애굽으로 간 야곱의 집안의 영혼은 모두 칠십 명이었더라.
+V|N=28|EN=And he sent Judah before him unto Joseph, to direct his face unto Goshen; and they came into the land of Goshen.|KO=그가 유다를 요셉에게 보내어 그의 얼굴을 고센으로 인도하게 하였고, 그들이 고센 땅에 이르렀더라.
+V|N=29|EN=And Joseph made ready his chariot, and went up to meet Israel his father, to Goshen, and presented himself unto him; and he fell on his neck, and wept on his neck a good while.|KO=요셉이 그의 수레를 준비하고 이스라엘의 아버지를 만나러 고센으로 올라가서 그를 만나고 그의 목에 엎드려서 오랫동안 울었더라.
+V|N=30|EN=And Israel said unto Joseph, Now let me die, since I have seen thy face, because thou art yet alive.|KO=이스라엘이 요셉에게 이르되, 내가 네 얼굴을 보았으니 이제는 죽어도 좋다. 너는 아직 살아 있구나.
+V|N=31|EN=And Joseph said unto his brethren, and unto his father’s house, I will go up, and shew Pharaoh, and say unto him, My brethren, and my father’s house, which were in the land of Canaan, are come unto me;|KO=요셉이 그의 형제들과 그의 아버지의 집에 이르되, 내가 올라가서 바로에게 보이고, 그에게 말하리라. 내 형제들과 아버지의 집이 가나안 땅에 있더니 나에게 왔나이다.
+V|N=32|EN=And the men are shepherds, for their trade hath been to feed cattle; and they have brought their flocks, and their herds, and all that they have.|KO=그 사람들은 목자라. 그들의 직업이 가축을 기르는 것이었고, 그들이 그들의 양과 소와 모든 것을 가지고 왔더라.
+V|N=33|EN=And it shall come to pass, when Pharaoh shall call you, and shall say, What is your occupation?|KO=바로가 너희를 부르고 너희에게 말하기를, 너희의 직업이 무엇이냐 하리니,
+V|N=34|EN=That ye shall say, Thy servants’ trade hath been about cattle from our youth even until now, both we, and also our fathers: that ye may dwell in the land of Goshen; for every shepherd is an abomination unto the Egyptians.|KO=너희는 그에게 이르기를, 당신의 종들은 어릴 때부터 지금까지 가축을 기르는 직업을 가졌으니, 우리와 우리 조상들도 그러하였나이다. 그러므로 당신의 종들이 고센 땅에 거주하게 하소서. 모든 목자는 애굽 사람에게는 가증한 것이니이다.

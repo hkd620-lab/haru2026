@@ -1,0 +1,20 @@
+#BOOK=Proverbs|BOOKCODE=pro|CHAPTER=9|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Proverbs 9|KO=
+V|N=1|EN=Wisdom hath builded her house, she hath hewn out her seven pillars:|KO=
+V|N=2|EN=She hath killed her beasts; she hath mingled her wine; she hath also furnished her table.|KO=
+V|N=3|EN=She hath sent forth her maidens: she crieth upon the highest places of the city,|KO=
+V|N=4|EN=Whoso is simple, let him turn in hither: as for him that wanteth understanding, she saith to him,|KO=
+V|N=5|EN=Come, eat of my bread, and drink of the wine which I have mingled.|KO=
+V|N=6|EN=Forsake the foolish, and live; and go in the way of understanding.|KO=
+V|N=7|EN=He that reproveth a scorner getteth to himself shame: and he that rebuketh a wicked man getteth himself a blot.|KO=
+V|N=8|EN=Reprove not a scorner, lest he hate thee: rebuke a wise man, and he will love thee.|KO=
+V|N=9|EN=Give instruction to a wise man, and he will be yet wiser: teach a just man, and he will increase in learning.|KO=
+V|N=10|EN=The fear of the LORD is the beginning of wisdom: and the knowledge of the holy is understanding.|KO=
+V|N=11|EN=For by me thy days shall be multiplied, and the years of thy life shall be increased.|KO=
+V|N=12|EN=If thou be wise, thou shalt be wise for thyself: but if thou scornest, thou alone shalt bear it.|KO=
+V|N=13|EN=A foolish woman is clamorous: she is simple, and knoweth nothing.|KO=
+V|N=14|EN=For she sitteth at the door of her house, on a seat in the high places of the city,|KO=
+V|N=15|EN=To call passengers who go right on their ways:|KO=
+V|N=16|EN=Whoso is simple, let him turn in hither: and as for him that wanteth understanding, she saith to him,|KO=
+V|N=17|EN=Stolen waters are sweet, and bread eaten in secret is pleasant.|KO=
+V|N=18|EN=But he knoweth not that the dead are there; and that her guests are in the depths of hell.|KO=

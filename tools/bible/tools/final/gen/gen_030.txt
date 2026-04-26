@@ -1,0 +1,45 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=30|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 30|KO=창세기 30장
+V|N=1|EN=And when Rachel saw that she bare Jacob no children, Rachel envied her sister; and said unto Jacob, Give me children, or else I die.|KO=라헬이 야곱에게 아들을 낳지 못함을 보고, 그녀의 여동생을 시기하여 야곱에게 이르되, 나에게 아들을 주지 아니하면 내가 죽겠노라 하니.
+V|N=2|EN=And Jacob’s anger was kindled against Rachel: and he said, Am I in God’s stead, who hath withheld from thee the fruit of the womb?|KO=야곱이 라헬에게 노하여 이르되, 내가 하나님의 대신이냐? 하나님이 네 태의 열매를 네게서 거두셨느니라.
+V|N=3|EN=And she said, Behold my maid Bilhah, go in unto her; and she shall bear upon my knees, that I may also have children by her.|KO=라헬이 이르되, 내 여종 빌하에게 들어가게 하라. 그녀가 내 무릎 위에서 아들을 낳을 것이니, 나도 그녀를 통하여 자녀를 얻으리라 하니.
+V|N=4|EN=And she gave him Bilhah her handmaid to wife: and Jacob went in unto her.|KO=라헬이 그의 여종 빌하를 아내로 야곱에게 주매, 야곱이 그녀에게 들어가니라.
+V|N=5|EN=And Bilhah conceived, and bare Jacob a son.|KO=빌하가 잉태하여 야곱에게 아들을 낳으니.
+V|N=6|EN=And Rachel said, God hath judged me, and hath also heard my voice, and hath given me a son: therefore called she his name Dan.|KO=라헬이 이르되, 하나님이 나를 판단하시고 내 목소리를 들으셨으며, 나에게 아들을 주셨으니, 그러므로 그녀가 그의 이름을 단이라 하였더라.
+V|N=7|EN=And Bilhah Rachel’s maid conceived again, and bare Jacob a second son.|KO=빌하, 라헬의 여종이 다시 잉태하여 야곱에게 두 번째 아들을 낳으니.
+V|N=8|EN=And Rachel said, With great wrestlings have I wrestled with my sister, and I have prevailed: and she called his name Naphtali.|KO=라헬이 이르되, 내가 내 여동생과 큰 싸움을 하여 이겼으니, 그녀가 그의 이름을 납달리라 하였더라.
+V|N=9|EN=When Leah saw that she had left bearing, she took Zilpah her maid, and gave her Jacob to wife.|KO=레아가 더 이상 아이를 낳지 못함을 보고, 그녀의 여종 실바를 취하여 야곱에게 아내로 주니.
+V|N=10|EN=And Zilpah Leah’s maid bare Jacob a son.|KO=실바, 레아의 여종이 야곱에게 아들을 낳으니.
+V|N=11|EN=And Leah said, A troop cometh: and she called his name Gad.|KO=레아가 이르되, 무리가 오리라 하며 그의 이름을 갓이라 하였더라.
+V|N=12|EN=And Zilpah Leah’s maid bare Jacob a second son.|KO=실바, 레아의 여종이 야곱에게 두 번째 아들을 낳으니.
+V|N=13|EN=And Leah said, Happy am I, for the daughters will call me blessed: and she called his name Asher.|KO=레아가 이르되, 나는 복이 있도다. 여인들이 나를 복이 있다 하리라 하며 그의 이름을 아셀이라 하였더라.
+V|N=14|EN=And Reuben went in the days of wheat harvest, and found mandrakes in the field, and brought them unto his mother Leah. Then Rachel said to Leah, Give me, I pray thee, of thy son’s mandrakes.|KO=루벤이 밀 수확기 동안에 만드라크를 찾아서 그의 어머니 레아에게 가져오니, 라헬이 레아에게 이르되, 내 아들의 만드라크를 내게 주라.
+V|N=15|EN=And she said unto her, Is it a small matter that thou hast taken my husband? and wouldest thou take away my son’s mandrakes also? And Rachel said, Therefore he shall lie with thee to night for thy son’s mandrakes.|KO=레아가 이르되, 네가 내 남편을 빼앗은 것이 작은 일이냐? 이제 네 아들의 만드라크도 빼앗으려 하느냐? 라헬이 이르되, 그러면 그가 오늘 밤 너와 함께 자리라. 네 아들의 만드라크를 위하여.
+V|N=16|EN=And Jacob came out of the field in the evening, and Leah went out to meet him, and said, Thou must come in unto me; for surely I have hired thee with my son’s mandrakes. And he lay with her that night.|KO=야곱이 저녁에 들에서 돌아오니, 레아가 나와 그를 맞아 이르되, 내가 반드시 너와 함께 자야 하리니, 내가 내 아들의 만드라크로 너를 사귀었음이라. 그가 그 밤에 그녀와 함께 자니라.
+V|N=17|EN=And God hearkened unto Leah, and she conceived, and bare Jacob the fifth son.|KO=하나님이 레아의 소리를 들으시고 그녀가 잉태하여 야곱에게 다섯 번째 아들을 낳으니.
+V|N=18|EN=And Leah said, God hath given me my hire, because I have given my maiden to my husband: and she called his name Issachar.|KO=레아가 이르되, 하나님이 내 품삯을 주셨으니, 내가 내 여종을 남편에게 주었음이라 하며 그의 이름을 잇사갈이라 하였더라.
+V|N=19|EN=And Leah conceived again, and bare Jacob the sixth son.|KO=레아가 다시 잉태하여 야곱에게 여섯 번째 아들을 낳으니.
+V|N=20|EN=And Leah said, God hath endued me with a good dowry; now will my husband dwell with me, because I have born him six sons: and she called his name Zebulun.|KO=레아가 이르되, 하나님이 나에게 좋은 품삯을 주셨으니, 이제 내 남편이 나와 함께 거하리라. 내가 그에게 여섯 아들을 낳았으니, 그의 이름을 스불론이라 하였더라.
+V|N=21|EN=And afterwards she bare a daughter, and called her name Dinah.|KO=그 후에 그녀가 딸을 낳고 그녀의 이름을 디나라 하였더라.
+V|N=22|EN=And God remembered Rachel, and God hearkened to her, and opened her womb.|KO=하나님이 라헬을 기억하시고 그녀의 소리를 들으시고 그녀의 태를 여셨더라.
+V|N=23|EN=And she conceived, and bare a son; and said, God hath taken away my reproach:|KO=라헬이 잉태하여 아들을 낳고 이르되, 하나님이 내 수치를 제거하셨다 하며.
+V|N=24|EN=And she called his name Joseph; and said, The LORD shall add to me another son.|KO=그녀가 그의 이름을 요셉이라 하고 이르되, 여호와께서 내게 또 다른 아들을 더하시기를 원하노라 하였더라.
+V|N=25|EN=And it came to pass, when Rachel had born Joseph, that Jacob said unto Laban, Send me away, that I may go unto mine own place, and to my country.|KO=라헬이 요셉을 낳은 후에, 야곱이 라반에게 이르되, 나를 보내어 내 고향으로 돌아가게 하라. 내가 내 처와 자녀를 데리고 가리니, 내가 너에게 봉사한 것을 아는 바니라.
+V|N=26|EN=Give me my wives and my children, for whom I have served thee, and let me go: for thou knowest my service which I have done thee.|KO=내 아내들과 자녀들을 내게 주고 나를 보내라. 내가 너에게 봉사한 것을 아는 바니라.
+V|N=27|EN=And Laban said unto him, I pray thee, if I have found favour in thine eyes, tarry: for I have learned by experience that the LORD hath blessed me for thy sake.|KO=라반이 그에게 이르되, 내가 너의 눈에 은혜를 입은 줄을 아노니, 여호와께서 너로 인하여 나를 복 주셨느니라.
+V|N=28|EN=And he said, Appoint me thy wages, and I will give it.|KO=그가 이르되, 내 품삯을 정하라. 내가 주리라.
+V|N=29|EN=And he said unto him, Thou knowest how I have served thee, and how thy cattle was with me.|KO=그가 그에게 이르되, 내가 너에게 어떻게 봉사하였는지, 네 양떼가 내게 어떻게 있었는지 아는 바니라.
+V|N=30|EN=For it was little which thou hadst before I came, and it is now increased unto a multitude; and the LORD hath blessed thee since my coming: and now when shall I provide for mine own house also?|KO=내가 너에게 오기 전에는 네게 적은 것이었으나, 지금은 많아졌고, 여호와께서 내 오는 동안 너를 복 주셨느니라. 이제 내가 내 집을 위하여 무엇을 준비할 수 있겠느냐?
+V|N=31|EN=And he said, What shall I give thee? And Jacob said, Thou shalt not give me any thing: if thou wilt do this thing for me, I will again feed and keep thy flock.|KO=그가 이르되, 내가 너에게 무엇을 주겠느냐? 야곱이 이르되, 나에게 아무것도 주지 마소서. 만일 내가 이 일을 너를 위하여 행하면, 내가 다시 너의 양떼를 먹이리이다.
+V|N=32|EN=I will pass through all thy flock to day, removing from thence all the speckled and spotted cattle, and all the brown cattle among the sheep, and the spotted and speckled among the goats: and of such shall be my hire.|KO=오늘 내가 너의 모든 양떼를 지나가며, 그곳에서 점이 있는 것과 얼룩이 있는 것, 그리고 양떼 중에서 갈색인 것과 염소 중에서 점이 있는 것과 얼룩이 있는 것을 제거하리니, 그것이 나의 품삯이 되리라.
+V|N=33|EN=So shall my righteousness answer for me in time to come, when it shall come for my hire before thy face: every one that is not speckled and spotted among the goats, and brown among the sheep, that shall be counted stolen with me.|KO=내 의가 장래에 너의 얼굴 앞에서 나를 위하여 품삯이 되리니, 점이 없고 얼룩이 없는 염소와 갈색이 없는 양은 내게 도둑으로 여겨지리라.
+V|N=34|EN=And Laban said, Behold, I would it might be according to thy word.|KO=라반이 이르되, 내가 원하는 대로 되기를 원하노라 하니.
+V|N=35|EN=And he removed that day the he goats that were ringstraked and spotted, and all the she goats that were speckled and spotted, and every one that had some white in it, and all the brown among the sheep, and gave them into the hand of his sons.|KO=그 날에 라반이 점이 있는 수컷 염소와 얼룩이 있는 암염소와 흰 것이 있는 모든 것과 갈색인 양을 그의 아들들의 손에 맡기고.
+V|N=36|EN=And he set three days’ journey betwixt himself and Jacob: and Jacob fed the rest of Laban’s flocks.|KO=그가 야곱과의 거리를 삼 일길로 두고, 야곱은 라반의 나머지 양떼를 기르니라.
+V|N=37|EN=And Jacob took him rods of green poplar, and of the hazel and chestnut tree; and pilled white strakes in them, and made the white appear which was in the rods.|KO=야곱이 푸른 포플러와 아몬드와 밤나무 가지를 취하여, 그 가지의 흰 줄을 벗기고, 그 줄이 드러나게 하니.
+V|N=38|EN=And he set the rods which he had pilled before the flocks in the gutters in the watering troughs when the flocks came to drink, that they should conceive when they came to drink.|KO=그가 그 가지를 양떼가 물을 마실 때에 물통에 두어, 양떼가 물을 마실 때에 잉태하게 하였더라.
+V|N=39|EN=And the flocks conceived before the rods, and brought forth cattle ringstraked, speckled, and spotted.|KO=양떼가 그 가지 앞에서 잉태하여 점이 있는 것과 얼룩이 있는 것과 줄무늬가 있는 것을 낳으니.
+V|N=40|EN=And Jacob did separate the lambs, and set the faces of the flocks toward the ringstraked, and all the brown in the flock of Laban; and he put his own flocks by themselves, and put them not unto Laban’s cattle.|KO=야곱이 어린 양들을 나누고, 라반의 양떼 중에서 점이 있는 것과 갈색인 것을 향하게 하며, 자기 양떼는 따로 두고 라반의 양과 섞이지 않게 하였더라.
+V|N=41|EN=And it came to pass, whensoever the stronger cattle did conceive, that Jacob laid the rods before the eyes of the cattle in the gutters, that they might conceive among the rods.|KO=강한 양들이 잉태할 때마다, 야곱이 그 양들이 물을 마실 때에 그 가지를 그들의 눈앞에 두어, 그들이 그 가지 앞에서 잉태하게 하였더라.
+V|N=42|EN=But when the cattle were feeble, he put them not in: so the feebler were Laban’s, and the stronger Jacob’s.|KO=그러나 약한 양들은 그에게 두지 아니하였으므로, 약한 것은 라반의 것이 되고, 강한 것은 야곱의 것이 되었더라.
+V|N=43|EN=And the man increased exceedingly, and had much cattle, and maidservants, and menservants, and camels, and asses.|KO=그 사람은 심히 번성하여 많은 가축과 여종과 남종과 낙타와 나귀를 가졌더라.

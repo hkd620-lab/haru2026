@@ -1,0 +1,26 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=7|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 7|KO=창세기 7장
+V|N=1|EN=And the LORD said unto Noah, Come thou and all thy house into the ark; for thee have I seen righteous before me in this generation.|KO=여호와께서 노아에게 말씀하시기를, 너와 네 집이 방주로 들어오라. 내가 이 세대에서 너를 의롭다 하여 보았음이라.
+V|N=2|EN=Of every clean beast thou shalt take to thee by sevens, the male and his female: and of beasts that are not clean by two, the male and his female.|KO=모든 정결한 짐승은 수컷과 암컷을 각각 일곱 마리씩 취하고, 정결하지 않은 짐승은 수컷과 암컷을 각각 두 마리씩 취하라.
+V|N=3|EN=Of fowls also of the air by sevens, the male and the female; to keep seed alive upon the face of all the earth.|KO=공중의 새도 수컷과 암컷을 각각 일곱 마리씩 취하라. 이는 지면의 모든 생물을 보존하기 위함이라.
+V|N=4|EN=For yet seven days, and I will cause it to rain upon the earth forty days and forty nights; and every living substance that I have made will I destroy from off the face of the earth.|KO=아직 일주일이 지나면 내가 땅에 사십 주야로 비를 내리리니 내가 만든 모든 생물을 지면에서 멸하리라.
+V|N=5|EN=And Noah did according unto all that the LORD commanded him.|KO=노아는 여호와께서 자기에게 명하신 모든 것을 행하였더라.
+V|N=6|EN=And Noah was six hundred years old when the flood of waters was upon the earth.|KO=노아가 홍수의 물이 땅에 있을 때에 육백 세였더라.
+V|N=7|EN=And Noah went in, and his sons, and his wife, and his sons’ wives with him, into the ark, because of the waters of the flood.|KO=노아와 그의 아들들과 그의 아내와 그의 아들들의 아내들이 홍수의 물 때문에 방주로 들어갔더라.
+V|N=8|EN=Of clean beasts, and of beasts that are not clean, and of fowls, and of every thing that creepeth upon the earth,|KO=정결한 짐승과 정결하지 않은 짐승과 새와 땅 위의 모든 기는 것들을 취하였더라.
+V|N=9|EN=There went in two and two unto Noah into the ark, the male and the female, as God had commanded Noah.|KO=노아에게 방주로 들어간 것은 하나님이 명하신 대로 수컷과 암컷이 각각 두 마리씩이었더라.
+V|N=10|EN=And it came to pass after seven days, that the waters of the flood were upon the earth.|KO=일주일 후에 홍수의 물이 땅에 임하였더라.
+V|N=11|EN=In the six hundredth year of Noah’s life, in the second month, the seventeenth day of the month, the same day were all the fountains of the great deep broken up, and the windows of heaven were opened.|KO=노아의 육백 세에, 둘째 달, 그 달의 열일곱 날에, 큰 깊음의 모든 샘이 터지고 하늘의 창이 열렸더라.
+V|N=12|EN=And the rain was upon the earth forty days and forty nights.|KO=비가 사십 주야로 땅에 내렸더라.
+V|N=13|EN=In the selfsame day entered Noah, and Shem, and Ham, and Japheth, the sons of Noah, and Noah’s wife, and the three wives of his sons with them, into the ark;|KO=그 날에 노아와 그의 아들들 셈과 함과 야벳과 노아의 아내와 그의 아들들의 아내들이 방주로 들어갔더라.
+V|N=14|EN=They, and every beast after his kind, and all the cattle after their kind, and every creeping thing that creepeth upon the earth after his kind, and every fowl after his kind, every bird of every sort.|KO=그들과 그 종류의 모든 짐승과 그 종류의 모든 가축과 그 종류의 모든 기는 것과 그 종류의 모든 새가 방주로 들어갔더라.
+V|N=15|EN=And they went in unto Noah into the ark, two and two of all flesh, wherein is the breath of life.|KO=모든 육체의 생명체가 노아에게 방주로 들어갔고, 두 마리씩 들어갔더라.
+V|N=16|EN=And they that went in, went in male and female of all flesh, as God had commanded him: and the LORD shut him in.|KO=들어간 것은 하나님이 명하신 대로 모든 육체의 수컷과 암컷이었고, 여호와께서 그를 닫으셨더라.
+V|N=17|EN=And the flood was forty days upon the earth; and the waters increased, and bare up the ark, and it was lift up above the earth.|KO=홍수가 땅에 사십 일 동안 있었고, 물이 증가하여 방주를 들어올렸더라.
+V|N=18|EN=And the waters prevailed, and were increased greatly upon the earth; and the ark went upon the face of the waters.|KO=물이 땅 위에 더욱 강하게 넘쳤고, 방주가 물 위에 떠올랐더라.
+V|N=19|EN=And the waters prevailed exceedingly upon the earth; and all the high hills, that were under the whole heaven, were covered.|KO=물이 땅 위에 심히 넘쳤고, 하늘 아래의 모든 높은 산들이 덮였더라.
+V|N=20|EN=Fifteen cubits upward did the waters prevail; and the mountains were covered.|KO=물이 십오 규빗 위로 넘쳤고, 산들이 덮였더라.
+V|N=21|EN=And all flesh died that moved upon the earth, both of fowl, and of cattle, and of beast, and of every creeping thing that creepeth upon the earth, and every man:|KO=땅 위의 모든 생물, 곧 새와 가축과 짐승과 땅 위의 모든 기는 것과 모든 사람의 생명이 죽었더라.
+V|N=22|EN=All in whose nostrils was the breath of life, of all that was in the dry land, died.|KO=마른 땅에 있는 모든 생물의 코에 생명의 기운이 있는 자는 다 죽었더라.
+V|N=23|EN=And every living substance was destroyed which was upon the face of the ground, both man, and cattle, and the creeping things, and the fowl of the heaven; and they were destroyed from the earth: and Noah only remained alive, and they that were with him in the ark.|KO=지면 위의 모든 생물이 멸망하였고, 사람과 가축과 기는 것과 하늘의 새가 멸망하였으며, 노아만 남고 그와 함께 방주에 있는 자들이 살아남았더라.
+V|N=24|EN=And the waters prevailed upon the earth an hundred and fifty days.|KO=물이 땅 위에 백오십 일 동안 넘쳤더라.

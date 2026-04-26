@@ -1,0 +1,24 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=28|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 28|KO=
+V|N=1|EN=And Isaac called Jacob, and blessed him, and charged him, and said unto him, Thou shalt not take a wife of the daughters of Canaan.|KO=
+V|N=2|EN=Arise, go to Padanaram, to the house of Bethuel thy mother’s father; and take thee a wife from thence of the daughters of Laban thy mother’s brother.|KO=
+V|N=3|EN=And God Almighty bless thee, and make thee fruitful, and multiply thee, that thou mayest be a multitude of people;|KO=
+V|N=4|EN=And give thee the blessing of Abraham, to thee, and to thy seed with thee; that thou mayest inherit the land wherein thou art a stranger, which God gave unto Abraham.|KO=
+V|N=5|EN=And Isaac sent away Jacob: and he went to Padanaram unto Laban, son of Bethuel the Syrian, the brother of Rebekah, Jacob’s and Esau’s mother.|KO=
+V|N=6|EN=When Esau saw that Isaac had blessed Jacob, and sent him away to Padanaram, to take him a wife from thence; and that as he blessed him he gave him a charge, saying, Thou shalt not take a wife of the daughters of Canaan;|KO=
+V|N=7|EN=And that Jacob obeyed his father and his mother, and was gone to Padanaram;|KO=
+V|N=8|EN=And Esau seeing that the daughters of Canaan pleased not Isaac his father;|KO=
+V|N=9|EN=Then went Esau unto Ishmael, and took unto the wives which he had Mahalath the daughter of Ishmael Abraham’s son, the sister of Nebajoth, to be his wife.|KO=
+V|N=10|EN=And Jacob went out from Beersheba, and went toward Haran.|KO=
+V|N=11|EN=And he lighted upon a certain place, and tarried there all night, because the sun was set; and he took of the stones of that place, and put them for his pillows, and lay down in that place to sleep.|KO=
+V|N=12|EN=And he dreamed, and behold a ladder set up on the earth, and the top of it reached to heaven: and behold the angels of God ascending and descending on it.|KO=
+V|N=13|EN=And, behold, the LORD stood above it, and said, I am the LORD God of Abraham thy father, and the God of Isaac: the land whereon thou liest, to thee will I give it, and to thy seed;|KO=
+V|N=14|EN=And thy seed shall be as the dust of the earth, and thou shalt spread abroad to the west, and to the east, and to the north, and to the south: and in thee and in thy seed shall all the families of the earth be blessed.|KO=
+V|N=15|EN=And, behold, I am with thee, and will keep thee in all places whither thou goest, and will bring thee again into this land; for I will not leave thee, until I have done that which I have spoken to thee of.|KO=
+V|N=16|EN=And Jacob awaked out of his sleep, and he said, Surely the LORD is in this place; and I knew it not.|KO=
+V|N=17|EN=And he was afraid, and said, How dreadful is this place! this is none other but the house of God, and this is the gate of heaven.|KO=
+V|N=18|EN=And Jacob rose up early in the morning, and took the stone that he had put for his pillows, and set it up for a pillar, and poured oil upon the top of it.|KO=
+V|N=19|EN=And he called the name of that place Bethel: but the name of that city was called Luz at the first.|KO=
+V|N=20|EN=And Jacob vowed a vow, saying, If God will be with me, and will keep me in this way that I go, and will give me bread to eat, and raiment to put on,|KO=
+V|N=21|EN=So that I come again to my father’s house in peace; then shall the LORD be my God:|KO=
+V|N=22|EN=And this stone, which I have set for a pillar, shall be God’s house: and of all that thou shalt give me I will surely give the tenth unto thee.|KO=

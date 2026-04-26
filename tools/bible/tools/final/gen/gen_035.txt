@@ -1,0 +1,31 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=35|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 35|KO=창세기 35장
+V|N=1|EN=And God said unto Jacob, Arise, go up to Bethel, and dwell there: and make there an altar unto God, that appeared unto thee when thou fleddest from the face of Esau thy brother.|KO=하나님이 야곱에게 말씀하시기를, 일어나 베델로 올라가 거기 거주하라. 그리고 너가 에서 네 형의 얼굴을 피할 때 너에게 나타나신 하나님께 제단을 쌓으라 하시니라.
+V|N=2|EN=Then Jacob said unto his household, and to all that were with him, Put away the strange gods that are among you, and be clean, and change your garments:|KO=그때 야곱이 그의 집안과 함께 있는 모든 자에게 이르되, 너희 중에 있는 이방 신들을 버리고 깨끗하게 하고 너희 의복을 바꾸라 하니라.
+V|N=3|EN=And let us arise, and go up to Bethel; and I will make there an altar unto God, who answered me in the day of my distress, and was with me in the way which I went.|KO=우리가 일어나 베델로 올라가자. 내가 거기서 내 고난의 날에 나에게 응답하신 하나님께 제단을 쌓으리라. 내가 간 길에서 나와 함께 하신 하나님이시니라.
+V|N=4|EN=And they gave unto Jacob all the strange gods which were in their hand, and all their earrings which were in their ears; and Jacob hid them under the oak which was by Shechem.|KO=그들이 야곱에게 그들의 손에 있는 모든 이방 신들과 귀에 있는 모든 금고리를 주었고, 야곱은 그것들을 세겜 곁의 상수리 나무 아래에 감추었더라.
+V|N=5|EN=And they journeyed: and the terror of God was upon the cities that were round about them, and they did not pursue after the sons of Jacob.|KO=그들이 여행하였고, 하나님이 그 주위의 도시들에 두려움을 주셨으므로 그들이 야곱의 아들들을 추격하지 아니하였더라.
+V|N=6|EN=So Jacob came to Luz, which is in the land of Canaan, that is, Bethel, he and all the people that were with him.|KO=야곱이 그와 함께한 모든 사람과 함께 가나안 땅의 루스에 이르렀으니, 곧 베델이라.
+V|N=7|EN=And he built there an altar, and called the place Elbethel: because there God appeared unto him, when he fled from the face of his brother.|KO=그가 거기서 제단을 쌓고 그곳을 엘베델이라 불렀으니, 이는 그가 그의 형의 얼굴을 피할 때 하나님이 그에게 나타나셨기 때문이라.
+V|N=8|EN=But Deborah Rebekah’s nurse died, and she was buried beneath Bethel under an oak: and the name of it was called Allonbachuth.|KO=그러나 리브가의 유모 드보라가 죽고 베델 아래의 상수리 나무 아래에 묻혔으니, 그 이름을 알론바굿이라 하였더라.
+V|N=9|EN=And God appeared unto Jacob again, when he came out of Padanaram, and blessed him.|KO=하나님이 다시 야곱에게 나타나셨고, 그가 바단아람에서 나올 때 그를 축복하셨더라.
+V|N=10|EN=And God said unto him, Thy name is Jacob: thy name shall not be called any more Jacob, but Israel shall be thy name: and he called his name Israel.|KO=하나님이 그에게 말씀하시기를, 네 이름은 야곱이라. 이제부터는 네 이름을 야곱이라 부르지 아니하고 이스라엘이라 부를 것이니라. 그가 그의 이름을 이스라엘이라 하였더라.
+V|N=11|EN=And God said unto him, I am God Almighty: be fruitful and multiply; a nation and a company of nations shall be of thee, and kings shall come out of thy loins;|KO=하나님이 그에게 말씀하시기를, 나는 전능한 하나님이라. 생육하고 번성하라. 너에게서 한 민족과 여러 민족이 나올 것이며, 왕들이 네 허리에서 나올 것이니라.
+V|N=12|EN=And the land which I gave Abraham and Isaac, to thee I will give it, and to thy seed after thee will I give the land.|KO=내가 아브라함과 이삭에게 준 땅을 너에게 주고, 너의 자손에게도 그 땅을 주리라.
+V|N=13|EN=And God went up from him in the place where he talked with him.|KO=하나님이 그와 이야기하신 곳에서 그를 떠나셨더라.
+V|N=14|EN=And Jacob set up a pillar in the place where he talked with him, even a pillar of stone: and he poured a drink offering thereon, and he poured oil thereon.|KO=야곱이 그와 이야기한 곳에 기둥을 세웠으니, 돌 기둥이라. 그가 그 위에 부어 드리는 제물을 부었고, 그 위에 기름을 부었더라.
+V|N=15|EN=And Jacob called the name of the place where God spake with him, Bethel.|KO=야곱이 하나님이 그와 말씀하신 곳의 이름을 베델이라 하였더라.
+V|N=16|EN=And they journeyed from Bethel; and there was but a little way to come to Ephrath: and Rachel travailed, and she had hard labour.|KO=그들이 베델에서 떠나고, 에브라다에 이르기까지는 얼마 되지 아니하였더라. 그리고 라헬이 진통하였고, 그녀는 힘을 다하였더라.
+V|N=17|EN=And it came to pass, when she was in hard labour, that the midwife said unto her, Fear not; thou shalt have this son also.|KO=그녀가 힘을 다할 때, 조산사가 그녀에게 두려워하지 말라. 너도 이 아들을 낳으리라 하니라.
+V|N=18|EN=And it came to pass, as her soul was in departing, (for she died) that she called his name Benoni: but his father called him Benjamin.|KO=그녀의 영이 떠나려 할 때, (그녀가 죽었으므로) 그녀가 그의 이름을 베논이라 하였으나, 그의 아버지는 그를 베냐민이라 불렀더라.
+V|N=19|EN=And Rachel died, and was buried in the way to Ephrath, which is Bethlehem.|KO=라헬이 죽고 에브라다로 가는 길에 묻혔으니, 그곳은 베들레헴이라.
+V|N=20|EN=And Jacob set a pillar upon her grave: that is the pillar of Rachel’s grave unto this day.|KO=야곱이 그녀의 무덤 위에 기둥을 세웠으니, 그것이 오늘날까지 라헬의 무덤의 기둥이라.
+V|N=21|EN=And Israel journeyed, and spread his tent beyond the tower of Edar.|KO=이스라엘이 여행하며 에다르 망대 너머에 그의 장막을 쳤더라.
+V|N=22|EN=And it came to pass, when Israel dwelt in that land, that Reuben went and lay with Bilhah his father’s concubine: and Israel heard it. Now the sons of Jacob were twelve:|KO=이스라엘이 그 땅에 거주할 때, 르우벤이 그의 아버지의 첩 빌하와 동침하였고, 이스라엘이 이를 들으니라. 이제 야곱의 아들은 열두 명이라.
+V|N=23|EN=The sons of Leah; Reuben, Jacob’s firstborn, and Simeon, and Levi, and Judah, and Issachar, and Zebulun:|KO=레아의 아들들은 르우벤, 야곱의 장자, 시므온, 레위, 유다, 이싸갈, 스불론이라.
+V|N=24|EN=The sons of Rachel; Joseph, and Benjamin:|KO=라헬의 아들들은 요셉과 베냐민이라.
+V|N=25|EN=And the sons of Bilhah, Rachel’s handmaid; Dan, and Naphtali:|KO=빌하, 라헬의 여종의 아들들은 단과 납달리라.
+V|N=26|EN=And the sons of Zilpah, Leah’s handmaid: Gad, and Asher: these are the sons of Jacob, which were born to him in Padanaram.|KO=실바, 레아의 여종의 아들들은 갓과 아셀이라. 이들은 바단아람에서 야곱에게 태어난 아들들이라.
+V|N=27|EN=And Jacob came unto Isaac his father unto Mamre, unto the city of Arbah, which is Hebron, where Abraham and Isaac sojourned.|KO=야곱이 그의 아버지 이삭에게 이르러 맘레, 곧 헤브론에 이르렀으니, 아브라함과 이삭이 거주하던 곳이라.
+V|N=28|EN=And the days of Isaac were an hundred and fourscore years.|KO=이삭의 나이는 백팔십 세라.
+V|N=29|EN=And Isaac gave up the ghost, and died, and was gathered unto his people, being old and full of days: and his sons Esau and Jacob buried him.|KO=이삭이 숨을 거두고 죽어 그의 백성과 함께 모였으니, 나이가 많고 날이 많았더라. 그의 아들 에서와 야곱이 그를 장사하였더라.

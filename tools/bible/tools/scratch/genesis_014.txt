@@ -1,0 +1,26 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=14|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 14|KO=
+V|N=1|EN=And it came to pass in the days of Amraphel king of Shinar, Arioch king of Ellasar, Chedorlaomer king of Elam, and Tidal king of nations;|KO=
+V|N=2|EN=That these made war with Bera king of Sodom, and with Birsha king of Gomorrah, Shinab king of Admah, and Shemeber king of Zeboiim, and the king of Bela, which is Zoar.|KO=
+V|N=3|EN=All these were joined together in the vale of Siddim, which is the salt sea.|KO=
+V|N=4|EN=Twelve years they served Chedorlaomer, and in the thirteenth year they rebelled.|KO=
+V|N=5|EN=And in the fourteenth year came Chedorlaomer, and the kings that were with him, and smote the Rephaims in Ashteroth Karnaim, and the Zuzims in Ham, and the Emins in Shaveh Kiriathaim,|KO=
+V|N=6|EN=And the Horites in their mount Seir, unto Elparan, which is by the wilderness.|KO=
+V|N=7|EN=And they returned, and came to Enmishpat, which is Kadesh, and smote all the country of the Amalekites, and also the Amorites, that dwelt in Hazezontamar.|KO=
+V|N=8|EN=And there went out the king of Sodom, and the king of Gomorrah, and the king of Admah, and the king of Zeboiim, and the king of Bela (the same is Zoar;) and they joined battle with them in the vale of Siddim;|KO=
+V|N=9|EN=With Chedorlaomer the king of Elam, and with Tidal king of nations, and Amraphel king of Shinar, and Arioch king of Ellasar; four kings with five.|KO=
+V|N=10|EN=And the vale of Siddim was full of slimepits; and the kings of Sodom and Gomorrah fled, and fell there; and they that remained fled to the mountain.|KO=
+V|N=11|EN=And they took all the goods of Sodom and Gomorrah, and all their victuals, and went their way.|KO=
+V|N=12|EN=And they took Lot, Abram’s brother’s son, who dwelt in Sodom, and his goods, and departed.|KO=
+V|N=13|EN=And there came one that had escaped, and told Abram the Hebrew; for he dwelt in the plain of Mamre the Amorite, brother of Eshcol, and brother of Aner: and these were confederate with Abram.|KO=
+V|N=14|EN=And when Abram heard that his brother was taken captive, he armed his trained servants, born in his own house, three hundred and eighteen, and pursued them unto Dan.|KO=
+V|N=15|EN=And he divided himself against them, he and his servants, by night, and smote them, and pursued them unto Hobah, which is on the left hand of Damascus.|KO=
+V|N=16|EN=And he brought back all the goods, and also brought again his brother Lot, and his goods, and the women also, and the people.|KO=
+V|N=17|EN=And the king of Sodom went out to meet him after his return from the slaughter of Chedorlaomer, and of the kings that were with him, at the valley of Shaveh, which is the king’s dale.|KO=
+V|N=18|EN=And Melchizedek king of Salem brought forth bread and wine: and he was the priest of the most high God.|KO=
+V|N=19|EN=And he blessed him, and said, Blessed be Abram of the most high God, possessor of heaven and earth:|KO=
+V|N=20|EN=And blessed be the most high God, which hath delivered thine enemies into thy hand. And he gave him tithes of all.|KO=
+V|N=21|EN=And the king of Sodom said unto Abram, Give me the persons, and take the goods to thyself.|KO=
+V|N=22|EN=And Abram said to the king of Sodom, I have lift up mine hand unto the LORD, the most high God, the possessor of heaven and earth,|KO=
+V|N=23|EN=That I will not take from a thread even to a shoelatchet, and that I will not take any thing that is thine, lest thou shouldest say, I have made Abram rich:|KO=
+V|N=24|EN=Save only that which the young men have eaten, and the portion of the men which went with me, Aner, Eshcol, and Mamre; let them take their portion.|KO=

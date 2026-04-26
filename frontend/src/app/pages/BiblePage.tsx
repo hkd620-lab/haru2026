@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { getAuth } from 'firebase/auth';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import genesisData from '../../data/genesis_1.json';
 
 interface Verse {
@@ -42,6 +42,31 @@ export function BiblePage() {
       document.removeEventListener('touchstart', unlock);
       document.removeEventListener('click', unlock);
     };
+  }, []);
+
+  // 창세기 1장 전체 자동 사전생성
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
+      try {
+        const verseTexts: Record<string, string> = {};
+        const verses: string[] = [];
+
+        genesisData.verses.forEach((verse: Verse) => {
+          const verseKey = `genesis_1_${verse.verse}`;
+          verses.push(verseKey);
+          verseTexts[verseKey] = verse.text;
+        });
+
+        const fns = getFunctions(undefined, 'asia-northeast3');
+        const fn = httpsCallable(fns, 'preloadChapterGrammar');
+        await fn({ book: '창세기', chapter: 1, verses, verseTexts });
+      } catch (e) {
+        // 백그라운드 작업 — 실패 무시
+      }
+    });
+    return () => unsubscribe();
   }, []);
   const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);

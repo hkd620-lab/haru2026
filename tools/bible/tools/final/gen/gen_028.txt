@@ -1,0 +1,24 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=28|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 28|KO=창세기 28장
+V|N=1|EN=And Isaac called Jacob, and blessed him, and charged him, and said unto him, Thou shalt not take a wife of the daughters of Canaan.|KO=이삭이 야곱을 부르고 그를 축복하며 그에게 명령하여 이르되, 너는 가나안의 딸들 중에서 아내를 취하지 말라.
+V|N=2|EN=Arise, go to Padanaram, to the house of Bethuel thy mother’s father; and take thee a wife from thence of the daughters of Laban thy mother’s brother.|KO=일어나서 바단아람으로 가서 네 어머니의 아버지 벧부엘의 집에 가서 그곳에서 네 어머니의 형 라반의 딸 중에서 아내를 취하라.
+V|N=3|EN=And God Almighty bless thee, and make thee fruitful, and multiply thee, that thou mayest be a multitude of people;|KO=전능하신 하나님이 너를 축복하시고 너를 번성하게 하시며 너를 많게 하시어 너로 큰 민족이 되게 하시기를 원하노라.
+V|N=4|EN=And give thee the blessing of Abraham, to thee, and to thy seed with thee; that thou mayest inherit the land wherein thou art a stranger, which God gave unto Abraham.|KO=아브라함의 축복을 너와 너와 함께하는 네 자손에게 주사, 너로 이 땅을 상속받게 하시기를 원하노라. 이는 하나님이 아브라함에게 주신 땅이라.
+V|N=5|EN=And Isaac sent away Jacob: and he went to Padanaram unto Laban, son of Bethuel the Syrian, the brother of Rebekah, Jacob’s and Esau’s mother.|KO=이삭이 야곱을 보내니 그가 바단아람으로 가서 시리아 사람 라반, 곧 리브가의 오빠의 아들인 베두엘에게로 갔더라.
+V|N=6|EN=When Esau saw that Isaac had blessed Jacob, and sent him away to Padanaram, to take him a wife from thence; and that as he blessed him he gave him a charge, saying, Thou shalt not take a wife of the daughters of Canaan;|KO=에서가 이삭이 야곱을 축복하고 그를 바단아람으로 보내 아내를 취하게 하였음을 보고, 그가 축복할 때에 그에게 명령하여 이르되, 너는 가나안의 딸들 중에서 아내를 취하지 말라 하였더라.
+V|N=7|EN=And that Jacob obeyed his father and his mother, and was gone to Padanaram;|KO=야곱이 그의 아버지와 어머니의 말을 순종하고 바단아람으로 갔더라.
+V|N=8|EN=And Esau seeing that the daughters of Canaan pleased not Isaac his father;|KO=에서가 가나안의 딸들이 그의 아버지 이삭의 눈에 좋지 않음을 보고,
+V|N=9|EN=Then went Esau unto Ishmael, and took unto the wives which he had Mahalath the daughter of Ishmael Abraham’s son, the sister of Nebajoth, to be his wife.|KO=에서가 이스마엘에게로 가서 그가 가진 아내들 외에 이스마엘의 아들 아브라함의 딸 마할랏을 아내로 취하였더라.
+V|N=10|EN=And Jacob went out from Beersheba, and went toward Haran.|KO=야곱이 브엘세바에서 나가 하란으로 향하더니,
+V|N=11|EN=And he lighted upon a certain place, and tarried there all night, because the sun was set; and he took of the stones of that place, and put them for his pillows, and lay down in that place to sleep.|KO=어떤 곳에 이르러 해가 지므로 거기서 유숙하였고, 그곳의 돌들을 가져다가 베개로 삼고 그곳에서 잠을 자더니,
+V|N=12|EN=And he dreamed, and behold a ladder set up on the earth, and the top of it reached to heaven: and behold the angels of God ascending and descending on it.|KO=꿈에 보니 땅에 닿은 사다리가 있고 그 꼭대기가 하늘에 닿았으며, 하나님의 사자들이 그 위에서 오르락내리락 하더라.
+V|N=13|EN=And, behold, the LORD stood above it, and said, I am the LORD God of Abraham thy father, and the God of Isaac: the land whereon thou liest, to thee will I give it, and to thy seed;|KO=여호와께서 그 위에 서서 이르시되, 나는 네 아버지 아브라함의 하나님이요, 이삭의 하나님이라. 네가 누워 있는 땅을 내가 너와 네 자손에게 주리라.
+V|N=14|EN=And thy seed shall be as the dust of the earth, and thou shalt spread abroad to the west, and to the east, and to the north, and to the south: and in thee and in thy seed shall all the families of the earth be blessed.|KO=너의 자손이 땅의 티끌과 같이 많아질 것이요, 너는 서쪽과 동쪽과 북쪽과 남쪽으로 퍼져 나가리니, 땅의 모든 족속이 너와 네 자손으로 말미암아 복을 받으리라.
+V|N=15|EN=And, behold, I am with thee, and will keep thee in all places whither thou goest, and will bring thee again into this land; for I will not leave thee, until I have done that which I have spoken to thee of.|KO=보라, 내가 너와 함께하여 네가 어디로 가든지 너를 지키며, 너를 이 땅으로 돌아오게 하리니, 내가 너에게 말한 것을 다 이루기까지 너를 떠나지 아니하리라 하신지라.
+V|N=16|EN=And Jacob awaked out of his sleep, and he said, Surely the LORD is in this place; and I knew it not.|KO=야곱이 잠에서 깨어 이르되, 여호와께서 과연 이곳에 계시거늘 내가 알지 못하였도다 하였더라.
+V|N=17|EN=And he was afraid, and said, How dreadful is this place! this is none other but the house of God, and this is the gate of heaven.|KO=그가 두려워하여 이르되, 이곳은 두려운 곳이로다. 이는 다름 아닌 하나님의 집이요, 이는 하늘의 문이로다 하였더라.
+V|N=18|EN=And Jacob rose up early in the morning, and took the stone that he had put for his pillows, and set it up for a pillar, and poured oil upon the top of it.|KO=야곱이 아침에 일찍 일어나 그가 베개로 삼았던 돌을 취하여 기둥으로 세우고 그 위에 기름을 부었더라.
+V|N=19|EN=And he called the name of that place Bethel: but the name of that city was called Luz at the first.|KO=그가 그곳의 이름을 베델이라 하였고, 그 성의 이름은 본래 루스라 하였더라.
+V|N=20|EN=And Jacob vowed a vow, saying, If God will be with me, and will keep me in this way that I go, and will give me bread to eat, and raiment to put on,|KO=야곱이 서원하여 이르되, 하나님이 나와 함께 계시고 내가 가는 이 길에서 나를 지키시며, 먹을 양식과 입을 옷을 주시면,
+V|N=21|EN=So that I come again to my father’s house in peace; then shall the LORD be my God:|KO=내가 평안히 아버지의 집으로 돌아오게 하실 때, 여호와께서 나의 하나님이 되실 것이라.
+V|N=22|EN=And this stone, which I have set for a pillar, shall be God’s house: and of all that thou shalt give me I will surely give the tenth unto thee.|KO=내가 세운 이 돌이 하나님의 집이 될 것이요, 내가 주께 드릴 모든 것의 십일조를 반드시 주께 드리겠나이다.

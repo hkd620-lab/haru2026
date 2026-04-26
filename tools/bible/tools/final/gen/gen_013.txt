@@ -1,0 +1,20 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=13|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 13|KO=창세기 13장
+V|N=1|EN=And Abram went up out of Egypt, he, and his wife, and all that he had, and Lot with him, into the south.|KO=아브람이 그의 아내와 그가 가진 모든 것과 함께 롯과 함께 애굽에서 나와 남쪽으로 갔다.
+V|N=2|EN=And Abram was very rich in cattle, in silver, and in gold.|KO=아브람은 가축과 은과 금이 매우 부유했다.
+V|N=3|EN=And he went on his journeys from the south even to Bethel, unto the place where his tent had been at the beginning, between Bethel and Hai;|KO=그는 남쪽에서 베델까지 그의 여정으로 나아갔고, 처음 그의 장막이 있었던 곳, 베델과 하이 사이에 이르렀다.
+V|N=4|EN=Unto the place of the altar, which he had made there at the first: and there Abram called on the name of the LORD.|KO=그가 처음 거기에서 만든 제단의 자리로 가서 아브람이 여호와의 이름을 불렀다.
+V|N=5|EN=And Lot also, which went with Abram, had flocks, and herds, and tents.|KO=롯도 아브람과 함께 갔고, 그는 양떼와 소떼와 장막이 있었다.
+V|N=6|EN=And the land was not able to bear them, that they might dwell together: for their substance was great, so that they could not dwell together.|KO=그 땅은 그들이 함께 거주할 수 없을 정도로 그들의 재산이 많았다.
+V|N=7|EN=And there was a strife between the herdmen of Abram’s cattle and the herdmen of Lot’s cattle: and the Canaanite and the Perizzite dwelled then in the land.|KO=아브람의 가축의 목자들과 롯의 가축의 목자들 사이에 다툼이 있었고, 그 땅에는 가나안 사람과 브리시 사람도 거주하고 있었다.
+V|N=8|EN=And Abram said unto Lot, Let there be no strife, I pray thee, between me and thee, and between my herdmen and thy herdmen; for we be brethren.|KO=아브람이 롯에게 이르되, 나와 너 사이에 다툼이 없기를 원하노니, 나의 목자와 너의 목자 사이에도 다툼이 없기를 원하노라. 우리는 형제니라.
+V|N=9|EN=Is not the whole land before thee? separate thyself, I pray thee, from me: if thou wilt take the left hand, then I will go to the right; or if thou depart to the right hand, then I will go to the left.|KO=온 땅이 너 앞에 있지 아니하냐? 나에게서 떠나라. 네가 왼쪽을 택하면 나는 오른쪽으로 가고, 네가 오른쪽을 택하면 나는 왼쪽으로 가리라.
+V|N=10|EN=And Lot lifted up his eyes, and beheld all the plain of Jordan, that it was well watered every where, before the LORD destroyed Sodom and Gomorrah, even as the garden of the LORD, like the land of Egypt, as thou comest unto Zoar.|KO=롯이 눈을 들어 요단의 온 평지를 보니, 여호와께서 소돔과 고모라를 멸하시기 전에 그곳이 물이 넉넉하고 여호와의 동산과 같고 애굽 땅과 같았다.
+V|N=11|EN=Then Lot chose him all the plain of Jordan; and Lot journeyed east: and they separated themselves the one from the other.|KO=롯이 요단의 온 평지를 택하고 동쪽으로 나아갔으며, 그들은 서로 분리되었다.
+V|N=12|EN=Abram dwelled in the land of Canaan, and Lot dwelled in the cities of the plain, and pitched his tent toward Sodom.|KO=아브람은 가나안 땅에 거주하였고, 롯은 평지의 성들에 거주하며 소돔을 향해 장막을 쳤다.
+V|N=13|EN=But the men of Sodom were wicked and sinners before the LORD exceedingly.|KO=그러나 소돔 사람들은 여호와 앞에서 악하고 큰 죄인이었다.
+V|N=14|EN=And the LORD said unto Abram, after that Lot was separated from him, Lift up now thine eyes, and look from the place where thou art northward, and southward, and eastward, and westward:|KO=여호와께서 아브람에게 이르시되, 롯이 그에게서 떠난 후에, 이제 네 눈을 들어 네가 있는 곳에서 북쪽과 남쪽과 동쪽과 서쪽을 바라보라.
+V|N=15|EN=For all the land which thou seest, to thee will I give it, and to thy seed for ever.|KO=네가 보는 모든 땅을 내가 너와 네 자손에게 영원히 주리라.
+V|N=16|EN=And I will make thy seed as the dust of the earth: so that if a man can number the dust of the earth, then shall thy seed also be numbered.|KO=내가 너의 자손을 땅의 티끌같이 만들리니, 사람이 땅의 티끌을 셀 수 있으면 너의 자손도 셀 수 있으리라.
+V|N=17|EN=Arise, walk through the land in the length of it and in the breadth of it; for I will give it unto thee.|KO=일어나 그 땅을 종횡으로 걸어 다니라. 내가 그것을 너에게 주리라.
+V|N=18|EN=Then Abram removed his tent, and came and dwelt in the plain of Mamre, which is in Hebron, and built there an altar unto the LORD.|KO=그때 아브람이 그의 장막을 옮겨 헤브론에 있는 마므레 평지에 거주하며 거기서 여호와를 위하여 제단을 쌓았다.
