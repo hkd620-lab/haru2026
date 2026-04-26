@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.fetchTopNews = exports.translateToEnglish = exports.getVerseQuiz = exports.getGrammarExplain = exports.getWordMeaning = exports.generateBook = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
+exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.fetchTopNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.generateBook = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -1477,6 +1477,163 @@ ${JSON.stringify(parsed, null, 2)}`;
     });
     logger.info(`[getGrammarExplain] 캐시 저장: ${verseKey}`);
     return verified;
+});
+// ===== 장 문법 사전생성 =====
+exports.preloadChapterGrammar = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET, OPENAI_API_KEY_SECRET] }, async (request) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+    const { book, chapter, verses, verseTexts } = request.data;
+    const results = [];
+    for (const verseKey of verses) {
+        try {
+            // 1. 캐시 확인 — 이미 있으면 스킵
+            const cacheRef = db.collection('grammarCache').doc(verseKey);
+            const cached = await cacheRef.get();
+            if (cached.exists) {
+                results.push({ verseKey, status: 'cached' });
+                continue;
+            }
+            const verseText = (verseTexts === null || verseTexts === void 0 ? void 0 : verseTexts[verseKey]) || '';
+            // 2. Gemini 호출
+            const geminiApiKey = GEMINI_API_KEY_SECRET.value();
+            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+            const geminiPrompt = `다음 영어 성경 구절(KJV)의 핵심 문법 요소를 JSON으로 분석해주세요.
+구절: "${verseText}"
+verseKey: "${verseKey}"
+
+반드시 아래 JSON 형식으로만 응답하세요:
+{
+  "items": [
+    {
+      "type": "동사|전치사|관계사|구동사|의문사|명령감탄",
+      "word": "분석할 단어",
+      "explanation": "한국어 설명 (2줄 이내)",
+      "example": "영어 예문",
+      "exampleKr": "한국어 번역"
+    }
+  ],
+  "mySentence": "이 구절 핵심 단어로 만든 새 영어 문장",
+  "mySentenceKr": "한국어 번역"
+}`;
+            const geminiRes = await fetch(geminiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: geminiPrompt }] }],
+                    generationConfig: { temperature: 0.3 }
+                })
+            });
+            if (!geminiRes.ok) {
+                results.push({ verseKey, status: 'gemini_error' });
+                continue;
+            }
+            const geminiJson = await geminiRes.json();
+            let geminiText = ((_e = (_d = (_c = (_b = (_a = geminiJson === null || geminiJson === void 0 ? void 0 : geminiJson.candidates) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.content) === null || _c === void 0 ? void 0 : _c.parts) === null || _d === void 0 ? void 0 : _d[0]) === null || _e === void 0 ? void 0 : _e.text) || '';
+            geminiText = geminiText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            const geminiData = JSON.parse(geminiText);
+            // 3. GPT-4o 검증
+            let finalData = geminiData;
+            let gptChanges = [];
+            let verifiedByGPT = false;
+            try {
+                const openaiApiKey = OPENAI_API_KEY_SECRET.value();
+                const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${openaiApiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-4o',
+                        temperature: 0.2,
+                        messages: [
+                            {
+                                role: 'system',
+                                content: '당신은 영어 문법 검증 전문가입니다. KJV 성경 고어체 전문가입니다. 반드시 순수 JSON만 응답하세요.'
+                            },
+                            {
+                                role: 'user',
+                                content: `다음 문법 분석이 정확한지 검증하고 오류가 있으면 수정해주세요.
+구절: "${verseText}"
+분석: ${JSON.stringify(geminiData)}
+
+수정사항이 있으면 corrected 필드에 수정된 전체 데이터를, changes 배열에 변경 내역을 담아주세요.
+수정사항이 없으면 changes를 빈 배열로, corrected를 null로 반환하세요.
+
+{"changes": ["변경내역1", ...], "corrected": null 또는 {...수정된데이터}}`
+                            }
+                        ]
+                    }),
+                    signal: AbortSignal.timeout(15000)
+                });
+                if (gptRes.ok) {
+                    const gptJson = await gptRes.json();
+                    let gptText = ((_h = (_g = (_f = gptJson === null || gptJson === void 0 ? void 0 : gptJson.choices) === null || _f === void 0 ? void 0 : _f[0]) === null || _g === void 0 ? void 0 : _g.message) === null || _h === void 0 ? void 0 : _h.content) || '';
+                    gptText = gptText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                    const gptResult = JSON.parse(gptText);
+                    gptChanges = gptResult.changes || [];
+                    if (gptResult.corrected) {
+                        finalData = gptResult.corrected;
+                    }
+                    verifiedByGPT = true;
+                }
+            }
+            catch (gptErr) {
+                logger.warn(`[preloadChapterGrammar] GPT 실패, Gemini 사용: ${verseKey}`);
+            }
+            // 4. 캐시 저장
+            await cacheRef.set({
+                ...finalData,
+                verseKey,
+                verifiedByGPT,
+                gptChanges,
+                createdAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+            results.push({
+                verseKey,
+                status: verifiedByGPT ? 'verified' : 'gemini_only',
+                gptCorrected: gptChanges.length > 0,
+                changesCount: gptChanges.length
+            });
+            // 5. API 과부하 방지 — 절 사이 0.5초 대기
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        catch (err) {
+            logger.error(`[preloadChapterGrammar] 오류: ${verseKey}`, err);
+            results.push({ verseKey, status: 'error', message: err.message });
+        }
+    }
+    // 6. 완료 후 관리자 FCM 알림
+    const totalCorrected = results.filter(r => r.gptCorrected).length;
+    const adminUid = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+    try {
+        const settingsDoc = await db
+            .collection('users').doc(adminUid)
+            .collection('settings').doc('settings').get();
+        const tokens = ((_j = settingsDoc.data()) === null || _j === void 0 ? void 0 : _j.fcmTokens) || [];
+        if (tokens.length > 0) {
+            const { getMessaging } = await Promise.resolve().then(() => __importStar(require('firebase-admin/messaging')));
+            await getMessaging().sendEachForMulticast({
+                tokens,
+                notification: {
+                    title: `📖 ${book} ${chapter}장 문법 생성 완료`,
+                    body: totalCorrected > 0
+                        ? `GPT 수정: ${totalCorrected}건 발견됨 ⚠️`
+                        : '수정 없음 ✅'
+                }
+            });
+        }
+    }
+    catch (fcmErr) {
+        logger.warn('[preloadChapterGrammar] FCM 알림 실패', fcmErr);
+    }
+    return {
+        success: true,
+        total: verses.length,
+        cached: results.filter(r => r.status === 'cached').length,
+        verified: results.filter(r => r.status === 'verified').length,
+        corrected: totalCorrected,
+        results
+    };
 });
 // ===== 퀴즈 생성 =====
 exports.getVerseQuiz = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] }, async (request) => {

@@ -352,3 +352,28 @@ GitHub: hkd620-lab/haru2026
 
 최종 업데이트: 2026.04.26
 HARU2026 by JOYEL — 허 교장님 전용
+
+## ⚠️ Git 브랜치 필수 원칙 (절대 준수)
+- 모든 작업은 feature/new-formats 브랜치에서 진행
+- 작업·빌드·배포 완료 후 반드시 main 머지까지 완료
+- 머지 없이 작업 종료 절대 금지
+
+### 머지 명령어 (작업 마무리 시 항상 실행)
+```bash
+cd ~/HARU2026
+git checkout main
+git merge feature/new-formats
+git push origin main
+git checkout feature/new-formats
+```
+
+> 🌳 나무 비유: 가지(feature)에서만 작업하고 본 줄기(main)에 머지 안 하면
+> 배포해도 실제 앱에 반영이 안 되는 사태 발생!
+
+## ⚠️ CC 코드 수정 원칙 (절대 준수)
+- 요청된 부분만 수정·추가할 것
+- 기존 함수·import·다른 코드 절대 건드리지 말 것
+- 추가 작업만 하고 나머지는 100% 원본 유지
+- 작업 전 반드시 해당 파일 백업 (file.tsx.old)
+- Functions 배포 시 반드시 region: 'asia-northeast3' 명시
+- CLAUDE.md 수정 시 반드시 기존 내용 읽은 후 맨 아래에만 추가
