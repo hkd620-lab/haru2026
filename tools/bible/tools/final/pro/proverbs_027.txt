@@ -1,0 +1,29 @@
+#BOOK=Proverbs|BOOKCODE=pro|CHAPTER=27|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Proverbs 27|KO=
+V|N=1|EN=Boast not thyself of to morrow; for thou knowest not what a day may bring forth.|KO=
+V|N=2|EN=Let another man praise thee, and not thine own mouth; a stranger, and not thine own lips.|KO=
+V|N=3|EN=A stone is heavy, and the sand weighty; but a fool’s wrath is heavier than them both.|KO=
+V|N=4|EN=Wrath is cruel, and anger is outrageous; but who is able to stand before envy?|KO=
+V|N=5|EN=Open rebuke is better than secret love.|KO=
+V|N=6|EN=Faithful are the wounds of a friend; but the kisses of an enemy are deceitful.|KO=
+V|N=7|EN=The full soul loatheth an honeycomb; but to the hungry soul every bitter thing is sweet.|KO=
+V|N=8|EN=As a bird that wandereth from her nest, so is a man that wandereth from his place.|KO=
+V|N=9|EN=Ointment and perfume rejoice the heart: so doth the sweetness of a man’s friend by hearty counsel.|KO=
+V|N=10|EN=Thine own friend, and thy father’s friend, forsake not; neither go into thy brother’s house in the day of thy calamity: for better is a neighbour that is near than a brother far off.|KO=
+V|N=11|EN=My son, be wise, and make my heart glad, that I may answer him that reproacheth me.|KO=
+V|N=12|EN=A prudent man foreseeth the evil, and hideth himself; but the simple pass on, and are punished.|KO=
+V|N=13|EN=Take his garment that is surety for a stranger, and take a pledge of him for a strange woman.|KO=
+V|N=14|EN=He that blesseth his friend with a loud voice, rising early in the morning, it shall be counted a curse to him.|KO=
+V|N=15|EN=A continual dropping in a very rainy day and a contentious woman are alike.|KO=
+V|N=16|EN=Whosoever hideth her hideth the wind, and the ointment of his right hand, which bewrayeth itself.|KO=
+V|N=17|EN=Iron sharpeneth iron; so a man sharpeneth the countenance of his friend.|KO=
+V|N=18|EN=Whoso keepeth the fig tree shall eat the fruit thereof: so he that waiteth on his master shall be honoured.|KO=
+V|N=19|EN=As in water face answereth to face, so the heart of man to man.|KO=
+V|N=20|EN=Hell and destruction are never full; so the eyes of man are never satisfied.|KO=
+V|N=21|EN=As the fining pot for silver, and the furnace for gold; so is a man to his praise.|KO=
+V|N=22|EN=Though thou shouldest bray a fool in a mortar among wheat with a pestle, yet will not his foolishness depart from him.|KO=
+V|N=23|EN=Be thou diligent to know the state of thy flocks, and look well to thy herds.|KO=
+V|N=24|EN=For riches are not for ever: and doth the crown endure to every generation?|KO=
+V|N=25|EN=The hay appeareth, and the tender grass sheweth itself, and herbs of the mountains are gathered.|KO=
+V|N=26|EN=The lambs are for thy clothing, and the goats are the price of the field.|KO=
+V|N=27|EN=And thou shalt have goats’ milk enough for thy food, for the food of thy household, and for the maintenance for thy maidens.|KO=

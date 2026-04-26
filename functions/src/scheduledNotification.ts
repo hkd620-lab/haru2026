@@ -67,6 +67,7 @@ export const scheduledPushNotification = onSchedule(
       const fcmTokens = settings.fcmTokens || [];
 
       if (fcmTokens.length > 0) {
+        const expiredTokens: string[] = [];
         for (const token of fcmTokens) {
           try {
             await admin.messaging().send({
@@ -77,9 +78,21 @@ export const scheduledPushNotification = onSchedule(
               },
             });
             sentCount++;
-          } catch (error) {
+          } catch (error: any) {
+            const reason = String(error);
             console.error(`토큰 전송 실패 (${token.substring(0, 20)}...):`, error);
+            if (reason.includes('NotRegistered') || reason.includes('registration-token-not-registered')) {
+              expiredTokens.push(token);
+            }
           }
+        }
+        if (expiredTokens.length > 0) {
+          const { FieldValue } = await import('firebase-admin/firestore');
+          const settingsRef = db.collection('users').doc(userId).collection('settings').doc('settings');
+          await settingsRef.update({
+            fcmTokens: FieldValue.arrayRemove(...expiredTokens),
+          });
+          console.log(`🧹 [${userId}] 만료 토큰 자동 삭제: ${expiredTokens.length}개`);
         }
       } else {
         skippedCount++;

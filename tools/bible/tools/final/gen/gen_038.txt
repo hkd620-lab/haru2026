@@ -1,0 +1,32 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=38|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 38|KO=창세기 38장
+V|N=1|EN=And it came to pass at that time, that Judah went down from his brethren, and turned in to a certain Adullamite, whose name was Hirah.|KO=그 때에 유다가 그의 형제들 중에서 내려가서 아둘람 사람의 한 사람에게로 돌아갔으니 그의 이름은 히라라.
+V|N=2|EN=And Judah saw there a daughter of a certain Canaanite, whose name was Shuah; and he took her, and went in unto her.|KO=유다가 거기서 가나안 사람의 딸을 보았으니 그 이름은 수아라. 그가 그녀를 취하여 들어갔더라.
+V|N=3|EN=And she conceived, and bare a son; and he called his name Er.|KO=그가 임신하여 아들을 낳고 그의 이름을 에르라 하였더라.
+V|N=4|EN=And she conceived again, and bare a son; and she called his name Onan.|KO=그가 다시 임신하여 아들을 낳고 그의 이름을 오난이라 하였더라.
+V|N=5|EN=And she yet again conceived, and bare a son; and called his name Shelah: and he was at Chezib, when she bare him.|KO=그가 또 임신하여 아들을 낳고 그의 이름을 셀라라 하였으니 그가 그를 낳을 때에 그는 게지브에 있었더라.
+V|N=6|EN=And Judah took a wife for Er his firstborn, whose name was Tamar.|KO=유다가 그의 맏아들을 위하여 아내를 취하였으니 그 이름은 다말이라.
+V|N=7|EN=And Er, Judah’s firstborn, was wicked in the sight of the LORD; and the LORD slew him.|KO=유다의 맏아들 에르가 여호와 보시기에 악하므로 여호와께서 그를 죽이셨더라.
+V|N=8|EN=And Judah said unto Onan, Go in unto thy brother’s wife, and marry her, and raise up seed to thy brother.|KO=유다가 오난에게 이르되, 네 형의 아내에게 들어가서 그와 혼인하고 네 형을 위하여 씨를 일으키라 하니라.
+V|N=9|EN=And Onan knew that the seed should not be his; and it came to pass, when he went in unto his brother’s wife, that he spilled it on the ground, lest that he should give seed to his brother.|KO=오난이 알더니 씨가 자기의 것이 아님을 알고 그의 형의 아내에게 들어갈 때마다 땅에 쏟아버리니 이는 그의 형에게 씨를 주지 않으려 함이었더라.
+V|N=10|EN=And the thing which he did displeased the LORD: wherefore he slew him also.|KO=그가 행한 일이 여호와 보시기에 악하므로 여호와께서 그도 죽이셨더라.
+V|N=11|EN=Then said Judah to Tamar his daughter in law, Remain a widow at thy father’s house, till Shelah my son be grown: for he said, Lest peradventure he die also, as his brethren did. And Tamar went and dwelt in her father’s house.|KO=그때 유다가 그의 며느리 다말에게 이르되, 너는 너의 아버지 집에 과부로 있으라. 내 아들 셀라가 자라기까지 기다리라 하였으니 이는 그가 또한 죽을까 두려워하였음이라. 다말이 가서 아버지 집에 과부로 있으니라.
+V|N=12|EN=And in process of time the daughter of Shuah Judah’s wife died; and Judah was comforted, and went up unto his sheepshearers to Timnath, he and his friend Hirah the Adullamite.|KO=여러 날 후에 유다의 아내 수아의 딸이 죽으매 유다가 위로를 받고 양털 깎는 자들에게 올라가니 그와 그의 친구 아둘람 사람 히라가 함께 하였더라.
+V|N=13|EN=And it was told Tamar, saying, Behold thy father in law goeth up to Timnath to shear his sheep.|KO=다말에게 전하니 이르되, 보라, 네 시아버지가 양털 깎으러 딤나에 올라가신다 하더라.
+V|N=14|EN=And she put her widow’s garments off from her, and covered her with a vail, and wrapped herself, and sat in an open place, which is by the way to Timnath; for she saw that Shelah was grown, and she was not given unto him to wife.|KO=다말이 과부의 옷을 벗고 베일로 가리우고 몸을 감싸고 딤나로 가는 길가에 앉으니 이는 셀라가 자라매 그를 주지 아니함을 보았음이라.
+V|N=15|EN=When Judah saw her, he thought her to be an harlot; because she had covered her face.|KO=유다가 그녀를 보고 창녀로 생각하고 얼굴을 가렸으므로 그녀에게로 돌아가서 이르되, 청하건대, 나에게 들어오라 하니라.
+V|N=16|EN=And he turned unto her by the way, and said, Go to, I pray thee, let me come in unto thee; (for he knew not that she was his daughter in law.) And she said, What wilt thou give me, that thou mayest come in unto me?|KO=그가 이르되, 내가 무엇을 주어 너에게 들어가랴 하니 그녀가 이르되, 당신이 나에게 무엇을 주겠느냐 하니라.
+V|N=17|EN=And he said, I will send thee a kid from the flock. And she said, Wilt thou give me a pledge, till thou send it?|KO=유다가 이르되, 내가 양 떼에서 새끼 염소를 보내리라 하니 그녀가 이르되, 당신이 보내기까지 나에게 무엇을 담보로 주겠느냐 하니라.
+V|N=18|EN=And he said, What pledge shall I give thee? And she said, Thy signet, and thy bracelets, and thy staff that is in thine hand. And he gave it her, and came in unto her, and she conceived by him.|KO=유다가 이르되, 내가 무엇을 담보로 주겠느냐 하니 그녀가 이르되, 당신의 인장과 팔찌와 손에 있는 지팡이를 주라 하니 그가 그것을 주고 그녀에게 들어가니 그녀가 그로 말미암아 임신하였더라.
+V|N=19|EN=And she arose, and went away, and laid by her vail from her, and put on the garments of her widowhood.|KO=그가 일어나서 가고 자기의 베일을 벗고 과부의 옷을 입었더라.
+V|N=20|EN=And Judah sent the kid by the hand of his friend the Adullamite, to receive his pledge from the woman’s hand: but he found her not.|KO=유다가 그의 친구 아둘람 사람의 손으로 새끼 염소를 보내어 그 여자의 담보를 찾게 하였으나 그를 찾지 못하니라.
+V|N=21|EN=Then he asked the men of that place, saying, Where is the harlot, that was openly by the way side? And they said, There was no harlot in this place.|KO=그가 그곳 사람들에게 물으니 이르되, 길가에 앉아 있는 창녀가 어디 있느냐 하니 그들이 이르되, 이곳에는 창녀가 없느니라.
+V|N=22|EN=And he returned to Judah, and said, I cannot find her; and also the men of the place said, that there was no harlot in this place.|KO=그가 유다에게 돌아와서 이르되, 내가 그녀를 찾지 못하였고 그곳 사람들도 이르되, 이곳에는 창녀가 없다고 하더이다.
+V|N=23|EN=And Judah said, Let her take it to her, lest we be shamed: behold, I sent this kid, and thou hast not found her.|KO=유다가 이르되, 그녀가 그것을 가져가게 하라. 우리가 수치를 당할까 하노라. 내가 이 새끼 염소를 보냈으나 너는 그녀를 찾지 못하였느니라.
+V|N=24|EN=And it came to pass about three months after, that it was told Judah, saying, Tamar thy daughter in law hath played the harlot; and also, behold, she is with child by whoredom. And Judah said, Bring her forth, and let her be burnt.|KO=약 석 달 후에 유다에게 전하니 이르되, 네 며느리 다말이 음행하였고 보라, 그녀가 음행으로 임신하였느니라. 유다가 이르되, 그녀를 끌어내어 불사르라 하니라.
+V|N=25|EN=When she was brought forth, she sent to her father in law, saying, By the man, whose these are, am I with child: and she said, Discern, I pray thee, whose are these, the signet, and bracelets, and staff.|KO=그를 끌어낼 때에 그녀가 그의 시아버지에게 이르되, 이 물건의 주인으로 내가 임신하였나이다 하며 이르되, 내가 청하건대, 이 인장과 팔찌와 지팡이가 누구의 것이냐 하니라.
+V|N=26|EN=And Judah acknowledged them, and said, She hath been more righteous than I; because that I gave her not to Shelah my son. And he knew her again no more.|KO=유다가 그것을 보고 이르되, 그녀가 나보다 의롭다. 내가 그녀를 셀라에게 주지 아니하였음이라. 그 후로 그를 다시 알지 아니하였더라.
+V|N=27|EN=And it came to pass in the time of her travail, that, behold, twins were in her womb.|KO=그의 해산 때에 쌍둥이가 그의 태중에 있었더라.
+V|N=28|EN=And it came to pass, when she travailed, that the one put out his hand: and the midwife took and bound upon his hand a scarlet thread, saying, This came out first.|KO=해산할 때에 한 아이가 손을 내밀매 산파가 그의 손에 홍색 실을 묶어 이르되, 이 아이가 먼저 나왔느니라 하더라.
+V|N=29|EN=And it came to pass, as he drew back his hand, that, behold, his brother came out: and she said, How hast thou broken forth? this breach be upon thee: therefore his name was called Pharez.|KO=그가 손을 다시 당기니 그의 형이 나와서 이르되, 네가 어찌하여 이렇게 터치느냐. 이로 말미암아 그의 이름이 베레스라 하였더라.
+V|N=30|EN=And afterward came out his brother, that had the scarlet thread upon his hand: and his name was called Zarah.|KO=그 후에 그의 형이 나왔고 그의 손에 홍색 실이 있었으므로 그의 이름을 세라라 하였더라.

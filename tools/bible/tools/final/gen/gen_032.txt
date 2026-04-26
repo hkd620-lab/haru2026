@@ -1,0 +1,34 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=32|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 32|KO=창세기 32장
+V|N=1|EN=And Jacob went on his way, and the angels of God met him.|KO=야곱이 길을 가다가 하나님의 사자들을 만났더라.
+V|N=2|EN=And when Jacob saw them, he said, This is God’s host: and he called the name of that place Mahanaim.|KO=야곱이 그들을 보고 이르되, 이는 하나님의 군대라 하고 그곳 이름을 마하나임이라 하였더라.
+V|N=3|EN=And Jacob sent messengers before him to Esau his brother unto the land of Seir, the country of Edom.|KO=야곱이 그의 형 에서에게 사람을 보내어 세일 땅으로 가게 하였더라.
+V|N=4|EN=And he commanded them, saying, Thus shall ye speak unto my lord Esau; Thy servant Jacob saith thus, I have sojourned with Laban, and stayed there until now:|KO=그가 그들에게 명령하여 이르되, 너희는 내 주 에서에게 이렇게 말하라. 너희의 종 야곱이 이렇게 말하노라. 내가 라반과 함께 거주하였고 지금까지 거기 거하였노라.
+V|N=5|EN=And I have oxen, and asses, flocks, and menservants, and womenservants: and I have sent to tell my lord, that I may find grace in thy sight.|KO=내게는 소와 나귀와 양떼와 남종과 여종이 있으며, 내가 내 주에게 은혜를 입고자 하여 이 소식을 전하였노라.
+V|N=6|EN=And the messengers returned to Jacob, saying, We came to thy brother Esau, and also he cometh to meet thee, and four hundred men with him.|KO=사자들이 야곱에게 돌아와 이르되, 우리가 당신의 형 에서를 만났고, 그가 당신을 만나러 오고 있으며, 사백 명이 그와 함께 오고 있더이다.
+V|N=7|EN=Then Jacob was greatly afraid and distressed: and he divided the people that was with him, and the flocks, and herds, and the camels, into two bands;|KO=야곱이 매우 두려워하고 근심하였으므로 그와 함께 있는 백성과 양떼와 소떼와 낙타를 두 무리로 나누었더라.
+V|N=8|EN=And said, If Esau come to the one company, and smite it, then the other company which is left shall escape.|KO=그가 이르되, 에서가 한 무리를 치면 남은 한 무리는 피하리라 하였더라.
+V|N=9|EN=And Jacob said, O God of my father Abraham, and God of my father Isaac, the LORD which saidst unto me, Return unto thy country, and to thy kindred, and I will deal well with thee:|KO=야곱이 이르되, 내 조부 아브라함의 하나님이요, 내 아버지 이삭의 하나님이여, 주께서 내게 이르시기를, 너의 고향과 친척에게로 돌아가라. 내가 너에게 은혜를 베풀리라 하셨나이다.
+V|N=10|EN=I am not worthy of the least of all the mercies, and of all the truth, which thou hast shewed unto thy servant; for with my staff I passed over this Jordan; and now I am become two bands.|KO=내가 주의 모든 은혜와 모든 진리 중에 가장 작은 것 하나도 감당하지 못할 자입니다. 내가 이 지팡이를 가지고 요단을 건넜더니 이제는 두 무리가 되었나이다.
+V|N=11|EN=Deliver me, I pray thee, from the hand of my brother, from the hand of Esau: for I fear him, lest he will come and smite me, and the mother with the children.|KO=내 형의 손, 곧 에서의 손에서 나를 건져 주시기를 간구하나이다. 그가 나를 치고 어미와 자식을 죽일까 두려워하나이다.
+V|N=12|EN=And thou saidst, I will surely do thee good, and make thy seed as the sand of the sea, which cannot be numbered for multitude.|KO=주께서 말씀하시기를, 내가 반드시 너에게 선을 베풀고, 네 자손을 바다의 모래처럼 많게 하리라 하셨나이다.
+V|N=13|EN=And he lodged there that same night; and took of that which came to his hand a present for Esau his brother;|KO=그가 그 밤에 거기서 유숙하고, 손에 잡힌 것을 가지고 형 에서에게 드릴 예물을 준비하였더라.
+V|N=14|EN=Two hundred she goats, and twenty he goats, two hundred ewes, and twenty rams,|KO=염소 암컷 이백 마리와 수컷 이십 마리, 암양 이백 마리와 수컷 이십 마리,
+V|N=15|EN=Thirty milch camels with their colts, forty kine, and ten bulls, twenty she asses, and ten foals.|KO=젖을 먹이는 낙타 서른 마리와 그 새끼, 소 마흔 마리와 수소 열 마리, 암나귀 스무 마리와 그 새끼 열 마리를 준비하였더라.
+V|N=16|EN=And he delivered them into the hand of his servants, every drove by themselves; and said unto his servants, Pass over before me, and put a space betwixt drove and drove.|KO=그가 그것들을 각각의 무리로 나누어 그의 종들에게 주며 이르되, 너희는 내 앞에서 지나가고 무리와 무리 사이에 간격을 두라 하였더라.
+V|N=17|EN=And he commanded the foremost, saying, When Esau my brother meeteth thee, and asketh thee, saying, Whose art thou? and whither goest thou? and whose are these before thee?|KO=그가 맨 앞에 있는 자에게 명령하여 이르되, 내 형 에서가 너를 만나거든, 너에게 묻기를, 너는 누구냐? 어디로 가느냐? 이들은 누구의 것이냐? 하거든,
+V|N=18|EN=Then thou shalt say, They be thy servant Jacob’s; it is a present sent unto my lord Esau: and, behold, also he is behind us.|KO=너는 이르기를, 당신의 종 야곱의 것이니이다. 이는 내 주 에게 드릴 예물이라 하라. 보소서, 그도 우리 뒤에 있나이다 하라.
+V|N=19|EN=And so commanded he the second, and the third, and all that followed the droves, saying, On this manner shall ye speak unto Esau, when ye find him.|KO=그가 두 번째와 세 번째, 그리고 모든 뒤를 따르는 자들에게도 이와 같이 말하라 하였더라.
+V|N=20|EN=And say ye moreover, Behold, thy servant Jacob is behind us. For he said, I will appease him with the present that goeth before me, and afterward I will see his face; peradventure he will accept of me.|KO=또 너희는 이르기를, 보소서, 당신의 종 야곱이 우리 뒤에 있나이다. 그는 예물로 그를 달래고자 하였으니, 그 후에 그의 얼굴을 보리라. 혹시 그가 나를 받아 주리라 하였더라.
+V|N=21|EN=So went the present over before him: and himself lodged that night in the company.|KO=예물이 그 앞에서 지나가고, 그는 그 밤에 진영에 유숙하였더라.
+V|N=22|EN=And he rose up that night, and took his two wives, and his two womenservants, and his eleven sons, and passed over the ford Jabbok.|KO=그가 그 밤에 일어나 두 아내와 두 여종과 열한 아들을 데리고 야복 나루를 건너갔더라.
+V|N=23|EN=And he took them, and sent them over the brook, and sent over that he had.|KO=그가 그들을 데리고 시내를 건너고, 그가 가진 것을 다 건너보내었더라.
+V|N=24|EN=And Jacob was left alone; and there wrestled a man with him until the breaking of the day.|KO=야곱이 홀로 남았더니, 한 사람이 그와 씨름하다가 날이 새는지라.
+V|N=25|EN=And when he saw that he prevailed not against him, he touched the hollow of his thigh; and the hollow of Jacob’s thigh was out of joint, as he wrestled with him.|KO=그가 자기를 이기지 못하는 것을 보고, 그의 허벅지 관절을 치니, 야곱의 허벅지 관절이 위골되었더라.
+V|N=26|EN=And he said, Let me go, for the day breaketh. And he said, I will not let thee go, except thou bless me.|KO=그가 이르되, 나를 보내라. 날이 새려 하느니라. 야곱이 이르되, 당신이 나를 축복하지 아니하면 보내지 않겠나이다.
+V|N=27|EN=And he said unto him, What is thy name? And he said, Jacob.|KO=그가 이르되, 네 이름이 무엇이냐? 야곱이라 하니,
+V|N=28|EN=And he said, Thy name shall be called no more Jacob, but Israel: for as a prince hast thou power with God and with men, and hast prevailed.|KO=그가 이르되, 네 이름을 다시는 야곱이라 부르지 아니하고 이스라엘이라 하리니, 이는 네가 하나님과 사람과 겨루어 이겼음이니라.
+V|N=29|EN=And Jacob asked him, and said, Tell me, I pray thee, thy name. And he said, Wherefore is it that thou dost ask after my name? And he blessed him there.|KO=야곱이 그에게 이르되, 청하건대, 당신의 이름을 가르쳐 주옵소서. 그가 이르되, 어찌하여 내 이름을 묻느냐? 그리고 그곳에서 그를 축복하였더라.
+V|N=30|EN=And Jacob called the name of the place Peniel: for I have seen God face to face, and my life is preserved.|KO=야곱이 그곳 이름을 비누엘이라 하였으니, 이는 내가 하나님을 대면하여 보았고, 내 생명이 보존되었음이니라.
+V|N=31|EN=And as he passed over Penuel the sun rose upon him, and he halted upon his thigh.|KO=그가 비누엘을 지나갈 때 해가 그를 비추었고, 그는 허벅지로 절었더라.
+V|N=32|EN=Therefore the children of Israel eat not of the sinew which shrank, which is upon the hollow of the thigh, unto this day: because he touched the hollow of Jacob’s thigh in the sinew that shrank.|KO=이스라엘 자손이 오늘날까지도 그 허벅지의 힘줄을 먹지 아니하나니, 이는 그가 야곱의 허벅지 힘줄을 쳤음이니라.

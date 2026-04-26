@@ -1,0 +1,34 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=5|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 5|KO=창세기 5장
+V|N=1|EN=This is the book of the generations of Adam. In the day that God created man, in the likeness of God made he him;|KO=
+V|N=2|EN=Male and female created he them; and blessed them, and called their name Adam, in the day when they were created.|KO=
+V|N=3|EN=And Adam lived an hundred and thirty years, and begat a son in his own likeness, and after his image; and called his name Seth:|KO=
+V|N=4|EN=And the days of Adam after he had begotten Seth were eight hundred years: and he begat sons and daughters:|KO=
+V|N=5|EN=And all the days that Adam lived were nine hundred and thirty years: and he died.|KO=
+V|N=6|EN=And Seth lived an hundred and five years, and begat Enos:|KO=
+V|N=7|EN=And Seth lived after he begat Enos eight hundred and seven years, and begat sons and daughters:|KO=
+V|N=8|EN=And all the days of Seth were nine hundred and twelve years: and he died.|KO=
+V|N=9|EN=And Enos lived ninety years, and begat Cainan:|KO=
+V|N=10|EN=And Enos lived after he begat Cainan eight hundred and fifteen years, and begat sons and daughters:|KO=
+V|N=11|EN=And all the days of Enos were nine hundred and five years: and he died.|KO=
+V|N=12|EN=And Cainan lived seventy years and begat Mahalaleel:|KO=
+V|N=13|EN=And Cainan lived after he begat Mahalaleel eight hundred and forty years, and begat sons and daughters:|KO=
+V|N=14|EN=And all the days of Cainan were nine hundred and ten years: and he died.|KO=
+V|N=15|EN=And Mahalaleel lived sixty and five years, and begat Jared:|KO=
+V|N=16|EN=And Mahalaleel lived after he begat Jared eight hundred and thirty years, and begat sons and daughters:|KO=
+V|N=17|EN=And all the days of Mahalaleel were eight hundred ninety and five years: and he died.|KO=
+V|N=18|EN=And Jared lived an hundred sixty and two years, and he begat Enoch:|KO=
+V|N=19|EN=And Jared lived after he begat Enoch eight hundred years, and begat sons and daughters:|KO=
+V|N=20|EN=And all the days of Jared were nine hundred sixty and two years: and he died.|KO=
+V|N=21|EN=And Enoch lived sixty and five years, and begat Methuselah:|KO=
+V|N=22|EN=And Enoch walked with God after he begat Methuselah three hundred years, and begat sons and daughters:|KO=
+V|N=23|EN=And all the days of Enoch were three hundred sixty and five years:|KO=
+V|N=24|EN=And Enoch walked with God: and he was not; for God took him.|KO=
+V|N=25|EN=And Methuselah lived an hundred eighty and seven years, and begat Lamech.|KO=
+V|N=26|EN=And Methuselah lived after he begat Lamech seven hundred eighty and two years, and begat sons and daughters:|KO=
+V|N=27|EN=And all the days of Methuselah were nine hundred sixty and nine years: and he died.|KO=
+V|N=28|EN=And Lamech lived an hundred eighty and two years, and begat a son:|KO=
+V|N=29|EN=And he called his name Noah, saying, This same shall comfort us concerning our work and toil of our hands, because of the ground which the LORD hath cursed.|KO=
+V|N=30|EN=And Lamech lived after he begat Noah five hundred ninety and five years, and begat sons and daughters:|KO=
+V|N=31|EN=And all the days of Lamech were seven hundred seventy and seven years: and he died.|KO=
+V|N=32|EN=And Noah was five hundred years old: and Noah begat Shem, Ham, and Japheth.|KO=

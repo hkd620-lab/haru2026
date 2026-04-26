@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import genesisData from '../../data/genesis_1.json';
 
 interface Verse {
@@ -8,10 +9,22 @@ interface Verse {
   text: string;
 }
 
+const DEV_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+
 export function BiblePage() {
   const navigate = useNavigate();
+  const currentUid = getAuth().currentUser?.uid ?? '';
+  const isDev = currentUid === DEV_UID;
+  const [errorPopup, setErrorPopup] = useState<{
+    verseText: string;
+    loading: boolean;
+    changes?: string[];
+  } | null>(null);
   const [ttsPlaying, setTtsPlaying] = useState<string | null>(null);
   const [ttsLoading, setTtsLoading] = useState<string | null>(null);
+  const [ttsSpeed, setTtsSpeed] = useState<number>(1.0);
+  const [highlightedWord, setHighlightedWord] = useState<{ key: string; index: number } | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // 안드로이드 오디오 잠금 해제
   useEffect(() => {
@@ -30,6 +43,31 @@ export function BiblePage() {
       document.removeEventListener('click', unlock);
     };
   }, []);
+
+  // 창세기 1장 전체 자동 사전생성
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
+      try {
+        const verseTexts: Record<string, string> = {};
+        const verses: string[] = [];
+
+        genesisData.verses.forEach((verse: Verse) => {
+          const verseKey = `genesis_1_${verse.verse}`;
+          verses.push(verseKey);
+          verseTexts[verseKey] = verse.text;
+        });
+
+        const fns = getFunctions(undefined, 'asia-northeast3');
+        const fn = httpsCallable(fns, 'preloadChapterGrammar');
+        await fn({ book: '창세기', chapter: 1, verses, verseTexts });
+      } catch (e) {
+        // 백그라운드 작업 — 실패 무시
+      }
+    });
+    return () => unsubscribe();
+  }, []);
   const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -37,20 +75,31 @@ export function BiblePage() {
   // 문법 팝업
   const [grammarPopup, setGrammarPopup] = useState<{
     verseText: string;
-    sentenceStructure?: {
-      subject: string;
-      verb: string;
-      object: string;
-      complement: string;
-      pattern: string;
-    };
-    details?: Array<{ word: string; role: string; explanation: string }>;
-    keyPoints?: Array<{ title: string; explanation: string }>;
     loading: boolean;
+    verb?: string;
+    verb_example_en?: string;
+    verb_example_ko?: string;
+    preposition?: string;
+    preposition_example_en?: string;
+    preposition_example_ko?: string;
+    phrasal?: string;
+    phrasal_example_en?: string;
+    phrasal_example_ko?: string;
+    relative?: string;
+    relative_example_en?: string;
+    relative_example_ko?: string;
+    question?: string;
+    question_example_en?: string;
+    question_example_ko?: string;
+    exclamation?: string;
+    exclamation_example_en?: string;
+    exclamation_example_ko?: string;
+    mysentence?: string;
+    korean?: string;
   } | null>(null);
 
   const handleGrammarClick = useCallback(async (verse: Verse) => {
-    setGrammarPopup({ verseText: verse.text, points: [], loading: true });
+    setGrammarPopup({ verseText: verse.text, loading: true });
     try {
       const { getFunctions: gf, httpsCallable: hc } = await import('firebase/functions');
       const fns = gf(undefined, 'asia-northeast3');
@@ -59,15 +108,33 @@ export function BiblePage() {
         verseKey: `genesis_1_${verse.verse}`,
         verseText: verse.text,
       });
-      setGrammarPopup({
-        verseText: verse.text,
-        sentenceStructure: res.data.sentenceStructure,
-        details: res.data.details || [],
-        keyPoints: res.data.keyPoints || [],
+      const result = res.data;
+      setGrammarPopup(prev => prev && ({
+        ...prev,
         loading: false,
-      });
+        verb: result.verb || '',
+        verb_example_en: result.verb_example_en || '',
+        verb_example_ko: result.verb_example_ko || '',
+        preposition: result.preposition || '',
+        preposition_example_en: result.preposition_example_en || '',
+        preposition_example_ko: result.preposition_example_ko || '',
+        phrasal: result.phrasal || '',
+        phrasal_example_en: result.phrasal_example_en || '',
+        phrasal_example_ko: result.phrasal_example_ko || '',
+        relative: result.relative || '',
+        relative_example_en: result.relative_example_en || '',
+        relative_example_ko: result.relative_example_ko || '',
+        question: result.question || '',
+        question_example_en: result.question_example_en || '',
+        question_example_ko: result.question_example_ko || '',
+        exclamation: result.exclamation || '',
+        exclamation_example_en: result.exclamation_example_en || '',
+        exclamation_example_ko: result.exclamation_example_ko || '',
+        mysentence: result.mysentence || '',
+        korean: result.korean || '',
+      }));
     } catch {
-      setGrammarPopup({ verseText: verse.text, details: [], keyPoints: [], loading: false });
+      setGrammarPopup({ verseText: verse.text, loading: false });
     }
   }, []);
 
@@ -114,6 +181,33 @@ export function BiblePage() {
     }
   }, []);
 
+  const handleErrorClick = useCallback(async (verse: Verse) => {
+    setErrorPopup({ verseText: verse.text, loading: true });
+    try {
+      const db = (await import('firebase/firestore')).getFirestore();
+      const { doc, getDoc } = await import('firebase/firestore');
+      const verseKey = `genesis_1_${verse.verse}`;
+      const cacheRef = doc(db, 'grammarCache', verseKey);
+      const snap = await getDoc(cacheRef);
+      if (snap.exists()) {
+        const data = snap.data();
+        setErrorPopup({
+          verseText: verse.text,
+          loading: false,
+          changes: data.gptChanges ?? [],
+        });
+      } else {
+        setErrorPopup({
+          verseText: verse.text,
+          loading: false,
+          changes: [],
+        });
+      }
+    } catch (e) {
+      setErrorPopup({ verseText: verse.text, loading: false, changes: [] });
+    }
+  }, []);
+
   // 단어 팝업
   const [wordPopup, setWordPopup] = useState<{
     word: string;
@@ -149,43 +243,54 @@ export function BiblePage() {
     }
   }, []);
 
-  const renderVerseWithWords = (text: string) => {
-    const words = text.split(' ');
+  const renderVerseWithWords = (text: string, verseKey?: string) => {
+    const words = text.trim().split(/\s+/);
     return (
       <p style={{ fontSize: 13, color: '#333', lineHeight: 1.8, margin: 0, flexWrap: 'wrap', display: 'flex', gap: '4px' }}>
-        {words.map((word, idx) => (
-          <span
-            key={idx}
-            onClick={(e) => { e.stopPropagation(); handleWordClick(word); }}
-            style={{
-              cursor: 'pointer',
-              borderRadius: 4,
-              padding: '0 2px',
-              transition: 'background 0.15s',
-              backgroundColor: 'transparent',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.backgroundColor = '#1A3C6E';
-              e.currentTarget.style.color = '#fff';
-              e.currentTarget.style.borderRadius = '4px';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = '#333';
-            }}
-            onTouchStart={e => {
-              e.currentTarget.style.backgroundColor = '#1A3C6E';
-              e.currentTarget.style.color = '#fff';
-              e.currentTarget.style.borderRadius = '4px';
-            }}
-            onTouchEnd={e => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = '#333';
-            }}
-          >
-            {word}
-          </span>
-        ))}
+        {words.map((word, idx) => {
+          const isHighlighted = verseKey && highlightedWord?.key === verseKey && highlightedWord?.index === idx;
+          return (
+            <span
+              key={idx}
+              onClick={(e) => { e.stopPropagation(); handleWordClick(word); }}
+              style={{
+                cursor: 'pointer',
+                borderRadius: 4,
+                padding: '0 2px',
+                transition: 'all 0.1s ease',
+                backgroundColor: isHighlighted ? '#D1FAE5' : 'transparent',
+                color: isHighlighted ? '#065F46' : '#333',
+                fontWeight: isHighlighted ? 700 : 400,
+              }}
+              onMouseEnter={e => {
+                if (!isHighlighted) {
+                  e.currentTarget.style.backgroundColor = '#1A3C6E';
+                  e.currentTarget.style.color = '#fff';
+                }
+              }}
+              onMouseLeave={e => {
+                if (!isHighlighted) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = '#333';
+                }
+              }}
+              onTouchStart={e => {
+                if (!isHighlighted) {
+                  e.currentTarget.style.backgroundColor = '#1A3C6E';
+                  e.currentTarget.style.color = '#fff';
+                }
+              }}
+              onTouchEnd={e => {
+                if (!isHighlighted) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = '#333';
+                }
+              }}
+            >
+              {word}
+            </span>
+          );
+        })}
       </p>
     );
   };
@@ -193,6 +298,8 @@ export function BiblePage() {
   const handleTTS = async (text: string, key: string) => {
     if (ttsPlaying === key) {
       audioRef.current?.pause();
+      setHighlightedWord(null);
+      if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
       setTtsPlaying(null);
       return;
     }
@@ -241,12 +348,43 @@ export function BiblePage() {
         } catch(_) {}
 
         audioRef.current = new Audio(audioSrc);
-        audioRef.current.onended = () => setTtsPlaying(null);
+        audioRef.current.playbackRate = ttsSpeed;
+        audioRef.current.onended = () => {
+          setTtsPlaying(null);
+          setHighlightedWord(null);
+          if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+        };
 
         // ④ play 실패 시 재시도 1회
         try {
           await audioRef.current.play();
           setTtsPlaying(key);
+
+          // 단어 하이라이트 (절별만, 전체 듣기 제외)
+          if (key.startsWith('verse_')) {
+            const words = text.trim().split(/\s+/);
+            let wordIndex = 0;
+            if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+            const audio = audioRef.current!;
+            const startLoop = () => {
+              const duration = audio.duration || words.length * 0.45;
+              const interval = (duration * 1000) / words.length;
+              highlightTimerRef.current = setInterval(() => {
+                if (wordIndex >= words.length) {
+                  clearInterval(highlightTimerRef.current!);
+                  setHighlightedWord(null);
+                  return;
+                }
+                setHighlightedWord({ key, index: wordIndex });
+                wordIndex++;
+              }, interval);
+            };
+            if (audio.duration) {
+              startLoop();
+            } else {
+              audio.addEventListener('loadedmetadata', startLoop, { once: true });
+            }
+          }
         } catch (playErr) {
           console.warn('TTS play 재시도:', playErr);
           setTimeout(async () => {
@@ -285,6 +423,23 @@ export function BiblePage() {
           <p style={{ color: '#1A3C6E', fontSize: 16, fontWeight: 700, margin: 0 }}>📖 창세기 1장</p>
           <p style={{ color: '#999', fontSize: 11, margin: 0 }}>Genesis Chapter 1 · KJV</p>
         </div>
+      </div>
+
+      {/* 듣기 속도 선택 */}
+      <div style={{ display: 'flex', gap: 6, padding: '8px 16px 0', justifyContent: 'flex-end' }}>
+        {[0.75, 1.0, 1.25, 1.5].map(s => (
+          <button
+            key={s}
+            onClick={() => setTtsSpeed(s)}
+            style={{
+              padding: '4px 10px', borderRadius: 12, fontSize: 11,
+              fontWeight: ttsSpeed === s ? 700 : 400,
+              backgroundColor: ttsSpeed === s ? '#1A3C6E' : '#f3f4f6',
+              color: ttsSpeed === s ? '#fff' : '#555',
+              border: 'none', cursor: 'pointer',
+            }}
+          >{s}x</button>
+        ))}
       </div>
 
       {/* 1장 전체 듣기 버튼 */}
@@ -333,7 +488,7 @@ export function BiblePage() {
                   {verse.verse}
                 </span>
                 {selectedVerse === verse.verse ? (
-                  renderVerseWithWords(verse.text)
+                  renderVerseWithWords(verse.text, `verse_${verse.verse}`)
                 ) : (
                   <p style={{
                     fontSize: 13, color: '#333', lineHeight: 1.6, margin: 0,
@@ -391,12 +546,104 @@ export function BiblePage() {
                 >
                   🎯 퀴즈
                 </button>
+                {/* 오류수정 — 개발자 전용 */}
+                {isDev && (
+                  <button
+                    onClick={() => handleErrorClick(verse)}
+                    style={{
+                      padding: '6px 14px', borderRadius: 20,
+                      border: '2px solid #534AB7', backgroundColor: '#EEEDFE',
+                      color: '#3C3489', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    🔍 오류수정
+                  </button>
+                )}
               </div>
             )}
           </div>
         ))}
       </div>
     </div>
+
+      {/* 오류수정 팝업 — 개발자 전용 */}
+      {errorPopup && (
+        <div
+          onClick={() => setErrorPopup(null)}
+          style={{
+            position: 'fixed', inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              backgroundColor: '#fff', borderRadius: 20,
+              padding: 16, width: '90%', maxWidth: 400,
+              maxHeight: '80vh', overflowY: 'auto',
+            }}
+          >
+            <div style={{
+              display: 'flex', justifyContent: 'space-between',
+              alignItems: 'center', marginBottom: 12,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 16, fontWeight: 600, color: '#1A3C6E' }}>GPT 오류수정 내역</span>
+                <span style={{
+                  fontSize: 11, background: '#EEEDFE', color: '#3C3489',
+                  padding: '2px 8px', borderRadius: 99, fontWeight: 500,
+                }}>개발자 전용</span>
+              </div>
+              <button onClick={() => setErrorPopup(null)} style={{
+                background: 'none', border: 'none', fontSize: 20,
+                color: '#999', cursor: 'pointer',
+              }}>×</button>
+            </div>
+
+            <p style={{ fontSize: 12, color: '#888', marginBottom: 12 }}>
+              {errorPopup.verseText.slice(0, 40)}...
+            </p>
+
+            {errorPopup.loading ? (
+              <p style={{ color: '#999', fontSize: 14, textAlign: 'center' }}>불러오는 중... 🔍</p>
+            ) : errorPopup.changes && errorPopup.changes.length > 0 ? (
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {errorPopup.changes.map((change, idx) => {
+                    const isPass = change.includes('수정 없음');
+                    return (
+                      <div key={idx} style={{
+                        background: '#f8f8f8', borderRadius: 8, padding: 12,
+                        borderLeft: `3px solid ${isPass ? '#1D9E75' : '#534AB7'}`,
+                      }}>
+                        <p style={{ fontSize: 13, color: '#333', margin: 0 }}>{change}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{
+                  marginTop: 16, padding: 10,
+                  background: '#EAF3DE', borderRadius: 8,
+                }}>
+                  <p style={{ fontSize: 12, color: '#3B6D11', margin: 0 }}>
+                    총 {errorPopup.changes.filter(c => !c.includes('수정 없음')).length}개 수정 ·{' '}
+                    {errorPopup.changes.filter(c => c.includes('수정 없음')).length}개 통과
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div style={{ padding: 16, textAlign: 'center' }}>
+                <p style={{ fontSize: 14, color: '#888' }}>수정 내역이 없습니다.</p>
+                <p style={{ fontSize: 12, color: '#aaa', marginTop: 4 }}>
+                  아직 GPT 검증이 실행되지 않았거나 수정 사항이 없습니다.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 단어 뜻 팝업 */}
       {wordPopup && (
@@ -484,7 +731,8 @@ export function BiblePage() {
             position: 'fixed', inset: 0,
             backgroundColor: 'rgba(0,0,0,0.4)',
             zIndex: 100, display: 'flex',
-            alignItems: 'flex-end', justifyContent: 'center',
+            alignItems: 'center', justifyContent: 'center',
+            padding: '16px',
           }}
         >
           <div
@@ -492,20 +740,22 @@ export function BiblePage() {
             style={{
               width: '100%', maxWidth: 480,
               backgroundColor: '#fff',
-              borderRadius: '20px 20px 0 0',
-              padding: '24px 24px 40px',
-              maxHeight: '75vh', overflowY: 'auto',
+              borderRadius: '20px',
+              padding: '24px 24px 32px',
+              maxHeight: '85vh', overflowY: 'auto',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <p style={{ fontSize: 15, fontWeight: 800, color: '#1A3C6E', margin: 0 }}>
-                📚 문법 해설
+                ✏️ 오늘의 표현
               </p>
               <button
                 onClick={() => setGrammarPopup(null)}
                 style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999' }}
               >✕</button>
             </div>
+
+            {/* 구절 원문 */}
             <div style={{
               padding: '10px 14px', backgroundColor: '#f8faff',
               borderRadius: 8, marginBottom: 16, fontSize: 12,
@@ -513,107 +763,78 @@ export function BiblePage() {
             }}>
               {grammarPopup.verseText}
             </div>
+
             {grammarPopup.loading ? (
               <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                <p style={{ color: '#999', fontSize: 14 }}>문법 분석 중... ✨</p>
+                <p style={{ color: '#999', fontSize: 14 }}>분석 중... ✨</p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-                {/* 문장 구조 */}
-                {grammarPopup.sentenceStructure && (
-                  <div>
-                    <p style={{ fontSize: 14, fontWeight: 800, color: '#1A3C6E', marginBottom: 10 }}>
-                      📐 문장 구조
-                    </p>
-                    <div style={{ backgroundColor: '#f8faff', borderRadius: 10, padding: 14, border: '1px solid #d0dff0' }}>
-                      {grammarPopup.sentenceStructure.subject && (
-                        <p style={{ fontSize: 13, margin: '0 0 6px' }}>
-                          <span style={{ fontWeight: 700, color: '#1A3C6E' }}>• 주어(S): </span>
-                          <span style={{ color: '#333' }}>{grammarPopup.sentenceStructure.subject}</span>
-                        </p>
-                      )}
-                      {grammarPopup.sentenceStructure.verb && (
-                        <p style={{ fontSize: 13, margin: '0 0 6px' }}>
-                          <span style={{ fontWeight: 700, color: '#10b981' }}>• 동사(V): </span>
-                          <span style={{ color: '#333' }}>{grammarPopup.sentenceStructure.verb}</span>
-                        </p>
-                      )}
-                      {grammarPopup.sentenceStructure.object && (
-                        <p style={{ fontSize: 13, margin: '0 0 6px' }}>
-                          <span style={{ fontWeight: 700, color: '#8B4789' }}>• 목적어(O): </span>
-                          <span style={{ color: '#333' }}>{grammarPopup.sentenceStructure.object}</span>
-                        </p>
-                      )}
-                      {grammarPopup.sentenceStructure.complement && (
-                        <p style={{ fontSize: 13, margin: '0 0 6px' }}>
-                          <span style={{ fontWeight: 700, color: '#f59e0b' }}>• 보어/부사구: </span>
-                          <span style={{ color: '#333' }}>{grammarPopup.sentenceStructure.complement}</span>
-                        </p>
-                      )}
-                      {grammarPopup.sentenceStructure.pattern && (
-                        <p style={{
-                          fontSize: 12, color: '#1A3C6E', fontWeight: 700,
-                          backgroundColor: '#EDE9F5', padding: '6px 10px',
-                          borderRadius: 6, marginTop: 10, marginBottom: 0,
+                {[
+                  { key: 'verb',        exKey: 'verb_example',        icon: '🔵', label: '핵심 동사',   color: '#EFF6FF', border: '#BFDBFE', text: '#1e40af' },
+                  { key: 'preposition', exKey: 'preposition_example',  icon: '🟡', label: '전치사',      color: '#FFFBEB', border: '#FDE68A', text: '#92400e' },
+                  { key: 'phrasal',     exKey: 'phrasal_example',      icon: '🟠', label: '구동사',      color: '#FFF7ED', border: '#FDBA74', text: '#9a3412' },
+                  { key: 'relative',    exKey: 'relative_example',     icon: '🟣', label: '관계사',      color: '#F5F3FF', border: '#C4B5FD', text: '#6d28d9' },
+                  { key: 'question',    exKey: 'question_example',     icon: '🔴', label: '의문사',      color: '#FFF1F2', border: '#FECDD3', text: '#9f1239' },
+                  { key: 'exclamation', exKey: 'exclamation_example',  icon: '🟢', label: '감탄사/명령', color: '#F0FDF4', border: '#86EFAC', text: '#166534' },
+                ].map(({ key, exKey, icon, label, color, border, text }) => {
+                  const val = grammarPopup[key as keyof typeof grammarPopup] as string | undefined;
+                  if (!val) return null;
+                  const exEn = grammarPopup[`${exKey}_en` as keyof typeof grammarPopup] as string | undefined;
+                  const exKo = grammarPopup[`${exKey}_ko` as keyof typeof grammarPopup] as string | undefined;
+                  return (
+                    <div key={key} style={{
+                      backgroundColor: color, borderRadius: 10,
+                      padding: '12px 14px', border: `1px solid ${border}`,
+                    }}>
+                      <p style={{ fontSize: 12, fontWeight: 700, color: text, marginBottom: 4 }}>
+                        {icon} {label}
+                      </p>
+                      <p style={{ fontSize: 13, color: '#333', lineHeight: 1.7, margin: '0 0 8px' }}>
+                        {val}
+                      </p>
+                      {exEn && (
+                        <div style={{
+                          backgroundColor: 'rgba(255,255,255,0.7)',
+                          borderRadius: 8, padding: '8px 10px',
+                          borderLeft: `3px solid ${border}`,
                         }}>
-                          ➡️ {grammarPopup.sentenceStructure.pattern}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* 세부 해설 */}
-                {grammarPopup.details && grammarPopup.details.length > 0 && (
-                  <div>
-                    <p style={{ fontSize: 14, fontWeight: 800, color: '#1A3C6E', marginBottom: 10 }}>
-                      🔍 세부 해설
-                    </p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {grammarPopup.details.map((detail, idx) => (
-                        <div key={idx} style={{
-                          backgroundColor: '#fafafa', borderRadius: 10,
-                          padding: 14, border: '1px solid #e8e0f0',
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                            <span style={{
-                              backgroundColor: '#8B4789', color: '#fff',
-                              borderRadius: 6, padding: '2px 8px',
-                              fontSize: 12, fontWeight: 700,
-                            }}>{detail.word}</span>
-                            <span style={{ fontSize: 11, color: '#999' }}>{detail.role}</span>
-                          </div>
-                          <p style={{ fontSize: 13, color: '#333', lineHeight: 1.7, margin: 0 }}>
-                            {detail.explanation}
+                          <p style={{ fontSize: 12, fontWeight: 600, color: text, margin: '0 0 2px' }}>
+                            📝 예문
                           </p>
+                          <p style={{ fontSize: 12, color: '#1A3C6E', fontWeight: 600, margin: '0 0 2px' }}>
+                            {exEn}
+                          </p>
+                          {exKo && (
+                            <p style={{ fontSize: 11, color: '#666', margin: 0 }}>
+                              → {exKo}
+                            </p>
+                          )}
                         </div>
-                      ))}
+                      )}
                     </div>
-                  </div>
-                )}
+                  );
+                })}
 
-                {/* 핵심 문법 포인트 */}
-                {grammarPopup.keyPoints && grammarPopup.keyPoints.length > 0 && (
-                  <div>
-                    <p style={{ fontSize: 14, fontWeight: 800, color: '#1A3C6E', marginBottom: 10 }}>
-                      📌 핵심 문법 포인트
+                {/* 내 문장 만들기 */}
+                {grammarPopup.mysentence && (
+                  <div style={{
+                    backgroundColor: '#D1FAE5', borderRadius: 10,
+                    padding: '12px 14px', border: '1px solid #6EE7B7',
+                    marginTop: 4,
+                  }}>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: '#065F46', marginBottom: 4 }}>
+                      ✏️ 나도 써볼게요
                     </p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {grammarPopup.keyPoints.map((kp, idx) => (
-                        <div key={idx} style={{
-                          backgroundColor: '#FDF6C3', borderRadius: 10,
-                          padding: 14, border: '1px solid #f0e080',
-                        }}>
-                          <p style={{ fontSize: 13, fontWeight: 700, color: '#1A3C6E', margin: '0 0 4px' }}>
-                            • {kp.title}
-                          </p>
-                          <p style={{ fontSize: 13, color: '#333', lineHeight: 1.7, margin: 0 }}>
-                            {kp.explanation}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
+                    <p style={{ fontSize: 14, fontWeight: 700, color: '#333', margin: '0 0 4px' }}>
+                      {grammarPopup.mysentence}
+                    </p>
+                    {grammarPopup.korean && (
+                      <p style={{ fontSize: 12, color: '#555', margin: 0 }}>
+                        → {grammarPopup.korean}
+                      </p>
+                    )}
                   </div>
                 )}
 

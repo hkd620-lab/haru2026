@@ -1,0 +1,40 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=42|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 42|KO=창세기 42장
+V|N=1|EN=Now when Jacob saw that there was corn in Egypt, Jacob said unto his sons, Why do ye look one upon another?|KO=야곱이 애굽에 곡식이 있는 것을 보고 그의 아들들에게 이르되 너희가 어찌하여 서로 쳐다보느냐
+V|N=2|EN=And he said, Behold, I have heard that there is corn in Egypt: get you down thither, and buy for us from thence; that we may live, and not die.|KO=그가 이르되 내가 애굽에 곡식이 있다 함을 들었으니 너희는 그리로 내려가서 우리를 위하여 거기서 곡식을 사오라 그리하면 우리가 살고 죽지 아니하리라
+V|N=3|EN=And Joseph’s ten brethren went down to buy corn in Egypt.|KO=요셉의 열 형제가 곡식을 사러 애굽에 내려갔더라
+V|N=4|EN=But Benjamin, Joseph’s brother, Jacob sent not with his brethren; for he said, Lest peradventure mischief befall him.|KO=그러나 베냐민은 요셉의 형제 중에 보내지 아니하였으니 이는 그가 이르기를 혹시 그에게 재앙이 닥칠까 두려워하였음이라
+V|N=5|EN=And the sons of Israel came to buy corn among those that came: for the famine was in the land of Canaan.|KO=이스라엘의 아들들이 곡식을 사러 오는 자들 중에 이르렀으니 이는 가나안 땅에 기근이 있었음이라
+V|N=6|EN=And Joseph was the governor over the land, and he it was that sold to all the people of the land: and Joseph’s brethren came, and bowed down themselves before him with their faces to the earth.|KO=요셉이 그 땅의 총리라 그가 그 땅의 모든 백성에게 곡식을 팔더라 요셉의 형들이 그 앞에 나아가서 땅에 엎드려 절하니
+V|N=7|EN=And Joseph saw his brethren, and he knew them, but made himself strange unto them, and spake roughly unto them; and he said unto them, Whence come ye? And they said, From the land of Canaan to buy food.|KO=요셉이 그의 형들을 보았으나 그들은 그를 알지 못하더라 요셉이 그들에게 이르되 너희는 어디서 왔느냐 그들이 이르되 가나안 땅에서 음식을 사러 왔나이다
+V|N=8|EN=And Joseph knew his brethren, but they knew not him.|KO=요셉이 그의 형들을 알았으나 그들은 그를 알지 못하더라
+V|N=9|EN=And Joseph remembered the dreams which he dreamed of them, and said unto them, Ye are spies; to see the nakedness of the land ye are come.|KO=요셉이 그들에게 이르되 너희는 정탐꾼이라 이 땅의 나체를 보려고 왔느니라
+V|N=10|EN=And they said unto him, Nay, my lord, but to buy food are thy servants come.|KO=그들이 그에게 이르되 아니라 나의 주여 우리는 음식을 사러 왔나이다
+V|N=11|EN=We are all one man’s sons; we are true men, thy servants are no spies.|KO=우리는 한 사람의 아들들이요 정직한 자들이니 주의 종들은 정탐꾼이 아니니이다
+V|N=12|EN=And he said unto them, Nay, but to see the nakedness of the land ye are come.|KO=요셉이 그들에게 이르되 아니라 너희는 이 땅의 나체를 보려고 왔느니라
+V|N=13|EN=And they said, Thy servants are twelve brethren, the sons of one man in the land of Canaan; and, behold, the youngest is this day with our father, and one is not.|KO=그들이 이르되 주의 종들은 열 두 형제라 가나안 땅에 한 사람은 없고 막내는 오늘 우리 아버지와 함께 있나이다
+V|N=14|EN=And Joseph said unto them, That is it that I spake unto you, saying, Ye are spies:|KO=요셉이 그들에게 이르되 내가 너희에게 말한 것이 이것이니 너희는 정탐꾼이라
+V|N=15|EN=Hereby ye shall be proved: By the life of Pharaoh ye shall not go forth hence, except your youngest brother come hither.|KO=너희는 이로써 시험을 받으리니 바로의 생명을 두고 맹세하노니 너희의 막내 형제가 여기로 오지 아니하면 너희는 여기서 나가지 못하리라
+V|N=16|EN=Send one of you, and let him fetch your brother, and ye shall be kept in prison, that your words may be proved, whether there be any truth in you: or else by the life of Pharaoh surely ye are spies.|KO=너희 중 한 사람을 보내어 너희 형제를 데려오게 하고 너희는 감옥에 갇히라 너희의 말이 진실한가 아닌가 시험하리라 그렇지 않으면 바로의 생명을 두고 너희는 정탐꾼이라
+V|N=17|EN=And he put them all together into ward three days.|KO=그가 그들을 삼일 동안 가두었더라
+V|N=18|EN=And Joseph said unto them the third day, This do, and live; for I fear God:|KO=요셉이 제삼일에 그들에게 이르되 너희는 이같이 행하라 그러면 살리라 나는 하나님을 경외하노라
+V|N=19|EN=If ye be true men, let one of your brethren be bound in the house of your prison: go ye, carry corn for the famine of your houses:|KO=너희가 정직한 자이면 너희 중 한 사람은 감옥에 묶이고 너희는 가서 너희 집의 기근을 위하여 곡식을 가져오라
+V|N=20|EN=But bring your youngest brother unto me; so shall your words be verified, and ye shall not die. And they did so.|KO=너희의 막내 형제를 내게 데려오라 그리하면 너희의 말이 진실한 줄을 내가 알리라 너희는 죽지 아니하리라 그들이 그대로 행하니라
+V|N=21|EN=And they said one to another, We are verily guilty concerning our brother, in that we saw the anguish of his soul, when he besought us, and we would not hear; therefore is this distress come upon us.|KO=그들이 서로 말하되 우리는 우리 형제에 대하여 진실히 죄를 지었도다 그가 우리에게 간구할 때 우리가 듣지 아니하였으므로 이 고통이 우리에게 임하였도다
+V|N=22|EN=And Reuben answered them, saying, Spake I not unto you, saying, Do not sin against the child; and ye would not hear? therefore, behold, also his blood is required.|KO=르우벤이 그들에게 대답하여 이르되 내가 너희에게 말하지 아니하였느냐 이 아이에게 죄를 범하지 말라 하였거늘 너희가 듣지 아니하였으니 그의 피가 우리에게 구하리라
+V|N=23|EN=And they knew not that Joseph understood them; for he spake unto them by an interpreter.|KO=그들은 요셉이 그들의 말을 알아듣지 못하는 줄을 알지 못하였으니 이는 요셉이 통역관을 두었음이라
+V|N=24|EN=And he turned himself about from them, and wept; and returned to them again, and communed with them, and took from them Simeon, and bound him before their eyes.|KO=요셉이 그들에게서 돌아서서 울고 다시 그들에게로 돌아와서 그들과 말하고 시므온을 그들 앞에서 잡아두니라
+V|N=25|EN=Then Joseph commanded to fill their sacks with corn, and to restore every man’s money into his sack, and to give them provision for the way: and thus did he unto them.|KO=요셉이 그들의 곡식 자루를 곡식으로 채우고 각 사람의 돈을 그의 자루에 도로 넣고 그들에게 갈 길을 주어 주었더라
+V|N=26|EN=And they laded their asses with the corn, and departed thence.|KO=그들이 그들의 나귀에 곡식을 싣고 거기서 떠나니라
+V|N=27|EN=And as one of them opened his sack to give his ass provender in the inn, he espied his money; for, behold, it was in his sack’s mouth.|KO=그들 중 한 사람이 여관에서 나귀에게 먹이를 주려고 그의 자루를 열었더니 그의 돈이 자루의 입에 있더라
+V|N=28|EN=And he said unto his brethren, My money is restored; and, lo, it is even in my sack: and their heart failed them, and they were afraid, saying one to another, What is this that God hath done unto us?|KO=그가 그의 형제들에게 이르되 내 돈이 도로 돌아왔도다 보라 내 자루에 있도다 그들이 두려워하여 서로 말하되 하나님이 우리에게 무엇을 하셨는고 하니라
+V|N=29|EN=And they came unto Jacob their father unto the land of Canaan, and told him all that befell unto them; saying,|KO=그들이 가나안 땅에 있는 그들의 아버지 야곱에게 이르러 그들에게 일어난 모든 일을 말하니
+V|N=30|EN=The man, who is the lord of the land, spake roughly to us, and took us for spies of the country.|KO=그 땅의 주가 우리에게 거칠게 말하고 우리를 정탐꾼으로 여겼다 하니
+V|N=31|EN=And we said unto him, We are true men; we are no spies:|KO=우리가 그에게 이르되 우리는 정직한 자들이요 정탐꾼이 아니니이다
+V|N=32|EN=We be twelve brethren, sons of our father; one is not, and the youngest is this day with our father in the land of Canaan.|KO=우리는 열 두 형제요 한 사람은 없고 막내는 오늘 우리 아버지와 함께 가나안 땅에 있나이다
+V|N=33|EN=And the man, the lord of the country, said unto us, Hereby shall I know that ye are true men; leave one of your brethren here with me, and take food for the famine of your households, and be gone:|KO=그 땅의 주가 우리에게 이르되 너희가 정직한 자인지 내가 알리라 너희 중 한 형제를 여기 두고 너희는 너희 집의 기근을 위하여 음식을 가져가라
+V|N=34|EN=And bring your youngest brother unto me: then shall I know that ye are no spies, but that ye are true men: so will I deliver you your brother, and ye shall traffick in the land.|KO=너희의 막내 형제를 내게 데려오라 그리하면 너희가 정탐꾼이 아니요 정직한 자인 줄을 내가 알리라 그리하면 너희의 형제를 내가 너희에게 주고 너희는 그 땅에서 거래하리라
+V|N=35|EN=And it came to pass as they emptied their sacks, that, behold, every man’s bundle of money was in his sack: and when both they and their father saw the bundles of money, they were afraid.|KO=그들이 자루를 비울 때 보라 각 사람의 돈이 그의 자루에 있더라 그들과 그들의 아버지가 돈 뭉치를 보고 두려워하니라
+V|N=36|EN=And Jacob their father said unto them, Me have ye bereaved of my children: Joseph is not, and Simeon is not, and ye will take Benjamin away: all these things are against me.|KO=그들의 아버지 야곱이 그들에게 이르되 너희가 나를 잃게 하였도다 요셉은 없어지고 시므온도 없어졌고 너희가 베냐민을 데려가려 하니 내게 이 모든 일이 닥쳤도다
+V|N=37|EN=And Reuben spake unto his father, saying, Slay my two sons, if I bring him not to thee: deliver him into my hand, and I will bring him to thee again.|KO=르우벤이 그의 아버지에게 이르되 내가 그를 너에게 데려오지 아니하면 내 두 아들을 죽이라 나를 그의 손에 맡기라 내가 반드시 그를 너에게 데려오리라
+V|N=38|EN=And he said, My son shall not go down with you; for his brother is dead, and he is left alone: if mischief befall him by the way in the which ye go, then shall ye bring down my gray hairs with sorrow to the grave.|KO=그가 이르되 내 아들은 너희와 함께 내려가지 못하리니 그의 형은 죽고 그는 홀로 남았으니 길에서 그에게 재앙이 닥치면 너희는 내 백발을 슬픔으로 음부에 내리게 하리라

@@ -1,0 +1,30 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=45|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 45|KO=창세기 45장
+V|N=1|EN=Then Joseph could not refrain himself before all them that stood by him; and he cried, Cause every man to go out from me. And there stood no man with him, while Joseph made himself known unto his brethren.|KO=그때 요셉이 자기를 가까이 서 있는 모든 사람 앞에서 참지 못하고 외쳤다. "모두 나가게 하라." 요셉이 자기 형제들에게 자기를 알릴 때까지 그와 함께 있는 사람이 없었다.
+V|N=2|EN=And he wept aloud: and the Egyptians and the house of Pharaoh heard.|KO=그가 크게 울었고, 애굽 사람들과 바로의 집이 들었다.
+V|N=3|EN=And Joseph said unto his brethren, I am Joseph; doth my father yet live? And his brethren could not answer him; for they were troubled at his presence.|KO=요셉이 형제들에게 이르되, "나는 요셉이라. 아버지가 아직 살아 계시냐?" 그 형제들이 그 앞에서 놀라서 대답하지 못하였다.
+V|N=4|EN=And Joseph said unto his brethren, Come near to me, I pray you. And they came near. And he said, I am Joseph your brother, whom ye sold into Egypt.|KO=요셉이 형제들에게 이르되, "내게 가까이 오라." 그들이 가까이 오니, 요셉이 이르되, "나는 너희가 애굽에 팔아넘긴 너희 형 요셉이다."
+V|N=5|EN=Now therefore be not grieved, nor angry with yourselves, that ye sold me hither: for God did send me before you to preserve life.|KO=그러므로 이제 너희가 나를 이곳에 팔아넘긴 것을 슬퍼하지 말고, 스스로 노하지 말라. 하나님이 나를 너희보다 먼저 보내어 생명을 구하게 하셨느니라.
+V|N=6|EN=For these two years hath the famine been in the land: and yet there are five years, in the which there shall neither be earing nor harvest.|KO=이 땅에 기근이 두 해 동안 있었고, 앞으로 다섯 해 동안은 밭을 갈지도 않고 거두지도 못할 것이니라.
+V|N=7|EN=And God sent me before you to preserve you a posterity in the earth, and to save your lives by a great deliverance.|KO=하나님이 나를 너희보다 먼저 보내어 땅에 남은 자를 구원하고, 너희 생명을 큰 구원으로 구하게 하셨느니라.
+V|N=8|EN=So now it was not you that sent me hither, but God: and he hath made me a father to Pharaoh, and lord of all his house, and a ruler throughout all the land of Egypt.|KO=그러므로 이제 나를 이곳에 보낸 것은 너희가 아니요, 하나님이시니, 그가 나를 바로의 아버지로 삼으시고, 그의 온 집의 주가 되게 하시고, 애굽 온 땅의 통치자로 삼으셨느니라.
+V|N=9|EN=Haste ye, and go up to my father, and say unto him, Thus saith thy son Joseph, God hath made me lord of all Egypt: come down unto me, tarry not:|KO=너희는 급히 올라가서 내 아버지께 이르기를, "너희 아들 요셉이 이같이 말하노라. 하나님이 나를 애굽의 주가 되게 하셨으니, 내게로 내려오라. 지체하지 말라."
+V|N=10|EN=And thou shalt dwell in the land of Goshen, and thou shalt be near unto me, thou, and thy children, and thy children’s children, and thy flocks, and thy herds, and all that thou hast:|KO=너는 고센 땅에 거주하고, 나와 가까이 있으라. 너와 네 자녀와 네 자녀의 자녀와 네 양과 네 소와 네 모든 소유가 함께 있으리라.
+V|N=11|EN=And there will I nourish thee; for yet there are five years of famine; lest thou, and thy household, and all that thou hast, come to poverty.|KO=내가 너를 거기서 기르리니, 기근이 아직 다섯 해 남았으므로, 너와 네 집과 네 모든 소유가 궁핍하게 되지 않게 하리라.
+V|N=12|EN=And, behold, your eyes see, and the eyes of my brother Benjamin, that it is my mouth that speaketh unto you.|KO=보라, 너희 눈과 내 형제 베냐민의 눈이 나의 입이 너희에게 말하는 것을 보고 있느니라.
+V|N=13|EN=And ye shall tell my father of all my glory in Egypt, and of all that ye have seen; and ye shall haste and bring down my father hither.|KO=너희는 내 아버지께 애굽에서 나의 모든 영광과 너희가 본 모든 것을 말하고, 급히 내 아버지를 이리로 데려오라.
+V|N=14|EN=And he fell upon his brother Benjamin’s neck, and wept; and Benjamin wept upon his neck.|KO=그가 베냐민의 목을 껴안고 울었고, 베냐민도 그의 목을 껴안고 울었더라.
+V|N=15|EN=Moreover he kissed all his brethren, and wept upon them: and after that his brethren talked with him.|KO=그가 그의 모든 형제에게 입을 맞추고 울었고, 그 후에 그의 형제들이 그와 말하였더라.
+V|N=16|EN=And the fame thereof was heard in Pharaoh’s house, saying, Joseph’s brethren are come: and it pleased Pharaoh well, and his servants.|KO=그 소문이 바로의 집에 들리니, "요셉의 형제들이 왔다." 바로와 그의 신하들이 기뻐하였더라.
+V|N=17|EN=And Pharaoh said unto Joseph, Say unto thy brethren, This do ye; lade your beasts, and go, get you unto the land of Canaan;|KO=바로가 요셉에게 이르되, "너는 네 형제들에게 이르기를, '너희는 이렇게 하라. 너희의 짐승을 싣고 가서 가나안 땅으로 가라.' 하라."
+V|N=18|EN=And take your father and your households, and come unto me: and I will give you the good of the land of Egypt, and ye shall eat the fat of the land.|KO=너희 아버지와 너희의 가족을 데리고 나에게 오라. 내가 애굽 땅의 좋은 것을 주리니, 너희는 그 땅의 기름진 것을 먹으리라.
+V|N=19|EN=Now thou art commanded, this do ye; take you wagons out of the land of Egypt for your little ones, and for your wives, and bring your father, and come.|KO=너희에게 명령하노니, 너희의 어린 자녀와 아내를 위하여 애굽에서 수레를 가져오고, 너희 아버지를 데리고 오라.
+V|N=20|EN=Also regard not your stuff; for the good of all the land of Egypt is yours.|KO=너희의 소유는 염려하지 말라. 애굽의 좋은 것이 너희의 것이니라.
+V|N=21|EN=And the children of Israel did so: and Joseph gave them wagons, according to the commandment of Pharaoh, and gave them provision for the way.|KO=이스라엘 자손이 그대로 행하였고, 요셉이 바로의 명령대로 그들에게 수레를 주고 길을 위한 양식을 주었더라.
+V|N=22|EN=To all of them he gave each man changes of raiment; but to Benjamin he gave three hundred pieces of silver, and five changes of raiment.|KO=그들에게 각 사람에게 의복을 주었고, 베냐민에게는 은 삼백 개와 의복 다섯 벌을 주었더라.
+V|N=23|EN=And to his father he sent after this manner; ten asses laden with the good things of Egypt, and ten she asses laden with corn and bread and meat for his father by the way.|KO=그의 아버지에게는 이와 같이 보내었으니, 애굽의 좋은 것과 곡식과 빵과 고기를 싣고 가는 나귀 열 마리를 보냈더라.
+V|N=24|EN=So he sent his brethren away, and they departed: and he said unto them, See that ye fall not out by the way.|KO=그가 그의 형제들을 보내며 그들이 떠나자, "너희는 길에서 다투지 말라." 하였더라.
+V|N=25|EN=And they went up out of Egypt, and came into the land of Canaan unto Jacob their father,|KO=그들이 애굽을 떠나 가나안 땅에 이르러 그들의 아버지 야곱에게로 갔더라.
+V|N=26|EN=And told him, saying, Joseph is yet alive, and he is governor over all the land of Egypt. And Jacob’s heart fainted, for he believed them not.|KO=그들이 그에게 이르되, "요셉이 아직 살아 있고, 그가 애굽의 총리가 되었다." 야곱의 마음이 기진하였으니, 그들이 그에게 말한 것을 믿지 못하였기 때문이라.
+V|N=27|EN=And they told him all the words of Joseph, which he had said unto them: and when he saw the wagons which Joseph had sent to carry him, the spirit of Jacob their father revived:|KO=그들이 요셉이 그들에게 말한 모든 말을 그에게 전하였고, 요셉이 그를 데리러 보낸 수레를 보았을 때, 그들의 아버지 야곱의 영이 소생하였더라.
+V|N=28|EN=And Israel said, It is enough; Joseph my son is yet alive: I will go and see him before I die.|KO=이스라엘이 이르되, "이제 충분하다. 내 아들 요셉이 아직 살아 있도다. 내가 죽기 전에 그를 보러 가리라."

@@ -1,0 +1,28 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=4|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 4|KO=창세기 4장
+V|N=1|EN=And Adam knew Eve his wife; and she conceived, and bare Cain, and said, I have gotten a man from the LORD.|KO=아담이 그의 아내 하와를 알았고, 그녀가 잉태하여 가인을 낳고 말하기를, 내가 여호와로부터 남자를 얻었다 하니라.
+V|N=2|EN=And she again bare his brother Abel. And Abel was a keeper of sheep, but Cain was a tiller of the ground.|KO=그녀가 다시 그의 형 아벨을 낳았고, 아벨은 양을 치는 자였으며, 가인은 땅을 경작하는 자였더라.
+V|N=3|EN=And in process of time it came to pass, that Cain brought of the fruit of the ground an offering unto the LORD.|KO=세월이 지나 가인이 땅의 소산으로 여호와께 제사를 드리니라.
+V|N=4|EN=And Abel, he also brought of the firstlings of his flock and of the fat thereof. And the LORD had respect unto Abel and to his offering:|KO=아벨도 그의 양 떼 중에서 처음 난 것과 그 기름을 드렸고, 여호와께서 아벨과 그의 제사를 받으셨으나,
+V|N=5|EN=But unto Cain and to his offering he had not respect. And Cain was very wroth, and his countenance fell.|KO=가인과 그의 제사는 받지 아니하신지라. 가인이 심히 분하여 안색이 변하니라.
+V|N=6|EN=And the LORD said unto Cain, Why art thou wroth? and why is thy countenance fallen?|KO=여호와께서 가인에게 이르시되, 네가 어찌하여 분노하느냐? 네 안색이 어찌하여 변하였느냐?
+V|N=7|EN=If thou doest well, shalt thou not be accepted? and if thou doest not well, sin lieth at the door. And unto thee shall be his desire, and thou shalt rule over him.|KO=네가 선을 행하면 어찌하여 받지 아니하겠느냐? 선을 행하지 아니하면 죄가 문 앞에 엎드려 있느니라. 너는 죄를 다스려야 하리라.
+V|N=8|EN=And Cain talked with Abel his brother: and it came to pass, when they were in the field, that Cain rose up against Abel his brother, and slew him.|KO=가인이 그의 형 아벨과 이야기하다가, 그들이 들에 있을 때에 가인이 아벨을 치고 죽이니라.
+V|N=9|EN=And the LORD said unto Cain, Where is Abel thy brother? And he said, I know not: Am I my brother’s keeper?|KO=여호와께서 가인에게 이르시되, 네 형 아벨이 어디 있느냐? 그가 이르되, 내가 알지 못하나이다. 내가 형의 지키는 자이니까요?
+V|N=10|EN=And he said, What hast thou done? the voice of thy brother’s blood crieth unto me from the ground.|KO=여호와께서 이르시되, 네가 무엇을 하였느냐? 네 형의 피가 땅에서 내게 부르짖고 있느니라.
+V|N=11|EN=And now art thou cursed from the earth, which hath opened her mouth to receive thy brother’s blood from thy hand;|KO=이제 너는 땅에서 저주를 받아 네 손으로부터 네 형의 피를 받은 땅이 입을 열어 너를 받아들이지 아니하리라.
+V|N=12|EN=When thou tillest the ground, it shall not henceforth yield unto thee her strength; a fugitive and a vagabond shalt thou be in the earth.|KO=너가 땅을 경작할 때에, 그 땅이 다시는 너에게 그 힘을 주지 아니할 것이요. 너는 땅에서 도망자와 방랑자가 되리라.
+V|N=13|EN=And Cain said unto the LORD, My punishment is greater than I can bear.|KO=가인이 여호와께 이르되, 내 죄벌이 내가 감당하기에는 너무 크니이다.
+V|N=14|EN=Behold, thou hast driven me out this day from the face of the earth; and from thy face shall I be hid; and I shall be a fugitive and a vagabond in the earth; and it shall come to pass, that every one that findeth me shall slay me.|KO=보소서, 주께서 오늘 나를 땅의 얼굴에서 쫓아내셨으니, 내가 주의 얼굴을 피하여 숨을 것이요, 나는 땅에서 도망자와 방랑자가 되리니, 나를 만나는 자가 나를 죽이리이다.
+V|N=15|EN=And the LORD said unto him, Therefore whosoever slayeth Cain, vengeance shall be taken on him sevenfold. And the LORD set a mark upon Cain, lest any finding him should kill him.|KO=여호와께서 그에게 이르시되, 가인을 죽이는 자는 벌을 칠 것이니, 가인에게 표를 주어 그를 만나는 자가 죽이지 못하게 하셨더라.
+V|N=16|EN=And Cain went out from the presence of the LORD, and dwelt in the land of Nod, on the east of Eden.|KO=가인이 여호와의 얼굴을 피하여 나가서 에덴 동쪽 노드 땅에 거하였더라.
+V|N=17|EN=And Cain knew his wife; and she conceived, and bare Enoch: and he builded a city, and called the name of the city, after the name of his son, Enoch.|KO=가인이 그의 아내를 알았고, 그녀가 잉태하여 에녹을 낳았으며, 성을 건축하고 그 성의 이름을 그의 아들의 이름을 따라 에녹이라 하였더라.
+V|N=18|EN=And unto Enoch was born Irad: and Irad begat Mehujael: and Mehujael begat Methusael: and Methusael begat Lamech.|KO=에녹에게 이라드가 태어났고, 이라드가 므후야엘을 낳았고, 므후야엘이 메후사엘을 낳았고, 메후사엘이 라멕을 낳았더라.
+V|N=19|EN=And Lamech took unto him two wives: the name of the one was Adah, and the name of the other Zillah.|KO=라멕이 두 아내를 취하였으니, 하나의 이름은 아다요, 다른 하나의 이름은 실라라.
+V|N=20|EN=And Adah bare Jabal: he was the father of such as dwell in tents, and of such as have cattle.|KO=아다가 야발을 낳았으니, 그는 장막에 거주하는 자와 가축의 아버지라.
+V|N=21|EN=And his brother’s name was Jubal: he was the father of all such as handle the harp and organ.|KO=그의 형의 이름은 유발이라. 그는 수금과 퉁소를 다루는 모든 자의 아버지라.
+V|N=22|EN=And Zillah, she also bare Tubalcain, an instructer of every artificer in brass and iron: and the sister of Tubalcain was Naamah.|KO=실라도 두발가인을 낳았으니, 그는 구리와 철로 모든 장인을 가르치는 자라. 두발가인의 누이는 나아마라.
+V|N=23|EN=And Lamech said unto his wives, Adah and Zillah, Hear my voice; ye wives of Lamech, hearken unto my speech: for I have slain a man to my wounding, and a young man to my hurt.|KO=라멕이 그의 아내 아다와 실라에게 이르되, 내 목소리를 들으라. 라멕의 아내들아, 내 말에 귀를 기울이라. 내가 상처를 입힌 남자를 죽였고, 젊은이를 다치게 하였노라.
+V|N=24|EN=If Cain shall be avenged sevenfold, truly Lamech seventy and sevenfold.|KO=가인을 갚는다면, 라멕은 칠십 배로 갚을 것이라 하였더라.
+V|N=25|EN=And Adam knew his wife again; and she bare a son, and called his name Seth: For God, said she, hath appointed me another seed instead of Abel, whom Cain slew.|KO=아담이 다시 그의 아내를 알았고, 그녀가 아들을 낳고 그의 이름을 셋이라 하였으니, 이는 하나님이 나에게 아벨 대신 다른 씨를 주셨다 하였더라.
+V|N=26|EN=And to Seth, to him also there was born a son; and he called his name Enos: then began men to call upon the name of the LORD.|KO=셋에게도 아들이 태어났고, 그는 그의 이름을 에노스라 하였으며, 그때부터 사람들이 여호와의 이름을 부르기 시작하였더라.

@@ -66,6 +66,31 @@ export const sendBroadcastNotification = onCall(
         // 실패한 토큰 정리
         if (response.failureCount > 0) {
           console.log(`실패한 토큰 ${response.failureCount}개 발견`);
+          const { FieldValue } = await import('firebase-admin/firestore');
+          const expiredTokens: string[] = [];
+          response.responses.forEach((resp, idx) => {
+            if (!resp.success) {
+              const reason = String(resp.error);
+              if (reason.includes('NotRegistered') || reason.includes('registration-token-not-registered')) {
+                expiredTokens.push(batch[idx]);
+              }
+            }
+          });
+          if (expiredTokens.length > 0) {
+            // 만료 토큰을 가진 사용자 문서에서 삭제
+            const settingsSnapshot2 = await db.collectionGroup('settings').get();
+            for (const doc of settingsSnapshot2.docs) {
+              const data = doc.data();
+              const userTokens: string[] = data.fcmTokens || [];
+              const toRemove = expiredTokens.filter(t => userTokens.includes(t));
+              if (toRemove.length > 0) {
+                await doc.ref.update({
+                  fcmTokens: FieldValue.arrayRemove(...toRemove),
+                });
+              }
+            }
+            console.log(`🧹 만료 토큰 자동 삭제 완료: ${expiredTokens.length}개`);
+          }
         }
       }
 

@@ -1,0 +1,33 @@
+#BOOK=Proverbs|BOOKCODE=pro|CHAPTER=11|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Proverbs 11|KO=
+V|N=1|EN=A false balance is abomination to the LORD: but a just weight is his delight.|KO=
+V|N=2|EN=When pride cometh, then cometh shame: but with the lowly is wisdom.|KO=
+V|N=3|EN=The integrity of the upright shall guide them: but the perverseness of transgressors shall destroy them.|KO=
+V|N=4|EN=Riches profit not in the day of wrath: but righteousness delivereth from death.|KO=
+V|N=5|EN=The righteousness of the perfect shall direct his way: but the wicked shall fall by his own wickedness.|KO=
+V|N=6|EN=The righteousness of the upright shall deliver them: but transgressors shall be taken in their own naughtiness.|KO=
+V|N=7|EN=When a wicked man dieth, his expectation shall perish: and the hope of unjust men perisheth.|KO=
+V|N=8|EN=The righteous is delivered out of trouble, and the wicked cometh in his stead.|KO=
+V|N=9|EN=An hypocrite with his mouth destroyeth his neighbour: but through knowledge shall the just be delivered.|KO=
+V|N=10|EN=When it goeth well with the righteous, the city rejoiceth: and when the wicked perish, there is shouting.|KO=
+V|N=11|EN=By the blessing of the upright the city is exalted: but it is overthrown by the mouth of the wicked.|KO=
+V|N=12|EN=He that is void of wisdom despiseth his neighbour: but a man of understanding holdeth his peace.|KO=
+V|N=13|EN=A talebearer revealeth secrets: but he that is of a faithful spirit concealeth the matter.|KO=
+V|N=14|EN=Where no counsel is, the people fall: but in the multitude of counsellors there is safety.|KO=
+V|N=15|EN=He that is surety for a stranger shall smart for it: and he that hateth suretiship is sure.|KO=
+V|N=16|EN=A gracious woman retaineth honour: and strong men retain riches.|KO=
+V|N=17|EN=The merciful man doeth good to his own soul: but he that is cruel troubleth his own flesh.|KO=
+V|N=18|EN=The wicked worketh a deceitful work: but to him that soweth righteousness shall be a sure reward.|KO=
+V|N=19|EN=As righteousness tendeth to life: so he that pursueth evil pursueth it to his own death.|KO=
+V|N=20|EN=They that are of a froward heart are abomination to the LORD: but such as are upright in their way are his delight.|KO=
+V|N=21|EN=Though hand join in hand, the wicked shall not be unpunished: but the seed of the righteous shall be delivered.|KO=
+V|N=22|EN=As a jewel of gold in a swine’s snout, so is a fair woman which is without discretion.|KO=
+V|N=23|EN=The desire of the righteous is only good: but the expectation of the wicked is wrath.|KO=
+V|N=24|EN=There is that scattereth, and yet increaseth; and there is that withholdeth more than is meet, but it tendeth to poverty.|KO=
+V|N=25|EN=The liberal soul shall be made fat: and he that watereth shall be watered also himself.|KO=
+V|N=26|EN=He that withholdeth corn, the people shall curse him: but blessing shall be upon the head of him that selleth it.|KO=
+V|N=27|EN=He that diligently seeketh good procureth favour: but he that seeketh mischief, it shall come unto him.|KO=
+V|N=28|EN=He that trusteth in his riches shall fall; but the righteous shall flourish as a branch.|KO=
+V|N=29|EN=He that troubleth his own house shall inherit the wind: and the fool shall be servant to the wise of heart.|KO=
+V|N=30|EN=The fruit of the righteous is a tree of life; and he that winneth souls is wise.|KO=
+V|N=31|EN=Behold, the righteous shall be recompensed in the earth: much more the wicked and the sinner.|KO=

@@ -1,0 +1,24 @@
+#BOOK=Proverbs|BOOKCODE=pro|CHAPTER=2|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Proverbs 2|KO=잠언 2장
+V|N=1|EN=My son, if thou wilt receive my words, and hide my commandments with thee;|KO=내 아들아 네가 만일 나의 말을 받으며 나의 계명을 네게 간직하며
+V|N=2|EN=So that thou incline thine ear unto wisdom, and apply thine heart to understanding;|KO=네 귀를 지혜에 기울이며 네 마음을 명철에 두며
+V|N=3|EN=Yea, if thou criest after knowledge, and liftest up thy voice for understanding;|KO=지식을 불러 구하며 명철을 얻으려고 소리를 높이며
+V|N=4|EN=If thou seekest her as silver, and searchest for her as for hid treasures;|KO=은을 구하는 것 같이 그것을 구하며 숨겨진 보배를 찾는 것 같이 그것을 찾으면
+V|N=5|EN=Then shalt thou understand the fear of the LORD, and find the knowledge of God.|KO=여호와를 경외하는 것을 깨달으며 하나님을 아는 지식을 얻으리니
+V|N=6|EN=For the LORD giveth wisdom: out of his mouth cometh knowledge and understanding.|KO=여호와께서 지혜를 주시며 지식과 명철을 그 입에서 내심이며
+V|N=7|EN=He layeth up sound wisdom for the righteous: he is a buckler to them that walk uprightly.|KO=정직한 자를 위하여 완전한 지혜를 쌓아 두시며 행실이 온전한 자에게 방패가 되시나니
+V|N=8|EN=He keepeth the paths of judgment, and preserveth the way of his saints.|KO=이는 정의의 길을 보호하시며 그의 성도들의 길을 지키려 하심이니라
+V|N=9|EN=Then shalt thou understand righteousness, and judgment, and equity; yea, every good path.|KO=그리하면 공의와 정의와 정직 곧 모든 선한 길을 깨달을 것이요
+V|N=10|EN=When wisdom entereth into thine heart, and knowledge is pleasant unto thy soul;|KO=곧 지혜가 네 마음에 들어가며 지식이 네 영혼을 즐겁게 할 것이며
+V|N=11|EN=Discretion shall preserve thee, understanding shall keep thee:|KO=근신이 너를 지키며 명철이 너를 보호하여
+V|N=12|EN=To deliver thee from the way of the evil man, from the man that speaketh froward things;|KO=악한 자의 길과 패역을 말하는 자에게서 너를 건지며
+V|N=13|EN=Who leave the paths of uprightness, to walk in the ways of darkness;|KO=이 무리는 정직한 길을 떠나 어두운 길로 행하며
+V|N=14|EN=Who rejoice to do evil, and delight in the frowardness of the wicked;|KO=행악하기를 기뻐하며 악인의 패역을 즐거워하나니
+V|N=15|EN=Whose ways are crooked, and they froward in their paths:|KO=그 길은 구부러지고 그 행위는 패역하니라
+V|N=16|EN=To deliver thee from the strange woman, even from the stranger which flattereth with her words;|KO=지혜가 또 너를 음녀에게서, 말로 호리는 이방 계집에게서 구원하리니
+V|N=17|EN=Which forsaketh the guide of her youth, and forgetteth the covenant of her God.|KO=그는 소시의 짝을 버리며 그의 하나님의 언약을 잊어버린 자라
+V|N=18|EN=For her house inclineth unto death, and her paths unto the dead.|KO=그의 집은 사망으로, 그의 길은 음부로 기울어졌나니
+V|N=19|EN=None that go unto her return again, neither take they hold of the paths of life.|KO=누구든지 그에게로 가는 자는 돌아오지 못하며 생명길을 얻지 못하느니라
+V|N=20|EN=That thou mayest walk in the way of good men, and keep the paths of the righteous.|KO=지혜가 너로 선한 자의 길로 행하게 하며 의인의 길을 지키게 하리니
+V|N=21|EN=For the upright shall dwell in the land, and the perfect shall remain in it.|KO=정직한 자는 땅에 거하며 완전한 자는 땅에 남아 있으리라
+V|N=22|EN=But the wicked shall be cut off from the earth, and the transgressors shall be rooted out of it.|KO=그러나 악인은 땅에서 끊어지겠고 범죄자는 땅에서 뽑히리라

@@ -1,0 +1,22 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=23|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 23|KO=창세기 23장
+V|N=1|EN=And Sarah was an hundred and seven and twenty years old: these were the years of the life of Sarah.|KO=사라가 백이십칠 세에 죽으니, 이는 사라의 생애의 연수라.
+V|N=2|EN=And Sarah died in Kirjatharba; the same is Hebron in the land of Canaan: and Abraham came to mourn for Sarah, and to weep for her.|KO=사라가 기럇아르바에서 죽으니, 이는 가나안 땅의 헤브론이라. 아브라함이 사라를 위하여 애도하며 울었다.
+V|N=3|EN=And Abraham stood up from before his dead, and spake unto the sons of Heth, saying,|KO=아브라함이 죽은 자 앞에서 일어나 헷 자손에게 말하여 이르되,
+V|N=4|EN=I am a stranger and a sojourner with you: give me a possession of a buryingplace with you, that I may bury my dead out of my sight.|KO=나는 당신들과 함께하는 나그네요, 거주자입니다. 나의 죽은 자를 당신들 중에서 장사할 장소를 주십시오.
+V|N=5|EN=And the children of Heth answered Abraham, saying unto him,|KO=헷 자손이 아브라함에게 대답하여 이르되,
+V|N=6|EN=Hear us, my lord: thou art a mighty prince among us: in the choice of our sepulchres bury thy dead; none of us shall withhold from thee his sepulchre, but that thou mayest bury thy dead.|KO=우리 주여, 당신은 우리 중에 강한 왕자이십니다. 당신의 죽은 자를 장사할 우리의 무덤 중에서 선택하십시오. 우리 중 누구도 당신의 무덤을 막지 않겠습니다.
+V|N=7|EN=And Abraham stood up, and bowed himself to the people of the land, even to the children of Heth.|KO=아브라함이 일어나 그 땅의 백성에게 절하고 헷 자손에게 말하였다.
+V|N=8|EN=And he communed with them, saying, If it be your mind that I should bury my dead out of my sight; hear me, and intreat for me to Ephron the son of Zohar,|KO=그가 그들에게 말하여 이르되, 만일 당신들이 나의 죽은 자를 내 시야에서 장사할 수 있도록 허락하신다면, 나를 들어주십시오. 소할의 아들 에브론에게 간청해 주십시오.
+V|N=9|EN=That he may give me the cave of Machpelah, which he hath, which is in the end of his field; for as much money as it is worth he shall give it me for a possession of a buryingplace amongst you.|KO=그가 나에게 그의 밭 끝에 있는 막벨라 굴을 주게 하여, 그 값으로 내가 지불할 것입니다. 당신들 중에서 장사할 장소로 주십시오.
+V|N=10|EN=And Ephron dwelt among the children of Heth: and Ephron the Hittite answered Abraham in the audience of the children of Heth, even of all that went in at the gate of his city, saying,|KO=에브론이 헷 자손 중에 거주하고 있었고, 에브론 헷 사람이 아브라함에게 대답하여 그의 성문에 들어온 모든 사람 앞에서 이르되,
+V|N=11|EN=Nay, my lord, hear me: the field give I thee, and the cave that is therein, I give it thee; in the presence of the sons of my people give I it thee: bury thy dead.|KO=아니오, 내 주여, 내 말을 들어주십시오. 내가 당신에게 그 밭을 주고, 그 안에 있는 굴도 주겠습니다. 내 백성의 아들들 앞에서 당신에게 주겠습니다. 당신의 죽은 자를 장사하십시오.
+V|N=12|EN=And Abraham bowed down himself before the people of the land.|KO=아브라함이 그 땅의 백성 앞에서 몸을 낮추었다.
+V|N=13|EN=And he spake unto Ephron in the audience of the people of the land, saying, But if thou wilt give it, I pray thee, hear me: I will give thee money for the field; take it of me, and I will bury my dead there.|KO=그가 그 땅의 백성 앞에서 에브론에게 말하여 이르되, 그러나 만일 당신이 주시려면, 내 말을 들어주십시오. 내가 그 밭에 대한 돈을 드리겠습니다. 나에게서 받아 주십시오. 내가 그곳에 내 죽은 자를 장사하겠습니다.
+V|N=14|EN=And Ephron answered Abraham, saying unto him,|KO=에브론이 아브라함에게 대답하여 이르되,
+V|N=15|EN=My lord, hearken unto me: the land is worth four hundred shekels of silver; what is that betwixt me and thee? bury therefore thy dead.|KO=내 주여, 내 말을 들어주십시오. 그 땅의 가치는 은 사백 세겔입니다. 당신과 나 사이에 무엇이 있습니까? 그러므로 당신의 죽은 자를 장사하십시오.
+V|N=16|EN=And Abraham hearkened unto Ephron; and Abraham weighed to Ephron the silver, which he had named in the audience of the sons of Heth, four hundred shekels of silver, current money with the merchant.|KO=아브라함이 에브론의 말을 듣고, 헷 자손의 앞에서 그가 말한 은 사백 세겔을 에브론에게 주었다.
+V|N=17|EN=And the field of Ephron which was in Machpelah, which was before Mamre, the field, and the cave which was therein, and all the trees that were in the field, that were in all the borders round about, were made sure|KO=막벨라의 밭과 그 안에 있는 굴과 그 밭의 모든 나무가 아브라함에게 확정되었고,
+V|N=18|EN=Unto Abraham for a possession in the presence of the children of Heth, before all that went in at the gate of his city.|KO=헷 자손의 앞에서 그의 성문에 들어온 모든 사람들 앞에서 아브라함의 소유가 되었다.
+V|N=19|EN=And after this, Abraham buried Sarah his wife in the cave of the field of Machpelah before Mamre: the same is Hebron in the land of Canaan.|KO=그 후에 아브라함이 그의 아내 사라를 막벨라의 밭에 장사하였으니, 이는 가나안 땅의 헤브론이라.
+V|N=20|EN=And the field, and the cave that is therein, were made sure unto Abraham for a possession of a buryingplace by the sons of Heth.|KO=그 밭과 그 안에 있는 굴이 헷 자손에 의해 아브라함에게 장사할 장소로 확정되었다.

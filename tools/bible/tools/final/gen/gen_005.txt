@@ -1,0 +1,34 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=5|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 5|KO=창세기 5장
+V|N=1|EN=This is the book of the generations of Adam. In the day that God created man, in the likeness of God made he him;|KO=이것은 아담의 세대에 관한 책이다. 하나님이 사람을 창조하신 날에 그를 하나님의 형상대로 만드셨다.
+V|N=2|EN=Male and female created he them; and blessed them, and called their name Adam, in the day when they were created.|KO=남자와 여자를 창조하시고 그들을 축복하시며 그들의 이름을 아담이라 부르셨다. 그들이 창조된 날에.
+V|N=3|EN=And Adam lived an hundred and thirty years, and begat a son in his own likeness, and after his image; and called his name Seth:|KO=아담은 130세에 아들을 낳았고, 그의 형상대로, 그의 모양대로 낳았으며, 그의 이름을 셋이라 불렀다.
+V|N=4|EN=And the days of Adam after he had begotten Seth were eight hundred years: and he begat sons and daughters:|KO=아담이 셋을 낳은 후에 산 날은 800년이었고, 아들과 딸들을 낳았다.
+V|N=5|EN=And all the days that Adam lived were nine hundred and thirty years: and he died.|KO=아담이 산 모든 날은 930년이었고, 그는 죽었다.
+V|N=6|EN=And Seth lived an hundred and five years, and begat Enos:|KO=셋은 105세에 에노스를 낳았다.
+V|N=7|EN=And Seth lived after he begat Enos eight hundred and seven years, and begat sons and daughters:|KO=셋은 에노스를 낳은 후에 807년을 살았고, 아들과 딸들을 낳았다.
+V|N=8|EN=And all the days of Seth were nine hundred and twelve years: and he died.|KO=셋이 산 모든 날은 912년이었고, 그는 죽었다.
+V|N=9|EN=And Enos lived ninety years, and begat Cainan:|KO=에노스는 90세에 가이난을 낳았다.
+V|N=10|EN=And Enos lived after he begat Cainan eight hundred and fifteen years, and begat sons and daughters:|KO=에노스는 가이난을 낳은 후에 815년을 살았고, 아들과 딸들을 낳았다.
+V|N=11|EN=And all the days of Enos were nine hundred and five years: and he died.|KO=에노스가 산 모든 날은 905년이었고, 그는 죽었다.
+V|N=12|EN=And Cainan lived seventy years and begat Mahalaleel:|KO=가이난은 70세에 마할랄렐을 낳았다.
+V|N=13|EN=And Cainan lived after he begat Mahalaleel eight hundred and forty years, and begat sons and daughters:|KO=가이난은 마할랄렐을 낳은 후에 840년을 살았고, 아들과 딸들을 낳았다.
+V|N=14|EN=And all the days of Cainan were nine hundred and ten years: and he died.|KO=가이난이 산 모든 날은 910년이었고, 그는 죽었다.
+V|N=15|EN=And Mahalaleel lived sixty and five years, and begat Jared:|KO=마할랄렐은 65세에 야렛을 낳았다.
+V|N=16|EN=And Mahalaleel lived after he begat Jared eight hundred and thirty years, and begat sons and daughters:|KO=마할랄렐은 야렛을 낳은 후에 830년을 살았고, 아들과 딸들을 낳았다.
+V|N=17|EN=And all the days of Mahalaleel were eight hundred ninety and five years: and he died.|KO=마할랄렐이 산 모든 날은 895년이었고, 그는 죽었다.
+V|N=18|EN=And Jared lived an hundred sixty and two years, and he begat Enoch:|KO=야렛은 162세에 에녹을 낳았다.
+V|N=19|EN=And Jared lived after he begat Enoch eight hundred years, and begat sons and daughters:|KO=야렛은 에녹을 낳은 후에 800년을 살았고, 아들과 딸들을 낳았다.
+V|N=20|EN=And all the days of Jared were nine hundred sixty and two years: and he died.|KO=야렛이 산 모든 날은 962년이었고, 그는 죽었다.
+V|N=21|EN=And Enoch lived sixty and five years, and begat Methuselah:|KO=에녹은 65세에 므두셀라를 낳았다.
+V|N=22|EN=And Enoch walked with God after he begat Methuselah three hundred years, and begat sons and daughters:|KO=에녹은 므두셀라를 낳은 후에 300년을 하나님과 동행하며 아들과 딸들을 낳았다.
+V|N=23|EN=And all the days of Enoch were three hundred sixty and five years:|KO=에녹이 산 모든 날은 365년이었다.
+V|N=24|EN=And Enoch walked with God: and he was not; for God took him.|KO=에녹은 하나님과 동행하였고, 그는 더 이상 존재하지 않았다. 하나님이 그를 데려가셨기 때문이다.
+V|N=25|EN=And Methuselah lived an hundred eighty and seven years, and begat Lamech.|KO=므두셀라는 187세에 라멕을 낳았다.
+V|N=26|EN=And Methuselah lived after he begat Lamech seven hundred eighty and two years, and begat sons and daughters:|KO=므두셀라는 라멕을 낳은 후에 782년을 살았고, 아들과 딸들을 낳았다.
+V|N=27|EN=And all the days of Methuselah were nine hundred sixty and nine years: and he died.|KO=므두셀라가 산 모든 날은 969년이었고, 그는 죽었다.
+V|N=28|EN=And Lamech lived an hundred eighty and two years, and begat a son:|KO=라멕은 182세에 아들을 낳았다.
+V|N=29|EN=And he called his name Noah, saying, This same shall comfort us concerning our work and toil of our hands, because of the ground which the LORD hath cursed.|KO=그는 그의 이름을 노아라 부르며, 이 아들이 우리 손의 수고와 일로 인해 위로가 될 것이라고 말했다. 이는 여호와께서 저주하신 땅 때문이다.
+V|N=30|EN=And Lamech lived after he begat Noah five hundred ninety and five years, and begat sons and daughters:|KO=라멕은 노아를 낳은 후에 595년을 살았고, 아들과 딸들을 낳았다.
+V|N=31|EN=And all the days of Lamech were seven hundred seventy and seven years: and he died.|KO=라멕이 산 모든 날은 777년이었고, 그는 죽었다.
+V|N=32|EN=And Noah was five hundred years old: and Noah begat Shem, Ham, and Japheth.|KO=노아는 500세가 되었고, 노아는 셈과 함과 야벳을 낳았다.

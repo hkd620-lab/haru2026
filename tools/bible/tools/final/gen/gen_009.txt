@@ -1,0 +1,31 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=9|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 9|KO=창세기 9장
+V|N=1|EN=And God blessed Noah and his sons, and said unto them, Be fruitful, and multiply, and replenish the earth.|KO=하나님이 노아와 그의 아들들을 축복하시고 그들에게 이르시되, 생육하고 번성하며 땅을 충만하게 하라 하시니라.
+V|N=2|EN=And the fear of you and the dread of you shall be upon every beast of the earth, and upon every fowl of the air, upon all that moveth upon the earth, and upon all the fishes of the sea; into your hand are they delivered.|KO=너희와 너희의 두려움이 땅의 모든 짐승과 공중의 모든 새와 땅 위를 기는 모든 것과 바다의 모든 물고기에게 임할 것이니, 그것들이 너희의 손에 넘겨졌느니라.
+V|N=3|EN=Every moving thing that liveth shall be meat for you; even as the green herb have I given you all things.|KO=땅 위의 모든 생물은 너희의 먹을 것이 될 것이니, 내가 푸른 풀과 같이 너희에게 모든 것을 주었노라.
+V|N=4|EN=But flesh with the life thereof, which is the blood thereof, shall ye not eat.|KO=그러나 생명이 있는 고기는 그 피를 먹지 말지니라.
+V|N=5|EN=And surely your blood of your lives will I require; at the hand of every beast will I require it, and at the hand of man; at the hand of every man’s brother will I require the life of man.|KO=너희의 생명의 피를 내가 반드시 요구하리니, 짐승의 손에서든지 사람의 손에서든지, 각 사람의 형제의 손에서든지, 사람의 생명을 요구하리라.
+V|N=6|EN=Whoso sheddeth man’s blood, by man shall his blood be shed: for in the image of God made he man.|KO=사람의 피를 흘리는 자는 그의 피가 사람에 의해 흘려질 것이니, 이는 하나님 형상대로 사람을 지으셨음이라.
+V|N=7|EN=And you, be ye fruitful, and multiply; bring forth abundantly in the earth, and multiply therein.|KO=너희는 생육하고 번성하며 땅에 충만하고 그 안에서 번성하라.
+V|N=8|EN=And God spake unto Noah, and to his sons with him, saying,|KO=하나님이 노아와 그의 아들들에게 말씀하시기를,
+V|N=9|EN=And I, behold, I establish my covenant with you, and with your seed after you;|KO=보라, 내가 너희와 너희 후손과 언약을 세우노라.
+V|N=10|EN=And with every living creature that is with you, of the fowl, of the cattle, and of every beast of the earth with you; from all that go out of the ark, to every beast of the earth.|KO=너희와 함께 있는 모든 생물, 곧 공중의 새와 가축과 땅의 모든 짐승과 언약을 세우며, 방주에서 나오는 모든 생물에게도 언약을 세우노라.
+V|N=11|EN=And I will establish my covenant with you, neither shall all flesh be cut off any more by the waters of a flood; neither shall there any more be a flood to destroy the earth.|KO=내가 너희와 언약을 세우노니, 다시는 홍수로 모든 육체를 끊지 아니할 것이요, 다시는 땅을 멸망시키는 홍수가 없으리라.
+V|N=12|EN=And God said, This is the token of the covenant which I make between me and you and every living creature that is with you, for perpetual generations:|KO=하나님이 말씀하시기를, 이것이 내가 너희와 너희와 함께 있는 모든 생물 사이에 세우는 언약의 표징이니, 영원한 대대로 세우는 언약이라.
+V|N=13|EN=I do set my bow in the cloud, and it shall be for a token of a covenant between me and the earth.|KO=내가 구름 속에 내 무지개를 두었으니, 그것이 나와 땅 사이의 언약의 표징이 될 것이라.
+V|N=14|EN=And it shall come to pass, when I bring a cloud over the earth, that the bow shall be seen in the cloud:|KO=내가 땅 위에 구름을 가져올 때에 무지개가 구름 속에 보일 것이요,
+V|N=15|EN=And I will remember my covenant, which is between me and you and every living creature of all flesh; and the waters shall no more become a flood to destroy all flesh.|KO=내가 너희와 모든 육체의 생물 사이에 세운 언약을 기억하리니, 다시는 모든 육체를 멸망시키는 홍수가 없으리라.
+V|N=16|EN=And the bow shall be in the cloud; and I will look upon it, that I may remember the everlasting covenant between God and every living creature of all flesh that is upon the earth.|KO=무지개가 구름 속에 있을 것이니, 내가 그것을 보고 하나님과 땅 위의 모든 육체 사이에 세운 영원한 언약을 기억하리라.
+V|N=17|EN=And God said unto Noah, This is the token of the covenant, which I have established between me and all flesh that is upon the earth.|KO=하나님이 노아에게 말씀하시기를, 이것이 내가 땅 위의 모든 육체와 세운 언약의 표징이라 하시니라.
+V|N=18|EN=And the sons of Noah, that went forth of the ark, were Shem, and Ham, and Japheth: and Ham is the father of Canaan.|KO=방주에서 나온 노아의 아들은 셈과 함과 야벳이라. 함은 가나안의 아버지라.
+V|N=19|EN=These are the three sons of Noah: and of them was the whole earth overspread.|KO=이들은 노아의 세 아들이라. 이들로 말미암아 온 땅이 퍼지니라.
+V|N=20|EN=And Noah began to be an husbandman, and he planted a vineyard:|KO=노아가 농부가 되어 포도원을 심었더라.
+V|N=21|EN=And he drank of the wine, and was drunken; and he was uncovered within his tent.|KO=그가 포도주를 마시고 취하여 자기 장막 안에서 벌거벗었더라.
+V|N=22|EN=And Ham, the father of Canaan, saw the nakedness of his father, and told his two brethren without.|KO=가나안의 아버지 함이 그의 아버지의 벌거벗음을 보고 두 형제에게 알리니,
+V|N=23|EN=And Shem and Japheth took a garment, and laid it upon both their shoulders, and went backward, and covered the nakedness of their father; and their faces were backward, and they saw not their father’s nakedness.|KO=셈과 야벳이 겉옷을 취하여 어깨에 메고 뒤로 가서 아버지의 벌거벗음을 가리니, 그들의 얼굴은 뒤로 향하였고 아버지의 벌거벗음을 보지 아니하였더라.
+V|N=24|EN=And Noah awoke from his wine, and knew what his younger son had done unto him.|KO=노아가 포도주에서 깨어나서 그의 작은 아들이 자기에 대하여 행한 일을 알고,
+V|N=25|EN=And he said, Cursed be Canaan; a servant of servants shall he be unto his brethren.|KO=가나안은 저주를 받을지어다. 그는 그의 형제의 종이 될지어다 하였고,
+V|N=26|EN=And he said, Blessed be the LORD God of Shem; and Canaan shall be his servant.|KO=그가 이르되, 셈의 하나님 여호와를 찬송할지어다. 가나안은 그의 종이 될지어다.
+V|N=27|EN=God shall enlarge Japheth, and he shall dwell in the tents of Shem; and Canaan shall be his servant.|KO=하나님이 야벳을 넓히시고 그가 셈의 장막에 거주할 것이며, 가나안은 그의 종이 될지어다.
+V|N=28|EN=And Noah lived after the flood three hundred and fifty years.|KO=노아가 홍수 후에 삼백 오십 년을 살았더라.
+V|N=29|EN=And all the days of Noah were nine hundred and fifty years: and he died.|KO=노아의 모든 날은 구백 오십 년이었고, 그가 죽었더라.

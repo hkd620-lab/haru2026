@@ -1,0 +1,33 @@
+#BOOK=Proverbs|BOOKCODE=pro|CHAPTER=31|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Proverbs 31|KO=
+V|N=1|EN=The words of king Lemuel, the prophecy that his mother taught him.|KO=
+V|N=2|EN=What, my son? and what, the son of my womb? and what, the son of my vows?|KO=
+V|N=3|EN=Give not thy strength unto women, nor thy ways to that which destroyeth kings.|KO=
+V|N=4|EN=It is not for kings, O Lemuel, it is not for kings to drink wine; nor for princes strong drink:|KO=
+V|N=5|EN=Lest they drink, and forget the law, and pervert the judgment of any of the afflicted.|KO=
+V|N=6|EN=Give strong drink unto him that is ready to perish, and wine unto those that be of heavy hearts.|KO=
+V|N=7|EN=Let him drink, and forget his poverty, and remember his misery no more.|KO=
+V|N=8|EN=Open thy mouth for the dumb in the cause of all such as are appointed to destruction.|KO=
+V|N=9|EN=Open thy mouth, judge righteously, and plead the cause of the poor and needy.|KO=
+V|N=10|EN=Who can find a virtuous woman? for her price is far above rubies.|KO=
+V|N=11|EN=The heart of her husband doth safely trust in her, so that he shall have no need of spoil.|KO=
+V|N=12|EN=She will do him good and not evil all the days of her life.|KO=
+V|N=13|EN=She seeketh wool, and flax, and worketh willingly with her hands.|KO=
+V|N=14|EN=She is like the merchants’ ships; she bringeth her food from afar.|KO=
+V|N=15|EN=She riseth also while it is yet night, and giveth meat to her household, and a portion to her maidens.|KO=
+V|N=16|EN=She considereth a field, and buyeth it: with the fruit of her hands she planteth a vineyard.|KO=
+V|N=17|EN=She girdeth her loins with strength, and strengtheneth her arms.|KO=
+V|N=18|EN=She perceiveth that her merchandise is good: her candle goeth not out by night.|KO=
+V|N=19|EN=She layeth her hands to the spindle, and her hands hold the distaff.|KO=
+V|N=20|EN=She stretcheth out her hand to the poor; yea, she reacheth forth her hands to the needy.|KO=
+V|N=21|EN=She is not afraid of the snow for her household: for all her household are clothed with scarlet.|KO=
+V|N=22|EN=She maketh herself coverings of tapestry; her clothing is silk and purple.|KO=
+V|N=23|EN=Her husband is known in the gates, when he sitteth among the elders of the land.|KO=
+V|N=24|EN=She maketh fine linen, and selleth it; and delivereth girdles unto the merchant.|KO=
+V|N=25|EN=Strength and honour are her clothing; and she shall rejoice in time to come.|KO=
+V|N=26|EN=She openeth her mouth with wisdom; and in her tongue is the law of kindness.|KO=
+V|N=27|EN=She looketh well to the ways of her household, and eateth not the bread of idleness.|KO=
+V|N=28|EN=Her children arise up, and call her blessed; her husband also, and he praiseth her.|KO=
+V|N=29|EN=Many daughters have done virtuously, but thou excellest them all.|KO=
+V|N=30|EN=Favour is deceitful, and beauty is vain: but a woman that feareth the LORD, she shall be praised.|KO=
+V|N=31|EN=Give her of the fruit of her hands; and let her own works praise her in the gates.|KO=

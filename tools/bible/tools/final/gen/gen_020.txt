@@ -1,0 +1,20 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=20|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 20|KO=창세기 20장
+V|N=1|EN=And Abraham journeyed from thence toward the south country, and dwelled between Kadesh and Shur, and sojourned in Gerar.|KO=아브라함이 그곳을 떠나 남쪽으로 가서 가데스와 수르 사이에 거주하며 게라에서 머물렀더라.
+V|N=2|EN=And Abraham said of Sarah his wife, She is my sister: and Abimelech king of Gerar sent, and took Sarah.|KO=아브라함이 그의 아내 사라에 대해 그녀는 내 누이로다 하니, 게라의 아비멜렉 왕이 사람을 보내어 사라를 데려갔더라.
+V|N=3|EN=But God came to Abimelech in a dream by night, and said to him, Behold, thou art but a dead man, for the woman which thou hast taken; for she is a man’s wife.|KO=하나님이 밤에 꿈에 아비멜렉에게 나타나 이르시되, 네가 데려간 여인은 남자의 아내이니, 너는 죽은 자라.
+V|N=4|EN=But Abimelech had not come near her: and he said, LORD, wilt thou slay also a righteous nation?|KO=아비멜렉이 그녀에게 가까이 가지 아니하였으므로 이르되, 주여, 의로운 민족도 죽이시려 하나이까?
+V|N=5|EN=Said he not unto me, She is my sister? and she, even she herself said, He is my brother: in the integrity of my heart and innocency of my hands have I done this.|KO=그가 내게 이르지 아니하였느냐, 그녀는 내 누이로다 하였고, 그녀도 스스로 그가 내 형이라 하였으니, 내 마음의 정직과 손의 무죄로 내가 이 일을 행하였나이다.
+V|N=6|EN=And God said unto him in a dream, Yea, I know that thou didst this in the integrity of thy heart; for I also withheld thee from sinning against me: therefore suffered I thee not to touch her.|KO=하나님이 꿈에 그에게 이르시되, 내가 네 마음의 정직으로 이 일을 행한 것을 내가 아노라. 그러므로 내가 너로 하여금 그녀에게 가까이 가지 못하게 하였노라.
+V|N=7|EN=Now therefore restore the man his wife; for he is a prophet, and he shall pray for thee, and thou shalt live: and if thou restore her not, know thou that thou shalt surely die, thou, and all that are thine.|KO=그러므로 이제 그 사람의 아내를 돌려보내라. 그는 선지자니 너를 위하여 기도할 것이요, 너는 살리라. 만일 그녀를 돌려보내지 아니하면, 너와 네 모든 것이 반드시 죽으리라.
+V|N=8|EN=Therefore Abimelech rose early in the morning, and called all his servants, and told all these things in their ears: and the men were sore afraid.|KO=아비멜렉이 아침에 일찍 일어나 모든 종들을 불러 그 모든 일을 그들에게 말하니, 그 사람들이 심히 두려워하더라.
+V|N=9|EN=Then Abimelech called Abraham, and said unto him, What hast thou done unto us? and what have I offended thee, that thou hast brought on me and on my kingdom a great sin? thou hast done deeds unto me that ought not to be done.|KO=아비멜렉이 아브라함을 불러 이르되, 네가 우리에게 무엇을 하였느냐? 내가 네게 무슨 죄를 지었기에 네가 나와 내 왕국에 큰 죄를 가져왔느냐? 네가 해서는 안 될 일을 나에게 행하였도다.
+V|N=10|EN=And Abimelech said unto Abraham, What sawest thou, that thou hast done this thing?|KO=아비멜렉이 아브라함에게 이르되, 네가 이 일을 행한 이유가 무엇이냐?
+V|N=11|EN=And Abraham said, Because I thought, Surely the fear of God is not in this place; and they will slay me for my wife’s sake.|KO=아브라함이 이르되, 내가 생각하기를, 이곳에는 하나님을 두려워하는 자가 없으므로 그들이 내 아내를 인하여 나를 죽일까 두려워하였노라.
+V|N=12|EN=And yet indeed she is my sister; she is the daughter of my father, but not the daughter of my mother; and she became my wife.|KO=그러나 그녀는 참으로 내 누이니, 그녀는 내 아버지의 딸이요, 내 어머니의 딸은 아니니라. 그녀가 내 아내가 되었느니라.
+V|N=13|EN=And it came to pass, when God caused me to wander from my father’s house, that I said unto her, This is thy kindness which thou shalt shew unto me; at every place whither we shall come, say of me, He is my brother.|KO=하나님이 내 아버지의 집에서 나를 방황하게 하실 때, 내가 그녀에게 이르기를, 네가 나에게 베풀어야 할 은혜는 이러하니, 우리가 가는 모든 곳에서 나를 형이라 하라 하였노라.
+V|N=14|EN=And Abimelech took sheep, and oxen, and menservants, and womenservants, and gave them unto Abraham, and restored him Sarah his wife.|KO=아비멜렉이 양과 소와 남종과 여종을 취하여 아브라함에게 주고, 그의 아내 사라를 돌려보내니라.
+V|N=15|EN=And Abimelech said, Behold, my land is before thee: dwell where it pleaseth thee.|KO=아비멜렉이 이르되, 내 땅이 네 앞에 있으니, 네가 좋을 대로 거주하라.
+V|N=16|EN=And unto Sarah he said, Behold, I have given thy brother a thousand pieces of silver: behold, he is to thee a covering of the eyes, unto all that are with thee, and with all other: thus she was reproved.|KO=사라에게 이르되, 내가 네 형에게 은 천 개를 주었으니, 이는 네가 함께 있는 모든 자에게 눈을 가리는 것이니라.
+V|N=17|EN=So Abraham prayed unto God: and God healed Abimelech, and his wife, and his maidservants; and they bare children.|KO=아브라함이 하나님께 기도하매, 하나님이 아비멜렉과 그의 아내와 여종들을 고치시니, 그들이 자녀를 낳았더라.
+V|N=18|EN=For the LORD had fast closed up all the wombs of the house of Abimelech, because of Sarah Abraham’s wife.|KO=여호와께서 아비멜렉의 집 모든 태를 닫으셨으니, 이는 아브라함의 아내 사라로 인함이었더라.

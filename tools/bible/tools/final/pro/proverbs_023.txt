@@ -1,0 +1,37 @@
+#BOOK=Proverbs|BOOKCODE=pro|CHAPTER=23|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Proverbs 23|KO=
+V|N=1|EN=When thou sittest to eat with a ruler, consider diligently what is before thee:|KO=
+V|N=2|EN=And put a knife to thy throat, if thou be a man given to appetite.|KO=
+V|N=3|EN=Be not desirous of his dainties: for they are deceitful meat.|KO=
+V|N=4|EN=Labour not to be rich: cease from thine own wisdom.|KO=
+V|N=5|EN=Wilt thou set thine eyes upon that which is not? for riches certainly make themselves wings; they fly away as an eagle toward heaven.|KO=
+V|N=6|EN=Eat thou not the bread of him that hath an evil eye, neither desire thou his dainty meats:|KO=
+V|N=7|EN=For as he thinketh in his heart, so is he: Eat and drink, saith he to thee; but his heart is not with thee.|KO=
+V|N=8|EN=The morsel which thou hast eaten shalt thou vomit up, and lose thy sweet words.|KO=
+V|N=9|EN=Speak not in the ears of a fool: for he will despise the wisdom of thy words.|KO=
+V|N=10|EN=Remove not the old landmark; and enter not into the fields of the fatherless:|KO=
+V|N=11|EN=For their redeemer is mighty; he shall plead their cause with thee.|KO=
+V|N=12|EN=Apply thine heart unto instruction, and thine ears to the words of knowledge.|KO=
+V|N=13|EN=Withhold not correction from the child: for if thou beatest him with the rod, he shall not die.|KO=
+V|N=14|EN=Thou shalt beat him with the rod, and shalt deliver his soul from hell.|KO=
+V|N=15|EN=My son, if thine heart be wise, my heart shall rejoice, even mine.|KO=
+V|N=16|EN=Yea, my reins shall rejoice, when thy lips speak right things.|KO=
+V|N=17|EN=Let not thine heart envy sinners: but be thou in the fear of the LORD all the day long.|KO=
+V|N=18|EN=For surely there is an end; and thine expectation shall not be cut off.|KO=
+V|N=19|EN=Hear thou, my son, and be wise, and guide thine heart in the way.|KO=
+V|N=20|EN=Be not among winebibbers; among riotous eaters of flesh:|KO=
+V|N=21|EN=For the drunkard and the glutton shall come to poverty: and drowsiness shall clothe a man with rags.|KO=
+V|N=22|EN=Hearken unto thy father that begat thee, and despise not thy mother when she is old.|KO=
+V|N=23|EN=Buy the truth, and sell it not; also wisdom, and instruction, and understanding.|KO=
+V|N=24|EN=The father of the righteous shall greatly rejoice: and he that begetteth a wise child shall have joy of him.|KO=
+V|N=25|EN=Thy father and thy mother shall be glad, and she that bare thee shall rejoice.|KO=
+V|N=26|EN=My son, give me thine heart, and let thine eyes observe my ways.|KO=
+V|N=27|EN=For a whore is a deep ditch; and a strange woman is a narrow pit.|KO=
+V|N=28|EN=She also lieth in wait as for a prey, and increaseth the transgressors among men.|KO=
+V|N=29|EN=Who hath woe? who hath sorrow? who hath contentions? who hath babbling? who hath wounds without cause? who hath redness of eyes?|KO=
+V|N=30|EN=They that tarry long at the wine; they that go to seek mixed wine.|KO=
+V|N=31|EN=Look not thou upon the wine when it is red, when it giveth his colour in the cup, when it moveth itself aright.|KO=
+V|N=32|EN=At the last it biteth like a serpent, and stingeth like an adder.|KO=
+V|N=33|EN=Thine eyes shall behold strange women, and thine heart shall utter perverse things.|KO=
+V|N=34|EN=Yea, thou shalt be as he that lieth down in the midst of the sea, or as he that lieth upon the top of a mast.|KO=
+V|N=35|EN=They have stricken me, shalt thou say, and I was not sick; they have beaten me, and I felt it not: when shall I awake? I will seek it yet again.|KO=

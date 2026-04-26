@@ -1,0 +1,26 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=14|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 14|KO=창세기 14장
+V|N=1|EN=And it came to pass in the days of Amraphel king of Shinar, Arioch king of Ellasar, Chedorlaomer king of Elam, and Tidal king of nations;|KO=아므라벨 왕의 시대에 신할과 엘라살의 아리옥 왕, 엘람의 그돌라오멜 왕, 그리고 여러 민족의 티달 왕이 있던 때에 일이 일어났다.
+V|N=2|EN=That these made war with Bera king of Sodom, and with Birsha king of Gomorrah, Shinab king of Admah, and Shemeber king of Zeboiim, and the king of Bela, which is Zoar.|KO=그들이 소돔의 베라 왕과 고모라의 비르사 왕, 아드마의 신압 왕, 그리고 제보임의 세멜 왕, 그리고 벨라 왕과 전쟁을 벌였다. 벨라는 소알이다.
+V|N=3|EN=All these were joined together in the vale of Siddim, which is the salt sea.|KO=이들은 모두 시딤 골짜기에 모였는데, 그곳은 소금 바다이다.
+V|N=4|EN=Twelve years they served Chedorlaomer, and in the thirteenth year they rebelled.|KO=그들은 12년 동안 그돌라오멜에게 섬겼고, 13년째에 반란을 일으켰다.
+V|N=5|EN=And in the fourteenth year came Chedorlaomer, and the kings that were with him, and smote the Rephaims in Ashteroth Karnaim, and the Zuzims in Ham, and the Emins in Shaveh Kiriathaim,|KO=그리고 14년째에 그돌라오멜과 그와 함께한 왕들이 와서 아스다롯 가르나임에서 레바임을 치고, 함에서 수짐을 치고, 샤웨 기럇하임에서 에민을 쳤다.
+V|N=6|EN=And the Horites in their mount Seir, unto Elparan, which is by the wilderness.|KO=그리고 그들은 세일 산에서 호리 사람들을 쳤고, 엘파란까지 갔는데, 그곳은 광야에 있다.
+V|N=7|EN=And they returned, and came to Enmishpat, which is Kadesh, and smote all the country of the Amalekites, and also the Amorites, that dwelt in Hazezontamar.|KO=그들은 돌아와서 엔미스바트, 곧 가데스에 이르러 아말렉 온 땅과 하세손 다말에 거주하는 아모리 사람들을 쳤다.
+V|N=8|EN=And there went out the king of Sodom, and the king of Gomorrah, and the king of Admah, and the king of Zeboiim, and the king of Bela (the same is Zoar;) and they joined battle with them in the vale of Siddim;|KO=그리고 소돔 왕과 고모라 왕과 아드마 왕과 제보임 왕과 벨라 왕이 나와서 그들과 시딤 골짜기에서 전투를 벌였다.
+V|N=9|EN=With Chedorlaomer the king of Elam, and with Tidal king of nations, and Amraphel king of Shinar, and Arioch king of Ellasar; four kings with five.|KO=그돌라오멜 엘람 왕과 여러 민족의 티달 왕, 신할의 아므라벨 왕, 엘라살의 아리옥 왕, 네 왕이 다섯 왕과 함께 있었다.
+V|N=10|EN=And the vale of Siddim was full of slimepits; and the kings of Sodom and Gomorrah fled, and fell there; and they that remained fled to the mountain.|KO=시딤 골짜기는 진흙 구덩이로 가득 차 있었고, 소돔과 고모라의 왕들이 도망쳐 거기서 넘어졌으며, 남은 자들은 산으로 도망쳤다.
+V|N=11|EN=And they took all the goods of Sodom and Gomorrah, and all their victuals, and went their way.|KO=그들은 소돔과 고모라의 모든 재물과 모든 양식을 취하고 떠났다.
+V|N=12|EN=And they took Lot, Abram’s brother’s son, who dwelt in Sodom, and his goods, and departed.|KO=그들은 소돔에 거주하던 아브람의 조카 롯과 그의 재물을 잡아갔다.
+V|N=13|EN=And there came one that had escaped, and told Abram the Hebrew; for he dwelt in the plain of Mamre the Amorite, brother of Eshcol, and brother of Aner: and these were confederate with Abram.|KO=그리고 도망친 한 사람이 와서 히브리 사람 아브람에게 이르렀으니, 그는 아모리 사람 마므레의 평지에 거주하고 있었고, 마므레는 에스골과 아너의 형제였다. 이들은 아브람과 동맹을 맺었다.
+V|N=14|EN=And when Abram heard that his brother was taken captive, he armed his trained servants, born in his own house, three hundred and eighteen, and pursued them unto Dan.|KO=아브람이 그의 형제가 사로잡혔다는 소식을 듣고, 자기 집에서 태어난 훈련된 종 318명을 무장시키고 단까지 추격하였다.
+V|N=15|EN=And he divided himself against them, he and his servants, by night, and smote them, and pursued them unto Hobah, which is on the left hand of Damascus.|KO=그는 밤에 그들을 치고, 그들을 다치게 하여 다마스쿠스 왼편 호바까지 추격하였다.
+V|N=16|EN=And he brought back all the goods, and also brought again his brother Lot, and his goods, and the women also, and the people.|KO=그는 모든 재물을 되찾고, 그의 형제 롯과 그의 재물, 그리고 여자들과 백성도 함께 데리고 돌아왔다.
+V|N=17|EN=And the king of Sodom went out to meet him after his return from the slaughter of Chedorlaomer, and of the kings that were with him, at the valley of Shaveh, which is the king’s dale.|KO=소돔 왕이 그돌라오멜과 그와 함께한 왕들을 처치한 후, 그의 귀환을 맞이하기 위해 나왔다. 그곳은 왕의 골짜기인 샤웨 골짜기이다.
+V|N=18|EN=And Melchizedek king of Salem brought forth bread and wine: and he was the priest of the most high God.|KO=살렘 왕 멜기세덱이 떡과 포도주를 가지고 나왔고, 그는 지극히 높으신 하나님의 제사장이었다.
+V|N=19|EN=And he blessed him, and said, Blessed be Abram of the most high God, possessor of heaven and earth:|KO=그가 아브람을 축복하며 말하였다. 지극히 높으신 하나님, 하늘과 땅의 소유자 아브람이 복을 받으시기를.
+V|N=20|EN=And blessed be the most high God, which hath delivered thine enemies into thy hand. And he gave him tithes of all.|KO=그리고 지극히 높으신 하나님이 당신의 원수를 당신의 손에 넘겨주셨으니, 그는 모든 것의 십일조를 그에게 주었다.
+V|N=21|EN=And the king of Sodom said unto Abram, Give me the persons, and take the goods to thyself.|KO=소돔 왕이 아브람에게 이르되, 사람들은 내게 주고, 재물은 당신이 가지라 하였다.
+V|N=22|EN=And Abram said to the king of Sodom, I have lift up mine hand unto the LORD, the most high God, the possessor of heaven and earth,|KO=아브람이 소돔 왕에게 이르되, 나는 지극히 높으신 하나님, 하늘과 땅의 소유자에게 내 손을 들어 맹세하였노라.
+V|N=23|EN=That I will not take from a thread even to a shoelatchet, and that I will not take any thing that is thine, lest thou shouldest say, I have made Abram rich:|KO=나는 실타래 하나도, 신발 끈 하나도 취하지 않겠다고 맹세하였으니, 당신이 말하기를 내가 아브람을 부유하게 하였다 할까 두렵다.
+V|N=24|EN=Save only that which the young men have eaten, and the portion of the men which went with me, Aner, Eshcol, and Mamre; let them take their portion.|KO=젊은 남자들이 먹은 것과 나와 함께 간 아너와 에스골과 마므레의 몫은 제외하고, 그들이 그 몫을 취하게 하라.

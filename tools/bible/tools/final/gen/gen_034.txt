@@ -1,0 +1,33 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=34|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 34|KO=창세기 34장
+V|N=1|EN=And Dinah the daughter of Leah, which she bare unto Jacob, went out to see the daughters of the land.|KO=레아의 딸 디나가 야곱에게서 태어난 그가 나가서 그 땅의 딸들을 보러 갔더라.
+V|N=2|EN=And when Shechem the son of Hamor the Hivite, prince of the country, saw her, he took her, and lay with her, and defiled her.|KO=하몰의 아들 세겜이 그 땅의 왕자라 디나를 보고 그녀를 취하여 동침하고 더럽혔더라.
+V|N=3|EN=And his soul clave unto Dinah the daughter of Jacob, and he loved the damsel, and spake kindly unto the damsel.|KO=그의 마음이 디나에게 붙어 그녀를 사랑하였고, 그 소녀에게 친절히 말하였더라.
+V|N=4|EN=And Shechem spake unto his father Hamor, saying, Get me this damsel to wife.|KO=세겜이 그의 아버지 하몰에게 말하여 이르되, 이 소녀를 아내로 내게 주라 하였더라.
+V|N=5|EN=And Jacob heard that he had defiled Dinah his daughter: now his sons were with his cattle in the field: and Jacob held his peace until they were come.|KO=야곱이 그의 딸 디나가 더럽혀졌다는 말을 듣고, 그의 아들들은 들에서 그의 양떼와 함께 있었으므로, 야곱은 그들이 돌아올 때까지 잠잠하였더라.
+V|N=6|EN=And Hamor the father of Shechem went out unto Jacob to commune with him.|KO=하몰은 세겜의 아버지로서 야곱에게 나아가 그와 이야기하려 하였더라.
+V|N=7|EN=And the sons of Jacob came out of the field when they heard it: and the men were grieved, and they were very wroth, because he had wrought folly in Israel in lying with Jacob’s daughter: which thing ought not to be done.|KO=야곱의 아들들이 들에서 돌아오고 이 말을 듣고, 그 남자들은 근심하며 매우 노하여, 그가 이스라엘에서 야곱의 딸과 동침하여 어리석은 일을 행하였기 때문이라.
+V|N=8|EN=And Hamor communed with them, saying, The soul of my son Shechem longeth for your daughter: I pray you give her him to wife.|KO=하몰이 그들에게 말하여 이르되, 내 아들 세겜의 마음이 당신의 딸을 사모하니, 제발 그를 아내로 주라 하였더라.
+V|N=9|EN=And make ye marriages with us, and give your daughters unto us, and take our daughters unto you.|KO=우리와 혼인하고 당신의 딸들을 우리에게 주며, 우리의 딸들을 당신에게 취하라 하였더라.
+V|N=10|EN=And ye shall dwell with us: and the land shall be before you; dwell and trade ye therein, and get you possessions therein.|KO=당신들은 우리와 함께 거주하고, 그 땅은 당신들 앞에 있으니, 그 안에 거주하며 거래하고, 그 안에서 소유를 얻으라 하였더라.
+V|N=11|EN=And Shechem said unto her father and unto her brethren, Let me find grace in your eyes, and what ye shall say unto me I will give.|KO=세겜이 그녀의 아버지와 그녀의 형제들에게 이르되, 당신들의 눈에 은혜를 얻게 하소서, 당신들이 나에게 말하는 것은 무엇이든지 내가 주겠노라 하였더라.
+V|N=12|EN=Ask me never so much dowry and gift, and I will give according as ye shall say unto me: but give me the damsel to wife.|KO=내게 많은 지참금과 선물을 요구하라, 내가 당신들이 말하는 대로 주겠노라. 그러나 나에게 이 소녀를 아내로 주라 하였더라.
+V|N=13|EN=And the sons of Jacob answered Shechem and Hamor his father deceitfully, and said, because he had defiled Dinah their sister:|KO=야곱의 아들들이 세겜과 그의 아버지 하몰에게 속여 대답하였으니, 이는 그들이 그들의 누이 디나를 더럽혔기 때문이라.
+V|N=14|EN=And they said unto them, We cannot do this thing, to give our sister to one that is uncircumcised; for that were a reproach unto us:|KO=그들이 그들에게 이르되, 우리는 이 일을 할 수 없나니, 우리의 누이를 할례 받지 아니한 자에게 주는 것은 우리에게 수치가 되기 때문이라.
+V|N=15|EN=But in this will we consent unto you: If ye will be as we be, that every male of you be circumcised;|KO=그러나 우리가 당신들에게 동의하리니, 만일 당신들이 우리와 같이 되어, 우리 중 모든 남자가 할례를 받으면,
+V|N=16|EN=Then will we give our daughters unto you, and we will take your daughters to us, and we will dwell with you, and we will become one people.|KO=그때에 우리는 당신들에게 우리의 딸들을 주고, 당신들의 딸들을 취하여 함께 거주하며, 우리가 한 민족이 되리라 하였더라.
+V|N=17|EN=But if ye will not hearken unto us, to be circumcised; then will we take our daughter, and we will be gone.|KO=그러나 만일 당신들이 우리에게 듣지 아니하고 할례를 받지 아니하면, 우리는 우리의 딸을 취하고 떠나리라 하였더라.
+V|N=18|EN=And their words pleased Hamor, and Shechem Hamor’s son.|KO=그들의 말이 하몰과 그의 아들 세겜에게 기쁘게 들렸더라.
+V|N=19|EN=And the young man deferred not to do the thing, because he had delight in Jacob’s daughter: and he was more honourable than all the house of his father.|KO=젊은이는 그 일을 지체하지 아니하였으니, 이는 그가 야곱의 딸을 기뻐하였고, 그의 아버지 집안의 모든 사람보다 더 존귀하였더라.
+V|N=20|EN=And Hamor and Shechem his son came unto the gate of their city, and communed with the men of their city, saying,|KO=하몰과 그의 아들 세겜이 그들의 성문에 이르러 그 성의 남자들과 이야기하여 이르되,
+V|N=21|EN=These men are peaceable with us; therefore let them dwell in the land, and trade therein; for the land, behold, it is large enough for them; let us take their daughters to us for wives, and let us give them our daughters.|KO=이 남자들은 우리와 평화롭게 지내고 있으니, 그들로 하여금 이 땅에 거주하게 하고, 그 안에서 거래하게 하자. 보라, 이 땅은 그들에게 넉넉하니, 우리가 그들의 딸들을 아내로 취하고, 그들에게 우리의 딸들을 주자 하였더라.
+V|N=22|EN=Only herein will the men consent unto us for to dwell with us, to be one people, if every male among us be circumcised, as they are circumcised.|KO=오직 이 일에 대하여 남자들이 우리와 동의하리니, 우리가 한 민족이 되려면, 우리 중 모든 남자가 그들과 같이 할례를 받아야 하리라 하였더라.
+V|N=23|EN=Shall not their cattle and their substance and every beast of theirs be ours? only let us consent unto them, and they will dwell with us.|KO=그들의 가축과 그들의 재물과 그들의 모든 짐승이 우리의 것이 되지 아니하겠느냐? 오직 우리가 그들에게 동의하자, 그들이 우리와 함께 거주하리라 하였더라.
+V|N=24|EN=And unto Hamor and unto Shechem his son hearkened all that went out of the gate of his city; and every male was circumcised, all that went out of the gate of his city.|KO=그 성의 문에서 나간 모든 남자가 하몰과 그의 아들의 말을 듣고 할례를 받았더라.
+V|N=25|EN=And it came to pass on the third day, when they were sore, that two of the sons of Jacob, Simeon and Levi, Dinah’s brethren, took each man his sword, and came upon the city boldly, and slew all the males.|KO=셋째 날에 그들이 아프고, 야곱의 두 아들 시므온과 레위가 각기 칼을 가지고 담대히 성에 들어가서 모든 남자를 죽였더라.
+V|N=26|EN=And they slew Hamor and Shechem his son with the edge of the sword, and took Dinah out of Shechem’s house, and went out.|KO=그들이 하몰과 그의 아들 세겜을 칼날로 죽이고, 디나를 세겜의 집에서 데리고 나와서 나갔더라.
+V|N=27|EN=The sons of Jacob came upon the slain, and spoiled the city, because they had defiled their sister.|KO=야곱의 아들들이 죽임을 당한 자들에게 가서 그 성을 약탈하였으니, 이는 그들이 그들의 누이를 더럽혔기 때문이라.
+V|N=28|EN=They took their sheep, and their oxen, and their asses, and that which was in the city, and that which was in the field,|KO=그들은 그들의 양과 소와 나귀와 성 안에 있는 것과 들에 있는 것을 다 취하였더라.
+V|N=29|EN=And all their wealth, and all their little ones, and their wives took they captive, and spoiled even all that was in the house.|KO=그들의 모든 재물과 그들의 어린 것들과 그들의 아내들을 사로잡고, 그 집에 있는 모든 것을 약탈하였더라.
+V|N=30|EN=And Jacob said to Simeon and Levi, Ye have troubled me to make me to stink among the inhabitants of the land, among the Canaanites and the Perizzites: and I being few in number, they shall gather themselves together against me, and slay me; and I shall be destroyed, I and my house.|KO=야곱이 시므온과 레위에게 이르되, 너희가 나를 괴롭게 하여 이 땅의 거민들, 가나안 사람들과 브리스 사람들 사이에서 나를 악취가 나게 하였으니, 내가 수가 적으므로 그들이 나를 모아 대적하여 나를 죽일 것이요, 나와 내 집이 멸망하리라 하였더라.
+V|N=31|EN=And they said, Should he deal with our sister as with an harlot?|KO=그들이 이르되, 그가 우리 누이와 창녀처럼 행하겠느냐?

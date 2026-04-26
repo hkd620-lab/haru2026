@@ -20,4 +20,11 @@ build/
 *.old
 *.bak*
 *. 3.*
-.claude/
+.claude/*
+!.claude/CLAUDE.md
+frontend/.claude/*
+!frontend/.claude/CLAUDE.md
+*.bak
+*.old
+*.old2
+*.backup_*

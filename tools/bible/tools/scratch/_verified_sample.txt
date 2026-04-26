@@ -1,0 +1,4 @@
+#BOOK=Psalms|BOOKCODE=psa|CHAPTER=117|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Psalm 117|KO=시편 117편
+V|N=1|EN=O praise the LORD, all ye(you) nations: praise him, all ye(you) people.|KO=너희 모든 나라들아 여호와를 찬양하며 너희 모든 백성들아 그를 찬송할지어다.
+V|N=2|EN=For his merciful kindness is great toward us: and the truth of the LORD endureth for ever. Praise ye(you) the LORD.|KO=우리에게 향하신 여호와의 인자하심이 크시고 여호와의 진실하심이 영원함이로다 할렐루야.

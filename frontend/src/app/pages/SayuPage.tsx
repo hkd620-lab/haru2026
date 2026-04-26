@@ -799,6 +799,20 @@ export function SayuPage() {
     } catch { toast.error('삭제 실패'); }
   };
 
+  const handleStarRating = async (logId: string, star: number) => {
+    try {
+      const newRating = aiLogs.find(l => l.id === logId)?.star_rating === star ? 0 : star;
+      await updateDoc(doc(db, `users/${user!.uid}/records`, logId), {
+        star_rating: newRating
+      });
+      setAiLogs(prev => prev.map(l =>
+        l.id === logId ? { ...l, star_rating: newRating } : l
+      ));
+    } catch (e) {
+      console.warn('별점 저장 실패:', e);
+    }
+  };
+
   const handleCopyAiLog = async (id: string) => {
     try {
       const log = aiLogs.find(l => l.id === id);
@@ -1747,6 +1761,23 @@ export function SayuPage() {
                             <span className="px-2 text-xs" style={{ color: '#aaa' }}>
                               {selectedAiLog?.id === log.id ? '▲' : '▼'}
                             </span>
+                            <div
+                              onClick={e => e.stopPropagation()}
+                              style={{ display: 'flex', alignItems: 'center', paddingRight: 4 }}
+                            >
+                              {[1, 2, 3].map(star => (
+                                <button
+                                  key={star}
+                                  onClick={e => { e.stopPropagation(); handleStarRating(log.id, star); }}
+                                  style={{
+                                    background: 'none', border: 'none', cursor: 'pointer',
+                                    fontSize: 14, padding: '0 1px', lineHeight: 1,
+                                    color: (log.star_rating || 0) >= star ? '#F59E0B' : '#e5e7eb',
+                                  }}
+                                  title={`별 ${star}개`}
+                                >★</button>
+                              ))}
+                            </div>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleCopyAiLog(log.id); }}
                               className="px-3 py-2.5 text-xs flex-shrink-0 hover:text-blue-500 transition-colors"

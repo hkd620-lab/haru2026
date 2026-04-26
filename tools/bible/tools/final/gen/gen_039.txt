@@ -1,0 +1,25 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=39|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 39|KO=창세기 39장
+V|N=1|EN=And Joseph was brought down to Egypt; and Potiphar, an officer of Pharaoh, captain of the guard, an Egyptian, bought him of the hands of the Ishmeelites, which had brought him down thither.|KO=요셉이 애굽으로 내려갔고, 바로의 신하, 경비대의 대장인 애굽 사람이 이스마엘 사람들의 손에서 그를 사서 데려갔다.
+V|N=2|EN=And the LORD was with Joseph, and he was a prosperous man; and he was in the house of his master the Egyptian.|KO=여호와께서 요셉과 함께 하시므로 그가 형통한 자가 되어 그의 주인 애굽의 집에 있었더라.
+V|N=3|EN=And his master saw that the LORD was with him, and that the LORD made all that he did to prosper in his hand.|KO=그의 주인이 여호와께서 그와 함께 하심을 보고, 여호와께서 그의 손에 있는 모든 일을 형통하게 하심을 보았더라.
+V|N=4|EN=And Joseph found grace in his sight, and he served him: and he made him overseer over his house, and all that he had he put into his hand.|KO=요셉이 그의 눈에 은혜를 얻으므로 그를 섬기게 하였고, 그가 그의 집의 총괄자로 삼고, 그의 모든 것을 그의 손에 맡겼더라.
+V|N=5|EN=And it came to pass from the time that he had made him overseer in his house, and over all that he had, that the LORD blessed the Egyptian’s house for Joseph’s sake; and the blessing of the LORD was upon all that he had in the house, and in the field.|KO=그가 요셉을 총괄자로 삼은 후부터 여호와께서 애굽 사람의 집을 요셉으로 인하여 복을 주시니, 여호와의 복이 그의 집과 밭에 있는 모든 것에 임하였더라.
+V|N=6|EN=And he left all that he had in Joseph’s hand; and he knew not ought he had, save the bread which he did eat. And Joseph was a goodly person, and well favoured.|KO=그가 요셉의 손에 있는 모든 것을 맡기고, 자기가 가진 것은 빵 외에는 아무것도 알지 못하였더라. 요셉은 아름답고 준수한 사람이었더라.
+V|N=7|EN=And it came to pass after these things, that his master’s wife cast her eyes upon Joseph; and she said, Lie with me.|KO=이 일 후에 그의 주인의 아내가 요셉에게 눈을 돌려 이르되, 나와 동침하자 하니,
+V|N=8|EN=But he refused, and said unto his master’s wife, Behold, my master wotteth not what is with me in the house, and he hath committed all that he hath to my hand;|KO=요셉이 거절하고 그의 주인의 아내에게 이르되, 내 주인이 나를 집에 두지 아니하시고, 내게 있는 모든 것을 다 내 손에 맡기셨으니,
+V|N=9|EN=There is none greater in this house than I; neither hath he kept back any thing from me but thee, because thou art his wife: how then can I do this great wickedness, and sin against God?|KO=이 집에는 나보다 더 큰 자가 없고, 그가 나에게는 아무것도 금하지 아니하였으니, 오직 당신뿐이니, 당신은 그의 아내임이라. 내가 어찌 이 큰 악을 행하여 하나님께 죄를 지을 수 있겠습니까?
+V|N=10|EN=And it came to pass, as she spake to Joseph day by day, that he hearkened not unto her, to lie by her, or to be with her.|KO=그 여인이 날마다 요셉에게 말하였으나, 요셉은 그녀의 말을 듣지 아니하고, 그녀와 함께 하거나 그녀 곁에 있지 아니하였더라.
+V|N=11|EN=And it came to pass about this time, that Joseph went into the house to do his business; and there was none of the men of the house there within.|KO=어느 날 요셉이 그의 일을 하려고 집에 들어갔고, 집안에 남자가 아무도 없더라.
+V|N=12|EN=And she caught him by his garment, saying, Lie with me: and he left his garment in her hand, and fled, and got him out.|KO=그 여인이 그의 겉옷을 잡고 이르되, 나와 동침하자 하니, 요셉이 그의 겉옷을 그의 손에 두고 도망하여 밖으로 나가니라.
+V|N=13|EN=And it came to pass, when she saw that he had left his garment in her hand, and was fled forth,|KO=그 여인이 그가 자기의 겉옷을 그의 손에 두고 도망한 것을 보고,
+V|N=14|EN=That she called unto the men of her house, and spake unto them, saying, See, he hath brought in an Hebrew unto us to mock us; he came in unto me to lie with me, and I cried with a loud voice:|KO=그 여인이 자기 집의 남자들에게 소리쳐 이르되, 보라, 그가 우리에게 히브리 사람을 데려와서 우리를 조롱하였도다. 그가 내게 들어와서 나와 동침하려 하였으나, 내가 큰 소리로 외쳤더니,
+V|N=15|EN=And it came to pass, when he heard that I lifted up my voice and cried, that he left his garment with me, and fled, and got him out.|KO=내가 소리 지르고 외쳤을 때, 그가 내게서 그의 겉옷을 두고 도망하였느니라.
+V|N=16|EN=And she laid up his garment by her, until his lord came home.|KO=그 여인이 그의 겉옷을 자기 곁에 두고, 그의 주인이 집에 돌아올 때까지 기다리더라.
+V|N=17|EN=And she spake unto him according to these words, saying, The Hebrew servant, which thou hast brought unto us, came in unto me to mock me:|KO=그 여인이 그의 주인에게 이르되, 당신이 우리에게 데려온 히브리 종이 나에게 들어와서 나를 조롱하였나이다.
+V|N=18|EN=And it came to pass, as I lifted up my voice and cried, that he left his garment with me, and fled out.|KO=내가 소리 지르고 외쳤을 때, 그가 내게서 그의 겉옷을 두고 도망하였나이다.
+V|N=19|EN=And it came to pass, when his master heard the words of his wife, which she spake unto him, saying, After this manner did thy servant to me; that his wrath was kindled.|KO=그의 주인이 아내의 말을 듣고, 그가 내게 이같이 하였다고 하니, 그의 분노가 일어났더라.
+V|N=20|EN=And Joseph’s master took him, and put him into the prison, a place where the king’s prisoners were bound: and he was there in the prison.|KO=요셉의 주인이 그를 잡아다가 왕의 죄수들이 갇힌 곳에 넣었더라. 그는 그곳에 갇혔더라.
+V|N=21|EN=But the LORD was with Joseph, and shewed him mercy, and gave him favour in the sight of the keeper of the prison.|KO=여호와께서 요셉과 함께 하시고, 그에게 인자를 베푸시고, 간수의 눈에 은혜를 주셨더라.
+V|N=22|EN=And the keeper of the prison committed to Joseph’s hand all the prisoners that were in the prison; and whatsoever they did there, he was the doer of it.|KO=간수가 감옥에 있는 모든 죄수들을 요셉의 손에 맡기고, 그가 거기서 하는 모든 일을 요셉이 하였더라.
+V|N=23|EN=The keeper of the prison looked not to any thing that was under his hand; because the LORD was with him, and that which he did, the LORD made it to prosper.|KO=간수가 그의 손에 있는 모든 것을 살펴보지 아니하였으니, 여호와께서 그와 함께 하시고, 그가 하는 모든 일을 형통하게 하셨더라.

@@ -1,0 +1,33 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=1|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 1|KO=창세기 1장
+V|N=1|EN=In the beginning God created the heaven and the earth.|KO=태초에 하나님이 천지를 창조하시니라.
+V|N=2|EN=And the earth was without form, and void; and darkness was upon the face of the deep. And the Spirit of God moved upon the face of the waters.|KO=땅은 형태가 없고 비어 있었으며, 깊음의 얼굴 위에 어둠이 있었고, 하나님의 영이 수면 위에 움직이시니라.
+V|N=3|EN=And God said, Let there be light: and there was light.|KO=하나님이 말씀하시기를 빛이 있으라 하시니, 빛이 있었고,
+V|N=4|EN=And God saw the light, that it was good: and God divided the light from the darkness.|KO=하나님이 그 빛을 보시니 좋았더라. 하나님이 빛과 어둠을 나누시고,
+V|N=5|EN=And God called the light Day, and the darkness he called Night. And the evening and the morning were the first day.|KO=하나님이 빛을 낮이라 부르시고, 어둠을 밤이라 부르시니, 저녁이 되고 아침이 되니 첫째 날이니라.
+V|N=6|EN=And God said, Let there be a firmament in the midst of the waters, and let it divide the waters from the waters.|KO=하나님이 말씀하시기를 수면 가운데에 궁창이 있어 수면을 나누게 하라 하시니,
+V|N=7|EN=And God made the firmament, and divided the waters which were under the firmament from the waters which were above the firmament: and it was so.|KO=하나님이 궁창을 만드시고, 궁창 아래의 물과 궁창 위의 물을 나누시니, 그대로 되니라.
+V|N=8|EN=And God called the firmament Heaven. And the evening and the morning were the second day.|KO=하나님이 궁창을 하늘이라 부르시고, 저녁이 되고 아침이 되니 둘째 날이니라.
+V|N=9|EN=And God said, Let the waters under the heaven be gathered together unto one place, and let the dry land appear: and it was so.|KO=하나님이 말씀하시기를 하늘 아래의 물이 한 곳으로 모이고, 마른 땅이 나타나게 하라 하시니, 그대로 되니라.
+V|N=10|EN=And God called the dry land Earth; and the gathering together of the waters called he Seas: and God saw that it was good.|KO=하나님이 마른 땅을 땅이라 부르시고, 모인 물을 바다라 부르시니, 하나님이 보시기에 좋았더라.
+V|N=11|EN=And God said, Let the earth bring forth grass, the herb yielding seed, and the fruit tree yielding fruit after his kind, whose seed is in itself, upon the earth: and it was so.|KO=하나님이 말씀하시기를 땅이 풀과 씨 맺는 채소와 그 종류의 열매 맺는 나무를 내게 하라 하시니, 그대로 되니라.
+V|N=12|EN=And the earth brought forth grass, and herb yielding seed after his kind, and the tree yielding fruit, whose seed was in itself, after his kind: and God saw that it was good.|KO=땅이 풀과 그 종류의 씨 맺는 채소와 그 종류의 열매 맺는 나무를 내니, 하나님이 보시기에 좋았더라.
+V|N=13|EN=And the evening and the morning were the third day.|KO=저녁이 되고 아침이 되니 셋째 날이니라.
+V|N=14|EN=And God said, Let there be lights in the firmament of the heaven to divide the day from the night; and let them be for signs, and for seasons, and for days, and years:|KO=하나님이 말씀하시기를 하늘의 궁창에 광명체들이 있어 낮과 밤을 나누고, 표징과 절기와 날과 해가 되게 하라 하시니,
+V|N=15|EN=And let them be for lights in the firmament of the heaven to give light upon the earth: and it was so.|KO=하나님이 그것들을 하늘의 궁창에 두어 땅에 비추게 하시니, 그대로 되니라.
+V|N=16|EN=And God made two great lights; the greater light to rule the day, and the lesser light to rule the night: he made the stars also.|KO=하나님이 두 큰 광명체를 만드시니, 큰 광명체는 낮을 다스리게 하시고, 작은 광명체는 밤을 다스리게 하시고, 별들도 만드시니라.
+V|N=17|EN=And God set them in the firmament of the heaven to give light upon the earth,|KO=하나님이 그것들을 하늘의 궁창에 두어 땅에 비추게 하시니,
+V|N=18|EN=And to rule over the day and over the night, and to divide the light from the darkness: and God saw that it was good.|KO=낮과 밤을 다스리게 하시고, 빛과 어둠을 나누게 하시니, 하나님이 보시기에 좋았더라.
+V|N=19|EN=And the evening and the morning were the fourth day.|KO=저녁이 되고 아침이 되니 넷째 날이니라.
+V|N=20|EN=And God said, Let the waters bring forth abundantly the moving creature that hath life, and fowl that may fly above the earth in the open firmament of heaven.|KO=하나님이 말씀하시기를 물이 생물을 풍성히 내게 하라 하시고, 하늘의 궁창 위에서 나는 새가 땅 위에 날게 하라 하시니,
+V|N=21|EN=And God created great whales, and every living creature that moveth, which the waters brought forth abundantly, after their kind, and every winged fowl after his kind: and God saw that it was good.|KO=하나님이 큰 고래와 물에서 생명을 내는 모든 생물을 그 종류대로 창조하시고, 날개 있는 새를 그 종류대로 창조하시니, 하나님이 보시기에 좋았더라.
+V|N=22|EN=And God blessed them, saying, Be fruitful, and multiply, and fill the waters in the seas, and let fowl multiply in the earth.|KO=하나님이 그들에게 복을 주시며 말씀하시기를 생육하고 번성하여 바다의 물을 채우고, 땅에서 새가 번성하게 하라 하시니라.
+V|N=23|EN=And the evening and the morning were the fifth day.|KO=저녁이 되고 아침이 되니 다섯째 날이니라.
+V|N=24|EN=And God said, Let the earth bring forth the living creature after his kind, cattle, and creeping thing, and beast of the earth after his kind: and it was so.|KO=하나님이 말씀하시기를 땅이 그 종류대로 생물을 내게 하라 하시니, 가축과 기는 것과 땅의 짐승을 그 종류대로 내게 하시니, 그대로 되니라.
+V|N=25|EN=And God made the beast of the earth after his kind, and cattle after their kind, and every thing that creepeth upon the earth after his kind: and God saw that it was good.|KO=하나님이 땅의 짐승을 그 종류대로, 가축을 그 종류대로, 땅 위에 기는 모든 것을 그 종류대로 만드시니, 하나님이 보시기에 좋았더라.
+V|N=26|EN=And God said, Let us make man in our image, after our likeness: and let them have dominion over the fish of the sea, and over the fowl of the air, and over the cattle, and over all the earth, and over every creeping thing that creepeth upon the earth.|KO=하나님이 말씀하시기를 우리의 형상대로 우리의 모양을 따라 사람을 만들고, 바다의 물고기와 하늘의 새와 가축과 땅의 모든 것과 땅 위에 기는 모든 것을 다스리게 하라 하시니,
+V|N=27|EN=So God created man in his own image, in the image of God created he him; male and female created he them.|KO=하나님이 자기 형상대로 사람을 창조하시되, 남자와 여자를 창조하시니라.
+V|N=28|EN=And God blessed them, and God said unto them, Be fruitful, and multiply, and replenish the earth, and subdue it: and have dominion over the fish of the sea, and over the fowl of the air, and over every living thing that moveth upon the earth.|KO=하나님이 그들에게 복을 주시며 말씀하시기를 생육하고 번성하여 땅을 채우고 정복하라. 바다의 물고기와 하늘의 새와 땅 위의 모든 생물을 다스리라 하시니라.
+V|N=29|EN=And God said, Behold, I have given you every herb bearing seed, which is upon the face of all the earth, and every tree, in the which is the fruit of a tree yielding seed; to you it shall be for meat.|KO=하나님이 말씀하시기를 보라, 내가 너희에게 땅의 모든 씨 맺는 채소와 모든 나무의 열매를 주었으니, 너희에게 식물이 되리라.
+V|N=30|EN=And to every beast of the earth, and to every fowl of the air, and to every thing that creepeth upon the earth, wherein there is life, I have given every green herb for meat: and it was so.|KO=또 땅의 모든 짐승과 하늘의 모든 새와 땅 위에 기는 모든 생물에게 생명이 있는 모든 것을 위하여 내가 모든 푸른 채소를 식물로 주었으니, 그대로 되니라.
+V|N=31|EN=And God saw every thing that he had made, and, behold, it was very good. And the evening and the morning were the sixth day.|KO=하나님이 지으신 모든 것을 보시니, 보라, 매우 좋았더라. 저녁이 되고 아침이 되니 여섯째 날이니라.

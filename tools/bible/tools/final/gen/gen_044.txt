@@ -1,0 +1,36 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=44|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 44|KO=창세기 44장
+V|N=1|EN=And he commanded the steward of his house, saying, Fill the men’s sacks with food, as much as they can carry, and put every man’s money in his sack’s mouth.|KO=그가 자기 집의 관리인에게 명령하여 이르되, 남자들의 자루에 그들이 운반할 수 있는 만큼 음식을 채우고, 각 사람의 돈을 그의 자루 입에 넣으라 하니라.
+V|N=2|EN=And put my cup, the silver cup, in the sack’s mouth of the youngest, and his corn money. And he did according to the word that Joseph had spoken.|KO=그리고 내 잔, 은잔을 가장 어린 자의 자루 입에 넣고 그의 곡식 값을 넣으라 하니, 그는 요셉이 말한 대로 하였더라.
+V|N=3|EN=As soon as the morning was light, the men were sent away, they and their asses.|KO=아침이 밝자, 그 남자들은 그들과 그들의 나귀를 보내었더라.
+V|N=4|EN=And when they were gone out of the city, and not yet far off, Joseph said unto his steward, Up, follow after the men; and when thou dost overtake them, say unto them, Wherefore have ye rewarded evil for good?|KO=그들이 성을 나가고 멀리 가지 않았을 때, 요셉이 그의 관리인에게 이르되, 일어나서 그 남자들을 따라가라. 그들을 따라잡으면 그들에게 말하라, 너희가 선을 악으로 보답하였느냐?
+V|N=5|EN=Is not this it in which my lord drinketh, and whereby indeed he divineth? ye have done evil in so doing.|KO=내 주가 마시는 것이 이것이 아니냐? 그리고 그로 인해 참으로 점치는 것이 아니냐? 너희가 이렇게 행함으로 악을 행하였느니라.
+V|N=6|EN=And he overtook them, and he spake unto them these same words.|KO=그가 그들을 따라잡고 이 같은 말을 그들에게 하였더라.
+V|N=7|EN=And they said unto him, Wherefore saith my lord these words? God forbid that thy servants should do according to this thing:|KO=그들이 그에게 이르되, 내 주가 어찌하여 이 같은 말을 하시나이까? 주의 종들이 이 일을 행할 수 없나이다.
+V|N=8|EN=Behold, the money, which we found in our sacks’ mouths, we brought again unto thee out of the land of Canaan: how then should we steal out of thy lord’s house silver or gold?|KO=보소서, 우리가 자루 입에서 발견한 돈을 가나안 땅에서 당신에게 다시 가져왔나이다. 그러면 어찌하여 당신의 주의 집에서 은이나 금을 훔치겠습니까?
+V|N=9|EN=With whomsoever of thy servants it be found, both let him die, and we also will be my lord’s bondmen.|KO=당신의 종들 중 누구에게서 발견되든지, 그 사람은 죽게 하고, 우리는 또한 내 주의 종이 되리이다.
+V|N=10|EN=And he said, Now also let it be according unto your words: he with whom it is found shall be my servant; and ye shall be blameless.|KO=그가 이르되, 이제 너희의 말대로 하리라. 그것이 발견된 자는 내 종이 될 것이요, 너희는 무죄하리라.
+V|N=11|EN=Then they speedily took down every man his sack to the ground, and opened every man his sack.|KO=그들이 급히 각자 자루를 땅에 내리고, 각자 자루를 열었더라.
+V|N=12|EN=And he searched, and began at the eldest, and left at the youngest: and the cup was found in Benjamin’s sack.|KO=그가 조사하기 시작하였고, 맏형부터 시작하여 막내까지 조사하였더니, 잔이 베냐민의 자루에서 발견되었더라.
+V|N=13|EN=Then they rent their clothes, and laded every man his ass, and returned to the city.|KO=그들이 자기의 옷을 찢고, 각자 자기의 나귀에 짐을 싣고, 성으로 돌아갔더라.
+V|N=14|EN=And Judah and his brethren came to Joseph’s house; for he was yet there: and they fell before him on the ground.|KO=유다와 그의 형제들이 요셉의 집에 이르렀을 때, 그는 아직 거기 있었고, 그들은 땅에 엎드려 그 앞에 엎드렸더라.
+V|N=15|EN=And Joseph said unto them, What deed is this that ye have done? wot ye not that such a man as I can certainly divine?|KO=요셉이 그들에게 이르되, 너희가 무슨 일을 하였느냐? 너희가 알지 못하느냐? 내가 이런 사람인 줄을 알지 못하느냐?
+V|N=16|EN=And Judah said, What shall we say unto my lord? what shall we speak? or how shall we clear ourselves? God hath found out the iniquity of thy servants: behold, we are my lord’s servants, both we, and he also with whom the cup is found.|KO=유다가 이르되, 내 주여, 우리가 내 주에게 무엇을 말하며, 무엇을 말할 수 있사옵니까? 우리가 어떻게 우리 자신을 변명할 수 있사옵니까? 하나님이 당신의 종들의 죄를 찾으셨나이다. 보소서, 우리는 내 주의 종이 되었고, 잔이 발견된 자도 그러하니이다.
+V|N=17|EN=And he said, God forbid that I should do so: but the man in whose hand the cup is found, he shall be my servant; and as for you, get you up in peace unto your father.|KO=그가 이르되, 내가 그렇게 할 수 없느니라. 잔이 발견된 자는 내 종이 될 것이요, 너희는 평안히 너희 아버지에게 돌아가라.
+V|N=18|EN=Then Judah came near unto him, and said, Oh my lord, let thy servant, I pray thee, speak a word in my lord’s ears, and let not thine anger burn against thy servant: for thou art even as Pharaoh.|KO=그때 유다가 가까이 나아가서 이르되, 오 내 주여, 내 주의 귀에 한 말씀을 하게 하옵소서. 내 주의 노가 내게 대하여 타오르지 않게 하옵소서. 당신은 바로와 같으니이다.
+V|N=19|EN=My lord asked his servants, saying, Have ye a father, or a brother?|KO=내 주가 그의 종들에게 물으시기를, 너희에게 아버지가 있느냐? 아니면 형제가 있느냐 하셨나이다.
+V|N=20|EN=And we said unto my lord, We have a father, an old man, and a child of his old age, a little one; and his brother is dead, and he alone is left of his mother, and his father loveth him.|KO=우리가 내 주에게 이르되, 우리는 아버지가 한 분 계시고, 늙은이와 그의 나이 많은 아들이 하나 있나이다. 그의 형은 죽었고, 그의 어머니의 아들은 그 외에는 남아 있지 않나이다. 그의 아버지가 그를 사랑하나이다.
+V|N=21|EN=And thou saidst unto thy servants, Bring him down unto me, that I may set mine eyes upon him.|KO=당신이 당신의 종들에게 이르시기를, 그를 내게 데려오라. 내가 그를 보리라 하셨나이다.
+V|N=22|EN=And we said unto my lord, The lad cannot leave his father: for if he should leave his father, his father would die.|KO=우리가 내 주에게 이르되, 그 아이는 그의 아버지를 떠날 수 없나이다. 만일 그가 그의 아버지를 떠나면, 그의 아버지가 죽으리이다.
+V|N=23|EN=And thou saidst unto thy servants, Except your youngest brother come down with you, ye shall see my face no more.|KO=당신이 당신의 종들에게 이르시기를, 너희의 막내 형제가 너희와 함께 내려오지 아니하면, 너희는 다시 내 얼굴을 보지 못하리라 하셨나이다.
+V|N=24|EN=And it came to pass when we came up unto thy servant my father, we told him the words of my lord.|KO=우리가 당신의 종인 우리 아버지에게 올라갔을 때, 우리는 내 주의 말씀을 그에게 전하였나이다.
+V|N=25|EN=And our father said, Go again, and buy us a little food.|KO=우리 아버지가 이르되, 다시 가서 우리에게 조금 음식을 사오라 하셨나이다.
+V|N=26|EN=And we said, We cannot go down: if our youngest brother be with us, then will we go down: for we may not see the man’s face, except our youngest brother be with us.|KO=우리가 이르되, 우리는 내려갈 수 없나이다. 만일 우리의 막내 형제가 우리와 함께 있으면, 그때에야 내려가겠나이다. 우리는 그 사람의 얼굴을 보지 못하나이다. 우리의 막내 형제가 우리와 함께 있지 아니하면.
+V|N=27|EN=And thy servant my father said unto us, Ye know that my wife bare me two sons:|KO=당신의 종인 우리 아버지가 우리에게 이르시기를, 너희가 알거니와, 내 아내가 나에게 두 아들을 낳았느니라.
+V|N=28|EN=And the one went out from me, and I said, Surely he is torn in pieces; and I saw him not since:|KO=하나는 나에게서 나가고, 나는 그가 찢겨졌다고 말하였고, 나는 그를 보지 못하였느니라.
+V|N=29|EN=And if ye take this also from me, and mischief befall him, ye shall bring down my gray hairs with sorrow to the grave.|KO=만일 너희가 이것도 내게서 취하고, 그에게 재앙이 닥치면, 너희는 내 백발을 슬픔으로 무덤에 내리게 하리라.
+V|N=30|EN=Now therefore when I come to thy servant my father, and the lad be not with us; seeing that his life is bound up in the lad’s life;|KO=그러므로 내가 당신의 종인 우리 아버지에게 가게 될 때, 그 아이가 우리와 함께 있지 아니하면, 그의 생명이 그 아이의 생명에 묶여 있음을 보게 되리니.
+V|N=31|EN=It shall come to pass, when he seeth that the lad is not with us, that he will die: and thy servants shall bring down the gray hairs of thy servant our father with sorrow to the grave.|KO=그 아이가 우리와 함께 있지 아니한 것을 보게 되면, 그는 죽으리니, 당신의 종들은 우리 아버지의 백발을 슬픔으로 무덤에 내리게 하리이다.
+V|N=32|EN=For thy servant became surety for the lad unto my father, saying, If I bring him not unto thee, then I shall bear the blame to my father for ever.|KO=당신의 종이 그 아이를 위해 우리 아버지에게 보증이 되었나이다. 내가 그를 당신에게 데려오지 아니하면, 내가 영원히 아버지에게 죄를 지게 되리이다.
+V|N=33|EN=Now therefore, I pray thee, let thy servant abide instead of the lad a bondman to my lord; and let the lad go up with his brethren.|KO=그러므로 이제, 내가 간청하나이다. 당신의 종이 그 아이 대신에 내 주의 종이 되게 하시고, 그 아이는 그의 형제들과 함께 올라가게 하옵소서.
+V|N=34|EN=For how shall I go up to my father, and the lad be not with me? lest peradventure I see the evil that shall come on my father.|KO=내가 어찌하여 올라가겠나이까? 그 아이가 나와 함께 있지 아니하면, 내가 어찌 내 아버지를 보겠나이까? 두렵건대, 내가 내 아버지에게 닥칠 재앙을 보게 되리이다.

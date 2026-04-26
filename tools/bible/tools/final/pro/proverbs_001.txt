@@ -1,0 +1,35 @@
+#BOOK=Proverbs|BOOKCODE=pro|CHAPTER=1|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Proverbs 1|KO=잠언 1장
+V|N=1|EN=The proverbs of Solomon the son of David, king of Israel;|KO=다윗의 아들 이스라엘 왕 솔로몬의 잠언이라.
+V|N=2|EN=To know wisdom and instruction; to perceive the words of understanding;|KO=지혜와 훈계를 알게 하며 명철의 말씀을 깨닫게 하며
+V|N=3|EN=To receive the instruction of wisdom, justice, and judgment, and equity;|KO=지혜의 훈계와 공의와 판단과 정직을 받게 하며
+V|N=4|EN=To give subtilty to the simple, to the young man knowledge and discretion.|KO=어리석은 자에게 슬기를 주며 젊은 자에게 지식과 근신함을 주기 위한 것이니라.
+V|N=5|EN=A wise man will hear, and will increase learning; and a man of understanding shall attain unto(to) wise counsels:|KO=지혜로운 자는 듣고 학식이 더할 것이요 명철한 자는 지략을 얻어 지혜로운 권고에 이르리라.
+V|N=6|EN=To understand a proverb, and the interpretation; the words of the wise, and their dark sayings.|KO=잠언과 그 뜻과 지혜 있는 자의 말과 그들의 오묘한 말을 깨닫게 하려 함이니라.
+V|N=7|EN=The fear of the LORD is the beginning of knowledge: but fools despise wisdom and instruction.|KO=여호와를 경외하는 것이 지식의 근본이거늘 미련한 자는 지혜와 훈계를 멸시하느니라.
+V|N=8|EN=My son, hear the instruction of thy(your) father, and forsake not the law of thy(your) mother:|KO=내 아들아 네 아버지의 훈계를 들으며 네 어머니의 법을 떠나지 말라.
+V|N=9|EN=For they shall be an ornament of grace unto(to) thy(your) head, and chains about thy(your) neck.|KO=이것이 네 머리에 은혜로운 관이 되며 네 목에 금사슬이 되리라.
+V|N=10|EN=My son, if sinners entice thee(you), consent thou(you) not.|KO=내 아들아 죄인들이 너를 꾈지라도 너는 따르지 말라.
+V|N=11|EN=If they say, Come with us, let us lay wait for blood, let us lurk privily for the innocent without cause:|KO=그들이 말하기를 우리와 함께 가자 우리가 피를 기다리자 까닭 없이 무죄한 자를 몰래 엿보자 하며
+V|N=12|EN=Let us swallow them up alive as the grave; and whole, as those that go down into the pit:|KO=우리가 스올처럼 그들을 산 채로 삼키며 구덩이에 내려가는 자처럼 온전히 삼키자 하고
+V|N=13|EN=We shall find all precious substance, we shall fill our houses with spoil:|KO=우리가 각종 보화를 얻으며 탈취한 것으로 우리 집을 채우리니
+V|N=14|EN=Cast in thy(your) lot among us; let us all have one purse:|KO=네 제비를 우리 가운데 던지라 우리가 다 한 돈주머니를 같이 하자 할지라도
+V|N=15|EN=My son, walk not thou(you) in the way with them; refrain thy(your) foot from their path:|KO=내 아들아 그들과 함께 길에 다니지 말고 네 발을 그들의 길에서 금하라.
+V|N=16|EN=For their feet run to evil, and make haste to shed blood.|KO=그들의 발은 악으로 달려가며 피를 흘리는 데에 빠르니라.
+V|N=17|EN=Surely in vain the net is spread in the sight of any bird.|KO=무릇 새가 보는 데서 그물을 치면 헛일이거늘
+V|N=18|EN=And they lay wait for their own blood; they lurk privily for their own lives.|KO=그들은 자기 피를 기다리며 자기 생명을 해하려고 몰래 엿보느니라.
+V|N=19|EN=So are the ways of every one that is greedy of gain; which taketh away the life of the owners thereof.|KO=이익에 탐하는 자마다 그 길이 이러하니라 그것이 그 임자의 생명을 빼앗느니라.
+V|N=20|EN=Wisdom crieth(cries) without; she uttereth(utters) her voice in the streets:|KO=지혜가 밖에서 부르며 거리에서 소리를 높이며
+V|N=21|EN=She crieth(cries) in the chief place of concourse, in the openings of the gates: in the city she uttereth(utters) her words, saying,|KO=모이는 곳의 요긴한 자리와 성문 어귀에서 외치며 성읍에서 그 말을 내어 이르되
+V|N=22|EN=How long, ye(you) simple ones, will ye(you) love simplicity? and the scorners delight in their scorning, and fools hate knowledge?|KO=너희 어리석은 자들아 어느 때까지 어리석음을 사랑하겠느냐 거만한 자들이 거만을 기뻐하며 미련한 자들이 지식을 미워하기를 어느 때까지 하겠느냐
+V|N=23|EN=Turn you at my reproof: behold, I will pour out my spirit unto(to) you, I will make known my words unto(to) you.|KO=내 책망으로 돌이키라 보라 내가 내 영을 너희에게 부어 주며 내 말을 너희에게 알게 하리라.
+V|N=24|EN=Because I have called, and ye(you) refused; I have stretched out my hand, and no man regarded;|KO=내가 불렀으나 너희가 거절하였고 내가 손을 폈으나 돌아보는 자가 없었고
+V|N=25|EN=But ye(you) have set at nought all my counsel, and would none of my reproof:|KO=도리어 너희가 내 모든 교훈을 물리치며 내 책망을 받지 아니하였은즉
+V|N=26|EN=I also will laugh at your calamity; I will mock when your fear cometh;|KO=나도 너희 재앙을 보고 웃으며 너희 두려움이 임할 때 비웃으리라.
+V|N=27|EN=When your fear cometh as desolation, and your destruction cometh as a whirlwind; when distress and anguish cometh upon you.|KO=너희 두려움이 황폐함 같이 임하고 너희 멸망이 회오리바람 같이 임하며 환난과 근심이 너희에게 임할 때에 그러하리라.
+V|N=28|EN=Then shall they call upon me, but I will not answer; they shall seek me early, but they shall not find me:|KO=그때에 그들이 내게 부르짖으나 내가 대답하지 아니하겠고 부지런히 나를 찾으나 나를 만나지 못하리니
+V|N=29|EN=For that they hated knowledge, and did not choose the fear of the LORD:|KO=이는 그들이 지식을 미워하며 여호와 경외하기를 택하지 아니하며
+V|N=30|EN=They would none of my counsel: they despised all my reproof.|KO=내 교훈을 받지 아니하고 내 모든 책망을 멸시하였음이라.
+V|N=31|EN=Therefore shall they eat of the fruit of their own way, and be filled with their own devices.|KO=그러므로 그들은 자기 행위의 열매를 먹으며 자기 꾀에 배부르게 되리라.
+V|N=32|EN=For the turning away of the simple shall slay them, and the prosperity of fools shall destroy them.|KO=어리석은 자의 배교는 그들을 죽이며 미련한 자의 형통은 그들을 멸망시키려니와
+V|N=33|EN=But whoso hearkeneth(heeds) unto(to) me shall dwell safely, and shall be quiet from fear of evil.|KO=오직 내 말을 듣는 자는 안전히 거하며 재앙의 두려움이 없이 평안하리라.

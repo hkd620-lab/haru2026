@@ -1,0 +1,37 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=29|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 29|KO=창세기 29장
+V|N=1|EN=Then Jacob went on his journey, and came into the land of the people of the east.|KO=그때 야곱이 여행을 계속하여 동방 사람들의 땅에 이르렀다.
+V|N=2|EN=And he looked, and behold a well in the field, and, lo, there were three flocks of sheep lying by it; for out of that well they watered the flocks: and a great stone was upon the well’s mouth.|KO=그가 눈을 들어 보니, 밭에 우물이 있고, 그 곁에 세 무리의 양이 누워 있었으니, 그들이 그 우물에서 양을 마시게 하였고, 우물의 입구에는 큰 돌이 있었다.
+V|N=3|EN=And thither were all the flocks gathered: and they rolled the stone from the well’s mouth, and watered the sheep, and put the stone again upon the well’s mouth in his place.|KO=모든 양들이 그곳에 모였고, 그들이 우물의 입구에서 돌을 굴려내어 양을 마시게 하고, 다시 그 돌을 제자리로 돌려놓았다.
+V|N=4|EN=And Jacob said unto them, My brethren, whence be ye? And they said, Of Haran are we.|KO=야곱이 그들에게 말하였다. "형제들이여, 너희는 어디서 왔느냐?" 그들이 대답하였다. "우리는 하란에서 왔습니다."
+V|N=5|EN=And he said unto them, Know ye Laban the son of Nahor? And they said, We know him.|KO=그가 그들에게 말하였다. "너희는 나홀의 아들 라반을 아느냐?" 그들이 대답하였다. "우리는 그를 압니다."
+V|N=6|EN=And he said unto them, Is he well? And they said, He is well: and, behold, Rachel his daughter cometh with the sheep.|KO=그가 그들에게 말하였다. "그는 잘 있느냐?" 그들이 대답하였다. "그는 잘 있습니다. 보라, 그의 딸 라헬이 양들과 함께 오고 있습니다."
+V|N=7|EN=And he said, Lo, it is yet high day, neither is it time that the cattle should be gathered together: water ye the sheep, and go and feed them.|KO=그가 말하였다. "보라, 아직 낮이 길고, 가축을 모을 때가 아니다. 너희는 양을 마시게 하고, 가서 먹이라."
+V|N=8|EN=And they said, We cannot, until all the flocks be gathered together, and till they roll the stone from the well’s mouth; then we water the sheep.|KO=그들이 대답하였다. "우리는 모든 양이 모일 때까지, 그리고 그들이 우물의 입구에서 돌을 굴려낼 때까지는 할 수 없습니다. 그때 우리는 양을 마시게 합니다."
+V|N=9|EN=And while he yet spake with them, Rachel came with her father’s sheep; for she kept them.|KO=그가 그들과 이야기하고 있을 때, 라헬이 아버지의 양들과 함께 왔으니, 그녀가 그것들을 지켰다.
+V|N=10|EN=And it came to pass, when Jacob saw Rachel the daughter of Laban his mother’s brother, and the sheep of Laban his mother’s brother, that Jacob went near, and rolled the stone from the well’s mouth, and watered the flock of Laban his mother’s brother.|KO=야곱이 라헬을 보았고, 그녀는 그의 어머니의 형 라반의 딸이었으며, 라반의 양을 보았을 때, 야곱이 가까이 가서 우물의 입구에서 돌을 굴려내고 라반의 양을 마시게 하였다.
+V|N=11|EN=And Jacob kissed Rachel, and lifted up his voice, and wept.|KO=야곱이 라헬에게 입맞추고, 목소리를 높여 울었다.
+V|N=12|EN=And Jacob told Rachel that he was her father’s brother, and that he was Rebekah’s son: and she ran and told her father.|KO=야곱이 라헬에게 자신이 그녀의 아버지의 형제이며, 그는 리브가의 아들임을 말하였고, 그녀는 달려가서 아버지에게 알렸다.
+V|N=13|EN=And it came to pass, when Laban heard the tidings of Jacob his sister’s son, that he ran to meet him, and embraced him, and kissed him, and brought him to his house. And he told Laban all these things.|KO=라반이 그의 누이의 아들 야곱의 소식을 듣고 그를 만나러 달려가서 그를 안고 입맞추고 그를 집으로 데려갔다. 그리고 그는 라반에게 이 모든 일을 이야기하였다.
+V|N=14|EN=And Laban said to him, Surely thou art my bone and my flesh. And he abode with him the space of a month.|KO=라반이 그에게 말하였다. "정녕 너는 내 뼈요 내 살이다." 그가 그와 함께 한 달 동안 머물렀다.
+V|N=15|EN=And Laban said unto Jacob, Because thou art my brother, shouldest thou therefore serve me for nought? tell me, what shall thy wages be?|KO=라반이 야곱에게 말하였다. "너는 내 형제이니, 내가 너를 위해 아무것도 없이 섬기게 할 수 있겠느냐? 네 품삯이 무엇이냐?"
+V|N=16|EN=And Laban had two daughters: the name of the elder was Leah, and the name of the younger was Rachel.|KO=라반에게 두 딸이 있었으니, 큰 딸의 이름은 레아요, 작은 딸의 이름은 라헬이었다.
+V|N=17|EN=Leah was tender eyed; but Rachel was beautiful and well favoured.|KO=레아는 눈이 부드러웠으나, 라헬은 아름답고 용모가 뛰어났다.
+V|N=18|EN=And Jacob loved Rachel; and said, I will serve thee seven years for Rachel thy younger daughter.|KO=야곱이 라헬을 사랑하였고, 그에게 말하였다. "나는 너의 작은 딸 라헬을 위하여 7년 동안 너를 섬기리라."
+V|N=19|EN=And Laban said, It is better that I give her to thee, than that I should give her to another man: abide with me.|KO=라반이 말하였다. "내가 그녀를 다른 사람에게 주는 것보다 너에게 주는 것이 더 좋다. 나와 함께 머물라."
+V|N=20|EN=And Jacob served seven years for Rachel; and they seemed unto him but a few days, for the love he had to her.|KO=야곱은 라헬을 위하여 7년 동안 섬겼고, 그가 그녀를 사랑한 관계로 그 기간이 며칠처럼 여겨졌다.
+V|N=21|EN=And Jacob said unto Laban, Give me my wife, for my days are fulfilled, that I may go in unto her.|KO=야곱이 라반에게 말하였다. "내 아내를 주십시오. 내 날이 다 차서 그녀에게 들어가게 하소서."
+V|N=22|EN=And Laban gathered together all the men of the place, and made a feast.|KO=라반이 그곳의 모든 남자들을 모아 잔치를 베풀었다.
+V|N=23|EN=And it came to pass in the evening, that he took Leah his daughter, and brought her to him; and he went in unto her.|KO=저녁이 되자, 그는 그의 딸 레아를 데려다가 그에게 주었고, 그는 레아에게 들어갔다.
+V|N=24|EN=And Laban gave unto his daughter Leah Zilpah his maid for an handmaid.|KO=라반이 그의 딸 레아에게 그의 여종 실바를 여종으로 주었다.
+V|N=25|EN=And it came to pass, that in the morning, behold, it was Leah: and he said to Laban, What is this thou hast done unto me? did not I serve with thee for Rachel? wherefore then hast thou beguiled me?|KO=아침이 되어 보니, 그것은 레아였다. 그는 라반에게 말하였다. "내가 너를 위해 라헬을 섬기지 않았느냐? 그러면 내가 무엇을 하였느냐?"
+V|N=26|EN=And Laban said, It must not be so done in our country, to give the younger before the firstborn.|KO=라반이 대답하였다. "우리 고에서는 큰딸을 먼저 주는 것이 법이니, 그렇게 하지 못한다."
+V|N=27|EN=Fulfil her week, and we will give thee this also for the service which thou shalt serve with me yet seven other years.|KO="그녀의 주를 채우고, 내가 너에게 또 다른 7년을 섬기게 하겠다."
+V|N=28|EN=And Jacob did so, and fulfilled her week: and he gave him Rachel his daughter to wife also.|KO=야곱이 그렇게 하였고, 그녀의 주를 채우고, 라반이 그의 딸 라헬을 아내로 주었다.
+V|N=29|EN=And Laban gave to Rachel his daughter Bilhah his handmaid to be her maid.|KO=라반이 그의 딸 라헬에게 그의 여종 빌하를 여종으로 주었다.
+V|N=30|EN=And he went in also unto Rachel, and he loved also Rachel more than Leah, and served with him yet seven other years.|KO=그는 또한 라헬에게 들어갔고, 라헬을 레아보다 더 사랑하였으며, 또 다른 7년을 그와 함께 섬겼다.
+V|N=31|EN=And when the LORD saw that Leah was hated, he opened her womb: but Rachel was barren.|KO=여호와께서 레아가 미움을 받는 것을 보시고 그녀의 태를 여셨으나, 라헬은 임신하지 못하였다.
+V|N=32|EN=And Leah conceived, and bare a son, and she called his name Reuben: for she said, Surely the LORD hath looked upon my affliction; now therefore my husband will love me.|KO=레아가 잉태하여 아들을 낳고 그의 이름을 루벤이라 하였으니, 그녀가 말하였다. "여호와께서 내 고통을 보셨으니, 이제 내 남편이 나를 사랑하리라."
+V|N=33|EN=And she conceived again, and bare a son; and said, Because the LORD hath heard I was hated, he hath therefore given me this son also: and she called his name Simeon.|KO=그녀가 다시 잉태하여 아들을 낳고 말하였다. "여호와께서 내가 미움을 받는 것을 들으셨으니, 나에게 또 이 아들을 주셨다." 그녀가 그의 이름을 시므온이라 하였다.
+V|N=34|EN=And she conceived again, and bare a son; and said, Now this time will my husband be joined unto me, because I have born him three sons: therefore was his name called Levi.|KO=그녀가 다시 잉태하여 아들을 낳고 말하였다. "이번에는 내 남편이 나와 결합하리라. 내가 그에게 아들 셋을 낳았으니, 그의 이름을 레위라 하였다."
+V|N=35|EN=And she conceived again, and bare a son: and she said, Now will I praise the LORD: therefore she called his name Judah; and left bearing.|KO=그녀가 다시 잉태하여 아들을 낳고 말하였다. "이제 내가 여호와를 찬양하리라." 그래서 그녀는 그의 이름을 유다라 하였고, 더 이상 아이를 낳지 않았다.

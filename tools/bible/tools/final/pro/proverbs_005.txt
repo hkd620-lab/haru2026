@@ -1,0 +1,25 @@
+#BOOK=Proverbs|BOOKCODE=pro|CHAPTER=5|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Proverbs 5|KO=
+V|N=1|EN=My son, attend unto my wisdom, and bow thine ear to my understanding:|KO=
+V|N=2|EN=That thou mayest regard discretion, and that thy lips may keep knowledge.|KO=
+V|N=3|EN=For the lips of a strange woman drop as an honeycomb, and her mouth is smoother than oil:|KO=
+V|N=4|EN=But her end is bitter as wormwood, sharp as a two-edged sword.|KO=
+V|N=5|EN=Her feet go down to death; her steps take hold on hell.|KO=
+V|N=6|EN=Lest thou shouldest ponder the path of life, her ways are moveable, that thou canst not know them.|KO=
+V|N=7|EN=Hear me now therefore, O ye children, and depart not from the words of my mouth.|KO=
+V|N=8|EN=Remove thy way far from her, and come not nigh the door of her house:|KO=
+V|N=9|EN=Lest thou give thine honour unto others, and thy years unto the cruel:|KO=
+V|N=10|EN=Lest strangers be filled with thy wealth; and thy labours be in the house of a stranger;|KO=
+V|N=11|EN=And thou mourn at the last, when thy flesh and thy body are consumed,|KO=
+V|N=12|EN=And say, How have I hated instruction, and my heart despised reproof;|KO=
+V|N=13|EN=And have not obeyed the voice of my teachers, nor inclined mine ear to them that instructed me!|KO=
+V|N=14|EN=I was almost in all evil in the midst of the congregation and assembly.|KO=
+V|N=15|EN=Drink waters out of thine own cistern, and running waters out of thine own well.|KO=
+V|N=16|EN=Let thy fountains be dispersed abroad, and rivers of waters in the streets.|KO=
+V|N=17|EN=Let them be only thine own, and not strangers’ with thee.|KO=
+V|N=18|EN=Let thy fountain be blessed: and rejoice with the wife of thy youth.|KO=
+V|N=19|EN=Let her be as the loving hind and pleasant roe; let her breasts satisfy thee at all times; and be thou ravished always with her love.|KO=
+V|N=20|EN=And why wilt thou, my son, be ravished with a strange woman, and embrace the bosom of a stranger?|KO=
+V|N=21|EN=For the ways of man are before the eyes of the LORD, and he pondereth all his goings.|KO=
+V|N=22|EN=His own iniquities shall take the wicked himself, and he shall be holden with the cords of his sins.|KO=
+V|N=23|EN=He shall die without instruction; and in the greatness of his folly he shall go astray.|KO=

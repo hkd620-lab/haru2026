@@ -1,0 +1,29 @@
+#BOOK=Proverbs|BOOKCODE=pro|CHAPTER=7|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Proverbs 7|KO=
+V|N=1|EN=My son, keep my words, and lay up my commandments with thee.|KO=
+V|N=2|EN=Keep my commandments, and live; and my law as the apple of thine eye.|KO=
+V|N=3|EN=Bind them upon thy fingers, write them upon the table of thine heart.|KO=
+V|N=4|EN=Say unto wisdom, Thou art my sister; and call understanding thy kinswoman:|KO=
+V|N=5|EN=That they may keep thee from the strange woman, from the stranger which flattereth with her words.|KO=
+V|N=6|EN=For at the window of my house I looked through my casement,|KO=
+V|N=7|EN=And beheld among the simple ones, I discerned among the youths, a young man void of understanding,|KO=
+V|N=8|EN=Passing through the street near her corner; and he went the way to her house,|KO=
+V|N=9|EN=In the twilight, in the evening, in the black and dark night:|KO=
+V|N=10|EN=And, behold, there met him a woman with the attire of an harlot, and subtil of heart.|KO=
+V|N=11|EN=(She is loud and stubborn; her feet abide not in her house:|KO=
+V|N=12|EN=Now is she without, now in the streets, and lieth in wait at every corner.)|KO=
+V|N=13|EN=So she caught him, and kissed him, and with an impudent face said unto him,|KO=
+V|N=14|EN=I have peace offerings with me; this day have I payed my vows.|KO=
+V|N=15|EN=Therefore came I forth to meet thee, diligently to seek thy face, and I have found thee.|KO=
+V|N=16|EN=I have decked my bed with coverings of tapestry, with carved works, with fine linen of Egypt.|KO=
+V|N=17|EN=I have perfumed my bed with myrrh, aloes, and cinnamon.|KO=
+V|N=18|EN=Come, let us take our fill of love until the morning: let us solace ourselves with loves.|KO=
+V|N=19|EN=For the goodman is not at home, he is gone a long journey:|KO=
+V|N=20|EN=He hath taken a bag of money with him, and will come home at the day appointed.|KO=
+V|N=21|EN=With her much fair speech she caused him to yield, with the flattering of her lips she forced him.|KO=
+V|N=22|EN=He goeth after her straightway, as an ox goeth to the slaughter, or as a fool to the correction of the stocks;|KO=
+V|N=23|EN=Till a dart strike through his liver; as a bird hasteth to the snare, and knoweth not that it is for his life.|KO=
+V|N=24|EN=Hearken unto me now therefore, O ye children, and attend to the words of my mouth.|KO=
+V|N=25|EN=Let not thine heart decline to her ways, go not astray in her paths.|KO=
+V|N=26|EN=For she hath cast down many wounded: yea, many strong men have been slain by her.|KO=
+V|N=27|EN=Her house is the way to hell, going down to the chambers of death.|KO=

@@ -1,0 +1,24 @@
+#BOOK=Genesis|BOOKCODE=gen|CHAPTER=8|VERSION=KJV|LANGPAIR=EN-KO|ARCHAIC=INLINE_PARENS
+T|EN=Genesis 8|KO=창세기 8장
+V|N=1|EN=And God remembered Noah, and every living thing, and all the cattle that was with him in the ark: and God made a wind to pass over the earth, and the waters asswaged;|KO=하나님이 노아와 그와 함께 방주에 있는 모든 생물과 가축을 기억하시고, 하나님이 땅 위에 바람을 불게 하시니 물이 가라앉았다.
+V|N=2|EN=The fountains also of the deep and the windows of heaven were stopped, and the rain from heaven was restrained;|KO=깊은 샘과 하늘의 창이 막히고, 하늘에서 내리는 비가 그쳤다.
+V|N=3|EN=And the waters returned from off the earth continually: and after the end of the hundred and fifty days the waters were abated.|KO=물이 땅에서 계속해서 물러갔고, 백오십 일이 끝난 후에 물이 줄어들었다.
+V|N=4|EN=And the ark rested in the seventh month, on the seventeenth day of the month, upon the mountains of Ararat.|KO=방주는 일곱째 달, 그 달의 열일곱째 날에 아라랏 산 위에 머물렀다.
+V|N=5|EN=And the waters decreased continually until the tenth month: in the tenth month, on the first day of the month, were the tops of the mountains seen.|KO=물이 계속 줄어들어 열째 달의 첫날에 산의 꼭대기가 보였다.
+V|N=6|EN=And it came to pass at the end of forty days, that Noah opened the window of the ark which he had made:|KO=사십 일이 끝날 무렵, 노아가 그가 만든 방주의 창을 열었다.
+V|N=7|EN=And he sent forth a raven, which went forth to and fro, until the waters were dried up from off the earth.|KO=그가 까마귀를 보내니, 까마귀가 나갔다가 다시 돌아오지 않았다.
+V|N=8|EN=Also he sent forth a dove from him, to see if the waters were abated from off the face of the ground;|KO=또한 그는 비둘기를 그에게 보내어 물이 땅의 얼굴에서 가라앉았는지 보게 하였다.
+V|N=9|EN=But the dove found no rest for the sole of her foot, and she returned unto him into the ark, for the waters were on the face of the whole earth: then he put forth his hand, and took her, and pulled her in unto him into the ark.|KO=그러나 비둘기는 발을 디딜 곳을 찾지 못하고, 방주로 돌아와 그에게로 돌아왔다. 온 땅에 물이 있었기 때문이다. 그가 손을 내밀어 비둘기를 잡아 방주로 데려왔다.
+V|N=10|EN=And he stayed yet other seven days; and again he sent forth the dove out of the ark;|KO=그는 또 다른 일곱 날을 기다렸다가 다시 비둘기를 방주에서 보냈다.
+V|N=11|EN=And the dove came in to him in the evening; and, lo, in her mouth was an olive leaf pluckt off: so Noah knew that the waters were abated from off the earth.|KO=비둘기가 저녁에 그에게 돌아왔고, 그 입에는 따온 올리브 잎이 있었다. 그래서 노아는 물이 땅에서 가라앉았음을 알았다.
+V|N=12|EN=And he stayed yet other seven days; and sent forth the dove; which returned not again unto him any more.|KO=그는 또 다른 일곱 날을 기다렸다가 비둘기를 보냈으나, 다시 그에게로 돌아오지 않았다.
+V|N=13|EN=And it came to pass in the six hundredth and first year, in the first month, the first day of the month, the waters were dried up from off the earth: and Noah removed the covering of the ark, and looked, and, behold, the face of the ground was dry.|KO=육백일이 되는 해의 첫 달, 첫날에 땅의 물이 말랐고, 노아가 방주의 덮개를 벗기고 보니, 땅의 얼굴이 마른 것을 보았다.
+V|N=14|EN=And in the second month, on the seven and twentieth day of the month, was the earth dried.|KO=둘째 달, 그 달의 이십칠째 날에 땅이 말랐다.
+V|N=15|EN=And God spake unto Noah, saying,|KO=하나님이 노아에게 말씀하셨다.
+V|N=16|EN=Go forth of the ark, thou, and thy wife, and thy sons, and thy sons’ wives with thee.|KO=너와 네 아내와 네 아들들과 네 아들들의 아내들과 함께 방주에서 나가라.
+V|N=17|EN=Bring forth with thee every living thing that is with thee, of all flesh, both of fowl, and of cattle, and of every creeping thing that creepeth upon the earth; that they may breed abundantly in the earth, and be fruitful, and multiply upon the earth.|KO=너와 함께 있는 모든 생물을 데리고 나가라. 새와 가축과 땅 위에 기는 모든 것을 데리고 나가서 땅에서 번성하고, 생육하고, 땅에서 번식하라.
+V|N=18|EN=And Noah went forth, and his sons, and his wife, and his sons’ wives with him:|KO=노아가 나가고 그의 아들들과 아내와 아들들의 아내가 그와 함께 나갔다.
+V|N=19|EN=Every beast, every creeping thing, and every fowl, and whatsoever creepeth upon the earth, after their kinds, went forth out of the ark.|KO=모든 짐승과 모든 기는 것과 모든 새와 땅 위에 기는 모든 것이 그 종류대로 방주에서 나갔다.
+V|N=20|EN=And Noah builded an altar unto the LORD; and took of every clean beast, and of every clean fowl, and offered burnt offerings on the altar.|KO=노아가 여호와를 위하여 제단을 쌓고, 모든 정결한 짐승과 정결한 새를 취하여 번제를 제단에 드렸다.
+V|N=21|EN=And the LORD smelled a sweet savour; and the LORD said in his heart, I will not again curse the ground any more for man’s sake; for the imagination of man’s heart is evil from his youth; neither will I again smite any more every thing living, as I have done.|KO=여호와께서 그 향기를 받으시고, 마음에 말씀하시기를, 내가 다시는 사람으로 인하여 땅을 저주하지 않겠다고 하셨다. 사람의 마음의 생각이 어릴 때부터 악하기 때문이다. 내가 전에 한 것처럼 다시는 모든 생물을 멸하지 않겠다고 하셨다.
+V|N=22|EN=While the earth remaineth, seedtime and harvest, and cold and heat, and summer and winter, and day and night shall not cease.|KO=땅이 계속 있는 동안, 씨 뿌리는 것과 추수하는 것, 추위와 더위, 여름과 겨울, 낮과 밤이 그치지 않을 것이다.
