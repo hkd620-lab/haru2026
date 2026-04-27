@@ -257,7 +257,7 @@ export function BiblePage() {
         transFn({ verseKey: `genesis_1_${verse.verse}`, text: verse.text }) as Promise<{ data: { translation: string } }>,
       ]);
 
-      if (isSequentialPlaying === null) return; // 중간에 정지된 경우
+      // (중간 정지 체크 제거 — React state 비동기 문제로 항상 null로 읽힘)
 
       // ③ 한국어 TTS
       const koCacheKey = `bible_genesis_1_ko_${verse.verse}`.slice(0, 80);
