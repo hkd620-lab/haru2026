@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
+import { GrapeAnimation } from '../components/GrapeAnimation';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -9,21 +10,43 @@ export function LoginPage() {
 
   // Google 로그인 - Cloud Functions 사용
   const handleGoogleLogin = () => {
-    window.location.href = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/googleLoginStart';
+    setIsLoading(true);
+    setTimeout(() => {
+      window.location.href = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/googleLoginStart';
+    }, 1500);
   };
 
   // 카카오 로그인
   const handleKakaoLogin = () => {
-    window.location.href = 'https://kakaologinstart-6ieesxet3q-du.a.run.app';
+    setIsLoading(true);
+    setTimeout(() => {
+      window.location.href = 'https://kakaologinstart-6ieesxet3q-du.a.run.app';
+    }, 1500);
   };
 
   // 네이버 로그인
   const handleNaverLogin = () => {
-    window.location.href = 'https://naverloginstart-6ieesxet3q-du.a.run.app';
+    setIsLoading(true);
+    setTimeout(() => {
+      window.location.href = 'https://naverloginstart-6ieesxet3q-du.a.run.app';
+    }, 1500);
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#EDE9F5' }}>
+      {isLoading && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center"
+          style={{ backgroundColor: 'rgba(237, 233, 245, 0.95)' }}
+        >
+          <div style={{ width: 300, height: 400 }}>
+            <GrapeAnimation />
+          </div>
+          <p className="mt-4 text-sm font-medium" style={{ color: '#1A3C6E' }}>
+            로그인 중...
+          </p>
+        </div>
+      )}
       <div className="max-w-md w-full px-6">
         <div className="text-center mb-8">
           <BookOpen className="w-16 h-16 mx-auto mb-4" style={{ color: '#1A3C6E' }} />
