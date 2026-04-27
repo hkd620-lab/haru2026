@@ -16,7 +16,7 @@ export default function GrammarDashboard({ uid }: { uid: string }) {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<CacheItem | null>(null);
   const [collapsed, setCollapsed] = useState(true);
-  const [selectedChapter, setSelectedChapter] = useState<1 | 2>(1);
+  const [selectedChapter, setSelectedChapter] = useState<number>(1);
 
   useEffect(() => {
     if (uid !== ADMIN_UID) return;
@@ -37,7 +37,14 @@ export default function GrammarDashboard({ uid }: { uid: string }) {
 
   if (uid !== ADMIN_UID) return null;
 
-  const totalVerses = selectedChapter === 1 ? 31 : 25;
+  const CHAPTER_VERSES: Record<number, number> = {
+    1:31,2:25,3:24,4:26,5:32,6:22,7:24,8:22,9:29,10:32,
+    11:32,12:20,13:18,14:24,15:21,16:16,17:27,18:33,19:38,20:18,
+    21:34,22:24,23:20,24:67,25:34,26:35,27:46,28:22,29:35,30:43,
+    31:55,32:32,33:20,34:31,35:29,36:43,37:36,38:30,39:23,40:23,
+    41:57,42:38,43:34,44:34,45:28,46:34,47:31,48:22,49:33,50:26
+  };
+  const totalVerses = CHAPTER_VERSES[selectedChapter] ?? 0;
   const verses = Array.from({ length: totalVerses }, (_, i) => `genesis_${selectedChapter}_${i + 1}`);
   const chapterItems = items.filter(item => verses.includes(item.verseKey));
   const corrected = chapterItems.filter(i => i.gptChanges.length > 0);
@@ -70,31 +77,25 @@ export default function GrammarDashboard({ uid }: { uid: string }) {
       <>
 
       {/* 장 선택 */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <button
-          onClick={() => setSelectedChapter(1)}
-          style={{
-            padding: '6px 18px',
-            borderRadius: 8,
-            border: 'none',
-            background: selectedChapter === 1 ? '#1A3C6E' : '#e5e7eb',
-            color: selectedChapter === 1 ? '#fff' : '#374151',
-            fontWeight: 600,
-            cursor: 'pointer'
-          }}
-        >1장</button>
-        <button
-          onClick={() => setSelectedChapter(2)}
-          style={{
-            padding: '6px 18px',
-            borderRadius: 8,
-            border: 'none',
-            background: selectedChapter === 2 ? '#1A3C6E' : '#e5e7eb',
-            color: selectedChapter === 2 ? '#fff' : '#374151',
-            fontWeight: 600,
-            cursor: 'pointer'
-          }}
-        >2장</button>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px' }}>
+        {Array.from({ length: 50 }, (_, i) => i + 1).map((ch) => (
+          <button
+            key={ch}
+            onClick={() => setSelectedChapter(ch)}
+            style={{
+              padding: '4px 10px',
+              borderRadius: '6px',
+              border: 'none',
+              background: selectedChapter === ch ? '#1A3C6E' : '#e5e7eb',
+              color: selectedChapter === ch ? '#fff' : '#374151',
+              fontWeight: selectedChapter === ch ? 700 : 400,
+              cursor: 'pointer',
+              fontSize: '13px',
+            }}
+          >
+            {ch}장
+          </button>
+        ))}
       </div>
 
       {/* 요약 */}
