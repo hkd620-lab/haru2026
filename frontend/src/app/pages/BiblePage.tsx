@@ -336,6 +336,7 @@ export function BiblePage() {
     koreanText?: string;
   } | null>(null);
   const [quizLevel, setQuizLevel] = useState<'basic' | 'intermediate' | 'advanced'>('basic');
+  const [showQuizHint, setShowQuizHint] = useState(false);
 
   const handleQuizClick = useCallback(async (verse: Verse, level: 'basic' | 'intermediate' | 'advanced' = quizLevel) => {
     setQuizPopup({
@@ -1430,17 +1431,34 @@ export function BiblePage() {
                   ))}
                 </div>
 
-                {/* 힌트 */}
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-                  {quizPopup.blanks.map((blank, idx) => (
-                    <span key={idx} style={{
-                      fontSize: 11, color: '#8B4789',
-                      backgroundColor: '#f0e6f6', padding: '3px 8px', borderRadius: 10,
-                    }}>
-                      빈칸{idx + 1}: {blank.hint}
-                    </span>
-                  ))}
+                {/* 힌트 토글 버튼 */}
+                <div style={{ marginBottom: 12 }}>
+                  <button
+                    onClick={() => setShowQuizHint(prev => !prev)}
+                    style={{
+                      padding: '5px 14px', borderRadius: 20,
+                      border: '1.5px solid #8B4789',
+                      backgroundColor: showQuizHint ? '#8B4789' : '#fff',
+                      color: showQuizHint ? '#fff' : '#8B4789',
+                      fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    }}
+                  >
+                    💡 힌트 {showQuizHint ? '접기 ▲' : '보기 ▼'}
+                  </button>
                 </div>
+                {/* 힌트 내용 — 토글 시에만 표시 */}
+                {showQuizHint && (
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                    {quizPopup.blanks.map((blank, idx) => (
+                      <span key={idx} style={{
+                        fontSize: 11, color: '#8B4789',
+                        backgroundColor: '#f0e6f6', padding: '3px 8px', borderRadius: 10,
+                      }}>
+                        빈칸{idx + 1}: {blank.hint}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 {/* 보기 */}
                 <p style={{ fontSize: 13, fontWeight: 700, color: '#1A3C6E', marginBottom: 10 }}>
