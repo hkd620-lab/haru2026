@@ -1653,11 +1653,11 @@ verseKey: "${verseKey}"
 });
 // ===== 퀴즈 생성 =====
 exports.getVerseQuiz = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] }, async (request) => {
-    const { verseKey, verseText } = request.data;
+    const { verseKey, verseText, level = 'basic' } = request.data;
     if (!verseText)
         throw new https_2.HttpsError('invalid-argument', '절 내용이 필요합니다.');
     const db = admin.firestore();
-    const cacheRef = db.collection('quizCache').doc(verseKey);
+    const cacheRef = db.collection('quizCache').doc(`${verseKey}_${level}`);
     // 1. 캐시 확인
     const cacheSnap = await cacheRef.get();
     if (cacheSnap.exists) {
@@ -1669,19 +1669,27 @@ exports.getVerseQuiz = (0, https_2.onCall)({ region: 'asia-northeast3', secrets:
     const { GoogleGenerativeAI } = await Promise.resolve().then(() => __importStar(require('@google/generative-ai')));
     const genAI = new GoogleGenerativeAI(GEMINI_KEY);
     const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
-    const prompt = `다음 영어 성경 구절에서 수능 또는 고등학교 수준의 단어만 골라 빈칸 퀴즈를 만들어주세요.
-
-구절: "${verseText}"
-
-규칙:
-- 빈칸은 2~4개 (수능/고등학교 수준 단어만)
+    const levelRules = level === 'advanced'
+        ? `- 한국어 번역을 보여주고 영어 단어를 모두 빈칸으로 만들기
+- 빈칸은 구절의 모든 단어 (관사 포함)
+- 보기는 구절의 모든 단어를 무작위로 섞어서 제공
+- koreanText 필드에 한국어 번역 포함`
+        : level === 'intermediate'
+            ? `- 빈칸은 4~6개 (수능/고등학교 수준 단어 + 중요 동사/명사 포함)
 - 보기는 빈칸 수 × 2개 (정답 + 헷갈리는 유사 단어)
 - 보기는 무작위 순서로 섞기
-- 쉬운 관사(a, the, an)나 접속사(and, or)는 빈칸 제외
-
+- 쉬운 관사(a, the, an)나 접속사(and, or)는 빈칸 제외`
+            : `- 빈칸은 2~4개 (수능/고등학교 수준 단어만)
+- 보기는 빈칸 수 × 2개 (정답 + 헷갈리는 유사 단어)
+- 보기는 무작위 순서로 섞기
+- 쉬운 관사(a, the, an)나 접속사(and, or)는 빈칸 제외`;
+    const prompt = `다음 영어 성경 구절로 빈칸 퀴즈를 만들어주세요.
+구절: "${verseText}"
+규칙:
+${levelRules}
 JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
 {
-  "blankedText": "빈칸을 ___로 표시한 전체 구절 (예: In the _____ God _____ the heaven)",
+  "blankedText": "빈칸을 _____로 표시한 전체 구절",
   "blanks": [
     {
       "index": 0,
@@ -1689,7 +1697,8 @@ JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
       "hint": "힌트 (한국어 뜻)"
     }
   ],
-  "options": ["보기1", "보기2", "보기3", "보기4", "보기5", "보기6"]
+  "options": ["보기1", "보기2", "보기3", "보기4"],
+  "koreanText": "한국어 번역 (고급 모드에서만 사용, 나머지는 빈 문자열)"
 }`;
     const result = await model.generateContent(prompt);
     const raw = result.response.text().trim();
