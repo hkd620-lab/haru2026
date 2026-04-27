@@ -1775,23 +1775,34 @@ export const preloadChapterGrammar = onCall(
         const geminiApiKey = GEMINI_API_KEY_SECRET.value();
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
 
-        const geminiPrompt = `다음 영어 성경 구절(KJV)의 핵심 문법 요소를 JSON으로 분석해주세요.
+        const geminiPrompt = `다음 영어 성경 구절에서 문법 요소를 분석해주세요.
 구절: "${verseText}"
-verseKey: "${verseKey}"
+규칙:
+- 문법 용어 절대 사용 금지 (주어/동사/목적어/3형식 등 금지)
+- 각 항목은 없으면 빈 문자열("")로 반환
+- 반드시 아래 JSON 형식으로만 응답 (다른 텍스트 없이)
 
-반드시 아래 JSON 형식으로만 응답하세요:
 {
-  "items": [
-    {
-      "type": "동사|전치사|관계사|구동사|의문사|명령감탄",
-      "word": "분석할 단어",
-      "explanation": "한국어 설명 (2줄 이내)",
-      "example": "영어 예문",
-      "exampleKr": "한국어 번역"
-    }
-  ],
-  "mySentence": "이 구절 핵심 단어로 만든 새 영어 문장",
-  "mySentenceKr": "한국어 번역"
+  "verb": "핵심 동사 설명 (예: created = 하나님께서 무언가를 새롭게 만들어내셨다는 뜻)",
+  "verb_example_en": "동사 활용 예문 영어",
+  "verb_example_ko": "위 예문 한국어 번역",
+  "preposition": "전치사 설명 (예: in = 어떤 시간이나 공간의 안쪽을 가리키는 표현)",
+  "preposition_example_en": "전치사 활용 예문 영어",
+  "preposition_example_ko": "위 예문 한국어 번역",
+  "phrasal": "구동사 설명 (예: bring forth = 산출하다, 없으면 빈 문자열)",
+  "phrasal_example_en": "구동사 활용 예문 영어",
+  "phrasal_example_ko": "위 예문 한국어 번역",
+  "relative": "관계사 설명 (없으면 빈 문자열)",
+  "relative_example_en": "관계사 활용 예문 영어",
+  "relative_example_ko": "위 예문 한국어 번역",
+  "question": "의문사 설명 (없으면 빈 문자열)",
+  "question_example_en": "의문사 활용 예문 영어",
+  "question_example_ko": "위 예문 한국어 번역",
+  "exclamation": "감탄사/명령 설명 (없으면 빈 문자열)",
+  "exclamation_example_en": "감탄사/명령 활용 예문 영어",
+  "exclamation_example_ko": "위 예문 한국어 번역",
+  "mysentence": "이 구절의 핵심 단어를 활용한 짧은 영어 예문 (반드시 입력)",
+  "korean": "위 예문의 한국어 번역 (반드시 입력)"
 }`;
 
         const geminiRes = await fetch(geminiUrl, {
@@ -1831,7 +1842,7 @@ verseKey: "${verseKey}"
               Authorization: `Bearer ${openaiApiKey}`
             },
             body: JSON.stringify({
-              model: 'gpt-4o',
+              model: 'gpt-4o-mini',
               temperature: 0.2,
               messages: [
                 {
@@ -1840,11 +1851,19 @@ verseKey: "${verseKey}"
                 },
                 {
                   role: 'user',
-                  content: `다음 문법 분석이 정확한지 검증하고 오류가 있으면 수정해주세요.
+                  content: `당신은 영어 문법 및 KJV 성경 고어체 전문가입니다.
+아래 영어 성경 구절의 문법 분석 JSON을 검토하고 오류가 있으면 수정해주세요.
 구절: "${verseText}"
 분석: ${JSON.stringify(geminiData)}
 
-수정사항이 있으면 corrected 필드에 수정된 전체 데이터를, changes 배열에 변경 내역을 담아주세요.
+검토 기준:
+1. verb: 설명과 verb_example_en의 동사 시제/형태 일치 여부
+2. preposition: 설명한 전치사와 예문의 전치사 일치 여부
+3. phrasal: 설명한 구동사가 예문에 그대로 사용됐는지
+4. relative: 설명한 관계사 용법과 예문 일치 여부
+5. mysentence/korean: 자연스러운 영어/한국어 문장인지
+
+수정사항이 있으면 corrected 필드에 수정된 전체 JSON을, changes 배열에 변경 내역을 담아주세요.
 수정사항이 없으면 changes를 빈 배열로, corrected를 null로 반환하세요.
 
 {"changes": ["변경내역1", ...], "corrected": null 또는 {...수정된데이터}}`
