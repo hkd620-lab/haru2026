@@ -441,7 +441,46 @@ export function BiblePage() {
   type TTSVoice = 'nova' | 'shimmer' | 'alloy' | 'onyx' | 'echo' | 'fable';
   const [enVoice, setEnVoice] = useState<TTSVoice>('onyx');
   const [koVoice, setKoVoice] = useState<TTSVoice>('nova');
+  const [previewPlaying, setPreviewPlaying] = useState<string | null>(null);
+  const [showEnVoice, setShowEnVoice] = useState<boolean>(false);
+  const [showKoVoice, setShowKoVoice] = useState<boolean>(false);
   const [showQuizHint, setShowQuizHint] = useState(false);
+
+  const handleVoicePreview = async (voice: TTSVoice, lang: 'en' | 'ko') => {
+    const key = `preview_${lang}_${voice}`;
+    if (previewPlaying === key) {
+      audioRef.current?.pause();
+      setPreviewPlaying(null);
+      return;
+    }
+    setPreviewPlaying(key);
+    try {
+      const sampleText = lang === 'en'
+        ? 'In the beginning God created the heavens and the earth.'
+        : '태초에 하나님이 천지를 창조하시니라.';
+      const cacheKey = `bible_preview_${lang}_${voice}`;
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const ttsFn = httpsCallable(fns, 'generateTTS');
+      const res: any = await ttsFn({ text: sampleText, cacheKey, voice });
+      let audioSrc = '';
+      if (res.data.audioUrl) {
+        audioSrc = res.data.audioUrl;
+      } else if (res.data.audioBase64) {
+        const binary = atob(res.data.audioBase64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        audioSrc = URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' }));
+      }
+      if (audioSrc && audioRef.current) {
+        audioRef.current.src = audioSrc;
+        await audioRef.current.play();
+        audioRef.current.onended = () => setPreviewPlaying(null);
+      }
+    } catch (e) {
+      console.error('미리듣기 오류:', e);
+      setPreviewPlaying(null);
+    }
+  };
 
   const handleQuizClick = useCallback(async (verse: Verse, level: 'basic' | 'intermediate' | 'advanced' = quizLevel) => {
     setQuizPopup({
@@ -1103,58 +1142,114 @@ export function BiblePage() {
             { v: 'echo',    label: '남성2', desc: '또렷한 고음' },
             { v: 'fable',   label: '남성3', desc: '따뜻한 내레이션' },
           ];
+          const voiceLabel: Record<TTSVoice, string> = {
+            nova: '여성1', shimmer: '여성2', alloy: '여성3',
+            onyx: '남성1', echo: '남성2', fable: '남성3',
+          };
           return (
             <>
               {/* 영어 음성 */}
               <div style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>🇺🇸 영어 음성</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
-                  {voices.map(({ v, label, desc }) => (
-                    <button
-                      key={v}
-                      onClick={() => setEnVoice(v)}
-                      style={{
-                        borderRadius: 10,
-                        border: '1px solid',
-                        borderColor: enVoice === v ? '#1A3C6E' : '#d1d5db',
-                        backgroundColor: enVoice === v ? '#1A3C6E' : '#fff',
-                        color: enVoice === v ? '#fff' : '#444',
-                        padding: '7px 4px',
-                        cursor: 'pointer',
-                        textAlign: 'center',
-                      }}
-                    >
-                      <div style={{ fontSize: 13, fontWeight: 500 }}>{label}</div>
-                      <div style={{ fontSize: 10, opacity: 0.8, marginTop: 2, lineHeight: 1.3 }}>{desc}</div>
-                    </button>
-                  ))}
-                </div>
+                <button
+                  onClick={() => setShowEnVoice(v => !v)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    width: '100%', background: '#f3f4f6', border: '1px solid #e5e7eb',
+                    borderRadius: 10, padding: '8px 12px', cursor: 'pointer', marginBottom: 6,
+                  }}
+                >
+                  <span style={{ fontSize: 13, color: '#444' }}>
+                    🇺🇸 영어 음성
+                    <span style={{ marginLeft: 8, fontSize: 12, color: '#1A3C6E', fontWeight: 500 }}>
+                      ({voiceLabel[enVoice]} 선택됨)
+                    </span>
+                  </span>
+                  <span style={{ fontSize: 12, color: '#888' }}>{showEnVoice ? '▲ 접기' : '▼ 펼치기'}</span>
+                </button>
+                {showEnVoice && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
+                    {voices.map(({ v, label, desc }) => (
+                      <div key={v} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <button
+                          onClick={() => setEnVoice(v)}
+                          style={{
+                            borderRadius: 10, border: '1px solid',
+                            borderColor: enVoice === v ? '#1A3C6E' : '#d1d5db',
+                            backgroundColor: enVoice === v ? '#1A3C6E' : '#fff',
+                            color: enVoice === v ? '#fff' : '#444',
+                            padding: '7px 4px', cursor: 'pointer', textAlign: 'center',
+                          }}
+                        >
+                          <div style={{ fontSize: 13, fontWeight: 500 }}>{label}</div>
+                          <div style={{ fontSize: 10, opacity: 0.8, marginTop: 2, lineHeight: 1.3 }}>{desc}</div>
+                        </button>
+                        <button
+                          onClick={() => handleVoicePreview(v, 'en')}
+                          style={{
+                            borderRadius: 8, border: '1px solid #d1d5db',
+                            backgroundColor: previewPlaying === `preview_en_${v}` ? '#8B4789' : '#f9fafb',
+                            color: previewPlaying === `preview_en_${v}` ? '#fff' : '#666',
+                            fontSize: 10, padding: '4px 2px', cursor: 'pointer',
+                          }}
+                        >
+                          {previewPlaying === `preview_en_${v}` ? '⏸ 정지' : '▶ 미리듣기'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* 한국어 음성 */}
               <div>
-                <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>🇰🇷 한국어 음성</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
-                  {voices.map(({ v, label, desc }) => (
-                    <button
-                      key={v}
-                      onClick={() => setKoVoice(v)}
-                      style={{
-                        borderRadius: 10,
-                        border: '1px solid',
-                        borderColor: koVoice === v ? '#10b981' : '#d1d5db',
-                        backgroundColor: koVoice === v ? '#10b981' : '#fff',
-                        color: koVoice === v ? '#fff' : '#444',
-                        padding: '7px 4px',
-                        cursor: 'pointer',
-                        textAlign: 'center',
-                      }}
-                    >
-                      <div style={{ fontSize: 13, fontWeight: 500 }}>{label}</div>
-                      <div style={{ fontSize: 10, opacity: 0.8, marginTop: 2, lineHeight: 1.3 }}>{desc}</div>
-                    </button>
-                  ))}
-                </div>
+                <button
+                  onClick={() => setShowKoVoice(v => !v)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    width: '100%', background: '#f3f4f6', border: '1px solid #e5e7eb',
+                    borderRadius: 10, padding: '8px 12px', cursor: 'pointer', marginBottom: 6,
+                  }}
+                >
+                  <span style={{ fontSize: 13, color: '#444' }}>
+                    🇰🇷 한국어 음성
+                    <span style={{ marginLeft: 8, fontSize: 12, color: '#10b981', fontWeight: 500 }}>
+                      ({voiceLabel[koVoice]} 선택됨)
+                    </span>
+                  </span>
+                  <span style={{ fontSize: 12, color: '#888' }}>{showKoVoice ? '▲ 접기' : '▼ 펼치기'}</span>
+                </button>
+                {showKoVoice && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
+                    {voices.map(({ v, label, desc }) => (
+                      <div key={v} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <button
+                          onClick={() => setKoVoice(v)}
+                          style={{
+                            borderRadius: 10, border: '1px solid',
+                            borderColor: koVoice === v ? '#10b981' : '#d1d5db',
+                            backgroundColor: koVoice === v ? '#10b981' : '#fff',
+                            color: koVoice === v ? '#fff' : '#444',
+                            padding: '7px 4px', cursor: 'pointer', textAlign: 'center',
+                          }}
+                        >
+                          <div style={{ fontSize: 13, fontWeight: 500 }}>{label}</div>
+                          <div style={{ fontSize: 10, opacity: 0.8, marginTop: 2, lineHeight: 1.3 }}>{desc}</div>
+                        </button>
+                        <button
+                          onClick={() => handleVoicePreview(v, 'ko')}
+                          style={{
+                            borderRadius: 8, border: '1px solid #d1d5db',
+                            backgroundColor: previewPlaying === `preview_ko_${v}` ? '#8B4789' : '#f9fafb',
+                            color: previewPlaying === `preview_ko_${v}` ? '#fff' : '#666',
+                            fontSize: 10, padding: '4px 2px', cursor: 'pointer',
+                          }}
+                        >
+                          {previewPlaying === `preview_ko_${v}` ? '⏸ 정지' : '▶ 미리듣기'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </>
           );
