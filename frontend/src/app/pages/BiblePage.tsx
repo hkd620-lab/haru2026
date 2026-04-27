@@ -258,6 +258,29 @@ export function BiblePage() {
             setHighlightedWord(null);
             resolve();
           };
+          // 영어 재생 시 단어 하이라이트
+          const words = verse.text.trim().split(/\s+/);
+          let wordIndex = 0;
+          if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+          const audio = audioRef.current!;
+          const startLoop = () => {
+            const duration = audio.duration || words.length * 0.45;
+            const interval = (duration * 1000) / words.length;
+            highlightTimerRef.current = setInterval(() => {
+              if (wordIndex >= words.length) {
+                clearInterval(highlightTimerRef.current!);
+                setHighlightedWord(null);
+                return;
+              }
+              setHighlightedWord({ key, index: wordIndex });
+              wordIndex++;
+            }, interval);
+          };
+          if (audio.duration) {
+            startLoop();
+          } else {
+            audio.addEventListener('loadedmetadata', startLoop, { once: true });
+          }
           audioRef.current.play();
         }),
         transFn({ verseKey: `genesis_1_${verse.verse}`, text: verse.text }) as Promise<{ data: { translation: string } }>,
