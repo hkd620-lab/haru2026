@@ -69,6 +69,7 @@ export function BiblePage() {
     return () => unsubscribe();
   }, []);
   const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
+  const [isFullPlaying, setIsFullPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
@@ -708,6 +709,7 @@ export function BiblePage() {
       const fns = getFunctions(undefined, 'asia-northeast3');
       const ttsFn = httpsCallable(fns, 'generateTTS');
       setTtsLoading(null);
+      setIsFullPlaying(true);
       setTtsPlaying('full_chapter');
       for (const verse of genesisData.verses) {
         // 현재 절 자동 펼치기
@@ -763,9 +765,11 @@ export function BiblePage() {
       }
       setTtsPlaying(null);
       setSelectedVerse(null);
+      setIsFullPlaying(false);
     } catch {
       setTtsLoading(null);
       setTtsPlaying(null);
+      setIsFullPlaying(false);
     }
   };
 
@@ -829,6 +833,7 @@ export function BiblePage() {
       const transFn = httpsCallable(fns, 'getVerseTranslation');
       const ttsFn = httpsCallable(fns, 'generateTTS');
       setTtsLoading(null);
+      setIsFullPlaying(true);
       setTtsPlaying('full_chapter_seq');
 
       for (const verse of genesisData.verses) {
@@ -916,9 +921,11 @@ export function BiblePage() {
         }
       }
       setTtsPlaying(null);
+      setIsFullPlaying(false);
     } catch {
       setTtsLoading(null);
       setTtsPlaying(null);
+      setIsFullPlaying(false);
     }
   };
 
@@ -938,6 +945,7 @@ export function BiblePage() {
       const ttsFn = httpsCallable(fns, 'generateTTS');
       const mappingFn = httpsCallable(fns, 'getVerseWordMapping');
       setTtsLoading(null);
+      setIsFullPlaying(true);
       setTtsPlaying('full_chapter_ko_en');
 
       for (const verse of genesisData.verses) {
@@ -1008,10 +1016,12 @@ export function BiblePage() {
       setTtsPlaying(null);
       setSelectedVerse(null);
       setHighlightedEnWords([]);
+      setIsFullPlaying(false);
     } catch {
       setTtsLoading(null);
       setTtsPlaying(null);
       setHighlightedEnWords([]);
+      setIsFullPlaying(false);
     }
   };
 
@@ -1181,7 +1191,7 @@ export function BiblePage() {
             </div>
 
             {/* 절 펼쳤을 때 버튼들 */}
-            {selectedVerse === verse.verse && (
+            {selectedVerse === verse.verse && !isFullPlaying && (
               <div style={{ padding: '4px 12px 14px' }}>
                 {/* 🔊 듣기 그룹 */}
                 <div style={{ backgroundColor: '#EDE9F5', borderRadius: 10, padding: '8px 10px', marginBottom: 6 }}>
