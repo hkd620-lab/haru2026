@@ -73,6 +73,7 @@ export function BiblePage() {
   const [isFullPlaying, setIsFullPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const koEnStopRef = useRef<boolean>(false);
 
   // 문법 팝업
   const [grammarPopup, setGrammarPopup] = useState<{
@@ -951,6 +952,7 @@ export function BiblePage() {
 
   const handleFullChapterKoEnTTS = async () => {
     if (ttsPlaying === 'full_chapter_ko_en') {
+      koEnStopRef.current = true;
       audioRef.current?.pause();
       if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
       setHighlightedEnWords([]);
@@ -959,6 +961,8 @@ export function BiblePage() {
       setIsFullPlaying(false);
       return;
     }
+
+    koEnStopRef.current = false;
     setTtsLoading('full_chapter_ko_en');
     try {
       const fns = getFunctions(undefined, 'asia-northeast3');
@@ -970,13 +974,17 @@ export function BiblePage() {
       setTtsPlaying('full_chapter_ko_en');
 
       for (const verse of genesisData.verses) {
+        if (koEnStopRef.current) break;
+
         setSelectedVerse(verse.verse);
         const transRes = await transFn({
           verseKey: `genesis_${currentChapter}_${verse.verse}`,
           text: verse.text,
         }) as { data: { translation: string } };
-        const translation = transRes.data.translation;
 
+        if (koEnStopRef.current) break;
+
+        const translation = transRes.data.translation;
         const koCacheKey = `bible_genesis_${currentChapter}_ko_${verse.verse}_${koVoice}`.slice(0, 80);
         const [ttsRes, mappingRes] = await Promise.all([
           ttsFn({ text: translation, cacheKey: koCacheKey, voice: koVoice }),
@@ -986,6 +994,8 @@ export function BiblePage() {
             koText: translation,
           }),
         ]) as any[];
+
+        if (koEnStopRef.current) break;
 
         const mapping = (mappingRes.data as any).mapping || [];
 
@@ -1000,7 +1010,7 @@ export function BiblePage() {
           audioSrc = URL.createObjectURL(blob);
         }
 
-        if (audioSrc) {
+        if (audioSrc && !koEnStopRef.current) {
           await new Promise<void>((resolve) => {
             audioRef.current = new Audio(audioSrc);
             audioRef.current.playbackRate = ttsSpeed;
@@ -1016,6 +1026,12 @@ export function BiblePage() {
               let idx = 0;
               if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
               highlightTimerRef.current = setInterval(() => {
+                if (koEnStopRef.current) {
+                  clearInterval(highlightTimerRef.current!);
+                  setHighlightedEnWords([]);
+                  resolve();
+                  return;
+                }
                 if (idx >= mapping.length) {
                   clearInterval(highlightTimerRef.current!);
                   setHighlightedEnWords([]);
@@ -1034,6 +1050,7 @@ export function BiblePage() {
           });
         }
       }
+
       setTtsPlaying(null);
       setSelectedVerse(null);
       setHighlightedEnWords([]);
