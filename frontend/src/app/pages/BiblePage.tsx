@@ -567,6 +567,130 @@ export function BiblePage() {
     handleTTS(fullText, 'full_chapter');
   };
 
+  const handleFullChapterKoreanTTS = async () => {
+    if (ttsPlaying === 'full_chapter_ko') {
+      audioRef.current?.pause();
+      setTtsPlaying(null);
+      return;
+    }
+    setTtsLoading('full_chapter_ko');
+    try {
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const transFn = httpsCallable(fns, 'getVerseTranslation');
+      const ttsFn = httpsCallable(fns, 'generateTTS');
+
+      // 전체 절 번역 순서대로 가져오기
+      const translations: string[] = [];
+      for (const verse of genesisData.verses) {
+        const res = await transFn({
+          verseKey: `genesis_1_${verse.verse}`,
+          text: verse.text,
+        }) as { data: { translation: string } };
+        translations.push(res.data.translation);
+      }
+      const fullKoText = translations.join(' ');
+      const cacheKey = 'bible_genesis_1_full_ko';
+      const ttsRes: any = await ttsFn({ text: fullKoText, cacheKey });
+      setTtsLoading(null);
+
+      let audioSrc = '';
+      if (ttsRes.data.audioUrl) {
+        audioSrc = ttsRes.data.audioUrl;
+      } else if (ttsRes.data.audioBase64) {
+        const binary = atob(ttsRes.data.audioBase64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const blob = new Blob([bytes], { type: 'audio/mp3' });
+        audioSrc = URL.createObjectURL(blob);
+      }
+      if (audioSrc) {
+        audioRef.current = new Audio(audioSrc);
+        audioRef.current.playbackRate = ttsSpeed;
+        audioRef.current.onended = () => setTtsPlaying(null);
+        await audioRef.current.play();
+        setTtsPlaying('full_chapter_ko');
+      }
+    } catch {
+      setTtsLoading(null);
+    }
+  };
+
+  const handleFullChapterSequentialTTS = async () => {
+    if (ttsPlaying === 'full_chapter_seq') {
+      audioRef.current?.pause();
+      setTtsPlaying(null);
+      return;
+    }
+    setTtsLoading('full_chapter_seq');
+    try {
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const transFn = httpsCallable(fns, 'getVerseTranslation');
+      const ttsFn = httpsCallable(fns, 'generateTTS');
+      setTtsLoading(null);
+      setTtsPlaying('full_chapter_seq');
+
+      for (const verse of genesisData.verses) {
+        // 영어 TTS
+        const enCacheKey = `bible_genesis_1_${verse.verse}`.slice(0, 80);
+        const enRes: any = await ttsFn({ text: verse.text, cacheKey: enCacheKey });
+        let enSrc = '';
+        if (enRes.data.audioUrl) {
+          enSrc = enRes.data.audioUrl;
+        } else if (enRes.data.audioBase64) {
+          const binary = atob(enRes.data.audioBase64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          const blob = new Blob([bytes], { type: 'audio/mp3' });
+          enSrc = URL.createObjectURL(blob);
+        }
+
+        // 번역 가져오기
+        const transRes = await transFn({
+          verseKey: `genesis_1_${verse.verse}`,
+          text: verse.text,
+        }) as { data: { translation: string } };
+
+        // 영어 재생
+        if (enSrc) {
+          await new Promise<void>((resolve) => {
+            audioRef.current = new Audio(enSrc);
+            audioRef.current.playbackRate = ttsSpeed;
+            audioRef.current.onended = () => resolve();
+            audioRef.current.play();
+          });
+        }
+
+        // 한국어 TTS
+        const koCacheKey = `bible_genesis_1_ko_${verse.verse}`.slice(0, 80);
+        const koRes: any = await ttsFn({ text: transRes.data.translation, cacheKey: koCacheKey });
+        let koSrc = '';
+        if (koRes.data.audioUrl) {
+          koSrc = koRes.data.audioUrl;
+        } else if (koRes.data.audioBase64) {
+          const binary = atob(koRes.data.audioBase64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          const blob = new Blob([bytes], { type: 'audio/mp3' });
+          koSrc = URL.createObjectURL(blob);
+        }
+
+        // 한국어 재생
+        if (koSrc) {
+          await new Promise<void>((resolve) => {
+            audioRef.current = new Audio(koSrc);
+            audioRef.current.playbackRate = ttsSpeed;
+            audioRef.current.onended = () => resolve();
+            audioRef.current.play();
+          });
+        }
+      }
+      setTtsPlaying(null);
+    } catch {
+      setTtsLoading(null);
+      setTtsPlaying(null);
+    }
+  };
+
   return (
     <>
     <div style={{ backgroundColor: '#FAF9F6', minHeight: '100vh', paddingBottom: 80 }}>
@@ -598,8 +722,9 @@ export function BiblePage() {
         ))}
       </div>
 
-      {/* 1장 전체 듣기 버튼 */}
-      <div style={{ padding: '16px', backgroundColor: '#EDE9F5' }}>
+      {/* 1장 전체 듣기 버튼 3종 */}
+      <div style={{ padding: '16px', backgroundColor: '#EDE9F5', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {/* 영어 전체 */}
         <button
           onClick={handleFullChapterTTS}
           style={{
@@ -610,7 +735,33 @@ export function BiblePage() {
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
         >
-          {ttsLoading === 'full_chapter' ? '⏳ 로딩 중...' : ttsPlaying === 'full_chapter' ? '⏸ 정지' : '🔊 1장 전체 듣기'}
+          {ttsLoading === 'full_chapter' ? '⏳ 로딩 중...' : ttsPlaying === 'full_chapter' ? '⏸ 정지' : '🔊 1장 영어 전체 듣기'}
+        </button>
+        {/* 한국어 전체 */}
+        <button
+          onClick={handleFullChapterKoreanTTS}
+          style={{
+            width: '100%', padding: '14px',
+            borderRadius: 12, border: 'none',
+            backgroundColor: ttsPlaying === 'full_chapter_ko' ? '#1A7A4A' : '#10b981',
+            color: '#FAF9F6', fontSize: 15, fontWeight: 700,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}
+        >
+          {ttsLoading === 'full_chapter_ko' ? '⏳ 로딩 중...' : ttsPlaying === 'full_chapter_ko' ? '⏸ 정지' : '🇰🇷 1장 한국어 전체 듣기'}
+        </button>
+        {/* 영→한 전체 */}
+        <button
+          onClick={handleFullChapterSequentialTTS}
+          style={{
+            width: '100%', padding: '14px',
+            borderRadius: 12, border: 'none',
+            backgroundColor: ttsPlaying === 'full_chapter_seq' ? '#B45309' : '#F59E0B',
+            color: '#FAF9F6', fontSize: 15, fontWeight: 700,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}
+        >
+          {ttsLoading === 'full_chapter_seq' ? '⏳ 로딩 중...' : ttsPlaying === 'full_chapter_seq' ? '⏸ 정지' : '🔄 1장 영→한 전체 듣기'}
         </button>
       </div>
 
