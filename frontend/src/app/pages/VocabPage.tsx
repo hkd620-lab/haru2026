@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -12,6 +13,7 @@ interface VocabEntry {
 }
 
 export default function VocabPage() {
+  const navigate = useNavigate();
   const [vocabList, setVocabList] = useState<VocabEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -76,6 +78,16 @@ export default function VocabPage() {
     <div style={{ maxWidth: 600, margin: '0 auto', padding: '20px 16px 80px' }}>
       {/* 헤더 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+        <button
+          onClick={() => navigate(-1)}
+          style={{
+            background: 'none', border: 'none',
+            fontSize: 14, color: '#1A3C6E',
+            cursor: 'pointer', padding: '4px 8px 4px 0',
+          }}
+        >
+          ← 뒤로
+        </button>
         <span style={{ fontSize: 22 }}>📚</span>
         <h1 style={{ fontSize: 20, fontWeight: 600, color: '#1A3C6E', margin: 0 }}>
           내 단어장
