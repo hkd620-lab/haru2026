@@ -157,6 +157,7 @@ export function RecordPage() {
   const [weather, setWeather] = useState<Weather>('쾌청');
   const [temperature, setTemperature] = useState<Temperature>('쾌적');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>('생활' as Category);
+  const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [selectedFormats, setSelectedFormats] = useState<RecordFormat[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [formatModalOpen, setFormatModalOpen] = useState(false);
@@ -689,6 +690,8 @@ export function RecordPage() {
             {(['생활', '업무', '하루학습', '하루LAW', 'HARU주식관리', 'HARU예언'] as (Category | 'HARUraw' | '하루학습')[]).map((category) => (
               <button
                 key={category}
+                onMouseEnter={() => setHoveredCategory(category)}
+                onMouseLeave={() => setHoveredCategory(null)}
                 onClick={() => {
                   // 📈 HARU주식관리 클릭 시 바로 모달 열기
                   if (category === 'HARU주식관리') {
@@ -715,10 +718,11 @@ export function RecordPage() {
                 }}
                 className="px-4 py-2 rounded-lg text-xs transition-all whitespace-nowrap flex-shrink-0"
                 style={{
-                  backgroundColor: selectedCategory === category ? '#1A3C6E' : '#FDF6C3',
-                  color: selectedCategory === category ? '#FAF9F6' : '#1A3C6E',
-                  border: selectedCategory === category ? 'none' : '1px solid #d0dff0',
+                  backgroundColor: selectedCategory === category ? '#1A3C6E' : hoveredCategory === category ? '#1A3C6E' : '#FDF6C3',
+                  color: selectedCategory === category ? '#FAF9F6' : hoveredCategory === category ? '#FAF9F6' : '#1A3C6E',
+                  border: selectedCategory === category ? 'none' : hoveredCategory === category ? 'none' : '1px solid #d0dff0',
                   fontWeight: selectedCategory === category ? 600 : 500,
+                  transition: 'background-color 0.2s, color 0.2s, border 0.2s',
                 }}
               >
                 {category === 'HARU주식관리' ? '📈 HARU주식관리' :
