@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { collection, getDocs, deleteDoc, doc, orderBy, query } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -31,12 +31,13 @@ export default function VocabPage() {
   }, []);
 
   const loadFromFirestore = async (uid: string) => {
-    const q = query(
-      collection(db, 'users', uid, 'vocabulary'),
-      orderBy('savedAt', 'desc')
-    );
-    const snap = await getDocs(q);
+    const snap = await getDocs(collection(db, 'users', uid, 'vocabulary'));
     const list = snap.docs.map(d => ({ word: d.id, ...d.data() } as VocabEntry));
+    list.sort((a, b) => {
+      const aTime = a.savedAt?.toMillis?.() ?? new Date(a.savedAt).getTime();
+      const bTime = b.savedAt?.toMillis?.() ?? new Date(b.savedAt).getTime();
+      return bTime - aTime;
+    });
     setVocabList(list);
   };
 
