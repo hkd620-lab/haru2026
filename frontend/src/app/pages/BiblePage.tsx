@@ -98,6 +98,14 @@ export function BiblePage() {
     korean?: string;
   } | null>(null);
 
+  // 번역 팝업
+  const [translationPopup, setTranslationPopup] = useState<{
+    verse: number;
+    text: string;
+    translation: string;
+    loading: boolean;
+  } | null>(null);
+
   const handleGrammarClick = useCallback(async (verse: Verse) => {
     setGrammarPopup({ verseText: verse.text, loading: true });
     try {
@@ -137,6 +145,21 @@ export function BiblePage() {
       setGrammarPopup({ verseText: verse.text, loading: false });
     }
   }, []);
+
+  const handleTranslationClick = async (verse: { verse: number; text: string }) => {
+    setTranslationPopup({ verse: verse.verse, text: verse.text, translation: '', loading: true });
+    try {
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const fn = httpsCallable(fns, 'getVerseTranslation');
+      const result = await fn({
+        verseKey: `genesis_1_${verse.verse}`,
+        text: verse.text,
+      }) as { data: { translation: string } };
+      setTranslationPopup({ verse: verse.verse, text: verse.text, translation: result.data.translation, loading: false });
+    } catch {
+      setTranslationPopup({ verse: verse.verse, text: verse.text, translation: '번역을 불러오지 못했습니다.', loading: false });
+    }
+  };
 
   // 퀴즈 팝업
   const [quizPopup, setQuizPopup] = useState<{
@@ -516,13 +539,16 @@ export function BiblePage() {
                 >
                   {ttsLoading === `verse_${verse.verse}` ? '⏳' : ttsPlaying === `verse_${verse.verse}` ? '⏸ 정지' : '🔊 듣기'}
                 </button>
-                {/* 단어 학습 (준비 중) */}
-                <button style={{
-                  padding: '6px 14px', borderRadius: 20,
-                  border: '1px solid #d0dff0', backgroundColor: '#f8faff',
-                  color: '#1A3C6E', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                }}>
-                  📝 단어
+                {/* 번역 */}
+                <button
+                  onClick={() => handleTranslationClick(verse)}
+                  style={{
+                    padding: '6px 14px', borderRadius: 20,
+                    border: '1px solid #d0dff0', backgroundColor: '#f8faff',
+                    color: '#1A3C6E', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  🇰🇷 번역
                 </button>
                 {/* 문법 */}
                 <button
@@ -546,25 +572,44 @@ export function BiblePage() {
                 >
                   🎯 퀴즈
                 </button>
-                {/* 오류수정 — 개발자 전용 */}
-                {isDev && (
-                  <button
-                    onClick={() => handleErrorClick(verse)}
-                    style={{
-                      padding: '6px 14px', borderRadius: 20,
-                      border: '2px solid #534AB7', backgroundColor: '#EEEDFE',
-                      color: '#3C3489', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                    }}
-                  >
-                    🔍 오류수정
-                  </button>
-                )}
               </div>
             )}
           </div>
         ))}
       </div>
     </div>
+
+      {/* 번역 팝업 */}
+      {translationPopup && (
+        <div style={{
+          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20,
+        }}>
+          <div style={{
+            backgroundColor: '#fff', borderRadius: 16, padding: 24,
+            maxWidth: 480, width: '100%', maxHeight: '80vh', overflowY: 'auto',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <span style={{ fontSize: 16, fontWeight: 700, color: '#1A3C6E' }}>
+                🇰🇷 창세기 1:{translationPopup.verse} 번역
+              </span>
+              <button onClick={() => setTranslationPopup(null)}
+                style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer' }}>×</button>
+            </div>
+            <p style={{ fontSize: 13, color: '#666', marginBottom: 16, lineHeight: 1.6 }}>
+              {translationPopup.text}
+            </p>
+            <hr style={{ margin: '12px 0', borderColor: '#eee' }} />
+            {translationPopup.loading ? (
+              <p style={{ color: '#999', fontSize: 14 }}>번역 불러오는 중... 🇰🇷</p>
+            ) : (
+              <p style={{ fontSize: 15, color: '#1A3C6E', lineHeight: 1.8, fontWeight: 500 }}>
+                {translationPopup.translation}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 오류수정 팝업 — 개발자 전용 */}
       {errorPopup && (
