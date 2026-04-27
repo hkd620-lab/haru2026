@@ -1160,37 +1160,6 @@ export function BiblePage() {
           )}
         </button>
 
-        {/* 한국어 전체 */}
-        <button
-          onClick={handleFullChapterKoreanTTS}
-          disabled={isFullPlaying && ttsPlaying !== 'full_chapter_ko'}
-          style={{
-            width: '100%', padding: '14px',
-            borderRadius: 12, border: 'none',
-            backgroundColor: ttsPlaying === 'full_chapter_ko'
-              ? '#10b981'
-              : isFullPlaying ? '#d1d5db' : '#10b981',
-            color: isFullPlaying && ttsPlaying !== 'full_chapter_ko' ? '#9ca3af' : '#FAF9F6',
-            fontSize: 15, fontWeight: 700,
-            cursor: isFullPlaying && ttsPlaying !== 'full_chapter_ko' ? 'not-allowed' : 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            opacity: isFullPlaying && ttsPlaying !== 'full_chapter_ko' ? 0.45 : 1,
-            transition: 'opacity 0.2s',
-          }}
-        >
-          {ttsPlaying === 'full_chapter_ko' ? (
-            <>
-              <span style={{ background: 'rgba(255,255,255,0.25)', borderRadius: 8, padding: '3px 10px', fontSize: 12 }}>▶ 재생 중</span>
-              <span>🇰🇷 {currentChapter}장 한국어 전체 듣기</span>
-              <span style={{ background: '#ef4444', borderRadius: 8, padding: '3px 10px', fontSize: 12, fontWeight: 700 }}>⏸ 정지</span>
-            </>
-          ) : (
-            <span style={{ width: '100%', textAlign: 'center' }}>
-              {ttsLoading === 'full_chapter_ko' ? '⏳ 로딩 중...' : `🇰🇷 ${currentChapter}장 한국어 전체 듣기`}
-            </span>
-          )}
-        </button>
-
         {/* 영→한 전체 */}
         <button
           onClick={handleFullChapterSequentialTTS}
