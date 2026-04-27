@@ -1340,7 +1340,8 @@ export function BiblePage() {
             position: 'fixed', inset: 0,
             backgroundColor: 'rgba(0,0,0,0.4)',
             zIndex: 100, display: 'flex',
-            alignItems: 'flex-end', justifyContent: 'center',
+            alignItems: 'center', justifyContent: 'center',
+            padding: '20px',
           }}
         >
           <div
@@ -1348,9 +1349,9 @@ export function BiblePage() {
             style={{
               width: '100%', maxWidth: 480,
               backgroundColor: '#fff',
-              borderRadius: '20px 20px 0 0',
-              padding: '24px 24px 40px',
-              maxHeight: '80vh', overflowY: 'auto',
+              borderRadius: 20,
+              padding: '24px 24px 32px',
+              maxHeight: '85vh', overflowY: 'auto',
             }}
           >
             {/* 헤더 */}
