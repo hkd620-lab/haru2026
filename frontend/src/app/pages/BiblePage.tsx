@@ -581,6 +581,12 @@ export function BiblePage() {
     phonetic: string;
     koreanPronunciation: string;
     loading: boolean;
+    example?: string;
+    exampleKo?: string;
+    phrasalVerb?: string;
+    phrasalVerbMeaning?: string;
+    phrasalVerbExample?: string;
+    phrasalVerbExampleKo?: string;
   } | null>(null);
 
   const handleWordClick = useCallback(async (word: string, verseText?: string) => {
@@ -603,6 +609,12 @@ export function BiblePage() {
         phonetic: res.data.phonetic || '',
         koreanPronunciation: res.data.koreanPronunciation || '',
         loading: false,
+        example: res.data.example || '',
+        exampleKo: res.data.exampleKo || '',
+        phrasalVerb: res.data.phrasalVerb || '',
+        phrasalVerbMeaning: res.data.phrasalVerbMeaning || '',
+        phrasalVerbExample: res.data.phrasalVerbExample || '',
+        phrasalVerbExampleKo: res.data.phrasalVerbExampleKo || '',
       });
     } catch {
       setWordPopup({ word: cleanWord, meaning: '오류가 발생했습니다.', partOfSpeech: '', phonetic: '', koreanPronunciation: '', loading: false });
@@ -1713,6 +1725,58 @@ export function BiblePage() {
                 >
                   {ttsLoading === `word_${wordPopup.word}` ? '⏳' : '🔊 발음 듣기'}
                 </button>
+
+                {/* 생활 예문 */}
+                {wordPopup.example && (
+                  <div style={{
+                    background: '#f0fdf4', borderRadius: 10,
+                    padding: '10px 12px', marginTop: 12, marginBottom: 8,
+                    borderLeft: '3px solid #10b981',
+                  }}>
+                    <div style={{ fontSize: 11, color: '#10b981', fontWeight: 600, marginBottom: 4 }}>
+                      💬 생활 예문
+                    </div>
+                    <div style={{ fontSize: 13, color: '#1A3C6E', fontWeight: 500 }}>
+                      {wordPopup.example}
+                    </div>
+                    {wordPopup.exampleKo && (
+                      <div style={{ fontSize: 12, color: '#666', marginTop: 3 }}>
+                        → {wordPopup.exampleKo}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 구동사 */}
+                {wordPopup.phrasalVerb && (
+                  <div style={{
+                    background: '#fff7ed', borderRadius: 10,
+                    padding: '10px 12px', marginBottom: 8,
+                    borderLeft: '3px solid #f97316',
+                  }}>
+                    <div style={{ fontSize: 11, color: '#f97316', fontWeight: 600, marginBottom: 4 }}>
+                      🔗 구동사
+                    </div>
+                    <div style={{ fontSize: 14, color: '#333', fontWeight: 600 }}>
+                      {wordPopup.phrasalVerb}
+                      {wordPopup.phrasalVerbMeaning && (
+                        <span style={{ fontSize: 13, fontWeight: 400, color: '#666', marginLeft: 8 }}>
+                          — {wordPopup.phrasalVerbMeaning}
+                        </span>
+                      )}
+                    </div>
+                    {wordPopup.phrasalVerbExample && (
+                      <div style={{ marginTop: 6, fontSize: 12, color: '#1A3C6E', fontStyle: 'italic' }}>
+                        {wordPopup.phrasalVerbExample}
+                      </div>
+                    )}
+                    {wordPopup.phrasalVerbExampleKo && (
+                      <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
+                        → {wordPopup.phrasalVerbExampleKo}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* 구분선 */}
                 <div style={{ borderTop: '1px solid #e5e7eb', margin: '14px 0' }} />
