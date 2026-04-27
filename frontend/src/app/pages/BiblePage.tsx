@@ -438,7 +438,7 @@ export function BiblePage() {
     koreanText?: string;
   } | null>(null);
   const [quizLevel, setQuizLevel] = useState<'basic' | 'intermediate' | 'advanced'>('basic');
-  const [enVoice, setEnVoice] = useState<'nova' | 'onyx'>('onyx');
+  const [enVoice, setEnVoice] = useState<'nova' | 'onyx' | 'echo'>('onyx');
   const [koVoice, setKoVoice] = useState<'nova' | 'onyx' | 'alloy' | 'echo'>('alloy');
   const [showQuizHint, setShowQuizHint] = useState(false);
 
@@ -1095,7 +1095,7 @@ export function BiblePage() {
       <div style={{ display: 'flex', gap: 12, padding: '8px 16px 0', justifyContent: 'flex-end', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: 11, color: '#555' }}>🇺🇸</span>
-          {(['nova', 'onyx'] as const).map(v => (
+          {(['nova', 'onyx', 'echo'] as const).map(v => (
             <button
               key={v}
               onClick={() => setEnVoice(v)}
@@ -1106,7 +1106,7 @@ export function BiblePage() {
                 color: enVoice === v ? '#fff' : '#555',
                 border: 'none', cursor: 'pointer',
               }}
-            >{v === 'nova' ? '여성' : '남성'}</button>
+            >{v === 'nova' ? '여성' : v === 'onyx' ? '남성1' : '남성2'}</button>
           ))}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
