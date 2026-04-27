@@ -58,5 +58,11 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow update, delete: if false;
     }
+
+    // 사용자 설정 (FCM 토큰 포함)
+    match /users/{userId}/settings/{docId} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == userId;
+    }
   }
 }
