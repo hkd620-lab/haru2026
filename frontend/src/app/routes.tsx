@@ -26,6 +26,7 @@ const NovelSynopsisPage = lazy(() => import('./pages/NovelSynopsisPage').then((m
 const NovelStoryPage = lazy(() => import('./pages/NovelStoryPage').then((m) => ({ default: m.NovelStoryPage })));
 const DiaryLearnPage = lazy(() => import('./pages/DiaryLearnPage').then((m) => ({ default: m.DiaryLearnPage })));
 const NewsPage = lazy(() => import('./pages/NewsPage').then((m) => ({ default: m.NewsPage })));
+const AdminChecklistPage = lazy(() => import('./pages/AdminChecklistPage').then((m) => ({ default: m.AdminChecklistPage })));
 
 // iOS 안전 로딩 인디케이터 (간단하고 블로킹 없음)
 function PageLoader() {
@@ -85,6 +86,7 @@ export const router = createBrowserRouter([
           { path: 'record-prophecy', element: <RecordProphecyPage /> },
           { path: 'diary-learn', element: withSuspense(<DiaryLearnPage />) },
           { path: 'news', element: withSuspense(<NewsPage />) },
+          { path: 'admin/checklist', element: withSuspense(<AdminChecklistPage />) },
           { path: 'record-detail/:date/:formatKey', element: withSuspense(<RecordDetailPage />) },
         ],
       },
