@@ -591,9 +591,79 @@ export function BiblePage() {
     }
   };
 
-  const handleFullChapterTTS = () => {
-    const fullText = genesisData.verses.map(v => v.text).join(' ');
-    handleTTS(fullText, 'full_chapter');
+  const handleFullChapterTTS = async () => {
+    if (ttsPlaying === 'full_chapter') {
+      audioRef.current?.pause();
+      if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+      setHighlightedWord(null);
+      setSelectedVerse(null);
+      setTtsPlaying(null);
+      return;
+    }
+    setTtsLoading('full_chapter');
+    try {
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const ttsFn = httpsCallable(fns, 'generateTTS');
+      setTtsLoading(null);
+      setTtsPlaying('full_chapter');
+      for (const verse of genesisData.verses) {
+        // 현재 절 자동 펼치기
+        setSelectedVerse(verse.verse);
+        const enCacheKey = `bible_genesis_1_${verse.verse}`.slice(0, 80);
+        const enRes: any = await ttsFn({ text: verse.text, cacheKey: enCacheKey });
+        let enSrc = '';
+        if (enRes.data.audioUrl) {
+          enSrc = enRes.data.audioUrl;
+        } else if (enRes.data.audioBase64) {
+          const binary = atob(enRes.data.audioBase64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          const blob = new Blob([bytes], { type: 'audio/mp3' });
+          enSrc = URL.createObjectURL(blob);
+        }
+        if (enSrc) {
+          await new Promise<void>((resolve) => {
+            audioRef.current = new Audio(enSrc);
+            audioRef.current.playbackRate = ttsSpeed;
+            audioRef.current.onended = () => {
+              if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+              setHighlightedWord(null);
+              resolve();
+            };
+            // 단어 하이라이트
+            const words = verse.text.trim().split(/\s+/);
+            let wordIndex = 0;
+            if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+            const audio = audioRef.current!;
+            const key = `verse_${verse.verse}`;
+            const startLoop = () => {
+              const duration = audio.duration || words.length * 0.45;
+              const interval = (duration * 1000) / words.length;
+              highlightTimerRef.current = setInterval(() => {
+                if (wordIndex >= words.length) {
+                  clearInterval(highlightTimerRef.current!);
+                  setHighlightedWord(null);
+                  return;
+                }
+                setHighlightedWord({ key, index: wordIndex });
+                wordIndex++;
+              }, interval);
+            };
+            if (audio.duration) {
+              startLoop();
+            } else {
+              audio.addEventListener('loadedmetadata', startLoop, { once: true });
+            }
+            audioRef.current.play();
+          });
+        }
+      }
+      setTtsPlaying(null);
+      setSelectedVerse(null);
+    } catch {
+      setTtsLoading(null);
+      setTtsPlaying(null);
+    }
   };
 
   const handleFullChapterKoreanTTS = async () => {
@@ -679,12 +749,41 @@ export function BiblePage() {
           text: verse.text,
         }) as { data: { translation: string } };
 
-        // 영어 재생
+        // 현재 절 자동 펼치기
+        setSelectedVerse(verse.verse);
+        // 영어 재생 + 하이라이트
         if (enSrc) {
           await new Promise<void>((resolve) => {
             audioRef.current = new Audio(enSrc);
             audioRef.current.playbackRate = ttsSpeed;
-            audioRef.current.onended = () => resolve();
+            audioRef.current.onended = () => {
+              if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+              setHighlightedWord(null);
+              resolve();
+            };
+            const words = verse.text.trim().split(/\s+/);
+            let wordIndex = 0;
+            if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+            const audio = audioRef.current!;
+            const key = `verse_${verse.verse}`;
+            const startLoop = () => {
+              const duration = audio.duration || words.length * 0.45;
+              const interval = (duration * 1000) / words.length;
+              highlightTimerRef.current = setInterval(() => {
+                if (wordIndex >= words.length) {
+                  clearInterval(highlightTimerRef.current!);
+                  setHighlightedWord(null);
+                  return;
+                }
+                setHighlightedWord({ key, index: wordIndex });
+                wordIndex++;
+              }, interval);
+            };
+            if (audio.duration) {
+              startLoop();
+            } else {
+              audio.addEventListener('loadedmetadata', startLoop, { once: true });
+            }
             audioRef.current.play();
           });
         }
