@@ -1842,7 +1842,7 @@ export const preloadChapterGrammar = onCall(
               Authorization: `Bearer ${openaiApiKey}`
             },
             body: JSON.stringify({
-              model: 'gpt-4o-mini',
+              model: 'gpt-4o',
               temperature: 0.2,
               messages: [
                 {
@@ -2521,6 +2521,20 @@ JSON 형식으로만 출력하세요 (다른 설명 없이):
 
     await cacheRef.set({ ...parsed, verseKey, createdAt: new Date() });
     return parsed;
+  }
+);
+
+export const getCustomToken = onCall(
+  { region: 'asia-northeast3' },
+  async (request) => {
+    const DEV_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+    const SECRET_KEY = 'haru-collector-2026';
+    const provided = request.data?.secretKey;
+    if (provided !== SECRET_KEY) {
+      throw new HttpsError('permission-denied', '권한 없음');
+    }
+    const token = await admin.auth().createCustomToken(DEV_UID);
+    return { token };
   }
 );
 
