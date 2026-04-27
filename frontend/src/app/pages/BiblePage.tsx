@@ -189,8 +189,8 @@ export function BiblePage() {
 
       // 한국어 TTS 호출
       const ttsFn = httpsCallable(fns, 'generateTTS');
-      const cacheKey = `bible_genesis_1_ko_${verse.verse}`.slice(0, 80);
-      const res: any = await ttsFn({ text: translation, cacheKey });
+      const cacheKey = `bible_genesis_1_ko_${verse.verse}_${koVoice}`.slice(0, 80);
+      const res: any = await ttsFn({ text: translation, cacheKey, voice: koVoice });
       setTtsLoading(null);
       if (audioRef.current) audioRef.current.pause();
       if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
@@ -241,7 +241,7 @@ export function BiblePage() {
 
       const [mappingResult, ttsResult] = await Promise.all([
         mappingFn({ verseKey: `genesis_1_${verse.verse}`, enText: verse.text, koText: translation }) as Promise<{ data: { mapping: Array<{ ko: string; enWords: string[] }> } }>,
-        ttsFn({ text: translation, cacheKey: `bible_genesis_1_ko_${verse.verse}`.slice(0, 80) }) as Promise<{ data: { audioUrl?: string; audioBase64?: string } }>,
+        ttsFn({ text: translation, cacheKey: `bible_genesis_1_ko_${verse.verse}_${koVoice}`.slice(0, 80), voice: koVoice }) as Promise<{ data: { audioUrl?: string; audioBase64?: string } }>,
       ]);
 
       const mapping = mappingResult.data.mapping || [];
@@ -319,8 +319,8 @@ export function BiblePage() {
 
       // ① 영어 TTS
       const ttsFn = httpsCallable(fns, 'generateTTS');
-      const enCacheKey = `bible_genesis_1_${verse.verse}`.slice(0, 80);
-      const enRes: any = await ttsFn({ text: verse.text, cacheKey: enCacheKey });
+      const enCacheKey = `bible_genesis_1_${verse.verse}_${enVoice}`.slice(0, 80);
+      const enRes: any = await ttsFn({ text: verse.text, cacheKey: enCacheKey, voice: enVoice });
       setTtsLoading(null);
 
       let enAudioSrc = '';
@@ -379,8 +379,8 @@ export function BiblePage() {
       // (중간 정지 체크 제거 — React state 비동기 문제로 항상 null로 읽힘)
 
       // ③ 한국어 TTS
-      const koCacheKey = `bible_genesis_1_ko_${verse.verse}`.slice(0, 80);
-      const koRes: any = await ttsFn({ text: transResult.data.translation, cacheKey: koCacheKey });
+      const koCacheKey = `bible_genesis_1_ko_${verse.verse}_${koVoice}`.slice(0, 80);
+      const koRes: any = await ttsFn({ text: transResult.data.translation, cacheKey: koCacheKey, voice: koVoice });
 
       let koAudioSrc = '';
       if (koRes.data.audioUrl) {
@@ -426,6 +426,8 @@ export function BiblePage() {
     koreanText?: string;
   } | null>(null);
   const [quizLevel, setQuizLevel] = useState<'basic' | 'intermediate' | 'advanced'>('basic');
+  const [enVoice, setEnVoice] = useState<'nova' | 'onyx'>('nova');
+  const [koVoice, setKoVoice] = useState<'nova' | 'onyx'>('onyx');
   const [showQuizHint, setShowQuizHint] = useState(false);
 
   const handleQuizClick = useCallback(async (verse: Verse, level: 'basic' | 'intermediate' | 'advanced' = quizLevel) => {
@@ -602,8 +604,9 @@ export function BiblePage() {
       // ② Firebase Function 호출
       const fns = getFunctions(undefined, 'asia-northeast3');
       const fn = httpsCallable(fns, 'generateTTS');
-      const cacheKey = `bible_genesis_1_${key}`.slice(0, 80);
-      const res: any = await fn({ text, cacheKey });
+      const voiceParam = key.startsWith('verse_ko') ? koVoice : enVoice;
+      const cacheKey = `bible_genesis_1_${key}_${voiceParam}`.slice(0, 80);
+      const res: any = await fn({ text, cacheKey, voice: voiceParam });
 
       if (audioRef.current) audioRef.current.pause();
 
@@ -709,8 +712,8 @@ export function BiblePage() {
       for (const verse of genesisData.verses) {
         // 현재 절 자동 펼치기
         setSelectedVerse(verse.verse);
-        const enCacheKey = `bible_genesis_1_${verse.verse}`.slice(0, 80);
-        const enRes: any = await ttsFn({ text: verse.text, cacheKey: enCacheKey });
+        const enCacheKey = `bible_genesis_1_${verse.verse}_${enVoice}`.slice(0, 80);
+        const enRes: any = await ttsFn({ text: verse.text, cacheKey: enCacheKey, voice: enVoice });
         let enSrc = '';
         if (enRes.data.audioUrl) {
           enSrc = enRes.data.audioUrl;
@@ -788,8 +791,8 @@ export function BiblePage() {
         translations.push(res.data.translation);
       }
       const fullKoText = translations.join(' ');
-      const cacheKey = 'bible_genesis_1_full_ko';
-      const ttsRes: any = await ttsFn({ text: fullKoText, cacheKey });
+      const cacheKey = `bible_genesis_1_full_ko_${koVoice}`;
+      const ttsRes: any = await ttsFn({ text: fullKoText, cacheKey, voice: koVoice });
       setTtsLoading(null);
 
       let audioSrc = '';
@@ -830,8 +833,8 @@ export function BiblePage() {
 
       for (const verse of genesisData.verses) {
         // 영어 TTS
-        const enCacheKey = `bible_genesis_1_${verse.verse}`.slice(0, 80);
-        const enRes: any = await ttsFn({ text: verse.text, cacheKey: enCacheKey });
+        const enCacheKey = `bible_genesis_1_${verse.verse}_${enVoice}`.slice(0, 80);
+        const enRes: any = await ttsFn({ text: verse.text, cacheKey: enCacheKey, voice: enVoice });
         let enSrc = '';
         if (enRes.data.audioUrl) {
           enSrc = enRes.data.audioUrl;
@@ -889,8 +892,8 @@ export function BiblePage() {
         }
 
         // 한국어 TTS
-        const koCacheKey = `bible_genesis_1_ko_${verse.verse}`.slice(0, 80);
-        const koRes: any = await ttsFn({ text: transRes.data.translation, cacheKey: koCacheKey });
+        const koCacheKey = `bible_genesis_1_ko_${verse.verse}_${koVoice}`.slice(0, 80);
+        const koRes: any = await ttsFn({ text: transRes.data.translation, cacheKey: koCacheKey, voice: koVoice });
         let koSrc = '';
         if (koRes.data.audioUrl) {
           koSrc = koRes.data.audioUrl;
@@ -948,6 +951,41 @@ export function BiblePage() {
             }}
           >{s}x</button>
         ))}
+      </div>
+      {/* 보이스 선택 */}
+      <div style={{ display: 'flex', gap: 12, padding: '8px 16px 0', justifyContent: 'flex-end', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 11, color: '#555' }}>🇺🇸</span>
+          {(['nova', 'onyx'] as const).map(v => (
+            <button
+              key={v}
+              onClick={() => setEnVoice(v)}
+              style={{
+                padding: '3px 10px', borderRadius: 12, fontSize: 11,
+                fontWeight: enVoice === v ? 700 : 400,
+                backgroundColor: enVoice === v ? '#534AB7' : '#f3f4f6',
+                color: enVoice === v ? '#fff' : '#555',
+                border: 'none', cursor: 'pointer',
+              }}
+            >{v === 'nova' ? '여성' : '남성'}</button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 11, color: '#555' }}>🇰🇷</span>
+          {(['nova', 'onyx'] as const).map(v => (
+            <button
+              key={v}
+              onClick={() => setKoVoice(v)}
+              style={{
+                padding: '3px 10px', borderRadius: 12, fontSize: 11,
+                fontWeight: koVoice === v ? 700 : 400,
+                backgroundColor: koVoice === v ? '#0F6E56' : '#f3f4f6',
+                color: koVoice === v ? '#fff' : '#555',
+                border: 'none', cursor: 'pointer',
+              }}
+            >{v === 'nova' ? '여성' : '남성'}</button>
+          ))}
+        </div>
       </div>
 
       {/* 1장 전체 듣기 버튼 3종 */}
