@@ -811,6 +811,8 @@ export function BiblePage() {
       const cacheKey = `bible_genesis_${currentChapter}_full_ko_${koVoice}`;
       const ttsRes: any = await ttsFn({ text: fullKoText, cacheKey, voice: koVoice });
       setTtsLoading(null);
+      setIsFullPlaying(true);
+      setTtsPlaying('full_chapter_ko');
 
       let audioSrc = '';
       if (ttsRes.data.audioUrl) {
@@ -825,12 +827,16 @@ export function BiblePage() {
       if (audioSrc) {
         audioRef.current = new Audio(audioSrc);
         audioRef.current.playbackRate = ttsSpeed;
-        audioRef.current.onended = () => setTtsPlaying(null);
+        audioRef.current.onended = () => {
+          setTtsPlaying(null);
+          setIsFullPlaying(false);
+        };
         await audioRef.current.play();
-        setTtsPlaying('full_chapter_ko');
       }
     } catch {
       setTtsLoading(null);
+      setIsFullPlaying(false);
+      setTtsPlaying(null);
     }
   };
 
