@@ -2,7 +2,8 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import genesisData from '../../data/genesis_1.json';
+import genesis1Data from '../../data/genesis_1.json';
+import genesis2Data from '../../data/genesis_2.json';
 
 interface Verse {
   verse: number;
@@ -54,7 +55,7 @@ export function BiblePage() {
         const verses: string[] = [];
 
         genesisData.verses.forEach((verse: Verse) => {
-          const verseKey = `genesis_1_${verse.verse}`;
+          const verseKey = `genesis_${currentChapter}_${verse.verse}`;
           verses.push(verseKey);
           verseTexts[verseKey] = verse.text;
         });
@@ -114,6 +115,16 @@ export function BiblePage() {
   // 영→한 연속 듣기 상태
   const [isSequentialPlaying, setIsSequentialPlaying] = useState<number | null>(null);
 
+  const [currentChapter, setCurrentChapter] = useState<1 | 2>(1);
+  const genesisData = currentChapter === 1 ? genesis1Data : genesis2Data;
+
+  useEffect(() => {
+    setSelectedVerse(null);
+    setTtsPlaying(null);
+    setIsFullPlaying(false);
+    if (audioRef.current) audioRef.current.pause();
+  }, [currentChapter]);
+
   const handleGrammarClick = useCallback(async (verse: Verse) => {
     setGrammarPopup({ verseText: verse.text, loading: true });
     try {
@@ -121,7 +132,7 @@ export function BiblePage() {
       const fns = gf(undefined, 'asia-northeast3');
       const fn = hc(fns, 'getGrammarExplain');
       const res: any = await fn({
-        verseKey: `genesis_1_${verse.verse}`,
+        verseKey: `genesis_${currentChapter}_${verse.verse}`,
         verseText: verse.text,
       });
       const result = res.data;
@@ -160,7 +171,7 @@ export function BiblePage() {
       const fns = getFunctions(undefined, 'asia-northeast3');
       const fn = httpsCallable(fns, 'getVerseTranslation');
       const result = await fn({
-        verseKey: `genesis_1_${verse.verse}`,
+        verseKey: `genesis_${currentChapter}_${verse.verse}`,
         text: verse.text,
       }) as { data: { translation: string } };
       setTranslationPopup({ verse: verse.verse, text: verse.text, translation: result.data.translation, loading: false });
@@ -183,14 +194,14 @@ export function BiblePage() {
       const fns = getFunctions(undefined, 'asia-northeast3');
       const transFn = httpsCallable(fns, 'getVerseTranslation');
       const transResult = await transFn({
-        verseKey: `genesis_1_${verse.verse}`,
+        verseKey: `genesis_${currentChapter}_${verse.verse}`,
         text: verse.text,
       }) as { data: { translation: string } };
       const translation = transResult.data.translation;
 
       // 한국어 TTS 호출
       const ttsFn = httpsCallable(fns, 'generateTTS');
-      const cacheKey = `bible_genesis_1_ko_${verse.verse}_${koVoice}`.slice(0, 80);
+      const cacheKey = `bible_genesis_${currentChapter}_ko_${verse.verse}_${koVoice}`.slice(0, 80);
       const res: any = await ttsFn({ text: translation, cacheKey, voice: koVoice });
       setTtsLoading(null);
       if (audioRef.current) audioRef.current.pause();
@@ -235,14 +246,14 @@ export function BiblePage() {
       const ttsFn = httpsCallable(fns, 'generateTTS');
 
       const transResult = await transFn({
-        verseKey: `genesis_1_${verse.verse}`,
+        verseKey: `genesis_${currentChapter}_${verse.verse}`,
         text: verse.text,
       }) as { data: { translation: string } };
       const translation = transResult.data.translation;
 
       const [mappingResult, ttsResult] = await Promise.all([
-        mappingFn({ verseKey: `genesis_1_${verse.verse}`, enText: verse.text, koText: translation }) as Promise<{ data: { mapping: Array<{ ko: string; enWords: string[] }> } }>,
-        ttsFn({ text: translation, cacheKey: `bible_genesis_1_ko_${verse.verse}_${koVoice}`.slice(0, 80), voice: koVoice }) as Promise<{ data: { audioUrl?: string; audioBase64?: string } }>,
+        mappingFn({ verseKey: `genesis_${currentChapter}_${verse.verse}`, enText: verse.text, koText: translation }) as Promise<{ data: { mapping: Array<{ ko: string; enWords: string[] }> } }>,
+        ttsFn({ text: translation, cacheKey: `bible_genesis_${currentChapter}_ko_${verse.verse}_${koVoice}`.slice(0, 80), voice: koVoice }) as Promise<{ data: { audioUrl?: string; audioBase64?: string } }>,
       ]);
 
       const mapping = mappingResult.data.mapping || [];
@@ -320,7 +331,7 @@ export function BiblePage() {
 
       // ① 영어 TTS
       const ttsFn = httpsCallable(fns, 'generateTTS');
-      const enCacheKey = `bible_genesis_1_${verse.verse}_${enVoice}`.slice(0, 80);
+      const enCacheKey = `bible_genesis_${currentChapter}_${verse.verse}_${enVoice}`.slice(0, 80);
       const enRes: any = await ttsFn({ text: verse.text, cacheKey: enCacheKey, voice: enVoice });
       setTtsLoading(null);
 
@@ -374,13 +385,13 @@ export function BiblePage() {
           }
           audioRef.current.play();
         }),
-        transFn({ verseKey: `genesis_1_${verse.verse}`, text: verse.text }) as Promise<{ data: { translation: string } }>,
+        transFn({ verseKey: `genesis_${currentChapter}_${verse.verse}`, text: verse.text }) as Promise<{ data: { translation: string } }>,
       ]);
 
       // (중간 정지 체크 제거 — React state 비동기 문제로 항상 null로 읽힘)
 
       // ③ 한국어 TTS
-      const koCacheKey = `bible_genesis_1_ko_${verse.verse}_${koVoice}`.slice(0, 80);
+      const koCacheKey = `bible_genesis_${currentChapter}_ko_${verse.verse}_${koVoice}`.slice(0, 80);
       const koRes: any = await ttsFn({ text: transResult.data.translation, cacheKey: koCacheKey, voice: koVoice });
 
       let koAudioSrc = '';
@@ -447,7 +458,7 @@ export function BiblePage() {
       const fns = gf(undefined, 'asia-northeast3');
       const fn = hc(fns, 'getVerseQuiz');
       const res: any = await fn({
-        verseKey: `genesis_1_${verse.verse}`,
+        verseKey: `genesis_${currentChapter}_${verse.verse}`,
         verseText: verse.text,
         level,
       });
@@ -472,7 +483,7 @@ export function BiblePage() {
     try {
       const db = (await import('firebase/firestore')).getFirestore();
       const { doc, getDoc } = await import('firebase/firestore');
-      const verseKey = `genesis_1_${verse.verse}`;
+      const verseKey = `genesis_${currentChapter}_${verse.verse}`;
       const cacheRef = doc(db, 'grammarCache', verseKey);
       const snap = await getDoc(cacheRef);
       if (snap.exists()) {
@@ -606,7 +617,7 @@ export function BiblePage() {
       const fns = getFunctions(undefined, 'asia-northeast3');
       const fn = httpsCallable(fns, 'generateTTS');
       const voiceParam = key.startsWith('verse_ko') ? koVoice : enVoice;
-      const cacheKey = `bible_genesis_1_${key}_${voiceParam}`.slice(0, 80);
+      const cacheKey = `bible_genesis_${currentChapter}_${key}_${voiceParam}`.slice(0, 80);
       const res: any = await fn({ text, cacheKey, voice: voiceParam });
 
       if (audioRef.current) audioRef.current.pause();
@@ -714,7 +725,7 @@ export function BiblePage() {
       for (const verse of genesisData.verses) {
         // 현재 절 자동 펼치기
         setSelectedVerse(verse.verse);
-        const enCacheKey = `bible_genesis_1_${verse.verse}_${enVoice}`.slice(0, 80);
+        const enCacheKey = `bible_genesis_${currentChapter}_${verse.verse}_${enVoice}`.slice(0, 80);
         const enRes: any = await ttsFn({ text: verse.text, cacheKey: enCacheKey, voice: enVoice });
         let enSrc = '';
         if (enRes.data.audioUrl) {
@@ -789,13 +800,13 @@ export function BiblePage() {
       const translations: string[] = [];
       for (const verse of genesisData.verses) {
         const res = await transFn({
-          verseKey: `genesis_1_${verse.verse}`,
+          verseKey: `genesis_${currentChapter}_${verse.verse}`,
           text: verse.text,
         }) as { data: { translation: string } };
         translations.push(res.data.translation);
       }
       const fullKoText = translations.join(' ');
-      const cacheKey = `bible_genesis_1_full_ko_${koVoice}`;
+      const cacheKey = `bible_genesis_${currentChapter}_full_ko_${koVoice}`;
       const ttsRes: any = await ttsFn({ text: fullKoText, cacheKey, voice: koVoice });
       setTtsLoading(null);
 
@@ -838,7 +849,7 @@ export function BiblePage() {
 
       for (const verse of genesisData.verses) {
         // 영어 TTS
-        const enCacheKey = `bible_genesis_1_${verse.verse}_${enVoice}`.slice(0, 80);
+        const enCacheKey = `bible_genesis_${currentChapter}_${verse.verse}_${enVoice}`.slice(0, 80);
         const enRes: any = await ttsFn({ text: verse.text, cacheKey: enCacheKey, voice: enVoice });
         let enSrc = '';
         if (enRes.data.audioUrl) {
@@ -853,7 +864,7 @@ export function BiblePage() {
 
         // 번역 가져오기
         const transRes = await transFn({
-          verseKey: `genesis_1_${verse.verse}`,
+          verseKey: `genesis_${currentChapter}_${verse.verse}`,
           text: verse.text,
         }) as { data: { translation: string } };
 
@@ -897,7 +908,7 @@ export function BiblePage() {
         }
 
         // 한국어 TTS
-        const koCacheKey = `bible_genesis_1_ko_${verse.verse}_${koVoice}`.slice(0, 80);
+        const koCacheKey = `bible_genesis_${currentChapter}_ko_${verse.verse}_${koVoice}`.slice(0, 80);
         const koRes: any = await ttsFn({ text: transRes.data.translation, cacheKey: koCacheKey, voice: koVoice });
         let koSrc = '';
         if (koRes.data.audioUrl) {
@@ -951,16 +962,16 @@ export function BiblePage() {
       for (const verse of genesisData.verses) {
         setSelectedVerse(verse.verse);
         const transRes = await transFn({
-          verseKey: `genesis_1_${verse.verse}`,
+          verseKey: `genesis_${currentChapter}_${verse.verse}`,
           text: verse.text,
         }) as { data: { translation: string } };
         const translation = transRes.data.translation;
 
-        const koCacheKey = `bible_genesis_1_ko_${verse.verse}_${koVoice}`.slice(0, 80);
+        const koCacheKey = `bible_genesis_${currentChapter}_ko_${verse.verse}_${koVoice}`.slice(0, 80);
         const [ttsRes, mappingRes] = await Promise.all([
           ttsFn({ text: translation, cacheKey: koCacheKey, voice: koVoice }),
           mappingFn({
-            verseKey: `genesis_1_${verse.verse}`,
+            verseKey: `genesis_${currentChapter}_${verse.verse}`,
             enText: verse.text,
             koText: translation,
           }),
@@ -1034,8 +1045,23 @@ export function BiblePage() {
           ← 뒤로
         </button>
         <div>
-          <p style={{ color: '#1A3C6E', fontSize: 16, fontWeight: 700, margin: 0 }}>📖 창세기 1장</p>
-          <p style={{ color: '#999', fontSize: 11, margin: 0 }}>Genesis Chapter 1 · KJV</p>
+          <p style={{ color: '#1A3C6E', fontSize: 16, fontWeight: 700, margin: 0 }}>📖 창세기 {currentChapter}장</p>
+          <p style={{ color: '#999', fontSize: 11, margin: 0 }}>Genesis Chapter {currentChapter} · KJV</p>
+          <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+            {([1, 2] as const).map(ch => (
+              <button
+                key={ch}
+                onClick={() => setCurrentChapter(ch)}
+                style={{
+                  padding: '3px 12px', borderRadius: 12, border: 'none',
+                  backgroundColor: currentChapter === ch ? '#1A3C6E' : '#f3f4f6',
+                  color: currentChapter === ch ? '#fff' : '#555',
+                  fontSize: 12, fontWeight: currentChapter === ch ? 700 : 400,
+                  cursor: 'pointer',
+                }}
+              >{ch}장</button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1104,7 +1130,7 @@ export function BiblePage() {
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
         >
-          {ttsLoading === 'full_chapter' ? '⏳ 로딩 중...' : ttsPlaying === 'full_chapter' ? '⏸ 정지' : '🇺🇸 1장 영어 전체 듣기'}
+          {ttsLoading === 'full_chapter' ? '⏳ 로딩 중...' : ttsPlaying === 'full_chapter' ? '⏸ 정지' : `🇺🇸 ${currentChapter}장 영어 전체 듣기`}
         </button>
         {/* 한국어 전체 */}
         <button
@@ -1117,7 +1143,7 @@ export function BiblePage() {
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
         >
-          {ttsLoading === 'full_chapter_ko' ? '⏳ 로딩 중...' : ttsPlaying === 'full_chapter_ko' ? '⏸ 정지' : '🇰🇷 1장 한국어 전체 듣기'}
+          {ttsLoading === 'full_chapter_ko' ? '⏳ 로딩 중...' : ttsPlaying === 'full_chapter_ko' ? '⏸ 정지' : `🇰🇷 ${currentChapter}장 한국어 전체 듣기`}
         </button>
         {/* 영→한 전체 */}
         <button
@@ -1130,7 +1156,7 @@ export function BiblePage() {
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
         >
-          {ttsLoading === 'full_chapter_seq' ? '⏳ 로딩 중...' : ttsPlaying === 'full_chapter_seq' ? '⏸ 정지' : '🔄 1장 영→한 전체 듣기'}
+          {ttsLoading === 'full_chapter_seq' ? '⏳ 로딩 중...' : ttsPlaying === 'full_chapter_seq' ? '⏸ 정지' : `🔄 ${currentChapter}장 영→한 전체 듣기`}
         </button>
         {/* 한→영 전체 */}
         <button
@@ -1143,7 +1169,7 @@ export function BiblePage() {
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
         >
-          {ttsLoading === 'full_chapter_ko_en' ? '⏳ 로딩 중...' : ttsPlaying === 'full_chapter_ko_en' ? '⏸ 정지' : '✨ 1장 한→영 전체 듣기'}
+          {ttsLoading === 'full_chapter_ko_en' ? '⏳ 로딩 중...' : ttsPlaying === 'full_chapter_ko_en' ? '⏸ 정지' : `✨ ${currentChapter}장 한→영 전체 듣기`}
         </button>
       </div>
 
@@ -1298,7 +1324,7 @@ export function BiblePage() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <span style={{ fontSize: 16, fontWeight: 700, color: '#1A3C6E' }}>
-                🇰🇷 창세기 1:{translationPopup.verse} 번역
+                🇰🇷 창세기 {currentChapter}:{translationPopup.verse} 번역
               </span>
               <button onClick={() => setTranslationPopup(null)}
                 style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer' }}>×</button>
