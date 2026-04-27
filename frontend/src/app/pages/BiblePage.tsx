@@ -332,9 +332,12 @@ export function BiblePage() {
     selectedAnswers: string[];
     submitted: boolean;
     loading: boolean;
+    level: 'basic' | 'intermediate' | 'advanced';
+    koreanText?: string;
   } | null>(null);
+  const [quizLevel, setQuizLevel] = useState<'basic' | 'intermediate' | 'advanced'>('basic');
 
-  const handleQuizClick = useCallback(async (verse: Verse) => {
+  const handleQuizClick = useCallback(async (verse: Verse, level: 'basic' | 'intermediate' | 'advanced' = quizLevel) => {
     setQuizPopup({
       verseText: verse.text,
       blankedText: '',
@@ -343,6 +346,7 @@ export function BiblePage() {
       selectedAnswers: [],
       submitted: false,
       loading: true,
+      level,
     });
     try {
       const { getFunctions: gf, httpsCallable: hc } = await import('firebase/functions');
@@ -351,6 +355,7 @@ export function BiblePage() {
       const res: any = await fn({
         verseKey: `genesis_1_${verse.verse}`,
         verseText: verse.text,
+        level,
       });
       setQuizPopup({
         verseText: verse.text,
@@ -360,11 +365,13 @@ export function BiblePage() {
         selectedAnswers: new Array(res.data.blanks?.length || 0).fill(''),
         submitted: false,
         loading: false,
+        level,
+        koreanText: res.data.koreanText || '',
       });
     } catch {
       setQuizPopup(null);
     }
-  }, []);
+  }, [quizLevel]);
 
   const handleErrorClick = useCallback(async (verse: Verse) => {
     setErrorPopup({ verseText: verse.text, loading: true });
@@ -999,7 +1006,7 @@ export function BiblePage() {
                 </button>
                 {/* 퀴즈 */}
                 <button
-                  onClick={() => handleQuizClick(verse)}
+                  onClick={() => handleQuizClick(verse, quizLevel)}
                   style={{
                     padding: '6px 14px', borderRadius: 20,
                     border: '1px solid #d0dff0', backgroundColor: '#f8faff',
@@ -1347,7 +1354,7 @@ export function BiblePage() {
             }}
           >
             {/* 헤더 */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <p style={{ fontSize: 15, fontWeight: 800, color: '#1A3C6E', margin: 0 }}>
                 🎯 빈칸 채우기 퀴즈
               </p>
@@ -1356,6 +1363,40 @@ export function BiblePage() {
                 style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999' }}
               >✕</button>
             </div>
+            {/* 난이도 선택 */}
+            {!quizPopup.loading && (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+                {(['basic', 'intermediate', 'advanced'] as const).map((lv) => (
+                  <button
+                    key={lv}
+                    onClick={() => {
+                      const currentVerse = { verse: 0, text: quizPopup.verseText };
+                      handleQuizClick(currentVerse as any, lv);
+                    }}
+                    style={{
+                      flex: 1, padding: '6px 4px', borderRadius: 10, border: 'none',
+                      backgroundColor: quizPopup.level === lv ? '#1A3C6E' : '#f3f4f6',
+                      color: quizPopup.level === lv ? '#fff' : '#555',
+                      fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    }}
+                  >
+                    {lv === 'basic' ? '🟢 초급' : lv === 'intermediate' ? '🟡 중급' : '🔴 고급'}
+                  </button>
+                ))}
+              </div>
+            )}
+            {/* 고급 모드: 한국어 문장 표시 */}
+            {!quizPopup.loading && quizPopup.level === 'advanced' && quizPopup.koreanText && (
+              <div style={{
+                backgroundColor: '#FEF3E2', borderRadius: 12,
+                padding: 14, marginBottom: 16,
+                border: '1.5px solid #F59E0B',
+                fontSize: 14, color: '#92400E', lineHeight: 1.8,
+              }}>
+                <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, color: '#B45309' }}>🇰🇷 한국어 번역</p>
+                {quizPopup.koreanText}
+              </div>
+            )}
 
             {quizPopup.loading ? (
               <div style={{ textAlign: 'center', padding: '20px 0' }}>
