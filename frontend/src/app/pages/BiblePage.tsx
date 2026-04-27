@@ -4,8 +4,6 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
-import genesis1Data from '../../data/genesis_1.json';
-import genesis2Data from '../../data/genesis_2.json';
 
 interface Verse {
   verse: number;
@@ -56,7 +54,7 @@ export function BiblePage() {
         const verseTexts: Record<string, string> = {};
         const verses: string[] = [];
 
-        genesisData.verses.forEach((verse: Verse) => {
+        (genesisData?.verses ?? []).forEach((verse: Verse) => {
           const verseKey = `genesis_${currentChapter}_${verse.verse}`;
           verses.push(verseKey);
           verseTexts[verseKey] = verse.text;
@@ -117,8 +115,14 @@ export function BiblePage() {
   // 영→한 연속 듣기 상태
   const [isSequentialPlaying, setIsSequentialPlaying] = useState<number | null>(null);
 
-  const [currentChapter, setCurrentChapter] = useState<1 | 2>(1);
-  const genesisData = currentChapter === 1 ? genesis1Data : genesis2Data;
+  const [currentChapter, setCurrentChapter] = useState<number>(1);
+  const [genesisData, setGenesisData] = useState<{ book: string; bookKo: string; chapter: number; verses: Verse[] } | null>(null);
+
+  useEffect(() => {
+    import(`../../data/genesis_${currentChapter}.json`)
+      .then((mod) => setGenesisData(mod.default))
+      .catch(() => console.error(`genesis_${currentChapter}.json 로드 실패`));
+  }, [currentChapter]);
 
   useEffect(() => {
     setSelectedVerse(null);
@@ -804,7 +808,7 @@ export function BiblePage() {
       setTtsLoading(null);
       setIsFullPlaying(true);
       setTtsPlaying('full_chapter');
-      for (const verse of genesisData.verses) {
+      for (const verse of (genesisData?.verses ?? [])) {
         // 현재 절 자동 펼치기
         setSelectedVerse(verse.verse);
         const enCacheKey = `bible_genesis_${currentChapter}_${verse.verse}_${enVoice}`.slice(0, 80);
@@ -881,7 +885,7 @@ export function BiblePage() {
 
       // 전체 절 번역 순서대로 가져오기
       const translations: string[] = [];
-      for (const verse of genesisData.verses) {
+      for (const verse of (genesisData?.verses ?? [])) {
         const res = await transFn({
           verseKey: `genesis_${currentChapter}_${verse.verse}`,
           text: verse.text,
@@ -937,7 +941,7 @@ export function BiblePage() {
       setIsFullPlaying(true);
       setTtsPlaying('full_chapter_seq');
 
-      for (const verse of genesisData.verses) {
+      for (const verse of (genesisData?.verses ?? [])) {
         // 영어 TTS
         const enCacheKey = `bible_genesis_${currentChapter}_${verse.verse}_${enVoice}`.slice(0, 80);
         const enRes: any = await ttsFn({ text: verse.text, cacheKey: enCacheKey, voice: enVoice });
@@ -1050,7 +1054,7 @@ export function BiblePage() {
       setIsFullPlaying(true);
       setTtsPlaying('full_chapter_ko_en');
 
-      for (const verse of genesisData.verses) {
+      for (const verse of (genesisData?.verses ?? [])) {
         setSelectedVerse(verse.verse);
         const transRes = await transFn({
           verseKey: `genesis_${currentChapter}_${verse.verse}`,
@@ -1148,19 +1152,24 @@ export function BiblePage() {
         <div>
           <p style={{ color: '#1A3C6E', fontSize: 16, fontWeight: 700, margin: 0 }}>📖 창세기 {currentChapter}장</p>
           <p style={{ color: '#999', fontSize: 11, margin: 0 }}>Genesis Chapter {currentChapter} · KJV</p>
-          <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-            {([1, 2] as const).map(ch => (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '12px' }}>
+            {Array.from({ length: 50 }, (_, i) => i + 1).map((ch) => (
               <button
                 key={ch}
                 onClick={() => setCurrentChapter(ch)}
                 style={{
-                  padding: '3px 12px', borderRadius: 12, border: 'none',
-                  backgroundColor: currentChapter === ch ? '#1A3C6E' : '#f3f4f6',
-                  color: currentChapter === ch ? '#fff' : '#555',
-                  fontSize: 12, fontWeight: currentChapter === ch ? 700 : 400,
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: currentChapter === ch ? '#1A3C6E' : '#e5e7eb',
+                  color: currentChapter === ch ? '#FAF9F6' : '#374151',
+                  fontWeight: currentChapter === ch ? 700 : 400,
                   cursor: 'pointer',
+                  fontSize: '13px',
                 }}
-              >{ch}장</button>
+              >
+                {ch}장
+              </button>
             ))}
           </div>
         </div>
@@ -1405,7 +1414,7 @@ export function BiblePage() {
 
       {/* 절 목록 */}
       <div style={{ padding: '0 16px 16px' }}>
-        {genesisData.verses.map((verse: Verse) => (
+        {(genesisData?.verses ?? []).map((verse: Verse) => (
           <div
             key={verse.verse}
             style={{
