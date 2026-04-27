@@ -1610,16 +1610,16 @@ export function BiblePage() {
             position: 'fixed', inset: 0,
             backgroundColor: 'rgba(0,0,0,0.4)',
             zIndex: 100, display: 'flex',
-            alignItems: 'flex-end', justifyContent: 'center',
+            alignItems: 'center', justifyContent: 'center',
           }}
         >
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              width: '100%', maxWidth: 480,
+              width: '90%', maxWidth: 360,
               backgroundColor: '#fff',
-              borderRadius: '20px 20px 0 0',
-              padding: '24px 24px 40px',
+              borderRadius: 16,
+              padding: '24px 20px',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
