@@ -922,6 +922,99 @@ export function BiblePage() {
     }
   };
 
+  const handleFullChapterKoEnTTS = async () => {
+    if (ttsPlaying === 'full_chapter_ko_en') {
+      audioRef.current?.pause();
+      if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+      setHighlightedEnWords([]);
+      setTtsPlaying(null);
+      setSelectedVerse(null);
+      return;
+    }
+    setTtsLoading('full_chapter_ko_en');
+    try {
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const transFn = httpsCallable(fns, 'getVerseTranslation');
+      const ttsFn = httpsCallable(fns, 'generateTTS');
+      const mappingFn = httpsCallable(fns, 'getVerseWordMapping');
+      setTtsLoading(null);
+      setTtsPlaying('full_chapter_ko_en');
+
+      for (const verse of genesisData.verses) {
+        setSelectedVerse(verse.verse);
+        const transRes = await transFn({
+          verseKey: `genesis_1_${verse.verse}`,
+          text: verse.text,
+        }) as { data: { translation: string } };
+        const translation = transRes.data.translation;
+
+        const koCacheKey = `bible_genesis_1_ko_${verse.verse}_${koVoice}`.slice(0, 80);
+        const [ttsRes, mappingRes] = await Promise.all([
+          ttsFn({ text: translation, cacheKey: koCacheKey, voice: koVoice }),
+          mappingFn({
+            verseKey: `genesis_1_${verse.verse}`,
+            enText: verse.text,
+            koText: translation,
+          }),
+        ]) as any[];
+
+        const mapping = (mappingRes.data as any).mapping || [];
+
+        let audioSrc = '';
+        if (ttsRes.data.audioUrl) {
+          audioSrc = ttsRes.data.audioUrl;
+        } else if (ttsRes.data.audioBase64) {
+          const binary = atob(ttsRes.data.audioBase64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          const blob = new Blob([bytes], { type: 'audio/mp3' });
+          audioSrc = URL.createObjectURL(blob);
+        }
+
+        if (audioSrc) {
+          await new Promise<void>((resolve) => {
+            audioRef.current = new Audio(audioSrc);
+            audioRef.current.playbackRate = ttsSpeed;
+            audioRef.current.onended = () => {
+              if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+              setHighlightedEnWords([]);
+              resolve();
+            };
+            const audio = audioRef.current!;
+            const startKoHighlight = () => {
+              const duration = audio.duration || mapping.length * 0.6;
+              const interval = (duration * 1000) / mapping.length;
+              let idx = 0;
+              if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+              highlightTimerRef.current = setInterval(() => {
+                if (idx >= mapping.length) {
+                  clearInterval(highlightTimerRef.current!);
+                  setHighlightedEnWords([]);
+                  return;
+                }
+                setHighlightedEnWords(mapping[idx].enWords);
+                idx++;
+              }, interval);
+            };
+            if (audio.duration) {
+              startKoHighlight();
+            } else {
+              audio.addEventListener('loadedmetadata', startKoHighlight, { once: true });
+            }
+            audioRef.current.play();
+          });
+        }
+      }
+      setTtsPlaying(null);
+      setSelectedVerse(null);
+      setHighlightedEnWords([]);
+    } catch {
+      setTtsLoading(null);
+      setTtsPlaying(null);
+      setHighlightedEnWords([]);
+    }
+  };
+
   return (
     <>
     <div style={{ backgroundColor: '#FAF9F6', minHeight: '100vh', paddingBottom: 80 }}>
@@ -1001,7 +1094,7 @@ export function BiblePage() {
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
         >
-          {ttsLoading === 'full_chapter' ? '⏳ 로딩 중...' : ttsPlaying === 'full_chapter' ? '⏸ 정지' : '🔊 1장 영어 전체 듣기'}
+          {ttsLoading === 'full_chapter' ? '⏳ 로딩 중...' : ttsPlaying === 'full_chapter' ? '⏸ 정지' : '🇺🇸 1장 영어 전체 듣기'}
         </button>
         {/* 한국어 전체 */}
         <button
@@ -1028,6 +1121,19 @@ export function BiblePage() {
           }}
         >
           {ttsLoading === 'full_chapter_seq' ? '⏳ 로딩 중...' : ttsPlaying === 'full_chapter_seq' ? '⏸ 정지' : '🔄 1장 영→한 전체 듣기'}
+        </button>
+        {/* 한→영 전체 */}
+        <button
+          onClick={handleFullChapterKoEnTTS}
+          style={{
+            width: '100%', padding: '14px',
+            borderRadius: 12, border: 'none',
+            backgroundColor: ttsPlaying === 'full_chapter_ko_en' ? '#185FA5' : '#378ADD',
+            color: '#FAF9F6', fontSize: 15, fontWeight: 700,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}
+        >
+          {ttsLoading === 'full_chapter_ko_en' ? '⏳ 로딩 중...' : ttsPlaying === 'full_chapter_ko_en' ? '⏸ 정지' : '✨ 1장 한→영 전체 듣기'}
         </button>
       </div>
 
@@ -1090,7 +1196,7 @@ export function BiblePage() {
                         fontSize: 12, fontWeight: 600, cursor: 'pointer',
                       }}
                     >
-                      {ttsLoading === `verse_${verse.verse}` ? '⏳' : ttsPlaying === `verse_${verse.verse}` ? '⏸ 정지' : '🔊 영어'}
+                      {ttsLoading === `verse_${verse.verse}` ? '⏳' : ttsPlaying === `verse_${verse.verse}` ? '⏸ 정지' : '🇺🇸 영어'}
                     </button>
                     <button
                       onClick={() => handleKoreanTTS(verse)}
