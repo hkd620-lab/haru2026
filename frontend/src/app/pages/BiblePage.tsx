@@ -438,8 +438,8 @@ export function BiblePage() {
     koreanText?: string;
   } | null>(null);
   const [quizLevel, setQuizLevel] = useState<'basic' | 'intermediate' | 'advanced'>('basic');
-  const [enVoice, setEnVoice] = useState<'nova' | 'onyx'>('nova');
-  const [koVoice, setKoVoice] = useState<'nova' | 'onyx'>('onyx');
+  const [enVoice, setEnVoice] = useState<'nova' | 'onyx'>('onyx');
+  const [koVoice, setKoVoice] = useState<'nova' | 'onyx'>('nova');
   const [showQuizHint, setShowQuizHint] = useState(false);
 
   const handleQuizClick = useCallback(async (verse: Verse, level: 'basic' | 'intermediate' | 'advanced' = quizLevel) => {
