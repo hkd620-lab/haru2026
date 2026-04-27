@@ -29,6 +29,7 @@ import { NewsPage } from './pages/NewsPage';
 import { BiblePage } from './pages/BiblePage';
 import VocabPage from './pages/VocabPage';
 import { DiaryLearnPage } from './pages/DiaryLearnPage';
+import { AdminChecklistPage } from './pages/AdminChecklistPage';
 import { NovelStudio } from './pages/NovelStudio';
 import { NovelSynopsisPage } from './pages/NovelSynopsisPage';
 import { NovelStoryPage } from './pages/NovelStoryPage';
@@ -128,6 +129,9 @@ function App() {
               <Route path="/bible" element={<BiblePage />} />
               <Route path="/vocab" element={<VocabPage />} />
               <Route path="/diary-learn" element={<DiaryLearnPage />} />
+
+              {/* 관리자 페이지 */}
+              <Route path="/admin/checklist" element={<AdminChecklistPage />} />
 
               {/* 구독 페이지 */}
               <Route path="/subscription" element={<SubscriptionPage />} />
