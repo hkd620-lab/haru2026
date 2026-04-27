@@ -60,3 +60,14 @@ git checkout feature/new-formats
 - 작업 전 반드시 해당 파일 백업 (file.tsx.old)
 - Functions 배포 시 반드시 region: 'asia-northeast3' 명시
 - CLAUDE.md 수정 시 반드시 기존 내용 읽은 후 맨 아래에만 추가
+
+## 주요 장애 이력 및 재발 방지
+
+### grammarCache 구조 불일치 오류 (2026-04-28)
+- **증상:** 문법 버튼 클릭 시 "오늘의 표현"만 뜨고 문법 분석 내용 없음
+- **원인:** Functions 코드 업데이트 후 Firestore grammarCache에 구버전 캐시가 남아있어 구조 불일치 발생
+- **해결:** grammarCache 전체 삭제
+  ```
+  firebase firestore:delete grammarCache --recursive --project haru2026-8abb8
+  ```
+- **재발 방지:** getGrammarExplain 관련 Functions 코드 수정 배포 시 반드시 grammarCache 전체 삭제 포함
