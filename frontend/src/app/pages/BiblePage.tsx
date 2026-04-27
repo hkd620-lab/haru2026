@@ -106,6 +106,10 @@ export function BiblePage() {
     loading: boolean;
   } | null>(null);
 
+  // 한→영 하이라이트 매핑
+  const [koEnMapping, setKoEnMapping] = useState<Array<{ ko: string; enWords: string[] }>>([]);
+  const [highlightedEnWords, setHighlightedEnWords] = useState<string[]>([]);
+
   // 영→한 연속 듣기 상태
   const [isSequentialPlaying, setIsSequentialPlaying] = useState<number | null>(null);
 
@@ -204,12 +208,98 @@ export function BiblePage() {
       if (audioSrc) {
         audioRef.current = new Audio(audioSrc);
         audioRef.current.playbackRate = ttsSpeed;
-        audioRef.current.onended = () => { setTtsPlaying(null); };
+        audioRef.current.onended = () => { setTtsPlaying(null); setHighlightedEnWords([]); };
         await audioRef.current.play();
         setTtsPlaying(key);
       }
     } catch {
       setTtsLoading(null);
+    }
+  };
+
+  // 한→영 하이라이트 듣기 (세계최초)
+  const handleKoEnHighlightTTS = async (verse: { verse: number; text: string }) => {
+    const key = `verse_koen_${verse.verse}`;
+    if (ttsPlaying === key) {
+      if (audioRef.current) audioRef.current.pause();
+      setTtsPlaying(null);
+      setHighlightedEnWords([]);
+      return;
+    }
+    setTtsLoading(key);
+    try {
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const transFn = httpsCallable(fns, 'getVerseTranslation');
+      const mappingFn = httpsCallable(fns, 'getVerseWordMapping');
+      const ttsFn = httpsCallable(fns, 'generateTTS');
+
+      const transResult = await transFn({
+        verseKey: `genesis_1_${verse.verse}`,
+        text: verse.text,
+      }) as { data: { translation: string } };
+      const translation = transResult.data.translation;
+
+      const [mappingResult, ttsResult] = await Promise.all([
+        mappingFn({ verseKey: `genesis_1_${verse.verse}`, enText: verse.text, koText: translation }) as Promise<{ data: { mapping: Array<{ ko: string; enWords: string[] }> } }>,
+        ttsFn({ text: translation, cacheKey: `bible_genesis_1_ko_${verse.verse}`.slice(0, 80) }) as Promise<{ data: { audioUrl?: string; audioBase64?: string } }>,
+      ]);
+
+      const mapping = mappingResult.data.mapping || [];
+      setKoEnMapping(mapping);
+
+      let audioSrc = '';
+      if (ttsResult.data.audioUrl) {
+        audioSrc = ttsResult.data.audioUrl;
+      } else if (ttsResult.data.audioBase64) {
+        const binary = atob(ttsResult.data.audioBase64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const blob = new Blob([bytes], { type: 'audio/mp3' });
+        audioSrc = URL.createObjectURL(blob);
+      }
+
+      if (audioSrc) {
+        if (audioRef.current) audioRef.current.pause();
+        if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+        setHighlightedWord(null);
+
+        audioRef.current = new Audio(audioSrc);
+        audioRef.current.playbackRate = ttsSpeed;
+        audioRef.current.onended = () => {
+          setTtsPlaying(null);
+          setHighlightedEnWords([]);
+          if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+        };
+        setTtsLoading(null);
+        await audioRef.current.play();
+        setTtsPlaying(key);
+
+        // 한국어 어절마다 대응 영어 단어 그린 하이라이트
+        let segIdx = 0;
+        const startKoLoop = () => {
+          const audio = audioRef.current!;
+          const duration = audio.duration || mapping.length * 0.6;
+          const interval = (duration * 1000) / (mapping.length || 1);
+          highlightTimerRef.current = setInterval(() => {
+            if (segIdx >= mapping.length) {
+              clearInterval(highlightTimerRef.current!);
+              setHighlightedEnWords([]);
+              return;
+            }
+            setHighlightedEnWords(mapping[segIdx].enWords);
+            segIdx++;
+          }, interval);
+        };
+        const audio = audioRef.current!;
+        if (audio.duration) {
+          startKoLoop();
+        } else {
+          audio.addEventListener('loadedmetadata', startKoLoop, { once: true });
+        }
+      }
+    } catch {
+      setTtsLoading(null);
+      setHighlightedEnWords([]);
     }
   };
 
@@ -442,6 +532,8 @@ export function BiblePage() {
       <p style={{ fontSize: 13, color: '#333', lineHeight: 1.8, margin: 0, flexWrap: 'wrap', display: 'flex', gap: '4px' }}>
         {words.map((word, idx) => {
           const isHighlighted = verseKey && highlightedWord?.key === verseKey && highlightedWord?.index === idx;
+          const cleanWord = word.replace(/[^a-zA-Z]/g, '');
+          const isEnHighlighted = highlightedEnWords.length > 0 && highlightedEnWords.some(w => w.toLowerCase() === cleanWord.toLowerCase());
           return (
             <span
               key={idx}
@@ -451,9 +543,9 @@ export function BiblePage() {
                 borderRadius: 4,
                 padding: '0 2px',
                 transition: 'all 0.1s ease',
-                backgroundColor: isHighlighted ? '#D1FAE5' : 'transparent',
-                color: isHighlighted ? '#065F46' : '#333',
-                fontWeight: isHighlighted ? 700 : 400,
+                backgroundColor: isEnHighlighted ? '#10b981' : isHighlighted ? '#D1FAE5' : 'transparent',
+                color: isEnHighlighted ? '#fff' : isHighlighted ? '#065F46' : '#333',
+                fontWeight: isHighlighted || isEnHighlighted ? 700 : 400,
               }}
               onMouseEnter={e => {
                 if (!isHighlighted) {
@@ -946,76 +1038,93 @@ export function BiblePage() {
 
             {/* 절 펼쳤을 때 버튼들 */}
             {selectedVerse === verse.verse && (
-              <div style={{ padding: '8px 16px 14px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {/* 영어 듣기 */}
-                <button
-                  onClick={() => handleTTS(verse.text, `verse_${verse.verse}`)}
-                  style={{
-                    padding: '6px 14px', borderRadius: 20, border: 'none',
-                    backgroundColor: ttsPlaying === `verse_${verse.verse}` ? '#8B4789' : '#EDE9F5',
-                    color: ttsPlaying === `verse_${verse.verse}` ? '#fff' : '#1A3C6E',
-                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                  }}
-                >
-                  {ttsLoading === `verse_${verse.verse}` ? '⏳' : ttsPlaying === `verse_${verse.verse}` ? '⏸ 정지' : '🔊 영어'}
-                </button>
-                {/* 한국어 듣기 */}
-                <button
-                  onClick={() => handleKoreanTTS(verse)}
-                  style={{
-                    padding: '6px 14px', borderRadius: 20, border: 'none',
-                    backgroundColor: ttsPlaying === `verse_ko_${verse.verse}` ? '#1A7A4A' : '#E8F5EE',
-                    color: ttsPlaying === `verse_ko_${verse.verse}` ? '#fff' : '#1A3C6E',
-                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                  }}
-                >
-                  {ttsLoading === `verse_ko_${verse.verse}` ? '⏳' : ttsPlaying === `verse_ko_${verse.verse}` ? '⏸ 정지' : '🇰🇷 한국어'}
-                </button>
-                {/* 영→한 연속 듣기 */}
-                <button
-                  onClick={() => handleSequentialTTS(verse)}
-                  style={{
-                    padding: '6px 14px', borderRadius: 20, border: 'none',
-                    backgroundColor: isSequentialPlaying === verse.verse ? '#B45309' : '#FEF3E2',
-                    color: isSequentialPlaying === verse.verse ? '#fff' : '#1A3C6E',
-                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                  }}
-                >
-                  {ttsLoading === `seq_${verse.verse}` ? '⏳' : isSequentialPlaying === verse.verse ? '⏸ 정지' : '🔄 영→한'}
-                </button>
-                {/* 번역 */}
-                <button
-                  onClick={() => handleTranslationClick(verse)}
-                  style={{
-                    padding: '6px 14px', borderRadius: 20,
-                    border: '1px solid #d0dff0', backgroundColor: '#f8faff',
-                    color: '#1A3C6E', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                  }}
-                >
-                  🇰🇷 번역
-                </button>
-                {/* 문법 */}
-                <button
-                  onClick={() => handleGrammarClick(verse)}
-                  style={{
-                    padding: '6px 14px', borderRadius: 20,
-                    border: '1px solid #d0dff0', backgroundColor: '#f8faff',
-                    color: '#1A3C6E', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                  }}
-                >
-                  📚 문법
-                </button>
-                {/* 퀴즈 */}
-                <button
-                  onClick={() => handleQuizClick(verse, quizLevel)}
-                  style={{
-                    padding: '6px 14px', borderRadius: 20,
-                    border: '1px solid #d0dff0', backgroundColor: '#f8faff',
-                    color: '#1A3C6E', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                  }}
-                >
-                  🎯 퀴즈
-                </button>
+              <div style={{ padding: '4px 12px 14px' }}>
+                {/* 🔊 듣기 그룹 */}
+                <div style={{ backgroundColor: '#EDE9F5', borderRadius: 10, padding: '8px 10px', marginBottom: 6 }}>
+                  <p style={{ fontSize: 10, color: '#8B4789', fontWeight: 700, margin: '0 0 6px' }}>🔊 듣기</p>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => handleTTS(verse.text, `verse_${verse.verse}`)}
+                      style={{
+                        padding: '5px 12px', borderRadius: 20, border: 'none',
+                        backgroundColor: ttsPlaying === `verse_${verse.verse}` ? '#8B4789' : '#fff',
+                        color: ttsPlaying === `verse_${verse.verse}` ? '#fff' : '#1A3C6E',
+                        fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                      }}
+                    >
+                      {ttsLoading === `verse_${verse.verse}` ? '⏳' : ttsPlaying === `verse_${verse.verse}` ? '⏸ 정지' : '🔊 영어'}
+                    </button>
+                    <button
+                      onClick={() => handleKoreanTTS(verse)}
+                      style={{
+                        padding: '5px 12px', borderRadius: 20, border: 'none',
+                        backgroundColor: ttsPlaying === `verse_ko_${verse.verse}` ? '#1A7A4A' : '#fff',
+                        color: ttsPlaying === `verse_ko_${verse.verse}` ? '#fff' : '#1A3C6E',
+                        fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                      }}
+                    >
+                      {ttsLoading === `verse_ko_${verse.verse}` ? '⏳' : ttsPlaying === `verse_ko_${verse.verse}` ? '⏸ 정지' : '🇰🇷 한국어'}
+                    </button>
+                    <button
+                      onClick={() => handleSequentialTTS(verse)}
+                      style={{
+                        padding: '5px 12px', borderRadius: 20, border: 'none',
+                        backgroundColor: isSequentialPlaying === verse.verse ? '#B45309' : '#fff',
+                        color: isSequentialPlaying === verse.verse ? '#fff' : '#1A3C6E',
+                        fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                      }}
+                    >
+                      {ttsLoading === `seq_${verse.verse}` ? '⏳' : isSequentialPlaying === verse.verse ? '⏸ 정지' : '🔄 영→한'}
+                    </button>
+                    <button
+                      onClick={() => handleKoEnHighlightTTS(verse)}
+                      style={{
+                        padding: '5px 12px', borderRadius: 20, border: 'none',
+                        backgroundColor: ttsPlaying === `verse_koen_${verse.verse}` ? '#065F46' : '#fff',
+                        color: ttsPlaying === `verse_koen_${verse.verse}` ? '#fff' : '#10b981',
+                        fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                      }}
+                    >
+                      {ttsLoading === `verse_koen_${verse.verse}` ? '⏳' : ttsPlaying === `verse_koen_${verse.verse}` ? '⏸ 정지' : '✨ 한→영'}
+                    </button>
+                  </div>
+                </div>
+                {/* 📖 학습 그룹 */}
+                <div style={{ backgroundColor: '#f3f4f6', borderRadius: 10, padding: '8px 10px' }}>
+                  <p style={{ fontSize: 10, color: '#6B7280', fontWeight: 700, margin: '0 0 6px' }}>📖 학습</p>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => handleTranslationClick(verse)}
+                      style={{
+                        padding: '5px 12px', borderRadius: 20,
+                        border: '1px solid #d0dff0', backgroundColor: '#fff',
+                        color: '#1A3C6E', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                      }}
+                    >
+                      🇰🇷 번역
+                    </button>
+                    <button
+                      onClick={() => handleGrammarClick(verse)}
+                      style={{
+                        padding: '5px 12px', borderRadius: 20,
+                        border: '1px solid #d0dff0', backgroundColor: '#fff',
+                        color: '#1A3C6E', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                      }}
+                    >
+                      📚 문법
+                    </button>
+                    <button
+                      onClick={() => handleQuizClick(verse, quizLevel)}
+                      style={{
+                        padding: '5px 12px', borderRadius: 20,
+                        border: '1px solid #d0dff0', backgroundColor: '#fff',
+                        color: '#1A3C6E', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                      }}
+                    >
+                      🎯 퀴즈
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>

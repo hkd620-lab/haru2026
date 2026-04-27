@@ -2470,3 +2470,37 @@ export const getVerseTranslation = onCall(
   }
 );
 
+export const getVerseWordMapping = onCall(
+  { region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] },
+  async (request) => {
+    const { verseKey, enText, koText } = request.data;
+    if (!enText || !koText) throw new HttpsError('invalid-argument', '영어/한국어 텍스트가 필요합니다.');
+
+    const cacheRef = db.collection('wordMappingCache').doc(verseKey);
+    const cached = await cacheRef.get();
+    if (cached.exists) return cached.data();
+
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+    const prompt = `다음 영어 성경 구절과 한국어 번역이 있습니다.
+한국어 번역을 단어/어절 단위로 분리하고, 각 한국어 단어/어절이 영어 원문의 어떤 단어(들)에 해당하는지 매핑해주세요.
+
+영어: ${enText}
+한국어: ${koText}
+
+JSON 형식으로만 출력하세요 (다른 설명 없이):
+{
+  "mapping": [
+    { "ko": "한국어어절", "enWords": ["영어단어1", "영어단어2"] },
+    ...
+  ]
+}`;
+    const result = await model.generateContent(prompt);
+    const raw = result.response.text().trim().replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(raw);
+
+    await cacheRef.set({ ...parsed, verseKey, createdAt: new Date() });
+    return parsed;
+  }
+);
+
