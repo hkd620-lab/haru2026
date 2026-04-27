@@ -713,6 +713,7 @@ export function BiblePage() {
       setHighlightedWord(null);
       setSelectedVerse(null);
       setTtsPlaying(null);
+      setIsFullPlaying(false);
       return;
     }
     setTtsLoading('full_chapter');
@@ -788,6 +789,7 @@ export function BiblePage() {
     if (ttsPlaying === 'full_chapter_ko') {
       audioRef.current?.pause();
       setTtsPlaying(null);
+      setIsFullPlaying(false);
       return;
     }
     setTtsLoading('full_chapter_ko');
@@ -836,6 +838,7 @@ export function BiblePage() {
     if (ttsPlaying === 'full_chapter_seq') {
       audioRef.current?.pause();
       setTtsPlaying(null);
+      setIsFullPlaying(false);
       return;
     }
     setTtsLoading('full_chapter_seq');
@@ -947,6 +950,7 @@ export function BiblePage() {
       setHighlightedEnWords([]);
       setTtsPlaying(null);
       setSelectedVerse(null);
+      setIsFullPlaying(false);
       return;
     }
     setTtsLoading('full_chapter_ko_en');
