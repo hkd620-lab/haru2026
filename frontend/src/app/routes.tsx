@@ -86,7 +86,9 @@ export const router = createBrowserRouter([
           { path: 'record-prophecy', element: <RecordProphecyPage /> },
           { path: 'diary-learn', element: withSuspense(<DiaryLearnPage />) },
           { path: 'news', element: withSuspense(<NewsPage />) },
-          { path: 'admin/checklist', element: withSuspense(<AdminChecklistPage />) },
+          { path: 'admin', children: [
+            { path: 'checklist', element: withSuspense(<AdminChecklistPage />) },
+          ]},
           { path: 'record-detail/:date/:formatKey', element: withSuspense(<RecordDetailPage />) },
         ],
       },
