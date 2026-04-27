@@ -439,7 +439,7 @@ export function BiblePage() {
   } | null>(null);
   const [quizLevel, setQuizLevel] = useState<'basic' | 'intermediate' | 'advanced'>('basic');
   const [enVoice, setEnVoice] = useState<'nova' | 'onyx'>('onyx');
-  const [koVoice, setKoVoice] = useState<'nova' | 'onyx' | 'alloy'>('alloy');
+  const [koVoice, setKoVoice] = useState<'nova' | 'onyx' | 'alloy' | 'echo'>('alloy');
   const [showQuizHint, setShowQuizHint] = useState(false);
 
   const handleQuizClick = useCallback(async (verse: Verse, level: 'basic' | 'intermediate' | 'advanced' = quizLevel) => {
@@ -1111,7 +1111,7 @@ export function BiblePage() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: 11, color: '#555' }}>🇰🇷</span>
-          {(['nova', 'alloy', 'onyx'] as const).map(v => (
+          {(['nova', 'alloy', 'onyx', 'echo'] as const).map(v => (
             <button
               key={v}
               onClick={() => setKoVoice(v)}
@@ -1122,7 +1122,7 @@ export function BiblePage() {
                 color: koVoice === v ? '#fff' : '#555',
                 border: 'none', cursor: 'pointer',
               }}
-            >{v === 'nova' ? '여성1' : v === 'alloy' ? '여성2' : '남성'}</button>
+            >{v === 'nova' ? '여성1' : v === 'alloy' ? '여성2' : v === 'onyx' ? '남성1' : '남성2'}</button>
           ))}
         </div>
       </div>
