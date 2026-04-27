@@ -64,5 +64,58 @@ service cloud.firestore {
       allow read, write: if request.auth != null
         && request.auth.uid == userId;
     }
+
+    // 뉴스 컬렉션
+    match /news/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+        request.auth.uid == "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
+    }
+
+    // 이메일-UID 매핑
+    match /email_to_uid/{docId} {
+      allow read, write: if request.auth != null &&
+        request.auth.uid == "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
+    }
+
+    // 법률 상담 캐시
+    match /lawConsultCache/{cacheId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // 구독 정보
+    match /subscription/{docId} {
+      allow read: if request.auth != null &&
+        request.auth.uid == docId;
+      allow write: if false;
+    }
+
+    // 단어장
+    match /vocabulary/{docId} {
+      allow read, write, delete: if request.auth != null;
+    }
+
+    // 텃밭 작물
+    match /gardenCrops/{docId} {
+      allow read, write, delete: if request.auth != null;
+    }
+
+    // 소설 설정
+    match /novelSettings/{docId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // 성경 학습이력
+    match /users/{userId}/bibleProgress/{docId} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == userId;
+    }
+
+    // 성경 단어장
+    match /users/{userId}/bibleWordbook/{docId} {
+      allow read, write, delete: if request.auth != null
+        && request.auth.uid == userId;
+    }
   }
 }
