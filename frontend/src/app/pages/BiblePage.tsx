@@ -189,6 +189,8 @@ export function BiblePage() {
       const res: any = await ttsFn({ text: translation, cacheKey });
       setTtsLoading(null);
       if (audioRef.current) audioRef.current.pause();
+      if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+      setHighlightedWord(null);
       let audioSrc = '';
       if (res.data.audioUrl) {
         audioSrc = res.data.audioUrl;
@@ -251,7 +253,11 @@ export function BiblePage() {
           audioRef.current = new Audio(enAudioSrc);
           audioRef.current.playbackRate = ttsSpeed;
           setTtsPlaying(key);
-          audioRef.current.onended = () => resolve();
+          audioRef.current.onended = () => {
+            if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+            setHighlightedWord(null);
+            resolve();
+          };
           audioRef.current.play();
         }),
         transFn({ verseKey: `genesis_1_${verse.verse}`, text: verse.text }) as Promise<{ data: { translation: string } }>,
@@ -517,7 +523,7 @@ export function BiblePage() {
           setTtsPlaying(key);
 
           // 단어 하이라이트 (절별만, 전체 듣기 제외)
-          if (key.startsWith('verse_')) {
+          if (key.startsWith('verse_') && !key.startsWith('verse_ko_')) {
             const words = text.trim().split(/\s+/);
             let wordIndex = 0;
             if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
