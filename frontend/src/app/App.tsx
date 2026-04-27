@@ -27,6 +27,7 @@ import { BookCreate } from './pages/BookCreate';
 import { BookReader } from './pages/BookReader';
 import { NewsPage } from './pages/NewsPage';
 import { BiblePage } from './pages/BiblePage';
+import VocabPage from './pages/VocabPage';
 import { DiaryLearnPage } from './pages/DiaryLearnPage';
 import { NovelStudio } from './pages/NovelStudio';
 import { NovelSynopsisPage } from './pages/NovelSynopsisPage';
@@ -125,6 +126,7 @@ function App() {
 
               {/* 영어성경학습 */}
               <Route path="/bible" element={<BiblePage />} />
+              <Route path="/vocab" element={<VocabPage />} />
               <Route path="/diary-learn" element={<DiaryLearnPage />} />
 
               {/* 구독 페이지 */}

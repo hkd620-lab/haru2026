@@ -2,6 +2,8 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db, auth } from '../../firebase';
 import genesis1Data from '../../data/genesis_1.json';
 import genesis2Data from '../../data/genesis_2.json';
 
@@ -446,6 +448,9 @@ export function BiblePage() {
   const [showEnVoice, setShowEnVoice] = useState<boolean>(false);
   const [showKoVoice, setShowKoVoice] = useState<boolean>(false);
   const [showQuizHint, setShowQuizHint] = useState(false);
+  const [vocabMemo, setVocabMemo] = useState<string>('');
+  const [vocabExample, setVocabExample] = useState<string>('');
+  const [vocabSaved, setVocabSaved] = useState<boolean>(false);
 
   const handleVoicePreview = async (voice: TTSVoice, lang: 'en' | 'ko') => {
     const key = `preview_${lang}_${voice}`;
@@ -481,6 +486,29 @@ export function BiblePage() {
       console.error('미리듣기 오류:', e);
       setPreviewPlaying(null);
     }
+  };
+
+  const handleSaveVocab = async () => {
+    if (!wordPopup) return;
+    const entry = {
+      word: wordPopup.word,
+      meaning: wordPopup.meaning,
+      example: vocabExample.trim(),
+      memo: vocabMemo.trim(),
+      savedAt: new Date().toISOString(),
+    };
+    const user = auth.currentUser;
+    if (user) {
+      await setDoc(
+        doc(db, 'users', user.uid, 'vocabulary', wordPopup.word),
+        { ...entry, savedAt: serverTimestamp() }
+      );
+    } else {
+      const existing = JSON.parse(localStorage.getItem('haru_vocab') || '{}');
+      existing[wordPopup.word] = entry;
+      localStorage.setItem('haru_vocab', JSON.stringify(existing));
+    }
+    setVocabSaved(true);
   };
 
   const handleQuizClick = useCallback(async (verse: Verse, level: 'basic' | 'intermediate' | 'advanced' = quizLevel) => {
@@ -554,14 +582,21 @@ export function BiblePage() {
     phonetic: string;
     koreanPronunciation: string;
     loading: boolean;
+    example?: string;
+    exampleKo?: string;
+    phrasalVerb?: string;
+    phrasalVerbMeaning?: string;
+    phrasalVerbExample?: string;
+    phrasalVerbExampleKo?: string;
   } | null>(null);
 
-  const handleWordClick = useCallback(async (word: string) => {
+  const handleWordClick = useCallback(async (word: string, verseText?: string) => {
     // 특수문자 제거
     const cleanWord = word.replace(/[^a-zA-Z]/g, '');
     if (!cleanWord) return;
 
     setWordPopup({ word: cleanWord, meaning: '', partOfSpeech: '', phonetic: '', koreanPronunciation: '', loading: true });
+    if (verseText) setVocabExample(verseText);
 
     try {
       const { getFunctions: gf, httpsCallable: hc } = await import('firebase/functions');
@@ -575,6 +610,12 @@ export function BiblePage() {
         phonetic: res.data.phonetic || '',
         koreanPronunciation: res.data.koreanPronunciation || '',
         loading: false,
+        example: res.data.example || '',
+        exampleKo: res.data.exampleKo || '',
+        phrasalVerb: res.data.phrasalVerb || '',
+        phrasalVerbMeaning: res.data.phrasalVerbMeaning || '',
+        phrasalVerbExample: res.data.phrasalVerbExample || '',
+        phrasalVerbExampleKo: res.data.phrasalVerbExampleKo || '',
       });
     } catch {
       setWordPopup({ word: cleanWord, meaning: '오류가 발생했습니다.', partOfSpeech: '', phonetic: '', koreanPronunciation: '', loading: false });
@@ -592,7 +633,7 @@ export function BiblePage() {
           return (
             <span
               key={idx}
-              onClick={(e) => { e.stopPropagation(); handleWordClick(word); }}
+              onClick={(e) => { e.stopPropagation(); handleWordClick(word, text); }}
               style={{
                 cursor: 'pointer',
                 borderRadius: 4,
@@ -1111,6 +1152,16 @@ export function BiblePage() {
         <button onClick={() => navigate('/record')} style={{ color: '#1A3C6E', background: 'none', border: 'none', fontSize: 14, cursor: 'pointer', padding: 0 }}>
           ← 뒤로
         </button>
+        <button
+          onClick={() => navigate('/vocab')}
+          style={{
+            marginLeft: 'auto', background: 'none', border: '1px solid #1A3C6E',
+            borderRadius: 20, padding: '4px 12px',
+            fontSize: 13, color: '#1A3C6E', cursor: 'pointer',
+          }}
+        >
+          📚 단어장
+        </button>
         <div>
           <p style={{ color: '#1A3C6E', fontSize: 16, fontWeight: 700, margin: 0 }}>📖 창세기 {currentChapter}장</p>
           <p style={{ color: '#999', fontSize: 11, margin: 0 }}>Genesis Chapter {currentChapter} · KJV</p>
@@ -1622,7 +1673,7 @@ export function BiblePage() {
       {/* 단어 뜻 팝업 */}
       {wordPopup && (
         <div
-          onClick={() => setWordPopup(null)}
+          onClick={() => { setWordPopup(null); setVocabMemo(''); setVocabExample(''); setVocabSaved(false); }}
           style={{
             position: 'fixed', inset: 0,
             backgroundColor: 'rgba(0,0,0,0.4)',
@@ -1644,7 +1695,7 @@ export function BiblePage() {
                 {wordPopup.word}
               </p>
               <button
-                onClick={() => setWordPopup(null)}
+                onClick={() => { setWordPopup(null); setVocabMemo(''); setVocabExample(''); setVocabSaved(false); }}
                 style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999' }}
               >✕</button>
             </div>
@@ -1691,6 +1742,124 @@ export function BiblePage() {
                 >
                   {ttsLoading === `word_${wordPopup.word}` ? '⏳' : '🔊 발음 듣기'}
                 </button>
+
+                {/* 생활 예문 */}
+                {wordPopup.example && (
+                  <div style={{
+                    background: '#f0fdf4', borderRadius: 10,
+                    padding: '10px 12px', marginTop: 12, marginBottom: 8,
+                    borderLeft: '3px solid #10b981',
+                  }}>
+                    <div style={{ fontSize: 11, color: '#10b981', fontWeight: 600, marginBottom: 4 }}>
+                      💬 생활 예문
+                    </div>
+                    <div style={{ fontSize: 13, color: '#1A3C6E', fontWeight: 500 }}>
+                      {wordPopup.example}
+                    </div>
+                    {wordPopup.exampleKo && (
+                      <div style={{ fontSize: 12, color: '#666', marginTop: 3 }}>
+                        → {wordPopup.exampleKo}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 구동사 */}
+                {wordPopup.phrasalVerb && (
+                  <div style={{
+                    background: '#fff7ed', borderRadius: 10,
+                    padding: '10px 12px', marginBottom: 8,
+                    borderLeft: '3px solid #f97316',
+                  }}>
+                    <div style={{ fontSize: 11, color: '#f97316', fontWeight: 600, marginBottom: 4 }}>
+                      🔗 구동사
+                    </div>
+                    <div style={{ fontSize: 14, color: '#333', fontWeight: 600 }}>
+                      {wordPopup.phrasalVerb}
+                      {wordPopup.phrasalVerbMeaning && (
+                        <span style={{ fontSize: 13, fontWeight: 400, color: '#666', marginLeft: 8 }}>
+                          — {wordPopup.phrasalVerbMeaning}
+                        </span>
+                      )}
+                    </div>
+                    {wordPopup.phrasalVerbExample && (
+                      <div style={{ marginTop: 6, fontSize: 12, color: '#1A3C6E', fontStyle: 'italic' }}>
+                        {wordPopup.phrasalVerbExample}
+                      </div>
+                    )}
+                    {wordPopup.phrasalVerbExampleKo && (
+                      <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
+                        → {wordPopup.phrasalVerbExampleKo}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 구분선 */}
+                <div style={{ borderTop: '1px solid #e5e7eb', margin: '14px 0' }} />
+
+                {/* 예문 입력 */}
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>
+                    📖 예문 (성경 절 자동입력 · 수정 가능)
+                  </div>
+                  <textarea
+                    value={vocabExample}
+                    onChange={e => setVocabExample(e.target.value)}
+                    placeholder="예문을 입력하세요..."
+                    rows={2}
+                    style={{
+                      width: '100%', fontSize: 13,
+                      padding: '8px 10px', borderRadius: 8,
+                      border: '1px solid #d1d5db',
+                      resize: 'none', boxSizing: 'border-box',
+                      outline: 'none', color: '#333',
+                      backgroundColor: '#f9fafb',
+                    }}
+                  />
+                </div>
+
+                {/* 메모 입력 */}
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>
+                    📝 나만의 메모 (선택)
+                  </div>
+                  <textarea
+                    value={vocabMemo}
+                    onChange={e => setVocabMemo(e.target.value)}
+                    placeholder="이 단어에 대한 메모를 입력하세요..."
+                    rows={2}
+                    style={{
+                      width: '100%', fontSize: 14,
+                      padding: '8px 10px', borderRadius: 8,
+                      border: '1px solid #d1d5db',
+                      resize: 'none', boxSizing: 'border-box',
+                      outline: 'none', color: '#333',
+                    }}
+                  />
+                </div>
+
+                {/* 저장 버튼 */}
+                {vocabSaved ? (
+                  <div style={{
+                    textAlign: 'center', fontSize: 14,
+                    color: '#10b981', fontWeight: 500, padding: '8px 0',
+                  }}>
+                    ✅ 단어장에 저장되었습니다!
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleSaveVocab}
+                    style={{
+                      width: '100%', padding: '10px 0',
+                      backgroundColor: '#1A3C6E', color: '#fff',
+                      border: 'none', borderRadius: 10,
+                      fontSize: 14, fontWeight: 500, cursor: 'pointer',
+                    }}
+                  >
+                    📚 단어장에 저장
+                  </button>
+                )}
               </>
             )}
           </div>
