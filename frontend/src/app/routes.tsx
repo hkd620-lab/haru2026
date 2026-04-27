@@ -18,6 +18,7 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ de
 const RecordDetailPage = lazy(() => import('./pages/RecordDetailPage').then((m) => ({ default: m.RecordDetailPage })));
 const HaruRawPage = lazy(() => import('./pages/HaruRawPage').then((m) => ({ default: m.HaruRawPage })));
 const BiblePage = lazy(() => import('./pages/BiblePage').then((m) => ({ default: m.BiblePage })));
+const VocabPage = lazy(() => import('./pages/VocabPage'));
 const BookStudio = lazy(() => import('./pages/BookStudio').then((m) => ({ default: m.BookStudio })));
 const BookCreate = lazy(() => import('./pages/BookCreate').then((m) => ({ default: m.BookCreate })));
 const NovelStudio = lazy(() => import('./pages/NovelStudio').then((m) => ({ default: m.NovelStudio })));
@@ -75,6 +76,7 @@ export const router = createBrowserRouter([
           { path: 'settings', element: withSuspense(<SettingsPage />) },
           { path: 'haruraw', element: withSuspense(<HaruRawPage />) },
           { path: 'bible', element: withSuspense(<BiblePage />) },
+          { path: 'vocab', element: withSuspense(<VocabPage />) },
           { path: 'book-studio', element: withSuspense(<BookStudio />) },
           { path: 'book-create', element: withSuspense(<BookCreate />) },
           { path: 'novel-studio', element: withSuspense(<NovelStudio />) },

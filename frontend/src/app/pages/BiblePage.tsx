@@ -1123,6 +1123,16 @@ export function BiblePage() {
         <button onClick={() => navigate('/record')} style={{ color: '#1A3C6E', background: 'none', border: 'none', fontSize: 14, cursor: 'pointer', padding: 0 }}>
           ← 뒤로
         </button>
+        <button
+          onClick={() => navigate('/vocab')}
+          style={{
+            marginLeft: 'auto', background: 'none', border: '1px solid #1A3C6E',
+            borderRadius: 20, padding: '4px 12px',
+            fontSize: 13, color: '#1A3C6E', cursor: 'pointer',
+          }}
+        >
+          📚 단어장
+        </button>
         <div>
           <p style={{ color: '#1A3C6E', fontSize: 16, fontWeight: 700, margin: 0 }}>📖 창세기 {currentChapter}장</p>
           <p style={{ color: '#999', fontSize: 11, margin: 0 }}>Genesis Chapter {currentChapter} · KJV</p>
