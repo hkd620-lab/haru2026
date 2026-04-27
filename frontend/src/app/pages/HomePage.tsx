@@ -6,6 +6,8 @@ import HaruLogo from '../../components/HaruLogo';
 import { firestoreService } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { requestNotificationPermission } from '../services/notificationService';
+import { collection, getDocs, orderBy, query, limit } from 'firebase/firestore';
+import { db } from '../../firebase';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -14,6 +16,7 @@ export function HomePage() {
   const { user } = useAuth();
   const today = new Date();
   const [todayFormatCount, setTodayFormatCount] = useState<number | null>(null);
+  const [lastCheckDate, setLastCheckDate] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -26,6 +29,14 @@ export function HomePage() {
       const todayRecord = records.find((r) => r.date === todayStr);
       setTodayFormatCount(todayRecord?.formats?.length ?? 0);
     }).catch(() => setTodayFormatCount(0));
+
+    if (user.uid === DEVELOPER_UID) {
+      const ref = collection(db, 'users', user.uid, 'checklist');
+      const q = query(ref, orderBy('completedAt', 'desc'), limit(1));
+      getDocs(q).then((snap) => {
+        setLastCheckDate(snap.empty ? null : snap.docs[0].id);
+      }).catch(() => setLastCheckDate(null));
+    }
   }, [user?.uid]);
 
   return (
@@ -80,7 +91,7 @@ export function HomePage() {
 
         {/* 개발자 전용 — 해외뉴스 버튼 */}
         {user?.uid === DEVELOPER_UID && (
-          <div className="flex justify-center mt-4">
+          <div className="flex flex-col items-center gap-2 mt-4">
             <button
               onClick={() => navigate('/news')}
               className="flex items-center justify-center gap-2 px-6 py-2 rounded-lg transition-all hover:opacity-90 shadow-lg"
@@ -88,6 +99,40 @@ export function HomePage() {
             >
               <span style={{ fontSize: 16 }}>🌍</span>
               <span className="text-sm tracking-wide">YTN보다 빠른 국제뉴스</span>
+            </button>
+            <button
+              onClick={() => navigate('/admin/checklist')}
+              className="flex items-center justify-center gap-2 px-6 py-2 rounded-lg transition-all hover:opacity-90 shadow-lg"
+              style={{ backgroundColor: 'transparent', color: '#1A3C6E', border: '2px solid #1A3C6E' }}
+            >
+              <span style={{ fontSize: 16 }}>✅</span>
+              <span className="text-sm tracking-wide">배포 점검 체크리스트</span>
+            </button>
+          </div>
+        )}
+
+        {/* 개발자 전용 — 마지막 점검일 표시 */}
+        {user?.uid === DEVELOPER_UID && lastCheckDate !== undefined && (
+          <div className="flex justify-center mt-3">
+            <button
+              onClick={() => navigate('/admin/checklist')}
+              className="text-xs"
+              style={{
+                color: (() => {
+                  if (!lastCheckDate) return '#9ca3af';
+                  const [y, m, d] = lastCheckDate.split('-').map(Number);
+                  const diff = Math.floor((Date.now() - new Date(y, m - 1, d).getTime()) / 86400000);
+                  return diff > 7 ? '#ef4444' : '#1A3C6E';
+                })(),
+              }}
+            >
+              {(() => {
+                if (!lastCheckDate) return '배포 점검 기록 없음';
+                const [y, m, d] = lastCheckDate.split('-').map(Number);
+                const diff = Math.floor((Date.now() - new Date(y, m - 1, d).getTime()) / 86400000);
+                if (diff > 7) return `⚠️ 배포 점검 필요 (마지막: ${lastCheckDate.replace(/-/g, '.')})`;
+                return `마지막 배포 점검: ${diff === 0 ? '오늘' : `${diff}일 전`}`;
+              })()}
             </button>
           </div>
         )}
