@@ -2434,3 +2434,29 @@ ${type === 'story'
   }
 );
 
+export const getVerseTranslation = onCall(
+  { region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] },
+  async (request) => {
+  const { verseKey, text } = request.data;
+
+  // Firestore 캐시 확인
+  const cacheRef = db.collection('translationCache').doc(verseKey);
+  const cached = await cacheRef.get();
+  if (cached.exists) {
+    return { translation: cached.data()?.translation };
+  }
+
+  // Gemini로 번역
+  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+  const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+  const prompt = `다음 KJV 성경 구절을 자연스러운 한국어로 번역해주세요. 번역문만 출력하세요.\n\n${text}`;
+  const result = await model.generateContent(prompt);
+  const translation = result.response.text().trim();
+
+  // Firestore 캐시 저장
+  await cacheRef.set({ translation, verseKey, createdAt: new Date() });
+
+  return { translation };
+  }
+);
+
