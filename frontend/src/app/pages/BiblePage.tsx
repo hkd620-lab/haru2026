@@ -438,8 +438,9 @@ export function BiblePage() {
     koreanText?: string;
   } | null>(null);
   const [quizLevel, setQuizLevel] = useState<'basic' | 'intermediate' | 'advanced'>('basic');
-  const [enVoice, setEnVoice] = useState<'nova' | 'onyx' | 'echo'>('onyx');
-  const [koVoice, setKoVoice] = useState<'nova' | 'onyx' | 'alloy' | 'echo'>('alloy');
+  type TTSVoice = 'nova' | 'shimmer' | 'alloy' | 'onyx' | 'echo' | 'fable';
+  const [enVoice, setEnVoice] = useState<TTSVoice>('onyx');
+  const [koVoice, setKoVoice] = useState<TTSVoice>('nova');
   const [showQuizHint, setShowQuizHint] = useState(false);
 
   const handleQuizClick = useCallback(async (verse: Verse, level: 'basic' | 'intermediate' | 'advanced' = quizLevel) => {
@@ -1092,39 +1093,72 @@ export function BiblePage() {
         ))}
       </div>
       {/* 보이스 선택 */}
-      <div style={{ display: 'flex', gap: 12, padding: '8px 16px 0', justifyContent: 'flex-end', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 11, color: '#555' }}>🇺🇸</span>
-          {(['nova', 'onyx', 'echo'] as const).map(v => (
-            <button
-              key={v}
-              onClick={() => setEnVoice(v)}
-              style={{
-                padding: '3px 10px', borderRadius: 12, fontSize: 11,
-                fontWeight: enVoice === v ? 700 : 400,
-                backgroundColor: enVoice === v ? '#534AB7' : '#f3f4f6',
-                color: enVoice === v ? '#fff' : '#555',
-                border: 'none', cursor: 'pointer',
-              }}
-            >{v === 'nova' ? '여성' : v === 'onyx' ? '남성1' : '남성2'}</button>
-          ))}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 11, color: '#555' }}>🇰🇷</span>
-          {(['nova', 'alloy', 'onyx', 'echo'] as const).map(v => (
-            <button
-              key={v}
-              onClick={() => setKoVoice(v)}
-              style={{
-                padding: '3px 10px', borderRadius: 12, fontSize: 11,
-                fontWeight: koVoice === v ? 700 : 400,
-                backgroundColor: koVoice === v ? '#0F6E56' : '#f3f4f6',
-                color: koVoice === v ? '#fff' : '#555',
-                border: 'none', cursor: 'pointer',
-              }}
-            >{v === 'nova' ? '여성1' : v === 'alloy' ? '여성2' : v === 'onyx' ? '남성1' : '남성2'}</button>
-          ))}
-        </div>
+      <div style={{ padding: '8px 16px 0' }}>
+        {(() => {
+          const voices: { v: TTSVoice; label: string; desc: string }[] = [
+            { v: 'nova',    label: '여성1', desc: '밝고 친근함' },
+            { v: 'shimmer', label: '여성2', desc: '부드럽고 따뜻함' },
+            { v: 'alloy',   label: '여성3', desc: '명료하고 깔끔함' },
+            { v: 'onyx',    label: '남성1', desc: '중후한 저음' },
+            { v: 'echo',    label: '남성2', desc: '또렷한 고음' },
+            { v: 'fable',   label: '남성3', desc: '따뜻한 내레이션' },
+          ];
+          return (
+            <>
+              {/* 영어 음성 */}
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>🇺🇸 영어 음성</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
+                  {voices.map(({ v, label, desc }) => (
+                    <button
+                      key={v}
+                      onClick={() => setEnVoice(v)}
+                      style={{
+                        borderRadius: 10,
+                        border: '1px solid',
+                        borderColor: enVoice === v ? '#1A3C6E' : '#d1d5db',
+                        backgroundColor: enVoice === v ? '#1A3C6E' : '#fff',
+                        color: enVoice === v ? '#fff' : '#444',
+                        padding: '7px 4px',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                      }}
+                    >
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{label}</div>
+                      <div style={{ fontSize: 10, opacity: 0.8, marginTop: 2, lineHeight: 1.3 }}>{desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 한국어 음성 */}
+              <div>
+                <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>🇰🇷 한국어 음성</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
+                  {voices.map(({ v, label, desc }) => (
+                    <button
+                      key={v}
+                      onClick={() => setKoVoice(v)}
+                      style={{
+                        borderRadius: 10,
+                        border: '1px solid',
+                        borderColor: koVoice === v ? '#10b981' : '#d1d5db',
+                        backgroundColor: koVoice === v ? '#10b981' : '#fff',
+                        color: koVoice === v ? '#fff' : '#444',
+                        padding: '7px 4px',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                      }}
+                    >
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{label}</div>
+                      <div style={{ fontSize: 10, opacity: 0.8, marginTop: 2, lineHeight: 1.3 }}>{desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          );
+        })()}
       </div>
 
       {/* 전체 듣기 버튼 4종 */}
