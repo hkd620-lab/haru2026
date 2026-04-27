@@ -106,6 +106,9 @@ export function BiblePage() {
     loading: boolean;
   } | null>(null);
 
+  // 영→한 연속 듣기 상태
+  const [isSequentialPlaying, setIsSequentialPlaying] = useState<number | null>(null);
+
   const handleGrammarClick = useCallback(async (verse: Verse) => {
     setGrammarPopup({ verseText: verse.text, loading: true });
     try {
@@ -158,6 +161,136 @@ export function BiblePage() {
       setTranslationPopup({ verse: verse.verse, text: verse.text, translation: result.data.translation, loading: false });
     } catch {
       setTranslationPopup({ verse: verse.verse, text: verse.text, translation: '번역을 불러오지 못했습니다.', loading: false });
+    }
+  };
+
+  // 한국어 TTS 듣기
+  const handleKoreanTTS = async (verse: { verse: number; text: string }) => {
+    const key = `verse_ko_${verse.verse}`;
+    if (ttsPlaying === key) {
+      if (audioRef.current) audioRef.current.pause();
+      setTtsPlaying(null);
+      return;
+    }
+    setTtsLoading(key);
+    try {
+      // 번역 먼저 가져오기 (캐시 우선)
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const transFn = httpsCallable(fns, 'getVerseTranslation');
+      const transResult = await transFn({
+        verseKey: `genesis_1_${verse.verse}`,
+        text: verse.text,
+      }) as { data: { translation: string } };
+      const translation = transResult.data.translation;
+
+      // 한국어 TTS 호출
+      const ttsFn = httpsCallable(fns, 'generateTTS');
+      const cacheKey = `bible_genesis_1_ko_${verse.verse}`.slice(0, 80);
+      const res: any = await ttsFn({ text: translation, cacheKey });
+      setTtsLoading(null);
+      if (audioRef.current) audioRef.current.pause();
+      let audioSrc = '';
+      if (res.data.audioUrl) {
+        audioSrc = res.data.audioUrl;
+      } else if (res.data.audioBase64) {
+        const binary = atob(res.data.audioBase64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const blob = new Blob([bytes], { type: 'audio/mp3' });
+        audioSrc = URL.createObjectURL(blob);
+      }
+      if (audioSrc) {
+        audioRef.current = new Audio(audioSrc);
+        audioRef.current.playbackRate = ttsSpeed;
+        audioRef.current.onended = () => { setTtsPlaying(null); };
+        await audioRef.current.play();
+        setTtsPlaying(key);
+      }
+    } catch {
+      setTtsLoading(null);
+    }
+  };
+
+  // 영어 → 한국어 연속 듣기
+  const handleSequentialTTS = async (verse: { verse: number; text: string }) => {
+    const key = `verse_${verse.verse}`;
+    if (isSequentialPlaying === verse.verse) {
+      if (audioRef.current) audioRef.current.pause();
+      setIsSequentialPlaying(null);
+      setTtsPlaying(null);
+      return;
+    }
+    setIsSequentialPlaying(verse.verse);
+    setTtsLoading(`seq_${verse.verse}`);
+    try {
+      const fns = getFunctions(undefined, 'asia-northeast3');
+
+      // ① 영어 TTS
+      const ttsFn = httpsCallable(fns, 'generateTTS');
+      const enCacheKey = `bible_genesis_1_${verse.verse}`.slice(0, 80);
+      const enRes: any = await ttsFn({ text: verse.text, cacheKey: enCacheKey });
+      setTtsLoading(null);
+
+      let enAudioSrc = '';
+      if (enRes.data.audioUrl) {
+        enAudioSrc = enRes.data.audioUrl;
+      } else if (enRes.data.audioBase64) {
+        const binary = atob(enRes.data.audioBase64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const blob = new Blob([bytes], { type: 'audio/mp3' });
+        enAudioSrc = URL.createObjectURL(blob);
+      }
+
+      if (!enAudioSrc) { setIsSequentialPlaying(null); return; }
+
+      // ② 번역 미리 가져오기 (영어 듣는 동안 준비)
+      const transFn = httpsCallable(fns, 'getVerseTranslation');
+      const [_, transResult] = await Promise.all([
+        new Promise<void>((resolve) => {
+          audioRef.current = new Audio(enAudioSrc);
+          audioRef.current.playbackRate = ttsSpeed;
+          setTtsPlaying(key);
+          audioRef.current.onended = () => resolve();
+          audioRef.current.play();
+        }),
+        transFn({ verseKey: `genesis_1_${verse.verse}`, text: verse.text }) as Promise<{ data: { translation: string } }>,
+      ]);
+
+      if (isSequentialPlaying === null) return; // 중간에 정지된 경우
+
+      // ③ 한국어 TTS
+      const koCacheKey = `bible_genesis_1_ko_${verse.verse}`.slice(0, 80);
+      const koRes: any = await ttsFn({ text: transResult.data.translation, cacheKey: koCacheKey });
+
+      let koAudioSrc = '';
+      if (koRes.data.audioUrl) {
+        koAudioSrc = koRes.data.audioUrl;
+      } else if (koRes.data.audioBase64) {
+        const binary = atob(koRes.data.audioBase64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const blob = new Blob([bytes], { type: 'audio/mp3' });
+        koAudioSrc = URL.createObjectURL(blob);
+      }
+
+      if (koAudioSrc) {
+        audioRef.current = new Audio(koAudioSrc);
+        audioRef.current.playbackRate = ttsSpeed;
+        setTtsPlaying(`verse_ko_${verse.verse}`);
+        audioRef.current.onended = () => {
+          setTtsPlaying(null);
+          setIsSequentialPlaying(null);
+        };
+        await audioRef.current.play();
+      } else {
+        setIsSequentialPlaying(null);
+        setTtsPlaying(null);
+      }
+    } catch {
+      setTtsLoading(null);
+      setIsSequentialPlaying(null);
+      setTtsPlaying(null);
     }
   };
 
@@ -527,7 +660,7 @@ export function BiblePage() {
             {/* 절 펼쳤을 때 버튼들 */}
             {selectedVerse === verse.verse && (
               <div style={{ padding: '8px 16px 14px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {/* 절 듣기 */}
+                {/* 영어 듣기 */}
                 <button
                   onClick={() => handleTTS(verse.text, `verse_${verse.verse}`)}
                   style={{
@@ -537,7 +670,31 @@ export function BiblePage() {
                     fontSize: 12, fontWeight: 600, cursor: 'pointer',
                   }}
                 >
-                  {ttsLoading === `verse_${verse.verse}` ? '⏳' : ttsPlaying === `verse_${verse.verse}` ? '⏸ 정지' : '🔊 듣기'}
+                  {ttsLoading === `verse_${verse.verse}` ? '⏳' : ttsPlaying === `verse_${verse.verse}` ? '⏸ 정지' : '🔊 영어'}
+                </button>
+                {/* 한국어 듣기 */}
+                <button
+                  onClick={() => handleKoreanTTS(verse)}
+                  style={{
+                    padding: '6px 14px', borderRadius: 20, border: 'none',
+                    backgroundColor: ttsPlaying === `verse_ko_${verse.verse}` ? '#1A7A4A' : '#E8F5EE',
+                    color: ttsPlaying === `verse_ko_${verse.verse}` ? '#fff' : '#1A3C6E',
+                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  {ttsLoading === `verse_ko_${verse.verse}` ? '⏳' : ttsPlaying === `verse_ko_${verse.verse}` ? '⏸ 정지' : '🇰🇷 한국어'}
+                </button>
+                {/* 영→한 연속 듣기 */}
+                <button
+                  onClick={() => handleSequentialTTS(verse)}
+                  style={{
+                    padding: '6px 14px', borderRadius: 20, border: 'none',
+                    backgroundColor: isSequentialPlaying === verse.verse ? '#B45309' : '#FEF3E2',
+                    color: isSequentialPlaying === verse.verse ? '#fff' : '#1A3C6E',
+                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  {ttsLoading === `seq_${verse.verse}` ? '⏳' : isSequentialPlaying === verse.verse ? '⏸ 정지' : '🔄 영→한'}
                 </button>
                 {/* 번역 */}
                 <button
