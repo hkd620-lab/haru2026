@@ -448,6 +448,7 @@ export function BiblePage() {
   const [showKoVoice, setShowKoVoice] = useState<boolean>(false);
   const [showQuizHint, setShowQuizHint] = useState(false);
   const [vocabMemo, setVocabMemo] = useState<string>('');
+  const [vocabExample, setVocabExample] = useState<string>('');
   const [vocabSaved, setVocabSaved] = useState<boolean>(false);
 
   const handleVoicePreview = async (voice: TTSVoice, lang: 'en' | 'ko') => {
@@ -491,6 +492,7 @@ export function BiblePage() {
     const entry = {
       word: wordPopup.word,
       meaning: wordPopup.meaning,
+      example: vocabExample.trim(),
       memo: vocabMemo.trim(),
       savedAt: new Date().toISOString(),
     };
@@ -581,12 +583,13 @@ export function BiblePage() {
     loading: boolean;
   } | null>(null);
 
-  const handleWordClick = useCallback(async (word: string) => {
+  const handleWordClick = useCallback(async (word: string, verseText?: string) => {
     // 특수문자 제거
     const cleanWord = word.replace(/[^a-zA-Z]/g, '');
     if (!cleanWord) return;
 
     setWordPopup({ word: cleanWord, meaning: '', partOfSpeech: '', phonetic: '', koreanPronunciation: '', loading: true });
+    if (verseText) setVocabExample(verseText);
 
     try {
       const { getFunctions: gf, httpsCallable: hc } = await import('firebase/functions');
@@ -617,7 +620,7 @@ export function BiblePage() {
           return (
             <span
               key={idx}
-              onClick={(e) => { e.stopPropagation(); handleWordClick(word); }}
+              onClick={(e) => { e.stopPropagation(); handleWordClick(word, text); }}
               style={{
                 cursor: 'pointer',
                 borderRadius: 4,
@@ -1631,7 +1634,7 @@ export function BiblePage() {
       {/* 단어 뜻 팝업 */}
       {wordPopup && (
         <div
-          onClick={() => { setWordPopup(null); setVocabMemo(''); setVocabSaved(false); }}
+          onClick={() => { setWordPopup(null); setVocabMemo(''); setVocabExample(''); setVocabSaved(false); }}
           style={{
             position: 'fixed', inset: 0,
             backgroundColor: 'rgba(0,0,0,0.4)',
@@ -1653,7 +1656,7 @@ export function BiblePage() {
                 {wordPopup.word}
               </p>
               <button
-                onClick={() => { setWordPopup(null); setVocabMemo(''); setVocabSaved(false); }}
+                onClick={() => { setWordPopup(null); setVocabMemo(''); setVocabExample(''); setVocabSaved(false); }}
                 style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999' }}
               >✕</button>
             </div>
@@ -1703,6 +1706,27 @@ export function BiblePage() {
 
                 {/* 구분선 */}
                 <div style={{ borderTop: '1px solid #e5e7eb', margin: '14px 0' }} />
+
+                {/* 예문 입력 */}
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>
+                    📖 예문 (성경 절 자동입력 · 수정 가능)
+                  </div>
+                  <textarea
+                    value={vocabExample}
+                    onChange={e => setVocabExample(e.target.value)}
+                    placeholder="예문을 입력하세요..."
+                    rows={2}
+                    style={{
+                      width: '100%', fontSize: 13,
+                      padding: '8px 10px', borderRadius: 8,
+                      border: '1px solid #d1d5db',
+                      resize: 'none', boxSizing: 'border-box',
+                      outline: 'none', color: '#333',
+                      backgroundColor: '#f9fafb',
+                    }}
+                  />
+                </div>
 
                 {/* 메모 입력 */}
                 <div style={{ marginBottom: 10 }}>
