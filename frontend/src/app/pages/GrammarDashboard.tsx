@@ -76,12 +76,13 @@ export default function GrammarDashboard({ uid }: { uid: string }) {
             verses.push(key);
             verseTexts[key] = v.text;
           });
-          // 캐시 안 된 절만 추려서 전송
+          // 캐시 안 된 절만 추려서 10개씩 나눠 전송
           const uncached = verses.filter(k => !cachedKeys.has(k));
-          if (uncached.length > 0) {
-            const uncachedTexts: Record<string, string> = {};
-            uncached.forEach(k => { uncachedTexts[k] = verseTexts[k]; });
-            await fn({ book: book.ko, chapter: ch, verses: uncached, verseTexts: uncachedTexts });
+          for (let i = 0; i < uncached.length; i += 10) {
+            const batch = uncached.slice(i, i + 10);
+            const batchTexts: Record<string, string> = {};
+            batch.forEach(k => { batchTexts[k] = verseTexts[k]; });
+            await fn({ book: book.ko, chapter: ch, verses: batch, verseTexts: batchTexts });
           }
         } catch {
           // 실패한 장은 스킵
