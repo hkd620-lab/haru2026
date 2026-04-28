@@ -1483,8 +1483,11 @@ export const generateTTS = onCall(
         .slice(0, 4000);
 
       const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+      // 429(rate limit) 강화 백오프: OpenAI Retry-After 헤더 우선, 미제공 시 5/10/20/40/60초 + jitter, 총 6회 시도
+      const BACKOFF_MS = [5000, 10000, 20000, 40000, 60000];
+      const MAX_ATTEMPTS = 6;
       let ttsResponse: any = null;
-      for (let attempt = 0; attempt < 4; attempt++) {
+      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         try {
           ttsResponse = await axios.post(
             'https://api.openai.com/v1/audio/speech',
@@ -1507,9 +1510,13 @@ export const generateTTS = onCall(
           break;
         } catch (err: any) {
           const status = err?.response?.status;
-          if (status === 429 && attempt < 3) {
-            const delay = (attempt + 1) * 2000; // 2s, 4s, 6s
-            logger.warn(`TTS 429 재시도 ${attempt + 1}회 (${delay}ms 대기)`);
+          if (status === 429 && attempt < MAX_ATTEMPTS - 1) {
+            const retryAfterRaw = err?.response?.headers?.['retry-after'];
+            const serverHintMs = retryAfterRaw ? Math.ceil(Number(retryAfterRaw) * 1000) : 0;
+            const baseDelay = BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length - 1)];
+            const jitter = Math.floor(Math.random() * 1000);
+            const delay = Math.max(serverHintMs, baseDelay) + jitter;
+            logger.warn(`TTS 429 재시도 ${attempt + 1}회 (${delay}ms 대기, retry-after=${retryAfterRaw ?? 'none'})`);
             await sleep(delay);
           } else {
             throw err;
@@ -1534,7 +1541,14 @@ export const generateTTS = onCall(
       return { success: true, audioUrl: signedUrl, cached: false };
 
     } catch (error: any) {
-      logger.error('TTS 생성 실패:', error);
+      // 보안: axios 에러 객체를 통째로 로깅하면 Authorization 헤더(OpenAI API 키)가 노출됨.
+      // 안전한 필드만 남긴다.
+      logger.error('TTS 생성 실패:', {
+        message: error?.message,
+        status: error?.response?.status,
+        code: error?.code,
+        cacheKey,
+      });
       throw new HttpsError('internal', 'TTS 생성에 실패했습니다.');
     }
   }
