@@ -1827,7 +1827,8 @@ export const preloadChapterGrammar = onCall(
           body: JSON.stringify({
             contents: [{ parts: [{ text: geminiPrompt }] }],
             generationConfig: { temperature: 0.3 }
-          })
+          }),
+          signal: AbortSignal.timeout(20000)
         });
 
         if (!geminiRes.ok) {
