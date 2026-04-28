@@ -1482,24 +1482,40 @@ export const generateTTS = onCall(
         .trim()
         .slice(0, 4000);
 
-      const ttsResponse = await axios.post(
-        'https://api.openai.com/v1/audio/speech',
-        {
-          model: 'tts-1',
-          input: cleanedText,
-          voice: safeVoice,
-          response_format: 'mp3',
-          speed: 0.95,
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${OPENAI_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          responseType: 'arraybuffer',
-          timeout: 60000,
+      const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+      let ttsResponse: any = null;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+          ttsResponse = await axios.post(
+            'https://api.openai.com/v1/audio/speech',
+            {
+              model: 'tts-1',
+              input: cleanedText,
+              voice: safeVoice,
+              response_format: 'mp3',
+              speed: 0.95,
+            },
+            {
+              headers: {
+                'Authorization': `Bearer ${OPENAI_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              responseType: 'arraybuffer',
+              timeout: 60000,
+            }
+          );
+          break;
+        } catch (err: any) {
+          const status = err?.response?.status;
+          if (status === 429 && attempt < 3) {
+            const delay = (attempt + 1) * 2000; // 2s, 4s, 6s
+            logger.warn(`TTS 429 재시도 ${attempt + 1}회 (${delay}ms 대기)`);
+            await sleep(delay);
+          } else {
+            throw err;
+          }
         }
-      );
+      }
 
       const audioBuffer = Buffer.from(ttsResponse.data);
       if (!audioBuffer.length) {

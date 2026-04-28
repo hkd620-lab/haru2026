@@ -1243,7 +1243,7 @@ exports.generateTTS = (0, https_2.onCall)({
             return { success: true, audioUrl: signedUrl, cached: true };
         }
         // 2. OpenAI TTS 생성
-        const OPENAI_KEY = OPENAI_API_KEY_SECRET.value();
+        const OPENAI_KEY = OPENAI_API_KEY_SECRET.value().replace(/[^\x20-\x7E]/g, '').trim();
         // 텍스트 정제 — 한글, 영문만 남기기
         const cleanedText = text
             .replace(/#{1,3}\s*/g, '')
@@ -1388,7 +1388,7 @@ mysentence와 korean은 반드시 채워야 합니다.
     let verified = parsed;
     let gptChanges = [];
     try {
-        const OPENAI_KEY = OPENAI_API_KEY_SECRET.value();
+        const OPENAI_KEY = OPENAI_API_KEY_SECRET.value().replace(/[^\x20-\x7E]/g, '').trim();
         const gptPrompt = `당신은 영어 문법 전문가입니다. 아래 영어 성경 구절의 문법 분석 JSON을 능동적으로 검토하고 개선하세요.
 
 구절: "${verseText}"
@@ -1564,7 +1564,7 @@ exports.preloadChapterGrammar = (0, https_2.onCall)({ region: 'asia-northeast3',
             let gptChanges = [];
             let verifiedByGPT = false;
             try {
-                const openaiApiKey = OPENAI_API_KEY_SECRET.value();
+                const openaiApiKey = OPENAI_API_KEY_SECRET.value().replace(/[^\x20-\x7E]/g, '').trim();
                 const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
                     method: 'POST',
                     headers: {
