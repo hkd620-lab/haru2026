@@ -71,3 +71,13 @@ git checkout feature/new-formats
   firebase firestore:delete grammarCache --recursive --project haru2026-8abb8
   ```
 - **재발 방지:** getGrammarExplain 관련 Functions 코드 수정 배포 시 반드시 grammarCache 전체 삭제 포함
+
+## 배포 원칙 ⚠️ 필수 준수
+
+작업 규모에 따라 배포 방식을 반드시 구분한다.
+
+| 작업 규모 | 해당 작업 예시 | 배포 방식 |
+|---|---|---|
+| 소규모 | 색상·텍스트 변경, 버그 1개 수정 | Firebase 직접 배포 |
+| 중규모 | 컴포넌트 1~2개 수정 | 로컬 확인 → Firebase 배포 |
+| 대규모 | 홈화면 개편, 새 기능, 라우터 변경 | 반드시 로컬 먼저 → 허 교장님 승인 → Firebase 배포 |
