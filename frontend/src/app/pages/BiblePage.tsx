@@ -116,12 +116,13 @@ export function BiblePage() {
   const [isSequentialPlaying, setIsSequentialPlaying] = useState<number | null>(null);
 
   const BOOKS = [
-    { prefix: 'genesis',   ko: '창세기',   en: 'Genesis',   chapters: 50 },
-    { prefix: 'exodus',    ko: '출애굽기', en: 'Exodus',    chapters: 40 },
-    { prefix: 'leviticus', ko: '레위기',   en: 'Leviticus', chapters: 27 },
-    { prefix: 'matthew',   ko: '마태복음', en: 'Matthew',   chapters: 28 },
-    { prefix: 'mark',      ko: '마가복음', en: 'Mark',      chapters: 16 },
+    { prefix: 'genesis',   ko: '창세기',   en: 'Genesis',   chapters: 50, testament: '구약' },
+    { prefix: 'exodus',    ko: '출애굽기', en: 'Exodus',    chapters: 40, testament: '구약' },
+    { prefix: 'leviticus', ko: '레위기',   en: 'Leviticus', chapters: 27, testament: '구약' },
+    { prefix: 'matthew',   ko: '마태복음', en: 'Matthew',   chapters: 28, testament: '신약' },
+    { prefix: 'mark',      ko: '마가복음', en: 'Mark',      chapters: 16, testament: '신약' },
   ];
+  const [currentTestament, setCurrentTestament] = useState<'구약' | '신약'>('구약');
   const [currentBook, setCurrentBook] = useState(BOOKS[0]);
   const [currentChapter, setCurrentChapter] = useState<number>(1);
   const [genesisData, setGenesisData] = useState<{ book: string; bookKo: string; chapter: number; verses: Verse[] } | null>(null);
@@ -1166,9 +1167,31 @@ export function BiblePage() {
           📚 단어장
         </button>
         <div>
-          {/* 책 선택 */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '12px 12px 4px' }}>
-            {BOOKS.map((b) => (
+          {/* 1단계: 구약 / 신약 탭 */}
+          <div style={{ display: 'flex', borderBottom: '2px solid #e5e7eb', margin: '0 12px' }}>
+            {(['구약', '신약'] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => {
+                  setCurrentTestament(t);
+                  const first = BOOKS.find((b) => b.testament === t);
+                  if (first) setCurrentBook(first);
+                }}
+                style={{
+                  padding: '8px 20px', background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: '14px', fontWeight: 700,
+                  color: currentTestament === t ? '#1A3C6E' : '#999',
+                  borderBottom: currentTestament === t ? '2px solid #1A3C6E' : '2px solid transparent',
+                  marginBottom: '-2px',
+                }}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+          {/* 2단계: 책 선택 */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '10px 12px 4px' }}>
+            {BOOKS.filter((b) => b.testament === currentTestament).map((b) => (
               <button
                 key={b.prefix}
                 onClick={() => setCurrentBook(b)}
