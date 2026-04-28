@@ -61,12 +61,13 @@ export default function GrammarDashboard({ uid }: { uid: string }) {
     let done = 0;
     const fns = getFunctions(undefined, 'asia-northeast3');
     const fn = httpsCallable(fns, 'preloadChapterGrammar', { timeout: 540000 });
+    const cachedKeys = new Set(items.map(i => i.verseKey));
     for (const book of BIBLE_BOOKS) {
       for (let ch = 1; ch <= book.chapters; ch++) {
         setBulkProgress({ book: book.ko, chapter: ch, total: totalChapters, done });
         try {
           const loader = BIBLE_JSON[`../../data/${book.prefix}_${ch}.json`];
-          if (!loader) continue;
+          if (!loader) { done++; continue; }
           const mod = await loader() as any;
           const verses: string[] = [];
           const verseTexts: Record<string, string> = {};
@@ -75,7 +76,11 @@ export default function GrammarDashboard({ uid }: { uid: string }) {
             verses.push(key);
             verseTexts[key] = v.text;
           });
-          await fn({ book: book.ko, chapter: ch, verses, verseTexts });
+          // 이 장의 모든 절이 이미 캐시됐으면 API 호출 스킵
+          const allCached = verses.every(k => cachedKeys.has(k));
+          if (!allCached) {
+            await fn({ book: book.ko, chapter: ch, verses, verseTexts });
+          }
         } catch {
           // 실패한 장은 스킵
         }
