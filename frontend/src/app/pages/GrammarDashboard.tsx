@@ -60,7 +60,7 @@ export default function GrammarDashboard({ uid }: { uid: string }) {
     setBulkRunning(true);
     let done = 0;
     const fns = getFunctions(undefined, 'asia-northeast3');
-    const fn = httpsCallable(fns, 'preloadChapterGrammar');
+    const fn = httpsCallable(fns, 'preloadChapterGrammar', { timeout: 540000 });
     for (const book of BIBLE_BOOKS) {
       for (let ch = 1; ch <= book.chapters; ch++) {
         setBulkProgress({ book: book.ko, chapter: ch, total: totalChapters, done });

@@ -46,22 +46,6 @@ export function BiblePage() {
     };
   }, []);
 
-  // 현재 장 전체 자동 사전생성 (책/장 변경 시마다 실행)
-  useEffect(() => {
-    if (!genesisData?.verses?.length) return;
-    const user = getAuth().currentUser;
-    if (!user) return;
-    const verseTexts: Record<string, string> = {};
-    const verses: string[] = [];
-    genesisData.verses.forEach((verse: Verse) => {
-      const verseKey = `${currentBook.prefix}_${currentChapter}_${verse.verse}`;
-      verses.push(verseKey);
-      verseTexts[verseKey] = verse.text;
-    });
-    const fns = getFunctions(undefined, 'asia-northeast3');
-    const fn = httpsCallable(fns, 'preloadChapterGrammar');
-    fn({ book: currentBook.ko, chapter: currentChapter, verses, verseTexts }).catch(() => {});
-  }, [genesisData, currentBook.prefix, currentChapter]);
   const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
   const [isFullPlaying, setIsFullPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -119,6 +103,23 @@ export function BiblePage() {
       .then((mod) => setGenesisData(mod.default))
       .catch(() => console.error(`${currentBook.prefix}_${currentChapter}.json 로드 실패`));
   }, [currentBook, currentChapter]);
+
+  // 현재 장 전체 자동 사전생성 (책/장 변경 시마다 실행)
+  useEffect(() => {
+    if (!genesisData?.verses?.length) return;
+    const user = getAuth().currentUser;
+    if (!user) return;
+    const verseTexts: Record<string, string> = {};
+    const verses: string[] = [];
+    genesisData.verses.forEach((verse: Verse) => {
+      const verseKey = `${currentBook.prefix}_${currentChapter}_${verse.verse}`;
+      verses.push(verseKey);
+      verseTexts[verseKey] = verse.text;
+    });
+    const fns = getFunctions(undefined, 'asia-northeast3');
+    const fn = httpsCallable(fns, 'preloadChapterGrammar', { timeout: 540000 });
+    fn({ book: currentBook.ko, chapter: currentChapter, verses, verseTexts }).catch(() => {});
+  }, [genesisData, currentBook.prefix, currentChapter]);
 
   useEffect(() => {
     setSelectedVerse(null);
