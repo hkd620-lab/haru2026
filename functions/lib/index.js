@@ -1221,6 +1221,7 @@ exports.generateTTS = (0, https_2.onCall)({
     secrets: [GEMINI_API_KEY_SECRET, GOOGLE_CLOUD_API_KEY_SECRET, OPENAI_API_KEY_SECRET],
     timeoutSeconds: 120,
 }, async (request) => {
+    var _a;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -1257,20 +1258,38 @@ exports.generateTTS = (0, https_2.onCall)({
             .replace(/\s{2,}/g, ' ')
             .trim()
             .slice(0, 4000);
-        const ttsResponse = await axios_1.default.post('https://api.openai.com/v1/audio/speech', {
-            model: 'tts-1',
-            input: cleanedText,
-            voice: safeVoice,
-            response_format: 'mp3',
-            speed: 0.95,
-        }, {
-            headers: {
-                'Authorization': `Bearer ${OPENAI_KEY}`,
-                'Content-Type': 'application/json',
-            },
-            responseType: 'arraybuffer',
-            timeout: 60000,
-        });
+        const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+        let ttsResponse = null;
+        for (let attempt = 0; attempt < 4; attempt++) {
+            try {
+                ttsResponse = await axios_1.default.post('https://api.openai.com/v1/audio/speech', {
+                    model: 'tts-1',
+                    input: cleanedText,
+                    voice: safeVoice,
+                    response_format: 'mp3',
+                    speed: 0.95,
+                }, {
+                    headers: {
+                        'Authorization': `Bearer ${OPENAI_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    responseType: 'arraybuffer',
+                    timeout: 60000,
+                });
+                break;
+            }
+            catch (err) {
+                const status = (_a = err === null || err === void 0 ? void 0 : err.response) === null || _a === void 0 ? void 0 : _a.status;
+                if (status === 429 && attempt < 3) {
+                    const delay = (attempt + 1) * 2000; // 2s, 4s, 6s
+                    logger.warn(`TTS 429 재시도 ${attempt + 1}회 (${delay}ms 대기)`);
+                    await sleep(delay);
+                }
+                else {
+                    throw err;
+                }
+            }
+        }
         const audioBuffer = Buffer.from(ttsResponse.data);
         if (!audioBuffer.length) {
             throw new https_2.HttpsError('internal', 'TTS 생성에 실패했습니다.');
@@ -1495,7 +1514,7 @@ ${JSON.stringify(parsed, null, 2)}`;
     return verified;
 });
 // ===== 장 문법 사전생성 =====
-exports.preloadChapterGrammar = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET, OPENAI_API_KEY_SECRET] }, async (request) => {
+exports.preloadChapterGrammar = (0, https_2.onCall)({ region: 'asia-northeast3', timeoutSeconds: 540, secrets: [GEMINI_API_KEY_SECRET, OPENAI_API_KEY_SECRET] }, async (request) => {
     var _a, _b, _c, _d, _e, _f, _g, _h, _j;
     const { book, chapter, verses, verseTexts } = request.data;
     const results = [];

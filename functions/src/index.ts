@@ -1769,7 +1769,7 @@ ${JSON.stringify(parsed, null, 2)}`;
 
 // ===== 장 문법 사전생성 =====
 export const preloadChapterGrammar = onCall(
-  { region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET, OPENAI_API_KEY_SECRET] },
+  { region: 'asia-northeast3', timeoutSeconds: 540, secrets: [GEMINI_API_KEY_SECRET, OPENAI_API_KEY_SECRET] },
   async (request) => {
     const { book, chapter, verses, verseTexts } = request.data;
 
