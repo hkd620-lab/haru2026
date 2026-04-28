@@ -950,6 +950,18 @@ export function BiblePage() {
       return;
     }
     setTtsLoading('full_chapter_seq');
+
+    // iOS Safari 자동재생 정책 회피:
+    // 33절 × 영/한 = 66회 new Audio()를 만들면 iOS는 두 번째 인스턴스부터 사용자 제스처와 무관한 것으로 보고 차단함.
+    // 사용자 제스처(클릭) 컨텍스트 안에서 단일 Audio 인스턴스를 확보한 뒤, 모든 절의 영→한 재생을 src 교체로 처리.
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+    } else {
+      audioRef.current.pause();
+      audioRef.current.onended = null;
+    }
+    const audio = audioRef.current;
+
     try {
       const fns = getFunctions(undefined, 'asia-northeast3');
       const transFn = httpsCallable(fns, 'getVerseTranslation');
@@ -984,9 +996,9 @@ export function BiblePage() {
         // 영어 재생 + 하이라이트
         if (enSrc) {
           await new Promise<void>((resolve) => {
-            audioRef.current = new Audio(enSrc);
-            audioRef.current.playbackRate = ttsSpeed;
-            audioRef.current.onended = () => {
+            audio.src = enSrc;
+            audio.playbackRate = ttsSpeed;
+            audio.onended = () => {
               if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
               setHighlightedWord(null);
               resolve();
@@ -994,7 +1006,6 @@ export function BiblePage() {
             const words = verse.text.trim().split(/\s+/);
             let wordIndex = 0;
             if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
-            const audio = audioRef.current!;
             const key = `verse_${verse.verse}`;
             const startLoop = () => {
               const duration = audio.duration || words.length * 0.45;
@@ -1009,12 +1020,12 @@ export function BiblePage() {
                 wordIndex++;
               }, interval);
             };
-            if (audio.duration) {
+            if (audio.duration && !isNaN(audio.duration)) {
               startLoop();
             } else {
               audio.addEventListener('loadedmetadata', startLoop, { once: true });
             }
-            audioRef.current.play();
+            audio.play().catch(() => resolve());
           });
         }
 
@@ -1032,13 +1043,13 @@ export function BiblePage() {
           koSrc = URL.createObjectURL(blob);
         }
 
-        // 한국어 재생
+        // 한국어 재생 — 같은 Audio 인스턴스 재사용으로 iOS unlock 유지
         if (koSrc) {
           await new Promise<void>((resolve) => {
-            audioRef.current = new Audio(koSrc);
-            audioRef.current.playbackRate = ttsSpeed;
-            audioRef.current.onended = () => resolve();
-            audioRef.current.play();
+            audio.src = koSrc;
+            audio.playbackRate = ttsSpeed;
+            audio.onended = () => resolve();
+            audio.play().catch(() => resolve());
           });
         }
       }
