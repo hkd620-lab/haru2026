@@ -61,7 +61,9 @@ export default function GrammarDashboard({ uid }: { uid: string }) {
     let done = 0;
     const fns = getFunctions(undefined, 'asia-northeast3');
     const fn = httpsCallable(fns, 'preloadChapterGrammar', { timeout: 540000 });
-    const cachedKeys = new Set(items.map(i => i.verseKey));
+    // 최신 캐시 목록을 Firestore에서 직접 조회 (이전 검증 중단 후 재시도 시 정확성 보장)
+    const freshSnap = await getDocs(collection(db, 'grammarCache'));
+    const cachedKeys = new Set(freshSnap.docs.map(d => d.id));
     for (const book of BIBLE_BOOKS) {
       for (let ch = 1; ch <= book.chapters; ch++) {
         setBulkProgress({ book: book.ko, chapter: ch, total: totalChapters, done });
