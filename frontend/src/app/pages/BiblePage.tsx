@@ -55,7 +55,7 @@ export function BiblePage() {
         const verses: string[] = [];
 
         (genesisData?.verses ?? []).forEach((verse: Verse) => {
-          const verseKey = `genesis_${currentChapter}_${verse.verse}`;
+          const verseKey = `${currentBook.prefix}_${currentChapter}_${verse.verse}`;
           verses.push(verseKey);
           verseTexts[verseKey] = verse.text;
         });
@@ -115,14 +115,30 @@ export function BiblePage() {
   // 영→한 연속 듣기 상태
   const [isSequentialPlaying, setIsSequentialPlaying] = useState<number | null>(null);
 
+  const BOOKS = [
+    { prefix: 'genesis',   ko: '창세기',   en: 'Genesis',   chapters: 50 },
+    { prefix: 'exodus',    ko: '출애굽기', en: 'Exodus',    chapters: 40 },
+    { prefix: 'leviticus', ko: '레위기',   en: 'Leviticus', chapters: 27 },
+    { prefix: 'matthew',   ko: '마태복음', en: 'Matthew',   chapters: 28 },
+    { prefix: 'mark',      ko: '마가복음', en: 'Mark',      chapters: 16 },
+  ];
+  const [currentBook, setCurrentBook] = useState(BOOKS[0]);
   const [currentChapter, setCurrentChapter] = useState<number>(1);
   const [genesisData, setGenesisData] = useState<{ book: string; bookKo: string; chapter: number; verses: Verse[] } | null>(null);
 
   useEffect(() => {
-    import(`../../data/genesis_${currentChapter}.json`)
+    import(`../../data/${currentBook.prefix}_${currentChapter}.json`)
       .then((mod) => setGenesisData(mod.default))
-      .catch(() => console.error(`genesis_${currentChapter}.json 로드 실패`));
-  }, [currentChapter]);
+      .catch(() => console.error(`${currentBook.prefix}_${currentChapter}.json 로드 실패`));
+  }, [currentBook, currentChapter]);
+
+  useEffect(() => {
+    setSelectedVerse(null);
+    setTtsPlaying(null);
+    setIsFullPlaying(false);
+    if (audioRef.current) audioRef.current.pause();
+    setCurrentChapter(1);
+  }, [currentBook]);
 
   useEffect(() => {
     setSelectedVerse(null);
@@ -138,7 +154,7 @@ export function BiblePage() {
       const fns = gf(undefined, 'asia-northeast3');
       const fn = hc(fns, 'getGrammarExplain');
       const res: any = await fn({
-        verseKey: `genesis_${currentChapter}_${verse.verse}`,
+        verseKey: `${currentBook.prefix}_${currentChapter}_${verse.verse}`,
         verseText: verse.text,
       });
       const result = res.data;
@@ -177,7 +193,7 @@ export function BiblePage() {
       const fns = getFunctions(undefined, 'asia-northeast3');
       const fn = httpsCallable(fns, 'getVerseTranslation');
       const result = await fn({
-        verseKey: `genesis_${currentChapter}_${verse.verse}`,
+        verseKey: `${currentBook.prefix}_${currentChapter}_${verse.verse}`,
         text: verse.text,
       }) as { data: { translation: string } };
       setTranslationPopup({ verse: verse.verse, text: verse.text, translation: result.data.translation, loading: false });
@@ -200,14 +216,14 @@ export function BiblePage() {
       const fns = getFunctions(undefined, 'asia-northeast3');
       const transFn = httpsCallable(fns, 'getVerseTranslation');
       const transResult = await transFn({
-        verseKey: `genesis_${currentChapter}_${verse.verse}`,
+        verseKey: `${currentBook.prefix}_${currentChapter}_${verse.verse}`,
         text: verse.text,
       }) as { data: { translation: string } };
       const translation = transResult.data.translation;
 
       // 한국어 TTS 호출
       const ttsFn = httpsCallable(fns, 'generateTTS');
-      const cacheKey = `bible_genesis_${currentChapter}_ko_${verse.verse}_${koVoice}`.slice(0, 80);
+      const cacheKey = `bible_${currentBook.prefix}_${currentChapter}_ko_${verse.verse}_${koVoice}`.slice(0, 80);
       const res: any = await ttsFn({ text: translation, cacheKey, voice: koVoice });
       setTtsLoading(null);
       if (audioRef.current) audioRef.current.pause();
@@ -252,14 +268,14 @@ export function BiblePage() {
       const ttsFn = httpsCallable(fns, 'generateTTS');
 
       const transResult = await transFn({
-        verseKey: `genesis_${currentChapter}_${verse.verse}`,
+        verseKey: `${currentBook.prefix}_${currentChapter}_${verse.verse}`,
         text: verse.text,
       }) as { data: { translation: string } };
       const translation = transResult.data.translation;
 
       const [mappingResult, ttsResult] = await Promise.all([
-        mappingFn({ verseKey: `genesis_${currentChapter}_${verse.verse}`, enText: verse.text, koText: translation }) as Promise<{ data: { mapping: Array<{ ko: string; enWords: string[] }> } }>,
-        ttsFn({ text: translation, cacheKey: `bible_genesis_${currentChapter}_ko_${verse.verse}_${koVoice}`.slice(0, 80), voice: koVoice }) as Promise<{ data: { audioUrl?: string; audioBase64?: string } }>,
+        mappingFn({ verseKey: `${currentBook.prefix}_${currentChapter}_${verse.verse}`, enText: verse.text, koText: translation }) as Promise<{ data: { mapping: Array<{ ko: string; enWords: string[] }> } }>,
+        ttsFn({ text: translation, cacheKey: `bible_${currentBook.prefix}_${currentChapter}_ko_${verse.verse}_${koVoice}`.slice(0, 80), voice: koVoice }) as Promise<{ data: { audioUrl?: string; audioBase64?: string } }>,
       ]);
 
       const mapping = mappingResult.data.mapping || [];
@@ -337,7 +353,7 @@ export function BiblePage() {
 
       // ① 영어 TTS
       const ttsFn = httpsCallable(fns, 'generateTTS');
-      const enCacheKey = `bible_genesis_${currentChapter}_${verse.verse}_${enVoice}`.slice(0, 80);
+      const enCacheKey = `bible_${currentBook.prefix}_${currentChapter}_${verse.verse}_${enVoice}`.slice(0, 80);
       const enRes: any = await ttsFn({ text: verse.text, cacheKey: enCacheKey, voice: enVoice });
       setTtsLoading(null);
 
@@ -391,13 +407,13 @@ export function BiblePage() {
           }
           audioRef.current.play();
         }),
-        transFn({ verseKey: `genesis_${currentChapter}_${verse.verse}`, text: verse.text }) as Promise<{ data: { translation: string } }>,
+        transFn({ verseKey: `${currentBook.prefix}_${currentChapter}_${verse.verse}`, text: verse.text }) as Promise<{ data: { translation: string } }>,
       ]);
 
       // (중간 정지 체크 제거 — React state 비동기 문제로 항상 null로 읽힘)
 
       // ③ 한국어 TTS
-      const koCacheKey = `bible_genesis_${currentChapter}_ko_${verse.verse}_${koVoice}`.slice(0, 80);
+      const koCacheKey = `bible_${currentBook.prefix}_${currentChapter}_ko_${verse.verse}_${koVoice}`.slice(0, 80);
       const koRes: any = await ttsFn({ text: transResult.data.translation, cacheKey: koCacheKey, voice: koVoice });
 
       let koAudioSrc = '';
@@ -530,7 +546,7 @@ export function BiblePage() {
       const fns = gf(undefined, 'asia-northeast3');
       const fn = hc(fns, 'getVerseQuiz');
       const res: any = await fn({
-        verseKey: `genesis_${currentChapter}_${verse.verse}`,
+        verseKey: `${currentBook.prefix}_${currentChapter}_${verse.verse}`,
         verseText: verse.text,
         level,
       });
@@ -555,7 +571,7 @@ export function BiblePage() {
     try {
       const db = (await import('firebase/firestore')).getFirestore();
       const { doc, getDoc } = await import('firebase/firestore');
-      const verseKey = `genesis_${currentChapter}_${verse.verse}`;
+      const verseKey = `${currentBook.prefix}_${currentChapter}_${verse.verse}`;
       const cacheRef = doc(db, 'grammarCache', verseKey);
       const snap = await getDoc(cacheRef);
       if (snap.exists()) {
@@ -702,7 +718,7 @@ export function BiblePage() {
       const fns = getFunctions(undefined, 'asia-northeast3');
       const fn = httpsCallable(fns, 'generateTTS');
       const voiceParam = key.startsWith('verse_ko') ? koVoice : enVoice;
-      const cacheKey = `bible_genesis_${currentChapter}_${key}_${voiceParam}`.slice(0, 80);
+      const cacheKey = `bible_${currentBook.prefix}_${currentChapter}_${key}_${voiceParam}`.slice(0, 80);
       const res: any = await fn({ text, cacheKey, voice: voiceParam });
 
       if (audioRef.current) audioRef.current.pause();
@@ -811,7 +827,7 @@ export function BiblePage() {
       for (const verse of (genesisData?.verses ?? [])) {
         // 현재 절 자동 펼치기
         setSelectedVerse(verse.verse);
-        const enCacheKey = `bible_genesis_${currentChapter}_${verse.verse}_${enVoice}`.slice(0, 80);
+        const enCacheKey = `bible_${currentBook.prefix}_${currentChapter}_${verse.verse}_${enVoice}`.slice(0, 80);
         const enRes: any = await ttsFn({ text: verse.text, cacheKey: enCacheKey, voice: enVoice });
         let enSrc = '';
         if (enRes.data.audioUrl) {
@@ -887,13 +903,13 @@ export function BiblePage() {
       const translations: string[] = [];
       for (const verse of (genesisData?.verses ?? [])) {
         const res = await transFn({
-          verseKey: `genesis_${currentChapter}_${verse.verse}`,
+          verseKey: `${currentBook.prefix}_${currentChapter}_${verse.verse}`,
           text: verse.text,
         }) as { data: { translation: string } };
         translations.push(res.data.translation);
       }
       const fullKoText = translations.join(' ');
-      const cacheKey = `bible_genesis_${currentChapter}_full_ko_${koVoice}`;
+      const cacheKey = `bible_${currentBook.prefix}_${currentChapter}_full_ko_${koVoice}`;
       const ttsRes: any = await ttsFn({ text: fullKoText, cacheKey, voice: koVoice });
       setTtsLoading(null);
       setIsFullPlaying(true);
@@ -943,7 +959,7 @@ export function BiblePage() {
 
       for (const verse of (genesisData?.verses ?? [])) {
         // 영어 TTS
-        const enCacheKey = `bible_genesis_${currentChapter}_${verse.verse}_${enVoice}`.slice(0, 80);
+        const enCacheKey = `bible_${currentBook.prefix}_${currentChapter}_${verse.verse}_${enVoice}`.slice(0, 80);
         const enRes: any = await ttsFn({ text: verse.text, cacheKey: enCacheKey, voice: enVoice });
         let enSrc = '';
         if (enRes.data.audioUrl) {
@@ -958,7 +974,7 @@ export function BiblePage() {
 
         // 번역 가져오기
         const transRes = await transFn({
-          verseKey: `genesis_${currentChapter}_${verse.verse}`,
+          verseKey: `${currentBook.prefix}_${currentChapter}_${verse.verse}`,
           text: verse.text,
         }) as { data: { translation: string } };
 
@@ -1002,7 +1018,7 @@ export function BiblePage() {
         }
 
         // 한국어 TTS
-        const koCacheKey = `bible_genesis_${currentChapter}_ko_${verse.verse}_${koVoice}`.slice(0, 80);
+        const koCacheKey = `bible_${currentBook.prefix}_${currentChapter}_ko_${verse.verse}_${koVoice}`.slice(0, 80);
         const koRes: any = await ttsFn({ text: transRes.data.translation, cacheKey: koCacheKey, voice: koVoice });
         let koSrc = '';
         if (koRes.data.audioUrl) {
@@ -1057,16 +1073,16 @@ export function BiblePage() {
       for (const verse of (genesisData?.verses ?? [])) {
         setSelectedVerse(verse.verse);
         const transRes = await transFn({
-          verseKey: `genesis_${currentChapter}_${verse.verse}`,
+          verseKey: `${currentBook.prefix}_${currentChapter}_${verse.verse}`,
           text: verse.text,
         }) as { data: { translation: string } };
         const translation = transRes.data.translation;
 
-        const koCacheKey = `bible_genesis_${currentChapter}_ko_${verse.verse}_${koVoice}`.slice(0, 80);
+        const koCacheKey = `bible_${currentBook.prefix}_${currentChapter}_ko_${verse.verse}_${koVoice}`.slice(0, 80);
         const [ttsRes, mappingRes] = await Promise.all([
           ttsFn({ text: translation, cacheKey: koCacheKey, voice: koVoice }),
           mappingFn({
-            verseKey: `genesis_${currentChapter}_${verse.verse}`,
+            verseKey: `${currentBook.prefix}_${currentChapter}_${verse.verse}`,
             enText: verse.text,
             koText: translation,
           }),
@@ -1150,10 +1166,28 @@ export function BiblePage() {
           📚 단어장
         </button>
         <div>
-          <p style={{ color: '#1A3C6E', fontSize: 16, fontWeight: 700, margin: 0 }}>📖 창세기 {currentChapter}장</p>
-          <p style={{ color: '#999', fontSize: 11, margin: 0 }}>Genesis Chapter {currentChapter} · KJV</p>
+          {/* 책 선택 */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '12px 12px 4px' }}>
+            {BOOKS.map((b) => (
+              <button
+                key={b.prefix}
+                onClick={() => setCurrentBook(b)}
+                style={{
+                  padding: '4px 12px', borderRadius: '6px', border: 'none',
+                  background: currentBook.prefix === b.prefix ? '#1A3C6E' : '#e5e7eb',
+                  color: currentBook.prefix === b.prefix ? '#FAF9F6' : '#374151',
+                  fontWeight: currentBook.prefix === b.prefix ? 700 : 400,
+                  cursor: 'pointer', fontSize: '13px',
+                }}
+              >
+                {b.ko}
+              </button>
+            ))}
+          </div>
+          <p style={{ color: '#1A3C6E', fontSize: 16, fontWeight: 700, margin: '4px 0 0 12px' }}>📖 {currentBook.ko} {currentChapter}장</p>
+          <p style={{ color: '#999', fontSize: 11, margin: '0 0 0 12px' }}>{currentBook.en} Chapter {currentChapter} · KJV</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '12px' }}>
-            {Array.from({ length: 50 }, (_, i) => i + 1).map((ch) => (
+            {Array.from({ length: currentBook.chapters }, (_, i) => i + 1).map((ch) => (
               <button
                 key={ch}
                 onClick={() => setCurrentChapter(ch)}
