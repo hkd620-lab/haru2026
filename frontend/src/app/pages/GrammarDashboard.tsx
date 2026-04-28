@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { db } from '../../firebase';
 import { BIBLE_BOOKS, BibleBook } from '../../data/bibleBooks';
 
@@ -27,6 +28,8 @@ export default function GrammarDashboard({ uid }: { uid: string }) {
   const [collapsed, setCollapsed] = useState(true);
   const [selectedBook, setSelectedBook] = useState<BibleBook>(BIBLE_BOOKS[0]);
   const [selectedChapter, setSelectedChapter] = useState<number>(1);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ book: string; chapter: number; total: number; done: number } | null>(null);
 
   useEffect(() => {
     if (uid !== ADMIN_UID) return;
@@ -47,6 +50,47 @@ export default function GrammarDashboard({ uid }: { uid: string }) {
 
   if (uid !== ADMIN_UID) return null;
 
+  const totalChapters = BIBLE_BOOKS.reduce((sum, b) => sum + b.chapters, 0);
+
+  async function handleBulkVerify() {
+    if (bulkRunning) return;
+    setBulkRunning(true);
+    let done = 0;
+    const fns = getFunctions(undefined, 'asia-northeast3');
+    const fn = httpsCallable(fns, 'preloadChapterGrammar');
+    for (const book of BIBLE_BOOKS) {
+      for (let ch = 1; ch <= book.chapters; ch++) {
+        setBulkProgress({ book: book.ko, chapter: ch, total: totalChapters, done });
+        try {
+          const mod = await import(`../../data/${book.prefix}_${ch}.json`);
+          const verses: string[] = [];
+          const verseTexts: Record<string, string> = {};
+          (mod.default.verses as { verse: number; text: string }[]).forEach(v => {
+            const key = `${book.prefix}_${ch}_${v.verse}`;
+            verses.push(key);
+            verseTexts[key] = v.text;
+          });
+          await fn({ book: book.ko, chapter: ch, verses, verseTexts });
+        } catch {
+          // 실패한 장은 스킵
+        }
+        done++;
+      }
+    }
+    setBulkRunning(false);
+    setBulkProgress(null);
+    // 검증 완료 후 목록 새로고침
+    const snap = await getDocs(collection(db, 'grammarCache'));
+    const data: CacheItem[] = snap.docs.map(doc => ({
+      verseKey: doc.id,
+      verifiedByGPT: doc.data().verifiedByGPT || false,
+      gptChanges: doc.data().gptChanges || [],
+      createdAt: doc.data().createdAt,
+    }));
+    data.sort((a, b) => a.verseKey.localeCompare(b.verseKey));
+    setItems(data);
+  }
+
   const totalVerses = selectedBook.verseCount[selectedChapter] ?? 0;
   const verses = Array.from({ length: totalVerses }, (_, i) => `${selectedBook.prefix}_${selectedChapter}_${i + 1}`);
   const chapterItems = items.filter(item => verses.includes(item.verseKey));
@@ -55,20 +99,43 @@ export default function GrammarDashboard({ uid }: { uid: string }) {
 
   return (
     <div style={{ padding: 20, maxWidth: 600, margin: '0 auto' }}>
-      <div
-        onClick={() => setCollapsed(!collapsed)}
-        style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          cursor: 'pointer', marginBottom: collapsed ? 0 : 16
-        }}
-      >
-        <h2 style={{ color: '#1A3C6E', fontSize: 20, fontWeight: 700, margin: 0 }}>
-          📊 문법 검증 대시보드
-        </h2>
-        <span style={{ fontSize: 20, color: '#1A3C6E' }}>
-          {collapsed ? '▼' : '▲'}
-        </span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <div
+          onClick={() => setCollapsed(!collapsed)}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', flex: 1 }}
+        >
+          <h2 style={{ color: '#1A3C6E', fontSize: 20, fontWeight: 700, margin: 0 }}>
+            📊 문법 검증 대시보드
+          </h2>
+          <span style={{ fontSize: 20, color: '#1A3C6E' }}>{collapsed ? '▼' : '▲'}</span>
+        </div>
+        <button
+          onClick={handleBulkVerify}
+          disabled={bulkRunning}
+          style={{
+            padding: '6px 14px', borderRadius: 8, border: 'none', cursor: bulkRunning ? 'default' : 'pointer',
+            background: bulkRunning ? '#e5e7eb' : '#10b981', color: '#fff',
+            fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
+          }}
+        >
+          {bulkRunning ? '검증 중...' : '⚡ 전체 검증'}
+        </button>
       </div>
+
+      {bulkProgress && (
+        <div style={{ background: '#f0fdf4', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+          <div style={{ fontSize: 13, color: '#065f46', marginBottom: 6 }}>
+            {bulkProgress.book} {bulkProgress.chapter}장 검증 중... ({bulkProgress.done}/{bulkProgress.total}장)
+          </div>
+          <div style={{ background: '#d1fae5', borderRadius: 99, height: 6, overflow: 'hidden' }}>
+            <div style={{
+              background: '#10b981', height: '100%', borderRadius: 99,
+              width: `${Math.round((bulkProgress.done / bulkProgress.total) * 100)}%`,
+              transition: 'width 0.3s',
+            }} />
+          </div>
+        </div>
+      )}
 
       {collapsed && (
         <p style={{ fontSize: 13, color: '#888', margin: '8px 0 0 0' }}>
