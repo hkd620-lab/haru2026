@@ -76,10 +76,12 @@ export default function GrammarDashboard({ uid }: { uid: string }) {
             verses.push(key);
             verseTexts[key] = v.text;
           });
-          // 이 장의 모든 절이 이미 캐시됐으면 API 호출 스킵
-          const allCached = verses.every(k => cachedKeys.has(k));
-          if (!allCached) {
-            await fn({ book: book.ko, chapter: ch, verses, verseTexts });
+          // 캐시 안 된 절만 추려서 전송
+          const uncached = verses.filter(k => !cachedKeys.has(k));
+          if (uncached.length > 0) {
+            const uncachedTexts: Record<string, string> = {};
+            uncached.forEach(k => { uncachedTexts[k] = verseTexts[k]; });
+            await fn({ book: book.ko, chapter: ch, verses: uncached, verseTexts: uncachedTexts });
           }
         } catch {
           // 실패한 장은 스킵
