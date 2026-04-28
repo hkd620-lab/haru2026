@@ -15,9 +15,11 @@ const CHECKLIST_ITEMS = [
   { id: 'payment_btn', category: '결제/환경', label: '구독 결제 버튼 정상' },
   { id: 'domain_access', category: '결제/환경', label: 'haru2026.com 접속 정상' },
   { id: 'ssl_cert', category: '결제/환경', label: 'SSL 인증서 정상 (자물쇠)' },
+  { id: 'fcm_mobile', category: '알림', label: 'FCM 알림 수신 정상 (iOS/Android)' },
+  { id: 'fcm_mac', category: '알림', label: 'FCM 알림 수신 정상 (Mac)' },
 ];
 
-const CATEGORIES = ['Firebase', 'AI', '결제/환경'];
+const CATEGORIES = ['Firebase', 'AI', '결제/환경', '알림'];
 
 function getTodayStr() {
   const today = new Date();
