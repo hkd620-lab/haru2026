@@ -1638,7 +1638,7 @@ mysentence와 korean은 반드시 채워야 합니다.
     let verified = parsed;
     let gptChanges: string[] = [];
     try {
-      const OPENAI_KEY = OPENAI_API_KEY_SECRET.value();
+      const OPENAI_KEY = OPENAI_API_KEY_SECRET.value().trim();
       const gptPrompt = `당신은 영어 문법 전문가입니다. 아래 영어 성경 구절의 문법 분석 JSON을 능동적으로 검토하고 개선하세요.
 
 구절: "${verseText}"
@@ -1834,7 +1834,7 @@ export const preloadChapterGrammar = onCall(
         let verifiedByGPT = false;
 
         try {
-          const openaiApiKey = OPENAI_API_KEY_SECRET.value();
+          const openaiApiKey = OPENAI_API_KEY_SECRET.value().trim();
           const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
