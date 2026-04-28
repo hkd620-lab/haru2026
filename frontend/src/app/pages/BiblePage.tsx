@@ -4,6 +4,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
+import { BIBLE_BOOKS } from '../../data/bibleBooks';
 
 interface Verse {
   verse: number;
@@ -115,13 +116,7 @@ export function BiblePage() {
   // 영→한 연속 듣기 상태
   const [isSequentialPlaying, setIsSequentialPlaying] = useState<number | null>(null);
 
-  const BOOKS = [
-    { prefix: 'genesis',   ko: '창세기',   en: 'Genesis',   chapters: 50, testament: '구약' },
-    { prefix: 'exodus',    ko: '출애굽기', en: 'Exodus',    chapters: 40, testament: '구약' },
-    { prefix: 'leviticus', ko: '레위기',   en: 'Leviticus', chapters: 27, testament: '구약' },
-    { prefix: 'matthew',   ko: '마태복음', en: 'Matthew',   chapters: 28, testament: '신약' },
-    { prefix: 'mark',      ko: '마가복음', en: 'Mark',      chapters: 16, testament: '신약' },
-  ];
+  const BOOKS = BIBLE_BOOKS;
   const [currentTestament, setCurrentTestament] = useState<'구약' | '신약'>('구약');
   const [currentBook, setCurrentBook] = useState(BOOKS[0]);
   const [currentChapter, setCurrentChapter] = useState<number>(1);
