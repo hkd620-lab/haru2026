@@ -1466,7 +1466,7 @@ export const generateTTS = onCall(
       }
 
       // 2. OpenAI TTS 생성
-      const OPENAI_KEY = OPENAI_API_KEY_SECRET.value();
+      const OPENAI_KEY = OPENAI_API_KEY_SECRET.value().trim();
 
       // 텍스트 정제 — 한글, 영문만 남기기
       const cleanedText = text
