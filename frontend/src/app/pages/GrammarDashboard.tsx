@@ -4,6 +4,9 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { db } from '../../firebase';
 import { BIBLE_BOOKS, BibleBook } from '../../data/bibleBooks';
 
+// Vite glob — 빌드 시점에 경로를 정적 분석하므로 순환 의존 없음
+const BIBLE_JSON = import.meta.glob('../../data/*.json');
+
 const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
 interface CacheItem {
@@ -62,7 +65,9 @@ export default function GrammarDashboard({ uid }: { uid: string }) {
       for (let ch = 1; ch <= book.chapters; ch++) {
         setBulkProgress({ book: book.ko, chapter: ch, total: totalChapters, done });
         try {
-          const mod = await import(`../../data/${book.prefix}_${ch}.json`);
+          const loader = BIBLE_JSON[`../../data/${book.prefix}_${ch}.json`];
+          if (!loader) continue;
+          const mod = await loader() as any;
           const verses: string[] = [];
           const verseTexts: Record<string, string> = {};
           (mod.default.verses as { verse: number; text: string }[]).forEach(v => {
