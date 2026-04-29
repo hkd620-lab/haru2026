@@ -24,6 +24,10 @@ export function NovelSynopsisPage() {
   const prophecyGoalType = location.state?.prophecyGoalType || '';
   const prophecyGoal = location.state?.prophecyGoal || '';
   const prophecyWall = location.state?.prophecyWall || '';
+  const navExtractedGoal = location.state?.extractedGoal || '';
+  const navPersons = location.state?.persons || [];
+  const navExtractedEvent = location.state?.extractedEvent || '';
+  const navExtractedDailyAchieve = location.state?.extractedDailyAchieve || '';
 
   // ── fromRecord=true 분기 전용 state ──
   const [analysis, setAnalysis] = useState({
@@ -94,15 +98,17 @@ export function NovelSynopsisPage() {
     question: prophecyWall || question,
     prophecyGoalType, prophecyGoal, prophecyWall,
     extractedChars: currentAnalysis.chars,
-    extractedDesire: currentAnalysis.desire,
     extractedShackle: currentAnalysis.shackle,
     extractedEvents: currentAnalysis.events,
     extractedRelationship: currentAnalysis.relationship,
     extractedPersonality: currentAnalysis.personality,
     extractedMotive: currentAnalysis.motive,
     extractedTheme: currentAnalysis.theme,
-    extractedOneLiner: currentAnalysis.oneLiner,
     extractedThreeLiner: currentAnalysis.threeLiner,
+    extractedGoal: navExtractedGoal || currentAnalysis.desire,
+    persons: navPersons,
+    extractedEvent: navExtractedEvent,
+    extractedDailyAchieve: navExtractedDailyAchieve,
     type: payloadType,
   });
 
