@@ -90,13 +90,14 @@ const WALL_OPTIONS: string[] = [
   '혼자라는 느낌이 든다',
 ];
 
-// === 9개 항목 칩 옵션 ===
+// === 9개 항목 칩 옵션 (각 6개, 성격은 8개) ===
 const EVENT_MOTIVE_CHIPS: string[] = [
   '예상치 못한 만남',
   '오랜 꿈을 향한 첫 걸음',
   '위기에서 찾은 기회',
   '관계의 균열과 회복',
   '성공적인 기술 구현과 삶의 변화',
+  '오랜 갈등의 해소',
 ];
 
 const THEME_CHIPS: string[] = [
@@ -105,6 +106,7 @@ const THEME_CHIPS: string[] = [
   '관계 속에서 발견하는 나',
   '포기하지 않는 자의 열매',
   '운명보다 강한 의지',
+  '작은 것에서 찾는 삶의 의미',
 ];
 
 const PERSONALITY_CHIPS: string[] = [
@@ -118,12 +120,31 @@ const PERSONALITY_CHIPS: string[] = [
   '결정적인 순간에 강함',
 ];
 
+const GOAL_CHIPS_NEW: string[] = [
+  '내가 시작한 일이 세상에 쓸모있게 남는 것',
+  '경제적으로 자유로워지는 것',
+  '나만의 작품을 완성하는 것',
+  '내가 믿는 가치대로 사는 것',
+  '나를 필요로 하는 곳에서 빛나는 것',
+  '사랑하는 사람과 평온하게 사는 것',
+];
+
+const SHACKLE_CHIPS_NEW: string[] = [
+  '과거의 실패와 후회',
+  '자기 자신에 대한 불신',
+  '주변의 시선과 편견',
+  '경제적 어려움',
+  '건강의 한계',
+  '포기하고 싶은 마음',
+];
+
 const EVENT_CHIPS: string[] = [
   '예상치 못한 사고를 겪었다',
   '중요한 결정을 내려야 했다',
   '오랜 관계가 갑자기 변했다',
   '기회가 찾아왔지만 놓쳤다',
   '뜻밖의 도움을 받았다',
+  '오랜 꿈에 도전했다',
 ];
 
 const DAILY_ACHIEVE_CHIPS: string[] = [
@@ -132,7 +153,22 @@ const DAILY_ACHIEVE_CHIPS: string[] = [
   '작은 목표 하나를 끝냈다',
   '누군가에게 먼저 연락했다',
   '오늘 하루를 기록으로 남겼다',
+  '건강을 위해 한 걸음 내딛었다',
 ];
+
+// 칩 복수선택 토글 헬퍼 (구분자 '、')
+const CHIP_SEP = '、';
+const toggleChip = (currentValue: string, chipText: string): string => {
+  const items = currentValue ? currentValue.split(CHIP_SEP).filter(Boolean) : [];
+  if (items.includes(chipText)) {
+    return items.filter(x => x !== chipText).join(CHIP_SEP);
+  }
+  return [...items, chipText].join(CHIP_SEP);
+};
+const isChipActive = (currentValue: string, chipText: string): boolean => {
+  if (!currentValue) return false;
+  return currentValue.split(CHIP_SEP).filter(Boolean).includes(chipText);
+};
 
 export function RecordProphecyPage() {
   const { user } = useAuth();
@@ -737,11 +773,11 @@ export function RecordProphecyPage() {
               <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>이야기를 움직이는 핵심 사건의 계기는 무엇인가요?</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
                 {EVENT_MOTIVE_CHIPS.map((opt, i) => {
-                  const active = extractedMotive === opt;
+                  const active = isChipActive(extractedMotive, opt);
                   return (
                     <button
                       key={i}
-                      onClick={() => setExtractedMotive(opt)}
+                      onClick={() => setExtractedMotive(toggleChip(extractedMotive, opt))}
                       style={{
                         padding: '6px 12px', borderRadius: 16, fontSize: 12,
                         border: active ? '1.5px solid #1A3C6E' : '0.5px solid #e5e7eb',
@@ -756,7 +792,7 @@ export function RecordProphecyPage() {
               <textarea
                 value={extractedMotive}
                 onChange={e => setExtractedMotive(e.target.value)}
-                placeholder="직접 입력도 가능합니다"
+                placeholder="예) 65세가 된 지금, 과거에 다른 선택을 했다면..."
                 rows={2}
                 style={{
                   width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
@@ -772,11 +808,11 @@ export function RecordProphecyPage() {
               <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>이 이야기가 궁극적으로 말하고 싶은 것은 무엇인가요?</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
                 {THEME_CHIPS.map((opt, i) => {
-                  const active = extractedTheme === opt;
+                  const active = isChipActive(extractedTheme, opt);
                   return (
                     <button
                       key={i}
-                      onClick={() => setExtractedTheme(opt)}
+                      onClick={() => setExtractedTheme(toggleChip(extractedTheme, opt))}
                       style={{
                         padding: '6px 12px', borderRadius: 16, fontSize: 12,
                         border: active ? '1.5px solid #1A3C6E' : '0.5px solid #e5e7eb',
@@ -791,7 +827,7 @@ export function RecordProphecyPage() {
               <textarea
                 value={extractedTheme}
                 onChange={e => setExtractedTheme(e.target.value)}
-                placeholder="직접 입력도 가능합니다"
+                placeholder="예) 끊임없는 노력과 절제로 역경을 이겨내며 삶을 지켜가는 과정"
                 rows={2}
                 style={{
                   width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
@@ -833,7 +869,7 @@ export function RecordProphecyPage() {
                     <input
                       value={p.name}
                       onChange={e => setPersons(prev => prev.map((q, i) => i === idx ? { ...q, name: e.target.value } : q))}
-                      placeholder="이름/관계 (예: 아내, 멘토 김OO)"
+                      placeholder="이름 또는 관계 (예: 배우자)"
                       style={{ flex: 1, border: '0.5px solid #e5e7eb', borderRadius: 6, padding: '6px 8px', fontSize: 16, color: '#374151', outline: 'none', boxSizing: 'border-box' }}
                     />
                     {persons.length > 1 && (
@@ -851,7 +887,7 @@ export function RecordProphecyPage() {
                   <textarea
                     value={p.relation}
                     onChange={e => setPersons(prev => prev.map((q, i) => i === idx ? { ...q, relation: e.target.value } : q))}
-                    placeholder="관계 설명 (예: 든든한 지지자)"
+                    placeholder="관계 설명 (예: 든든한 지지자, 때론 날카로운 조언자)"
                     rows={1}
                     style={{
                       width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 6,
@@ -885,11 +921,11 @@ export function RecordProphecyPage() {
                   <p style={{ fontSize: 12, fontWeight: 500, color: '#1A3C6E', marginBottom: 8 }}>{p.name}</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
                     {PERSONALITY_CHIPS.map((opt, i) => {
-                      const active = p.personality === opt;
+                      const active = isChipActive(p.personality, opt);
                       return (
                         <button
                           key={i}
-                          onClick={() => setPersons(prev => prev.map((q, j) => j === idx ? { ...q, personality: opt } : q))}
+                          onClick={() => setPersons(prev => prev.map((q, j) => j === idx ? { ...q, personality: toggleChip(q.personality, opt) } : q))}
                           style={{
                             padding: '6px 12px', borderRadius: 16, fontSize: 11,
                             border: active ? '1.5px solid #1A3C6E' : '0.5px solid #e5e7eb',
@@ -904,7 +940,7 @@ export function RecordProphecyPage() {
                   <textarea
                     value={p.personality}
                     onChange={e => setPersons(prev => prev.map((q, j) => j === idx ? { ...q, personality: e.target.value } : q))}
-                    placeholder="직접 입력도 가능합니다"
+                    placeholder="또는 직접 입력..."
                     rows={1}
                     style={{
                       width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 6,
@@ -920,10 +956,28 @@ export function RecordProphecyPage() {
             <div style={styles.card}>
               <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginBottom: 4 }}>6. 초목표</p>
               <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>주인공이 궁극적으로 이루고 싶은 것은 무엇인가요?</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                {GOAL_CHIPS_NEW.map((opt, i) => {
+                  const active = isChipActive(extractedGoal, opt);
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => setExtractedGoal(toggleChip(extractedGoal, opt))}
+                      style={{
+                        padding: '6px 12px', borderRadius: 16, fontSize: 12,
+                        border: active ? '1.5px solid #1A3C6E' : '0.5px solid #e5e7eb',
+                        background: active ? '#1A3C6E' : '#fff',
+                        color: active ? '#fff' : '#374151',
+                        cursor: 'pointer',
+                      }}
+                    >{opt}</button>
+                  );
+                })}
+              </div>
               <textarea
                 value={extractedGoal}
                 onChange={e => setExtractedGoal(e.target.value)}
-                placeholder="예: 내가 시작한 일이 세상에 쓸모있게 남는 것"
+                placeholder="예) 내가 시작한 일이 세상에 쓸모있게 남는 것"
                 rows={2}
                 style={{
                   width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
@@ -937,10 +991,28 @@ export function RecordProphecyPage() {
             <div style={styles.card}>
               <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginBottom: 4 }}>7. 주인공이 극복할 것</p>
               <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>주인공의 발목을 잡는 것은 무엇인가요?</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                {SHACKLE_CHIPS_NEW.map((opt, i) => {
+                  const active = isChipActive(extractedShackle, opt);
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => setExtractedShackle(toggleChip(extractedShackle, opt))}
+                      style={{
+                        padding: '6px 12px', borderRadius: 16, fontSize: 12,
+                        border: active ? '1.5px solid #1A3C6E' : '0.5px solid #e5e7eb',
+                        background: active ? '#1A3C6E' : '#fff',
+                        color: active ? '#fff' : '#374151',
+                        cursor: 'pointer',
+                      }}
+                    >{opt}</button>
+                  );
+                })}
+              </div>
               <textarea
                 value={extractedShackle}
                 onChange={e => setExtractedShackle(e.target.value)}
-                placeholder="예: 과거의 좌절과 실패, 포기로 인한 처참함"
+                placeholder="예) 과거의 좌절과 실패, 포기로 인한 처참함"
                 rows={2}
                 style={{
                   width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
@@ -956,11 +1028,11 @@ export function RecordProphecyPage() {
               <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>신문에 날 만한 크고 작은 사건을 입력해주세요.</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
                 {EVENT_CHIPS.map((opt, i) => {
-                  const active = extractedEvent === opt;
+                  const active = isChipActive(extractedEvent, opt);
                   return (
                     <button
                       key={i}
-                      onClick={() => setExtractedEvent(opt)}
+                      onClick={() => setExtractedEvent(toggleChip(extractedEvent, opt))}
                       style={{
                         padding: '6px 12px', borderRadius: 16, fontSize: 12,
                         border: active ? '1.5px solid #1A3C6E' : '0.5px solid #e5e7eb',
@@ -975,7 +1047,7 @@ export function RecordProphecyPage() {
               <textarea
                 value={extractedEvent}
                 onChange={e => setExtractedEvent(e.target.value)}
-                placeholder="예: 아내와 오토바이로 시장 가다 자동차와 접촉사고가 났다"
+                placeholder="예) 아내와 오토바이로 시장 가다 자동차와 접촉사고가 났다"
                 rows={2}
                 style={{
                   width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
@@ -991,11 +1063,11 @@ export function RecordProphecyPage() {
               <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>소소하지만 나에게 의미있는 일상의 성취를 입력해주세요.</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
                 {DAILY_ACHIEVE_CHIPS.map((opt, i) => {
-                  const active = extractedDailyAchieve === opt;
+                  const active = isChipActive(extractedDailyAchieve, opt);
                   return (
                     <button
                       key={i}
-                      onClick={() => setExtractedDailyAchieve(opt)}
+                      onClick={() => setExtractedDailyAchieve(toggleChip(extractedDailyAchieve, opt))}
                       style={{
                         padding: '6px 12px', borderRadius: 16, fontSize: 12,
                         border: active ? '1.5px solid #1A3C6E' : '0.5px solid #e5e7eb',
@@ -1010,7 +1082,7 @@ export function RecordProphecyPage() {
               <textarea
                 value={extractedDailyAchieve}
                 onChange={e => setExtractedDailyAchieve(e.target.value)}
-                placeholder="예: 아내와 함께 시장을 갔다"
+                placeholder="예) 아내와 함께 시장을 갔다"
                 rows={2}
                 style={{
                   width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
