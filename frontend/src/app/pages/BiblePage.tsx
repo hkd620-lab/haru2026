@@ -129,6 +129,15 @@ export function BiblePage() {
     setCurrentChapter(1);
   }, [currentBook]);
 
+  // 신구약 탭 변경 시 해당 첫 번째 책 자동 선택
+  useEffect(() => {
+    const first = BOOKS.find((b) => b.testament === currentTestament);
+    if (first && currentBook.testament !== currentTestament) {
+      setCurrentBook(first);
+      setCurrentChapter(1);
+    }
+  }, [currentTestament]);
+
   useEffect(() => {
     setSelectedVerse(null);
     setTtsPlaying(null);
@@ -1186,7 +1195,10 @@ export function BiblePage() {
                 onClick={() => {
                   setCurrentTestament(t);
                   const first = BOOKS.find((b) => b.testament === t);
-                  if (first) setCurrentBook(first);
+                  if (first) {
+                    setCurrentBook(first);
+                    setCurrentChapter(1);
+                  }
                 }}
                 style={{
                   padding: '8px 20px', background: 'none', border: 'none', cursor: 'pointer',
