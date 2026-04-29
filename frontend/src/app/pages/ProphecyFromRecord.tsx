@@ -26,6 +26,70 @@ interface RecordItem {
 const PROPHECY_TYPES = ['나의 미래', '자식의 미래', '과거를 바꿨다면'];
 const TIME_OPTIONS = ['1년 후', '3년 후', '5년 후', '10년 후'];
 
+const GOAL_TYPE_OPTIONS: { value: 'me' | 'child' | 'past'; label: string; sub: string }[] = [
+  { value: 'me', label: '나의 미래', sub: '초목표를 향한 서사' },
+  { value: 'child', label: '자식의 미래', sub: '자식에게 바라는 것의 서사' },
+  { value: 'past', label: '과거를 바꿨다면', sub: '그때 달랐다면 지금은 어땠을까' },
+];
+
+const GOAL_HINTS: Record<'me' | 'child' | 'past', string> = {
+  me: '내가 원한다고 원하는 대로 되는 미래는 아닙니다. 여기서 선택한 초목표가 달성될지는 운명과 나의 노력이 결정합니다.',
+  child: '자식에게 바라는 것은 내 마음일 뿐, 자식의 삶은 자식의 것입니다. 운명은 알 수 없습니다.',
+  past: '과거를 바꿨다면 지금이 어떻게 달라졌을지는 그 누구도 단언할 수 없습니다. 여러 요소가 개입되어 현실과 미래가 어떻게 전개될지 — 그야말로 궁금합니다.',
+};
+
+const GOAL_OPTIONS: Record<'me' | 'child' | 'past', string[]> = {
+  me: [
+    '내가 시작한 일이 세상에 쓸모있게 남는 것',
+    '경제적으로 자유로워지는 것',
+    '건강하게 오래 사는 것',
+    '나만의 작품을 완성하는 것',
+    '사람들에게 인정받는 것',
+    '사랑하는 사람과 평온하게 사는 것',
+    '두려움 없이 도전하는 사람이 되는 것',
+    '내가 믿는 가치대로 사는 것',
+    '후회 없는 선택을 하며 사는 것',
+    '나를 필요로 하는 곳에서 빛나는 것',
+  ],
+  child: [
+    '건강하고 행복하게 사는 것',
+    '자기가 좋아하는 일을 하며 사는 것',
+    '좋은 사람을 만나 사랑받는 것',
+    '경제적으로 어렵지 않게 사는 것',
+    '바른 가치관을 가진 사람이 되는 것',
+    '실패해도 다시 일어서는 사람이 되는 것',
+    '자기 자신을 사랑할 줄 아는 사람이 되는 것',
+    '좋은 친구들과 함께하는 것',
+    '부모보다 더 나은 삶을 사는 것',
+    '세상에 선한 영향을 미치는 것',
+  ],
+  past: [
+    '그 선택을 하지 않았다면',
+    '그 사람을 만나지 않았다면',
+    '그때 용기를 냈다면',
+    '그 직업을 선택했다면',
+    '그 말을 하지 않았다면',
+    '더 일찍 시작했다면',
+    '그 관계를 끊었다면',
+    '그때 떠났다면',
+    '더 열심히 했다면',
+    '그 기회를 잡았다면',
+  ],
+};
+
+const WALL_OPTIONS: string[] = [
+  '새로운 도전을 앞두고 두렵다',
+  '경제적으로 막막한 상황이다',
+  '중요한 관계가 흔들리고 있다',
+  '건강이 걱정된다',
+  '나 자신을 믿지 못하겠다',
+  '시작했지만 포기하고 싶다',
+  '선택의 기로에 서 있다',
+  '과거의 실수가 발목을 잡는다',
+  '인정받지 못하는 느낌이다',
+  '혼자라는 느낌이 든다',
+];
+
 export function RecordProphecyPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -48,6 +112,9 @@ export function RecordProphecyPage() {
   const [prophecyType, setProphecyType] = useState('나의 미래');
   const [timeOption, setTimeOption] = useState('3년 후');
   const [question, setQuestion] = useState('');
+  const [prophecyGoalType, setProphecyGoalType] = useState<'me' | 'child' | 'past' | ''>('');
+  const [prophecyGoal, setProphecyGoal] = useState('');
+  const [prophecyWall, setProphecyWall] = useState('');
 
   // analyze step 관련
   const [analyzing, setAnalyzing] = useState(false);
@@ -180,6 +247,9 @@ export function RecordProphecyPage() {
         prophecyType,
         timeOption,
         question,
+        prophecyGoalType,
+        prophecyGoal,
+        prophecyWall,
         extractedChars,
         extractedDesire,
         extractedShackle,
@@ -590,17 +660,125 @@ export function RecordProphecyPage() {
               <p style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E' }}>{selectedRecord?.title}</p>
             </div>
 
+            {/* 예언 유형 선택 — 3개 버튼 */}
             <div style={styles.card}>
-              <p style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E', marginBottom: 12 }}>① 예언 종류</p>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {PROPHECY_TYPES.map(t => (
-                  <button key={t} style={styles.pill(prophecyType === t)} onClick={() => setProphecyType(t)}>{t}</button>
-                ))}
+              <p style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E', marginBottom: 12 }}>예언 유형 선택</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {GOAL_TYPE_OPTIONS.map(opt => {
+                  const active = prophecyGoalType === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => { setProphecyGoalType(opt.value); setProphecyGoal(''); }}
+                      style={{
+                        textAlign: 'left',
+                        padding: '12px 14px',
+                        borderRadius: 10,
+                        border: active ? '2px solid #1A3C6E' : '0.5px solid #e5e7eb',
+                        background: active ? '#E6F1FB' : '#fff',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#1A3C6E' }}>{opt.label}</div>
+                      <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{opt.sub}</div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
+            {/* 유형 선택 후: 초목표/바람 입력 */}
+            {prophecyGoalType && (
+              <div style={styles.card}>
+                <p style={{
+                  fontSize: 11, color: '#633806', lineHeight: 1.7,
+                  background: '#FFFBF0', border: '0.5px solid #F9CB42',
+                  borderRadius: 8, padding: '8px 10px', marginBottom: 12,
+                }}>
+                  💡 {GOAL_HINTS[prophecyGoalType]}
+                </p>
+                <p style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E', marginBottom: 10 }}>
+                  {prophecyGoalType === 'me' && '초목표 선택 (또는 직접 입력)'}
+                  {prophecyGoalType === 'child' && '자식에게 바라는 것 (또는 직접 입력)'}
+                  {prophecyGoalType === 'past' && '바꾸고 싶은 과거 (또는 직접 입력)'}
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                  {GOAL_OPTIONS[prophecyGoalType].map((opt, i) => {
+                    const active = prophecyGoal === opt;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => setProphecyGoal(opt)}
+                        style={{
+                          padding: '8px 14px',
+                          borderRadius: 20,
+                          border: active ? '1.5px solid #1A3C6E' : '0.5px solid #e5e7eb',
+                          background: active ? '#1A3C6E' : '#fff',
+                          color: active ? '#fff' : '#374151',
+                          fontSize: 12,
+                          cursor: 'pointer',
+                        }}
+                      >{opt}</button>
+                    );
+                  })}
+                </div>
+                <textarea
+                  value={prophecyGoal}
+                  onChange={e => setProphecyGoal(e.target.value)}
+                  placeholder="직접 입력도 가능합니다"
+                  rows={2}
+                  style={{
+                    width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
+                    padding: '10px 12px', fontSize: 16, resize: 'none', outline: 'none',
+                    lineHeight: 1.6, fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            )}
+
+            {/* 공통 — 유형 선택 후 항상 표시: 지금 가장 넘고 싶은 한 가지 */}
+            {prophecyGoalType && (
+              <div style={styles.card}>
+                <p style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E', marginBottom: 4 }}>지금 가장 넘고 싶은 한 가지</p>
+                <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 12, lineHeight: 1.6 }}>
+                  현재 나를 막고 있는 것을 알려주세요. AI가 이것을 극복하는 서사를 더 실감나게 써드립니다.
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                  {WALL_OPTIONS.map((opt, i) => {
+                    const active = prophecyWall === opt;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => setProphecyWall(opt)}
+                        style={{
+                          padding: '8px 14px',
+                          borderRadius: 20,
+                          border: active ? '1.5px solid #10b981' : '0.5px solid #e5e7eb',
+                          background: active ? '#10b981' : '#fff',
+                          color: active ? '#fff' : '#374151',
+                          fontSize: 12,
+                          cursor: 'pointer',
+                        }}
+                      >{opt}</button>
+                    );
+                  })}
+                </div>
+                <textarea
+                  value={prophecyWall}
+                  onChange={e => setProphecyWall(e.target.value)}
+                  placeholder="직접 입력도 가능합니다"
+                  rows={2}
+                  style={{
+                    width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
+                    padding: '10px 12px', fontSize: 16, resize: 'none', outline: 'none',
+                    lineHeight: 1.6, fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            )}
+
             <div style={styles.card}>
-              <p style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E', marginBottom: 12 }}>② 시간 배경</p>
+              <p style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E', marginBottom: 12 }}>시간 배경</p>
               <div style={{ display: 'flex', gap: 6 }}>
                 {TIME_OPTIONS.map(t => (
                   <button key={t} style={styles.pill(timeOption === t)} onClick={() => setTimeOption(t)}>{t}</button>
@@ -608,22 +786,11 @@ export function RecordProphecyPage() {
               </div>
             </div>
 
-            <div style={styles.card}>
-              <p style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E', marginBottom: 8 }}>③ 지금 가장 넘고 싶은 한 가지는?</p>
-              <textarea
-                value={question}
-                onChange={e => setQuestion(e.target.value)}
-                placeholder="예: Flutter 앱 출시, 건강 회복, 관계 회복..."
-                rows={3}
-                style={{
-                  width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
-                  padding: '10px 12px', fontSize: 14, resize: 'none', outline: 'none',
-                  lineHeight: 1.6, fontFamily: 'inherit', color: '#374151',
-                }}
-              />
-            </div>
-
-            <button style={styles.btnPrimary} onClick={goToSynopsis} disabled={!question.trim()}>
+            <button
+              style={styles.btnPrimary}
+              onClick={goToSynopsis}
+              disabled={!prophecyGoalType || !prophecyGoal.trim() || !prophecyWall.trim()}
+            >
               📖 시놉시스 생성하기
             </button>
           </>
