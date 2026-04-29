@@ -1188,7 +1188,7 @@ export function BiblePage() {
         </button>
         <div>
           {/* 1단계: 구약 / 신약 탭 */}
-          <div style={{ display: 'flex', borderBottom: '2px solid #e5e7eb', margin: '0 12px' }}>
+          <div style={{ display: 'flex', borderBottom: '2px solid #e5e7eb', margin: '20px 12px 0 12px' }}>
             {(['구약', '신약'] as const).map((t) => (
               <button
                 key={t}
@@ -1201,7 +1201,7 @@ export function BiblePage() {
                   }
                 }}
                 style={{
-                  padding: '8px 20px', background: 'none', border: 'none', cursor: 'pointer',
+                  padding: '16px 24px', background: 'none', border: 'none', cursor: 'pointer',
                   fontSize: '14px', fontWeight: 700,
                   color: currentTestament === t ? '#1A3C6E' : '#999',
                   borderBottom: currentTestament === t ? '2px solid #1A3C6E' : '2px solid transparent',
