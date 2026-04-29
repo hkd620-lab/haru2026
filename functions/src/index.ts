@@ -2418,7 +2418,8 @@ export const generateHaruProphecy = onCall(
             extractedChars, extractedDesire, extractedShackle, extractedEvents,
             extractedRelationship, extractedPersonality, extractedMotive, extractedTheme,
             extractedOneLiner, extractedThreeLiner,
-            prophecyGoalType, prophecyGoal, prophecyWall } = request.data;
+            prophecyGoalType, prophecyGoal, prophecyWall,
+            extractedGoal, persons, extractedEvent, extractedDailyAchieve } = request.data;
     // type: 'synopsis' | 'story'
 
     if (!fromRecord && !motive) {
@@ -2509,8 +2510,23 @@ export const generateHaruProphecy = onCall(
         const themeStr = toLine(extractedTheme);
         const oneLinerStr = toLine(extractedOneLiner);
         const threeLinerStr = toLine(extractedThreeLiner);
+        const goalStr = toLine(extractedGoal);
+        const eventStr = toLine(extractedEvent);
+        const dailyAchieveStr = toLine(extractedDailyAchieve);
+        const personsStr = Array.isArray(persons)
+          ? persons
+              .filter((p: any) => p && (p.name || p.relation || p.personality))
+              .map((p: any) => {
+                const namePart = p.name ? p.name.trim() : '';
+                const relationPart = p.relation ? p.relation.trim() : '';
+                const personalityPart = p.personality ? p.personality.trim() : '';
+                const head = relationPart ? `${namePart}(${relationPart})` : namePart;
+                return personalityPart ? `${head} - ${personalityPart}` : head;
+              })
+              .filter(Boolean)
+              .join(', ')
+          : '';
         const charsLine = charsStr ? `[등장 인물]: ${charsStr}` : '';
-        const desireLine = desireStr ? `[작성자의 소망]: ${desireStr}` : '';
         const shackleLine = shackleStr ? `[극복할 것]: ${shackleStr}` : '';
         const eventsLine = eventsStr ? `[주요 사건]: ${eventsStr}` : '';
         const relationshipLine = relationshipStr ? `[인간관계]: ${relationshipStr}` : '';
@@ -2519,10 +2535,15 @@ export const generateHaruProphecy = onCall(
         const themeLine = themeStr ? `[주제·기획의도]: ${themeStr}` : '';
         const oneLinerLine = oneLinerStr ? `[한 줄 스토리]: ${oneLinerStr}` : '';
         const threeLinerLine = threeLinerStr ? `[세 줄 스토리]: ${threeLinerStr}` : '';
+        const extractedGoalLine = goalStr ? `[초목표]: ${goalStr}` : '';
+        const personsLine = personsStr ? `[등장인물 & 관계와 성격]: ${personsStr}` : '';
+        const eventLine = eventStr ? `[나에게 일어난 사건]: ${eventStr}` : '';
+        const dailyAchieveLine = dailyAchieveStr ? `[일상에서 이룬 일]: ${dailyAchieveStr}` : '';
         const extractedBlock = [
-          charsLine, desireLine, shackleLine, eventsLine,
+          charsLine, shackleLine, eventsLine,
           relationshipLine, personalityLine, motiveLine, themeLine,
-          oneLinerLine, threeLinerLine
+          oneLinerLine, threeLinerLine,
+          extractedGoalLine, personsLine, eventLine, dailyAchieveLine,
         ].filter(Boolean).join('\n');
 
         const goalTypeMap: Record<string, string> = {
