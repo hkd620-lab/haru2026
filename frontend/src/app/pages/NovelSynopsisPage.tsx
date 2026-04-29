@@ -21,6 +21,9 @@ export function NovelSynopsisPage() {
   const prophecyType = location.state?.prophecyType || '나의 미래';
   const timeOption = location.state?.timeOption || '3년 후';
   const question = location.state?.question || '';
+  const prophecyGoalType = location.state?.prophecyGoalType || '';
+  const prophecyGoal = location.state?.prophecyGoal || '';
+  const prophecyWall = location.state?.prophecyWall || '';
 
   // ── fromRecord=true 분기 전용 state ──
   const [analysis, setAnalysis] = useState({
@@ -77,10 +80,19 @@ export function NovelSynopsisPage() {
   };
 
   // ── fromRecord=true 분기 전용 함수 ──
+  const goalTypeToKorean: Record<string, string> = {
+    me: '나의 미래',
+    child: '자식의 미래',
+    past: '과거를 바꿨다면',
+  };
+
   const buildPayload = (currentAnalysis: typeof analysis, payloadType: 'synopsis' | 'story') => ({
     fromRecord: true,
     recordContent, recordTitle, recordDate, recordFormat,
-    prophecyType, timeOption, question,
+    prophecyType: goalTypeToKorean[prophecyGoalType as string] || prophecyType,
+    timeOption,
+    question: prophecyWall || question,
+    prophecyGoalType, prophecyGoal, prophecyWall,
     extractedChars: currentAnalysis.chars,
     extractedDesire: currentAnalysis.desire,
     extractedShackle: currentAnalysis.shackle,
