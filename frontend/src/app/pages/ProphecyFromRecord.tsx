@@ -55,6 +55,12 @@ export function RecordProphecyPage() {
   const [extractedDesire, setExtractedDesire] = useState('');
   const [extractedShackle, setExtractedShackle] = useState('');
   const [extractedEvents, setExtractedEvents] = useState('');
+  const [extractedRelationship, setExtractedRelationship] = useState('');
+  const [extractedPersonality, setExtractedPersonality] = useState('');
+  const [extractedMotive, setExtractedMotive] = useState('');
+  const [extractedTheme, setExtractedTheme] = useState('');
+  const [extractedOneLiner, setExtractedOneLiner] = useState('');
+  const [extractedThreeLiner, setExtractedThreeLiner] = useState('');
   const analyzeCalledRef = useRef(false);
 
   useEffect(() => {
@@ -149,6 +155,12 @@ export function RecordProphecyPage() {
       setExtractedDesire(d.desire || '');
       setExtractedShackle(d.shackle || '');
       setExtractedEvents(d.events || '');
+      setExtractedRelationship(d.relationship || '');
+      setExtractedPersonality(d.personality || '');
+      setExtractedMotive(d.motive || '');
+      setExtractedTheme(d.theme || '');
+      setExtractedOneLiner(d.oneLiner || '');
+      setExtractedThreeLiner(d.threeLiner || '');
     } catch (e) {
       console.error('분석 실패', e);
     } finally {
@@ -172,6 +184,12 @@ export function RecordProphecyPage() {
         extractedDesire,
         extractedShackle,
         extractedEvents,
+        extractedRelationship,
+        extractedPersonality,
+        extractedMotive,
+        extractedTheme,
+        extractedOneLiner,
+        extractedThreeLiner,
       }
     });
   };
@@ -396,7 +414,9 @@ export function RecordProphecyPage() {
               <p style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E' }}>{selectedRecord?.title}</p>
             </div>
 
-            {!analyzing && !extractedChars && !extractedDesire && !extractedShackle && !extractedEvents && (
+            {!analyzing && !extractedChars && !extractedDesire && !extractedShackle && !extractedEvents
+              && !extractedRelationship && !extractedPersonality && !extractedMotive
+              && !extractedTheme && !extractedOneLiner && !extractedThreeLiner && (
               <button style={styles.btnPrimary} onClick={async () => { analyzeCalledRef.current = true; await analyzeRecord(); }}>
                 🤖 AI로 기록 분석하기
               </button>
@@ -408,7 +428,9 @@ export function RecordProphecyPage() {
               </div>
             )}
 
-            {!analyzing && (extractedChars || extractedDesire || extractedShackle || extractedEvents) && (
+            {!analyzing && (extractedChars || extractedDesire || extractedShackle || extractedEvents
+              || extractedRelationship || extractedPersonality || extractedMotive
+              || extractedTheme || extractedOneLiner || extractedThreeLiner) && (
               <>
                 <div style={styles.card}>
                   <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginBottom: 12 }}>📊 AI 분석 결과</p>
@@ -453,7 +475,7 @@ export function RecordProphecyPage() {
                   </div>
 
                   {/* 주요 사건 */}
-                  <div style={{ marginBottom: 4 }}>
+                  <div style={{ marginBottom: 12 }}>
                     <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
                       📌 주요 사건 {extractedEvents ? <span style={{ color: '#10b981' }}>✅</span> : <span style={{ color: '#f59e0b' }}>✏️ 입력 필요</span>}
                     </p>
@@ -465,12 +487,95 @@ export function RecordProphecyPage() {
                       style={{ width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: '#374151', outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
                     />
                   </div>
+
+                  {/* 인간관계 */}
+                  <div style={{ marginBottom: 12 }}>
+                    <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
+                      🤝 인간관계 {extractedRelationship ? <span style={{ color: '#10b981' }}>✅</span> : <span style={{ color: '#f59e0b' }}>✏️ 입력 필요</span>}
+                    </p>
+                    <input
+                      value={extractedRelationship}
+                      onChange={e => setExtractedRelationship(e.target.value)}
+                      placeholder="예: 가족, 협력적"
+                      style={{ width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: '#374151', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  {/* 인물 성격 */}
+                  <div style={{ marginBottom: 12 }}>
+                    <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
+                      🎭 인물 성격 {extractedPersonality ? <span style={{ color: '#10b981' }}>✅</span> : <span style={{ color: '#f59e0b' }}>✏️ 입력 필요</span>}
+                    </p>
+                    <input
+                      value={extractedPersonality}
+                      onChange={e => setExtractedPersonality(e.target.value)}
+                      placeholder="예: 성실하고 신중함"
+                      style={{ width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: '#374151', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  {/* 사건 모티브 */}
+                  <div style={{ marginBottom: 12 }}>
+                    <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
+                      🎬 사건 모티브 {extractedMotive ? <span style={{ color: '#10b981' }}>✅</span> : <span style={{ color: '#f59e0b' }}>✏️ 입력 필요</span>}
+                    </p>
+                    <input
+                      value={extractedMotive}
+                      onChange={e => setExtractedMotive(e.target.value)}
+                      placeholder="예: 도전과 가족"
+                      style={{ width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: '#374151', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  {/* 주제·기획의도 */}
+                  <div style={{ marginBottom: 12 }}>
+                    <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
+                      🎯 주제·기획의도 {extractedTheme ? <span style={{ color: '#10b981' }}>✅</span> : <span style={{ color: '#f59e0b' }}>✏️ 입력 필요</span>}
+                    </p>
+                    <input
+                      value={extractedTheme}
+                      onChange={e => setExtractedTheme(e.target.value)}
+                      placeholder="예: 용기를 내어 새 길을 열다"
+                      style={{ width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: '#374151', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  {/* 한 줄 스토리 */}
+                  <div style={{ marginBottom: 12 }}>
+                    <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
+                      📝 한 줄 스토리 {extractedOneLiner ? <span style={{ color: '#10b981' }}>✅</span> : <span style={{ color: '#f59e0b' }}>✏️ 입력 필요</span>}
+                    </p>
+                    <input
+                      value={extractedOneLiner}
+                      onChange={e => setExtractedOneLiner(e.target.value)}
+                      placeholder="예: 한 가족이 함께 새로운 길을 열어가는 이야기."
+                      style={{ width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: '#374151', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  {/* 세 줄 스토리 */}
+                  <div style={{ marginBottom: 4 }}>
+                    <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
+                      📃 세 줄 스토리 {extractedThreeLiner ? <span style={{ color: '#10b981' }}>✅</span> : <span style={{ color: '#f59e0b' }}>✏️ 입력 필요</span>}
+                    </p>
+                    <textarea
+                      value={extractedThreeLiner}
+                      onChange={e => setExtractedThreeLiner(e.target.value)}
+                      placeholder={'예: 한 가장이 앱 개발을 시작했다.\n가족의 응원으로 두려움을 이겨냈다.\n작은 한 걸음이 큰 변화를 만들었다.'}
+                      rows={3}
+                      style={{ width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: '#374151', outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    />
+                  </div>
                 </div>
 
                 <button style={styles.btnPrimary} onClick={() => setStep('items')}>
                   ✅ 항목 확인 완료 — 예언 설정으로
                 </button>
-                <button style={styles.btnSecondary} onClick={() => { setExtractedChars(''); setExtractedDesire(''); setExtractedShackle(''); setExtractedEvents(''); }}>
+                <button style={styles.btnSecondary} onClick={() => {
+                  setExtractedChars(''); setExtractedDesire(''); setExtractedShackle(''); setExtractedEvents('');
+                  setExtractedRelationship(''); setExtractedPersonality(''); setExtractedMotive('');
+                  setExtractedTheme(''); setExtractedOneLiner(''); setExtractedThreeLiner('');
+                }}>
                   🔄 다시 분석하기
                 </button>
               </>

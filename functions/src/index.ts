@@ -2258,34 +2258,99 @@ export const analyzeRecordForProphecy = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
-    const { content } = request.data;
+    const { content, userAnalysis, round } = request.data;
     if (!content || typeof content !== 'string' || content.trim().length < 10) {
       throw new HttpsError('invalid-argument', '분석할 기록 내용이 너무 짧습니다.');
     }
 
-    const systemPrompt = `당신은 HARU예언 분석가입니다.
+    const systemPromptInitial = `당신은 HARU예언 분석가입니다.
 사용자가 작성한 기록(일기·에세이·여행기 등)에서 미래 예언 소설 생성에 필요한 핵심 항목을 추출합니다.
 
-[추출 항목 — 4가지]
+[추출 항목 — 10가지]
 1. chars (등장인물): 기록에 등장한 사람들. 쉼표로 구분된 한 줄 문자열. 본인은 "나"로 표기. 최대 5명.
 2. desire (소망): 작성자가 지금 가장 원하는 것·이루고 싶은 것. 짧은 한 문장.
 3. shackle (극복할 것): 작성자를 막고 있는 것·두려움·제약. 짧은 한 문장.
 4. events (주요 사건): 기록에 나타난 의미 있는 사건/장면. 쉼표로 구분된 짧은 문구들. 최대 5개.
+5. relationship (인간관계): 등장인물 간의 관계. 짧은 한 문장.
+6. personality (인물 성격): 등장인물들의 성격 특징. 짧은 한 문장.
+7. motive (사건 모티브): 기록의 핵심 주제·테마. 짧은 한 문장.
+8. theme (주제·기획의도): 이 이야기가 전달하려는 메시지. 짧은 한 문장.
+9. oneLiner (한 줄 스토리): 기록 전체를 한 문장으로 요약.
+10. threeLiner (세 줄 스토리): 기록을 세 문장으로 요약. 줄바꿈(\\n)으로 구분.
 
 [출력 규칙]
 - 반드시 JSON 한 덩어리만 출력. 마크다운/설명 절대 금지.
 - 모든 필드는 string. 명확히 읽히지 않으면 빈 문자열("")로.
 - 추측하거나 만들어내지 말 것. 빈 칸으로 두고 사용자가 직접 채우게 한다.
 
-출력 형식 (필드 4개 모두 string):
+출력 형식 (필드 10개 모두 string):
 {
   "chars": "나, 아내, 딸 찬미",
   "desire": "Flutter 앱 출시",
   "shackle": "두려움, 게으름",
-  "events": "앱 개발 시작, 사업자 등록"
+  "events": "앱 개발 시작, 사업자 등록",
+  "relationship": "가족, 협력적",
+  "personality": "성실하고 신중함",
+  "motive": "도전과 가족",
+  "theme": "용기를 내어 새 길을 열다",
+  "oneLiner": "한 가족이 함께 새로운 길을 열어가는 이야기.",
+  "threeLiner": "한 가장이 앱 개발을 시작했다.\\n가족의 응원으로 두려움을 이겨냈다.\\n작은 한 걸음이 큰 변화를 만들었다."
 }`;
 
-    const userPrompt = `[기록 내용]\n${content.slice(0, 4000)}\n\n위 기록에서 4개 항목을 추출해 JSON으로만 답하세요.`;
+    const systemPromptRefine = `당신은 HARU예언 분석가입니다.
+사용자가 1차 분석 결과를 직접 수정했습니다.
+사용자의 수정 의도를 최대한 존중하면서, 기록 원문과 모순되지 않도록
+자연스럽게 다듬어 10개 항목을 다시 정리해주세요.
+
+[작업 원칙]
+- 사용자 수정안의 의도를 그대로 따라가되, 표현을 자연스럽게 다듬는다.
+- 빈 칸은 기록 원문에서 적절히 채워준다.
+- 사용자가 명확히 적은 부분은 절대 임의로 바꾸지 않는다.
+
+[출력 규칙]
+- 반드시 JSON 한 덩어리만 출력. 마크다운/설명 절대 금지.
+- 모든 필드는 string.
+- 출력 형식은 1차 분석과 동일.
+
+출력 형식 (필드 10개 모두 string):
+{
+  "chars": "...",
+  "desire": "...",
+  "shackle": "...",
+  "events": "...",
+  "relationship": "...",
+  "personality": "...",
+  "motive": "...",
+  "theme": "...",
+  "oneLiner": "...",
+  "threeLiner": "..."
+}`;
+
+    const isRefine = round === 2 || round === 3;
+    const systemPrompt = isRefine ? systemPromptRefine : systemPromptInitial;
+
+    let userPrompt: string;
+    if (isRefine) {
+      const ua = userAnalysis || {};
+      userPrompt = `[원본 기록]
+${content.slice(0, 4000)}
+
+[사용자의 ${round - 1}차 수정안]
+- chars: ${ua.chars || ''}
+- desire: ${ua.desire || ''}
+- shackle: ${ua.shackle || ''}
+- events: ${ua.events || ''}
+- relationship: ${ua.relationship || ''}
+- personality: ${ua.personality || ''}
+- motive: ${ua.motive || ''}
+- theme: ${ua.theme || ''}
+- oneLiner: ${ua.oneLiner || ''}
+- threeLiner: ${ua.threeLiner || ''}
+
+위 수정안을 기반으로 10개 항목을 다시 정리해 JSON으로만 답하세요.`;
+    } else {
+      userPrompt = `[기록 내용]\n${content.slice(0, 4000)}\n\n위 기록에서 10개 항목을 추출해 JSON으로만 답하세요.`;
+    }
 
     try {
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
@@ -2297,7 +2362,11 @@ export const analyzeRecordForProphecy = onCall(
       let text = result.response.text().trim();
       text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
 
-      let parsed: any = { chars: '', desire: '', shackle: '', events: '' };
+      let parsed: any = {
+        chars: '', desire: '', shackle: '', events: '',
+        relationship: '', personality: '', motive: '', theme: '',
+        oneLiner: '', threeLiner: ''
+      };
       try {
         parsed = JSON.parse(text);
       } catch {
@@ -2318,6 +2387,12 @@ export const analyzeRecordForProphecy = onCall(
         desire: toStr(parsed.desire),
         shackle: toStr(parsed.shackle),
         events: toStr(parsed.events),
+        relationship: toStr(parsed.relationship),
+        personality: toStr(parsed.personality),
+        motive: toStr(parsed.motive),
+        theme: toStr(parsed.theme),
+        oneLiner: toStr(parsed.oneLiner),
+        threeLiner: toStr(parsed.threeLiner),
       };
     } catch (error) {
       console.error('analyzeRecordForProphecy 실패:', error);
@@ -2340,7 +2415,9 @@ export const generateHaruProphecy = onCall(
 
     const { motive, motiveCustom, chars, birth, desire, shackle, events, luck, unluck, narrative, type,
             fromRecord, recordContent, recordTitle, recordDate, recordFormat, prophecyType, timeOption, question,
-            extractedChars, extractedDesire, extractedShackle, extractedEvents } = request.data;
+            extractedChars, extractedDesire, extractedShackle, extractedEvents,
+            extractedRelationship, extractedPersonality, extractedMotive, extractedTheme,
+            extractedOneLiner, extractedThreeLiner } = request.data;
     // type: 'synopsis' | 'story'
 
     if (!fromRecord && !motive) {
@@ -2425,11 +2502,27 @@ export const generateHaruProphecy = onCall(
         const desireStr = toLine(extractedDesire);
         const shackleStr = toLine(extractedShackle);
         const eventsStr = toLine(extractedEvents);
+        const relationshipStr = toLine(extractedRelationship);
+        const personalityStr = toLine(extractedPersonality);
+        const motiveStr = toLine(extractedMotive);
+        const themeStr = toLine(extractedTheme);
+        const oneLinerStr = toLine(extractedOneLiner);
+        const threeLinerStr = toLine(extractedThreeLiner);
         const charsLine = charsStr ? `[등장 인물]: ${charsStr}` : '';
         const desireLine = desireStr ? `[작성자의 소망]: ${desireStr}` : '';
         const shackleLine = shackleStr ? `[극복할 것]: ${shackleStr}` : '';
         const eventsLine = eventsStr ? `[주요 사건]: ${eventsStr}` : '';
-        const extractedBlock = [charsLine, desireLine, shackleLine, eventsLine].filter(Boolean).join('\n');
+        const relationshipLine = relationshipStr ? `[인간관계]: ${relationshipStr}` : '';
+        const personalityLine = personalityStr ? `[인물 성격]: ${personalityStr}` : '';
+        const motiveLine = motiveStr ? `[사건 모티브]: ${motiveStr}` : '';
+        const themeLine = themeStr ? `[주제·기획의도]: ${themeStr}` : '';
+        const oneLinerLine = oneLinerStr ? `[한 줄 스토리]: ${oneLinerStr}` : '';
+        const threeLinerLine = threeLinerStr ? `[세 줄 스토리]: ${threeLinerStr}` : '';
+        const extractedBlock = [
+          charsLine, desireLine, shackleLine, eventsLine,
+          relationshipLine, personalityLine, motiveLine, themeLine,
+          oneLinerLine, threeLinerLine
+        ].filter(Boolean).join('\n');
         userPrompt = `
 [창작 모드]: 내 기록으로 창작
 [기록 제목]: ${recordTitle}
