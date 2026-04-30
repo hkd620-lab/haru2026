@@ -3,6 +3,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithRedirect,
+  signInWithPopup,
   getRedirectResult,
   signOut as firebaseSignOut,
   onAuthStateChanged,
@@ -144,7 +145,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const googleSignIn = async () => {
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithRedirect(auth, provider);
+      if (import.meta.env.DEV) {
+        await signInWithPopup(auth, provider);
+      } else {
+        await signInWithRedirect(auth, provider);
+      }
     } catch (error: any) {
       console.error('Google sign in error:', error);
       throw new Error(error.message || 'Google 로그인 실패');
