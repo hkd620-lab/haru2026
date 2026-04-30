@@ -1857,6 +1857,13 @@ export function BiblePage() {
                 verse: startVerse,
                 mode,
               };
+              // 클릭 즉시 상단 이어듣기 카드로 승격 — 재생 시작 시 ⏸/⏹ 큰 버튼이 곧바로 보이도록
+              setRecentHistory((prev) => {
+                const filtered = prev.filter(
+                  (x) => !(x.bookPrefix === h.bookPrefix && x.chapter === h.chapter)
+                );
+                return [{ ...h, lastHeardAt: new Date() }, ...filtered].slice(0, 3);
+              });
               setCurrentTestament(target.testament as '구약' | '신약');
               const sameBook = currentBook.prefix === target.prefix;
               if (!sameBook) setCurrentBook(target);
