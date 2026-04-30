@@ -2,3 +2,12 @@
 @source '../**/*.{js,ts,jsx,tsx}';
 
 @import 'tw-animate-css';
+
+@theme {
+  --color-haru-bg: #F1F1EC;
+  --color-haru-main: #77B60A;
+  --color-haru-sub: #F8C554;
+  --color-haru-point: #B47551;
+  --color-haru-navy: #1A3C6E;
+  --color-haru-tabbg: #FFFFFF;
+}
