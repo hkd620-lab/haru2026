@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { BIBLE_BOOKS } from '../../data/bibleBooks';
 
@@ -28,6 +28,13 @@ export function BiblePage() {
   const [ttsSpeed, setTtsSpeed] = useState<number>(1.0);
   const [highlightedWord, setHighlightedWord] = useState<{ key: string; index: number } | null>(null);
   const highlightTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pendingNavRef = useRef<{
+    prefix: string;
+    chapter: number;
+    verse: number;
+    mode?: 'en' | 'ko' | 'seq' | 'quiz';
+  } | null>(null);
+  const progressMapRef = useRef<Record<string, { heardVerses: number[]; quizVerses: number[]; lastVerse: number; lastMode: string }>>({});
 
   // 안드로이드 오디오 잠금 해제
   useEffect(() => {
@@ -49,6 +56,29 @@ export function BiblePage() {
 
   const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
   const [isFullPlaying, setIsFullPlaying] = useState(false);
+  const [isBookPlaying, setIsBookPlaying] = useState<boolean>(false);
+  const [bookPlayingChapter, setBookPlayingChapter] = useState<number | null>(null);
+  const [playMode, setPlayMode] = useState<'en' | 'seq' | 'ko'>('en');
+  const [playRange, setPlayRange] = useState<'chapter' | 'book'>('chapter');
+  // 진도 기록
+  const [progressMap, setProgressMap] = useState<Record<string, {
+    heardVerses: number[];
+    quizVerses: number[];
+    lastVerse: number;
+    lastMode: string;
+  }>>({});
+  const [recentHistory, setRecentHistory] = useState<Array<{
+    bookKo: string;
+    bookPrefix: string;
+    chapter: number;
+    lastVerse: number;
+    lastMode: string;
+    lastHeardAt: any;
+  }>>([]);
+  const [resumeCardClosed, setResumeCardClosed] = useState<boolean>(false);
+  // saveProgress가 매 호출마다 최신 progressMap을 읽도록 ref와 state를 동기화
+  // (장/권 전체 듣기 for-loop에서 stale closure로 이전 절이 덮어써지는 버그 방지)
+  progressMapRef.current = progressMap;
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
@@ -140,11 +170,115 @@ export function BiblePage() {
   }, [currentTestament]);
 
   useEffect(() => {
+    if (isBookPlaying) return;
     setSelectedVerse(null);
     setTtsPlaying(null);
     setIsFullPlaying(false);
     if (audioRef.current) audioRef.current.pause();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentChapter]);
+
+  // 현재 책의 모든 장 진도 불러오기 — 새로고침 시 auth 비동기 복원 대응
+  useEffect(() => {
+    let cancelled = false;
+    const unsubscribe = onAuthStateChanged(getAuth(), async (user) => {
+      if (!user || cancelled) return;
+      try {
+        const colRef = collection(db, 'users', user.uid, 'bibleProgress');
+        const snap = await getDocs(colRef);
+        const map: Record<string, { heardVerses: number[]; quizVerses: number[]; lastVerse: number; lastMode: string }> = {};
+        snap.forEach((d) => {
+          const data = d.data() as any;
+          if (data.lastBookPrefix === currentBook.prefix) {
+            map[d.id] = {
+              heardVerses: data.heardVerses || [],
+              quizVerses: data.quizVerses || [],
+              lastVerse: data.lastVerse || 0,
+              lastMode: data.lastMode || '',
+            };
+          }
+        });
+        if (!cancelled) setProgressMap((p) => ({ ...p, ...map }));
+      } catch (e) {
+        console.warn('progressMap 로드 실패:', e);
+      }
+    });
+    return () => { cancelled = true; unsubscribe(); };
+  }, [currentBook.prefix]);
+
+  // 최근 학습 3개 (전체 책 기준) — 새로고침 시 auth 비동기 복원 대응
+  useEffect(() => {
+    let cancelled = false;
+    const unsubscribe = onAuthStateChanged(getAuth(), async (user) => {
+      if (!user || cancelled) return;
+      try {
+        const colRef = collection(db, 'users', user.uid, 'bibleProgress');
+        const q = query(colRef, orderBy('lastHeardAt', 'desc'), limit(3));
+        const snap = await getDocs(q);
+        const list: Array<{ bookKo: string; bookPrefix: string; chapter: number; lastVerse: number; lastMode: string; lastHeardAt: any }> = [];
+        snap.forEach((d) => {
+          const data = d.data() as any;
+          if (data.lastBookPrefix && data.lastChapter) {
+            list.push({
+              bookKo: data.lastBook || '',
+              bookPrefix: data.lastBookPrefix,
+              chapter: data.lastChapter,
+              lastVerse: data.lastVerse || 0,
+              lastMode: data.lastMode || '',
+              lastHeardAt: data.lastHeardAt || null,
+            });
+          }
+        });
+        if (!cancelled) setRecentHistory(list);
+      } catch (e) {
+        console.warn('recentHistory 로드 실패:', e);
+      }
+    });
+    return () => { cancelled = true; unsubscribe(); };
+  }, []);
+
+  // 이어듣기 — 책 변경 후 chapter=1로 리셋되는 useEffect를 보정해 pending chapter로 복원
+  // (currentChapter 도 dep에 포함 — [currentBook] effect가 chapter=1로 덮어쓴 후속 렌더에서도 보정)
+  useEffect(() => {
+    const pn = pendingNavRef.current;
+    if (pn && pn.prefix === currentBook.prefix && currentChapter !== pn.chapter) {
+      setCurrentChapter(pn.chapter);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentBook.prefix, currentChapter]);
+
+  // 이어듣기 — chapter 데이터 로드 후 절 펼치기 + 스크롤 + 모드 자동 재생
+  // genesisData 신선도(chapter/bookKo) 체크 — 이전 책/장의 stale 데이터로 잘못 트리거되는 것 방지
+  useEffect(() => {
+    const pn = pendingNavRef.current;
+    if (
+      pn &&
+      pn.prefix === currentBook.prefix &&
+      pn.chapter === currentChapter &&
+      genesisData?.verses?.length &&
+      genesisData?.chapter === currentChapter &&
+      genesisData?.bookKo === currentBook.ko
+    ) {
+      if (pn.verse) setSelectedVerse(pn.verse);
+      const targetVerse = pn.verse;
+      const playMode = pn.mode;
+      pendingNavRef.current = null;
+      requestAnimationFrame(() => {
+        const el = document.getElementById(`bible-verse-${targetVerse}`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+      if (playMode) {
+        if (playMode === 'en') handleFullChapterTTS(targetVerse);
+        else if (playMode === 'ko') handleFullChapterKoreanTTS(targetVerse);
+        else if (playMode === 'seq') handleFullChapterSequentialTTS(targetVerse);
+        else if (playMode === 'quiz') {
+          const v = genesisData?.verses?.find((vs: Verse) => vs.verse === targetVerse);
+          if (v) handleQuizClick(v);
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [genesisData, currentChapter, currentBook.prefix]);
 
   const handleGrammarClick = useCallback(async (verse: Verse) => {
     setGrammarPopup({ verseText: verse.text, loading: true });
@@ -213,6 +347,8 @@ export function BiblePage() {
     setSelectedVerse(null);
     setIsFullPlaying(false);
     setIsSequentialPlaying(null);
+    setIsBookPlaying(false);
+    setBookPlayingChapter(null);
   };
 
   // 한국어 TTS 듣기
@@ -267,7 +403,11 @@ export function BiblePage() {
       if (audioSrc) {
         audioRef.current = new Audio(audioSrc);
         audioRef.current.playbackRate = ttsSpeed;
-        audioRef.current.onended = () => { setTtsPlaying(null); setHighlightedEnWords([]); };
+        audioRef.current.onended = () => {
+          setTtsPlaying(null);
+          setHighlightedEnWords([]);
+          saveProgress(verse.verse, 'ko');
+        };
         await audioRef.current.play();
         setTtsPlaying(key);
       }
@@ -472,9 +612,17 @@ export function BiblePage() {
 
       // (중간 정지 체크 제거 — React state 비동기 문제로 항상 null로 읽힘)
 
-      // ③ 한국어 TTS
+      // ③ 한국어 TTS + 한↔영 매핑 병렬
+      const mappingFn = httpsCallable(fns, 'getVerseWordMapping');
       const koCacheKey = `bible_${currentBook.prefix}_${currentChapter}_ko_${verse.verse}_${koVoice}`.slice(0, 80);
-      const koRes: any = await ttsFn({ text: transResult.data.translation, cacheKey: koCacheKey, voice: koVoice });
+      const [koRes, mappingRes] = await Promise.all([
+        ttsFn({ text: transResult.data.translation, cacheKey: koCacheKey, voice: koVoice }) as Promise<{ data: { audioUrl?: string; audioBase64?: string } }>,
+        mappingFn({
+          verseKey: `${currentBook.prefix}_${currentChapter}_${verse.verse}`,
+          enText: verse.text,
+          koText: transResult.data.translation,
+        }) as Promise<{ data: { mapping: Array<{ ko: string; enWords: string[] }> } }>,
+      ]);
 
       let koAudioSrc = '';
       if (koRes.data.audioUrl) {
@@ -486,6 +634,7 @@ export function BiblePage() {
         const blob = new Blob([bytes], { type: 'audio/mp3' });
         koAudioSrc = URL.createObjectURL(blob);
       }
+      const mapping = mappingRes.data.mapping || [];
 
       if (koAudioSrc) {
         // 같은 Audio 인스턴스 재사용 — iOS unlock 유지로 차단 회피
@@ -493,9 +642,34 @@ export function BiblePage() {
         audio.playbackRate = ttsSpeed;
         setTtsPlaying(`verse_ko_${verse.verse}`);
         audio.onended = () => {
+          if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+          setHighlightedEnWords([]);
           setTtsPlaying(null);
           setIsSequentialPlaying(null);
+          saveProgress(verse.verse, 'seq');
         };
+        // 한국어 발음 중 영어 단어 하이라이트
+        if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+        let segIdx = 0;
+        const startKoHighlight = () => {
+          if (!mapping.length) return;
+          const duration = audio.duration || mapping.length * 0.6;
+          const interval = (duration * 1000) / mapping.length;
+          highlightTimerRef.current = setInterval(() => {
+            if (segIdx >= mapping.length) {
+              clearInterval(highlightTimerRef.current!);
+              setHighlightedEnWords([]);
+              return;
+            }
+            setHighlightedEnWords(mapping[segIdx].enWords);
+            segIdx++;
+          }, interval);
+        };
+        if (audio.duration && !isNaN(audio.duration)) {
+          startKoHighlight();
+        } else {
+          audio.addEventListener('loadedmetadata', startKoHighlight, { once: true });
+        }
         await audio.play();
       } else {
         setIsSequentialPlaying(null);
@@ -505,11 +679,69 @@ export function BiblePage() {
       setTtsLoading(null);
       setIsSequentialPlaying(null);
       setTtsPlaying(null);
+      setHighlightedEnWords([]);
     }
   };
 
+  // 진도 저장 헬퍼 — 권 전체 듣기처럼 currentChapter와 다른 장을 재생할 때는 chapterOverride로 명시 전달
+  const saveProgress = useCallback(async (
+    verseNum: number,
+    mode: 'en' | 'ko' | 'seq' | 'quiz',
+    chapterOverride?: number,
+  ) => {
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+      const chapter = chapterOverride ?? currentChapter;
+      const docKey = `${currentBook.prefix}_${chapter}`;
+      const isQuiz = mode === 'quiz';
+      // ref에서 최신 progressMap 읽기 (장/권 for-loop의 연속 호출에서도 누적 정확)
+      const prev = progressMapRef.current[docKey] || { heardVerses: [], quizVerses: [], lastVerse: 0, lastMode: '' };
+      const heardVerses = isQuiz
+        ? (prev.heardVerses || [])
+        : Array.from(new Set([...(prev.heardVerses || []), verseNum])).sort((a, b) => a - b);
+      const quizVerses = isQuiz
+        ? Array.from(new Set([...(prev.quizVerses || []), verseNum])).sort((a, b) => a - b)
+        : (prev.quizVerses || []);
+      const nextLastMode = isQuiz ? (prev.lastMode || '') : mode;
+      const newEntry = { heardVerses, quizVerses, lastVerse: verseNum, lastMode: nextLastMode };
+      // 동기적으로 ref 갱신 — await 이전에 다음 호출이 즉시 누적된 값을 보도록
+      progressMapRef.current = { ...progressMapRef.current, [docKey]: newEntry };
+      const ref = doc(db, 'users', user.uid, 'bibleProgress', docKey);
+      await setDoc(ref, {
+        heardVerses,
+        quizVerses,
+        lastVerse: verseNum,
+        lastMode: nextLastMode,
+        lastBook: currentBook.ko,
+        lastBookPrefix: currentBook.prefix,
+        lastChapter: chapter,
+        lastHeardAt: serverTimestamp(),
+      }, { merge: true });
+      setProgressMap((p) => ({ ...p, [docKey]: newEntry }));
+      // 이어듣기 카드 실시간 표시 — recentHistory 즉시 갱신
+      setRecentHistory((prev) => {
+        const histEntry = {
+          bookKo: currentBook.ko,
+          bookPrefix: currentBook.prefix,
+          chapter,
+          lastVerse: verseNum,
+          lastMode: nextLastMode,
+          lastHeardAt: new Date(),
+        };
+        const filtered = prev.filter(
+          (h) => !(h.bookPrefix === currentBook.prefix && h.chapter === chapter)
+        );
+        return [histEntry, ...filtered].slice(0, 3);
+      });
+    } catch (e) {
+      console.warn('saveProgress 실패:', e);
+    }
+  }, [currentBook.prefix, currentBook.ko, currentChapter]);
+
   // 퀴즈 팝업
   const [quizPopup, setQuizPopup] = useState<{
+    verse: number;
     verseText: string;
     blankedText: string;
     blanks: Array<{ index: number; answer: string; hint: string }>;
@@ -593,6 +825,7 @@ export function BiblePage() {
 
   const handleQuizClick = useCallback(async (verse: Verse, level: 'basic' | 'intermediate' | 'advanced' = quizLevel) => {
     setQuizPopup({
+      verse: verse.verse,
       verseText: verse.text,
       blankedText: '',
       blanks: [],
@@ -612,6 +845,7 @@ export function BiblePage() {
         level,
       });
       setQuizPopup({
+        verse: verse.verse,
         verseText: verse.text,
         blankedText: res.data.blankedText || '',
         blanks: res.data.blanks || [],
@@ -825,6 +1059,11 @@ export function BiblePage() {
           setTtsPlaying(null);
           setHighlightedWord(null);
           if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+          // 영어 절 재생 완료 시 진도 저장
+          if (key.startsWith('verse_') && !key.startsWith('verse_ko_')) {
+            const num = parseInt(key.replace('verse_', ''), 10);
+            if (!isNaN(num)) saveProgress(num, 'en');
+          }
         };
 
         // ④ play 실패 시 재시도 1회
@@ -878,7 +1117,7 @@ export function BiblePage() {
     }
   };
 
-  const handleFullChapterTTS = async () => {
+  const handleFullChapterTTS = async (startVerse?: number) => {
     const key = 'full_chapter';
     // 현재 재생 중 → 일시정지
     if (ttsPlaying === key && ttsPaused !== key) {
@@ -905,6 +1144,7 @@ export function BiblePage() {
       setIsFullPlaying(true);
       setTtsPlaying('full_chapter');
       for (const verse of (genesisData?.verses ?? [])) {
+        if (startVerse && verse.verse < startVerse) continue;
         // 현재 절 자동 펼치기
         setSelectedVerse(verse.verse);
         const enCacheKey = `bible_${currentBook.prefix}_${currentChapter}_${verse.verse}_${enVoice}`.slice(0, 80);
@@ -926,6 +1166,7 @@ export function BiblePage() {
             audioRef.current.onended = () => {
               if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
               setHighlightedWord(null);
+              saveProgress(verse.verse, 'en');
               resolve();
             };
             // 단어 하이라이트
@@ -966,7 +1207,7 @@ export function BiblePage() {
     }
   };
 
-  const handleFullChapterKoreanTTS = async () => {
+  const handleFullChapterKoreanTTS = async (startVerse?: number) => {
     if (ttsPlaying === 'full_chapter_ko') {
       audioRef.current?.pause();
       setTtsPlaying(null);
@@ -979,9 +1220,10 @@ export function BiblePage() {
       const transFn = httpsCallable(fns, 'getVerseTranslation');
       const ttsFn = httpsCallable(fns, 'generateTTS');
 
-      // 전체 절 번역 순서대로 가져오기
+      // 전체 절 번역 순서대로 가져오기 (startVerse 미만 절 제외)
       const translations: string[] = [];
       for (const verse of (genesisData?.verses ?? [])) {
+        if (startVerse && verse.verse < startVerse) continue;
         const res = await transFn({
           verseKey: `${currentBook.prefix}_${currentChapter}_${verse.verse}`,
           text: verse.text,
@@ -989,7 +1231,9 @@ export function BiblePage() {
         translations.push(res.data.translation);
       }
       const fullKoText = translations.join(' ');
-      const cacheKey = `bible_${currentBook.prefix}_${currentChapter}_full_ko_${koVoice}`;
+      const cacheKey = startVerse
+        ? `bible_${currentBook.prefix}_${currentChapter}_full_ko_${koVoice}_from${startVerse}`
+        : `bible_${currentBook.prefix}_${currentChapter}_full_ko_${koVoice}`;
       const ttsRes: any = await ttsFn({ text: fullKoText, cacheKey, voice: koVoice });
       setTtsLoading(null);
       setIsFullPlaying(true);
@@ -1008,9 +1252,14 @@ export function BiblePage() {
       if (audioSrc) {
         audioRef.current = new Audio(audioSrc);
         audioRef.current.playbackRate = ttsSpeed;
-        audioRef.current.onended = () => {
+        audioRef.current.onended = async () => {
           setTtsPlaying(null);
           setIsFullPlaying(false);
+          // 재생 완료 — 재생된 절들만 진도 순차 저장(누적 보장)
+          for (const v of (genesisData?.verses ?? [])) {
+            if (startVerse && v.verse < startVerse) continue;
+            await saveProgress(v.verse, 'ko');
+          }
         };
         await audioRef.current.play();
       }
@@ -1021,7 +1270,7 @@ export function BiblePage() {
     }
   };
 
-  const handleFullChapterSequentialTTS = async () => {
+  const handleFullChapterSequentialTTS = async (startVerse?: number) => {
     const key = 'full_chapter_seq';
     // 현재 재생 중 → 일시정지
     if (ttsPlaying === key && ttsPaused !== key) {
@@ -1057,14 +1306,22 @@ export function BiblePage() {
       const fns = getFunctions(undefined, 'asia-northeast3');
       const transFn = httpsCallable(fns, 'getVerseTranslation');
       const ttsFn = httpsCallable(fns, 'generateTTS');
+      const mappingFn = httpsCallable(fns, 'getVerseWordMapping');
       setTtsLoading(null);
       setIsFullPlaying(true);
       setTtsPlaying('full_chapter_seq');
 
       for (const verse of (genesisData?.verses ?? [])) {
-        // 영어 TTS
+        if (startVerse && verse.verse < startVerse) continue;
+        // 영어 TTS + 번역 병렬
         const enCacheKey = `bible_${currentBook.prefix}_${currentChapter}_${verse.verse}_${enVoice}`.slice(0, 80);
-        const enRes: any = await ttsFn({ text: verse.text, cacheKey: enCacheKey, voice: enVoice });
+        const [enRes, transRes] = await Promise.all([
+          ttsFn({ text: verse.text, cacheKey: enCacheKey, voice: enVoice }) as Promise<{ data: { audioUrl?: string; audioBase64?: string } }>,
+          transFn({
+            verseKey: `${currentBook.prefix}_${currentChapter}_${verse.verse}`,
+            text: verse.text,
+          }) as Promise<{ data: { translation: string } }>,
+        ]);
         let enSrc = '';
         if (enRes.data.audioUrl) {
           enSrc = enRes.data.audioUrl;
@@ -1075,12 +1332,6 @@ export function BiblePage() {
           const blob = new Blob([bytes], { type: 'audio/mp3' });
           enSrc = URL.createObjectURL(blob);
         }
-
-        // 번역 가져오기
-        const transRes = await transFn({
-          verseKey: `${currentBook.prefix}_${currentChapter}_${verse.verse}`,
-          text: verse.text,
-        }) as { data: { translation: string } };
 
         // 현재 절 자동 펼치기
         setSelectedVerse(verse.verse);
@@ -1120,9 +1371,16 @@ export function BiblePage() {
           });
         }
 
-        // 한국어 TTS
+        // 한국어 TTS + 한↔영 매핑 병렬
         const koCacheKey = `bible_${currentBook.prefix}_${currentChapter}_ko_${verse.verse}_${koVoice}`.slice(0, 80);
-        const koRes: any = await ttsFn({ text: transRes.data.translation, cacheKey: koCacheKey, voice: koVoice });
+        const [koRes, mappingRes] = await Promise.all([
+          ttsFn({ text: transRes.data.translation, cacheKey: koCacheKey, voice: koVoice }) as Promise<{ data: { audioUrl?: string; audioBase64?: string } }>,
+          mappingFn({
+            verseKey: `${currentBook.prefix}_${currentChapter}_${verse.verse}`,
+            enText: verse.text,
+            koText: transRes.data.translation,
+          }) as Promise<{ data: { mapping: Array<{ ko: string; enWords: string[] }> } }>,
+        ]);
         let koSrc = '';
         if (koRes.data.audioUrl) {
           koSrc = koRes.data.audioUrl;
@@ -1133,129 +1391,373 @@ export function BiblePage() {
           const blob = new Blob([bytes], { type: 'audio/mp3' });
           koSrc = URL.createObjectURL(blob);
         }
+        const mapping = mappingRes.data.mapping || [];
 
-        // 한국어 재생 — 같은 Audio 인스턴스 재사용으로 iOS unlock 유지
+        // 한국어 재생 — 같은 Audio 인스턴스 재사용으로 iOS unlock 유지 + 영어 단어 하이라이트
         if (koSrc) {
           await new Promise<void>((resolve) => {
             audio.src = koSrc;
             audio.playbackRate = ttsSpeed;
-            audio.onended = () => resolve();
+            audio.onended = () => {
+              if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+              setHighlightedEnWords([]);
+              saveProgress(verse.verse, 'seq');
+              resolve();
+            };
+            if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+            let segIdx = 0;
+            const startKoHighlight = () => {
+              if (!mapping.length) return;
+              const duration = audio.duration || mapping.length * 0.6;
+              const interval = (duration * 1000) / mapping.length;
+              highlightTimerRef.current = setInterval(() => {
+                if (segIdx >= mapping.length) {
+                  clearInterval(highlightTimerRef.current!);
+                  setHighlightedEnWords([]);
+                  return;
+                }
+                setHighlightedEnWords(mapping[segIdx].enWords);
+                segIdx++;
+              }, interval);
+            };
+            if (audio.duration && !isNaN(audio.duration)) {
+              startKoHighlight();
+            } else {
+              audio.addEventListener('loadedmetadata', startKoHighlight, { once: true });
+            }
             audio.play().catch(() => resolve());
           });
         }
       }
       setTtsPlaying(null);
       setIsFullPlaying(false);
+      setHighlightedEnWords([]);
     } catch {
       setTtsLoading(null);
       setTtsPlaying(null);
       setIsFullPlaying(false);
+      setHighlightedEnWords([]);
     }
   };
 
-  const handleFullChapterKoEnTTS = async () => {
-    const key = 'full_chapter_ko_en';
-    // 현재 재생 중 → 일시정지
+  // 권 전체 — 영어
+  const handleFullBookTTS = async () => {
+    const key = 'full_book_en';
     if (ttsPlaying === key && ttsPaused !== key) {
       audioRef.current?.pause();
       setTtsPaused(key);
       setTtsPlaying(null);
       return;
     }
-    // 일시정지 중 → 이어서 재생
     if (ttsPaused === key) {
       await audioRef.current?.play();
       setTtsPaused(null);
       setTtsPlaying(key);
       return;
     }
-    // 새로운 재생 시작 시 → 기존 일시정지 초기화
     setTtsPaused(null);
     if (audioRef.current) audioRef.current.pause();
-    setTtsLoading('full_chapter_ko_en');
+    setTtsLoading(key);
+
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+    } else {
+      audioRef.current.pause();
+      audioRef.current.onended = null;
+    }
+    const audio = audioRef.current;
+
+    try {
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const ttsFn = httpsCallable(fns, 'generateTTS');
+      setTtsLoading(null);
+      setIsBookPlaying(true);
+      setTtsPlaying(key);
+
+      const totalChapters = currentBook.chapters;
+      for (let chapterNum = 1; chapterNum <= totalChapters; chapterNum++) {
+        setBookPlayingChapter(chapterNum);
+        let chapterData: { verses: Verse[] } | null = null;
+        try {
+          const mod = await import(`../../data/${currentBook.prefix}_${chapterNum}.json`);
+          chapterData = mod.default;
+        } catch {
+          continue;
+        }
+        for (const verse of (chapterData?.verses ?? [])) {
+          const enCacheKey = `bible_${currentBook.prefix}_${chapterNum}_${verse.verse}_${enVoice}`.slice(0, 80);
+          const enRes: any = await ttsFn({ text: verse.text, cacheKey: enCacheKey, voice: enVoice });
+          let enSrc = '';
+          if (enRes.data.audioUrl) {
+            enSrc = enRes.data.audioUrl;
+          } else if (enRes.data.audioBase64) {
+            const binary = atob(enRes.data.audioBase64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            const blob = new Blob([bytes], { type: 'audio/mp3' });
+            enSrc = URL.createObjectURL(blob);
+          }
+          if (enSrc) {
+            await new Promise<void>((resolve) => {
+              audio.src = enSrc;
+              audio.playbackRate = ttsSpeed;
+              audio.onended = () => {
+                saveProgress(verse.verse, 'en', chapterNum);
+                resolve();
+              };
+              audio.play().catch(() => resolve());
+            });
+          }
+        }
+      }
+      setTtsPlaying(null);
+      setIsBookPlaying(false);
+      setBookPlayingChapter(null);
+    } catch {
+      setTtsLoading(null);
+      setTtsPlaying(null);
+      setIsBookPlaying(false);
+      setBookPlayingChapter(null);
+    }
+  };
+
+  // 권 전체 — 영→한
+  const handleFullBookSequentialTTS = async () => {
+    const key = 'full_book_seq';
+    if (ttsPlaying === key && ttsPaused !== key) {
+      audioRef.current?.pause();
+      setTtsPaused(key);
+      setTtsPlaying(null);
+      return;
+    }
+    if (ttsPaused === key) {
+      await audioRef.current?.play();
+      setTtsPaused(null);
+      setTtsPlaying(key);
+      return;
+    }
+    setTtsPaused(null);
+    if (audioRef.current) audioRef.current.pause();
+    setTtsLoading(key);
+
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+    } else {
+      audioRef.current.pause();
+      audioRef.current.onended = null;
+    }
+    const audio = audioRef.current;
+
     try {
       const fns = getFunctions(undefined, 'asia-northeast3');
       const transFn = httpsCallable(fns, 'getVerseTranslation');
       const ttsFn = httpsCallable(fns, 'generateTTS');
       const mappingFn = httpsCallable(fns, 'getVerseWordMapping');
       setTtsLoading(null);
-      setIsFullPlaying(true);
-      setTtsPlaying('full_chapter_ko_en');
+      setIsBookPlaying(true);
+      setTtsPlaying(key);
 
-      for (const verse of (genesisData?.verses ?? [])) {
-        setSelectedVerse(verse.verse);
-        const transRes = await transFn({
-          verseKey: `${currentBook.prefix}_${currentChapter}_${verse.verse}`,
-          text: verse.text,
-        }) as { data: { translation: string } };
-        const translation = transRes.data.translation;
+      const totalChapters = currentBook.chapters;
+      for (let chapterNum = 1; chapterNum <= totalChapters; chapterNum++) {
+        setBookPlayingChapter(chapterNum);
+        setCurrentChapter(chapterNum);
+        let chapterData: { verses: Verse[] } | null = null;
+        try {
+          const mod = await import(`../../data/${currentBook.prefix}_${chapterNum}.json`);
+          chapterData = mod.default;
+        } catch {
+          continue;
+        }
+        for (const verse of (chapterData?.verses ?? [])) {
+          // 영어 TTS + 번역 병렬
+          const enCacheKey = `bible_${currentBook.prefix}_${chapterNum}_${verse.verse}_${enVoice}`.slice(0, 80);
+          const [enRes, transRes] = await Promise.all([
+            ttsFn({ text: verse.text, cacheKey: enCacheKey, voice: enVoice }) as Promise<{ data: { audioUrl?: string; audioBase64?: string } }>,
+            transFn({
+              verseKey: `${currentBook.prefix}_${chapterNum}_${verse.verse}`,
+              text: verse.text,
+            }) as Promise<{ data: { translation: string } }>,
+          ]);
+          let enSrc = '';
+          if (enRes.data.audioUrl) {
+            enSrc = enRes.data.audioUrl;
+          } else if (enRes.data.audioBase64) {
+            const binary = atob(enRes.data.audioBase64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            const blob = new Blob([bytes], { type: 'audio/mp3' });
+            enSrc = URL.createObjectURL(blob);
+          }
+          if (enSrc) {
+            await new Promise<void>((resolve) => {
+              audio.src = enSrc;
+              audio.playbackRate = ttsSpeed;
+              audio.onended = () => resolve();
+              audio.play().catch(() => resolve());
+            });
+          }
+          // 한국어 TTS + 한↔영 매핑 병렬
+          const koCacheKey = `bible_${currentBook.prefix}_${chapterNum}_ko_${verse.verse}_${koVoice}`.slice(0, 80);
+          const [koRes, mappingRes] = await Promise.all([
+            ttsFn({ text: transRes.data.translation, cacheKey: koCacheKey, voice: koVoice }) as Promise<{ data: { audioUrl?: string; audioBase64?: string } }>,
+            mappingFn({
+              verseKey: `${currentBook.prefix}_${chapterNum}_${verse.verse}`,
+              enText: verse.text,
+              koText: transRes.data.translation,
+            }) as Promise<{ data: { mapping: Array<{ ko: string; enWords: string[] }> } }>,
+          ]);
+          let koSrc = '';
+          if (koRes.data.audioUrl) {
+            koSrc = koRes.data.audioUrl;
+          } else if (koRes.data.audioBase64) {
+            const binary = atob(koRes.data.audioBase64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            const blob = new Blob([bytes], { type: 'audio/mp3' });
+            koSrc = URL.createObjectURL(blob);
+          }
+          const mapping = mappingRes.data.mapping || [];
+          // 한국어 재생 + 영어 단어 하이라이트
+          if (koSrc) {
+            await new Promise<void>((resolve) => {
+              audio.src = koSrc;
+              audio.playbackRate = ttsSpeed;
+              audio.onended = () => {
+                if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+                setHighlightedEnWords([]);
+                saveProgress(verse.verse, 'seq', chapterNum);
+                resolve();
+              };
+              if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+              let segIdx = 0;
+              const startKoHighlight = () => {
+                if (!mapping.length) return;
+                const duration = audio.duration || mapping.length * 0.6;
+                const interval = (duration * 1000) / mapping.length;
+                highlightTimerRef.current = setInterval(() => {
+                  if (segIdx >= mapping.length) {
+                    clearInterval(highlightTimerRef.current!);
+                    setHighlightedEnWords([]);
+                    return;
+                  }
+                  setHighlightedEnWords(mapping[segIdx].enWords);
+                  segIdx++;
+                }, interval);
+              };
+              if (audio.duration && !isNaN(audio.duration)) {
+                startKoHighlight();
+              } else {
+                audio.addEventListener('loadedmetadata', startKoHighlight, { once: true });
+              }
+              audio.play().catch(() => resolve());
+            });
+          }
+        }
+      }
+      setTtsPlaying(null);
+      setIsBookPlaying(false);
+      setBookPlayingChapter(null);
+      setHighlightedEnWords([]);
+    } catch {
+      setTtsLoading(null);
+      setTtsPlaying(null);
+      setIsBookPlaying(false);
+      setBookPlayingChapter(null);
+      setHighlightedEnWords([]);
+    }
+  };
 
-        const koCacheKey = `bible_${currentBook.prefix}_${currentChapter}_ko_${verse.verse}_${koVoice}`.slice(0, 80);
-        const [ttsRes, mappingRes] = await Promise.all([
-          ttsFn({ text: translation, cacheKey: koCacheKey, voice: koVoice }),
-          mappingFn({
-            verseKey: `${currentBook.prefix}_${currentChapter}_${verse.verse}`,
-            enText: verse.text,
-            koText: translation,
-          }),
-        ]) as any[];
+  // 권 전체 — 한국어
+  const handleFullBookKoreanTTS = async () => {
+    const key = 'full_book_ko';
+    if (ttsPlaying === key && ttsPaused !== key) {
+      audioRef.current?.pause();
+      setTtsPaused(key);
+      setTtsPlaying(null);
+      return;
+    }
+    if (ttsPaused === key) {
+      await audioRef.current?.play();
+      setTtsPaused(null);
+      setTtsPlaying(key);
+      return;
+    }
+    setTtsPaused(null);
+    if (audioRef.current) audioRef.current.pause();
+    setTtsLoading(key);
 
-        const mapping = (mappingRes.data as any).mapping || [];
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+    } else {
+      audioRef.current.pause();
+      audioRef.current.onended = null;
+    }
+    const audio = audioRef.current;
 
-        let audioSrc = '';
+    try {
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const transFn = httpsCallable(fns, 'getVerseTranslation');
+      const ttsFn = httpsCallable(fns, 'generateTTS');
+      setTtsLoading(null);
+      setIsBookPlaying(true);
+      setTtsPlaying(key);
+
+      const totalChapters = currentBook.chapters;
+      for (let chapterNum = 1; chapterNum <= totalChapters; chapterNum++) {
+        setBookPlayingChapter(chapterNum);
+        let chapterData: { verses: Verse[] } | null = null;
+        try {
+          const mod = await import(`../../data/${currentBook.prefix}_${chapterNum}.json`);
+          chapterData = mod.default;
+        } catch {
+          continue;
+        }
+        // 장 단위로 번역 모아서 1번 TTS 호출
+        const translations: string[] = [];
+        for (const verse of (chapterData?.verses ?? [])) {
+          const res = await transFn({
+            verseKey: `${currentBook.prefix}_${chapterNum}_${verse.verse}`,
+            text: verse.text,
+          }) as { data: { translation: string } };
+          translations.push(res.data.translation);
+        }
+        if (!translations.length) continue;
+        const fullKoText = translations.join(' ');
+        const cacheKey = `bible_${currentBook.prefix}_${chapterNum}_full_ko_${koVoice}`;
+        const ttsRes: any = await ttsFn({ text: fullKoText, cacheKey, voice: koVoice });
+        let koSrc = '';
         if (ttsRes.data.audioUrl) {
-          audioSrc = ttsRes.data.audioUrl;
+          koSrc = ttsRes.data.audioUrl;
         } else if (ttsRes.data.audioBase64) {
           const binary = atob(ttsRes.data.audioBase64);
           const bytes = new Uint8Array(binary.length);
           for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
           const blob = new Blob([bytes], { type: 'audio/mp3' });
-          audioSrc = URL.createObjectURL(blob);
+          koSrc = URL.createObjectURL(blob);
         }
-
-        if (audioSrc) {
+        if (koSrc) {
           await new Promise<void>((resolve) => {
-            audioRef.current = new Audio(audioSrc);
-            audioRef.current.playbackRate = ttsSpeed;
-            audioRef.current.onended = () => {
-              if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
-              setHighlightedEnWords([]);
+            audio.src = koSrc;
+            audio.playbackRate = ttsSpeed;
+            audio.onended = async () => {
+              // 장 합본 재생 완료 — 해당 장 모든 절 진도 순차 저장(누적 보장)
+              for (const v of (chapterData?.verses ?? [])) {
+                await saveProgress(v.verse, 'ko', chapterNum);
+              }
               resolve();
             };
-            const audio = audioRef.current!;
-            const startKoHighlight = () => {
-              const duration = audio.duration || mapping.length * 0.6;
-              const interval = (duration * 1000) / mapping.length;
-              let idx = 0;
-              if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
-              highlightTimerRef.current = setInterval(() => {
-                if (idx >= mapping.length) {
-                  clearInterval(highlightTimerRef.current!);
-                  setHighlightedEnWords([]);
-                  return;
-                }
-                setHighlightedEnWords(mapping[idx].enWords);
-                idx++;
-              }, interval);
-            };
-            if (audio.duration) {
-              startKoHighlight();
-            } else {
-              audio.addEventListener('loadedmetadata', startKoHighlight, { once: true });
-            }
-            audioRef.current.play();
+            audio.play().catch(() => resolve());
           });
         }
       }
       setTtsPlaying(null);
-      setSelectedVerse(null);
-      setHighlightedEnWords([]);
-      setIsFullPlaying(false);
+      setIsBookPlaying(false);
+      setBookPlayingChapter(null);
     } catch {
       setTtsLoading(null);
       setTtsPlaying(null);
-      setHighlightedEnWords([]);
-      setIsFullPlaying(false);
+      setIsBookPlaying(false);
+      setBookPlayingChapter(null);
     }
   };
 
@@ -1303,6 +1805,464 @@ export function BiblePage() {
               </button>
             ))}
           </div>
+          {/* 이어듣기 카드 */}
+          {!resumeCardClosed && recentHistory.length > 0 && (() => {
+            const top = recentHistory[0];
+            const formatTime = (ts: any) => {
+              if (!ts) return '';
+              try {
+                const d = ts.toDate ? ts.toDate() : new Date(ts);
+                const diff = (Date.now() - d.getTime()) / 1000;
+                if (diff < 60) return '방금 전';
+                if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+                const today = new Date();
+                const isToday = d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
+                const hh = d.getHours();
+                const mm = d.getMinutes().toString().padStart(2, '0');
+                const ampm = hh < 12 ? '오전' : '오후';
+                const h12 = hh % 12 === 0 ? 12 : hh % 12;
+                if (isToday) return `오늘 ${ampm} ${h12}시 ${mm}분`;
+                return `${d.getMonth() + 1}월 ${d.getDate()}일 ${ampm} ${h12}시`;
+              } catch { return ''; }
+            };
+            const modeLabel = (m: string) => m === 'en' ? '영어' : m === 'ko' ? '한국어' : m === 'seq' ? '영→한' : '';
+            // lastVerse + 1 (다음 절) 계산 — 장 끝이면 다음 장 1절로 롤오버
+            const computeStart = (h: typeof top) => {
+              const target = BOOKS.find((b) => b.prefix === h.bookPrefix);
+              const baseLast = h.lastVerse || 0;
+              let chapter = h.chapter;
+              let startVerse = baseLast + 1;
+              const total = target?.verseCount?.[chapter] || 0;
+              if (total > 0 && startVerse > total) {
+                chapter += 1;
+                startVerse = 1;
+                if (chapter > (target?.chapters || 0)) {
+                  // 권 끝 — 마지막 절 그대로 (재생 없이 위치만)
+                  chapter = h.chapter;
+                  startVerse = baseLast || 1;
+                  return { chapter, startVerse, atBookEnd: true };
+                }
+              }
+              return { chapter, startVerse, atBookEnd: false };
+            };
+            const topStart = computeStart(top);
+            const goTo = (h: typeof top) => {
+              const target = BOOKS.find((b) => b.prefix === h.bookPrefix);
+              if (!target) return;
+              const { chapter: targetChapter, startVerse, atBookEnd } = computeStart(h);
+              const mode = atBookEnd ? undefined : (h.lastMode as 'en' | 'ko' | 'seq' | 'quiz' | undefined);
+              pendingNavRef.current = {
+                prefix: h.bookPrefix,
+                chapter: targetChapter,
+                verse: startVerse,
+                mode,
+              };
+              setCurrentTestament(target.testament as '구약' | '신약');
+              const sameBook = currentBook.prefix === target.prefix;
+              if (!sameBook) setCurrentBook(target);
+              setCurrentChapter(targetChapter);
+              setSelectedVerse(startVerse);
+              if (sameBook && genesisData?.verses?.length && targetChapter === currentChapter) {
+                // 같은 책·같은 장 — 데이터 useEffect 안 거치므로 즉시 처리
+                pendingNavRef.current = null;
+                requestAnimationFrame(() => {
+                  const el = document.getElementById(`bible-verse-${startVerse}`);
+                  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                });
+                if (mode === 'en') handleFullChapterTTS(startVerse);
+                else if (mode === 'ko') handleFullChapterKoreanTTS(startVerse);
+                else if (mode === 'seq') handleFullChapterSequentialTTS(startVerse);
+                else if (mode === 'quiz') {
+                  const v = genesisData.verses.find((vs: Verse) => vs.verse === startVerse);
+                  if (v) handleQuizClick(v);
+                }
+              }
+            };
+            const curKey = `${currentBook.prefix}_${currentChapter}`;
+            const curProg = progressMap[curKey];
+            const verseTotal = genesisData?.verses?.length || 0;
+            const heardSet = new Set(curProg?.heardVerses || []);
+            const quizSet = new Set(curProg?.quizVerses || []);
+            const bookChapters = currentBook.chapters;
+            let completedChapters = 0;
+            for (let c = 1; c <= bookChapters; c++) {
+              const k = `${currentBook.prefix}_${c}`;
+              const p = progressMap[k];
+              const total = currentBook.verseCount?.[c] || 0;
+              if (p && p.heardVerses && total > 0 && p.heardVerses.length / total >= 0.8) {
+                completedChapters++;
+              }
+            }
+            const bookProgressPct = bookChapters > 0 ? Math.round((completedChapters / bookChapters) * 100) : 0;
+            return (
+              <div style={{
+                margin: '12px',
+                padding: '14px',
+                background: '#EEF3FB',
+                border: '1px solid #B5D4F4',
+                borderRadius: 14,
+                position: 'relative',
+              }}>
+                <button
+                  onClick={() => setResumeCardClosed(true)}
+                  style={{
+                    position: 'absolute', top: 8, right: 8,
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: 18, color: '#6B7280', lineHeight: 1,
+                  }}
+                  aria-label="닫기"
+                >×</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  <span style={{
+                    width: 8, height: 8, borderRadius: '50%', background: '#10b981',
+                    animation: 'haru-pulse 1.4s ease-in-out infinite',
+                  }} />
+                  <style>{`@keyframes haru-pulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.4;transform:scale(0.7);} }`}</style>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#1A3C6E' }}>최근 학습 — 이어듣기</span>
+                </div>
+                <div style={{ fontSize: 14, color: '#1A3C6E', fontWeight: 600, marginBottom: 2 }}>
+                  📖 {top.bookKo} {top.chapter}장 {top.lastVerse}절
+                </div>
+                <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 10 }}>
+                  마지막 모드: {modeLabel(top.lastMode) || '—'} · {formatTime(top.lastHeardAt)}
+                </div>
+                {(() => {
+                  const chapterPlayKeys = ['full_chapter', 'full_chapter_ko', 'full_chapter_seq'];
+                  const isOnTopChapter =
+                    currentBook.prefix === top.bookPrefix && currentChapter === top.chapter;
+                  const playingKey = isOnTopChapter && chapterPlayKeys.includes(ttsPlaying || '')
+                    ? ttsPlaying
+                    : null;
+                  const pausedKey = isOnTopChapter && chapterPlayKeys.includes(ttsPaused || '')
+                    ? ttsPaused
+                    : null;
+                  const activeKey = playingKey || pausedKey;
+                  const handler =
+                    activeKey === 'full_chapter' ? handleFullChapterTTS
+                    : activeKey === 'full_chapter_ko' ? handleFullChapterKoreanTTS
+                    : activeKey === 'full_chapter_seq' ? handleFullChapterSequentialTTS
+                    : null;
+                  if (activeKey && handler) {
+                    return (
+                      <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+                        <button
+                          onClick={() => handler()}
+                          style={{
+                            flex: 1, padding: '10px', borderRadius: 10, border: 'none',
+                            background: '#1A3C6E', color: '#FAF9F6',
+                            fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                          }}
+                        >{playingKey ? '⏸ 일시정지' : '▶ 계속 듣기'}</button>
+                        <button
+                          onClick={stopAllTTS}
+                          style={{
+                            flex: 1, padding: '10px', borderRadius: 10, border: 'none',
+                            background: '#ef4444', color: '#FAF9F6',
+                            fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                          }}
+                        >⏹ 정지</button>
+                      </div>
+                    );
+                  }
+                  return (
+                    <button
+                      onClick={() => goTo(top)}
+                      style={{
+                        width: '100%', padding: '10px', borderRadius: 10, border: 'none',
+                        background: '#1A3C6E', color: '#FAF9F6',
+                        fontSize: 14, fontWeight: 700, cursor: 'pointer', marginBottom: 12,
+                      }}
+                    >▶ 이어듣기 ({topStart.chapter}장 {topStart.startVerse}절부터)</button>
+                  );
+                })()}
+
+                {/* 현재 장 절별 진도 바 */}
+                {verseTotal > 0 && (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 11, color: '#6B7280', marginBottom: 4 }}>
+                      현재 장 진도 ({currentBook.ko} {currentChapter}장)
+                    </div>
+                    <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                      {Array.from({ length: verseTotal }, (_, i) => i + 1).map((vn) => {
+                        const isHeard = heardSet.has(vn);
+                        const isQuiz = quizSet.has(vn);
+                        let bg = '#e5e7eb';
+                        if (isQuiz) bg = '#10b981';
+                        else if (isHeard) bg = '#378ADD';
+                        return (
+                          <div key={vn} style={{
+                            flex: '1 1 auto', minWidth: 6, maxWidth: 14, height: 8,
+                            borderRadius: 2, background: bg,
+                          }} />
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* 권 전체 진도 바 */}
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 11, color: '#6B7280', marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
+                    <span>{currentBook.ko} 전체 진도</span>
+                    <span>{bookProgressPct}%</span>
+                  </div>
+                  <div style={{ height: 6, background: '#e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                    <div style={{ width: `${bookProgressPct}%`, height: '100%', background: '#1A3C6E' }} />
+                  </div>
+                </div>
+
+                {/* 최근 학습 다른 곳 2개 */}
+                {recentHistory.length > 1 && (
+                  <div>
+                    <div style={{ fontSize: 10, color: '#6B7280', marginBottom: 6 }}>
+                      📋 최근 학습한 다른 곳 (최대 3개)
+                    </div>
+                    {(() => {
+                      const chapterPlayKeys = ['full_chapter', 'full_chapter_ko', 'full_chapter_seq'];
+                      const deleteHistoryItem = async (h: typeof top) => {
+                        setRecentHistory((prev) =>
+                          prev.filter((x) => !(x.bookPrefix === h.bookPrefix && x.chapter === h.chapter))
+                        );
+                        const user = auth.currentUser;
+                        if (!user) return;
+                        try {
+                          const docKey = `${h.bookPrefix}_${h.chapter}`;
+                          const ref = doc(db, 'users', user.uid, 'bibleProgress', docKey);
+                          await setDoc(ref, { lastHeardAt: null }, { merge: true });
+                        } catch (e) {
+                          console.warn('항목 삭제 실패:', e);
+                        }
+                      };
+                      return recentHistory.slice(1, 3).map((h, idx) => {
+                        const isOnThisChapter =
+                          currentBook.prefix === h.bookPrefix && currentChapter === h.chapter;
+                        const playingKey = isOnThisChapter && chapterPlayKeys.includes(ttsPlaying || '')
+                          ? ttsPlaying
+                          : null;
+                        const pausedKey = isOnThisChapter && chapterPlayKeys.includes(ttsPaused || '')
+                          ? ttsPaused
+                          : null;
+                        const activeKey = playingKey || pausedKey;
+                        const handler =
+                          activeKey === 'full_chapter' ? handleFullChapterTTS
+                          : activeKey === 'full_chapter_ko' ? handleFullChapterKoreanTTS
+                          : activeKey === 'full_chapter_seq' ? handleFullChapterSequentialTTS
+                          : null;
+                        return (
+                          <div
+                            key={idx}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 4,
+                              padding: '8px 10px', marginBottom: 4,
+                              background: '#fff', border: '1px solid #d1d5db',
+                              borderRadius: 8,
+                            }}
+                          >
+                            <button
+                              onClick={() => goTo(h)}
+                              style={{
+                                flex: 1, textAlign: 'left',
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                padding: 0,
+                              }}
+                            >
+                              <span style={{ fontSize: 12, color: '#1A3C6E', fontWeight: 600 }}>
+                                {h.bookKo} {h.chapter}장 {h.lastVerse}절
+                              </span>
+                              <span style={{ fontSize: 11, color: '#6B7280', marginLeft: 8 }}>
+                                {modeLabel(h.lastMode)} · {formatTime(h.lastHeardAt)}
+                              </span>
+                            </button>
+                            {activeKey && handler && (
+                              <>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handler(); }}
+                                  style={{
+                                    background: '#1A3C6E', color: '#FAF9F6',
+                                    border: 'none', borderRadius: 6,
+                                    padding: '4px 8px', fontSize: 11, cursor: 'pointer',
+                                  }}
+                                  aria-label={playingKey ? '일시정지' : '계속 듣기'}
+                                >{playingKey ? '⏸' : '▶'}</button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); stopAllTTS(); }}
+                                  style={{
+                                    background: '#ef4444', color: '#FAF9F6',
+                                    border: 'none', borderRadius: 6,
+                                    padding: '4px 8px', fontSize: 11, cursor: 'pointer',
+                                  }}
+                                  aria-label="정지"
+                                >⏹</button>
+                              </>
+                            )}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); deleteHistoryItem(h); }}
+                              style={{
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                color: '#9CA3AF', fontSize: 16, lineHeight: 1, padding: '0 4px',
+                              }}
+                              aria-label="삭제"
+                            >×</button>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                )}
+
+                {/* 전체 학습 기록 초기화 */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                  <button
+                    onClick={async () => {
+                      if (!window.confirm('모든 학습 기록을 초기화할까요?\n진도 데이터(들은 절, 퀴즈)는 유지됩니다.')) return;
+                      setRecentHistory([]);
+                      setResumeCardClosed(true);
+                      const user = auth.currentUser;
+                      if (!user) return;
+                      try {
+                        const colRef = collection(db, 'users', user.uid, 'bibleProgress');
+                        const snap = await getDocs(colRef);
+                        await Promise.all(
+                          snap.docs.map((d) => setDoc(d.ref, { lastHeardAt: null }, { merge: true }))
+                        );
+                      } catch (e) {
+                        console.warn('전체 기록 초기화 실패:', e);
+                      }
+                    }}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: '#ef4444', fontSize: 11, padding: '4px 6px',
+                    }}
+                  >🗑️ 학습 기록 초기화</button>
+                </div>
+              </div>
+            );
+          })()}
+          {/* 보이스 선택 */}
+          <div style={{ padding: '8px 16px 0' }}>
+            {(() => {
+              const voices: { v: TTSVoice; label: string; desc: string }[] = [
+                { v: 'nova',    label: '여성1', desc: '밝고 친근함' },
+                { v: 'shimmer', label: '여성2', desc: '부드럽고 따뜻함' },
+                { v: 'alloy',   label: '여성3', desc: '명료하고 깔끔함' },
+                { v: 'onyx',    label: '남성1', desc: '중후한 저음' },
+                { v: 'echo',    label: '남성2', desc: '또렷한 고음' },
+                { v: 'fable',   label: '남성3', desc: '따뜻한 내레이션' },
+              ];
+              const voiceLabel: Record<TTSVoice, string> = {
+                nova: '여성1', shimmer: '여성2', alloy: '여성3',
+                onyx: '남성1', echo: '남성2', fable: '남성3',
+              };
+              return (
+                <>
+                  {/* 영어 음성 */}
+                  <div style={{ marginBottom: 10 }}>
+                    <button
+                      onClick={() => setShowEnVoice(v => !v)}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        width: '100%', background: '#f3f4f6', border: '1px solid #e5e7eb',
+                        borderRadius: 10, padding: '8px 12px', cursor: 'pointer', marginBottom: 6,
+                      }}
+                    >
+                      <span style={{ fontSize: 13, color: '#444' }}>
+                        🇺🇸 영어 음성
+                        <span style={{ marginLeft: 8, fontSize: 12, color: '#1A3C6E', fontWeight: 500 }}>
+                          ({voiceLabel[enVoice]} 선택됨)
+                        </span>
+                      </span>
+                      <span style={{ fontSize: 12, color: '#888' }}>{showEnVoice ? '▲ 접기' : '▼ 펼치기'}</span>
+                    </button>
+                    {showEnVoice && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
+                        {voices.map(({ v, label, desc }) => (
+                          <div key={v} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <button
+                              onClick={() => setEnVoice(v)}
+                              style={{
+                                borderRadius: 10, border: '1px solid',
+                                borderColor: enVoice === v ? '#1A3C6E' : '#d1d5db',
+                                backgroundColor: enVoice === v ? '#1A3C6E' : '#fff',
+                                color: enVoice === v ? '#fff' : '#444',
+                                padding: '7px 4px', cursor: 'pointer', textAlign: 'center',
+                              }}
+                            >
+                              <div style={{ fontSize: 13, fontWeight: 500 }}>{label}</div>
+                              <div style={{ fontSize: 10, opacity: 0.8, marginTop: 2, lineHeight: 1.3 }}>{desc}</div>
+                            </button>
+                            <button
+                              onClick={() => handleVoicePreview(v, 'en')}
+                              style={{
+                                borderRadius: 8, border: '1px solid #d1d5db',
+                                backgroundColor: previewPlaying === `preview_en_${v}` ? '#8B4789' : '#f9fafb',
+                                color: previewPlaying === `preview_en_${v}` ? '#fff' : '#666',
+                                fontSize: 10, padding: '4px 2px', cursor: 'pointer',
+                              }}
+                            >
+                              {previewPlaying === `preview_en_${v}` ? '⏸ 정지' : '▶ 미리듣기'}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 한국어 음성 */}
+                  <div>
+                    <button
+                      onClick={() => setShowKoVoice(v => !v)}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        width: '100%', background: '#f3f4f6', border: '1px solid #e5e7eb',
+                        borderRadius: 10, padding: '8px 12px', cursor: 'pointer', marginBottom: 6,
+                      }}
+                    >
+                      <span style={{ fontSize: 13, color: '#444' }}>
+                        🇰🇷 한국어 음성
+                        <span style={{ marginLeft: 8, fontSize: 12, color: '#10b981', fontWeight: 500 }}>
+                          ({voiceLabel[koVoice]} 선택됨)
+                        </span>
+                      </span>
+                      <span style={{ fontSize: 12, color: '#888' }}>{showKoVoice ? '▲ 접기' : '▼ 펼치기'}</span>
+                    </button>
+                    {showKoVoice && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
+                        {voices.map(({ v, label, desc }) => (
+                          <div key={v} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <button
+                              onClick={() => setKoVoice(v)}
+                              style={{
+                                borderRadius: 10, border: '1px solid',
+                                borderColor: koVoice === v ? '#10b981' : '#d1d5db',
+                                backgroundColor: koVoice === v ? '#10b981' : '#fff',
+                                color: koVoice === v ? '#fff' : '#444',
+                                padding: '7px 4px', cursor: 'pointer', textAlign: 'center',
+                              }}
+                            >
+                              <div style={{ fontSize: 13, fontWeight: 500 }}>{label}</div>
+                              <div style={{ fontSize: 10, opacity: 0.8, marginTop: 2, lineHeight: 1.3 }}>{desc}</div>
+                            </button>
+                            <button
+                              onClick={() => handleVoicePreview(v, 'ko')}
+                              style={{
+                                borderRadius: 8, border: '1px solid #d1d5db',
+                                backgroundColor: previewPlaying === `preview_ko_${v}` ? '#8B4789' : '#f9fafb',
+                                color: previewPlaying === `preview_ko_${v}` ? '#fff' : '#666',
+                                fontSize: 10, padding: '4px 2px', cursor: 'pointer',
+                              }}
+                            >
+                              {previewPlaying === `preview_ko_${v}` ? '⏸ 정지' : '▶ 미리듣기'}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
           {/* 2단계: 책 선택 */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '10px 12px 4px' }}>
             {BOOKS.filter((b) => b.testament === currentTestament).map((b) => (
@@ -1323,25 +2283,69 @@ export function BiblePage() {
           </div>
           <p style={{ color: '#1A3C6E', fontSize: 16, fontWeight: 700, margin: '4px 0 0 12px' }}>📖 {currentBook.ko} {currentChapter}장</p>
           <p style={{ color: '#999', fontSize: 11, margin: '0 0 0 12px' }}>{currentBook.en} Chapter {currentChapter} · KJV</p>
+          <p style={{ color: '#6B7280', fontSize: 11, margin: '6px 0 0', textAlign: 'center' }}>
+            🤖 AI 학습용 번역 · 공식 성경 번역본과 다를 수 있습니다
+          </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '12px' }}>
-            {Array.from({ length: currentBook.chapters }, (_, i) => i + 1).map((ch) => (
-              <button
-                key={ch}
-                onClick={() => setCurrentChapter(ch)}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  background: currentChapter === ch ? '#1A3C6E' : '#e5e7eb',
-                  color: currentChapter === ch ? '#FAF9F6' : '#374151',
-                  fontWeight: currentChapter === ch ? 700 : 400,
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                }}
-              >
-                {ch}장
-              </button>
-            ))}
+            {Array.from({ length: currentBook.chapters }, (_, i) => i + 1).map((ch) => {
+              const p = progressMap[`${currentBook.prefix}_${ch}`];
+              let dotColor: string | null = null;
+              if (p && p.heardVerses && p.heardVerses.length > 0) {
+                const total = currentBook.verseCount?.[ch] || 0;
+                const ratio = total > 0 ? p.heardVerses.length / total : 0;
+                dotColor = ratio >= 0.8 ? '#10b981' : '#f59e0b';
+              }
+              return (
+                <button
+                  key={ch}
+                  onClick={() => setCurrentChapter(ch)}
+                  onMouseEnter={(e) => {
+                    if (currentChapter !== ch) {
+                      e.currentTarget.style.background = '#1A3C6E';
+                      e.currentTarget.style.color = '#FAF9F6';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (currentChapter !== ch) {
+                      e.currentTarget.style.background = '#e5e7eb';
+                      e.currentTarget.style.color = '#374151';
+                    }
+                  }}
+                  onTouchStart={(e) => {
+                    if (currentChapter !== ch) {
+                      e.currentTarget.style.background = '#1A3C6E';
+                      e.currentTarget.style.color = '#FAF9F6';
+                    }
+                  }}
+                  onTouchEnd={(e) => {
+                    if (currentChapter !== ch) {
+                      e.currentTarget.style.background = '#e5e7eb';
+                      e.currentTarget.style.color = '#374151';
+                    }
+                  }}
+                  style={{
+                    position: 'relative',
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: currentChapter === ch ? '#1A3C6E' : '#e5e7eb',
+                    color: currentChapter === ch ? '#FAF9F6' : '#374151',
+                    fontWeight: currentChapter === ch ? 700 : 400,
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                  }}
+                >
+                  {ch}장
+                  {dotColor && (
+                    <span style={{
+                      position: 'absolute', top: 2, right: 2,
+                      width: 6, height: 6, borderRadius: '50%',
+                      background: dotColor,
+                    }} />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -1362,343 +2366,160 @@ export function BiblePage() {
           >{s}x</button>
         ))}
       </div>
-      {/* 보이스 선택 */}
-      <div style={{ padding: '8px 16px 0' }}>
+      {/* 3단계 재생 UI */}
+      <div style={{ padding: '16px', backgroundColor: '#EDE9F5', display: 'flex', flexDirection: 'column', gap: 12 }}>
         {(() => {
-          const voices: { v: TTSVoice; label: string; desc: string }[] = [
-            { v: 'nova',    label: '여성1', desc: '밝고 친근함' },
-            { v: 'shimmer', label: '여성2', desc: '부드럽고 따뜻함' },
-            { v: 'alloy',   label: '여성3', desc: '명료하고 깔끔함' },
-            { v: 'onyx',    label: '남성1', desc: '중후한 저음' },
-            { v: 'echo',    label: '남성2', desc: '또렷한 고음' },
-            { v: 'fable',   label: '남성3', desc: '따뜻한 내레이션' },
-          ];
-          const voiceLabel: Record<TTSVoice, string> = {
-            nova: '여성1', shimmer: '여성2', alloy: '여성3',
-            onyx: '남성1', echo: '남성2', fable: '남성3',
-          };
+          const handlerMap = {
+            'chapter-en':  { key: 'full_chapter',     handler: handleFullChapterTTS,           color: '#1A3C6E' },
+            'chapter-seq': { key: 'full_chapter_seq', handler: handleFullChapterSequentialTTS, color: '#F59E0B' },
+            'chapter-ko':  { key: 'full_chapter_ko',  handler: handleFullChapterKoreanTTS,     color: '#10b981' },
+            'book-en':     { key: 'full_book_en',     handler: handleFullBookTTS,              color: '#1A3C6E' },
+            'book-seq':    { key: 'full_book_seq',    handler: handleFullBookSequentialTTS,    color: '#F59E0B' },
+            'book-ko':     { key: 'full_book_ko',     handler: handleFullBookKoreanTTS,        color: '#10b981' },
+          } as const;
+          const conf = handlerMap[`${playRange}-${playMode}` as keyof typeof handlerMap];
+          const modeLabel = playMode === 'en' ? '영어' : playMode === 'seq' ? '영→한' : '한국어';
+          const rangeLabel = playRange === 'book'
+            ? `${currentBook.ko} 전체`
+            : `${currentChapter}장`;
+          const playingThis = ttsPlaying === conf.key;
+          const pausedThis = ttsPaused === conf.key;
+          const loadingThis = ttsLoading === conf.key;
+          const anyOtherActive =
+            (isFullPlaying || isBookPlaying) && !playingThis && !pausedThis;
+          const lockSelectors = isFullPlaying || isBookPlaying;
+
           return (
             <>
-              {/* 영어 음성 */}
-              <div style={{ marginBottom: 10 }}>
-                <button
-                  onClick={() => setShowEnVoice(v => !v)}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    width: '100%', background: '#f3f4f6', border: '1px solid #e5e7eb',
-                    borderRadius: 10, padding: '8px 12px', cursor: 'pointer', marginBottom: 6,
-                  }}
-                >
-                  <span style={{ fontSize: 13, color: '#444' }}>
-                    🇺🇸 영어 음성
-                    <span style={{ marginLeft: 8, fontSize: 12, color: '#1A3C6E', fontWeight: 500 }}>
-                      ({voiceLabel[enVoice]} 선택됨)
-                    </span>
-                  </span>
-                  <span style={{ fontSize: 12, color: '#888' }}>{showEnVoice ? '▲ 접기' : '▼ 펼치기'}</span>
-                </button>
-                {showEnVoice && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
-                    {voices.map(({ v, label, desc }) => (
-                      <div key={v} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <button
-                          onClick={() => setEnVoice(v)}
-                          style={{
-                            borderRadius: 10, border: '1px solid',
-                            borderColor: enVoice === v ? '#1A3C6E' : '#d1d5db',
-                            backgroundColor: enVoice === v ? '#1A3C6E' : '#fff',
-                            color: enVoice === v ? '#fff' : '#444',
-                            padding: '7px 4px', cursor: 'pointer', textAlign: 'center',
-                          }}
-                        >
-                          <div style={{ fontSize: 13, fontWeight: 500 }}>{label}</div>
-                          <div style={{ fontSize: 10, opacity: 0.8, marginTop: 2, lineHeight: 1.3 }}>{desc}</div>
-                        </button>
-                        <button
-                          onClick={() => handleVoicePreview(v, 'en')}
-                          style={{
-                            borderRadius: 8, border: '1px solid #d1d5db',
-                            backgroundColor: previewPlaying === `preview_en_${v}` ? '#8B4789' : '#f9fafb',
-                            color: previewPlaying === `preview_en_${v}` ? '#fff' : '#666',
-                            fontSize: 10, padding: '4px 2px', cursor: 'pointer',
-                          }}
-                        >
-                          {previewPlaying === `preview_en_${v}` ? '⏸ 정지' : '▶ 미리듣기'}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              {/* ① 모드 탭 */}
+              <div style={{ display: 'flex', borderRadius: 12, overflow: 'hidden', border: '1px solid #d1d5db', background: '#fff' }}>
+                {([
+                  { v: 'en',  label: '🇺🇸 영어' },
+                  { v: 'seq', label: '🔄 영→한' },
+                  { v: 'ko',  label: '🇰🇷 한국어' },
+                ] as const).map((m) => (
+                  <button
+                    key={m.v}
+                    onClick={() => setPlayMode(m.v)}
+                    disabled={lockSelectors}
+                    style={{
+                      flex: 1, padding: '12px 8px', border: 'none',
+                      cursor: lockSelectors ? 'not-allowed' : 'pointer',
+                      backgroundColor: playMode === m.v ? '#1A3C6E' : 'transparent',
+                      color: playMode === m.v ? '#FAF9F6' : '#1A3C6E',
+                      fontSize: 14, fontWeight: 600,
+                      opacity: lockSelectors && playMode !== m.v ? 0.5 : 1,
+                    }}
+                  >
+                    {m.label}
+                  </button>
+                ))}
               </div>
 
-              {/* 한국어 음성 */}
-              <div>
+              {/* ② 범위 카드 */}
+              <div style={{ display: 'flex', gap: 8 }}>
                 <button
-                  onClick={() => setShowKoVoice(v => !v)}
+                  onClick={() => setPlayRange('book')}
+                  disabled={lockSelectors}
                   style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    width: '100%', background: '#f3f4f6', border: '1px solid #e5e7eb',
-                    borderRadius: 10, padding: '8px 12px', cursor: 'pointer', marginBottom: 6,
+                    flex: 1, padding: '14px 8px', borderRadius: 12,
+                    border: playRange === 'book' ? '2px solid #1A3C6E' : '1px solid #d1d5db',
+                    backgroundColor: playRange === 'book' ? '#1A3C6E' : '#fff',
+                    color: playRange === 'book' ? '#FAF9F6' : '#1A3C6E',
+                    cursor: lockSelectors ? 'not-allowed' : 'pointer',
+                    fontSize: 13, fontWeight: 600, lineHeight: 1.4,
+                    opacity: lockSelectors && playRange !== 'book' ? 0.5 : 1,
                   }}
                 >
-                  <span style={{ fontSize: 13, color: '#444' }}>
-                    🇰🇷 한국어 음성
-                    <span style={{ marginLeft: 8, fontSize: 12, color: '#10b981', fontWeight: 500 }}>
-                      ({voiceLabel[koVoice]} 선택됨)
-                    </span>
-                  </span>
-                  <span style={{ fontSize: 12, color: '#888' }}>{showKoVoice ? '▲ 접기' : '▼ 펼치기'}</span>
+                  📖 {currentBook.ko} 전체
+                  <div style={{ fontSize: 11, opacity: 0.85, marginTop: 2 }}>(1~{currentBook.chapters}장)</div>
                 </button>
-                {showKoVoice && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
-                    {voices.map(({ v, label, desc }) => (
-                      <div key={v} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <button
-                          onClick={() => setKoVoice(v)}
-                          style={{
-                            borderRadius: 10, border: '1px solid',
-                            borderColor: koVoice === v ? '#10b981' : '#d1d5db',
-                            backgroundColor: koVoice === v ? '#10b981' : '#fff',
-                            color: koVoice === v ? '#fff' : '#444',
-                            padding: '7px 4px', cursor: 'pointer', textAlign: 'center',
-                          }}
-                        >
-                          <div style={{ fontSize: 13, fontWeight: 500 }}>{label}</div>
-                          <div style={{ fontSize: 10, opacity: 0.8, marginTop: 2, lineHeight: 1.3 }}>{desc}</div>
-                        </button>
-                        <button
-                          onClick={() => handleVoicePreview(v, 'ko')}
-                          style={{
-                            borderRadius: 8, border: '1px solid #d1d5db',
-                            backgroundColor: previewPlaying === `preview_ko_${v}` ? '#8B4789' : '#f9fafb',
-                            color: previewPlaying === `preview_ko_${v}` ? '#fff' : '#666',
-                            fontSize: 10, padding: '4px 2px', cursor: 'pointer',
-                          }}
-                        >
-                          {previewPlaying === `preview_ko_${v}` ? '⏸ 정지' : '▶ 미리듣기'}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <button
+                  onClick={() => setPlayRange('chapter')}
+                  disabled={lockSelectors}
+                  style={{
+                    flex: 1, padding: '14px 8px', borderRadius: 12,
+                    border: playRange === 'chapter' ? '2px solid #1A3C6E' : '1px solid #d1d5db',
+                    backgroundColor: playRange === 'chapter' ? '#1A3C6E' : '#fff',
+                    color: playRange === 'chapter' ? '#FAF9F6' : '#1A3C6E',
+                    cursor: lockSelectors ? 'not-allowed' : 'pointer',
+                    fontSize: 13, fontWeight: 600, lineHeight: 1.4,
+                    opacity: lockSelectors && playRange !== 'chapter' ? 0.5 : 1,
+                  }}
+                >
+                  🎵 현재 장만
+                  <div style={{ fontSize: 11, opacity: 0.85, marginTop: 2 }}>({currentChapter}장)</div>
+                </button>
               </div>
+
+              {/* ③ 재생 / 상태 / 컨트롤 */}
+              {(playingThis || pausedThis) ? (
+                <>
+                  <div style={{
+                    textAlign: 'center', fontSize: 13, color: '#1A3C6E', fontWeight: 600,
+                    background: '#fff', borderRadius: 10, padding: '10px',
+                  }}>
+                    {playRange === 'book' && bookPlayingChapter
+                      ? `📖 ${bookPlayingChapter}장${selectedVerse ? ` ${selectedVerse}절` : ''} ${playingThis ? '재생 중...' : '일시정지'}`
+                      : selectedVerse
+                        ? `${selectedVerse}절 ${playingThis ? '재생 중...' : '일시정지'}`
+                        : playingThis ? '재생 중...' : '일시정지'}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={conf.handler}
+                      style={{
+                        flex: 1, padding: '14px', borderRadius: 12, border: 'none',
+                        backgroundColor: conf.color, color: '#FAF9F6',
+                        fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                      }}
+                    >
+                      {playingThis ? '⏸ 일시정지' : '▶ 계속 듣기'}
+                    </button>
+                    <button
+                      onClick={stopAllTTS}
+                      style={{
+                        flex: 1, padding: '14px', borderRadius: 12, border: 'none',
+                        backgroundColor: '#ef4444', color: '#FAF9F6',
+                        fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                      }}
+                    >
+                      ⏹ 정지
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <button
+                  onClick={conf.handler}
+                  disabled={anyOtherActive}
+                  style={{
+                    width: '100%', padding: '16px', borderRadius: 12, border: 'none',
+                    backgroundColor: anyOtherActive ? '#d1d5db' : conf.color,
+                    color: anyOtherActive ? '#9ca3af' : '#FAF9F6',
+                    fontSize: 16, fontWeight: 700,
+                    cursor: anyOtherActive ? 'not-allowed' : 'pointer',
+                    opacity: anyOtherActive ? 0.45 : 1,
+                    transition: 'opacity 0.2s',
+                  }}
+                >
+                  {loadingThis ? '⏳ 로딩 중...' : `▶ ${rangeLabel} ${modeLabel} 듣기 시작`}
+                </button>
+              )}
             </>
           );
         })()}
       </div>
 
-      {/* 전체 듣기 버튼 4종 */}
-      <div style={{ padding: '16px', backgroundColor: '#EDE9F5', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {/* 영어 전체 */}
-        {ttsPlaying === 'full_chapter' ? (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={handleFullChapterTTS}
-              style={{
-                flex: 1, padding: '14px', borderRadius: 12, border: 'none',
-                backgroundColor: '#1A3C6E', color: '#FAF9F6',
-                fontSize: 15, fontWeight: 700, cursor: 'pointer',
-              }}
-            >
-              ⏸ 일시정지
-            </button>
-            <button
-              onClick={stopAllTTS}
-              style={{
-                flex: 1, padding: '14px', borderRadius: 12, border: 'none',
-                backgroundColor: '#ef4444', color: '#FAF9F6',
-                fontSize: 15, fontWeight: 700, cursor: 'pointer',
-              }}
-            >
-              ⏹ 정지
-            </button>
-          </div>
-        ) : ttsPaused === 'full_chapter' ? (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={handleFullChapterTTS}
-              style={{
-                flex: 1, padding: '14px', borderRadius: 12, border: 'none',
-                backgroundColor: '#1A3C6E', color: '#FAF9F6',
-                fontSize: 15, fontWeight: 700, cursor: 'pointer',
-              }}
-            >
-              ▶ 계속 듣기
-            </button>
-            <button
-              onClick={stopAllTTS}
-              style={{
-                flex: 1, padding: '14px', borderRadius: 12, border: 'none',
-                backgroundColor: '#ef4444', color: '#FAF9F6',
-                fontSize: 15, fontWeight: 700, cursor: 'pointer',
-              }}
-            >
-              ⏹ 정지
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={handleFullChapterTTS}
-            disabled={isFullPlaying}
-            style={{
-              width: '100%', padding: '14px',
-              borderRadius: 12, border: 'none',
-              backgroundColor: isFullPlaying ? '#d1d5db' : '#1A3C6E',
-              color: isFullPlaying ? '#9ca3af' : '#FAF9F6',
-              fontSize: 15, fontWeight: 700,
-              cursor: isFullPlaying ? 'not-allowed' : 'pointer',
-              opacity: isFullPlaying ? 0.45 : 1,
-              transition: 'opacity 0.2s',
-            }}
-          >
-            <span style={{ width: '100%', textAlign: 'center' }}>
-              {ttsLoading === 'full_chapter' ? '⏳ 로딩 중...' : `🇺🇸 ${currentChapter}장 영어 전체 듣기`}
-            </span>
-          </button>
-        )}
-
-        {/* 영→한 전체 */}
-        {ttsPlaying === 'full_chapter_seq' ? (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={handleFullChapterSequentialTTS}
-              style={{
-                flex: 1, padding: '14px', borderRadius: 12, border: 'none',
-                backgroundColor: '#F59E0B', color: '#FAF9F6',
-                fontSize: 15, fontWeight: 700, cursor: 'pointer',
-              }}
-            >
-              ⏸ 일시정지
-            </button>
-            <button
-              onClick={stopAllTTS}
-              style={{
-                flex: 1, padding: '14px', borderRadius: 12, border: 'none',
-                backgroundColor: '#ef4444', color: '#FAF9F6',
-                fontSize: 15, fontWeight: 700, cursor: 'pointer',
-              }}
-            >
-              ⏹ 정지
-            </button>
-          </div>
-        ) : ttsPaused === 'full_chapter_seq' ? (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={handleFullChapterSequentialTTS}
-              style={{
-                flex: 1, padding: '14px', borderRadius: 12, border: 'none',
-                backgroundColor: '#F59E0B', color: '#FAF9F6',
-                fontSize: 15, fontWeight: 700, cursor: 'pointer',
-              }}
-            >
-              ▶ 계속 듣기
-            </button>
-            <button
-              onClick={stopAllTTS}
-              style={{
-                flex: 1, padding: '14px', borderRadius: 12, border: 'none',
-                backgroundColor: '#ef4444', color: '#FAF9F6',
-                fontSize: 15, fontWeight: 700, cursor: 'pointer',
-              }}
-            >
-              ⏹ 정지
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={handleFullChapterSequentialTTS}
-            disabled={isFullPlaying}
-            style={{
-              width: '100%', padding: '14px',
-              borderRadius: 12, border: 'none',
-              backgroundColor: isFullPlaying ? '#d1d5db' : '#F59E0B',
-              color: isFullPlaying ? '#9ca3af' : '#FAF9F6',
-              fontSize: 15, fontWeight: 700,
-              cursor: isFullPlaying ? 'not-allowed' : 'pointer',
-              opacity: isFullPlaying ? 0.45 : 1,
-              transition: 'opacity 0.2s',
-            }}
-          >
-            <span style={{ width: '100%', textAlign: 'center' }}>
-              {ttsLoading === 'full_chapter_seq' ? '⏳ 로딩 중...' : `🔄 ${currentChapter}장 영→한 전체 듣기`}
-            </span>
-          </button>
-        )}
-
-        {/* 한→영 전체 */}
-        {ttsPlaying === 'full_chapter_ko_en' ? (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={handleFullChapterKoEnTTS}
-              style={{
-                flex: 1, padding: '14px', borderRadius: 12, border: 'none',
-                backgroundColor: '#378ADD', color: '#FAF9F6',
-                fontSize: 15, fontWeight: 700, cursor: 'pointer',
-              }}
-            >
-              ⏸ 일시정지
-            </button>
-            <button
-              onClick={stopAllTTS}
-              style={{
-                flex: 1, padding: '14px', borderRadius: 12, border: 'none',
-                backgroundColor: '#ef4444', color: '#FAF9F6',
-                fontSize: 15, fontWeight: 700, cursor: 'pointer',
-              }}
-            >
-              ⏹ 정지
-            </button>
-          </div>
-        ) : ttsPaused === 'full_chapter_ko_en' ? (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={handleFullChapterKoEnTTS}
-              style={{
-                flex: 1, padding: '14px', borderRadius: 12, border: 'none',
-                backgroundColor: '#378ADD', color: '#FAF9F6',
-                fontSize: 15, fontWeight: 700, cursor: 'pointer',
-              }}
-            >
-              ▶ 계속 듣기
-            </button>
-            <button
-              onClick={stopAllTTS}
-              style={{
-                flex: 1, padding: '14px', borderRadius: 12, border: 'none',
-                backgroundColor: '#ef4444', color: '#FAF9F6',
-                fontSize: 15, fontWeight: 700, cursor: 'pointer',
-              }}
-            >
-              ⏹ 정지
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={handleFullChapterKoEnTTS}
-            disabled={isFullPlaying}
-            style={{
-              width: '100%', padding: '14px',
-              borderRadius: 12, border: 'none',
-              backgroundColor: isFullPlaying ? '#d1d5db' : '#378ADD',
-              color: isFullPlaying ? '#9ca3af' : '#FAF9F6',
-              fontSize: 15, fontWeight: 700,
-              cursor: isFullPlaying ? 'not-allowed' : 'pointer',
-              opacity: isFullPlaying ? 0.45 : 1,
-              transition: 'opacity 0.2s',
-            }}
-          >
-            <span style={{ width: '100%', textAlign: 'center' }}>
-              {ttsLoading === 'full_chapter_ko_en' ? '⏳ 로딩 중...' : `✨ ${currentChapter}장 한→영 전체 듣기`}
-            </span>
-          </button>
-        )}
-      </div>
-
       {/* 절 목록 */}
       <div style={{ padding: '0 16px 16px' }}>
-        {(genesisData?.verses ?? []).map((verse: Verse) => (
+        {(genesisData?.verses ?? []).map((verse: Verse) => {
+          const curProg = progressMap[`${currentBook.prefix}_${currentChapter}`];
+          const isHeard = curProg?.heardVerses?.includes(verse.verse) || false;
+          const isQuiz = curProg?.quizVerses?.includes(verse.verse) || false;
+          return (
           <div
             key={verse.verse}
+            id={`bible-verse-${verse.verse}`}
             style={{
               backgroundColor: selectedVerse === verse.verse ? '#EDE9F5' : '#fff',
               borderRadius: 12, marginBottom: 10,
@@ -1714,7 +2535,7 @@ export function BiblePage() {
               }}
               onClick={() => setSelectedVerse(selectedVerse === verse.verse ? null : verse.verse)}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
                 <span style={{
                   backgroundColor: '#1A3C6E', color: '#FAF9F6',
                   borderRadius: '50%', width: 28, height: 28,
@@ -1735,6 +2556,11 @@ export function BiblePage() {
                   </p>
                 )}
               </div>
+              {(isHeard || isQuiz) && (
+                <div style={{ flexShrink: 0, marginLeft: 8, fontSize: 13, letterSpacing: 1 }}>
+                  {isHeard && '🔊'}{isQuiz && '🎯'}
+                </div>
+              )}
             </div>
 
             {/* 절 펼쳤을 때 버튼들 */}
@@ -2017,7 +2843,8 @@ export function BiblePage() {
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
 
@@ -2049,6 +2876,11 @@ export function BiblePage() {
                 {translationPopup.translation}
               </p>
             )}
+            <hr style={{ margin: '16px 0 10px', borderColor: '#eee' }} />
+            <p style={{ fontSize: 11, color: '#6B7280', lineHeight: 1.5, margin: 0 }}>
+              📌 이 번역은 영어 학습을 위해 AI가 재구성한 학습용 번역입니다.
+              예배·신앙 목적의 공식 성경 번역본과 다를 수 있습니다.
+            </p>
           </div>
         </div>
       )}
@@ -2634,7 +3466,10 @@ export function BiblePage() {
                 {!quizPopup.submitted && (
                   <button
                     disabled={quizPopup.selectedAnswers.some(a => a === '')}
-                    onClick={() => setQuizPopup(prev => prev ? { ...prev, submitted: true } : null)}
+                    onClick={() => {
+                      setQuizPopup(prev => prev ? { ...prev, submitted: true } : null);
+                      if (quizPopup.verse) saveProgress(quizPopup.verse, 'quiz');
+                    }}
                     style={{
                       width: '100%', padding: '12px',
                       borderRadius: 12, border: 'none',
