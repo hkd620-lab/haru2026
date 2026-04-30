@@ -3,14 +3,27 @@ import { useNavigate } from 'react-router';
 import { BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { GrapeAnimation } from '../components/GrapeAnimation';
+import { useAuth } from '../contexts/AuthContext';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const { googleSignIn } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Google 로그인 - Cloud Functions 사용
-  const handleGoogleLogin = () => {
+  // Google 로그인 - dev: Firebase SDK popup / prod: Cloud Functions 흐름
+  const handleGoogleLogin = async () => {
     setIsLoading(true);
+    if (import.meta.env.DEV) {
+      try {
+        await googleSignIn();
+        navigate('/');
+      } catch (e: any) {
+        console.error('[dev] Google login failed:', e);
+        toast.error('Google 로그인 실패');
+        setIsLoading(false);
+      }
+      return;
+    }
     setTimeout(() => {
       window.location.href = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/googleLoginStart';
     }, 1500);
