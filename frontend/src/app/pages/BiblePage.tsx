@@ -2146,7 +2146,8 @@ export function BiblePage() {
               </div>
             );
           })()}
-          {/* 보이스 선택 */}
+          {/* 보이스 선택 UI — TTS 비용 안정화로 비활성화 (영어 onyx, 한국어 nova 고정) */}
+          {false && (
           <div style={{ padding: '8px 16px 0' }}>
             {(() => {
               const voices: { v: TTSVoice; label: string; desc: string }[] = [
@@ -2270,6 +2271,7 @@ export function BiblePage() {
               );
             })()}
           </div>
+          )}
           {/* 2단계: 책 선택 */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '10px 12px 4px' }}>
             {BOOKS.filter((b) => b.testament === currentTestament).map((b) => (

@@ -1259,9 +1259,9 @@ exports.generateTTS = (0, https_2.onCall)({
             .trim()
             .slice(0, 4000);
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-        // 429(rate limit) 강화 백오프: OpenAI Retry-After 헤더 우선, 미제공 시 5/10/20/40/60초 + jitter, 총 6회 시도
-        const BACKOFF_MS = [5000, 10000, 20000, 40000, 60000];
-        const MAX_ATTEMPTS = 6;
+        // 429(rate limit) 백오프: OpenAI Retry-After 헤더 우선, 미제공 시 5/10/20초 + jitter, 총 3회 시도
+        const BACKOFF_MS = [5000, 10000, 20000];
+        const MAX_ATTEMPTS = 3;
         let ttsResponse = null;
         for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
             try {
@@ -1297,6 +1297,8 @@ exports.generateTTS = (0, https_2.onCall)({
                 }
             }
         }
+        // 절 사이 호출 간격 확보 (OpenAI rate-limit 자체 유발 방지)
+        await sleep(500);
         const audioBuffer = Buffer.from(ttsResponse.data);
         if (!audioBuffer.length) {
             throw new https_2.HttpsError('internal', 'TTS 생성에 실패했습니다.');
