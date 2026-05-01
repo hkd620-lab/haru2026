@@ -31,7 +31,7 @@ const BUTTONS: ButtonItem[] = [
   { t: "SAYU", sub: "私有·사유", s: "PRIVATE", icon: "sayu", kind: "sub", href: "/sayu" },
   { t: "영어성경",      s: "BIBLE",    icon: "book",  href: "/bible" },
   { t: "영어일기",      s: "DIARY",    icon: "pen",   href: "/diary-learn" },
-  { t: "HARU예언",      s: "PROPHECY", icon: "star",  href: "/record-prophecy" },
+  { t: "HARU예언",      s: "PROPHECY", icon: "star",  href: "/prophecy-hub" },
   { t: "하루LAW",       s: "LAW",      icon: "scale", href: "/record" },
   { t: "기록통계·합본", s: "STATS",    icon: "chart", href: "/stats" },
   { t: "최신외신 3편",  s: "NEWS",     icon: "globe", dot: true, href: "/news" },

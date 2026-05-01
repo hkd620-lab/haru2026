@@ -1366,7 +1366,7 @@ export function SayuPage() {
                       📖 사람속으로
                     </button>
                     <button
-                      onClick={() => navigate('/novel-studio')}
+                      onClick={() => navigate('/prophecy-hub')}
                       style={{
                         flex: 1, padding: '10px',
                         borderRadius: 10,
