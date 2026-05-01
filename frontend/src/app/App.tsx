@@ -1,7 +1,5 @@
-import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from './config/firebase';
+import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { LoadingProvider } from './contexts/LoadingContext';
@@ -89,49 +87,6 @@ function HomeOrLanding() {
   return user ? <HomePage /> : <LandingPage />;
 }
 
-function getPageKey(pathname: string): number {
-  if (pathname === '/') return 0; // 홈
-  if (pathname.startsWith('/record')) return 1; // 기록
-  if (pathname.startsWith('/sayu')) return 2; // SAYU
-  if (
-    pathname.startsWith('/book-studio') ||
-    pathname.startsWith('/book-create') ||
-    pathname.startsWith('/book-reader')
-  ) {
-    return 3; // 책스튜디오
-  }
-  if (pathname.startsWith('/settings')) return 4; // 설정
-  return 0;
-}
-
-function TodayQuoteWrapper() {
-  const { user } = useAuth();
-  const location = useLocation();
-  const [quoteType, setQuoteType] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    if (!user?.uid) {
-      setQuoteType(undefined);
-      return;
-    }
-    (async () => {
-      try {
-        const ref = doc(db, `users/${user.uid}/settings/settings`);
-        const snap = await getDoc(ref);
-        if (snap.exists()) {
-          const data = snap.data() as { quoteType?: string };
-          setQuoteType(data.quoteType);
-        }
-      } catch (e) {
-        console.error('quoteType 로딩 실패:', e);
-      }
-    })();
-  }, [user?.uid]);
-
-  if (!user) return null;
-  return <TodayQuote quoteType={quoteType} pageKey={getPageKey(location.pathname)} />;
-}
-
 function App() {
   return (
     <ThemeProvider>
@@ -189,7 +144,7 @@ function App() {
               <Route path="/refund" element={<RefundPage />} />
             </Routes>
           </main>
-          <TodayQuoteWrapper />
+          <TodayQuote />
           <Footer />
           <BottomNav />
           <Toaster position="top-center" toastOptions={{ className: 'no-print' }} />
