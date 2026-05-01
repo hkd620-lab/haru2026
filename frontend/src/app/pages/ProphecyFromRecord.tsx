@@ -23,20 +23,7 @@ interface RecordItem {
   rawData: any;
 }
 
-const PROPHECY_TYPES = ['나의 미래', '자식의 미래', '과거를 바꿨다면'];
 const TIME_OPTIONS = ['1년 후', '3년 후', '5년 후', '10년 후'];
-
-const GOAL_TYPE_OPTIONS: { value: 'me' | 'child' | 'past'; label: string; sub: string }[] = [
-  { value: 'me', label: '나의 미래', sub: '초목표를 향한 서사' },
-  { value: 'child', label: '자식의 미래', sub: '자식에게 바라는 것의 서사' },
-  { value: 'past', label: '과거를 바꿨다면', sub: '그때 달랐다면 지금은 어땠을까' },
-];
-
-const GOAL_HINTS: Record<'me' | 'child' | 'past', string> = {
-  me: '내가 원한다고 원하는 대로 되는 미래는 아닙니다. 여기서 선택한 초목표가 달성될지는 운명과 나의 노력이 결정합니다.',
-  child: '자식에게 바라는 것은 내 마음일 뿐, 자식의 삶은 자식의 것입니다. 운명은 알 수 없습니다.',
-  past: '과거를 바꿨다면 지금이 어떻게 달라졌을지는 그 누구도 단언할 수 없습니다. 여러 요소가 개입되어 현실과 미래가 어떻게 전개될지 — 그야말로 궁금합니다.',
-};
 
 const GOAL_OPTIONS: Record<'me' | 'child' | 'past', string[]> = {
   me: [
@@ -189,10 +176,9 @@ export function RecordProphecyPage() {
   const [mergeRecords, setMergeRecords] = useState<RecordItem[]>([]);
   const [mergeLoading, setMergeLoading] = useState(false);
 
-  const [prophecyType, setProphecyType] = useState('나의 미래');
   const [timeOption, setTimeOption] = useState('3년 후');
   const [question, setQuestion] = useState('');
-  const [prophecyGoalType, setProphecyGoalType] = useState<'me' | 'child' | 'past' | ''>('');
+  const [prophecyGoalType, setProphecyGoalType] = useState<'me' | 'child' | 'past' | ''>('me');
   const [prophecyGoal, setProphecyGoal] = useState('');
   const [prophecyWall, setProphecyWall] = useState('');
 
@@ -332,7 +318,7 @@ export function RecordProphecyPage() {
         recordTitle: selectedRecord.title,
         recordDate: selectedRecord.date,
         recordFormat: selectedRecord.format,
-        prophecyType,
+        prophecyType: '나의 미래',
         timeOption,
         question,
         prophecyGoalType,
@@ -738,33 +724,6 @@ export function RecordProphecyPage() {
             <div style={{ ...styles.card, background: '#EEF3FA', border: '0.5px solid #B5D4F4' }}>
               <p style={{ fontSize: 11, color: '#9ca3af', marginBottom: 4 }}>선택된 기록</p>
               <p style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E' }}>{selectedRecord?.title}</p>
-            </div>
-
-            {/* 예언 유형 선택 — 3개 버튼 */}
-            <div style={styles.card}>
-              <p style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E', marginBottom: 12 }}>예언 유형 선택</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {GOAL_TYPE_OPTIONS.map(opt => {
-                  const active = prophecyGoalType === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      onClick={() => { setProphecyGoalType(opt.value); setProphecyGoal(''); }}
-                      style={{
-                        textAlign: 'left',
-                        padding: '12px 14px',
-                        borderRadius: 10,
-                        border: active ? '2px solid #1A3C6E' : '0.5px solid #e5e7eb',
-                        background: active ? '#E6F1FB' : '#fff',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#1A3C6E' }}>{opt.label}</div>
-                      <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{opt.sub}</div>
-                    </button>
-                  );
-                })}
-              </div>
             </div>
 
             {/* === 1. 사건 모티브 === */}

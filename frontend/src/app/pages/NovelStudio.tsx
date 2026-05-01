@@ -119,7 +119,6 @@ function CompleteButton({ onClick, label, color = '#10b981' }: { onClick: () => 
 
 function MotiveTab({ s, upd, onNext }: { s: NovelSettings; upd: (k: keyof NovelSettings, v: any) => void; onNext: () => void }) {
   const OPTIONS = [
-    { id: 'daughter_future', label: '👧 나 딸의 미래는' },
     { id: 'my_future',       label: '🌟 나의 미래는' },
     { id: 'what_if',         label: '⏪ 그때 이랬다면' },
     { id: 'lottery',         label: '🎰 로또 1등 당첨이 되었다면' },
@@ -1196,13 +1195,14 @@ export function NovelStudio() {
   }, [user?.uid]);
 
   const goNext = () => {
-    const currentIndex = TABS.findIndex(t => t.id === activeTab);
-    const next = TABS[currentIndex + 1];
-    if (next) {
-      setActiveTab(next.id);
+    setActiveTab(prev => {
+      const currentIndex = TABS.findIndex(t => t.id === prev);
+      const next = TABS[currentIndex + 1];
+      if (!next) return prev;
       setVisitedTabs(p => p.includes(next.id) ? p : [...p, next.id]);
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+      return next.id;
+    });
   };
 
   const upd = (key: keyof NovelSettings, value: any) => {
