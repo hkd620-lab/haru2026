@@ -6,9 +6,10 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { requestNotificationPermission, updateNotificationSettings, cleanupDuplicateTokens, removeCurrentToken } from '../services/notificationService';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { useSubscription } from '../hooks/useSubscription';
 import GrammarDashboard from './GrammarDashboard';
 
 const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
@@ -16,6 +17,7 @@ const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 export function SettingsPage() {
   const { user, signOut } = useAuth();
   const { isDark, toggleTheme } = useTheme();
+  const { isPremium } = useSubscription();
   const navigate = useNavigate();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
@@ -45,6 +47,10 @@ export function SettingsPage() {
   });
   const [loadingStats, setLoadingStats] = useState(true);
 
+  // 명언 종류 선택 상태
+  const [quoteType, setQuoteType] = useState<'classic' | 'bible'>('classic');
+  const [isSavingQuoteType, setIsSavingQuoteType] = useState(false);
+
   const isAdmin = user?.uid === ADMIN_UID;
   const isDevUser = user?.email === 'hkd620@gmail.com';
 
@@ -52,6 +58,7 @@ export function SettingsPage() {
     if (user?.uid) {
       loadStats();
       loadNotificationSettings();
+      loadQuoteType();
       cleanupDuplicateTokens(user.uid); // 앱 마운트 시 기존 중복 토큰 1회 정리
       if (user.email === 'hkd620@gmail.com') {
         loadFcmTokens();
@@ -60,6 +67,45 @@ export function SettingsPage() {
       setLoadingStats(false);
     }
   }, [user?.uid]);
+
+  const loadQuoteType = async () => {
+    if (!user?.uid) return;
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      const snap = await getDoc(userRef);
+      if (snap.exists()) {
+        const data = snap.data() as { quoteType?: 'classic' | 'bible' };
+        if (data.quoteType === 'bible' || data.quoteType === 'classic') {
+          setQuoteType(data.quoteType);
+        }
+      }
+    } catch (e) {
+      console.error('명언 종류 로딩 실패:', e);
+    }
+  };
+
+  const handleQuoteTypeChange = async (next: 'classic' | 'bible') => {
+    if (!user?.uid) return;
+    if (next === quoteType) return;
+
+    if (next === 'bible' && !isPremium) {
+      toast.error('구독자 전용 기능입니다');
+      return;
+    }
+
+    setIsSavingQuoteType(true);
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      await setDoc(userRef, { quoteType: next }, { merge: true });
+      setQuoteType(next);
+      toast.success(next === 'bible' ? '성경 말씀으로 변경되었습니다.' : '동서양 명언으로 변경되었습니다.');
+    } catch (e) {
+      console.error('명언 종류 저장 실패:', e);
+      toast.error('명언 종류 변경에 실패했습니다.');
+    } finally {
+      setIsSavingQuoteType(false);
+    }
+  };
 
   const loadStats = async () => {
     if (!user?.uid) {
@@ -487,6 +533,69 @@ export function SettingsPage() {
               </p>
             </div>
           </div>
+        </section>
+
+        <section className="bg-white rounded-lg p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-5">
+            <Sparkles className="w-5 h-5" style={{ color: '#1A3C6E' }} />
+            <h2 className="text-base tracking-wide" style={{ color: '#333' }}>
+              명언 종류
+            </h2>
+          </div>
+
+          <p className="text-xs mb-4" style={{ color: '#666' }}>
+            홈 화면 하단에 표시되는 오늘의 명언을 선택하세요
+          </p>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => handleQuoteTypeChange('classic')}
+              disabled={isSavingQuoteType}
+              className="flex items-center justify-center gap-2 py-3 px-3 rounded-lg text-sm transition-all disabled:opacity-50"
+              style={{
+                backgroundColor: quoteType === 'classic' ? '#1A3C6E' : '#F9FAFB',
+                color: quoteType === 'classic' ? '#fff' : '#333',
+                border: quoteType === 'classic' ? '1px solid #1A3C6E' : '1px solid #e5e5e5',
+                fontWeight: quoteType === 'classic' ? 600 : 400,
+              }}
+            >
+              <span>💬</span>
+              <span>동서양 명언</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleQuoteTypeChange('bible')}
+              disabled={isSavingQuoteType}
+              className="flex items-center justify-center gap-2 py-3 px-3 rounded-lg text-sm transition-all disabled:opacity-50"
+              style={{
+                backgroundColor: quoteType === 'bible' ? '#1A3C6E' : '#F9FAFB',
+                color: quoteType === 'bible' ? '#fff' : '#333',
+                border: quoteType === 'bible' ? '1px solid #1A3C6E' : '1px solid #e5e5e5',
+                fontWeight: quoteType === 'bible' ? 600 : 400,
+              }}
+            >
+              <span>✝️</span>
+              <span>
+                성경 말씀
+                {!isPremium && (
+                  <span
+                    className="ml-1 text-xs"
+                    style={{ color: quoteType === 'bible' ? '#fbbf24' : '#999' }}
+                  >
+                    (구독자)
+                  </span>
+                )}
+              </span>
+            </button>
+          </div>
+
+          {!isPremium && (
+            <p className="text-xs mt-3" style={{ color: '#999' }}>
+              💡 성경 말씀은 구독자 전용 기능입니다.
+            </p>
+          )}
         </section>
 
         <section className="bg-white rounded-lg p-6 shadow-sm">

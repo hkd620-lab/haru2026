@@ -1,5 +1,7 @@
-import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from './config/firebase';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { LoadingProvider } from './contexts/LoadingContext';
@@ -36,6 +38,7 @@ import { NovelStoryPage } from './pages/NovelStoryPage';
 import { RecordProphecyPage } from './pages/ProphecyFromRecord';
 import { BottomNav } from './components/BottomNav';
 import { Footer } from './components/Footer';
+import { TodayQuote } from './components/TodayQuote';
 import { setupForegroundMessageListener, requestNotificationPermission } from './services/notificationService';
 
 function AppInitializer() {
@@ -86,6 +89,49 @@ function HomeOrLanding() {
   return user ? <HomePage /> : <LandingPage />;
 }
 
+function getPageKey(pathname: string): number {
+  if (pathname === '/') return 0; // 홈
+  if (pathname.startsWith('/record')) return 1; // 기록
+  if (pathname.startsWith('/sayu')) return 2; // SAYU
+  if (
+    pathname.startsWith('/book-studio') ||
+    pathname.startsWith('/book-create') ||
+    pathname.startsWith('/book-reader')
+  ) {
+    return 3; // 책스튜디오
+  }
+  if (pathname.startsWith('/settings')) return 4; // 설정
+  return 0;
+}
+
+function TodayQuoteWrapper() {
+  const { user } = useAuth();
+  const location = useLocation();
+  const [quoteType, setQuoteType] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setQuoteType(undefined);
+      return;
+    }
+    (async () => {
+      try {
+        const ref = doc(db, 'users', user.uid);
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          const data = snap.data() as { quoteType?: string };
+          setQuoteType(data.quoteType);
+        }
+      } catch (e) {
+        console.error('quoteType 로딩 실패:', e);
+      }
+    })();
+  }, [user?.uid]);
+
+  if (!user) return null;
+  return <TodayQuote quoteType={quoteType} pageKey={getPageKey(location.pathname)} />;
+}
+
 function App() {
   return (
     <ThemeProvider>
@@ -93,7 +139,7 @@ function App() {
         <LoadingProvider>
         <AppInitializer />
         <BrowserRouter>
-        <div className="min-h-screen bg-[#FEFBE8] dark:bg-gray-900 print:bg-white">
+        <div className="min-h-screen bg-[#FEFBE8] print:bg-white">
           <main style={{ paddingBottom: 'var(--content-pb)' }}>
             <Routes>
               {/* 홈 화면 — 비로그인 시 랜딩, 로그인 시 홈 */}
@@ -143,6 +189,7 @@ function App() {
               <Route path="/refund" element={<RefundPage />} />
             </Routes>
           </main>
+          <TodayQuoteWrapper />
           <Footer />
           <BottomNav />
           <Toaster position="top-center" toastOptions={{ className: 'no-print' }} />
