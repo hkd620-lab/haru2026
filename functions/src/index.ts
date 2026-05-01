@@ -1573,6 +1573,36 @@ export const generateTTS = onCall(
   }
 );
 
+// ===== ttsUsage 30일 이상 문서 자동 청소 (매일 0시 KST) =====
+export const cleanupTtsUsage = onSchedule(
+  {
+    schedule: '0 0 * * *',
+    timeZone: 'Asia/Seoul',
+    region: 'asia-northeast3',
+  },
+  async () => {
+    try {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 30);
+      const cutoffStr = cutoff.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+
+      const snap = await db.collectionGroup('ttsUsage').get();
+      const toDelete = snap.docs.filter(d => d.id < cutoffStr);
+
+      let deleted = 0;
+      for (let i = 0; i < toDelete.length; i += 500) {
+        const batch = db.batch();
+        toDelete.slice(i, i + 500).forEach(d => batch.delete(d.ref));
+        await batch.commit();
+        deleted += Math.min(500, toDelete.length - i);
+      }
+      logger.info(`ttsUsage 청소 완료: ${deleted}개 삭제 (cutoff=${cutoffStr})`);
+    } catch (error) {
+      logger.error('ttsUsage 청소 실패:', error);
+    }
+  }
+);
+
 export { generateBook } from "./bookStudio";
 
 // ===== 단어 뜻 조회 =====

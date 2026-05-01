@@ -13,6 +13,14 @@ interface Verse {
 
 const DEV_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
+const showTTSLimitAlert = (err: any) => {
+  const msg = err?.message || '';
+  const code = err?.code || '';
+  if (msg.includes('한도') || code === 'functions/resource-exhausted' || code === 'resource-exhausted') {
+    alert('오늘 TTS 사용 한도(500회)를 초과했습니다. 내일 다시 이용해주세요 😊');
+  }
+};
+
 export function BiblePage() {
   const navigate = useNavigate();
   const currentUid = getAuth().currentUser?.uid ?? '';
@@ -411,7 +419,8 @@ export function BiblePage() {
         await audioRef.current.play();
         setTtsPlaying(key);
       }
-    } catch {
+    } catch (err: any) {
+      showTTSLimitAlert(err);
       setTtsLoading(null);
     }
   };
@@ -507,7 +516,8 @@ export function BiblePage() {
           audio.addEventListener('loadedmetadata', startKoLoop, { once: true });
         }
       }
-    } catch {
+    } catch (err: any) {
+      showTTSLimitAlert(err);
       setTtsLoading(null);
       setHighlightedEnWords([]);
     }
@@ -675,7 +685,8 @@ export function BiblePage() {
         setIsSequentialPlaying(null);
         setTtsPlaying(null);
       }
-    } catch {
+    } catch (err: any) {
+      showTTSLimitAlert(err);
       setTtsLoading(null);
       setIsSequentialPlaying(null);
       setTtsPlaying(null);
@@ -1109,7 +1120,8 @@ export function BiblePage() {
           }, 300);
         }
       }
-    } catch (err) {
+    } catch (err: any) {
+      showTTSLimitAlert(err);
       console.error('TTS 오류:', err);
       setTtsPlaying(null);
     } finally {
@@ -1200,7 +1212,8 @@ export function BiblePage() {
       setTtsPlaying(null);
       setSelectedVerse(null);
       setIsFullPlaying(false);
-    } catch {
+    } catch (err: any) {
+      showTTSLimitAlert(err);
       setTtsLoading(null);
       setTtsPlaying(null);
       setIsFullPlaying(false);
@@ -1263,7 +1276,8 @@ export function BiblePage() {
         };
         await audioRef.current.play();
       }
-    } catch {
+    } catch (err: any) {
+      showTTSLimitAlert(err);
       setTtsLoading(null);
       setIsFullPlaying(false);
       setTtsPlaying(null);
@@ -1432,7 +1446,8 @@ export function BiblePage() {
       setTtsPlaying(null);
       setIsFullPlaying(false);
       setHighlightedEnWords([]);
-    } catch {
+    } catch (err: any) {
+      showTTSLimitAlert(err);
       setTtsLoading(null);
       setTtsPlaying(null);
       setIsFullPlaying(false);
@@ -1516,7 +1531,8 @@ export function BiblePage() {
       setTtsPlaying(null);
       setIsBookPlaying(false);
       setBookPlayingChapter(null);
-    } catch {
+    } catch (err: any) {
+      showTTSLimitAlert(err);
       setTtsLoading(null);
       setTtsPlaying(null);
       setIsBookPlaying(false);
@@ -1664,7 +1680,8 @@ export function BiblePage() {
       setIsBookPlaying(false);
       setBookPlayingChapter(null);
       setHighlightedEnWords([]);
-    } catch {
+    } catch (err: any) {
+      showTTSLimitAlert(err);
       setTtsLoading(null);
       setTtsPlaying(null);
       setIsBookPlaying(false);
@@ -1762,7 +1779,8 @@ export function BiblePage() {
       setTtsPlaying(null);
       setIsBookPlaying(false);
       setBookPlayingChapter(null);
-    } catch {
+    } catch (err: any) {
+      showTTSLimitAlert(err);
       setTtsLoading(null);
       setTtsPlaying(null);
       setIsBookPlaying(false);
