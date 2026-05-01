@@ -1221,7 +1221,7 @@ exports.generateTTS = (0, https_2.onCall)({
     secrets: [GEMINI_API_KEY_SECRET, GOOGLE_CLOUD_API_KEY_SECRET, OPENAI_API_KEY_SECRET],
     timeoutSeconds: 120,
 }, async (request) => {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e, _f;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -1234,7 +1234,7 @@ exports.generateTTS = (0, https_2.onCall)({
     const filePath = `ttsCache/${cacheKey}_${safeVoice}.mp3`;
     const file = bucket().file(filePath);
     try {
-        // 1. Storage 캐시 확인 — 캐시된 경우 서명된 URL 반환
+        // 1. Storage 캐시 확인 — 캐시된 경우 서명된 URL 반환 (한도 차감 없음)
         const [exists] = await file.exists();
         if (exists) {
             const [signedUrl] = await file.getSignedUrl({
@@ -1242,6 +1242,15 @@ exports.generateTTS = (0, https_2.onCall)({
                 expires: Date.now() + 3600 * 1000, // 1시간
             });
             return { success: true, audioUrl: signedUrl, cached: true };
+        }
+        // 사용자별 하루 TTS 호출 제한 (KST 기준, 캐시 미스 = 새 절 첫 청취만 차감)
+        const uid = request.auth.uid;
+        const todayKst = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+        const usageRef = db.doc(`users/${uid}/ttsUsage/${todayKst}`);
+        const usageSnap = await usageRef.get();
+        const currentCount = usageSnap.exists ? ((_b = (_a = usageSnap.data()) === null || _a === void 0 ? void 0 : _a.count) !== null && _b !== void 0 ? _b : 0) : 0;
+        if (currentCount >= 500) {
+            throw new https_2.HttpsError('resource-exhausted', '오늘 TTS 사용 한도를 초과했습니다');
         }
         // 2. OpenAI TTS 생성
         const OPENAI_KEY = OPENAI_API_KEY_SECRET.value().replace(/[^\x20-\x7E]/g, '').trim();
@@ -1282,9 +1291,9 @@ exports.generateTTS = (0, https_2.onCall)({
                 break;
             }
             catch (err) {
-                const status = (_a = err === null || err === void 0 ? void 0 : err.response) === null || _a === void 0 ? void 0 : _a.status;
+                const status = (_c = err === null || err === void 0 ? void 0 : err.response) === null || _c === void 0 ? void 0 : _c.status;
                 if (status === 429 && attempt < MAX_ATTEMPTS - 1) {
-                    const retryAfterRaw = (_c = (_b = err === null || err === void 0 ? void 0 : err.response) === null || _b === void 0 ? void 0 : _b.headers) === null || _c === void 0 ? void 0 : _c['retry-after'];
+                    const retryAfterRaw = (_e = (_d = err === null || err === void 0 ? void 0 : err.response) === null || _d === void 0 ? void 0 : _d.headers) === null || _e === void 0 ? void 0 : _e['retry-after'];
                     const serverHintMs = retryAfterRaw ? Math.ceil(Number(retryAfterRaw) * 1000) : 0;
                     const baseDelay = BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length - 1)];
                     const jitter = Math.floor(Math.random() * 1000);
@@ -1306,6 +1315,11 @@ exports.generateTTS = (0, https_2.onCall)({
         await file.save(audioBuffer, {
             metadata: { contentType: 'audio/mpeg' },
         });
+        // 일일 호출 카운터 +1 (Storage 저장 성공 후 차감)
+        await usageRef.set({
+            count: admin.firestore.FieldValue.increment(1),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
         // 서명된 URL 반환 (긴 텍스트도 안전하게 처리)
         const [signedUrl] = await file.getSignedUrl({
             action: 'read',
@@ -1318,7 +1332,7 @@ exports.generateTTS = (0, https_2.onCall)({
         // 안전한 필드만 남긴다.
         logger.error('TTS 생성 실패:', {
             message: error === null || error === void 0 ? void 0 : error.message,
-            status: (_d = error === null || error === void 0 ? void 0 : error.response) === null || _d === void 0 ? void 0 : _d.status,
+            status: (_f = error === null || error === void 0 ? void 0 : error.response) === null || _f === void 0 ? void 0 : _f.status,
             code: error === null || error === void 0 ? void 0 : error.code,
             cacheKey,
         });

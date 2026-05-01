@@ -1455,6 +1455,9 @@ export function BiblePage() {
       setTtsPlaying(key);
       return;
     }
+    if (!window.confirm('권 전체를 듣습니다. 처음 듣는 경우 시간이 걸릴 수 있습니다. 계속하시겠습니까?')) {
+      return;
+    }
     setTtsPaused(null);
     if (audioRef.current) audioRef.current.pause();
     setTtsLoading(key);
@@ -1534,6 +1537,9 @@ export function BiblePage() {
       await audioRef.current?.play();
       setTtsPaused(null);
       setTtsPlaying(key);
+      return;
+    }
+    if (!window.confirm('권 전체를 듣습니다. 처음 듣는 경우 시간이 걸릴 수 있습니다. 계속하시겠습니까?')) {
       return;
     }
     setTtsPaused(null);
@@ -1680,6 +1686,9 @@ export function BiblePage() {
       await audioRef.current?.play();
       setTtsPaused(null);
       setTtsPlaying(key);
+      return;
+    }
+    if (!window.confirm('권 전체를 듣습니다. 처음 듣는 경우 시간이 걸릴 수 있습니다. 계속하시겠습니까?')) {
       return;
     }
     setTtsPaused(null);

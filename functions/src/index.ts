@@ -1455,7 +1455,7 @@ export const generateTTS = onCall(
     const file = bucket().file(filePath);
 
     try {
-      // 1. Storage 캐시 확인 — 캐시된 경우 서명된 URL 반환
+      // 1. Storage 캐시 확인 — 캐시된 경우 서명된 URL 반환 (한도 차감 없음)
       const [exists] = await file.exists();
       if (exists) {
         const [signedUrl] = await file.getSignedUrl({
@@ -1463,6 +1463,16 @@ export const generateTTS = onCall(
           expires: Date.now() + 3600 * 1000, // 1시간
         });
         return { success: true, audioUrl: signedUrl, cached: true };
+      }
+
+      // 사용자별 하루 TTS 호출 제한 (KST 기준, 캐시 미스 = 새 절 첫 청취만 차감)
+      const uid = request.auth.uid;
+      const todayKst = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+      const usageRef = db.doc(`users/${uid}/ttsUsage/${todayKst}`);
+      const usageSnap = await usageRef.get();
+      const currentCount = usageSnap.exists ? (usageSnap.data()?.count ?? 0) : 0;
+      if (currentCount >= 500) {
+        throw new HttpsError('resource-exhausted', '오늘 TTS 사용 한도를 초과했습니다');
       }
 
       // 2. OpenAI TTS 생성
@@ -1535,6 +1545,12 @@ export const generateTTS = onCall(
       await file.save(audioBuffer, {
         metadata: { contentType: 'audio/mpeg' },
       });
+
+      // 일일 호출 카운터 +1 (Storage 저장 성공 후 차감)
+      await usageRef.set({
+        count: admin.firestore.FieldValue.increment(1),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
 
       // 서명된 URL 반환 (긴 텍스트도 안전하게 처리)
       const [signedUrl] = await file.getSignedUrl({
