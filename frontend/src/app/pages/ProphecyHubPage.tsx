@@ -1,5 +1,6 @@
 import { ChevronLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 export function ProphecyHubPage() {
   const navigate = useNavigate();
@@ -29,7 +30,7 @@ export function ProphecyHubPage() {
         </div>
       </div>
 
-      {/* 카드 2개 (세로 배치) */}
+      {/* 카드 3개 (세로 배치) */}
       <div className="flex flex-col gap-4">
         <button
           type="button"
@@ -50,6 +51,33 @@ export function ProphecyHubPage() {
 
         <button
           type="button"
+          onClick={() => toast.info('준비 중입니다. 곧 만나요! 🚀')}
+          className="w-full text-left rounded-2xl p-6 transition-all hover:shadow-lg active:scale-[0.99] touch-manipulation"
+          style={{
+            backgroundColor: '#1A3C6E',
+            color: '#fff',
+            boxShadow: '0 6px 16px -10px rgba(26,60,110,0.4)',
+          }}
+        >
+          <div className="text-3xl mb-3">🌐</div>
+          <h2 className="text-lg font-bold mb-1.5">사전설정으로 미래 예언</h2>
+          <p className="text-sm leading-relaxed mb-3" style={{ color: 'rgba(255,255,255,0.8)' }}>
+            미래인재상 예언 등 — 곧 만나요!
+          </p>
+          <span
+            className="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full"
+            style={{
+              backgroundColor: 'rgba(255,255,255,0.15)',
+              color: 'rgba(255,255,255,0.85)',
+              letterSpacing: '0.02em',
+            }}
+          >
+            🚧 준비 중
+          </span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => navigate('/novel-studio')}
           className="w-full text-left rounded-2xl p-6 transition-all hover:shadow-lg active:scale-[0.99] touch-manipulation"
           style={{
@@ -58,10 +86,10 @@ export function ProphecyHubPage() {
             boxShadow: '0 6px 16px -10px rgba(26,60,110,0.4)',
           }}
         >
-          <div className="text-3xl mb-3">✨</div>
-          <h2 className="text-lg font-bold mb-1.5">사전설정으로 예언</h2>
+          <div className="text-3xl mb-3">✍️</div>
+          <h2 className="text-lg font-bold mb-1.5">나도 작가</h2>
           <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.8)' }}>
-            처음부터 직접 설정하여 나만의 예언을 만듭니다
+            처음부터 직접 설정하여 나만의 예언 이야기를 만듭니다
           </p>
         </button>
       </div>
