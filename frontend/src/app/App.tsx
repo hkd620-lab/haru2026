@@ -116,7 +116,7 @@ function TodayQuoteWrapper() {
     }
     (async () => {
       try {
-        const ref = doc(db, 'users', user.uid);
+        const ref = doc(db, `users/${user.uid}/settings/settings`);
         const snap = await getDoc(ref);
         if (snap.exists()) {
           const data = snap.data() as { quoteType?: string };

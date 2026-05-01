@@ -4,8 +4,10 @@ import bibleQuotes from '../../data/bible_quotes.json';
 
 interface QuoteItem {
   text: string;
+  original?: string;
   source?: string;
   author?: string;
+  occupation?: string;
   reference?: string;
 }
 
@@ -33,7 +35,11 @@ export function TodayQuote({ quoteType, pageKey = 0 }: TodayQuoteProps) {
 
   if (!todayQuote) return null;
 
-  const sourceLabel = todayQuote.source ?? todayQuote.author ?? todayQuote.reference;
+  const sourceLabel = isBible
+    ? todayQuote.reference
+    : todayQuote.author && todayQuote.occupation
+      ? `${todayQuote.author} (${todayQuote.occupation})`
+      : todayQuote.author ?? todayQuote.source;
 
   return (
     <div
@@ -59,8 +65,17 @@ export function TodayQuote({ quoteType, pageKey = 0 }: TodayQuoteProps) {
           className="text-sm leading-relaxed"
           style={{ color: '#1A3C6E', fontWeight: 500 }}
         >
-          {todayQuote.text}
+          “{todayQuote.text}”
         </p>
+        {todayQuote.original && (
+          <p
+            className="text-xs mt-2 leading-relaxed"
+            style={{ color: '#666', fontStyle: 'italic' }}
+          >
+            <span style={{ fontWeight: 600, marginRight: 4 }}>원문:</span>
+            {todayQuote.original}
+          </p>
+        )}
         {sourceLabel && (
           <p
             className="text-xs mt-2 text-right"

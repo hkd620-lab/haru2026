@@ -71,8 +71,8 @@ export function SettingsPage() {
   const loadQuoteType = async () => {
     if (!user?.uid) return;
     try {
-      const userRef = doc(db, 'users', user.uid);
-      const snap = await getDoc(userRef);
+      const settingsRef = doc(db, `users/${user.uid}/settings/settings`);
+      const snap = await getDoc(settingsRef);
       if (snap.exists()) {
         const data = snap.data() as { quoteType?: 'classic' | 'bible' };
         if (data.quoteType === 'bible' || data.quoteType === 'classic') {
@@ -95,8 +95,8 @@ export function SettingsPage() {
 
     setIsSavingQuoteType(true);
     try {
-      const userRef = doc(db, 'users', user.uid);
-      await setDoc(userRef, { quoteType: next }, { merge: true });
+      const settingsRef = doc(db, `users/${user.uid}/settings/settings`);
+      await setDoc(settingsRef, { quoteType: next }, { merge: true });
       setQuoteType(next);
       toast.success(next === 'bible' ? '성경 말씀으로 변경되었습니다.' : '동서양 명언으로 변경되었습니다.');
     } catch (e) {

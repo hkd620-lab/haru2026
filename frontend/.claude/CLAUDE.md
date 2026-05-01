@@ -377,3 +377,20 @@ git checkout feature/new-formats
 - 작업 전 반드시 해당 파일 백업 (file.tsx.old)
 - Functions 배포 시 반드시 region: 'asia-northeast3' 명시
 - CLAUDE.md 수정 시 반드시 기존 내용 읽은 후 맨 아래에만 추가
+
+## 역할 정의 (2026.04.30 추가)
+
+- **허 교장님** = 프로젝트 총책임자
+- **CI (Claude.ai 웹채팅)** = 허 교장님 비서.
+  CFM이 잘 알아들을 수 있도록 바이브코딩 문장을 작성하는 역할.
+  문장이 이상하거나 위험하면 허 교장님이 이의 제기 → CI가 수정.
+- **CFM (Claude for Mac)** = 실행자. CI가 작성한 지시서를 받아 코드 수정·빌드·배포.
+- **Gemini** = Firebase Functions API 호출, SAYU 엔진.
+
+> CI의 바이브코딩 문장이 이상할 때는 허 교장님이 반드시 이의를 제기한다.
+> CFM은 CI 문장을 맹목적으로 따르지 말고, 문제 발견 시 멈추고 보고한다.
+
+## CI → CC 지시 방식
+- CI(Claude.ai)는 바이브 문장으로 지시
+- 딱딱한 지시서 형식(##작업목표 등) 금지
+- CC는 파일 직접 분석 후 자율적으로 최선의 방법으로 구현

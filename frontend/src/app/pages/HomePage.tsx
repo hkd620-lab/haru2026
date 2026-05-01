@@ -164,49 +164,6 @@ export function HomePage() {
         <div className="h-2" />
       </section>
 
-      {/* Bottom tabs — sticky, safe-area aware */}
-      <nav
-        aria-label="주요 메뉴"
-        className="
-          sticky bottom-0 z-10
-          border-t border-haru-navy/10 bg-haru-tabbg/95 backdrop-blur
-          pb-[env(safe-area-inset-bottom)]
-        "
-      >
-        <ul className="flex items-stretch justify-around px-1.5 pt-2">
-          {visibleTabs.map((t) => {
-            const isActive =
-              t.href === "/"
-                ? location.pathname === "/"
-                : location.pathname === t.href || location.pathname.startsWith(t.href + "/");
-            return (
-              <li key={t.l} className="flex-1">
-                <Link
-                  to={t.href}
-                  aria-current={isActive ? "page" : undefined}
-                  className={`
-                    relative flex w-full min-h-[44px] flex-col items-center justify-center gap-0.5
-                    rounded-md px-1 pt-1 pb-2 select-none touch-manipulation
-                    active:scale-95 transition-transform
-                    ${isActive ? "text-haru-navy" : "text-haru-navy/55"}
-                  `}
-                >
-                  <TabIcon name={t.i} />
-                  <span
-                    className={`whitespace-nowrap text-[9.5px] tracking-[0.2px]
-                      ${isActive ? "font-bold" : "font-medium"}`}
-                  >
-                    {t.l}
-                  </span>
-                  {isActive && (
-                    <span className="absolute bottom-1 h-0.5 w-3.5 rounded-sm bg-haru-point" />
-                  )}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
     </main>
   );
 }

@@ -687,7 +687,7 @@ export function RecordPage() {
 
           {/* 카테고리 선택 */}
           <div className="flex gap-2 mb-3 overflow-x-auto">
-            {(['생활', '업무', '하루학습', '하루LAW', 'HARU주식관리', 'HARU예언'] as (Category | 'HARUraw' | '하루학습')[]).map((category) => (
+            {(['생활', '업무'] as (Category | 'HARUraw' | '하루학습')[]).map((category) => (
               <button
                 key={category}
                 onMouseEnter={() => setHoveredCategory(category)}
