@@ -11,7 +11,7 @@ export function BottomNav() {
 
   const baseItems = [
     { path: '/', icon: Home, label: 'HARU' },
-    { path: '/record', icon: BookOpen, label: '기록' },
+    { path: '/record-hub', icon: BookOpen, label: '기록' },
     { path: '/sayu', icon: Sparkles, label: 'SAYU·다듬기' },
     { path: '/settings', icon: Settings, label: '설정' },
   ];
