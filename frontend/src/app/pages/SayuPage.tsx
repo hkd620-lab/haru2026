@@ -222,7 +222,7 @@ export function SayuPage() {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string; recordId?: string }[]>([]);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고', 'SNS검색기록']));
   const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
   // 📊 통계/합치기 모달
@@ -1181,16 +1181,6 @@ export function SayuPage() {
         {/* 뷰 전환 버튼 */}
         <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: '#1A3C6E' }}>
           <button
-            onClick={() => setViewMode('calendar')}
-            className="flex-1 py-1.5 text-sm font-medium transition-all"
-            style={{
-              backgroundColor: viewMode === 'calendar' ? '#1A3C6E' : 'transparent',
-              color: viewMode === 'calendar' ? '#FAF9F6' : '#1A3C6E',
-            }}
-          >
-            달력
-          </button>
-          <button
             onClick={() => setViewMode('list')}
             className="flex-1 py-1.5 text-sm font-medium transition-all"
             style={{
@@ -1199,6 +1189,16 @@ export function SayuPage() {
             }}
           >
             목록
+          </button>
+          <button
+            onClick={() => setViewMode('calendar')}
+            className="flex-1 py-1.5 text-sm font-medium transition-all"
+            style={{
+              backgroundColor: viewMode === 'calendar' ? '#1A3C6E' : 'transparent',
+              color: viewMode === 'calendar' ? '#FAF9F6' : '#1A3C6E',
+            }}
+          >
+            달력
           </button>
         </div>
       </div>
