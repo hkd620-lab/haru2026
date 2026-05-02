@@ -42,6 +42,11 @@ export function SnsRecordsPage() {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [searchFilter, setSearchFilter] = useState<'all' | 'text' | 'photo' | 'video' | 'year'>('all');
 
+  const [timelinePage, setTimelinePage] = useState(1);
+  const [searchPage, setSearchPage] = useState(1);
+  const PAGE_SIZE = 10;
+  const initialTabSet = useRef(false);
+
   const [selectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -53,17 +58,30 @@ export function SnsRecordsPage() {
         const colRef = collection(db, 'users', user.uid, 'snsRecords');
         const snap = await getDocs(query(colRef, orderBy('timestamp', 'desc')));
         if (cancelled) return;
-        const list: SnsRecord[] = snap.docs.map((d) => {
+        // 중복 제거: 같은 timestamp + 같은 텍스트는 1개만 유지 (timestamp desc 정렬이라 최신 doc 우선)
+        const seen = new Set<string>();
+        const list: SnsRecord[] = [];
+        snap.docs.forEach((d) => {
           const data = d.data() as any;
-          return {
+          const ts = typeof data.timestamp === 'number' ? data.timestamp : 0;
+          const text = data.text || '';
+          const key = `${ts}__${text}`;
+          if (seen.has(key)) return;
+          seen.add(key);
+          list.push({
             id: d.id,
             source: (data.source as Source) || 'facebook',
-            timestamp: typeof data.timestamp === 'number' ? data.timestamp : 0,
-            text: data.text || '',
+            timestamp: ts,
+            text,
             thumbnails: Array.isArray(data.thumbnails) ? data.thumbnails : [],
-          };
+          });
         });
         setRecords(list);
+        // 첫 진입 시 데이터가 있으면 타임라인 탭으로 자동 전환 (1회만)
+        if (!initialTabSet.current) {
+          initialTabSet.current = true;
+          if (list.length > 0) setTab('timeline');
+        }
       } catch (e) {
         console.error('SNS 기록 조회 실패:', e);
       } finally {
@@ -73,6 +91,9 @@ export function SnsRecordsPage() {
     load();
     return () => { cancelled = true; };
   }, [user, uploading]);
+
+  useEffect(() => { setTimelinePage(1); }, [records.length]);
+  useEffect(() => { setSearchPage(1); }, [searchKeyword, searchFilter]);
 
   const handleOpenFacebookDownload = () => {
     window.open('https://accountscenter.facebook.com/info_and_permissions/dyi/', '_blank', 'noopener,noreferrer');
@@ -174,6 +195,27 @@ export function SnsRecordsPage() {
 
   return (
     <div style={{ minHeight: 'calc(100vh - 56px - 80px)', background: COLOR_BG, padding: '20px 16px 32px' }}>
+      {uploading && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            background: 'rgba(250, 249, 246, 0.95)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <div style={{ width: 280, height: 360 }}>
+            <GrapeAnimation />
+          </div>
+          <p style={{ marginTop: 12, fontSize: 14, fontWeight: 600, color: COLOR_BLUE }}>
+            {uploadProgress || '처리 중...'}
+          </p>
+        </div>
+      )}
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
         <div style={{ marginBottom: 16 }}>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: COLOR_BLUE, letterSpacing: '-0.01em' }}>
@@ -334,7 +376,7 @@ export function SnsRecordsPage() {
                       cursor: uploading ? 'wait' : 'pointer',
                     }}
                   >
-                    {uploading ? `⏳ ${uploadProgress || '처리 중...'}` : '📦 ZIP 파일 선택하기'}
+                    {uploading ? '처리 중...' : '📦 ZIP 파일 선택하기'}
                   </button>
                   <p style={{ fontSize: 11, color: '#666', marginTop: 8 }}>
                     업로드 후 자동으로 분석이 시작돼요. 잠시만 기다려주세요.
@@ -358,18 +400,25 @@ export function SnsRecordsPage() {
             ) : records.length === 0 ? (
               <EmptyState message="아직 가져온 SNS 기록이 없어요." subMessage="업로드 탭에서 ZIP을 올려주세요." />
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {records.map((r) => (
-                  <PostCard
-                    key={r.id}
-                    record={r}
-                    formatDate={formatDate}
-                    isPremium={isPremium}
-                    onConvert={() => requirePremium('AI 일기로 변환')}
-                    onSayu={() => requirePremium('SAYU 다듬기')}
-                  />
-                ))}
-              </div>
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {records.slice((timelinePage - 1) * PAGE_SIZE, timelinePage * PAGE_SIZE).map((r) => (
+                    <PostCard
+                      key={r.id}
+                      record={r}
+                      formatDate={formatDate}
+                      isPremium={isPremium}
+                      onConvert={() => requirePremium('AI 일기로 변환')}
+                      onSayu={() => requirePremium('SAYU 다듬기')}
+                    />
+                  ))}
+                </div>
+                <Pagination
+                  page={timelinePage}
+                  totalPages={Math.max(1, Math.ceil(records.length / PAGE_SIZE))}
+                  onChange={setTimelinePage}
+                />
+              </>
             )}
           </section>
         )}
@@ -422,21 +471,35 @@ export function SnsRecordsPage() {
                 );
               })}
             </div>
-            {filteredRecords.length === 0 ? (
+            {loadingRecords ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 0' }}>
+                <div style={{ width: 200, height: 260 }}>
+                  <GrapeAnimation />
+                </div>
+                <p style={{ marginTop: 8, fontSize: 12, color: '#666' }}>검색 데이터를 불러오는 중...</p>
+              </div>
+            ) : filteredRecords.length === 0 ? (
               <EmptyState message="검색 결과가 없어요." />
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {filteredRecords.map((r) => (
-                  <PostCard
-                    key={r.id}
-                    record={r}
-                    formatDate={formatDate}
-                    isPremium={isPremium}
-                    onConvert={() => requirePremium('AI 일기로 변환')}
-                    onSayu={() => requirePremium('SAYU 다듬기')}
-                  />
-                ))}
-              </div>
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {filteredRecords.slice((searchPage - 1) * PAGE_SIZE, searchPage * PAGE_SIZE).map((r) => (
+                    <PostCard
+                      key={r.id}
+                      record={r}
+                      formatDate={formatDate}
+                      isPremium={isPremium}
+                      onConvert={() => requirePremium('AI 일기로 변환')}
+                      onSayu={() => requirePremium('SAYU 다듬기')}
+                    />
+                  ))}
+                </div>
+                <Pagination
+                  page={searchPage}
+                  totalPages={Math.max(1, Math.ceil(filteredRecords.length / PAGE_SIZE))}
+                  onChange={setSearchPage}
+                />
+              </>
             )}
           </section>
         )}
@@ -555,6 +618,69 @@ function PostCard({
           ✨ SAYU 다듬기 {!isPremium && '🔒'}
         </button>
       </div>
+    </div>
+  );
+}
+
+function Pagination({
+  page,
+  totalPages,
+  onChange,
+}: {
+  page: number;
+  totalPages: number;
+  onChange: (p: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+  const canPrev = page > 1;
+  const canNext = page < totalPages;
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        marginTop: 16,
+      }}
+    >
+      <button
+        type="button"
+        disabled={!canPrev}
+        onClick={() => canPrev && onChange(page - 1)}
+        style={{
+          padding: '8px 14px',
+          borderRadius: 8,
+          border: `1px solid ${COLOR_BORDER}`,
+          background: '#fff',
+          color: canPrev ? COLOR_BLUE : '#bbb',
+          fontSize: 13,
+          fontWeight: 600,
+          cursor: canPrev ? 'pointer' : 'not-allowed',
+        }}
+      >
+        ← 이전
+      </button>
+      <span style={{ fontSize: 12, color: '#666', fontWeight: 600 }}>
+        {page} / {totalPages}
+      </span>
+      <button
+        type="button"
+        disabled={!canNext}
+        onClick={() => canNext && onChange(page + 1)}
+        style={{
+          padding: '8px 14px',
+          borderRadius: 8,
+          border: `1px solid ${COLOR_BORDER}`,
+          background: '#fff',
+          color: canNext ? COLOR_BLUE : '#bbb',
+          fontSize: 13,
+          fontWeight: 600,
+          cursor: canNext ? 'pointer' : 'not-allowed',
+        }}
+      >
+        다음 →
+      </button>
     </div>
   );
 }

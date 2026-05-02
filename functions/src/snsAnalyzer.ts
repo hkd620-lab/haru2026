@@ -114,7 +114,20 @@ export const analyzeFacebookZip = onCall(
     }
 
     let saved = 0;
+    let skippedDuplicates = 0;
     const colRef = db.collection('users').doc(uid).collection('snsRecords');
+
+    // 기존 저장 데이터의 (timestamp + text) 키 미리 로드 → 중복 저장 방지
+    const existingKeys = new Set<string>();
+    try {
+      const existingSnap = await colRef.get();
+      existingSnap.forEach((d) => {
+        const data = d.data() as any;
+        existingKeys.add(`${data.timestamp || 0}__${fixFbEncoding(data.text || '')}`);
+      });
+    } catch (e) {
+      logger.warn('기존 snsRecords 로드 실패:', e);
+    }
 
     for (const post of allPosts) {
       const ts =
@@ -136,6 +149,14 @@ export const analyzeFacebookZip = onCall(
 
       // 텍스트와 사진이 모두 없으면 스킵
       if (!text && mediaItems.length === 0) continue;
+
+      // 중복 저장 방지: 같은 timestamp + 같은 텍스트는 스킵
+      const dedupKey = `${ts}__${fixFbEncoding(text)}`;
+      if (existingKeys.has(dedupKey)) {
+        skippedDuplicates++;
+        continue;
+      }
+      existingKeys.add(dedupKey);
 
       const docRef = colRef.doc();
       const thumbnails: string[] = [];
@@ -185,7 +206,7 @@ export const analyzeFacebookZip = onCall(
       logger.warn('원본 ZIP 삭제 실패:', e);
     }
 
-    logger.info(`analyzeFacebookZip 완료: uid=${uid}, saved=${saved}`);
+    logger.info(`analyzeFacebookZip 완료: uid=${uid}, saved=${saved}, skippedDuplicates=${skippedDuplicates}`);
     return { success: true, count: saved };
   }
 );
