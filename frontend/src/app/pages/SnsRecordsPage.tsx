@@ -39,8 +39,20 @@ export function SnsRecordsPage() {
   const [records, setRecords] = useState<SnsRecord[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(false);
 
+  // 검색 입력값 (draft) — 검색 버튼을 눌러야 applied로 반영
   const [searchKeyword, setSearchKeyword] = useState('');
   const [searchFilter, setSearchFilter] = useState<'all' | 'text' | 'photo' | 'video' | 'year'>('all');
+  const [searchDateFrom, setSearchDateFrom] = useState('');
+  const [searchDateTo, setSearchDateTo] = useState('');
+  const [searchSource, setSearchSource] = useState<'all' | 'facebook' | 'instagram'>('all');
+
+  const [appliedSearch, setAppliedSearch] = useState<{
+    keyword: string;
+    filter: 'all' | 'text' | 'photo' | 'video' | 'year';
+    dateFrom: string;
+    dateTo: string;
+    source: 'all' | 'facebook' | 'instagram';
+  }>({ keyword: '', filter: 'all', dateFrom: '', dateTo: '', source: 'all' });
 
   const [timelinePage, setTimelinePage] = useState(1);
   const [searchPage, setSearchPage] = useState(1);
@@ -93,7 +105,7 @@ export function SnsRecordsPage() {
   }, [user, uploading]);
 
   useEffect(() => { setTimelinePage(1); }, [records.length]);
-  useEffect(() => { setSearchPage(1); }, [searchKeyword, searchFilter]);
+  useEffect(() => { setSearchPage(1); }, [appliedSearch]);
 
   const handleOpenFacebookDownload = () => {
     window.open('https://accountscenter.facebook.com/info_and_permissions/dyi/', '_blank', 'noopener,noreferrer');
@@ -154,15 +166,32 @@ export function SnsRecordsPage() {
   };
 
   const filteredRecords = useMemo(() => {
-    const kw = searchKeyword.trim().toLowerCase();
+    const kw = appliedSearch.keyword.trim().toLowerCase();
+    const fromMs = appliedSearch.dateFrom ? new Date(appliedSearch.dateFrom + 'T00:00:00').getTime() : 0;
+    const toMs = appliedSearch.dateTo ? new Date(appliedSearch.dateTo + 'T23:59:59').getTime() : 0;
     return records.filter((r) => {
-      if (searchFilter === 'text' && (r.thumbnails?.length ?? 0) > 0) return false;
-      if (searchFilter === 'photo' && (r.thumbnails?.length ?? 0) === 0) return false;
-      if (searchFilter === 'video') return false;
+      if (appliedSearch.source !== 'all' && r.source !== appliedSearch.source) return false;
+      const hasPhoto = (r.thumbnails?.length ?? 0) > 0;
+      if (appliedSearch.filter === 'text' && hasPhoto) return false;
+      if (appliedSearch.filter === 'photo' && !hasPhoto) return false;
+      if (appliedSearch.filter === 'video') return false;
+      const tsMs = r.timestamp * (r.timestamp < 1e12 ? 1000 : 1);
+      if (fromMs && tsMs < fromMs) return false;
+      if (toMs && tsMs > toMs) return false;
       if (kw && !r.text.toLowerCase().includes(kw)) return false;
       return true;
     });
-  }, [records, searchKeyword, searchFilter]);
+  }, [records, appliedSearch]);
+
+  const handleApplySearch = () => {
+    setAppliedSearch({
+      keyword: searchKeyword,
+      filter: searchFilter,
+      dateFrom: searchDateFrom,
+      dateTo: searchDateTo,
+      source: searchSource,
+    });
+  };
 
   const formatDate = (ts: number) => {
     if (!ts) return '';
@@ -217,13 +246,33 @@ export function SnsRecordsPage() {
         </div>
       )}
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
-        <div style={{ marginBottom: 16 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: COLOR_BLUE, letterSpacing: '-0.01em' }}>
-            📱 SNS 기록 가져오기
-          </h1>
-          <p style={{ fontSize: 13, color: '#666', marginTop: 6 }}>
-            Facebook · Instagram 기록을 AI로 정리해드려요.
-          </p>
+        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+          <div>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: COLOR_BLUE, letterSpacing: '-0.01em' }}>
+              📱 snsHARU보기
+            </h1>
+            <p style={{ fontSize: 13, color: '#666', marginTop: 6 }}>
+              Facebook · Instagram 기록을 AI로 정리해드려요.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/sayu', { state: { mainTab: 'sns' } })}
+            style={{
+              flexShrink: 0,
+              padding: '8px 12px',
+              borderRadius: 999,
+              border: `1px solid ${COLOR_GREEN}`,
+              background: '#fff',
+              color: COLOR_GREEN,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            📂 snsHARU보기 →
+          </button>
         </div>
 
         {/* 탭 헤더 */}
@@ -238,7 +287,7 @@ export function SnsRecordsPage() {
           {([
             { k: 'upload', label: '업로드' },
             { k: 'timeline', label: '타임라인' },
-            { k: 'search', label: '검색' },
+            { k: 'search', label: 'snsHARU보기' },
             { k: 'ai', label: 'AI정리' },
           ] as { k: TabKey; label: string }[]).map((t) => {
             const active = tab === t.k;
@@ -423,7 +472,7 @@ export function SnsRecordsPage() {
           </section>
         )}
 
-        {/* === 탭3: 검색 === */}
+        {/* === 탭3: snsHARU보기 (고도화 검색) === */}
         {tab === 'search' && (
           <section>
             <input
@@ -437,10 +486,84 @@ export function SnsRecordsPage() {
                 borderRadius: 10,
                 border: `1px solid ${COLOR_BORDER}`,
                 fontSize: 14,
-                marginBottom: 12,
+                marginBottom: 8,
                 outline: 'none',
+                boxSizing: 'border-box',
               }}
             />
+
+            {/* 날짜 범위 */}
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', margin: '8px 0 6px' }}>
+              날짜 범위
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 6, marginBottom: 10 }}>
+              <input
+                type="date"
+                value={searchDateFrom}
+                onChange={(e) => setSearchDateFrom(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  border: `1px solid ${COLOR_BORDER}`,
+                  fontSize: 13,
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              />
+              <input
+                type="date"
+                value={searchDateTo}
+                onChange={(e) => setSearchDateTo(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  border: `1px solid ${COLOR_BORDER}`,
+                  fontSize: 13,
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            {/* 출처 필터 */}
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', margin: '8px 0 6px' }}>
+              출처
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+              {([
+                { k: 'all', label: '전체' },
+                { k: 'facebook', label: '📘 Facebook' },
+                { k: 'instagram', label: '📷 Instagram' },
+              ] as { k: typeof searchSource; label: string }[]).map((c) => {
+                const active = searchSource === c.k;
+                return (
+                  <button
+                    key={c.k}
+                    type="button"
+                    onClick={() => setSearchSource(c.k)}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 999,
+                      border: `1px solid ${active ? COLOR_BLUE : COLOR_BORDER}`,
+                      background: active ? COLOR_BLUE : '#fff',
+                      color: active ? '#fff' : COLOR_BLUE,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {c.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 타입 필터 */}
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', margin: '8px 0 6px' }}>
+              타입
+            </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
               {([
                 { k: 'all', label: '전체' },
@@ -471,6 +594,32 @@ export function SnsRecordsPage() {
                 );
               })}
             </div>
+
+            {/* 검색 버튼 */}
+            <button
+              type="button"
+              onClick={handleApplySearch}
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                borderRadius: 10,
+                border: 'none',
+                background: COLOR_BLUE,
+                color: '#fff',
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: 'pointer',
+                marginBottom: 14,
+              }}
+            >
+              🔎 검색하기
+            </button>
+
+            {/* 검색 결과 건수 */}
+            <p style={{ fontSize: 12, color: '#666', marginBottom: 10 }}>
+              검색 결과: <b>{filteredRecords.length}</b>건
+            </p>
+
             {loadingRecords ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 0' }}>
                 <div style={{ width: 200, height: 260 }}>
