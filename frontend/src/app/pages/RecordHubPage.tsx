@@ -3,8 +3,20 @@ import { useNavigate } from 'react-router-dom';
 export function RecordHubPage() {
   const navigate = useNavigate();
 
-  const lifeRecords = ['일기', '에세이', '여행기록', '텃밭일지', '반려동물', '육아일기'];
-  const workRecords = ['선교보고', '일반보고', '업무일지', '메모'];
+  const lifeRecords: { label: string; format: string }[] = [
+    { label: '일기', format: '일기' },
+    { label: '에세이', format: '에세이' },
+    { label: '여행기록', format: '여행기록' },
+    { label: '텃밭일지', format: '텃밭일지' },
+    { label: '반려동물', format: '애완동물관찰일지' },
+    { label: '육아일기', format: '육아일기' },
+  ];
+  const workRecords: { label: string; format: string }[] = [
+    { label: '선교보고', format: '선교보고' },
+    { label: '일반보고', format: '일반보고' },
+    { label: '업무일지', format: '업무일지' },
+    { label: '메모', format: '메모' },
+  ];
   const knowledgeCards: { icon: string; label: string; desc?: string; path: string; isNew?: boolean; accent?: string }[] = [
     { icon: '🔮', label: 'HARU예언', path: '/prophecy-hub' },
     { icon: '⚖️', label: '하루LAW', path: '/record' },
@@ -85,11 +97,11 @@ export function RecordHubPage() {
               gap: 8,
             }}
           >
-            {lifeRecords.map((label) => (
+            {lifeRecords.map(({ label, format }) => (
               <button
                 key={label}
                 type="button"
-                onClick={() => navigate('/record')}
+                onClick={() => navigate('/record', { state: { format } })}
                 style={recordButtonStyle}
               >
                 {label}
@@ -108,11 +120,11 @@ export function RecordHubPage() {
               gap: 8,
             }}
           >
-            {workRecords.map((label) => (
+            {workRecords.map(({ label, format }) => (
               <button
                 key={label}
                 type="button"
-                onClick={() => navigate('/record')}
+                onClick={() => navigate('/record', { state: { format } })}
                 style={recordButtonStyle}
               >
                 {label}

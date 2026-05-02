@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { DiaryLearnModal } from '../components/DiaryLearnModal';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Calendar } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { firestoreService } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { RecordTitleAnimation } from '../components/RecordTitleAnimation';
@@ -133,6 +133,7 @@ export function RecordPage() {
   );
 
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
   const isDeveloper = user?.uid === DEVELOPER_UID;
@@ -415,6 +416,19 @@ export function RecordPage() {
     setSelectedFormats([format]);
     setFormatModalOpen(true);
   };
+
+  // RecordHubPage에서 format을 state로 전달받아 들어왔다면 자동으로 형식 모달 열기
+  const autoOpenedRef = useRef(false);
+  useEffect(() => {
+    if (autoOpenedRef.current) return;
+    if (!user) return;
+    const incomingFormat = (location.state as any)?.format as string | undefined;
+    if (!incomingFormat) return;
+    autoOpenedRef.current = true;
+    openFormatDirectly(incomingFormat as RecordFormat);
+    // state 소비 후 history에서 제거 — 새로고침/뒤로가기 시 재열림 방지
+    navigate(location.pathname, { replace: true, state: null });
+  }, [user, location.state]);
 
   const handleSave = async () => {
     if (!selectedFormats || selectedFormats.length === 0) {
