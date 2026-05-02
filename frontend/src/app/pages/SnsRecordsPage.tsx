@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { db, storage, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
+import { GrapeAnimation } from '../components/GrapeAnimation';
 
 const COLOR_BLUE = '#1A3C6E';
 const COLOR_BG = '#FAF9F6';
@@ -26,8 +27,8 @@ interface SnsRecord {
 
 export function SnsRecordsPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { isPremium } = useSubscription();
+  const { user, loading: authLoading } = useAuth();
+  const { isPremium, loading: subLoading } = useSubscription();
 
   const [tab, setTab] = useState<TabKey>('upload');
   const [source, setSource] = useState<Source>('facebook');
@@ -147,6 +148,29 @@ export function SnsRecordsPage() {
     const d = new Date(ts * (ts < 1e12 ? 1000 : 1));
     return d.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
   };
+
+  if (authLoading || subLoading) {
+    return (
+      <div
+        style={{
+          minHeight: 'calc(100vh - 56px - 80px)',
+          background: COLOR_BG,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px 16px',
+        }}
+      >
+        <div style={{ width: 240, height: 320 }}>
+          <GrapeAnimation />
+        </div>
+        <p style={{ marginTop: 12, fontSize: 13, fontWeight: 600, color: COLOR_BLUE }}>
+          SNS 기록 페이지 준비 중...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: 'calc(100vh - 56px - 80px)', background: COLOR_BG, padding: '20px 16px 32px' }}>
@@ -325,7 +349,12 @@ export function SnsRecordsPage() {
         {tab === 'timeline' && (
           <section>
             {loadingRecords ? (
-              <p style={{ textAlign: 'center', color: '#888', padding: 32 }}>불러오는 중...</p>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 0' }}>
+                <div style={{ width: 200, height: 260 }}>
+                  <GrapeAnimation />
+                </div>
+                <p style={{ marginTop: 8, fontSize: 12, color: '#666' }}>SNS 기록을 불러오는 중...</p>
+              </div>
             ) : records.length === 0 ? (
               <EmptyState message="아직 가져온 SNS 기록이 없어요." subMessage="업로드 탭에서 ZIP을 올려주세요." />
             ) : (

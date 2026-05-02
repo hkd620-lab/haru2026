@@ -122,5 +122,10 @@ service cloud.firestore {
       allow read, write, delete: if request.auth != null
         && request.auth.uid == userId;
     }
+
+    // SNS 기록 가져오기 (Facebook ZIP 분석 결과)
+    match /users/{uid}/snsRecords/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
   }
 }
