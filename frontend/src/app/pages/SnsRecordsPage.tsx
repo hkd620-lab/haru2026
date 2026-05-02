@@ -467,7 +467,7 @@ export function SnsRecordsPage() {
               type="text"
               value={searchKeyword}
               onChange={(e) => setSearchKeyword(e.target.value)}
-              placeholder="예) 여행, 가족, 생일, 결혼, 졸업, 친구, 교육, 사업, 직장, 감사, 추억"
+              placeholder="키워드로 검색  예) 여행, 가족, 생일, 결혼, 졸업, 친구, 교육, 사업, 직장, 감사, 추억"
               style={{
                 width: '100%',
                 padding: '12px 14px',
