@@ -11,7 +11,6 @@ import type { RecordFormat } from '../types/haruTypes';
 import { collection, getDocs, orderBy, query, deleteDoc, doc, writeBatch, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { SnsHaruTab } from '../components/SnsHaruTab';
 
 // 목록 뷰에서 제목으로 쓸 첫 번째 필드 키
 const FORMAT_FIRST_FIELD: Record<string, string> = {
@@ -224,9 +223,6 @@ export function SayuPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string; recordId?: string }[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
-  const [mainTab, setMainTab] = useState<'records' | 'sns'>(
-    (location.state as any)?.mainTab === 'sns' ? 'sns' : 'records'
-  );
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고']));
   const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
   // 📊 통계/합치기 모달
@@ -1032,63 +1028,8 @@ export function SayuPage() {
   return (
     <>
     <style>{printStyle}</style>
-    {/* === 상단 메인 탭 (내 기록 / snsHARU보기) === */}
-    <div
-      className="no-print"
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-        gap: 6,
-        maxWidth: 896,
-        margin: '0 auto',
-        padding: '12px 16px 0',
-        background: '#EDE9F5',
-      }}
-    >
-      {(
-        [
-          { k: 'records', label: '📔 내 기록' },
-          { k: 'sns', label: '📱 snsHARU보기' },
-        ] as { k: 'records' | 'sns'; label: string }[]
-      ).map((t) => {
-        const active = mainTab === t.k;
-        return (
-          <button
-            key={t.k}
-            type="button"
-            onClick={() => {
-              if (t.k === 'sns') {
-                navigate('/sns-records');
-              } else {
-                setMainTab('records');
-              }
-            }}
-            style={{
-              padding: '10px 8px',
-              borderRadius: 10,
-              border: `1px solid ${active ? '#1A3C6E' : '#d1cee0'}`,
-              background: active ? '#1A3C6E' : '#fff',
-              color: active ? '#fff' : '#1A3C6E',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            {t.label}
-          </button>
-        );
-      })}
-    </div>
 
-    {mainTab === 'sns' && (
-      <div style={{ background: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px - 60px)' }}>
-        <div style={{ maxWidth: 896, margin: '0 auto' }}>
-          <SnsHaruTab />
-        </div>
-      </div>
-    )}
-
-    <div className="sayu-page-container no-print max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)', display: mainTab === 'records' ? 'block' : 'none' }}>
+    <div className="sayu-page-container no-print max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
       {/* 타이틀 + 가이드 */}
       <div className="mb-4">
         <div className="flex items-start justify-between mb-2">
@@ -1190,6 +1131,44 @@ export function SayuPage() {
       {/* ─── 목록 뷰 ─── */}
       {viewMode === 'list' && (
         <div>
+          {/* 외부 이동 버튼 — snsHARU / 나의 작품 */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            <button
+              type="button"
+              onClick={() => navigate('/sns-records')}
+              style={{
+                flex: 1,
+                padding: '12px 10px',
+                borderRadius: 10,
+                border: '1px solid #BBDDF5',
+                backgroundColor: '#E8F4FD',
+                color: '#1A3C6E',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              📱 snsHARU
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/prophecy-hub')}
+              style={{
+                flex: 1,
+                padding: '12px 10px',
+                borderRadius: 10,
+                border: '1px solid #D9D2EC',
+                backgroundColor: '#F0EDF8',
+                color: '#1A3C6E',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              📖 나의 작품
+            </button>
+          </div>
+
           {loading ? (
             <p className="text-center py-8 text-sm" style={{ color: '#999' }}>불러오는 중...</p>
           ) : !hasMonthRecords ? (
