@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { addDoc, collection, getDocs, orderBy, query, serverTimestamp } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
@@ -8,7 +8,6 @@ import { db, storage, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { GrapeAnimation } from '../components/GrapeAnimation';
-import { firestoreService } from '../services/firestoreService';
 
 const COLOR_BLUE = '#1A3C6E';
 const COLOR_BG = '#FAF9F6';
@@ -65,8 +64,8 @@ export function SnsRecordsPage() {
   const [autobioFrom, setAutobioFrom] = useState<string>('');
   const [autobioTo, setAutobioTo] = useState<string>('');
 
-  // 카드별 변환 진행상태
-  const [convertingId, setConvertingId] = useState<string | null>(null);
+  // 검색결과 저장 진행상태
+  const [savingSearch, setSavingSearch] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -205,55 +204,36 @@ export function SnsRecordsPage() {
     return d.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
   };
 
-  const tsToDateString = (ts: number): string => {
-    if (!ts) return new Date().toISOString().slice(0, 10);
-    const d = new Date(ts * (ts < 1e12 ? 1000 : 1));
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  };
-
-  const handleConvertToDiary = async (record: SnsRecord) => {
-    if (!requirePremium('AI 일기로 변환')) return;
+  const handleSaveSearchResults = async () => {
+    if (!requirePremium('검색결과 저장')) return;
     if (!user) return;
-    if (!record.text || record.text.trim().length === 0) {
-      toast.error('변환할 텍스트가 없습니다.');
+    if (filteredRecords.length === 0) {
+      toast.info('저장할 검색결과가 없습니다.');
       return;
     }
-    setConvertingId(record.id);
+    setSavingSearch(true);
     try {
-      const callable = httpsCallable(functions, 'convertSnsToDiary');
-      const res = await callable({
-        text: record.text,
-        source: record.source,
-        timestamp: record.timestamp,
-      });
-      const { diaryText } = (res.data || {}) as { diaryText?: string };
-      if (!diaryText) {
-        toast.error('AI 변환 결과가 비어있습니다.');
-        return;
-      }
-      const dateStr = tsToDateString(record.timestamp);
-      await firestoreService.saveRecord(user.uid, {
+      const today = new Date();
+      const y = today.getFullYear();
+      const m = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const dateStr = `${y}-${m}-${day}`;
+      const colRef = collection(db, 'users', user.uid, 'snsSearchHistory');
+      await addDoc(colRef, {
         date: dateStr,
-        formats: ['일기'],
-        content: '',
-        diary_오늘한일: diaryText,
-        source: record.source,
-      } as any);
-      toast.success('일기로 저장되었습니다');
+        keyword: appliedSearch.keyword,
+        source: appliedSearch.source,
+        type: appliedSearch.filter,
+        results: filteredRecords,
+        savedAt: serverTimestamp(),
+      });
+      toast.success('검색결과가 저장되었습니다');
     } catch (err: any) {
-      console.error('AI 일기 변환 실패:', err);
-      toast.error(err?.message || 'AI 변환에 실패했습니다.');
+      console.error('검색결과 저장 실패:', err);
+      toast.error(err?.message || '검색결과 저장에 실패했습니다.');
     } finally {
-      setConvertingId(null);
+      setSavingSearch(false);
     }
-  };
-
-  const handleSayuPolish = (record: SnsRecord) => {
-    if (!requirePremium('SAYU 다듬기')) return;
-    navigate('/sayu', { state: { snsText: record.text, snsSource: record.source, snsTimestamp: record.timestamp } });
   };
 
   const handleAutobioGenerate = () => {
@@ -286,7 +266,7 @@ export function SnsRecordsPage() {
 
   return (
     <div style={{ minHeight: 'calc(100vh - 56px - 80px)', background: COLOR_BG, padding: '20px 16px 32px' }}>
-      {(uploading || convertingId) && (
+      {(uploading || savingSearch) && (
         <div
           style={{
             position: 'fixed',
@@ -305,7 +285,7 @@ export function SnsRecordsPage() {
           <p style={{ marginTop: 12, fontSize: 14, fontWeight: 600, color: COLOR_BLUE }}>
             {uploading
               ? (uploadProgress || '처리 중...')
-              : 'AI가 일기로 변환 중...'}
+              : '검색결과 저장 중...'}
           </p>
         </div>
       )}
@@ -331,7 +311,7 @@ export function SnsRecordsPage() {
           {([
             { k: 'upload', label: '업로드' },
             { k: 'timeline', label: '타임라인' },
-            { k: 'autobio', label: '통합자서전생성' },
+            { k: 'autobio', label: '통합 나의 이야기 생성' },
           ] as { k: TabKey; label: string }[]).map((t) => {
             const active = tab === t.k;
             return (
@@ -616,11 +596,34 @@ export function SnsRecordsPage() {
                 fontSize: 14,
                 fontWeight: 700,
                 cursor: 'pointer',
-                marginBottom: 14,
+                marginBottom: 8,
               }}
             >
               🔎 검색하기
             </button>
+
+            {/* 검색결과 저장 버튼 — 결과가 1건 이상일 때만 노출 */}
+            {filteredRecords.length > 0 && (
+              <button
+                type="button"
+                onClick={handleSaveSearchResults}
+                disabled={savingSearch}
+                style={{
+                  width: '100%',
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  border: `1px solid ${COLOR_BLUE}`,
+                  background: '#fff',
+                  color: COLOR_BLUE,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: savingSearch ? 'wait' : 'pointer',
+                  marginBottom: 14,
+                }}
+              >
+                {savingSearch ? '저장 중...' : '🔖 검색결과 저장'}
+              </button>
+            )}
 
             {/* 검색 결과 건수 */}
             <p style={{ fontSize: 12, color: '#666', marginBottom: 10 }}>
@@ -646,9 +649,6 @@ export function SnsRecordsPage() {
                       key={r.id}
                       record={r}
                       formatDate={formatDate}
-                      isPremium={isPremium}
-                      onConvert={() => handleConvertToDiary(r)}
-                      onSayu={() => handleSayuPolish(r)}
                     />
                   ))}
                 </div>
@@ -802,15 +802,9 @@ export function SnsRecordsPage() {
 function PostCard({
   record,
   formatDate,
-  isPremium,
-  onConvert,
-  onSayu,
 }: {
   record: SnsRecord;
   formatDate: (ts: number) => string;
-  isPremium: boolean;
-  onConvert: () => void;
-  onSayu: () => void;
 }) {
   const lines = record.text.split('\n').slice(0, 3).join('\n');
   const truncated = record.text.length > 140 ? record.text.slice(0, 140) + '…' : lines;
@@ -844,14 +838,6 @@ function PostCard({
           ))}
         </div>
       )}
-      <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
-        <button type="button" onClick={onConvert} style={smallBtnStyle(isPremium)}>
-          ✏️ AI 일기로 변환 {!isPremium && '🔒'}
-        </button>
-        <button type="button" onClick={onSayu} style={smallBtnStyle(isPremium)}>
-          ✨ SAYU 다듬기 {!isPremium && '🔒'}
-        </button>
-      </div>
     </div>
   );
 }
@@ -959,17 +945,5 @@ const stepDescStyle: React.CSSProperties = {
   margin: '6px 0 0 0',
   lineHeight: 1.5,
 };
-
-const smallBtnStyle = (premium: boolean): React.CSSProperties => ({
-  flex: 1,
-  padding: '8px 10px',
-  borderRadius: 8,
-  border: `1px solid ${COLOR_BORDER}`,
-  background: '#fff',
-  color: premium ? COLOR_BLUE : '#888',
-  fontSize: 12,
-  fontWeight: 600,
-  cursor: 'pointer',
-});
 
 export default SnsRecordsPage;
