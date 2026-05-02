@@ -223,7 +223,7 @@ export function SayuPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string; recordId?: string }[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고']));
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고', 'SNS검색기록']));
   const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
   // 📊 통계/합치기 모달
   const [formatStatModal, setFormatStatModal] = useState<{
@@ -301,12 +301,27 @@ export function SayuPage() {
   const [draggingBookIdx, setDraggingBookIdx] = useState<number | null>(null);
   const [draggingChapterInfo, setDraggingChapterInfo] = useState<{ bookId: string; idx: number } | null>(null);
 
+  // 🔍 SNS검색기록
+  type SnsSearchRecord = {
+    id: string;
+    date: string;
+    keyword: string;
+    source: 'all' | 'facebook' | 'instagram';
+    type: 'all' | 'text' | 'photo' | 'video';
+    results: { id: string; source: 'facebook' | 'instagram'; timestamp: number; text: string; thumbnails?: string[] }[];
+    savedAtMs: number;
+  };
+  const [snsSearchRecords, setSnsSearchRecords] = useState<SnsSearchRecord[]>([]);
+  const [snsSearchLoaded, setSnsSearchLoaded] = useState(false);
+  const [snsSearchLoading, setSnsSearchLoading] = useState(false);
+  const [expandedSearchIds, setExpandedSearchIds] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     fetchRecords();
   }, [user?.uid, currentMonth]);
 
   useEffect(() => {
-    setCollapsedCategories(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고']));
+    setCollapsedCategories(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고', 'SNS검색기록']));
     setExpandedFormats(new Set());
   }, [location.pathname]);
 
@@ -378,6 +393,66 @@ export function SayuPage() {
       })();
     }
   }, [collapsedCategories, booksLoaded]);
+
+  // Fetch SNS 검색기록 when SNS검색기록 is expanded
+  useEffect(() => {
+    if (!collapsedCategories.has('SNS검색기록') && !snsSearchLoaded && user?.uid) {
+      setSnsSearchLoading(true);
+      (async () => {
+        try {
+          const colRef = collection(db, 'users', user.uid, 'snsSearchHistory');
+          const snap = await getDocs(query(colRef, orderBy('savedAt', 'desc')));
+          const list: SnsSearchRecord[] = [];
+          snap.docs.slice(0, 50).forEach((d) => {
+            const data = d.data() as any;
+            const savedAtMs = data?.savedAt?.toMillis ? data.savedAt.toMillis() : 0;
+            list.push({
+              id: d.id,
+              date: typeof data.date === 'string' ? data.date : '',
+              keyword: typeof data.keyword === 'string' ? data.keyword : '',
+              source: (data.source as any) || 'all',
+              type: (data.type as any) || 'all',
+              results: Array.isArray(data.results) ? data.results : [],
+              savedAtMs,
+            });
+          });
+          setSnsSearchRecords(list);
+          setSnsSearchLoaded(true);
+        } catch (e) {
+          console.error('SNS 검색기록 조회 실패:', e);
+        } finally {
+          setSnsSearchLoading(false);
+        }
+      })();
+    }
+  }, [collapsedCategories, snsSearchLoaded, user?.uid]);
+
+  const toggleSearchExpand = (id: string) => {
+    setExpandedSearchIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleDeleteSnsSearch = async (id: string) => {
+    if (!user?.uid) return;
+    if (!window.confirm('이 검색기록을 삭제할까요?')) return;
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'snsSearchHistory', id));
+      setSnsSearchRecords((prev) => prev.filter((r) => r.id !== id));
+      setExpandedSearchIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      toast.success('검색기록을 삭제했습니다.');
+    } catch (e) {
+      console.error('SNS 검색기록 삭제 실패:', e);
+      toast.error('삭제에 실패했습니다.');
+    }
+  };
 
   const toggleSayuGuide = () => {
     const newValue = !showSayuGuide;
@@ -1167,6 +1242,162 @@ export function SayuPage() {
             >
               📖 나의 작품
             </button>
+          </div>
+
+          {/* 🔍 SNS검색기록 섹션 */}
+          <div className="mb-4">
+            <button
+              onClick={() => toggleCategory('SNS검색기록')}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
+              style={{ backgroundColor: '#E8F4FD', color: '#1A3C6E' }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>🔍 SNS검색기록</span>
+              <span style={{ fontSize: '10px' }}>{collapsedCategories.has('SNS검색기록') ? '▶' : '▼'}</span>
+            </button>
+            {!collapsedCategories.has('SNS검색기록') && (
+              <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                {snsSearchLoading ? (
+                  <p className="text-center py-4 text-xs" style={{ color: '#999' }}>불러오는 중...</p>
+                ) : snsSearchRecords.length === 0 ? (
+                  <p className="text-center py-4 text-xs" style={{ color: '#999' }}>저장된 검색기록이 없습니다</p>
+                ) : (
+                  (() => {
+                    // 날짜별 그룹핑 — 최신 날짜 먼저, 같은 날짜 내에서는 savedAt 내림차순
+                    const groups = new Map<string, typeof snsSearchRecords>();
+                    snsSearchRecords.forEach((r) => {
+                      const key = r.date || '';
+                      if (!groups.has(key)) groups.set(key, []);
+                      groups.get(key)!.push(r);
+                    });
+                    const sourceLabel = (s: string) =>
+                      s === 'facebook' ? 'Facebook' : s === 'instagram' ? 'Instagram' : '전체';
+                    const formatDateHeader = (d: string) => {
+                      if (!d || d.length < 10) return d || '(날짜 없음)';
+                      return d.replace(/-/g, '.');
+                    };
+                    const formatTs = (ts: number) => {
+                      if (!ts) return '';
+                      const dt = new Date(ts * (ts < 1e12 ? 1000 : 1));
+                      return dt.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                    };
+                    const sortedDates = Array.from(groups.keys()).sort((a, b) => b.localeCompare(a));
+                    return sortedDates.map((dateKey) => {
+                      const items = groups.get(dateKey)!;
+                      return (
+                        <div key={dateKey || 'no-date'}>
+                          <div
+                            className="px-3 py-2 text-xs font-semibold border-t"
+                            style={{ backgroundColor: '#f9fafb', color: '#1A3C6E', borderColor: '#f0f0f0' }}
+                          >
+                            {formatDateHeader(dateKey)}
+                          </div>
+                          {items.map((rec) => {
+                            const isExpanded = expandedSearchIds.has(rec.id);
+                            const keywordDisplay = rec.keyword?.trim() ? rec.keyword : '(키워드 없음)';
+                            return (
+                              <div key={rec.id} className="border-t" style={{ borderColor: '#f0f0f0' }}>
+                                <div className="flex items-center px-3 py-2">
+                                  <button
+                                    onClick={() => toggleSearchExpand(rec.id)}
+                                    className="flex items-center gap-2 flex-1 text-left hover:opacity-80 transition-opacity min-w-0"
+                                  >
+                                    <span className="text-xs font-semibold truncate" style={{ color: '#333' }}>
+                                      {keywordDisplay}
+                                    </span>
+                                    <span className="text-xs" style={{ color: '#666' }}>
+                                      {sourceLabel(rec.source)}
+                                    </span>
+                                    <span className="text-xs" style={{ color: '#999' }}>
+                                      결과 {rec.results.length}건
+                                    </span>
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleSearchExpand(rec.id);
+                                    }}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 6px', flexShrink: 0 }}
+                                  >
+                                    <span style={{ fontSize: '10px', color: '#1A3C6E' }}>{isExpanded ? '▼' : '▶'}</span>
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteSnsSearch(rec.id);
+                                    }}
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      padding: '0 4px',
+                                      color: '#999',
+                                      fontSize: 14,
+                                      flexShrink: 0,
+                                    }}
+                                    aria-label="삭제"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                                {isExpanded && (
+                                  <div className="px-3 pb-3" style={{ backgroundColor: '#fafbfc' }}>
+                                    {rec.results.length === 0 ? (
+                                      <p className="text-xs py-2" style={{ color: '#999' }}>저장된 결과가 없습니다</p>
+                                    ) : (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8 }}>
+                                        {rec.results.map((post, idx) => {
+                                          const lines = (post.text || '').split('\n').slice(0, 3).join('\n');
+                                          const truncated = (post.text || '').length > 140
+                                            ? (post.text || '').slice(0, 140) + '…'
+                                            : lines;
+                                          const thumbs = (post.thumbnails || []).slice(0, 3);
+                                          return (
+                                            <div
+                                              key={post.id || idx}
+                                              style={{
+                                                background: '#fff',
+                                                border: '1px solid #e5e5e5',
+                                                borderRadius: 8,
+                                                padding: 10,
+                                              }}
+                                            >
+                                              <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>
+                                                {formatTs(post.timestamp)} · {post.source === 'facebook' ? 'Facebook' : 'Instagram'}
+                                              </div>
+                                              {post.text && (
+                                                <p style={{ fontSize: 13, color: '#222', whiteSpace: 'pre-line', lineHeight: 1.5, margin: 0 }}>
+                                                  {truncated}
+                                                </p>
+                                              )}
+                                              {thumbs.length > 0 && (
+                                                <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                                                  {thumbs.map((url, i) => (
+                                                    <img
+                                                      key={i}
+                                                      src={url}
+                                                      alt=""
+                                                      style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 6, background: '#eee' }}
+                                                    />
+                                                  ))}
+                                                </div>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    });
+                  })()
+                )}
+              </div>
+            )}
           </div>
 
           {loading ? (
