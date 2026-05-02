@@ -36,6 +36,7 @@ import { NovelStoryPage } from './pages/NovelStoryPage';
 import { RecordProphecyPage } from './pages/ProphecyFromRecord';
 import { ProphecyHubPage } from './pages/ProphecyHubPage';
 import { RecordHubPage } from './pages/RecordHubPage';
+import { SnsRecordsPage } from './pages/SnsRecordsPage';
 import { BottomNav } from './components/BottomNav';
 import { Footer } from './components/Footer';
 import { TodayQuote } from './components/TodayQuote';
@@ -129,6 +130,7 @@ function App() {
               <Route path="/record-prophecy" element={<RecordProphecyPage />} />
               <Route path="/prophecy-hub" element={<ProphecyHubPage />} />
               <Route path="/record-hub" element={<RecordHubPage />} />
+              <Route path="/sns-records" element={<SnsRecordsPage />} />
 
               {/* 영어성경학습 */}
               <Route path="/bible" element={<BiblePage />} />

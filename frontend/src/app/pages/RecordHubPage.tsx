@@ -5,11 +5,12 @@ export function RecordHubPage() {
 
   const lifeRecords = ['일기', '에세이', '여행기록', '텃밭일지', '반려동물', '육아일기'];
   const workRecords = ['선교보고', '일반보고', '업무일지', '메모'];
-  const knowledgeCards: { icon: string; label: string; path: string }[] = [
+  const knowledgeCards: { icon: string; label: string; desc?: string; path: string; isNew?: boolean; accent?: string }[] = [
     { icon: '🔮', label: 'HARU예언', path: '/prophecy-hub' },
     { icon: '⚖️', label: '하루LAW', path: '/record' },
     { icon: '📖', label: '영어성경', path: '/bible' },
     { icon: '✏️', label: '영어일기', path: '/diary-learn' },
+    { icon: '📱', label: 'SNS 기록 가져오기', desc: 'Facebook · Instagram 기록 AI로 정리', path: '/sns-records', isNew: true, accent: '#10b981' },
   ];
 
   const recordButtonStyle: React.CSSProperties = {
@@ -135,10 +136,37 @@ export function RecordHubPage() {
                 key={card.label}
                 type="button"
                 onClick={() => navigate(card.path)}
-                style={knowledgeCardStyle}
+                style={{
+                  ...knowledgeCardStyle,
+                  position: 'relative',
+                  ...(card.accent ? { borderColor: card.accent } : {}),
+                }}
               >
+                {card.isNew && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      background: '#10b981',
+                      color: '#fff',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: '2px 6px',
+                      borderRadius: 999,
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    NEW
+                  </span>
+                )}
                 <span style={{ fontSize: 22 }}>{card.icon}</span>
                 <span>{card.label}</span>
+                {card.desc && (
+                  <span style={{ fontSize: 11, color: '#666', fontWeight: 400, textAlign: 'center', lineHeight: 1.3 }}>
+                    {card.desc}
+                  </span>
+                )}
               </button>
             ))}
           </div>

@@ -15,5 +15,17 @@ service firebase.storage {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow write, delete: if request.auth != null && request.auth.uid == userId;
     }
+
+    // ✅ SNS 기록 가져오기 — Facebook ZIP 업로드 경로 (분석 후 함수가 삭제)
+    match /users/{userId}/snsUploads/{fileName} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ✅ SNS 기록 가져오기 — 분석 결과 썸네일 (Functions가 생성·makePublic 처리)
+    match /users/{userId}/snsThumbnails/{docId}/{fileName} {
+      allow read: if true;
+      allow write, delete: if false;
+    }
   }
 }

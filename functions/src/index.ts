@@ -1604,6 +1604,7 @@ export const cleanupTtsUsage = onSchedule(
 );
 
 export { generateBook } from "./bookStudio";
+export { analyzeFacebookZip } from "./snsAnalyzer";
 
 // ===== 단어 뜻 조회 =====
 export const getWordMeaning = onCall(
