@@ -8,13 +8,14 @@ import { db, storage, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { GrapeAnimation } from '../components/GrapeAnimation';
+import { firestoreService } from '../services/firestoreService';
 
 const COLOR_BLUE = '#1A3C6E';
 const COLOR_BG = '#FAF9F6';
 const COLOR_GREEN = '#10b981';
 const COLOR_BORDER = '#e5e5e5';
 
-type TabKey = 'upload' | 'timeline' | 'search' | 'ai';
+type TabKey = 'upload' | 'timeline' | 'autobio';
 type Source = 'facebook' | 'instagram';
 
 interface SnsRecord {
@@ -41,25 +42,31 @@ export function SnsRecordsPage() {
 
   // 검색 입력값 (draft) — 검색 버튼을 눌러야 applied로 반영
   const [searchKeyword, setSearchKeyword] = useState('');
-  const [searchFilter, setSearchFilter] = useState<'all' | 'text' | 'photo' | 'video' | 'year'>('all');
+  const [searchFilter, setSearchFilter] = useState<'all' | 'text' | 'photo' | 'video'>('all');
   const [searchDateFrom, setSearchDateFrom] = useState('');
   const [searchDateTo, setSearchDateTo] = useState('');
   const [searchSource, setSearchSource] = useState<'all' | 'facebook' | 'instagram'>('all');
 
   const [appliedSearch, setAppliedSearch] = useState<{
     keyword: string;
-    filter: 'all' | 'text' | 'photo' | 'video' | 'year';
+    filter: 'all' | 'text' | 'photo' | 'video';
     dateFrom: string;
     dateTo: string;
     source: 'all' | 'facebook' | 'instagram';
   }>({ keyword: '', filter: 'all', dateFrom: '', dateTo: '', source: 'all' });
 
   const [timelinePage, setTimelinePage] = useState(1);
-  const [searchPage, setSearchPage] = useState(1);
   const PAGE_SIZE = 10;
   const initialTabSet = useRef(false);
 
-  const [selectedIds] = useState<Set<string>>(new Set());
+  // 통합자서전 기간 선택
+  const [autobioRange, setAutobioRange] = useState<'all' | 'year' | 'custom'>('all');
+  const [autobioYear, setAutobioYear] = useState<string>('');
+  const [autobioFrom, setAutobioFrom] = useState<string>('');
+  const [autobioTo, setAutobioTo] = useState<string>('');
+
+  // 카드별 변환 진행상태
+  const [convertingId, setConvertingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -70,7 +77,7 @@ export function SnsRecordsPage() {
         const colRef = collection(db, 'users', user.uid, 'snsRecords');
         const snap = await getDocs(query(colRef, orderBy('timestamp', 'desc')));
         if (cancelled) return;
-        // 중복 제거: 같은 timestamp + 같은 텍스트는 1개만 유지 (timestamp desc 정렬이라 최신 doc 우선)
+        // 중복 제거: 같은 timestamp + 같은 텍스트는 1개만 유지
         const seen = new Set<string>();
         const list: SnsRecord[] = [];
         snap.docs.forEach((d) => {
@@ -104,8 +111,7 @@ export function SnsRecordsPage() {
     return () => { cancelled = true; };
   }, [user, uploading]);
 
-  useEffect(() => { setTimelinePage(1); }, [records.length]);
-  useEffect(() => { setSearchPage(1); }, [appliedSearch]);
+  useEffect(() => { setTimelinePage(1); }, [appliedSearch, records.length]);
 
   const handleOpenFacebookDownload = () => {
     window.open('https://accountscenter.facebook.com/info_and_permissions/dyi/', '_blank', 'noopener,noreferrer');
@@ -199,6 +205,62 @@ export function SnsRecordsPage() {
     return d.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
   };
 
+  const tsToDateString = (ts: number): string => {
+    if (!ts) return new Date().toISOString().slice(0, 10);
+    const d = new Date(ts * (ts < 1e12 ? 1000 : 1));
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const handleConvertToDiary = async (record: SnsRecord) => {
+    if (!requirePremium('AI 일기로 변환')) return;
+    if (!user) return;
+    if (!record.text || record.text.trim().length === 0) {
+      toast.error('변환할 텍스트가 없습니다.');
+      return;
+    }
+    setConvertingId(record.id);
+    try {
+      const callable = httpsCallable(functions, 'convertSnsToDiary');
+      const res = await callable({
+        text: record.text,
+        source: record.source,
+        timestamp: record.timestamp,
+      });
+      const { diaryText } = (res.data || {}) as { diaryText?: string };
+      if (!diaryText) {
+        toast.error('AI 변환 결과가 비어있습니다.');
+        return;
+      }
+      const dateStr = tsToDateString(record.timestamp);
+      await firestoreService.saveRecord(user.uid, {
+        date: dateStr,
+        formats: ['일기'],
+        content: '',
+        diary_오늘한일: diaryText,
+        source: record.source,
+      } as any);
+      toast.success('일기로 저장되었습니다');
+    } catch (err: any) {
+      console.error('AI 일기 변환 실패:', err);
+      toast.error(err?.message || 'AI 변환에 실패했습니다.');
+    } finally {
+      setConvertingId(null);
+    }
+  };
+
+  const handleSayuPolish = (record: SnsRecord) => {
+    if (!requirePremium('SAYU 다듬기')) return;
+    navigate('/sayu', { state: { snsText: record.text, snsSource: record.source, snsTimestamp: record.timestamp } });
+  };
+
+  const handleAutobioGenerate = () => {
+    if (!requirePremium('나의 이야기 시놉시스 생성')) return;
+    toast.info('준비 중입니다');
+  };
+
   if (authLoading || subLoading) {
     return (
       <div
@@ -224,7 +286,7 @@ export function SnsRecordsPage() {
 
   return (
     <div style={{ minHeight: 'calc(100vh - 56px - 80px)', background: COLOR_BG, padding: '20px 16px 32px' }}>
-      {uploading && (
+      {(uploading || convertingId) && (
         <div
           style={{
             position: 'fixed',
@@ -241,45 +303,27 @@ export function SnsRecordsPage() {
             <GrapeAnimation />
           </div>
           <p style={{ marginTop: 12, fontSize: 14, fontWeight: 600, color: COLOR_BLUE }}>
-            {uploadProgress || '처리 중...'}
+            {uploading
+              ? (uploadProgress || '처리 중...')
+              : 'AI가 일기로 변환 중...'}
           </p>
         </div>
       )}
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
-        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: COLOR_BLUE, letterSpacing: '-0.01em' }}>
-              📱 snsHARU보기
-            </h1>
-            <p style={{ fontSize: 13, color: '#666', marginTop: 6 }}>
-              Facebook · Instagram 기록을 AI로 정리해드려요.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate('/sayu', { state: { mainTab: 'sns' } })}
-            style={{
-              flexShrink: 0,
-              padding: '8px 12px',
-              borderRadius: 999,
-              border: `1px solid ${COLOR_GREEN}`,
-              background: '#fff',
-              color: COLOR_GREEN,
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            📂 snsHARU보기 →
-          </button>
+        <div style={{ marginBottom: 16 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: COLOR_BLUE, letterSpacing: '-0.01em' }}>
+            📱 snsHARU보기
+          </h1>
+          <p style={{ fontSize: 13, color: '#666', marginTop: 6 }}>
+            Facebook · Instagram 기록을 AI로 정리해드려요.
+          </p>
         </div>
 
-        {/* 탭 헤더 */}
+        {/* 탭 헤더 (3개) */}
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
             gap: 6,
             marginBottom: 18,
           }}
@@ -287,8 +331,7 @@ export function SnsRecordsPage() {
           {([
             { k: 'upload', label: '업로드' },
             { k: 'timeline', label: '타임라인' },
-            { k: 'search', label: 'snsHARU보기' },
-            { k: 'ai', label: 'AI정리' },
+            { k: 'autobio', label: '통합자서전생성' },
           ] as { k: TabKey; label: string }[]).map((t) => {
             const active = tab === t.k;
             return (
@@ -436,45 +479,10 @@ export function SnsRecordsPage() {
           </section>
         )}
 
-        {/* === 탭2: 타임라인 === */}
+        {/* === 탭2: 타임라인 (검색/필터 통합) === */}
         {tab === 'timeline' && (
           <section>
-            {loadingRecords ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 0' }}>
-                <div style={{ width: 200, height: 260 }}>
-                  <GrapeAnimation />
-                </div>
-                <p style={{ marginTop: 8, fontSize: 12, color: '#666' }}>SNS 기록을 불러오는 중...</p>
-              </div>
-            ) : records.length === 0 ? (
-              <EmptyState message="아직 가져온 SNS 기록이 없어요." subMessage="업로드 탭에서 ZIP을 올려주세요." />
-            ) : (
-              <>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {records.slice((timelinePage - 1) * PAGE_SIZE, timelinePage * PAGE_SIZE).map((r) => (
-                    <PostCard
-                      key={r.id}
-                      record={r}
-                      formatDate={formatDate}
-                      isPremium={isPremium}
-                      onConvert={() => requirePremium('AI 일기로 변환')}
-                      onSayu={() => requirePremium('SAYU 다듬기')}
-                    />
-                  ))}
-                </div>
-                <Pagination
-                  page={timelinePage}
-                  totalPages={Math.max(1, Math.ceil(records.length / PAGE_SIZE))}
-                  onChange={setTimelinePage}
-                />
-              </>
-            )}
-          </section>
-        )}
-
-        {/* === 탭3: snsHARU보기 (고도화 검색) === */}
-        {tab === 'search' && (
-          <section>
+            {/* 키워드 검색창 */}
             <input
               type="text"
               value={searchKeyword}
@@ -570,7 +578,6 @@ export function SnsRecordsPage() {
                 { k: 'text', label: '글만' },
                 { k: 'photo', label: '사진' },
                 { k: 'video', label: '영상' },
-                { k: 'year', label: '연도별' },
               ] as { k: typeof searchFilter; label: string }[]).map((c) => {
                 const active = searchFilter === c.k;
                 return (
@@ -625,85 +632,163 @@ export function SnsRecordsPage() {
                 <div style={{ width: 200, height: 260 }}>
                   <GrapeAnimation />
                 </div>
-                <p style={{ marginTop: 8, fontSize: 12, color: '#666' }}>검색 데이터를 불러오는 중...</p>
+                <p style={{ marginTop: 8, fontSize: 12, color: '#666' }}>SNS 기록을 불러오는 중...</p>
               </div>
+            ) : records.length === 0 ? (
+              <EmptyState message="아직 가져온 SNS 기록이 없어요." subMessage="업로드 탭에서 ZIP을 올려주세요." />
             ) : filteredRecords.length === 0 ? (
               <EmptyState message="검색 결과가 없어요." />
             ) : (
               <>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {filteredRecords.slice((searchPage - 1) * PAGE_SIZE, searchPage * PAGE_SIZE).map((r) => (
+                  {filteredRecords.slice((timelinePage - 1) * PAGE_SIZE, timelinePage * PAGE_SIZE).map((r) => (
                     <PostCard
                       key={r.id}
                       record={r}
                       formatDate={formatDate}
                       isPremium={isPremium}
-                      onConvert={() => requirePremium('AI 일기로 변환')}
-                      onSayu={() => requirePremium('SAYU 다듬기')}
+                      onConvert={() => handleConvertToDiary(r)}
+                      onSayu={() => handleSayuPolish(r)}
                     />
                   ))}
                 </div>
                 <Pagination
-                  page={searchPage}
+                  page={timelinePage}
                   totalPages={Math.max(1, Math.ceil(filteredRecords.length / PAGE_SIZE))}
-                  onChange={setSearchPage}
+                  onChange={setTimelinePage}
                 />
               </>
             )}
           </section>
         )}
 
-        {/* === 탭4: AI정리 === */}
-        {tab === 'ai' && (
+        {/* === 탭3: 통합자서전생성 === */}
+        {tab === 'autobio' && (
           <section>
-            <div style={aiCardStyle}>
-              <div style={aiCardHeaderStyle}>
-                <span style={{ fontSize: 22 }}>📝</span>
-                <span style={{ fontWeight: 700, color: COLOR_BLUE }}>AI 일기로 변환</span>
-                {!isPremium && <PremiumPill />}
-              </div>
-              <p style={{ fontSize: 13, color: '#444', marginTop: 6, lineHeight: 1.5 }}>
-                선택한 게시물들을 HARU 일기 형식으로 자동 변환해요.
+            <div
+              style={{
+                background: '#fff',
+                border: `1px solid ${COLOR_BORDER}`,
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 12,
+              }}
+            >
+              <p style={{ fontSize: 13, color: '#444', lineHeight: 1.6, margin: 0 }}>
+                기간별 전체 기록으로 나의 이야기를 생성합니다
               </p>
-              <p style={{ fontSize: 12, color: '#888', marginTop: 6 }}>
-                선택된 게시물: {selectedIds.size}개 (타임라인/검색 탭에서 카드를 길게 눌러 선택)
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!requirePremium('AI 일기로 변환')) return;
-                  if (selectedIds.size === 0) {
-                    toast.info('변환할 게시물을 먼저 선택해주세요.');
-                    return;
-                  }
-                  toast.info('AI 일기 변환은 곧 활성화됩니다.');
-                }}
-                style={primaryBtnStyle}
-              >
-                일기로 변환하기
-              </button>
             </div>
 
-            <div style={aiCardStyle}>
-              <div style={aiCardHeaderStyle}>
-                <span style={{ fontSize: 22 }}>📚</span>
-                <span style={{ fontWeight: 700, color: COLOR_BLUE }}>AI 자서전 생성</span>
-                {!isPremium && <PremiumPill />}
-              </div>
-              <p style={{ fontSize: 13, color: '#444', marginTop: 6, lineHeight: 1.5 }}>
-                전체 SNS 기록을 시간순으로 엮어 한 권의 자서전으로 만들어드려요.
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!requirePremium('AI 자서전 생성')) return;
-                  toast.info('AI 자서전 생성은 곧 활성화됩니다.');
-                }}
-                style={primaryBtnStyle}
-              >
-                자서전 생성 시작
-              </button>
+            {/* 기간 선택 */}
+            <div style={{ fontSize: 12, fontWeight: 700, color: COLOR_BLUE, margin: '6px 0 8px' }}>
+              기간 선택
             </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+              {([
+                { k: 'all', label: '전체 기간' },
+                { k: 'year', label: '연도별' },
+                { k: 'custom', label: '직접설정' },
+              ] as { k: typeof autobioRange; label: string }[]).map((c) => {
+                const active = autobioRange === c.k;
+                return (
+                  <button
+                    key={c.k}
+                    type="button"
+                    onClick={() => setAutobioRange(c.k)}
+                    style={{
+                      padding: '8px 14px',
+                      borderRadius: 999,
+                      border: `1px solid ${active ? COLOR_BLUE : COLOR_BORDER}`,
+                      background: active ? COLOR_BLUE : '#fff',
+                      color: active ? '#fff' : COLOR_BLUE,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {c.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {autobioRange === 'year' && (
+              <input
+                type="number"
+                placeholder="예: 2024"
+                value={autobioYear}
+                onChange={(e) => setAutobioYear(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  border: `1px solid ${COLOR_BORDER}`,
+                  fontSize: 13,
+                  outline: 'none',
+                  marginBottom: 10,
+                  boxSizing: 'border-box',
+                }}
+              />
+            )}
+
+            {autobioRange === 'custom' && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 6, marginBottom: 10 }}>
+                <input
+                  type="date"
+                  value={autobioFrom}
+                  onChange={(e) => setAutobioFrom(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: `1px solid ${COLOR_BORDER}`,
+                    fontSize: 13,
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+                <input
+                  type="date"
+                  value={autobioTo}
+                  onChange={(e) => setAutobioTo(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: `1px solid ${COLOR_BORDER}`,
+                    fontSize: 13,
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            )}
+
+            {/* 시놉시스 생성 버튼 */}
+            <button
+              type="button"
+              onClick={handleAutobioGenerate}
+              style={{
+                width: '100%',
+                padding: '14px 14px',
+                borderRadius: 10,
+                border: 'none',
+                background: COLOR_BLUE,
+                color: '#fff',
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: 'pointer',
+                marginTop: 6,
+                marginBottom: 12,
+              }}
+            >
+              📖 나의 이야기 시놉시스 생성
+            </button>
+
+            {/* 안내 문구 */}
+            <p style={{ fontSize: 12, color: '#666', lineHeight: 1.6, margin: 0 }}>
+              생성된 나의 이야기는 나도작가 SNS 작품 섹션에 저장됩니다
+            </p>
           </section>
         )}
       </div>
@@ -843,23 +928,6 @@ function EmptyState({ message, subMessage }: { message: string; subMessage?: str
   );
 }
 
-function PremiumPill() {
-  return (
-    <span style={{
-      marginLeft: 'auto',
-      background: '#fff7e6',
-      color: '#b76e00',
-      fontSize: 10,
-      fontWeight: 700,
-      padding: '2px 8px',
-      borderRadius: 999,
-      border: '1px solid #ffd591',
-    }}>
-      구독 전용
-    </span>
-  );
-}
-
 const stepBoxStyle: React.CSSProperties = {
   background: '#fff',
   border: `1px solid ${COLOR_BORDER}`,
@@ -890,33 +958,6 @@ const stepDescStyle: React.CSSProperties = {
   color: '#444',
   margin: '6px 0 0 0',
   lineHeight: 1.5,
-};
-
-const aiCardStyle: React.CSSProperties = {
-  background: '#fff',
-  border: `1px solid ${COLOR_BORDER}`,
-  borderRadius: 12,
-  padding: 16,
-  marginBottom: 12,
-};
-
-const aiCardHeaderStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-};
-
-const primaryBtnStyle: React.CSSProperties = {
-  width: '100%',
-  marginTop: 12,
-  padding: '12px 14px',
-  borderRadius: 10,
-  border: 'none',
-  background: COLOR_BLUE,
-  color: '#fff',
-  fontSize: 14,
-  fontWeight: 600,
-  cursor: 'pointer',
 };
 
 const smallBtnStyle = (premium: boolean): React.CSSProperties => ({

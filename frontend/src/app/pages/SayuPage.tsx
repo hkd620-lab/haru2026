@@ -1056,7 +1056,13 @@ export function SayuPage() {
           <button
             key={t.k}
             type="button"
-            onClick={() => setMainTab(t.k)}
+            onClick={() => {
+              if (t.k === 'sns') {
+                navigate('/sns-records');
+              } else {
+                setMainTab('records');
+              }
+            }}
             style={{
               padding: '10px 8px',
               borderRadius: 10,
