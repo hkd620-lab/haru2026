@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.fetchTopNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.generateBook = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
+exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.fetchTopNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -1339,8 +1339,37 @@ exports.generateTTS = (0, https_2.onCall)({
         throw new https_2.HttpsError('internal', 'TTS 생성에 실패했습니다.');
     }
 });
+// ===== ttsUsage 30일 이상 문서 자동 청소 (매일 0시 KST) =====
+exports.cleanupTtsUsage = (0, scheduler_1.onSchedule)({
+    schedule: '0 0 * * *',
+    timeZone: 'Asia/Seoul',
+    region: 'asia-northeast3',
+}, async () => {
+    try {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - 30);
+        const cutoffStr = cutoff.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+        const snap = await db.collectionGroup('ttsUsage').get();
+        const toDelete = snap.docs.filter(d => d.id < cutoffStr);
+        let deleted = 0;
+        for (let i = 0; i < toDelete.length; i += 500) {
+            const batch = db.batch();
+            toDelete.slice(i, i + 500).forEach(d => batch.delete(d.ref));
+            await batch.commit();
+            deleted += Math.min(500, toDelete.length - i);
+        }
+        logger.info(`ttsUsage 청소 완료: ${deleted}개 삭제 (cutoff=${cutoffStr})`);
+    }
+    catch (error) {
+        logger.error('ttsUsage 청소 실패:', error);
+    }
+});
 var bookStudio_1 = require("./bookStudio");
 Object.defineProperty(exports, "generateBook", { enumerable: true, get: function () { return bookStudio_1.generateBook; } });
+var snsAnalyzer_1 = require("./snsAnalyzer");
+Object.defineProperty(exports, "analyzeFacebookZip", { enumerable: true, get: function () { return snsAnalyzer_1.analyzeFacebookZip; } });
+var snsToDiary_1 = require("./snsToDiary");
+Object.defineProperty(exports, "convertSnsToDiary", { enumerable: true, get: function () { return snsToDiary_1.convertSnsToDiary; } });
 // ===== 단어 뜻 조회 =====
 exports.getWordMeaning = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] }, async (request) => {
     const { word } = request.data;
