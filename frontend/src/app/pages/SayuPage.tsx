@@ -11,6 +11,7 @@ import type { RecordFormat } from '../types/haruTypes';
 import { collection, getDocs, orderBy, query, deleteDoc, doc, writeBatch, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { SnsHaruTab } from '../components/SnsHaruTab';
 
 // 목록 뷰에서 제목으로 쓸 첫 번째 필드 키
 const FORMAT_FIRST_FIELD: Record<string, string> = {
@@ -223,6 +224,7 @@ export function SayuPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string; recordId?: string }[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
+  const [mainTab, setMainTab] = useState<'records' | 'sns'>('records');
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고']));
   const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
   // 📊 통계/합치기 모달
@@ -2297,7 +2299,49 @@ function StockDashboard({ records }: { records: any[] }) {
   const donutTotal = buyCount + sellCount || 1;
 
   return (
-    <div style={{ padding: '12px', background: '#f9fafb' }}>
+    <>
+      {/* === 상단 메인 탭 (내 기록 / SNS HARU) === */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+          gap: 6,
+          padding: '12px 12px 0',
+          background: '#f9fafb',
+        }}
+      >
+        {(
+          [
+            { k: 'records', label: '📔 내 기록' },
+            { k: 'sns', label: '📱 SNS HARU' },
+          ] as { k: 'records' | 'sns'; label: string }[]
+        ).map((t) => {
+          const active = mainTab === t.k;
+          return (
+            <button
+              key={t.k}
+              type="button"
+              onClick={() => setMainTab(t.k)}
+              style={{
+                padding: '10px 8px',
+                borderRadius: 10,
+                border: `1px solid ${active ? '#1A3C6E' : '#e5e7eb'}`,
+                background: active ? '#1A3C6E' : '#fff',
+                color: active ? '#fff' : '#1A3C6E',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {mainTab === 'sns' && <SnsHaruTab />}
+
+      <div style={{ padding: '12px', background: '#f9fafb', display: mainTab === 'records' ? 'block' : 'none' }}>
       {/* 통계 카드 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 8, marginBottom: 12 }}>
         {[
@@ -2429,5 +2473,6 @@ function StockDashboard({ records }: { records: any[] }) {
         </div>
       ))}
     </div>
+    </>
   );
 }

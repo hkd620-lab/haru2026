@@ -127,5 +127,10 @@ service cloud.firestore {
     match /users/{uid}/snsRecords/{docId} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
+
+    // SNS HARU 검색 즐겨찾기
+    match /users/{uid}/savedSearches/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
   }
 }
