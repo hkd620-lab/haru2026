@@ -160,6 +160,42 @@ export function HomePage() {
           ))}
         </div>
 
+        {/* snsHARU보기 신규 카드 (NEW 배지 + 브랜드 그린 테두리) */}
+        <div className="px-[18px] pb-4">
+          <Link
+            to="/sns-records"
+            className="
+              relative block rounded-[14px] bg-white p-4
+              active:scale-[0.99] transition-transform touch-manipulation select-none
+              shadow-[0_4px_12px_-8px_rgba(16,185,129,0.35)]
+            "
+            style={{ border: '1.5px solid #10b981' }}
+          >
+            <span
+              className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-white text-[9px] font-bold tracking-wider"
+              style={{ background: '#10b981' }}
+            >
+              NEW
+            </span>
+            <div className="flex items-center gap-3">
+              <span
+                className="flex h-10 w-10 items-center justify-center rounded-[10px] text-[20px] flex-shrink-0"
+                style={{ background: 'rgba(16,185,129,0.12)' }}
+              >
+                📱
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[14px] font-bold tracking-tight text-haru-navy">
+                  snsHARU보기
+                </div>
+                <div className="text-[11px] text-haru-navy/60 mt-0.5">
+                  Facebook · Instagram 기록 AI로 정리
+                </div>
+              </div>
+            </div>
+          </Link>
+        </div>
+
         {/* Spacer so the last row doesn't sit under the sticky tab bar */}
         <div className="h-2" />
       </section>
