@@ -37,7 +37,6 @@ export function DiaryLearnPage() {
 
   const [step, setStep] = useState<'list' | 'detail' | 'learn'>('list');
   const [diaries, setDiaries] = useState<DiaryItem[]>([]);
-  const [visibleCount, setVisibleCount] = useState(10);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<DiaryItem | null>(null);
   const [translatedSentences, setTranslatedSentences] = useState<string[]>([]);
@@ -276,38 +275,22 @@ export function DiaryLearnPage() {
             ) : diaries.length === 0 ? (
               <p style={{ textAlign: 'center', color: '#999', padding: '40px 0' }}>작성한 일기/에세이가 없습니다</p>
             ) : (
-              <>
-                {diaries.slice(0, visibleCount).map(diary => (
-                  <div
-                    key={diary.id}
-                    onClick={() => { setSelected(diary); setStep('detail'); }}
-                    style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '16px 0', borderBottom: '0.5px solid #e0e0e0', cursor: 'pointer',
-                    }}
-                  >
-                    <div>
-                      <p style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>{diary.date}</p>
-                      <p style={{ fontSize: 15, fontWeight: 600, color: '#1A3C6E' }}>{diary.title}</p>
-                    </div>
-                    <span style={{ color: '#999', fontSize: 20 }}>›</span>
+              diaries.map(diary => (
+                <div
+                  key={diary.id}
+                  onClick={() => { setSelected(diary); setStep('detail'); }}
+                  style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '16px 0', borderBottom: '0.5px solid #e0e0e0', cursor: 'pointer',
+                  }}
+                >
+                  <div>
+                    <p style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>{diary.date}</p>
+                    <p style={{ fontSize: 15, fontWeight: 600, color: '#1A3C6E' }}>{diary.title}</p>
                   </div>
-                ))}
-                {visibleCount < diaries.length && (
-                  <button
-                    onClick={() => setVisibleCount(visibleCount + 10)}
-                    style={{
-                      width: '100%', padding: '14px',
-                      marginTop: 16,
-                      backgroundColor: '#EDE9F5', color: '#1A3C6E',
-                      border: 'none', borderRadius: 12,
-                      fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                    }}
-                  >
-                    📖 더 보기 ({diaries.length - visibleCount}개 더 있음)
-                  </button>
-                )}
-              </>
+                  <span style={{ color: '#999', fontSize: 20 }}>›</span>
+                </div>
+              ))
             )}
           </div>
         )}
