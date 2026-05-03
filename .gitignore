@@ -17,7 +17,7 @@ frontend/dist/
 dist/
 build/
 참고자료/
-*.old
+*.old*
 *.bak*
 *. 3.*
 .claude/*
@@ -25,12 +25,9 @@ build/
 frontend/.claude/*
 !frontend/.claude/CLAUDE.md
 *.bak
-*.old
-*.old2
+*.old*
 *.backup_*
 
 # 백업 파일 무시
-*.old
-*.old2
-*.old3
+*.old*
 *.bak
