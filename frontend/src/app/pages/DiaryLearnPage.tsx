@@ -58,6 +58,8 @@ export function DiaryLearnPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<DiaryItem | null>(null);
   const [translatedSentences, setTranslatedSentences] = useState<string[]>([]);
+  const [showOriginalText, setShowOriginalText] = useState(false);
+  const [showGrammarDetails, setShowGrammarDetails] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [activeTab, setActiveTab] = useState<'korean' | 'english'>('korean');
   const [ttsPlaying, setTtsPlaying] = useState<string | null>(null);
@@ -275,6 +277,13 @@ export function DiaryLearnPage() {
       setGrammarPopup({ verseText: text, loading: false });
     }
   }, [fns]);
+
+  // 문법 팝업 닫을 때 토글 초기화
+  const closeGrammarPopup = useCallback(() => {
+    setGrammarPopup(null);
+    setShowOriginalText(false);
+    setShowGrammarDetails(false);
+  }, []);
 
   // 퀴즈
   const handleQuizClick = useCallback(async (text: string) => {
@@ -598,7 +607,7 @@ export function DiaryLearnPage() {
       {/* 문법 팝업 */}
       {grammarPopup && (
         <div
-          onClick={() => setGrammarPopup(null)}
+          onClick={closeGrammarPopup}
           style={{
             position: 'fixed', inset: 0,
             backgroundColor: 'rgba(0,0,0,0.4)',
@@ -622,15 +631,15 @@ export function DiaryLearnPage() {
                 ✏️ 오늘의 표현
               </p>
               <button
-                onClick={() => setGrammarPopup(null)}
+                onClick={closeGrammarPopup}
                 style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999' }}
               >✕</button>
             </div>
 
             <div style={{
-              padding: '10px 14px', backgroundColor: '#f8faff',
-              borderRadius: 8, marginBottom: 16, fontSize: 12,
-              color: '#555', lineHeight: 1.6,
+              padding: '12px 14px', backgroundColor: '#f8faff',
+              borderRadius: 8, marginBottom: 12, fontSize: 14,
+              color: '#1A3C6E', lineHeight: 1.6, fontWeight: 600,
             }}>
               {grammarPopup.verseText}
             </div>
@@ -640,71 +649,121 @@ export function DiaryLearnPage() {
                 <p style={{ color: '#999', fontSize: 14 }}>분석 중... ✨</p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
 
-                {[
-                  { key: 'verb',        exKey: 'verb_example',        icon: '🔵', label: '핵심 동사',   color: '#EFF6FF', border: '#BFDBFE', text: '#1e40af' },
-                  { key: 'preposition', exKey: 'preposition_example',  icon: '🟡', label: '전치사',      color: '#FFFBEB', border: '#FDE68A', text: '#92400e' },
-                  { key: 'phrasal',     exKey: 'phrasal_example',      icon: '🟠', label: '구동사',      color: '#FFF7ED', border: '#FDBA74', text: '#9a3412' },
-                  { key: 'relative',    exKey: 'relative_example',     icon: '🟣', label: '관계사',      color: '#F5F3FF', border: '#C4B5FD', text: '#6d28d9' },
-                  { key: 'question',    exKey: 'question_example',     icon: '🔴', label: '의문사',      color: '#FFF1F2', border: '#FECDD3', text: '#9f1239' },
-                  { key: 'exclamation', exKey: 'exclamation_example',  icon: '🟢', label: '감탄사/명령', color: '#F0FDF4', border: '#86EFAC', text: '#166534' },
-                ].map(({ key, exKey, icon, label, color, border, text }) => {
-                  const val = grammarPopup[key as keyof typeof grammarPopup] as string | undefined;
-                  if (!val) return null;
-                  const exEn = grammarPopup[`${exKey}_en` as keyof typeof grammarPopup] as string | undefined;
-                  const exKo = grammarPopup[`${exKey}_ko` as keyof typeof grammarPopup] as string | undefined;
-                  return (
-                    <div key={key} style={{
-                      backgroundColor: color, borderRadius: 10,
-                      padding: '12px 14px', border: `1px solid ${border}`,
-                    }}>
-                      <p style={{ fontSize: 12, fontWeight: 700, color: text, marginBottom: 4 }}>
-                        {icon} {label}
-                      </p>
-                      <p style={{ fontSize: 13, color: '#333', lineHeight: 1.7, margin: '0 0 8px' }}>
-                        {val}
-                      </p>
-                      {exEn && (
-                        <div style={{
-                          backgroundColor: 'rgba(255,255,255,0.7)',
-                          borderRadius: 8, padding: '8px 10px',
-                          borderLeft: `3px solid ${border}`,
+                <button
+                  onClick={() => setShowOriginalText(!showOriginalText)}
+                  style={{
+                    width: '100%', padding: '12px 14px',
+                    backgroundColor: '#FEF3C7',
+                    color: '#92400e',
+                    border: '1px solid #FDE68A',
+                    borderRadius: 10,
+                    fontSize: 13, fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  }}
+                >
+                  <span>📖 한국어 원문 보기</span>
+                  <span>{showOriginalText ? '▲' : '▼'}</span>
+                </button>
+                {showOriginalText && selected && (
+                  <div style={{
+                    padding: '12px 14px', backgroundColor: '#FFFBEB',
+                    borderRadius: 8, fontSize: 13,
+                    color: '#333', lineHeight: 1.7,
+                    border: '1px solid #FDE68A',
+                  }}>
+                    {selected.content}
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setShowGrammarDetails(!showGrammarDetails)}
+                  style={{
+                    width: '100%', padding: '12px 14px',
+                    backgroundColor: '#EFF6FF',
+                    color: '#1e40af',
+                    border: '1px solid #BFDBFE',
+                    borderRadius: 10,
+                    fontSize: 13, fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  }}
+                >
+                  <span>✏️ 문법 보기</span>
+                  <span>{showGrammarDetails ? '▲' : '▼'}</span>
+                </button>
+
+                {showGrammarDetails && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+                    {[
+                      { key: 'verb',        exKey: 'verb_example',        icon: '🔵', label: '핵심 동사',   color: '#EFF6FF', border: '#BFDBFE', text: '#1e40af' },
+                      { key: 'preposition', exKey: 'preposition_example',  icon: '🟡', label: '전치사',      color: '#FFFBEB', border: '#FDE68A', text: '#92400e' },
+                      { key: 'phrasal',     exKey: 'phrasal_example',      icon: '🟠', label: '구동사',      color: '#FFF7ED', border: '#FDBA74', text: '#9a3412' },
+                      { key: 'relative',    exKey: 'relative_example',     icon: '🟣', label: '관계사',      color: '#F5F3FF', border: '#C4B5FD', text: '#6d28d9' },
+                      { key: 'question',    exKey: 'question_example',     icon: '🔴', label: '의문사',      color: '#FFF1F2', border: '#FECDD3', text: '#9f1239' },
+                      { key: 'exclamation', exKey: 'exclamation_example',  icon: '🟢', label: '감탄사/명령', color: '#F0FDF4', border: '#86EFAC', text: '#166534' },
+                    ].map(({ key, exKey, icon, label, color, border, text }) => {
+                      const val = grammarPopup[key as keyof typeof grammarPopup] as string | undefined;
+                      if (!val) return null;
+                      const exEn = grammarPopup[`${exKey}_en` as keyof typeof grammarPopup] as string | undefined;
+                      const exKo = grammarPopup[`${exKey}_ko` as keyof typeof grammarPopup] as string | undefined;
+                      return (
+                        <div key={key} style={{
+                          backgroundColor: color, borderRadius: 10,
+                          padding: '12px 14px', border: `1px solid ${border}`,
                         }}>
-                          <p style={{ fontSize: 12, fontWeight: 600, color: text, margin: '0 0 2px' }}>
-                            📝 예문
+                          <p style={{ fontSize: 12, fontWeight: 700, color: text, marginBottom: 4 }}>
+                            {icon} {label}
                           </p>
-                          <p style={{ fontSize: 12, color: '#1A3C6E', fontWeight: 600, margin: '0 0 2px' }}>
-                            {exEn}
+                          <p style={{ fontSize: 13, color: '#333', lineHeight: 1.7, margin: '0 0 8px' }}>
+                            {val}
                           </p>
-                          {exKo && (
-                            <p style={{ fontSize: 11, color: '#666', margin: 0 }}>
-                              → {exKo}
-                            </p>
+                          {exEn && (
+                            <div style={{
+                              backgroundColor: 'rgba(255,255,255,0.7)',
+                              borderRadius: 8, padding: '8px 10px',
+                              borderLeft: `3px solid ${border}`,
+                            }}>
+                              <p style={{ fontSize: 12, fontWeight: 600, color: text, margin: '0 0 2px' }}>
+                                📝 예문
+                              </p>
+                              <p style={{ fontSize: 12, color: '#1A3C6E', fontWeight: 600, margin: '0 0 2px' }}>
+                                {exEn}
+                              </p>
+                              {exKo && (
+                                <p style={{ fontSize: 11, color: '#666', margin: 0 }}>
+                                  → {exKo}
+                                </p>
+                              )}
+                            </div>
                           )}
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
+                      );
+                    })}
 
-                {grammarPopup.mysentence && (
-                  <div style={{
-                    backgroundColor: '#D1FAE5', borderRadius: 10,
-                    padding: '12px 14px', border: '1px solid #6EE7B7',
-                    marginTop: 4,
-                  }}>
-                    <p style={{ fontSize: 12, fontWeight: 700, color: '#065F46', marginBottom: 4 }}>
-                      ✏️ 나도 써볼게요
-                    </p>
-                    <p style={{ fontSize: 14, fontWeight: 700, color: '#333', margin: '0 0 4px' }}>
-                      {grammarPopup.mysentence}
-                    </p>
-                    {grammarPopup.korean && (
-                      <p style={{ fontSize: 12, color: '#555', margin: 0 }}>
-                        → {grammarPopup.korean}
-                      </p>
+                    {grammarPopup.mysentence && (
+                      <div style={{
+                        backgroundColor: '#D1FAE5', borderRadius: 10,
+                        padding: '12px 14px', border: '1px solid #6EE7B7',
+                        marginTop: 4,
+                      }}>
+                        <p style={{ fontSize: 12, fontWeight: 700, color: '#065F46', marginBottom: 4 }}>
+                          ✏️ 나도 써볼게요
+                        </p>
+                        <p style={{ fontSize: 14, fontWeight: 700, color: '#333', margin: '0 0 4px' }}>
+                          {grammarPopup.mysentence}
+                        </p>
+                        {grammarPopup.korean && (
+                          <p style={{ fontSize: 12, color: '#555', margin: 0 }}>
+                            → {grammarPopup.korean}
+                          </p>
+                        )}
+                      </div>
                     )}
+
                   </div>
                 )}
 
