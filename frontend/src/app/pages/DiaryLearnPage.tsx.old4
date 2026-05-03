@@ -91,15 +91,12 @@ export function DiaryLearnPage() {
 
             const title = record[`${prefix}_title`] || record.title || '제목 없음';
 
-            // 메타 필드 + simple 필드는 한글 본문 추출에서 제외
-            const excludeKeys = ['_title', '_ai_title', '_sayu', '_simple', '_mode', '_rating', '_style', '_polishedAt', '_images'];
-            // 1순위: 한글 본문 필드들 (diary_오늘한일 등)
-            let contentFields = Object.entries(record)
+            const excludeKeys = ['_title', '_sayu', '_mode', '_rating', '_style', '_polishedAt', '_images'];
+            const contentFields = Object.entries(record)
               .filter(([key]) =>
                 key.startsWith(`${prefix}_`) &&
                 !excludeKeys.some(ex => key.endsWith(ex)) &&
-                !key.includes('image') &&
-                !key.includes('url')
+                !key.includes('image')
               )
               .filter(([, val]) =>
                 typeof val === 'string' &&
@@ -110,22 +107,15 @@ export function DiaryLearnPage() {
               .map(([, val]) => (val as string).trim())
               .filter(v => v.length > 0)
               .join('\n\n');
-            // 2순위: 한글 필드가 비었으면 diary_simple 사용 (단, URL로 시작하지 않을 때만)
-            if (!contentFields) {
-              const simpleVal = record[`${prefix}_simple`];
-              if (typeof simpleVal === 'string' && simpleVal.trim().length > 0 && !simpleVal.startsWith('http')) {
-                contentFields = simpleVal.trim();
-              }
-            }
 
             return {
               id: record.id,
               date: record.date || record.id.split('_')[0],
               title,
-              content: contentFields,
+              content: contentFields || '내용 없음',
             };
           });
-        setDiaries(items.filter(item => item.content && item.content.trim().length > 0));
+        setDiaries(items);
       } catch (e) {
         console.error(e);
       } finally {
