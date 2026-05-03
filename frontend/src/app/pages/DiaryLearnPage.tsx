@@ -44,8 +44,10 @@ export function DiaryLearnPage() {
   const [translating, setTranslating] = useState(false);
   const [activeTab, setActiveTab] = useState<'korean' | 'english'>('korean');
   const [ttsPlaying, setTtsPlaying] = useState<string | null>(null);
+  const [highlightedWord, setHighlightedWord] = useState<{ key: string; index: number } | null>(null);
   const [ttsLoading, setTtsLoading] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [wordPopup, setWordPopup] = useState<{
     word: string;
     meaning: string;
@@ -158,6 +160,8 @@ export function DiaryLearnPage() {
     if (ttsPlaying === key) {
       audioRef.current?.pause();
       setTtsPlaying(null);
+      if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+      setHighlightedWord(null);
       return;
     }
     try {
@@ -184,7 +188,33 @@ export function DiaryLearnPage() {
         audio.load();
         await audio.play();
         setTtsPlaying(key);
-        audio.onended = () => setTtsPlaying(null);
+        // 단어 하이라이트 시작
+        const words = text.trim().split(/\s+/);
+        let wordIndex = 0;
+        if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+        const startLoop = () => {
+          const duration = audio.duration || words.length * 0.45;
+          const interval = (duration * 1000) / words.length;
+          highlightTimerRef.current = setInterval(() => {
+            if (wordIndex >= words.length) {
+              if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+              setHighlightedWord(null);
+              return;
+            }
+            setHighlightedWord({ key, index: wordIndex });
+            wordIndex++;
+          }, interval);
+        };
+        if (audio.duration && !isNaN(audio.duration)) {
+          startLoop();
+        } else {
+          audio.addEventListener('loadedmetadata', startLoop, { once: true });
+        }
+        audio.onended = () => {
+          if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+          setHighlightedWord(null);
+          setTtsPlaying(null);
+        };
       }
     } catch (e) {
       console.error('TTS 오류:', e);
@@ -406,31 +436,45 @@ export function DiaryLearnPage() {
                   >
                     <p style={{ fontSize: 11, color: '#999', marginBottom: 6 }}>문장 {idx + 1}</p>
                     <p style={{ fontSize: 15, lineHeight: 1.9, color: '#333', marginBottom: 10 }}>
-                      {sentence.split(' ').map((word, wIdx) => (
-                        <span
-                          key={wIdx}
-                          onClick={() => handleWordClick(word)}
-                          onMouseEnter={e => {
-                            e.currentTarget.style.backgroundColor = '#1A3C6E';
-                            e.currentTarget.style.color = '#fff';
-                            e.currentTarget.style.borderRadius = '4px';
-                          }}
-                          onMouseLeave={e => {
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                            e.currentTarget.style.color = '#333';
-                          }}
-                          onTouchStart={e => {
-                            e.currentTarget.style.backgroundColor = '#1A3C6E';
-                            e.currentTarget.style.color = '#fff';
-                            e.currentTarget.style.borderRadius = '4px';
-                          }}
-                          onTouchEnd={e => {
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                            e.currentTarget.style.color = '#333';
-                          }}
-                          style={{ cursor: 'pointer', padding: '0 2px' }}
-                        >{word} </span>
-                      ))}
+                      {sentence.split(' ').map((word, wIdx) => {
+                        const isHighlighted = highlightedWord?.key === `s_${idx}` && highlightedWord?.index === wIdx;
+                        return (
+                          <span
+                            key={wIdx}
+                            onClick={() => handleWordClick(word)}
+                            onMouseEnter={e => {
+                              if (isHighlighted) return;
+                              e.currentTarget.style.backgroundColor = '#1A3C6E';
+                              e.currentTarget.style.color = '#fff';
+                              e.currentTarget.style.borderRadius = '4px';
+                            }}
+                            onMouseLeave={e => {
+                              if (isHighlighted) return;
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                              e.currentTarget.style.color = '#333';
+                            }}
+                            onTouchStart={e => {
+                              if (isHighlighted) return;
+                              e.currentTarget.style.backgroundColor = '#1A3C6E';
+                              e.currentTarget.style.color = '#fff';
+                              e.currentTarget.style.borderRadius = '4px';
+                            }}
+                            onTouchEnd={e => {
+                              if (isHighlighted) return;
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                              e.currentTarget.style.color = '#333';
+                            }}
+                            style={{
+                              cursor: 'pointer',
+                              padding: '0 2px',
+                              backgroundColor: isHighlighted ? '#dc2626' : 'transparent',
+                              color: isHighlighted ? '#fff' : '#333',
+                              borderRadius: isHighlighted ? '4px' : '0',
+                              transition: 'background-color 0.15s, color 0.15s',
+                            }}
+                          >{word} </span>
+                        );
+                      })}
                     </p>
 
                     <div style={{ display: 'flex', gap: 6 }}>
