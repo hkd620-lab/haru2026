@@ -53,7 +53,6 @@ export function DiaryLearnPage() {
     koreanPronunciation: string;
     loading: boolean;
   } | null>(null);
-  const [wordMode, setWordMode] = useState<number | null>(null);
   const [grammarPopup, setGrammarPopup] = useState<GrammarPopup | null>(null);
   const [quizPopup, setQuizPopup] = useState<QuizPopup | null>(null);
 
@@ -419,16 +418,6 @@ export function DiaryLearnPage() {
                         }}
                       >{ttsLoading === `s_${idx}` ? '⏳' : ttsPlaying === `s_${idx}` ? '⏸ 정지' : '🔊 듣기'}</button>
                       <button
-                        onClick={() => setWordMode(wordMode === idx ? null : idx)}
-                        style={{
-                          flex: 1, padding: '7px 4px',
-                          backgroundColor: wordMode === idx ? '#1A3C6E' : '#EDE9F5',
-                          color: wordMode === idx ? '#fff' : '#1A3C6E',
-                          border: 'none', borderRadius: 8,
-                          fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                        }}
-                      >📖 단어</button>
-                      <button
                         onClick={() => handleGrammarClick(sentence)}
                         style={{
                           flex: 1, padding: '7px 4px',
@@ -447,35 +436,6 @@ export function DiaryLearnPage() {
                         }}
                       >🎯 퀴즈</button>
                     </div>
-                    {wordMode === idx && (
-                      <div style={{ marginTop: 8, lineHeight: 2.2, fontSize: 15, color: '#333' }}>
-                        {sentence.split(' ').map((word, wIdx) => (
-                          <span
-                            key={wIdx}
-                            onClick={() => handleWordClick(word.replace(/[^a-zA-Z]/g, ''))}
-                            onMouseEnter={e => {
-                              e.currentTarget.style.backgroundColor = '#1A3C6E';
-                              e.currentTarget.style.color = '#fff';
-                              e.currentTarget.style.borderRadius = '4px';
-                            }}
-                            onMouseLeave={e => {
-                              e.currentTarget.style.backgroundColor = 'transparent';
-                              e.currentTarget.style.color = '#333';
-                            }}
-                            onTouchStart={e => {
-                              e.currentTarget.style.backgroundColor = '#1A3C6E';
-                              e.currentTarget.style.color = '#fff';
-                              e.currentTarget.style.borderRadius = '4px';
-                            }}
-                            onTouchEnd={e => {
-                              e.currentTarget.style.backgroundColor = 'transparent';
-                              e.currentTarget.style.color = '#333';
-                            }}
-                            style={{ cursor: 'pointer', padding: '0 3px' }}
-                          >{word} </span>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
