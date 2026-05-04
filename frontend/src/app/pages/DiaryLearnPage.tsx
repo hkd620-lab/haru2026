@@ -11,6 +11,7 @@ interface DiaryItem {
   date: string;
   title: string;
   content: string;
+  format?: '일기' | '에세이' | '직접작성';
   _english_sentences?: string[];
   _english_translated_at?: any;
   _english_source_length?: number;
@@ -58,11 +59,15 @@ export function DiaryLearnPage() {
   const { user } = useAuth();
   const fns = getFunctions(undefined, 'asia-northeast3');
 
-  const [step, setStep] = useState<'list' | 'detail' | 'learn'>('list');
+  const [step, setStep] = useState<'sourceSelect' | 'list' | 'detail' | 'learn' | 'write'>('sourceSelect');
+  const [source, setSource] = useState<'diary' | 'essay' | 'write' | null>(null);
   const [diaries, setDiaries] = useState<DiaryItem[]>([]);
   const [visibleCount, setVisibleCount] = useState(10);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<DiaryItem | null>(null);
+  // 직접 작성용 상태
+  const [koreanInput, setKoreanInput] = useState('');
+  const [directTranslating, setDirectTranslating] = useState(false);
   const [translatedSentences, setTranslatedSentences] = useState<string[]>([]);
   const [showOriginalText, setShowOriginalText] = useState(false);
   const [showGrammarDetails, setShowGrammarDetails] = useState(false);
@@ -163,6 +168,7 @@ export function DiaryLearnPage() {
               date: record.date || record.id.split('_')[0],
               title,
               content: contentFields,
+              format: format as '일기' | '에세이',
               _english_sentences: record._english_sentences,
               _english_translated_at: record._english_translated_at,
               _english_source_length: record._english_source_length,
@@ -213,6 +219,64 @@ export function DiaryLearnPage() {
       console.error(e);
     } finally {
       setTranslating(false);
+    }
+  };
+
+  // 직접 작성 → 영어 번역 + Firestore 저장
+  const handleDirectTranslate = async () => {
+    const trimmed = koreanInput.trim();
+    if (!trimmed || !user) return;
+    setDirectTranslating(true);
+    try {
+      const fn = httpsCallable(fns, 'translateToEnglish');
+      const res: any = await fn({ text: trimmed });
+      const sentences: string[] = res.data.sentences || [res.data.translated];
+
+      // 오늘 날짜
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const dateStr = `${yyyy}-${mm}-${dd}`;
+      const recordId = `${dateStr}_english_diary_${Date.now()}`;
+      const englishText = sentences.join(' ');
+      const titleSnippet = trimmed.slice(0, 20) + (trimmed.length > 20 ? '...' : '');
+
+      // Firestore에 저장 (실패해도 학습은 계속 진행)
+      try {
+        await firestoreService.saveRecord(user.uid, {
+          id: recordId,
+          date: dateStr,
+          formats: ['직접작성영어일기' as any],
+          english_diary_korean: trimmed,
+          english_diary_english: englishText,
+          english_diary_date: dateStr,
+          english_diary_title: titleSnippet,
+          _english_sentences: sentences,
+          _english_translated_at: new Date(),
+          _english_source_length: trimmed.length,
+        } as any);
+      } catch (saveErr) {
+        console.error('직접 작성 영어일기 저장 실패:', saveErr);
+      }
+
+      // 학습 화면으로 진입 (selected에 가상 DiaryItem 세팅)
+      setSelected({
+        id: recordId,
+        date: dateStr,
+        title: titleSnippet,
+        content: trimmed,
+        format: '직접작성',
+        _english_sentences: sentences,
+        _english_source_length: trimmed.length,
+      });
+      setTranslatedSentences(sentences);
+      setActiveTab('english');
+      setStep('learn');
+    } catch (e) {
+      console.error('직접 작성 번역 실패:', e);
+    } finally {
+      setDirectTranslating(false);
     }
   };
 
@@ -417,29 +481,215 @@ export function DiaryLearnPage() {
       }}>
         <button
           onClick={() => {
-            if (step === 'learn') { setStep('detail'); setActiveTab('korean'); }
+            if (step === 'learn') {
+              if (source === 'write') {
+                setStep('sourceSelect');
+                setSource(null);
+                setKoreanInput('');
+                setSelected(null);
+                setTranslatedSentences([]);
+                setActiveTab('korean');
+              } else {
+                setStep('detail');
+                setActiveTab('korean');
+              }
+            }
             else if (step === 'detail') setStep('list');
+            else if (step === 'list') { setStep('sourceSelect'); setSource(null); }
+            else if (step === 'write') { setStep('sourceSelect'); setSource(null); setKoreanInput(''); }
             else navigate(-1);
           }}
           style={{ background: 'none', border: 'none', color: '#fff', fontSize: 20, cursor: 'pointer' }}
         >←</button>
         <p style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
-          {step === 'list' ? '✍️ 영어 일기 학습' : step === 'detail' ? selected?.title : '🇺🇸 영어 번역 학습'}
+          {step === 'sourceSelect' ? '✍️ 영어 일기 학습'
+            : step === 'list' ? (source === 'essay' ? '📝 에세이에서 가져오기' : '📔 일기에서 가져오기')
+            : step === 'write' ? '✏️ 직접 작성하기'
+            : step === 'detail' ? selected?.title
+            : '🇺🇸 영어 번역 학습'}
         </p>
       </div>
 
       <div style={{ padding: '20px 20px 40px' }}>
 
+        {/* 섹션 선택 화면 */}
+        {step === 'sourceSelect' && (
+          <div>
+            <p style={{ fontSize: 14, color: '#666', marginBottom: 20, lineHeight: 1.6 }}>
+              어떤 방식으로 영어 일기 학습을 시작하시겠어요?
+            </p>
+
+            {/* 1번: 일기에서 가져오기 */}
+            <button
+              onClick={() => { setSource('diary'); setStep('list'); setVisibleCount(10); }}
+              style={{
+                width: '100%', padding: '20px',
+                marginBottom: 14,
+                backgroundColor: '#fff',
+                color: '#1A3C6E',
+                border: '2px solid #1A3C6E',
+                borderRadius: 16,
+                fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                textAlign: 'left',
+                display: 'flex', alignItems: 'center', gap: 14,
+              }}
+            >
+              <div style={{
+                width: 48, height: 48, borderRadius: 12,
+                backgroundColor: '#1A3C6E', color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 24, flexShrink: 0,
+              }}>📔</div>
+              <div>
+                <p style={{ fontSize: 16, fontWeight: 800, color: '#1A3C6E', margin: '0 0 4px' }}>
+                  일기에서 가져오기
+                </p>
+                <p style={{ fontSize: 12, color: '#666', margin: 0, fontWeight: 500 }}>
+                  작성한 일기를 영어로 학습해요
+                </p>
+              </div>
+            </button>
+
+            {/* 2번: 에세이에서 가져오기 */}
+            <button
+              onClick={() => { setSource('essay'); setStep('list'); setVisibleCount(10); }}
+              style={{
+                width: '100%', padding: '20px',
+                marginBottom: 14,
+                backgroundColor: '#fff',
+                color: '#10b981',
+                border: '2px solid #10b981',
+                borderRadius: 16,
+                fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                textAlign: 'left',
+                display: 'flex', alignItems: 'center', gap: 14,
+              }}
+            >
+              <div style={{
+                width: 48, height: 48, borderRadius: 12,
+                backgroundColor: '#10b981', color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 24, flexShrink: 0,
+              }}>📝</div>
+              <div>
+                <p style={{ fontSize: 16, fontWeight: 800, color: '#10b981', margin: '0 0 4px' }}>
+                  에세이에서 가져오기
+                </p>
+                <p style={{ fontSize: 12, color: '#666', margin: 0, fontWeight: 500 }}>
+                  작성한 에세이를 영어로 학습해요
+                </p>
+              </div>
+            </button>
+
+            {/* 3번: 직접 작성 */}
+            <button
+              onClick={() => { setSource('write'); setStep('write'); setKoreanInput(''); }}
+              style={{
+                width: '100%', padding: '20px',
+                marginBottom: 14,
+                background: 'linear-gradient(135deg, #1A3C6E 0%, #10b981 100%)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 16,
+                fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                textAlign: 'left',
+                display: 'flex', alignItems: 'center', gap: 14,
+              }}
+            >
+              <div style={{
+                width: 48, height: 48, borderRadius: 12,
+                backgroundColor: 'rgba(255,255,255,0.2)', color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 24, flexShrink: 0,
+              }}>✏️</div>
+              <div>
+                <p style={{ fontSize: 16, fontWeight: 800, color: '#fff', margin: '0 0 4px' }}>
+                  직접 작성하기
+                </p>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.9)', margin: 0, fontWeight: 500 }}>
+                  한글로 쓰면 영어로 번역해서 학습해요
+                </p>
+              </div>
+            </button>
+          </div>
+        )}
+
+        {/* 직접 작성 화면 */}
+        {step === 'write' && (
+          <div>
+            <p style={{ fontSize: 13, color: '#666', marginBottom: 12, lineHeight: 1.6 }}>
+              한글로 자유롭게 작성하세요. 영어로 번역한 뒤 학습을 시작합니다.
+            </p>
+            <textarea
+              value={koreanInput}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val.length <= 1000) setKoreanInput(val);
+              }}
+              placeholder="오늘 있었던 일이나 생각을 한글로 써보세요. (최대 1000자)"
+              style={{
+                width: '100%',
+                minHeight: 220,
+                padding: 14,
+                fontSize: 15,
+                lineHeight: 1.7,
+                color: '#333',
+                backgroundColor: '#f8faff',
+                border: '1.5px solid #d0dff0',
+                borderRadius: 12,
+                resize: 'vertical',
+                fontFamily: 'inherit',
+                boxSizing: 'border-box',
+              }}
+            />
+            <div style={{
+              display: 'flex', justifyContent: 'flex-end',
+              fontSize: 12, color: koreanInput.length >= 1000 ? '#dc2626' : '#999',
+              marginTop: 6, marginBottom: 16,
+            }}>
+              {koreanInput.length} / 1000
+            </div>
+
+            <button
+              onClick={handleDirectTranslate}
+              disabled={!koreanInput.trim() || directTranslating}
+              style={{
+                width: '100%', padding: '14px',
+                backgroundColor: !koreanInput.trim() || directTranslating ? '#cbd5e1' : '#10b981',
+                color: '#fff',
+                border: 'none', borderRadius: 12,
+                fontSize: 15, fontWeight: 700,
+                cursor: !koreanInput.trim() || directTranslating ? 'default' : 'pointer',
+              }}
+            >
+              {directTranslating ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <GrapeLoadingMini size={22} color="#fff" />
+                  번역 중... 🌐
+                </span>
+              ) : '🌐 영어로 번역하여 학습하기'}
+            </button>
+          </div>
+        )}
+
         {/* 일기 목록 */}
-        {step === 'list' && (
+        {step === 'list' && (() => {
+          const filtered = diaries.filter(d =>
+            source === 'essay' ? d.format === '에세이' : d.format === '일기'
+          );
+          return (
           <div>
             {loading ? (
-              <p style={{ textAlign: 'center', color: '#999', padding: '40px 0' }}>일기 불러오는 중...</p>
-            ) : diaries.length === 0 ? (
-              <p style={{ textAlign: 'center', color: '#999', padding: '40px 0' }}>작성한 일기/에세이가 없습니다</p>
+              <p style={{ textAlign: 'center', color: '#999', padding: '40px 0' }}>
+                {source === 'essay' ? '에세이 불러오는 중...' : '일기 불러오는 중...'}
+              </p>
+            ) : filtered.length === 0 ? (
+              <p style={{ textAlign: 'center', color: '#999', padding: '40px 0' }}>
+                {source === 'essay' ? '작성한 에세이가 없습니다' : '작성한 일기가 없습니다'}
+              </p>
             ) : (
               <>
-                {diaries.slice(0, visibleCount).map(diary => (
+                {filtered.slice(0, visibleCount).map(diary => (
                   <div
                     key={diary.id}
                     onClick={() => { setSelected(diary); setStep('detail'); }}
@@ -455,7 +705,7 @@ export function DiaryLearnPage() {
                     <span style={{ color: '#999', fontSize: 20 }}>›</span>
                   </div>
                 ))}
-                {visibleCount < diaries.length && (
+                {visibleCount < filtered.length && (
                   <button
                     onClick={() => setVisibleCount(visibleCount + 10)}
                     style={{
@@ -466,13 +716,14 @@ export function DiaryLearnPage() {
                       fontSize: 14, fontWeight: 600, cursor: 'pointer',
                     }}
                   >
-                    📖 더 보기 ({diaries.length - visibleCount}개 더 있음)
+                    📖 더 보기 ({filtered.length - visibleCount}개 더 있음)
                   </button>
                 )}
               </>
             )}
           </div>
-        )}
+          );
+        })()}
 
         {/* 일기 원문 */}
         {step === 'detail' && selected && (
