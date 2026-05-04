@@ -7,6 +7,7 @@ import { firestoreService } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { RecordTitleAnimation } from '../components/RecordTitleAnimation';
 import { FormatModal } from '../components/FormatModal';
+import GrapeLoadingMini from '../components/GrapeLoadingMini';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS, FORMAT_PREFIX } from '../types/haruTypes';
 import { db } from '../../firebase';
@@ -430,6 +431,14 @@ export function RecordPage() {
     navigate(location.pathname, { replace: true, state: null });
   }, [user, location.state]);
 
+  // RecordHubPage에서 category를 state로 전달받아 들어왔다면 해당 탭 자동 활성화
+  useEffect(() => {
+    const incomingCategory = (location.state as any)?.category as string | undefined;
+    if (incomingCategory) {
+      setSelectedCategory(incomingCategory as any);
+    }
+  }, [location.state]);
+
   const handleSave = async () => {
     if (!selectedFormats || selectedFormats.length === 0) {
       toast.error('형식을 선택해 주세요.');
@@ -701,7 +710,7 @@ export function RecordPage() {
 
           {/* 카테고리 선택 */}
           <div className="flex gap-2 mb-3 overflow-x-auto">
-            {(['생활', '업무'] as (Category | 'HARUraw' | '하루학습')[]).map((category) => (
+            {(['생활', '업무', '하루LAW'] as (Category | 'HARUraw' | '하루학습' | '하루LAW')[]).map((category) => (
               <button
                 key={category}
                 onMouseEnter={() => setHoveredCategory(category)}
@@ -872,9 +881,10 @@ export function RecordPage() {
 
               {/* 로딩 */}
               {lawLoading && (
-                <p style={{ textAlign: 'center', color: '#1A3C6E', fontSize: 13, padding: '16px 0' }}>
-                  ⚖️ 법령 분석 중...
-                </p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '16px 0' }}>
+                  <GrapeLoadingMini size={32} />
+                  <span style={{ color: '#1A3C6E', fontSize: 13 }}>⚖️ 법령 분석 중...</span>
+                </div>
               )}
 
               {/* 에러 */}
@@ -950,7 +960,10 @@ export function RecordPage() {
                   {openCard?.idx === idx && (
                     <div style={{ marginTop: 10, borderRadius: 8, overflow: 'hidden' }}>
                       {openCard.loading ? (
-                        <p style={{ fontSize: 12, color: '#999', textAlign: 'center', padding: 16 }}>분석 중...</p>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: 16 }}>
+                          <GrapeLoadingMini size={28} />
+                          <span style={{ fontSize: 12, color: '#999' }}>분석 중...</span>
+                        </div>
                       ) : (
                         renderStyledContent(openCard.content)
                       )}
