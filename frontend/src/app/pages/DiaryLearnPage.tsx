@@ -809,6 +809,27 @@ export function DiaryLearnPage() {
               <p style={{ fontSize: 15, fontWeight: 800, color: '#1A3C6E', margin: 0 }}>🎯 빈칸 채우기 퀴즈</p>
               <button onClick={() => setQuizPopup(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999' }}>✕</button>
             </div>
+            {/* 난이도 선택 버튼 (loading 여부 관계없이 항상 표시) */}
+            {!quizPopup.loading && (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+                {(['basic', 'intermediate', 'advanced'] as const).map(lv => (
+                  <button
+                    key={lv}
+                    onClick={() => handleQuizClick(quizPopup.verseText, lv)}
+                    style={{
+                      flex: 1, padding: '8px 4px',
+                      backgroundColor: quizPopup.level === lv ? '#1A3C6E' : '#f3f4f6',
+                      color: quizPopup.level === lv ? '#fff' : '#555',
+                      border: 'none', borderRadius: 8,
+                      fontSize: 12, fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {lv === 'basic' ? '🟢 초급' : lv === 'intermediate' ? '🟡 중급' : '🔴 고급'}
+                  </button>
+                ))}
+              </div>
+            )}
             {quizPopup.loading ? (
               <p style={{ textAlign: 'center', color: '#999', fontSize: 14, padding: '20px 0' }}>퀴즈 생성 중... 🎯</p>
             ) : (
