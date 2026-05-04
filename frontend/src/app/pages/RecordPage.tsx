@@ -431,6 +431,14 @@ export function RecordPage() {
     navigate(location.pathname, { replace: true, state: null });
   }, [user, location.state]);
 
+  // RecordHubPage에서 category를 state로 전달받아 들어왔다면 해당 탭 자동 활성화
+  useEffect(() => {
+    const incomingCategory = (location.state as any)?.category as string | undefined;
+    if (incomingCategory) {
+      setSelectedCategory(incomingCategory as any);
+    }
+  }, [location.state]);
+
   const handleSave = async () => {
     if (!selectedFormats || selectedFormats.length === 0) {
       toast.error('형식을 선택해 주세요.');
@@ -702,7 +710,7 @@ export function RecordPage() {
 
           {/* 카테고리 선택 */}
           <div className="flex gap-2 mb-3 overflow-x-auto">
-            {(['생활', '업무'] as (Category | 'HARUraw' | '하루학습')[]).map((category) => (
+            {(['생활', '업무', '하루LAW'] as (Category | 'HARUraw' | '하루학습' | '하루LAW')[]).map((category) => (
               <button
                 key={category}
                 onMouseEnter={() => setHoveredCategory(category)}
