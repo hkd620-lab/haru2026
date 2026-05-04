@@ -5,6 +5,7 @@ import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { BIBLE_BOOKS } from '../../data/bibleBooks';
+import GrapeLoadingMini from '../components/GrapeLoadingMini';
 
 interface Verse {
   verse: number;
@@ -2549,7 +2550,7 @@ export function BiblePage() {
                     transition: 'opacity 0.2s',
                   }}
                 >
-                  {loadingThis ? '⏳ 로딩 중...' : `▶ ${rangeLabel} ${modeLabel} 듣기 시작`}
+                  {loadingThis ? <GrapeLoadingMini size={22} withText color="#FAF9F6" /> : `▶ ${rangeLabel} ${modeLabel} 듣기 시작`}
                 </button>
               )}
             </>
@@ -2672,7 +2673,7 @@ export function BiblePage() {
                           fontSize: 12, fontWeight: 600, cursor: 'pointer',
                         }}
                       >
-                        {ttsLoading === `verse_${verse.verse}` ? '⏳' : '🇺🇸 영어'}
+                        {ttsLoading === `verse_${verse.verse}` ? <GrapeLoadingMini size={20} /> : '🇺🇸 영어'}
                       </button>
                     )}
                     {ttsPlaying === `verse_ko_${verse.verse}` ? (
@@ -2730,7 +2731,7 @@ export function BiblePage() {
                           fontSize: 12, fontWeight: 600, cursor: 'pointer',
                         }}
                       >
-                        {ttsLoading === `verse_ko_${verse.verse}` ? '⏳' : '🇰🇷 한국어'}
+                        {ttsLoading === `verse_ko_${verse.verse}` ? <GrapeLoadingMini size={20} /> : '🇰🇷 한국어'}
                       </button>
                     )}
                     {isSequentialPlaying === verse.verse ? (
@@ -2788,7 +2789,7 @@ export function BiblePage() {
                           fontSize: 12, fontWeight: 600, cursor: 'pointer',
                         }}
                       >
-                        {ttsLoading === `seq_${verse.verse}` ? '⏳' : '🔄 영→한'}
+                        {ttsLoading === `seq_${verse.verse}` ? <GrapeLoadingMini size={20} /> : '🔄 영→한'}
                       </button>
                     )}
                     {ttsPlaying === `verse_koen_${verse.verse}` ? (
@@ -2846,7 +2847,7 @@ export function BiblePage() {
                           fontSize: 12, fontWeight: 700, cursor: 'pointer',
                         }}
                       >
-                        {ttsLoading === `verse_koen_${verse.verse}` ? '⏳' : '✨ 한→영'}
+                        {ttsLoading === `verse_koen_${verse.verse}` ? <GrapeLoadingMini size={20} /> : '✨ 한→영'}
                       </button>
                     )}
                   </div>
@@ -2917,7 +2918,10 @@ export function BiblePage() {
             </p>
             <hr style={{ margin: '12px 0', borderColor: '#eee' }} />
             {translationPopup.loading ? (
-              <p style={{ color: '#999', fontSize: 14 }}>번역 불러오는 중... 🇰🇷</p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                <GrapeLoadingMini size={32} />
+                <span style={{ color: '#999', fontSize: 14 }}>번역 불러오는 중... 🇰🇷</span>
+              </div>
             ) : (
               <p style={{ fontSize: 15, color: '#1A3C6E', lineHeight: 1.8, fontWeight: 500 }}>
                 {translationPopup.translation}
@@ -2973,7 +2977,10 @@ export function BiblePage() {
             </p>
 
             {errorPopup.loading ? (
-              <p style={{ color: '#999', fontSize: 14, textAlign: 'center' }}>불러오는 중... 🔍</p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                <GrapeLoadingMini size={32} />
+                <span style={{ color: '#999', fontSize: 14 }}>불러오는 중... 🔍</span>
+              </div>
             ) : errorPopup.changes && errorPopup.changes.length > 0 ? (
               <>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -3081,7 +3088,7 @@ export function BiblePage() {
                     color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
                   }}
                 >
-                  {ttsLoading === `word_${wordPopup.word}` ? '⏳' : '🔊 발음 듣기'}
+                  {ttsLoading === `word_${wordPopup.word}` ? <GrapeLoadingMini size={20} /> : '🔊 발음 듣기'}
                 </button>
 
                 {/* 생활 예문 */}
@@ -3250,7 +3257,10 @@ export function BiblePage() {
 
             {grammarPopup.loading ? (
               <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                <p style={{ color: '#999', fontSize: 14 }}>분석 중... ✨</p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                  <GrapeLoadingMini size={32} />
+                  <span style={{ color: '#999', fontSize: 14 }}>분석 중... ✨</span>
+                </div>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -3397,7 +3407,10 @@ export function BiblePage() {
 
             {quizPopup.loading ? (
               <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                <p style={{ color: '#999', fontSize: 14 }}>퀴즈 생성 중... 🎯</p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                  <GrapeLoadingMini size={32} />
+                  <span style={{ color: '#999', fontSize: 14 }}>퀴즈 생성 중... 🎯</span>
+                </div>
               </div>
             ) : (
               <div>
