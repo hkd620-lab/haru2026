@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
@@ -771,6 +771,16 @@ export function BiblePage() {
   const [showEnVoice, setShowEnVoice] = useState<boolean>(false);
   const [showKoVoice, setShowKoVoice] = useState<boolean>(false);
   const [showQuizHint, setShowQuizHint] = useState(false);
+
+  const shuffledOptions = useMemo(() => {
+    const opts = quizPopup?.options || [];
+    const arr = [...opts];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }, [quizPopup?.verseText, quizPopup?.level, quizPopup?.options]);
   const [vocabMemo, setVocabMemo] = useState<string>('');
   const [vocabExample, setVocabExample] = useState<string>('');
   const [vocabSaved, setVocabSaved] = useState<boolean>(false);
@@ -835,6 +845,7 @@ export function BiblePage() {
   };
 
   const handleQuizClick = useCallback(async (verse: Verse, level: 'basic' | 'intermediate' | 'advanced' = quizLevel) => {
+    setShowQuizHint(false);
     setQuizPopup({
       verse: verse.verse,
       verseText: verse.text,
@@ -3449,7 +3460,7 @@ export function BiblePage() {
                   보기에서 선택하세요:
                 </p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
-                  {quizPopup.options.map((option, idx) => {
+                  {shuffledOptions.map((option, idx) => {
                     const isUsed = quizPopup.selectedAnswers.includes(option);
                     const isCorrect = quizPopup.submitted && quizPopup.blanks.some(b => b.answer === option);
                     const isWrong = quizPopup.submitted && isUsed && !isCorrect;

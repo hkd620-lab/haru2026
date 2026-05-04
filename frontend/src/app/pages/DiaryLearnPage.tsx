@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,6 +10,9 @@ interface DiaryItem {
   date: string;
   title: string;
   content: string;
+  _english_sentences?: string[];
+  _english_translated_at?: any;
+  _english_source_length?: number;
 }
 
 interface GrammarPopup {
@@ -69,6 +72,8 @@ export function DiaryLearnPage() {
   const [ttsLoading, setTtsLoading] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const highlightTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [isFullPlaying, setIsFullPlaying] = useState(false);
+  const isFullPlayingRef = useRef(false);
   const [wordPopup, setWordPopup] = useState<{
     word: string;
     meaning: string;
@@ -79,6 +84,17 @@ export function DiaryLearnPage() {
   } | null>(null);
   const [grammarPopup, setGrammarPopup] = useState<GrammarPopup | null>(null);
   const [quizPopup, setQuizPopup] = useState<QuizPopup | null>(null);
+  const [showHint, setShowHint] = useState(false);
+
+  const shuffledOptions = useMemo(() => {
+    const opts = quizPopup?.options || [];
+    const arr = [...opts];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }, [quizPopup?.verseText, quizPopup?.level, quizPopup?.options]);
 
   // 오디오 잠금 해제 (안드로이드)
   useEffect(() => {
@@ -146,6 +162,9 @@ export function DiaryLearnPage() {
               date: record.date || record.id.split('_')[0],
               title,
               content: contentFields,
+              _english_sentences: record._english_sentences,
+              _english_translated_at: record._english_translated_at,
+              _english_source_length: record._english_source_length,
             };
           });
         setDiaries(items.filter(item => item.content && item.content.trim().length > 0));
@@ -160,15 +179,35 @@ export function DiaryLearnPage() {
 
   // 영어 번역
   const handleTranslate = async () => {
-    if (!selected) return;
+    if (!selected || !user) return;
     setTranslating(true);
     try {
+      // 캐시 확인: 영어 번역이 이미 있고 본문 길이가 일치하면 재사용 (API 호출 0회)
+      const cached = selected._english_sentences;
+      const cachedLen = selected._english_source_length;
+      if (Array.isArray(cached) && cached.length > 0 && cachedLen === selected.content.length) {
+        setTranslatedSentences(cached);
+        setActiveTab('english');
+        setStep('learn');
+        return;
+      }
+      // 캐시 없거나 본문 변경 → 새로 번역
       const fn = httpsCallable(fns, 'translateToEnglish');
       const res: any = await fn({ text: selected.content });
       const sentences: string[] = res.data.sentences || [res.data.translated];
       setTranslatedSentences(sentences);
       setActiveTab('english');
       setStep('learn');
+      // Firestore에 캐시 저장 (실패해도 사용자 경험에는 영향 없음)
+      try {
+        await firestoreService.updateRecord(user.uid, selected.id, {
+          _english_sentences: sentences,
+          _english_translated_at: new Date(),
+          _english_source_length: selected.content.length,
+        });
+      } catch (saveErr) {
+        console.error('영어 번역 캐시 저장 실패:', saveErr);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -177,12 +216,13 @@ export function DiaryLearnPage() {
   };
 
   // TTS
-  const handleTTS = async (text: string, key: string) => {
+  const handleTTS = async (text: string, key: string, onEnd?: () => void) => {
     if (ttsPlaying === key) {
       audioRef.current?.pause();
       setTtsPlaying(null);
       if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
       setHighlightedWord(null);
+      onEnd?.();
       return;
     }
     try {
@@ -235,6 +275,15 @@ export function DiaryLearnPage() {
           if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
           setHighlightedWord(null);
           setTtsPlaying(null);
+          onEnd?.();
+        };
+        audio.onpause = () => {
+          // 외부에서 audio.pause()로 강제 정지된 경우 (자연 종료가 아닐 때)
+          if (!audio.ended) {
+            if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+            setHighlightedWord(null);
+            onEnd?.();
+          }
         };
       }
     } catch (e) {
@@ -242,6 +291,30 @@ export function DiaryLearnPage() {
     } finally {
       setTtsLoading(null);
     }
+  };
+
+  // 전체 듣기: 문장별로 handleTTS를 순차 호출하여 단어 하이라이트 재사용
+  const handlePlayAll = async () => {
+    if (isFullPlayingRef.current) {
+      // 정지: 진행 중이면 즉시 중단
+      isFullPlayingRef.current = false;
+      setIsFullPlaying(false);
+      audioRef.current?.pause();
+      if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+      setHighlightedWord(null);
+      setTtsPlaying(null);
+      return;
+    }
+    isFullPlayingRef.current = true;
+    setIsFullPlaying(true);
+    for (let idx = 0; idx < translatedSentences.length; idx++) {
+      if (!isFullPlayingRef.current) break;
+      await new Promise<void>(resolve => {
+        handleTTS(translatedSentences[idx], `s_${idx}`, () => resolve());
+      });
+    }
+    isFullPlayingRef.current = false;
+    setIsFullPlaying(false);
   };
 
   // 문법
@@ -289,6 +362,7 @@ export function DiaryLearnPage() {
 
   // 퀴즈
   const handleQuizClick = useCallback(async (text: string, level: 'basic' | 'intermediate' | 'advanced' = 'basic') => {
+    setShowHint(false);
     setQuizPopup({ verseText: text, loading: true, level });
     try {
       const fn = httpsCallable(fns, 'getVerseQuiz');
@@ -460,15 +534,15 @@ export function DiaryLearnPage() {
               <div>
                 {/* 전체 듣기 */}
                 <button
-                  onClick={() => handleTTS(translatedSentences.join(' '), 'full')}
+                  onClick={handlePlayAll}
                   style={{
                     marginBottom: 16, padding: '10px 20px',
-                    backgroundColor: ttsPlaying === 'full' ? '#8B4789' : '#1A3C6E',
+                    backgroundColor: isFullPlaying ? '#8B4789' : '#1A3C6E',
                     color: '#fff', border: 'none', borderRadius: 20,
                     fontSize: 13, fontWeight: 600, cursor: 'pointer',
                   }}
                 >
-                  {ttsLoading === 'full' ? '⏳ 로딩 중...' : ttsPlaying === 'full' ? '⏸ 정지' : '🔊 전체 듣기'}
+                  {isFullPlaying ? '⏸ 정지' : '🔊 전체 듣기'}
                 </button>
 
                 {/* 문장별 */}
@@ -809,6 +883,27 @@ export function DiaryLearnPage() {
               <p style={{ fontSize: 15, fontWeight: 800, color: '#1A3C6E', margin: 0 }}>🎯 빈칸 채우기 퀴즈</p>
               <button onClick={() => setQuizPopup(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999' }}>✕</button>
             </div>
+            {/* 난이도 선택 버튼 (loading 여부 관계없이 항상 표시) */}
+            {!quizPopup.loading && (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+                {(['basic', 'intermediate', 'advanced'] as const).map(lv => (
+                  <button
+                    key={lv}
+                    onClick={() => handleQuizClick(quizPopup.verseText, lv)}
+                    style={{
+                      flex: 1, padding: '8px 4px',
+                      backgroundColor: quizPopup.level === lv ? '#1A3C6E' : '#f3f4f6',
+                      color: quizPopup.level === lv ? '#fff' : '#555',
+                      border: 'none', borderRadius: 8,
+                      fontSize: 12, fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {lv === 'basic' ? '🟢 초급' : lv === 'intermediate' ? '🟡 중급' : '🔴 고급'}
+                  </button>
+                ))}
+              </div>
+            )}
             {quizPopup.loading ? (
               <p style={{ textAlign: 'center', color: '#999', fontSize: 14, padding: '20px 0' }}>퀴즈 생성 중... 🎯</p>
             ) : (
@@ -825,16 +920,34 @@ export function DiaryLearnPage() {
                     </span>
                   ))}
                 </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-                  {quizPopup.blanks?.map((blank, idx) => (
-                    <span key={idx} style={{ fontSize: 11, color: '#8B4789', backgroundColor: '#f0e6f6', padding: '3px 8px', borderRadius: 10 }}>
-                      빈칸{idx + 1}: {blank.hint}
-                    </span>
-                  ))}
-                </div>
+                <button
+                  onClick={() => setShowHint(prev => !prev)}
+                  style={{
+                    padding: '8px 14px',
+                    backgroundColor: showHint ? '#fef3c7' : '#f3f4f6',
+                    color: '#555',
+                    border: '1.5px solid ' + (showHint ? '#fbbf24' : '#d1d5db'),
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    marginBottom: 12,
+                  }}
+                >
+                  {showHint ? '🙈 힌트 숨기기' : '💡 힌트 보기'}
+                </button>
+                {showHint && (
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                    {quizPopup.blanks?.map((blank, idx) => (
+                      <span key={idx} style={{ fontSize: 11, color: '#8B4789', backgroundColor: '#f0e6f6', padding: '3px 8px', borderRadius: 10 }}>
+                        빈칸{idx + 1}: {blank.hint}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <p style={{ fontSize: 13, fontWeight: 700, color: '#1A3C6E', marginBottom: 10 }}>보기에서 선택하세요:</p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
-                  {quizPopup.options?.map((option, idx) => {
+                  {shuffledOptions.map((option, idx) => {
                     const isUsed = quizPopup.selectedAnswers?.includes(option);
                     return (
                       <button
