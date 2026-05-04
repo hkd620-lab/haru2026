@@ -495,7 +495,12 @@ export function DiaryLearnPage() {
                 fontSize: 15, fontWeight: 700, cursor: 'pointer',
               }}
             >
-              {translating ? '번역 중... 🌐' : '🌐 영어로 번역하여 학습하기'}
+              {translating ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <GrapeLoadingMini size={22} color="#fff" />
+                  번역 중... 🌐
+                </span>
+              ) : '🌐 영어로 번역하여 학습하기'}
             </button>
           </div>
         )}
@@ -675,7 +680,7 @@ export function DiaryLearnPage() {
                     color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
                   }}
                 >
-                  {ttsLoading === `word_${wordPopup.word}` ? '⏳' : '🔊 발음 듣기'}
+                  {ttsLoading === `word_${wordPopup.word}` ? <GrapeLoadingMini size={20} color="#fff" /> : '🔊 발음 듣기'}
                 </button>
               </>
             )}
@@ -749,7 +754,10 @@ export function DiaryLearnPage() {
 
             {grammarPopup.loading ? (
               <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                <p style={{ color: '#999', fontSize: 14 }}>분석 중... ✨</p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                  <GrapeLoadingMini size={32} />
+                  <span style={{ color: '#999', fontSize: 14 }}>분석 중... ✨</span>
+                </div>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -906,7 +914,10 @@ export function DiaryLearnPage() {
               </div>
             )}
             {quizPopup.loading ? (
-              <p style={{ textAlign: 'center', color: '#999', fontSize: 14, padding: '20px 0' }}>퀴즈 생성 중... 🎯</p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '20px 0' }}>
+                <GrapeLoadingMini size={32} />
+                <span style={{ color: '#999', fontSize: 14 }}>퀴즈 생성 중... 🎯</span>
+              </div>
             ) : (
               <div>
                 <div style={{ backgroundColor: '#f8faff', borderRadius: 12, padding: 16, marginBottom: 20, border: '1.5px solid #d0dff0', lineHeight: 2, fontSize: 14, color: '#333' }}>
