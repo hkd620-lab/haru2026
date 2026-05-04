@@ -560,7 +560,7 @@ export function DiaryLearnPage() {
 
       {/* 단어 팝업 — 성경과 완전 동일 */}
       {wordPopup && (
-        <div onClick={() => setWordPopup(null)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div onClick={() => setWordPopup(null)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, backgroundColor: '#fff', borderRadius: '20px', margin: '0 16px', padding: '24px 24px 40px', maxHeight: '80vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <p style={{ fontSize: 22, fontWeight: 800, color: '#1A3C6E', margin: 0 }}>{wordPopup.word}</p>
@@ -641,7 +641,31 @@ export function DiaryLearnPage() {
               borderRadius: 8, marginBottom: 12, fontSize: 14,
               color: '#1A3C6E', lineHeight: 1.6, fontWeight: 600,
             }}>
-              {grammarPopup.verseText}
+              {grammarPopup.verseText.split(' ').map((word, wIdx) => (
+                <span
+                  key={wIdx}
+                  onClick={() => handleWordClick(word)}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.backgroundColor = '#1A3C6E';
+                    e.currentTarget.style.color = '#fff';
+                    e.currentTarget.style.borderRadius = '4px';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = '#1A3C6E';
+                  }}
+                  onTouchStart={e => {
+                    e.currentTarget.style.backgroundColor = '#1A3C6E';
+                    e.currentTarget.style.color = '#fff';
+                    e.currentTarget.style.borderRadius = '4px';
+                  }}
+                  onTouchEnd={e => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = '#1A3C6E';
+                  }}
+                  style={{ cursor: 'pointer', padding: '0 2px' }}
+                >{word} </span>
+              ))}
             </div>
 
             {grammarPopup.loading ? (
