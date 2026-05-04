@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useAuth } from '../contexts/AuthContext';
@@ -79,6 +79,17 @@ export function DiaryLearnPage() {
   } | null>(null);
   const [grammarPopup, setGrammarPopup] = useState<GrammarPopup | null>(null);
   const [quizPopup, setQuizPopup] = useState<QuizPopup | null>(null);
+  const [showHint, setShowHint] = useState(false);
+
+  const shuffledOptions = useMemo(() => {
+    const opts = quizPopup?.options || [];
+    const arr = [...opts];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }, [quizPopup?.verseText, quizPopup?.level, quizPopup?.options]);
 
   // 오디오 잠금 해제 (안드로이드)
   useEffect(() => {
@@ -289,6 +300,7 @@ export function DiaryLearnPage() {
 
   // 퀴즈
   const handleQuizClick = useCallback(async (text: string, level: 'basic' | 'intermediate' | 'advanced' = 'basic') => {
+    setShowHint(false);
     setQuizPopup({ verseText: text, loading: true, level });
     try {
       const fn = httpsCallable(fns, 'getVerseQuiz');
@@ -846,16 +858,34 @@ export function DiaryLearnPage() {
                     </span>
                   ))}
                 </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-                  {quizPopup.blanks?.map((blank, idx) => (
-                    <span key={idx} style={{ fontSize: 11, color: '#8B4789', backgroundColor: '#f0e6f6', padding: '3px 8px', borderRadius: 10 }}>
-                      빈칸{idx + 1}: {blank.hint}
-                    </span>
-                  ))}
-                </div>
+                <button
+                  onClick={() => setShowHint(prev => !prev)}
+                  style={{
+                    padding: '8px 14px',
+                    backgroundColor: showHint ? '#fef3c7' : '#f3f4f6',
+                    color: '#555',
+                    border: '1.5px solid ' + (showHint ? '#fbbf24' : '#d1d5db'),
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    marginBottom: 12,
+                  }}
+                >
+                  {showHint ? '🙈 힌트 숨기기' : '💡 힌트 보기'}
+                </button>
+                {showHint && (
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                    {quizPopup.blanks?.map((blank, idx) => (
+                      <span key={idx} style={{ fontSize: 11, color: '#8B4789', backgroundColor: '#f0e6f6', padding: '3px 8px', borderRadius: 10 }}>
+                        빈칸{idx + 1}: {blank.hint}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <p style={{ fontSize: 13, fontWeight: 700, color: '#1A3C6E', marginBottom: 10 }}>보기에서 선택하세요:</p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
-                  {quizPopup.options?.map((option, idx) => {
+                  {shuffledOptions.map((option, idx) => {
                     const isUsed = quizPopup.selectedAnswers?.includes(option);
                     return (
                       <button
