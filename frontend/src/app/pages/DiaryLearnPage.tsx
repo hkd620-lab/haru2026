@@ -72,6 +72,8 @@ export function DiaryLearnPage() {
   const [ttsLoading, setTtsLoading] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const highlightTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [isFullPlaying, setIsFullPlaying] = useState(false);
+  const isFullPlayingRef = useRef(false);
   const [wordPopup, setWordPopup] = useState<{
     word: string;
     meaning: string;
@@ -214,12 +216,13 @@ export function DiaryLearnPage() {
   };
 
   // TTS
-  const handleTTS = async (text: string, key: string) => {
+  const handleTTS = async (text: string, key: string, onEnd?: () => void) => {
     if (ttsPlaying === key) {
       audioRef.current?.pause();
       setTtsPlaying(null);
       if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
       setHighlightedWord(null);
+      onEnd?.();
       return;
     }
     try {
@@ -272,6 +275,15 @@ export function DiaryLearnPage() {
           if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
           setHighlightedWord(null);
           setTtsPlaying(null);
+          onEnd?.();
+        };
+        audio.onpause = () => {
+          // 외부에서 audio.pause()로 강제 정지된 경우 (자연 종료가 아닐 때)
+          if (!audio.ended) {
+            if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+            setHighlightedWord(null);
+            onEnd?.();
+          }
         };
       }
     } catch (e) {
@@ -279,6 +291,30 @@ export function DiaryLearnPage() {
     } finally {
       setTtsLoading(null);
     }
+  };
+
+  // 전체 듣기: 문장별로 handleTTS를 순차 호출하여 단어 하이라이트 재사용
+  const handlePlayAll = async () => {
+    if (isFullPlayingRef.current) {
+      // 정지: 진행 중이면 즉시 중단
+      isFullPlayingRef.current = false;
+      setIsFullPlaying(false);
+      audioRef.current?.pause();
+      if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
+      setHighlightedWord(null);
+      setTtsPlaying(null);
+      return;
+    }
+    isFullPlayingRef.current = true;
+    setIsFullPlaying(true);
+    for (let idx = 0; idx < translatedSentences.length; idx++) {
+      if (!isFullPlayingRef.current) break;
+      await new Promise<void>(resolve => {
+        handleTTS(translatedSentences[idx], `s_${idx}`, () => resolve());
+      });
+    }
+    isFullPlayingRef.current = false;
+    setIsFullPlaying(false);
   };
 
   // 문법
@@ -498,15 +534,15 @@ export function DiaryLearnPage() {
               <div>
                 {/* 전체 듣기 */}
                 <button
-                  onClick={() => handleTTS(translatedSentences.join(' '), 'full')}
+                  onClick={handlePlayAll}
                   style={{
                     marginBottom: 16, padding: '10px 20px',
-                    backgroundColor: ttsPlaying === 'full' ? '#8B4789' : '#1A3C6E',
+                    backgroundColor: isFullPlaying ? '#8B4789' : '#1A3C6E',
                     color: '#fff', border: 'none', borderRadius: 20,
                     fontSize: 13, fontWeight: 600, cursor: 'pointer',
                   }}
                 >
-                  {ttsLoading === 'full' ? '⏳ 로딩 중...' : ttsPlaying === 'full' ? '⏸ 정지' : '🔊 전체 듣기'}
+                  {isFullPlaying ? '⏸ 정지' : '🔊 전체 듣기'}
                 </button>
 
                 {/* 문장별 */}
