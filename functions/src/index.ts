@@ -230,6 +230,10 @@ export const generateTitlesForAll = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    const DEV_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+    if (request.auth.uid !== DEV_UID) {
+      throw new HttpsError('permission-denied', '개발자 전용 기능입니다');
+    }
     const uid = request.auth.uid;
 
     const FORMAT_PREFIX_MAP: Record<string, string> = {
@@ -1840,11 +1844,20 @@ ${JSON.stringify(parsed, null, 2)}`;
 export const preloadChapterGrammar = onCall(
   { region: 'asia-northeast3', timeoutSeconds: 540, secrets: [GEMINI_API_KEY_SECRET, OPENAI_API_KEY_SECRET] },
   async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다');
+    }
+
     const { book, chapter, verses, verseTexts } = request.data;
 
     const results: any[] = [];
 
     for (const verseKey of verses) {
+      // 임의 키 주입 방지 — 영어성경 verseKey 형식만 허용 (예: matthew_5_3)
+      if (!/^[a-z]+_\d+_\d+$/.test(verseKey)) {
+        results.push({ verseKey, status: 'invalid_key' });
+        continue;
+      }
       try {
         // 1. 캐시 확인 — 이미 있으면 스킵
         const cacheRef = db.collection('grammarCache').doc(verseKey);
