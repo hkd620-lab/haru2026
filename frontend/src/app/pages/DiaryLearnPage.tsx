@@ -10,6 +10,9 @@ interface DiaryItem {
   date: string;
   title: string;
   content: string;
+  _english_sentences?: string[];
+  _english_translated_at?: any;
+  _english_source_length?: number;
 }
 
 interface GrammarPopup {
@@ -157,6 +160,9 @@ export function DiaryLearnPage() {
               date: record.date || record.id.split('_')[0],
               title,
               content: contentFields,
+              _english_sentences: record._english_sentences,
+              _english_translated_at: record._english_translated_at,
+              _english_source_length: record._english_source_length,
             };
           });
         setDiaries(items.filter(item => item.content && item.content.trim().length > 0));
@@ -171,15 +177,35 @@ export function DiaryLearnPage() {
 
   // 영어 번역
   const handleTranslate = async () => {
-    if (!selected) return;
+    if (!selected || !user) return;
     setTranslating(true);
     try {
+      // 캐시 확인: 영어 번역이 이미 있고 본문 길이가 일치하면 재사용 (API 호출 0회)
+      const cached = selected._english_sentences;
+      const cachedLen = selected._english_source_length;
+      if (Array.isArray(cached) && cached.length > 0 && cachedLen === selected.content.length) {
+        setTranslatedSentences(cached);
+        setActiveTab('english');
+        setStep('learn');
+        return;
+      }
+      // 캐시 없거나 본문 변경 → 새로 번역
       const fn = httpsCallable(fns, 'translateToEnglish');
       const res: any = await fn({ text: selected.content });
       const sentences: string[] = res.data.sentences || [res.data.translated];
       setTranslatedSentences(sentences);
       setActiveTab('english');
       setStep('learn');
+      // Firestore에 캐시 저장 (실패해도 사용자 경험에는 영향 없음)
+      try {
+        await firestoreService.updateRecord(user.uid, selected.id, {
+          _english_sentences: sentences,
+          _english_translated_at: new Date(),
+          _english_source_length: selected.content.length,
+        });
+      } catch (saveErr) {
+        console.error('영어 번역 캐시 저장 실패:', saveErr);
+      }
     } catch (e) {
       console.error(e);
     } finally {
