@@ -1715,10 +1715,14 @@ mysentence와 korean은 반드시 채워야 합니다.
     const clean = raw.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
 
-    // 3. GPT-4o 검증
+    // 3. GPT-4o 검증 (영어성경: 항상, 영어일기학습: 200자 초과 시만 — 비용 절감)
+    const isBible = /^[a-z]+_\d+_\d+$/.test(verseKey || '');
+    const isDiary = (verseKey || '').startsWith('diary_');
+    const useGPT4o = isBible || (isDiary && verseText.length > 200);
+
     let verified = parsed;
     let gptChanges: string[] = [];
-    try {
+    if (useGPT4o) try {
       const OPENAI_KEY = OPENAI_API_KEY_SECRET.value().replace(/[^\x20-\x7E]/g, '').trim();
       const gptPrompt = `당신은 영어 문법 전문가입니다. 아래 영어 성경 구절의 문법 분석 JSON을 능동적으로 검토하고 개선하세요.
 
@@ -1823,7 +1827,7 @@ ${JSON.stringify(parsed, null, 2)}`;
     await cacheRef.set({
       ...verified,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      verifiedByGPT: true,
+      verifiedByGPT: useGPT4o,
       gptChanges: gptChanges,
     });
 
