@@ -2220,7 +2220,17 @@ ${allItems.join('\n\n---\n\n')}
 // ===== 뉴스 수동 새로고침 (개발자용) =====
 export const refreshNews = onCall(
   { secrets: [GEMINI_API_KEY_SECRET], region: 'asia-northeast3' },
-  async () => {
+  async (request) => {
+    // 개발자 UID — 향후 일반 사용자 개방 시 한도 체크 로직 추가 예정
+    const DEV_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+    const isDeveloper = request.auth?.uid === DEV_UID;
+
+    if (!isDeveloper) {
+      // TODO: 정식 출시 시 일반 사용자 한도 체크 로직 추가
+      // 예: 일 1회 / 월 30회 한도, 또는 유료 구독자만 허용
+      throw new HttpsError('permission-denied', '뉴스 새로고침 권한이 없습니다');
+    }
+
     try {
       const RSS_URLS = [
         'https://www.aljazeera.com/xml/rss/all.xml',
