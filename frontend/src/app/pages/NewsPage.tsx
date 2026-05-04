@@ -3,6 +3,9 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useNavigate } from 'react-router';
+import { useAuth } from '../contexts/AuthContext';
+
+const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
 interface NewsData {
   rank: number;
@@ -16,9 +19,17 @@ interface NewsData {
 
 export function NewsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [newsList, setNewsList] = useState<NewsData[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    if (!user?.uid || user.uid !== DEVELOPER_UID) {
+      navigate('/');
+      return;
+    }
+  }, [user?.uid]);
 
   useEffect(() => {
     const docs = ['rank1', 'rank2', 'rank3'];

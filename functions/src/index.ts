@@ -2135,6 +2135,8 @@ JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
 );
 
 // ===== 🌍 해외 뉴스 자동 수집 (30분마다) =====
+// 2026-05-05 비활성화: 비용 절감 (월 7,200원). 필요 시 주석 해제하여 재활성화
+/*
 export const fetchTopNews = onSchedule(
   {
     schedule: 'every 30 minutes',
@@ -2216,11 +2218,22 @@ ${allItems.join('\n\n---\n\n')}
     } catch (err) { logger.error('뉴스 수집 오류:', err); }
   }
 );
+*/
 
 // ===== 뉴스 수동 새로고침 (개발자용) =====
 export const refreshNews = onCall(
   { secrets: [GEMINI_API_KEY_SECRET], region: 'asia-northeast3' },
-  async () => {
+  async (request) => {
+    // 개발자 UID — 향후 일반 사용자 개방 시 한도 체크 로직 추가 예정
+    const DEV_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+    const isDeveloper = request.auth?.uid === DEV_UID;
+
+    if (!isDeveloper) {
+      // TODO: 정식 출시 시 일반 사용자 한도 체크 로직 추가
+      // 예: 일 1회 / 월 30회 한도, 또는 유료 구독자만 허용
+      throw new HttpsError('permission-denied', '뉴스 새로고침 권한이 없습니다');
+    }
+
     try {
       const RSS_URLS = [
         'https://www.aljazeera.com/xml/rss/all.xml',

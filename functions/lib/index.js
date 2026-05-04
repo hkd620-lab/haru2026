@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.fetchTopNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
+exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -1839,46 +1839,44 @@ JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
     return parsed;
 });
 // ===== 🌍 해외 뉴스 자동 수집 (30분마다) =====
-exports.fetchTopNews = (0, scheduler_1.onSchedule)({
+// 2026-05-05 비활성화: 비용 절감 (월 7,200원). 필요 시 주석 해제하여 재활성화
+/*
+export const fetchTopNews = onSchedule(
+  {
     schedule: 'every 30 minutes',
     timeZone: 'Asia/Seoul',
     region: 'asia-northeast3',
     secrets: [GEMINI_API_KEY_SECRET],
-}, async () => {
+  },
+  async () => {
     try {
-        const RSS_URLS = [
-            'https://www.aljazeera.com/xml/rss/all.xml',
-            'https://www.theguardian.com/world/rss',
-            'https://rss.nytimes.com/services/xml/rss/nyt/World.xml',
-        ];
-        let allItems = [];
-        for (const url of RSS_URLS) {
-            try {
-                const res = await axios_1.default.get(url, { timeout: 8000, responseType: 'text' });
-                const xml = res.data;
-                const titleMatches = xml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>|<title>(.*?)<\/title>/g) || [];
-                const descMatches = xml.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>|<description>(.*?)<\/description>/g) || [];
-                const linkMatches = xml.match(/<link>(.*?)<\/link>|<link\s+href="(.*?)"/g) || [];
-                for (let i = 1; i < Math.min(titleMatches.length, 8); i++) {
-                    const title = (titleMatches[i] || '').replace(/<\/?[^>]+(>|$)/g, '').replace(/\[CDATA\[|\]\]/g, '').trim();
-                    const desc = (descMatches[i] || '').replace(/<\/?[^>]+(>|$)/g, '').replace(/\[CDATA\[|\]\]/g, '').trim();
-                    const link = (linkMatches[i] || '').replace(/<link>|<\/link>|<link\s+href="|"/g, '').trim();
-                    if (title && title.length > 10) {
-                        allItems.push(`제목: ${title}\n요약: ${desc.slice(0, 200)}\n링크: ${link}`);
-                    }
-                }
+      const RSS_URLS = [
+        'https://www.aljazeera.com/xml/rss/all.xml',
+        'https://www.theguardian.com/world/rss',
+        'https://rss.nytimes.com/services/xml/rss/nyt/World.xml',
+      ];
+      let allItems: string[] = [];
+      for (const url of RSS_URLS) {
+        try {
+          const res = await axios.get(url, { timeout: 8000, responseType: 'text' });
+          const xml = res.data as string;
+          const titleMatches = xml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>|<title>(.*?)<\/title>/g) || [];
+          const descMatches = xml.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>|<description>(.*?)<\/description>/g) || [];
+          const linkMatches = xml.match(/<link>(.*?)<\/link>|<link\s+href="(.*?)"/g) || [];
+          for (let i = 1; i < Math.min(titleMatches.length, 8); i++) {
+            const title = (titleMatches[i] || '').replace(/<\/?[^>]+(>|$)/g, '').replace(/\[CDATA\[|\]\]/g, '').trim();
+            const desc = (descMatches[i] || '').replace(/<\/?[^>]+(>|$)/g, '').replace(/\[CDATA\[|\]\]/g, '').trim();
+            const link = (linkMatches[i] || '').replace(/<link>|<\/link>|<link\s+href="|"/g, '').trim();
+            if (title && title.length > 10) {
+              allItems.push(`제목: ${title}\n요약: ${desc.slice(0, 200)}\n링크: ${link}`);
             }
-            catch (e) {
-                logger.warn('RSS 수집 실패:', url);
-            }
-        }
-        if (allItems.length === 0) {
-            logger.warn('수집된 뉴스 없음');
-            return;
-        }
-        const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-        const prompt = `다음은 오늘의 해외 주요 뉴스 목록입니다.
+          }
+        } catch (e) { logger.warn('RSS 수집 실패:', url); }
+      }
+      if (allItems.length === 0) { logger.warn('수집된 뉴스 없음'); return; }
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      const prompt = `다음은 오늘의 해외 주요 뉴스 목록입니다.
 미국과 이란 관계, 중동 정세, 국제 분쟁, 외교 관련 뉴스 중 가장 중요한 순서대로 3개를 선택해서 한국어로 번역 요약해주세요.
 
 뉴스 목록:
@@ -1911,23 +1909,31 @@ ${allItems.join('\n\n---\n\n')}
     "category": "미국-이란 or 중동 or 국제분쟁 or 외교"
   }
 ]`;
-        const result = await model.generateContent(prompt);
-        const text = result.response.text().replace(/```json|```/g, '').trim();
-        const newsArray = JSON.parse(text);
-        const batch = db.batch();
-        for (const item of newsArray) {
-            const ref = db.collection('news').doc(`rank${item.rank}`);
-            batch.set(ref, { ...item, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
-        }
-        await batch.commit();
-        logger.info('✅ 뉴스 3건 저장 완료');
-    }
-    catch (err) {
-        logger.error('뉴스 수집 오류:', err);
-    }
-});
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().replace(/```json|```/g, '').trim();
+      const newsArray = JSON.parse(text);
+      const batch = db.batch();
+      for (const item of newsArray) {
+        const ref = db.collection('news').doc(`rank${item.rank}`);
+        batch.set(ref, { ...item, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      }
+      await batch.commit();
+      logger.info('✅ 뉴스 3건 저장 완료');
+    } catch (err) { logger.error('뉴스 수집 오류:', err); }
+  }
+);
+*/
 // ===== 뉴스 수동 새로고침 (개발자용) =====
-exports.refreshNews = (0, https_2.onCall)({ secrets: [GEMINI_API_KEY_SECRET], region: 'asia-northeast3' }, async () => {
+exports.refreshNews = (0, https_2.onCall)({ secrets: [GEMINI_API_KEY_SECRET], region: 'asia-northeast3' }, async (request) => {
+    var _a;
+    // 개발자 UID — 향후 일반 사용자 개방 시 한도 체크 로직 추가 예정
+    const DEV_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+    const isDeveloper = ((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid) === DEV_UID;
+    if (!isDeveloper) {
+        // TODO: 정식 출시 시 일반 사용자 한도 체크 로직 추가
+        // 예: 일 1회 / 월 30회 한도, 또는 유료 구독자만 허용
+        throw new https_2.HttpsError('permission-denied', '뉴스 새로고침 권한이 없습니다');
+    }
     try {
         const RSS_URLS = [
             'https://www.aljazeera.com/xml/rss/all.xml',
