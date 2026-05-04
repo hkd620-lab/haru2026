@@ -22,6 +22,7 @@ type ButtonItem = {
   kind?: "main" | "sub";
   dot?: boolean;
   href: string;
+  devOnly?: boolean;
 };
 
 type TabItem = { l: string; i: TabIconName; href: string; devOnly?: boolean };
@@ -34,7 +35,7 @@ const BUTTONS: ButtonItem[] = [
   { t: "HARU예언",      s: "PROPHECY", icon: "star",  href: "/prophecy-hub" },
   { t: "하루LAW",       s: "LAW",      icon: "scale", href: "/record" },
   { t: "기록통계·합본", s: "STATS",    icon: "chart", href: "/stats" },
-  { t: "최신외신 3편",  s: "NEWS",     icon: "globe", dot: true, href: "/news" },
+  { t: "최신외신 3편",  s: "NEWS",     icon: "globe", dot: true, href: "/news", devOnly: true },
 ];
 
 const TABS: TabItem[] = [
@@ -54,6 +55,11 @@ export function HomePage() {
 
   const visibleTabs = useMemo(
     () => TABS.filter((t) => !t.devOnly || user?.uid === DEVELOPER_UID),
+    [user?.uid]
+  );
+
+  const visibleButtons = useMemo(
+    () => BUTTONS.filter((b) => !b.devOnly || user?.uid === DEVELOPER_UID),
     [user?.uid]
   );
 
@@ -155,7 +161,7 @@ export function HomePage() {
 
         {/* 2x4 grid */}
         <div className="grid grid-cols-2 gap-2 px-[18px] pb-4">
-          {BUTTONS.map((b, i) => (
+          {visibleButtons.map((b, i) => (
             <Tile key={i} {...b} />
           ))}
         </div>
