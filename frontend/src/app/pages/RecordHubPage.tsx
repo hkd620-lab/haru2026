@@ -17,9 +17,9 @@ export function RecordHubPage() {
     { label: '업무일지', format: '업무일지' },
     { label: '메모', format: '메모' },
   ];
-  const knowledgeCards: { icon: string; label: string; desc?: string; path: string; isNew?: boolean; accent?: string }[] = [
+  const knowledgeCards: { icon: string; label: string; desc?: string; path: string; isNew?: boolean; accent?: string; state?: { category: string } }[] = [
     { icon: '🔮', label: 'HARU예언', path: '/prophecy-hub' },
-    { icon: '⚖️', label: '하루LAW', path: '/record' },
+    { icon: '⚖️', label: '하루LAW', path: '/record', state: { category: '하루LAW' } },
     { icon: '📖', label: '영어성경', path: '/bible' },
     { icon: '✏️', label: '영어일기', path: '/diary-learn' },
     { icon: '📱', label: 'SNS 기록 가져오기', desc: 'Facebook · Instagram 기록 AI로 정리', path: '/sns-records', isNew: true, accent: '#10b981' },
@@ -147,7 +147,7 @@ export function RecordHubPage() {
               <button
                 key={card.label}
                 type="button"
-                onClick={() => navigate(card.path)}
+                onClick={() => navigate(card.path, card.state ? { state: card.state } : undefined)}
                 style={{
                   ...knowledgeCardStyle,
                   position: 'relative',
