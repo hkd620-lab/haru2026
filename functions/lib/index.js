@@ -1462,12 +1462,16 @@ mysentence와 korean은 반드시 채워야 합니다.
     const raw = result.response.text().trim();
     const clean = raw.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
-    // 3. GPT-4o 검증
+    // 3. GPT-4o 검증 (영어성경: 항상, 영어일기학습: 200자 초과 시만 — 비용 절감)
+    const isBible = /^[a-z]+_\d+_\d+$/.test(verseKey || '');
+    const isDiary = (verseKey || '').startsWith('diary_');
+    const useGPT4o = isBible || (isDiary && verseText.length > 200);
     let verified = parsed;
     let gptChanges = [];
-    try {
-        const OPENAI_KEY = OPENAI_API_KEY_SECRET.value().replace(/[^\x20-\x7E]/g, '').trim();
-        const gptPrompt = `당신은 영어 문법 전문가입니다. 아래 영어 성경 구절의 문법 분석 JSON을 능동적으로 검토하고 개선하세요.
+    if (useGPT4o)
+        try {
+            const OPENAI_KEY = OPENAI_API_KEY_SECRET.value().replace(/[^\x20-\x7E]/g, '').trim();
+            const gptPrompt = `당신은 영어 문법 전문가입니다. 아래 영어 성경 구절의 문법 분석 JSON을 능동적으로 검토하고 개선하세요.
 
 구절: "${verseText}"
 
@@ -1535,38 +1539,38 @@ mysentence와 korean은 반드시 채워야 합니다.
 
 분석 JSON:
 ${JSON.stringify(parsed, null, 2)}`;
-        const gptRes = await axios_1.default.post('https://api.openai.com/v1/chat/completions', {
-            model: 'gpt-4o',
-            messages: [{ role: 'user', content: gptPrompt }],
-            temperature: 0.2,
-        }, {
-            headers: {
-                Authorization: `Bearer ${OPENAI_KEY}`,
-                'Content-Type': 'application/json',
-            },
-            timeout: 25000,
-        });
-        const gptRaw = gptRes.data.choices[0].message.content.trim();
-        const gptClean = gptRaw.replace(/```json|```/g, '').trim();
-        const gptParsed = JSON.parse(gptClean);
-        verified = (_a = gptParsed.result) !== null && _a !== void 0 ? _a : gptParsed;
-        gptChanges = (_b = gptParsed.changes) !== null && _b !== void 0 ? _b : [];
-        if (gptChanges.length > 0) {
-            logger.info(`[getGrammarExplain] GPT-4o 수정 내역 (${verseKey}): ${JSON.stringify(gptChanges)}`);
+            const gptRes = await axios_1.default.post('https://api.openai.com/v1/chat/completions', {
+                model: 'gpt-4o',
+                messages: [{ role: 'user', content: gptPrompt }],
+                temperature: 0.2,
+            }, {
+                headers: {
+                    Authorization: `Bearer ${OPENAI_KEY}`,
+                    'Content-Type': 'application/json',
+                },
+                timeout: 25000,
+            });
+            const gptRaw = gptRes.data.choices[0].message.content.trim();
+            const gptClean = gptRaw.replace(/```json|```/g, '').trim();
+            const gptParsed = JSON.parse(gptClean);
+            verified = (_a = gptParsed.result) !== null && _a !== void 0 ? _a : gptParsed;
+            gptChanges = (_b = gptParsed.changes) !== null && _b !== void 0 ? _b : [];
+            if (gptChanges.length > 0) {
+                logger.info(`[getGrammarExplain] GPT-4o 수정 내역 (${verseKey}): ${JSON.stringify(gptChanges)}`);
+            }
+            else {
+                logger.info(`[getGrammarExplain] GPT-4o 수정 없음: ${verseKey}`);
+            }
         }
-        else {
-            logger.info(`[getGrammarExplain] GPT-4o 수정 없음: ${verseKey}`);
+        catch (gptErr) {
+            logger.warn(`[getGrammarExplain] GPT-4o 검증 실패, Gemini 결과 사용: ${verseKey}`, gptErr);
+            // GPT 실패 시 Gemini 결과 그대로 사용 (서비스 중단 없음)
         }
-    }
-    catch (gptErr) {
-        logger.warn(`[getGrammarExplain] GPT-4o 검증 실패, Gemini 결과 사용: ${verseKey}`, gptErr);
-        // GPT 실패 시 Gemini 결과 그대로 사용 (서비스 중단 없음)
-    }
     // 4. 캐시 저장
     await cacheRef.set({
         ...verified,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        verifiedByGPT: true,
+        verifiedByGPT: useGPT4o,
         gptChanges: gptChanges,
     });
     logger.info(`[getGrammarExplain] 캐시 저장: ${verseKey}`);
