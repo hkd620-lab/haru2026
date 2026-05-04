@@ -2135,6 +2135,8 @@ JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
 );
 
 // ===== 🌍 해외 뉴스 자동 수집 (30분마다) =====
+// 2026-05-05 비활성화: 비용 절감 (월 7,200원). 필요 시 주석 해제하여 재활성화
+/*
 export const fetchTopNews = onSchedule(
   {
     schedule: 'every 30 minutes',
@@ -2216,6 +2218,7 @@ ${allItems.join('\n\n---\n\n')}
     } catch (err) { logger.error('뉴스 수집 오류:', err); }
   }
 );
+*/
 
 // ===== 뉴스 수동 새로고침 (개발자용) =====
 export const refreshNews = onCall(
