@@ -38,13 +38,15 @@ interface GrammarPopup {
 }
 
 interface QuizPopup {
-  text: string;
+  verseText: string;
   loading: boolean;
   blankedText?: string;
-  blanks?: { hint: string; answer: string }[];
+  blanks?: Array<{ index: number; answer: string; hint: string }>;
   options?: string[];
   selectedAnswers?: string[];
   submitted?: boolean;
+  level?: 'basic' | 'intermediate' | 'advanced';
+  koreanText?: string;
 }
 
 export function DiaryLearnPage() {
@@ -286,20 +288,22 @@ export function DiaryLearnPage() {
   }, []);
 
   // 퀴즈
-  const handleQuizClick = useCallback(async (text: string) => {
-    setQuizPopup({ text, loading: true });
+  const handleQuizClick = useCallback(async (text: string, level: 'basic' | 'intermediate' | 'advanced' = 'basic') => {
+    setQuizPopup({ verseText: text, loading: true, level });
     try {
       const fn = httpsCallable(fns, 'getVerseQuiz');
-      const verseKey = `diary_quiz_${text.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '_')}`;
-      const res: any = await fn({ verseText: text, verseKey });
+      const verseKey = `diary_quiz_${level}_${text.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '_')}`;
+      const res: any = await fn({ verseText: text, verseKey, level });
       setQuizPopup({
-        text,
+        verseText: text,
         loading: false,
         blankedText: res.data.blankedText,
         blanks: res.data.blanks,
         options: res.data.options,
         selectedAnswers: new Array(res.data.blanks?.length || 0).fill(''),
         submitted: false,
+        level,
+        koreanText: res.data.koreanText,
       });
     } catch {
       setQuizPopup(null);
