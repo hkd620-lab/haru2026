@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -22,6 +22,13 @@ export function BookCreate() {
   const [searchParams] = useSearchParams();
   const existingBookId = searchParams.get('bookId');
   const existingBookTitle = searchParams.get('bookTitle') || '';
+
+  useEffect(() => {
+    if (user?.email !== 'hkd620@gmail.com') {
+      navigate('/');
+      return;
+    }
+  }, [user?.email]);
 
   const [title, setTitle] = useState(existingBookTitle);
   const [sourceType, setSourceType] = useState<'nonfiction' | 'fiction' | 'mixed'>('nonfiction');
