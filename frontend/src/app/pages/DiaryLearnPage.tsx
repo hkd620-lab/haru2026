@@ -4,6 +4,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../../firebase';
 import { firestoreService } from '../services/firestoreService';
+import GrapeLoadingMini from '../components/GrapeLoadingMini';
 
 interface DiaryItem {
   id: string;
@@ -608,7 +609,7 @@ export function DiaryLearnPage() {
                           border: 'none', borderRadius: 8,
                           fontSize: 12, fontWeight: 600, cursor: 'pointer',
                         }}
-                      >{ttsLoading === `s_${idx}` ? '⏳' : ttsPlaying === `s_${idx}` ? '⏸ 정지' : '🔊 듣기'}</button>
+                      >{ttsLoading === `s_${idx}` ? <GrapeLoadingMini size={28} /> : ttsPlaying === `s_${idx}` ? '⏸ 정지' : '🔊 듣기'}</button>
                       <button
                         onClick={() => handleGrammarClick(sentence)}
                         style={{
