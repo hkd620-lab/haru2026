@@ -1173,57 +1173,152 @@ AI 의견:
         throw new https_2.HttpsError('internal', '법령 해설에 실패했습니다.');
     }
 });
-// ===== 법령 관련 판례 검색 =====
+// ===== 법령 관련 판례 검색 (국가법령정보 OpenAPI 연동) =====
 exports.lawPrecedent = (0, https_2.onCall)({
     region: 'asia-northeast3',
-    secrets: [GEMINI_API_KEY_SECRET],
+    secrets: [LAW_API_KEY_SECRET, GEMINI_API_KEY_SECRET],
     timeoutSeconds: 300,
 }, async (request) => {
+    var _a, _b;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다');
     }
     const { lawText, userQuery } = request.data;
-    if (!lawText) {
-        throw new https_2.HttpsError('invalid-argument', '법령 텍스트를 입력해주세요.');
+    if (!lawText || String(lawText).trim().length === 0) {
+        throw new https_2.HttpsError('invalid-argument', '법령 정보가 필요합니다');
     }
+    const DISCLAIMER = '이 정보는 국가법령정보센터에서 제공한 실제 판례입니다. AI 요약은 참고용이며, 정확한 내용은 법령정보센터에서 확인하세요.';
+    const NO_RESULT_DISCLAIMER = '이 검색은 국가법령정보센터의 실제 판례 데이터를 기반으로 합니다.';
+    const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+    // 1. Gemini로 검색 키워드 추출 (lawSearch 0단계 패턴)
+    let searchKeyword = '';
     try {
-        const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-        const model = genAI.getGenerativeModel({
-            model: 'gemini-2.5-flash',
-            systemInstruction: `당신은 실무 경력 20년의 대한민국 법률 전문가입니다.
-해당 법 조문과 사용자 질문에 맞는 실제 대법원 판례를 2개 제시하세요.
-반드시 JSON 배열 형식으로만 출력하세요. 다른 텍스트 없이.
-형식:
-[
-  {
-    "caseName": "사건명 (예: 모욕죄 성립 여부)",
-    "caseNum": "대법원 연도. 월. 일. 선고 사건번호",
-    "summary": "summary는 60자 이내, 마크다운 기호 절대 금지, 줄바꿈 없이 한 문장으로"
-  }
-]`
+        const kwModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+        const kwResult = await kwModel.generateContent(`다음 법령 조문과 사용자 질문에서 판례 검색에 사용할 핵심 키워드 1개를 추출하세요.
+반드시 5~15자 이내의 한국어 명사구로만 답하세요. 다른 텍스트 없이.
+
+법령: ${lawText}
+사용자 질문: ${userQuery || '없음'}`);
+        searchKeyword = kwResult.response.text().trim().split('\n')[0].trim();
+        // 한글 1자 이상 포함 검증 (한자/기호만 나오면 폴백)
+        if (!/[가-힣]/.test(searchKeyword) || searchKeyword.length === 0) {
+            searchKeyword = '';
+        }
+    }
+    catch (kwErr) {
+        logger.warn('판례 키워드 추출 실패, 폴백 사용:', kwErr === null || kwErr === void 0 ? void 0 : kwErr.message);
+        searchKeyword = '';
+    }
+    // 키워드 추출 실패 시 폴백 (userQuery → lawText 첫 20자)
+    if (!searchKeyword) {
+        const fallback = (userQuery && String(userQuery).trim()) || String(lawText).trim().slice(0, 20);
+        searchKeyword = fallback.slice(0, 20);
+    }
+    logger.info('lawPrecedent 검색 키워드:', searchKeyword);
+    // 2. 국가법령정보 OpenAPI 호출 (판례 검색)
+    const ocKey = LAW_API_KEY_SECRET.value();
+    const searchUrl = `https://www.law.go.kr/DRF/lawSearch.do?OC=${ocKey}&target=prec&type=JSON&query=${encodeURIComponent(searchKeyword)}&display=10`;
+    let response;
+    try {
+        response = await axios_1.default.get(searchUrl, {
+            timeout: 10000,
+            headers: {
+                'Referer': 'https://haru2026.com/',
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+            },
         });
-        const prompt = `법령: ${lawText}\n사용자 질문: ${userQuery || ''}`;
-        const result = await model.generateContent(prompt);
-        // JSON 파싱 시도
-        let precedents;
-        try {
-            let rawText = result.response.text().trim();
-            rawText = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-            precedents = JSON.parse(rawText);
-        }
-        catch (parseError) {
-            logger.error('판례 JSON 파싱 실패, 원문:', result.response.text());
-            throw new https_2.HttpsError('internal', '판례 정보 파싱에 실패했습니다.');
-        }
+    }
+    catch (apiErr) {
+        logger.error('판례 OpenAPI 호출 실패:', {
+            message: apiErr === null || apiErr === void 0 ? void 0 : apiErr.message,
+            status: (_a = apiErr === null || apiErr === void 0 ? void 0 : apiErr.response) === null || _a === void 0 ? void 0 : _a.status,
+            code: apiErr === null || apiErr === void 0 ? void 0 : apiErr.code,
+        });
+        throw new https_2.HttpsError('internal', '판례 검색 서버에 연결할 수 없습니다');
+    }
+    // 3. 응답 파싱
+    const precSearch = (_b = response.data) === null || _b === void 0 ? void 0 : _b.PrecSearch;
+    const totalCnt = parseInt((precSearch === null || precSearch === void 0 ? void 0 : precSearch.totalCnt) || '0', 10);
+    const rawList = precSearch === null || precSearch === void 0 ? void 0 : precSearch.prec;
+    // 4. 0건 또는 비정상 구조 처리
+    if (!precSearch || totalCnt === 0 || !rawList) {
         return {
             success: true,
-            precedents: precedents,
+            precedents: [],
+            totalCount: 0,
+            searchKeyword,
+            message: '관련 판례를 찾을 수 없습니다',
+            disclaimer: NO_RESULT_DISCLAIMER,
         };
     }
-    catch (error) {
-        logger.error('판례 검색 실패:', error);
-        throw new https_2.HttpsError('internal', '판례 검색에 실패했습니다.');
+    // 5. 상위 3건 normalize
+    const precList = Array.isArray(rawList) ? rawList : [rawList];
+    const top3 = precList.slice(0, 3);
+    // 6. Gemini 일괄 요약 (메타데이터만, 환각 차단 시스템 프롬프트)
+    let summaries = [];
+    try {
+        const sumModel = genAI.getGenerativeModel({
+            model: 'gemini-2.5-flash',
+            systemInstruction: `당신은 법률 판례 요약 전문가입니다.
+아래에 제공된 판례들은 국가법령정보센터에서 가져온 실제 판례입니다.
+
+⚠️ 중요한 규칙:
+1. 제공된 사건명 외에 새로운 사건명을 만들지 마세요.
+2. 제공된 사건번호 외에 새로운 사건번호를 만들지 마세요.
+3. 사건의 구체적 내용·판결 결과를 추측하지 마세요. (본문이 제공되지 않았습니다)
+4. 사용자가 검색한 맥락에서 "어떤 종류의 사건인지"만 60자 이내로 요약하세요.
+5. 마크다운 기호 절대 금지, 줄바꿈 없이 한 문장으로.
+
+각 판례에 대한 60자 이내 요약을 JSON 배열로만 출력하세요. 다른 텍스트 없이.
+형식:
+[
+  { "summary": "음주운전 누범 사유에 관한 형사 판례" },
+  { "summary": "..." },
+  { "summary": "..." }
+]`,
+        });
+        const precLines = top3
+            .map((p, i) => `${i + 1}. 사건명: ${(p === null || p === void 0 ? void 0 : p.사건명) || '(없음)'} / 사건번호: ${(p === null || p === void 0 ? void 0 : p.사건번호) || '(없음)'} / 법원: ${(p === null || p === void 0 ? void 0 : p.법원명) || '(없음)'} / 선고일: ${(p === null || p === void 0 ? void 0 : p.선고일자) || '(없음)'}`)
+            .join('\n');
+        const sumPrompt = `검색 키워드: ${searchKeyword}
+사용자 질문: ${userQuery || '없음'}
+
+판례 목록:
+${precLines}`;
+        const sumResult = await sumModel.generateContent(sumPrompt);
+        let rawSum = sumResult.response.text().trim();
+        rawSum = rawSum.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+        const parsed = JSON.parse(rawSum);
+        if (Array.isArray(parsed)) {
+            summaries = parsed;
+        }
     }
+    catch (sumErr) {
+        logger.warn('판례 요약 생성 실패, 기본값 사용:', sumErr === null || sumErr === void 0 ? void 0 : sumErr.message);
+        summaries = [];
+    }
+    // 7. 반환 객체 조립 (기존 호환 + 신규 필드)
+    const precedents = top3.map((p, idx) => {
+        var _a;
+        return ({
+            caseName: (p === null || p === void 0 ? void 0 : p.사건명) || '',
+            caseNum: `${(p === null || p === void 0 ? void 0 : p.법원명) || ''} ${(p === null || p === void 0 ? void 0 : p.선고일자) || ''} 선고 ${(p === null || p === void 0 ? void 0 : p.사건번호) || ''}`.trim(),
+            summary: ((_a = summaries[idx]) === null || _a === void 0 ? void 0 : _a.summary) || 'AI 요약 생성 실패',
+            courtName: (p === null || p === void 0 ? void 0 : p.법원명) || '',
+            sentenceDate: (p === null || p === void 0 ? void 0 : p.선고일자) || '',
+            caseId: (p === null || p === void 0 ? void 0 : p.판례일련번호) || '',
+            detailLink: (p === null || p === void 0 ? void 0 : p.판례상세링크)
+                ? `https://www.law.go.kr${p.판례상세링크}`
+                : '',
+        });
+    });
+    return {
+        success: true,
+        precedents,
+        totalCount: totalCnt,
+        searchKeyword,
+        disclaimer: DISCLAIMER,
+    };
 });
 // ===== TTS 음성 생성 =====
 exports.generateTTS = (0, https_2.onCall)({
