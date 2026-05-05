@@ -1327,6 +1327,10 @@ export const lawEasyExplain = onCall(
     timeoutSeconds: 300,
   },
   async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다');
+    }
+
     const { lawText, userQuery } = request.data;
 
     if (!lawText) {
@@ -1388,6 +1392,10 @@ export const lawPrecedent = onCall(
     timeoutSeconds: 300,
   },
   async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다');
+    }
+
     const { lawText, userQuery } = request.data;
 
     if (!lawText) {

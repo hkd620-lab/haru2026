@@ -1122,6 +1122,9 @@ exports.lawEasyExplain = (0, https_2.onCall)({
     secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 300,
 }, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다');
+    }
     const { lawText, userQuery } = request.data;
     if (!lawText) {
         throw new https_2.HttpsError('invalid-argument', '법령 텍스트를 입력해주세요.');
@@ -1176,6 +1179,9 @@ exports.lawPrecedent = (0, https_2.onCall)({
     secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 300,
 }, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다');
+    }
     const { lawText, userQuery } = request.data;
     if (!lawText) {
         throw new https_2.HttpsError('invalid-argument', '법령 텍스트를 입력해주세요.');
