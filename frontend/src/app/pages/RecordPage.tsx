@@ -119,6 +119,25 @@ export function RecordPage() {
             }}>{cleanLine}</p>
           );
         }
+        if (trimmed.startsWith('🔗')) {
+          const urlMatch = trimmed.match(/(https?:\/\/\S+)/);
+          if (urlMatch) {
+            const url = urlMatch[1];
+            const label = trimmed.replace(url, '').trim();
+            return (
+              <p key={lineIdx} style={{
+                fontSize: 12, marginTop: 6, marginBottom: 4, lineHeight: 1.6,
+              }}>
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: '#4a90d9', textDecoration: 'underline' }}
+                >{label} ↗</a>
+              </p>
+            );
+          }
+        }
         return (
           <p key={lineIdx} style={{
             fontSize: 13, color: '#3a3a4a',
@@ -596,9 +615,17 @@ export function RecordPage() {
         });
         return;
       }
-      const body = precs.map((p: any) =>
-        `📌 ${p.caseName}\n${p.caseNum}\n${p.summary}`
-      ).join('\n\n');
+      const body = precs.map((p: any) => {
+        const lines = [
+          `📌 ${p.caseName}`,
+          p.caseNum,
+          p.summary,
+        ];
+        if (p.detailLink) {
+          lines.push(`🔗 법령정보센터에서 전체 판례 보기 ${p.detailLink}`);
+        }
+        return lines.join('\n');
+      }).join('\n\n');
       setOpenCard({ idx, type: 'prec', content: body, loading: false });
     } catch {
       setOpenCard({ idx, type: 'prec', content: '판례를 불러오지 못했습니다.', loading: false });
