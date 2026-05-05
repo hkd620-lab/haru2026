@@ -1194,8 +1194,19 @@ exports.lawPrecedent = (0, https_2.onCall)({
     let searchKeyword = '';
     try {
         const kwModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
-        const kwResult = await kwModel.generateContent(`다음 법령 조문과 사용자 질문에서 판례 검색에 사용할 핵심 키워드 1개를 추출하세요.
-반드시 5~15자 이내의 한국어 명사구로만 답하세요. 다른 텍스트 없이.
+        const kwResult = await kwModel.generateContent(`다음 법령 조문과 사용자 질문에 가장 관련된 판례 검색용 핵심 키워드 1개만 출력하세요.
+반드시 단일 명사로, 다른 설명 없이.
+
+예시:
+"음주운전 처벌" → 음주운전
+"부당해고 당함" → 해고
+"이혼 재산분할" → 이혼
+"사기죄 신고" → 사기
+"폭행 합의" → 폭행
+"임대차 보증금" → 임대차
+"상속 분쟁" → 상속
+"성희롱 처벌" → 성희롱
+"명예훼손 고소" → 명예훼손
 
 법령: ${lawText}
 사용자 질문: ${userQuery || '없음'}`);
@@ -1242,6 +1253,7 @@ exports.lawPrecedent = (0, https_2.onCall)({
     const rawList = precSearch === null || precSearch === void 0 ? void 0 : precSearch.prec;
     // 4. 0건 또는 비정상 구조 처리
     if (!precSearch || totalCnt === 0 || !rawList) {
+        logger.info('lawPrecedent 0건 응답:', { searchKeyword, userQuery: userQuery || '' });
         return {
             success: true,
             precedents: [],

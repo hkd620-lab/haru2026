@@ -585,6 +585,17 @@ export function RecordPage() {
         userQuery: activeLawQuery,
       });
       const precs = res.data.precedents;
+      if (precs.length === 0) {
+        const message = res.data?.message || '관련 판례를 찾을 수 없습니다';
+        const disclaimer = res.data?.disclaimer || '';
+        setOpenCard({
+          idx,
+          type: 'prec',
+          content: `${message}\n\n${disclaimer}`.trim(),
+          loading: false,
+        });
+        return;
+      }
       const body = precs.map((p: any) =>
         `📌 ${p.caseName}\n${p.caseNum}\n${p.summary}`
       ).join('\n\n');
