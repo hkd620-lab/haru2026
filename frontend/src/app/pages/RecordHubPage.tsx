@@ -1,7 +1,12 @@
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+
+const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
 export function RecordHubPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isDeveloper = user?.uid === DEVELOPER_UID || user?.email === 'hkd620@gmail.com';
 
   const lifeRecords: { label: string; format: string }[] = [
     { label: '일기', format: '일기' },
@@ -17,12 +22,21 @@ export function RecordHubPage() {
     { label: '업무일지', format: '업무일지' },
     { label: '메모', format: '메모' },
   ];
-  const knowledgeCards: { icon: string; label: string; desc?: string; path: string; isNew?: boolean; accent?: string; state?: { category: string } }[] = [
+  const knowledgeCards: { icon: string; label: string; desc?: string; path: string; isNew?: boolean; accent?: string; state?: { category?: string; format?: string } }[] = [
     { icon: '🔮', label: 'HARU예언', path: '/prophecy-hub' },
     { icon: '⚖️', label: '하루LAW', path: '/record', state: { category: '하루LAW' } },
     { icon: '📖', label: '영어성경', path: '/bible' },
     { icon: '✏️', label: '영어일기', path: '/diary-learn' },
     { icon: '📱', label: 'SNS 기록 가져오기', desc: 'Facebook · Instagram 기록 AI로 정리', path: '/sns-records', isNew: true, accent: '#10b981' },
+    { icon: '📈', label: 'HARU주식관리', desc: '주식 거래·종목 기록', path: '/record', state: { format: 'HARU주식관리' } },
+    { icon: '📚', label: '하루충전소', desc: '오늘의 책 한 권', path: '/book-studio' },
+  ];
+
+  const devToolCards: { icon: string; label: string; desc: string; path: string }[] = [
+    { icon: '🤖', label: '하루AI지식창고', desc: 'AI 대화 저장·검색', path: '/sayu' },
+    { icon: '📰', label: '최신외신 3편', desc: '데일리 영문 뉴스', path: '/news' },
+    { icon: '✅', label: '배포 체크리스트', desc: '배포 전 점검', path: '/admin/checklist' },
+    { icon: '📚', label: '책 만들기', desc: '신규 책 생성', path: '/book-create' },
   ];
 
   const recordButtonStyle: React.CSSProperties = {
@@ -135,7 +149,7 @@ export function RecordHubPage() {
 
         {/* 섹션 3: AI 지식창고 */}
         <section style={{ marginBottom: 28 }}>
-          <p style={sectionLabel}>📚 AI 지식창고</p>
+          <p style={sectionLabel}>🏛️ HARU 비서실</p>
           <div
             style={{
               display: 'grid',
@@ -183,6 +197,42 @@ export function RecordHubPage() {
             ))}
           </div>
         </section>
+
+        {/* 섹션 4: 개발자 도구 (허 대표님께만 보임) */}
+        {isDeveloper && (
+          <section style={{ marginBottom: 28 }}>
+            <p style={{ ...sectionLabel, color: '#8B4789' }}>🔧 개발자 도구</p>
+            <p style={{ fontSize: 11, color: '#999', marginTop: -6, marginBottom: 10 }}>
+              허 대표님께만 보임
+            </p>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                gap: 10,
+              }}
+            >
+              {devToolCards.map((card) => (
+                <button
+                  key={card.label}
+                  type="button"
+                  onClick={() => navigate(card.path)}
+                  style={{
+                    ...knowledgeCardStyle,
+                    border: '0.5px solid #d9c9e8',
+                    background: '#FBF8FE',
+                  }}
+                >
+                  <span style={{ fontSize: 22 }}>{card.icon}</span>
+                  <span style={{ color: '#5a2d7a' }}>{card.label}</span>
+                  <span style={{ fontSize: 11, color: '#888', fontWeight: 400, textAlign: 'center', lineHeight: 1.3 }}>
+                    {card.desc}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* 하단 CTA: 내 기록 서재 보기 */}
         <button
