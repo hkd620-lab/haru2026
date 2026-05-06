@@ -325,6 +325,33 @@ export function SayuPage() {
     setExpandedFormats(new Set());
   }, [location.pathname]);
 
+  // 자동 펼침: RecordHubPage 개발자 도구에서 autoOpen='ai-knowledge'로 진입 시 1회만
+  // 의존성을 [location.pathname]로 두어 reset useEffect와 같은 commit에서 순서 보장
+  // (StrictMode 2회 실행 시에도 reset 직후 autoOpen이 항상 뒤따라 실행됨)
+  const autoOpenRanRef = useRef(false);
+  useEffect(() => {
+    if (autoOpenRanRef.current) return;
+    if ((location.state as any)?.autoOpen !== 'ai-knowledge') return;
+    autoOpenRanRef.current = true;
+
+    setCollapsedCategories(prev => {
+      const next = new Set(prev);
+      next.delete('하루AI지식창고');
+      return next;
+    });
+
+    const timer = setTimeout(() => {
+      const btn = Array.from(document.querySelectorAll('button'))
+        .find(b => b.textContent?.includes('하루AI지식창고'));
+      btn?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+
+    navigate(location.pathname, { replace: true, state: null });
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
   // Fetch AI logs when AI지식모음 is expanded
   useEffect(() => {
     if (!collapsedCategories.has('하루AI지식창고') && !aiLogsLoaded && user?.email) {

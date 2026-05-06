@@ -32,8 +32,8 @@ export function RecordHubPage() {
     { icon: '📚', label: '하루충전소', desc: '오늘의 책 한 권', path: '/book-studio' },
   ];
 
-  const devToolCards: { icon: string; label: string; desc: string; path: string }[] = [
-    { icon: '🤖', label: '하루AI지식창고', desc: 'AI 대화 저장·검색', path: '/sayu' },
+  const devToolCards: { icon: string; label: string; desc: string; path: string; state?: { autoOpen?: string } }[] = [
+    { icon: '🤖', label: '하루AI지식창고', desc: 'AI 대화 저장·검색', path: '/sayu', state: { autoOpen: 'ai-knowledge' } },
     { icon: '📰', label: '최신외신 3편', desc: '데일리 영문 뉴스', path: '/news' },
     { icon: '✅', label: '배포 체크리스트', desc: '배포 전 점검', path: '/admin/checklist' },
     { icon: '📚', label: '책 만들기', desc: '신규 책 생성', path: '/book-create' },
@@ -216,7 +216,7 @@ export function RecordHubPage() {
                 <button
                   key={card.label}
                   type="button"
-                  onClick={() => navigate(card.path)}
+                  onClick={() => navigate(card.path, card.state ? { state: card.state } : undefined)}
                   style={{
                     ...knowledgeCardStyle,
                     border: '0.5px solid #d9c9e8',
