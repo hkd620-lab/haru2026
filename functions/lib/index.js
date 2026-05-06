@@ -67,6 +67,7 @@ const PORTONE_API_SECRET = (0, params_1.defineSecret)('PORTONE_API_SECRET');
 const LAW_API_KEY_SECRET = (0, params_1.defineSecret)('LAW_API_KEY');
 const GOOGLE_CLOUD_API_KEY_SECRET = (0, params_1.defineSecret)('GOOGLE_CLOUD_API_KEY');
 const OPENAI_API_KEY_SECRET = (0, params_1.defineSecret)('OPENAI_API_KEY');
+const COLLECTOR_SECRET_KEY = (0, params_1.defineSecret)('COLLECTOR_SECRET_KEY');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
 // Storage 버킷
 const bucket = () => (0, storage_1.getStorage)().bucket();
@@ -2545,12 +2546,14 @@ JSON 형식으로만 출력하세요 (다른 설명 없이):
     await cacheRef.set({ ...parsed, verseKey, createdAt: new Date() });
     return parsed;
 });
-exports.getCustomToken = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
+exports.getCustomToken = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    secrets: [COLLECTOR_SECRET_KEY],
+}, async (request) => {
     var _a;
     const DEV_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
-    const SECRET_KEY = 'haru-collector-2026';
     const provided = (_a = request.data) === null || _a === void 0 ? void 0 : _a.secretKey;
-    if (provided !== SECRET_KEY) {
+    if (provided !== COLLECTOR_SECRET_KEY.value()) {
         throw new https_2.HttpsError('permission-denied', '권한 없음');
     }
     const token = await admin.auth().createCustomToken(DEV_UID);
