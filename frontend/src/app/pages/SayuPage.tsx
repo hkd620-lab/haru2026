@@ -1616,7 +1616,7 @@ export function SayuPage() {
               className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
               style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
             >
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><BookOpen className="w-4 h-4" /> 하루충전소</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><BookOpen className="w-4 h-4" /> 원기충전소</span>
               <span style={{ fontSize: '10px' }}>{collapsedCategories.has('하루충전소') ? '▶' : '▼'}</span>
             </button>
             {!collapsedCategories.has('하루충전소') && (

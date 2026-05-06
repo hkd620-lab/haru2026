@@ -1,77 +1,28 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import { firestoreService } from "../services/firestoreService";
 import { useAuth } from "../contexts/AuthContext";
 
 const DEVELOPER_UID = "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
 
-/**
- * HARU2026 — Home (Style B · 2열 그리드 기능형)
- * PWA-ready
- */
-
-// ── Data ────────────────────────────────────────────────────────────────
-type IconName = "rec" | "sayu" | "book" | "pen" | "star" | "scale" | "chart" | "globe";
-type TabIconName = "home" | "list" | "sparkle" | "grid" | "gear";
-
-type ButtonItem = {
-  t: string;
-  sub?: string;
-  s: string;
-  icon: IconName;
-  kind?: "main" | "sub";
-  dot?: boolean;
-  href: string;
-  devOnly?: boolean;
-};
-
-type TabItem = { l: string; i: TabIconName; href: string; devOnly?: boolean };
-
-const BUTTONS: ButtonItem[] = [
-  { t: "오늘 기록하기", s: "REC",      icon: "rec",   kind: "main", href: "/record" },
-  { t: "SAYU", sub: "私有·사유", s: "PRIVATE", icon: "sayu", kind: "sub", href: "/sayu" },
-  { t: "영어성경",      s: "BIBLE",    icon: "book",  href: "/bible" },
-  { t: "영어일기",      s: "DIARY",    icon: "pen",   href: "/diary-learn" },
-  { t: "HARU예언",      s: "PROPHECY", icon: "star",  href: "/prophecy-hub" },
-  { t: "하루LAW",       s: "LAW",      icon: "scale", href: "/record" },
-  { t: "기록통계·합본", s: "STATS",    icon: "chart", href: "/stats" },
-  { t: "최신외신 3편",  s: "NEWS",     icon: "globe", dot: true, href: "/news", devOnly: true },
-];
-
-const TABS: TabItem[] = [
-  { l: "HARU",        i: "home",    href: "/" },
-  { l: "기록",        i: "list",    href: "/record" },
-  { l: "SAYU·다듬기", i: "sparkle", href: "/sayu" },
-  { l: "핵스튜디오",  i: "grid",    href: "/book-studio", devOnly: true },
-  { l: "설정",        i: "gear",    href: "/settings" },
-];
-
-// ── Page ────────────────────────────────────────────────────────────────
 export function HomePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
+  const isDeveloper =
+    user?.uid === DEVELOPER_UID || user?.email === "hkd620@gmail.com";
   const today = formatToday();
 
-  const visibleTabs = useMemo(
-    () => TABS.filter((t) => !t.devOnly || user?.uid === DEVELOPER_UID),
-    [user?.uid]
-  );
-
-  const visibleButtons = useMemo(
-    () => BUTTONS.filter((b) => !b.devOnly || user?.uid === DEVELOPER_UID),
-    [user?.uid]
-  );
-
   const [todayFormatCount, setTodayFormatCount] = useState<number | null>(null);
-
   useEffect(() => {
     if (!user?.uid) {
       setTodayFormatCount(null);
       return;
     }
     const d = new Date();
-    const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+      2,
+      "0",
+    )}-${String(d.getDate()).padStart(2, "0")}`;
     firestoreService
       .getRecords(user.uid)
       .then((records) => {
@@ -80,6 +31,71 @@ export function HomePage() {
       })
       .catch(() => setTodayFormatCount(0));
   }, [user?.uid]);
+
+  // 📕 HARU 기록 — 5×2 그리드 (10개)
+  const recordCards: { label: string; format: string; icon: string }[] = [
+    { icon: "📔", label: "일기", format: "일기" },
+    { icon: "✍️", label: "에세이", format: "에세이" },
+    { icon: "✈️", label: "여행기록", format: "여행기록" },
+    { icon: "🌱", label: "텃밭일지", format: "텃밭일지" },
+    { icon: "🐾", label: "반려동물", format: "애완동물관찰일지" },
+    { icon: "👶", label: "육아일기", format: "육아일기" },
+    { icon: "⛪", label: "선교보고", format: "선교보고" },
+    { icon: "📋", label: "일반보고", format: "일반보고" },
+    { icon: "💼", label: "업무일지", format: "업무일지" },
+    { icon: "📝", label: "메모", format: "메모" },
+  ];
+
+  // 🏛️ HARU 비서실 — 4×2 그리드 (7개)
+  const secretaryCards: {
+    icon: string;
+    label: string;
+    path: string;
+    state?: { category?: string; format?: string };
+    accent?: string;
+  }[] = [
+    { icon: "🔮", label: "HARU예언", path: "/prophecy-hub" },
+    { icon: "⚖️", label: "하루LAW", path: "/record", state: { category: "하루LAW" } },
+    { icon: "📖", label: "영어성경", path: "/bible" },
+    { icon: "✏️", label: "영어일기", path: "/diary-learn" },
+    { icon: "📱", label: "SNS 가져오기", path: "/sns-records", accent: "#10b981" },
+    { icon: "📈", label: "HARU주식관리", path: "/record", state: { format: "HARU주식관리" }, accent: "#10b981" },
+    { icon: "📚", label: "원기충전소", path: "/book-studio", accent: "#10b981" },
+  ];
+
+  // 🔧 개발자 도구 — 4×1 그리드 (4개, 개발자만)
+  const devToolCards: { icon: string; label: string; path: string }[] = [
+    { icon: "🤖", label: "하루AI지식창고", path: "/sayu" },
+    { icon: "📰", label: "최신외신", path: "/news" },
+    { icon: "✅", label: "배포 체크", path: "/admin/checklist" },
+    { icon: "📚", label: "책 만들기", path: "/book-create" },
+  ];
+
+  const compactCardStyle: React.CSSProperties = {
+    padding: "8px 6px",
+    borderRadius: 8,
+    border: "0.5px solid #e5e5e5",
+    background: "#fff",
+    color: "#1A3C6E",
+    cursor: "pointer",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    minHeight: 60,
+    fontSize: 10,
+    fontWeight: 500,
+    transition: "all 0.15s",
+  };
+
+  const sectionLabel: React.CSSProperties = {
+    fontSize: 13,
+    fontWeight: 600,
+    color: "#1A3C6E",
+    marginBottom: 8,
+    letterSpacing: "0.02em",
+  };
 
   return (
     <main
@@ -91,7 +107,7 @@ export function HomePage() {
         overscroll-none
       "
     >
-      {/* Header */}
+      {/* Header — HARU 로고 + 설정 */}
       <header className="flex items-center justify-between px-[18px] pt-3 pb-3">
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-haru-navy">
@@ -116,149 +132,223 @@ export function HomePage() {
             active:scale-95 transition-transform touch-manipulation
           "
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
-               stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          >
             <circle cx="8" cy="6" r="2.5" />
             <path d="M3 14c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5" />
           </svg>
         </button>
       </header>
 
-      {/* Scrollable content */}
-      <section className="flex-1 flex flex-col">
-        {/* Date strip */}
-        <div
-          className="
-            mx-[18px] mb-2.5 flex items-center justify-between
-            rounded-2xl bg-haru-navy px-4 py-3.5 text-white
-          "
-        >
-          <div>
-            <div className="text-[11px] font-semibold tracking-[1.4px] text-white/85">
-              {today.label}
-            </div>
-            <div className="mt-0.5 text-[22px] font-extrabold tracking-tight text-white">
-              {today.kr}
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1 text-[10.5px] font-semibold text-white">
-            <span className="h-1.5 w-1.5 rounded-full bg-haru-main" />
-            {todayFormatCount ?? 0}건
-          </div>
-        </div>
-
-        {/* Catchphrase */}
-        <div
-          className="
-            mx-[18px] mb-3 rounded-xl border border-haru-navy/10 bg-white
-            px-4 py-3 text-center text-[15px] font-medium tracking-tight
-            text-haru-navy/60 shadow-[0_4px_12px_-8px_rgba(26,60,110,0.15)]
-          "
-        >
-          간편하게,{" "}
-          <span className="font-extrabold text-haru-navy">쓸모있게</span> 남기다
-        </div>
-
-        {/* 2x4 grid */}
-        <div className="grid grid-cols-2 gap-2 px-[18px] pb-4">
-          {visibleButtons.map((b, i) => (
-            <Tile key={i} {...b} />
-          ))}
-        </div>
-
-        {/* snsHARU보기 신규 카드 (NEW 배지 + 브랜드 그린 테두리) */}
-        <div className="px-[18px] pb-4">
-          <Link
-            to="/sns-records"
-            className="
-              relative block rounded-[14px] bg-white p-4
-              active:scale-[0.99] transition-transform touch-manipulation select-none
-              shadow-[0_4px_12px_-8px_rgba(16,185,129,0.35)]
-            "
-            style={{ border: '1.5px solid #10b981' }}
+      {/* Body */}
+      <div style={{ flex: 1, padding: "0 16px 32px" }}>
+        <div style={{ maxWidth: 720, margin: "0 auto" }}>
+          {/* 🌅 인사 영역 — 날짜 strip */}
+          <section
+            style={{
+              marginBottom: 12,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              backgroundColor: "#1A3C6E",
+              color: "#fff",
+              padding: "14px 18px",
+              borderRadius: 16,
+            }}
           >
-            <span
-              className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-white text-[9px] font-bold tracking-wider"
-              style={{ background: '#10b981' }}
-            >
-              NEW
-            </span>
-            <div className="flex items-center gap-3">
-              <span
-                className="flex h-10 w-10 items-center justify-center rounded-[10px] text-[20px] flex-shrink-0"
-                style={{ background: 'rgba(16,185,129,0.12)' }}
+            <div>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  letterSpacing: "1.2px",
+                  opacity: 0.85,
+                }}
               >
-                📱
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="text-[14px] font-bold tracking-tight text-haru-navy">
-                  snsHARU보기
-                </div>
-                <div className="text-[11px] text-haru-navy/60 mt-0.5">
-                  Facebook · Instagram 기록 AI로 정리
-                </div>
+                {today.label}
+              </div>
+              <div
+                style={{
+                  fontSize: 22,
+                  fontWeight: 800,
+                  letterSpacing: "-0.01em",
+                  marginTop: 2,
+                }}
+              >
+                {today.kr}
               </div>
             </div>
-          </Link>
-        </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                background: "rgba(255,255,255,0.18)",
+                padding: "4px 10px",
+                borderRadius: 999,
+                fontSize: 11,
+                fontWeight: 600,
+              }}
+            >
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: 999,
+                  background: "#10b981",
+                }}
+              />
+              {todayFormatCount ?? 0}건
+            </div>
+          </section>
 
-        {/* Spacer so the last row doesn't sit under the sticky tab bar */}
-        <div className="h-2" />
-      </section>
+          {/* 캐치프레이즈 */}
+          <p
+            style={{
+              margin: "0 0 18px 0",
+              padding: "10px 14px",
+              textAlign: "center",
+              fontSize: 14,
+              color: "#888",
+              letterSpacing: "-0.01em",
+              background: "#fff",
+              border: "1px solid rgba(26,60,110,0.1)",
+              borderRadius: 12,
+              boxShadow: "0 4px 12px -8px rgba(26,60,110,0.15)",
+            }}
+          >
+            간편하게,{" "}
+            <strong style={{ color: "#1A3C6E", fontWeight: 800 }}>
+              쓸모있게
+            </strong>{" "}
+            남기다
+          </p>
 
-    </main>
-  );
-}
+          {/* 📕 HARU 기록 — 5×2 (10개) */}
+          <section style={{ marginBottom: 18 }}>
+            <p style={sectionLabel}>📕 HARU 기록</p>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+                gap: 4,
+              }}
+            >
+              {recordCards.map((card) => (
+                <button
+                  key={card.label}
+                  type="button"
+                  onClick={() =>
+                    navigate("/record", { state: { format: card.format } })
+                  }
+                  style={compactCardStyle}
+                >
+                  <span style={{ fontSize: 18 }}>{card.icon}</span>
+                  <span>{card.label}</span>
+                </button>
+              ))}
+            </div>
+          </section>
 
-// ── Tile ────────────────────────────────────────────────────────────────
-function Tile({
-  kind, t, sub, s, icon, dot, href,
-}: ButtonItem) {
-  const isMain = kind === "main";
-  const isSub  = kind === "sub";
+          {/* 🏛️ HARU 비서실 — 4×2 (7개) */}
+          <section style={{ marginBottom: 18 }}>
+            <p style={sectionLabel}>🏛️ HARU 비서실</p>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                gap: 4,
+              }}
+            >
+              {secretaryCards.map((card) => (
+                <button
+                  key={card.label}
+                  type="button"
+                  onClick={() =>
+                    navigate(card.path, card.state ? { state: card.state } : undefined)
+                  }
+                  style={{
+                    ...compactCardStyle,
+                    ...(card.accent ? { borderColor: card.accent } : {}),
+                  }}
+                >
+                  <span style={{ fontSize: 18 }}>{card.icon}</span>
+                  <span>{card.label}</span>
+                </button>
+              ))}
+            </div>
+          </section>
 
-  const bg =
-    isMain ? "bg-haru-main text-white"
-    : isSub ? "bg-haru-sub text-haru-navy"
-    : "bg-white text-haru-navy border border-haru-navy/10";
-  const shadow = isMain
-    ? "shadow-[0_6px_14px_-8px_rgba(119,182,10,0.5)]"
-    : isSub
-    ? "shadow-[0_4px_10px_-8px_rgba(180,117,81,0.35)]"
-    : "";
-  const subText = isMain ? "text-white/70" : "text-haru-navy/55";
-  const iconWrap =
-    isMain ? "bg-white/20"
-    : isSub ? "bg-haru-navy/10"
-    : "bg-haru-navy/5";
-
-  return (
-    <Link
-      to={href}
-      className={`
-        relative h-[88px] overflow-hidden rounded-[14px] p-3
-        flex flex-col justify-between
-        active:scale-[0.98] transition-transform touch-manipulation select-none
-        ${bg} ${shadow}
-      `}
-    >
-      <div className="flex items-center justify-between">
-        <span className={`flex h-[26px] w-[26px] items-center justify-center rounded-[7px] ${iconWrap}`}>
-          <TileIcon name={icon} />
-        </span>
-        {dot && <span className="h-1.5 w-1.5 rounded-full bg-haru-point" />}
-      </div>
-
-      <div className="text-left">
-        <div className={`text-[9px] font-bold tracking-[1.2px] ${subText}`}>{s}</div>
-        <div className="text-[13.5px] font-bold tracking-tight leading-tight">
-          {t}
-          {sub && (
-            <span className={`ml-1 text-[10px] font-medium ${subText}`}>{sub}</span>
+          {/* 🔧 개발자 도구 — 4×1 (4개, 개발자만) */}
+          {isDeveloper && (
+            <section style={{ marginBottom: 18 }}>
+              <p style={{ ...sectionLabel, color: "#8B4789" }}>🔧 개발자 도구</p>
+              <p
+                style={{
+                  fontSize: 10,
+                  color: "#999",
+                  marginTop: -6,
+                  marginBottom: 8,
+                }}
+              >
+                허 대표님께만 보임
+              </p>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                  gap: 4,
+                }}
+              >
+                {devToolCards.map((card) => (
+                  <button
+                    key={card.label}
+                    type="button"
+                    onClick={() => navigate(card.path)}
+                    style={{
+                      ...compactCardStyle,
+                      border: "0.5px solid #d9c9e8",
+                      background: "#FBF8FE",
+                      color: "#5a2d7a",
+                    }}
+                  >
+                    <span style={{ fontSize: 18 }}>{card.icon}</span>
+                    <span>{card.label}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
           )}
+
+          {/* 📚 내 기록 서재 보기 (CTA) */}
+          <button
+            type="button"
+            onClick={() => navigate("/library")}
+            style={{
+              width: "100%",
+              padding: "14px 16px",
+              borderRadius: 12,
+              border: "none",
+              background: "#1A3C6E",
+              color: "#fff",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              boxShadow: "0 4px 12px -8px rgba(26,60,110,0.4)",
+            }}
+          >
+            📚 내 기록 서재 보기
+          </button>
         </div>
       </div>
-    </Link>
+    </main>
   );
 }
 
@@ -273,53 +363,36 @@ function formatToday() {
   };
 }
 
-// ── Iconography ─────────────────────────────────────────────────────────
-function TileIcon({ name }: { name: IconName }) {
-  const s = {
-    stroke: "currentColor", strokeWidth: 1.6, fill: "none",
-    strokeLinecap: "round" as const, strokeLinejoin: "round" as const,
-  };
-  switch (name) {
-    case "rec":   return <svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="3.5" fill="currentColor" /></svg>;
-    case "sayu":  return <svg width="13" height="13" viewBox="0 0 14 14"><path d="M3 11V4l4 4 4-4v7" {...s} /></svg>;
-    case "book":  return <svg width="13" height="13" viewBox="0 0 14 14"><path d="M3 2h6a2 2 0 012 2v8H5a2 2 0 01-2-2zM3 2v8" {...s} /></svg>;
-    case "pen":   return <svg width="13" height="13" viewBox="0 0 14 14"><path d="M2 12l2-1 7-7-1-1-7 7-1 2zM9 4l1 1" {...s} /></svg>;
-    case "star":  return <svg width="13" height="13" viewBox="0 0 14 14"><path d="M7 2l1.6 3.2L12 6l-2.5 2.4.6 3.4L7 10.2 3.9 11.8l.6-3.4L2 6l3.4-.8z" {...s} /></svg>;
-    case "scale": return <svg width="13" height="13" viewBox="0 0 14 14"><path d="M7 2v10M3 12h8M4 5l-2 4h4zM10 5l-2 4h4zM4 5h6" {...s} /></svg>;
-    case "chart": return <svg width="13" height="13" viewBox="0 0 14 14"><path d="M2 12V3M2 12h10M5 9V7M8 9V5M11 9V6" {...s} /></svg>;
-    case "globe": return <svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" {...s} /><path d="M2 7h10M7 2c1.6 1.6 2.5 3.2 2.5 5s-.9 3.4-2.5 5c-1.6-1.6-2.5-3.2-2.5-5s.9-3.4 2.5-5z" {...s} /></svg>;
-  }
-}
-
-function TabIcon({ name }: { name: TabIconName }) {
-  const s = {
-    stroke: "currentColor", strokeWidth: 1.6, fill: "none",
-    strokeLinecap: "round" as const, strokeLinejoin: "round" as const,
-  };
-  switch (name) {
-    case "home":    return <svg width="22" height="22" viewBox="0 0 20 20"><path d="M3 9l7-6 7 6v8H3z" {...s} /></svg>;
-    case "list":    return <svg width="22" height="22" viewBox="0 0 20 20"><path d="M5 5h10M5 10h10M5 15h10" {...s} /></svg>;
-    case "sparkle": return <svg width="22" height="22" viewBox="0 0 20 20"><path d="M10 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" {...s} /></svg>;
-    case "grid":    return <svg width="22" height="22" viewBox="0 0 20 20"><rect x="3" y="3" width="6" height="6" {...s} /><rect x="11" y="3" width="6" height="6" {...s} /><rect x="3" y="11" width="6" height="6" {...s} /><rect x="11" y="11" width="6" height="6" {...s} /></svg>;
-    case "gear":    return <svg width="22" height="22" viewBox="0 0 20 20"><circle cx="10" cy="10" r="3" {...s} /><path d="M10 2v3M10 15v3M2 10h3M15 10h3M4.5 4.5l2 2M13.5 13.5l2 2M4.5 15.5l2-2M13.5 6.5l2-2" {...s} /></svg>;
-  }
-}
-
-// ── Logo ────────────────────────────────────────────────────────────────
-function GrapeMark({ size = 22, color = "#1A3C6E", accent }: {
-  size?: number; color?: string; accent?: string;
+function GrapeMark({
+  size = 22,
+  color = "#1A3C6E",
+  accent,
+}: {
+  size?: number;
+  color?: string;
+  accent?: string;
 }) {
   return (
-    <svg width={size} height={size * 1.18} viewBox="0 0 22 26" fill={color} aria-hidden="true">
-      <circle cx="6"    cy="10" r="3.6" />
-      <circle cx="11"   cy="9"  r="3.6" />
-      <circle cx="16"   cy="10" r="3.6" />
-      <circle cx="8.5"  cy="15" r="3.6" />
+    <svg
+      width={size}
+      height={size * 1.18}
+      viewBox="0 0 22 26"
+      fill={color}
+      aria-hidden="true"
+    >
+      <circle cx="6" cy="10" r="3.6" />
+      <circle cx="11" cy="9" r="3.6" />
+      <circle cx="16" cy="10" r="3.6" />
+      <circle cx="8.5" cy="15" r="3.6" />
       <circle cx="13.5" cy="15" r="3.6" />
-      <circle cx="11"   cy="20" r="3.6" />
-      <path d="M11 6 Q12 3 14 2"
-            stroke={accent || color} strokeWidth="1.4"
-            fill="none" strokeLinecap="round" />
+      <circle cx="11" cy="20" r="3.6" />
+      <path
+        d="M11 6 Q12 3 14 2"
+        stroke={accent || color}
+        strokeWidth="1.4"
+        fill="none"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
