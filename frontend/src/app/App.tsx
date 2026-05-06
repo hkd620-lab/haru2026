@@ -129,7 +129,7 @@ function App() {
               <Route path="/novel-story" element={<NovelStoryPage />} />
               <Route path="/record-prophecy" element={<RecordProphecyPage />} />
               <Route path="/prophecy-hub" element={<ProphecyHubPage />} />
-              <Route path="/record-hub" element={<RecordHubPage />} />
+              <Route path="/record-hub" element={<HomeOrLanding />} />
               <Route path="/sns-records" element={<SnsRecordsPage />} />
 
               {/* 영어성경학습 */}
