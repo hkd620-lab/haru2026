@@ -1,7 +1,12 @@
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+
+const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
 export function RecordHubPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isDeveloper = user?.uid === DEVELOPER_UID;
 
   const lifeRecords: { label: string; format: string }[] = [
     { label: '일기', format: '일기' },
@@ -17,12 +22,15 @@ export function RecordHubPage() {
     { label: '업무일지', format: '업무일지' },
     { label: '메모', format: '메모' },
   ];
-  const knowledgeCards: { icon: string; label: string; desc?: string; path: string; isNew?: boolean; accent?: string; state?: { category: string } }[] = [
+  const knowledgeCards: { icon: string; label: string; desc?: string; path: string; isNew?: boolean; accent?: string; state?: { category?: string; format?: string } }[] = [
     { icon: '🔮', label: 'HARU예언', path: '/prophecy-hub' },
     { icon: '⚖️', label: '하루LAW', path: '/record', state: { category: '하루LAW' } },
     { icon: '📖', label: '영어성경', path: '/bible' },
     { icon: '✏️', label: '영어일기', path: '/diary-learn' },
     { icon: '📱', label: 'SNS 기록 가져오기', desc: 'Facebook · Instagram 기록 AI로 정리', path: '/sns-records', isNew: true, accent: '#10b981' },
+    { icon: '📈', label: 'HARU주식관리', desc: '주식 거래·종목 기록', path: '/record', state: { format: 'HARU주식관리' } },
+    { icon: '📚', label: '하루충전소', desc: '오늘의 책 한 권', path: '/book-studio' },
+    ...(isDeveloper ? [{ icon: '🤖', label: '하루AI지식창고', desc: '개인 AI 지식 데이터베이스', path: '/sayu' }] : []),
   ];
 
   const recordButtonStyle: React.CSSProperties = {
