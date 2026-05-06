@@ -155,8 +155,6 @@ export function RecordPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
-  const isDeveloper = user?.uid === DEVELOPER_UID;
   const [currentDate] = useState(new Date());
   const [mood, setMood] = useState<Mood>('평온');
   const [showEnvToast, setShowEnvToast] = useState(false);
