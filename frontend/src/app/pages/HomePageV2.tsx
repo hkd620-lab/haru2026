@@ -373,11 +373,11 @@ export function HomePageV2() {
           [data-v2="header-actions"] .v2-pill { padding: 6px 9px !important; font-size: 11px !important; }
           [data-v2="profile"] { width: 36px !important; height: 36px !important; }
 
-          [data-v2="hero-grid"] { gap: 10px !important; margin-bottom: 14px !important; }
+          [data-v2="hero-grid"] { display: grid !important; grid-template-columns: 1fr !important; gap: 10px !important; margin-bottom: 14px !important; }
           [data-v2="hero-date"] { padding: 16px 16px 14px !important; min-height: auto !important; border-radius: 18px !important; }
-          [data-v2="hero-date-cap"] { font-size: 10px !important; letter-spacing: 2px !important; }
-          [data-v2="hero-date-num"] { font-size: 40px !important; margin-top: 6px !important; gap: 6px !important; }
-          [data-v2="hero-date-num"] small { font-size: 13px !important; }
+          [data-v2="hero-date-cap"] { font-size: 10px !important; letter-spacing: 2px !important; padding-right: 70px !important; }
+          [data-v2="hero-date-num"] { font-size: 36px !important; margin-top: 6px !important; gap: 6px !important; }
+          [data-v2="hero-date-num"] small { font-size: 12px !important; }
           [data-v2="hero-date-headline"] { font-size: 14px !important; margin-top: 10px !important; }
           [data-v2="hero-date-tag"] { font-size: 10px !important; padding: 4px 9px 4px 8px !important; top: 12px !important; right: 12px !important; }
           [data-v2="hero-date-chips"] { gap: 6px !important; margin-top: 10px !important; }
@@ -386,7 +386,7 @@ export function HomePageV2() {
           [data-v2="hero-date-blob3"] { width: 60px !important; height: 60px !important; right: 140px !important; }
 
           [data-v2="hero-greet"] { padding: 14px !important; min-height: auto !important; border-radius: 18px !important; }
-          [data-v2="hero-greet-cap"] { font-size: 9px !important; letter-spacing: 2px !important; }
+          [data-v2="hero-greet-cap"] { font-size: 9px !important; letter-spacing: 1.5px !important; white-space: nowrap !important; }
           [data-v2="hero-greet-title"] { font-size: 16px !important; margin: 6px 0 4px !important; }
           [data-v2="hero-greet-body"] { font-size: 12px !important; line-height: 1.55 !important; }
           [data-v2="hero-greet-streak"] { margin-top: 10px !important; padding-top: 10px !important; gap: 8px !important; }
@@ -419,10 +419,10 @@ export function HomePageV2() {
           [data-v2="pattern-strip"] { font-size: 9px !important; margin-top: 14px !important; gap: 4px !important; padding: 0 4px !important; }
           [data-v2="pattern-strip"] > span:first-of-type, [data-v2="pattern-strip"] > span:last-of-type { flex: 0 0 24px !important; }
 
-          [data-v2="bottom-nav-wrap"] { bottom: max(8px, env(safe-area-inset-bottom)) !important; padding: 0 8px !important; }
-          [data-v2="bottom-nav-wrap"] nav { padding: 4px !important; gap: 2px !important; max-width: 100% !important; }
-          [data-v2="bottom-nav-wrap"] nav button { padding: 8px 10px !important; font-size: 10px !important; gap: 5px !important; }
-          [data-v2="bottom-nav-wrap"] nav button svg { width: 13px !important; height: 13px !important; }
+          [data-v2="bottom-nav-wrap"] { bottom: max(8px, env(safe-area-inset-bottom)) !important; padding: 0 6px !important; }
+          [data-v2="bottom-nav-wrap"] nav { padding: 3px !important; gap: 1px !important; max-width: 100% !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+          [data-v2="bottom-nav-wrap"] nav button { padding: 7px 4px !important; font-size: 10px !important; gap: 4px !important; min-width: 0 !important; }
+          [data-v2="bottom-nav-wrap"] nav button svg { width: 12px !important; height: 12px !important; }
         }
       `}</style>
 
