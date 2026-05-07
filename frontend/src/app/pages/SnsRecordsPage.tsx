@@ -8,6 +8,7 @@ import { db, storage, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { GrapeAnimation } from '../components/GrapeAnimation';
+import { X } from 'lucide-react';
 
 const COLOR_BLUE = '#1A3C6E';
 const COLOR_BG = '#FAF9F6';
@@ -266,6 +267,35 @@ export function SnsRecordsPage() {
 
   return (
     <div style={{ minHeight: 'calc(100vh - 56px - 80px)', background: COLOR_BG, padding: '20px 16px 32px' }}>
+      <button
+        type="button"
+        onClick={() => {
+          if (window.history.length > 1) {
+            navigate(-1);
+          } else {
+            navigate('/');
+          }
+        }}
+        aria-label="닫기"
+        style={{
+          position: 'fixed',
+          top: 12,
+          right: 12,
+          zIndex: 50,
+          background: '#fff',
+          border: '1px solid #e5e5e5',
+          borderRadius: '50%',
+          width: 36,
+          height: 36,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        }}
+      >
+        <X style={{ width: 18, height: 18, color: COLOR_BLUE }} />
+      </button>
       {(uploading || savingSearch) && (
         <div
           style={{
