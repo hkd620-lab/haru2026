@@ -376,7 +376,7 @@ export function HomePageV2() {
           [data-v2="hero-grid"] { display: grid !important; grid-template-columns: 1fr !important; gap: 10px !important; margin-bottom: 14px !important; }
           [data-v2="hero-date"] { padding: 16px 16px 14px !important; min-height: auto !important; border-radius: 18px !important; }
           [data-v2="hero-date-cap"] { font-size: 10px !important; letter-spacing: 2px !important; padding-right: 70px !important; }
-          [data-v2="hero-date-num"] { font-size: 28px !important; margin-top: 4px !important; gap: 5px !important; }
+          [data-v2="hero-date-num"] { font-size: 22px !important; margin-top: 4px !important; gap: 5px !important; }
           [data-v2="hero-date-num"] small { font-size: 11px !important; }
           [data-v2="hero-date-headline"] { font-size: 13px !important; margin-top: 8px !important; }
           [data-v2="hero-date-tag"] { font-size: 10px !important; padding: 4px 9px 4px 8px !important; top: 12px !important; right: 12px !important; }
@@ -684,7 +684,7 @@ export function HomePageV2() {
                 data-v2="hero-date-num"
                 style={{
                   fontFamily: FONT_SERIF,
-                  fontSize: 88,
+                  fontSize: 44,
                   fontWeight: 700,
                   color: '#4A5A2C',
                   lineHeight: 1,
@@ -692,18 +692,20 @@ export function HomePageV2() {
                   marginTop: 14,
                   display: 'flex',
                   alignItems: 'baseline',
-                  gap: 14,
+                  gap: 10,
+                  whiteSpace: 'nowrap',
+                  flexWrap: 'wrap',
                 }}
-                className="max-[820px]:!text-[60px]"
               >
                 {today.big}
                 <small
                   style={{
                     fontFamily: FONT_SERIF,
-                    fontSize: 28,
+                    fontSize: 16,
                     fontWeight: 400,
                     color: '#7A6F5A',
                     letterSpacing: '-0.01em',
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   · 입하 立夏
