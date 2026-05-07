@@ -393,11 +393,16 @@ export function HomePageV2() {
           [data-v2="hero-greet-streak"] > div:last-of-type { font-size: 10px !important; }
 
           [data-v2="section"] { margin-bottom: 16px !important; }
-          [data-v2="section-head"] { gap: 8px !important; margin-bottom: 12px !important; }
-          [data-v2="section-icon"] { width: 32px !important; height: 32px !important; }
-          [data-v2="section-title"] { font-size: 17px !important; }
-          [data-v2="section-sub"] { font-size: 11px !important; }
-          [data-v2="section-badge"] { font-size: 9px !important; padding: 4px 9px !important; }
+          [data-v2="section-head"] { gap: 6px !important; margin-bottom: 10px !important; flex-wrap: nowrap !important; }
+          [data-v2="section-icon"] { width: 30px !important; height: 30px !important; flex-shrink: 0 !important; }
+          [data-v2="section-icon"] svg { width: 16px !important; height: 16px !important; }
+          [data-v2="section-title"] { font-size: 16px !important; white-space: nowrap !important; flex-shrink: 0 !important; }
+          [data-v2="section-sub"] { display: none !important; }
+          [data-v2="section-badge"] { font-size: 8px !important; padding: 3px 7px !important; white-space: nowrap !important; letter-spacing: 0.08em !important; flex-shrink: 0 !important; }
+
+          /* 카드 그리드 강제 — Tailwind arbitrary breakpoint 미동작 우회 */
+          [data-v2="records-grid"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; }
+          [data-v2="agents-grid"] { grid-template-columns: 1fr !important; gap: 8px !important; }
 
           .v2-rec { padding: 12px 10px !important; gap: 6px !important; border-radius: 14px !important; }
           .v2-rec > span:first-of-type { width: 38px !important; height: 38px !important; border-radius: 10px !important; }
@@ -875,6 +880,7 @@ export function HomePageV2() {
             }
           />
           <div
+            data-v2="records-grid"
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(5, 1fr)',
@@ -966,6 +972,7 @@ export function HomePageV2() {
             }
           />
           <div
+            data-v2="agents-grid"
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(4, 1fr)',
@@ -1525,6 +1532,7 @@ function SectionHead({
 }) {
   return (
     <div
+      data-v2="section-head"
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -1533,6 +1541,7 @@ function SectionHead({
       }}
     >
       <span
+        data-v2="section-icon"
         style={{
           width: 38,
           height: 38,
@@ -1558,6 +1567,7 @@ function SectionHead({
         </svg>
       </span>
       <span
+        data-v2="section-title"
         style={{
           fontFamily: FONT_SERIF,
           fontSize: 22,
@@ -1568,8 +1578,9 @@ function SectionHead({
       >
         {title}
       </span>
-      <span style={{ fontSize: 12, color: '#7A6F5A', marginLeft: 4 }}>{sub}</span>
+      <span data-v2="section-sub" style={{ fontSize: 12, color: '#7A6F5A', marginLeft: 4 }}>{sub}</span>
       <span
+        data-v2="section-badge"
         style={{
           display: 'inline-flex',
           alignItems: 'center',
