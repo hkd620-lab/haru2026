@@ -349,6 +349,15 @@ export function HomePageV2() {
         .v2-pill:active { transform: scale(0.98); }
         .v2-nav-item:hover { color:#7A6F5A; }
 
+        /* === 태블릿 (1열 hero) === */
+        @media (max-width: 1100px) {
+          [data-v2="hero-grid"] { grid-template-columns: 1fr !important; }
+          [data-v2="records-grid"] { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+          [data-v2="agents-grid"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+        }
+        @media (max-width: 820px) {
+          [data-v2="records-grid"] { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+        }
         /* === 모바일 최적화 (PWA 우선) === */
         @media (max-width: 640px) {
           /* 모든 pill / nav 버튼 텍스트 줄바꿈 금지 */
@@ -583,7 +592,6 @@ export function HomePageV2() {
             gap: 16,
             marginBottom: 32,
           }}
-          className="max-[820px]:!grid-cols-1"
         >
           {/* Hero date */}
           <section
@@ -891,7 +899,6 @@ export function HomePageV2() {
               gridTemplateColumns: 'repeat(5, 1fr)',
               gap: 14,
             }}
-            className="max-[1100px]:!grid-cols-4 max-[820px]:!grid-cols-3 max-[520px]:!grid-cols-2"
           >
             {RECORDS.map((r) => (
               <button
@@ -983,7 +990,6 @@ export function HomePageV2() {
               gridTemplateColumns: 'repeat(4, 1fr)',
               gap: 14,
             }}
-            className="max-[1100px]:!grid-cols-2 max-[520px]:!grid-cols-1"
           >
             {AGENTS.map((a) => {
               const disabled = a.path === null;
