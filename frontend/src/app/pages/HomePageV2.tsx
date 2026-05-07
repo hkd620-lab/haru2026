@@ -348,6 +348,21 @@ export function HomePageV2() {
 
         /* === 모바일 최적화 (PWA 우선) === */
         @media (max-width: 640px) {
+          /* 모든 pill / nav 버튼 텍스트 줄바꿈 금지 */
+          .v2-pill, [data-v2="bottom-nav-wrap"] nav button, [data-v2="hero-date-tag"], [data-v2="hero-date-chips"] > span { white-space: nowrap !important; }
+          /* 헤더 액션 pill을 아이콘만 표시 (텍스트 숨김) */
+          [data-v2="header-actions"] .v2-pill { font-size: 0 !important; padding: 0 !important; width: 36px !important; height: 36px !important; gap: 0 !important; justify-content: center !important; }
+          [data-v2="header-actions"] .v2-pill svg { width: 16px !important; height: 16px !important; }
+          [data-v2="header-actions"] .v2-pill > span { display: none !important; }
+          /* 히어로 날짜: 5월 7일 한 줄, "입하 立夏"는 다음 줄 */
+          [data-v2="hero-date-num"] { flex-wrap: wrap !important; align-items: baseline !important; white-space: nowrap !important; word-break: keep-all !important; }
+          [data-v2="hero-date-num"] small { flex-basis: 100% !important; margin-top: 4px !important; white-space: nowrap !important; }
+          /* "오늘 0건" 태그가 큰 폰 글자와 겹치지 않게 */
+          [data-v2="hero-date-tag"] { font-size: 9px !important; padding: 3px 8px !important; gap: 5px !important; top: 10px !important; right: 10px !important; }
+          /* 히어로 칩들 줄바꿈 안 깨지게 */
+          [data-v2="hero-date-chips"] { gap: 5px !important; }
+          [data-v2="hero-date-chips"] > span { font-size: 10px !important; padding: 5px 9px !important; }
+
           [data-v2="page"] { padding: 12px 12px 96px !important; }
           [data-v2="header"] { padding: 4px 0 12px !important; }
           [data-v2="logo"] { width: 38px !important; height: 38px !important; border-radius: 11px !important; }
@@ -404,10 +419,10 @@ export function HomePageV2() {
           [data-v2="pattern-strip"] { font-size: 9px !important; margin-top: 14px !important; gap: 4px !important; padding: 0 4px !important; }
           [data-v2="pattern-strip"] > span:first-of-type, [data-v2="pattern-strip"] > span:last-of-type { flex: 0 0 24px !important; }
 
-          [data-v2="bottom-nav-wrap"] { bottom: max(10px, env(safe-area-inset-bottom)) !important; padding: 0 12px !important; }
-          [data-v2="bottom-nav-wrap"] nav { padding: 5px !important; gap: 3px !important; }
-          [data-v2="bottom-nav-wrap"] nav button { padding: 9px 12px !important; font-size: 11px !important; gap: 6px !important; }
-          [data-v2="bottom-nav-wrap"] nav button svg { width: 14px !important; height: 14px !important; }
+          [data-v2="bottom-nav-wrap"] { bottom: max(8px, env(safe-area-inset-bottom)) !important; padding: 0 8px !important; }
+          [data-v2="bottom-nav-wrap"] nav { padding: 4px !important; gap: 2px !important; max-width: 100% !important; }
+          [data-v2="bottom-nav-wrap"] nav button { padding: 8px 10px !important; font-size: 10px !important; gap: 5px !important; }
+          [data-v2="bottom-nav-wrap"] nav button svg { width: 13px !important; height: 13px !important; }
         }
       `}</style>
 
