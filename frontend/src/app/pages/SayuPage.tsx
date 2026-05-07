@@ -1225,44 +1225,6 @@ export function SayuPage() {
       {/* ─── 목록 뷰 ─── */}
       {viewMode === 'list' && (
         <div>
-          {/* 외부 이동 버튼 — snsHARU / 나의 작품 */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-            <button
-              type="button"
-              onClick={() => navigate('/sns-records')}
-              style={{
-                flex: 1,
-                padding: '12px 10px',
-                borderRadius: 10,
-                border: '1px solid #BBDDF5',
-                backgroundColor: '#E8F4FD',
-                color: '#1A3C6E',
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              📱 snsHARU
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/prophecy-hub')}
-              style={{
-                flex: 1,
-                padding: '12px 10px',
-                borderRadius: 10,
-                border: '1px solid #D9D2EC',
-                backgroundColor: '#F0EDF8',
-                color: '#1A3C6E',
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              📖 나의 작품
-            </button>
-          </div>
-
           {/* 🔍 SNS검색기록 섹션 */}
           <div className="mb-4">
             <button
@@ -1817,6 +1779,30 @@ export function SayuPage() {
             )}
           </div>
 
+          {/* snsHARU 진입 카드 — 원기충전소 다음 위치 */}
+          <button
+            type="button"
+            onClick={() => navigate('/sns-records')}
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              marginBottom: 16,
+              borderRadius: 10,
+              border: '1px solid #BBDDF5',
+              backgroundColor: '#E8F4FD',
+              color: '#1A3C6E',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span>📱 snsHARU</span>
+            <span style={{ fontSize: 14, color: '#1A3C6E' }}>›</span>
+          </button>
+
           {/* 하루LAW */}
           {(() => {
             const haruLawCategory = listData.find(d => d.category === '하루LAW');
@@ -2103,6 +2089,30 @@ export function SayuPage() {
             )}
           </div>
           )}
+
+          {/* 나의 작품 진입 카드 — PDF 생성 결과물 통합 라이브러리 (현재는 책스튜디오) */}
+          <button
+            type="button"
+            onClick={() => navigate('/book-studio')}
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              marginBottom: 16,
+              borderRadius: 10,
+              border: '1px solid #D9D2EC',
+              backgroundColor: '#F0EDF8',
+              color: '#1A3C6E',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span>📖 나의 작품</span>
+            <span style={{ fontSize: 14, color: '#1A3C6E' }}>›</span>
+          </button>
         </div>
       )}
 
