@@ -2376,7 +2376,7 @@ export function BiblePage() {
           <p style={{ color: '#6B7280', fontSize: 11, margin: '6px 0 0', textAlign: 'center' }}>
             🤖 AI 학습용 번역 · 공식 성경 번역본과 다를 수 있습니다
           </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(48px, 1fr))', gap: '6px', padding: '12px' }}>
             {Array.from({ length: currentBook.chapters }, (_, i) => i + 1).map((ch) => {
               const p = progressMap[`${currentBook.prefix}_${ch}`];
               let dotColor: string | null = null;
@@ -2415,7 +2415,7 @@ export function BiblePage() {
                   }}
                   style={{
                     position: 'relative',
-                    padding: '4px 10px',
+                    padding: '6px 0',
                     borderRadius: '6px',
                     border: 'none',
                     background: currentChapter === ch ? '#1A3C6E' : '#e5e7eb',
@@ -2423,6 +2423,7 @@ export function BiblePage() {
                     fontWeight: currentChapter === ch ? 700 : 400,
                     cursor: 'pointer',
                     fontSize: '13px',
+                    textAlign: 'center',
                   }}
                 >
                   {ch}장
@@ -2481,32 +2482,7 @@ export function BiblePage() {
 
           return (
             <>
-              {/* ① 모드 탭 */}
-              <div style={{ display: 'flex', borderRadius: 12, overflow: 'hidden', border: '1px solid #d1d5db', background: '#fff' }}>
-                {([
-                  { v: 'en',  label: '🇺🇸 영어' },
-                  { v: 'seq', label: '🔄 영→한' },
-                  { v: 'ko',  label: '🇰🇷 한국어' },
-                ] as const).map((m) => (
-                  <button
-                    key={m.v}
-                    onClick={() => setPlayMode(m.v)}
-                    disabled={lockSelectors}
-                    style={{
-                      flex: 1, padding: '12px 8px', border: 'none',
-                      cursor: lockSelectors ? 'not-allowed' : 'pointer',
-                      backgroundColor: playMode === m.v ? '#1A3C6E' : 'transparent',
-                      color: playMode === m.v ? '#FAF9F6' : '#1A3C6E',
-                      fontSize: 14, fontWeight: 600,
-                      opacity: lockSelectors && playMode !== m.v ? 0.5 : 1,
-                    }}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* ② 범위 카드 */}
+              {/* ① 범위 카드 */}
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
                   onClick={() => setPlayRange('book')}
@@ -2540,6 +2516,31 @@ export function BiblePage() {
                   🎵 현재 장만
                   <div style={{ fontSize: 11, opacity: 0.85, marginTop: 2 }}>({currentChapter}장)</div>
                 </button>
+              </div>
+
+              {/* ② 모드 탭 */}
+              <div style={{ display: 'flex', borderRadius: 12, overflow: 'hidden', border: '1px solid #d1d5db', background: '#fff' }}>
+                {([
+                  { v: 'en',  label: '🇺🇸 영어' },
+                  { v: 'seq', label: '🔄 영→한' },
+                  { v: 'ko',  label: '🇰🇷 한국어' },
+                ] as const).map((m) => (
+                  <button
+                    key={m.v}
+                    onClick={() => setPlayMode(m.v)}
+                    disabled={lockSelectors}
+                    style={{
+                      flex: 1, padding: '12px 8px', border: 'none',
+                      cursor: lockSelectors ? 'not-allowed' : 'pointer',
+                      backgroundColor: playMode === m.v ? '#1A3C6E' : 'transparent',
+                      color: playMode === m.v ? '#FAF9F6' : '#1A3C6E',
+                      fontSize: 14, fontWeight: 600,
+                      opacity: lockSelectors && playMode !== m.v ? 0.5 : 1,
+                    }}
+                  >
+                    {m.label}
+                  </button>
+                ))}
               </div>
 
               {/* ③ 재생 / 상태 / 컨트롤 */}
@@ -2592,7 +2593,7 @@ export function BiblePage() {
                     transition: 'opacity 0.2s',
                   }}
                 >
-                  {loadingThis ? <GrapeLoadingMini size={22} withText color="#FAF9F6" /> : `▶ ${rangeLabel} ${modeLabel} 듣기 시작`}
+                  {loadingThis ? <GrapeLoadingMini size={22} withText color="#FAF9F6" /> : `▶ ${rangeLabel} 성경 듣기 시작`}
                 </button>
               )}
             </>
