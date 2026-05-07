@@ -23,6 +23,7 @@ type Agent = {
   variant: 'lilac' | 'green' | 'terracotta';
   stroke: string;
   path: string | null;
+  state?: Record<string, unknown>;
   icon: ReactNode;
 };
 
@@ -193,7 +194,8 @@ const AGENTS: Agent[] = [
     tag: 'LAW · 안내',
     variant: 'green',
     stroke: '#4A5A2C',
-    path: null,
+    path: '/record',
+    state: { format: 'HARUraw' },
     icon: (
       <>
         <path d="M12 3v18" />
@@ -259,7 +261,8 @@ const AGENTS: Agent[] = [
     tag: 'STOCK · 안내',
     variant: 'terracotta',
     stroke: '#B85C2E',
-    path: null,
+    path: '/record',
+    state: { format: 'HARU주식관리' },
     icon: (
       <>
         <path d="M3 17l6-6 4 4 8-8" />
@@ -990,7 +993,7 @@ export function HomePageV2() {
                 type="button"
                 disabled={disabled}
                 aria-disabled={disabled}
-                onClick={() => { if (a.path) navigate(a.path); }}
+                onClick={() => { if (a.path) navigate(a.path, a.state ? { state: a.state } : undefined); }}
                 className={disabled ? '' : 'v2-agent'}
                 data-v2="agent"
                 style={{
