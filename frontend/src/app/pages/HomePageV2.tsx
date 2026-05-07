@@ -195,7 +195,7 @@ const AGENTS: Agent[] = [
     variant: 'green',
     stroke: '#4A5A2C',
     path: '/record',
-    state: { format: 'HARUraw' },
+    state: { category: '하루LAW' },
     icon: (
       <>
         <path d="M12 3v18" />
