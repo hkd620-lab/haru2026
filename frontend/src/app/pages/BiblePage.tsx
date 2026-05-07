@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router';
+import { X } from 'lucide-react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
@@ -1814,46 +1815,76 @@ export function BiblePage() {
   return (
     <>
     <div style={{ backgroundColor: '#FAF9F6', minHeight: '100vh', paddingBottom: 80 }}>
-      {/* 페이지 제목 */}
-      <div style={{ padding: '16px 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <button onClick={closeToOrigin} style={{ color: '#1A3C6E', background: 'none', border: 'none', fontSize: 14, cursor: 'pointer', padding: 0 }}>
-          ← 뒤로
-        </button>
-        <button
-          onClick={() => navigate('/vocab')}
-          style={{
-            marginLeft: 'auto', background: 'none', border: '1px solid #1A3C6E',
-            borderRadius: 20, padding: '4px 12px',
-            fontSize: 13, color: '#1A3C6E', cursor: 'pointer',
-          }}
-        >
-          📚 단어장
-        </button>
+      {/* 우상단 전체 닫기 X 버튼 */}
+      <button
+        type="button"
+        onClick={closeToOrigin}
+        aria-label="닫기"
+        style={{
+          position: 'fixed',
+          top: 12,
+          right: 12,
+          zIndex: 50,
+          background: '#fff',
+          border: '1px solid #e5e5e5',
+          borderRadius: '50%',
+          width: 36,
+          height: 36,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        }}
+      >
+        <X style={{ width: 18, height: 18, color: '#1A3C6E' }} />
+      </button>
+      <div style={{ padding: '16px 16px 0' }}>
         <div>
-          {/* 1단계: 구약 / 신약 탭 */}
-          <div style={{ display: 'flex', borderBottom: '2px solid #e5e7eb', margin: '20px 12px 0 12px' }}>
-            {(['구약', '신약'] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => {
-                  setCurrentTestament(t);
-                  const first = BOOKS.find((b) => b.testament === t);
-                  if (first) {
-                    setCurrentBook(first);
-                    setCurrentChapter(1);
-                  }
-                }}
-                style={{
-                  padding: '16px 24px', background: 'none', border: 'none', cursor: 'pointer',
-                  fontSize: '14px', fontWeight: 700,
-                  color: currentTestament === t ? '#1A3C6E' : '#999',
-                  borderBottom: currentTestament === t ? '2px solid #1A3C6E' : '2px solid transparent',
-                  marginBottom: '-2px',
-                }}
-              >
-                {t}
-              </button>
-            ))}
+          {/* 1단계: 구약 / 신약 탭 + 단어장 버튼 */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: '2px solid #e5e7eb',
+            margin: '20px 12px 0 12px',
+            paddingRight: 4,
+          }}>
+            <div style={{ display: 'flex' }}>
+              {(['구약', '신약'] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => {
+                    setCurrentTestament(t);
+                    const first = BOOKS.find((b) => b.testament === t);
+                    if (first) {
+                      setCurrentBook(first);
+                      setCurrentChapter(1);
+                    }
+                  }}
+                  style={{
+                    padding: '16px 24px', background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: '14px', fontWeight: 700,
+                    color: currentTestament === t ? '#1A3C6E' : '#999',
+                    borderBottom: currentTestament === t ? '2px solid #1A3C6E' : '2px solid transparent',
+                    marginBottom: '-2px',
+                  }}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => navigate('/vocab')}
+              style={{
+                background: 'none', border: '1px solid #1A3C6E',
+                borderRadius: 20, padding: '5px 12px',
+                fontSize: 12, color: '#1A3C6E', cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              📚 단어장
+            </button>
           </div>
           {/* 이어듣기 카드 */}
           {!resumeCardClosed && recentHistory.length > 0 && (() => {
