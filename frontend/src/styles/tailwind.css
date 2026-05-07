@@ -10,4 +10,22 @@
   --color-haru-point: #B47551;
   --color-haru-navy: #1A3C6E;
   --color-haru-tabbg: #FFFFFF;
+
+  /* Reposeful palette — HomePageV2 (CD handoff 2026-05-07) */
+  --color-reposeful-olive: #7A8B4E;
+  --color-reposeful-olive-dark: #4A5A2C;
+  --color-reposeful-lilac: #C9C0DE;
+  --color-reposeful-lilac-dark: #5A4E7A;
+  --color-reposeful-lilac-light: #DDD0E8;
+  --color-reposeful-light-green: #D4DEA0;
+  --color-reposeful-green-light: #E0E8B8;
+  --color-reposeful-terracotta: #B85C2E;
+  --color-reposeful-terracotta-light: #F5E5DC;
+  --color-reposeful-peach: #E8B894;
+  --color-reposeful-bg: #F5F0E8;
+  --color-reposeful-bg2: #EDE8DC;
+  --color-reposeful-border: #E5DFD0;
+  --color-reposeful-fg: #2C2C2A;
+  --color-reposeful-fg2: #7A6F5A;
+  --color-reposeful-fg-muted: #888780;
 }

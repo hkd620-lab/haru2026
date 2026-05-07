@@ -1,4 +1,8 @@
+import { useLocation } from 'react-router-dom';
+
 export function Footer() {
+  const location = useLocation();
+  if (location.pathname === '/v2') return null;
   return (
     <footer style={{
       borderTop: '1px solid rgba(0,0,0,0.08)',

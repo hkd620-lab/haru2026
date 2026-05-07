@@ -9,6 +9,8 @@ export function BottomNav() {
   const { user } = useAuth();
   const isDeveloper = user?.uid === DEVELOPER_UID;
 
+  if (location.pathname === '/v2') return null;
+
   const baseItems = [
     { path: '/', icon: Home, label: 'HARU' },
     { path: '/sayu', icon: Sparkles, label: 'SAYU·다듬기' },

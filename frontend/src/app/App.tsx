@@ -6,6 +6,7 @@ import { LoadingProvider } from './contexts/LoadingContext';
 import { Toaster } from 'sonner';
 import { useAuth } from './contexts/AuthContext';
 import { HomePage } from './pages/HomePage';
+import { HomePageV2 } from './pages/HomePageV2';
 import { LandingPage } from './pages/LandingPage';
 import { RecordPage } from './pages/RecordPage';
 import { LibraryPage } from './pages/LibraryPage';
@@ -102,6 +103,9 @@ function App() {
             <Routes>
               {/* 홈 화면 — 비로그인 시 랜딩, 로그인 시 홈 */}
               <Route path="/" element={<HomeOrLanding />} />
+
+              {/* v2 홈 (CD Reposeful 디자인 미리보기) */}
+              <Route path="/v2" element={<HomePageV2 />} />
               
               {/* 인증 */}
               <Route path="/login" element={<LoginPage />} />

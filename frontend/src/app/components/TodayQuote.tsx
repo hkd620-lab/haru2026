@@ -80,6 +80,7 @@ export function TodayQuote() {
   };
 
   if (!user || !todayQuote) return null;
+  if (location.pathname === '/v2') return null;
 
   const sourceLabel = isBible
     ? todayQuote.reference
