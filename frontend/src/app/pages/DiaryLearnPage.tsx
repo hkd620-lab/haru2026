@@ -501,7 +501,13 @@ export function DiaryLearnPage() {
             else if (step === 'detail') setStep('list');
             else if (step === 'list') { setStep('sourceSelect'); setSource(null); }
             else if (step === 'write') { setStep('sourceSelect'); setSource(null); setKoreanInput(''); }
-            else navigate(-1);
+            else {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate('/');
+              }
+            }
           }}
           style={{ background: 'none', border: 'none', color: '#fff', fontSize: 20, cursor: 'pointer' }}
         >←</button>

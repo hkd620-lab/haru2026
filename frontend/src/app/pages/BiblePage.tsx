@@ -1805,7 +1805,13 @@ export function BiblePage() {
     <div style={{ backgroundColor: '#FAF9F6', minHeight: '100vh', paddingBottom: 80 }}>
       {/* 페이지 제목 */}
       <div style={{ padding: '16px 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <button onClick={() => navigate('/record')} style={{ color: '#1A3C6E', background: 'none', border: 'none', fontSize: 14, cursor: 'pointer', padding: 0 }}>
+        <button onClick={() => {
+          if (window.history.length > 1) {
+            navigate(-1);
+          } else {
+            navigate('/');
+          }
+        }} style={{ color: '#1A3C6E', background: 'none', border: 'none', fontSize: 14, cursor: 'pointer', padding: 0 }}>
           ← 뒤로
         </button>
         <button

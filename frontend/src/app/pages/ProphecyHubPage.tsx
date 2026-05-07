@@ -14,9 +14,15 @@ export function ProphecyHubPage() {
       <div className="flex items-center gap-2 mb-8">
         <button
           type="button"
-          onClick={() => navigate('/')}
+          onClick={() => {
+            if (window.history.length > 1) {
+              navigate(-1);
+            } else {
+              navigate('/');
+            }
+          }}
           className="p-2 -ml-2 rounded-full hover:bg-black/5 transition-colors touch-manipulation"
-          aria-label="홈으로"
+          aria-label="뒤로가기"
         >
           <ChevronLeft className="w-6 h-6" style={{ color: '#1A3C6E' }} />
         </button>

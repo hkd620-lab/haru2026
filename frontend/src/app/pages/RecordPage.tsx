@@ -1104,7 +1104,14 @@ export function RecordPage() {
     {savedFormat && (
       <FormatModal
         isOpen={formatModalOpen}
-        onClose={() => { setFormatModalOpen(false); navigate('/'); }}
+        onClose={() => {
+          setFormatModalOpen(false);
+          if (window.history.length > 1) {
+            navigate(-1);
+          } else {
+            navigate('/');
+          }
+        }}
         format={savedFormat}
         recordId={savedDateStr}
         onSave={handleSaveFormatData}
