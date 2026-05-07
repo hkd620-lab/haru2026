@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { GrapeAnimation } from '../components/GrapeAnimation';
 import { X } from 'lucide-react';
+import { getOrigin } from '../services/v2Origin';
 
 const COLOR_BLUE = '#1A3C6E';
 const COLOR_BG = '#FAF9F6';
@@ -33,7 +34,14 @@ export function SnsRecordsPage() {
   const closeToOrigin = () => {
     if (fromPath) {
       navigate(fromPath);
-    } else if (window.history.length > 1) {
+      return;
+    }
+    const origin = getOrigin();
+    if (origin) {
+      navigate(origin);
+      return;
+    }
+    if (window.history.length > 1) {
       navigate(-1);
     } else {
       navigate('/');

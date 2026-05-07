@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
+import { X } from 'lucide-react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useLoading } from '../contexts/LoadingContext';
 import { toast } from 'sonner';
 import { ProphecyDiagram } from '../components/ProphecyDiagram';
+import { getOrigin } from '../services/v2Origin';
 
 // === 9개 항목 칩 옵션 ===
 const ANALYSIS_MOTIVE_CHIPS = ['예상치 못한 만남', '오랜 꿈을 향한 첫 걸음', '위기에서 찾은 기회', '관계의 균열과 회복', '성공적인 기술 구현과 삶의 변화', '오랜 갈등의 해소'];
@@ -232,18 +234,36 @@ export function NovelSynopsisPage() {
         minHeight: 'calc(100vh - 56px - 80px)',
         backgroundColor: '#FAF9F6',
       }}>
+        {/* 우상단 X 닫기 — v2 origin 우선 */}
+        <button
+          type="button"
+          aria-label="닫기"
+          title="닫기"
+          onClick={() => navigate(getOrigin() || '/')}
+          style={{
+            position: 'fixed',
+            top: 12,
+            right: 12,
+            zIndex: 100,
+            background: '#fff',
+            border: '1px solid #e5e5e5',
+            borderRadius: '50%',
+            width: 36,
+            height: 36,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+          }}
+        >
+          <X style={{ width: 18, height: 18, color: '#1A3C6E' }} />
+        </button>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 22 }}>🔮</span>
             <h1 style={{ fontSize: 18, fontWeight: 700, color: '#1A3C6E', margin: 0 }}>HARU예언</h1>
           </div>
-          <button
-            onClick={() => navigate('/novel-studio')}
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              fontSize: 13, color: '#6B7280', padding: '6px 10px', borderRadius: 8,
-            }}
-          >← 설정으로</button>
         </div>
 
         {!synopsis && (
@@ -349,6 +369,31 @@ export function NovelSynopsisPage() {
       minHeight: 'calc(100vh - 56px - 80px)',
       backgroundColor: '#FAF9F6',
     }}>
+      {/* 우상단 X 닫기 — v2 origin 우선 */}
+      <button
+        type="button"
+        aria-label="닫기"
+        title="닫기"
+        onClick={() => navigate(getOrigin() || '/')}
+        style={{
+          position: 'fixed',
+          top: 12,
+          right: 12,
+          zIndex: 100,
+          background: '#fff',
+          border: '1px solid #e5e5e5',
+          borderRadius: '50%',
+          width: 36,
+          height: 36,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        }}
+      >
+        <X style={{ width: 18, height: 18, color: '#1A3C6E' }} />
+      </button>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 22 }}>🔮</span>
@@ -356,13 +401,6 @@ export function NovelSynopsisPage() {
             HARU예언 — {synopsisRound}차 시놉시스
           </h1>
         </div>
-        <button
-          onClick={() => navigate('/record-prophecy')}
-          style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: 13, color: '#6B7280', padding: '6px 10px', borderRadius: 8,
-          }}
-        >← 설정으로</button>
       </div>
 
       <div style={{

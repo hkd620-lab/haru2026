@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, TrendingUp, Brain, Sparkles, Activity, Calendar, Star } from 'lucide-react';
+import { X, TrendingUp, Brain, Sparkles, Activity, Calendar, Star } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService, RecordFormat } from '../services/firestoreService';
@@ -230,12 +230,29 @@ export function FormatStatisticsPage() {
       {/* Header */}
       <div className="mb-6">
         <button
+          type="button"
+          aria-label="닫기"
+          title="닫기"
           onClick={() => navigate(getOrigin() || '/sayu')}
-          className="flex items-center gap-2 mb-4 text-sm transition-opacity hover:opacity-70"
-          style={{ color: '#1A3C6E' }}
+          className="mb-4 transition-opacity hover:opacity-70"
+          style={{
+            position: 'fixed',
+            top: 12,
+            right: 12,
+            zIndex: 50,
+            background: '#fff',
+            border: '1px solid #e5e5e5',
+            borderRadius: '50%',
+            width: 36,
+            height: 36,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+          }}
         >
-          <ArrowLeft className="w-4 h-4" />
-          {getOrigin() ? '돌아가기' : 'SAYU로 돌아가기'}
+          <X style={{ width: 18, height: 18, color: '#1A3C6E' }} />
         </button>
 
         <div className="flex items-center justify-between mb-2">

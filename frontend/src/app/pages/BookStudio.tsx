@@ -4,6 +4,7 @@ import { db } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation, useNavigate } from 'react-router';
 import { X } from 'lucide-react';
+import { getOrigin } from '../services/v2Origin';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -38,7 +39,14 @@ export function BookStudio() {
   const closeToOrigin = () => {
     if (fromPath) {
       navigate(fromPath);
-    } else if (window.history.length > 1) {
+      return;
+    }
+    const origin = getOrigin();
+    if (origin) {
+      navigate(origin);
+      return;
+    }
+    if (window.history.length > 1) {
       navigate(-1);
     } else {
       navigate('/');

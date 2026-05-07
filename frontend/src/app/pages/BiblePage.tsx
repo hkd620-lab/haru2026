@@ -7,6 +7,7 @@ import { doc, setDoc, serverTimestamp, collection, getDocs, query, orderBy, limi
 import { db, auth } from '../../firebase';
 import { BIBLE_BOOKS } from '../../data/bibleBooks';
 import GrapeLoadingMini from '../components/GrapeLoadingMini';
+import { getOrigin } from '../services/v2Origin';
 
 interface Verse {
   verse: number;
@@ -30,7 +31,14 @@ export function BiblePage() {
   const closeToOrigin = () => {
     if (fromPath) {
       navigate(fromPath);
-    } else if (window.history.length > 1) {
+      return;
+    }
+    const origin = getOrigin();
+    if (origin) {
+      navigate(origin);
+      return;
+    }
+    if (window.history.length > 1) {
       navigate(-1);
     } else {
       navigate('/');

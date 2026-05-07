@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { ChevronLeft, ChevronRight, X, Printer, Download, FileText } from 'lucide-react';
 import { RecordFormat } from '../services/firestoreService';
+import { getOrigin } from '../services/v2Origin';
 import { toast } from 'sonner';
 
 
@@ -111,7 +112,8 @@ export function MergeViewerPage() {
   };
 
   const handleClose = () => {
-    navigate('/merge');
+    // v2 origin이 있으면 곧장 v2로 닫기, 없으면 합본 첫 화면으로
+    navigate(getOrigin() || '/merge');
   };
 
   // 대표 사진: 로드 가능한 첫 번째 이미지를 비동기로 탐색

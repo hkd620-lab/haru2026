@@ -1,6 +1,7 @@
-import { ChevronLeft, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { getOrigin } from '../services/v2Origin';
 
 export function ProphecyHubPage() {
   const navigate = useNavigate();
@@ -9,7 +10,14 @@ export function ProphecyHubPage() {
   const closeToOrigin = () => {
     if (fromPath) {
       navigate(fromPath);
-    } else if (window.history.length > 1) {
+      return;
+    }
+    const origin = getOrigin();
+    if (origin) {
+      navigate(origin);
+      return;
+    }
+    if (window.history.length > 1) {
       navigate(-1);
     } else {
       navigate('/');
@@ -45,23 +53,13 @@ export function ProphecyHubPage() {
         <X style={{ width: 18, height: 18, color: '#1A3C6E' }} />
       </button>
       {/* 헤더 */}
-      <div className="flex items-center gap-2 mb-8">
-        <button
-          type="button"
-          onClick={closeToOrigin}
-          className="p-2 -ml-2 rounded-full hover:bg-black/5 transition-colors touch-manipulation"
-          aria-label="뒤로가기"
-        >
-          <ChevronLeft className="w-6 h-6" style={{ color: '#1A3C6E' }} />
-        </button>
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight" style={{ color: '#1A3C6E' }}>
-            🔮 HARU 예언
-          </h1>
-          <p className="text-sm mt-1.5" style={{ color: '#666' }}>
-            어떤 방식으로 예언을 시작할까요?
-          </p>
-        </div>
+      <div className="mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight" style={{ color: '#1A3C6E' }}>
+          🔮 HARU 예언
+        </h1>
+        <p className="text-sm mt-1.5" style={{ color: '#666' }}>
+          어떤 방식으로 예언을 시작할까요?
+        </p>
       </div>
 
       {/* 카드 3개 (세로 배치) */}

@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../../firebase';
 import { firestoreService } from '../services/firestoreService';
+import { getOrigin } from '../services/v2Origin';
 import GrapeLoadingMini from '../components/GrapeLoadingMini';
 
 interface DiaryItem {
@@ -61,7 +63,14 @@ export function DiaryLearnPage() {
   const closeToOrigin = () => {
     if (fromPath) {
       navigate(fromPath);
-    } else if (window.history.length > 1) {
+      return;
+    }
+    const origin = getOrigin();
+    if (origin) {
+      navigate(origin);
+      return;
+    }
+    if (window.history.length > 1) {
       navigate(-1);
     } else {
       navigate('/');
@@ -487,6 +496,31 @@ export function DiaryLearnPage() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#FAF9F6' }}>
+      {/* 우상단 fixed X 닫기 — v2 origin 우선 */}
+      <button
+        type="button"
+        aria-label="닫기"
+        title="닫기"
+        onClick={() => navigate(getOrigin() || '/')}
+        style={{
+          position: 'fixed',
+          top: 12,
+          right: 12,
+          zIndex: 100,
+          background: '#fff',
+          border: '1px solid #e5e5e5',
+          borderRadius: '50%',
+          width: 36,
+          height: 36,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        }}
+      >
+        <X style={{ width: 18, height: 18, color: '#1A3C6E' }} />
+      </button>
       {/* 상단 헤더 */}
       <div style={{
         backgroundColor: '#1A3C6E', color: '#fff',

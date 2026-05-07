@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from 'react-router';
-import { ChevronLeft, Printer, Copy } from 'lucide-react';
+import { X, Printer, Copy } from 'lucide-react';
 import { toast } from 'sonner';
+import { getOrigin } from '../services/v2Origin';
 
 export function NovelStoryPage() {
   const navigate = useNavigate();
@@ -51,12 +52,6 @@ export function NovelStoryPage() {
           padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12,
         }}
       >
-        <button
-          onClick={() => navigate(fromRecord ? '/record-prophecy' : '/novel-synopsis')}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
-        >
-          <ChevronLeft size={22} color="#1A3C6E" />
-        </button>
         <span style={{ fontSize: 16, fontWeight: 600, color: '#1A3C6E', flex: 1 }}>
           🔮 HARU예언 단편 이야기
         </span>
@@ -70,6 +65,13 @@ export function NovelStoryPage() {
           title="PDF 저장"
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6 }}
         ><Printer size={18} color="#6B7280" /></button>
+        <button
+          type="button"
+          aria-label="닫기"
+          title="닫기"
+          onClick={() => navigate(getOrigin() || '/')}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6 }}
+        ><X size={20} color="#1A3C6E" /></button>
       </div>
 
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '20px 16px' }}>

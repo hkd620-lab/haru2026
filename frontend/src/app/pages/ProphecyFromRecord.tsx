@@ -4,7 +4,8 @@ import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../services/firestoreService';
-import { ChevronLeft } from 'lucide-react';
+import { X } from 'lucide-react';
+import { getOrigin } from '../services/v2Origin';
 
 const FORMAT_PREFIX: Record<string, string> = {
   '일기': 'diary', '에세이': 'essay', '여행기록': 'travel',
@@ -389,18 +390,17 @@ export function RecordProphecyPage() {
 
   return (
     <div style={styles.container}>
-      <div style={styles.header}>
-        <button onClick={() => step === 'track' ? navigate(-1) : setStep(
-          step === 'items' ? 'analyze' :
-          step === 'analyze' ? 'preview' :
-          step === 'preview' ? 'formatList' :
-          step === 'formatList' ? 'list' :
-          step === 'list' ? 'track' : 'track'
-        )}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-          <ChevronLeft size={22} color="#1A3C6E" />
-        </button>
+      <div style={{ ...styles.header, justifyContent: 'space-between' }}>
         <span style={{ fontSize: 16, fontWeight: 600, color: '#1A3C6E' }}>🔮 내 기록으로 창작</span>
+        <button
+          type="button"
+          aria-label="닫기"
+          title="닫기"
+          onClick={() => navigate(getOrigin() || '/')}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <X size={22} color="#1A3C6E" />
+        </button>
       </div>
 
       <div style={styles.body}>
