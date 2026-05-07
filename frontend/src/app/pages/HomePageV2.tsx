@@ -376,9 +376,9 @@ export function HomePageV2() {
           [data-v2="hero-grid"] { display: grid !important; grid-template-columns: 1fr !important; gap: 10px !important; margin-bottom: 14px !important; }
           [data-v2="hero-date"] { padding: 16px 16px 14px !important; min-height: auto !important; border-radius: 18px !important; }
           [data-v2="hero-date-cap"] { font-size: 10px !important; letter-spacing: 2px !important; padding-right: 70px !important; }
-          [data-v2="hero-date-num"] { font-size: 36px !important; margin-top: 6px !important; gap: 6px !important; }
-          [data-v2="hero-date-num"] small { font-size: 12px !important; }
-          [data-v2="hero-date-headline"] { font-size: 14px !important; margin-top: 10px !important; }
+          [data-v2="hero-date-num"] { font-size: 28px !important; margin-top: 4px !important; gap: 5px !important; }
+          [data-v2="hero-date-num"] small { font-size: 11px !important; }
+          [data-v2="hero-date-headline"] { font-size: 13px !important; margin-top: 8px !important; }
           [data-v2="hero-date-tag"] { font-size: 10px !important; padding: 4px 9px 4px 8px !important; top: 12px !important; right: 12px !important; }
           [data-v2="hero-date-chips"] { gap: 6px !important; margin-top: 10px !important; }
           [data-v2="hero-date-blob1"] { width: 140px !important; height: 140px !important; top: -36px !important; right: 60px !important; }
@@ -402,18 +402,18 @@ export function HomePageV2() {
 
           /* 카드 그리드 강제 — Tailwind arbitrary breakpoint 미동작 우회 */
           [data-v2="records-grid"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; }
-          [data-v2="agents-grid"] { grid-template-columns: 1fr !important; gap: 8px !important; }
+          [data-v2="agents-grid"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; }
 
           .v2-rec { padding: 12px 10px !important; gap: 6px !important; border-radius: 14px !important; }
           .v2-rec > span:first-of-type { width: 38px !important; height: 38px !important; border-radius: 10px !important; }
           .v2-rec > span:nth-of-type(2) { font-size: 12px !important; }
           .v2-rec > span:nth-of-type(3) { font-size: 9px !important; margin-top: -4px !important; }
 
-          [data-v2="agent"] { padding: 14px !important; gap: 10px !important; min-height: 118px !important; border-radius: 16px !important; }
-          [data-v2="agent"] > div:first-of-type { width: 42px !important; height: 42px !important; border-radius: 11px !important; }
-          [data-v2="agent-title"] { font-size: 15px !important; }
-          [data-v2="agent-sub"] { font-size: 11px !important; margin-top: 4px !important; }
-          [data-v2="agent-tag"] { font-size: 8px !important; padding: 2px 7px !important; margin-top: 8px !important; }
+          [data-v2="agent"] { padding: 12px !important; gap: 8px !important; min-height: 112px !important; border-radius: 14px !important; }
+          [data-v2="agent"] > div:first-of-type { width: 38px !important; height: 38px !important; border-radius: 10px !important; }
+          [data-v2="agent-title"] { font-size: 13px !important; }
+          [data-v2="agent-sub"] { font-size: 10px !important; margin-top: 3px !important; line-height: 1.4 !important; }
+          [data-v2="agent-tag"] { font-size: 8px !important; padding: 2px 6px !important; margin-top: 6px !important; }
 
           [data-v2="cta"] { padding: 16px 18px !important; font-size: 14px !important; border-radius: 18px !important; margin-top: 4px !important; }
           [data-v2="cta-icon"] { width: 36px !important; height: 36px !important; }
