@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router';
-import { X, Printer, Copy } from 'lucide-react';
+import { ChevronLeft, X, Printer, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { getOrigin } from '../services/v2Origin';
 
@@ -43,7 +43,33 @@ export function NovelStoryPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#FAF9F6', paddingBottom: 100 }}>
-      {/* 헤더 */}
+      {/* 우상단 fixed X 닫기 — v2 origin 우선 */}
+      <button
+        type="button"
+        aria-label="닫기"
+        title="닫기"
+        onClick={() => navigate(getOrigin() || '/')}
+        className="no-print"
+        style={{
+          position: 'fixed',
+          top: 12,
+          right: 12,
+          zIndex: 100,
+          background: '#fff',
+          border: '1px solid #e5e5e5',
+          borderRadius: '50%',
+          width: 36,
+          height: 36,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        }}
+      >
+        <X style={{ width: 18, height: 18, color: '#1A3C6E' }} />
+      </button>
+      {/* 헤더 — 한 단계 뒤로(설정으로) + 액션 */}
       <div
         className="no-print"
         style={{
@@ -52,6 +78,14 @@ export function NovelStoryPage() {
           padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12,
         }}
       >
+        <button
+          onClick={() => navigate(fromRecord ? '/record-prophecy' : '/novel-synopsis')}
+          aria-label="이전 단계"
+          title="이전 단계"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+        >
+          <ChevronLeft size={22} color="#1A3C6E" />
+        </button>
         <span style={{ fontSize: 16, fontWeight: 600, color: '#1A3C6E', flex: 1 }}>
           🔮 HARU예언 단편 이야기
         </span>
@@ -65,13 +99,6 @@ export function NovelStoryPage() {
           title="PDF 저장"
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6 }}
         ><Printer size={18} color="#6B7280" /></button>
-        <button
-          type="button"
-          aria-label="닫기"
-          title="닫기"
-          onClick={() => navigate(getOrigin() || '/')}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6 }}
-        ><X size={20} color="#1A3C6E" /></button>
       </div>
 
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '20px 16px' }}>

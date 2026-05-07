@@ -4,7 +4,7 @@ import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../services/firestoreService';
-import { X } from 'lucide-react';
+import { ChevronLeft, X } from 'lucide-react';
 import { getOrigin } from '../services/v2Origin';
 
 const FORMAT_PREFIX: Record<string, string> = {
@@ -390,17 +390,48 @@ export function RecordProphecyPage() {
 
   return (
     <div style={styles.container}>
-      <div style={{ ...styles.header, justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 16, fontWeight: 600, color: '#1A3C6E' }}>🔮 내 기록으로 창작</span>
+      {/* 우상단 fixed X 닫기 — v2 origin 우선 */}
+      <button
+        type="button"
+        aria-label="닫기"
+        title="닫기"
+        onClick={() => navigate(getOrigin() || '/')}
+        style={{
+          position: 'fixed',
+          top: 12,
+          right: 12,
+          zIndex: 100,
+          background: '#fff',
+          border: '1px solid #e5e5e5',
+          borderRadius: '50%',
+          width: 36,
+          height: 36,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        }}
+      >
+        <X style={{ width: 18, height: 18, color: '#1A3C6E' }} />
+      </button>
+      {/* 헤더 — 단계 뒤로 가기 화살표 보존 */}
+      <div style={styles.header}>
         <button
-          type="button"
-          aria-label="닫기"
-          title="닫기"
-          onClick={() => navigate(getOrigin() || '/')}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => step === 'track' ? navigate(-1) : setStep(
+            step === 'items' ? 'analyze' :
+            step === 'analyze' ? 'preview' :
+            step === 'preview' ? 'formatList' :
+            step === 'formatList' ? 'list' :
+            step === 'list' ? 'track' : 'track'
+          )}
+          aria-label="이전 단계"
+          title="이전 단계"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
         >
-          <X size={22} color="#1A3C6E" />
+          <ChevronLeft size={22} color="#1A3C6E" />
         </button>
+        <span style={{ fontSize: 16, fontWeight: 600, color: '#1A3C6E' }}>🔮 내 기록으로 창작</span>
       </div>
 
       <div style={styles.body}>
