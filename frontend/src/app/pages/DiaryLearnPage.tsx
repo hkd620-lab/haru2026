@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../../firebase';
@@ -56,6 +56,17 @@ interface QuizPopup {
 
 export function DiaryLearnPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromPath = (location.state as any)?.from as string | undefined;
+  const closeToOrigin = () => {
+    if (fromPath) {
+      navigate(fromPath);
+    } else if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/');
+    }
+  };
   const { user } = useAuth();
   const fns = getFunctions(undefined, 'asia-northeast3');
 
@@ -501,13 +512,7 @@ export function DiaryLearnPage() {
             else if (step === 'detail') setStep('list');
             else if (step === 'list') { setStep('sourceSelect'); setSource(null); }
             else if (step === 'write') { setStep('sourceSelect'); setSource(null); setKoreanInput(''); }
-            else {
-              if (window.history.length > 1) {
-                navigate(-1);
-              } else {
-                navigate('/');
-              }
-            }
+            else closeToOrigin();
           }}
           style={{ background: 'none', border: 'none', color: '#fff', fontSize: 20, cursor: 'pointer' }}
         >←</button>

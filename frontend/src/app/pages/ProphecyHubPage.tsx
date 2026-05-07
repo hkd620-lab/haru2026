@@ -1,9 +1,20 @@
 import { ChevronLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 export function ProphecyHubPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromPath = (location.state as any)?.from as string | undefined;
+  const closeToOrigin = () => {
+    if (fromPath) {
+      navigate(fromPath);
+    } else if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/');
+    }
+  };
 
   return (
     <div
@@ -14,13 +25,7 @@ export function ProphecyHubPage() {
       <div className="flex items-center gap-2 mb-8">
         <button
           type="button"
-          onClick={() => {
-            if (window.history.length > 1) {
-              navigate(-1);
-            } else {
-              navigate('/');
-            }
-          }}
+          onClick={closeToOrigin}
           className="p-2 -ml-2 rounded-full hover:bg-black/5 transition-colors touch-manipulation"
           aria-label="뒤로가기"
         >

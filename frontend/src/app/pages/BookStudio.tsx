@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, onSnapshot, orderBy, query, doc, updateDoc, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { X } from 'lucide-react';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
@@ -33,6 +33,17 @@ export function BookStudio() {
   const [loading, setLoading] = useState(true);
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromPath = (location.state as any)?.from as string | undefined;
+  const closeToOrigin = () => {
+    if (fromPath) {
+      navigate(fromPath);
+    } else if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/');
+    }
+  };
   const isDeveloper = user?.uid === DEVELOPER_UID;
   const [editingBookId, setEditingBookId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
@@ -83,13 +94,7 @@ export function BookStudio() {
     >
       <button
         type="button"
-        onClick={() => {
-          if (window.history.length > 1) {
-            navigate(-1);
-          } else {
-            navigate('/');
-          }
-        }}
+        onClick={closeToOrigin}
         aria-label="닫기"
         style={{
           position: 'fixed',

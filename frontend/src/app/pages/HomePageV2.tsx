@@ -904,7 +904,7 @@ export function HomePageV2() {
               <button
                 key={r.label}
                 type="button"
-                onClick={() => navigate('/record', { state: { format: r.format } })}
+                onClick={() => navigate('/record', { state: { format: r.format, from: '/v2' } })}
                 className="v2-rec"
                 style={{
                   background: '#fff',
@@ -999,7 +999,10 @@ export function HomePageV2() {
                 type="button"
                 disabled={disabled}
                 aria-disabled={disabled}
-                onClick={() => { if (a.path) navigate(a.path, a.state ? { state: a.state } : undefined); }}
+                onClick={() => {
+                  if (!a.path) return;
+                  navigate(a.path, { state: { ...(a.state || {}), from: '/v2' } });
+                }}
                 className={disabled ? '' : 'v2-agent'}
                 data-v2="agent"
                 style={{

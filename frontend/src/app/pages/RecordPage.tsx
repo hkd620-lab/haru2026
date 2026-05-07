@@ -155,6 +155,16 @@ export function RecordPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const [fromPath, setFromPath] = useState<string | null>(() => (location.state as any)?.from ?? null);
+  const closeToOrigin = () => {
+    if (fromPath) {
+      navigate(fromPath);
+    } else if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/');
+    }
+  };
   const [currentDate] = useState(new Date());
   const [mood, setMood] = useState<Mood>('평온');
   const [showEnvToast, setShowEnvToast] = useState(false);
@@ -441,6 +451,8 @@ export function RecordPage() {
     if (autoOpenedRef.current) return;
     if (!user) return;
     const incomingFormat = (location.state as any)?.format as string | undefined;
+    const incomingFrom = (location.state as any)?.from as string | undefined;
+    if (incomingFrom) setFromPath(incomingFrom);
     if (!incomingFormat) return;
     autoOpenedRef.current = true;
     openFormatDirectly(incomingFormat as RecordFormat);
@@ -676,13 +688,7 @@ export function RecordPage() {
     <div className="max-w-3xl mx-auto px-4 py-3" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
       <button
         type="button"
-        onClick={() => {
-          if (window.history.length > 1) {
-            navigate(-1);
-          } else {
-            navigate('/');
-          }
-        }}
+        onClick={closeToOrigin}
         aria-label="닫기"
         style={{
           position: 'fixed',
@@ -1135,11 +1141,7 @@ export function RecordPage() {
         isOpen={formatModalOpen}
         onClose={() => {
           setFormatModalOpen(false);
-          if (window.history.length > 1) {
-            navigate(-1);
-          } else {
-            navigate('/');
-          }
+          closeToOrigin();
         }}
         format={savedFormat}
         recordId={savedDateStr}

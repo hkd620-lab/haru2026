@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
@@ -24,6 +24,17 @@ const showTTSLimitAlert = (err: any) => {
 
 export function BiblePage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromPath = (location.state as any)?.from as string | undefined;
+  const closeToOrigin = () => {
+    if (fromPath) {
+      navigate(fromPath);
+    } else if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/');
+    }
+  };
   const currentUid = getAuth().currentUser?.uid ?? '';
   const isDev = currentUid === DEV_UID;
   const [errorPopup, setErrorPopup] = useState<{
@@ -1805,13 +1816,7 @@ export function BiblePage() {
     <div style={{ backgroundColor: '#FAF9F6', minHeight: '100vh', paddingBottom: 80 }}>
       {/* 페이지 제목 */}
       <div style={{ padding: '16px 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <button onClick={() => {
-          if (window.history.length > 1) {
-            navigate(-1);
-          } else {
-            navigate('/');
-          }
-        }} style={{ color: '#1A3C6E', background: 'none', border: 'none', fontSize: 14, cursor: 'pointer', padding: 0 }}>
+        <button onClick={closeToOrigin} style={{ color: '#1A3C6E', background: 'none', border: 'none', fontSize: 14, cursor: 'pointer', padding: 0 }}>
           ← 뒤로
         </button>
         <button
