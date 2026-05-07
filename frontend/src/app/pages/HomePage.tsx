@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { firestoreService } from "../services/firestoreService";
 import { useAuth } from "../contexts/AuthContext";
+import { clearOrigin } from "../services/v2Origin";
 
 const DEVELOPER_UID = "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
 
@@ -13,6 +14,12 @@ export function HomePage() {
   const today = formatToday();
 
   const [todayFormatCount, setTodayFormatCount] = useState<number | null>(null);
+
+  // 사용자가 v1 홈에 도달했다는 건 v2 origin 트래킹을 끝내야 한다는 뜻
+  useEffect(() => {
+    clearOrigin();
+  }, []);
+
   useEffect(() => {
     if (!user?.uid) {
       setTodayFormatCount(null);

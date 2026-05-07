@@ -1,6 +1,7 @@
 import { Home, BookOpen, Sparkles, Settings, Library } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
+import { getOrigin } from '../services/v2Origin';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -11,8 +12,11 @@ export function BottomNav() {
 
   if (location.pathname === '/v2') return null;
 
+  // v2에서 진입한 세션이면 HARU 버튼이 v2 홈으로 향하도록
+  const homePath = getOrigin() || '/';
+
   const baseItems = [
-    { path: '/', icon: Home, label: 'HARU' },
+    { path: homePath, icon: Home, label: 'HARU' },
     { path: '/sayu', icon: Sparkles, label: 'SAYU·다듬기' },
     { path: '/settings', icon: Settings, label: '설정' },
   ];

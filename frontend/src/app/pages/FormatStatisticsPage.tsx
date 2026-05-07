@@ -10,6 +10,7 @@ import {
   FORMAT_PREFIX,
 } from '../types/haruTypes';
 import { useSubscription } from '../hooks/useSubscription';
+import { getOrigin } from '../services/v2Origin';
 
 // 날짜 계산 함수들
 function getWeekRange(year: number, month: number, week: number) {
@@ -229,12 +230,12 @@ export function FormatStatisticsPage() {
       {/* Header */}
       <div className="mb-6">
         <button
-          onClick={() => navigate('/sayu')}
+          onClick={() => navigate(getOrigin() || '/sayu')}
           className="flex items-center gap-2 mb-4 text-sm transition-opacity hover:opacity-70"
           style={{ color: '#1A3C6E' }}
         >
           <ArrowLeft className="w-4 h-4" />
-          SAYU로 돌아가기
+          {getOrigin() ? '돌아가기' : 'SAYU로 돌아가기'}
         </button>
 
         <div className="flex items-center justify-between mb-2">

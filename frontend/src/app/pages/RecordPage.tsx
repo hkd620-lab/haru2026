@@ -4,6 +4,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Calendar, X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router';
 import { firestoreService } from '../services/firestoreService';
+import { getOrigin } from '../services/v2Origin';
 import { useAuth } from '../contexts/AuthContext';
 import { RecordTitleAnimation } from '../components/RecordTitleAnimation';
 import { FormatModal } from '../components/FormatModal';
@@ -159,7 +160,15 @@ export function RecordPage() {
   const closeToOrigin = () => {
     if (fromPath) {
       navigate(fromPath);
-    } else if (window.history.length > 1) {
+      return;
+    }
+    // sessionStorage에 v2 origin이 남아 있으면 그쪽으로 (통계/합본 거치며 state 유실된 경우)
+    const origin = getOrigin();
+    if (origin) {
+      navigate(origin);
+      return;
+    }
+    if (window.history.length > 1) {
       navigate(-1);
     } else {
       navigate('/');

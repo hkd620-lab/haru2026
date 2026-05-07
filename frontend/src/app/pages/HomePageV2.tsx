@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { setOrigin } from '../services/v2Origin';
 
 const FONT_KR =
   "'Pretendard', 'Pretendard Variable', system-ui, sans-serif";
@@ -322,6 +323,11 @@ function todayLabel(now: Date) {
 export function HomePageV2() {
   const navigate = useNavigate();
   const today = useMemo(() => todayLabel(new Date()), []);
+
+  // v2 진입을 sessionStorage에 기록 → 통계/합본 등 깊은 경로 닫기 시 v2 복귀용
+  useEffect(() => {
+    setOrigin('/v2');
+  }, []);
 
   return (
     <div

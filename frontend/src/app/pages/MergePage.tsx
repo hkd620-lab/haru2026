@@ -7,6 +7,7 @@ import { firestoreService } from '../services/firestoreService';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS, FORMAT_PREFIX } from '../types/haruTypes';
 import { useSubscription } from '../hooks/useSubscription';
+import { getOrigin } from '../services/v2Origin';
 
 type MergeFilter = 'special' | 'all';
 type MergePeriod = 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'custom';
@@ -171,7 +172,7 @@ export function MergePage() {
       <div className="flex items-center justify-between">
         <MergeTitleAnimation />
         <button
-          onClick={() => navigate('/sayu')}
+          onClick={() => navigate(getOrigin() || '/sayu')}
           style={{
             background: 'none',
             border: 'none',
