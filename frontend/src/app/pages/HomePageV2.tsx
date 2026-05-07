@@ -345,9 +345,74 @@ export function HomePageV2() {
         .v2-pill:hover { color:#2C2C2A; border-color:#d4cdb9; }
         .v2-pill:active { transform: scale(0.98); }
         .v2-nav-item:hover { color:#7A6F5A; }
+
+        /* === 모바일 최적화 (PWA 우선) === */
+        @media (max-width: 640px) {
+          [data-v2="page"] { padding: 12px 12px 96px !important; }
+          [data-v2="header"] { padding: 4px 0 12px !important; }
+          [data-v2="logo"] { width: 38px !important; height: 38px !important; border-radius: 11px !important; }
+          [data-v2="logo"] svg { width: 19px !important; height: 22px !important; }
+          [data-v2="brand-title"] { font-size: 17px !important; }
+          [data-v2="brand-sub"] { font-size: 8px !important; letter-spacing: 2px !important; margin-top: 3px !important; }
+          [data-v2="header-actions"] { gap: 6px !important; }
+          [data-v2="header-actions"] .v2-pill { padding: 6px 9px !important; font-size: 11px !important; }
+          [data-v2="profile"] { width: 36px !important; height: 36px !important; }
+
+          [data-v2="hero-grid"] { gap: 10px !important; margin-bottom: 14px !important; }
+          [data-v2="hero-date"] { padding: 16px 16px 14px !important; min-height: auto !important; border-radius: 18px !important; }
+          [data-v2="hero-date-cap"] { font-size: 10px !important; letter-spacing: 2px !important; }
+          [data-v2="hero-date-num"] { font-size: 40px !important; margin-top: 6px !important; gap: 6px !important; }
+          [data-v2="hero-date-num"] small { font-size: 13px !important; }
+          [data-v2="hero-date-headline"] { font-size: 14px !important; margin-top: 10px !important; }
+          [data-v2="hero-date-tag"] { font-size: 10px !important; padding: 4px 9px 4px 8px !important; top: 12px !important; right: 12px !important; }
+          [data-v2="hero-date-chips"] { gap: 6px !important; margin-top: 10px !important; }
+          [data-v2="hero-date-blob1"] { width: 140px !important; height: 140px !important; top: -36px !important; right: 60px !important; }
+          [data-v2="hero-date-blob2"] { width: 110px !important; height: 110px !important; right: -28px !important; }
+          [data-v2="hero-date-blob3"] { width: 60px !important; height: 60px !important; right: 140px !important; }
+
+          [data-v2="hero-greet"] { padding: 14px !important; min-height: auto !important; border-radius: 18px !important; }
+          [data-v2="hero-greet-cap"] { font-size: 9px !important; letter-spacing: 2px !important; }
+          [data-v2="hero-greet-title"] { font-size: 16px !important; margin: 6px 0 4px !important; }
+          [data-v2="hero-greet-body"] { font-size: 12px !important; line-height: 1.55 !important; }
+          [data-v2="hero-greet-streak"] { margin-top: 10px !important; padding-top: 10px !important; gap: 8px !important; }
+          [data-v2="hero-greet-streak"] > div:last-of-type { font-size: 10px !important; }
+
+          [data-v2="section"] { margin-bottom: 16px !important; }
+          [data-v2="section-head"] { gap: 8px !important; margin-bottom: 12px !important; }
+          [data-v2="section-icon"] { width: 32px !important; height: 32px !important; }
+          [data-v2="section-title"] { font-size: 17px !important; }
+          [data-v2="section-sub"] { font-size: 11px !important; }
+          [data-v2="section-badge"] { font-size: 9px !important; padding: 4px 9px !important; }
+
+          .v2-rec { padding: 12px 10px !important; gap: 6px !important; border-radius: 14px !important; }
+          .v2-rec > span:first-of-type { width: 38px !important; height: 38px !important; border-radius: 10px !important; }
+          .v2-rec > span:nth-of-type(2) { font-size: 12px !important; }
+          .v2-rec > span:nth-of-type(3) { font-size: 9px !important; margin-top: -4px !important; }
+
+          [data-v2="agent"] { padding: 14px !important; gap: 10px !important; min-height: 118px !important; border-radius: 16px !important; }
+          [data-v2="agent"] > div:first-of-type { width: 42px !important; height: 42px !important; border-radius: 11px !important; }
+          [data-v2="agent-title"] { font-size: 15px !important; }
+          [data-v2="agent-sub"] { font-size: 11px !important; margin-top: 4px !important; }
+          [data-v2="agent-tag"] { font-size: 8px !important; padding: 2px 7px !important; margin-top: 8px !important; }
+
+          [data-v2="cta"] { padding: 16px 18px !important; font-size: 14px !important; border-radius: 18px !important; margin-top: 4px !important; }
+          [data-v2="cta-icon"] { width: 36px !important; height: 36px !important; }
+          [data-v2="cta-icon"] svg { width: 18px !important; height: 18px !important; }
+          [data-v2="cta-arrow"] { width: 36px !important; height: 36px !important; }
+          [data-v2="cta-en"] { font-size: 9px !important; letter-spacing: 2px !important; }
+
+          [data-v2="pattern-strip"] { font-size: 9px !important; margin-top: 14px !important; gap: 4px !important; padding: 0 4px !important; }
+          [data-v2="pattern-strip"] > span:first-of-type, [data-v2="pattern-strip"] > span:last-of-type { flex: 0 0 24px !important; }
+
+          [data-v2="bottom-nav-wrap"] { bottom: max(10px, env(safe-area-inset-bottom)) !important; padding: 0 12px !important; }
+          [data-v2="bottom-nav-wrap"] nav { padding: 5px !important; gap: 3px !important; }
+          [data-v2="bottom-nav-wrap"] nav button { padding: 9px 12px !important; font-size: 11px !important; gap: 6px !important; }
+          [data-v2="bottom-nav-wrap"] nav button svg { width: 14px !important; height: 14px !important; }
+        }
       `}</style>
 
       <div
+        data-v2="page"
         style={{
           maxWidth: 1280,
           margin: '0 auto',
@@ -357,6 +422,7 @@ export function HomePageV2() {
       >
         {/* HEADER */}
         <header
+          data-v2="header"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -366,6 +432,7 @@ export function HomePageV2() {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div
+              data-v2="logo"
               style={{
                 width: 52,
                 height: 52,
@@ -395,6 +462,7 @@ export function HomePageV2() {
             </div>
             <div style={{ lineHeight: 1 }}>
               <div
+                data-v2="brand-title"
                 style={{
                   fontFamily: FONT_EN,
                   fontSize: 22,
@@ -406,6 +474,7 @@ export function HomePageV2() {
                 HARU
               </div>
               <div
+                data-v2="brand-sub"
                 style={{
                   fontFamily: FONT_EN,
                   fontSize: 10,
@@ -421,7 +490,7 @@ export function HomePageV2() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div data-v2="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button type="button" className="v2-pill" style={pillStyle}>
               <PillSvg>
                 <path d="M21 21l-4.3-4.3" />
@@ -450,6 +519,7 @@ export function HomePageV2() {
               aria-label="프로필"
               onClick={() => navigate('/settings')}
               className="v2-pill"
+              data-v2="profile"
               style={{
                 width: 44,
                 height: 44,
@@ -483,6 +553,7 @@ export function HomePageV2() {
 
         {/* HERO ROW */}
         <div
+          data-v2="hero-grid"
           style={{
             display: 'grid',
             gridTemplateColumns: '1.55fr 1fr',
@@ -493,6 +564,7 @@ export function HomePageV2() {
         >
           {/* Hero date */}
           <section
+            data-v2="hero-date"
             style={{
               position: 'relative',
               background: '#fff',
@@ -504,6 +576,7 @@ export function HomePageV2() {
             }}
           >
             <div
+              data-v2="hero-date-blob1"
               style={{
                 position: 'absolute',
                 top: -54,
@@ -516,6 +589,7 @@ export function HomePageV2() {
               }}
             />
             <div
+              data-v2="hero-date-blob2"
               style={{
                 position: 'absolute',
                 top: 28,
@@ -528,6 +602,7 @@ export function HomePageV2() {
               }}
             />
             <div
+              data-v2="hero-date-blob3"
               style={{
                 position: 'absolute',
                 bottom: -36,
@@ -541,6 +616,7 @@ export function HomePageV2() {
             />
 
             <div
+              data-v2="hero-date-tag"
               style={{
                 position: 'absolute',
                 top: 32,
@@ -572,6 +648,7 @@ export function HomePageV2() {
 
             <div style={{ position: 'relative', zIndex: 1 }}>
               <div
+                data-v2="hero-date-cap"
                 style={{
                   fontFamily: FONT_EN,
                   fontSize: 12,
@@ -584,6 +661,7 @@ export function HomePageV2() {
                 {today.cap}
               </div>
               <div
+                data-v2="hero-date-num"
                 style={{
                   fontFamily: FONT_SERIF,
                   fontSize: 88,
@@ -612,6 +690,7 @@ export function HomePageV2() {
                 </small>
               </div>
               <div
+                data-v2="hero-date-headline"
                 style={{
                   fontFamily: FONT_SERIF,
                   fontSize: 22,
@@ -626,6 +705,7 @@ export function HomePageV2() {
                 남기다
               </div>
               <div
+                data-v2="hero-date-chips"
                 style={{
                   display: 'flex',
                   gap: 10,
@@ -661,6 +741,7 @@ export function HomePageV2() {
 
           {/* Greet */}
           <aside
+            data-v2="hero-greet"
             style={{
               background: '#fff',
               border: '1px solid #E5DFD0',
@@ -689,6 +770,7 @@ export function HomePageV2() {
             />
             <div style={{ position: 'relative', zIndex: 1 }}>
               <div
+                data-v2="hero-greet-cap"
                 style={{
                   fontFamily: FONT_EN,
                   fontSize: 11,
@@ -701,6 +783,7 @@ export function HomePageV2() {
                 GOOD MORNING
               </div>
               <h3
+                data-v2="hero-greet-title"
                 style={{
                   fontFamily: FONT_SERIF,
                   fontSize: 26,
@@ -713,6 +796,7 @@ export function HomePageV2() {
                 오늘도 한 줄, 남겨볼까요?
               </h3>
               <p
+                data-v2="hero-greet-body"
                 style={{
                   fontSize: 13,
                   color: '#7A6F5A',
@@ -729,6 +813,7 @@ export function HomePageV2() {
             </div>
 
             <div
+              data-v2="hero-greet-streak"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -758,7 +843,7 @@ export function HomePageV2() {
         </div>
 
         {/* RECORDS SECTION */}
-        <section style={{ marginBottom: 36 }}>
+        <section data-v2="section" style={{ marginBottom: 36 }}>
           <SectionHead
             iconBg="#E0E8B8"
             iconStroke="#4A5A2C"
@@ -850,7 +935,7 @@ export function HomePageV2() {
         </section>
 
         {/* AGENTS SECTION */}
-        <section style={{ marginBottom: 36 }}>
+        <section data-v2="section" style={{ marginBottom: 36 }}>
           <SectionHead
             iconBg="#DDD0E8"
             iconStroke="#5A4E7A"
@@ -883,6 +968,7 @@ export function HomePageV2() {
                 aria-disabled={disabled}
                 onClick={() => { if (a.path) navigate(a.path); }}
                 className={disabled ? '' : 'v2-agent'}
+                data-v2="agent"
                 style={{
                   borderRadius: 20,
                   padding: 22,
@@ -920,6 +1006,7 @@ export function HomePageV2() {
                 </div>
                 <div style={{ position: 'relative', zIndex: 1 }}>
                   <div
+                    data-v2="agent-title"
                     style={{
                       fontFamily: FONT_SERIF,
                       fontSize: 18,
@@ -930,6 +1017,7 @@ export function HomePageV2() {
                     {a.label}
                   </div>
                   <div
+                    data-v2="agent-sub"
                     style={{
                       fontSize: 11,
                       marginTop: 6,
@@ -940,6 +1028,7 @@ export function HomePageV2() {
                     {a.sub}
                   </div>
                   <span
+                    data-v2="agent-tag"
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -1051,6 +1140,7 @@ export function HomePageV2() {
         <button
           type="button"
           className="v2-cta"
+          data-v2="cta"
           onClick={() => navigate('/library')}
           style={{
             width: '100%',
@@ -1085,6 +1175,7 @@ export function HomePageV2() {
             }}
           >
             <span
+              data-v2="cta-icon"
               style={{
                 width: 44,
                 height: 44,
@@ -1119,6 +1210,7 @@ export function HomePageV2() {
               }}
             >
               <small
+                data-v2="cta-en"
                 style={{
                   fontFamily: FONT_EN,
                   fontSize: 10,
@@ -1135,6 +1227,7 @@ export function HomePageV2() {
           </span>
           <span
             className="v2-cta-arrow"
+            data-v2="cta-arrow"
             style={{
               width: 44,
               height: 44,
@@ -1165,6 +1258,7 @@ export function HomePageV2() {
 
         {/* Pattern strip */}
         <div
+          data-v2="pattern-strip"
           style={{
             display: 'flex',
             gap: 6,
@@ -1204,6 +1298,7 @@ export function HomePageV2() {
 
       {/* BOTTOM PILL NAV */}
       <div
+        data-v2="bottom-nav-wrap"
         style={{
           position: 'fixed',
           bottom: 24,
