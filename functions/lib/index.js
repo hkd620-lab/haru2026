@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
+exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -68,6 +68,7 @@ const LAW_API_KEY_SECRET = (0, params_1.defineSecret)('LAW_API_KEY');
 const GOOGLE_CLOUD_API_KEY_SECRET = (0, params_1.defineSecret)('GOOGLE_CLOUD_API_KEY');
 const OPENAI_API_KEY_SECRET = (0, params_1.defineSecret)('OPENAI_API_KEY');
 const COLLECTOR_SECRET_KEY = (0, params_1.defineSecret)('COLLECTOR_SECRET_KEY');
+const ONBID_API_KEY_SECRET = (0, params_1.defineSecret)('ONBID_API_KEY');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
 // Storage 버킷
 const bucket = () => (0, storage_1.getStorage)().bucket();
@@ -2558,4 +2559,126 @@ exports.getCustomToken = (0, https_2.onCall)({
     }
     const token = await admin.auth().createCustomToken(DEV_UID);
     return { token };
+});
+// ===== 🏠 온비드 부동산 물건목록 조회 (공공데이터포털 KAMCO) =====
+// 출처: 한국자산관리공사 온비드 / Endpoint: apis.data.go.kr/B010003/OnbidRlstListSrvc2
+exports.getOnbidRealEstateList = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    secrets: [ONBID_API_KEY_SECRET],
+    timeoutSeconds: 30,
+}, async (request) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다');
+    }
+    const d = request.data || {};
+    const pageNo = Math.max(1, parseInt(String((_a = d.pageNo) !== null && _a !== void 0 ? _a : '1'), 10) || 1);
+    const numOfRows = Math.min(50, Math.max(1, parseInt(String((_b = d.numOfRows) !== null && _b !== void 0 ? _b : '10'), 10) || 10));
+    const params = {
+        serviceKey: ONBID_API_KEY_SECRET.value(),
+        pageNo: String(pageNo),
+        numOfRows: String(numOfRows),
+        resultType: 'json',
+    };
+    const optionalKeys = [
+        'prptDivCd',
+        'bidDivCd',
+        'pvctTrgtYn',
+        'dspsMthodCd',
+        'cltrUsgLclsCtgrId',
+        'cltrUsgMclsCtgrId',
+        'cltrUsgSclsCtgrId',
+        'cltrUsgLclsCtgrNm',
+        'cltrUsgMclsCtgrNm',
+        'cltrUsgSclsCtgrNm',
+        'lctnSdnm',
+        'lctnSggnm',
+        'lctnEmdNm',
+        'lowstBidPrcStart',
+        'lowstBidPrcEnd',
+        'landSqmsStart',
+        'landSqmsEnd',
+        'bldSqmsStart',
+        'bldSqmsEnd',
+        'bidPrdYmdStart',
+        'bidPrdYmdEnd',
+        'cptnMthodCd',
+        'cptnMthodNm',
+        'alcYn',
+        'usbdNftStart',
+        'usbdNftEnd',
+        'apslEvlAmtStart',
+        'apslEvlAmtEnd',
+        'onbidCltrNm',
+        'orgNm',
+        'mdfcnYmdStart',
+        'mdfcnYmdEnd',
+    ];
+    for (const k of optionalKeys) {
+        const v = d[k];
+        if (v !== undefined && v !== null && String(v).trim() !== '') {
+            params[k] = String(v).trim();
+        }
+    }
+    const url = 'https://apis.data.go.kr/B010003/OnbidRlstListSrvc2/getRlstCltrList2';
+    let resp;
+    try {
+        resp = await axios_1.default.get(url, {
+            params,
+            timeout: 15000,
+            headers: { Accept: 'application/json' },
+            // serviceKey 가 이미 인코딩되어 있을 수 있으므로 URLSearchParams 가 한번 더 인코딩하지 않도록 주의
+            paramsSerializer: (p) => Object.entries(p)
+                .map(([k, v]) => k === 'serviceKey'
+                ? `${k}=${encodeURIComponent(decodeURIComponent(String(v)))}`
+                : `${k}=${encodeURIComponent(String(v))}`)
+                .join('&'),
+        });
+    }
+    catch (err) {
+        logger.error('온비드 API 호출 실패:', {
+            message: err === null || err === void 0 ? void 0 : err.message,
+            status: (_c = err === null || err === void 0 ? void 0 : err.response) === null || _c === void 0 ? void 0 : _c.status,
+            code: err === null || err === void 0 ? void 0 : err.code,
+        });
+        throw new https_2.HttpsError('internal', '온비드 서버에 연결할 수 없습니다');
+    }
+    const data = resp === null || resp === void 0 ? void 0 : resp.data;
+    const header = (_d = data === null || data === void 0 ? void 0 : data.response) === null || _d === void 0 ? void 0 : _d.header;
+    const body = (_e = data === null || data === void 0 ? void 0 : data.response) === null || _e === void 0 ? void 0 : _e.body;
+    const resultCode = (_f = header === null || header === void 0 ? void 0 : header.resultCode) !== null && _f !== void 0 ? _f : '';
+    const resultMsg = (_g = header === null || header === void 0 ? void 0 : header.resultMsg) !== null && _g !== void 0 ? _g : '';
+    if (resultCode && resultCode !== '00' && resultCode !== '0') {
+        logger.warn('온비드 API 비정상 응답:', { resultCode, resultMsg });
+        if (resultCode === '03') {
+            return {
+                success: true,
+                items: [],
+                totalCount: 0,
+                pageNo,
+                numOfRows,
+                resultCode,
+                resultMsg,
+            };
+        }
+        throw new https_2.HttpsError('internal', `온비드 API 오류 (${resultCode}): ${resultMsg}`);
+    }
+    const rawItems = body === null || body === void 0 ? void 0 : body.items;
+    let items = [];
+    if (Array.isArray(rawItems)) {
+        items = rawItems;
+    }
+    else if (rawItems === null || rawItems === void 0 ? void 0 : rawItems.item) {
+        items = Array.isArray(rawItems.item) ? rawItems.item : [rawItems.item];
+    }
+    return {
+        success: true,
+        items,
+        totalCount: parseInt(String((_h = body === null || body === void 0 ? void 0 : body.totalCount) !== null && _h !== void 0 ? _h : '0'), 10) || 0,
+        pageNo: parseInt(String((_j = body === null || body === void 0 ? void 0 : body.pageNo) !== null && _j !== void 0 ? _j : pageNo), 10) || pageNo,
+        numOfRows: parseInt(String((_k = body === null || body === void 0 ? void 0 : body.numOfRows) !== null && _k !== void 0 ? _k : numOfRows), 10) || numOfRows,
+        resultCode,
+        resultMsg,
+        disclaimer: '본 정보는 한국자산관리공사 온비드 공공데이터를 활용한 참고용이며, 실제 입찰은 온비드 공식사이트(onbid.co.kr)에서 확인하세요.',
+    };
 });

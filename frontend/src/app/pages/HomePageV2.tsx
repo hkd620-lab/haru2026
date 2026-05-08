@@ -285,6 +285,21 @@ const AGENTS: Agent[] = [
       </>
     ),
   },
+  {
+    label: '온비드 부동산',
+    sub: '온비드 공매 부동산을 한눈에 — 입찰 일정·최저가·소재지까지 검색.',
+    tag: 'BID · 부동산',
+    variant: 'lilac',
+    stroke: '#5A4E7A',
+    path: '/onbid-realestate',
+    icon: (
+      <>
+        <path d="M3 11l9-7 9 7" />
+        <path d="M5 10v10h14V10" />
+        <path d="M10 20v-6h4v6" />
+      </>
+    ),
+  },
 ];
 
 const agentBg = {

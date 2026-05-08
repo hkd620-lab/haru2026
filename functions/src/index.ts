@@ -32,6 +32,7 @@ const LAW_API_KEY_SECRET = defineSecret('LAW_API_KEY');
 const GOOGLE_CLOUD_API_KEY_SECRET = defineSecret('GOOGLE_CLOUD_API_KEY');
 const OPENAI_API_KEY_SECRET = defineSecret('OPENAI_API_KEY');
 const COLLECTOR_SECRET_KEY = defineSecret('COLLECTOR_SECRET_KEY');
+const ONBID_API_KEY_SECRET = defineSecret('ONBID_API_KEY');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
 
 // Storage 버킷
@@ -2904,6 +2905,141 @@ export const getCustomToken = onCall(
     }
     const token = await admin.auth().createCustomToken(DEV_UID);
     return { token };
+  }
+);
+
+// ===== 🏠 온비드 부동산 물건목록 조회 (공공데이터포털 KAMCO) =====
+// 출처: 한국자산관리공사 온비드 / Endpoint: apis.data.go.kr/B010003/OnbidRlstListSrvc2
+export const getOnbidRealEstateList = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [ONBID_API_KEY_SECRET],
+    timeoutSeconds: 30,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다');
+    }
+
+    const d = request.data || {};
+    const pageNo = Math.max(1, parseInt(String(d.pageNo ?? '1'), 10) || 1);
+    const numOfRows = Math.min(50, Math.max(1, parseInt(String(d.numOfRows ?? '10'), 10) || 10));
+
+    const params: Record<string, string> = {
+      serviceKey: ONBID_API_KEY_SECRET.value(),
+      pageNo: String(pageNo),
+      numOfRows: String(numOfRows),
+      resultType: 'json',
+    };
+
+    const optionalKeys = [
+      'prptDivCd',
+      'bidDivCd',
+      'pvctTrgtYn',
+      'dspsMthodCd',
+      'cltrUsgLclsCtgrId',
+      'cltrUsgMclsCtgrId',
+      'cltrUsgSclsCtgrId',
+      'cltrUsgLclsCtgrNm',
+      'cltrUsgMclsCtgrNm',
+      'cltrUsgSclsCtgrNm',
+      'lctnSdnm',
+      'lctnSggnm',
+      'lctnEmdNm',
+      'lowstBidPrcStart',
+      'lowstBidPrcEnd',
+      'landSqmsStart',
+      'landSqmsEnd',
+      'bldSqmsStart',
+      'bldSqmsEnd',
+      'bidPrdYmdStart',
+      'bidPrdYmdEnd',
+      'cptnMthodCd',
+      'cptnMthodNm',
+      'alcYn',
+      'usbdNftStart',
+      'usbdNftEnd',
+      'apslEvlAmtStart',
+      'apslEvlAmtEnd',
+      'onbidCltrNm',
+      'orgNm',
+      'mdfcnYmdStart',
+      'mdfcnYmdEnd',
+    ];
+    for (const k of optionalKeys) {
+      const v = d[k];
+      if (v !== undefined && v !== null && String(v).trim() !== '') {
+        params[k] = String(v).trim();
+      }
+    }
+
+    const url = 'https://apis.data.go.kr/B010003/OnbidRlstListSrvc2/getRlstCltrList2';
+
+    let resp: any;
+    try {
+      resp = await axios.get(url, {
+        params,
+        timeout: 15000,
+        headers: { Accept: 'application/json' },
+        // serviceKey 가 이미 인코딩되어 있을 수 있으므로 URLSearchParams 가 한번 더 인코딩하지 않도록 주의
+        paramsSerializer: (p) =>
+          Object.entries(p)
+            .map(([k, v]) =>
+              k === 'serviceKey'
+                ? `${k}=${encodeURIComponent(decodeURIComponent(String(v)))}`
+                : `${k}=${encodeURIComponent(String(v))}`
+            )
+            .join('&'),
+      });
+    } catch (err: any) {
+      logger.error('온비드 API 호출 실패:', {
+        message: err?.message,
+        status: err?.response?.status,
+        code: err?.code,
+      });
+      throw new HttpsError('internal', '온비드 서버에 연결할 수 없습니다');
+    }
+
+    const data = resp?.data;
+    const header = data?.response?.header;
+    const body = data?.response?.body;
+    const resultCode = header?.resultCode ?? '';
+    const resultMsg = header?.resultMsg ?? '';
+
+    if (resultCode && resultCode !== '00' && resultCode !== '0') {
+      logger.warn('온비드 API 비정상 응답:', { resultCode, resultMsg });
+      if (resultCode === '03') {
+        return {
+          success: true,
+          items: [],
+          totalCount: 0,
+          pageNo,
+          numOfRows,
+          resultCode,
+          resultMsg,
+        };
+      }
+      throw new HttpsError('internal', `온비드 API 오류 (${resultCode}): ${resultMsg}`);
+    }
+
+    const rawItems = body?.items;
+    let items: any[] = [];
+    if (Array.isArray(rawItems)) {
+      items = rawItems;
+    } else if (rawItems?.item) {
+      items = Array.isArray(rawItems.item) ? rawItems.item : [rawItems.item];
+    }
+
+    return {
+      success: true,
+      items,
+      totalCount: parseInt(String(body?.totalCount ?? '0'), 10) || 0,
+      pageNo: parseInt(String(body?.pageNo ?? pageNo), 10) || pageNo,
+      numOfRows: parseInt(String(body?.numOfRows ?? numOfRows), 10) || numOfRows,
+      resultCode,
+      resultMsg,
+      disclaimer: '본 정보는 한국자산관리공사 온비드 공공데이터를 활용한 참고용이며, 실제 입찰은 온비드 공식사이트(onbid.co.kr)에서 확인하세요.',
+    };
   }
 );
 
