@@ -1225,162 +1225,6 @@ export function SayuPage() {
       {/* ─── 목록 뷰 ─── */}
       {viewMode === 'list' && (
         <div>
-          {/* 🔍 SNS검색기록 섹션 */}
-          <div className="mb-4">
-            <button
-              onClick={() => toggleCategory('SNS검색기록')}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
-              style={{ backgroundColor: '#E8F4FD', color: '#1A3C6E' }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>🔍 SNS검색기록</span>
-              <span style={{ fontSize: '10px' }}>{collapsedCategories.has('SNS검색기록') ? '▶' : '▼'}</span>
-            </button>
-            {!collapsedCategories.has('SNS검색기록') && (
-              <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-                {snsSearchLoading ? (
-                  <p className="text-center py-4 text-xs" style={{ color: '#999' }}>불러오는 중...</p>
-                ) : snsSearchRecords.length === 0 ? (
-                  <p className="text-center py-4 text-xs" style={{ color: '#999' }}>저장된 검색기록이 없습니다</p>
-                ) : (
-                  (() => {
-                    // 날짜별 그룹핑 — 최신 날짜 먼저, 같은 날짜 내에서는 savedAt 내림차순
-                    const groups = new Map<string, typeof snsSearchRecords>();
-                    snsSearchRecords.forEach((r) => {
-                      const key = r.date || '';
-                      if (!groups.has(key)) groups.set(key, []);
-                      groups.get(key)!.push(r);
-                    });
-                    const sourceLabel = (s: string) =>
-                      s === 'facebook' ? 'Facebook' : s === 'instagram' ? 'Instagram' : '전체';
-                    const formatDateHeader = (d: string) => {
-                      if (!d || d.length < 10) return d || '(날짜 없음)';
-                      return d.replace(/-/g, '.');
-                    };
-                    const formatTs = (ts: number) => {
-                      if (!ts) return '';
-                      const dt = new Date(ts * (ts < 1e12 ? 1000 : 1));
-                      return dt.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
-                    };
-                    const sortedDates = Array.from(groups.keys()).sort((a, b) => b.localeCompare(a));
-                    return sortedDates.map((dateKey) => {
-                      const items = groups.get(dateKey)!;
-                      return (
-                        <div key={dateKey || 'no-date'}>
-                          <div
-                            className="px-3 py-2 text-xs font-semibold border-t"
-                            style={{ backgroundColor: '#f9fafb', color: '#1A3C6E', borderColor: '#f0f0f0' }}
-                          >
-                            {formatDateHeader(dateKey)}
-                          </div>
-                          {items.map((rec) => {
-                            const isExpanded = expandedSearchIds.has(rec.id);
-                            const keywordDisplay = rec.keyword?.trim() ? rec.keyword : '(키워드 없음)';
-                            return (
-                              <div key={rec.id} className="border-t" style={{ borderColor: '#f0f0f0' }}>
-                                <div className="flex items-center px-3 py-2">
-                                  <button
-                                    onClick={() => toggleSearchExpand(rec.id)}
-                                    className="flex items-center gap-2 flex-1 text-left hover:opacity-80 transition-opacity min-w-0"
-                                  >
-                                    <span className="text-xs font-semibold truncate" style={{ color: '#333' }}>
-                                      {keywordDisplay}
-                                    </span>
-                                    <span className="text-xs" style={{ color: '#666' }}>
-                                      {sourceLabel(rec.source)}
-                                    </span>
-                                    <span className="text-xs" style={{ color: '#999' }}>
-                                      결과 {rec.results.length}건
-                                    </span>
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      toggleSearchExpand(rec.id);
-                                    }}
-                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 6px', flexShrink: 0 }}
-                                  >
-                                    <span style={{ fontSize: '10px', color: '#1A3C6E' }}>{isExpanded ? '▼' : '▶'}</span>
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteSnsSearch(rec.id);
-                                    }}
-                                    style={{
-                                      background: 'none',
-                                      border: 'none',
-                                      cursor: 'pointer',
-                                      padding: '0 4px',
-                                      color: '#999',
-                                      fontSize: 14,
-                                      flexShrink: 0,
-                                    }}
-                                    aria-label="삭제"
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                                {isExpanded && (
-                                  <div className="px-3 pb-3" style={{ backgroundColor: '#fafbfc' }}>
-                                    {rec.results.length === 0 ? (
-                                      <p className="text-xs py-2" style={{ color: '#999' }}>저장된 결과가 없습니다</p>
-                                    ) : (
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8 }}>
-                                        {rec.results.map((post, idx) => {
-                                          const lines = (post.text || '').split('\n').slice(0, 3).join('\n');
-                                          const truncated = (post.text || '').length > 140
-                                            ? (post.text || '').slice(0, 140) + '…'
-                                            : lines;
-                                          const thumbs = (post.thumbnails || []).slice(0, 3);
-                                          return (
-                                            <div
-                                              key={post.id || idx}
-                                              style={{
-                                                background: '#fff',
-                                                border: '1px solid #e5e5e5',
-                                                borderRadius: 8,
-                                                padding: 10,
-                                              }}
-                                            >
-                                              <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>
-                                                {formatTs(post.timestamp)} · {post.source === 'facebook' ? 'Facebook' : 'Instagram'}
-                                              </div>
-                                              {post.text && (
-                                                <p style={{ fontSize: 13, color: '#222', whiteSpace: 'pre-line', lineHeight: 1.5, margin: 0 }}>
-                                                  {truncated}
-                                                </p>
-                                              )}
-                                              {thumbs.length > 0 && (
-                                                <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-                                                  {thumbs.map((url, i) => (
-                                                    <img
-                                                      key={i}
-                                                      src={url}
-                                                      alt=""
-                                                      style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 6, background: '#eee' }}
-                                                    />
-                                                  ))}
-                                                </div>
-                                              )}
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      );
-                    });
-                  })()
-                )}
-              </div>
-            )}
-          </div>
-
           {loading ? (
             <p className="text-center py-8 text-sm" style={{ color: '#999' }}>불러오는 중...</p>
           ) : !hasMonthRecords ? (
@@ -1390,6 +1234,7 @@ export function SayuPage() {
           ) : (
             listData.map(({ category, formats }) => {
               if (category === '하루LAW') return null;
+              if (category === 'HARU주식관리') return null;
               return (
               <div key={category} className="mb-4">
                 {/* 카테고리 헤더 */}
@@ -1802,6 +1647,100 @@ export function SayuPage() {
             <span>📱 snsHARU</span>
             <span style={{ fontSize: 14, color: '#1A3C6E' }}>›</span>
           </button>
+
+          {/* 📈 HARU주식관리 — snsHARU 직후 위치 */}
+          {(() => {
+            const stockCat = listData.find(c => c.category === 'HARU주식관리');
+            if (!stockCat) return null;
+            const { category, formats } = stockCat;
+            return (
+              <div key={category} className="mb-4">
+                <button
+                  onClick={() => toggleCategory(category)}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
+                  style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{category}</span>
+                  <span style={{ fontSize: '10px' }}>
+                    {collapsedCategories.has(category) ? '▶' : '▼'}
+                  </span>
+                </button>
+
+                {!collapsedCategories.has(category) && (
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div className="px-3 py-2" style={{ backgroundColor: '#f9fafb' }}>
+                      <input
+                        type="text"
+                        value={categorySearch[category] || ''}
+                        onChange={e => setCategorySearch(prev => ({ ...prev, [category]: e.target.value }))}
+                        placeholder="제목으로 검색..."
+                        className="w-full px-3 py-1.5 text-xs rounded border outline-none"
+                        style={{ borderColor: '#d1d5db', backgroundColor: '#fff', fontSize: 14 }}
+                      />
+                    </div>
+                    {formats.map(({ format, entries }, fIdx) => {
+                      const prefix = FORMAT_PREFIX[format as RecordFormat];
+                      const isFormatExpanded = expandedFormats.has(prefix);
+                      const searchTerm = (categorySearch[category] || '').toLowerCase();
+                      const filteredEntries = searchTerm
+                        ? entries.filter(e => e.title.toLowerCase().includes(searchTerm))
+                        : entries;
+                      const pageKey = `${prefix}_${category}`;
+                      const page = formatPages[pageKey] || 1;
+                      const totalPages = Math.ceil(filteredEntries.length / PAGE_SIZE);
+
+                      return (
+                        <div
+                          key={String(format)}
+                          className={fIdx > 0 ? 'border-t' : ''}
+                          style={{ borderColor: '#f0f0f0' }}
+                        >
+                          <div className="flex items-center px-3 py-2" style={{ backgroundColor: '#f9fafb' }}>
+                            <button
+                              onClick={() => toggleFormat(prefix)}
+                              className="flex items-center gap-2 flex-1 text-left hover:opacity-80 transition-opacity"
+                            >
+                              <span className="text-sm">{FORMAT_EMOJI[format as RecordFormat]}</span>
+                              <span className="text-xs font-semibold" style={{ color: '#333' }}>{String(format)}</span>
+                              <span className="text-xs" style={{ color: '#999' }}>({entries.length})</span>
+                            </button>
+                            <button
+                              onClick={() => toggleFormat(prefix)}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
+                            >
+                              <span style={{ fontSize: '10px', color: '#1A3C6E' }}>{isFormatExpanded ? '▼' : '▶'}</span>
+                            </button>
+                          </div>
+
+                          {/* 📈 HARU주식관리 대시보드 — 주식 전용 */}
+                          {isFormatExpanded && (
+                            <StockDashboard
+                              records={entries
+                                .map((e) => records.find((r) => r.id === e.recordId))
+                                .filter(Boolean) as any[]}
+                            />
+                          )}
+
+                          {totalPages > 1 && (
+                            <div className="flex justify-center gap-1 py-2 px-3 border-t" style={{ borderColor: '#f0f0f0' }}>
+                              {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                                <button
+                                  key={p}
+                                  onClick={() => setFormatPages(prev => ({ ...prev, [pageKey]: p }))}
+                                  className="w-7 h-7 rounded text-xs font-medium transition-all"
+                                  style={{ backgroundColor: page === p ? '#1A3C6E' : '#f3f4f6', color: page === p ? '#fff' : '#333' }}
+                                >{p}</button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* 하루LAW */}
           {(() => {
