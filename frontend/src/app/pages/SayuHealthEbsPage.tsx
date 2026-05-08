@@ -4,7 +4,12 @@ import { toast } from 'sonner';
 import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 
-const EBS_MYUNGUI_URL = 'https://home.ebs.co.kr/myungui/main';
+// 구글 site:ebs.co.kr 검색으로 EBS 공식 명의 콘텐츠 안내 (EBS 사이트 장애·개편 무관)
+const buildEbsSearchUrl = (kw: string) => {
+  const k = kw.trim();
+  const q = k ? `site:ebs.co.kr 명의 ${k}` : 'site:ebs.co.kr 명의';
+  return `https://www.google.com/search?q=${encodeURIComponent(q)}`;
+};
 
 export function SayuHealthEbsPage() {
   const navigate = useNavigate();
@@ -21,19 +26,14 @@ export function SayuHealthEbsPage() {
     else navigate('/');
   };
 
-  const handleOpen = async () => {
+  const handleOpen = () => {
     const k = keyword.trim();
-    try {
-      if (k && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(k);
-        toast.success(`"${k}" 키워드 복사됨. EBS 명의에서 검색하세요.`);
-      } else if (!k) {
-        toast.info('EBS 명의 공식 페이지를 새 창에서 엽니다.');
-      }
-    } catch {
-      // 클립보드 실패해도 사이트는 연다
+    if (k) {
+      toast.success(`"${k}" 검색 결과 페이지를 새 창에서 엽니다.`);
+    } else {
+      toast.info('EBS 명의 검색 결과 페이지를 새 창에서 엽니다.');
     }
-    window.open(EBS_MYUNGUI_URL, '_blank', 'noopener,noreferrer');
+    window.open(buildEbsSearchUrl(k), '_blank', 'noopener,noreferrer');
   };
 
   const onSubmit = (e: React.FormEvent) => {
@@ -86,7 +86,7 @@ export function SayuHealthEbsPage() {
           🌟 EBS명의찾기
         </h1>
         <p className="text-sm mt-1.5" style={{ color: '#666', lineHeight: 1.6 }}>
-          증상·질병 키워드를 입력하면 EBS 명의 공식 페이지로 이동합니다.
+          증상·질병 키워드를 입력하면 EBS 명의 검색 결과 페이지로 이동합니다.
         </p>
       </div>
 
@@ -126,7 +126,7 @@ export function SayuHealthEbsPage() {
               boxShadow: '0 4px 10px -6px rgba(74,90,44,0.6)',
             }}
           >
-            🔗 키워드 복사 + EBS 명의 열기
+            🔍 EBS 명의 검색 결과 열기
           </button>
         </div>
 
@@ -142,9 +142,9 @@ export function SayuHealthEbsPage() {
             padding: '10px 12px',
           }}
         >
-          EBS 명의는 직접 검색 연결을 제공하지 않습니다.<br />
-          입력하신 키워드가 자동으로 복사되니,<br />
-          EBS 명의 페이지의 검색창에 붙여넣기 해주세요.
+          입력하신 키워드와 함께 EBS 공식 사이트(ebs.co.kr) 안에서<br />
+          관련 명의 콘텐츠를 찾아드립니다.<br />
+          검색 결과에서 보고 싶은 영상·자료를 직접 선택해 주세요.
         </div>
       </form>
 
@@ -162,6 +162,7 @@ export function SayuHealthEbsPage() {
           출처: EBS 명의 (공식 사이트)
         </div>
         본 페이지는 EBS와 무관한 정보 안내 서비스입니다.
+        구글 검색(site:ebs.co.kr)을 통해 EBS 명의 콘텐츠를 안내합니다.
         HARU2026은 EBS 콘텐츠를 자체 저장·재배포하지 않으며,
         실제 영상·자료는 위 외부 링크에서 직접 확인하세요.
         의학적 판단은 반드시 의료진과 상의하시기 바랍니다.
