@@ -3051,8 +3051,76 @@ export const getOnbidRealEstateList = onCall(
   }
 );
 
-// ===== 💊 식약처 의약품 제품 허가정보 조회 (SAYU건강관리 - 약봉지 보고 약정 얻기) =====
-// 출처: 식품의약품안전처 / Endpoint: apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService06
+// ===== 💊 식약처 의약품 제품 허가정보 조회 (SAYU건강관리 - 약봉지 보고 약정보 얻기) =====
+// 출처: 식품의약품안전처 / Base: apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService07
+// 함수명(operation)이 버전마다 변동되므로 후보 순차 시도 + 성공한 URL 메모리 캐시
+const DRUG_API_BASE = 'https://apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService07';
+const DRUG_API_OPS = [
+  '/getDrugPrdtPrmsnDtlInq05',
+  '/getDrugPrdtPrmsnInq05',
+  '/getDrugPrdtPrmsnDtlInq07',
+  '/getDrugPrdtPrmsnInq07',
+  '/getDrugPrdtPrmsnDtlInq04',
+  '/getDrugPrdtPrmsnInq04',
+];
+let _drugApiUrlCache: string | null = null;
+
+async function callDrugApi(params: Record<string, string>): Promise<any> {
+  const tryUrls = _drugApiUrlCache
+    ? [_drugApiUrlCache]
+    : DRUG_API_OPS.map((op) => DRUG_API_BASE + op);
+
+  let lastError: any = null;
+  let lastSnippet = '';
+  let lastStatus = 0;
+  for (const url of tryUrls) {
+    try {
+      const resp = await axios.get(url, {
+        params,
+        timeout: 12000,
+        headers: { Accept: 'application/json' },
+        paramsSerializer: (p) =>
+          Object.entries(p)
+            .map(([k, v]) =>
+              k === 'serviceKey'
+                ? `${k}=${encodeURIComponent(decodeURIComponent(String(v)))}`
+                : `${k}=${encodeURIComponent(String(v))}`
+            )
+            .join('&'),
+      });
+      const data = resp?.data;
+      const root = data?.response ?? data;
+      // 식약처는 성공 시 response.body 또는 body 구조를 가짐
+      if (root && (root.body || root.header)) {
+        if (!_drugApiUrlCache) {
+          _drugApiUrlCache = url;
+          logger.info('식약처 endpoint 확정:', { op: url.split('/').pop() });
+        }
+        return resp;
+      }
+      // 200이지만 응답 구조가 다르면 다음 후보로
+    } catch (err: any) {
+      lastError = err;
+      lastStatus = err?.response?.status || 0;
+      lastSnippet = typeof err?.response?.data === 'string'
+        ? err.response.data.slice(0, 200)
+        : JSON.stringify(err?.response?.data || {}).slice(0, 200);
+      // 404 / API not found는 다음 후보로 진행
+      if (lastStatus === 404 || /not found/i.test(lastSnippet)) continue;
+      // 401/403 등 인증 문제도 다음 후보로 (다른 함수의 권한이 있을 수 있음)
+      continue;
+    }
+  }
+
+  logger.error('식약처 API 모든 endpoint 후보 실패', {
+    lastStatus,
+    lastSnippet,
+    triedCount: tryUrls.length,
+  });
+  throw lastError || new Error('식약처 API endpoint를 찾을 수 없습니다');
+}
+
+
 export const getDrugInfo = onCall(
   {
     region: 'asia-northeast3',
@@ -3080,34 +3148,10 @@ export const getDrugInfo = onCall(
       item_name: itemName,
     };
 
-    const url = 'https://apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService07/getDrugPrdtPrmsnInq07';
-
     let resp: any;
     try {
-      resp = await axios.get(url, {
-        params,
-        timeout: 15000,
-        headers: { Accept: 'application/json' },
-        paramsSerializer: (p) =>
-          Object.entries(p)
-            .map(([k, v]) =>
-              k === 'serviceKey'
-                ? `${k}=${encodeURIComponent(decodeURIComponent(String(v)))}`
-                : `${k}=${encodeURIComponent(String(v))}`
-            )
-            .join('&'),
-      });
+      resp = await callDrugApi(params);
     } catch (err: any) {
-      // 디버깅: 응답 본문 일부도 함께 로깅 (키는 미포함, 식약처 fault 메시지만)
-      const respDataSnippet = typeof err?.response?.data === 'string'
-        ? err.response.data.slice(0, 300)
-        : JSON.stringify(err?.response?.data || {}).slice(0, 300);
-      logger.error('식약처 API 호출 실패:', {
-        message: err?.message?.slice(0, 200),
-        status: err?.response?.status,
-        code: err?.code,
-        respDataSnippet,
-      });
       throw new HttpsError('internal', '식약처 서버에 연결할 수 없습니다');
     }
 
@@ -3155,8 +3199,73 @@ export const getDrugInfo = onCall(
   }
 );
 
-// ===== 🏥 심평원 의료기관별 정보 조회 (SAYU건강관리 - 동네병원정보) =====
-// 출처: 건강보험심사평가원 / Endpoint: apis.data.go.kr/B551182/hospInfoServicev2
+// ===== 🏥 심평원 의료기관별 상세정보 조회 (SAYU건강관리 - 동네병원정보) =====
+// 출처: 건강보험심사평가원 / Base: apis.data.go.kr/B551182/MadmDtlInfoService2.7
+// (사용자 제공 정확 endpoint, 점 표기 변형도 폴백 시도)
+const HIRA_API_BASES = [
+  'https://apis.data.go.kr/B551182/MadmDtlInfoService2.7',
+  'https://apis.data.go.kr/B551182/MadmDtlInfoService2_7',
+  'https://apis.data.go.kr/B551182/MadmDtlInfoService27',
+];
+const HIRA_API_OPS = [
+  '/getMadmDtlList27',
+  '/getMadmDtlInfoList27',
+  '/getMadmDtlList',
+  '/getMadmList27',
+  '/getMadmList',
+];
+let _hospitalApiUrlCache: string | null = null;
+
+async function callHospitalApi(params: Record<string, string>): Promise<any> {
+  const tryUrls = _hospitalApiUrlCache
+    ? [_hospitalApiUrlCache]
+    : HIRA_API_BASES.flatMap((base) => HIRA_API_OPS.map((op) => base + op));
+
+  let lastError: any = null;
+  let lastSnippet = '';
+  let lastStatus = 0;
+  for (const url of tryUrls) {
+    try {
+      const resp = await axios.get(url, {
+        params,
+        timeout: 12000,
+        headers: { Accept: 'application/json' },
+        paramsSerializer: (p) =>
+          Object.entries(p)
+            .map(([k, v]) =>
+              k === 'ServiceKey' || k === 'serviceKey'
+                ? `${k}=${encodeURIComponent(decodeURIComponent(String(v)))}`
+                : `${k}=${encodeURIComponent(String(v))}`
+            )
+            .join('&'),
+      });
+      const root = resp?.data?.response ?? resp?.data;
+      if (root && (root.body || root.header)) {
+        if (!_hospitalApiUrlCache) {
+          _hospitalApiUrlCache = url;
+          logger.info('심평원 endpoint 확정:', { op: url.split('/').slice(-2).join('/') });
+        }
+        return resp;
+      }
+    } catch (err: any) {
+      lastError = err;
+      lastStatus = err?.response?.status || 0;
+      lastSnippet = typeof err?.response?.data === 'string'
+        ? err.response.data.slice(0, 200)
+        : JSON.stringify(err?.response?.data || {}).slice(0, 200);
+      if (lastStatus === 404 || /not found/i.test(lastSnippet)) continue;
+      continue;
+    }
+  }
+
+  logger.error('심평원 API 모든 endpoint 후보 실패', {
+    lastStatus,
+    lastSnippet,
+    triedCount: tryUrls.length,
+  });
+  throw lastError || new Error('심평원 API endpoint를 찾을 수 없습니다');
+}
+
 const HIRA_SIDO_NM_TO_CD: Record<string, string> = {
   '서울특별시': '110000',
   '부산광역시': '210000',
@@ -3215,29 +3324,10 @@ export const getHospitalList = onCall(
     if (yadmNm) params.yadmNm = yadmNm;
     if (dgsbjtCd) params.dgsbjtCd = dgsbjtCd;
 
-    const url = 'https://apis.data.go.kr/B551182/hospInfoServicev2/getHospBasisList';
-
     let resp: any;
     try {
-      resp = await axios.get(url, {
-        params,
-        timeout: 15000,
-        headers: { Accept: 'application/json' },
-        paramsSerializer: (p) =>
-          Object.entries(p)
-            .map(([k, v]) =>
-              k === 'ServiceKey'
-                ? `${k}=${encodeURIComponent(decodeURIComponent(String(v)))}`
-                : `${k}=${encodeURIComponent(String(v))}`
-            )
-            .join('&'),
-      });
+      resp = await callHospitalApi(params);
     } catch (err: any) {
-      logger.error('심평원 API 호출 실패:', {
-        message: err?.message,
-        status: err?.response?.status,
-        code: err?.code,
-      });
       throw new HttpsError('internal', '심평원 서버에 연결할 수 없습니다');
     }
 
@@ -3415,22 +3505,7 @@ export const analyzeDrugPhoto = onCall(
         item_name: name,
       };
       try {
-        const resp = await axios.get(
-          'https://apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService07/getDrugPrdtPrmsnInq07',
-          {
-            params,
-            timeout: 15000,
-            headers: { Accept: 'application/json' },
-            paramsSerializer: (p) =>
-              Object.entries(p)
-                .map(([k, v]) =>
-                  k === 'serviceKey'
-                    ? `${k}=${encodeURIComponent(decodeURIComponent(String(v)))}`
-                    : `${k}=${encodeURIComponent(String(v))}`
-                )
-                .join('&'),
-          }
-        );
+        const resp = await callDrugApi(params);
         const root = resp?.data?.response ?? resp?.data;
         const body = root?.body;
         const rawItems = body?.items;
