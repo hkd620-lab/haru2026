@@ -533,10 +533,12 @@ export function OnbidRealEstatePage() {
                       fontSize: 11,
                       color: '#888780',
                       marginTop: 8,
-                      lineHeight: 1.5,
+                      lineHeight: 1.6,
                     }}
                   >
-                    번호가 복사됩니다. 온비드 검색창에 붙여넣기(⌘V) 하세요.
+                    온비드는 직접 연결을 막아두었습니다.<br />
+                    물건 번호가 자동으로 복사되었으니,<br />
+                    온비드 화면 위쪽 검색창에 붙여넣기 해주세요.
                   </div>
                 </div>
               </div>
