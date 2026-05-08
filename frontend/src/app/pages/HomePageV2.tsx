@@ -26,6 +26,7 @@ type Agent = {
   path: string | null;
   state?: Record<string, unknown>;
   icon: ReactNode;
+  beta?: boolean;
 };
 
 const RECORDS: RecordItem[] = [
@@ -292,6 +293,7 @@ const AGENTS: Agent[] = [
     variant: 'lilac',
     stroke: '#5A4E7A',
     path: '/onbid-realestate',
+    beta: true,
     icon: (
       <>
         <path d="M3 11l9-7 9 7" />
@@ -1045,6 +1047,29 @@ export function HomePageV2() {
                   opacity: disabled ? 0.7 : 1,
                 }}
               >
+                {a.beta && (
+                  <span
+                    data-v2="agent-beta"
+                    style={{
+                      position: 'absolute',
+                      top: 10,
+                      right: 10,
+                      zIndex: 2,
+                      padding: '2px 7px',
+                      borderRadius: 999,
+                      background: '#1A3C6E',
+                      color: '#fff',
+                      fontFamily: FONT_EN,
+                      fontSize: 9,
+                      fontWeight: 700,
+                      letterSpacing: '0.14em',
+                      textTransform: 'uppercase',
+                      boxShadow: '0 2px 6px -2px rgba(26,60,110,0.45)',
+                    }}
+                  >
+                    BETA
+                  </span>
+                )}
                 <div
                   style={{
                     width: 52,
