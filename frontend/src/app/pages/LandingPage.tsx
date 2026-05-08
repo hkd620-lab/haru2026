@@ -358,7 +358,6 @@ export function LandingPage() {
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '36px' }}>
             {[
-              { emoji: '🧠', name: '릭 핸슨', role: '심리학자', quote: '뇌는 부정적 경험엔 벨크로처럼, 긍정적 경험엔 테플론처럼 작동한다' },
               { emoji: '✍️', name: '페니베이커 박사', role: '임상심리학자', quote: '하루 15분, 감정을 글로 쓰는 것만으로 스트레스 호르몬이 감소한다' },
               { emoji: '💚', name: '맥크러티 박사', role: 'HeartMath 연구소', quote: '감사 일기는 심박·혈압·호흡을 동기화하여 신체를 최적 상태로 만든다' },
             ].map((r, i) => (
@@ -556,7 +555,7 @@ export function LandingPage() {
       </section>
 
       {/* ══════════════════════════════
-          섹션 5-1: HARU의 날개 (신기능)
+          섹션 5-1: HARU의 날개 — AI 비서실 8개 (v1 수정본)
       ══════════════════════════════ */}
       <section style={{ background: '#0f1f3d', padding: '80px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
@@ -565,7 +564,7 @@ export function LandingPage() {
               border: '1px solid rgba(16,185,129,0.4)', color: '#10b981',
               fontSize: '11px', letterSpacing: '3px', padding: '5px 18px', borderRadius: '20px'
             }}>
-              HARU EXCLUSIVE
+              HARU EXCLUSIVE · AI 비서실
             </span>
           </div>
           <h2 style={{
@@ -574,76 +573,59 @@ export function LandingPage() {
           }}>
             🪶 HARU의 날개
           </h2>
-          <p style={{ textAlign: 'center', color: 'rgba(250,249,246,0.5)', fontSize: '16px', marginBottom: '56px' }}>
-            기록을 넘어, 배움과 창작까지
+          <p style={{
+            textAlign: 'center', color: 'rgba(250,249,246,0.65)',
+            fontSize: '16px', lineHeight: 1.7, marginBottom: '56px',
+            maxWidth: '640px', margin: '0 auto 56px',
+          }}>
+            일기를 넘어, 매일 다른 도움을 받는<br />
+            <strong style={{ color: '#10b981', fontWeight: 700 }}>8가지 AI 비서</strong>가 함께합니다
           </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'center' }}>
+          <div className="agents-8" style={{
+            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px',
+          }}>
             {[
-              {
-                emoji: '⚖️',
-                title: '하루LAW',
-                sub: '법령 AI 검색',
-                desc: '법령 키워드로 검색하면 AI가 60자로 쉽게 설명하고, 관련 판례까지 안내합니다.',
-                color: '#f59e0b',
-                glow: 'rgba(245,158,11,0.15)',
-              },
-              {
-                emoji: '📚',
-                title: '나도작가',
-                sub: 'Book Studio',
-                desc: 'AI가 당신의 과거로 미래를 씁니다. 내가 선택한 가치관과 삶의 조각들로 AI가 나만의 서사를 완성합니다.',
-                color: '#a78bfa',
-                glow: 'rgba(167,139,250,0.15)',
-              },
-              {
-                emoji: '🎓',
-                title: '하루학습',
-                sub: '영어 · 뉴스',
-                desc: '영어성경, 영어일기쓰기, 국제뉴스를 TTS 음성과 함께 매일 학습하세요.',
-                color: '#38bdf8',
-                glow: 'rgba(56,189,248,0.15)',
-              },
-            ].map((f) => (
-              <div key={f.title} style={{
-                flex: '1 1 280px', maxWidth: '320px',
-                background: `linear-gradient(135deg, rgba(255,255,255,0.05) 0%, ${f.glow} 100%)`,
-                border: `1.5px solid ${f.color}44`,
-                borderRadius: '20px', padding: '36px 28px',
+              { emoji: '🔮', title: 'HARU예언',     sub: 'DAILY ORACLE',  desc: '오늘의 한 줄, 차분히 건네드려요.',          color: '#a78bfa' },
+              { emoji: '⚖️', title: '하루LAW',      sub: 'LAW · 판례',    desc: '법령·판례를 쉬운 말로 풀어드립니다.',        color: '#f59e0b' },
+              { emoji: '📖', title: '영어성경',     sub: 'BIBLE',         desc: '매일 한 구절, 천천히 읽어드려요.',          color: '#38bdf8' },
+              { emoji: '🌐', title: '영어일기',     sub: 'EN DIARY',      desc: '오늘의 한국어를 자연스러운 영문으로.',       color: '#10b981' },
+              { emoji: '📥', title: 'SNS가져오기',  sub: 'IMPORT',        desc: '흩어진 글을 한 곳으로 모아드립니다.',        color: '#ec4899' },
+              { emoji: '📈', title: 'HARU주식',     sub: 'MARKET',        desc: '관심 종목과 시장 흐름을 차분히.',           color: '#22d3ee' },
+              { emoji: '🌿', title: '원기충전소',   sub: 'RECOVERY',      desc: '오늘 컨디션, 작은 회복 루틴을 추천해요.',    color: '#84cc16' },
+              { emoji: '📚', title: '책스튜디오',   sub: 'BOOK STUDIO',   desc: '기록이 쌓이면 자동으로 책이 됩니다.',        color: '#fbbf24' },
+            ].map((a) => (
+              <div key={a.title} style={{
+                background: `linear-gradient(135deg, rgba(255,255,255,0.05) 0%, ${a.color}1f 100%)`,
+                border: `1.5px solid ${a.color}44`,
+                borderRadius: '18px', padding: '28px 22px',
                 position: 'relative', overflow: 'hidden',
               }}>
                 <div style={{
                   position: 'absolute', top: '-20px', right: '-20px',
-                  width: '100px', height: '100px', borderRadius: '50%',
-                  background: `radial-gradient(circle, ${f.color}22 0%, transparent 70%)`,
+                  width: '90px', height: '90px', borderRadius: '50%',
+                  background: `radial-gradient(circle, ${a.color}26 0%, transparent 70%)`,
                   pointerEvents: 'none',
                 }} />
-                <div style={{ fontSize: '44px', marginBottom: '16px' }}>{f.emoji}</div>
+                <div style={{ fontSize: '36px', marginBottom: '12px' }}>{a.emoji}</div>
                 <span style={{
-                  background: `${f.color}22`, color: f.color,
-                  fontSize: '11px', fontWeight: 700, padding: '3px 10px',
-                  borderRadius: '10px', letterSpacing: '1px'
+                  background: `${a.color}26`, color: a.color,
+                  fontSize: '10px', fontWeight: 700, padding: '3px 9px',
+                  borderRadius: '10px', letterSpacing: '1px',
                 }}>
-                  {f.sub}
+                  {a.sub}
                 </span>
                 <h3 style={{
-                  fontSize: '22px', fontWeight: 800, color: '#FAF9F6',
-                  margin: '12px 0 10px'
+                  fontSize: '18px', fontWeight: 800, color: '#FAF9F6',
+                  margin: '10px 0 8px',
                 }}>
-                  {f.title}
+                  {a.title}
                 </h3>
                 <p style={{
-                  fontSize: '14px', color: 'rgba(250,249,246,0.6)',
-                  lineHeight: 1.8, margin: 0
+                  fontSize: '13px', color: 'rgba(250,249,246,0.62)',
+                  lineHeight: 1.7, margin: 0,
                 }}>
-                  {f.desc}
+                  {a.desc}
                 </p>
-                <div style={{
-                  marginTop: '24px', display: 'inline-flex',
-                  alignItems: 'center', gap: '6px',
-                  color: f.color, fontSize: '13px', fontWeight: 600
-                }}>
-                  자세히 보기 →
-                </div>
               </div>
             ))}
           </div>
@@ -651,48 +633,116 @@ export function LandingPage() {
       </section>
 
       {/* ══════════════════════════════
-          섹션 5-2: 구독 요금 안내
+          섹션 5-2: 구독 요금 — LIGHT/PREMIUM + 7일 무료 체험
       ══════════════════════════════ */}
       <section style={{ background: '#f0f4ff', padding: '72px 24px' }}>
-        <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'center' }}>
+        <div style={{ maxWidth: '760px', margin: '0 auto', textAlign: 'center' }}>
+          {/* 7일 무료 체험 배너 */}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: '10px',
+            background: '#10b981', color: '#fff',
+            borderRadius: '999px', padding: '8px 20px',
+            fontSize: '13px', fontWeight: 700, letterSpacing: '0.3px',
+            boxShadow: '0 8px 24px -8px rgba(16,185,129,0.55)',
+            marginBottom: '18px',
+          }}>
+            <span style={{ fontSize: '14px' }}>🎁</span>
+            지금 가입하면{' '}
+            <span style={{ background: 'rgba(255,255,255,0.22)', padding: '2px 8px', borderRadius: '999px' }}>
+              7일 무료 체험
+            </span>
+          </div>
+
           <h2 style={{ fontSize: 'clamp(22px,4vw,32px)', fontWeight: 800, color: '#1A3C6E', marginBottom: '8px' }}>
             구독 요금 안내
           </h2>
-          <p style={{ color: '#666', fontSize: '16px', marginBottom: '48px' }}>
+          <p style={{ color: '#666', fontSize: '16px', marginBottom: '40px' }}>
             하루의 기록이 쌓여 인생의 빅데이터가 됩니다
           </p>
+
           <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
             {[
-              { plan: '월간 구독', price: '₩3,000', period: '/월', note: '언제든 해지 가능', highlight: false },
-              { plan: '연간 구독', price: '₩30,000', period: '/년', note: '2개월 무료 혜택 🎉', highlight: true },
+              {
+                plan: 'LIGHT', price: '₩4,000', period: '/월',
+                note: '핵심 기록 + SAYU BASIC',
+                bullets: ['10가지 기록 형식', 'SAYU BASIC 다듬기', '통계 & 기록합치기'],
+                highlight: false,
+              },
+              {
+                plan: 'PREMIUM', price: '₩5,000', period: '/월',
+                note: 'AI 비서실 8종 모두 + SAYU PREMIUM',
+                bullets: ['LIGHT 모든 기능', 'AI 비서실 8개 전체', 'SAYU PREMIUM (Gemini)'],
+                highlight: true,
+                badge: 'RECOMMENDED',
+              },
             ].map((p) => (
               <div key={p.plan} style={{
-                flex: '1 1 200px', maxWidth: '280px',
+                flex: '1 1 240px', maxWidth: '320px', position: 'relative',
                 background: p.highlight ? '#1A3C6E' : '#fff',
                 border: p.highlight ? 'none' : '2px solid #e0e7ff',
                 borderRadius: '20px', padding: '36px 28px',
                 boxShadow: p.highlight ? '0 12px 40px rgba(26,60,110,0.25)' : '0 4px 16px rgba(0,0,0,0.06)',
+                textAlign: 'left',
               }}>
-                <p style={{ color: p.highlight ? 'rgba(250,249,246,0.6)' : '#888', fontSize: '13px', margin: '0 0 12px', letterSpacing: '1px' }}>
+                {p.badge && (
+                  <span style={{
+                    position: 'absolute', top: '-12px', right: '20px',
+                    background: '#10b981', color: '#fff',
+                    fontSize: '10px', fontWeight: 800, letterSpacing: '1.5px',
+                    padding: '4px 10px', borderRadius: '999px',
+                  }}>
+                    {p.badge}
+                  </span>
+                )}
+                <p style={{
+                  color: p.highlight ? '#10b981' : '#1A3C6E',
+                  fontSize: '13px', fontWeight: 800, margin: '0 0 12px', letterSpacing: '2px',
+                }}>
                   {p.plan}
                 </p>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '6px', justifyContent: 'center' }}>
-                  <span style={{ color: p.highlight ? '#FAF9F6' : '#1A3C6E', fontSize: '38px', fontWeight: 800 }}>{p.price}</span>
-                  <span style={{ color: p.highlight ? 'rgba(250,249,246,0.5)' : '#999', fontSize: '14px' }}>{p.period}</span>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '6px' }}>
+                  <span style={{ color: p.highlight ? '#FAF9F6' : '#1A3C6E', fontSize: '40px', fontWeight: 800 }}>{p.price}</span>
+                  <span style={{ color: p.highlight ? 'rgba(250,249,246,0.55)' : '#999', fontSize: '14px' }}>{p.period}</span>
                 </div>
-                <p style={{ color: p.highlight ? 'rgba(250,249,246,0.5)' : '#aaa', fontSize: '12px', margin: '0 0 24px' }}>{p.note}</p>
-                <button style={{
-                  background: p.highlight ? '#10b981' : '#1A3C6E',
-                  color: '#fff', border: 'none',
-                  borderRadius: '50px', padding: '12px 0',
-                  fontSize: '14px', fontWeight: 700,
-                  cursor: 'pointer', width: '100%',
+                <p style={{ color: p.highlight ? 'rgba(250,249,246,0.6)' : '#888', fontSize: '12px', margin: '0 0 20px' }}>{p.note}</p>
+                <ul style={{
+                  listStyle: 'none', padding: 0, margin: '0 0 22px',
+                  display: 'flex', flexDirection: 'column', gap: '8px',
                 }}>
-                  구독 시작
+                  {p.bullets.map((b) => (
+                    <li key={b} style={{
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      color: p.highlight ? 'rgba(250,249,246,0.85)' : '#444', fontSize: '13px',
+                    }}>
+                      <span style={{
+                        width: '16px', height: '16px', borderRadius: '50%',
+                        background: p.highlight ? 'rgba(16,185,129,0.25)' : '#d1fae5',
+                        color: '#10b981', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '10px', fontWeight: 800, flexShrink: 0,
+                      }}>✓</span>
+                      {b}
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  onClick={goToLogin}
+                  style={{
+                    background: p.highlight ? '#10b981' : '#1A3C6E',
+                    color: '#fff', border: 'none',
+                    borderRadius: '50px', padding: '12px 0',
+                    fontSize: '14px', fontWeight: 700,
+                    cursor: 'pointer', width: '100%',
+                  }}
+                >
+                  7일 무료 체험 시작
                 </button>
               </div>
             ))}
           </div>
+
+          <p style={{ color: '#888', fontSize: '12px', marginTop: '20px' }}>
+            7일 체험 기간 중 언제든 해지 가능 · 결제는 체험 종료 후 시작됩니다
+          </p>
         </div>
       </section>
 
@@ -731,10 +781,18 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* 모바일 반응형 — format-grid */}
+      {/* 모바일·태블릿 반응형 — format-grid / agents-8 */}
       <style>{`
         @media (max-width: 640px) {
           .format-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+          .agents-8 {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+        }
+        @media (min-width: 641px) and (max-width: 1024px) {
+          .agents-8 {
             grid-template-columns: repeat(2, 1fr) !important;
           }
         }
