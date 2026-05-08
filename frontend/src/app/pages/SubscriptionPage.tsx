@@ -62,43 +62,55 @@ export default function SubscriptionPage() {
       <div className="w-full max-w-md">
 
         {/* 헤더 */}
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-black text-[#1A3C6E] mb-1">HARU PREMIUM</h1>
+        <div className="text-center mb-4">
+          <h1 className="text-2xl font-black text-[#1A3C6E] mb-1">HARU 구독 플랜</h1>
           <p className="text-sm text-gray-500">기록을 더 깊게 활용하세요</p>
+        </div>
+
+        {/* 7일 프리미엄 무료 체험 배너 */}
+        <div
+          className="rounded-2xl p-3 mb-4 text-center"
+          style={{
+            background: 'linear-gradient(90deg, #1A3C6E 0%, #10b981 100%)',
+            color: '#fff',
+          }}
+        >
+          <p className="text-sm font-bold mb-0.5">🎉 신규 가입 시 7일 프리미엄 무료 체험</p>
+          <p className="text-[11px] opacity-90">전 기능 7일간 무제한 체험 가능</p>
         </div>
 
         {/* 카드 비교 */}
         <div className="grid grid-cols-2 gap-3 mb-5">
 
-          {/* FREE */}
+          {/* LIGHT */}
           <div className="bg-white rounded-2xl p-4 border border-gray-200">
-            <div className="text-base font-bold text-gray-400 mb-1">FREE</div>
-            <div className="text-3xl font-black text-gray-800 mb-3">₩0</div>
-            <ul className="space-y-1 text-sm text-gray-600">
-              <li>✅ 기록 형식 10개</li>
-              <li>✅ SAYU 다듬기 전체</li>
-              <li>✅ TEXT/HTML 출력</li>
-              <li>✅ 주간 합침 + PDF</li>
-              <li>✅ 주간 통계</li>
-              <li className="text-gray-300">🔒 SAYU PDF 저장</li>
-              <li className="text-gray-300">🔒 월간/분기/연간</li>
+            <div className="text-base font-bold text-gray-500 mb-1">LIGHT</div>
+            <div className="text-3xl font-black text-gray-800 mb-1">₩4,000</div>
+            <div className="text-xs text-gray-400 mb-3">/ 월</div>
+            <ul className="space-y-1 text-xs text-gray-600 text-left">
+              <li>✅ 10가지 기록 형식</li>
+              <li>✅ SAYU 다듬기</li>
+              <li>✅ AI 제목 자동추출</li>
+              <li>✅ 통계·합본</li>
+              <li>✅ 사진 업로드</li>
+              <li>✅ AI 비서실 통합 월 10회</li>
             </ul>
           </div>
 
-          {/* PREMIUM */}
+          {/* PREMIUM (강조) */}
           <div className="bg-[#1A3C6E] rounded-2xl p-4 relative">
-            <div className="text-sm font-bold text-[#10b981] mb-1 mt-1">PREMIUM</div>
-            <div className="text-3xl font-black text-white mb-1">
-              ₩3,000
+            <div
+              className="absolute -top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: '#F8C554', color: '#1A3C6E' }}
+            >
+              추천
             </div>
+            <div className="text-sm font-bold text-[#10b981] mb-1 mt-1">PREMIUM</div>
+            <div className="text-3xl font-black text-white mb-1">₩5,000</div>
             <div className="text-xs text-gray-400 mb-3">/ 월</div>
             <ul className="space-y-1 text-xs text-gray-200 text-left">
-              <li>✅ FREE 모든 기능</li>
-              <li>✅ SAYU PDF 저장</li>
-              <li>✅ 월간 기록합침</li>
-              <li>✅ 분기 기록합침</li>
-              <li>✅ 연간 기록합침</li>
-              <li>✅ 월간/분기/연간 통계</li>
+              <li>✅ LIGHT 모든 기능</li>
+              <li>✅ AI 비서실 각 일 2회 / 월 40회</li>
             </ul>
           </div>
         </div>
