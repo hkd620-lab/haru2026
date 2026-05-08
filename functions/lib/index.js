@@ -2567,23 +2567,24 @@ exports.getOnbidRealEstateList = (0, https_2.onCall)({
     secrets: [ONBID_API_KEY_SECRET],
     timeoutSeconds: 30,
 }, async (request) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다');
     }
     const d = request.data || {};
     const pageNo = Math.max(1, parseInt(String((_a = d.pageNo) !== null && _a !== void 0 ? _a : '1'), 10) || 1);
     const numOfRows = Math.min(50, Math.max(1, parseInt(String((_b = d.numOfRows) !== null && _b !== void 0 ? _b : '10'), 10) || 10));
+    // v2.0 필수: prptDivCd, pvctTrgtYn — 사용자가 안 보내면 안전한 기본값으로 채움
     const params = {
         serviceKey: ONBID_API_KEY_SECRET.value(),
         pageNo: String(pageNo),
         numOfRows: String(numOfRows),
         resultType: 'json',
+        prptDivCd: (String((_c = d.prptDivCd) !== null && _c !== void 0 ? _c : '').trim()) || '0007',
+        pvctTrgtYn: (String((_d = d.pvctTrgtYn) !== null && _d !== void 0 ? _d : '').trim()) || 'N',
     };
     const optionalKeys = [
-        'prptDivCd',
         'bidDivCd',
-        'pvctTrgtYn',
         'dspsMthodCd',
         'cltrUsgLclsCtgrId',
         'cltrUsgMclsCtgrId',
@@ -2638,16 +2639,20 @@ exports.getOnbidRealEstateList = (0, https_2.onCall)({
     catch (err) {
         logger.error('온비드 API 호출 실패:', {
             message: err === null || err === void 0 ? void 0 : err.message,
-            status: (_c = err === null || err === void 0 ? void 0 : err.response) === null || _c === void 0 ? void 0 : _c.status,
+            status: (_e = err === null || err === void 0 ? void 0 : err.response) === null || _e === void 0 ? void 0 : _e.status,
             code: err === null || err === void 0 ? void 0 : err.code,
         });
         throw new https_2.HttpsError('internal', '온비드 서버에 연결할 수 없습니다');
     }
     const data = resp === null || resp === void 0 ? void 0 : resp.data;
-    const header = (_d = data === null || data === void 0 ? void 0 : data.response) === null || _d === void 0 ? void 0 : _d.header;
-    const body = (_e = data === null || data === void 0 ? void 0 : data.response) === null || _e === void 0 ? void 0 : _e.body;
-    const resultCode = (_f = header === null || header === void 0 ? void 0 : header.resultCode) !== null && _f !== void 0 ? _f : '';
-    const resultMsg = (_g = header === null || header === void 0 ? void 0 : header.resultMsg) !== null && _g !== void 0 ? _g : '';
+    // 응답 형태 두 가지 모두 지원:
+    //   (A) { response: { header, body } }  — OpenAPI 가이드 예제
+    //   (B) { header, body }                — 실제 Onbid v2 응답
+    const root = (_f = data === null || data === void 0 ? void 0 : data.response) !== null && _f !== void 0 ? _f : data;
+    const header = root === null || root === void 0 ? void 0 : root.header;
+    const body = root === null || root === void 0 ? void 0 : root.body;
+    const resultCode = (_g = header === null || header === void 0 ? void 0 : header.resultCode) !== null && _g !== void 0 ? _g : '';
+    const resultMsg = (_h = header === null || header === void 0 ? void 0 : header.resultMsg) !== null && _h !== void 0 ? _h : '';
     if (resultCode && resultCode !== '00' && resultCode !== '0') {
         logger.warn('온비드 API 비정상 응답:', { resultCode, resultMsg });
         if (resultCode === '03') {
@@ -2674,9 +2679,9 @@ exports.getOnbidRealEstateList = (0, https_2.onCall)({
     return {
         success: true,
         items,
-        totalCount: parseInt(String((_h = body === null || body === void 0 ? void 0 : body.totalCount) !== null && _h !== void 0 ? _h : '0'), 10) || 0,
-        pageNo: parseInt(String((_j = body === null || body === void 0 ? void 0 : body.pageNo) !== null && _j !== void 0 ? _j : pageNo), 10) || pageNo,
-        numOfRows: parseInt(String((_k = body === null || body === void 0 ? void 0 : body.numOfRows) !== null && _k !== void 0 ? _k : numOfRows), 10) || numOfRows,
+        totalCount: parseInt(String((_j = body === null || body === void 0 ? void 0 : body.totalCount) !== null && _j !== void 0 ? _j : '0'), 10) || 0,
+        pageNo: parseInt(String((_k = body === null || body === void 0 ? void 0 : body.pageNo) !== null && _k !== void 0 ? _k : pageNo), 10) || pageNo,
+        numOfRows: parseInt(String((_l = body === null || body === void 0 ? void 0 : body.numOfRows) !== null && _l !== void 0 ? _l : numOfRows), 10) || numOfRows,
         resultCode,
         resultMsg,
         disclaimer: '본 정보는 한국자산관리공사 온비드 공공데이터를 활용한 참고용이며, 실제 입찰은 온비드 공식사이트(onbid.co.kr)에서 확인하세요.',
