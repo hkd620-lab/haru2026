@@ -179,7 +179,7 @@ export function LandingPage() {
                   </div>
                   <div style={{ marginTop: '4px', borderTop: '1px solid rgba(74,90,44,0.15)', paddingTop: '6px' }}>
                     🪶 나도작가 —{' '}
-                    <span style={{ color: '#a78bfa', fontWeight: 600 }}>AI가 당신의 과거로 미래를 씁니다</span>
+                    <span style={{ color: '#a78bfa', fontWeight: 600 }}>AI가 당신의 기록으로 미래를 씁니다</span>
                   </div>
                 </div>
               </div>
@@ -229,9 +229,9 @@ export function LandingPage() {
               간편하게 입력하고,<br />쓸모있게 남깁니다
             </h1>
             <p style={{ fontSize: '17px', opacity: 0.8, lineHeight: 1.75, marginBottom: '32px' }}>
-              일기, 에세이, 업무일지까지 —<br />
-              10가지 형식으로 간편하게 입력하고<br />
-              AI가 다듬어 드립니다
+              10가지 형식으로 간편하게 입력하면<br />
+              AI가 이를 바탕으로 미래를 예측하고<br />
+              자서전을 만들어 드립니다
             </p>
 
 
@@ -330,7 +330,16 @@ export function LandingPage() {
                 >
                   쓸모있게
                 </motion.span>{' '}
-                남기는 앱
+                남기는 똑똑하고{' '}
+                <motion.span
+                  className="font-semibold"
+                  style={{ color: '#ff6600' }}
+                  animate={{ scale: [1, 1.15, 1] }}
+                  transition={{ delay: 4.0, duration: 0.8 }}
+                >
+                  쓸모있는
+                </motion.span>{' '}
+                기록 비서
               </motion.p>
             </div>
           </div>
@@ -419,7 +428,7 @@ export function LandingPage() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'center' }}>
             {[
               { img: IMAGES.feature_record, title: '10가지 기록 형식', desc: '일기부터 선교보고까지 — 상황에 맞는 형식으로 간편하게 작성' },
-              { img: IMAGES.feature_sayu,   title: 'SAYU(사유) 다듬기', desc: '원문 감정 보존 원칙 — AI가 더 자연스럽게 표현을 다듬어 드립니다' },
+              { img: IMAGES.feature_sayu,   title: 'SAYU(사유) 다듬기', desc: '재창작 없이 다듬기 — 당신의 글을 당신답게' },
               { img: IMAGES.feature_stats,  title: '통계 & 기록합치기', desc: '작성 현황을 한눈에 보고 여러 기록을 하나의 리포트로' },
             ].map((card) => (
               <div key={card.title} style={{
@@ -585,14 +594,14 @@ export function LandingPage() {
             display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px',
           }}>
             {[
-              { emoji: '🔮', title: 'HARU예언',     sub: 'DAILY ORACLE',  desc: '오늘의 한 줄, 차분히 건네드려요.',          color: '#a78bfa' },
-              { emoji: '⚖️', title: '하루LAW',      sub: 'LAW · 판례',    desc: '법령·판례를 쉬운 말로 풀어드립니다.',        color: '#f59e0b' },
-              { emoji: '📖', title: '영어성경',     sub: 'BIBLE',         desc: '매일 한 구절, 천천히 읽어드려요.',          color: '#38bdf8' },
-              { emoji: '🌐', title: '영어일기',     sub: 'EN DIARY',      desc: '오늘의 한국어를 자연스러운 영문으로.',       color: '#7A8B4E' },
-              { emoji: '📥', title: 'SNS가져오기',  sub: 'IMPORT',        desc: '흩어진 글을 한 곳으로 모아드립니다.',        color: '#ec4899' },
-              { emoji: '📈', title: 'HARU주식',     sub: 'MARKET',        desc: '관심 종목과 시장 흐름을 차분히.',           color: '#22d3ee' },
-              { emoji: '🌿', title: '원기충전소',   sub: 'RECOVERY',      desc: '오늘 컨디션, 작은 회복 루틴을 추천해요.',    color: '#84cc16' },
-              { emoji: '📚', title: '책스튜디오',   sub: 'BOOK STUDIO',   desc: '기록이 쌓이면 자동으로 책이 됩니다.',        color: '#fbbf24' },
+              { emoji: '🔮', title: 'HARU예언',     sub: 'DAILY ORACLE',  desc: '오늘의 한 줄 기록이 모여 당신의 미래를 예언합니다.',                              color: '#a78bfa' },
+              { emoji: '⚖️', title: '하루LAW',      sub: 'LAW · 판례',    desc: '법령·판례를 정부 데이터 그대로, 풀이는 AI가 쉬운 말로 풀어드립니다. 환각 제로.', color: '#f59e0b' },
+              { emoji: '📖', title: '영어성경',     sub: 'BIBLE',         desc: '영어·영한·한영 듣기·말하기·해석·단어·문법을 한 번에 — 영어성경 학습의 결정판', color: '#38bdf8' },
+              { emoji: '🌐', title: '영어일기',     sub: 'EN DIARY',      desc: '내가 기록한 일기와 에세이로 자연스러운 영작 학습',                                color: '#7A8B4E' },
+              { emoji: '📥', title: 'SNS가져오기',  sub: 'IMPORT',        desc: '페이스북과 인스타그램의 추억들을 입맛대로 정렬하고 나만의 책으로 출간해 드립니다.', color: '#ec4899' },
+              { emoji: '📈', title: 'HARU주식',     sub: 'MARKET',        desc: '내가 매도·매수한 종목들의 현재와 미래를 예측하여 주식 투자를 즐겁게.',           color: '#22d3ee' },
+              { emoji: '🌿', title: '원기충전소',   sub: 'RECOVERY',      desc: '오늘 컨디션을 기록하면 AI가 맞춤 회복 루틴을 처방해드립니다.',                    color: '#84cc16' },
+              { emoji: '📚', title: '책스튜디오',   sub: 'BOOK STUDIO',   desc: '1년 기록이 한 권의 책으로 — 자동 출간 시스템',                                    color: '#fbbf24' },
             ].map((a) => (
               <div key={a.title} style={{
                 background: `linear-gradient(135deg, rgba(255,255,255,0.05) 0%, ${a.color}1f 100%)`,
@@ -664,13 +673,13 @@ export function LandingPage() {
             {[
               {
                 plan: 'LIGHT', price: '₩4,000', period: '/월',
-                note: '핵심 기록 + SAYU BASIC',
+                note: '10가지 기록 + SAYU BASIC + AI 비서 월 10회',
                 bullets: ['10가지 기록 형식', 'SAYU BASIC 다듬기', '통계 & 기록합치기'],
                 highlight: false,
               },
               {
                 plan: 'PREMIUM', price: '₩5,000', period: '/월',
-                note: 'AI 비서실 8종 모두 + SAYU PREMIUM',
+                note: '라이트 전체 + AI 비서 일 2회 / 월 40회',
                 bullets: ['LIGHT 모든 기능', 'AI 비서실 8개 전체', 'SAYU PREMIUM (Gemini)'],
                 highlight: true,
                 badge: 'RECOMMENDED',
