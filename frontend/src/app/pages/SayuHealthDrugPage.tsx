@@ -39,6 +39,8 @@ type AnalyzeResponse = {
   aiNote: string;
   items: DrugItem[];
   totalCount: number;
+  searchUsedName?: string;
+  fallbackUsed?: boolean;
   disclaimer: string;
 };
 
@@ -224,6 +226,8 @@ export function SayuHealthDrugPage() {
         setItemName(data.extractedName);
         if (list.length === 0) {
           toast.info(`"${data.extractedName}" 약은 식약처 DB에서 찾지 못했습니다.`);
+        } else if (data.fallbackUsed && data.searchUsedName) {
+          toast.success(`"${data.extractedName}" 인식 → "${data.searchUsedName}" 시리즈로 검색됨`);
         } else {
           toast.success(`"${data.extractedName}" 인식됨`);
         }

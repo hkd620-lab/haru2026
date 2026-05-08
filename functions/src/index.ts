@@ -3399,46 +3399,92 @@ export const analyzeDrugPhoto = onCall(
       };
     }
 
-    // === 2단계: 추출된 약 이름으로 식약처 API 자동 조회 ===
-    const drugParams: Record<string, string> = {
-      serviceKey: DRUG_API_KEY_SECRET.value(),
-      pageNo: '1',
-      numOfRows: '5',
-      type: 'json',
-      item_name: extractedName,
+    // === 2단계: 추출된 약 이름으로 식약처 API 폴백 검색 ===
+    // 식약처 DB는 함량·표기 차이로 정확명 매칭이 안 될 수 있어 단계별 폴백
+    const searchDrug = async (name: string): Promise<{ items: any[]; totalCount: number }> => {
+      const params: Record<string, string> = {
+        serviceKey: DRUG_API_KEY_SECRET.value(),
+        pageNo: '1',
+        numOfRows: '10',
+        type: 'json',
+        item_name: name,
+      };
+      try {
+        const resp = await axios.get(
+          'https://apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService06/getDrugPrdtPrmsnDtlInq05',
+          {
+            params,
+            timeout: 15000,
+            headers: { Accept: 'application/json' },
+            paramsSerializer: (p) =>
+              Object.entries(p)
+                .map(([k, v]) =>
+                  k === 'serviceKey'
+                    ? `${k}=${encodeURIComponent(decodeURIComponent(String(v)))}`
+                    : `${k}=${encodeURIComponent(String(v))}`
+                )
+                .join('&'),
+          }
+        );
+        const root = resp?.data?.response ?? resp?.data;
+        const body = root?.body;
+        const rawItems = body?.items;
+        let items: any[] = [];
+        if (Array.isArray(rawItems)) items = rawItems;
+        else if (rawItems?.item) items = Array.isArray(rawItems.item) ? rawItems.item : [rawItems.item];
+        const totalCount = parseInt(String(body?.totalCount ?? '0'), 10) || items.length;
+        return { items, totalCount };
+      } catch {
+        return { items: [], totalCount: 0 };
+      }
+    };
+
+    // 함량·용량·괄호·슬래시 등을 제거해 베이스 약명만 추출
+    // "텔미누보정40/2.5mg" → "텔미누보정"
+    const stripDosage = (s: string): string =>
+      s
+        .replace(/\d+(\.\d+)?\s*\/\s*\d+(\.\d+)?\s*(mg|g|ml|mcg|µg|μg|IU|%)?/gi, '')
+        .replace(/\d+(\.\d+)?\s*(mg|g|ml|mcg|µg|μg|IU|%)/gi, '')
+        .replace(/\([^)]*\)/g, '')
+        .replace(/[\/·,]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    // 한글·영문 단어만 추출 (더 적극적 폴백)
+    const baseWord = (s: string): string => {
+      const m = s.match(/[가-힣A-Za-z]+/g);
+      return m ? m[0] : '';
     };
 
     let drugItems: any[] = [];
     let drugTotalCount = 0;
-    try {
-      const drugResp = await axios.get(
-        'https://apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService06/getDrugPrdtPrmsnDtlInq05',
-        {
-          params: drugParams,
-          timeout: 15000,
-          headers: { Accept: 'application/json' },
-          paramsSerializer: (p) =>
-            Object.entries(p)
-              .map(([k, v]) =>
-                k === 'serviceKey'
-                  ? `${k}=${encodeURIComponent(decodeURIComponent(String(v)))}`
-                  : `${k}=${encodeURIComponent(String(v))}`
-              )
-              .join('&'),
+    let searchUsedName = extractedName;
+
+    // 1차: 전체 이름 그대로
+    const r1 = await searchDrug(extractedName);
+    if (r1.totalCount > 0) {
+      drugItems = r1.items;
+      drugTotalCount = r1.totalCount;
+    } else {
+      // 2차: 함량·용량 제거한 베이스명
+      const stripped = stripDosage(extractedName);
+      if (stripped && stripped !== extractedName && stripped.length >= 2) {
+        const r2 = await searchDrug(stripped);
+        if (r2.totalCount > 0) {
+          drugItems = r2.items;
+          drugTotalCount = r2.totalCount;
+          searchUsedName = stripped;
+        } else {
+          // 3차: 첫 단어만 (예: "텔미누보 정" → "텔미누보")
+          const word = baseWord(stripped);
+          if (word && word !== stripped && word.length >= 2) {
+            const r3 = await searchDrug(word);
+            drugItems = r3.items;
+            drugTotalCount = r3.totalCount;
+            searchUsedName = word;
+          }
         }
-      );
-      const root = drugResp?.data?.response ?? drugResp?.data;
-      const body = root?.body;
-      const rawItems = body?.items;
-      if (Array.isArray(rawItems)) {
-        drugItems = rawItems;
-      } else if (rawItems?.item) {
-        drugItems = Array.isArray(rawItems.item) ? rawItems.item : [rawItems.item];
       }
-      drugTotalCount = parseInt(String(body?.totalCount ?? '0'), 10) || drugItems.length;
-    } catch (err: any) {
-      logger.warn('식약처 자동 조회 실패 (AI 추출은 성공)', { message: err?.message?.slice(0, 200) });
-      // 식약처 실패해도 AI 추출 결과는 반환
     }
 
     return {
@@ -3448,6 +3494,8 @@ export const analyzeDrugPhoto = onCall(
       aiNote,
       items: drugItems,
       totalCount: drugTotalCount,
+      searchUsedName, // 실제 식약처 검색에 사용된 이름 (폴백 시 다를 수 있음)
+      fallbackUsed: searchUsedName !== extractedName,
       disclaimer: 'AI 분석은 참고용이며, 정확한 정보는 식약처 자료를 우선합니다. 약 이름만 추출하며, 환자·의사 등 개인정보는 저장·전송하지 않습니다.',
     };
   }
