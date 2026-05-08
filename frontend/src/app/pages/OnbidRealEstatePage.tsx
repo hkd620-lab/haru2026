@@ -531,9 +531,13 @@ export function OnbidRealEstatePage() {
                   <div
                     style={{
                       fontSize: 11,
-                      color: '#888780',
+                      color: '#5A4E7A',
                       marginTop: 8,
                       lineHeight: 1.6,
+                      background: '#F3EEF8',
+                      border: '1px solid #E5DCEE',
+                      borderRadius: 8,
+                      padding: '8px 12px',
                     }}
                   >
                     온비드는 직접 연결을 막아두었습니다.<br />
