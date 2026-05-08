@@ -176,7 +176,7 @@ const RECORDS: RecordItem[] = [
 const AGENTS: Agent[] = [
   {
     label: 'HARU예언',
-    sub: '오늘의 한 줄, 차분히 건네드려요',
+    sub: '오늘의 한 줄 기록이 모여 당신의 미래를 예언합니다.',
     tag: 'SAYU · 감성',
     variant: 'lilac',
     stroke: '#5A4E7A',
@@ -191,7 +191,7 @@ const AGENTS: Agent[] = [
   },
   {
     label: '하루LAW',
-    sub: '법령·판례를 쉬운 말로 풀어드립니다',
+    sub: '법령·판례를 정부 데이터 그대로, 풀이는 AI가 쉬운 말로 풀어드립니다. 환각 제로.',
     tag: 'LAW · 안내',
     variant: 'green',
     stroke: '#4A5A2C',
@@ -209,7 +209,7 @@ const AGENTS: Agent[] = [
   },
   {
     label: '영어성경',
-    sub: '매일 한 구절, 천천히 읽어드려요',
+    sub: '영어·영한·한영 듣기·말하기·해석·단어·문법을 한 번에 — 영어성경 학습의 결정판',
     tag: 'BIBLE · 학습',
     variant: 'terracotta',
     stroke: '#B85C2E',
@@ -225,7 +225,7 @@ const AGENTS: Agent[] = [
   },
   {
     label: '영어일기',
-    sub: '오늘의 한국어를 자연스러운 영문으로',
+    sub: '내가 기록한 일기와 에세이로 자연스러운 영작 학습',
     tag: 'WRITE · 영문',
     variant: 'lilac',
     stroke: '#5A4E7A',
@@ -240,7 +240,7 @@ const AGENTS: Agent[] = [
   },
   {
     label: 'SNS 가져오기',
-    sub: '흩어진 글을 한 곳으로 모아드립니다',
+    sub: '페이스북과 인스타그램의 추억들을 입맛대로 정렬하고 나만의 책으로 출간해 드립니다.',
     tag: 'IMPORT · 정리',
     variant: 'green',
     stroke: '#4A5A2C',
@@ -258,7 +258,7 @@ const AGENTS: Agent[] = [
   },
   {
     label: 'HARU주식',
-    sub: '관심 종목과 시장 흐름을 차분히',
+    sub: '내가 매도·매수한 종목들의 현재와 미래를 예측하여 주식 투자를 즐겁게.',
     tag: 'STOCK · 안내',
     variant: 'terracotta',
     stroke: '#B85C2E',
@@ -273,7 +273,7 @@ const AGENTS: Agent[] = [
   },
   {
     label: '원기충전소',
-    sub: '오늘 컨디션, 작은 회복 루틴 추천',
+    sub: '오늘 컨디션을 기록하면 AI가 맞춤 회복 루틴을 처방해드립니다.',
     tag: 'CARE · 회복',
     variant: 'green',
     stroke: '#4A5A2C',
