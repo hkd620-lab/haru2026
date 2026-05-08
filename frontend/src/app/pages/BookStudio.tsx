@@ -3,8 +3,8 @@ import { collection, onSnapshot, orderBy, query, doc, updateDoc, getDocs } from 
 import { db } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation, useNavigate } from 'react-router';
-import { X } from 'lucide-react';
 import { getOrigin } from '../services/v2Origin';
+import { PageHeaderActions } from '../components/PageHeaderActions';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -100,29 +100,7 @@ export function BookStudio() {
       className="min-h-screen"
       style={{ backgroundColor: '#FAF9F6', color: '#1A3C6E' }}
     >
-      <button
-        type="button"
-        onClick={closeToOrigin}
-        aria-label="닫기"
-        style={{
-          position: 'fixed',
-          top: 12,
-          right: 12,
-          zIndex: 50,
-          background: '#fff',
-          border: '1px solid #e5e5e5',
-          borderRadius: '50%',
-          width: 36,
-          height: 36,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-        }}
-      >
-        <X style={{ width: 18, height: 18, color: '#1A3C6E' }} />
-      </button>
+      <PageHeaderActions onClose={closeToOrigin} />
       {/* 헤더 */}
       <div
         className="sticky top-0 z-10 px-4 py-4 border-b"

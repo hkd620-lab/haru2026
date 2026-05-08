@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { ChevronLeft, ChevronRight, Info, Leaf, Briefcase, BookOpen, Scale, Cpu, Volume2, Pause, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Info, Leaf, Briefcase, BookOpen, Scale, Cpu, Volume2, Pause } from 'lucide-react';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
-import { getOrigin } from '../services/v2Origin';
+import { PageHeaderActions } from '../components/PageHeaderActions';
 import { useAuth } from '../contexts/AuthContext';
 import { SayuTitleAnimation } from '../components/SayuTitleAnimation';
 import { toast } from 'sonner';
@@ -1106,28 +1106,11 @@ export function SayuPage() {
     <style>{printStyle}</style>
 
     <div className="sayu-page-container no-print max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
+      <PageHeaderActions />
       {/* 타이틀 + 가이드 */}
       <div className="mb-4">
         <div className="flex items-start justify-between mb-2">
           <SayuTitleAnimation />
-          <button
-            type="button"
-            aria-label="닫기"
-            title="닫기"
-            onClick={() => navigate(getOrigin() || '/')}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 6,
-              borderRadius: 999,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <X style={{ width: 22, height: 22, color: '#6B7280' }} />
-          </button>
         </div>
         <p className="text-sm mb-2" style={{ color: '#666666' }}>
           작성한 기록을 AI가 다듬은 결과를 확인하세요

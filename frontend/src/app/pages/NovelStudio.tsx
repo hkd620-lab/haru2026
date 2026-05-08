@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router';
-import { X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { db } from '../../firebase';
-import { getOrigin } from '../services/v2Origin';
+import { PageHeaderActions } from '../components/PageHeaderActions';
 
 
 type Tab = 'motive' | 'birth' | 'desire' | 'shackle' | 'luck' | 'unluck' | 'narrative' | 'chars' | 'events';
@@ -1232,31 +1231,7 @@ export function NovelStudio() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#FAF9F6', color: '#1A3C6E', paddingBottom: 100 }}>
-      {/* 우상단 X 닫기 — v2 origin 우선 */}
-      <button
-        type="button"
-        aria-label="닫기"
-        title="닫기"
-        onClick={() => navigate(getOrigin() || '/')}
-        style={{
-          position: 'fixed',
-          top: 12,
-          right: 12,
-          zIndex: 100,
-          background: '#fff',
-          border: '1px solid #e5e5e5',
-          borderRadius: '50%',
-          width: 36,
-          height: 36,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-        }}
-      >
-        <X style={{ width: 18, height: 18, color: '#1A3C6E' }} />
-      </button>
+      <PageHeaderActions />
       {/* 헤더 */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 10,

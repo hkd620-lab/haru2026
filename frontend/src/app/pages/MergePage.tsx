@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS, FORMAT_PREFIX } from '../types/haruTypes';
 import { useSubscription } from '../hooks/useSubscription';
 import { getOrigin } from '../services/v2Origin';
+import { PageHeaderActions } from '../components/PageHeaderActions';
 
 type MergeFilter = 'special' | 'all';
 type MergePeriod = 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'custom';
@@ -169,24 +170,9 @@ export function MergePage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col gap-3" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
-      <div className="flex items-center justify-between">
+      <PageHeaderActions onClose={() => navigate(getOrigin() || '/sayu')} />
+      <div className="flex items-center">
         <MergeTitleAnimation />
-        <button
-          onClick={() => navigate(getOrigin() || '/sayu')}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: '6px',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          title="닫기"
-        >
-          <X style={{ width: 22, height: 22, color: '#6B7280' }} />
-        </button>
       </div>
 
       {showNotice && (

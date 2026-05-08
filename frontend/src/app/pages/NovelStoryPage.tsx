@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from 'react-router';
-import { ChevronLeft, X, Printer, Copy } from 'lucide-react';
+import { ChevronLeft, Printer, Copy } from 'lucide-react';
 import { toast } from 'sonner';
-import { getOrigin } from '../services/v2Origin';
+import { PageHeaderActions } from '../components/PageHeaderActions';
 
 export function NovelStoryPage() {
   const navigate = useNavigate();
@@ -43,32 +43,7 @@ export function NovelStoryPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#FAF9F6', paddingBottom: 100 }}>
-      {/* 우상단 fixed X 닫기 — v2 origin 우선 */}
-      <button
-        type="button"
-        aria-label="닫기"
-        title="닫기"
-        onClick={() => navigate(getOrigin() || '/')}
-        className="no-print"
-        style={{
-          position: 'fixed',
-          top: 12,
-          right: 12,
-          zIndex: 100,
-          background: '#fff',
-          border: '1px solid #e5e5e5',
-          borderRadius: '50%',
-          width: 36,
-          height: 36,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-        }}
-      >
-        <X style={{ width: 18, height: 18, color: '#1A3C6E' }} />
-      </button>
+      <PageHeaderActions />
       {/* 헤더 — 한 단계 뒤로(설정으로) + 액션 */}
       <div
         className="no-print"

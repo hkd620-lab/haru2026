@@ -1,7 +1,7 @@
-import { X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { getOrigin } from '../services/v2Origin';
+import { PageHeaderActions } from '../components/PageHeaderActions';
 
 export function ProphecyHubPage() {
   const navigate = useNavigate();
@@ -29,29 +29,7 @@ export function ProphecyHubPage() {
       className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8"
       style={{ minHeight: 'calc(100vh - 56px - 80px)' }}
     >
-      <button
-        type="button"
-        onClick={closeToOrigin}
-        aria-label="닫기"
-        style={{
-          position: 'fixed',
-          top: 12,
-          right: 12,
-          zIndex: 50,
-          background: '#fff',
-          border: '1px solid #e5e5e5',
-          borderRadius: '50%',
-          width: 36,
-          height: 36,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-        }}
-      >
-        <X style={{ width: 18, height: 18, color: '#1A3C6E' }} />
-      </button>
+      <PageHeaderActions onClose={closeToOrigin} />
       {/* 헤더 */}
       <div className="mb-8">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight" style={{ color: '#1A3C6E' }}>

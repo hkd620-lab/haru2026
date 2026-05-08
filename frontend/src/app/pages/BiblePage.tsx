@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { X } from 'lucide-react';
+import { PageHeaderActions } from '../components/PageHeaderActions';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
@@ -1823,30 +1823,7 @@ export function BiblePage() {
   return (
     <>
     <div style={{ backgroundColor: '#FAF9F6', minHeight: '100vh', paddingBottom: 80 }}>
-      {/* 우상단 전체 닫기 X 버튼 */}
-      <button
-        type="button"
-        onClick={closeToOrigin}
-        aria-label="닫기"
-        style={{
-          position: 'fixed',
-          top: 12,
-          right: 12,
-          zIndex: 50,
-          background: '#fff',
-          border: '1px solid #e5e5e5',
-          borderRadius: '50%',
-          width: 36,
-          height: 36,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-        }}
-      >
-        <X style={{ width: 18, height: 18, color: '#1A3C6E' }} />
-      </button>
+      <PageHeaderActions onClose={closeToOrigin} />
       <div style={{ padding: '16px 16px 0' }}>
         <div>
           {/* 1단계: 구약 / 신약 탭 + 단어장 버튼 */}

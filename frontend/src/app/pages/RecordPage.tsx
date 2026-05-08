@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { DiaryLearnModal } from '../components/DiaryLearnModal';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { Calendar, X } from 'lucide-react';
+import { Calendar } from 'lucide-react';
+import { PageHeaderActions } from '../components/PageHeaderActions';
 import { useLocation, useNavigate } from 'react-router';
 import { firestoreService } from '../services/firestoreService';
 import { getOrigin } from '../services/v2Origin';
@@ -695,29 +696,7 @@ export function RecordPage() {
   return (
     <>
     <div className="max-w-3xl mx-auto px-4 py-3" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
-      <button
-        type="button"
-        onClick={closeToOrigin}
-        aria-label="닫기"
-        style={{
-          position: 'fixed',
-          top: 12,
-          right: 12,
-          zIndex: 50,
-          background: '#fff',
-          border: '1px solid #e5e5e5',
-          borderRadius: '50%',
-          width: 36,
-          height: 36,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-        }}
-      >
-        <X style={{ width: 18, height: 18, color: '#1A3C6E' }} />
-      </button>
+      <PageHeaderActions onClose={closeToOrigin} />
       <div className="space-y-3">
         {/* Title Animation */}
         <section className="flex items-center justify-center py-1">

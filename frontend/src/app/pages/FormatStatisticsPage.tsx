@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { X, TrendingUp, Brain, Sparkles, Activity, Calendar, Star } from 'lucide-react';
+import { TrendingUp, Brain, Sparkles, Activity, Calendar, Star } from 'lucide-react';
+import { PageHeaderActions } from '../components/PageHeaderActions';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService, RecordFormat } from '../services/firestoreService';
@@ -229,31 +230,7 @@ export function FormatStatisticsPage() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
       {/* Header */}
       <div className="mb-6">
-        <button
-          type="button"
-          aria-label="닫기"
-          title="닫기"
-          onClick={() => navigate(getOrigin() || '/sayu')}
-          className="mb-4 transition-opacity hover:opacity-70"
-          style={{
-            position: 'fixed',
-            top: 12,
-            right: 12,
-            zIndex: 50,
-            background: '#fff',
-            border: '1px solid #e5e5e5',
-            borderRadius: '50%',
-            width: 36,
-            height: 36,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-          }}
-        >
-          <X style={{ width: 18, height: 18, color: '#1A3C6E' }} />
-        </button>
+        <PageHeaderActions onClose={() => navigate(getOrigin() || '/sayu')} />
 
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-2xl font-bold" style={{ color: '#1A3C6E' }}>

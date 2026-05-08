@@ -677,12 +677,27 @@ export function MergeViewerPage() {
       >
         {/* 상단 헤더 */}
         <div className="flex items-center justify-between px-4 py-3 bg-white border-b" style={{ borderColor: '#e5e5e5' }}>
-          <button
-            onClick={handleClose}
-            className="p-2 rounded hover:bg-gray-100 transition-colors"
-          >
-            <X className="w-5 h-5" style={{ color: '#666' }} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => {
+                if (window.history.length > 1) navigate(-1);
+                else handleClose();
+              }}
+              className="p-2 rounded hover:bg-gray-100 transition-colors"
+              aria-label="뒤로가기"
+              title="뒤로가기"
+            >
+              <ChevronLeft className="w-5 h-5" style={{ color: '#666' }} />
+            </button>
+            <button
+              onClick={handleClose}
+              className="p-2 rounded hover:bg-gray-100 transition-colors"
+              aria-label="닫기"
+              title="닫기"
+            >
+              <X className="w-5 h-5" style={{ color: '#666' }} />
+            </button>
+          </div>
           <div className="text-sm font-medium" style={{ color: '#1A3C6E' }}>
             {format} 합본
           </div>

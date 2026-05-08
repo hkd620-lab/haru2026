@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, ChevronRight, X } from 'lucide-react';
-import { getOrigin } from '../services/v2Origin';
+import { BarChart3, ChevronRight } from 'lucide-react';
+import { PageHeaderActions } from '../components/PageHeaderActions';
 
 type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '메모';
 
@@ -47,31 +47,7 @@ export function StatisticsPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
-      {/* 우상단 X 닫기 */}
-      <button
-        type="button"
-        aria-label="닫기"
-        title="닫기"
-        onClick={() => navigate(getOrigin() || '/')}
-        style={{
-          position: 'fixed',
-          top: 12,
-          right: 12,
-          zIndex: 50,
-          background: '#fff',
-          border: '1px solid #e5e5e5',
-          borderRadius: '50%',
-          width: 36,
-          height: 36,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-        }}
-      >
-        <X style={{ width: 18, height: 18, color: '#1A3C6E' }} />
-      </button>
+      <PageHeaderActions />
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
