@@ -88,7 +88,7 @@ function AppInitializer() {
 function HomeOrLanding() {
   const { user, loading } = useAuth();
   if (loading) return null;
-  return user ? <HomePage /> : <LandingPage />;
+  return user ? <HomePageV2 /> : <LandingPage />;
 }
 
 function App() {
@@ -104,8 +104,11 @@ function App() {
               {/* 홈 화면 — 비로그인 시 랜딩, 로그인 시 홈 */}
               <Route path="/" element={<HomeOrLanding />} />
 
-              {/* v2 홈 (CD Reposeful 디자인 미리보기) */}
+              {/* v2 홈 (CD Reposeful 디자인 미리보기 — 메인 승격됨, 호환용 유지) */}
               <Route path="/v2" element={<HomePageV2 />} />
+
+              {/* v1 백업 라우트 (구 HomePage 보존, 롤백/비교용) */}
+              <Route path="/v1-legacy" element={<HomePage />} />
               
               {/* 인증 */}
               <Route path="/login" element={<LoginPage />} />
