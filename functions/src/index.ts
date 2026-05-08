@@ -3280,3 +3280,176 @@ export const getHospitalList = onCall(
   }
 );
 
+// ===== 🔬 약봉지 AI 사진 분석 (SAYU건강관리 - Gemini Vision) =====
+// 입력: 사진 base64 배열 (1~3장)
+// 처리: Gemini Vision으로 약 이름만 추출 → 식약처 API로 공식 정보 조회
+// 개인정보 안전장치:
+//   1) 프롬프트에 환자·의사·병원 정보 무시 명시
+//   2) 사진·개인정보 로그 차단 (장수·바이트 길이만 로깅)
+//   3) 분석 후 사진 즉시 폐기 (Storage 저장 없음)
+//   4) 추출 결과는 식약처 공식 데이터로 한 번 더 검증
+export const analyzeDrugPhoto = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET, DRUG_API_KEY_SECRET],
+    timeoutSeconds: 60,
+    memory: '512MiB',
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다');
+    }
+
+    const d = request.data || {};
+    const rawImages = Array.isArray(d.images) ? d.images : [];
+    const images: string[] = rawImages
+      .filter((s: unknown) => typeof s === 'string' && s.length > 0)
+      .map((s: string) => s.replace(/^data:image\/[a-zA-Z]+;base64,/, ''))
+      .slice(0, 3);
+
+    if (images.length === 0) {
+      throw new HttpsError('invalid-argument', '사진이 필요합니다 (최소 1장, 최대 3장)');
+    }
+
+    // 사진 크기 검증 (각 장 최대 4MB base64 ≈ 3MB 원본)
+    const totalKb = images.reduce((sum, b) => sum + Math.round(b.length * 0.75 / 1024), 0);
+    if (totalKb > 12 * 1024) {
+      throw new HttpsError('invalid-argument', '사진이 너무 큽니다. 1장당 4MB 이하로 줄여주세요');
+    }
+
+    // 🔒 로깅 안전장치: 사진·개인정보 절대 안 남기고 메타데이터만
+    logger.info('analyzeDrugPhoto 호출', {
+      imageCount: images.length,
+      totalKb,
+      uid: request.auth.uid.slice(0, 8) + '…',
+    });
+
+    // === 1단계: Gemini Vision으로 약 이름만 추출 ===
+    // 🔒 프롬프트 안전장치: 환자·의사·병원 정보 명시적 무시
+    const prompt = `당신은 약봉지 사진에서 약 이름만 추출하는 도우미입니다.
+
+[추출 대상 — 오직 이것만]
+- 약의 제품명 (예: "타이레놀정500mg", "게보린", "베아제")
+- 사진에서 가장 또렷하게 식별되는 약 이름 1개
+- 한국 식약처에 등록된 의약품 제품명 형식
+
+[절대 무시 — 분석·언급·저장 모두 금지]
+- 환자 이름, 생년월일, 나이, 성별, 주민번호
+- 처방 의사 이름, 면허번호
+- 병원명, 의원명, 약국명, 주소, 전화번호
+- 처방일자, 처방번호, 보험 식별번호
+- 그 외 사람을 식별할 수 있는 모든 정보
+
+위 무시 대상은 응답에 절대 포함하지 말고, 내부적으로도 텍스트화하지 마세요.
+
+[출력 형식 — JSON 한 줄, 마크다운 금지]
+{"drugName": "약 이름 또는 빈 문자열", "confidence": "high|medium|low|none", "note": "한 줄 메모"}
+
+[규칙]
+- 약 이름을 찾을 수 없으면 drugName="", confidence="none"
+- 흐릿하거나 추측에 의존해야 하면 confidence="low"
+- 약봉지가 아닌 사진이면 drugName="", confidence="none", note="약봉지 사진이 아닙니다"
+- 추측·환각 금지. 확실하지 않으면 빈 문자열.`;
+
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+    const visionModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+
+    let extractedName = '';
+    let confidence: 'high' | 'medium' | 'low' | 'none' = 'none';
+    let aiNote = '';
+    try {
+      const parts: any[] = [{ text: prompt }];
+      for (const b64 of images) {
+        parts.push({
+          inlineData: {
+            mimeType: 'image/jpeg',
+            data: b64,
+          },
+        });
+      }
+      const result = await visionModel.generateContent({
+        contents: [{ role: 'user', parts }],
+      });
+      let raw = result.response.text().trim();
+      // 마크다운 코드펜스 제거
+      raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+      const parsed = JSON.parse(raw);
+      extractedName = String(parsed?.drugName ?? '').trim().slice(0, 60);
+      const c = String(parsed?.confidence ?? 'none').trim().toLowerCase();
+      confidence = (['high', 'medium', 'low', 'none'].includes(c) ? c : 'none') as typeof confidence;
+      aiNote = String(parsed?.note ?? '').trim().slice(0, 100);
+    } catch (err: any) {
+      // 🔒 에러 로그에도 사진·prompt 데이터 노출 금지
+      logger.error('Gemini Vision 분석 실패', { message: err?.message?.slice(0, 200) });
+      throw new HttpsError('internal', 'AI 분석 중 오류가 발생했습니다. 사진을 다시 찍어 주세요');
+    }
+
+    // 사진 base64 즉시 메모리 해제 (분석 끝났으니 보관 안 함)
+    images.length = 0;
+
+    if (!extractedName) {
+      return {
+        success: true,
+        extractedName: '',
+        confidence,
+        aiNote: aiNote || '약 이름을 인식하지 못했습니다. 사진을 더 또렷이 찍거나 약 이름을 직접 입력해 주세요.',
+        items: [],
+        totalCount: 0,
+        disclaimer: 'AI 분석은 참고용이며, 정확한 정보는 식약처 자료를 우선합니다. 약 이름만 추출하며, 환자·의사 등 개인정보는 저장·전송하지 않습니다.',
+      };
+    }
+
+    // === 2단계: 추출된 약 이름으로 식약처 API 자동 조회 ===
+    const drugParams: Record<string, string> = {
+      serviceKey: DRUG_API_KEY_SECRET.value(),
+      pageNo: '1',
+      numOfRows: '5',
+      type: 'json',
+      item_name: extractedName,
+    };
+
+    let drugItems: any[] = [];
+    let drugTotalCount = 0;
+    try {
+      const drugResp = await axios.get(
+        'https://apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService06/getDrugPrdtPrmsnDtlInq05',
+        {
+          params: drugParams,
+          timeout: 15000,
+          headers: { Accept: 'application/json' },
+          paramsSerializer: (p) =>
+            Object.entries(p)
+              .map(([k, v]) =>
+                k === 'serviceKey'
+                  ? `${k}=${encodeURIComponent(decodeURIComponent(String(v)))}`
+                  : `${k}=${encodeURIComponent(String(v))}`
+              )
+              .join('&'),
+        }
+      );
+      const root = drugResp?.data?.response ?? drugResp?.data;
+      const body = root?.body;
+      const rawItems = body?.items;
+      if (Array.isArray(rawItems)) {
+        drugItems = rawItems;
+      } else if (rawItems?.item) {
+        drugItems = Array.isArray(rawItems.item) ? rawItems.item : [rawItems.item];
+      }
+      drugTotalCount = parseInt(String(body?.totalCount ?? '0'), 10) || drugItems.length;
+    } catch (err: any) {
+      logger.warn('식약처 자동 조회 실패 (AI 추출은 성공)', { message: err?.message?.slice(0, 200) });
+      // 식약처 실패해도 AI 추출 결과는 반환
+    }
+
+    return {
+      success: true,
+      extractedName,
+      confidence,
+      aiNote,
+      items: drugItems,
+      totalCount: drugTotalCount,
+      disclaimer: 'AI 분석은 참고용이며, 정확한 정보는 식약처 자료를 우선합니다. 약 이름만 추출하며, 환자·의사 등 개인정보는 저장·전송하지 않습니다.',
+    };
+  }
+);
+

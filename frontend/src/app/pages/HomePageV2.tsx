@@ -304,7 +304,7 @@ const AGENTS: Agent[] = [
   },
   {
     label: 'SAYU건강관리',
-    sub: 'EBS 명의 · 약봉지 약정 · 동네병원까지 — 공공데이터로 건강을 한곳에.',
+    sub: 'EBS 명의 · 약봉지 약정보 · 동네병원까지 — 공공데이터로 건강을 한곳에.',
     tag: 'CARE · 건강',
     variant: 'green',
     stroke: '#4A5A2C',
