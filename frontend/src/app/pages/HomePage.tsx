@@ -125,7 +125,7 @@ export function HomePage() {
               HARU
             </div>
             <div className="mt-0.5 text-[9px] font-medium tracking-[1.4px] text-haru-navy/55">
-              BY JOYEL
+              BY 조이L허경대
             </div>
           </div>
         </div>

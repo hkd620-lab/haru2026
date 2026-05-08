@@ -523,7 +523,7 @@ export function HomePageV2() {
                   textTransform: 'uppercase',
                 }}
               >
-                BY JOYEL · 2026
+                BY HARU2026 · EST. 2026
               </div>
             </div>
           </div>

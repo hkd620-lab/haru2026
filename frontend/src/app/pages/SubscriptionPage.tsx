@@ -103,12 +103,24 @@ export default function SubscriptionPage() {
           </div>
         </div>
 
-        {/* 서비스 제공기간 안내 */}
+        {/* 베타 무료 운영 안내 (정식 결제 시스템 준비 중) */}
+        <div
+          className="rounded-2xl p-4 mb-3 text-center"
+          style={{ backgroundColor: '#FFFBEA', border: '1px solid #F8C554' }}
+        >
+          <p className="text-sm font-bold mb-1" style={{ color: '#1A3C6E' }}>
+            🎁 베타 무료 운영 중
+          </p>
+          <p className="text-xs" style={{ color: '#7A6F5A' }}>
+            정식 결제 시스템 준비 중입니다.
+          </p>
+        </div>
+
+        {/* === 결제 버튼 영역 임시 숨김 (정식 출시 시 복원) ===
         <p className="text-center text-xs mb-3" style={{ color: '#10b981' }}>
           ✓ 구독 결제 완료 후 즉시 서비스 이용 가능합니다
         </p>
 
-        {/* 카카오페이 버튼 */}
         <button
           onClick={() => handleSubscribe('kakao')}
           disabled={loading || authLoading}
@@ -117,7 +129,6 @@ export default function SubscriptionPage() {
           {loading ? '결제 처리 중...' : '💛 카카오페이로 결제하기'}
         </button>
 
-        {/* 토스페이먼츠 버튼 */}
         <button
           onClick={() => handleSubscribe('toss')}
           disabled={loading || authLoading}
@@ -129,6 +140,7 @@ export default function SubscriptionPage() {
         <p className="text-center text-xs text-gray-400 mb-2">
           카카오페이 · 신용카드 · 체크카드 결제 가능
         </p>
+        === 결제 버튼 영역 임시 숨김 끝 === */}
 
         <button
           onClick={() => window.history.back()}

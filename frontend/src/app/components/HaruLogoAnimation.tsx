@@ -2,7 +2,7 @@ import { motion, useAnimation } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 
 const haruLetters = ['H', 'A', 'R', 'U'];
-const joyel = 'by JOYEL';
+const joyel = 'by 조이L허경대';
 
 export function HaruLogoAnimation() {
   const shimmerControls = useAnimation();
@@ -40,7 +40,7 @@ export function HaruLogoAnimation() {
     return () => clearTimeout(timer);
   }, [shimmerControls]);
 
-  // by JOYEL 타이프라이터
+  // by 조이L허경대 타이프라이터
   useEffect(() => {
     const startDelay = 1350; // HARU 끝나고 시작
     const charInterval = 80;  // 한 글자 간격
@@ -127,7 +127,7 @@ export function HaruLogoAnimation() {
         )}
       </div>
 
-      {/* ── by JOYEL : 타이프라이터 ── */}
+      {/* ── by 조이L허경대 : 타이프라이터 ── */}
       <div
         style={{
           fontSize: '0.72rem',

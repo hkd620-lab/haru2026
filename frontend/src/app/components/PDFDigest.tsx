@@ -309,7 +309,7 @@ export function PDFDigest({ data }: PDFDigestProps) {
           </p>
         </div>
         <div className="text-xs" style={{ color: '#999999' }}>
-          © 2026 HARU by JOYEL. All rights reserved.
+          © 2026 HARU by 조이L허경대. All rights reserved.
         </div>
       </footer>
 

@@ -19,7 +19,7 @@ export function LibraryTitleAnimation() {
         HARU
       </h1>
       <p style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '13px', letterSpacing: '0.22em', color: '#1A3C6E', opacity: 0.75, margin: '10px 0 0 0' }}>
-        by JOYEL
+        by 조이L허경대
       </p>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '14px auto 0', gap: '6px' }}>
         <div style={{ width: '40px', height: '1px', backgroundColor: '#1A3C6E', opacity: 0.3 }} />

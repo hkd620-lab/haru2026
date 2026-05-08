@@ -936,7 +936,7 @@ export function SettingsPage() {
 
         <div className="text-center py-8">
           <p className="text-xs mb-1" style={{ color: '#999' }}>
-            HARU v1.0 by JOYEL
+            HARU v1.0 by 조이L허경대
           </p>
           <p className="text-xs" style={{ color: '#ccc' }}>
             © 2026 All rights reserved.
