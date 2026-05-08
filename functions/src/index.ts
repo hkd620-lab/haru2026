@@ -3080,7 +3080,7 @@ export const getDrugInfo = onCall(
       item_name: itemName,
     };
 
-    const url = 'https://apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService06/getDrugPrdtPrmsnInq05';
+    const url = 'https://apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService07/getDrugPrdtPrmsnInq07';
 
     let resp: any;
     try {
@@ -3416,7 +3416,7 @@ export const analyzeDrugPhoto = onCall(
       };
       try {
         const resp = await axios.get(
-          'https://apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService06/getDrugPrdtPrmsnInq05',
+          'https://apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService07/getDrugPrdtPrmsnInq07',
           {
             params,
             timeout: 15000,
