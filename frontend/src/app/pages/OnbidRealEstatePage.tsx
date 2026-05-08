@@ -362,22 +362,29 @@ export function OnbidRealEstatePage() {
           const key = `${it.cltrMngNo || it.onbidCltrno || idx}-${it.pbctCdtnNo || idx}`;
           const region = [it.lctnSdnm, it.lctnSggnm, it.lctnEmdNm].filter(Boolean).join(' ');
           const usage = [it.cltrUsgMclsCtgrNm, it.cltrUsgSclsCtgrNm].filter(Boolean).join(' · ');
-          const onbidUrl =
-            it.onbidCltrno && it.onbidPbancNo
-              ? `https://www.onbid.co.kr/op/cta/cltrdtl/collateralRealEstateDetail.do?cltrNo=${it.onbidCltrno}&plnmNo=${it.onbidPbancNo}`
-              : 'https://www.onbid.co.kr/';
+          const cltrMngNo = it.cltrMngNo || '';
+          const handleCardOpen = async () => {
+            try {
+              if (cltrMngNo && navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(cltrMngNo);
+                toast.success(`물건관리번호 ${cltrMngNo} 복사됨. 온비드에서 검색하세요.`);
+              }
+            } catch {
+              // 클립보드 실패해도 사이트는 연다
+            }
+            window.open('https://www.onbid.co.kr/', '_blank', 'noopener,noreferrer');
+          };
           return (
-            <a
+            <button
               key={key}
-              href={onbidUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block rounded-2xl p-4 transition-all hover:shadow-md active:scale-[0.99]"
+              type="button"
+              onClick={handleCardOpen}
+              className="block w-full text-left rounded-2xl p-4 transition-all hover:shadow-md active:scale-[0.99]"
               style={{
                 backgroundColor: '#fff',
                 border: '1px solid #E5DFD0',
-                textDecoration: 'none',
                 color: '#2C2C2A',
+                cursor: 'pointer',
               }}
             >
               <div className="flex gap-3">
@@ -493,9 +500,21 @@ export function OnbidRealEstatePage() {
                       </span>
                     )}
                   </div>
+                  {cltrMngNo && (
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: '#5A4E7A',
+                        marginTop: 6,
+                        fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+                      }}
+                    >
+                      📋 물건관리번호 {cltrMngNo}
+                    </div>
+                  )}
                 </div>
               </div>
-            </a>
+            </button>
           );
         })}
 
