@@ -2925,17 +2925,18 @@ export const getOnbidRealEstateList = onCall(
     const pageNo = Math.max(1, parseInt(String(d.pageNo ?? '1'), 10) || 1);
     const numOfRows = Math.min(50, Math.max(1, parseInt(String(d.numOfRows ?? '10'), 10) || 10));
 
+    // v2.0 필수: prptDivCd, pvctTrgtYn — 사용자가 안 보내면 안전한 기본값으로 채움
     const params: Record<string, string> = {
       serviceKey: ONBID_API_KEY_SECRET.value(),
       pageNo: String(pageNo),
       numOfRows: String(numOfRows),
       resultType: 'json',
+      prptDivCd: (String(d.prptDivCd ?? '').trim()) || '0007',
+      pvctTrgtYn: (String(d.pvctTrgtYn ?? '').trim()) || 'N',
     };
 
     const optionalKeys = [
-      'prptDivCd',
       'bidDivCd',
-      'pvctTrgtYn',
       'dspsMthodCd',
       'cltrUsgLclsCtgrId',
       'cltrUsgMclsCtgrId',
@@ -3001,10 +3002,15 @@ export const getOnbidRealEstateList = onCall(
     }
 
     const data = resp?.data;
-    const header = data?.response?.header;
-    const body = data?.response?.body;
+    // 응답 형태 두 가지 모두 지원:
+    //   (A) { response: { header, body } }  — OpenAPI 가이드 예제
+    //   (B) { header, body }                — 실제 Onbid v2 응답
+    const root = data?.response ?? data;
+    const header = root?.header;
+    const body = root?.body;
     const resultCode = header?.resultCode ?? '';
     const resultMsg = header?.resultMsg ?? '';
+
 
     if (resultCode && resultCode !== '00' && resultCode !== '0') {
       logger.warn('온비드 API 비정상 응답:', { resultCode, resultMsg });
