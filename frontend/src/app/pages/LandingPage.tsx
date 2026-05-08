@@ -38,7 +38,7 @@ function GrapeLogo() {
   return (
     <svg width="48" height="56" viewBox="0 0 100 100" style={{ display: 'inline-block' }}>
       {dots.map((d, i) => (
-        <circle key={i} cx={d.x} cy={d.y} r="9" fill="#10b981" />
+        <circle key={i} cx={d.x} cy={d.y} r="9" fill="#7A8B4E" />
       ))}
     </svg>
   );
@@ -69,8 +69,8 @@ export function LandingPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAF9F6' }}>
-        <div style={{ color: '#1A3C6E', fontSize: '18px' }}>로딩 중...</div>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F5F0E8' }}>
+        <div style={{ color: '#4A5A2C', fontSize: '18px' }}>로딩 중...</div>
       </div>
     );
   }
@@ -78,7 +78,7 @@ export function LandingPage() {
   const goToLogin = () => navigate('/login');
 
   return (
-    <div style={{ fontFamily: 'inherit', background: '#FAF9F6', overflowX: 'hidden' }}>
+    <div style={{ fontFamily: 'inherit', background: '#F5F0E8', overflowX: 'hidden' }}>
 
       <style>{`
         @media (max-width: 640px) {
@@ -117,8 +117,8 @@ export function LandingPage() {
           `}</style>
           <div
             style={{
-              background: 'linear-gradient(90deg, #E8F7F1 0%, #F0FBF6 100%)',
-              borderBottom: '1px solid #10b981',
+              background: 'linear-gradient(90deg, #F5F0E8 0%, #EDE8DC 100%)',
+              borderBottom: '1px solid #D8D1BC',
               padding: '14px 20px',
               paddingTop: 'calc(14px + env(safe-area-inset-top, 0px))',
               display: 'flex',
@@ -145,7 +145,7 @@ export function LandingPage() {
                   width: '36px',
                   height: '36px',
                   borderRadius: '50%',
-                  background: '#10b981',
+                  background: '#7A8B4E',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -161,7 +161,7 @@ export function LandingPage() {
                 <div
                   className="haru-tip-banner-content"
                   style={{
-                    color: '#1A3C6E',
+                    color: '#4A5A2C',
                     fontSize: '13px',
                     lineHeight: '1.6',
                     opacity: 0.85,
@@ -169,15 +169,15 @@ export function LandingPage() {
                 >
                   <div>
                     📱 스마트폰으로{' '}
-                    <span style={{ color: '#10b981', fontWeight: 600 }}>간편하게</span>{' '}
+                    <span style={{ color: '#7A8B4E', fontWeight: 600 }}>간편하게</span>{' '}
                     입력
                   </div>
                   <div>
                     💻 웹브라우저에서{' '}
-                    <span style={{ color: '#10b981', fontWeight: 600 }}>쓸모있게</span>{' '}
+                    <span style={{ color: '#7A8B4E', fontWeight: 600 }}>쓸모있게</span>{' '}
                     완성
                   </div>
-                  <div style={{ marginTop: '4px', borderTop: '1px solid rgba(26,60,110,0.15)', paddingTop: '6px' }}>
+                  <div style={{ marginTop: '4px', borderTop: '1px solid rgba(74,90,44,0.15)', paddingTop: '6px' }}>
                     🪶 나도작가 —{' '}
                     <span style={{ color: '#a78bfa', fontWeight: 600 }}>AI가 당신의 과거로 미래를 씁니다</span>
                   </div>
@@ -188,7 +188,7 @@ export function LandingPage() {
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: '#1A3C6E',
+                  color: '#4A5A2C',
                   opacity: 0.5,
                   fontSize: '24px',
                   cursor: 'pointer',
@@ -209,7 +209,7 @@ export function LandingPage() {
       {/* ══════════════════════════════
           섹션 1: 히어로
       ══════════════════════════════ */}
-      <section className="hero-section" style={{ background: '#1A3C6E', color: '#FAF9F6', padding: '12px 24px', paddingTop: 'max(32px, env(safe-area-inset-top, 32px))', maxHeight: '100dvh', overflow: 'hidden' }}>
+      <section className="hero-section" style={{ background: '#4A5A2C', color: '#F5F0E8', padding: '12px 24px', paddingTop: 'max(32px, env(safe-area-inset-top, 32px))', maxHeight: '100dvh', overflow: 'hidden' }}>
         <div style={{
           maxWidth: '1100px', margin: '0 auto',
           display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px',
@@ -254,7 +254,7 @@ export function LandingPage() {
             <div style={{
               width: '100%',
               borderRadius: '24px',
-              background: '#1A3C6E',
+              background: '#4A5A2C',
               padding: '8px 20px 16px',
               display: 'flex',
               flexDirection: 'column',
@@ -301,7 +301,7 @@ export function LandingPage() {
               <motion.p
                 style={{
                   fontSize: 'clamp(13px, 2.2vw, 16px)',
-                  color: '#FAF9F6',
+                  color: '#F5F0E8',
                   opacity: 0.85,
                   marginTop: '-8px',
                   marginBottom: '0',
@@ -340,18 +340,18 @@ export function LandingPage() {
       {/* ══════════════════════════════
           섹션 2: 왜 기록인가? (뇌과학)
       ══════════════════════════════ */}
-      <section className="next-section-after-hero" style={{ background: 'linear-gradient(160deg, #0d2347 0%, #1A3C6E 100%)', padding: '72px 24px' }}>
+      <section className="next-section-after-hero" style={{ background: 'linear-gradient(160deg, #3F4F26 0%, #4A5A2C 100%)', padding: '72px 24px' }}>
         <div style={{ maxWidth: '860px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '12px' }}>
             <span style={{
-              border: '1px solid rgba(16,185,129,0.5)', color: '#10b981',
+              border: '1px solid rgba(122,139,78,0.5)', color: '#7A8B4E',
               fontSize: '11px', letterSpacing: '3px', padding: '5px 18px', borderRadius: '20px'
             }}>
               BRAIN SCIENCE × DAILY RECORD
             </span>
           </div>
-          <h2 style={{ color: '#FAF9F6', fontSize: 'clamp(22px,4vw,36px)', textAlign: 'center', fontWeight: 400, margin: '0 0 8px' }}>
-            왜 <em style={{ color: '#10b981' }}>기록</em>인가?
+          <h2 style={{ color: '#F5F0E8', fontSize: 'clamp(22px,4vw,36px)', textAlign: 'center', fontWeight: 400, margin: '0 0 8px' }}>
+            왜 <em style={{ color: '#7A8B4E' }}>기록</em>인가?
           </h2>
           <p style={{ color: 'rgba(250,249,246,0.5)', textAlign: 'center', fontSize: '14px', marginBottom: '40px' }}>
             세계적인 연구자들이 임상으로 입증한 기록의 과학
@@ -368,7 +368,7 @@ export function LandingPage() {
               }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
                   <div style={{
-                    fontSize: '22px', background: 'rgba(16,185,129,0.1)',
+                    fontSize: '22px', background: 'rgba(122,139,78,0.1)',
                     borderRadius: '10px', width: '44px', height: '44px',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
                   }}>
@@ -376,13 +376,13 @@ export function LandingPage() {
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
-                      <span style={{ color: '#FAF9F6', fontSize: '16px', fontWeight: 700 }}>{r.name}</span>
-                      <span style={{ color: '#10b981', fontSize: '11px', background: 'rgba(16,185,129,0.1)', padding: '2px 10px', borderRadius: '10px' }}>{r.role}</span>
+                      <span style={{ color: '#F5F0E8', fontSize: '16px', fontWeight: 700 }}>{r.name}</span>
+                      <span style={{ color: '#7A8B4E', fontSize: '11px', background: 'rgba(122,139,78,0.1)', padding: '2px 10px', borderRadius: '10px' }}>{r.role}</span>
                     </div>
                     <blockquote style={{
                       margin: 0, color: 'rgba(250,249,246,0.8)', fontSize: '14px',
                       lineHeight: 1.8, fontStyle: 'italic',
-                      borderLeft: '2px solid rgba(16,185,129,0.4)', paddingLeft: '12px'
+                      borderLeft: '2px solid rgba(122,139,78,0.4)', paddingLeft: '12px'
                     }}>
                       "{r.quote}"
                     </blockquote>
@@ -392,14 +392,14 @@ export function LandingPage() {
             ))}
           </div>
           <div style={{
-            background: 'rgba(16,185,129,0.06)',
-            border: '1px solid rgba(16,185,129,0.15)',
+            background: 'rgba(122,139,78,0.06)',
+            border: '1px solid rgba(122,139,78,0.15)',
             borderRadius: '14px', padding: '28px', textAlign: 'center'
           }}>
             <p style={{ color: 'rgba(250,249,246,0.75)', fontSize: '15px', lineHeight: 1.9, margin: 0 }}>
               기록은 단순한 메모가 아닙니다.<br />
               감정을 객관화하고, 삶을 데이터로 편집하는<br />
-              <strong style={{ color: '#FAF9F6' }}>'인지 재구조화'</strong> 전략입니다.
+              <strong style={{ color: '#F5F0E8' }}>'인지 재구조화'</strong> 전략입니다.
             </p>
           </div>
         </div>
@@ -410,7 +410,7 @@ export function LandingPage() {
       ══════════════════════════════ */}
       <section style={{ background: '#fff', padding: '64px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <h2 style={{ textAlign: 'center', fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: 800, color: '#1A3C6E', marginBottom: '8px' }}>
+          <h2 style={{ textAlign: 'center', fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: 800, color: '#4A5A2C', marginBottom: '8px' }}>
             HARU가 특별한 이유
           </h2>
           <p style={{ textAlign: 'center', color: '#666', fontSize: '16px', marginBottom: '40px' }}>
@@ -424,12 +424,12 @@ export function LandingPage() {
             ].map((card) => (
               <div key={card.title} style={{
                 flex: '1 1 280px', maxWidth: '340px',
-                background: '#FAF9F6', borderRadius: '16px',
+                background: '#F5F0E8', borderRadius: '16px',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.07)', overflow: 'hidden',
               }}>
                 <img src={card.img} alt={card.title} style={{ width: '100%', height: '180px', objectFit: 'cover' }} />
                 <div style={{ padding: '20px' }}>
-                  <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#1A3C6E', marginBottom: '8px' }}>{card.title}</h3>
+                  <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#4A5A2C', marginBottom: '8px' }}>{card.title}</h3>
                   <p style={{ fontSize: '15px', color: '#555', lineHeight: 1.65 }}>{card.desc}</p>
                 </div>
               </div>
@@ -441,9 +441,9 @@ export function LandingPage() {
       {/* ══════════════════════════════
           섹션 4: SAYU 소개 2단
       ══════════════════════════════ */}
-      <section style={{ background: '#f0f4ff', padding: '64px 24px' }}>
+      <section style={{ background: '#EDE8DC', padding: '64px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <h2 style={{ textAlign: 'left', fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: 800, color: '#1A3C6E', marginBottom: '8px' }}>
+          <h2 style={{ textAlign: 'left', fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: 800, color: '#4A5A2C', marginBottom: '8px' }}>
             SAYU(사유:思惟)는 단순한 기록을 넘어,<br />당신의 소중한 일상을 당신만의 자산으로 남기는 공간입니다.
           </h2>
           <p style={{ textAlign: 'left', color: '#666', fontSize: '16px', marginBottom: '40px' }}>
@@ -454,15 +454,15 @@ export function LandingPage() {
             {/* BASIC */}
             <div style={{
               flex: '1 1 280px', maxWidth: '480px',
-              background: '#1A3C6E', color: '#FAF9F6',
+              background: '#4A5A2C', color: '#F5F0E8',
               borderRadius: '20px', overflow: 'hidden',
-              boxShadow: '0 8px 30px rgba(26,60,110,0.25)',
+              boxShadow: '0 8px 30px rgba(74,90,44,0.25)',
             }}>
               <img src={IMAGES.sayu_premium} alt="SAYU BASIC" style={{ width: '100%', height: '200px', objectFit: 'cover', opacity: 0.85 }} />
               <div style={{ padding: '24px' }}>
                 <span style={{
                   display: 'inline-block',
-                  background: '#10b981', color: '#fff',
+                  background: '#7A8B4E', color: '#fff',
                   borderRadius: '20px', padding: '3px 12px',
                   fontSize: '12px', fontWeight: 700, marginBottom: '12px',
                 }}>
@@ -480,19 +480,19 @@ export function LandingPage() {
               flex: '1 1 280px', maxWidth: '480px',
               background: '#fff', borderRadius: '20px', overflow: 'hidden',
               boxShadow: '0 8px 30px rgba(0,0,0,0.10)',
-              border: '2px solid #10b981',
+              border: '2px solid #7A8B4E',
             }}>
               <img src={IMAGES.sayu_premium} alt="SAYU PREMIUM" style={{ width: '100%', height: '200px', objectFit: 'cover' }} />
               <div style={{ padding: '24px' }}>
                 <span style={{
                   display: 'inline-block',
-                  background: '#1A3C6E', color: '#fff',
+                  background: '#4A5A2C', color: '#fff',
                   borderRadius: '20px', padding: '3px 12px',
                   fontSize: '12px', fontWeight: 700, marginBottom: '12px',
                 }}>
                   SAYU PREMIUM
                 </span>
-                <h3 style={{ fontSize: '22px', fontWeight: 800, color: '#1A3C6E', marginBottom: '10px' }}>프리미엄 다듬기</h3>
+                <h3 style={{ fontSize: '22px', fontWeight: 800, color: '#4A5A2C', marginBottom: '10px' }}>프리미엄 다듬기</h3>
                 <p style={{ fontSize: '15px', color: '#444', lineHeight: 1.7 }}>
                   Gemini AI가 더 풍부하고 깊이 있는 표현으로 다듬습니다. 구독 회원 전용
                 </p>
@@ -506,9 +506,9 @@ export function LandingPage() {
       {/* ══════════════════════════════
           섹션 5: 기록 형식 10개 그리드
       ══════════════════════════════ */}
-      <section style={{ background: '#FAF9F6', padding: '64px 24px' }}>
+      <section style={{ background: '#F5F0E8', padding: '64px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <h2 style={{ textAlign: 'center', fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: 800, color: '#1A3C6E', marginBottom: '8px' }}>
+          <h2 style={{ textAlign: 'center', fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: 800, color: '#4A5A2C', marginBottom: '8px' }}>
             기록 형식 10가지
           </h2>
           <p style={{ textAlign: 'center', color: '#666', fontSize: '16px', marginBottom: '40px' }}>
@@ -525,15 +525,15 @@ export function LandingPage() {
               const isLife = f.category === '생활';
               return (
                 <div key={f.name} style={{
-                  background: isLife ? '#e8f5e9' : '#e3f0ff',
+                  background: isLife ? '#E8E8C0' : '#E5DFE8',
                   borderRadius: '12px', padding: '18px 10px',
                   textAlign: 'center', position: 'relative',
-                  border: f.badge ? '2px solid #10b981' : `1px solid ${isLife ? '#a5d6a7' : '#90caf9'}`,
+                  border: f.badge ? '2px solid #7A8B4E' : `1px solid ${isLife ? '#D4DEA0' : '#C9C0DE'}`,
                 }}>
                   {f.badge && (
                     <span style={{
                       position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)',
-                      background: '#10b981', color: '#fff',
+                      background: '#7A8B4E', color: '#fff',
                       borderRadius: '10px', padding: '2px 8px',
                       fontSize: '10px', fontWeight: 700, whiteSpace: 'nowrap',
                     }}>
@@ -541,10 +541,10 @@ export function LandingPage() {
                     </span>
                   )}
                   <div style={{ fontSize: '26px', marginBottom: '6px' }}>{f.emoji}</div>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: isLife ? '#2e7d32' : '#1565c0' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: isLife ? '#4A5A2C' : '#5C5078' }}>
                     {f.name}
                   </div>
-                  <div style={{ fontSize: '11px', marginTop: '3px', color: isLife ? '#4caf50' : '#2196f3', fontWeight: 600 }}>
+                  <div style={{ fontSize: '11px', marginTop: '3px', color: isLife ? '#7A8B4E' : '#7A6F8E', fontWeight: 600 }}>
                     {f.category}
                   </div>
                 </div>
@@ -557,11 +557,11 @@ export function LandingPage() {
       {/* ══════════════════════════════
           섹션 5-1: HARU의 날개 — AI 비서실 8개 (v1 수정본)
       ══════════════════════════════ */}
-      <section style={{ background: '#0f1f3d', padding: '80px 24px' }}>
+      <section style={{ background: '#3F4F26', padding: '80px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '12px' }}>
             <span style={{
-              border: '1px solid rgba(16,185,129,0.4)', color: '#10b981',
+              border: '1px solid rgba(122,139,78,0.4)', color: '#7A8B4E',
               fontSize: '11px', letterSpacing: '3px', padding: '5px 18px', borderRadius: '20px'
             }}>
               HARU EXCLUSIVE · AI 비서실
@@ -569,7 +569,7 @@ export function LandingPage() {
           </div>
           <h2 style={{
             textAlign: 'center', fontSize: 'clamp(26px,5vw,44px)',
-            fontWeight: 800, color: '#FAF9F6', margin: '12px 0 8px', letterSpacing: '-0.5px'
+            fontWeight: 800, color: '#F5F0E8', margin: '12px 0 8px', letterSpacing: '-0.5px'
           }}>
             🪶 HARU의 날개
           </h2>
@@ -579,7 +579,7 @@ export function LandingPage() {
             maxWidth: '640px', margin: '0 auto 56px',
           }}>
             일기를 넘어, 매일 다른 도움을 받는<br />
-            <strong style={{ color: '#10b981', fontWeight: 700 }}>8가지 AI 비서</strong>가 함께합니다
+            <strong style={{ color: '#7A8B4E', fontWeight: 700 }}>8가지 AI 비서</strong>가 함께합니다
           </p>
           <div className="agents-8" style={{
             display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px',
@@ -588,7 +588,7 @@ export function LandingPage() {
               { emoji: '🔮', title: 'HARU예언',     sub: 'DAILY ORACLE',  desc: '오늘의 한 줄, 차분히 건네드려요.',          color: '#a78bfa' },
               { emoji: '⚖️', title: '하루LAW',      sub: 'LAW · 판례',    desc: '법령·판례를 쉬운 말로 풀어드립니다.',        color: '#f59e0b' },
               { emoji: '📖', title: '영어성경',     sub: 'BIBLE',         desc: '매일 한 구절, 천천히 읽어드려요.',          color: '#38bdf8' },
-              { emoji: '🌐', title: '영어일기',     sub: 'EN DIARY',      desc: '오늘의 한국어를 자연스러운 영문으로.',       color: '#10b981' },
+              { emoji: '🌐', title: '영어일기',     sub: 'EN DIARY',      desc: '오늘의 한국어를 자연스러운 영문으로.',       color: '#7A8B4E' },
               { emoji: '📥', title: 'SNS가져오기',  sub: 'IMPORT',        desc: '흩어진 글을 한 곳으로 모아드립니다.',        color: '#ec4899' },
               { emoji: '📈', title: 'HARU주식',     sub: 'MARKET',        desc: '관심 종목과 시장 흐름을 차분히.',           color: '#22d3ee' },
               { emoji: '🌿', title: '원기충전소',   sub: 'RECOVERY',      desc: '오늘 컨디션, 작은 회복 루틴을 추천해요.',    color: '#84cc16' },
@@ -615,7 +615,7 @@ export function LandingPage() {
                   {a.sub}
                 </span>
                 <h3 style={{
-                  fontSize: '18px', fontWeight: 800, color: '#FAF9F6',
+                  fontSize: '18px', fontWeight: 800, color: '#F5F0E8',
                   margin: '10px 0 8px',
                 }}>
                   {a.title}
@@ -635,15 +635,15 @@ export function LandingPage() {
       {/* ══════════════════════════════
           섹션 5-2: 구독 요금 — LIGHT/PREMIUM + 7일 무료 체험
       ══════════════════════════════ */}
-      <section style={{ background: '#f0f4ff', padding: '72px 24px' }}>
+      <section style={{ background: '#EDE8DC', padding: '72px 24px' }}>
         <div style={{ maxWidth: '760px', margin: '0 auto', textAlign: 'center' }}>
           {/* 7일 무료 체험 배너 */}
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: '10px',
-            background: '#10b981', color: '#fff',
+            background: '#7A8B4E', color: '#fff',
             borderRadius: '999px', padding: '8px 20px',
             fontSize: '13px', fontWeight: 700, letterSpacing: '0.3px',
-            boxShadow: '0 8px 24px -8px rgba(16,185,129,0.55)',
+            boxShadow: '0 8px 24px -8px rgba(122,139,78,0.55)',
             marginBottom: '18px',
           }}>
             <span style={{ fontSize: '14px' }}>🎁</span>
@@ -653,7 +653,7 @@ export function LandingPage() {
             </span>
           </div>
 
-          <h2 style={{ fontSize: 'clamp(22px,4vw,32px)', fontWeight: 800, color: '#1A3C6E', marginBottom: '8px' }}>
+          <h2 style={{ fontSize: 'clamp(22px,4vw,32px)', fontWeight: 800, color: '#4A5A2C', marginBottom: '8px' }}>
             구독 요금 안내
           </h2>
           <p style={{ color: '#666', fontSize: '16px', marginBottom: '40px' }}>
@@ -678,16 +678,16 @@ export function LandingPage() {
             ].map((p) => (
               <div key={p.plan} style={{
                 flex: '1 1 240px', maxWidth: '320px', position: 'relative',
-                background: p.highlight ? '#1A3C6E' : '#fff',
-                border: p.highlight ? 'none' : '2px solid #e0e7ff',
+                background: p.highlight ? '#4A5A2C' : '#fff',
+                border: p.highlight ? 'none' : '2px solid #E5DFD0',
                 borderRadius: '20px', padding: '36px 28px',
-                boxShadow: p.highlight ? '0 12px 40px rgba(26,60,110,0.25)' : '0 4px 16px rgba(0,0,0,0.06)',
+                boxShadow: p.highlight ? '0 12px 40px rgba(74,90,44,0.25)' : '0 4px 16px rgba(0,0,0,0.06)',
                 textAlign: 'left',
               }}>
                 {p.badge && (
                   <span style={{
                     position: 'absolute', top: '-12px', right: '20px',
-                    background: '#10b981', color: '#fff',
+                    background: '#7A8B4E', color: '#fff',
                     fontSize: '10px', fontWeight: 800, letterSpacing: '1.5px',
                     padding: '4px 10px', borderRadius: '999px',
                   }}>
@@ -695,13 +695,13 @@ export function LandingPage() {
                   </span>
                 )}
                 <p style={{
-                  color: p.highlight ? '#10b981' : '#1A3C6E',
+                  color: p.highlight ? '#7A8B4E' : '#4A5A2C',
                   fontSize: '13px', fontWeight: 800, margin: '0 0 12px', letterSpacing: '2px',
                 }}>
                   {p.plan}
                 </p>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '6px' }}>
-                  <span style={{ color: p.highlight ? '#FAF9F6' : '#1A3C6E', fontSize: '40px', fontWeight: 800 }}>{p.price}</span>
+                  <span style={{ color: p.highlight ? '#F5F0E8' : '#4A5A2C', fontSize: '40px', fontWeight: 800 }}>{p.price}</span>
                   <span style={{ color: p.highlight ? 'rgba(250,249,246,0.55)' : '#999', fontSize: '14px' }}>{p.period}</span>
                 </div>
                 <p style={{ color: p.highlight ? 'rgba(250,249,246,0.6)' : '#888', fontSize: '12px', margin: '0 0 20px' }}>{p.note}</p>
@@ -716,8 +716,8 @@ export function LandingPage() {
                     }}>
                       <span style={{
                         width: '16px', height: '16px', borderRadius: '50%',
-                        background: p.highlight ? 'rgba(16,185,129,0.25)' : '#d1fae5',
-                        color: '#10b981', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        background: p.highlight ? 'rgba(122,139,78,0.25)' : '#d1fae5',
+                        color: '#7A8B4E', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: '10px', fontWeight: 800, flexShrink: 0,
                       }}>✓</span>
                       {b}
@@ -727,7 +727,7 @@ export function LandingPage() {
                 <button
                   onClick={goToLogin}
                   style={{
-                    background: p.highlight ? '#10b981' : '#1A3C6E',
+                    background: p.highlight ? '#7A8B4E' : '#4A5A2C',
                     color: '#fff', border: 'none',
                     borderRadius: '50px', padding: '12px 0',
                     fontSize: '14px', fontWeight: 700,
@@ -749,7 +749,7 @@ export function LandingPage() {
       {/* ══════════════════════════════
           섹션 6: 하단 CTA
       ══════════════════════════════ */}
-      <section style={{ background: '#1A3C6E', color: '#FAF9F6', padding: '64px 24px' }}>
+      <section style={{ background: '#4A5A2C', color: '#F5F0E8', padding: '64px 24px' }}>
         <div style={{
           maxWidth: '1100px', margin: '0 auto',
           display: 'flex', flexWrap: 'wrap', alignItems: 'center',
@@ -769,7 +769,7 @@ export function LandingPage() {
             <button
               onClick={goToLogin}
               style={{
-                background: '#10b981', color: '#fff', border: 'none',
+                background: '#7A8B4E', color: '#fff', border: 'none',
                 borderRadius: '12px', padding: '16px 40px',
                 fontSize: '18px', fontWeight: 700, cursor: 'pointer',
                 whiteSpace: 'nowrap',
