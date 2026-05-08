@@ -3080,7 +3080,7 @@ export const getDrugInfo = onCall(
       item_name: itemName,
     };
 
-    const url = 'https://apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService06/getDrugPrdtPrmsnDtlInq05';
+    const url = 'https://apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService06/getDrugPrdtPrmsnInq05';
 
     let resp: any;
     try {
@@ -3098,10 +3098,15 @@ export const getDrugInfo = onCall(
             .join('&'),
       });
     } catch (err: any) {
+      // 디버깅: 응답 본문 일부도 함께 로깅 (키는 미포함, 식약처 fault 메시지만)
+      const respDataSnippet = typeof err?.response?.data === 'string'
+        ? err.response.data.slice(0, 300)
+        : JSON.stringify(err?.response?.data || {}).slice(0, 300);
       logger.error('식약처 API 호출 실패:', {
-        message: err?.message,
+        message: err?.message?.slice(0, 200),
         status: err?.response?.status,
         code: err?.code,
+        respDataSnippet,
       });
       throw new HttpsError('internal', '식약처 서버에 연결할 수 없습니다');
     }
@@ -3411,7 +3416,7 @@ export const analyzeDrugPhoto = onCall(
       };
       try {
         const resp = await axios.get(
-          'https://apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService06/getDrugPrdtPrmsnDtlInq05',
+          'https://apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService06/getDrugPrdtPrmsnInq05',
           {
             params,
             timeout: 15000,
