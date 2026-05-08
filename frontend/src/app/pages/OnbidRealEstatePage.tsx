@@ -103,6 +103,16 @@ function todayYmd() {
   return `${d.getFullYear()}${m}${day}`;
 }
 
+function ymdToIso(ymd: string) {
+  if (!ymd || ymd.length !== 8) return '';
+  return `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}`;
+}
+
+function isoToYmd(iso: string) {
+  if (!iso) return '';
+  return iso.replace(/-/g, '').slice(0, 8);
+}
+
 export function OnbidRealEstatePage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -277,24 +287,20 @@ export function OnbidRealEstatePage() {
             />
           </div>
           <div>
-            <div style={labelStyle}>입찰기간 시작 (YYYYMMDD)</div>
+            <div style={labelStyle}>입찰기간 시작</div>
             <input
-              type="text"
-              inputMode="numeric"
-              value={bidPrdYmdStart}
-              onChange={(e) => setBidPrdYmdStart(e.target.value.replace(/[^0-9]/g, '').slice(0, 8))}
-              placeholder="20260508"
+              type="date"
+              value={ymdToIso(bidPrdYmdStart)}
+              onChange={(e) => setBidPrdYmdStart(isoToYmd(e.target.value))}
               style={inputStyle}
             />
           </div>
           <div>
-            <div style={labelStyle}>입찰기간 종료 (YYYYMMDD)</div>
+            <div style={labelStyle}>입찰기간 종료</div>
             <input
-              type="text"
-              inputMode="numeric"
-              value={bidPrdYmdEnd}
-              onChange={(e) => setBidPrdYmdEnd(e.target.value.replace(/[^0-9]/g, '').slice(0, 8))}
-              placeholder="20260608"
+              type="date"
+              value={ymdToIso(bidPrdYmdEnd)}
+              onChange={(e) => setBidPrdYmdEnd(isoToYmd(e.target.value))}
               style={inputStyle}
             />
           </div>
