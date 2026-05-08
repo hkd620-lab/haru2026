@@ -19,7 +19,7 @@ export function NovelStoryPage() {
   };
 
   const handlePrint = () => {
-    document.title = `HARU예언_이야기_${new Date().toISOString().slice(0, 10)}.pdf`;
+    document.title = `HARU미래전망_이야기_${new Date().toISOString().slice(0, 10)}.pdf`;
     window.print();
   };
 
@@ -62,7 +62,7 @@ export function NovelStoryPage() {
           <ChevronLeft size={22} color="#1A3C6E" />
         </button>
         <span style={{ fontSize: 16, fontWeight: 600, color: '#1A3C6E', flex: 1 }}>
-          🔮 HARU예언 단편 이야기
+          🔮 HARU미래전망 단편 이야기
         </span>
         <button
           onClick={handleCopy}
@@ -85,7 +85,7 @@ export function NovelStoryPage() {
             <div style={{ fontSize: 32, marginBottom: 6 }}>🔮</div>
             <p style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>
               사주는 태어난 날을 봅니다.<br />
-              HARU예언은 당신이 살아온 날을 봅니다.
+              HARU미래전망은 당신이 살아온 날을 봅니다.
             </p>
           </div>
           <p

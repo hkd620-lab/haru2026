@@ -73,7 +73,7 @@ export function NovelSynopsisPage() {
   // ── fromRecord=false (자유 창작 모드) 기존 흐름 그대로 ──
   const handleGenerateSynopsisLegacy = async () => {
     setIsGenerating(true);
-    showLoading('🔮 AI가 당신의 미래를 예언하고 있습니다...');
+    showLoading('🔮 AI가 당신의 미래를 전망하고 있습니다...');
     try {
       const functions = getFunctions(undefined, 'asia-northeast3');
       const fn = httpsCallable(functions, 'generateHaruProphecy');
@@ -139,7 +139,7 @@ export function NovelSynopsisPage() {
 
   const handleGenerateSynopsis = async (regenerate: boolean = false) => {
     setIsGenerating(true);
-    showLoading(regenerate ? '🔮 사용자 수정안을 반영해 다시 분석 중...' : '🔮 AI가 당신의 미래를 예언하고 있습니다...');
+    showLoading(regenerate ? '🔮 사용자 수정안을 반영해 다시 분석 중...' : '🔮 AI가 당신의 미래를 전망하고 있습니다...');
     try {
       const functions = getFunctions(undefined, 'asia-northeast3');
 
@@ -237,7 +237,7 @@ export function NovelSynopsisPage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 22 }}>🔮</span>
-            <h1 style={{ fontSize: 18, fontWeight: 700, color: '#1A3C6E', margin: 0 }}>HARU예언</h1>
+            <h1 style={{ fontSize: 18, fontWeight: 700, color: '#1A3C6E', margin: 0 }}>HARU미래전망</h1>
           </div>
         </div>
 
@@ -248,13 +248,13 @@ export function NovelSynopsisPage() {
           }}>
             <div style={{ fontSize: 40, marginBottom: 10 }}>🔮</div>
             <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1A3C6E', marginBottom: 8 }}>
-              AI가 당신의 미래를 예언합니다
+              AI가 당신의 미래를 전망합니다
             </h2>
             <p style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.8, margin: 0 }}>
               설정하신 내용을 바탕으로<br />
               Gemini AI가 당신만의 미래 서사를 생성합니다.<br /><br />
               <strong>"사주는 태어난 날을 봅니다.<br />
-              HARU예언은 당신이 살아온 날을 봅니다."</strong>
+              HARU미래전망은 당신이 살아온 날을 봅니다."</strong>
             </p>
           </div>
         )}
@@ -267,7 +267,7 @@ export function NovelSynopsisPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
               <span style={{ fontSize: 16 }}>🔮</span>
               <h2 style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E', margin: 0 }}>
-                당신의 예언 시놉시스
+                당신의 미래전망 시놉시스
               </h2>
             </div>
             <p style={{
@@ -349,7 +349,7 @@ export function NovelSynopsisPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 22 }}>🔮</span>
           <h1 style={{ fontSize: 18, fontWeight: 700, color: '#1A3C6E', margin: 0 }}>
-            HARU예언 — {synopsisRound}차 시놉시스
+            HARU미래전망 — {synopsisRound}차 시놉시스
           </h1>
         </div>
       </div>

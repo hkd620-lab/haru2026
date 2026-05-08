@@ -10,7 +10,7 @@ import { PageHeaderActions } from '../components/PageHeaderActions';
 type Tab = 'motive' | 'birth' | 'desire' | 'shackle' | 'luck' | 'unluck' | 'narrative' | 'chars' | 'events';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'motive',    label: '예언 모티브', icon: '🔮' },
+  { id: 'motive',    label: '미래전망 모티브', icon: '🔮' },
   { id: 'chars',     label: '인물',   icon: '👥' },
   { id: 'birth',     label: '탄생',   icon: '🌱' },
   { id: 'desire',    label: '욕망',   icon: '🔥' },
@@ -128,7 +128,7 @@ function MotiveTab({ s, upd, onNext }: { s: NovelSettings; upd: (k: keyof NovelS
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <Card>
-        <SectionLabel>🔮 예언 모티브 — 어떤 미래를 예언받고 싶으신가요?</SectionLabel>
+        <SectionLabel>🔮 미래전망 모티브 — 어떤 미래를 전망받고 싶으신가요?</SectionLabel>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {OPTIONS.map(opt => (
             <button
@@ -156,7 +156,7 @@ function MotiveTab({ s, upd, onNext }: { s: NovelSettings; upd: (k: keyof NovelS
           ))}
           {s.motive === 'custom' && (
             <textarea
-              placeholder="예언받고 싶은 상황을 자유롭게 입력하세요..."
+              placeholder="전망받고 싶은 상황을 자유롭게 입력하세요..."
               value={s.motiveCustom || ''}
               onChange={e => upd('motiveCustom', e.target.value)}
               style={{
@@ -1242,7 +1242,7 @@ export function NovelStudio() {
         <div style={{ maxWidth: 640, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 20 }}>🔮</span>
-            <h1 style={{ fontSize: 18, fontWeight: 700, color: '#1A3C6E' }}>HARU예언</h1>
+            <h1 style={{ fontSize: 18, fontWeight: 700, color: '#1A3C6E' }}>HARU미래전망</h1>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button

@@ -808,7 +808,7 @@ export function RecordPage() {
                 }}
               >
                 {category === 'HARU주식관리' ? '📈 HARU주식관리' :
-                 category === 'HARU예언' ? '🔮 HARU예언' :
+                 category === 'HARU예언' ? '🔮 HARU미래전망' :
                  category}
               </button>
             ))}
@@ -1161,7 +1161,7 @@ export function RecordPage() {
             {/* 타이틀 */}
             <div style={{ textAlign: 'center', marginBottom: 16 }}>
               <div style={{ fontSize: 36, marginBottom: 8, lineHeight: 1 }}>🔮</div>
-              <div style={{ fontSize: 20, fontWeight: 500, color: '#1A3C6E', marginBottom: 6 }}>HARU예언</div>
+              <div style={{ fontSize: 20, fontWeight: 500, color: '#1A3C6E', marginBottom: 6 }}>HARU미래전망</div>
               <div style={{ display: 'inline-block', background: '#E6F1FB', borderRadius: 99, padding: '3px 14px', marginBottom: 6 }}>
                 <span style={{ fontSize: 11, color: '#0C447C', fontWeight: 500 }}>사주보다 과학적인 접근</span>
               </div>
@@ -1184,7 +1184,7 @@ export function RecordPage() {
                 한 기록을 선택하거나 합친 기록을 선택하여
               </p>
               <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 7 }}>
-                <span style={{ fontSize: 10, background: '#fff', color: '#1A3C6E', borderRadius: 99, padding: '3px 10px', fontWeight: 500 }}>예언서</span>
+                <span style={{ fontSize: 10, background: '#fff', color: '#1A3C6E', borderRadius: 99, padding: '3px 10px', fontWeight: 500 }}>전망서</span>
                 <span style={{ fontSize: 10, background: 'transparent', color: '#B5D4F4', border: '0.5px solid #378ADD', borderRadius: 99, padding: '3px 10px' }}>나의 미래</span>
                 <span style={{ fontSize: 10, background: 'transparent', color: '#B5D4F4', border: '0.5px solid #378ADD', borderRadius: 99, padding: '3px 10px' }}>자녀의 미래</span>
                 <span style={{ fontSize: 10, background: '#fff', color: '#1A3C6E', borderRadius: 99, padding: '3px 10px', fontWeight: 500 }}>나의 회고록</span>
@@ -1207,7 +1207,7 @@ export function RecordPage() {
                 9가지 나만의 선택으로
               </p>
               <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 7 }}>
-                <span style={{ fontSize: 10, background: '#fff', color: '#065f46', borderRadius: 99, padding: '3px 10px', fontWeight: 500 }}>예언서</span>
+                <span style={{ fontSize: 10, background: '#fff', color: '#065f46', borderRadius: 99, padding: '3px 10px', fontWeight: 500 }}>전망서</span>
                 <span style={{ fontSize: 10, background: 'transparent', color: '#9FE1CB', border: '0.5px solid #5DCAA5', borderRadius: 99, padding: '3px 10px' }}>나의 미래</span>
                 <span style={{ fontSize: 10, background: 'transparent', color: '#9FE1CB', border: '0.5px solid #5DCAA5', borderRadius: 99, padding: '3px 10px' }}>자식의 미래</span>
                 <span style={{ fontSize: 10, background: '#fff', color: '#065f46', borderRadius: 99, padding: '3px 10px', fontWeight: 500 }}>창작소설</span>

@@ -61,7 +61,7 @@ export function HomePage() {
     state?: { category?: string; format?: string };
     accent?: string;
   }[] = [
-    { icon: "🔮", label: "HARU예언", path: "/prophecy-hub" },
+    { icon: "🔮", label: "HARU미래전망", path: "/prophecy-hub" },
     { icon: "⚖️", label: "하루LAW", path: "/record", state: { category: "하루LAW" } },
     { icon: "📖", label: "영어성경", path: "/bible" },
     { icon: "✏️", label: "영어일기", path: "/diary-learn" },

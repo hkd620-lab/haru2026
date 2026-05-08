@@ -1569,7 +1569,7 @@ export function SayuModal({
                 onClick={() => {
                   const recordContent = editedContent?.trim() || content?.trim() || '';
                   if (!recordContent) {
-                    toast.error('예언할 기록 내용이 없습니다.');
+                    toast.error('전망할 기록 내용이 없습니다.');
                     return;
                   }
                   onClose();
@@ -1597,7 +1597,7 @@ export function SayuModal({
                   cursor: 'pointer',
                 }}
               >
-                🔮 이 기록으로 예언하기
+                🔮 이 기록으로 미래전망
               </button>
               <p style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', marginTop: 6 }}>
                 AI가 이 기록을 분석해 미래 서사를 만들어줍니다

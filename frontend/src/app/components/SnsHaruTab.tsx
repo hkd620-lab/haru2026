@@ -279,7 +279,7 @@ export function SnsHaruTab() {
   };
 
   const handleSendToProphecy = (record: SnsRecord) => {
-    if (!requirePremium('HARU예언으로 보내기')) return;
+    if (!requirePremium('HARU미래전망으로 보내기')) return;
     const date = formatDate(record.timestamp, 'iso');
     const incomingRecord = {
       id: record.id,
@@ -554,7 +554,7 @@ function ResultCard({
           {converting ? '변환 중...' : `✏️ AI 일기${!isPremium ? ' 🔒' : ''}`}
         </button>
         <button type="button" onClick={onProphecy} style={smallBtnStyle(isPremium)}>
-          🔮 HARU예언{!isPremium && ' 🔒'}
+          🔮 HARU미래전망{!isPremium && ' 🔒'}
         </button>
         <button type="button" onClick={onPdf} style={smallBtnStyle(isPremium)}>
           📄 PDF{!isPremium && ' 🔒'}

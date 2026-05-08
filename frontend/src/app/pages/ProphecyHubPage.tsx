@@ -33,10 +33,10 @@ export function ProphecyHubPage() {
       {/* 헤더 */}
       <div className="mb-8">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight" style={{ color: '#1A3C6E' }}>
-          🔮 HARU 예언
+          🔮 HARU 미래전망
         </h1>
         <p className="text-sm mt-1.5" style={{ color: '#666' }}>
-          어떤 방식으로 예언을 시작할까요?
+          어떤 방식으로 미래전망을 시작할까요?
         </p>
       </div>
 
@@ -53,9 +53,9 @@ export function ProphecyHubPage() {
           }}
         >
           <div className="text-3xl mb-3">📖</div>
-          <h2 className="text-lg font-bold mb-1.5">내 기록으로 예언</h2>
+          <h2 className="text-lg font-bold mb-1.5">내 기록으로 미래전망</h2>
           <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.8)' }}>
-            나의 기록을 AI가 분석하여 예언 이야기를 만듭니다
+            나의 기록을 AI가 분석하여 미래전망 이야기를 만듭니다
           </p>
         </button>
 
@@ -70,9 +70,9 @@ export function ProphecyHubPage() {
           }}
         >
           <div className="text-3xl mb-3">🌐</div>
-          <h2 className="text-lg font-bold mb-1.5">사전설정으로 미래 예언</h2>
+          <h2 className="text-lg font-bold mb-1.5">사전설정으로 미래전망</h2>
           <p className="text-sm leading-relaxed mb-3" style={{ color: 'rgba(255,255,255,0.8)' }}>
-            미래인재상 예언 등 — 곧 만나요!
+            미래인재상 전망 등 — 곧 만나요!
           </p>
           <span
             className="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full"
@@ -99,7 +99,7 @@ export function ProphecyHubPage() {
           <div className="text-3xl mb-3">✍️</div>
           <h2 className="text-lg font-bold mb-1.5">나도 작가</h2>
           <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.8)' }}>
-            처음부터 직접 설정하여 나만의 예언 이야기를 만듭니다
+            처음부터 직접 설정하여 나만의 미래전망 이야기를 만듭니다
           </p>
         </button>
       </div>

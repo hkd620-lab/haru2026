@@ -594,7 +594,7 @@ export function LandingPage() {
             display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px',
           }}>
             {[
-              { emoji: '🔮', title: 'HARU예언',     sub: 'DAILY ORACLE',  desc: '오늘의 한 줄 기록이 모여 당신의 미래를 예언합니다.',                              color: '#a78bfa' },
+              { emoji: '🔮', title: 'HARU미래전망', sub: 'DAILY ORACLE',  desc: '오늘의 한 줄 기록이 모여 당신의 미래를 전망합니다.',                              color: '#a78bfa' },
               { emoji: '⚖️', title: '하루LAW',      sub: 'LAW · 판례',    desc: '법령·판례를 정부 데이터 그대로, 풀이는 AI가 쉬운 말로 풀어드립니다. 환각 제로.', color: '#f59e0b' },
               { emoji: '📖', title: '영어성경',     sub: 'BIBLE',         desc: '영어·영한·한영 듣기·말하기·해석·단어·문법을 한 번에 — 영어성경 학습의 결정판', color: '#38bdf8' },
               { emoji: '🌐', title: '영어일기',     sub: 'EN DIARY',      desc: '내가 기록한 일기와 에세이로 자연스러운 영작 학습',                                color: '#7A8B4E' },

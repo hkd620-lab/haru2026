@@ -176,8 +176,8 @@ const RECORDS: RecordItem[] = [
 
 const AGENTS: Agent[] = [
   {
-    label: 'HARU예언',
-    sub: '오늘의 한 줄 기록이 모여 당신의 미래를 예언합니다.',
+    label: 'HARU미래전망',
+    sub: '오늘의 한 줄 기록이 모여 당신의 미래를 전망합니다.',
     tag: 'SAYU · 감성',
     variant: 'lilac',
     stroke: '#5A4E7A',

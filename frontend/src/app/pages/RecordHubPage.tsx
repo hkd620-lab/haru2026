@@ -23,7 +23,7 @@ export function RecordHubPage() {
     { label: '메모', format: '메모' },
   ];
   const knowledgeCards: { icon: string; label: string; desc?: string; path: string; isNew?: boolean; accent?: string; state?: { category?: string; format?: string } }[] = [
-    { icon: '🔮', label: 'HARU예언', path: '/prophecy-hub' },
+    { icon: '🔮', label: 'HARU미래전망', path: '/prophecy-hub' },
     { icon: '⚖️', label: '하루LAW', path: '/record', state: { category: '하루LAW' } },
     { icon: '📖', label: '영어성경', path: '/bible' },
     { icon: '✏️', label: '영어일기', path: '/diary-learn' },

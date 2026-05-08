@@ -710,7 +710,7 @@ export function RecordProphecyPage() {
                 </div>
 
                 <button style={styles.btnPrimary} onClick={() => setStep('items')}>
-                  ✅ 항목 확인 완료 — 예언 설정으로
+                  ✅ 항목 확인 완료 — 미래전망 설정으로
                 </button>
                 <button style={styles.btnSecondary} onClick={() => {
                   setExtractedChars(''); setExtractedDesire(''); setExtractedShackle(''); setExtractedEvents('');
