@@ -33,6 +33,8 @@ const GOOGLE_CLOUD_API_KEY_SECRET = defineSecret('GOOGLE_CLOUD_API_KEY');
 const OPENAI_API_KEY_SECRET = defineSecret('OPENAI_API_KEY');
 const COLLECTOR_SECRET_KEY = defineSecret('COLLECTOR_SECRET_KEY');
 const ONBID_API_KEY_SECRET = defineSecret('ONBID_API_KEY');
+const DRUG_API_KEY_SECRET = defineSecret('DRUG_API_KEY');
+const HIRA_API_KEY_SECRET = defineSecret('HIRA_API_KEY');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
 
 // Storage 버킷
@@ -3045,6 +3047,235 @@ export const getOnbidRealEstateList = onCall(
       resultCode,
       resultMsg,
       disclaimer: '본 정보는 한국자산관리공사 온비드 공공데이터를 활용한 참고용이며, 실제 입찰은 온비드 공식사이트(onbid.co.kr)에서 확인하세요.',
+    };
+  }
+);
+
+// ===== 💊 식약처 의약품 제품 허가정보 조회 (SAYU건강관리 - 약봉지 보고 약정 얻기) =====
+// 출처: 식품의약품안전처 / Endpoint: apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService06
+export const getDrugInfo = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [DRUG_API_KEY_SECRET],
+    timeoutSeconds: 30,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다');
+    }
+
+    const d = request.data || {};
+    const itemName = String(d.itemName ?? '').trim();
+    if (!itemName) {
+      throw new HttpsError('invalid-argument', '약 이름을 입력하세요');
+    }
+    const pageNo = Math.max(1, parseInt(String(d.pageNo ?? '1'), 10) || 1);
+    const numOfRows = Math.min(20, Math.max(1, parseInt(String(d.numOfRows ?? '10'), 10) || 10));
+
+    const params: Record<string, string> = {
+      serviceKey: DRUG_API_KEY_SECRET.value(),
+      pageNo: String(pageNo),
+      numOfRows: String(numOfRows),
+      type: 'json',
+      item_name: itemName,
+    };
+
+    const url = 'https://apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService06/getDrugPrdtPrmsnDtlInq05';
+
+    let resp: any;
+    try {
+      resp = await axios.get(url, {
+        params,
+        timeout: 15000,
+        headers: { Accept: 'application/json' },
+        paramsSerializer: (p) =>
+          Object.entries(p)
+            .map(([k, v]) =>
+              k === 'serviceKey'
+                ? `${k}=${encodeURIComponent(decodeURIComponent(String(v)))}`
+                : `${k}=${encodeURIComponent(String(v))}`
+            )
+            .join('&'),
+      });
+    } catch (err: any) {
+      logger.error('식약처 API 호출 실패:', {
+        message: err?.message,
+        status: err?.response?.status,
+        code: err?.code,
+      });
+      throw new HttpsError('internal', '식약처 서버에 연결할 수 없습니다');
+    }
+
+    const data = resp?.data;
+    const root = data?.response ?? data;
+    const header = root?.header;
+    const body = root?.body;
+    const resultCode = header?.resultCode ?? '';
+    const resultMsg = header?.resultMsg ?? '';
+
+    if (resultCode && resultCode !== '00' && resultCode !== '0') {
+      logger.warn('식약처 API 비정상 응답:', { resultCode, resultMsg });
+      if (resultCode === '03') {
+        return {
+          success: true,
+          items: [],
+          totalCount: 0,
+          pageNo,
+          numOfRows,
+          resultCode,
+          resultMsg,
+        };
+      }
+      throw new HttpsError('internal', `식약처 API 오류 (${resultCode}): ${resultMsg}`);
+    }
+
+    const rawItems = body?.items;
+    let items: any[] = [];
+    if (Array.isArray(rawItems)) {
+      items = rawItems;
+    } else if (rawItems?.item) {
+      items = Array.isArray(rawItems.item) ? rawItems.item : [rawItems.item];
+    }
+
+    return {
+      success: true,
+      items,
+      totalCount: parseInt(String(body?.totalCount ?? '0'), 10) || 0,
+      pageNo: parseInt(String(body?.pageNo ?? pageNo), 10) || pageNo,
+      numOfRows: parseInt(String(body?.numOfRows ?? numOfRows), 10) || numOfRows,
+      resultCode,
+      resultMsg,
+      disclaimer: '본 정보는 식품의약품안전처 공공데이터를 활용한 참고용이며, 의료 행위·처방을 대체하지 않습니다.',
+    };
+  }
+);
+
+// ===== 🏥 심평원 의료기관별 정보 조회 (SAYU건강관리 - 동네병원정보) =====
+// 출처: 건강보험심사평가원 / Endpoint: apis.data.go.kr/B551182/hospInfoServicev2
+const HIRA_SIDO_NM_TO_CD: Record<string, string> = {
+  '서울특별시': '110000',
+  '부산광역시': '210000',
+  '대구광역시': '220000',
+  '인천광역시': '230000',
+  '광주광역시': '240000',
+  '대전광역시': '250000',
+  '울산광역시': '260000',
+  '세종특별자치시': '290000',
+  '경기도': '310000',
+  '강원특별자치도': '320000',
+  '충청북도': '330000',
+  '충청남도': '340000',
+  '전북특별자치도': '350000',
+  '전라남도': '360000',
+  '경상북도': '370000',
+  '경상남도': '380000',
+  '제주특별자치도': '390000',
+};
+
+export const getHospitalList = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [HIRA_API_KEY_SECRET],
+    timeoutSeconds: 30,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다');
+    }
+
+    const d = request.data || {};
+    const pageNo = Math.max(1, parseInt(String(d.pageNo ?? '1'), 10) || 1);
+    const numOfRows = Math.min(50, Math.max(1, parseInt(String(d.numOfRows ?? '10'), 10) || 10));
+
+    const sidoCdNm = String(d.sidoCdNm ?? '').trim();
+    const sgguCdNm = String(d.sgguCdNm ?? '').trim();
+    const yadmNm = String(d.yadmNm ?? '').trim();
+    const dgsbjtCd = String(d.dgsbjtCd ?? '').trim();
+
+    if (!sidoCdNm && !sgguCdNm && !yadmNm) {
+      throw new HttpsError('invalid-argument', '시·도, 시·군·구, 병원명 중 하나는 필요합니다');
+    }
+
+    const params: Record<string, string> = {
+      ServiceKey: HIRA_API_KEY_SECRET.value(),
+      pageNo: String(pageNo),
+      numOfRows: String(numOfRows),
+      _type: 'json',
+    };
+
+    if (sidoCdNm && HIRA_SIDO_NM_TO_CD[sidoCdNm]) {
+      params.sidoCd = HIRA_SIDO_NM_TO_CD[sidoCdNm];
+    }
+    if (sgguCdNm) params.sgguCdNm = sgguCdNm;
+    if (yadmNm) params.yadmNm = yadmNm;
+    if (dgsbjtCd) params.dgsbjtCd = dgsbjtCd;
+
+    const url = 'https://apis.data.go.kr/B551182/hospInfoServicev2/getHospBasisList';
+
+    let resp: any;
+    try {
+      resp = await axios.get(url, {
+        params,
+        timeout: 15000,
+        headers: { Accept: 'application/json' },
+        paramsSerializer: (p) =>
+          Object.entries(p)
+            .map(([k, v]) =>
+              k === 'ServiceKey'
+                ? `${k}=${encodeURIComponent(decodeURIComponent(String(v)))}`
+                : `${k}=${encodeURIComponent(String(v))}`
+            )
+            .join('&'),
+      });
+    } catch (err: any) {
+      logger.error('심평원 API 호출 실패:', {
+        message: err?.message,
+        status: err?.response?.status,
+        code: err?.code,
+      });
+      throw new HttpsError('internal', '심평원 서버에 연결할 수 없습니다');
+    }
+
+    const data = resp?.data;
+    const root = data?.response ?? data;
+    const header = root?.header;
+    const body = root?.body;
+    const resultCode = header?.resultCode ?? '';
+    const resultMsg = header?.resultMsg ?? '';
+
+    if (resultCode && resultCode !== '00' && resultCode !== '0') {
+      logger.warn('심평원 API 비정상 응답:', { resultCode, resultMsg });
+      if (resultCode === '03') {
+        return {
+          success: true,
+          items: [],
+          totalCount: 0,
+          pageNo,
+          numOfRows,
+          resultCode,
+          resultMsg,
+        };
+      }
+      throw new HttpsError('internal', `심평원 API 오류 (${resultCode}): ${resultMsg}`);
+    }
+
+    const rawItems = body?.items;
+    let items: any[] = [];
+    if (Array.isArray(rawItems)) {
+      items = rawItems;
+    } else if (rawItems?.item) {
+      items = Array.isArray(rawItems.item) ? rawItems.item : [rawItems.item];
+    }
+
+    return {
+      success: true,
+      items,
+      totalCount: parseInt(String(body?.totalCount ?? '0'), 10) || 0,
+      pageNo: parseInt(String(body?.pageNo ?? pageNo), 10) || pageNo,
+      numOfRows: parseInt(String(body?.numOfRows ?? numOfRows), 10) || numOfRows,
+      resultCode,
+      resultMsg,
+      disclaimer: '본 정보는 건강보험심사평가원 공공데이터를 활용한 참고용이며, 특정 기관·의사의 평가나 추천이 아닙니다.',
     };
   }
 );

@@ -302,6 +302,21 @@ const AGENTS: Agent[] = [
       </>
     ),
   },
+  {
+    label: 'SAYU건강관리',
+    sub: 'EBS 명의 · 약봉지 약정 · 동네병원까지 — 공공데이터로 건강을 한곳에.',
+    tag: 'CARE · 건강',
+    variant: 'green',
+    stroke: '#4A5A2C',
+    path: '/sayu-health',
+    beta: true,
+    icon: (
+      <>
+        <path d="M12 21s-8-5-8-12a5 5 0 019-3 5 5 0 019 3c0 7-8 12-8 12z" />
+        <path d="M9 12h2v-2h2v2h2v2h-2v2h-2v-2H9z" />
+      </>
+    ),
+  },
 ];
 
 const agentBg = {

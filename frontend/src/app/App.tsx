@@ -39,6 +39,10 @@ import { ProphecyHubPage } from './pages/ProphecyHubPage';
 import { RecordHubPage } from './pages/RecordHubPage';
 import { SnsRecordsPage } from './pages/SnsRecordsPage';
 import { OnbidRealEstatePage } from './pages/OnbidRealEstatePage';
+import { SayuHealthHubPage } from './pages/SayuHealthHubPage';
+import { SayuHealthEbsPage } from './pages/SayuHealthEbsPage';
+import { SayuHealthDrugPage } from './pages/SayuHealthDrugPage';
+import { SayuHealthHospitalPage } from './pages/SayuHealthHospitalPage';
 import { BottomNav } from './components/BottomNav';
 import { Footer } from './components/Footer';
 import { TodayQuote } from './components/TodayQuote';
@@ -140,6 +144,12 @@ function App() {
               <Route path="/record-hub" element={<HomeOrLanding />} />
               <Route path="/sns-records" element={<SnsRecordsPage />} />
               <Route path="/onbid-realestate" element={<OnbidRealEstatePage />} />
+
+              {/* SAYU건강관리 (허브 + 3개 하위) */}
+              <Route path="/sayu-health" element={<SayuHealthHubPage />} />
+              <Route path="/sayu-health/ebs" element={<SayuHealthEbsPage />} />
+              <Route path="/sayu-health/drug" element={<SayuHealthDrugPage />} />
+              <Route path="/sayu-health/hospital" element={<SayuHealthHospitalPage />} />
 
               {/* 영어성경학습 */}
               <Route path="/bible" element={<BiblePage />} />
