@@ -512,6 +512,32 @@ export function OnbidRealEstatePage() {
                       📋 물건관리번호 {cltrMngNo}
                     </div>
                   )}
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      marginTop: 10,
+                      padding: '6px 12px',
+                      borderRadius: 999,
+                      background: '#5A4E7A',
+                      color: '#fff',
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
+                  >
+                    🔗 번호 복사 + 온비드 열기
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: '#888780',
+                      marginTop: 8,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    번호가 복사됩니다. 온비드 검색창에 붙여넣기(⌘V) 하세요.
+                  </div>
                 </div>
               </div>
             </button>
