@@ -78,7 +78,7 @@ export function LandingPage() {
   const goToLogin = () => navigate('/login');
 
   return (
-    <div style={{ fontFamily: 'inherit', background: '#F5F0E8', overflowX: 'hidden' }}>
+    <div className="lp-page" style={{ fontFamily: 'inherit', background: '#F5F0E8', overflowX: 'hidden' }}>
 
       <style>{`
         @media (max-width: 640px) {
@@ -749,14 +749,14 @@ export function LandingPage() {
       {/* ══════════════════════════════
           섹션 6: 하단 CTA
       ══════════════════════════════ */}
-      <section style={{ background: '#4A5A2C', color: '#F5F0E8', padding: '64px 24px' }}>
-        <div style={{
+      <section className="lp-cta" style={{ background: '#4A5A2C', color: '#F5F0E8', padding: '64px 24px' }}>
+        <div className="lp-cta-wrap" style={{
           maxWidth: '1100px', margin: '0 auto',
           display: 'flex', flexWrap: 'wrap', alignItems: 'center',
           justifyContent: 'space-between', gap: '32px',
         }}>
           {/* 왼쪽 텍스트 */}
-          <div style={{ flex: '1 1 280px' }}>
+          <div className="lp-cta-text" style={{ flex: '1 1 280px' }}>
             <h2 style={{ fontSize: 'clamp(22px, 4vw, 34px)', fontWeight: 800, marginBottom: '12px' }}>
               지금 바로 하루를 기록해보세요
             </h2>
@@ -765,7 +765,7 @@ export function LandingPage() {
             </p>
           </div>
           {/* 오른쪽 버튼 */}
-          <div>
+          <div className="lp-cta-btn">
             <button
               onClick={goToLogin}
               style={{
@@ -781,20 +781,44 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* 모바일·태블릿 반응형 — format-grid / agents-8 */}
+      {/* 반응형: 모바일 / 태블릿 / 데스크톱 3-tier */}
       <style>{`
-        @media (max-width: 640px) {
-          .format-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
-          }
-          .agents-8 {
-            grid-template-columns: repeat(2, 1fr) !important;
-          }
-        }
+        /* ─── 태블릿 (641-1024px) ─── */
         @media (min-width: 641px) and (max-width: 1024px) {
-          .agents-8 {
-            grid-template-columns: repeat(2, 1fr) !important;
+          .agents-8     { grid-template-columns: repeat(2, 1fr) !important; }
+          .format-grid  { grid-template-columns: repeat(5, 1fr) !important; }
+        }
+
+        /* ─── 모바일 (≤640px) ─── */
+        @media (max-width: 640px) {
+          /* 그리드: 2열 */
+          .format-grid  { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+          .agents-8     { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+
+          /* Hero 제약 해제 + 패딩 축소 (노치 영역 보호 유지) */
+          .lp-page .hero-section {
+            max-height: none !important;
+            overflow: visible !important;
+            padding: 16px 18px 32px !important;
+            padding-top: max(16px, env(safe-area-inset-top, 16px)) !important;
           }
+
+          /* 모든 일반 섹션 패딩 축소 (Hero·CTA·안내 배너 제외) */
+          .lp-page > section:not(.hero-section):not(.lp-cta) {
+            padding-top: 48px !important;
+            padding-bottom: 48px !important;
+            padding-left: 18px !important;
+            padding-right: 18px !important;
+          }
+
+          /* 하단 CTA: 텍스트 + 버튼 가운데 세로 배치 */
+          .lp-cta { padding: 48px 18px !important; }
+          .lp-cta-wrap { flex-direction: column !important; text-align: center !important; gap: 20px !important; }
+          .lp-cta-btn { width: 100% !important; }
+          .lp-cta-btn button { width: 100% !important; padding: 14px 0 !important; font-size: 16px !important; }
+
+          /* 박사 인용 / SAYU / 기능 카드 패딩 미세 축소 */
+          .lp-page blockquote { font-size: 13px !important; padding-left: 10px !important; }
         }
       `}</style>
 
