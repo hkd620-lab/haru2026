@@ -3200,13 +3200,13 @@ export const getDrugInfo = onCall(
 );
 
 // ===== 🏥 심평원 병원정보서비스 조회 (SAYU건강관리 - 동네병원정보) =====
-// 출처: 건강보험심사평가원 / 공식 가이드(병원정보서비스 v1.2, 2021-06-16) 명시 endpoint
-// Service: hospInfoService1, Operation: getHospBasisList1 (가이드 §4.1, 9페이지)
+// 출처: 건강보험심사평가원
+// 실제 살아있는 endpoint: hospInfoServicev2/getHospBasisList (Cloud Logs 401 검증)
+// 가이드 v1.2(2021)의 hospInfoService1은 폐지된 것으로 확인 (HTTP 500 응답)
 const HIRA_CANDIDATES: { url: string }[] = [
-  { url: 'https://apis.data.go.kr/B551182/hospInfoService1/getHospBasisList1' },
-  { url: 'http://apis.data.go.kr/B551182/hospInfoService1/getHospBasisList1' },
-  { url: 'https://apis.data.go.kr/B551182/hospInfoService2/getHospBasisList2' },
   { url: 'https://apis.data.go.kr/B551182/hospInfoServicev2/getHospBasisList' },
+  { url: 'http://apis.data.go.kr/B551182/hospInfoServicev2/getHospBasisList' },
+  { url: 'https://apis.data.go.kr/B551182/hospInfoService1/getHospBasisList1' },
 ];
 let _hospitalApiUrlCache: string | null = null;
 
@@ -3225,6 +3225,10 @@ function encodePublicDataParam(key: string, value: unknown): string {
 
 function getPublicDataErrorKind(resultCode: string, resultMsg: string, snippet: string): string | null {
   const text = `${resultCode} ${resultMsg} ${snippet}`.toUpperCase();
+  // 평문 "UNAUTHORIZED"도 인증 거부로 처리 (B551182의 401 응답 패턴)
+  if (text.includes('UNAUTHORIZED')) {
+    return 'SERVICE_KEY_IS_NOT_REGISTERED_ERROR';
+  }
   const knownErrors = [
     'SERVICE_KEY_IS_NOT_REGISTERED_ERROR',
     'LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR',
