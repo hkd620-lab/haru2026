@@ -3202,33 +3202,36 @@ export const getDrugInfo = onCall(
 // ===== 🏥 심평원 의료기관별 상세정보 조회 (SAYU건강관리 - 동네병원정보) =====
 // 출처: 건강보험심사평가원 / Base: apis.data.go.kr/B551182/MadmDtlInfoService2.7
 // (사용자 제공 정확 endpoint, 점 표기 변형도 폴백 시도)
-const HIRA_API_BASES = [
-  'https://apis.data.go.kr/B551182/MadmDtlInfoService2.7',
-  'https://apis.data.go.kr/B551182/MadmDtlInfoService2_7',
-  'https://apis.data.go.kr/B551182/MadmDtlInfoService27',
-];
-const HIRA_API_OPS = [
-  '/getMadmDtlList27',
-  '/getMadmDtlInfoList27',
-  '/getMadmDtlList',
-  '/getMadmList27',
-  '/getMadmList',
+// 후보 1: 병원정보서비스(검색용) - 같은 심평원(B551182) 키로 동작 가능성
+// 후보 2: 의료기관별 상세정보(ykiho 조회용) - 사용자가 명시한 base
+const HIRA_CANDIDATES: { url: string }[] = [
+  // 검색용 우선 (시·도/시·군·구로 찾기 가능)
+  { url: 'https://apis.data.go.kr/B551182/hospInfoServicev2/getHospBasisList' },
+  { url: 'https://apis.data.go.kr/B551182/hospInfoServicev2/getMadmList' },
+  // 상세정보 서비스 변형들
+  { url: 'https://apis.data.go.kr/B551182/MadmDtlInfoService2.7/getDtlInfo2.7' },
+  { url: 'https://apis.data.go.kr/B551182/MadmDtlInfoService2_7/getDtlInfo2_7' },
+  { url: 'https://apis.data.go.kr/B551182/MadmDtlInfoService27/getDtlInfo27' },
+  { url: 'https://apis.data.go.kr/B551182/MadmDtlInfoService2.7/getFacilityInfo2.7' },
+  { url: 'https://apis.data.go.kr/B551182/MadmDtlInfoService27/getFacilityInfo27' },
 ];
 let _hospitalApiUrlCache: string | null = null;
 
 async function callHospitalApi(params: Record<string, string>): Promise<any> {
   const tryUrls = _hospitalApiUrlCache
     ? [_hospitalApiUrlCache]
-    : HIRA_API_BASES.flatMap((base) => HIRA_API_OPS.map((op) => base + op));
+    : HIRA_CANDIDATES.map((c) => c.url);
 
   let lastError: any = null;
   let lastSnippet = '';
   let lastStatus = 0;
+  const attempts: { url: string; status: number; snippet: string }[] = [];
+
   for (const url of tryUrls) {
     try {
       const resp = await axios.get(url, {
         params,
-        timeout: 12000,
+        timeout: 10000,
         headers: { Accept: 'application/json' },
         paramsSerializer: (p) =>
           Object.entries(p)
@@ -3240,20 +3243,33 @@ async function callHospitalApi(params: Record<string, string>): Promise<any> {
             .join('&'),
       });
       const root = resp?.data?.response ?? resp?.data;
-      if (root && (root.body || root.header)) {
+      const header = root?.header;
+      const resultCode = header?.resultCode ?? '';
+      // resultCode가 정상(00 또는 0)이면 endpoint 살아있음
+      if (root && (root.body || root.header) && (resultCode === '00' || resultCode === '0' || resultCode === '')) {
         if (!_hospitalApiUrlCache) {
           _hospitalApiUrlCache = url;
-          logger.info('심평원 endpoint 확정:', { op: url.split('/').slice(-2).join('/') });
+          logger.info('심평원 endpoint 확정:', { url: url.replace('https://apis.data.go.kr/B551182/', '') });
         }
         return resp;
       }
+      // 200이지만 비정상 응답 → 다음 후보로
+      attempts.push({
+        url: url.replace('https://apis.data.go.kr/B551182/', ''),
+        status: 200,
+        snippet: `resultCode=${resultCode} ${header?.resultMsg || ''}`.slice(0, 100),
+      });
     } catch (err: any) {
       lastError = err;
       lastStatus = err?.response?.status || 0;
       lastSnippet = typeof err?.response?.data === 'string'
-        ? err.response.data.slice(0, 200)
-        : JSON.stringify(err?.response?.data || {}).slice(0, 200);
-      if (lastStatus === 404 || /not found/i.test(lastSnippet)) continue;
+        ? err.response.data.slice(0, 500)
+        : JSON.stringify(err?.response?.data || {}).slice(0, 500);
+      attempts.push({
+        url: url.replace('https://apis.data.go.kr/B551182/', ''),
+        status: lastStatus,
+        snippet: lastSnippet.slice(0, 100),
+      });
       continue;
     }
   }
@@ -3262,6 +3278,7 @@ async function callHospitalApi(params: Record<string, string>): Promise<any> {
     lastStatus,
     lastSnippet,
     triedCount: tryUrls.length,
+    attempts,
   });
   throw lastError || new Error('심평원 API endpoint를 찾을 수 없습니다');
 }
