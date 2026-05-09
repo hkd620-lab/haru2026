@@ -3202,18 +3202,12 @@ export const getDrugInfo = onCall(
 // ===== 🏥 심평원 의료기관별 상세정보 조회 (SAYU건강관리 - 동네병원정보) =====
 // 출처: 건강보험심사평가원 / Base: apis.data.go.kr/B551182/MadmDtlInfoService2.7
 // (사용자 제공 정확 endpoint, 점 표기 변형도 폴백 시도)
-// 후보 1: 병원정보서비스(검색용) - 같은 심평원(B551182) 키로 동작 가능성
-// 후보 2: 의료기관별 상세정보(ykiho 조회용) - 사용자가 명시한 base
+// 검색용 정확한 endpoint (병원정보서비스 가이드 v1.2, 2021-06-16 명시)
+// 폴백 후보: v1 폐기 가능성 대비 v2도 준비
 const HIRA_CANDIDATES: { url: string }[] = [
-  // 검색용 우선 (시·도/시·군·구로 찾기 가능)
+  { url: 'https://apis.data.go.kr/B551182/hospInfoService1/getHospBasisList1' },
+  { url: 'https://apis.data.go.kr/B551182/hospInfoService2/getHospBasisList2' },
   { url: 'https://apis.data.go.kr/B551182/hospInfoServicev2/getHospBasisList' },
-  { url: 'https://apis.data.go.kr/B551182/hospInfoServicev2/getMadmList' },
-  // 상세정보 서비스 변형들
-  { url: 'https://apis.data.go.kr/B551182/MadmDtlInfoService2.7/getDtlInfo2.7' },
-  { url: 'https://apis.data.go.kr/B551182/MadmDtlInfoService2_7/getDtlInfo2_7' },
-  { url: 'https://apis.data.go.kr/B551182/MadmDtlInfoService27/getDtlInfo27' },
-  { url: 'https://apis.data.go.kr/B551182/MadmDtlInfoService2.7/getFacilityInfo2.7' },
-  { url: 'https://apis.data.go.kr/B551182/MadmDtlInfoService27/getFacilityInfo27' },
 ];
 let _hospitalApiUrlCache: string | null = null;
 
@@ -3327,17 +3321,21 @@ export const getHospitalList = onCall(
       throw new HttpsError('invalid-argument', '시·도, 시·군·구, 병원명 중 하나는 필요합니다');
     }
 
+    // sgguCd는 6자리 코드라 한글→코드 매핑이 어려움.
+    // 서버에는 sgguCd를 보내지 않고, 응답을 받은 후 sgguCdNm 필드로 필터링.
+    // 시군구 필터링을 위해 페이지 사이즈를 넉넉히 받음.
+    const fetchSize = sgguCdNm ? 50 : numOfRows;
+
     const params: Record<string, string> = {
       ServiceKey: HIRA_API_KEY_SECRET.value(),
       pageNo: String(pageNo),
-      numOfRows: String(numOfRows),
+      numOfRows: String(fetchSize),
       _type: 'json',
     };
 
     if (sidoCdNm && HIRA_SIDO_NM_TO_CD[sidoCdNm]) {
       params.sidoCd = HIRA_SIDO_NM_TO_CD[sidoCdNm];
     }
-    if (sgguCdNm) params.sgguCdNm = sgguCdNm;
     if (yadmNm) params.yadmNm = yadmNm;
     if (dgsbjtCd) params.dgsbjtCd = dgsbjtCd;
 
@@ -3379,12 +3377,28 @@ export const getHospitalList = onCall(
       items = Array.isArray(rawItems.item) ? rawItems.item : [rawItems.item];
     }
 
+    const apiTotalCount = parseInt(String(body?.totalCount ?? '0'), 10) || 0;
+
+    // 시군구 필터링 (sgguCd 매핑 불가 → 응답의 sgguCdNm 필드로 부분 매치)
+    let filteredItems = items;
+    let filteredTotal = apiTotalCount;
+    if (sgguCdNm) {
+      filteredItems = items.filter((it: any) => {
+        const nm = String(it?.sgguCdNm ?? '').trim();
+        return nm.includes(sgguCdNm);
+      });
+      filteredTotal = filteredItems.length;
+    }
+
+    // numOfRows에 맞춰 잘라냄
+    const finalItems = filteredItems.slice(0, numOfRows);
+
     return {
       success: true,
-      items,
-      totalCount: parseInt(String(body?.totalCount ?? '0'), 10) || 0,
+      items: finalItems,
+      totalCount: filteredTotal,
       pageNo: parseInt(String(body?.pageNo ?? pageNo), 10) || pageNo,
-      numOfRows: parseInt(String(body?.numOfRows ?? numOfRows), 10) || numOfRows,
+      numOfRows,
       resultCode,
       resultMsg,
       disclaimer: '본 정보는 건강보험심사평가원 공공데이터를 활용한 참고용이며, 특정 기관·의사의 평가나 추천이 아닙니다.',
