@@ -3199,17 +3199,46 @@ export const getDrugInfo = onCall(
   }
 );
 
-// ===== 🏥 심평원 의료기관별 상세정보 조회 (SAYU건강관리 - 동네병원정보) =====
-// 출처: 건강보험심사평가원 / Base: apis.data.go.kr/B551182/MadmDtlInfoService2.7
-// (사용자 제공 정확 endpoint, 점 표기 변형도 폴백 시도)
-// 검색용 정확한 endpoint (병원정보서비스 가이드 v1.2, 2021-06-16 명시)
-// 폴백 후보: v1 폐기 가능성 대비 v2도 준비
+// ===== 🏥 심평원 병원정보서비스 조회 (SAYU건강관리 - 동네병원정보) =====
+// 출처: 건강보험심사평가원 / 공식 가이드(병원정보서비스 v1.2, 2021-06-16) 명시 endpoint
+// Service: hospInfoService1, Operation: getHospBasisList1 (가이드 §4.1, 9페이지)
 const HIRA_CANDIDATES: { url: string }[] = [
   { url: 'https://apis.data.go.kr/B551182/hospInfoService1/getHospBasisList1' },
+  { url: 'http://apis.data.go.kr/B551182/hospInfoService1/getHospBasisList1' },
   { url: 'https://apis.data.go.kr/B551182/hospInfoService2/getHospBasisList2' },
   { url: 'https://apis.data.go.kr/B551182/hospInfoServicev2/getHospBasisList' },
 ];
 let _hospitalApiUrlCache: string | null = null;
+
+function encodePublicDataParam(key: string, value: unknown): string {
+  const raw = String(value);
+  if (key !== 'ServiceKey' && key !== 'serviceKey') {
+    return encodeURIComponent(raw);
+  }
+
+  try {
+    return encodeURIComponent(decodeURIComponent(raw));
+  } catch {
+    return encodeURIComponent(raw);
+  }
+}
+
+function getPublicDataErrorKind(resultCode: string, resultMsg: string, snippet: string): string | null {
+  const text = `${resultCode} ${resultMsg} ${snippet}`.toUpperCase();
+  const knownErrors = [
+    'SERVICE_KEY_IS_NOT_REGISTERED_ERROR',
+    'LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR',
+    'INVALID_REQUEST_PARAMETER_ERROR',
+    'SERVICE_ACCESS_DENIED_ERROR',
+    'SERVICE_KEY_IS_NOT_REGISTERED',
+    'UNREGISTERED_SERVICE_KEY',
+  ];
+  return knownErrors.find((code) => text.includes(code)) ?? null;
+}
+
+function hospitalEndpointLabel(url: string): string {
+  return url.replace(/^https?:\/\/apis\.data\.go\.kr\/B551182\//, '');
+}
 
 async function callHospitalApi(params: Record<string, string>): Promise<any> {
   const tryUrls = _hospitalApiUrlCache
@@ -3225,45 +3254,86 @@ async function callHospitalApi(params: Record<string, string>): Promise<any> {
     try {
       const resp = await axios.get(url, {
         params,
-        timeout: 10000,
+        timeout: 12000,
         headers: { Accept: 'application/json' },
         paramsSerializer: (p) =>
           Object.entries(p)
-            .map(([k, v]) =>
-              k === 'ServiceKey' || k === 'serviceKey'
-                ? `${k}=${encodeURIComponent(decodeURIComponent(String(v)))}`
-                : `${k}=${encodeURIComponent(String(v))}`
-            )
+            .map(([k, v]) => `${k}=${encodePublicDataParam(k, v)}`)
             .join('&'),
       });
       const root = resp?.data?.response ?? resp?.data;
       const header = root?.header;
       const resultCode = header?.resultCode ?? '';
+      const resultMsg = header?.resultMsg ?? '';
+      const bodySnippet = typeof resp?.data === 'string'
+        ? resp.data.slice(0, 500)
+        : JSON.stringify(resp?.data || {}).slice(0, 500);
+
+      logger.info('심평원 endpoint 응답', {
+        endpoint: hospitalEndpointLabel(url),
+        status: resp.status,
+        resultCode,
+        resultMsg,
+      });
+
       // resultCode가 정상(00 또는 0)이면 endpoint 살아있음
       if (root && (root.body || root.header) && (resultCode === '00' || resultCode === '0' || resultCode === '')) {
         if (!_hospitalApiUrlCache) {
           _hospitalApiUrlCache = url;
-          logger.info('심평원 endpoint 확정:', { url: url.replace('https://apis.data.go.kr/B551182/', '') });
+          logger.info('심평원 endpoint 확정:', { endpoint: hospitalEndpointLabel(url) });
         }
         return resp;
       }
+
+      const publicDataError = getPublicDataErrorKind(resultCode, resultMsg, bodySnippet);
+
       // 200이지만 비정상 응답 → 다음 후보로
       attempts.push({
-        url: url.replace('https://apis.data.go.kr/B551182/', ''),
+        url: hospitalEndpointLabel(url),
         status: 200,
-        snippet: `resultCode=${resultCode} ${header?.resultMsg || ''}`.slice(0, 100),
+        snippet: `resultCode=${resultCode} ${resultMsg || bodySnippet}`.slice(0, 180),
       });
+
+      if (publicDataError) {
+        const error = new Error(`심평원 공공데이터 오류: ${publicDataError}`);
+        (error as any).publicDataError = publicDataError;
+        (error as any).resultCode = resultCode;
+        (error as any).resultMsg = resultMsg;
+        (error as any).attempts = attempts;
+        throw error;
+      }
     } catch (err: any) {
       lastError = err;
       lastStatus = err?.response?.status || 0;
       lastSnippet = typeof err?.response?.data === 'string'
         ? err.response.data.slice(0, 500)
         : JSON.stringify(err?.response?.data || {}).slice(0, 500);
+      const root = err?.response?.data?.response ?? err?.response?.data;
+      const header = root?.header;
+      const resultCode = header?.resultCode ?? err?.resultCode ?? '';
+      const resultMsg = header?.resultMsg ?? err?.resultMsg ?? '';
+      const publicDataError = err?.publicDataError ?? getPublicDataErrorKind(resultCode, resultMsg, lastSnippet);
+
       attempts.push({
-        url: url.replace('https://apis.data.go.kr/B551182/', ''),
+        url: hospitalEndpointLabel(url),
         status: lastStatus,
-        snippet: lastSnippet.slice(0, 100),
+        snippet: `resultCode=${resultCode} ${resultMsg || lastSnippet}`.slice(0, 180),
       });
+
+      logger.warn('심평원 endpoint 실패', {
+        endpoint: hospitalEndpointLabel(url),
+        status: lastStatus,
+        resultCode,
+        resultMsg,
+        publicDataError,
+        snippet: lastSnippet.slice(0, 180),
+      });
+
+      if (publicDataError) {
+        err.attempts = attempts;
+        throw err;
+      }
+
       continue;
     }
   }
@@ -3274,7 +3344,13 @@ async function callHospitalApi(params: Record<string, string>): Promise<any> {
     triedCount: tryUrls.length,
     attempts,
   });
-  throw lastError || new Error('심평원 API endpoint를 찾을 수 없습니다');
+  if (lastError) {
+    lastError.attempts = attempts;
+    throw lastError;
+  }
+  const error = new Error('심평원 API endpoint를 찾을 수 없습니다');
+  (error as any).attempts = attempts;
+  throw error;
 }
 
 const HIRA_SIDO_NM_TO_CD: Record<string, string> = {
@@ -3343,7 +3419,38 @@ export const getHospitalList = onCall(
     try {
       resp = await callHospitalApi(params);
     } catch (err: any) {
-      throw new HttpsError('internal', '심평원 서버에 연결할 수 없습니다');
+      logger.error('심평원 병원정보 조회 실패', {
+        message: err?.message,
+        status: err?.response?.status,
+        code: err?.code,
+        resultCode: err?.resultCode,
+        resultMsg: err?.resultMsg,
+        publicDataError: err?.publicDataError,
+        attempts: err?.attempts,
+      });
+
+      // 공공데이터 표준 에러 코드별 사용자 친화적 메시지로 분기
+      const pde: string | null = err?.publicDataError ?? null;
+      let userMessage = '심평원 서버에 일시적 문제가 있습니다. 잠시 후 다시 시도해 주세요.';
+      let httpsCode: 'internal' | 'permission-denied' | 'resource-exhausted' | 'invalid-argument' | 'unavailable' = 'internal';
+
+      if (pde) {
+        if (pde.includes('SERVICE_KEY_IS_NOT_REGISTERED')) {
+          userMessage = '병원정보서비스 인증이 거부됐습니다. 공공데이터포털에서 병원정보서비스(15001698) 활용신청 상태를 확인해 주세요.';
+          httpsCode = 'permission-denied';
+        } else if (pde.includes('LIMITED_NUMBER_OF_SERVICE_REQUESTS')) {
+          userMessage = '오늘 조회 한도(1,000회/일)를 초과했습니다. 내일 다시 시도해 주세요.';
+          httpsCode = 'resource-exhausted';
+        } else if (pde.includes('INVALID_REQUEST_PARAMETER')) {
+          userMessage = '검색 조건이 올바르지 않습니다. 다시 확인해 주세요.';
+          httpsCode = 'invalid-argument';
+        } else if (pde.includes('SERVICE_ACCESS_DENIED')) {
+          userMessage = '병원정보서비스 접근이 거부됐습니다. 활용신청 승인 상태를 확인해 주세요.';
+          httpsCode = 'permission-denied';
+        }
+      }
+
+      throw new HttpsError(httpsCode, userMessage);
     }
 
     const data = resp?.data;
@@ -3611,4 +3718,3 @@ export const analyzeDrugPhoto = onCall(
     };
   }
 );
-
