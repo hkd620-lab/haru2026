@@ -3334,6 +3334,9 @@ async function callHospitalApi(params: Record<string, string>): Promise<any> {
       });
 
       if (publicDataError) {
+        err.publicDataError = publicDataError;
+        err.resultCode = resultCode;
+        err.resultMsg = resultMsg;
         err.attempts = attempts;
         throw err;
       }
