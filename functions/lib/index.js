@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
+exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -2689,14 +2689,77 @@ exports.getOnbidRealEstateList = (0, https_2.onCall)({
         disclaimer: '본 정보는 한국자산관리공사 온비드 공공데이터를 활용한 참고용이며, 실제 입찰은 온비드 공식사이트(onbid.co.kr)에서 확인하세요.',
     };
 });
-// ===== 💊 식약처 의약품 제품 허가정보 조회 (SAYU건강관리 - 약봉지 보고 약정 얻기) =====
-// 출처: 식품의약품안전처 / Endpoint: apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService06
+// ===== 💊 식약처 의약품 제품 허가정보 조회 (SAYU건강관리 - 약봉지 보고 약정보 얻기) =====
+// 출처: 식품의약품안전처 / Base: apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService07
+// 함수명(operation)이 버전마다 변동되므로 후보 순차 시도 + 성공한 URL 메모리 캐시
+const DRUG_API_BASE = 'https://apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService07';
+const DRUG_API_OPS = [
+    '/getDrugPrdtPrmsnDtlInq05',
+    '/getDrugPrdtPrmsnInq05',
+    '/getDrugPrdtPrmsnDtlInq07',
+    '/getDrugPrdtPrmsnInq07',
+    '/getDrugPrdtPrmsnDtlInq04',
+    '/getDrugPrdtPrmsnInq04',
+];
+let _drugApiUrlCache = null;
+async function callDrugApi(params) {
+    var _a, _b, _c, _d;
+    const tryUrls = _drugApiUrlCache
+        ? [_drugApiUrlCache]
+        : DRUG_API_OPS.map((op) => DRUG_API_BASE + op);
+    let lastError = null;
+    let lastSnippet = '';
+    let lastStatus = 0;
+    for (const url of tryUrls) {
+        try {
+            const resp = await axios_1.default.get(url, {
+                params,
+                timeout: 12000,
+                headers: { Accept: 'application/json' },
+                paramsSerializer: (p) => Object.entries(p)
+                    .map(([k, v]) => k === 'serviceKey'
+                    ? `${k}=${encodeURIComponent(decodeURIComponent(String(v)))}`
+                    : `${k}=${encodeURIComponent(String(v))}`)
+                    .join('&'),
+            });
+            const data = resp === null || resp === void 0 ? void 0 : resp.data;
+            const root = (_a = data === null || data === void 0 ? void 0 : data.response) !== null && _a !== void 0 ? _a : data;
+            // 식약처는 성공 시 response.body 또는 body 구조를 가짐
+            if (root && (root.body || root.header)) {
+                if (!_drugApiUrlCache) {
+                    _drugApiUrlCache = url;
+                    logger.info('식약처 endpoint 확정:', { op: url.split('/').pop() });
+                }
+                return resp;
+            }
+            // 200이지만 응답 구조가 다르면 다음 후보로
+        }
+        catch (err) {
+            lastError = err;
+            lastStatus = ((_b = err === null || err === void 0 ? void 0 : err.response) === null || _b === void 0 ? void 0 : _b.status) || 0;
+            lastSnippet = typeof ((_c = err === null || err === void 0 ? void 0 : err.response) === null || _c === void 0 ? void 0 : _c.data) === 'string'
+                ? err.response.data.slice(0, 200)
+                : JSON.stringify(((_d = err === null || err === void 0 ? void 0 : err.response) === null || _d === void 0 ? void 0 : _d.data) || {}).slice(0, 200);
+            // 404 / API not found는 다음 후보로 진행
+            if (lastStatus === 404 || /not found/i.test(lastSnippet))
+                continue;
+            // 401/403 등 인증 문제도 다음 후보로 (다른 함수의 권한이 있을 수 있음)
+            continue;
+        }
+    }
+    logger.error('식약처 API 모든 endpoint 후보 실패', {
+        lastStatus,
+        lastSnippet,
+        triedCount: tryUrls.length,
+    });
+    throw lastError || new Error('식약처 API endpoint를 찾을 수 없습니다');
+}
 exports.getDrugInfo = (0, https_2.onCall)({
     region: 'asia-northeast3',
     secrets: [DRUG_API_KEY_SECRET],
     timeoutSeconds: 30,
 }, async (request) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다');
     }
@@ -2714,34 +2777,19 @@ exports.getDrugInfo = (0, https_2.onCall)({
         type: 'json',
         item_name: itemName,
     };
-    const url = 'https://apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService06/getDrugPrdtPrmsnDtlInq05';
     let resp;
     try {
-        resp = await axios_1.default.get(url, {
-            params,
-            timeout: 15000,
-            headers: { Accept: 'application/json' },
-            paramsSerializer: (p) => Object.entries(p)
-                .map(([k, v]) => k === 'serviceKey'
-                ? `${k}=${encodeURIComponent(decodeURIComponent(String(v)))}`
-                : `${k}=${encodeURIComponent(String(v))}`)
-                .join('&'),
-        });
+        resp = await callDrugApi(params);
     }
     catch (err) {
-        logger.error('식약처 API 호출 실패:', {
-            message: err === null || err === void 0 ? void 0 : err.message,
-            status: (_d = err === null || err === void 0 ? void 0 : err.response) === null || _d === void 0 ? void 0 : _d.status,
-            code: err === null || err === void 0 ? void 0 : err.code,
-        });
         throw new https_2.HttpsError('internal', '식약처 서버에 연결할 수 없습니다');
     }
     const data = resp === null || resp === void 0 ? void 0 : resp.data;
-    const root = (_e = data === null || data === void 0 ? void 0 : data.response) !== null && _e !== void 0 ? _e : data;
+    const root = (_d = data === null || data === void 0 ? void 0 : data.response) !== null && _d !== void 0 ? _d : data;
     const header = root === null || root === void 0 ? void 0 : root.header;
     const body = root === null || root === void 0 ? void 0 : root.body;
-    const resultCode = (_f = header === null || header === void 0 ? void 0 : header.resultCode) !== null && _f !== void 0 ? _f : '';
-    const resultMsg = (_g = header === null || header === void 0 ? void 0 : header.resultMsg) !== null && _g !== void 0 ? _g : '';
+    const resultCode = (_e = header === null || header === void 0 ? void 0 : header.resultCode) !== null && _e !== void 0 ? _e : '';
+    const resultMsg = (_f = header === null || header === void 0 ? void 0 : header.resultMsg) !== null && _f !== void 0 ? _f : '';
     if (resultCode && resultCode !== '00' && resultCode !== '0') {
         logger.warn('식약처 API 비정상 응답:', { resultCode, resultMsg });
         if (resultCode === '03') {
@@ -2768,16 +2816,157 @@ exports.getDrugInfo = (0, https_2.onCall)({
     return {
         success: true,
         items,
-        totalCount: parseInt(String((_h = body === null || body === void 0 ? void 0 : body.totalCount) !== null && _h !== void 0 ? _h : '0'), 10) || 0,
-        pageNo: parseInt(String((_j = body === null || body === void 0 ? void 0 : body.pageNo) !== null && _j !== void 0 ? _j : pageNo), 10) || pageNo,
-        numOfRows: parseInt(String((_k = body === null || body === void 0 ? void 0 : body.numOfRows) !== null && _k !== void 0 ? _k : numOfRows), 10) || numOfRows,
+        totalCount: parseInt(String((_g = body === null || body === void 0 ? void 0 : body.totalCount) !== null && _g !== void 0 ? _g : '0'), 10) || 0,
+        pageNo: parseInt(String((_h = body === null || body === void 0 ? void 0 : body.pageNo) !== null && _h !== void 0 ? _h : pageNo), 10) || pageNo,
+        numOfRows: parseInt(String((_j = body === null || body === void 0 ? void 0 : body.numOfRows) !== null && _j !== void 0 ? _j : numOfRows), 10) || numOfRows,
         resultCode,
         resultMsg,
         disclaimer: '본 정보는 식품의약품안전처 공공데이터를 활용한 참고용이며, 의료 행위·처방을 대체하지 않습니다.',
     };
 });
-// ===== 🏥 심평원 의료기관별 정보 조회 (SAYU건강관리 - 동네병원정보) =====
-// 출처: 건강보험심사평가원 / Endpoint: apis.data.go.kr/B551182/hospInfoServicev2
+// ===== 🏥 심평원 병원정보서비스 조회 (SAYU건강관리 - 동네병원정보) =====
+// 출처: 건강보험심사평가원
+// 실제 살아있는 endpoint: hospInfoServicev2/getHospBasisList (Cloud Logs 401 검증)
+// 가이드 v1.2(2021)의 hospInfoService1은 폐지된 것으로 확인 (HTTP 500 응답)
+const HIRA_CANDIDATES = [
+    { url: 'https://apis.data.go.kr/B551182/hospInfoServicev2/getHospBasisList' },
+    { url: 'http://apis.data.go.kr/B551182/hospInfoServicev2/getHospBasisList' },
+    { url: 'https://apis.data.go.kr/B551182/hospInfoService1/getHospBasisList1' },
+];
+let _hospitalApiUrlCache = null;
+function encodePublicDataParam(key, value) {
+    const raw = String(value);
+    if (key !== 'ServiceKey' && key !== 'serviceKey') {
+        return encodeURIComponent(raw);
+    }
+    try {
+        return encodeURIComponent(decodeURIComponent(raw));
+    }
+    catch {
+        return encodeURIComponent(raw);
+    }
+}
+function getPublicDataErrorKind(resultCode, resultMsg, snippet) {
+    var _a;
+    const text = `${resultCode} ${resultMsg} ${snippet}`.toUpperCase();
+    // 평문 "UNAUTHORIZED"도 인증 거부로 처리 (B551182의 401 응답 패턴)
+    if (text.includes('UNAUTHORIZED')) {
+        return 'SERVICE_KEY_IS_NOT_REGISTERED_ERROR';
+    }
+    const knownErrors = [
+        'SERVICE_KEY_IS_NOT_REGISTERED_ERROR',
+        'LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR',
+        'INVALID_REQUEST_PARAMETER_ERROR',
+        'SERVICE_ACCESS_DENIED_ERROR',
+        'SERVICE_KEY_IS_NOT_REGISTERED',
+        'UNREGISTERED_SERVICE_KEY',
+    ];
+    return (_a = knownErrors.find((code) => text.includes(code))) !== null && _a !== void 0 ? _a : null;
+}
+function hospitalEndpointLabel(url) {
+    return url.replace(/^https?:\/\/apis\.data\.go\.kr\/B551182\//, '');
+}
+async function callHospitalApi(params) {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r;
+    const tryUrls = _hospitalApiUrlCache
+        ? [_hospitalApiUrlCache]
+        : HIRA_CANDIDATES.map((c) => c.url);
+    let lastError = null;
+    let lastSnippet = '';
+    let lastStatus = 0;
+    const attempts = [];
+    for (const url of tryUrls) {
+        try {
+            const resp = await axios_1.default.get(url, {
+                params,
+                timeout: 12000,
+                headers: { Accept: 'application/json' },
+                paramsSerializer: (p) => Object.entries(p)
+                    .map(([k, v]) => `${k}=${encodePublicDataParam(k, v)}`)
+                    .join('&'),
+            });
+            const root = (_b = (_a = resp === null || resp === void 0 ? void 0 : resp.data) === null || _a === void 0 ? void 0 : _a.response) !== null && _b !== void 0 ? _b : resp === null || resp === void 0 ? void 0 : resp.data;
+            const header = root === null || root === void 0 ? void 0 : root.header;
+            const resultCode = (_c = header === null || header === void 0 ? void 0 : header.resultCode) !== null && _c !== void 0 ? _c : '';
+            const resultMsg = (_d = header === null || header === void 0 ? void 0 : header.resultMsg) !== null && _d !== void 0 ? _d : '';
+            const bodySnippet = typeof (resp === null || resp === void 0 ? void 0 : resp.data) === 'string'
+                ? resp.data.slice(0, 500)
+                : JSON.stringify((resp === null || resp === void 0 ? void 0 : resp.data) || {}).slice(0, 500);
+            logger.info('심평원 endpoint 응답', {
+                endpoint: hospitalEndpointLabel(url),
+                status: resp.status,
+                resultCode,
+                resultMsg,
+            });
+            // resultCode가 정상(00 또는 0)이면 endpoint 살아있음
+            if (root && (root.body || root.header) && (resultCode === '00' || resultCode === '0' || resultCode === '')) {
+                if (!_hospitalApiUrlCache) {
+                    _hospitalApiUrlCache = url;
+                    logger.info('심평원 endpoint 확정:', { endpoint: hospitalEndpointLabel(url) });
+                }
+                return resp;
+            }
+            const publicDataError = getPublicDataErrorKind(resultCode, resultMsg, bodySnippet);
+            // 200이지만 비정상 응답 → 다음 후보로
+            attempts.push({
+                url: hospitalEndpointLabel(url),
+                status: 200,
+                snippet: `resultCode=${resultCode} ${resultMsg || bodySnippet}`.slice(0, 180),
+            });
+            if (publicDataError) {
+                const error = new Error(`심평원 공공데이터 오류: ${publicDataError}`);
+                error.publicDataError = publicDataError;
+                error.resultCode = resultCode;
+                error.resultMsg = resultMsg;
+                error.attempts = attempts;
+                throw error;
+            }
+        }
+        catch (err) {
+            lastError = err;
+            lastStatus = ((_e = err === null || err === void 0 ? void 0 : err.response) === null || _e === void 0 ? void 0 : _e.status) || 0;
+            lastSnippet = typeof ((_f = err === null || err === void 0 ? void 0 : err.response) === null || _f === void 0 ? void 0 : _f.data) === 'string'
+                ? err.response.data.slice(0, 500)
+                : JSON.stringify(((_g = err === null || err === void 0 ? void 0 : err.response) === null || _g === void 0 ? void 0 : _g.data) || {}).slice(0, 500);
+            const root = (_k = (_j = (_h = err === null || err === void 0 ? void 0 : err.response) === null || _h === void 0 ? void 0 : _h.data) === null || _j === void 0 ? void 0 : _j.response) !== null && _k !== void 0 ? _k : (_l = err === null || err === void 0 ? void 0 : err.response) === null || _l === void 0 ? void 0 : _l.data;
+            const header = root === null || root === void 0 ? void 0 : root.header;
+            const resultCode = (_o = (_m = header === null || header === void 0 ? void 0 : header.resultCode) !== null && _m !== void 0 ? _m : err === null || err === void 0 ? void 0 : err.resultCode) !== null && _o !== void 0 ? _o : '';
+            const resultMsg = (_q = (_p = header === null || header === void 0 ? void 0 : header.resultMsg) !== null && _p !== void 0 ? _p : err === null || err === void 0 ? void 0 : err.resultMsg) !== null && _q !== void 0 ? _q : '';
+            const publicDataError = (_r = err === null || err === void 0 ? void 0 : err.publicDataError) !== null && _r !== void 0 ? _r : getPublicDataErrorKind(resultCode, resultMsg, lastSnippet);
+            attempts.push({
+                url: hospitalEndpointLabel(url),
+                status: lastStatus,
+                snippet: `resultCode=${resultCode} ${resultMsg || lastSnippet}`.slice(0, 180),
+            });
+            logger.warn('심평원 endpoint 실패', {
+                endpoint: hospitalEndpointLabel(url),
+                status: lastStatus,
+                resultCode,
+                resultMsg,
+                publicDataError,
+                snippet: lastSnippet.slice(0, 180),
+            });
+            if (publicDataError) {
+                err.attempts = attempts;
+                throw err;
+            }
+            continue;
+        }
+    }
+    logger.error('심평원 API 모든 endpoint 후보 실패', {
+        lastStatus,
+        lastSnippet,
+        triedCount: tryUrls.length,
+        attempts,
+    });
+    if (lastError) {
+        lastError.attempts = attempts;
+        throw lastError;
+    }
+    const error = new Error('심평원 API endpoint를 찾을 수 없습니다');
+    error.attempts = attempts;
+    throw error;
+}
 const HIRA_SIDO_NM_TO_CD = {
     '서울특별시': '110000',
     '부산광역시': '210000',
@@ -2816,49 +3005,67 @@ exports.getHospitalList = (0, https_2.onCall)({
     if (!sidoCdNm && !sgguCdNm && !yadmNm) {
         throw new https_2.HttpsError('invalid-argument', '시·도, 시·군·구, 병원명 중 하나는 필요합니다');
     }
+    // sgguCd는 6자리 코드라 한글→코드 매핑이 어려움.
+    // 서버에는 sgguCd를 보내지 않고, 응답을 받은 후 sgguCdNm 필드로 필터링.
+    // 시군구 필터링을 위해 페이지 사이즈를 넉넉히 받음.
+    const fetchSize = sgguCdNm ? 50 : numOfRows;
     const params = {
         ServiceKey: HIRA_API_KEY_SECRET.value(),
         pageNo: String(pageNo),
-        numOfRows: String(numOfRows),
+        numOfRows: String(fetchSize),
         _type: 'json',
     };
     if (sidoCdNm && HIRA_SIDO_NM_TO_CD[sidoCdNm]) {
         params.sidoCd = HIRA_SIDO_NM_TO_CD[sidoCdNm];
     }
-    if (sgguCdNm)
-        params.sgguCdNm = sgguCdNm;
     if (yadmNm)
         params.yadmNm = yadmNm;
     if (dgsbjtCd)
         params.dgsbjtCd = dgsbjtCd;
-    const url = 'https://apis.data.go.kr/B551182/hospInfoServicev2/getHospBasisList';
     let resp;
     try {
-        resp = await axios_1.default.get(url, {
-            params,
-            timeout: 15000,
-            headers: { Accept: 'application/json' },
-            paramsSerializer: (p) => Object.entries(p)
-                .map(([k, v]) => k === 'ServiceKey'
-                ? `${k}=${encodeURIComponent(decodeURIComponent(String(v)))}`
-                : `${k}=${encodeURIComponent(String(v))}`)
-                .join('&'),
-        });
+        resp = await callHospitalApi(params);
     }
     catch (err) {
-        logger.error('심평원 API 호출 실패:', {
+        logger.error('심평원 병원정보 조회 실패', {
             message: err === null || err === void 0 ? void 0 : err.message,
             status: (_g = err === null || err === void 0 ? void 0 : err.response) === null || _g === void 0 ? void 0 : _g.status,
             code: err === null || err === void 0 ? void 0 : err.code,
+            resultCode: err === null || err === void 0 ? void 0 : err.resultCode,
+            resultMsg: err === null || err === void 0 ? void 0 : err.resultMsg,
+            publicDataError: err === null || err === void 0 ? void 0 : err.publicDataError,
+            attempts: err === null || err === void 0 ? void 0 : err.attempts,
         });
-        throw new https_2.HttpsError('internal', '심평원 서버에 연결할 수 없습니다');
+        // 공공데이터 표준 에러 코드별 사용자 친화적 메시지로 분기
+        const pde = (_h = err === null || err === void 0 ? void 0 : err.publicDataError) !== null && _h !== void 0 ? _h : null;
+        let userMessage = '심평원 서버에 일시적 문제가 있습니다. 잠시 후 다시 시도해 주세요.';
+        let httpsCode = 'internal';
+        if (pde) {
+            if (pde.includes('SERVICE_KEY_IS_NOT_REGISTERED')) {
+                userMessage = '병원정보서비스 인증이 거부됐습니다. 공공데이터포털에서 병원정보서비스(15001698) 활용신청 상태를 확인해 주세요.';
+                httpsCode = 'permission-denied';
+            }
+            else if (pde.includes('LIMITED_NUMBER_OF_SERVICE_REQUESTS')) {
+                userMessage = '오늘 조회 한도(1,000회/일)를 초과했습니다. 내일 다시 시도해 주세요.';
+                httpsCode = 'resource-exhausted';
+            }
+            else if (pde.includes('INVALID_REQUEST_PARAMETER')) {
+                userMessage = '검색 조건이 올바르지 않습니다. 다시 확인해 주세요.';
+                httpsCode = 'invalid-argument';
+            }
+            else if (pde.includes('SERVICE_ACCESS_DENIED')) {
+                userMessage = '병원정보서비스 접근이 거부됐습니다. 활용신청 승인 상태를 확인해 주세요.';
+                httpsCode = 'permission-denied';
+            }
+        }
+        throw new https_2.HttpsError(httpsCode, userMessage);
     }
     const data = resp === null || resp === void 0 ? void 0 : resp.data;
-    const root = (_h = data === null || data === void 0 ? void 0 : data.response) !== null && _h !== void 0 ? _h : data;
+    const root = (_j = data === null || data === void 0 ? void 0 : data.response) !== null && _j !== void 0 ? _j : data;
     const header = root === null || root === void 0 ? void 0 : root.header;
     const body = root === null || root === void 0 ? void 0 : root.body;
-    const resultCode = (_j = header === null || header === void 0 ? void 0 : header.resultCode) !== null && _j !== void 0 ? _j : '';
-    const resultMsg = (_k = header === null || header === void 0 ? void 0 : header.resultMsg) !== null && _k !== void 0 ? _k : '';
+    const resultCode = (_k = header === null || header === void 0 ? void 0 : header.resultCode) !== null && _k !== void 0 ? _k : '';
+    const resultMsg = (_l = header === null || header === void 0 ? void 0 : header.resultMsg) !== null && _l !== void 0 ? _l : '';
     if (resultCode && resultCode !== '00' && resultCode !== '0') {
         logger.warn('심평원 API 비정상 응답:', { resultCode, resultMsg });
         if (resultCode === '03') {
@@ -2882,14 +3089,222 @@ exports.getHospitalList = (0, https_2.onCall)({
     else if (rawItems === null || rawItems === void 0 ? void 0 : rawItems.item) {
         items = Array.isArray(rawItems.item) ? rawItems.item : [rawItems.item];
     }
+    const apiTotalCount = parseInt(String((_m = body === null || body === void 0 ? void 0 : body.totalCount) !== null && _m !== void 0 ? _m : '0'), 10) || 0;
+    // 시군구 필터링 (sgguCd 매핑 불가 → 응답의 sgguCdNm 필드로 부분 매치)
+    let filteredItems = items;
+    let filteredTotal = apiTotalCount;
+    if (sgguCdNm) {
+        filteredItems = items.filter((it) => {
+            var _a;
+            const nm = String((_a = it === null || it === void 0 ? void 0 : it.sgguCdNm) !== null && _a !== void 0 ? _a : '').trim();
+            return nm.includes(sgguCdNm);
+        });
+        filteredTotal = filteredItems.length;
+    }
+    // numOfRows에 맞춰 잘라냄
+    const finalItems = filteredItems.slice(0, numOfRows);
     return {
         success: true,
-        items,
-        totalCount: parseInt(String((_l = body === null || body === void 0 ? void 0 : body.totalCount) !== null && _l !== void 0 ? _l : '0'), 10) || 0,
-        pageNo: parseInt(String((_m = body === null || body === void 0 ? void 0 : body.pageNo) !== null && _m !== void 0 ? _m : pageNo), 10) || pageNo,
-        numOfRows: parseInt(String((_o = body === null || body === void 0 ? void 0 : body.numOfRows) !== null && _o !== void 0 ? _o : numOfRows), 10) || numOfRows,
+        items: finalItems,
+        totalCount: filteredTotal,
+        pageNo: parseInt(String((_o = body === null || body === void 0 ? void 0 : body.pageNo) !== null && _o !== void 0 ? _o : pageNo), 10) || pageNo,
+        numOfRows,
         resultCode,
         resultMsg,
         disclaimer: '본 정보는 건강보험심사평가원 공공데이터를 활용한 참고용이며, 특정 기관·의사의 평가나 추천이 아닙니다.',
+    };
+});
+// ===== 🔬 약봉지 AI 사진 분석 (SAYU건강관리 - Gemini Vision) =====
+// 입력: 사진 base64 배열 (1~3장)
+// 처리: Gemini Vision으로 약 이름만 추출 → 식약처 API로 공식 정보 조회
+// 개인정보 안전장치:
+//   1) 프롬프트에 환자·의사·병원 정보 무시 명시
+//   2) 사진·개인정보 로그 차단 (장수·바이트 길이만 로깅)
+//   3) 분석 후 사진 즉시 폐기 (Storage 저장 없음)
+//   4) 추출 결과는 식약처 공식 데이터로 한 번 더 검증
+exports.analyzeDrugPhoto = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET, DRUG_API_KEY_SECRET],
+    timeoutSeconds: 60,
+    memory: '512MiB',
+}, async (request) => {
+    var _a, _b, _c, _d;
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다');
+    }
+    const d = request.data || {};
+    const rawImages = Array.isArray(d.images) ? d.images : [];
+    const images = rawImages
+        .filter((s) => typeof s === 'string' && s.length > 0)
+        .map((s) => s.replace(/^data:image\/[a-zA-Z]+;base64,/, ''))
+        .slice(0, 3);
+    if (images.length === 0) {
+        throw new https_2.HttpsError('invalid-argument', '사진이 필요합니다 (최소 1장, 최대 3장)');
+    }
+    // 사진 크기 검증 (각 장 최대 4MB base64 ≈ 3MB 원본)
+    const totalKb = images.reduce((sum, b) => sum + Math.round(b.length * 0.75 / 1024), 0);
+    if (totalKb > 12 * 1024) {
+        throw new https_2.HttpsError('invalid-argument', '사진이 너무 큽니다. 1장당 4MB 이하로 줄여주세요');
+    }
+    // 🔒 로깅 안전장치: 사진·개인정보 절대 안 남기고 메타데이터만
+    logger.info('analyzeDrugPhoto 호출', {
+        imageCount: images.length,
+        totalKb,
+        uid: request.auth.uid.slice(0, 8) + '…',
+    });
+    // === 1단계: Gemini Vision으로 약 이름만 추출 ===
+    // 🔒 프롬프트 안전장치: 환자·의사·병원 정보 명시적 무시
+    const prompt = `당신은 약봉지 사진에서 약 이름만 추출하는 도우미입니다.
+
+[추출 대상 — 오직 이것만]
+- 약의 제품명 (예: "타이레놀정500mg", "게보린", "베아제")
+- 사진에서 가장 또렷하게 식별되는 약 이름 1개
+- 한국 식약처에 등록된 의약품 제품명 형식
+
+[절대 무시 — 분석·언급·저장 모두 금지]
+- 환자 이름, 생년월일, 나이, 성별, 주민번호
+- 처방 의사 이름, 면허번호
+- 병원명, 의원명, 약국명, 주소, 전화번호
+- 처방일자, 처방번호, 보험 식별번호
+- 그 외 사람을 식별할 수 있는 모든 정보
+
+위 무시 대상은 응답에 절대 포함하지 말고, 내부적으로도 텍스트화하지 마세요.
+
+[출력 형식 — JSON 한 줄, 마크다운 금지]
+{"drugName": "약 이름 또는 빈 문자열", "confidence": "high|medium|low|none", "note": "한 줄 메모"}
+
+[규칙]
+- 약 이름을 찾을 수 없으면 drugName="", confidence="none"
+- 흐릿하거나 추측에 의존해야 하면 confidence="low"
+- 약봉지가 아닌 사진이면 drugName="", confidence="none", note="약봉지 사진이 아닙니다"
+- 추측·환각 금지. 확실하지 않으면 빈 문자열.`;
+    const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+    const visionModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+    let extractedName = '';
+    let confidence = 'none';
+    let aiNote = '';
+    try {
+        const parts = [{ text: prompt }];
+        for (const b64 of images) {
+            parts.push({
+                inlineData: {
+                    mimeType: 'image/jpeg',
+                    data: b64,
+                },
+            });
+        }
+        const result = await visionModel.generateContent({
+            contents: [{ role: 'user', parts }],
+        });
+        let raw = result.response.text().trim();
+        // 마크다운 코드펜스 제거
+        raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+        const parsed = JSON.parse(raw);
+        extractedName = String((_a = parsed === null || parsed === void 0 ? void 0 : parsed.drugName) !== null && _a !== void 0 ? _a : '').trim().slice(0, 60);
+        const c = String((_b = parsed === null || parsed === void 0 ? void 0 : parsed.confidence) !== null && _b !== void 0 ? _b : 'none').trim().toLowerCase();
+        confidence = (['high', 'medium', 'low', 'none'].includes(c) ? c : 'none');
+        aiNote = String((_c = parsed === null || parsed === void 0 ? void 0 : parsed.note) !== null && _c !== void 0 ? _c : '').trim().slice(0, 100);
+    }
+    catch (err) {
+        // 🔒 에러 로그에도 사진·prompt 데이터 노출 금지
+        logger.error('Gemini Vision 분석 실패', { message: (_d = err === null || err === void 0 ? void 0 : err.message) === null || _d === void 0 ? void 0 : _d.slice(0, 200) });
+        throw new https_2.HttpsError('internal', 'AI 분석 중 오류가 발생했습니다. 사진을 다시 찍어 주세요');
+    }
+    // 사진 base64 즉시 메모리 해제 (분석 끝났으니 보관 안 함)
+    images.length = 0;
+    if (!extractedName) {
+        return {
+            success: true,
+            extractedName: '',
+            confidence,
+            aiNote: aiNote || '약 이름을 인식하지 못했습니다. 사진을 더 또렷이 찍거나 약 이름을 직접 입력해 주세요.',
+            items: [],
+            totalCount: 0,
+            disclaimer: 'AI 분석은 참고용이며, 정확한 정보는 식약처 자료를 우선합니다. 약 이름만 추출하며, 환자·의사 등 개인정보는 저장·전송하지 않습니다.',
+        };
+    }
+    // === 2단계: 추출된 약 이름으로 식약처 API 폴백 검색 ===
+    // 식약처 DB는 함량·표기 차이로 정확명 매칭이 안 될 수 있어 단계별 폴백
+    const searchDrug = async (name) => {
+        var _a, _b, _c;
+        const params = {
+            serviceKey: DRUG_API_KEY_SECRET.value(),
+            pageNo: '1',
+            numOfRows: '10',
+            type: 'json',
+            item_name: name,
+        };
+        try {
+            const resp = await callDrugApi(params);
+            const root = (_b = (_a = resp === null || resp === void 0 ? void 0 : resp.data) === null || _a === void 0 ? void 0 : _a.response) !== null && _b !== void 0 ? _b : resp === null || resp === void 0 ? void 0 : resp.data;
+            const body = root === null || root === void 0 ? void 0 : root.body;
+            const rawItems = body === null || body === void 0 ? void 0 : body.items;
+            let items = [];
+            if (Array.isArray(rawItems))
+                items = rawItems;
+            else if (rawItems === null || rawItems === void 0 ? void 0 : rawItems.item)
+                items = Array.isArray(rawItems.item) ? rawItems.item : [rawItems.item];
+            const totalCount = parseInt(String((_c = body === null || body === void 0 ? void 0 : body.totalCount) !== null && _c !== void 0 ? _c : '0'), 10) || items.length;
+            return { items, totalCount };
+        }
+        catch {
+            return { items: [], totalCount: 0 };
+        }
+    };
+    // 함량·용량·괄호·슬래시 등을 제거해 베이스 약명만 추출
+    // "텔미누보정40/2.5mg" → "텔미누보정"
+    const stripDosage = (s) => s
+        .replace(/\d+(\.\d+)?\s*\/\s*\d+(\.\d+)?\s*(mg|g|ml|mcg|µg|μg|IU|%)?/gi, '')
+        .replace(/\d+(\.\d+)?\s*(mg|g|ml|mcg|µg|μg|IU|%)/gi, '')
+        .replace(/\([^)]*\)/g, '')
+        .replace(/[\/·,]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    // 한글·영문 단어만 추출 (더 적극적 폴백)
+    const baseWord = (s) => {
+        const m = s.match(/[가-힣A-Za-z]+/g);
+        return m ? m[0] : '';
+    };
+    let drugItems = [];
+    let drugTotalCount = 0;
+    let searchUsedName = extractedName;
+    // 1차: 전체 이름 그대로
+    const r1 = await searchDrug(extractedName);
+    if (r1.totalCount > 0) {
+        drugItems = r1.items;
+        drugTotalCount = r1.totalCount;
+    }
+    else {
+        // 2차: 함량·용량 제거한 베이스명
+        const stripped = stripDosage(extractedName);
+        if (stripped && stripped !== extractedName && stripped.length >= 2) {
+            const r2 = await searchDrug(stripped);
+            if (r2.totalCount > 0) {
+                drugItems = r2.items;
+                drugTotalCount = r2.totalCount;
+                searchUsedName = stripped;
+            }
+            else {
+                // 3차: 첫 단어만 (예: "텔미누보 정" → "텔미누보")
+                const word = baseWord(stripped);
+                if (word && word !== stripped && word.length >= 2) {
+                    const r3 = await searchDrug(word);
+                    drugItems = r3.items;
+                    drugTotalCount = r3.totalCount;
+                    searchUsedName = word;
+                }
+            }
+        }
+    }
+    return {
+        success: true,
+        extractedName,
+        confidence,
+        aiNote,
+        items: drugItems,
+        totalCount: drugTotalCount,
+        searchUsedName, // 실제 식약처 검색에 사용된 이름 (폴백 시 다를 수 있음)
+        fallbackUsed: searchUsedName !== extractedName,
+        disclaimer: 'AI 분석은 참고용이며, 정확한 정보는 식약처 자료를 우선합니다. 약 이름만 추출하며, 환자·의사 등 개인정보는 저장·전송하지 않습니다.',
     };
 });
