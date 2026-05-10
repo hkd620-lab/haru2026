@@ -51,6 +51,10 @@ export function SettingsPage() {
   const [quoteType, setQuoteType] = useState<'classic' | 'bible'>('classic');
   const [isSavingQuoteType, setIsSavingQuoteType] = useState(false);
 
+  // 내 정보 — 현재 나이 (HARU예언 등에서 사용)
+  const [profileAge, setProfileAge] = useState<string>('');
+  const [isSavingAge, setIsSavingAge] = useState(false);
+
   const isAdmin = user?.uid === ADMIN_UID;
   const isDevUser = user?.email === 'hkd620@gmail.com';
 
@@ -59,6 +63,7 @@ export function SettingsPage() {
       loadStats();
       loadNotificationSettings();
       loadQuoteType();
+      loadProfileAge();
       cleanupDuplicateTokens(user.uid); // 앱 마운트 시 기존 중복 토큰 1회 정리
       if (user.email === 'hkd620@gmail.com') {
         loadFcmTokens();
@@ -67,6 +72,44 @@ export function SettingsPage() {
       setLoadingStats(false);
     }
   }, [user?.uid]);
+
+  const loadProfileAge = async () => {
+    if (!user?.uid) return;
+    try {
+      const profile = await firestoreService.getUserProfile(user.uid);
+      if (typeof profile.currentAge === 'number' && profile.currentAge > 0) {
+        setProfileAge(String(profile.currentAge));
+      } else {
+        // Firestore 없으면 localStorage fallback (HARU예언에서만 입력했던 사용자 마이그레이션)
+        try {
+          const cached = localStorage.getItem('haru_user_current_age');
+          if (cached) setProfileAge(cached);
+        } catch {}
+      }
+    } catch (e) {
+      console.error('내 정보 로딩 실패:', e);
+    }
+  };
+
+  const handleSaveProfileAge = async () => {
+    if (!user?.uid) return;
+    const ageNum = parseInt(profileAge, 10);
+    if (!Number.isFinite(ageNum) || ageNum <= 0 || ageNum > 120) {
+      toast.error('1~120 사이의 나이를 입력해주세요.');
+      return;
+    }
+    setIsSavingAge(true);
+    try {
+      await firestoreService.saveUserProfile(user.uid, { currentAge: ageNum });
+      try { localStorage.setItem('haru_user_current_age', String(ageNum)); } catch {}
+      toast.success('현재 나이가 저장되었습니다.');
+    } catch (e) {
+      console.error('내 정보 저장 실패:', e);
+      toast.error('나이 저장에 실패했습니다.');
+    } finally {
+      setIsSavingAge(false);
+    }
+  };
 
   const loadQuoteType = async () => {
     if (!user?.uid) return;
@@ -868,6 +911,52 @@ export function SettingsPage() {
             )}
           </section>
         )}
+
+        <section className="bg-white rounded-lg p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-5">
+            <User className="w-5 h-5" style={{ color: '#1A3C6E' }} />
+            <h2 className="text-base tracking-wide" style={{ color: '#333' }}>
+              내 정보
+            </h2>
+          </div>
+
+          <div>
+            <p className="text-sm mb-1" style={{ color: '#374151', fontWeight: 500 }}>
+              현재 나이 (만)
+            </p>
+            <p className="text-xs mb-3" style={{ color: '#9CA3AF', lineHeight: 1.6 }}>
+              HARU예언이 미래 시점의 나이를 정확히 계산할 때 사용합니다.
+            </p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={120}
+                value={profileAge}
+                onChange={(e) => setProfileAge(e.target.value.replace(/[^0-9]/g, ''))}
+                placeholder="예) 65"
+                style={{
+                  flex: 1, border: '1px solid #E5E7EB', borderRadius: 8,
+                  padding: '8px 10px', fontSize: 16, outline: 'none',
+                  fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
+                }}
+              />
+              <button
+                onClick={handleSaveProfileAge}
+                disabled={isSavingAge || !profileAge}
+                style={{
+                  padding: '8px 16px', borderRadius: 8, border: 'none',
+                  background: isSavingAge || !profileAge ? '#D1D5DB' : '#1A3C6E',
+                  color: '#fff', fontSize: 13, fontWeight: 500,
+                  cursor: isSavingAge || !profileAge ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {isSavingAge ? '저장 중...' : '저장'}
+              </button>
+            </div>
+          </div>
+        </section>
 
         <section className="bg-white rounded-lg p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-5">

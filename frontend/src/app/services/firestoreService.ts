@@ -1098,6 +1098,40 @@ class FirestoreService {
     );
     await Promise.all(promises);
   }
+
+  /**
+   * 사용자 프로필 조회 (users/{uid}/settings/profile)
+   * 현재는 currentAge / ageUpdatedAt만 사용. 향후 다른 프로필 필드 확장 가능.
+   */
+  async getUserProfile(userId: string): Promise<{ currentAge?: number; ageUpdatedAt?: string }> {
+    try {
+      const profileRef = doc(db, 'users', userId, 'settings', 'profile');
+      const snap = await getDoc(profileRef);
+      if (snap.exists()) {
+        return snap.data() as { currentAge?: number; ageUpdatedAt?: string };
+      }
+      return {};
+    } catch (error) {
+      console.error('사용자 프로필 불러오기 실패:', error);
+      return {};
+    }
+  }
+
+  /**
+   * 사용자 프로필 저장 (merge). 현재는 currentAge만 사용.
+   */
+  async saveUserProfile(userId: string, partial: { currentAge?: number }): Promise<void> {
+    try {
+      const profileRef = doc(db, 'users', userId, 'settings', 'profile');
+      await setDoc(profileRef, {
+        ...partial,
+        ageUpdatedAt: new Date().toISOString(),
+      }, { merge: true });
+    } catch (error) {
+      console.error('사용자 프로필 저장 실패:', error);
+      throw error;
+    }
+  }
 }
 
 export const firestoreService = new FirestoreService();

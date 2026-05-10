@@ -282,6 +282,21 @@ export function RecordProphecyPage() {
     }
   };
 
+  // 사용자 프로필 currentAge 로드: Firestore 우선, 없으면 localStorage 유지
+  useEffect(() => {
+    if (!user?.uid) return;
+    let cancelled = false;
+    firestoreService.getUserProfile(user.uid).then(profile => {
+      if (cancelled) return;
+      if (typeof profile.currentAge === 'number' && profile.currentAge > 0) {
+        const ageStr = String(profile.currentAge);
+        setCurrentAge(ageStr);
+        try { localStorage.setItem(CURRENT_AGE_STORAGE_KEY, ageStr); } catch {}
+      }
+    }).catch(() => { /* 무시: localStorage fallback 유지 */ });
+    return () => { cancelled = true; };
+  }, [user?.uid]);
+
   // 외부에서 들어온 단일 기록(예: SayuModal "이 기록으로 예언하기")
   useEffect(() => {
     const incoming = location.state?.incomingRecord as RecordItem | undefined;
@@ -327,6 +342,9 @@ export function RecordProphecyPage() {
     const hasAge = Number.isFinite(ageNum) && ageNum > 0;
     if (hasAge) {
       try { localStorage.setItem(CURRENT_AGE_STORAGE_KEY, String(ageNum)); } catch {}
+      if (user?.uid) {
+        firestoreService.saveUserProfile(user.uid, { currentAge: ageNum }).catch(() => { /* 비차단 */ });
+      }
     }
     const baseYear = new Date().getFullYear();
     const yearsAhead = parseTimeOptionYears(timeOption);
