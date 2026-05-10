@@ -42,7 +42,7 @@ const sanitizeProtagonistName = (raw: string): string => {
     .slice(0, 20);
 };
 
-type NameMode = 'real' | 'nickname' | 'custom';
+type NameMode = '' | 'real' | 'nickname' | 'custom';
 
 const GOAL_OPTIONS: Record<'me' | 'child' | 'past', string[]> = {
   me: [
@@ -204,7 +204,7 @@ export function RecordProphecyPage() {
   // 주인공 이름: 프로필에서 불러옴 + 사용자가 매번 선택
   const [profileRealName, setProfileRealName] = useState<string>('');
   const [profileNickname, setProfileNickname] = useState<string>('');
-  const [nameMode, setNameMode] = useState<NameMode>('real');
+  const [nameMode, setNameMode] = useState<NameMode>('');
   const [customName, setCustomName] = useState<string>('');
   const [question, setQuestion] = useState('');
   const [prophecyGoalType, setProphecyGoalType] = useState<'me' | 'child' | 'past' | ''>('me');
@@ -314,8 +314,14 @@ export function RecordProphecyPage() {
       const nick = typeof profile.nickname === 'string' ? profile.nickname : '';
       setProfileRealName(real);
       setProfileNickname(nick);
-      // 기본 모드: 본명이 있으면 real, 없고 닉네임만 있으면 nickname
-      if (!real && nick) setNameMode('nickname');
+      // 자동 선택 규칙:
+      // - 본명만 등록 → 'real' 자동
+      // - 닉네임만 등록 → 'nickname' 자동
+      // - 둘 다 등록 → '' (미선택, 매번 명시 선택 강제)
+      // - 둘 다 미등록 → '' (사용자가 직접입력 선택 필요)
+      if (real && !nick) setNameMode('real');
+      else if (!real && nick) setNameMode('nickname');
+      // 둘 다 / 둘 다 미등록 → 미선택 그대로
     }).catch(() => { /* 무시: localStorage fallback 유지 */ });
     return () => { cancelled = true; };
   }, [user?.uid]);
@@ -374,16 +380,14 @@ export function RecordProphecyPage() {
     const futureYear = baseYear + yearsAhead;
     const futureAge = hasAge ? ageNum + yearsAhead : null;
 
-    // 주인공 이름 결정: nameMode → fallback 본명 → fallback 닉네임 → null(이름 강제 안 함)
+    // 주인공 이름 결정: 사용자가 명시 선택한 모드만 사용 (자동 fallback은 본명 강제 방지를 위해 제거)
     let protagonistName: string | null = null;
     if (nameMode === 'real' && profileRealName) protagonistName = profileRealName;
     else if (nameMode === 'nickname' && profileNickname) protagonistName = profileNickname;
     else if (nameMode === 'custom') {
-      const cleaned = sanitizeProtagonistName(customName);
-      protagonistName = cleaned || profileRealName || profileNickname || null;
-    } else {
-      protagonistName = profileRealName || profileNickname || null;
+      protagonistName = sanitizeProtagonistName(customName) || null;
     }
+    // nameMode가 '' (미선택)이면 protagonistName=null → AI가 이름 강제 안 받음
     navigate('/novel-synopsis', {
       state: {
         fromRecord: true,
@@ -1136,9 +1140,13 @@ export function RecordProphecyPage() {
             </div>
 
             <div style={styles.card}>
-              <p style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E', marginBottom: 4 }}>이 이야기의 주인공 이름</p>
+              <p style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E', marginBottom: 4 }}>
+                이 이야기의 주인공 이름 {!nameMode && <span style={{ color: '#ef4444' }}>*선택 필요</span>}
+              </p>
               <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>
-                AI가 임의로 이름을 만들지 않도록, 이번 단편에서 사용할 이름을 선택해 주세요.
+                {profileRealName && profileNickname
+                  ? '본명·닉네임 둘 다 등록되어 있습니다. 이번 이야기에 어떤 이름을 쓸지 매번 선택해 주세요.'
+                  : 'AI가 임의로 이름을 만들지 않도록, 이번 단편에서 사용할 이름을 선택해 주세요.'}
                 {!profileRealName && !profileNickname && ' (설정 → 내 정보에서 본명/닉네임을 먼저 등록하면 매번 입력하지 않아도 됩니다.)'}
               </p>
               <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
@@ -1220,13 +1228,30 @@ export function RecordProphecyPage() {
               </div>
             </div>
 
-            <button
-              style={styles.btnPrimary}
-              onClick={goToSynopsis}
-              disabled={!prophecyGoalType}
-            >
-              📖 시놉시스 생성하기
-            </button>
+            {(() => {
+              const customNameClean = sanitizeProtagonistName(customName);
+              const nameReady =
+                (nameMode === 'real' && !!profileRealName) ||
+                (nameMode === 'nickname' && !!profileNickname) ||
+                (nameMode === 'custom' && customNameClean.length > 0);
+              const blocked = !prophecyGoalType || !nameReady;
+              return (
+                <>
+                  {!nameReady && (
+                    <p style={{ fontSize: 12, color: '#ef4444', textAlign: 'center', marginTop: 6, marginBottom: 0 }}>
+                      ※ 위에서 본명·닉네임·직접입력 중 하나를 선택해야 시놉시스를 생성할 수 있습니다.
+                    </p>
+                  )}
+                  <button
+                    style={{ ...styles.btnPrimary, opacity: blocked ? 0.4 : 1, cursor: blocked ? 'not-allowed' : 'pointer' }}
+                    onClick={goToSynopsis}
+                    disabled={blocked}
+                  >
+                    📖 시놉시스 생성하기
+                  </button>
+                </>
+              );
+            })()}
           </>
         )}
 
