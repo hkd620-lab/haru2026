@@ -350,9 +350,19 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/.claude/CLAUDE.md, .gitignore
 - 다음할일: GPT-4o 검증 프롬프트 강화 (getGrammarExplain)
 
+### 2026-05-11 (1차)
+- 완료: HARU예언 fromRecord 흐름에 사용자 실제 나이 전달 — AI 임의 연령 추정 방지. ProphecyFromRecord에 currentAge 입력 UI 추가, NovelSynopsisPage payload에 currentAge/baseYear/futureYear/futureAge 4필드 추가, generateHaruProphecy 프롬프트에 연령 고정 블록 + 모순 표현 금지 제약 추가. 65+5년후 재생성 시 "서른 후반" 등 표현 제거 검증 완료.
+- 수정파일: frontend/src/app/pages/ProphecyFromRecord.tsx, frontend/src/app/pages/NovelSynopsisPage.tsx, functions/src/index.ts
+- 다음할일: 성별·birthYear 추가 (별도 작업)
+
+### 2026-05-11 (2차)
+- 완료: currentAge를 users/{uid}/settings/profile 문서로 영구 저장 — 다기기 동기화. firestoreService에 getUserProfile/saveUserProfile 헬퍼 추가, ProphecyFromRecord는 Firestore 우선 로드 후 localStorage fallback, SettingsPage에 "내 정보" 섹션 신설 (현재 나이 입력+저장). 4가지 검증 시나리오 통과 (양방향 동기화, 다기기 유지, localStorage 마이그레이션).
+- 수정파일: frontend/src/app/services/firestoreService.ts, frontend/src/app/pages/ProphecyFromRecord.tsx, frontend/src/app/pages/SettingsPage.tsx
+- 다음할일: 성별·birthYear를 같은 profile 문서에 merge로 추가
+
 ---
 
-최종 업데이트: 2026.04.26
+최종 업데이트: 2026.05.11
 HARU2026 by JOYEL — 허 교장님 전용
 
 ## ⚠️ Git 브랜치 필수 원칙 (절대 준수)
