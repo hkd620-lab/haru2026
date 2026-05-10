@@ -56,6 +56,7 @@ export function NovelSynopsisPage() {
   const navBaseYear = location.state?.baseYear ?? null;
   const navFutureYear = location.state?.futureYear ?? null;
   const navFutureAge = location.state?.futureAge ?? null;
+  const navProtagonistName = location.state?.protagonistName ?? null;
 
   // ── fromRecord=true 분기 전용 state ──
   const [analysis, setAnalysis] = useState({
@@ -142,6 +143,7 @@ export function NovelSynopsisPage() {
     baseYear: navBaseYear,
     futureYear: navFutureYear,
     futureAge: navFutureAge,
+    protagonistName: navProtagonistName,
     type: payloadType,
   });
 

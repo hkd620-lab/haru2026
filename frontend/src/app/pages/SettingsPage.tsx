@@ -55,6 +55,11 @@ export function SettingsPage() {
   const [profileAge, setProfileAge] = useState<string>('');
   const [isSavingAge, setIsSavingAge] = useState(false);
 
+  // 내 정보 — 본명/닉네임 (HARU예언 주인공 이름으로 사용)
+  const [profileRealName, setProfileRealName] = useState<string>('');
+  const [profileNickname, setProfileNickname] = useState<string>('');
+  const [isSavingName, setIsSavingName] = useState(false);
+
   const isAdmin = user?.uid === ADMIN_UID;
   const isDevUser = user?.email === 'hkd620@gmail.com';
 
@@ -80,14 +85,49 @@ export function SettingsPage() {
       if (typeof profile.currentAge === 'number' && profile.currentAge > 0) {
         setProfileAge(String(profile.currentAge));
       } else {
-        // Firestore 없으면 localStorage fallback (HARU예언에서만 입력했던 사용자 마이그레이션)
         try {
           const cached = localStorage.getItem('haru_user_current_age');
           if (cached) setProfileAge(cached);
         } catch {}
       }
+      if (typeof profile.realName === 'string') setProfileRealName(profile.realName);
+      if (typeof profile.nickname === 'string') setProfileNickname(profile.nickname);
     } catch (e) {
       console.error('내 정보 로딩 실패:', e);
+    }
+  };
+
+  // 이름 sanitize: 빈 문자열, 길이, 위험 문자 모두 차단
+  const sanitizeName = (raw: string): string => {
+    return (raw || '')
+      .replace(/[\n\r\t`{}$\\<>"]/g, '')
+      .replace(/[^\p{L}\p{N} \-_.]/gu, '')
+      .trim()
+      .slice(0, 20);
+  };
+
+  const handleSaveProfileName = async () => {
+    if (!user?.uid) return;
+    const cleanReal = sanitizeName(profileRealName);
+    const cleanNick = sanitizeName(profileNickname);
+    if (!cleanReal && !cleanNick) {
+      toast.error('본명 또는 닉네임 중 하나는 입력해주세요.');
+      return;
+    }
+    setIsSavingName(true);
+    try {
+      await firestoreService.saveUserProfile(user.uid, {
+        realName: cleanReal,
+        nickname: cleanNick,
+      });
+      setProfileRealName(cleanReal);
+      setProfileNickname(cleanNick);
+      toast.success('이름 정보가 저장되었습니다.');
+    } catch (e) {
+      console.error('이름 저장 실패:', e);
+      toast.error('이름 저장에 실패했습니다.');
+    } finally {
+      setIsSavingName(false);
     }
   };
 
@@ -918,6 +958,53 @@ export function SettingsPage() {
             <h2 className="text-base tracking-wide" style={{ color: '#333' }}>
               내 정보
             </h2>
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <p className="text-sm mb-1" style={{ color: '#374151', fontWeight: 500 }}>
+              본명 / 닉네임
+            </p>
+            <p className="text-xs mb-3" style={{ color: '#9CA3AF', lineHeight: 1.6 }}>
+              HARU예언 단편의 주인공 이름으로 사용됩니다. 한글·영문·숫자 및 공백만 입력 가능 (각 20자 이내).
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
+              <input
+                type="text"
+                maxLength={20}
+                value={profileRealName}
+                onChange={(e) => setProfileRealName(e.target.value)}
+                placeholder="본명 (예: 허경대)"
+                style={{
+                  width: '100%', border: '1px solid #E5E7EB', borderRadius: 8,
+                  padding: '8px 10px', fontSize: 16, outline: 'none',
+                  fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
+                }}
+              />
+              <input
+                type="text"
+                maxLength={20}
+                value={profileNickname}
+                onChange={(e) => setProfileNickname(e.target.value)}
+                placeholder="닉네임 (예: 허교장)"
+                style={{
+                  width: '100%', border: '1px solid #E5E7EB', borderRadius: 8,
+                  padding: '8px 10px', fontSize: 16, outline: 'none',
+                  fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
+                }}
+              />
+              <button
+                onClick={handleSaveProfileName}
+                disabled={isSavingName || (!profileRealName && !profileNickname)}
+                style={{
+                  padding: '8px 16px', borderRadius: 8, border: 'none',
+                  background: (isSavingName || (!profileRealName && !profileNickname)) ? '#D1D5DB' : '#1A3C6E',
+                  color: '#fff', fontSize: 13, fontWeight: 500,
+                  cursor: (isSavingName || (!profileRealName && !profileNickname)) ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {isSavingName ? '저장 중...' : '이름 저장'}
+              </button>
+            </div>
           </div>
 
           <div>

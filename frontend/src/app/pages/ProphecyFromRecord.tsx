@@ -33,6 +33,17 @@ const parseTimeOptionYears = (opt: string): number => {
   return m ? parseInt(m[1], 10) : 0;
 };
 
+// 주인공 이름 sanitize: prompt injection / 잘못된 문자 차단
+const sanitizeProtagonistName = (raw: string): string => {
+  return (raw || '')
+    .replace(/[\n\r\t`{}$\\<>"]/g, '')
+    .replace(/[^\p{L}\p{N} \-_.]/gu, '')
+    .trim()
+    .slice(0, 20);
+};
+
+type NameMode = 'real' | 'nickname' | 'custom';
+
 const GOAL_OPTIONS: Record<'me' | 'child' | 'past', string[]> = {
   me: [
     '내가 시작한 일이 세상에 쓸모있게 남는 것',
@@ -189,6 +200,12 @@ export function RecordProphecyPage() {
     if (typeof window === 'undefined') return '';
     return localStorage.getItem(CURRENT_AGE_STORAGE_KEY) || '';
   });
+
+  // 주인공 이름: 프로필에서 불러옴 + 사용자가 매번 선택
+  const [profileRealName, setProfileRealName] = useState<string>('');
+  const [profileNickname, setProfileNickname] = useState<string>('');
+  const [nameMode, setNameMode] = useState<NameMode>('real');
+  const [customName, setCustomName] = useState<string>('');
   const [question, setQuestion] = useState('');
   const [prophecyGoalType, setProphecyGoalType] = useState<'me' | 'child' | 'past' | ''>('me');
   const [prophecyGoal, setProphecyGoal] = useState('');
@@ -293,6 +310,12 @@ export function RecordProphecyPage() {
         setCurrentAge(ageStr);
         try { localStorage.setItem(CURRENT_AGE_STORAGE_KEY, ageStr); } catch {}
       }
+      const real = typeof profile.realName === 'string' ? profile.realName : '';
+      const nick = typeof profile.nickname === 'string' ? profile.nickname : '';
+      setProfileRealName(real);
+      setProfileNickname(nick);
+      // 기본 모드: 본명이 있으면 real, 없고 닉네임만 있으면 nickname
+      if (!real && nick) setNameMode('nickname');
     }).catch(() => { /* 무시: localStorage fallback 유지 */ });
     return () => { cancelled = true; };
   }, [user?.uid]);
@@ -350,6 +373,17 @@ export function RecordProphecyPage() {
     const yearsAhead = parseTimeOptionYears(timeOption);
     const futureYear = baseYear + yearsAhead;
     const futureAge = hasAge ? ageNum + yearsAhead : null;
+
+    // 주인공 이름 결정: nameMode → fallback 본명 → fallback 닉네임 → null(이름 강제 안 함)
+    let protagonistName: string | null = null;
+    if (nameMode === 'real' && profileRealName) protagonistName = profileRealName;
+    else if (nameMode === 'nickname' && profileNickname) protagonistName = profileNickname;
+    else if (nameMode === 'custom') {
+      const cleaned = sanitizeProtagonistName(customName);
+      protagonistName = cleaned || profileRealName || profileNickname || null;
+    } else {
+      protagonistName = profileRealName || profileNickname || null;
+    }
     navigate('/novel-synopsis', {
       state: {
         fromRecord: true,
@@ -380,6 +414,7 @@ export function RecordProphecyPage() {
         baseYear,
         futureYear,
         futureAge,
+        protagonistName,
       }
     });
   };
@@ -1098,6 +1133,61 @@ export function RecordProphecyPage() {
                   lineHeight: 1.6, fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
                 }}
               />
+            </div>
+
+            <div style={styles.card}>
+              <p style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E', marginBottom: 4 }}>이 이야기의 주인공 이름</p>
+              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>
+                AI가 임의로 이름을 만들지 않도록, 이번 단편에서 사용할 이름을 선택해 주세요.
+                {!profileRealName && !profileNickname && ' (설정 → 내 정보에서 본명/닉네임을 먼저 등록하면 매번 입력하지 않아도 됩니다.)'}
+              </p>
+              <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  disabled={!profileRealName}
+                  style={{
+                    ...styles.pill(nameMode === 'real'),
+                    opacity: profileRealName ? 1 : 0.4,
+                    cursor: profileRealName ? 'pointer' : 'not-allowed',
+                  }}
+                  onClick={() => profileRealName && setNameMode('real')}
+                >
+                  본명{profileRealName ? ` (${profileRealName})` : ' (미등록)'}
+                </button>
+                <button
+                  type="button"
+                  disabled={!profileNickname}
+                  style={{
+                    ...styles.pill(nameMode === 'nickname'),
+                    opacity: profileNickname ? 1 : 0.4,
+                    cursor: profileNickname ? 'pointer' : 'not-allowed',
+                  }}
+                  onClick={() => profileNickname && setNameMode('nickname')}
+                >
+                  닉네임{profileNickname ? ` (${profileNickname})` : ' (미등록)'}
+                </button>
+                <button
+                  type="button"
+                  style={styles.pill(nameMode === 'custom')}
+                  onClick={() => setNameMode('custom')}
+                >
+                  직접 입력
+                </button>
+              </div>
+              {nameMode === 'custom' && (
+                <input
+                  type="text"
+                  maxLength={20}
+                  value={customName}
+                  onChange={e => setCustomName(e.target.value)}
+                  placeholder="이번 이야기에서 쓸 이름 (최대 20자)"
+                  style={{
+                    width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
+                    padding: '8px 10px', fontSize: 16, outline: 'none',
+                    fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
+                  }}
+                />
+              )}
             </div>
 
             <div style={styles.card}>

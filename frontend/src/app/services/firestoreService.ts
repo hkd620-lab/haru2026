@@ -1101,14 +1101,20 @@ class FirestoreService {
 
   /**
    * 사용자 프로필 조회 (users/{uid}/settings/profile)
-   * 현재는 currentAge / ageUpdatedAt만 사용. 향후 다른 프로필 필드 확장 가능.
+   * currentAge / realName / nickname 등 generic 프로필 필드.
    */
-  async getUserProfile(userId: string): Promise<{ currentAge?: number; ageUpdatedAt?: string }> {
+  async getUserProfile(userId: string): Promise<{
+    currentAge?: number;
+    ageUpdatedAt?: string;
+    realName?: string;
+    nickname?: string;
+    nameUpdatedAt?: string;
+  }> {
     try {
       const profileRef = doc(db, 'users', userId, 'settings', 'profile');
       const snap = await getDoc(profileRef);
       if (snap.exists()) {
-        return snap.data() as { currentAge?: number; ageUpdatedAt?: string };
+        return snap.data() as any;
       }
       return {};
     } catch (error) {
@@ -1118,15 +1124,19 @@ class FirestoreService {
   }
 
   /**
-   * 사용자 프로필 저장 (merge). 현재는 currentAge만 사용.
+   * 사용자 프로필 저장 (merge). 변경된 필드만 넘기면 됨.
    */
-  async saveUserProfile(userId: string, partial: { currentAge?: number }): Promise<void> {
+  async saveUserProfile(userId: string, partial: {
+    currentAge?: number;
+    realName?: string;
+    nickname?: string;
+  }): Promise<void> {
     try {
       const profileRef = doc(db, 'users', userId, 'settings', 'profile');
-      await setDoc(profileRef, {
-        ...partial,
-        ageUpdatedAt: new Date().toISOString(),
-      }, { merge: true });
+      const payload: any = { ...partial };
+      if (partial.currentAge !== undefined) payload.ageUpdatedAt = new Date().toISOString();
+      if (partial.realName !== undefined || partial.nickname !== undefined) payload.nameUpdatedAt = new Date().toISOString();
+      await setDoc(profileRef, payload, { merge: true });
     } catch (error) {
       console.error('사용자 프로필 저장 실패:', error);
       throw error;
