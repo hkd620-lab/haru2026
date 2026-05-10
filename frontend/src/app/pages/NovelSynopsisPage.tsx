@@ -52,6 +52,10 @@ export function NovelSynopsisPage() {
   const navPersons = location.state?.persons || [];
   const navExtractedEvent = location.state?.extractedEvent || '';
   const navExtractedDailyAchieve = location.state?.extractedDailyAchieve || '';
+  const navCurrentAge = location.state?.currentAge ?? null;
+  const navBaseYear = location.state?.baseYear ?? null;
+  const navFutureYear = location.state?.futureYear ?? null;
+  const navFutureAge = location.state?.futureAge ?? null;
 
   // ── fromRecord=true 분기 전용 state ──
   const [analysis, setAnalysis] = useState({
@@ -134,6 +138,10 @@ export function NovelSynopsisPage() {
     persons: navPersons,
     extractedEvent: currentAnalysis.events || navExtractedEvent,
     extractedDailyAchieve: currentAnalysis.dailyAchieve || navExtractedDailyAchieve,
+    currentAge: navCurrentAge,
+    baseYear: navBaseYear,
+    futureYear: navFutureYear,
+    futureAge: navFutureAge,
     type: payloadType,
   });
 

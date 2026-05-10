@@ -2631,7 +2631,8 @@ export const generateHaruProphecy = onCall(
             extractedRelationship, extractedPersonality, extractedMotive, extractedTheme,
             extractedOneLiner, extractedThreeLiner,
             prophecyGoalType, prophecyGoal, prophecyWall,
-            extractedGoal, persons, extractedEvent, extractedDailyAchieve } = request.data;
+            extractedGoal, persons, extractedEvent, extractedDailyAchieve,
+            currentAge, baseYear, futureYear, futureAge } = request.data;
     // type: 'synopsis' | 'story'
 
     if (!fromRecord && !motive) {
@@ -2769,6 +2770,10 @@ export const generateHaruProphecy = onCall(
         const wallLine = prophecyWall ? `[지금 가장 넘고 싶은 것]: ${prophecyWall}` : '';
         const goalBlock = [goalTypeLine, goalLine, wallLine].filter(Boolean).join('\n');
 
+        const hasAge = typeof currentAge === 'number' && currentAge > 0;
+        const ageBlock = hasAge
+          ? `\n[사용자 연령 정보 — 절대 준수]\n- 사용자의 현재 나이: ${currentAge}세 (기준 연도: ${baseYear ?? new Date().getFullYear()}년)\n- 미래 시점: ${futureYear ?? ''}년 — 이 시점의 사용자는 ${futureAge ?? ''}세입니다.\n- AI는 사용자의 나이를 임의로 추정하지 않습니다. 위 수치만 사용합니다.\n- "30대", "40대", "서른 후반", "오십대" 등 연령대 표현은 ${futureAge ?? ''}세와 맞지 않으면 절대 쓰지 않습니다.\n- 주인공·사용자의 외모·체력·인생 단계·사회적 위치 묘사는 ${futureAge ?? ''}세에 부합해야 합니다.\n`
+          : '';
         userPrompt = `
 [창작 모드]: 내 기록으로 창작
 [기록 제목]: ${recordTitle}
@@ -2777,13 +2782,13 @@ export const generateHaruProphecy = onCall(
 [예언 종류]: ${prophecyType}
 [시간 배경]: ${timeOption}
 [핵심 질문]: ${question}
-${extractedBlock ? '\n[AI가 기록에서 추출한 핵심 요소]:\n' + extractedBlock + '\n' : ''}${goalBlock ? '\n[사용자의 예언 목표]:\n' + goalBlock + '\n' : ''}
+${ageBlock}${extractedBlock ? '\n[AI가 기록에서 추출한 핵심 요소]:\n' + extractedBlock + '\n' : ''}${goalBlock ? '\n[사용자의 예언 목표]:\n' + goalBlock + '\n' : ''}
 [실제 기록 내용]:
 ${recordContent}
 
 위 실제 기록과 추출된 핵심 요소를 바탕으로 ${timeOption} 뒤의 이야기를 예언 소설 형식으로 작성해주세요.
 기록 속 인물, 감정, 사건을 최대한 살려서 "내 이야기 같다"는 느낌이 들게 해주세요.
-${goalBlock ? '특히 위 [사용자의 예언 목표]에 명시된 예언 유형·초목표·넘고 싶은 것을 시놉시스/서사 전체에 반드시 자연스럽게 반영해주세요. 사용자의 초목표가 어떻게 되어가는지, 사용자가 넘고 싶다고 말한 것을 어떻게 마주하는지 이야기 속에 분명히 드러나야 합니다.\n' : ''}예언 종류: ${prophecyType}
+${hasAge ? `반드시 주인공이 ${futureAge}세인 것을 전제로 묘사하세요. 어떤 경우에도 ${futureAge}세와 모순되는 연령대 표현을 사용하지 마세요.\n` : ''}${goalBlock ? '특히 위 [사용자의 예언 목표]에 명시된 예언 유형·초목표·넘고 싶은 것을 시놉시스/서사 전체에 반드시 자연스럽게 반영해주세요. 사용자의 초목표가 어떻게 되어가는지, 사용자가 넘고 싶다고 말한 것을 어떻게 마주하는지 이야기 속에 분명히 드러나야 합니다.\n' : ''}예언 종류: ${prophecyType}
 
 ${type === 'story'
   ? '분량: A4 5페이지 분량 (4000~6000자). 기승전결 구조로 작성.'

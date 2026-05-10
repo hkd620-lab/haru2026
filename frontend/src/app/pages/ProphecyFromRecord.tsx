@@ -26,6 +26,13 @@ interface RecordItem {
 
 const TIME_OPTIONS = ['1년 후', '3년 후', '5년 후', '10년 후'];
 
+const CURRENT_AGE_STORAGE_KEY = 'haru_user_current_age';
+
+const parseTimeOptionYears = (opt: string): number => {
+  const m = opt.match(/(\d+)/);
+  return m ? parseInt(m[1], 10) : 0;
+};
+
 const GOAL_OPTIONS: Record<'me' | 'child' | 'past', string[]> = {
   me: [
     '내가 시작한 일이 세상에 쓸모있게 남는 것',
@@ -178,6 +185,10 @@ export function RecordProphecyPage() {
   const [mergeLoading, setMergeLoading] = useState(false);
 
   const [timeOption, setTimeOption] = useState('3년 후');
+  const [currentAge, setCurrentAge] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    return localStorage.getItem(CURRENT_AGE_STORAGE_KEY) || '';
+  });
   const [question, setQuestion] = useState('');
   const [prophecyGoalType, setProphecyGoalType] = useState<'me' | 'child' | 'past' | ''>('me');
   const [prophecyGoal, setProphecyGoal] = useState('');
@@ -312,6 +323,15 @@ export function RecordProphecyPage() {
 
   const goToSynopsis = () => {
     if (!selectedRecord) return;
+    const ageNum = parseInt(currentAge, 10);
+    const hasAge = Number.isFinite(ageNum) && ageNum > 0;
+    if (hasAge) {
+      try { localStorage.setItem(CURRENT_AGE_STORAGE_KEY, String(ageNum)); } catch {}
+    }
+    const baseYear = new Date().getFullYear();
+    const yearsAhead = parseTimeOptionYears(timeOption);
+    const futureYear = baseYear + yearsAhead;
+    const futureAge = hasAge ? ageNum + yearsAhead : null;
     navigate('/novel-synopsis', {
       state: {
         fromRecord: true,
@@ -338,6 +358,10 @@ export function RecordProphecyPage() {
         persons,
         extractedEvent,
         extractedDailyAchieve,
+        currentAge: hasAge ? ageNum : null,
+        baseYear,
+        futureYear,
+        futureAge,
       }
     });
   };
@@ -1054,6 +1078,27 @@ export function RecordProphecyPage() {
                   width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
                   padding: '8px 10px', fontSize: 16, resize: 'none', outline: 'none',
                   lineHeight: 1.6, fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            <div style={styles.card}>
+              <p style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E', marginBottom: 4 }}>현재 나이 (만)</p>
+              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>
+                AI가 미래 시점의 나이를 정확히 계산하기 위해 필요합니다.
+              </p>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={120}
+                value={currentAge}
+                onChange={e => setCurrentAge(e.target.value.replace(/[^0-9]/g, ''))}
+                placeholder="예) 65"
+                style={{
+                  width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
+                  padding: '8px 10px', fontSize: 16, outline: 'none',
+                  fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
                 }}
               />
             </div>
