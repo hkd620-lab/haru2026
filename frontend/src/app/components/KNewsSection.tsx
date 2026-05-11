@@ -18,18 +18,20 @@ const KNewsCard: React.FC<{ news: KNews }> = ({ news }) => {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
       <div
-        className="bg-gray-50 overflow-hidden flex items-center justify-center"
+        className="bg-gray-50 overflow-auto flex items-start justify-start"
         style={{ maxHeight: maxH, transition: 'max-height 240ms ease-out' }}
       >
         <img
           src={news.imageUrl}
           alt={news.title}
           onClick={handleImageClick}
-          className="w-full h-auto object-contain select-none"
+          className="select-none"
           style={{
-            maxHeight: maxH,
+            width: `${100 * zoom}%`,
+            maxWidth: 'none',
+            height: 'auto',
             cursor: isMaxed ? 'zoom-out' : 'zoom-in',
-            transition: 'max-height 240ms ease-out',
+            transition: 'width 240ms ease-out',
           }}
           loading="lazy"
           title={isMaxed ? '클릭하면 원래 크기로 돌아갑니다' : '클릭하면 50% 확대됩니다'}
