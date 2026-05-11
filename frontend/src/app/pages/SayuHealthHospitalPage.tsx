@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
+import { INFOGRAPHICS, type Infographic } from '../data/infographicsData';
 
 type AnalyzeResponse = {
   recommendedSpecialties: string[];
@@ -23,6 +24,8 @@ export function SayuHealthHospitalPage() {
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [lastSymptomsText, setLastSymptomsText] = useState('');
 
   const closeToOrigin = () => {
     if (fromPath) { navigate(fromPath); return; }
@@ -50,6 +53,8 @@ export function SayuHealthHospitalPage() {
       if (Number.isFinite(ageNum) && ageNum > 0 && ageNum < 150) payload.age = ageNum;
       const res = await fn(payload);
       setResult(res.data);
+      setLastSymptomsText(effectiveSymptoms);
+      setShowResultModal(true);
     } catch (e: any) {
       console.error('[SymptomAnalysis] failed', e);
       toast.error(e?.message || '분석 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
@@ -89,10 +94,32 @@ export function SayuHealthHospitalPage() {
     const q = neighborhood.trim() ? `${neighborhood.trim()} ${keyword}` : keyword;
     return `https://map.naver.com/v5/search/${encodeURIComponent(q)}`;
   };
-  const buildKakaoUrl = (keyword: string) => {
-    const q = neighborhood.trim() ? `${neighborhood.trim()} ${keyword}` : keyword;
-    return `https://map.kakao.com/link/search/${encodeURIComponent(q)}`;
-  };
+  const buildEbsSearchUrl = (keyword: string) =>
+    `https://www.ebs.co.kr/search?query=${encodeURIComponent(keyword)}&collection=community`;
+
+  // 인포그래픽 자동 매칭: Gemini 결과 + 사용자 입력 증상에서 키워드 추출
+  const matchedInfographic: Infographic | null = useMemo(() => {
+    if (!result) return null;
+    const rawKeywords = [
+      result.searchKeyword,
+      result.ebsKeyword,
+      ...(result.recommendedSpecialties || []),
+      lastSymptomsText,
+    ].filter(Boolean) as string[];
+    const keywords = rawKeywords
+      .flatMap((s) => s.split(/[,\s]+/))
+      .map((s) => s.trim())
+      .filter((s) => s.length >= 2);
+    if (keywords.length === 0) return null;
+    return (
+      INFOGRAPHICS.find((info) => {
+        const haystack = [...info.tags, ...info.relatedSymptoms];
+        return haystack.some((needle) =>
+          keywords.some((kw) => kw.includes(needle) || needle.includes(kw))
+        );
+      }) ?? null
+    );
+  }, [result, lastSymptomsText]);
 
   const styles = {
     container: { minHeight: '100vh', background: '#FAF9F6', paddingBottom: 80 } as React.CSSProperties,
@@ -263,96 +290,10 @@ export function SayuHealthHospitalPage() {
 
           <div className="mt-4 pt-3 border-t border-gray-100">
             <p className="text-[11px] text-gray-400 leading-relaxed">
-              ℹ️ 버튼을 누르면 자동으로 검색됩니다. 결과는 EBS·네이버지도·카카오맵·굿닥에서 가져옵니다.
+              ℹ️ 버튼을 누르면 자동으로 검색됩니다. 결과는 네이버지도·EBS 명의에서 가져옵니다.
             </p>
           </div>
         </div>
-
-        {/* 결과 영역 */}
-        {result && (
-          <div id="search-result">
-            <div style={{ ...styles.card, background: '#EEF3FA', border: '0.5px solid #B5D4F4' }}>
-              <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>추천 진료과</p>
-              <p style={{ fontSize: 18, fontWeight: 700, color: '#1A3C6E', marginBottom: 8 }}>
-                {result.recommendedSpecialties.join(', ')}
-              </p>
-              <p style={{ fontSize: 11, color: '#9ca3af', lineHeight: 1.6 }}>
-                {result.disclaimer}
-              </p>
-            </div>
-
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', margin: '20px 0 10px' }}>
-              📍 동네 병원·명의 정보 찾기
-            </p>
-
-            {/* 카드 1: 네이버 지도 */}
-            <div style={styles.serviceCard}>
-              <div style={styles.serviceTitle}>🗺️ 네이버 지도에서 동네 병원 찾기</div>
-              <div style={styles.serviceDesc}>
-                네이버 지도로 <strong>{neighborhood.trim() ? `${neighborhood.trim()} ` : ''}{result.searchKeyword}</strong> 검색
-              </div>
-              <a
-                href={buildNaverUrl(result.searchKeyword)}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={styles.serviceBtn}
-              >
-                네이버 지도 열기
-              </a>
-            </div>
-
-            {/* 카드 2: 카카오맵 */}
-            <div style={styles.serviceCard}>
-              <div style={styles.serviceTitle}>📍 카카오맵에서 동네 병원 찾기</div>
-              <div style={styles.serviceDesc}>
-                카카오맵으로 <strong>{neighborhood.trim() ? `${neighborhood.trim()} ` : ''}{result.searchKeyword}</strong> 검색
-              </div>
-              <a
-                href={buildKakaoUrl(result.searchKeyword)}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={styles.serviceBtn}
-              >
-                카카오맵 열기
-              </a>
-            </div>
-
-            {/* 카드 3: EBS 명의 */}
-            <div style={styles.serviceCard}>
-              <div style={styles.serviceTitle}>🎬 EBS 명의에서 관련 분야 명의 찾기</div>
-              <div style={styles.serviceDesc}>
-                EBS 명의 다시보기에서 <strong>'{result.ebsKeyword}'</strong> 관련 영상을 검색해 보세요.
-              </div>
-              <a
-                href="https://home.ebs.co.kr/bestdoctors/replay/1/list"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={styles.serviceBtn}
-              >
-                EBS 명의 다시보기 열기
-              </a>
-              <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
-                이동 후 검색창에 <strong>'{result.ebsKeyword}'</strong>를 입력하세요.
-              </p>
-            </div>
-
-            {/* 카드 4: 굿닥 */}
-            <div style={styles.serviceCard}>
-              <div style={styles.serviceTitle}>💊 굿닥에서 비대면 진료 알아보기</div>
-              <div style={styles.serviceDesc}>
-                굿닥에서 진료과별 비대면 진료를 신청할 수 있습니다.
-              </div>
-              <a
-                href="https://www.goodoc.co.kr/hospitals"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={styles.serviceBtn}
-              >
-                굿닥 열기
-              </a>
-            </div>
-          </div>
-        )}
 
         {/* 페이지 하단 면책 */}
         <div style={styles.disclaimer}>
@@ -362,6 +303,195 @@ export function SayuHealthHospitalPage() {
           <br />· 응급 상황(가슴 통증, 호흡 곤란, 의식 저하 등)에는 즉시 <strong>119</strong>에 신고하세요.
         </div>
       </div>
+
+      {/* 진료과 분석 결과 — 풀스크린 모달 */}
+      {showResultModal && result && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 flex items-start justify-center overflow-y-auto p-4"
+          onClick={() => setShowResultModal(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="bg-white rounded-2xl max-w-2xl w-full my-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white border-b px-5 py-3 flex justify-between items-center rounded-t-2xl z-10">
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1A3C6E' }}>
+                🩺 진료과 분석 결과
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowResultModal(false)}
+                aria-label="닫기"
+                className="text-2xl leading-none w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100"
+                style={{ color: '#666' }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="px-5 py-4">
+              {/* 진료과 + 의심 키워드 */}
+              <div
+                style={{
+                  ...styles.card,
+                  background: '#EEF3FA',
+                  border: '0.5px solid #B5D4F4',
+                  marginBottom: 14,
+                }}
+              >
+                <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>추천 진료과</p>
+                <p
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 700,
+                    color: '#1A3C6E',
+                    marginBottom: 10,
+                  }}
+                >
+                  {result.recommendedSpecialties.join(', ')}
+                </p>
+                {result.ebsKeyword && (
+                  <>
+                    <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 2 }}>
+                      관련 키워드
+                    </p>
+                    <p style={{ fontSize: 14, color: '#374151', marginBottom: 8 }}>
+                      {result.ebsKeyword}
+                    </p>
+                  </>
+                )}
+                <p style={{ fontSize: 11, color: '#9ca3af', lineHeight: 1.6 }}>
+                  {result.disclaimer}
+                </p>
+              </div>
+
+              <p
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: '#1A3C6E',
+                  margin: '8px 0 10px',
+                }}
+              >
+                📍 동네 병원·명의 정보 찾기
+              </p>
+
+              {/* 카드 1: 네이버 지도 */}
+              <div style={styles.serviceCard}>
+                <div style={styles.serviceTitle}>🗺️ 네이버 지도에서 동네 병원 찾기</div>
+                <div style={styles.serviceDesc}>
+                  네이버 지도로{' '}
+                  <strong>
+                    {neighborhood.trim() ? `${neighborhood.trim()} ` : ''}
+                    {result.searchKeyword}
+                  </strong>{' '}
+                  검색
+                </div>
+                <a
+                  href={buildNaverUrl(result.searchKeyword)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={styles.serviceBtn}
+                >
+                  네이버 지도 열기
+                </a>
+              </div>
+
+              {/* 카드 2: EBS 명의 — 사용법 안내 + 자동 검색 URL */}
+              <div style={styles.serviceCard}>
+                <div style={styles.serviceTitle}>📺 EBS 명의 다시보기</div>
+                <div
+                  style={{
+                    background: '#F8FAFC',
+                    border: '0.5px solid #E5E7EB',
+                    borderRadius: 10,
+                    padding: '10px 12px',
+                    fontSize: 12,
+                    color: '#374151',
+                    lineHeight: 1.8,
+                  }}
+                >
+                  <div>① 아래 버튼을 누르면</div>
+                  <div>
+                    ② EBS 사이트에서 <strong>'{result.ebsKeyword}'</strong> 관련 영상이
+                    자동으로 검색됩니다
+                  </div>
+                  <div>③ 보고 싶은 의사 영상을 클릭하여 시청하세요</div>
+                </div>
+                <a
+                  href={buildEbsSearchUrl(result.ebsKeyword)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={styles.serviceBtn}
+                >
+                  EBS에서 '{result.ebsKeyword}' 검색하기 →
+                </a>
+                <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+                  ※ EBS 회원가입·로그인이 필요할 수 있습니다.
+                </p>
+              </div>
+
+              {/* 카드 3: 인포그래픽 매칭 (있을 때만) */}
+              {matchedInfographic && (
+                <div
+                  style={{
+                    ...styles.serviceCard,
+                    background:
+                      'linear-gradient(135deg, #FFF7E0 0%, #ffffff 70%)',
+                    border: '1px solid #F4D78D',
+                  }}
+                >
+                  <div style={styles.serviceTitle}>
+                    📊 관련 인포그래픽 <span style={{ color: '#D97706' }}>⭐</span>
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#2C2C2A' }}>
+                    {matchedInfographic.title}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#4A5A2C' }}>
+                    {matchedInfographic.subtitle}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#888780' }}>
+                    {matchedInfographic.curator} 큐레이션 · 시니어 친화 건강 정보
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowResultModal(false);
+                      navigate('/sayu-health/library', {
+                        state: { from: '/sayu-health/hospital' },
+                      });
+                    }}
+                    style={{
+                      ...styles.serviceBtn,
+                      background: '#D97706',
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    인포그래픽 자세히 보기 →
+                  </button>
+                </div>
+              )}
+
+              <p
+                style={{
+                  fontSize: 11,
+                  color: '#9ca3af',
+                  marginTop: 14,
+                  paddingTop: 10,
+                  borderTop: '0.5px solid #E5E7EB',
+                  lineHeight: 1.7,
+                }}
+              >
+                ※ 본 정보는 일반적인 건강 정보이며 진료를 대체할 수 없습니다.
+                증상이 있으시면 반드시 의료진과 상의하세요.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
