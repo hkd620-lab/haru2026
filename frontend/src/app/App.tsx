@@ -32,6 +32,7 @@ import VocabPage from './pages/VocabPage';
 import { DiaryLearnPage } from './pages/DiaryLearnPage';
 import { AdminChecklistPage } from './pages/AdminChecklistPage';
 import { DevConsolePage } from './pages/DevConsolePage';
+import { KNewsPublisherPage } from './pages/KNewsPublisherPage';
 import { NovelStudio } from './pages/NovelStudio';
 import { NovelSynopsisPage } from './pages/NovelSynopsisPage';
 import { NovelStoryPage } from './pages/NovelStoryPage';
@@ -162,6 +163,7 @@ function App() {
               {/* 관리자 페이지 */}
               <Route path="/admin/checklist" element={<AdminChecklistPage />} />
               <Route path="/admin/console" element={<DevConsolePage />} />
+              <Route path="/admin/k-news-publisher" element={<KNewsPublisherPage />} />
 
               {/* 구독 페이지 */}
               <Route path="/subscription" element={<SubscriptionPage />} />

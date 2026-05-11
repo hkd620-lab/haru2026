@@ -22,6 +22,13 @@ const DEV_TOOLS: DevTool[] = [
     color: '#1A3C6E',
   },
   {
+    icon: '📰',
+    label: 'K뉴스 발행',
+    description: 'AI 자동 분석 카드뉴스 발행',
+    path: '/admin/k-news-publisher',
+    color: '#B85C2E',
+  },
+  {
     icon: '🗂️',
     label: '관리자 체크리스트',
     description: '운영 체크리스트',

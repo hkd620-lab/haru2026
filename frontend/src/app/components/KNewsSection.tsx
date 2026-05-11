@@ -1,8 +1,20 @@
-import React from 'react';
-import { K_NEWS_DATA, CATEGORY_COLORS } from '../data/kNewsData';
+import React, { useEffect, useState } from 'react';
+import { KNews, fetchKNews, CATEGORY_COLORS, formatKNewsDate } from '../data/kNewsData';
 
 export const KNewsSection: React.FC = () => {
-  const hasNews = K_NEWS_DATA.length > 0;
+  const [news, setNews] = useState<KNews[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchKNews()
+      .then(setNews)
+      .catch((e) => {
+        console.error('K뉴스 로딩 실패', e);
+        setError(e?.message || '불러오기에 실패했습니다.');
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
     <div>
@@ -10,36 +22,57 @@ export const KNewsSection: React.FC = () => {
         매일 새로워지는 우리나라 자긍심
       </p>
 
-      {hasNews ? (
+      {loading ? (
+        <div className="flex justify-center py-10">
+          <div
+            className="w-8 h-8 border-4 rounded-full animate-spin"
+            style={{ borderColor: '#1A3C6E', borderTopColor: 'transparent' }}
+          />
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center text-sm text-red-700">
+          {error}
+        </div>
+      ) : news.length > 0 ? (
         <div className="grid grid-cols-1 gap-4">
-          {K_NEWS_DATA.map((news) => (
+          {news.map((item) => (
             <div
-              key={news.id}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+              key={item.id}
+              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
             >
               <div className="aspect-[3/4] bg-gray-100 overflow-hidden">
                 <img
-                  src={news.imageUrl}
-                  alt={news.title}
+                  src={item.imageUrl}
+                  alt={item.title}
                   className="w-full h-full object-cover"
                   loading="lazy"
                 />
               </div>
               <div className="p-4">
                 <div className="flex gap-2 mb-2 flex-wrap">
-                  <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full border ${CATEGORY_COLORS[news.category]}`}>
-                    {news.category}
+                  <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full border ${CATEGORY_COLORS[item.category]}`}>
+                    {item.category}
                   </span>
+                  {item.tags?.slice(0, 3).map((tag) => (
+                    <span key={tag} className="inline-block px-2 py-1 text-xs font-medium rounded-full bg-gray-50 text-gray-600 border border-gray-200">
+                      #{tag}
+                    </span>
+                  ))}
                 </div>
                 <h3 className="font-bold text-base mb-1" style={{ color: '#1A3C6E' }}>
-                  {news.title}
+                  {item.title}
                 </h3>
                 <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                  {news.subtitle}
+                  {item.subtitle}
                 </p>
+                {item.sources && item.sources.length > 0 && (
+                  <p className="text-[11px] text-gray-500 mb-2">
+                    출처: {item.sources.join(', ')}
+                  </p>
+                )}
                 <div className="flex items-center justify-between text-xs text-gray-500 border-t pt-2">
-                  <span>{news.createdAt}</span>
-                  <span>· {news.curator}</span>
+                  <span>{formatKNewsDate(item.createdAt)}</span>
+                  <span>· {item.curator}</span>
                 </div>
               </div>
             </div>

@@ -257,11 +257,15 @@ export function BookStudio() {
           </div>
         )}
 
-        {/* 명언 탭 — TodayQuote 컴포넌트 재사용 */}
-        {activeTab === 'quote' && <TodayQuote />}
+        {/* 명언 탭 — 동서양 명언만 표시 (외부 탭으로 제어) */}
+        {activeTab === 'quote' && (
+          <TodayQuote defaultTab="classic" hideTabSwitcher />
+        )}
 
-        {/* 성경말씀 탭 — TodayQuote 컴포넌트 재사용 */}
-        {activeTab === 'bible' && <TodayQuote />}
+        {/* 성경말씀 탭 — 성경 말씀만 표시 (외부 탭으로 제어) */}
+        {activeTab === 'bible' && (
+          <TodayQuote defaultTab="bible" hideTabSwitcher />
+        )}
       </div>
     </div>
   );
