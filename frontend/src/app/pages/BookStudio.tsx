@@ -176,17 +176,6 @@ export function BookStudio() {
         {/* 사람속으로 탭 — 기존 책 목록 */}
         {activeTab === 'people' && (
           <div className="max-w-2xl mx-auto">
-            {isDeveloper && (
-              <div className="flex justify-end mb-3">
-                <button
-                  className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: '#1A3C6E' }}
-                  onClick={() => navigate('/book-create')}
-                >
-                  📖 새 책 만들기
-                </button>
-              </div>
-            )}
             {loading ? (
               <div className="flex justify-center py-20">
                 <div
