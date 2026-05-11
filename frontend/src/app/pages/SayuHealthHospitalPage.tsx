@@ -34,8 +34,9 @@ export function SayuHealthHospitalPage() {
 
   const canAnalyze = symptoms.trim().length >= 5 && !loading;
 
-  const runAnalyze = async () => {
-    if (!canAnalyze) return;
+  const runAnalyze = async (override?: { symptomsText?: string }) => {
+    const effectiveSymptoms = (override?.symptomsText ?? symptoms).trim();
+    if (effectiveSymptoms.length < 5 || loading) return;
     setLoading(true);
     setResult(null);
     try {
@@ -44,7 +45,7 @@ export function SayuHealthHospitalPage() {
         functions,
         'analyzeSymptomsForSpecialty'
       );
-      const payload: { symptoms: string; age?: number } = { symptoms: symptoms.trim() };
+      const payload: { symptoms: string; age?: number } = { symptoms: effectiveSymptoms };
       const ageNum = parseInt(age, 10);
       if (Number.isFinite(ageNum) && ageNum > 0 && ageNum < 150) payload.age = ageNum;
       const res = await fn(payload);
@@ -55,6 +56,33 @@ export function SayuHealthHospitalPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // ⭐ B안: 6대 관심병 빠른 진입 버튼 데이터
+  const QUICK_SEARCH_BUTTONS: Array<{
+    id: string;
+    gender: 'male' | 'female';
+    label: string;
+    subLabel: string;
+    keyword: string;
+    fullWidth: boolean;
+  }> = [
+    { id: 'prostate', gender: 'male', label: '전립선', subLabel: '비대증·전립선암', keyword: '전립선 비대증, 소변 자주 마려움, 야간뇨', fullWidth: false },
+    { id: 'cardiovascular', gender: 'male', label: '심혈관', subLabel: '고혈압·심부전', keyword: '고혈압, 가슴 통증, 부정맥', fullWidth: false },
+    { id: 'spine', gender: 'male', label: '척추·디스크', subLabel: '허리·목 통증', keyword: '허리 통증, 다리 저림, 디스크', fullWidth: true },
+    { id: 'joint', gender: 'female', label: '관절', subLabel: '무릎·고관절', keyword: '무릎 통증, 관절염, 계단 오르기 힘듦', fullWidth: false },
+    { id: 'menopause', gender: 'female', label: '갱년기', subLabel: '골다공증·폐경', keyword: '갱년기 증상, 골다공증, 폐경', fullWidth: false },
+    { id: 'female_cancer', gender: 'female', label: '여성암', subLabel: '유방암·자궁암 검진', keyword: '유방암 검진, 자궁암 검진', fullWidth: true },
+  ];
+
+  const handleQuickButtonClick = (keyword: string) => {
+    setSymptoms(keyword);
+    // state 비동기 업데이트 우회: override로 직접 키워드 전달
+    runAnalyze({ symptomsText: keyword });
+    // 결과 영역으로 부드러운 스크롤
+    setTimeout(() => {
+      document.getElementById('search-result')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 300);
   };
 
   const buildNaverUrl = (keyword: string) => {
@@ -181,7 +209,7 @@ export function SayuHealthHospitalPage() {
           </div>
 
           <button
-            onClick={runAnalyze}
+            onClick={() => runAnalyze()}
             disabled={!canAnalyze}
             style={styles.btnPrimary(!canAnalyze)}
           >
@@ -189,9 +217,60 @@ export function SayuHealthHospitalPage() {
           </button>
         </div>
 
+        {/* ⭐ B안 신규: 6대 관심병 빠른 진입 카드 */}
+        <div className="mt-6 bg-white rounded-lg border border-gray-200 p-4 sm:p-5">
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className="text-amber-500">⚡</span>
+            <h3 className="text-base font-medium text-gray-900">시니어 관심 질환</h3>
+          </div>
+          <p className="text-xs text-gray-500 mb-4">버튼 한 번으로 빠른 검색</p>
+
+          <div className="mb-4">
+            <div className="text-sm font-medium text-gray-700 mb-2">🚹 남성</div>
+            <div className="grid grid-cols-2 gap-2">
+              {QUICK_SEARCH_BUTTONS.filter((b) => b.gender === 'male').map((btn) => (
+                <button
+                  key={btn.id}
+                  type="button"
+                  onClick={() => handleQuickButtonClick(btn.keyword)}
+                  disabled={loading}
+                  className={`${btn.fullWidth ? 'col-span-2' : ''} bg-blue-50 hover:bg-blue-100 active:bg-blue-200 border border-blue-200 text-blue-900 rounded-lg px-2 py-3 text-center transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  <div className="text-sm font-medium">{btn.label}</div>
+                  <div className="text-[11px] text-blue-700 mt-0.5">{btn.subLabel}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-sm font-medium text-gray-700 mb-2">🚺 여성</div>
+            <div className="grid grid-cols-2 gap-2">
+              {QUICK_SEARCH_BUTTONS.filter((b) => b.gender === 'female').map((btn) => (
+                <button
+                  key={btn.id}
+                  type="button"
+                  onClick={() => handleQuickButtonClick(btn.keyword)}
+                  disabled={loading}
+                  className={`${btn.fullWidth ? 'col-span-2' : ''} bg-pink-50 hover:bg-pink-100 active:bg-pink-200 border border-pink-200 text-pink-900 rounded-lg px-2 py-3 text-center transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  <div className="text-sm font-medium">{btn.label}</div>
+                  <div className="text-[11px] text-pink-700 mt-0.5">{btn.subLabel}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-gray-100">
+            <p className="text-[11px] text-gray-400 leading-relaxed">
+              ℹ️ 버튼을 누르면 자동으로 검색됩니다. 결과는 EBS·네이버지도·카카오맵·굿닥에서 가져옵니다.
+            </p>
+          </div>
+        </div>
+
         {/* 결과 영역 */}
         {result && (
-          <>
+          <div id="search-result">
             <div style={{ ...styles.card, background: '#EEF3FA', border: '0.5px solid #B5D4F4' }}>
               <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>추천 진료과</p>
               <p style={{ fontSize: 18, fontWeight: 700, color: '#1A3C6E', marginBottom: 8 }}>
@@ -272,7 +351,7 @@ export function SayuHealthHospitalPage() {
                 굿닥 열기
               </a>
             </div>
-          </>
+          </div>
         )}
 
         {/* 페이지 하단 면책 */}
