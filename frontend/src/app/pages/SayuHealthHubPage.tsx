@@ -113,7 +113,7 @@ export function SayuHealthHubPage() {
           className="text-2xl md:text-3xl font-bold tracking-tight"
           style={{ color: '#1A3C6E' }}
         >
-          🩺 SAYU건강관리
+          🩺 HARU건강관리
         </h1>
         <p className="text-sm mt-1.5" style={{ color: '#666', lineHeight: 1.6 }}>
           공공데이터로 건강 정보를 안내드립니다. 진료·처방을 대체하지 않으며,

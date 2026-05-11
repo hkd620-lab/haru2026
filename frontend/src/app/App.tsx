@@ -146,7 +146,7 @@ function App() {
               <Route path="/sns-records" element={<SnsRecordsPage />} />
               <Route path="/onbid-realestate" element={<OnbidRealEstatePage />} />
 
-              {/* SAYU건강관리 (허브 + 3개 하위) */}
+              {/* HARU건강관리 (허브 + 3개 하위) */}
               <Route path="/sayu-health" element={<SayuHealthHubPage />} />
               <Route path="/sayu-health/ebs" element={<SayuHealthEbsPage />} />
               <Route path="/sayu-health/drug" element={<SayuHealthDrugPage />} />

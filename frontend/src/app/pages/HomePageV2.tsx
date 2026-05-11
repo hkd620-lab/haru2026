@@ -303,8 +303,8 @@ const AGENTS: Agent[] = [
     ),
   },
   {
-    label: 'SAYU건강관리',
-    sub: 'EBS 명의 · 약봉지 약정보 · 동네병원까지 — 공공데이터로 건강을 한곳에.',
+    label: 'HARU건강관리',
+    sub: '명의찾기 · 약봉지 약정보 · 건강 인포그래픽 — HARU와 함께 챙기는 건강.',
     tag: 'CARE · 건강',
     variant: 'green',
     stroke: '#4A5A2C',
