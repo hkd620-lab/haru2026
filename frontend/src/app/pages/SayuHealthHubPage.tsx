@@ -40,10 +40,10 @@ const FEATURES: SubFeature[] = [
   },
   {
     path: '/sayu-health/hospital',
-    title: '심평원 동네병원정보',
-    sub: '진료과·지역으로 병원 리스트 조회',
-    desc: '건강보험심사평가원 의료기관 정보를 검색합니다.',
-    source: '출처: 건강보험심사평가원 (공공데이터포털)',
+    title: '내 증상 알아보고 병원찾기',
+    sub: '증상 입력 → 진료과 분석 → 병원찾기',
+    desc: 'HARU 진료과 분석 + 네이버 지도·EBS 명의 통합 안내',
+    source: '출처: 네이버 지도 / EBS 명의 (외부 채널 연동)',
     icon: (
       <>
         <path d="M3 21V8l9-5 9 5v13" />
