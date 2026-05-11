@@ -34,17 +34,18 @@ export const KNewsSection: React.FC = () => {
           {error}
         </div>
       ) : news.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto">
           {news.map((item) => (
             <div
               key={item.id}
               className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
             >
-              <div className="aspect-[3/4] bg-gray-100 overflow-hidden">
+              <div className="bg-gray-50 overflow-hidden flex items-center justify-center" style={{ maxHeight: 420 }}>
                 <img
                   src={item.imageUrl}
                   alt={item.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-auto object-contain"
+                  style={{ maxHeight: 420 }}
                   loading="lazy"
                 />
               </div>
