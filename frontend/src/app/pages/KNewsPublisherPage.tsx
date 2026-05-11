@@ -129,7 +129,7 @@ export function KNewsPublisherPage() {
         tags,
         sources,
         imageUrl,
-        curator: '허 교장님',
+        curator: 'HARU2026',
         balanceNote: balanceNote.trim() || DEFAULT_BALANCE_NOTE,
         createdAt: serverTimestamp(),
       });
@@ -273,7 +273,7 @@ export function KNewsPublisherPage() {
           </div>
 
           <div className="text-xs text-gray-500 pt-2 border-t border-gray-100">
-            큐레이터: 허 교장님 · 발행일: 자동
+            큐레이터: HARU2026 · 발행일: 자동
           </div>
         </section>
 

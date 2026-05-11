@@ -73,7 +73,7 @@ export const KNewsSection: React.FC = () => {
                 )}
                 <div className="flex items-center justify-between text-xs text-gray-500 border-t pt-2">
                   <span>{formatKNewsDate(item.createdAt)}</span>
-                  <span>· {item.curator}</span>
+                  <span>· {item.curator === '허 교장님' || !item.curator ? 'HARU2026' : item.curator}</span>
                 </div>
               </div>
             </div>
