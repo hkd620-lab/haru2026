@@ -1,6 +1,76 @@
 import React, { useEffect, useState } from 'react';
 import { KNews, fetchKNews, CATEGORY_COLORS, formatKNewsDate } from '../data/kNewsData';
 
+const BASE_MAX_HEIGHT = 420;
+const ZOOM_STEP = 1.5;
+const MAX_ZOOM = 5;
+
+const KNewsCard: React.FC<{ news: KNews }> = ({ news }) => {
+  const [zoom, setZoom] = useState(1);
+
+  const handleImageClick = () => {
+    setZoom((prev) => (prev >= MAX_ZOOM ? 1 : Number((prev * ZOOM_STEP).toFixed(2))));
+  };
+
+  const maxH = BASE_MAX_HEIGHT * zoom;
+  const isMaxed = zoom >= MAX_ZOOM;
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+      <div
+        className="bg-gray-50 overflow-hidden flex items-center justify-center"
+        style={{ maxHeight: maxH, transition: 'max-height 240ms ease-out' }}
+      >
+        <img
+          src={news.imageUrl}
+          alt={news.title}
+          onClick={handleImageClick}
+          className="w-full h-auto object-contain select-none"
+          style={{
+            maxHeight: maxH,
+            cursor: isMaxed ? 'zoom-out' : 'zoom-in',
+            transition: 'max-height 240ms ease-out',
+          }}
+          loading="lazy"
+          title={isMaxed ? '클릭하면 원래 크기로 돌아갑니다' : '클릭하면 50% 확대됩니다'}
+        />
+      </div>
+      <div className="p-4">
+        <div className="flex gap-2 mb-2 flex-wrap items-center">
+          <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full border ${CATEGORY_COLORS[news.category]}`}>
+            {news.category}
+          </span>
+          {news.tags?.slice(0, 3).map((tag) => (
+            <span key={tag} className="inline-block px-2 py-1 text-xs font-medium rounded-full bg-gray-50 text-gray-600 border border-gray-200">
+              #{tag}
+            </span>
+          ))}
+          {zoom > 1 && (
+            <span className="ml-auto inline-block px-2 py-1 text-[10px] font-medium rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+              🔍 ×{zoom.toFixed(2)}
+            </span>
+          )}
+        </div>
+        <h3 className="font-bold text-base mb-1" style={{ color: '#1A3C6E' }}>
+          {news.title}
+        </h3>
+        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+          {news.subtitle}
+        </p>
+        {news.sources && news.sources.length > 0 && (
+          <p className="text-[11px] text-gray-500 mb-2">
+            출처: {news.sources.join(', ')}
+          </p>
+        )}
+        <div className="flex items-center justify-between text-xs text-gray-500 border-t pt-2">
+          <span>{formatKNewsDate(news.createdAt)}</span>
+          <span>· {news.curator === '허 교장님' || !news.curator ? 'HARU2026' : news.curator}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const KNewsSection: React.FC = () => {
   const [news, setNews] = useState<KNews[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +89,7 @@ export const KNewsSection: React.FC = () => {
   return (
     <div>
       <p className="text-sm text-gray-600 mb-3">
-        매일 새로워지는 우리나라 자긍심
+        매일 새로워지는 우리나라 자긍심 <span className="text-gray-400">· 이미지 클릭으로 +50% 확대</span>
       </p>
 
       {loading ? (
@@ -34,49 +104,9 @@ export const KNewsSection: React.FC = () => {
           {error}
         </div>
       ) : news.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto items-start">
           {news.map((item) => (
-            <div
-              key={item.id}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
-            >
-              <div className="bg-gray-50 overflow-hidden flex items-center justify-center" style={{ maxHeight: 420 }}>
-                <img
-                  src={item.imageUrl}
-                  alt={item.title}
-                  className="w-full h-auto object-contain"
-                  style={{ maxHeight: 420 }}
-                  loading="lazy"
-                />
-              </div>
-              <div className="p-4">
-                <div className="flex gap-2 mb-2 flex-wrap">
-                  <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full border ${CATEGORY_COLORS[item.category]}`}>
-                    {item.category}
-                  </span>
-                  {item.tags?.slice(0, 3).map((tag) => (
-                    <span key={tag} className="inline-block px-2 py-1 text-xs font-medium rounded-full bg-gray-50 text-gray-600 border border-gray-200">
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-                <h3 className="font-bold text-base mb-1" style={{ color: '#1A3C6E' }}>
-                  {item.title}
-                </h3>
-                <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                  {item.subtitle}
-                </p>
-                {item.sources && item.sources.length > 0 && (
-                  <p className="text-[11px] text-gray-500 mb-2">
-                    출처: {item.sources.join(', ')}
-                  </p>
-                )}
-                <div className="flex items-center justify-between text-xs text-gray-500 border-t pt-2">
-                  <span>{formatKNewsDate(item.createdAt)}</span>
-                  <span>· {item.curator === '허 교장님' || !item.curator ? 'HARU2026' : item.curator}</span>
-                </div>
-              </div>
-            </div>
+            <KNewsCard key={item.id} news={item} />
           ))}
         </div>
       ) : (
