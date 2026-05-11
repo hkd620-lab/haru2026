@@ -3747,3 +3747,106 @@ export const analyzeDrugPhoto = onCall(
     };
   }
 );
+
+// ===== 🩺 증상별 진료과 분석 (SayuHealth 명의찾기 — 심평원 API 대체) =====
+// 입력: 사용자 증상 자유 텍스트 + (선택) 나이
+// 출력: 추천 진료과 1~3개 + 지도/EBS 검색 키워드 + 면책 문구
+// Firestore 저장 없음 (1회성 검색, 개인정보 부담 최소화)
+export const analyzeSymptomsForSpecialty = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+    timeoutSeconds: 30,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const d = request.data || {};
+    const symptoms = typeof d.symptoms === 'string' ? d.symptoms.trim() : '';
+    const ageRaw = d.age;
+    const age = typeof ageRaw === 'number' && ageRaw > 0 && ageRaw < 150
+      ? Math.floor(ageRaw)
+      : null;
+
+    if (!symptoms || symptoms.length < 5) {
+      throw new HttpsError('invalid-argument', '증상을 5자 이상 입력해 주세요.');
+    }
+    if (symptoms.length > 1000) {
+      throw new HttpsError('invalid-argument', '증상은 1000자 이내로 입력해 주세요.');
+    }
+
+    const systemPrompt = `당신은 한국 의료 안내 보조 AI입니다.
+사용자의 증상을 듣고 적절한 진료과를 1~3개 추천하세요.
+
+⚠️ 절대 준수:
+- 진단·치료법 제안 금지
+- "최고 의사"·"명의 추천" 같은 표현 금지
+- 응급 증상(가슴 통증·호흡 곤란·의식 저하 등) 의심 시 119 안내를 disclaimer에 우선 명시
+- 추천 진료과 외 의학적 조언 금지
+
+응답은 반드시 아래 JSON 구조로만 출력하세요. 마크다운 코드펜스(\`\`\`) 없이 순수 JSON만:
+{
+  "recommendedSpecialties": ["순환기내과", "호흡기내과"],
+  "searchKeyword": "순환기내과",
+  "ebsKeyword": "심장",
+  "disclaimer": "이 추천은 참고용이며 진료 효과를 보장하지 않습니다. 정확한 진단은 의료진과 상담하세요."
+}
+
+규칙:
+- recommendedSpecialties: 1~3개의 한국 진료과명 (예: "순환기내과", "신경과", "정형외과")
+- searchKeyword: 지도 앱에서 검색할 한 단어 진료과 (가장 적합한 1개)
+- ebsKeyword: EBS 명의 다시보기에서 검색할 키워드 (예: "심장", "당뇨", "뇌졸중")
+- disclaimer: 면책 문구. 응급 증상 의심 시 119 안내 추가`;
+
+    const userPrompt = `[사용자 입력]
+- 증상: ${symptoms}
+- 나이: ${age !== null ? `${age}세` : '미입력'}
+
+위 증상에 어울리는 진료과를 분석해 JSON으로만 응답하세요.`;
+
+    try {
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-3.1-flash-lite-preview',
+        systemInstruction: systemPrompt,
+      });
+      const result = await model.generateContent(userPrompt);
+      const raw = result.response.text().trim();
+      // Gemini가 가끔 ```json ... ``` 으로 감쌀 수 있어 정리
+      const cleaned = raw.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/\s*```\s*$/, '').trim();
+      let parsed: any;
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch (e) {
+        logger.error('analyzeSymptomsForSpecialty: JSON 파싱 실패', { raw: raw.slice(0, 500) });
+        throw new HttpsError('internal', '진료과 분석 응답을 해석할 수 없습니다. 잠시 후 다시 시도해 주세요.');
+      }
+
+      const specialties: string[] = Array.isArray(parsed.recommendedSpecialties)
+        ? parsed.recommendedSpecialties.filter((s: any) => typeof s === 'string' && s.trim().length > 0).slice(0, 3)
+        : [];
+      const searchKeyword = typeof parsed.searchKeyword === 'string' && parsed.searchKeyword.trim()
+        ? parsed.searchKeyword.trim()
+        : (specialties[0] || '내과');
+      const ebsKeyword = typeof parsed.ebsKeyword === 'string' && parsed.ebsKeyword.trim()
+        ? parsed.ebsKeyword.trim()
+        : (specialties[0] || '건강');
+      const disclaimer = typeof parsed.disclaimer === 'string' && parsed.disclaimer.trim()
+        ? parsed.disclaimer.trim()
+        : '이 추천은 참고용이며 진료 효과를 보장하지 않습니다. 정확한 진단은 의료진과 상담하세요. 응급 증상(가슴 통증·호흡 곤란·의식 저하 등)에는 즉시 119에 신고하세요.';
+
+      return {
+        recommendedSpecialties: specialties.length > 0 ? specialties : ['내과'],
+        searchKeyword,
+        ebsKeyword,
+        disclaimer,
+      };
+    } catch (e: any) {
+      if (e instanceof HttpsError) throw e;
+      logger.error('analyzeSymptomsForSpecialty 실패', { message: e?.message });
+      throw new HttpsError('internal', '진료과 분석에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+    }
+  }
+);
