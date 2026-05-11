@@ -317,6 +317,21 @@ const AGENTS: Agent[] = [
       </>
     ),
   },
+  {
+    label: '나도작가',
+    sub: 'AI와 함께 글쓰기 — 시놉시스부터 단편소설까지 손쉽게 완성합니다.',
+    tag: 'WRITE · 창작',
+    variant: 'terracotta',
+    stroke: '#B85C2E',
+    path: '/novel-studio',
+    icon: (
+      <>
+        <path d="M4 20h4l11-11-4-4L4 16z" />
+        <path d="M14 6l4 4" />
+        <path d="M5 21h14" />
+      </>
+    ),
+  },
 ];
 
 const agentBg = {

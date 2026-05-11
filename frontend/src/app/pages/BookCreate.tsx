@@ -362,7 +362,7 @@ export function BookCreate() {
               className="w-full py-3 rounded-lg text-white font-semibold text-base"
               style={{ backgroundColor: '#10b981' }}
             >
-              저장 완료 — 책 스튜디오로 이동
+              저장 완료 — 원기충전소로 이동
             </button>
           </div>
         )}
