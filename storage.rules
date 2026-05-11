@@ -27,5 +27,12 @@ service firebase.storage {
       allow read: if true;
       allow write, delete: if false;
     }
+
+    // ✅ K뉴스 카드뉴스 이미지 — 개발자만 발행, 인증 사용자 read
+    match /k-news/{fileName} {
+      allow read: if request.auth != null;
+      allow write, delete: if request.auth != null
+        && request.auth.uid == 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+    }
   }
 }

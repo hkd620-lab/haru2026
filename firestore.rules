@@ -132,5 +132,12 @@ service cloud.firestore {
     match /users/{uid}/savedSearches/{docId} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
+
+    // ✅ K뉴스 카드뉴스 — 개발자만 발행/수정/삭제, 인증 사용자 read
+    match /k_news/{docId} {
+      allow read: if request.auth != null;
+      allow write, delete: if request.auth != null
+        && request.auth.uid == 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+    }
   }
 }

@@ -19,6 +19,11 @@ interface QuoteItem {
   reference?: string;
 }
 
+interface TodayQuoteProps {
+  defaultTab?: 'classic' | 'bible';
+  hideTabSwitcher?: boolean;
+}
+
 function getDayOfYear(date: Date): number {
   const start = new Date(date.getFullYear(), 0, 0);
   const diff = date.getTime() - start.getTime();
@@ -31,13 +36,17 @@ function hashPath(p: string): number {
   return Math.abs(h);
 }
 
-export function TodayQuote() {
+export function TodayQuote({ defaultTab, hideTabSwitcher = false }: TodayQuoteProps = {}) {
   const { user } = useAuth();
   const { isPremium } = useSubscription();
   const location = useLocation();
-  const [quoteType, setQuoteType] = useState<QuoteType>('classic');
+  const [quoteType, setQuoteType] = useState<QuoteType>(defaultTab ?? 'classic');
 
   useEffect(() => {
+    if (defaultTab) {
+      setQuoteType(defaultTab);
+      return;
+    }
     if (!user?.uid) return;
     (async () => {
       try {
@@ -51,7 +60,7 @@ export function TodayQuote() {
         console.error('명언 종류 로딩 실패:', e);
       }
     })();
-  }, [user?.uid]);
+  }, [user?.uid, defaultTab]);
 
   const isBible = quoteType === 'bible';
   const list = (isBible ? bibleQuotes : quotes) as QuoteItem[];
@@ -81,6 +90,7 @@ export function TodayQuote() {
 
   if (!user || !todayQuote) return null;
   if (location.pathname === '/v2') return null;
+  if (location.pathname === '/book-studio' && !defaultTab) return null;
 
   const sourceLabel = isBible
     ? todayQuote.reference
@@ -98,33 +108,35 @@ export function TodayQuote() {
         }}
       >
         {/* 탭 토글 */}
-        <div
-          className="grid grid-cols-2"
-          style={{ borderBottom: '1px solid #e8e5de' }}
-        >
-          <button
-            type="button"
-            onClick={() => handleQuoteTypeChange('classic')}
-            className="py-2.5 text-xs font-semibold transition-colors active:scale-[0.99] touch-manipulation"
-            style={{
-              backgroundColor: !isBible ? '#1A3C6E' : 'transparent',
-              color: !isBible ? '#fff' : 'rgba(26,60,110,0.55)',
-            }}
+        {!hideTabSwitcher && (
+          <div
+            className="grid grid-cols-2"
+            style={{ borderBottom: '1px solid #e8e5de' }}
           >
-            💬 동서양 명언
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuoteTypeChange('bible')}
-            className="py-2.5 text-xs font-semibold transition-colors active:scale-[0.99] touch-manipulation"
-            style={{
-              backgroundColor: isBible ? '#1A3C6E' : 'transparent',
-              color: isBible ? '#fff' : 'rgba(26,60,110,0.55)',
-            }}
-          >
-            ✝️ 성경 말씀
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => handleQuoteTypeChange('classic')}
+              className="py-2.5 text-xs font-semibold transition-colors active:scale-[0.99] touch-manipulation"
+              style={{
+                backgroundColor: !isBible ? '#1A3C6E' : 'transparent',
+                color: !isBible ? '#fff' : 'rgba(26,60,110,0.55)',
+              }}
+            >
+              💬 동서양 명언
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuoteTypeChange('bible')}
+              className="py-2.5 text-xs font-semibold transition-colors active:scale-[0.99] touch-manipulation"
+              style={{
+                backgroundColor: isBible ? '#1A3C6E' : 'transparent',
+                color: isBible ? '#fff' : 'rgba(26,60,110,0.55)',
+              }}
+            >
+              ✝️ 성경 말씀
+            </button>
+          </div>
+        )}
 
         {/* 본문 */}
         <div className="px-5 py-4">
