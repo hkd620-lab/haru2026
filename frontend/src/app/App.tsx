@@ -43,6 +43,7 @@ import { SayuHealthHubPage } from './pages/SayuHealthHubPage';
 import { SayuHealthEbsPage } from './pages/SayuHealthEbsPage';
 import { SayuHealthDrugPage } from './pages/SayuHealthDrugPage';
 import { SayuHealthHospitalPage } from './pages/SayuHealthHospitalPage';
+import { SayuHealthLibraryPage } from './pages/SayuHealthLibraryPage';
 import { BottomNav } from './components/BottomNav';
 import { Footer } from './components/Footer';
 import { TodayQuote } from './components/TodayQuote';
@@ -150,6 +151,7 @@ function App() {
               <Route path="/sayu-health/ebs" element={<SayuHealthEbsPage />} />
               <Route path="/sayu-health/drug" element={<SayuHealthDrugPage />} />
               <Route path="/sayu-health/hospital" element={<SayuHealthHospitalPage />} />
+              <Route path="/sayu-health/library" element={<SayuHealthLibraryPage />} />
 
               {/* 영어성경학습 */}
               <Route path="/bible" element={<BiblePage />} />
