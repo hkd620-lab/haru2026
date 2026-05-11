@@ -2,6 +2,9 @@ import type { CSSProperties, ReactNode } from 'react';
 import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { setOrigin } from '../services/v2Origin';
+import { useAuth } from '../contexts/AuthContext';
+
+const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
 const FONT_KR =
   "'Pretendard', 'Pretendard Variable', system-ui, sans-serif";
@@ -369,6 +372,8 @@ function todayLabel(now: Date) {
 
 export function HomePageV2() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isDeveloper = user?.uid === DEVELOPER_UID;
   const today = useMemo(() => todayLabel(new Date()), []);
 
   // v2 진입을 sessionStorage에 기록 → 통계/합본 등 깊은 경로 닫기 시 v2 복귀용
@@ -599,6 +604,30 @@ export function HomePageV2() {
                 }}
               />
             </button>
+            {isDeveloper && (
+              <button
+                type="button"
+                aria-label="개발자 콘솔"
+                onClick={() => navigate('/admin/console')}
+                className="v2-pill"
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 999,
+                  background: '#fff',
+                  border: '1px solid #E5DFD0',
+                  color: '#7A6F5A',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontSize: 18,
+                  transition: 'all 180ms cubic-bezier(0.22,0.61,0.36,1)',
+                }}
+              >
+                🛠
+              </button>
+            )}
             <button
               type="button"
               aria-label="프로필"
