@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
+exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -2308,7 +2308,18 @@ exports.generateHaruProphecy = (0, https_2.onCall)({
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
-    const { motive, motiveCustom, chars, birth, desire, shackle, events, luck, unluck, narrative, type, fromRecord, recordContent, recordTitle, recordDate, recordFormat, prophecyType, timeOption, question, extractedChars, extractedDesire, extractedShackle, extractedEvents, extractedRelationship, extractedPersonality, extractedMotive, extractedTheme, extractedOneLiner, extractedThreeLiner, prophecyGoalType, prophecyGoal, prophecyWall, extractedGoal, persons, extractedEvent, extractedDailyAchieve } = request.data;
+    const { motive, motiveCustom, chars, birth, desire, shackle, events, luck, unluck, narrative, type, fromRecord, recordContent, recordTitle, recordDate, recordFormat, prophecyType, timeOption, question, extractedChars, extractedDesire, extractedShackle, extractedEvents, extractedRelationship, extractedPersonality, extractedMotive, extractedTheme, extractedOneLiner, extractedThreeLiner, prophecyGoalType, prophecyGoal, prophecyWall, extractedGoal, persons, extractedEvent, extractedDailyAchieve, currentAge, baseYear, futureYear, futureAge, protagonistName: rawProtagonistName } = request.data;
+    // 서버측 한 번 더 sanitize (클라 우회 방지)
+    const sanitizedProtagonistName = (() => {
+        if (typeof rawProtagonistName !== 'string')
+            return null;
+        const cleaned = rawProtagonistName
+            .replace(/[\n\r\t`{}$\\<>"]/g, '')
+            .replace(/[^\p{L}\p{N} \-_.]/gu, '')
+            .trim()
+            .slice(0, 20);
+        return cleaned || null;
+    })();
     // type: 'synopsis' | 'story'
     if (!fromRecord && !motive) {
         throw new https_2.HttpsError('invalid-argument', '예언 모티브가 필요합니다.');
@@ -2333,8 +2344,12 @@ exports.generateHaruProphecy = (0, https_2.onCall)({
         throw new https_2.HttpsError('resource-exhausted', '이번 달 예언 횟수(30회)를 모두 사용했습니다.');
     }
     try {
+        const protagonistNameBlock = sanitizedProtagonistName
+            ? `\n[주인공 이름 — 절대 준수]\n- 이 이야기의 주인공 이름은 반드시 "${sanitizedProtagonistName}" 입니다.\n- AI는 다른 이름(예: "강준", "민수" 등)을 임의로 생성하지 않습니다.\n- 주인공을 지칭할 때는 "${sanitizedProtagonistName}" 또는 인칭대명사("그", "그녀")만 사용합니다.\n`
+            : '';
         const systemPrompt = `당신은 한국 최고의 소설가이자 인생 예언가입니다.
 아래 [HARU예언 인생 법칙]을 이야기 속에 직접 언급하지 말고 자연스럽게 녹여서 생성하세요.
+${protagonistNameBlock}
 
 ━━━━━━━━━━━━━━━━━━━━━━
 [HARU예언 인생 법칙 — 반드시 적용]
@@ -2439,6 +2454,10 @@ exports.generateHaruProphecy = (0, https_2.onCall)({
             const goalLine = prophecyGoal ? `[사용자의 초목표/바람]: ${prophecyGoal}` : '';
             const wallLine = prophecyWall ? `[지금 가장 넘고 싶은 것]: ${prophecyWall}` : '';
             const goalBlock = [goalTypeLine, goalLine, wallLine].filter(Boolean).join('\n');
+            const hasAge = typeof currentAge === 'number' && currentAge > 0;
+            const ageBlock = hasAge
+                ? `\n[사용자 연령 정보 — 절대 준수]\n- 사용자의 현재 나이: ${currentAge}세 (기준 연도: ${baseYear !== null && baseYear !== void 0 ? baseYear : new Date().getFullYear()}년)\n- 미래 시점: ${futureYear !== null && futureYear !== void 0 ? futureYear : ''}년 — 이 시점의 사용자는 ${futureAge !== null && futureAge !== void 0 ? futureAge : ''}세입니다.\n- AI는 사용자의 나이를 임의로 추정하지 않습니다. 위 수치만 사용합니다.\n- "30대", "40대", "서른 후반", "오십대" 등 연령대 표현은 ${futureAge !== null && futureAge !== void 0 ? futureAge : ''}세와 맞지 않으면 절대 쓰지 않습니다.\n- 주인공·사용자의 외모·체력·인생 단계·사회적 위치 묘사는 ${futureAge !== null && futureAge !== void 0 ? futureAge : ''}세에 부합해야 합니다.\n`
+                : '';
             userPrompt = `
 [창작 모드]: 내 기록으로 창작
 [기록 제목]: ${recordTitle}
@@ -2447,13 +2466,13 @@ exports.generateHaruProphecy = (0, https_2.onCall)({
 [예언 종류]: ${prophecyType}
 [시간 배경]: ${timeOption}
 [핵심 질문]: ${question}
-${extractedBlock ? '\n[AI가 기록에서 추출한 핵심 요소]:\n' + extractedBlock + '\n' : ''}${goalBlock ? '\n[사용자의 예언 목표]:\n' + goalBlock + '\n' : ''}
+${ageBlock}${extractedBlock ? '\n[AI가 기록에서 추출한 핵심 요소]:\n' + extractedBlock + '\n' : ''}${goalBlock ? '\n[사용자의 예언 목표]:\n' + goalBlock + '\n' : ''}
 [실제 기록 내용]:
 ${recordContent}
 
 위 실제 기록과 추출된 핵심 요소를 바탕으로 ${timeOption} 뒤의 이야기를 예언 소설 형식으로 작성해주세요.
 기록 속 인물, 감정, 사건을 최대한 살려서 "내 이야기 같다"는 느낌이 들게 해주세요.
-${goalBlock ? '특히 위 [사용자의 예언 목표]에 명시된 예언 유형·초목표·넘고 싶은 것을 시놉시스/서사 전체에 반드시 자연스럽게 반영해주세요. 사용자의 초목표가 어떻게 되어가는지, 사용자가 넘고 싶다고 말한 것을 어떻게 마주하는지 이야기 속에 분명히 드러나야 합니다.\n' : ''}예언 종류: ${prophecyType}
+${hasAge ? `반드시 주인공이 ${futureAge}세인 것을 전제로 묘사하세요. 어떤 경우에도 ${futureAge}세와 모순되는 연령대 표현을 사용하지 마세요.\n` : ''}${sanitizedProtagonistName ? `위 이야기 전체에서 주인공 이름은 반드시 "${sanitizedProtagonistName}"이며, 절대 다른 이름을 임의로 생성하지 않습니다. "${sanitizedProtagonistName}" 또는 인칭대명사만 사용하세요.\n` : ''}${goalBlock ? '특히 위 [사용자의 예언 목표]에 명시된 예언 유형·초목표·넘고 싶은 것을 시놉시스/서사 전체에 반드시 자연스럽게 반영해주세요. 사용자의 초목표가 어떻게 되어가는지, 사용자가 넘고 싶다고 말한 것을 어떻게 마주하는지 이야기 속에 분명히 드러나야 합니다.\n' : ''}예언 종류: ${prophecyType}
 
 ${type === 'story'
                 ? '분량: A4 5페이지 분량 (4000~6000자). 기승전결 구조로 작성.'
@@ -2947,6 +2966,9 @@ async function callHospitalApi(params) {
                 snippet: lastSnippet.slice(0, 180),
             });
             if (publicDataError) {
+                err.publicDataError = publicDataError;
+                err.resultCode = resultCode;
+                err.resultMsg = resultMsg;
                 err.attempts = attempts;
                 throw err;
             }
@@ -3307,4 +3329,99 @@ exports.analyzeDrugPhoto = (0, https_2.onCall)({
         fallbackUsed: searchUsedName !== extractedName,
         disclaimer: 'AI 분석은 참고용이며, 정확한 정보는 식약처 자료를 우선합니다. 약 이름만 추출하며, 환자·의사 등 개인정보는 저장·전송하지 않습니다.',
     };
+});
+// ===== 🩺 증상별 진료과 분석 (SayuHealth 명의찾기 — 심평원 API 대체) =====
+// 입력: 사용자 증상 자유 텍스트 + (선택) 나이
+// 출력: 추천 진료과 1~3개 + 지도/EBS 검색 키워드 + 면책 문구
+// Firestore 저장 없음 (1회성 검색, 개인정보 부담 최소화)
+exports.analyzeSymptomsForSpecialty = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+    timeoutSeconds: 30,
+}, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const d = request.data || {};
+    const symptoms = typeof d.symptoms === 'string' ? d.symptoms.trim() : '';
+    const ageRaw = d.age;
+    const age = typeof ageRaw === 'number' && ageRaw > 0 && ageRaw < 150
+        ? Math.floor(ageRaw)
+        : null;
+    if (!symptoms || symptoms.length < 5) {
+        throw new https_2.HttpsError('invalid-argument', '증상을 5자 이상 입력해 주세요.');
+    }
+    if (symptoms.length > 1000) {
+        throw new https_2.HttpsError('invalid-argument', '증상은 1000자 이내로 입력해 주세요.');
+    }
+    const systemPrompt = `당신은 한국 의료 안내 보조 AI입니다.
+사용자의 증상을 듣고 적절한 진료과를 1~3개 추천하세요.
+
+⚠️ 절대 준수:
+- 진단·치료법 제안 금지
+- "최고 의사"·"명의 추천" 같은 표현 금지
+- 응급 증상(가슴 통증·호흡 곤란·의식 저하 등) 의심 시 119 안내를 disclaimer에 우선 명시
+- 추천 진료과 외 의학적 조언 금지
+
+응답은 반드시 아래 JSON 구조로만 출력하세요. 마크다운 코드펜스(\`\`\`) 없이 순수 JSON만:
+{
+  "recommendedSpecialties": ["순환기내과", "호흡기내과"],
+  "searchKeyword": "순환기내과",
+  "ebsKeyword": "심장",
+  "disclaimer": "이 추천은 참고용이며 진료 효과를 보장하지 않습니다. 정확한 진단은 의료진과 상담하세요."
+}
+
+규칙:
+- recommendedSpecialties: 1~3개의 한국 진료과명 (예: "순환기내과", "신경과", "정형외과")
+- searchKeyword: 지도 앱에서 검색할 한 단어 진료과 (가장 적합한 1개)
+- ebsKeyword: EBS 명의 다시보기에서 검색할 키워드 (예: "심장", "당뇨", "뇌졸중")
+- disclaimer: 면책 문구. 응급 증상 의심 시 119 안내 추가`;
+    const userPrompt = `[사용자 입력]
+- 증상: ${symptoms}
+- 나이: ${age !== null ? `${age}세` : '미입력'}
+
+위 증상에 어울리는 진료과를 분석해 JSON으로만 응답하세요.`;
+    try {
+        const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+        const model = genAI.getGenerativeModel({
+            model: 'gemini-3.1-flash-lite-preview',
+            systemInstruction: systemPrompt,
+        });
+        const result = await model.generateContent(userPrompt);
+        const raw = result.response.text().trim();
+        // Gemini가 가끔 ```json ... ``` 으로 감쌀 수 있어 정리
+        const cleaned = raw.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/\s*```\s*$/, '').trim();
+        let parsed;
+        try {
+            parsed = JSON.parse(cleaned);
+        }
+        catch (e) {
+            logger.error('analyzeSymptomsForSpecialty: JSON 파싱 실패', { raw: raw.slice(0, 500) });
+            throw new https_2.HttpsError('internal', '진료과 분석 응답을 해석할 수 없습니다. 잠시 후 다시 시도해 주세요.');
+        }
+        const specialties = Array.isArray(parsed.recommendedSpecialties)
+            ? parsed.recommendedSpecialties.filter((s) => typeof s === 'string' && s.trim().length > 0).slice(0, 3)
+            : [];
+        const searchKeyword = typeof parsed.searchKeyword === 'string' && parsed.searchKeyword.trim()
+            ? parsed.searchKeyword.trim()
+            : (specialties[0] || '내과');
+        const ebsKeyword = typeof parsed.ebsKeyword === 'string' && parsed.ebsKeyword.trim()
+            ? parsed.ebsKeyword.trim()
+            : (specialties[0] || '건강');
+        const disclaimer = typeof parsed.disclaimer === 'string' && parsed.disclaimer.trim()
+            ? parsed.disclaimer.trim()
+            : '이 추천은 참고용이며 진료 효과를 보장하지 않습니다. 정확한 진단은 의료진과 상담하세요. 응급 증상(가슴 통증·호흡 곤란·의식 저하 등)에는 즉시 119에 신고하세요.';
+        return {
+            recommendedSpecialties: specialties.length > 0 ? specialties : ['내과'],
+            searchKeyword,
+            ebsKeyword,
+            disclaimer,
+        };
+    }
+    catch (e) {
+        if (e instanceof https_2.HttpsError)
+            throw e;
+        logger.error('analyzeSymptomsForSpecialty 실패', { message: e === null || e === void 0 ? void 0 : e.message });
+        throw new https_2.HttpsError('internal', '진료과 분석에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+    }
 });
