@@ -24,7 +24,7 @@ export const INFOGRAPHICS: Infographic[] = [
     tags: ['협심증', '심장', '흉통', '심근경색', '관상동맥'],
     relatedSymptoms: ['가슴통증', '흉통', '가슴조임', '호흡곤란', '심혈관'],
     createdAt: '2026-05-11',
-    curator: '허 교장님',
+    curator: 'HARU2026',
     imageUrl: '/infographics/01_angina.png',
     sources: [
       '건강보험심사평가원',
@@ -46,7 +46,7 @@ export const INFOGRAPHICS: Infographic[] = [
     tags: ['전립선', '비대증', '전립선암', '빈뇨', '야간뇨'],
     relatedSymptoms: ['빈뇨', '야간뇨', '배뇨곤란', '소변', '잔뇨감'],
     createdAt: '2026-05-11',
-    curator: '허 교장님',
+    curator: 'HARU2026',
     imageUrl: '/infographics/02_prostate.png',
     sources: ['대한비뇨의학회', '국가건강정보포털'],
   },
@@ -59,7 +59,7 @@ export const INFOGRAPHICS: Infographic[] = [
     tags: ['당뇨', '혈당', '인슐린', '합병증', 'HbA1c'],
     relatedSymptoms: ['다음', '다뇨', '다식', '체중감소', '갈증'],
     createdAt: '2026-05-11',
-    curator: '허 교장님',
+    curator: 'HARU2026',
     imageUrl: '/infographics/03_diabetes.png',
     sources: [
       '대한당뇨병학회 Diabetes Fact Sheet 2024',

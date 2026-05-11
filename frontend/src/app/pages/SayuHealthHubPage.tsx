@@ -55,7 +55,7 @@ const FEATURES: SubFeature[] = [
   {
     path: '/sayu-health/library',
     title: '건강 정보 라이브러리',
-    sub: '허 교장님이 큐레이션하는 시니어 친화 건강 인포그래픽',
+    sub: 'HARU2026이 큐레이션하는 시니어 친화 건강 인포그래픽',
     desc: '협심증·전립선·당뇨병 등 시니어가 꼭 알아야 할 정보. 매일 2개씩 추가됩니다.',
     source: '출처: 국가건강정보포털·심평원·각 학회 (큐레이션)',
     icon: (

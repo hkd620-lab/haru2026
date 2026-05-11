@@ -80,7 +80,7 @@ export function SayuHealthLibraryPage() {
           📚 건강 정보 라이브러리
         </h1>
         <p className="text-sm mt-1.5" style={{ color: '#666', lineHeight: 1.6 }}>
-          허 교장님이 매일 큐레이션하는 시니어 친화 건강 인포그래픽입니다.
+          HARU2026이 매일 큐레이션하는 시니어 친화 건강 인포그래픽입니다.
           진료를 대체하지 않으며, 최종 판단은 의료진과 상의하세요.
         </p>
         <div className="text-xs mt-2" style={{ color: '#4A5A2C' }}>
