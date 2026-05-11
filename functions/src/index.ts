@@ -3850,3 +3850,71 @@ export const analyzeSymptomsForSpecialty = onCall(
     }
   }
 );
+
+// ✅ K뉴스 자동 발행 도구 — 카드뉴스 이미지에서 메타데이터 자동 추출 (Gemini Vision)
+export const extractKNewsMetadata = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+    memory: '512MiB',
+    timeoutSeconds: 60,
+  },
+  async (request) => {
+    const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+    if (request.auth?.uid !== DEVELOPER_UID) {
+      throw new HttpsError('permission-denied', '개발자 전용 기능입니다.');
+    }
+
+    const { imageBase64, mimeType } = request.data as { imageBase64?: string; mimeType?: string };
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
+      throw new HttpsError('invalid-argument', '이미지 데이터(imageBase64)가 필요합니다.');
+    }
+
+    const prompt = `이 카드뉴스 이미지를 분석하여 아래 JSON 형식으로만 응답하세요. 다른 설명/마크다운 금지.
+
+{
+  "title": "카드뉴스 메인 제목 (한 줄, 30자 이내)",
+  "subtitle": "부제 또는 핵심 요약 (50자 이내)",
+  "category": "K-컬처/K-푸드/K-기술/K-스포츠/글로벌 위상/한국의 가치 중 가장 적합한 하나",
+  "tags": ["관련 태그 3~5개"],
+  "sources": ["이미지에 명시된 출처 (OECD/통계청/KOFICE 등). 없으면 빈 배열"],
+  "summary": "카드뉴스 핵심 요약 1~2문장",
+  "copyrightCheck": {
+    "isAIGenerated": true 또는 false,
+    "brandDetected": "방송사/언론사 로고·워터마크 검출 여부 (true/false)",
+    "publicSource": "공공기관 출처가 명확한가? (true/false)"
+  }
+}
+
+반드시 위 JSON 키 구조 그대로. category는 반드시 6개 중 정확히 하나.`;
+
+    try {
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+
+      const result = await model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            data: imageBase64,
+            mimeType: mimeType || 'image/png',
+          },
+        },
+      ]);
+
+      const text = result.response.text();
+      const cleaned = text.replace(/```json|```/g, '').trim();
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        logger.error('extractKNewsMetadata 응답 JSON 미발견', { text });
+        throw new HttpsError('internal', 'AI 응답에서 JSON을 찾을 수 없습니다.');
+      }
+      const parsed = JSON.parse(jsonMatch[0]);
+      return parsed;
+    } catch (e: any) {
+      if (e instanceof HttpsError) throw e;
+      logger.error('extractKNewsMetadata 실패', { message: e?.message });
+      throw new HttpsError('internal', `메타데이터 추출 실패: ${e?.message || '알 수 없는 오류'}`);
+    }
+  }
+);
