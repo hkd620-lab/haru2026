@@ -24,7 +24,7 @@ export function BottomNav() {
   const navItems = isDeveloper
     ? [
         ...baseItems.slice(0, 2),
-        { path: '/book-studio', icon: Library, label: '책스튜디오' },
+        { path: '/book-studio', icon: Library, label: '원기충전소' },
         ...baseItems.slice(2),
       ]
     : baseItems;
