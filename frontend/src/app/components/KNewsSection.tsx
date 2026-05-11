@@ -1,40 +1,79 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { KNews, fetchKNews, CATEGORY_COLORS, formatKNewsDate } from '../data/kNewsData';
 
 const BASE_MAX_HEIGHT = 420;
 const ZOOM_STEP = 1.5;
 const MAX_ZOOM = 5;
+const DRAG_THRESHOLD = 5;
 
 const KNewsCard: React.FC<{ news: KNews }> = ({ news }) => {
   const [zoom, setZoom] = useState(1);
+  const [isDragging, setIsDragging] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleImageClick = () => {
+  const toggleZoom = () => {
     setZoom((prev) => (prev >= MAX_ZOOM ? 1 : Number((prev * ZOOM_STEP).toFixed(2))));
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const container = containerRef.current;
+    if (!container) return;
+    e.preventDefault();
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startScrollLeft = container.scrollLeft;
+    const startScrollTop = container.scrollTop;
+    let dragged = false;
+
+    setIsDragging(true);
+
+    const onMove = (ev: MouseEvent) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      if (!dragged && (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD)) {
+        dragged = true;
+      }
+      container.scrollLeft = startScrollLeft - dx;
+      container.scrollTop = startScrollTop - dy;
+    };
+
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      setIsDragging(false);
+      if (!dragged) toggleZoom();
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
   };
 
   const maxH = BASE_MAX_HEIGHT * zoom;
   const isMaxed = zoom >= MAX_ZOOM;
+  const containerCursor = isDragging ? 'grabbing' : zoom > 1 ? 'grab' : 'zoom-in';
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
       <div
+        ref={containerRef}
         className="bg-gray-50 overflow-auto flex items-start justify-start"
-        style={{ maxHeight: maxH, transition: 'max-height 240ms ease-out' }}
+        style={{ maxHeight: maxH, transition: 'max-height 240ms ease-out', cursor: containerCursor }}
+        onMouseDown={handleMouseDown}
       >
         <img
           src={news.imageUrl}
           alt={news.title}
-          onClick={handleImageClick}
-          className="select-none"
+          draggable={false}
+          className="select-none pointer-events-none"
           style={{
             width: `${100 * zoom}%`,
             maxWidth: 'none',
             height: 'auto',
-            cursor: isMaxed ? 'zoom-out' : 'zoom-in',
-            transition: 'width 240ms ease-out',
+            transition: isDragging ? 'none' : 'width 240ms ease-out',
           }}
           loading="lazy"
-          title={isMaxed ? '클릭하면 원래 크기로 돌아갑니다' : '클릭하면 50% 확대됩니다'}
+          title={isMaxed ? '클릭하면 원래 크기로 돌아갑니다' : '클릭=50% 확대, 드래그=이동'}
         />
       </div>
       <div className="p-4">
@@ -91,7 +130,7 @@ export const KNewsSection: React.FC = () => {
   return (
     <div>
       <p className="text-sm text-gray-600 mb-3">
-        매일 새로워지는 우리나라 자긍심 <span className="text-gray-400">· 이미지 클릭으로 +50% 확대</span>
+        매일 새로워지는 우리나라 자긍심 <span className="text-gray-400">· 클릭=+50% 확대 / 드래그=이동</span>
       </p>
 
       {loading ? (
