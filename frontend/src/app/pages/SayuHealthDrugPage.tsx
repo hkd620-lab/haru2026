@@ -814,9 +814,9 @@ export function SayuHealthDrugPage() {
 
                     {opened && (
                       <div className="mt-3 flex flex-col gap-3">
-                        <DocBlock title="효능·효과" body={stripDocTags(it.EE_DOC_DATA)} />
-                        <DocBlock title="용법·용량" body={stripDocTags(it.UD_DOC_DATA)} />
-                        <DocBlock title="주의사항·부작용" body={stripDocTags(it.NB_DOC_DATA)} />
+                        <DocBlock title="효능·효과" body={stripDocTags(it.EE_DOC_DATA)} previewMode="firstSentence" />
+                        <DocBlock title="용법·용량" body={stripDocTags(it.UD_DOC_DATA)} previewMode="firstSentence" />
+                        <DocBlock title="주의사항·부작용" body={stripDocTags(it.NB_DOC_DATA)} previewMode="lines" />
                         {it.STORAGE_METHOD && (
                           <DocBlock title="저장방법" body={it.STORAGE_METHOD} />
                         )}
@@ -872,8 +872,41 @@ export function SayuHealthDrugPage() {
   );
 }
 
-function DocBlock({ title, body }: { title: string; body: string }) {
+// 본문에서 미리보기 텍스트 추출
+function getPreview(body: string, mode: 'firstSentence' | 'lines'): string {
+  const trimmed = body.trim();
+  if (!trimmed) return '';
+
+  if (mode === 'firstSentence') {
+    // 한국어 종결("다.", "니다.", "요.") 또는 영어 마침표 기준
+    const m = trimmed.match(/^[\s\S]*?(?:니다\.|습니다\.|다\.|요\.|\.\s|\.$)/);
+    if (m && m[0].trim().length >= 4) return m[0].trim();
+    const firstLine = trimmed.split('\n').find((l) => l.trim().length > 0) || '';
+    return firstLine.length > 120 ? `${firstLine.slice(0, 117)}…` : firstLine;
+  }
+
+  // 'lines' — 의미 있는 처음 3줄
+  const lines = trimmed.split('\n').map((l) => l.trim()).filter(Boolean);
+  return lines.slice(0, 3).join('\n');
+}
+
+function DocBlock({
+  title,
+  body,
+  previewMode,
+}: {
+  title: string;
+  body: string;
+  previewMode?: 'firstSentence' | 'lines';
+}) {
+  const [expanded, setExpanded] = useState(false);
   if (!body) return null;
+
+  const preview = previewMode ? getPreview(body, previewMode) : body;
+  const hasMore = preview.length > 0 && preview !== body.trim();
+  const showSafetyNotice = previewMode === 'lines' && hasMore && !expanded;
+  const display = expanded || !hasMore ? body : preview;
+
   return (
     <div
       style={{
@@ -893,6 +926,24 @@ function DocBlock({ title, body }: { title: string; body: string }) {
       >
         {title}
       </div>
+
+      {showSafetyNotice && (
+        <div
+          style={{
+            fontSize: 11,
+            color: '#B85C2E',
+            background: '#FBEEE5',
+            border: '1px solid #E8B894',
+            borderRadius: 6,
+            padding: '6px 8px',
+            marginBottom: 8,
+            lineHeight: 1.55,
+          }}
+        >
+          ⚠️ 일부 미리보기입니다. 복용 전 [전체 보기]에서 모든 주의사항을 반드시 확인하세요.
+        </div>
+      )}
+
       <div
         style={{
           fontSize: 13,
@@ -903,8 +954,27 @@ function DocBlock({ title, body }: { title: string; body: string }) {
           textAlign: 'left',
         }}
       >
-        {body}
+        {display}
       </div>
+
+      {hasMore && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          style={{
+            marginTop: 8,
+            background: 'none',
+            border: 'none',
+            color: '#4A5A2C',
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: 'pointer',
+            padding: 0,
+          }}
+        >
+          {expanded ? '간단히 보기 ▲' : '전체 보기 ▼'}
+        </button>
+      )}
     </div>
   );
 }
