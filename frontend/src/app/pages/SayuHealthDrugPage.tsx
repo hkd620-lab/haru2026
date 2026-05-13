@@ -153,6 +153,33 @@ function extractDosageNumbers(name?: string): string | null {
   return m ? m[1].replace(/\s+/g, '') : null;
 }
 
+// 카드 펼침에 표시할 상세 필드가 하나라도 있는지
+function hasAnyDoc(it: DrugItem): boolean {
+  return Boolean(
+    stripDocTags(it.EE_DOC_DATA) ||
+      stripDocTags(it.UD_DOC_DATA) ||
+      stripDocTags(it.NB_DOC_DATA) ||
+      (it.STORAGE_METHOD && it.STORAGE_METHOD.trim()),
+  );
+}
+
+// 카드 식별 키 — visibleItems 토글에 따라 idx가 바뀌어도 동일 카드는 같은 key
+function cardKey(it: DrugItem, gIdx: number, idx: number): string {
+  return it.ITEM_SEQ ? `seq-${it.ITEM_SEQ}` : `${gIdx}-${idx}`;
+}
+
+// 분석 직후 자동 펼침 대상 — 함량 매칭된 첫 카드(없으면 첫 items[0])의 key
+function pickAutoOpenKey(recognized: { extractedName: string; items: DrugItem[] }[]): string | null {
+  const firstGroup = recognized.find((r) => r.items.length > 0);
+  if (!firstGroup) return null;
+  const aiDose = extractDosageNumbers(firstGroup.extractedName);
+  const matched = aiDose
+    ? firstGroup.items.find((it) => extractDosageNumbers(it.ITEM_NAME) === aiDose)
+    : null;
+  const target = matched || firstGroup.items[0];
+  return target?.ITEM_SEQ ? `seq-${target.ITEM_SEQ}` : null;
+}
+
 // AI 인식 함량과 일치하는 카드만 matched, 나머지는 others
 // noMatch=true: AI 함량 추출은 됐지만 식약처 일치 항목 없음 — 자동 표시 금지 + 경고 안내 필요
 function filterByDosage(
@@ -251,7 +278,8 @@ export function SayuHealthDrugPage() {
         },
       ]);
       setSearched(true);
-      setOpenKey(list.length > 0 ? '0-0' : null);
+      const firstSeq = list[0]?.ITEM_SEQ;
+      setOpenKey(firstSeq ? `seq-${firstSeq}` : list.length > 0 ? '0-0' : null);
       if (list.length === 0) {
         toast.info('검색 결과가 없습니다. 약 이름을 다시 확인해 주세요.');
       }
@@ -361,9 +389,8 @@ export function SayuHealthDrugPage() {
       setRecognizedList(recognized);
       setSearched(true);
 
-      // 첫 번째 약의 첫 번째 결과를 자동으로 펼침
-      const firstWithItems = recognized.findIndex((r) => r.items.length > 0);
-      setOpenKey(firstWithItems >= 0 ? `${firstWithItems}-0` : null);
+      // 첫 번째 약의 함량 매칭된 카드(없으면 첫 items[0])를 ITEM_SEQ 기반 key로 자동 펼침
+      setOpenKey(pickAutoOpenKey(recognized));
 
       if (recognized.length > 0) {
         // 첫 약 이름은 텍스트 입력란에도 채움 (편의)
@@ -808,11 +835,11 @@ export function SayuHealthDrugPage() {
               )}
 
               {visibleItems.map(({ item: it, dosage }, idx) => {
-                const key = `${gIdx}-${idx}`;
+                const key = cardKey(it, gIdx, idx);
                 const opened = openKey === key;
                 return (
                   <div
-                    key={`${it.ITEM_SEQ || key}`}
+                    key={key}
                     className="rounded-2xl p-4"
                     style={{
                       backgroundColor: '#fff',
@@ -895,11 +922,33 @@ export function SayuHealthDrugPage() {
 
                     {opened && (
                       <div className="mt-3 flex flex-col gap-3">
-                        <DocBlock title="효능·효과" body={stripDocTags(it.EE_DOC_DATA)} previewMode="firstSentence" />
-                        <DocBlock title="용법·용량" body={stripDocTags(it.UD_DOC_DATA)} previewMode="firstSentence" />
-                        <DocBlock title="주의사항·부작용" body={stripDocTags(it.NB_DOC_DATA)} previewMode="lines" />
-                        {it.STORAGE_METHOD && (
-                          <DocBlock title="저장방법" body={it.STORAGE_METHOD} />
+                        {hasAnyDoc(it) ? (
+                          <>
+                            <DocBlock title="효능·효과" body={stripDocTags(it.EE_DOC_DATA)} previewMode="firstSentence" />
+                            <DocBlock title="용법·용량" body={stripDocTags(it.UD_DOC_DATA)} previewMode="firstSentence" />
+                            <DocBlock title="주의사항·부작용" body={stripDocTags(it.NB_DOC_DATA)} previewMode="lines" />
+                            {it.STORAGE_METHOD && (
+                              <DocBlock title="저장방법" body={it.STORAGE_METHOD} />
+                            )}
+                          </>
+                        ) : (
+                          <div
+                            style={{
+                              background: '#F5F0E8',
+                              border: '1px solid #E5DFD0',
+                              borderRadius: 10,
+                              padding: '14px 16px',
+                              fontSize: 13,
+                              color: '#7A6F5A',
+                              textAlign: 'center',
+                              lineHeight: 1.6,
+                            }}
+                          >
+                            식약처 상세정보가 제공되지 않는 품목입니다.
+                            <div style={{ fontSize: 11, marginTop: 4, opacity: 0.8 }}>
+                              (의약품 제품 허가정보에는 등록됐지만 효능·용법 문서가 비어있습니다)
+                            </div>
+                          </div>
                         )}
                       </div>
                     )}
