@@ -146,6 +146,38 @@ function dedupAndSort(items: DrugItem[]): { item: DrugItem; dosage: string | nul
   return withDosage.map(({ it, dosage }) => ({ item: it, dosage }));
 }
 
+// "텔미누보정40/2.5mg" → "40/2.5" — 단위 무관한 숫자 키만 추출
+function extractDosageNumbers(name?: string): string | null {
+  if (!name) return null;
+  const m = name.match(/(\d+(?:[./]\d+)*)\s*(?:밀리그램|밀리리터|마이크로그램|단위|mg|ml|g|IU|µg|㎍)/i);
+  return m ? m[1].replace(/\s+/g, '') : null;
+}
+
+// AI 인식 함량과 일치하는 카드만 matched, 나머지는 others
+function filterByDosage(
+  items: DrugItem[],
+  aiName?: string,
+): {
+  matched: { item: DrugItem; dosage: string | null }[];
+  others: { item: DrugItem; dosage: string | null }[];
+  aiDose: string | null;
+} {
+  const sorted = dedupAndSort(items);
+  const aiDose = extractDosageNumbers(aiName);
+  if (!aiDose) return { matched: sorted, others: [], aiDose: null };
+
+  const matched: typeof sorted = [];
+  const others: typeof sorted = [];
+  for (const entry of sorted) {
+    const itemDose = extractDosageNumbers(entry.item.ITEM_NAME);
+    if (itemDose === aiDose) matched.push(entry);
+    else others.push(entry);
+  }
+  // 매칭 0건이면 안전 fallback: 전체 표시
+  if (matched.length === 0) return { matched: sorted, others: [], aiDose };
+  return { matched, others, aiDose };
+}
+
 async function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -169,6 +201,16 @@ export function SayuHealthDrugPage() {
   const [recognizedList, setRecognizedList] = useState<RecognizedDrug[]>([]);
   const [searched, setSearched] = useState(false);
   const [openKey, setOpenKey] = useState<string | null>(null);
+  const [showOthersGroups, setShowOthersGroups] = useState<Set<number>>(new Set());
+
+  const toggleOthers = (gIdx: number) => {
+    setShowOthersGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(gIdx)) next.delete(gIdx);
+      else next.add(gIdx);
+      return next;
+    });
+  };
 
   const [photos, setPhotos] = useState<PhotoSlot[]>([]);
   const [photoProcessing, setPhotoProcessing] = useState(false);
@@ -675,7 +717,13 @@ export function SayuHealthDrugPage() {
       )}
 
       <div className="flex flex-col gap-5">
-        {recognizedList.map((group, gIdx) => (
+        {recognizedList.map((group, gIdx) => {
+          const { matched, others, aiDose } = filterByDosage(group.items, group.extractedName);
+          const showOthers = showOthersGroups.has(gIdx);
+          const visibleItems = showOthers ? [...matched, ...others] : matched;
+          const totalShown = matched.length + others.length;
+          const hasOthers = aiDose !== null && others.length > 0;
+          return (
           <div key={`grp-${gIdx}-${group.extractedName}`}>
             {recognizedList.length > 1 && (
               <div
@@ -717,7 +765,9 @@ export function SayuHealthDrugPage() {
                   AI {confidenceLabel[group.confidence]}
                 </span>
                 <span style={{ marginLeft: 'auto', fontSize: 11, color: '#7A6F5A' }}>
-                  식약처 {group.totalCount}건
+                  {hasOthers
+                    ? `함량 ${aiDose} 일치 ${matched.length}건 / 전체 ${totalShown}건`
+                    : `식약처 ${totalShown || group.totalCount}건`}
                   {group.fallbackUsed && group.searchUsedName && (
                     <> · "{group.searchUsedName}" 검색</>
                   )}
@@ -726,7 +776,7 @@ export function SayuHealthDrugPage() {
             )}
 
             <div className="flex flex-col gap-3">
-              {dedupAndSort(group.items).map(({ item: it, dosage }, idx) => {
+              {visibleItems.map(({ item: it, dosage }, idx) => {
                 const key = `${gIdx}-${idx}`;
                 const opened = openKey === key;
                 return (
@@ -826,6 +876,28 @@ export function SayuHealthDrugPage() {
                 );
               })}
 
+              {hasOthers && (
+                <button
+                  type="button"
+                  onClick={() => toggleOthers(gIdx)}
+                  style={{
+                    marginTop: 4,
+                    padding: '10px 14px',
+                    backgroundColor: '#fff',
+                    border: '1px dashed #B7C97A',
+                    borderRadius: 12,
+                    color: '#4A5A2C',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {showOthers
+                    ? `함량 ${aiDose} 일치만 보기 ▲`
+                    : `다른 함량도 보기 (${others.length}건) ▼`}
+                </button>
+              )}
+
               {group.items.length === 0 && (
                 <div
                   className="rounded-2xl p-5 text-center"
@@ -836,7 +908,8 @@ export function SayuHealthDrugPage() {
               )}
             </div>
           </div>
-        ))}
+          );
+        })}
 
         {searched && !loading && !analyzing && recognizedList.length === 0 && (
           <div
