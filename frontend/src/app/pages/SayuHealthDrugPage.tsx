@@ -65,16 +65,85 @@ const MAX_PHOTOS = 3;
 function stripDocTags(raw?: string) {
   if (!raw) return '';
   let s = String(raw);
-  s = s.replace(/<\s*\/?\s*(ARTICLE|PARAGRAPH|CN|TITLE)[^>]*>/gi, '\n');
+
+  // 1) CDATA 마커 제거
+  s = s.replace(/<!\[CDATA\[/g, '').replace(/\]\]>/g, '');
+
+  // 2) 표 구조 변환: TD 사이 " · ", TR 끝 \n, TBL 끝 \n\n
+  s = s.replace(/<\s*\/\s*td\s*>/gi, ' · ');
+  s = s.replace(/<\s*td[^>]*>/gi, '');
+  s = s.replace(/<\s*\/\s*tr\s*>/gi, '\n');
+  s = s.replace(/<\s*tr[^>]*>/gi, '');
+  s = s.replace(/<\s*\/\s*(table|tbl|tbody|thead)\s*>/gi, '\n\n');
+  s = s.replace(/<\s*(table|tbl|tbody|thead)[^>]*>/gi, '');
+
+  // 3) 기존 문단 태그 → 줄바꿈
+  s = s.replace(/<\s*\/?\s*(ARTICLE|PARAGRAPH|CN|TITLE|BR)[^>]*>/gi, '\n');
+
+  // 4) 남은 태그 제거
   s = s.replace(/<[^>]+>/g, '');
+
+  // 5) 엔티티 해제
   s = s
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"');
-  s = s.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+
+  // 6) " · " 가 줄 끝/시작에 위치하면 정리
+  s = s.replace(/[ \t]+\n/g, '\n');
+  s = s.replace(/\s*·\s*\n/g, '\n');
+  s = s.replace(/\n\s*·\s*/g, '\n');
+  s = s.replace(/(\s*·\s*){2,}/g, ' · ');
+
+  // 7) 짧은 단독 줄(3자 이하)은 다음 줄과 합치기
+  const lines = s.split('\n');
+  const merged: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const cur = lines[i].trim();
+    if (!cur) {
+      merged.push('');
+      continue;
+    }
+    if (cur.length <= 3 && i + 1 < lines.length && lines[i + 1].trim()) {
+      merged.push(`${cur} ${lines[i + 1].trim()}`);
+      i++;
+    } else {
+      merged.push(cur);
+    }
+  }
+  s = merged.join('\n');
+
+  // 8) 연속 빈 줄 압축
+  s = s.replace(/\n{3,}/g, '\n\n').trim();
   return s;
+}
+
+// "텔미누보정40/2.5밀리그램(...)" → "40/2.5밀리그램", sortKey=40
+function extractDosage(name?: string): { dosage: string | null; sortKey: number } {
+  if (!name) return { dosage: null, sortKey: Number.POSITIVE_INFINITY };
+  const m = name.match(/(\d+(?:[./]\d+)*\s*(?:밀리그램|밀리리터|마이크로그램|단위|mg|ml|g|IU|µg|㎍))/i);
+  if (!m) return { dosage: null, sortKey: Number.POSITIVE_INFINITY };
+  const dosage = m[1].replace(/\s+/g, '');
+  const numMatch = dosage.match(/\d+(?:\.\d+)?/);
+  const sortKey = numMatch ? parseFloat(numMatch[0]) : Number.POSITIVE_INFINITY;
+  return { dosage, sortKey };
+}
+
+// ITEM_SEQ 기준 중복 제거 + 함량 오름차순 정렬
+function dedupAndSort(items: DrugItem[]): { item: DrugItem; dosage: string | null }[] {
+  const seen = new Set<string>();
+  const unique: DrugItem[] = [];
+  for (const it of items) {
+    const key = it.ITEM_SEQ || `${it.ITEM_NAME || ''}__${it.ENTP_NAME || ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(it);
+  }
+  const withDosage = unique.map((it) => ({ it, ...extractDosage(it.ITEM_NAME) }));
+  withDosage.sort((a, b) => a.sortKey - b.sortKey);
+  return withDosage.map(({ it, dosage }) => ({ item: it, dosage }));
 }
 
 async function blobToBase64(blob: Blob): Promise<string> {
@@ -657,7 +726,7 @@ export function SayuHealthDrugPage() {
             )}
 
             <div className="flex flex-col gap-3">
-              {group.items.map((it, idx) => {
+              {dedupAndSort(group.items).map(({ item: it, dosage }, idx) => {
                 const key = `${gIdx}-${idx}`;
                 const opened = openKey === key;
                 return (
@@ -697,6 +766,25 @@ export function SayuHealthDrugPage() {
                           </span>
                         )}
                       </div>
+                      {dosage && (
+                        <div style={{ marginBottom: 6 }}>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              fontSize: 14,
+                              fontWeight: 800,
+                              color: '#fff',
+                              background: '#4A5A2C',
+                              padding: '4px 12px',
+                              borderRadius: 999,
+                              letterSpacing: '0.02em',
+                              boxShadow: '0 2px 4px -2px rgba(74,90,44,0.4)',
+                            }}
+                          >
+                            💊 {dosage}
+                          </span>
+                        </div>
+                      )}
                       <div
                         style={{
                           fontSize: 15,
@@ -812,6 +900,7 @@ function DocBlock({ title, body }: { title: string; body: string }) {
           lineHeight: 1.7,
           whiteSpace: 'pre-wrap',
           wordBreak: 'keep-all',
+          textAlign: 'left',
         }}
       >
         {body}
