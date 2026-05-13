@@ -131,17 +131,69 @@ export const polishContent = onCall(
         throw new HttpsError('invalid-argument', '텍스트는 5000자 이내여야 합니다.');
       }
 
+      // SAYU 형식별 3그룹 분기 (2026-05-13 도입)
+      // 풍성형: 감성·문학 표현 환영
+      // 균형형: 사실+감정 균형
+      // 보수형: 사실 중심, 보수적 (디폴트 — 알 수 없는 format도 여기로)
+      const RICH_FORMATS = ['diary', 'essay', 'travel'];
+      const BALANCED_FORMATS = ['garden', 'pet', 'child'];
+      const CONSERVATIVE_FORMATS = ['mission', 'report', 'work', 'memo'];
+      const normalizedFormat = typeof format === 'string' ? format.toLowerCase().trim() : '';
+      let formatGroup: 'rich' | 'balanced' | 'conservative';
+      if (RICH_FORMATS.includes(normalizedFormat)) {
+        formatGroup = 'rich';
+      } else if (BALANCED_FORMATS.includes(normalizedFormat)) {
+        formatGroup = 'balanced';
+      } else {
+        formatGroup = 'conservative';
+      }
+      console.log('[polishContent] mode=%s format=%s → group=%s', mode, normalizedFormat || '(empty)', formatGroup);
+      if (normalizedFormat && !CONSERVATIVE_FORMATS.includes(normalizedFormat) && formatGroup === 'conservative') {
+        console.log('[polishContent] 알 수 없는 format → 보수형 디폴트 적용:', normalizedFormat);
+      }
+
       let systemPrompt = '';
 
       if (mode === 'BASIC') {
         systemPrompt = `당신은 신중한 편집자입니다.
 원문을 최대한 유지하며 맞춤법과 어색한 표현만 교정하세요.
 존댓말 유지, 내용 추가 금지, 문단 분리 금지.`;
-      } else {  // 이건 PREMIUM 모드
-        systemPrompt = `당신은 재능있는 에세이 작가입니다.
-감동적인 글로 재구성하되 존댓말 유지.
-새로운 사건 추가 금지.
-소제목 추가 금지. 마크다운 기호(**, ##, __, --, >) 절대 사용 금지.
+      } else if (formatGroup === 'rich') {
+        // 풍성형 — 일기·에세이·여행기록
+        systemPrompt = `당신은 한국 중장년층의 일상을 글로 빚어내는 에세이 작가입니다.
+원문의 감정·사실·인물·시간은 절대 바꾸지 않고, 다음을 풍성하게 합니다:
+1. 감각 묘사: 시각·청각·후각·촉각·미각 중 어울리는 표현 추가
+2. 감정 명료화: 원문에 있는 감정을 더 또렷이 드러내는 비유나 표현
+3. 호흡 조정: 짧은 문장과 긴 문장을 섞어 자연스러운 리듬 만들기
+4. 회상의 깊이: 사실은 그대로, 그 순간의 의미만 부드럽게 부각
+
+엄격한 금지: 새로운 사건·인물·장소 추가 / 원문에 없는 감정 창작 / 소제목 / 마크다운 기호(**, ##, __, --, >) / 과장된 결론 / 교훈
+유지: 존댓말 / 시제 / 인칭 / 사실 관계
+
+본문만 자연스럽게 이어지는 문단으로 작성하세요.`;
+      } else if (formatGroup === 'balanced') {
+        // 균형형 — 텃밭일지·반려동물·육아일기
+        systemPrompt = `당신은 한국 중장년층의 일상 기록을 다듬는 에세이 작가입니다.
+원문의 사실·감정·날짜·인물·장소는 그대로 보존하며, 다음을 자연스럽게 다듬습니다:
+1. 사실 묘사 정돈: 관찰한 내용을 명확하고 읽기 좋게 정리
+2. 감정 보존: 원문에 드러난 따뜻함·기쁨·걱정 등을 자연스럽게 살림
+3. 문장 호흡: 자연스러운 리듬으로 다듬기
+
+엄격한 금지: 새로운 사건·관찰·인물 추가 / 원문에 없는 감정 창작 / 시적 비유 과용 / 소제목 / 마크다운 기호 / 교훈
+유지: 존댓말 / 시제 / 인칭 / 사실 관계 / 관찰의 객관성
+
+본문만 자연스럽게 이어지는 문단으로 작성하세요.`;
+      } else {
+        // 보수형 — 선교보고·일반보고·업무일지·메모 (및 디폴트)
+        systemPrompt = `당신은 신중한 편집자입니다.
+원문의 사실·수치·날짜·인물·결정 사항을 절대 바꾸지 않고, 다음만 다듬습니다:
+1. 맞춤법·문법 교정
+2. 어색한 표현을 자연스럽게 정리
+3. 문장 길이가 너무 길면 적절히 분리
+
+엄격한 금지: 새로운 내용 추가 / 감성적 표현 / 시적 비유 / 소제목 / 마크다운 기호 / 의견 첨가
+유지: 존댓말 / 시제 / 인칭 / 사실·수치·날짜 정확성 / 보고서 어조
+
 본문만 자연스럽게 이어지는 문단으로 작성하세요.`;
       }
 
