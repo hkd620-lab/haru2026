@@ -564,7 +564,7 @@ export function LandingPage() {
       </section>
 
       {/* ══════════════════════════════
-          섹션 5-1: HARU의 날개 — AI 비서실 8개 (v1 수정본)
+          섹션 5-1: HARU의 날개 — AI 비서실 11개 (v2 홈과 동기화)
       ══════════════════════════════ */}
       <section style={{ background: '#3F4F26', padding: '80px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
@@ -588,7 +588,7 @@ export function LandingPage() {
             maxWidth: '640px', margin: '0 auto 56px',
           }}>
             일기를 넘어, 매일 다른 도움을 받는<br />
-            <strong style={{ color: '#7A8B4E', fontWeight: 700 }}>8가지 AI 비서</strong>가 함께합니다
+            <strong style={{ color: '#7A8B4E', fontWeight: 700 }}>11가지 AI 비서</strong>가 함께합니다
           </p>
           <div className="agents-8" style={{
             display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px',
@@ -601,13 +601,19 @@ export function LandingPage() {
               { emoji: '📥', title: 'SNS가져오기',  sub: 'IMPORT',        desc: '페이스북과 인스타그램의 추억들을 입맛대로 정렬하고 나만의 책으로 출간해 드립니다.', color: '#ec4899' },
               { emoji: '📈', title: 'HARU주식',     sub: 'MARKET',        desc: '내가 매도·매수한 종목들의 현재와 미래를 예측하여 주식 투자를 즐겁게.',           color: '#22d3ee' },
               { emoji: '🌿', title: '원기충전소',   sub: 'RECOVERY',      desc: '오늘 컨디션을 기록하면 AI가 맞춤 회복 루틴을 처방해드립니다.',                    color: '#84cc16' },
-              { emoji: '📚', title: '책스튜디오',   sub: 'BOOK STUDIO',   desc: '1년 기록이 한 권의 책으로 — 자동 출간 시스템',                                    color: '#fbbf24' },
+              { emoji: '🏠', title: '온비드 부동산', sub: 'BID · 부동산', desc: '온비드 공매 부동산을 한눈에 — 입찰 일정·최저가·소재지까지 검색.',                color: '#a78bfa', beta: true },
+              { emoji: '💚', title: 'HARU건강관리', sub: 'CARE · 건강',  desc: '명의찾기 · 약봉지 약정보 · 건강 인포그래픽 — HARU와 함께 챙기는 건강.',          color: '#10b981', beta: true },
+              { emoji: '✍️', title: '나도작가',     sub: 'WRITE · 창작', desc: 'AI와 함께 글쓰기 — 시놉시스부터 단편소설까지 손쉽게 완성합니다.',                color: '#f97316' },
+              { emoji: '✨', title: '새 비서 예정', sub: 'COMING SOON',  desc: '곧 새로운 동료가 합류합니다.',                                                    color: '#888780', placeholder: true },
             ].map((a) => (
               <div key={a.title} style={{
-                background: `linear-gradient(135deg, rgba(255,255,255,0.05) 0%, ${a.color}1f 100%)`,
+                background: a.placeholder
+                  ? 'rgba(255,255,255,0.03)'
+                  : `linear-gradient(135deg, rgba(255,255,255,0.05) 0%, ${a.color}1f 100%)`,
                 border: `1.5px solid ${a.color}44`,
                 borderRadius: '18px', padding: '28px 22px',
                 position: 'relative', overflow: 'hidden',
+                opacity: a.placeholder ? 0.72 : 1,
               }}>
                 <div style={{
                   position: 'absolute', top: '-20px', right: '-20px',
@@ -615,6 +621,16 @@ export function LandingPage() {
                   background: `radial-gradient(circle, ${a.color}26 0%, transparent 70%)`,
                   pointerEvents: 'none',
                 }} />
+                {a.beta && (
+                  <span style={{
+                    position: 'absolute', top: '12px', right: '12px',
+                    background: '#1A3C6E', color: '#fff',
+                    fontSize: '9px', fontWeight: 800, letterSpacing: '1.5px',
+                    padding: '3px 8px', borderRadius: '999px', zIndex: 2,
+                  }}>
+                    BETA
+                  </span>
+                )}
                 <div style={{ fontSize: '36px', marginBottom: '12px' }}>{a.emoji}</div>
                 <span style={{
                   background: `${a.color}26`, color: a.color,
@@ -683,7 +699,7 @@ export function LandingPage() {
               {
                 plan: 'PREMIUM', price: '₩5,000', period: '/월',
                 note: '라이트 전체 + AI 비서 일 2회 / 월 40회',
-                bullets: ['LIGHT 모든 기능', 'AI 비서실 8개 전체', 'SAYU PREMIUM (Gemini)'],
+                bullets: ['LIGHT 모든 기능', 'AI 비서실 11개 전체', 'SAYU PREMIUM (Gemini)'],
                 highlight: true,
                 badge: 'RECOMMENDED',
               },
