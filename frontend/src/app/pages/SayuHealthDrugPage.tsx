@@ -153,6 +153,21 @@ function extractDosageNumbers(name?: string): string | null {
   return m ? m[1].replace(/\s+/g, '') : null;
 }
 
+// 카드 미리보기용 — 원문 앞부분만 자름 (AI 요약 X, 의료 판단 X)
+function getCardPreview(body: string, maxLen = 120): string {
+  if (!body) return '';
+  const trimmed = body.trim();
+  if (!trimmed) return '';
+  // 첫 종결어미까지 — 너무 짧으면 첫 줄 사용
+  const m = trimmed.match(/^[\s\S]*?(?:니다\.|습니다\.|다\.|요\.|\.\s|\.$)/);
+  let s =
+    m && m[0].trim().length >= 6
+      ? m[0].trim()
+      : trimmed.split('\n').find((l) => l.trim().length > 0) || trimmed;
+  s = s.replace(/\s+/g, ' ').trim();
+  return s.length > maxLen ? `${s.slice(0, maxLen - 1)}…` : s;
+}
+
 // 카드 펼침에 표시할 상세 필드가 하나라도 있는지
 function hasAnyDoc(it: DrugItem): boolean {
   return Boolean(
@@ -847,111 +862,170 @@ export function SayuHealthDrugPage() {
                       color: '#2C2C2A',
                     }}
                   >
-                    <button
-                      type="button"
-                      onClick={() => setOpenKey(opened ? null : key)}
-                      className="w-full text-left"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                    >
-                      <div className="flex items-center gap-2 flex-wrap" style={{ marginBottom: 4 }}>
-                        {it.ETC_OTC_CODE && (
-                          <span
+                    {(() => {
+                      const eeFull = stripDocTags(it.EE_DOC_DATA);
+                      const udFull = stripDocTags(it.UD_DOC_DATA);
+                      const nbFull = stripDocTags(it.NB_DOC_DATA);
+                      const storage = (it.STORAGE_METHOD || '').trim();
+                      const hasDoc = Boolean(eeFull || udFull || nbFull || storage);
+                      const eePrev = getCardPreview(eeFull, 120);
+                      const udPrev = getCardPreview(udFull, 120);
+                      const nbPrev = getCardPreview(nbFull, 140);
+                      return (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => hasDoc && setOpenKey(opened ? null : key)}
+                            disabled={!hasDoc}
+                            className="w-full text-left"
                             style={{
-                              fontSize: 10,
-                              fontWeight: 700,
-                              color: '#4A5A2C',
-                              backgroundColor: '#F1F5DC',
-                              padding: '2px 8px',
-                              borderRadius: 999,
+                              background: 'none',
+                              border: 'none',
+                              cursor: hasDoc ? 'pointer' : 'default',
+                              padding: 0,
                             }}
                           >
-                            {it.ETC_OTC_CODE}
-                          </span>
-                        )}
-                        {it.ENTP_NAME && (
-                          <span style={{ fontSize: 11, color: '#888780' }}>
-                            {it.ENTP_NAME}
-                          </span>
-                        )}
-                      </div>
-                      {dosage && (
-                        <div style={{ marginBottom: 6 }}>
-                          <span
-                            style={{
-                              display: 'inline-block',
-                              fontSize: 14,
-                              fontWeight: 800,
-                              color: '#fff',
-                              background: '#4A5A2C',
-                              padding: '4px 12px',
-                              borderRadius: 999,
-                              letterSpacing: '0.02em',
-                              boxShadow: '0 2px 4px -2px rgba(74,90,44,0.4)',
-                            }}
-                          >
-                            💊 {dosage}
-                          </span>
-                        </div>
-                      )}
-                      <div
-                        style={{
-                          fontSize: 15,
-                          fontWeight: 700,
-                          color: '#1A3C6E',
-                          lineHeight: 1.35,
-                        }}
-                      >
-                        {it.ITEM_NAME || '(제품명 없음)'}
-                      </div>
-                      {it.MAIN_INGR && (
-                        <div style={{ fontSize: 11, color: '#7A6F5A', marginTop: 4 }}>
-                          주성분: {it.MAIN_INGR}
-                        </div>
-                      )}
-                      <div
-                        style={{
-                          marginTop: 8,
-                          fontSize: 12,
-                          color: '#4A5A2C',
-                          fontWeight: 600,
-                        }}
-                      >
-                        {opened ? '상세 닫기 ▲' : '효능·용법·주의사항 보기 ▼'}
-                      </div>
-                    </button>
-
-                    {opened && (
-                      <div className="mt-3 flex flex-col gap-3">
-                        {hasAnyDoc(it) ? (
-                          <>
-                            <DocBlock title="효능·효과" body={stripDocTags(it.EE_DOC_DATA)} previewMode="firstSentence" />
-                            <DocBlock title="용법·용량" body={stripDocTags(it.UD_DOC_DATA)} previewMode="firstSentence" />
-                            <DocBlock title="주의사항·부작용" body={stripDocTags(it.NB_DOC_DATA)} previewMode="lines" />
-                            {it.STORAGE_METHOD && (
-                              <DocBlock title="저장방법" body={it.STORAGE_METHOD} />
-                            )}
-                          </>
-                        ) : (
-                          <div
-                            style={{
-                              background: '#F5F0E8',
-                              border: '1px solid #E5DFD0',
-                              borderRadius: 10,
-                              padding: '14px 16px',
-                              fontSize: 13,
-                              color: '#7A6F5A',
-                              textAlign: 'center',
-                              lineHeight: 1.6,
-                            }}
-                          >
-                            식약처 상세정보가 제공되지 않는 품목입니다.
-                            <div style={{ fontSize: 11, marginTop: 4, opacity: 0.8 }}>
-                              (의약품 제품 허가정보에는 등록됐지만 효능·용법 문서가 비어있습니다)
+                            <div className="flex items-center gap-2 flex-wrap" style={{ marginBottom: 4 }}>
+                              {it.ETC_OTC_CODE && (
+                                <span
+                                  style={{
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    color: '#4A5A2C',
+                                    backgroundColor: '#F1F5DC',
+                                    padding: '2px 8px',
+                                    borderRadius: 999,
+                                  }}
+                                >
+                                  {it.ETC_OTC_CODE}
+                                </span>
+                              )}
+                              {it.ENTP_NAME && (
+                                <span style={{ fontSize: 11, color: '#888780' }}>{it.ENTP_NAME}</span>
+                              )}
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                            {dosage && (
+                              <div style={{ marginBottom: 6 }}>
+                                <span
+                                  style={{
+                                    display: 'inline-block',
+                                    fontSize: 14,
+                                    fontWeight: 800,
+                                    color: '#fff',
+                                    background: '#4A5A2C',
+                                    padding: '4px 12px',
+                                    borderRadius: 999,
+                                    letterSpacing: '0.02em',
+                                    boxShadow: '0 2px 4px -2px rgba(74,90,44,0.4)',
+                                  }}
+                                >
+                                  💊 {dosage}
+                                </span>
+                              </div>
+                            )}
+                            <div
+                              style={{
+                                fontSize: 15,
+                                fontWeight: 700,
+                                color: '#1A3C6E',
+                                lineHeight: 1.35,
+                              }}
+                            >
+                              {it.ITEM_NAME || '(제품명 없음)'}
+                            </div>
+                            {it.MAIN_INGR && (
+                              <div style={{ fontSize: 11, color: '#7A6F5A', marginTop: 4 }}>
+                                주성분: {it.MAIN_INGR}
+                              </div>
+                            )}
+
+                            {/* 미리보기 3줄 또는 정보 없음 안내 */}
+                            {hasDoc ? (
+                              <div
+                                style={{
+                                  marginTop: 10,
+                                  paddingTop: 10,
+                                  borderTop: '1px dashed #E5DFD0',
+                                }}
+                              >
+                                {eePrev && <PreviewLine label="효능" text={eePrev} />}
+                                {udPrev && <PreviewLine label="용법" text={udPrev} />}
+                                {nbPrev && <PreviewLine label="주의" text={nbPrev} />}
+                              </div>
+                            ) : (
+                              <div
+                                style={{
+                                  marginTop: 10,
+                                  padding: '10px 12px',
+                                  background: '#F5F0E8',
+                                  border: '1px solid #E5DFD0',
+                                  borderRadius: 10,
+                                  fontSize: 12,
+                                  color: '#7A6F5A',
+                                  lineHeight: 1.6,
+                                  textAlign: 'left',
+                                }}
+                              >
+                                식약처에 품목 기본정보는 등록되어 있지만, 효능·용법·주의사항 상세 문서는 제공되지 않는 품목입니다.
+                              </div>
+                            )}
+
+                            {hasDoc && (
+                              <div
+                                style={{
+                                  marginTop: 10,
+                                  fontSize: 12,
+                                  color: '#4A5A2C',
+                                  fontWeight: 700,
+                                }}
+                              >
+                                {opened ? '상세정보 닫기 ▲' : '상세정보 보기 ▼'}
+                              </div>
+                            )}
+                          </button>
+
+                          {opened && hasDoc && (
+                            <div
+                              className="mt-3"
+                              style={{
+                                maxHeight: 360,
+                                overflowY: 'auto',
+                                border: '1px solid #E5DFD0',
+                                borderRadius: 12,
+                                padding: 12,
+                                background: '#FAF9F0',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 12,
+                              }}
+                            >
+                              {eeFull && <DocBlock title="효능·효과" body={eeFull} />}
+                              {udFull && <DocBlock title="용법·용량" body={udFull} />}
+                              {nbFull && <DocBlock title="주의사항·부작용" body={nbFull} />}
+                              {storage && <DocBlock title="저장방법" body={storage} />}
+                              <button
+                                type="button"
+                                onClick={() => setOpenKey(null)}
+                                style={{
+                                  marginTop: 4,
+                                  padding: '8px 14px',
+                                  background: '#fff',
+                                  border: '1px solid #D4DEA0',
+                                  borderRadius: 10,
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  color: '#4A5A2C',
+                                  cursor: 'pointer',
+                                  alignSelf: 'center',
+                                }}
+                              >
+                                상세정보 닫기 ▲
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 );
               })}
@@ -1045,6 +1119,16 @@ function getPreview(body: string, mode: 'firstSentence' | 'lines'): string {
   // 'lines' — 의미 있는 처음 3줄
   const lines = trimmed.split('\n').map((l) => l.trim()).filter(Boolean);
   return lines.slice(0, 3).join('\n');
+}
+
+function PreviewLine({ label, text }: { label: string; text: string }) {
+  if (!text) return null;
+  return (
+    <div style={{ fontSize: 12, lineHeight: 1.6, marginTop: 2, textAlign: 'left' }}>
+      <strong style={{ color: '#4A5A2C', marginRight: 6 }}>{label}</strong>
+      <span style={{ color: '#5A554C' }}>{text}</span>
+    </div>
+  );
 }
 
 function DocBlock({
