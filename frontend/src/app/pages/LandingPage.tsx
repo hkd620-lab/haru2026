@@ -643,7 +643,10 @@ export function LandingPage() {
 
       {/* ══════════════════════════════
           섹션 5-2: 구독 요금 — LIGHT/PREMIUM + 7일 무료 체험
+          ⚠️ 2026-05-13 임시 비노출 (모두의 창업 신청서 D-2)
+          복원: 아래 false → true 로 변경 또는 VITE_SHOW_PRICING=true 설정
       ══════════════════════════════ */}
+      {(import.meta.env.VITE_SHOW_PRICING === 'true' || false) && (
       <section style={{ background: '#EDE8DC', padding: '72px 24px' }}>
         <div style={{ maxWidth: '760px', margin: '0 auto', textAlign: 'center' }}>
           {/* 7일 무료 체험 배너 */}
@@ -754,6 +757,7 @@ export function LandingPage() {
           </p>
         </div>
       </section>
+      )}
 
       {/* ══════════════════════════════
           섹션 6: 하단 CTA
