@@ -154,6 +154,7 @@ function extractDosageNumbers(name?: string): string | null {
 }
 
 // AI 인식 함량과 일치하는 카드만 matched, 나머지는 others
+// noMatch=true: AI 함량 추출은 됐지만 식약처 일치 항목 없음 — 자동 표시 금지 + 경고 안내 필요
 function filterByDosage(
   items: DrugItem[],
   aiName?: string,
@@ -161,10 +162,11 @@ function filterByDosage(
   matched: { item: DrugItem; dosage: string | null }[];
   others: { item: DrugItem; dosage: string | null }[];
   aiDose: string | null;
+  noMatch: boolean;
 } {
   const sorted = dedupAndSort(items);
   const aiDose = extractDosageNumbers(aiName);
-  if (!aiDose) return { matched: sorted, others: [], aiDose: null };
+  if (!aiDose) return { matched: sorted, others: [], aiDose: null, noMatch: false };
 
   const matched: typeof sorted = [];
   const others: typeof sorted = [];
@@ -173,9 +175,9 @@ function filterByDosage(
     if (itemDose === aiDose) matched.push(entry);
     else others.push(entry);
   }
-  // 매칭 0건이면 안전 fallback: 전체 표시
-  if (matched.length === 0) return { matched: sorted, others: [], aiDose };
-  return { matched, others, aiDose };
+  // 함량 불일치: 카드 자동 표시 안 함, 경고 안내 + 토글로만 다른 함량 노출
+  if (matched.length === 0) return { matched: [], others: sorted, aiDose, noMatch: true };
+  return { matched, others, aiDose, noMatch: false };
 }
 
 async function blobToBase64(blob: Blob): Promise<string> {
@@ -718,9 +720,14 @@ export function SayuHealthDrugPage() {
 
       <div className="flex flex-col gap-5">
         {recognizedList.map((group, gIdx) => {
-          const { matched, others, aiDose } = filterByDosage(group.items, group.extractedName);
+          const { matched, others, aiDose, noMatch } = filterByDosage(group.items, group.extractedName);
           const showOthers = showOthersGroups.has(gIdx);
-          const visibleItems = showOthers ? [...matched, ...others] : matched;
+          // noMatch면 펼치기 전엔 아무 카드도 표시 안 함 (안전 우선)
+          const visibleItems = showOthers
+            ? [...matched, ...others]
+            : noMatch
+              ? []
+              : matched;
           const totalShown = matched.length + others.length;
           const hasOthers = aiDose !== null && others.length > 0;
           return (
@@ -765,9 +772,11 @@ export function SayuHealthDrugPage() {
                   AI {confidenceLabel[group.confidence]}
                 </span>
                 <span style={{ marginLeft: 'auto', fontSize: 11, color: '#7A6F5A' }}>
-                  {hasOthers
-                    ? `함량 ${aiDose} 일치 ${matched.length}건 / 전체 ${totalShown}건`
-                    : `식약처 ${totalShown || group.totalCount}건`}
+                  {noMatch
+                    ? `함량 ${aiDose} 일치 0건 · 다른 함량 ${others.length}건`
+                    : hasOthers
+                      ? `함량 ${aiDose} 일치 ${matched.length}건 / 전체 ${totalShown}건`
+                      : `식약처 ${totalShown || group.totalCount}건`}
                   {group.fallbackUsed && group.searchUsedName && (
                     <> · "{group.searchUsedName}" 검색</>
                   )}
@@ -776,6 +785,28 @@ export function SayuHealthDrugPage() {
             )}
 
             <div className="flex flex-col gap-3">
+              {noMatch && !showOthers && (
+                <div
+                  className="rounded-xl p-3"
+                  style={{
+                    background: '#FBEEE5',
+                    border: '1px solid #E8B894',
+                    color: '#7A4A1E',
+                    fontSize: 12,
+                    lineHeight: 1.6,
+                  }}
+                >
+                  <div style={{ fontWeight: 700, marginBottom: 4, color: '#B85C2E' }}>
+                    ⚠️ AI 인식 함량과 식약처 품목 함량이 다릅니다
+                  </div>
+                  AI가 <strong>{aiDose}</strong>(으)로 인식했지만 식약처 DB에서 같은 함량을 찾지 못했습니다.
+                  같은 이름으로 검색된 다른 함량은 {others.length}건 있습니다.
+                  <strong style={{ display: 'block', marginTop: 4 }}>
+                    약봉지의 함량을 다시 확인해 주세요. (앱이 함량을 추측 보정하지 않습니다)
+                  </strong>
+                </div>
+              )}
+
               {visibleItems.map(({ item: it, dosage }, idx) => {
                 const key = `${gIdx}-${idx}`;
                 const opened = openKey === key;
@@ -876,7 +907,7 @@ export function SayuHealthDrugPage() {
                 );
               })}
 
-              {hasOthers && (
+              {(hasOthers || (noMatch && others.length > 0)) && (
                 <button
                   type="button"
                   onClick={() => toggleOthers(gIdx)}
@@ -893,8 +924,12 @@ export function SayuHealthDrugPage() {
                   }}
                 >
                   {showOthers
-                    ? `함량 ${aiDose} 일치만 보기 ▲`
-                    : `다른 함량도 보기 (${others.length}건) ▼`}
+                    ? noMatch
+                      ? '다시 접기 ▲'
+                      : `함량 ${aiDose} 일치만 보기 ▲`
+                    : noMatch
+                      ? `다른 함량 보기 (${others.length}건) ▼`
+                      : `다른 함량도 보기 (${others.length}건) ▼`}
                 </button>
               )}
 
