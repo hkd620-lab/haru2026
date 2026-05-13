@@ -3131,6 +3131,7 @@ export const getOnbidRealEstateList = onCall(
 const DRUG_API_BASE = 'https://apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService07';
 const DRUG_API_OPS = [
   '/getDrugPrdtPrmsnDtlInq05',
+  '/getDrugPrdtPrmsnDtlInq06',
   '/getDrugPrdtPrmsnInq05',
   '/getDrugPrdtPrmsnDtlInq07',
   '/getDrugPrdtPrmsnInq07',
