@@ -32,8 +32,18 @@ type DrugResponse = {
   disclaimer?: string;
 };
 
+type RecognizedDrug = {
+  extractedName: string;
+  confidence: 'high' | 'medium' | 'low' | 'none';
+  items: DrugItem[];
+  totalCount: number;
+  searchUsedName?: string;
+  fallbackUsed?: boolean;
+};
+
 type AnalyzeResponse = {
   success: boolean;
+  recognized?: RecognizedDrug[];
   extractedName: string;
   confidence: 'high' | 'medium' | 'low' | 'none';
   aiNote: string;
@@ -87,10 +97,9 @@ export function SayuHealthDrugPage() {
 
   const [itemName, setItemName] = useState('');
   const [loading, setLoading] = useState(false);
-  const [items, setItems] = useState<DrugItem[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
+  const [recognizedList, setRecognizedList] = useState<RecognizedDrug[]>([]);
   const [searched, setSearched] = useState(false);
-  const [openIdx, setOpenIdx] = useState<number | null>(null);
+  const [openKey, setOpenKey] = useState<string | null>(null);
 
   const [photos, setPhotos] = useState<PhotoSlot[]>([]);
   const [photoProcessing, setPhotoProcessing] = useState(false);
@@ -120,10 +129,16 @@ export function SayuHealthDrugPage() {
       const res = await fn({ itemName: q, pageNo: 1, numOfRows: 10 });
       const data = res.data;
       const list = Array.isArray(data?.items) ? data.items : [];
-      setItems(list);
-      setTotalCount(data?.totalCount || list.length);
+      setRecognizedList([
+        {
+          extractedName: q,
+          confidence: 'high',
+          items: list,
+          totalCount: data?.totalCount || list.length,
+        },
+      ]);
       setSearched(true);
-      setOpenIdx(list.length > 0 ? 0 : null);
+      setOpenKey(list.length > 0 ? '0-0' : null);
       if (list.length === 0) {
         toast.info('검색 결과가 없습니다. 약 이름을 다시 확인해 주세요.');
       }
@@ -131,8 +146,7 @@ export function SayuHealthDrugPage() {
       console.error('[Drug] search failed', e);
       const msg = e?.message || '검색 중 오류가 발생했습니다';
       toast.error(msg);
-      setItems([]);
-      setTotalCount(0);
+      setRecognizedList([]);
       setSearched(true);
     } finally {
       setLoading(false);
@@ -216,20 +230,44 @@ export function SayuHealthDrugPage() {
       const res = await fn({ images: photos.map((p) => p.base64) });
       const data = res.data;
       setAiResult(data);
-      const list = Array.isArray(data?.items) ? data.items : [];
-      setItems(list);
-      setTotalCount(data?.totalCount || list.length);
-      setSearched(true);
-      setOpenIdx(list.length > 0 ? 0 : null);
 
-      if (data?.extractedName) {
-        setItemName(data.extractedName);
-        if (list.length === 0) {
-          toast.info(`"${data.extractedName}" 약은 식약처 DB에서 찾지 못했습니다.`);
-        } else if (data.fallbackUsed && data.searchUsedName) {
-          toast.success(`"${data.extractedName}" 인식 → "${data.searchUsedName}" 시리즈로 검색됨`);
+      // 신 응답(recognized 배열) 우선, 구 응답 폴백
+      const recognized: RecognizedDrug[] = Array.isArray(data?.recognized) && data.recognized.length > 0
+        ? data.recognized
+        : data?.extractedName
+          ? [{
+              extractedName: data.extractedName,
+              confidence: data.confidence,
+              items: Array.isArray(data?.items) ? data.items : [],
+              totalCount: data?.totalCount || 0,
+              searchUsedName: data.searchUsedName,
+              fallbackUsed: data.fallbackUsed,
+            }]
+          : [];
+
+      setRecognizedList(recognized);
+      setSearched(true);
+
+      // 첫 번째 약의 첫 번째 결과를 자동으로 펼침
+      const firstWithItems = recognized.findIndex((r) => r.items.length > 0);
+      setOpenKey(firstWithItems >= 0 ? `${firstWithItems}-0` : null);
+
+      if (recognized.length > 0) {
+        // 첫 약 이름은 텍스트 입력란에도 채움 (편의)
+        setItemName(recognized[0].extractedName);
+        const total = recognized.length;
+        const foundCount = recognized.filter((r) => r.items.length > 0).length;
+        if (total === 1) {
+          const r = recognized[0];
+          if (r.items.length === 0) {
+            toast.info(`"${r.extractedName}" 약은 식약처 DB에서 찾지 못했습니다.`);
+          } else if (r.fallbackUsed && r.searchUsedName) {
+            toast.success(`"${r.extractedName}" 인식 → "${r.searchUsedName}" 시리즈로 검색됨`);
+          } else {
+            toast.success(`"${r.extractedName}" 인식됨`);
+          }
         } else {
-          toast.success(`"${data.extractedName}" 인식됨`);
+          toast.success(`약 ${total}개 인식됨${foundCount < total ? ` (식약처 검색 ${foundCount}/${total})` : ''}`);
         }
       } else {
         toast.warning(data?.aiNote || '약 이름을 인식하지 못했습니다.');
@@ -512,7 +550,7 @@ export function SayuHealthDrugPage() {
           </button>
         </div>
 
-        {aiResult && !analyzing && (
+        {aiResult && !analyzing && recognizedList.length > 0 && (
           <div
             style={{
               marginTop: 12,
@@ -525,125 +563,199 @@ export function SayuHealthDrugPage() {
               color: '#2C2C2A',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: '#fff',
-                  background: confidenceColor[aiResult.confidence],
-                  padding: '2px 7px',
-                  borderRadius: 999,
-                }}
-              >
-                AI 신뢰도 {confidenceLabel[aiResult.confidence]}
-              </span>
-              {aiResult.extractedName && (
-                <span style={{ fontWeight: 700, color: '#1A3C6E' }}>
-                  인식: {aiResult.extractedName}
+            <div style={{ fontWeight: 700, color: '#1A3C6E', marginBottom: 6 }}>
+              AI 인식 결과: {recognizedList.length}개 약
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {recognizedList.map((r, i) => (
+                <span
+                  key={`pill-${i}`}
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: '#2C2C2A',
+                    background: '#fff',
+                    border: `1px solid ${confidenceColor[r.confidence]}`,
+                    borderLeft: `4px solid ${confidenceColor[r.confidence]}`,
+                    padding: '3px 8px',
+                    borderRadius: 6,
+                  }}
+                >
+                  {r.extractedName}
+                  <span style={{ color: confidenceColor[r.confidence], marginLeft: 4, fontSize: 10 }}>
+                    · {confidenceLabel[r.confidence]}
+                  </span>
                 </span>
-              )}
+              ))}
             </div>
             {aiResult.aiNote && (
-              <div style={{ color: '#7A6F5A', fontSize: 11 }}>{aiResult.aiNote}</div>
+              <div style={{ color: '#7A6F5A', fontSize: 11, marginTop: 6 }}>{aiResult.aiNote}</div>
             )}
           </div>
         )}
       </div>
 
-      {searched && !loading && !analyzing && (
+      {searched && !loading && !analyzing && recognizedList.length > 0 && (
         <div className="mb-3" style={{ fontSize: 13, color: '#666' }}>
-          총 <strong style={{ color: '#1A3C6E' }}>{totalCount.toLocaleString()}</strong>건
+          {recognizedList.length === 1 ? (
+            <>총 <strong style={{ color: '#1A3C6E' }}>{recognizedList[0].totalCount.toLocaleString()}</strong>건</>
+          ) : (
+            <>약 <strong style={{ color: '#1A3C6E' }}>{recognizedList.length}</strong>개 / 식약처 총 <strong style={{ color: '#1A3C6E' }}>{recognizedList.reduce((s, r) => s + r.totalCount, 0).toLocaleString()}</strong>건</>
+          )}
         </div>
       )}
 
-      <div className="flex flex-col gap-3">
-        {items.map((it, idx) => {
-          const opened = openIdx === idx;
-          return (
-            <div
-              key={`${it.ITEM_SEQ || idx}`}
-              className="rounded-2xl p-4"
-              style={{
-                backgroundColor: '#fff',
-                border: '1px solid #E5DFD0',
-                color: '#2C2C2A',
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setOpenIdx(opened ? null : idx)}
-                className="w-full text-left"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+      <div className="flex flex-col gap-5">
+        {recognizedList.map((group, gIdx) => (
+          <div key={`grp-${gIdx}-${group.extractedName}`}>
+            {recognizedList.length > 1 && (
+              <div
+                className="rounded-xl px-3 py-2 mb-2"
+                style={{
+                  background: '#F1F5DC',
+                  border: '1px solid #D4DEA0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                }}
               >
-                <div className="flex items-center gap-2 flex-wrap" style={{ marginBottom: 4 }}>
-                  {it.ETC_OTC_CODE && (
-                    <span
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        color: '#4A5A2C',
-                        backgroundColor: '#F1F5DC',
-                        padding: '2px 8px',
-                        borderRadius: 999,
-                      }}
-                    >
-                      {it.ETC_OTC_CODE}
-                    </span>
-                  )}
-                  {it.ENTP_NAME && (
-                    <span style={{ fontSize: 11, color: '#888780' }}>
-                      {it.ENTP_NAME}
-                    </span>
-                  )}
-                </div>
-                <div
+                <span
                   style={{
-                    fontSize: 15,
+                    fontSize: 10,
                     fontWeight: 700,
-                    color: '#1A3C6E',
-                    lineHeight: 1.35,
+                    color: '#fff',
+                    background: '#4A5A2C',
+                    padding: '2px 7px',
+                    borderRadius: 999,
                   }}
                 >
-                  {it.ITEM_NAME || '(제품명 없음)'}
-                </div>
-                {it.MAIN_INGR && (
-                  <div style={{ fontSize: 11, color: '#7A6F5A', marginTop: 4 }}>
-                    주성분: {it.MAIN_INGR}
-                  </div>
-                )}
-                <div
+                  약 {gIdx + 1}
+                </span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: '#1A3C6E' }}>
+                  {group.extractedName}
+                </span>
+                <span
                   style={{
-                    marginTop: 8,
-                    fontSize: 12,
-                    color: '#4A5A2C',
-                    fontWeight: 600,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: '#fff',
+                    background: confidenceColor[group.confidence],
+                    padding: '2px 7px',
+                    borderRadius: 999,
                   }}
                 >
-                  {opened ? '상세 닫기 ▲' : '효능·용법·주의사항 보기 ▼'}
-                </div>
-              </button>
-
-              {opened && (
-                <div className="mt-3 flex flex-col gap-3">
-                  <DocBlock title="효능·효과" body={stripDocTags(it.EE_DOC_DATA)} />
-                  <DocBlock title="용법·용량" body={stripDocTags(it.UD_DOC_DATA)} />
-                  <DocBlock title="주의사항·부작용" body={stripDocTags(it.NB_DOC_DATA)} />
-                  {it.STORAGE_METHOD && (
-                    <DocBlock title="저장방법" body={it.STORAGE_METHOD} />
+                  AI {confidenceLabel[group.confidence]}
+                </span>
+                <span style={{ marginLeft: 'auto', fontSize: 11, color: '#7A6F5A' }}>
+                  식약처 {group.totalCount}건
+                  {group.fallbackUsed && group.searchUsedName && (
+                    <> · "{group.searchUsedName}" 검색</>
                   )}
+                </span>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-3">
+              {group.items.map((it, idx) => {
+                const key = `${gIdx}-${idx}`;
+                const opened = openKey === key;
+                return (
+                  <div
+                    key={`${it.ITEM_SEQ || key}`}
+                    className="rounded-2xl p-4"
+                    style={{
+                      backgroundColor: '#fff',
+                      border: '1px solid #E5DFD0',
+                      color: '#2C2C2A',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setOpenKey(opened ? null : key)}
+                      className="w-full text-left"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    >
+                      <div className="flex items-center gap-2 flex-wrap" style={{ marginBottom: 4 }}>
+                        {it.ETC_OTC_CODE && (
+                          <span
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              color: '#4A5A2C',
+                              backgroundColor: '#F1F5DC',
+                              padding: '2px 8px',
+                              borderRadius: 999,
+                            }}
+                          >
+                            {it.ETC_OTC_CODE}
+                          </span>
+                        )}
+                        {it.ENTP_NAME && (
+                          <span style={{ fontSize: 11, color: '#888780' }}>
+                            {it.ENTP_NAME}
+                          </span>
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 15,
+                          fontWeight: 700,
+                          color: '#1A3C6E',
+                          lineHeight: 1.35,
+                        }}
+                      >
+                        {it.ITEM_NAME || '(제품명 없음)'}
+                      </div>
+                      {it.MAIN_INGR && (
+                        <div style={{ fontSize: 11, color: '#7A6F5A', marginTop: 4 }}>
+                          주성분: {it.MAIN_INGR}
+                        </div>
+                      )}
+                      <div
+                        style={{
+                          marginTop: 8,
+                          fontSize: 12,
+                          color: '#4A5A2C',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {opened ? '상세 닫기 ▲' : '효능·용법·주의사항 보기 ▼'}
+                      </div>
+                    </button>
+
+                    {opened && (
+                      <div className="mt-3 flex flex-col gap-3">
+                        <DocBlock title="효능·효과" body={stripDocTags(it.EE_DOC_DATA)} />
+                        <DocBlock title="용법·용량" body={stripDocTags(it.UD_DOC_DATA)} />
+                        <DocBlock title="주의사항·부작용" body={stripDocTags(it.NB_DOC_DATA)} />
+                        {it.STORAGE_METHOD && (
+                          <DocBlock title="저장방법" body={it.STORAGE_METHOD} />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {group.items.length === 0 && (
+                <div
+                  className="rounded-2xl p-5 text-center"
+                  style={{ backgroundColor: '#F5F0E8', color: '#888780', fontSize: 13 }}
+                >
+                  "{group.extractedName}" 약은 식약처 DB에서 찾지 못했습니다. 약 이름을 직접 입력해 다시 검색해 보세요.
                 </div>
               )}
             </div>
-          );
-        })}
+          </div>
+        ))}
 
-        {searched && !loading && !analyzing && items.length === 0 && (
+        {searched && !loading && !analyzing && recognizedList.length === 0 && (
           <div
             className="rounded-2xl p-8 text-center"
             style={{ backgroundColor: '#F5F0E8', color: '#888780', fontSize: 14 }}
           >
-            검색 결과가 없습니다. 약 이름을 다시 확인해 주세요.
+            검색 결과가 없습니다. 약 이름을 다시 확인하거나 사진을 더 또렷이 찍어 주세요.
           </div>
         )}
       </div>
