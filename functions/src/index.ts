@@ -3143,7 +3143,13 @@ let _drugApiUrlCache: string | null = null;
 async function callDrugApiOnce(
   url: string,
   params: Record<string, string>,
-): Promise<{ resp: any; hasResults: boolean; totalCount: number }> {
+): Promise<{
+  resp: any;
+  hasResults: boolean;
+  hasDetailFields: boolean;
+  totalCount: number;
+  itemCount: number;
+}> {
   const resp = await axios.get(url, {
     params,
     timeout: 12000,
@@ -3162,20 +3168,26 @@ async function callDrugApiOnce(
   if (!root || (!root.body && !root.header)) {
     throw new Error('식약처 응답 구조 비정상');
   }
-  // 실제 결과 유무 판별 — 캐시 확정 조건에 사용
   const body = root.body;
   const rawItems = body?.items;
-  let itemCount = 0;
-  if (Array.isArray(rawItems)) itemCount = rawItems.length;
-  else if (rawItems?.item) itemCount = Array.isArray(rawItems.item) ? rawItems.item.length : 1;
+  let items: any[] = [];
+  if (Array.isArray(rawItems)) items = rawItems;
+  else if (rawItems?.item) items = Array.isArray(rawItems.item) ? rawItems.item : [rawItems.item];
+  const itemCount = items.length;
   const totalCount = parseInt(String(body?.totalCount ?? '0'), 10) || 0;
   const hasResults = itemCount > 0 || totalCount > 0;
-  return { resp, hasResults, totalCount };
+  // 상세 화면이 필요로 하는 문서 필드가 하나라도 들어있는지
+  const hasDetailFields = items.some(
+    (it) =>
+      (it?.EE_DOC_DATA && String(it.EE_DOC_DATA).trim()) ||
+      (it?.UD_DOC_DATA && String(it.UD_DOC_DATA).trim()) ||
+      (it?.NB_DOC_DATA && String(it.NB_DOC_DATA).trim()),
+  );
+  return { resp, hasResults, hasDetailFields, totalCount, itemCount };
 }
 
 async function callDrugApi(params: Record<string, string>): Promise<any> {
   // 1단계: 캐시된 endpoint 우선 시도.
-  // 0건이어도 그대로 반환(캐시는 유지) — 검색어가 식약처 DB에 없을 수 있음.
   // 응답 자체가 실패한 경우만 캐시 무효화 후 전체 후보 재시도.
   if (_drugApiUrlCache) {
     try {
@@ -3190,30 +3202,47 @@ async function callDrugApi(params: Record<string, string>): Promise<any> {
     }
   }
 
-  // 2단계: 전체 후보 순회 — "검색 결과 있음"인 endpoint만 캐시 확정.
-  // 모든 endpoint가 0건이면 첫 정상 응답을 반환하되 캐시는 보류
-  // (다음 검색에서 다른 endpoint 후보 계속 시도하도록).
+  // 2단계: 전체 후보 순회 — 우선순위
+  //   ① 상세 필드(EE/UD/NB_DOC_DATA) 있는 endpoint → 즉시 캐시 + 반환
+  //   ② items만 있고 상세 필드 없는 endpoint → fallback 후보, 캐시 보류
+  //   ③ 0건이지만 정상 응답 → 마지막 fallback 후보, 캐시 보류
   const tryUrls = DRUG_API_OPS.map((op) => DRUG_API_BASE + op);
+  let firstResultResp: any = null;
+  let firstResultOp: string | null = null;
   let firstValidResp: any = null;
   let firstValidOp: string | null = null;
   let lastError: any = null;
   let lastSnippet = '';
   let lastStatus = 0;
+
   for (const url of tryUrls) {
+    const op = url.split('/').pop() || '';
     try {
-      const { resp, hasResults, totalCount } = await callDrugApiOnce(url, params);
-      if (hasResults) {
+      const { resp, hasResults, hasDetailFields, totalCount, itemCount } =
+        await callDrugApiOnce(url, params);
+      logger.info('식약처 endpoint 시도', {
+        op,
+        totalCount,
+        itemCount,
+        hasResults,
+        hasDetailFields,
+      });
+      if (hasDetailFields) {
         _drugApiUrlCache = url;
         logger.info('식약처 endpoint 확정:', {
-          op: url.split('/').pop(),
+          op,
           totalCount,
+          reason: 'detail_fields_found',
         });
         return resp;
       }
-      // 0건이지만 정상 응답 — 첫 번째만 기억 (캐시 확정 보류)
+      if (hasResults && !firstResultResp) {
+        firstResultResp = resp;
+        firstResultOp = op;
+      }
       if (!firstValidResp) {
         firstValidResp = resp;
-        firstValidOp = url.split('/').pop() || null;
+        firstValidOp = op;
       }
     } catch (err: any) {
       lastError = err;
@@ -3225,7 +3254,14 @@ async function callDrugApi(params: Record<string, string>): Promise<any> {
     }
   }
 
-  // 모든 endpoint 시도 후 결과 0건이지만 정상 응답이 있었던 경우
+  // 상세 필드 발견 못 함 → 결과 있는 응답을 fallback으로 반환 (캐시 보류)
+  if (firstResultResp) {
+    logger.warn('식약처 모든 endpoint 상세 필드 없음 — 결과만 있는 응답 반환, 캐시 보류', {
+      firstResultOp,
+      tried: tryUrls.length,
+    });
+    return firstResultResp;
+  }
   if (firstValidResp) {
     logger.warn('식약처 모든 endpoint 0건 — 캐시 확정 보류', {
       firstValidOp,
