@@ -23,7 +23,7 @@ export function BottomNav() {
 
   const thirdSlot = isDeveloper
     ? { path: '/admin/console', icon: Wrench, label: '개발자 콘솔' }
-    : { path: '/book-studio', icon: Library, label: '원기충전소' };
+    : { path: '/recovery', icon: Library, label: '원기충전소' };
 
   const navItems = [
     ...baseItems.slice(0, 2),

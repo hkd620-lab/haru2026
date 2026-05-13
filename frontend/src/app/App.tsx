@@ -134,10 +134,11 @@ function App() {
               <Route path="/stats" element={<StatisticsPage />} />
               <Route path="/stats/:format" element={<FormatStatisticsPage />} />
 
-              {/* 책 스튜디오 */}
-              <Route path="/book-studio" element={<BookStudio />} />
-              <Route path="/book-create" element={<BookCreate />} />
-              <Route path="/book-reader/:bookId" element={<BookReader />} />
+              {/* 원기충전소 (구 책스튜디오 — 2026-05-13 리브랜딩, 폐기 URL은 홈 리다이렉트) */}
+              <Route path="/recovery" element={<BookStudio />} />
+              <Route path="/book-studio" element={<Navigate to="/" replace />} />
+              <Route path="/book-create" element={<Navigate to="/" replace />} />
+              <Route path="/book-reader/:bookId" element={<Navigate to="/" replace />} />
               <Route path="/news" element={<NewsPage />} />
               <Route path="/novel-studio" element={<NovelStudio />} />
               <Route path="/novel-synopsis" element={<NovelSynopsisPage />} />

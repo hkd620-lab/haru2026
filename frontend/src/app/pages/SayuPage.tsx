@@ -1434,7 +1434,7 @@ export function SayuPage() {
                 {isDeveloper && (
                   <div style={{ display: 'flex', gap: 10, padding: '12px 16px', borderBottom: '1px solid #f0f0f0' }}>
                     <button
-                      onClick={() => navigate('/book-studio')}
+                      onClick={() => navigate('/recovery')}
                       style={{
                         flex: 1, padding: '10px',
                         borderRadius: 10, border: 'none',
@@ -2012,10 +2012,10 @@ export function SayuPage() {
           </div>
           )}
 
-          {/* 나의 작품 진입 카드 — PDF 생성 결과물 통합 라이브러리 (현재는 책스튜디오) */}
+          {/* 나의 작품 진입 카드 — PDF 생성 결과물 통합 라이브러리 (원기충전소로 진입) */}
           <button
             type="button"
-            onClick={() => navigate('/book-studio')}
+            onClick={() => navigate('/recovery')}
             style={{
               width: '100%',
               padding: '12px 14px',

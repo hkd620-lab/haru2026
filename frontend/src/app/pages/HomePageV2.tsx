@@ -281,7 +281,7 @@ const AGENTS: Agent[] = [
     tag: 'CARE · 회복',
     variant: 'green',
     stroke: '#4A5A2C',
-    path: '/book-studio',
+    path: '/recovery',
     icon: (
       <>
         <path d="M12 21s-8-5-8-12a5 5 0 019-3 5 5 0 019 3c0 7-8 12-8 12z" />

@@ -135,7 +135,7 @@ export function KNewsPublisherPage() {
       });
 
       toast.success('발행 완료! 원기충전소 K뉴스 탭에 노출됩니다.');
-      navigate('/book-studio');
+      navigate('/recovery');
     } catch (err: any) {
       console.error('K뉴스 발행 실패', err);
       toast.error(`발행 실패: ${err?.message || '알 수 없는 오류'}`);
