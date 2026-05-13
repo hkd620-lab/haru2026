@@ -3140,7 +3140,10 @@ const DRUG_API_OPS = [
 ];
 let _drugApiUrlCache: string | null = null;
 
-async function callDrugApiOnce(url: string, params: Record<string, string>): Promise<any> {
+async function callDrugApiOnce(
+  url: string,
+  params: Record<string, string>,
+): Promise<{ resp: any; hasResults: boolean; totalCount: number }> {
   const resp = await axios.get(url, {
     params,
     timeout: 12000,
@@ -3156,17 +3159,28 @@ async function callDrugApiOnce(url: string, params: Record<string, string>): Pro
   });
   const data = resp?.data;
   const root = data?.response ?? data;
-  if (root && (root.body || root.header)) {
-    return resp;
+  if (!root || (!root.body && !root.header)) {
+    throw new Error('식약처 응답 구조 비정상');
   }
-  throw new Error('식약처 응답 구조 비정상');
+  // 실제 결과 유무 판별 — 캐시 확정 조건에 사용
+  const body = root.body;
+  const rawItems = body?.items;
+  let itemCount = 0;
+  if (Array.isArray(rawItems)) itemCount = rawItems.length;
+  else if (rawItems?.item) itemCount = Array.isArray(rawItems.item) ? rawItems.item.length : 1;
+  const totalCount = parseInt(String(body?.totalCount ?? '0'), 10) || 0;
+  const hasResults = itemCount > 0 || totalCount > 0;
+  return { resp, hasResults, totalCount };
 }
 
 async function callDrugApi(params: Record<string, string>): Promise<any> {
-  // 1단계: 캐시된 endpoint 우선 시도. 실패 시 캐시 무효화 후 전체 후보로 fallthrough.
+  // 1단계: 캐시된 endpoint 우선 시도.
+  // 0건이어도 그대로 반환(캐시는 유지) — 검색어가 식약처 DB에 없을 수 있음.
+  // 응답 자체가 실패한 경우만 캐시 무효화 후 전체 후보 재시도.
   if (_drugApiUrlCache) {
     try {
-      return await callDrugApiOnce(_drugApiUrlCache, params);
+      const { resp } = await callDrugApiOnce(_drugApiUrlCache, params);
+      return resp;
     } catch (err: any) {
       logger.warn('식약처 캐시 endpoint 실패 — 캐시 무효화 후 전체 후보 재시도', {
         cached: _drugApiUrlCache.split('/').pop(),
@@ -3176,26 +3190,48 @@ async function callDrugApi(params: Record<string, string>): Promise<any> {
     }
   }
 
-  // 2단계: 전체 후보 순회
+  // 2단계: 전체 후보 순회 — "검색 결과 있음"인 endpoint만 캐시 확정.
+  // 모든 endpoint가 0건이면 첫 정상 응답을 반환하되 캐시는 보류
+  // (다음 검색에서 다른 endpoint 후보 계속 시도하도록).
   const tryUrls = DRUG_API_OPS.map((op) => DRUG_API_BASE + op);
+  let firstValidResp: any = null;
+  let firstValidOp: string | null = null;
   let lastError: any = null;
   let lastSnippet = '';
   let lastStatus = 0;
   for (const url of tryUrls) {
     try {
-      const resp = await callDrugApiOnce(url, params);
-      _drugApiUrlCache = url;
-      logger.info('식약처 endpoint 확정:', { op: url.split('/').pop() });
-      return resp;
+      const { resp, hasResults, totalCount } = await callDrugApiOnce(url, params);
+      if (hasResults) {
+        _drugApiUrlCache = url;
+        logger.info('식약처 endpoint 확정:', {
+          op: url.split('/').pop(),
+          totalCount,
+        });
+        return resp;
+      }
+      // 0건이지만 정상 응답 — 첫 번째만 기억 (캐시 확정 보류)
+      if (!firstValidResp) {
+        firstValidResp = resp;
+        firstValidOp = url.split('/').pop() || null;
+      }
     } catch (err: any) {
       lastError = err;
       lastStatus = err?.response?.status || 0;
       lastSnippet = typeof err?.response?.data === 'string'
         ? err.response.data.slice(0, 200)
         : JSON.stringify(err?.response?.data || {}).slice(0, 200);
-      // 404 / not found / 응답 구조 비정상 / 기타 오류 모두 다음 후보로
       continue;
     }
+  }
+
+  // 모든 endpoint 시도 후 결과 0건이지만 정상 응답이 있었던 경우
+  if (firstValidResp) {
+    logger.warn('식약처 모든 endpoint 0건 — 캐시 확정 보류', {
+      firstValidOp,
+      tried: tryUrls.length,
+    });
+    return firstValidResp;
   }
 
   logger.error('식약처 API 모든 endpoint 후보 실패', {
@@ -3803,30 +3839,59 @@ export const analyzeDrugPhoto = onCall(
       let items: any[] = [];
       let totalCount = 0;
       let searchUsedName = extractedName;
+      let stageUsed: 'original' | 'stripDosage' | 'baseWord' | 'none' = 'none';
 
       const r1 = await searchDrug(extractedName);
+      logger.info('식약처 검색 단계', {
+        stage: 'original',
+        name: extractedName,
+        totalCount: r1.totalCount,
+        op: _drugApiUrlCache?.split('/').pop() || '?',
+      });
       if (r1.totalCount > 0) {
         items = r1.items;
         totalCount = r1.totalCount;
+        stageUsed = 'original';
       } else {
         const stripped = stripDosage(extractedName);
         if (stripped && stripped !== extractedName && stripped.length >= 2) {
           const r2 = await searchDrug(stripped);
+          logger.info('식약처 검색 단계', {
+            stage: 'stripDosage',
+            name: stripped,
+            totalCount: r2.totalCount,
+            op: _drugApiUrlCache?.split('/').pop() || '?',
+          });
           if (r2.totalCount > 0) {
             items = r2.items;
             totalCount = r2.totalCount;
             searchUsedName = stripped;
+            stageUsed = 'stripDosage';
           } else {
             const word = baseWord(stripped);
             if (word && word !== stripped && word.length >= 2) {
               const r3 = await searchDrug(word);
+              logger.info('식약처 검색 단계', {
+                stage: 'baseWord',
+                name: word,
+                totalCount: r3.totalCount,
+                op: _drugApiUrlCache?.split('/').pop() || '?',
+              });
               items = r3.items;
               totalCount = r3.totalCount;
               searchUsedName = word;
+              stageUsed = 'baseWord';
             }
           }
         }
       }
+      logger.info('식약처 검색 최종', {
+        extractedName,
+        finalName: searchUsedName,
+        totalCount,
+        stageUsed,
+        op: _drugApiUrlCache?.split('/').pop() || '?',
+      });
       return { items, totalCount, searchUsedName, fallbackUsed: searchUsedName !== extractedName };
     };
 
