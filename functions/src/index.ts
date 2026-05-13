@@ -3140,49 +3140,60 @@ const DRUG_API_OPS = [
 ];
 let _drugApiUrlCache: string | null = null;
 
-async function callDrugApi(params: Record<string, string>): Promise<any> {
-  const tryUrls = _drugApiUrlCache
-    ? [_drugApiUrlCache]
-    : DRUG_API_OPS.map((op) => DRUG_API_BASE + op);
+async function callDrugApiOnce(url: string, params: Record<string, string>): Promise<any> {
+  const resp = await axios.get(url, {
+    params,
+    timeout: 12000,
+    headers: { Accept: 'application/json' },
+    paramsSerializer: (p) =>
+      Object.entries(p)
+        .map(([k, v]) =>
+          k === 'serviceKey'
+            ? `${k}=${encodeURIComponent(decodeURIComponent(String(v)))}`
+            : `${k}=${encodeURIComponent(String(v))}`
+        )
+        .join('&'),
+  });
+  const data = resp?.data;
+  const root = data?.response ?? data;
+  if (root && (root.body || root.header)) {
+    return resp;
+  }
+  throw new Error('식약처 응답 구조 비정상');
+}
 
+async function callDrugApi(params: Record<string, string>): Promise<any> {
+  // 1단계: 캐시된 endpoint 우선 시도. 실패 시 캐시 무효화 후 전체 후보로 fallthrough.
+  if (_drugApiUrlCache) {
+    try {
+      return await callDrugApiOnce(_drugApiUrlCache, params);
+    } catch (err: any) {
+      logger.warn('식약처 캐시 endpoint 실패 — 캐시 무효화 후 전체 후보 재시도', {
+        cached: _drugApiUrlCache.split('/').pop(),
+        status: err?.response?.status || 0,
+      });
+      _drugApiUrlCache = null;
+    }
+  }
+
+  // 2단계: 전체 후보 순회
+  const tryUrls = DRUG_API_OPS.map((op) => DRUG_API_BASE + op);
   let lastError: any = null;
   let lastSnippet = '';
   let lastStatus = 0;
   for (const url of tryUrls) {
     try {
-      const resp = await axios.get(url, {
-        params,
-        timeout: 12000,
-        headers: { Accept: 'application/json' },
-        paramsSerializer: (p) =>
-          Object.entries(p)
-            .map(([k, v]) =>
-              k === 'serviceKey'
-                ? `${k}=${encodeURIComponent(decodeURIComponent(String(v)))}`
-                : `${k}=${encodeURIComponent(String(v))}`
-            )
-            .join('&'),
-      });
-      const data = resp?.data;
-      const root = data?.response ?? data;
-      // 식약처는 성공 시 response.body 또는 body 구조를 가짐
-      if (root && (root.body || root.header)) {
-        if (!_drugApiUrlCache) {
-          _drugApiUrlCache = url;
-          logger.info('식약처 endpoint 확정:', { op: url.split('/').pop() });
-        }
-        return resp;
-      }
-      // 200이지만 응답 구조가 다르면 다음 후보로
+      const resp = await callDrugApiOnce(url, params);
+      _drugApiUrlCache = url;
+      logger.info('식약처 endpoint 확정:', { op: url.split('/').pop() });
+      return resp;
     } catch (err: any) {
       lastError = err;
       lastStatus = err?.response?.status || 0;
       lastSnippet = typeof err?.response?.data === 'string'
         ? err.response.data.slice(0, 200)
         : JSON.stringify(err?.response?.data || {}).slice(0, 200);
-      // 404 / API not found는 다음 후보로 진행
-      if (lastStatus === 404 || /not found/i.test(lastSnippet)) continue;
-      // 401/403 등 인증 문제도 다음 후보로 (다른 함수의 권한이 있을 수 있음)
+      // 404 / not found / 응답 구조 비정상 / 기타 오류 모두 다음 후보로
       continue;
     }
   }
