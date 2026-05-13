@@ -922,8 +922,6 @@ export function HomePageV2() {
                 어젯밤 적어두신{' '}
                 <b style={{ color: '#B85C2E' }}>‘텃밭일지’</b>는<br />
                 SAYU가 곱게 다듬어 두었어요.
-                <br />
-                서재에서 마저 살펴보세요.
               </p>
             </div>
 
@@ -1277,125 +1275,7 @@ export function HomePageV2() {
           </div>
         </section>
 
-        {/* CTA */}
-        <button
-          type="button"
-          className="v2-cta"
-          data-v2="cta"
-          onClick={() => navigate('/library')}
-          style={{
-            width: '100%',
-            background: '#4A5A2C',
-            color: '#F5F0E8',
-            border: 'none',
-            borderRadius: 22,
-            padding: '26px 28px',
-            fontSize: 18,
-            fontWeight: 600,
-            letterSpacing: '-0.01em',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            boxShadow: '0 10px 28px -16px rgba(74,90,44,0.55)',
-            transition:
-              'background 180ms cubic-bezier(0.22,0.61,0.36,1), transform 120ms',
-            position: 'relative',
-            overflow: 'hidden',
-            marginTop: 8,
-            fontFamily: FONT_KR,
-          }}
-        >
-          <span
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 16,
-              position: 'relative',
-              zIndex: 1,
-            }}
-          >
-            <span
-              data-v2="cta-icon"
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 12,
-                background: 'rgba(245,240,232,0.12)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <svg
-                width="22"
-                height="22"
-                viewBox="0 0 24 24"
-                stroke="#F5F0E8"
-                strokeWidth="1.6"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M4 4h12a4 4 0 014 4v13H8a4 4 0 01-4-4V4z" />
-                <path d="M4 17a4 4 0 014-4h12" />
-                <path d="M9 8h7M9 12h5" />
-              </svg>
-            </span>
-            <span
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 4,
-                alignItems: 'flex-start',
-              }}
-            >
-              <small
-                data-v2="cta-en"
-                style={{
-                  fontFamily: FONT_EN,
-                  fontSize: 10,
-                  letterSpacing: 3,
-                  textTransform: 'uppercase',
-                  opacity: 0.65,
-                  fontWeight: 500,
-                }}
-              >
-                MY LIBRARY
-              </small>
-              내 기록 서재 보기
-            </span>
-          </span>
-          <span
-            className="v2-cta-arrow"
-            data-v2="cta-arrow"
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 999,
-              background: 'rgba(245,240,232,0.12)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'transform 180ms, background 180ms',
-              position: 'relative',
-              zIndex: 1,
-            }}
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              stroke="#F5F0E8"
-              strokeWidth="1.8"
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M5 12h14M13 5l7 7-7 7" />
-            </svg>
-          </span>
-        </button>
+        {/* CTA (MY LIBRARY 서재 배너 — 2026-05-13 폐기. 서재 개념 제거) */}
 
         {/* Pattern strip */}
         <div
