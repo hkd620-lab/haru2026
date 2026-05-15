@@ -199,7 +199,7 @@ export const polishContent = onCall(
 
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());  // 🔐 Secret 값 사용
       const model = genAI.getGenerativeModel({
-        model: "gemini-3.1-flash-lite-preview",
+        model: "gemini-3.1-flash-lite",
         systemInstruction: systemPrompt
       });
 
@@ -249,7 +249,7 @@ export const extractTitle = onCall(
       }
 
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
 
       const prompt = `다음 기록의 핵심을 담은 짧은 제목을 만들어주세요.
 제목만 한 줄로 출력하세요. 10자 이내. 따옴표·마크다운 기호(*, #) 없이 텍스트만.
@@ -303,7 +303,7 @@ export const generateTitlesForAll = onCall(
     ];
 
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
 
     const snapshot = await db
       .collection('users').doc(uid).collection('records')
@@ -570,7 +570,7 @@ ${text}`;
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-3.1-flash-lite-preview"
+      model: "gemini-3.1-flash-lite"
     });
 
     const result = await model.generateContent(analysisPrompt);
@@ -1242,7 +1242,7 @@ export const lawSearch = onCall(
 
       // 0단계: Gemini로 정확한 법령 이름 추출
       const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-      const kwModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+      const kwModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
       const kwResult = await kwModel.generateContent(
         `다음 질문과 가장 관련된 대한민국 공식 법령 이름 1개만 출력하세요.
 반드시 법령 이름만, 다른 설명 없이.
@@ -1312,7 +1312,7 @@ export const lawSearch = onCall(
         .map((j: any) => `${j.articleStr}(${j.title}): ${j.content}`)
         .join('\n');
 
-      const selectModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+      const selectModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
       const selectResult = await selectModel.generateContent(
         `다음은 ${lawName}의 조문 목록입니다.
 사용자 질문 "${query}"과 가장 관련된 조문 번호를 최대 3개만 골라서
@@ -1466,7 +1466,7 @@ export const lawPrecedent = onCall(
     // 1. Gemini로 검색 키워드 추출 (lawSearch 0단계 패턴)
     let searchKeyword = '';
     try {
-      const kwModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+      const kwModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
       const kwResult = await kwModel.generateContent(
         `다음 법령 조문과 사용자 질문에 가장 관련된 판례 검색용 핵심 키워드 1개만 출력하세요.
 반드시 단일 명사로, 다른 설명 없이.
@@ -1815,7 +1815,7 @@ export const getWordMeaning = onCall(
     const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
 
     const prompt = `영어 단어 "${word}"의 정보를 알려주세요.
 JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
@@ -1858,7 +1858,7 @@ export const getGrammarExplain = onCall(
     const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
 
     const prompt = `다음 영어 성경 구절에서 문법 요소를 분석해주세요.
 
@@ -2251,7 +2251,7 @@ export const getVerseQuiz = onCall(
     const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
 
     const levelRules = level === 'advanced'
       ? `- 한국어 번역을 보여주고 영어 단어를 모두 빈칸으로 만들기
@@ -2312,7 +2312,7 @@ export const translateToEnglish = onCall(
     const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
 
     const prompt = `다음 한국어 일기를 자연스러운 영어로 번역해주세요.
 문장 단위로 나눠서 배열로 반환하세요.
@@ -2619,7 +2619,7 @@ ${content.slice(0, 4000)}
     try {
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
       const model = genAI.getGenerativeModel({
-        model: 'gemini-3.1-flash-lite-preview',
+        model: 'gemini-3.1-flash-lite',
         systemInstruction: systemPrompt,
       });
       const result = await model.generateContent(userPrompt);
@@ -2884,7 +2884,7 @@ ${type === 'story'
 
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
       const model = genAI.getGenerativeModel({
-        model: 'gemini-3.1-flash-lite-preview',
+        model: 'gemini-3.1-flash-lite',
         systemInstruction: systemPrompt,
       });
 
@@ -2922,7 +2922,7 @@ export const getVerseTranslation = onCall(
 
   // Gemini로 번역
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-  const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
   const prompt = `다음 KJV 성경 구절을 자연스러운 한국어로 번역해주세요. 번역문만 출력하세요.\n\n${text}`;
   const result = await model.generateContent(prompt);
   const translation = result.response.text().trim();
@@ -2945,7 +2945,7 @@ export const getVerseWordMapping = onCall(
     if (cached.exists) return cached.data();
 
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
     const prompt = `다음 영어 성경 구절과 한국어 번역이 있습니다.
 한국어 번역을 단어/어절 단위로 분리하고, 각 한국어 단어/어절이 영어 원문의 어떤 단어(들)에 해당하는지 매핑해주세요.
 
@@ -3752,7 +3752,7 @@ export const analyzeDrugPhoto = onCall(
 - 최대 10개까지만 추출`;
 
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-    const visionModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+    const visionModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
 
     type DrugConfidence = 'high' | 'medium' | 'low' | 'none';
     type ParsedDrug = { name: string; confidence: DrugConfidence };
@@ -4026,7 +4026,7 @@ export const analyzeSymptomsForSpecialty = onCall(
     try {
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
       const model = genAI.getGenerativeModel({
-        model: 'gemini-3.1-flash-lite-preview',
+        model: 'gemini-3.1-flash-lite',
         systemInstruction: systemPrompt,
       });
       const result = await model.generateContent(userPrompt);
@@ -4107,7 +4107,7 @@ export const extractKNewsMetadata = onCall(
 
     try {
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
 
       const result = await model.generateContent([
         prompt,
