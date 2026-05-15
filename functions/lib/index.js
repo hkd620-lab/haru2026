@@ -219,7 +219,7 @@ exports.polishContent = (0, https_2.onCall)({
         }
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value()); // 🔐 Secret 값 사용
         const model = genAI.getGenerativeModel({
-            model: "gemini-3.1-flash-lite-preview",
+            model: "gemini-3.1-flash-lite",
             systemInstruction: systemPrompt
         });
         const result = await model.generateContent(text);
@@ -261,7 +261,7 @@ exports.extractTitle = (0, https_2.onCall)({
             throw new https_2.HttpsError('invalid-argument', '텍스트가 필요합니다.');
         }
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-        const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
         const prompt = `다음 기록의 핵심을 담은 짧은 제목을 만들어주세요.
 제목만 한 줄로 출력하세요. 10자 이내. 따옴표·마크다운 기호(*, #) 없이 텍스트만.
 
@@ -307,7 +307,7 @@ exports.generateTitlesForAll = (0, https_2.onCall)({
         '_polishedAt', '_mode', '_stats', '_space', '_title', '_tags',
     ];
     const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
     const snapshot = await db
         .collection('users').doc(uid).collection('records')
         .limit(500)
@@ -551,7 +551,7 @@ async function analyzeStats(text, format, apiKey) {
 ${text}`;
         const genAI = new generative_ai_1.GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
-            model: "gemini-3.1-flash-lite-preview"
+            model: "gemini-3.1-flash-lite"
         });
         const result = await model.generateContent(analysisPrompt);
         const responseText = result.response.text();
@@ -1068,7 +1068,7 @@ exports.lawSearch = (0, https_2.onCall)({
         };
         // 0단계: Gemini로 정확한 법령 이름 추출
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_KEY);
-        const kwModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+        const kwModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
         const kwResult = await kwModel.generateContent(`다음 질문과 가장 관련된 대한민국 공식 법령 이름 1개만 출력하세요.
 반드시 법령 이름만, 다른 설명 없이.
 
@@ -1124,7 +1124,7 @@ exports.lawSearch = (0, https_2.onCall)({
         const allText = allJomuns
             .map((j) => `${j.articleStr}(${j.title}): ${j.content}`)
             .join('\n');
-        const selectModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+        const selectModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
         const selectResult = await selectModel.generateContent(`다음은 ${lawName}의 조문 목록입니다.
 사용자 질문 "${query}"과 가장 관련된 조문 번호를 최대 3개만 골라서
 쉼표로 구분하여 출력하세요. 조문 번호만 (예: 제311조,제312조,제307조)
@@ -1252,7 +1252,7 @@ exports.lawPrecedent = (0, https_2.onCall)({
     // 1. Gemini로 검색 키워드 추출 (lawSearch 0단계 패턴)
     let searchKeyword = '';
     try {
-        const kwModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+        const kwModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
         const kwResult = await kwModel.generateContent(`다음 법령 조문과 사용자 질문에 가장 관련된 판례 검색용 핵심 키워드 1개만 출력하세요.
 반드시 단일 명사로, 다른 설명 없이.
 
@@ -1565,7 +1565,7 @@ exports.getWordMeaning = (0, https_2.onCall)({ region: 'asia-northeast3', secret
     const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
     const { GoogleGenerativeAI } = await Promise.resolve().then(() => __importStar(require('@google/generative-ai')));
     const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
     const prompt = `영어 단어 "${word}"의 정보를 알려주세요.
 JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
 {"meaning": "한국어 뜻 (짧게 1~3개)", "partOfSpeech": "품사 (명사/동사/형용사/부사/전치사/접속사/관사 중)", "phonetic": "미국식 발음기호 (예: /ɪn/)", "koreanPronunciation": "한국어 발음 (예: 인)", "example": "중학생도 이해할 수 있는 쉬운 일상 생활 예문 (성경 문장 사용 금지)", "exampleKo": "위 예문 한국어 번역", "phrasalVerb": "이 단어가 포함된 대표 구동사 (예: bring forth, give up) — 없으면 빈 문자열", "phrasalVerbMeaning": "구동사 한국어 뜻 — 없으면 빈 문자열", "phrasalVerbExample": "구동사 생활 예문 영어 — 없으면 빈 문자열", "phrasalVerbExampleKo": "구동사 예문 한국어 번역 — 없으면 빈 문자열"}`;
@@ -1599,7 +1599,7 @@ exports.getGrammarExplain = (0, https_2.onCall)({ region: 'asia-northeast3', sec
     const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
     const { GoogleGenerativeAI } = await Promise.resolve().then(() => __importStar(require('@google/generative-ai')));
     const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
     const prompt = `다음 영어 성경 구절에서 문법 요소를 분석해주세요.
 
 구절: "${verseText}"
@@ -1958,7 +1958,7 @@ exports.getVerseQuiz = (0, https_2.onCall)({ region: 'asia-northeast3', secrets:
     const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
     const { GoogleGenerativeAI } = await Promise.resolve().then(() => __importStar(require('@google/generative-ai')));
     const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
     const levelRules = level === 'advanced'
         ? `- 한국어 번역을 보여주고 영어 단어를 모두 빈칸으로 만들기
 - 빈칸은 구절의 모든 단어 (관사 포함)
@@ -2010,7 +2010,7 @@ exports.translateToEnglish = (0, https_2.onCall)({ region: 'asia-northeast3', se
     const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
     const { GoogleGenerativeAI } = await Promise.resolve().then(() => __importStar(require('@google/generative-ai')));
     const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
     const prompt = `다음 한국어 일기를 자연스러운 영어로 번역해주세요.
 문장 단위로 나눠서 배열로 반환하세요.
 원문의 감정과 표현을 최대한 살려주세요.
@@ -2306,7 +2306,7 @@ ${content.slice(0, 4000)}
     try {
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
         const model = genAI.getGenerativeModel({
-            model: 'gemini-3.1-flash-lite-preview',
+            model: 'gemini-3.1-flash-lite',
             systemInstruction: systemPrompt,
         });
         const result = await model.generateContent(userPrompt);
@@ -2554,7 +2554,7 @@ ${type === 'story'
         }
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
         const model = genAI.getGenerativeModel({
-            model: 'gemini-3.1-flash-lite-preview',
+            model: 'gemini-3.1-flash-lite',
             systemInstruction: systemPrompt,
         });
         const result = await model.generateContent(userPrompt);
@@ -2586,7 +2586,7 @@ exports.getVerseTranslation = (0, https_2.onCall)({ region: 'asia-northeast3', s
     }
     // Gemini로 번역
     const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
     const prompt = `다음 KJV 성경 구절을 자연스러운 한국어로 번역해주세요. 번역문만 출력하세요.\n\n${text}`;
     const result = await model.generateContent(prompt);
     const translation = result.response.text().trim();
@@ -2603,7 +2603,7 @@ exports.getVerseWordMapping = (0, https_2.onCall)({ region: 'asia-northeast3', s
     if (cached.exists)
         return cached.data();
     const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
     const prompt = `다음 영어 성경 구절과 한국어 번역이 있습니다.
 한국어 번역을 단어/어절 단위로 분리하고, 각 한국어 단어/어절이 영어 원문의 어떤 단어(들)에 해당하는지 매핑해주세요.
 
@@ -2769,6 +2769,7 @@ exports.getOnbidRealEstateList = (0, https_2.onCall)({
 const DRUG_API_BASE = 'https://apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService07';
 const DRUG_API_OPS = [
     '/getDrugPrdtPrmsnDtlInq05',
+    '/getDrugPrdtPrmsnDtlInq06',
     '/getDrugPrdtPrmsnInq05',
     '/getDrugPrdtPrmsnDtlInq07',
     '/getDrugPrdtPrmsnInq07',
@@ -2776,37 +2777,96 @@ const DRUG_API_OPS = [
     '/getDrugPrdtPrmsnInq04',
 ];
 let _drugApiUrlCache = null;
+async function callDrugApiOnce(url, params) {
+    var _a, _b;
+    const resp = await axios_1.default.get(url, {
+        params,
+        timeout: 12000,
+        headers: { Accept: 'application/json' },
+        paramsSerializer: (p) => Object.entries(p)
+            .map(([k, v]) => k === 'serviceKey'
+            ? `${k}=${encodeURIComponent(decodeURIComponent(String(v)))}`
+            : `${k}=${encodeURIComponent(String(v))}`)
+            .join('&'),
+    });
+    const data = resp === null || resp === void 0 ? void 0 : resp.data;
+    const root = (_a = data === null || data === void 0 ? void 0 : data.response) !== null && _a !== void 0 ? _a : data;
+    if (!root || (!root.body && !root.header)) {
+        throw new Error('식약처 응답 구조 비정상');
+    }
+    const body = root.body;
+    const rawItems = body === null || body === void 0 ? void 0 : body.items;
+    let items = [];
+    if (Array.isArray(rawItems))
+        items = rawItems;
+    else if (rawItems === null || rawItems === void 0 ? void 0 : rawItems.item)
+        items = Array.isArray(rawItems.item) ? rawItems.item : [rawItems.item];
+    const itemCount = items.length;
+    const totalCount = parseInt(String((_b = body === null || body === void 0 ? void 0 : body.totalCount) !== null && _b !== void 0 ? _b : '0'), 10) || 0;
+    const hasResults = itemCount > 0 || totalCount > 0;
+    // 상세 화면이 필요로 하는 문서 필드가 하나라도 들어있는지
+    const hasDetailFields = items.some((it) => ((it === null || it === void 0 ? void 0 : it.EE_DOC_DATA) && String(it.EE_DOC_DATA).trim()) ||
+        ((it === null || it === void 0 ? void 0 : it.UD_DOC_DATA) && String(it.UD_DOC_DATA).trim()) ||
+        ((it === null || it === void 0 ? void 0 : it.NB_DOC_DATA) && String(it.NB_DOC_DATA).trim()));
+    return { resp, hasResults, hasDetailFields, totalCount, itemCount };
+}
 async function callDrugApi(params) {
     var _a, _b, _c, _d;
-    const tryUrls = _drugApiUrlCache
-        ? [_drugApiUrlCache]
-        : DRUG_API_OPS.map((op) => DRUG_API_BASE + op);
+    // 1단계: 캐시된 endpoint 우선 시도.
+    // 응답 자체가 실패한 경우만 캐시 무효화 후 전체 후보 재시도.
+    if (_drugApiUrlCache) {
+        try {
+            const { resp } = await callDrugApiOnce(_drugApiUrlCache, params);
+            return resp;
+        }
+        catch (err) {
+            logger.warn('식약처 캐시 endpoint 실패 — 캐시 무효화 후 전체 후보 재시도', {
+                cached: _drugApiUrlCache.split('/').pop(),
+                status: ((_a = err === null || err === void 0 ? void 0 : err.response) === null || _a === void 0 ? void 0 : _a.status) || 0,
+            });
+            _drugApiUrlCache = null;
+        }
+    }
+    // 2단계: 전체 후보 순회 — 우선순위
+    //   ① 상세 필드(EE/UD/NB_DOC_DATA) 있는 endpoint → 즉시 캐시 + 반환
+    //   ② items만 있고 상세 필드 없는 endpoint → fallback 후보, 캐시 보류
+    //   ③ 0건이지만 정상 응답 → 마지막 fallback 후보, 캐시 보류
+    const tryUrls = DRUG_API_OPS.map((op) => DRUG_API_BASE + op);
+    let firstResultResp = null;
+    let firstResultOp = null;
+    let firstValidResp = null;
+    let firstValidOp = null;
     let lastError = null;
     let lastSnippet = '';
     let lastStatus = 0;
     for (const url of tryUrls) {
+        const op = url.split('/').pop() || '';
         try {
-            const resp = await axios_1.default.get(url, {
-                params,
-                timeout: 12000,
-                headers: { Accept: 'application/json' },
-                paramsSerializer: (p) => Object.entries(p)
-                    .map(([k, v]) => k === 'serviceKey'
-                    ? `${k}=${encodeURIComponent(decodeURIComponent(String(v)))}`
-                    : `${k}=${encodeURIComponent(String(v))}`)
-                    .join('&'),
+            const { resp, hasResults, hasDetailFields, totalCount, itemCount } = await callDrugApiOnce(url, params);
+            logger.info('식약처 endpoint 시도', {
+                op,
+                totalCount,
+                itemCount,
+                hasResults,
+                hasDetailFields,
             });
-            const data = resp === null || resp === void 0 ? void 0 : resp.data;
-            const root = (_a = data === null || data === void 0 ? void 0 : data.response) !== null && _a !== void 0 ? _a : data;
-            // 식약처는 성공 시 response.body 또는 body 구조를 가짐
-            if (root && (root.body || root.header)) {
-                if (!_drugApiUrlCache) {
-                    _drugApiUrlCache = url;
-                    logger.info('식약처 endpoint 확정:', { op: url.split('/').pop() });
-                }
+            if (hasDetailFields) {
+                _drugApiUrlCache = url;
+                logger.info('식약처 endpoint 확정:', {
+                    op,
+                    totalCount,
+                    reason: 'detail_fields_found',
+                });
                 return resp;
             }
-            // 200이지만 응답 구조가 다르면 다음 후보로
+            if (hasResults && !firstResultResp) {
+                firstResultResp = resp;
+                firstResultOp = op;
+            }
+            if (!firstValidResp) {
+                firstValidResp = resp;
+                firstValidOp = op;
+            }
         }
         catch (err) {
             lastError = err;
@@ -2814,12 +2874,23 @@ async function callDrugApi(params) {
             lastSnippet = typeof ((_c = err === null || err === void 0 ? void 0 : err.response) === null || _c === void 0 ? void 0 : _c.data) === 'string'
                 ? err.response.data.slice(0, 200)
                 : JSON.stringify(((_d = err === null || err === void 0 ? void 0 : err.response) === null || _d === void 0 ? void 0 : _d.data) || {}).slice(0, 200);
-            // 404 / API not found는 다음 후보로 진행
-            if (lastStatus === 404 || /not found/i.test(lastSnippet))
-                continue;
-            // 401/403 등 인증 문제도 다음 후보로 (다른 함수의 권한이 있을 수 있음)
             continue;
         }
+    }
+    // 상세 필드 발견 못 함 → 결과 있는 응답을 fallback으로 반환 (캐시 보류)
+    if (firstResultResp) {
+        logger.warn('식약처 모든 endpoint 상세 필드 없음 — 결과만 있는 응답 반환, 캐시 보류', {
+            firstResultOp,
+            tried: tryUrls.length,
+        });
+        return firstResultResp;
+    }
+    if (firstValidResp) {
+        logger.warn('식약처 모든 endpoint 0건 — 캐시 확정 보류', {
+            firstValidOp,
+            tried: tryUrls.length,
+        });
+        return firstValidResp;
     }
     logger.error('식약처 API 모든 endpoint 후보 실패', {
         lastStatus,
@@ -3205,7 +3276,7 @@ exports.analyzeDrugPhoto = (0, https_2.onCall)({
     timeoutSeconds: 60,
     memory: '512MiB',
 }, async (request) => {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다');
     }
@@ -3229,13 +3300,14 @@ exports.analyzeDrugPhoto = (0, https_2.onCall)({
         totalKb,
         uid: request.auth.uid.slice(0, 8) + '…',
     });
-    // === 1단계: Gemini Vision으로 약 이름만 추출 ===
+    // === 1단계: Gemini Vision으로 약 이름 "전부" 추출 (다중 약 지원) ===
     // 🔒 프롬프트 안전장치: 환자·의사·병원 정보 명시적 무시
     const prompt = `당신은 약봉지 사진에서 약 이름만 추출하는 도우미입니다.
 
 [추출 대상 — 오직 이것만]
 - 약의 제품명 (예: "타이레놀정500mg", "게보린", "베아제")
-- 사진에서 가장 또렷하게 식별되는 약 이름 1개
+- 한 봉지 안에 여러 약이 있으면 **모든 약을 빠짐없이** 추출하세요
+- 사진이 여러 장이면 각 사진의 약도 모두 추출하세요 (중복은 1번만)
 - 한국 식약처에 등록된 의약품 제품명 형식
 
 [절대 무시 — 분석·언급·저장 모두 금지]
@@ -3248,17 +3320,17 @@ exports.analyzeDrugPhoto = (0, https_2.onCall)({
 위 무시 대상은 응답에 절대 포함하지 말고, 내부적으로도 텍스트화하지 마세요.
 
 [출력 형식 — JSON 한 줄, 마크다운 금지]
-{"drugName": "약 이름 또는 빈 문자열", "confidence": "high|medium|low|none", "note": "한 줄 메모"}
+{"drugs": [{"name": "약 이름1", "confidence": "high|medium|low"}, {"name": "약 이름2", "confidence": "high|medium|low"}], "note": "한 줄 메모"}
 
 [규칙]
-- 약 이름을 찾을 수 없으면 drugName="", confidence="none"
-- 흐릿하거나 추측에 의존해야 하면 confidence="low"
-- 약봉지가 아닌 사진이면 drugName="", confidence="none", note="약봉지 사진이 아닙니다"
-- 추측·환각 금지. 확실하지 않으면 빈 문자열.`;
+- 약 이름이 하나도 없으면 drugs=[] (빈 배열), note="약봉지 사진이 아닙니다" 또는 사유
+- 약마다 confidence 개별 평가 (흐릿한 약은 "low")
+- 같은 약이 여러 번 보이면 한 번만 포함
+- 추측·환각 금지. 확실하지 않은 이름은 포함하지 마세요.
+- 최대 10개까지만 추출`;
     const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-    const visionModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
-    let extractedName = '';
-    let confidence = 'none';
+    const visionModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+    let parsedDrugs = [];
     let aiNote = '';
     try {
         const parts = [{ text: prompt }];
@@ -3277,30 +3349,55 @@ exports.analyzeDrugPhoto = (0, https_2.onCall)({
         // 마크다운 코드펜스 제거
         raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
         const parsed = JSON.parse(raw);
-        extractedName = String((_a = parsed === null || parsed === void 0 ? void 0 : parsed.drugName) !== null && _a !== void 0 ? _a : '').trim().slice(0, 60);
-        const c = String((_b = parsed === null || parsed === void 0 ? void 0 : parsed.confidence) !== null && _b !== void 0 ? _b : 'none').trim().toLowerCase();
-        confidence = (['high', 'medium', 'low', 'none'].includes(c) ? c : 'none');
-        aiNote = String((_c = parsed === null || parsed === void 0 ? void 0 : parsed.note) !== null && _c !== void 0 ? _c : '').trim().slice(0, 100);
+        aiNote = String((_a = parsed === null || parsed === void 0 ? void 0 : parsed.note) !== null && _a !== void 0 ? _a : '').trim().slice(0, 100);
+        // 신·구 응답 형식 모두 수용 (drugs 배열 우선, 없으면 drugName 단일 폴백)
+        const rawList = Array.isArray(parsed === null || parsed === void 0 ? void 0 : parsed.drugs) ? parsed.drugs : [];
+        const seen = new Set();
+        for (const item of rawList) {
+            const name = String((_b = item === null || item === void 0 ? void 0 : item.name) !== null && _b !== void 0 ? _b : '').trim().slice(0, 60);
+            if (!name)
+                continue;
+            const key = name.toLowerCase().replace(/\s+/g, '');
+            if (seen.has(key))
+                continue;
+            seen.add(key);
+            const c = String((_c = item === null || item === void 0 ? void 0 : item.confidence) !== null && _c !== void 0 ? _c : 'medium').trim().toLowerCase();
+            const confidence = (['high', 'medium', 'low', 'none'].includes(c) ? c : 'medium');
+            parsedDrugs.push({ name, confidence });
+            if (parsedDrugs.length >= 10)
+                break;
+        }
+        // 구 형식 폴백 (drugName 단일 필드)
+        if (parsedDrugs.length === 0 && (parsed === null || parsed === void 0 ? void 0 : parsed.drugName)) {
+            const name = String(parsed.drugName).trim().slice(0, 60);
+            if (name) {
+                const c = String((_d = parsed === null || parsed === void 0 ? void 0 : parsed.confidence) !== null && _d !== void 0 ? _d : 'none').trim().toLowerCase();
+                const confidence = (['high', 'medium', 'low', 'none'].includes(c) ? c : 'none');
+                parsedDrugs.push({ name, confidence });
+            }
+        }
     }
     catch (err) {
         // 🔒 에러 로그에도 사진·prompt 데이터 노출 금지
-        logger.error('Gemini Vision 분석 실패', { message: (_d = err === null || err === void 0 ? void 0 : err.message) === null || _d === void 0 ? void 0 : _d.slice(0, 200) });
+        logger.error('Gemini Vision 분석 실패', { message: (_e = err === null || err === void 0 ? void 0 : err.message) === null || _e === void 0 ? void 0 : _e.slice(0, 200) });
         throw new https_2.HttpsError('internal', 'AI 분석 중 오류가 발생했습니다. 사진을 다시 찍어 주세요');
     }
     // 사진 base64 즉시 메모리 해제 (분석 끝났으니 보관 안 함)
     images.length = 0;
-    if (!extractedName) {
+    const disclaimer = 'AI 분석은 참고용이며, 정확한 정보는 식약처 자료를 우선합니다. 약 이름만 추출하며, 환자·의사 등 개인정보는 저장·전송하지 않습니다.';
+    if (parsedDrugs.length === 0) {
         return {
             success: true,
+            recognized: [],
             extractedName: '',
-            confidence,
+            confidence: 'none',
             aiNote: aiNote || '약 이름을 인식하지 못했습니다. 사진을 더 또렷이 찍거나 약 이름을 직접 입력해 주세요.',
             items: [],
             totalCount: 0,
-            disclaimer: 'AI 분석은 참고용이며, 정확한 정보는 식약처 자료를 우선합니다. 약 이름만 추출하며, 환자·의사 등 개인정보는 저장·전송하지 않습니다.',
+            disclaimer,
         };
     }
-    // === 2단계: 추출된 약 이름으로 식약처 API 폴백 검색 ===
+    // === 2단계: 추출된 약 이름들 각각 식약처 API 폴백 검색 ===
     // 식약처 DB는 함량·표기 차이로 정확명 매칭이 안 될 수 있어 단계별 폴백
     const searchDrug = async (name) => {
         var _a, _b, _c;
@@ -3342,47 +3439,93 @@ exports.analyzeDrugPhoto = (0, https_2.onCall)({
         const m = s.match(/[가-힣A-Za-z]+/g);
         return m ? m[0] : '';
     };
-    let drugItems = [];
-    let drugTotalCount = 0;
-    let searchUsedName = extractedName;
-    // 1차: 전체 이름 그대로
-    const r1 = await searchDrug(extractedName);
-    if (r1.totalCount > 0) {
-        drugItems = r1.items;
-        drugTotalCount = r1.totalCount;
-    }
-    else {
-        // 2차: 함량·용량 제거한 베이스명
-        const stripped = stripDosage(extractedName);
-        if (stripped && stripped !== extractedName && stripped.length >= 2) {
-            const r2 = await searchDrug(stripped);
-            if (r2.totalCount > 0) {
-                drugItems = r2.items;
-                drugTotalCount = r2.totalCount;
-                searchUsedName = stripped;
-            }
-            else {
-                // 3차: 첫 단어만 (예: "텔미누보 정" → "텔미누보")
-                const word = baseWord(stripped);
-                if (word && word !== stripped && word.length >= 2) {
-                    const r3 = await searchDrug(word);
-                    drugItems = r3.items;
-                    drugTotalCount = r3.totalCount;
-                    searchUsedName = word;
+    // 약 1개에 대한 3단 폴백 검색
+    const searchWithFallback = async (extractedName) => {
+        let items = [];
+        let totalCount = 0;
+        let searchUsedName = extractedName;
+        let stageUsed = 'none';
+        const r1 = await searchDrug(extractedName);
+        logger.info('식약처 검색 단계', {
+            stage: 'original',
+            name: extractedName,
+            totalCount: r1.totalCount,
+            op: (_drugApiUrlCache === null || _drugApiUrlCache === void 0 ? void 0 : _drugApiUrlCache.split('/').pop()) || '?',
+        });
+        if (r1.totalCount > 0) {
+            items = r1.items;
+            totalCount = r1.totalCount;
+            stageUsed = 'original';
+        }
+        else {
+            const stripped = stripDosage(extractedName);
+            if (stripped && stripped !== extractedName && stripped.length >= 2) {
+                const r2 = await searchDrug(stripped);
+                logger.info('식약처 검색 단계', {
+                    stage: 'stripDosage',
+                    name: stripped,
+                    totalCount: r2.totalCount,
+                    op: (_drugApiUrlCache === null || _drugApiUrlCache === void 0 ? void 0 : _drugApiUrlCache.split('/').pop()) || '?',
+                });
+                if (r2.totalCount > 0) {
+                    items = r2.items;
+                    totalCount = r2.totalCount;
+                    searchUsedName = stripped;
+                    stageUsed = 'stripDosage';
+                }
+                else {
+                    const word = baseWord(stripped);
+                    if (word && word !== stripped && word.length >= 2) {
+                        const r3 = await searchDrug(word);
+                        logger.info('식약처 검색 단계', {
+                            stage: 'baseWord',
+                            name: word,
+                            totalCount: r3.totalCount,
+                            op: (_drugApiUrlCache === null || _drugApiUrlCache === void 0 ? void 0 : _drugApiUrlCache.split('/').pop()) || '?',
+                        });
+                        items = r3.items;
+                        totalCount = r3.totalCount;
+                        searchUsedName = word;
+                        stageUsed = 'baseWord';
+                    }
                 }
             }
         }
-    }
+        logger.info('식약처 검색 최종', {
+            extractedName,
+            finalName: searchUsedName,
+            totalCount,
+            stageUsed,
+            op: (_drugApiUrlCache === null || _drugApiUrlCache === void 0 ? void 0 : _drugApiUrlCache.split('/').pop()) || '?',
+        });
+        return { items, totalCount, searchUsedName, fallbackUsed: searchUsedName !== extractedName };
+    };
+    // 각 약에 대해 병렬 검색
+    const recognized = await Promise.all(parsedDrugs.map(async (d) => {
+        const r = await searchWithFallback(d.name);
+        return {
+            extractedName: d.name,
+            confidence: d.confidence,
+            items: r.items,
+            totalCount: r.totalCount,
+            searchUsedName: r.searchUsedName,
+            fallbackUsed: r.fallbackUsed,
+        };
+    }));
+    // 하위 호환: 첫 번째 약 기준 단일 필드도 함께 반환
+    const first = recognized[0];
     return {
         success: true,
-        extractedName,
-        confidence,
+        recognized,
+        // 하위 호환 (구 클라이언트가 깨지지 않도록 첫 번째 약 기준)
+        extractedName: first.extractedName,
+        confidence: first.confidence,
         aiNote,
-        items: drugItems,
-        totalCount: drugTotalCount,
-        searchUsedName, // 실제 식약처 검색에 사용된 이름 (폴백 시 다를 수 있음)
-        fallbackUsed: searchUsedName !== extractedName,
-        disclaimer: 'AI 분석은 참고용이며, 정확한 정보는 식약처 자료를 우선합니다. 약 이름만 추출하며, 환자·의사 등 개인정보는 저장·전송하지 않습니다.',
+        items: first.items,
+        totalCount: first.totalCount,
+        searchUsedName: first.searchUsedName,
+        fallbackUsed: first.fallbackUsed,
+        disclaimer,
     };
 });
 // ===== 🩺 증상별 진료과 분석 (SayuHealth 명의찾기 — 심평원 API 대체) =====
@@ -3439,7 +3582,7 @@ exports.analyzeSymptomsForSpecialty = (0, https_2.onCall)({
     try {
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
         const model = genAI.getGenerativeModel({
-            model: 'gemini-3.1-flash-lite-preview',
+            model: 'gemini-3.1-flash-lite',
             systemInstruction: systemPrompt,
         });
         const result = await model.generateContent(userPrompt);
@@ -3515,7 +3658,7 @@ exports.extractKNewsMetadata = (0, https_2.onCall)({
 반드시 위 JSON 키 구조 그대로. category는 반드시 6개 중 정확히 하나.`;
     try {
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-        const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
         const result = await model.generateContent([
             prompt,
             {

@@ -89,7 +89,7 @@ ${text}
     try {
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY.value());
       const model = genAI.getGenerativeModel({
-        model: 'gemini-3.1-flash-lite-preview',
+        model: 'gemini-3.1-flash-lite',
         systemInstruction: systemPrompt,
       });
       const result = await model.generateContent(userPrompt);
