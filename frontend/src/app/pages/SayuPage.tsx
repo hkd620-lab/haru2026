@@ -1105,104 +1105,94 @@ export function SayuPage() {
     <>
     <style>{printStyle}</style>
 
-    <div className="sayu-page-container no-print max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
+    <div className="sayu-page-container no-print max-w-4xl mx-auto" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)', padding: 20 }}>
       <PageHeaderActions />
       {/* 타이틀 + 가이드 */}
       <div className="mb-4">
         <div className="flex items-start justify-between mb-2">
           <SayuTitleAnimation />
         </div>
-        <p className="text-sm mb-2" style={{ color: '#666666' }}>
-          작성한 기록을 AI가 다듬은 결과를 확인하세요
+        <p className="text-xs" style={{ color: '#666666', display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
+          <Info className="w-3.5 h-3.5" style={{ color: '#1A3C6E', flexShrink: 0 }} />
+          원문 감정 그대로, 문장만 자연스럽게 다듬습니다
         </p>
-        <div
-          className="border-l-4 rounded transition-all"
-          style={{
-            backgroundColor: '#FDF6C3',
-            borderColor: '#1A3C6E',
-            overflow: 'hidden',
-          }}
-        >
-          <div
-            className="flex items-center justify-between p-3 cursor-pointer transition-colors"
-            onClick={toggleSayuGuide}
-            style={{ backgroundColor: showSayuGuide ? 'transparent' : 'rgba(26, 60, 110, 0.05)' }}
-          >
-            <div className="flex items-center gap-2">
-              <Info className="w-4 h-4" style={{ color: '#1A3C6E' }} />
-              <p className="text-xs font-semibold" style={{ color: '#1A3C6E', margin: 0 }}>
-                사용 안내
-              </p>
-            </div>
-            <div
-              className="text-xs transition-transform"
-              style={{
-                color: '#1A3C6E',
-                transform: showSayuGuide ? 'rotate(180deg)' : 'rotate(0deg)',
-              }}
-            >
-              ▼
-            </div>
-          </div>
-          {showSayuGuide && (
-            <div className="px-3 pb-3">
-              <p className="text-xs leading-relaxed" style={{ color: '#1A3C6E' }}>
-                💡 목록에서 기록을 클릭하거나, 달력에서 날짜를 선택해 SAYU를 확인하세요.
-              </p>
-              <p className="text-xs mt-1 leading-relaxed" style={{ color: '#666' }}>
-                초록 점: 원본 저장 / 파란 점: SAYU 저장 / 주황 점: 다듬기 완료
-              </p>
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* 공통 월 네비게이션 + 뷰 전환 */}
-      <div className="bg-white rounded-lg p-3 shadow-sm mb-4">
-        <div className="flex items-center justify-between mb-3">
+      {/* 월 선택 — 헤딩 + 변경 칩 (카드 제거) */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1A3C6E', margin: 0, letterSpacing: '-0.01em' }}>
+          {monthName}
+        </h2>
+        <div style={{ display: 'flex', gap: 6 }}>
           <button
             onClick={handlePrevMonth}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-            style={{ color: '#1A3C6E' }}
+            aria-label="이전 달"
+            style={{
+              width: 32, height: 32, borderRadius: 999,
+              border: '1px solid rgba(26,60,110,0.18)', background: '#fff',
+              color: '#1A3C6E', cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            }}
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-4 h-4" />
           </button>
-          <h2 className="text-lg font-semibold" style={{ color: '#1A3C6E' }}>
-            {monthName}
-          </h2>
           <button
             onClick={handleNextMonth}
             disabled={isNextMonthDisabled}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            style={{ color: '#1A3C6E' }}
+            aria-label="다음 달"
+            style={{
+              width: 32, height: 32, borderRadius: 999,
+              border: '1px solid rgba(26,60,110,0.18)', background: '#fff',
+              color: '#1A3C6E', cursor: isNextMonthDisabled ? 'not-allowed' : 'pointer',
+              opacity: isNextMonthDisabled ? 0.3 : 1,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            }}
           >
-            <ChevronRight className="w-5 h-5" />
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
+      </div>
 
-        {/* 뷰 전환 버튼 */}
-        <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: '#1A3C6E' }}>
-          <button
-            onClick={() => setViewMode('list')}
-            className="flex-1 py-1.5 text-sm font-medium transition-all"
-            style={{
-              backgroundColor: viewMode === 'list' ? '#1A3C6E' : 'transparent',
-              color: viewMode === 'list' ? '#FAF9F6' : '#1A3C6E',
-            }}
-          >
-            목록
-          </button>
-          <button
-            onClick={() => setViewMode('calendar')}
-            className="flex-1 py-1.5 text-sm font-medium transition-all"
-            style={{
-              backgroundColor: viewMode === 'calendar' ? '#1A3C6E' : 'transparent',
-              color: viewMode === 'calendar' ? '#FAF9F6' : '#1A3C6E',
-            }}
-          >
-            달력
-          </button>
-        </div>
+      {/* 목록 / 달력 segmented 탭 */}
+      <div
+        role="tablist"
+        style={{
+          display: 'flex', gap: 4, padding: 4, borderRadius: 12,
+          backgroundColor: '#F1EADB', marginBottom: 16,
+        }}
+      >
+        <button
+          role="tab"
+          aria-selected={viewMode === 'list'}
+          onClick={() => setViewMode('list')}
+          style={{
+            flex: 1, minHeight: 36, padding: '6px 0', borderRadius: 8,
+            border: 'none', cursor: 'pointer',
+            backgroundColor: viewMode === 'list' ? '#FFFFFF' : 'transparent',
+            color: viewMode === 'list' ? '#1A3C6E' : '#7A6A4F',
+            fontSize: 13, fontWeight: viewMode === 'list' ? 700 : 500,
+            boxShadow: viewMode === 'list' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+            transition: 'background-color 0.15s, color 0.15s',
+          }}
+        >
+          목록
+        </button>
+        <button
+          role="tab"
+          aria-selected={viewMode === 'calendar'}
+          onClick={() => setViewMode('calendar')}
+          style={{
+            flex: 1, minHeight: 36, padding: '6px 0', borderRadius: 8,
+            border: 'none', cursor: 'pointer',
+            backgroundColor: viewMode === 'calendar' ? '#FFFFFF' : 'transparent',
+            color: viewMode === 'calendar' ? '#1A3C6E' : '#7A6A4F',
+            fontSize: 13, fontWeight: viewMode === 'calendar' ? 700 : 500,
+            boxShadow: viewMode === 'calendar' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+            transition: 'background-color 0.15s, color 0.15s',
+          }}
+        >
+          달력
+        </button>
       </div>
 
       {/* ─── 목록 뷰 ─── */}
@@ -1223,10 +1213,11 @@ export function SayuPage() {
                 {/* 카테고리 헤더 */}
                 <button
                   onClick={() => toggleCategory(category)}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
-                  style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
+                  className="w-full flex items-center justify-between rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
+                  style={{ backgroundColor: '#FFFFFF', color: '#1A3C6E', padding: '0 16px', minHeight: 52, border: '1px solid #ECE6F5', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
                 >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: category === '생활' ? '#10b981' : category === '업무' ? '#1A3C6E' : '#9CA3AF', flexShrink: 0 }} />
                     {category === '생활' ? <><Leaf className="w-4 h-4" /> 생활</> : category === '업무' ? <><Briefcase className="w-4 h-4" /> 업무</> : category}
                   </span>
                   <span style={{ fontSize: '10px' }}>
@@ -1329,7 +1320,8 @@ export function SayuPage() {
                               {pagedEntries.map((entry) => (
                                 <div key={`${entry.date}-${entry.formatKey}-${entry.recordId}`} className="w-full flex items-center gap-1 border-t" style={{ borderColor: '#f5f5f5' }}>
                                   <button
-                                    className="flex items-center gap-3 flex-1 px-4 py-2.5 text-left hover:bg-yellow-50 transition-colors"
+                                    className="flex items-center gap-3 flex-1 px-4 text-left hover:bg-yellow-50 transition-colors"
+                                    style={{ minHeight: 48 }}
                                     onClick={async () => {
                                       openFormatSayu(entry.date, entry.formatKey, format as any, entry.recordId);
                                       // ai_title 없으면 백그라운드 추출
@@ -1422,10 +1414,13 @@ export function SayuPage() {
           <div className="mb-4">
             <button
               onClick={() => toggleCategory('하루충전소')}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
-              style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
+              className="w-full flex items-center justify-between rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
+              style={{ backgroundColor: '#FFFFFF', color: '#1A3C6E', padding: '0 16px', minHeight: 52, border: '1px solid #ECE6F5', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
             >
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><BookOpen className="w-4 h-4" /> 원기충전소</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#EAB308', flexShrink: 0 }} />
+                <BookOpen className="w-4 h-4" /> 원기충전소
+              </span>
               <span style={{ fontSize: '10px' }}>{collapsedCategories.has('하루충전소') ? '▶' : '▼'}</span>
             </button>
             {!collapsedCategories.has('하루충전소') && (
@@ -1640,10 +1635,13 @@ export function SayuPage() {
               <div key={category} className="mb-4">
                 <button
                   onClick={() => toggleCategory(category)}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
-                  style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
+                  className="w-full flex items-center justify-between rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
+                  style={{ backgroundColor: '#FFFFFF', color: '#1A3C6E', padding: '0 16px', minHeight: 52, border: '1px solid #ECE6F5', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
                 >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{category}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#F59E0B', flexShrink: 0 }} />
+                    {category}
+                  </span>
                   <span style={{ fontSize: '10px' }}>
                     {collapsedCategories.has(category) ? '▶' : '▼'}
                   </span>
@@ -1734,10 +1732,13 @@ export function SayuPage() {
               <div key={category} className="mb-4">
                 <button
                   onClick={() => toggleCategory(category)}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
-                  style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
+                  className="w-full flex items-center justify-between rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
+                  style={{ backgroundColor: '#FFFFFF', color: '#1A3C6E', padding: '0 16px', minHeight: 52, border: '1px solid #ECE6F5', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
                 >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Scale className="w-4 h-4" /> 하루LAW</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#8B4789', flexShrink: 0 }} />
+                    <Scale className="w-4 h-4" /> 하루LAW
+                  </span>
                   <span style={{ fontSize: '10px' }}>
                     {collapsedCategories.has(category) ? '▶' : '▼'}
                   </span>
@@ -1782,7 +1783,8 @@ export function SayuPage() {
                               {pagedEntries.map((entry) => (
                                 <div key={`${entry.date}-${entry.formatKey}-${entry.recordId}`} className="w-full flex items-center gap-1 border-t" style={{ borderColor: '#f5f5f5' }}>
                                   <button
-                                    className="flex items-center gap-3 flex-1 px-4 py-2.5 text-left hover:bg-yellow-50 transition-colors"
+                                    className="flex items-center gap-3 flex-1 px-4 text-left hover:bg-yellow-50 transition-colors"
+                                    style={{ minHeight: 48 }}
                                     onClick={async () => {
                                       openFormatSayu(entry.date, entry.formatKey, format as any, entry.recordId);
                                       // ai_title 없으면 백그라운드 추출
@@ -1869,10 +1871,13 @@ export function SayuPage() {
           <div className="mb-4">
             <button
               onClick={() => toggleCategory('하루AI지식창고')}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
-              style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}
+              className="w-full flex items-center justify-between rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
+              style={{ backgroundColor: '#FFFFFF', color: '#1A3C6E', padding: '0 16px', minHeight: 52, border: '1px solid #ECE6F5', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
             >
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Cpu className="w-4 h-4" /> 하루AI지식창고</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#6366F1', flexShrink: 0 }} />
+                <Cpu className="w-4 h-4" /> 하루AI지식창고
+              </span>
               <span style={{ fontSize: '10px' }}>{collapsedCategories.has('하루AI지식창고') ? '▶' : '▼'}</span>
             </button>
             {!collapsedCategories.has('하루AI지식창고') && (
