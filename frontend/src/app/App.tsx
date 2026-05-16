@@ -46,6 +46,7 @@ import { SayuHealthEbsPage } from './pages/SayuHealthEbsPage';
 import { SayuHealthDrugPage } from './pages/SayuHealthDrugPage';
 import { SayuHealthHospitalPage } from './pages/SayuHealthHospitalPage';
 import { SayuHealthLibraryPage } from './pages/SayuHealthLibraryPage';
+import { PlantDetectivePage } from './pages/PlantDetectivePage';
 import { BottomNav } from './components/BottomNav';
 import { Footer } from './components/Footer';
 import { TodayQuote } from './components/TodayQuote';
@@ -148,6 +149,7 @@ function App() {
               <Route path="/record-hub" element={<HomeOrLanding />} />
               <Route path="/sns-records" element={<SnsRecordsPage />} />
               <Route path="/onbid-realestate" element={<OnbidRealEstatePage />} />
+              <Route path="/plant-detective" element={<PlantDetectivePage />} />
 
               {/* HARU건강관리 (허브 + 3개 하위) */}
               <Route path="/sayu-health" element={<SayuHealthHubPage />} />

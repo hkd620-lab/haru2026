@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.extractTitle = exports.polishContent = void 0;
+exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.extractTitle = exports.polishContent = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -3988,5 +3988,91 @@ exports.extractKNewsMetadata = (0, https_2.onCall)({
             throw e;
         logger.error('extractKNewsMetadata 실패', { message: e === null || e === void 0 ? void 0 : e.message });
         throw new https_2.HttpsError('internal', `메타데이터 추출 실패: ${(e === null || e === void 0 ? void 0 : e.message) || '알 수 없는 오류'}`);
+    }
+});
+// ===== 🌱 하루식물탐정 — 식물 사진 상태 분석 =====
+exports.analyzePlantPhoto = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+    memory: '512MiB',
+    timeoutSeconds: 60,
+}, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const { imageBase64, mimeType } = request.data;
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
+        throw new https_2.HttpsError('invalid-argument', '이미지 데이터(imageBase64)가 필요합니다.');
+    }
+    const cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '');
+    const imageKb = Math.round(cleanBase64.length * 0.75 / 1024);
+    if (imageKb > 6 * 1024) {
+        throw new https_2.HttpsError('invalid-argument', '사진이 너무 큽니다. 더 작은 사진으로 다시 시도해 주세요.');
+    }
+    logger.info('analyzePlantPhoto 호출', {
+        uid: request.auth.uid.slice(0, 8) + '…',
+        imageKb,
+        mimeType: mimeType || 'image/jpeg',
+    });
+    const prompt = `당신은 텃밭과 화분 식물을 사진으로 살피는 식물 도우미입니다.
+사진에서 보이는 정보만 근거로 식물 이름과 상태, 관리 힌트를 한국어로 답하세요.
+
+[중요 원칙]
+- 사진만으로 확정 진단하지 말고 불확실하면 불확실하다고 말하세요.
+- 농약·살충제 제품명이나 위험한 처방을 단정하지 마세요.
+- 먹을 수 있는 식물/독성 여부는 확정하지 마세요.
+- 응급 수준의 병충해나 고사 위험이 의심되면 전문가 상담을 권하세요.
+- 응답은 JSON 하나만 출력하고 마크다운은 쓰지 마세요.
+
+[JSON 형식]
+{
+  "plantName": "가능한 식물 이름 또는 식물 이름 불확실",
+  "condition": "한 줄 상태 요약",
+  "confidence": "high|medium|low",
+  "findings": ["사진에서 보이는 관찰 내용 1", "관찰 내용 2"],
+  "actions": ["오늘 할 수 있는 관리 힌트 1", "관리 힌트 2"],
+  "warningSigns": ["주의해서 다시 볼 신호 1"],
+  "note": "사진 분석은 참고용이라는 짧은 안내"
+}`;
+    try {
+        const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+        const result = await model.generateContent([
+            prompt,
+            {
+                inlineData: {
+                    data: cleanBase64,
+                    mimeType: mimeType || 'image/jpeg',
+                },
+            },
+        ]);
+        const text = result.response.text();
+        const cleaned = text.replace(/```json|```/g, '').trim();
+        const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            logger.error('analyzePlantPhoto 응답 JSON 미발견', { text: text.slice(0, 500) });
+            throw new https_2.HttpsError('internal', 'AI 응답에서 JSON을 찾을 수 없습니다.');
+        }
+        const parsed = JSON.parse(jsonMatch[0]);
+        const normalizeList = (value) => Array.isArray(value)
+            ? value.map((item) => String(item || '').trim()).filter(Boolean).slice(0, 5)
+            : [];
+        return {
+            plantName: String((parsed === null || parsed === void 0 ? void 0 : parsed.plantName) || '식물 이름 불확실').slice(0, 80),
+            condition: String((parsed === null || parsed === void 0 ? void 0 : parsed.condition) || '사진에서 확인 가능한 상태가 제한적입니다.').slice(0, 160),
+            confidence: ['high', 'medium', 'low'].includes(String(parsed === null || parsed === void 0 ? void 0 : parsed.confidence))
+                ? parsed.confidence
+                : 'low',
+            findings: normalizeList(parsed === null || parsed === void 0 ? void 0 : parsed.findings),
+            actions: normalizeList(parsed === null || parsed === void 0 ? void 0 : parsed.actions),
+            warningSigns: normalizeList(parsed === null || parsed === void 0 ? void 0 : parsed.warningSigns),
+            note: String((parsed === null || parsed === void 0 ? void 0 : parsed.note) || '사진 분석은 참고용입니다. 상태가 악화되면 전문가에게 상담하세요.').slice(0, 200),
+        };
+    }
+    catch (error) {
+        if (error instanceof https_2.HttpsError)
+            throw error;
+        logger.error('analyzePlantPhoto 실패', { message: error === null || error === void 0 ? void 0 : error.message });
+        throw new https_2.HttpsError('internal', '식물 사진 분석에 실패했습니다. 사진을 다시 찍어 주세요.');
     }
 });

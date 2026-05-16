@@ -290,6 +290,24 @@ const AGENTS: Agent[] = [
     ),
   },
   {
+    label: '하루식물탐정',
+    sub: '잎과 열매 사진을 보고 식물 상태와 돌봄 힌트를 알려드립니다.',
+    tag: 'GARDEN · 사진',
+    variant: 'green',
+    stroke: '#4A5A2C',
+    path: '/plant-detective',
+    beta: true,
+    icon: (
+      <>
+        <path d="M12 21V9" />
+        <path d="M12 9c-4 0-7-3-7-7 4 0 7 3 7 7z" />
+        <path d="M12 13c4 0 7-3 7-7-4 0-7 3-7 7z" />
+        <circle cx="18" cy="18" r="3" />
+        <path d="M20.5 20.5L22 22" />
+      </>
+    ),
+  },
+  {
     label: '온비드 부동산',
     sub: '온비드 공매 부동산을 한눈에 — 입찰 일정·최저가·소재지까지 검색.',
     tag: 'BID · 부동산',
