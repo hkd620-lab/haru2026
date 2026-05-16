@@ -4526,7 +4526,7 @@ async function callKindwiseIdentification(
     },
     body: JSON.stringify({
       images: [base64],
-      similar_images: false,
+      // Plant.id v3는 similar_images=false 를 modifier로 거부 → 필드 자체를 생략 (default 동작)
     }),
   });
 
