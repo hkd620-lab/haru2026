@@ -78,23 +78,41 @@ function extractPreviewKeywords(text: string): string[] {
     .map(([k]) => (k.length > 14 ? k.slice(0, 13) + '…' : k));
 }
 
+// 레코드 본문 필드를 하나의 문자열로 합치는 헬퍼 (AI 추출과 fallback 양쪽에서 재사용)
+function getRecordSourceText(r: any, prefix: string): string {
+  if (!r) return '';
+  const parts: string[] = [];
+  const sayu = r[`${prefix}_sayu`];
+  if (typeof sayu === 'string') parts.push(sayu);
+  Object.keys(r).forEach((k) => {
+    if (!k.startsWith(`${prefix}_`)) return;
+    if (k.endsWith('_sayu') || k.endsWith('_keywords') || k.endsWith('_ai_title') || k.endsWith('_title') || k.endsWith('_polished') || k.endsWith('_polishedAt') || k.endsWith('_mode') || k.endsWith('_stats') || k.endsWith('_images') || k.endsWith('_rating') || k.endsWith('_tags') || k.endsWith('_space') || k.endsWith('_style')) return;
+    const v = r[k];
+    if (typeof v === 'string' && v.trim()) parts.push(v);
+  });
+  return parts.join(' ');
+}
+
+// AI로그(하루AI지식창고)의 본문 추출
+function getAiLogSourceText(log: any): string {
+  const c = log?.content;
+  if (typeof c === 'string' && c.trim()) return c;
+  return (log?.ai_title as string) || (log?.title as string) || '';
+}
+
 // 레코드에서 미리보기 키워드를 가져오는 헬퍼: 저장된 _keywords 우선, 없으면 fallback 추출
 function getRecordPreviewKeywords(r: any, prefix: string): string[] {
   const stored = r?.[`${prefix}_keywords`];
   if (Array.isArray(stored) && stored.length > 0) {
     return stored.filter((s: any) => typeof s === 'string' && s.trim()).slice(0, 10);
   }
-  const parts: string[] = [];
-  const sayu = r?.[`${prefix}_sayu`];
-  if (typeof sayu === 'string') parts.push(sayu);
-  Object.keys(r || {}).forEach((k) => {
-    if (!k.startsWith(`${prefix}_`)) return;
-    if (k.endsWith('_sayu') || k.endsWith('_keywords') || k.endsWith('_ai_title') || k.endsWith('_title') || k.endsWith('_polished') || k.endsWith('_polishedAt') || k.endsWith('_mode') || k.endsWith('_stats') || k.endsWith('_images') || k.endsWith('_rating') || k.endsWith('_tags') || k.endsWith('_space') || k.endsWith('_style')) return;
-    const v = r[k];
-    if (typeof v === 'string' && v.trim()) parts.push(v);
-  });
-  return extractPreviewKeywords(parts.join(' '));
+  return extractPreviewKeywords(getRecordSourceText(r, prefix));
 }
+
+// IntersectionObserver 백필 메타
+type KwMeta =
+  | { kind: 'record'; id: string; prefix: string; text: string }
+  | { kind: 'ailog'; id: string; text: string };
 
 export function SayuPage() {
   const handleTTS = async (text: string, key: string) => {
@@ -378,6 +396,65 @@ export function SayuPage() {
   const [snsSearchLoaded, setSnsSearchLoaded] = useState(false);
   const [snsSearchLoading, setSnsSearchLoading] = useState(false);
   const [expandedSearchIds, setExpandedSearchIds] = useState<Set<string>>(new Set());
+
+  // === SAYU 키워드 미리보기 백필 (IntersectionObserver) ===
+  const kwInflightRef = useRef<Set<string>>(new Set());
+  const kwIORef = useRef<IntersectionObserver | null>(null);
+  const kwMetaRef = useRef<WeakMap<Element, KwMeta>>(new WeakMap());
+
+  const runKwExtract = async (meta: KwMeta) => {
+    const key = meta.kind === 'record' ? `r_${meta.id}_${meta.prefix}` : `a_${meta.id}`;
+    if (kwInflightRef.current.has(key)) return;
+    if (!user) return;
+    if (!meta.text || meta.text.trim().length < 5) return;
+    kwInflightRef.current.add(key);
+    try {
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const fn = httpsCallable(fns, 'extractKeywords');
+      const result: any = await fn({ text: meta.text, max: 10 });
+      const keywords: string[] = Array.isArray(result?.data?.keywords) ? result.data.keywords : [];
+      if (keywords.length === 0) return;
+      if (meta.kind === 'record') {
+        const field = `${meta.prefix}_keywords`;
+        await updateDoc(doc(db, `users/${user.uid}/records`, meta.id), { [field]: keywords });
+        setRecords((prev) => prev.map((r) => (r.id === meta.id ? ({ ...r, [field]: keywords } as any) : r)));
+      } else {
+        await updateDoc(doc(db, `users/${user.uid}/records`, meta.id), { keywords });
+        setAiLogs((prev) => prev.map((l) => (l.id === meta.id ? ({ ...l, keywords } as any) : l)));
+      }
+    } catch (err) {
+      console.warn('extractKeywords 호출 실패:', err);
+    } finally {
+      kwInflightRef.current.delete(key);
+    }
+  };
+
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (!e.isIntersecting) return;
+        const meta = kwMetaRef.current.get(e.target);
+        if (!meta) return;
+        io.unobserve(e.target);
+        kwMetaRef.current.delete(e.target);
+        runKwExtract(meta);
+      });
+    }, { rootMargin: '40px' });
+    kwIORef.current = io;
+    return () => {
+      io.disconnect();
+      kwIORef.current = null;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const observeKwTarget = (el: HTMLElement | null, meta: KwMeta | null) => {
+    const io = kwIORef.current;
+    if (!el || !meta || !io) return;
+    kwMetaRef.current.set(el, meta);
+    io.observe(el);
+  };
 
   useEffect(() => {
     fetchRecords();
@@ -1382,7 +1459,18 @@ export function SayuPage() {
                           {isFormatExpanded && format !== 'HARU주식관리' && (
                             <>
                               {pagedEntries.map((entry) => (
-                                <div key={`${entry.date}-${entry.formatKey}-${entry.recordId}`} className="w-full flex items-center gap-1 border-t" style={{ borderColor: '#f5f5f5' }}>
+                                <div
+                                  key={`${entry.date}-${entry.formatKey}-${entry.recordId}`}
+                                  className="w-full flex items-center gap-1 border-t"
+                                  style={{ borderColor: '#f5f5f5' }}
+                                  ref={(el) => {
+                                    if (!el) return;
+                                    if (entry.keywords && entry.keywords.length > 0) return;
+                                    const rec = records.find((r) => r.id === entry.recordId);
+                                    if (!rec) return;
+                                    observeKwTarget(el, { kind: 'record', id: entry.recordId, prefix: entry.formatKey, text: getRecordSourceText(rec, entry.formatKey) });
+                                  }}
+                                >
                                   <button
                                     className="flex items-center gap-3 flex-1 px-4 text-left hover:bg-yellow-50 transition-colors"
                                     style={{ minHeight: 48 }}
@@ -1852,7 +1940,18 @@ export function SayuPage() {
                           {isFormatExpanded && (
                             <>
                               {pagedEntries.map((entry) => (
-                                <div key={`${entry.date}-${entry.formatKey}-${entry.recordId}`} className="w-full flex items-center gap-1 border-t" style={{ borderColor: '#f5f5f5' }}>
+                                <div
+                                  key={`${entry.date}-${entry.formatKey}-${entry.recordId}`}
+                                  className="w-full flex items-center gap-1 border-t"
+                                  style={{ borderColor: '#f5f5f5' }}
+                                  ref={(el) => {
+                                    if (!el) return;
+                                    if (entry.keywords && entry.keywords.length > 0) return;
+                                    const rec = records.find((r) => r.id === entry.recordId);
+                                    if (!rec) return;
+                                    observeKwTarget(el, { kind: 'record', id: entry.recordId, prefix: entry.formatKey, text: getRecordSourceText(rec, entry.formatKey) });
+                                  }}
+                                >
                                   <button
                                     className="flex items-center gap-3 flex-1 px-4 text-left hover:bg-yellow-50 transition-colors"
                                     style={{ minHeight: 48 }}
@@ -2009,7 +2108,17 @@ export function SayuPage() {
                   return (
                     <>
                       {paged.map((log) => (
-                        <div key={log.id} className="border-t" style={{ borderColor: '#f5f5f5' }}>
+                        <div
+                          key={log.id}
+                          className="border-t"
+                          style={{ borderColor: '#f5f5f5' }}
+                          ref={(el) => {
+                            if (!el) return;
+                            const stored = (log as any).keywords;
+                            if (Array.isArray(stored) && stored.length > 0) return;
+                            observeKwTarget(el, { kind: 'ailog', id: log.id, text: getAiLogSourceText(log) });
+                          }}
+                        >
                           <div
                             className="flex items-center cursor-pointer"
                             style={{ backgroundColor: selectedAiLog?.id === log.id ? '#f0f4ff' : 'transparent' }}
