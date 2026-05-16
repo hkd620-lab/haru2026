@@ -1165,6 +1165,43 @@ export { sendBroadcastNotification } from './broadcastNotification';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { v2: cloudinary } = require('cloudinary');
 
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'dmhutjnpn';
+const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY || '752573158646558';
+
+function configureCloudinary() {
+  cloudinary.config({
+    cloud_name: CLOUDINARY_CLOUD_NAME,
+    api_key: CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+}
+
+function safeCloudinarySegment(value: unknown, fallback: string): string {
+  const raw = String(value || fallback).trim();
+  return raw.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80) || fallback;
+}
+
+function extractCloudinaryPublicId(imageUrl: string): string | null {
+  try {
+    const parsed = new URL(imageUrl);
+    if (!parsed.hostname.includes('cloudinary.com')) return null;
+
+    const parts = parsed.pathname.split('/').filter(Boolean);
+    const uploadIndex = parts.indexOf('upload');
+    if (uploadIndex === -1) return null;
+
+    const idParts = parts.slice(uploadIndex + 1);
+    if (idParts[0] && /^v\d+$/.test(idParts[0])) {
+      idParts.shift();
+    }
+
+    const publicIdWithExtension = idParts.join('/');
+    return publicIdWithExtension.replace(/\.[a-zA-Z0-9]+$/, '') || null;
+  } catch {
+    return null;
+  }
+}
+
 export const convertHeic = onCall(
   { region: 'asia-northeast3' },
   async (request) => {
@@ -1174,11 +1211,7 @@ export const convertHeic = onCall(
       throw new HttpsError('invalid-argument', '이미지 데이터가 필요합니다.');
     }
 
-    cloudinary.config({
-      cloud_name: 'dmhutjnpn',
-      api_key: '752573158646558',
-      api_secret: process.env.CLOUDINARY_API_SECRET,
-    });
+    configureCloudinary();
 
     try {
       const dataUri = `data:image/heic;base64,${imageBase64}`;
@@ -1191,6 +1224,88 @@ export const convertHeic = onCall(
     } catch (error: any) {
       logger.error('Cloudinary HEIC 변환 오류:', error);
       throw new HttpsError('internal', `변환 실패: ${error.message}`);
+    }
+  }
+);
+
+export const uploadRecordImage = onCall(
+  { region: 'asia-northeast3' },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const { imageBase64, mimeType, recordId, prefix, fileName } = request.data || {};
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
+      throw new HttpsError('invalid-argument', '이미지 데이터가 필요합니다.');
+    }
+
+    const contentType = typeof mimeType === 'string' && mimeType.startsWith('image/')
+      ? mimeType
+      : 'image/jpeg';
+    const uid = request.auth.uid;
+    const safeRecordId = safeCloudinarySegment(recordId, 'record');
+    const safePrefix = safeCloudinarySegment(prefix, 'format');
+    const safeFileName = safeCloudinarySegment(String(fileName || 'image').replace(/\.[^.]+$/, ''), 'image');
+
+    configureCloudinary();
+
+    try {
+      const dataUri = `data:${contentType};base64,${imageBase64}`;
+      const result = await cloudinary.uploader.upload(dataUri, {
+        resource_type: 'image',
+        folder: `haru2026/records/${uid}/${safePrefix}`,
+        public_id: `${safeRecordId}_${safeFileName}`,
+        overwrite: false,
+      });
+
+      return {
+        url: result.secure_url,
+        publicId: result.public_id,
+      };
+    } catch (error: any) {
+      logger.error('Cloudinary 기록 사진 업로드 오류:', error);
+      throw new HttpsError('internal', `업로드 실패: ${error.message}`);
+    }
+  }
+);
+
+export const deleteRecordImage = onCall(
+  { region: 'asia-northeast3' },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const { imageUrl, publicId } = request.data || {};
+    const targetPublicId = typeof publicId === 'string' && publicId.trim()
+      ? publicId.trim()
+      : typeof imageUrl === 'string'
+        ? extractCloudinaryPublicId(imageUrl)
+        : null;
+
+    if (!targetPublicId) {
+      throw new HttpsError('invalid-argument', 'Cloudinary public_id를 찾을 수 없습니다.');
+    }
+
+    if (!targetPublicId.startsWith(`haru2026/records/${request.auth.uid}/`)) {
+      throw new HttpsError('permission-denied', '삭제 권한이 없는 이미지입니다.');
+    }
+
+    configureCloudinary();
+
+    try {
+      const result = await cloudinary.uploader.destroy(targetPublicId, {
+        resource_type: 'image',
+      });
+      if (result?.result === 'not found') {
+        throw new HttpsError('not-found', '이미 삭제된 이미지입니다.');
+      }
+      return { success: true, publicId: targetPublicId };
+    } catch (error: any) {
+      if (error instanceof HttpsError) throw error;
+      logger.error('Cloudinary 기록 사진 삭제 오류:', error);
+      throw new HttpsError('internal', `삭제 실패: ${error.message}`);
     }
   }
 );

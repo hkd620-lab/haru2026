@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.extractTitle = exports.polishContent = void 0;
+exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.deleteRecordImage = exports.uploadRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.extractTitle = exports.polishContent = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -282,6 +282,161 @@ ${text.slice(0, 600)}`;
         console.error('제목 추출 실패:', error);
         throw new https_2.HttpsError('internal', '제목 추출에 실패했습니다.');
     }
+});
+// ===== 🔑 SAYU 리스트 미리보기 키워드 추출 =====
+// 본문에서 핵심 고유어(서비스명·전략명·시장명·기능명·제품명) 3~6개를 JSON 배열로 반환.
+// 일반 추상명사·1글자·단독 "AI" 등은 후처리에서 제거.
+const KW_STRICT_STOP = new Set([
+    // 단독 일반 추상명사
+    'AI', 'ai', '기록', '실제', '현재', '구조', '가능성', '수준', '부분', '내용', '생각',
+    '사람', '경우', '이런', '저런', '방법', '방향', '과정', '결과', '효과', '의미',
+    '가치', '활용', '적용', '관련', '다양', '진행', '중심', '기준', '정도', '시간',
+    '시점', '필요', '중요', '주요', '확인', '사용', '제공', '하나', '오늘', '내일',
+    '어제', '지금', '이번', '이후', '이전', '여러', '모두', '많이', '많은', '대부분',
+    '문제', '상황', '상태', '느낌', '측면', '단계', '기반', '계열', '메모리',
+    // 사용자 호칭 / 인사 표현 (개인 식별어 제외)
+    '허대표', '허대표님', '대표님', '교장님', '박사님', '시박사', '선생님', '본인',
+    // 종결·서술 표현
+    '있습니다', '입니다', '합니다', '됩니다', '하다', '되다', '이다', '있다', '없다',
+    '이건', '저건', '그건', '여기', '저기', '거기',
+    // 형용사/부사 어간
+    '단순', '단순한', '중요한', '필요한', '간단한', '복잡한', '새로운', '좋은',
+    '만든', '만들기', '만들', '진행중', '완료', '시작', '취업', '신청',
+]);
+// 숫자+한국어 단위 패턴 (예: "3개", "4가지", "10명") — 키워드로 부적합
+const KW_NUMUNIT_RE = /^\d+\s*(개|가지|명|번|회|차|단계|시간|초|분|일|월|년|건|개월|주|살|세|점|위|등|차례|장|편)$/;
+exports.extractKeywords = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET]
+}, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    try {
+        const { text, title, max } = request.data || {};
+        if (!text || typeof text !== 'string' || !text.trim()) {
+            throw new https_2.HttpsError('invalid-argument', '텍스트가 필요합니다.');
+        }
+        // 클라이언트가 더 큰 값을 보내도 6으로 cap. 최소 3.
+        const requested = typeof max === 'number' && max > 0 && max <= 20 ? Math.floor(max) : 6;
+        const limit = Math.max(3, Math.min(6, requested));
+        const titleLine = typeof title === 'string' && title.trim() ? title.trim().slice(0, 80) : '';
+        const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+        const prompt = `다음 기록에서 핵심 키워드를 3~${limit}개만 추출하세요.
+
+[엄격한 규칙]
+1. 기록의 **주제명/서비스명/전략명/시장명/기능명/제품명/지역명/조직명** 같은 고유어만 사용
+2. 제목에 포함된 핵심 고유어를 최우선으로 살릴 것
+3. **1글자 키워드 절대 금지** (반드시 2글자 이상)
+4. 다음 일반어는 절대 사용 금지: AI(단독), 기록, 실제, 현재, 구조, 가능성, 수준, 부분, 내용, 생각, 사람, 경우, 이런, 저런, 방법, 방향, 과정, 결과, 효과, 의미, 가치, 활용, 적용, 관련, 다양, 진행, 중심, 기준, 정도, 시간, 시점, 필요, 중요, 주요, 확인, 사용, 제공, 문제, 상황, 상태, 느낌, 측면, 단계, 기반, 계열, 메모리, 단순, 중요한, 만든, 만들기, 완료, 신청, 시작, 취업
+5. 단독 "AI"는 금지. "AI비서", "AI플랫폼" 같은 합성어 형태는 허용
+6. **사용자 호칭/인사 표현 절대 금지**: 허대표, 허대표님, 대표님, 교장님, 박사님, 시박사, 선생님, 본인 등 사람을 부르는 단어는 키워드 아님
+7. 종결 표현/문장 잔여 금지: 있습니다, 입니다, 합니다, 됩니다, 이건, 그건
+8. 숫자+단위 금지 (예: 3개, 4가지, 10명)
+9. 조사·형용사·부사·동사·일반 추상명사 제외
+10. 동의어는 한 표현으로 통합 (예: "공모" + "공모전" → "공모전")
+11. 각 키워드 길이 2~12자, 한국어 명사 또는 영문/숫자 포함 고유명사 원문
+
+[출력 형식]
+JSON 배열 한 줄만. 마크다운·번호·콜론·설명 절대 금지. 배열 외 텍스트 출력 금지.
+
+[좋은 예시]
+제목: "HARU2026 공모전 합격 전략"
+출력: ["HARU2026","공모전","합격전략"]
+
+제목: "외국인 전용 AI 비서 시장 분석"
+출력: ["외국인","AI비서","시장분석"]
+
+제목: "HARU의 독보적 성장세"
+출력: ["HARU","독보적성장","성장세"]
+
+[나쁜 예시 — 절대 이런 식 금지]
+출력: ["AI","허대표님","있습니다","이건","실제","중요한"]  ← 모두 일반어/호칭/형용사라 키워드 아님
+출력: ["3개","4가지","단계","구조","느낌"]  ← 숫자+단위·일반 추상명사
+
+${titleLine ? `제목: "${titleLine}"\n` : ''}기록 내용:
+${text.slice(0, 4000)}`;
+        const result = await model.generateContent(prompt);
+        const raw = (result.response.text() || '').trim();
+        const cleaned = raw
+            .replace(/^```(?:json)?\s*/i, '')
+            .replace(/\s*```$/i, '')
+            .trim();
+        let parsed = null;
+        try {
+            parsed = JSON.parse(cleaned);
+        }
+        catch {
+            const m = cleaned.match(/\[[\s\S]*?\]/);
+            if (m) {
+                try {
+                    parsed = JSON.parse(m[0]);
+                }
+                catch { /* keep null */ }
+            }
+        }
+        if (!Array.isArray(parsed))
+            return { keywords: [] };
+        const keywords = parsed
+            .filter((k) => typeof k === 'string')
+            .map((k) => k.trim().replace(/^["'`*#\-•·\s]+|["'`*#\-•·\s]+$/g, '').trim())
+            .filter((k) => k.length >= 2 && k.length <= 14)
+            .filter((k) => !KW_STRICT_STOP.has(k) && !KW_STRICT_STOP.has(k.toLowerCase()))
+            .filter((k) => !/^\d+$/.test(k))
+            .filter((k) => !KW_NUMUNIT_RE.test(k))
+            .filter((k, i, arr) => arr.indexOf(k) === i)
+            .slice(0, limit);
+        return { keywords };
+    }
+    catch (error) {
+        console.error('키워드 추출 실패:', error);
+        throw new https_2.HttpsError('internal', '키워드 추출에 실패했습니다.');
+    }
+});
+// ===== 🧹 기존 저품질 keywords 캐시 일괄 삭제 (호출자 본인 데이터 한정) =====
+// 사용법: 브라우저 콘솔에서 한 줄 호출 — 결과로 {docsExamined, docsUpdated, fieldsCleared} 반환.
+// const { getFunctions, httpsCallable } = await import('firebase/functions');
+// const r = await httpsCallable(getFunctions(undefined,'asia-northeast3'),'clearKeywordsCache')();
+// console.log(r.data);
+exports.clearKeywordsCache = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    const FieldValue = admin.firestore.FieldValue;
+    const recordsRef = db.collection('users').doc(uid).collection('records');
+    const snap = await recordsRef.get();
+    let docsExamined = 0;
+    let docsUpdated = 0;
+    let fieldsCleared = 0;
+    let batch = db.batch();
+    let opsInBatch = 0;
+    for (const docSnap of snap.docs) {
+        docsExamined++;
+        const data = docSnap.data();
+        const updates = {};
+        Object.keys(data).forEach((k) => {
+            if (k === 'keywords' || k.endsWith('_keywords')) {
+                updates[k] = FieldValue.delete();
+                fieldsCleared++;
+            }
+        });
+        if (Object.keys(updates).length === 0)
+            continue;
+        batch.update(docSnap.ref, updates);
+        docsUpdated++;
+        opsInBatch++;
+        if (opsInBatch >= 400) {
+            await batch.commit();
+            batch = db.batch();
+            opsInBatch = 0;
+        }
+    }
+    if (opsInBatch > 0) {
+        await batch.commit();
+    }
+    return { docsExamined, docsUpdated, fieldsCleared };
 });
 // ===== 🏷️ 기존 기록 AI 제목 일괄 생성 =====
 exports.generateTitlesForAll = (0, https_2.onCall)({
@@ -861,16 +1016,45 @@ Object.defineProperty(exports, "sendBroadcastNotification", { enumerable: true, 
 // ===== 📷 HEIC → JPG 변환 (Cloudinary) =====
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { v2: cloudinary } = require('cloudinary');
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'dmhutjnpn';
+const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY || '752573158646558';
+function configureCloudinary() {
+    cloudinary.config({
+        cloud_name: CLOUDINARY_CLOUD_NAME,
+        api_key: CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+}
+function safeCloudinarySegment(value, fallback) {
+    const raw = String(value || fallback).trim();
+    return raw.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80) || fallback;
+}
+function extractCloudinaryPublicId(imageUrl) {
+    try {
+        const parsed = new URL(imageUrl);
+        if (!parsed.hostname.includes('cloudinary.com'))
+            return null;
+        const parts = parsed.pathname.split('/').filter(Boolean);
+        const uploadIndex = parts.indexOf('upload');
+        if (uploadIndex === -1)
+            return null;
+        const idParts = parts.slice(uploadIndex + 1);
+        if (idParts[0] && /^v\d+$/.test(idParts[0])) {
+            idParts.shift();
+        }
+        const publicIdWithExtension = idParts.join('/');
+        return publicIdWithExtension.replace(/\.[a-zA-Z0-9]+$/, '') || null;
+    }
+    catch {
+        return null;
+    }
+}
 exports.convertHeic = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
     const { imageBase64 } = request.data;
     if (!imageBase64 || typeof imageBase64 !== 'string') {
         throw new https_2.HttpsError('invalid-argument', '이미지 데이터가 필요합니다.');
     }
-    cloudinary.config({
-        cloud_name: 'dmhutjnpn',
-        api_key: '752573158646558',
-        api_secret: process.env.CLOUDINARY_API_SECRET,
-    });
+    configureCloudinary();
     try {
         const dataUri = `data:image/heic;base64,${imageBase64}`;
         const result = await cloudinary.uploader.upload(dataUri, {
@@ -883,6 +1067,73 @@ exports.convertHeic = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (
     catch (error) {
         logger.error('Cloudinary HEIC 변환 오류:', error);
         throw new https_2.HttpsError('internal', `변환 실패: ${error.message}`);
+    }
+});
+exports.uploadRecordImage = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const { imageBase64, mimeType, recordId, prefix, fileName } = request.data || {};
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
+        throw new https_2.HttpsError('invalid-argument', '이미지 데이터가 필요합니다.');
+    }
+    const contentType = typeof mimeType === 'string' && mimeType.startsWith('image/')
+        ? mimeType
+        : 'image/jpeg';
+    const uid = request.auth.uid;
+    const safeRecordId = safeCloudinarySegment(recordId, 'record');
+    const safePrefix = safeCloudinarySegment(prefix, 'format');
+    const safeFileName = safeCloudinarySegment(String(fileName || 'image').replace(/\.[^.]+$/, ''), 'image');
+    configureCloudinary();
+    try {
+        const dataUri = `data:${contentType};base64,${imageBase64}`;
+        const result = await cloudinary.uploader.upload(dataUri, {
+            resource_type: 'image',
+            folder: `haru2026/records/${uid}/${safePrefix}`,
+            public_id: `${safeRecordId}_${safeFileName}`,
+            overwrite: false,
+        });
+        return {
+            url: result.secure_url,
+            publicId: result.public_id,
+        };
+    }
+    catch (error) {
+        logger.error('Cloudinary 기록 사진 업로드 오류:', error);
+        throw new https_2.HttpsError('internal', `업로드 실패: ${error.message}`);
+    }
+});
+exports.deleteRecordImage = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const { imageUrl, publicId } = request.data || {};
+    const targetPublicId = typeof publicId === 'string' && publicId.trim()
+        ? publicId.trim()
+        : typeof imageUrl === 'string'
+            ? extractCloudinaryPublicId(imageUrl)
+            : null;
+    if (!targetPublicId) {
+        throw new https_2.HttpsError('invalid-argument', 'Cloudinary public_id를 찾을 수 없습니다.');
+    }
+    if (!targetPublicId.startsWith(`haru2026/records/${request.auth.uid}/`)) {
+        throw new https_2.HttpsError('permission-denied', '삭제 권한이 없는 이미지입니다.');
+    }
+    configureCloudinary();
+    try {
+        const result = await cloudinary.uploader.destroy(targetPublicId, {
+            resource_type: 'image',
+        });
+        if ((result === null || result === void 0 ? void 0 : result.result) === 'not found') {
+            throw new https_2.HttpsError('not-found', '이미 삭제된 이미지입니다.');
+        }
+        return { success: true, publicId: targetPublicId };
+    }
+    catch (error) {
+        if (error instanceof https_2.HttpsError)
+            throw error;
+        logger.error('Cloudinary 기록 사진 삭제 오류:', error);
+        throw new https_2.HttpsError('internal', `삭제 실패: ${error.message}`);
     }
 });
 exports.generateMergePDFFast = (0, https_2.onCall)({ region: 'asia-northeast3', memory: '1GiB', timeoutSeconds: 300 }, async (request) => {
