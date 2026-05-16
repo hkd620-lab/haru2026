@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.deleteRecordImage = exports.uploadRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.extractTitle = exports.polishContent = void 0;
+exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.extractTitle = exports.polishContent = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -1123,40 +1123,9 @@ exports.convertHeic = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (
         throw new https_2.HttpsError('internal', `변환 실패: ${error.message}`);
     }
 });
-exports.uploadRecordImage = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
-    if (!request.auth) {
-        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
-    }
-    const { imageBase64, mimeType, recordId, prefix, fileName } = request.data || {};
-    if (!imageBase64 || typeof imageBase64 !== 'string') {
-        throw new https_2.HttpsError('invalid-argument', '이미지 데이터가 필요합니다.');
-    }
-    const contentType = typeof mimeType === 'string' && mimeType.startsWith('image/')
-        ? mimeType
-        : 'image/jpeg';
-    const uid = request.auth.uid;
-    const safeRecordId = safeCloudinarySegment(recordId, 'record');
-    const safePrefix = safeCloudinarySegment(prefix, 'format');
-    const safeFileName = safeCloudinarySegment(String(fileName || 'image').replace(/\.[^.]+$/, ''), 'image');
-    configureCloudinary();
-    try {
-        const dataUri = `data:${contentType};base64,${imageBase64}`;
-        const result = await cloudinary.uploader.upload(dataUri, {
-            resource_type: 'image',
-            folder: `haru2026/records/${uid}/${safePrefix}`,
-            public_id: `${safeRecordId}_${safeFileName}`,
-            overwrite: false,
-        });
-        return {
-            url: result.secure_url,
-            publicId: result.public_id,
-        };
-    }
-    catch (error) {
-        logger.error('Cloudinary 기록 사진 업로드 오류:', error);
-        throw new https_2.HttpsError('internal', `업로드 실패: ${error.message}`);
-    }
-});
+// uploadRecordImage 는 정책 복구(Firebase Storage 메인)에 따라 제거됨.
+// 일반 업로드는 frontend가 Firebase Storage 직접 처리.
+// HEIC만 convertHeic(임시 변환) 거친 후 Firebase Storage에 영구 저장.
 exports.deleteRecordImage = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
