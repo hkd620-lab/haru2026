@@ -34,6 +34,68 @@ interface AiLog { id: string; title?: string; source?: string; createdAt?: strin
 interface Chapter { id: string; bookId: string; title: string; sourceTitle: string; content: string; order: number; }
 interface Book { id: string; title: string; totalChapters: number; order?: number; chapters: Chapter[]; }
 
+// SAYU 리스트 키워드 미리보기용 fallback 추출기
+// 저장 구조는 건드리지 않고 화면 표시 fallback으로만 사용
+const KW_STOP = new Set<string>([
+  '이','가','을','를','은','는','의','에','와','과','도','로','으로','에서','에게','한테','까지','부터','보다','처럼','같이','마다','조차','마저','이나','나','이라','라고','이라고','이며','면서','이지만','지만','이든','든',
+  '그리고','그러나','하지만','또는','또한','즉','따라서','그래서','그러면','그런데','그래도','그러므로','그렇지만','다만','다시','정말','매우','너무','조금','거의','아주','이미','잘','꼭','참','뭐','왜','어떻게','어떤','이런','그런','저런','어느','이번','지난','요즘','오늘','내일','어제','계속','다른','모든','어떻','이렇','그렇','저렇','있다','없다','한다','하다','되다','이다','였다','했다','였습니다','입니다','합니다','됩니다',
+  'the','and','but','or','for','to','of','in','on','at','an','is','are','was','were','be','been','being','this','that','these','those','it','its','as','by','with','from','about','into','than','then','so','if','when','where','what','who','how','have','has','had','do','does','did','will','would','can','could','should','may','might','i','you','he','she','they','we','my','your','his','her','their','our',
+]);
+const KW_TAIL = ['입니다','였습니다','합니다','됩니다','이었다','였다','했다','이라고','이라며','이라는','이라서','이라도','이라면','이지만','으로서','으로써','으로부터','으로는','으로도','이면서','으면서','이면','으면','이라','이며','이고','이지','이거','이었','일까','한테','에게','에서','부터','까지','보다','마다','조차','마저','이나','이든','든지','라도','라고','라며','라는','으로','에는','에도','에서','은','는','이','가','을','를','의','과','와','도','로','만','요','죠'];
+
+function stripKwTail(token: string): string {
+  for (const t of KW_TAIL) {
+    if (token.length > t.length + 1 && token.endsWith(t)) {
+      const stripped = token.slice(0, -t.length);
+      const lastChar = stripped.charCodeAt(stripped.length - 1);
+      if (lastChar >= 0xAC00 && lastChar <= 0xD7AF) return stripped;
+    }
+  }
+  return token;
+}
+
+function extractPreviewKeywords(text: string): string[] {
+  if (!text || typeof text !== 'string') return [];
+  const cleaned = text
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!cleaned) return [];
+  const tokens = cleaned.split(' ')
+    .map(stripKwTail)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2 && !KW_STOP.has(t.toLowerCase()) && !/^\d+$/.test(t));
+  const freq = new Map<string, { count: number; order: number }>();
+  tokens.forEach((tok, i) => {
+    const e = freq.get(tok);
+    if (e) e.count += 1;
+    else freq.set(tok, { count: 1, order: i });
+  });
+  return [...freq.entries()]
+    .sort((a, b) => b[1].count - a[1].count || a[1].order - b[1].order)
+    .slice(0, 5)
+    .map(([k]) => (k.length > 14 ? k.slice(0, 13) + '…' : k));
+}
+
+// 레코드에서 미리보기 키워드를 가져오는 헬퍼: 저장된 _keywords 우선, 없으면 fallback 추출
+function getRecordPreviewKeywords(r: any, prefix: string): string[] {
+  const stored = r?.[`${prefix}_keywords`];
+  if (Array.isArray(stored) && stored.length > 0) {
+    return stored.filter((s: any) => typeof s === 'string' && s.trim()).slice(0, 5);
+  }
+  const parts: string[] = [];
+  const sayu = r?.[`${prefix}_sayu`];
+  if (typeof sayu === 'string') parts.push(sayu);
+  Object.keys(r || {}).forEach((k) => {
+    if (!k.startsWith(`${prefix}_`)) return;
+    if (k.endsWith('_sayu') || k.endsWith('_keywords') || k.endsWith('_ai_title') || k.endsWith('_title') || k.endsWith('_polished') || k.endsWith('_polishedAt') || k.endsWith('_mode') || k.endsWith('_stats') || k.endsWith('_images') || k.endsWith('_rating') || k.endsWith('_tags') || k.endsWith('_space') || k.endsWith('_style')) return;
+    const v = r[k];
+    if (typeof v === 'string' && v.trim()) parts.push(v);
+  });
+  return extractPreviewKeywords(parts.join(' '));
+}
+
 export function SayuPage() {
   const handleTTS = async (text: string, key: string) => {
     // 재생 중이면 정지
@@ -963,7 +1025,7 @@ export function SayuPage() {
       category: string;
       formats: {
         format: RecordFormat | any;
-        entries: { date: string; title: string; aiTitle?: string; hasSayu: boolean; formatKey: string; recordId: string }[];
+        entries: { date: string; title: string; aiTitle?: string; hasSayu: boolean; formatKey: string; recordId: string; keywords?: string[] }[];
       }[];
     };
 
@@ -978,6 +1040,7 @@ export function SayuPage() {
         hasSayu: false,
         formatKey: 'haruraw',
         recordId: r.id,
+        keywords: getRecordPreviewKeywords(r, 'haruraw'),
       }));
     if (harurawEntries.length > 0) {
       result.push({ category: '하루LAW', formats: [{ format: 'HARUraw' as any, entries: harurawEntries }] });
@@ -1033,6 +1096,7 @@ export function SayuPage() {
               hasSayu: !!r[`${prefix}_sayu`],
               formatKey: prefix,
               recordId: r.id,
+              keywords: getRecordPreviewKeywords(r, prefix),
             };
           })
           .sort((a, b) => b.date.localeCompare(a.date));
@@ -1356,10 +1420,17 @@ export function SayuPage() {
                                     }}
                                   >
                                     <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: '32px' }}>{formatListDate(entry.date)}</span>
-                                    <span className="text-sm flex-1" style={{ color: '#333', overflow: 'hidden' }}>
-                                      <span className="truncate" style={{ display: 'inline' }}>{entry.title}</span>
-                                      {entry.aiTitle && entry.aiTitle !== entry.title && (
-                                        <span style={{ color: '#999', fontSize: 11, marginLeft: 4, whiteSpace: 'nowrap' }}>({entry.aiTitle})</span>
+                                    <span className="flex-1" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 2 }}>
+                                      <span style={{ display: 'flex', alignItems: 'baseline', gap: 4, minWidth: 0 }}>
+                                        <span className="text-sm truncate" style={{ color: '#333', flex: '1 1 auto', minWidth: 0 }}>{entry.title}</span>
+                                        {entry.aiTitle && entry.aiTitle !== entry.title && (
+                                          <span style={{ color: '#999', fontSize: 11, whiteSpace: 'nowrap', flexShrink: 0 }}>({entry.aiTitle})</span>
+                                        )}
+                                      </span>
+                                      {entry.keywords && entry.keywords.length > 0 && (
+                                        <span style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4, overflowWrap: 'anywhere', wordBreak: 'keep-all', display: 'block' }}>
+                                          {entry.keywords.slice(0, 5).join(' · ')}
+                                        </span>
                                       )}
                                     </span>
                                     {entry.hasSayu && (
@@ -1819,10 +1890,17 @@ export function SayuPage() {
                                     }}
                                   >
                                     <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: '32px' }}>{formatListDate(entry.date)}</span>
-                                    <span className="text-sm flex-1" style={{ color: '#333', overflow: 'hidden' }}>
-                                      <span className="truncate" style={{ display: 'inline' }}>{entry.title}</span>
-                                      {entry.aiTitle && entry.aiTitle !== entry.title && (
-                                        <span style={{ color: '#999', fontSize: 11, marginLeft: 4, whiteSpace: 'nowrap' }}>({entry.aiTitle})</span>
+                                    <span className="flex-1" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 2 }}>
+                                      <span style={{ display: 'flex', alignItems: 'baseline', gap: 4, minWidth: 0 }}>
+                                        <span className="text-sm truncate" style={{ color: '#333', flex: '1 1 auto', minWidth: 0 }}>{entry.title}</span>
+                                        {entry.aiTitle && entry.aiTitle !== entry.title && (
+                                          <span style={{ color: '#999', fontSize: 11, whiteSpace: 'nowrap', flexShrink: 0 }}>({entry.aiTitle})</span>
+                                        )}
+                                      </span>
+                                      {entry.keywords && entry.keywords.length > 0 && (
+                                        <span style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4, overflowWrap: 'anywhere', wordBreak: 'keep-all', display: 'block' }}>
+                                          {entry.keywords.slice(0, 5).join(' · ')}
+                                        </span>
                                       )}
                                     </span>
                                   </button>
