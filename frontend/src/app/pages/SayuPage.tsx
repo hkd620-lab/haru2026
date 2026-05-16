@@ -39,8 +39,19 @@ interface Book { id: string; title: string; totalChapters: number; order?: numbe
 const KW_STOP = new Set<string>([
   '이','가','을','를','은','는','의','에','와','과','도','로','으로','에서','에게','한테','까지','부터','보다','처럼','같이','마다','조차','마저','이나','나','이라','라고','이라고','이며','면서','이지만','지만','이든','든',
   '그리고','그러나','하지만','또는','또한','즉','따라서','그래서','그러면','그런데','그래도','그러므로','그렇지만','다만','다시','정말','매우','너무','조금','거의','아주','이미','잘','꼭','참','뭐','왜','어떻게','어떤','이런','그런','저런','어느','이번','지난','요즘','오늘','내일','어제','계속','다른','모든','어떻','이렇','그렇','저렇','있다','없다','한다','하다','되다','이다','였다','했다','였습니다','입니다','합니다','됩니다',
+  // 일반 추상명사 (Functions KW_STRICT_STOP과 동기화)
+  'AI','ai','기록','실제','현재','구조','가능성','수준','부분','내용','생각','사람','경우','방법','방향','과정','결과','효과','의미','가치','활용','적용','관련','다양','진행','중심','기준','정도','시간','시점','필요','중요','주요','확인','사용','제공','문제','상황','상태','느낌','측면','단계','기반','계열','메모리',
+  // 사용자 호칭 / 인사
+  '허대표','허대표님','대표님','교장님','박사님','시박사','선생님','본인',
+  // 종결 표현
+  '있습니다','이건','저건','그건','여기','저기','거기',
+  // 형용사/동사 어간
+  '단순','단순한','중요한','필요한','간단한','복잡한','새로운','좋은','만든','만들기','만들','진행중','완료','시작','취업','신청',
+  // 영어 stop
   'the','and','but','or','for','to','of','in','on','at','an','is','are','was','were','be','been','being','this','that','these','those','it','its','as','by','with','from','about','into','than','then','so','if','when','where','what','who','how','have','has','had','do','does','did','will','would','can','could','should','may','might','i','you','he','she','they','we','my','your','his','her','their','our',
 ]);
+// 숫자+단위 패턴 (Functions와 동일)
+const KW_NUMUNIT_RE = /^\d+\s*(개|가지|명|번|회|차|단계|시간|초|분|일|월|년|건|개월|주|살|세|점|위|등|차례|장|편)$/;
 const KW_TAIL = ['입니다','였습니다','합니다','됩니다','이었다','였다','했다','이라고','이라며','이라는','이라서','이라도','이라면','이지만','으로서','으로써','으로부터','으로는','으로도','이면서','으면서','이면','으면','이라','이며','이고','이지','이거','이었','일까','한테','에게','에서','부터','까지','보다','마다','조차','마저','이나','이든','든지','라도','라고','라며','라는','으로','에는','에도','에서','은','는','이','가','을','를','의','과','와','도','로','만','요','죠'];
 
 function stripKwTail(token: string): string {
@@ -65,7 +76,7 @@ function extractPreviewKeywords(text: string): string[] {
   const tokens = cleaned.split(' ')
     .map(stripKwTail)
     .map((t) => t.trim())
-    .filter((t) => t.length >= 2 && !KW_STOP.has(t.toLowerCase()) && !/^\d+$/.test(t));
+    .filter((t) => t.length >= 2 && !KW_STOP.has(t) && !KW_STOP.has(t.toLowerCase()) && !/^\d+$/.test(t) && !KW_NUMUNIT_RE.test(t));
   const freq = new Map<string, { count: number; order: number }>();
   tokens.forEach((tok, i) => {
     const e = freq.get(tok);
@@ -74,7 +85,7 @@ function extractPreviewKeywords(text: string): string[] {
   });
   return [...freq.entries()]
     .sort((a, b) => b[1].count - a[1].count || a[1].order - b[1].order)
-    .slice(0, 10)
+    .slice(0, 6)
     .map(([k]) => (k.length > 14 ? k.slice(0, 13) + '…' : k));
 }
 
@@ -104,7 +115,7 @@ function getAiLogSourceText(log: any): string {
 function getRecordPreviewKeywords(r: any, prefix: string): string[] {
   const stored = r?.[`${prefix}_keywords`];
   if (Array.isArray(stored) && stored.length > 0) {
-    return stored.filter((s: any) => typeof s === 'string' && s.trim()).slice(0, 10);
+    return stored.filter((s: any) => typeof s === 'string' && s.trim()).slice(0, 6);
   }
   return extractPreviewKeywords(getRecordSourceText(r, prefix));
 }
@@ -411,7 +422,7 @@ export function SayuPage() {
     try {
       const fns = getFunctions(undefined, 'asia-northeast3');
       const fn = httpsCallable(fns, 'extractKeywords');
-      const result: any = await fn({ text: meta.text, max: 10 });
+      const result: any = await fn({ text: meta.text, max: 6 });
       const keywords: string[] = Array.isArray(result?.data?.keywords) ? result.data.keywords : [];
       if (keywords.length === 0) return;
       if (meta.kind === 'record') {
@@ -1257,6 +1268,44 @@ export function SayuPage() {
           <Info className="w-3.5 h-3.5" style={{ color: '#1A3C6E', flexShrink: 0 }} />
           원문 감정 그대로, 문장만 자연스럽게 다듬습니다
         </p>
+        {isDeveloper && (
+          <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={async () => {
+                if (!window.confirm('내 기록의 keywords 캐시를 모두 삭제하고 새로 추출합니다. 진행할까요?')) return;
+                try {
+                  toast.info('키워드 캐시 청소 중...');
+                  const fns = getFunctions(undefined, 'asia-northeast3');
+                  const fn = httpsCallable(fns, 'clearKeywordsCache');
+                  const r: any = await fn();
+                  const d = r?.data || {};
+                  toast.success(`청소 완료: 문서 ${d.docsUpdated || 0}개에서 필드 ${d.fieldsCleared || 0}개 삭제`);
+                  // 로컬 state에서도 keywords 필드 제거 → 다음 IntersectionObserver 트리거 시 재추출
+                  setRecords((prev) => prev.map((rec) => {
+                    const next: any = { ...rec };
+                    Object.keys(next).forEach((k) => { if (k === 'keywords' || k.endsWith('_keywords')) delete next[k]; });
+                    return next;
+                  }));
+                  setAiLogs((prev) => prev.map((log) => {
+                    const next: any = { ...log };
+                    delete next.keywords;
+                    return next;
+                  }));
+                } catch (err: any) {
+                  console.error(err);
+                  toast.error('청소 실패: ' + (err?.message || '알 수 없는 오류'));
+                }
+              }}
+              style={{
+                fontSize: 11, padding: '4px 10px', borderRadius: 8,
+                border: '1px solid #D9D2EC', backgroundColor: '#fff',
+                color: '#1A3C6E', cursor: 'pointer',
+              }}
+              title="개발자 전용 — 모든 record의 keywords 필드 삭제 후 새 프롬프트로 재추출"
+            >🧹 키워드 캐시 청소</button>
+          </div>
+        )}
       </div>
 
       {/* 월 선택 — 헤딩 + 변경 칩 (카드 제거) */}
@@ -1517,7 +1566,7 @@ export function SayuPage() {
                                       </span>
                                       {entry.keywords && entry.keywords.length > 0 && (
                                         <span style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4, overflowWrap: 'anywhere', wordBreak: 'keep-all', display: 'block' }}>
-                                          {entry.keywords.slice(0, 10).join(' · ')}
+                                          {entry.keywords.slice(0, 6).join(' · ')}
                                         </span>
                                       )}
                                     </span>
@@ -1998,7 +2047,7 @@ export function SayuPage() {
                                       </span>
                                       {entry.keywords && entry.keywords.length > 0 && (
                                         <span style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4, overflowWrap: 'anywhere', wordBreak: 'keep-all', display: 'block' }}>
-                                          {entry.keywords.slice(0, 10).join(' · ')}
+                                          {entry.keywords.slice(0, 6).join(' · ')}
                                         </span>
                                       )}
                                     </span>
@@ -2148,7 +2197,7 @@ export function SayuPage() {
                               {(() => {
                                 const stored = (log as any).keywords;
                                 const kws = Array.isArray(stored) && stored.length > 0
-                                  ? stored.filter((s: any) => typeof s === 'string' && s.trim()).slice(0, 10)
+                                  ? stored.filter((s: any) => typeof s === 'string' && s.trim()).slice(0, 6)
                                   : extractPreviewKeywords(((log as any).content as string) || log.ai_title || log.title || '');
                                 if (kws.length === 0) return null;
                                 return (
