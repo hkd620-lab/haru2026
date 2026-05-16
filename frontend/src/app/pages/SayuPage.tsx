@@ -74,7 +74,7 @@ function extractPreviewKeywords(text: string): string[] {
   });
   return [...freq.entries()]
     .sort((a, b) => b[1].count - a[1].count || a[1].order - b[1].order)
-    .slice(0, 5)
+    .slice(0, 10)
     .map(([k]) => (k.length > 14 ? k.slice(0, 13) + '…' : k));
 }
 
@@ -82,7 +82,7 @@ function extractPreviewKeywords(text: string): string[] {
 function getRecordPreviewKeywords(r: any, prefix: string): string[] {
   const stored = r?.[`${prefix}_keywords`];
   if (Array.isArray(stored) && stored.length > 0) {
-    return stored.filter((s: any) => typeof s === 'string' && s.trim()).slice(0, 5);
+    return stored.filter((s: any) => typeof s === 'string' && s.trim()).slice(0, 10);
   }
   const parts: string[] = [];
   const sayu = r?.[`${prefix}_sayu`];
@@ -1429,7 +1429,7 @@ export function SayuPage() {
                                       </span>
                                       {entry.keywords && entry.keywords.length > 0 && (
                                         <span style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4, overflowWrap: 'anywhere', wordBreak: 'keep-all', display: 'block' }}>
-                                          {entry.keywords.slice(0, 5).join(' · ')}
+                                          {entry.keywords.slice(0, 10).join(' · ')}
                                         </span>
                                       )}
                                     </span>
@@ -1899,7 +1899,7 @@ export function SayuPage() {
                                       </span>
                                       {entry.keywords && entry.keywords.length > 0 && (
                                         <span style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4, overflowWrap: 'anywhere', wordBreak: 'keep-all', display: 'block' }}>
-                                          {entry.keywords.slice(0, 5).join(' · ')}
+                                          {entry.keywords.slice(0, 10).join(' · ')}
                                         </span>
                                       )}
                                     </span>
@@ -2039,7 +2039,7 @@ export function SayuPage() {
                               {(() => {
                                 const stored = (log as any).keywords;
                                 const kws = Array.isArray(stored) && stored.length > 0
-                                  ? stored.filter((s: any) => typeof s === 'string' && s.trim()).slice(0, 5)
+                                  ? stored.filter((s: any) => typeof s === 'string' && s.trim()).slice(0, 10)
                                   : extractPreviewKeywords(((log as any).content as string) || log.ai_title || log.title || '');
                                 if (kws.length === 0) return null;
                                 return (
