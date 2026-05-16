@@ -315,7 +315,7 @@ export function SayuPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string; recordId?: string }[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고', 'SNS검색기록']));
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루식물탐정', '하루AI지식창고', 'SNS검색기록']));
   const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
   // 📊 통계/합치기 모달
   const [formatStatModal, setFormatStatModal] = useState<{
@@ -407,6 +407,7 @@ export function SayuPage() {
   const [snsSearchLoaded, setSnsSearchLoaded] = useState(false);
   const [snsSearchLoading, setSnsSearchLoading] = useState(false);
   const [expandedSearchIds, setExpandedSearchIds] = useState<Set<string>>(new Set());
+  const [expandedPlantIds, setExpandedPlantIds] = useState<Set<string>>(new Set());
 
   // === SAYU 키워드 미리보기 백필 (IntersectionObserver) ===
   const kwInflightRef = useRef<Set<string>>(new Set());
@@ -472,7 +473,7 @@ export function SayuPage() {
   }, [user?.uid, currentMonth]);
 
   useEffect(() => {
-    setCollapsedCategories(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고', 'SNS검색기록']));
+    setCollapsedCategories(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루식물탐정', '하루AI지식창고', 'SNS검색기록']));
     setExpandedFormats(new Set());
   }, [location.pathname]);
 
@@ -2086,6 +2087,161 @@ export function SayuPage() {
                         </div>
                       );
                     })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* 🌱 하루식물탐정 — 시간 누적 식별 기록 (records[].plantDetective 배열에서 추출) */}
+          {(() => {
+            const plantEntries: { date: string; recordId: string; entry: any; idx: number }[] = [];
+            records.forEach((r: any) => {
+              const arr = Array.isArray(r?.plantDetective) ? r.plantDetective : [];
+              arr.forEach((e: any, i: number) => {
+                if (e && typeof e === 'object') {
+                  plantEntries.push({ date: r.date || r.id, recordId: r.id, entry: e, idx: i });
+                }
+              });
+            });
+            if (plantEntries.length === 0) return null;
+            plantEntries.sort((a, b) => {
+              const ta = a.entry?.createdAt || 0;
+              const tb = b.entry?.createdAt || 0;
+              if (tb !== ta) return tb - ta;
+              return (b.date || '').localeCompare(a.date || '');
+            });
+            const expanded = !collapsedCategories.has('하루식물탐정');
+            const renderList = (title: string, items: any) => {
+              if (!Array.isArray(items) || items.length === 0) return null;
+              return (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ fontWeight: 700, fontSize: 12, color: '#555', marginBottom: 4 }}>{title}</div>
+                  <ul style={{ margin: 0, paddingLeft: 18, color: '#3d4734', fontSize: 12, lineHeight: 1.55 }}>
+                    {items.slice(0, 5).map((it: any, i: number) => (
+                      <li key={i}>{String(it)}</li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            };
+            return (
+              <div className="mb-4">
+                <button
+                  onClick={() => toggleCategory('하루식물탐정')}
+                  className="w-full flex items-center justify-between rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
+                  style={{ backgroundColor: '#FFFFFF', color: '#1A3C6E', padding: '0 16px', minHeight: 52, border: '1px solid #ECE6F5', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#10b981', flexShrink: 0 }} />
+                    🌱 하루식물탐정
+                    <span style={{ fontSize: 12, color: '#999', fontWeight: 500 }}>({plantEntries.length})</span>
+                  </span>
+                  <span style={{ fontSize: '10px' }}>{expanded ? '▼' : '▶'}</span>
+                </button>
+                {expanded && (
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                    {plantEntries.slice(0, 30).map(({ date, recordId, entry, idx }) => {
+                      const id = `${recordId}_${idx}`;
+                      const isOpen = expandedPlantIds.has(id);
+                      const confPct = typeof entry.identificationConfidence === 'number'
+                        ? Math.round(entry.identificationConfidence * 100)
+                        : null;
+                      return (
+                        <div key={id} className="border-t" style={{ borderColor: '#f5f5f5' }}>
+                          <button
+                            onClick={() => {
+                              setExpandedPlantIds((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(id)) next.delete(id); else next.add(id);
+                                return next;
+                              });
+                            }}
+                            className="w-full flex items-center px-4 text-left hover:bg-yellow-50 transition-colors"
+                            style={{ minHeight: 48 }}
+                          >
+                            <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: 52 }}>
+                              {date && date.length >= 10 ? date.slice(5) : date}
+                            </span>
+                            <span className="text-sm truncate" style={{ color: '#333', marginLeft: 8, flex: '1 1 auto', minWidth: 0 }}>
+                              {entry.plantName || '식물 이름 불확실'}
+                            </span>
+                            {confPct !== null && (
+                              <span style={{
+                                fontSize: 11, padding: '2px 8px', borderRadius: 6,
+                                background: confPct >= 60 ? '#eef0d8' : '#fff5d6',
+                                color: confPct >= 60 ? '#4A5A2C' : '#6e5a16',
+                                marginRight: 8, flexShrink: 0, fontWeight: 700,
+                              }}>
+                                {confPct}%
+                              </span>
+                            )}
+                            <span style={{ fontSize: 10, color: '#1A3C6E', flexShrink: 0 }}>{isOpen ? '▼' : '▶'}</span>
+                          </button>
+                          {isOpen && (
+                            <div className="px-4 py-3" style={{ borderTop: '1px solid #f5f5f5', background: '#fafafa' }}>
+                              {entry.imageUrl && (
+                                <img
+                                  src={entry.imageUrl}
+                                  alt={entry.plantName || '식물 사진'}
+                                  style={{ width: '100%', maxHeight: 240, objectFit: 'cover', borderRadius: 8, border: '1px solid #e6e6e6', marginBottom: 10 }}
+                                />
+                              )}
+                              <div style={{ fontSize: 13, color: '#333', lineHeight: 1.55 }}>
+                                <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 2 }}>
+                                  {entry.plantName || '식물 이름 불확실'}
+                                </div>
+                                {entry.latinName && (
+                                  <div style={{ fontStyle: 'italic', fontSize: 12, color: '#6b7654', marginBottom: 6 }}>
+                                    {entry.latinName}
+                                    {entry.taxonomy?.family && (
+                                      <span style={{ marginLeft: 6, fontStyle: 'normal', color: '#92996f' }}>
+                                        · {entry.taxonomy.family}
+                                        {entry.taxonomy.genus ? ` / ${entry.taxonomy.genus}` : ''}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                                {entry.condition && (
+                                  <div style={{ fontWeight: 700, color: '#4A5A2C', marginBottom: 6 }}>{entry.condition}</div>
+                                )}
+                                {renderList('관찰 내용', entry.findings)}
+                                {renderList('돌봄 힌트', entry.actions)}
+                                {renderList('주의 신호', entry.warningSigns)}
+                                {Array.isArray(entry.alternativeCandidates) && entry.alternativeCandidates.length > 0 && (
+                                  <div style={{ marginTop: 10 }}>
+                                    <div style={{ fontWeight: 700, fontSize: 12, color: '#555', marginBottom: 4 }}>다른 가능성</div>
+                                    <div style={{ fontSize: 12, color: '#666' }}>
+                                      {entry.alternativeCandidates.slice(0, 3).map((c: any, i: number) => (
+                                        <span key={i} style={{ marginRight: 10 }}>
+                                          {c.name}
+                                          {typeof c.probability === 'number' && (
+                                            <span style={{ color: '#888', marginLeft: 2 }}>({Math.round(c.probability * 100)}%)</span>
+                                          )}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {entry.note && (
+                                  <p style={{ marginTop: 10, fontSize: 11, color: '#7a725d', lineHeight: 1.5 }}>{entry.note}</p>
+                                )}
+                                {entry.identifiedBy === 'gemini' && (
+                                  <div style={{ marginTop: 8, fontSize: 10, color: '#999' }}>
+                                    ※ Plant.id 미사용 (AI 단독 분석)
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {plantEntries.length > 30 && (
+                      <div className="px-4 py-2 text-center text-xs" style={{ color: '#999', borderTop: '1px solid #f5f5f5' }}>
+                        최근 30건 표시 — 더 많은 기록은 월 이동으로 확인
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
