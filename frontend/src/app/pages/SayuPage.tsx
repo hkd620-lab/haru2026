@@ -2168,10 +2168,11 @@ export function SayuPage() {
                             </span>
                             {confPct !== null && (
                               <span style={{
-                                fontSize: 11, padding: '2px 8px', borderRadius: 6,
+                                fontSize: 22, lineHeight: 1, padding: '6px 12px', borderRadius: 8,
                                 background: confPct >= 60 ? '#eef0d8' : '#fff5d6',
                                 color: confPct >= 60 ? '#4A5A2C' : '#6e5a16',
-                                marginRight: 8, flexShrink: 0, fontWeight: 700,
+                                marginRight: 8, flexShrink: 0, fontWeight: 900,
+                                letterSpacing: '-0.02em',
                               }}>
                                 {confPct}%
                               </span>
@@ -2180,6 +2181,26 @@ export function SayuPage() {
                           </button>
                           {isOpen && (
                             <div className="px-4 py-3" style={{ borderTop: '1px solid #f5f5f5', background: '#fafafa' }}>
+                              {confPct !== null && (
+                                <div style={{
+                                  display: 'flex', alignItems: 'baseline', gap: 8,
+                                  marginBottom: 10, padding: '10px 14px', borderRadius: 10,
+                                  background: confPct >= 60 ? '#eef0d8' : '#fff5d6',
+                                  border: `1px solid ${confPct >= 60 ? '#d6db9f' : '#e8d68a'}`,
+                                }}>
+                                  <span style={{
+                                    fontSize: 42, lineHeight: 1, fontWeight: 900,
+                                    color: confPct >= 60 ? '#4A5A2C' : '#6e5a16',
+                                    letterSpacing: '-0.03em',
+                                  }}>{confPct}%</span>
+                                  <span style={{
+                                    fontSize: 13, fontWeight: 700,
+                                    color: confPct >= 60 ? '#4A5A2C' : '#6e5a16',
+                                  }}>
+                                    {confPct >= 80 ? '높은 확신' : confPct >= 60 ? '보통 확신' : '낮은 확신'}
+                                  </span>
+                                </div>
+                              )}
                               {entry.imageUrl && (
                                 <img
                                   src={entry.imageUrl}
