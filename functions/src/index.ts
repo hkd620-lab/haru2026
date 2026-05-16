@@ -275,6 +275,75 @@ ${text.slice(0, 600)}`;
   }
 );
 
+// ===== 🔑 SAYU 리스트 미리보기 키워드 추출 =====
+// 본문에서 핵심 명사 키워드 N개(기본 10개)를 JSON 배열로 반환.
+// 동의어 통합·동사/조사 제외. extractTitle과 동일한 모델·리전 사용.
+export const extractKeywords = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET]
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    try {
+      const { text, max } = request.data || {};
+      if (!text || typeof text !== 'string' || !text.trim()) {
+        throw new HttpsError('invalid-argument', '텍스트가 필요합니다.');
+      }
+      const limit = typeof max === 'number' && max > 0 && max <= 20 ? Math.floor(max) : 10;
+
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+
+      const prompt = `다음 기록에서 핵심 키워드를 정확히 ${limit}개 추출하세요.
+규칙:
+- 명사 위주 (동사·형용사·조사·접속사·감탄사 제외)
+- 동의어는 하나로 통합 (예: "AI"와 "인공지능"이 같이 나오면 하나만)
+- 각 키워드는 1~12자 한국어 명사 또는 영문 고유명사 원문 표기
+- 너무 일반적인 단어 제외 (예: "내용", "생각", "사람", "정도", "부분", "경우")
+- 출력은 JSON 배열 한 줄만. 예시: ["키워드1","키워드2","키워드3"]
+- 마크다운·번호·콜론·설명 절대 금지. 배열 외 텍스트 출력 금지.
+
+기록 내용:
+${text.slice(0, 4000)}`;
+
+      const result = await model.generateContent(prompt);
+      const raw = (result.response.text() || '').trim();
+
+      const cleaned = raw
+        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/\s*```$/i, '')
+        .trim();
+
+      let parsed: unknown = null;
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch {
+        const m = cleaned.match(/\[[\s\S]*?\]/);
+        if (m) {
+          try { parsed = JSON.parse(m[0]); } catch { /* keep null */ }
+        }
+      }
+
+      if (!Array.isArray(parsed)) return { keywords: [] as string[] };
+
+      const keywords = (parsed as unknown[])
+        .filter((k): k is string => typeof k === 'string')
+        .map((k) => k.trim().replace(/^["'`*#\-•·\s]+|["'`*#\-•·\s]+$/g, '').trim())
+        .filter((k) => k.length >= 1 && k.length <= 14)
+        .filter((k, i, arr) => arr.indexOf(k) === i)
+        .slice(0, limit);
+
+      return { keywords };
+    } catch (error: any) {
+      console.error('키워드 추출 실패:', error);
+      throw new HttpsError('internal', '키워드 추출에 실패했습니다.');
+    }
+  }
+);
+
 // ===== 🏷️ 기존 기록 AI 제목 일괄 생성 =====
 export const generateTitlesForAll = onCall(
   {
