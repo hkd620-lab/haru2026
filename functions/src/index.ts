@@ -4503,11 +4503,21 @@ type KindwiseIdResult = {
 
 async function callKindwiseIdentification(
   base64: string,
-  mimeType: string,
+  _mimeType: string,
   apiKey: string,
 ): Promise<KindwiseIdResult> {
-  const dataUri = `data:${mimeType};base64,${base64}`;
-  const endpoint = 'https://api.plant.id/v3/identification?details=common_names,taxonomy,url&language=ko';
+  // Plant.id v3는 raw base64를 권장 (data URI prefix 없이)
+  const detailsParam = encodeURIComponent('common_names,taxonomy,url');
+  const endpoint = `https://api.plant.id/v3/identification?details=${detailsParam}&language=ko`;
+
+  logger.info('Kindwise 요청 시작', {
+    endpoint,
+    base64Length: base64.length,
+    base64FirstChars: base64.slice(0, 20),
+    apiKeyLength: apiKey?.length || 0,
+    apiKeyMasked: apiKey ? `${apiKey.slice(0, 4)}…${apiKey.slice(-4)}` : 'EMPTY',
+  });
+
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
@@ -4515,16 +4525,29 @@ async function callKindwiseIdentification(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      images: [dataUri],
+      images: [base64],
       similar_images: false,
     }),
   });
 
   if (!response.ok) {
     const errText = await response.text().catch(() => '');
-    throw new Error(`Kindwise ${response.status}: ${errText.slice(0, 200)}`);
+    logger.error('Kindwise 응답 오류', {
+      status: response.status,
+      statusText: response.statusText,
+      bodyPreview: errText.slice(0, 500),
+      contentType: response.headers.get('content-type') || '',
+    });
+    throw new Error(`Kindwise ${response.status} ${response.statusText}: ${errText.slice(0, 200)}`);
   }
   const json: any = await response.json();
+  logger.info('Kindwise 응답 OK', {
+    status: response.status,
+    keys: Object.keys(json || {}),
+    resultKeys: Object.keys(json?.result || {}),
+    suggestionsCount: json?.result?.classification?.suggestions?.length || 0,
+    isPlantProb: json?.result?.is_plant?.probability,
+  });
   const suggestions: KindwiseSuggestion[] = json?.result?.classification?.suggestions || [];
   const top = suggestions[0] || {};
   const isPlant = Number(json?.result?.is_plant?.probability ?? 0);
@@ -4662,7 +4685,8 @@ export const analyzePlantPhoto = onCall(
       kindwise = await callKindwiseIdentification(cleanBase64, finalMime, KINDWISE_PLANT_ID_API_KEY_SECRET.value());
     } catch (err: any) {
       kindwiseError = err?.message || 'Kindwise 호출 실패';
-      logger.warn('Kindwise 식별 실패 — Gemini 단독 분석으로 진행', { message: kindwiseError });
+      // 메시지를 첫 인자에 결합 — Cloud Logging에서 본문 잘림 방지
+      logger.warn(`Kindwise 식별 실패 — Gemini 단독 분석으로 진행: ${kindwiseError}`);
     }
 
     // 2단계: Gemini 해설 (Kindwise 결과를 힌트로 사용)
