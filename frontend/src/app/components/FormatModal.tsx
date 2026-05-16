@@ -2,6 +2,7 @@ import { X, TestTube2, Wand2, Upload, Trash2, Plus } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { getTestData } from '../data/testData';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
 import { compressImage } from '../services/imageService';
 import { useAuth } from '../contexts/AuthContext';
@@ -24,11 +25,6 @@ interface FormatModalProps {
 
 interface PolishResult {
   text: string;
-}
-
-interface CloudinaryUploadResult {
-  url: string;
-  publicId?: string;
 }
 
 // 형식별 입력 필드 정의
@@ -545,26 +541,10 @@ ${contentValues}`,
     }
   };
 
-  const blobToBase64 = (blob: Blob): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result;
-        if (typeof result !== 'string') {
-          reject(new Error('BASE64_CONVERSION_FAILED'));
-          return;
-        }
-        resolve(result.split(',')[1] || '');
-      };
-      reader.onerror = () => reject(new Error('FILE_READER_ERROR'));
-      reader.readAsDataURL(blob);
-    });
-  };
-
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
-    
+
     const remainingSlots = 3 - uploadedImages.length;
     if (remainingSlots <= 0) {
       toast.warning('최대 3장까지만 업로드할 수 있습니다.');
@@ -572,12 +552,12 @@ ${contentValues}`,
     }
 
     const filesToUpload = Array.from(files).slice(0, remainingSlots);
-    
+
     setIsUploading(true);
     try {
+      const storage = getStorage();
       const newImageUrls: string[] = [];
       const functionsInstance = getFunctions(undefined, 'asia-northeast3');
-      const uploadRecordImage = httpsCallable(functionsInstance, 'uploadRecordImage');
 
       for (const file of filesToUpload) {
         if (file.size > 20 * 1024 * 1024) {
@@ -602,13 +582,12 @@ ${contentValues}`,
           continue;
         }
 
-        // HEIC → JPG 변환 (Cloudinary, Firebase Functions 경유)
+        // HEIC → JPG 변환 (Cloudinary convertHeic 임시 변환만 사용)
         let fileToProcess: File | Blob = file;
         if (isHeic) {
           try {
             toast.info('HEIC 파일을 변환 중...');
 
-            // arrayBuffer로 읽기 (FileReader 미사용)
             const arrayBuffer = await file.arrayBuffer();
             const bytes = new Uint8Array(arrayBuffer);
             let binary = '';
@@ -618,12 +597,11 @@ ${contentValues}`,
             }
             const imageBase64 = btoa(binary);
 
-            // convertHeic Function 호출 → Cloudinary JPG URL 반환
             const convertHeicFunc = httpsCallable(functionsInstance, 'convertHeic');
             const result = await convertHeicFunc({ imageBase64 });
             const { url } = result.data as { url: string };
 
-            // Cloudinary JPG URL → Blob
+            // Cloudinary 임시 JPG URL → Blob (이후 Firebase Storage에 영구 저장)
             const response = await fetch(url);
             if (!response.ok) throw new Error('JPG 다운로드 실패');
             fileToProcess = await response.blob();
@@ -634,35 +612,19 @@ ${contentValues}`,
           }
         }
 
-        // 이미지 압축 및 Cloudinary 업로드
+        // 이미지 압축 및 Firebase Storage 업로드 (메인 저장소)
         try {
-          console.log('🖼️ [이미지 압축 시작]');
-          const originalSizeMB = (fileToProcess.size / 1024 / 1024).toFixed(2);
-          console.log(`📥 원본 크기: ${originalSizeMB}MB`);
-
           const imageFile =
             fileToProcess instanceof File
               ? fileToProcess
               : new File([fileToProcess], fileName, { type: 'image/jpeg' });
           const compressed = await compressImage(imageFile, 800, 0.85);
 
-          const compressedSizeMB = (compressed.size / 1024 / 1024).toFixed(2);
-          const compressionRate = ((1 - compressed.size / file.size) * 100).toFixed(1);
-          console.log(`📤 압축 후 크기: ${compressedSizeMB}MB`);
-          console.log(`✅ 압축률: ${compressionRate}%`);
-          console.log('🎉 [이미지 압축 완료]\n');
-
-          const imageBase64 = await blobToBase64(compressed);
-          const result = await uploadRecordImage({
-            imageBase64,
-            mimeType: 'image/jpeg',
-            recordId,
-            prefix,
-            fileName,
-          });
-          const { url } = result.data as CloudinaryUploadResult;
-          if (!url) throw new Error('Cloudinary URL 누락');
-          newImageUrls.push(url);
+          const imagePath = `users/${user.uid}/format_photos/${recordId}_${prefix}_${fileName}`;
+          const storageRef = ref(storage, imagePath);
+          await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
+          const downloadUrl = await getDownloadURL(storageRef);
+          newImageUrls.push(downloadUrl);
         } catch (fileError: any) {
           if (fileError?.message === 'FILE_READER_ERROR') {
             toast.error(
@@ -687,30 +649,55 @@ ${contentValues}`,
     }
   };
 
+  // Firebase Storage URL → 내부 경로 추출 (deleteObject 용)
+  function getStoragePathFromDownloadUrl(url: string): string | null {
+    try {
+      const u = new URL(url);
+      const idx = u.pathname.indexOf('/o/');
+      if (idx === -1) return null;
+      const encodedPath = u.pathname.substring(idx + 3);
+      return decodeURIComponent(encodedPath);
+    } catch {
+      return null;
+    }
+  }
+
   const handleDeleteImage = async (imageUrl: string, index: number) => {
     try {
-      console.log('🗑️ 이미지 삭제 시도');
-      console.log('이미지 URL:', imageUrl);
+      const isCloudinary = typeof imageUrl === 'string' && imageUrl.includes('cloudinary.com');
 
-      const functionsInstance = getFunctions(undefined, 'asia-northeast3');
-      const deleteRecordImage = httpsCallable(functionsInstance, 'deleteRecordImage');
-      await deleteRecordImage({ imageUrl });
-      
+      if (isCloudinary) {
+        // 과거 Cloudinary 업로드 호환 — Functions로 원본도 삭제
+        const functionsInstance = getFunctions(undefined, 'asia-northeast3');
+        const deleteRecordImage = httpsCallable(functionsInstance, 'deleteRecordImage');
+        await deleteRecordImage({ imageUrl });
+      } else {
+        // Firebase Storage 표준 삭제
+        const storage = getStorage();
+        const path = imageUrl.startsWith('http') ? getStoragePathFromDownloadUrl(imageUrl) : imageUrl;
+        if (!path) throw new Error('Invalid image URL');
+        const imageRef = ref(storage, path);
+        await deleteObject(imageRef);
+      }
+
       setUploadedImages(prev => prev.filter((_, i) => i !== index));
       toast.success('사진이 삭제되었습니다.');
     } catch (error: any) {
       console.error('이미지 삭제 실패:', error);
-      
-      // 이미 없거나 옛 URL 판별 실패면 화면에서는 제거 가능하게 처리
-      const ignorableDeleteError =
-        error?.code === 'functions/not-found' ||
-        error?.code === 'functions/invalid-argument' ||
-        error?.code === 'storage/object-not-found' ||
-        error?.message?.includes('not found') ||
-        error?.message?.includes('object-not-found') ||
-        error?.message?.includes('invalid-argument');
 
-      if (ignorableDeleteError) {
+      // 이미 사라졌거나 URL 판별 실패한 경우 — 화면에서는 제거 (양쪽 무시 패턴 통합)
+      const code = error?.code || '';
+      const msg = error?.message || '';
+      const ignorable =
+        code === 'storage/object-not-found' ||
+        code === 'functions/not-found' ||
+        code === 'functions/invalid-argument' ||
+        msg.includes('not found') ||
+        msg.includes('object-not-found') ||
+        msg.includes('invalid-argument') ||
+        msg.includes('이미 삭제');
+
+      if (ignorable) {
         setUploadedImages(prev => prev.filter((_, i) => i !== index));
         toast.success('사진이 제거되었습니다.');
       } else {

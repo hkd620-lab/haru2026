@@ -7,7 +7,7 @@ import { useLoading } from '../contexts/LoadingContext';
 import { HaruLogoAnimation } from './HaruLogoAnimation';
 import { doc, getDoc, updateDoc, deleteDoc, deleteField, arrayRemove } from 'firebase/firestore';
 import { ref, listAll, deleteObject, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { httpsCallable } from 'firebase/functions';
+import { httpsCallable, getFunctions } from 'firebase/functions';
 import { db, storage, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -470,16 +470,25 @@ export function SayuModal({
   const handleDeleteImage = async (imageUrl: string, index: number) => {
     if (!currentUser || !firestoreId || !formatKey) return;
     try {
-      // Storage에서 삭제 (URL에서 파일명 추출)
+      // URL 종류에 따라 원본 삭제 분기 (실패해도 Firestore는 업데이트)
       try {
-        const decodedUrl = decodeURIComponent(imageUrl);
-        const fileName = decodedUrl.split('/format_photos/')[1]?.split('?')[0];
-        if (fileName) {
-          const imageRef = ref(storage, `users/${currentUser.uid}/format_photos/${fileName}`);
-          await deleteObject(imageRef);
+        const isCloudinary = typeof imageUrl === 'string' && imageUrl.includes('cloudinary.com');
+        if (isCloudinary) {
+          // 과거 Cloudinary 업로드 호환 — Functions로 원본 삭제
+          const fns = getFunctions(undefined, 'asia-northeast3');
+          const deleteRecordImage = httpsCallable(fns, 'deleteRecordImage');
+          await deleteRecordImage({ imageUrl });
+        } else {
+          // Firebase Storage 표준 삭제
+          const decodedUrl = decodeURIComponent(imageUrl);
+          const fileName = decodedUrl.split('/format_photos/')[1]?.split('?')[0];
+          if (fileName) {
+            const imageRef = ref(storage, `users/${currentUser.uid}/format_photos/${fileName}`);
+            await deleteObject(imageRef);
+          }
         }
       } catch {
-        // Storage 삭제 실패해도 Firestore는 업데이트
+        // 원본 삭제 실패해도 Firestore는 업데이트 — UX 보존
       }
       // Firestore 업데이트
       const newImages = localImages

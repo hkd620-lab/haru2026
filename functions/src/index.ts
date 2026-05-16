@@ -1287,47 +1287,9 @@ export const convertHeic = onCall(
   }
 );
 
-export const uploadRecordImage = onCall(
-  { region: 'asia-northeast3' },
-  async (request) => {
-    if (!request.auth) {
-      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
-    }
-
-    const { imageBase64, mimeType, recordId, prefix, fileName } = request.data || {};
-    if (!imageBase64 || typeof imageBase64 !== 'string') {
-      throw new HttpsError('invalid-argument', '이미지 데이터가 필요합니다.');
-    }
-
-    const contentType = typeof mimeType === 'string' && mimeType.startsWith('image/')
-      ? mimeType
-      : 'image/jpeg';
-    const uid = request.auth.uid;
-    const safeRecordId = safeCloudinarySegment(recordId, 'record');
-    const safePrefix = safeCloudinarySegment(prefix, 'format');
-    const safeFileName = safeCloudinarySegment(String(fileName || 'image').replace(/\.[^.]+$/, ''), 'image');
-
-    configureCloudinary();
-
-    try {
-      const dataUri = `data:${contentType};base64,${imageBase64}`;
-      const result = await cloudinary.uploader.upload(dataUri, {
-        resource_type: 'image',
-        folder: `haru2026/records/${uid}/${safePrefix}`,
-        public_id: `${safeRecordId}_${safeFileName}`,
-        overwrite: false,
-      });
-
-      return {
-        url: result.secure_url,
-        publicId: result.public_id,
-      };
-    } catch (error: any) {
-      logger.error('Cloudinary 기록 사진 업로드 오류:', error);
-      throw new HttpsError('internal', `업로드 실패: ${error.message}`);
-    }
-  }
-);
+// uploadRecordImage 는 정책 복구(Firebase Storage 메인)에 따라 제거됨.
+// 일반 업로드는 frontend가 Firebase Storage 직접 처리.
+// HEIC만 convertHeic(임시 변환) 거친 후 Firebase Storage에 영구 저장.
 
 export const deleteRecordImage = onCall(
   { region: 'asia-northeast3' },
