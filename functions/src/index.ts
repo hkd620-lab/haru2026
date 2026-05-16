@@ -35,6 +35,7 @@ const COLLECTOR_SECRET_KEY = defineSecret('COLLECTOR_SECRET_KEY');
 const ONBID_API_KEY_SECRET = defineSecret('ONBID_API_KEY');
 const DRUG_API_KEY_SECRET = defineSecret('DRUG_API_KEY');
 const HIRA_API_KEY_SECRET = defineSecret('HIRA_API_KEY');
+const KINDWISE_PLANT_ID_API_KEY_SECRET = defineSecret('KINDWISE_PLANT_ID_API_KEY');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
 
 // Storage 버킷
@@ -4474,11 +4475,160 @@ export const extractKNewsMetadata = onCall(
   }
 );
 
-// ===== 🌱 하루식물탐정 — 식물 사진 상태 분석 =====
+// ===== 🌱 하루식물탐정 — Kindwise Plant.id 식별 + Gemini 해설 =====
+// 1) Kindwise Plant.id v3 identification: 학명·일반명·확률 (전문 모델)
+// 2) Gemini Flash Lite vision: 상태·관찰·돌봄 힌트·주의 신호 (해설 레이어)
+// 두 호출 병렬 + Promise.allSettled로 graceful fallback.
+
+type KindwiseSuggestion = {
+  name?: string;
+  probability?: number;
+  details?: {
+    common_names?: string[];
+    taxonomy?: { class?: string; family?: string; genus?: string; order?: string; phylum?: string; kingdom?: string };
+    url?: string;
+    description?: { value?: string };
+  };
+};
+
+type KindwiseIdResult = {
+  topPlantName: string;
+  latinName: string;
+  identificationProbability: number;
+  isPlantProbability: number;
+  alternativeCandidates: { name: string; latinName: string; probability: number }[];
+  taxonomy?: { family?: string; genus?: string };
+  kindwiseUrl?: string;
+};
+
+async function callKindwiseIdentification(
+  base64: string,
+  mimeType: string,
+  apiKey: string,
+): Promise<KindwiseIdResult> {
+  const dataUri = `data:${mimeType};base64,${base64}`;
+  const endpoint = 'https://api.plant.id/v3/identification?details=common_names,taxonomy,url&language=ko';
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Api-Key': apiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      images: [dataUri],
+      similar_images: false,
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '');
+    throw new Error(`Kindwise ${response.status}: ${errText.slice(0, 200)}`);
+  }
+  const json: any = await response.json();
+  const suggestions: KindwiseSuggestion[] = json?.result?.classification?.suggestions || [];
+  const top = suggestions[0] || {};
+  const isPlant = Number(json?.result?.is_plant?.probability ?? 0);
+
+  const topCommon = top.details?.common_names?.[0];
+  const topName = String(topCommon || top.name || '식물 이름 불확실').slice(0, 80);
+  const latinName = String(top.name || '').slice(0, 120);
+  const probability = Number(top.probability || 0);
+  const taxonomy = top.details?.taxonomy
+    ? { family: top.details.taxonomy.family, genus: top.details.taxonomy.genus }
+    : undefined;
+
+  const alternativeCandidates = suggestions.slice(1, 4).map((s) => ({
+    name: String(s.details?.common_names?.[0] || s.name || '').slice(0, 80),
+    latinName: String(s.name || '').slice(0, 120),
+    probability: Number(s.probability || 0),
+  })).filter((c) => c.name);
+
+  return {
+    topPlantName: topName,
+    latinName,
+    identificationProbability: probability,
+    isPlantProbability: isPlant,
+    alternativeCandidates,
+    taxonomy,
+    kindwiseUrl: top.details?.url,
+  };
+}
+
+type GeminiAdviceResult = {
+  plantName: string;
+  condition: string;
+  confidence: 'high' | 'medium' | 'low';
+  findings: string[];
+  actions: string[];
+  warningSigns: string[];
+  note: string;
+};
+
+async function callGeminiAdvice(
+  base64: string,
+  mimeType: string,
+  apiKey: string,
+  identifiedName?: string,
+): Promise<GeminiAdviceResult> {
+  const nameHint = identifiedName
+    ? `\n[참고] 외부 식물 식별 모델은 이 사진을 "${identifiedName}"로 추정했습니다. 이름은 그대로 신뢰하되 상태·관찰·관리 힌트만 사진을 보고 한국어로 답하세요.\n`
+    : '';
+
+  const prompt = `당신은 텃밭과 화분 식물을 사진으로 살피는 식물 도우미입니다.
+사진에서 보이는 정보만 근거로 식물 상태와 관리 힌트를 한국어로 답하세요.
+${nameHint}
+[중요 원칙]
+- 사진만으로 확정 진단하지 말고 불확실하면 불확실하다고 말하세요.
+- 농약·살충제 제품명이나 위험한 처방을 단정하지 마세요.
+- 먹을 수 있는 식물/독성 여부는 확정하지 마세요.
+- 응급 수준의 병충해나 고사 위험이 의심되면 전문가 상담을 권하세요.
+- 응답은 JSON 하나만 출력하고 마크다운은 쓰지 마세요.
+
+[JSON 형식]
+{
+  "plantName": "${identifiedName ? identifiedName : '가능한 식물 이름 또는 식물 이름 불확실'}",
+  "condition": "한 줄 상태 요약",
+  "confidence": "high|medium|low",
+  "findings": ["사진에서 보이는 관찰 내용 1", "관찰 내용 2"],
+  "actions": ["오늘 할 수 있는 관리 힌트 1", "관리 힌트 2"],
+  "warningSigns": ["주의해서 다시 볼 신호 1"],
+  "note": "사진 분석은 참고용이라는 짧은 안내"
+}`;
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+  const result = await model.generateContent([
+    prompt,
+    { inlineData: { data: base64, mimeType: mimeType || 'image/jpeg' } },
+  ]);
+
+  const text = result.response.text();
+  const cleaned = text.replace(/```json|```/g, '').trim();
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('Gemini 응답에서 JSON을 찾을 수 없습니다.');
+
+  const parsed = JSON.parse(jsonMatch[0]);
+  const normalizeList = (value: unknown): string[] =>
+    Array.isArray(value)
+      ? value.map((item) => String(item || '').trim()).filter(Boolean).slice(0, 5)
+      : [];
+
+  const conf = String(parsed?.confidence);
+  return {
+    plantName: String(parsed?.plantName || identifiedName || '식물 이름 불확실').slice(0, 80),
+    condition: String(parsed?.condition || '사진에서 확인 가능한 상태가 제한적입니다.').slice(0, 160),
+    confidence: (['high', 'medium', 'low'].includes(conf) ? conf : 'low') as 'high' | 'medium' | 'low',
+    findings: normalizeList(parsed?.findings),
+    actions: normalizeList(parsed?.actions),
+    warningSigns: normalizeList(parsed?.warningSigns),
+    note: String(parsed?.note || '사진 분석은 참고용입니다. 상태가 악화되면 전문가에게 상담하세요.').slice(0, 200),
+  };
+}
+
 export const analyzePlantPhoto = onCall(
   {
     region: 'asia-northeast3',
-    secrets: [GEMINI_API_KEY_SECRET],
+    secrets: [GEMINI_API_KEY_SECRET, KINDWISE_PLANT_ID_API_KEY_SECRET],
     memory: '512MiB',
     timeoutSeconds: 60,
   },
@@ -4498,75 +4648,70 @@ export const analyzePlantPhoto = onCall(
       throw new HttpsError('invalid-argument', '사진이 너무 큽니다. 더 작은 사진으로 다시 시도해 주세요.');
     }
 
+    const finalMime = mimeType || 'image/jpeg';
     logger.info('analyzePlantPhoto 호출', {
       uid: request.auth.uid.slice(0, 8) + '…',
       imageKb,
-      mimeType: mimeType || 'image/jpeg',
+      mimeType: finalMime,
     });
 
-    const prompt = `당신은 텃밭과 화분 식물을 사진으로 살피는 식물 도우미입니다.
-사진에서 보이는 정보만 근거로 식물 이름과 상태, 관리 힌트를 한국어로 답하세요.
-
-[중요 원칙]
-- 사진만으로 확정 진단하지 말고 불확실하면 불확실하다고 말하세요.
-- 농약·살충제 제품명이나 위험한 처방을 단정하지 마세요.
-- 먹을 수 있는 식물/독성 여부는 확정하지 마세요.
-- 응급 수준의 병충해나 고사 위험이 의심되면 전문가 상담을 권하세요.
-- 응답은 JSON 하나만 출력하고 마크다운은 쓰지 마세요.
-
-[JSON 형식]
-{
-  "plantName": "가능한 식물 이름 또는 식물 이름 불확실",
-  "condition": "한 줄 상태 요약",
-  "confidence": "high|medium|low",
-  "findings": ["사진에서 보이는 관찰 내용 1", "관찰 내용 2"],
-  "actions": ["오늘 할 수 있는 관리 힌트 1", "관리 힌트 2"],
-  "warningSigns": ["주의해서 다시 볼 신호 1"],
-  "note": "사진 분석은 참고용이라는 짧은 안내"
-}`;
-
+    // 1단계: Kindwise 식별 (먼저 식물 이름을 확보해 Gemini 프롬프트에 주입)
+    let kindwise: KindwiseIdResult | null = null;
+    let kindwiseError: string | undefined;
     try {
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
-      const result = await model.generateContent([
-        prompt,
-        {
-          inlineData: {
-            data: cleanBase64,
-            mimeType: mimeType || 'image/jpeg',
-          },
-        },
-      ]);
-
-      const text = result.response.text();
-      const cleaned = text.replace(/```json|```/g, '').trim();
-      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        logger.error('analyzePlantPhoto 응답 JSON 미발견', { text: text.slice(0, 500) });
-        throw new HttpsError('internal', 'AI 응답에서 JSON을 찾을 수 없습니다.');
-      }
-
-      const parsed = JSON.parse(jsonMatch[0]);
-      const normalizeList = (value: unknown): string[] =>
-        Array.isArray(value)
-          ? value.map((item) => String(item || '').trim()).filter(Boolean).slice(0, 5)
-          : [];
-
-      return {
-        plantName: String(parsed?.plantName || '식물 이름 불확실').slice(0, 80),
-        condition: String(parsed?.condition || '사진에서 확인 가능한 상태가 제한적입니다.').slice(0, 160),
-        confidence: ['high', 'medium', 'low'].includes(String(parsed?.confidence))
-          ? parsed.confidence
-          : 'low',
-        findings: normalizeList(parsed?.findings),
-        actions: normalizeList(parsed?.actions),
-        warningSigns: normalizeList(parsed?.warningSigns),
-        note: String(parsed?.note || '사진 분석은 참고용입니다. 상태가 악화되면 전문가에게 상담하세요.').slice(0, 200),
-      };
-    } catch (error: any) {
-      if (error instanceof HttpsError) throw error;
-      logger.error('analyzePlantPhoto 실패', { message: error?.message });
-      throw new HttpsError('internal', '식물 사진 분석에 실패했습니다. 사진을 다시 찍어 주세요.');
+      kindwise = await callKindwiseIdentification(cleanBase64, finalMime, KINDWISE_PLANT_ID_API_KEY_SECRET.value());
+    } catch (err: any) {
+      kindwiseError = err?.message || 'Kindwise 호출 실패';
+      logger.warn('Kindwise 식별 실패 — Gemini 단독 분석으로 진행', { message: kindwiseError });
     }
+
+    // 2단계: Gemini 해설 (Kindwise 결과를 힌트로 사용)
+    let advice: GeminiAdviceResult;
+    try {
+      advice = await callGeminiAdvice(
+        cleanBase64,
+        finalMime,
+        GEMINI_API_KEY_SECRET.value(),
+        kindwise?.topPlantName,
+      );
+    } catch (err: any) {
+      if (err instanceof HttpsError) throw err;
+      logger.error('Gemini 해설 실패', { message: err?.message, kindwiseError });
+      // Gemini도 실패 — Kindwise만이라도 있으면 최소 응답, 아니면 에러
+      if (!kindwise) {
+        throw new HttpsError('internal', '식물 사진 분석에 실패했습니다. 사진을 다시 찍어 주세요.');
+      }
+      advice = {
+        plantName: kindwise.topPlantName,
+        condition: '해설을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.',
+        confidence: 'low',
+        findings: [],
+        actions: [],
+        warningSigns: [],
+        note: '사진 분석은 참고용입니다. 상태가 악화되면 전문가에게 상담하세요.',
+      };
+    }
+
+    // 응답 합치기
+    return {
+      // 표시용 이름: Kindwise top 우선 → Gemini fallback
+      plantName: kindwise?.topPlantName || advice.plantName,
+      latinName: kindwise?.latinName || '',
+      identificationConfidence: kindwise?.identificationProbability ?? null, // 0~1
+      isPlantProbability: kindwise?.isPlantProbability ?? null,
+      alternativeCandidates: kindwise?.alternativeCandidates || [],
+      taxonomy: kindwise?.taxonomy,
+      kindwiseUrl: kindwise?.kindwiseUrl,
+      // 해설 (Gemini)
+      condition: advice.condition,
+      confidence: advice.confidence,
+      findings: advice.findings,
+      actions: advice.actions,
+      warningSigns: advice.warningSigns,
+      note: advice.note,
+      // 메타 (디버깅·UI에서 비표시 가능)
+      identifiedBy: kindwise ? 'kindwise' : 'gemini',
+      kindwiseError: kindwiseError || null,
+    };
   }
 );

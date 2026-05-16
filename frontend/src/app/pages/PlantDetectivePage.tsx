@@ -7,8 +7,23 @@ import { toast } from 'sonner';
 import { functions } from '../../firebase';
 import { compressImage } from '../services/imageService';
 
+type AlternativeCandidate = {
+  name: string;
+  latinName?: string;
+  probability?: number;
+};
+
 type PlantResult = {
+  // Kindwise 식별
   plantName?: string;
+  latinName?: string;
+  identificationConfidence?: number | null; // 0~1
+  isPlantProbability?: number | null; // 0~1
+  alternativeCandidates?: AlternativeCandidate[];
+  taxonomy?: { family?: string; genus?: string };
+  kindwiseUrl?: string;
+  identifiedBy?: 'kindwise' | 'gemini';
+  // Gemini 해설
   condition?: string;
   confidence?: 'high' | 'medium' | 'low';
   findings?: string[];
@@ -280,13 +295,34 @@ export function PlantDetectivePage() {
               </div>
             ) : (
               <div>
-                <div style={{ fontSize: 13, color: '#6b7654', fontWeight: 800, marginBottom: 8 }}>
-                  신뢰도: {result.confidence === 'high' ? '높음' : result.confidence === 'medium' ? '보통' : '낮음'}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#6b7654', fontWeight: 800, marginBottom: 8, flexWrap: 'wrap' }}>
+                  <span>해설 신뢰도: {result.confidence === 'high' ? '높음' : result.confidence === 'medium' ? '보통' : '낮음'}</span>
+                  {typeof result.identificationConfidence === 'number' && (
+                    <span style={{ padding: '2px 8px', borderRadius: 6, background: '#eef0d8', color: '#4A5A2C' }}>
+                      식별 일치도 {Math.round(result.identificationConfidence * 100)}%
+                    </span>
+                  )}
+                  {result.identifiedBy === 'gemini' && (
+                    <span style={{ padding: '2px 8px', borderRadius: 6, background: '#fcebd8', color: '#7b3f28', fontSize: 11 }}>
+                      Plant.id 미사용 (AI 단독)
+                    </span>
+                  )}
                 </div>
-                <h2 style={{ margin: '0 0 8px', fontSize: 24, fontWeight: 950 }}>
+                <h2 style={{ margin: '0 0 4px', fontSize: 24, fontWeight: 950 }}>
                   {result.plantName || '식물 이름 불확실'}
                 </h2>
-                <p style={{ margin: '0 0 16px', color: '#4A5A2C', fontSize: 16, fontWeight: 800 }}>
+                {result.latinName && (
+                  <div style={{ margin: '0 0 10px', fontSize: 13, fontStyle: 'italic', color: '#6b7654' }}>
+                    {result.latinName}
+                    {result.taxonomy?.family && (
+                      <span style={{ marginLeft: 8, fontStyle: 'normal', color: '#92996f' }}>
+                        · {result.taxonomy.family}
+                        {result.taxonomy.genus ? ` / ${result.taxonomy.genus}` : ''}
+                      </span>
+                    )}
+                  </div>
+                )}
+                <p style={{ margin: '8px 0 16px', color: '#4A5A2C', fontSize: 16, fontWeight: 800 }}>
                   {result.condition || '사진에서 확인 가능한 상태가 제한적입니다.'}
                 </p>
 
@@ -294,10 +330,43 @@ export function PlantDetectivePage() {
                 <ResultList title="돌봄 힌트" items={result.actions} />
                 <ResultList title="주의 신호" items={result.warningSigns} />
 
+                {result.alternativeCandidates && result.alternativeCandidates.length > 0 && (
+                  <div style={{ marginTop: 16 }}>
+                    <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 900, color: '#24301f' }}>
+                      다른 가능성
+                    </h3>
+                    <ul style={{ margin: 0, paddingLeft: 18, color: '#3d4734', lineHeight: 1.65 }}>
+                      {result.alternativeCandidates.slice(0, 3).map((c, i) => (
+                        <li key={`alt-${i}`}>
+                          <span style={{ fontWeight: 700 }}>{c.name}</span>
+                          {c.latinName && (
+                            <span style={{ marginLeft: 6, fontStyle: 'italic', color: '#6b7654' }}>{c.latinName}</span>
+                          )}
+                          {typeof c.probability === 'number' && (
+                            <span style={{ marginLeft: 6, color: '#92996f', fontSize: 12 }}>
+                              ({Math.round(c.probability * 100)}%)
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 {result.note && (
                   <p style={{ marginTop: 14, fontSize: 13, color: '#7a725d', lineHeight: 1.6 }}>
                     {result.note}
                   </p>
+                )}
+                {result.kindwiseUrl && (
+                  <a
+                    href={result.kindwiseUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: 'inline-block', marginTop: 10, fontSize: 12, color: '#4A5A2C', textDecoration: 'underline' }}
+                  >
+                    Plant.id 도감에서 자세히 보기 →
+                  </a>
                 )}
               </div>
             )}
