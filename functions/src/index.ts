@@ -276,8 +276,18 @@ ${text.slice(0, 600)}`;
 );
 
 // ===== 🔑 SAYU 리스트 미리보기 키워드 추출 =====
-// 본문에서 핵심 명사 키워드 N개(기본 10개)를 JSON 배열로 반환.
-// 동의어 통합·동사/조사 제외. extractTitle과 동일한 모델·리전 사용.
+// 본문에서 핵심 고유어(서비스명·전략명·시장명·기능명·제품명) 3~6개를 JSON 배열로 반환.
+// 일반 추상명사·1글자·단독 "AI" 등은 후처리에서 제거.
+const KW_STRICT_STOP = new Set<string>([
+  // 단독 일반어
+  'AI', 'ai', '기록', '실제', '현재', '구조', '가능성', '수준', '부분', '내용', '생각',
+  '사람', '경우', '이런', '저런', '방법', '방향', '과정', '결과', '효과', '의미',
+  '가치', '활용', '적용', '관련', '다양', '진행', '중심', '기준', '정도', '시간',
+  '시점', '필요', '중요', '주요', '확인', '사용', '제공', '하나', '오늘', '내일',
+  '어제', '지금', '이번', '이후', '이전', '여러', '모두', '많이', '많은', '대부분',
+  '문제', '상황', '상태', '상황', '느낌',
+]);
+
 export const extractKeywords = onCall(
   {
     region: 'asia-northeast3',
@@ -288,25 +298,46 @@ export const extractKeywords = onCall(
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
     try {
-      const { text, max } = request.data || {};
+      const { text, title, max } = request.data || {};
       if (!text || typeof text !== 'string' || !text.trim()) {
         throw new HttpsError('invalid-argument', '텍스트가 필요합니다.');
       }
-      const limit = typeof max === 'number' && max > 0 && max <= 20 ? Math.floor(max) : 10;
+      // 클라이언트가 더 큰 값을 보내도 6으로 cap. 최소 3.
+      const requested = typeof max === 'number' && max > 0 && max <= 20 ? Math.floor(max) : 6;
+      const limit = Math.max(3, Math.min(6, requested));
+      const titleLine = typeof title === 'string' && title.trim() ? title.trim().slice(0, 80) : '';
 
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
       const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
 
-      const prompt = `다음 기록에서 핵심 키워드를 정확히 ${limit}개 추출하세요.
-규칙:
-- 명사 위주 (동사·형용사·조사·접속사·감탄사 제외)
-- 동의어는 하나로 통합 (예: "AI"와 "인공지능"이 같이 나오면 하나만)
-- 각 키워드는 1~12자 한국어 명사 또는 영문 고유명사 원문 표기
-- 너무 일반적인 단어 제외 (예: "내용", "생각", "사람", "정도", "부분", "경우")
-- 출력은 JSON 배열 한 줄만. 예시: ["키워드1","키워드2","키워드3"]
-- 마크다운·번호·콜론·설명 절대 금지. 배열 외 텍스트 출력 금지.
+      const prompt = `다음 기록에서 핵심 키워드를 3~${limit}개만 추출하세요.
 
-기록 내용:
+[엄격한 규칙]
+1. 기록의 **주제명/서비스명/전략명/시장명/기능명/제품명/지역명/조직명** 같은 고유어만 사용
+2. 제목에 포함된 핵심 고유어를 최우선으로 살릴 것
+3. **1글자 키워드 절대 금지** (반드시 2글자 이상)
+4. 다음 일반어는 절대 사용 금지: AI(단독), 기록, 실제, 현재, 구조, 가능성, 수준, 부분, 내용, 생각, 사람, 경우, 이런, 저런, 방법, 방향, 과정, 결과, 효과, 의미, 가치, 활용, 적용, 관련, 다양, 진행, 중심, 기준, 정도, 시간, 시점, 필요, 중요, 주요, 확인, 사용, 제공, 문제, 상황, 상태, 느낌
+5. 단독 "AI"는 금지. "AI비서", "AI플랫폼" 같은 합성어 형태는 허용
+6. 조사·형용사·부사·동사·일반 추상명사 제외
+7. 동의어는 한 표현으로 통합 (예: "공모" + "공모전" → "공모전")
+8. 각 키워드 길이 2~12자, 한국어 명사 또는 영문 고유명사 원문
+
+[출력 형식]
+JSON 배열 한 줄만. 마크다운·번호·콜론·설명 절대 금지. 배열 외 텍스트 출력 금지.
+
+[예시 1]
+제목: "HARU2026 공모전 합격 전략"
+출력: ["HARU2026","공모전","합격전략"]
+
+[예시 2]
+제목: "외국인 전용 AI 비서 시장 분석"
+출력: ["외국인","AI비서","시장분석"]
+
+[예시 3]
+제목: "HARU의 독보적 성장세"
+출력: ["HARU","성장세","독보성"]
+
+${titleLine ? `제목: "${titleLine}"\n` : ''}기록 내용:
 ${text.slice(0, 4000)}`;
 
       const result = await model.generateContent(prompt);
@@ -332,7 +363,9 @@ ${text.slice(0, 4000)}`;
       const keywords = (parsed as unknown[])
         .filter((k): k is string => typeof k === 'string')
         .map((k) => k.trim().replace(/^["'`*#\-•·\s]+|["'`*#\-•·\s]+$/g, '').trim())
-        .filter((k) => k.length >= 1 && k.length <= 14)
+        .filter((k) => k.length >= 2 && k.length <= 14)
+        .filter((k) => !KW_STRICT_STOP.has(k) && !KW_STRICT_STOP.has(k.toLowerCase()))
+        .filter((k) => !/^\d+$/.test(k))
         .filter((k, i, arr) => arr.indexOf(k) === i)
         .slice(0, limit);
 
@@ -341,6 +374,56 @@ ${text.slice(0, 4000)}`;
       console.error('키워드 추출 실패:', error);
       throw new HttpsError('internal', '키워드 추출에 실패했습니다.');
     }
+  }
+);
+
+// ===== 🧹 기존 저품질 keywords 캐시 일괄 삭제 (호출자 본인 데이터 한정) =====
+// 사용법: 브라우저 콘솔에서 한 줄 호출 — 결과로 {docsExamined, docsUpdated, fieldsCleared} 반환.
+// const { getFunctions, httpsCallable } = await import('firebase/functions');
+// const r = await httpsCallable(getFunctions(undefined,'asia-northeast3'),'clearKeywordsCache')();
+// console.log(r.data);
+export const clearKeywordsCache = onCall(
+  { region: 'asia-northeast3' },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    const FieldValue = admin.firestore.FieldValue;
+    const recordsRef = db.collection('users').doc(uid).collection('records');
+    const snap = await recordsRef.get();
+
+    let docsExamined = 0;
+    let docsUpdated = 0;
+    let fieldsCleared = 0;
+
+    let batch = db.batch();
+    let opsInBatch = 0;
+
+    for (const docSnap of snap.docs) {
+      docsExamined++;
+      const data = docSnap.data() as Record<string, any>;
+      const updates: Record<string, any> = {};
+      Object.keys(data).forEach((k) => {
+        if (k === 'keywords' || k.endsWith('_keywords')) {
+          updates[k] = FieldValue.delete();
+          fieldsCleared++;
+        }
+      });
+      if (Object.keys(updates).length === 0) continue;
+      batch.update(docSnap.ref, updates);
+      docsUpdated++;
+      opsInBatch++;
+      if (opsInBatch >= 400) {
+        await batch.commit();
+        batch = db.batch();
+        opsInBatch = 0;
+      }
+    }
+    if (opsInBatch > 0) {
+      await batch.commit();
+    }
+    return { docsExamined, docsUpdated, fieldsCleared };
   }
 );
 
