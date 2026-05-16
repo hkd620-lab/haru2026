@@ -1202,6 +1202,65 @@ function extractCloudinaryPublicId(imageUrl: string): string | null {
   }
 }
 
+function extractFirebaseStorageTarget(imageUrl: string): { bucketName?: string; path: string } | null {
+  const trimmed = imageUrl.trim();
+  if (!trimmed) return null;
+
+  try {
+    if (trimmed.startsWith('gs://')) {
+      const withoutScheme = trimmed.slice('gs://'.length);
+      const slashIndex = withoutScheme.indexOf('/');
+      if (slashIndex === -1) return null;
+      return {
+        bucketName: withoutScheme.slice(0, slashIndex),
+        path: withoutScheme.slice(slashIndex + 1),
+      };
+    }
+
+    const parsed = new URL(trimmed);
+    const parts = parsed.pathname.split('/').filter(Boolean);
+
+    if (parsed.hostname === 'firebasestorage.googleapis.com') {
+      const bucketIndex = parts.indexOf('b');
+      const objectIndex = parts.indexOf('o');
+      if (bucketIndex === -1 || objectIndex === -1 || !parts[bucketIndex + 1] || !parts[objectIndex + 1]) {
+        return null;
+      }
+      return {
+        bucketName: decodeURIComponent(parts[bucketIndex + 1]),
+        path: decodeURIComponent(parts.slice(objectIndex + 1).join('/')),
+      };
+    }
+
+    if (parsed.hostname === 'storage.googleapis.com' && parts.length >= 2) {
+      return {
+        bucketName: decodeURIComponent(parts[0]),
+        path: decodeURIComponent(parts.slice(1).join('/')),
+      };
+    }
+
+    if (parsed.hostname.endsWith('.storage.googleapis.com') && parts.length >= 1) {
+      return {
+        bucketName: parsed.hostname.replace(/\.storage\.googleapis\.com$/, ''),
+        path: decodeURIComponent(parts.join('/')),
+      };
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function isStorageObjectNotFound(error: any): boolean {
+  const code = String(error?.code || '').toLowerCase();
+  const message = String(error?.message || '').toLowerCase();
+  return code === '404' ||
+    code.includes('not-found') ||
+    message.includes('no such object') ||
+    message.includes('not found');
+}
+
 export const convertHeic = onCall(
   { region: 'asia-northeast3' },
   async (request) => {
@@ -1278,33 +1337,66 @@ export const deleteRecordImage = onCall(
     }
 
     const { imageUrl, publicId } = request.data || {};
+    const uid = request.auth.uid;
     const targetPublicId = typeof publicId === 'string' && publicId.trim()
       ? publicId.trim()
       : typeof imageUrl === 'string'
         ? extractCloudinaryPublicId(imageUrl)
         : null;
 
-    if (!targetPublicId) {
-      throw new HttpsError('invalid-argument', 'Cloudinary public_id를 찾을 수 없습니다.');
+    if (targetPublicId) {
+      if (!targetPublicId.startsWith(`haru2026/records/${uid}/`)) {
+        throw new HttpsError('permission-denied', '삭제 권한이 없는 이미지입니다.');
+      }
+
+      configureCloudinary();
+
+      try {
+        const result = await cloudinary.uploader.destroy(targetPublicId, {
+          resource_type: 'image',
+        });
+        return {
+          success: true,
+          storage: 'cloudinary',
+          publicId: targetPublicId,
+          alreadyDeleted: result?.result === 'not found',
+        };
+      } catch (error: any) {
+        if (error instanceof HttpsError) throw error;
+        logger.error('Cloudinary 기록 사진 삭제 오류:', error);
+        throw new HttpsError('internal', `삭제 실패: ${error.message}`);
+      }
     }
 
-    if (!targetPublicId.startsWith(`haru2026/records/${request.auth.uid}/`)) {
+    if (typeof imageUrl !== 'string' || !imageUrl.trim()) {
+      throw new HttpsError('invalid-argument', '이미지 URL이 필요합니다.');
+    }
+
+    const storageTarget = extractFirebaseStorageTarget(imageUrl);
+    if (!storageTarget) {
+      return { success: true, storage: 'unknown', skipped: true };
+    }
+
+    if (!storageTarget.path.startsWith(`users/${uid}/format_photos/`)) {
       throw new HttpsError('permission-denied', '삭제 권한이 없는 이미지입니다.');
     }
 
-    configureCloudinary();
-
     try {
-      const result = await cloudinary.uploader.destroy(targetPublicId, {
-        resource_type: 'image',
-      });
-      if (result?.result === 'not found') {
-        throw new HttpsError('not-found', '이미 삭제된 이미지입니다.');
-      }
-      return { success: true, publicId: targetPublicId };
+      const targetBucket = storageTarget.bucketName
+        ? getStorage().bucket(storageTarget.bucketName)
+        : bucket();
+      await targetBucket.file(storageTarget.path).delete();
+      return { success: true, storage: 'firebase', path: storageTarget.path };
     } catch (error: any) {
-      if (error instanceof HttpsError) throw error;
-      logger.error('Cloudinary 기록 사진 삭제 오류:', error);
+      if (isStorageObjectNotFound(error)) {
+        return {
+          success: true,
+          storage: 'firebase',
+          path: storageTarget.path,
+          alreadyDeleted: true,
+        };
+      }
+      logger.error('Firebase Storage 기록 사진 삭제 오류:', error);
       throw new HttpsError('internal', `삭제 실패: ${error.message}`);
     }
   }

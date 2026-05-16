@@ -690,7 +690,7 @@ ${contentValues}`,
   const handleDeleteImage = async (imageUrl: string, index: number) => {
     try {
       console.log('🗑️ 이미지 삭제 시도');
-      console.log('Cloudinary URL:', imageUrl);
+      console.log('이미지 URL:', imageUrl);
 
       const functionsInstance = getFunctions(undefined, 'asia-northeast3');
       const deleteRecordImage = httpsCallable(functionsInstance, 'deleteRecordImage');
@@ -701,8 +701,16 @@ ${contentValues}`,
     } catch (error: any) {
       console.error('이미지 삭제 실패:', error);
       
-      // Cloudinary에 이미 없거나 예전 URL이면 화면에서는 제거 가능하게 처리
-      if (error?.code === 'functions/not-found' || error?.message?.includes('not found')) {
+      // 이미 없거나 옛 URL 판별 실패면 화면에서는 제거 가능하게 처리
+      const ignorableDeleteError =
+        error?.code === 'functions/not-found' ||
+        error?.code === 'functions/invalid-argument' ||
+        error?.code === 'storage/object-not-found' ||
+        error?.message?.includes('not found') ||
+        error?.message?.includes('object-not-found') ||
+        error?.message?.includes('invalid-argument');
+
+      if (ignorableDeleteError) {
         setUploadedImages(prev => prev.filter((_, i) => i !== index));
         toast.success('사진이 제거되었습니다.');
       } else {
