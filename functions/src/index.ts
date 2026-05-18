@@ -300,6 +300,93 @@ const KW_STRICT_STOP = new Set<string>([
 // 숫자+한국어 단위 패턴 (예: "3개", "4가지", "10명") — 키워드로 부적합
 const KW_NUMUNIT_RE = /^\d+\s*(개|가지|명|번|회|차|단계|시간|초|분|일|월|년|건|개월|주|살|세|점|위|등|차례|장|편)$/;
 
+// ===== 📝 HARU 메모 — 비공개 AI 보조 관찰 메모 (공개 댓글 아님) =====
+// 평가·훈계·과잉 공감 금지. 사실 기반 짧은 관찰 메모(3문장 이내).
+export const generateHaruMemo = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    try {
+      const { formatType, fields, date } = (request.data || {}) as {
+        formatType?: string;
+        fields?: Record<string, unknown>;
+        date?: string;
+      };
+      if (!formatType || typeof formatType !== 'string') {
+        throw new HttpsError('invalid-argument', 'formatType이 필요합니다.');
+      }
+      if (!fields || typeof fields !== 'object') {
+        throw new HttpsError('invalid-argument', 'fields가 필요합니다.');
+      }
+
+      // 메타·이미지·sayu·점수 같은 비-본문 필드 제외 후 텍스트 합성
+      const META_SUFFIXES = ['_sayu', '_polished', '_polishedAt', '_mode', '_stats', '_images', '_rating', '_keywords', '_ai_title', '_tags', '_space', '_style'];
+      const lines: string[] = [];
+      Object.keys(fields).forEach((k) => {
+        if (META_SUFFIXES.some((s) => k.endsWith(s))) return;
+        const v = (fields as any)[k];
+        if (typeof v === 'string' && v.trim()) {
+          lines.push(`${k}: ${v.trim()}`);
+        }
+      });
+      const bodyText = lines.join('\n').slice(0, 3500);
+      if (!bodyText) {
+        return { content: '오늘 기록에서 메모로 정리할 본문이 충분하지 않습니다.' };
+      }
+
+      const prompt = `당신은 사용자의 기록을 조용히 보조 관찰하는 비공개 메모 도우미입니다.
+이 메모는 SNS 댓글이 아니며 공개되지 않습니다. 평가·훈계·과잉 위로·칭찬 남발을 절대 금지합니다.
+
+[엄격 규칙]
+- 정확히 1~3문장. 절대 4문장 이상 작성 금지.
+- 한국어 존댓말, 차분하고 조용한 문체.
+- "대단하세요", "멋집니다", "힘내세요" 같은 SNS형 표현 금지.
+- 사용자를 평가하거나 훈계하지 마세요.
+- 과잉 공감 금지 ("정말 힘드셨겠어요" 류 금지).
+- 기록의 반복 표현·생활 흐름·감정 패턴·사실을 중심으로 짧게 관찰합니다.
+- 마크다운·이모지·번호·따옴표·인사말 금지. 본문 텍스트만 출력.
+
+[예시 톤]
+"최근 기록에서 피로 관련 표현이 반복되고 있습니다."
+"오늘 기록은 감정보다 사실 중심으로 정리되어 있습니다."
+"비슷한 흐름이 이어진다면 이후 기록과 함께 생활 패턴을 비교해볼 수 있습니다."
+
+기록 형식: ${formatType}
+기록 날짜: ${date || '날짜 미상'}
+기록 본문:
+${bodyText}`;
+
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+      const modelId = 'gemini-3.1-flash-lite';
+      const model = genAI.getGenerativeModel({ model: modelId });
+      const result = await model.generateContent(prompt);
+      const raw = (result.response.text() || '').trim();
+
+      // 마크다운/이모지/따옴표 잡음 제거
+      const cleaned = raw
+        .replace(/^["'`*#\-•·]+|["'`*#\-•·]+$/g, '')
+        .replace(/\*\*|__/g, '')
+        .replace(/^\s*[-*]\s+/gm, '')
+        .trim();
+
+      // 3문장 cap (마침표·물음표·느낌표 기준)
+      const sentences = cleaned.match(/[^.!?。]+[.!?。]?/g) || [cleaned];
+      const trimmed = sentences.slice(0, 3).join('').trim() || cleaned.slice(0, 240);
+
+      return { content: trimmed.slice(0, 280) };
+    } catch (error: any) {
+      if (error instanceof HttpsError) throw error;
+      console.error('HARU 메모 생성 실패:', error);
+      throw new HttpsError('internal', 'HARU 메모 생성에 실패했습니다.');
+    }
+  },
+);
+
 export const extractKeywords = onCall(
   {
     region: 'asia-northeast3',
