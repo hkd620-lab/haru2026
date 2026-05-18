@@ -1,4 +1,4 @@
-type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '메모';
+type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '메모' | 'HARU보조장부';
 
 export function getTestData(format: RecordFormat): Record<string, string> | null {
   switch (format) {
@@ -94,6 +94,18 @@ export function getTestData(format: RecordFormat): Record<string, string> | null
     case '메모':
       return {
         memo_simple: '내일 오전 10시 회의 준비 필요.',
+      };
+
+    case 'HARU보조장부':
+      return {
+        ledger_date: '2026.05.18 14:30',
+        ledger_type: '수입',
+        ledger_item: '컨설팅 매출',
+        ledger_partner: '(주)민들레',
+        ledger_amount: '1,200,000원',
+        ledger_payment: '계좌이체',
+        ledger_proof: '세금계산서',
+        ledger_memo: '5월 정기 컨설팅 — 차주 잔금 입금 예정 (보조장부 — 세무 신고용 정식 장부 아님)',
       };
 
     default:
