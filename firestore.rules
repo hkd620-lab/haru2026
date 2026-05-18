@@ -7,6 +7,11 @@ service cloud.firestore {
         || userId == "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
+    // 🌿 하루식물탐정 — 사용자별 식물 도감
+    match /users/{userId}/plants/{plantId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create, update, delete: if request.auth != null && request.auth.uid == userId;
+    }
     match /users/{uid}/settings/{settingId} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
