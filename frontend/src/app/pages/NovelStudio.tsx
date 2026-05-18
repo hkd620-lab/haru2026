@@ -1,10 +1,234 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { db } from '../../firebase';
 import { PageHeaderActions } from '../components/PageHeaderActions';
+
+// 📚 책소재 카드 — 책 프로젝트 ID/제목 (functions/bookMaterial.ts와 동일)
+const BOOK_MATERIAL_PROJECT_ID = 'book_haru2026_ai_platform';
+const BOOK_MATERIAL_BOOK_TITLE = '65세 할아버지, AI와 HARU2026 플랫폼을 만들다';
+
+type BookMaterialFilter = 'all' | 'S' | 'A' | 'unused' | 'noChapter';
+
+interface BookMaterialDoc {
+  id: string;
+  title?: string;
+  ai_title?: string;
+  bookMaterial?: {
+    enabled?: boolean;
+    projectId?: string;
+    bookTitle?: string;
+    materialGrade?: 'S' | 'A' | 'B' | 'C';
+    bookMaterialTitle?: string;
+    summary3?: string;
+    coreSentences?: string[];
+    sceneForBook?: string;
+    chapterCandidates?: string[];
+    quoteCandidates?: string[];
+    topicTags?: string[];
+    sourceType?: string;
+    originalTitle?: string;
+    usedInBook?: boolean;
+    usedChapterId?: string | null;
+    createdAt?: any;
+  };
+}
+
+function BookMaterialPanel({ uid }: { uid: string }) {
+  const [collapsed, setCollapsed] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [materials, setMaterials] = useState<BookMaterialDoc[]>([]);
+  const [filter, setFilter] = useState<BookMaterialFilter>('all');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const fetchMaterials = useCallback(async () => {
+    if (!uid) return;
+    setLoading(true);
+    try {
+      const ref = collection(db, `users/${uid}/records`);
+      const q = query(ref, where('type', '==', 'ai_log'), orderBy('createdAt', 'desc'));
+      const snap = await getDocs(q);
+      const list: BookMaterialDoc[] = snap.docs
+        .map(d => ({ id: d.id, ...(d.data() as any) }))
+        .filter((r: any) => r.bookMaterial?.enabled && r.bookMaterial?.projectId === BOOK_MATERIAL_PROJECT_ID);
+      setMaterials(list);
+      setLoaded(true);
+    } catch (e: any) {
+      console.error('책소재 불러오기 실패:', e);
+      toast.error('책소재 불러오기에 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  }, [uid]);
+
+  useEffect(() => {
+    if (!collapsed && !loaded) {
+      fetchMaterials();
+    }
+  }, [collapsed, loaded, fetchMaterials]);
+
+  const filtered = materials.filter(r => {
+    const bm = r.bookMaterial!;
+    if (filter === 'S') return bm.materialGrade === 'S';
+    if (filter === 'A') return bm.materialGrade === 'A';
+    if (filter === 'unused') return !bm.usedInBook;
+    if (filter === 'noChapter') return !bm.usedChapterId && !(bm.chapterCandidates && bm.chapterCandidates.length > 0);
+    return true;
+  });
+
+  const filterButtons: { value: BookMaterialFilter; label: string }[] = [
+    { value: 'all', label: `전체 (${materials.length})` },
+    { value: 'S', label: 'S급' },
+    { value: 'A', label: 'A급' },
+    { value: 'unused', label: '미사용' },
+    { value: 'noChapter', label: '챕터 미분류' },
+  ];
+
+  return (
+    <div style={{
+      background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12,
+      margin: '12px 16px 0', maxWidth: 640,
+      marginLeft: 'auto', marginRight: 'auto',
+    }}>
+      <button
+        onClick={() => setCollapsed(c => !c)}
+        style={{
+          width: '100%', padding: '12px 14px', border: 'none', background: 'transparent',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          fontSize: 14, fontWeight: 600, color: '#1A3C6E', cursor: 'pointer',
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          📚 책소재 불러오기
+          <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 400 }}>
+            ({BOOK_MATERIAL_BOOK_TITLE})
+          </span>
+        </span>
+        <span style={{ fontSize: 11, color: '#6B7280' }}>{collapsed ? '▼ 열기' : '▲ 닫기'}</span>
+      </button>
+
+      {!collapsed && (
+        <div style={{ borderTop: '1px solid #F3F4F6', padding: '10px 14px 14px' }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+            {filterButtons.map(b => (
+              <button
+                key={b.value}
+                onClick={() => setFilter(b.value)}
+                style={{
+                  padding: '4px 10px', borderRadius: 99, fontSize: 11, fontWeight: 600,
+                  border: 'none', cursor: 'pointer',
+                  background: filter === b.value ? '#1A3C6E' : '#F3F4F6',
+                  color: filter === b.value ? '#fff' : '#6B7280',
+                }}
+              >{b.label}</button>
+            ))}
+            <button
+              onClick={() => { setLoaded(false); fetchMaterials(); }}
+              disabled={loading}
+              style={{
+                padding: '4px 10px', borderRadius: 99, fontSize: 11, fontWeight: 600,
+                border: '1px dashed #D1D5DB', cursor: loading ? 'wait' : 'pointer',
+                background: '#fff', color: '#6B7280', marginLeft: 'auto',
+              }}
+              title="새로고침"
+            >🔄</button>
+          </div>
+
+          {loading ? (
+            <p style={{ textAlign: 'center', padding: 20, fontSize: 12, color: '#9CA3AF' }}>불러오는 중...</p>
+          ) : filtered.length === 0 ? (
+            <p style={{ textAlign: 'center', padding: 20, fontSize: 12, color: '#9CA3AF' }}>
+              {materials.length === 0
+                ? '아직 책소재로 변환된 대화가 없습니다. SAYU 화면 → 하루AI지식창고에서 📚 버튼으로 변환해 주세요.'
+                : '필터에 해당하는 책소재가 없습니다.'}
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto' }}>
+              {filtered.map(r => {
+                const bm = r.bookMaterial!;
+                const isOpen = expandedId === r.id;
+                return (
+                  <div key={r.id}
+                    style={{
+                      border: '1px solid #F3F4F6', borderRadius: 8, padding: '8px 10px',
+                      background: bm.usedInBook ? '#F9FAFB' : '#fff',
+                    }}
+                  >
+                    <div
+                      onClick={() => setExpandedId(isOpen ? null : r.id)}
+                      style={{ cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: 6 }}
+                    >
+                      <span style={{
+                        fontSize: 9, padding: '1px 5px', borderRadius: 4, fontWeight: 700,
+                        background: bm.materialGrade === 'S' ? '#FEF3C7'
+                          : bm.materialGrade === 'A' ? '#DBEAFE'
+                          : bm.materialGrade === 'B' ? '#E5E7EB' : '#F3F4F6',
+                        color: bm.materialGrade === 'S' ? '#92400E'
+                          : bm.materialGrade === 'A' ? '#1E40AF'
+                          : '#374151',
+                        marginTop: 2,
+                      }}>{bm.materialGrade}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', margin: 0 }}>
+                          {bm.bookMaterialTitle || r.ai_title || r.title || '(제목 없음)'}
+                          {bm.usedInBook && <span style={{ marginLeft: 6, fontSize: 10, color: '#6B7280' }}>· 사용됨</span>}
+                        </p>
+                        {bm.summary3 && (
+                          <p style={{ fontSize: 11, color: '#6B7280', margin: '2px 0 0', whiteSpace: 'pre-wrap' }}>{bm.summary3}</p>
+                        )}
+                      </div>
+                      <span style={{ fontSize: 10, color: '#9CA3AF', marginTop: 4 }}>{isOpen ? '▲' : '▼'}</span>
+                    </div>
+                    {isOpen && (
+                      <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px dashed #E5E7EB', fontSize: 11, color: '#374151' }}>
+                        {Array.isArray(bm.coreSentences) && bm.coreSentences.length > 0 && (
+                          <div style={{ marginBottom: 6 }}>
+                            <p style={{ fontWeight: 600, color: '#1A3C6E', margin: 0 }}>핵심 문장</p>
+                            <ul style={{ marginLeft: 14, marginTop: 2 }}>
+                              {bm.coreSentences.map((s, i) => <li key={i}>{s}</li>)}
+                            </ul>
+                          </div>
+                        )}
+                        {bm.sceneForBook && (
+                          <div style={{ marginBottom: 6 }}>
+                            <p style={{ fontWeight: 600, color: '#1A3C6E', margin: 0 }}>장면 / 사례</p>
+                            <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{bm.sceneForBook}</p>
+                          </div>
+                        )}
+                        {Array.isArray(bm.chapterCandidates) && bm.chapterCandidates.length > 0 && (
+                          <div style={{ marginBottom: 6 }}>
+                            <p style={{ fontWeight: 600, color: '#1A3C6E', margin: 0 }}>예상 챕터 후보</p>
+                            <p style={{ margin: 0 }}>{bm.chapterCandidates.join(' · ')}</p>
+                          </div>
+                        )}
+                        {Array.isArray(bm.quoteCandidates) && bm.quoteCandidates.length > 0 && (
+                          <div style={{ marginBottom: 6 }}>
+                            <p style={{ fontWeight: 600, color: '#1A3C6E', margin: 0 }}>인용 후보</p>
+                            <ul style={{ marginLeft: 14, marginTop: 2 }}>
+                              {bm.quoteCandidates.map((s, i) => <li key={i}>{s}</li>)}
+                            </ul>
+                          </div>
+                        )}
+                        {Array.isArray(bm.topicTags) && bm.topicTags.length > 0 && (
+                          <p style={{ fontSize: 10, color: '#9CA3AF', margin: 0 }}>
+                            #{bm.topicTags.join(' #')}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 
 type Tab = 'motive' | 'birth' | 'desire' | 'shackle' | 'luck' | 'unluck' | 'narrative' | 'chars' | 'events';
@@ -1301,6 +1525,9 @@ export function NovelStudio() {
           </div>
         </div>
       </div>
+
+      {/* 📚 책소재 불러오기 — book_haru2026_ai_platform */}
+      <BookMaterialPanel uid={user.uid} />
 
       {/* 탭 진행 표시 (숫자만) */}
       <div style={{ background: '#fff', borderBottom: '0.5px solid #e5e5e5', padding: '8px 16px' }}>

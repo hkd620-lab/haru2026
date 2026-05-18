@@ -378,6 +378,7 @@ export function SayuPage() {
   const [aiSearch, setAiSearch] = useState('');
   const [aiPage, setAiPage] = useState(1);
   const [aiSearchMode, setAiSearchMode] = useState<'title' | 'content'>('title');
+  const [bookMaterialBusy, setBookMaterialBusy] = useState<Set<string>>(new Set());
 
   // 읽을거리
   const [books, setBooks] = useState<Book[]>([]);
@@ -1053,6 +1054,39 @@ export function SayuPage() {
       toast.success('📋 클립보드에 복사되었습니다!');
     } catch {
       toast.error('복사에 실패했습니다.');
+    }
+  };
+
+  // 📚 책소재로 변환 — 선택한 AI 대화 1건을 책 재료 카드로 구조화
+  const handleConvertToBookMaterial = async (log: AiLog) => {
+    const content = (log as any).content as string | undefined;
+    if (!content || content.trim().length < 10) {
+      toast.error('변환할 대화 내용이 너무 짧습니다.');
+      return;
+    }
+    const already = !!(log as any).bookMaterial?.enabled;
+    if (already && !window.confirm('이미 책소재로 변환된 항목입니다. 다시 변환하시겠습니까?')) {
+      return;
+    }
+    try {
+      setBookMaterialBusy(prev => { const n = new Set(prev); n.add(log.id); return n; });
+      toast.info('📚 책소재로 변환 중...');
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const convertFn = httpsCallable(fns, 'convertToBookMaterial');
+      const result = await convertFn({
+        logId: log.id,
+        content,
+        title: (log as any).ai_title || log.title || '',
+      });
+      const data = (result.data || {}) as any;
+      if (!data?.ok) throw new Error('AI 응답 형식 오류');
+      setAiLogs(prev => prev.map(l => l.id === log.id ? ({ ...l, bookMaterial: data.bookMaterial } as any) : l));
+      toast.success('✅ 책소재 변환 완료!');
+    } catch (e: any) {
+      console.error('책소재 변환 실패:', e);
+      toast.error(`변환 실패: ${e?.message || '알 수 없는 오류'}`);
+    } finally {
+      setBookMaterialBusy(prev => { const n = new Set(prev); n.delete(log.id); return n; });
     }
   };
 
@@ -2384,6 +2418,16 @@ export function SayuPage() {
                                 );
                               })()}
                               {log.source && <p className="text-xs mt-0.5" style={{ color: '#999' }}>{log.source}</p>}
+                              {(log as any).bookMaterial?.enabled && (
+                                <p className="text-xs mt-0.5" style={{ color: '#1A3C6E', fontWeight: 600 }}>
+                                  📚 책소재 완료
+                                  {(log as any).bookMaterial?.materialGrade && (
+                                    <span style={{ marginLeft: 6, fontSize: 10, padding: '1px 6px', borderRadius: 99, backgroundColor: '#EEF2FF', color: '#4338CA' }}>
+                                      {(log as any).bookMaterial.materialGrade}급
+                                    </span>
+                                  )}
+                                </p>
+                              )}
                             </div>
                             <span className="px-2 text-xs" style={{ color: '#aaa' }}>
                               {selectedAiLog?.id === log.id ? '▲' : '▼'}
@@ -2411,16 +2455,73 @@ export function SayuPage() {
                               style={{ color: '#ccc' }} title="복사"
                             >📋</button>
                             <button
+                              onClick={(e) => { e.stopPropagation(); handleConvertToBookMaterial(log); }}
+                              disabled={bookMaterialBusy.has(log.id)}
+                              className="px-3 py-2.5 text-xs flex-shrink-0 transition-colors"
+                              style={{
+                                color: (log as any).bookMaterial?.enabled ? '#1A3C6E' : '#ccc',
+                                cursor: bookMaterialBusy.has(log.id) ? 'wait' : 'pointer',
+                                opacity: bookMaterialBusy.has(log.id) ? 0.5 : 1,
+                              }}
+                              title={
+                                bookMaterialBusy.has(log.id)
+                                  ? '변환 중...'
+                                  : (log as any).bookMaterial?.enabled
+                                    ? '다시 책소재로 변환'
+                                    : '책소재로 변환'
+                              }
+                            >
+                              {bookMaterialBusy.has(log.id) ? '⏳' : (log as any).bookMaterial?.enabled ? '🔄' : '📚'}
+                            </button>
+                            <button
                               onClick={(e) => { e.stopPropagation(); handleDeleteAiLog(log.id); }}
                               className="px-3 py-2.5 text-xs flex-shrink-0 hover:text-red-600 transition-colors"
                               style={{ color: '#ccc' }} title="삭제"
                             >✕</button>
                           </div>
                           {selectedAiLog?.id === log.id && (
-                            <div className="px-4 py-3 text-xs leading-relaxed whitespace-pre-wrap"
-                              style={{ backgroundColor: '#f8faff', color: '#333', borderTop: '1px solid #eef2ff' }}>
-                              {(log as any).content || '내용 없음'}
-                            </div>
+                            <>
+                              {(log as any).bookMaterial?.enabled && (
+                                <div className="px-4 py-3 text-xs leading-relaxed"
+                                  style={{ backgroundColor: '#FEF6E0', color: '#1A3C6E', borderTop: '1px solid #FCE5A1' }}>
+                                  <p style={{ fontWeight: 700, marginBottom: 4 }}>
+                                    📚 책소재 — {(log as any).bookMaterial.bookMaterialTitle || '(제목 없음)'}
+                                    <span style={{ marginLeft: 6, fontSize: 10, padding: '1px 6px', borderRadius: 99, backgroundColor: '#EEF2FF', color: '#4338CA' }}>
+                                      {(log as any).bookMaterial.materialGrade}급
+                                    </span>
+                                  </p>
+                                  {(log as any).bookMaterial.summary3 && (
+                                    <p style={{ marginBottom: 4, whiteSpace: 'pre-wrap' }}>
+                                      <strong>요약:</strong> {(log as any).bookMaterial.summary3}
+                                    </p>
+                                  )}
+                                  {Array.isArray((log as any).bookMaterial.coreSentences) && (log as any).bookMaterial.coreSentences.length > 0 && (
+                                    <p style={{ marginBottom: 4 }}>
+                                      <strong>핵심문장:</strong>
+                                      <ul style={{ marginLeft: 14, marginTop: 2, listStyleType: 'disc' }}>
+                                        {(log as any).bookMaterial.coreSentences.map((s: string, i: number) => (
+                                          <li key={i}>{s}</li>
+                                        ))}
+                                      </ul>
+                                    </p>
+                                  )}
+                                  {Array.isArray((log as any).bookMaterial.chapterCandidates) && (log as any).bookMaterial.chapterCandidates.length > 0 && (
+                                    <p style={{ marginBottom: 4 }}>
+                                      <strong>예상 챕터:</strong> {(log as any).bookMaterial.chapterCandidates.join(' · ')}
+                                    </p>
+                                  )}
+                                  {Array.isArray((log as any).bookMaterial.topicTags) && (log as any).bookMaterial.topicTags.length > 0 && (
+                                    <p style={{ fontSize: 10, color: '#6B7280' }}>
+                                      #{(log as any).bookMaterial.topicTags.join(' #')}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                              <div className="px-4 py-3 text-xs leading-relaxed whitespace-pre-wrap"
+                                style={{ backgroundColor: '#f8faff', color: '#333', borderTop: '1px solid #eef2ff' }}>
+                                {(log as any).content || '내용 없음'}
+                              </div>
+                            </>
                           )}
                         </div>
                       ))}
