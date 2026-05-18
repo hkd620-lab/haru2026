@@ -36,6 +36,28 @@ function safeArray(v: unknown, maxItems: number, maxLen: number): string[] {
     .map((x) => (x as string).slice(0, maxLen));
 }
 
+// 원문 보존도(verbatim score) — 0~1.
+// 단순화: 공백/구두점 제거 후 6글자 윈도우(슬라이딩)의 source 포함률을 계산.
+// 0.7+ : 거의 원문 그대로 / 0.4~0.7 : 부분 인용 / 0.4 미만 : AI 재창작 의심.
+function normalizeForVerbatim(s: string): string {
+  return s.replace(/[\s\p{P}]/gu, '').toLowerCase();
+}
+
+function computeVerbatimScore(passage: string, source: string): number {
+  const p = normalizeForVerbatim(passage);
+  const s = normalizeForVerbatim(source);
+  if (p.length < 6 || s.length < 6) return 0;
+  const window = 6;
+  let total = 0;
+  let hit = 0;
+  for (let i = 0; i + window <= p.length; i += 1) {
+    total += 1;
+    if (s.includes(p.slice(i, i + window))) hit += 1;
+  }
+  if (total === 0) return 0;
+  return Math.round((hit / total) * 100) / 100;
+}
+
 function extractJson(raw: string): any {
   const cleaned = raw
     .replace(/^```json\s*/i, '')
@@ -116,78 +138,85 @@ export const convertToBookMaterial = onCall(
       model: 'gemini-3.1-flash-lite',
       generationConfig: {
         responseMimeType: 'application/json',
-        temperature: 0.55,
+        temperature: 0.25,
       },
     });
 
-    // v3-passage — "한 줄 명언"이 아니라 "3~6줄짜리 책 인용문단"을 만든다
+    // v4-verbatim — "AI 가 다시 좋은 문장을 쓰는 것"을 버리고
+    // "원문에서 강한 부분을 찾아 거의 그대로 살리는 것"이 목표
     const prompt = `당신은 65세 저자(허대표)의 회고록 책 편집자입니다.
-다음 AI 대화 기록 한 건을 읽고, 책 본문에 그대로 들어갈 수 있는 "책 인용문단(bookPassages)"을 JSON으로만 출력하세요.
+당신은 작가가 아닙니다. **큐레이터**입니다.
+원문 자체가 책의 본문이며, 당신의 일은 원문에서 강한 부분을 찾아내 책에 그대로 옮기는 것입니다.
 
 책 제목: "${BOOK_TITLE}"
 
 [가장 중요한 원칙 — 반드시 지킬 것]
-- 결과물은 한 줄짜리 명언이 아닙니다. 책 본문에 그대로 들어갈 "짧은 책 문단"입니다.
-- 각 bookPassages 항목은 반드시 3~6줄 분량 (줄바꿈 \\n 사용).
-- 한 문단 안에 흐름·맥락·장면·감정·깨달음이 함께 살아 있어야 합니다.
-- 첫 줄에 상황·전제·과거를 깔고, 뒤로 변화·깨달음·의미로 이어지는 호흡.
-- 1인칭 회상체("나는 ~ 시작했다", "~받기 시작했다", "~만들기 시작했다", "그때 나는 ~")가 자연스러우면 적극 사용.
-- 절대 한 문장으로 끝내지 마세요. 한 줄짜리 결론 문장 금지.
+1. **원문의 표현을 거의 그대로 유지하세요.** 단어·조사·어미를 임의로 바꾸지 마세요.
+2. **AI가 더 멋있게 다시 쓰지 마세요.** 작가의 말은 작가의 것입니다.
+3. **허용되는 편집은 다음 셋뿐:**
+   - 군더더기 입말(어, 음, 그래서, 아 그러니까…) 제거
+   - 한 문단으로 묶기 위한 줄바꿈(\\n) 추가
+   - 너무 긴 문장 한 번 끊기 (마침표 위치 조정 정도)
+4. **새 표현·새 비유·새 결론 문장 추가 금지.** 원문에 없는 단어는 쓰지 마세요.
+5. 원문이 좋은 곳을 찾는 것이 핵심입니다. 못 찾았으면 빈 배열로 두세요.
 
 [금지]
-- 원문에 없는 사실 창작·과장·미화 금지.
-- "~구축됨", "~형성됨", "~확보됨", "~이어집니다" 같은 보고서 결론체 금지.
-- AI 특유의 과장된 감성체 금지 ("드디어 나는...", "그 순간 모든 것이..." 같은 표현 금지).
-- 따옴표로 감싼 명언화 금지. 본문 문단 자체로 작성.
-- 짧은 압축·단순 요약·단답형 결론 금지.
-- 불확실한 부분은 만들지 말고 다른 문단으로 대체하거나 적게 출력.
+- 원문에 없는 사실·표현 창작.
+- "~구축됨", "~형성됨", "~이어집니다" 같은 보고서 결론체 추가.
+- "드디어 나는…", "그 순간 모든 것이…" 같은 AI 식 감성 결론 추가.
+- 짧은 한 줄 명언화. 따옴표로 감싼 격언화.
+- 원문 흐름을 다시 쓰거나 재구성하는 것.
 
-[참고 톤 — 원문에 없는 내용을 옮기지는 말 것, 호흡과 길이만 참고]
-예시 A (사용 가능한 책 문단의 느낌):
-처음에는 단순한 기록앱이라고 생각했다.
-하지만 HARU2026은 기록을 저장하는 수준을 넘어,
-기록이 다시 책과 결과물로 이어지는 구조를 만들기 시작했다.
+[좋은 변환 예 — 원문 보존이 어떻게 보이는지]
 
-예시 B:
-예전의 AI 서비스들은 대부분 질문과 답변 수준에서 끝났다.
-하지만 HARU2026은 기록이 구조화되고,
-다시 책과 원고로 이어지는 흐름을 만들기 시작했다.
+원문에 이런 부분이 있다면:
+"기록은 흩어지고 있고 기존 앱들은 제 갈증을 채워주지 못했습니다. 늦은 나이에 도전한다는 게 솔직히 좀 무섭기도 했지만 오기 같은 게 있었어요."
 
-그 과정에서 나는 단순히 AI를 사용하는 사람이 아니라,
-AI들이 서로 구현하고 검수하는 협업 체계를 만들고 있다는 느낌을 받기 시작했다.
+좋은 변환(원문 보존):
+"기록은 흩어지고 있었고,
+기존 앱들은 내 갈증을 채워주지 못했다.
+늦은 나이에 도전한다는 것이 솔직히 좀 무서웠지만,
+그 안에 오기 같은 것이 있었다."
+→ 입말 정리 + 줄바꿈만. 표현 유지.
 
-[작성 가이드]
-- bookPassages: 3~5개 문단. 각 문단은 3~6줄. 단락 사이에 두 번 줄바꿈(\\n\\n)을 허용해서 한 문단 안에서 호흡 전환을 줘도 좋음.
-- bookSummary: 카드 상단 요약. 3~5줄, 흐름과 의미가 살아 있는 문장.
-- bookMaterialTitle: 책의 한 소절 제목처럼 (20자 이내).
-- chapterCandidates: 이 자료가 들어갈 만한 챕터 후보 2~5개.
-- topicTags: 검색용 짧은 태그 3~10개.
-- materialGrade: S/A/B/C — 책에 어느 정도 강하게 쓸 수 있는지.
+나쁜 변환(AI 재창작):
+"결핍은 질문의 시작이었고, 늦은 도전은 두려움 속에서도 빛을 발했다."
+→ 원문에 없는 비유·결론. 금지.
+
+[bookPassages 작성 가이드]
+- 2~5개 문단. 각 문단은 3~6줄 분량 (줄바꿈 \\n).
+- **각 문단의 90% 이상은 원문 문장이 그대로 들어가야 합니다.**
+- 원문 여러 부분을 한 문단으로 묶을 때도 표현은 보존.
+- 만약 원문에 강한 부분이 1~2개뿐이면, 억지로 5개 만들지 말고 적게 출력.
+
+[bookSummary 작성 가이드]
+- 3~5줄. 원문 화자의 말투로.
+- 본인 정리가 어려우면 원문 첫·마지막 문장을 살짝 다듬어서 사용.
 
 [원본 제목]
 ${originalTitle || '(없음)'}
 
-[원본 대화]
+[원본 대화 — 이것이 책입니다. 이 안에서 인용하세요.]
 """
 ${text}
 """
 
 아래 JSON 스키마로만 출력하세요. 코드블록·주석·여분 텍스트 금지:
 {
-  "bookMaterialTitle": "책소재 제목 (20자 이내, 따옴표 없이)",
-  "bookSummary": "책소재 요약 3~5줄 — 줄바꿈은 \\n. 단순 압축 금지.",
+  "bookMaterialTitle": "책소재 제목 (20자 이내, 따옴표 없이) — 가능하면 원문 핵심 표현을 그대로 사용",
+  "bookSummary": "원문 톤을 유지한 3~5줄 요약. 줄바꿈 \\n.",
   "bookPassages": [
-    "3~6줄짜리 책 인용문단. 줄바꿈은 \\n. 한 줄 결론 금지.",
-    "또 다른 책 인용문단 (다른 관점/장면을 살릴 것)."
+    "원문에서 인용한 3~6줄 짜리 책 문단. 원문 단어·조사 유지. 줄바꿈 \\n.",
+    "(있다면) 또 다른 강한 부분"
   ],
   "chapterCandidates": ["예상 챕터 후보 1", "예상 챕터 후보 2"],
   "materialGrade": "S",
   "topicTags": ["태그1", "태그2", "태그3"]
 }
 
-[자료 등급 기준]
-- S: 책에 그대로 들어갈 수 있는 결정적 장면/통찰
-- A: 한 챕터의 핵심 소재로 충분
+[자료 등급 기준 — 원문 강도 기준으로 평가]
+- S: 원문 자체가 책에 그대로 들어가도 좋을 만큼 생생함
+- A: 다듬으면 한 챕터의 핵심 소재
 - B: 보조 자료로 활용 가능
 - C: 활용도 낮음`;
 
@@ -208,6 +237,12 @@ ${text}
     // bookPassages — 한 항목 = 3~6줄 책 인용문단 (줄바꿈 \n 보존, 단락 호흡 살림)
     const bookPassages = safeArray(parsed?.bookPassages, 6, 1200);
 
+    // 원문 보존도 점수 — 각 passage 가 원문에서 얼마나 살아남았는지
+    const passageVerbatimScores: number[] = bookPassages.map((p) => computeVerbatimScore(p, originalContent));
+    const verbatimAverage = passageVerbatimScores.length === 0
+      ? 0
+      : Math.round((passageVerbatimScores.reduce((a, b) => a + b, 0) / passageVerbatimScores.length) * 100) / 100;
+
     const bookMaterial = {
       enabled: true,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -219,7 +254,9 @@ ${text}
       // 신규 — 책 본문에 그대로 들어갈 "짧은 책 문단" 중심
       bookSummary: safeString(parsed?.bookSummary, 800),
       bookPassages,
-      promptVersion: 'v3-passage',
+      passageVerbatimScores,
+      verbatimAverage,
+      promptVersion: 'v4-verbatim',
 
       // v2 4분할 필드는 더 이상 생성하지 않음 — 옛 데이터 호환 표시용으로만 빈 배열 보존
       bookQuoteLines: [],

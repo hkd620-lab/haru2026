@@ -2527,31 +2527,59 @@ export function SayuPage() {
                                       </div>
                                     )}
 
-                                    {/* 3) 책 인용문단 — v3-passage 의 메인 출력 */}
-                                    {passages.length > 0 && (
-                                      <div style={{ marginBottom: 10 }}>
-                                        <p style={{ fontWeight: 700, color: '#1A3C6E', margin: '0 0 4px' }}>
-                                          책 인용문단 ({passages.length}개)
-                                        </p>
-                                        {passages.map((p, i) => (
-                                          <blockquote
-                                            key={i}
-                                            style={{
-                                              margin: '0 0 8px',
-                                              padding: '8px 10px',
-                                              borderLeft: '3px solid #C9A75A',
-                                              background: '#FFFBEC',
-                                              whiteSpace: 'pre-wrap',
-                                              fontSize: 12,
-                                              lineHeight: 1.7,
-                                              color: '#1F2937',
-                                            }}
-                                          >
-                                            {p}
-                                          </blockquote>
-                                        ))}
-                                      </div>
-                                    )}
+                                    {/* 3) 책 인용문단 — v4-verbatim: 원문 보존 중심 */}
+                                    {passages.length > 0 && (() => {
+                                      const scores: number[] = Array.isArray(bm.passageVerbatimScores) ? bm.passageVerbatimScores : [];
+                                      const avg: number | undefined = typeof bm.verbatimAverage === 'number' ? bm.verbatimAverage : undefined;
+                                      const scoreColor = (s: number) =>
+                                        s >= 0.7 ? { bg: '#DCFCE7', fg: '#166534', label: '원문 그대로' }
+                                        : s >= 0.4 ? { bg: '#FEF3C7', fg: '#92400E', label: '부분 인용' }
+                                        : { bg: '#FEE2E2', fg: '#991B1B', label: 'AI 재창작 의심' };
+                                      return (
+                                        <div style={{ marginBottom: 10 }}>
+                                          <p style={{ fontWeight: 700, color: '#1A3C6E', margin: '0 0 4px' }}>
+                                            책 인용문단 ({passages.length}개) — 원문 그대로 중심
+                                            {typeof avg === 'number' && (
+                                              <span style={{
+                                                marginLeft: 6, fontSize: 10, padding: '1px 6px', borderRadius: 99,
+                                                background: scoreColor(avg).bg, color: scoreColor(avg).fg, fontWeight: 600,
+                                              }}>
+                                                원문보존 평균 {Math.round(avg * 100)}%
+                                              </span>
+                                            )}
+                                          </p>
+                                          {passages.map((p, i) => {
+                                            const s = scores[i];
+                                            const c = typeof s === 'number' ? scoreColor(s) : null;
+                                            return (
+                                              <div key={i} style={{ marginBottom: 10 }}>
+                                                <blockquote
+                                                  style={{
+                                                    margin: 0,
+                                                    padding: '8px 10px',
+                                                    borderLeft: '3px solid #C9A75A',
+                                                    background: '#FFFBEC',
+                                                    whiteSpace: 'pre-wrap',
+                                                    fontSize: 12,
+                                                    lineHeight: 1.7,
+                                                    color: '#1F2937',
+                                                  }}
+                                                >
+                                                  {p}
+                                                </blockquote>
+                                                {c && (
+                                                  <p style={{
+                                                    margin: '2px 0 0', fontSize: 9, color: c.fg, textAlign: 'right',
+                                                  }}>
+                                                    원문보존 {Math.round(s * 100)}% · {c.label}
+                                                  </p>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      );
+                                    })()}
 
                                     {/* 레거시 fallback — 재변환 전 옛 데이터일 때만 표시 */}
                                     {isLegacyOnly && (
@@ -2596,7 +2624,7 @@ export function SayuPage() {
 
                                     {/* 재변환 안내 */}
                                     <p style={{ fontSize: 10, color: '#92400E', marginTop: 8, paddingTop: 6, borderTop: '1px dashed #FCE5A1' }}>
-                                      💡 더 책답게 바꾸려면 카드 상단 🔄 버튼을 누르세요. 재변환 시 책 사용 흔적(usedInBook)은 보존됩니다.
+                                      💡 v4 부터 AI는 작가가 아니라 큐레이터입니다. 원문에서 강한 부분을 그대로 살립니다. 카드 상단 🔄 버튼으로 재변환하면 책 사용 흔적은 보존됩니다.
                                     </p>
                                   </div>
                                 );
