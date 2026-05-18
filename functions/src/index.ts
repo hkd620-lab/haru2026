@@ -36,6 +36,7 @@ const ONBID_API_KEY_SECRET = defineSecret('ONBID_API_KEY');
 const DRUG_API_KEY_SECRET = defineSecret('DRUG_API_KEY');
 const HIRA_API_KEY_SECRET = defineSecret('HIRA_API_KEY');
 const KINDWISE_PLANT_ID_API_KEY_SECRET = defineSecret('KINDWISE_PLANT_ID_API_KEY');
+const PLANTNET_API_KEY_SECRET = defineSecret('PLANTNET_API_KEY');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
 
 // Storage 버킷
@@ -4825,4 +4826,336 @@ export const analyzePlantPhoto = onCall(
       kindwiseError: kindwiseError || null,
     };
   }
+);
+
+// ============================================================
+// 🌿 detectPlantAdvanced — Plant.id + PlantNet + Gemini 교차검증
+// ============================================================
+// - Plant.id (Kindwise): 1차 식별 (전세계 도감 + 확률)
+// - PlantNet k-world-flora: 2차 교차검증 (다중 사진 활용, 한국 산야초 강세)
+// - Gemini: 두 결과를 비교 분석 + 독초/유사종/추가촬영 안내
+// - 어느 한 API 실패해도 graceful fallback (남은 결과로 분석 진행)
+
+type PlantNetCandidate = {
+  name: string;
+  scientificName: string;
+  score: number;
+  family?: string;
+  genus?: string;
+};
+
+type PlantNetIdResult = {
+  top: PlantNetCandidate | null;
+  alternatives: PlantNetCandidate[];
+};
+
+async function callPlantNetIdentification(
+  images: { base64: string; mimeType: string }[],
+  apiKey: string,
+): Promise<PlantNetIdResult> {
+  if (!apiKey) throw new Error('PLANTNET_API_KEY 없음');
+  if (!images.length) throw new Error('PlantNet 호출에 이미지 없음');
+
+  // 프로젝트: k-world-flora (전세계 식물 — 한국 산야초 포함)
+  const project = 'k-world-flora';
+  const endpoint = `https://my-api.plantnet.org/v2/identify/${project}?api-key=${encodeURIComponent(apiKey)}&lang=ko&include-related-images=false&no-reject=false`;
+
+  const form = new FormData();
+  for (let i = 0; i < images.length; i++) {
+    const img = images[i];
+    const bytes = Buffer.from(img.base64, 'base64');
+    const blob = new Blob([bytes], { type: img.mimeType || 'image/jpeg' });
+    form.append('images', blob, `image_${i + 1}.jpg`);
+    // organs=auto — PlantNet이 자동 추정 (잎/꽃/줄기/열매 구분 안 해도 됨)
+    form.append('organs', 'auto');
+  }
+
+  logger.info('PlantNet 요청 시작', {
+    project,
+    imageCount: images.length,
+    apiKeyMasked: apiKey ? `${apiKey.slice(0, 4)}…${apiKey.slice(-4)}` : 'EMPTY',
+  });
+
+  const response = await fetch(endpoint, { method: 'POST', body: form as any });
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '');
+    logger.error('PlantNet 응답 오류', {
+      status: response.status,
+      statusText: response.statusText,
+      bodyPreview: errText.slice(0, 500),
+    });
+    throw new Error(`PlantNet ${response.status} ${response.statusText}: ${errText.slice(0, 200)}`);
+  }
+  const json: any = await response.json();
+  const results: any[] = Array.isArray(json?.results) ? json.results : [];
+  logger.info('PlantNet 응답 OK', {
+    resultCount: results.length,
+    topScore: results[0]?.score,
+  });
+
+  const toCandidate = (r: any): PlantNetCandidate => {
+    const species = r?.species || {};
+    const commonArr = Array.isArray(species.commonNames) ? species.commonNames : [];
+    const common = commonArr.length > 0 ? String(commonArr[0]) : '';
+    const sci = String(species.scientificNameWithoutAuthor || species.scientificName || '');
+    return {
+      name: (common || sci || '').slice(0, 80),
+      scientificName: sci.slice(0, 120),
+      score: Number(r?.score || 0),
+      family: species?.family?.scientificNameWithoutAuthor || species?.family?.scientificName || undefined,
+      genus: species?.genus?.scientificNameWithoutAuthor || species?.genus?.scientificName || undefined,
+    };
+  };
+
+  const sorted = [...results].sort((a, b) => Number(b?.score || 0) - Number(a?.score || 0));
+  const top = sorted.length > 0 ? toCandidate(sorted[0]) : null;
+  const alternatives = sorted.slice(1, 4).map(toCandidate).filter((c) => c.name);
+
+  return { top, alternatives };
+}
+
+type CrossVerificationResult = {
+  finalGuess: string;
+  finalLatinName: string;
+  analysis: string;
+  warning: string;
+  edible: 'unknown' | 'yes' | 'no';
+  poisonousRisk: boolean;
+  similarSpecies: string[];
+  needMorePhotos: string[];
+  confidence: 'high' | 'medium' | 'low';
+};
+
+async function callGeminiCrossVerification(
+  plantId: KindwiseIdResult | null,
+  plantNet: PlantNetIdResult | null,
+  images: { base64: string; mimeType: string }[],
+  apiKey: string,
+): Promise<CrossVerificationResult> {
+  // 두 API 결과 요약을 JSON 문자열로 직렬화 (Gemini가 비교 분석)
+  const plantIdSummary = plantId
+    ? {
+        topName: plantId.topPlantName,
+        latinName: plantId.latinName,
+        confidence: Math.round(plantId.identificationProbability * 100) / 100,
+        family: plantId.taxonomy?.family,
+        genus: plantId.taxonomy?.genus,
+        alternatives: plantId.alternativeCandidates.slice(0, 3).map((c) => ({
+          name: c.name,
+          latinName: c.latinName,
+          confidence: Math.round(c.probability * 100) / 100,
+        })),
+      }
+    : null;
+
+  const plantNetSummary = plantNet
+    ? {
+        top: plantNet.top
+          ? {
+              name: plantNet.top.name,
+              scientificName: plantNet.top.scientificName,
+              confidence: Math.round(plantNet.top.score * 100) / 100,
+              family: plantNet.top.family,
+              genus: plantNet.top.genus,
+            }
+          : null,
+        alternatives: plantNet.alternatives.slice(0, 3).map((c) => ({
+          name: c.name,
+          scientificName: c.scientificName,
+          confidence: Math.round(c.score * 100) / 100,
+        })),
+      }
+    : null;
+
+  const prompt = `당신은 한국 산야초·나물·야생식물·텃밭작물 식별 전문가입니다.
+아래 두 외부 식물 식별 모델의 결과와 첨부 사진들을 비교 분석하여 최종 답변을 한국어 JSON으로 제공하세요.
+
+[Plant.id 결과]
+${plantIdSummary ? JSON.stringify(plantIdSummary, null, 2) : '(호출 실패 또는 결과 없음)'}
+
+[PlantNet (k-world-flora) 결과]
+${plantNetSummary ? JSON.stringify(plantNetSummary, null, 2) : '(호출 실패 또는 결과 없음)'}
+
+[판단 원칙]
+- 두 API의 top 결과가 일치(같은 학명/속/과)하면 신뢰도 'high'
+- 한쪽만 결과가 있으면 신뢰도는 그 confidence를 그대로 사용
+- 두 결과가 다르면 사진을 직접 보고 어느 쪽이 맞는지 판단하되, 한국 산야초 가능성을 우선 고려
+- "먹을 수 있다(edible: yes)"는 매우 보수적으로 — 확실하지 않으면 무조건 "unknown"
+- 독초 가능성이 조금이라도 있으면 poisonousRisk: true
+- 사진이 부족해 보이면 needMorePhotos에 구체적으로 (예: "꽃이 핀 모습", "잎 뒷면 클로즈업")
+- JSON 하나만 출력, 마크다운 금지, 코드펜스 금지
+
+[JSON 형식]
+{
+  "finalGuess": "최종 추정 한국어 이름 (불확실하면 '식물 이름 불확실')",
+  "finalLatinName": "학명 (있을 때만)",
+  "analysis": "왜 그렇게 판단했는지 2~3문장 한국어 설명",
+  "warning": "독초·유사종·주의사항 한 문장 (없으면 빈 문자열)",
+  "edible": "unknown | yes | no",
+  "poisonousRisk": true | false,
+  "similarSpecies": ["유사종1 (구분 포인트)", "유사종2 (구분 포인트)"],
+  "needMorePhotos": ["꽃이 핀 모습이 필요합니다", ...],
+  "confidence": "high | medium | low"
+}`;
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+
+  // 사진들을 모두 첨부 (Gemini는 multi-image 지원)
+  const parts: any[] = [prompt];
+  for (const img of images.slice(0, 5)) {
+    parts.push({ inlineData: { data: img.base64, mimeType: img.mimeType || 'image/jpeg' } });
+  }
+
+  const result = await model.generateContent(parts);
+  const text = result.response.text();
+  const cleaned = text.replace(/```json|```/g, '').trim();
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('Gemini 응답에서 JSON을 찾을 수 없습니다.');
+
+  const parsed = JSON.parse(jsonMatch[0]);
+  const normList = (v: unknown): string[] =>
+    Array.isArray(v) ? v.map((x) => String(x || '').trim()).filter(Boolean).slice(0, 5) : [];
+  const edibleRaw = String(parsed?.edible || 'unknown').toLowerCase();
+  const edible: 'unknown' | 'yes' | 'no' = (['unknown', 'yes', 'no'].includes(edibleRaw) ? edibleRaw : 'unknown') as any;
+  const confRaw = String(parsed?.confidence || 'low').toLowerCase();
+  const confidence: 'high' | 'medium' | 'low' = (['high', 'medium', 'low'].includes(confRaw) ? confRaw : 'low') as any;
+
+  return {
+    finalGuess: String(parsed?.finalGuess || '식물 이름 불확실').slice(0, 80),
+    finalLatinName: String(parsed?.finalLatinName || '').slice(0, 120),
+    analysis: String(parsed?.analysis || '').slice(0, 400),
+    warning: String(parsed?.warning || '').slice(0, 200),
+    edible,
+    poisonousRisk: Boolean(parsed?.poisonousRisk),
+    similarSpecies: normList(parsed?.similarSpecies),
+    needMorePhotos: normList(parsed?.needMorePhotos),
+    confidence,
+  };
+}
+
+export const detectPlantAdvanced = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET, KINDWISE_PLANT_ID_API_KEY_SECRET, PLANTNET_API_KEY_SECRET],
+    memory: '1GiB',
+    timeoutSeconds: 120,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const rawImages = (request.data as any)?.images;
+    if (!Array.isArray(rawImages) || rawImages.length === 0) {
+      throw new HttpsError('invalid-argument', '이미지 1장 이상이 필요합니다.');
+    }
+    if (rawImages.length > 5) {
+      throw new HttpsError('invalid-argument', '최대 5장까지 업로드 가능합니다.');
+    }
+
+    // base64 정리 (data URI prefix 제거) + 타입 정규화
+    const images = rawImages.map((it: any) => {
+      const b64 = String(it?.imageBase64 || '').replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '');
+      return { base64: b64, mimeType: String(it?.mimeType || 'image/jpeg') };
+    }).filter((it) => it.base64.length > 0);
+
+    if (images.length === 0) {
+      throw new HttpsError('invalid-argument', '유효한 이미지 데이터가 없습니다.');
+    }
+
+    // 총 용량 가드 (≈ base64 75% 비율 = 실제 바이트)
+    const totalKb = images.reduce((s, img) => s + Math.round(img.base64.length * 0.75 / 1024), 0);
+    if (totalKb > 12 * 1024) {
+      throw new HttpsError('invalid-argument', '사진 총 용량이 너무 큽니다 (최대 ~12MB). 압축 후 다시 시도해 주세요.');
+    }
+
+    logger.info('detectPlantAdvanced 호출', {
+      uid: request.auth.uid.slice(0, 8) + '…',
+      imageCount: images.length,
+      totalKb,
+    });
+
+    // PlantNet 키 가용성 확인 (없으면 graceful skip)
+    let plantNetKey = '';
+    try {
+      plantNetKey = PLANTNET_API_KEY_SECRET.value();
+    } catch (_e) {
+      plantNetKey = '';
+    }
+
+    // Plant.id는 단일 이미지만 받음 → 첫 사진 사용
+    const plantIdPromise: Promise<KindwiseIdResult | null> = callKindwiseIdentification(
+      images[0].base64,
+      images[0].mimeType,
+      KINDWISE_PLANT_ID_API_KEY_SECRET.value(),
+    ).catch((e: any) => {
+      logger.warn('Plant.id 실패 — 계속 진행: ' + (e?.message || 'unknown'));
+      return null;
+    });
+
+    // PlantNet은 모든 이미지를 함께 전달 (정확도 ↑)
+    const plantNetPromise: Promise<PlantNetIdResult | null> = plantNetKey
+      ? callPlantNetIdentification(images, plantNetKey).catch((e: any) => {
+          logger.warn('PlantNet 실패 — 계속 진행: ' + (e?.message || 'unknown'));
+          return null;
+        })
+      : Promise.resolve(null);
+
+    const [plantIdResult, plantNetResult] = await Promise.all([plantIdPromise, plantNetPromise]);
+
+    // Gemini 교차검증
+    let cross: CrossVerificationResult | null = null;
+    let geminiError: string | undefined;
+    try {
+      cross = await callGeminiCrossVerification(
+        plantIdResult,
+        plantNetResult,
+        images,
+        GEMINI_API_KEY_SECRET.value(),
+      );
+    } catch (e: any) {
+      geminiError = e?.message || 'Gemini 교차검증 실패';
+      logger.error('Gemini 교차검증 실패', { message: geminiError });
+    }
+
+    // 둘 다 실패 + Gemini도 실패 → 사용자에게 에러
+    if (!plantIdResult && !plantNetResult && !cross) {
+      throw new HttpsError(
+        'internal',
+        '식물 식별에 실패했습니다. 사진을 다시 찍어 주세요 (잎·꽃·줄기가 모두 보이도록).',
+      );
+    }
+
+    return {
+      plantId: plantIdResult
+        ? {
+            name: plantIdResult.topPlantName,
+            latinName: plantIdResult.latinName,
+            confidence: plantIdResult.identificationProbability,
+            isPlantProbability: plantIdResult.isPlantProbability,
+            family: plantIdResult.taxonomy?.family,
+            genus: plantIdResult.taxonomy?.genus,
+            alternatives: plantIdResult.alternativeCandidates,
+            url: plantIdResult.kindwiseUrl || null,
+          }
+        : null,
+      plantNet: plantNetResult
+        ? {
+            name: plantNetResult.top?.name || '',
+            scientificName: plantNetResult.top?.scientificName || '',
+            confidence: plantNetResult.top?.score ?? 0,
+            family: plantNetResult.top?.family,
+            genus: plantNetResult.top?.genus,
+            alternatives: plantNetResult.alternatives,
+          }
+        : null,
+      gemini: cross,
+      meta: {
+        imageCount: images.length,
+        plantNetAvailable: Boolean(plantNetKey),
+        geminiError: geminiError || null,
+      },
+    };
+  },
 );
