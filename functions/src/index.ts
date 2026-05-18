@@ -4860,13 +4860,35 @@ async function callPlantNetIdentification(
   const project = 'k-world-flora';
   const endpoint = `https://my-api.plantnet.org/v2/identify/${project}?api-key=${encodeURIComponent(apiKey)}&lang=ko&include-related-images=false&no-reject=false`;
 
+  // PlantNet은 JPEG/PNG/GIF만 허용 — webp가 섞이면 INVALID_ARGUMENT.
+  // sharp로 모든 이미지를 안전한 JPEG로 정규화 후 multipart 구성.
   const form = new FormData();
   for (let i = 0; i < images.length; i++) {
     const img = images[i];
-    const bytes = Buffer.from(img.base64, 'base64');
-    const blob = new Blob([bytes], { type: img.mimeType || 'image/jpeg' });
-    form.append('images', blob, `image_${i + 1}.jpg`);
-    // organs=auto — PlantNet이 자동 추정 (잎/꽃/줄기/열매 구분 안 해도 됨)
+    let bytes: Buffer;
+    try {
+      // 입력이 이미 JPEG든 webp/png든 일괄 JPEG로 재인코딩 — 가장 호환성 높은 형식
+      bytes = await sharp(Buffer.from(img.base64, 'base64'))
+        .rotate() // EXIF orientation 적용
+        .jpeg({ quality: 88, mozjpeg: false })
+        .toBuffer();
+    } catch (e: any) {
+      logger.warn(`PlantNet 이미지 ${i + 1} sharp 변환 실패 — 원본 사용: ${e?.message}`);
+      bytes = Buffer.from(img.base64, 'base64');
+    }
+    // Node 20 의 global File 우선 사용 (undici가 multipart에서 가장 정확히 다룸).
+    // 일부 환경에서 File이 없을 수 있어 Blob fallback 제공.
+    // Buffer/Uint8Array → BlobPart 캐스팅은 TS strict(SharedArrayBuffer 분기) 회피용.
+    const blobPart: BlobPart = bytes as unknown as BlobPart;
+    let part: any;
+    if (typeof (globalThis as any).File === 'function') {
+      part = new (globalThis as any).File([blobPart], `image_${i + 1}.jpg`, { type: 'image/jpeg' });
+      form.append('images', part);
+    } else {
+      part = new Blob([blobPart], { type: 'image/jpeg' });
+      form.append('images', part, `image_${i + 1}.jpg`);
+    }
+    // organs=auto — PlantNet이 잎/꽃/줄기/열매 자동 추정. 이미지 개수와 1:1 매핑 유지.
     form.append('organs', 'auto');
   }
 
@@ -4874,15 +4896,22 @@ async function callPlantNetIdentification(
     project,
     imageCount: images.length,
     apiKeyMasked: apiKey ? `${apiKey.slice(0, 4)}…${apiKey.slice(-4)}` : 'EMPTY',
+    hasFileGlobal: typeof (globalThis as any).File === 'function',
   });
 
-  const response = await fetch(endpoint, { method: 'POST', body: form as any });
+  // body 에 FormData 를 그대로 전달 — Content-Type/boundary 는 fetch(undici)가 자동 생성.
+  // 수동 Content-Type 헤더 지정 금지 (boundary 깨짐 원인).
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    body: form,
+    headers: { Accept: 'application/json' },
+  });
   if (!response.ok) {
     const errText = await response.text().catch(() => '');
     logger.error('PlantNet 응답 오류', {
       status: response.status,
       statusText: response.statusText,
-      bodyPreview: errText.slice(0, 500),
+      bodyPreview: errText.slice(0, 800),
     });
     throw new Error(`PlantNet ${response.status} ${response.statusText}: ${errText.slice(0, 200)}`);
   }
