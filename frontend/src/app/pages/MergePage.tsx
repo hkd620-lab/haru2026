@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Layers, X } from 'lucide-react';
+import { Layers, X, FileSpreadsheet } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { MergeTitleAnimation } from '../components/MergeTitleAnimation';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,6 +9,7 @@ import { RecordFormat, Category, CATEGORY_FORMATS, FORMAT_PREFIX } from '../type
 import { useSubscription } from '../hooks/useSubscription';
 import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
+import { exportLedgerToXlsx, type LedgerPeriod } from '../services/ledgerExportService';
 
 type MergeFilter = 'special' | 'all';
 type MergePeriod = 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'custom';
@@ -31,6 +32,9 @@ export function MergePage() {
   const [endDate, setEndDate] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [showNotice, setShowNotice] = useState(true);
+  // 📒 HARU보조장부 엑셀 저장 전용 상태
+  const [ledgerPeriod, setLedgerPeriod] = useState<LedgerPeriod>('thisMonth');
+  const [isExportingLedger, setIsExportingLedger] = useState(false);
 
   const periodOptions: PeriodOption[] = [
     { id: 'weekly', title: '주간', description: '최근 7일 기준' },
@@ -84,6 +88,28 @@ export function MergePage() {
 
   const handleCustomDateChange = () => {
     setSelectedPeriod('custom');
+  };
+
+  const handleExportLedger = async () => {
+    if (!user) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+    setIsExportingLedger(true);
+    try {
+      const records = await firestoreService.getRecords(user.uid);
+      const result = exportLedgerToXlsx(records, ledgerPeriod);
+      if (result.count === 0) {
+        toast.warning('해당 기간의 보조장부 기록이 없습니다.');
+      } else {
+        toast.success(`📒 ${result.count}건이 ${result.fileName} 파일로 저장되었습니다.`);
+      }
+    } catch (e) {
+      console.error('보조장부 엑셀 저장 실패:', e);
+      toast.error('엑셀 저장에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsExportingLedger(false);
+    }
   };
 
   const handleRunMerge = async () => {
@@ -420,6 +446,81 @@ export function MergePage() {
         <Layers className="w-4 h-4" />
         <span>{isRunning ? '합치는 중...' : '📥 합치기 실행'}</span>
       </button>
+
+      {/* 📒 HARU보조장부 전용 — 엑셀 저장 (보조장부 선택 시에만 노출) */}
+      {selectedFormat === 'HARU보조장부' && (
+        <section
+          className="bg-white rounded-lg shadow-sm overflow-hidden"
+          style={{ border: '1px solid #e5e5e5' }}
+        >
+          <div className="px-4 pt-3 pb-2 flex items-center gap-2">
+            <span style={{ fontSize: '13px', color: '#1A3C6E', fontWeight: 600 }}>
+              🧾 보조장부 엑셀 저장
+            </span>
+            <span className="text-xs" style={{ color: '#999' }}>
+              — 기간을 선택해 .xlsx 파일로 내려받기
+            </span>
+          </div>
+
+          <div className="grid grid-cols-4 gap-0 px-3">
+            {([
+              { id: 'today',     label: '오늘' },
+              { id: 'thisWeek',  label: '이번주' },
+              { id: 'thisMonth', label: '이번달' },
+              { id: 'all',       label: '전체' },
+            ] as { id: LedgerPeriod; label: string }[]).map((opt, index, arr) => {
+              const isSelected = ledgerPeriod === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => setLedgerPeriod(opt.id)}
+                  className="py-2 text-center transition-all"
+                  style={{
+                    backgroundColor: isSelected ? '#1A3C6E' : '#FEFBE8',
+                    color: isSelected ? '#FAF9F6' : '#333',
+                    border: `1px solid ${isSelected ? '#1A3C6E' : '#e5e5e5'}`,
+                    borderRadius:
+                      index === 0
+                        ? '6px 0 0 6px'
+                        : index === arr.length - 1
+                        ? '0 6px 6px 0'
+                        : '0',
+                    fontSize: '13px',
+                    fontWeight: isSelected ? 600 : 400,
+                  }}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="px-3 pt-3 pb-2">
+            <button
+              onClick={handleExportLedger}
+              disabled={isExportingLedger}
+              className="w-full py-3 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 shadow-sm"
+              style={{
+                backgroundColor: '#10b981',
+                color: '#FAF9F6',
+                fontWeight: 600,
+                fontSize: '14px',
+              }}
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>{isExportingLedger ? '저장 중...' : '보조장부 엑셀 저장'}</span>
+            </button>
+          </div>
+
+          <p
+            className="px-4 pb-3"
+            style={{ fontSize: '11px', color: '#6B7280', lineHeight: 1.6 }}
+          >
+            HARU보조장부는 기록 보조 기능입니다.<br />
+            최종 장부 및 세무 신고는 사용자 또는 세무 전문가의 확인이 필요합니다.
+          </p>
+        </section>
+      )}
     </div>
   );
 }
