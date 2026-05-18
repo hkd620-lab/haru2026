@@ -9,7 +9,7 @@
 // 형식 타입 정의
 // ===========================================
 
-// 10가지 기록 형식
+// 10가지 기록 형식 (+ HARU주식관리, HARUraw, HARU보조장부 보조 형식)
 export type RecordFormat =
   | '일기'
   | '에세이'
@@ -22,7 +22,8 @@ export type RecordFormat =
   | '육아일기'
   | 'HARU주식관리'
   | '메모'
-  | 'HARUraw';
+  | 'HARUraw'
+  | 'HARU보조장부';
 
 // 기존 코드 호환성을 위한 alias
 export type RecordFormatKorean = RecordFormat;
@@ -37,7 +38,7 @@ export type Category = '생활' | '업무' | 'AI대화' | 'HARU주식관리' | '
 // 카테고리별 형식 분류
 export const CATEGORY_FORMATS: Record<Category, RecordFormat[]> = {
   '생활': ['일기', '에세이', '여행기록', '텃밭일지', '애완동물관찰일지', '육아일기'],
-  '업무': ['선교보고', '일반보고', '업무일지', '메모'],
+  '업무': ['선교보고', '일반보고', '업무일지', '메모', 'HARU보조장부'],
   'AI대화': ['ChatGPT', 'Claude', 'Gemini', '기타'] as any[],
   'HARU주식관리': ['HARU주식관리'],
   '나도작가': ['나도작가'] as any[],
@@ -56,6 +57,7 @@ export const ALL_FORMATS: RecordFormat[] = [
   '육아일기',
   'HARU주식관리',
   '메모',
+  'HARU보조장부',
   'HARUraw',
 ];
 
@@ -73,6 +75,7 @@ export const FORMAT_PREFIX: Record<RecordFormat, string> = {
   'HARU주식관리': 'stock',
   '메모': 'memo',
   'HARUraw': 'haruraw',
+  'HARU보조장부': 'ledger',
 };
 
 // prefix에서 형식명 찾기 (역매핑)
@@ -89,6 +92,7 @@ export const PREFIX_TO_FORMAT: Record<string, RecordFormat> = {
   'stock': 'HARU주식관리',
   'memo': '메모',
   'haruraw': 'HARUraw',
+  'ledger': 'HARU보조장부',
 };
 
 // 형식별 이모지 (선택사항)
@@ -105,6 +109,7 @@ export const FORMAT_EMOJI: Record<RecordFormat, string> = {
   'HARU주식관리': '📈',
   '메모': '📝',
   'HARUraw': '⚖️',
+  'HARU보조장부': '🧾',
 };
 
 // ===========================================
