@@ -175,6 +175,19 @@ const RECORDS: RecordItem[] = [
       </>
     ),
   },
+  {
+    label: 'HARU보조장부',
+    sub: '수입·지출 보조',
+    bg: '#E5DBC2',
+    stroke: '#7A6F5A',
+    format: 'HARU보조장부',
+    icon: (
+      <>
+        <path d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z" />
+        <path d="M8 8h8M8 12h8M8 16h5" />
+      </>
+    ),
+  },
 ];
 
 const AGENTS: Agent[] = [
@@ -980,7 +993,7 @@ export function HomePageV2() {
             iconStroke="#4A5A2C"
             title="HARU 기록"
             sub="매일의 한 줄, 평생의 자산"
-            badge="10가지 형식"
+            badge="11가지 형식"
             badgeDot="#7A8B4E"
             icon={
               <>
