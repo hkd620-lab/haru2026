@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import { ArrowLeft, Camera, Leaf, Loader2, Search, X, Save, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Camera, Leaf, Loader2, Search, X, Save, AlertTriangle, ChevronDown, ChevronUp, BookOpen, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { doc, setDoc, arrayUnion } from 'firebase/firestore';
+import { doc, setDoc, arrayUnion, collection, getDocs } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { db, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -61,6 +61,22 @@ type PhotoItem = {
 
 const MAX_PHOTOS = 5;
 
+// 📚 내 도감 매칭 — 이름 후보 정규화
+function normName(s: string | null | undefined): string {
+  if (!s) return '';
+  return String(s).trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+type LibraryMatch = {
+  id: string;
+  userConfirmedName?: string;
+  finalGuess?: string;
+  photo: string | null;
+  date?: string;
+  source?: 'user_confirmed' | 'ai' | string;
+  matchedOn: string;
+};
+
 const PHOTO_GUIDE_ITEMS = [
   { icon: '🌿', label: '잎 앞면', hint: '광택·잎맥 확인용' },
   { icon: '🍃', label: '잎 뒷면', hint: '잎털·색감 확인용' },
@@ -97,12 +113,32 @@ export function PlantDetectivePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [savedToToday, setSavedToToday] = useState(false);
   const [showGuide, setShowGuide] = useState(true);
+  // 📚 내 도감 매칭
+  const [libraryMatches, setLibraryMatches] = useState<LibraryMatch[]>([]);
+  // ✍️ 사용자 직접 이름 확정
+  const [userConfirmedName, setUserConfirmedName] = useState('');
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [confirmedSavedDocId, setConfirmedSavedDocId] = useState<string | null>(null);
+  // 현재 결과를 plants/ 컬렉션에 한 번 저장했다면 그 plantId를 기억 — 재저장 시 update
+  const [activePlantDocId, setActivePlantDocId] = useState<string | null>(null);
+  const [activePlantImageUrls, setActivePlantImageUrls] = useState<string[]>([]);
+  const [activePlantCreatedAt, setActivePlantCreatedAt] = useState<number | null>(null);
+
+  const resetSessionState = () => {
+    setResult(null);
+    setSavedToToday(false);
+    setLibraryMatches([]);
+    setUserConfirmedName('');
+    setConfirmedSavedDocId(null);
+    setActivePlantDocId(null);
+    setActivePlantImageUrls([]);
+    setActivePlantCreatedAt(null);
+  };
 
   const clearAll = () => {
     photos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
     setPhotos([]);
-    setResult(null);
-    setSavedToToday(false);
+    resetSessionState();
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -112,8 +148,7 @@ export function PlantDetectivePage() {
       if (target) URL.revokeObjectURL(target.previewUrl);
       return prev.filter((p) => p.id !== id);
     });
-    setResult(null);
-    setSavedToToday(false);
+    resetSessionState();
   };
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -169,6 +204,8 @@ export function PlantDetectivePage() {
       return;
     }
     setIsAnalyzing(true);
+    // 새 분석 — 이전 세션 잔여 상태 정리 (도감 매칭/사용자 확정 초기화)
+    resetSessionState();
     try {
       const detect = httpsCallable<
         { images: { imageBase64: string; mimeType: string }[] },
@@ -177,9 +214,18 @@ export function PlantDetectivePage() {
       const response = await detect({
         images: photos.map((p) => ({ imageBase64: p.base64, mimeType: p.mimeType })),
       });
-      setResult(response.data);
-      if (response.data.meta && !response.data.meta.plantNetAvailable) {
+      const data = response.data;
+      setResult(data);
+      if (data.meta && !data.meta.plantNetAvailable) {
         toast.info('PlantNet 키가 설정되지 않아 Plant.id + Gemini 결과만 표시됩니다.');
+      }
+      // 분석 결과에 등장한 이름들을 사용자 도감에서 매칭 검색 (비동기, 실패해도 무시)
+      if (user) {
+        findLibraryMatches(data).then((matches) => {
+          setLibraryMatches(matches);
+        }).catch((e) => {
+          console.warn('내 도감 매칭 조회 실패:', e);
+        });
       }
     } catch (error: any) {
       console.error('식물 분석 실패:', error);
@@ -189,7 +235,127 @@ export function PlantDetectivePage() {
     }
   };
 
-  // 양쪽 저장 — records/{date}.plantDetective[] (legacy) + plants/{plantId} (신규)
+  // 📚 사용자 도감에서 이름 매칭 검색
+  const findLibraryMatches = async (data: AdvancedResult): Promise<LibraryMatch[]> => {
+    if (!user) return [];
+    // 분석 결과에서 모든 이름 후보 수집 (Gemini final / Plant.id / PlantNet · 한국명·학명 모두)
+    const candidates = new Map<string, string>(); // normalized → 원본
+    const add = (s?: string | null) => {
+      const k = normName(s || '');
+      if (k && k.length >= 2) candidates.set(k, String(s));
+    };
+    add(data.gemini?.finalGuess);
+    add(data.gemini?.finalLatinName);
+    add(data.plantId?.name);
+    add(data.plantId?.latinName);
+    add(data.plantNet?.name);
+    add(data.plantNet?.scientificName);
+    if (candidates.size === 0) return [];
+
+    const snap = await getDocs(collection(db, 'users', user.uid, 'plants'));
+    const matches: LibraryMatch[] = [];
+    snap.forEach((d) => {
+      const v = d.data() as any;
+      // 도감 도큐먼트의 이름 후보들 (사용자 확정 우선)
+      const docNames: { value: string; field: string }[] = [];
+      if (v.userConfirmedName) docNames.push({ value: v.userConfirmedName, field: 'userConfirmedName' });
+      if (v.finalGuess) docNames.push({ value: v.finalGuess, field: 'finalGuess' });
+      if (v.finalLatinName) docNames.push({ value: v.finalLatinName, field: 'finalLatinName' });
+      if (v.originalPlantIdResult?.name) docNames.push({ value: v.originalPlantIdResult.name, field: 'plantId.name' });
+      if (v.originalPlantIdResult?.latinName) docNames.push({ value: v.originalPlantIdResult.latinName, field: 'plantId.latinName' });
+      if (v.originalPlantNetResult?.name) docNames.push({ value: v.originalPlantNetResult.name, field: 'plantNet.name' });
+      if (v.originalPlantNetResult?.scientificName) docNames.push({ value: v.originalPlantNetResult.scientificName, field: 'plantNet.sci' });
+
+      const photos = Array.isArray(v.photos) ? v.photos : Array.isArray(v.imageUrls) ? v.imageUrls : [];
+      for (const dn of docNames) {
+        const key = normName(dn.value);
+        if (candidates.has(key)) {
+          matches.push({
+            id: d.id,
+            userConfirmedName: v.userConfirmedName,
+            finalGuess: v.finalGuess,
+            photo: photos[0] || null,
+            date: v.date,
+            source: v.source,
+            matchedOn: dn.value,
+          });
+          break;
+        }
+      }
+    });
+    // 최근 저장 우선 (createdAt desc 가까운 구현 — id에 timestamp 포함됨)
+    matches.sort((a, b) => (b.id > a.id ? 1 : -1));
+    // 사용자 확정본을 우선 노출
+    matches.sort((a, b) => {
+      const aw = a.source === 'user_confirmed' ? 1 : 0;
+      const bw = b.source === 'user_confirmed' ? 1 : 0;
+      return bw - aw;
+    });
+    return matches.slice(0, 3);
+  };
+
+  // 사진 업로드 — 이미 한 번 업로드했다면 재사용
+  const ensurePlantDocAssets = async (): Promise<{
+    plantId: string;
+    today: string;
+    createdAt: number;
+    imageUrls: string[];
+  }> => {
+    if (!user) throw new Error('UNAUTH');
+    if (activePlantDocId && activePlantImageUrls.length > 0 && activePlantCreatedAt) {
+      const d = new Date(activePlantCreatedAt);
+      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return {
+        plantId: activePlantDocId,
+        today,
+        createdAt: activePlantCreatedAt,
+        imageUrls: activePlantImageUrls,
+      };
+    }
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const today = `${yyyy}-${mm}-${dd}`;
+    const ts = Date.now();
+    const plantId = `plant_${today}_${ts}_${Math.random().toString(36).slice(2, 8)}`;
+
+    const storage = getStorage();
+    const imageUrls: string[] = [];
+    for (let i = 0; i < photos.length; i++) {
+      const p = photos[i];
+      const fileName = `${plantId}_${i + 1}.jpg`;
+      const path = `users/${user.uid}/format_photos/${fileName}`;
+      const storageRef = ref(storage, path);
+      const blob = await fetch(p.previewUrl).then((r) => r.blob());
+      await uploadBytes(storageRef, blob, { contentType: blob.type || 'image/jpeg' });
+      const url = await getDownloadURL(storageRef);
+      imageUrls.push(url);
+    }
+    setActivePlantDocId(plantId);
+    setActivePlantImageUrls(imageUrls);
+    setActivePlantCreatedAt(ts);
+    return { plantId, today, createdAt: ts, imageUrls };
+  };
+
+  const buildDisplayName = () => {
+    if (!result) return { name: '식물 이름 불확실', latin: '', confidence: null as number | null };
+    return {
+      name:
+        result.gemini?.finalGuess ||
+        result.plantId?.name ||
+        result.plantNet?.name ||
+        '식물 이름 불확실',
+      latin:
+        result.gemini?.finalLatinName ||
+        result.plantId?.latinName ||
+        result.plantNet?.scientificName ||
+        '',
+      confidence: (result.plantId?.confidence ?? result.plantNet?.confidence ?? null) as number | null,
+    };
+  };
+
+  // 양쪽 저장 — records/{date}.plantDetective[] (legacy) + plants/{plantId} (신규, source: ai)
   const saveToToday = async () => {
     if (!user) {
       toast.error('로그인이 필요합니다.');
@@ -201,64 +367,37 @@ export function PlantDetectivePage() {
     }
     setIsSaving(true);
     try {
-      const now = new Date();
-      const yyyy = now.getFullYear();
-      const mm = String(now.getMonth() + 1).padStart(2, '0');
-      const dd = String(now.getDate()).padStart(2, '0');
-      const today = `${yyyy}-${mm}-${dd}`;
-      const ts = Date.now();
-      const plantId = `plant_${today}_${ts}_${Math.random().toString(36).slice(2, 8)}`;
+      const { plantId, today, createdAt, imageUrls } = await ensurePlantDocAssets();
+      const { name: displayName, latin: displayLatin, confidence: topConfidence } = buildDisplayName();
 
-      // 1) Storage에 사진들 업로드
-      const storage = getStorage();
-      const imageUrls: string[] = [];
-      for (let i = 0; i < photos.length; i++) {
-        const p = photos[i];
-        const fileName = `${plantId}_${i + 1}.jpg`;
-        const path = `users/${user.uid}/format_photos/${fileName}`;
-        const storageRef = ref(storage, path);
-        const blob = await fetch(p.previewUrl).then((r) => r.blob());
-        await uploadBytes(storageRef, blob, { contentType: blob.type || 'image/jpeg' });
-        const url = await getDownloadURL(storageRef);
-        imageUrls.push(url);
-      }
-
-      // 2) 표시용 식물명 — Gemini finalGuess 우선, 없으면 plantId/plantNet top
-      const displayName =
-        result.gemini?.finalGuess ||
-        result.plantId?.name ||
-        result.plantNet?.name ||
-        '식물 이름 불확실';
-      const displayLatin =
-        result.gemini?.finalLatinName ||
-        result.plantId?.latinName ||
-        result.plantNet?.scientificName ||
-        '';
-      const topConfidence =
-        result.plantId?.confidence ??
-        result.plantNet?.confidence ??
-        null;
-
-      // 3) 신규 컬렉션 — users/{uid}/plants/{plantId}
+      // 1) users/{uid}/plants/{plantId}
       const plantDocRef = doc(db, 'users', user.uid, 'plants', plantId);
-      await setDoc(plantDocRef, {
-        plantId,
-        createdAt: ts,
-        date: today,
-        imageUrls,
-        finalGuess: displayName,
-        finalLatinName: displayLatin,
-        confidence: topConfidence,
-        plantId_result: result.plantId,
-        plantNet_result: result.plantNet,
-        gemini_result: result.gemini,
-        meta: result.meta,
-      });
+      const now = Date.now();
+      await setDoc(
+        plantDocRef,
+        {
+          plantId,
+          date: today,
+          createdAt,
+          updatedAt: now,
+          photos: imageUrls,
+          finalGuess: displayName,
+          finalLatinName: displayLatin,
+          confidence: topConfidence,
+          originalPlantIdResult: result.plantId,
+          originalPlantNetResult: result.plantNet,
+          geminiAnalysis: result.gemini,
+          meta: result.meta,
+          // 사용자 확정 이전이면 source는 ai. user_confirmed로 저장됐다면 덮어쓰지 않음.
+          source: confirmedSavedDocId === plantId ? 'user_confirmed' : 'ai',
+        },
+        { merge: true },
+      );
 
-      // 4) 기존 호환 — records/{today}.plantDetective[] 에도 누적 저장
+      // 2) 기존 호환 — records/{today}.plantDetective[]
       const recordRef = doc(db, 'users', user.uid, 'records', today);
       const legacyEntry = {
-        createdAt: ts,
+        createdAt,
         plantId,
         imageUrl: imageUrls[0] || '',
         imageUrls,
@@ -298,6 +437,64 @@ export function PlantDetectivePage() {
       toast.error(error?.message || '저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // ✍️ 사용자 직접 이름 확정 — plants/{plantId}만 user_confirmed로 저장 (records 경로는 무수정)
+  const saveAsUserConfirmed = async () => {
+    if (!user) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+    if (!result || photos.length === 0) {
+      toast.info('먼저 분석을 완료해 주세요.');
+      return;
+    }
+    const name = userConfirmedName.trim();
+    if (name.length === 0) {
+      toast.warning('직접 입력한 식물 이름을 적어 주세요.');
+      return;
+    }
+    if (name.length > 60) {
+      toast.warning('식물 이름은 60자 이내로 입력해 주세요.');
+      return;
+    }
+    setIsConfirming(true);
+    try {
+      const { plantId, today, createdAt, imageUrls } = await ensurePlantDocAssets();
+      const { name: displayName, latin: displayLatin, confidence: topConfidence } = buildDisplayName();
+
+      const plantDocRef = doc(db, 'users', user.uid, 'plants', plantId);
+      const now = Date.now();
+      await setDoc(
+        plantDocRef,
+        {
+          plantId,
+          date: today,
+          createdAt,
+          updatedAt: now,
+          photos: imageUrls,
+          // 사용자 확정 이름이 최우선 — 기존 API 결과는 original* 로 그대로 보존
+          userConfirmedName: name,
+          finalGuess: displayName,
+          finalLatinName: displayLatin,
+          confidence: topConfidence,
+          originalPlantIdResult: result.plantId,
+          originalPlantNetResult: result.plantNet,
+          geminiAnalysis: result.gemini,
+          meta: result.meta,
+          source: 'user_confirmed',
+        },
+        { merge: true },
+      );
+
+      setConfirmedSavedDocId(plantId);
+      toast.success(`📚 '${name}' 으로 내 도감에 저장했어요.`);
+    } catch (error: any) {
+      console.error('사용자 확정 저장 실패:', error);
+      toast.error(error?.message || '저장에 실패했습니다.');
+    } finally {
+      setIsConfirming(false);
     }
   };
 
@@ -581,6 +778,99 @@ export function PlantDetectivePage() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* ========== 📚 내 도감 참고 결과 (가장 먼저 노출) ========== */}
+            {libraryMatches.length > 0 && (
+              <ResultCard title="📚 내 도감 참고 결과" accent="#7C5E10" bg="#FFF8DB">
+                <p style={{ margin: '0 0 8px', fontSize: 12, color: '#6b5b22', lineHeight: 1.55 }}>
+                  같은 이름의 식물을 이전에 기록하신 적이 있어요. 참고하세요.
+                </p>
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 8 }}>
+                  {libraryMatches.map((m) => {
+                    const showName = m.userConfirmedName || m.finalGuess || m.matchedOn;
+                    return (
+                      <li
+                        key={m.id}
+                        style={{
+                          display: 'flex',
+                          gap: 10,
+                          alignItems: 'center',
+                          background: '#fff',
+                          border: '1px solid #f1e3a8',
+                          borderRadius: 8,
+                          padding: 8,
+                        }}
+                      >
+                        {m.photo ? (
+                          <img
+                            src={m.photo}
+                            alt="이전 도감 사진"
+                            style={{
+                              width: 56,
+                              height: 56,
+                              objectFit: 'cover',
+                              borderRadius: 6,
+                              flexShrink: 0,
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: 56,
+                              height: 56,
+                              borderRadius: 6,
+                              background: '#f3eccd',
+                              display: 'grid',
+                              placeItems: 'center',
+                              flexShrink: 0,
+                              color: '#a88f30',
+                            }}
+                          >
+                            <BookOpen size={20} />
+                          </div>
+                        )}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            <span style={{ fontWeight: 800, fontSize: 14, color: '#3d3414' }}>
+                              {showName}
+                            </span>
+                            {m.source === 'user_confirmed' && (
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  padding: '2px 8px',
+                                  borderRadius: 999,
+                                  background: '#DCFCE7',
+                                  color: '#166534',
+                                }}
+                              >
+                                내가 확정
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: 11, color: '#7a6a2c', marginTop: 2 }}>
+                            {m.date ? `${m.date} 기록` : '이전 기록'}
+                            {m.matchedOn && m.matchedOn !== showName && (
+                              <span style={{ marginLeft: 6, color: '#a88f30' }}>
+                                · 이번 결과의 "{m.matchedOn}"와 일치
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </ResultCard>
+            )}
+
             {/* ========== 독초 경고 ========== */}
             {showPoisonAlert && (
               <div
@@ -764,6 +1054,81 @@ export function PlantDetectivePage() {
                 </ul>
               </ResultCard>
             )}
+
+            {/* ========== ✍️ 직접 이름 수정·확정 ========== */}
+            <ResultCard title="✍️ 직접 이름 수정·확정" accent="#15803D" bg="#F0FDF4">
+              <p style={{ margin: '0 0 8px', fontSize: 12, color: '#3d4734', lineHeight: 1.55 }}>
+                AI 결과가 틀렸다면 진짜 식물 이름을 직접 입력해 주세요.<br />
+                내 도감에 정답으로 저장됩니다. 다음에 같은 식물을 찍으면 우선 보여드릴게요.
+              </p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <input
+                  type="text"
+                  value={userConfirmedName}
+                  onChange={(e) => setUserConfirmedName(e.target.value)}
+                  placeholder="예: 수세미"
+                  maxLength={60}
+                  disabled={isConfirming}
+                  style={{
+                    flex: 1,
+                    minWidth: 160,
+                    height: 42,
+                    borderRadius: 8,
+                    border: '1px solid #BBF7D0',
+                    background: '#fff',
+                    padding: '0 12px',
+                    fontSize: 16, // 모바일 줌 방지
+                    color: '#1f2a17',
+                    outline: 'none',
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={saveAsUserConfirmed}
+                  disabled={isConfirming || userConfirmedName.trim().length === 0}
+                  style={{
+                    height: 42,
+                    borderRadius: 8,
+                    border: '1px solid #15803D',
+                    background:
+                      isConfirming || userConfirmedName.trim().length === 0
+                        ? '#86efac'
+                        : '#15803D',
+                    color: '#fff',
+                    fontWeight: 900,
+                    padding: '0 14px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    cursor:
+                      isConfirming || userConfirmedName.trim().length === 0
+                        ? 'not-allowed'
+                        : 'pointer',
+                  }}
+                >
+                  {isConfirming ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <CheckCircle2 size={16} />
+                  )}
+                  내 도감에 정답으로 저장
+                </button>
+              </div>
+              {confirmedSavedDocId && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    fontSize: 12,
+                    color: '#166534',
+                    background: '#DCFCE7',
+                    padding: '6px 10px',
+                    borderRadius: 6,
+                  }}
+                >
+                  ✅ 도감에 저장되었습니다. 기존 Plant.id · PlantNet · Gemini 결과도 함께 보관됩니다.
+                </div>
+              )}
+            </ResultCard>
 
             {/* ========== 저장 버튼 ========== */}
             <button
