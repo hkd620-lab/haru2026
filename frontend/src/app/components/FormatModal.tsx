@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import heic2any from 'heic2any';
 import { LoadingOverlay } from './LoadingOverlay';
 
-type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | 'HARU주식관리' | '메모';
+type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | 'HARU주식관리' | '메모' | 'HARU보조장부';
 type SayuMode = 'BASIC' | 'PREMIUM';
 
 interface FormatModalProps {
@@ -114,6 +114,16 @@ const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placehol
     { key: 'stock_date', label: '거래일시', placeholder: '예: 2026.04.23 10:23', rows: 1 },
     { key: 'stock_memo', label: '메모', placeholder: '추가로 기록할 내용', rows: 3 },
   ],
+  'HARU보조장부': [
+    { key: 'ledger_date', label: '거래일시', placeholder: '예: 2026.05.18 14:30', rows: 1 },
+    { key: 'ledger_type', label: '거래종류', placeholder: '예: 수입 / 지출', rows: 1 },
+    { key: 'ledger_item', label: '항목', placeholder: '예: 컨설팅 매출 / 사무실 임대료 / 식대', rows: 1 },
+    { key: 'ledger_partner', label: '거래처', placeholder: '예: (주)민들레 / 김철수님', rows: 1 },
+    { key: 'ledger_amount', label: '금액', placeholder: '예: 1,200,000원', rows: 1 },
+    { key: 'ledger_payment', label: '결제수단', placeholder: '예: 계좌이체 / 신용카드 / 현금', rows: 1 },
+    { key: 'ledger_proof', label: '증빙', placeholder: '예: 세금계산서 / 현금영수증 / 카드매출전표', rows: 1 },
+    { key: 'ledger_memo', label: '업무 메모', placeholder: '관련 업무 흐름·특이사항을 자유롭게 작성하세요 (보조장부 — 세무 신고용 정식 장부 아님)', rows: 4 },
+  ],
 };
 
 // 형식별 prefix 매핑
@@ -129,6 +139,7 @@ const FORMAT_PREFIX: Record<RecordFormat, string> = {
   '육아일기': 'child',
   'HARU주식관리': 'stock',
   '메모': 'memo',
+  'HARU보조장부': 'ledger',
 };
 
 // 기록 스타일 타입
