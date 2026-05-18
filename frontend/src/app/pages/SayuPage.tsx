@@ -2527,7 +2527,74 @@ export function SayuPage() {
                                       </div>
                                     )}
 
-                                    {/* 3) 책 인용문단 — v4-verbatim: 원문 보존 중심 */}
+                                    {/* v5-vibeflow — 인간+AI 사고 흐름 5종 (원문 보존 기반) */}
+                                    {(() => {
+                                      const humanQ: string = bm.humanQuestionCore || '';
+                                      const aiR: string = bm.aiResponseCore || '';
+                                      const shift: string = bm.thinkingShift || '';
+                                      const collab: string = bm.collaborationMoment || '';
+                                      const vibe: string = bm.vibeFlow || '';
+                                      const vibeScore: number | undefined = typeof bm.vibeVerbatimScore === 'number' ? bm.vibeVerbatimScore : undefined;
+                                      if (!humanQ && !aiR && !shift && !collab && !vibe) return null;
+                                      const Block = ({ icon, label, text }: { icon: string; label: string; text: string }) => (
+                                        text ? (
+                                          <div style={{
+                                            marginBottom: 8, padding: '8px 10px',
+                                            background: '#FFFFFF', border: '1px solid #F0E4C2', borderRadius: 6,
+                                          }}>
+                                            <p style={{ margin: 0, fontWeight: 700, fontSize: 11, color: '#1A3C6E' }}>
+                                              {icon} {label}
+                                            </p>
+                                            <p style={{ margin: '3px 0 0', whiteSpace: 'pre-wrap', fontSize: 12, lineHeight: 1.6, color: '#1F2937' }}>
+                                              {text}
+                                            </p>
+                                          </div>
+                                        ) : null
+                                      );
+                                      const scoreColor = (s: number) =>
+                                        s >= 0.7 ? { bg: '#DCFCE7', fg: '#166534', label: '원문 그대로' }
+                                        : s >= 0.4 ? { bg: '#FEF3C7', fg: '#92400E', label: '부분 인용' }
+                                        : { bg: '#FEE2E2', fg: '#991B1B', label: 'AI 재창작 의심' };
+                                      return (
+                                        <div style={{ marginBottom: 10 }}>
+                                          <p style={{ fontWeight: 700, color: '#1A3C6E', margin: '0 0 6px' }}>
+                                            인간 + AI 사고 흐름
+                                          </p>
+                                          {/* 1) 인간 질문 핵심 */}
+                                          <Block icon="🧑" label="인간 질문 핵심" text={humanQ} />
+                                          {/* 2) AI 응답 핵심 */}
+                                          <Block icon="🤖" label="AI 응답 핵심" text={aiR} />
+                                          {/* 3) 사고 변화 */}
+                                          <Block icon="💡" label="사고 변화" text={shift} />
+                                          {/* 4) AI 협업 장면 */}
+                                          <Block icon="🤝" label="AI 협업 장면" text={collab} />
+                                          {/* 5) 바이브 흐름 */}
+                                          {vibe && (
+                                            <div style={{
+                                              marginBottom: 8, padding: '10px 12px',
+                                              background: '#F0EDF8', border: '1px solid #D9D2EC', borderRadius: 6,
+                                            }}>
+                                              <p style={{ margin: 0, fontWeight: 700, fontSize: 11, color: '#1A3C6E' }}>
+                                                🌊 바이브 흐름 (질문 → 응답 → 깨달음)
+                                                {typeof vibeScore === 'number' && (
+                                                  <span style={{
+                                                    marginLeft: 6, fontSize: 9, padding: '1px 6px', borderRadius: 99,
+                                                    background: scoreColor(vibeScore).bg, color: scoreColor(vibeScore).fg, fontWeight: 600,
+                                                  }}>
+                                                    원문보존 {Math.round(vibeScore * 100)}% · {scoreColor(vibeScore).label}
+                                                  </span>
+                                                )}
+                                              </p>
+                                              <p style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap', fontSize: 12, lineHeight: 1.7, color: '#1F2937' }}>
+                                                {vibe}
+                                              </p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })()}
+
+                                    {/* 6) 책 인용문단 — v4-verbatim: 원문 보존 중심 */}
                                     {passages.length > 0 && (() => {
                                       const scores: number[] = Array.isArray(bm.passageVerbatimScores) ? bm.passageVerbatimScores : [];
                                       const avg: number | undefined = typeof bm.verbatimAverage === 'number' ? bm.verbatimAverage : undefined;

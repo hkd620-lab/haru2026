@@ -33,6 +33,10 @@ interface BookMaterialDoc {
     usedInBook?: boolean;
     usedChapterId?: string | null;
     createdAt?: any;
+    // v5-vibeflow — 인간+AI 사고 흐름 (미리보기 1줄만 사용)
+    vibeFlow?: string;
+    vibeVerbatimScore?: number;
+    promptVersion?: string;
   };
 }
 
@@ -179,11 +183,36 @@ function BookMaterialPanel({ uid }: { uid: string }) {
                         {bm.summary3 && (
                           <p style={{ fontSize: 11, color: '#6B7280', margin: '2px 0 0', whiteSpace: 'pre-wrap' }}>{bm.summary3}</p>
                         )}
+                        {/* v5-vibeflow 미리보기 — 닫힌 상태에서도 한 줄 노출 */}
+                        {bm.vibeFlow && (
+                          <p style={{
+                            fontSize: 11, color: '#1A3C6E', margin: '4px 0 0',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          }} title={bm.vibeFlow}>
+                            🌊 {bm.vibeFlow.replace(/\n/g, ' ').slice(0, 90)}
+                            {typeof bm.vibeVerbatimScore === 'number' && (
+                              <span style={{
+                                marginLeft: 6, fontSize: 9, padding: '0 5px', borderRadius: 99,
+                                background: bm.vibeVerbatimScore >= 0.7 ? '#DCFCE7' : bm.vibeVerbatimScore >= 0.4 ? '#FEF3C7' : '#FEE2E2',
+                                color: bm.vibeVerbatimScore >= 0.7 ? '#166534' : bm.vibeVerbatimScore >= 0.4 ? '#92400E' : '#991B1B',
+                              }}>{Math.round(bm.vibeVerbatimScore * 100)}%</span>
+                            )}
+                          </p>
+                        )}
                       </div>
                       <span style={{ fontSize: 10, color: '#9CA3AF', marginTop: 4 }}>{isOpen ? '▲' : '▼'}</span>
                     </div>
                     {isOpen && (
                       <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px dashed #E5E7EB', fontSize: 11, color: '#374151' }}>
+                        {/* v5-vibeflow 풀 미리보기 — 펼친 상태 */}
+                        {bm.vibeFlow && (
+                          <div style={{ marginBottom: 6, padding: '6px 8px', background: '#F0EDF8', borderRadius: 6 }}>
+                            <p style={{ fontWeight: 600, color: '#1A3C6E', margin: 0, fontSize: 11 }}>🌊 바이브 흐름</p>
+                            <p style={{ margin: '2px 0 0', whiteSpace: 'pre-wrap', fontSize: 11, lineHeight: 1.6 }}>
+                              {bm.vibeFlow}
+                            </p>
+                          </div>
+                        )}
                         {Array.isArray(bm.coreSentences) && bm.coreSentences.length > 0 && (
                           <div style={{ marginBottom: 6 }}>
                             <p style={{ fontWeight: 600, color: '#1A3C6E', margin: 0 }}>핵심 문장</p>
