@@ -116,41 +116,70 @@ export const convertToBookMaterial = onCall(
       model: 'gemini-3.1-flash-lite',
       generationConfig: {
         responseMimeType: 'application/json',
-        temperature: 0.3,
+        temperature: 0.55,
       },
     });
 
-    const prompt = `당신은 회고록 책 편집자입니다. 다음 AI 대화 기록을 분석해 "책소재 카드"를 JSON으로만 출력하세요.
+    // 책소재 생성 프롬프트 — "회의록 압축 요약"이 아니라 "책에서 밑줄 긋고 싶은 문장"을 만든다
+    const prompt = `당신은 65세 저자의 회고록 책 편집자입니다.
+다음 AI 대화 기록 한 건을 읽고, 책에 그대로 쓸 수 있는 "책소재 카드"를 JSON으로만 출력하세요.
 
 책 제목: "${BOOK_TITLE}"
 
-원칙:
-- 원문에 없는 사실은 만들지 마세요. 추정·과장 금지.
-- 허대표님의 경험을 과장하거나 미화하지 마세요.
-- 감동을 만들지 마세요. 사실 위주.
-- 결과물은 책 본문이 아니라 "책소재 카드"입니다.
-- HARU2026 관련 내용은 원문 기준으로만 정리하세요.
-- 기술적 사실 추정 금지. 불확실하면 빈 문자열 또는 빈 배열.
+[목표]
+- 결과물은 회의록 압축 요약이 아니라, 책에서 밑줄 긋고 싶은 문장들입니다.
+- 원문의 흐름·장면·감정·깨달음을 살리세요.
+- "왜 이 순간이 중요했는지"가 드러나야 합니다.
 
-원본 제목: ${originalTitle || '(없음)'}
-원본 내용:
+[반드시 지킬 원칙]
+- 원문에 없는 사실은 절대 만들지 마세요. 추정·창작·미화 금지.
+- 허대표님의 실제 말투와 호흡을 유지하세요. 보고서 문체·AI 특유의 감성체 금지.
+- "~구축됨", "~형성됨", "~확보됨" 같은 명사형 결론 문장 남발 금지.
+- 단순 요약 금지. 짧은 압축 금지. 의미 없는 추상 문장 금지.
+- 감동을 짜내지 마세요. 사실과 흐름 자체에서 의미가 드러나게 하세요.
+- 불확실한 부분은 빈 문자열 또는 빈 배열로 두세요.
+
+[원본 제목]
+${originalTitle || '(없음)'}
+
+[원본 대화]
 """
 ${text}
 """
 
-다음 JSON 스키마로만 출력하세요. 다른 텍스트 포함 금지:
+아래 JSON 스키마로만 출력하세요. 코드블록·주석·여분 텍스트 금지:
 {
-  "bookMaterialTitle": "책소재 제목(20자 이내, 따옴표 없이)",
-  "summary3": "세 줄 요약(전체 120자 이내, 줄바꿈은 \\n 사용)",
+  "bookMaterialTitle": "책소재 제목 — 한 챕터 소제목처럼 (20자 이내, 따옴표 없이)",
+
+  "bookSummary": "책소재 요약 3~5줄 — 흐름과 의미가 살아 있는 문장으로, 줄바꿈은 \\n 사용. 단순 압축 금지.",
+
+  "bookQuoteLines": [
+    "책 본문에 직접 인용 가능한 문장. 너무 짧지 않게. 허대표님 말투/호흡 유지. 감정과 의미가 함께 담길 것. 최대 5개."
+  ],
+
+  "bookInsightLines": [
+    "깨달음·통찰 문장. 시스템 변화, 철학 전환, 인생 단계의 의미가 드러나는 문장. 최대 5개."
+  ],
+
+  "bookSceneLines": [
+    "실제 상황이 눈에 보이는 장면 문장. 누가·어디서·무엇을·어떤 흐름으로 했는지가 드러나도록. 최대 5개."
+  ],
+
+  "bookEmotionLines": [
+    "감정·철학 문장. 과장 금지, 인간적인 결을 유지. 최대 5개."
+  ],
+
+  "summary3": "세 줄 요약(120자 이내, 줄바꿈 \\n). 옛 UI 호환용.",
   "coreSentences": ["핵심 문장 1", "핵심 문장 2", "핵심 문장 3"],
-  "sceneForBook": "책에 쓸 수 있는 장면/사례 — 원문 기반 200자 이내",
+  "sceneForBook": "책에 쓸 수 있는 장면/사례를 원문 기반 200자 이내로 — 옛 UI 호환용",
+
   "chapterCandidates": ["예상 챕터 후보 1", "예상 챕터 후보 2"],
   "materialGrade": "S",
   "quoteCandidates": ["인용 후보 문장 1"],
   "topicTags": ["태그1", "태그2", "태그3"]
 }
 
-자료 등급 기준:
+[자료 등급 기준]
 - S: 책에 그대로 쓸 만한 결정적 장면/통찰
 - A: 한 챕터의 핵심 소재로 충분
 - B: 일부 보조 자료로 활용 가능
@@ -177,15 +206,27 @@ ${text}
       bookTitle: BOOK_TITLE,
       materialGrade: grade,
       bookMaterialTitle: safeString(parsed?.bookMaterialTitle, 40),
+
+      // 신규 — 책 집필용 본격 구조 (서사·감정·장면·깨달음 보존)
+      bookSummary: safeString(parsed?.bookSummary, 800),
+      bookQuoteLines: safeArray(parsed?.bookQuoteLines, 5, 300),
+      bookInsightLines: safeArray(parsed?.bookInsightLines, 5, 300),
+      bookSceneLines: safeArray(parsed?.bookSceneLines, 5, 400),
+      bookEmotionLines: safeArray(parsed?.bookEmotionLines, 5, 300),
+      promptVersion: 'v2-story',
+
+      // 레거시 — 기존 UI 호환을 위해 유지
       summary3: safeString(parsed?.summary3, 300),
       coreSentences: safeArray(parsed?.coreSentences, 5, 200),
       sceneForBook: safeString(parsed?.sceneForBook, 500),
+
       chapterCandidates: safeArray(parsed?.chapterCandidates, 5, 60),
       quoteCandidates: safeArray(parsed?.quoteCandidates, 5, 200),
       topicTags: safeArray(parsed?.topicTags, 10, 30),
       sourceType: 'HARU지식창고',
       originalTitle,
       originalTextPreserved: true,
+      // 재변환 시 책 사용 흔적 보존
       usedInBook: typeof doc.bookMaterial?.usedInBook === 'boolean' ? doc.bookMaterial.usedInBook : false,
       usedChapterId: typeof doc.bookMaterial?.usedChapterId === 'string' ? doc.bookMaterial.usedChapterId : null,
     };

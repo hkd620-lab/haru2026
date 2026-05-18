@@ -2486,42 +2486,89 @@ export function SayuPage() {
                           </div>
                           {selectedAiLog?.id === log.id && (
                             <>
-                              {(log as any).bookMaterial?.enabled && (
-                                <div className="px-4 py-3 text-xs leading-relaxed"
-                                  style={{ backgroundColor: '#FEF6E0', color: '#1A3C6E', borderTop: '1px solid #FCE5A1' }}>
-                                  <p style={{ fontWeight: 700, marginBottom: 4 }}>
-                                    📚 책소재 — {(log as any).bookMaterial.bookMaterialTitle || '(제목 없음)'}
-                                    <span style={{ marginLeft: 6, fontSize: 10, padding: '1px 6px', borderRadius: 99, backgroundColor: '#EEF2FF', color: '#4338CA' }}>
-                                      {(log as any).bookMaterial.materialGrade}급
-                                    </span>
-                                  </p>
-                                  {(log as any).bookMaterial.summary3 && (
-                                    <p style={{ marginBottom: 4, whiteSpace: 'pre-wrap' }}>
-                                      <strong>요약:</strong> {(log as any).bookMaterial.summary3}
-                                    </p>
-                                  )}
-                                  {Array.isArray((log as any).bookMaterial.coreSentences) && (log as any).bookMaterial.coreSentences.length > 0 && (
-                                    <p style={{ marginBottom: 4 }}>
-                                      <strong>핵심문장:</strong>
+                              {(() => {
+                                const bm = (log as any).bookMaterial;
+                                if (!bm?.enabled) return null;
+                                // 신규 v2-story 필드 (없으면 레거시 폴백)
+                                const bookSummary: string = bm.bookSummary || bm.summary3 || '';
+                                const quoteLines: string[] = Array.isArray(bm.bookQuoteLines) && bm.bookQuoteLines.length > 0
+                                  ? bm.bookQuoteLines
+                                  : (Array.isArray(bm.quoteCandidates) ? bm.quoteCandidates : []);
+                                const insightLines: string[] = Array.isArray(bm.bookInsightLines) ? bm.bookInsightLines : [];
+                                const sceneLines: string[] = Array.isArray(bm.bookSceneLines) && bm.bookSceneLines.length > 0
+                                  ? bm.bookSceneLines
+                                  : (bm.sceneForBook ? [bm.sceneForBook] : []);
+                                const emotionLines: string[] = Array.isArray(bm.bookEmotionLines) ? bm.bookEmotionLines : [];
+                                const legacyCore: string[] = Array.isArray(bm.coreSentences) ? bm.coreSentences : [];
+                                const chapters: string[] = Array.isArray(bm.chapterCandidates) ? bm.chapterCandidates : [];
+                                const tags: string[] = Array.isArray(bm.topicTags) ? bm.topicTags : [];
+                                const renderList = (label: string, items: string[]) => (
+                                  items.length === 0 ? null : (
+                                    <div style={{ marginBottom: 6 }}>
+                                      <p style={{ fontWeight: 700, color: '#1A3C6E', margin: 0 }}>{label}</p>
                                       <ul style={{ marginLeft: 14, marginTop: 2, listStyleType: 'disc' }}>
-                                        {(log as any).bookMaterial.coreSentences.map((s: string, i: number) => (
-                                          <li key={i}>{s}</li>
-                                        ))}
+                                        {items.map((s, i) => <li key={i} style={{ marginBottom: 2 }}>{s}</li>)}
                                       </ul>
+                                    </div>
+                                  )
+                                );
+                                return (
+                                  <div className="px-4 py-3 text-xs leading-relaxed"
+                                    style={{ backgroundColor: '#FEF6E0', color: '#1A3C6E', borderTop: '1px solid #FCE5A1' }}>
+                                    {/* 1) 책소재 제목 */}
+                                    <p style={{ fontWeight: 700, marginBottom: 6, fontSize: 13 }}>
+                                      📚 책소재 — {bm.bookMaterialTitle || '(제목 없음)'}
+                                      <span style={{ marginLeft: 6, fontSize: 10, padding: '1px 6px', borderRadius: 99, backgroundColor: '#EEF2FF', color: '#4338CA' }}>
+                                        {bm.materialGrade}급
+                                      </span>
+                                      {bm.promptVersion && (
+                                        <span style={{ marginLeft: 6, fontSize: 9, color: '#9CA3AF' }}>
+                                          {bm.promptVersion}
+                                        </span>
+                                      )}
                                     </p>
-                                  )}
-                                  {Array.isArray((log as any).bookMaterial.chapterCandidates) && (log as any).bookMaterial.chapterCandidates.length > 0 && (
-                                    <p style={{ marginBottom: 4 }}>
-                                      <strong>예상 챕터:</strong> {(log as any).bookMaterial.chapterCandidates.join(' · ')}
+
+                                    {/* 2) 책소재 요약 */}
+                                    {bookSummary && (
+                                      <div style={{ marginBottom: 8 }}>
+                                        <p style={{ fontWeight: 700, color: '#1A3C6E', margin: 0 }}>책소재 요약</p>
+                                        <p style={{ margin: '2px 0 0', whiteSpace: 'pre-wrap' }}>{bookSummary}</p>
+                                      </div>
+                                    )}
+
+                                    {/* 3~6) 책 인용 / 깨달음 / 장면 / 감정 */}
+                                    {renderList('책 인용문장', quoteLines)}
+                                    {renderList('깨달음 문장', insightLines)}
+                                    {renderList('장면 문장', sceneLines)}
+                                    {renderList('감정·철학 문장', emotionLines)}
+
+                                    {/* 레거시 coreSentences (v1 데이터에만 존재) */}
+                                    {quoteLines.length === 0 && insightLines.length === 0
+                                      && emotionLines.length === 0 && legacyCore.length > 0 && (
+                                        renderList('핵심문장 (v1)', legacyCore)
+                                    )}
+
+                                    {/* 7) 챕터 후보 */}
+                                    {chapters.length > 0 && (
+                                      <p style={{ marginBottom: 4 }}>
+                                        <strong>예상 챕터:</strong> {chapters.join(' · ')}
+                                      </p>
+                                    )}
+
+                                    {/* 8) 태그 */}
+                                    {tags.length > 0 && (
+                                      <p style={{ fontSize: 10, color: '#6B7280', marginTop: 4 }}>
+                                        #{tags.join(' #')}
+                                      </p>
+                                    )}
+
+                                    {/* 9) 재변환 안내 */}
+                                    <p style={{ fontSize: 10, color: '#92400E', marginTop: 8, paddingTop: 6, borderTop: '1px dashed #FCE5A1' }}>
+                                      💡 더 책답게 바꾸려면 카드 상단 🔄 버튼을 누르세요. (재변환 시 책 사용 흔적은 보존됩니다)
                                     </p>
-                                  )}
-                                  {Array.isArray((log as any).bookMaterial.topicTags) && (log as any).bookMaterial.topicTags.length > 0 && (
-                                    <p style={{ fontSize: 10, color: '#6B7280' }}>
-                                      #{(log as any).bookMaterial.topicTags.join(' #')}
-                                    </p>
-                                  )}
-                                </div>
-                              )}
+                                  </div>
+                                );
+                              })()}
                               <div className="px-4 py-3 text-xs leading-relaxed whitespace-pre-wrap"
                                 style={{ backgroundColor: '#f8faff', color: '#333', borderTop: '1px solid #eef2ff' }}>
                                 {(log as any).content || '내용 없음'}
