@@ -1058,6 +1058,7 @@ export function SayuPage() {
   };
 
   // 📚 책소재로 변환 — 선택한 AI 대화 1건을 책 재료 카드로 구조화
+  // 보안: callable 은 logId / force 만 받음. 원본 content/title 은 서버가 Firestore 에서 다시 읽음.
   const handleConvertToBookMaterial = async (log: AiLog) => {
     const content = (log as any).content as string | undefined;
     if (!content || content.trim().length < 10) {
@@ -1075,8 +1076,7 @@ export function SayuPage() {
       const convertFn = httpsCallable(fns, 'convertToBookMaterial');
       const result = await convertFn({
         logId: log.id,
-        content,
-        title: (log as any).ai_title || log.title || '',
+        force: already,
       });
       const data = (result.data || {}) as any;
       if (!data?.ok) throw new Error('AI 응답 형식 오류');
@@ -1084,7 +1084,12 @@ export function SayuPage() {
       toast.success('✅ 책소재 변환 완료!');
     } catch (e: any) {
       console.error('책소재 변환 실패:', e);
-      toast.error(`변환 실패: ${e?.message || '알 수 없는 오류'}`);
+      const code = e?.code || '';
+      const msg = e?.message || '알 수 없는 오류';
+      if (code === 'functions/permission-denied') toast.error('권한이 없습니다 (개발자 전용 기능)');
+      else if (code === 'functions/not-found') toast.error('원본 기록을 찾을 수 없습니다.');
+      else if (code === 'functions/failed-precondition') toast.error(msg);
+      else toast.error(`변환 실패: ${msg}`);
     } finally {
       setBookMaterialBusy(prev => { const n = new Set(prev); n.delete(log.id); return n; });
     }

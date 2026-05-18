@@ -1526,8 +1526,8 @@ export function NovelStudio() {
         </div>
       </div>
 
-      {/* 📚 책소재 불러오기 — book_haru2026_ai_platform */}
-      <BookMaterialPanel uid={user.uid} />
+      {/* 📚 책소재 불러오기 — book_haru2026_ai_platform (개발자 전용 — 사적 책 프로젝트 보호) */}
+      {isDeveloper && <BookMaterialPanel uid={user.uid} />}
 
       {/* 탭 진행 표시 (숫자만) */}
       <div style={{ background: '#fff', borderBottom: '0.5px solid #e5e5e5', padding: '8px 16px' }}>

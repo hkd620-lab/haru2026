@@ -1,5 +1,12 @@
 // 책소재 자동 구조화 — 하루AI지식창고 대화 1건을 책 재료 카드로 변환
 // 책 프로젝트: 65세 할아버지, AI와 HARU2026 플랫폼을 만들다
+//
+// 보안:
+// - 인증 필수 (request.auth)
+// - 개발자 UID 화이트리스트만 허용 (Gemini 비용 보호 + 사적 책 프로젝트 보호)
+// - 클라이언트는 logId만 전송. title/content는 신뢰하지 않고 Firestore 원본을 다시 읽음
+// - 원본 type 이 'ai_log' 가 아니면 거부
+// - 저장은 merge 로 bookMaterial 만 부착, 원본 필드 절대 미수정
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -10,6 +17,11 @@ const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
 
 const BOOK_PROJECT_ID = 'book_haru2026_ai_platform';
 const BOOK_TITLE = '65세 할아버지, AI와 HARU2026 플랫폼을 만들다';
+
+// 프로젝트 전반에서 동일하게 사용되는 개발자 UID (bookStudio.ts / SayuPage / NovelStudio 와 일치)
+const DEVELOPER_UIDS: ReadonlySet<string> = new Set([
+  'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8',
+]);
 
 function safeString(v: unknown, max: number): string {
   if (typeof v !== 'string') return '';
@@ -49,27 +61,56 @@ export const convertToBookMaterial = onCall(
     timeoutSeconds: 60,
   },
   async (request) => {
+    // 1) 인증 확인
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    const uid = request.auth.uid;
 
-    const { logId, content, title } = (request.data || {}) as {
-      logId?: string;
-      content?: string;
-      title?: string;
-    };
+    // 2) 개발자 UID 화이트리스트 (Gemini 비용 + 사적 책 프로젝트 보호)
+    if (!DEVELOPER_UIDS.has(uid)) {
+      logger.warn('convertToBookMaterial: 비개발자 호출 차단', { uid });
+      throw new HttpsError('permission-denied', '책소재 변환은 개발자 전용 기능입니다.');
+    }
 
-    if (!logId || typeof logId !== 'string') {
+    // 3) 입력은 logId / force 만 신뢰
+    const { logId, force } = (request.data || {}) as { logId?: unknown; force?: unknown };
+    if (typeof logId !== 'string' || !logId.trim()) {
       throw new HttpsError('invalid-argument', 'logId가 필요합니다.');
     }
-    if (!content || typeof content !== 'string' || content.trim().length < 10) {
-      throw new HttpsError('invalid-argument', '대화 내용이 너무 짧습니다.');
+    const forceConvert = force === true;
+
+    // 4) Firestore 원본 문서 조회 (클라이언트 payload 의 title/content 는 폐기)
+    const db = admin.firestore();
+    const docRef = db.doc(`users/${uid}/records/${logId}`);
+    const snap = await docRef.get();
+    if (!snap.exists) {
+      throw new HttpsError('not-found', '대상 기록을 찾을 수 없습니다.');
+    }
+    const doc = snap.data() || {};
+
+    // 5) type === 'ai_log' 만 변환 허용
+    if (doc.type !== 'ai_log') {
+      logger.warn('convertToBookMaterial: 비 ai_log 변환 시도 차단', { uid, logId, type: doc.type });
+      throw new HttpsError('failed-precondition', 'ai_log 타입의 기록만 책소재로 변환할 수 있습니다.');
     }
 
-    const uid = request.auth.uid;
-    const text = content.slice(0, 6000);
-    const originalTitle = typeof title === 'string' ? title : '';
+    // 6) 중복 변환 방지 (force=true 일 때만 재변환 허용 — 개발자 한정)
+    if (doc.bookMaterial?.enabled === true && !forceConvert) {
+      throw new HttpsError('already-exists', '이미 책소재로 변환된 항목입니다. force=true 로 재변환하세요.');
+    }
 
+    // 7) 원본 content 검증
+    const originalContent = typeof doc.content === 'string' ? doc.content : '';
+    if (originalContent.trim().length < 10) {
+      throw new HttpsError('failed-precondition', '대화 내용이 너무 짧아 책소재로 변환할 수 없습니다.');
+    }
+    const text = originalContent.slice(0, 6000);
+    const originalTitle: string = typeof doc.ai_title === 'string' && doc.ai_title.trim()
+      ? doc.ai_title
+      : (typeof doc.title === 'string' ? doc.title : '');
+
+    // 8) Gemini 호출
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY.value());
     const model = genAI.getGenerativeModel({
       model: 'gemini-3.1-flash-lite',
@@ -145,12 +186,12 @@ ${text}
       sourceType: 'HARU지식창고',
       originalTitle,
       originalTextPreserved: true,
-      usedInBook: false,
-      usedChapterId: null,
+      usedInBook: typeof doc.bookMaterial?.usedInBook === 'boolean' ? doc.bookMaterial.usedInBook : false,
+      usedChapterId: typeof doc.bookMaterial?.usedChapterId === 'string' ? doc.bookMaterial.usedChapterId : null,
     };
 
-    const db = admin.firestore();
-    await db.doc(`users/${uid}/records/${logId}`).set({ bookMaterial }, { merge: true });
+    // 9) merge 저장 — 원본 title/content/tags/type/createdAt 등은 절대 미수정
+    await docRef.set({ bookMaterial }, { merge: true });
 
     return { ok: true, bookMaterial };
   },
