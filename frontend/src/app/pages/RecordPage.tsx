@@ -13,7 +13,7 @@ import GrapeLoadingMini from '../components/GrapeLoadingMini';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS, FORMAT_PREFIX } from '../types/haruTypes';
 import { db } from '../../firebase';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, query as fsQuery, where, getDocs } from 'firebase/firestore';
 import {
   DndContext,
   closestCenter,
@@ -204,7 +204,11 @@ export function RecordPage() {
   const [savedRecordId, setSavedRecordId] = useState('');
   const [savedFormat, setSavedFormat] = useState<RecordFormat | null>(null);
   // ─── HARU 메모 (비공개 AI 보조 관찰 메모) ───
-  const [todayRecord, setTodayRecord] = useState<Record<string, any> | null>(null);
+  // firestoreService.saveRecord는 docId를 `${date}_${ts}` 로 만들기 때문에
+  // 한 날에 여러 doc이 생긴다 → date 단일 ID 가 아닌 query 로 수집해야 한다.
+  type TodayRecordDoc = { id: string; data: Record<string, any> };
+  const [todayRecords, setTodayRecords] = useState<TodayRecordDoc[]>([]);
+  // key: `${docId}_${prefix}` — 같은 형식이 doc 별로 따로 메모를 가질 수 있게.
   const [haruMemos, setHaruMemos] = useState<Record<string, { content: string; createdAt?: any; model?: string; source?: string }>>({});
   const [generatingMemoFor, setGeneratingMemoFor] = useState<string | null>(null);
   const [todayRecordTick, setTodayRecordTick] = useState(0);
@@ -700,29 +704,43 @@ export function RecordPage() {
     }
   };
 
-  // ─── HARU 메모: 오늘 record fetch (currentDate 변경 또는 저장 후) ───
+  // ─── HARU 메모: 오늘의 모든 records fetch (date 단일 ID가 아닌 query) ───
   useEffect(() => {
     let cancelled = false;
     const fetchToday = async () => {
       if (!user?.uid) {
-        setTodayRecord(null);
+        setTodayRecords([]);
         setHaruMemos({});
         return;
       }
       try {
         const dateStr = getLocalDateString(currentDate);
-        const snap = await getDoc(doc(db, 'users', user.uid, 'records', dateStr));
+        const q = fsQuery(
+          collection(db, 'users', user.uid, 'records'),
+          where('date', '==', dateStr),
+        );
+        const snap = await getDocs(q);
         if (cancelled) return;
-        if (snap.exists()) {
-          const data = snap.data() || {};
-          setTodayRecord(data);
-          setHaruMemos((data.haruMemos as any) || {});
-        } else {
-          setTodayRecord(null);
-          setHaruMemos({});
-        }
+        const docs: TodayRecordDoc[] = [];
+        const memos: Record<string, any> = {};
+        snap.forEach((d) => {
+          const data = d.data() || {};
+          docs.push({ id: d.id, data });
+          const docMemos = (data.haruMemos || {}) as Record<string, any>;
+          Object.entries(docMemos).forEach(([prefix, memo]) => {
+            memos[`${d.id}_${prefix}`] = memo;
+          });
+        });
+        // 최신 doc 먼저 (createdAt 또는 docId 끝의 timestamp 기준)
+        docs.sort((a, b) => {
+          const tA = Number(String(a.id).split('_').pop()) || 0;
+          const tB = Number(String(b.id).split('_').pop()) || 0;
+          return tB - tA;
+        });
+        setTodayRecords(docs);
+        setHaruMemos(memos);
       } catch (e) {
-        console.warn('오늘 record fetch 실패 (HARU 메모용):', e);
+        console.warn('오늘 records fetch 실패 (HARU 메모용):', e);
       }
     };
     fetchToday();
@@ -733,18 +751,24 @@ export function RecordPage() {
   }, [user?.uid, currentDate, todayRecordTick]);
 
   // ─── HARU 메모 생성 호출 (사용자 클릭 시만, 자동 생성 금지) ───
-  const generateMemoForFormat = async (formatType: RecordFormat, prefix: string) => {
-    if (!user?.uid || !todayRecord) {
+  const generateMemoForFormat = async (formatType: RecordFormat, prefix: string, docId: string) => {
+    if (!user?.uid || !docId) {
       toast.info('먼저 기록을 작성해 주세요.');
       return;
     }
-    setGeneratingMemoFor(prefix);
+    const targetDoc = todayRecords.find((r) => r.id === docId);
+    if (!targetDoc) {
+      toast.info('기록을 찾지 못했습니다. 새로고침 후 다시 시도해 주세요.');
+      return;
+    }
+    const key = `${docId}_${prefix}`;
+    setGeneratingMemoFor(key);
     try {
       const dateStr = getLocalDateString(currentDate);
       const fields: Record<string, string> = {};
-      Object.keys(todayRecord).forEach((k) => {
-        if (k.startsWith(`${prefix}_`) && typeof todayRecord[k] === 'string') {
-          fields[k] = todayRecord[k] as string;
+      Object.keys(targetDoc.data).forEach((k) => {
+        if (k.startsWith(`${prefix}_`) && typeof targetDoc.data[k] === 'string') {
+          fields[k] = targetDoc.data[k] as string;
         }
       });
       if (Object.keys(fields).length === 0) {
@@ -769,13 +793,13 @@ export function RecordPage() {
         source: 'haru_ai',
       };
       await setDoc(
-        doc(db, 'users', user.uid, 'records', dateStr),
+        doc(db, 'users', user.uid, 'records', docId),
         { haruMemos: { [prefix]: memoEntry } },
         { merge: true },
       );
       setHaruMemos((prev) => ({
         ...prev,
-        [prefix]: { ...memoEntry, createdAt: Date.now() } as any,
+        [key]: { ...memoEntry, createdAt: Date.now() } as any,
       }));
       toast.success('HARU 메모가 저장되었습니다.');
     } catch (err: any) {
@@ -1215,20 +1239,32 @@ export function RecordPage() {
 
         {/* ─── HARU 메모 (비공개 AI 보조 관찰 메모) ─── */}
         {(() => {
-          if (!todayRecord) return null;
-          const writtenFormats: { format: RecordFormat; prefix: string }[] = [];
-          (Object.entries(FORMAT_PREFIX) as Array<[RecordFormat, string]>).forEach(([format, prefix]) => {
-            const hasContent = Object.keys(todayRecord).some((k) =>
-              k.startsWith(`${prefix}_`)
-              && !k.endsWith('_sayu') && !k.endsWith('_polished') && !k.endsWith('_polishedAt')
-              && !k.endsWith('_mode') && !k.endsWith('_stats') && !k.endsWith('_images')
-              && !k.endsWith('_rating') && !k.endsWith('_keywords') && !k.endsWith('_ai_title')
-              && !k.endsWith('_tags') && !k.endsWith('_space') && !k.endsWith('_style')
-              && typeof todayRecord[k] === 'string' && (todayRecord[k] as string).trim().length > 0
-            );
-            if (hasContent) writtenFormats.push({ format, prefix });
+          // 오늘의 모든 docs(같은 날 여러 record doc) × 작성된 형식 = 카드 한 장
+          type Item = { docId: string; format: RecordFormat; prefix: string };
+          const items: Item[] = [];
+          const META_SUFFIX = ['_sayu','_polished','_polishedAt','_mode','_stats','_images','_rating','_keywords','_ai_title','_tags','_space','_style'];
+          const formatEntries = Object.entries(FORMAT_PREFIX) as Array<[RecordFormat, string]>;
+          todayRecords.forEach(({ id: docId, data }) => {
+            formatEntries.forEach(([format, prefix]) => {
+              // 1) 본문 필드 (prefix_*) 존재 또는
+              // 2) data.formats 배열에 형식명 포함 → 작성된 것으로 인정
+              const hasContent = Object.keys(data).some((k) =>
+                k.startsWith(`${prefix}_`)
+                && !META_SUFFIX.some((s) => k.endsWith(s))
+                && typeof data[k] === 'string'
+                && (data[k] as string).trim().length > 0
+              );
+              const inFormats = Array.isArray((data as any).formats)
+                && (data as any).formats.includes(format);
+              if (hasContent || inFormats) {
+                // 같은 doc에 같은 prefix가 중복 추가되지 않도록
+                if (!items.find((it) => it.docId === docId && it.prefix === prefix)) {
+                  items.push({ docId, format, prefix });
+                }
+              }
+            });
           });
-          if (writtenFormats.length === 0) return null;
+          if (items.length === 0) return null;
           return (
             <section className="bg-white rounded-lg p-3 shadow-sm">
               <div className="mb-2">
@@ -1240,12 +1276,13 @@ export function RecordPage() {
                 </p>
               </div>
               <div className="space-y-2">
-                {writtenFormats.map(({ format, prefix }) => {
-                  const memo = haruMemos[prefix];
-                  const isGenerating = generatingMemoFor === prefix;
+                {items.map(({ docId, format, prefix }) => {
+                  const key = `${docId}_${prefix}`;
+                  const memo = haruMemos[key];
+                  const isGenerating = generatingMemoFor === key;
                   return (
                     <div
-                      key={prefix}
+                      key={key}
                       className="rounded-lg"
                       style={{ border: '1px solid #ECE6F5', padding: 12, background: '#fff' }}
                     >
@@ -1255,7 +1292,7 @@ export function RecordPage() {
                         </div>
                         <button
                           type="button"
-                          onClick={() => generateMemoForFormat(format, prefix)}
+                          onClick={() => generateMemoForFormat(format, prefix, docId)}
                           disabled={isGenerating}
                           className="text-xs flex-shrink-0"
                           style={{
