@@ -120,24 +120,49 @@ export const convertToBookMaterial = onCall(
       },
     });
 
-    // 책소재 생성 프롬프트 — "회의록 압축 요약"이 아니라 "책에서 밑줄 긋고 싶은 문장"을 만든다
-    const prompt = `당신은 65세 저자의 회고록 책 편집자입니다.
-다음 AI 대화 기록 한 건을 읽고, 책에 그대로 쓸 수 있는 "책소재 카드"를 JSON으로만 출력하세요.
+    // v3-passage — "한 줄 명언"이 아니라 "3~6줄짜리 책 인용문단"을 만든다
+    const prompt = `당신은 65세 저자(허대표)의 회고록 책 편집자입니다.
+다음 AI 대화 기록 한 건을 읽고, 책 본문에 그대로 들어갈 수 있는 "책 인용문단(bookPassages)"을 JSON으로만 출력하세요.
 
 책 제목: "${BOOK_TITLE}"
 
-[목표]
-- 결과물은 회의록 압축 요약이 아니라, 책에서 밑줄 긋고 싶은 문장들입니다.
-- 원문의 흐름·장면·감정·깨달음을 살리세요.
-- "왜 이 순간이 중요했는지"가 드러나야 합니다.
+[가장 중요한 원칙 — 반드시 지킬 것]
+- 결과물은 한 줄짜리 명언이 아닙니다. 책 본문에 그대로 들어갈 "짧은 책 문단"입니다.
+- 각 bookPassages 항목은 반드시 3~6줄 분량 (줄바꿈 \\n 사용).
+- 한 문단 안에 흐름·맥락·장면·감정·깨달음이 함께 살아 있어야 합니다.
+- 첫 줄에 상황·전제·과거를 깔고, 뒤로 변화·깨달음·의미로 이어지는 호흡.
+- 1인칭 회상체("나는 ~ 시작했다", "~받기 시작했다", "~만들기 시작했다", "그때 나는 ~")가 자연스러우면 적극 사용.
+- 절대 한 문장으로 끝내지 마세요. 한 줄짜리 결론 문장 금지.
 
-[반드시 지킬 원칙]
-- 원문에 없는 사실은 절대 만들지 마세요. 추정·창작·미화 금지.
-- 허대표님의 실제 말투와 호흡을 유지하세요. 보고서 문체·AI 특유의 감성체 금지.
-- "~구축됨", "~형성됨", "~확보됨" 같은 명사형 결론 문장 남발 금지.
-- 단순 요약 금지. 짧은 압축 금지. 의미 없는 추상 문장 금지.
-- 감동을 짜내지 마세요. 사실과 흐름 자체에서 의미가 드러나게 하세요.
-- 불확실한 부분은 빈 문자열 또는 빈 배열로 두세요.
+[금지]
+- 원문에 없는 사실 창작·과장·미화 금지.
+- "~구축됨", "~형성됨", "~확보됨", "~이어집니다" 같은 보고서 결론체 금지.
+- AI 특유의 과장된 감성체 금지 ("드디어 나는...", "그 순간 모든 것이..." 같은 표현 금지).
+- 따옴표로 감싼 명언화 금지. 본문 문단 자체로 작성.
+- 짧은 압축·단순 요약·단답형 결론 금지.
+- 불확실한 부분은 만들지 말고 다른 문단으로 대체하거나 적게 출력.
+
+[참고 톤 — 원문에 없는 내용을 옮기지는 말 것, 호흡과 길이만 참고]
+예시 A (사용 가능한 책 문단의 느낌):
+처음에는 단순한 기록앱이라고 생각했다.
+하지만 HARU2026은 기록을 저장하는 수준을 넘어,
+기록이 다시 책과 결과물로 이어지는 구조를 만들기 시작했다.
+
+예시 B:
+예전의 AI 서비스들은 대부분 질문과 답변 수준에서 끝났다.
+하지만 HARU2026은 기록이 구조화되고,
+다시 책과 원고로 이어지는 흐름을 만들기 시작했다.
+
+그 과정에서 나는 단순히 AI를 사용하는 사람이 아니라,
+AI들이 서로 구현하고 검수하는 협업 체계를 만들고 있다는 느낌을 받기 시작했다.
+
+[작성 가이드]
+- bookPassages: 3~5개 문단. 각 문단은 3~6줄. 단락 사이에 두 번 줄바꿈(\\n\\n)을 허용해서 한 문단 안에서 호흡 전환을 줘도 좋음.
+- bookSummary: 카드 상단 요약. 3~5줄, 흐름과 의미가 살아 있는 문장.
+- bookMaterialTitle: 책의 한 소절 제목처럼 (20자 이내).
+- chapterCandidates: 이 자료가 들어갈 만한 챕터 후보 2~5개.
+- topicTags: 검색용 짧은 태그 3~10개.
+- materialGrade: S/A/B/C — 책에 어느 정도 강하게 쓸 수 있는지.
 
 [원본 제목]
 ${originalTitle || '(없음)'}
@@ -149,40 +174,21 @@ ${text}
 
 아래 JSON 스키마로만 출력하세요. 코드블록·주석·여분 텍스트 금지:
 {
-  "bookMaterialTitle": "책소재 제목 — 한 챕터 소제목처럼 (20자 이내, 따옴표 없이)",
-
-  "bookSummary": "책소재 요약 3~5줄 — 흐름과 의미가 살아 있는 문장으로, 줄바꿈은 \\n 사용. 단순 압축 금지.",
-
-  "bookQuoteLines": [
-    "책 본문에 직접 인용 가능한 문장. 너무 짧지 않게. 허대표님 말투/호흡 유지. 감정과 의미가 함께 담길 것. 최대 5개."
+  "bookMaterialTitle": "책소재 제목 (20자 이내, 따옴표 없이)",
+  "bookSummary": "책소재 요약 3~5줄 — 줄바꿈은 \\n. 단순 압축 금지.",
+  "bookPassages": [
+    "3~6줄짜리 책 인용문단. 줄바꿈은 \\n. 한 줄 결론 금지.",
+    "또 다른 책 인용문단 (다른 관점/장면을 살릴 것)."
   ],
-
-  "bookInsightLines": [
-    "깨달음·통찰 문장. 시스템 변화, 철학 전환, 인생 단계의 의미가 드러나는 문장. 최대 5개."
-  ],
-
-  "bookSceneLines": [
-    "실제 상황이 눈에 보이는 장면 문장. 누가·어디서·무엇을·어떤 흐름으로 했는지가 드러나도록. 최대 5개."
-  ],
-
-  "bookEmotionLines": [
-    "감정·철학 문장. 과장 금지, 인간적인 결을 유지. 최대 5개."
-  ],
-
-  "summary3": "세 줄 요약(120자 이내, 줄바꿈 \\n). 옛 UI 호환용.",
-  "coreSentences": ["핵심 문장 1", "핵심 문장 2", "핵심 문장 3"],
-  "sceneForBook": "책에 쓸 수 있는 장면/사례를 원문 기반 200자 이내로 — 옛 UI 호환용",
-
   "chapterCandidates": ["예상 챕터 후보 1", "예상 챕터 후보 2"],
   "materialGrade": "S",
-  "quoteCandidates": ["인용 후보 문장 1"],
   "topicTags": ["태그1", "태그2", "태그3"]
 }
 
 [자료 등급 기준]
-- S: 책에 그대로 쓸 만한 결정적 장면/통찰
+- S: 책에 그대로 들어갈 수 있는 결정적 장면/통찰
 - A: 한 챕터의 핵심 소재로 충분
-- B: 일부 보조 자료로 활용 가능
+- B: 보조 자료로 활용 가능
 - C: 활용도 낮음`;
 
     let parsed: any;
@@ -199,6 +205,9 @@ ${text}
       ? parsed.materialGrade
       : 'B';
 
+    // bookPassages — 한 항목 = 3~6줄 책 인용문단 (줄바꿈 \n 보존, 단락 호흡 살림)
+    const bookPassages = safeArray(parsed?.bookPassages, 6, 1200);
+
     const bookMaterial = {
       enabled: true,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -207,21 +216,24 @@ ${text}
       materialGrade: grade,
       bookMaterialTitle: safeString(parsed?.bookMaterialTitle, 40),
 
-      // 신규 — 책 집필용 본격 구조 (서사·감정·장면·깨달음 보존)
+      // 신규 — 책 본문에 그대로 들어갈 "짧은 책 문단" 중심
       bookSummary: safeString(parsed?.bookSummary, 800),
-      bookQuoteLines: safeArray(parsed?.bookQuoteLines, 5, 300),
-      bookInsightLines: safeArray(parsed?.bookInsightLines, 5, 300),
-      bookSceneLines: safeArray(parsed?.bookSceneLines, 5, 400),
-      bookEmotionLines: safeArray(parsed?.bookEmotionLines, 5, 300),
-      promptVersion: 'v2-story',
+      bookPassages,
+      promptVersion: 'v3-passage',
 
-      // 레거시 — 기존 UI 호환을 위해 유지
-      summary3: safeString(parsed?.summary3, 300),
-      coreSentences: safeArray(parsed?.coreSentences, 5, 200),
-      sceneForBook: safeString(parsed?.sceneForBook, 500),
+      // v2 4분할 필드는 더 이상 생성하지 않음 — 옛 데이터 호환 표시용으로만 빈 배열 보존
+      bookQuoteLines: [],
+      bookInsightLines: [],
+      bookSceneLines: [],
+      bookEmotionLines: [],
+
+      // v1 레거시 — 기존 UI 호환을 위해 필드는 존재하되 비워둠 (사용 안 함)
+      summary3: '',
+      coreSentences: [],
+      sceneForBook: '',
+      quoteCandidates: [],
 
       chapterCandidates: safeArray(parsed?.chapterCandidates, 5, 60),
-      quoteCandidates: safeArray(parsed?.quoteCandidates, 5, 200),
       topicTags: safeArray(parsed?.topicTags, 10, 30),
       sourceType: 'HARU지식창고',
       originalTitle,

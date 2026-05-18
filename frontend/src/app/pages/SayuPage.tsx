@@ -2489,29 +2489,20 @@ export function SayuPage() {
                               {(() => {
                                 const bm = (log as any).bookMaterial;
                                 if (!bm?.enabled) return null;
-                                // 신규 v2-story 필드 (없으면 레거시 폴백)
+                                // 신규 v3-passage 필드 (없으면 v2/v1 폴백)
                                 const bookSummary: string = bm.bookSummary || bm.summary3 || '';
-                                const quoteLines: string[] = Array.isArray(bm.bookQuoteLines) && bm.bookQuoteLines.length > 0
-                                  ? bm.bookQuoteLines
-                                  : (Array.isArray(bm.quoteCandidates) ? bm.quoteCandidates : []);
-                                const insightLines: string[] = Array.isArray(bm.bookInsightLines) ? bm.bookInsightLines : [];
-                                const sceneLines: string[] = Array.isArray(bm.bookSceneLines) && bm.bookSceneLines.length > 0
-                                  ? bm.bookSceneLines
-                                  : (bm.sceneForBook ? [bm.sceneForBook] : []);
-                                const emotionLines: string[] = Array.isArray(bm.bookEmotionLines) ? bm.bookEmotionLines : [];
-                                const legacyCore: string[] = Array.isArray(bm.coreSentences) ? bm.coreSentences : [];
+                                const passages: string[] = Array.isArray(bm.bookPassages) ? bm.bookPassages.filter((s: any) => typeof s === 'string' && s.trim()) : [];
+                                // v2 데이터에서 재변환 전인 경우만 사용 (legacy fallback)
+                                const v2QuoteLines: string[] = Array.isArray(bm.bookQuoteLines) ? bm.bookQuoteLines : [];
+                                const v2Insight: string[] = Array.isArray(bm.bookInsightLines) ? bm.bookInsightLines : [];
+                                const v2Scene: string[] = Array.isArray(bm.bookSceneLines) ? bm.bookSceneLines : [];
+                                const v2Emotion: string[] = Array.isArray(bm.bookEmotionLines) ? bm.bookEmotionLines : [];
+                                const v1Core: string[] = Array.isArray(bm.coreSentences) ? bm.coreSentences : [];
+                                const isLegacyOnly = passages.length === 0 && (
+                                  v2QuoteLines.length > 0 || v2Insight.length > 0 || v2Scene.length > 0 || v2Emotion.length > 0 || v1Core.length > 0
+                                );
                                 const chapters: string[] = Array.isArray(bm.chapterCandidates) ? bm.chapterCandidates : [];
                                 const tags: string[] = Array.isArray(bm.topicTags) ? bm.topicTags : [];
-                                const renderList = (label: string, items: string[]) => (
-                                  items.length === 0 ? null : (
-                                    <div style={{ marginBottom: 6 }}>
-                                      <p style={{ fontWeight: 700, color: '#1A3C6E', margin: 0 }}>{label}</p>
-                                      <ul style={{ marginLeft: 14, marginTop: 2, listStyleType: 'disc' }}>
-                                        {items.map((s, i) => <li key={i} style={{ marginBottom: 2 }}>{s}</li>)}
-                                      </ul>
-                                    </div>
-                                  )
-                                );
                                 return (
                                   <div className="px-4 py-3 text-xs leading-relaxed"
                                     style={{ backgroundColor: '#FEF6E0', color: '#1A3C6E', borderTop: '1px solid #FCE5A1' }}>
@@ -2530,41 +2521,82 @@ export function SayuPage() {
 
                                     {/* 2) 책소재 요약 */}
                                     {bookSummary && (
-                                      <div style={{ marginBottom: 8 }}>
+                                      <div style={{ marginBottom: 10 }}>
                                         <p style={{ fontWeight: 700, color: '#1A3C6E', margin: 0 }}>책소재 요약</p>
                                         <p style={{ margin: '2px 0 0', whiteSpace: 'pre-wrap' }}>{bookSummary}</p>
                                       </div>
                                     )}
 
-                                    {/* 3~6) 책 인용 / 깨달음 / 장면 / 감정 */}
-                                    {renderList('책 인용문장', quoteLines)}
-                                    {renderList('깨달음 문장', insightLines)}
-                                    {renderList('장면 문장', sceneLines)}
-                                    {renderList('감정·철학 문장', emotionLines)}
-
-                                    {/* 레거시 coreSentences (v1 데이터에만 존재) */}
-                                    {quoteLines.length === 0 && insightLines.length === 0
-                                      && emotionLines.length === 0 && legacyCore.length > 0 && (
-                                        renderList('핵심문장 (v1)', legacyCore)
+                                    {/* 3) 책 인용문단 — v3-passage 의 메인 출력 */}
+                                    {passages.length > 0 && (
+                                      <div style={{ marginBottom: 10 }}>
+                                        <p style={{ fontWeight: 700, color: '#1A3C6E', margin: '0 0 4px' }}>
+                                          책 인용문단 ({passages.length}개)
+                                        </p>
+                                        {passages.map((p, i) => (
+                                          <blockquote
+                                            key={i}
+                                            style={{
+                                              margin: '0 0 8px',
+                                              padding: '8px 10px',
+                                              borderLeft: '3px solid #C9A75A',
+                                              background: '#FFFBEC',
+                                              whiteSpace: 'pre-wrap',
+                                              fontSize: 12,
+                                              lineHeight: 1.7,
+                                              color: '#1F2937',
+                                            }}
+                                          >
+                                            {p}
+                                          </blockquote>
+                                        ))}
+                                      </div>
                                     )}
 
-                                    {/* 7) 챕터 후보 */}
+                                    {/* 레거시 fallback — 재변환 전 옛 데이터일 때만 표시 */}
+                                    {isLegacyOnly && (
+                                      <div style={{
+                                        marginBottom: 10, padding: '8px 10px',
+                                        background: '#FFFFFF', border: '1px dashed #FCE5A1',
+                                        borderRadius: 6,
+                                      }}>
+                                        <p style={{ fontSize: 10, color: '#92400E', margin: '0 0 4px' }}>
+                                          ⚠️ 옛 버전(한 줄 명언) 책소재입니다. 🔄 재변환을 누르면 책 인용문단으로 다시 만들어집니다.
+                                        </p>
+                                        {[
+                                          { label: '책 인용문장', items: v2QuoteLines },
+                                          { label: '깨달음 문장', items: v2Insight },
+                                          { label: '장면 문장', items: v2Scene },
+                                          { label: '감정·철학 문장', items: v2Emotion },
+                                          { label: '핵심문장 (v1)', items: v1Core },
+                                        ].filter(x => x.items.length > 0).map(({ label, items }) => (
+                                          <div key={label} style={{ marginTop: 6 }}>
+                                            <p style={{ fontWeight: 600, color: '#1A3C6E', margin: 0, fontSize: 11 }}>{label}</p>
+                                            <ul style={{ marginLeft: 14, marginTop: 2, listStyleType: 'disc', fontSize: 11 }}>
+                                              {items.map((s, i) => <li key={i} style={{ marginBottom: 2 }}>{s}</li>)}
+                                            </ul>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+
+                                    {/* 4) 챕터 후보 */}
                                     {chapters.length > 0 && (
                                       <p style={{ marginBottom: 4 }}>
                                         <strong>예상 챕터:</strong> {chapters.join(' · ')}
                                       </p>
                                     )}
 
-                                    {/* 8) 태그 */}
+                                    {/* 5) 태그 */}
                                     {tags.length > 0 && (
                                       <p style={{ fontSize: 10, color: '#6B7280', marginTop: 4 }}>
                                         #{tags.join(' #')}
                                       </p>
                                     )}
 
-                                    {/* 9) 재변환 안내 */}
+                                    {/* 재변환 안내 */}
                                     <p style={{ fontSize: 10, color: '#92400E', marginTop: 8, paddingTop: 6, borderTop: '1px dashed #FCE5A1' }}>
-                                      💡 더 책답게 바꾸려면 카드 상단 🔄 버튼을 누르세요. (재변환 시 책 사용 흔적은 보존됩니다)
+                                      💡 더 책답게 바꾸려면 카드 상단 🔄 버튼을 누르세요. 재변환 시 책 사용 흔적(usedInBook)은 보존됩니다.
                                     </p>
                                   </div>
                                 );
