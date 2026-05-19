@@ -4909,12 +4909,20 @@ async function callPlantNetIdentification(
   });
   if (!response.ok) {
     const errText = await response.text().catch(() => '');
+    // 실패 원인 분류 — 코드 문제 vs 키/플랜/quota 문제 구분용. API key 값은 로그에 출력 금지.
+    let failureCategory: 'auth_invalid_key' | 'auth_forbidden_or_plan' | 'not_found' | 'quota_exceeded' | 'unknown';
+    if (response.status === 401) failureCategory = 'auth_invalid_key';
+    else if (response.status === 403) failureCategory = 'auth_forbidden_or_plan';
+    else if (response.status === 404) failureCategory = 'not_found';
+    else if (response.status === 429) failureCategory = 'quota_exceeded';
+    else failureCategory = 'unknown';
     logger.error('PlantNet 응답 오류', {
       status: response.status,
       statusText: response.statusText,
+      failureCategory,
       bodyPreview: errText.slice(0, 800),
     });
-    throw new Error(`PlantNet ${response.status} ${response.statusText}: ${errText.slice(0, 200)}`);
+    throw new Error(`PlantNet ${response.status} ${response.statusText} [${failureCategory}]: ${errText.slice(0, 200)}`);
   }
   const json: any = await response.json();
   const results: any[] = Array.isArray(json?.results) ? json.results : [];
