@@ -4859,7 +4859,7 @@ async function callPlantNetIdentification(
 
   // 프로젝트: k-world-flora (전세계 식물 — 한국 산야초 포함)
   const project = 'k-world-flora';
-  const endpoint = `https://my-api.plantnet.org/v2/identify/${project}?api-key=${encodeURIComponent(apiKey)}&lang=ko&include-related-images=false&no-reject=false`;
+  const endpoint = `https://my-api.plantnet.org/v2/identify/${project}?api-key=${encodeURIComponent(apiKey)}&lang=en&include-related-images=false&no-reject=false`;
 
   // PlantNet은 JPEG/PNG/GIF만 허용 — webp가 섞이면 INVALID_ARGUMENT.
   // sharp로 모든 이미지를 안전한 JPEG로 정규화 후 multipart 구성.
