@@ -4952,6 +4952,115 @@ async function callPlantNetIdentification(
   return { top, alternatives };
 }
 
+// 🌿 학명 → plant_dictionary 캐시 키 정규화 (binomial nomenclature 기준 — author/cultivar 제외)
+function normalizeScientificKey(scientific: string): string {
+  const s = String(scientific || '').trim();
+  if (!s) return '';
+  const parts = s.split(/\s+/).filter(Boolean);
+  const binomial = parts.slice(0, 2).join(' ');
+  return binomial
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 100);
+}
+
+// 🌿 PlantNet 결과 → 한국어명 검정 (plant_dictionary 캐시 우선, miss 시 Gemini 호출)
+// 검정 실패 시 koName=null 반환 — 호출 측에서 영어명 fallback 처리 책임.
+async function resolveKoreanPlantName(
+  scientificName: string,
+  englishName: string,
+  geminiApiKey: string,
+): Promise<{ koName: string | null; scientificKey: string; cached: boolean }> {
+  const scientificKey = normalizeScientificKey(scientificName);
+  if (!scientificKey) return { koName: null, scientificKey: '', cached: false };
+
+  const ref = db.collection('plant_dictionary').doc(scientificKey);
+
+  try {
+    const snap = await ref.get();
+    if (snap.exists) {
+      const data = snap.data() as any;
+      const koNames: string[] = Array.isArray(data?.koNames) ? data.koNames : [];
+      const englishNames: string[] = Array.isArray(data?.englishNames) ? data.englishNames : [];
+      if (englishName && !englishNames.includes(englishName)) {
+        ref.update({
+          englishNames: admin.firestore.FieldValue.arrayUnion(englishName),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }).catch(() => {});
+      }
+      return { koName: koNames[0] || null, scientificKey, cached: true };
+    }
+  } catch (e: any) {
+    logger.warn('plant_dictionary 캐시 조회 실패: ' + (e?.message || ''));
+  }
+
+  try {
+    const prompt = `다음 식물의 한국어 이름을 알려주세요.
+
+학명: ${scientificName}
+영문명: ${englishName || '(없음)'}
+
+Return ONLY valid JSON.
+No markdown.
+No explanation.
+
+{
+  "koName": "...",
+  "confidence": 0,
+  "isValid": true,
+  "note": "..."
+}
+
+규칙:
+- koName: 한국에서 통용되는 식물 이름 (없으면 빈 문자열)
+- confidence: 0~100 신뢰도 (정확하면 90 이상, 추정이면 60~80, 모호하면 60 미만)
+- isValid: 위 학명·영문명 매핑이 정확하면 true, 모호하거나 후보가 여러 종이면 false
+- note: 짧은 한국어 설명 (없으면 빈 문자열)
+- JSON 하나만 출력, 마크다운/코드펜스 금지`;
+
+    const genAI = new GoogleGenerativeAI(geminiApiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    const cleaned = text.replace(/```json|```/g, '').trim();
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      logger.warn('한국어 검정 JSON 파싱 실패', { preview: cleaned.slice(0, 200) });
+      return { koName: null, scientificKey, cached: false };
+    }
+    const parsed = JSON.parse(jsonMatch[0]);
+    const koName = String(parsed?.koName || '').trim().slice(0, 60);
+    const confidence = Number(parsed?.confidence ?? 0);
+    const isValid = Boolean(parsed?.isValid);
+
+    if (koName && isValid && confidence >= 70) {
+      try {
+        await ref.set({
+          scientificName,
+          englishNames: englishName ? [englishName] : [],
+          koNames: [koName],
+          verifiedByAI: true,
+          confidence,
+          source: 'PlantNet',
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        logger.info('plant_dictionary 저장', { scientificKey, koName, confidence });
+      } catch (e: any) {
+        logger.warn('plant_dictionary 저장 실패: ' + (e?.message || ''));
+      }
+      return { koName, scientificKey, cached: false };
+    }
+
+    logger.info('한국어 검정 기준 미달', { scientificKey, koName, confidence, isValid });
+    return { koName: null, scientificKey, cached: false };
+  } catch (e: any) {
+    logger.warn('한국어 검정 AI 호출 실패: ' + (e?.message || ''));
+    return { koName: null, scientificKey, cached: false };
+  }
+}
+
 type CrossVerificationResult = {
   finalGuess: string;
   finalLatinName: string;
@@ -5165,6 +5274,22 @@ export const detectPlantAdvanced = onCall(
       );
     }
 
+    // 🌿 PlantNet top 결과 → 한국어명 검정 (캐시 우선, 실패 시 영어명 fallback)
+    let plantNetKoName: string | null = null;
+    let plantNetScientificKey: string | null = null;
+    if (plantNetResult?.top?.scientificName) {
+      const resolution = await resolveKoreanPlantName(
+        plantNetResult.top.scientificName,
+        plantNetResult.top.name || '',
+        GEMINI_API_KEY_SECRET.value(),
+      ).catch((e: any) => {
+        logger.warn('한국어명 검정 fallback — ' + (e?.message || ''));
+        return { koName: null as string | null, scientificKey: '', cached: false };
+      });
+      plantNetKoName = resolution.koName;
+      plantNetScientificKey = resolution.scientificKey || null;
+    }
+
     return {
       plantId: plantIdResult
         ? {
@@ -5183,6 +5308,8 @@ export const detectPlantAdvanced = onCall(
             name: plantNetResult.top?.name || '',
             scientificName: plantNetResult.top?.scientificName || '',
             confidence: plantNetResult.top?.score ?? 0,
+            koName: plantNetKoName,
+            scientificKey: plantNetScientificKey,
             family: plantNetResult.top?.family,
             genus: plantNetResult.top?.genus,
             alternatives: plantNetResult.alternatives,

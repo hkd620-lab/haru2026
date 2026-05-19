@@ -12,6 +12,11 @@ service cloud.firestore {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow create, update, delete: if request.auth != null && request.auth.uid == userId;
     }
+    // 🌿 하루식물탐정 — 공용 한국어명 사전 (Functions Admin SDK 전용 쓰기)
+    match /plant_dictionary/{entryId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
     match /users/{uid}/settings/{settingId} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
