@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { ArrowLeft, Camera, Leaf, Loader2, Search, X, Save, AlertTriangle, ChevronDown, ChevronUp, BookOpen, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -28,6 +28,8 @@ type PlantNetSection = {
   name: string;
   scientificName: string;
   confidence: number;          // 0~1
+  koName?: string | null;            // Functions plant_dictionary 검정 결과
+  scientificKey?: string | null;     // plant_dictionary 문서 ID (binomial 정규화)
   family?: string;
   genus?: string;
   alternatives: { name: string; scientificName: string; score: number }[];
@@ -134,6 +136,25 @@ export function PlantDetectivePage() {
     setActivePlantImageUrls([]);
     setActivePlantCreatedAt(null);
   };
+
+  // 🎯 최종 식물명 확정 state object — 향후 도감 저장 시 그대로 직렬화 가능한 형태로 유지
+  // TODO: future plant encyclopedia integration — finalConfirmation 을 users/{uid}/plants 에 저장
+  const finalConfirmation = useMemo(() => {
+    if (!result?.plantNet) return null;
+    const aiPrediction = result.plantNet.name || '';
+    const aiKoName = result.plantNet.koName ?? null;
+    const scientificName = result.plantNet.scientificName || '';
+    const userInput = userConfirmedName.trim();
+    const correctedByUser =
+      userInput.length > 0 && userInput !== (aiKoName || aiPrediction);
+    return {
+      aiPrediction,
+      aiKoName,
+      scientificName,
+      userConfirmedName: userInput,
+      correctedByUser,
+    };
+  }, [result, userConfirmedName]);
 
   const clearAll = () => {
     photos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
@@ -998,8 +1019,13 @@ export function PlantDetectivePage() {
                 <>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                     <h4 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>
-                      {result.plantNet.name || '식물 이름 불확실'}
+                      {result.plantNet.koName || result.plantNet.name || '식물 이름 불확실'}
                     </h4>
+                    {result.plantNet.koName && result.plantNet.name && (
+                      <span style={{ fontSize: 12, color: '#6b7654' }}>
+                        ({result.plantNet.name})
+                      </span>
+                    )}
                     <span style={{ fontSize: 12, color: '#6b7654', fontStyle: 'italic' }}>
                       {result.plantNet.scientificName}
                     </span>
@@ -1032,6 +1058,184 @@ export function PlantDetectivePage() {
                 </div>
               )}
             </ResultCard>
+
+            {/* ========== 🎯 최종 식물명 확정 ========== */}
+            {/* TODO: future plant encyclopedia integration — finalConfirmation 을 users/{uid}/plants 에 저장 */}
+            {result.plantNet && finalConfirmation && (
+              <ResultCard title="🎯 최종 식물명 확정" accent="#15803D" bg="#F0FDF4">
+                <p style={{ margin: '0 0 8px', fontSize: 12, color: '#3d4734', lineHeight: 1.55 }}>
+                  AI 추정은 후보일 뿐입니다. 맞는 후보를 클릭하거나, 직접 입력해 최종 식물명을 확정하세요.
+                </p>
+
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#15803D', marginBottom: 6 }}>
+                  AI 추정 결과
+                </div>
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}>
+                  <li
+                    style={{
+                      display: 'flex',
+                      gap: 8,
+                      alignItems: 'center',
+                      background: '#fff',
+                      border: '1px solid #BBF7D0',
+                      borderRadius: 8,
+                      padding: '8px 10px',
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, fontSize: 14, color: '#1f2a17' }}>
+                        {finalConfirmation.aiKoName || finalConfirmation.aiPrediction || '(이름 없음)'}
+                        {finalConfirmation.aiKoName && finalConfirmation.aiPrediction && (
+                          <span style={{ marginLeft: 6, fontWeight: 500, color: '#6b7654', fontSize: 12 }}>
+                            ({finalConfirmation.aiPrediction})
+                          </span>
+                        )}
+                      </div>
+                      {finalConfirmation.scientificName && (
+                        <div style={{ fontSize: 11, fontStyle: 'italic', color: '#6b7654' }}>
+                          {finalConfirmation.scientificName}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setUserConfirmedName(
+                          finalConfirmation.aiKoName || finalConfirmation.aiPrediction || '',
+                        )
+                      }
+                      style={{
+                        height: 32,
+                        padding: '0 10px',
+                        borderRadius: 6,
+                        border: '1px solid #15803D',
+                        background: '#15803D',
+                        color: '#fff',
+                        fontWeight: 800,
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                      }}
+                    >
+                      이 식물로 확정
+                    </button>
+                  </li>
+
+                  {result.plantNet.alternatives.slice(0, 3).map((c, i) => (
+                    <li
+                      key={`alt-${i}`}
+                      style={{
+                        display: 'flex',
+                        gap: 8,
+                        alignItems: 'center',
+                        background: '#fff',
+                        border: '1px solid #BBF7D0',
+                        borderRadius: 8,
+                        padding: '8px 10px',
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: '#1f2a17' }}>
+                          {c.name || '(이름 없음)'}
+                        </div>
+                        {c.scientificName && (
+                          <div style={{ fontSize: 11, fontStyle: 'italic', color: '#6b7654' }}>
+                            {c.scientificName}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setUserConfirmedName(c.name || '')}
+                        style={{
+                          height: 30,
+                          padding: '0 10px',
+                          borderRadius: 6,
+                          border: '1px solid #15803D',
+                          background: '#fff',
+                          color: '#15803D',
+                          fontWeight: 700,
+                          fontSize: 12,
+                          cursor: 'pointer',
+                          flexShrink: 0,
+                        }}
+                      >
+                        이 식물로 확정
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+
+                <div style={{ marginTop: 10, fontSize: 12, fontWeight: 800, color: '#15803D', marginBottom: 6 }}>
+                  또는 직접 입력
+                </div>
+                <input
+                  type="text"
+                  value={userConfirmedName}
+                  onChange={(e) => setUserConfirmedName(e.target.value)}
+                  placeholder="예: 수세미"
+                  maxLength={60}
+                  style={{
+                    width: '100%',
+                    height: 42,
+                    borderRadius: 8,
+                    border: '1px solid #BBF7D0',
+                    background: '#fff',
+                    padding: '0 12px',
+                    fontSize: 16,
+                    color: '#1f2a17',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+
+                {finalConfirmation.userConfirmedName && (
+                  <div
+                    style={{
+                      marginTop: 10,
+                      padding: 10,
+                      borderRadius: 8,
+                      background: '#DCFCE7',
+                      color: '#166534',
+                      fontSize: 13,
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    <div>
+                      최종 확정: <strong>{finalConfirmation.userConfirmedName}</strong>
+                    </div>
+                    <div style={{ fontSize: 12, color: '#365e3a' }}>
+                      AI 추정: {finalConfirmation.aiKoName || finalConfirmation.aiPrediction || '—'}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#365e3a' }}>
+                      상태: {finalConfirmation.correctedByUser ? '사용자가 수정함' : 'AI 추정 그대로 사용'}
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    toast.info('📚 내 식물도감은 2차 작업에서 활성화됩니다.')
+                  }
+                  style={{
+                    marginTop: 12,
+                    width: '100%',
+                    height: 40,
+                    borderRadius: 8,
+                    border: '1px dashed #15803D',
+                    background: '#F0FDF4',
+                    color: '#15803D',
+                    fontWeight: 700,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                  }}
+                  title="향후 내 식물도감과 연결될 자리입니다"
+                >
+                  📚 내 식물도감 예정
+                </button>
+              </ResultCard>
+            )}
 
             {/* ========== 유사종 ========== */}
             {gemini && gemini.similarSpecies.length > 0 && (
