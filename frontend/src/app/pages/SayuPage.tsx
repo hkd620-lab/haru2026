@@ -689,11 +689,12 @@ export function SayuPage() {
   const ALL_FORMAT_PREFIXES: Record<string, string> = {
     '일기': 'diary', '에세이': 'essay', '선교보고': 'mission',
     '일반보고': 'report', '업무일지': 'work', '여행기록': 'travel',
+    '독서사유': 'reading',
     '텃밭일지': 'garden', '애완동물관찰일지': 'pet', '육아일기': 'child',
     '메모': 'memo',
   };
 
-  const META_SUFFIXES = ['_sayu', '_polished', '_polishedAt', '_mode', '_stats', '_images', '_rating'];
+  const META_SUFFIXES = ['_sayu', '_final_sayu', '_polished', '_polishedAt', '_mode', '_stats', '_images', '_rating', '_status', '_completedAt', '_reflection_questions', '_reflection_answers', '_entries_snapshot'];
 
   const hasSayu = (date: Date | null): 'none' | 'saved' | 'polished' | 'written' => {
     if (!date) return 'none';
@@ -734,6 +735,7 @@ export function SayuPage() {
     diary:   '#1A3C6E',
     essay:   '#7C3AED',
     travel:  '#0EA5E9',
+    reading: '#92400E',
     garden:  '#16A34A',
     pet:     '#F59E0B',
     child:   '#EC4899',

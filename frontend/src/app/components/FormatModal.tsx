@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { getTestData } from '../data/testData';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { compressImage } from '../services/imageService';
 import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import heic2any from 'heic2any';
 import { LoadingOverlay } from './LoadingOverlay';
 
-type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | 'HARU주식관리' | '메모' | 'HARU보조장부';
+type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | 'HARU주식관리' | '메모' | 'HARU보조장부';
 type SayuMode = 'BASIC' | 'PREMIUM';
 
 interface FormatModalProps {
@@ -75,6 +75,15 @@ const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placehol
     { key: 'travel_gratitude', label: '감사', placeholder: '길을 안내해 주신 노스님의 미소에 감사드립니다.\n비를 피할 수 있도록 해 준 쉼터 지붕에 감사드립니다.', rows: 3 },
     { key: 'travel_space', label: '여백', placeholder: '자유롭게 작성하세요.', rows: 2 },
   ],
+  독서사유: [
+    { key: 'reading_book_title', label: '책 제목', placeholder: '예: 오래된 미래', rows: 1 },
+    { key: 'reading_author', label: '저자', placeholder: '예: 헬레나 노르베리 호지', rows: 1 },
+    { key: 'reading_today_part', label: '오늘 읽은 부분', placeholder: '예: 1장 일부, 35쪽부터 52쪽까지', rows: 2 },
+    { key: 'reading_sentence', label: '기억 문장', placeholder: '오늘 마음에 남은 문장 한 줄을 적어도 충분합니다.', rows: 3 },
+    { key: 'reading_thought', label: '떠오른 생각', placeholder: '읽으며 문득 든 생각을 짧게 적어주세요.', rows: 3 },
+    { key: 'reading_life_link', label: '내 삶과 연결', placeholder: '내 경험, 일, 관계, 신앙, 습관과 닿은 부분이 있다면 적어주세요.', rows: 3 },
+    { key: 'reading_space', label: '여백', placeholder: '아직 정리되지 않은 느낌이나 다음에 다시 볼 부분을 남겨두세요.', rows: 2 },
+  ],
   텃밭일지: [
     { key: 'garden_crop', label: '작물', placeholder: '토마토, 상추, 고추를 심었습니다.', rows: 2 },
     { key: 'garden_work', label: '오늘 한 일', placeholder: '잡초를 제거하고 물을 주었습니다.', rows: 3 },
@@ -134,6 +143,7 @@ const FORMAT_PREFIX: Record<RecordFormat, string> = {
   '일반보고': 'report',
   '업무일지': 'work',
   '여행기록': 'travel',
+  '독서사유': 'reading',
   '텃밭일지': 'garden',
   '애완동물관찰일지': 'pet',
   '육아일기': 'child',
@@ -189,16 +199,33 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   // 🌱 텃밭일지 전용: 작물 목록 관리
   const [crops, setCrops] = useState<string[]>([]);
   const [newCropName, setNewCropName] = useState('');
+  const [isReadingFinishing, setIsReadingFinishing] = useState(false);
+  const [showReadingFinishModal, setShowReadingFinishModal] = useState(false);
+  const [readingAnalysis, setReadingAnalysis] = useState('');
+  const [readingReflectionAnswers, setReadingReflectionAnswers] = useState<Record<string, string>>({});
+  const [readingEntriesSnapshot, setReadingEntriesSnapshot] = useState<string>('');
+
+  const readingReflectionQuestions = [
+    '이 책은 나를 어떻게 변화시켰는가?',
+    '나는 무엇을 반성하게 되었는가?',
+    '내 삶과 연결된 부분은 무엇인가?',
+    '앞으로 무엇을 실천하고 싶은가?',
+    '미래의 내가 다시 읽는다면 어떤 의미가 남기를 원하는가?',
+  ];
 
   useEffect(() => {
     if (isOpen) {
       setFormData(initialData);
       setPolishedContent('');
       setShowPolishModal(false);
+      setShowReadingFinishModal(false);
+      setReadingAnalysis('');
+      setReadingReflectionAnswers({});
+      setReadingEntriesSnapshot('');
       setShowModeSelect(false);
 
-      setRecordStyle('simple');
-      setRecordStep(format === 'HARU주식관리' ? 'input' : 'select');
+      setRecordStyle(format === '독서사유' ? 'premium' : 'simple');
+      setRecordStep(format === 'HARU주식관리' || format === '독서사유' ? 'input' : 'select');
       setStockCandidates([]);
       setShowCandidates(false);
 
@@ -459,7 +486,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   };
 
   const handlePolishClick = () => {
-    const currentTitle = (formData[`${prefix}_title`] || '').trim();
+    const currentTitle = (formData[`${prefix}_title`] || (format === '독서사유' ? formData.reading_book_title : '') || '').trim();
     if (!currentTitle) {
       toast.warning('제목을 입력해 주세요. 제목이 있어야 나중에 목록에서 내용을 확인하기 편합니다.');
       return;
@@ -718,7 +745,7 @@ ${contentValues}`,
   };
 
   const handleSaveOriginalAsSayu = async () => {
-    const currentTitle = (formData[`${prefix}_title`] || '').trim();
+    const currentTitle = (formData[`${prefix}_title`] || (format === '독서사유' ? formData.reading_book_title : '') || '').trim();
     if (!currentTitle) {
       toast.warning('제목을 입력해 주세요. 제목이 있어야 나중에 목록에서 내용을 확인하기 편합니다.');
       return;
@@ -754,6 +781,9 @@ ${contentValues}`,
       [`${prefix}_style`]: recordStyle,
       [`${prefix}_mode`]: 'ORIGINAL',
     };
+    if (format === '독서사유' && !dataToSave[`${prefix}_title`] && formData.reading_book_title?.trim()) {
+      dataToSave[`${prefix}_title`] = formData.reading_book_title.trim();
+    }
 
     if (format === '텃밭일지' && crops.length > 0) {
       dataToSave.garden_crop = crops.join(', ');
@@ -795,6 +825,8 @@ ${contentValues}`,
     // 사용자 입력 제목 포함
     if (formData[`${prefix}_title`]?.trim()) {
       updateData[`${prefix}_title`] = formData[`${prefix}_title`].trim();
+    } else if (format === '독서사유' && formData.reading_book_title?.trim()) {
+      updateData[`${prefix}_title`] = formData.reading_book_title.trim();
     }
 
     setIsSaving(true);
@@ -806,6 +838,139 @@ ${contentValues}`,
     } catch (error) {
       console.error('SAYU 저장 실패:', error);
       toast.error('저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const buildCurrentReadingEntry = () => {
+    const labels: Record<string, string> = {
+      reading_book_title: '책 제목',
+      reading_author: '저자',
+      reading_today_part: '오늘 읽은 부분',
+      reading_sentence: '기억 문장',
+      reading_thought: '떠오른 생각',
+      reading_life_link: '내 삶과 연결',
+      reading_space: '여백',
+    };
+    return Object.entries(labels)
+      .map(([key, label]) => {
+        const value = formData[key];
+        return typeof value === 'string' && value.trim() ? `${label}: ${value.trim()}` : '';
+      })
+      .filter(Boolean)
+      .join('\n');
+  };
+
+  const handleReadingFinishClick = async () => {
+    if (format !== '독서사유') return;
+    const bookTitle = (formData.reading_book_title || formData[`${prefix}_title`] || '').trim();
+    if (!bookTitle) {
+      toast.warning('책 제목을 먼저 입력해 주세요.');
+      return;
+    }
+    if (!user?.uid) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+
+    setIsReadingFinishing(true);
+    try {
+      const db = getFirestore();
+      const recordsRef = collection(db, 'users', user.uid, 'records');
+      const q = query(recordsRef, where('formats', 'array-contains', '독서사유'));
+      const snap = await getDocs(q);
+      const entries: Array<{ date: string; text: string }> = [];
+      snap.forEach((recordSnap) => {
+        const data = recordSnap.data() as Record<string, any>;
+        const savedTitle = String(data.reading_book_title || data.reading_title || '').trim();
+        if (savedTitle !== bookTitle) return;
+        const text = [
+          data.reading_today_part ? `오늘 읽은 부분: ${data.reading_today_part}` : '',
+          data.reading_sentence ? `기억 문장: ${data.reading_sentence}` : '',
+          data.reading_thought ? `떠오른 생각: ${data.reading_thought}` : '',
+          data.reading_life_link ? `내 삶과 연결: ${data.reading_life_link}` : '',
+          data.reading_space ? `여백: ${data.reading_space}` : '',
+          data.reading_simple ? `간편 기록: ${data.reading_simple}` : '',
+        ].filter(Boolean).join('\n');
+        if (text.trim()) entries.push({ date: String(data.date || ''), text });
+      });
+      const currentEntry = buildCurrentReadingEntry();
+      if (currentEntry.trim()) {
+        entries.push({ date: new Date().toISOString().slice(0, 10), text: currentEntry });
+      }
+      if (entries.length === 0) {
+        toast.warning('분석할 독서 기록이 없습니다.');
+        return;
+      }
+      entries.sort((a, b) => a.date.localeCompare(b.date));
+      const entriesText = entries
+        .map((entry, index) => `[${index + 1}] ${entry.date || '날짜 없음'}\n${entry.text}`)
+        .join('\n\n')
+        .slice(0, 4300);
+
+      const functions = getFunctions(undefined, 'asia-northeast3');
+      const polishContentFunc = httpsCallable(functions, 'polishContent');
+      const result = await polishContentFunc({
+        text: `다음은 한 권의 책 "${bookTitle}"을 읽는 동안 남긴 독서사유 누적 기록입니다.
+사용자가 쓰지 않은 사건, 감정, 판단을 추가하지 말고, 기록에 드러난 흐름만 차분히 분석하세요.
+문체는 HARU SAYU처럼 절제되고 사실 기반이어야 합니다.
+
+포함할 내용:
+1. 독서 흐름 요약
+2. 반복해서 드러난 관심과 생각
+3. 사용자의 삶과 연결된 지점
+4. 기록에서 확인되는 자기성찰과 변화
+5. 장기 자산으로 남길 최종 독서사유
+
+누적 기록:
+${entriesText}`,
+        format: 'reading',
+        mode: 'PREMIUM',
+      });
+      const responseData = result.data as any;
+      setReadingEntriesSnapshot(entriesText);
+      setReadingAnalysis(responseData.text || '');
+      setShowReadingFinishModal(true);
+      toast.success('독서사유 마무리 분석이 준비되었습니다.');
+    } catch (error) {
+      console.error('독서사유 마무리 실패:', error);
+      toast.error('독서사유 마무리 분석에 실패했습니다.');
+    } finally {
+      setIsReadingFinishing(false);
+    }
+  };
+
+  const handleSaveReadingFinal = async () => {
+    const answers = readingReflectionQuestions
+      .map((question) => `${question}\n${(readingReflectionAnswers[question] || '').trim()}`)
+      .join('\n\n');
+    const finalSayu = `${readingAnalysis.trim()}\n\n[자기성찰 답변]\n${answers}`.trim();
+    const updateData: Record<string, any> = {
+      ...formData,
+      [imagesKey]: JSON.stringify(uploadedImages),
+      [`${prefix}_style`]: recordStyle,
+      [`${prefix}_mode`]: 'READING_FINAL',
+      [`${prefix}_sayu`]: readingAnalysis,
+      [`${prefix}_final_sayu`]: finalSayu,
+      [`${prefix}_reflection_questions`]: JSON.stringify(readingReflectionQuestions),
+      [`${prefix}_reflection_answers`]: JSON.stringify(readingReflectionAnswers),
+      [`${prefix}_entries_snapshot`]: readingEntriesSnapshot,
+      [`${prefix}_status`]: 'completed',
+      [`${prefix}_completedAt`]: new Date().toISOString(),
+    };
+    if (formData.reading_book_title?.trim()) {
+      updateData[`${prefix}_title`] = formData.reading_book_title.trim();
+    }
+    setIsSaving(true);
+    try {
+      await onSave(updateData);
+      toast.success('최종 독서사유가 저장되었습니다.');
+      setShowReadingFinishModal(false);
+      onClose();
+    } catch (error) {
+      console.error('최종 독서사유 저장 실패:', error);
+      toast.error('최종 저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -979,18 +1144,20 @@ ${contentValues}`,
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {/* 뒤로가기 + 모드 배지 */}
               <div>
-                <button
-                  onClick={() => setRecordStep('select')}
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--color-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', marginBottom: '14px', padding: 0 }}
-                >
-                  ← 방식 다시 선택
-                </button>
+                {format !== '독서사유' && (
+                  <button
+                    onClick={() => setRecordStep('select')}
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--color-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', marginBottom: '14px', padding: 0 }}
+                  >
+                    ← 방식 다시 선택
+                  </button>
+                )}
                 <span style={{
                   display: 'inline-block', fontSize: '11px', padding: '3px 10px', borderRadius: '20px', fontWeight: 500,
                   background: recordStyle === 'simple' ? '#dcfce7' : '#dbeafe',
                   color: recordStyle === 'simple' ? '#166534' : '#1e3a8a',
                 }}>
-                  {recordStyle === 'simple' ? '✏️ 간편 기록' : '📋 프리미엄 기록'}
+                  {format === '독서사유' ? '📚 진행형 독서 기록' : recordStyle === 'simple' ? '✏️ 간편 기록' : '📋 프리미엄 기록'}
                 </span>
               </div>
 
@@ -1522,6 +1689,80 @@ ${contentValues}`,
                     ? '파일을 먼저 업로드해주세요'
                     : `저장 (${stockCandidates.length}건)`}
               </button>
+            ) : format === '독서사유' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <button
+                  onClick={handleReadingFinishClick}
+                  disabled={isReadingFinishing || isSaving || isPolishing}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    fontSize: 14,
+                    border: '1px solid #1A3C6E',
+                    borderRadius: 8,
+                    backgroundColor: '#FEFBE8',
+                    color: '#1A3C6E',
+                    cursor: (isReadingFinishing || isSaving || isPolishing) ? 'not-allowed' : 'pointer',
+                    opacity: (isReadingFinishing || isSaving || isPolishing) ? 0.7 : 1,
+                    fontWeight: 600,
+                  }}
+                >
+                  {isReadingFinishing ? '독서 흐름 분석 중...' : '📚 독서 마무리하기'}
+                </button>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <button
+                    onClick={handlePolishClick}
+                    disabled={isPolishing || isSaving}
+                    style={{
+                      padding: '12px 16px',
+                      fontSize: 14,
+                      border: 'none',
+                      borderRadius: 8,
+                      backgroundColor: '#10b981',
+                      color: '#fff',
+                      cursor: (isPolishing || isSaving) ? 'not-allowed' : 'pointer',
+                      opacity: (isPolishing || isSaving) ? 0.7 : 1,
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    {isPolishing ? (
+                      <>
+                        <Wand2 className="animate-spin" style={{ width: 15, height: 15 }} />
+                        AI 다듬는 중...
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 style={{ width: 15, height: 15 }} />
+                        AI 다듬은 후 SAYU 저장
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={handleSaveOriginalAsSayu}
+                    disabled={isSaving || isPolishing}
+                    style={{
+                      padding: '12px 16px',
+                      fontSize: 14,
+                      border: 'none',
+                      borderRadius: 8,
+                      backgroundColor: '#1A3C6E',
+                      color: '#FAF9F6',
+                      cursor: (isSaving || isPolishing) ? 'not-allowed' : 'pointer',
+                      opacity: (isSaving || isPolishing) ? 0.7 : 1,
+                      fontWeight: 500,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {isSaving ? '저장 중...' : '중간 기록 저장'}
+                  </button>
+                </div>
+              </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <button
@@ -1696,6 +1937,113 @@ ${contentValues}`,
                 }}
               >
                 {isSaving ? '저장 중...' : '💾 SAYU 저장'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 독서사유 최종 완료 모달 */}
+      {showReadingFinishModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1200,
+            padding: 20,
+          }}
+          onClick={() => setShowReadingFinishModal(false)}
+        >
+          <div
+            style={{
+              backgroundColor: '#FAF9F6',
+              borderRadius: 12,
+              maxWidth: 760,
+              width: '100%',
+              maxHeight: '88vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e5e5', backgroundColor: '#fff' }}>
+              <h2 style={{ fontSize: 19, color: '#1A3C6E', fontWeight: 700, margin: 0 }}>
+                📚 독서사유 마무리
+              </h2>
+              <p style={{ fontSize: 12, color: '#777', margin: '6px 0 0 0' }}>
+                누적 기록을 바탕으로 만든 SAYU 분석과 자기성찰 질문입니다.
+              </p>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+              <label style={{ display: 'block', fontSize: 13, color: '#555', marginBottom: 8, fontWeight: 600 }}>
+                SAYU 분석
+              </label>
+              <textarea
+                value={readingAnalysis}
+                onChange={(e) => setReadingAnalysis(e.target.value)}
+                style={{
+                  width: '100%',
+                  minHeight: 240,
+                  padding: 16,
+                  fontSize: 14,
+                  lineHeight: 1.7,
+                  border: '1px solid #e5e5e5',
+                  borderRadius: 8,
+                  backgroundColor: '#fff',
+                  color: '#333',
+                  resize: 'vertical',
+                  fontFamily: 'inherit',
+                  outline: 'none',
+                  whiteSpace: 'pre-wrap',
+                }}
+              />
+              <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {readingReflectionQuestions.map((question) => (
+                  <div key={question}>
+                    <label style={{ display: 'block', fontSize: 13, color: '#555', marginBottom: 6, fontWeight: 600 }}>
+                      {question}
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={readingReflectionAnswers[question] || ''}
+                      onChange={(e) => setReadingReflectionAnswers((prev) => ({ ...prev, [question]: e.target.value }))}
+                      placeholder="짧게 적어도 충분합니다."
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        fontSize: 14,
+                        lineHeight: 1.6,
+                        border: '1px solid #e5e5e5',
+                        borderRadius: 8,
+                        backgroundColor: '#fff',
+                        color: '#333',
+                        resize: 'vertical',
+                        fontFamily: 'inherit',
+                        outline: 'none',
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #e5e5e5', display: 'flex', justifyContent: 'flex-end', gap: 10, backgroundColor: '#fff' }}>
+              <button
+                onClick={() => setShowReadingFinishModal(false)}
+                style={{ padding: '10px 18px', fontSize: 14, border: '1px solid #d1d5db', borderRadius: 8, background: '#fff', color: '#555', cursor: 'pointer' }}
+              >
+                닫기
+              </button>
+              <button
+                onClick={handleSaveReadingFinal}
+                disabled={isSaving}
+                style={{ padding: '10px 22px', fontSize: 14, border: 'none', borderRadius: 8, background: '#1A3C6E', color: '#FAF9F6', cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.7 : 1, fontWeight: 700 }}
+              >
+                {isSaving ? '저장 중...' : '최종 독서사유 저장'}
               </button>
             </div>
           </div>

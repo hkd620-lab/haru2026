@@ -1242,7 +1242,7 @@ export function RecordPage() {
           // 오늘의 모든 docs(같은 날 여러 record doc) × 작성된 형식 = 카드 한 장
           type Item = { docId: string; format: RecordFormat; prefix: string };
           const items: Item[] = [];
-          const META_SUFFIX = ['_sayu','_polished','_polishedAt','_mode','_stats','_images','_rating','_keywords','_ai_title','_tags','_space','_style'];
+          const META_SUFFIX = ['_sayu','_final_sayu','_polished','_polishedAt','_mode','_stats','_images','_rating','_keywords','_ai_title','_tags','_space','_style','_status','_completedAt','_reflection_questions','_reflection_answers','_entries_snapshot'];
           const formatEntries = Object.entries(FORMAT_PREFIX) as Array<[RecordFormat, string]>;
           todayRecords.forEach(({ id: docId, data }) => {
             formatEntries.forEach(([format, prefix]) => {
