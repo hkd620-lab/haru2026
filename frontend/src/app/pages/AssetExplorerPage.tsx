@@ -188,7 +188,7 @@ export function AssetExplorerPage() {
             ☁️ HARU 기록탐정
           </h1>
           <p style={{ margin: '8px 0 0', color: '#666', fontSize: 14, lineHeight: 1.6 }}>
-            Google Drive와 연결해 사진·문서·PDF 기록 자산을 정리합니다.
+            Google Drive·OneDrive와 연결해 흩어진 기록 자산을 정리합니다.
           </p>
         </header>
 
@@ -249,7 +249,7 @@ export function AssetExplorerPage() {
                   </span>
                 </div>
                 <p style={{ margin: 0, color: '#777', fontSize: 12, lineHeight: 1.55 }}>
-                  아이폰·맥 사용자 파일 가져오기 실험 기능
+                  Apple iCloud 자산 연동 실험 기능
                 </p>
               </button>
             )}
@@ -337,48 +337,70 @@ export function AssetExplorerPage() {
               </div>
             </div>
 
-            {/* OneDrive 카드 — 개발자 전용 (DEV_OWNER_EMAILS 일치 시만 노출) */}
-            {isDevOwner && (
-              <button
-                type="button"
-                onClick={() => toast.info('OneDrive 연결은 개발자 전용 실험 기능입니다')}
-                style={{
-                  textAlign: 'left',
-                  border: '1px solid #e6e2d8',
-                  background: '#FBFAF6',
-                  borderRadius: 10,
-                  padding: 14,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 6,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 22 }}>🪟</span>
-                  <p style={{ margin: 0, color: '#1A3C6E', fontSize: 15, fontWeight: 800 }}>
-                    OneDrive 연결
-                  </p>
-                  <span
-                    style={{
-                      marginLeft: 'auto',
-                      fontSize: 11,
-                      fontWeight: 800,
-                      color: '#7c3aed',
-                      background: '#ede9fe',
-                      border: '1px solid #ddd6fe',
-                      borderRadius: 6,
-                      padding: '2px 8px',
-                    }}
-                  >
-                    개발자 전용
-                  </span>
-                </div>
-                <p style={{ margin: 0, color: '#777', fontSize: 12, lineHeight: 1.55 }}>
-                  Windows 파일 자산 연결 (실험 기능)
+            {/* OneDrive 카드 — 일반 구독자 정식 노출 (실 연결은 준비중) */}
+            <div
+              style={{
+                border: '1px solid #d6e0f0',
+                background: '#fff',
+                borderRadius: 10,
+                padding: 14,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 22 }}>🪟</span>
+                <p style={{ margin: 0, color: '#1A3C6E', fontSize: 15, fontWeight: 800 }}>
+                  OneDrive 연결
                 </p>
-              </button>
-            )}
+              </div>
+              <p style={{ margin: 0, color: '#777', fontSize: 12, lineHeight: 1.55 }}>
+                문서·PDF·제안서 자산 자동 연결
+              </p>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                <button
+                  type="button"
+                  onClick={() => toast.info('OneDrive 연결은 곧 지원될 예정입니다')}
+                  style={{
+                    border: '1px solid #1A3C6E',
+                    borderRadius: 8,
+                    background: '#fff',
+                    color: '#1A3C6E',
+                    padding: '8px 11px',
+                    fontSize: 12,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <CheckCircle2 size={13} />
+                  연결하기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toast.info('OneDrive 연결은 곧 지원될 예정입니다')}
+                  style={{
+                    border: 'none',
+                    borderRadius: 8,
+                    background: '#1A3C6E',
+                    color: '#fff',
+                    padding: '8px 11px',
+                    fontSize: 12,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <FolderPlus size={13} />
+                  최근 자산 추천
+                </button>
+              </div>
+            </div>
           </div>
         </section>
 
