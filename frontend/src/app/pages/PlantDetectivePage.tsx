@@ -129,6 +129,7 @@ export function PlantDetectivePage() {
 
   // 🌱 v1 사용자입력 기반 식물 자산 저장 — AI 흐름과 독립
   const [showV1Form, setShowV1Form] = useState(false);
+  const [showV1Advanced, setShowV1Advanced] = useState(false);
   const [v1PlantName, setV1PlantName] = useState('');
   const [v1AiGuess, setV1AiGuess] = useState('');
   const [v1Confidence, setV1Confidence] = useState<string>('1');
@@ -642,13 +643,13 @@ export function PlantDetectivePage() {
       </header>
 
       <main style={{ maxWidth: 880, margin: '0 auto', padding: '18px 16px 96px' }}>
-        {/* ========== 🌱 v1 사용자입력 식물 자산 저장 ========== */}
+        {/* ========== 🛠 고급 사용자 직접 등록 ========== */}
         <section
           style={{
-            border: '1px solid #c9d8a6',
-            background: '#f4f8e6',
+            border: '1px solid #d8d0b8',
+            background: '#fffdf4',
             borderRadius: 10,
-            padding: 14,
+            padding: 12,
             marginBottom: 14,
           }}
         >
@@ -664,16 +665,38 @@ export function PlantDetectivePage() {
               border: 'none',
               padding: 0,
               cursor: 'pointer',
-              color: '#3f5316',
+              color: '#5c5a48',
               fontWeight: 800,
-              fontSize: 14,
+              fontSize: 13,
             }}
           >
-            <span>🌱 사용자 입력 기반 식물 자산 저장 (AI 분석 없이 직접 등록)</span>
+            <span>🛠 고급 사용자 직접 등록</span>
             {showV1Form ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </button>
+          <p style={{ margin: '6px 0 0', fontSize: 11, color: '#7a725d', lineHeight: 1.5 }}>
+            AI 분석 없이 직접 식물 정보를 등록할 수 있는 고급 기능입니다.
+          </p>
           {showV1Form && (
             <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div
+                style={{
+                  border: '1px solid #e1dbc4',
+                  background: '#f8f4dd',
+                  borderRadius: 8,
+                  padding: '10px 12px',
+                  color: '#4A5A2C',
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 6 }}>🌱 언제 사용하나요?</div>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, lineHeight: 1.65 }}>
+                  <li>AI가 식물을 잘못 식별했을 때</li>
+                  <li>책/웹에서 본 식물을 기록하고 싶을 때</li>
+                  <li>이름만 먼저 저장하고 싶을 때</li>
+                </ul>
+                <p style={{ margin: '6px 0 0', fontSize: 12, lineHeight: 1.55 }}>
+                  식물 이름과 메모만 입력해도 저장할 수 있습니다.
+                </p>
+              </div>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: '#3f5316' }}>식물 이름 *</span>
                 <input
@@ -693,13 +716,10 @@ export function PlantDetectivePage() {
                 />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#3f5316' }}>AI 추정명</span>
-                <input
-                  type="text"
-                  value={v1AiGuess}
-                  onChange={(e) => setV1AiGuess(e.target.value)}
-                  maxLength={120}
-                  placeholder="예: Phalaenopsis aphrodite"
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#3f5316' }}>sourceType</span>
+                <select
+                  value={v1SourceType}
+                  onChange={(e) => setV1SourceType(e.target.value as PlantAssetSourceType)}
                   style={{
                     height: 36,
                     borderRadius: 6,
@@ -708,48 +728,12 @@ export function PlantDetectivePage() {
                     background: '#fff',
                     fontSize: 13,
                   }}
-                />
+                >
+                  <option value="real_photo">실사진 (real_photo)</option>
+                  <option value="book_photo">도감사진 (book_photo)</option>
+                  <option value="web_reference">웹참고 (web_reference)</option>
+                </select>
               </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#3f5316' }}>confidence (0~1)</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={v1Confidence}
-                    onChange={(e) => setV1Confidence(e.target.value)}
-                    style={{
-                      height: 36,
-                      borderRadius: 6,
-                      border: '1px solid #c9d8a6',
-                      padding: '0 10px',
-                      background: '#fff',
-                      fontSize: 13,
-                    }}
-                  />
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#3f5316' }}>sourceType</span>
-                  <select
-                    value={v1SourceType}
-                    onChange={(e) => setV1SourceType(e.target.value as PlantAssetSourceType)}
-                    style={{
-                      height: 36,
-                      borderRadius: 6,
-                      border: '1px solid #c9d8a6',
-                      padding: '0 10px',
-                      background: '#fff',
-                      fontSize: 13,
-                    }}
-                  >
-                    <option value="real_photo">실사진 (real_photo)</option>
-                    <option value="book_photo">도감사진 (book_photo)</option>
-                    <option value="web_reference">웹참고 (web_reference)</option>
-                  </select>
-                </label>
-              </div>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: '#3f5316' }}>사용자 메모</span>
                 <textarea
@@ -758,25 +742,6 @@ export function PlantDetectivePage() {
                   maxLength={2000}
                   rows={3}
                   placeholder="이 식물에 대한 메모를 남기세요."
-                  style={{
-                    borderRadius: 6,
-                    border: '1px solid #c9d8a6',
-                    padding: '8px 10px',
-                    background: '#fff',
-                    fontSize: 13,
-                    resize: 'vertical',
-                  }}
-                />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#3f5316' }}>
-                  이미지 URL (한 줄에 하나 또는 쉼표 구분)
-                </span>
-                <textarea
-                  value={v1ImageUrlsText}
-                  onChange={(e) => setV1ImageUrlsText(e.target.value)}
-                  rows={2}
-                  placeholder="https://example.com/photo1.jpg"
                   style={{
                     borderRadius: 6,
                     border: '1px solid #c9d8a6',
@@ -797,16 +762,99 @@ export function PlantDetectivePage() {
               </label>
               <button
                 type="button"
+                onClick={() => setShowV1Advanced((v) => !v)}
+                style={{
+                  height: 34,
+                  borderRadius: 7,
+                  border: '1px solid #d8d0b8',
+                  background: '#fff',
+                  color: '#5c5a48',
+                  fontWeight: 800,
+                  fontSize: 12,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  cursor: 'pointer',
+                }}
+              >
+                {showV1Advanced ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                고급 설정
+              </button>
+              {showV1Advanced && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#3f5316' }}>AI 추정명</span>
+                    <input
+                      type="text"
+                      value={v1AiGuess}
+                      onChange={(e) => setV1AiGuess(e.target.value)}
+                      maxLength={120}
+                      placeholder="예: Phalaenopsis aphrodite"
+                      style={{
+                        height: 36,
+                        borderRadius: 6,
+                        border: '1px solid #c9d8a6',
+                        padding: '0 10px',
+                        background: '#fff',
+                        fontSize: 13,
+                      }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#3f5316' }}>confidence (0~1)</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      value={v1Confidence}
+                      onChange={(e) => setV1Confidence(e.target.value)}
+                      style={{
+                        height: 36,
+                        borderRadius: 6,
+                        border: '1px solid #c9d8a6',
+                        padding: '0 10px',
+                        background: '#fff',
+                        fontSize: 13,
+                      }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#3f5316' }}>
+                      이미지 URL (한 줄에 하나 또는 쉼표 구분)
+                    </span>
+                    <textarea
+                      value={v1ImageUrlsText}
+                      onChange={(e) => setV1ImageUrlsText(e.target.value)}
+                      rows={2}
+                      placeholder="https://example.com/photo1.jpg"
+                      style={{
+                        borderRadius: 6,
+                        border: '1px solid #c9d8a6',
+                        padding: '8px 10px',
+                        background: '#fff',
+                        fontSize: 13,
+                        resize: 'vertical',
+                      }}
+                    />
+                  </label>
+                </div>
+              )}
+              <button
+                type="button"
                 onClick={saveV1PlantAsset}
                 disabled={v1Saving || v1PlantName.trim().length === 0}
                 style={{
-                  height: 44,
+                  height: 36,
                   borderRadius: 8,
-                  border: '1px solid #4A5A2C',
+                  border: '1px solid #b8c28c',
                   background:
+                    v1Saving || v1PlantName.trim().length === 0 ? '#f1f4e6' : '#fff',
+                  color:
                     v1Saving || v1PlantName.trim().length === 0 ? '#a7b886' : '#4A5A2C',
-                  color: '#fff',
-                  fontWeight: 900,
+                  fontWeight: 800,
+                  fontSize: 13,
                   cursor:
                     v1Saving || v1PlantName.trim().length === 0 ? 'not-allowed' : 'pointer',
                   display: 'inline-flex',
@@ -816,7 +864,7 @@ export function PlantDetectivePage() {
                 }}
               >
                 {v1Saving ? <Loader2 size={16} className="animate-spin" /> : <Leaf size={16} />}
-                🌱 식물 자산 저장
+                🌱 식물만 저장
               </button>
               {v1LastSavedId && (
                 <div
