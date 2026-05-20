@@ -188,7 +188,7 @@ export function AssetExplorerPage() {
             ☁️ HARU 기록탐정
           </h1>
           <p style={{ margin: '8px 0 0', color: '#666', fontSize: 14, lineHeight: 1.6 }}>
-            Google Drive·OneDrive와 연결해 흩어진 기록 자산을 정리합니다.
+            Google Drive·OneDrive·iCloud와 연결해 흩어진 기록 자산을 HARU 자산 폴더로 안전하게 정리합니다.
           </p>
         </header>
 
@@ -211,48 +211,46 @@ export function AssetExplorerPage() {
               gap: 10,
             }}
           >
-            {/* iCloud 카드 — 개발자 전용 (DEV_OWNER_EMAILS 일치 시만 노출) */}
-            {isDevOwner && (
-              <button
-                type="button"
-                onClick={() => toast.info('iCloud 연결은 개발자 전용 실험 기능입니다')}
-                style={{
-                  textAlign: 'left',
-                  border: '1px solid #e6e2d8',
-                  background: '#FBFAF6',
-                  borderRadius: 10,
-                  padding: 14,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 6,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 22 }}>🍎</span>
-                  <p style={{ margin: 0, color: '#1A3C6E', fontSize: 15, fontWeight: 800 }}>
-                    iCloud 연결
-                  </p>
-                  <span
-                    style={{
-                      marginLeft: 'auto',
-                      fontSize: 11,
-                      fontWeight: 800,
-                      color: '#7c3aed',
-                      background: '#ede9fe',
-                      border: '1px solid #ddd6fe',
-                      borderRadius: 6,
-                      padding: '2px 8px',
-                    }}
-                  >
-                    개발자 전용
-                  </span>
-                </div>
-                <p style={{ margin: 0, color: '#777', fontSize: 12, lineHeight: 1.55 }}>
-                  Apple iCloud 자산 연동 실험 기능
+            {/* iCloud 카드 — Beta (정식 베타, 일반 구독자 노출. 실 연동 준비 중) */}
+            <button
+              type="button"
+              onClick={() => toast.info('iCloud 연결은 Beta 준비 중입니다')}
+              style={{
+                textAlign: 'left',
+                border: '1px solid #d6e0f0',
+                background: '#fff',
+                borderRadius: 10,
+                padding: 14,
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 22 }}>🍎</span>
+                <p style={{ margin: 0, color: '#1A3C6E', fontSize: 15, fontWeight: 800 }}>
+                  iCloud 연결
                 </p>
-              </button>
-            )}
+                <span
+                  style={{
+                    marginLeft: 'auto',
+                    fontSize: 11,
+                    fontWeight: 800,
+                    color: '#1d4ed8',
+                    background: '#dbeafe',
+                    border: '1px solid #bfdbfe',
+                    borderRadius: 6,
+                    padding: '2px 8px',
+                  }}
+                >
+                  Beta
+                </span>
+              </div>
+              <p style={{ margin: 0, color: '#777', fontSize: 12, lineHeight: 1.55 }}>
+                아이폰·맥 기록 자산 연결 (Beta 준비 중)
+              </p>
+            </button>
 
             {/* Google Drive 카드 — 실연결 */}
             <div
