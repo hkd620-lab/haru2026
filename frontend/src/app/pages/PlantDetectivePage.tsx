@@ -1556,20 +1556,25 @@ export function PlantDetectivePage() {
                   type="button"
                   onClick={saveAsUserConfirmed}
                   disabled={isConfirming || userConfirmedName.trim().length === 0}
+                  title="도감 정보만 빠르게 저장합니다"
                   style={{
-                    height: 42,
-                    borderRadius: 8,
-                    border: '1px solid #15803D',
+                    height: 34,
+                    borderRadius: 6,
+                    border: '1px solid #BBF7D0',
                     background:
+                      isConfirming || userConfirmedName.trim().length === 0
+                        ? '#F0FDF4'
+                        : '#fff',
+                    color:
                       isConfirming || userConfirmedName.trim().length === 0
                         ? '#86efac'
                         : '#15803D',
-                    color: '#fff',
-                    fontWeight: 900,
-                    padding: '0 14px',
+                    fontWeight: 600,
+                    fontSize: 12,
+                    padding: '0 10px',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 6,
+                    gap: 5,
                     cursor:
                       isConfirming || userConfirmedName.trim().length === 0
                         ? 'not-allowed'
@@ -1577,13 +1582,16 @@ export function PlantDetectivePage() {
                   }}
                 >
                   {isConfirming ? (
-                    <Loader2 size={16} className="animate-spin" />
+                    <Loader2 size={13} className="animate-spin" />
                   ) : (
-                    <CheckCircle2 size={16} />
+                    <span style={{ fontSize: 13 }}>🌱</span>
                   )}
-                  내 도감에 정답으로 저장
+                  식물만 저장
                 </button>
               </div>
+              <p style={{ margin: '6px 0 0', fontSize: 11, color: '#6b7654', lineHeight: 1.5 }}>
+                도감 정보만 빠르게 저장합니다 (오늘 기록과 분리)
+              </p>
               {confirmedSavedDocId && (
                 <div
                   style={{
@@ -1600,29 +1608,45 @@ export function PlantDetectivePage() {
               )}
             </ResultCard>
 
-            {/* ========== 저장 버튼 ========== */}
+            {/* ========== 메인 저장 버튼 ========== */}
+            <p
+              style={{
+                margin: '0 0 6px',
+                fontSize: 12,
+                color: '#6b7654',
+                textAlign: 'center',
+                lineHeight: 1.55,
+              }}
+            >
+              오늘의 관찰과 식물 정보를 함께 저장합니다
+            </p>
             <button
               type="button"
               onClick={saveToToday}
               disabled={isSaving || savedToToday}
               style={{
                 width: '100%',
-                height: 48,
-                borderRadius: 8,
+                height: 52,
+                borderRadius: 10,
                 border: '1px solid #4A5A2C',
                 background: savedToToday ? '#e7dfc8' : isSaving ? '#7b8b4b' : '#4A5A2C',
                 color: '#fff',
                 fontWeight: 900,
+                fontSize: 16,
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 8,
                 cursor: isSaving || savedToToday ? 'not-allowed' : 'pointer',
               }}
-              title="오늘 기록 + 식물 도감(plants/)에 함께 저장합니다"
+              title="오늘의 관찰과 식물 정보를 함께 저장합니다"
             >
-              {isSaving ? <Loader2 size={17} className="animate-spin" /> : <Save size={17} />}
-              {savedToToday ? '오늘 기록에 저장됨' : isSaving ? '저장 중...' : '오늘 SAYU + 도감에 저장'}
+              {isSaving ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : (
+                <span style={{ fontSize: 18 }}>📔</span>
+              )}
+              {savedToToday ? '오늘 기록에 저장됨' : isSaving ? '저장 중...' : '오늘 기록 저장'}
             </button>
 
             <p style={{ fontSize: 11, color: '#7a725d', textAlign: 'center', lineHeight: 1.55 }}>
