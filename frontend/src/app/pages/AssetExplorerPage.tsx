@@ -51,6 +51,11 @@ export function AssetExplorerPage() {
   const [savedAssets, setSavedAssets] = useState<SavedAsset[]>([]);
   const [searchText, setSearchText] = useState('');
   const [hasDriveConnection, setHasDriveConnection] = useState(searchParams.get('drive') === 'connected');
+  // OneDrive 연결 1단계 상태
+  const [oneDriveConnected, setOneDriveConnected] = useState(false);
+  const [oneDriveFolderReady, setOneDriveFolderReady] = useState(false);
+  const [oneDriveConnecting, setOneDriveConnecting] = useState(false);
+  const [oneDriveError, setOneDriveError] = useState<string | null>(null);
 
   const filteredAssets = useMemo(() => {
     const keyword = searchText.trim().toLowerCase();
@@ -82,7 +87,39 @@ export function AssetExplorerPage() {
     } else if (searchParams.get('drive') === 'error') {
       toast.error('Google Drive 연결에 실패했습니다.');
     }
+    if (searchParams.get('onedrive') === 'connected') {
+      toast.success('OneDrive 연결이 완료되었습니다.');
+      setOneDriveConnected(true);
+      setOneDriveError(null);
+    } else if (searchParams.get('onedrive') === 'error') {
+      setOneDriveError('OneDrive 연결에 실패했습니다. 다시 시도해 주세요.');
+      toast.error('OneDrive 연결에 실패했습니다. 다시 시도해 주세요.');
+    }
   }, [searchParams]);
+
+  // OneDrive 현재 연결 상태 조회 (mount 시 + 콜백 복귀 시)
+  useEffect(() => {
+    if (!user?.uid) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const getState = httpsCallable<unknown, { connected: boolean; folderReady: boolean; folderPath: string | null }>(
+          functions,
+          'getOneDriveConnectionState',
+        );
+        const result = await getState({});
+        if (cancelled) return;
+        setOneDriveConnected(Boolean(result.data?.connected));
+        setOneDriveFolderReady(Boolean(result.data?.folderReady));
+      } catch (e) {
+        // 연결 상태 조회 실패는 카드 표시에만 영향, 별도 toast 없음
+        console.warn('OneDrive 연결 상태 조회 실패:', e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid, searchParams]);
 
   useEffect(() => {
     loadAssets().catch((error) => {
@@ -105,6 +142,30 @@ export function AssetExplorerPage() {
       console.error('Drive 연결 시작 실패:', error);
       toast.error(error?.message || 'Google Drive 연결을 시작하지 못했습니다.');
       setIsConnecting(false);
+    }
+  };
+
+  const connectOneDrive = async () => {
+    if (!user?.uid) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+    setOneDriveConnecting(true);
+    setOneDriveError(null);
+    try {
+      const start = httpsCallable<unknown, { authUrl: string }>(functions, 'startOneDriveConnect');
+      const result = await start({});
+      window.location.href = result.data.authUrl;
+    } catch (error: any) {
+      const msg = String(error?.message || '');
+      const friendly =
+        msg.includes('OneDrive 연결이 아직 설정')
+          ? 'OneDrive 연결이 아직 설정되지 않았습니다. 잠시 후 다시 시도해 주세요.'
+          : 'OneDrive 연결에 실패했습니다. 다시 시도해 주세요.';
+      console.error('OneDrive 연결 시작 실패:', error);
+      setOneDriveError(friendly);
+      toast.error(friendly);
+      setOneDriveConnecting(false);
     }
   };
 
@@ -335,7 +396,7 @@ export function AssetExplorerPage() {
               </div>
             </div>
 
-            {/* OneDrive 카드 — 일반 구독자 정식 노출 (실 연결은 준비중) */}
+            {/* OneDrive 카드 — Step 1: 실 Microsoft 연결 + HARU2026 폴더 준비 */}
             <div
               style={{
                 border: '1px solid #d6e0f0',
@@ -352,14 +413,43 @@ export function AssetExplorerPage() {
                 <p style={{ margin: 0, color: '#1A3C6E', fontSize: 15, fontWeight: 800 }}>
                   OneDrive 연결
                 </p>
+                {oneDriveConnected && (
+                  <span
+                    style={{
+                      marginLeft: 'auto',
+                      fontSize: 11,
+                      fontWeight: 800,
+                      color: '#166534',
+                      background: '#DCFCE7',
+                      border: '1px solid #bbf7d0',
+                      borderRadius: 6,
+                      padding: '2px 8px',
+                    }}
+                  >
+                    연결됨
+                  </span>
+                )}
               </div>
               <p style={{ margin: 0, color: '#777', fontSize: 12, lineHeight: 1.55 }}>
                 문서·PDF·제안서 자산 자동 연결
               </p>
+              {oneDriveConnected ? (
+                <p style={{ margin: 0, color: '#4A5A2C', fontSize: 12, fontWeight: 700 }}>
+                  {oneDriveFolderReady
+                    ? 'HARU2026 폴더 준비 완료'
+                    : 'HARU2026 폴더 준비 중'}
+                </p>
+              ) : (
+                <p style={{ margin: 0, color: '#92996f', fontSize: 11 }}>연결 전</p>
+              )}
+              {oneDriveError && (
+                <p style={{ margin: 0, color: '#b91c1c', fontSize: 11 }}>{oneDriveError}</p>
+              )}
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
                 <button
                   type="button"
-                  onClick={() => toast.info('OneDrive 연결은 곧 지원될 예정입니다')}
+                  onClick={connectOneDrive}
+                  disabled={oneDriveConnecting}
                   style={{
                     border: '1px solid #1A3C6E',
                     borderRadius: 8,
@@ -368,34 +458,18 @@ export function AssetExplorerPage() {
                     padding: '8px 11px',
                     fontSize: 12,
                     fontWeight: 800,
-                    cursor: 'pointer',
+                    cursor: oneDriveConnecting ? 'wait' : 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
                   }}
                 >
-                  <CheckCircle2 size={13} />
-                  연결하기
-                </button>
-                <button
-                  type="button"
-                  onClick={() => toast.info('OneDrive 연결은 곧 지원될 예정입니다')}
-                  style={{
-                    border: 'none',
-                    borderRadius: 8,
-                    background: '#1A3C6E',
-                    color: '#fff',
-                    padding: '8px 11px',
-                    fontSize: 12,
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                  }}
-                >
-                  <FolderPlus size={13} />
-                  최근 자산 추천
+                  {oneDriveConnecting ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <CheckCircle2 size={13} />
+                  )}
+                  {oneDriveConnected ? '다시 연결' : 'OneDrive 연결하기'}
                 </button>
               </div>
             </div>

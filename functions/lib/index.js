@@ -37,7 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.convertToBookMaterial = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = void 0;
-exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = void 0;
+exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -81,6 +81,8 @@ const KAKAO_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunction
 const NAVER_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/naverCallback';
 const GOOGLE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/googleCallback';
 const HARU_DRIVE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/haruDriveCallback';
+const ONEDRIVE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/oneDriveCallback';
+const ONEDRIVE_OAUTH_SCOPE = 'offline_access Files.ReadWrite User.Read';
 const db = admin.firestore();
 // ===== 🔑 이메일 기반 통합 UID 생성/조회 함수 (기존 UID 우선) =====
 async function getOrCreateUnifiedUid(email, provider) {
@@ -5144,4 +5146,236 @@ exports.testNibrPlantSearch = (0, https_1.onRequest)({ region: 'asia-northeast3'
             code: (err === null || err === void 0 ? void 0 : err.code) || null,
         });
     }
+});
+// ===========================================
+// 🪟 OneDrive 연결 1단계 (Step 1)
+//   목표: Microsoft 로그인 → 사용자별 OneDrive 연결 상태 저장 → /HARU2026 폴더 생성
+//   이번 단계 금지: 파일 복사 / 이동 / AI 자동분류 / assetIndex 생성
+//   env: process.env.MICROSOFT_CLIENT_ID / MICROSOFT_CLIENT_SECRET / MICROSOFT_REDIRECT_URI(선택, 미설정 시 기본값)
+//   token 저장 위치: users/{uid}/cloudConnections/oneDrive (서버 전용, 프론트 직접 접근 X)
+// ===========================================
+const ONEDRIVE_AUTH_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize';
+const ONEDRIVE_TOKEN_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
+const ONEDRIVE_GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
+const ONEDRIVE_HARU_FOLDER_NAME = 'HARU2026';
+const ONEDRIVE_HARU_FOLDER_PATH = '/HARU2026';
+function getOneDriveEnv() {
+    const clientId = process.env.MICROSOFT_CLIENT_ID;
+    const clientSecret = process.env.MICROSOFT_CLIENT_SECRET;
+    const redirectUri = process.env.MICROSOFT_REDIRECT_URI || ONEDRIVE_REDIRECT_URI;
+    if (!clientId || !clientSecret)
+        return null;
+    return { clientId, clientSecret, redirectUri };
+}
+async function ensureHaruFolderOnOneDrive(accessToken) {
+    var _a, _b, _c;
+    // 1) 기존 폴더 조회 (중복 생성 방지)
+    try {
+        const existing = await axios_1.default.get(`${ONEDRIVE_GRAPH_BASE}/me/drive/root:${ONEDRIVE_HARU_FOLDER_PATH}`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            validateStatus: () => true,
+            timeout: 15000,
+        });
+        if (existing.status === 200 && ((_a = existing.data) === null || _a === void 0 ? void 0 : _a.id)) {
+            return { folderId: existing.data.id, folderPath: ONEDRIVE_HARU_FOLDER_PATH };
+        }
+    }
+    catch {
+        /* fall through to create */
+    }
+    // 2) 신규 생성 (conflictBehavior: fail → 409면 race condition으로 간주하고 재조회)
+    try {
+        const created = await axios_1.default.post(`${ONEDRIVE_GRAPH_BASE}/me/drive/root/children`, {
+            name: ONEDRIVE_HARU_FOLDER_NAME,
+            folder: {},
+            '@microsoft.graph.conflictBehavior': 'fail',
+        }, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+            validateStatus: () => true,
+            timeout: 15000,
+        });
+        if (created.status === 201 && ((_b = created.data) === null || _b === void 0 ? void 0 : _b.id)) {
+            return { folderId: created.data.id, folderPath: ONEDRIVE_HARU_FOLDER_PATH };
+        }
+        if (created.status === 409) {
+            // race or hidden conflict — 재조회 시도
+            const re = await axios_1.default.get(`${ONEDRIVE_GRAPH_BASE}/me/drive/root:${ONEDRIVE_HARU_FOLDER_PATH}`, { headers: { Authorization: `Bearer ${accessToken}` }, validateStatus: () => true, timeout: 15000 });
+            if (re.status === 200 && ((_c = re.data) === null || _c === void 0 ? void 0 : _c.id)) {
+                return { folderId: re.data.id, folderPath: ONEDRIVE_HARU_FOLDER_PATH };
+            }
+        }
+        throw new Error(`folder create failed: status ${created.status}`);
+    }
+    catch (e) {
+        throw new Error(`folder create error: ${(e === null || e === void 0 ? void 0 : e.message) || 'unknown'}`);
+    }
+}
+// 1) OAuth 시작 — authUrl 반환 (callable, uid 확인)
+exports.startOneDriveConnect = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
+    var _a;
+    const uid = (_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid;
+    if (!uid) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const env = getOneDriveEnv();
+    if (!env) {
+        logger.warn('OneDrive env missing — MICROSOFT_CLIENT_ID/SECRET not configured');
+        throw new https_2.HttpsError('failed-precondition', 'OneDrive 연결이 아직 설정되지 않았습니다.');
+    }
+    const state = crypto.randomBytes(32).toString('hex');
+    await db.collection('oauth_states').doc(state).set({
+        provider: 'oneDrive',
+        uid,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
+    });
+    const params = new URLSearchParams({
+        client_id: env.clientId,
+        response_type: 'code',
+        redirect_uri: env.redirectUri,
+        scope: ONEDRIVE_OAUTH_SCOPE,
+        response_mode: 'query',
+        state,
+    });
+    return { authUrl: `${ONEDRIVE_AUTH_URL}?${params.toString()}` };
+});
+// 2) OAuth callback — Microsoft 가 호출 → token 교환 → 폴더 생성 → Firestore 저장 → 프론트 redirect
+exports.oneDriveCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', timeoutSeconds: 60 }, async (req, res) => {
+    var _a, _b, _c, _d;
+    try {
+        const env = getOneDriveEnv();
+        if (!env) {
+            logger.warn('OneDrive callback: env missing');
+            res.redirect(`${FRONTEND_URL}/asset-explorer?onedrive=error`);
+            return;
+        }
+        const { code, state } = req.query;
+        if (!code || typeof code !== 'string')
+            throw new Error('missing code');
+        if (!state || typeof state !== 'string')
+            throw new Error('missing state');
+        const stateDoc = await db.collection('oauth_states').doc(state).get();
+        if (!stateDoc.exists)
+            throw new Error('state not found');
+        const stateData = stateDoc.data();
+        if (!stateData)
+            throw new Error('state empty');
+        if (stateData.provider !== 'oneDrive')
+            throw new Error('provider mismatch');
+        if (((_b = (_a = stateData.expiresAt) === null || _a === void 0 ? void 0 : _a.toMillis) === null || _b === void 0 ? void 0 : _b.call(_a)) < Date.now())
+            throw new Error('state expired');
+        const uid = stateData.uid;
+        if (!uid)
+            throw new Error('uid missing in state');
+        await stateDoc.ref.delete();
+        // token 교환
+        const tokenForm = new URLSearchParams({
+            client_id: env.clientId,
+            client_secret: env.clientSecret,
+            grant_type: 'authorization_code',
+            code,
+            redirect_uri: env.redirectUri,
+            scope: ONEDRIVE_OAUTH_SCOPE,
+        });
+        const tokenRes = await axios_1.default.post(ONEDRIVE_TOKEN_URL, tokenForm.toString(), {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            validateStatus: () => true,
+            timeout: 20000,
+        });
+        if (tokenRes.status !== 200 || !((_c = tokenRes.data) === null || _c === void 0 ? void 0 : _c.access_token)) {
+            logger.error('OneDrive token exchange failed', {
+                status: tokenRes.status,
+                errorCode: (_d = tokenRes.data) === null || _d === void 0 ? void 0 : _d.error,
+                // 민감 정보는 로그하지 않음
+            });
+            throw new Error('token exchange failed');
+        }
+        const accessToken = tokenRes.data.access_token;
+        const refreshToken = tokenRes.data.refresh_token || null;
+        const expiresInSec = Number(tokenRes.data.expires_in) || 3600;
+        const tokenExpiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + expiresInSec * 1000);
+        // /HARU2026 폴더 생성 (또는 기존 사용)
+        let folderId = null;
+        let folderPath = null;
+        try {
+            const ensured = await ensureHaruFolderOnOneDrive(accessToken);
+            folderId = ensured.folderId;
+            folderPath = ensured.folderPath;
+        }
+        catch (e) {
+            logger.error('OneDrive folder ensure failed', { message: (e === null || e === void 0 ? void 0 : e.message) || String(e) });
+        }
+        // Firestore 저장 — users/{uid}/cloudConnections/oneDrive
+        const docRef = db.doc(`users/${uid}/cloudConnections/oneDrive`);
+        await docRef.set({
+            provider: 'oneDrive',
+            connected: true,
+            status: folderId ? 'connected' : 'connected_no_folder',
+            connectedAt: admin.firestore.FieldValue.serverTimestamp(),
+            folderPath: folderPath || ONEDRIVE_HARU_FOLDER_PATH,
+            folderId: folderId || null,
+            scope: ONEDRIVE_OAUTH_SCOPE,
+            accessToken,
+            refreshToken,
+            tokenExpiresAt,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        res.redirect(`${FRONTEND_URL}/asset-explorer?onedrive=connected`);
+    }
+    catch (error) {
+        logger.error('OneDrive callback failed', {
+            message: (error === null || error === void 0 ? void 0 : error.message) || String(error),
+        });
+        res.redirect(`${FRONTEND_URL}/asset-explorer?onedrive=error`);
+    }
+});
+// 3) HARU 폴더 보장 (멱등) — callable, 이미 있으면 기존 폴더 사용
+exports.ensureOneDriveHaruFolder = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
+    var _a;
+    const uid = (_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid;
+    if (!uid)
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    const docRef = db.doc(`users/${uid}/cloudConnections/oneDrive`);
+    const snap = await docRef.get();
+    if (!snap.exists) {
+        throw new https_2.HttpsError('failed-precondition', 'OneDrive 연결이 필요합니다.');
+    }
+    const data = snap.data();
+    const accessToken = data === null || data === void 0 ? void 0 : data.accessToken;
+    if (!accessToken) {
+        throw new https_2.HttpsError('failed-precondition', 'OneDrive 액세스 정보가 없습니다.');
+    }
+    try {
+        const ensured = await ensureHaruFolderOnOneDrive(accessToken);
+        await docRef.set({
+            folderId: ensured.folderId,
+            folderPath: ensured.folderPath,
+            status: 'connected',
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        return { folderId: ensured.folderId, folderPath: ensured.folderPath };
+    }
+    catch (e) {
+        logger.error('ensureOneDriveHaruFolder failed', { message: (e === null || e === void 0 ? void 0 : e.message) || String(e) });
+        throw new https_2.HttpsError('internal', 'HARU 폴더 준비에 실패했습니다.');
+    }
+});
+// 4) 연결 상태 조회 — 토큰 없이 boolean + folder 상태만 반환
+exports.getOneDriveConnectionState = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
+    var _a;
+    const uid = (_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid;
+    if (!uid)
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    const snap = await db.doc(`users/${uid}/cloudConnections/oneDrive`).get();
+    if (!snap.exists) {
+        return { connected: false, folderReady: false, folderPath: null };
+    }
+    const data = snap.data();
+    const connected = Boolean((data === null || data === void 0 ? void 0 : data.connected) && (data === null || data === void 0 ? void 0 : data.accessToken));
+    const folderReady = Boolean(data === null || data === void 0 ? void 0 : data.folderId);
+    const folderPath = (data === null || data === void 0 ? void 0 : data.folderPath) || null;
+    return { connected, folderReady, folderPath };
 });
