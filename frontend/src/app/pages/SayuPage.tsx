@@ -413,6 +413,8 @@ export function SayuPage() {
   const [snsSearchLoading, setSnsSearchLoading] = useState(false);
   const [expandedSearchIds, setExpandedSearchIds] = useState<Set<string>>(new Set());
   const [expandedPlantIds, setExpandedPlantIds] = useState<Set<string>>(new Set());
+  const [selectedPlantEntryIds, setSelectedPlantEntryIds] = useState<Set<string>>(new Set());
+  const [plantDeleteBusy, setPlantDeleteBusy] = useState(false);
 
   // === SAYU 키워드 미리보기 백필 (IntersectionObserver) ===
   const kwInflightRef = useRef<Set<string>>(new Set());
@@ -608,6 +610,54 @@ export function SayuPage() {
     } catch (e) {
       console.error('SNS 검색기록 삭제 실패:', e);
       toast.error('삭제에 실패했습니다.');
+    }
+  };
+
+  const handleDeleteSelectedPlantEntries = async () => {
+    if (!user?.uid || selectedPlantEntryIds.size === 0) return;
+    if (!window.confirm(`선택한 식물 판독 기록 ${selectedPlantEntryIds.size}개를 삭제할까요?`)) return;
+    setPlantDeleteBusy(true);
+    try {
+      const grouped = new Map<string, Set<number>>();
+      selectedPlantEntryIds.forEach((id) => {
+        const splitAt = id.lastIndexOf('_');
+        if (splitAt <= 0) return;
+        const recordId = id.slice(0, splitAt);
+        const idx = Number(id.slice(splitAt + 1));
+        if (!Number.isInteger(idx)) return;
+        const set = grouped.get(recordId) || new Set<number>();
+        set.add(idx);
+        grouped.set(recordId, set);
+      });
+
+      for (const [recordId, indexes] of grouped.entries()) {
+        const record = records.find((r) => r.id === recordId);
+        const current = Array.isArray((record as any)?.plantDetective)
+          ? ((record as any).plantDetective as any[])
+          : [];
+        const next = current.filter((_, idx) => !indexes.has(idx));
+        await updateDoc(doc(db, 'users', user.uid, 'records', recordId), {
+          plantDetective: next,
+        });
+        setRecords((prev) =>
+          prev.map((r) =>
+            r.id === recordId ? ({ ...r, plantDetective: next } as HaruRecord) : r,
+          ),
+        );
+      }
+
+      setExpandedPlantIds((prev) => {
+        const next = new Set(prev);
+        selectedPlantEntryIds.forEach((id) => next.delete(id));
+        return next;
+      });
+      setSelectedPlantEntryIds(new Set());
+      toast.success('선택한 식물 판독 기록을 삭제했습니다.');
+    } catch (e) {
+      console.error('식물 판독 기록 삭제 실패:', e);
+      toast.error('삭제에 실패했습니다.');
+    } finally {
+      setPlantDeleteBusy(false);
     }
   };
 
@@ -2278,6 +2328,9 @@ export function SayuPage() {
             };
             const getPlantSubTitle = (entry: any) =>
               [entry?.englishName, entry?.scientificName || entry?.latinName].filter(Boolean).join(' / ');
+            const selectedPlantCount = plantEntries.filter(({ recordId, idx }) =>
+              selectedPlantEntryIds.has(`${recordId}_${idx}`),
+            ).length;
             return (
               <div className="mb-4">
                 <button
@@ -2294,9 +2347,38 @@ export function SayuPage() {
                 </button>
                 {expanded && (
                   <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                    {selectedPlantCount > 0 && (
+                      <div
+                        className="flex items-center justify-between px-4 py-2"
+                        style={{ borderTop: '1px solid #f5f5f5', background: '#fffdf4' }}
+                      >
+                        <span style={{ fontSize: 12, color: '#6b5b22', fontWeight: 700 }}>
+                          {selectedPlantCount}개 선택됨
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleDeleteSelectedPlantEntries}
+                          disabled={plantDeleteBusy}
+                          style={{
+                            minHeight: 32,
+                            padding: '0 12px',
+                            borderRadius: 8,
+                            border: '1px solid #ef4444',
+                            background: plantDeleteBusy ? '#fee2e2' : '#fff',
+                            color: '#b91c1c',
+                            fontSize: 12,
+                            fontWeight: 800,
+                            cursor: plantDeleteBusy ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          {plantDeleteBusy ? '삭제 중...' : '선택 삭제'}
+                        </button>
+                      </div>
+                    )}
                     {plantEntries.slice(0, 30).map(({ date, recordId, entry, idx }) => {
                       const id = `${recordId}_${idx}`;
                       const isOpen = expandedPlantIds.has(id);
+                      const isSelected = selectedPlantEntryIds.has(id);
                       const plantTitle = getPlantTitle(entry);
                       const plantSubTitle = getPlantSubTitle(entry);
                       const confPct = typeof entry.identificationConfidence === 'number'
@@ -2304,17 +2386,36 @@ export function SayuPage() {
                         : null;
                       return (
                         <div key={id} className="border-t" style={{ borderColor: '#f5f5f5' }}>
-                          <button
-                            onClick={() => {
-                              setExpandedPlantIds((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(id)) next.delete(id); else next.add(id);
-                                return next;
-                              });
-                            }}
-                            className="w-full flex items-center px-4 text-left hover:bg-yellow-50 transition-colors"
-                            style={{ minHeight: 48 }}
+                          <div
+                            className="w-full flex items-center text-left hover:bg-yellow-50 transition-colors"
+                            style={{ minHeight: 48, paddingLeft: 12 }}
                           >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setSelectedPlantEntryIds((prev) => {
+                                  const next = new Set(prev);
+                                  if (checked) next.add(id);
+                                  else next.delete(id);
+                                  return next;
+                                });
+                              }}
+                              aria-label={`${plantTitle} 선택`}
+                              style={{ width: 18, height: 18, marginRight: 10, flexShrink: 0, accentColor: '#1A3C6E' }}
+                            />
+                            <button
+                              onClick={() => {
+                                setExpandedPlantIds((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(id)) next.delete(id); else next.add(id);
+                                  return next;
+                                });
+                              }}
+                              className="flex items-center text-left"
+                              style={{ minHeight: 48, flex: 1, minWidth: 0, border: 'none', background: 'transparent', padding: '0 16px 0 0' }}
+                            >
                             <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: 52 }}>
                               {date && date.length >= 10 ? date.slice(5) : date}
                             </span>
@@ -2333,7 +2434,8 @@ export function SayuPage() {
                               </span>
                             )}
                             <span style={{ fontSize: 10, color: '#1A3C6E', flexShrink: 0 }}>{isOpen ? '▼' : '▶'}</span>
-                          </button>
+                            </button>
+                          </div>
                           {isOpen && (
                             <div className="px-4 py-3" style={{ borderTop: '1px solid #f5f5f5', background: '#fafafa' }}>
                               {confPct !== null && (
