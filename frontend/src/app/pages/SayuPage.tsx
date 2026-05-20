@@ -25,6 +25,7 @@ const FORMAT_FIRST_FIELD: Record<string, string> = {
   pet: 'pet_name',
   child: 'child_name',
   memo: 'memo_title',
+  reading: 'reading_book_title',
 };
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
@@ -348,6 +349,9 @@ export function SayuPage() {
     title: '',
     aiTitle: '',
   });
+
+  // 📚 내가 읽은 책 — final_reflection 카드 펼침 상태
+  const [expandedFinalReadingIds, setExpandedFinalReadingIds] = useState<Set<string>>(new Set());
 
   const [showSayuGuide, setShowSayuGuide] = useState(() => {
     try {
@@ -1659,6 +1663,96 @@ export function SayuPage() {
 
           {/* 구분선 */}
           <hr className="my-4" style={{ borderColor: '#d1d5db' }} />
+
+          {/* 📚 내가 읽은 책 — 독서사유 final_reflection 만 최신순 리스트 */}
+          <div className="mb-4">
+            <button
+              onClick={() => toggleCategory('내가 읽은 책')}
+              className="w-full flex items-center justify-between rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
+              style={{ backgroundColor: '#FFFFFF', color: '#1A3C6E', padding: '0 16px', minHeight: 52, border: '1px solid #ECE6F5', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#10b981', flexShrink: 0 }} />
+                <BookOpen className="w-4 h-4" /> 내가 읽은 책
+              </span>
+              <span style={{ fontSize: '10px' }}>{collapsedCategories.has('내가 읽은 책') ? '▶' : '▼'}</span>
+            </button>
+            {!collapsedCategories.has('내가 읽은 책') && (() => {
+              const finals = (records as any[])
+                .filter((r) =>
+                  r &&
+                  Array.isArray(r.formats) &&
+                  r.formats.includes('독서사유') &&
+                  (r.readingEntryType === 'final_reflection' || r.reading_status === 'completed'),
+                )
+                .sort((a, b) => {
+                  // 완독일 = reading_completedAt 우선, 없으면 date
+                  const aKey = String(a.reading_completedAt || a.date || '');
+                  const bKey = String(b.reading_completedAt || b.date || '');
+                  return bKey.localeCompare(aKey);
+                });
+              if (finals.length === 0) {
+                return (
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <p className="text-center py-4 text-xs" style={{ color: '#999' }}>
+                      아직 마무리한 책이 없습니다. 기록 → 독서사유 → "독서마무리하기"로 첫 책을 마무리해 보세요.
+                    </p>
+                  </div>
+                );
+              }
+              return (
+                <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                  {finals.map((rec: any, idx: number) => {
+                    const recId = String(rec.id || `idx_${idx}`);
+                    const isOpen = expandedFinalReadingIds.has(recId);
+                    const bodyText = String(
+                      rec.reading_final_sayu || rec.reading_sayu || '',
+                    ).trim();
+                    return (
+                      <div key={recId} className={idx > 0 ? 'border-t' : ''} style={{ borderColor: '#f0f0f0' }}>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedFinalReadingIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(recId)) next.delete(recId); else next.add(recId);
+                            return next;
+                          })}
+                          className="w-full text-left px-3 py-2.5 hover:bg-gray-50"
+                          style={{ minHeight: 52, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, fontSize: 14, color: '#1A3C6E', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span>📖</span>
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {rec.reading_book_title || rec.reading_title || '(제목 없음)'}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                              {rec.reading_author ? `${rec.reading_author} · ` : ''}
+                              {formatListDate(String(rec.reading_completedAt || rec.date || '').slice(0, 10))}
+                            </div>
+                          </div>
+                          <span style={{ fontSize: 10, color: '#9ca3af' }}>{isOpen ? '▼' : '▶'}</span>
+                        </button>
+                        {isOpen && (
+                          <div style={{ padding: '0 16px 14px 16px' }}>
+                            <pre style={{
+                              whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit',
+                              fontSize: 13, color: '#374151', lineHeight: 1.7, margin: 0,
+                              padding: '12px 14px',
+                              backgroundColor: '#F9FAFB', borderRadius: 8, border: '1px solid #f0f0f0',
+                            }}>
+                              {bodyText || '(내용이 비어 있습니다)'}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
 
           {/* 하루충전소 */}
           <div className="mb-4">

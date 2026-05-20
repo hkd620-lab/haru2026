@@ -118,6 +118,41 @@ export const FORMAT_EMOJI: Record<RecordFormat, string> = {
 };
 
 // ===========================================
+// 📚 독서사유 — 책 묶음 메타 유틸
+// ===========================================
+
+// 책 제목/저자 normalize — trim + lowercase + 연속 공백 1칸 + NFC. 특수문자 제거는 하지 않음.
+export function normalizeBookField(s: string | null | undefined): string {
+  return String(s || '')
+    .normalize('NFC')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+// (normalize(title) + '|' + normalize(author)) → 결정적 hash 16자. djb2 변형.
+// 같은 책(title+author)이면 같은 readingBookId. prefix는 reading_ 사용.
+export function makeReadingBookId(title: string, author: string): string {
+  const t = normalizeBookField(title);
+  const a = normalizeBookField(author);
+  if (!t && !a) return '';
+  const key = `${t}|${a}`;
+  let h1 = 5381;
+  let h2 = 52711;
+  for (let i = 0; i < key.length; i++) {
+    const c = key.charCodeAt(i);
+    h1 = ((h1 << 5) + h1) ^ c;
+    h2 = ((h2 << 5) + h2) + c;
+    h1 = h1 >>> 0;
+    h2 = h2 >>> 0;
+  }
+  const hex = (h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0')).slice(0, 16);
+  return `reading_${hex}`;
+}
+
+export type ReadingEntryType = 'chapter_note' | 'final_reflection';
+
+// ===========================================
 // 통계 타입 정의
 // ===========================================
 

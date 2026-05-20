@@ -39,11 +39,12 @@ export function HomePage() {
       .catch(() => setTodayFormatCount(0));
   }, [user?.uid]);
 
-  // 📕 HARU 기록 — 5×2 그리드 (10개)
+  // 📕 HARU 기록 — 11개 (독서사유 포함)
   const recordCards: { label: string; format: string; icon: string }[] = [
     { icon: "📔", label: "일기", format: "일기" },
     { icon: "✍️", label: "에세이", format: "에세이" },
     { icon: "✈️", label: "여행기록", format: "여행기록" },
+    { icon: "📚", label: "독서사유", format: "독서사유" },
     { icon: "🌱", label: "텃밭일지", format: "텃밭일지" },
     { icon: "🐾", label: "반려동물", format: "애완동물관찰일지" },
     { icon: "👶", label: "육아일기", format: "육아일기" },
