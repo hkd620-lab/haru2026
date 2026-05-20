@@ -1683,7 +1683,14 @@ export function SayuPage() {
                   r &&
                   Array.isArray(r.formats) &&
                   r.formats.includes('독서사유') &&
-                  (r.readingEntryType === 'final_reflection' || r.reading_status === 'completed'),
+                  (
+                    // 신규(v2) 필드 — readingId 단계 도입 이후
+                    r.entryType === 'finalReflection' ||
+                    r.readingStatus === 'completed' ||
+                    // 기존 필드 호환
+                    r.readingEntryType === 'final_reflection' ||
+                    r.reading_status === 'completed'
+                  ),
                 )
                 .sort((a, b) => {
                   // 완독일 = reading_completedAt 우선, 없으면 date

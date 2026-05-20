@@ -10,7 +10,7 @@ import { useSubscription } from '../hooks/useSubscription';
 import { toast } from 'sonner';
 import heic2any from 'heic2any';
 import { LoadingOverlay } from './LoadingOverlay';
-import { makeReadingBookId, normalizeBookField } from '../types/haruTypes';
+import { makeReadingBookId, normalizeBookField, buildReadingMetaCombined } from '../types/haruTypes';
 
 type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | 'HARU주식관리' | '메모' | 'HARU보조장부';
 type SayuMode = 'BASIC' | 'PREMIUM';
@@ -79,6 +79,7 @@ const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placehol
   독서사유: [
     { key: 'reading_book_title', label: '책 제목', placeholder: '예: 오래된 미래', rows: 1 },
     { key: 'reading_author', label: '저자', placeholder: '예: 헬레나 노르베리 호지', rows: 1 },
+    { key: 'reading_started_at', label: '읽기 시작일', placeholder: '예: 2026-05-20', rows: 1 },
     { key: 'reading_today_part', label: '오늘 읽은 챕터', placeholder: '예: 1장 35~52쪽, 또는 마음에 닿은 한 챕터', rows: 2 },
     { key: 'reading_sentence', label: '기억 문장', placeholder: '오늘 마음에 남은 문장 한 줄을 적어도 충분합니다.', rows: 3 },
     { key: 'reading_thought', label: '떠오른 생각', placeholder: '읽으며 문득 든 생각을 짧게 적어주세요.', rows: 3 },
@@ -238,7 +239,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       setShowModeSelect(false);
 
       setRecordStyle(format === '독서사유' ? 'premium' : 'simple');
-      setRecordStep(format === 'HARU주식관리' || format === '독서사유' ? 'input' : 'select');
+      // 독서사유는 select 단계에서 "이어작성 / 새작성" 분기. HARU주식관리만 input 직진.
+      setRecordStep(format === 'HARU주식관리' ? 'input' : 'select');
       setStockCandidates([]);
       setShowCandidates(false);
       // 📚 독서사유 — 책 묶음 state 초기화 + 사용자 records 에서 책 목록 로드
@@ -256,12 +258,14 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
             const byBookId = new Map<string, KnownReadingBook>();
             snap.forEach((docSnap) => {
               const data = docSnap.data() as any;
-              const title = String(data.reading_book_title || data.reading_title || '').trim();
-              const author = String(data.reading_author || '').trim();
+              const title = String(data.bookTitle || data.reading_book_title || data.reading_title || '').trim();
+              const author = String(data.author || data.reading_author || '').trim();
               if (!title) return;
-              const bookId: string = data.readingBookId || makeReadingBookId(title, author);
+              const bookId: string = data.readingId || data.readingBookId || makeReadingBookId(title, author);
               if (!bookId) return;
               const isFinal =
+                String(data.entryType || '') === 'finalReflection' ||
+                String(data.readingStatus || '') === 'completed' ||
                 String(data.readingEntryType || '') === 'final_reflection' ||
                 String(data.reading_status || '') === 'completed';
               const date = String(data.date || '');
@@ -941,8 +945,10 @@ ${contentValues}`,
       .join('\n');
   };
 
-  // 📚 독서사유 — 책 묶음 메타 (readingBookId + bookTitleNormalized + authorNormalized + readingEntryType)
-  // 모든 reading 저장 경로(handleSubmit / handleSaveOriginalAsSayu / handleSaveSayu / handleSaveReadingFinal)에 동일 inject.
+  // 📚 독서사유 — 책 묶음 메타 (신/구 필드 모두 inject — 호환성 우선)
+  // 신규(v2): readingId / readingStatus / entryType / bookTitle / author / reading_started_at
+  // 기존: readingBookId / readingEntryType / bookTitleNormalized / authorNormalized
+  // 마이그레이션 후 deprecated 필드 제거 검토.
   const buildReadingMeta = (
     entryType: 'chapter_note' | 'final_reflection',
   ): Record<string, any> => {
@@ -950,12 +956,13 @@ ${contentValues}`,
     const title = String(formData.reading_book_title || '').trim();
     const author = String(formData.reading_author || '').trim();
     if (!title) return {};
-    return {
-      readingBookId: makeReadingBookId(title, author),
-      bookTitleNormalized: normalizeBookField(title),
-      authorNormalized: normalizeBookField(author),
-      readingEntryType: entryType,
-    };
+    const startedAt = String(formData.reading_started_at || '').trim();
+    return buildReadingMetaCombined({
+      bookTitle: title,
+      author,
+      entryType,
+      startedAt: startedAt || undefined,
+    });
   };
 
   // 📚 기존 책 선택 핸들러 — 책 제목/저자 자동 채움 + readonly + 마무리 책 차단
@@ -1037,15 +1044,17 @@ ${contentValues}`,
       const entries: Array<{ date: string; text: string }> = [];
       snap.forEach((recordSnap) => {
         const data = recordSnap.data() as Record<string, any>;
-        // readingBookId 기반 매칭 (정규화 hash) — 없으면 fallback 으로 즉시 계산
+        // readingId(v2) → readingBookId(기존) → fallback 계산 순으로 식별자 결정
         const savedBookId: string =
+          data.readingId ||
           data.readingBookId ||
           makeReadingBookId(
-            String(data.reading_book_title || data.reading_title || ''),
-            String(data.reading_author || ''),
+            String(data.bookTitle || data.reading_book_title || data.reading_title || ''),
+            String(data.author || data.reading_author || ''),
           );
         if (savedBookId !== currentBookId) return;
-        // 이미 final_reflection 인 record 는 수집 대상에서 제외
+        // 이미 final_reflection 인 record 는 수집 대상에서 제외 (신/구 둘 다 인식)
+        if (data.entryType === 'finalReflection') return;
         if (data.readingEntryType === 'final_reflection') return;
         const text = [
           data.reading_today_part ? `오늘 읽은 챕터: ${data.reading_today_part}` : '',
@@ -1109,8 +1118,17 @@ ${entriesText}`,
     if (format !== '독서사유') return;
     const bookTitle = (formData.reading_book_title || '').trim();
     const bookAuthor = (formData.reading_author || '').trim();
+    const startedAt = (formData.reading_started_at || '').trim();
     if (!bookTitle) {
       toast.warning('책 제목을 먼저 입력해 주세요.');
+      return;
+    }
+    if (!bookAuthor) {
+      toast.warning('저자를 입력해 주세요.');
+      return;
+    }
+    if (!startedAt) {
+      toast.warning('읽기 시작일을 입력해 주세요. (예: 2026-05-20)');
       return;
     }
     // 마무리한 책 차단
@@ -1330,8 +1348,128 @@ ${contentValues}`,
           )}
 
           {/* Content */}
-          {/* Step 1 — 공통 선택 화면 */}
-          {recordStep === 'select' && (
+          {/* Step 1 — 공통 선택 화면 (독서사유는 이어작성/새작성 분기) */}
+          {recordStep === 'select' && format === '독서사유' && (
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+              <p style={{ textAlign: 'center', fontSize: '14px', fontWeight: 600, color: '#1A3C6E', marginBottom: '4px' }}>
+                📚 독서사유를 어떻게 시작할까요?
+              </p>
+              <p style={{ textAlign: 'center', fontSize: '11px', color: 'var(--color-text-secondary)', marginBottom: '20px' }}>
+                여러 책을 동시에 작성중 상태로 둘 수 있어요
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: 24 }}>
+                {/* 이어작성 카드 */}
+                <div
+                  onClick={() => {
+                    if (knownReadingBooks.filter((b) => !b.hasFinalReflection).length === 0) {
+                      toast.info('아직 작성중인 책이 없어요. "새작성"으로 시작해 보세요.');
+                      return;
+                    }
+                    // select 단계 유지 — 아래 책 리스트에서 선택
+                  }}
+                  style={{
+                    border: '1px solid #1A3C6E',
+                    borderRadius: '12px',
+                    padding: '20px 14px',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    background: '#EEF3FA',
+                  }}
+                >
+                  <div style={{ fontSize: '28px', marginBottom: '8px' }}>📖</div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#1A3C6E', marginBottom: '4px' }}>이어작성</div>
+                  <div style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.5 }}>
+                    작성중인 책 {knownReadingBooks.filter((b) => !b.hasFinalReflection).length}권
+                  </div>
+                </div>
+                {/* 새작성 카드 */}
+                <div
+                  onClick={() => {
+                    // 빈 폼으로 input 단계 진입
+                    setSelectedExistingBookId('');
+                    setIsReadingBookLocked(false);
+                    setBlockedBookMessage('');
+                    setFormData((prev) => ({
+                      ...prev,
+                      reading_book_title: '',
+                      reading_author: '',
+                      reading_started_at: new Date().toISOString().slice(0, 10),
+                    }));
+                    setRecordStep('input');
+                  }}
+                  style={{
+                    border: '1px solid #10b981',
+                    borderRadius: '12px',
+                    padding: '20px 14px',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    background: '#f0fdf8',
+                  }}
+                >
+                  <div style={{ fontSize: '28px', marginBottom: '8px' }}>✨</div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#047857', marginBottom: '4px' }}>새작성</div>
+                  <div style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.5 }}>
+                    새 책으로 시작
+                  </div>
+                </div>
+              </div>
+
+              {/* 작성중인 책 리스트 — 클릭 시 이어쓰기 모드로 input 진입 */}
+              {knownReadingBooks.filter((b) => !b.hasFinalReflection).length > 0 && (
+                <div>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: '#1A3C6E', marginBottom: 8 }}>
+                    📖 작성중인 책 — 클릭하면 이어 쓸 수 있어요
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {knownReadingBooks
+                      .filter((b) => !b.hasFinalReflection)
+                      .map((b) => (
+                        <button
+                          key={b.readingBookId}
+                          type="button"
+                          onClick={() => {
+                            onSelectExistingBook(b.readingBookId);
+                            // initialData에 시작일이 없으면 기존 가장 오래된 record 기준 — 단순화로 lastDate 사용
+                            setFormData((prev) => ({
+                              ...prev,
+                              reading_started_at: prev.reading_started_at || b.lastDate || '',
+                            }));
+                            setRecordStep('input');
+                          }}
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                            padding: '12px 14px',
+                            border: '1px solid #d0dff0', borderRadius: 10,
+                            backgroundColor: '#fff', color: '#1A3C6E',
+                            cursor: 'pointer', textAlign: 'left',
+                            fontWeight: 600, fontSize: 13,
+                          }}
+                          title={b.author ? `${b.bookTitle} — ${b.author}` : b.bookTitle}
+                        >
+                          <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              📖 {b.bookTitle}
+                            </span>
+                            <span style={{ fontSize: 11, color: '#6b7280', fontWeight: 400, marginTop: 2 }}>
+                              {b.author || '(저자 미기재)'}{b.lastDate ? ` · 마지막 ${b.lastDate}` : ''}
+                            </span>
+                          </span>
+                          <span style={{ fontSize: 10, color: '#10b981', fontWeight: 700, flexShrink: 0 }}>작성중 ▶</span>
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              )}
+              {knownReadingBooks.filter((b) => b.hasFinalReflection).length > 0 && (
+                <p style={{ fontSize: 11, color: '#9ca3af', margin: '12px 0 0', textAlign: 'center' }}>
+                  ✅ 마무리한 책 {knownReadingBooks.filter((b) => b.hasFinalReflection).length}권은 SAYU → "내가 읽은 책"에서 볼 수 있어요.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Step 1 — 기존 형식 (간편/프리미엄) */}
+          {recordStep === 'select' && format !== '독서사유' && (
             <div style={{ flex: 1, overflowY: 'auto', padding: '32px 24px' }}>
               <p style={{ textAlign: 'center', fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: '4px' }}>
                 기록 방식을 선택하세요
