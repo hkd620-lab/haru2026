@@ -37,7 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.convertToBookMaterial = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = void 0;
-exports.detectPlantAdvanced = exports.analyzePlantPhoto = void 0;
+exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -4967,4 +4967,181 @@ exports.detectPlantAdvanced = (0, https_2.onCall)({
             geminiError: geminiError || null,
         },
     };
+});
+// ===========================================
+// 🌿 NIBR (국립생물자원관) 국가생물종목록 Open API 테스트 endpoint
+//   - process.env.NIBR_API_KEY 사용 (응답/로그에 절대 노출하지 않음)
+//   - process.env.NIBR_TEST_SECRET 으로 헤더 토큰 검증 (개발자 전용 잠금)
+//   - 명세 기준: 키 파라미터명 oapiAcsUnqNo / page=1 / responseType=json
+//   - 검색어 파라미터는 현재 명세에서 미확인 → 우선 목록 조회만 수행해 응답 구조 확인
+//   - 호출 예: curl -H "x-internal-test-secret: $SECRET" \
+//             "https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/testNibrPlantSearch?page=1"
+// ===========================================
+function maskAllSecrets(text, secrets) {
+    let out = text;
+    for (const s of secrets) {
+        if (typeof s === 'string' && s.length > 0) {
+            out = out.split(s).join('***REDACTED***');
+        }
+    }
+    return out;
+}
+function sanitizeValue(v, secrets) {
+    if (v == null)
+        return v;
+    if (typeof v === 'string')
+        return maskAllSecrets(v, secrets);
+    if (typeof v === 'number' || typeof v === 'boolean')
+        return v;
+    if (Array.isArray(v))
+        return v.map((x) => sanitizeValue(x, secrets));
+    if (typeof v === 'object') {
+        const out = {};
+        for (const k of Object.keys(v)) {
+            out[k] = sanitizeValue(v[k], secrets);
+        }
+        return out;
+    }
+    return v;
+}
+exports.testNibrPlantSearch = (0, https_1.onRequest)({ region: 'asia-northeast3', timeoutSeconds: 30 }, async (req, res) => {
+    var _a, _b, _c, _d, _f, _g, _h, _j, _k;
+    const apiKey = process.env.NIBR_API_KEY;
+    const internalSecret = process.env.NIBR_TEST_SECRET;
+    if (!apiKey) {
+        logger.error('NIBR_API_KEY missing in functions env');
+        res.status(500).json({ ok: false, error: 'NIBR_API_KEY missing' });
+        return;
+    }
+    if (!internalSecret) {
+        logger.warn('NIBR_TEST_SECRET missing — endpoint locked');
+        res.status(503).json({
+            ok: false,
+            error: 'NIBR_TEST_SECRET not configured; endpoint locked',
+        });
+        return;
+    }
+    // 내부 개발용 토큰 검증 (constant-time compare)
+    const headerSecret = String(req.get('x-internal-test-secret') || '');
+    const a = Buffer.from(headerSecret, 'utf8');
+    const b = Buffer.from(internalSecret, 'utf8');
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+        logger.warn('NIBR test unauthorized', {
+            ip: req.ip || null,
+            ua: req.get('user-agent') || null,
+        });
+        res.status(403).json({ ok: false, error: 'forbidden' });
+        return;
+    }
+    const secretsToMask = [apiKey, internalSecret];
+    const pageRaw = typeof req.query.page === 'string' ? req.query.page.trim() : '';
+    const page = /^\d+$/.test(pageRaw) ? Number(pageRaw) : 1;
+    const endpoint = 'https://species.nibr.go.kr/gwsvc/openapi/rest/ktsn/taxons/search';
+    try {
+        const response = await axios_1.default.get(endpoint, {
+            params: {
+                oapiAcsUnqNo: apiKey,
+                page,
+                responseType: 'json',
+            },
+            responseType: 'text',
+            validateStatus: () => true,
+            timeout: 15000,
+        });
+        const httpStatus = response.status;
+        const contentType = String(response.headers['content-type'] || '');
+        const rawRaw = typeof response.data === 'string'
+            ? response.data
+            : JSON.stringify(response.data || {});
+        const responseLength = rawRaw.length;
+        const snippetMasked = maskAllSecrets(rawRaw.slice(0, 1500), secretsToMask);
+        // JSON 파싱은 원본(rawRaw)으로 수행 — 파싱 결과는 sanitizeValue로 한 번 더 마스킹
+        let parsedJson = null;
+        try {
+            parsedJson = JSON.parse(rawRaw);
+        }
+        catch {
+            /* not JSON — XML 가능성 */
+        }
+        // 응답 raw에서 명세 필드명 키워드 검출 (대표국명/학명/KTSN/관련분류군/정명·이명)
+        const detected = {
+            대표국명: /대표국명|repKorNm|repKorName|kor_nm|korNm/i.test(rawRaw),
+            학명: /학명|scientificName|sciNm|sci_nm|scName/i.test(rawRaw),
+            KTSN: /\bktsn\b|국가생물종번호|ktsnNo|ktsnId/i.test(rawRaw),
+            관련분류군: /관련분류군|relatedTaxon|relTaxon|taxonGroup/i.test(rawRaw),
+            정명이명: /정명|이명|namestatus|validity|accepted|synonym/i.test(rawRaw),
+        };
+        // 가능한 경우 항목 배열을 찾아 첫 항목 + 키 목록 노출
+        let foundArrayPath = null;
+        let firstItem = null;
+        let itemCount = null;
+        let itemKeys = [];
+        if (parsedJson && typeof parsedJson === 'object') {
+            const candidatePaths = [
+                { path: 'result.item', value: (_a = parsedJson === null || parsedJson === void 0 ? void 0 : parsedJson.result) === null || _a === void 0 ? void 0 : _a.item },
+                { path: 'result.items', value: (_b = parsedJson === null || parsedJson === void 0 ? void 0 : parsedJson.result) === null || _b === void 0 ? void 0 : _b.items },
+                { path: 'items', value: parsedJson === null || parsedJson === void 0 ? void 0 : parsedJson.items },
+                { path: 'data.item', value: (_c = parsedJson === null || parsedJson === void 0 ? void 0 : parsedJson.data) === null || _c === void 0 ? void 0 : _c.item },
+                { path: 'data.items', value: (_d = parsedJson === null || parsedJson === void 0 ? void 0 : parsedJson.data) === null || _d === void 0 ? void 0 : _d.items },
+                { path: 'data.list', value: (_f = parsedJson === null || parsedJson === void 0 ? void 0 : parsedJson.data) === null || _f === void 0 ? void 0 : _f.list },
+                { path: 'response.body.items.item', value: (_j = (_h = (_g = parsedJson === null || parsedJson === void 0 ? void 0 : parsedJson.response) === null || _g === void 0 ? void 0 : _g.body) === null || _h === void 0 ? void 0 : _h.items) === null || _j === void 0 ? void 0 : _j.item },
+                { path: 'body.items', value: (_k = parsedJson === null || parsedJson === void 0 ? void 0 : parsedJson.body) === null || _k === void 0 ? void 0 : _k.items },
+                { path: 'list', value: parsedJson === null || parsedJson === void 0 ? void 0 : parsedJson.list },
+            ];
+            for (const c of candidatePaths) {
+                if (Array.isArray(c.value) && c.value.length > 0) {
+                    foundArrayPath = c.path;
+                    firstItem = c.value[0];
+                    itemCount = c.value.length;
+                    break;
+                }
+            }
+            if (firstItem && typeof firstItem === 'object') {
+                itemKeys = Object.keys(firstItem);
+            }
+        }
+        // 로그: 키 노출 없이 메타데이터만
+        logger.info('NIBR test response', {
+            page,
+            httpStatus,
+            contentType,
+            responseLength,
+            detected,
+            foundArrayPath,
+            itemCount,
+            itemKeys,
+        });
+        const sanitizedFirstItem = firstItem
+            ? sanitizeValue(firstItem, secretsToMask)
+            : null;
+        res.status(200).json({
+            ok: true,
+            page,
+            endpoint,
+            params: { oapiAcsUnqNo: '***REDACTED***', page, responseType: 'json' },
+            nibrStatus: httpStatus,
+            contentType,
+            responseLength,
+            snippet: snippetMasked,
+            topLevelKeys: parsedJson && typeof parsedJson === 'object' ? Object.keys(parsedJson) : null,
+            foundArrayPath,
+            itemCount,
+            itemKeys,
+            detected,
+            parsedFirstItem: sanitizedFirstItem,
+        });
+    }
+    catch (err) {
+        logger.error('NIBR test call failed', {
+            message: (err === null || err === void 0 ? void 0 : err.message) || String(err),
+            code: (err === null || err === void 0 ? void 0 : err.code) || null,
+        });
+        res.status(500).json({
+            ok: false,
+            page,
+            endpoint,
+            error: (err === null || err === void 0 ? void 0 : err.message) || 'NIBR call failed',
+            code: (err === null || err === void 0 ? void 0 : err.code) || null,
+        });
+    }
 });
