@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { SayuTitleAnimation } from '../components/SayuTitleAnimation';
 import { toast } from 'sonner';
 import { SayuModal } from '../components/SayuModal';
-import { CATEGORY_FORMATS, FORMAT_PREFIX, FORMAT_EMOJI } from '../types/haruTypes';
+import { CATEGORY_FORMATS, FORMAT_PREFIX, FORMAT_EMOJI, READING_ENTRY_TYPES, READING_STATUS } from '../types/haruTypes';
 import type { RecordFormat } from '../types/haruTypes';
 import { collection, getDocs, orderBy, query, deleteDoc, doc, writeBatch, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
@@ -1684,11 +1684,12 @@ export function SayuPage() {
                   Array.isArray(r.formats) &&
                   r.formats.includes('독서사유') &&
                   (
-                    // 신규(v2) 필드 — readingId 단계 도입 이후
-                    r.entryType === 'finalReflection' ||
-                    r.readingStatus === 'completed' ||
-                    // 기존 필드 호환
-                    r.readingEntryType === 'final_reflection' ||
+                    // canonical(v2) 필드 — 신규 저장 기준
+                    r.entryType === READING_ENTRY_TYPES.FINAL ||
+                    r.readingStatus === READING_STATUS.COMPLETED ||
+                    // TODO(HARU-v3): legacy compatibility 제거 예정.
+                    // 신규 구조(entryType/readingStatus/readingId) 기준으로 migration 계획.
+                    r.readingEntryType === READING_ENTRY_TYPES.LEGACY_FINAL ||
                     r.reading_status === 'completed'
                   ),
                 )

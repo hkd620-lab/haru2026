@@ -10,7 +10,13 @@ import { useSubscription } from '../hooks/useSubscription';
 import { toast } from 'sonner';
 import heic2any from 'heic2any';
 import { LoadingOverlay } from './LoadingOverlay';
-import { makeReadingBookId, normalizeBookField, buildReadingMetaCombined } from '../types/haruTypes';
+import {
+  makeReadingBookId,
+  normalizeBookField,
+  buildReadingMetaCombined,
+  READING_ENTRY_TYPES,
+  READING_STATUS,
+} from '../types/haruTypes';
 
 type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | 'HARU주식관리' | '메모' | 'HARU보조장부';
 type SayuMode = 'BASIC' | 'PREMIUM';
@@ -206,7 +212,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [readingAnalysis, setReadingAnalysis] = useState('');
   const [readingReflectionAnswers, setReadingReflectionAnswers] = useState<Record<string, string>>({});
   const [readingEntriesSnapshot, setReadingEntriesSnapshot] = useState<string>('');
-  // 📚 독서사유 — 책 묶음(readingBookId) 관리
+  // 📚 독서사유 — 책 묶음(readingId canonical, readingBookId legacy compatibility) 관리
   type KnownReadingBook = {
     readingBookId: string;
     bookTitle: string;
@@ -261,12 +267,14 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
               const title = String(data.bookTitle || data.reading_book_title || data.reading_title || '').trim();
               const author = String(data.author || data.reading_author || '').trim();
               if (!title) return;
+              // TODO(HARU-v3): legacy compatibility 제거 예정.
+              // 신규 구조(entryType/readingStatus/readingId) 기준으로 migration 계획.
               const bookId: string = data.readingId || data.readingBookId || makeReadingBookId(title, author);
               if (!bookId) return;
               const isFinal =
-                String(data.entryType || '') === 'finalReflection' ||
-                String(data.readingStatus || '') === 'completed' ||
-                String(data.readingEntryType || '') === 'final_reflection' ||
+                String(data.entryType || '') === READING_ENTRY_TYPES.FINAL ||
+                String(data.readingStatus || '') === READING_STATUS.COMPLETED ||
+                String(data.readingEntryType || '') === READING_ENTRY_TYPES.LEGACY_FINAL ||
                 String(data.reading_status || '') === 'completed';
               const date = String(data.date || '');
               const existing = byBookId.get(bookId);
@@ -945,10 +953,11 @@ ${contentValues}`,
       .join('\n');
   };
 
-  // 📚 독서사유 — 책 묶음 메타 (신/구 필드 모두 inject — 호환성 우선)
-  // 신규(v2): readingId / readingStatus / entryType / bookTitle / author / reading_started_at
-  // 기존: readingBookId / readingEntryType / bookTitleNormalized / authorNormalized
-  // 마이그레이션 후 deprecated 필드 제거 검토.
+  // 📚 독서사유 — 책 묶음 메타
+  // canonical write(v2 strict): readingId / readingStatus / entryType / bookTitle / author / reading_started_at
+  // legacy compatibility(read only after migration): readingBookId / readingEntryType / bookTitleNormalized / authorNormalized
+  // TODO(HARU-v3): legacy compatibility 제거 예정.
+  // 신규 구조(entryType/readingStatus/readingId) 기준으로 migration 계획.
   const buildReadingMeta = (
     entryType: 'chapter_note' | 'final_reflection',
   ): Record<string, any> => {
@@ -1044,7 +1053,9 @@ ${contentValues}`,
       const entries: Array<{ date: string; text: string }> = [];
       snap.forEach((recordSnap) => {
         const data = recordSnap.data() as Record<string, any>;
-        // readingId(v2) → readingBookId(기존) → fallback 계산 순으로 식별자 결정
+        // readingId(v2) → readingBookId(legacy) → fallback 계산 순으로 식별자 결정
+        // TODO(HARU-v3): legacy compatibility 제거 예정.
+        // 신규 구조(entryType/readingStatus/readingId) 기준으로 migration 계획.
         const savedBookId: string =
           data.readingId ||
           data.readingBookId ||
@@ -1053,9 +1064,13 @@ ${contentValues}`,
             String(data.author || data.reading_author || ''),
           );
         if (savedBookId !== currentBookId) return;
-        // 이미 final_reflection 인 record 는 수집 대상에서 제외 (신/구 둘 다 인식)
-        if (data.entryType === 'finalReflection') return;
-        if (data.readingEntryType === 'final_reflection') return;
+        // 현재는 운영 안정성을 위해 legacy OR 호환을 유지한다.
+        // TODO(HARU-v3): legacy compatibility 제거 예정.
+        // 신규 구조(entryType/readingStatus/readingId) 기준으로 migration 계획.
+        // 독서마무리 수집은 향후 entryType === "readingNote"
+        // 또는 readingEntryType === "chapter_note" 만 수집하도록 전환 예정.
+        if (data.entryType === READING_ENTRY_TYPES.FINAL) return;
+        if (data.readingEntryType === READING_ENTRY_TYPES.LEGACY_FINAL) return;
         const text = [
           data.reading_today_part ? `오늘 읽은 챕터: ${data.reading_today_part}` : '',
           data.reading_sentence ? `기억 문장: ${data.reading_sentence}` : '',

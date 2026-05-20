@@ -152,19 +152,32 @@ export function makeReadingBookId(title: string, author: string): string {
 
 export type ReadingEntryType = 'chapter_note' | 'final_reflection';
 
-// 📚 신규(v2) 표기 — 지시서 "이어작성/새작성" 단계 도입과 함께 추가.
-// 기존 readingEntryType 도 호환을 위해 함께 저장한다. 마이그레이션 후 deprecated.
+// 📚 신규(v2) 표기 — canonical write 기준.
 export type ReadingEntryTypeV2 = 'readingNote' | 'finalReflection';
 export type ReadingStatus = 'writing' | 'completed';
 
+export const READING_ENTRY_TYPES = {
+  NOTE: 'readingNote',
+  FINAL: 'finalReflection',
+  LEGACY_NOTE: 'chapter_note',
+  LEGACY_FINAL: 'final_reflection',
+} as const;
+
+export const READING_STATUS = {
+  WRITING: 'writing',
+  COMPLETED: 'completed',
+} as const;
+
 // chapter_note ↔ readingNote, final_reflection ↔ finalReflection 매핑
 export function entryTypeOldToNew(t: ReadingEntryType): ReadingEntryTypeV2 {
-  return t === 'final_reflection' ? 'finalReflection' : 'readingNote';
+  return t === READING_ENTRY_TYPES.LEGACY_FINAL ? READING_ENTRY_TYPES.FINAL : READING_ENTRY_TYPES.NOTE;
 }
 
 // 📚 독서사유 record 에 inject 할 신/구 메타 필드 묶음 — 모든 reading 저장 경로에서 단일 source.
-//   - 기존: readingBookId, readingEntryType (호환 유지)
-//   - 신규: readingId, readingStatus, entryType, bookTitle, author, reading_started_at(선택)
+//   - canonical write: readingId, readingStatus, entryType, bookTitle, author, reading_started_at(선택)
+//   - legacy compatibility: readingBookId, readingEntryType, bookTitleNormalized, authorNormalized
+// TODO(HARU-v3): legacy compatibility 제거 예정.
+// 신규 구조(entryType/readingStatus/readingId) 기준으로 migration 계획.
 export function buildReadingMetaCombined(params: {
   bookTitle: string;
   author: string;
@@ -176,19 +189,21 @@ export function buildReadingMetaCombined(params: {
   if (!title) return {};
   const id = makeReadingBookId(title, author);
   const entryV2: ReadingEntryTypeV2 = entryTypeOldToNew(params.entryType);
-  const status: ReadingStatus = params.entryType === 'final_reflection' ? 'completed' : 'writing';
+  const status: ReadingStatus = params.entryType === READING_ENTRY_TYPES.LEGACY_FINAL
+    ? READING_STATUS.COMPLETED
+    : READING_STATUS.WRITING;
   const meta: Record<string, any> = {
-    // 기존(deprecated 예정, 호환 유지)
-    readingBookId: id,
-    readingEntryType: params.entryType,
-    bookTitleNormalized: normalizeBookField(title),
-    authorNormalized: normalizeBookField(author),
-    // 신규(지시서 v2)
+    // canonical write(v2 strict)
     readingId: id,
     entryType: entryV2,
     readingStatus: status,
     bookTitle: title,
     author,
+    // legacy read compatibility(deprecated 예정)
+    readingBookId: id,
+    readingEntryType: params.entryType,
+    bookTitleNormalized: normalizeBookField(title),
+    authorNormalized: normalizeBookField(author),
   };
   if (params.startedAt) meta.reading_started_at = params.startedAt;
   return meta;
