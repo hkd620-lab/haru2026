@@ -5673,3 +5673,111 @@ export const detectPlantAdvanced = onCall(
     };
   },
 );
+
+// ===========================================
+// 🌿 NIBR (국립생물자원관) 국가생물종목록 Open API 테스트 endpoint
+//   - process.env.NIBR_API_KEY 사용 (응답/로그에 절대 노출하지 않음)
+//   - GET https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/testNibrPlantSearch?q=수세미
+//   - 응답은 raw 일부(snippet) + 국명/학명/분류군 필드 검출 플래그 + 가능 시 첫 항목 파싱
+// ===========================================
+export const testNibrPlantSearch = onRequest(
+  { region: 'asia-northeast3', timeoutSeconds: 30 },
+  async (req, res) => {
+    const apiKey = process.env.NIBR_API_KEY;
+    if (!apiKey) {
+      logger.error('NIBR_API_KEY missing in functions env');
+      res.status(500).json({ ok: false, error: 'NIBR_API_KEY missing' });
+      return;
+    }
+
+    const rawQ = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    const q = rawQ.length > 0 ? rawQ : '수세미';
+    const endpoint = 'https://species.nibr.go.kr/gwsvc/openapi/rest/ktsn/taxons/search';
+
+    try {
+      const response = await axios.get(endpoint, {
+        params: { serviceKey: apiKey, kw: q },
+        responseType: 'text',
+        validateStatus: () => true,
+        timeout: 15_000,
+      });
+      const httpStatus = response.status;
+      const contentType = String(response.headers['content-type'] || '');
+      const raw =
+        typeof response.data === 'string'
+          ? response.data
+          : JSON.stringify(response.data || {});
+      const snippet = raw.slice(0, 600);
+
+      // 시도: JSON 파싱 (XML 응답이면 실패 → null 유지)
+      let parsedJson: any = null;
+      try {
+        parsedJson = JSON.parse(raw);
+      } catch {
+        /* not JSON — XML 가능성 */
+      }
+
+      // 키 마스킹 안전을 위해 raw 안에 API 키가 echo 될 가능성 차단 — 만약 응답에 키가 echo 되면 마스킹
+      // (NIBR API는 보통 키 echo 안 하지만 방어적으로)
+      const safeSnippet = snippet.replace(apiKey, '***REDACTED***');
+
+      // 응답 raw에서 일반 필드명 키워드 검출
+      const has_kor = /국명|kor_name|korName|hangulnm|hanname|kornm/i.test(raw);
+      const has_sci = /학명|sci_name|sciName|scientificName|scinm|scname/i.test(raw);
+      const has_taxon = /분류군|taxon|family|genus|kingdom|phylum|class/i.test(raw);
+
+      // 가능한 경우 첫 항목 파싱 (NIBR 응답 스키마 미상 → 후보 경로 여러 개 시도)
+      let firstItem: any = null;
+      if (parsedJson) {
+        const candidates = [
+          parsedJson?.result?.item,
+          parsedJson?.result?.items,
+          parsedJson?.items,
+          parsedJson?.data?.item,
+          parsedJson?.response?.body?.items?.item,
+          parsedJson?.body?.items,
+        ];
+        for (const c of candidates) {
+          if (Array.isArray(c) && c.length > 0) {
+            firstItem = c[0];
+            break;
+          }
+        }
+      }
+
+      // 로그: 키 노출 없이 메타데이터만
+      logger.info('NIBR test response', {
+        query: q,
+        httpStatus,
+        contentType,
+        responseLength: raw.length,
+        flags: { has_kor, has_sci, has_taxon },
+        firstItemPresent: Boolean(firstItem),
+      });
+
+      res.status(200).json({
+        ok: true,
+        query: q,
+        endpoint,
+        nibrStatus: httpStatus,
+        contentType,
+        responseLength: raw.length,
+        snippet: safeSnippet,
+        flags: { has_kor, has_sci, has_taxon },
+        parsedFirstItem: firstItem,
+      });
+    } catch (err: any) {
+      logger.error('NIBR test call failed', {
+        message: err?.message || String(err),
+        code: err?.code || null,
+      });
+      res.status(500).json({
+        ok: false,
+        query: q,
+        endpoint,
+        error: err?.message || 'NIBR call failed',
+        code: err?.code || null,
+      });
+    }
+  },
+);
