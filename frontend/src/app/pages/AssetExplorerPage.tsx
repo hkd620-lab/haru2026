@@ -34,10 +34,14 @@ function formatSavedDate(asset: SavedAsset) {
   return date.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
 }
 
+// 개발자/허대표 전용 실험 카드 노출 제어 (Google Drive 외 클라우드는 일반 사용자 미노출)
+const DEV_OWNER_EMAILS = ['hkd620@gmail.com'];
+
 export function AssetExplorerPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, loading } = useAuth();
+  const isDevOwner = Boolean(user?.email && DEV_OWNER_EMAILS.includes(user.email));
   const [isConnecting, setIsConnecting] = useState(false);
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
@@ -181,10 +185,10 @@ export function AssetExplorerPage() {
 
         <header style={{ margin: '8px 0 18px' }}>
           <h1 style={{ margin: 0, color: '#1A3C6E', fontSize: 24, fontWeight: 900 }}>
-            ☁️ HARU 클라우드 기록탐정
+            ☁️ HARU 기록탐정
           </h1>
           <p style={{ margin: '8px 0 0', color: '#666', fontSize: 14, lineHeight: 1.6 }}>
-            개인의 기록 자산을 안전하게 연결하고 정리합니다
+            Google Drive와 연결해 사진·문서·PDF 기록 자산을 정리합니다.
           </p>
         </header>
 
@@ -207,46 +211,48 @@ export function AssetExplorerPage() {
               gap: 10,
             }}
           >
-            {/* iCloud 카드 — 준비중 */}
-            <button
-              type="button"
-              onClick={() => toast.info('iCloud 연결은 준비중입니다')}
-              style={{
-                textAlign: 'left',
-                border: '1px solid #e6e2d8',
-                background: '#FBFAF6',
-                borderRadius: 10,
-                padding: 14,
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 6,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 22 }}>🍎</span>
-                <p style={{ margin: 0, color: '#1A3C6E', fontSize: 15, fontWeight: 800 }}>
-                  iCloud 연결
+            {/* iCloud 카드 — 개발자 전용 (DEV_OWNER_EMAILS 일치 시만 노출) */}
+            {isDevOwner && (
+              <button
+                type="button"
+                onClick={() => toast.info('iCloud 연결은 개발자 전용 실험 기능입니다')}
+                style={{
+                  textAlign: 'left',
+                  border: '1px solid #e6e2d8',
+                  background: '#FBFAF6',
+                  borderRadius: 10,
+                  padding: 14,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 22 }}>🍎</span>
+                  <p style={{ margin: 0, color: '#1A3C6E', fontSize: 15, fontWeight: 800 }}>
+                    iCloud 연결
+                  </p>
+                  <span
+                    style={{
+                      marginLeft: 'auto',
+                      fontSize: 11,
+                      fontWeight: 800,
+                      color: '#7c3aed',
+                      background: '#ede9fe',
+                      border: '1px solid #ddd6fe',
+                      borderRadius: 6,
+                      padding: '2px 8px',
+                    }}
+                  >
+                    개발자 전용
+                  </span>
+                </div>
+                <p style={{ margin: 0, color: '#777', fontSize: 12, lineHeight: 1.55 }}>
+                  아이폰·맥 사용자 파일 가져오기 실험 기능
                 </p>
-                <span
-                  style={{
-                    marginLeft: 'auto',
-                    fontSize: 11,
-                    fontWeight: 800,
-                    color: '#8a6d1f',
-                    background: '#fff5d6',
-                    border: '1px solid #e8d68a',
-                    borderRadius: 6,
-                    padding: '2px 8px',
-                  }}
-                >
-                  준비중
-                </span>
-              </div>
-              <p style={{ margin: 0, color: '#777', fontSize: 12, lineHeight: 1.55 }}>
-                아이폰·맥 기록 자산 연결
-              </p>
-            </button>
+              </button>
+            )}
 
             {/* Google Drive 카드 — 실연결 */}
             <div
@@ -283,7 +289,7 @@ export function AssetExplorerPage() {
                 )}
               </div>
               <p style={{ margin: 0, color: '#777', fontSize: 12, lineHeight: 1.55 }}>
-                문서·사진·PDF 자동 연결
+                안드로이드·구글 계정 사용자를 위한 자동 자산 연결
               </p>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
                 <button
@@ -331,46 +337,48 @@ export function AssetExplorerPage() {
               </div>
             </div>
 
-            {/* OneDrive 카드 — 준비중 */}
-            <button
-              type="button"
-              onClick={() => toast.info('OneDrive 연결은 준비중입니다')}
-              style={{
-                textAlign: 'left',
-                border: '1px solid #e6e2d8',
-                background: '#FBFAF6',
-                borderRadius: 10,
-                padding: 14,
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 6,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 22 }}>🪟</span>
-                <p style={{ margin: 0, color: '#1A3C6E', fontSize: 15, fontWeight: 800 }}>
-                  OneDrive 연결
+            {/* OneDrive 카드 — 개발자 전용 (DEV_OWNER_EMAILS 일치 시만 노출) */}
+            {isDevOwner && (
+              <button
+                type="button"
+                onClick={() => toast.info('OneDrive 연결은 개발자 전용 실험 기능입니다')}
+                style={{
+                  textAlign: 'left',
+                  border: '1px solid #e6e2d8',
+                  background: '#FBFAF6',
+                  borderRadius: 10,
+                  padding: 14,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 22 }}>🪟</span>
+                  <p style={{ margin: 0, color: '#1A3C6E', fontSize: 15, fontWeight: 800 }}>
+                    OneDrive 연결
+                  </p>
+                  <span
+                    style={{
+                      marginLeft: 'auto',
+                      fontSize: 11,
+                      fontWeight: 800,
+                      color: '#7c3aed',
+                      background: '#ede9fe',
+                      border: '1px solid #ddd6fe',
+                      borderRadius: 6,
+                      padding: '2px 8px',
+                    }}
+                  >
+                    개발자 전용
+                  </span>
+                </div>
+                <p style={{ margin: 0, color: '#777', fontSize: 12, lineHeight: 1.55 }}>
+                  Windows 파일 자산 연결 (실험 기능)
                 </p>
-                <span
-                  style={{
-                    marginLeft: 'auto',
-                    fontSize: 11,
-                    fontWeight: 800,
-                    color: '#8a6d1f',
-                    background: '#fff5d6',
-                    border: '1px solid #e8d68a',
-                    borderRadius: 6,
-                    padding: '2px 8px',
-                  }}
-                >
-                  준비중
-                </span>
-              </div>
-              <p style={{ margin: 0, color: '#777', fontSize: 12, lineHeight: 1.55 }}>
-                Windows 파일 자산 연결
-              </p>
-            </button>
+              </button>
+            )}
           </div>
         </section>
 
