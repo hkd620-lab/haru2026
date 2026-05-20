@@ -181,10 +181,10 @@ export function AssetExplorerPage() {
 
         <header style={{ margin: '8px 0 18px' }}>
           <h1 style={{ margin: 0, color: '#1A3C6E', fontSize: 24, fontWeight: 900 }}>
-            📦 HARU자산탐정
+            📦 HARU 기록탐정
           </h1>
           <p style={{ margin: '8px 0 0', color: '#666', fontSize: 14, lineHeight: 1.6 }}>
-            선택한 자산만 HARU 폴더에 정리합니다
+            선택한 기록만 HARU 폴더에 정리합니다 — Google Drive 연결
           </p>
         </header>
 

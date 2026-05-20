@@ -335,9 +335,9 @@ const AGENTS: Agent[] = [
     ),
   },
   {
-    label: '📦 HARU자산탐정',
+    label: '📦 HARU 기록탐정',
     sub: 'Google Drive에서 선택한 문서·이미지·PDF만 HARU 폴더에 정리합니다.',
-    tag: 'ASSET · 정리',
+    tag: 'RECORD · 정리',
     variant: 'lilac',
     stroke: '#5A4E7A',
     path: '/asset-explorer',

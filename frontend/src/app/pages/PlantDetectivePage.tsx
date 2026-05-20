@@ -968,6 +968,9 @@ export function PlantDetectivePage() {
           <div>
             <div style={{ fontSize: 13, color: '#6b7654', fontWeight: 700 }}>GARDEN · 교차검증</div>
             <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900, letterSpacing: 0 }}>하루식물탐정</h1>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6b7654', lineHeight: 1.5 }}>
+              AI 판독 + 관찰일기 + 나만의 식물도감
+            </p>
           </div>
         </div>
       </header>
