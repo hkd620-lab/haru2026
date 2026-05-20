@@ -5677,8 +5677,9 @@ export const detectPlantAdvanced = onCall(
 // ===========================================
 // 🌿 NIBR (국립생물자원관) 국가생물종목록 Open API 테스트 endpoint
 //   - process.env.NIBR_API_KEY 사용 (응답/로그에 절대 노출하지 않음)
-//   - GET https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/testNibrPlantSearch?q=수세미
-//   - 응답은 raw 일부(snippet) + 국명/학명/분류군 필드 검출 플래그 + 가능 시 첫 항목 파싱
+//   - 명세 기준: 키 파라미터명 oapiAcsUnqNo / page=1 / responseType=json
+//   - 검색어 파라미터는 현재 명세에서 미확인 → 우선 목록 조회만 수행해 응답 구조 확인
+//   - GET .../testNibrPlantSearch?page=1
 // ===========================================
 export const testNibrPlantSearch = onRequest(
   { region: 'asia-northeast3', timeoutSeconds: 30 },
@@ -5690,13 +5691,17 @@ export const testNibrPlantSearch = onRequest(
       return;
     }
 
-    const rawQ = typeof req.query.q === 'string' ? req.query.q.trim() : '';
-    const q = rawQ.length > 0 ? rawQ : '수세미';
+    const pageRaw = typeof req.query.page === 'string' ? req.query.page.trim() : '';
+    const page = /^\d+$/.test(pageRaw) ? Number(pageRaw) : 1;
     const endpoint = 'https://species.nibr.go.kr/gwsvc/openapi/rest/ktsn/taxons/search';
 
     try {
       const response = await axios.get(endpoint, {
-        params: { serviceKey: apiKey, kw: q },
+        params: {
+          oapiAcsUnqNo: apiKey,
+          page,
+          responseType: 'json',
+        },
         responseType: 'text',
         validateStatus: () => true,
         timeout: 15_000,
@@ -5707,7 +5712,7 @@ export const testNibrPlantSearch = onRequest(
         typeof response.data === 'string'
           ? response.data
           : JSON.stringify(response.data || {});
-      const snippet = raw.slice(0, 600);
+      const snippet = raw.slice(0, 1500);
 
       // 시도: JSON 파싱 (XML 응답이면 실패 → null 유지)
       let parsedJson: any = null;
@@ -5717,53 +5722,75 @@ export const testNibrPlantSearch = onRequest(
         /* not JSON — XML 가능성 */
       }
 
-      // 키 마스킹 안전을 위해 raw 안에 API 키가 echo 될 가능성 차단 — 만약 응답에 키가 echo 되면 마스킹
-      // (NIBR API는 보통 키 echo 안 하지만 방어적으로)
+      // 응답에 키가 echo 될 가능성 차단 (방어적 마스킹)
       const safeSnippet = snippet.replace(apiKey, '***REDACTED***');
 
-      // 응답 raw에서 일반 필드명 키워드 검출
-      const has_kor = /국명|kor_name|korName|hangulnm|hanname|kornm/i.test(raw);
-      const has_sci = /학명|sci_name|sciName|scientificName|scinm|scname/i.test(raw);
-      const has_taxon = /분류군|taxon|family|genus|kingdom|phylum|class/i.test(raw);
+      // 응답 raw에서 명세 필드명 키워드 검출 (대표국명/학명/KTSN/관련분류군/정명·이명)
+      const detected = {
+        대표국명: /대표국명|repKorNm|repKorName|kor_nm|korNm/i.test(raw),
+        학명: /학명|scientificName|sciNm|sci_nm|scName/i.test(raw),
+        KTSN: /\bktsn\b|국가생물종번호|ktsnNo|ktsnId/i.test(raw),
+        관련분류군: /관련분류군|relatedTaxon|relTaxon|taxonGroup/i.test(raw),
+        정명이명: /정명|이명|namestatus|validity|accepted|synonym/i.test(raw),
+      };
 
-      // 가능한 경우 첫 항목 파싱 (NIBR 응답 스키마 미상 → 후보 경로 여러 개 시도)
+      // 가능한 경우 항목 배열을 찾아 첫 항목 + 키 목록 노출
+      let foundArrayPath: string | null = null;
       let firstItem: any = null;
-      if (parsedJson) {
-        const candidates = [
-          parsedJson?.result?.item,
-          parsedJson?.result?.items,
-          parsedJson?.items,
-          parsedJson?.data?.item,
-          parsedJson?.response?.body?.items?.item,
-          parsedJson?.body?.items,
+      let itemCount: number | null = null;
+      let itemKeys: string[] = [];
+      if (parsedJson && typeof parsedJson === 'object') {
+        const candidatePaths: Array<{ path: string; value: any }> = [
+          { path: 'result.item', value: parsedJson?.result?.item },
+          { path: 'result.items', value: parsedJson?.result?.items },
+          { path: 'items', value: parsedJson?.items },
+          { path: 'data.item', value: parsedJson?.data?.item },
+          { path: 'data.items', value: parsedJson?.data?.items },
+          { path: 'data.list', value: parsedJson?.data?.list },
+          { path: 'response.body.items.item', value: parsedJson?.response?.body?.items?.item },
+          { path: 'body.items', value: parsedJson?.body?.items },
+          { path: 'list', value: parsedJson?.list },
         ];
-        for (const c of candidates) {
-          if (Array.isArray(c) && c.length > 0) {
-            firstItem = c[0];
+        for (const c of candidatePaths) {
+          if (Array.isArray(c.value) && c.value.length > 0) {
+            foundArrayPath = c.path;
+            firstItem = c.value[0];
+            itemCount = c.value.length;
             break;
           }
+        }
+        if (firstItem && typeof firstItem === 'object') {
+          itemKeys = Object.keys(firstItem);
         }
       }
 
       // 로그: 키 노출 없이 메타데이터만
       logger.info('NIBR test response', {
-        query: q,
+        page,
         httpStatus,
         contentType,
         responseLength: raw.length,
-        flags: { has_kor, has_sci, has_taxon },
-        firstItemPresent: Boolean(firstItem),
+        detected,
+        foundArrayPath,
+        itemCount,
+        itemKeys,
       });
 
       res.status(200).json({
         ok: true,
-        query: q,
+        page,
         endpoint,
+        params: { oapiAcsUnqNo: '***REDACTED***', page, responseType: 'json' },
         nibrStatus: httpStatus,
         contentType,
         responseLength: raw.length,
         snippet: safeSnippet,
-        flags: { has_kor, has_sci, has_taxon },
+        topLevelKeys:
+          parsedJson && typeof parsedJson === 'object' ? Object.keys(parsedJson) : null,
+        foundArrayPath,
+        itemCount,
+        itemKeys,
+        detected,
         parsedFirstItem: firstItem,
       });
     } catch (err: any) {
@@ -5773,7 +5800,7 @@ export const testNibrPlantSearch = onRequest(
       });
       res.status(500).json({
         ok: false,
-        query: q,
+        page,
         endpoint,
         error: err?.message || 'NIBR call failed',
         code: err?.code || null,
