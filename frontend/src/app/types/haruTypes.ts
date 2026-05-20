@@ -325,3 +325,31 @@ export function statScoreToColor(score: StatScore): string {
   };
   return colorMap[score];
 }
+
+// ===========================================
+// 🌿 하루식물탐정 v1 — 사용자 입력 기반 식물 자산
+// 저장 경로: users/{uid}/plants/{plantId}
+// 기존 AI 기반 plants 문서와 같은 컬렉션을 공유하나 스키마는 별도.
+// ===========================================
+export type PlantAssetSourceType = 'real_photo' | 'book_photo' | 'web_reference';
+
+export interface PlantAsset {
+  id: string;
+
+  plantName: string;
+  aiGuess: string;
+  confidence: number;
+
+  userConfirmed: boolean;
+
+  sourceType: PlantAssetSourceType;
+
+  memo: string;
+
+  imageUrls: string[];
+
+  tags: string[];
+
+  createdAt: string;
+  updatedAt: string;
+}

@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { db, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { compressImage } from '../services/imageService';
+import type { PlantAsset, PlantAssetSourceType } from '../types/haruTypes';
 
 // ===========================================
 // 응답 타입 — functions/src/index.ts detectPlantAdvanced 와 동기
@@ -125,6 +126,18 @@ export function PlantDetectivePage() {
   const [activePlantDocId, setActivePlantDocId] = useState<string | null>(null);
   const [activePlantImageUrls, setActivePlantImageUrls] = useState<string[]>([]);
   const [activePlantCreatedAt, setActivePlantCreatedAt] = useState<number | null>(null);
+
+  // 🌱 v1 사용자입력 기반 식물 자산 저장 — AI 흐름과 독립
+  const [showV1Form, setShowV1Form] = useState(false);
+  const [v1PlantName, setV1PlantName] = useState('');
+  const [v1AiGuess, setV1AiGuess] = useState('');
+  const [v1Confidence, setV1Confidence] = useState<string>('1');
+  const [v1SourceType, setV1SourceType] = useState<PlantAssetSourceType>('real_photo');
+  const [v1Memo, setV1Memo] = useState('');
+  const [v1ImageUrlsText, setV1ImageUrlsText] = useState('');
+  const [v1UserConfirmed, setV1UserConfirmed] = useState(false);
+  const [v1Saving, setV1Saving] = useState(false);
+  const [v1LastSavedId, setV1LastSavedId] = useState<string | null>(null);
 
   const resetSessionState = () => {
     setResult(null);
@@ -519,6 +532,66 @@ export function PlantDetectivePage() {
     }
   };
 
+  // 🌱 v1 사용자입력 식물 자산 저장 — users/{uid}/plants/{plantId} (PlantAsset 스키마)
+  const saveV1PlantAsset = async () => {
+    if (!user) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+    const plantName = v1PlantName.trim();
+    if (plantName.length === 0) {
+      toast.warning('식물 이름을 입력해 주세요.');
+      return;
+    }
+    if (plantName.length > 60) {
+      toast.warning('식물 이름은 60자 이내로 입력해 주세요.');
+      return;
+    }
+    const confParsed = Number(v1Confidence);
+    const confidence =
+      Number.isFinite(confParsed) ? Math.max(0, Math.min(1, confParsed)) : 1;
+    const imageUrls = v1ImageUrlsText
+      .split(/\r?\n|,/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    setV1Saving(true);
+    try {
+      const ts = Date.now();
+      const plantId = `plant_v1_${ts}_${Math.random().toString(36).slice(2, 8)}`;
+      const nowIso = new Date(ts).toISOString();
+      const asset: PlantAsset = {
+        id: plantId,
+        plantName,
+        aiGuess: v1AiGuess.trim(),
+        confidence,
+        userConfirmed: v1UserConfirmed,
+        sourceType: v1SourceType,
+        memo: v1Memo.trim(),
+        imageUrls,
+        tags: [],
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+      const plantDocRef = doc(db, 'users', user.uid, 'plants', plantId);
+      await setDoc(plantDocRef, asset);
+      setV1LastSavedId(plantId);
+      toast.success(`🌱 '${plantName}' 식물 자산이 저장되었습니다.`);
+      // 입력 초기화 (sourceType은 사용자가 선택한 값 유지)
+      setV1PlantName('');
+      setV1AiGuess('');
+      setV1Confidence('1');
+      setV1Memo('');
+      setV1ImageUrlsText('');
+      setV1UserConfirmed(false);
+    } catch (error: any) {
+      console.error('v1 식물 자산 저장 실패:', error);
+      toast.error(error?.message || '저장에 실패했습니다.');
+    } finally {
+      setV1Saving(false);
+    }
+  };
+
   const gemini = result?.gemini;
   const showPoisonAlert = Boolean(gemini?.poisonousRisk || gemini?.warning);
 
@@ -569,6 +642,199 @@ export function PlantDetectivePage() {
       </header>
 
       <main style={{ maxWidth: 880, margin: '0 auto', padding: '18px 16px 96px' }}>
+        {/* ========== 🌱 v1 사용자입력 식물 자산 저장 ========== */}
+        <section
+          style={{
+            border: '1px solid #c9d8a6',
+            background: '#f4f8e6',
+            borderRadius: 10,
+            padding: 14,
+            marginBottom: 14,
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setShowV1Form((v) => !v)}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'transparent',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
+              color: '#3f5316',
+              fontWeight: 800,
+              fontSize: 14,
+            }}
+          >
+            <span>🌱 사용자 입력 기반 식물 자산 저장 (AI 분석 없이 직접 등록)</span>
+            {showV1Form ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </button>
+          {showV1Form && (
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#3f5316' }}>식물 이름 *</span>
+                <input
+                  type="text"
+                  value={v1PlantName}
+                  onChange={(e) => setV1PlantName(e.target.value)}
+                  maxLength={60}
+                  placeholder="예: 호접란"
+                  style={{
+                    height: 36,
+                    borderRadius: 6,
+                    border: '1px solid #c9d8a6',
+                    padding: '0 10px',
+                    background: '#fff',
+                    fontSize: 13,
+                  }}
+                />
+              </label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#3f5316' }}>AI 추정명</span>
+                <input
+                  type="text"
+                  value={v1AiGuess}
+                  onChange={(e) => setV1AiGuess(e.target.value)}
+                  maxLength={120}
+                  placeholder="예: Phalaenopsis aphrodite"
+                  style={{
+                    height: 36,
+                    borderRadius: 6,
+                    border: '1px solid #c9d8a6',
+                    padding: '0 10px',
+                    background: '#fff',
+                    fontSize: 13,
+                  }}
+                />
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#3f5316' }}>confidence (0~1)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={v1Confidence}
+                    onChange={(e) => setV1Confidence(e.target.value)}
+                    style={{
+                      height: 36,
+                      borderRadius: 6,
+                      border: '1px solid #c9d8a6',
+                      padding: '0 10px',
+                      background: '#fff',
+                      fontSize: 13,
+                    }}
+                  />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#3f5316' }}>sourceType</span>
+                  <select
+                    value={v1SourceType}
+                    onChange={(e) => setV1SourceType(e.target.value as PlantAssetSourceType)}
+                    style={{
+                      height: 36,
+                      borderRadius: 6,
+                      border: '1px solid #c9d8a6',
+                      padding: '0 10px',
+                      background: '#fff',
+                      fontSize: 13,
+                    }}
+                  >
+                    <option value="real_photo">실사진 (real_photo)</option>
+                    <option value="book_photo">도감사진 (book_photo)</option>
+                    <option value="web_reference">웹참고 (web_reference)</option>
+                  </select>
+                </label>
+              </div>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#3f5316' }}>사용자 메모</span>
+                <textarea
+                  value={v1Memo}
+                  onChange={(e) => setV1Memo(e.target.value)}
+                  maxLength={2000}
+                  rows={3}
+                  placeholder="이 식물에 대한 메모를 남기세요."
+                  style={{
+                    borderRadius: 6,
+                    border: '1px solid #c9d8a6',
+                    padding: '8px 10px',
+                    background: '#fff',
+                    fontSize: 13,
+                    resize: 'vertical',
+                  }}
+                />
+              </label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#3f5316' }}>
+                  이미지 URL (한 줄에 하나 또는 쉼표 구분)
+                </span>
+                <textarea
+                  value={v1ImageUrlsText}
+                  onChange={(e) => setV1ImageUrlsText(e.target.value)}
+                  rows={2}
+                  placeholder="https://example.com/photo1.jpg"
+                  style={{
+                    borderRadius: 6,
+                    border: '1px solid #c9d8a6',
+                    padding: '8px 10px',
+                    background: '#fff',
+                    fontSize: 13,
+                    resize: 'vertical',
+                  }}
+                />
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#3f5316' }}>
+                <input
+                  type="checkbox"
+                  checked={v1UserConfirmed}
+                  onChange={(e) => setV1UserConfirmed(e.target.checked)}
+                />
+                <span>식별 확정 (userConfirmed)</span>
+              </label>
+              <button
+                type="button"
+                onClick={saveV1PlantAsset}
+                disabled={v1Saving || v1PlantName.trim().length === 0}
+                style={{
+                  height: 44,
+                  borderRadius: 8,
+                  border: '1px solid #4A5A2C',
+                  background:
+                    v1Saving || v1PlantName.trim().length === 0 ? '#a7b886' : '#4A5A2C',
+                  color: '#fff',
+                  fontWeight: 900,
+                  cursor:
+                    v1Saving || v1PlantName.trim().length === 0 ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+              >
+                {v1Saving ? <Loader2 size={16} className="animate-spin" /> : <Leaf size={16} />}
+                🌱 식물 자산 저장
+              </button>
+              {v1LastSavedId && (
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: '#166534',
+                    background: '#DCFCE7',
+                    padding: '6px 10px',
+                    borderRadius: 6,
+                  }}
+                >
+                  ✅ 저장됨 — plantId: {v1LastSavedId}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+
         {/* ========== 촬영 가이드 ========== */}
         <section
           style={{
