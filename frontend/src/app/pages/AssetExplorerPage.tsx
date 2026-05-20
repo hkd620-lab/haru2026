@@ -138,7 +138,7 @@ export function AssetExplorerPage() {
     try {
       const copyAssets = httpsCallable<{ fileIds: string[] }, CopyResponse>(functions, 'copyHaruDriveAssets');
       const result = await copyAssets({ fileIds: selectedIds });
-      toast.success('선택한 자산을 HARU 폴더에 복사했습니다.');
+      toast.success('선택한 기록 자산을 정리했습니다.');
       setModalOpen(false);
       setSelectedIds([]);
       await loadAssets();
@@ -181,10 +181,10 @@ export function AssetExplorerPage() {
 
         <header style={{ margin: '8px 0 18px' }}>
           <h1 style={{ margin: 0, color: '#1A3C6E', fontSize: 24, fontWeight: 900 }}>
-            📦 HARU 기록탐정
+            ☁️ HARU 클라우드 기록탐정
           </h1>
           <p style={{ margin: '8px 0 0', color: '#666', fontSize: 14, lineHeight: 1.6 }}>
-            선택한 기록만 HARU 폴더에 정리합니다 — Google Drive 연결
+            개인의 기록 자산을 안전하게 연결하고 정리합니다
           </p>
         </header>
 
@@ -197,65 +197,181 @@ export function AssetExplorerPage() {
             marginBottom: 14,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <div>
-              <p style={{ margin: 0, color: '#1A3C6E', fontSize: 16, fontWeight: 800 }}>
-                Google Drive 연결
+          <h2 style={{ margin: '0 0 12px', color: '#1A3C6E', fontSize: 16, fontWeight: 900 }}>
+            클라우드 연결
+          </h2>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: 10,
+            }}
+          >
+            {/* iCloud 카드 — 준비중 */}
+            <button
+              type="button"
+              onClick={() => toast.info('iCloud 연결은 준비중입니다')}
+              style={{
+                textAlign: 'left',
+                border: '1px solid #e6e2d8',
+                background: '#FBFAF6',
+                borderRadius: 10,
+                padding: 14,
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 22 }}>🍎</span>
+                <p style={{ margin: 0, color: '#1A3C6E', fontSize: 15, fontWeight: 800 }}>
+                  iCloud 연결
+                </p>
+                <span
+                  style={{
+                    marginLeft: 'auto',
+                    fontSize: 11,
+                    fontWeight: 800,
+                    color: '#8a6d1f',
+                    background: '#fff5d6',
+                    border: '1px solid #e8d68a',
+                    borderRadius: 6,
+                    padding: '2px 8px',
+                  }}
+                >
+                  준비중
+                </span>
+              </div>
+              <p style={{ margin: 0, color: '#777', fontSize: 12, lineHeight: 1.55 }}>
+                아이폰·맥 기록 자산 연결
               </p>
-              <p style={{ margin: '6px 0 0', color: '#777', fontSize: 13 }}>
-                연결 후 `/HARU` 폴더를 확인하고, 최근 문서·이미지·PDF 후보만 보여드립니다.
+            </button>
+
+            {/* Google Drive 카드 — 실연결 */}
+            <div
+              style={{
+                border: '1px solid #d6e0f0',
+                background: '#fff',
+                borderRadius: 10,
+                padding: 14,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 22 }}>📁</span>
+                <p style={{ margin: 0, color: '#1A3C6E', fontSize: 15, fontWeight: 800 }}>
+                  Google Drive 연결
+                </p>
+                {hasDriveConnection && (
+                  <span
+                    style={{
+                      marginLeft: 'auto',
+                      fontSize: 11,
+                      fontWeight: 800,
+                      color: '#166534',
+                      background: '#DCFCE7',
+                      border: '1px solid #bbf7d0',
+                      borderRadius: 6,
+                      padding: '2px 8px',
+                    }}
+                  >
+                    연결됨
+                  </span>
+                )}
+              </div>
+              <p style={{ margin: 0, color: '#777', fontSize: 12, lineHeight: 1.55 }}>
+                문서·사진·PDF 자동 연결
               </p>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                <button
+                  type="button"
+                  onClick={connectDrive}
+                  disabled={isConnecting}
+                  style={{
+                    border: '1px solid #1A3C6E',
+                    borderRadius: 8,
+                    background: '#fff',
+                    color: '#1A3C6E',
+                    padding: '8px 11px',
+                    fontSize: 12,
+                    fontWeight: 800,
+                    cursor: isConnecting ? 'wait' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  {isConnecting ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                  {hasDriveConnection ? '다시 연결' : '연결하기'}
+                </button>
+                <button
+                  type="button"
+                  onClick={loadCandidates}
+                  disabled={isLoadingCandidates}
+                  style={{
+                    border: 'none',
+                    borderRadius: 8,
+                    background: '#1A3C6E',
+                    color: '#fff',
+                    padding: '8px 11px',
+                    fontSize: 12,
+                    fontWeight: 800,
+                    cursor: isLoadingCandidates ? 'wait' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  {isLoadingCandidates ? <Loader2 size={13} className="animate-spin" /> : <FolderPlus size={13} />}
+                  최근 자산 추천
+                </button>
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={connectDrive}
-                disabled={isConnecting}
-                style={{
-                  border: '1px solid #1A3C6E',
-                  borderRadius: 8,
-                  background: '#fff',
-                  color: '#1A3C6E',
-                  padding: '11px 13px',
-                  fontSize: 13,
-                  fontWeight: 800,
-                  cursor: isConnecting ? 'wait' : 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                {isConnecting ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
-                Drive 연결
-              </button>
-              <button
-                type="button"
-                onClick={loadCandidates}
-                disabled={isLoadingCandidates}
-                style={{
-                  border: 'none',
-                  borderRadius: 8,
-                  background: '#1A3C6E',
-                  color: '#fff',
-                  padding: '11px 13px',
-                  fontSize: 13,
-                  fontWeight: 800,
-                  cursor: isLoadingCandidates ? 'wait' : 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                {isLoadingCandidates ? <Loader2 size={15} className="animate-spin" /> : <FolderPlus size={15} />}
-                후보 탐색
-              </button>
-            </div>
+
+            {/* OneDrive 카드 — 준비중 */}
+            <button
+              type="button"
+              onClick={() => toast.info('OneDrive 연결은 준비중입니다')}
+              style={{
+                textAlign: 'left',
+                border: '1px solid #e6e2d8',
+                background: '#FBFAF6',
+                borderRadius: 10,
+                padding: 14,
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 22 }}>🪟</span>
+                <p style={{ margin: 0, color: '#1A3C6E', fontSize: 15, fontWeight: 800 }}>
+                  OneDrive 연결
+                </p>
+                <span
+                  style={{
+                    marginLeft: 'auto',
+                    fontSize: 11,
+                    fontWeight: 800,
+                    color: '#8a6d1f',
+                    background: '#fff5d6',
+                    border: '1px solid #e8d68a',
+                    borderRadius: 6,
+                    padding: '2px 8px',
+                  }}
+                >
+                  준비중
+                </span>
+              </div>
+              <p style={{ margin: 0, color: '#777', fontSize: 12, lineHeight: 1.55 }}>
+                Windows 파일 자산 연결
+              </p>
+            </button>
           </div>
-          {hasDriveConnection && (
-            <p style={{ margin: '12px 0 0', color: '#4A5A2C', fontSize: 12, fontWeight: 700 }}>
-              Google Drive 연결 상태를 확인했습니다.
-            </p>
-          )}
         </section>
 
         <section
@@ -268,14 +384,14 @@ export function AssetExplorerPage() {
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
             <h2 style={{ margin: 0, color: '#1A3C6E', fontSize: 17, fontWeight: 900 }}>
-              HARU 자산 검색
+              내 기록 자산
             </h2>
             <div style={{ position: 'relative', width: 'min(100%, 320px)' }}>
               <Search size={16} style={{ position: 'absolute', left: 11, top: 11, color: '#888' }} />
               <input
                 value={searchText}
                 onChange={(event) => setSearchText(event.target.value)}
-                placeholder="파일명 검색"
+                placeholder="기록 자산 검색"
                 style={{
                   width: '100%',
                   height: 38,
@@ -291,7 +407,7 @@ export function AssetExplorerPage() {
 
           {filteredAssets.length === 0 ? (
             <div style={{ padding: '34px 10px', textAlign: 'center', color: '#777', fontSize: 14 }}>
-              {savedAssets.length === 0 ? '아직 HARU 폴더에 정리한 자산이 없습니다.' : '검색 결과가 없습니다.'}
+              {savedAssets.length === 0 ? '아직 정리한 기록 자산이 없습니다.' : '검색 결과가 없습니다.'}
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
@@ -346,6 +462,24 @@ export function AssetExplorerPage() {
               ))}
             </div>
           )}
+        </section>
+
+        {/* ========== HARU 철학 안내 ========== */}
+        <section
+          style={{
+            marginTop: 14,
+            background: '#FBFAF6',
+            border: '1px solid #e8e2d8',
+            borderRadius: 10,
+            padding: 16,
+          }}
+        >
+          <p style={{ margin: 0, color: '#1A3C6E', fontSize: 14, fontWeight: 900 }}>
+            기록이 쌓여 가치가 됩니다
+          </p>
+          <p style={{ margin: '6px 0 0', color: '#666', fontSize: 13, lineHeight: 1.6 }}>
+            HARU는 사진·문서·관찰·생각을 연결해 개인의 기록 자산으로 정리합니다.
+          </p>
         </section>
       </div>
 
