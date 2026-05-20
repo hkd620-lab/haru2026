@@ -688,6 +688,126 @@ export function PlantDetectivePage() {
     }
   };
 
+  // 🪴 통합 저장 — 메인 "📔 오늘 기록 저장" 버튼 단일 핸들러
+  //   1) plants/{plantId} merge 저장 (saveToToday 와 동일 스키마)
+  //   2) records/{today}.plantDetective[] arrayUnion (legacy 호환)
+  //   3) 관찰 textarea 입력이 있으면 records/{today}.plantObservation[] arrayUnion 도 함께
+  //   토스트는 1회만 — 지시서 6: '오늘의 식물 기록과 관찰 내용을 저장했습니다.'
+  const saveTodayAllRecord = async () => {
+    if (!user) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+    if (!result || photos.length === 0) {
+      toast.info('먼저 분석을 완료해 주세요.');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const { plantId, today, createdAt, imageUrls } = await ensurePlantDocAssets();
+      const { name: displayName, latin: displayLatin, confidence: topConfidence } = buildDisplayName();
+      const now = Date.now();
+
+      // 1) plants/{plantId}
+      const plantDocRef = doc(db, 'users', user.uid, 'plants', plantId);
+      await setDoc(
+        plantDocRef,
+        {
+          plantId,
+          date: today,
+          createdAt,
+          updatedAt: now,
+          photos: imageUrls,
+          finalGuess: displayName,
+          finalLatinName: displayLatin,
+          confidence: topConfidence,
+          originalPlantIdResult: result.plantId,
+          originalPlantNetResult: result.plantNet,
+          geminiAnalysis: result.gemini,
+          meta: result.meta,
+          source: confirmedSavedDocId === plantId ? 'user_confirmed' : 'ai',
+        },
+        { merge: true },
+      );
+
+      // 2) records/{today}.plantDetective[] (legacy 호환 — saveToToday 와 동일)
+      const recordRef = doc(db, 'users', user.uid, 'records', today);
+      const legacyEntry = {
+        createdAt,
+        plantId,
+        imageUrl: imageUrls[0] || '',
+        imageUrls,
+        plantName: displayName,
+        latinName: displayLatin,
+        identificationConfidence:
+          typeof result.plantId?.confidence === 'number' ? result.plantId.confidence : null,
+        isPlantProbability:
+          typeof result.plantId?.isPlantProbability === 'number'
+            ? result.plantId.isPlantProbability
+            : null,
+        alternativeCandidates: Array.isArray(result.plantId?.alternatives)
+          ? result.plantId!.alternatives
+          : [],
+        taxonomy:
+          result.plantId?.family || result.plantId?.genus
+            ? { family: result.plantId.family, genus: result.plantId.genus }
+            : null,
+        identifiedBy: result.plantId ? 'kindwise' : result.plantNet ? 'plantnet' : 'gemini',
+        condition: result.gemini?.analysis || '',
+        confidence: result.gemini?.confidence || 'low',
+        findings: [],
+        actions: [],
+        warningSigns: result.gemini?.warning ? [result.gemini.warning] : [],
+        note: result.gemini?.warning || '',
+      };
+
+      // 3) records/{today}.plantObservation[] (관찰 입력이 있을 때만)
+      const observation = obsObservation.trim();
+      const aiDifference = obsAiDifference.trim();
+      const memo = obsMemo.trim();
+      const hasObsInput =
+        observation.length > 0 || aiDifference.length > 0 || memo.length > 0;
+      const updatePayload: Record<string, any> = {
+        date: today,
+        plantDetective: arrayUnion(legacyEntry),
+      };
+      if (hasObsInput) {
+        const obsEntry = {
+          format: 'plantObservation',
+          plantId,
+          linkedPlantId: plantId,
+          plantName: displayName,
+          latinName: displayLatin,
+          imageUrl: imageUrls[0] || '',
+          imageUrls,
+          observation,
+          aiDifference,
+          memo,
+          createdAt,
+        };
+        updatePayload.plantObservation = arrayUnion(obsEntry);
+      }
+      await setDoc(recordRef, updatePayload, { merge: true });
+
+      setSavedToToday(true);
+      if (hasObsInput) {
+        setObsObservation('');
+        setObsAiDifference('');
+        setObsMemo('');
+        const savedTs = new Date(now);
+        const hh = String(savedTs.getHours()).padStart(2, '0');
+        const mm = String(savedTs.getMinutes()).padStart(2, '0');
+        setObsSavedAt(`${today} ${hh}:${mm}`);
+      }
+      toast.success('오늘의 식물 기록과 관찰 내용을 저장했습니다.');
+    } catch (error: any) {
+      console.error('통합 저장 실패:', error);
+      toast.error(error?.message || '저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const gemini = result?.gemini;
   const showPoisonAlert = Boolean(gemini?.poisonousRisk || gemini?.warning);
 
@@ -1829,67 +1949,9 @@ export function PlantDetectivePage() {
                   outline: 'none',
                 }}
               />
-              <button
-                type="button"
-                onClick={saveTodayObservation}
-                disabled={
-                  obsSaving ||
-                  (obsObservation.trim().length === 0 &&
-                    obsAiDifference.trim().length === 0 &&
-                    obsMemo.trim().length === 0)
-                }
-                title="식물 정보와 오늘의 관찰 내용을 함께 저장합니다."
-                style={{
-                  height: 52,
-                  borderRadius: 10,
-                  border: '1px solid #8a6d1f',
-                  background:
-                    obsSaving ||
-                    (obsObservation.trim().length === 0 &&
-                      obsAiDifference.trim().length === 0 &&
-                      obsMemo.trim().length === 0)
-                      ? '#d8c98a'
-                      : '#8a6d1f',
-                  color: '#fff',
-                  fontWeight: 900,
-                  fontSize: 16,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  cursor:
-                    obsSaving ||
-                    (obsObservation.trim().length === 0 &&
-                      obsAiDifference.trim().length === 0 &&
-                      obsMemo.trim().length === 0)
-                      ? 'not-allowed'
-                      : 'pointer',
-                }}
-              >
-                {obsSaving ? (
-                  <Loader2 size={18} className="animate-spin" />
-                ) : (
-                  <span style={{ fontSize: 18 }}>📔</span>
-                )}
-                오늘 관찰 기록 저장
-              </button>
-              <p style={{ margin: 0, fontSize: 12, color: '#6b7654', textAlign: 'center', lineHeight: 1.55 }}>
-                식물 정보와 오늘의 관찰 내용을 함께 저장합니다.
+              <p style={{ margin: 0, fontSize: 11, color: '#92996f', lineHeight: 1.55 }}>
+                작성한 관찰은 아래 <strong>📔 오늘 기록 저장</strong> 버튼을 누를 때 함께 저장됩니다.
               </p>
-              {obsSavedAt && (
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: '#166534',
-                    background: '#DCFCE7',
-                    padding: '6px 10px',
-                    borderRadius: 6,
-                    textAlign: 'center',
-                  }}
-                >
-                  ✅ 오늘의 관찰이 저장되었습니다 — {obsSavedAt}
-                </div>
-              )}
             </section>
 
             {/* ========== 메인 저장 버튼 ========== */}
@@ -1906,7 +1968,7 @@ export function PlantDetectivePage() {
             </p>
             <button
               type="button"
-              onClick={saveToToday}
+              onClick={saveTodayAllRecord}
               disabled={isSaving || savedToToday}
               style={{
                 width: '100%',
@@ -1923,7 +1985,7 @@ export function PlantDetectivePage() {
                 gap: 8,
                 cursor: isSaving || savedToToday ? 'not-allowed' : 'pointer',
               }}
-              title="오늘의 관찰과 식물 정보를 함께 저장합니다"
+              title="오늘의 식물 기록과 관찰 내용을 함께 저장합니다"
             >
               {isSaving ? (
                 <Loader2 size={18} className="animate-spin" />
