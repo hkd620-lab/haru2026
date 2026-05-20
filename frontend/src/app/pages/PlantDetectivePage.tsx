@@ -170,6 +170,15 @@ export function PlantDetectivePage() {
   const [obsSaving, setObsSaving] = useState(false);
   const [obsSavedAt, setObsSavedAt] = useState<string | null>(null);
 
+  const buildAiUserTitle = (aiKoName?: string | null, aiPrediction?: string | null, userName?: string | null) => {
+    const aiName = (aiKoName || aiPrediction || '').trim();
+    const reportedName = (userName || '').trim();
+    if (reportedName && aiName && reportedName !== aiName) {
+      return `AI 판독: ${aiName} / 사용자 보고: ${reportedName}`;
+    }
+    return reportedName || aiName || '식물 이름 불확실';
+  };
+
   const loadPlantLibrary = async () => {
     if (!user) {
       setPlantLibrary([]);
@@ -234,7 +243,7 @@ export function PlantDetectivePage() {
       userConfirmedName: userInput,
       userConfirmedEnglishName: userEnglish,
       userConfirmedScientificName: userScientific,
-      displayName: userInput || aiKoName || aiPrediction || '식물 이름 불확실',
+      displayName: buildAiUserTitle(aiKoName, aiPrediction, userInput),
       correctedByUser,
     };
   }, [result, userConfirmedName, userConfirmedEnglishName, userConfirmedScientificName]);
@@ -252,7 +261,7 @@ export function PlantDetectivePage() {
     }
     const aiPrediction = result.plantNet?.name || result.plantId?.name || result.gemini?.finalGuess || '';
     const aiKoName = result.plantNet?.koName || result.gemini?.finalGuess || '';
-    const title = userConfirmedName.trim() || aiKoName || aiPrediction || '식물 이름 불확실';
+    const title = buildAiUserTitle(aiKoName, aiPrediction, userConfirmedName);
     const hasUserConfirmation = userConfirmedName.trim().length > 0;
     return {
       title,
@@ -630,13 +639,14 @@ export function PlantDetectivePage() {
           updatedAt: serverTimestamp(),
           photos: imageUrls,
           imageUrl: imageUrls[0] || '',
-          // 사용자 확정 이름이 최우선 — 기존 API 결과는 original* 로 그대로 보존
-          displayName: name,
+          // 제목은 AI 판독명과 사용자 보고명을 함께 보존 — 기존 API 결과는 original* 로 그대로 보존
+          displayName,
           englishName,
           scientificName,
           aiPrediction,
           aiKoName,
           userConfirmedName: name,
+          humanReportedName: name,
           correctedByUser,
           observationCount: increment(1),
           finalGuess: displayName,
@@ -1938,7 +1948,7 @@ export function PlantDetectivePage() {
                     }}
                   >
                     <div>
-                      최종 확정: <strong>{finalConfirmation.userConfirmedName}</strong>
+                      제목: <strong>{finalConfirmation.displayName}</strong>
                     </div>
                     {(finalConfirmation.englishName || finalConfirmation.scientificName) && (
                       <div style={{ fontSize: 12, color: '#365e3a' }}>
@@ -1948,8 +1958,13 @@ export function PlantDetectivePage() {
                     <div style={{ fontSize: 12, color: '#365e3a' }}>
                       AI 추정: {finalConfirmation.aiKoName || finalConfirmation.aiPrediction || '—'}
                     </div>
+                    {finalConfirmation.correctedByUser && (
+                      <div style={{ fontSize: 12, color: '#365e3a' }}>
+                        사용자 보고: {finalConfirmation.userConfirmedName}
+                      </div>
+                    )}
                     <div style={{ fontSize: 12, color: '#365e3a' }}>
-                      상태: {finalConfirmation.correctedByUser ? '사용자가 수정함' : 'AI 추정 그대로 사용'}
+                      상태: {finalConfirmation.correctedByUser ? 'AI 판독과 사용자 보고가 다름' : 'AI 추정 그대로 사용'}
                     </div>
                   </div>
                 )}

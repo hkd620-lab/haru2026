@@ -2268,8 +2268,14 @@ export function SayuPage() {
                 </div>
               );
             };
-            const getPlantTitle = (entry: any) =>
-              entry?.userConfirmedName || entry?.title || entry?.aiKoName || entry?.aiPrediction || entry?.plantName || '식물 이름 불확실';
+            const getPlantTitle = (entry: any) => {
+              const aiName = entry?.aiKoName || entry?.aiPrediction || '';
+              const userName = entry?.userConfirmedName || entry?.humanReportedName || '';
+              if (aiName && userName && aiName !== userName) {
+                return `AI 판독: ${aiName} / 사용자 보고: ${userName}`;
+              }
+              return entry?.title || userName || aiName || entry?.plantName || '식물 이름 불확실';
+            };
             const getPlantSubTitle = (entry: any) =>
               [entry?.englishName, entry?.scientificName || entry?.latinName].filter(Boolean).join(' / ');
             return (
