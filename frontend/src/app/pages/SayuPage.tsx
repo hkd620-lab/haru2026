@@ -2348,7 +2348,17 @@ export function SayuPage() {
                                 <img
                                   src={entry.imageUrl}
                                   alt={entry.plantName || '식물 사진'}
-                                  style={{ width: '100%', maxHeight: 240, objectFit: 'cover', borderRadius: 8, border: '1px solid #e6e6e6', marginBottom: 10 }}
+                                  style={{
+                                    width: '100%',
+                                    height: 'auto',
+                                    objectFit: 'contain',
+                                    objectPosition: 'center',
+                                    display: 'block',
+                                    borderRadius: 8,
+                                    border: '1px solid #e6e6e6',
+                                    background: '#fff',
+                                    marginBottom: 10,
+                                  }}
                                 />
                               )}
                               <div style={{ fontSize: 13, color: '#333', lineHeight: 1.55 }}>
