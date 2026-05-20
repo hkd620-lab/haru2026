@@ -140,6 +140,13 @@ export function PlantDetectivePage() {
   const [v1Saving, setV1Saving] = useState(false);
   const [v1LastSavedId, setV1LastSavedId] = useState<string | null>(null);
 
+  // 📔 오늘의 관찰 — records/{date}.plantObservation[] 저장용
+  const [obsObservation, setObsObservation] = useState('');
+  const [obsAiDifference, setObsAiDifference] = useState('');
+  const [obsMemo, setObsMemo] = useState('');
+  const [obsSaving, setObsSaving] = useState(false);
+  const [obsSavedAt, setObsSavedAt] = useState<string | null>(null);
+
   const resetSessionState = () => {
     setResult(null);
     setSavedToToday(false);
@@ -149,6 +156,10 @@ export function PlantDetectivePage() {
     setActivePlantDocId(null);
     setActivePlantImageUrls([]);
     setActivePlantCreatedAt(null);
+    setObsObservation('');
+    setObsAiDifference('');
+    setObsMemo('');
+    setObsSavedAt(null);
   };
 
   // 🎯 최종 식물명 확정 state object — 향후 도감 저장 시 그대로 직렬화 가능한 형태로 유지
@@ -590,6 +601,90 @@ export function PlantDetectivePage() {
       toast.error(error?.message || '저장에 실패했습니다.');
     } finally {
       setV1Saving(false);
+    }
+  };
+
+  // 📔 오늘의 관찰 — records/{date}.plantObservation[] 신규 필드에 저장
+  //   기존 records.plantDetective[] 와 별도 배열 → 구조 충돌 없음
+  //   plants/{plantId} 도 함께 저장(=saveToToday 패턴) → 식물 정보 + 관찰 연결
+  const saveTodayObservation = async () => {
+    if (!user) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+    if (!result || photos.length === 0) {
+      toast.info('먼저 사진 분석을 완료해 주세요.');
+      return;
+    }
+    const observation = obsObservation.trim();
+    const aiDifference = obsAiDifference.trim();
+    const memo = obsMemo.trim();
+    if (observation.length === 0 && aiDifference.length === 0 && memo.length === 0) {
+      toast.warning('관찰 내용을 한 가지 이상 입력해 주세요.');
+      return;
+    }
+    setObsSaving(true);
+    try {
+      const { plantId, today, createdAt, imageUrls } = await ensurePlantDocAssets();
+      const { name: displayName, latin: displayLatin, confidence: topConfidence } = buildDisplayName();
+      const now = Date.now();
+
+      // 1) plants/{plantId} — 기존 saveToToday와 동일 스키마 (merge)
+      const plantDocRef = doc(db, 'users', user.uid, 'plants', plantId);
+      await setDoc(
+        plantDocRef,
+        {
+          plantId,
+          date: today,
+          createdAt,
+          updatedAt: now,
+          photos: imageUrls,
+          finalGuess: displayName,
+          finalLatinName: displayLatin,
+          confidence: topConfidence,
+          originalPlantIdResult: result.plantId,
+          originalPlantNetResult: result.plantNet,
+          geminiAnalysis: result.gemini,
+          meta: result.meta,
+          source: confirmedSavedDocId === plantId ? 'user_confirmed' : 'ai',
+        },
+        { merge: true },
+      );
+
+      // 2) records/{today}.plantObservation[] — 신규 별도 필드 (기존 plantDetective[] 무수정)
+      const recordRef = doc(db, 'users', user.uid, 'records', today);
+      const obsEntry = {
+        format: 'plantObservation',
+        plantId,
+        linkedPlantId: plantId,
+        plantName: displayName,
+        latinName: displayLatin,
+        imageUrl: imageUrls[0] || '',
+        imageUrls,
+        observation,
+        aiDifference,
+        memo,
+        createdAt,
+      };
+      await setDoc(
+        recordRef,
+        { date: today, plantObservation: arrayUnion(obsEntry) },
+        { merge: true },
+      );
+
+      const savedTs = new Date(now);
+      const hh = String(savedTs.getHours()).padStart(2, '0');
+      const mm = String(savedTs.getMinutes()).padStart(2, '0');
+      setObsSavedAt(`${today} ${hh}:${mm}`);
+      setObsObservation('');
+      setObsAiDifference('');
+      setObsMemo('');
+      toast.success('📔 오늘의 관찰이 저장되었습니다.');
+    } catch (error: any) {
+      console.error('오늘의 관찰 저장 실패:', error);
+      toast.error(error?.message || '저장에 실패했습니다.');
+    } finally {
+      setObsSaving(false);
     }
   };
 
@@ -1655,6 +1750,147 @@ export function PlantDetectivePage() {
                 </div>
               )}
             </ResultCard>
+
+            {/* ========== 📔 오늘의 관찰 ========== */}
+            <section
+              style={{
+                border: '1px solid #d8c98a',
+                background: '#fffbe6',
+                borderRadius: 10,
+                padding: 14,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 900, color: '#4A5A2C' }}>
+                  📔 오늘의 관찰
+                </div>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6b7654', lineHeight: 1.55 }}>
+                  오늘 관찰한 변화나 생각을 간단히 기록해보세요.
+                </p>
+              </div>
+              <textarea
+                value={obsObservation}
+                onChange={(e) => setObsObservation(e.target.value)}
+                maxLength={2000}
+                rows={3}
+                placeholder={
+                  '오늘 무엇을 관찰했나요?\n예: 꽃이 처음 피었어요 / 줄기가 갑자기 많이 자랐어요'
+                }
+                style={{
+                  borderRadius: 8,
+                  border: '1px solid #e6dcab',
+                  padding: '10px 12px',
+                  background: '#fff',
+                  fontSize: 14,
+                  lineHeight: 1.55,
+                  color: '#1f2a17',
+                  resize: 'vertical',
+                  outline: 'none',
+                }}
+              />
+              <textarea
+                value={obsAiDifference}
+                onChange={(e) => setObsAiDifference(e.target.value)}
+                maxLength={2000}
+                rows={3}
+                placeholder={
+                  'AI 결과와 다른 점이 있었나요?\n예: AI는 오이라고 했지만 줄기 모양은 수세미 같았어요'
+                }
+                style={{
+                  borderRadius: 8,
+                  border: '1px solid #e6dcab',
+                  padding: '10px 12px',
+                  background: '#fff',
+                  fontSize: 14,
+                  lineHeight: 1.55,
+                  color: '#1f2a17',
+                  resize: 'vertical',
+                  outline: 'none',
+                }}
+              />
+              <textarea
+                value={obsMemo}
+                onChange={(e) => setObsMemo(e.target.value)}
+                maxLength={2000}
+                rows={2}
+                placeholder={'자유 메모\n예: 비 온 뒤 성장 속도가 빨라졌어요'}
+                style={{
+                  borderRadius: 8,
+                  border: '1px solid #e6dcab',
+                  padding: '10px 12px',
+                  background: '#fff',
+                  fontSize: 14,
+                  lineHeight: 1.55,
+                  color: '#1f2a17',
+                  resize: 'vertical',
+                  outline: 'none',
+                }}
+              />
+              <button
+                type="button"
+                onClick={saveTodayObservation}
+                disabled={
+                  obsSaving ||
+                  (obsObservation.trim().length === 0 &&
+                    obsAiDifference.trim().length === 0 &&
+                    obsMemo.trim().length === 0)
+                }
+                title="식물 정보와 오늘의 관찰 내용을 함께 저장합니다."
+                style={{
+                  height: 52,
+                  borderRadius: 10,
+                  border: '1px solid #8a6d1f',
+                  background:
+                    obsSaving ||
+                    (obsObservation.trim().length === 0 &&
+                      obsAiDifference.trim().length === 0 &&
+                      obsMemo.trim().length === 0)
+                      ? '#d8c98a'
+                      : '#8a6d1f',
+                  color: '#fff',
+                  fontWeight: 900,
+                  fontSize: 16,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  cursor:
+                    obsSaving ||
+                    (obsObservation.trim().length === 0 &&
+                      obsAiDifference.trim().length === 0 &&
+                      obsMemo.trim().length === 0)
+                      ? 'not-allowed'
+                      : 'pointer',
+                }}
+              >
+                {obsSaving ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <span style={{ fontSize: 18 }}>📔</span>
+                )}
+                오늘 관찰 기록 저장
+              </button>
+              <p style={{ margin: 0, fontSize: 12, color: '#6b7654', textAlign: 'center', lineHeight: 1.55 }}>
+                식물 정보와 오늘의 관찰 내용을 함께 저장합니다.
+              </p>
+              {obsSavedAt && (
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: '#166534',
+                    background: '#DCFCE7',
+                    padding: '6px 10px',
+                    borderRadius: 6,
+                    textAlign: 'center',
+                  }}
+                >
+                  ✅ 오늘의 관찰이 저장되었습니다 — {obsSavedAt}
+                </div>
+              )}
+            </section>
 
             {/* ========== 메인 저장 버튼 ========== */}
             <p
