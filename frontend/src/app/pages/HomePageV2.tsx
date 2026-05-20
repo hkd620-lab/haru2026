@@ -321,6 +321,22 @@ const AGENTS: Agent[] = [
     ),
   },
   {
+    label: '📦 HARU자산탐정',
+    sub: 'Google Drive에서 선택한 문서·이미지·PDF만 HARU 폴더에 정리합니다.',
+    tag: 'ASSET · 정리',
+    variant: 'lilac',
+    stroke: '#5A4E7A',
+    path: '/asset-explorer',
+    beta: true,
+    icon: (
+      <>
+        <path d="M4 7h6l2 2h8v10a2 2 0 01-2 2H6a2 2 0 01-2-2z" />
+        <path d="M8 13h8" />
+        <path d="M8 17h5" />
+      </>
+    ),
+  },
+  {
     label: '온비드 부동산',
     sub: '온비드 공매 부동산을 한눈에 — 입찰 일정·최저가·소재지까지 검색.',
     tag: 'BID · 부동산',

@@ -45,6 +45,7 @@ const bucket = () => getStorage().bucket();
 const KAKAO_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/kakaoCallback';
 const NAVER_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/naverCallback';
 const GOOGLE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/googleCallback';
+const HARU_DRIVE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/haruDriveCallback';
 
 const db = admin.firestore();
 
@@ -1167,6 +1168,354 @@ export const googleCallback = onRequest(
         `${FRONTEND_URL}/login?error=${encodeURIComponent(error.message)}`
       );
     }
+  }
+);
+
+type DriveTokenData = {
+  accessToken?: string;
+  refreshToken?: string;
+  expiresAt?: admin.firestore.Timestamp;
+};
+
+type DriveFile = {
+  id: string;
+  name: string;
+  mimeType: string;
+  modifiedTime?: string;
+  webViewLink?: string;
+  iconLink?: string;
+  thumbnailLink?: string;
+};
+
+const DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder';
+const HARU_DRIVE_SCOPES = [
+  'https://www.googleapis.com/auth/drive.metadata.readonly',
+  'https://www.googleapis.com/auth/drive.file',
+];
+const DRIVE_FILE_FIELDS = 'id,name,mimeType,modifiedTime,webViewLink,iconLink,thumbnailLink';
+const DRIVE_FILE_FIELDS_PARAM = `files(${DRIVE_FILE_FIELDS})`;
+
+function driveTokenRef(uid: string) {
+  return db.doc(`users/${uid}/integrations/googleDrive`);
+}
+
+function isHaruAssetCandidate(file: DriveFile): boolean {
+  const mimeType = file.mimeType || '';
+  return (
+    mimeType === 'application/pdf' ||
+    mimeType.startsWith('image/') ||
+    mimeType === 'application/vnd.google-apps.document' ||
+    mimeType === 'application/vnd.google-apps.spreadsheet' ||
+    mimeType === 'application/vnd.google-apps.presentation'
+  );
+}
+
+function getDriveFileKind(mimeType: string): string {
+  if (mimeType === 'application/pdf') return 'PDF';
+  if (mimeType.startsWith('image/')) return '이미지';
+  if (mimeType === 'application/vnd.google-apps.document') return '문서';
+  if (mimeType === 'application/vnd.google-apps.spreadsheet') return '스프레드시트';
+  if (mimeType === 'application/vnd.google-apps.presentation') return '프레젠테이션';
+  return '파일';
+}
+
+async function refreshDriveAccessToken(uid: string, tokenData: DriveTokenData): Promise<string> {
+  const expiresAt = tokenData.expiresAt?.toMillis() || 0;
+  if (tokenData.accessToken && expiresAt > Date.now() + 60 * 1000) {
+    return tokenData.accessToken;
+  }
+
+  if (!tokenData.refreshToken) {
+    throw new HttpsError('failed-precondition', 'Google Drive 연결이 만료되었습니다. 다시 연결해 주세요.');
+  }
+
+  const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
+    client_id: GOOGLE_CLIENT_ID_SECRET.value(),
+    client_secret: GOOGLE_CLIENT_SECRET_SECRET.value(),
+    refresh_token: tokenData.refreshToken,
+    grant_type: 'refresh_token',
+  });
+
+  const accessToken = tokenResponse.data.access_token;
+  const expiresIn = Number(tokenResponse.data.expires_in || 3600);
+  await driveTokenRef(uid).set(
+    {
+      accessToken,
+      expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + expiresIn * 1000),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+  return accessToken;
+}
+
+async function getDriveAccessToken(uid: string): Promise<string> {
+  const snap = await driveTokenRef(uid).get();
+  if (!snap.exists) {
+    throw new HttpsError('failed-precondition', 'Google Drive 연결이 필요합니다.');
+  }
+  return refreshDriveAccessToken(uid, snap.data() as DriveTokenData);
+}
+
+async function ensureHaruDriveFolder(accessToken: string): Promise<DriveFile> {
+  const folderQuery = [
+    "name = 'HARU'",
+    `mimeType = '${DRIVE_FOLDER_MIME}'`,
+    'trashed = false',
+  ].join(' and ');
+
+  const existing = await axios.get('https://www.googleapis.com/drive/v3/files', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    params: {
+      q: folderQuery,
+      spaces: 'drive',
+      pageSize: 1,
+      fields: DRIVE_FILE_FIELDS_PARAM,
+    },
+  });
+
+  const first = existing.data.files?.[0];
+  if (first) return first;
+
+  const created = await axios.post(
+    'https://www.googleapis.com/drive/v3/files',
+    { name: 'HARU', mimeType: DRIVE_FOLDER_MIME },
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      params: { fields: DRIVE_FILE_FIELDS },
+    }
+  );
+  return created.data;
+}
+
+// ===== 📦 HARU자산탐정: Google Drive 연결 시작 =====
+export const startHaruDriveConnect = onCall(
+  {
+    region: 'asia-northeast3',
+    cors: [
+      'https://haru2026-8abb8.web.app',
+      'https://haru2026.com',
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+    ],
+    secrets: [GOOGLE_CLIENT_ID_SECRET, GOOGLE_CLIENT_SECRET_SECRET],
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const state = crypto.randomBytes(32).toString('hex');
+    await db.collection('oauth_states').doc(state).set({
+      provider: 'haru-drive',
+      uid: request.auth.uid,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 10 * 60 * 1000),
+    });
+
+    const params = new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID_SECRET.value(),
+      redirect_uri: HARU_DRIVE_REDIRECT_URI,
+      response_type: 'code',
+      scope: HARU_DRIVE_SCOPES.join(' '),
+      state,
+      access_type: 'offline',
+      prompt: 'consent',
+      include_granted_scopes: 'true',
+    });
+
+    return { authUrl: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` };
+  }
+);
+
+// ===== 📦 HARU자산탐정: Google Drive OAuth 콜백 =====
+export const haruDriveCallback = onRequest(
+  {
+    region: 'asia-northeast3',
+    secrets: [GOOGLE_CLIENT_ID_SECRET, GOOGLE_CLIENT_SECRET_SECRET],
+  },
+  async (req, res) => {
+    try {
+      const { code, state } = req.query;
+      if (!code || typeof code !== 'string') throw new Error('Invalid code');
+      if (!state || typeof state !== 'string') throw new Error('Invalid state');
+
+      const stateDoc = await db.collection('oauth_states').doc(state).get();
+      if (!stateDoc.exists) throw new Error('State not found');
+
+      const stateData = stateDoc.data();
+      if (stateData?.provider !== 'haru-drive') throw new Error('Invalid provider');
+      if (stateData?.expiresAt.toMillis() < Date.now()) throw new Error('State expired');
+
+      await stateDoc.ref.delete();
+
+      const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
+        code,
+        client_id: GOOGLE_CLIENT_ID_SECRET.value(),
+        client_secret: GOOGLE_CLIENT_SECRET_SECRET.value(),
+        redirect_uri: HARU_DRIVE_REDIRECT_URI,
+        grant_type: 'authorization_code',
+      });
+
+      const tokenData = tokenResponse.data;
+      await driveTokenRef(stateData.uid).set(
+        {
+          accessToken: tokenData.access_token,
+          refreshToken: tokenData.refresh_token || null,
+          scope: tokenData.scope || HARU_DRIVE_SCOPES.join(' '),
+          expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + Number(tokenData.expires_in || 3600) * 1000),
+          connectedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      res.redirect(`${FRONTEND_URL}/asset-explorer?drive=connected`);
+    } catch (error: any) {
+      console.error('❌ HARU Drive 콜백 실패:', error);
+      res.redirect(`${FRONTEND_URL}/asset-explorer?drive=error`);
+    }
+  }
+);
+
+// ===== 📦 HARU자산탐정: 최근 후보 탐색 + /HARU 폴더 보장 =====
+export const getHaruDriveCandidates = onCall(
+  {
+    region: 'asia-northeast3',
+    cors: [
+      'https://haru2026-8abb8.web.app',
+      'https://haru2026.com',
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+    ],
+    secrets: [GOOGLE_CLIENT_ID_SECRET, GOOGLE_CLIENT_SECRET_SECRET],
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const uid = request.auth.uid;
+    const accessToken = await getDriveAccessToken(uid);
+    const folder = await ensureHaruDriveFolder(accessToken);
+
+    const response = await axios.get('https://www.googleapis.com/drive/v3/files', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      params: {
+        q: 'trashed = false',
+        spaces: 'drive',
+        pageSize: 30,
+        orderBy: 'modifiedTime desc',
+        fields: DRIVE_FILE_FIELDS_PARAM,
+      },
+    });
+
+    const candidates = ((response.data.files || []) as DriveFile[])
+      .filter((file) => file.id !== folder.id && isHaruAssetCandidate(file))
+      .slice(0, 20)
+      .map((file) => ({
+        ...file,
+        kind: getDriveFileKind(file.mimeType),
+      }));
+
+    return {
+      haruFolderId: folder.id,
+      candidates,
+    };
+  }
+);
+
+// ===== 📦 HARU자산탐정: 선택 파일만 /HARU 폴더로 복사 =====
+export const copyHaruDriveAssets = onCall(
+  {
+    region: 'asia-northeast3',
+    cors: [
+      'https://haru2026-8abb8.web.app',
+      'https://haru2026.com',
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+    ],
+    secrets: [GOOGLE_CLIENT_ID_SECRET, GOOGLE_CLIENT_SECRET_SECRET],
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const fileIds = Array.isArray(request.data?.fileIds)
+      ? request.data.fileIds.filter((id: unknown) => typeof id === 'string' && id.trim())
+      : [];
+    if (fileIds.length === 0) {
+      throw new HttpsError('invalid-argument', '복사할 파일을 선택해 주세요.');
+    }
+    if (fileIds.length > 20) {
+      throw new HttpsError('invalid-argument', '한 번에 최대 20개까지 복사할 수 있습니다.');
+    }
+
+    const uid = request.auth.uid;
+    const accessToken = await getDriveAccessToken(uid);
+    const folder = await ensureHaruDriveFolder(accessToken);
+    const copiedAssets = [];
+
+    for (const fileId of fileIds) {
+      const source = await axios.get(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: { fields: DRIVE_FILE_FIELDS },
+      });
+
+      const sourceFile = source.data as DriveFile;
+      if (!isHaruAssetCandidate(sourceFile)) {
+        continue;
+      }
+
+      const copied = await axios.post(
+        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/copy`,
+        {
+          name: sourceFile.name,
+          parents: [folder.id],
+        },
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          params: { fields: DRIVE_FILE_FIELDS },
+        }
+      );
+
+      const copiedFile = copied.data as DriveFile;
+      const assetRef = db.collection('users').doc(uid).collection('assets').doc(copiedFile.id);
+      const now = admin.firestore.FieldValue.serverTimestamp();
+      const assetData = {
+        title: copiedFile.name || sourceFile.name || '이름 없는 파일',
+        mimeType: copiedFile.mimeType || sourceFile.mimeType,
+        source: 'google-drive',
+        driveFileId: copiedFile.id,
+        sourceDriveFileId: sourceFile.id,
+        driveUrl: copiedFile.webViewLink || sourceFile.webViewLink || '',
+        createdAt: now,
+        updatedAt: now,
+        tags: [],
+        haruFolder: true,
+        kind: getDriveFileKind(copiedFile.mimeType || sourceFile.mimeType),
+        thumbnailLink: copiedFile.thumbnailLink || sourceFile.thumbnailLink || '',
+        iconLink: copiedFile.iconLink || sourceFile.iconLink || '',
+      };
+
+      await assetRef.set(assetData, { merge: true });
+      copiedAssets.push({
+        id: assetRef.id,
+        title: assetData.title,
+        mimeType: assetData.mimeType,
+        driveFileId: assetData.driveFileId,
+        driveUrl: assetData.driveUrl,
+        kind: assetData.kind,
+        thumbnailLink: assetData.thumbnailLink,
+        iconLink: assetData.iconLink,
+      });
+    }
+
+    return {
+      copiedCount: copiedAssets.length,
+      assets: copiedAssets,
+    };
   }
 );
 

@@ -36,7 +36,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.extractTitle = exports.polishContent = void 0;
+exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.convertToBookMaterial = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = void 0;
+exports.detectPlantAdvanced = exports.analyzePlantPhoto = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -71,12 +72,15 @@ const COLLECTOR_SECRET_KEY = (0, params_1.defineSecret)('COLLECTOR_SECRET_KEY');
 const ONBID_API_KEY_SECRET = (0, params_1.defineSecret)('ONBID_API_KEY');
 const DRUG_API_KEY_SECRET = (0, params_1.defineSecret)('DRUG_API_KEY');
 const HIRA_API_KEY_SECRET = (0, params_1.defineSecret)('HIRA_API_KEY');
+const KINDWISE_PLANT_ID_API_KEY_SECRET = (0, params_1.defineSecret)('KINDWISE_PLANT_ID_API_KEY');
+const PLANTNET_API_KEY_SECRET = (0, params_1.defineSecret)('PLANTNET_API_KEY');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
 // Storage 버킷
 const bucket = () => (0, storage_1.getStorage)().bucket();
 const KAKAO_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/kakaoCallback';
 const NAVER_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/naverCallback';
 const GOOGLE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/googleCallback';
+const HARU_DRIVE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/haruDriveCallback';
 const db = admin.firestore();
 // ===== 🔑 이메일 기반 통합 UID 생성/조회 함수 (기존 UID 우선) =====
 async function getOrCreateUnifiedUid(email, provider) {
@@ -305,6 +309,82 @@ const KW_STRICT_STOP = new Set([
 ]);
 // 숫자+한국어 단위 패턴 (예: "3개", "4가지", "10명") — 키워드로 부적합
 const KW_NUMUNIT_RE = /^\d+\s*(개|가지|명|번|회|차|단계|시간|초|분|일|월|년|건|개월|주|살|세|점|위|등|차례|장|편)$/;
+// ===== 📝 HARU 메모 — 비공개 AI 보조 관찰 메모 (공개 댓글 아님) =====
+// 평가·훈계·과잉 공감 금지. 사실 기반 짧은 관찰 메모(3문장 이내).
+exports.generateHaruMemo = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+}, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    try {
+        const { formatType, fields, date } = (request.data || {});
+        if (!formatType || typeof formatType !== 'string') {
+            throw new https_2.HttpsError('invalid-argument', 'formatType이 필요합니다.');
+        }
+        if (!fields || typeof fields !== 'object') {
+            throw new https_2.HttpsError('invalid-argument', 'fields가 필요합니다.');
+        }
+        // 메타·이미지·sayu·점수 같은 비-본문 필드 제외 후 텍스트 합성
+        const META_SUFFIXES = ['_sayu', '_polished', '_polishedAt', '_mode', '_stats', '_images', '_rating', '_keywords', '_ai_title', '_tags', '_space', '_style'];
+        const lines = [];
+        Object.keys(fields).forEach((k) => {
+            if (META_SUFFIXES.some((s) => k.endsWith(s)))
+                return;
+            const v = fields[k];
+            if (typeof v === 'string' && v.trim()) {
+                lines.push(`${k}: ${v.trim()}`);
+            }
+        });
+        const bodyText = lines.join('\n').slice(0, 3500);
+        if (!bodyText) {
+            return { content: '오늘 기록에서 메모로 정리할 본문이 충분하지 않습니다.' };
+        }
+        const prompt = `당신은 사용자의 기록을 조용히 보조 관찰하는 비공개 메모 도우미입니다.
+이 메모는 SNS 댓글이 아니며 공개되지 않습니다. 평가·훈계·과잉 위로·칭찬 남발을 절대 금지합니다.
+
+[엄격 규칙]
+- 정확히 1~3문장. 절대 4문장 이상 작성 금지.
+- 한국어 존댓말, 차분하고 조용한 문체.
+- "대단하세요", "멋집니다", "힘내세요" 같은 SNS형 표현 금지.
+- 사용자를 평가하거나 훈계하지 마세요.
+- 과잉 공감 금지 ("정말 힘드셨겠어요" 류 금지).
+- 기록의 반복 표현·생활 흐름·감정 패턴·사실을 중심으로 짧게 관찰합니다.
+- 마크다운·이모지·번호·따옴표·인사말 금지. 본문 텍스트만 출력.
+
+[예시 톤]
+"최근 기록에서 피로 관련 표현이 반복되고 있습니다."
+"오늘 기록은 감정보다 사실 중심으로 정리되어 있습니다."
+"비슷한 흐름이 이어진다면 이후 기록과 함께 생활 패턴을 비교해볼 수 있습니다."
+
+기록 형식: ${formatType}
+기록 날짜: ${date || '날짜 미상'}
+기록 본문:
+${bodyText}`;
+        const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+        const modelId = 'gemini-3.1-flash-lite';
+        const model = genAI.getGenerativeModel({ model: modelId });
+        const result = await model.generateContent(prompt);
+        const raw = (result.response.text() || '').trim();
+        // 마크다운/이모지/따옴표 잡음 제거
+        const cleaned = raw
+            .replace(/^["'`*#\-•·]+|["'`*#\-•·]+$/g, '')
+            .replace(/\*\*|__/g, '')
+            .replace(/^\s*[-*]\s+/gm, '')
+            .trim();
+        // 3문장 cap (마침표·물음표·느낌표 기준)
+        const sentences = cleaned.match(/[^.!?。]+[.!?。]?/g) || [cleaned];
+        const trimmed = sentences.slice(0, 3).join('').trim() || cleaned.slice(0, 240);
+        return { content: trimmed.slice(0, 280) };
+    }
+    catch (error) {
+        if (error instanceof https_2.HttpsError)
+            throw error;
+        console.error('HARU 메모 생성 실패:', error);
+        throw new https_2.HttpsError('internal', 'HARU 메모 생성에 실패했습니다.');
+    }
+});
 exports.extractKeywords = (0, https_2.onCall)({
     region: 'asia-northeast3',
     secrets: [GEMINI_API_KEY_SECRET]
@@ -952,6 +1032,287 @@ exports.googleCallback = (0, https_1.onRequest)({
         res.redirect(`${FRONTEND_URL}/login?error=${encodeURIComponent(error.message)}`);
     }
 });
+const DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder';
+const HARU_DRIVE_SCOPES = [
+    'https://www.googleapis.com/auth/drive.metadata.readonly',
+    'https://www.googleapis.com/auth/drive.file',
+];
+const DRIVE_FILE_FIELDS = 'id,name,mimeType,modifiedTime,webViewLink,iconLink,thumbnailLink';
+const DRIVE_FILE_FIELDS_PARAM = `files(${DRIVE_FILE_FIELDS})`;
+function driveTokenRef(uid) {
+    return db.doc(`users/${uid}/integrations/googleDrive`);
+}
+function isHaruAssetCandidate(file) {
+    const mimeType = file.mimeType || '';
+    return (mimeType === 'application/pdf' ||
+        mimeType.startsWith('image/') ||
+        mimeType === 'application/vnd.google-apps.document' ||
+        mimeType === 'application/vnd.google-apps.spreadsheet' ||
+        mimeType === 'application/vnd.google-apps.presentation');
+}
+function getDriveFileKind(mimeType) {
+    if (mimeType === 'application/pdf')
+        return 'PDF';
+    if (mimeType.startsWith('image/'))
+        return '이미지';
+    if (mimeType === 'application/vnd.google-apps.document')
+        return '문서';
+    if (mimeType === 'application/vnd.google-apps.spreadsheet')
+        return '스프레드시트';
+    if (mimeType === 'application/vnd.google-apps.presentation')
+        return '프레젠테이션';
+    return '파일';
+}
+async function refreshDriveAccessToken(uid, tokenData) {
+    var _a;
+    const expiresAt = ((_a = tokenData.expiresAt) === null || _a === void 0 ? void 0 : _a.toMillis()) || 0;
+    if (tokenData.accessToken && expiresAt > Date.now() + 60 * 1000) {
+        return tokenData.accessToken;
+    }
+    if (!tokenData.refreshToken) {
+        throw new https_2.HttpsError('failed-precondition', 'Google Drive 연결이 만료되었습니다. 다시 연결해 주세요.');
+    }
+    const tokenResponse = await axios_1.default.post('https://oauth2.googleapis.com/token', {
+        client_id: GOOGLE_CLIENT_ID_SECRET.value(),
+        client_secret: GOOGLE_CLIENT_SECRET_SECRET.value(),
+        refresh_token: tokenData.refreshToken,
+        grant_type: 'refresh_token',
+    });
+    const accessToken = tokenResponse.data.access_token;
+    const expiresIn = Number(tokenResponse.data.expires_in || 3600);
+    await driveTokenRef(uid).set({
+        accessToken,
+        expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + expiresIn * 1000),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+    return accessToken;
+}
+async function getDriveAccessToken(uid) {
+    const snap = await driveTokenRef(uid).get();
+    if (!snap.exists) {
+        throw new https_2.HttpsError('failed-precondition', 'Google Drive 연결이 필요합니다.');
+    }
+    return refreshDriveAccessToken(uid, snap.data());
+}
+async function ensureHaruDriveFolder(accessToken) {
+    var _a;
+    const folderQuery = [
+        "name = 'HARU'",
+        `mimeType = '${DRIVE_FOLDER_MIME}'`,
+        'trashed = false',
+    ].join(' and ');
+    const existing = await axios_1.default.get('https://www.googleapis.com/drive/v3/files', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: {
+            q: folderQuery,
+            spaces: 'drive',
+            pageSize: 1,
+            fields: DRIVE_FILE_FIELDS_PARAM,
+        },
+    });
+    const first = (_a = existing.data.files) === null || _a === void 0 ? void 0 : _a[0];
+    if (first)
+        return first;
+    const created = await axios_1.default.post('https://www.googleapis.com/drive/v3/files', { name: 'HARU', mimeType: DRIVE_FOLDER_MIME }, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: { fields: DRIVE_FILE_FIELDS },
+    });
+    return created.data;
+}
+// ===== 📦 HARU자산탐정: Google Drive 연결 시작 =====
+exports.startHaruDriveConnect = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    cors: [
+        'https://haru2026-8abb8.web.app',
+        'https://haru2026.com',
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+    ],
+    secrets: [GOOGLE_CLIENT_ID_SECRET, GOOGLE_CLIENT_SECRET_SECRET],
+}, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const state = crypto.randomBytes(32).toString('hex');
+    await db.collection('oauth_states').doc(state).set({
+        provider: 'haru-drive',
+        uid: request.auth.uid,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 10 * 60 * 1000),
+    });
+    const params = new URLSearchParams({
+        client_id: GOOGLE_CLIENT_ID_SECRET.value(),
+        redirect_uri: HARU_DRIVE_REDIRECT_URI,
+        response_type: 'code',
+        scope: HARU_DRIVE_SCOPES.join(' '),
+        state,
+        access_type: 'offline',
+        prompt: 'consent',
+        include_granted_scopes: 'true',
+    });
+    return { authUrl: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` };
+});
+// ===== 📦 HARU자산탐정: Google Drive OAuth 콜백 =====
+exports.haruDriveCallback = (0, https_1.onRequest)({
+    region: 'asia-northeast3',
+    secrets: [GOOGLE_CLIENT_ID_SECRET, GOOGLE_CLIENT_SECRET_SECRET],
+}, async (req, res) => {
+    try {
+        const { code, state } = req.query;
+        if (!code || typeof code !== 'string')
+            throw new Error('Invalid code');
+        if (!state || typeof state !== 'string')
+            throw new Error('Invalid state');
+        const stateDoc = await db.collection('oauth_states').doc(state).get();
+        if (!stateDoc.exists)
+            throw new Error('State not found');
+        const stateData = stateDoc.data();
+        if ((stateData === null || stateData === void 0 ? void 0 : stateData.provider) !== 'haru-drive')
+            throw new Error('Invalid provider');
+        if ((stateData === null || stateData === void 0 ? void 0 : stateData.expiresAt.toMillis()) < Date.now())
+            throw new Error('State expired');
+        await stateDoc.ref.delete();
+        const tokenResponse = await axios_1.default.post('https://oauth2.googleapis.com/token', {
+            code,
+            client_id: GOOGLE_CLIENT_ID_SECRET.value(),
+            client_secret: GOOGLE_CLIENT_SECRET_SECRET.value(),
+            redirect_uri: HARU_DRIVE_REDIRECT_URI,
+            grant_type: 'authorization_code',
+        });
+        const tokenData = tokenResponse.data;
+        await driveTokenRef(stateData.uid).set({
+            accessToken: tokenData.access_token,
+            refreshToken: tokenData.refresh_token || null,
+            scope: tokenData.scope || HARU_DRIVE_SCOPES.join(' '),
+            expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + Number(tokenData.expires_in || 3600) * 1000),
+            connectedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        res.redirect(`${FRONTEND_URL}/asset-explorer?drive=connected`);
+    }
+    catch (error) {
+        console.error('❌ HARU Drive 콜백 실패:', error);
+        res.redirect(`${FRONTEND_URL}/asset-explorer?drive=error`);
+    }
+});
+// ===== 📦 HARU자산탐정: 최근 후보 탐색 + /HARU 폴더 보장 =====
+exports.getHaruDriveCandidates = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    cors: [
+        'https://haru2026-8abb8.web.app',
+        'https://haru2026.com',
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+    ],
+    secrets: [GOOGLE_CLIENT_ID_SECRET, GOOGLE_CLIENT_SECRET_SECRET],
+}, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    const accessToken = await getDriveAccessToken(uid);
+    const folder = await ensureHaruDriveFolder(accessToken);
+    const response = await axios_1.default.get('https://www.googleapis.com/drive/v3/files', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: {
+            q: 'trashed = false',
+            spaces: 'drive',
+            pageSize: 30,
+            orderBy: 'modifiedTime desc',
+            fields: DRIVE_FILE_FIELDS_PARAM,
+        },
+    });
+    const candidates = (response.data.files || [])
+        .filter((file) => file.id !== folder.id && isHaruAssetCandidate(file))
+        .slice(0, 20)
+        .map((file) => ({
+        ...file,
+        kind: getDriveFileKind(file.mimeType),
+    }));
+    return {
+        haruFolderId: folder.id,
+        candidates,
+    };
+});
+// ===== 📦 HARU자산탐정: 선택 파일만 /HARU 폴더로 복사 =====
+exports.copyHaruDriveAssets = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    cors: [
+        'https://haru2026-8abb8.web.app',
+        'https://haru2026.com',
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+    ],
+    secrets: [GOOGLE_CLIENT_ID_SECRET, GOOGLE_CLIENT_SECRET_SECRET],
+}, async (request) => {
+    var _a;
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const fileIds = Array.isArray((_a = request.data) === null || _a === void 0 ? void 0 : _a.fileIds)
+        ? request.data.fileIds.filter((id) => typeof id === 'string' && id.trim())
+        : [];
+    if (fileIds.length === 0) {
+        throw new https_2.HttpsError('invalid-argument', '복사할 파일을 선택해 주세요.');
+    }
+    if (fileIds.length > 20) {
+        throw new https_2.HttpsError('invalid-argument', '한 번에 최대 20개까지 복사할 수 있습니다.');
+    }
+    const uid = request.auth.uid;
+    const accessToken = await getDriveAccessToken(uid);
+    const folder = await ensureHaruDriveFolder(accessToken);
+    const copiedAssets = [];
+    for (const fileId of fileIds) {
+        const source = await axios_1.default.get(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            params: { fields: DRIVE_FILE_FIELDS },
+        });
+        const sourceFile = source.data;
+        if (!isHaruAssetCandidate(sourceFile)) {
+            continue;
+        }
+        const copied = await axios_1.default.post(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/copy`, {
+            name: sourceFile.name,
+            parents: [folder.id],
+        }, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            params: { fields: DRIVE_FILE_FIELDS },
+        });
+        const copiedFile = copied.data;
+        const assetRef = db.collection('users').doc(uid).collection('assets').doc(copiedFile.id);
+        const now = admin.firestore.FieldValue.serverTimestamp();
+        const assetData = {
+            title: copiedFile.name || sourceFile.name || '이름 없는 파일',
+            mimeType: copiedFile.mimeType || sourceFile.mimeType,
+            source: 'google-drive',
+            driveFileId: copiedFile.id,
+            sourceDriveFileId: sourceFile.id,
+            driveUrl: copiedFile.webViewLink || sourceFile.webViewLink || '',
+            createdAt: now,
+            updatedAt: now,
+            tags: [],
+            haruFolder: true,
+            kind: getDriveFileKind(copiedFile.mimeType || sourceFile.mimeType),
+            thumbnailLink: copiedFile.thumbnailLink || sourceFile.thumbnailLink || '',
+            iconLink: copiedFile.iconLink || sourceFile.iconLink || '',
+        };
+        await assetRef.set(assetData, { merge: true });
+        copiedAssets.push({
+            id: assetRef.id,
+            title: assetData.title,
+            mimeType: assetData.mimeType,
+            driveFileId: assetData.driveFileId,
+            driveUrl: assetData.driveUrl,
+            kind: assetData.kind,
+            thumbnailLink: assetData.thumbnailLink,
+            iconLink: assetData.iconLink,
+        });
+    }
+    return {
+        copiedCount: copiedAssets.length,
+        assets: copiedAssets,
+    };
+});
 // ===== 🔔 테스트 알림 발송 =====
 exports.sendTestNotification = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
     var _a;
@@ -1341,7 +1702,7 @@ exports.lawSearch = (0, https_2.onCall)({
     region: 'asia-northeast3',
     secrets: [LAW_API_KEY_SECRET, GEMINI_API_KEY_SECRET],
 }, async (request) => {
-    var _a, _b, _c, _d, _e;
+    var _a, _b, _c, _d, _f;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -1413,7 +1774,7 @@ exports.lawSearch = (0, https_2.onCall)({
         const serviceUrl = `https://www.law.go.kr/DRF/lawService.do?OC=${LAW_API_KEY}&target=law&MST=${mstId}&type=XML`;
         const serviceRes = await axios_1.default.get(serviceUrl, axiosConfig);
         const lawJson = parser.parse(serviceRes.data);
-        const jomuns = ((_e = (_d = lawJson === null || lawJson === void 0 ? void 0 : lawJson.법령) === null || _d === void 0 ? void 0 : _d.조문) === null || _e === void 0 ? void 0 : _e.조문단위) || [];
+        const jomuns = ((_f = (_d = lawJson === null || lawJson === void 0 ? void 0 : lawJson.법령) === null || _d === void 0 ? void 0 : _d.조문) === null || _f === void 0 ? void 0 : _f.조문단위) || [];
         const arrayJomuns = Array.isArray(jomuns) ? jomuns : [jomuns];
         // 전체 조문 정제
         const allJomuns = arrayJomuns
@@ -1704,7 +2065,7 @@ exports.generateTTS = (0, https_2.onCall)({
     secrets: [GEMINI_API_KEY_SECRET, GOOGLE_CLOUD_API_KEY_SECRET, OPENAI_API_KEY_SECRET],
     timeoutSeconds: 120,
 }, async (request) => {
-    var _a, _b, _c, _d, _e, _f;
+    var _a, _b, _c, _d, _f, _g;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -1776,7 +2137,7 @@ exports.generateTTS = (0, https_2.onCall)({
             catch (err) {
                 const status = (_c = err === null || err === void 0 ? void 0 : err.response) === null || _c === void 0 ? void 0 : _c.status;
                 if (status === 429 && attempt < MAX_ATTEMPTS - 1) {
-                    const retryAfterRaw = (_e = (_d = err === null || err === void 0 ? void 0 : err.response) === null || _d === void 0 ? void 0 : _d.headers) === null || _e === void 0 ? void 0 : _e['retry-after'];
+                    const retryAfterRaw = (_f = (_d = err === null || err === void 0 ? void 0 : err.response) === null || _d === void 0 ? void 0 : _d.headers) === null || _f === void 0 ? void 0 : _f['retry-after'];
                     const serverHintMs = retryAfterRaw ? Math.ceil(Number(retryAfterRaw) * 1000) : 0;
                     const baseDelay = BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length - 1)];
                     const jitter = Math.floor(Math.random() * 1000);
@@ -1815,7 +2176,7 @@ exports.generateTTS = (0, https_2.onCall)({
         // 안전한 필드만 남긴다.
         logger.error('TTS 생성 실패:', {
             message: error === null || error === void 0 ? void 0 : error.message,
-            status: (_f = error === null || error === void 0 ? void 0 : error.response) === null || _f === void 0 ? void 0 : _f.status,
+            status: (_g = error === null || error === void 0 ? void 0 : error.response) === null || _g === void 0 ? void 0 : _g.status,
             code: error === null || error === void 0 ? void 0 : error.code,
             cacheKey,
         });
@@ -1853,6 +2214,8 @@ var snsAnalyzer_1 = require("./snsAnalyzer");
 Object.defineProperty(exports, "analyzeFacebookZip", { enumerable: true, get: function () { return snsAnalyzer_1.analyzeFacebookZip; } });
 var snsToDiary_1 = require("./snsToDiary");
 Object.defineProperty(exports, "convertSnsToDiary", { enumerable: true, get: function () { return snsToDiary_1.convertSnsToDiary; } });
+var bookMaterial_1 = require("./bookMaterial");
+Object.defineProperty(exports, "convertToBookMaterial", { enumerable: true, get: function () { return bookMaterial_1.convertToBookMaterial; } });
 // ===== 단어 뜻 조회 =====
 exports.getWordMeaning = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] }, async (request) => {
     const { word } = request.data;
@@ -2061,7 +2424,7 @@ ${JSON.stringify(parsed, null, 2)}`;
 });
 // ===== 장 문법 사전생성 =====
 exports.preloadChapterGrammar = (0, https_2.onCall)({ region: 'asia-northeast3', timeoutSeconds: 540, secrets: [GEMINI_API_KEY_SECRET, OPENAI_API_KEY_SECRET] }, async (request) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+    var _a, _b, _c, _d, _f, _g, _h, _j, _k;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다');
     }
@@ -2128,7 +2491,7 @@ exports.preloadChapterGrammar = (0, https_2.onCall)({ region: 'asia-northeast3',
                 continue;
             }
             const geminiJson = await geminiRes.json();
-            let geminiText = ((_e = (_d = (_c = (_b = (_a = geminiJson === null || geminiJson === void 0 ? void 0 : geminiJson.candidates) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.content) === null || _c === void 0 ? void 0 : _c.parts) === null || _d === void 0 ? void 0 : _d[0]) === null || _e === void 0 ? void 0 : _e.text) || '';
+            let geminiText = ((_f = (_d = (_c = (_b = (_a = geminiJson === null || geminiJson === void 0 ? void 0 : geminiJson.candidates) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.content) === null || _c === void 0 ? void 0 : _c.parts) === null || _d === void 0 ? void 0 : _d[0]) === null || _f === void 0 ? void 0 : _f.text) || '';
             geminiText = geminiText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
             // 제어문자 제거 (JSON 파싱 오류 방지)
             geminiText = geminiText.replace(/[\x00-\x1F\x7F]/g, (c) => c === '\n' || c === '\r' || c === '\t' ? c : '');
@@ -2178,7 +2541,7 @@ exports.preloadChapterGrammar = (0, https_2.onCall)({ region: 'asia-northeast3',
                 });
                 if (gptRes.ok) {
                     const gptJson = await gptRes.json();
-                    let gptText = ((_h = (_g = (_f = gptJson === null || gptJson === void 0 ? void 0 : gptJson.choices) === null || _f === void 0 ? void 0 : _f[0]) === null || _g === void 0 ? void 0 : _g.message) === null || _h === void 0 ? void 0 : _h.content) || '';
+                    let gptText = ((_j = (_h = (_g = gptJson === null || gptJson === void 0 ? void 0 : gptJson.choices) === null || _g === void 0 ? void 0 : _g[0]) === null || _h === void 0 ? void 0 : _h.message) === null || _j === void 0 ? void 0 : _j.content) || '';
                     gptText = gptText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
                     const gptResult = JSON.parse(gptText);
                     gptChanges = gptResult.changes || [];
@@ -2220,7 +2583,7 @@ exports.preloadChapterGrammar = (0, https_2.onCall)({ region: 'asia-northeast3',
         const settingsDoc = await db
             .collection('users').doc(adminUid)
             .collection('settings').doc('settings').get();
-        const tokens = ((_j = settingsDoc.data()) === null || _j === void 0 ? void 0 : _j.fcmTokens) || [];
+        const tokens = ((_k = settingsDoc.data()) === null || _k === void 0 ? void 0 : _k.fcmTokens) || [];
         if (tokens.length > 0) {
             const { getMessaging } = await Promise.resolve().then(() => __importStar(require('firebase-admin/messaging')));
             await getMessaging().sendEachForMulticast({
@@ -2948,7 +3311,7 @@ exports.getOnbidRealEstateList = (0, https_2.onCall)({
     secrets: [ONBID_API_KEY_SECRET],
     timeoutSeconds: 30,
 }, async (request) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
+    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다');
     }
@@ -3020,7 +3383,7 @@ exports.getOnbidRealEstateList = (0, https_2.onCall)({
     catch (err) {
         logger.error('온비드 API 호출 실패:', {
             message: err === null || err === void 0 ? void 0 : err.message,
-            status: (_e = err === null || err === void 0 ? void 0 : err.response) === null || _e === void 0 ? void 0 : _e.status,
+            status: (_f = err === null || err === void 0 ? void 0 : err.response) === null || _f === void 0 ? void 0 : _f.status,
             code: err === null || err === void 0 ? void 0 : err.code,
         });
         throw new https_2.HttpsError('internal', '온비드 서버에 연결할 수 없습니다');
@@ -3029,11 +3392,11 @@ exports.getOnbidRealEstateList = (0, https_2.onCall)({
     // 응답 형태 두 가지 모두 지원:
     //   (A) { response: { header, body } }  — OpenAPI 가이드 예제
     //   (B) { header, body }                — 실제 Onbid v2 응답
-    const root = (_f = data === null || data === void 0 ? void 0 : data.response) !== null && _f !== void 0 ? _f : data;
+    const root = (_g = data === null || data === void 0 ? void 0 : data.response) !== null && _g !== void 0 ? _g : data;
     const header = root === null || root === void 0 ? void 0 : root.header;
     const body = root === null || root === void 0 ? void 0 : root.body;
-    const resultCode = (_g = header === null || header === void 0 ? void 0 : header.resultCode) !== null && _g !== void 0 ? _g : '';
-    const resultMsg = (_h = header === null || header === void 0 ? void 0 : header.resultMsg) !== null && _h !== void 0 ? _h : '';
+    const resultCode = (_h = header === null || header === void 0 ? void 0 : header.resultCode) !== null && _h !== void 0 ? _h : '';
+    const resultMsg = (_j = header === null || header === void 0 ? void 0 : header.resultMsg) !== null && _j !== void 0 ? _j : '';
     if (resultCode && resultCode !== '00' && resultCode !== '0') {
         logger.warn('온비드 API 비정상 응답:', { resultCode, resultMsg });
         if (resultCode === '03') {
@@ -3060,9 +3423,9 @@ exports.getOnbidRealEstateList = (0, https_2.onCall)({
     return {
         success: true,
         items,
-        totalCount: parseInt(String((_j = body === null || body === void 0 ? void 0 : body.totalCount) !== null && _j !== void 0 ? _j : '0'), 10) || 0,
-        pageNo: parseInt(String((_k = body === null || body === void 0 ? void 0 : body.pageNo) !== null && _k !== void 0 ? _k : pageNo), 10) || pageNo,
-        numOfRows: parseInt(String((_l = body === null || body === void 0 ? void 0 : body.numOfRows) !== null && _l !== void 0 ? _l : numOfRows), 10) || numOfRows,
+        totalCount: parseInt(String((_k = body === null || body === void 0 ? void 0 : body.totalCount) !== null && _k !== void 0 ? _k : '0'), 10) || 0,
+        pageNo: parseInt(String((_l = body === null || body === void 0 ? void 0 : body.pageNo) !== null && _l !== void 0 ? _l : pageNo), 10) || pageNo,
+        numOfRows: parseInt(String((_m = body === null || body === void 0 ? void 0 : body.numOfRows) !== null && _m !== void 0 ? _m : numOfRows), 10) || numOfRows,
         resultCode,
         resultMsg,
         disclaimer: '본 정보는 한국자산관리공사 온비드 공공데이터를 활용한 참고용이며, 실제 입찰은 온비드 공식사이트(onbid.co.kr)에서 확인하세요.',
@@ -3209,7 +3572,7 @@ exports.getDrugInfo = (0, https_2.onCall)({
     secrets: [DRUG_API_KEY_SECRET],
     timeoutSeconds: 30,
 }, async (request) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+    var _a, _b, _c, _d, _f, _g, _h, _j, _k;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다');
     }
@@ -3238,8 +3601,8 @@ exports.getDrugInfo = (0, https_2.onCall)({
     const root = (_d = data === null || data === void 0 ? void 0 : data.response) !== null && _d !== void 0 ? _d : data;
     const header = root === null || root === void 0 ? void 0 : root.header;
     const body = root === null || root === void 0 ? void 0 : root.body;
-    const resultCode = (_e = header === null || header === void 0 ? void 0 : header.resultCode) !== null && _e !== void 0 ? _e : '';
-    const resultMsg = (_f = header === null || header === void 0 ? void 0 : header.resultMsg) !== null && _f !== void 0 ? _f : '';
+    const resultCode = (_f = header === null || header === void 0 ? void 0 : header.resultCode) !== null && _f !== void 0 ? _f : '';
+    const resultMsg = (_g = header === null || header === void 0 ? void 0 : header.resultMsg) !== null && _g !== void 0 ? _g : '';
     if (resultCode && resultCode !== '00' && resultCode !== '0') {
         logger.warn('식약처 API 비정상 응답:', { resultCode, resultMsg });
         if (resultCode === '03') {
@@ -3266,9 +3629,9 @@ exports.getDrugInfo = (0, https_2.onCall)({
     return {
         success: true,
         items,
-        totalCount: parseInt(String((_g = body === null || body === void 0 ? void 0 : body.totalCount) !== null && _g !== void 0 ? _g : '0'), 10) || 0,
-        pageNo: parseInt(String((_h = body === null || body === void 0 ? void 0 : body.pageNo) !== null && _h !== void 0 ? _h : pageNo), 10) || pageNo,
-        numOfRows: parseInt(String((_j = body === null || body === void 0 ? void 0 : body.numOfRows) !== null && _j !== void 0 ? _j : numOfRows), 10) || numOfRows,
+        totalCount: parseInt(String((_h = body === null || body === void 0 ? void 0 : body.totalCount) !== null && _h !== void 0 ? _h : '0'), 10) || 0,
+        pageNo: parseInt(String((_j = body === null || body === void 0 ? void 0 : body.pageNo) !== null && _j !== void 0 ? _j : pageNo), 10) || pageNo,
+        numOfRows: parseInt(String((_k = body === null || body === void 0 ? void 0 : body.numOfRows) !== null && _k !== void 0 ? _k : numOfRows), 10) || numOfRows,
         resultCode,
         resultMsg,
         disclaimer: '본 정보는 식품의약품안전처 공공데이터를 활용한 참고용이며, 의료 행위·처방을 대체하지 않습니다.',
@@ -3317,7 +3680,7 @@ function hospitalEndpointLabel(url) {
     return url.replace(/^https?:\/\/apis\.data\.go\.kr\/B551182\//, '');
 }
 async function callHospitalApi(params) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r;
+    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s;
     const tryUrls = _hospitalApiUrlCache
         ? [_hospitalApiUrlCache]
         : HIRA_CANDIDATES.map((c) => c.url);
@@ -3374,15 +3737,15 @@ async function callHospitalApi(params) {
         }
         catch (err) {
             lastError = err;
-            lastStatus = ((_e = err === null || err === void 0 ? void 0 : err.response) === null || _e === void 0 ? void 0 : _e.status) || 0;
-            lastSnippet = typeof ((_f = err === null || err === void 0 ? void 0 : err.response) === null || _f === void 0 ? void 0 : _f.data) === 'string'
+            lastStatus = ((_f = err === null || err === void 0 ? void 0 : err.response) === null || _f === void 0 ? void 0 : _f.status) || 0;
+            lastSnippet = typeof ((_g = err === null || err === void 0 ? void 0 : err.response) === null || _g === void 0 ? void 0 : _g.data) === 'string'
                 ? err.response.data.slice(0, 500)
-                : JSON.stringify(((_g = err === null || err === void 0 ? void 0 : err.response) === null || _g === void 0 ? void 0 : _g.data) || {}).slice(0, 500);
-            const root = (_k = (_j = (_h = err === null || err === void 0 ? void 0 : err.response) === null || _h === void 0 ? void 0 : _h.data) === null || _j === void 0 ? void 0 : _j.response) !== null && _k !== void 0 ? _k : (_l = err === null || err === void 0 ? void 0 : err.response) === null || _l === void 0 ? void 0 : _l.data;
+                : JSON.stringify(((_h = err === null || err === void 0 ? void 0 : err.response) === null || _h === void 0 ? void 0 : _h.data) || {}).slice(0, 500);
+            const root = (_l = (_k = (_j = err === null || err === void 0 ? void 0 : err.response) === null || _j === void 0 ? void 0 : _j.data) === null || _k === void 0 ? void 0 : _k.response) !== null && _l !== void 0 ? _l : (_m = err === null || err === void 0 ? void 0 : err.response) === null || _m === void 0 ? void 0 : _m.data;
             const header = root === null || root === void 0 ? void 0 : root.header;
-            const resultCode = (_o = (_m = header === null || header === void 0 ? void 0 : header.resultCode) !== null && _m !== void 0 ? _m : err === null || err === void 0 ? void 0 : err.resultCode) !== null && _o !== void 0 ? _o : '';
-            const resultMsg = (_q = (_p = header === null || header === void 0 ? void 0 : header.resultMsg) !== null && _p !== void 0 ? _p : err === null || err === void 0 ? void 0 : err.resultMsg) !== null && _q !== void 0 ? _q : '';
-            const publicDataError = (_r = err === null || err === void 0 ? void 0 : err.publicDataError) !== null && _r !== void 0 ? _r : getPublicDataErrorKind(resultCode, resultMsg, lastSnippet);
+            const resultCode = (_p = (_o = header === null || header === void 0 ? void 0 : header.resultCode) !== null && _o !== void 0 ? _o : err === null || err === void 0 ? void 0 : err.resultCode) !== null && _p !== void 0 ? _p : '';
+            const resultMsg = (_r = (_q = header === null || header === void 0 ? void 0 : header.resultMsg) !== null && _q !== void 0 ? _q : err === null || err === void 0 ? void 0 : err.resultMsg) !== null && _r !== void 0 ? _r : '';
+            const publicDataError = (_s = err === null || err === void 0 ? void 0 : err.publicDataError) !== null && _s !== void 0 ? _s : getPublicDataErrorKind(resultCode, resultMsg, lastSnippet);
             attempts.push({
                 url: hospitalEndpointLabel(url),
                 status: lastStatus,
@@ -3444,7 +3807,7 @@ exports.getHospitalList = (0, https_2.onCall)({
     secrets: [HIRA_API_KEY_SECRET],
     timeoutSeconds: 30,
 }, async (request) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
+    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m, _o, _p;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다');
     }
@@ -3453,8 +3816,8 @@ exports.getHospitalList = (0, https_2.onCall)({
     const numOfRows = Math.min(50, Math.max(1, parseInt(String((_b = d.numOfRows) !== null && _b !== void 0 ? _b : '10'), 10) || 10));
     const sidoCdNm = String((_c = d.sidoCdNm) !== null && _c !== void 0 ? _c : '').trim();
     const sgguCdNm = String((_d = d.sgguCdNm) !== null && _d !== void 0 ? _d : '').trim();
-    const yadmNm = String((_e = d.yadmNm) !== null && _e !== void 0 ? _e : '').trim();
-    const dgsbjtCd = String((_f = d.dgsbjtCd) !== null && _f !== void 0 ? _f : '').trim();
+    const yadmNm = String((_f = d.yadmNm) !== null && _f !== void 0 ? _f : '').trim();
+    const dgsbjtCd = String((_g = d.dgsbjtCd) !== null && _g !== void 0 ? _g : '').trim();
     if (!sidoCdNm && !sgguCdNm && !yadmNm) {
         throw new https_2.HttpsError('invalid-argument', '시·도, 시·군·구, 병원명 중 하나는 필요합니다');
     }
@@ -3482,7 +3845,7 @@ exports.getHospitalList = (0, https_2.onCall)({
     catch (err) {
         logger.error('심평원 병원정보 조회 실패', {
             message: err === null || err === void 0 ? void 0 : err.message,
-            status: (_g = err === null || err === void 0 ? void 0 : err.response) === null || _g === void 0 ? void 0 : _g.status,
+            status: (_h = err === null || err === void 0 ? void 0 : err.response) === null || _h === void 0 ? void 0 : _h.status,
             code: err === null || err === void 0 ? void 0 : err.code,
             resultCode: err === null || err === void 0 ? void 0 : err.resultCode,
             resultMsg: err === null || err === void 0 ? void 0 : err.resultMsg,
@@ -3490,7 +3853,7 @@ exports.getHospitalList = (0, https_2.onCall)({
             attempts: err === null || err === void 0 ? void 0 : err.attempts,
         });
         // 공공데이터 표준 에러 코드별 사용자 친화적 메시지로 분기
-        const pde = (_h = err === null || err === void 0 ? void 0 : err.publicDataError) !== null && _h !== void 0 ? _h : null;
+        const pde = (_j = err === null || err === void 0 ? void 0 : err.publicDataError) !== null && _j !== void 0 ? _j : null;
         let userMessage = '심평원 서버에 일시적 문제가 있습니다. 잠시 후 다시 시도해 주세요.';
         let httpsCode = 'internal';
         if (pde) {
@@ -3514,11 +3877,11 @@ exports.getHospitalList = (0, https_2.onCall)({
         throw new https_2.HttpsError(httpsCode, userMessage);
     }
     const data = resp === null || resp === void 0 ? void 0 : resp.data;
-    const root = (_j = data === null || data === void 0 ? void 0 : data.response) !== null && _j !== void 0 ? _j : data;
+    const root = (_k = data === null || data === void 0 ? void 0 : data.response) !== null && _k !== void 0 ? _k : data;
     const header = root === null || root === void 0 ? void 0 : root.header;
     const body = root === null || root === void 0 ? void 0 : root.body;
-    const resultCode = (_k = header === null || header === void 0 ? void 0 : header.resultCode) !== null && _k !== void 0 ? _k : '';
-    const resultMsg = (_l = header === null || header === void 0 ? void 0 : header.resultMsg) !== null && _l !== void 0 ? _l : '';
+    const resultCode = (_l = header === null || header === void 0 ? void 0 : header.resultCode) !== null && _l !== void 0 ? _l : '';
+    const resultMsg = (_m = header === null || header === void 0 ? void 0 : header.resultMsg) !== null && _m !== void 0 ? _m : '';
     if (resultCode && resultCode !== '00' && resultCode !== '0') {
         logger.warn('심평원 API 비정상 응답:', { resultCode, resultMsg });
         if (resultCode === '03') {
@@ -3542,7 +3905,7 @@ exports.getHospitalList = (0, https_2.onCall)({
     else if (rawItems === null || rawItems === void 0 ? void 0 : rawItems.item) {
         items = Array.isArray(rawItems.item) ? rawItems.item : [rawItems.item];
     }
-    const apiTotalCount = parseInt(String((_m = body === null || body === void 0 ? void 0 : body.totalCount) !== null && _m !== void 0 ? _m : '0'), 10) || 0;
+    const apiTotalCount = parseInt(String((_o = body === null || body === void 0 ? void 0 : body.totalCount) !== null && _o !== void 0 ? _o : '0'), 10) || 0;
     // 시군구 필터링 (sgguCd 매핑 불가 → 응답의 sgguCdNm 필드로 부분 매치)
     let filteredItems = items;
     let filteredTotal = apiTotalCount;
@@ -3560,7 +3923,7 @@ exports.getHospitalList = (0, https_2.onCall)({
         success: true,
         items: finalItems,
         totalCount: filteredTotal,
-        pageNo: parseInt(String((_o = body === null || body === void 0 ? void 0 : body.pageNo) !== null && _o !== void 0 ? _o : pageNo), 10) || pageNo,
+        pageNo: parseInt(String((_p = body === null || body === void 0 ? void 0 : body.pageNo) !== null && _p !== void 0 ? _p : pageNo), 10) || pageNo,
         numOfRows,
         resultCode,
         resultMsg,
@@ -3581,7 +3944,7 @@ exports.analyzeDrugPhoto = (0, https_2.onCall)({
     timeoutSeconds: 60,
     memory: '512MiB',
 }, async (request) => {
-    var _a, _b, _c, _d, _e;
+    var _a, _b, _c, _d, _f;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다');
     }
@@ -3684,7 +4047,7 @@ exports.analyzeDrugPhoto = (0, https_2.onCall)({
     }
     catch (err) {
         // 🔒 에러 로그에도 사진·prompt 데이터 노출 금지
-        logger.error('Gemini Vision 분석 실패', { message: (_e = err === null || err === void 0 ? void 0 : err.message) === null || _e === void 0 ? void 0 : _e.slice(0, 200) });
+        logger.error('Gemini Vision 분석 실패', { message: (_f = err === null || err === void 0 ? void 0 : err.message) === null || _f === void 0 ? void 0 : _f.slice(0, 200) });
         throw new https_2.HttpsError('internal', 'AI 분석 중 오류가 발생했습니다. 사진을 다시 찍어 주세요');
     }
     // 사진 base64 즉시 메모리 해제 (분석 끝났으니 보관 안 함)
@@ -3990,13 +4353,132 @@ exports.extractKNewsMetadata = (0, https_2.onCall)({
         throw new https_2.HttpsError('internal', `메타데이터 추출 실패: ${(e === null || e === void 0 ? void 0 : e.message) || '알 수 없는 오류'}`);
     }
 });
-// ===== 🌱 하루식물탐정 — 식물 사진 상태 분석 =====
+async function callKindwiseIdentification(base64, _mimeType, apiKey) {
+    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q;
+    // Plant.id v3는 raw base64를 권장 (data URI prefix 없이)
+    const detailsParam = encodeURIComponent('common_names,taxonomy,url');
+    const endpoint = `https://api.plant.id/v3/identification?details=${detailsParam}&language=ko`;
+    logger.info('Kindwise 요청 시작', {
+        endpoint,
+        base64Length: base64.length,
+        base64FirstChars: base64.slice(0, 20),
+        apiKeyLength: (apiKey === null || apiKey === void 0 ? void 0 : apiKey.length) || 0,
+        apiKeyMasked: apiKey ? `${apiKey.slice(0, 4)}…${apiKey.slice(-4)}` : 'EMPTY',
+    });
+    const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Api-Key': apiKey,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            images: [base64],
+            // Plant.id v3는 similar_images=false 를 modifier로 거부 → 필드 자체를 생략 (default 동작)
+        }),
+    });
+    if (!response.ok) {
+        const errText = await response.text().catch(() => '');
+        logger.error('Kindwise 응답 오류', {
+            status: response.status,
+            statusText: response.statusText,
+            bodyPreview: errText.slice(0, 500),
+            contentType: response.headers.get('content-type') || '',
+        });
+        throw new Error(`Kindwise ${response.status} ${response.statusText}: ${errText.slice(0, 200)}`);
+    }
+    const json = await response.json();
+    logger.info('Kindwise 응답 OK', {
+        status: response.status,
+        keys: Object.keys(json || {}),
+        resultKeys: Object.keys((json === null || json === void 0 ? void 0 : json.result) || {}),
+        suggestionsCount: ((_c = (_b = (_a = json === null || json === void 0 ? void 0 : json.result) === null || _a === void 0 ? void 0 : _a.classification) === null || _b === void 0 ? void 0 : _b.suggestions) === null || _c === void 0 ? void 0 : _c.length) || 0,
+        isPlantProb: (_f = (_d = json === null || json === void 0 ? void 0 : json.result) === null || _d === void 0 ? void 0 : _d.is_plant) === null || _f === void 0 ? void 0 : _f.probability,
+    });
+    const suggestions = ((_h = (_g = json === null || json === void 0 ? void 0 : json.result) === null || _g === void 0 ? void 0 : _g.classification) === null || _h === void 0 ? void 0 : _h.suggestions) || [];
+    const top = suggestions[0] || {};
+    const isPlant = Number((_l = (_k = (_j = json === null || json === void 0 ? void 0 : json.result) === null || _j === void 0 ? void 0 : _j.is_plant) === null || _k === void 0 ? void 0 : _k.probability) !== null && _l !== void 0 ? _l : 0);
+    const topCommon = (_o = (_m = top.details) === null || _m === void 0 ? void 0 : _m.common_names) === null || _o === void 0 ? void 0 : _o[0];
+    const topName = String(topCommon || top.name || '식물 이름 불확실').slice(0, 80);
+    const latinName = String(top.name || '').slice(0, 120);
+    const probability = Number(top.probability || 0);
+    const taxonomy = ((_p = top.details) === null || _p === void 0 ? void 0 : _p.taxonomy)
+        ? { family: top.details.taxonomy.family, genus: top.details.taxonomy.genus }
+        : undefined;
+    const alternativeCandidates = suggestions.slice(1, 4).map((s) => {
+        var _a, _b;
+        return ({
+            name: String(((_b = (_a = s.details) === null || _a === void 0 ? void 0 : _a.common_names) === null || _b === void 0 ? void 0 : _b[0]) || s.name || '').slice(0, 80),
+            latinName: String(s.name || '').slice(0, 120),
+            probability: Number(s.probability || 0),
+        });
+    }).filter((c) => c.name);
+    return {
+        topPlantName: topName,
+        latinName,
+        identificationProbability: probability,
+        isPlantProbability: isPlant,
+        alternativeCandidates,
+        taxonomy,
+        kindwiseUrl: (_q = top.details) === null || _q === void 0 ? void 0 : _q.url,
+    };
+}
+async function callGeminiAdvice(base64, mimeType, apiKey, identifiedName) {
+    const nameHint = identifiedName
+        ? `\n[참고] 외부 식물 식별 모델은 이 사진을 "${identifiedName}"로 추정했습니다. 이름은 그대로 신뢰하되 상태·관찰·관리 힌트만 사진을 보고 한국어로 답하세요.\n`
+        : '';
+    const prompt = `당신은 텃밭과 화분 식물을 사진으로 살피는 식물 도우미입니다.
+사진에서 보이는 정보만 근거로 식물 상태와 관리 힌트를 한국어로 답하세요.
+${nameHint}
+[중요 원칙]
+- 사진만으로 확정 진단하지 말고 불확실하면 불확실하다고 말하세요.
+- 농약·살충제 제품명이나 위험한 처방을 단정하지 마세요.
+- 먹을 수 있는 식물/독성 여부는 확정하지 마세요.
+- 응급 수준의 병충해나 고사 위험이 의심되면 전문가 상담을 권하세요.
+- 응답은 JSON 하나만 출력하고 마크다운은 쓰지 마세요.
+
+[JSON 형식]
+{
+  "plantName": "${identifiedName ? identifiedName : '가능한 식물 이름 또는 식물 이름 불확실'}",
+  "condition": "한 줄 상태 요약",
+  "confidence": "high|medium|low",
+  "findings": ["사진에서 보이는 관찰 내용 1", "관찰 내용 2"],
+  "actions": ["오늘 할 수 있는 관리 힌트 1", "관리 힌트 2"],
+  "warningSigns": ["주의해서 다시 볼 신호 1"],
+  "note": "사진 분석은 참고용이라는 짧은 안내"
+}`;
+    const genAI = new generative_ai_1.GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+    const result = await model.generateContent([
+        prompt,
+        { inlineData: { data: base64, mimeType: mimeType || 'image/jpeg' } },
+    ]);
+    const text = result.response.text();
+    const cleaned = text.replace(/```json|```/g, '').trim();
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (!jsonMatch)
+        throw new Error('Gemini 응답에서 JSON을 찾을 수 없습니다.');
+    const parsed = JSON.parse(jsonMatch[0]);
+    const normalizeList = (value) => Array.isArray(value)
+        ? value.map((item) => String(item || '').trim()).filter(Boolean).slice(0, 5)
+        : [];
+    const conf = String(parsed === null || parsed === void 0 ? void 0 : parsed.confidence);
+    return {
+        plantName: String((parsed === null || parsed === void 0 ? void 0 : parsed.plantName) || identifiedName || '식물 이름 불확실').slice(0, 80),
+        condition: String((parsed === null || parsed === void 0 ? void 0 : parsed.condition) || '사진에서 확인 가능한 상태가 제한적입니다.').slice(0, 160),
+        confidence: (['high', 'medium', 'low'].includes(conf) ? conf : 'low'),
+        findings: normalizeList(parsed === null || parsed === void 0 ? void 0 : parsed.findings),
+        actions: normalizeList(parsed === null || parsed === void 0 ? void 0 : parsed.actions),
+        warningSigns: normalizeList(parsed === null || parsed === void 0 ? void 0 : parsed.warningSigns),
+        note: String((parsed === null || parsed === void 0 ? void 0 : parsed.note) || '사진 분석은 참고용입니다. 상태가 악화되면 전문가에게 상담하세요.').slice(0, 200),
+    };
+}
 exports.analyzePlantPhoto = (0, https_2.onCall)({
     region: 'asia-northeast3',
-    secrets: [GEMINI_API_KEY_SECRET],
+    secrets: [GEMINI_API_KEY_SECRET, KINDWISE_PLANT_ID_API_KEY_SECRET],
     memory: '512MiB',
     timeoutSeconds: 60,
 }, async (request) => {
+    var _a, _b;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -4009,70 +4491,480 @@ exports.analyzePlantPhoto = (0, https_2.onCall)({
     if (imageKb > 6 * 1024) {
         throw new https_2.HttpsError('invalid-argument', '사진이 너무 큽니다. 더 작은 사진으로 다시 시도해 주세요.');
     }
+    const finalMime = mimeType || 'image/jpeg';
     logger.info('analyzePlantPhoto 호출', {
         uid: request.auth.uid.slice(0, 8) + '…',
         imageKb,
-        mimeType: mimeType || 'image/jpeg',
+        mimeType: finalMime,
     });
-    const prompt = `당신은 텃밭과 화분 식물을 사진으로 살피는 식물 도우미입니다.
-사진에서 보이는 정보만 근거로 식물 이름과 상태, 관리 힌트를 한국어로 답하세요.
-
-[중요 원칙]
-- 사진만으로 확정 진단하지 말고 불확실하면 불확실하다고 말하세요.
-- 농약·살충제 제품명이나 위험한 처방을 단정하지 마세요.
-- 먹을 수 있는 식물/독성 여부는 확정하지 마세요.
-- 응급 수준의 병충해나 고사 위험이 의심되면 전문가 상담을 권하세요.
-- 응답은 JSON 하나만 출력하고 마크다운은 쓰지 마세요.
-
-[JSON 형식]
-{
-  "plantName": "가능한 식물 이름 또는 식물 이름 불확실",
-  "condition": "한 줄 상태 요약",
-  "confidence": "high|medium|low",
-  "findings": ["사진에서 보이는 관찰 내용 1", "관찰 내용 2"],
-  "actions": ["오늘 할 수 있는 관리 힌트 1", "관리 힌트 2"],
-  "warningSigns": ["주의해서 다시 볼 신호 1"],
-  "note": "사진 분석은 참고용이라는 짧은 안내"
-}`;
+    // 1단계: Kindwise 식별 (먼저 식물 이름을 확보해 Gemini 프롬프트에 주입)
+    let kindwise = null;
+    let kindwiseError;
     try {
-        const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+        kindwise = await callKindwiseIdentification(cleanBase64, finalMime, KINDWISE_PLANT_ID_API_KEY_SECRET.value());
+    }
+    catch (err) {
+        kindwiseError = (err === null || err === void 0 ? void 0 : err.message) || 'Kindwise 호출 실패';
+        // 메시지를 첫 인자에 결합 — Cloud Logging에서 본문 잘림 방지
+        logger.warn(`Kindwise 식별 실패 — Gemini 단독 분석으로 진행: ${kindwiseError}`);
+    }
+    // 2단계: Gemini 해설 (Kindwise 결과를 힌트로 사용)
+    let advice;
+    try {
+        advice = await callGeminiAdvice(cleanBase64, finalMime, GEMINI_API_KEY_SECRET.value(), kindwise === null || kindwise === void 0 ? void 0 : kindwise.topPlantName);
+    }
+    catch (err) {
+        if (err instanceof https_2.HttpsError)
+            throw err;
+        logger.error('Gemini 해설 실패', { message: err === null || err === void 0 ? void 0 : err.message, kindwiseError });
+        // Gemini도 실패 — Kindwise만이라도 있으면 최소 응답, 아니면 에러
+        if (!kindwise) {
+            throw new https_2.HttpsError('internal', '식물 사진 분석에 실패했습니다. 사진을 다시 찍어 주세요.');
+        }
+        advice = {
+            plantName: kindwise.topPlantName,
+            condition: '해설을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.',
+            confidence: 'low',
+            findings: [],
+            actions: [],
+            warningSigns: [],
+            note: '사진 분석은 참고용입니다. 상태가 악화되면 전문가에게 상담하세요.',
+        };
+    }
+    // 응답 합치기
+    return {
+        // 표시용 이름: Kindwise top 우선 → Gemini fallback
+        plantName: (kindwise === null || kindwise === void 0 ? void 0 : kindwise.topPlantName) || advice.plantName,
+        latinName: (kindwise === null || kindwise === void 0 ? void 0 : kindwise.latinName) || '',
+        identificationConfidence: (_a = kindwise === null || kindwise === void 0 ? void 0 : kindwise.identificationProbability) !== null && _a !== void 0 ? _a : null, // 0~1
+        isPlantProbability: (_b = kindwise === null || kindwise === void 0 ? void 0 : kindwise.isPlantProbability) !== null && _b !== void 0 ? _b : null,
+        alternativeCandidates: (kindwise === null || kindwise === void 0 ? void 0 : kindwise.alternativeCandidates) || [],
+        taxonomy: kindwise === null || kindwise === void 0 ? void 0 : kindwise.taxonomy,
+        kindwiseUrl: kindwise === null || kindwise === void 0 ? void 0 : kindwise.kindwiseUrl,
+        // 해설 (Gemini)
+        condition: advice.condition,
+        confidence: advice.confidence,
+        findings: advice.findings,
+        actions: advice.actions,
+        warningSigns: advice.warningSigns,
+        note: advice.note,
+        // 메타 (디버깅·UI에서 비표시 가능)
+        identifiedBy: kindwise ? 'kindwise' : 'gemini',
+        kindwiseError: kindwiseError || null,
+    };
+});
+async function callPlantNetIdentification(images, apiKey) {
+    var _a;
+    if (!apiKey)
+        throw new Error('PLANTNET_API_KEY 없음');
+    if (!images.length)
+        throw new Error('PlantNet 호출에 이미지 없음');
+    // 프로젝트: k-world-flora (전세계 식물 — 한국 산야초 포함)
+    const project = 'k-world-flora';
+    const endpoint = `https://my-api.plantnet.org/v2/identify/${project}?api-key=${encodeURIComponent(apiKey)}&lang=en&include-related-images=false&no-reject=false`;
+    // PlantNet은 JPEG/PNG/GIF만 허용 — webp가 섞이면 INVALID_ARGUMENT.
+    // sharp로 모든 이미지를 안전한 JPEG로 정규화 후 multipart 구성.
+    const form = new FormData();
+    for (let i = 0; i < images.length; i++) {
+        const img = images[i];
+        let bytes;
+        try {
+            // 입력이 이미 JPEG든 webp/png든 일괄 JPEG로 재인코딩 — 가장 호환성 높은 형식
+            bytes = await sharp(Buffer.from(img.base64, 'base64'))
+                .rotate() // EXIF orientation 적용
+                .jpeg({ quality: 88, mozjpeg: false })
+                .toBuffer();
+        }
+        catch (e) {
+            logger.warn(`PlantNet 이미지 ${i + 1} sharp 변환 실패 — 원본 사용: ${e === null || e === void 0 ? void 0 : e.message}`);
+            bytes = Buffer.from(img.base64, 'base64');
+        }
+        // Node 20 의 global File 우선 사용 (undici가 multipart에서 가장 정확히 다룸).
+        // 일부 환경에서 File이 없을 수 있어 Blob fallback 제공.
+        // Buffer/Uint8Array → BlobPart 캐스팅은 TS strict(SharedArrayBuffer 분기) 회피용.
+        const blobPart = bytes;
+        let part;
+        if (typeof globalThis.File === 'function') {
+            part = new globalThis.File([blobPart], `image_${i + 1}.jpg`, { type: 'image/jpeg' });
+            form.append('images', part);
+        }
+        else {
+            part = new Blob([blobPart], { type: 'image/jpeg' });
+            form.append('images', part, `image_${i + 1}.jpg`);
+        }
+        // organs=auto — PlantNet이 잎/꽃/줄기/열매 자동 추정. 이미지 개수와 1:1 매핑 유지.
+        form.append('organs', 'auto');
+    }
+    logger.info('PlantNet 요청 시작', {
+        project,
+        imageCount: images.length,
+        apiKeyMasked: apiKey ? `${apiKey.slice(0, 4)}…${apiKey.slice(-4)}` : 'EMPTY',
+        hasFileGlobal: typeof globalThis.File === 'function',
+    });
+    // body 에 FormData 를 그대로 전달 — Content-Type/boundary 는 fetch(undici)가 자동 생성.
+    // 수동 Content-Type 헤더 지정 금지 (boundary 깨짐 원인).
+    const response = await fetch(endpoint, {
+        method: 'POST',
+        body: form,
+        headers: { Accept: 'application/json' },
+    });
+    if (!response.ok) {
+        const errText = await response.text().catch(() => '');
+        // 실패 원인 분류 — 코드 문제 vs 키/플랜/quota 문제 구분용. API key 값은 로그에 출력 금지.
+        let failureCategory;
+        if (response.status === 401)
+            failureCategory = 'auth_invalid_key';
+        else if (response.status === 403)
+            failureCategory = 'auth_forbidden_or_plan';
+        else if (response.status === 404)
+            failureCategory = 'not_found';
+        else if (response.status === 429)
+            failureCategory = 'quota_exceeded';
+        else
+            failureCategory = 'unknown';
+        logger.error('PlantNet 응답 오류', {
+            status: response.status,
+            statusText: response.statusText,
+            failureCategory,
+            bodyPreview: errText.slice(0, 800),
+        });
+        throw new Error(`PlantNet ${response.status} ${response.statusText} [${failureCategory}]: ${errText.slice(0, 200)}`);
+    }
+    const json = await response.json();
+    const results = Array.isArray(json === null || json === void 0 ? void 0 : json.results) ? json.results : [];
+    logger.info('PlantNet 응답 OK', {
+        resultCount: results.length,
+        topScore: (_a = results[0]) === null || _a === void 0 ? void 0 : _a.score,
+    });
+    const toCandidate = (r) => {
+        var _a, _b, _c, _d;
+        const species = (r === null || r === void 0 ? void 0 : r.species) || {};
+        const commonArr = Array.isArray(species.commonNames) ? species.commonNames : [];
+        const common = commonArr.length > 0 ? String(commonArr[0]) : '';
+        const sci = String(species.scientificNameWithoutAuthor || species.scientificName || '');
+        return {
+            name: (common || sci || '').slice(0, 80),
+            scientificName: sci.slice(0, 120),
+            score: Number((r === null || r === void 0 ? void 0 : r.score) || 0),
+            family: ((_a = species === null || species === void 0 ? void 0 : species.family) === null || _a === void 0 ? void 0 : _a.scientificNameWithoutAuthor) || ((_b = species === null || species === void 0 ? void 0 : species.family) === null || _b === void 0 ? void 0 : _b.scientificName) || undefined,
+            genus: ((_c = species === null || species === void 0 ? void 0 : species.genus) === null || _c === void 0 ? void 0 : _c.scientificNameWithoutAuthor) || ((_d = species === null || species === void 0 ? void 0 : species.genus) === null || _d === void 0 ? void 0 : _d.scientificName) || undefined,
+        };
+    };
+    const sorted = [...results].sort((a, b) => Number((b === null || b === void 0 ? void 0 : b.score) || 0) - Number((a === null || a === void 0 ? void 0 : a.score) || 0));
+    const top = sorted.length > 0 ? toCandidate(sorted[0]) : null;
+    const alternatives = sorted.slice(1, 4).map(toCandidate).filter((c) => c.name);
+    return { top, alternatives };
+}
+// 🌿 학명 → plant_dictionary 캐시 키 정규화 (binomial nomenclature 기준 — author/cultivar 제외)
+function normalizeScientificKey(scientific) {
+    const s = String(scientific || '').trim();
+    if (!s)
+        return '';
+    const parts = s.split(/\s+/).filter(Boolean);
+    const binomial = parts.slice(0, 2).join(' ');
+    return binomial
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 100);
+}
+// 🌿 PlantNet 결과 → 한국어명 검정 (plant_dictionary 캐시 우선, miss 시 Gemini 호출)
+// 검정 실패 시 koName=null 반환 — 호출 측에서 영어명 fallback 처리 책임.
+async function resolveKoreanPlantName(scientificName, englishName, geminiApiKey) {
+    var _a;
+    const scientificKey = normalizeScientificKey(scientificName);
+    if (!scientificKey)
+        return { koName: null, scientificKey: '', cached: false };
+    const ref = db.collection('plant_dictionary').doc(scientificKey);
+    try {
+        const snap = await ref.get();
+        if (snap.exists) {
+            const data = snap.data();
+            const koNames = Array.isArray(data === null || data === void 0 ? void 0 : data.koNames) ? data.koNames : [];
+            const englishNames = Array.isArray(data === null || data === void 0 ? void 0 : data.englishNames) ? data.englishNames : [];
+            if (englishName && !englishNames.includes(englishName)) {
+                ref.update({
+                    englishNames: admin.firestore.FieldValue.arrayUnion(englishName),
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                }).catch(() => { });
+            }
+            return { koName: koNames[0] || null, scientificKey, cached: true };
+        }
+    }
+    catch (e) {
+        logger.warn('plant_dictionary 캐시 조회 실패: ' + ((e === null || e === void 0 ? void 0 : e.message) || ''));
+    }
+    try {
+        const prompt = `다음 식물의 한국어 이름을 알려주세요.
+
+학명: ${scientificName}
+영문명: ${englishName || '(없음)'}
+
+Return ONLY valid JSON.
+No markdown.
+No explanation.
+
+{
+  "koName": "...",
+  "confidence": 0,
+  "isValid": true,
+  "note": "..."
+}
+
+규칙:
+- koName: 한국에서 통용되는 식물 이름 (없으면 빈 문자열)
+- confidence: 0~100 신뢰도 (정확하면 90 이상, 추정이면 60~80, 모호하면 60 미만)
+- isValid: 위 학명·영문명 매핑이 정확하면 true, 모호하거나 후보가 여러 종이면 false
+- note: 짧은 한국어 설명 (없으면 빈 문자열)
+- JSON 하나만 출력, 마크다운/코드펜스 금지`;
+        const genAI = new generative_ai_1.GoogleGenerativeAI(geminiApiKey);
         const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
-        const result = await model.generateContent([
-            prompt,
-            {
-                inlineData: {
-                    data: cleanBase64,
-                    mimeType: mimeType || 'image/jpeg',
-                },
-            },
-        ]);
+        const result = await model.generateContent(prompt);
         const text = result.response.text();
         const cleaned = text.replace(/```json|```/g, '').trim();
         const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
-            logger.error('analyzePlantPhoto 응답 JSON 미발견', { text: text.slice(0, 500) });
-            throw new https_2.HttpsError('internal', 'AI 응답에서 JSON을 찾을 수 없습니다.');
+            logger.warn('한국어 검정 JSON 파싱 실패', { preview: cleaned.slice(0, 200) });
+            return { koName: null, scientificKey, cached: false };
         }
         const parsed = JSON.parse(jsonMatch[0]);
-        const normalizeList = (value) => Array.isArray(value)
-            ? value.map((item) => String(item || '').trim()).filter(Boolean).slice(0, 5)
-            : [];
-        return {
-            plantName: String((parsed === null || parsed === void 0 ? void 0 : parsed.plantName) || '식물 이름 불확실').slice(0, 80),
-            condition: String((parsed === null || parsed === void 0 ? void 0 : parsed.condition) || '사진에서 확인 가능한 상태가 제한적입니다.').slice(0, 160),
-            confidence: ['high', 'medium', 'low'].includes(String(parsed === null || parsed === void 0 ? void 0 : parsed.confidence))
-                ? parsed.confidence
-                : 'low',
-            findings: normalizeList(parsed === null || parsed === void 0 ? void 0 : parsed.findings),
-            actions: normalizeList(parsed === null || parsed === void 0 ? void 0 : parsed.actions),
-            warningSigns: normalizeList(parsed === null || parsed === void 0 ? void 0 : parsed.warningSigns),
-            note: String((parsed === null || parsed === void 0 ? void 0 : parsed.note) || '사진 분석은 참고용입니다. 상태가 악화되면 전문가에게 상담하세요.').slice(0, 200),
-        };
+        const koName = String((parsed === null || parsed === void 0 ? void 0 : parsed.koName) || '').trim().slice(0, 60);
+        const confidence = Number((_a = parsed === null || parsed === void 0 ? void 0 : parsed.confidence) !== null && _a !== void 0 ? _a : 0);
+        const isValid = Boolean(parsed === null || parsed === void 0 ? void 0 : parsed.isValid);
+        if (koName && isValid && confidence >= 70) {
+            try {
+                await ref.set({
+                    scientificName,
+                    englishNames: englishName ? [englishName] : [],
+                    koNames: [koName],
+                    verifiedByAI: true,
+                    confidence,
+                    source: 'PlantNet',
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
+                logger.info('plant_dictionary 저장', { scientificKey, koName, confidence });
+            }
+            catch (e) {
+                logger.warn('plant_dictionary 저장 실패: ' + ((e === null || e === void 0 ? void 0 : e.message) || ''));
+            }
+            return { koName, scientificKey, cached: false };
+        }
+        logger.info('한국어 검정 기준 미달', { scientificKey, koName, confidence, isValid });
+        return { koName: null, scientificKey, cached: false };
     }
-    catch (error) {
-        if (error instanceof https_2.HttpsError)
-            throw error;
-        logger.error('analyzePlantPhoto 실패', { message: error === null || error === void 0 ? void 0 : error.message });
-        throw new https_2.HttpsError('internal', '식물 사진 분석에 실패했습니다. 사진을 다시 찍어 주세요.');
+    catch (e) {
+        logger.warn('한국어 검정 AI 호출 실패: ' + ((e === null || e === void 0 ? void 0 : e.message) || ''));
+        return { koName: null, scientificKey, cached: false };
     }
+}
+async function callGeminiCrossVerification(plantId, plantNet, images, apiKey) {
+    var _a, _b;
+    // 두 API 결과 요약을 JSON 문자열로 직렬화 (Gemini가 비교 분석)
+    const plantIdSummary = plantId
+        ? {
+            topName: plantId.topPlantName,
+            latinName: plantId.latinName,
+            confidence: Math.round(plantId.identificationProbability * 100) / 100,
+            family: (_a = plantId.taxonomy) === null || _a === void 0 ? void 0 : _a.family,
+            genus: (_b = plantId.taxonomy) === null || _b === void 0 ? void 0 : _b.genus,
+            alternatives: plantId.alternativeCandidates.slice(0, 3).map((c) => ({
+                name: c.name,
+                latinName: c.latinName,
+                confidence: Math.round(c.probability * 100) / 100,
+            })),
+        }
+        : null;
+    const plantNetSummary = plantNet
+        ? {
+            top: plantNet.top
+                ? {
+                    name: plantNet.top.name,
+                    scientificName: plantNet.top.scientificName,
+                    confidence: Math.round(plantNet.top.score * 100) / 100,
+                    family: plantNet.top.family,
+                    genus: plantNet.top.genus,
+                }
+                : null,
+            alternatives: plantNet.alternatives.slice(0, 3).map((c) => ({
+                name: c.name,
+                scientificName: c.scientificName,
+                confidence: Math.round(c.score * 100) / 100,
+            })),
+        }
+        : null;
+    const prompt = `당신은 한국 산야초·나물·야생식물·텃밭작물 식별 전문가입니다.
+아래 두 외부 식물 식별 모델의 결과와 첨부 사진들을 비교 분석하여 최종 답변을 한국어 JSON으로 제공하세요.
+
+[Plant.id 결과]
+${plantIdSummary ? JSON.stringify(plantIdSummary, null, 2) : '(호출 실패 또는 결과 없음)'}
+
+[PlantNet (k-world-flora) 결과]
+${plantNetSummary ? JSON.stringify(plantNetSummary, null, 2) : '(호출 실패 또는 결과 없음)'}
+
+[판단 원칙]
+- 두 API의 top 결과가 일치(같은 학명/속/과)하면 신뢰도 'high'
+- 한쪽만 결과가 있으면 신뢰도는 그 confidence를 그대로 사용
+- 두 결과가 다르면 사진을 직접 보고 어느 쪽이 맞는지 판단하되, 한국 산야초 가능성을 우선 고려
+- "먹을 수 있다(edible: yes)"는 매우 보수적으로 — 확실하지 않으면 무조건 "unknown"
+- 독초 가능성이 조금이라도 있으면 poisonousRisk: true
+- 사진이 부족해 보이면 needMorePhotos에 구체적으로 (예: "꽃이 핀 모습", "잎 뒷면 클로즈업")
+- JSON 하나만 출력, 마크다운 금지, 코드펜스 금지
+
+[JSON 형식]
+{
+  "finalGuess": "최종 추정 한국어 이름 (불확실하면 '식물 이름 불확실')",
+  "finalLatinName": "학명 (있을 때만)",
+  "analysis": "왜 그렇게 판단했는지 2~3문장 한국어 설명",
+  "warning": "독초·유사종·주의사항 한 문장 (없으면 빈 문자열)",
+  "edible": "unknown | yes | no",
+  "poisonousRisk": true | false,
+  "similarSpecies": ["유사종1 (구분 포인트)", "유사종2 (구분 포인트)"],
+  "needMorePhotos": ["꽃이 핀 모습이 필요합니다", ...],
+  "confidence": "high | medium | low"
+}`;
+    const genAI = new generative_ai_1.GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+    // 사진들을 모두 첨부 (Gemini는 multi-image 지원)
+    const parts = [prompt];
+    for (const img of images.slice(0, 5)) {
+        parts.push({ inlineData: { data: img.base64, mimeType: img.mimeType || 'image/jpeg' } });
+    }
+    const result = await model.generateContent(parts);
+    const text = result.response.text();
+    const cleaned = text.replace(/```json|```/g, '').trim();
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (!jsonMatch)
+        throw new Error('Gemini 응답에서 JSON을 찾을 수 없습니다.');
+    const parsed = JSON.parse(jsonMatch[0]);
+    const normList = (v) => Array.isArray(v) ? v.map((x) => String(x || '').trim()).filter(Boolean).slice(0, 5) : [];
+    const edibleRaw = String((parsed === null || parsed === void 0 ? void 0 : parsed.edible) || 'unknown').toLowerCase();
+    const edible = (['unknown', 'yes', 'no'].includes(edibleRaw) ? edibleRaw : 'unknown');
+    const confRaw = String((parsed === null || parsed === void 0 ? void 0 : parsed.confidence) || 'low').toLowerCase();
+    const confidence = (['high', 'medium', 'low'].includes(confRaw) ? confRaw : 'low');
+    return {
+        finalGuess: String((parsed === null || parsed === void 0 ? void 0 : parsed.finalGuess) || '식물 이름 불확실').slice(0, 80),
+        finalLatinName: String((parsed === null || parsed === void 0 ? void 0 : parsed.finalLatinName) || '').slice(0, 120),
+        analysis: String((parsed === null || parsed === void 0 ? void 0 : parsed.analysis) || '').slice(0, 400),
+        warning: String((parsed === null || parsed === void 0 ? void 0 : parsed.warning) || '').slice(0, 200),
+        edible,
+        poisonousRisk: Boolean(parsed === null || parsed === void 0 ? void 0 : parsed.poisonousRisk),
+        similarSpecies: normList(parsed === null || parsed === void 0 ? void 0 : parsed.similarSpecies),
+        needMorePhotos: normList(parsed === null || parsed === void 0 ? void 0 : parsed.needMorePhotos),
+        confidence,
+    };
+}
+exports.detectPlantAdvanced = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET, KINDWISE_PLANT_ID_API_KEY_SECRET, PLANTNET_API_KEY_SECRET],
+    memory: '1GiB',
+    timeoutSeconds: 120,
+}, async (request) => {
+    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l;
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const rawImages = (_a = request.data) === null || _a === void 0 ? void 0 : _a.images;
+    if (!Array.isArray(rawImages) || rawImages.length === 0) {
+        throw new https_2.HttpsError('invalid-argument', '이미지 1장 이상이 필요합니다.');
+    }
+    if (rawImages.length > 5) {
+        throw new https_2.HttpsError('invalid-argument', '최대 5장까지 업로드 가능합니다.');
+    }
+    // base64 정리 (data URI prefix 제거) + 타입 정규화
+    const images = rawImages.map((it) => {
+        const b64 = String((it === null || it === void 0 ? void 0 : it.imageBase64) || '').replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '');
+        return { base64: b64, mimeType: String((it === null || it === void 0 ? void 0 : it.mimeType) || 'image/jpeg') };
+    }).filter((it) => it.base64.length > 0);
+    if (images.length === 0) {
+        throw new https_2.HttpsError('invalid-argument', '유효한 이미지 데이터가 없습니다.');
+    }
+    // 총 용량 가드 (≈ base64 75% 비율 = 실제 바이트)
+    const totalKb = images.reduce((s, img) => s + Math.round(img.base64.length * 0.75 / 1024), 0);
+    if (totalKb > 12 * 1024) {
+        throw new https_2.HttpsError('invalid-argument', '사진 총 용량이 너무 큽니다 (최대 ~12MB). 압축 후 다시 시도해 주세요.');
+    }
+    logger.info('detectPlantAdvanced 호출', {
+        uid: request.auth.uid.slice(0, 8) + '…',
+        imageCount: images.length,
+        totalKb,
+    });
+    // PlantNet 키 가용성 확인 (없으면 graceful skip)
+    let plantNetKey = '';
+    try {
+        plantNetKey = PLANTNET_API_KEY_SECRET.value();
+    }
+    catch (_e) {
+        plantNetKey = '';
+    }
+    // Plant.id는 단일 이미지만 받음 → 첫 사진 사용
+    const plantIdPromise = callKindwiseIdentification(images[0].base64, images[0].mimeType, KINDWISE_PLANT_ID_API_KEY_SECRET.value()).catch((e) => {
+        logger.warn('Plant.id 실패 — 계속 진행: ' + ((e === null || e === void 0 ? void 0 : e.message) || 'unknown'));
+        return null;
+    });
+    // PlantNet은 모든 이미지를 함께 전달 (정확도 ↑)
+    const plantNetPromise = plantNetKey
+        ? callPlantNetIdentification(images, plantNetKey).catch((e) => {
+            logger.warn('PlantNet 실패 — 계속 진행: ' + ((e === null || e === void 0 ? void 0 : e.message) || 'unknown'));
+            return null;
+        })
+        : Promise.resolve(null);
+    const [plantIdResult, plantNetResult] = await Promise.all([plantIdPromise, plantNetPromise]);
+    // Gemini 교차검증
+    let cross = null;
+    let geminiError;
+    try {
+        cross = await callGeminiCrossVerification(plantIdResult, plantNetResult, images, GEMINI_API_KEY_SECRET.value());
+    }
+    catch (e) {
+        geminiError = (e === null || e === void 0 ? void 0 : e.message) || 'Gemini 교차검증 실패';
+        logger.error('Gemini 교차검증 실패', { message: geminiError });
+    }
+    // 둘 다 실패 + Gemini도 실패 → 사용자에게 에러
+    if (!plantIdResult && !plantNetResult && !cross) {
+        throw new https_2.HttpsError('internal', '식물 식별에 실패했습니다. 사진을 다시 찍어 주세요 (잎·꽃·줄기가 모두 보이도록).');
+    }
+    // 🌿 PlantNet top 결과 → 한국어명 검정 (캐시 우선, 실패 시 영어명 fallback)
+    let plantNetKoName = null;
+    let plantNetScientificKey = null;
+    if ((_b = plantNetResult === null || plantNetResult === void 0 ? void 0 : plantNetResult.top) === null || _b === void 0 ? void 0 : _b.scientificName) {
+        const resolution = await resolveKoreanPlantName(plantNetResult.top.scientificName, plantNetResult.top.name || '', GEMINI_API_KEY_SECRET.value()).catch((e) => {
+            logger.warn('한국어명 검정 fallback — ' + ((e === null || e === void 0 ? void 0 : e.message) || ''));
+            return { koName: null, scientificKey: '', cached: false };
+        });
+        plantNetKoName = resolution.koName;
+        plantNetScientificKey = resolution.scientificKey || null;
+    }
+    return {
+        plantId: plantIdResult
+            ? {
+                name: plantIdResult.topPlantName,
+                latinName: plantIdResult.latinName,
+                confidence: plantIdResult.identificationProbability,
+                isPlantProbability: plantIdResult.isPlantProbability,
+                family: (_c = plantIdResult.taxonomy) === null || _c === void 0 ? void 0 : _c.family,
+                genus: (_d = plantIdResult.taxonomy) === null || _d === void 0 ? void 0 : _d.genus,
+                alternatives: plantIdResult.alternativeCandidates,
+                url: plantIdResult.kindwiseUrl || null,
+            }
+            : null,
+        plantNet: plantNetResult
+            ? {
+                name: ((_f = plantNetResult.top) === null || _f === void 0 ? void 0 : _f.name) || '',
+                scientificName: ((_g = plantNetResult.top) === null || _g === void 0 ? void 0 : _g.scientificName) || '',
+                confidence: (_j = (_h = plantNetResult.top) === null || _h === void 0 ? void 0 : _h.score) !== null && _j !== void 0 ? _j : 0,
+                koName: plantNetKoName,
+                scientificKey: plantNetScientificKey,
+                family: (_k = plantNetResult.top) === null || _k === void 0 ? void 0 : _k.family,
+                genus: (_l = plantNetResult.top) === null || _l === void 0 ? void 0 : _l.genus,
+                alternatives: plantNetResult.alternatives,
+            }
+            : null,
+        gemini: cross,
+        meta: {
+            imageCount: images.length,
+            plantNetAvailable: Boolean(plantNetKey),
+            geminiError: geminiError || null,
+        },
+    };
 });
