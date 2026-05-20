@@ -152,6 +152,48 @@ export function makeReadingBookId(title: string, author: string): string {
 
 export type ReadingEntryType = 'chapter_note' | 'final_reflection';
 
+// 📚 신규(v2) 표기 — 지시서 "이어작성/새작성" 단계 도입과 함께 추가.
+// 기존 readingEntryType 도 호환을 위해 함께 저장한다. 마이그레이션 후 deprecated.
+export type ReadingEntryTypeV2 = 'readingNote' | 'finalReflection';
+export type ReadingStatus = 'writing' | 'completed';
+
+// chapter_note ↔ readingNote, final_reflection ↔ finalReflection 매핑
+export function entryTypeOldToNew(t: ReadingEntryType): ReadingEntryTypeV2 {
+  return t === 'final_reflection' ? 'finalReflection' : 'readingNote';
+}
+
+// 📚 독서사유 record 에 inject 할 신/구 메타 필드 묶음 — 모든 reading 저장 경로에서 단일 source.
+//   - 기존: readingBookId, readingEntryType (호환 유지)
+//   - 신규: readingId, readingStatus, entryType, bookTitle, author, reading_started_at(선택)
+export function buildReadingMetaCombined(params: {
+  bookTitle: string;
+  author: string;
+  entryType: ReadingEntryType;
+  startedAt?: string;
+}): Record<string, any> {
+  const title = String(params.bookTitle || '').trim();
+  const author = String(params.author || '').trim();
+  if (!title) return {};
+  const id = makeReadingBookId(title, author);
+  const entryV2: ReadingEntryTypeV2 = entryTypeOldToNew(params.entryType);
+  const status: ReadingStatus = params.entryType === 'final_reflection' ? 'completed' : 'writing';
+  const meta: Record<string, any> = {
+    // 기존(deprecated 예정, 호환 유지)
+    readingBookId: id,
+    readingEntryType: params.entryType,
+    bookTitleNormalized: normalizeBookField(title),
+    authorNormalized: normalizeBookField(author),
+    // 신규(지시서 v2)
+    readingId: id,
+    entryType: entryV2,
+    readingStatus: status,
+    bookTitle: title,
+    author,
+  };
+  if (params.startedAt) meta.reading_started_at = params.startedAt;
+  return meta;
+}
+
 // ===========================================
 // 통계 타입 정의
 // ===========================================
