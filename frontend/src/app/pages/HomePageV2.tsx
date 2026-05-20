@@ -74,6 +74,20 @@ const RECORDS: RecordItem[] = [
     ),
   },
   {
+    label: '독서사유',
+    sub: '책과 나의 변화',
+    bg: '#E5DBC2',
+    stroke: '#7A6F5A',
+    format: '독서사유',
+    icon: (
+      <>
+        <path d="M4 5h7a4 4 0 014 4v12H8a4 4 0 00-4-4z" />
+        <path d="M20 5h-7a4 4 0 00-4 4v12h7a4 4 0 014-4z" />
+        <path d="M8 9h3M13 9h3" />
+      </>
+    ),
+  },
+  {
     label: '텃밭일지',
     sub: '자라는 풍경',
     bg: '#C8D38A',
@@ -1009,7 +1023,7 @@ export function HomePageV2() {
             iconStroke="#4A5A2C"
             title="HARU 기록"
             sub="매일의 한 줄, 평생의 자산"
-            badge="11가지 형식"
+            badge="12가지 형식"
             badgeDot="#7A8B4E"
             icon={
               <>
