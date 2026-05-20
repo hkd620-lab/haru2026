@@ -22,6 +22,12 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if false;
     }
+    // 🌿 하루식물탐정 — 공용 사용자 수정 검증 기록
+    match /community_plant_corrections/{correctionId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if false;
+    }
     match /users/{uid}/settings/{settingId} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }

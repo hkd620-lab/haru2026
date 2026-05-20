@@ -2268,6 +2268,10 @@ export function SayuPage() {
                 </div>
               );
             };
+            const getPlantTitle = (entry: any) =>
+              entry?.userConfirmedName || entry?.title || entry?.aiKoName || entry?.aiPrediction || entry?.plantName || '식물 이름 불확실';
+            const getPlantSubTitle = (entry: any) =>
+              [entry?.englishName, entry?.scientificName || entry?.latinName].filter(Boolean).join(' / ');
             return (
               <div className="mb-4">
                 <button
@@ -2287,6 +2291,8 @@ export function SayuPage() {
                     {plantEntries.slice(0, 30).map(({ date, recordId, entry, idx }) => {
                       const id = `${recordId}_${idx}`;
                       const isOpen = expandedPlantIds.has(id);
+                      const plantTitle = getPlantTitle(entry);
+                      const plantSubTitle = getPlantSubTitle(entry);
                       const confPct = typeof entry.identificationConfidence === 'number'
                         ? Math.round(entry.identificationConfidence * 100)
                         : null;
@@ -2307,7 +2313,7 @@ export function SayuPage() {
                               {date && date.length >= 10 ? date.slice(5) : date}
                             </span>
                             <span className="text-sm truncate" style={{ color: '#333', marginLeft: 8, flex: '1 1 auto', minWidth: 0 }}>
-                              {entry.plantName || '식물 이름 불확실'}
+                              {plantTitle}
                             </span>
                             {confPct !== null && (
                               <span style={{
@@ -2347,7 +2353,7 @@ export function SayuPage() {
                               {entry.imageUrl && (
                                 <img
                                   src={entry.imageUrl}
-                                  alt={entry.plantName || '식물 사진'}
+                                  alt={plantTitle}
                                   style={{
                                     width: '100%',
                                     height: 'auto',
@@ -2363,11 +2369,11 @@ export function SayuPage() {
                               )}
                               <div style={{ fontSize: 13, color: '#333', lineHeight: 1.55 }}>
                                 <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 2 }}>
-                                  {entry.plantName || '식물 이름 불확실'}
+                                  {plantTitle}
                                 </div>
-                                {entry.latinName && (
+                                {plantSubTitle && (
                                   <div style={{ fontStyle: 'italic', fontSize: 12, color: '#6b7654', marginBottom: 6 }}>
-                                    {entry.latinName}
+                                    {plantSubTitle}
                                     {entry.taxonomy?.family && (
                                       <span style={{ marginLeft: 6, fontStyle: 'normal', color: '#92996f' }}>
                                         · {entry.taxonomy.family}

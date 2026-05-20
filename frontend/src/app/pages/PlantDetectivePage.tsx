@@ -1,10 +1,10 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { ArrowLeft, Camera, Leaf, Loader2, Search, X, Save, AlertTriangle, ChevronDown, ChevronUp, BookOpen, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { doc, setDoc, arrayUnion, collection, getDocs } from 'firebase/firestore';
+import { doc, setDoc, arrayUnion, collection, getDocs, query, where, limit, serverTimestamp, increment, orderBy } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { db, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -74,10 +74,28 @@ type LibraryMatch = {
   id: string;
   userConfirmedName?: string;
   finalGuess?: string;
+  englishName?: string;
+  scientificName?: string;
   photo: string | null;
   date?: string;
   source?: 'user_confirmed' | 'ai' | string;
   matchedOn: string;
+};
+
+type PlantLibraryItem = {
+  id: string;
+  displayName?: string;
+  finalGuess?: string;
+  finalLatinName?: string;
+  englishName?: string;
+  scientificName?: string;
+  userConfirmedName?: string;
+  date?: string;
+  photos?: string[];
+  imageUrl?: string;
+  updatedAt?: any;
+  createdAt?: any;
+  observationCount?: number;
 };
 
 const PHOTO_GUIDE_ITEMS = [
@@ -115,11 +133,16 @@ export function PlantDetectivePage() {
   const [result, setResult] = useState<AdvancedResult | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [savedToToday, setSavedToToday] = useState(false);
+  const [activeTab, setActiveTab] = useState<'detect' | 'recent' | 'library'>('detect');
+  const [plantLibrary, setPlantLibrary] = useState<PlantLibraryItem[]>([]);
+  const [communityCorrectionKnown, setCommunityCorrectionKnown] = useState(false);
   const [showGuide, setShowGuide] = useState(true);
   // 📚 내 도감 매칭
   const [libraryMatches, setLibraryMatches] = useState<LibraryMatch[]>([]);
   // ✍️ 사용자 직접 이름 확정
   const [userConfirmedName, setUserConfirmedName] = useState('');
+  const [userConfirmedEnglishName, setUserConfirmedEnglishName] = useState('');
+  const [userConfirmedScientificName, setUserConfirmedScientificName] = useState('');
   const [isConfirming, setIsConfirming] = useState(false);
   const [confirmedSavedDocId, setConfirmedSavedDocId] = useState<string | null>(null);
   // 현재 결과를 plants/ 컬렉션에 한 번 저장했다면 그 plantId를 기억 — 재저장 시 update
@@ -147,11 +170,36 @@ export function PlantDetectivePage() {
   const [obsSaving, setObsSaving] = useState(false);
   const [obsSavedAt, setObsSavedAt] = useState<string | null>(null);
 
+  const loadPlantLibrary = async () => {
+    if (!user) {
+      setPlantLibrary([]);
+      return;
+    }
+    try {
+      const q = query(
+        collection(db, 'users', user.uid, 'plants'),
+        orderBy('updatedAt', 'desc'),
+        limit(30),
+      );
+      const snap = await getDocs(q);
+      setPlantLibrary(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
+    } catch (e) {
+      console.warn('내 식물도감 조회 실패:', e);
+    }
+  };
+
+  useEffect(() => {
+    loadPlantLibrary();
+  }, [user?.uid]);
+
   const resetSessionState = () => {
     setResult(null);
     setSavedToToday(false);
     setLibraryMatches([]);
+    setCommunityCorrectionKnown(false);
     setUserConfirmedName('');
+    setUserConfirmedEnglishName('');
+    setUserConfirmedScientificName('');
     setConfirmedSavedDocId(null);
     setActivePlantDocId(null);
     setActivePlantImageUrls([]);
@@ -163,23 +211,64 @@ export function PlantDetectivePage() {
   };
 
   // 🎯 최종 식물명 확정 state object — 향후 도감 저장 시 그대로 직렬화 가능한 형태로 유지
-  // TODO: future plant encyclopedia integration — finalConfirmation 을 users/{uid}/plants 에 저장
   const finalConfirmation = useMemo(() => {
-    if (!result?.plantNet) return null;
-    const aiPrediction = result.plantNet.name || '';
-    const aiKoName = result.plantNet.koName ?? null;
-    const scientificName = result.plantNet.scientificName || '';
+    if (!result) return null;
+    const aiPrediction = result.plantNet?.name || result.plantId?.name || result.gemini?.finalGuess || '';
+    const aiKoName = result.plantNet?.koName || result.gemini?.finalGuess || null;
+    const aiScientificName =
+      result.plantNet?.scientificName || result.gemini?.finalLatinName || result.plantId?.latinName || '';
+    const aiEnglishName = result.plantNet?.name || result.plantId?.name || '';
     const userInput = userConfirmedName.trim();
+    const userEnglish = userConfirmedEnglishName.trim();
+    const userScientific = userConfirmedScientificName.trim();
+    const hasUserConfirmation = userInput.length > 0;
     const correctedByUser =
       userInput.length > 0 && userInput !== (aiKoName || aiPrediction);
     return {
       aiPrediction,
       aiKoName,
-      scientificName,
+      aiScientificName,
+      aiEnglishName,
+      scientificName: userScientific || (hasUserConfirmation ? '' : aiScientificName),
+      englishName: userEnglish || (hasUserConfirmation ? '' : aiEnglishName),
       userConfirmedName: userInput,
+      userConfirmedEnglishName: userEnglish,
+      userConfirmedScientificName: userScientific,
+      displayName: userInput || aiKoName || aiPrediction || '식물 이름 불확실',
       correctedByUser,
     };
-  }, [result, userConfirmedName]);
+  }, [result, userConfirmedName, userConfirmedEnglishName, userConfirmedScientificName]);
+
+  const getDisplayIdentity = () => {
+    if (!result) {
+      return {
+        title: '식물 이름 불확실',
+        englishName: '',
+        scientificName: '',
+        aiPrediction: '',
+        aiKoName: '',
+        confidence: null as number | null,
+      };
+    }
+    const aiPrediction = result.plantNet?.name || result.plantId?.name || result.gemini?.finalGuess || '';
+    const aiKoName = result.plantNet?.koName || result.gemini?.finalGuess || '';
+    const title = userConfirmedName.trim() || aiKoName || aiPrediction || '식물 이름 불확실';
+    const hasUserConfirmation = userConfirmedName.trim().length > 0;
+    return {
+      title,
+      englishName:
+        userConfirmedEnglishName.trim() ||
+        (hasUserConfirmation ? '' : result.plantNet?.name || result.plantId?.name || ''),
+      scientificName:
+        userConfirmedScientificName.trim() ||
+        (hasUserConfirmation
+          ? ''
+          : result.plantNet?.scientificName || result.gemini?.finalLatinName || result.plantId?.latinName || ''),
+      aiPrediction,
+      aiKoName,
+      confidence: (result.plantId?.confidence ?? result.plantNet?.confidence ?? null) as number | null,
+    };
+  };
 
   const clearAll = () => {
     photos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
@@ -273,12 +362,39 @@ export function PlantDetectivePage() {
           console.warn('내 도감 매칭 조회 실패:', e);
         });
       }
+      findCommunityCorrection(data).then(setCommunityCorrectionKnown).catch((e) => {
+        console.warn('공용 검증 기록 조회 실패:', e);
+      });
     } catch (error: any) {
       console.error('식물 분석 실패:', error);
       toast.error(error?.message || '식물 분석에 실패했습니다.');
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  const findCommunityCorrection = async (data: AdvancedResult): Promise<boolean> => {
+    const scientificName =
+      data.plantNet?.scientificName || data.gemini?.finalLatinName || data.plantId?.latinName || '';
+    const aiPrediction = data.plantNet?.name || data.plantId?.name || data.gemini?.finalGuess || '';
+    const checks = [];
+    if (scientificName) {
+      checks.push(getDocs(query(
+        collection(db, 'community_plant_corrections'),
+        where('aiScientificName', '==', scientificName),
+        limit(1),
+      )));
+    }
+    if (aiPrediction) {
+      checks.push(getDocs(query(
+        collection(db, 'community_plant_corrections'),
+        where('aiPrediction', '==', aiPrediction),
+        limit(1),
+      )));
+    }
+    if (checks.length === 0) return false;
+    const snaps = await Promise.all(checks);
+    return snaps.some((snap) => !snap.empty);
   };
 
   // 📚 사용자 도감에서 이름 매칭 검색
@@ -305,6 +421,9 @@ export function PlantDetectivePage() {
       // 도감 도큐먼트의 이름 후보들 (사용자 확정 우선)
       const docNames: { value: string; field: string }[] = [];
       if (v.userConfirmedName) docNames.push({ value: v.userConfirmedName, field: 'userConfirmedName' });
+      if (v.displayName) docNames.push({ value: v.displayName, field: 'displayName' });
+      if (v.englishName) docNames.push({ value: v.englishName, field: 'englishName' });
+      if (v.scientificName) docNames.push({ value: v.scientificName, field: 'scientificName' });
       if (v.finalGuess) docNames.push({ value: v.finalGuess, field: 'finalGuess' });
       if (v.finalLatinName) docNames.push({ value: v.finalLatinName, field: 'finalLatinName' });
       if (v.originalPlantIdResult?.name) docNames.push({ value: v.originalPlantIdResult.name, field: 'plantId.name' });
@@ -319,7 +438,9 @@ export function PlantDetectivePage() {
           matches.push({
             id: d.id,
             userConfirmedName: v.userConfirmedName,
-            finalGuess: v.finalGuess,
+            finalGuess: v.displayName || v.finalGuess,
+            englishName: v.englishName,
+            scientificName: v.scientificName || v.finalLatinName,
             photo: photos[0] || null,
             date: v.date,
             source: v.source,
@@ -385,23 +506,18 @@ export function PlantDetectivePage() {
   };
 
   const buildDisplayName = () => {
-    if (!result) return { name: '식물 이름 불확실', latin: '', confidence: null as number | null };
+    if (!result) return { name: '식물 이름 불확실', latin: '', englishName: '', scientificName: '', confidence: null as number | null };
+    const identity = getDisplayIdentity();
     return {
-      name:
-        result.gemini?.finalGuess ||
-        result.plantId?.name ||
-        result.plantNet?.name ||
-        '식물 이름 불확실',
-      latin:
-        result.gemini?.finalLatinName ||
-        result.plantId?.latinName ||
-        result.plantNet?.scientificName ||
-        '',
-      confidence: (result.plantId?.confidence ?? result.plantNet?.confidence ?? null) as number | null,
+      name: identity.title,
+      latin: identity.scientificName,
+      englishName: identity.englishName,
+      scientificName: identity.scientificName,
+      confidence: identity.confidence,
     };
   };
 
-  // 양쪽 저장 — records/{date}.plantDetective[] (legacy) + plants/{plantId} (신규, source: ai)
+  // 오늘 기록 저장 — records/{date}.plantDetective[] 유지. AI 단독 결과는 plants 도감에 저장하지 않음.
   const saveToToday = async () => {
     if (!user) {
       toast.error('로그인이 필요합니다.');
@@ -414,41 +530,23 @@ export function PlantDetectivePage() {
     setIsSaving(true);
     try {
       const { plantId, today, createdAt, imageUrls } = await ensurePlantDocAssets();
-      const { name: displayName, latin: displayLatin, confidence: topConfidence } = buildDisplayName();
+      const { name: displayName, latin: displayLatin, englishName, scientificName } = buildDisplayName();
 
-      // 1) users/{uid}/plants/{plantId}
-      const plantDocRef = doc(db, 'users', user.uid, 'plants', plantId);
-      const now = Date.now();
-      await setDoc(
-        plantDocRef,
-        {
-          plantId,
-          date: today,
-          createdAt,
-          updatedAt: now,
-          photos: imageUrls,
-          finalGuess: displayName,
-          finalLatinName: displayLatin,
-          confidence: topConfidence,
-          originalPlantIdResult: result.plantId,
-          originalPlantNetResult: result.plantNet,
-          geminiAnalysis: result.gemini,
-          meta: result.meta,
-          // 사용자 확정 이전이면 source는 ai. user_confirmed로 저장됐다면 덮어쓰지 않음.
-          source: confirmedSavedDocId === plantId ? 'user_confirmed' : 'ai',
-        },
-        { merge: true },
-      );
-
-      // 2) 기존 호환 — records/{today}.plantDetective[]
+      // 기존 호환 — records/{today}.plantDetective[]
       const recordRef = doc(db, 'users', user.uid, 'records', today);
       const legacyEntry = {
         createdAt,
         plantId,
         imageUrl: imageUrls[0] || '',
         imageUrls,
+        title: displayName,
         plantName: displayName,
         latinName: displayLatin,
+        englishName,
+        scientificName,
+        userConfirmedName: userConfirmedName.trim() || '',
+        aiKoName: result.plantNet?.koName || result.gemini?.finalGuess || '',
+        aiPrediction: result.plantNet?.name || result.plantId?.name || result.gemini?.finalGuess || '',
         identificationConfidence:
           typeof result.plantId?.confidence === 'number' ? result.plantId.confidence : null,
         isPlantProbability:
@@ -508,20 +606,39 @@ export function PlantDetectivePage() {
     setIsConfirming(true);
     try {
       const { plantId, today, createdAt, imageUrls } = await ensurePlantDocAssets();
-      const { name: displayName, latin: displayLatin, confidence: topConfidence } = buildDisplayName();
+      const { name: displayName, latin: displayLatin, englishName, scientificName, confidence: topConfidence } = buildDisplayName();
+      const aiPrediction = result.plantNet?.name || result.plantId?.name || result.gemini?.finalGuess || '';
+      const aiKoName = result.plantNet?.koName || result.gemini?.finalGuess || '';
+      const correctedByUser = Boolean(name && name !== (aiKoName || aiPrediction));
+      let targetPlantId = plantId;
+      if (scientificName) {
+        const existing = await getDocs(query(
+          collection(db, 'users', user.uid, 'plants'),
+          where('scientificName', '==', scientificName),
+          limit(1),
+        ));
+        if (!existing.empty) targetPlantId = existing.docs[0].id;
+      }
 
-      const plantDocRef = doc(db, 'users', user.uid, 'plants', plantId);
-      const now = Date.now();
+      const plantDocRef = doc(db, 'users', user.uid, 'plants', targetPlantId);
       await setDoc(
         plantDocRef,
         {
-          plantId,
+          plantId: targetPlantId,
           date: today,
-          createdAt,
-          updatedAt: now,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
           photos: imageUrls,
+          imageUrl: imageUrls[0] || '',
           // 사용자 확정 이름이 최우선 — 기존 API 결과는 original* 로 그대로 보존
+          displayName: name,
+          englishName,
+          scientificName,
+          aiPrediction,
+          aiKoName,
           userConfirmedName: name,
+          correctedByUser,
+          observationCount: increment(1),
           finalGuess: displayName,
           finalLatinName: displayLatin,
           confidence: topConfidence,
@@ -534,7 +651,21 @@ export function PlantDetectivePage() {
         { merge: true },
       );
 
-      setConfirmedSavedDocId(plantId);
+      if (correctedByUser) {
+        const correctionRef = doc(collection(db, 'community_plant_corrections'));
+        await setDoc(correctionRef, {
+          aiPrediction,
+          aiScientificName: result.plantNet?.scientificName || result.plantId?.latinName || result.gemini?.finalLatinName || '',
+          userConfirmedName: name,
+          userConfirmedScientificName: scientificName,
+          confidenceLabel: '사용자 경험 기반 수정 기록 있음',
+          createdAt: serverTimestamp(),
+        });
+        setCommunityCorrectionKnown(true);
+      }
+
+      setConfirmedSavedDocId(targetPlantId);
+      await loadPlantLibrary();
       toast.success(`📚 '${name}' 으로 내 도감에 저장했어요.`);
     } catch (error: any) {
       console.error('사용자 확정 저장 실패:', error);
@@ -606,7 +737,7 @@ export function PlantDetectivePage() {
 
   // 📔 오늘의 관찰 — records/{date}.plantObservation[] 신규 필드에 저장
   //   기존 records.plantDetective[] 와 별도 배열 → 구조 충돌 없음
-  //   plants/{plantId} 도 함께 저장(=saveToToday 패턴) → 식물 정보 + 관찰 연결
+  //   AI 단독 결과는 plants 도감에 저장하지 않음
   const saveTodayObservation = async () => {
     if (!user) {
       toast.error('로그인이 필요합니다.');
@@ -626,32 +757,10 @@ export function PlantDetectivePage() {
     setObsSaving(true);
     try {
       const { plantId, today, createdAt, imageUrls } = await ensurePlantDocAssets();
-      const { name: displayName, latin: displayLatin, confidence: topConfidence } = buildDisplayName();
+      const { name: displayName, latin: displayLatin, englishName, scientificName } = buildDisplayName();
       const now = Date.now();
 
-      // 1) plants/{plantId} — 기존 saveToToday와 동일 스키마 (merge)
-      const plantDocRef = doc(db, 'users', user.uid, 'plants', plantId);
-      await setDoc(
-        plantDocRef,
-        {
-          plantId,
-          date: today,
-          createdAt,
-          updatedAt: now,
-          photos: imageUrls,
-          finalGuess: displayName,
-          finalLatinName: displayLatin,
-          confidence: topConfidence,
-          originalPlantIdResult: result.plantId,
-          originalPlantNetResult: result.plantNet,
-          geminiAnalysis: result.gemini,
-          meta: result.meta,
-          source: confirmedSavedDocId === plantId ? 'user_confirmed' : 'ai',
-        },
-        { merge: true },
-      );
-
-      // 2) records/{today}.plantObservation[] — 신규 별도 필드 (기존 plantDetective[] 무수정)
+      // records/{today}.plantObservation[] — 신규 별도 필드 (기존 plantDetective[] 무수정)
       const recordRef = doc(db, 'users', user.uid, 'records', today);
       const obsEntry = {
         format: 'plantObservation',
@@ -661,6 +770,12 @@ export function PlantDetectivePage() {
         latinName: displayLatin,
         imageUrl: imageUrls[0] || '',
         imageUrls,
+        title: displayName,
+        englishName,
+        scientificName,
+        userConfirmedName: userConfirmedName.trim() || '',
+        aiKoName: result.plantNet?.koName || result.gemini?.finalGuess || '',
+        aiPrediction: result.plantNet?.name || result.plantId?.name || result.gemini?.finalGuess || '',
         observation,
         aiDifference,
         memo,
@@ -689,9 +804,9 @@ export function PlantDetectivePage() {
   };
 
   // 🪴 통합 저장 — 메인 "📔 오늘 기록 저장" 버튼 단일 핸들러
-  //   1) plants/{plantId} merge 저장 (saveToToday 와 동일 스키마)
-  //   2) records/{today}.plantDetective[] arrayUnion (legacy 호환)
-  //   3) 관찰 textarea 입력이 있으면 records/{today}.plantObservation[] arrayUnion 도 함께
+  //   1) records/{today}.plantDetective[] arrayUnion (legacy 호환)
+  //   2) 관찰 textarea 입력이 있으면 records/{today}.plantObservation[] arrayUnion 도 함께
+  //   AI 단독 결과는 plants 도감에 저장하지 않음
   //   토스트는 1회만 — 지시서 6: '오늘의 식물 기록과 관찰 내용을 저장했습니다.'
   const saveTodayAllRecord = async () => {
     if (!user) {
@@ -705,40 +820,24 @@ export function PlantDetectivePage() {
     setIsSaving(true);
     try {
       const { plantId, today, createdAt, imageUrls } = await ensurePlantDocAssets();
-      const { name: displayName, latin: displayLatin, confidence: topConfidence } = buildDisplayName();
+      const { name: displayName, latin: displayLatin, englishName, scientificName } = buildDisplayName();
       const now = Date.now();
 
-      // 1) plants/{plantId}
-      const plantDocRef = doc(db, 'users', user.uid, 'plants', plantId);
-      await setDoc(
-        plantDocRef,
-        {
-          plantId,
-          date: today,
-          createdAt,
-          updatedAt: now,
-          photos: imageUrls,
-          finalGuess: displayName,
-          finalLatinName: displayLatin,
-          confidence: topConfidence,
-          originalPlantIdResult: result.plantId,
-          originalPlantNetResult: result.plantNet,
-          geminiAnalysis: result.gemini,
-          meta: result.meta,
-          source: confirmedSavedDocId === plantId ? 'user_confirmed' : 'ai',
-        },
-        { merge: true },
-      );
-
-      // 2) records/{today}.plantDetective[] (legacy 호환 — saveToToday 와 동일)
+      // 1) records/{today}.plantDetective[] (legacy 호환 — saveToToday 와 동일)
       const recordRef = doc(db, 'users', user.uid, 'records', today);
       const legacyEntry = {
         createdAt,
         plantId,
         imageUrl: imageUrls[0] || '',
         imageUrls,
+        title: displayName,
         plantName: displayName,
         latinName: displayLatin,
+        englishName,
+        scientificName,
+        userConfirmedName: userConfirmedName.trim() || '',
+        aiKoName: result.plantNet?.koName || result.gemini?.finalGuess || '',
+        aiPrediction: result.plantNet?.name || result.plantId?.name || result.gemini?.finalGuess || '',
         identificationConfidence:
           typeof result.plantId?.confidence === 'number' ? result.plantId.confidence : null,
         isPlantProbability:
@@ -761,7 +860,7 @@ export function PlantDetectivePage() {
         note: result.gemini?.warning || '',
       };
 
-      // 3) records/{today}.plantObservation[] (관찰 입력이 있을 때만)
+      // 2) records/{today}.plantObservation[] (관찰 입력이 있을 때만)
       const observation = obsObservation.trim();
       const aiDifference = obsAiDifference.trim();
       const memo = obsMemo.trim();
@@ -780,6 +879,12 @@ export function PlantDetectivePage() {
           latinName: displayLatin,
           imageUrl: imageUrls[0] || '',
           imageUrls,
+          title: displayName,
+          englishName,
+          scientificName,
+          userConfirmedName: userConfirmedName.trim() || '',
+          aiKoName: result.plantNet?.koName || result.gemini?.finalGuess || '',
+          aiPrediction: result.plantNet?.name || result.plantId?.name || result.gemini?.finalGuess || '',
           observation,
           aiDifference,
           memo,
@@ -858,6 +963,49 @@ export function PlantDetectivePage() {
       </header>
 
       <main style={{ maxWidth: 880, margin: '0 auto', padding: '18px 16px 96px' }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 6,
+            marginBottom: 14,
+            background: '#ece4c8',
+            padding: 4,
+            borderRadius: 10,
+          }}
+        >
+          {[
+            ['detect', '판독'],
+            ['recent', '최근 판독'],
+            ['library', '📚 내 식물도감'],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setActiveTab(key as 'detect' | 'recent' | 'library')}
+              style={{
+                minHeight: 38,
+                border: 'none',
+                borderRadius: 8,
+                background: activeTab === key ? '#fffdf4' : 'transparent',
+                color: activeTab === key ? '#3d4734' : '#7a725d',
+                fontWeight: 900,
+                fontSize: 13,
+                boxShadow: activeTab === key ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                cursor: 'pointer',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === 'library' ? (
+          <PlantLibraryPanel plants={plantLibrary} />
+        ) : activeTab === 'recent' ? (
+          <RecentDetectPanel plants={plantLibrary} />
+        ) : (
+          <>
         {/* ========== 🛠 고급 사용자 직접 등록 ========== */}
         <section
           style={{
@@ -1588,9 +1736,24 @@ export function PlantDetectivePage() {
               )}
             </ResultCard>
 
+            {communityCorrectionKnown && (
+              <section
+                style={{
+                  border: '1px solid #BBF7D0',
+                  background: '#F0FDF4',
+                  borderRadius: 10,
+                  padding: '10px 12px',
+                  color: '#166534',
+                  fontSize: 13,
+                  fontWeight: 800,
+                }}
+              >
+                🌿 사용자 경험 기반 수정 기록 있음
+              </section>
+            )}
+
             {/* ========== 🎯 최종 식물명 확정 ========== */}
-            {/* TODO: future plant encyclopedia integration — finalConfirmation 을 users/{uid}/plants 에 저장 */}
-            {result.plantNet && finalConfirmation && (
+            {finalConfirmation && (
               <ResultCard title="🎯 최종 식물명 확정" accent="#15803D" bg="#F0FDF4">
                 <p style={{ margin: '0 0 8px', fontSize: 12, color: '#3d4734', lineHeight: 1.55 }}>
                   AI 추정은 후보일 뿐입니다. 맞는 후보를 클릭하거나, 직접 입력해 최종 식물명을 확정하세요.
@@ -1628,11 +1791,13 @@ export function PlantDetectivePage() {
                     </div>
                     <button
                       type="button"
-                      onClick={() =>
+                      onClick={() => {
                         setUserConfirmedName(
                           finalConfirmation.aiKoName || finalConfirmation.aiPrediction || '',
-                        )
-                      }
+                        );
+                        setUserConfirmedEnglishName(finalConfirmation.aiEnglishName || '');
+                        setUserConfirmedScientificName(finalConfirmation.aiScientificName || '');
+                      }}
                       style={{
                         height: 32,
                         padding: '0 10px',
@@ -1650,7 +1815,7 @@ export function PlantDetectivePage() {
                     </button>
                   </li>
 
-                  {result.plantNet.alternatives.slice(0, 3).map((c, i) => (
+                  {(result.plantNet?.alternatives || []).slice(0, 3).map((c, i) => (
                     <li
                       key={`alt-${i}`}
                       style={{
@@ -1675,7 +1840,11 @@ export function PlantDetectivePage() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => setUserConfirmedName(c.name || '')}
+                        onClick={() => {
+                          setUserConfirmedName(c.name || '');
+                          setUserConfirmedEnglishName(c.name || '');
+                          setUserConfirmedScientificName(c.scientificName || '');
+                        }}
                         style={{
                           height: 30,
                           padding: '0 10px',
@@ -1717,6 +1886,44 @@ export function PlantDetectivePage() {
                     boxSizing: 'border-box',
                   }}
                 />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+                  <input
+                    type="text"
+                    value={userConfirmedEnglishName}
+                    onChange={(e) => setUserConfirmedEnglishName(e.target.value)}
+                    placeholder="영어명 예: Luffa"
+                    maxLength={80}
+                    style={{
+                      height: 38,
+                      borderRadius: 8,
+                      border: '1px solid #BBF7D0',
+                      background: '#fff',
+                      padding: '0 10px',
+                      fontSize: 13,
+                      color: '#1f2a17',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  <input
+                    type="text"
+                    value={userConfirmedScientificName}
+                    onChange={(e) => setUserConfirmedScientificName(e.target.value)}
+                    placeholder="학명 예: Luffa cylindrica"
+                    maxLength={120}
+                    style={{
+                      height: 38,
+                      borderRadius: 8,
+                      border: '1px solid #BBF7D0',
+                      background: '#fff',
+                      padding: '0 10px',
+                      fontSize: 13,
+                      color: '#1f2a17',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
 
                 {finalConfirmation.userConfirmedName && (
                   <div
@@ -1733,6 +1940,11 @@ export function PlantDetectivePage() {
                     <div>
                       최종 확정: <strong>{finalConfirmation.userConfirmedName}</strong>
                     </div>
+                    {(finalConfirmation.englishName || finalConfirmation.scientificName) && (
+                      <div style={{ fontSize: 12, color: '#365e3a' }}>
+                        {[finalConfirmation.englishName, finalConfirmation.scientificName].filter(Boolean).join(' / ')}
+                      </div>
+                    )}
                     <div style={{ fontSize: 12, color: '#365e3a' }}>
                       AI 추정: {finalConfirmation.aiKoName || finalConfirmation.aiPrediction || '—'}
                     </div>
@@ -1744,24 +1956,26 @@ export function PlantDetectivePage() {
 
                 <button
                   type="button"
-                  onClick={() =>
-                    toast.info('📚 내 식물도감은 2차 작업에서 활성화됩니다.')
-                  }
+                  onClick={saveAsUserConfirmed}
+                  disabled={isConfirming || userConfirmedName.trim().length === 0}
                   style={{
                     marginTop: 12,
                     width: '100%',
                     height: 40,
                     borderRadius: 8,
-                    border: '1px dashed #15803D',
-                    background: '#F0FDF4',
-                    color: '#15803D',
+                    border: '1px solid #15803D',
+                    background:
+                      isConfirming || userConfirmedName.trim().length === 0 ? '#DCFCE7' : '#15803D',
+                    color:
+                      isConfirming || userConfirmedName.trim().length === 0 ? '#86efac' : '#fff',
                     fontWeight: 700,
                     fontSize: 13,
-                    cursor: 'pointer',
+                    cursor:
+                      isConfirming || userConfirmedName.trim().length === 0 ? 'not-allowed' : 'pointer',
                   }}
-                  title="향후 내 식물도감과 연결될 자리입니다"
+                  title="사용자 최종확정값을 내 식물도감에 저장합니다"
                 >
-                  📚 내 식물도감 예정
+                  {isConfirming ? '저장 중...' : '📚 내 식물도감 저장'}
                 </button>
               </ResultCard>
             )}
@@ -1851,6 +2065,44 @@ export function PlantDetectivePage() {
                   )}
                   식물만 저장
                 </button>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+                <input
+                  type="text"
+                  value={userConfirmedEnglishName}
+                  onChange={(e) => setUserConfirmedEnglishName(e.target.value)}
+                  placeholder="영어명 예: Luffa"
+                  maxLength={80}
+                  disabled={isConfirming}
+                  style={{
+                    height: 36,
+                    borderRadius: 8,
+                    border: '1px solid #BBF7D0',
+                    background: '#fff',
+                    padding: '0 10px',
+                    fontSize: 13,
+                    color: '#1f2a17',
+                    outline: 'none',
+                  }}
+                />
+                <input
+                  type="text"
+                  value={userConfirmedScientificName}
+                  onChange={(e) => setUserConfirmedScientificName(e.target.value)}
+                  placeholder="학명 예: Luffa cylindrica"
+                  maxLength={120}
+                  disabled={isConfirming}
+                  style={{
+                    height: 36,
+                    borderRadius: 8,
+                    border: '1px solid #BBF7D0',
+                    background: '#fff',
+                    padding: '0 10px',
+                    fontSize: 13,
+                    color: '#1f2a17',
+                    outline: 'none',
+                  }}
+                />
               </div>
               <p style={{ margin: '6px 0 0', fontSize: 11, color: '#6b7654', lineHeight: 1.5 }}>
                 도감 정보만 빠르게 저장합니다 (오늘 기록과 분리)
@@ -2000,6 +2252,8 @@ export function PlantDetectivePage() {
             </p>
           </div>
         )}
+          </>
+        )}
       </main>
     </div>
   );
@@ -2008,6 +2262,106 @@ export function PlantDetectivePage() {
 // ===========================================
 // 작은 표시 컴포넌트들
 // ===========================================
+function tsToLabel(value: any): string {
+  const date =
+    typeof value?.toDate === 'function'
+      ? value.toDate()
+      : typeof value === 'number'
+      ? new Date(value)
+      : value
+      ? new Date(value)
+      : null;
+  if (!date || Number.isNaN(date.getTime())) return '';
+  return date.toISOString().slice(0, 10);
+}
+
+function PlantLibraryPanel({ plants }: { plants: PlantLibraryItem[] }) {
+  if (plants.length === 0) {
+    return (
+      <ResultCard title="📚 내 식물도감" accent="#4A5A2C" bg="#fffdf4">
+        <div style={{ fontSize: 13, color: '#6b7654' }}>
+          사용자가 최종 확정한 식물이 여기에 저장됩니다.
+        </div>
+      </ResultCard>
+    );
+  }
+  return (
+    <ResultCard title="📚 내 식물도감" accent="#4A5A2C" bg="#fffdf4">
+      <div style={{ display: 'grid', gap: 10 }}>
+        {plants.map((p) => {
+          const photo = p.imageUrl || p.photos?.[0] || '';
+          const displayName = p.displayName || p.userConfirmedName || '식물 이름 불확실';
+          const recent = tsToLabel(p.updatedAt) || tsToLabel(p.createdAt);
+          return (
+            <div
+              key={p.id}
+              style={{
+                display: 'flex',
+                gap: 10,
+                alignItems: 'center',
+                border: '1px solid #e5ddbf',
+                borderRadius: 8,
+                background: '#fff',
+                padding: 10,
+              }}
+            >
+              {photo ? (
+                <img src={photo} alt={displayName} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 6 }} />
+              ) : (
+                <div style={{ width: 64, height: 64, borderRadius: 6, background: '#eef0d8', display: 'grid', placeItems: 'center', color: '#4A5A2C' }}>
+                  <BookOpen size={22} />
+                </div>
+              )}
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 16, fontWeight: 900, color: '#24301f' }}>{displayName}</div>
+                {(p.englishName || p.scientificName) && (
+                  <div style={{ fontSize: 12, color: '#6b7654', fontStyle: 'italic', marginTop: 2 }}>
+                    {[p.englishName, p.scientificName].filter(Boolean).join(' / ')}
+                  </div>
+                )}
+                <div style={{ fontSize: 11, color: '#92996f', marginTop: 4 }}>
+                  최근 관찰일 {recent || '-'}
+                  {typeof p.observationCount === 'number' ? ` · ${p.observationCount}회` : ''}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </ResultCard>
+  );
+}
+
+function RecentDetectPanel({ plants }: { plants: PlantLibraryItem[] }) {
+  return (
+    <ResultCard title="최근 판독" accent="#7C5E10" bg="#FFF8DB">
+      <div style={{ fontSize: 13, color: '#6b5b22', lineHeight: 1.55 }}>
+        사용자 확정 후 도감에 저장된 최근 식물 기준으로 표시합니다. AI 단독 판독은 오늘 기록에만 남고 도감에는 저장하지 않습니다.
+      </div>
+      <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+        {plants.slice(0, 10).map((p) => (
+          <div key={p.id} style={{ border: '1px solid #f1e3a8', borderRadius: 8, background: '#fff', padding: 10 }}>
+            <div style={{ fontSize: 14, fontWeight: 900, color: '#3d3414' }}>
+              {p.displayName || p.userConfirmedName || '식물 이름 불확실'}
+            </div>
+            {(p.englishName || p.scientificName) && (
+              <div style={{ fontSize: 12, color: '#7a6a2c', fontStyle: 'italic', marginTop: 2 }}>
+                {[p.englishName, p.scientificName].filter(Boolean).join(' / ')}
+              </div>
+            )}
+            <div style={{ fontSize: 11, color: '#a88f30', marginTop: 4 }}>
+              최근 관찰일 {tsToLabel(p.updatedAt) || tsToLabel(p.createdAt) || '-'}
+            </div>
+          </div>
+        ))}
+        {plants.length === 0 && (
+          <div style={{ fontSize: 13, color: '#7a6a2c' }}>아직 사용자 확정 판독이 없습니다.</div>
+        )}
+      </div>
+    </ResultCard>
+  );
+}
+
 function ResultCard({
   title,
   accent,
