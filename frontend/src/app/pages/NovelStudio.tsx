@@ -118,7 +118,7 @@ function BookMaterialPanel({ uid }: { uid: string }) {
       {!collapsed && (
         <div style={{ borderTop: '1px solid #F3F4F6', padding: '10px 14px 14px' }}>
           <button
-            onClick={() => navigate('/book-create')}
+            onClick={() => navigate('/admin/elder-book')}
             style={{
               width: '100%', padding: '10px 12px', marginBottom: 10, borderRadius: 8,
               border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,

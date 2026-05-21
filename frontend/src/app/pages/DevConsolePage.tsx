@@ -22,6 +22,13 @@ const DEV_TOOLS: DevTool[] = [
     color: '#1A3C6E',
   },
   {
+    icon: '👴',
+    label: '65노인 책 출간',
+    description: '지식창고 소재로 책 엮기 (65세 할아버지)',
+    path: '/admin/elder-book',
+    color: '#1A3C6E',
+  },
+  {
     icon: '📰',
     label: 'K뉴스 발행',
     description: 'AI 자동 분석 카드뉴스 발행',
