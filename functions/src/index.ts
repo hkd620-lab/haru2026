@@ -37,6 +37,8 @@ const DRUG_API_KEY_SECRET = defineSecret('DRUG_API_KEY');
 const HIRA_API_KEY_SECRET = defineSecret('HIRA_API_KEY');
 const KINDWISE_PLANT_ID_API_KEY_SECRET = defineSecret('KINDWISE_PLANT_ID_API_KEY');
 const PLANTNET_API_KEY_SECRET = defineSecret('PLANTNET_API_KEY');
+const MICROSOFT_CLIENT_ID_SECRET = defineSecret('MICROSOFT_CLIENT_ID');
+const MICROSOFT_CLIENT_SECRET_SECRET = defineSecret('MICROSOFT_CLIENT_SECRET');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
 
 // Storage 버킷
@@ -5942,7 +5944,7 @@ async function ensureHaruFolderOnOneDrive(accessToken: string): Promise<{ folder
 
 // 1) OAuth 시작 — authUrl 반환 (callable, uid 확인)
 export const startOneDriveConnect = onCall(
-  { region: 'asia-northeast3' },
+  { region: 'asia-northeast3', secrets: [MICROSOFT_CLIENT_ID_SECRET, MICROSOFT_CLIENT_SECRET_SECRET] },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
@@ -5977,7 +5979,7 @@ export const startOneDriveConnect = onCall(
 
 // 2) OAuth callback — Microsoft 가 호출 → token 교환 → 폴더 생성 → Firestore 저장 → 프론트 redirect
 export const oneDriveCallback = onRequest(
-  { region: 'asia-northeast3', timeoutSeconds: 60 },
+  { region: 'asia-northeast3', timeoutSeconds: 60, secrets: [MICROSOFT_CLIENT_ID_SECRET, MICROSOFT_CLIENT_SECRET_SECRET] },
   async (req, res) => {
     try {
       const env = getOneDriveEnv();
@@ -5987,6 +5989,11 @@ export const oneDriveCallback = onRequest(
         return;
       }
       const { code, state } = req.query;
+      if (req.query.error) {
+        logger.error('OneDrive callback: Microsoft returned error — ' + String(req.query.error) + ' / ' + String(req.query.error_description || ''));
+        res.redirect(`${FRONTEND_URL}/asset-explorer?onedrive=error`);
+        return;
+      }
       if (!code || typeof code !== 'string') throw new Error('missing code');
       if (!state || typeof state !== 'string') throw new Error('missing state');
 
@@ -6015,11 +6022,7 @@ export const oneDriveCallback = onRequest(
         timeout: 20_000,
       });
       if (tokenRes.status !== 200 || !tokenRes.data?.access_token) {
-        logger.error('OneDrive token exchange failed', {
-          status: tokenRes.status,
-          errorCode: tokenRes.data?.error,
-          // 민감 정보는 로그하지 않음
-        });
+        logger.error('OneDrive token exchange failed — status=' + tokenRes.status + ' error=' + String(tokenRes.data?.error) + ' desc=' + String(tokenRes.data?.error_description || ''));
         throw new Error('token exchange failed');
       }
       const accessToken: string = tokenRes.data.access_token;
@@ -6061,9 +6064,7 @@ export const oneDriveCallback = onRequest(
 
       res.redirect(`${FRONTEND_URL}/asset-explorer?onedrive=connected`);
     } catch (error: any) {
-      logger.error('OneDrive callback failed', {
-        message: error?.message || String(error),
-      });
+      logger.error('OneDrive callback failed — ' + (error?.message || String(error)));
       res.redirect(`${FRONTEND_URL}/asset-explorer?onedrive=error`);
     }
   },

@@ -36,8 +36,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.convertToBookMaterial = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = void 0;
-exports.getKoreanPlantInfo = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = void 0;
+exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = void 0;
+exports.getKoreanPlantInfo = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -74,6 +74,8 @@ const DRUG_API_KEY_SECRET = (0, params_1.defineSecret)('DRUG_API_KEY');
 const HIRA_API_KEY_SECRET = (0, params_1.defineSecret)('HIRA_API_KEY');
 const KINDWISE_PLANT_ID_API_KEY_SECRET = (0, params_1.defineSecret)('KINDWISE_PLANT_ID_API_KEY');
 const PLANTNET_API_KEY_SECRET = (0, params_1.defineSecret)('PLANTNET_API_KEY');
+const MICROSOFT_CLIENT_ID_SECRET = (0, params_1.defineSecret)('MICROSOFT_CLIENT_ID');
+const MICROSOFT_CLIENT_SECRET_SECRET = (0, params_1.defineSecret)('MICROSOFT_CLIENT_SECRET');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
 // Storage 버킷
 const bucket = () => (0, storage_1.getStorage)().bucket();
@@ -2218,6 +2220,12 @@ var snsToDiary_1 = require("./snsToDiary");
 Object.defineProperty(exports, "convertSnsToDiary", { enumerable: true, get: function () { return snsToDiary_1.convertSnsToDiary; } });
 var bookMaterial_1 = require("./bookMaterial");
 Object.defineProperty(exports, "convertToBookMaterial", { enumerable: true, get: function () { return bookMaterial_1.convertToBookMaterial; } });
+var elderBook_1 = require("./elderBook");
+Object.defineProperty(exports, "gatherElderBookSources", { enumerable: true, get: function () { return elderBook_1.gatherElderBookSources; } });
+Object.defineProperty(exports, "buildElderBookOutline", { enumerable: true, get: function () { return elderBook_1.buildElderBookOutline; } });
+Object.defineProperty(exports, "assignElderBookSources", { enumerable: true, get: function () { return elderBook_1.assignElderBookSources; } });
+Object.defineProperty(exports, "draftElderBookChapters", { enumerable: true, get: function () { return elderBook_1.draftElderBookChapters; } });
+Object.defineProperty(exports, "polishElderBookChapters", { enumerable: true, get: function () { return elderBook_1.polishElderBookChapters; } });
 // ===== 단어 뜻 조회 =====
 exports.getWordMeaning = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] }, async (request) => {
     const { word } = request.data;
@@ -5214,7 +5222,7 @@ async function ensureHaruFolderOnOneDrive(accessToken) {
     }
 }
 // 1) OAuth 시작 — authUrl 반환 (callable, uid 확인)
-exports.startOneDriveConnect = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
+exports.startOneDriveConnect = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [MICROSOFT_CLIENT_ID_SECRET, MICROSOFT_CLIENT_SECRET_SECRET] }, async (request) => {
     var _a;
     const uid = (_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid;
     if (!uid) {
@@ -5243,8 +5251,8 @@ exports.startOneDriveConnect = (0, https_2.onCall)({ region: 'asia-northeast3' }
     return { authUrl: `${ONEDRIVE_AUTH_URL}?${params.toString()}` };
 });
 // 2) OAuth callback — Microsoft 가 호출 → token 교환 → 폴더 생성 → Firestore 저장 → 프론트 redirect
-exports.oneDriveCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', timeoutSeconds: 60 }, async (req, res) => {
-    var _a, _b, _c, _d;
+exports.oneDriveCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', timeoutSeconds: 60, secrets: [MICROSOFT_CLIENT_ID_SECRET, MICROSOFT_CLIENT_SECRET_SECRET] }, async (req, res) => {
+    var _a, _b, _c, _d, _f;
     try {
         const env = getOneDriveEnv();
         if (!env) {
@@ -5253,6 +5261,11 @@ exports.oneDriveCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', t
             return;
         }
         const { code, state } = req.query;
+        if (req.query.error) {
+            logger.error('OneDrive callback: Microsoft returned error — ' + String(req.query.error) + ' / ' + String(req.query.error_description || ''));
+            res.redirect(`${FRONTEND_URL}/asset-explorer?onedrive=error`);
+            return;
+        }
         if (!code || typeof code !== 'string')
             throw new Error('missing code');
         if (!state || typeof state !== 'string')
@@ -5286,11 +5299,7 @@ exports.oneDriveCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', t
             timeout: 20000,
         });
         if (tokenRes.status !== 200 || !((_c = tokenRes.data) === null || _c === void 0 ? void 0 : _c.access_token)) {
-            logger.error('OneDrive token exchange failed', {
-                status: tokenRes.status,
-                errorCode: (_d = tokenRes.data) === null || _d === void 0 ? void 0 : _d.error,
-                // 민감 정보는 로그하지 않음
-            });
+            logger.error('OneDrive token exchange failed — status=' + tokenRes.status + ' error=' + String((_d = tokenRes.data) === null || _d === void 0 ? void 0 : _d.error) + ' desc=' + String(((_f = tokenRes.data) === null || _f === void 0 ? void 0 : _f.error_description) || ''));
             throw new Error('token exchange failed');
         }
         const accessToken = tokenRes.data.access_token;
@@ -5326,9 +5335,7 @@ exports.oneDriveCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', t
         res.redirect(`${FRONTEND_URL}/asset-explorer?onedrive=connected`);
     }
     catch (error) {
-        logger.error('OneDrive callback failed', {
-            message: (error === null || error === void 0 ? void 0 : error.message) || String(error),
-        });
+        logger.error('OneDrive callback failed — ' + ((error === null || error === void 0 ? void 0 : error.message) || String(error)));
         res.redirect(`${FRONTEND_URL}/asset-explorer?onedrive=error`);
     }
 });
