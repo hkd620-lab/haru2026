@@ -139,7 +139,7 @@ function App() {
               {/* 원기충전소 (구 책스튜디오 — 2026-05-13 리브랜딩, 폐기 URL은 홈 리다이렉트) */}
               <Route path="/recovery" element={<BookStudio />} />
               <Route path="/book-studio" element={<Navigate to="/" replace />} />
-              <Route path="/book-create" element={<Navigate to="/" replace />} />
+              <Route path="/book-create" element={<BookCreate />} />
               <Route path="/book-reader/:bookId" element={<Navigate to="/" replace />} />
               <Route path="/news" element={<NewsPage />} />
               <Route path="/novel-studio" element={<NovelStudio />} />

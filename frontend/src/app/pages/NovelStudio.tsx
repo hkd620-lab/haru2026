@@ -41,6 +41,7 @@ interface BookMaterialDoc {
 }
 
 function BookMaterialPanel({ uid }: { uid: string }) {
+  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(true);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -116,6 +117,15 @@ function BookMaterialPanel({ uid }: { uid: string }) {
 
       {!collapsed && (
         <div style={{ borderTop: '1px solid #F3F4F6', padding: '10px 14px 14px' }}>
+          <button
+            onClick={() => navigate('/book-create')}
+            style={{
+              width: '100%', padding: '10px 12px', marginBottom: 10, borderRadius: 8,
+              border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
+              background: '#1A3C6E', color: '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}
+          >📖 책으로 엮기</button>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
             {filterButtons.map(b => (
               <button
