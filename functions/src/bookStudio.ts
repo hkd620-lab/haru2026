@@ -101,7 +101,7 @@ export const generateBook = onCall(
 
       const message = await client.chat.completions.create({
         model: "gpt-5.5-2026-04-23",
-        max_tokens: 2000,
+        max_completion_tokens: 4000,
         messages: [{ role: "user", content: prompt }],
       });
 
@@ -145,7 +145,7 @@ export const generateBook = onCall(
 
     const psychMsg = await client.chat.completions.create({
       model: "gpt-5.5-2026-04-23",
-      max_tokens: 800,
+      max_completion_tokens: 2000,
       messages: [{ role: "user", content: psychPrompt }],
     });
 

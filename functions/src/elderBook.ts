@@ -188,7 +188,7 @@ ${sourceDigest}
     try {
       const res = await client.chat.completions.create({
         model: OPENAI_MODEL,
-        max_tokens: 2000,
+        max_completion_tokens: 8000,
         messages: [{ role: "user", content: prompt }],
       });
       parsed = extractJson(res.choices[0]?.message?.content || "");
@@ -267,7 +267,7 @@ ${passageList}
     try {
       const res = await client.chat.completions.create({
         model: OPENAI_MODEL,
-        max_tokens: 2000,
+        max_completion_tokens: 8000,
         messages: [{ role: "user", content: prompt }],
       });
       parsed = extractJson(res.choices[0]?.message?.content || "");
