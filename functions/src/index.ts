@@ -6169,6 +6169,7 @@ function nibrNormalizeSci(s: string): string {
 function nibrExtractArray(parsed: any): any[] {
   if (!parsed || typeof parsed !== 'object') return [];
   const candidates: any[] = [
+    parsed?.data?.content, // ★ NIBR ktsn/taxons/search 공식 명세 (v1)
     parsed?.result?.item,
     parsed?.result?.items,
     parsed?.items,
@@ -6183,6 +6184,12 @@ function nibrExtractArray(parsed: any): any[] {
     if (Array.isArray(c) && c.length > 0) return c;
   }
   return [];
+}
+
+// NIBR stnm은 권위명·연도가 붙는 형식("Cucurbita maxima Duchesne 1786") — 첫 두 토큰(속명+종소명)만 비교
+function nibrSciBinomial(sci: string): string {
+  const tokens = sci.trim().toLowerCase().replace(/\s+/g, ' ').split(' ');
+  return tokens.slice(0, 2).join(' ');
 }
 
 function nibrEmptyResponse(status: NibrMatchStatus): KoreanPlantInfoResponse {
@@ -6249,55 +6256,81 @@ export const getKoreanPlantInfo = onCall(
           ? response.data
           : JSON.stringify(response.data || {});
 
+      // 응답에서 NIBR errorCode 추출 (진단용 — 키 값은 절대 포함 X)
+      let parsedForDiag: any = null;
+      try {
+        parsedForDiag = JSON.parse(rawRaw);
+      } catch {
+        /* not JSON — XML 가능성 */
+      }
+      const nibrErrorCode: string | null =
+        parsedForDiag && typeof parsedForDiag === 'object'
+          ? parsedForDiag.errorCode || null
+          : null;
+
       // 신청 미완료 / 권한 오류 — fallback (throw 금지)
-      const unavailableSignals = /APLY_NOT_FOUND|UNAUTHORIZED|FORBIDDEN/i;
+      const unavailableSignals = /APLY_NOT_FOUND|APLY_NOT_APRV|INVLD_API_KEY|UNAUTHORIZED|FORBIDDEN/i;
       if (
         httpStatus === 401 ||
         httpStatus === 403 ||
         httpStatus === 404 ||
         unavailableSignals.test(rawRaw)
       ) {
-        logger.warn('NIBR enrichment unavailable', { httpStatus });
+        logger.warn('NIBR enrichment unavailable', {
+          httpStatus,
+          nibrErrorCode,
+        });
         return nibrEmptyResponse('api_unavailable');
       }
       if (httpStatus >= 400) {
-        logger.warn('NIBR enrichment http error', { httpStatus });
+        logger.warn('NIBR enrichment http error', {
+          httpStatus,
+          nibrErrorCode,
+        });
         return nibrEmptyResponse('api_unavailable');
       }
 
-      let parsed: any = null;
-      try {
-        parsed = JSON.parse(rawRaw);
-      } catch {
+      const parsed: any = parsedForDiag;
+      if (!parsed) {
         return nibrEmptyResponse('api_unavailable');
       }
 
       const items = nibrExtractArray(parsed);
       if (items.length === 0) {
+        logger.warn('NIBR response had no items array', {
+          topLevelKeys: parsed && typeof parsed === 'object' ? Object.keys(parsed) : null,
+        });
         return nibrEmptyResponse('not_found');
       }
 
-      const target = nibrNormalizeSci(sciInput);
+      const target = nibrSciBinomial(sciInput);
       let matched: any = null;
       for (const it of items) {
-        const sci = nibrPickString(
-          it?.stnm,
-          it?.ktsnLtnNm,
-          it?.scientificName,
-          it?.sciNm,
-          it?.sci_nm,
-          it?.scName,
-        );
-        if (sci && nibrNormalizeSci(sci) === target) {
+        // 1) stnm 첫 두 토큰(속명+종소명)
+        const stnm = nibrPickString(it?.stnm, it?.scientificName);
+        if (stnm && nibrSciBinomial(stnm) === target) {
+          matched = it;
+          break;
+        }
+        // 2) gnusKtsnLtnNm + specsKtsnLtnNm 조합
+        const gnusL = nibrPickString(it?.gnusKtsnLtnNm);
+        const specsL = nibrPickString(it?.specsKtsnLtnNm);
+        if (gnusL && specsL && nibrSciBinomial(`${gnusL} ${specsL}`) === target) {
           matched = it;
           break;
         }
       }
       if (!matched) {
+        logger.info('NIBR no binomial match in this page', {
+          targetBinomial: target,
+          itemsCount: items.length,
+        });
         return nibrEmptyResponse('not_found');
       }
 
+      // NIBR 명세 (ktsn taxons search) 우선 + 구버전/유사 키 후보 보존
       const koreanName = nibrPickString(
+        matched?.ktsnKrnNm,
         matched?.kornm,
         matched?.korNm,
         matched?.kor_nm,
@@ -6307,41 +6340,58 @@ export const getKoreanPlantInfo = onCall(
       );
       const speciesKoreanName =
         nibrPickString(
+          matched?.specsKtsnKrnNm,
           matched?.specKorNm,
           matched?.species_kor,
           matched?.speciesKoreanName,
         ) || koreanName;
-      const sciFinal = nibrPickString(
-        matched?.stnm,
-        matched?.ktsnLtnNm,
-        matched?.scientificName,
-        matched?.sciNm,
-      );
+      const sciFinal = (() => {
+        // 깨끗한 binomial 우선: gnusLtn + specsLtn
+        const gnusL = nibrPickString(matched?.gnusKtsnLtnNm);
+        const specsL = nibrPickString(matched?.specsKtsnLtnNm);
+        if (gnusL && specsL) return `${gnusL} ${specsL}`;
+        return nibrPickString(
+          matched?.stnm,
+          matched?.ktsnLtnNm,
+          matched?.scientificName,
+          matched?.sciNm,
+        );
+      })();
       const phylumName = nibrPickString(
+        matched?.phlmKtsnKrnNm,
+        matched?.phlmKtsnLtnNm,
         matched?.phylumName,
         matched?.phylumKornm,
         matched?.phylumKorNm,
         matched?.phylum,
       );
       const className = nibrPickString(
+        matched?.classKtsnKrnNm,
+        matched?.classKtsnLtnNm,
         matched?.className,
         matched?.classKornm,
         matched?.classKorNm,
         matched?.classNm,
       );
       const orderName = nibrPickString(
+        matched?.orderKtsnKrnNm,
+        matched?.orderKtsnLtnNm,
         matched?.orderName,
         matched?.orderKornm,
         matched?.orderKorNm,
         matched?.ordNm,
       );
       const familyName = nibrPickString(
+        matched?.fmlyKtsnKrnNm,
+        matched?.fmlyKtsnLtnNm,
         matched?.familyName,
         matched?.familyKornm,
         matched?.familyKorNm,
         matched?.famNm,
       );
       const genusName = nibrPickString(
+        matched?.gnusKtsnKrnNm,
+        matched?.gnusKtsnLtnNm,
         matched?.genusName,
         matched?.genusKornm,
         matched?.genusKorNm,
