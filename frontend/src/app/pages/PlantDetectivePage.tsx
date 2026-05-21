@@ -70,6 +70,22 @@ type KoreanPlantInfoResponse = {
   status: 'matched' | 'not_found' | 'api_unavailable' | 'not_configured';
 };
 
+const emptyKoreanPlantInfo = (
+  status: KoreanPlantInfoResponse['status'],
+): KoreanPlantInfoResponse => ({
+  koreanName: null,
+  scientificName: null,
+  phylumName: null,
+  className: null,
+  orderName: null,
+  familyName: null,
+  genusName: null,
+  speciesKoreanName: null,
+  source: 'NIBR',
+  rawMatched: false,
+  status,
+});
+
 type PhotoItem = {
   id: string;
   previewUrl: string;
@@ -411,7 +427,7 @@ export function PlantDetectivePage() {
           })
           .catch((e) => {
             console.warn('NIBR 보강 조회 실패 — 기존 결과 유지:', e);
-            setKoreanInfo(null);
+            setKoreanInfo(emptyKoreanPlantInfo('api_unavailable'));
           });
       }
     } catch (error: any) {
@@ -1808,24 +1824,50 @@ export function PlantDetectivePage() {
               )}
             </ResultCard>
 
-            {/* 🌿 국내 생물종(NIBR) 보강 — matched일 때만 표시. AI 판독·사용자 정정 결과를 덮어쓰지 않음 */}
-            {koreanInfo && koreanInfo.status === 'matched' && (koreanInfo.koreanName || koreanInfo.familyName) && (
+            {/* 🌿 국내 생물종(NIBR) 보강 — 결과/진단을 화면에 표시. AI 판독·사용자 정정 결과를 덮어쓰지 않음 */}
+            {koreanInfo && (
               <ResultCard title="🇰🇷 국내 생물종 정보 (NIBR)" accent="#15803D" bg="#F0FDF4">
-                {koreanInfo.koreanName && (
-                  <div style={{ fontSize: 16, fontWeight: 900, color: '#15803D' }}>
-                    {koreanInfo.koreanName}
-                  </div>
-                )}
-                {koreanInfo.scientificName && (
-                  <div style={{ fontSize: 12, fontStyle: 'italic', color: '#6b7654', marginTop: 2 }}>
-                    {koreanInfo.scientificName}
-                  </div>
-                )}
-                {(koreanInfo.familyName || koreanInfo.genusName || koreanInfo.orderName) && (
-                  <div style={{ marginTop: 6, fontSize: 12, color: '#3d4734' }}>
-                    {[koreanInfo.orderName, koreanInfo.familyName, koreanInfo.genusName]
-                      .filter(Boolean)
-                      .join(' / ')}
+                {koreanInfo.status === 'matched' && (koreanInfo.koreanName || koreanInfo.familyName) ? (
+                  <>
+                    {koreanInfo.koreanName && (
+                      <div style={{ fontSize: 16, fontWeight: 900, color: '#15803D' }}>
+                        {koreanInfo.koreanName}
+                      </div>
+                    )}
+                    {koreanInfo.scientificName && (
+                      <div style={{ fontSize: 12, fontStyle: 'italic', color: '#6b7654', marginTop: 2 }}>
+                        {koreanInfo.scientificName}
+                      </div>
+                    )}
+                    {(koreanInfo.familyName || koreanInfo.genusName || koreanInfo.orderName) && (
+                      <div style={{ marginTop: 6, fontSize: 12, color: '#3d4734' }}>
+                        {[koreanInfo.orderName, koreanInfo.familyName, koreanInfo.genusName]
+                          .filter(Boolean)
+                          .join(' / ')}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div style={{ fontSize: 13, color: '#3d4734', lineHeight: 1.7 }}>
+                    {koreanInfo.status === 'not_found' && (
+                      <>
+                        NIBR 응답은 받았지만 현재 조회 범위에서 AI 학명과 일치하는 국가생물종 항목을 찾지 못했습니다.
+                        <br />
+                        학명이 더 넓은 품종·변종명이거나, API 검색 페이지네이션 범위 밖에 있을 수 있습니다.
+                      </>
+                    )}
+                    {koreanInfo.status === 'api_unavailable' && (
+                      <>
+                        NIBR API가 현재 해당 요청을 처리하지 못했습니다.
+                        <br />
+                        키 승인 상태 또는 NIBR 서버 응답을 확인해야 합니다.
+                      </>
+                    )}
+                    {koreanInfo.status === 'not_configured' && (
+                      <>
+                        NIBR API 키가 함수에 설정되지 않아 국가생물종 보강을 건너뛰었습니다.
+                      </>
+                    )}
                   </div>
                 )}
                 <div style={{ marginTop: 6, fontSize: 11, color: '#6b7654' }}>
