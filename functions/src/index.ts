@@ -5713,8 +5713,8 @@ function sanitizeValue(v: any, secrets: string[]): any {
 export const testNibrPlantSearch = onRequest(
   { region: 'asia-northeast3', timeoutSeconds: 30 },
   async (req, res) => {
-    const apiKey = process.env.NIBR_API_KEY;
-    const internalSecret = process.env.NIBR_TEST_SECRET;
+    const apiKey = String(process.env.NIBR_API_KEY || '').trim();
+    const internalSecret = String(process.env.NIBR_TEST_SECRET || '').trim();
     if (!apiKey) {
       logger.error('NIBR_API_KEY missing in functions env');
       res.status(500).json({ ok: false, error: 'NIBR_API_KEY missing' });
@@ -6228,7 +6228,7 @@ export const getKoreanPlantInfo = onCall(
     // Secret 미등록 fallback (1차 dry-run 정상 경로)
     let apiKey = '';
     try {
-      apiKey = NIBR_API_KEY_SECRET.value();
+      apiKey = String(NIBR_API_KEY_SECRET.value() || '').trim();
     } catch {
       apiKey = '';
     }
@@ -6236,7 +6236,6 @@ export const getKoreanPlantInfo = onCall(
       logger.warn('NIBR_API_KEY not configured — enrichment skipped');
       return nibrEmptyResponse('not_configured');
     }
-
     const endpoint = 'https://species.nibr.go.kr/gwsvc/openapi/rest/ktsn/taxons/search';
 
     try {

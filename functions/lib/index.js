@@ -5008,8 +5008,8 @@ function sanitizeValue(v, secrets) {
 }
 exports.testNibrPlantSearch = (0, https_1.onRequest)({ region: 'asia-northeast3', timeoutSeconds: 30 }, async (req, res) => {
     var _a, _b, _c, _d, _f, _g, _h, _j, _k;
-    const apiKey = process.env.NIBR_API_KEY;
-    const internalSecret = process.env.NIBR_TEST_SECRET;
+    const apiKey = String(process.env.NIBR_API_KEY || '').trim();
+    const internalSecret = String(process.env.NIBR_TEST_SECRET || '').trim();
     if (!apiKey) {
         logger.error('NIBR_API_KEY missing in functions env');
         res.status(500).json({ ok: false, error: 'NIBR_API_KEY missing' });
@@ -5403,18 +5403,19 @@ function nibrNormalizeSci(s) {
     return s.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 function nibrExtractArray(parsed) {
-    var _a, _b, _c, _d, _f, _g, _h, _j, _k;
+    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l;
     if (!parsed || typeof parsed !== 'object')
         return [];
     const candidates = [
-        (_a = parsed === null || parsed === void 0 ? void 0 : parsed.result) === null || _a === void 0 ? void 0 : _a.item,
-        (_b = parsed === null || parsed === void 0 ? void 0 : parsed.result) === null || _b === void 0 ? void 0 : _b.items,
+        (_a = parsed === null || parsed === void 0 ? void 0 : parsed.data) === null || _a === void 0 ? void 0 : _a.content, // ★ NIBR ktsn/taxons/search 공식 명세 (v1)
+        (_b = parsed === null || parsed === void 0 ? void 0 : parsed.result) === null || _b === void 0 ? void 0 : _b.item,
+        (_c = parsed === null || parsed === void 0 ? void 0 : parsed.result) === null || _c === void 0 ? void 0 : _c.items,
         parsed === null || parsed === void 0 ? void 0 : parsed.items,
-        (_c = parsed === null || parsed === void 0 ? void 0 : parsed.data) === null || _c === void 0 ? void 0 : _c.item,
-        (_d = parsed === null || parsed === void 0 ? void 0 : parsed.data) === null || _d === void 0 ? void 0 : _d.items,
-        (_f = parsed === null || parsed === void 0 ? void 0 : parsed.data) === null || _f === void 0 ? void 0 : _f.list,
-        (_j = (_h = (_g = parsed === null || parsed === void 0 ? void 0 : parsed.response) === null || _g === void 0 ? void 0 : _g.body) === null || _h === void 0 ? void 0 : _h.items) === null || _j === void 0 ? void 0 : _j.item,
-        (_k = parsed === null || parsed === void 0 ? void 0 : parsed.body) === null || _k === void 0 ? void 0 : _k.items,
+        (_d = parsed === null || parsed === void 0 ? void 0 : parsed.data) === null || _d === void 0 ? void 0 : _d.item,
+        (_f = parsed === null || parsed === void 0 ? void 0 : parsed.data) === null || _f === void 0 ? void 0 : _f.items,
+        (_g = parsed === null || parsed === void 0 ? void 0 : parsed.data) === null || _g === void 0 ? void 0 : _g.list,
+        (_k = (_j = (_h = parsed === null || parsed === void 0 ? void 0 : parsed.response) === null || _h === void 0 ? void 0 : _h.body) === null || _j === void 0 ? void 0 : _j.items) === null || _k === void 0 ? void 0 : _k.item,
+        (_l = parsed === null || parsed === void 0 ? void 0 : parsed.body) === null || _l === void 0 ? void 0 : _l.items,
         parsed === null || parsed === void 0 ? void 0 : parsed.list,
     ];
     for (const c of candidates) {
@@ -5422,6 +5423,11 @@ function nibrExtractArray(parsed) {
             return c;
     }
     return [];
+}
+// NIBR stnm은 권위명·연도가 붙는 형식("Cucurbita maxima Duchesne 1786") — 첫 두 토큰(속명+종소명)만 비교
+function nibrSciBinomial(sci) {
+    const tokens = sci.trim().toLowerCase().replace(/\s+/g, ' ').split(' ');
+    return tokens.slice(0, 2).join(' ');
 }
 function nibrEmptyResponse(status) {
     return {
@@ -5455,7 +5461,7 @@ exports.getKoreanPlantInfo = (0, https_2.onCall)({
     // Secret 미등록 fallback (1차 dry-run 정상 경로)
     let apiKey = '';
     try {
-        apiKey = NIBR_API_KEY_SECRET.value();
+        apiKey = String(NIBR_API_KEY_SECRET.value() || '').trim();
     }
     catch {
         apiKey = '';
@@ -5480,50 +5486,87 @@ exports.getKoreanPlantInfo = (0, https_2.onCall)({
         const rawRaw = typeof response.data === 'string'
             ? response.data
             : JSON.stringify(response.data || {});
+        // 응답에서 NIBR errorCode 추출 (진단용 — 키 값은 절대 포함 X)
+        let parsedForDiag = null;
+        try {
+            parsedForDiag = JSON.parse(rawRaw);
+        }
+        catch {
+            /* not JSON — XML 가능성 */
+        }
+        const nibrErrorCode = parsedForDiag && typeof parsedForDiag === 'object'
+            ? parsedForDiag.errorCode || null
+            : null;
         // 신청 미완료 / 권한 오류 — fallback (throw 금지)
-        const unavailableSignals = /APLY_NOT_FOUND|UNAUTHORIZED|FORBIDDEN/i;
+        const unavailableSignals = /APLY_NOT_FOUND|APLY_NOT_APRV|INVLD_API_KEY|UNAUTHORIZED|FORBIDDEN/i;
         if (httpStatus === 401 ||
             httpStatus === 403 ||
             httpStatus === 404 ||
             unavailableSignals.test(rawRaw)) {
-            logger.warn('NIBR enrichment unavailable', { httpStatus });
+            logger.warn('NIBR enrichment unavailable', {
+                httpStatus,
+                nibrErrorCode,
+            });
             return nibrEmptyResponse('api_unavailable');
         }
         if (httpStatus >= 400) {
-            logger.warn('NIBR enrichment http error', { httpStatus });
+            logger.warn('NIBR enrichment http error', {
+                httpStatus,
+                nibrErrorCode,
+            });
             return nibrEmptyResponse('api_unavailable');
         }
-        let parsed = null;
-        try {
-            parsed = JSON.parse(rawRaw);
-        }
-        catch {
+        const parsed = parsedForDiag;
+        if (!parsed) {
             return nibrEmptyResponse('api_unavailable');
         }
         const items = nibrExtractArray(parsed);
         if (items.length === 0) {
+            logger.warn('NIBR response had no items array', {
+                topLevelKeys: parsed && typeof parsed === 'object' ? Object.keys(parsed) : null,
+            });
             return nibrEmptyResponse('not_found');
         }
-        const target = nibrNormalizeSci(sciInput);
+        const target = nibrSciBinomial(sciInput);
         let matched = null;
         for (const it of items) {
-            const sci = nibrPickString(it === null || it === void 0 ? void 0 : it.stnm, it === null || it === void 0 ? void 0 : it.ktsnLtnNm, it === null || it === void 0 ? void 0 : it.scientificName, it === null || it === void 0 ? void 0 : it.sciNm, it === null || it === void 0 ? void 0 : it.sci_nm, it === null || it === void 0 ? void 0 : it.scName);
-            if (sci && nibrNormalizeSci(sci) === target) {
+            // 1) stnm 첫 두 토큰(속명+종소명)
+            const stnm = nibrPickString(it === null || it === void 0 ? void 0 : it.stnm, it === null || it === void 0 ? void 0 : it.scientificName);
+            if (stnm && nibrSciBinomial(stnm) === target) {
+                matched = it;
+                break;
+            }
+            // 2) gnusKtsnLtnNm + specsKtsnLtnNm 조합
+            const gnusL = nibrPickString(it === null || it === void 0 ? void 0 : it.gnusKtsnLtnNm);
+            const specsL = nibrPickString(it === null || it === void 0 ? void 0 : it.specsKtsnLtnNm);
+            if (gnusL && specsL && nibrSciBinomial(`${gnusL} ${specsL}`) === target) {
                 matched = it;
                 break;
             }
         }
         if (!matched) {
+            logger.info('NIBR no binomial match in this page', {
+                targetBinomial: target,
+                itemsCount: items.length,
+            });
             return nibrEmptyResponse('not_found');
         }
-        const koreanName = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.kornm, matched === null || matched === void 0 ? void 0 : matched.korNm, matched === null || matched === void 0 ? void 0 : matched.kor_nm, matched === null || matched === void 0 ? void 0 : matched.repKorNm, matched === null || matched === void 0 ? void 0 : matched.repKorName, matched === null || matched === void 0 ? void 0 : matched.koreanName);
-        const speciesKoreanName = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.specKorNm, matched === null || matched === void 0 ? void 0 : matched.species_kor, matched === null || matched === void 0 ? void 0 : matched.speciesKoreanName) || koreanName;
-        const sciFinal = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.stnm, matched === null || matched === void 0 ? void 0 : matched.ktsnLtnNm, matched === null || matched === void 0 ? void 0 : matched.scientificName, matched === null || matched === void 0 ? void 0 : matched.sciNm);
-        const phylumName = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.phylumName, matched === null || matched === void 0 ? void 0 : matched.phylumKornm, matched === null || matched === void 0 ? void 0 : matched.phylumKorNm, matched === null || matched === void 0 ? void 0 : matched.phylum);
-        const className = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.className, matched === null || matched === void 0 ? void 0 : matched.classKornm, matched === null || matched === void 0 ? void 0 : matched.classKorNm, matched === null || matched === void 0 ? void 0 : matched.classNm);
-        const orderName = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.orderName, matched === null || matched === void 0 ? void 0 : matched.orderKornm, matched === null || matched === void 0 ? void 0 : matched.orderKorNm, matched === null || matched === void 0 ? void 0 : matched.ordNm);
-        const familyName = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.familyName, matched === null || matched === void 0 ? void 0 : matched.familyKornm, matched === null || matched === void 0 ? void 0 : matched.familyKorNm, matched === null || matched === void 0 ? void 0 : matched.famNm);
-        const genusName = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.genusName, matched === null || matched === void 0 ? void 0 : matched.genusKornm, matched === null || matched === void 0 ? void 0 : matched.genusKorNm, matched === null || matched === void 0 ? void 0 : matched.genNm);
+        // NIBR 명세 (ktsn taxons search) 우선 + 구버전/유사 키 후보 보존
+        const koreanName = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.ktsnKrnNm, matched === null || matched === void 0 ? void 0 : matched.kornm, matched === null || matched === void 0 ? void 0 : matched.korNm, matched === null || matched === void 0 ? void 0 : matched.kor_nm, matched === null || matched === void 0 ? void 0 : matched.repKorNm, matched === null || matched === void 0 ? void 0 : matched.repKorName, matched === null || matched === void 0 ? void 0 : matched.koreanName);
+        const speciesKoreanName = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.specsKtsnKrnNm, matched === null || matched === void 0 ? void 0 : matched.specKorNm, matched === null || matched === void 0 ? void 0 : matched.species_kor, matched === null || matched === void 0 ? void 0 : matched.speciesKoreanName) || koreanName;
+        const sciFinal = (() => {
+            // 깨끗한 binomial 우선: gnusLtn + specsLtn
+            const gnusL = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.gnusKtsnLtnNm);
+            const specsL = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.specsKtsnLtnNm);
+            if (gnusL && specsL)
+                return `${gnusL} ${specsL}`;
+            return nibrPickString(matched === null || matched === void 0 ? void 0 : matched.stnm, matched === null || matched === void 0 ? void 0 : matched.ktsnLtnNm, matched === null || matched === void 0 ? void 0 : matched.scientificName, matched === null || matched === void 0 ? void 0 : matched.sciNm);
+        })();
+        const phylumName = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.phlmKtsnKrnNm, matched === null || matched === void 0 ? void 0 : matched.phlmKtsnLtnNm, matched === null || matched === void 0 ? void 0 : matched.phylumName, matched === null || matched === void 0 ? void 0 : matched.phylumKornm, matched === null || matched === void 0 ? void 0 : matched.phylumKorNm, matched === null || matched === void 0 ? void 0 : matched.phylum);
+        const className = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.classKtsnKrnNm, matched === null || matched === void 0 ? void 0 : matched.classKtsnLtnNm, matched === null || matched === void 0 ? void 0 : matched.className, matched === null || matched === void 0 ? void 0 : matched.classKornm, matched === null || matched === void 0 ? void 0 : matched.classKorNm, matched === null || matched === void 0 ? void 0 : matched.classNm);
+        const orderName = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.orderKtsnKrnNm, matched === null || matched === void 0 ? void 0 : matched.orderKtsnLtnNm, matched === null || matched === void 0 ? void 0 : matched.orderName, matched === null || matched === void 0 ? void 0 : matched.orderKornm, matched === null || matched === void 0 ? void 0 : matched.orderKorNm, matched === null || matched === void 0 ? void 0 : matched.ordNm);
+        const familyName = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.fmlyKtsnKrnNm, matched === null || matched === void 0 ? void 0 : matched.fmlyKtsnLtnNm, matched === null || matched === void 0 ? void 0 : matched.familyName, matched === null || matched === void 0 ? void 0 : matched.familyKornm, matched === null || matched === void 0 ? void 0 : matched.familyKorNm, matched === null || matched === void 0 ? void 0 : matched.famNm);
+        const genusName = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.gnusKtsnKrnNm, matched === null || matched === void 0 ? void 0 : matched.gnusKtsnLtnNm, matched === null || matched === void 0 ? void 0 : matched.genusName, matched === null || matched === void 0 ? void 0 : matched.genusKornm, matched === null || matched === void 0 ? void 0 : matched.genusKorNm, matched === null || matched === void 0 ? void 0 : matched.genNm);
         return {
             koreanName,
             scientificName: sciFinal,
