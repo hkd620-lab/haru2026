@@ -56,6 +56,7 @@ export function AssetExplorerPage() {
   const [oneDriveFolderReady, setOneDriveFolderReady] = useState(false);
   const [oneDriveConnecting, setOneDriveConnecting] = useState(false);
   const [oneDriveError, setOneDriveError] = useState<string | null>(null);
+  const [showMacICloudGuide, setShowMacICloudGuide] = useState(false);
 
   const filteredAssets = useMemo(() => {
     const keyword = searchText.trim().toLowerCase();
@@ -275,7 +276,7 @@ export function AssetExplorerPage() {
             {/* iCloud 카드 — Beta (정식 베타, 일반 구독자 노출. 실 연동 준비 중) */}
             <button
               type="button"
-              onClick={() => toast.info('iCloud 연결은 Beta 준비 중입니다')}
+              onClick={() => setShowMacICloudGuide(true)}
               style={{
                 textAlign: 'left',
                 border: '1px solid #d6e0f0',
@@ -311,6 +312,21 @@ export function AssetExplorerPage() {
               <p style={{ margin: 0, color: '#777', fontSize: 12, lineHeight: 1.55 }}>
                 아이폰·맥 기록 자산 연결 (Beta 준비 중)
               </p>
+              <span
+                style={{
+                  alignSelf: 'flex-start',
+                  marginTop: 4,
+                  border: '1px solid #1A3C6E',
+                  borderRadius: 8,
+                  color: '#1A3C6E',
+                  padding: '7px 10px',
+                  fontSize: 12,
+                  fontWeight: 800,
+                  background: '#fff',
+                }}
+              >
+                맥 자료를 iCloud로 이동하기
+              </span>
             </button>
 
             {/* Google Drive 카드 — 실연결 */}
@@ -594,6 +610,91 @@ export function AssetExplorerPage() {
         onToggle={toggleSelected}
         onCopy={copySelectedAssets}
       />
+      {showMacICloudGuide && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="맥 자료 iCloud 저장 안내"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(10, 20, 35, 0.36)',
+            zIndex: 60,
+            display: 'grid',
+            placeItems: 'center',
+            padding: 18,
+          }}
+          onClick={() => setShowMacICloudGuide(false)}
+        >
+          <div
+            style={{
+              width: 'min(100%, 420px)',
+              background: '#fff',
+              borderRadius: 12,
+              border: '1px solid #d6e0f0',
+              boxShadow: '0 18px 45px rgba(0,0,0,0.18)',
+              padding: 18,
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <span style={{ fontSize: 24 }}>🍎</span>
+              <div>
+                <h2 style={{ margin: 0, color: '#1A3C6E', fontSize: 17, fontWeight: 900 }}>
+                  맥 자료를 iCloud로 저장하기
+                </h2>
+                <p style={{ margin: '3px 0 0', color: '#777', fontSize: 12 }}>
+                  원본은 유지하고 HARU 임시수집함으로 모읍니다.
+                </p>
+              </div>
+            </div>
+
+            <div
+              style={{
+                background: '#F8FBFF',
+                border: '1px solid #dbeafe',
+                borderRadius: 10,
+                padding: 12,
+                color: '#1A3C6E',
+                fontSize: 12,
+                lineHeight: 1.65,
+                wordBreak: 'break-all',
+              }}
+            >
+              ~/Library/Mobile Documents/com~apple~CloudDocs/HARU_기록탐정/00_임시수집함
+            </div>
+
+            <ol style={{ margin: '12px 0 0', paddingLeft: 18, color: '#444', fontSize: 13, lineHeight: 1.7 }}>
+              <li>Finder에서 옮길 파일을 선택합니다.</li>
+              <li>선택한 파일을 위 HARU 임시수집함 폴더로 복사합니다.</li>
+              <li>이후 HARU에서 식물·투자·독서·개발로그 폴더로 정리합니다.</li>
+            </ol>
+
+            <p style={{ margin: '12px 0 0', color: '#8a6d1f', fontSize: 12, lineHeight: 1.55 }}>
+              브라우저 보안상 웹 버튼이 맥 파일을 직접 이동하지는 않습니다. 자동 복사 빠른 동작은 macOS Finder용으로 별도 추가할 수 있습니다.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setShowMacICloudGuide(false)}
+              style={{
+                marginTop: 14,
+                width: '100%',
+                height: 40,
+                border: 'none',
+                borderRadius: 8,
+                background: '#1A3C6E',
+                color: '#fff',
+                fontSize: 13,
+                fontWeight: 900,
+                cursor: 'pointer',
+              }}
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
