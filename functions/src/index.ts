@@ -6123,6 +6123,192 @@ export const getOneDriveConnectionState = onCall(
   },
 );
 
+// 5) 최근 자산 추천 + 가져오기 (Google Drive 미러링)
+//   getOneDriveCandidates: Graph /me/drive/recent → 후보 필터 → 최대 20개
+//   copyOneDriveAssets: 선택 파일 /HARU2026 복사(202 비동기) + assets 색인(status pending_copy)
+function isOneDriveAssetCandidate(item: any): boolean {
+  if (!item || item.folder) return false;
+  const mt = item.file?.mimeType || '';
+  return (
+    mt === 'application/pdf' ||
+    mt.startsWith('image/') ||
+    mt === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    mt === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+    mt === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
+    mt === 'application/msword' ||
+    mt === 'application/vnd.ms-excel' ||
+    mt === 'application/vnd.ms-powerpoint'
+  );
+}
+
+function getOneDriveFileKind(mt: string): string {
+  if (mt === 'application/pdf') return 'PDF';
+  if (mt.startsWith('image/')) return '이미지';
+  if (mt.includes('wordprocessingml') || mt === 'application/msword') return '문서';
+  if (mt.includes('spreadsheetml') || mt === 'application/vnd.ms-excel') return '스프레드시트';
+  if (mt.includes('presentationml') || mt === 'application/vnd.ms-powerpoint') return '프레젠테이션';
+  return '파일';
+}
+
+async function refreshOneDriveAccessToken(uid: string, data: any): Promise<string> {
+  const expiresAt = data?.tokenExpiresAt?.toMillis?.() || 0;
+  if (data?.accessToken && expiresAt > Date.now() + 60 * 1000) {
+    return data.accessToken as string;
+  }
+  if (!data?.refreshToken) {
+    throw new HttpsError('failed-precondition', 'OneDrive 연결이 만료되었습니다. 다시 연결해 주세요.');
+  }
+  const env = getOneDriveEnv();
+  if (!env) {
+    throw new HttpsError('failed-precondition', 'OneDrive 연결이 아직 설정되지 않았습니다.');
+  }
+  const form = new URLSearchParams({
+    client_id: env.clientId,
+    client_secret: env.clientSecret,
+    refresh_token: data.refreshToken,
+    grant_type: 'refresh_token',
+    redirect_uri: env.redirectUri,
+    scope: ONEDRIVE_OAUTH_SCOPE,
+  });
+  const res = await axios.post(ONEDRIVE_TOKEN_URL, form.toString(), {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    validateStatus: () => true,
+    timeout: 20_000,
+  });
+  if (res.status !== 200 || !res.data?.access_token) {
+    logger.error('OneDrive token refresh failed — status=' + res.status + ' error=' + String(res.data?.error) + ' desc=' + String(res.data?.error_description || ''));
+    throw new HttpsError('failed-precondition', 'OneDrive 연결이 만료되었습니다. 다시 연결해 주세요.');
+  }
+  const accessToken: string = res.data.access_token;
+  const newRefresh: string = res.data.refresh_token || data.refreshToken;
+  const expiresInSec: number = Number(res.data.expires_in) || 3600;
+  await db.doc(`users/${uid}/cloudConnections/oneDrive`).set(
+    {
+      accessToken,
+      refreshToken: newRefresh,
+      tokenExpiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + expiresInSec * 1000),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+  return accessToken;
+}
+
+async function getOneDriveAccessToken(uid: string): Promise<string> {
+  const snap = await db.doc(`users/${uid}/cloudConnections/oneDrive`).get();
+  if (!snap.exists) {
+    throw new HttpsError('failed-precondition', 'OneDrive 연결이 필요합니다.');
+  }
+  return refreshOneDriveAccessToken(uid, snap.data());
+}
+
+export const getOneDriveCandidates = onCall(
+  { region: 'asia-northeast3', secrets: [MICROSOFT_CLIENT_ID_SECRET, MICROSOFT_CLIENT_SECRET_SECRET] },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    const accessToken = await getOneDriveAccessToken(uid);
+    const res = await axios.get(`${ONEDRIVE_GRAPH_BASE}/me/drive/recent`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      params: { $top: 40 },
+      validateStatus: () => true,
+      timeout: 20_000,
+    });
+    if (res.status !== 200) {
+      logger.error('OneDrive recent list failed — status=' + res.status);
+      throw new HttpsError('internal', '최근 자산 후보를 불러오지 못했습니다.');
+    }
+    const items = (res.data?.value || []) as any[];
+    const candidates = items
+      .filter(isOneDriveAssetCandidate)
+      .slice(0, 20)
+      .map((item) => {
+        const mt = item.file?.mimeType || '';
+        return {
+          id: item.id as string,
+          name: (item.name as string) || '이름 없는 파일',
+          mimeType: mt,
+          modifiedTime: (item.lastModifiedDateTime as string) || '',
+          webViewLink: (item.webUrl as string) || '',
+          thumbnailLink: '',
+          iconLink: '',
+          kind: getOneDriveFileKind(mt),
+        };
+      });
+    return { candidates };
+  },
+);
+
+export const copyOneDriveAssets = onCall(
+  { region: 'asia-northeast3', secrets: [MICROSOFT_CLIENT_ID_SECRET, MICROSOFT_CLIENT_SECRET_SECRET] },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    const fileIds = Array.isArray(request.data?.fileIds)
+      ? (request.data.fileIds as unknown[]).filter((id) => typeof id === 'string' && (id as string).trim()) as string[]
+      : [];
+    if (fileIds.length === 0) {
+      throw new HttpsError('invalid-argument', '가져올 파일을 선택해 주세요.');
+    }
+    if (fileIds.length > 20) {
+      throw new HttpsError('invalid-argument', '한 번에 최대 20개까지 가져올 수 있습니다.');
+    }
+    const accessToken = await getOneDriveAccessToken(uid);
+    const folder = await ensureHaruFolderOnOneDrive(accessToken);
+
+    let requestedCount = 0;
+    for (const fileId of fileIds) {
+      const srcRes = await axios.get(
+        `${ONEDRIVE_GRAPH_BASE}/me/drive/items/${encodeURIComponent(fileId)}`,
+        { headers: { Authorization: `Bearer ${accessToken}` }, validateStatus: () => true, timeout: 20_000 },
+      );
+      if (srcRes.status !== 200 || !srcRes.data?.id) continue;
+      const src = srcRes.data;
+      if (!isOneDriveAssetCandidate(src)) continue;
+
+      const copyRes = await axios.post(
+        `${ONEDRIVE_GRAPH_BASE}/me/drive/items/${encodeURIComponent(fileId)}/copy`,
+        { parentReference: { id: folder.folderId }, name: src.name },
+        {
+          headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          validateStatus: () => true,
+          timeout: 20_000,
+        },
+      );
+      const accepted = copyRes.status === 202 || copyRes.status === 200;
+      const monitorUrl: string | null = (copyRes.headers?.location as string) || null;
+      const mt = src.file?.mimeType || '';
+
+      const assetRef = db.collection('users').doc(uid).collection('assets').doc(src.id as string);
+      const now = admin.firestore.FieldValue.serverTimestamp();
+      await assetRef.set(
+        {
+          title: src.name || '이름 없는 파일',
+          mimeType: mt,
+          source: 'onedrive',
+          oneDriveItemId: src.id,
+          sourceOneDriveItemId: src.id,
+          driveUrl: src.webUrl || '',
+          copyMonitorUrl: monitorUrl,
+          status: accepted ? 'pending_copy' : 'copy_failed',
+          folderPath: folder.folderPath,
+          createdAt: now,
+          updatedAt: now,
+          tags: [],
+          haruFolder: true,
+          kind: getOneDriveFileKind(mt),
+          thumbnailLink: '',
+          iconLink: '',
+        },
+        { merge: true },
+      );
+      if (accepted) requestedCount += 1;
+    }
+
+    return { copiedCount: requestedCount };
+  },
+);
+
 // ===========================================
 // 🌿 국내 생물종(NIBR) 보강 — getKoreanPlantInfo
 //   목적: PlantNet/Plant.id 판독 결과의 scientificName을 받아

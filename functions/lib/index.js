@@ -37,7 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = void 0;
-exports.getKoreanPlantInfo = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = void 0;
+exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -5385,6 +5385,177 @@ exports.getOneDriveConnectionState = (0, https_2.onCall)({ region: 'asia-northea
     const folderReady = Boolean(data === null || data === void 0 ? void 0 : data.folderId);
     const folderPath = (data === null || data === void 0 ? void 0 : data.folderPath) || null;
     return { connected, folderReady, folderPath };
+});
+// 5) 최근 자산 추천 + 가져오기 (Google Drive 미러링)
+//   getOneDriveCandidates: Graph /me/drive/recent → 후보 필터 → 최대 20개
+//   copyOneDriveAssets: 선택 파일 /HARU2026 복사(202 비동기) + assets 색인(status pending_copy)
+function isOneDriveAssetCandidate(item) {
+    var _a;
+    if (!item || item.folder)
+        return false;
+    const mt = ((_a = item.file) === null || _a === void 0 ? void 0 : _a.mimeType) || '';
+    return (mt === 'application/pdf' ||
+        mt.startsWith('image/') ||
+        mt === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+        mt === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+        mt === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
+        mt === 'application/msword' ||
+        mt === 'application/vnd.ms-excel' ||
+        mt === 'application/vnd.ms-powerpoint');
+}
+function getOneDriveFileKind(mt) {
+    if (mt === 'application/pdf')
+        return 'PDF';
+    if (mt.startsWith('image/'))
+        return '이미지';
+    if (mt.includes('wordprocessingml') || mt === 'application/msword')
+        return '문서';
+    if (mt.includes('spreadsheetml') || mt === 'application/vnd.ms-excel')
+        return '스프레드시트';
+    if (mt.includes('presentationml') || mt === 'application/vnd.ms-powerpoint')
+        return '프레젠테이션';
+    return '파일';
+}
+async function refreshOneDriveAccessToken(uid, data) {
+    var _a, _b, _c, _d, _f;
+    const expiresAt = ((_b = (_a = data === null || data === void 0 ? void 0 : data.tokenExpiresAt) === null || _a === void 0 ? void 0 : _a.toMillis) === null || _b === void 0 ? void 0 : _b.call(_a)) || 0;
+    if ((data === null || data === void 0 ? void 0 : data.accessToken) && expiresAt > Date.now() + 60 * 1000) {
+        return data.accessToken;
+    }
+    if (!(data === null || data === void 0 ? void 0 : data.refreshToken)) {
+        throw new https_2.HttpsError('failed-precondition', 'OneDrive 연결이 만료되었습니다. 다시 연결해 주세요.');
+    }
+    const env = getOneDriveEnv();
+    if (!env) {
+        throw new https_2.HttpsError('failed-precondition', 'OneDrive 연결이 아직 설정되지 않았습니다.');
+    }
+    const form = new URLSearchParams({
+        client_id: env.clientId,
+        client_secret: env.clientSecret,
+        refresh_token: data.refreshToken,
+        grant_type: 'refresh_token',
+        redirect_uri: env.redirectUri,
+        scope: ONEDRIVE_OAUTH_SCOPE,
+    });
+    const res = await axios_1.default.post(ONEDRIVE_TOKEN_URL, form.toString(), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        validateStatus: () => true,
+        timeout: 20000,
+    });
+    if (res.status !== 200 || !((_c = res.data) === null || _c === void 0 ? void 0 : _c.access_token)) {
+        logger.error('OneDrive token refresh failed — status=' + res.status + ' error=' + String((_d = res.data) === null || _d === void 0 ? void 0 : _d.error) + ' desc=' + String(((_f = res.data) === null || _f === void 0 ? void 0 : _f.error_description) || ''));
+        throw new https_2.HttpsError('failed-precondition', 'OneDrive 연결이 만료되었습니다. 다시 연결해 주세요.');
+    }
+    const accessToken = res.data.access_token;
+    const newRefresh = res.data.refresh_token || data.refreshToken;
+    const expiresInSec = Number(res.data.expires_in) || 3600;
+    await db.doc(`users/${uid}/cloudConnections/oneDrive`).set({
+        accessToken,
+        refreshToken: newRefresh,
+        tokenExpiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + expiresInSec * 1000),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+    return accessToken;
+}
+async function getOneDriveAccessToken(uid) {
+    const snap = await db.doc(`users/${uid}/cloudConnections/oneDrive`).get();
+    if (!snap.exists) {
+        throw new https_2.HttpsError('failed-precondition', 'OneDrive 연결이 필요합니다.');
+    }
+    return refreshOneDriveAccessToken(uid, snap.data());
+}
+exports.getOneDriveCandidates = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [MICROSOFT_CLIENT_ID_SECRET, MICROSOFT_CLIENT_SECRET_SECRET] }, async (request) => {
+    var _a, _b;
+    const uid = (_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid;
+    if (!uid)
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    const accessToken = await getOneDriveAccessToken(uid);
+    const res = await axios_1.default.get(`${ONEDRIVE_GRAPH_BASE}/me/drive/recent`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: { $top: 40 },
+        validateStatus: () => true,
+        timeout: 20000,
+    });
+    if (res.status !== 200) {
+        logger.error('OneDrive recent list failed — status=' + res.status);
+        throw new https_2.HttpsError('internal', '최근 자산 후보를 불러오지 못했습니다.');
+    }
+    const items = (((_b = res.data) === null || _b === void 0 ? void 0 : _b.value) || []);
+    const candidates = items
+        .filter(isOneDriveAssetCandidate)
+        .slice(0, 20)
+        .map((item) => {
+        var _a;
+        const mt = ((_a = item.file) === null || _a === void 0 ? void 0 : _a.mimeType) || '';
+        return {
+            id: item.id,
+            name: item.name || '이름 없는 파일',
+            mimeType: mt,
+            modifiedTime: item.lastModifiedDateTime || '',
+            webViewLink: item.webUrl || '',
+            thumbnailLink: '',
+            iconLink: '',
+            kind: getOneDriveFileKind(mt),
+        };
+    });
+    return { candidates };
+});
+exports.copyOneDriveAssets = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [MICROSOFT_CLIENT_ID_SECRET, MICROSOFT_CLIENT_SECRET_SECRET] }, async (request) => {
+    var _a, _b, _c, _d, _f;
+    const uid = (_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid;
+    if (!uid)
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    const fileIds = Array.isArray((_b = request.data) === null || _b === void 0 ? void 0 : _b.fileIds)
+        ? request.data.fileIds.filter((id) => typeof id === 'string' && id.trim())
+        : [];
+    if (fileIds.length === 0) {
+        throw new https_2.HttpsError('invalid-argument', '가져올 파일을 선택해 주세요.');
+    }
+    if (fileIds.length > 20) {
+        throw new https_2.HttpsError('invalid-argument', '한 번에 최대 20개까지 가져올 수 있습니다.');
+    }
+    const accessToken = await getOneDriveAccessToken(uid);
+    const folder = await ensureHaruFolderOnOneDrive(accessToken);
+    let requestedCount = 0;
+    for (const fileId of fileIds) {
+        const srcRes = await axios_1.default.get(`${ONEDRIVE_GRAPH_BASE}/me/drive/items/${encodeURIComponent(fileId)}`, { headers: { Authorization: `Bearer ${accessToken}` }, validateStatus: () => true, timeout: 20000 });
+        if (srcRes.status !== 200 || !((_c = srcRes.data) === null || _c === void 0 ? void 0 : _c.id))
+            continue;
+        const src = srcRes.data;
+        if (!isOneDriveAssetCandidate(src))
+            continue;
+        const copyRes = await axios_1.default.post(`${ONEDRIVE_GRAPH_BASE}/me/drive/items/${encodeURIComponent(fileId)}/copy`, { parentReference: { id: folder.folderId }, name: src.name }, {
+            headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+            validateStatus: () => true,
+            timeout: 20000,
+        });
+        const accepted = copyRes.status === 202 || copyRes.status === 200;
+        const monitorUrl = ((_d = copyRes.headers) === null || _d === void 0 ? void 0 : _d.location) || null;
+        const mt = ((_f = src.file) === null || _f === void 0 ? void 0 : _f.mimeType) || '';
+        const assetRef = db.collection('users').doc(uid).collection('assets').doc(src.id);
+        const now = admin.firestore.FieldValue.serverTimestamp();
+        await assetRef.set({
+            title: src.name || '이름 없는 파일',
+            mimeType: mt,
+            source: 'onedrive',
+            oneDriveItemId: src.id,
+            sourceOneDriveItemId: src.id,
+            driveUrl: src.webUrl || '',
+            copyMonitorUrl: monitorUrl,
+            status: accepted ? 'pending_copy' : 'copy_failed',
+            folderPath: folder.folderPath,
+            createdAt: now,
+            updatedAt: now,
+            tags: [],
+            haruFolder: true,
+            kind: getOneDriveFileKind(mt),
+            thumbnailLink: '',
+            iconLink: '',
+        }, { merge: true });
+        if (accepted)
+            requestedCount += 1;
+    }
+    return { copiedCount: requestedCount };
 });
 // ===========================================
 // 🌿 국내 생물종(NIBR) 보강 — getKoreanPlantInfo

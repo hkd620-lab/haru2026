@@ -56,6 +56,9 @@ export function AssetExplorerPage() {
   const [oneDriveFolderReady, setOneDriveFolderReady] = useState(false);
   const [oneDriveConnecting, setOneDriveConnecting] = useState(false);
   const [oneDriveError, setOneDriveError] = useState<string | null>(null);
+  const [isLoadingOneDriveCandidates, setIsLoadingOneDriveCandidates] = useState(false);
+  // 후보 모달이 어느 클라우드용인지 — 가져오기 버튼이 올바른 함수로 분기
+  const [activeSource, setActiveSource] = useState<'google' | 'onedrive'>('google');
   const [showMacICloudGuide, setShowMacICloudGuide] = useState(false);
 
   const filteredAssets = useMemo(() => {
@@ -178,6 +181,7 @@ export function AssetExplorerPage() {
       setCandidates(result.data.candidates || []);
       setSelectedIds([]);
       setHasDriveConnection(true);
+      setActiveSource('google');
       setModalOpen(true);
     } catch (error: any) {
       console.error('자산 후보 탐색 실패:', error);
@@ -189,6 +193,50 @@ export function AssetExplorerPage() {
       }
     } finally {
       setIsLoadingCandidates(false);
+    }
+  };
+
+  const loadOneDriveCandidates = async () => {
+    setIsLoadingOneDriveCandidates(true);
+    try {
+      const getCandidates = httpsCallable<unknown, { candidates: AssetCandidate[] }>(functions, 'getOneDriveCandidates');
+      const result = await getCandidates({});
+      setCandidates(result.data.candidates || []);
+      setSelectedIds([]);
+      setActiveSource('onedrive');
+      setModalOpen(true);
+    } catch (error: any) {
+      console.error('OneDrive 자산 후보 탐색 실패:', error);
+      const message = String(error?.message || '');
+      if (message.includes('OneDrive 연결')) {
+        toast.error('OneDrive 연결이 필요합니다.');
+      } else {
+        toast.error(error?.message || '최근 자산 후보를 불러오지 못했습니다.');
+      }
+    } finally {
+      setIsLoadingOneDriveCandidates(false);
+    }
+  };
+
+  const copyOneDriveSelectedAssets = async () => {
+    if (selectedIds.length === 0) return;
+    setIsCopying(true);
+    try {
+      const copyAssets = httpsCallable<{ fileIds: string[] }, CopyResponse>(functions, 'copyOneDriveAssets');
+      const result = await copyAssets({ fileIds: selectedIds });
+      setModalOpen(false);
+      setSelectedIds([]);
+      await loadAssets();
+      if (result.data.copiedCount === 0) {
+        toast.warning('가져올 수 있는 문서·이미지·PDF가 없었습니다.');
+      } else {
+        toast.success('가져오기를 요청했습니다. 잠시 후 OneDrive /HARU2026 폴더에 복사됩니다.');
+      }
+    } catch (error: any) {
+      console.error('OneDrive 자산 가져오기 실패:', error);
+      toast.error(error?.message || '선택한 자산을 가져오지 못했습니다.');
+    } finally {
+      setIsCopying(false);
     }
   };
 
@@ -487,6 +535,33 @@ export function AssetExplorerPage() {
                   )}
                   {oneDriveConnected ? '다시 연결' : 'OneDrive 연결하기'}
                 </button>
+                {oneDriveConnected && (
+                  <button
+                    type="button"
+                    onClick={loadOneDriveCandidates}
+                    disabled={isLoadingOneDriveCandidates}
+                    style={{
+                      border: 'none',
+                      borderRadius: 8,
+                      background: '#1A3C6E',
+                      color: '#fff',
+                      padding: '8px 11px',
+                      fontSize: 12,
+                      fontWeight: 800,
+                      cursor: isLoadingOneDriveCandidates ? 'wait' : 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    {isLoadingOneDriveCandidates ? (
+                      <Loader2 size={13} className="animate-spin" />
+                    ) : (
+                      <FolderPlus size={13} />
+                    )}
+                    최근 자산 추천
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -608,7 +683,7 @@ export function AssetExplorerPage() {
         isCopying={isCopying}
         onClose={() => setModalOpen(false)}
         onToggle={toggleSelected}
-        onCopy={copySelectedAssets}
+        onCopy={activeSource === 'onedrive' ? copyOneDriveSelectedAssets : copySelectedAssets}
       />
       {showMacICloudGuide && (
         <div
