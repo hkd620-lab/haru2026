@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { httpsCallable } from 'firebase/functions';
-import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { functions, db } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -46,6 +46,11 @@ export function ElderBookPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [openChapter, setOpenChapter] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'polished' | 'draft'>('polished');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editBody, setEditBody] = useState('');
+  const [editField, setEditField] = useState<'draft' | 'polished'>('draft');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -86,6 +91,63 @@ export function ElderBookPage() {
       await loadBook();
       hideLoading();
       setBusy(null);
+    }
+  };
+
+  const startEdit = (c: ChapterDoc) => {
+    const field: 'draft' | 'polished' = viewMode === 'polished' && (c.polished || '').trim() ? 'polished' : 'draft';
+    setEditingId(c.id);
+    setEditField(field);
+    setEditTitle(c.title || '');
+    setEditBody((field === 'polished' ? c.polished : c.draft) || c.draft || '');
+    setOpenChapter(c.id);
+  };
+
+  const cancelEdit = () => { setEditingId(null); setEditTitle(''); setEditBody(''); };
+
+  const saveEdit = async () => {
+    if (!editingId) return;
+    setSaving(true);
+    try {
+      const patch: any = { title: editTitle.trim() || '(제목 없음)', updatedAt: serverTimestamp() };
+      patch[editField] = editBody;
+      if (editField === 'draft') patch.wordCount = editBody.length;
+      else patch.polishedWordCount = editBody.length;
+      await updateDoc(doc(db, 'books', ELDER_BOOK_ID, 'chapters', editingId), patch);
+      await loadBook();
+      cancelEdit();
+      toast.success('저장했습니다.');
+    } catch (e: any) {
+      toast.error(e?.message || '저장 실패');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteChapter = async (c: ChapterDoc) => {
+    if (!window.confirm(`'${c.title}' 장을 삭제할까요? 되돌릴 수 없습니다.`)) return;
+    try {
+      await deleteDoc(doc(db, 'books', ELDER_BOOK_ID, 'chapters', c.id));
+      await loadBook();
+      toast.success('삭제했습니다.');
+    } catch (e: any) {
+      toast.error(e?.message || '삭제 실패');
+    }
+  };
+
+  const addChapter = async () => {
+    try {
+      const maxOrder = chapters.reduce((m, c) => Math.max(m, c.order ?? 0), 0);
+      const ref = doc(collection(db, 'books', ELDER_BOOK_ID, 'chapters'));
+      await setDoc(ref, {
+        chapterId: ref.id, bookId: ELDER_BOOK_ID, title: '새 장', part: '직접 추가',
+        order: maxOrder + 1, draft: '', polished: null, status: 'manual', wordCount: 0,
+        updatedAt: serverTimestamp(),
+      });
+      await loadBook();
+      toast.success('장을 추가했습니다.');
+    } catch (e: any) {
+      toast.error(e?.message || '추가 실패');
     }
   };
 
@@ -223,6 +285,7 @@ export function ElderBookPage() {
               {chapters.map((c) => {
                 const text = (viewMode === 'polished' ? c.polished : c.draft) || c.draft || '';
                 const isOpen = openChapter === c.id;
+                const isEditing = editingId === c.id;
                 return (
                   <div key={c.id} style={{ border: '1px solid #F3F4F6', borderRadius: 8 }}>
                     <button onClick={() => setOpenChapter(isOpen ? null : c.id)}
@@ -233,13 +296,42 @@ export function ElderBookPage() {
                       </span>
                       <span style={{ fontSize: 11, color: '#9CA3AF' }}>{text ? `${text.length}자` : ''} {isOpen ? '▲' : '▼'}</span>
                     </button>
-                    {isOpen && text && (
-                      <p style={{ margin: 0, padding: '0 12px 12px', fontSize: 13, lineHeight: 1.8, color: '#374151', whiteSpace: 'pre-wrap' }}>{text}</p>
+                    {isOpen && (
+                      <div style={{ padding: '0 12px 12px' }}>
+                        {isEditing ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="장 제목"
+                              style={{ width: '100%', padding: '8px 10px', border: '1px solid #D1D5DB', borderRadius: 6, fontSize: 13, fontWeight: 600 }} />
+                            <textarea value={editBody} onChange={(e) => setEditBody(e.target.value)} rows={12}
+                              style={{ width: '100%', padding: '10px', border: '1px solid #D1D5DB', borderRadius: 6, fontSize: 13, lineHeight: 1.8, resize: 'vertical' }} />
+                            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                              <span style={{ fontSize: 11, color: '#9CA3AF', marginRight: 'auto', alignSelf: 'center' }}>
+                                {editField === 'polished' ? '윤문본 편집' : '초고 편집'} · {editBody.length}자
+                              </span>
+                              <SmallBtn label="취소" onClick={cancelEdit} />
+                              <SmallBtn label={saving ? '저장 중…' : '저장'} onClick={saveEdit} primary disabled={saving} />
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.8, color: '#374151', whiteSpace: 'pre-wrap' }}>{text || <span style={{ color: '#9CA3AF' }}>(본문 없음)</span>}</p>
+                            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 8 }}>
+                              <SmallBtn label="✏️ 편집" onClick={() => startEdit(c)} />
+                              <SmallBtn label="🗑 삭제" onClick={() => deleteChapter(c)} danger />
+                            </div>
+                          </>
+                        )}
+                      </div>
                     )}
                   </div>
                 );
               })}
             </div>
+            <button onClick={addChapter}
+              style={{ width: '100%', marginTop: 10, padding: '9px', borderRadius: 8, border: '1px dashed #D1D5DB',
+                background: '#fff', color: '#6B7280', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              + 장 추가
+            </button>
           </div>
         )}
 
@@ -274,6 +366,18 @@ function StageCard({ step, title, desc, buttonLabel, busy, disabled, onClick, ch
       >{busy ? '작업 중…' : buttonLabel}</button>
       {children ? <div style={{ marginTop: 12, borderTop: '1px solid #F3F4F6', paddingTop: 12 }}>{children}</div> : null}
     </div>
+  );
+}
+
+function SmallBtn({ label, onClick, primary, danger, disabled }: { label: string; onClick: () => void; primary?: boolean; danger?: boolean; disabled?: boolean }) {
+  const bg = primary ? NAVY : danger ? '#FEE2E2' : '#F3F4F6';
+  const color = primary ? '#fff' : danger ? '#B91C1C' : '#374151';
+  return (
+    <button onClick={onClick} disabled={disabled}
+      style={{ padding: '6px 12px', borderRadius: 6, border: 'none', fontSize: 12, fontWeight: 700,
+        background: bg, color, cursor: disabled ? 'wait' : 'pointer', opacity: disabled ? 0.6 : 1 }}>
+      {label}
+    </button>
   );
 }
 
