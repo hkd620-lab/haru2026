@@ -6204,8 +6204,7 @@ function nibrEmptyResponse(status: NibrMatchStatus): KoreanPlantInfoResponse {
 export const getKoreanPlantInfo = onCall(
   {
     region: 'asia-northeast3',
-    // 1차 dry-run: Secret 미등록 상태 안전 deploy 위해 secrets attach 안 함.
-    // defineSecret('NIBR_API_KEY') 선언은 유지 — 값 등록 후 2차 시점에 secrets: [NIBR_API_KEY_SECRET] 재추가.
+    secrets: [NIBR_API_KEY_SECRET],
     timeoutSeconds: 20,
   },
   async (request): Promise<KoreanPlantInfoResponse> => {

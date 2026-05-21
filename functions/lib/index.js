@@ -37,7 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.convertToBookMaterial = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = void 0;
-exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = void 0;
+exports.getKoreanPlantInfo = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -5378,4 +5378,170 @@ exports.getOneDriveConnectionState = (0, https_2.onCall)({ region: 'asia-northea
     const folderReady = Boolean(data === null || data === void 0 ? void 0 : data.folderId);
     const folderPath = (data === null || data === void 0 ? void 0 : data.folderPath) || null;
     return { connected, folderReady, folderPath };
+});
+// ===========================================
+// 🌿 국내 생물종(NIBR) 보강 — getKoreanPlantInfo
+//   목적: PlantNet/Plant.id 판독 결과의 scientificName을 받아
+//         NIBR 국가생물종지식정보시스템에서 한국어 국명/분류정보를 보강 조회.
+//   원칙: 보강 정보 전용. 실패 시 throw 대신 fallback 응답으로 기존 흐름 무영향.
+//   금지: public onRequest 노출 / 캐시 / mock / 키 echo / NIBR 결과를 사용자 확정값으로 저장.
+//   Secret: defineSecret('NIBR_API_KEY')
+//     - 미등록 시 status: "not_configured" 반환 (이번 1차 배포 dry-run 상태)
+// ===========================================
+const NIBR_API_KEY_SECRET = (0, params_1.defineSecret)('NIBR_API_KEY');
+function nibrPickString(...values) {
+    for (const v of values) {
+        if (typeof v === 'string') {
+            const t = v.trim();
+            if (t.length > 0)
+                return t;
+        }
+    }
+    return null;
+}
+function nibrNormalizeSci(s) {
+    return s.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+function nibrExtractArray(parsed) {
+    var _a, _b, _c, _d, _f, _g, _h, _j, _k;
+    if (!parsed || typeof parsed !== 'object')
+        return [];
+    const candidates = [
+        (_a = parsed === null || parsed === void 0 ? void 0 : parsed.result) === null || _a === void 0 ? void 0 : _a.item,
+        (_b = parsed === null || parsed === void 0 ? void 0 : parsed.result) === null || _b === void 0 ? void 0 : _b.items,
+        parsed === null || parsed === void 0 ? void 0 : parsed.items,
+        (_c = parsed === null || parsed === void 0 ? void 0 : parsed.data) === null || _c === void 0 ? void 0 : _c.item,
+        (_d = parsed === null || parsed === void 0 ? void 0 : parsed.data) === null || _d === void 0 ? void 0 : _d.items,
+        (_f = parsed === null || parsed === void 0 ? void 0 : parsed.data) === null || _f === void 0 ? void 0 : _f.list,
+        (_j = (_h = (_g = parsed === null || parsed === void 0 ? void 0 : parsed.response) === null || _g === void 0 ? void 0 : _g.body) === null || _h === void 0 ? void 0 : _h.items) === null || _j === void 0 ? void 0 : _j.item,
+        (_k = parsed === null || parsed === void 0 ? void 0 : parsed.body) === null || _k === void 0 ? void 0 : _k.items,
+        parsed === null || parsed === void 0 ? void 0 : parsed.list,
+    ];
+    for (const c of candidates) {
+        if (Array.isArray(c) && c.length > 0)
+            return c;
+    }
+    return [];
+}
+function nibrEmptyResponse(status) {
+    return {
+        koreanName: null,
+        scientificName: null,
+        phylumName: null,
+        className: null,
+        orderName: null,
+        familyName: null,
+        genusName: null,
+        speciesKoreanName: null,
+        source: 'NIBR',
+        rawMatched: false,
+        status,
+    };
+}
+exports.getKoreanPlantInfo = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    secrets: [NIBR_API_KEY_SECRET],
+    timeoutSeconds: 20,
+}, async (request) => {
+    var _a, _b;
+    const uid = (_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid;
+    if (!uid) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const sciInput = String(((_b = request.data) === null || _b === void 0 ? void 0 : _b.scientificName) || '').trim();
+    if (!sciInput) {
+        return nibrEmptyResponse('not_found');
+    }
+    // Secret 미등록 fallback (1차 dry-run 정상 경로)
+    let apiKey = '';
+    try {
+        apiKey = NIBR_API_KEY_SECRET.value();
+    }
+    catch {
+        apiKey = '';
+    }
+    if (!apiKey) {
+        logger.warn('NIBR_API_KEY not configured — enrichment skipped');
+        return nibrEmptyResponse('not_configured');
+    }
+    const endpoint = 'https://species.nibr.go.kr/gwsvc/openapi/rest/ktsn/taxons/search';
+    try {
+        const response = await axios_1.default.get(endpoint, {
+            params: {
+                oapiAcsUnqNo: apiKey,
+                page: 1,
+                responseType: 'json',
+            },
+            responseType: 'text',
+            validateStatus: () => true,
+            timeout: 15000,
+        });
+        const httpStatus = response.status;
+        const rawRaw = typeof response.data === 'string'
+            ? response.data
+            : JSON.stringify(response.data || {});
+        // 신청 미완료 / 권한 오류 — fallback (throw 금지)
+        const unavailableSignals = /APLY_NOT_FOUND|UNAUTHORIZED|FORBIDDEN/i;
+        if (httpStatus === 401 ||
+            httpStatus === 403 ||
+            httpStatus === 404 ||
+            unavailableSignals.test(rawRaw)) {
+            logger.warn('NIBR enrichment unavailable', { httpStatus });
+            return nibrEmptyResponse('api_unavailable');
+        }
+        if (httpStatus >= 400) {
+            logger.warn('NIBR enrichment http error', { httpStatus });
+            return nibrEmptyResponse('api_unavailable');
+        }
+        let parsed = null;
+        try {
+            parsed = JSON.parse(rawRaw);
+        }
+        catch {
+            return nibrEmptyResponse('api_unavailable');
+        }
+        const items = nibrExtractArray(parsed);
+        if (items.length === 0) {
+            return nibrEmptyResponse('not_found');
+        }
+        const target = nibrNormalizeSci(sciInput);
+        let matched = null;
+        for (const it of items) {
+            const sci = nibrPickString(it === null || it === void 0 ? void 0 : it.stnm, it === null || it === void 0 ? void 0 : it.ktsnLtnNm, it === null || it === void 0 ? void 0 : it.scientificName, it === null || it === void 0 ? void 0 : it.sciNm, it === null || it === void 0 ? void 0 : it.sci_nm, it === null || it === void 0 ? void 0 : it.scName);
+            if (sci && nibrNormalizeSci(sci) === target) {
+                matched = it;
+                break;
+            }
+        }
+        if (!matched) {
+            return nibrEmptyResponse('not_found');
+        }
+        const koreanName = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.kornm, matched === null || matched === void 0 ? void 0 : matched.korNm, matched === null || matched === void 0 ? void 0 : matched.kor_nm, matched === null || matched === void 0 ? void 0 : matched.repKorNm, matched === null || matched === void 0 ? void 0 : matched.repKorName, matched === null || matched === void 0 ? void 0 : matched.koreanName);
+        const speciesKoreanName = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.specKorNm, matched === null || matched === void 0 ? void 0 : matched.species_kor, matched === null || matched === void 0 ? void 0 : matched.speciesKoreanName) || koreanName;
+        const sciFinal = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.stnm, matched === null || matched === void 0 ? void 0 : matched.ktsnLtnNm, matched === null || matched === void 0 ? void 0 : matched.scientificName, matched === null || matched === void 0 ? void 0 : matched.sciNm);
+        const phylumName = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.phylumName, matched === null || matched === void 0 ? void 0 : matched.phylumKornm, matched === null || matched === void 0 ? void 0 : matched.phylumKorNm, matched === null || matched === void 0 ? void 0 : matched.phylum);
+        const className = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.className, matched === null || matched === void 0 ? void 0 : matched.classKornm, matched === null || matched === void 0 ? void 0 : matched.classKorNm, matched === null || matched === void 0 ? void 0 : matched.classNm);
+        const orderName = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.orderName, matched === null || matched === void 0 ? void 0 : matched.orderKornm, matched === null || matched === void 0 ? void 0 : matched.orderKorNm, matched === null || matched === void 0 ? void 0 : matched.ordNm);
+        const familyName = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.familyName, matched === null || matched === void 0 ? void 0 : matched.familyKornm, matched === null || matched === void 0 ? void 0 : matched.familyKorNm, matched === null || matched === void 0 ? void 0 : matched.famNm);
+        const genusName = nibrPickString(matched === null || matched === void 0 ? void 0 : matched.genusName, matched === null || matched === void 0 ? void 0 : matched.genusKornm, matched === null || matched === void 0 ? void 0 : matched.genusKorNm, matched === null || matched === void 0 ? void 0 : matched.genNm);
+        return {
+            koreanName,
+            scientificName: sciFinal,
+            phylumName,
+            className,
+            orderName,
+            familyName,
+            genusName,
+            speciesKoreanName,
+            source: 'NIBR',
+            rawMatched: true,
+            status: 'matched',
+        };
+    }
+    catch (err) {
+        logger.warn('NIBR enrichment call failed', {
+            message: (err === null || err === void 0 ? void 0 : err.message) || String(err),
+        });
+        return nibrEmptyResponse('api_unavailable');
+    }
 });
