@@ -76,13 +76,14 @@ export function ElderBookPage() {
     setBusy(key);
     showLoading(loadingMsg);
     try {
-      const fn = httpsCallable(functions, fnName);
+      // 가편 등은 장 수만큼 순차 호출되어 기본 70초를 넘으므로 클라이언트 타임아웃을 9분으로
+      const fn = httpsCallable(functions, fnName, { timeout: 540000 });
       await fn({});
-      await loadBook();
       toast.success(okMsg);
     } catch (e: any) {
       toast.error(e?.message || '작업 실패');
     } finally {
+      await loadBook();
       hideLoading();
       setBusy(null);
     }
