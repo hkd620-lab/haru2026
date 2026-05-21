@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { httpsCallable } from 'firebase/functions';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { functions, db } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,13 +23,27 @@ interface BookDoc {
   assignmentStats?: { perChapter?: Record<string, number>; unassigned?: number };
 }
 
+interface ChapterDoc {
+  id: string;
+  title?: string;
+  part?: string;
+  order?: number;
+  draft?: string | null;
+  polished?: string | null;
+  status?: string;
+  sourceCount?: number;
+}
+
 export function ElderBookPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isDeveloper = user?.uid === DEVELOPER_UID;
 
   const [book, setBook] = useState<BookDoc | null>(null);
+  const [chapters, setChapters] = useState<ChapterDoc[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const [openChapter, setOpenChapter] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'polished' | 'draft'>('polished');
 
   useEffect(() => {
     if (!user) return;
@@ -40,6 +54,11 @@ export function ElderBookPage() {
     try {
       const snap = await getDoc(doc(db, 'books', ELDER_BOOK_ID));
       setBook(snap.exists() ? (snap.data() as BookDoc) : null);
+      const chapSnap = await getDocs(collection(db, 'books', ELDER_BOOK_ID, 'chapters'));
+      const list = chapSnap.docs
+        .map((d) => ({ id: d.id, ...(d.data() as any) }) as ChapterDoc)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      setChapters(list);
     } catch (e) {
       console.error('책 진행상태 로드 실패:', e);
     }
@@ -70,6 +89,9 @@ export function ElderBookPage() {
   const aStats = book?.assignmentStats;
   const hasSources = !!stats && stats.accepted > 0;
   const hasOutline = !!outline?.parts?.length;
+  const hasAssign = !!aStats;
+  const hasDraft = chapters.some((c) => (c.draft || '').trim().length > 0);
+  const hasPolished = chapters.some((c) => (c.polished || '').trim().length > 0);
 
   return (
     <div style={{ minHeight: '100vh', background: OFFWHITE, color: NAVY, paddingBottom: 80 }}>
@@ -150,8 +172,71 @@ export function ElderBookPage() {
           )}
         </StageCard>
 
+        {/* 4단계 — 가편 작성 */}
+        <StageCard
+          step="④"
+          title="가편 작성"
+          desc="각 장에 배분된 원문 소재만 재료로 장별 초고 집필 (머리말·맺음말 포함, 창작 금지)"
+          buttonLabel={hasDraft ? '가편 다시 작성' : '가편 작성'}
+          busy={busy === 'draft'}
+          disabled={!!busy || !hasAssign}
+          onClick={() => run('draftElderBookChapters', 'draft', '가편을 작성했습니다.')}
+        />
+
+        {/* 4-1단계 — AI 윤문 */}
+        <StageCard
+          step="④-1"
+          title="AI 윤문"
+          desc="초고를 가독성 중심으로 다듬기 (사실·내용 불변, 흐름만 개선)"
+          buttonLabel={hasPolished ? '다시 윤문' : 'AI 윤문'}
+          busy={busy === 'polish'}
+          disabled={!!busy || !hasDraft}
+          onClick={() => run('polishElderBookChapters', 'polish', '윤문을 마쳤습니다.')}
+        />
+
+        {/* 챕터 뷰어 */}
+        {chapters.length > 0 && (
+          <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, padding: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ fontSize: 15, fontWeight: 700 }}>📑 원고 ({chapters.length})</span>
+              {hasPolished && (
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {(['polished', 'draft'] as const).map((m) => (
+                    <button key={m} onClick={() => setViewMode(m)}
+                      style={{ padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700, border: 'none', cursor: 'pointer',
+                        background: viewMode === m ? NAVY : '#F3F4F6', color: viewMode === m ? '#fff' : '#6B7280' }}>
+                      {m === 'polished' ? '윤문본' : '초고'}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {chapters.map((c) => {
+                const text = (viewMode === 'polished' ? c.polished : c.draft) || c.draft || '';
+                const isOpen = openChapter === c.id;
+                return (
+                  <div key={c.id} style={{ border: '1px solid #F3F4F6', borderRadius: 8 }}>
+                    <button onClick={() => setOpenChapter(isOpen ? null : c.id)}
+                      style={{ width: '100%', textAlign: 'left', padding: '9px 11px', border: 'none', background: 'transparent', cursor: 'pointer',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>
+                        {c.title}{c.status === 'no_sources' ? <span style={{ color: '#9CA3AF', fontWeight: 400 }}> (소재 없음)</span> : null}
+                      </span>
+                      <span style={{ fontSize: 11, color: '#9CA3AF' }}>{text ? `${text.length}자` : ''} {isOpen ? '▲' : '▼'}</span>
+                    </button>
+                    {isOpen && text && (
+                      <p style={{ margin: 0, padding: '0 12px 12px', fontSize: 13, lineHeight: 1.8, color: '#374151', whiteSpace: 'pre-wrap' }}>{text}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <p style={{ fontSize: 11, color: '#9CA3AF', textAlign: 'center', marginTop: 4 }}>
-          Phase 1 — 소재·차례·배분 / 가편·검토·출력은 다음 단계에서 추가됩니다.
+          Phase 1·2 — 소재·차례·배분·가편·윤문 / 교차검토·저자검토·출력은 Phase 3에서 추가됩니다.
         </p>
       </div>
     </div>

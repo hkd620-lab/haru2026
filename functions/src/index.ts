@@ -2572,7 +2572,7 @@ export { generateBook } from "./bookStudio";
 export { analyzeFacebookZip } from "./snsAnalyzer";
 export { convertSnsToDiary } from "./snsToDiary";
 export { convertToBookMaterial } from "./bookMaterial";
-export { gatherElderBookSources, buildElderBookOutline, assignElderBookSources } from "./elderBook";
+export { gatherElderBookSources, buildElderBookOutline, assignElderBookSources, draftElderBookChapters, polishElderBookChapters } from "./elderBook";
 
 // ===== 단어 뜻 조회 =====
 export const getWordMeaning = onCall(

@@ -306,3 +306,165 @@ ${passageList}
     return { ok: true, assignmentStats: { perChapter, unassigned }, chapters };
   }
 );
+
+// ───────────────────────────────────────────────────────────
+// 4단계 — 가편(초고) 작성 (장별, gpt-5.5). 배분된 원문 소재만 재료로 사용.
+// ───────────────────────────────────────────────────────────
+type ChapterPlan = { id: string; title: string; intent: string; part: string; order: number };
+
+function flattenChapters(outline: any): ChapterPlan[] {
+  const out: ChapterPlan[] = [];
+  let order = 1;
+  (outline?.parts || []).forEach((p: any) => {
+    (p.chapters || []).forEach((c: any) => {
+      if (c?.id) out.push({ id: String(c.id), title: String(c.title || ""), intent: String(c.intent || ""), part: String(p.partTitle || ""), order: order++ });
+    });
+  });
+  return out;
+}
+
+export const draftElderBookChapters = onCall(
+  { region: "asia-northeast3", secrets: [OPENAI_API_KEY], timeoutSeconds: 540 },
+  async (request) => {
+    assertDeveloper(request);
+    const db = admin.firestore();
+
+    const bookSnap = await db.collection("books").doc(ELDER_BOOK_ID).get();
+    const book = bookSnap.data() as any;
+    const sources: GatheredSource[] = Array.isArray(book?.sources) ? book.sources : [];
+    const outline = book?.outline;
+    const assignments: Record<string, string> = book?.assignments || {};
+    if (!outline?.parts?.length) throw new HttpsError("failed-precondition", "먼저 차례를 구성해주세요 (2단계).");
+    if (!Object.keys(assignments).length) throw new HttpsError("failed-precondition", "먼저 소재를 배분해주세요 (3단계).");
+
+    // passageKey -> text 조회용 맵
+    const textByKey: Record<string, string> = {};
+    sources.forEach((s) => s.passages.forEach((p) => { textByKey[p.key] = p.text; }));
+
+    const chapters = flattenChapters(outline);
+    const client = new OpenAI({ apiKey: OPENAI_API_KEY.value() });
+    const written: { chapterId: string; title: string; order: number; wordCount: number; skipped?: boolean }[] = [];
+
+    const draftOne = async (id: string, title: string, intent: string, part: string, order: number, passages: string[]) => {
+      const sourceBlock = passages.map((t) => `- ${t}`).join("\n");
+      const prompt = `당신은 논픽션 단행본 집필자입니다. "${BOOK_TITLE}" 책의 한 장을 집필합니다.
+
+[장 제목] ${title}
+[이 장의 의도] ${intent}
+
+[반드시 활용할 원문 소재 — 사용자가 직접 기록한 문장들. 사실과 핵심 표현을 보존하세요]
+${sourceBlock}
+
+[집필 지침]
+- 도입–전개–마무리의 자연스러운 흐름
+- 위 원문 소재의 사실과 표현을 살려 한 편의 장으로 엮을 것
+- 원문에 없는 사건·수치·인물·결론을 새로 지어내지 말 것
+- 분량 800~1500자
+- 마크다운/머리표 없이 본문 산문만 출력`;
+      const res = await client.chat.completions.create({
+        model: OPENAI_MODEL,
+        max_completion_tokens: 6000,
+        messages: [{ role: "user", content: prompt }],
+      });
+      const content = (res.choices[0]?.message?.content || "").trim();
+      await db.collection("books").doc(ELDER_BOOK_ID).collection("chapters").doc(id).set(
+        {
+          chapterId: id, bookId: ELDER_BOOK_ID, title, part, order,
+          intent, sourceCount: passages.length,
+          draft: content, polished: null, status: "drafted",
+          wordCount: content.length,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+      written.push({ chapterId: id, title, order, wordCount: content.length });
+    };
+
+    // 머리말
+    await draftOne("preface", "머리말", outline.preface || "이 책을 여는 글", "앞부속", 0,
+      [`이 책의 컨셉: ${outline.concept || BOOK_TITLE}`, `머리말 방향: ${outline.preface || ""}`]);
+
+    // 본문 장
+    for (const ch of chapters) {
+      const passages = Object.entries(assignments)
+        .filter(([, chId]) => chId === ch.id)
+        .map(([key]) => textByKey[key])
+        .filter(Boolean);
+      if (passages.length === 0) {
+        await db.collection("books").doc(ELDER_BOOK_ID).collection("chapters").doc(ch.id).set(
+          { chapterId: ch.id, bookId: ELDER_BOOK_ID, title: ch.title, part: ch.part, order: ch.order, sourceCount: 0, status: "no_sources", updatedAt: admin.firestore.FieldValue.serverTimestamp() },
+          { merge: true }
+        );
+        written.push({ chapterId: ch.id, title: ch.title, order: ch.order, wordCount: 0, skipped: true });
+        continue;
+      }
+      await draftOne(ch.id, ch.title, ch.intent, ch.part, ch.order, passages);
+      logger.info(`[elderBook] draft 장 완료: ${ch.title}`);
+    }
+
+    // 맺음말
+    await draftOne("epilogue", "맺음말", outline.epilogue || "이 책을 닫는 글", "뒷부속", chapters.length + 1,
+      [`맺음말 방향: ${outline.epilogue || ""}`, `책 컨셉: ${outline.concept || BOOK_TITLE}`]);
+
+    await db.collection("books").doc(ELDER_BOOK_ID).set(
+      { stage: "drafted", draftedAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() },
+      { merge: true }
+    );
+
+    logger.info("[elderBook] draft 완료", { chapters: written.length });
+    return { ok: true, chapters: written };
+  }
+);
+
+// ───────────────────────────────────────────────────────────
+// 4-1단계 — AI 윤문 (초고 다듬기, gpt-5.5). 사실·내용 불변, 흐름·가독성만.
+// ───────────────────────────────────────────────────────────
+export const polishElderBookChapters = onCall(
+  { region: "asia-northeast3", secrets: [OPENAI_API_KEY], timeoutSeconds: 540 },
+  async (request) => {
+    assertDeveloper(request);
+    const db = admin.firestore();
+
+    const chapSnap = await db.collection("books").doc(ELDER_BOOK_ID).collection("chapters").get();
+    const drafted = chapSnap.docs
+      .map((d) => ({ id: d.id, ...(d.data() as any) }))
+      .filter((c) => typeof c.draft === "string" && c.draft.trim().length > 0)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    if (drafted.length === 0) throw new HttpsError("failed-precondition", "먼저 가편을 작성해주세요 (4단계).");
+
+    const client = new OpenAI({ apiKey: OPENAI_API_KEY.value() });
+    const polished: { chapterId: string; title: string; wordCount: number }[] = [];
+
+    for (const c of drafted) {
+      const prompt = `아래는 책 "${BOOK_TITLE}"의 한 장 초고입니다. 책 본문답게 다듬으세요.
+
+[엄격한 규칙]
+- 사실·사건·내용을 바꾸거나 새로 추가하지 말 것 (윤문만)
+- 원문 화자의 톤 유지, 과장·미사여구 금지
+- 문장 흐름·연결·가독성만 개선
+- 마크다운 없이 본문 산문만 출력
+
+[초고]
+${c.draft}`;
+      const res = await client.chat.completions.create({
+        model: OPENAI_MODEL,
+        max_completion_tokens: 6000,
+        messages: [{ role: "user", content: prompt }],
+      });
+      const content = (res.choices[0]?.message?.content || "").trim();
+      await db.collection("books").doc(ELDER_BOOK_ID).collection("chapters").doc(c.id).set(
+        { polished: content, status: "polished", polishedWordCount: content.length, updatedAt: admin.firestore.FieldValue.serverTimestamp() },
+        { merge: true }
+      );
+      polished.push({ chapterId: c.id, title: c.title, wordCount: content.length });
+      logger.info(`[elderBook] polish 완료: ${c.title}`);
+    }
+
+    await db.collection("books").doc(ELDER_BOOK_ID).set(
+      { stage: "polished", polishedAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() },
+      { merge: true }
+    );
+
+    return { ok: true, polished };
+  }
+);
