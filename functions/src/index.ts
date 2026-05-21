@@ -6120,3 +6120,252 @@ export const getOneDriveConnectionState = onCall(
     return { connected, folderReady, folderPath };
   },
 );
+
+// ===========================================
+// 🌿 국내 생물종(NIBR) 보강 — getKoreanPlantInfo
+//   목적: PlantNet/Plant.id 판독 결과의 scientificName을 받아
+//         NIBR 국가생물종지식정보시스템에서 한국어 국명/분류정보를 보강 조회.
+//   원칙: 보강 정보 전용. 실패 시 throw 대신 fallback 응답으로 기존 흐름 무영향.
+//   금지: public onRequest 노출 / 캐시 / mock / 키 echo / NIBR 결과를 사용자 확정값으로 저장.
+//   Secret: defineSecret('NIBR_API_KEY')
+//     - 미등록 시 status: "not_configured" 반환 (이번 1차 배포 dry-run 상태)
+// ===========================================
+const NIBR_API_KEY_SECRET = defineSecret('NIBR_API_KEY');
+
+type NibrMatchStatus =
+  | 'matched'
+  | 'not_found'
+  | 'api_unavailable'
+  | 'not_configured';
+
+type KoreanPlantInfoResponse = {
+  koreanName: string | null;
+  scientificName: string | null;
+  phylumName: string | null;
+  className: string | null;
+  orderName: string | null;
+  familyName: string | null;
+  genusName: string | null;
+  speciesKoreanName: string | null;
+  source: 'NIBR';
+  rawMatched: boolean;
+  status: NibrMatchStatus;
+};
+
+function nibrPickString(...values: any[]): string | null {
+  for (const v of values) {
+    if (typeof v === 'string') {
+      const t = v.trim();
+      if (t.length > 0) return t;
+    }
+  }
+  return null;
+}
+
+function nibrNormalizeSci(s: string): string {
+  return s.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function nibrExtractArray(parsed: any): any[] {
+  if (!parsed || typeof parsed !== 'object') return [];
+  const candidates: any[] = [
+    parsed?.result?.item,
+    parsed?.result?.items,
+    parsed?.items,
+    parsed?.data?.item,
+    parsed?.data?.items,
+    parsed?.data?.list,
+    parsed?.response?.body?.items?.item,
+    parsed?.body?.items,
+    parsed?.list,
+  ];
+  for (const c of candidates) {
+    if (Array.isArray(c) && c.length > 0) return c;
+  }
+  return [];
+}
+
+function nibrEmptyResponse(status: NibrMatchStatus): KoreanPlantInfoResponse {
+  return {
+    koreanName: null,
+    scientificName: null,
+    phylumName: null,
+    className: null,
+    orderName: null,
+    familyName: null,
+    genusName: null,
+    speciesKoreanName: null,
+    source: 'NIBR',
+    rawMatched: false,
+    status,
+  };
+}
+
+export const getKoreanPlantInfo = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [NIBR_API_KEY_SECRET],
+    timeoutSeconds: 20,
+  },
+  async (request): Promise<KoreanPlantInfoResponse> => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const sciInput = String(request.data?.scientificName || '').trim();
+    if (!sciInput) {
+      return nibrEmptyResponse('not_found');
+    }
+
+    // Secret 미등록 fallback (1차 dry-run 정상 경로)
+    let apiKey = '';
+    try {
+      apiKey = NIBR_API_KEY_SECRET.value();
+    } catch {
+      apiKey = '';
+    }
+    if (!apiKey) {
+      logger.warn('NIBR_API_KEY not configured — enrichment skipped');
+      return nibrEmptyResponse('not_configured');
+    }
+
+    const endpoint = 'https://species.nibr.go.kr/gwsvc/openapi/rest/ktsn/taxons/search';
+
+    try {
+      const response = await axios.get(endpoint, {
+        params: {
+          oapiAcsUnqNo: apiKey,
+          page: 1,
+          responseType: 'json',
+        },
+        responseType: 'text',
+        validateStatus: () => true,
+        timeout: 15_000,
+      });
+      const httpStatus = response.status;
+      const rawRaw =
+        typeof response.data === 'string'
+          ? response.data
+          : JSON.stringify(response.data || {});
+
+      // 신청 미완료 / 권한 오류 — fallback (throw 금지)
+      const unavailableSignals = /APLY_NOT_FOUND|UNAUTHORIZED|FORBIDDEN/i;
+      if (
+        httpStatus === 401 ||
+        httpStatus === 403 ||
+        httpStatus === 404 ||
+        unavailableSignals.test(rawRaw)
+      ) {
+        logger.warn('NIBR enrichment unavailable', { httpStatus });
+        return nibrEmptyResponse('api_unavailable');
+      }
+      if (httpStatus >= 400) {
+        logger.warn('NIBR enrichment http error', { httpStatus });
+        return nibrEmptyResponse('api_unavailable');
+      }
+
+      let parsed: any = null;
+      try {
+        parsed = JSON.parse(rawRaw);
+      } catch {
+        return nibrEmptyResponse('api_unavailable');
+      }
+
+      const items = nibrExtractArray(parsed);
+      if (items.length === 0) {
+        return nibrEmptyResponse('not_found');
+      }
+
+      const target = nibrNormalizeSci(sciInput);
+      let matched: any = null;
+      for (const it of items) {
+        const sci = nibrPickString(
+          it?.stnm,
+          it?.ktsnLtnNm,
+          it?.scientificName,
+          it?.sciNm,
+          it?.sci_nm,
+          it?.scName,
+        );
+        if (sci && nibrNormalizeSci(sci) === target) {
+          matched = it;
+          break;
+        }
+      }
+      if (!matched) {
+        return nibrEmptyResponse('not_found');
+      }
+
+      const koreanName = nibrPickString(
+        matched?.kornm,
+        matched?.korNm,
+        matched?.kor_nm,
+        matched?.repKorNm,
+        matched?.repKorName,
+        matched?.koreanName,
+      );
+      const speciesKoreanName =
+        nibrPickString(
+          matched?.specKorNm,
+          matched?.species_kor,
+          matched?.speciesKoreanName,
+        ) || koreanName;
+      const sciFinal = nibrPickString(
+        matched?.stnm,
+        matched?.ktsnLtnNm,
+        matched?.scientificName,
+        matched?.sciNm,
+      );
+      const phylumName = nibrPickString(
+        matched?.phylumName,
+        matched?.phylumKornm,
+        matched?.phylumKorNm,
+        matched?.phylum,
+      );
+      const className = nibrPickString(
+        matched?.className,
+        matched?.classKornm,
+        matched?.classKorNm,
+        matched?.classNm,
+      );
+      const orderName = nibrPickString(
+        matched?.orderName,
+        matched?.orderKornm,
+        matched?.orderKorNm,
+        matched?.ordNm,
+      );
+      const familyName = nibrPickString(
+        matched?.familyName,
+        matched?.familyKornm,
+        matched?.familyKorNm,
+        matched?.famNm,
+      );
+      const genusName = nibrPickString(
+        matched?.genusName,
+        matched?.genusKornm,
+        matched?.genusKorNm,
+        matched?.genNm,
+      );
+
+      return {
+        koreanName,
+        scientificName: sciFinal,
+        phylumName,
+        className,
+        orderName,
+        familyName,
+        genusName,
+        speciesKoreanName,
+        source: 'NIBR',
+        rawMatched: true,
+        status: 'matched',
+      };
+    } catch (err: any) {
+      logger.warn('NIBR enrichment call failed', {
+        message: err?.message || String(err),
+      });
+      return nibrEmptyResponse('api_unavailable');
+    }
+  },
+);

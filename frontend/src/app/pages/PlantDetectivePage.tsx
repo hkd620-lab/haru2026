@@ -55,6 +55,21 @@ type AdvancedResult = {
   meta: { imageCount: number; plantNetAvailable: boolean; geminiError: string | null };
 };
 
+// 🌿 NIBR 국내 생물종 보강 정보 (functions: getKoreanPlantInfo 응답)
+type KoreanPlantInfoResponse = {
+  koreanName: string | null;
+  scientificName: string | null;
+  phylumName: string | null;
+  className: string | null;
+  orderName: string | null;
+  familyName: string | null;
+  genusName: string | null;
+  speciesKoreanName: string | null;
+  source: 'NIBR';
+  rawMatched: boolean;
+  status: 'matched' | 'not_found' | 'api_unavailable' | 'not_configured';
+};
+
 type PhotoItem = {
   id: string;
   previewUrl: string;
@@ -149,6 +164,8 @@ export function PlantDetectivePage() {
   const [activePlantDocId, setActivePlantDocId] = useState<string | null>(null);
   const [activePlantImageUrls, setActivePlantImageUrls] = useState<string[]>([]);
   const [activePlantCreatedAt, setActivePlantCreatedAt] = useState<number | null>(null);
+  // 🌿 NIBR 국내 생물종 보강 정보 — 분석 후 비동기로 조회 (실패해도 기존 흐름 무영향)
+  const [koreanInfo, setKoreanInfo] = useState<KoreanPlantInfoResponse | null>(null);
 
   // 🌱 v1 사용자입력 기반 식물 자산 저장 — AI 흐름과 독립
   const [showV1Form, setShowV1Form] = useState(false);
@@ -213,6 +230,7 @@ export function PlantDetectivePage() {
     setActivePlantDocId(null);
     setActivePlantImageUrls([]);
     setActivePlantCreatedAt(null);
+    setKoreanInfo(null);
     setObsObservation('');
     setObsAiDifference('');
     setObsMemo('');
@@ -374,6 +392,28 @@ export function PlantDetectivePage() {
       findCommunityCorrection(data).then(setCommunityCorrectionKnown).catch((e) => {
         console.warn('공용 검증 기록 조회 실패:', e);
       });
+      // 🌿 NIBR 보강 (보강 정보 전용) — scientificName 후보 우선순위:
+      // 1) plantNet.scientificName → 2) plantId.latinName → 3) gemini.finalLatinName
+      // Secret 미등록/매칭 실패는 조용히 무시 (기존 흐름 무영향)
+      const nibrSci =
+        data.plantNet?.scientificName ||
+        data.plantId?.latinName ||
+        data.gemini?.finalLatinName ||
+        '';
+      if (nibrSci) {
+        const callKoreanInfo = httpsCallable<
+          { scientificName: string },
+          KoreanPlantInfoResponse
+        >(functions, 'getKoreanPlantInfo');
+        callKoreanInfo({ scientificName: nibrSci })
+          .then((res) => {
+            setKoreanInfo(res.data || null);
+          })
+          .catch((e) => {
+            console.warn('NIBR 보강 조회 실패 — 기존 결과 유지:', e);
+            setKoreanInfo(null);
+          });
+      }
     } catch (error: any) {
       console.error('식물 분석 실패:', error);
       toast.error(error?.message || '식물 분석에 실패했습니다.');
@@ -630,6 +670,24 @@ export function PlantDetectivePage() {
       }
 
       const plantDocRef = doc(db, 'users', user.uid, 'plants', targetPlantId);
+      // 🌿 NIBR 보강 정보 — matched일 때만 필드 set (기존 scientificName 보존 위해 NIBR 학명은 koreanTaxonomyScientificName으로 분리)
+      const nibrMatched =
+        koreanInfo?.status === 'matched' && Boolean(koreanInfo?.rawMatched);
+      const koreanTaxonomyPayload = nibrMatched
+        ? {
+            koreanName: koreanInfo!.koreanName,
+            koreanTaxonomyScientificName: koreanInfo!.scientificName,
+            familyName: koreanInfo!.familyName,
+            genusName: koreanInfo!.genusName,
+            orderName: koreanInfo!.orderName,
+            className: koreanInfo!.className,
+            phylumName: koreanInfo!.phylumName,
+            speciesKoreanName: koreanInfo!.speciesKoreanName,
+            koreanTaxonomySource: 'NIBR' as const,
+            koreanTaxonomyMatched: true as const,
+            koreanTaxonomyMatchedAt: serverTimestamp(),
+          }
+        : {};
       await setDoc(
         plantDocRef,
         {
@@ -657,6 +715,7 @@ export function PlantDetectivePage() {
           geminiAnalysis: result.gemini,
           meta: result.meta,
           source: 'user_confirmed',
+          ...koreanTaxonomyPayload,
         },
         { merge: true },
       );
@@ -1748,6 +1807,32 @@ export function PlantDetectivePage() {
                 </div>
               )}
             </ResultCard>
+
+            {/* 🌿 국내 생물종(NIBR) 보강 — matched일 때만 표시. AI 판독·사용자 정정 결과를 덮어쓰지 않음 */}
+            {koreanInfo && koreanInfo.status === 'matched' && (koreanInfo.koreanName || koreanInfo.familyName) && (
+              <ResultCard title="🇰🇷 국내 생물종 정보 (NIBR)" accent="#15803D" bg="#F0FDF4">
+                {koreanInfo.koreanName && (
+                  <div style={{ fontSize: 16, fontWeight: 900, color: '#15803D' }}>
+                    {koreanInfo.koreanName}
+                  </div>
+                )}
+                {koreanInfo.scientificName && (
+                  <div style={{ fontSize: 12, fontStyle: 'italic', color: '#6b7654', marginTop: 2 }}>
+                    {koreanInfo.scientificName}
+                  </div>
+                )}
+                {(koreanInfo.familyName || koreanInfo.genusName || koreanInfo.orderName) && (
+                  <div style={{ marginTop: 6, fontSize: 12, color: '#3d4734' }}>
+                    {[koreanInfo.orderName, koreanInfo.familyName, koreanInfo.genusName]
+                      .filter(Boolean)
+                      .join(' / ')}
+                  </div>
+                )}
+                <div style={{ marginTop: 6, fontSize: 11, color: '#6b7654' }}>
+                  출처: 국가생물종지식정보시스템 (NIBR)
+                </div>
+              </ResultCard>
+            )}
 
             {communityCorrectionKnown && (
               <section
