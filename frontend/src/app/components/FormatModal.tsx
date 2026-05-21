@@ -34,6 +34,15 @@ interface PolishResult {
   text: string;
 }
 
+type GrowthSubjectType = 'child' | 'garden';
+
+type GrowthSubject = {
+  id: string;
+  subjectType: GrowthSubjectType;
+  name: string;
+  latestRecordDate?: string;
+};
+
 // 형식별 입력 필드 정의
 const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placeholder: string; rows?: number }[]> = {
   일기: [
@@ -207,6 +216,9 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   // 🌱 텃밭일지 전용: 작물 목록 관리
   const [crops, setCrops] = useState<string[]>([]);
   const [newCropName, setNewCropName] = useState('');
+  const [growthSubjects, setGrowthSubjects] = useState<GrowthSubject[]>([]);
+  const [selectedGrowthSubjectId, setSelectedGrowthSubjectId] = useState('');
+  const [newGrowthSubjectName, setNewGrowthSubjectName] = useState('');
   const [isReadingFinishing, setIsReadingFinishing] = useState(false);
   const [showReadingFinishModal, setShowReadingFinishModal] = useState(false);
   const [readingAnalysis, setReadingAnalysis] = useState('');
@@ -353,6 +365,42 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
           }
         })();
       }
+
+      if ((format === '육아일기' || format === '텃밭일지') && user?.uid) {
+        (async () => {
+          try {
+            const subjectType: GrowthSubjectType = format === '육아일기' ? 'child' : 'garden';
+            const db = getFirestore();
+            const subjectsRef = collection(db, 'users', user.uid, 'growthSubjects');
+            const q = query(subjectsRef, where('subjectType', '==', subjectType));
+            const snap = await getDocs(q);
+            const subjects = snap.docs
+              .map((docSnap) => {
+                const data = docSnap.data() as any;
+                return {
+                  id: docSnap.id,
+                  subjectType,
+                  name: String(data.name || '').trim(),
+                  latestRecordDate: String(data.latestRecordDate || ''),
+                };
+              })
+              .filter((subject) => subject.name)
+              .sort((a, b) => (b.latestRecordDate || '').localeCompare(a.latestRecordDate || ''));
+            setGrowthSubjects(subjects);
+            setSelectedGrowthSubjectId('');
+            setNewGrowthSubjectName('');
+          } catch (e) {
+            console.warn('성장대상 목록 로드 실패:', e);
+            setGrowthSubjects([]);
+            setSelectedGrowthSubjectId('');
+            setNewGrowthSubjectName('');
+          }
+        })();
+      } else {
+        setGrowthSubjects([]);
+        setSelectedGrowthSubjectId('');
+        setNewGrowthSubjectName('');
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -367,6 +415,23 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
 
   const handleChange = (key: string, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const getGrowthSaveFields = () => {
+    if (format !== '육아일기' && format !== '텃밭일지') return {};
+
+    const subjectType: GrowthSubjectType = format === '육아일기' ? 'child' : 'garden';
+    const selectedSubject = growthSubjects.find((subject) => subject.id === selectedGrowthSubjectId);
+    const newName = newGrowthSubjectName.trim();
+    const subjectName = newName || selectedSubject?.name || '';
+
+    if (!subjectName) return {};
+
+    return {
+      _growthSubjectId: newName ? '' : selectedGrowthSubjectId,
+      _growthSubjectType: subjectType,
+      _growthSubjectName: subjectName,
+    };
   };
 
   // 📈 HARU주식관리: 카톡 내보내기 TXT 파싱 (키움증권 체결통보)
@@ -540,7 +605,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     if (recordStep === 'select') return;
     setIsSaving(true);
     try {
-      const dataToSave = { ...formData };
+      const dataToSave = { ...formData, ...getGrowthSaveFields() };
       if (format === '텃밭일지' && crops.length > 0) {
         dataToSave.garden_crop = crops.join(', ');
       }
@@ -867,6 +932,7 @@ ${contentValues}`,
 
     const dataToSave: Record<string, any> = {
       ...formData,
+      ...getGrowthSaveFields(),
       [sayuKey]: originalContent,
       [imagesKey]: JSON.stringify(uploadedImages),
       [`${prefix}_style`]: recordStyle,
@@ -896,6 +962,7 @@ ${contentValues}`,
   const handleSaveSayu = async () => {
     const updateData: Record<string, any> = {
       ...formData,
+      ...getGrowthSaveFields(),
       [sayuKey]: polishedContent,
       [imagesKey]: JSON.stringify(uploadedImages),
       [`${prefix}_polished`]: true,
@@ -1648,6 +1715,72 @@ ${contentValues}`,
                       ⚠️ {blockedBookMessage}
                     </div>
                   )}
+                </div>
+              )}
+
+              {(format === '육아일기' || format === '텃밭일지') && (
+                <div
+                  style={{
+                    padding: 12,
+                    border: '1px solid #d0dff0',
+                    borderRadius: 10,
+                    backgroundColor: '#f8fbff',
+                  }}
+                >
+                  <label style={{ display: 'block', fontSize: 13, color: '#1A3C6E', marginBottom: 8, fontWeight: 700 }}>
+                    성장대상
+                  </label>
+                  <select
+                    value={selectedGrowthSubjectId}
+                    onChange={(e) => {
+                      setSelectedGrowthSubjectId(e.target.value);
+                      if (e.target.value) setNewGrowthSubjectName('');
+                    }}
+                    style={{
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      padding: '10px 12px',
+                      fontSize: 14,
+                      border: '1px solid #d0dff0',
+                      borderRadius: 8,
+                      backgroundColor: '#fff',
+                      color: '#333',
+                      marginBottom: 8,
+                      outline: 'none',
+                    }}
+                  >
+                    <option value="">기존 대상 선택</option>
+                    {growthSubjects.map((subject) => (
+                      <option key={subject.id} value={subject.id}>
+                        {subject.name}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    value={newGrowthSubjectName}
+                    onChange={(e) => {
+                      setNewGrowthSubjectName(e.target.value);
+                      if (e.target.value.trim()) setSelectedGrowthSubjectId('');
+                    }}
+                    placeholder={format === '육아일기' ? '새 대상 추가: 아이 이름 또는 별칭' : '새 대상 추가: 작물명 또는 식물명'}
+                    style={{
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      padding: '10px 12px',
+                      fontSize: 14,
+                      border: '1px solid #d0dff0',
+                      borderRadius: 8,
+                      backgroundColor: '#fff',
+                      color: '#333',
+                      outline: 'none',
+                    }}
+                  />
+                  <p style={{ margin: '8px 0 0', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
+                    {format === '육아일기'
+                      ? '아이의 성장기록으로 함께 저장됩니다.'
+                      : '작물의 성장과정으로 함께 저장됩니다.'}
+                  </p>
                 </div>
               )}
 

@@ -13,7 +13,7 @@ import GrapeLoadingMini from '../components/GrapeLoadingMini';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS, FORMAT_PREFIX } from '../types/haruTypes';
 import { db } from '../../firebase';
-import { doc, getDoc, setDoc, serverTimestamp, collection, query as fsQuery, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, query as fsQuery, where, getDocs, arrayUnion } from 'firebase/firestore';
 import {
   DndContext,
   closestCenter,
@@ -34,6 +34,7 @@ import { CSS } from '@dnd-kit/utilities';
 type Mood = '기쁨' | '평온' | '무미' | '울적' | '번잡';
 type Weather = '쾌청' | '흐림' | '비' | '눈';
 type Temperature = '폭염' | '온난' | '쾌적' | '쌀쌀' | '혹한';
+type GrowthSubjectType = 'child' | 'garden';
 
 const DEFAULT_WEATHER = ['쾌청', '흐림', '비', '눈'];
 const DEFAULT_TEMPERATURE = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
@@ -663,6 +664,22 @@ export function RecordPage() {
 
   const handleSaveFormatData = async (formatData: Record<string, string>) => {
     if (!user) return;
+    const growthSubjectName =
+      typeof (formatData as any)._growthSubjectName === 'string'
+        ? ((formatData as any)._growthSubjectName as string).trim()
+        : '';
+    const growthSubjectType =
+      (formatData as any)._growthSubjectType === 'child' || (formatData as any)._growthSubjectType === 'garden'
+        ? ((formatData as any)._growthSubjectType as GrowthSubjectType)
+        : undefined;
+    const existingGrowthSubjectId =
+      typeof (formatData as any)._growthSubjectId === 'string' && (formatData as any)._growthSubjectId
+        ? ((formatData as any)._growthSubjectId as string)
+        : undefined;
+    const shouldSaveGrowthEntry = Boolean(growthSubjectName && growthSubjectType);
+    const growthSubjectId = shouldSaveGrowthEntry
+      ? existingGrowthSubjectId || doc(collection(db, 'users', user.uid, 'growthSubjects')).id
+      : undefined;
     const customRecordId =
       typeof (formatData as any)._recordId === 'string' && (formatData as any)._recordId
         ? ((formatData as any)._recordId as string)
@@ -673,7 +690,7 @@ export function RecordPage() {
     const updateData: Record<string, any> = {};
     let hasContent = false;
     Object.entries(formatData).forEach(([key, value]) => {
-      if (key === '_recordId' || key === 'formats') return;
+      if (key === '_recordId' || key === 'formats' || key.startsWith('_growth')) return;
       if (typeof value === 'string' && value.trim().length > 0) {
         updateData[key] = value;
         hasContent = true;
@@ -692,8 +709,67 @@ export function RecordPage() {
         mood,
         formats: formatsOverride ?? selectedFormats,
         content: '',
+        ...(shouldSaveGrowthEntry && growthSubjectId ? {
+          growthSubjectId,
+          growthSubjectType,
+          growthSubjectName,
+        } : {}),
         ...updateData,
       });
+      if (shouldSaveGrowthEntry && growthSubjectId && growthSubjectType) {
+        const sourceFormat = growthSubjectType === 'child' ? '육아일지' : '텃밭일지';
+        const prefix = growthSubjectType === 'child' ? 'child' : 'garden';
+        const memo =
+          String(updateData[`${prefix}_simple`] || '').trim() ||
+          Object.entries(updateData)
+            .filter(([key, value]) =>
+              key.startsWith(`${prefix}_`) &&
+              typeof value === 'string' &&
+              value.trim().length > 0 &&
+              !key.endsWith('_images') &&
+              !key.endsWith('_style') &&
+              !key.endsWith('_mode')
+            )
+            .map(([, value]) => String(value).trim())
+            .join('\n\n');
+        const photoUrls = (() => {
+          const raw = updateData[`${prefix}_images`];
+          if (typeof raw !== 'string') return [];
+          try {
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed.filter((url) => typeof url === 'string') : [];
+          } catch {
+            return [];
+          }
+        })();
+        await setDoc(
+          doc(db, 'users', user.uid, 'growthSubjects', growthSubjectId),
+          {
+            subjectType: growthSubjectType,
+            name: growthSubjectName,
+            ...(existingGrowthSubjectId ? {} : { createdAt: serverTimestamp() }),
+            updatedAt: serverTimestamp(),
+            latestRecordDate: savedDateStr,
+            ...(photoUrls[0] ? { latestPhotoUrl: photoUrls[0] } : {}),
+            linkedRecordDates: arrayUnion(savedDateStr),
+          },
+          { merge: true },
+        );
+        await setDoc(
+          doc(db, 'users', user.uid, 'growthSubjects', growthSubjectId, 'entries', recordId),
+          {
+            recordDate: savedDateStr,
+            recordId,
+            subjectType: growthSubjectType,
+            subjectName: growthSubjectName,
+            memo,
+            ...(photoUrls.length > 0 ? { photoUrls } : {}),
+            createdAt: serverTimestamp(),
+            sourceFormat,
+          },
+          { merge: true },
+        );
+      }
       setSavedRecordId(recordId);
       toast.success('내용이 저장되었습니다!');
       // 저장 직후 HARU 메모 섹션이 새 데이터를 인지하도록 refresh
