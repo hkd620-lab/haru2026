@@ -5,6 +5,7 @@ import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { functions, db } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useLoading } from '../contexts/LoadingContext';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
@@ -37,6 +38,7 @@ interface ChapterDoc {
 export function ElderBookPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { showLoading, hideLoading } = useLoading();
   const isDeveloper = user?.uid === DEVELOPER_UID;
 
   const [book, setBook] = useState<BookDoc | null>(null);
@@ -70,8 +72,9 @@ export function ElderBookPage() {
 
   if (!user || !isDeveloper) return null;
 
-  const run = async (fnName: string, key: string, okMsg: string) => {
+  const run = async (fnName: string, key: string, okMsg: string, loadingMsg: string) => {
     setBusy(key);
+    showLoading(loadingMsg);
     try {
       const fn = httpsCallable(functions, fnName);
       await fn({});
@@ -80,6 +83,7 @@ export function ElderBookPage() {
     } catch (e: any) {
       toast.error(e?.message || '작업 실패');
     } finally {
+      hideLoading();
       setBusy(null);
     }
   };
@@ -111,13 +115,16 @@ export function ElderBookPage() {
           buttonLabel={hasSources ? '다시 모으기' : '소재 모을까요?'}
           busy={busy === 'gather'}
           disabled={!!busy}
-          onClick={() => run('gatherElderBookSources', 'gather', '소재를 모았습니다.')}
+          onClick={() => run('gatherElderBookSources', 'gather', '소재를 모았습니다.', '지식창고 소재를 모으는 중…')}
         >
           {stats && (
             <div style={{ fontSize: 13, lineHeight: 1.7 }}>
               <Row label="책소재 카드" value={`${stats.totalCards}개`} />
               <Row label="채택 문단 (70%+)" value={`${stats.accepted}개`} strong />
               <Row label="제외 문단" value={`${stats.excluded}개`} muted />
+              <p style={{ fontSize: 11, color: '#9CA3AF', margin: '8px 0 0', lineHeight: 1.6 }}>
+                💡 소재를 더 넣으려면: 지식창고(SAYU)에서 📚로 책소재를 추가 변환 → 여기서 <b>다시 모으기</b> → <b>다시 배분</b> → <b>가편 다시 작성</b> 순으로 누르면 추가 소재가 반영됩니다.
+              </p>
             </div>
           )}
         </StageCard>
@@ -130,7 +137,7 @@ export function ElderBookPage() {
           buttonLabel={hasOutline ? '차례 다시 구성' : '차례와 책을 구성하시오'}
           busy={busy === 'outline'}
           disabled={!!busy || !hasSources}
-          onClick={() => run('buildElderBookOutline', 'outline', '차례를 구성했습니다.')}
+          onClick={() => run('buildElderBookOutline', 'outline', '차례를 구성했습니다.', 'AI가 차례를 구성하는 중…')}
         >
           {outline?.parts?.length ? (
             <div style={{ fontSize: 13 }}>
@@ -159,7 +166,7 @@ export function ElderBookPage() {
           buttonLabel={aStats ? '다시 배분' : '소재를 장에 배분'}
           busy={busy === 'assign'}
           disabled={!!busy || !hasOutline}
-          onClick={() => run('assignElderBookSources', 'assign', '소재를 배분했습니다.')}
+          onClick={() => run('assignElderBookSources', 'assign', '소재를 배분했습니다.', 'AI가 소재를 장에 배분하는 중…')}
         >
           {aStats && (
             <div style={{ fontSize: 13, lineHeight: 1.7 }}>
@@ -180,7 +187,7 @@ export function ElderBookPage() {
           buttonLabel={hasDraft ? '가편 다시 작성' : '가편 작성'}
           busy={busy === 'draft'}
           disabled={!!busy || !hasAssign}
-          onClick={() => run('draftElderBookChapters', 'draft', '가편을 작성했습니다.')}
+          onClick={() => run('draftElderBookChapters', 'draft', '가편을 작성했습니다.', 'AI가 가편을 집필하는 중… (장 수만큼 시간이 걸립니다)')}
         />
 
         {/* 4-1단계 — AI 윤문 */}
@@ -191,7 +198,7 @@ export function ElderBookPage() {
           buttonLabel={hasPolished ? '다시 윤문' : 'AI 윤문'}
           busy={busy === 'polish'}
           disabled={!!busy || !hasDraft}
-          onClick={() => run('polishElderBookChapters', 'polish', '윤문을 마쳤습니다.')}
+          onClick={() => run('polishElderBookChapters', 'polish', '윤문을 마쳤습니다.', 'AI가 윤문하는 중…')}
         />
 
         {/* 챕터 뷰어 */}
