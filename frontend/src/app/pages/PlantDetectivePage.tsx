@@ -161,6 +161,9 @@ function pctText(v: number | null | undefined): string {
 
 // 🇰🇷 NIBR 보강은 관리자 전용 — 기존 프로젝트 관리자 판별 방식(UID 상수)과 동일
 const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+// NIBR 개발자용 보강 UI(실시간 버튼·XML 붙여넣기·결과카드·자동호출) 노출 토글.
+// 방향 전환(관찰일지 중심)에 따라 실사용 흐름에서 제외 — 향후 내부 검증 필요 시에만 true.
+const NIBR_DEBUG = false;
 
 export function PlantDetectivePage() {
   const navigate = useNavigate();
@@ -613,8 +616,8 @@ export function PlantDetectivePage() {
       findCommunityCorrection(data).then(setCommunityCorrectionKnown).catch((e) => {
         console.warn('공용 검증 기록 조회 실패:', e);
       });
-      // 🌿 NIBR 보강 — 관리자(허대표) 계정에서만 호출. 구독자/일반 사용자는 NIBR 호출이 발생하지 않음.
-      if (isAdmin) {
+      // 🌿 NIBR 보강 — NIBR_DEBUG일 때만(관리자) 호출. 평상시(관찰일지 중심)엔 호출하지 않음.
+      if (NIBR_DEBUG && isAdmin) {
         runNibrEnrichment(data);
       }
     } catch (error: any) {
@@ -922,6 +925,8 @@ export function PlantDetectivePage() {
           geminiAnalysis: result.gemini,
           meta: result.meta,
           source: 'user_confirmed',
+          // 식별 상태: 사용자가 AI와 다른 이름을 넣으면 corrected, 그대로면 confirmed (AI 단독은 suspected)
+          identificationStatus: correctedByUser ? 'corrected' : 'confirmed',
           ...koreanTaxonomyPayload,
         },
         { merge: true },
@@ -1400,7 +1405,7 @@ export function PlantDetectivePage() {
                   checked={v1UserConfirmed}
                   onChange={(e) => setV1UserConfirmed(e.target.checked)}
                 />
-                <span>식별 확정 (userConfirmed)</span>
+                <span>내가 정한 이름 (userConfirmed)</span>
               </label>
               <button
                 type="button"
@@ -1828,7 +1833,7 @@ export function PlantDetectivePage() {
                                   color: '#166534',
                                 }}
                               >
-                                내가 확정
+                                내가 정함
                               </span>
                             )}
                           </div>
@@ -1881,12 +1886,12 @@ export function PlantDetectivePage() {
             {/* ========== HARU AI 최종 분석 ========== */}
             {gemini && (
               <ResultCard
-                title="🌿 HARU AI 최종 분석"
+                title="🌿 오늘의 추정 (HARU AI)"
                 accent="#4A5A2C"
                 bg="#F1F4DC"
               >
                 <div style={{ fontSize: 13, color: '#6b7654', fontWeight: 800, marginBottom: 4 }}>
-                  최종 추정 · 신뢰도 {gemini.confidence === 'high' ? '높음' : gemini.confidence === 'medium' ? '보통' : '낮음'}
+                  가장 가까운 후보 · 신뢰도 {gemini.confidence === 'high' ? '높음' : gemini.confidence === 'medium' ? '보통' : '낮음'}
                 </div>
                 <h3 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 950 }}>
                   {gemini.finalGuess}
@@ -1896,6 +1901,9 @@ export function PlantDetectivePage() {
                     {gemini.finalLatinName}
                   </div>
                 )}
+                <p style={{ margin: '0 0 8px', fontSize: 12, color: '#7a8b4e', lineHeight: 1.55 }}>
+                  오늘 사진 기준 추정이에요. 어린잎 단계라면 확정이 어려울 수 있어요 — 꽃이나 열매가 생기면 다시 확인해 보세요.
+                </p>
                 {gemini.analysis && (
                   <p style={{ margin: '6px 0 0', fontSize: 14, color: '#3d4734', lineHeight: 1.6 }}>
                     {gemini.analysis}
@@ -2015,8 +2023,8 @@ export function PlantDetectivePage() {
               )}
             </ResultCard>
 
-            {/* 🇰🇷 NIBR 한국식물 보강 — 관리자(허대표) 전용 버튼. 구독자/일반 사용자에게는 노출되지 않음 */}
-            {isAdmin && result && (
+            {/* 🇰🇷 NIBR 한국식물 보강 — NIBR_DEBUG(내부 검증)일 때만 노출. 평상시 숨김 */}
+            {NIBR_DEBUG && isAdmin && result && (
               <button
                 type="button"
                 onClick={() => runNibrEnrichment(result)}
@@ -2037,8 +2045,8 @@ export function PlantDetectivePage() {
               </button>
             )}
 
-            {/* 🇰🇷 NIBR XML 붙여넣기 보강 — 관리자(허대표) 전용. 본인 등록 IP에서 받은 NIBR 응답(XML/JSON)을 붙여넣어 파싱 */}
-            {isAdmin && result && (
+            {/* 🇰🇷 NIBR XML 붙여넣기 보강 — NIBR_DEBUG(내부 검증)일 때만 노출. 평상시 숨김 */}
+            {NIBR_DEBUG && isAdmin && result && (
               <div
                 style={{
                   border: '1px solid #15803D',
@@ -2095,8 +2103,8 @@ export function PlantDetectivePage() {
               </div>
             )}
 
-            {/* 🌿 국내 생물종(NIBR) 보강 결과 — 관리자(허대표) 전용. AI 판독·사용자 정정 결과를 덮어쓰지 않음 */}
-            {isAdmin && koreanInfo && (
+            {/* 🌿 국내 생물종(NIBR) 보강 결과 — NIBR_DEBUG(내부 검증)일 때만 노출. 평상시 숨김 */}
+            {NIBR_DEBUG && isAdmin && koreanInfo && (
               <ResultCard title="🇰🇷 국내 생물종 정보 (NIBR)" accent="#15803D" bg="#F0FDF4">
                 {koreanInfo.status === 'matched' && (koreanInfo.koreanName || koreanInfo.familyName) ? (
                   <>
@@ -2178,11 +2186,11 @@ export function PlantDetectivePage() {
               </section>
             )}
 
-            {/* ========== 🎯 최종 식물명 확정 ========== */}
+            {/* ========== 🎯 내가 부를 이름 정하기 ========== */}
             {finalConfirmation && (
-              <ResultCard title="🎯 최종 식물명 확정" accent="#15803D" bg="#F0FDF4">
+              <ResultCard title="🎯 내가 부를 이름 정하기" accent="#15803D" bg="#F0FDF4">
                 <p style={{ margin: '0 0 8px', fontSize: 12, color: '#3d4734', lineHeight: 1.55 }}>
-                  AI 추정은 후보일 뿐입니다. 맞는 후보를 클릭하거나, 직접 입력해 최종 식물명을 확정하세요.
+                  AI 추정은 오늘 사진 기준 후보일 뿐입니다. 맞는 후보를 고르거나, 직접 입력해 내가 부를 이름으로 기록하세요. 나중에 꽃·열매를 보고 언제든 바꿀 수 있어요.
                 </p>
 
                 <div style={{ fontSize: 12, fontWeight: 800, color: '#15803D', marginBottom: 6 }}>
@@ -2237,7 +2245,7 @@ export function PlantDetectivePage() {
                         flexShrink: 0,
                       }}
                     >
-                      이 식물로 확정
+                      이 이름으로 기록
                     </button>
                   </li>
 
@@ -2284,7 +2292,7 @@ export function PlantDetectivePage() {
                           flexShrink: 0,
                         }}
                       >
-                        이 식물로 확정
+                        이 이름으로 기록
                       </button>
                     </li>
                   ))}
@@ -2404,7 +2412,7 @@ export function PlantDetectivePage() {
                     cursor:
                       isConfirming || userConfirmedName.trim().length === 0 ? 'not-allowed' : 'pointer',
                   }}
-                  title="사용자 최종확정값을 내 식물도감에 저장합니다"
+                  title="내가 정한 이름을 내 식물도감에 저장합니다"
                 >
                   {isConfirming ? '저장 중...' : '📚 내 식물도감 저장'}
                 </button>
@@ -2433,8 +2441,8 @@ export function PlantDetectivePage() {
               </ResultCard>
             )}
 
-            {/* ========== ✍️ 직접 이름 수정·확정 ========== */}
-            <ResultCard title="✍️ 직접 이름 수정·확정" accent="#15803D" bg="#F0FDF4">
+            {/* ========== ✍️ 직접 이름 수정·기록 ========== */}
+            <ResultCard title="✍️ 직접 이름 수정·기록" accent="#15803D" bg="#F0FDF4">
               <p style={{ margin: '0 0 8px', fontSize: 12, color: '#3d4734', lineHeight: 1.55 }}>
                 AI 결과가 틀렸다면 진짜 식물 이름을 직접 입력해 주세요.<br />
                 내 도감에 정답으로 저장됩니다. 다음에 같은 식물을 찍으면 우선 보여드릴게요.
@@ -2711,7 +2719,7 @@ function PlantLibraryPanel({ plants }: { plants: PlantLibraryItem[] }) {
     return (
       <ResultCard title="📚 내 식물도감" accent="#4A5A2C" bg="#fffdf4">
         <div style={{ fontSize: 13, color: '#6b7654' }}>
-          사용자가 최종 확정한 식물이 여기에 저장됩니다.
+          내가 이름을 정한 식물이 여기에 저장됩니다.
         </div>
       </ResultCard>
     );
@@ -2767,7 +2775,7 @@ function RecentDetectPanel({ plants }: { plants: PlantLibraryItem[] }) {
   return (
     <ResultCard title="최근 판독" accent="#7C5E10" bg="#FFF8DB">
       <div style={{ fontSize: 13, color: '#6b5b22', lineHeight: 1.55 }}>
-        사용자 확정 후 도감에 저장된 최근 식물 기준으로 표시합니다. AI 단독 판독은 오늘 기록에만 남고 도감에는 저장하지 않습니다.
+        이름을 정해 도감에 저장한 최근 식물 기준으로 표시합니다. AI 단독 추정은 오늘 기록에만 남고 도감에는 저장하지 않습니다.
       </div>
       <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
         {plants.slice(0, 10).map((p) => (
@@ -2786,7 +2794,7 @@ function RecentDetectPanel({ plants }: { plants: PlantLibraryItem[] }) {
           </div>
         ))}
         {plants.length === 0 && (
-          <div style={{ fontSize: 13, color: '#7a6a2c' }}>아직 사용자 확정 판독이 없습니다.</div>
+          <div style={{ fontSize: 13, color: '#7a6a2c' }}>아직 이름을 정해 기록한 식물이 없습니다.</div>
         )}
       </div>
     </ResultCard>
