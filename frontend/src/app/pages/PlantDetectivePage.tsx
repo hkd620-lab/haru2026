@@ -65,6 +65,11 @@ type KoreanPlantInfoResponse = {
   familyName: string | null;
   genusName: string | null;
   speciesKoreanName: string | null;
+  // 관리자 XML 붙여넣기 보강용 추가 필드 (실시간 호출 응답에는 없을 수 있어 optional)
+  familyKorName?: string | null;
+  apgFamilyName?: string | null;
+  apgFamilyKorName?: string | null;
+  lastUpdated?: string | null;
   source: 'NIBR';
   rawMatched: boolean;
   status: 'matched' | 'not_found' | 'api_unavailable' | 'not_configured';
@@ -378,6 +383,106 @@ export function PlantDetectivePage() {
       setIsPreparing(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  // 🇰🇷 관리자 전용: NIBR XML/JSON 붙여넣기 보강 입력
+  const [nibrXmlInput, setNibrXmlInput] = useState('');
+
+  // 후보 키들 중 첫 비어있지 않은 값 추출 (대소문자 무시)
+  const pickNibrField = (map: Record<string, string>, keys: string[]): string => {
+    for (const k of keys) {
+      const found = Object.keys(map).find((mk) => mk.toLowerCase() === k.toLowerCase());
+      if (found && map[found] && map[found].trim()) return map[found].trim();
+    }
+    return '';
+  };
+
+  // 붙여넣은 NIBR 응답(JSON 우선, 실패 시 XML)에서 첫 항목을 평탄한 key→text 맵으로
+  const flattenNibrFirstItem = (raw: string): Record<string, string> | null => {
+    const text = raw.trim();
+    if (!text) return null;
+    // 1) JSON
+    try {
+      const parsed: any = JSON.parse(text);
+      const candidates = [
+        parsed?.data?.content, parsed?.result?.item, parsed?.result?.items,
+        parsed?.items, parsed?.data?.item, parsed?.data?.items, parsed?.list,
+        parsed?.response?.body?.items?.item,
+      ];
+      let item: any = null;
+      for (const c of candidates) {
+        if (Array.isArray(c) && c.length) { item = c[0]; break; }
+        if (c && !Array.isArray(c) && typeof c === 'object') { item = c; break; }
+      }
+      if (!item && parsed && typeof parsed === 'object') item = parsed;
+      if (item && typeof item === 'object') {
+        const map: Record<string, string> = {};
+        for (const [k, v] of Object.entries(item)) {
+          if (v != null && typeof v !== 'object') map[k] = String(v);
+        }
+        if (Object.keys(map).length) return map;
+      }
+    } catch {
+      /* JSON 아님 → XML 시도 */
+    }
+    // 2) XML
+    try {
+      const docXml = new DOMParser().parseFromString(text, 'application/xml');
+      if (docXml.getElementsByTagName('parsererror').length > 0) return null;
+      const container =
+        docXml.querySelector('item') || docXml.querySelector('content') || docXml.documentElement;
+      if (!container) return null;
+      const map: Record<string, string> = {};
+      const children = container.children;
+      for (let i = 0; i < children.length; i++) {
+        const el = children[i];
+        if (el.children.length === 0) map[el.tagName] = (el.textContent || '').trim();
+      }
+      return Object.keys(map).length ? map : null;
+    } catch {
+      return null;
+    }
+  };
+
+  // 🇰🇷 관리자 전용: 붙여넣은 NIBR XML/JSON 파싱 → koreanInfo 보강 (저장은 기존 도감 저장 흐름 재사용)
+  const parseNibrPastedData = () => {
+    const map = flattenNibrFirstItem(nibrXmlInput);
+    if (!map) {
+      toast.error('NIBR XML/JSON을 인식하지 못했습니다. 응답 원문을 그대로 붙여넣어 주세요.');
+      return;
+    }
+    const koreanName = pickNibrField(map, ['ktsnKrnNm', 'kornm', 'korNm', 'kor_nm', 'repKorNm', 'repKorName', 'koreanName']);
+    const gnusL = pickNibrField(map, ['gnusKtsnLtnNm']);
+    const specsL = pickNibrField(map, ['specsKtsnLtnNm']);
+    const scientificName = gnusL && specsL ? `${gnusL} ${specsL}` : pickNibrField(map, ['stnm', 'ktsnLtnNm', 'scientificName', 'sciNm']);
+    const familyName = pickNibrField(map, ['fmlyKtsnLtnNm', 'familyName', 'family', 'fmlyNm']);
+    const familyKorName = pickNibrField(map, ['fmlyKtsnKrnNm', 'familyKornm', 'familyKorNm', 'fmlyKorNm']);
+    const apgFamilyName = pickNibrField(map, ['apgFmlyKtsnLtnNm', 'apgFamilyName', 'apgFmlyNm', 'apgFamily']);
+    const apgFamilyKorName = pickNibrField(map, ['apgFmlyKtsnKrnNm', 'apgFamilyKorName', 'apgFmlyKrnNm', 'apgFmlyKorNm']);
+    const lastUpdated = pickNibrField(map, ['lastUpdtDt', 'updtDt', 'lastUpdated', 'mdfcnDt', 'last_updt_de', 'frstRegistDt']);
+
+    if (!koreanName && !scientificName && !familyName && !familyKorName) {
+      toast.error('국명·학명·과명을 찾지 못했습니다. NIBR 응답 형식을 확인해 주세요.');
+      return;
+    }
+    setKoreanInfo({
+      koreanName: koreanName || null,
+      scientificName: scientificName || null,
+      phylumName: null,
+      className: null,
+      orderName: null,
+      familyName: familyName || familyKorName || null,
+      genusName: null,
+      speciesKoreanName: null,
+      familyKorName: familyKorName || null,
+      apgFamilyName: apgFamilyName || null,
+      apgFamilyKorName: apgFamilyKorName || null,
+      lastUpdated: lastUpdated || null,
+      source: 'NIBR',
+      rawMatched: true,
+      status: 'matched',
+    });
+    toast.success('NIBR 보강 정보를 추출했습니다. 도감 저장 시 함께 반영됩니다.');
   };
 
   // 🌿 NIBR 국내 생물종 보강 실행 — 관리자(허대표) 전용.
@@ -711,6 +816,10 @@ export function PlantDetectivePage() {
             className: koreanInfo!.className,
             phylumName: koreanInfo!.phylumName,
             speciesKoreanName: koreanInfo!.speciesKoreanName,
+            familyKorName: koreanInfo!.familyKorName ?? null,
+            apgFamilyName: koreanInfo!.apgFamilyName ?? null,
+            apgFamilyKorName: koreanInfo!.apgFamilyKorName ?? null,
+            koreanTaxonomyLastUpdated: koreanInfo!.lastUpdated ?? null,
             koreanTaxonomySource: 'NIBR' as const,
             koreanTaxonomyMatched: true as const,
             koreanTaxonomyMatchedAt: serverTimestamp(),
@@ -1858,6 +1967,64 @@ export function PlantDetectivePage() {
               </button>
             )}
 
+            {/* 🇰🇷 NIBR XML 붙여넣기 보강 — 관리자(허대표) 전용. 본인 등록 IP에서 받은 NIBR 응답(XML/JSON)을 붙여넣어 파싱 */}
+            {isAdmin && result && (
+              <div
+                style={{
+                  border: '1px solid #15803D',
+                  borderRadius: 10,
+                  background: '#F0FDF4',
+                  padding: 14,
+                  marginTop: 4,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                }}
+              >
+                <div style={{ fontSize: 14, fontWeight: 900, color: '#15803D' }}>
+                  🇰🇷 NIBR XML 붙여넣기 보강 (관리자 전용)
+                </div>
+                <p style={{ margin: 0, fontSize: 12, color: '#3d4734', lineHeight: 1.6 }}>
+                  본인 등록 IP에서 공공데이터포털/NIBR URL을 직접 호출해 받은 응답(XML 또는 JSON)을 그대로 붙여넣으세요.
+                  국명·학명·과명·APG 과명·갱신일을 추출해 아래 결과에 반영하고, 도감 저장 시 함께 기록됩니다.
+                </p>
+                <textarea
+                  value={nibrXmlInput}
+                  onChange={(e) => setNibrXmlInput(e.target.value)}
+                  placeholder="여기에 NIBR XML/JSON 응답 원문을 붙여넣으세요"
+                  rows={5}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    border: '1px solid #cbd5c0',
+                    borderRadius: 8,
+                    padding: 10,
+                    fontSize: 13,
+                    fontFamily: 'monospace',
+                    resize: 'vertical',
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={parseNibrPastedData}
+                  disabled={!nibrXmlInput.trim()}
+                  style={{
+                    alignSelf: 'flex-start',
+                    border: 'none',
+                    borderRadius: 8,
+                    background: nibrXmlInput.trim() ? '#15803D' : '#B8C0CC',
+                    color: '#fff',
+                    fontSize: 13,
+                    fontWeight: 800,
+                    padding: '10px 14px',
+                    cursor: nibrXmlInput.trim() ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  XML 파싱·보강
+                </button>
+              </div>
+            )}
+
             {/* 🌿 국내 생물종(NIBR) 보강 결과 — 관리자(허대표) 전용. AI 판독·사용자 정정 결과를 덮어쓰지 않음 */}
             {isAdmin && koreanInfo && (
               <ResultCard title="🇰🇷 국내 생물종 정보 (NIBR)" accent="#15803D" bg="#F0FDF4">
@@ -1878,6 +2045,21 @@ export function PlantDetectivePage() {
                         {[koreanInfo.orderName, koreanInfo.familyName, koreanInfo.genusName]
                           .filter(Boolean)
                           .join(' / ')}
+                      </div>
+                    )}
+                    {koreanInfo.familyKorName && (
+                      <div style={{ marginTop: 4, fontSize: 12, color: '#3d4734' }}>
+                        과명: {koreanInfo.familyKorName}
+                      </div>
+                    )}
+                    {(koreanInfo.apgFamilyKorName || koreanInfo.apgFamilyName) && (
+                      <div style={{ marginTop: 4, fontSize: 12, color: '#3d4734' }}>
+                        APG 과명: {[koreanInfo.apgFamilyKorName, koreanInfo.apgFamilyName].filter(Boolean).join(' / ')}
+                      </div>
+                    )}
+                    {koreanInfo.lastUpdated && (
+                      <div style={{ marginTop: 4, fontSize: 11, color: '#6b7654' }}>
+                        갱신일: {koreanInfo.lastUpdated}
                       </div>
                     )}
                   </>
