@@ -29,6 +29,13 @@ const DEV_TOOLS: DevTool[] = [
     color: '#1A3C6E',
   },
   {
+    icon: '📝',
+    label: '기록물생성',
+    description: '선택한 책소재로 편집 가능한 기록물 가편 생성',
+    path: '/admin/record-book',
+    color: '#1A3C6E',
+  },
+  {
     icon: '📰',
     label: 'K뉴스 발행',
     description: 'AI 자동 분석 카드뉴스 발행',

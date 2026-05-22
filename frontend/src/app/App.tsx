@@ -33,6 +33,7 @@ import { DiaryLearnPage } from './pages/DiaryLearnPage';
 import { AdminChecklistPage } from './pages/AdminChecklistPage';
 import { DevConsolePage } from './pages/DevConsolePage';
 import { ElderBookPage } from './pages/ElderBookPage';
+import { RecordBookPage } from './pages/RecordBookPage';
 import { KNewsPublisherPage } from './pages/KNewsPublisherPage';
 import { NovelStudio } from './pages/NovelStudio';
 import { NovelSynopsisPage } from './pages/NovelSynopsisPage';
@@ -170,6 +171,7 @@ function App() {
               <Route path="/admin/checklist" element={<AdminChecklistPage />} />
               <Route path="/admin/console" element={<DevConsolePage />} />
               <Route path="/admin/elder-book" element={<ElderBookPage />} />
+              <Route path="/admin/record-book" element={<RecordBookPage />} />
               <Route path="/admin/k-news-publisher" element={<KNewsPublisherPage />} />
 
               {/* 구독 페이지 */}
