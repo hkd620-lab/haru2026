@@ -397,69 +397,104 @@ export function PlantDetectivePage() {
     return '';
   };
 
-  // 붙여넣은 NIBR 응답(JSON 우선, 실패 시 XML)에서 첫 항목을 평탄한 key→text 맵으로
-  const flattenNibrFirstItem = (raw: string): Record<string, string> | null => {
+  // 학명 → 속명+종소명(앞 두 토큰) 소문자 정규화
+  const nibrBinomial = (s: string): string =>
+    (s || '').trim().toLowerCase().replace(/\s+/g, ' ').split(' ').filter(Boolean).slice(0, 2).join(' ');
+
+  // 붙여넣은 NIBR 응답(JSON 우선, 실패 시 XML)에서 모든 항목을 평탄한 key→text 맵 배열로
+  const flattenNibrItems = (raw: string): Record<string, string>[] => {
     const text = raw.trim();
-    if (!text) return null;
+    if (!text) return [];
+    const toMap = (obj: any): Record<string, string> => {
+      const map: Record<string, string> = {};
+      for (const [k, v] of Object.entries(obj)) {
+        if (v != null && typeof v !== 'object') map[k] = String(v);
+      }
+      return map;
+    };
     // 1) JSON
     try {
       const parsed: any = JSON.parse(text);
-      const candidates = [
+      const arrays = [
         parsed?.data?.content, parsed?.result?.item, parsed?.result?.items,
         parsed?.items, parsed?.data?.item, parsed?.data?.items, parsed?.list,
         parsed?.response?.body?.items?.item,
       ];
-      let item: any = null;
-      for (const c of candidates) {
-        if (Array.isArray(c) && c.length) { item = c[0]; break; }
-        if (c && !Array.isArray(c) && typeof c === 'object') { item = c; break; }
+      for (const a of arrays) {
+        if (Array.isArray(a) && a.length) return a.filter((x) => x && typeof x === 'object').map(toMap);
+        if (a && !Array.isArray(a) && typeof a === 'object') return [toMap(a)];
       }
-      if (!item && parsed && typeof parsed === 'object') item = parsed;
-      if (item && typeof item === 'object') {
-        const map: Record<string, string> = {};
-        for (const [k, v] of Object.entries(item)) {
-          if (v != null && typeof v !== 'object') map[k] = String(v);
-        }
-        if (Object.keys(map).length) return map;
-      }
+      if (parsed && typeof parsed === 'object') return [toMap(parsed)];
     } catch {
       /* JSON 아님 → XML 시도 */
     }
-    // 2) XML
+    // 2) XML — <content> 우선, 없으면 <item>, 그래도 없으면 루트
     try {
       const docXml = new DOMParser().parseFromString(text, 'application/xml');
-      if (docXml.getElementsByTagName('parsererror').length > 0) return null;
-      const container =
-        docXml.querySelector('item') || docXml.querySelector('content') || docXml.documentElement;
-      if (!container) return null;
-      const map: Record<string, string> = {};
-      const children = container.children;
-      for (let i = 0; i < children.length; i++) {
-        const el = children[i];
-        if (el.children.length === 0) map[el.tagName] = (el.textContent || '').trim();
-      }
-      return Object.keys(map).length ? map : null;
+      if (docXml.getElementsByTagName('parsererror').length > 0) return [];
+      let nodes = Array.from(docXml.getElementsByTagName('content'));
+      if (nodes.length === 0) nodes = Array.from(docXml.getElementsByTagName('item'));
+      if (nodes.length === 0 && docXml.documentElement) nodes = [docXml.documentElement];
+      return nodes
+        .map((node) => {
+          const map: Record<string, string> = {};
+          const children = node.children;
+          for (let i = 0; i < children.length; i++) {
+            const el = children[i];
+            if (el.children.length === 0) map[el.tagName] = (el.textContent || '').trim();
+          }
+          return map;
+        })
+        .filter((m) => Object.keys(m).length > 0);
     } catch {
-      return null;
+      return [];
     }
   };
 
-  // 🇰🇷 관리자 전용: 붙여넣은 NIBR XML/JSON 파싱 → koreanInfo 보강 (저장은 기존 도감 저장 흐름 재사용)
+  // 🇰🇷 관리자 전용: 붙여넣은 NIBR XML/JSON 파싱 → 분석한 식물 학명과 일치하는 항목을 골라 koreanInfo 보강
   const parseNibrPastedData = () => {
-    const map = flattenNibrFirstItem(nibrXmlInput);
-    if (!map) {
+    const items = flattenNibrItems(nibrXmlInput);
+    if (items.length === 0) {
       toast.error('NIBR XML/JSON을 인식하지 못했습니다. 응답 원문을 그대로 붙여넣어 주세요.');
       return;
     }
+
+    const itemBinomial = (m: Record<string, string>): string => {
+      const g = pickNibrField(m, ['gnusKtsnLtnNm']);
+      const s = pickNibrField(m, ['specsKtsnLtnNm']);
+      if (g && s) return nibrBinomial(`${g} ${s}`);
+      return nibrBinomial(pickNibrField(m, ['stnm', 'ktsnLtnNm', 'scientificName', 'sciNm']));
+    };
+
+    // 분석한 식물 학명으로 정확한 항목 매칭 (목록이면 일치 항목, 없으면 첫 항목)
+    const aiSci =
+      result?.plantNet?.scientificName ||
+      result?.plantId?.latinName ||
+      result?.gemini?.finalLatinName ||
+      '';
+    const target = nibrBinomial(aiSci);
+    let map: Record<string, string>;
+    if (target && items.length > 1) {
+      const found = items.find((m) => itemBinomial(m) === target);
+      if (!found) {
+        toast.error(`붙여넣은 목록에서 '${aiSci}' 항목을 찾지 못했습니다. 해당 학명으로 NIBR에서 검색한 결과를 붙여넣어 주세요.`);
+        return;
+      }
+      map = found;
+    } else {
+      map = items[0];
+    }
+
     const koreanName = pickNibrField(map, ['ktsnKrnNm', 'kornm', 'korNm', 'kor_nm', 'repKorNm', 'repKorName', 'koreanName']);
     const gnusL = pickNibrField(map, ['gnusKtsnLtnNm']);
     const specsL = pickNibrField(map, ['specsKtsnLtnNm']);
     const scientificName = gnusL && specsL ? `${gnusL} ${specsL}` : pickNibrField(map, ['stnm', 'ktsnLtnNm', 'scientificName', 'sciNm']);
     const familyName = pickNibrField(map, ['fmlyKtsnLtnNm', 'familyName', 'family', 'fmlyNm']);
     const familyKorName = pickNibrField(map, ['fmlyKtsnKrnNm', 'familyKornm', 'familyKorNm', 'fmlyKorNm']);
-    const apgFamilyName = pickNibrField(map, ['apgFmlyKtsnLtnNm', 'apgFamilyName', 'apgFmlyNm', 'apgFamily']);
-    const apgFamilyKorName = pickNibrField(map, ['apgFmlyKtsnKrnNm', 'apgFamilyKorName', 'apgFmlyKrnNm', 'apgFmlyKorNm']);
-    const lastUpdated = pickNibrField(map, ['lastUpdtDt', 'updtDt', 'lastUpdated', 'mdfcnDt', 'last_updt_de', 'frstRegistDt']);
+    const genusKorName = pickNibrField(map, ['gnusKtsnKrnNm']);
+    const orderKorName = pickNibrField(map, ['orderKtsnKrnNm']);
+    // 갱신일: 수정일(mdfcnDt) 우선, 없으면 등록일(regDt)로 대체
+    const lastUpdated = pickNibrField(map, ['mdfcnDt', 'lastUpdtDt', 'updtDt', 'lastUpdated', 'regDt', 'frstRegistDt']);
 
     if (!koreanName && !scientificName && !familyName && !familyKorName) {
       toast.error('국명·학명·과명을 찾지 못했습니다. NIBR 응답 형식을 확인해 주세요.');
@@ -470,19 +505,20 @@ export function PlantDetectivePage() {
       scientificName: scientificName || null,
       phylumName: null,
       className: null,
-      orderName: null,
+      orderName: orderKorName || null,
       familyName: familyName || familyKorName || null,
-      genusName: null,
+      genusName: genusKorName || null,
       speciesKoreanName: null,
       familyKorName: familyKorName || null,
-      apgFamilyName: apgFamilyName || null,
-      apgFamilyKorName: apgFamilyKorName || null,
+      // APG 과명은 NIBR ktsn/taxons 엔드포인트가 제공하지 않음 → null
+      apgFamilyName: null,
+      apgFamilyKorName: null,
       lastUpdated: lastUpdated || null,
       source: 'NIBR',
       rawMatched: true,
       status: 'matched',
     });
-    toast.success('NIBR 보강 정보를 추출했습니다. 도감 저장 시 함께 반영됩니다.');
+    toast.success(`NIBR 보강 정보를 추출했습니다${koreanName ? `: ${koreanName}` : ''}. 도감 저장 시 함께 반영됩니다.`);
   };
 
   // 🌿 NIBR 국내 생물종 보강 실행 — 관리자(허대표) 전용.
@@ -1985,8 +2021,8 @@ export function PlantDetectivePage() {
                   🇰🇷 NIBR XML 붙여넣기 보강 (관리자 전용)
                 </div>
                 <p style={{ margin: 0, fontSize: 12, color: '#3d4734', lineHeight: 1.6 }}>
-                  본인 등록 IP에서 공공데이터포털/NIBR URL을 직접 호출해 받은 응답(XML 또는 JSON)을 그대로 붙여넣으세요.
-                  국명·학명·과명·APG 과명·갱신일을 추출해 아래 결과에 반영하고, 도감 저장 시 함께 기록됩니다.
+                  본인 등록 IP에서 NIBR 오픈API를 호출해 받은 응답(XML 또는 JSON)을 그대로 붙여넣으세요.
+                  분석한 식물 학명과 일치하는 항목의 국명·학명·과명·갱신일을 추출해 아래 결과에 반영하고, 도감 저장 시 함께 기록됩니다.
                 </p>
                 <textarea
                   value={nibrXmlInput}
