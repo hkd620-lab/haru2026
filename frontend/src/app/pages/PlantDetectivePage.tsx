@@ -10,6 +10,7 @@ import { db, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { compressImage } from '../services/imageService';
 import type { PlantAsset, PlantAssetSourceType } from '../types/haruTypes';
+import { lookupPlantAlias } from '../data/plantNameAliases';
 
 // ===========================================
 // 응답 타입 — functions/src/index.ts detectPlantAdvanced 와 동기
@@ -186,6 +187,9 @@ export function PlantDetectivePage() {
   const [userConfirmedName, setUserConfirmedName] = useState('');
   const [userConfirmedEnglishName, setUserConfirmedEnglishName] = useState('');
   const [userConfirmedScientificName, setUserConfirmedScientificName] = useState('');
+  // 영어명/학명을 사용자가 직접 입력했는지 — true면 한국명 자동완성이 덮어쓰지 않음
+  const [userEditedEnglishName, setUserEditedEnglishName] = useState(false);
+  const [userEditedScientificName, setUserEditedScientificName] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [confirmedSavedDocId, setConfirmedSavedDocId] = useState<string | null>(null);
   // 현재 결과를 plants/ 컬렉션에 한 번 저장했다면 그 plantId를 기억 — 재저장 시 update
@@ -254,6 +258,8 @@ export function PlantDetectivePage() {
     setUserConfirmedName('');
     setUserConfirmedEnglishName('');
     setUserConfirmedScientificName('');
+    setUserEditedEnglishName(false);
+    setUserEditedScientificName(false);
     setConfirmedSavedDocId(null);
     setActivePlantDocId(null);
     setActivePlantImageUrls([]);
@@ -2451,7 +2457,16 @@ export function PlantDetectivePage() {
                 <input
                   type="text"
                   value={userConfirmedName}
-                  onChange={(e) => setUserConfirmedName(e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setUserConfirmedName(v);
+                    // 로컬 사전 자동완성 — 사용자가 직접 입력한 영어명/학명은 덮어쓰지 않음
+                    const alias = lookupPlantAlias(v);
+                    if (alias) {
+                      if (!userEditedEnglishName) setUserConfirmedEnglishName(alias.englishName);
+                      if (!userEditedScientificName) setUserConfirmedScientificName(alias.scientificName);
+                    }
+                  }}
                   placeholder="예: 수세미"
                   maxLength={60}
                   disabled={isConfirming}
@@ -2509,7 +2524,10 @@ export function PlantDetectivePage() {
                 <input
                   type="text"
                   value={userConfirmedEnglishName}
-                  onChange={(e) => setUserConfirmedEnglishName(e.target.value)}
+                  onChange={(e) => {
+                    setUserConfirmedEnglishName(e.target.value);
+                    setUserEditedEnglishName(true);
+                  }}
                   placeholder="영어명 예: Luffa"
                   maxLength={80}
                   disabled={isConfirming}
@@ -2527,7 +2545,10 @@ export function PlantDetectivePage() {
                 <input
                   type="text"
                   value={userConfirmedScientificName}
-                  onChange={(e) => setUserConfirmedScientificName(e.target.value)}
+                  onChange={(e) => {
+                    setUserConfirmedScientificName(e.target.value);
+                    setUserEditedScientificName(true);
+                  }}
                   placeholder="학명 예: Luffa cylindrica"
                   maxLength={120}
                   disabled={isConfirming}
