@@ -428,9 +428,12 @@ export function PlantDetectivePage() {
     } catch {
       /* JSON 아님 → XML 시도 */
     }
-    // 2) XML — <content> 우선, 없으면 <item>, 그래도 없으면 루트
+    // 2) XML — 브라우저 XML 뷰어 복사 시 앞에 붙는 안내문("This XML file does not appear...") 등
+    //    비-XML 선행 텍스트를 제거(첫 '<'부터)한 뒤 파싱
     try {
-      const docXml = new DOMParser().parseFromString(text, 'application/xml');
+      const lt = text.indexOf('<');
+      const xmlText = lt > 0 ? text.slice(lt) : text;
+      const docXml = new DOMParser().parseFromString(xmlText, 'application/xml');
       if (docXml.getElementsByTagName('parsererror').length > 0) return [];
       let nodes = Array.from(docXml.getElementsByTagName('content'));
       if (nodes.length === 0) nodes = Array.from(docXml.getElementsByTagName('item'));
