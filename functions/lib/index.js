@@ -5632,6 +5632,11 @@ exports.getKoreanPlantInfo = (0, https_2.onCall)({
     if (!uid) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    // 🇰🇷 NIBR 보강은 관리자(허대표) 전용 — 비관리자는 NIBR 호출 자체를 차단
+    const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+    if (uid !== ADMIN_UID) {
+        throw new https_2.HttpsError('permission-denied', '관리자 전용 기능입니다.');
+    }
     const sciInput = String(((_b = request.data) === null || _b === void 0 ? void 0 : _b.scientificName) || '').trim();
     if (!sciInput) {
         return nibrEmptyResponse('not_found');

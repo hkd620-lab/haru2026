@@ -154,9 +154,13 @@ function pctText(v: number | null | undefined): string {
   return `${Math.round(v * 100)}%`;
 }
 
+// 🇰🇷 NIBR 보강은 관리자 전용 — 기존 프로젝트 관리자 판별 방식(UID 상수)과 동일
+const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+
 export function PlantDetectivePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isAdmin = user?.uid === ADMIN_UID;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [isPreparing, setIsPreparing] = useState(false);
@@ -376,6 +380,32 @@ export function PlantDetectivePage() {
     }
   };
 
+  // 🌿 NIBR 국내 생물종 보강 실행 — 관리자(허대표) 전용.
+  //   실제 NIBR 호출은 고정 egress IP 인프라 준비 전까지 빈 결과일 수 있으나, 기존 흐름엔 영향 없음.
+  const runNibrEnrichment = (data: AdvancedResult) => {
+    const nibrSci =
+      data.plantNet?.scientificName ||
+      data.plantId?.latinName ||
+      data.gemini?.finalLatinName ||
+      '';
+    if (!nibrSci) {
+      toast('학명 정보가 없어 NIBR 보강을 건너뜁니다.');
+      return;
+    }
+    const callKoreanInfo = httpsCallable<
+      { scientificName: string },
+      KoreanPlantInfoResponse
+    >(functions, 'getKoreanPlantInfo');
+    callKoreanInfo({ scientificName: nibrSci })
+      .then((res) => {
+        setKoreanInfo(res.data || null);
+      })
+      .catch((e) => {
+        console.warn('NIBR 보강 조회 실패 — 기존 결과 유지:', e);
+        setKoreanInfo(emptyKoreanPlantInfo('api_unavailable'));
+      });
+  };
+
   const analyzePlant = async () => {
     if (photos.length === 0) {
       toast.info('사진을 1장 이상 선택해 주세요.');
@@ -408,27 +438,9 @@ export function PlantDetectivePage() {
       findCommunityCorrection(data).then(setCommunityCorrectionKnown).catch((e) => {
         console.warn('공용 검증 기록 조회 실패:', e);
       });
-      // 🌿 NIBR 보강 (보강 정보 전용) — scientificName 후보 우선순위:
-      // 1) plantNet.scientificName → 2) plantId.latinName → 3) gemini.finalLatinName
-      // Secret 미등록/매칭 실패는 조용히 무시 (기존 흐름 무영향)
-      const nibrSci =
-        data.plantNet?.scientificName ||
-        data.plantId?.latinName ||
-        data.gemini?.finalLatinName ||
-        '';
-      if (nibrSci) {
-        const callKoreanInfo = httpsCallable<
-          { scientificName: string },
-          KoreanPlantInfoResponse
-        >(functions, 'getKoreanPlantInfo');
-        callKoreanInfo({ scientificName: nibrSci })
-          .then((res) => {
-            setKoreanInfo(res.data || null);
-          })
-          .catch((e) => {
-            console.warn('NIBR 보강 조회 실패 — 기존 결과 유지:', e);
-            setKoreanInfo(emptyKoreanPlantInfo('api_unavailable'));
-          });
+      // 🌿 NIBR 보강 — 관리자(허대표) 계정에서만 호출. 구독자/일반 사용자는 NIBR 호출이 발생하지 않음.
+      if (isAdmin) {
+        runNibrEnrichment(data);
       }
     } catch (error: any) {
       console.error('식물 분석 실패:', error);
@@ -1824,8 +1836,30 @@ export function PlantDetectivePage() {
               )}
             </ResultCard>
 
-            {/* 🌿 국내 생물종(NIBR) 보강 — 결과/진단을 화면에 표시. AI 판독·사용자 정정 결과를 덮어쓰지 않음 */}
-            {koreanInfo && (
+            {/* 🇰🇷 NIBR 한국식물 보강 — 관리자(허대표) 전용 버튼. 구독자/일반 사용자에게는 노출되지 않음 */}
+            {isAdmin && result && (
+              <button
+                type="button"
+                onClick={() => runNibrEnrichment(result)}
+                style={{
+                  width: '100%',
+                  border: '1px solid #15803D',
+                  borderRadius: 10,
+                  background: '#F0FDF4',
+                  color: '#15803D',
+                  fontSize: 14,
+                  fontWeight: 900,
+                  padding: '12px 14px',
+                  marginTop: 4,
+                  cursor: 'pointer',
+                }}
+              >
+                🇰🇷 NIBR 한국식물 보강
+              </button>
+            )}
+
+            {/* 🌿 국내 생물종(NIBR) 보강 결과 — 관리자(허대표) 전용. AI 판독·사용자 정정 결과를 덮어쓰지 않음 */}
+            {isAdmin && koreanInfo && (
               <ResultCard title="🇰🇷 국내 생물종 정보 (NIBR)" accent="#15803D" bg="#F0FDF4">
                 {koreanInfo.status === 'matched' && (koreanInfo.koreanName || koreanInfo.familyName) ? (
                   <>
