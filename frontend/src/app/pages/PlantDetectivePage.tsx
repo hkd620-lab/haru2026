@@ -428,27 +428,58 @@ export function PlantDetectivePage() {
     } catch {
       /* JSON 아님 → XML 시도 */
     }
+    const flattenElement = (node: Element): Record<string, string> => {
+      const map: Record<string, string> = {};
+      const visit = (el: Element) => {
+        const children = Array.from(el.children);
+        if (children.length === 0) {
+          const value = (el.textContent || '').trim();
+          if (value) map[el.localName || el.tagName] = value;
+          return;
+        }
+        children.forEach(visit);
+      };
+      visit(node);
+      return map;
+    };
+    const extractContentBlocks = (xmlText: string): Record<string, string>[] => {
+      const blocks = Array.from(xmlText.matchAll(/<content\b[^>]*>([\s\S]*?)<\/content>/gi))
+        .map((m) => m[1])
+        .filter((block) => block && block.trim());
+      return blocks
+        .map((block) => {
+          const map: Record<string, string> = {};
+          const fieldMatches = Array.from(block.matchAll(/<([A-Za-z_][\w:.-]*)\b[^>]*>([\s\S]*?)<\/\1>/g));
+          for (const match of fieldMatches) {
+            const key = match[1].split(':').pop() || match[1];
+            const value = match[2]
+              .replace(/<[^>]+>/g, ' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+            if (value) map[key] = value;
+          }
+          return map;
+        })
+        .filter((m) => Object.keys(m).length > 0);
+    };
     // 2) XML — 브라우저 XML 뷰어 복사 시 앞에 붙는 안내문("This XML file does not appear...") 등
     //    비-XML 선행 텍스트를 제거(첫 '<'부터)한 뒤 파싱
     try {
       const lt = text.indexOf('<');
       const xmlText = lt > 0 ? text.slice(lt) : text;
       const docXml = new DOMParser().parseFromString(xmlText, 'application/xml');
-      if (docXml.getElementsByTagName('parsererror').length > 0) return [];
-      let nodes = Array.from(docXml.getElementsByTagName('content'));
-      if (nodes.length === 0) nodes = Array.from(docXml.getElementsByTagName('item'));
-      if (nodes.length === 0 && docXml.documentElement) nodes = [docXml.documentElement];
-      return nodes
-        .map((node) => {
-          const map: Record<string, string> = {};
-          const children = node.children;
-          for (let i = 0; i < children.length; i++) {
-            const el = children[i];
-            if (el.children.length === 0) map[el.tagName] = (el.textContent || '').trim();
-          }
-          return map;
-        })
-        .filter((m) => Object.keys(m).length > 0);
+      if (docXml.getElementsByTagName('parsererror').length === 0) {
+        let nodes = Array.from(docXml.getElementsByTagName('content'));
+        if (nodes.length === 0) nodes = Array.from(docXml.getElementsByTagName('item'));
+        if (nodes.length === 0 && docXml.documentElement) {
+          nodes = Array.from(docXml.documentElement.children).filter((el) =>
+            ['content', 'item'].includes((el.localName || el.tagName).toLowerCase()),
+          );
+        }
+        const parsedMaps = nodes.map(flattenElement).filter((m) => Object.keys(m).length > 0);
+        if (parsedMaps.length > 0) return parsedMaps;
+      }
+      return extractContentBlocks(xmlText);
     } catch {
       return [];
     }
