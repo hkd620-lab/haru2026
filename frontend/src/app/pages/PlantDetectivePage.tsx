@@ -410,6 +410,18 @@ export function PlantDetectivePage() {
   const nibrBinomial = (s: string): string =>
     (s || '').trim().toLowerCase().replace(/\s+/g, ' ').split(' ').filter(Boolean).slice(0, 2).join(' ');
 
+  const updateUserConfirmedName = (value: string) => {
+    setUserConfirmedName(value);
+    const alias = lookupPlantAlias(value);
+    if (!alias) return;
+    if (!userEditedEnglishName || !userConfirmedEnglishName.trim()) {
+      setUserConfirmedEnglishName(alias.englishName);
+    }
+    if (!userEditedScientificName || !userConfirmedScientificName.trim()) {
+      setUserConfirmedScientificName(alias.scientificName);
+    }
+  };
+
   // 붙여넣은 NIBR 응답(JSON 우선, 실패 시 XML)에서 모든 항목을 평탄한 key→text 맵 배열로
   const flattenNibrItems = (raw: string): Record<string, string>[] => {
     const text = raw.trim();
@@ -2310,7 +2322,7 @@ export function PlantDetectivePage() {
                 <input
                   type="text"
                   value={userConfirmedName}
-                  onChange={(e) => setUserConfirmedName(e.target.value)}
+                  onChange={(e) => updateUserConfirmedName(e.target.value)}
                   placeholder="예: 수세미"
                   maxLength={60}
                   style={{
@@ -2330,7 +2342,10 @@ export function PlantDetectivePage() {
                   <input
                     type="text"
                     value={userConfirmedEnglishName}
-                    onChange={(e) => setUserConfirmedEnglishName(e.target.value)}
+                    onChange={(e) => {
+                      setUserConfirmedEnglishName(e.target.value);
+                      setUserEditedEnglishName(true);
+                    }}
                     placeholder="영어명 예: Luffa"
                     maxLength={80}
                     style={{
@@ -2348,7 +2363,10 @@ export function PlantDetectivePage() {
                   <input
                     type="text"
                     value={userConfirmedScientificName}
-                    onChange={(e) => setUserConfirmedScientificName(e.target.value)}
+                    onChange={(e) => {
+                      setUserConfirmedScientificName(e.target.value);
+                      setUserEditedScientificName(true);
+                    }}
                     placeholder="학명 예: Luffa cylindrica"
                     maxLength={120}
                     style={{
@@ -2458,14 +2476,7 @@ export function PlantDetectivePage() {
                   type="text"
                   value={userConfirmedName}
                   onChange={(e) => {
-                    const v = e.target.value;
-                    setUserConfirmedName(v);
-                    // 로컬 사전 자동완성 — 사용자가 직접 입력한 영어명/학명은 덮어쓰지 않음
-                    const alias = lookupPlantAlias(v);
-                    if (alias) {
-                      if (!userEditedEnglishName) setUserConfirmedEnglishName(alias.englishName);
-                      if (!userEditedScientificName) setUserConfirmedScientificName(alias.scientificName);
-                    }
+                    updateUserConfirmedName(e.target.value);
                   }}
                   placeholder="예: 수세미"
                   maxLength={60}
