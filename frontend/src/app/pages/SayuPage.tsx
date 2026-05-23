@@ -56,6 +56,7 @@ interface SayuPlantDiaryEditKey {
   recordId: string;
   idx: number;
 }
+type SayuPlantDiaryInputMode = 'edit' | 'append';
 
 const emptyPlantDiaryDraft = {
   observation: '',
@@ -451,6 +452,7 @@ export function SayuPage() {
   const [plantPopupType, setPlantPopupType] = useState<null | 'assistant' | 'diary' | 'library' | 'catalog'>(null);
   const [selectedPlantDiaryItem, setSelectedPlantDiaryItem] = useState<SayuPlantLibraryItem | null>(null);
   const [editingPlantDiaryKey, setEditingPlantDiaryKey] = useState<SayuPlantDiaryEditKey | null>(null);
+  const [plantDiaryInputMode, setPlantDiaryInputMode] = useState<SayuPlantDiaryInputMode>('append');
   const [plantDiaryDraft, setPlantDiaryDraft] = useState(emptyPlantDiaryDraft);
   const [plantDiarySaving, setPlantDiarySaving] = useState(false);
 
@@ -558,6 +560,19 @@ export function SayuPage() {
 
   const formatDaysAfterRecord = (days: number) => (days > 0 ? `${days}일 지나서 기록` : '기록 당일');
 
+  const getDiarySortTime = (value: any) => {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      const parsed = new Date(value).getTime();
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    if (value?.toDate && typeof value.toDate === 'function') {
+      const parsed = value.toDate().getTime();
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  };
+
   const getPlantDiaryTrace = (entry: any, fallbackDate: string) => {
     const recordDate = normalizeDiaryDateKey(entry?.recordDate || entry?.firstRecordDate || entry?.originalRecordDate || fallbackDate, fallbackDate);
     const updatedDate = entry?.updatedDate || (entry?.updatedAt ? normalizeDiaryDateKey(entry.updatedAt, '') : '');
@@ -629,17 +644,20 @@ export function SayuPage() {
   const openPlantDiaryDetail = (plant: SayuPlantLibraryItem) => {
     setSelectedPlantDiaryItem(plant);
     setEditingPlantDiaryKey(null);
+    setPlantDiaryInputMode('append');
     setPlantDiaryDraft(emptyPlantDiaryDraft);
   };
 
   const closePlantDiaryDetail = () => {
     setSelectedPlantDiaryItem(null);
     setEditingPlantDiaryKey(null);
+    setPlantDiaryInputMode('append');
     setPlantDiaryDraft(emptyPlantDiaryDraft);
   };
 
   const handleEditPlantDiary = (recordId: string, idx: number, entry: any) => {
     setEditingPlantDiaryKey({ recordId, idx });
+    setPlantDiaryInputMode('edit');
     setPlantDiaryDraft({
       observation: String(entry?.observation || ''),
       aiDifference: String(entry?.aiDifference || ''),
@@ -664,15 +682,23 @@ export function SayuPage() {
       const photoUrl = file ? await uploadSayuPlantDiaryPhoto(plant.id, file) : '';
       const plantName = getSayuPlantName(plant);
       const today = getLocalDateKey();
-      const recordId = editingPlantDiaryKey?.recordId || today;
+      const targetRecord = editingPlantDiaryKey?.recordId
+        ? records.find((r) => r.id === editingPlantDiaryKey.recordId) as any
+        : null;
+      const current = editingPlantDiaryKey && targetRecord
+        ? (Array.isArray(targetRecord?.plantObservation) ? [...targetRecord.plantObservation] : [])
+        : [];
+      const prev = editingPlantDiaryKey ? (current[editingPlantDiaryKey.idx] || {}) : {};
+      const targetRecordDate = editingPlantDiaryKey
+        ? normalizeDiaryDateKey(prev.recordDate || prev.firstRecordDate || prev.originalRecordDate || editingPlantDiaryKey.recordId, editingPlantDiaryKey.recordId)
+        : today;
+      const recordId = editingPlantDiaryKey ? editingPlantDiaryKey.recordId : today;
       const recordRef = doc(db, 'users', user.uid, 'records', recordId);
       const now = Date.now();
       const nowIso = new Date(now).toISOString();
-      if (editingPlantDiaryKey) {
-        const targetRecord = records.find((r) => r.id === editingPlantDiaryKey.recordId) as any;
-        const current = Array.isArray(targetRecord?.plantObservation) ? [...targetRecord.plantObservation] : [];
-        const prev = current[editingPlantDiaryKey.idx] || {};
-        const recordDate = normalizeDiaryDateKey(prev.recordDate || prev.firstRecordDate || prev.originalRecordDate || recordId, recordId);
+      const shouldEditExisting = !!editingPlantDiaryKey && plantDiaryInputMode === 'edit';
+      if (shouldEditExisting && editingPlantDiaryKey) {
+        const recordDate = targetRecordDate;
         const updatedDate = getLocalDateKey(now);
         const daysAfterRecord = getDaysBetweenDateKeys(recordDate, updatedDate);
         const editHistory = Array.isArray(prev.editHistory) ? prev.editHistory : [];
@@ -717,13 +743,17 @@ export function SayuPage() {
         )));
         toast.success('성장일기를 수정했습니다.');
       } else {
+        const parentDiaryId = prev?.id || (editingPlantDiaryKey ? `${editingPlantDiaryKey.recordId}_${editingPlantDiaryKey.idx}` : '');
         const entry = {
-          id: `sayu_${plant.id}_${now}`,
+          id: `sayu_${plant.id}_${recordId}_${now}`,
           plantId: plant.id,
           plantName,
           title: plantName,
-          recordDate: today,
-          firstRecordDate: today,
+          recordDate: targetRecordDate,
+          firstRecordDate: prev.firstRecordDate || targetRecordDate,
+          parentDiaryId,
+          addedToRecordId: editingPlantDiaryKey?.recordId || '',
+          addedFromDiaryIndex: editingPlantDiaryKey?.idx ?? null,
           observation,
           aiDifference,
           memo,
@@ -738,22 +768,22 @@ export function SayuPage() {
         await setDoc(
           recordRef,
           {
-            date: today,
+            date: targetRecordDate,
             plantObservation: arrayUnion(entry),
             updatedAt: serverTimestamp(),
           },
           { merge: true },
         );
         setRecords((prevRecords) => {
-          const existing = prevRecords.find((r) => r.id === today) as any;
+          const existing = prevRecords.find((r) => r.id === recordId) as any;
           if (existing) {
             return prevRecords.map((r) => (
-              r.id === today
+              r.id === recordId
                 ? ({ ...(r as any), plantObservation: [...(Array.isArray((r as any).plantObservation) ? (r as any).plantObservation : []), entry] } as HaruRecord)
                 : r
             ));
           }
-          return [{ id: today, date: today, plantObservation: [entry] } as any, ...prevRecords];
+          return [{ id: recordId, date: targetRecordDate, plantObservation: [entry] } as any, ...prevRecords];
         });
         await setDoc(
           doc(db, 'users', user.uid, 'plants', plant.id),
@@ -779,9 +809,10 @@ export function SayuPage() {
               }
             : item
         )));
-        toast.success('성장일기를 추가했습니다.');
+        toast.success(editingPlantDiaryKey ? '같은 날짜에 성장일기를 추가했습니다.' : '성장일기를 추가했습니다.');
       }
       setEditingPlantDiaryKey(null);
+      setPlantDiaryInputMode('append');
       setPlantDiaryDraft(emptyPlantDiaryDraft);
     } catch (e: any) {
       toast.error(e?.message || '성장일기 저장에 실패했습니다.');
@@ -2853,14 +2884,14 @@ export function SayuPage() {
               });
             });
             plantEntries.sort((a, b) => {
-              const ta = a.entry?.createdAt || 0;
-              const tb = b.entry?.createdAt || 0;
+              const ta = getDiarySortTime(a.entry?.createdAt || a.entry?.createdDate || a.date);
+              const tb = getDiarySortTime(b.entry?.createdAt || b.entry?.createdDate || b.date);
               if (tb !== ta) return tb - ta;
               return (b.date || '').localeCompare(a.date || '');
             });
             plantObservationEntries.sort((a, b) => {
-              const ta = a.entry?.createdAt || 0;
-              const tb = b.entry?.createdAt || 0;
+              const ta = getDiarySortTime(a.entry?.createdAt || a.entry?.createdDate || a.date);
+              const tb = getDiarySortTime(b.entry?.createdAt || b.entry?.createdDate || b.date);
               if (tb !== ta) return tb - ta;
               return (b.date || '').localeCompare(a.date || '');
             });
@@ -3322,7 +3353,7 @@ export function SayuPage() {
                       <div style={{ padding: 14, overflowY: 'auto', display: 'grid', gap: 12 }}>
                         <div style={{ border: '1px solid #f0ead1', borderRadius: 8, background: '#fff', padding: 12, display: 'grid', gap: 8 }}>
                           <div style={{ fontSize: 13, color: '#24301f', fontWeight: 900 }}>
-                            {editingPlantDiaryKey ? '성장일기 수정' : '성장일기 추가'}
+                            {editingPlantDiaryKey ? '성장일기 추가 및 수정' : '성장일기 추가'}
                           </div>
                           {editingPlantDiaryEntry && (() => {
                             const trace = getPlantDiaryTrace(editingPlantDiaryEntry.entry, editingPlantDiaryEntry.date);
@@ -3331,6 +3362,11 @@ export function SayuPage() {
                                 <div>{trace.recordLabel}</div>
                                 {trace.editedLabel && <div>{trace.editedLabel}</div>}
                                 {trace.editCount > 0 && <div>수정 흔적 {trace.editCount}회 보존 중</div>}
+                                {plantDiaryInputMode === 'append' && (
+                                  <div style={{ color: '#4A5A2C', fontWeight: 900 }}>
+                                    같은 날짜에 새 성장 기록으로 추가됩니다.
+                                  </div>
+                                )}
                               </div>
                             );
                           })()}
@@ -3371,7 +3407,7 @@ export function SayuPage() {
                                 cursor: plantDiarySaving ? 'wait' : 'pointer',
                               }}
                             >
-                              사진 추가하고 저장
+                              {editingPlantDiaryKey && plantDiaryInputMode === 'append' ? '사진 추가하고 기록 추가' : '사진 추가하고 저장'}
                               <input
                                 type="file"
                                 accept="image/jpeg,image/png,image/webp"
@@ -3400,14 +3436,22 @@ export function SayuPage() {
                                 cursor: plantDiarySaving ? 'wait' : 'pointer',
                               }}
                             >
-                              {plantDiarySaving ? '저장 중...' : editingPlantDiaryKey ? '수정 저장' : '글만 저장'}
+                              {plantDiarySaving
+                                ? '저장 중...'
+                                : editingPlantDiaryKey
+                                  ? plantDiaryInputMode === 'edit' ? '수정 저장' : '추가 저장'
+                                  : '글만 저장'}
                             </button>
                             {editingPlantDiaryKey && (
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setEditingPlantDiaryKey(null);
-                                  setPlantDiaryDraft(emptyPlantDiaryDraft);
+                                  if (plantDiaryInputMode === 'edit') {
+                                    setPlantDiaryInputMode('append');
+                                    setPlantDiaryDraft(emptyPlantDiaryDraft);
+                                  } else if (editingPlantDiaryEntry) {
+                                    handleEditPlantDiary(editingPlantDiaryEntry.recordId, editingPlantDiaryEntry.idx, editingPlantDiaryEntry.entry);
+                                  }
                                 }}
                                 disabled={plantDiarySaving}
                                 style={{
@@ -3422,7 +3466,7 @@ export function SayuPage() {
                                   cursor: plantDiarySaving ? 'wait' : 'pointer',
                                 }}
                               >
-                                새 일기로 전환
+                                {plantDiaryInputMode === 'edit' ? '이 날짜에 새 기록 추가' : '수정 입력으로 돌아가기'}
                               </button>
                             )}
                           </div>
