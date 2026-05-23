@@ -100,8 +100,8 @@ const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placehol
     { key: 'travel_space', label: '여백', placeholder: '자유롭게 작성하세요.', rows: 2 },
   ],
   독서사유: [
-    { key: 'reading_book_title', label: '책 제목', placeholder: '예: 오래된 미래', rows: 1 },
-    { key: 'reading_author', label: '저자', placeholder: '예: 헬레나 노르베리 호지', rows: 1 },
+    { key: 'reading_book_title', label: '책 제목', placeholder: '예: 노인과 바다', rows: 1 },
+    { key: 'reading_author', label: '저자', placeholder: '예: 어니스트 헤밍웨이', rows: 1 },
     { key: 'reading_book_text', label: '본문 내용', placeholder: '사진으로 텍스트를 추출하거나 직접 입력하세요.', rows: 5 },
     { key: 'reading_journal', label: '독서장', placeholder: '헤밍웨이 『노인과 바다』 1장을 읽었다.\n산티아고의 고독이 오래 남았다.', rows: 5 },
   ],
