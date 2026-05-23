@@ -135,6 +135,25 @@ type PlantLibraryItem = {
   observationCount?: number;
 };
 
+type PlantDiaryEntry = {
+  id: string;
+  recordDate: string;
+  plantId?: string;
+  plantName?: string;
+  title?: string;
+  imageUrl?: string;
+  imageUrls?: string[];
+  observation?: string;
+  aiDifference?: string;
+  memo?: string;
+  createdAt?: any;
+};
+
+type PublicPlantCatalogItem = PlantLibraryItem & {
+  watermarkText?: string;
+  source?: string;
+};
+
 const PHOTO_GUIDE_ITEMS = [
   { icon: '🌿', label: '잎 앞면', hint: '광택·잎맥 확인용' },
   { icon: '🍃', label: '잎 뒷면', hint: '잎털·색감 확인용' },
@@ -160,6 +179,16 @@ function pctText(v: number | null | undefined): string {
   return `${Math.round(v * 100)}%`;
 }
 
+function makeCatalogDocId(name: string, scientificName: string): string {
+  const base = (scientificName || name || 'plant')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9가-힣]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+  return base || `plant-${Date.now()}`;
+}
+
 // 🇰🇷 NIBR 보강은 관리자 전용 — 기존 프로젝트 관리자 판별 방식(UID 상수)과 동일
 const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 // NIBR 개발자용 보강 UI(실시간 버튼·XML 붙여넣기·결과카드·자동호출) 노출 토글.
@@ -177,8 +206,11 @@ export function PlantDetectivePage() {
   const [result, setResult] = useState<AdvancedResult | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [savedToToday, setSavedToToday] = useState(false);
-  const [activeTab, setActiveTab] = useState<'detect' | 'recent' | 'library'>('detect');
+  const [activeTab, setActiveTab] = useState<'detect' | 'recent' | 'library' | 'diary' | 'catalog'>('detect');
   const [plantLibrary, setPlantLibrary] = useState<PlantLibraryItem[]>([]);
+  const [plantDiary, setPlantDiary] = useState<PlantDiaryEntry[]>([]);
+  const [publicCatalog, setPublicCatalog] = useState<PublicPlantCatalogItem[]>([]);
+  const [libraryPhotoUploadingId, setLibraryPhotoUploadingId] = useState<string | null>(null);
   const [communityCorrectionKnown, setCommunityCorrectionKnown] = useState(false);
   const [showGuide, setShowGuide] = useState(true);
   // 📚 내 도감 매칭
@@ -246,8 +278,61 @@ export function PlantDetectivePage() {
     }
   };
 
+  const loadPlantDiary = async () => {
+    if (!user) {
+      setPlantDiary([]);
+      return;
+    }
+    try {
+      const q = query(
+        collection(db, 'users', user.uid, 'records'),
+        orderBy('date', 'desc'),
+        limit(60),
+      );
+      const snap = await getDocs(q);
+      const entries: PlantDiaryEntry[] = [];
+      snap.forEach((d) => {
+        const data = d.data() as any;
+        const recordDate = String(data.date || d.id);
+        const observations = Array.isArray(data.plantObservation) ? data.plantObservation : [];
+        observations.forEach((entry: any, index: number) => {
+          entries.push({
+            id: `${d.id}_${index}`,
+            recordDate,
+            ...(entry || {}),
+          });
+        });
+      });
+      entries.sort((a, b) => {
+        const av = typeof a.createdAt === 'number' ? a.createdAt : 0;
+        const bv = typeof b.createdAt === 'number' ? b.createdAt : 0;
+        return bv - av;
+      });
+      setPlantDiary(entries);
+    } catch (e) {
+      console.warn('식물 성장일기 조회 실패:', e);
+    }
+  };
+
+  const loadPublicCatalog = async () => {
+    try {
+      const q = query(
+        collection(db, 'plant_catalog'),
+        orderBy('updatedAt', 'desc'),
+        limit(80),
+      );
+      const snap = await getDocs(q);
+      setPublicCatalog(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
+    } catch (e) {
+      console.warn('하루2026 식물도감 조회 실패:', e);
+      setPublicCatalog([]);
+    }
+  };
+
   useEffect(() => {
     loadPlantLibrary();
+    loadPlantDiary();
+    loadPublicCatalog();
   }, [user?.uid]);
 
   const resetSessionState = () => {
@@ -950,6 +1035,36 @@ export function PlantDetectivePage() {
         { merge: true },
       );
 
+      const catalogDocId = makeCatalogDocId(name, scientificName);
+      await setDoc(
+        doc(db, 'plant_catalog', catalogDocId),
+        {
+          catalogId: catalogDocId,
+          displayName,
+          englishName,
+          scientificName,
+          aiPrediction,
+          aiKoName,
+          userConfirmedName: name,
+          finalGuess: displayName,
+          finalLatinName: displayLatin,
+          photos: imageUrls.slice(0, MAX_PHOTOS),
+          imageUrl: imageUrls[0] || '',
+          confidence: topConfidence,
+          originalPlantIdResult: result.plantId,
+          originalPlantNetResult: result.plantNet,
+          geminiAnalysis: result.gemini,
+          meta: result.meta,
+          source: 'haru_plant_detective',
+          watermarkText: 'HARU2026 식물탐정',
+          visibility: 'public_readonly',
+          updatedAt: serverTimestamp(),
+          createdAt: serverTimestamp(),
+          observationCount: increment(1),
+        },
+        { merge: true },
+      );
+
       if (correctedByUser) {
         const correctionRef = doc(collection(db, 'community_plant_corrections'));
         await setDoc(correctionRef, {
@@ -965,12 +1080,79 @@ export function PlantDetectivePage() {
 
       setConfirmedSavedDocId(targetPlantId);
       await loadPlantLibrary();
+      await loadPublicCatalog();
       toast.success(`📚 '${name}' 으로 내 도감에 저장했어요.`);
     } catch (error: any) {
       console.error('사용자 확정 저장 실패:', error);
       toast.error(error?.message || '저장에 실패했습니다.');
     } finally {
       setIsConfirming(false);
+    }
+  };
+
+  const addGrowthPhotoToPlant = async (plant: PlantLibraryItem, file: File) => {
+    if (!user) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      toast.error('사진 파일만 추가할 수 있어요.');
+      return;
+    }
+    setLibraryPhotoUploadingId(plant.id);
+    try {
+      const compressed = await compressImage(file, 1024, 0.82);
+      const storage = getStorage();
+      const ts = Date.now();
+      const path = `users/${user.uid}/format_photos/${plant.id}_growth_${ts}.jpg`;
+      const storageRef = ref(storage, path);
+      await uploadBytes(storageRef, compressed, { contentType: compressed.type || file.type || 'image/jpeg' });
+      const url = await getDownloadURL(storageRef);
+      const photoEntry = {
+        url,
+        addedAt: ts,
+        type: 'growth',
+      };
+      await setDoc(
+        doc(db, 'users', user.uid, 'plants', plant.id),
+        {
+          photos: arrayUnion(url),
+          imageUrl: plant.imageUrl || url,
+          growthPhotos: arrayUnion(photoEntry),
+          latestPhotoUrl: url,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+      if (isAdmin) {
+        const displayName = plant.displayName || plant.userConfirmedName || plant.finalGuess || '식물 이름 불확실';
+        const catalogDocId = makeCatalogDocId(displayName, plant.scientificName || plant.finalLatinName || '');
+        await setDoc(
+          doc(db, 'plant_catalog', catalogDocId),
+          {
+            displayName,
+            scientificName: plant.scientificName || plant.finalLatinName || '',
+            englishName: plant.englishName || '',
+            photos: arrayUnion(url),
+            imageUrl: plant.imageUrl || url,
+            growthPhotos: arrayUnion(photoEntry),
+            source: 'haru_plant_detective',
+            watermarkText: 'HARU2026 식물탐정',
+            visibility: 'public_readonly',
+            updatedAt: serverTimestamp(),
+            createdAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
+      }
+      await loadPlantLibrary();
+      if (isAdmin) await loadPublicCatalog();
+      toast.success('성장사진을 추가했습니다.');
+    } catch (error: any) {
+      console.error('성장사진 추가 실패:', error);
+      toast.error(error?.message || '성장사진 추가에 실패했습니다.');
+    } finally {
+      setLibraryPhotoUploadingId(null);
     }
   };
 
@@ -1093,6 +1275,7 @@ export function PlantDetectivePage() {
       setObsObservation('');
       setObsAiDifference('');
       setObsMemo('');
+      await loadPlantDiary();
       toast.success('📔 오늘의 관찰이 저장되었습니다.');
     } catch (error: any) {
       console.error('오늘의 관찰 저장 실패:', error);
@@ -1203,6 +1386,7 @@ export function PlantDetectivePage() {
         const mm = String(savedTs.getMinutes()).padStart(2, '0');
         setObsSavedAt(`${today} ${hh}:${mm}`);
       }
+      await loadPlantDiary();
       toast.success('오늘의 식물 기록과 관찰 내용을 저장했습니다.');
     } catch (error: any) {
       console.error('통합 저장 실패:', error);
@@ -1268,7 +1452,7 @@ export function PlantDetectivePage() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
+            gridTemplateColumns: 'repeat(5, 1fr)',
             gap: 6,
             marginBottom: 14,
             background: '#ece4c8',
@@ -1279,12 +1463,14 @@ export function PlantDetectivePage() {
           {[
             ['detect', '판독'],
             ['recent', '최근 판독'],
-            ['library', '📚 내 식물도감'],
+            ['diary', '성장일기'],
+            ['library', '내 도감'],
+            ['catalog', '하루 도감'],
           ].map(([key, label]) => (
             <button
               key={key}
               type="button"
-              onClick={() => setActiveTab(key as 'detect' | 'recent' | 'library')}
+              onClick={() => setActiveTab(key as 'detect' | 'recent' | 'library' | 'diary' | 'catalog')}
               style={{
                 minHeight: 38,
                 border: 'none',
@@ -1303,7 +1489,15 @@ export function PlantDetectivePage() {
         </div>
 
         {activeTab === 'library' ? (
-          <PlantLibraryPanel plants={plantLibrary} />
+          <PlantLibraryPanel
+            plants={plantLibrary}
+            uploadingId={libraryPhotoUploadingId}
+            onAddGrowthPhoto={addGrowthPhotoToPlant}
+          />
+        ) : activeTab === 'diary' ? (
+          <PlantDiaryPanel entries={plantDiary} />
+        ) : activeTab === 'catalog' ? (
+          <PublicPlantCatalogPanel plants={publicCatalog} isAdmin={isAdmin} />
         ) : activeTab === 'recent' ? (
           <RecentDetectPanel plants={plantLibrary} />
         ) : (
@@ -2746,12 +2940,20 @@ function tsToLabel(value: any): string {
   return date.toISOString().slice(0, 10);
 }
 
-function PlantLibraryPanel({ plants }: { plants: PlantLibraryItem[] }) {
+function PlantLibraryPanel({
+  plants,
+  uploadingId,
+  onAddGrowthPhoto,
+}: {
+  plants: PlantLibraryItem[];
+  uploadingId: string | null;
+  onAddGrowthPhoto: (plant: PlantLibraryItem, file: File) => void;
+}) {
   if (plants.length === 0) {
     return (
       <ResultCard title="📚 내 식물도감" accent="#4A5A2C" bg="#fffdf4">
         <div style={{ fontSize: 13, color: '#6b7654' }}>
-          내가 이름을 정한 식물이 여기에 저장됩니다.
+          내가 이름을 정한 식물이 여기에 저장됩니다. 저장 후에는 성장사진을 계속 추가할 수 있어요.
         </div>
       </ResultCard>
     );
@@ -2763,39 +2965,223 @@ function PlantLibraryPanel({ plants }: { plants: PlantLibraryItem[] }) {
           const photo = p.imageUrl || p.photos?.[0] || '';
           const displayName = p.displayName || p.userConfirmedName || '식물 이름 불확실';
           const recent = tsToLabel(p.updatedAt) || tsToLabel(p.createdAt);
+          const photoCount = Array.isArray(p.photos) ? p.photos.length : photo ? 1 : 0;
           return (
             <div
               key={p.id}
               style={{
-                display: 'flex',
-                gap: 10,
-                alignItems: 'center',
                 border: '1px solid #e5ddbf',
                 borderRadius: 8,
                 background: '#fff',
                 padding: 10,
               }}
             >
-              {photo ? (
-                <img src={photo} alt={displayName} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 6 }} />
-              ) : (
-                <div style={{ width: 64, height: 64, borderRadius: 6, background: '#eef0d8', display: 'grid', placeItems: 'center', color: '#4A5A2C' }}>
-                  <BookOpen size={22} />
-                </div>
-              )}
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontSize: 16, fontWeight: 900, color: '#24301f' }}>{displayName}</div>
-                {(p.englishName || p.scientificName) && (
-                  <div style={{ fontSize: 12, color: '#6b7654', fontStyle: 'italic', marginTop: 2 }}>
-                    {[p.englishName, p.scientificName].filter(Boolean).join(' / ')}
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                {photo ? (
+                  <img src={photo} alt={displayName} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 6 }} />
+                ) : (
+                  <div style={{ width: 64, height: 64, borderRadius: 6, background: '#eef0d8', display: 'grid', placeItems: 'center', color: '#4A5A2C' }}>
+                    <BookOpen size={22} />
                   </div>
                 )}
-                <div style={{ fontSize: 11, color: '#92996f', marginTop: 4 }}>
-                  최근 관찰일 {recent || '-'}
-                  {typeof p.observationCount === 'number' ? ` · ${p.observationCount}회` : ''}
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 16, fontWeight: 900, color: '#24301f' }}>{displayName}</div>
+                  {(p.englishName || p.scientificName) && (
+                    <div style={{ fontSize: 12, color: '#6b7654', fontStyle: 'italic', marginTop: 2 }}>
+                      {[p.englishName, p.scientificName].filter(Boolean).join(' / ')}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11, color: '#92996f', marginTop: 4 }}>
+                    최근 관찰일 {recent || '-'}
+                    {typeof p.observationCount === 'number' ? ` · ${p.observationCount}회` : ''}
+                    {` · 사진 ${photoCount}장`}
+                  </div>
                 </div>
               </div>
+              {Array.isArray(p.photos) && p.photos.length > 1 && (
+                <div style={{ display: 'flex', gap: 6, marginTop: 10, overflowX: 'auto', paddingBottom: 2 }}>
+                  {p.photos.slice(0, 5).map((url, idx) => (
+                    <img
+                      key={`${p.id}_photo_${idx}`}
+                      src={url}
+                      alt={`${displayName} 성장사진 ${idx + 1}`}
+                      style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5ddbf', flexShrink: 0 }}
+                    />
+                  ))}
+                </div>
+              )}
+              <label
+                style={{
+                  marginTop: 10,
+                  height: 34,
+                  borderRadius: 7,
+                  border: '1px solid #b8c28c',
+                  background: uploadingId === p.id ? '#f1f4e6' : '#fff',
+                  color: uploadingId === p.id ? '#a7b886' : '#4A5A2C',
+                  fontWeight: 900,
+                  fontSize: 12,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  padding: '0 10px',
+                  cursor: uploadingId === p.id ? 'wait' : 'pointer',
+                }}
+              >
+                {uploadingId === p.id ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
+                성장사진 추가
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  disabled={uploadingId === p.id}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = '';
+                    if (file) onAddGrowthPhoto(p, file);
+                  }}
+                  style={{ display: 'none' }}
+                />
+              </label>
             </div>
+          );
+        })}
+      </div>
+    </ResultCard>
+  );
+}
+
+function PlantDiaryPanel({ entries }: { entries: PlantDiaryEntry[] }) {
+  if (entries.length === 0) {
+    return (
+      <ResultCard title="📔 성장일기" accent="#4A5A2C" bg="#fffdf4">
+        <div style={{ fontSize: 13, color: '#6b7654', lineHeight: 1.6 }}>
+          하루식물탐정에서 오늘의 관찰을 저장하면 이곳에서 다시 볼 수 있습니다.
+        </div>
+      </ResultCard>
+    );
+  }
+  return (
+    <ResultCard title="📔 성장일기" accent="#4A5A2C" bg="#fffdf4">
+      <div style={{ display: 'grid', gap: 10 }}>
+        {entries.map((entry) => {
+          const photo = entry.imageUrl || entry.imageUrls?.[0] || '';
+          const name = entry.plantName || entry.title || '식물 관찰';
+          return (
+            <article
+              key={entry.id}
+              style={{
+                border: '1px solid #e5ddbf',
+                borderRadius: 8,
+                background: '#fff',
+                padding: 10,
+              }}
+            >
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                {photo ? (
+                  <img src={photo} alt={name} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+                ) : (
+                  <div style={{ width: 64, height: 64, borderRadius: 6, background: '#eef0d8', display: 'grid', placeItems: 'center', color: '#4A5A2C', flexShrink: 0 }}>
+                    <Leaf size={22} />
+                  </div>
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, color: '#92996f', fontWeight: 800 }}>{entry.recordDate}</div>
+                  <div style={{ fontSize: 16, color: '#24301f', fontWeight: 900, marginTop: 2 }}>{name}</div>
+                  {entry.observation && (
+                    <p style={{ margin: '6px 0 0', fontSize: 13, color: '#3d4734', lineHeight: 1.55 }}>
+                      {entry.observation}
+                    </p>
+                  )}
+                  {entry.aiDifference && (
+                    <p style={{ margin: '6px 0 0', fontSize: 12, color: '#7a6a2c', lineHeight: 1.5 }}>
+                      AI와 다른 점: {entry.aiDifference}
+                    </p>
+                  )}
+                  {entry.memo && (
+                    <p style={{ margin: '6px 0 0', fontSize: 12, color: '#6b7654', lineHeight: 1.5 }}>
+                      메모: {entry.memo}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </ResultCard>
+  );
+}
+
+function PublicPlantCatalogPanel({
+  plants,
+  isAdmin,
+}: {
+  plants: PublicPlantCatalogItem[];
+  isAdmin: boolean;
+}) {
+  if (plants.length === 0) {
+    return (
+      <ResultCard title="🌿 하루2026 식물도감" accent="#0F766E" bg="#ECFDF5">
+        <div style={{ fontSize: 13, color: '#37675f', lineHeight: 1.6 }}>
+          하루식물탐정에서 생성한 공개 도감이 여기에 표시됩니다. 개발자 외 사용자는 보기만 할 수 있습니다.
+        </div>
+      </ResultCard>
+    );
+  }
+  return (
+    <ResultCard title="🌿 하루2026 식물도감" accent="#0F766E" bg="#ECFDF5">
+      <div style={{ display: 'grid', gap: 10 }}>
+        {plants.map((p) => {
+          const photo = p.imageUrl || p.photos?.[0] || '';
+          const displayName = p.displayName || p.userConfirmedName || p.finalGuess || '식물 이름 불확실';
+          return (
+            <article
+              key={p.id}
+              style={{
+                position: 'relative',
+                border: '1px solid #b8dfd5',
+                borderRadius: 8,
+                background: '#fff',
+                padding: 10,
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  right: 10,
+                  bottom: 8,
+                  color: 'rgba(15, 118, 110, 0.16)',
+                  fontWeight: 950,
+                  fontSize: 18,
+                  pointerEvents: 'none',
+                }}
+              >
+                {p.watermarkText || 'HARU2026 식물탐정'}
+              </div>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', position: 'relative' }}>
+                {photo ? (
+                  <img src={photo} alt={displayName} style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+                ) : (
+                  <div style={{ width: 72, height: 72, borderRadius: 6, background: '#dff5ef', display: 'grid', placeItems: 'center', color: '#0F766E', flexShrink: 0 }}>
+                    <BookOpen size={24} />
+                  </div>
+                )}
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 16, fontWeight: 950, color: '#123f39' }}>{displayName}</div>
+                  {(p.englishName || p.scientificName) && (
+                    <div style={{ fontSize: 12, color: '#37675f', fontStyle: 'italic', marginTop: 2 }}>
+                      {[p.englishName, p.scientificName].filter(Boolean).join(' / ')}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11, color: '#5f8d83', marginTop: 5 }}>
+                    보기 전용 · {isAdmin ? '개발자 권한' : 'HARU2026 워터마크'}
+                    {typeof p.observationCount === 'number' ? ` · ${p.observationCount}회 생성` : ''}
+                  </div>
+                </div>
+              </div>
+            </article>
           );
         })}
       </div>
