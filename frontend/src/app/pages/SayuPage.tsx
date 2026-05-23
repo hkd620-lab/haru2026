@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { SayuModal } from '../components/SayuModal';
 import { CATEGORY_FORMATS, FORMAT_PREFIX, FORMAT_EMOJI, READING_ENTRY_TYPES, READING_STATUS } from '../types/haruTypes';
 import type { RecordFormat } from '../types/haruTypes';
-import { collection, getDocs, orderBy, query, deleteDoc, doc, writeBatch, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, orderBy, query, deleteDoc, doc, writeBatch, updateDoc, limit } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
@@ -34,6 +34,21 @@ const PAGE_SIZE = 10;
 interface AiLog { id: string; title?: string; source?: string; createdAt?: string; [key: string]: any; }
 interface Chapter { id: string; bookId: string; title: string; sourceTitle: string; content: string; order: number; }
 interface Book { id: string; title: string; totalChapters: number; order?: number; chapters: Chapter[]; }
+interface SayuPlantLibraryItem {
+  id: string;
+  displayName?: string;
+  userConfirmedName?: string;
+  finalGuess?: string;
+  englishName?: string;
+  scientificName?: string;
+  finalLatinName?: string;
+  imageUrl?: string;
+  photos?: string[];
+  updatedAt?: any;
+  createdAt?: any;
+  observationCount?: number;
+  watermarkText?: string;
+}
 
 // SAYU 리스트 키워드 미리보기용 fallback 추출기
 // 저장 구조는 건드리지 않고 화면 표시 fallback으로만 사용
@@ -316,7 +331,7 @@ export function SayuPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string; recordId?: string }[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루식물탐정', '하루AI지식창고', 'SNS검색기록']));
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고', 'SNS검색기록']));
   const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
   // 📊 통계/합치기 모달
   const [formatStatModal, setFormatStatModal] = useState<{
@@ -415,6 +430,10 @@ export function SayuPage() {
   const [expandedPlantIds, setExpandedPlantIds] = useState<Set<string>>(new Set());
   const [selectedPlantEntryIds, setSelectedPlantEntryIds] = useState<Set<string>>(new Set());
   const [plantDeleteBusy, setPlantDeleteBusy] = useState(false);
+  const [plantLibraryItems, setPlantLibraryItems] = useState<SayuPlantLibraryItem[]>([]);
+  const [plantCatalogItems, setPlantCatalogItems] = useState<SayuPlantLibraryItem[]>([]);
+  const [plantLibraryLoaded, setPlantLibraryLoaded] = useState(false);
+  const [plantCatalogLoaded, setPlantCatalogLoaded] = useState(false);
 
   // === SAYU 키워드 미리보기 백필 (IntersectionObserver) ===
   const kwInflightRef = useRef<Set<string>>(new Set());
@@ -480,9 +499,54 @@ export function SayuPage() {
   }, [user?.uid, currentMonth]);
 
   useEffect(() => {
-    setCollapsedCategories(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루식물탐정', '하루AI지식창고', 'SNS검색기록']));
+    setCollapsedCategories(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고', 'SNS검색기록']));
     setExpandedFormats(new Set());
   }, [location.pathname]);
+
+  useEffect(() => {
+    setPlantLibraryLoaded(false);
+    setPlantCatalogLoaded(false);
+    setPlantLibraryItems([]);
+    setPlantCatalogItems([]);
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (collapsedCategories.has('하루식물탐정')) return;
+    if (!user?.uid || plantLibraryLoaded) return;
+    (async () => {
+      try {
+        const snap = await getDocs(query(
+          collection(db, 'users', user.uid, 'plants'),
+          orderBy('updatedAt', 'desc'),
+          limit(20),
+        ));
+        setPlantLibraryItems(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
+      } catch (e) {
+        console.warn('SAYU 개인 식물도감 조회 실패:', e);
+      } finally {
+        setPlantLibraryLoaded(true);
+      }
+    })();
+  }, [collapsedCategories, plantLibraryLoaded, user?.uid]);
+
+  useEffect(() => {
+    if (collapsedCategories.has('하루식물탐정')) return;
+    if (plantCatalogLoaded) return;
+    (async () => {
+      try {
+        const snap = await getDocs(query(
+          collection(db, 'plant_catalog'),
+          orderBy('updatedAt', 'desc'),
+          limit(30),
+        ));
+        setPlantCatalogItems(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
+      } catch (e) {
+        console.warn('SAYU 공개 식물도감 조회 실패:', e);
+      } finally {
+        setPlantCatalogLoaded(true);
+      }
+    })();
+  }, [collapsedCategories, plantCatalogLoaded]);
 
   // Fetch AI logs when AI지식모음 is expanded
   useEffect(() => {
@@ -2289,6 +2353,7 @@ export function SayuPage() {
           {/* 🌱 하루식물탐정 — 시간 누적 식별 기록 (records[].plantDetective 배열에서 추출) */}
           {(() => {
             const plantEntries: { date: string; recordId: string; entry: any; idx: number }[] = [];
+            const plantObservationEntries: { date: string; recordId: string; entry: any; idx: number }[] = [];
             records.forEach((r: any) => {
               const arr = Array.isArray(r?.plantDetective) ? r.plantDetective : [];
               arr.forEach((e: any, i: number) => {
@@ -2296,9 +2361,20 @@ export function SayuPage() {
                   plantEntries.push({ date: r.date || r.id, recordId: r.id, entry: e, idx: i });
                 }
               });
+              const obsArr = Array.isArray(r?.plantObservation) ? r.plantObservation : [];
+              obsArr.forEach((e: any, i: number) => {
+                if (e && typeof e === 'object') {
+                  plantObservationEntries.push({ date: r.date || r.id, recordId: r.id, entry: e, idx: i });
+                }
+              });
             });
-            if (plantEntries.length === 0) return null;
             plantEntries.sort((a, b) => {
+              const ta = a.entry?.createdAt || 0;
+              const tb = b.entry?.createdAt || 0;
+              if (tb !== ta) return tb - ta;
+              return (b.date || '').localeCompare(a.date || '');
+            });
+            plantObservationEntries.sort((a, b) => {
               const ta = a.entry?.createdAt || 0;
               const tb = b.entry?.createdAt || 0;
               if (tb !== ta) return tb - ta;
@@ -2328,9 +2404,80 @@ export function SayuPage() {
             };
             const getPlantSubTitle = (entry: any) =>
               [entry?.englishName, entry?.scientificName || entry?.latinName].filter(Boolean).join(' / ');
+            const getLibraryName = (item: SayuPlantLibraryItem) =>
+              item.displayName || item.userConfirmedName || item.finalGuess || '식물 이름 불확실';
+            const getLibrarySub = (item: SayuPlantLibraryItem) =>
+              [item.englishName, item.scientificName || item.finalLatinName].filter(Boolean).join(' / ');
+            const getLibraryDate = (item: SayuPlantLibraryItem) => {
+              const raw = item.updatedAt || item.createdAt;
+              const date =
+                typeof raw?.toDate === 'function'
+                  ? raw.toDate()
+                  : raw
+                    ? new Date(raw)
+                    : null;
+              return date && !Number.isNaN(date.getTime()) ? date.toISOString().slice(0, 10) : '';
+            };
+            const renderMiniPlantCard = (item: SayuPlantLibraryItem, watermark = false) => {
+              const photo = item.imageUrl || item.photos?.[0] || '';
+              const name = getLibraryName(item);
+              const sub = getLibrarySub(item);
+              return (
+                <div
+                  key={item.id}
+                  style={{
+                    position: 'relative',
+                    display: 'flex',
+                    gap: 10,
+                    alignItems: 'center',
+                    border: '1px solid #f0ead1',
+                    borderRadius: 8,
+                    background: '#fff',
+                    padding: 10,
+                    overflow: 'hidden',
+                  }}
+                >
+                  {watermark && (
+                    <div
+                      aria-hidden="true"
+                      style={{
+                        position: 'absolute',
+                        right: 8,
+                        bottom: 6,
+                        color: 'rgba(15, 118, 110, 0.15)',
+                        fontSize: 15,
+                        fontWeight: 950,
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      {item.watermarkText || 'HARU2026 식물탐정'}
+                    </div>
+                  )}
+                  {photo ? (
+                    <img src={photo} alt={name} style={{ width: 54, height: 54, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+                  ) : (
+                    <div style={{ width: 54, height: 54, borderRadius: 6, background: '#eef0d8', display: 'grid', placeItems: 'center', color: '#4A5A2C', flexShrink: 0 }}>
+                      <Leaf size={20} />
+                    </div>
+                  )}
+                  <div style={{ minWidth: 0, flex: 1, position: 'relative' }}>
+                    <div className="truncate" style={{ fontSize: 14, fontWeight: 900, color: '#24301f' }}>{name}</div>
+                    {sub && (
+                      <div className="truncate" style={{ fontSize: 11, color: '#6b7654', fontStyle: 'italic', marginTop: 2 }}>{sub}</div>
+                    )}
+                    <div style={{ fontSize: 10, color: '#92996f', marginTop: 4 }}>
+                      {getLibraryDate(item) || '도감'}
+                      {typeof item.observationCount === 'number' ? ` · ${item.observationCount}회` : ''}
+                      {Array.isArray(item.photos) ? ` · 사진 ${item.photos.length}장` : ''}
+                    </div>
+                  </div>
+                </div>
+              );
+            };
             const selectedPlantCount = plantEntries.filter(({ recordId, idx }) =>
               selectedPlantEntryIds.has(`${recordId}_${idx}`),
             ).length;
+            const totalPlantCount = plantEntries.length + plantObservationEntries.length + plantLibraryItems.length + plantCatalogItems.length;
             return (
               <div className="mb-4">
                 <button
@@ -2341,12 +2488,102 @@ export function SayuPage() {
                   <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#10b981', flexShrink: 0 }} />
                     🌱 하루식물탐정
-                    <span style={{ fontSize: 12, color: '#999', fontWeight: 500 }}>({plantEntries.length})</span>
+                    <span style={{ fontSize: 12, color: '#999', fontWeight: 500 }}>({totalPlantCount})</span>
                   </span>
                   <span style={{ fontSize: '10px' }}>{expanded ? '▼' : '▶'}</span>
                 </button>
                 {expanded && (
                   <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div className="px-4 py-3" style={{ borderTop: '1px solid #f5f5f5', background: '#fffdf4' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
+                        <button
+                          type="button"
+                          onClick={() => navigate('/plant-detective')}
+                          style={{
+                            minHeight: 42,
+                            border: '1px solid #d8c98a',
+                            borderRadius: 8,
+                            background: '#fff',
+                            color: '#4A5A2C',
+                            fontSize: 12,
+                            fontWeight: 900,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          식물탐정비서 열기
+                        </button>
+                        <div style={{ border: '1px solid #e8dfba', borderRadius: 8, background: '#fff', padding: '8px 10px' }}>
+                          <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>성장일기</div>
+                          <div style={{ fontSize: 18, color: '#4A5A2C', fontWeight: 950 }}>{plantObservationEntries.length}</div>
+                        </div>
+                        <div style={{ border: '1px solid #e8dfba', borderRadius: 8, background: '#fff', padding: '8px 10px' }}>
+                          <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>개인도감</div>
+                          <div style={{ fontSize: 18, color: '#4A5A2C', fontWeight: 950 }}>{plantLibraryItems.length}</div>
+                        </div>
+                        <div style={{ border: '1px solid #cfe9df', borderRadius: 8, background: '#fff', padding: '8px 10px' }}>
+                          <div style={{ fontSize: 11, color: '#5f8d83', fontWeight: 800 }}>공개도감</div>
+                          <div style={{ fontSize: 18, color: '#0F766E', fontWeight: 950 }}>{plantCatalogItems.length}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {plantObservationEntries.length > 0 && (
+                      <div className="px-4 py-3" style={{ borderTop: '1px solid #f5f5f5' }}>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: '#4A5A2C', marginBottom: 8 }}>📔 성장일기</div>
+                        <div style={{ display: 'grid', gap: 8 }}>
+                          {plantObservationEntries.slice(0, 5).map(({ date, recordId, entry, idx }) => {
+                            const title = entry?.plantName || entry?.title || '식물 관찰';
+                            const photo = entry?.imageUrl || (Array.isArray(entry?.imageUrls) ? entry.imageUrls[0] : '');
+                            return (
+                              <div key={`${recordId}_obs_${idx}`} style={{ display: 'flex', gap: 10, border: '1px solid #f0ead1', borderRadius: 8, background: '#fff', padding: 10 }}>
+                                {photo ? (
+                                  <img src={photo} alt={title} style={{ width: 54, height: 54, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+                                ) : (
+                                  <div style={{ width: 54, height: 54, borderRadius: 6, background: '#eef0d8', display: 'grid', placeItems: 'center', color: '#4A5A2C', flexShrink: 0 }}>
+                                    <Leaf size={20} />
+                                  </div>
+                                )}
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                  <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>{date}</div>
+                                  <div className="truncate" style={{ fontSize: 14, color: '#24301f', fontWeight: 900 }}>{title}</div>
+                                  {entry?.observation && (
+                                    <div style={{ marginTop: 4, fontSize: 12, color: '#3d4734', lineHeight: 1.45 }}>
+                                      {String(entry.observation).slice(0, 90)}
+                                      {String(entry.observation).length > 90 ? '…' : ''}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {plantLibraryItems.length > 0 && (
+                      <div className="px-4 py-3" style={{ borderTop: '1px solid #f5f5f5', background: '#fffdf4' }}>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: '#4A5A2C', marginBottom: 8 }}>📚 개인도감</div>
+                        <div style={{ display: 'grid', gap: 8 }}>
+                          {plantLibraryItems.slice(0, 5).map((item) => renderMiniPlantCard(item))}
+                        </div>
+                      </div>
+                    )}
+
+                    {plantCatalogItems.length > 0 && (
+                      <div className="px-4 py-3" style={{ borderTop: '1px solid #f5f5f5', background: '#ECFDF5' }}>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: '#0F766E', marginBottom: 8 }}>🌿 공개도감</div>
+                        <div style={{ display: 'grid', gap: 8 }}>
+                          {plantCatalogItems.slice(0, 5).map((item) => renderMiniPlantCard(item, true))}
+                        </div>
+                      </div>
+                    )}
+
+                    {totalPlantCount === 0 && (
+                      <div className="px-4 py-3" style={{ borderTop: '1px solid #f5f5f5', color: '#6b7654', fontSize: 13, lineHeight: 1.6 }}>
+                        아직 저장된 식물탐정 성장일기나 도감이 없습니다.
+                      </div>
+                    )}
+
                     {selectedPlantCount > 0 && (
                       <div
                         className="flex items-center justify-between px-4 py-2"
