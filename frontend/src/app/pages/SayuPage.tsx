@@ -3327,7 +3327,20 @@ export function SayuPage() {
                               const photo = entry?.imageUrl || (Array.isArray(entry?.imageUrls) ? entry.imageUrls[0] : '');
                               const images = Array.isArray(entry?.imageUrls) ? entry.imageUrls.filter(Boolean) : photo ? [photo] : [];
                               return (
-                                <article key={`${recordId}_plant_detail_${idx}`} style={{ border: '1px solid #f0ead1', borderRadius: 8, background: '#fff', padding: 10 }}>
+                                <button
+                                  key={`${recordId}_plant_detail_${idx}`}
+                                  type="button"
+                                  onClick={() => handleEditPlantDiary(recordId, idx, entry)}
+                                  style={{
+                                    width: '100%',
+                                    border: '1px solid #f0ead1',
+                                    borderRadius: 8,
+                                    background: '#fff',
+                                    padding: 10,
+                                    textAlign: 'left',
+                                    cursor: 'pointer',
+                                  }}
+                                >
                                   <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                                     {photo ? (
                                       <img src={photo} alt={getSayuPlantName(selectedPlantDiaryItem)} style={{ width: 58, height: 58, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
@@ -3350,10 +3363,10 @@ export function SayuPage() {
                                       )}
                                     </div>
                                   </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleEditPlantDiary(recordId, idx, entry)}
+                                  <div
                                     style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
                                       marginTop: 8,
                                       minHeight: 30,
                                       padding: '0 10px',
@@ -3367,8 +3380,8 @@ export function SayuPage() {
                                     }}
                                   >
                                     수정하기
-                                  </button>
-                                </article>
+                                  </div>
+                                </button>
                               );
                             })
                           ) : (
