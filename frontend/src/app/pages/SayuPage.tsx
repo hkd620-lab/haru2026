@@ -434,6 +434,7 @@ export function SayuPage() {
   const [plantCatalogItems, setPlantCatalogItems] = useState<SayuPlantLibraryItem[]>([]);
   const [plantLibraryLoaded, setPlantLibraryLoaded] = useState(false);
   const [plantCatalogLoaded, setPlantCatalogLoaded] = useState(false);
+  const [plantPopupType, setPlantPopupType] = useState<null | 'assistant' | 'diary' | 'library' | 'catalog'>(null);
 
   // === SAYU 키워드 미리보기 백필 (IntersectionObserver) ===
   const kwInflightRef = useRef<Set<string>>(new Set());
@@ -2095,26 +2096,28 @@ export function SayuPage() {
           {/* 📈 HARU주식관리 — snsHARU 직후 위치 */}
           {(() => {
             const stockCat = listData.find(c => c.category === 'HARU주식관리');
-            if (!stockCat) return null;
-            const { category, formats } = stockCat;
+            const category = stockCat?.category || 'HARU주식관리';
+            const formats = stockCat?.formats || [];
             return (
-              <div key={category} className="mb-4">
-                <button
-                  onClick={() => toggleCategory(category)}
-                  className="w-full flex items-center justify-between rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
-                  style={{ backgroundColor: '#FFFFFF', color: '#1A3C6E', padding: '0 16px', minHeight: 52, border: '1px solid #ECE6F5', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
-                >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#F59E0B', flexShrink: 0 }} />
-                    {category}
-                  </span>
-                  <span style={{ fontSize: '10px' }}>
-                    {collapsedCategories.has(category) ? '▶' : '▼'}
-                  </span>
-                </button>
+              <>
+                {stockCat && (
+                  <div key={category} className="mb-4">
+                    <button
+                      onClick={() => toggleCategory(category)}
+                      className="w-full flex items-center justify-between rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
+                      style={{ backgroundColor: '#FFFFFF', color: '#1A3C6E', padding: '0 16px', minHeight: 52, border: '1px solid #ECE6F5', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#F59E0B', flexShrink: 0 }} />
+                        {category}
+                      </span>
+                      <span style={{ fontSize: '10px' }}>
+                        {collapsedCategories.has(category) ? '▶' : '▼'}
+                      </span>
+                    </button>
 
-                {!collapsedCategories.has(category) && (
-                  <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                    {!collapsedCategories.has(category) && (
+                      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
                     <div className="px-3 py-2" style={{ backgroundColor: '#f9fafb' }}>
                       <input
                         type="text"
@@ -2185,7 +2188,175 @@ export function SayuPage() {
                     })}
                   </div>
                 )}
-              </div>
+                  </div>
+                )}
+                {false && plantPopupType && (
+                  <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="하루식물탐정 팝업"
+                    onClick={() => setPlantPopupType(null)}
+                    style={{
+                      position: 'fixed',
+                      inset: 0,
+                      zIndex: 1000,
+                      background: 'rgba(17, 24, 39, 0.42)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 16,
+                    }}
+                  >
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        width: 'min(560px, 100%)',
+                        maxHeight: '78vh',
+                        overflow: 'hidden',
+                        borderRadius: 12,
+                        background: plantPopupType === 'catalog' ? '#ECFDF5' : '#fffdf4',
+                        border: plantPopupType === 'catalog' ? '1px solid #b8dfd5' : '1px solid #e8dfba',
+                        boxShadow: '0 18px 45px rgba(0,0,0,0.25)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 12,
+                          padding: '14px 16px',
+                          borderBottom: '1px solid rgba(0,0,0,0.08)',
+                          background: '#fff',
+                        }}
+                      >
+                        <div style={{ fontSize: 16, fontWeight: 950, color: plantPopupType === 'catalog' ? '#0F766E' : '#4A5A2C' }}>
+                          {plantPopupType === 'assistant' && '식물탐정비서'}
+                          {plantPopupType === 'diary' && '성장일기'}
+                          {plantPopupType === 'library' && '개인도감'}
+                          {plantPopupType === 'catalog' && '공개도감'}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setPlantPopupType(null)}
+                          aria-label="팝업 닫기"
+                          style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: 17,
+                            border: '1px solid #e5e7eb',
+                            background: '#fff',
+                            color: '#1A3C6E',
+                            fontSize: 18,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                      <div style={{ padding: 14, overflowY: 'auto' }}>
+                        {plantPopupType === 'assistant' && (
+                          <div style={{ display: 'grid', gap: 10 }}>
+                            <button
+                              type="button"
+                              onClick={() => navigate('/plant-detective')}
+                              style={{
+                                minHeight: 46,
+                                borderRadius: 8,
+                                border: '1px solid #4A5A2C',
+                                background: '#4A5A2C',
+                                color: '#fff',
+                                fontSize: 14,
+                                fontWeight: 900,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              식물탐정비서로 이동
+                            </button>
+                            {plantEntries.length > 0 ? (
+                              <div style={{ display: 'grid', gap: 8 }}>
+                                {plantEntries.slice(0, 5).map(({ date, entry, idx }) => (
+                                  <div key={`assistant_recent_${date}_${idx}`} style={{ border: '1px solid #f0ead1', borderRadius: 8, background: '#fff', padding: 10 }}>
+                                    <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>{date}</div>
+                                    <div style={{ fontSize: 14, color: '#24301f', fontWeight: 900, marginTop: 2 }}>
+                                      {getPlantTitle(entry)}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: 13, color: '#6b7654', lineHeight: 1.6 }}>
+                                아직 식물탐정 판독 기록이 없습니다.
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {plantPopupType === 'diary' && (
+                          plantObservationEntries.length > 0 ? (
+                            <div style={{ display: 'grid', gap: 8 }}>
+                              {plantObservationEntries.slice(0, 30).map(({ date, recordId, entry, idx }) => {
+                                const title = entry?.plantName || entry?.title || '식물 관찰';
+                                const photo = entry?.imageUrl || (Array.isArray(entry?.imageUrls) ? entry.imageUrls[0] : '');
+                                return (
+                                  <div key={`${recordId}_popup_obs_${idx}`} style={{ display: 'flex', gap: 10, border: '1px solid #f0ead1', borderRadius: 8, background: '#fff', padding: 10 }}>
+                                    {photo ? (
+                                      <img src={photo} alt={title} style={{ width: 54, height: 54, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+                                    ) : (
+                                      <div style={{ width: 54, height: 54, borderRadius: 6, background: '#eef0d8', display: 'grid', placeItems: 'center', color: '#4A5A2C', flexShrink: 0 }}>
+                                        <Leaf size={20} />
+                                      </div>
+                                    )}
+                                    <div style={{ minWidth: 0, flex: 1 }}>
+                                      <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>{date}</div>
+                                      <div className="truncate" style={{ fontSize: 14, color: '#24301f', fontWeight: 900 }}>{title}</div>
+                                      {entry?.observation && (
+                                        <div style={{ marginTop: 4, fontSize: 12, color: '#3d4734', lineHeight: 1.45 }}>
+                                          {String(entry.observation)}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: 13, color: '#6b7654', lineHeight: 1.6 }}>
+                              아직 저장된 성장일기가 없습니다.
+                            </div>
+                          )
+                        )}
+
+                        {plantPopupType === 'library' && (
+                          plantLibraryItems.length > 0 ? (
+                            <div style={{ display: 'grid', gap: 8 }}>
+                              {plantLibraryItems.slice(0, 30).map((item) => renderMiniPlantCard(item))}
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: 13, color: '#6b7654', lineHeight: 1.6 }}>
+                              아직 내 식물도감에 저장된 식물이 없습니다.
+                            </div>
+                          )
+                        )}
+
+                        {plantPopupType === 'catalog' && (
+                          plantCatalogItems.length > 0 ? (
+                            <div style={{ display: 'grid', gap: 8 }}>
+                              {plantCatalogItems.slice(0, 30).map((item) => renderMiniPlantCard(item, true))}
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: 13, color: '#37675f', lineHeight: 1.6 }}>
+                              아직 공개 식물도감에 표시할 식물이 없습니다.
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
             );
           })()}
 
@@ -2381,12 +2552,6 @@ export function SayuPage() {
               return (b.date || '').localeCompare(a.date || '');
             });
             const expanded = !collapsedCategories.has('하루식물탐정');
-            const scrollToPlantSection = (sectionId: string) => {
-              document.getElementById(sectionId)?.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start',
-              });
-            };
             const renderList = (title: string, items: any) => {
               if (!Array.isArray(items) || items.length === 0) return null;
               return (
@@ -2480,9 +2645,6 @@ export function SayuPage() {
                 </div>
               );
             };
-            const selectedPlantCount = plantEntries.filter(({ recordId, idx }) =>
-              selectedPlantEntryIds.has(`${recordId}_${idx}`),
-            ).length;
             const totalPlantCount = plantEntries.length + plantObservationEntries.length + plantLibraryItems.length + plantCatalogItems.length;
             return (
               <div className="mb-4">
@@ -2504,7 +2666,7 @@ export function SayuPage() {
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
                         <button
                           type="button"
-                          onClick={() => navigate('/plant-detective')}
+                          onClick={() => setPlantPopupType('assistant')}
                           style={{
                             minHeight: 42,
                             border: '1px solid #d8c98a',
@@ -2520,7 +2682,7 @@ export function SayuPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => scrollToPlantSection('sayu-plant-diary')}
+                          onClick={() => setPlantPopupType('diary')}
                           style={{
                             border: '1px solid #e8dfba',
                             borderRadius: 8,
@@ -2529,14 +2691,14 @@ export function SayuPage() {
                             textAlign: 'left',
                             cursor: 'pointer',
                           }}
-                          title="성장일기 목록으로 이동"
+                          title="성장일기 팝업 열기"
                         >
                           <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>성장일기</div>
                           <div style={{ fontSize: 18, color: '#4A5A2C', fontWeight: 950 }}>{plantObservationEntries.length}</div>
                         </button>
                         <button
                           type="button"
-                          onClick={() => scrollToPlantSection('sayu-plant-library')}
+                          onClick={() => setPlantPopupType('library')}
                           style={{
                             border: '1px solid #e8dfba',
                             borderRadius: 8,
@@ -2545,14 +2707,14 @@ export function SayuPage() {
                             textAlign: 'left',
                             cursor: 'pointer',
                           }}
-                          title="개인도감 목록으로 이동"
+                          title="개인도감 팝업 열기"
                         >
                           <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>개인도감</div>
                           <div style={{ fontSize: 18, color: '#4A5A2C', fontWeight: 950 }}>{plantLibraryItems.length}</div>
                         </button>
                         <button
                           type="button"
-                          onClick={() => scrollToPlantSection('sayu-plant-catalog')}
+                          onClick={() => setPlantPopupType('catalog')}
                           style={{
                             border: '1px solid #cfe9df',
                             borderRadius: 8,
@@ -2561,7 +2723,7 @@ export function SayuPage() {
                             textAlign: 'left',
                             cursor: 'pointer',
                           }}
-                          title="공개도감 목록으로 이동"
+                          title="공개도감 팝업 열기"
                         >
                           <div style={{ fontSize: 11, color: '#5f8d83', fontWeight: 800 }}>공개도감</div>
                           <div style={{ fontSize: 18, color: '#0F766E', fontWeight: 950 }}>{plantCatalogItems.length}</div>
@@ -2569,264 +2731,172 @@ export function SayuPage() {
                       </div>
                     </div>
 
+                  </div>
+                )}
+                {plantPopupType && (
+                  <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="하루식물탐정 팝업"
+                    onClick={() => setPlantPopupType(null)}
+                    style={{
+                      position: 'fixed',
+                      inset: 0,
+                      zIndex: 1000,
+                      background: 'rgba(17, 24, 39, 0.42)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 16,
+                    }}
+                  >
                     <div
-                      id="sayu-plant-diary"
-                      className="px-4 py-3"
-                      style={{ borderTop: '1px solid #f5f5f5', scrollMarginTop: 90 }}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        width: 'min(560px, 100%)',
+                        maxHeight: '78vh',
+                        overflow: 'hidden',
+                        borderRadius: 12,
+                        background: plantPopupType === 'catalog' ? '#ECFDF5' : '#fffdf4',
+                        border: plantPopupType === 'catalog' ? '1px solid #b8dfd5' : '1px solid #e8dfba',
+                        boxShadow: '0 18px 45px rgba(0,0,0,0.25)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                      }}
                     >
-                      <div style={{ fontSize: 13, fontWeight: 900, color: '#4A5A2C', marginBottom: 8 }}>📔 성장일기</div>
-                      {plantObservationEntries.length > 0 ? (
-                        <div style={{ display: 'grid', gap: 8 }}>
-                          {plantObservationEntries.slice(0, 5).map(({ date, recordId, entry, idx }) => {
-                            const title = entry?.plantName || entry?.title || '식물 관찰';
-                            const photo = entry?.imageUrl || (Array.isArray(entry?.imageUrls) ? entry.imageUrls[0] : '');
-                            return (
-                              <div key={`${recordId}_obs_${idx}`} style={{ display: 'flex', gap: 10, border: '1px solid #f0ead1', borderRadius: 8, background: '#fff', padding: 10 }}>
-                                {photo ? (
-                                  <img src={photo} alt={title} style={{ width: 54, height: 54, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
-                                ) : (
-                                  <div style={{ width: 54, height: 54, borderRadius: 6, background: '#eef0d8', display: 'grid', placeItems: 'center', color: '#4A5A2C', flexShrink: 0 }}>
-                                    <Leaf size={20} />
-                                  </div>
-                                )}
-                                <div style={{ minWidth: 0, flex: 1 }}>
-                                  <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>{date}</div>
-                                  <div className="truncate" style={{ fontSize: 14, color: '#24301f', fontWeight: 900 }}>{title}</div>
-                                  {entry?.observation && (
-                                    <div style={{ marginTop: 4, fontSize: 12, color: '#3d4734', lineHeight: 1.45 }}>
-                                      {String(entry.observation).slice(0, 90)}
-                                      {String(entry.observation).length > 90 ? '…' : ''}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div style={{ fontSize: 12, color: '#6b7654', lineHeight: 1.6 }}>
-                          아직 저장된 성장일기가 없습니다. 식물탐정비서에서 오늘의 관찰을 저장하면 여기에 표시됩니다.
-                        </div>
-                      )}
-                    </div>
-
-                    <div
-                      id="sayu-plant-library"
-                      className="px-4 py-3"
-                      style={{ borderTop: '1px solid #f5f5f5', background: '#fffdf4', scrollMarginTop: 90 }}
-                    >
-                      <div style={{ fontSize: 13, fontWeight: 900, color: '#4A5A2C', marginBottom: 8 }}>📚 개인도감</div>
-                      {plantLibraryItems.length > 0 ? (
-                        <div style={{ display: 'grid', gap: 8 }}>
-                          {plantLibraryItems.slice(0, 5).map((item) => renderMiniPlantCard(item))}
-                        </div>
-                      ) : (
-                        <div style={{ fontSize: 12, color: '#6b7654', lineHeight: 1.6 }}>
-                          아직 내 식물도감에 저장된 식물이 없습니다.
-                        </div>
-                      )}
-                    </div>
-
-                    <div
-                      id="sayu-plant-catalog"
-                      className="px-4 py-3"
-                      style={{ borderTop: '1px solid #f5f5f5', background: '#ECFDF5', scrollMarginTop: 90 }}
-                    >
-                      <div style={{ fontSize: 13, fontWeight: 900, color: '#0F766E', marginBottom: 8 }}>🌿 공개도감</div>
-                      {plantCatalogItems.length > 0 ? (
-                        <div style={{ display: 'grid', gap: 8 }}>
-                          {plantCatalogItems.slice(0, 5).map((item) => renderMiniPlantCard(item, true))}
-                        </div>
-                      ) : (
-                        <div style={{ fontSize: 12, color: '#37675f', lineHeight: 1.6 }}>
-                          아직 공개 식물도감에 표시할 식물이 없습니다.
-                        </div>
-                      )}
-                    </div>
-
-                    {selectedPlantCount > 0 && (
                       <div
-                        className="flex items-center justify-between px-4 py-2"
-                        style={{ borderTop: '1px solid #f5f5f5', background: '#fffdf4' }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 12,
+                          padding: '14px 16px',
+                          borderBottom: '1px solid rgba(0,0,0,0.08)',
+                          background: '#fff',
+                        }}
                       >
-                        <span style={{ fontSize: 12, color: '#6b5b22', fontWeight: 700 }}>
-                          {selectedPlantCount}개 선택됨
-                        </span>
+                        <div style={{ fontSize: 16, fontWeight: 950, color: plantPopupType === 'catalog' ? '#0F766E' : '#4A5A2C' }}>
+                          {plantPopupType === 'assistant' && '식물탐정비서'}
+                          {plantPopupType === 'diary' && '성장일기'}
+                          {plantPopupType === 'library' && '개인도감'}
+                          {plantPopupType === 'catalog' && '공개도감'}
+                        </div>
                         <button
                           type="button"
-                          onClick={handleDeleteSelectedPlantEntries}
-                          disabled={plantDeleteBusy}
+                          onClick={() => setPlantPopupType(null)}
+                          aria-label="팝업 닫기"
                           style={{
-                            minHeight: 32,
-                            padding: '0 12px',
-                            borderRadius: 8,
-                            border: '1px solid #ef4444',
-                            background: plantDeleteBusy ? '#fee2e2' : '#fff',
-                            color: '#b91c1c',
-                            fontSize: 12,
-                            fontWeight: 800,
-                            cursor: plantDeleteBusy ? 'not-allowed' : 'pointer',
+                            width: 34,
+                            height: 34,
+                            borderRadius: 17,
+                            border: '1px solid #e5e7eb',
+                            background: '#fff',
+                            color: '#1A3C6E',
+                            fontSize: 18,
+                            cursor: 'pointer',
                           }}
                         >
-                          {plantDeleteBusy ? '삭제 중...' : '선택 삭제'}
+                          ×
                         </button>
                       </div>
-                    )}
-                    {plantEntries.slice(0, 30).map(({ date, recordId, entry, idx }) => {
-                      const id = `${recordId}_${idx}`;
-                      const isOpen = expandedPlantIds.has(id);
-                      const isSelected = selectedPlantEntryIds.has(id);
-                      const plantTitle = getPlantTitle(entry);
-                      const plantSubTitle = getPlantSubTitle(entry);
-                      const confPct = typeof entry.identificationConfidence === 'number'
-                        ? Math.round(entry.identificationConfidence * 100)
-                        : null;
-                      return (
-                        <div key={id} className="border-t" style={{ borderColor: '#f5f5f5' }}>
-                          <div
-                            className="w-full flex items-center text-left hover:bg-yellow-50 transition-colors"
-                            style={{ minHeight: 48, paddingLeft: 12 }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={(e) => {
-                                const checked = e.target.checked;
-                                setSelectedPlantEntryIds((prev) => {
-                                  const next = new Set(prev);
-                                  if (checked) next.add(id);
-                                  else next.delete(id);
-                                  return next;
-                                });
-                              }}
-                              aria-label={`${plantTitle} 선택`}
-                              style={{ width: 18, height: 18, marginRight: 10, flexShrink: 0, accentColor: '#1A3C6E' }}
-                            />
+                      <div style={{ padding: 14, overflowY: 'auto' }}>
+                        {plantPopupType === 'assistant' && (
+                          <div style={{ display: 'grid', gap: 10 }}>
                             <button
-                              onClick={() => {
-                                setExpandedPlantIds((prev) => {
-                                  const next = new Set(prev);
-                                  if (next.has(id)) next.delete(id); else next.add(id);
-                                  return next;
-                                });
+                              type="button"
+                              onClick={() => navigate('/plant-detective')}
+                              style={{
+                                minHeight: 46,
+                                borderRadius: 8,
+                                border: '1px solid #4A5A2C',
+                                background: '#4A5A2C',
+                                color: '#fff',
+                                fontSize: 14,
+                                fontWeight: 900,
+                                cursor: 'pointer',
                               }}
-                              className="flex items-center text-left"
-                              style={{ minHeight: 48, flex: 1, minWidth: 0, border: 'none', background: 'transparent', padding: '0 16px 0 0' }}
                             >
-                            <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: 52 }}>
-                              {date && date.length >= 10 ? date.slice(5) : date}
-                            </span>
-                            <span className="text-sm truncate" style={{ color: '#333', marginLeft: 8, flex: '1 1 auto', minWidth: 0 }}>
-                              {plantTitle}
-                            </span>
-                            {confPct !== null && (
-                              <span style={{
-                                fontSize: 22, lineHeight: 1, padding: '6px 12px', borderRadius: 8,
-                                background: confPct >= 60 ? '#eef0d8' : '#fff5d6',
-                                color: confPct >= 60 ? '#4A5A2C' : '#6e5a16',
-                                marginRight: 8, flexShrink: 0, fontWeight: 900,
-                                letterSpacing: '-0.02em',
-                              }}>
-                                {confPct}%
-                              </span>
-                            )}
-                            <span style={{ fontSize: 10, color: '#1A3C6E', flexShrink: 0 }}>{isOpen ? '▼' : '▶'}</span>
+                              식물탐정비서로 이동
                             </button>
-                          </div>
-                          {isOpen && (
-                            <div className="px-4 py-3" style={{ borderTop: '1px solid #f5f5f5', background: '#fafafa' }}>
-                              {confPct !== null && (
-                                <div style={{
-                                  display: 'flex', alignItems: 'baseline', gap: 8,
-                                  marginBottom: 10, padding: '10px 14px', borderRadius: 10,
-                                  background: confPct >= 60 ? '#eef0d8' : '#fff5d6',
-                                  border: `1px solid ${confPct >= 60 ? '#d6db9f' : '#e8d68a'}`,
-                                }}>
-                                  <span style={{
-                                    fontSize: 42, lineHeight: 1, fontWeight: 900,
-                                    color: confPct >= 60 ? '#4A5A2C' : '#6e5a16',
-                                    letterSpacing: '-0.03em',
-                                  }}>{confPct}%</span>
-                                  <span style={{
-                                    fontSize: 13, fontWeight: 700,
-                                    color: confPct >= 60 ? '#4A5A2C' : '#6e5a16',
-                                  }}>
-                                    {confPct >= 80 ? '높은 확신' : confPct >= 60 ? '보통 확신' : '낮은 확신'}
-                                  </span>
-                                </div>
-                              )}
-                              {entry.imageUrl && (
-                                <img
-                                  src={entry.imageUrl}
-                                  alt={plantTitle}
-                                  style={{
-                                    width: '100%',
-                                    height: 'auto',
-                                    objectFit: 'contain',
-                                    objectPosition: 'center',
-                                    display: 'block',
-                                    borderRadius: 8,
-                                    border: '1px solid #e6e6e6',
-                                    background: '#fff',
-                                    marginBottom: 10,
-                                  }}
-                                />
-                              )}
-                              <div style={{ fontSize: 13, color: '#333', lineHeight: 1.55 }}>
-                                <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 2 }}>
-                                  {plantTitle}
-                                </div>
-                                {plantSubTitle && (
-                                  <div style={{ fontStyle: 'italic', fontSize: 12, color: '#6b7654', marginBottom: 6 }}>
-                                    {plantSubTitle}
-                                    {entry.taxonomy?.family && (
-                                      <span style={{ marginLeft: 6, fontStyle: 'normal', color: '#92996f' }}>
-                                        · {entry.taxonomy.family}
-                                        {entry.taxonomy.genus ? ` / ${entry.taxonomy.genus}` : ''}
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-                                {entry.condition && (
-                                  <div style={{ fontWeight: 700, color: '#4A5A2C', marginBottom: 6 }}>{entry.condition}</div>
-                                )}
-                                {renderList('관찰 내용', entry.findings)}
-                                {renderList('돌봄 힌트', entry.actions)}
-                                {renderList('주의 신호', entry.warningSigns)}
-                                {Array.isArray(entry.alternativeCandidates) && entry.alternativeCandidates.length > 0 && (
-                                  <div style={{ marginTop: 10 }}>
-                                    <div style={{ fontWeight: 700, fontSize: 12, color: '#555', marginBottom: 4 }}>다른 가능성</div>
-                                    <div style={{ fontSize: 12, color: '#666' }}>
-                                      {entry.alternativeCandidates.slice(0, 3).map((c: any, i: number) => (
-                                        <span key={i} style={{ marginRight: 10 }}>
-                                          {c.name}
-                                          {typeof c.probability === 'number' && (
-                                            <span style={{ color: '#888', marginLeft: 2 }}>({Math.round(c.probability * 100)}%)</span>
-                                          )}
-                                        </span>
-                                      ))}
+                            {plantEntries.length > 0 ? (
+                              <div style={{ display: 'grid', gap: 8 }}>
+                                {plantEntries.slice(0, 5).map(({ date, entry, idx }) => (
+                                  <div key={`assistant_recent_${date}_${idx}`} style={{ border: '1px solid #f0ead1', borderRadius: 8, background: '#fff', padding: 10 }}>
+                                    <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>{date}</div>
+                                    <div style={{ fontSize: 14, color: '#24301f', fontWeight: 900, marginTop: 2 }}>
+                                      {getPlantTitle(entry)}
                                     </div>
                                   </div>
-                                )}
-                                {entry.note && (
-                                  <p style={{ marginTop: 10, fontSize: 11, color: '#7a725d', lineHeight: 1.5 }}>{entry.note}</p>
-                                )}
-                                {entry.identifiedBy === 'gemini' && (
-                                  <div style={{ marginTop: 8, fontSize: 10, color: '#999' }}>
-                                    ※ Plant.id 미사용 (AI 단독 분석)
-                                  </div>
-                                )}
+                                ))}
                               </div>
+                            ) : (
+                              <div style={{ fontSize: 13, color: '#6b7654', lineHeight: 1.6 }}>
+                                아직 식물탐정 판독 기록이 없습니다.
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {plantPopupType === 'diary' && (
+                          plantObservationEntries.length > 0 ? (
+                            <div style={{ display: 'grid', gap: 8 }}>
+                              {plantObservationEntries.slice(0, 30).map(({ date, recordId, entry, idx }) => {
+                                const title = entry?.plantName || entry?.title || '식물 관찰';
+                                const photo = entry?.imageUrl || (Array.isArray(entry?.imageUrls) ? entry.imageUrls[0] : '');
+                                return (
+                                  <div key={`${recordId}_popup_obs_${idx}`} style={{ display: 'flex', gap: 10, border: '1px solid #f0ead1', borderRadius: 8, background: '#fff', padding: 10 }}>
+                                    {photo ? (
+                                      <img src={photo} alt={title} style={{ width: 54, height: 54, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+                                    ) : (
+                                      <div style={{ width: 54, height: 54, borderRadius: 6, background: '#eef0d8', display: 'grid', placeItems: 'center', color: '#4A5A2C', flexShrink: 0 }}>
+                                        <Leaf size={20} />
+                                      </div>
+                                    )}
+                                    <div style={{ minWidth: 0, flex: 1 }}>
+                                      <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>{date}</div>
+                                      <div className="truncate" style={{ fontSize: 14, color: '#24301f', fontWeight: 900 }}>{title}</div>
+                                      {entry?.observation && (
+                                        <div style={{ marginTop: 4, fontSize: 12, color: '#3d4734', lineHeight: 1.45 }}>
+                                          {String(entry.observation)}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                    {plantEntries.length > 30 && (
-                      <div className="px-4 py-2 text-center text-xs" style={{ color: '#999', borderTop: '1px solid #f5f5f5' }}>
-                        최근 30건 표시 — 더 많은 기록은 월 이동으로 확인
+                          ) : (
+                            <div style={{ fontSize: 13, color: '#6b7654', lineHeight: 1.6 }}>
+                              아직 저장된 성장일기가 없습니다.
+                            </div>
+                          )
+                        )}
+
+                        {plantPopupType === 'library' && (
+                          plantLibraryItems.length > 0 ? (
+                            <div style={{ display: 'grid', gap: 8 }}>
+                              {plantLibraryItems.slice(0, 30).map((item) => renderMiniPlantCard(item))}
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: 13, color: '#6b7654', lineHeight: 1.6 }}>
+                              아직 내 식물도감에 저장된 식물이 없습니다.
+                            </div>
+                          )
+                        )}
+
+                        {plantPopupType === 'catalog' && (
+                          plantCatalogItems.length > 0 ? (
+                            <div style={{ display: 'grid', gap: 8 }}>
+                              {plantCatalogItems.slice(0, 30).map((item) => renderMiniPlantCard(item, true))}
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: 13, color: '#37675f', lineHeight: 1.6 }}>
+                              아직 공개 식물도감에 표시할 식물이 없습니다.
+                            </div>
+                          )
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
                 )}
               </div>
