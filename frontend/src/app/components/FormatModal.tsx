@@ -102,13 +102,8 @@ const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placehol
   독서사유: [
     { key: 'reading_book_title', label: '책 제목', placeholder: '예: 오래된 미래', rows: 1 },
     { key: 'reading_author', label: '저자', placeholder: '예: 헬레나 노르베리 호지', rows: 1 },
-    { key: 'reading_started_at', label: '읽기 시작일', placeholder: '예: 2026-05-20', rows: 1 },
-    { key: 'reading_today_part', label: '오늘 읽은 챕터', placeholder: '예: 1장 35~52쪽, 또는 마음에 닿은 한 챕터', rows: 2 },
-    { key: 'reading_book_text', label: '책 본문', placeholder: '책 본문 사진을 텍스트로 변환하면 여기에 들어옵니다.', rows: 6 },
-    { key: 'reading_sentence', label: '기억 문장', placeholder: '오늘 마음에 남은 문장 한 줄을 적어도 충분합니다.', rows: 3 },
-    { key: 'reading_thought', label: '떠오른 생각', placeholder: '읽으며 문득 든 생각을 짧게 적어주세요.', rows: 3 },
-    { key: 'reading_life_link', label: '내 삶과 연결', placeholder: '내 경험, 일, 관계, 신앙, 습관과 닿은 부분이 있다면 적어주세요.', rows: 3 },
-    { key: 'reading_space', label: '여백', placeholder: '아직 정리되지 않은 느낌이나 다음에 다시 볼 부분을 남겨두세요.', rows: 2 },
+    { key: 'reading_book_text', label: '본문 내용', placeholder: '사진으로 텍스트를 추출하거나 직접 입력하세요.', rows: 5 },
+    { key: 'reading_journal', label: '독서장', placeholder: '헤밍웨이 『노인과 바다』 1장을 읽었다.\n산티아고의 고독이 오래 남았다.', rows: 5 },
   ],
   텃밭일지: [
     { key: 'garden_crop', label: '작물', placeholder: '토마토, 상추, 고추를 심었습니다.', rows: 2 },
@@ -209,6 +204,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isExtractingBookText, setIsExtractingBookText] = useState(false);
   const [readingOcrUsedCount, setReadingOcrUsedCount] = useState<number | null>(null);
+  const [readingBookTextMode, setReadingBookTextMode] = useState<'photo' | 'manual'>('photo');
   const bookOcrInputRef = useRef<HTMLInputElement>(null);
 
   // 📈 HARU주식관리: 카톡 TXT 내보내기 파싱 state
@@ -270,6 +266,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       setReadingAnalysis('');
       setReadingReflectionAnswers({});
       setReadingEntriesSnapshot('');
+      setReadingBookTextMode('photo');
       setShowModeSelect(false);
       setReadingOcrUsedCount(null);
 
@@ -1170,12 +1167,8 @@ ${contentValues}`,
     const labels: Record<string, string> = {
       reading_book_title: '책 제목',
       reading_author: '저자',
-      reading_today_part: '오늘 읽은 부분',
-      reading_book_text: '책 본문',
-      reading_sentence: '기억 문장',
-      reading_thought: '떠오른 생각',
-      reading_life_link: '내 삶과 연결',
-      reading_space: '여백',
+      reading_book_text: '본문 내용',
+      reading_journal: '독서장',
     };
     return Object.entries(labels)
       .map(([key, label]) => {
@@ -1238,7 +1231,14 @@ ${contentValues}`,
     setSelectedExistingBookId('');
     setIsReadingBookLocked(false);
     setBlockedBookMessage('');
-    setFormData((prev) => ({ ...prev, reading_book_title: '', reading_author: '' }));
+    setReadingBookTextMode('photo');
+    setFormData((prev) => ({
+      ...prev,
+      reading_book_title: '',
+      reading_author: '',
+      reading_book_text: '',
+      reading_journal: '',
+    }));
   };
 
   // 📚 책 제목/저자 직접 수정 시 final_reflection 차단 자동 체크
@@ -1306,7 +1306,8 @@ ${contentValues}`,
         if (data.readingEntryType === READING_ENTRY_TYPES.LEGACY_FINAL) return;
         const text = [
           data.reading_today_part ? `오늘 읽은 챕터: ${data.reading_today_part}` : '',
-          data.reading_book_text ? `책 본문: ${data.reading_book_text}` : '',
+          data.reading_book_text ? `본문 내용: ${data.reading_book_text}` : '',
+          data.reading_journal ? `독서장: ${data.reading_journal}` : '',
           data.reading_sentence ? `기억 문장: ${data.reading_sentence}` : '',
           data.reading_thought ? `떠오른 생각: ${data.reading_thought}` : '',
           data.reading_life_link ? `내 삶과 연결: ${data.reading_life_link}` : '',
@@ -1367,17 +1368,13 @@ ${entriesText}`,
     if (format !== '독서사유') return;
     const bookTitle = (formData.reading_book_title || '').trim();
     const bookAuthor = (formData.reading_author || '').trim();
-    const startedAt = (formData.reading_started_at || '').trim();
+    const startedAt = (formData.reading_started_at || new Date().toISOString().slice(0, 10)).trim();
     if (!bookTitle) {
       toast.warning('책 제목을 먼저 입력해 주세요.');
       return;
     }
     if (!bookAuthor) {
       toast.warning('저자를 입력해 주세요.');
-      return;
-    }
-    if (!startedAt) {
-      toast.warning('읽기 시작일을 입력해 주세요. (예: 2026-05-20)');
       return;
     }
     // 마무리한 책 차단
@@ -1389,13 +1386,12 @@ ${entriesText}`,
       return;
     }
 
-    const contentValues = fields
-      .filter((f) => f.key !== 'reading_book_title' && f.key !== 'reading_author')
-      .map((f) => formData[f.key])
-      .filter((v) => typeof v === 'string' && v.trim())
-      .join('\n\n');
+    const contentValues = [
+      formData.reading_book_text ? `본문 내용:\n${formData.reading_book_text}` : '',
+      formData.reading_journal ? `독서장:\n${formData.reading_journal}` : '',
+    ].filter((v) => typeof v === 'string' && v.trim()).join('\n\n');
     if (!contentValues.trim()) {
-      toast.error('읽은 챕터·기억 문장 등 한 줄이라도 작성해 주세요.');
+      toast.error('본문 내용이나 독서장을 한 줄이라도 작성해 주세요.');
       return;
     }
 
@@ -1405,7 +1401,7 @@ ${entriesText}`,
       const fns = getFunctions(undefined, 'asia-northeast3');
       const polishContentFunc = httpsCallable(fns, 'polishContent');
       const result = await polishContentFunc({
-        text: `다음은 "독서사유" 형식으로 작성된 중간 독서기록입니다.
+        text: `다음은 "독서장" 형식으로 작성된 중간 독서기록입니다.
 AI 다듬기 강도 6 수준(10단계 중 6)으로 다듬어 주세요 — 사실·인용은 원문 보존, 표현은 자연스럽게 정돈.
 
 **절대 준수 사항:**
@@ -1427,6 +1423,7 @@ ${contentValues}`,
       const updateData: Record<string, any> = {
         ...formData,
         _recordId: `reading_note_${currentBookId}_${Date.now()}`,
+        reading_started_at: formData.reading_started_at || startedAt,
         [imagesKey]: JSON.stringify(uploadedImages),
         [`${prefix}_style`]: 'premium',
         [`${prefix}_mode`]: 'PREMIUM',
@@ -1442,7 +1439,7 @@ ${contentValues}`,
 
       setIsSaving(true);
       await onSave(updateData);
-      toast.success('📖 중간기록이 누적 저장되었습니다.');
+      toast.success('📖 독서장이 누적 저장되었습니다.');
       onClose();
     } catch (error: any) {
       console.error('중간기록 저장 실패:', error);
@@ -1548,7 +1545,7 @@ ${contentValues}`,
           >
             <div>
               <h2 style={{ fontSize: 18, color: '#1A3C6E', fontWeight: 600, margin: 0 }}>
-                {format} 작성
+                {format === '독서사유' ? '독서장 작성' : `${format} 작성`}
               </h2>
               {existingSayu && (
                 <p style={{ fontSize: 12, color: '#10b981', margin: '4px 0 0 0' }}>
@@ -1604,7 +1601,7 @@ ${contentValues}`,
           {recordStep === 'select' && format === '독서사유' && (
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
               <p style={{ textAlign: 'center', fontSize: '14px', fontWeight: 600, color: '#1A3C6E', marginBottom: '4px' }}>
-                📚 독서사유를 어떻게 시작할까요?
+                📚 독서장을 어떻게 시작할까요?
               </p>
               <p style={{ textAlign: 'center', fontSize: '11px', color: 'var(--color-text-secondary)', marginBottom: '20px' }}>
                 여러 책을 동시에 작성중 상태로 둘 수 있어요
@@ -1646,6 +1643,8 @@ ${contentValues}`,
                       reading_book_title: '',
                       reading_author: '',
                       reading_started_at: new Date().toISOString().slice(0, 10),
+                      reading_book_text: '',
+                      reading_journal: '',
                     }));
                     setRecordStep('input');
                   }}
@@ -1894,10 +1893,10 @@ ${contentValues}`,
                       backgroundColor: '#f8fbff',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
                       <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A3C6E', fontWeight: 700 }}>
                         <FileText style={{ width: 15, height: 15 }} />
-                        책 본문 사진 → 텍스트
+                        본문 내용
                       </label>
                       <span style={{ fontSize: 11, color: '#6b7280', whiteSpace: 'nowrap' }}>
                         {isDeveloper
@@ -1907,47 +1906,107 @@ ${contentValues}`,
                             : `${readingOcrUsedCount}/${READING_BOOK_OCR_LIMIT}장`}
                       </span>
                     </div>
-                    <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
-                      책 페이지를 촬영해 추가하면 아래 "책 본문" 칸에 텍스트만 붙습니다. 사진 원본은 저장하지 않습니다.
-                    </p>
-                    <input
-                      ref={bookOcrInputRef}
-                      type="file"
-                      accept="image/*,.heic,.heif"
-                      multiple
-                      onChange={handleBookTextOcrUpload}
-                      style={{ display: 'none' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!isPremium) {
-                          alert('PREMIUM 구독 후 이용 가능한 기능입니다.');
-                          return;
-                        }
-                        bookOcrInputRef.current?.click();
-                      }}
-                      disabled={isExtractingBookText || (!isDeveloper && readingOcrUsedCount !== null && readingOcrUsedCount >= READING_BOOK_OCR_LIMIT)}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+                      <button
+                        type="button"
+                        onClick={() => setReadingBookTextMode('photo')}
+                        style={{
+                          minHeight: 38,
+                          borderRadius: 8,
+                          border: readingBookTextMode === 'photo' ? '1.5px solid #1A3C6E' : '1px solid #d0dff0',
+                          backgroundColor: readingBookTextMode === 'photo' ? '#dbeafe' : '#fff',
+                          color: '#1A3C6E',
+                          fontSize: 13,
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        사진으로 추출
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setReadingBookTextMode('manual')}
+                        style={{
+                          minHeight: 38,
+                          borderRadius: 8,
+                          border: readingBookTextMode === 'manual' ? '1.5px solid #1A3C6E' : '1px solid #d0dff0',
+                          backgroundColor: readingBookTextMode === 'manual' ? '#dbeafe' : '#fff',
+                          color: '#1A3C6E',
+                          fontSize: 13,
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        직접 입력
+                      </button>
+                    </div>
+                    {readingBookTextMode === 'photo' && (
+                      <>
+                        <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
+                          책 페이지를 촬영해 추가하면 텍스트만 남습니다. 사진 원본은 저장하지 않습니다.
+                        </p>
+                        <input
+                          ref={bookOcrInputRef}
+                          type="file"
+                          accept="image/*,.heic,.heif"
+                          multiple
+                          onChange={handleBookTextOcrUpload}
+                          style={{ display: 'none' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!isPremium) {
+                              alert('PREMIUM 구독 후 이용 가능한 기능입니다.');
+                              return;
+                            }
+                            bookOcrInputRef.current?.click();
+                          }}
+                          disabled={isExtractingBookText || (!isDeveloper && readingOcrUsedCount !== null && readingOcrUsedCount >= READING_BOOK_OCR_LIMIT)}
+                          style={{
+                            width: '100%',
+                            padding: '10px 14px',
+                            border: '1px dashed #1A3C6E',
+                            borderRadius: 8,
+                            backgroundColor: '#fff',
+                            color: '#1A3C6E',
+                            cursor: isExtractingBookText ? 'wait' : 'pointer',
+                            opacity: isExtractingBookText || (!isDeveloper && readingOcrUsedCount !== null && readingOcrUsedCount >= READING_BOOK_OCR_LIMIT) ? 0.55 : 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 8,
+                            fontSize: 13,
+                            fontWeight: 700,
+                          }}
+                        >
+                          <Camera style={{ width: 16, height: 16 }} />
+                          {isExtractingBookText ? '텍스트 변환 중...' : '책 본문 사진 추가'}
+                        </button>
+                      </>
+                    )}
+                    <textarea
+                      value={formData.reading_book_text || ''}
+                      onChange={(e) => handleChange('reading_book_text', e.target.value)}
+                      placeholder={readingBookTextMode === 'photo'
+                        ? '사진에서 추출된 본문 텍스트가 여기에 들어옵니다.'
+                        : '읽은 본문 내용을 직접 입력하세요.'}
+                      rows={5}
                       style={{
                         width: '100%',
-                        padding: '10px 14px',
-                        border: '1px dashed #1A3C6E',
+                        boxSizing: 'border-box',
+                        marginTop: 10,
+                        padding: '12px 16px',
+                        fontSize: 14,
+                        border: '1px solid #d0dff0',
                         borderRadius: 8,
                         backgroundColor: '#fff',
-                        color: '#1A3C6E',
-                        cursor: isExtractingBookText ? 'wait' : 'pointer',
-                        opacity: isExtractingBookText || (!isDeveloper && readingOcrUsedCount !== null && readingOcrUsedCount >= READING_BOOK_OCR_LIMIT) ? 0.55 : 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8,
-                        fontSize: 13,
-                        fontWeight: 700,
+                        color: '#333',
+                        resize: 'vertical',
+                        fontFamily: 'inherit',
+                        outline: 'none',
                       }}
-                    >
-                      <Camera style={{ width: 16, height: 16 }} />
-                      {isExtractingBookText ? '텍스트 변환 중...' : '책 본문 사진 추가'}
-                    </button>
+                    />
                   </div>
                 </div>
               )}
@@ -2146,7 +2205,9 @@ ${contentValues}`,
                           </div>
                         ))}
                       </div>
-                    : fields.map((field) => {
+                    : fields
+                      .filter((field) => !(format === '독서사유' && field.key === 'reading_book_text'))
+                      .map((field) => {
                         // 📚 독서사유 — 이어쓰기 모드면 책 제목·저자 readonly
                         const isReadingBookField =
                           format === '독서사유' &&
@@ -2575,7 +2636,7 @@ ${contentValues}`,
                       다듬는 중...
                     </>
                   ) : (
-                    <>📖 중간기록 추가하기</>
+                    <>📖 독서장 추가하기</>
                   )}
                 </button>
                 <button
