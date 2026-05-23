@@ -9,8 +9,8 @@ import { toast } from 'sonner';
 import { SayuModal } from '../components/SayuModal';
 import { CATEGORY_FORMATS, FORMAT_PREFIX, FORMAT_EMOJI, READING_ENTRY_TYPES, READING_STATUS } from '../types/haruTypes';
 import type { RecordFormat } from '../types/haruTypes';
-import { collection, getDocs, orderBy, query, deleteDoc, doc, writeBatch, updateDoc, limit, setDoc, serverTimestamp, arrayUnion, increment } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, getDocs, getDoc, orderBy, query, deleteDoc, doc, writeBatch, updateDoc, limit, setDoc, serverTimestamp, arrayUnion, increment } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db } from '../../firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useSubscription } from '../hooks/useSubscription';
@@ -631,6 +631,129 @@ export function SayuPage() {
     const storageRef = ref(storage, `users/${user!.uid}/format_photos/${plantId}_sayu_diary_${ts}.jpg`);
     await uploadBytes(storageRef, compressed, { contentType: compressed.type || file.type || 'image/jpeg' });
     return getDownloadURL(storageRef);
+  };
+
+  const collectPlantDiaryImageUrls = (entry: any) => {
+    const urls = new Set<string>();
+    const addUrl = (value: any) => {
+      const url = typeof value === 'string' ? value.trim() : '';
+      if (url && url.startsWith('http')) urls.add(url);
+    };
+    addUrl(entry?.imageUrl);
+    if (Array.isArray(entry?.imageUrls)) entry.imageUrls.forEach(addUrl);
+    if (Array.isArray(entry?.editHistory)) {
+      entry.editHistory.forEach((history: any) => {
+        addUrl(history?.previousImageUrl);
+        addUrl(history?.addedPhotoUrl);
+        if (Array.isArray(history?.previousImageUrls)) history.previousImageUrls.forEach(addUrl);
+      });
+    }
+    return Array.from(urls);
+  };
+
+  const deleteSayuPlantDiaryStoredPhoto = async (imageUrl: string) => {
+    if (!user?.uid) return;
+    const url = imageUrl.trim();
+    if (!url) return;
+    if (url.includes('cloudinary.com')) {
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const deleteRecordImage = httpsCallable(fns, 'deleteRecordImage');
+      await deleteRecordImage({ imageUrl: url });
+      return;
+    }
+    const decodedUrl = decodeURIComponent(url);
+    const userPathMarker = `/users/${user.uid}/format_photos/`;
+    const fileName = decodedUrl.includes(userPathMarker)
+      ? decodedUrl.split(userPathMarker)[1]?.split('?')[0]
+      : decodedUrl.split('/format_photos/')[1]?.split('?')[0];
+    if (!fileName) {
+      throw new Error('사진 저장 경로를 확인할 수 없어 원본 삭제를 중단했습니다.');
+    }
+    const storage = getStorage();
+    await deleteObject(ref(storage, `users/${user.uid}/format_photos/${fileName}`));
+  };
+
+  const removePlantDiaryPhotoRefs = async (plantId: string, imageUrls: string[]) => {
+    if (!user?.uid || !plantId || imageUrls.length === 0) return;
+    const urlSet = new Set(imageUrls);
+    const plantRef = doc(db, 'users', user.uid, 'plants', plantId);
+    const plantSnap = await getDoc(plantRef);
+    if (!plantSnap.exists()) return;
+    const data = plantSnap.data() as any;
+    const nextPhotos = Array.isArray(data.photos)
+      ? data.photos.filter((url: any) => !urlSet.has(String(url)))
+      : [];
+    const nextGrowthPhotos = Array.isArray(data.growthPhotos)
+      ? data.growthPhotos.filter((item: any) => !urlSet.has(typeof item === 'string' ? item : String(item?.url || '')))
+      : [];
+    const currentImageUrl = String(data.imageUrl || '');
+    const currentLatestPhotoUrl = String(data.latestPhotoUrl || '');
+    const nextImageUrl = urlSet.has(currentImageUrl) ? (nextPhotos[0] || '') : currentImageUrl;
+    const nextLatestPhotoUrl = urlSet.has(currentLatestPhotoUrl)
+      ? (nextPhotos[nextPhotos.length - 1] || nextImageUrl || '')
+      : currentLatestPhotoUrl;
+    await setDoc(
+      plantRef,
+      {
+        photos: nextPhotos,
+        growthPhotos: nextGrowthPhotos,
+        imageUrl: nextImageUrl,
+        latestPhotoUrl: nextLatestPhotoUrl,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+    setPlantLibraryItems((prev) => prev.map((item) => (
+      item.id === plantId
+        ? { ...item, photos: nextPhotos, imageUrl: nextImageUrl || undefined }
+        : item
+    )));
+    setSelectedPlantDiaryItem((prev) => (
+      prev?.id === plantId ? { ...prev, photos: nextPhotos, imageUrl: nextImageUrl || undefined } : prev
+    ));
+  };
+
+  const handleDeletePlantDiaryEntry = async (recordId: string, idx: number, entry: any) => {
+    if (!user?.uid) return;
+    const imageUrls = collectPlantDiaryImageUrls(entry);
+    const confirmText = imageUrls.length > 0
+      ? '이 성장일기를 삭제할까요? 연결된 사진 원본도 Firebase Storage에서 함께 삭제됩니다.'
+      : '이 성장일기를 삭제할까요?';
+    if (!window.confirm(confirmText)) return;
+    setPlantDiarySaving(true);
+    try {
+      const deleteResults = await Promise.allSettled(imageUrls.map((url) => deleteSayuPlantDiaryStoredPhoto(url)));
+      const failedDelete = deleteResults.find((result) => {
+        const error = result.status === 'rejected' ? (result.reason as any) : null;
+        return error && error.code !== 'storage/object-not-found';
+      });
+      if (failedDelete) {
+        throw new Error('사진 원본 삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+      }
+
+      const record = records.find((r) => r.id === recordId) as any;
+      const current = Array.isArray(record?.plantObservation) ? [...record.plantObservation] : [];
+      const next = current.filter((_, entryIdx) => entryIdx !== idx);
+      await updateDoc(doc(db, 'users', user.uid, 'records', recordId), {
+        plantObservation: next,
+        updatedAt: serverTimestamp(),
+      });
+      await removePlantDiaryPhotoRefs(String(entry?.plantId || selectedPlantDiaryItem?.id || ''), imageUrls);
+      setRecords((prevRecords) => prevRecords.map((r) => (
+        r.id === recordId ? ({ ...(r as any), plantObservation: next } as HaruRecord) : r
+      )));
+      if (editingPlantDiaryKey?.recordId === recordId && editingPlantDiaryKey.idx === idx) {
+        setEditingPlantDiaryKey(null);
+        setPlantDiaryInputMode('append');
+        setPlantDiaryDraft(emptyPlantDiaryDraft);
+      }
+      toast.success(imageUrls.length > 0 ? '성장일기와 사진 원본을 삭제했습니다.' : '성장일기를 삭제했습니다.');
+    } catch (e: any) {
+      console.error('성장일기 삭제 실패:', e);
+      toast.error(e?.message || '성장일기 삭제에 실패했습니다.');
+    } finally {
+      setPlantDiarySaving(false);
+    }
   };
 
   const openPublicPlantCatalog = () => {
@@ -3479,10 +3602,8 @@ export function SayuPage() {
                               const images = Array.isArray(entry?.imageUrls) ? entry.imageUrls.filter(Boolean) : photo ? [photo] : [];
                               const trace = getPlantDiaryTrace(entry, date);
                               return (
-                                <button
+                                <div
                                   key={`${recordId}_plant_detail_${idx}`}
-                                  type="button"
-                                  onClick={() => handleEditPlantDiary(recordId, idx, entry)}
                                   style={{
                                     width: '100%',
                                     border: '1px solid #f0ead1',
@@ -3490,10 +3611,22 @@ export function SayuPage() {
                                     background: '#fff',
                                     padding: 10,
                                     textAlign: 'left',
-                                    cursor: 'pointer',
                                   }}
                                 >
-                                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditPlantDiary(recordId, idx, entry)}
+                                    style={{
+                                      width: '100%',
+                                      border: 'none',
+                                      background: 'transparent',
+                                      padding: 0,
+                                      textAlign: 'left',
+                                      cursor: 'pointer',
+                                      fontFamily: 'inherit',
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                                     {photo ? (
                                       <img src={photo} alt={getSayuPlantName(selectedPlantDiaryItem)} style={{ width: 58, height: 58, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
                                     ) : (
@@ -3538,25 +3671,45 @@ export function SayuPage() {
                                       )}
                                     </div>
                                   </div>
-                                  <div
-                                    style={{
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      marginTop: 8,
-                                      minHeight: 30,
-                                      padding: '0 10px',
-                                      borderRadius: 7,
-                                      border: '1px solid #e5ddbf',
-                                      background: '#fffdf4',
-                                      color: '#4A5A2C',
-                                      fontSize: 12,
-                                      fontWeight: 800,
-                                      cursor: 'pointer',
-                                    }}
-                                  >
-                                    수정하기
+                                  </button>
+                                  <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEditPlantDiary(recordId, idx, entry)}
+                                      style={{
+                                        minHeight: 30,
+                                        padding: '0 10px',
+                                        borderRadius: 7,
+                                        border: '1px solid #e5ddbf',
+                                        background: '#fffdf4',
+                                        color: '#4A5A2C',
+                                        fontSize: 12,
+                                        fontWeight: 800,
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      수정하기
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeletePlantDiaryEntry(recordId, idx, entry)}
+                                      disabled={plantDiarySaving}
+                                      style={{
+                                        minHeight: 30,
+                                        padding: '0 10px',
+                                        borderRadius: 7,
+                                        border: '1px solid #fecaca',
+                                        background: plantDiarySaving ? '#f3f4f6' : '#fff',
+                                        color: plantDiarySaving ? '#9ca3af' : '#dc2626',
+                                        fontSize: 12,
+                                        fontWeight: 800,
+                                        cursor: plantDiarySaving ? 'wait' : 'pointer',
+                                      }}
+                                    >
+                                      삭제
+                                    </button>
                                   </div>
-                                </button>
+                                </div>
                               );
                             })
                           ) : (
