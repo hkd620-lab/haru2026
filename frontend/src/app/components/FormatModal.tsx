@@ -103,7 +103,7 @@ const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placehol
     { key: 'reading_book_title', label: '책 제목', placeholder: '예: 노인과 바다', rows: 1 },
     { key: 'reading_author', label: '저자', placeholder: '예: 어니스트 헤밍웨이', rows: 1 },
     { key: 'reading_book_text', label: '본문 내용', placeholder: '사진으로 텍스트를 추출하거나 직접 입력하세요.', rows: 5 },
-    { key: 'reading_journal', label: '독서장', placeholder: '헤밍웨이 『노인과 바다』 1장을 읽었다.\n산티아고의 고독이 오래 남았다.', rows: 5 },
+    { key: 'reading_journal', label: '독서장', placeholder: '노인은 오늘도 바다로 나갔다.\n혼자였지만 포기하지 않았다.\n큰 물고기와 끝까지 겨루었다.\n나는 그의 끈기를 오래 생각했다.\n나도 쉽게 물러서지 않겠다.', rows: 5 },
   ],
   텃밭일지: [
     { key: 'garden_crop', label: '작물', placeholder: '토마토, 상추, 고추를 심었습니다.', rows: 2 },
