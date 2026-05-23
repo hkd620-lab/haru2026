@@ -3077,8 +3077,37 @@ export function SayuPage() {
                               {plantObservationEntries.slice(0, 30).map(({ date, recordId, entry, idx }) => {
                                 const title = entry?.plantName || entry?.title || '식물 관찰';
                                 const photo = entry?.imageUrl || (Array.isArray(entry?.imageUrls) ? entry.imageUrls[0] : '');
+                                const linkedPlant = plantLibraryItems.find((plant) => isPlantDiaryForItem(entry, plant));
+                                const diaryPlant = linkedPlant || {
+                                  id: String(entry?.plantId || `diary_${recordId}_${idx}`),
+                                  displayName: title,
+                                  userConfirmedName: entry?.userConfirmedName || entry?.humanReportedName || entry?.plantName || title,
+                                  finalGuess: entry?.aiKoName || entry?.aiPrediction || title,
+                                  englishName: entry?.englishName,
+                                  scientificName: entry?.scientificName || entry?.latinName,
+                                  imageUrl: photo,
+                                  photos: Array.isArray(entry?.imageUrls) ? entry.imageUrls : photo ? [photo] : [],
+                                } as SayuPlantLibraryItem;
                                 return (
-                                  <div key={`${recordId}_popup_obs_${idx}`} style={{ display: 'flex', gap: 10, border: '1px solid #f0ead1', borderRadius: 8, background: '#fff', padding: 10 }}>
+                                  <button
+                                    key={`${recordId}_popup_obs_${idx}`}
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedPlantDiaryItem(diaryPlant);
+                                      handleEditPlantDiary(recordId, idx, entry);
+                                    }}
+                                    style={{
+                                      display: 'flex',
+                                      width: '100%',
+                                      gap: 10,
+                                      border: '1px solid #f0ead1',
+                                      borderRadius: 8,
+                                      background: '#fff',
+                                      padding: 10,
+                                      textAlign: 'left',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
                                     {photo ? (
                                       <img src={photo} alt={title} style={{ width: 54, height: 54, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
                                     ) : (
@@ -3095,7 +3124,7 @@ export function SayuPage() {
                                         </div>
                                       )}
                                     </div>
-                                  </div>
+                                  </button>
                                 );
                               })}
                             </div>
@@ -3109,7 +3138,7 @@ export function SayuPage() {
                         {plantPopupType === 'library' && (
                           plantLibraryItems.length > 0 ? (
                             <div style={{ display: 'grid', gap: 8 }}>
-                              {plantLibraryItems.slice(0, 30).map((item) => renderMiniPlantCard(item))}
+                              {plantLibraryItems.slice(0, 30).map((item) => renderMiniPlantCard(item, false, () => openPlantDiaryDetail(item)))}
                             </div>
                           ) : (
                             <div style={{ fontSize: 13, color: '#6b7654', lineHeight: 1.6 }}>
