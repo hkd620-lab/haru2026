@@ -1,4 +1,4 @@
-import { X, TestTube2, Wand2, Upload, Trash2, Plus } from 'lucide-react';
+import { X, TestTube2, Wand2, Upload, Trash2, Plus, Camera, FileText } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { getTestData } from '../data/testData';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -32,6 +32,14 @@ interface FormatModalProps {
 
 interface PolishResult {
   text: string;
+}
+
+interface BookOcrResult {
+  text?: string;
+  usedCount?: number | null;
+  limit?: number | null;
+  remainingCount?: number | null;
+  isDeveloper?: boolean;
 }
 
 type GrowthSubjectType = 'child' | 'garden';
@@ -96,6 +104,7 @@ const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placehol
     { key: 'reading_author', label: '저자', placeholder: '예: 헬레나 노르베리 호지', rows: 1 },
     { key: 'reading_started_at', label: '읽기 시작일', placeholder: '예: 2026-05-20', rows: 1 },
     { key: 'reading_today_part', label: '오늘 읽은 챕터', placeholder: '예: 1장 35~52쪽, 또는 마음에 닿은 한 챕터', rows: 2 },
+    { key: 'reading_book_text', label: '책 본문', placeholder: '책 본문 사진을 텍스트로 변환하면 여기에 들어옵니다.', rows: 6 },
     { key: 'reading_sentence', label: '기억 문장', placeholder: '오늘 마음에 남은 문장 한 줄을 적어도 충분합니다.', rows: 3 },
     { key: 'reading_thought', label: '떠오른 생각', placeholder: '읽으며 문득 든 생각을 짧게 적어주세요.', rows: 3 },
     { key: 'reading_life_link', label: '내 삶과 연결', placeholder: '내 경험, 일, 관계, 신앙, 습관과 닿은 부분이 있다면 적어주세요.', rows: 3 },
@@ -179,6 +188,9 @@ const DIARY_PREMIUM_FIELDS = [
   { key: 'diary_여백', label: '여백' },
 ];
 
+const DEVELOPER_UIDS = ['naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8'];
+const READING_BOOK_OCR_LIMIT = 20;
+
 export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, onSave }: FormatModalProps) {
   const { user } = useAuth();
   const { isPremium } = useSubscription();
@@ -195,6 +207,9 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isExtractingBookText, setIsExtractingBookText] = useState(false);
+  const [readingOcrUsedCount, setReadingOcrUsedCount] = useState<number | null>(null);
+  const bookOcrInputRef = useRef<HTMLInputElement>(null);
 
   // 📈 HARU주식관리: 카톡 TXT 내보내기 파싱 state
   const [isCsvParsing, setIsCsvParsing] = useState(false);
@@ -236,6 +251,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [selectedExistingBookId, setSelectedExistingBookId] = useState<string>(''); // '' = 새 책
   const [isReadingBookLocked, setIsReadingBookLocked] = useState(false);
   const [blockedBookMessage, setBlockedBookMessage] = useState<string>('');
+  const isDeveloper = !!user?.uid && DEVELOPER_UIDS.includes(user.uid);
 
   const readingReflectionQuestions = [
     '이 책은 나를 어떻게 변화시켰는가?',
@@ -255,6 +271,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       setReadingReflectionAnswers({});
       setReadingEntriesSnapshot('');
       setShowModeSelect(false);
+      setReadingOcrUsedCount(null);
 
       setRecordStyle(format === '독서사유' ? 'premium' : 'simple');
       // 독서사유는 select 단계에서 "이어작성 / 새작성" 분기. HARU주식관리만 input 직진.
@@ -735,6 +752,166 @@ ${contentValues}`,
     }
   };
 
+  const blobToBase64String = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = String(reader.result || '');
+        resolve(dataUrl.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, ''));
+      };
+      reader.onerror = () => reject(new Error('FILE_READER_ERROR'));
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  const prepareBookOcrImage = async (file: File): Promise<Blob> => {
+    const functionsInstance = getFunctions(undefined, 'asia-northeast3');
+    const isHeic = file.type === 'image/heic' || file.type === 'image/heif' ||
+      file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
+
+    let fileToProcess: File | Blob = file;
+    if (isHeic) {
+      toast.info('HEIC 파일을 JPG로 변환 중...');
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = '';
+      const chunkSize = 8192;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+      }
+      const convertHeicFunc = httpsCallable(functionsInstance, 'convertHeic');
+      const result = await convertHeicFunc({ imageBase64: btoa(binary) });
+      const { url } = result.data as { url: string };
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('JPG 다운로드 실패');
+      fileToProcess = await response.blob();
+    }
+
+    const imageFile = fileToProcess instanceof File
+      ? fileToProcess
+      : new File([fileToProcess], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
+    return compressImage(imageFile, 1600, 0.9);
+  };
+
+  const clearBookOcrInput = () => {
+    if (bookOcrInputRef.current) {
+      bookOcrInputRef.current.value = '';
+    }
+  };
+
+  const handleBookTextOcrUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    if (format !== '독서사유') {
+      clearBookOcrInput();
+      return;
+    }
+    if (!user?.uid) {
+      toast.error('로그인이 필요합니다.');
+      clearBookOcrInput();
+      return;
+    }
+    if (!isPremium) {
+      alert('PREMIUM 구독 후 이용 가능한 기능입니다.');
+      clearBookOcrInput();
+      return;
+    }
+
+    const bookTitle = String(formData.reading_book_title || '').trim();
+    const author = String(formData.reading_author || '').trim();
+    if (!bookTitle) {
+      toast.warning('책 제목을 먼저 입력해 주세요.');
+      clearBookOcrInput();
+      return;
+    }
+    if (!author) {
+      toast.warning('저자를 먼저 입력해 주세요.');
+      clearBookOcrInput();
+      return;
+    }
+
+    const allFiles = Array.from(files);
+    const remainingSlots = isDeveloper
+      ? allFiles.length
+      : Math.max(READING_BOOK_OCR_LIMIT - (readingOcrUsedCount ?? 0), 0);
+    if (remainingSlots <= 0) {
+      toast.warning('책 한 권당 본문 사진은 총 20장까지 변환할 수 있습니다.');
+      clearBookOcrInput();
+      return;
+    }
+
+    const filesToProcess = isDeveloper ? allFiles : allFiles.slice(0, remainingSlots);
+    if (!isDeveloper && allFiles.length > filesToProcess.length) {
+      toast.warning(`남은 변환 가능 사진 ${filesToProcess.length}장만 처리합니다.`);
+    }
+
+    setIsExtractingBookText(true);
+    try {
+      const functionsInstance = getFunctions(undefined, 'asia-northeast3');
+      const extractBookTextFunc = httpsCallable(functionsInstance, 'extractReadingBookTextFromPhoto');
+      const extractedTexts: string[] = [];
+      let successCount = 0;
+
+      for (const file of filesToProcess) {
+        const isHeic = file.type === 'image/heic' || file.type === 'image/heif' ||
+          file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
+        if (!file.type.startsWith('image/') && !isHeic) {
+          toast.warning(`${file.name}은 이미지 파일이 아닙니다.`);
+          continue;
+        }
+        if (file.size > 20 * 1024 * 1024) {
+          toast.warning(`${file.name}은 20MB를 초과하여 건너뜁니다.`);
+          continue;
+        }
+
+        try {
+          const compressed = await prepareBookOcrImage(file);
+          const imageBase64 = await blobToBase64String(compressed);
+          const result = await extractBookTextFunc({
+            imageBase64,
+            mimeType: 'image/jpeg',
+            bookTitle,
+            author,
+          });
+          const data = result.data as BookOcrResult;
+          const extracted = String(data.text || '').trim();
+          if (extracted) extractedTexts.push(extracted);
+          if (typeof data.usedCount === 'number') setReadingOcrUsedCount(data.usedCount);
+          successCount++;
+        } catch (error: any) {
+          const code = String(error?.code || '');
+          const message = String(error?.message || '책 본문 텍스트 변환에 실패했습니다.');
+          if (code.includes('resource-exhausted')) {
+            toast.warning(message);
+            break;
+          }
+          console.error('책 본문 OCR 실패:', error);
+          toast.error(message);
+        }
+      }
+
+      if (extractedTexts.length > 0) {
+        setFormData((prev) => {
+          const current = String(prev.reading_book_text || '').trim();
+          const nextText = extractedTexts.join('\n\n').trim();
+          const previousCount = Number(prev.reading_ocr_photo_count || 0);
+          return {
+            ...prev,
+            reading_book_text: current ? `${current}\n\n${nextText}` : nextText,
+            reading_ocr_photo_count: String(previousCount + successCount),
+          };
+        });
+        toast.success(`${successCount}장의 책 본문을 텍스트로 변환했습니다.`);
+      } else if (successCount > 0) {
+        toast.warning('사진에서 읽을 수 있는 책 본문을 찾지 못했습니다.');
+      }
+    } finally {
+      setIsExtractingBookText(false);
+      clearBookOcrInput();
+    }
+  };
+
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
@@ -1006,6 +1183,7 @@ ${contentValues}`,
       reading_book_title: '책 제목',
       reading_author: '저자',
       reading_today_part: '오늘 읽은 부분',
+      reading_book_text: '책 본문',
       reading_sentence: '기억 문장',
       reading_thought: '떠오른 생각',
       reading_life_link: '내 삶과 연결',
@@ -1140,6 +1318,7 @@ ${contentValues}`,
         if (data.readingEntryType === READING_ENTRY_TYPES.LEGACY_FINAL) return;
         const text = [
           data.reading_today_part ? `오늘 읽은 챕터: ${data.reading_today_part}` : '',
+          data.reading_book_text ? `책 본문: ${data.reading_book_text}` : '',
           data.reading_sentence ? `기억 문장: ${data.reading_sentence}` : '',
           data.reading_thought ? `떠오른 생각: ${data.reading_thought}` : '',
           data.reading_life_link ? `내 삶과 연결: ${data.reading_life_link}` : '',
@@ -1715,6 +1894,70 @@ ${contentValues}`,
                       ⚠️ {blockedBookMessage}
                     </div>
                   )}
+                  <div
+                    style={{
+                      marginTop: 12,
+                      padding: 12,
+                      border: '1px solid #d0dff0',
+                      borderRadius: 10,
+                      backgroundColor: '#f8fbff',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A3C6E', fontWeight: 700 }}>
+                        <FileText style={{ width: 15, height: 15 }} />
+                        책 본문 사진 → 텍스트
+                      </label>
+                      <span style={{ fontSize: 11, color: '#6b7280', whiteSpace: 'nowrap' }}>
+                        {isDeveloper
+                          ? '개발자 무제한'
+                          : readingOcrUsedCount === null
+                            ? `구독자 책 1권당 ${READING_BOOK_OCR_LIMIT}장`
+                            : `${readingOcrUsedCount}/${READING_BOOK_OCR_LIMIT}장`}
+                      </span>
+                    </div>
+                    <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
+                      책 페이지를 촬영해 추가하면 아래 "책 본문" 칸에 텍스트로 붙습니다.
+                    </p>
+                    <input
+                      ref={bookOcrInputRef}
+                      type="file"
+                      accept="image/*,.heic,.heif"
+                      multiple
+                      onChange={handleBookTextOcrUpload}
+                      style={{ display: 'none' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!isPremium) {
+                          alert('PREMIUM 구독 후 이용 가능한 기능입니다.');
+                          return;
+                        }
+                        bookOcrInputRef.current?.click();
+                      }}
+                      disabled={isExtractingBookText || (!isDeveloper && readingOcrUsedCount !== null && readingOcrUsedCount >= READING_BOOK_OCR_LIMIT)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        border: '1px dashed #1A3C6E',
+                        borderRadius: 8,
+                        backgroundColor: '#fff',
+                        color: '#1A3C6E',
+                        cursor: isExtractingBookText ? 'wait' : 'pointer',
+                        opacity: isExtractingBookText || (!isDeveloper && readingOcrUsedCount !== null && readingOcrUsedCount >= READING_BOOK_OCR_LIMIT) ? 0.55 : 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        fontSize: 13,
+                        fontWeight: 700,
+                      }}
+                    >
+                      <Camera style={{ width: 16, height: 16 }} />
+                      {isExtractingBookText ? '텍스트 변환 중...' : '책 본문 사진 추가'}
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -2729,8 +2972,8 @@ ${contentValues}`,
 
       {/* 사진 업로드 중 포도송이 오버레이 */}
       <LoadingOverlay
-        visible={isUploading}
-        message="사진 업로드 중..."
+        visible={isUploading || isExtractingBookText}
+        message={isExtractingBookText ? '책 본문 텍스트 변환 중...' : '사진 업로드 중...'}
       />
     </>
   );

@@ -43,6 +43,10 @@ const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
 
 // Storage 버킷
 const bucket = () => getStorage().bucket();
+const DEVELOPER_UIDS = new Set([
+  'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8',
+]);
+const READING_BOOK_OCR_LIMIT = 20;
 
 const KAKAO_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/kakaoCallback';
 const NAVER_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/naverCallback';
@@ -52,6 +56,32 @@ const ONEDRIVE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunct
 const ONEDRIVE_OAUTH_SCOPE = 'offline_access Files.ReadWrite User.Read';
 
 const db = admin.firestore();
+
+function normalizeReadingBookField(s: unknown): string {
+  return String(s || '')
+    .normalize('NFC')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+function makeReadingBookIdForFunction(title: string, author: string): string {
+  const t = normalizeReadingBookField(title);
+  const a = normalizeReadingBookField(author);
+  if (!t && !a) return '';
+  const key = `${t}|${a}`;
+  let h1 = 5381;
+  let h2 = 52711;
+  for (let i = 0; i < key.length; i++) {
+    const c = key.charCodeAt(i);
+    h1 = ((h1 << 5) + h1) ^ c;
+    h2 = ((h2 << 5) + h2) + c;
+    h1 = h1 >>> 0;
+    h2 = h2 >>> 0;
+  }
+  const hex = (h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0')).slice(0, 16);
+  return `reading_${hex}`;
+}
 
 // ===== 🔑 이메일 기반 통합 UID 생성/조회 함수 (기존 UID 우선) =====
 async function getOrCreateUnifiedUid(email: string, provider: string): Promise<string> {
@@ -1802,6 +1832,145 @@ export const deleteRecordImage = onCall(
       }
       logger.error('Firebase Storage 기록 사진 삭제 오류:', error);
       throw new HttpsError('internal', `삭제 실패: ${error.message}`);
+    }
+  }
+);
+
+// ===== 📚 독서사유 책 본문 사진 → 텍스트 변환 (Gemini Vision OCR) =====
+export const extractReadingBookTextFromPhoto = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+    memory: '512MiB',
+    timeoutSeconds: 60,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const uid = request.auth.uid;
+    const isDeveloper = DEVELOPER_UIDS.has(uid);
+    const d = request.data || {};
+    const bookTitle = String(d.bookTitle || '').trim().slice(0, 200);
+    const author = String(d.author || '').trim().slice(0, 120);
+    const bookId = makeReadingBookIdForFunction(bookTitle, author);
+    const rawImage = String(d.imageBase64 || '');
+    const imageBase64 = rawImage.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '');
+    const mimeType = String(d.mimeType || 'image/jpeg').startsWith('image/')
+      ? String(d.mimeType || 'image/jpeg')
+      : 'image/jpeg';
+
+    if (!bookTitle || !bookId) {
+      throw new HttpsError('invalid-argument', '책 제목이 필요합니다.');
+    }
+    if (!imageBase64) {
+      throw new HttpsError('invalid-argument', '이미지 데이터(imageBase64)가 필요합니다.');
+    }
+
+    const imageKb = Math.round(imageBase64.length * 0.75 / 1024);
+    if (imageKb > 7 * 1024) {
+      throw new HttpsError('invalid-argument', '사진이 너무 큽니다. 한 장당 7MB 이하로 줄여주세요.');
+    }
+
+    if (!isDeveloper) {
+      const subSnap = await db.doc(`users/${uid}/subscription/info`).get();
+      const plan = String(subSnap.data()?.plan || '').toLowerCase();
+      if (plan !== 'premium') {
+        throw new HttpsError('permission-denied', '책 본문 사진 텍스트 변환은 PREMIUM 구독자 전용 기능입니다.');
+      }
+    }
+
+    const usageRef = db.doc(`users/${uid}/readingOcrUsage/${bookId}`);
+    let usedCount: number | null = null;
+    let slotReserved = false;
+
+    if (!isDeveloper) {
+      usedCount = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(usageRef);
+        const current = Number(snap.data()?.photoCount || 0);
+        if (current >= READING_BOOK_OCR_LIMIT) {
+          throw new HttpsError('resource-exhausted', '책 한 권당 본문 사진은 총 20장까지 변환할 수 있습니다.');
+        }
+        const next = current + 1;
+        const dataToSave: Record<string, any> = {
+          bookId,
+          bookTitle,
+          author,
+          photoCount: next,
+          limit: READING_BOOK_OCR_LIMIT,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+        if (!snap.exists) {
+          dataToSave.createdAt = admin.firestore.FieldValue.serverTimestamp();
+        }
+        tx.set(usageRef, dataToSave, { merge: true });
+        return next;
+      });
+      slotReserved = true;
+    }
+
+    try {
+      logger.info('extractReadingBookTextFromPhoto 호출', {
+        uid: uid.slice(0, 8) + '…',
+        bookId,
+        imageKb,
+        isDeveloper,
+        usedCount,
+      });
+
+      const prompt = `책 본문 사진에서 보이는 텍스트만 원문 그대로 옮기세요.
+
+[규칙]
+- 요약, 해석, 감상, 제목 생성 금지
+- 보이지 않는 글자 추측 금지. 판독이 어려운 부분은 [판독불가]로 표시
+- 책 본문, 소제목, 쪽번호, 각주가 보이면 줄바꿈을 최대한 유지해 옮김
+- 광고, 앱 UI, 촬영 화면 글자는 제외
+- 응답은 텍스트 본문만. 마크다운 코드펜스 금지
+- 사진에 책 본문이 없으면 빈 문자열만 반환`;
+
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+      const result = await model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            data: imageBase64,
+            mimeType,
+          },
+        },
+      ]);
+
+      const extractedText = result.response.text()
+        .replace(/^```(?:text)?\s*/i, '')
+        .replace(/```\s*$/i, '')
+        .trim()
+        .slice(0, 12000);
+
+      return {
+        text: extractedText,
+        bookId,
+        usedCount,
+        limit: isDeveloper ? null : READING_BOOK_OCR_LIMIT,
+        remainingCount: isDeveloper || usedCount === null
+          ? null
+          : Math.max(READING_BOOK_OCR_LIMIT - usedCount, 0),
+        isDeveloper,
+      };
+    } catch (error: any) {
+      if (slotReserved) {
+        try {
+          await usageRef.set({
+            photoCount: admin.firestore.FieldValue.increment(-1),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          }, { merge: true });
+        } catch (rollbackError: any) {
+          logger.warn('독서 OCR 사용량 롤백 실패', { message: rollbackError?.message });
+        }
+      }
+      if (error instanceof HttpsError) throw error;
+      logger.error('독서 본문 OCR 실패', { message: error?.message?.slice(0, 200) });
+      throw new HttpsError('internal', '책 본문 텍스트 변환에 실패했습니다. 사진을 더 또렷이 찍어 주세요.');
     }
   }
 );
