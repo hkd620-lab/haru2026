@@ -331,7 +331,7 @@ export function SayuPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string; recordId?: string }[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고', 'SNS검색기록', '내가 읽은 책', 'HARU주식관리', '하루식물탐정']));
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고', 'SNS검색기록', '내가 읽은 책', 'HARU주식관리']));
   const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
   // 📊 통계/합치기 모달
   const [formatStatModal, setFormatStatModal] = useState<{
@@ -499,7 +499,7 @@ export function SayuPage() {
   }, [user?.uid, currentMonth]);
 
   useEffect(() => {
-    setCollapsedCategories(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고', 'SNS검색기록', '내가 읽은 책', 'HARU주식관리', '하루식물탐정']));
+    setCollapsedCategories(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고', 'SNS검색기록', '내가 읽은 책', 'HARU주식관리']));
     setExpandedFormats(new Set());
   }, [location.pathname]);
 
@@ -2381,6 +2381,12 @@ export function SayuPage() {
               return (b.date || '').localeCompare(a.date || '');
             });
             const expanded = !collapsedCategories.has('하루식물탐정');
+            const scrollToPlantSection = (sectionId: string) => {
+              document.getElementById(sectionId)?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+              });
+            };
             const renderList = (title: string, items: any) => {
               if (!Array.isArray(items) || items.length === 0) return null;
               return (
@@ -2512,24 +2518,64 @@ export function SayuPage() {
                         >
                           식물탐정비서 열기
                         </button>
-                        <div style={{ border: '1px solid #e8dfba', borderRadius: 8, background: '#fff', padding: '8px 10px' }}>
+                        <button
+                          type="button"
+                          onClick={() => scrollToPlantSection('sayu-plant-diary')}
+                          style={{
+                            border: '1px solid #e8dfba',
+                            borderRadius: 8,
+                            background: '#fff',
+                            padding: '8px 10px',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                          }}
+                          title="성장일기 목록으로 이동"
+                        >
                           <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>성장일기</div>
                           <div style={{ fontSize: 18, color: '#4A5A2C', fontWeight: 950 }}>{plantObservationEntries.length}</div>
-                        </div>
-                        <div style={{ border: '1px solid #e8dfba', borderRadius: 8, background: '#fff', padding: '8px 10px' }}>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => scrollToPlantSection('sayu-plant-library')}
+                          style={{
+                            border: '1px solid #e8dfba',
+                            borderRadius: 8,
+                            background: '#fff',
+                            padding: '8px 10px',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                          }}
+                          title="개인도감 목록으로 이동"
+                        >
                           <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>개인도감</div>
                           <div style={{ fontSize: 18, color: '#4A5A2C', fontWeight: 950 }}>{plantLibraryItems.length}</div>
-                        </div>
-                        <div style={{ border: '1px solid #cfe9df', borderRadius: 8, background: '#fff', padding: '8px 10px' }}>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => scrollToPlantSection('sayu-plant-catalog')}
+                          style={{
+                            border: '1px solid #cfe9df',
+                            borderRadius: 8,
+                            background: '#fff',
+                            padding: '8px 10px',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                          }}
+                          title="공개도감 목록으로 이동"
+                        >
                           <div style={{ fontSize: 11, color: '#5f8d83', fontWeight: 800 }}>공개도감</div>
                           <div style={{ fontSize: 18, color: '#0F766E', fontWeight: 950 }}>{plantCatalogItems.length}</div>
-                        </div>
+                        </button>
                       </div>
                     </div>
 
-                    {plantObservationEntries.length > 0 && (
-                      <div className="px-4 py-3" style={{ borderTop: '1px solid #f5f5f5' }}>
-                        <div style={{ fontSize: 13, fontWeight: 900, color: '#4A5A2C', marginBottom: 8 }}>📔 성장일기</div>
+                    <div
+                      id="sayu-plant-diary"
+                      className="px-4 py-3"
+                      style={{ borderTop: '1px solid #f5f5f5', scrollMarginTop: 90 }}
+                    >
+                      <div style={{ fontSize: 13, fontWeight: 900, color: '#4A5A2C', marginBottom: 8 }}>📔 성장일기</div>
+                      {plantObservationEntries.length > 0 ? (
                         <div style={{ display: 'grid', gap: 8 }}>
                           {plantObservationEntries.slice(0, 5).map(({ date, recordId, entry, idx }) => {
                             const title = entry?.plantName || entry?.title || '식물 관찰';
@@ -2557,32 +2603,46 @@ export function SayuPage() {
                             );
                           })}
                         </div>
-                      </div>
-                    )}
+                      ) : (
+                        <div style={{ fontSize: 12, color: '#6b7654', lineHeight: 1.6 }}>
+                          아직 저장된 성장일기가 없습니다. 식물탐정비서에서 오늘의 관찰을 저장하면 여기에 표시됩니다.
+                        </div>
+                      )}
+                    </div>
 
-                    {plantLibraryItems.length > 0 && (
-                      <div className="px-4 py-3" style={{ borderTop: '1px solid #f5f5f5', background: '#fffdf4' }}>
-                        <div style={{ fontSize: 13, fontWeight: 900, color: '#4A5A2C', marginBottom: 8 }}>📚 개인도감</div>
+                    <div
+                      id="sayu-plant-library"
+                      className="px-4 py-3"
+                      style={{ borderTop: '1px solid #f5f5f5', background: '#fffdf4', scrollMarginTop: 90 }}
+                    >
+                      <div style={{ fontSize: 13, fontWeight: 900, color: '#4A5A2C', marginBottom: 8 }}>📚 개인도감</div>
+                      {plantLibraryItems.length > 0 ? (
                         <div style={{ display: 'grid', gap: 8 }}>
                           {plantLibraryItems.slice(0, 5).map((item) => renderMiniPlantCard(item))}
                         </div>
-                      </div>
-                    )}
+                      ) : (
+                        <div style={{ fontSize: 12, color: '#6b7654', lineHeight: 1.6 }}>
+                          아직 내 식물도감에 저장된 식물이 없습니다.
+                        </div>
+                      )}
+                    </div>
 
-                    {plantCatalogItems.length > 0 && (
-                      <div className="px-4 py-3" style={{ borderTop: '1px solid #f5f5f5', background: '#ECFDF5' }}>
-                        <div style={{ fontSize: 13, fontWeight: 900, color: '#0F766E', marginBottom: 8 }}>🌿 공개도감</div>
+                    <div
+                      id="sayu-plant-catalog"
+                      className="px-4 py-3"
+                      style={{ borderTop: '1px solid #f5f5f5', background: '#ECFDF5', scrollMarginTop: 90 }}
+                    >
+                      <div style={{ fontSize: 13, fontWeight: 900, color: '#0F766E', marginBottom: 8 }}>🌿 공개도감</div>
+                      {plantCatalogItems.length > 0 ? (
                         <div style={{ display: 'grid', gap: 8 }}>
                           {plantCatalogItems.slice(0, 5).map((item) => renderMiniPlantCard(item, true))}
                         </div>
-                      </div>
-                    )}
-
-                    {totalPlantCount === 0 && (
-                      <div className="px-4 py-3" style={{ borderTop: '1px solid #f5f5f5', color: '#6b7654', fontSize: 13, lineHeight: 1.6 }}>
-                        아직 저장된 식물탐정 성장일기나 도감이 없습니다.
-                      </div>
-                    )}
+                      ) : (
+                        <div style={{ fontSize: 12, color: '#37675f', lineHeight: 1.6 }}>
+                          아직 공개 식물도감에 표시할 식물이 없습니다.
+                        </div>
+                      )}
+                    </div>
 
                     {selectedPlantCount > 0 && (
                       <div
