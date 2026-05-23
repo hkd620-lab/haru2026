@@ -81,3 +81,34 @@ git checkout feature/new-formats
 | 소규모 | 색상·텍스트 변경, 버그 1개 수정 | Firebase 직접 배포 |
 | 중규모 | 컴포넌트 1~2개 수정 | 로컬 확인 → Firebase 배포 |
 | 대규모 | 홈화면 개편, 새 기능, 라우터 변경 | 반드시 로컬 먼저 → 허 교장님 승인 → Firebase 배포 |
+
+## HARU2026 원격 Git 협업 운영 규칙
+
+### 역할 구조
+- 허대표님 = 총괄대표
+- 시박사(ChatGPT) = 전략·기획·운영 구조 설계
+- 기장(Codex) = 최고기술자 / 원격 Git 메인 작업자
+- cc(Claude Code) = 보조 개발 및 검수
+
+### Git 운영 원칙 (추가)
+- GitHub 원격 저장소 = 진실의 원천(Source of Truth)
+- 작업 전 git pull 필수
+- main 직접 수정 금지 (반드시 feature/new-formats 경유 후 머지)
+- main push = live 배포 / PR = preview 배포
+- **git add . 사용 금지** — 수정한 파일만 명시적으로 git add
+- 동시 코드 수정 금지
+
+### 보안 원칙
+- Secret / API key / JSON key 출력 금지
+- private_key 채팅 출력 금지
+- GitHub Secret 사용 원칙 유지
+
+### 금지 파일 (수정·커밋 금지)
+- routes.tsx
+- HaruRawPage.tsx
+- *.zombie
+
+### 커밋 제외 대상 (백업/복사본)
+- backup/
+- archives/
+- 파일명에 ` 2.ts` / ` 2.tsx`가 붙은 macOS 중복 복사본
