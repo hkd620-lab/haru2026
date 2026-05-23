@@ -513,12 +513,68 @@ export function SayuPage() {
     io.observe(el);
   };
 
-  const getLocalDateKey = () => {
-    const d = new Date();
+  const getLocalDateKey = (value: Date | number | string = new Date()) => {
+    const d = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(d.getTime())) return getLocalDateKey(new Date());
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const parseDateKeyTime = (dateKey: string) => {
+    const [yyyy, mm, dd] = String(dateKey || '').slice(0, 10).split('-').map((v) => Number(v));
+    if (!yyyy || !mm || !dd) return null;
+    return new Date(yyyy, mm - 1, dd).getTime();
+  };
+
+  const normalizeDiaryDateKey = (value: any, fallback?: string) => {
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+    if (value?.toDate && typeof value.toDate === 'function') return getLocalDateKey(value.toDate());
+    if (value) {
+      const parsed = new Date(value);
+      if (!Number.isNaN(parsed.getTime())) return getLocalDateKey(parsed);
+    }
+    return fallback || getLocalDateKey();
+  };
+
+  const formatKoreanDate = (dateKey: string) => {
+    const [yyyy, mm, dd] = String(dateKey || '').slice(0, 10).split('-');
+    if (!yyyy || !mm || !dd) return String(dateKey || '');
+    return `${yyyy}년 ${Number(mm)}월 ${Number(dd)}일`;
+  };
+
+  const summarizeTraceText = (value: any) => {
+    const text = String(value || '').replace(/\s+/g, ' ').trim();
+    return text.length > 70 ? `${text.slice(0, 70)}...` : text;
+  };
+
+  const getDaysBetweenDateKeys = (fromDateKey: string, toDateKey: string) => {
+    const fromTime = parseDateKeyTime(fromDateKey);
+    const toTime = parseDateKeyTime(toDateKey);
+    if (fromTime === null || toTime === null) return 0;
+    return Math.max(0, Math.round((toTime - fromTime) / 86400000));
+  };
+
+  const formatDaysAfterRecord = (days: number) => (days > 0 ? `${days}일 지나서 기록` : '기록 당일');
+
+  const getPlantDiaryTrace = (entry: any, fallbackDate: string) => {
+    const recordDate = normalizeDiaryDateKey(entry?.recordDate || entry?.firstRecordDate || entry?.originalRecordDate || fallbackDate, fallbackDate);
+    const updatedDate = entry?.updatedDate || (entry?.updatedAt ? normalizeDiaryDateKey(entry.updatedAt, '') : '');
+    const daysAfterRecord = typeof entry?.daysAfterRecord === 'number'
+      ? entry.daysAfterRecord
+      : updatedDate
+        ? getDaysBetweenDateKeys(recordDate, updatedDate)
+        : 0;
+    const editHistory = Array.isArray(entry?.editHistory) ? entry.editHistory : [];
+    return {
+      recordDate,
+      recordLabel: `${formatKoreanDate(recordDate)} 기록`,
+      updatedDate,
+      editedLabel: updatedDate ? `${formatKoreanDate(updatedDate)} 수정 · ${formatDaysAfterRecord(daysAfterRecord)}` : '',
+      editHistory,
+      editCount: typeof entry?.editCount === 'number' ? entry.editCount : editHistory.length,
+    };
   };
 
   const getSayuPlantName = (plant: SayuPlantLibraryItem | null) =>
@@ -611,21 +667,49 @@ export function SayuPage() {
       const recordId = editingPlantDiaryKey?.recordId || today;
       const recordRef = doc(db, 'users', user.uid, 'records', recordId);
       const now = Date.now();
+      const nowIso = new Date(now).toISOString();
       if (editingPlantDiaryKey) {
         const targetRecord = records.find((r) => r.id === editingPlantDiaryKey.recordId) as any;
         const current = Array.isArray(targetRecord?.plantObservation) ? [...targetRecord.plantObservation] : [];
         const prev = current[editingPlantDiaryKey.idx] || {};
+        const recordDate = normalizeDiaryDateKey(prev.recordDate || prev.firstRecordDate || prev.originalRecordDate || recordId, recordId);
+        const updatedDate = getLocalDateKey(now);
+        const daysAfterRecord = getDaysBetweenDateKeys(recordDate, updatedDate);
+        const editHistory = Array.isArray(prev.editHistory) ? prev.editHistory : [];
+        const editCount = editHistory.length + 1;
         current[editingPlantDiaryKey.idx] = {
           ...prev,
           plantId: prev.plantId || plant.id,
           plantName: prev.plantName || plantName,
           title: prev.title || plantName,
+          recordDate,
+          firstRecordDate: prev.firstRecordDate || recordDate,
           observation,
           aiDifference,
           memo,
           imageUrl: prev.imageUrl || photoUrl || '',
-          imageUrls: photoUrl ? [...(Array.isArray(prev.imageUrls) ? prev.imageUrls : []), photoUrl] : prev.imageUrls,
-          updatedAt: new Date(now).toISOString(),
+          imageUrls: photoUrl ? [...(Array.isArray(prev.imageUrls) ? prev.imageUrls : []), photoUrl] : (Array.isArray(prev.imageUrls) ? prev.imageUrls : []),
+          updatedAt: nowIso,
+          updatedDate,
+          daysAfterRecord,
+          editCount,
+          editHistory: [
+            ...editHistory,
+            {
+              editedAt: nowIso,
+              editedDate: updatedDate,
+              daysAfterRecord,
+              previousObservation: String(prev.observation || ''),
+              previousAiDifference: String(prev.aiDifference || ''),
+              previousMemo: String(prev.memo || ''),
+              previousImageUrl: prev.imageUrl || '',
+              previousImageUrls: Array.isArray(prev.imageUrls) ? prev.imageUrls : [],
+              newObservation: observation,
+              newAiDifference: aiDifference,
+              newMemo: memo,
+              addedPhotoUrl: photoUrl || '',
+            },
+          ],
         };
         await updateDoc(recordRef, { plantObservation: current });
         setRecords((prevRecords) => prevRecords.map((r) => (
@@ -639,12 +723,16 @@ export function SayuPage() {
           plantName,
           title: plantName,
           recordDate: today,
+          firstRecordDate: today,
           observation,
           aiDifference,
           memo,
           imageUrl: photoUrl,
           imageUrls: photoUrl ? [photoUrl] : [],
-          createdAt: new Date(now).toISOString(),
+          createdAt: nowIso,
+          createdDate: today,
+          editCount: 0,
+          editHistory: [],
           source: 'sayu_plant_diary',
         };
         await setDoc(
@@ -2880,6 +2968,9 @@ export function SayuPage() {
             const selectedPlantDiaryEntries = selectedPlantDiaryItem
               ? plantObservationEntries.filter(({ entry }) => isPlantDiaryForItem(entry, selectedPlantDiaryItem))
               : [];
+            const editingPlantDiaryEntry = editingPlantDiaryKey
+              ? plantObservationEntries.find(({ recordId, idx }) => recordId === editingPlantDiaryKey.recordId && idx === editingPlantDiaryKey.idx)
+              : null;
             return (
               <div className="mb-4">
                 <button
@@ -3077,6 +3168,7 @@ export function SayuPage() {
                               {plantObservationEntries.slice(0, 30).map(({ date, recordId, entry, idx }) => {
                                 const title = entry?.plantName || entry?.title || '식물 관찰';
                                 const photo = entry?.imageUrl || (Array.isArray(entry?.imageUrls) ? entry.imageUrls[0] : '');
+                                const trace = getPlantDiaryTrace(entry, date);
                                 const linkedPlant = plantLibraryItems.find((plant) => isPlantDiaryForItem(entry, plant));
                                 const diaryPlant = linkedPlant || {
                                   id: String(entry?.plantId || `diary_${recordId}_${idx}`),
@@ -3116,7 +3208,12 @@ export function SayuPage() {
                                       </div>
                                     )}
                                     <div style={{ minWidth: 0, flex: 1 }}>
-                                      <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>{date}</div>
+                                      <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>{trace.recordLabel}</div>
+                                      {trace.editedLabel && (
+                                        <div style={{ marginTop: 2, fontSize: 11, color: '#7a6a2c', fontWeight: 800 }}>
+                                          {trace.editedLabel}
+                                        </div>
+                                      )}
                                       <div className="truncate" style={{ fontSize: 14, color: '#24301f', fontWeight: 900 }}>{title}</div>
                                       {entry?.observation && (
                                         <div style={{ marginTop: 4, fontSize: 12, color: '#3d4734', lineHeight: 1.45 }}>
@@ -3227,6 +3324,16 @@ export function SayuPage() {
                           <div style={{ fontSize: 13, color: '#24301f', fontWeight: 900 }}>
                             {editingPlantDiaryKey ? '성장일기 수정' : '성장일기 추가'}
                           </div>
+                          {editingPlantDiaryEntry && (() => {
+                            const trace = getPlantDiaryTrace(editingPlantDiaryEntry.entry, editingPlantDiaryEntry.date);
+                            return (
+                              <div style={{ border: '1px solid #efe7c9', borderRadius: 8, background: '#fffdf4', padding: 8, fontSize: 11, color: '#6b7654', lineHeight: 1.55 }}>
+                                <div>{trace.recordLabel}</div>
+                                {trace.editedLabel && <div>{trace.editedLabel}</div>}
+                                {trace.editCount > 0 && <div>수정 흔적 {trace.editCount}회 보존 중</div>}
+                              </div>
+                            );
+                          })()}
                           <textarea
                             value={plantDiaryDraft.observation}
                             onChange={(e) => setPlantDiaryDraft((prev) => ({ ...prev, observation: e.target.value }))}
@@ -3326,6 +3433,7 @@ export function SayuPage() {
                             selectedPlantDiaryEntries.map(({ date, recordId, entry, idx }) => {
                               const photo = entry?.imageUrl || (Array.isArray(entry?.imageUrls) ? entry.imageUrls[0] : '');
                               const images = Array.isArray(entry?.imageUrls) ? entry.imageUrls.filter(Boolean) : photo ? [photo] : [];
+                              const trace = getPlantDiaryTrace(entry, date);
                               return (
                                 <button
                                   key={`${recordId}_plant_detail_${idx}`}
@@ -3350,7 +3458,12 @@ export function SayuPage() {
                                       </div>
                                     )}
                                     <div style={{ minWidth: 0, flex: 1 }}>
-                                      <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>{date}</div>
+                                      <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>{trace.recordLabel}</div>
+                                      {trace.editedLabel && (
+                                        <div style={{ marginTop: 2, fontSize: 11, color: '#7a6a2c', fontWeight: 800 }}>
+                                          {trace.editedLabel}
+                                        </div>
+                                      )}
                                       {entry?.observation && <p style={{ margin: '4px 0 0', color: '#24301f', fontSize: 13, lineHeight: 1.5 }}>{String(entry.observation)}</p>}
                                       {entry?.aiDifference && <p style={{ margin: '4px 0 0', color: '#7a6a2c', fontSize: 12, lineHeight: 1.45 }}>AI와 다른 점: {String(entry.aiDifference)}</p>}
                                       {entry?.memo && <p style={{ margin: '4px 0 0', color: '#6b7654', fontSize: 12, lineHeight: 1.45 }}>메모: {String(entry.memo)}</p>}
@@ -3359,6 +3472,24 @@ export function SayuPage() {
                                           {images.slice(0, 6).map((url: string, imageIdx: number) => (
                                             <img key={`${recordId}_${idx}_detail_photo_${imageIdx}`} src={url} alt={`성장사진 ${imageIdx + 1}`} style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5ddbf', flexShrink: 0 }} />
                                           ))}
+                                        </div>
+                                      )}
+                                      {trace.editHistory.length > 0 && (
+                                        <div style={{ marginTop: 8, borderTop: '1px dashed #e5ddbf', paddingTop: 6, display: 'grid', gap: 3, fontSize: 11, color: '#7a6a2c', lineHeight: 1.45 }}>
+                                          <div style={{ fontWeight: 900 }}>수정 흔적 {trace.editHistory.length}회</div>
+                                          {trace.editHistory.map((history: any, historyIdx: number) => {
+                                            const editedDate = normalizeDiaryDateKey(history?.editedDate || history?.editedAt, trace.updatedDate || trace.recordDate);
+                                            const daysAfterRecord = typeof history?.daysAfterRecord === 'number'
+                                              ? history.daysAfterRecord
+                                              : getDaysBetweenDateKeys(trace.recordDate, editedDate);
+                                            const previousText = summarizeTraceText(history?.previousObservation || history?.previousMemo || history?.previousAiDifference);
+                                            return (
+                                              <div key={`${recordId}_${idx}_history_${historyIdx}`}>
+                                                {historyIdx + 1}. {formatKoreanDate(editedDate)} 수정 · {formatDaysAfterRecord(daysAfterRecord)}
+                                                {previousText ? ` · 이전: ${previousText}` : ''}
+                                              </div>
+                                            );
+                                          })}
                                         </div>
                                       )}
                                     </div>
