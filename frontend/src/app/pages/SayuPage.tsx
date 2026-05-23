@@ -331,7 +331,7 @@ export function SayuPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string; recordId?: string }[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고', 'SNS검색기록']));
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고', 'SNS검색기록', '내가 읽은 책', 'HARU주식관리', '하루식물탐정']));
   const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
   // 📊 통계/합치기 모달
   const [formatStatModal, setFormatStatModal] = useState<{
@@ -499,7 +499,7 @@ export function SayuPage() {
   }, [user?.uid, currentMonth]);
 
   useEffect(() => {
-    setCollapsedCategories(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고', 'SNS검색기록']));
+    setCollapsedCategories(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고', 'SNS검색기록', '내가 읽은 책', 'HARU주식관리', '하루식물탐정']));
     setExpandedFormats(new Set());
   }, [location.pathname]);
 
