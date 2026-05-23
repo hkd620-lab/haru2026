@@ -11,6 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { compressImage } from '../services/imageService';
 import type { PlantAsset, PlantAssetSourceType } from '../types/haruTypes';
 import { lookupPlantAlias } from '../data/plantNameAliases';
+import { useSubscription } from '../hooks/useSubscription';
 
 // ===========================================
 // 응답 타입 — functions/src/index.ts detectPlantAdvanced 와 동기
@@ -198,6 +199,7 @@ const NIBR_DEBUG = false;
 export function PlantDetectivePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isPremium } = useSubscription();
   const isAdmin = user?.uid === ADMIN_UID;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
@@ -315,6 +317,10 @@ export function PlantDetectivePage() {
   };
 
   const loadPublicCatalog = async () => {
+    if (!isPremium && !isAdmin) {
+      setPublicCatalog([]);
+      return;
+    }
     try {
       const q = query(
         collection(db, 'plant_catalog'),
@@ -333,7 +339,7 @@ export function PlantDetectivePage() {
     loadPlantLibrary();
     loadPlantDiary();
     loadPublicCatalog();
-  }, [user?.uid]);
+  }, [isAdmin, isPremium, user?.uid]);
 
   const resetSessionState = () => {
     setResult(null);
@@ -1470,7 +1476,13 @@ export function PlantDetectivePage() {
             <button
               key={key}
               type="button"
-              onClick={() => setActiveTab(key as 'detect' | 'recent' | 'library' | 'diary' | 'catalog')}
+              onClick={() => {
+                if (key === 'catalog' && !isPremium && !isAdmin) {
+                  toast.error('공개도감은 구독자 전용입니다.');
+                  return;
+                }
+                setActiveTab(key as 'detect' | 'recent' | 'library' | 'diary' | 'catalog');
+              }}
               style={{
                 minHeight: 38,
                 border: 'none',

@@ -9,9 +9,12 @@ import { toast } from 'sonner';
 import { SayuModal } from '../components/SayuModal';
 import { CATEGORY_FORMATS, FORMAT_PREFIX, FORMAT_EMOJI, READING_ENTRY_TYPES, READING_STATUS } from '../types/haruTypes';
 import type { RecordFormat } from '../types/haruTypes';
-import { collection, getDocs, orderBy, query, deleteDoc, doc, writeBatch, updateDoc, limit } from 'firebase/firestore';
+import { collection, getDocs, orderBy, query, deleteDoc, doc, writeBatch, updateDoc, limit, setDoc, serverTimestamp, arrayUnion, increment } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db } from '../../firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { useSubscription } from '../hooks/useSubscription';
+import { compressImage } from '../services/imageService';
 
 // 목록 뷰에서 제목으로 쓸 첫 번째 필드 키
 const FORMAT_FIRST_FIELD: Record<string, string> = {
@@ -49,6 +52,16 @@ interface SayuPlantLibraryItem {
   observationCount?: number;
   watermarkText?: string;
 }
+interface SayuPlantDiaryEditKey {
+  recordId: string;
+  idx: number;
+}
+
+const emptyPlantDiaryDraft = {
+  observation: '',
+  aiDifference: '',
+  memo: '',
+};
 
 // SAYU 리스트 키워드 미리보기용 fallback 추출기
 // 저장 구조는 건드리지 않고 화면 표시 fallback으로만 사용
@@ -324,6 +337,7 @@ export function SayuPage() {
 
   const location = useLocation();
   const { user } = useAuth();
+  const { isPremium } = useSubscription();
   const navigate = useNavigate();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [records, setRecords] = useState<HaruRecord[]>([]);
@@ -435,6 +449,10 @@ export function SayuPage() {
   const [plantLibraryLoaded, setPlantLibraryLoaded] = useState(false);
   const [plantCatalogLoaded, setPlantCatalogLoaded] = useState(false);
   const [plantPopupType, setPlantPopupType] = useState<null | 'assistant' | 'diary' | 'library' | 'catalog'>(null);
+  const [selectedPlantDiaryItem, setSelectedPlantDiaryItem] = useState<SayuPlantLibraryItem | null>(null);
+  const [editingPlantDiaryKey, setEditingPlantDiaryKey] = useState<SayuPlantDiaryEditKey | null>(null);
+  const [plantDiaryDraft, setPlantDiaryDraft] = useState(emptyPlantDiaryDraft);
+  const [plantDiarySaving, setPlantDiarySaving] = useState(false);
 
   // === SAYU 키워드 미리보기 백필 (IntersectionObserver) ===
   const kwInflightRef = useRef<Set<string>>(new Set());
@@ -495,6 +513,195 @@ export function SayuPage() {
     io.observe(el);
   };
 
+  const getLocalDateKey = () => {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const getSayuPlantName = (plant: SayuPlantLibraryItem | null) =>
+    plant?.displayName || plant?.userConfirmedName || plant?.finalGuess || '식물 이름 불확실';
+
+  const normalizePlantName = (value: any) => String(value || '').trim().toLowerCase();
+
+  const isPlantDiaryForItem = (entry: any, plant: SayuPlantLibraryItem | null) => {
+    if (!entry || !plant) return false;
+    if (entry.plantId && entry.plantId === plant.id) return true;
+    const plantNames = [
+      plant.displayName,
+      plant.userConfirmedName,
+      plant.finalGuess,
+      plant.englishName,
+      plant.scientificName,
+      plant.finalLatinName,
+    ].map(normalizePlantName).filter(Boolean);
+    const entryNames = [
+      entry.plantName,
+      entry.title,
+      entry.userConfirmedName,
+      entry.humanReportedName,
+      entry.aiKoName,
+      entry.aiPrediction,
+      entry.scientificName,
+      entry.latinName,
+    ].map(normalizePlantName).filter(Boolean);
+    return entryNames.some((name) => plantNames.includes(name));
+  };
+
+  const uploadSayuPlantDiaryPhoto = async (plantId: string, file: File) => {
+    if (!file.type.startsWith('image/')) {
+      throw new Error('사진 파일만 추가할 수 있어요.');
+    }
+    const compressed = await compressImage(file, 1024, 0.82);
+    const storage = getStorage();
+    const ts = Date.now();
+    const storageRef = ref(storage, `users/${user!.uid}/format_photos/${plantId}_sayu_diary_${ts}.jpg`);
+    await uploadBytes(storageRef, compressed, { contentType: compressed.type || file.type || 'image/jpeg' });
+    return getDownloadURL(storageRef);
+  };
+
+  const openPublicPlantCatalog = () => {
+    if (!isPremium && !isDeveloper) {
+      toast.error('공개도감은 구독자 전용입니다.');
+      return;
+    }
+    setPlantPopupType('catalog');
+  };
+
+  const openPlantDiaryDetail = (plant: SayuPlantLibraryItem) => {
+    setSelectedPlantDiaryItem(plant);
+    setEditingPlantDiaryKey(null);
+    setPlantDiaryDraft(emptyPlantDiaryDraft);
+  };
+
+  const closePlantDiaryDetail = () => {
+    setSelectedPlantDiaryItem(null);
+    setEditingPlantDiaryKey(null);
+    setPlantDiaryDraft(emptyPlantDiaryDraft);
+  };
+
+  const handleEditPlantDiary = (recordId: string, idx: number, entry: any) => {
+    setEditingPlantDiaryKey({ recordId, idx });
+    setPlantDiaryDraft({
+      observation: String(entry?.observation || ''),
+      aiDifference: String(entry?.aiDifference || ''),
+      memo: String(entry?.memo || ''),
+    });
+  };
+
+  const handleSavePlantDiary = async (plant: SayuPlantLibraryItem, file?: File | null) => {
+    if (!user?.uid) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+    const observation = plantDiaryDraft.observation.trim();
+    const aiDifference = plantDiaryDraft.aiDifference.trim();
+    const memo = plantDiaryDraft.memo.trim();
+    if (!observation && !aiDifference && !memo && !file) {
+      toast.error('성장일기 내용이나 사진을 추가해 주세요.');
+      return;
+    }
+    setPlantDiarySaving(true);
+    try {
+      const photoUrl = file ? await uploadSayuPlantDiaryPhoto(plant.id, file) : '';
+      const plantName = getSayuPlantName(plant);
+      const today = getLocalDateKey();
+      const recordId = editingPlantDiaryKey?.recordId || today;
+      const recordRef = doc(db, 'users', user.uid, 'records', recordId);
+      const now = Date.now();
+      if (editingPlantDiaryKey) {
+        const targetRecord = records.find((r) => r.id === editingPlantDiaryKey.recordId) as any;
+        const current = Array.isArray(targetRecord?.plantObservation) ? [...targetRecord.plantObservation] : [];
+        const prev = current[editingPlantDiaryKey.idx] || {};
+        current[editingPlantDiaryKey.idx] = {
+          ...prev,
+          plantId: prev.plantId || plant.id,
+          plantName: prev.plantName || plantName,
+          title: prev.title || plantName,
+          observation,
+          aiDifference,
+          memo,
+          imageUrl: prev.imageUrl || photoUrl || '',
+          imageUrls: photoUrl ? [...(Array.isArray(prev.imageUrls) ? prev.imageUrls : []), photoUrl] : prev.imageUrls,
+          updatedAt: new Date(now).toISOString(),
+        };
+        await updateDoc(recordRef, { plantObservation: current });
+        setRecords((prevRecords) => prevRecords.map((r) => (
+          r.id === editingPlantDiaryKey.recordId ? ({ ...(r as any), plantObservation: current } as HaruRecord) : r
+        )));
+        toast.success('성장일기를 수정했습니다.');
+      } else {
+        const entry = {
+          id: `sayu_${plant.id}_${now}`,
+          plantId: plant.id,
+          plantName,
+          title: plantName,
+          recordDate: today,
+          observation,
+          aiDifference,
+          memo,
+          imageUrl: photoUrl,
+          imageUrls: photoUrl ? [photoUrl] : [],
+          createdAt: new Date(now).toISOString(),
+          source: 'sayu_plant_diary',
+        };
+        await setDoc(
+          recordRef,
+          {
+            date: today,
+            plantObservation: arrayUnion(entry),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
+        setRecords((prevRecords) => {
+          const existing = prevRecords.find((r) => r.id === today) as any;
+          if (existing) {
+            return prevRecords.map((r) => (
+              r.id === today
+                ? ({ ...(r as any), plantObservation: [...(Array.isArray((r as any).plantObservation) ? (r as any).plantObservation : []), entry] } as HaruRecord)
+                : r
+            ));
+          }
+          return [{ id: today, date: today, plantObservation: [entry] } as any, ...prevRecords];
+        });
+        await setDoc(
+          doc(db, 'users', user.uid, 'plants', plant.id),
+          {
+            observationCount: increment(1),
+            updatedAt: serverTimestamp(),
+            ...(photoUrl ? {
+              photos: arrayUnion(photoUrl),
+              imageUrl: plant.imageUrl || photoUrl,
+              growthPhotos: arrayUnion({ url: photoUrl, addedAt: now, type: 'growth_diary' }),
+              latestPhotoUrl: photoUrl,
+            } : {}),
+          },
+          { merge: true },
+        );
+        setPlantLibraryItems((prev) => prev.map((item) => (
+          item.id === plant.id
+            ? {
+                ...item,
+                observationCount: typeof item.observationCount === 'number' ? item.observationCount + 1 : 1,
+                photos: photoUrl ? [...(Array.isArray(item.photos) ? item.photos : []), photoUrl] : item.photos,
+                imageUrl: item.imageUrl || photoUrl,
+              }
+            : item
+        )));
+        toast.success('성장일기를 추가했습니다.');
+      }
+      setEditingPlantDiaryKey(null);
+      setPlantDiaryDraft(emptyPlantDiaryDraft);
+    } catch (e: any) {
+      toast.error(e?.message || '성장일기 저장에 실패했습니다.');
+    } finally {
+      setPlantDiarySaving(false);
+    }
+  };
+
   useEffect(() => {
     fetchRecords();
   }, [user?.uid, currentMonth]);
@@ -532,6 +739,7 @@ export function SayuPage() {
 
   useEffect(() => {
     if (collapsedCategories.has('하루식물탐정')) return;
+    if (!isPremium && !isDeveloper) return;
     if (plantCatalogLoaded) return;
     (async () => {
       try {
@@ -547,7 +755,7 @@ export function SayuPage() {
         setPlantCatalogLoaded(true);
       }
     })();
-  }, [collapsedCategories, plantCatalogLoaded]);
+  }, [collapsedCategories, isDeveloper, isPremium, plantCatalogLoaded]);
 
   // Fetch AI logs when AI지식모음 is expanded
   useEffect(() => {
@@ -2300,8 +2508,25 @@ export function SayuPage() {
                               {plantObservationEntries.slice(0, 30).map(({ date, recordId, entry, idx }) => {
                                 const title = entry?.plantName || entry?.title || '식물 관찰';
                                 const photo = entry?.imageUrl || (Array.isArray(entry?.imageUrls) ? entry.imageUrls[0] : '');
+                                const linkedPlant = plantLibraryItems.find((plant) => isPlantDiaryForItem(entry, plant));
+                                const DiaryTag = linkedPlant ? 'button' : 'div';
                                 return (
-                                  <div key={`${recordId}_popup_obs_${idx}`} style={{ display: 'flex', gap: 10, border: '1px solid #f0ead1', borderRadius: 8, background: '#fff', padding: 10 }}>
+                                  <DiaryTag
+                                    key={`${recordId}_popup_obs_${idx}`}
+                                    type={linkedPlant ? 'button' : undefined}
+                                    onClick={linkedPlant ? () => openPlantDiaryDetail(linkedPlant) : undefined}
+                                    style={{
+                                      display: 'flex',
+                                      width: '100%',
+                                      gap: 10,
+                                      border: '1px solid #f0ead1',
+                                      borderRadius: 8,
+                                      background: '#fff',
+                                      padding: 10,
+                                      textAlign: 'left',
+                                      cursor: linkedPlant ? 'pointer' : 'default',
+                                    }}
+                                  >
                                     {photo ? (
                                       <img src={photo} alt={title} style={{ width: 54, height: 54, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
                                     ) : (
@@ -2318,7 +2543,7 @@ export function SayuPage() {
                                         </div>
                                       )}
                                     </div>
-                                  </div>
+                                  </DiaryTag>
                                 );
                               })}
                             </div>
@@ -2332,7 +2557,7 @@ export function SayuPage() {
                         {plantPopupType === 'library' && (
                           plantLibraryItems.length > 0 ? (
                             <div style={{ display: 'grid', gap: 8 }}>
-                              {plantLibraryItems.slice(0, 30).map((item) => renderMiniPlantCard(item))}
+                              {plantLibraryItems.slice(0, 30).map((item) => renderMiniPlantCard(item, false, () => openPlantDiaryDetail(item)))}
                             </div>
                           ) : (
                             <div style={{ fontSize: 13, color: '#6b7654', lineHeight: 1.6 }}>
@@ -2589,16 +2814,20 @@ export function SayuPage() {
                     : null;
               return date && !Number.isNaN(date.getTime()) ? date.toISOString().slice(0, 10) : '';
             };
-            const renderMiniPlantCard = (item: SayuPlantLibraryItem, watermark = false) => {
+            const renderMiniPlantCard = (item: SayuPlantLibraryItem, watermark = false, onOpen?: () => void) => {
               const photo = item.imageUrl || item.photos?.[0] || '';
               const name = getLibraryName(item);
               const sub = getLibrarySub(item);
+              const CardTag = onOpen ? 'button' : 'div';
               return (
-                <div
+                <CardTag
                   key={item.id}
+                  type={onOpen ? 'button' : undefined}
+                  onClick={onOpen}
                   style={{
                     position: 'relative',
                     display: 'flex',
+                    width: '100%',
                     gap: 10,
                     alignItems: 'center',
                     border: '1px solid #f0ead1',
@@ -2606,6 +2835,8 @@ export function SayuPage() {
                     background: '#fff',
                     padding: 10,
                     overflow: 'hidden',
+                    textAlign: 'left',
+                    cursor: onOpen ? 'pointer' : 'default',
                   }}
                 >
                   {watermark && (
@@ -2642,10 +2873,13 @@ export function SayuPage() {
                       {Array.isArray(item.photos) ? ` · 사진 ${item.photos.length}장` : ''}
                     </div>
                   </div>
-                </div>
+                </CardTag>
               );
             };
             const totalPlantCount = plantEntries.length + plantObservationEntries.length + plantLibraryItems.length + plantCatalogItems.length;
+            const selectedPlantDiaryEntries = selectedPlantDiaryItem
+              ? plantObservationEntries.filter(({ entry }) => isPlantDiaryForItem(entry, selectedPlantDiaryItem))
+              : [];
             return (
               <div className="mb-4">
                 <button
@@ -2714,7 +2948,7 @@ export function SayuPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => setPlantPopupType('catalog')}
+                          onClick={openPublicPlantCatalog}
                           style={{
                             border: '1px solid #cfe9df',
                             borderRadius: 8,
@@ -2895,6 +3129,225 @@ export function SayuPage() {
                             </div>
                           )
                         )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {selectedPlantDiaryItem && (
+                  <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="식물 성장일기 편집"
+                    onClick={closePlantDiaryDetail}
+                    style={{
+                      position: 'fixed',
+                      inset: 0,
+                      zIndex: 1010,
+                      background: 'rgba(17, 24, 39, 0.48)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 16,
+                    }}
+                  >
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        width: 'min(620px, 100%)',
+                        maxHeight: '82vh',
+                        overflow: 'hidden',
+                        borderRadius: 12,
+                        background: '#fffdf4',
+                        border: '1px solid #e8dfba',
+                        boxShadow: '0 18px 45px rgba(0,0,0,0.28)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid rgba(0,0,0,0.08)', background: '#fff' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div className="truncate" style={{ fontSize: 16, color: '#4A5A2C', fontWeight: 950 }}>
+                            {getSayuPlantName(selectedPlantDiaryItem)} 성장일기
+                          </div>
+                          <div style={{ fontSize: 11, color: '#92996f', marginTop: 3 }}>
+                            개인도감 식물별로 계속 추가·수정할 수 있습니다.
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={closePlantDiaryDetail}
+                          aria-label="성장일기 편집 닫기"
+                          style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: 17,
+                            border: '1px solid #e5e7eb',
+                            background: '#fff',
+                            color: '#1A3C6E',
+                            fontSize: 18,
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+
+                      <div style={{ padding: 14, overflowY: 'auto', display: 'grid', gap: 12 }}>
+                        <div style={{ border: '1px solid #f0ead1', borderRadius: 8, background: '#fff', padding: 12, display: 'grid', gap: 8 }}>
+                          <div style={{ fontSize: 13, color: '#24301f', fontWeight: 900 }}>
+                            {editingPlantDiaryKey ? '성장일기 수정' : '성장일기 추가'}
+                          </div>
+                          <textarea
+                            value={plantDiaryDraft.observation}
+                            onChange={(e) => setPlantDiaryDraft((prev) => ({ ...prev, observation: e.target.value }))}
+                            placeholder="오늘의 성장 상태, 잎·줄기·흙·꽃 변화"
+                            rows={3}
+                            style={{ width: '100%', resize: 'vertical', border: '1px solid #e5ddbf', borderRadius: 8, padding: 10, fontSize: 13, lineHeight: 1.5 }}
+                          />
+                          <textarea
+                            value={plantDiaryDraft.aiDifference}
+                            onChange={(e) => setPlantDiaryDraft((prev) => ({ ...prev, aiDifference: e.target.value }))}
+                            placeholder="AI 판독과 다르게 보인 점"
+                            rows={2}
+                            style={{ width: '100%', resize: 'vertical', border: '1px solid #e5ddbf', borderRadius: 8, padding: 10, fontSize: 13, lineHeight: 1.5 }}
+                          />
+                          <textarea
+                            value={plantDiaryDraft.memo}
+                            onChange={(e) => setPlantDiaryDraft((prev) => ({ ...prev, memo: e.target.value }))}
+                            placeholder="물주기, 햇빛, 비료, 다음 관리 메모"
+                            rows={2}
+                            style={{ width: '100%', resize: 'vertical', border: '1px solid #e5ddbf', borderRadius: 8, padding: 10, fontSize: 13, lineHeight: 1.5 }}
+                          />
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                            <label
+                              style={{
+                                minHeight: 36,
+                                padding: '0 12px',
+                                borderRadius: 8,
+                                border: '1px solid #b8c28c',
+                                color: '#4A5A2C',
+                                background: '#fff',
+                                fontSize: 12,
+                                fontWeight: 900,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                cursor: plantDiarySaving ? 'wait' : 'pointer',
+                              }}
+                            >
+                              사진 추가하고 저장
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                disabled={plantDiarySaving}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0] || null;
+                                  e.target.value = '';
+                                  if (file) handleSavePlantDiary(selectedPlantDiaryItem, file);
+                                }}
+                                style={{ display: 'none' }}
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => handleSavePlantDiary(selectedPlantDiaryItem)}
+                              disabled={plantDiarySaving}
+                              style={{
+                                minHeight: 36,
+                                padding: '0 12px',
+                                borderRadius: 8,
+                                border: '1px solid #4A5A2C',
+                                background: plantDiarySaving ? '#eef0d8' : '#4A5A2C',
+                                color: plantDiarySaving ? '#7b8b4b' : '#fff',
+                                fontSize: 12,
+                                fontWeight: 900,
+                                cursor: plantDiarySaving ? 'wait' : 'pointer',
+                              }}
+                            >
+                              {plantDiarySaving ? '저장 중...' : editingPlantDiaryKey ? '수정 저장' : '글만 저장'}
+                            </button>
+                            {editingPlantDiaryKey && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingPlantDiaryKey(null);
+                                  setPlantDiaryDraft(emptyPlantDiaryDraft);
+                                }}
+                                disabled={plantDiarySaving}
+                                style={{
+                                  minHeight: 36,
+                                  padding: '0 12px',
+                                  borderRadius: 8,
+                                  border: '1px solid #e5ddbf',
+                                  background: '#fff',
+                                  color: '#6b7654',
+                                  fontSize: 12,
+                                  fontWeight: 800,
+                                  cursor: plantDiarySaving ? 'wait' : 'pointer',
+                                }}
+                              >
+                                새 일기로 전환
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gap: 8 }}>
+                          {selectedPlantDiaryEntries.length > 0 ? (
+                            selectedPlantDiaryEntries.map(({ date, recordId, entry, idx }) => {
+                              const photo = entry?.imageUrl || (Array.isArray(entry?.imageUrls) ? entry.imageUrls[0] : '');
+                              const images = Array.isArray(entry?.imageUrls) ? entry.imageUrls.filter(Boolean) : photo ? [photo] : [];
+                              return (
+                                <article key={`${recordId}_plant_detail_${idx}`} style={{ border: '1px solid #f0ead1', borderRadius: 8, background: '#fff', padding: 10 }}>
+                                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                                    {photo ? (
+                                      <img src={photo} alt={getSayuPlantName(selectedPlantDiaryItem)} style={{ width: 58, height: 58, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+                                    ) : (
+                                      <div style={{ width: 58, height: 58, borderRadius: 6, background: '#eef0d8', display: 'grid', placeItems: 'center', color: '#4A5A2C', flexShrink: 0 }}>
+                                        <Leaf size={20} />
+                                      </div>
+                                    )}
+                                    <div style={{ minWidth: 0, flex: 1 }}>
+                                      <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>{date}</div>
+                                      {entry?.observation && <p style={{ margin: '4px 0 0', color: '#24301f', fontSize: 13, lineHeight: 1.5 }}>{String(entry.observation)}</p>}
+                                      {entry?.aiDifference && <p style={{ margin: '4px 0 0', color: '#7a6a2c', fontSize: 12, lineHeight: 1.45 }}>AI와 다른 점: {String(entry.aiDifference)}</p>}
+                                      {entry?.memo && <p style={{ margin: '4px 0 0', color: '#6b7654', fontSize: 12, lineHeight: 1.45 }}>메모: {String(entry.memo)}</p>}
+                                      {images.length > 1 && (
+                                        <div style={{ display: 'flex', gap: 6, marginTop: 8, overflowX: 'auto' }}>
+                                          {images.slice(0, 6).map((url: string, imageIdx: number) => (
+                                            <img key={`${recordId}_${idx}_detail_photo_${imageIdx}`} src={url} alt={`성장사진 ${imageIdx + 1}`} style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5ddbf', flexShrink: 0 }} />
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditPlantDiary(recordId, idx, entry)}
+                                    style={{
+                                      marginTop: 8,
+                                      minHeight: 30,
+                                      padding: '0 10px',
+                                      borderRadius: 7,
+                                      border: '1px solid #e5ddbf',
+                                      background: '#fffdf4',
+                                      color: '#4A5A2C',
+                                      fontSize: 12,
+                                      fontWeight: 800,
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    수정하기
+                                  </button>
+                                </article>
+                              );
+                            })
+                          ) : (
+                            <div style={{ border: '1px solid #f0ead1', borderRadius: 8, background: '#fff', padding: 12, fontSize: 13, color: '#6b7654', lineHeight: 1.6 }}>
+                              이 식물의 성장일기가 아직 없습니다. 위 입력란에서 첫 성장일기를 추가해 주세요.
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
