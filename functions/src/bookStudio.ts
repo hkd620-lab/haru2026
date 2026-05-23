@@ -100,7 +100,7 @@ export const generateBook = onCall(
 6. 마지막 줄: 📚 근거: 노트북LM 분석 — ${sourceTitle || title}`;
 
       const message = await client.chat.completions.create({
-        model: "gpt-5.5-2026-04-23",
+        model: "gpt-4o",
         max_completion_tokens: 4000,
         messages: [{ role: "user", content: prompt }],
       });
@@ -144,7 +144,7 @@ export const generateBook = onCall(
 [다룬 인물/소스]: ${sources.map((s, i) => s.sourceTitle || `소스 ${i + 1}`).join(', ')}`;
 
     const psychMsg = await client.chat.completions.create({
-      model: "gpt-5.5-2026-04-23",
+      model: "gpt-4o",
       max_completion_tokens: 2000,
       messages: [{ role: "user", content: psychPrompt }],
     });

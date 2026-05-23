@@ -2347,7 +2347,7 @@ export const lawEasyExplain = onCall(
     try {
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
       const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.1-flash-lite',
         systemInstruction: `당신은 실무 경력 20년의 대한민국 법률 전문가입니다.
 사용자의 질문과 관련 법조문을 바탕으로, 반드시 아래 형식으로만 답변하세요.
 마크다운 기호(**, ##, --, >, __)는 절대 사용하지 마세요.
@@ -2502,7 +2502,7 @@ export const lawPrecedent = onCall(
     let summaries: Array<{ summary: string }> = [];
     try {
       const sumModel = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.1-flash-lite',
         systemInstruction: `당신은 실무 경력 20년의 대한민국 법률 전문가입니다.
 아래에 제공된 판례들은 국가법령정보센터에서 가져온 실제 판례입니다.
 사용자의 검색 키워드와 질문 맥락을 바탕으로, 각 판례를 사용자가 이해하기 쉽게 요약하세요.
@@ -3007,7 +3007,7 @@ export const preloadChapterGrammar = onCall(
 
         // 2. Gemini 호출
         const geminiApiKey = GEMINI_API_KEY_SECRET.value();
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${geminiApiKey}`;
 
         const geminiPrompt = `다음 영어 성경 구절에서 문법 요소를 분석해주세요.
 구절: "${verseText}"
@@ -3324,7 +3324,7 @@ export const fetchTopNews = onSchedule(
       }
       if (allItems.length === 0) { logger.warn('수집된 뉴스 없음'); return; }
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
       const prompt = `다음은 오늘의 해외 주요 뉴스 목록입니다.
 미국과 이란 관계, 중동 정세, 국제 분쟁, 외교 관련 뉴스 중 가장 중요한 순서대로 3개를 선택해서 한국어로 번역 요약해주세요.
 
@@ -3413,7 +3413,7 @@ export const refreshNews = onCall(
       }
       if (allItems.length === 0) return { success: false, message: '뉴스 없음' };
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
       const prompt = `다음은 오늘의 해외 주요 뉴스 목록입니다.
 미국과 이란 관계, 중동 정세, 국제 분쟁, 외교 관련 뉴스 중 가장 중요한 순서대로 3개를 선택해서 한국어로 번역 요약해주세요.
 
