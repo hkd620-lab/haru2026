@@ -203,3 +203,167 @@ GitHub Actions workflow 추가/수정 시 권한 설정 먼저 확인.
 ### 중요 철학
 HARU2026은 "기록 → 사유 → 자산" 구조를 기반으로 하는 장기 운영 SaaS 플랫폼이다.
 속도보다 **안정성 · rollback 가능성 · 장애 예방 · Git 기록 보존**을 우선한다.
+
+---
+
+# HARU2026 GitHub Actions 운영 보강 규칙 (2026.05.24)
+
+## GitHub Actions 운영 상태
+
+HARU2026은 GitHub Actions 기반 자동배포 체계를 사용한다.
+
+* Pull Request(PR) 생성 시:
+
+  * Firebase Hosting preview 배포 자동 실행
+* main merge 시:
+
+  * Firebase Hosting live 배포 자동 실행
+
+GitHub 원격 저장소를 최종 Source of Truth로 사용한다.
+
+---
+
+## PR 중심 운영 원칙 (매우 중요)
+
+기존:
+
+```text
+수정 → firebase deploy
+```
+
+현재 운영 원칙:
+
+```text
+수정 → feature 브랜치 push → PR 생성 → preview 확인 → merge → live 자동배포
+```
+
+가능하면 PR 기반 merge를 우선 사용한다.
+
+---
+
+## main merge 전 최종 확인 필수
+
+main 브랜치 push는 실제 live 서비스에 즉시 반영된다.
+
+따라서 merge 전 반드시 아래를 확인한다.
+
+* npm run build 성공 여부
+* git diff 최종 확인
+* 원치 않는 파일 add 여부 확인
+* Secret/API key 포함 여부 확인
+* preview 배포 정상 여부 확인
+
+확인 없이 main merge 금지.
+
+---
+
+## 머지 방식 우선순위
+
+### 방법 1 — PR 방식 (권장)
+
+1. feature/new-formats 작업
+2. git push
+3. Pull Request 생성
+4. preview 배포 확인
+5. Merge Pull Request
+6. main live 자동배포 확인
+
+### 방법 2 — 로컬 merge 방식 (긴급 상황 전용)
+
+```bash
+cd ~/HARU2026
+git checkout main
+git pull origin main
+git merge feature/new-formats
+git push origin main
+git checkout feature/new-formats
+```
+
+긴급 hotfix 상황 외에는 PR 방식 우선 권장.
+
+---
+
+## rollback 원칙 (신규)
+
+배포 후 장애 발생 시:
+
+* 원인 분석보다 rollback 우선
+* 마지막 정상 commit 확인
+* 필요 시 main revert 또는 이전 정상 commit redeploy
+* 서비스 장애 장시간 유지 금지
+
+---
+
+## 작업 시작 전 필수 확인
+
+작업 시작 전 반드시 실행:
+
+```bash
+git pull
+git status
+```
+
+pull 없이 작업 시작 금지.
+
+---
+
+## GitHub Actions 장애 이력 (2026.05.23)
+
+### 증상
+
+PR preview 배포 실패:
+
+```text
+Resource not accessible by integration
+```
+
+### 원인
+
+GitHub Actions workflow 권한이 read-only 상태.
+
+### 해결
+
+GitHub Settings → Actions → General:
+
+* Workflow permissions:
+
+  * Read and write permissions
+* Allow GitHub Actions to create and approve pull requests:
+
+  * 활성화
+
+### 재발 방지
+
+GitHub Actions workflow 추가/수정 시 권한 설정 먼저 확인.
+
+---
+
+## 배포 명령어 운영 변경
+
+기본 배포 방식:
+
+* GitHub Actions 자동배포
+
+수동 firebase deploy:
+
+* 긴급 상황 전용
+* 장애 복구용
+* GitHub Actions 실패 시만 사용
+
+---
+
+## 중요 철학
+
+HARU2026은:
+“기록 → 사유 → 자산”
+
+구조를 기반으로 하는 장기 운영 SaaS 플랫폼이다.
+
+속도보다:
+
+* 안정성
+* rollback 가능성
+* 장애 예방
+* Git 기록 보존
+
+을 우선한다.
