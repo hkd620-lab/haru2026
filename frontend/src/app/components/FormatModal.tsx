@@ -765,26 +765,14 @@ ${contentValues}`,
   };
 
   const prepareBookOcrImage = async (file: File): Promise<Blob> => {
-    const functionsInstance = getFunctions(undefined, 'asia-northeast3');
     const isHeic = file.type === 'image/heic' || file.type === 'image/heif' ||
       file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
 
     let fileToProcess: File | Blob = file;
     if (isHeic) {
-      toast.info('HEIC 파일을 JPG로 변환 중...');
-      const arrayBuffer = await file.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuffer);
-      let binary = '';
-      const chunkSize = 8192;
-      for (let i = 0; i < bytes.length; i += chunkSize) {
-        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-      }
-      const convertHeicFunc = httpsCallable(functionsInstance, 'convertHeic');
-      const result = await convertHeicFunc({ imageBase64: btoa(binary) });
-      const { url } = result.data as { url: string };
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('JPG 다운로드 실패');
-      fileToProcess = await response.blob();
+      toast.info('HEIC 파일을 기기 안에서 JPG로 변환 중...');
+      const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+      fileToProcess = Array.isArray(converted) ? converted[0] : converted;
     }
 
     const imageFile = fileToProcess instanceof File
@@ -1438,12 +1426,15 @@ ${contentValues}`,
 
       const updateData: Record<string, any> = {
         ...formData,
+        _recordId: `reading_note_${currentBookId}_${Date.now()}`,
         [imagesKey]: JSON.stringify(uploadedImages),
         [`${prefix}_style`]: 'premium',
         [`${prefix}_mode`]: 'PREMIUM',
         [`${prefix}_sayu`]: polished,
         [`${prefix}_polished`]: true,
         [`${prefix}_polishedAt`]: new Date().toISOString(),
+        [`${prefix}_note_createdAt`]: new Date().toISOString(),
+        [`${prefix}_accumulation_mode`]: 'append',
         ...buildReadingMeta('chapter_note'),
       };
       if (stats) updateData[`${prefix}_stats`] = stats;
@@ -1451,7 +1442,7 @@ ${contentValues}`,
 
       setIsSaving(true);
       await onSave(updateData);
-      toast.success('📖 중간기록이 저장되었습니다.');
+      toast.success('📖 중간기록이 누적 저장되었습니다.');
       onClose();
     } catch (error: any) {
       console.error('중간기록 저장 실패:', error);
@@ -1917,7 +1908,7 @@ ${contentValues}`,
                       </span>
                     </div>
                     <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
-                      책 페이지를 촬영해 추가하면 아래 "책 본문" 칸에 텍스트로 붙습니다.
+                      책 페이지를 촬영해 추가하면 아래 "책 본문" 칸에 텍스트만 붙습니다. 사진 원본은 저장하지 않습니다.
                     </p>
                     <input
                       ref={bookOcrInputRef}
@@ -2253,8 +2244,8 @@ ${contentValues}`,
                 </div>
               )}
 
-              {/* 📸 사진 업로드 섹션 */}
-              {format !== 'HARU주식관리' && (
+              {/* 📸 사진 업로드 섹션 — 독서사유 책본문 사진은 OCR 후 저장하지 않음 */}
+              {format !== 'HARU주식관리' && format !== '독서사유' && (
               <div>
                 <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 4, fontWeight: 500 }}>
                   📸 사진 <span style={{ fontWeight: 400, color: '#9ca3af' }}>(선택사항)</span>
@@ -2584,7 +2575,7 @@ ${contentValues}`,
                       다듬는 중...
                     </>
                   ) : (
-                    <>📖 중간기록저장하기</>
+                    <>📖 중간기록 추가하기</>
                   )}
                 </button>
                 <button

@@ -1855,8 +1855,7 @@ export const extractReadingBookTextFromPhoto = onCall(
     const bookTitle = String(d.bookTitle || '').trim().slice(0, 200);
     const author = String(d.author || '').trim().slice(0, 120);
     const bookId = makeReadingBookIdForFunction(bookTitle, author);
-    const rawImage = String(d.imageBase64 || '');
-    const imageBase64 = rawImage.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '');
+    let imageBase64 = String(d.imageBase64 || '').replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '');
     const mimeType = String(d.mimeType || 'image/jpeg').startsWith('image/')
       ? String(d.mimeType || 'image/jpeg')
       : 'image/jpeg';
@@ -1931,6 +1930,7 @@ export const extractReadingBookTextFromPhoto = onCall(
 
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
       const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+      // 책 본문 사진 원본은 Storage/Firestore에 저장하지 않고 OCR 요청 메모리에서만 사용한다.
       const result = await model.generateContent([
         prompt,
         {
@@ -1947,6 +1947,7 @@ export const extractReadingBookTextFromPhoto = onCall(
         .trim()
         .slice(0, 12000);
 
+      imageBase64 = '';
       return {
         text: extractedText,
         bookId,
@@ -1958,6 +1959,7 @@ export const extractReadingBookTextFromPhoto = onCall(
         isDeveloper,
       };
     } catch (error: any) {
+      imageBase64 = '';
       if (slotReserved) {
         try {
           await usageRef.set({
