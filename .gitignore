@@ -4,6 +4,8 @@
 # 환경 변수 파일 (절대 Git에 올리면 안 됨)
 .env
 .env.local
+.env.*
+!.env.example
 .env.*.local
 frontend/.env
 frontend/.env.local

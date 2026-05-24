@@ -29,12 +29,12 @@ export const storage = getStorage(app);
 export const messaging = getMessaging(app);
 
 const aiLibraryConfig = {
-  apiKey: "AIzaSyBzd4_gQi3fOsEAFTWEa1hAoAEhW7yCn7A",
-  authDomain: "my-ai-library-74805.firebaseapp.com",
-  projectId: "my-ai-library-74805",
-  storageBucket: "my-ai-library-74805.firebasestorage.app",
-  messagingSenderId: "1037388320702",
-  appId: "1:1037388320702:web:40a0c903b8f1eb2e1273ef",
+  apiKey: import.meta.env.VITE_AI_LIBRARY_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_AI_LIBRARY_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_AI_LIBRARY_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_AI_LIBRARY_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_AI_LIBRARY_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_AI_LIBRARY_FIREBASE_APP_ID,
 };
 const aiLibraryApp = getApps().find(a => a.name === 'aiLibrary')
   || initializeApp(aiLibraryConfig, 'aiLibrary');
