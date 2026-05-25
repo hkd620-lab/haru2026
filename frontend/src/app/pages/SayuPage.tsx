@@ -347,6 +347,7 @@ export function SayuPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string; recordId?: string }[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [sayuTab, setSayuTab] = useState<'records' | 'assistants'>('records');
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고', 'SNS검색기록', '내가 읽은 책', 'HARU주식관리']));
   const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
   // 📊 통계/합치기 모달
@@ -1958,6 +1959,53 @@ export function SayuPage() {
         )}
       </div>
 
+      <div
+        role="tablist"
+        aria-label="SAYU 보기 선택"
+        style={{
+          display: 'flex',
+          gap: 6,
+          padding: 4,
+          borderRadius: 12,
+          backgroundColor: '#E5E7EB',
+          marginBottom: 14,
+        }}
+      >
+        {([
+          { key: 'records', label: '사유기록' },
+          { key: 'assistants', label: '사유비서' },
+        ] as const).map((tab) => {
+          const active = sayuTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => {
+                setSayuTab(tab.key);
+                if (tab.key === 'assistants') setViewMode('list');
+              }}
+              style={{
+                flex: 1,
+                minHeight: 44,
+                padding: '9px 12px',
+                borderRadius: 9,
+                border: 'none',
+                backgroundColor: active ? '#1A3C6E' : '#F3F4F6',
+                color: active ? '#FFFFFF' : '#6B7280',
+                fontSize: 14,
+                fontWeight: active ? 800 : 700,
+                cursor: 'pointer',
+                boxShadow: active ? '0 1px 3px rgba(26,60,110,0.22)' : 'none',
+              }}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* 월 선택 — 헤딩 + 변경 칩 (카드 제거) */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1A3C6E', margin: 0, letterSpacing: '-0.01em' }}>
@@ -1996,54 +2044,56 @@ export function SayuPage() {
       </div>
 
       {/* 목록 / 달력 segmented 탭 */}
-      <div
-        role="tablist"
-        style={{
-          display: 'flex', gap: 4, padding: 4, borderRadius: 12,
-          backgroundColor: '#F1EADB', marginBottom: 16,
-          position: 'relative', zIndex: 2,
-        }}
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={viewMode === 'list'}
-          onClick={() => handleViewModeChange('list')}
+      {sayuTab === 'records' && (
+        <div
+          role="tablist"
           style={{
-            flex: 1, minHeight: 36, padding: '6px 0', borderRadius: 8,
-            border: 'none', cursor: 'pointer', pointerEvents: 'auto',
-            backgroundColor: viewMode === 'list' ? '#FFFFFF' : 'transparent',
-            color: viewMode === 'list' ? '#1A3C6E' : '#7A6A4F',
-            fontSize: 13, fontWeight: viewMode === 'list' ? 700 : 500,
-            boxShadow: viewMode === 'list' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-            transition: 'background-color 0.15s, color 0.15s',
+            display: 'flex', gap: 4, padding: 4, borderRadius: 12,
+            backgroundColor: '#F1EADB', marginBottom: 16,
+            position: 'relative', zIndex: 2,
           }}
         >
-          목록
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={viewMode === 'calendar'}
-          onClick={() => handleViewModeChange('calendar')}
-          style={{
-            flex: 1, minHeight: 36, padding: '6px 0', borderRadius: 8,
-            border: 'none', cursor: 'pointer', pointerEvents: 'auto',
-            backgroundColor: viewMode === 'calendar' ? '#FFFFFF' : 'transparent',
-            color: viewMode === 'calendar' ? '#1A3C6E' : '#7A6A4F',
-            fontSize: 13, fontWeight: viewMode === 'calendar' ? 700 : 500,
-            boxShadow: viewMode === 'calendar' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-            transition: 'background-color 0.15s, color 0.15s',
-          }}
-        >
-          달력
-        </button>
-      </div>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === 'list'}
+            onClick={() => handleViewModeChange('list')}
+            style={{
+              flex: 1, minHeight: 36, padding: '6px 0', borderRadius: 8,
+              border: 'none', cursor: 'pointer', pointerEvents: 'auto',
+              backgroundColor: viewMode === 'list' ? '#FFFFFF' : 'transparent',
+              color: viewMode === 'list' ? '#1A3C6E' : '#7A6A4F',
+              fontSize: 13, fontWeight: viewMode === 'list' ? 700 : 500,
+              boxShadow: viewMode === 'list' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+              transition: 'background-color 0.15s, color 0.15s',
+            }}
+          >
+            목록
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === 'calendar'}
+            onClick={() => handleViewModeChange('calendar')}
+            style={{
+              flex: 1, minHeight: 36, padding: '6px 0', borderRadius: 8,
+              border: 'none', cursor: 'pointer', pointerEvents: 'auto',
+              backgroundColor: viewMode === 'calendar' ? '#FFFFFF' : 'transparent',
+              color: viewMode === 'calendar' ? '#1A3C6E' : '#7A6A4F',
+              fontSize: 13, fontWeight: viewMode === 'calendar' ? 700 : 500,
+              boxShadow: viewMode === 'calendar' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+              transition: 'background-color 0.15s, color 0.15s',
+            }}
+          >
+            달력
+          </button>
+        </div>
+      )}
 
       {/* ─── 목록 뷰 ─── */}
       {viewMode === 'list' && (
         <div>
-          {loading ? (
+          {sayuTab === 'records' && (loading ? (
             <p className="text-center py-8 text-sm" style={{ color: '#999' }}>불러오는 중...</p>
           ) : !hasMonthRecords ? (
             <div className="bg-white rounded-lg p-8 shadow-sm text-center">
@@ -2280,12 +2330,13 @@ export function SayuPage() {
               </div>
               );
             })
-          )}
+          ))}
 
           {/* 구분선 */}
-          <hr className="my-4" style={{ borderColor: '#d1d5db' }} />
+          {sayuTab === 'records' && <hr className="my-4" style={{ borderColor: '#d1d5db' }} />}
 
           {/* 📚 내가 읽은 책 — 독서사유 final_reflection 만 최신순 리스트 */}
+          {sayuTab === 'records' && (
           <div className="mb-4">
             <button
               onClick={() => toggleCategory('내가 읽은 책')}
@@ -2382,8 +2433,10 @@ export function SayuPage() {
               );
             })()}
           </div>
+          )}
 
           {/* 하루충전소 */}
+          {sayuTab === 'records' && (
           <div className="mb-4">
             <button
               onClick={() => toggleCategory('하루충전소')}
@@ -2574,8 +2627,10 @@ export function SayuPage() {
               </div>
             )}
           </div>
+          )}
 
           {/* snsHARU 진입 카드 — 원기충전소 다음 위치 */}
+          {sayuTab === 'records' && (
           <button
             type="button"
             onClick={() => navigate('/sns-records')}
@@ -2598,9 +2653,10 @@ export function SayuPage() {
             <span>📱 snsHARU</span>
             <span style={{ fontSize: 14, color: '#1A3C6E' }}>›</span>
           </button>
+          )}
 
           {/* 📈 HARU주식관리 — snsHARU 직후 위치 */}
-          {(() => {
+          {sayuTab === 'records' && (() => {
             const stockCat = listData.find(c => c.category === 'HARU주식관리');
             const category = stockCat?.category || 'HARU주식관리';
             const formats = stockCat?.formats || [];
@@ -2915,7 +2971,7 @@ export function SayuPage() {
           })()}
 
           {/* 하루LAW */}
-          {(() => {
+          {sayuTab === 'assistants' && (() => {
             const haruLawCategory = listData.find(d => d.category === '하루LAW');
             if (!haruLawCategory) return null;
             const { category, formats } = haruLawCategory;
@@ -3076,7 +3132,7 @@ export function SayuPage() {
           })()}
 
           {/* 🌱 하루식물탐정 — 시간 누적 식별 기록 (records[].plantDetective 배열에서 추출) */}
-          {(() => {
+          {sayuTab === 'assistants' && (() => {
             const plantEntries: { date: string; recordId: string; entry: any; idx: number }[] = [];
             const plantObservationEntries: { date: string; recordId: string; entry: any; idx: number }[] = [];
             records.forEach((r: any) => {
@@ -3205,7 +3261,7 @@ export function SayuPage() {
                 </CardTag>
               );
             };
-            const totalPlantCount = plantEntries.length + plantObservationEntries.length + plantLibraryItems.length + plantCatalogItems.length;
+            const totalPlantCount = plantEntries.length;
             const selectedPlantDiaryEntries = selectedPlantDiaryItem
               ? plantObservationEntries.filter(({ entry }) => isPlantDiaryForItem(entry, selectedPlantDiaryItem))
               : [];
@@ -3229,7 +3285,7 @@ export function SayuPage() {
                 {expanded && (
                   <div className="bg-white rounded-lg shadow-sm overflow-hidden">
                     <div className="px-4 py-3" style={{ borderTop: '1px solid #f5f5f5', background: '#fffdf4' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
                         <button
                           type="button"
                           onClick={() => setPlantPopupType('assistant')}
@@ -3245,54 +3301,6 @@ export function SayuPage() {
                           }}
                         >
                           식물탐정비서 열기
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPlantPopupType('diary')}
-                          style={{
-                            border: '1px solid #e8dfba',
-                            borderRadius: 8,
-                            background: '#fff',
-                            padding: '8px 10px',
-                            textAlign: 'left',
-                            cursor: 'pointer',
-                          }}
-                          title="성장일기 팝업 열기"
-                        >
-                          <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>성장일기</div>
-                          <div style={{ fontSize: 18, color: '#4A5A2C', fontWeight: 950 }}>{plantObservationEntries.length}</div>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPlantPopupType('library')}
-                          style={{
-                            border: '1px solid #e8dfba',
-                            borderRadius: 8,
-                            background: '#fff',
-                            padding: '8px 10px',
-                            textAlign: 'left',
-                            cursor: 'pointer',
-                          }}
-                          title="개인도감 팝업 열기"
-                        >
-                          <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>개인도감</div>
-                          <div style={{ fontSize: 18, color: '#4A5A2C', fontWeight: 950 }}>{plantLibraryItems.length}</div>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={openPublicPlantCatalog}
-                          style={{
-                            border: '1px solid #cfe9df',
-                            borderRadius: 8,
-                            background: '#fff',
-                            padding: '8px 10px',
-                            textAlign: 'left',
-                            cursor: 'pointer',
-                          }}
-                          title="공개도감 팝업 열기"
-                        >
-                          <div style={{ fontSize: 11, color: '#5f8d83', fontWeight: 800 }}>공개도감</div>
-                          <div style={{ fontSize: 18, color: '#0F766E', fontWeight: 950 }}>{plantCatalogItems.length}</div>
                         </button>
                       </div>
                     </div>
@@ -3814,7 +3822,7 @@ export function SayuPage() {
           })()}
 
           {/* 하루AI지식창고 (개발자 전용) */}
-          {isDeveloper && (
+          {sayuTab === 'assistants' && isDeveloper && (
           <div className="mb-4">
             <button
               onClick={() => toggleCategory('하루AI지식창고')}
@@ -4228,6 +4236,7 @@ export function SayuPage() {
           )}
 
           {/* 나의 작품 진입 카드 — PDF 생성 결과물 통합 라이브러리 (원기충전소로 진입) */}
+          {sayuTab === 'records' && (
           <button
             type="button"
             onClick={() => navigate('/recovery')}
@@ -4250,11 +4259,12 @@ export function SayuPage() {
             <span>📖 나의 작품</span>
             <span style={{ fontSize: 14, color: '#1A3C6E' }}>›</span>
           </button>
+          )}
         </div>
       )}
 
       {/* ─── 달력 뷰 ─── */}
-      {viewMode === 'calendar' && (
+      {sayuTab === 'records' && viewMode === 'calendar' && (
         <div>
           <section className="bg-white rounded-lg p-4 shadow-sm mb-4">
             <div className="grid grid-cols-7 gap-1 mb-2">
