@@ -28,7 +28,7 @@ export function RecordHubPage() {
     { icon: '📖', label: '영어성경', path: '/bible' },
     { icon: '✏️', label: '영어일기', path: '/diary-learn' },
     { icon: '📱', label: 'SNS 기록 가져오기', desc: 'Facebook · Instagram 기록 AI로 정리', path: '/sns-records', isNew: true, accent: '#10b981' },
-    { icon: '📈', label: 'HARU주식관리', desc: '주식 거래·종목 기록', path: '/record', state: { format: 'HARU주식관리' } },
+    { icon: '📈', label: '주식거래일지', desc: '캡처 OCR·거래소감 기록', path: '/record', state: { format: '주식거래일지' } },
     { icon: '📚', label: '원기충전소', desc: '오늘의 책 한 권', path: '/recovery' },
   ];
 

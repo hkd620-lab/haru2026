@@ -179,7 +179,13 @@ class FirestoreService {
       });
       
       // 해당 형식의 기록만 필터링
-      const formatRecords = records.filter(r => r.formats && r.formats.includes(format));
+      const stockFormats = ['HARU주식관리', '주식거래일지'];
+      const formatRecords = records.filter(r => {
+        if (stockFormats.includes(format)) {
+          return (r.formats && r.formats.some((f: string) => stockFormats.includes(f))) || Boolean(r.stock_name);
+        }
+        return r.formats && r.formats.includes(format);
+      });
       
       console.log(`\n🎯 2단계: "${format}" 형식 필터링`);
       console.log('필터링 후 기록 개수:', formatRecords.length);
@@ -204,6 +210,8 @@ class FirestoreService {
         '텃밭일지': 'garden',
         '애완동물관찰일지': 'pet',
         '육아일기': 'parenting',
+        'HARU주식관리': 'stock',
+        '주식거래일지': 'stock',
       };
 
       const prefix = prefixMap[format];
@@ -241,6 +249,10 @@ class FirestoreService {
           break;
         case '육아일기':
           result = this.calculateParentingStats(formatRecords, prefix);
+          break;
+        case 'HARU주식관리':
+        case '주식거래일지':
+          result = this.calculateStockStats(formatRecords, prefix);
           break;
         default:
           result = this.calculateBasicStats(formatRecords, prefix, format);
@@ -837,6 +849,35 @@ class FirestoreService {
     };
   }
 
+  /**
+   * 주식거래일지 통계 계산
+   */
+  private calculateStockStats(records: HaruRecord[], prefix: string) {
+    const buyCount = records.filter(r => String(r.stock_type || '').includes('매수')).length;
+    const sellCount = records.filter(r => String(r.stock_type || '').includes('매도')).length;
+    const reflectedCount = records.filter(r => String(r.stock_reflection || r[`${prefix}_sayu`] || '').trim()).length;
+    const totalAmount = records.reduce((sum, r) => {
+      const amount = parseInt(String(r.stock_total || '').replace(/[^0-9]/g, ''), 10) || 0;
+      return sum + amount;
+    }, 0);
+    const stocks = new Set(records.map(r => String(r.stock_name || '').trim()).filter(Boolean));
+    const reflectionRate = records.length > 0 ? Math.round((reflectedCount / records.length) * 100) : 0;
+
+    return {
+      total_days: records.length,
+      trade_count: records.length,
+      buy_count: buyCount,
+      sell_count: sellCount,
+      stock_count: stocks.size,
+      total_amount: totalAmount,
+      reflection_rate: reflectionRate,
+      consistency_score: Math.min(100, records.length * 10),
+      risk_review_score: reflectionRate,
+      personality_type: '거래 복기형 투자자',
+      insight: `총 ${records.length}건의 거래를 기록했고, ${stocks.size}개 종목을 다뤘습니다. 거래소감 기록률은 ${reflectionRate}%입니다.`,
+    };
+  }
+
   // ✅ 새로 추가: 텃밭일지 작물 관리 함수들
   
   /**
@@ -940,6 +981,8 @@ class FirestoreService {
         { name: '텃밭일지', prefix: 'garden' },
         { name: '애완동물관찰일지', prefix: 'pet' },
         { name: '육아일기', prefix: 'child' },
+        { name: 'HARU주식관리', prefix: 'stock' },
+        { name: '주식거래일지', prefix: 'stock' },
       ];
       
       records.forEach((record, index) => {

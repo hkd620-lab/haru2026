@@ -22,6 +22,7 @@ export type RecordFormat =
   | '애완동물관찰일지'
   | '육아일기'
   | 'HARU주식관리'
+  | '주식거래일지'
   | '메모'
   | 'HARUraw'
   | 'HARU보조장부';
@@ -41,7 +42,7 @@ export const CATEGORY_FORMATS: Record<Category, RecordFormat[]> = {
   '생활': ['일기', '에세이', '여행기록', '독서사유', '텃밭일지', '애완동물관찰일지', '육아일기'],
   '업무': ['선교보고', '일반보고', '업무일지', '메모', 'HARU보조장부'],
   'AI대화': ['ChatGPT', 'Claude', 'Gemini', '기타'] as any[],
-  'HARU주식관리': ['HARU주식관리'],
+  'HARU주식관리': ['HARU주식관리', '주식거래일지'],
   '나도작가': ['나도작가'] as any[],
 };
 
@@ -58,6 +59,7 @@ export const ALL_FORMATS: RecordFormat[] = [
   '애완동물관찰일지',
   '육아일기',
   'HARU주식관리',
+  '주식거래일지',
   '메모',
   'HARU보조장부',
   'HARUraw',
@@ -76,6 +78,7 @@ export const FORMAT_PREFIX: Record<RecordFormat, string> = {
   '애완동물관찰일지': 'pet',
   '육아일기': 'child',
   'HARU주식관리': 'stock',
+  '주식거래일지': 'stock',
   '메모': 'memo',
   'HARUraw': 'haruraw',
   'HARU보조장부': 'ledger',
@@ -112,6 +115,7 @@ export const FORMAT_EMOJI: Record<RecordFormat, string> = {
   '애완동물관찰일지': '🐾',
   '육아일기': '👶',
   'HARU주식관리': '📈',
+  '주식거래일지': '📈',
   '메모': '📝',
   'HARUraw': '⚖️',
   'HARU보조장부': '🧾',

@@ -137,6 +137,16 @@ const FORMAT_METRICS: Record<RecordFormat, FormatMetric[]> = {
     { key: 'emotional_understanding', label: '감정 이해도', icon: '💝', description: '감정 필드 작성' },
     { key: 'learning_support', label: '학습 지원도', icon: '📚', description: '학습 필드 작성' },
   ],
+  'HARU주식관리': [
+    { key: 'trade_count', label: '거래 기록', icon: '📈', description: '매수·매도 거래 기록 수' },
+    { key: 'stock_count', label: '종목 다양성', icon: '🏷️', description: '기록한 종목 수' },
+    { key: 'reflection_rate', label: '복기율', icon: '📝', description: '거래소감 작성 비율' },
+  ],
+  '주식거래일지': [
+    { key: 'trade_count', label: '거래 기록', icon: '📈', description: '매수·매도 거래 기록 수' },
+    { key: 'stock_count', label: '종목 다양성', icon: '🏷️', description: '기록한 종목 수' },
+    { key: 'reflection_rate', label: '복기율', icon: '📝', description: '거래소감 작성 비율' },
+  ],
 };
 
 export function FormatStatisticsPage() {
@@ -216,7 +226,13 @@ export function FormatStatisticsPage() {
   useEffect(() => {
     if (!user?.uid) return;
     firestoreService.getRecords(user.uid).then((records) => {
-      setAllFormatRecords(records.filter((r) => r.formats && r.formats.includes(formatType)));
+      const stockFormats = ['HARU주식관리', '주식거래일지'];
+      setAllFormatRecords(records.filter((r) => {
+        if (stockFormats.includes(formatType)) {
+          return (r.formats && r.formats.some((f: string) => stockFormats.includes(f))) || Boolean((r as any).stock_name);
+        }
+        return r.formats && r.formats.includes(formatType);
+      }));
     }).catch(() => setAllFormatRecords([]));
   }, [user?.uid, formatType]);
 

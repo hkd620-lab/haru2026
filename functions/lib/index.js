@@ -36,8 +36,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = void 0;
-exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = void 0;
+exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = void 0;
+exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -1731,6 +1731,95 @@ exports.extractReadingBookTextFromPhoto = (0, https_2.onCall)({
             throw error;
         logger.error('독서 본문 OCR 실패', { message: (_b = error === null || error === void 0 ? void 0 : error.message) === null || _b === void 0 ? void 0 : _b.slice(0, 200) });
         throw new https_2.HttpsError('internal', '책 본문 텍스트 변환에 실패했습니다. 사진을 더 또렷이 찍어 주세요.');
+    }
+});
+// ===== 📈 주식거래 캡처 이미지 → 거래 텍스트/필드 추출 (Gemini Vision OCR) =====
+exports.extractStockTradeTextFromPhoto = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+    memory: '512MiB',
+    timeoutSeconds: 60,
+}, async (request) => {
+    var _a, _b, _c, _d;
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    let imageBase64 = String(((_a = request.data) === null || _a === void 0 ? void 0 : _a.imageBase64) || '').replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '');
+    const mimeType = String(((_b = request.data) === null || _b === void 0 ? void 0 : _b.mimeType) || 'image/jpeg').startsWith('image/')
+        ? String(((_c = request.data) === null || _c === void 0 ? void 0 : _c.mimeType) || 'image/jpeg')
+        : 'image/jpeg';
+    if (!imageBase64) {
+        throw new https_2.HttpsError('invalid-argument', '이미지 데이터(imageBase64)가 필요합니다.');
+    }
+    const imageKb = Math.round(imageBase64.length * 0.75 / 1024);
+    if (imageKb > 7 * 1024) {
+        throw new https_2.HttpsError('invalid-argument', '사진이 너무 큽니다. 한 장당 7MB 이하로 줄여주세요.');
+    }
+    try {
+        const prompt = `주식 거래 캡처 이미지에서 보이는 거래 내용을 추출하세요.
+
+[규칙]
+- 보이는 텍스트만 근거로 삼고 추측하지 마세요.
+- 증권사 앱/문자/체결 알림/거래 내역 화면 모두 허용합니다.
+- 거래유형은 매수, 매도, 입금, 출금, 배당, 수수료, 기타 중 가장 상식적인 값으로 정리합니다.
+- 종목명, 단가, 수량, 거래금액, 거래일시가 보이면 그대로 옮깁니다.
+- 숫자와 통화 단위는 화면에 보이는 형식을 최대한 유지합니다.
+- 응답은 아래 JSON만 반환하고 코드펜스는 쓰지 마세요.
+
+{
+  "text": "캡처에서 읽은 원문 텍스트",
+  "trade": {
+    "stock_type": "매수/매도/입금/출금/배당/수수료/기타",
+    "stock_name": "종목명",
+    "stock_price": "거래단가",
+    "stock_quantity": "수량",
+    "stock_total": "거래금액",
+    "stock_date": "거래일시"
+  }
+}`;
+        const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+        const result = await model.generateContent([
+            prompt,
+            {
+                inlineData: {
+                    data: imageBase64,
+                    mimeType,
+                },
+            },
+        ]);
+        const rawText = result.response.text()
+            .replace(/^```(?:json)?\s*/i, '')
+            .replace(/```\s*$/i, '')
+            .trim();
+        imageBase64 = '';
+        let parsed = {};
+        try {
+            parsed = JSON.parse(rawText);
+        }
+        catch {
+            parsed = { text: rawText, trade: {} };
+        }
+        const trade = (parsed === null || parsed === void 0 ? void 0 : parsed.trade) && typeof parsed.trade === 'object' ? parsed.trade : {};
+        const safeTrade = {
+            stock_type: String(trade.stock_type || '').slice(0, 40),
+            stock_name: String(trade.stock_name || '').slice(0, 120),
+            stock_price: String(trade.stock_price || '').slice(0, 80),
+            stock_quantity: String(trade.stock_quantity || '').slice(0, 80),
+            stock_total: String(trade.stock_total || '').slice(0, 80),
+            stock_date: String(trade.stock_date || '').slice(0, 80),
+        };
+        return {
+            text: String((parsed === null || parsed === void 0 ? void 0 : parsed.text) || rawText || '').slice(0, 12000),
+            trade: safeTrade,
+        };
+    }
+    catch (error) {
+        imageBase64 = '';
+        if (error instanceof https_2.HttpsError)
+            throw error;
+        logger.error('주식 거래 캡처 OCR 실패', { message: (_d = error === null || error === void 0 ? void 0 : error.message) === null || _d === void 0 ? void 0 : _d.slice(0, 200) });
+        throw new https_2.HttpsError('internal', '거래 캡처 텍스트 추출에 실패했습니다. 사진을 더 또렷하게 올려 주세요.');
     }
 });
 exports.generateMergePDFFast = (0, https_2.onCall)({ region: 'asia-northeast3', memory: '1GiB', timeoutSeconds: 300 }, async (request) => {
