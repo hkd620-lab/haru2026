@@ -57,6 +57,25 @@ const ONEDRIVE_OAUTH_SCOPE = 'offline_access Files.ReadWrite User.Read';
 
 const db = admin.firestore();
 
+function getSafeOAuthError(error: any) {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data || {};
+    return {
+      message: error.message,
+      status: error.response?.status,
+      providerError: typeof data.error === 'string' ? data.error : undefined,
+      providerErrorCode: typeof data.error_code === 'string' ? data.error_code : undefined,
+      providerErrorDescription: typeof data.error_description === 'string'
+        ? data.error_description.slice(0, 120)
+        : undefined,
+    };
+  }
+
+  return {
+    message: error?.message || String(error),
+  };
+}
+
 function normalizeReadingBookField(s: unknown): string {
   return String(s || '')
     .normalize('NFC')
@@ -987,9 +1006,9 @@ export const kakaoCallback = onRequest(
       );
 
     } catch (error: any) {
-      console.error('❌ 카카오 콜백 실패:', error);
+      logger.error('❌ 카카오 콜백 실패:', getSafeOAuthError(error));
       res.redirect(
-        `${FRONTEND_URL}/login?error=${encodeURIComponent(error.message)}`
+        `${FRONTEND_URL}/login?error=kakao_login_failed`
       );
     }
   }

@@ -90,6 +90,24 @@ const HARU_DRIVE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfun
 const ONEDRIVE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/oneDriveCallback';
 const ONEDRIVE_OAUTH_SCOPE = 'offline_access Files.ReadWrite User.Read';
 const db = admin.firestore();
+function getSafeOAuthError(error) {
+    var _a, _b;
+    if (axios_1.default.isAxiosError(error)) {
+        const data = ((_a = error.response) === null || _a === void 0 ? void 0 : _a.data) || {};
+        return {
+            message: error.message,
+            status: (_b = error.response) === null || _b === void 0 ? void 0 : _b.status,
+            providerError: typeof data.error === 'string' ? data.error : undefined,
+            providerErrorCode: typeof data.error_code === 'string' ? data.error_code : undefined,
+            providerErrorDescription: typeof data.error_description === 'string'
+                ? data.error_description.slice(0, 120)
+                : undefined,
+        };
+    }
+    return {
+        message: (error === null || error === void 0 ? void 0 : error.message) || String(error),
+    };
+}
 function normalizeReadingBookField(s) {
     return String(s || '')
         .normalize('NFC')
@@ -912,8 +930,8 @@ exports.kakaoCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', secr
         res.redirect(`${FRONTEND_URL}/auth/callback?customToken=${customToken}&provider=kakao`);
     }
     catch (error) {
-        console.error('❌ 카카오 콜백 실패:', error);
-        res.redirect(`${FRONTEND_URL}/login?error=${encodeURIComponent(error.message)}`);
+        logger.error('❌ 카카오 콜백 실패:', getSafeOAuthError(error));
+        res.redirect(`${FRONTEND_URL}/login?error=kakao_login_failed`);
     }
 });
 // ===== 🟢 네이버 로그인 시작 =====
@@ -2021,7 +2039,7 @@ exports.lawEasyExplain = (0, https_2.onCall)({
     try {
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
         const model = genAI.getGenerativeModel({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3.1-flash-lite',
             systemInstruction: `당신은 실무 경력 20년의 대한민국 법률 전문가입니다.
 사용자의 질문과 관련 법조문을 바탕으로, 반드시 아래 형식으로만 답변하세요.
 마크다운 기호(**, ##, --, >, __)는 절대 사용하지 마세요.
@@ -2159,7 +2177,7 @@ exports.lawPrecedent = (0, https_2.onCall)({
     let summaries = [];
     try {
         const sumModel = genAI.getGenerativeModel({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3.1-flash-lite',
             systemInstruction: `당신은 실무 경력 20년의 대한민국 법률 전문가입니다.
 아래에 제공된 판례들은 국가법령정보센터에서 가져온 실제 판례입니다.
 사용자의 검색 키워드와 질문 맥락을 바탕으로, 각 판례를 사용자가 이해하기 쉽게 요약하세요.
@@ -2617,7 +2635,7 @@ exports.preloadChapterGrammar = (0, https_2.onCall)({ region: 'asia-northeast3',
             const verseText = (verseTexts === null || verseTexts === void 0 ? void 0 : verseTexts[verseKey]) || '';
             // 2. Gemini 호출
             const geminiApiKey = GEMINI_API_KEY_SECRET.value();
-            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${geminiApiKey}`;
             const geminiPrompt = `다음 영어 성경 구절에서 문법 요소를 분석해주세요.
 구절: "${verseText}"
 규칙:
@@ -2903,7 +2921,7 @@ export const fetchTopNews = onSchedule(
       }
       if (allItems.length === 0) { logger.warn('수집된 뉴스 없음'); return; }
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
       const prompt = `다음은 오늘의 해외 주요 뉴스 목록입니다.
 미국과 이란 관계, 중동 정세, 국제 분쟁, 외교 관련 뉴스 중 가장 중요한 순서대로 3개를 선택해서 한국어로 번역 요약해주세요.
 
@@ -2992,7 +3010,7 @@ exports.refreshNews = (0, https_2.onCall)({ secrets: [GEMINI_API_KEY_SECRET], re
         if (allItems.length === 0)
             return { success: false, message: '뉴스 없음' };
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
         const prompt = `다음은 오늘의 해외 주요 뉴스 목록입니다.
 미국과 이란 관계, 중동 정세, 국제 분쟁, 외교 관련 뉴스 중 가장 중요한 순서대로 3개를 선택해서 한국어로 번역 요약해주세요.
 
