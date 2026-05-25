@@ -1255,6 +1255,10 @@ export function SayuPage() {
 
   const days = getDaysInMonth();
 
+  const handleViewModeChange = (mode: 'list' | 'calendar') => {
+    setViewMode(mode);
+  };
+
   // 모든 형식 prefix 매핑
   const ALL_FORMAT_PREFIXES: Record<string, string> = {
     '일기': 'diary', '에세이': 'essay', '선교보고': 'mission',
@@ -1362,19 +1366,36 @@ export function SayuPage() {
     const seenFormatKeys = new Set<string>();
     const availableFormats: { key: string; label: string; recordId: string }[] = [];
     dayRecords.forEach((record) => {
-      if (!record.formats) return;
-      record.formats.forEach((format) => {
-        const prefix = ALL_FORMAT_PREFIXES[format];
+      const formatsForRecord =
+        Array.isArray(record.formats) && record.formats.length > 0
+          ? record.formats
+              .map((format) => ({ label: String(format), prefix: ALL_FORMAT_PREFIXES[String(format)] }))
+              .filter((item) => item.prefix)
+          : Object.entries(ALL_FORMAT_PREFIXES)
+              .map(([label, prefix]) => ({ label, prefix }))
+              .filter(({ prefix }) =>
+                Object.keys(record).some((key) =>
+                  key.startsWith(`${prefix}_`) &&
+                  !META_SUFFIXES.some((suffix) => key.endsWith(suffix)) &&
+                  typeof record[key] === 'string' &&
+                  (record[key] as string).trim().length > 0,
+                ),
+              );
+
+      formatsForRecord.forEach(({ label, prefix }) => {
         if (!prefix) return;
         const entryKey = `${prefix}_${record.id}`;
         if (!seenFormatKeys.has(entryKey)) {
           seenFormatKeys.add(entryKey);
-          availableFormats.push({ key: prefix, label: format, recordId: record.id });
+          availableFormats.push({ key: prefix, label, recordId: record.id });
         }
       });
     });
 
     setSelectedDateFormats(availableFormats);
+    if (availableFormats.length === 0) {
+      toast.info('선택할 수 있는 형식 결과가 없습니다.');
+    }
   };
 
   const openFormatSayu = (dateStr: string, formatKey: string, formatLabel: string, recordId?: string) => {
@@ -1847,6 +1868,19 @@ export function SayuPage() {
     });
   };
 
+  const handleListFormatHeaderClick = (
+    formatKey: string,
+    entries: { date: string; formatKey: string; recordId: string }[],
+    formatLabel: string,
+  ) => {
+    if (entries.length === 1) {
+      const entry = entries[0];
+      openFormatSayu(entry.date, entry.formatKey, formatLabel, entry.recordId);
+      return;
+    }
+    toggleFormat(formatKey);
+  };
+
   const listData = getMonthListData();
   const hasMonthRecords = listData.length > 0;
 
@@ -1931,6 +1965,7 @@ export function SayuPage() {
         </h2>
         <div style={{ display: 'flex', gap: 6 }}>
           <button
+            type="button"
             onClick={handlePrevMonth}
             aria-label="이전 달"
             style={{
@@ -1943,6 +1978,7 @@ export function SayuPage() {
             <ChevronLeft className="w-4 h-4" />
           </button>
           <button
+            type="button"
             onClick={handleNextMonth}
             disabled={isNextMonthDisabled}
             aria-label="다음 달"
@@ -1965,15 +2001,17 @@ export function SayuPage() {
         style={{
           display: 'flex', gap: 4, padding: 4, borderRadius: 12,
           backgroundColor: '#F1EADB', marginBottom: 16,
+          position: 'relative', zIndex: 2,
         }}
       >
         <button
+          type="button"
           role="tab"
           aria-selected={viewMode === 'list'}
-          onClick={() => setViewMode('list')}
+          onClick={() => handleViewModeChange('list')}
           style={{
             flex: 1, minHeight: 36, padding: '6px 0', borderRadius: 8,
-            border: 'none', cursor: 'pointer',
+            border: 'none', cursor: 'pointer', pointerEvents: 'auto',
             backgroundColor: viewMode === 'list' ? '#FFFFFF' : 'transparent',
             color: viewMode === 'list' ? '#1A3C6E' : '#7A6A4F',
             fontSize: 13, fontWeight: viewMode === 'list' ? 700 : 500,
@@ -1984,12 +2022,13 @@ export function SayuPage() {
           목록
         </button>
         <button
+          type="button"
           role="tab"
           aria-selected={viewMode === 'calendar'}
-          onClick={() => setViewMode('calendar')}
+          onClick={() => handleViewModeChange('calendar')}
           style={{
             flex: 1, minHeight: 36, padding: '6px 0', borderRadius: 8,
-            border: 'none', cursor: 'pointer',
+            border: 'none', cursor: 'pointer', pointerEvents: 'auto',
             backgroundColor: viewMode === 'calendar' ? '#FFFFFF' : 'transparent',
             color: viewMode === 'calendar' ? '#1A3C6E' : '#7A6A4F',
             fontSize: 13, fontWeight: viewMode === 'calendar' ? 700 : 500,
@@ -2018,6 +2057,7 @@ export function SayuPage() {
               <div key={category} className="mb-4">
                 {/* 카테고리 헤더 */}
                 <button
+                  type="button"
                   onClick={() => toggleCategory(category)}
                   className="w-full flex items-center justify-between rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
                   style={{ backgroundColor: '#FFFFFF', color: '#1A3C6E', padding: '0 16px', minHeight: 52, border: '1px solid #ECE6F5', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
@@ -2067,8 +2107,10 @@ export function SayuPage() {
                           <div className="flex items-center px-3 py-2" style={{ backgroundColor: '#f9fafb' }}>
                             {/* 아이콘 + 형식명 — 클릭 시 펼침/접힘 */}
                             <button
-                              onClick={() => toggleFormat(prefix)}
+                              type="button"
+                              onClick={() => handleListFormatHeaderClick(prefix, entries, String(format))}
                               className="flex items-center gap-2 flex-1 text-left hover:opacity-80 transition-opacity"
+                              aria-label={`${String(format)} 결과 ${entries.length}개 ${entries.length === 1 ? '열기' : '펼치기'}`}
                             >
                               <span className="text-sm">{category === '하루LAW' ? '⚖️' : FORMAT_EMOJI[format as RecordFormat]}</span>
                               <span className="text-xs font-semibold" style={{ color: '#333' }}>{String(format)}</span>
@@ -2079,6 +2121,7 @@ export function SayuPage() {
                             {category !== '하루LAW' && category !== 'HARU주식관리' && (
                               <>
                                 <button
+                                  type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     navigate(`/stats/${String(format)}`);
@@ -2090,6 +2133,7 @@ export function SayuPage() {
                                   }}
                                 >통계</button>
                                 <button
+                                  type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     navigate('/merge');
@@ -2105,8 +2149,10 @@ export function SayuPage() {
 
                             {/* 펼침 화살표 */}
                             <button
+                              type="button"
                               onClick={() => toggleFormat(prefix)}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
+                              aria-label={`${String(format)} 결과 ${isFormatExpanded ? '접기' : '펼치기'}`}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px 4px', flexShrink: 0 }}
                             >
                               <span style={{ fontSize: '10px', color: '#1A3C6E' }}>{isFormatExpanded ? '▼' : '▶'}</span>
                             </button>
@@ -2118,6 +2164,7 @@ export function SayuPage() {
                               records={entries
                                 .map((e) => records.find((r) => r.id === e.recordId))
                                 .filter(Boolean) as any[]}
+                              onOpenRecord={(record) => openFormatSayu(record.date || String(record.stock_date || '').slice(0, 10), 'stock', '주식거래일지', record.recordId)}
                             />
                           )}
                           {/* 기록 목록 — 형식 펼쳤을 때만 표시 */}
@@ -2137,6 +2184,7 @@ export function SayuPage() {
                                   }}
                                 >
                                   <button
+                                    type="button"
                                     className="flex items-center gap-3 flex-1 px-4 text-left hover:bg-yellow-50 transition-colors"
                                     style={{ minHeight: 48 }}
                                     onClick={async () => {
@@ -2191,6 +2239,7 @@ export function SayuPage() {
                                     )}
                                   </button>
                                   <button
+                                    type="button"
                                     onClick={e => {
                                       e.stopPropagation();
                                       handleCopyRecord(entry.recordId, entry.formatKey);
@@ -2200,6 +2249,7 @@ export function SayuPage() {
                                     title="복사"
                                   >📋</button>
                                   <button
+                                    type="button"
                                     onClick={e => { e.stopPropagation(); handleDeleteRecord(entry.recordId); }}
                                     className="px-3 py-2.5 text-xs flex-shrink-0 hover:text-red-600 transition-colors"
                                     style={{ color: '#ccc' }}
@@ -2211,6 +2261,7 @@ export function SayuPage() {
                                 <div className="flex justify-center gap-1 py-2 px-3 border-t" style={{ borderColor: '#f0f0f0' }}>
                                   {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
                                     <button
+                                      type="button"
                                       key={p}
                                       onClick={() => setFormatPages(prev => ({ ...prev, [pageKey]: p }))}
                                       className="w-7 h-7 rounded text-xs font-medium transition-all"
@@ -2558,6 +2609,7 @@ export function SayuPage() {
                 {stockCat && (
                   <div key={category} className="mb-4">
                     <button
+                      type="button"
                       onClick={() => toggleCategory(category)}
                       className="w-full flex items-center justify-between rounded-lg mb-1 text-sm font-semibold transition-colors hover:opacity-80"
                       style={{ backgroundColor: '#FFFFFF', color: '#1A3C6E', padding: '0 16px', minHeight: 52, border: '1px solid #ECE6F5', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
@@ -2602,14 +2654,17 @@ export function SayuPage() {
                         >
                           <div className="flex items-center px-3 py-2" style={{ backgroundColor: '#f9fafb' }}>
                             <button
-                              onClick={() => toggleFormat(prefix)}
+                              type="button"
+                              onClick={() => handleListFormatHeaderClick(prefix, entries, String(format))}
                               className="flex items-center gap-2 flex-1 text-left hover:opacity-80 transition-opacity"
+                              aria-label={`${String(format)} 결과 ${entries.length}개 ${entries.length === 1 ? '열기' : '펼치기'}`}
                             >
                               <span className="text-sm">{FORMAT_EMOJI[format as RecordFormat]}</span>
                               <span className="text-xs font-semibold" style={{ color: '#333' }}>{String(format)}</span>
                               <span className="text-xs" style={{ color: '#999' }}>({entries.length})</span>
                             </button>
                             <button
+                              type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 navigate(`/stats/${String(format)}`);
@@ -2621,6 +2676,7 @@ export function SayuPage() {
                               }}
                             >통계</button>
                             <button
+                              type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 navigate('/merge');
@@ -2632,8 +2688,10 @@ export function SayuPage() {
                               }}
                             >기록합치기</button>
                             <button
+                              type="button"
                               onClick={() => toggleFormat(prefix)}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
+                              aria-label={`${String(format)} 결과 ${isFormatExpanded ? '접기' : '펼치기'}`}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px 4px', flexShrink: 0 }}
                             >
                               <span style={{ fontSize: '10px', color: '#1A3C6E' }}>{isFormatExpanded ? '▼' : '▶'}</span>
                             </button>
@@ -2645,6 +2703,7 @@ export function SayuPage() {
                               records={entries
                                 .map((e) => records.find((r) => r.id === e.recordId))
                                 .filter(Boolean) as any[]}
+                              onOpenRecord={(record) => openFormatSayu(record.date || String(record.stock_date || '').slice(0, 10), 'stock', '주식거래일지', record.recordId)}
                             />
                           )}
 
@@ -2652,6 +2711,7 @@ export function SayuPage() {
                             <div className="flex justify-center gap-1 py-2 px-3 border-t" style={{ borderColor: '#f0f0f0' }}>
                               {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
                                 <button
+                                  type="button"
                                   key={p}
                                   onClick={() => setFormatPages(prev => ({ ...prev, [pageKey]: p }))}
                                   className="w-7 h-7 rounded text-xs font-medium transition-all"
@@ -4217,6 +4277,7 @@ export function SayuPage() {
 
                 return (
                   <button
+                    type="button"
                     key={idx}
                     onClick={() => handleDateClick(day)}
                     disabled={!day}
@@ -4278,6 +4339,7 @@ export function SayuPage() {
               <div className="flex flex-wrap gap-2">
                 {selectedDateFormats.map((formatInfo, idx) => (
                   <button
+                    type="button"
                     key={idx}
                     onClick={() => handleFormatClick(formatInfo.key, formatInfo.label, formatInfo.recordId)}
                     className="px-3 py-1.5 rounded-full text-xs font-medium transition-all hover:opacity-80 hover:shadow-md cursor-pointer"
@@ -4610,7 +4672,13 @@ export function SayuPage() {
 }
 
 // ===== 📈 HARU주식관리 대시보드 =====
-function StockDashboard({ records }: { records: any[] }) {
+function StockDashboard({
+  records,
+  onOpenRecord,
+}: {
+  records: any[];
+  onOpenRecord?: (record: any) => void;
+}) {
   const [filter, setFilter] = useState<'전체' | '매수' | '매도' | '실현이익' | '실현손실'>('전체');
   const [sort, setSort] = useState<'최신순' | '오래된순' | '금액높은순' | '금액낮은순'>('최신순');
   const [dateFrom, setDateFrom] = useState('');
@@ -4620,6 +4688,8 @@ function StockDashboard({ records }: { records: any[] }) {
   // 레코드 → 거래 객체 (각 레코드가 1건의 거래를 보유)
   const allTrades: any[] = records
     .map((r) => ({
+      recordId: r?.id || '',
+      date: r?.date || '',
       stock_type: r?.stock_type || '',
       stock_name: r?.stock_name || '',
       stock_price: r?.stock_price || '',
@@ -4662,6 +4732,7 @@ function StockDashboard({ records }: { records: any[] }) {
 
   const chip = (label: string, active: boolean, onClick: () => void, color?: string) => (
     <button
+      type="button"
       onClick={onClick}
       style={{
         display: 'inline-flex', alignItems: 'center', fontSize: 11,
@@ -4753,6 +4824,7 @@ function StockDashboard({ records }: { records: any[] }) {
           };
           return (
             <button
+              type="button"
               key={p}
               onClick={applyRange}
               style={{ fontSize: 11, padding: '5px 10px', borderRadius: 20, margin: 3, cursor: 'pointer', border: '0.5px solid #e5e7eb', background: '#fff', color: '#6B7280' }}
@@ -4791,7 +4863,22 @@ function StockDashboard({ records }: { records: any[] }) {
         <div style={{ textAlign: 'center', padding: 20, fontSize: 13, color: '#9CA3AF' }}>거래 내역이 없습니다</div>
       )}
       {filtered.map((t: any, i: number) => (
-        <div key={i} style={{ background: '#fff', border: '0.5px solid #e5e7eb', borderRadius: 10, padding: '12px 14px', marginBottom: 8 }}>
+        <button
+          type="button"
+          key={`${t.recordId || t.stock_date}-${i}`}
+          onClick={() => onOpenRecord?.(t)}
+          style={{
+            width: '100%',
+            textAlign: 'left',
+            background: '#fff',
+            border: '0.5px solid #e5e7eb',
+            borderRadius: 10,
+            padding: '12px 14px',
+            marginBottom: 8,
+            cursor: onOpenRecord ? 'pointer' : 'default',
+          }}
+          aria-label={`${t.stock_name} 거래 결과 열기`}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>{t.stock_name}</span>
             <span style={{
@@ -4811,7 +4898,7 @@ function StockDashboard({ records }: { records: any[] }) {
               {String(t.stock_reflection || t.stock_sayu).trim()}
             </div>
           )}
-        </div>
+        </button>
       ))}
     </div>
   );
