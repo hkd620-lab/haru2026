@@ -176,6 +176,20 @@ const RECORDS: RecordItem[] = [
     ),
   },
   {
+    label: '주식거래일지',
+    sub: '거래와 복기',
+    bg: '#E0E8B8',
+    stroke: '#4A5A2C',
+    format: '주식거래일지',
+    icon: (
+      <>
+        <path d="M3 17l6-6 4 4 8-8" />
+        <path d="M14 7h7v7" />
+        <path d="M5 21h14" />
+      </>
+    ),
+  },
+  {
     label: '메모',
     sub: '짧은 한 조각',
     bg: '#F5E5DC',
@@ -294,7 +308,7 @@ const AGENTS: Agent[] = [
     variant: 'terracotta',
     stroke: '#B85C2E',
     path: '/record',
-    state: { format: 'HARU주식관리' },
+    state: { format: '주식거래일지' },
     icon: (
       <>
         <path d="M3 17l6-6 4 4 8-8" />
