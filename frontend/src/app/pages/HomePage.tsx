@@ -73,7 +73,7 @@ export function HomePage() {
 
   // 🔧 개발자 도구 — 4×1 그리드 (4개, 개발자만)
   const devToolCards: { icon: string; label: string; path: string }[] = [
-    { icon: "🤖", label: "하루AI지식창고", path: "/sayu" },
+    { icon: "🤖", label: "하루AI지식창고", path: "/admin/console" },
     { icon: "📰", label: "최신외신", path: "/news" },
     { icon: "✅", label: "배포 체크", path: "/admin/checklist" },
     { icon: "📚", label: "책 만들기", path: "/book-create" },

@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { PageHeaderActions } from '../components/PageHeaderActions';
+import { AiLibraryPage } from './AiLibraryPage';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -14,6 +15,13 @@ interface DevTool {
 }
 
 const DEV_TOOLS: DevTool[] = [
+  {
+    icon: '🤖',
+    label: '하루AI지식창고',
+    description: 'AI 대화 저장·검색',
+    path: 'ai-library',
+    color: '#6366F1',
+  },
   {
     icon: '📖',
     label: '새 책 만들기',
@@ -54,6 +62,7 @@ const DEV_TOOLS: DevTool[] = [
 export function DevConsolePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [activePanel, setActivePanel] = useState<'tools' | 'ai-library'>('tools');
   const isDeveloper = user?.uid === DEVELOPER_UID;
 
   useEffect(() => {
@@ -62,6 +71,15 @@ export function DevConsolePage() {
   }, [user, isDeveloper, navigate]);
 
   if (!user || !isDeveloper) return null;
+
+  if (activePanel === 'ai-library') {
+    return (
+      <div className="min-h-screen pb-20" style={{ backgroundColor: '#FAF9F6', color: '#1A3C6E' }}>
+        <PageHeaderActions onClose={() => setActivePanel('tools')} />
+        <AiLibraryPage />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-20" style={{ backgroundColor: '#FAF9F6', color: '#1A3C6E' }}>
@@ -81,7 +99,13 @@ export function DevConsolePage() {
           {DEV_TOOLS.map((tool) => (
             <button
               key={tool.path}
-              onClick={() => navigate(tool.path)}
+              onClick={() => {
+                if (tool.path === 'ai-library') {
+                  setActivePanel('ai-library');
+                  return;
+                }
+                navigate(tool.path);
+              }}
               className="bg-white rounded-2xl border border-gray-200 p-5 text-left hover:shadow-md transition-shadow"
             >
               <div className="text-3xl mb-3">{tool.icon}</div>

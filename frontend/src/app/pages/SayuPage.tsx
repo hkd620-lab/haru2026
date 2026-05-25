@@ -1003,9 +1003,9 @@ export function SayuPage() {
     })();
   }, [collapsedCategories, isDeveloper, isPremium, plantCatalogLoaded]);
 
-  // Fetch AI logs when 사유비서 is opened
+  // Fetch AI logs only for the legacy developer-only knowledge warehouse panel.
   useEffect(() => {
-    if (sayuTab === 'assistants' && !aiLogsLoaded && user?.email) {
+    if (false && sayuTab === 'assistants' && !aiLogsLoaded && user?.email) {
       setAiLogsLoading(true);
       firestoreService.getAiLogs(user.email).then(async (data: any[]) => {
         setAiLogs(data);
@@ -1919,13 +1919,25 @@ export function SayuPage() {
     });
   };
 
-  const hasSavedSayuForRecord = (record: HaruRecord, prefix: string) => {
+  const isKnowledgeWarehouseRecord = (record: HaruRecord) => (
+    record.type === 'ai_log' ||
+    record.format === 'ai_log' ||
+    record.source === 'claude.ai' ||
+    record.source === 'chatgpt.com' ||
+    record.source === 'gemini.google.com'
+  );
+
+  const hasCompletedFormatForRecord = (record: HaruRecord, prefix: string) => {
+    if (isKnowledgeWarehouseRecord(record)) return false;
     const sayu = record[`${prefix}_sayu`];
     const finalSayu = record[`${prefix}_final_sayu`];
+    const status = record[`${prefix}_status`];
     return (
       (typeof sayu === 'string' && sayu.trim().length > 0) ||
       (typeof finalSayu === 'string' && finalSayu.trim().length > 0) ||
-      record[`${prefix}_polished`] === true
+      record[`${prefix}_polished`] === true ||
+      status === 'completed' ||
+      getRecordSourceText(record, prefix).trim().length > 0
     );
   };
 
@@ -1960,7 +1972,7 @@ export function SayuPage() {
     .filter((record) => isCurrentMonthDate(record.date))
     .flatMap((record) =>
       getRecordFormatsForList(record)
-        .filter(({ prefix }) => hasSavedSayuForRecord(record, prefix))
+        .filter(({ prefix }) => hasCompletedFormatForRecord(record, prefix))
         .map(({ label, prefix }) => ({
           id: `${record.id}_${prefix}`,
           date: record.date,
@@ -1976,7 +1988,13 @@ export function SayuPage() {
 
   const assistantEntries: FlatSayuEntry[] = [
     ...records
-      .filter((record) => isCurrentMonthDate(record.date) && Array.isArray(record.formats) && record.formats.includes('HARUraw' as any))
+      .filter((record) => (
+        isCurrentMonthDate(record.date) &&
+        !isKnowledgeWarehouseRecord(record) &&
+        Array.isArray(record.formats) &&
+        record.formats.includes('HARUraw' as any) &&
+        getRecordSourceText(record, 'haruraw').trim().length > 0
+      ))
       .map((record) => ({
         id: `${record.id}_haruraw`,
         date: record.date,
@@ -1988,7 +2006,7 @@ export function SayuPage() {
         onOpen: () => openFormatSayu(record.date, 'haruraw', 'HARUraw', record.id),
       })),
     ...records
-      .filter((record) => isCurrentMonthDate(record.date))
+      .filter((record) => isCurrentMonthDate(record.date) && !isKnowledgeWarehouseRecord(record))
       .flatMap((record: any) =>
         (Array.isArray(record.plantDetective) ? record.plantDetective : []).map((entry: any, idx: number) => ({
           id: `${record.id}_plant_${idx}`,
@@ -2000,24 +2018,6 @@ export function SayuPage() {
           onOpen: () => setPlantPopupType('assistant'),
         })),
       ),
-    ...(isDeveloper
-      ? aiLogs
-          .filter((log: any) => isCurrentMonthDate(String(log.createdAt || log.date || '').slice(0, 10)))
-          .map((log: any) => ({
-            id: `ai_${log.id}`,
-            date: String(log.createdAt || log.date || '').slice(0, 10),
-            label: '하루AI지식창고',
-            title: String(log.ai_title || log.title || '(제목 없음)').slice(0, 48),
-            subtitle: extractPreviewKeywords(String(log.content || log.ai_title || log.title || '')).slice(0, 4).join(' · '),
-            color: '#6366F1',
-            onOpen: () => setSelectedAiLog(selectedAiLog?.id === log.id ? null : log),
-            extra: selectedAiLog?.id === log.id ? (
-              <div className="px-4 py-3 text-xs leading-relaxed whitespace-pre-wrap" style={{ backgroundColor: '#f8faff', color: '#333', borderTop: '1px solid #eef2ff' }}>
-                {String(log.content || '내용 없음')}
-              </div>
-            ) : undefined,
-          }))
-      : []),
   ].sort((a, b) => b.date.localeCompare(a.date) || a.label.localeCompare(b.label));
 
   const activeEntries = sayuTab === 'records' ? recordEntries : assistantEntries;
@@ -2090,9 +2090,6 @@ export function SayuPage() {
 
   const renderFlatEntryList = (entries: FlatSayuEntry[]) => {
     if (loading && sayuTab === 'records') {
-      return <p className="text-center py-8 text-sm" style={{ color: '#999' }}>불러오는 중...</p>;
-    }
-    if (aiLogsLoading && sayuTab === 'assistants') {
       return <p className="text-center py-8 text-sm" style={{ color: '#999' }}>불러오는 중...</p>;
     }
     if (entries.length === 0) {

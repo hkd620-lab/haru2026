@@ -33,7 +33,7 @@ export function RecordHubPage() {
   ];
 
   const devToolCards: { icon: string; label: string; desc: string; path: string }[] = [
-    { icon: '🤖', label: '하루AI지식창고', desc: 'AI 대화 저장·검색', path: '/sayu' },
+    { icon: '🤖', label: '하루AI지식창고', desc: 'AI 대화 저장·검색', path: '/admin/console' },
     { icon: '📰', label: '최신외신 3편', desc: '데일리 영문 뉴스', path: '/news' },
     { icon: '✅', label: '배포 체크리스트', desc: '배포 전 점검', path: '/admin/checklist' },
     { icon: '📚', label: '책 만들기', desc: '신규 책 생성', path: '/book-create' },
