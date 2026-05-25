@@ -350,6 +350,7 @@ export function SayuPage() {
   const [selectedAssistantDate, setSelectedAssistantDate] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [sayuTab, setSayuTab] = useState<'records' | 'assistants'>('records');
+  const [expandedSayuGroups, setExpandedSayuGroups] = useState<Set<string>>(new Set());
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고', 'SNS검색기록', '내가 읽은 책', 'HARU주식관리']));
   const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
   // 📊 통계/합치기 모달
@@ -1896,6 +1897,20 @@ export function SayuPage() {
     extra?: ReactNode;
   };
 
+  const getSayuGroupKey = (tab: 'records' | 'assistants', label: string) => `${tab}_${label}`;
+
+  const toggleSayuGroup = (groupKey: string) => {
+    setExpandedSayuGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupKey)) {
+        next.delete(groupKey);
+      } else {
+        next.add(groupKey);
+      }
+      return next;
+    });
+  };
+
   const getRecordFormatsForList = (record: HaruRecord) => {
     const formatsFromRecord = Array.isArray(record.formats)
       ? record.formats
@@ -2099,6 +2114,112 @@ export function SayuPage() {
       </button>
     </div>
   );
+
+  const renderGroupedEntryList = (entries: FlatSayuEntry[]) => {
+    if (loading && sayuTab === 'records') {
+      return <p className="text-center py-8 text-sm" style={{ color: '#999' }}>불러오는 중...</p>;
+    }
+    if (entries.length === 0) {
+      return (
+        <div className="bg-white rounded-lg p-8 shadow-sm text-center">
+          <p className="text-sm" style={{ color: '#999' }}>
+            {sayuTab === 'records' ? '이 달의 사유 기록이 없습니다' : '이 달의 사유비서 결과가 없습니다'}
+          </p>
+        </div>
+      );
+    }
+    const groups = Array.from(entries.reduce((map, entry) => {
+      const group = map.get(entry.label) || {
+        label: entry.label,
+        color: entry.color,
+        latestDate: entry.date,
+        entries: [] as FlatSayuEntry[],
+      };
+      group.entries.push(entry);
+      if (entry.date > group.latestDate) group.latestDate = entry.date;
+      if (!group.color) group.color = entry.color;
+      map.set(entry.label, group);
+      return map;
+    }, new Map<string, { label: string; color: string; latestDate: string; entries: FlatSayuEntry[] }>()).values())
+      .map((group) => ({
+        ...group,
+        entries: group.entries.sort((a, b) => b.date.localeCompare(a.date) || a.title.localeCompare(b.title)),
+      }))
+      .sort((a, b) => b.latestDate.localeCompare(a.latestDate) || a.label.localeCompare(b.label));
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {groups.map((group) => {
+          const groupKey = getSayuGroupKey(sayuTab, group.label);
+          const isExpanded = expandedSayuGroups.has(groupKey);
+          return (
+            <section key={groupKey} className="bg-white rounded-lg shadow-sm overflow-hidden">
+              <button
+                type="button"
+                onClick={() => toggleSayuGroup(groupKey)}
+                className="w-full flex items-center gap-3 px-4 text-left hover:bg-yellow-50 transition-colors"
+                aria-expanded={isExpanded}
+                style={{ minHeight: 62 }}
+              >
+                <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: group.color, flexShrink: 0 }} />
+                <span className="flex-1" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 2 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minWidth: 0 }}>
+                    <span className="text-base font-semibold truncate" style={{ color: '#1A3C6E', minWidth: 0 }}>
+                      {group.label}
+                    </span>
+                    <span style={{ color: '#6B7280', fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      {group.entries.length}개
+                    </span>
+                  </span>
+                  <span style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4 }}>
+                    최근 기록 {formatListDate(group.latestDate)}
+                  </span>
+                </span>
+                <ChevronRight
+                  className="w-4 h-4"
+                  aria-hidden="true"
+                  style={{
+                    color: '#9CA3AF',
+                    flexShrink: 0,
+                    transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.15s',
+                  }}
+                />
+              </button>
+
+              {isExpanded && (
+                <div style={{ borderTop: '1px solid #f0f0f0' }}>
+                  {group.entries.map((entry, idx) => (
+                    <div key={entry.id} className={idx > 0 ? 'border-t' : ''} style={{ borderColor: '#f0f0f0' }}>
+                      <button
+                        type="button"
+                        onClick={entry.onOpen}
+                        className="w-full flex items-center gap-3 px-4 text-left hover:bg-yellow-50 transition-colors"
+                        style={{ minHeight: 56, paddingLeft: 18 }}
+                      >
+                        <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: 36 }}>
+                          {formatListDate(entry.date)}
+                        </span>
+                        <span className="flex-1" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 2 }}>
+                          <span className="text-sm truncate" style={{ color: '#333' }}>{entry.title}</span>
+                          {entry.subtitle && (
+                            <span style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4, overflowWrap: 'anywhere', wordBreak: 'keep-all', display: 'block' }}>
+                              {entry.subtitle}
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                      {entry.extra}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          );
+        })}
+      </div>
+    );
+  };
 
   const renderFlatEntryList = (entries: FlatSayuEntry[]) => {
     if (loading && sayuTab === 'records') {
@@ -2421,7 +2542,7 @@ export function SayuPage() {
       {/* 목록 / 달력 segmented 탭 */}
       {renderViewModeTabs()}
 
-      {viewMode === 'list' && renderFlatEntryList(activeEntries)}
+      {viewMode === 'list' && renderGroupedEntryList(activeEntries)}
       {viewMode === 'calendar' && renderEntryCalendar(activeEntries)}
 
       {/* ─── 목록 뷰 ─── */}
