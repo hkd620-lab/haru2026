@@ -880,9 +880,11 @@ exports.kakaoLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3', se
 });
 // ===== 🟡 카카오 콜백 (통합 UID 적용) =====
 exports.kakaoCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', secrets: [KAKAO_CLIENT_ID_SECRET, KAKAO_CLIENT_SECRET_SECRET] }, async (req, res) => {
-    var _a, _b, _c;
+    var _a, _b, _c, _d, _f;
     try {
         const { code, state } = req.query;
+        if (!code || typeof code !== 'string')
+            throw new Error('Invalid code');
         if (!state || typeof state !== 'string')
             throw new Error('Invalid state');
         const stateDoc = await db.collection('oauth_states').doc(state).get();
@@ -893,26 +895,51 @@ exports.kakaoCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', secr
             throw new Error('State expired');
         }
         await stateDoc.ref.delete();
-        const tokenResponse = await axios_1.default.post('https://kauth.kakao.com/oauth/token', null, {
-            params: {
-                grant_type: 'authorization_code',
-                client_id: KAKAO_CLIENT_ID_SECRET.value().trim(),
-                client_secret: KAKAO_CLIENT_SECRET_SECRET.value().trim(),
-                redirect_uri: KAKAO_REDIRECT_URI,
-                code,
-            },
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-        });
+        const kakaoTokenParams = {
+            grant_type: 'authorization_code',
+            client_id: KAKAO_CLIENT_ID_SECRET.value().trim(),
+            redirect_uri: KAKAO_REDIRECT_URI,
+            code,
+        };
+        const kakaoClientSecret = KAKAO_CLIENT_SECRET_SECRET.value().trim();
+        if (kakaoClientSecret) {
+            kakaoTokenParams.client_secret = kakaoClientSecret;
+        }
+        let tokenResponse;
+        try {
+            tokenResponse = await axios_1.default.post('https://kauth.kakao.com/oauth/token', null, {
+                params: kakaoTokenParams,
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+            });
+        }
+        catch (tokenError) {
+            const data = axios_1.default.isAxiosError(tokenError) ? (_a = tokenError.response) === null || _a === void 0 ? void 0 : _a.data : null;
+            if (kakaoClientSecret &&
+                ((_b = tokenError === null || tokenError === void 0 ? void 0 : tokenError.response) === null || _b === void 0 ? void 0 : _b.status) === 401 &&
+                (data === null || data === void 0 ? void 0 : data.error) === 'invalid_client') {
+                logger.warn('카카오 client_secret 거절됨. client_secret 없이 토큰 교환 재시도');
+                const { client_secret, ...retryParams } = kakaoTokenParams;
+                tokenResponse = await axios_1.default.post('https://kauth.kakao.com/oauth/token', null, {
+                    params: retryParams,
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                });
+            }
+            else {
+                throw tokenError;
+            }
+        }
         const { access_token } = tokenResponse.data;
         const userResponse = await axios_1.default.get('https://kapi.kakao.com/v2/user/me', { headers: { Authorization: `Bearer ${access_token}` } });
         const kakaoUser = userResponse.data;
         if (!kakaoUser.id) {
             throw new Error('카카오 사용자 ID를 가져올 수 없습니다');
         }
-        const email = ((_a = kakaoUser.kakao_account) === null || _a === void 0 ? void 0 : _a.email) || `kakao_${kakaoUser.id}@placeholder.local`;
-        const displayName = ((_c = (_b = kakaoUser.kakao_account) === null || _b === void 0 ? void 0 : _b.profile) === null || _c === void 0 ? void 0 : _c.nickname) || `kakao_user_${kakaoUser.id}`;
+        const email = ((_c = kakaoUser.kakao_account) === null || _c === void 0 ? void 0 : _c.email) || `kakao_${kakaoUser.id}@placeholder.local`;
+        const displayName = ((_f = (_d = kakaoUser.kakao_account) === null || _d === void 0 ? void 0 : _d.profile) === null || _f === void 0 ? void 0 : _f.nickname) || `kakao_user_${kakaoUser.id}`;
         // 🔑 통합 UID 생성/조회
         const uid = await getOrCreateUnifiedUid(email, 'kakao');
         // photoURL 완전히 제거 - 카카오는 photoURL 없이 생성

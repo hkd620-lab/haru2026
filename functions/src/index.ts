@@ -941,6 +941,7 @@ export const kakaoCallback = onRequest(
     try {
       const { code, state } = req.query;
 
+      if (!code || typeof code !== 'string') throw new Error('Invalid code');
       if (!state || typeof state !== 'string') throw new Error('Invalid state');
 
       const stateDoc = await db.collection('oauth_states').doc(state).get();
@@ -953,22 +954,52 @@ export const kakaoCallback = onRequest(
 
       await stateDoc.ref.delete();
 
-      const tokenResponse = await axios.post(
-        'https://kauth.kakao.com/oauth/token',
-        null,
-        {
-          params: {
-            grant_type: 'authorization_code',
-            client_id: KAKAO_CLIENT_ID_SECRET.value().trim(),
-            client_secret: KAKAO_CLIENT_SECRET_SECRET.value().trim(),
-            redirect_uri: KAKAO_REDIRECT_URI,
-            code,
-          },
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
+      const kakaoTokenParams: Record<string, string | string[] | undefined> = {
+        grant_type: 'authorization_code',
+        client_id: KAKAO_CLIENT_ID_SECRET.value().trim(),
+        redirect_uri: KAKAO_REDIRECT_URI,
+        code,
+      };
+      const kakaoClientSecret = KAKAO_CLIENT_SECRET_SECRET.value().trim();
+      if (kakaoClientSecret) {
+        kakaoTokenParams.client_secret = kakaoClientSecret;
+      }
+
+      let tokenResponse;
+      try {
+        tokenResponse = await axios.post(
+          'https://kauth.kakao.com/oauth/token',
+          null,
+          {
+            params: kakaoTokenParams,
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+          }
+        );
+      } catch (tokenError: any) {
+        const data = axios.isAxiosError(tokenError) ? tokenError.response?.data : null;
+        if (
+          kakaoClientSecret &&
+          tokenError?.response?.status === 401 &&
+          data?.error === 'invalid_client'
+        ) {
+          logger.warn('카카오 client_secret 거절됨. client_secret 없이 토큰 교환 재시도');
+          const { client_secret, ...retryParams } = kakaoTokenParams;
+          tokenResponse = await axios.post(
+            'https://kauth.kakao.com/oauth/token',
+            null,
+            {
+              params: retryParams,
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+            }
+          );
+        } else {
+          throw tokenError;
         }
-      );
+      }
 
       const { access_token } = tokenResponse.data;
 
