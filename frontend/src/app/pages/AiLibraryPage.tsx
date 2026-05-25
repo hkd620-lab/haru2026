@@ -112,6 +112,23 @@ const buildMaterialCopyText = (record: HaruRecord, material: BookMaterial) => {
   ].filter(Boolean).join('\n\n');
 };
 
+const getMaterialPreviewText = (record: HaruRecord, material: BookMaterial) => {
+  const summary = cleanText(material.bookSummary || material.summary3);
+  const question = cleanText(material.humanQuestionCore);
+  const answer = cleanText(material.aiResponseCore);
+  const vibe = cleanText(material.vibeFlow);
+  const firstPassage = toTextArray(material.bookPassages, 1)[0] || '';
+
+  return [
+    summary,
+    question && `질문 핵심\n${question}`,
+    answer && `답변 핵심\n${answer}`,
+    vibe && `흐름\n${vibe}`,
+    !summary && !question && !answer && firstPassage,
+    !summary && !question && !answer && !firstPassage && getMaterialTitle(record, material),
+  ].filter(Boolean).join('\n\n');
+};
+
 function MaterialBlock({ label, children, tint = '#FFFFFF' }: { label: string; children: ReactNode; tint?: string }) {
   if (!children) return null;
   return (
@@ -393,9 +410,22 @@ export function AiLibraryPage() {
       const data = (result.data || {}) as any;
       if (!data?.ok) throw new Error('AI 응답 형식 오류');
 
-      setLogs(prevLogs => prevLogs.map(item =>
-        item.id === log.id ? { ...item, bookMaterial: data.bookMaterial } : item
-      ));
+      if (user?.email) {
+        const freshLogs = await firestoreService.getAiLogs(user.email);
+        const refreshed = freshLogs.find(item => item.id === log.id);
+        setLogs(freshLogs.map(item =>
+          item.id === log.id && !item.bookMaterial && data.bookMaterial
+            ? { ...item, bookMaterial: data.bookMaterial }
+            : item
+        ));
+        if (!refreshed?.bookMaterial && !data.bookMaterial) {
+          alert('변환은 완료됐지만 화면 갱신값을 바로 읽지 못했습니다. 새로고침하면 반영됩니다.');
+        }
+      } else {
+        setLogs(prevLogs => prevLogs.map(item =>
+          item.id === log.id ? { ...item, bookMaterial: data.bookMaterial } : item
+        ));
+      }
       setExpandedId(log.id);
       alert('책소재 변환이 완료되었습니다.');
     } catch (error: any) {
@@ -518,6 +548,14 @@ export function AiLibraryPage() {
             const material = getBookMaterial(log);
             const isExpanded = expandedId === log.id;
             const isConverting = bookMaterialBusy.has(log.id);
+            const materialPreview = material ? getMaterialPreviewText(log, material) : '';
+            const displayText = material
+              ? materialPreview
+              : log.content
+                ? isExpanded
+                  ? log.content
+                  : log.content.slice(0, 100) + (log.content.length > 100 ? '...' : '')
+                : '';
             return (
             <div
               key={log.id}
@@ -526,7 +564,7 @@ export function AiLibraryPage() {
                 border: `1px solid ${deleteMode && selectedIds.has(log.id) ? '#1A3C6E' : '#e5e5e5'}`,
                 borderRadius: '10px',
                 padding: '14px',
-                background: deleteMode && selectedIds.has(log.id) ? '#f8f9ff' : '#fff',
+                background: deleteMode && selectedIds.has(log.id) ? '#f8f9ff' : material ? '#FFFCF2' : '#fff',
                 cursor: 'pointer',
                 position: 'relative',
               }}
@@ -588,12 +626,20 @@ export function AiLibraryPage() {
                   )}
                 </p>
               )}
-              <p style={{ fontSize: '13px', color: '#555', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
-                {isExpanded
-                  ? log.content
-                  : log.content
-                    ? log.content.slice(0, 100) + (log.content.length > 100 ? '...' : '')
-                    : ''}
+              <p
+                style={{
+                  fontSize: '13px',
+                  color: material ? '#1F2937' : '#555',
+                  lineHeight: '1.55',
+                  whiteSpace: 'pre-wrap',
+                  margin: material ? '8px 0 4px' : undefined,
+                  padding: material ? '10px' : undefined,
+                  borderRadius: material ? 8 : undefined,
+                  background: material ? '#FFFFFF' : undefined,
+                  border: material ? '1px solid #F0E4C2' : undefined,
+                }}
+              >
+                {displayText}
               </p>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: '8px', flexWrap: 'wrap' }}>
                 <button
@@ -662,7 +708,16 @@ export function AiLibraryPage() {
                 </button>
               </div>
               {isExpanded && (
-                <BookMaterialPanel log={log} />
+                <>
+                  <BookMaterialPanel log={log} />
+                  {material && log.content && (
+                    <div style={{ marginTop: 10 }}>
+                      <MaterialBlock label="원문 대화" tint="#FFFFFF">
+                        {log.content}
+                      </MaterialBlock>
+                    </div>
+                  )}
+                </>
               )}
             </div>
             );
