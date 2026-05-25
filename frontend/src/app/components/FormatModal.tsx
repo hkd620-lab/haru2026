@@ -233,7 +233,11 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [isExtractingBookText, setIsExtractingBookText] = useState(false);
   const [readingOcrUsedCount, setReadingOcrUsedCount] = useState<number | null>(null);
   const [readingBookTextMode, setReadingBookTextMode] = useState<'photo' | 'manual'>('photo');
+  const [selectedBookOcrFiles, setSelectedBookOcrFiles] = useState<File[]>([]);
   const bookOcrInputRef = useRef<HTMLInputElement>(null);
+  const [selectedStockOcrFiles, setSelectedStockOcrFiles] = useState<File[]>([]);
+  const [isExtractingStockText, setIsExtractingStockText] = useState(false);
+  const stockOcrInputRef = useRef<HTMLInputElement>(null);
 
   // 📈 HARU주식관리: 카톡 TXT 내보내기 파싱 state
   const [isCsvParsing, setIsCsvParsing] = useState(false);
@@ -822,14 +826,22 @@ ${contentValues}`,
       clearBookOcrInput();
       return;
     }
+    setSelectedBookOcrFiles(Array.from(files));
+    toast.success(`${files.length}장의 책 본문 사진을 추가했습니다. 텍스트추출 버튼을 눌러주세요.`);
+    clearBookOcrInput();
+  };
+
+  const handleExtractSelectedBookText = async () => {
+    if (selectedBookOcrFiles.length === 0) {
+      toast.warning('먼저 책 본문 사진을 추가해 주세요.');
+      return;
+    }
     if (!user?.uid) {
       toast.error('로그인이 필요합니다.');
-      clearBookOcrInput();
       return;
     }
     if (!isPremium) {
       alert('PREMIUM 구독 후 이용 가능한 기능입니다.');
-      clearBookOcrInput();
       return;
     }
 
@@ -837,22 +849,19 @@ ${contentValues}`,
     const author = String(formData.reading_author || '').trim();
     if (!bookTitle) {
       toast.warning('책 제목을 먼저 입력해 주세요.');
-      clearBookOcrInput();
       return;
     }
     if (!author) {
       toast.warning('저자를 먼저 입력해 주세요.');
-      clearBookOcrInput();
       return;
     }
 
-    const allFiles = Array.from(files);
+    const allFiles = selectedBookOcrFiles;
     const remainingSlots = isDeveloper
       ? allFiles.length
       : Math.max(READING_BOOK_OCR_LIMIT - (readingOcrUsedCount ?? 0), 0);
     if (remainingSlots <= 0) {
       toast.warning('책 한 권당 본문 사진은 총 20장까지 변환할 수 있습니다.');
-      clearBookOcrInput();
       return;
     }
 
@@ -917,13 +926,13 @@ ${contentValues}`,
             reading_ocr_photo_count: String(previousCount + successCount),
           };
         });
+        setSelectedBookOcrFiles([]);
         toast.success(`${successCount}장의 책 본문을 텍스트로 변환했습니다.`);
       } else if (successCount > 0) {
         toast.warning('사진에서 읽을 수 있는 책 본문을 찾지 못했습니다.');
       }
     } finally {
       setIsExtractingBookText(false);
-      clearBookOcrInput();
     }
   };
 
@@ -960,6 +969,71 @@ ${contentValues}`,
       mimeType: 'image/jpeg',
     });
     applyStockOcrResult(result.data as StockOcrResult);
+  };
+
+  const clearStockOcrInput = () => {
+    if (stockOcrInputRef.current) {
+      stockOcrInputRef.current.value = '';
+    }
+  };
+
+  const handleStockOcrPhotoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    if (!isStockFormat) {
+      clearStockOcrInput();
+      return;
+    }
+
+    const selected = Array.from(files).slice(0, 3);
+    setSelectedStockOcrFiles(selected);
+    toast.success(`${selected.length}장의 거래 캡처 사진을 추가했습니다. 텍스트추출 버튼을 눌러주세요.`);
+    clearStockOcrInput();
+  };
+
+  const handleExtractSelectedStockText = async () => {
+    if (!isStockFormat) return;
+    if (selectedStockOcrFiles.length === 0) {
+      toast.warning('먼저 거래 캡처 사진을 추가해 주세요.');
+      return;
+    }
+    if (!user?.uid) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+
+    setIsExtractingStockText(true);
+    let successCount = 0;
+    try {
+      for (const file of selectedStockOcrFiles) {
+        const isHeic = file.type === 'image/heic' || file.type === 'image/heif' ||
+          file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
+        if (!file.type.startsWith('image/') && !isHeic) {
+          toast.warning(`${file.name}은 이미지 파일이 아닙니다.`);
+          continue;
+        }
+        if (file.size > 20 * 1024 * 1024) {
+          toast.warning(`${file.name}은 20MB를 초과하여 건너뜁니다.`);
+          continue;
+        }
+
+        try {
+          const compressed = await prepareBookOcrImage(file);
+          await extractStockTextFromImage(compressed);
+          successCount++;
+        } catch (ocrError: any) {
+          console.error('주식 거래 캡처 OCR 실패:', ocrError);
+          toast.warning(String(ocrError?.message || '거래 캡처 텍스트 추출에 실패했습니다.'));
+        }
+      }
+
+      if (successCount > 0) {
+        setSelectedStockOcrFiles([]);
+        toast.success(`${successCount}장의 거래 캡처에서 텍스트를 추출했습니다.`);
+      }
+    } finally {
+      setIsExtractingStockText(false);
+    }
   };
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -2065,8 +2139,36 @@ ${contentValues}`,
                           }}
                         >
                           <Camera style={{ width: 16, height: 16 }} />
-                          {isExtractingBookText ? '텍스트 변환 중...' : '책 본문 사진 추가'}
+                          책 본문 사진 추가
+                          {selectedBookOcrFiles.length > 0 ? ` (${selectedBookOcrFiles.length}장)` : ''}
                         </button>
+                        {selectedBookOcrFiles.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={handleExtractSelectedBookText}
+                            disabled={isExtractingBookText}
+                            style={{
+                              width: '100%',
+                              marginTop: 8,
+                              padding: '10px 14px',
+                              border: 'none',
+                              borderRadius: 8,
+                              backgroundColor: '#1A3C6E',
+                              color: '#fff',
+                              cursor: isExtractingBookText ? 'wait' : 'pointer',
+                              opacity: isExtractingBookText ? 0.6 : 1,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 8,
+                              fontSize: 13,
+                              fontWeight: 800,
+                            }}
+                          >
+                            <FileText style={{ width: 16, height: 16 }} />
+                            {isExtractingBookText ? '텍스트추출 중...' : '텍스트추출'}
+                          </button>
+                        )}
                       </>
                     )}
                     <textarea
@@ -2413,8 +2515,89 @@ ${contentValues}`,
                 </div>
               )}
 
+              {/* 📈 주식 형식 전용: 거래 캡처 사진 OCR — 사진 원본은 저장하지 않음 */}
+              {isStockFormat && (
+                <div
+                  style={{
+                    padding: 12,
+                    border: '1px solid #d0dff0',
+                    borderRadius: 10,
+                    backgroundColor: '#f8fbff',
+                  }}
+                >
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A3C6E', marginBottom: 8, fontWeight: 700 }}>
+                    <Camera style={{ width: 15, height: 15 }} />
+                    거래 캡처 사진 텍스트추출
+                  </label>
+                  <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
+                    사진은 서버에 저장하지 않고, 추출된 텍스트만 캡처 원문 칸에 남습니다.
+                  </p>
+                  <input
+                    ref={stockOcrInputRef}
+                    type="file"
+                    accept="image/*,.heic,.heif"
+                    multiple
+                    onChange={handleStockOcrPhotoSelect}
+                    style={{ display: 'none' }}
+                  />
+                  <div style={{ display: 'grid', gridTemplateColumns: selectedStockOcrFiles.length > 0 ? '1fr 1fr' : '1fr', gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() => stockOcrInputRef.current?.click()}
+                      disabled={isExtractingStockText}
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        border: '1px dashed #1A3C6E',
+                        borderRadius: 8,
+                        backgroundColor: '#fff',
+                        color: '#1A3C6E',
+                        cursor: isExtractingStockText ? 'wait' : 'pointer',
+                        opacity: isExtractingStockText ? 0.55 : 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        fontSize: 13,
+                        fontWeight: 700,
+                      }}
+                    >
+                      <Upload style={{ width: 16, height: 16 }} />
+                      사진 추가
+                      {selectedStockOcrFiles.length > 0 ? ` (${selectedStockOcrFiles.length}장)` : ''}
+                    </button>
+                    {selectedStockOcrFiles.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleExtractSelectedStockText}
+                        disabled={isExtractingStockText}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          border: 'none',
+                          borderRadius: 8,
+                          backgroundColor: '#1A3C6E',
+                          color: '#fff',
+                          cursor: isExtractingStockText ? 'wait' : 'pointer',
+                          opacity: isExtractingStockText ? 0.6 : 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                          fontSize: 13,
+                          fontWeight: 800,
+                        }}
+                      >
+                        <FileText style={{ width: 16, height: 16 }} />
+                        {isExtractingStockText ? '텍스트추출 중...' : '텍스트추출'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* 📸 사진 업로드 섹션 — 독서사유 책본문 사진은 OCR 후 저장하지 않음 */}
-              {format !== '독서사유' && (
+              {format !== '독서사유' && !isStockFormat && (
               <div>
                 <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 4, fontWeight: 500 }}>
                   📸 사진 <span style={{ fontWeight: 400, color: '#9ca3af' }}>(선택사항)</span>
@@ -3151,8 +3334,14 @@ ${contentValues}`,
 
       {/* 사진 업로드 중 포도송이 오버레이 */}
       <LoadingOverlay
-        visible={isUploading || isExtractingBookText}
-        message={isExtractingBookText ? '책 본문 텍스트 변환 중...' : '사진 업로드 중...'}
+        visible={isUploading || isExtractingBookText || isExtractingStockText}
+        message={
+          isExtractingBookText
+            ? '책 본문 텍스트 변환 중...'
+            : isExtractingStockText
+              ? '거래 캡처 텍스트 추출 중...'
+              : '사진 업로드 중...'
+        }
       />
     </>
   );
