@@ -1919,13 +1919,26 @@ export function SayuPage() {
     });
   };
 
-  const isKnowledgeWarehouseRecord = (record: HaruRecord) => (
-    record.type === 'ai_log' ||
-    record.format === 'ai_log' ||
-    record.source === 'claude.ai' ||
-    record.source === 'chatgpt.com' ||
-    record.source === 'gemini.google.com'
-  );
+  const isKnowledgeWarehouseRecord = (record: HaruRecord) => {
+    const formats = Array.isArray(record.formats) ? record.formats.map(String) : [];
+    const sourceText = [
+      record.type,
+      record.format,
+      record.source,
+      record.sourceType,
+      record.provider,
+      record.model,
+    ].filter(Boolean).join(' ').toLowerCase();
+    return (
+      formats.some((format) => ['AI대화', 'ChatGPT', 'Claude', 'Gemini'].includes(format)) ||
+      sourceText.includes('ai_log') ||
+      sourceText.includes('claude') ||
+      sourceText.includes('chatgpt') ||
+      sourceText.includes('gemini') ||
+      sourceText.includes('haru_ai') ||
+      sourceText.includes('지식창고')
+    );
+  };
 
   const hasCompletedFormatForRecord = (record: HaruRecord, prefix: string) => {
     if (isKnowledgeWarehouseRecord(record)) return false;
@@ -1936,8 +1949,7 @@ export function SayuPage() {
       (typeof sayu === 'string' && sayu.trim().length > 0) ||
       (typeof finalSayu === 'string' && finalSayu.trim().length > 0) ||
       record[`${prefix}_polished`] === true ||
-      status === 'completed' ||
-      getRecordSourceText(record, prefix).trim().length > 0
+      status === 'completed'
     );
   };
 
