@@ -1134,10 +1134,12 @@ class FirestoreService {
   }
 
   async deleteAiLogs(ids: Set<string>): Promise<void> {
-    const { aiLibraryDb } = await import('../../firebase');
+    const { db, auth } = await import('../../firebase');
     const { doc, deleteDoc } = await import('firebase/firestore');
+    const uid = auth.currentUser?.uid;
+    if (!uid) throw new Error('로그인이 필요합니다.');
     const promises = Array.from(ids).map(id =>
-      deleteDoc(doc(aiLibraryDb, 'conversations', id))
+      deleteDoc(doc(db, 'users', uid, 'records', id))
     );
     await Promise.all(promises);
   }

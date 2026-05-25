@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, type ReactNode } from 'react';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -235,6 +236,7 @@ export function AiLibraryPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteMode, setDeleteMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bookMaterialBusy, setBookMaterialBusy] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     console.log('[AiLibraryPage] user 상태:', user);
@@ -343,6 +345,75 @@ export function AiLibraryPage() {
     }
   };
 
+  const handleDeleteOne = async (log: HaruRecord) => {
+    const title = log.title || '이 대화';
+    if (!confirm(`'${title}' 기록을 삭제하시겠습니까?`)) return;
+
+    try {
+      await firestoreService.deleteAiLogs(new Set([log.id]));
+      setLogs(prevLogs => prevLogs.filter(item => item.id !== log.id));
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        next.delete(log.id);
+        return next;
+      });
+      if (expandedId === log.id) setExpandedId(null);
+      alert('삭제되었습니다.');
+    } catch (error) {
+      console.error('[handleDeleteOne] 삭제 실패:', error);
+      alert('삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleConvertToBookMaterial = async (log: HaruRecord) => {
+    const content = (log.content || '').trim();
+    if (content.length < 10) {
+      alert('변환할 대화 내용이 너무 짧습니다.');
+      return;
+    }
+
+    const already = !!log.bookMaterial?.enabled;
+    if (already && !confirm('이미 책소재로 변환된 항목입니다. 다시 변환하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      setBookMaterialBusy(prev => {
+        const next = new Set(prev);
+        next.add(log.id);
+        return next;
+      });
+
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const convertFn = httpsCallable(fns, 'convertToBookMaterial');
+      const result = await convertFn({
+        logId: log.id,
+        force: already,
+      });
+      const data = (result.data || {}) as any;
+      if (!data?.ok) throw new Error('AI 응답 형식 오류');
+
+      setLogs(prevLogs => prevLogs.map(item =>
+        item.id === log.id ? { ...item, bookMaterial: data.bookMaterial } : item
+      ));
+      setExpandedId(log.id);
+      alert('책소재 변환이 완료되었습니다.');
+    } catch (error: any) {
+      console.error('[handleConvertToBookMaterial] 변환 실패:', error);
+      const code = error?.code || '';
+      const message = error?.message || '알 수 없는 오류';
+      if (code === 'functions/permission-denied') alert('권한이 없습니다. 개발자 전용 기능입니다.');
+      else if (code === 'functions/not-found') alert('원본 기록을 찾을 수 없습니다.');
+      else alert(`변환 실패: ${message}`);
+    } finally {
+      setBookMaterialBusy(prev => {
+        const next = new Set(prev);
+        next.delete(log.id);
+        return next;
+      });
+    }
+  };
+
   return (
     <div style={{ padding: '16px', maxWidth: '640px', margin: '0 auto', paddingBottom: '100px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -445,6 +516,8 @@ export function AiLibraryPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {filtered.map((log) => {
             const material = getBookMaterial(log);
+            const isExpanded = expandedId === log.id;
+            const isConverting = bookMaterialBusy.has(log.id);
             return (
             <div
               key={log.id}
@@ -516,18 +589,44 @@ export function AiLibraryPage() {
                 </p>
               )}
               <p style={{ fontSize: '13px', color: '#555', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
-                {expandedId === log.id
+                {isExpanded
                   ? log.content
                   : log.content
                     ? log.content.slice(0, 100) + (log.content.length > 100 ? '...' : '')
                     : ''}
               </p>
-              {log.content && log.content.length > 100 && (
-                <p style={{ fontSize: '11px', color: '#1A3C6E', marginTop: '6px', textAlign: 'right' }}>
-                  {expandedId === log.id ? '▲ 접기' : '▼ 전체보기'}
-                </p>
-              )}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: '8px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCardClick(log.id);
+                  }}
+                  style={{
+                    background: '#fff', border: '1px solid #D7DEE8',
+                    borderRadius: 6, padding: '4px 10px',
+                    fontSize: 12, color: '#1A3C6E',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {isExpanded ? '▲ 접기' : '▼ 펼치기'}
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleConvertToBookMaterial(log);
+                  }}
+                  disabled={isConverting}
+                  style={{
+                    background: material ? '#EEF3FB' : '#1A3C6E',
+                    border: material ? '1px solid #B8C7DC' : '1px solid #1A3C6E',
+                    borderRadius: 6, padding: '4px 10px',
+                    fontSize: 12, color: material ? '#1A3C6E' : '#fff',
+                    cursor: isConverting ? 'wait' : 'pointer',
+                    opacity: isConverting ? 0.6 : 1,
+                  }}
+                >
+                  {isConverting ? '변환 중...' : material ? '📚 재변환' : '📚 책소재 변환'}
+                </button>
                 <button
                   onClick={async (e) => {
                     e.stopPropagation();
@@ -547,8 +646,22 @@ export function AiLibraryPage() {
                 >
                   📋 복사
                 </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteOne(log);
+                  }}
+                  style={{
+                    background: 'none', border: '1px solid #F1C4C4',
+                    borderRadius: 6, padding: '4px 10px',
+                    fontSize: 12, color: '#B91C1C',
+                    cursor: 'pointer',
+                  }}
+                >
+                  삭제
+                </button>
               </div>
-              {expandedId === log.id && (
+              {isExpanded && (
                 <BookMaterialPanel log={log} />
               )}
             </div>
