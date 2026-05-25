@@ -38,3 +38,9 @@ frontend/.claude/*
 # 백업 파일 무시
 *.old*
 *.bak
+*.backup*
+*.backup_*
+* 2.ts
+* 2.tsx
+* 2.old*
+* 2.backup*
