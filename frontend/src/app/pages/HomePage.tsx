@@ -67,7 +67,7 @@ export function HomePage() {
     { icon: "📖", label: "영어성경", path: "/bible" },
     { icon: "✏️", label: "영어일기", path: "/diary-learn" },
     { icon: "📱", label: "SNS 가져오기", path: "/sns-records", accent: "#10b981" },
-    { icon: "📈", label: "HARU주식관리", path: "/record", state: { format: "HARU주식관리" }, accent: "#10b981" },
+    { icon: "📈", label: "주식거래일지", path: "/record", state: { format: "주식거래일지" }, accent: "#10b981" },
     { icon: "📚", label: "원기충전소", path: "/recovery", accent: "#10b981" },
   ];
 

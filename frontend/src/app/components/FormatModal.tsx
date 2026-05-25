@@ -18,7 +18,7 @@ import {
   READING_STATUS,
 } from '../types/haruTypes';
 
-type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | 'HARU주식관리' | '메모' | 'HARU보조장부';
+type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | 'HARU주식관리' | '주식거래일지' | '메모' | 'HARU보조장부';
 type SayuMode = 'BASIC' | 'PREMIUM';
 
 interface FormatModalProps {
@@ -40,6 +40,18 @@ interface BookOcrResult {
   limit?: number | null;
   remainingCount?: number | null;
   isDeveloper?: boolean;
+}
+
+interface StockOcrResult {
+  text?: string;
+  trade?: Partial<{
+    stock_type: string;
+    stock_name: string;
+    stock_price: string;
+    stock_quantity: string;
+    stock_total: string;
+    stock_date: string;
+  }>;
 }
 
 type GrowthSubjectType = 'child' | 'garden';
@@ -142,6 +154,21 @@ const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placehol
     { key: 'stock_quantity', label: '수량', placeholder: '예: 3주', rows: 1 },
     { key: 'stock_total', label: '거래금액', placeholder: '단가×수량 자동계산', rows: 1 },
     { key: 'stock_date', label: '거래일시', placeholder: '예: 2026.04.23 10:23', rows: 1 },
+    { key: 'stock_reason', label: '거래 판단', placeholder: '매수·매도 이유, 진입/청산 기준, 리스크 판단', rows: 3 },
+    { key: 'stock_reflection', label: '거래소감', placeholder: '거래 후 느낀 점, 잘한 점, 다음에 보완할 점', rows: 4 },
+    { key: 'stock_capture_text', label: '캡처 원문', placeholder: '거래 캡처 이미지에서 추출된 텍스트가 들어갑니다.', rows: 4 },
+    { key: 'stock_memo', label: '메모', placeholder: '추가로 기록할 내용', rows: 3 },
+  ],
+  '주식거래일지': [
+    { key: 'stock_type', label: '거래유형', placeholder: '예: 매수 / 매도', rows: 1 },
+    { key: 'stock_name', label: '종목명', placeholder: '예: 삼성전자', rows: 1 },
+    { key: 'stock_price', label: '거래단가', placeholder: '예: 227,500원', rows: 1 },
+    { key: 'stock_quantity', label: '수량', placeholder: '예: 3주', rows: 1 },
+    { key: 'stock_total', label: '거래금액', placeholder: '예: 682,500원', rows: 1 },
+    { key: 'stock_date', label: '거래일시', placeholder: '예: 2026.05.25 10:23', rows: 1 },
+    { key: 'stock_reason', label: '거래 판단', placeholder: '매수·매도 이유, 진입/청산 기준, 리스크 판단', rows: 3 },
+    { key: 'stock_reflection', label: '거래소감', placeholder: '거래 후 느낀 점, 잘한 점, 다음에 보완할 점', rows: 4 },
+    { key: 'stock_capture_text', label: '캡처 원문', placeholder: '거래 캡처 이미지에서 추출된 텍스트가 들어갑니다.', rows: 4 },
     { key: 'stock_memo', label: '메모', placeholder: '추가로 기록할 내용', rows: 3 },
   ],
   'HARU보조장부': [
@@ -169,6 +196,7 @@ const FORMAT_PREFIX: Record<RecordFormat, string> = {
   '애완동물관찰일지': 'pet',
   '육아일기': 'child',
   'HARU주식관리': 'stock',
+  '주식거래일지': 'stock',
   '메모': 'memo',
   'HARU보조장부': 'ledger',
 };
@@ -270,9 +298,10 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       setShowModeSelect(false);
       setReadingOcrUsedCount(null);
 
-      setRecordStyle(format === '독서사유' ? 'premium' : 'simple');
-      // 독서사유는 select 단계에서 "이어작성 / 새작성" 분기. HARU주식관리만 input 직진.
-      setRecordStep(format === 'HARU주식관리' ? 'input' : 'select');
+      const isStockFormat = format === 'HARU주식관리' || format === '주식거래일지';
+      setRecordStyle(format === '독서사유' || isStockFormat ? 'premium' : 'simple');
+      // 독서사유는 select 단계에서 "이어작성 / 새작성" 분기. 주식 형식은 input 직진.
+      setRecordStep(isStockFormat ? 'input' : 'select');
       setStockCandidates([]);
       setShowCandidates(false);
       // 📚 독서사유 — 책 묶음 state 초기화 + 사용자 records 에서 책 목록 로드
@@ -426,6 +455,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const sayuKey = `${prefix}_sayu`;
   const imagesKey = `${prefix}_images`;
   const existingSayu = initialData[sayuKey];
+  const isStockFormat = format === 'HARU주식관리' || format === '주식거래일지';
 
   const handleChange = (key: string, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -538,7 +568,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
         const recordId = `stock_${rawDate || Date.now()}_${i}`;
 
         const dataToSave: Record<string, any> = {
-          formats: ['HARU주식관리'],
+          formats: [format],
           [`${prefix}_title`]: `${t.stock_name} ${t.stock_type} ${t.stock_quantity}`,
           stock_type: t.stock_type,
           stock_name: t.stock_name,
@@ -656,7 +686,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   };
 
   const handlePolishClick = () => {
-    const currentTitle = (formData[`${prefix}_title`] || (format === '독서사유' ? formData.reading_book_title : '') || '').trim();
+    const currentTitle = (formData[`${prefix}_title`] || (format === '독서사유' ? formData.reading_book_title : '') || (isStockFormat ? formData.stock_name : '') || '').trim();
     if (!currentTitle) {
       toast.warning('제목을 입력해 주세요. 제목이 있어야 나중에 목록에서 내용을 확인하기 편합니다.');
       return;
@@ -897,6 +927,41 @@ ${contentValues}`,
     }
   };
 
+  const applyStockOcrResult = (data: StockOcrResult) => {
+    const trade = data.trade || {};
+    const extractedText = String(data.text || '').trim();
+    setFormData((prev) => {
+      const next: Record<string, string> = { ...prev };
+      (['stock_type', 'stock_name', 'stock_price', 'stock_quantity', 'stock_total', 'stock_date'] as const).forEach((key) => {
+        const value = String(trade[key] || '').trim();
+        if (value && !String(next[key] || '').trim()) {
+          next[key] = value;
+        }
+      });
+      if (extractedText) {
+        const current = String(next.stock_capture_text || '').trim();
+        next.stock_capture_text = current ? `${current}\n\n${extractedText}` : extractedText;
+      }
+      if (!String(next.stock_title || '').trim()) {
+        const titleParts = [next.stock_name, next.stock_type, next.stock_quantity].filter(Boolean);
+        if (titleParts.length > 0) next.stock_title = titleParts.join(' ');
+      }
+      return next;
+    });
+  };
+
+  const extractStockTextFromImage = async (imageBlob: Blob) => {
+    if (!isStockFormat) return;
+    const imageBase64 = await blobToBase64String(imageBlob);
+    const functionsInstance = getFunctions(undefined, 'asia-northeast3');
+    const extractStockTextFunc = httpsCallable(functionsInstance, 'extractStockTradeTextFromPhoto');
+    const result = await extractStockTextFunc({
+      imageBase64,
+      mimeType: 'image/jpeg',
+    });
+    applyStockOcrResult(result.data as StockOcrResult);
+  };
+
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
@@ -981,6 +1046,14 @@ ${contentValues}`,
           await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
           const downloadUrl = await getDownloadURL(storageRef);
           newImageUrls.push(downloadUrl);
+          if (isStockFormat) {
+            try {
+              await extractStockTextFromImage(compressed);
+            } catch (ocrError: any) {
+              console.error('주식 거래 캡처 OCR 실패:', ocrError);
+              toast.warning(String(ocrError?.message || '거래 캡처 텍스트 추출에 실패했습니다.'));
+            }
+          }
         } catch (fileError: any) {
           if (fileError?.message === 'FILE_READER_ERROR') {
             toast.error(
@@ -1063,7 +1136,7 @@ ${contentValues}`,
   };
 
   const handleSaveOriginalAsSayu = async () => {
-    const currentTitle = (formData[`${prefix}_title`] || (format === '독서사유' ? formData.reading_book_title : '') || '').trim();
+    const currentTitle = (formData[`${prefix}_title`] || (format === '독서사유' ? formData.reading_book_title : '') || (isStockFormat ? formData.stock_name : '') || '').trim();
     if (!currentTitle) {
       toast.warning('제목을 입력해 주세요. 제목이 있어야 나중에 목록에서 내용을 확인하기 편합니다.');
       return;
@@ -1102,6 +1175,12 @@ ${contentValues}`,
     };
     if (format === '독서사유' && !dataToSave[`${prefix}_title`] && formData.reading_book_title?.trim()) {
       dataToSave[`${prefix}_title`] = formData.reading_book_title.trim();
+    }
+    if (isStockFormat && !dataToSave[`${prefix}_title`] && formData.stock_name?.trim()) {
+      dataToSave[`${prefix}_title`] = [formData.stock_name, formData.stock_type, formData.stock_quantity]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
     }
 
     if (format === '텃밭일지' && crops.length > 0) {
@@ -1147,6 +1226,11 @@ ${contentValues}`,
       updateData[`${prefix}_title`] = formData[`${prefix}_title`].trim();
     } else if (format === '독서사유' && formData.reading_book_title?.trim()) {
       updateData[`${prefix}_title`] = formData.reading_book_title.trim();
+    } else if (isStockFormat && formData.stock_name?.trim()) {
+      updateData[`${prefix}_title`] = [formData.stock_name, formData.stock_type, formData.stock_quantity]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
     }
 
     setIsSaving(true);
@@ -2156,7 +2240,7 @@ ${contentValues}`,
               )}
 
               {/* 간편 스타일: 자유 텍스트 1개 */}
-              {recordStyle === 'simple' && format !== 'HARU주식관리' && (
+              {recordStyle === 'simple' && !isStockFormat && (
                 <textarea
                   rows={8}
                   placeholder="자유롭게 기록해 주세요..."
@@ -2172,7 +2256,7 @@ ${contentValues}`,
               )}
 
               {/* 프리미엄 스타일: FORMAT_FIELDS 그대로 */}
-              {recordStyle === 'premium' && format !== 'HARU주식관리' && (
+              {recordStyle === 'premium' && !isStockFormat && (
                 <>
                   {format === '일기'
                     ? <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -2252,8 +2336,32 @@ ${contentValues}`,
                 </>
               )}
 
-              {/* 📈 HARU주식관리 전용: 카톡 내보내기 파일 업로드 */}
-              {format === 'HARU주식관리' && (
+              {isStockFormat && (
+                <>
+                  {fields.map((field) => (
+                    <div key={field.key}>
+                      <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
+                        {field.label}
+                      </label>
+                      <textarea
+                        value={formData[field.key] || ''}
+                        onChange={(e) => handleChange(field.key, e.target.value)}
+                        placeholder={field.placeholder}
+                        rows={field.rows || 4}
+                        style={{
+                          width: '100%', padding: '12px 16px', fontSize: 14,
+                          border: '1px solid #e5e5e5', borderRadius: 8,
+                          backgroundColor: '#fff', color: '#333',
+                          resize: 'vertical', fontFamily: 'inherit', outline: 'none',
+                        }}
+                      />
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {/* 📈 주식 형식 전용: 카톡 내보내기 파일 업로드 */}
+              {isStockFormat && (
                 <div style={{ padding: '8px 0' }}>
                   <p
                     style={{
@@ -2306,7 +2414,7 @@ ${contentValues}`,
               )}
 
               {/* 📸 사진 업로드 섹션 — 독서사유 책본문 사진은 OCR 후 저장하지 않음 */}
-              {format !== 'HARU주식관리' && format !== '독서사유' && (
+              {format !== '독서사유' && (
               <div>
                 <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 4, fontWeight: 500 }}>
                   📸 사진 <span style={{ fontWeight: 400, color: '#9ca3af' }}>(선택사항)</span>
@@ -2585,28 +2693,47 @@ ${contentValues}`,
                   {isSaving ? '저장 중...' : '원본 저장'}
                 </button>
               </div>
-            ) : format === 'HARU주식관리' ? (
-              <button
-                onClick={handleSaveAllTrades}
-                disabled={isSaving || stockCandidates.length === 0}
-                style={{
-                  width: '100%',
-                  padding: '14px',
-                  background: stockCandidates.length === 0 ? '#9CA3AF' : '#1A3C6E',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 8,
-                  fontSize: 15,
-                  fontWeight: 'bold',
-                  cursor: stockCandidates.length === 0 || isSaving ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {isSaving
-                  ? '저장 중...'
-                  : stockCandidates.length === 0
-                    ? '파일을 먼저 업로드해주세요'
-                    : `저장 (${stockCandidates.length}건)`}
-              </button>
+            ) : isStockFormat ? (
+              <div style={{ display: 'grid', gridTemplateColumns: stockCandidates.length > 0 ? '1fr 1fr' : '1fr', gap: 10 }}>
+                {stockCandidates.length > 0 && (
+                  <button
+                    onClick={handleSaveAllTrades}
+                    disabled={isSaving}
+                    style={{
+                      width: '100%',
+                      padding: '14px',
+                      background: '#1A3C6E',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 8,
+                      fontSize: 14,
+                      fontWeight: 'bold',
+                      cursor: isSaving ? 'not-allowed' : 'pointer',
+                      opacity: isSaving ? 0.7 : 1,
+                    }}
+                  >
+                    {isSaving ? '저장 중...' : `파일 거래 저장 (${stockCandidates.length}건)`}
+                  </button>
+                )}
+                <button
+                  onClick={handleSaveOriginalAsSayu}
+                  disabled={isSaving || isPolishing}
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    background: '#10b981',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 8,
+                    fontSize: 14,
+                    fontWeight: 'bold',
+                    cursor: isSaving || isPolishing ? 'not-allowed' : 'pointer',
+                    opacity: isSaving || isPolishing ? 0.7 : 1,
+                  }}
+                >
+                  {isSaving ? '저장 중...' : '거래소감 저장'}
+                </button>
+              </div>
             ) : format === '독서사유' ? (
               // 📚 독서사유 — 두 버튼만 (지시서 [5]): 중간기록저장하기 / 독서마무리하기
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

@@ -29,6 +29,7 @@ const FORMAT_FIRST_FIELD: Record<string, string> = {
   child: 'child_name',
   memo: 'memo_title',
   reading: 'reading_book_title',
+  stock: 'stock_name',
 };
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
@@ -1261,6 +1262,8 @@ export function SayuPage() {
     '독서사유': 'reading',
     '텃밭일지': 'garden', '애완동물관찰일지': 'pet', '육아일기': 'child',
     '메모': 'memo',
+    'HARU주식관리': 'stock',
+    '주식거래일지': 'stock',
   };
 
   const META_SUFFIXES = ['_sayu', '_final_sayu', '_polished', '_polishedAt', '_mode', '_stats', '_images', '_rating', '_status', '_completedAt', '_reflection_questions', '_reflection_answers', '_entries_snapshot'];
@@ -1313,6 +1316,7 @@ export function SayuPage() {
     work:    '#0D9488',
     memo:    '#D97706',
     haruraw: '#10b981',
+    stock:   '#F59E0B',
   };
 
   const getFormatDotsForDay = (date: Date | null): { prefix: string; color: string }[] => {
@@ -1748,19 +1752,20 @@ export function SayuPage() {
     // 📈 HARU주식관리 — 전체 기간 기준 (월 필터 미적용)
     const stockEntries = records
       .filter((r: any) =>
-        (r.formats && r.formats.includes('HARU주식관리')) || !!r.stock_name,
+        (r.formats && (r.formats.includes('HARU주식관리') || r.formats.includes('주식거래일지'))) || !!r.stock_name,
       )
       .map((r: any) => ({
         date: r.date,
         title: `${r.stock_name || ''} ${r.stock_type || ''} ${r.stock_quantity || ''}`.trim() || '(종목 없음)',
-        hasSayu: false,
+        hasSayu: Boolean(r.stock_sayu),
         formatKey: 'stock',
         recordId: r.id,
+        keywords: getRecordPreviewKeywords(r, 'stock'),
       }));
     if (stockEntries.length > 0) {
       result.push({
         category: 'HARU주식관리',
-        formats: [{ format: 'HARU주식관리' as RecordFormat, entries: stockEntries }],
+        formats: [{ format: '주식거래일지' as RecordFormat, entries: stockEntries }],
       });
     }
 
@@ -2604,6 +2609,28 @@ export function SayuPage() {
                               <span className="text-xs font-semibold" style={{ color: '#333' }}>{String(format)}</span>
                               <span className="text-xs" style={{ color: '#999' }}>({entries.length})</span>
                             </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/stats/${String(format)}`);
+                              }}
+                              style={{
+                                padding: '4px 10px', borderRadius: 20, border: '1px solid #1A3C6E',
+                                backgroundColor: 'transparent', color: '#1A3C6E',
+                                fontSize: 11, fontWeight: 600, cursor: 'pointer', marginRight: 6, flexShrink: 0,
+                              }}
+                            >통계</button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate('/merge');
+                              }}
+                              style={{
+                                padding: '4px 10px', borderRadius: 20, border: 'none',
+                                backgroundColor: '#1A3C6E', color: '#fff',
+                                fontSize: 11, fontWeight: 600, cursor: 'pointer', marginRight: 8, flexShrink: 0,
+                              }}
+                            >기록합치기</button>
                             <button
                               onClick={() => toggleFormat(prefix)}
                               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
@@ -4599,6 +4626,8 @@ function StockDashboard({ records }: { records: any[] }) {
       stock_quantity: r?.stock_quantity || '',
       stock_total: r?.stock_total || '',
       stock_date: r?.stock_date || r?.date || '',
+      stock_reflection: r?.stock_reflection || '',
+      stock_sayu: r?.stock_sayu || '',
     }))
     .filter((t) => t.stock_name);
 
@@ -4629,6 +4658,7 @@ function StockDashboard({ records }: { records: any[] }) {
     (sum: number, t: any) => sum + (parseInt((t.stock_total || '0').replace(/[^0-9]/g, '')) || 0),
     0,
   );
+  const reflectionCount = allTrades.filter((t: any) => String(t.stock_reflection || t.stock_sayu || '').trim()).length;
 
   const chip = (label: string, active: boolean, onClick: () => void, color?: string) => (
     <button
@@ -4654,6 +4684,7 @@ function StockDashboard({ records }: { records: any[] }) {
           { label: '판 거래', term: '매도', val: `${sellCount}건`, color: '#A32D2D' },
           { label: '거래 종목', term: '', val: `${stockNames.length - 1}개`, color: '#1A3C6E' },
           { label: '총 거래금액', term: '', val: `${Math.round(totalAmt / 10000).toLocaleString()}만원`, color: '#1A3C6E' },
+          { label: '거래소감', term: '', val: `${reflectionCount}건`, color: '#10B981' },
         ].map((s) => (
           <div key={s.label} style={{ background: '#fff', border: '0.5px solid #e5e7eb', borderRadius: 8, padding: '10px 12px' }}>
             <div style={{ fontSize: 11, color: '#6B7280' }}>
@@ -4775,6 +4806,11 @@ function StockDashboard({ records }: { records: any[] }) {
             {t.stock_quantity} · {t.stock_price} · 총 {t.stock_total}
           </div>
           <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>{t.stock_date}</div>
+          {String(t.stock_reflection || t.stock_sayu || '').trim() && (
+            <div style={{ fontSize: 12, color: '#374151', marginTop: 8, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+              {String(t.stock_reflection || t.stock_sayu).trim()}
+            </div>
+          )}
         </div>
       ))}
     </div>
