@@ -1440,7 +1440,7 @@ export function SayuPage() {
       }
     });
 
-    let sayuContent = record[sayuKey] || '';
+    let sayuContent = record[sayuKey] || record[`${formatKey}_final_sayu`] || '';
     if (!sayuContent) {
       const originalFields = Object.keys(record)
         .filter(k =>
@@ -1919,6 +1919,16 @@ export function SayuPage() {
     });
   };
 
+  const hasSavedSayuForRecord = (record: HaruRecord, prefix: string) => {
+    const sayu = record[`${prefix}_sayu`];
+    const finalSayu = record[`${prefix}_final_sayu`];
+    return (
+      (typeof sayu === 'string' && sayu.trim().length > 0) ||
+      (typeof finalSayu === 'string' && finalSayu.trim().length > 0) ||
+      record[`${prefix}_polished`] === true
+    );
+  };
+
   const getRecordDisplayTitle = (record: HaruRecord, prefix: string, label: string) => {
     const title =
       String(record[`${prefix}_ai_title`] || '').trim() ||
@@ -1950,7 +1960,7 @@ export function SayuPage() {
     .filter((record) => isCurrentMonthDate(record.date))
     .flatMap((record) =>
       getRecordFormatsForList(record)
-        .filter(({ prefix }) => getRecordSourceText(record, prefix).trim().length > 0)
+        .filter(({ prefix }) => hasSavedSayuForRecord(record, prefix))
         .map(({ label, prefix }) => ({
           id: `${record.id}_${prefix}`,
           date: record.date,
