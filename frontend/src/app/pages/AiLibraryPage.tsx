@@ -54,6 +54,56 @@ const MATERIAL_KEYS: (keyof BookMaterial)[] = [
 
 const cleanText = (value?: string) => (value || '').trim();
 
+const trimTitle = (value: string, limit = 54) => {
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  return normalized.length > limit ? `${normalized.slice(0, limit - 1)}…` : normalized;
+};
+
+const isGenericStoredTitle = (record: HaruRecord, title?: string) => {
+  const text = cleanText(title);
+  if (!text) return true;
+  const source = record.source || '';
+  const sourceLabel = SOURCE_LABELS[source] || source;
+  const escapedSource = source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const escapedLabel = sourceLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return [
+    /^\[[^\]]+\]\s*\d{4}\.\s*\d{1,2}\.\s*\d{1,2}\.?$/u,
+    /^\[[^\]]+\]\s*\d{4}-\d{2}-\d{2}$/u,
+    new RegExp(`^\\[${escapedSource}\\]`, 'u'),
+    new RegExp(`^\\[${escapedLabel}\\]`, 'u'),
+    /^[\d.\-\s년월일]+$/u,
+    /^제목 없음$/u,
+  ].some((pattern) => pattern.test(text));
+};
+
+const extractContentHeadline = (content?: string) => {
+  const text = cleanText(content);
+  if (!text) return '';
+
+  const questionMatch = text.match(/(?:👤\s*)?질문\s*\n+([\s\S]*?)(?:\n\s*\n|(?:🤖\s*)?답변\s*\n|$)/u);
+  if (questionMatch?.[1]) {
+    const questionLine = questionMatch[1]
+      .split('\n')
+      .map((line) => line.trim())
+      .find((line) => line.length > 3);
+    if (questionLine) return trimTitle(questionLine);
+  }
+
+  const firstMeaningfulLine = text
+    .split('\n')
+    .map((line) => line
+      .replace(/^[👤🤖📚💬✅⚠️\s-]+/u, '')
+      .replace(/^(질문|답변|요약|원문 대화)\s*[:：-]?\s*/u, '')
+      .trim())
+    .find((line) => (
+      line.length > 4
+      && !/^\[[^\]]+\]\s*\d{4}/u.test(line)
+      && !/^[\d.\-\s년월일]+$/u.test(line)
+    ));
+
+  return firstMeaningfulLine ? trimTitle(firstMeaningfulLine) : '';
+};
+
 const toTextArray = (value: unknown, limit = 8) => (
   Array.isArray(value)
     ? value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0).slice(0, limit)
@@ -74,8 +124,17 @@ const getBookMaterial = (record: HaruRecord): BookMaterial | null => {
 const getMaterialTitle = (record: HaruRecord, material: BookMaterial) => (
   cleanText(material.bookMaterialTitle)
     || cleanText(record.ai_title)
-    || cleanText(record.title)
+    || (!isGenericStoredTitle(record, record.title) ? cleanText(record.title) : '')
+    || extractContentHeadline(record.content)
     || '제목 없는 책소재'
+);
+
+const getDisplayTitle = (record: HaruRecord, material?: BookMaterial | null) => (
+  cleanText(material?.bookMaterialTitle)
+    || (!isGenericStoredTitle(record, record.ai_title) ? cleanText(record.ai_title) : '')
+    || (!isGenericStoredTitle(record, record.title) ? cleanText(record.title) : '')
+    || extractContentHeadline(record.content)
+    || '제목 없는 대화'
 );
 
 const buildMaterialCopyText = (record: HaruRecord, material: BookMaterial) => {
@@ -297,9 +356,11 @@ export function AiLibraryPage() {
   const filtered = logs.filter((r) => {
     const matchTab = filter === 'all' || getSource(r) === filter;
     const kw = keyword.trim().toLowerCase();
+    const displayTitle = getDisplayTitle(r, getBookMaterial(r)).toLowerCase();
     const matchKeyword = !kw
       || r.content?.toLowerCase().includes(kw)
-      || r.title?.toLowerCase().includes(kw);
+      || r.title?.toLowerCase().includes(kw)
+      || displayTitle.includes(kw);
     return matchTab && matchKeyword;
   });
 
@@ -548,6 +609,7 @@ export function AiLibraryPage() {
             const material = getBookMaterial(log);
             const isExpanded = expandedId === log.id;
             const isConverting = bookMaterialBusy.has(log.id);
+            const displayTitle = getDisplayTitle(log, material);
             const materialPreview = material ? getMaterialPreviewText(log, material) : '';
             const displayText = material
               ? materialPreview
@@ -611,9 +673,12 @@ export function AiLibraryPage() {
                   {formatDate(log.createdAt)}
                 </span>
               </div>
-              {log.title && (
-                <p style={{ fontSize: '14px', fontWeight: 600, color: '#222', marginBottom: '4px' }}>
-                  {log.title}
+              <p style={{ fontSize: '15px', fontWeight: 700, color: '#222', margin: '0 0 4px', lineHeight: 1.35 }}>
+                {displayTitle}
+              </p>
+              {!isGenericStoredTitle(log, log.title) && log.title && log.title !== displayTitle && (
+                <p style={{ fontSize: 11, color: '#8A94A6', margin: '0 0 6px' }}>
+                  원제목: {log.title}
                 </p>
               )}
               {material && (
