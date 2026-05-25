@@ -1,14 +1,230 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, type ReactNode } from 'react';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 
 type SourceFilter = string;
+
+type BookMaterial = {
+  enabled?: boolean;
+  materialGrade?: string;
+  promptVersion?: string;
+  bookMaterialTitle?: string;
+  bookSummary?: string;
+  summary3?: string;
+  humanQuestionCore?: string;
+  aiResponseCore?: string;
+  thinkingShift?: string;
+  collaborationMoment?: string;
+  vibeFlow?: string;
+  bookPassages?: unknown[];
+  chapterCandidates?: unknown[];
+  topicTags?: unknown[];
+  bookQuoteLines?: unknown[];
+  bookInsightLines?: unknown[];
+  bookSceneLines?: unknown[];
+  bookEmotionLines?: unknown[];
+  coreSentences?: unknown[];
+};
 
 const SOURCE_LABELS: Record<string, string> = {
   'claude.ai': 'Claude',
   'gemini.google.com': 'Gemini',
   'chatgpt.com': 'ChatGPT',
 };
+
+const MATERIAL_KEYS: (keyof BookMaterial)[] = [
+  'bookMaterialTitle',
+  'bookSummary',
+  'summary3',
+  'humanQuestionCore',
+  'aiResponseCore',
+  'thinkingShift',
+  'collaborationMoment',
+  'vibeFlow',
+  'bookPassages',
+  'chapterCandidates',
+  'topicTags',
+  'bookQuoteLines',
+  'bookInsightLines',
+  'bookSceneLines',
+  'bookEmotionLines',
+  'coreSentences',
+];
+
+const cleanText = (value?: string) => (value || '').trim();
+
+const toTextArray = (value: unknown, limit = 8) => (
+  Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0).slice(0, limit)
+    : []
+);
+
+const getBookMaterial = (record: HaruRecord): BookMaterial | null => {
+  const material = record.bookMaterial as BookMaterial | undefined;
+  if (!material) return null;
+  const hasMaterialData = !!material.enabled || MATERIAL_KEYS.some((key) => {
+    const value = material[key];
+    if (Array.isArray(value)) return value.some((item) => typeof item === 'string' && item.trim());
+    return typeof value === 'string' && value.trim().length > 0;
+  });
+  return hasMaterialData ? material : null;
+};
+
+const getMaterialTitle = (record: HaruRecord, material: BookMaterial) => (
+  cleanText(material.bookMaterialTitle)
+    || cleanText(record.ai_title)
+    || cleanText(record.title)
+    || '제목 없는 책소재'
+);
+
+const buildMaterialCopyText = (record: HaruRecord, material: BookMaterial) => {
+  const summary = cleanText(material.bookSummary || material.summary3);
+  const question = cleanText(material.humanQuestionCore);
+  const answer = cleanText(material.aiResponseCore);
+  const shift = cleanText(material.thinkingShift);
+  const collaboration = cleanText(material.collaborationMoment);
+  const vibe = cleanText(material.vibeFlow);
+  const passages = toTextArray(material.bookPassages);
+  const legacyPassages = [
+    ...toTextArray(material.bookQuoteLines),
+    ...toTextArray(material.bookInsightLines),
+    ...toTextArray(material.bookSceneLines),
+    ...toTextArray(material.bookEmotionLines),
+    ...toTextArray(material.coreSentences),
+  ];
+  const chapters = toTextArray(material.chapterCandidates, 5);
+  const tags = toTextArray(material.topicTags, 8);
+
+  return [
+    `책소재: ${getMaterialTitle(record, material)}`,
+    '',
+    summary && `요약\n${summary}`,
+    question && `질문 핵심\n${question}`,
+    answer && `답변 핵심\n${answer}`,
+    shift && `사고 변화\n${shift}`,
+    collaboration && `AI 협업 장면\n${collaboration}`,
+    vibe && `바이브 흐름\n${vibe}`,
+    passages.length > 0 && `인용문단\n${passages.map((item, index) => `${index + 1}. ${item}`).join('\n\n')}`,
+    passages.length === 0 && legacyPassages.length > 0 && `레거시 인용문단\n${legacyPassages.map((item, index) => `${index + 1}. ${item}`).join('\n\n')}`,
+    chapters.length > 0 && `예상 챕터\n${chapters.join(' / ')}`,
+    tags.length > 0 && `주제 태그\n${tags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ')}`,
+  ].filter(Boolean).join('\n\n');
+};
+
+function MaterialBlock({ label, children, tint = '#FFFFFF' }: { label: string; children: ReactNode; tint?: string }) {
+  if (!children) return null;
+  return (
+    <div style={{ padding: '8px 10px', background: tint, border: '1px solid #F0E4C2', borderRadius: 6 }}>
+      <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, color: '#1A3C6E' }}>{label}</p>
+      <div style={{ margin: 0, fontSize: 12, lineHeight: 1.65, color: '#1F2937', whiteSpace: 'pre-wrap' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function BookMaterialPanel({ log }: { log: HaruRecord }) {
+  const material = getBookMaterial(log);
+  if (!material) return null;
+
+  const summary = cleanText(material.bookSummary || material.summary3);
+  const question = cleanText(material.humanQuestionCore);
+  const answer = cleanText(material.aiResponseCore);
+  const shift = cleanText(material.thinkingShift);
+  const collaboration = cleanText(material.collaborationMoment);
+  const vibe = cleanText(material.vibeFlow);
+  const passages = toTextArray(material.bookPassages);
+  const legacyPassages = [
+    ...toTextArray(material.bookQuoteLines),
+    ...toTextArray(material.bookInsightLines),
+    ...toTextArray(material.bookSceneLines),
+    ...toTextArray(material.bookEmotionLines),
+    ...toTextArray(material.coreSentences),
+  ];
+  const chapters = toTextArray(material.chapterCandidates, 5);
+  const tags = toTextArray(material.topicTags, 8);
+
+  return (
+    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #F0E4C2' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start', marginBottom: 10 }}>
+        <div>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#1A3C6E' }}>
+            📚 책 원고 소재 — {getMaterialTitle(log, material)}
+          </p>
+          <p style={{ margin: '3px 0 0', fontSize: 10, color: '#6B7280' }}>
+            {material.materialGrade ? `${material.materialGrade}급` : '소재화 완료'}
+            {material.promptVersion ? ` · ${material.promptVersion}` : ''}
+          </p>
+        </div>
+        <button
+          onClick={async (e) => {
+            e.stopPropagation();
+            try {
+              await navigator.clipboard.writeText(buildMaterialCopyText(log, material));
+              alert('책소재가 복사되었습니다!');
+            } catch {
+              alert('책소재 복사에 실패했습니다.');
+            }
+          }}
+          style={{
+            flexShrink: 0,
+            background: '#1A3C6E',
+            border: 'none',
+            borderRadius: 6,
+            padding: '5px 9px',
+            fontSize: 11,
+            color: '#fff',
+            cursor: 'pointer',
+          }}
+        >
+          소재 복사
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <MaterialBlock label="책소재 요약" tint="#FFFBEC">{summary}</MaterialBlock>
+        <MaterialBlock label="질문 핵심">{question}</MaterialBlock>
+        <MaterialBlock label="답변 핵심">{answer}</MaterialBlock>
+        <MaterialBlock label="사고 변화">{shift}</MaterialBlock>
+        <MaterialBlock label="AI 협업 장면">{collaboration}</MaterialBlock>
+        <MaterialBlock label="바이브 흐름" tint="#F0EDF8">{vibe}</MaterialBlock>
+        {passages.length > 0 && (
+          <MaterialBlock label={`인용문단 (${passages.length}개)`} tint="#FFFBEC">
+            {passages.map((passage, index) => (
+              <blockquote
+                key={index}
+                style={{
+                  margin: index === 0 ? 0 : '8px 0 0',
+                  paddingLeft: 10,
+                  borderLeft: '3px solid #C9A75A',
+                }}
+              >
+                {passage}
+              </blockquote>
+            ))}
+          </MaterialBlock>
+        )}
+        {passages.length === 0 && legacyPassages.length > 0 && (
+          <MaterialBlock label="레거시 인용문단" tint="#FFFBEC">
+            <ul style={{ margin: 0, paddingLeft: 16 }}>
+              {legacyPassages.map((passage, index) => <li key={index}>{passage}</li>)}
+            </ul>
+          </MaterialBlock>
+        )}
+        {chapters.length > 0 && (
+          <MaterialBlock label="예상 챕터">
+            {chapters.join(' · ')}
+          </MaterialBlock>
+        )}
+        {tags.length > 0 && (
+          <p style={{ fontSize: 10, color: '#6B7280', margin: 0 }}>
+            {tags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ')}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function AiLibraryPage() {
   const { user } = useAuth();
@@ -227,7 +443,9 @@ export function AiLibraryPage() {
         <p style={{ color: '#999', fontSize: '14px' }}>저장된 AI 학습 기록이 없습니다.</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {filtered.map((log) => (
+          {filtered.map((log) => {
+            const material = getBookMaterial(log);
+            return (
             <div
               key={log.id}
               onClick={() => handleCardClick(log.id)}
@@ -287,6 +505,16 @@ export function AiLibraryPage() {
                   {log.title}
                 </p>
               )}
+              {material && (
+                <p style={{ fontSize: '11px', color: '#1A3C6E', fontWeight: 700, margin: '0 0 6px' }}>
+                  📚 책 원고 소재
+                  {material.materialGrade && (
+                    <span style={{ marginLeft: 6, fontSize: 10, padding: '1px 6px', borderRadius: 99, background: '#EEF2FF', color: '#4338CA' }}>
+                      {material.materialGrade}급
+                    </span>
+                  )}
+                </p>
+              )}
               <p style={{ fontSize: '13px', color: '#555', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
                 {expandedId === log.id
                   ? log.content
@@ -320,8 +548,12 @@ export function AiLibraryPage() {
                   📋 복사
                 </button>
               </div>
+              {expandedId === log.id && (
+                <BookMaterialPanel log={log} />
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
