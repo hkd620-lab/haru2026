@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import type { ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { ChevronLeft, ChevronRight, Info, Leaf, Briefcase, BookOpen, Scale, Cpu, Volume2, Pause } from 'lucide-react';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
@@ -346,6 +347,7 @@ export function SayuPage() {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string; recordId?: string }[]>([]);
+  const [selectedAssistantDate, setSelectedAssistantDate] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [sayuTab, setSayuTab] = useState<'records' | 'assistants'>('records');
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고', 'SNS검색기록', '내가 읽은 책', 'HARU주식관리']));
@@ -1001,9 +1003,9 @@ export function SayuPage() {
     })();
   }, [collapsedCategories, isDeveloper, isPremium, plantCatalogLoaded]);
 
-  // Fetch AI logs when AI지식모음 is expanded
+  // Fetch AI logs when 사유비서 is opened
   useEffect(() => {
-    if (!collapsedCategories.has('하루AI지식창고') && !aiLogsLoaded && user?.email) {
+    if (sayuTab === 'assistants' && !aiLogsLoaded && user?.email) {
       setAiLogsLoading(true);
       firestoreService.getAiLogs(user.email).then(async (data: any[]) => {
         setAiLogs(data);
@@ -1038,7 +1040,7 @@ export function SayuPage() {
         }
       }).catch(() => setAiLogsLoading(false));
     }
-  }, [collapsedCategories, aiLogsLoaded, user?.email]);
+  }, [sayuTab, aiLogsLoaded, user?.email]);
 
   // Fetch books when 읽을거리 is expanded
   useEffect(() => {
@@ -1882,6 +1884,361 @@ export function SayuPage() {
     toggleFormat(formatKey);
   };
 
+  type FlatSayuEntry = {
+    id: string;
+    date: string;
+    label: string;
+    title: string;
+    subtitle?: string;
+    color: string;
+    keywords?: string[];
+    onOpen: () => void;
+    extra?: ReactNode;
+  };
+
+  const getRecordFormatsForList = (record: HaruRecord) => {
+    const formatsFromRecord = Array.isArray(record.formats)
+      ? record.formats
+          .map((format) => ({
+            label: String(format),
+            prefix: ALL_FORMAT_PREFIXES[String(format)],
+          }))
+          .filter((item) => item.prefix && item.prefix !== 'haruraw')
+      : [];
+
+    const formatsFromFields = Object.entries(ALL_FORMAT_PREFIXES)
+      .filter(([, prefix]) => prefix !== 'haruraw')
+      .map(([label, prefix]) => ({ label, prefix }))
+      .filter(({ prefix }) => getRecordSourceText(record, prefix).trim().length > 0);
+
+    const seen = new Set<string>();
+    return [...formatsFromRecord, ...formatsFromFields].filter((item) => {
+      if (seen.has(item.prefix)) return false;
+      seen.add(item.prefix);
+      return true;
+    });
+  };
+
+  const getRecordDisplayTitle = (record: HaruRecord, prefix: string, label: string) => {
+    const title =
+      String(record[`${prefix}_ai_title`] || '').trim() ||
+      String(record[`${prefix}_title`] || '').trim() ||
+      (prefix === 'reading'
+        ? String(record.reading_book_title || record.reading_title || '').trim()
+        : '') ||
+      (prefix === 'stock'
+        ? [record.stock_name, record.stock_type, record.stock_quantity].filter(Boolean).join(' ').trim()
+        : '') ||
+      String(record[FORMAT_FIRST_FIELD[prefix]] || '').trim();
+
+    if (title) return title.slice(0, 48);
+    const fallback = Object.keys(record).find((key) =>
+      key.startsWith(`${prefix}_`) &&
+      !META_SUFFIXES.some((suffix) => key.endsWith(suffix)) &&
+      typeof record[key] === 'string' &&
+      String(record[key]).trim().length > 0,
+    );
+    return fallback ? String(record[fallback]).trim().slice(0, 48) : label;
+  };
+
+  const isCurrentMonthDate = (dateStr: string) => {
+    const [year, month] = String(dateStr || '').slice(0, 10).split('-').map(Number);
+    return year === currentMonth.getFullYear() && month === currentMonth.getMonth() + 1;
+  };
+
+  const recordEntries: FlatSayuEntry[] = records
+    .filter((record) => isCurrentMonthDate(record.date))
+    .flatMap((record) =>
+      getRecordFormatsForList(record)
+        .filter(({ prefix }) => getRecordSourceText(record, prefix).trim().length > 0)
+        .map(({ label, prefix }) => ({
+          id: `${record.id}_${prefix}`,
+          date: record.date,
+          label,
+          title: getRecordDisplayTitle(record, prefix, label),
+          subtitle: getRecordPreviewKeywords(record, prefix).slice(0, 4).join(' · '),
+          color: FORMAT_COLORS[prefix] ?? '#1A3C6E',
+          keywords: getRecordPreviewKeywords(record, prefix),
+          onOpen: () => openFormatSayu(record.date, prefix, label, record.id),
+        })),
+    )
+    .sort((a, b) => b.date.localeCompare(a.date) || a.label.localeCompare(b.label));
+
+  const assistantEntries: FlatSayuEntry[] = [
+    ...records
+      .filter((record) => isCurrentMonthDate(record.date) && Array.isArray(record.formats) && record.formats.includes('HARUraw' as any))
+      .map((record) => ({
+        id: `${record.id}_haruraw`,
+        date: record.date,
+        label: '하루LAW',
+        title: String((record as any).haruraw_query || '(질문 없음)').slice(0, 48),
+        subtitle: getRecordPreviewKeywords(record, 'haruraw').slice(0, 4).join(' · '),
+        color: FORMAT_COLORS.haruraw,
+        keywords: getRecordPreviewKeywords(record, 'haruraw'),
+        onOpen: () => openFormatSayu(record.date, 'haruraw', 'HARUraw', record.id),
+      })),
+    ...records
+      .filter((record) => isCurrentMonthDate(record.date))
+      .flatMap((record: any) =>
+        (Array.isArray(record.plantDetective) ? record.plantDetective : []).map((entry: any, idx: number) => ({
+          id: `${record.id}_plant_${idx}`,
+          date: record.date,
+          label: '하루식물탐정',
+          title: String(entry?.title || entry?.userConfirmedName || entry?.humanReportedName || entry?.aiKoName || entry?.aiPrediction || '식물 판독 결과').slice(0, 48),
+          subtitle: [entry?.englishName, entry?.scientificName || entry?.latinName].filter(Boolean).join(' / '),
+          color: '#10b981',
+          onOpen: () => setPlantPopupType('assistant'),
+        })),
+      ),
+    ...(isDeveloper
+      ? aiLogs
+          .filter((log: any) => isCurrentMonthDate(String(log.createdAt || log.date || '').slice(0, 10)))
+          .map((log: any) => ({
+            id: `ai_${log.id}`,
+            date: String(log.createdAt || log.date || '').slice(0, 10),
+            label: '하루AI지식창고',
+            title: String(log.ai_title || log.title || '(제목 없음)').slice(0, 48),
+            subtitle: extractPreviewKeywords(String(log.content || log.ai_title || log.title || '')).slice(0, 4).join(' · '),
+            color: '#6366F1',
+            onOpen: () => setSelectedAiLog(selectedAiLog?.id === log.id ? null : log),
+            extra: selectedAiLog?.id === log.id ? (
+              <div className="px-4 py-3 text-xs leading-relaxed whitespace-pre-wrap" style={{ backgroundColor: '#f8faff', color: '#333', borderTop: '1px solid #eef2ff' }}>
+                {String(log.content || '내용 없음')}
+              </div>
+            ) : undefined,
+          }))
+      : []),
+  ].sort((a, b) => b.date.localeCompare(a.date) || a.label.localeCompare(b.label));
+
+  const activeEntries = sayuTab === 'records' ? recordEntries : assistantEntries;
+  const activeSelectedDate = sayuTab === 'records' ? selectedDate : selectedAssistantDate;
+  const setActiveSelectedDate = sayuTab === 'records' ? setSelectedDate : setSelectedAssistantDate;
+  const activeSelectedEntries = activeSelectedDate
+    ? activeEntries.filter((entry) => entry.date === activeSelectedDate)
+    : [];
+
+  const getDotsForEntriesDay = (date: Date | null, entries: FlatSayuEntry[]) => {
+    if (!date) return [];
+    const dateStr = formatDateString(date);
+    const seen = new Set<string>();
+    return entries
+      .filter((entry) => entry.date === dateStr)
+      .filter((entry) => {
+        const key = `${entry.label}_${entry.color}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 5);
+  };
+
+  const renderViewModeTabs = () => (
+    <div
+      role="tablist"
+      style={{
+        display: 'flex', gap: 4, padding: 4, borderRadius: 12,
+        backgroundColor: '#F1EADB', marginBottom: 16,
+        position: 'relative', zIndex: 2,
+      }}
+    >
+      <button
+        type="button"
+        role="tab"
+        aria-selected={viewMode === 'list'}
+        onClick={() => handleViewModeChange('list')}
+        style={{
+          flex: 1, minHeight: 36, padding: '6px 0', borderRadius: 8,
+          border: 'none', cursor: 'pointer', pointerEvents: 'auto',
+          backgroundColor: viewMode === 'list' ? '#FFFFFF' : 'transparent',
+          color: viewMode === 'list' ? '#1A3C6E' : '#7A6A4F',
+          fontSize: 13, fontWeight: viewMode === 'list' ? 700 : 500,
+          boxShadow: viewMode === 'list' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+          transition: 'background-color 0.15s, color 0.15s',
+        }}
+      >
+        목록
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={viewMode === 'calendar'}
+        onClick={() => handleViewModeChange('calendar')}
+        style={{
+          flex: 1, minHeight: 36, padding: '6px 0', borderRadius: 8,
+          border: 'none', cursor: 'pointer', pointerEvents: 'auto',
+          backgroundColor: viewMode === 'calendar' ? '#FFFFFF' : 'transparent',
+          color: viewMode === 'calendar' ? '#1A3C6E' : '#7A6A4F',
+          fontSize: 13, fontWeight: viewMode === 'calendar' ? 700 : 500,
+          boxShadow: viewMode === 'calendar' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+          transition: 'background-color 0.15s, color 0.15s',
+        }}
+      >
+        달력
+      </button>
+    </div>
+  );
+
+  const renderFlatEntryList = (entries: FlatSayuEntry[]) => {
+    if (loading && sayuTab === 'records') {
+      return <p className="text-center py-8 text-sm" style={{ color: '#999' }}>불러오는 중...</p>;
+    }
+    if (aiLogsLoading && sayuTab === 'assistants') {
+      return <p className="text-center py-8 text-sm" style={{ color: '#999' }}>불러오는 중...</p>;
+    }
+    if (entries.length === 0) {
+      return (
+        <div className="bg-white rounded-lg p-8 shadow-sm text-center">
+          <p className="text-sm" style={{ color: '#999' }}>
+            {sayuTab === 'records' ? '이 달의 사유 기록이 없습니다' : '이 달의 사유비서 결과가 없습니다'}
+          </p>
+        </div>
+      );
+    }
+    return (
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        {entries.map((entry, idx) => (
+          <div key={entry.id} className={idx > 0 ? 'border-t' : ''} style={{ borderColor: '#f0f0f0' }}>
+            <button
+              type="button"
+              onClick={entry.onOpen}
+              className="w-full flex items-center gap-3 px-4 text-left hover:bg-yellow-50 transition-colors"
+              style={{ minHeight: 56 }}
+            >
+              <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: 36 }}>
+                {formatListDate(entry.date)}
+              </span>
+              <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: entry.color, flexShrink: 0 }} />
+              <span className="flex-1" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 2 }}>
+                <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
+                  <span className="text-sm truncate" style={{ color: '#333', flex: '1 1 auto', minWidth: 0 }}>{entry.title}</span>
+                  <span style={{ color: '#999', fontSize: 11, whiteSpace: 'nowrap', flexShrink: 0 }}>{entry.label}</span>
+                </span>
+                {entry.subtitle && (
+                  <span style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4, overflowWrap: 'anywhere', wordBreak: 'keep-all', display: 'block' }}>
+                    {entry.subtitle}
+                  </span>
+                )}
+              </span>
+            </button>
+            {entry.extra}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderEntryCalendar = (entries: FlatSayuEntry[]) => (
+    <div>
+      <section className="bg-white rounded-lg p-4 shadow-sm mb-4">
+        <div className="grid grid-cols-7 gap-1 mb-2">
+          {['일', '월', '화', '수', '목', '금', '토'].map((day, idx) => (
+            <div
+              key={idx}
+              className="text-center text-xs font-semibold py-2"
+              style={{ color: idx === 0 ? '#ef4444' : idx === 6 ? '#3b82f6' : '#666' }}
+            >
+              {day}
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7 gap-1">
+          {days.map((day, idx) => {
+            const dateStr = day ? formatDateString(day) : '';
+            const isToday = day && dateStr === formatDateString(new Date());
+            const isSelected = day && activeSelectedDate === dateStr;
+            const dots = getDotsForEntriesDay(day, entries);
+
+            return (
+              <button
+                type="button"
+                key={idx}
+                onClick={() => {
+                  if (!day) return;
+                  if (dots.length === 0) {
+                    toast.info('해당 날짜에 기록이 없습니다.');
+                    return;
+                  }
+                  setActiveSelectedDate(dateStr);
+                }}
+                disabled={!day}
+                className="relative aspect-square flex items-center justify-center rounded-lg transition-all disabled:cursor-default"
+                style={{
+                  backgroundColor: isSelected
+                    ? '#1A3C6E'
+                    : isToday
+                      ? '#FDF6C3'
+                      : 'transparent',
+                  color: isSelected
+                    ? '#FEFBE8'
+                    : isToday
+                      ? '#1A3C6E'
+                      : day
+                        ? '#333'
+                        : 'transparent',
+                  fontSize: '13px',
+                  fontWeight: isToday || isSelected ? 600 : 400,
+                  cursor: day ? 'pointer' : 'default',
+                  border: isToday && !isSelected ? '1.5px solid #1A3C6E' : 'none',
+                }}
+              >
+                {day && day.getDate()}
+                {dots.length > 0 && (
+                  <div
+                    className="absolute flex gap-0.5 justify-center flex-wrap"
+                    style={{ bottom: '2px', left: 0, right: 0, maxWidth: '100%', padding: '0 2px' }}
+                  >
+                    {dots.map((dot) => (
+                      <span
+                        key={dot.id}
+                        style={{
+                          width: '5px',
+                          height: '5px',
+                          borderRadius: '50%',
+                          backgroundColor: isSelected ? '#FEFBE8' : dot.color,
+                          display: 'inline-block',
+                          flexShrink: 0,
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {activeSelectedDate && activeSelectedEntries.length > 0 && (
+        <div className="mt-4 bg-white rounded-lg p-4 shadow-sm">
+          <p className="text-xs font-semibold mb-2" style={{ color: '#1A3C6E' }}>
+            {new Date(activeSelectedDate + 'T00:00:00').toLocaleDateString('ko-KR', {
+              month: 'long',
+              day: 'numeric',
+            })}의 {sayuTab === 'records' ? '사유 기록' : '사유비서 결과'}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {activeSelectedEntries.map((entry) => (
+              <button
+                type="button"
+                key={entry.id}
+                onClick={entry.onOpen}
+                className="px-3 py-1.5 rounded-full text-xs font-medium transition-all hover:opacity-80 hover:shadow-md cursor-pointer"
+                style={{
+                  backgroundColor: '#FDF6C3',
+                  color: '#1A3C6E',
+                  border: `1px solid ${entry.color}`,
+                }}
+              >
+                {entry.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   const listData = getMonthListData();
   const hasMonthRecords = listData.length > 0;
 
@@ -1984,7 +2341,6 @@ export function SayuPage() {
               aria-selected={active}
               onClick={() => {
                 setSayuTab(tab.key);
-                if (tab.key === 'assistants') setViewMode('list');
               }}
               style={{
                 flex: 1,
@@ -2044,54 +2400,13 @@ export function SayuPage() {
       </div>
 
       {/* 목록 / 달력 segmented 탭 */}
-      {sayuTab === 'records' && (
-        <div
-          role="tablist"
-          style={{
-            display: 'flex', gap: 4, padding: 4, borderRadius: 12,
-            backgroundColor: '#F1EADB', marginBottom: 16,
-            position: 'relative', zIndex: 2,
-          }}
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={viewMode === 'list'}
-            onClick={() => handleViewModeChange('list')}
-            style={{
-              flex: 1, minHeight: 36, padding: '6px 0', borderRadius: 8,
-              border: 'none', cursor: 'pointer', pointerEvents: 'auto',
-              backgroundColor: viewMode === 'list' ? '#FFFFFF' : 'transparent',
-              color: viewMode === 'list' ? '#1A3C6E' : '#7A6A4F',
-              fontSize: 13, fontWeight: viewMode === 'list' ? 700 : 500,
-              boxShadow: viewMode === 'list' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-              transition: 'background-color 0.15s, color 0.15s',
-            }}
-          >
-            목록
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={viewMode === 'calendar'}
-            onClick={() => handleViewModeChange('calendar')}
-            style={{
-              flex: 1, minHeight: 36, padding: '6px 0', borderRadius: 8,
-              border: 'none', cursor: 'pointer', pointerEvents: 'auto',
-              backgroundColor: viewMode === 'calendar' ? '#FFFFFF' : 'transparent',
-              color: viewMode === 'calendar' ? '#1A3C6E' : '#7A6A4F',
-              fontSize: 13, fontWeight: viewMode === 'calendar' ? 700 : 500,
-              boxShadow: viewMode === 'calendar' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-              transition: 'background-color 0.15s, color 0.15s',
-            }}
-          >
-            달력
-          </button>
-        </div>
-      )}
+      {renderViewModeTabs()}
+
+      {viewMode === 'list' && renderFlatEntryList(activeEntries)}
+      {viewMode === 'calendar' && renderEntryCalendar(activeEntries)}
 
       {/* ─── 목록 뷰 ─── */}
-      {viewMode === 'list' && (
+      {false && viewMode === 'list' && (
         <div>
           {sayuTab === 'records' && (loading ? (
             <p className="text-center py-8 text-sm" style={{ color: '#999' }}>불러오는 중...</p>
@@ -4264,7 +4579,7 @@ export function SayuPage() {
       )}
 
       {/* ─── 달력 뷰 ─── */}
-      {sayuTab === 'records' && viewMode === 'calendar' && (
+      {false && sayuTab === 'records' && viewMode === 'calendar' && (
         <div>
           <section className="bg-white rounded-lg p-4 shadow-sm mb-4">
             <div className="grid grid-cols-7 gap-1 mb-2">
