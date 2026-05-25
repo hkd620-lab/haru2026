@@ -44,3 +44,7 @@ frontend/.claude/*
 * 2.tsx
 * 2.old*
 * 2.backup*
+* 2.*
+* 3.*
+archives/
+backup/
