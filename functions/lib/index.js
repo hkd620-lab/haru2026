@@ -4657,6 +4657,16 @@ exports.extractKNewsMetadata = (0, https_2.onCall)({
         throw new https_2.HttpsError('internal', `메타데이터 추출 실패: ${(e === null || e === void 0 ? void 0 : e.message) || '알 수 없는 오류'}`);
     }
 });
+function pickApiScore(...values) {
+    for (const value of values) {
+        if (value === undefined || value === null || value === '')
+            continue;
+        const n = Number(value);
+        if (Number.isFinite(n))
+            return n;
+    }
+    return null;
+}
 async function callKindwiseIdentification(base64, _mimeType, apiKey) {
     var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q;
     // Plant.id v3는 raw base64를 권장 (data URI prefix 없이)
@@ -4704,7 +4714,7 @@ async function callKindwiseIdentification(base64, _mimeType, apiKey) {
     const topCommon = (_o = (_m = top.details) === null || _m === void 0 ? void 0 : _m.common_names) === null || _o === void 0 ? void 0 : _o[0];
     const topName = String(topCommon || top.name || '식물 이름 불확실').slice(0, 80);
     const latinName = String(top.name || '').slice(0, 120);
-    const probability = Number(top.probability || 0);
+    const probability = pickApiScore(top.probability, top.score, top.confidence, top.similarity);
     const taxonomy = ((_p = top.details) === null || _p === void 0 ? void 0 : _p.taxonomy)
         ? { family: top.details.taxonomy.family, genus: top.details.taxonomy.genus }
         : undefined;
@@ -4713,7 +4723,7 @@ async function callKindwiseIdentification(base64, _mimeType, apiKey) {
         return ({
             name: String(((_b = (_a = s.details) === null || _a === void 0 ? void 0 : _a.common_names) === null || _b === void 0 ? void 0 : _b[0]) || s.name || '').slice(0, 80),
             latinName: String(s.name || '').slice(0, 120),
-            probability: Number(s.probability || 0),
+            probability: pickApiScore(s.probability, s.score, s.confidence, s.similarity),
         });
     }).filter((c) => c.name);
     return {
@@ -4949,12 +4959,17 @@ async function callPlantNetIdentification(images, apiKey) {
         return {
             name: (common || sci || '').slice(0, 80),
             scientificName: sci.slice(0, 120),
-            score: Number((r === null || r === void 0 ? void 0 : r.score) || 0),
+            score: pickApiScore(r === null || r === void 0 ? void 0 : r.score, r === null || r === void 0 ? void 0 : r.probability, r === null || r === void 0 ? void 0 : r.confidence, r === null || r === void 0 ? void 0 : r.similarity),
             family: ((_a = species === null || species === void 0 ? void 0 : species.family) === null || _a === void 0 ? void 0 : _a.scientificNameWithoutAuthor) || ((_b = species === null || species === void 0 ? void 0 : species.family) === null || _b === void 0 ? void 0 : _b.scientificName) || undefined,
             genus: ((_c = species === null || species === void 0 ? void 0 : species.genus) === null || _c === void 0 ? void 0 : _c.scientificNameWithoutAuthor) || ((_d = species === null || species === void 0 ? void 0 : species.genus) === null || _d === void 0 ? void 0 : _d.scientificName) || undefined,
         };
     };
-    const sorted = [...results].sort((a, b) => Number((b === null || b === void 0 ? void 0 : b.score) || 0) - Number((a === null || a === void 0 ? void 0 : a.score) || 0));
+    const sorted = [...results].sort((a, b) => {
+        var _a, _b;
+        const bScore = (_a = pickApiScore(b === null || b === void 0 ? void 0 : b.score, b === null || b === void 0 ? void 0 : b.probability, b === null || b === void 0 ? void 0 : b.confidence, b === null || b === void 0 ? void 0 : b.similarity)) !== null && _a !== void 0 ? _a : -1;
+        const aScore = (_b = pickApiScore(a === null || a === void 0 ? void 0 : a.score, a === null || a === void 0 ? void 0 : a.probability, a === null || a === void 0 ? void 0 : a.confidence, a === null || a === void 0 ? void 0 : a.similarity)) !== null && _b !== void 0 ? _b : -1;
+        return bScore - aScore;
+    });
     const top = sorted.length > 0 ? toCandidate(sorted[0]) : null;
     const alternatives = sorted.slice(1, 4).map(toCandidate).filter((c) => c.name);
     return { top, alternatives };
@@ -5069,13 +5084,15 @@ async function callGeminiCrossVerification(plantId, plantNet, images, apiKey) {
         ? {
             topName: plantId.topPlantName,
             latinName: plantId.latinName,
-            confidence: Math.round(plantId.identificationProbability * 100) / 100,
+            confidence: plantId.identificationProbability === null
+                ? null
+                : Math.round(plantId.identificationProbability * 100) / 100,
             family: (_a = plantId.taxonomy) === null || _a === void 0 ? void 0 : _a.family,
             genus: (_b = plantId.taxonomy) === null || _b === void 0 ? void 0 : _b.genus,
             alternatives: plantId.alternativeCandidates.slice(0, 3).map((c) => ({
                 name: c.name,
                 latinName: c.latinName,
-                confidence: Math.round(c.probability * 100) / 100,
+                confidence: c.probability === null ? null : Math.round(c.probability * 100) / 100,
             })),
         }
         : null;
@@ -5085,7 +5102,7 @@ async function callGeminiCrossVerification(plantId, plantNet, images, apiKey) {
                 ? {
                     name: plantNet.top.name,
                     scientificName: plantNet.top.scientificName,
-                    confidence: Math.round(plantNet.top.score * 100) / 100,
+                    confidence: plantNet.top.score === null ? null : Math.round(plantNet.top.score * 100) / 100,
                     family: plantNet.top.family,
                     genus: plantNet.top.genus,
                 }
@@ -5093,7 +5110,7 @@ async function callGeminiCrossVerification(plantId, plantNet, images, apiKey) {
             alternatives: plantNet.alternatives.slice(0, 3).map((c) => ({
                 name: c.name,
                 scientificName: c.scientificName,
-                confidence: Math.round(c.score * 100) / 100,
+                confidence: c.score === null ? null : Math.round(c.score * 100) / 100,
             })),
         }
         : null;
@@ -5256,7 +5273,7 @@ exports.detectPlantAdvanced = (0, https_2.onCall)({
             ? {
                 name: ((_f = plantNetResult.top) === null || _f === void 0 ? void 0 : _f.name) || '',
                 scientificName: ((_g = plantNetResult.top) === null || _g === void 0 ? void 0 : _g.scientificName) || '',
-                confidence: (_j = (_h = plantNetResult.top) === null || _h === void 0 ? void 0 : _h.score) !== null && _j !== void 0 ? _j : 0,
+                confidence: (_j = (_h = plantNetResult.top) === null || _h === void 0 ? void 0 : _h.score) !== null && _j !== void 0 ? _j : null,
                 koName: plantNetKoName,
                 scientificKey: plantNetScientificKey,
                 family: (_k = plantNetResult.top) === null || _k === void 0 ? void 0 : _k.family,
