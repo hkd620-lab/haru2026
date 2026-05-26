@@ -5330,6 +5330,14 @@ async function callKindwiseIdentification(
   const topName = String(topCommon || top.name || '식물 이름 불확실').slice(0, 80);
   const latinName = String(top.name || '').slice(0, 120);
   const probability = pickApiScore(top.probability, top.score, top.confidence, top.similarity);
+  logger.info('Kindwise 점수 필드 확인', {
+    topKeys: Object.keys(top || {}),
+    probability: top.probability ?? null,
+    score: top.score ?? null,
+    confidence: top.confidence ?? null,
+    similarity: top.similarity ?? null,
+    selectedScore: probability,
+  });
   const taxonomy = top.details?.taxonomy
     ? { family: top.details.taxonomy.family, genus: top.details.taxonomy.genus }
     : undefined;
@@ -5614,6 +5622,19 @@ async function callPlantNetIdentification(
   logger.info('PlantNet 응답 OK', {
     resultCount: results.length,
     topScore: results[0]?.score,
+  });
+  logger.info('PlantNet 점수 필드 확인', {
+    topKeys: Object.keys(results[0] || {}),
+    score: results[0]?.score ?? null,
+    probability: results[0]?.probability ?? null,
+    confidence: results[0]?.confidence ?? null,
+    similarity: results[0]?.similarity ?? null,
+    selectedScore: pickApiScore(
+      results[0]?.score,
+      results[0]?.probability,
+      results[0]?.confidence,
+      results[0]?.similarity,
+    ),
   });
 
   const toCandidate = (r: any): PlantNetCandidate => {
@@ -5981,12 +6002,21 @@ export const detectPlantAdvanced = onCall(
       plantNetScientificKey = resolution.scientificKey || null;
     }
 
+    const plantIdConfidence = plantIdResult?.identificationProbability ?? null;
+    const plantNetConfidence = plantNetResult?.top?.score ?? null;
+    logger.info('detectPlantAdvanced 반환 점수 확인', {
+      plantIdConfidence,
+      plantNetConfidence,
+      plantIdAlternativeScores: plantIdResult?.alternativeCandidates.map((c) => c.probability) || [],
+      plantNetAlternativeScores: plantNetResult?.alternatives.map((c) => c.score) || [],
+    });
+
     return {
       plantId: plantIdResult
         ? {
             name: plantIdResult.topPlantName,
             latinName: plantIdResult.latinName,
-            confidence: plantIdResult.identificationProbability,
+            confidence: plantIdConfidence,
             isPlantProbability: plantIdResult.isPlantProbability,
             family: plantIdResult.taxonomy?.family,
             genus: plantIdResult.taxonomy?.genus,
@@ -5998,7 +6028,7 @@ export const detectPlantAdvanced = onCall(
         ? {
             name: plantNetResult.top?.name || '',
             scientificName: plantNetResult.top?.scientificName || '',
-            confidence: plantNetResult.top?.score ?? null,
+            confidence: plantNetConfidence,
             koName: plantNetKoName,
             scientificKey: plantNetScientificKey,
             family: plantNetResult.top?.family,
