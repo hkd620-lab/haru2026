@@ -98,6 +98,17 @@ type PhotoItem = {
   previewUrl: string;
   base64: string;
   mimeType: string;
+  downloadUrl?: string;
+  storagePath?: string;
+  fileName?: string;
+  uploadedAt?: number;
+};
+
+type PlantImageMeta = {
+  imageUrl: string;
+  storagePath: string;
+  fileName: string;
+  uploadedAt: number;
 };
 
 const MAX_PHOTOS = 5;
@@ -173,6 +184,21 @@ function blobToBase64(blob: Blob): Promise<string> {
     reader.onerror = () => reject(new Error('FILE_READER_ERROR'));
     reader.readAsDataURL(blob);
   });
+}
+
+function base64ToBlob(base64: string, mimeType: string): Blob {
+  const raw = base64.includes(',') ? base64.split(',').pop() || '' : base64;
+  const byteString = atob(raw);
+  const chunks: Uint8Array[] = [];
+  for (let offset = 0; offset < byteString.length; offset += 8192) {
+    const slice = byteString.slice(offset, offset + 8192);
+    const bytes = new Uint8Array(slice.length);
+    for (let i = 0; i < slice.length; i++) {
+      bytes[i] = slice.charCodeAt(i);
+    }
+    chunks.push(bytes);
+  }
+  return new Blob(chunks, { type: mimeType || 'image/jpeg' });
 }
 
 function pctText(v: number | null | undefined): string {
@@ -318,6 +344,7 @@ export function PlantDetectivePage() {
   // 현재 결과를 plants/ 컬렉션에 한 번 저장했다면 그 plantId를 기억 — 재저장 시 update
   const [activePlantDocId, setActivePlantDocId] = useState<string | null>(null);
   const [activePlantImageUrls, setActivePlantImageUrls] = useState<string[]>([]);
+  const [activePlantImageMetas, setActivePlantImageMetas] = useState<PlantImageMeta[]>([]);
   const [activePlantCreatedAt, setActivePlantCreatedAt] = useState<number | null>(null);
   // 🌿 NIBR 국내 생물종 보강 정보 — 분석 후 비동기로 조회 (실패해도 기존 흐름 무영향)
   const [koreanInfo, setKoreanInfo] = useState<KoreanPlantInfoResponse | null>(null);
@@ -457,11 +484,44 @@ export function PlantDetectivePage() {
             ? [entry.imageUrl]
             : [];
         const createdAt = toFiniteNumber(entry.createdAt);
+        const savedImageMetas: PlantImageMeta[] = Array.isArray(entry.imageMetas)
+          ? entry.imageMetas
+              .map((meta: any, index: number) => ({
+                imageUrl: String(meta?.imageUrl || meta?.downloadUrl || imageUrls[index] || '').trim(),
+                storagePath: String(meta?.storagePath || '').trim(),
+                fileName: String(meta?.fileName || '').trim(),
+                uploadedAt: toFiniteNumber(meta?.uploadedAt) || createdAt || 0,
+              }))
+              .filter((meta: PlantImageMeta) => meta.imageUrl)
+          : imageUrls.map((url: string, index: number) => ({
+              imageUrl: url,
+              storagePath:
+                (Array.isArray(entry.storagePaths) && typeof entry.storagePaths[index] === 'string'
+                  ? entry.storagePaths[index]
+                  : index === 0 && typeof entry.storagePath === 'string'
+                    ? entry.storagePath
+                    : '') || '',
+              fileName:
+                (Array.isArray(entry.fileNames) && typeof entry.fileNames[index] === 'string'
+                  ? entry.fileNames[index]
+                  : index === 0 && typeof entry.fileName === 'string'
+                    ? entry.fileName
+                    : '') || '',
+              uploadedAt:
+                toFiniteNumber(Array.isArray(entry.uploadedAts) ? entry.uploadedAts[index] : null) ||
+                (index === 0 ? toFiniteNumber(entry.uploadedAt) : null) ||
+                createdAt ||
+                0,
+            }));
         setPhotos(imageUrls.map((url: string, index: number) => ({
           id: `saved_${selectedRecordId}_${selectedPlantIndex}_${index}`,
           previewUrl: url,
           base64: '',
           mimeType: 'image/jpeg',
+          downloadUrl: url,
+          storagePath: savedImageMetas[index]?.storagePath || '',
+          fileName: savedImageMetas[index]?.fileName || '',
+          uploadedAt: savedImageMetas[index]?.uploadedAt || createdAt || 0,
         })));
         setResult(toSavedPlantDetectiveResult(entry));
         setSavedToToday(true);
@@ -475,6 +535,7 @@ export function PlantDetectivePage() {
         setConfirmedSavedDocId(null);
         setActivePlantDocId(typeof entry.plantId === 'string' && entry.plantId ? entry.plantId : null);
         setActivePlantImageUrls(imageUrls);
+        setActivePlantImageMetas(savedImageMetas);
         setActivePlantCreatedAt(createdAt);
         setKoreanInfo(null);
         setObsObservation('');
@@ -509,6 +570,7 @@ export function PlantDetectivePage() {
     setConfirmedSavedDocId(null);
     setActivePlantDocId(null);
     setActivePlantImageUrls([]);
+    setActivePlantImageMetas([]);
     setActivePlantCreatedAt(null);
     setKoreanInfo(null);
     setObsObservation('');
@@ -986,16 +1048,26 @@ export function PlantDetectivePage() {
     today: string;
     createdAt: number;
     imageUrls: string[];
+    imageMetas: PlantImageMeta[];
   }> => {
     if (!user) throw new Error('UNAUTH');
     if (activePlantDocId && activePlantImageUrls.length > 0 && activePlantCreatedAt) {
       const d = new Date(activePlantCreatedAt);
       const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const imageMetas = activePlantImageMetas.length > 0
+        ? activePlantImageMetas
+        : activePlantImageUrls.map((url) => ({
+            imageUrl: url,
+            storagePath: '',
+            fileName: '',
+            uploadedAt: activePlantCreatedAt,
+          }));
       return {
         plantId: activePlantDocId,
         today,
         createdAt: activePlantCreatedAt,
         imageUrls: activePlantImageUrls,
+        imageMetas,
       };
     }
     const now = new Date();
@@ -1008,20 +1080,69 @@ export function PlantDetectivePage() {
 
     const storage = getStorage();
     const imageUrls: string[] = [];
+    const imageMetas: PlantImageMeta[] = [];
     for (let i = 0; i < photos.length; i++) {
       const p = photos[i];
       const fileName = `${plantId}_${i + 1}.jpg`;
       const path = `users/${user.uid}/format_photos/${fileName}`;
+      const existingUrl = p.downloadUrl || (/^https?:\/\//.test(p.previewUrl) ? p.previewUrl : '');
+      if (!p.base64 && existingUrl) {
+        imageUrls.push(existingUrl);
+        imageMetas.push({
+          imageUrl: existingUrl,
+          storagePath: p.storagePath || '',
+          fileName: p.fileName || '',
+          uploadedAt: p.uploadedAt || ts,
+        });
+        continue;
+      }
       const storageRef = ref(storage, path);
-      const blob = await fetch(p.previewUrl).then((r) => r.blob());
+      const blob = p.base64
+        ? base64ToBlob(p.base64, p.mimeType || 'image/jpeg')
+        : await fetch(p.previewUrl).then((r) => r.blob());
       await uploadBytes(storageRef, blob, { contentType: blob.type || 'image/jpeg' });
       const url = await getDownloadURL(storageRef);
       imageUrls.push(url);
+      imageMetas.push({
+        imageUrl: url,
+        storagePath: path,
+        fileName,
+        uploadedAt: ts,
+      });
     }
     setActivePlantDocId(plantId);
     setActivePlantImageUrls(imageUrls);
+    setActivePlantImageMetas(imageMetas);
     setActivePlantCreatedAt(ts);
-    return { plantId, today, createdAt: ts, imageUrls };
+    return { plantId, today, createdAt: ts, imageUrls, imageMetas };
+  };
+
+  const buildResultSaveFields = (imageMetas: PlantImageMeta[], updatedAt: number) => {
+    const primaryImage = imageMetas[0];
+    const aiScientificName =
+      result?.plantNet?.scientificName ||
+      result?.plantId?.latinName ||
+      result?.gemini?.finalLatinName ||
+      '';
+    return {
+      photoUrl: primaryImage?.imageUrl || '',
+      storagePath: primaryImage?.storagePath || '',
+      fileName: primaryImage?.fileName || '',
+      uploadedAt: primaryImage?.uploadedAt || updatedAt,
+      imageMetas,
+      storagePaths: imageMetas.map((meta) => meta.storagePath).filter(Boolean),
+      fileNames: imageMetas.map((meta) => meta.fileName).filter(Boolean),
+      uploadedAts: imageMetas.map((meta) => meta.uploadedAt),
+      aiScientificName,
+      plantNetResult: result?.plantNet || null,
+      plantIdResult: result?.plantId || null,
+      plantIdError: result?.plantId ? null : 'Plant.id 결과를 가져오지 못했습니다.',
+      providerResults: {
+        plantId: result?.plantId || null,
+        plantNet: result?.plantNet || null,
+        gemini: result?.gemini || null,
+      },
+    };
   };
 
   const buildDisplayName = () => {
@@ -1048,16 +1169,19 @@ export function PlantDetectivePage() {
     }
     setIsSaving(true);
     try {
-      const { plantId, today, createdAt, imageUrls } = await ensurePlantDocAssets();
+      const { plantId, today, createdAt, imageUrls, imageMetas } = await ensurePlantDocAssets();
       const { name: displayName, latin: displayLatin, englishName, scientificName } = buildDisplayName();
+      const updatedAt = Date.now();
 
       // 기존 호환 — records/{today}.plantDetective[]
       const recordRef = doc(db, 'users', user.uid, 'records', today);
       const legacyEntry = {
         createdAt,
+        updatedAt,
         plantId,
         imageUrl: imageUrls[0] || '',
         imageUrls,
+        ...buildResultSaveFields(imageMetas, updatedAt),
         title: displayName,
         plantName: displayName,
         latinName: displayLatin,
@@ -1094,10 +1218,13 @@ export function PlantDetectivePage() {
       );
 
       setSavedToToday(true);
+      if (!result.plantId) {
+        toast.info('Plant.id 결과는 가져오지 못했지만 다른 판독 결과는 저장할 수 있습니다.');
+      }
       toast.success(`오늘 기록(${today})에 저장되었습니다.`);
     } catch (error: any) {
       console.error('식물탐정 저장 실패:', error);
-      toast.error(error?.message || '저장에 실패했습니다.');
+      toast.error('저장 중 오류가 발생했습니다. 이미지 접근 또는 네트워크 상태를 확인하세요.');
     } finally {
       setIsSaving(false);
     }
@@ -1124,11 +1251,12 @@ export function PlantDetectivePage() {
     }
     setIsConfirming(true);
     try {
-      const { plantId, today, createdAt, imageUrls } = await ensurePlantDocAssets();
+      const { plantId, today, createdAt, imageUrls, imageMetas } = await ensurePlantDocAssets();
       const { name: displayName, latin: displayLatin, englishName, scientificName, confidence: topConfidence } = buildDisplayName();
       const aiPrediction = result.plantNet?.name || result.plantId?.name || result.gemini?.finalGuess || '';
       const aiKoName = result.plantNet?.koName || result.gemini?.finalGuess || '';
       const correctedByUser = Boolean(name && name !== (aiKoName || aiPrediction));
+      const resultSaveFields = buildResultSaveFields(imageMetas, Date.now());
       let targetPlantId = plantId;
       if (scientificName) {
         const existing = await getDocs(query(
@@ -1171,6 +1299,7 @@ export function PlantDetectivePage() {
           updatedAt: serverTimestamp(),
           photos: imageUrls,
           imageUrl: imageUrls[0] || '',
+          ...resultSaveFields,
           // 제목은 AI 판독명과 사용자 보고명을 함께 보존 — 기존 API 결과는 original* 로 그대로 보존
           displayName,
           englishName,
@@ -1211,6 +1340,7 @@ export function PlantDetectivePage() {
           finalLatinName: displayLatin,
           photos: imageUrls.slice(0, MAX_PHOTOS),
           imageUrl: imageUrls[0] || '',
+          ...resultSaveFields,
           confidence: topConfidence,
           originalPlantIdResult: result.plantId,
           originalPlantNetResult: result.plantNet,
@@ -1398,7 +1528,7 @@ export function PlantDetectivePage() {
     }
     setObsSaving(true);
     try {
-      const { plantId, today, createdAt, imageUrls } = await ensurePlantDocAssets();
+      const { plantId, today, createdAt, imageUrls, imageMetas } = await ensurePlantDocAssets();
       const { name: displayName, latin: displayLatin, englishName, scientificName } = buildDisplayName();
       const now = Date.now();
 
@@ -1408,10 +1538,12 @@ export function PlantDetectivePage() {
         format: 'plantObservation',
         plantId,
         linkedPlantId: plantId,
+        updatedAt: now,
         plantName: displayName,
         latinName: displayLatin,
         imageUrl: imageUrls[0] || '',
         imageUrls,
+        ...buildResultSaveFields(imageMetas, now),
         title: displayName,
         englishName,
         scientificName,
@@ -1462,17 +1594,20 @@ export function PlantDetectivePage() {
     }
     setIsSaving(true);
     try {
-      const { plantId, today, createdAt, imageUrls } = await ensurePlantDocAssets();
+      const { plantId, today, createdAt, imageUrls, imageMetas } = await ensurePlantDocAssets();
       const { name: displayName, latin: displayLatin, englishName, scientificName } = buildDisplayName();
       const now = Date.now();
+      const resultSaveFields = buildResultSaveFields(imageMetas, now);
 
       // 1) records/{today}.plantDetective[] (legacy 호환 — saveToToday 와 동일)
       const recordRef = doc(db, 'users', user.uid, 'records', today);
       const legacyEntry = {
         createdAt,
+        updatedAt: now,
         plantId,
         imageUrl: imageUrls[0] || '',
         imageUrls,
+        ...resultSaveFields,
         title: displayName,
         plantName: displayName,
         latinName: displayLatin,
@@ -1518,10 +1653,12 @@ export function PlantDetectivePage() {
           format: 'plantObservation',
           plantId,
           linkedPlantId: plantId,
+          updatedAt: now,
           plantName: displayName,
           latinName: displayLatin,
           imageUrl: imageUrls[0] || '',
           imageUrls,
+          ...resultSaveFields,
           title: displayName,
           englishName,
           scientificName,
@@ -1548,10 +1685,13 @@ export function PlantDetectivePage() {
         setObsSavedAt(`${today} ${hh}:${mm}`);
       }
       await loadPlantDiary();
+      if (!result.plantId) {
+        toast.info('Plant.id 결과는 가져오지 못했지만 다른 판독 결과는 저장할 수 있습니다.');
+      }
       toast.success('오늘의 식물 기록과 관찰 내용을 저장했습니다.');
     } catch (error: any) {
       console.error('통합 저장 실패:', error);
-      toast.error(error?.message || '저장에 실패했습니다.');
+      toast.error('저장 중 오류가 발생했습니다. 이미지 접근 또는 네트워크 상태를 확인하세요.');
     } finally {
       setIsSaving(false);
     }
