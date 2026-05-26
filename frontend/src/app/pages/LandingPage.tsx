@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { toast } from 'sonner';
 import { GrapeAnimation } from '../components/GrapeAnimation';
 
 const IMAGES = {
@@ -46,8 +47,9 @@ function GrapeLogo() {
 
 export function LandingPage() {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, loading, googleSignIn } = useAuth();
   const [showBanner, setShowBanner] = useState(true);
+  const [isLoginLoading, setIsLoginLoading] = useState(false);
 
   useEffect(() => {
     const dismissed = localStorage.getItem('haru_tip_banner_dismissed');
@@ -77,6 +79,44 @@ export function LandingPage() {
 
   const goToLogin = () => navigate('/login');
 
+  const handleGoogleLogin = async () => {
+    setIsLoginLoading(true);
+    if (import.meta.env.DEV) {
+      try {
+        await googleSignIn();
+        navigate('/');
+      } catch (e: any) {
+        console.error('[dev] Google login failed:', e);
+        toast.error('Google 로그인 실패');
+        setIsLoginLoading(false);
+      }
+      return;
+    }
+    setTimeout(() => {
+      window.location.href = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/googleLoginStart';
+    }, 1500);
+  };
+
+  const handleKakaoLogin = () => {
+    setIsLoginLoading(true);
+    setTimeout(() => {
+      window.location.href = 'https://kakaologinstart-6ieesxet3q-du.a.run.app';
+    }, 1500);
+  };
+
+  const handleNaverLogin = () => {
+    setIsLoginLoading(true);
+    setTimeout(() => {
+      window.location.href = 'https://naverloginstart-6ieesxet3q-du.a.run.app';
+    }, 1500);
+  };
+
+  const socialLoginButtons = [
+    { label: 'Google', onClick: handleGoogleLogin },
+    { label: '카카오', onClick: handleKakaoLogin },
+    { label: '네이버', onClick: handleNaverLogin },
+  ];
+
   return (
     <div className="lp-page" style={{ fontFamily: 'inherit', background: '#F5F0E8', overflowX: 'hidden' }}>
 
@@ -85,6 +125,20 @@ export function LandingPage() {
           .hero-section {
             padding-bottom: 24px !important;
             min-height: auto !important;
+          }
+          .hero-login {
+            margin-top: -8px !important;
+            margin-bottom: 18px !important;
+          }
+          .hero-login-title {
+            width: 100% !important;
+            font-size: 13px !important;
+          }
+          .hero-login-button {
+            flex: 1 1 calc(33.333% - 8px) !important;
+            min-width: 72px !important;
+            padding: 8px 10px !important;
+            font-size: 13px !important;
           }
           .grape-animation-container {
             margin-bottom: 0 !important;
@@ -235,16 +289,46 @@ export function LandingPage() {
             </p>
 
 
-            {/* 소셜 로그인 뱃지 */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-              <span style={{ fontSize: '13px', opacity: 0.55, marginRight: '4px' }}>소셜 로그인:</span>
-              {['Google', '카카오', '네이버'].map((s) => (
-                <span key={s} style={{
-                  background: 'rgba(255,255,255,0.12)', borderRadius: '20px',
-                  padding: '4px 12px', fontSize: '13px', fontWeight: 600,
-                }}>
-                  {s}
-                </span>
+            {/* 상단 소셜 로그인 */}
+            <div
+              className="hero-login"
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '8px',
+                alignItems: 'center',
+                maxWidth: '420px',
+              }}
+            >
+              <span
+                className="hero-login-title"
+                style={{ fontSize: '13px', opacity: 0.72, marginRight: '4px', fontWeight: 600 }}
+              >
+                기존 회원은 바로 로그인하세요
+              </span>
+              {socialLoginButtons.map((button) => (
+                <button
+                  key={button.label}
+                  type="button"
+                  onClick={button.onClick}
+                  disabled={isLoginLoading}
+                  className="hero-login-button"
+                  style={{
+                    background: 'rgba(245,240,232,0.14)',
+                    color: '#F5F0E8',
+                    border: '1px solid rgba(245,240,232,0.18)',
+                    borderRadius: '20px',
+                    padding: '7px 14px',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    cursor: isLoginLoading ? 'default' : 'pointer',
+                    opacity: isLoginLoading ? 0.55 : 1,
+                    lineHeight: 1.2,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {button.label}
+                </button>
               ))}
             </div>
           </div>
