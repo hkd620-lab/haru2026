@@ -1181,6 +1181,30 @@ export function SayuPage() {
     }
   };
 
+  const handleDeleteSinglePlantEntry = async (recordId: string, idx: number) => {
+    if (!user?.uid) return;
+    if (!window.confirm('이 식물 판독 기록만 삭제할까요?')) return;
+    try {
+      const record = records.find((r) => r.id === recordId);
+      const current = Array.isArray((record as any)?.plantDetective)
+        ? ((record as any).plantDetective as any[])
+        : [];
+      const next = current.filter((_, currentIdx) => currentIdx !== idx);
+      await updateDoc(doc(db, 'users', user.uid, 'records', recordId), {
+        plantDetective: next,
+      });
+      setRecords((prev) =>
+        prev.map((r) =>
+          r.id === recordId ? ({ ...r, plantDetective: next } as HaruRecord) : r,
+        ),
+      );
+      toast.success('식물 판독 기록을 삭제했습니다.');
+    } catch (e) {
+      console.error('식물 판독 기록 삭제 실패:', e);
+      toast.error('삭제에 실패했습니다.');
+    }
+  };
+
   const toggleSayuGuide = () => {
     const newValue = !showSayuGuide;
     setShowSayuGuide(newValue);
@@ -3758,6 +3782,64 @@ export function SayuPage() {
                           식물탐정비서 열기
                         </button>
                       </div>
+                      {plantEntries.length > 0 ? (
+                        <div style={{ display: 'grid', gap: 8, marginTop: 12, maxHeight: 420, overflowY: 'auto' }}>
+                          {plantEntries.map(({ date, recordId, entry, idx }) => {
+                            const sub = getPlantSubTitle(entry);
+                            return (
+                              <div key={`plant_entry_${recordId}_${idx}`} style={{ border: '1px solid #f0ead1', borderRadius: 8, background: '#fff', padding: 10 }}>
+                                <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>{date}</div>
+                                <div style={{ fontSize: 14, color: '#24301f', fontWeight: 900, marginTop: 2 }}>
+                                  {getPlantTitle(entry)}
+                                </div>
+                                {sub && (
+                                  <div style={{ fontSize: 11, color: '#6b7654', fontStyle: 'italic', marginTop: 2 }}>{sub}</div>
+                                )}
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => navigate('/plant-detective', { state: { recordId, idx } })}
+                                    style={{
+                                      minHeight: 28,
+                                      padding: '0 10px',
+                                      borderRadius: 7,
+                                      border: '1px solid #d8c98a',
+                                      background: '#fff',
+                                      color: '#4A5A2C',
+                                      fontSize: 12,
+                                      fontWeight: 800,
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    상세보기
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteSinglePlantEntry(recordId, idx)}
+                                    style={{
+                                      minHeight: 28,
+                                      padding: '0 10px',
+                                      borderRadius: 7,
+                                      border: '1px solid #fecaca',
+                                      background: '#fff',
+                                      color: '#dc2626',
+                                      fontSize: 12,
+                                      fontWeight: 800,
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    삭제
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 13, color: '#6b7654', lineHeight: 1.6, marginTop: 12 }}>
+                          아직 식물탐정 판독 기록이 없습니다.
+                        </div>
+                      )}
                     </div>
 
                   </div>
