@@ -43,6 +43,7 @@ import { ProphecyHubPage } from './pages/ProphecyHubPage';
 import { RecordHubPage } from './pages/RecordHubPage';
 import { SnsRecordsPage } from './pages/SnsRecordsPage';
 import { OnbidRealEstatePage } from './pages/OnbidRealEstatePage';
+import { LawsuitPracticePage } from './pages/LawsuitPracticePage';
 import { SayuHealthHubPage } from './pages/SayuHealthHubPage';
 import { SayuHealthEbsPage } from './pages/SayuHealthEbsPage';
 import { SayuHealthDrugPage } from './pages/SayuHealthDrugPage';
@@ -152,6 +153,7 @@ function App() {
               <Route path="/record-hub" element={<HomeOrLanding />} />
               <Route path="/sns-records" element={<SnsRecordsPage />} />
               <Route path="/onbid-realestate" element={<OnbidRealEstatePage />} />
+              <Route path="/lawsuit-practice" element={<LawsuitPracticePage />} />
               <Route path="/plant-detective" element={<PlantDetectivePage />} />
               <Route path="/asset-explorer" element={<AssetExplorerPage />} />
 

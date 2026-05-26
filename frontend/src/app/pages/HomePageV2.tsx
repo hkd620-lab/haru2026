@@ -253,6 +253,24 @@ const AGENTS: Agent[] = [
     ),
   },
   {
+    label: '전자소송연습비서',
+    sub: '중고거래 분쟁을 질문 단계로 정리하고 사건 타임라인을 만들어봅니다.',
+    tag: 'PRACTICE · V1',
+    variant: 'terracotta',
+    stroke: '#B85C2E',
+    path: '/lawsuit-practice',
+    beta: true,
+    icon: (
+      <>
+        <path d="M5 4h10l4 4v12H5z" />
+        <path d="M15 4v4h4" />
+        <path d="M8 13h8" />
+        <path d="M8 17h5" />
+        <path d="M7 9h3" />
+      </>
+    ),
+  },
+  {
     label: '영어성경',
     sub: '영어·영한·한영 듣기·말하기·해석·단어·문법을 한 번에 — 영어성경 학습의 결정판',
     tag: 'BIBLE · 학습',
