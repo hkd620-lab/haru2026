@@ -18,13 +18,17 @@ const FORMATS = [
   { name: '일기',           emoji: '📔', category: '생활' },
   { name: '에세이',         emoji: '✍️', category: '생활' },
   { name: '여행기록',       emoji: '✈️', category: '생활' },
+  { name: '독서사유',       emoji: '📚', category: '생활' },
   { name: '텃밭일지',       emoji: '🌱', category: '생활' },
-  { name: '애완동물관찰일지', emoji: '🐾', category: '생활' },
+  { name: '애완동물관찰',   emoji: '🐾', category: '생활' },
+  { name: '육아일기',       emoji: '👶', category: '생활' },
   { name: '선교보고',       emoji: '📋', category: '업무' },
   { name: '일반보고',       emoji: '📊', category: '업무' },
   { name: '업무일지',       emoji: '💼', category: '업무' },
-  { name: '육아일기',       emoji: '👶', category: '생활' },
   { name: '메모',           emoji: '📝', category: '업무', badge: 'AI 제목' },
+  { name: 'HARU보조장부',   emoji: '🧾', category: '업무' },
+  { name: 'HARU주식관리',   emoji: '📈', category: '자산' },
+  { name: '하루LAW',        emoji: '⚖️', category: '전문' },
 ];
 
 /* ── 포도송이 로고 ── */
@@ -233,7 +237,7 @@ export function LandingPage() {
                   </div>
                   <div style={{ marginTop: '4px', borderTop: '1px solid rgba(74,90,44,0.15)', paddingTop: '6px' }}>
                     🪶 나도작가 —{' '}
-                    <span style={{ color: '#a78bfa', fontWeight: 600 }}>AI가 당신의 기록으로 미래를 씁니다</span>
+                    <span style={{ color: '#a78bfa', fontWeight: 600 }}>기록을 바탕으로 글의 재료를 만듭니다</span>
                   </div>
                 </div>
               </div>
@@ -275,17 +279,17 @@ export function LandingPage() {
               <GrapeLogo />
               <div>
                 <div style={{ fontSize: '22px', fontWeight: 800, letterSpacing: '1px' }}>HARU 2026</div>
-                <div style={{ fontSize: '12px', opacity: 0.6, letterSpacing: '2px', textTransform: 'uppercase' }}>Daily Journal App</div>
+                <div style={{ fontSize: '12px', opacity: 0.6, letterSpacing: '2px', textTransform: 'uppercase' }}>AI Life Platform</div>
               </div>
             </div>
 
             <h1 style={{ fontSize: 'clamp(26px, 5vw, 46px)', fontWeight: 800, lineHeight: 1.25, marginBottom: '16px' }}>
-              간편하게 입력하고,<br />쓸모있게 남깁니다
+              기록을 모아,<br />삶의 도구로 바꿉니다
             </h1>
             <p style={{ fontSize: '17px', opacity: 0.8, lineHeight: 1.75, marginBottom: '32px' }}>
-              10가지 형식으로 간편하게 입력하면<br />
-              AI가 이를 바탕으로 미래를 예측하고<br />
-              자서전을 만들어 드립니다
+              목적별 형식으로 하루를 남기고<br />
+              AI와 전문 데이터가 기록을 해석해<br />
+              다시 꺼내 쓰는 자산으로 정리합니다
             </p>
 
 
@@ -414,16 +418,16 @@ export function LandingPage() {
                 >
                   쓸모있게
                 </motion.span>{' '}
-                남기는 똑똑하고{' '}
+                남기고{' '}
                 <motion.span
                   className="font-semibold"
                   style={{ color: '#ff6600' }}
                   animate={{ scale: [1, 1.15, 1] }}
                   transition={{ delay: 4.0, duration: 0.8 }}
                 >
-                  쓸모있는
+                  다시 쓰는
                 </motion.span>{' '}
-                기록 비서
+                AI 라이프 플랫폼
               </motion.p>
             </div>
           </div>
@@ -499,21 +503,21 @@ export function LandingPage() {
       </section>
 
       {/* ══════════════════════════════
-          섹션 3: 주요 기능 3개 카드
+          섹션 3: 주요 기능 카드
       ══════════════════════════════ */}
       <section style={{ background: '#fff', padding: '64px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <h2 style={{ textAlign: 'center', fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: 800, color: '#4A5A2C', marginBottom: '8px' }}>
-            HARU가 특별한 이유
+            HARU가 기록을 다루는 방식
           </h2>
           <p style={{ textAlign: 'center', color: '#666', fontSize: '16px', marginBottom: '40px' }}>
-            매일의 기록이 자산이 됩니다
+            입력, 해석, 축적, 활용이 한 흐름으로 이어집니다
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'center' }}>
             {[
-              { img: IMAGES.feature_record, title: '10가지 기록 형식', desc: '일기부터 선교보고까지 — 상황에 맞는 형식으로 간편하게 작성' },
-              { img: IMAGES.feature_sayu,   title: 'SAYU(사유) 다듬기', desc: '재창작 없이 다듬기 — 당신의 글을 당신답게' },
-              { img: IMAGES.feature_stats,  title: '통계 & 기록합치기', desc: '작성 현황을 한눈에 보고 여러 기록을 하나의 리포트로' },
+              { img: IMAGES.feature_record, title: '목적별 기록 하네스', desc: '일상, 업무, 독서, 자산, 법률 질문까지 목적에 맞는 형식으로 남깁니다' },
+              { img: IMAGES.feature_sayu,   title: 'SAYU와 사실 기반 정리', desc: '원문 사실과 감정을 보존하며 문장을 다듬고, 기록을 검색·분류 가능한 자산으로 만듭니다' },
+              { img: IMAGES.feature_stats,  title: '통계·합본·AI 비서실', desc: '쌓인 기록을 통계와 리포트로 묶고, 법률·건강·학습·자산 비서가 다시 활용합니다' },
             ].map((card) => (
               <div key={card.title} style={{
                 flex: '1 1 280px', maxWidth: '340px',
@@ -537,10 +541,10 @@ export function LandingPage() {
       <section style={{ background: '#EDE8DC', padding: '64px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <h2 style={{ textAlign: 'left', fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: 800, color: '#4A5A2C', marginBottom: '8px' }}>
-            SAYU(사유:思惟)는 단순한 기록을 넘어,<br />당신의 소중한 일상을 당신만의 자산으로 남기는 공간입니다.
+            SAYU(사유:思惟)는 글을 대신 쓰는 기능이 아니라,<br />당신의 기록을 보존하며 정리하는 해석 공간입니다.
           </h2>
           <p style={{ textAlign: 'left', color: '#666', fontSize: '16px', marginBottom: '40px' }}>
-            내 기록을 한 단계 끌어올려 드립니다.
+            사실은 지키고, 문장은 다듬고, 나중에 다시 꺼내 쓸 수 있게 남깁니다.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'center' }}>
 
@@ -561,9 +565,9 @@ export function LandingPage() {
                 }}>
                   SAYU BASIC
                 </span>
-                <h3 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '10px' }}>기본 다듬기</h3>
+                <h3 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '10px' }}>원문 보존 다듬기</h3>
                 <p style={{ fontSize: '15px', opacity: 0.8, lineHeight: 1.7 }}>
-                  원문 감정과 내용을 보존하며 문장을 자연스럽게 다듬습니다
+                  사용자가 쓴 사건과 감정을 지키면서 문장을 자연스럽게 정리합니다
                 </p>
               </div>
             </div>
@@ -585,9 +589,9 @@ export function LandingPage() {
                 }}>
                   SAYU PREMIUM
                 </span>
-                <h3 style={{ fontSize: '22px', fontWeight: 800, color: '#4A5A2C', marginBottom: '10px' }}>프리미엄 다듬기</h3>
+                <h3 style={{ fontSize: '22px', fontWeight: 800, color: '#4A5A2C', marginBottom: '10px' }}>누적 기록 해석</h3>
                 <p style={{ fontSize: '15px', color: '#444', lineHeight: 1.7 }}>
-                  Gemini AI가 더 풍부하고 깊이 있는 표현으로 다듬습니다. 구독 회원 전용
+                  기록의 흐름을 요약하고 사유 질문을 더해 장기 자산으로 남깁니다
                 </p>
               </div>
             </div>
@@ -597,15 +601,15 @@ export function LandingPage() {
       </section>
 
       {/* ══════════════════════════════
-          섹션 5: 기록 형식 10개 그리드
+          섹션 5: 목적별 기록 형식 그리드
       ══════════════════════════════ */}
       <section style={{ background: '#F5F0E8', padding: '64px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <h2 style={{ textAlign: 'center', fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: 800, color: '#4A5A2C', marginBottom: '8px' }}>
-            기록 형식 10가지
+            목적별 기록 형식
           </h2>
           <p style={{ textAlign: 'center', color: '#666', fontSize: '16px', marginBottom: '40px' }}>
-            내 상황에 맞게 선택
+            생활·업무·자산·전문 영역을 한 곳에 모읍니다
           </p>
           <div style={{
             display: 'grid',
@@ -616,12 +620,14 @@ export function LandingPage() {
           >
             {FORMATS.map((f) => {
               const isLife = f.category === '생활';
+              const isAsset = f.category === '자산';
+              const isSpecial = f.category === '전문';
               return (
                 <div key={f.name} style={{
-                  background: isLife ? '#E8E8C0' : '#E5DFE8',
+                  background: isLife ? '#E8E8C0' : isAsset ? '#DDE8E5' : isSpecial ? '#E8E1D6' : '#E5DFE8',
                   borderRadius: '12px', padding: '18px 10px',
                   textAlign: 'center', position: 'relative',
-                  border: f.badge ? '2px solid #7A8B4E' : `1px solid ${isLife ? '#D4DEA0' : '#C9C0DE'}`,
+                  border: f.badge ? '2px solid #7A8B4E' : `1px solid ${isLife ? '#D4DEA0' : isAsset ? '#BFD4CE' : isSpecial ? '#D6C7B6' : '#C9C0DE'}`,
                 }}>
                   {f.badge && (
                     <span style={{
@@ -634,10 +640,10 @@ export function LandingPage() {
                     </span>
                   )}
                   <div style={{ fontSize: '26px', marginBottom: '6px' }}>{f.emoji}</div>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: isLife ? '#4A5A2C' : '#5C5078' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: isLife ? '#4A5A2C' : isAsset ? '#2E5B55' : isSpecial ? '#735538' : '#5C5078' }}>
                     {f.name}
                   </div>
-                  <div style={{ fontSize: '11px', marginTop: '3px', color: isLife ? '#7A8B4E' : '#7A6F8E', fontWeight: 600 }}>
+                  <div style={{ fontSize: '11px', marginTop: '3px', color: isLife ? '#7A8B4E' : isAsset ? '#4B8078' : isSpecial ? '#9A7042' : '#7A6F8E', fontWeight: 600 }}>
                     {f.category}
                   </div>
                 </div>
@@ -648,7 +654,7 @@ export function LandingPage() {
       </section>
 
       {/* ══════════════════════════════
-          섹션 5-1: HARU의 날개 — AI 비서실 11개 (v2 홈과 동기화)
+          섹션 5-1: HARU의 날개 — AI 비서실 (v2 홈과 동기화)
       ══════════════════════════════ */}
       <section style={{ background: '#3F4F26', padding: '80px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
@@ -657,7 +663,7 @@ export function LandingPage() {
               border: '1px solid rgba(122,139,78,0.4)', color: '#7A8B4E',
               fontSize: '11px', letterSpacing: '3px', padding: '5px 18px', borderRadius: '20px'
             }}>
-              HARU EXCLUSIVE · AI 비서실
+              HARU EXCLUSIVE · AI LIFE ASSISTANTS
             </span>
           </div>
           <h2 style={{
@@ -671,8 +677,8 @@ export function LandingPage() {
             fontSize: '16px', lineHeight: 1.7, marginBottom: '56px',
             maxWidth: '640px', margin: '0 auto 56px',
           }}>
-            일기를 넘어, 매일 다른 도움을 받는<br />
-            <strong style={{ color: '#7A8B4E', fontWeight: 700 }}>11가지 AI 비서</strong>가 함께합니다
+            기록을 바탕으로 법률·건강·학습·자산·창작 영역까지<br />
+            <strong style={{ color: '#7A8B4E', fontWeight: 700 }}>전문 AI 비서실</strong>이 함께합니다
           </p>
           <div className="agents-8" style={{
             display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px',
@@ -683,7 +689,7 @@ export function LandingPage() {
               { emoji: '📖', title: '영어성경',     sub: 'BIBLE',         desc: '영어·영한·한영 듣기·말하기·해석·단어·문법을 한 번에 — 영어성경 학습의 결정판', color: '#38bdf8' },
               { emoji: '🌐', title: '영어일기',     sub: 'EN DIARY',      desc: '내가 기록한 일기와 에세이로 자연스러운 영작 학습',                                color: '#7A8B4E' },
               { emoji: '📥', title: 'SNS가져오기',  sub: 'IMPORT',        desc: '페이스북과 인스타그램의 추억들을 입맛대로 정렬하고 나만의 책으로 출간해 드립니다.', color: '#ec4899' },
-              { emoji: '📈', title: 'HARU주식',     sub: 'MARKET',        desc: '내가 매도·매수한 종목들의 현재와 미래를 예측하여 주식 투자를 즐겁게.',           color: '#22d3ee' },
+              { emoji: '📈', title: 'HARU주식',     sub: 'MARKET',        desc: '내가 매도·매수한 종목 기록을 모아 투자 흐름을 점검합니다.',                  color: '#22d3ee' },
               { emoji: '🌿', title: '원기충전소',   sub: 'RECOVERY',      desc: '오늘 컨디션을 기록하면 AI가 맞춤 회복 루틴을 처방해드립니다.',                    color: '#84cc16' },
               { emoji: '🏠', title: '온비드 부동산', sub: 'BID · 부동산', desc: '온비드 공매 부동산을 한눈에 — 입찰 일정·최저가·소재지까지 검색.',                color: '#a78bfa', beta: true },
               { emoji: '💚', title: 'HARU건강관리', sub: 'CARE · 건강',  desc: '명의찾기 · 약봉지 약정보 · 건강 인포그래픽 — HARU와 함께 챙기는 건강.',          color: '#10b981', beta: true },
@@ -776,14 +782,14 @@ export function LandingPage() {
             {[
               {
                 plan: 'LIGHT', price: '₩4,000', period: '/월',
-                note: '10가지 기록 + SAYU BASIC + AI 비서 월 10회',
-                bullets: ['10가지 기록 형식', 'SAYU BASIC 다듬기', '통계 & 기록합치기'],
+                note: '목적별 기록 + SAYU BASIC + AI 비서 월 10회',
+                bullets: ['목적별 기록 형식', 'SAYU BASIC 다듬기', '통계·합본'],
                 highlight: false,
               },
               {
                 plan: 'PREMIUM', price: '₩5,000', period: '/월',
                 note: '라이트 전체 + AI 비서 일 2회 / 월 40회',
-                bullets: ['LIGHT 모든 기능', 'AI 비서실 11개 전체', 'SAYU PREMIUM (Gemini)'],
+                bullets: ['LIGHT 모든 기능', '전문 AI 비서실', 'SAYU PREMIUM (Gemini)'],
                 highlight: true,
                 badge: 'RECOMMENDED',
               },
