@@ -5245,6 +5245,9 @@ export const extractKNewsMetadata = onCall(
 type KindwiseSuggestion = {
   name?: string;
   probability?: number;
+  score?: number;
+  confidence?: number;
+  similarity?: number;
   details?: {
     common_names?: string[];
     taxonomy?: { class?: string; family?: string; genus?: string; order?: string; phylum?: string; kingdom?: string };
@@ -5256,12 +5259,21 @@ type KindwiseSuggestion = {
 type KindwiseIdResult = {
   topPlantName: string;
   latinName: string;
-  identificationProbability: number;
+  identificationProbability: number | null;
   isPlantProbability: number;
-  alternativeCandidates: { name: string; latinName: string; probability: number }[];
+  alternativeCandidates: { name: string; latinName: string; probability: number | null }[];
   taxonomy?: { family?: string; genus?: string };
   kindwiseUrl?: string;
 };
+
+function pickApiScore(...values: unknown[]): number | null {
+  for (const value of values) {
+    if (value === undefined || value === null || value === '') continue;
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
 
 async function callKindwiseIdentification(
   base64: string,
@@ -5317,7 +5329,7 @@ async function callKindwiseIdentification(
   const topCommon = top.details?.common_names?.[0];
   const topName = String(topCommon || top.name || '식물 이름 불확실').slice(0, 80);
   const latinName = String(top.name || '').slice(0, 120);
-  const probability = Number(top.probability || 0);
+  const probability = pickApiScore(top.probability, top.score, top.confidence, top.similarity);
   const taxonomy = top.details?.taxonomy
     ? { family: top.details.taxonomy.family, genus: top.details.taxonomy.genus }
     : undefined;
@@ -5325,7 +5337,7 @@ async function callKindwiseIdentification(
   const alternativeCandidates = suggestions.slice(1, 4).map((s) => ({
     name: String(s.details?.common_names?.[0] || s.name || '').slice(0, 80),
     latinName: String(s.name || '').slice(0, 120),
-    probability: Number(s.probability || 0),
+    probability: pickApiScore(s.probability, s.score, s.confidence, s.similarity),
   })).filter((c) => c.name);
 
   return {
@@ -5513,7 +5525,7 @@ export const analyzePlantPhoto = onCall(
 type PlantNetCandidate = {
   name: string;
   scientificName: string;
-  score: number;
+  score: number | null;
   family?: string;
   genus?: string;
 };
@@ -5612,13 +5624,17 @@ async function callPlantNetIdentification(
     return {
       name: (common || sci || '').slice(0, 80),
       scientificName: sci.slice(0, 120),
-      score: Number(r?.score || 0),
+      score: pickApiScore(r?.score, r?.probability, r?.confidence, r?.similarity),
       family: species?.family?.scientificNameWithoutAuthor || species?.family?.scientificName || undefined,
       genus: species?.genus?.scientificNameWithoutAuthor || species?.genus?.scientificName || undefined,
     };
   };
 
-  const sorted = [...results].sort((a, b) => Number(b?.score || 0) - Number(a?.score || 0));
+  const sorted = [...results].sort((a, b) => {
+    const bScore = pickApiScore(b?.score, b?.probability, b?.confidence, b?.similarity) ?? -1;
+    const aScore = pickApiScore(a?.score, a?.probability, a?.confidence, a?.similarity) ?? -1;
+    return bScore - aScore;
+  });
   const top = sorted.length > 0 ? toCandidate(sorted[0]) : null;
   const alternatives = sorted.slice(1, 4).map(toCandidate).filter((c) => c.name);
 
@@ -5757,13 +5773,15 @@ async function callGeminiCrossVerification(
     ? {
         topName: plantId.topPlantName,
         latinName: plantId.latinName,
-        confidence: Math.round(plantId.identificationProbability * 100) / 100,
+        confidence: plantId.identificationProbability === null
+          ? null
+          : Math.round(plantId.identificationProbability * 100) / 100,
         family: plantId.taxonomy?.family,
         genus: plantId.taxonomy?.genus,
         alternatives: plantId.alternativeCandidates.slice(0, 3).map((c) => ({
           name: c.name,
           latinName: c.latinName,
-          confidence: Math.round(c.probability * 100) / 100,
+          confidence: c.probability === null ? null : Math.round(c.probability * 100) / 100,
         })),
       }
     : null;
@@ -5774,7 +5792,7 @@ async function callGeminiCrossVerification(
           ? {
               name: plantNet.top.name,
               scientificName: plantNet.top.scientificName,
-              confidence: Math.round(plantNet.top.score * 100) / 100,
+              confidence: plantNet.top.score === null ? null : Math.round(plantNet.top.score * 100) / 100,
               family: plantNet.top.family,
               genus: plantNet.top.genus,
             }
@@ -5782,7 +5800,7 @@ async function callGeminiCrossVerification(
         alternatives: plantNet.alternatives.slice(0, 3).map((c) => ({
           name: c.name,
           scientificName: c.scientificName,
-          confidence: Math.round(c.score * 100) / 100,
+          confidence: c.score === null ? null : Math.round(c.score * 100) / 100,
         })),
       }
     : null;
@@ -5980,7 +5998,7 @@ export const detectPlantAdvanced = onCall(
         ? {
             name: plantNetResult.top?.name || '',
             scientificName: plantNetResult.top?.scientificName || '',
-            confidence: plantNetResult.top?.score ?? 0,
+            confidence: plantNetResult.top?.score ?? null,
             koName: plantNetKoName,
             scientificKey: plantNetScientificKey,
             family: plantNetResult.top?.family,

@@ -19,23 +19,23 @@ import { useSubscription } from '../hooks/useSubscription';
 type PlantIdSection = {
   name: string;
   latinName: string;
-  confidence: number;          // 0~1
+  confidence: number | null;          // 0~1 or 0~100
   isPlantProbability: number | null;
   family?: string;
   genus?: string;
-  alternatives: { name: string; latinName: string; probability: number }[];
+  alternatives: { name: string; latinName: string; probability: number | null }[];
   url: string | null;
 };
 
 type PlantNetSection = {
   name: string;
   scientificName: string;
-  confidence: number;          // 0~1
+  confidence: number | null;          // 0~1 or 0~100
   koName?: string | null;            // Functions plant_dictionary 검정 결과
   scientificKey?: string | null;     // plant_dictionary 문서 ID (binomial 정규화)
   family?: string;
   genus?: string;
-  alternatives: { name: string; scientificName: string; score: number }[];
+  alternatives: { name: string; scientificName: string; score: number | null }[];
 };
 
 type GeminiSection = {
@@ -201,9 +201,23 @@ function base64ToBlob(base64: string, mimeType: string): Blob {
   return new Blob(chunks, { type: mimeType || 'image/jpeg' });
 }
 
+function normalizeConfidence(value: any): number | null {
+  if (value === undefined || value === null || value === '') return null;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  if (n >= 0 && n <= 1) return Math.round(n * 100);
+  if (n > 1 && n <= 100) return Math.round(n);
+  return null;
+}
+
+function confidenceText(value: any): string {
+  const confidence = normalizeConfidence(value);
+  return confidence === null ? '일치도 정보 없음' : `일치도 ${confidence}%`;
+}
+
 function pctText(v: number | null | undefined): string {
-  if (typeof v !== 'number' || !Number.isFinite(v)) return '—';
-  return `${Math.round(v * 100)}%`;
+  const confidence = normalizeConfidence(v);
+  return confidence === null ? '정보 없음' : `${confidence}%`;
 }
 
 function makeCatalogDocId(name: string, scientificName: string): string {
@@ -245,7 +259,7 @@ const toSavedPlantDetectiveResult = (entry: any): AdvancedResult => {
     ? entry.alternativeCandidates.map((candidate: any) => ({
         name: String(candidate?.name || '').trim(),
         latinName: String(candidate?.latinName || candidate?.scientificName || '').trim(),
-        probability: toFiniteNumber(candidate?.probability || candidate?.score) || 0,
+        probability: toFiniteNumber(candidate?.probability ?? candidate?.score),
       }))
     : [];
 
@@ -254,7 +268,7 @@ const toSavedPlantDetectiveResult = (entry: any): AdvancedResult => {
       ? {
           name: aiPrediction || aiKoName || '식물 이름 불확실',
           latinName: scientificName,
-          confidence: confidence ?? 0,
+          confidence,
           isPlantProbability,
           family: entry?.taxonomy?.family,
           genus: entry?.taxonomy?.genus,
@@ -266,7 +280,7 @@ const toSavedPlantDetectiveResult = (entry: any): AdvancedResult => {
       ? {
           name: aiPrediction || aiKoName || '식물 이름 불확실',
           scientificName,
-          confidence: confidence ?? 0,
+          confidence,
           koName: aiKoName || null,
           alternatives: [],
         }
@@ -2472,7 +2486,7 @@ export function PlantDetectivePage() {
                     </span>
                   </div>
                   <div style={{ marginTop: 4, fontSize: 13, color: '#1A3C6E', fontWeight: 700 }}>
-                    일치도 {pctText(result.plantId.confidence)}
+                    {confidenceText(result.plantId.confidence)}
                     {result.plantId.family && (
                       <span style={{ marginLeft: 8, color: '#6b7654', fontWeight: 500 }}>
                         · {result.plantId.family}
@@ -2514,7 +2528,7 @@ export function PlantDetectivePage() {
                     </span>
                   </div>
                   <div style={{ marginTop: 4, fontSize: 13, color: '#0F766E', fontWeight: 700 }}>
-                    일치도 {pctText(result.plantNet.confidence)}
+                    {confidenceText(result.plantNet.confidence)}
                     {result.plantNet.family && (
                       <span style={{ marginLeft: 8, color: '#6b7654', fontWeight: 500 }}>
                         · {result.plantNet.family}
