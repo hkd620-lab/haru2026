@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { ArrowLeft, Camera, Leaf, Loader2, Search, X, Save, AlertTriangle, ChevronDown, ChevronUp, BookOpen, CheckCircle2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { doc, setDoc, arrayUnion, collection, getDocs, query, where, limit, serverTimestamp, increment, orderBy } from 'firebase/firestore';
+import { doc, getDoc, setDoc, arrayUnion, collection, getDocs, query, where, limit, serverTimestamp, increment, orderBy } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { db, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -196,12 +196,101 @@ const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 // 방향 전환(관찰일지 중심)에 따라 실사용 흐름에서 제외 — 향후 내부 검증 필요 시에만 true.
 const NIBR_DEBUG = false;
 
+const toFiniteNumber = (value: any): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const toGeminiConfidence = (value: any): GeminiSection['confidence'] => {
+  return value === 'high' || value === 'medium' || value === 'low' ? value : 'low';
+};
+
+const toSavedPlantDetectiveResult = (entry: any): AdvancedResult => {
+  const aiPrediction = String(entry?.aiPrediction || entry?.englishName || entry?.plantName || entry?.title || '').trim();
+  const aiKoName = String(entry?.aiKoName || entry?.plantName || entry?.title || '').trim();
+  const scientificName = String(entry?.scientificName || entry?.latinName || '').trim();
+  const confidence = toFiniteNumber(entry?.identificationConfidence);
+  const isPlantProbability = toFiniteNumber(entry?.isPlantProbability);
+  const alternatives = Array.isArray(entry?.alternativeCandidates)
+    ? entry.alternativeCandidates.map((candidate: any) => ({
+        name: String(candidate?.name || '').trim(),
+        latinName: String(candidate?.latinName || candidate?.scientificName || '').trim(),
+        probability: toFiniteNumber(candidate?.probability || candidate?.score) || 0,
+      }))
+    : [];
+
+  return {
+    plantId: aiPrediction || scientificName || alternatives.length > 0
+      ? {
+          name: aiPrediction || aiKoName || '식물 이름 불확실',
+          latinName: scientificName,
+          confidence: confidence ?? 0,
+          isPlantProbability,
+          family: entry?.taxonomy?.family,
+          genus: entry?.taxonomy?.genus,
+          alternatives,
+          url: null,
+        }
+      : null,
+    plantNet: aiPrediction || aiKoName || scientificName
+      ? {
+          name: aiPrediction || aiKoName || '식물 이름 불확실',
+          scientificName,
+          confidence: confidence ?? 0,
+          koName: aiKoName || null,
+          alternatives: [],
+        }
+      : null,
+    gemini: {
+      finalGuess: aiKoName || aiPrediction || '식물 이름 불확실',
+      finalLatinName: scientificName,
+      analysis: String(entry?.condition || entry?.analysis || '').trim(),
+      warning: String(
+        entry?.note ||
+          (Array.isArray(entry?.warningSigns) ? entry.warningSigns[0] : '') ||
+          '',
+      ).trim(),
+      edible: 'unknown',
+      poisonousRisk: false,
+      similarSpecies: [],
+      needMorePhotos: [],
+      confidence: toGeminiConfidence(entry?.confidence),
+    },
+    meta: {
+      imageCount: Array.isArray(entry?.imageUrls) ? entry.imageUrls.length : entry?.imageUrl ? 1 : 0,
+      plantNetAvailable: Boolean(aiPrediction || scientificName),
+      geminiError: null,
+    },
+  };
+};
+
 export function PlantDetectivePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { isPremium } = useSubscription();
   const isAdmin = user?.uid === ADMIN_UID;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const loadedSayuSelectionKeyRef = useRef<string | null>(null);
+  const sayuSelectedPlant = location.state as
+    | {
+        recordId?: string;
+        idx?: number;
+        entryIndex?: number;
+        from?: string;
+      }
+    | null;
+  const selectedRecordId = sayuSelectedPlant?.recordId;
+  const selectedPlantIndex =
+    typeof sayuSelectedPlant?.idx === 'number'
+      ? sayuSelectedPlant.idx
+      : typeof sayuSelectedPlant?.entryIndex === 'number'
+        ? sayuSelectedPlant.entryIndex
+        : null;
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [isPreparing, setIsPreparing] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -340,6 +429,72 @@ export function PlantDetectivePage() {
     loadPlantDiary();
     loadPublicCatalog();
   }, [isAdmin, isPremium, user?.uid]);
+
+  useEffect(() => {
+    if (!selectedRecordId || selectedPlantIndex === null) return;
+    if (!user?.uid) return;
+
+    const selectionKey = `${user.uid}:${selectedRecordId}:${selectedPlantIndex}`;
+    if (loadedSayuSelectionKeyRef.current === selectionKey) return;
+    loadedSayuSelectionKeyRef.current = selectionKey;
+
+    let cancelled = false;
+    const loadSelectedPlantDetectiveEntry = async () => {
+      try {
+        const recordSnap = await getDoc(doc(db, 'users', user.uid, 'records', selectedRecordId));
+        const data = recordSnap.exists() ? recordSnap.data() : null;
+        const entries = Array.isArray(data?.plantDetective) ? data.plantDetective : [];
+        const entry = entries[selectedPlantIndex];
+        if (!entry || typeof entry !== 'object') {
+          toast.warning('선택한 식물 판독 기록을 찾을 수 없습니다.');
+          return;
+        }
+        if (cancelled) return;
+
+        const imageUrls = Array.isArray(entry.imageUrls)
+          ? entry.imageUrls.filter((url: any) => typeof url === 'string' && url.trim())
+          : typeof entry.imageUrl === 'string' && entry.imageUrl.trim()
+            ? [entry.imageUrl]
+            : [];
+        const createdAt = toFiniteNumber(entry.createdAt);
+        setPhotos(imageUrls.map((url: string, index: number) => ({
+          id: `saved_${selectedRecordId}_${selectedPlantIndex}_${index}`,
+          previewUrl: url,
+          base64: '',
+          mimeType: 'image/jpeg',
+        })));
+        setResult(toSavedPlantDetectiveResult(entry));
+        setSavedToToday(true);
+        setLibraryMatches([]);
+        setCommunityCorrectionKnown(false);
+        setUserConfirmedName(String(entry.userConfirmedName || entry.humanReportedName || '').trim());
+        setUserConfirmedEnglishName(String(entry.englishName || '').trim());
+        setUserConfirmedScientificName(String(entry.scientificName || entry.latinName || '').trim());
+        setUserEditedEnglishName(Boolean(entry.englishName));
+        setUserEditedScientificName(Boolean(entry.scientificName || entry.latinName));
+        setConfirmedSavedDocId(null);
+        setActivePlantDocId(typeof entry.plantId === 'string' && entry.plantId ? entry.plantId : null);
+        setActivePlantImageUrls(imageUrls);
+        setActivePlantCreatedAt(createdAt);
+        setKoreanInfo(null);
+        setObsObservation('');
+        setObsAiDifference('');
+        setObsMemo('');
+        setObsSavedAt(null);
+        setActiveTab('detect');
+        setShowGuide(false);
+        toast.success('선택한 식물 판독 기록을 열었습니다.');
+      } catch (error) {
+        console.error('선택한 식물 판독 기록 조회 실패:', error);
+        toast.error('선택한 식물 판독 기록을 찾을 수 없습니다.');
+      }
+    };
+
+    loadSelectedPlantDetectiveEntry();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedRecordId, selectedPlantIndex, user?.uid]);
 
   const resetSessionState = () => {
     setResult(null);
