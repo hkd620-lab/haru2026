@@ -3798,7 +3798,14 @@ export function SayuPage() {
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
                                   <button
                                     type="button"
-                                    onClick={() => navigate('/plant-detective', { state: { recordId, idx } })}
+                                    onClick={() => navigate('/plant-detective', {
+                                      state: {
+                                        from: 'sayu-plant-detective',
+                                        recordId,
+                                        idx,
+                                        entryIndex: idx,
+                                      },
+                                    })}
                                     style={{
                                       minHeight: 28,
                                       padding: '0 10px',
