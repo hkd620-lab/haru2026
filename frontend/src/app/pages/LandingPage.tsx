@@ -1,71 +1,283 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
 import { toast } from 'sonner';
-import { GrapeAnimation } from '../components/GrapeAnimation';
 
-const IMAGES = {
-  hero: 'https://storage.googleapis.com/haru2026-8abb8.firebasestorage.app/landing/hero.png',
-  feature_record: 'https://storage.googleapis.com/haru2026-8abb8.firebasestorage.app/landing/feature_record.png',
-  feature_sayu: 'https://storage.googleapis.com/haru2026-8abb8.firebasestorage.app/landing/feature_sayu.png',
-  feature_stats: 'https://storage.googleapis.com/haru2026-8abb8.firebasestorage.app/landing/feature_stats.png',
-  sayu_premium: 'https://storage.googleapis.com/haru2026-8abb8.firebasestorage.app/landing/sayu_premium.png',
+/* ────────────────────────────────────────────────────────────
+   HARU by JOYEL — 랜딩 (CD "Reposeful" 디자인 핸드오프 구현)
+   · 디자인: 색·타이포·레이아웃은 CD 시안 기준
+   · 데이터: 형식·비서실은 실제 앱 기준 (역할·숫자 정확)
+   · 로그인/Firestore/Functions/라우터는 건드리지 않음
+   ──────────────────────────────────────────────────────────── */
+
+const C = {
+  olive: '#7A8B4E', oliveDark: '#4A5A2C',
+  lilac: '#C9C0DE', lilacDark: '#5A4E7A', lilacLight: '#DDD0E8',
+  lightGreen: '#D4DEA0', greenLight: '#E0E8B8',
+  terracotta: '#B85C2E', terracottaLight: '#F5E5DC', peach: '#E8B894',
+  fg: '#2C2C2A', fg2: '#7A6F5A', mute: '#888780',
+  bg: '#F5F0E8', bg2: '#EDE8DC', card: '#FFFFFF', border: '#E5DFD0',
 };
 
+type Hue = 'green' | 'lilac' | 'terracotta';
+const hueBg: Record<Hue, string> = { green: C.greenLight, lilac: C.lilacLight, terracotta: C.terracottaLight };
+const hueFg: Record<Hue, string> = { green: C.oliveDark, lilac: C.lilacDark, terracotta: C.terracotta };
+const agentBg: Record<Hue, string> = {
+  green: `linear-gradient(135deg, ${C.greenLight} 0%, #ffffff 65%)`,
+  lilac: `linear-gradient(135deg, ${C.lilacLight} 0%, #ffffff 65%)`,
+  terracotta: `linear-gradient(135deg, ${C.terracottaLight} 0%, #ffffff 65%)`,
+};
+const agentBorder: Record<Hue, string> = { green: C.lightGreen, lilac: C.lilac, terracotta: C.peach };
 
-const FORMATS = [
-  { name: '일기',           emoji: '📔', category: '생활' },
-  { name: '에세이',         emoji: '✍️', category: '생활' },
-  { name: '여행기록',       emoji: '✈️', category: '생활' },
-  { name: '독서사유',       emoji: '📚', category: '생활' },
-  { name: '텃밭일지',       emoji: '🌱', category: '생활' },
-  { name: '애완동물관찰',   emoji: '🐾', category: '생활' },
-  { name: '육아일기',       emoji: '👶', category: '생활' },
-  { name: '선교보고',       emoji: '📋', category: '업무' },
-  { name: '일반보고',       emoji: '📊', category: '업무' },
-  { name: '업무일지',       emoji: '💼', category: '업무' },
-  { name: '메모',           emoji: '📝', category: '업무', badge: 'AI 제목' },
-  { name: 'HARU보조장부',   emoji: '🧾', category: '업무' },
-  { name: 'HARU주식관리',   emoji: '📈', category: '자산' },
-  { name: '하루LAW',        emoji: '⚖️', category: '전문' },
+const SHOW_PRICING = import.meta.env.VITE_SHOW_PRICING === 'true';
+
+/* ── 실제 기록 형식 14개 (현재 앱 기준) ── */
+const FORMATS: { name: string; icon: string; hue: Hue; cat: string; badge?: string }[] = [
+  { name: '일기',         icon: 'diary',     hue: 'green',      cat: '생활' },
+  { name: '에세이',       icon: 'pen',       hue: 'lilac',      cat: '생활' },
+  { name: '여행기록',     icon: 'plane',     hue: 'terracotta', cat: '생활' },
+  { name: '독서사유',     icon: 'book',      hue: 'green',      cat: '생활' },
+  { name: '텃밭일지',     icon: 'seed',      hue: 'green',      cat: '생활' },
+  { name: '애완동물관찰일지', icon: 'paw',   hue: 'terracotta', cat: '생활' },
+  { name: '육아일기',     icon: 'baby',      hue: 'lilac',      cat: '생활' },
+  { name: '선교보고',     icon: 'church',    hue: 'green',      cat: '업무' },
+  { name: '일반보고',     icon: 'chart',     hue: 'terracotta', cat: '업무' },
+  { name: '업무일지',     icon: 'briefcase', hue: 'lilac',      cat: '업무' },
+  { name: '메모',         icon: 'memo',      hue: 'green',      cat: '업무', badge: 'AI 제목' },
+  { name: 'HARU보조장부', icon: 'bookbind',  hue: 'terracotta', cat: '업무' },
+  { name: 'HARU주식관리', icon: 'invest',    hue: 'green',      cat: '자산' },
+  { name: '하루LAW',      icon: 'law',       hue: 'terracotta', cat: '전문' },
 ];
 
-/* ── 포도송이 로고 ── */
-function GrapeLogo() {
-  const dots = [
-    { x: 50, y: 10 },
-    { x: 30, y: 30 }, { x: 70, y: 30 },
-    { x: 10, y: 50 }, { x: 50, y: 50 }, { x: 90, y: 50 },
-    { x: 30, y: 70 }, { x: 70, y: 70 },
-    { x: 10, y: 90 }, { x: 90, y: 90 },
-  ];
+/* ── 실제 비서실 "HARU의 날개" (역할·beta 그대로) ── */
+const AGENTS: { emoji: string; title: string; sub: string; desc: string; hue: Hue; beta?: boolean; placeholder?: boolean }[] = [
+  { emoji: '🔮', title: 'HARU미래전망', sub: 'DAILY ORACLE', desc: '오늘의 한 줄 기록이 모여 당신의 미래를 전망합니다.', hue: 'lilac' },
+  { emoji: '⚖️', title: '하루LAW', sub: 'LAW · 판례', desc: '법령·판례를 정부 데이터 그대로, 풀이는 AI가 쉬운 말로 풀어드립니다. 환각 제로.', hue: 'terracotta' },
+  { emoji: '📖', title: '영어성경', sub: 'BIBLE', desc: '영어·영한·한영 듣기·말하기·해석·단어·문법을 한 번에 — 영어성경 학습의 결정판.', hue: 'green' },
+  { emoji: '🌐', title: '영어일기', sub: 'EN DIARY', desc: '내가 기록한 일기와 에세이로 자연스러운 영작 학습.', hue: 'lilac' },
+  { emoji: '📥', title: 'SNS가져오기', sub: 'IMPORT', desc: '페이스북·인스타그램의 추억을 입맛대로 정렬하고 나만의 책으로 출간해 드립니다.', hue: 'terracotta' },
+  { emoji: '📈', title: 'HARU주식', sub: 'MARKET', desc: '내가 매도·매수한 종목 기록을 모아 투자 흐름을 점검합니다.', hue: 'green' },
+  { emoji: '🌿', title: '원기충전소', sub: 'RECOVERY', desc: '오늘 컨디션을 기록하면 AI가 맞춤 회복 루틴을 처방해드립니다.', hue: 'lilac' },
+  { emoji: '🏠', title: '온비드 부동산', sub: 'BID · 부동산', desc: '온비드 공매 부동산을 한눈에 — 입찰 일정·최저가·소재지까지 검색.', hue: 'terracotta', beta: true },
+  { emoji: '💚', title: 'HARU건강관리', sub: 'CARE · 건강', desc: '명의찾기 · 약봉지 약정보 · 건강 인포그래픽 — HARU와 함께 챙기는 건강.', hue: 'green', beta: true },
+  { emoji: '✍️', title: '나도작가', sub: 'WRITE · 창작', desc: 'AI와 함께 글쓰기 — 시놉시스부터 단편소설까지 손쉽게 완성합니다.', hue: 'lilac' },
+  { emoji: '✨', title: '새 비서 예정', sub: 'COMING SOON', desc: '곧 새로운 동료가 합류합니다.', hue: 'green', placeholder: true },
+];
+
+const SCATTER = [
+  { name: '메모장',   sub: '제목 없이 쌓인 글', icon: 'memo',    rot: -2 },
+  { name: '사진첩',   sub: '날짜만 남은 풍경',  icon: 'camera',  rot: 1.5 },
+  { name: '카톡 대화', sub: '나에게 보낸 메모',  icon: 'message', rot: -1 },
+  { name: '문서 폴더', sub: '어디 있더라…',     icon: 'folder',  rot: 2 },
+  { name: '종이 노트', sub: '꺼내보기 어려운',  icon: 'diary',   rot: -1.5 },
+];
+
+const PILLARS: { n: string; icon: string; hue: Hue; title: string; body: string; chip: string }[] = [
+  {
+    n: '01', icon: 'filter', hue: 'green',
+    title: '목적별로 모읍니다',
+    body: '일기·에세이·독서·투자·업무·여행 등 14가지 형식으로 시작해, 새 영역이 생기면 형식이 자라납니다. 같은 글이라도 어디에 속하는지부터 정리됩니다.',
+    chip: '14가지 기록 형식',
+  },
+  {
+    n: '02', icon: 'spark', hue: 'lilac',
+    title: 'SAYU가 다듬습니다',
+    body: '원문의 감정과 사실은 그대로 두고, 표현만 자연스럽게 정리합니다. 새 내용을 만들지도, 교훈을 덧붙이지도 않는 — 사용자 자신의 글을 위한 AI입니다.',
+    chip: '재창작 없이, 감정 그대로',
+  },
+  {
+    n: '03', icon: 'archive', hue: 'terracotta',
+    title: '자산이 됩니다',
+    body: '쌓인 기록은 통계, 월별 합본, 회고 자료, 책 소재로 다시 꺼내 쓸 수 있습니다. 오늘 적은 한 문장이 몇 해 뒤의 자료가 되도록 설계했습니다.',
+    chip: '통계 · 합본 · 책 소재 · 회고',
+  },
+];
+
+const FLOW = [
+  { n: '01', t: '기록 입력',   d: '오늘 있었던 일을 평소 말투로 자유롭게 적습니다.' },
+  { n: '02', t: 'AI 정리',     d: 'SAYU가 표현만 다듬어 읽기 좋은 글로 정돈합니다.' },
+  { n: '03', t: '분류 · 검색', d: '형식과 날짜로 자동 분류되고, 키워드로 찾을 수 있습니다.' },
+  { n: '04', t: '통계 · 합본', d: '월별·연도별로 흐름을 보여주고, 한 권으로 묶어 보관합니다.' },
+  { n: '05', t: '평생 자산',   d: '책 소재가 되고, 회고 자료가 되고, 다음 세대에 남길 기록이 됩니다.' },
+];
+
+const PRICING = [
+  {
+    plan: 'LIGHT', price: '₩4,000', period: '/월',
+    note: '목적별 기록 + SAYU BASIC + AI 비서 월 10회',
+    bullets: ['목적별 기록 형식', 'SAYU BASIC 다듬기', '통계 · 합본'],
+    highlight: false, badge: '',
+  },
+  {
+    plan: 'PREMIUM', price: '₩5,000', period: '/월',
+    note: '라이트 전체 + AI 비서 일 2회 / 월 40회',
+    bullets: ['LIGHT 모든 기능', '전문 AI 비서실', 'SAYU PREMIUM'],
+    highlight: true, badge: 'RECOMMENDED',
+  },
+];
+
+/* ── 아이콘 (Tabler 스타일 outline) ── */
+const ICON_PATHS: Record<string, JSX.Element> = {
+  diary: <><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M9 3v18M9 8h11M9 13h11" /></>,
+  pen: <><path d="M4 20h4l10-10-4-4L4 16z" /><path d="M14 6l4 4" /></>,
+  book: <><path d="M4 4h6a3 3 0 013 3v14a2 2 0 00-2-2H4z" /><path d="M20 4h-6a3 3 0 00-3 3v14a2 2 0 012-2h7z" /></>,
+  invest: <><path d="M3 17l6-6 4 4 8-9" /><path d="M14 6h7v7" /></>,
+  plane: <><path d="M3 12l18-9-7 18-2-7-9-2z" /></>,
+  seed: <><path d="M12 22V8" /><path d="M12 8c-3 0-5-2-5-5 3 0 5 2 5 5z" /><path d="M12 12c3 0 5-2 5-5-3 0-5 2-5 5z" /></>,
+  paw: <><circle cx="9" cy="6" r="2" /><circle cx="15" cy="6" r="2" /><circle cx="6" cy="11" r="2" /><circle cx="18" cy="11" r="2" /><path d="M12 14c-4 0-7 3-5 7 1 2 3 1 5 1s4 1 5-1c2-4-1-7-5-7z" /></>,
+  baby: <><circle cx="12" cy="6" r="3" /><path d="M5 21c0-4 3-7 7-7s7 3 7 7" /></>,
+  church: <><path d="M12 2v4M10 4h4" /><path d="M5 22V10l7-4 7 4v12" /><path d="M10 22v-6h4v6" /></>,
+  briefcase: <><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2" /></>,
+  study: <><path d="M3 7l9-4 9 4-9 4z" /><path d="M21 10v5" /><path d="M7 9v6c0 1.5 2.5 3 5 3s5-1.5 5-3V9" /></>,
+  memo: <><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M8 9h8M8 13h8M8 17h5" /></>,
+  spark: <><path d="M12 3v3M5 6l2 2M3 12h3M5 18l2-2M12 18v3M17 16l2 2M18 12h3M19 6l-2 2" /><circle cx="12" cy="12" r="4" /></>,
+  brain: <><path d="M9 4a3 3 0 013 3v10a3 3 0 01-6 0V8a3 3 0 013-4z" /><path d="M15 4a3 3 0 00-3 3v10a3 3 0 006 0V8a3 3 0 00-3-4z" /><path d="M6 11h12" /></>,
+  law: <><path d="M5 21h14" /><path d="M12 3v18" /><path d="M7 8l-3 6h6z" /><path d="M17 8l3 6h-6z" /><path d="M12 3l-5 5M12 3l5 5" /></>,
+  globe: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" /></>,
+  bible: <><path d="M5 4h12a2 2 0 012 2v15H7a2 2 0 01-2-2z" /><path d="M12 8v6M9 11h6" /></>,
+  chart: <><path d="M4 20V8M10 20V4M16 20v-8M22 20H4" /></>,
+  bookbind: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M7 4v16M10 8h7M10 12h7M10 16h4" /></>,
+  archive: <><rect x="3" y="4" width="18" height="4" rx="1" /><path d="M5 8v11a1 1 0 001 1h12a1 1 0 001-1V8" /><path d="M10 12h4" /></>,
+  arrowR: <><path d="M5 12h14M13 5l7 7-7 7" /></>,
+  check: <><path d="M5 12l5 5 9-9" /></>,
+  x: <><path d="M6 6l12 12M18 6L6 18" /></>,
+  shield: <><path d="M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z" /><path d="M9 12l2 2 4-4" /></>,
+  user: <><circle cx="12" cy="8" r="3.5" /><path d="M5 21c0-3.5 3-6 7-6s7 2.5 7 6" /></>,
+  message: <><path d="M3 11c0-3 2-5 5-5h8c3 0 5 2 5 5v3c0 3-2 5-5 5h-2l-4 3v-3H8c-3 0-5-2-5-5z" /></>,
+  camera: <><rect x="3" y="6" width="18" height="14" rx="2" /><circle cx="12" cy="13" r="3.5" /><path d="M8 6l1.5-2h5L16 6" /></>,
+  folder: <><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></>,
+  filter: <><path d="M4 4h16l-6 8v6l-4 2v-8z" /></>,
+  home: <><path d="M3 11l9-8 9 8" /><path d="M5 10v10h14V10" /></>,
+  cog: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-2.82 1.17V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" /></>,
+};
+
+function Icon({ name, size = 22, color = 'currentColor', sw = 1.5 }: { name: string; size?: number; color?: string; sw?: number }) {
+  const d = ICON_PATHS[name];
+  if (!d) return null;
   return (
-    <svg width="48" height="56" viewBox="0 0 100 100" style={{ display: 'inline-block' }}>
-      {dots.map((d, i) => (
-        <circle key={i} cx={d.x} cy={d.y} r="9" fill="#7A8B4E" />
-      ))}
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>
+      {d}
     </svg>
+  );
+}
+
+function GrapeMark({ size = 22, color = '#F5F0E8', accent = '#E8B894' }: { size?: number; color?: string; accent?: string }) {
+  return (
+    <svg width={size} height={size * 1.18} viewBox="0 0 22 26" fill={color} style={{ display: 'block' }}>
+      <circle cx="6" cy="10" r="3.6" />
+      <circle cx="11" cy="9" r="3.6" />
+      <circle cx="16" cy="10" r="3.6" />
+      <circle cx="8.5" cy="15" r="3.6" />
+      <circle cx="13.5" cy="15" r="3.6" />
+      <circle cx="11" cy="20" r="3.6" />
+      <path d="M11 6 Q12 3 14 2" stroke={accent} strokeWidth="1.4" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/* ── 히어로 폰 목업 (앱 홈 미리보기) ── */
+const PH_RECORDS: { name: string; icon: string; hue: Hue }[] = [
+  { name: '일기', icon: 'diary', hue: 'green' },
+  { name: '에세이', icon: 'pen', hue: 'lilac' },
+  { name: '독서', icon: 'book', hue: 'terracotta' },
+  { name: '주식', icon: 'invest', hue: 'green' },
+  { name: '여행', icon: 'plane', hue: 'lilac' },
+  { name: '텃밭', icon: 'seed', hue: 'green' },
+  { name: '반려', icon: 'paw', hue: 'terracotta' },
+  { name: '메모', icon: 'memo', hue: 'lilac' },
+];
+const PH_AGENTS: { name: string; sub: string; icon: string; hue: Hue }[] = [
+  { name: '하루LAW', sub: '법령·판례', icon: 'law', hue: 'terracotta' },
+  { name: '영어성경', sub: '듣기·해석', icon: 'bible', hue: 'green' },
+];
+
+function HaruPhone() {
+  return (
+    <div className="lp-phone" role="img" aria-label="HARU 앱 홈 화면 미리보기">
+      <div className="lp-phone__notch" />
+      <div className="lp-phone__inner">
+        <div className="ph-stack">
+          <div className="ph-head">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div className="ph-mark"><GrapeMark size={16} color="#F5F0E8" accent={C.peach} /></div>
+              <div className="ph-titleblock">
+                <div className="ph-title">HARU</div>
+                <div className="ph-by">BY JOYEL</div>
+              </div>
+            </div>
+            <div style={{ width: 28, height: 28, borderRadius: 999, border: `1px solid ${C.border}`, background: '#fff', display: 'grid', placeItems: 'center', color: C.fg2 }}>
+              <Icon name="user" size={14} />
+            </div>
+          </div>
+
+          <div className="ph-hero">
+            <div className="ph-hero__decoA" />
+            <div className="ph-hero__decoB" />
+            <div className="ph-hero__cap">2026 · NOV · FRI</div>
+            <div className="ph-hero__date">11월 6일</div>
+            <div className="ph-hero__pill">오늘 3건</div>
+          </div>
+
+          <div className="ph-section">HARU 기록</div>
+          <div className="ph-grid">
+            {PH_RECORDS.map((r) => (
+              <div key={r.name} className="ph-cell">
+                <div className="ph-cell__ico" style={{ background: hueBg[r.hue] }}>
+                  <Icon name={r.icon} size={16} color={hueFg[r.hue]} />
+                </div>
+                <div className="ph-cell__lbl">{r.name}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="ph-section">HARU 비서실</div>
+          <div className="ph-agents">
+            {PH_AGENTS.map((a) => (
+              <div key={a.name} className="ph-agent" style={{ background: agentBg[a.hue], borderColor: agentBorder[a.hue], color: hueFg[a.hue] }}>
+                <div className="ph-agent__ico"><Icon name={a.icon} size={16} color={hueFg[a.hue]} /></div>
+                <div>
+                  <div className="ph-agent__t">{a.name}</div>
+                  <div className="ph-agent__s">{a.sub}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="ph-cta">내 기록 서재 보기<Icon name="arrowR" size={12} color="#F5F0E8" /></div>
+
+          <div className="ph-tab">
+            <div className="ph-tab__item active"><Icon name="home" size={14} sw={2} /><span>HARU</span></div>
+            <div className="ph-tab__item"><Icon name="spark" size={14} /><span>SAYU</span></div>
+            <div className="ph-tab__item"><Icon name="cog" size={14} /><span>설정</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HeroFloats() {
+  return (
+    <>
+      <div className="lp-float lp-float--a" style={{ width: 168, padding: '12px 14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <Icon name="spark" size={14} color={C.lilacDark} />
+          <div style={{ fontSize: 11, fontWeight: 600, color: C.lilacDark, letterSpacing: '0.04em' }}>SAYU 정리됨</div>
+        </div>
+        <div style={{ fontSize: 11, color: C.fg2, lineHeight: 1.5 }}>원문 감정 그대로, 표현만 다듬었어요.</div>
+      </div>
+      <div className="lp-float lp-float--c" style={{ width: 160, padding: '12px 14px' }}>
+        <div style={{ fontFamily: 'var(--lp-en)', fontSize: 9, letterSpacing: '2.5px', color: C.mute, textTransform: 'uppercase', marginBottom: 4 }}>이번 달 합본</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: C.fg, lineHeight: 1.35 }}>11월 일기 · 28편</div>
+      </div>
+    </>
   );
 }
 
 export function LandingPage() {
   const navigate = useNavigate();
   const { user, loading, googleSignIn } = useAuth();
-  const [showBanner, setShowBanner] = useState(true);
   const [isLoginLoading, setIsLoginLoading] = useState(false);
-
-  useEffect(() => {
-    const dismissed = localStorage.getItem('haru_tip_banner_dismissed');
-    if (dismissed === 'true') {
-      setShowBanner(false);
-    }
-  }, []);
-
-  const handleCloseBanner = () => {
-    localStorage.setItem('haru_tip_banner_dismissed', 'true');
-    setShowBanner(false);
-  };
 
   useEffect(() => {
     if (!loading && user) {
@@ -75,13 +287,14 @@ export function LandingPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F5F0E8' }}>
-        <div style={{ color: '#4A5A2C', fontSize: '18px' }}>로딩 중...</div>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.bg }}>
+        <div style={{ color: C.oliveDark, fontSize: '18px' }}>로딩 중...</div>
       </div>
     );
   }
 
   const goToLogin = () => navigate('/login');
+  const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   const handleGoogleLogin = async () => {
     setIsLoginLoading(true);
@@ -122,825 +335,541 @@ export function LandingPage() {
   ];
 
   return (
-    <div className="lp-page" style={{ fontFamily: 'inherit', background: '#F5F0E8', overflowX: 'hidden' }}>
+    <div className="lp-page">
+      <style>{LP_CSS}</style>
 
-      <style>{`
-        @media (max-width: 640px) {
-          .hero-section {
-            padding-bottom: 24px !important;
-            min-height: auto !important;
-          }
-          .hero-login {
-            margin-top: -8px !important;
-            margin-bottom: 18px !important;
-          }
-          .hero-login-title {
-            width: 100% !important;
-            font-size: 13px !important;
-          }
-          .hero-login-button {
-            flex: 1 1 calc(33.333% - 8px) !important;
-            min-width: 72px !important;
-            padding: 8px 10px !important;
-            font-size: 13px !important;
-          }
-          .grape-animation-container {
-            margin-bottom: 0 !important;
-            padding-bottom: 0 !important;
-          }
-          .next-section-after-hero {
-            padding-top: 24px !important;
-            margin-top: 0 !important;
-          }
-        }
-      `}</style>
-
-      {showBanner && (
-        <>
-          <style>{`
-            @media (max-width: 640px) {
-              .haru-tip-banner-icon {
-                width: 28px !important;
-                height: 28px !important;
-                font-size: 14px !important;
-              }
-              .haru-tip-banner-title {
-                font-size: 13px !important;
-              }
-              .haru-tip-banner-content {
-                font-size: 12px !important;
-                line-height: 1.4 !important;
-              }
-            }
-          `}</style>
-          <div
-            style={{
-              background: 'linear-gradient(90deg, #F5F0E8 0%, #EDE8DC 100%)',
-              borderBottom: '1px solid #D8D1BC',
-              padding: '14px 20px',
-              paddingTop: 'calc(14px + env(safe-area-inset-top, 0px))',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '16px',
-              position: 'relative',
-              zIndex: 10,
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '14px',
-                flex: 1,
-                maxWidth: '900px',
-                margin: '0 auto',
-              }}
-            >
-              <div
-                className="haru-tip-banner-icon"
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '50%',
-                  background: '#7A8B4E',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  color: 'white',
-                  fontSize: '18px',
-                  fontWeight: 500,
-                }}
-              >
-                ✦
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  className="haru-tip-banner-content"
-                  style={{
-                    color: '#4A5A2C',
-                    fontSize: '13px',
-                    lineHeight: '1.6',
-                    opacity: 0.85,
-                  }}
-                >
-                  <div>
-                    📱 스마트폰으로{' '}
-                    <span style={{ color: '#7A8B4E', fontWeight: 600 }}>간편하게</span>{' '}
-                    입력
-                  </div>
-                  <div>
-                    💻 웹브라우저에서{' '}
-                    <span style={{ color: '#7A8B4E', fontWeight: 600 }}>쓸모있게</span>{' '}
-                    완성
-                  </div>
-                  <div style={{ marginTop: '4px', borderTop: '1px solid rgba(74,90,44,0.15)', paddingTop: '6px' }}>
-                    🪶 나도작가 —{' '}
-                    <span style={{ color: '#a78bfa', fontWeight: 600 }}>기록을 바탕으로 글의 재료를 만듭니다</span>
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={handleCloseBanner}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#4A5A2C',
-                  opacity: 0.5,
-                  fontSize: '24px',
-                  cursor: 'pointer',
-                  padding: '4px 8px',
-                  lineHeight: 1,
-                  flexShrink: 0,
-                  alignSelf: 'flex-start',
-                }}
-                aria-label="배너 닫기"
-              >
-                ×
-              </button>
+      {/* ───── Top nav ───── */}
+      <nav className="lp-nav">
+        <div className="lp-wrap lp-nav__inner">
+          <a className="lp-nav__brand" href="#top" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+            <div className="lp-nav__mark"><GrapeMark size={20} color={C.bg} accent={C.peach} /></div>
+            <div>
+              <div className="lp-nav__name">HARU</div>
+              <div className="lp-nav__by">BY JOYEL</div>
             </div>
+          </a>
+          <div className="lp-nav__links">
+            <a href="#how" onClick={(e) => { e.preventDefault(); scrollTo('how'); }}>HARU가 하는 일</a>
+            <a href="#formats" onClick={(e) => { e.preventDefault(); scrollTo('formats'); }}>기록 형식</a>
+            <a href="#agents" onClick={(e) => { e.preventDefault(); scrollTo('agents'); }}>비서실</a>
+            <a href="#sayu" onClick={(e) => { e.preventDefault(); scrollTo('sayu'); }}>SAYU 원칙</a>
+            <a href="#flow" onClick={(e) => { e.preventDefault(); scrollTo('flow'); }}>사용 흐름</a>
           </div>
-        </>
-      )}
+          <div className="lp-nav__cta">
+            <button className="lp-btn lp-btn--primary lp-btn--sm" onClick={goToLogin}>오늘 기록 시작하기</button>
+          </div>
+        </div>
+      </nav>
 
-      {/* ══════════════════════════════
-          섹션 1: 히어로
-      ══════════════════════════════ */}
-      <section className="hero-section" style={{ background: '#4A5A2C', color: '#F5F0E8', padding: '12px 24px', paddingTop: 'max(32px, env(safe-area-inset-top, 32px))', maxHeight: '100dvh', overflow: 'hidden' }}>
-        <div style={{
-          maxWidth: '1100px', margin: '0 auto',
-          display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px',
-        }}>
-          {/* 왼쪽 텍스트 */}
-          <div style={{ flex: '1 1 300px', minWidth: '280px' }}>
-            {/* 포도송이 로고 + 브랜드명 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-              <GrapeLogo />
-              <div>
-                <div style={{ fontSize: '22px', fontWeight: 800, letterSpacing: '1px' }}>HARU 2026</div>
-                <div style={{ fontSize: '12px', opacity: 0.6, letterSpacing: '2px', textTransform: 'uppercase' }}>AI Life Platform</div>
-              </div>
-            </div>
-
-            <h1 style={{ fontSize: 'clamp(26px, 5vw, 46px)', fontWeight: 800, lineHeight: 1.25, marginBottom: '16px' }}>
-              기록을 모아,<br />삶의 도구로 바꿉니다
+      {/* ───── Hero ───── */}
+      <section className="lp-hero" id="top">
+        <div className="lp-hero__deco"><span /><span /></div>
+        <div className="lp-wrap lp-hero__grid">
+          <div>
+            <div className="lp-cap">DAILY RECORD × AI ASSISTANT</div>
+            <h1 className="lp-h1">
+              하루의 기록이<br />
+              <span style={{ color: C.oliveDark }}>삶의 자산이</span> 됩니다.
             </h1>
-            <p style={{ fontSize: '17px', opacity: 0.8, lineHeight: 1.75, marginBottom: '32px' }}>
-              목적별 형식으로 하루를 남기고<br />
-              AI와 전문 데이터가 기록을 해석해<br />
-              다시 꺼내 쓰는 자산으로 정리합니다
+            <p className="lp-hero__sub">
+              일기, 독서, 식물, 투자, 업무, 법률, AI 지식창고까지.<br />
+              흩어진 기록을 목적별로 모으고, <strong style={{ color: C.fg, fontWeight: 600 }}>SAYU</strong>가 다시 정리해
+              나중에 꺼내 쓸 수 있는 자료로 바꿉니다.
             </p>
-
-
-            {/* 상단 소셜 로그인 */}
-            <div
-              className="hero-login"
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '8px',
-                alignItems: 'center',
-                maxWidth: '420px',
-              }}
-            >
-              <span
-                className="hero-login-title"
-                style={{ fontSize: '13px', opacity: 0.72, marginRight: '4px', fontWeight: 600 }}
-              >
-                기존 회원은 바로 로그인하세요
-              </span>
-              {socialLoginButtons.map((button) => (
-                <button
-                  key={button.label}
-                  type="button"
-                  onClick={button.onClick}
-                  disabled={isLoginLoading}
-                  className="hero-login-button"
-                  style={{
-                    background: 'rgba(245,240,232,0.14)',
-                    color: '#F5F0E8',
-                    border: '1px solid rgba(245,240,232,0.18)',
-                    borderRadius: '20px',
-                    padding: '7px 14px',
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    cursor: isLoginLoading ? 'default' : 'pointer',
-                    opacity: isLoginLoading ? 0.55 : 1,
-                    lineHeight: 1.2,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {button.label}
+            <div className="lp-hero__cta-row">
+              <button className="lp-btn lp-btn--primary" onClick={goToLogin}>
+                오늘 기록 시작하기<Icon name="arrowR" size={18} sw={2} />
+              </button>
+              <button className="lp-btn lp-btn--ghost" onClick={() => scrollTo('how')}>HARU가 하는 일 보기</button>
+            </div>
+            <div className="lp-hero__login">
+              <span className="lp-hero__login-title">기존 회원은 바로 로그인하세요</span>
+              {socialLoginButtons.map((b) => (
+                <button key={b.label} type="button" onClick={b.onClick} disabled={isLoginLoading} className="lp-hero__login-btn">
+                  {b.label}
                 </button>
               ))}
             </div>
+            <div className="lp-hero__trust">
+              <span><Icon name="shield" size={18} color={C.olive} />원문 감정 그대로</span>
+              <span><Icon name="user" size={18} color={C.olive} />평생 사용을 위한 설계</span>
+              <span><Icon name="archive" size={18} color={C.olive} />언제든 합본·내보내기</span>
+            </div>
           </div>
+          <div className="lp-hero__visual">
+            <HaruPhone />
+            <HeroFloats />
+          </div>
+        </div>
+      </section>
 
-          {/* 오른쪽 GrapeAnimation + HARU 타이틀 + 서브타이틀 */}
-          <div className="grape-animation-container" style={{ flex: '1 1 260px', minWidth: '240px', textAlign: 'center' }}>
-            <div style={{
-              width: '100%',
-              borderRadius: '24px',
-              background: '#4A5A2C',
-              padding: '8px 20px 16px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-            }}>
-              {/* 포도송이 애니메이션 */}
-              <GrapeAnimation />
+      {/* ───── Trust strip ───── */}
+      <div className="lp-divider">
+        <div className="lp-wrap lp-divider__inner">
+          <span><Icon name="shield" size={14} />원문 감정 보존</span>
+          <span><Icon name="spark" size={14} />SAYU AI 정리</span>
+          <span><Icon name="archive" size={14} />평생 자산화</span>
+          <span><Icon name="bookbind" size={14} />합본 · 책 소재</span>
+          <span><Icon name="chart" size={14} />통계 · 회고</span>
+        </div>
+      </div>
 
-              {/* HARU 타이틀 - 포도송이 바로 아래 바짝 */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '4px',
-                marginTop: '-240px',
-              }}>
-                {['H', 'A', 'R', 'U'].map((letter, index) => (
-                  <motion.span
-                    key={index}
-                    className="font-bold"
-                    style={{
-                      fontSize: 'clamp(40px, 8vw, 64px)',
-                      backgroundImage: 'linear-gradient(135deg, #cc4400 0%, #ff6600 20%, #ffaa44 40%, #fff0dd 50%, #ffaa44 60%, #ff6600 80%, #cc4400 100%)',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      backgroundClip: 'text',
-                      backgroundSize: '300% 100%',
-                      filter: 'drop-shadow(0 0 8px rgba(255,102,0,0.6)) drop-shadow(0 2px 4px rgba(0,0,0,0.5))',
-                    }}
-                    initial={{ opacity: 0, y: 20, scale: 0.5 }}
-                    animate={{ opacity: 1, y: 0, backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
-                    transition={{
-                      opacity: { delay: 1.0 + index * 0.1, duration: 0.5 },
-                      y: { delay: 1.0 + index * 0.1, duration: 0.5 },
-                      backgroundPosition: { delay: 1.7 + index * 0.15, duration: 2.5, repeat: Infinity, repeatDelay: 1, ease: 'linear' },
-                    }}
-                  >
-                    {letter}
-                  </motion.span>
-                ))}
+      {/* ───── Problem ───── */}
+      <section className="lp-section lp-section--soft" id="problem">
+        <div className="lp-wrap">
+          <div className="lp-cap">PROBLEM · 흩어진 기록</div>
+          <h2 className="lp-h2">기록은 남기지만,<br />다시 꺼내 쓰기는 어렵습니다.</h2>
+          <p className="lp-lead" style={{ maxWidth: 640 }}>
+            한 사람의 하루는 메모장에, 사진첩에, 카톡에, 문서에 흩어집니다.
+            남긴 양은 적지 않은데, 어디에 무엇이 있는지 다시 찾기는 쉽지 않습니다.
+          </p>
+          <div className="lp-prob-grid">
+            {SCATTER.map((t) => (
+              <div key={t.name} className="lp-prob-card" style={{ ['--rot' as any]: `${t.rot}deg` }}>
+                <div className="lp-prob-card__ico"><Icon name={t.icon} size={26} /></div>
+                <p className="lp-prob-card__name">{t.name}</p>
+                <p className="lp-prob-card__sub">{t.sub}</p>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-              {/* 서브타이틀 - HARU 바로 아래 바짝 */}
-              <motion.p
+      {/* ───── Solution / pillars ───── */}
+      <section className="lp-section" id="how">
+        <div className="lp-wrap">
+          <div className="lp-cap">HOW · HARU의 일하는 방식</div>
+          <h2 className="lp-h2">기능을 보여드리지 않고,<br />이익을 보여드립니다.</h2>
+          <p className="lp-lead" style={{ maxWidth: 620 }}>
+            HARU가 사용자 대신 하는 일은 단순합니다. 목적별로 모으고, 깔끔하게 정리하고, 평생 꺼내 쓸 수 있도록 보관합니다.
+          </p>
+          <div className="lp-pillars">
+            {PILLARS.map((p) => (
+              <article key={p.n} className="lp-pillar">
+                <div className="lp-pillar__num">PILLAR {p.n}</div>
+                <div className="lp-pillar__ico" style={{ background: hueBg[p.hue] }}>
+                  <Icon name={p.icon} size={28} color={hueFg[p.hue]} sw={1.6} />
+                </div>
+                <h3>{p.title}</h3>
+                <p>{p.body}</p>
+                <span className="lp-pillar__chip" style={{ background: hueBg[p.hue], color: hueFg[p.hue] }}>
+                  <Icon name="check" size={14} color={hueFg[p.hue]} sw={2} />{p.chip}
+                </span>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ───── Formats (실제 14) ───── */}
+      <section className="lp-section lp-section--soft tight" id="formats">
+        <div className="lp-wrap">
+          <div className="lp-cap">FORMATS · 14가지로 시작합니다</div>
+          <h2 className="lp-h2">한 줄에도 자리가 있습니다.</h2>
+          <p className="lp-lead" style={{ maxWidth: 600 }}>
+            생활·업무·자산·전문 영역까지, 무엇을 적을지 정하면 어떻게 정리될지가 따라옵니다.
+            새로운 분야는 형식이 자라며 계속 더해지고 있습니다.
+          </p>
+          <div className="lp-formats">
+            {FORMATS.map((f) => (
+              <div key={f.name} className="lp-fmt">
+                {f.badge && <span className="lp-fmt__badge">{f.badge}</span>}
+                <div className="lp-fmt__ico" style={{ background: hueBg[f.hue] }}>
+                  <Icon name={f.icon} size={24} color={hueFg[f.hue]} sw={1.6} />
+                </div>
+                <span className="lp-fmt__name">{f.name}</span>
+                <span className="lp-fmt__cat">{f.cat}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ───── Agents (실제 11) ───── */}
+      <section className="lp-section" id="agents">
+        <div className="lp-wrap">
+          <div className="lp-cap">SAYU & AGENTS · HARU의 날개</div>
+          <h2 className="lp-h2">정리는 AI가, 기록은 사용자가.</h2>
+          <p className="lp-lead" style={{ maxWidth: 640 }}>
+            기록을 바탕으로 법률·건강·학습·자산·창작 영역까지 전문 AI 비서실이 함께합니다.
+            모두 사용자의 기록을 보조할 뿐, 사용자의 자리를 대신하지 않습니다.
+          </p>
+          <div className="lp-agents">
+            {AGENTS.map((a) => (
+              <article
+                key={a.title}
+                className="lp-agent"
                 style={{
-                  fontSize: 'clamp(13px, 2.2vw, 16px)',
-                  color: '#F5F0E8',
-                  opacity: 0.85,
-                  marginTop: '-8px',
-                  marginBottom: '0',
-                  textAlign: 'center',
-                  lineHeight: '1.5',
+                  background: a.placeholder ? '#FBF8F1' : agentBg[a.hue],
+                  borderColor: agentBorder[a.hue],
+                  color: hueFg[a.hue],
+                  opacity: a.placeholder ? 0.72 : 1,
                 }}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 0.85, y: 0 }}
-                transition={{ delay: 2.5, duration: 0.6 }}
               >
-                하루를{' '}
-                <motion.span
-                  className="font-semibold"
-                  style={{ color: '#ff6600' }}
-                  animate={{ scale: [1, 1.15, 1] }}
-                  transition={{ delay: 3.0, duration: 0.8 }}
-                >
-                  간편하게
-                </motion.span>{' '}
-                입력하고{' '}
-                <motion.span
-                  className="font-semibold"
-                  style={{ color: '#ff6600' }}
-                  animate={{ scale: [1, 1.15, 1] }}
-                  transition={{ delay: 3.5, duration: 0.8 }}
-                >
-                  쓸모있게
-                </motion.span>{' '}
-                남기고{' '}
-                <motion.span
-                  className="font-semibold"
-                  style={{ color: '#ff6600' }}
-                  animate={{ scale: [1, 1.15, 1] }}
-                  transition={{ delay: 4.0, duration: 0.8 }}
-                >
-                  다시 쓰는
-                </motion.span>{' '}
-                AI 라이프 플랫폼
-              </motion.p>
+                {a.beta && <span className="lp-agent__beta">BETA</span>}
+                <div className="lp-agent__top">
+                  <div className="lp-agent__ico" style={{ fontSize: 22 }}>{a.emoji}</div>
+                  <div>
+                    <div className="lp-agent__name">{a.title}</div>
+                    <div className="lp-agent__sub">{a.sub}</div>
+                  </div>
+                </div>
+                <p className="lp-agent__desc" style={{ color: C.fg2 }}>{a.desc}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ───── SAYU principles ───── */}
+      <section className="lp-section lp-sayu" id="sayu">
+        <div className="lp-wrap">
+          <div className="lp-cap">SAYU · 사유, 사용자의 글을 위한 원칙</div>
+          <h2 className="lp-h2">내 감정은 그대로,<br />표현만 더 아름답게.</h2>
+          <p className="lp-sayu__lead">
+            AI가 사용자의 글에 새로운 이야기를 보태거나, 교훈을 덧붙이거나, 감정을 바꾸는 일은
+            하지 않습니다. SAYU는 문장만 자연스럽게 다듬어, 사용자 자신의 글로 남깁니다.
+          </p>
+          <div className="lp-sayu__rules">
+            <div className="lp-rule">
+              <div className="lp-rule__badge lp-rule__badge--no"><Icon name="x" size={22} sw={2.2} /></div>
+              <div className="lp-rule__title">재창작하지 않습니다</div>
+              <p className="lp-rule__desc">없던 사건이나 묘사를 만들어 넣지 않습니다. 원문이 짧으면 짧은 채로, 단정하게 정돈할 뿐입니다.</p>
+            </div>
+            <div className="lp-rule">
+              <div className="lp-rule__badge lp-rule__badge--no"><Icon name="x" size={22} sw={2.2} /></div>
+              <div className="lp-rule__title">교훈을 덧붙이지 않습니다</div>
+              <p className="lp-rule__desc">"오늘 하루도 감사하다" 같은 마무리를 임의로 더하지 않습니다. 의미는 사용자의 것이지, AI가 만들 영역이 아닙니다.</p>
+            </div>
+            <div className="lp-rule">
+              <div className="lp-rule__badge lp-rule__badge--yes"><Icon name="check" size={22} sw={2.4} /></div>
+              <div className="lp-rule__title">원문 감정을 보존합니다</div>
+              <p className="lp-rule__desc">기쁨은 기쁨대로, 답답함은 답답함대로. 표현이 거칠 때는 다듬지만, 감정의 결은 손대지 않습니다.</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ══════════════════════════════
-          섹션 2: 왜 기록인가? (뇌과학)
-      ══════════════════════════════ */}
-      <section className="next-section-after-hero" style={{ background: 'linear-gradient(160deg, #3F4F26 0%, #4A5A2C 100%)', padding: '72px 24px' }}>
-        <div style={{ maxWidth: '860px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '12px' }}>
-            <span style={{
-              border: '1px solid rgba(122,139,78,0.5)', color: '#7A8B4E',
-              fontSize: '11px', letterSpacing: '3px', padding: '5px 18px', borderRadius: '20px'
-            }}>
-              BRAIN SCIENCE × DAILY RECORD
-            </span>
-          </div>
-          <h2 style={{ color: '#F5F0E8', fontSize: 'clamp(22px,4vw,36px)', textAlign: 'center', fontWeight: 400, margin: '0 0 8px' }}>
-            왜 <em style={{ color: '#7A8B4E' }}>기록</em>인가?
-          </h2>
-          <p style={{ color: 'rgba(250,249,246,0.5)', textAlign: 'center', fontSize: '14px', marginBottom: '40px' }}>
-            세계적인 연구자들이 임상으로 입증한 기록의 과학
+      {/* ───── Flow ───── */}
+      <section className="lp-section" id="flow">
+        <div className="lp-wrap">
+          <div className="lp-cap">FLOW · 사용 흐름</div>
+          <h2 className="lp-h2">오늘의 한 줄이<br />평생 자료가 되기까지.</h2>
+          <p className="lp-lead" style={{ maxWidth: 580 }}>
+            입력에서 보관까지 다섯 단계. 사용자는 첫 단계만, 나머지는 HARU가 합니다.
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '36px' }}>
-            {[
-              { emoji: '✍️', name: '페니베이커 박사', role: '임상심리학자', quote: '하루 15분, 감정을 글로 쓰는 것만으로 스트레스 호르몬이 감소한다' },
-              { emoji: '💚', name: '맥크러티 박사', role: 'HeartMath 연구소', quote: '감사 일기는 심박·혈압·호흡을 동기화하여 신체를 최적 상태로 만든다' },
-            ].map((r, i) => (
-              <div key={i} style={{
-                background: 'rgba(250,249,246,0.04)',
-                border: '1px solid rgba(250,249,246,0.1)',
-                borderRadius: '14px', padding: '22px 24px',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-                  <div style={{
-                    fontSize: '22px', background: 'rgba(122,139,78,0.1)',
-                    borderRadius: '10px', width: '44px', height: '44px',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                  }}>
-                    {r.emoji}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
-                      <span style={{ color: '#F5F0E8', fontSize: '16px', fontWeight: 700 }}>{r.name}</span>
-                      <span style={{ color: '#7A8B4E', fontSize: '11px', background: 'rgba(122,139,78,0.1)', padding: '2px 10px', borderRadius: '10px' }}>{r.role}</span>
-                    </div>
-                    <blockquote style={{
-                      margin: 0, color: 'rgba(250,249,246,0.8)', fontSize: '14px',
-                      lineHeight: 1.8, fontStyle: 'italic',
-                      borderLeft: '2px solid rgba(122,139,78,0.4)', paddingLeft: '12px'
-                    }}>
-                      "{r.quote}"
-                    </blockquote>
-                  </div>
+          <div className="lp-flow">
+            <div className="lp-flow__line" aria-hidden="true" />
+            <div className="lp-flow__steps">
+              {FLOW.map((s) => (
+                <div key={s.n} className="lp-step">
+                  <div className="lp-step__num">{s.n}</div>
+                  <div className="lp-step__t">{s.t}</div>
+                  <div className="lp-step__d">{s.d}</div>
                 </div>
-              </div>
-            ))}
-          </div>
-          <div style={{
-            background: 'rgba(122,139,78,0.06)',
-            border: '1px solid rgba(122,139,78,0.15)',
-            borderRadius: '14px', padding: '28px', textAlign: 'center'
-          }}>
-            <p style={{ color: 'rgba(250,249,246,0.75)', fontSize: '15px', lineHeight: 1.9, margin: 0 }}>
-              기록은 단순한 메모가 아닙니다.<br />
-              감정을 객관화하고, 삶을 데이터로 편집하는<br />
-              <strong style={{ color: '#F5F0E8' }}>'인지 재구조화'</strong> 전략입니다.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════
-          섹션 3: 주요 기능 카드
-      ══════════════════════════════ */}
-      <section style={{ background: '#fff', padding: '64px 24px' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <h2 style={{ textAlign: 'center', fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: 800, color: '#4A5A2C', marginBottom: '8px' }}>
-            HARU가 기록을 다루는 방식
-          </h2>
-          <p style={{ textAlign: 'center', color: '#666', fontSize: '16px', marginBottom: '40px' }}>
-            입력, 해석, 축적, 활용이 한 흐름으로 이어집니다
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'center' }}>
-            {[
-              { img: IMAGES.feature_record, title: '목적별 기록 하네스', desc: '일상, 업무, 독서, 자산, 법률 질문까지 목적에 맞는 형식으로 남깁니다' },
-              { img: IMAGES.feature_sayu,   title: 'SAYU와 사실 기반 정리', desc: '원문 사실과 감정을 보존하며 문장을 다듬고, 기록을 검색·분류 가능한 자산으로 만듭니다' },
-              { img: IMAGES.feature_stats,  title: '통계·합본·AI 비서실', desc: '쌓인 기록을 통계와 리포트로 묶고, 법률·건강·학습·자산 비서가 다시 활용합니다' },
-            ].map((card) => (
-              <div key={card.title} style={{
-                flex: '1 1 280px', maxWidth: '340px',
-                background: '#F5F0E8', borderRadius: '16px',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.07)', overflow: 'hidden',
-              }}>
-                <img src={card.img} alt={card.title} style={{ width: '100%', height: '180px', objectFit: 'cover' }} />
-                <div style={{ padding: '20px' }}>
-                  <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#4A5A2C', marginBottom: '8px' }}>{card.title}</h3>
-                  <p style={{ fontSize: '15px', color: '#555', lineHeight: 1.65 }}>{card.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════
-          섹션 4: SAYU 소개 2단
-      ══════════════════════════════ */}
-      <section style={{ background: '#EDE8DC', padding: '64px 24px' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <h2 style={{ textAlign: 'left', fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: 800, color: '#4A5A2C', marginBottom: '8px' }}>
-            SAYU(사유:思惟)는 글을 대신 쓰는 기능이 아니라,<br />당신의 기록을 보존하며 정리하는 해석 공간입니다.
-          </h2>
-          <p style={{ textAlign: 'left', color: '#666', fontSize: '16px', marginBottom: '40px' }}>
-            사실은 지키고, 문장은 다듬고, 나중에 다시 꺼내 쓸 수 있게 남깁니다.
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'center' }}>
-
-            {/* BASIC */}
-            <div style={{
-              flex: '1 1 280px', maxWidth: '480px',
-              background: '#4A5A2C', color: '#F5F0E8',
-              borderRadius: '20px', overflow: 'hidden',
-              boxShadow: '0 8px 30px rgba(74,90,44,0.25)',
-            }}>
-              <img src={IMAGES.sayu_premium} alt="SAYU BASIC" style={{ width: '100%', height: '200px', objectFit: 'cover', opacity: 0.85 }} />
-              <div style={{ padding: '24px' }}>
-                <span style={{
-                  display: 'inline-block',
-                  background: '#7A8B4E', color: '#fff',
-                  borderRadius: '20px', padding: '3px 12px',
-                  fontSize: '12px', fontWeight: 700, marginBottom: '12px',
-                }}>
-                  SAYU BASIC
-                </span>
-                <h3 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '10px' }}>원문 보존 다듬기</h3>
-                <p style={{ fontSize: '15px', opacity: 0.8, lineHeight: 1.7 }}>
-                  사용자가 쓴 사건과 감정을 지키면서 문장을 자연스럽게 정리합니다
-                </p>
-              </div>
+              ))}
             </div>
+          </div>
+        </div>
+      </section>
 
-            {/* PREMIUM */}
-            <div style={{
-              flex: '1 1 280px', maxWidth: '480px',
-              background: '#fff', borderRadius: '20px', overflow: 'hidden',
-              boxShadow: '0 8px 30px rgba(0,0,0,0.10)',
-              border: '2px solid #7A8B4E',
-            }}>
-              <img src={IMAGES.sayu_premium} alt="SAYU PREMIUM" style={{ width: '100%', height: '200px', objectFit: 'cover' }} />
-              <div style={{ padding: '24px' }}>
-                <span style={{
-                  display: 'inline-block',
-                  background: '#4A5A2C', color: '#fff',
-                  borderRadius: '20px', padding: '3px 12px',
-                  fontSize: '12px', fontWeight: 700, marginBottom: '12px',
-                }}>
-                  SAYU PREMIUM
-                </span>
-                <h3 style={{ fontSize: '22px', fontWeight: 800, color: '#4A5A2C', marginBottom: '10px' }}>누적 기록 해석</h3>
-                <p style={{ fontSize: '15px', color: '#444', lineHeight: 1.7 }}>
-                  기록의 흐름을 요약하고 사유 질문을 더해 장기 자산으로 남깁니다
-                </p>
-              </div>
+      {/* ───── Creator note ───── */}
+      <section className="lp-section tight">
+        <div className="lp-wrap">
+          <div className="lp-creator">
+            <div className="lp-creator__avatar">許</div>
+            <div>
+              <div className="lp-cap" style={{ marginBottom: 14 }}>FROM THE FOUNDER</div>
+              <p className="lp-creator__body">
+                "평생을 가르치는 일에 썼습니다. 돌아보니 가장 아쉬운 것은, 매일 무언가를 적었지만
+                다시 꺼내 쓰기 어려운 형태로 남았다는 점이었습니다.
+                HARU는 글재주를 다투는 도구가 아니라, 평생 쌓아온 자신의 이야기를
+                제 자리에 모아두는 도구입니다."
+              </p>
+              <div className="lp-creator__sig">— 주식회사 조이엘 (JOYEL Inc.) · 창립자 노트</div>
             </div>
-
           </div>
         </div>
       </section>
 
-      {/* ══════════════════════════════
-          섹션 5: 목적별 기록 형식 그리드
-      ══════════════════════════════ */}
-      <section style={{ background: '#F5F0E8', padding: '64px 24px' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <h2 style={{ textAlign: 'center', fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: 800, color: '#4A5A2C', marginBottom: '8px' }}>
-            목적별 기록 형식
-          </h2>
-          <p style={{ textAlign: 'center', color: '#666', fontSize: '16px', marginBottom: '40px' }}>
-            생활·업무·자산·전문 영역을 한 곳에 모읍니다
-          </p>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(5, 1fr)',
-            gap: '16px',
-          }}
-            className="format-grid"
-          >
-            {FORMATS.map((f) => {
-              const isLife = f.category === '생활';
-              const isAsset = f.category === '자산';
-              const isSpecial = f.category === '전문';
-              return (
-                <div key={f.name} style={{
-                  background: isLife ? '#E8E8C0' : isAsset ? '#DDE8E5' : isSpecial ? '#E8E1D6' : '#E5DFE8',
-                  borderRadius: '12px', padding: '18px 10px',
-                  textAlign: 'center', position: 'relative',
-                  border: f.badge ? '2px solid #7A8B4E' : `1px solid ${isLife ? '#D4DEA0' : isAsset ? '#BFD4CE' : isSpecial ? '#D6C7B6' : '#C9C0DE'}`,
-                }}>
-                  {f.badge && (
-                    <span style={{
-                      position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)',
-                      background: '#7A8B4E', color: '#fff',
-                      borderRadius: '10px', padding: '2px 8px',
-                      fontSize: '10px', fontWeight: 700, whiteSpace: 'nowrap',
-                    }}>
-                      {f.badge}
-                    </span>
-                  )}
-                  <div style={{ fontSize: '26px', marginBottom: '6px' }}>{f.emoji}</div>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: isLife ? '#4A5A2C' : isAsset ? '#2E5B55' : isSpecial ? '#735538' : '#5C5078' }}>
-                    {f.name}
-                  </div>
-                  <div style={{ fontSize: '11px', marginTop: '3px', color: isLife ? '#7A8B4E' : isAsset ? '#4B8078' : isSpecial ? '#9A7042' : '#7A6F8E', fontWeight: 600 }}>
-                    {f.category}
-                  </div>
+      {/* ───── Pricing (flag 숨김, 노출 시 현재 정책만) ───── */}
+      {SHOW_PRICING && (
+        <section className="lp-section lp-section--soft tight" id="pricing">
+          <div className="lp-wrap" style={{ textAlign: 'center' }}>
+            <div className="lp-trial-badge">🎁 지금 가입하면 <strong>7일 무료 체험</strong></div>
+            <h2 className="lp-h2" style={{ textAlign: 'center' }}>구독 요금 안내</h2>
+            <p className="lp-lead" style={{ margin: '0 auto 48px', textAlign: 'center' }}>하루의 기록이 쌓여 인생의 빅데이터가 됩니다.</p>
+            <div className="lp-plans">
+              {PRICING.map((p) => (
+                <div key={p.plan} className={`lp-plan${p.highlight ? ' lp-plan--hl' : ''}`}>
+                  {p.badge && <span className="lp-plan__badge">{p.badge}</span>}
+                  <div className="lp-plan__name">{p.plan}</div>
+                  <div className="lp-plan__price">{p.price}<span>{p.period}</span></div>
+                  <p className="lp-plan__note">{p.note}</p>
+                  <ul className="lp-plan__list">
+                    {p.bullets.map((b) => (
+                      <li key={b}><Icon name="check" size={15} color={p.highlight ? C.peach : C.olive} sw={2.2} />{b}</li>
+                    ))}
+                  </ul>
+                  <button className="lp-btn lp-btn--primary" style={{ width: '100%' }} onClick={goToLogin}>7일 무료 체험 시작</button>
                 </div>
-              );
-            })}
+              ))}
+            </div>
+            <p className="lp-plan__foot">7일 체험 기간 중 언제든 해지 가능 · 결제는 체험 종료 후 시작됩니다.</p>
           </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════
-          섹션 5-1: HARU의 날개 — AI 비서실 (v2 홈과 동기화)
-      ══════════════════════════════ */}
-      <section style={{ background: '#3F4F26', padding: '80px 24px' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '12px' }}>
-            <span style={{
-              border: '1px solid rgba(122,139,78,0.4)', color: '#7A8B4E',
-              fontSize: '11px', letterSpacing: '3px', padding: '5px 18px', borderRadius: '20px'
-            }}>
-              HARU EXCLUSIVE · AI LIFE ASSISTANTS
-            </span>
-          </div>
-          <h2 style={{
-            textAlign: 'center', fontSize: 'clamp(26px,5vw,44px)',
-            fontWeight: 800, color: '#F5F0E8', margin: '12px 0 8px', letterSpacing: '-0.5px'
-          }}>
-            🪶 HARU의 날개
-          </h2>
-          <p style={{
-            textAlign: 'center', color: 'rgba(250,249,246,0.65)',
-            fontSize: '16px', lineHeight: 1.7, marginBottom: '56px',
-            maxWidth: '640px', margin: '0 auto 56px',
-          }}>
-            기록을 바탕으로 법률·건강·학습·자산·창작 영역까지<br />
-            <strong style={{ color: '#7A8B4E', fontWeight: 700 }}>전문 AI 비서실</strong>이 함께합니다
-          </p>
-          <div className="agents-8" style={{
-            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px',
-          }}>
-            {[
-              { emoji: '🔮', title: 'HARU미래전망', sub: 'DAILY ORACLE',  desc: '오늘의 한 줄 기록이 모여 당신의 미래를 전망합니다.',                              color: '#a78bfa' },
-              { emoji: '⚖️', title: '하루LAW',      sub: 'LAW · 판례',    desc: '법령·판례를 정부 데이터 그대로, 풀이는 AI가 쉬운 말로 풀어드립니다. 환각 제로.', color: '#f59e0b' },
-              { emoji: '📖', title: '영어성경',     sub: 'BIBLE',         desc: '영어·영한·한영 듣기·말하기·해석·단어·문법을 한 번에 — 영어성경 학습의 결정판', color: '#38bdf8' },
-              { emoji: '🌐', title: '영어일기',     sub: 'EN DIARY',      desc: '내가 기록한 일기와 에세이로 자연스러운 영작 학습',                                color: '#7A8B4E' },
-              { emoji: '📥', title: 'SNS가져오기',  sub: 'IMPORT',        desc: '페이스북과 인스타그램의 추억들을 입맛대로 정렬하고 나만의 책으로 출간해 드립니다.', color: '#ec4899' },
-              { emoji: '📈', title: 'HARU주식',     sub: 'MARKET',        desc: '내가 매도·매수한 종목 기록을 모아 투자 흐름을 점검합니다.',                  color: '#22d3ee' },
-              { emoji: '🌿', title: '원기충전소',   sub: 'RECOVERY',      desc: '오늘 컨디션을 기록하면 AI가 맞춤 회복 루틴을 처방해드립니다.',                    color: '#84cc16' },
-              { emoji: '🏠', title: '온비드 부동산', sub: 'BID · 부동산', desc: '온비드 공매 부동산을 한눈에 — 입찰 일정·최저가·소재지까지 검색.',                color: '#a78bfa', beta: true },
-              { emoji: '💚', title: 'HARU건강관리', sub: 'CARE · 건강',  desc: '명의찾기 · 약봉지 약정보 · 건강 인포그래픽 — HARU와 함께 챙기는 건강.',          color: '#10b981', beta: true },
-              { emoji: '✍️', title: '나도작가',     sub: 'WRITE · 창작', desc: 'AI와 함께 글쓰기 — 시놉시스부터 단편소설까지 손쉽게 완성합니다.',                color: '#f97316' },
-              { emoji: '✨', title: '새 비서 예정', sub: 'COMING SOON',  desc: '곧 새로운 동료가 합류합니다.',                                                    color: '#888780', placeholder: true },
-            ].map((a) => (
-              <div key={a.title} style={{
-                background: a.placeholder
-                  ? 'rgba(255,255,255,0.03)'
-                  : `linear-gradient(135deg, rgba(255,255,255,0.05) 0%, ${a.color}1f 100%)`,
-                border: `1.5px solid ${a.color}44`,
-                borderRadius: '18px', padding: '28px 22px',
-                position: 'relative', overflow: 'hidden',
-                opacity: a.placeholder ? 0.72 : 1,
-              }}>
-                <div style={{
-                  position: 'absolute', top: '-20px', right: '-20px',
-                  width: '90px', height: '90px', borderRadius: '50%',
-                  background: `radial-gradient(circle, ${a.color}26 0%, transparent 70%)`,
-                  pointerEvents: 'none',
-                }} />
-                {a.beta && (
-                  <span style={{
-                    position: 'absolute', top: '12px', right: '12px',
-                    background: '#1A3C6E', color: '#fff',
-                    fontSize: '9px', fontWeight: 800, letterSpacing: '1.5px',
-                    padding: '3px 8px', borderRadius: '999px', zIndex: 2,
-                  }}>
-                    BETA
-                  </span>
-                )}
-                <div style={{ fontSize: '36px', marginBottom: '12px' }}>{a.emoji}</div>
-                <span style={{
-                  background: `${a.color}26`, color: a.color,
-                  fontSize: '10px', fontWeight: 700, padding: '3px 9px',
-                  borderRadius: '10px', letterSpacing: '1px',
-                }}>
-                  {a.sub}
-                </span>
-                <h3 style={{
-                  fontSize: '18px', fontWeight: 800, color: '#F5F0E8',
-                  margin: '10px 0 8px',
-                }}>
-                  {a.title}
-                </h3>
-                <p style={{
-                  fontSize: '13px', color: 'rgba(250,249,246,0.62)',
-                  lineHeight: 1.7, margin: 0,
-                }}>
-                  {a.desc}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════
-          섹션 5-2: 구독 요금 — LIGHT/PREMIUM + 7일 무료 체험
-          ⚠️ 2026-05-13 임시 비노출 (모두의 창업 신청서 D-2)
-          복원: 아래 false → true 로 변경 또는 VITE_SHOW_PRICING=true 설정
-      ══════════════════════════════ */}
-      {(import.meta.env.VITE_SHOW_PRICING === 'true' || false) && (
-      <section style={{ background: '#EDE8DC', padding: '72px 24px' }}>
-        <div style={{ maxWidth: '760px', margin: '0 auto', textAlign: 'center' }}>
-          {/* 7일 무료 체험 배너 */}
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: '10px',
-            background: '#7A8B4E', color: '#fff',
-            borderRadius: '999px', padding: '8px 20px',
-            fontSize: '13px', fontWeight: 700, letterSpacing: '0.3px',
-            boxShadow: '0 8px 24px -8px rgba(122,139,78,0.55)',
-            marginBottom: '18px',
-          }}>
-            <span style={{ fontSize: '14px' }}>🎁</span>
-            지금 가입하면{' '}
-            <span style={{ background: 'rgba(255,255,255,0.22)', padding: '2px 8px', borderRadius: '999px' }}>
-              7일 무료 체험
-            </span>
-          </div>
-
-          <h2 style={{ fontSize: 'clamp(22px,4vw,32px)', fontWeight: 800, color: '#4A5A2C', marginBottom: '8px' }}>
-            구독 요금 안내
-          </h2>
-          <p style={{ color: '#666', fontSize: '16px', marginBottom: '40px' }}>
-            하루의 기록이 쌓여 인생의 빅데이터가 됩니다
-          </p>
-
-          <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            {[
-              {
-                plan: 'LIGHT', price: '₩4,000', period: '/월',
-                note: '목적별 기록 + SAYU BASIC + AI 비서 월 10회',
-                bullets: ['목적별 기록 형식', 'SAYU BASIC 다듬기', '통계·합본'],
-                highlight: false,
-              },
-              {
-                plan: 'PREMIUM', price: '₩5,000', period: '/월',
-                note: '라이트 전체 + AI 비서 일 2회 / 월 40회',
-                bullets: ['LIGHT 모든 기능', '전문 AI 비서실', 'SAYU PREMIUM (Gemini)'],
-                highlight: true,
-                badge: 'RECOMMENDED',
-              },
-            ].map((p) => (
-              <div key={p.plan} style={{
-                flex: '1 1 240px', maxWidth: '320px', position: 'relative',
-                background: p.highlight ? '#4A5A2C' : '#fff',
-                border: p.highlight ? 'none' : '2px solid #E5DFD0',
-                borderRadius: '20px', padding: '36px 28px',
-                boxShadow: p.highlight ? '0 12px 40px rgba(74,90,44,0.25)' : '0 4px 16px rgba(0,0,0,0.06)',
-                textAlign: 'left',
-              }}>
-                {p.badge && (
-                  <span style={{
-                    position: 'absolute', top: '-12px', right: '20px',
-                    background: '#7A8B4E', color: '#fff',
-                    fontSize: '10px', fontWeight: 800, letterSpacing: '1.5px',
-                    padding: '4px 10px', borderRadius: '999px',
-                  }}>
-                    {p.badge}
-                  </span>
-                )}
-                <p style={{
-                  color: p.highlight ? '#7A8B4E' : '#4A5A2C',
-                  fontSize: '13px', fontWeight: 800, margin: '0 0 12px', letterSpacing: '2px',
-                }}>
-                  {p.plan}
-                </p>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '6px' }}>
-                  <span style={{ color: p.highlight ? '#F5F0E8' : '#4A5A2C', fontSize: '40px', fontWeight: 800 }}>{p.price}</span>
-                  <span style={{ color: p.highlight ? 'rgba(250,249,246,0.55)' : '#999', fontSize: '14px' }}>{p.period}</span>
-                </div>
-                <p style={{ color: p.highlight ? 'rgba(250,249,246,0.6)' : '#888', fontSize: '12px', margin: '0 0 20px' }}>{p.note}</p>
-                <ul style={{
-                  listStyle: 'none', padding: 0, margin: '0 0 22px',
-                  display: 'flex', flexDirection: 'column', gap: '8px',
-                }}>
-                  {p.bullets.map((b) => (
-                    <li key={b} style={{
-                      display: 'flex', alignItems: 'center', gap: '8px',
-                      color: p.highlight ? 'rgba(250,249,246,0.85)' : '#444', fontSize: '13px',
-                    }}>
-                      <span style={{
-                        width: '16px', height: '16px', borderRadius: '50%',
-                        background: p.highlight ? 'rgba(122,139,78,0.25)' : '#d1fae5',
-                        color: '#7A8B4E', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '10px', fontWeight: 800, flexShrink: 0,
-                      }}>✓</span>
-                      {b}
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  onClick={goToLogin}
-                  style={{
-                    background: p.highlight ? '#7A8B4E' : '#4A5A2C',
-                    color: '#fff', border: 'none',
-                    borderRadius: '50px', padding: '12px 0',
-                    fontSize: '14px', fontWeight: 700,
-                    cursor: 'pointer', width: '100%',
-                  }}
-                >
-                  7일 무료 체험 시작
-                </button>
-              </div>
-            ))}
-          </div>
-
-          <p style={{ color: '#888', fontSize: '12px', marginTop: '20px' }}>
-            7일 체험 기간 중 언제든 해지 가능 · 결제는 체험 종료 후 시작됩니다
-          </p>
-        </div>
-      </section>
+        </section>
       )}
 
-      {/* ══════════════════════════════
-          섹션 6: 하단 CTA
-      ══════════════════════════════ */}
-      <section className="lp-cta" style={{ background: '#4A5A2C', color: '#F5F0E8', padding: '64px 24px' }}>
-        <div className="lp-cta-wrap" style={{
-          maxWidth: '1100px', margin: '0 auto',
-          display: 'flex', flexWrap: 'wrap', alignItems: 'center',
-          justifyContent: 'space-between', gap: '32px',
-        }}>
-          {/* 왼쪽 텍스트 */}
-          <div className="lp-cta-text" style={{ flex: '1 1 280px' }}>
-            <h2 style={{ fontSize: 'clamp(22px, 4vw, 34px)', fontWeight: 800, marginBottom: '12px' }}>
-              지금 바로 하루를 기록해보세요
-            </h2>
-            <p style={{ fontSize: '16px', opacity: 0.75 }}>
-              Google · 카카오 · 네이버 소셜 로그인으로 30초면 시작
-            </p>
-          </div>
-          {/* 오른쪽 버튼 */}
-          <div className="lp-cta-btn">
-            <button
-              onClick={goToLogin}
-              style={{
-                background: '#7A8B4E', color: '#fff', border: 'none',
-                borderRadius: '12px', padding: '16px 40px',
-                fontSize: '18px', fontWeight: 700, cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              무료로 시작하기 →
-            </button>
+      {/* ───── Final CTA ───── */}
+      <section className="lp-section tight">
+        <div className="lp-wrap">
+          <div className="lp-final">
+            <div className="lp-final__deco lp-final__deco--a" />
+            <div className="lp-final__deco lp-final__deco--b" />
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <div className="lp-cap" style={{ color: 'rgba(245,240,232,0.7)' }}>START TODAY</div>
+              <h2>오늘 하나만 기록해도<br />HARU는 시작됩니다.</h2>
+              <p>한 줄도 좋고, 사진 한 장의 메모도 좋습니다. 쌓이는 일은 HARU가 합니다.</p>
+              <div className="lp-final__cta-row">
+                <button className="lp-btn lp-btn--primary" onClick={goToLogin}>오늘 기록 시작하기<Icon name="arrowR" size={18} sw={2} /></button>
+                <button className="lp-btn lp-btn--ghost" onClick={() => scrollTo(SHOW_PRICING ? 'pricing' : 'agents')}>
+                  {SHOW_PRICING ? '요금 · 구독 안내' : 'HARU 둘러보기'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* 반응형: 모바일 / 태블릿 / 데스크톱 3-tier */}
-      <style>{`
-        /* ─── 태블릿 (641-1024px) ─── */
-        @media (min-width: 641px) and (max-width: 1024px) {
-          .agents-8     { grid-template-columns: repeat(2, 1fr) !important; }
-          .format-grid  { grid-template-columns: repeat(5, 1fr) !important; }
-        }
-
-        /* ─── 모바일 (≤640px) ─── */
-        @media (max-width: 640px) {
-          /* 그리드: 2열 */
-          .format-grid  { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
-          .agents-8     { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
-
-          /* Hero 제약 해제 + 패딩 축소 (노치 영역 보호 유지) */
-          .lp-page .hero-section {
-            max-height: none !important;
-            overflow: visible !important;
-            padding: 16px 18px 32px !important;
-            padding-top: max(16px, env(safe-area-inset-top, 16px)) !important;
-          }
-
-          /* 모든 일반 섹션 패딩 축소 (Hero·CTA·안내 배너 제외) */
-          .lp-page > section:not(.hero-section):not(.lp-cta) {
-            padding-top: 48px !important;
-            padding-bottom: 48px !important;
-            padding-left: 18px !important;
-            padding-right: 18px !important;
-          }
-
-          /* 하단 CTA: 텍스트 + 버튼 가운데 세로 배치 */
-          .lp-cta { padding: 48px 18px !important; }
-          .lp-cta-wrap { flex-direction: column !important; text-align: center !important; gap: 20px !important; }
-          .lp-cta-btn { width: 100% !important; }
-          .lp-cta-btn button { width: 100% !important; padding: 14px 0 !important; font-size: 16px !important; }
-
-          /* 박사 인용 / SAYU / 기능 카드 패딩 미세 축소 */
-          .lp-page blockquote { font-size: 13px !important; padding-left: 10px !important; }
-        }
-      `}</style>
-
+      {/* 전역 Footer(App.tsx)가 법적 정보·약관/개인정보/환불 링크를 담당하므로
+          랜딩 자체 footer는 두지 않는다 (footer 중복 방지). */}
     </div>
   );
 }
+
+/* ────────────────────────────────────────────────────────────
+   스타일 — .lp-page 스코프로 한정 (전역 html/body 미오염)
+   CD haru-tokens.css + landing.css 이식
+   ──────────────────────────────────────────────────────────── */
+const LP_CSS = `
+.lp-page {
+  --olive:#7A8B4E; --olive-dark:#4A5A2C;
+  --lilac:#C9C0DE; --lilac-dark:#5A4E7A; --lilac-light:#DDD0E8;
+  --light-green:#D4DEA0; --green-light:#E0E8B8;
+  --terracotta:#B85C2E; --terracotta-light:#F5E5DC; --peach:#E8B894;
+  --bg:#F5F0E8; --bg-2:#EDE8DC; --card:#FFFFFF; --border:#E5DFD0;
+  --fg:#2C2C2A; --fg-2:#7A6F5A; --fg-muted:#888780;
+  --accent-active:#7A8B4E; --accent-active-dark:#4A5A2C;
+  --lp-en:'Inter',system-ui,sans-serif;
+  --lp-kr:'Pretendard','Pretendard Variable',-apple-system,system-ui,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+  --lp-serif:'Nanum Myeongjo','Apple SD Gothic Neo',serif;
+  --lp-hero:clamp(40px,6vw,76px);
+  --lp-h2:clamp(28px,3.4vw,44px);
+  --lp-h3:clamp(22px,2vw,28px);
+  --lp-lead:clamp(16px,1.4vw,20px);
+  --lp-content:1200px;
+  --lp-pad-x:clamp(20px,4vw,64px);
+  --ease:cubic-bezier(0.22,0.61,0.36,1);
+  --dur:180ms; --dur-fast:120ms;
+  background:var(--bg);
+  color:var(--fg);
+  font-family:var(--lp-kr);
+  font-size:18px;
+  line-height:1.7;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+.lp-page *{box-sizing:border-box;}
+.lp-page ::selection{background:var(--olive);color:var(--bg);}
+
+.lp-wrap{max-width:var(--lp-content);margin:0 auto;padding-left:var(--lp-pad-x);padding-right:var(--lp-pad-x);}
+.lp-section{padding:clamp(64px,9vw,120px) 0;}
+.lp-section.tight{padding:clamp(52px,6vw,84px) 0;}
+.lp-section--soft{background:var(--bg-2);}
+
+.lp-cap{font-family:var(--lp-en);font-size:12px;font-weight:500;letter-spacing:0.22em;text-transform:uppercase;color:var(--fg-muted);margin:0 0 18px;display:inline-flex;align-items:center;gap:10px;}
+.lp-cap::before{content:"";width:28px;height:1px;background:currentColor;opacity:0.5;}
+
+.lp-h1{font-family:var(--lp-kr);font-size:var(--lp-hero);font-weight:700;letter-spacing:-0.025em;line-height:1.14;margin:0 0 24px;color:var(--fg);}
+.lp-h2{font-size:var(--lp-h2);font-weight:700;letter-spacing:-0.018em;line-height:1.22;margin:0 0 20px;color:var(--fg);}
+.lp-lead{font-size:var(--lp-lead);line-height:1.7;color:var(--fg-2);margin:0;}
+
+.lp-btn{font-family:var(--lp-kr);font-size:17px;font-weight:600;letter-spacing:-0.005em;padding:16px 26px;border-radius:14px;border:1px solid transparent;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:background var(--dur) var(--ease),transform var(--dur-fast) var(--ease),border-color var(--dur) var(--ease),color var(--dur) var(--ease);min-height:56px;}
+.lp-btn:active{transform:scale(0.985);}
+.lp-btn:disabled{opacity:0.55;cursor:default;}
+.lp-btn--primary{background:var(--accent-active-dark);color:var(--bg);box-shadow:0 8px 20px -14px rgba(74,90,44,0.55);}
+.lp-btn--primary:hover{background:#3F4F26;}
+.lp-btn--ghost{background:transparent;color:var(--fg);border-color:var(--border);}
+.lp-btn--ghost:hover{background:#FAF6EE;border-color:#D8D1BE;}
+.lp-btn--sm{font-size:15px;padding:10px 18px;min-height:44px;border-radius:12px;}
+
+.lp-nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(16px) saturate(140%);-webkit-backdrop-filter:blur(16px) saturate(140%);background:rgba(245,240,232,0.82);border-bottom:1px solid rgba(229,223,208,0.6);}
+.lp-nav__inner{display:flex;align-items:center;justify-content:space-between;height:72px;}
+.lp-nav__brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;}
+.lp-nav__mark{width:38px;height:38px;border-radius:11px;background:var(--accent-active-dark);display:grid;place-items:center;}
+.lp-nav__name{font-weight:700;font-size:19px;letter-spacing:-0.01em;line-height:1;}
+.lp-nav__by{font-family:var(--lp-en);font-size:10px;letter-spacing:0.18em;color:var(--fg-2);margin-top:4px;}
+.lp-nav__links{display:flex;align-items:center;gap:4px;}
+.lp-nav__links a{padding:8px 14px;border-radius:10px;color:var(--fg);text-decoration:none;font-size:15px;font-weight:500;transition:background var(--dur) var(--ease);}
+.lp-nav__links a:hover{background:rgba(0,0,0,0.04);}
+.lp-nav__cta{display:flex;align-items:center;gap:8px;}
+@media(max-width:760px){.lp-nav__links{display:none;}}
+
+.lp-hero{padding-top:clamp(48px,8vw,88px);padding-bottom:clamp(56px,8vw,104px);position:relative;}
+.lp-hero__grid{display:grid;grid-template-columns:1.05fr 1fr;gap:clamp(40px,6vw,88px);align-items:center;}
+@media(max-width:920px){.lp-hero__grid{grid-template-columns:1fr;}.lp-hero__visual{order:-1;min-height:480px;}}
+.lp-hero__sub{font-size:var(--lp-lead);color:var(--fg-2);line-height:1.65;margin:0 0 32px;max-width:52ch;}
+.lp-hero__cta-row{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:22px;}
+.lp-hero__login{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:30px;}
+.lp-hero__login-title{font-size:14px;color:var(--fg-2);margin-right:4px;font-weight:600;}
+.lp-hero__login-btn{background:#fff;border:1px solid var(--border);border-radius:20px;padding:8px 16px;font-size:14px;font-weight:700;color:var(--fg);cursor:pointer;transition:border-color var(--dur) var(--ease),color var(--dur) var(--ease);}
+.lp-hero__login-btn:hover{border-color:var(--olive);color:var(--olive-dark);}
+.lp-hero__trust{display:flex;flex-wrap:wrap;gap:18px 30px;font-size:14px;color:var(--fg-2);}
+.lp-hero__trust>span{display:inline-flex;align-items:center;gap:8px;}
+.lp-hero__visual{position:relative;min-height:600px;display:grid;place-items:center;}
+
+.lp-phone{width:320px;height:640px;border-radius:44px;background:var(--card);border:1px solid var(--border);box-shadow:0 40px 80px -50px rgba(74,90,44,0.4),0 12px 24px -16px rgba(0,0,0,0.1);padding:14px;position:relative;z-index:2;overflow:hidden;}
+.lp-phone__inner{width:100%;height:100%;border-radius:32px;background:var(--bg);overflow:hidden;position:relative;}
+.lp-phone__notch{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:90px;height:22px;background:#1a1a1a;border-radius:999px;z-index:10;}
+
+.lp-float{position:absolute;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:14px 16px;box-shadow:0 18px 36px -22px rgba(74,90,44,0.35);z-index:3;animation:lpFloatY 6s ease-in-out infinite;}
+.lp-float--a{top:8%;left:-6%;animation-delay:0s;}
+.lp-float--c{bottom:6%;left:-2%;animation-delay:-4s;}
+@keyframes lpFloatY{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
+
+.lp-hero__deco{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:0;}
+.lp-hero__deco span{position:absolute;border-radius:50%;filter:blur(40px);}
+.lp-hero__deco span:nth-child(1){width:380px;height:380px;background:var(--light-green);top:-120px;right:-60px;opacity:0.45;}
+.lp-hero__deco span:nth-child(2){width:280px;height:280px;background:var(--lilac);bottom:-80px;left:35%;opacity:0.35;}
+
+.lp-divider{border-top:1px solid var(--border);padding:26px 0;background:var(--bg-2);}
+.lp-divider__inner{display:flex;align-items:center;justify-content:center;gap:28px;flex-wrap:wrap;font-size:13px;font-weight:500;letter-spacing:0.06em;color:var(--fg-muted);}
+.lp-divider__inner>span{display:inline-flex;align-items:center;gap:9px;}
+.lp-divider__inner svg{opacity:0.6;}
+
+.lp-prob-grid{margin-top:52px;display:grid;grid-template-columns:repeat(5,1fr);gap:18px;}
+@media(max-width:920px){.lp-prob-grid{grid-template-columns:repeat(2,1fr);}}
+.lp-prob-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px 18px;text-align:center;transform:rotate(var(--rot,0deg));transition:transform var(--dur) var(--ease);}
+.lp-prob-card:hover{transform:rotate(0deg) translateY(-4px);}
+.lp-prob-card__ico{width:56px;height:56px;border-radius:14px;background:var(--bg-2);margin:0 auto 14px;display:grid;place-items:center;color:var(--fg-2);}
+.lp-prob-card__name{font-size:16px;font-weight:600;color:var(--fg);margin:0 0 4px;}
+.lp-prob-card__sub{font-size:13px;color:var(--fg-muted);line-height:1.55;margin:0;}
+
+.lp-pillars{margin-top:52px;display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+@media(max-width:920px){.lp-pillars{grid-template-columns:1fr;}}
+.lp-pillar{background:var(--card);border:1px solid var(--border);border-radius:22px;padding:32px 28px;position:relative;overflow:hidden;min-height:300px;display:flex;flex-direction:column;}
+.lp-pillar__num{font-family:var(--lp-en);font-size:13px;font-weight:500;letter-spacing:0.2em;color:var(--fg-muted);margin-bottom:18px;}
+.lp-pillar__ico{width:56px;height:56px;border-radius:14px;display:grid;place-items:center;margin-bottom:18px;}
+.lp-pillar h3{font-size:22px;font-weight:700;margin:0 0 12px;letter-spacing:-0.01em;color:var(--fg);}
+.lp-pillar p{font-size:16px;color:var(--fg-2);line-height:1.7;margin:0;flex:1;}
+.lp-pillar__chip{margin-top:20px;display:inline-flex;align-self:flex-start;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600;letter-spacing:0.04em;}
+
+.lp-formats{margin-top:44px;display:grid;grid-template-columns:repeat(7,1fr);gap:12px;}
+@media(max-width:1100px){.lp-formats{grid-template-columns:repeat(5,1fr);}}
+@media(max-width:760px){.lp-formats{grid-template-columns:repeat(4,1fr);gap:10px;}}
+@media(max-width:480px){.lp-formats{grid-template-columns:repeat(3,1fr);}}
+.lp-fmt{position:relative;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px 10px 16px;display:flex;flex-direction:column;align-items:center;gap:8px;}
+.lp-fmt__ico{width:50px;height:50px;border-radius:14px;display:grid;place-items:center;margin-bottom:2px;}
+.lp-fmt__name{font-size:14px;font-weight:600;color:var(--fg);text-align:center;}
+.lp-fmt__cat{font-size:11px;font-weight:600;color:var(--fg-muted);}
+.lp-fmt__badge{position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:var(--olive);color:#fff;border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700;white-space:nowrap;}
+
+.lp-agents{margin-top:44px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+@media(max-width:1100px){.lp-agents{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:540px){.lp-agents{grid-template-columns:1fr;}}
+.lp-agent{position:relative;border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:12px;min-height:178px;border:1px solid;transition:transform var(--dur) var(--ease);overflow:hidden;}
+.lp-agent:hover{transform:translateY(-3px);}
+.lp-agent__top{display:flex;align-items:center;gap:12px;}
+.lp-agent__ico{width:48px;height:48px;border-radius:13px;background:var(--card);display:grid;place-items:center;flex-shrink:0;}
+.lp-agent__name{font-size:17px;font-weight:700;}
+.lp-agent__sub{font-family:var(--lp-en);font-size:10px;font-weight:600;letter-spacing:0.12em;opacity:0.8;margin-top:3px;}
+.lp-agent__desc{font-size:14px;line-height:1.6;flex:1;margin:0;}
+.lp-agent__beta{position:absolute;top:14px;right:14px;background:#1A3C6E;color:#fff;font-size:9px;font-weight:800;letter-spacing:1.2px;padding:3px 8px;border-radius:999px;}
+
+.lp-sayu{background:linear-gradient(180deg,var(--bg) 0%,var(--bg-2) 100%);border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+.lp-sayu__lead{max-width:720px;font-size:22px;line-height:1.7;color:var(--fg);font-family:var(--lp-serif);font-weight:400;margin:0 0 52px;}
+.lp-sayu__rules{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+@media(max-width:760px){.lp-sayu__rules{grid-template-columns:1fr;}}
+.lp-rule{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:26px 24px;display:flex;flex-direction:column;gap:14px;}
+.lp-rule__badge{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;}
+.lp-rule__badge--no{background:var(--terracotta-light);color:var(--terracotta);}
+.lp-rule__badge--yes{background:var(--green-light);color:var(--olive-dark);}
+.lp-rule__title{font-size:18px;font-weight:700;color:var(--fg);}
+.lp-rule__desc{font-size:15px;color:var(--fg-2);line-height:1.65;margin:0;}
+
+.lp-flow{margin-top:52px;position:relative;}
+.lp-flow__line{position:absolute;top:32px;left:6%;right:6%;height:2px;background:repeating-linear-gradient(to right,var(--border) 0 8px,transparent 8px 14px);z-index:0;}
+@media(max-width:920px){.lp-flow__line{display:none;}}
+.lp-flow__steps{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;position:relative;z-index:1;}
+@media(max-width:920px){.lp-flow__steps{grid-template-columns:1fr;gap:18px;}}
+.lp-step{display:flex;flex-direction:column;align-items:center;text-align:center;padding:0 6px;}
+.lp-step__num{width:64px;height:64px;border-radius:999px;background:var(--card);border:1px solid var(--border);display:grid;place-items:center;font-family:var(--lp-en);font-size:18px;font-weight:600;color:var(--accent-active-dark);margin-bottom:18px;box-shadow:0 1px 3px rgba(74,90,44,0.06);}
+.lp-step__t{font-size:17px;font-weight:700;margin:0 0 6px;color:var(--fg);}
+.lp-step__d{font-size:14px;color:var(--fg-2);line-height:1.55;max-width:180px;}
+
+.lp-creator{background:var(--card);border:1px solid var(--border);border-radius:22px;padding:clamp(32px,5vw,56px);display:grid;grid-template-columns:80px 1fr;gap:clamp(20px,3vw,36px);align-items:flex-start;}
+@media(max-width:760px){.lp-creator{grid-template-columns:1fr;}}
+.lp-creator__avatar{width:80px;height:80px;border-radius:24px;background:linear-gradient(135deg,var(--lilac-light),var(--green-light));display:grid;place-items:center;font-family:var(--lp-serif);font-weight:700;font-size:30px;color:var(--olive-dark);}
+.lp-creator__body{font-family:var(--lp-serif);font-size:20px;line-height:1.85;color:var(--fg);margin:0;}
+.lp-creator__sig{margin-top:22px;font-size:14px;letter-spacing:0.04em;color:var(--fg-2);}
+
+.lp-trial-badge{display:inline-flex;align-items:center;gap:8px;background:var(--olive);color:#fff;border-radius:999px;padding:8px 20px;font-size:14px;font-weight:700;margin-bottom:18px;}
+.lp-plans{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;}
+.lp-plan{position:relative;flex:1 1 260px;max-width:340px;background:var(--card);border:2px solid var(--border);border-radius:20px;padding:36px 28px;text-align:left;}
+.lp-plan--hl{background:var(--olive-dark);border-color:var(--olive-dark);color:var(--bg);}
+.lp-plan__badge{position:absolute;top:-12px;right:20px;background:var(--olive);color:#fff;font-size:10px;font-weight:800;letter-spacing:1.5px;padding:4px 10px;border-radius:999px;}
+.lp-plan__name{font-size:13px;font-weight:800;letter-spacing:2px;margin-bottom:12px;color:var(--olive-dark);}
+.lp-plan--hl .lp-plan__name{color:var(--peach);}
+.lp-plan__price{font-size:40px;font-weight:800;color:var(--fg);}
+.lp-plan--hl .lp-plan__price{color:var(--bg);}
+.lp-plan__price span{font-size:14px;font-weight:500;color:var(--fg-muted);margin-left:4px;}
+.lp-plan--hl .lp-plan__price span{color:rgba(245,240,232,0.6);}
+.lp-plan__note{font-size:12px;color:var(--fg-muted);margin:6px 0 20px;}
+.lp-plan--hl .lp-plan__note{color:rgba(245,240,232,0.6);}
+.lp-plan__list{list-style:none;padding:0;margin:0 0 22px;display:flex;flex-direction:column;gap:8px;}
+.lp-plan__list li{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--fg-2);}
+.lp-plan--hl .lp-plan__list li{color:rgba(245,240,232,0.85);}
+.lp-plan--hl .lp-btn--primary{background:var(--olive);color:#fff;}
+.lp-plan--hl .lp-btn--primary:hover{background:#6b7a44;}
+.lp-plan__foot{color:var(--fg-muted);font-size:12px;margin-top:20px;}
+
+.lp-final{background:var(--accent-active-dark);color:var(--bg);border-radius:28px;padding:clamp(48px,7vw,84px) clamp(28px,5vw,72px);position:relative;overflow:hidden;text-align:center;}
+.lp-final h2{font-size:clamp(30px,4vw,50px);font-weight:700;letter-spacing:-0.02em;line-height:1.2;margin:0 0 18px;color:var(--bg);}
+.lp-final p{font-size:var(--lp-lead);line-height:1.65;color:rgba(245,240,232,0.78);margin:0 auto 36px;max-width:540px;}
+.lp-final__deco{position:absolute;pointer-events:none;}
+.lp-final__deco--a{top:-60px;right:-40px;width:220px;height:220px;border-radius:50%;background:rgba(232,184,148,0.15);}
+.lp-final__deco--b{bottom:-80px;left:-60px;width:280px;height:280px;border-radius:50%;background:rgba(201,192,222,0.12);}
+.lp-final .lp-btn--primary{background:var(--bg);color:var(--accent-active-dark);box-shadow:0 12px 24px -16px rgba(0,0,0,0.4);}
+.lp-final .lp-btn--primary:hover{background:#FFFAF0;}
+.lp-final .lp-btn--ghost{color:var(--bg);border-color:rgba(245,240,232,0.4);}
+.lp-final .lp-btn--ghost:hover{background:rgba(245,240,232,0.08);border-color:rgba(245,240,232,0.6);}
+.lp-final__cta-row{display:inline-flex;flex-wrap:wrap;justify-content:center;gap:12px;position:relative;z-index:1;}
+
+.ph-stack{display:flex;flex-direction:column;height:100%;}
+.ph-head{display:flex;align-items:center;justify-content:space-between;padding:38px 16px 8px;}
+.ph-mark{width:30px;height:30px;border-radius:9px;background:var(--olive-dark);display:grid;place-items:center;}
+.ph-titleblock{display:flex;flex-direction:column;gap:2px;}
+.ph-title{font-size:13px;font-weight:700;line-height:1;color:var(--fg);}
+.ph-by{font-family:var(--lp-en);font-size:8px;letter-spacing:0.16em;color:var(--fg-2);}
+.ph-hero{margin:4px 14px 10px;background:#fff;border:1px solid var(--border);border-radius:16px;padding:16px;position:relative;overflow:hidden;}
+.ph-hero__decoA{position:absolute;top:-14px;right:20px;width:60px;height:60px;border-radius:50%;background:var(--light-green);opacity:0.45;}
+.ph-hero__decoB{position:absolute;top:14px;right:-8px;width:44px;height:44px;border-radius:50%;background:var(--lilac);opacity:0.5;}
+.ph-hero__cap{font-family:var(--lp-en);font-size:9px;font-weight:500;letter-spacing:3px;color:var(--fg-muted);text-transform:uppercase;position:relative;}
+.ph-hero__date{font-size:26px;font-weight:600;letter-spacing:-0.01em;color:var(--fg);margin-top:2px;}
+.ph-hero__pill{margin-top:8px;display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;background:var(--green-light);color:var(--olive-dark);font-size:9px;font-weight:600;}
+.ph-hero__pill::before{content:"";width:5px;height:5px;border-radius:999px;background:var(--olive);}
+.ph-section{font-size:11px;font-weight:600;color:var(--fg);margin:6px 16px;}
+.ph-grid{margin:0 14px 12px;display:grid;grid-template-columns:repeat(4,1fr);gap:5px;}
+.ph-cell{background:#fff;border:1px solid var(--border);border-radius:12px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.ph-cell__ico{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;}
+.ph-cell__lbl{font-size:8px;font-weight:500;color:var(--fg);}
+.ph-agents{margin:0 14px 12px;display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.ph-agent{border-radius:12px;padding:8px;display:flex;align-items:center;gap:8px;border:1px solid;}
+.ph-agent__ico{width:26px;height:26px;border-radius:8px;background:#fff;display:grid;place-items:center;flex-shrink:0;}
+.ph-agent__t{font-size:9.5px;font-weight:600;line-height:1.1;}
+.ph-agent__s{font-size:8px;opacity:0.7;margin-top:1px;}
+.ph-cta{margin:0 14px;background:var(--olive-dark);color:var(--bg);border-radius:14px;padding:11px 12px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;font-weight:600;}
+.ph-tab{margin-top:6px;padding:8px 0 10px;border-top:1px solid var(--border);background:#fff;display:grid;grid-template-columns:repeat(3,1fr);}
+.ph-tab__item{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:8px;color:var(--fg-muted);}
+.ph-tab__item.active{color:var(--olive-dark);font-weight:600;}
+`;
