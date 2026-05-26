@@ -2066,7 +2066,29 @@ export function SayuPage() {
           title: String(entry?.title || entry?.userConfirmedName || entry?.humanReportedName || entry?.aiKoName || entry?.aiPrediction || '식물 판독 결과').slice(0, 48),
           subtitle: [entry?.englishName, entry?.scientificName || entry?.latinName].filter(Boolean).join(' / '),
           color: '#10b981',
-          onOpen: () => setPlantPopupType('assistant'),
+          onOpen: () => navigate('/plant-detective', {
+            state: { from: 'sayu-plant-detective', recordId: record.id, idx, entryIndex: idx },
+          }),
+          extra: (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '0 18px 12px' }}>
+              <button
+                type="button"
+                onClick={() => navigate('/plant-detective', {
+                  state: { from: 'sayu-plant-detective', recordId: record.id, idx, entryIndex: idx },
+                })}
+                style={{ minHeight: 28, padding: '0 10px', borderRadius: 7, border: '1px solid #d8c98a', background: '#fff', color: '#4A5A2C', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
+              >
+                상세보기
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteSinglePlantEntry(record.id, idx)}
+                style={{ minHeight: 28, padding: '0 10px', borderRadius: 7, border: '1px solid #fecaca', background: '#fff', color: '#dc2626', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
+              >
+                삭제
+              </button>
+            </div>
+          ),
         })),
       ),
   ].sort((a, b) => b.date.localeCompare(a.date) || a.label.localeCompare(b.label));
