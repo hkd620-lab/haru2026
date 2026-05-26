@@ -253,7 +253,18 @@ const toSavedPlantDetectiveResult = (entry: any): AdvancedResult => {
   const aiPrediction = String(entry?.aiPrediction || entry?.englishName || entry?.plantName || entry?.title || '').trim();
   const aiKoName = String(entry?.aiKoName || entry?.plantName || entry?.title || '').trim();
   const scientificName = String(entry?.scientificName || entry?.latinName || '').trim();
-  const confidence = toFiniteNumber(entry?.identificationConfidence);
+  const plantIdConfidence = toFiniteNumber(
+    entry?.identificationConfidence ??
+      entry?.plantIdResult?.confidence ??
+      entry?.originalPlantIdResult?.confidence ??
+      entry?.providerResults?.plantId?.confidence,
+  );
+  const plantNetConfidence = toFiniteNumber(
+    entry?.plantNetResult?.confidence ??
+      entry?.originalPlantNetResult?.confidence ??
+      entry?.providerResults?.plantNet?.confidence ??
+      entry?.identificationConfidence,
+  );
   const isPlantProbability = toFiniteNumber(entry?.isPlantProbability);
   const alternatives = Array.isArray(entry?.alternativeCandidates)
     ? entry.alternativeCandidates.map((candidate: any) => ({
@@ -268,7 +279,7 @@ const toSavedPlantDetectiveResult = (entry: any): AdvancedResult => {
       ? {
           name: aiPrediction || aiKoName || '식물 이름 불확실',
           latinName: scientificName,
-          confidence,
+          confidence: plantIdConfidence,
           isPlantProbability,
           family: entry?.taxonomy?.family,
           genus: entry?.taxonomy?.genus,
@@ -280,7 +291,7 @@ const toSavedPlantDetectiveResult = (entry: any): AdvancedResult => {
       ? {
           name: aiPrediction || aiKoName || '식물 이름 불확실',
           scientificName,
-          confidence,
+          confidence: plantNetConfidence,
           koName: aiKoName || null,
           alternatives: [],
         }
@@ -941,6 +952,12 @@ export function PlantDetectivePage() {
         images: photos.map((p) => ({ imageBase64: p.base64, mimeType: p.mimeType })),
       });
       const data = response.data;
+      console.debug('PlantDetective score debug', {
+        plantIdConfidence: data.plantId?.confidence ?? null,
+        plantNetConfidence: data.plantNet?.confidence ?? null,
+        plantIdAlternativeScores: (data.plantId?.alternatives || []).map((c) => c.probability ?? null),
+        plantNetAlternativeScores: (data.plantNet?.alternatives || []).map((c) => c.score ?? null),
+      });
       setResult(data);
       if (data.meta && !data.meta.plantNetAvailable) {
         toast.info('PlantNet 키가 설정되지 않아 Plant.id + Gemini 결과만 표시됩니다.');
