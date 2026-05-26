@@ -3809,6 +3809,46 @@ export function SayuPage() {
                         >
                           식물탐정비서 열기
                         </button>
+                        {plantEntries.length > 0 && (
+                          <div style={{ display: 'grid', gap: 8 }}>
+                            {plantEntries.slice(0, 5).map(({ date, recordId, entry, idx }) => (
+                              <div key={`assistants_inline_${recordId}_${idx}`} style={{ border: '1px solid #f0ead1', borderRadius: 8, background: '#fff', padding: 10 }}>
+                                <button
+                                  type="button"
+                                  onClick={() => navigate('/plant-detective')}
+                                  style={{ width: '100%', border: 'none', background: 'transparent', padding: 0, textAlign: 'left', cursor: 'pointer' }}
+                                >
+                                  <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>{date}</div>
+                                  <div style={{ fontSize: 14, color: '#24301f', fontWeight: 900, marginTop: 2 }}>
+                                    {getPlantTitle(entry)}
+                                  </div>
+                                  <div style={{ fontSize: 11, color: '#6b7654', marginTop: 4 }}>
+                                    클릭하여 식물탐정 상세 화면으로 이동
+                                  </div>
+                                </button>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteSinglePlantEntry(recordId, idx)}
+                                    style={{
+                                      minHeight: 28,
+                                      padding: '0 10px',
+                                      borderRadius: 7,
+                                      border: '1px solid #fecaca',
+                                      background: '#fff',
+                                      color: '#dc2626',
+                                      fontSize: 12,
+                                      fontWeight: 800,
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    삭제
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
 
