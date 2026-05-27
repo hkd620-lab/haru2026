@@ -189,6 +189,37 @@ type PlantDiaryEntry = {
 type PublicPlantCatalogItem = PlantLibraryItem & {
   watermarkText?: string;
   source?: string;
+  visibility?: string;
+  isPublic?: boolean;
+  publicAllowed?: boolean;
+  shareToPublic?: boolean;
+  photoUrl?: string;
+  imageMetas?: PlantImageMeta[];
+  growthPhotos?: any[];
+  fileName?: string;
+  fileNames?: string[];
+  uploadedAt?: any;
+  uploadedAts?: any[];
+  locationLabel?: string;
+  publicLocation?: string;
+  locationName?: string;
+  addressRegion?: string;
+  region?: string;
+  city?: string;
+  province?: string;
+  country?: string;
+  characteristics?: string;
+  features?: string;
+  featureSummary?: string;
+  description?: string;
+  distribution?: string;
+  distributionRegion?: string;
+  habitat?: string;
+  aiKoName?: string;
+  aiPrediction?: string;
+  plantNetResult?: PlantNetSection | null;
+  originalPlantNetResult?: PlantNetSection | null;
+  geminiAnalysis?: GeminiSection | null;
 };
 
 const PHOTO_GUIDE_ITEMS = [
@@ -494,7 +525,11 @@ export function PlantDetectivePage() {
         limit(80),
       );
       const snap = await getDocs(q);
-      setPublicCatalog(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
+      setPublicCatalog(
+        snap.docs
+          .map((d) => ({ id: d.id, ...(d.data() as any) }))
+          .filter(isPublicCatalogVisible),
+      );
     } catch (e) {
       console.warn('하루2026 식물도감 조회 실패:', e);
       setPublicCatalog([]);
@@ -1822,7 +1857,7 @@ export function PlantDetectivePage() {
             ['recent', '최근 판독'],
             ['diary', '성장일기'],
             ['library', '내 도감'],
-            ['catalog', '하루 도감'],
+            ['catalog', '하루공개도감'],
           ].map(([key, label]) => (
             <button
               key={key}
@@ -3558,6 +3593,177 @@ function buildPlantDiaryGroups(entries: PlantDiaryEntry[]): PlantDiaryGroup[] {
     });
 }
 
+type PublicCatalogPhotoItem = {
+  key: string;
+  url: string;
+  dateText: string;
+  sortTime: number;
+};
+
+function isPublicCatalogVisible(item: PublicPlantCatalogItem): boolean {
+  return (
+    item.visibility === 'public_readonly' ||
+    item.visibility === 'public' ||
+    item.isPublic === true ||
+    item.publicAllowed === true ||
+    item.shareToPublic === true
+  );
+}
+
+function tsToDateTimeLabel(value: any): string {
+  const date =
+    typeof value?.toDate === 'function'
+      ? value.toDate()
+      : typeof value === 'number'
+      ? new Date(value)
+      : value
+      ? new Date(value)
+      : null;
+  if (!date || Number.isNaN(date.getTime())) return '';
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const hh = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+}
+
+function getPublicCatalogDisplayName(item: PublicPlantCatalogItem): string {
+  return (
+    item.userConfirmedName ||
+    item.displayName ||
+    item.finalGuess ||
+    item.plantNetResult?.koName ||
+    item.originalPlantNetResult?.koName ||
+    item.aiKoName ||
+    item.aiPrediction ||
+    '식물 이름 불확실'
+  );
+}
+
+function getPublicCatalogScientificText(item: PublicPlantCatalogItem): string {
+  return [item.englishName || item.aiPrediction, item.scientificName || item.finalLatinName]
+    .filter(Boolean)
+    .join(' / ');
+}
+
+function getPublicCatalogFeatureText(item: PublicPlantCatalogItem): string {
+  return (
+    item.characteristics ||
+    item.features ||
+    item.featureSummary ||
+    item.description ||
+    item.geminiAnalysis?.analysis ||
+    '식물 특징 설명이 아직 없습니다.'
+  );
+}
+
+function getPublicCatalogDistributionText(item: PublicPlantCatalogItem): string {
+  return (
+    item.distribution ||
+    item.distributionRegion ||
+    item.habitat ||
+    item.plantNetResult?.family ||
+    item.originalPlantNetResult?.family ||
+    '분포지역 설명이 아직 없습니다.'
+  );
+}
+
+function getPublicCatalogLocationText(item: PublicPlantCatalogItem): string {
+  const coarse = [
+    item.publicLocation,
+    item.locationLabel,
+    item.locationName,
+    item.addressRegion,
+    item.region,
+    item.city,
+    item.province,
+    item.country,
+  ].find((value) => String(value || '').trim());
+  return coarse ? String(coarse).trim() : '촬영 장소 미공개';
+}
+
+function collectPublicCatalogPhotos(item: PublicPlantCatalogItem): PublicCatalogPhotoItem[] {
+  const seen = new Set<string>();
+  const photos: PublicCatalogPhotoItem[] = [];
+  const itemAny = item as any;
+
+  const addPhoto = (urlValue: any, source: any = {}) => {
+    const url = String(urlValue || '').trim();
+    if (!isDisplayablePhotoUrl(url) || seen.has(url)) return;
+    seen.add(url);
+    const actualSource =
+      source?.takenAt ??
+      source?.photoTakenAt ??
+      source?.capturedAt ??
+      source?.createdAt ??
+      source?.uploadedAt;
+    const actualLabel = tsToDateTimeLabel(actualSource) || tsToLabel(actualSource);
+    const inferredLabel = extractDateFromPhotoText(
+      `${url} ${source?.fileName || ''} ${source?.storagePath || ''} ${source?.path || ''}`,
+    );
+    const fallbackSource = itemAny.updatedAt ?? itemAny.createdAt ?? itemAny.uploadedAt;
+    const fallbackLabel = tsToDateTimeLabel(fallbackSource) || tsToLabel(fallbackSource);
+    const dateText = actualLabel
+      ? `촬영일시: ${actualLabel}`
+      : inferredLabel
+      ? `추정일: ${inferredLabel}`
+      : fallbackLabel
+      ? `촬영일시 미확인 · 공개 기록일: ${fallbackLabel}`
+      : '촬영일시 미확인';
+    photos.push({
+      key: `${item.id}_${photos.length}_${url}`,
+      url,
+      dateText,
+      sortTime: plantDiarySortTime(actualSource || inferredLabel || fallbackSource),
+    });
+  };
+
+  const addUnknown = (value: any) => {
+    if (!value) return;
+    if (typeof value === 'string') {
+      addPhoto(value);
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.forEach(addUnknown);
+      return;
+    }
+    if (typeof value === 'object') {
+      addPhoto(value.imageUrl || value.photoUrl || value.downloadUrl || value.url || value.src, value);
+    }
+  };
+
+  addUnknown(item.imageMetas);
+  addUnknown(item.growthPhotos);
+  addPhoto(item.imageUrl, {
+    uploadedAt: item.uploadedAt,
+    fileName: item.fileName,
+  });
+  addPhoto(item.photoUrl, {
+    uploadedAt: item.uploadedAt,
+    fileName: item.fileName,
+  });
+
+  if (Array.isArray(item.photos) && (Array.isArray(item.fileNames) || Array.isArray(item.uploadedAts))) {
+    item.photos.forEach((url, index) => {
+      addPhoto(url, {
+        fileName: item.fileNames?.[index],
+        uploadedAt: item.uploadedAts?.[index],
+      });
+    });
+  } else {
+    addUnknown(item.photos);
+  }
+
+  return photos.sort((a, b) => {
+    if (a.sortTime === b.sortTime) return a.key.localeCompare(b.key);
+    if (!a.sortTime) return 1;
+    if (!b.sortTime) return -1;
+    return a.sortTime - b.sortTime;
+  });
+}
+
 function PlantLibraryPanel({
   plants,
   uploadingId,
@@ -3917,24 +4123,150 @@ function PublicPlantCatalogPanel({
   plants: PublicPlantCatalogItem[];
   isAdmin: boolean;
 }) {
+  const [selectedCatalogId, setSelectedCatalogId] = useState<string | null>(null);
+  const selected = selectedCatalogId ? plants.find((plant) => plant.id === selectedCatalogId) || null : null;
+
   if (plants.length === 0) {
     return (
-      <ResultCard title="🌿 하루2026 식물도감" accent="#0F766E" bg="#ECFDF5">
+      <ResultCard title="🌿 하루공개도감" accent="#0F766E" bg="#ECFDF5">
         <div style={{ fontSize: 13, color: '#37675f', lineHeight: 1.6 }}>
-          하루식물탐정에서 생성한 공개 도감이 여기에 표시됩니다. 개발자 외 사용자는 보기만 할 수 있습니다.
+          공개 허용된 식물 기록이 여기에 표시됩니다. 촬영 장소는 공개용 지역 정보만 보여드립니다.
         </div>
       </ResultCard>
     );
   }
+
+  if (selected) {
+    const displayName = getPublicCatalogDisplayName(selected);
+    const scientificText = getPublicCatalogScientificText(selected);
+    const photos = collectPublicCatalogPhotos(selected);
+    const featureText = getPublicCatalogFeatureText(selected);
+    const distributionText = getPublicCatalogDistributionText(selected);
+    const locationText = getPublicCatalogLocationText(selected);
+    const updatedLabel = tsToDateTimeLabel(selected.updatedAt) || tsToLabel(selected.updatedAt) || '-';
+
+    return (
+      <ResultCard title={`🌿 ${displayName} 공개도감`} accent="#0F766E" bg="#ECFDF5">
+        <button
+          type="button"
+          onClick={() => setSelectedCatalogId(null)}
+          style={{
+            height: 34,
+            borderRadius: 7,
+            border: '1px solid #99d7cc',
+            background: '#fff',
+            color: '#0F766E',
+            fontWeight: 900,
+            fontSize: 12,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '0 10px',
+            cursor: 'pointer',
+          }}
+        >
+          ← 하루공개도감 목록으로
+        </button>
+
+        <div style={{ display: 'grid', gap: 12, marginTop: 12 }}>
+          <section style={{ border: '1px solid #b8dfd5', borderRadius: 8, background: '#fff', padding: 12 }}>
+            <div style={{ fontSize: 11, color: '#5f8d83', fontWeight: 900 }}>PlantNet + 사용자 확정명 기준</div>
+            <h3 style={{ margin: '4px 0 0', fontSize: 22, color: '#123f39', fontWeight: 950 }}>{displayName}</h3>
+            {scientificText && (
+              <div style={{ marginTop: 3, fontSize: 13, color: '#37675f', fontStyle: 'italic' }}>
+                {scientificText}
+              </div>
+            )}
+            <div style={{ marginTop: 8, fontSize: 12, color: '#5f8d83', fontWeight: 800 }}>
+              공개 기록 갱신일: {updatedLabel}
+              {typeof selected.observationCount === 'number' ? ` · 누적 ${selected.observationCount}회` : ''}
+            </div>
+          </section>
+
+          <section>
+            <h4 style={{ margin: '0 0 8px', fontSize: 15, color: '#123f39', fontWeight: 950 }}>사진과 촬영 정보</h4>
+            {photos.length > 0 ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+                {photos.map((photo) => (
+                  <figure
+                    key={photo.key}
+                    style={{
+                      margin: 0,
+                      border: '1px solid #b8dfd5',
+                      borderRadius: 8,
+                      background: '#fff',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <img
+                      src={photo.url}
+                      alt={`${displayName} 공개도감 사진`}
+                      style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', display: 'block' }}
+                    />
+                    <figcaption style={{ padding: 8, display: 'grid', gap: 4 }}>
+                      <div style={{ fontSize: 11, color: '#37675f', fontWeight: 900 }}>{photo.dateText}</div>
+                      <div style={{ fontSize: 11, color: '#5f8d83', fontWeight: 800 }}>
+                        촬영 장소: {locationText}
+                      </div>
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            ) : (
+              <div style={{ border: '1px solid #b8dfd5', borderRadius: 8, background: '#fff', padding: 12, fontSize: 13, color: '#37675f' }}>
+                공개 표시 가능한 사진이 아직 없습니다.
+              </div>
+            )}
+          </section>
+
+          <section style={{ display: 'grid', gap: 10 }}>
+            <div style={{ border: '1px solid #b8dfd5', borderRadius: 8, background: '#fff', padding: 12 }}>
+              <div style={{ fontSize: 13, color: '#0F766E', fontWeight: 950, marginBottom: 5 }}>식물 특징</div>
+              <p style={{ margin: 0, fontSize: 13, color: '#123f39', lineHeight: 1.6 }}>{featureText}</p>
+            </div>
+            <div style={{ border: '1px solid #b8dfd5', borderRadius: 8, background: '#fff', padding: 12 }}>
+              <div style={{ fontSize: 13, color: '#0F766E', fontWeight: 950, marginBottom: 5 }}>분포지역 설명</div>
+              <p style={{ margin: 0, fontSize: 13, color: '#123f39', lineHeight: 1.6 }}>{distributionText}</p>
+            </div>
+            <div style={{ border: '1px solid #b8dfd5', borderRadius: 8, background: '#fff', padding: 12 }}>
+              <div style={{ fontSize: 13, color: '#0F766E', fontWeight: 950, marginBottom: 5 }}>촬영 장소</div>
+              <p style={{ margin: 0, fontSize: 13, color: '#123f39', lineHeight: 1.6 }}>
+                {locationText}
+              </p>
+              <p style={{ margin: '6px 0 0', fontSize: 11, color: '#5f8d83', lineHeight: 1.5 }}>
+                개인정보 보호를 위해 좌표와 상세 주소는 공개하지 않습니다.
+              </p>
+            </div>
+          </section>
+        </div>
+      </ResultCard>
+    );
+  }
+
   return (
-    <ResultCard title="🌿 하루2026 식물도감" accent="#0F766E" bg="#ECFDF5">
+    <ResultCard title="🌿 하루공개도감" accent="#0F766E" bg="#ECFDF5">
+      <p style={{ margin: '0 0 10px', fontSize: 12, color: '#37675f', lineHeight: 1.55 }}>
+        공개 허용된 식물 기록만 표시합니다. 식물명을 누르면 사진, 촬영일시, 공개용 촬영 장소, 특징과 분포지역을 볼 수 있습니다.
+      </p>
       <div style={{ display: 'grid', gap: 10 }}>
         {plants.map((p) => {
-          const photo = p.imageUrl || p.photos?.[0] || '';
-          const displayName = p.displayName || p.userConfirmedName || p.finalGuess || '식물 이름 불확실';
+          const photos = collectPublicCatalogPhotos(p);
+          const photo = photos[0]?.url || p.imageUrl || p.photos?.[0] || '';
+          const displayName = getPublicCatalogDisplayName(p);
+          const scientificText = getPublicCatalogScientificText(p);
+          const locationText = getPublicCatalogLocationText(p);
           return (
             <article
               key={p.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelectedCatalogId(p.id)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  setSelectedCatalogId(p.id);
+                }
+              }}
               style={{
                 position: 'relative',
                 border: '1px solid #b8dfd5',
@@ -3942,6 +4274,7 @@ function PublicPlantCatalogPanel({
                 background: '#fff',
                 padding: 10,
                 overflow: 'hidden',
+                cursor: 'pointer',
               }}
             >
               <div
@@ -3968,14 +4301,18 @@ function PublicPlantCatalogPanel({
                 )}
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ fontSize: 16, fontWeight: 950, color: '#123f39' }}>{displayName}</div>
-                  {(p.englishName || p.scientificName) && (
+                  {scientificText && (
                     <div style={{ fontSize: 12, color: '#37675f', fontStyle: 'italic', marginTop: 2 }}>
-                      {[p.englishName, p.scientificName].filter(Boolean).join(' / ')}
+                      {scientificText}
                     </div>
                   )}
                   <div style={{ fontSize: 11, color: '#5f8d83', marginTop: 5 }}>
                     보기 전용 · {isAdmin ? '개발자 권한' : 'HARU2026 워터마크'}
                     {typeof p.observationCount === 'number' ? ` · ${p.observationCount}회 생성` : ''}
+                    {photos.length > 0 ? ` · 사진 ${photos.length}장` : ''}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#5f8d83', marginTop: 3 }}>
+                    촬영 장소: {locationText}
                   </div>
                 </div>
               </div>
