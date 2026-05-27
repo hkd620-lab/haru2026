@@ -437,6 +437,7 @@ export function PlantDetectivePage() {
   const [userEditedEnglishName, setUserEditedEnglishName] = useState(false);
   const [userEditedScientificName, setUserEditedScientificName] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [shareToPublicCatalog, setShareToPublicCatalog] = useState(true);
   const [confirmedSavedDocId, setConfirmedSavedDocId] = useState<string | null>(null);
   // 현재 결과를 plants/ 컬렉션에 한 번 저장했다면 그 plantId를 기억 — 재저장 시 update
   const [activePlantDocId, setActivePlantDocId] = useState<string | null>(null);
@@ -1450,9 +1451,11 @@ export function PlantDetectivePage() {
       toast.info('먼저 분석을 완료해 주세요.');
       return;
     }
-    const name = userConfirmedName.trim();
+    const aiKoNameFallback = result.plantNet?.koName || result.gemini?.finalGuess || '';
+    const aiPredictionFallback = result.plantNet?.name || result.plantId?.name || result.gemini?.finalGuess || '';
+    const name = userConfirmedName.trim() || aiKoNameFallback || aiPredictionFallback;
     if (name.length === 0) {
-      toast.warning('직접 입력한 식물 이름을 적어 주세요.');
+      toast.warning('분석 결과가 없어 저장할 수 없습니다.');
       return;
     }
     if (name.length > 60) {
@@ -1535,36 +1538,38 @@ export function PlantDetectivePage() {
         { merge: true },
       );
 
-      const catalogDocId = makeCatalogDocId(name, scientificName);
-      await setDoc(
-        doc(db, 'plant_catalog', catalogDocId),
-        {
-          catalogId: catalogDocId,
-          displayName,
-          englishName,
-          scientificName,
-          aiPrediction,
-          aiKoName,
-          userConfirmedName: name,
-          finalGuess: displayName,
-          finalLatinName: displayLatin,
-          photos: imageUrls.slice(0, MAX_PHOTOS),
-          imageUrl: imageUrls[0] || '',
-          ...resultSaveFields,
-          confidence: topConfidence,
-          originalPlantIdResult: result.plantId,
-          originalPlantNetResult: result.plantNet,
-          geminiAnalysis: result.gemini,
-          meta: result.meta,
-          source: 'haru_plant_detective',
-          watermarkText: 'HARU2026 식물탐정',
-          visibility: 'public_readonly',
-          updatedAt: serverTimestamp(),
-          createdAt: serverTimestamp(),
-          observationCount: increment(1),
-        },
-        { merge: true },
-      );
+      if (shareToPublicCatalog) {
+        const catalogDocId = makeCatalogDocId(name, scientificName);
+        await setDoc(
+          doc(db, 'plant_catalog', catalogDocId),
+          {
+            catalogId: catalogDocId,
+            displayName,
+            englishName,
+            scientificName,
+            aiPrediction,
+            aiKoName,
+            userConfirmedName: userConfirmedName.trim(),
+            finalGuess: displayName,
+            finalLatinName: displayLatin,
+            photos: imageUrls.slice(0, MAX_PHOTOS),
+            imageUrl: imageUrls[0] || '',
+            ...resultSaveFields,
+            confidence: topConfidence,
+            originalPlantIdResult: result.plantId,
+            originalPlantNetResult: result.plantNet,
+            geminiAnalysis: result.gemini,
+            meta: result.meta,
+            source: 'haru_plant_detective',
+            watermarkText: 'HARU2026 식물탐정',
+            visibility: 'public_readonly',
+            updatedAt: serverTimestamp(),
+            createdAt: serverTimestamp(),
+            observationCount: increment(1),
+          },
+          { merge: true },
+        );
+      }
 
       if (correctedByUser) {
         const correctionRef = doc(collection(db, 'community_plant_corrections'));
@@ -1909,6 +1914,7 @@ export function PlantDetectivePage() {
 
   const gemini = result?.gemini;
   const showPoisonAlert = Boolean(gemini?.poisonousRisk || gemini?.warning);
+  const userConfirmSaveDisabled = isConfirming || (!result && photos.length === 0);
 
   return (
     <div style={{ minHeight: '100vh', background: '#FEFBE8', color: '#24301f' }}>
@@ -3130,10 +3136,22 @@ export function PlantDetectivePage() {
                   </div>
                 )}
 
+                {/* 공개도감 공개 여부 체크박스 */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#15803D', marginBottom: 8, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={shareToPublicCatalog}
+                    onChange={(e) => setShareToPublicCatalog(e.target.checked)}
+                    disabled={isConfirming}
+                    style={{ width: 16, height: 16, accentColor: '#15803D' }}
+                  />
+                  공개도감에 공개하기
+                </label>
+
                 <button
                   type="button"
                   onClick={saveAsUserConfirmed}
-                  disabled={isConfirming || userConfirmedName.trim().length === 0}
+                  disabled={userConfirmSaveDisabled}
                   style={{
                     marginTop: 12,
                     width: '100%',
@@ -3141,13 +3159,13 @@ export function PlantDetectivePage() {
                     borderRadius: 8,
                     border: '1px solid #15803D',
                     background:
-                      isConfirming || userConfirmedName.trim().length === 0 ? '#DCFCE7' : '#15803D',
+                      userConfirmSaveDisabled ? '#DCFCE7' : '#15803D',
                     color:
-                      isConfirming || userConfirmedName.trim().length === 0 ? '#86efac' : '#fff',
+                      userConfirmSaveDisabled ? '#86efac' : '#fff',
                     fontWeight: 700,
                     fontSize: 13,
                     cursor:
-                      isConfirming || userConfirmedName.trim().length === 0 ? 'not-allowed' : 'pointer',
+                      userConfirmSaveDisabled ? 'not-allowed' : 'pointer',
                   }}
                   title="내가 정한 이름을 내 식물도감에 저장합니다"
                 >
@@ -3210,18 +3228,18 @@ export function PlantDetectivePage() {
                 <button
                   type="button"
                   onClick={saveAsUserConfirmed}
-                  disabled={isConfirming || userConfirmedName.trim().length === 0}
+                  disabled={userConfirmSaveDisabled}
                   title="도감 정보만 빠르게 저장합니다"
                   style={{
                     height: 34,
                     borderRadius: 6,
                     border: '1px solid #BBF7D0',
                     background:
-                      isConfirming || userConfirmedName.trim().length === 0
+                      userConfirmSaveDisabled
                         ? '#F0FDF4'
                         : '#fff',
                     color:
-                      isConfirming || userConfirmedName.trim().length === 0
+                      userConfirmSaveDisabled
                         ? '#86efac'
                         : '#15803D',
                     fontWeight: 600,
@@ -3231,7 +3249,7 @@ export function PlantDetectivePage() {
                     alignItems: 'center',
                     gap: 5,
                     cursor:
-                      isConfirming || userConfirmedName.trim().length === 0
+                      userConfirmSaveDisabled
                         ? 'not-allowed'
                         : 'pointer',
                   }}
