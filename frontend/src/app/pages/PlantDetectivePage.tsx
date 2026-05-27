@@ -158,14 +158,28 @@ type PlantDiaryEntry = {
   id: string;
   recordDate: string;
   plantId?: string;
+  plantRecordId?: string;
+  linkedPlantId?: string;
+  userConfirmedName?: string;
+  aiKoName?: string;
+  aiPrediction?: string;
   plantName?: string;
   title?: string;
   imageUrl?: string;
+  photoUrl?: string;
+  storagePath?: string;
+  photos?: string[];
   imageUrls?: string[];
+  photoUrls?: string[];
+  imageMetas?: PlantImageMeta[];
+  photoMetas?: any[];
+  format_photos?: any;
+  formatPhotos?: any;
   observation?: string;
   aiDifference?: string;
   memo?: string;
   createdAt?: any;
+  updatedAt?: any;
 };
 
 type PublicPlantCatalogItem = PlantLibraryItem & {
@@ -3287,6 +3301,181 @@ function tsToLabel(value: any): string {
   return date.toISOString().slice(0, 10);
 }
 
+type PlantDiaryPhotoItem = {
+  key: string;
+  url: string;
+  dateLabel: string;
+  sortTime: number;
+  title: string;
+};
+
+type PlantDiaryGroup = {
+  key: string;
+  displayName: string;
+  entries: PlantDiaryEntry[];
+  photos: PlantDiaryPhotoItem[];
+  recentDate: string;
+};
+
+function plantDiarySortTime(value: any): number {
+  const date =
+    typeof value?.toDate === 'function'
+      ? value.toDate()
+      : typeof value === 'number'
+      ? new Date(value)
+      : value
+      ? new Date(value)
+      : null;
+  return date && !Number.isNaN(date.getTime()) ? date.getTime() : 0;
+}
+
+function normalizePlantDiaryKey(value: any): string {
+  return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function getPlantDiaryName(entry: PlantDiaryEntry): string {
+  return (
+    entry.userConfirmedName ||
+    entry.plantName ||
+    entry.aiKoName ||
+    entry.title ||
+    entry.aiPrediction ||
+    '식물 관찰'
+  );
+}
+
+function getPlantDiaryGroupKey(entry: PlantDiaryEntry): string {
+  const idKey = normalizePlantDiaryKey(entry.plantId || entry.plantRecordId || entry.linkedPlantId);
+  if (idKey) return `id:${idKey}`;
+  const confirmedKey = normalizePlantDiaryKey(entry.userConfirmedName);
+  if (confirmedKey) return `confirmed:${confirmedKey}`;
+  const nameKey = normalizePlantDiaryKey(entry.plantName || entry.aiKoName);
+  if (nameKey) return `name:${nameKey}`;
+  return `entry:${entry.id}`;
+}
+
+function isDisplayablePhotoUrl(value: any): value is string {
+  const url = String(value || '').trim();
+  return /^(https?:\/\/|data:image\/|blob:)/i.test(url);
+}
+
+function collectPlantDiaryPhotos(entry: PlantDiaryEntry): PlantDiaryPhotoItem[] {
+  const seen = new Set<string>();
+  const photos: PlantDiaryPhotoItem[] = [];
+  const entryAny = entry as any;
+  const name = getPlantDiaryName(entry);
+
+  const addPhoto = (urlValue: any, source: any = {}) => {
+    const url = String(urlValue || '').trim();
+    if (!isDisplayablePhotoUrl(url) || seen.has(url)) return;
+    seen.add(url);
+    const dateSource =
+      source?.takenAt ??
+      source?.photoTakenAt ??
+      source?.createdAt ??
+      entryAny?.takenAt ??
+      entryAny?.photoTakenAt ??
+      entry.createdAt ??
+      entry.recordDate;
+    const dateLabel = tsToLabel(dateSource) || '촬영일 미확인';
+    photos.push({
+      key: `${entry.id}_${photos.length}_${url}`,
+      url,
+      dateLabel,
+      sortTime: plantDiarySortTime(dateSource),
+      title: String(source?.title || entry.title || name),
+    });
+  };
+
+  const addFromUnknown = (value: any) => {
+    if (!value) return;
+    if (typeof value === 'string') {
+      addPhoto(value);
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.forEach(addFromUnknown);
+      return;
+    }
+    if (typeof value === 'object') {
+      const candidateUrl =
+        value.imageUrl ||
+        value.photoUrl ||
+        value.downloadUrl ||
+        value.url ||
+        value.src ||
+        value.storagePath;
+      addPhoto(candidateUrl, value);
+    }
+  };
+
+  addFromUnknown(entry.imageMetas);
+  addFromUnknown(entry.photoMetas);
+  addPhoto(entry.imageUrl, entry);
+  addPhoto(entry.photoUrl, entry);
+  addPhoto(entry.storagePath, entry);
+  addFromUnknown(entry.imageUrls);
+  addFromUnknown(entry.photoUrls);
+  addFromUnknown(entry.photos);
+  addFromUnknown(entry.format_photos);
+  addFromUnknown(entry.formatPhotos);
+
+  return photos.sort((a, b) => {
+    if (a.sortTime === b.sortTime) return a.key.localeCompare(b.key);
+    if (!a.sortTime) return 1;
+    if (!b.sortTime) return -1;
+    return a.sortTime - b.sortTime;
+  });
+}
+
+function buildPlantDiaryGroups(entries: PlantDiaryEntry[]): PlantDiaryGroup[] {
+  const map = new Map<string, PlantDiaryGroup>();
+  entries.forEach((entry) => {
+    const key = getPlantDiaryGroupKey(entry);
+    const displayName = getPlantDiaryName(entry);
+    const group = map.get(key) || {
+      key,
+      displayName,
+      entries: [],
+      photos: [],
+      recentDate: '',
+    };
+    if (group.displayName === '식물 관찰' && displayName !== '식물 관찰') {
+      group.displayName = displayName;
+    }
+    group.entries.push(entry);
+    group.photos.push(...collectPlantDiaryPhotos(entry));
+    map.set(key, group);
+  });
+
+  return Array.from(map.values())
+    .map((group) => {
+      const seenPhotos = new Set<string>();
+      const photos = group.photos.filter((photo) => {
+        if (seenPhotos.has(photo.url)) return false;
+        seenPhotos.add(photo.url);
+        return true;
+      });
+      const sortedEntries = [...group.entries].sort((a, b) => {
+        const bt = plantDiarySortTime(b.updatedAt ?? b.createdAt ?? b.recordDate);
+        const at = plantDiarySortTime(a.updatedAt ?? a.createdAt ?? a.recordDate);
+        return bt - at;
+      });
+      const recent = sortedEntries[0];
+      return {
+        ...group,
+        entries: sortedEntries,
+        photos,
+        recentDate: recent ? tsToLabel(recent.updatedAt ?? recent.createdAt ?? recent.recordDate) || recent.recordDate : '',
+      };
+    })
+    .sort((a, b) => {
+      const bt = plantDiarySortTime(b.entries[0]?.updatedAt ?? b.entries[0]?.createdAt ?? b.entries[0]?.recordDate);
+      const at = plantDiarySortTime(a.entries[0]?.updatedAt ?? a.entries[0]?.createdAt ?? a.entries[0]?.recordDate);
+      return bt - at;
+    });
+}
+
 function PlantLibraryPanel({
   plants,
   uploadingId,
@@ -3398,6 +3587,10 @@ function PlantLibraryPanel({
 }
 
 function PlantDiaryPanel({ entries }: { entries: PlantDiaryEntry[] }) {
+  const groups = useMemo(() => buildPlantDiaryGroups(entries), [entries]);
+  const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null);
+  const selectedGroup = selectedGroupKey ? groups.find((group) => group.key === selectedGroupKey) || null : null;
+
   if (entries.length === 0) {
     return (
       <ResultCard title="📔 성장일기" accent="#4A5A2C" bg="#fffdf4">
@@ -3407,20 +3600,189 @@ function PlantDiaryPanel({ entries }: { entries: PlantDiaryEntry[] }) {
       </ResultCard>
     );
   }
+
+  if (selectedGroup) {
+    return (
+      <ResultCard title={`📔 ${selectedGroup.displayName} 성장기록`} accent="#4A5A2C" bg="#fffdf4">
+        <button
+          type="button"
+          onClick={() => setSelectedGroupKey(null)}
+          style={{
+            height: 34,
+            borderRadius: 7,
+            border: '1px solid #b8c28c',
+            background: '#fff',
+            color: '#4A5A2C',
+            fontWeight: 900,
+            fontSize: 12,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '0 10px',
+            cursor: 'pointer',
+          }}
+        >
+          ← 성장일기 목록으로
+        </button>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(96px, 1fr))',
+            gap: 8,
+            marginTop: 12,
+          }}
+        >
+          <div style={{ border: '1px solid #e5ddbf', borderRadius: 8, background: '#fff', padding: 10 }}>
+            <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>누적 기록</div>
+            <div style={{ fontSize: 18, color: '#24301f', fontWeight: 950, marginTop: 2 }}>{selectedGroup.entries.length}건</div>
+          </div>
+          <div style={{ border: '1px solid #e5ddbf', borderRadius: 8, background: '#fff', padding: 10 }}>
+            <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>사진</div>
+            <div style={{ fontSize: 18, color: '#24301f', fontWeight: 950, marginTop: 2 }}>{selectedGroup.photos.length}장</div>
+          </div>
+          <div style={{ border: '1px solid #e5ddbf', borderRadius: 8, background: '#fff', padding: 10 }}>
+            <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>최근 기록일</div>
+            <div style={{ fontSize: 18, color: '#24301f', fontWeight: 950, marginTop: 2 }}>{selectedGroup.recentDate || '-'}</div>
+          </div>
+        </div>
+
+        <section style={{ marginTop: 14 }}>
+          <h4 style={{ margin: '0 0 8px', fontSize: 15, color: '#24301f', fontWeight: 950 }}>
+            사진으로 보는 성장 변화
+          </h4>
+          {selectedGroup.photos.length > 0 ? (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(132px, 1fr))',
+                gap: 10,
+              }}
+            >
+              {selectedGroup.photos.map((photo) => (
+                <figure
+                  key={photo.key}
+                  style={{
+                    margin: 0,
+                    border: '1px solid #e5ddbf',
+                    borderRadius: 8,
+                    background: '#fff',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <img
+                    src={photo.url}
+                    alt={`${selectedGroup.displayName} 성장사진`}
+                    style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', display: 'block' }}
+                  />
+                  <figcaption style={{ padding: 8 }}>
+                    <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>
+                      {photo.dateLabel === '촬영일 미확인' ? photo.dateLabel : `촬영일: ${photo.dateLabel}`}
+                    </div>
+                    {photo.title && photo.title !== selectedGroup.displayName && (
+                      <div style={{ marginTop: 3, fontSize: 12, color: '#3d4734', fontWeight: 800 }}>
+                        {photo.title}
+                      </div>
+                    )}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          ) : (
+            <div style={{ border: '1px solid #e5ddbf', borderRadius: 8, background: '#fff', padding: 12, fontSize: 13, color: '#6b7654' }}>
+              표시할 사진이 아직 없습니다.
+            </div>
+          )}
+        </section>
+
+        <section style={{ marginTop: 14 }}>
+          <h4 style={{ margin: '0 0 8px', fontSize: 15, color: '#24301f', fontWeight: 950 }}>
+            최근 성장 누적 기록
+          </h4>
+          <div style={{ display: 'grid', gap: 10 }}>
+            {selectedGroup.entries.map((entry) => (
+              <article
+                key={entry.id}
+                style={{
+                  border: '1px solid #e5ddbf',
+                  borderRadius: 8,
+                  background: '#fff',
+                  padding: 12,
+                }}
+              >
+                <div style={{ fontSize: 12, color: '#92996f', fontWeight: 800 }}>
+                  {tsToLabel(entry.updatedAt ?? entry.createdAt ?? entry.recordDate) || entry.recordDate}
+                </div>
+                <div style={{ marginTop: 3, fontSize: 15, color: '#24301f', fontWeight: 950 }}>
+                  {entry.title || getPlantDiaryName(entry)}
+                </div>
+                {entry.observation && (
+                  <p style={{ margin: '7px 0 0', fontSize: 13, color: '#3d4734', lineHeight: 1.55 }}>
+                    {entry.observation}
+                  </p>
+                )}
+                {entry.aiDifference && (
+                  <p style={{ margin: '7px 0 0', fontSize: 12, color: '#7a6a2c', lineHeight: 1.5 }}>
+                    AI와 다른 점: {entry.aiDifference}
+                  </p>
+                )}
+                {entry.memo && (
+                  <p style={{ margin: '7px 0 0', fontSize: 12, color: '#6b7654', lineHeight: 1.5 }}>
+                    메모: {entry.memo}
+                  </p>
+                )}
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <button
+          type="button"
+          disabled
+          style={{
+            marginTop: 14,
+            minHeight: 38,
+            width: '100%',
+            borderRadius: 8,
+            border: '1px solid #d6dabc',
+            background: '#eef0d8',
+            color: '#92996f',
+            fontWeight: 900,
+            fontSize: 13,
+            cursor: 'not-allowed',
+          }}
+        >
+          이 식물 성장기록 사유하기 준비 중
+        </button>
+      </ResultCard>
+    );
+  }
+
   return (
     <ResultCard title="📔 성장일기" accent="#4A5A2C" bg="#fffdf4">
       <div style={{ display: 'grid', gap: 10 }}>
-        {entries.map((entry) => {
-          const photo = entry.imageUrl || entry.imageUrls?.[0] || '';
-          const name = entry.plantName || entry.title || '식물 관찰';
+        {groups.map((group) => {
+          const latest = group.entries[0];
+          const photo = group.photos[0]?.url || latest?.imageUrl || latest?.imageUrls?.[0] || '';
+          const name = group.displayName;
           return (
             <article
-              key={entry.id}
+              key={group.key}
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelectedGroupKey(group.key)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  setSelectedGroupKey(group.key);
+                }
+              }}
               style={{
                 border: '1px solid #e5ddbf',
                 borderRadius: 8,
                 background: '#fff',
                 padding: 10,
+                cursor: 'pointer',
               }}
             >
               <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -3432,23 +3794,30 @@ function PlantDiaryPanel({ entries }: { entries: PlantDiaryEntry[] }) {
                   </div>
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, color: '#92996f', fontWeight: 800 }}>{entry.recordDate}</div>
+                  <div style={{ fontSize: 12, color: '#92996f', fontWeight: 800 }}>
+                    {group.recentDate || latest?.recordDate}
+                    {group.entries.length > 1 ? ` · 누적 ${group.entries.length}건` : ''}
+                    {group.photos.length > 0 ? ` · 사진 ${group.photos.length}장` : ''}
+                  </div>
                   <div style={{ fontSize: 16, color: '#24301f', fontWeight: 900, marginTop: 2 }}>{name}</div>
-                  {entry.observation && (
+                  {latest?.observation && (
                     <p style={{ margin: '6px 0 0', fontSize: 13, color: '#3d4734', lineHeight: 1.55 }}>
-                      {entry.observation}
+                      {latest.observation}
                     </p>
                   )}
-                  {entry.aiDifference && (
+                  {latest?.aiDifference && (
                     <p style={{ margin: '6px 0 0', fontSize: 12, color: '#7a6a2c', lineHeight: 1.5 }}>
-                      AI와 다른 점: {entry.aiDifference}
+                      AI와 다른 점: {latest.aiDifference}
                     </p>
                   )}
-                  {entry.memo && (
+                  {latest?.memo && (
                     <p style={{ margin: '6px 0 0', fontSize: 12, color: '#6b7654', lineHeight: 1.5 }}>
-                      메모: {entry.memo}
+                      메모: {latest.memo}
                     </p>
                   )}
+                  <div style={{ marginTop: 7, fontSize: 11, color: '#92996f', fontWeight: 800 }}>
+                    식물명을 누르면 사진 변화와 누적 성장기록을 볼 수 있습니다.
+                  </div>
                 </div>
               </div>
             </article>
