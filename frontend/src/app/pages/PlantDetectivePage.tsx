@@ -54,7 +54,13 @@ type AdvancedResult = {
   plantId: PlantIdSection | null;
   plantNet: PlantNetSection | null;
   gemini: GeminiSection | null;
-  meta: { imageCount: number; plantNetAvailable: boolean; geminiError: string | null };
+  meta: {
+    imageCount: number;
+    plantNetAvailable: boolean;
+    geminiError: string | null;
+    plantIdStatus?: 'enabled' | 'disabled';
+    plantIdDisabledReason?: string | null;
+  };
 };
 
 // 🌿 NIBR 국내 생물종 보강 정보 (functions: getKoreanPlantInfo 응답)
@@ -112,6 +118,7 @@ type PlantImageMeta = {
 };
 
 const MAX_PHOTOS = 5;
+const SHOW_PLANT_ID_RESULT = false;
 
 // 📚 내 도감 매칭 — 이름 후보 정규화
 function normName(s: string | null | undefined): string {
@@ -960,7 +967,7 @@ export function PlantDetectivePage() {
       });
       setResult(data);
       if (data.meta && !data.meta.plantNetAvailable) {
-        toast.info('PlantNet 키가 설정되지 않아 Plant.id + Gemini 결과만 표시됩니다.');
+        toast.info('PlantNet 결과를 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.');
       }
       // 분석 결과에 등장한 이름들을 사용자 도감에서 매칭 검색 (비동기, 실패해도 무시)
       if (user) {
@@ -1249,7 +1256,7 @@ export function PlantDetectivePage() {
       );
 
       setSavedToToday(true);
-      if (!result.plantId) {
+      if (SHOW_PLANT_ID_RESULT && !result.plantId) {
         toast.info('Plant.id 결과는 가져오지 못했지만 다른 판독 결과는 저장할 수 있습니다.');
       }
       toast.success(`오늘 기록(${today})에 저장되었습니다.`);
@@ -1716,7 +1723,7 @@ export function PlantDetectivePage() {
         setObsSavedAt(`${today} ${hh}:${mm}`);
       }
       await loadPlantDiary();
-      if (!result.plantId) {
+      if (SHOW_PLANT_ID_RESULT && !result.plantId) {
         toast.info('Plant.id 결과는 가져오지 못했지만 다른 판독 결과는 저장할 수 있습니다.');
       }
       toast.success('오늘의 식물 기록과 관찰 내용을 저장했습니다.');
@@ -2305,7 +2312,7 @@ export function PlantDetectivePage() {
             <Leaf size={36} style={{ margin: '0 auto 10px' }} />
             <div style={{ fontWeight: 900 }}>분석 결과가 여기에 표시됩니다</div>
             <div style={{ fontSize: 12, marginTop: 6 }}>
-              Plant.id · PlantNet · HARU AI가 함께 분석합니다.
+              PlantNet · HARU AI가 함께 분석합니다.
             </div>
           </div>
         ) : (
@@ -2491,41 +2498,43 @@ export function PlantDetectivePage() {
             )}
 
             {/* ========== Plant.id 결과 ========== */}
-            <ResultCard title="🧪 Plant.id 결과" accent="#1A3C6E" bg="#EEF3FA">
-              {result.plantId ? (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                    <h4 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>
-                      {result.plantId.name || '식물 이름 불확실'}
-                    </h4>
-                    <span style={{ fontSize: 12, color: '#6b7654', fontStyle: 'italic' }}>
-                      {result.plantId.latinName}
-                    </span>
-                  </div>
-                  <div style={{ marginTop: 4, fontSize: 13, color: '#1A3C6E', fontWeight: 700 }}>
-                    {confidenceText(result.plantId.confidence)}
-                    {result.plantId.family && (
-                      <span style={{ marginLeft: 8, color: '#6b7654', fontWeight: 500 }}>
-                        · {result.plantId.family}
-                        {result.plantId.genus ? ` / ${result.plantId.genus}` : ''}
+            {SHOW_PLANT_ID_RESULT && (
+              <ResultCard title="🧪 Plant.id 결과" accent="#1A3C6E" bg="#EEF3FA">
+                {result.plantId ? (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                      <h4 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>
+                        {result.plantId.name || '식물 이름 불확실'}
+                      </h4>
+                      <span style={{ fontSize: 12, color: '#6b7654', fontStyle: 'italic' }}>
+                        {result.plantId.latinName}
                       </span>
+                    </div>
+                    <div style={{ marginTop: 4, fontSize: 13, color: '#1A3C6E', fontWeight: 700 }}>
+                      {confidenceText(result.plantId.confidence)}
+                      {result.plantId.family && (
+                        <span style={{ marginLeft: 8, color: '#6b7654', fontWeight: 500 }}>
+                          · {result.plantId.family}
+                          {result.plantId.genus ? ` / ${result.plantId.genus}` : ''}
+                        </span>
+                      )}
+                    </div>
+                    {result.plantId.alternatives.length > 0 && (
+                      <CandList
+                        label="다른 가능성"
+                        items={result.plantId.alternatives.map((c) => ({
+                          name: c.name,
+                          sub: c.latinName,
+                          score: c.probability,
+                        }))}
+                      />
                     )}
-                  </div>
-                  {result.plantId.alternatives.length > 0 && (
-                    <CandList
-                      label="다른 가능성"
-                      items={result.plantId.alternatives.map((c) => ({
-                        name: c.name,
-                        sub: c.latinName,
-                        score: c.probability,
-                      }))}
-                    />
-                  )}
-                </>
-              ) : (
-                <div style={{ fontSize: 13, color: '#6b7654' }}>Plant.id 결과를 가져오지 못했습니다.</div>
-              )}
-            </ResultCard>
+                  </>
+                ) : (
+                  <div style={{ fontSize: 13, color: '#6b7654' }}>Plant.id 결과를 가져오지 못했습니다.</div>
+                )}
+              </ResultCard>
+            )}
 
             {/* ========== PlantNet 결과 ========== */}
             <ResultCard title="🌍 PlantNet 결과 (k-world-flora)" accent="#0F766E" bg="#ECFDF5">
@@ -2567,7 +2576,7 @@ export function PlantDetectivePage() {
               ) : (
                 <div style={{ fontSize: 13, color: '#6b7654' }}>
                   {result.meta?.plantNetAvailable === false
-                    ? 'PlantNet API 키가 아직 설정되지 않았어요. Plant.id 결과만으로 분석했습니다.'
+                    ? 'PlantNet API 키가 아직 설정되지 않았어요. 잠시 후 다시 시도해 주세요.'
                     : 'PlantNet 결과를 가져오지 못했습니다 (식물 특징이 부족하거나 일시적 오류).'}
                 </div>
               )}
