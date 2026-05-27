@@ -167,5 +167,35 @@ service cloud.firestore {
       allow write, delete: if request.auth != null
         && request.auth.uid == 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
     }
+
+    // 🌿 하루공개도감 — 공개 카탈로그 및 댓글
+    match /plant_catalog/{catalogId} {
+      // 공개도감 읽기: 누구나 허용
+      allow read: if true;
+
+      // 공개도감 생성·수정: 로그인 사용자만 (커뮤니티 기여 방식)
+      allow create, update: if request.auth != null;
+
+      // 공개도감 삭제: 관리자만
+      allow delete: if request.auth != null
+        && request.auth.uid == 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+
+      match /comments/{commentId} {
+        // 댓글 읽기: 누구나 허용
+        allow read: if true;
+
+        // 댓글 작성: 로그인 사용자 + 본인 uid 일치 확인
+        allow create: if request.auth != null
+          && request.resource.data.uid == request.auth.uid;
+
+        // 댓글 삭제: 본인 또는 관리자만
+        allow delete: if request.auth != null
+          && (resource.data.uid == request.auth.uid
+            || request.auth.uid == 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8');
+
+        // 댓글 수정: 허용 안 함
+        allow update: if false;
+      }
+    }
   }
 }
