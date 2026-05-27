@@ -4,13 +4,14 @@ import { ArrowLeft, Camera, Leaf, Loader2, Search, X, Save, AlertTriangle, Chevr
 import { useLocation, useNavigate } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { doc, getDoc, setDoc, arrayUnion, collection, getDocs, query, where, limit, serverTimestamp, increment, orderBy } from 'firebase/firestore';
+import { doc, getDoc, setDoc, arrayUnion, collection, getDocs, query, where, limit, serverTimestamp, increment, orderBy, addDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { db, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { compressImage } from '../services/imageService';
 import type { PlantAsset, PlantAssetSourceType } from '../types/haruTypes';
 import { lookupPlantAlias } from '../data/plantNameAliases';
+import { firestoreService } from '../services/firestoreService';
 import { useSubscription } from '../hooks/useSubscription';
 
 // ===========================================
@@ -4260,8 +4261,72 @@ function PublicPlantCatalogPanel({
   plants: PublicPlantCatalogItem[];
   isAdmin: boolean;
 }) {
+  const { user } = useAuth();
   const [selectedCatalogId, setSelectedCatalogId] = useState<string | null>(null);
   const selected = selectedCatalogId ? plants.find((plant) => plant.id === selectedCatalogId) || null : null;
+
+  // 댓글 관련 state
+  const [comments, setComments] = useState<{
+    id: string;
+    uid: string;
+    nickname: string;
+    text: string;
+    createdAt: any;
+  }[]>([]);
+  const [commentText, setCommentText] = useState('');
+  const [commentNickname, setCommentNickname] = useState('');
+  const [commentLoading, setCommentLoading] = useState(false);
+
+  // 로그인 사용자 닉네임 로드 (마운트 시 1회)
+  useEffect(() => {
+    if (!user) return;
+    firestoreService.getUserProfile(user.uid).then((profile: any) => {
+      const name = profile?.nickname || profile?.realName || user.displayName || user.email?.split('@')[0] || 'User';
+      setCommentNickname(name);
+    });
+  }, [user]);
+
+  // 선택한 도감 항목이 바뀔 때마다 댓글 실시간 구독
+  useEffect(() => {
+    if (!selectedCatalogId) return;
+    const q = query(
+      collection(db, 'plant_catalog', selectedCatalogId, 'comments'),
+      orderBy('createdAt', 'asc')
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      setComments(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)));
+    });
+    return () => unsub();
+  }, [selectedCatalogId]);
+
+  // 댓글 작성
+  const handleAddComment = async () => {
+    if (!user || !commentText.trim() || !selectedCatalogId) return;
+    if (!commentNickname) return;
+    setCommentLoading(true);
+    try {
+      await addDoc(
+        collection(db, 'plant_catalog', selectedCatalogId, 'comments'),
+        {
+          uid: user.uid,
+          nickname: commentNickname,
+          text: commentText.trim(),
+          createdAt: serverTimestamp(),
+        }
+      );
+      setCommentText('');
+    } finally {
+      setCommentLoading(false);
+    }
+  };
+
+  // 댓글 삭제
+  const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+  const handleDeleteComment = async (commentId: string, commentUid: string) => {
+    if (!user) return;
+    if (user.uid !== commentUid && user.uid !== ADMIN_UID) return;
+    await deleteDoc(doc(db, 'plant_catalog', selectedCatalogId!, 'comments', commentId));
+  };
 
   if (plants.length === 0) {
     return (
@@ -4375,6 +4440,84 @@ function PublicPlantCatalogPanel({
               </p>
             </div>
           </section>
+
+          {/* 댓글 영역 */}
+          <div style={{ marginTop: 32, borderTop: '1px solid #e5e7eb', paddingTop: 20 }}>
+            <h4 style={{ fontSize: 15, fontWeight: 600, color: '#1A3C6E', marginBottom: 12 }}>
+              💬 댓글 {comments.length > 0 ? `(${comments.length})` : ''}
+            </h4>
+
+            {/* 댓글 목록 */}
+            {comments.length === 0 ? (
+              <p style={{ fontSize: 13, color: '#9ca3af', marginBottom: 16 }}>
+                첫 번째 댓글을 남겨보세요.
+              </p>
+            ) : (
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 16px 0' }}>
+                {comments.map(c => (
+                  <li key={c.id} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+                    padding: '8px 0', borderBottom: '1px solid #f3f4f6'
+                  }}>
+                    <div>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginRight: 8 }}>
+                        {c.nickname}
+                      </span>
+                      <span style={{ fontSize: 13, color: '#374151' }}>{c.text}</span>
+                      <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+                        {c.createdAt?.toDate?.()?.toLocaleDateString('ko-KR') ?? ''}
+                      </div>
+                    </div>
+                    {user && (user.uid === c.uid || user.uid === ADMIN_UID) && (
+                      <button
+                        onClick={() => handleDeleteComment(c.id, c.uid)}
+                        style={{
+                          fontSize: 11, color: '#ef4444', background: 'none',
+                          border: 'none', cursor: 'pointer', marginLeft: 8, flexShrink: 0
+                        }}
+                      >
+                        삭제
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {/* 댓글 입력 */}
+            {user ? (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type="text"
+                  value={commentText}
+                  onChange={e => setCommentText(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) handleAddComment(); }}
+                  placeholder="댓글을 입력하세요..."
+                  maxLength={200}
+                  style={{
+                    flex: 1, fontSize: 16, padding: '8px 12px',
+                    border: '1px solid #d1d5db', borderRadius: 8, outline: 'none'
+                  }}
+                />
+                <button
+                  onClick={handleAddComment}
+                  disabled={commentLoading || !commentText.trim() || !commentNickname}
+                  style={{
+                    fontSize: 13, padding: '8px 16px', borderRadius: 8,
+                    background: '#1A3C6E', color: '#fff', border: 'none',
+                    cursor: commentLoading ? 'not-allowed' : 'pointer',
+                    opacity: (!commentText.trim() || !commentNickname) ? 0.5 : 1
+                  }}
+                >
+                  {commentLoading ? '...' : '등록'}
+                </button>
+              </div>
+            ) : (
+              <p style={{ fontSize: 13, color: '#6b7280' }}>
+                로그인하면 댓글을 남길 수 있어요.
+              </p>
+            )}
+          </div>
         </div>
       </ResultCard>
     );
