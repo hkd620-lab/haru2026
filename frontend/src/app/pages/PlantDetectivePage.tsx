@@ -103,17 +103,25 @@ type PhotoItem = {
   id: string;
   previewUrl: string;
   base64: string;
+  thumbnailBase64?: string;
   mimeType: string;
+  thumbnailMimeType?: string;
   downloadUrl?: string;
+  thumbnailUrl?: string;
   storagePath?: string;
+  thumbnailStoragePath?: string;
   fileName?: string;
+  thumbnailFileName?: string;
   uploadedAt?: number;
 };
 
 type PlantImageMeta = {
   imageUrl: string;
+  thumbnailUrl?: string;
   storagePath: string;
+  thumbnailStoragePath?: string;
   fileName: string;
+  thumbnailFileName?: string;
   uploadedAt: number;
 };
 
@@ -255,6 +263,14 @@ function base64ToBlob(base64: string, mimeType: string): Blob {
     chunks.push(bytes);
   }
   return new Blob(chunks, { type: mimeType || 'image/jpeg' });
+}
+
+async function createPlantImageVariants(file: File): Promise<{ original: Blob; thumbnail: Blob }> {
+  const [original, thumbnail] = await Promise.all([
+    compressImage(file, 1024, 0.82),
+    compressImage(file, 300, 0.75),
+  ]);
+  return { original, thumbnail };
 }
 
 function normalizeConfidence(value: any): number | null {
@@ -604,8 +620,11 @@ export function PlantDetectivePage() {
           base64: '',
           mimeType: 'image/jpeg',
           downloadUrl: url,
+          thumbnailUrl: savedImageMetas[index]?.thumbnailUrl || '',
           storagePath: savedImageMetas[index]?.storagePath || '',
+          thumbnailStoragePath: savedImageMetas[index]?.thumbnailStoragePath || '',
           fileName: savedImageMetas[index]?.fileName || '',
+          thumbnailFileName: savedImageMetas[index]?.thumbnailFileName || '',
           uploadedAt: savedImageMetas[index]?.uploadedAt || createdAt || 0,
         })));
         setResult(toSavedPlantDetectiveResult(entry));
@@ -764,13 +783,16 @@ export function PlantDetectivePage() {
           toast.error(`'${file.name}' 은 20MB를 초과해요.`);
           continue;
         }
-        const compressed = await compressImage(file, 1024, 0.82);
-        const base64 = await blobToBase64(compressed);
+        const { original, thumbnail } = await createPlantImageVariants(file);
+        const base64 = await blobToBase64(original);
+        const thumbnailBase64 = await blobToBase64(thumbnail);
         next.push({
           id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-          previewUrl: URL.createObjectURL(compressed),
+          previewUrl: URL.createObjectURL(thumbnail),
           base64,
-          mimeType: compressed.type || file.type || 'image/jpeg',
+          thumbnailBase64,
+          mimeType: original.type || file.type || 'image/jpeg',
+          thumbnailMimeType: thumbnail.type || 'image/jpeg',
         });
       }
       if (next.length > 0) {
@@ -1208,6 +1230,97 @@ export function PlantDetectivePage() {
     return { plantId, today, createdAt: ts, imageUrls, imageMetas };
   };
 
+  const ensureUserConfirmedPlantDocAssets = async (): Promise<{
+    plantId: string;
+    today: string;
+    createdAt: number;
+    imageUrls: string[];
+    imageMetas: PlantImageMeta[];
+  }> => {
+    if (!user) throw new Error('UNAUTH');
+    if (
+      activePlantDocId &&
+      activePlantImageUrls.length > 0 &&
+      activePlantImageMetas.some((meta) => Boolean(meta.thumbnailUrl)) &&
+      activePlantCreatedAt
+    ) {
+      const d = new Date(activePlantCreatedAt);
+      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return {
+        plantId: activePlantDocId,
+        today,
+        createdAt: activePlantCreatedAt,
+        imageUrls: activePlantImageUrls,
+        imageMetas: activePlantImageMetas,
+      };
+    }
+
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const today = `${yyyy}-${mm}-${dd}`;
+    const ts = Date.now();
+    const plantId = activePlantDocId || `plant_${today}_${ts}_${Math.random().toString(36).slice(2, 8)}`;
+    const storage = getStorage();
+    const imageUrls: string[] = [];
+    const imageMetas: PlantImageMeta[] = [];
+
+    for (let i = 0; i < photos.length; i++) {
+      const p = photos[i];
+      const fileName = `${plantId}_${i + 1}.jpg`;
+      const originalFileName = `orig_${fileName}`;
+      const thumbnailFileName = `thumb_${fileName}`;
+      const originalPath = `users/${user.uid}/plants/${originalFileName}`;
+      const thumbnailPath = `users/${user.uid}/plants/${thumbnailFileName}`;
+      const existingUrl = p.downloadUrl || (/^https?:\/\//.test(p.previewUrl) ? p.previewUrl : '');
+
+      if (!p.base64 && existingUrl) {
+        const existingThumbnailUrl = p.thumbnailUrl || existingUrl;
+        imageUrls.push(existingUrl);
+        imageMetas.push({
+          imageUrl: existingUrl,
+          thumbnailUrl: existingThumbnailUrl,
+          storagePath: p.storagePath || '',
+          thumbnailStoragePath: p.thumbnailStoragePath || '',
+          fileName: p.fileName || '',
+          thumbnailFileName: p.thumbnailFileName || '',
+          uploadedAt: p.uploadedAt || ts,
+        });
+        continue;
+      }
+
+      const originalBlob = base64ToBlob(p.base64, p.mimeType || 'image/jpeg');
+      const thumbnailBlob = p.thumbnailBase64
+        ? base64ToBlob(p.thumbnailBase64, p.thumbnailMimeType || 'image/jpeg')
+        : originalBlob;
+      const originalRef = ref(storage, originalPath);
+      const thumbnailRef = ref(storage, thumbnailPath);
+      await uploadBytes(originalRef, originalBlob, { contentType: originalBlob.type || 'image/jpeg' });
+      await uploadBytes(thumbnailRef, thumbnailBlob, { contentType: thumbnailBlob.type || 'image/jpeg' });
+      const [originalUrl, thumbnailUrl] = await Promise.all([
+        getDownloadURL(originalRef),
+        getDownloadURL(thumbnailRef),
+      ]);
+      imageUrls.push(originalUrl);
+      imageMetas.push({
+        imageUrl: originalUrl,
+        thumbnailUrl,
+        storagePath: originalPath,
+        thumbnailStoragePath: thumbnailPath,
+        fileName: originalFileName,
+        thumbnailFileName,
+        uploadedAt: ts,
+      });
+    }
+
+    setActivePlantDocId(plantId);
+    setActivePlantImageUrls(imageUrls);
+    setActivePlantImageMetas(imageMetas);
+    setActivePlantCreatedAt(ts);
+    return { plantId, today, createdAt: ts, imageUrls, imageMetas };
+  };
+
   const buildResultSaveFields = (imageMetas: PlantImageMeta[], updatedAt: number) => {
     const primaryImage = imageMetas[0];
     const aiScientificName =
@@ -1217,13 +1330,19 @@ export function PlantDetectivePage() {
       '';
     return {
       photoUrl: primaryImage?.imageUrl || '',
+      thumbnailUrl: primaryImage?.thumbnailUrl || '',
       storagePath: primaryImage?.storagePath || '',
+      thumbnailStoragePath: primaryImage?.thumbnailStoragePath || '',
       fileName: primaryImage?.fileName || '',
+      thumbnailFileName: primaryImage?.thumbnailFileName || '',
       uploadedAt: primaryImage?.uploadedAt || updatedAt,
       imageMetas,
       storagePaths: imageMetas.map((meta) => meta.storagePath).filter(Boolean),
+      thumbnailStoragePaths: imageMetas.map((meta) => meta.thumbnailStoragePath).filter(Boolean),
       fileNames: imageMetas.map((meta) => meta.fileName).filter(Boolean),
+      thumbnailFileNames: imageMetas.map((meta) => meta.thumbnailFileName).filter(Boolean),
       uploadedAts: imageMetas.map((meta) => meta.uploadedAt),
+      thumbnailUrls: imageMetas.map((meta) => meta.thumbnailUrl).filter(Boolean),
       aiScientificName,
       plantNetResult: result?.plantNet || null,
       plantIdResult: result?.plantId || null,
@@ -1342,7 +1461,7 @@ export function PlantDetectivePage() {
     }
     setIsConfirming(true);
     try {
-      const { plantId, today, createdAt, imageUrls, imageMetas } = await ensurePlantDocAssets();
+      const { plantId, today, createdAt, imageUrls, imageMetas } = await ensureUserConfirmedPlantDocAssets();
       const { name: displayName, latin: displayLatin, englishName, scientificName, confidence: topConfidence } = buildDisplayName();
       const aiPrediction = result.plantNet?.name || result.plantId?.name || result.gemini?.finalGuess || '';
       const aiKoName = result.plantNet?.koName || result.gemini?.finalGuess || '';
