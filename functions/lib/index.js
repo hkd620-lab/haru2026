@@ -4875,6 +4875,15 @@ exports.analyzePlantPhoto = (0, https_2.onCall)({
         kindwiseError: kindwiseError || null,
     };
 });
+// ============================================================
+// 🌿 detectPlantAdvanced — Plant.id + PlantNet + Gemini 교차검증
+// ============================================================
+// - Plant.id (Kindwise): 1차 식별 (전세계 도감 + 확률)
+// - PlantNet k-world-flora: 2차 교차검증 (다중 사진 활용, 한국 산야초 강세)
+// - Gemini: 두 결과를 비교 분석 + 독초/유사종/추가촬영 안내
+// - 어느 한 API 실패해도 graceful fallback (남은 결과로 분석 진행)
+const ENABLE_KINDWISE_PLANT_ID = false;
+const KINDWISE_PLANT_ID_DISABLED_REASON = 'Kindwise Plant.id는 향후 지원금 확보 후 활성화 예정';
 async function callPlantNetIdentification(images, apiKey) {
     var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m, _o, _p;
     if (!apiKey)
@@ -5234,11 +5243,19 @@ exports.detectPlantAdvanced = (0, https_2.onCall)({
     catch (_e) {
         plantNetKey = '';
     }
-    // Plant.id는 단일 이미지만 받음 → 첫 사진 사용
-    const plantIdPromise = callKindwiseIdentification(images[0].base64, images[0].mimeType, KINDWISE_PLANT_ID_API_KEY_SECRET.value()).catch((e) => {
-        logger.warn('Plant.id 실패 — 계속 진행: ' + ((e === null || e === void 0 ? void 0 : e.message) || 'unknown'));
-        return null;
-    });
+    // Plant.id는 Kindwise 크레딧 확보 후 다시 활성화할 수 있도록 호출부를 보존한다.
+    const plantIdPromise = ENABLE_KINDWISE_PLANT_ID
+        ? callKindwiseIdentification(images[0].base64, images[0].mimeType, KINDWISE_PLANT_ID_API_KEY_SECRET.value()).catch((e) => {
+            logger.warn('Plant.id 실패 — 계속 진행: ' + ((e === null || e === void 0 ? void 0 : e.message) || 'unknown'));
+            return null;
+        })
+        : Promise.resolve(null);
+    if (!ENABLE_KINDWISE_PLANT_ID) {
+        logger.info('Plant.id 호출 생략', {
+            plantIdStatus: 'disabled',
+            reason: KINDWISE_PLANT_ID_DISABLED_REASON,
+        });
+    }
     // PlantNet은 모든 이미지를 함께 전달 (정확도 ↑)
     const plantNetPromise = plantNetKey
         ? callPlantNetIdentification(images, plantNetKey).catch((e) => {
@@ -5309,6 +5326,8 @@ exports.detectPlantAdvanced = (0, https_2.onCall)({
         meta: {
             imageCount: images.length,
             plantNetAvailable: Boolean(plantNetKey),
+            plantIdStatus: ENABLE_KINDWISE_PLANT_ID ? 'enabled' : 'disabled',
+            plantIdDisabledReason: ENABLE_KINDWISE_PLANT_ID ? null : KINDWISE_PLANT_ID_DISABLED_REASON,
             geminiError: geminiError || null,
         },
     };
