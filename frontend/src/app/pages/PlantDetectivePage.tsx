@@ -175,6 +175,10 @@ type PlantDiaryEntry = {
   photoMetas?: any[];
   format_photos?: any;
   formatPhotos?: any;
+  takenAt?: any;
+  photoTakenAt?: any;
+  capturedAt?: any;
+  uploadedAt?: any;
   observation?: string;
   aiDifference?: string;
   memo?: string;
@@ -3305,6 +3309,8 @@ type PlantDiaryPhotoItem = {
   key: string;
   url: string;
   dateLabel: string;
+  dateKind: 'actual' | 'estimated' | 'record' | 'unknown';
+  recordDateLabel: string;
   sortTime: number;
   title: string;
 };
@@ -3359,32 +3365,108 @@ function isDisplayablePhotoUrl(value: any): value is string {
   return /^(https?:\/\/|data:image\/|blob:)/i.test(url);
 }
 
+function extractDateFromPhotoText(value: any): string {
+  const text = decodeURIComponent(String(value || ''));
+  const match = text.match(/(^|[^\d])((?:19|20)\d{2})[-_]?([01]\d)[-_]?([0-3]\d)([^\d]|$)/);
+  if (!match) return '';
+  const label = `${match[2]}-${match[3]}-${match[4]}`;
+  return tsToLabel(label) === label ? label : '';
+}
+
+function resolvePlantDiaryPhotoDate(
+  entry: PlantDiaryEntry,
+  source: any,
+  url: string,
+  useEntryPhotoFields: boolean,
+): { dateLabel: string; dateKind: PlantDiaryPhotoItem['dateKind']; recordDateLabel: string; sortTime: number } {
+  const entryAny = entry as any;
+  const sourceAny = source || {};
+  const actualDateSource = useEntryPhotoFields
+    ? entryAny.takenAt ?? entryAny.photoTakenAt ?? entryAny.capturedAt ?? entryAny.uploadedAt
+    : sourceAny.takenAt ?? sourceAny.photoTakenAt ?? sourceAny.capturedAt ?? sourceAny.createdAt ?? sourceAny.uploadedAt;
+  const actualLabel = tsToLabel(actualDateSource);
+  if (actualLabel) {
+    return {
+      dateLabel: actualLabel,
+      dateKind: 'actual',
+      recordDateLabel: tsToLabel(entry.recordDate) || entry.recordDate || '',
+      sortTime: plantDiarySortTime(actualDateSource),
+    };
+  }
+
+  const inferredLabel = extractDateFromPhotoText(
+    `${url} ${sourceAny.fileName || ''} ${sourceAny.storagePath || ''} ${sourceAny.path || ''}`,
+  );
+  if (inferredLabel) {
+    return {
+      dateLabel: inferredLabel,
+      dateKind: 'estimated',
+      recordDateLabel: tsToLabel(entry.recordDate) || entry.recordDate || '',
+      sortTime: plantDiarySortTime(inferredLabel),
+    };
+  }
+
+  const recordDateLabel = tsToLabel(entry.recordDate) || entry.recordDate || '';
+  return {
+    dateLabel: recordDateLabel || '촬영일 미확인',
+    dateKind: recordDateLabel ? 'record' : 'unknown',
+    recordDateLabel,
+    sortTime: plantDiarySortTime(entry.updatedAt ?? entry.createdAt ?? entry.recordDate),
+  };
+}
+
+function plantDiaryPhotoDateText(photo: PlantDiaryPhotoItem): string {
+  if (photo.dateKind === 'actual') return `촬영일: ${photo.dateLabel}`;
+  if (photo.dateKind === 'estimated') return `추정일: ${photo.dateLabel}`;
+  if (photo.dateKind === 'record') return `촬영일 미확인 · 기록일: ${photo.recordDateLabel}`;
+  return '촬영일 미확인';
+}
+
+function logPlantDiaryPhotoDateDebug(entry: PlantDiaryEntry, source: any, photo: PlantDiaryPhotoItem) {
+  if (typeof window === 'undefined') return;
+  if (!window.location.search.includes('plantDiaryPhotoDebug=1')) return;
+  console.log('PlantDiary photo date debug', {
+    entryId: entry.id,
+    recordDate: entry.recordDate,
+    imageUrl: entry.imageUrl,
+    photoUrl: entry.photoUrl,
+    photos: entry.photos,
+    imageUrls: entry.imageUrls,
+    storagePath: entry.storagePath,
+    fileName: source?.fileName,
+    uploadedAt: source?.uploadedAt,
+    createdAt: source?.createdAt,
+    takenAt: source?.takenAt ?? (entry as any).takenAt,
+    photoTakenAt: source?.photoTakenAt ?? (entry as any).photoTakenAt,
+    capturedAt: source?.capturedAt ?? (entry as any).capturedAt,
+    dateKind: photo.dateKind,
+    dateLabel: photo.dateLabel,
+    recordDateLabel: photo.recordDateLabel,
+    url: photo.url,
+  });
+}
+
 function collectPlantDiaryPhotos(entry: PlantDiaryEntry): PlantDiaryPhotoItem[] {
   const seen = new Set<string>();
   const photos: PlantDiaryPhotoItem[] = [];
-  const entryAny = entry as any;
   const name = getPlantDiaryName(entry);
 
-  const addPhoto = (urlValue: any, source: any = {}) => {
+  const addPhoto = (urlValue: any, source: any = {}, useEntryPhotoFields = false) => {
     const url = String(urlValue || '').trim();
     if (!isDisplayablePhotoUrl(url) || seen.has(url)) return;
     seen.add(url);
-    const dateSource =
-      source?.takenAt ??
-      source?.photoTakenAt ??
-      source?.createdAt ??
-      entryAny?.takenAt ??
-      entryAny?.photoTakenAt ??
-      entry.createdAt ??
-      entry.recordDate;
-    const dateLabel = tsToLabel(dateSource) || '촬영일 미확인';
-    photos.push({
+    const date = resolvePlantDiaryPhotoDate(entry, source, url, useEntryPhotoFields);
+    const photo = {
       key: `${entry.id}_${photos.length}_${url}`,
       url,
-      dateLabel,
-      sortTime: plantDiarySortTime(dateSource),
+      dateLabel: date.dateLabel,
+      dateKind: date.dateKind,
+      recordDateLabel: date.recordDateLabel,
+      sortTime: date.sortTime,
       title: String(source?.title || entry.title || name),
-    });
+    };
+    photos.push(photo);
+    logPlantDiaryPhotoDateDebug(entry, source, photo);
   };
 
   const addFromUnknown = (value: any) => {
@@ -3411,9 +3493,9 @@ function collectPlantDiaryPhotos(entry: PlantDiaryEntry): PlantDiaryPhotoItem[] 
 
   addFromUnknown(entry.imageMetas);
   addFromUnknown(entry.photoMetas);
-  addPhoto(entry.imageUrl, entry);
-  addPhoto(entry.photoUrl, entry);
-  addPhoto(entry.storagePath, entry);
+  addPhoto(entry.imageUrl, entry, true);
+  addPhoto(entry.photoUrl, entry, true);
+  addPhoto(entry.storagePath, entry, true);
   addFromUnknown(entry.imageUrls);
   addFromUnknown(entry.photoUrls);
   addFromUnknown(entry.photos);
@@ -3677,7 +3759,7 @@ function PlantDiaryPanel({ entries }: { entries: PlantDiaryEntry[] }) {
                   />
                   <figcaption style={{ padding: 8 }}>
                     <div style={{ fontSize: 11, color: '#92996f', fontWeight: 800 }}>
-                      {photo.dateLabel === '촬영일 미확인' ? photo.dateLabel : `촬영일: ${photo.dateLabel}`}
+                      {plantDiaryPhotoDateText(photo)}
                     </div>
                     {photo.title && photo.title !== selectedGroup.displayName && (
                       <div style={{ marginTop: 3, fontSize: 12, color: '#3d4734', fontWeight: 800 }}>
