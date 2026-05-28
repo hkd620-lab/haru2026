@@ -49,21 +49,6 @@ const FORMATS: { name: string; icon: string; hue: Hue; cat: string; badge?: stri
   { name: '하루LAW',      icon: 'law',       hue: 'terracotta', cat: '전문' },
 ];
 
-/* ── 실제 비서실 "HARU의 날개" (역할·beta 그대로) ── */
-const AGENTS: { emoji: string; title: string; sub: string; desc: string; hue: Hue; beta?: boolean; placeholder?: boolean }[] = [
-  { emoji: '🔮', title: 'HARU미래전망', sub: 'DAILY ORACLE', desc: '오늘의 한 줄 기록이 모여 당신의 미래를 전망합니다.', hue: 'lilac' },
-  { emoji: '⚖️', title: '하루LAW', sub: 'LAW · 판례', desc: '법령·판례를 정부 데이터 그대로, 풀이는 AI가 쉬운 말로 풀어드립니다. 환각 제로.', hue: 'terracotta' },
-  { emoji: '📖', title: '영어성경', sub: 'BIBLE', desc: '영어·영한·한영 듣기·말하기·해석·단어·문법을 한 번에 — 영어성경 학습의 결정판.', hue: 'green' },
-  { emoji: '🌐', title: '영어일기', sub: 'EN DIARY', desc: '내가 기록한 일기와 에세이로 자연스러운 영작 학습.', hue: 'lilac' },
-  { emoji: '📥', title: 'SNS가져오기', sub: 'IMPORT', desc: '페이스북·인스타그램의 추억을 입맛대로 정렬하고 나만의 책으로 출간해 드립니다.', hue: 'terracotta' },
-  { emoji: '📈', title: 'HARU주식', sub: 'MARKET', desc: '내가 매도·매수한 종목 기록을 모아 투자 흐름을 점검합니다.', hue: 'green' },
-  { emoji: '🌿', title: '원기충전소', sub: 'RECOVERY', desc: '오늘 컨디션을 기록하면 AI가 맞춤 회복 루틴을 처방해드립니다.', hue: 'lilac' },
-  { emoji: '🏠', title: '온비드 부동산', sub: 'BID · 부동산', desc: '온비드 공매 부동산을 한눈에 — 입찰 일정·최저가·소재지까지 검색.', hue: 'terracotta', beta: true },
-  { emoji: '💚', title: 'HARU건강관리', sub: 'CARE · 건강', desc: '명의찾기 · 약봉지 약정보 · 건강 인포그래픽 — HARU와 함께 챙기는 건강.', hue: 'green', beta: true },
-  { emoji: '✍️', title: '나도작가', sub: 'WRITE · 창작', desc: 'AI와 함께 글쓰기 — 시놉시스부터 단편소설까지 손쉽게 완성합니다.', hue: 'lilac' },
-  { emoji: '✨', title: '새 비서 예정', sub: 'COMING SOON', desc: '곧 새로운 동료가 합류합니다.', hue: 'green', placeholder: true },
-];
-
 const SCATTER = [
   { name: '메모장',   sub: '제목 없이 쌓인 글', icon: 'memo',    rot: -2 },
   { name: '사진첩',   sub: '날짜만 남은 풍경',  icon: 'camera',  rot: 1.5 },
@@ -72,24 +57,33 @@ const SCATTER = [
   { name: '종이 노트', sub: '꺼내보기 어려운',  icon: 'diary',   rot: -1.5 },
 ];
 
-const PILLARS: { n: string; icon: string; hue: Hue; title: string; body: string; chip: string }[] = [
+const DOORS: { n: string; icon: string; hue: Hue; title: string; body: string; chip: string; note?: string }[] = [
   {
-    n: '01', icon: 'filter', hue: 'green',
-    title: '목적별로 모읍니다',
-    body: '일기·에세이·독서·투자·업무·여행 등 14가지 형식으로 시작해, 새 영역이 생기면 형식이 자라납니다. 같은 글이라도 어디에 속하는지부터 정리됩니다.',
-    chip: '14가지 기록 형식',
+    n: '01', icon: 'pen', hue: 'green',
+    title: '기록하기',
+    body: '오늘의 일, 생각, 사진, 경험을 남깁니다. 형식이 먼저 정해져 있어, 무엇을 적을지부터 자리가 잡힙니다.',
+    chip: '일기 · 여행기록 · 업무일지',
   },
   {
     n: '02', icon: 'spark', hue: 'lilac',
-    title: 'SAYU가 다듬습니다',
-    body: '원문의 감정과 사실은 그대로 두고, 표현만 자연스럽게 정리합니다. 새 내용을 만들지도, 교훈을 덧붙이지도 않는 — 사용자 자신의 글을 위한 AI입니다.',
-    chip: '재창작 없이, 감정 그대로',
+    title: '이해하기',
+    body: '쌓인 기록을 돌아보고 내 삶의 흐름을 정리합니다. SAYU가 표현을 다듬고, 통계와 합본이 변화를 보여줍니다.',
+    chip: 'SAYU · 통계 · 합본 회고',
+    note: 'SAYU는 흩어진 기록을 모아 생각과 흐름을 정리하는 HARU의 사유 기능입니다.',
   },
   {
-    n: '03', icon: 'archive', hue: 'terracotta',
-    title: '자산이 됩니다',
-    body: '쌓인 기록은 통계, 월별 합본, 회고 자료, 책 소재로 다시 꺼내 쓸 수 있습니다. 오늘 적은 한 문장이 몇 해 뒤의 자료가 되도록 설계했습니다.',
-    chip: '통계 · 합본 · 책 소재 · 회고',
+    n: '03', icon: 'shield', hue: 'terracotta',
+    title: '도움받기',
+    body: '건강·문서·생활 문제를 기록을 바탕으로 점검합니다. 필요한 순간에 내 기록을 다시 꺼내 씁니다.',
+    chip: '건강 기록 · 문서정리 · 전자소송연습',
+    note: '전자소송연습은 법률 판단이나 대리 업무가 아니라, 서류와 기한을 빠뜨리지 않도록 돕는 체크리스트형 연습 기능입니다.',
+  },
+  {
+    n: '04', icon: 'seed', hue: 'green',
+    title: '발견하기',
+    body: '식물, 책, 채널, 장소처럼 내가 발견한 가치를 모읍니다. 기록은 나만의 발견 목록이 됩니다.',
+    chip: '식물탐정 · 명작탐정 · 숨은 채널',
+    note: '명작탐정은 향후 잊힌 책과 숨은 채널처럼 다시 소개할 가치가 있는 콘텐츠를 기록하는 발견형 비서로 확장될 예정입니다.',
   },
 ];
 
@@ -104,13 +98,13 @@ const FLOW = [
 const PRICING = [
   {
     plan: 'LIGHT', price: '₩4,000', period: '/월',
-    note: '목적별 기록 + SAYU BASIC + AI 비서 월 10회',
+    note: '기록하고 정리하는 기본 구독 · AI 비서 월 10회',
     bullets: ['목적별 기록 형식', 'SAYU BASIC 다듬기', '통계 · 합본'],
     highlight: false, badge: '',
   },
   {
     plan: 'PREMIUM', price: '₩5,000', period: '/월',
-    note: '라이트 전체 + AI 비서 일 2회 / 월 40회',
+    note: '기록을 해석하고 활용하는 확장 구독 · AI 비서 일 2회 / 월 40회',
     bullets: ['LIGHT 모든 기능', '전문 AI 비서실', 'SAYU PREMIUM'],
     highlight: true, badge: 'RECOMMENDED',
   },
@@ -349,14 +343,13 @@ export function LandingPage() {
             </div>
           </a>
           <div className="lp-nav__links">
-            <a href="#how" onClick={(e) => { e.preventDefault(); scrollTo('how'); }}>HARU가 하는 일</a>
+            <a href="#how" onClick={(e) => { e.preventDefault(); scrollTo('how'); }}>네 개의 문</a>
             <a href="#formats" onClick={(e) => { e.preventDefault(); scrollTo('formats'); }}>기록 형식</a>
-            <a href="#agents" onClick={(e) => { e.preventDefault(); scrollTo('agents'); }}>비서실</a>
             <a href="#sayu" onClick={(e) => { e.preventDefault(); scrollTo('sayu'); }}>SAYU 원칙</a>
             <a href="#flow" onClick={(e) => { e.preventDefault(); scrollTo('flow'); }}>사용 흐름</a>
           </div>
           <div className="lp-nav__cta">
-            <button className="lp-btn lp-btn--primary lp-btn--sm" onClick={goToLogin}>오늘 기록 시작하기</button>
+            <button className="lp-btn lp-btn--primary lp-btn--sm" onClick={goToLogin}>무료로 시작하기</button>
           </div>
         </div>
       </nav>
@@ -366,19 +359,18 @@ export function LandingPage() {
         <div className="lp-hero__deco"><span /><span /></div>
         <div className="lp-wrap lp-hero__grid">
           <div>
-            <div className="lp-cap">DAILY RECORD × AI ASSISTANT</div>
+            <div className="lp-cap">RECORD · UNDERSTAND · USE · DISCOVER</div>
             <h1 className="lp-h1">
-              하루의 기록이<br />
-              <span style={{ color: C.oliveDark }}>삶의 자산이</span> 됩니다.
+              흘러가는 하루를,<br />
+              <span style={{ color: C.oliveDark }}>다시 꺼내 쓸 수 있는</span> 기록으로.
             </h1>
             <p className="lp-hero__sub">
-              일기, 독서, 식물, 투자, 업무, 법률, AI 지식창고까지.<br />
-              흩어진 기록을 목적별로 모으고, <strong style={{ color: C.fg, fontWeight: 600 }}>SAYU</strong>가 다시 정리해
-              나중에 꺼내 쓸 수 있는 자료로 바꿉니다.
+              HARU2026은 하루의 기록, 생각, 건강, 배움, 발견을 모아<br />
+              필요한 순간에 다시 활용할 수 있도록 돕는 <strong style={{ color: C.fg, fontWeight: 600 }}>AI 기록 플랫폼</strong>입니다.
             </p>
             <div className="lp-hero__cta-row">
               <button className="lp-btn lp-btn--primary" onClick={goToLogin}>
-                오늘 기록 시작하기<Icon name="arrowR" size={18} sw={2} />
+                무료로 시작하기<Icon name="arrowR" size={18} sw={2} />
               </button>
               <button className="lp-btn lp-btn--ghost" onClick={() => scrollTo('how')}>HARU가 하는 일 보기</button>
             </div>
@@ -435,26 +427,29 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ───── Solution / pillars ───── */}
+      {/* ───── Four doors ───── */}
       <section className="lp-section" id="how">
         <div className="lp-wrap">
-          <div className="lp-cap">HOW · HARU의 일하는 방식</div>
-          <h2 className="lp-h2">기능을 보여드리지 않고,<br />이익을 보여드립니다.</h2>
-          <p className="lp-lead" style={{ maxWidth: 620 }}>
-            HARU가 사용자 대신 하는 일은 단순합니다. 목적별로 모으고, 깔끔하게 정리하고, 평생 꺼내 쓸 수 있도록 보관합니다.
+          <div className="lp-cap">FOUR DOORS · 네 개의 문</div>
+          <h2 className="lp-h2">기록하고, 이해하고,<br />도움받고, 발견합니다.</h2>
+          <p className="lp-lead" style={{ maxWidth: 660 }}>
+            기록은 단순한 추억이 아니라, 나중에 나를 이해하고 돕는 자료가 됩니다.
+            HARU는 기록하고, SAYU는 의미를 정리하며, 전문 비서는 필요한 순간에 기록을 꺼내 씁니다.
+            사용자는 네 개의 문으로 접근하고, 필요한 비서는 각 문 안에서 만납니다.
           </p>
-          <div className="lp-pillars">
-            {PILLARS.map((p) => (
-              <article key={p.n} className="lp-pillar">
-                <div className="lp-pillar__num">PILLAR {p.n}</div>
-                <div className="lp-pillar__ico" style={{ background: hueBg[p.hue] }}>
-                  <Icon name={p.icon} size={28} color={hueFg[p.hue]} sw={1.6} />
+          <div className="lp-doors">
+            {DOORS.map((d) => (
+              <article key={d.n} className="lp-pillar">
+                <div className="lp-pillar__num">DOOR {d.n}</div>
+                <div className="lp-pillar__ico" style={{ background: hueBg[d.hue] }}>
+                  <Icon name={d.icon} size={28} color={hueFg[d.hue]} sw={1.6} />
                 </div>
-                <h3>{p.title}</h3>
-                <p>{p.body}</p>
-                <span className="lp-pillar__chip" style={{ background: hueBg[p.hue], color: hueFg[p.hue] }}>
-                  <Icon name="check" size={14} color={hueFg[p.hue]} sw={2} />{p.chip}
+                <h3>{d.title}</h3>
+                <p>{d.body}</p>
+                <span className="lp-pillar__chip" style={{ background: hueBg[d.hue], color: hueFg[d.hue] }}>
+                  <Icon name="check" size={14} color={hueFg[d.hue]} sw={2} />{d.chip}
                 </span>
+                {d.note && <p className="lp-pillar__note">{d.note}</p>}
               </article>
             ))}
           </div>
@@ -480,42 +475,6 @@ export function LandingPage() {
                 <span className="lp-fmt__name">{f.name}</span>
                 <span className="lp-fmt__cat">{f.cat}</span>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ───── Agents (실제 11) ───── */}
-      <section className="lp-section" id="agents">
-        <div className="lp-wrap">
-          <div className="lp-cap">SAYU & AGENTS · HARU의 날개</div>
-          <h2 className="lp-h2">정리는 AI가, 기록은 사용자가.</h2>
-          <p className="lp-lead" style={{ maxWidth: 640 }}>
-            기록을 바탕으로 법률·건강·학습·자산·창작 영역까지 전문 AI 비서실이 함께합니다.
-            모두 사용자의 기록을 보조할 뿐, 사용자의 자리를 대신하지 않습니다.
-          </p>
-          <div className="lp-agents">
-            {AGENTS.map((a) => (
-              <article
-                key={a.title}
-                className="lp-agent"
-                style={{
-                  background: a.placeholder ? '#FBF8F1' : agentBg[a.hue],
-                  borderColor: agentBorder[a.hue],
-                  color: hueFg[a.hue],
-                  opacity: a.placeholder ? 0.72 : 1,
-                }}
-              >
-                {a.beta && <span className="lp-agent__beta">BETA</span>}
-                <div className="lp-agent__top">
-                  <div className="lp-agent__ico" style={{ fontSize: 22 }}>{a.emoji}</div>
-                  <div>
-                    <div className="lp-agent__name">{a.title}</div>
-                    <div className="lp-agent__sub">{a.sub}</div>
-                  </div>
-                </div>
-                <p className="lp-agent__desc" style={{ color: C.fg2 }}>{a.desc}</p>
-              </article>
             ))}
           </div>
         </div>
@@ -628,11 +587,11 @@ export function LandingPage() {
             <div className="lp-final__deco lp-final__deco--b" />
             <div style={{ position: 'relative', zIndex: 1 }}>
               <div className="lp-cap" style={{ color: 'rgba(245,240,232,0.7)' }}>START TODAY</div>
-              <h2>오늘 하나만 기록해도<br />HARU는 시작됩니다.</h2>
+              <h2>오늘의 기록은,<br />내일의 나를 돕는 자료가 됩니다.</h2>
               <p>한 줄도 좋고, 사진 한 장의 메모도 좋습니다. 쌓이는 일은 HARU가 합니다.</p>
               <div className="lp-final__cta-row">
-                <button className="lp-btn lp-btn--primary" onClick={goToLogin}>오늘 기록 시작하기<Icon name="arrowR" size={18} sw={2} /></button>
-                <button className="lp-btn lp-btn--ghost" onClick={() => scrollTo(SHOW_PRICING ? 'pricing' : 'agents')}>
+                <button className="lp-btn lp-btn--primary" onClick={goToLogin}>무료로 시작하기<Icon name="arrowR" size={18} sw={2} /></button>
+                <button className="lp-btn lp-btn--ghost" onClick={() => scrollTo(SHOW_PRICING ? 'pricing' : 'how')}>
                   {SHOW_PRICING ? '요금 · 구독 안내' : 'HARU 둘러보기'}
                 </button>
               </div>
@@ -757,12 +716,16 @@ const LP_CSS = `
 
 .lp-pillars{margin-top:52px;display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
 @media(max-width:920px){.lp-pillars{grid-template-columns:1fr;}}
+.lp-doors{margin-top:52px;display:grid;grid-template-columns:repeat(4,1fr);gap:18px;}
+@media(max-width:1100px){.lp-doors{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:560px){.lp-doors{grid-template-columns:1fr;}}
 .lp-pillar{background:var(--card);border:1px solid var(--border);border-radius:22px;padding:32px 28px;position:relative;overflow:hidden;min-height:300px;display:flex;flex-direction:column;}
 .lp-pillar__num{font-family:var(--lp-en);font-size:13px;font-weight:500;letter-spacing:0.2em;color:var(--fg-muted);margin-bottom:18px;}
 .lp-pillar__ico{width:56px;height:56px;border-radius:14px;display:grid;place-items:center;margin-bottom:18px;}
 .lp-pillar h3{font-size:22px;font-weight:700;margin:0 0 12px;letter-spacing:-0.01em;color:var(--fg);}
 .lp-pillar p{font-size:16px;color:var(--fg-2);line-height:1.7;margin:0;flex:1;}
 .lp-pillar__chip{margin-top:20px;display:inline-flex;align-self:flex-start;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600;letter-spacing:0.04em;}
+.lp-pillar__note{margin:14px 0 0;font-size:12.5px;line-height:1.55;color:var(--fg-muted);border-top:1px dashed var(--border);padding-top:12px;flex:none;}
 
 .lp-formats{margin-top:44px;display:grid;grid-template-columns:repeat(7,1fr);gap:12px;}
 @media(max-width:1100px){.lp-formats{grid-template-columns:repeat(5,1fr);}}
