@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { useAuth } from '../contexts/AuthContext';
-import { createLegalCase, getLegalCases } from '../services/legalCasesService';
+import { createLegalCase, createSampleLegalCase, getLegalCases } from '../services/legalCasesService';
 import {
   type LegalCase,
   type LegalCaseStatus,
@@ -49,6 +49,7 @@ const LEGAL_CASE_TYPES: LegalCaseType[] = [
 const PARTY_ROLES: PartyRole[] = ['신청인/원고', '피신청인/피고'];
 
 const LEGAL_CASE_STATUSES: LegalCaseStatus[] = [
+  '제출준비',
   '제출완료',
   '송달확인중',
   '보정필요',
@@ -73,6 +74,8 @@ function getToday() {
 
 function statusClassName(status: LegalCaseStatus) {
   switch (status) {
+    case '제출준비':
+      return 'border-purple-200 bg-purple-50 text-purple-700';
     case '제출완료':
       return 'border-blue-200 bg-blue-50 text-blue-700';
     case '송달확인중':
@@ -100,6 +103,7 @@ export default function LegalCasesPage() {
   const [cases, setCases] = useState<LegalCase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCreatingSample, setIsCreatingSample] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [form, setForm] = useState<CaseFormState>(initialForm);
 
@@ -184,6 +188,25 @@ export default function LegalCasesPage() {
     }
   };
 
+  const createSampleCase = async () => {
+    if (!user?.uid) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+
+    setIsCreatingSample(true);
+    try {
+      const caseId = await createSampleLegalCase(user.uid);
+      toast.success('샘플 사건을 생성했습니다.');
+      navigate(`/legal-cases/${caseId}`);
+    } catch (error) {
+      console.error('샘플 사건 생성 실패:', error);
+      toast.error('샘플 사건을 생성하지 못했습니다.');
+    } finally {
+      setIsCreatingSample(false);
+    }
+  };
+
   if (loading || isLoading) {
     return (
       <div className="min-h-screen bg-[#FEFBE8] px-4 py-6">
@@ -209,6 +232,31 @@ export default function LegalCasesPage() {
             사건 추가
           </Button>
         </header>
+
+        <div className="rounded-lg border border-blue-100 bg-blue-50 p-4">
+          <p className="text-sm font-medium text-blue-900">간편연습 샘플 사건 만들기</p>
+          <p className="mt-1 text-xs text-blue-700">
+            대여금 300만 원 지급명령 예시 사건으로 전자소송 체크리스트를 연습합니다.
+          </p>
+          <Button
+            className="mt-3"
+            size="sm"
+            disabled={isCreatingSample}
+            onClick={createSampleCase}
+          >
+            {isCreatingSample ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                샘플 사건 생성 중...
+              </>
+            ) : (
+              '간편연습 샘플 사건 만들기'
+            )}
+          </Button>
+          <p className="mt-2 text-xs leading-5 text-gray-500">
+            이 사건은 전자소송 절차를 익히기 위한 연습용 예시입니다. 실제 사건 제출 전에는 법원 문서와 전자소송포털 안내를 직접 확인하세요.
+          </p>
+        </div>
 
         {todayUncheckedCount > 0 && (
           <div className="flex items-start gap-2 rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-900">

@@ -154,3 +154,44 @@ export async function deleteDocument(
 }
 
 export { auth };
+
+export async function createSampleLegalCase(uid: string): Promise<string> {
+  const sampleMemo = `[간편연습 가이드]
+□ 사건명과 사건유형을 확인했다
+□ 청구금액을 확인했다
+□ 증거자료 목록을 정리했다
+□ 제출 전 미리보기를 확인했다
+□ 전자서명 필요 여부를 확인했다
+□ 인지대·송달료 납부 여부를 확인했다
+□ 제출 후 접수증 저장 여부를 확인했다
+□ 나의문서함 제출서류 확인 여부를 확인했다
+□ 미확인 송달문서 확인 루틴을 만들었다
+
+[증거 예시]
+갑 제1호증: 계좌이체내역
+갑 제2호증: 변제 약속 문자
+갑 제3호증: 독촉 문자
+
+주의: 이 사건번호와 내용은 전자소송 절차 연습을 위한 예시입니다. 실제 사건 제출 전에는 법원 문서와 전자소송포털 안내를 직접 확인하세요.`;
+
+  return createLegalCase(uid, {
+    title: '대여금 300만 원 지급명령 연습',
+    caseType: '지급명령',
+    claimAmount: 3000000,
+    status: '제출준비',
+    courtName: '연습용 법원',
+    caseNumber: '2026차전00000',
+    partyRole: '신청인/원고',
+    submittedAt: '',
+    memo: sampleMemo,
+    checklistSubmit: {
+      confirmedSubmitScreen: false,
+      savedReceipt: false,
+      checkedCaseNumber: false,
+      confirmedFeePayment: false,
+      savedFinalPdf: false,
+      checkedAttachments: false,
+      confirmedMyCaseList: false,
+    },
+  });
+}

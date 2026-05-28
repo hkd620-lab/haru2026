@@ -10,6 +10,7 @@ export interface LegalCase {
   submittedAt: string;
   receiptNumber?: string;
   status: LegalCaseStatus;
+  claimAmount?: number;
   memo?: string;
   lastCheckedAt?: string;
   checklistSubmit: SubmitChecklist;
@@ -27,6 +28,7 @@ export type LegalCaseType =
 export type PartyRole = '신청인/원고' | '피신청인/피고';
 
 export type LegalCaseStatus =
+  | '제출준비'
   | '제출완료'
   | '송달확인중'
   | '보정필요'
