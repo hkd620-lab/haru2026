@@ -85,6 +85,33 @@ const CASE_CARDS = [
   },
 ];
 
+const PRACTICE_CASE_EXAMPLES = [
+  {
+    title: '대여금 반환',
+    body: '지인에게 300만 원을 빌려주었으나 약속한 날짜까지 돌려받지 못한 경우',
+  },
+  {
+    title: '중고거래 대금 반환',
+    body: '중고거래로 물품을 구매했으나 물건을 받지 못했거나 설명과 다른 물건을 받은 경우',
+  },
+  {
+    title: '물품대금 청구',
+    body: '물건을 납품했지만 대금을 받지 못한 경우',
+  },
+  {
+    title: '용역대금 청구',
+    body: '일을 해주었지만 약속한 비용을 받지 못한 경우',
+  },
+  {
+    title: '임대차보증금 반환',
+    body: '계약이 끝났는데 보증금 일부 또는 전부를 돌려받지 못한 경우',
+  },
+  {
+    title: '지급명령 연습',
+    body: '증거가 비교적 분명한 금전청구 사건에서 지급명령 절차를 연습하는 경우',
+  },
+];
+
 const DUMMY_EVIDENCE = [
   '채팅 캡처',
   '입금확인증',
@@ -361,7 +388,7 @@ export function LawsuitPracticePage() {
                   전자소송연습비서
                 </h1>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-[#dceeff]">
-                  중고거래 분쟁을 전자소송 화면 흐름처럼 11단계로 정리합니다.
+                  나홀로 전자소송에서 자주 만나는 단순 금전청구 사건을 11단계 흐름으로 연습합니다.
                 </p>
               </div>
               {state.isLoggedIn && (
@@ -454,7 +481,10 @@ export function LawsuitPracticePage() {
 
             {step === 2 && (
               <div>
-                <SectionTitle title="사건유형 선택" subtitle="중고거래 분쟁만 실제 흐름을 진행합니다." />
+                <SectionTitle
+                  title="사건유형 선택"
+                  subtitle="현재 입력 흐름은 중고거래 예시로 진행하며, 아래 단순 금전청구 사례도 절차 연습용으로 함께 참고합니다."
+                />
                 <div className="lawsuit-grid">
                   {CASE_CARDS.map((card) => (
                     <button
@@ -477,6 +507,22 @@ export function LawsuitPracticePage() {
                       </div>
                     </button>
                   ))}
+                </div>
+                <div className="mt-6 rounded-lg border border-[#dbe3ec] bg-[#f8fafc] p-5">
+                  <h3 className="text-base font-extrabold text-[#1f2937]">
+                    나홀로 전자소송에서 자주 만나는 연습 사례
+                  </h3>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {PRACTICE_CASE_EXAMPLES.map((item) => (
+                      <div key={item.title} className="rounded-lg border border-[#e2e8f0] bg-white p-4">
+                        <div className="text-sm font-extrabold text-[#185FA5]">{item.title}</div>
+                        <p className="mt-2 text-sm leading-6 text-[#475569]">예: {item.body}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-4 text-xs leading-5 text-[#64748b]">
+                    이 사례들은 전자소송 절차를 익히기 위한 연습용 예시입니다. 실제 사건에서는 계약서, 계좌이체내역, 문자, 내용증명, 법원 안내문 등을 직접 확인해야 합니다.
+                  </p>
                 </div>
               </div>
             )}
