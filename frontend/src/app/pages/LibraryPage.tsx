@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BookOpen, Info } from 'lucide-react';
 import { FormatModal } from '../components/FormatModal';
-import { TimelineCollageModal } from '../components/TimelineCollageModal';
 import { useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
@@ -29,8 +28,6 @@ export function LibraryPage() {
     summary: string;
     articles: string;
   }>({ isOpen: false, query: '', summary: '', articles: '' });
-
-  const [timelineModalOpen, setTimelineModalOpen] = useState(false);
 
   const [showLibraryGuide, setShowLibraryGuide] = useState(() => {
     try {
@@ -458,26 +455,6 @@ export function LibraryPage() {
             </div>
           )}
 
-          {/* 성장 타임라인 버튼 */}
-          <div className="bg-white rounded-lg p-4 shadow-sm">
-            <button
-              onClick={() => setTimelineModalOpen(true)}
-              className="w-full px-6 py-3 rounded-lg text-sm transition-all hover:opacity-90"
-              style={{
-                backgroundColor: '#1A3C6E',
-                color: '#FAF9F6',
-                border: '2px solid #2A4C7E',
-                fontWeight: 600,
-                letterSpacing: '0.04em',
-              }}
-            >
-              🌱 성장 타임라인 만들기
-            </button>
-            <p className="text-xs text-center mt-2" style={{ color: '#888' }}>
-              사진 기록을 골라 한 장의 타임라인 이미지로 저장하세요
-            </p>
-          </div>
-
           {formatsForDisplay.length > 0 && (
             <div className="bg-white rounded-lg p-6 shadow-sm">
               <button
@@ -532,15 +509,6 @@ export function LibraryPage() {
           recordId={selectedRecord.id}
           initialData={getFormatData(modalState.format)}
           onSave={handleSaveFormatData}
-        />
-      )}
-
-      {timelineModalOpen && authUser?.uid && (
-        <TimelineCollageModal
-          isOpen={timelineModalOpen}
-          onClose={() => setTimelineModalOpen(false)}
-          records={records}
-          uid={authUser.uid}
         />
       )}
 
