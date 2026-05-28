@@ -710,6 +710,20 @@ export function LawsuitPracticePage() {
                   </div>
                 </div>
 
+                <div className="mt-5 rounded-lg border border-[#bfd7ee] bg-[#f3f9ff] p-5">
+                  <p className="text-sm leading-6 text-[#475569]">
+                    전자소송 절차를 익혔다면, 샘플 사건을 만들어 제출 후 체크리스트·송달확인·보정기한 관리를 연습해 보세요.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/legal-cases')}
+                    className="lawsuit-button mt-4 inline-flex w-full items-center justify-center gap-2 bg-[#185FA5] px-5 text-white"
+                  >
+                    전자소송 체크리스트 비서로 이동
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+
                 <button
                   type="button"
                   onClick={resetPractice}
