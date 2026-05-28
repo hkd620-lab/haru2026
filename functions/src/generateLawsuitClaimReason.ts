@@ -4,6 +4,12 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as logger from 'firebase-functions/logger';
 
 const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
+const ALLOWED_CALLABLE_ORIGINS = [
+  'https://haru2026-8abb8.web.app',
+  'https://haru2026.com',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+];
 
 function sanitizeInput(raw: unknown, maxLength: number): string {
   if (typeof raw !== 'string') return '';
@@ -17,6 +23,7 @@ function sanitizeInput(raw: unknown, maxLength: number): string {
 export const generateLawsuitClaimReason = onCall(
   {
     region: 'asia-northeast3',
+    cors: ALLOWED_CALLABLE_ORIGINS,
     secrets: [GEMINI_API_KEY],
     timeoutSeconds: 120,
   },
