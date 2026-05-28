@@ -229,6 +229,42 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
     }
   };
 
+  const copyLink = async () => {
+    if (!resultUrl) return;
+    try {
+      await navigator.clipboard.writeText(resultUrl);
+      toast.success('링크가 복사되었습니다! 카카오톡 등에 붙여넣기 하세요.');
+    } catch {
+      toast.error('복사에 실패했습니다.');
+    }
+  };
+
+  const shareTimeline = async () => {
+    if (!resultUrl) return;
+    const shareTitle = title.trim() || '성장 타임라인';
+
+    if (navigator.share) {
+      try {
+        // 이미지 파일로 직접 공유 시도
+        const resp = await fetch(resultUrl);
+        const blob = await resp.blob();
+        const file = new File([blob], '성장타임라인.png', { type: 'image/png' });
+        if (navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ title: shareTitle, files: [file] });
+          return;
+        }
+        // 파일 공유 불가 시 URL 공유
+        await navigator.share({ title: shareTitle, url: resultUrl });
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') {
+          copyLink();
+        }
+      }
+    } else {
+      copyLink();
+    }
+  };
+
   const handleClose = () => {
     setStep('select');
     setSelected([]);
@@ -406,28 +442,57 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
                   display: 'block',
                 }}
               />
+              {/* 공유하기 (기장 검토용) */}
+              <button
+                onClick={shareTimeline}
+                style={{
+                  width: '100%', padding: '14px',
+                  backgroundColor: '#1A3C6E', color: '#fff',
+                  border: 'none', borderRadius: 10,
+                  fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                  marginBottom: 8,
+                }}
+              >
+                📤 공유하기 (카카오톡 등)
+              </button>
+
+              {/* 링크 복사 */}
+              <button
+                onClick={copyLink}
+                style={{
+                  width: '100%', padding: '12px',
+                  backgroundColor: '#f0f4ff', color: '#1A3C6E',
+                  border: '1px solid #d0dff0', borderRadius: 10,
+                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                  marginBottom: 8,
+                }}
+              >
+                🔗 링크 복사
+              </button>
+
+              {/* 이미지 저장 */}
               <a
                 href={resultUrl}
                 download="성장타임라인.png"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
-                  display: 'block', padding: '14px',
-                  backgroundColor: '#10b981', color: '#fff',
-                  borderRadius: 10, fontSize: 15, fontWeight: 700,
+                  display: 'block', padding: '12px',
+                  backgroundColor: '#f5f5f5', color: '#555',
+                  borderRadius: 10, fontSize: 14,
                   textAlign: 'center', textDecoration: 'none',
-                  marginBottom: 10,
+                  border: '1px solid #e0e0e0', marginBottom: 10,
                 }}
               >
                 📥 이미지 저장
               </a>
+
               <button
                 onClick={handleClose}
                 style={{
-                  width: '100%', padding: 12,
-                  backgroundColor: '#f5f5f5', color: '#666',
-                  border: '1px solid #e0e0e0', borderRadius: 10,
-                  fontSize: 14, cursor: 'pointer',
+                  width: '100%', padding: 10,
+                  background: 'none', color: '#aaa',
+                  border: 'none', fontSize: 13, cursor: 'pointer',
                 }}
               >
                 닫기
