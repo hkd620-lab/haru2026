@@ -21,6 +21,7 @@ export function SayuTogetherPage() {
   const [loading, setLoading] = useState(false);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [sharedActionId, setSharedActionId] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const fromPath = (location.state as any)?.from as string | undefined;
 
@@ -42,7 +43,20 @@ export function SayuTogetherPage() {
     setLoading(true);
     setErrorMessage('');
     try {
-      const next = await firestoreService.getSharedRecords();
+      let next = await firestoreService.getSharedRecords();
+      const ownRecordsMissingPhotoField = next.filter((item) =>
+        item.ownerUid === user.uid &&
+        item.sourceRecordId &&
+        !Object.prototype.hasOwnProperty.call(item, 'publicPhotoUrls')
+      );
+      if (ownRecordsMissingPhotoField.length > 0) {
+        await Promise.allSettled(
+          ownRecordsMissingPhotoField.map((item) =>
+            firestoreService.publishRecordToShared(user.uid, item.sourceRecordId),
+          ),
+        );
+        next = await firestoreService.getSharedRecords();
+      }
       setItems(next);
       setSelectedId((current) => {
         if (current && next.some((item) => item.id === current)) return current;
@@ -150,6 +164,42 @@ export function SayuTogetherPage() {
     }
   };
 
+  const handleRefreshSharedRecord = async (item: SharedRecordListItem) => {
+    if (!user?.uid || item.ownerUid !== user.uid || !item.sourceRecordId) return;
+    setSharedActionId(item.id);
+    try {
+      await firestoreService.publishRecordToShared(user.uid, item.sourceRecordId);
+      await loadSharedRecords();
+      toast.success('공개 정보를 새로고침했습니다.');
+    } catch (error) {
+      console.error('SAYU-함께보기 공개 정보 갱신 실패:', error);
+      toast.error('공개 정보를 새로고침하지 못했습니다.');
+    } finally {
+      setSharedActionId('');
+    }
+  };
+
+  const handleUnpublishSharedRecord = async (item: SharedRecordListItem) => {
+    if (!user?.uid || item.ownerUid !== user.uid || !item.sourceRecordId) return;
+    const confirmed = window.confirm('이 글을 SAYU-함께보기에서 삭제합니다. 내 개인 기록은 삭제되지 않습니다.');
+    if (!confirmed) return;
+
+    setSharedActionId(item.id);
+    try {
+      await firestoreService.unpublishSharedRecord(user.uid, item.sourceRecordId);
+      const nextItems = items.filter((nextItem) => nextItem.id !== item.id);
+      setItems(nextItems);
+      setSelectedId((current) => current === item.id ? nextItems[0]?.id || '' : current);
+      setComments([]);
+      toast.success('SAYU-함께보기에서 삭제했습니다.');
+    } catch (error) {
+      console.error('SAYU-함께보기 공개 삭제 실패:', error);
+      toast.error('함께보기 글을 삭제하지 못했습니다.');
+    } finally {
+      setSharedActionId('');
+    }
+  };
+
   const renderList = () => {
     if (authLoading || loading) {
       return (
@@ -200,6 +250,8 @@ export function SayuTogetherPage() {
           const isSelected = selectedId === item.id;
           const formats = Array.isArray(item.formats) ? item.formats : [];
           const photoUrls = getPhotoUrls(item);
+          const isOwnItem = item.ownerUid === user?.uid;
+          const isBusy = sharedActionId === item.id;
           return (
             <article
               key={item.id}
@@ -245,24 +297,70 @@ export function SayuTogetherPage() {
                   {getPreviewText(item)}
                 </p>
               )}
-              <button
-                type="button"
-                onClick={() => setSelectedId(item.id)}
-                className="mt-3 w-full sm:w-auto"
-                style={{
-                  minHeight: 34,
-                  padding: '0 14px',
-                  borderRadius: 8,
-                  border: '1px solid #0F766E',
-                  background: isSelected ? '#0F766E' : '#FFFFFF',
-                  color: isSelected ? '#FFFFFF' : '#0F766E',
-                  fontSize: 12,
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                }}
-              >
-                {isSelected ? '상세 보는 중' : '상세 보기'}
-              </button>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedId(item.id)}
+                  className="w-full sm:w-auto"
+                  style={{
+                    minHeight: 34,
+                    padding: '0 14px',
+                    borderRadius: 8,
+                    border: '1px solid #0F766E',
+                    background: isSelected ? '#0F766E' : '#FFFFFF',
+                    color: isSelected ? '#FFFFFF' : '#0F766E',
+                    fontSize: 12,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {isSelected ? '상세 보는 중' : '상세 보기'}
+                </button>
+                {isOwnItem && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleRefreshSharedRecord(item)}
+                      disabled={isBusy}
+                      className="w-full sm:w-auto"
+                      style={{
+                        minHeight: 34,
+                        padding: '0 14px',
+                        borderRadius: 8,
+                        border: '1px solid #CBD5E1',
+                        background: '#FFFFFF',
+                        color: '#475569',
+                        fontSize: 12,
+                        fontWeight: 800,
+                        cursor: isBusy ? 'wait' : 'pointer',
+                        opacity: isBusy ? 0.65 : 1,
+                      }}
+                    >
+                      사진 새로고침
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleUnpublishSharedRecord(item)}
+                      disabled={isBusy}
+                      className="w-full sm:w-auto"
+                      style={{
+                        minHeight: 34,
+                        padding: '0 14px',
+                        borderRadius: 8,
+                        border: '1px solid #FECACA',
+                        background: '#FEF2F2',
+                        color: '#B42318',
+                        fontSize: 12,
+                        fontWeight: 800,
+                        cursor: isBusy ? 'wait' : 'pointer',
+                        opacity: isBusy ? 0.65 : 1,
+                      }}
+                    >
+                      함께보기 삭제
+                    </button>
+                  </>
+                )}
+              </div>
             </article>
           );
         })}
@@ -274,6 +372,8 @@ export function SayuTogetherPage() {
     if (!user?.uid || !selectedItem) return null;
     const formats = Array.isArray(selectedItem.formats) ? selectedItem.formats : [];
     const photoUrls = getPhotoUrls(selectedItem);
+    const isOwnItem = selectedItem.ownerUid === user.uid;
+    const isBusy = sharedActionId === selectedItem.id;
 
     return (
       <section
@@ -287,6 +387,48 @@ export function SayuTogetherPage() {
           <p className="text-xs mt-1" style={{ color: '#64748B' }}>
             {selectedItem.nickname || 'HARU 회원'} · {formatRecordDate(selectedItem.recordDate)}
           </p>
+          {isOwnItem && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => handleRefreshSharedRecord(selectedItem)}
+                disabled={isBusy}
+                style={{
+                  minHeight: 34,
+                  padding: '0 14px',
+                  borderRadius: 8,
+                  border: '1px solid #CBD5E1',
+                  background: '#FFFFFF',
+                  color: '#475569',
+                  fontSize: 12,
+                  fontWeight: 800,
+                  cursor: isBusy ? 'wait' : 'pointer',
+                  opacity: isBusy ? 0.65 : 1,
+                }}
+              >
+                사진 새로고침
+              </button>
+              <button
+                type="button"
+                onClick={() => handleUnpublishSharedRecord(selectedItem)}
+                disabled={isBusy}
+                style={{
+                  minHeight: 34,
+                  padding: '0 14px',
+                  borderRadius: 8,
+                  border: '1px solid #FECACA',
+                  background: '#FEF2F2',
+                  color: '#B42318',
+                  fontSize: 12,
+                  fontWeight: 800,
+                  cursor: isBusy ? 'wait' : 'pointer',
+                  opacity: isBusy ? 0.65 : 1,
+                }}
+              >
+                함께보기 삭제
+              </button>
+            </div>
+          )}
         </div>
 
         {photoUrls.length > 0 && (

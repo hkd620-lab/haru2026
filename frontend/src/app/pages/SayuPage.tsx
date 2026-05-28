@@ -1629,7 +1629,7 @@ export function SayuPage() {
     const confirmed = window.confirm(
       isPublic
         ? '공개를 취소하면 SAYU-함께보기에서 더 이상 보이지 않습니다.'
-        : '이 기록의 SAYU 다듬은 본문을 HARU 회원들과 함께 볼 수 있게 공개합니다.\n원문, 사진, 위치, 이메일, UID는 공개되지 않습니다.',
+        : '이 기록의 SAYU 다듬은 본문과 사진을 HARU 회원들과 함께 볼 수 있게 공개합니다.\n원문, 위치, 이메일, UID는 공개되지 않습니다.',
     );
     if (!confirmed) return;
 
@@ -2986,7 +2986,7 @@ export function SayuPage() {
                   </p>
                   <p style={{ margin: '4px 0 0', fontSize: 12, lineHeight: 1.5, color: publishable ? '#64748B' : '#B42318' }}>
                     {publishable
-                      ? 'SAYU 다듬은 본문만 공개됩니다. 원문, 사진, 위치, 이메일, UID는 공개되지 않습니다.'
+                      ? 'SAYU 다듬은 본문과 사진이 공개됩니다. 원문, 위치, 이메일, UID는 공개되지 않습니다.'
                       : PUBLIC_SAYU_REQUIRED_MESSAGE}
                   </p>
                 </div>

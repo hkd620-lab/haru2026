@@ -10,6 +10,7 @@ import { ref, listAll, deleteObject, uploadBytes, getDownloadURL } from 'firebas
 import { httpsCallable, getFunctions } from 'firebase/functions';
 import { db, storage, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { firestoreService } from '../services/firestoreService';
 
 const WEATHER_OPTIONS = ['쾌청', '흐림', '비', '눈'];
 const TEMPERATURE_OPTIONS = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
@@ -86,6 +87,15 @@ export function SayuModal({
   const [localImages, setLocalImages] = useState<string[]>(images || []);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [editedTitle, setEditedTitle] = useState(title || '');
+
+  const refreshPublicSharedRecord = async () => {
+    if (!currentUser?.uid || !firestoreId) return;
+    const recordRef = doc(db, 'users', currentUser.uid, 'records', firestoreId);
+    const recordSnap = await getDoc(recordRef);
+    if (recordSnap.exists() && recordSnap.data().isPublic === true) {
+      await firestoreService.publishRecordToShared(currentUser.uid, firestoreId);
+    }
+  };
 
   // 🗑 형식 삭제
   const handleDeleteFormat = async () => {
@@ -501,6 +511,7 @@ export function SayuModal({
       await updateDoc(recordRef, {
         [`${formatKey}_images`]: JSON.stringify(newImages),
       });
+      await refreshPublicSharedRecord();
       toast.success('사진이 삭제되었습니다.');
     } catch (err) {
       console.error('사진 삭제 실패:', err);
@@ -529,6 +540,7 @@ export function SayuModal({
       await updateDoc(recordRef, {
         [`${formatKey}_images`]: JSON.stringify(newImages),
       });
+      await refreshPublicSharedRecord();
       toast.success('사진이 추가되었습니다!');
     } catch (err) {
       console.error('사진 업로드 실패:', err);
