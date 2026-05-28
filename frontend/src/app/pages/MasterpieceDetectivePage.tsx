@@ -32,10 +32,23 @@ const UPCOMING = [
   '구독자 제보는 나중에 검토',
 ];
 
+const YOUTUBE_DISCOVERY_PRINCIPLES = [
+  '인기 채널 추천이 아니라 숨은 신생 채널 발굴',
+  'YouTube API 자동 연동은 이번 작업에서 제외',
+  '채널명, 영상 제목, 링크, 운영자 추천 이유 중심',
+  '영상 파일, 음원 파일, 캡처 이미지 저장 금지',
+  '공식 유튜브 링크 또는 임베드 중심',
+  '불법 업로드 의심 채널 제외',
+  '최종 공개는 운영자 승인 후 진행',
+];
+
 const DISABLED_BUTTONS = [
   '운영자 등록 준비 중',
   'AI 소개글 생성 준비 중',
   '구독자 저장 기능 준비 중',
+  '최근 신생 채널 후보 수집 준비 중',
+  'YouTube API 연동 준비 중',
+  '운영자 검토 기능 준비 중',
 ];
 
 export function MasterpieceDetectivePage() {
@@ -98,6 +111,32 @@ export function MasterpieceDetectivePage() {
               <li key={item}>- {item}</li>
             ))}
           </ul>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-200 p-5">
+          <h3 className="font-bold text-base mb-2" style={{ color: '#1A3C6E' }}>
+            5. 향후: 최근 개설된 좋은 유튜브 채널 발굴
+          </h3>
+          <p className="text-sm text-gray-700 leading-relaxed">
+            명작탐정비서는 향후 최근 개설되었거나 아직 구독자 수는 적지만,
+            콘텐츠 구성·정보성·선곡·해설·진정성이 뛰어난 유튜브 채널을 발굴해
+            HARU 구독자에게 소개할 수 있습니다.
+          </p>
+          <p className="text-sm text-gray-600 leading-relaxed mt-2">
+            단, 초기에는 자동 추천이 아니라 운영자 큐레이션 후보로만 다룹니다.
+            AI는 후보를 정리하고, 최종 공개 여부는 운영자가 판단합니다.
+          </p>
+
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <h4 className="font-semibold text-sm mb-2" style={{ color: '#1A3C6E' }}>
+              초기 원칙
+            </h4>
+            <ul className="text-sm text-gray-600 leading-relaxed space-y-1">
+              {YOUTUBE_DISCOVERY_PRINCIPLES.map((item) => (
+                <li key={item}>- {item}</li>
+              ))}
+            </ul>
+          </div>
         </div>
 
         <div className="pt-2 space-y-2">
