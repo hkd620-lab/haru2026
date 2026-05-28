@@ -17,6 +17,7 @@ service cloud.firestore {
         "sourceRecordId",
         "title",
         "nickname",
+        "publicPhotoUrls",
         "createdAt",
         "updatedAt",
         "publishedAt",
@@ -55,6 +56,7 @@ service cloud.firestore {
         && request.resource.data.sourceRecordId is string
         && request.resource.data.title is string
         && request.resource.data.nickname is string
+        && (!request.resource.data.keys().hasAny(["publicPhotoUrls"]) || request.resource.data.publicPhotoUrls is list)
         && request.resource.data.recordDate is string
         && request.resource.data.isActive is bool
         && request.resource.data.formats is list;
