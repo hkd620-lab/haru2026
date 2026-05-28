@@ -54,6 +54,7 @@ import { SayuHealthHospitalPage } from './pages/SayuHealthHospitalPage';
 import { SayuHealthLibraryPage } from './pages/SayuHealthLibraryPage';
 import { PlantDetectivePage } from './pages/PlantDetectivePage';
 import { AssetExplorerPage } from './pages/AssetExplorerPage';
+import { MasterpieceDetectivePage } from './pages/MasterpieceDetectivePage';
 import { BottomNav } from './components/BottomNav';
 import { Footer } from './components/Footer';
 import { TodayQuote } from './components/TodayQuote';
@@ -181,6 +182,9 @@ function App() {
               <Route path="/admin/elder-book" element={<ElderBookPage />} />
               <Route path="/admin/record-book" element={<RecordBookPage />} />
               <Route path="/admin/k-news-publisher" element={<KNewsPublisherPage />} />
+
+              {/* 개발자 전용 임시 화면 */}
+              <Route path="/dev/masterpiece-detective" element={<MasterpieceDetectivePage />} />
 
               {/* 구독 페이지 */}
               <Route path="/subscription" element={<SubscriptionPage />} />
