@@ -390,6 +390,11 @@ export function LawsuitPracticePage() {
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-[#dceeff]">
                   나홀로 전자소송에서 자주 만나는 단순 금전청구 사건을 11단계 흐름으로 연습합니다.
                 </p>
+                <div className="mt-3 space-y-2 text-sm leading-6 text-[#dceeff]">
+                  <p>전자소송연습비서는 실제 소송을 대신 진행하는 기능이 아닙니다.</p>
+                  <p>나홀로 전자소송을 준비하는 사용자가 절차, 서류, 증거자료, 송달확인, 보정기한 관리를 미리 연습하도록 돕는 체크리스트 비서입니다.</p>
+                  <p>단순한 금전청구 사건은 연습을 통해 실제 나홀로 전자소송 준비에 도움을 받을 수 있습니다. 다만 실제 제출 전에는 반드시 법원 문서, 전자소송포털 안내, 본인의 증거자료를 직접 확인해야 합니다.</p>
+                </div>
               </div>
               {state.isLoggedIn && (
                 <div className="rounded bg-white px-3 py-2 text-sm font-extrabold text-[#185FA5]">
@@ -522,6 +527,35 @@ export function LawsuitPracticePage() {
                   </div>
                   <p className="mt-4 text-xs leading-5 text-[#64748b]">
                     이 사례들은 전자소송 절차를 익히기 위한 연습용 예시입니다. 실제 사건에서는 계약서, 계좌이체내역, 문자, 내용증명, 법원 안내문 등을 직접 확인해야 합니다.
+                  </p>
+                </div>
+                <div className="mt-4 rounded-lg border border-[#fca5a5] bg-[#fff5f5] p-5">
+                  <h3 className="text-base font-extrabold text-[#b91c1c]">
+                    전문가 상담이 필요한 사건
+                  </h3>
+                  <p className="mt-1 text-sm leading-5 text-[#475569]">
+                    아래 사건은 이 연습비서만 믿고 혼자 진행하기보다 전문가 상담이 필요한 유형입니다.
+                  </p>
+                  <ul className="mt-3 space-y-1 text-sm leading-6 text-[#475569]">
+                    <li>• 상대방이 강하게 다투는 사건</li>
+                    <li>• 금액이 큰 사건</li>
+                    <li>• 손해배상액 산정이 어려운 사건</li>
+                    <li>• 부동산 명도, 가압류, 가처분 등 절차상 위험이 큰 사건</li>
+                    <li>• 이혼, 상속, 가사 사건</li>
+                    <li>• 형사 문제와 연결된 사건</li>
+                    <li>• 계약 해석이 복잡한 사건</li>
+                    <li>• 법률상 기한 계산이 중요한 사건</li>
+                  </ul>
+                  <p className="mt-3 text-xs leading-5 text-[#b91c1c]">
+                    이런 사건은 전자소송연습비서를 자료 정리와 질문 준비용으로만 활용하고, 실제 진행 전에는 전문가 상담을 권장합니다.
+                  </p>
+                </div>
+                <div className="mt-4 rounded-lg border border-[#dbe3ec] bg-[#f8fafc] px-4 py-3 text-xs leading-5 text-[#64748b]">
+                  <p>
+                    이 연습은 전자소송 절차를 익히기 위한 예시입니다. 실제 사건에서는 샘플 문장을 그대로 제출하지 말고, 본인의 날짜, 금액, 당사자 정보, 증거자료에 맞게 수정해야 합니다.
+                  </p>
+                  <p className="mt-2">
+                    지연손해금, 보정기한, 송달 효력은 사건유형과 법원 문서에 따라 달라질 수 있으므로 자동으로 확정하지 않습니다. 반드시 전자소송포털과 법원 안내문을 직접 확인하세요.
                   </p>
                 </div>
               </div>
