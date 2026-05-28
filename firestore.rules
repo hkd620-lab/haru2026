@@ -302,5 +302,14 @@ service cloud.firestore {
         allow update: if false;
       }
     }
+
+    // 전자소송 사건 관리
+    match /users/{uid}/legalCases/{caseId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+
+      match /documents/{documentId} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
   }
 }
