@@ -389,9 +389,12 @@ class FirestoreService {
       throw new Error('COMMENT_BODY_REQUIRED');
     }
 
+    const userProfile = await this.getUserProfile(currentUser.uid);
+    const nickname = getCleanText(userProfile?.nickname) || currentUser.displayName || '익명 사용자';
+
     const commentRef = await addDoc(collection(db, 'shared_records', sharedRecordId, 'comments'), {
       ownerUid: currentUser.uid,
-      displayName: currentUser.displayName || '익명 사용자',
+      displayName: nickname,
       body: trimmedBody,
       createdAt: serverTimestamp(),
       isDeleted: false,
