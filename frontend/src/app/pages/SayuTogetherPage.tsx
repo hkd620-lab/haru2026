@@ -1,32 +1,33 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { collection, getDocs, limit, query, where } from 'firebase/firestore';
 import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../../firebase';
-
-type SharedRecordListItem = {
-  id: string;
-  title?: string;
-  nickname?: string;
-  recordDate?: string;
-  publishedAt?: any;
-  formats?: Array<{
-    formatKey?: string;
-    formatLabel?: string;
-    sayuText?: string;
-  }>;
-};
+import {
+  firestoreService,
+  type SharedRecordComment,
+  type SharedRecordListItem,
+} from '../services/firestoreService';
+import { toast } from 'sonner';
 
 export function SayuTogetherPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, loading: authLoading } = useAuth();
   const [items, setItems] = useState<SharedRecordListItem[]>([]);
+  const [selectedId, setSelectedId] = useState('');
+  const [comments, setComments] = useState<SharedRecordComment[]>([]);
+  const [commentBody, setCommentBody] = useState('');
   const [loading, setLoading] = useState(false);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const fromPath = (location.state as any)?.from as string | undefined;
+
+  const selectedItem = useMemo(
+    () => items.find((item) => item.id === selectedId) || null,
+    [items, selectedId],
+  );
 
   const closeToOrigin = () => {
     if (fromPath) { navigate(fromPath); return; }
@@ -36,51 +37,113 @@ export function SayuTogetherPage() {
     else navigate('/');
   };
 
+  const loadSharedRecords = async () => {
+    if (!user?.uid) return;
+    setLoading(true);
+    setErrorMessage('');
+    try {
+      const next = await firestoreService.getSharedRecords();
+      setItems(next);
+      setSelectedId((current) => {
+        if (current && next.some((item) => item.id === current)) return current;
+        return next[0]?.id || '';
+      });
+    } catch (error) {
+      console.error('SAYU-함께보기 공개 글 불러오기 실패:', error);
+      setErrorMessage('공개된 SAYU 기록을 불러오지 못했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadComments = async (sharedRecordId: string) => {
+    if (!sharedRecordId || !user?.uid) {
+      setComments([]);
+      return;
+    }
+    setCommentsLoading(true);
+    try {
+      const next = await firestoreService.getSharedRecordComments(sharedRecordId);
+      setComments(next);
+    } catch (error) {
+      console.error('SAYU-함께보기 댓글 불러오기 실패:', error);
+      toast.error('댓글을 불러오지 못했습니다.');
+    } finally {
+      setCommentsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    if (authLoading || !user?.uid) return;
-    let cancelled = false;
-
-    const loadSharedRecords = async () => {
-      setLoading(true);
-      setErrorMessage('');
-      try {
-        const sharedQuery = query(
-          collection(db, 'shared_records'),
-          where('isActive', '==', true),
-          limit(20),
-        );
-        const snapshot = await getDocs(sharedQuery);
-        if (cancelled) return;
-        const next = snapshot.docs
-          .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as SharedRecordListItem)
-          .sort((a, b) => {
-            const aTime = a.publishedAt?.toMillis?.() ?? 0;
-            const bTime = b.publishedAt?.toMillis?.() ?? 0;
-            return bTime - aTime;
-          });
-        setItems(next);
-      } catch (error) {
-        console.error('SAYU-함께보기 공개 글 불러오기 실패:', error);
-        if (!cancelled) setErrorMessage('공개된 SAYU 기록을 불러오지 못했습니다.');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
+    if (authLoading) return;
+    if (!user?.uid) {
+      setItems([]);
+      setSelectedId('');
+      setComments([]);
+      return;
+    }
     loadSharedRecords();
-    return () => {
-      cancelled = true;
-    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user?.uid]);
+
+  useEffect(() => {
+    if (!selectedId || !user?.uid) {
+      setComments([]);
+      return;
+    }
+    loadComments(selectedId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, user?.uid]);
 
   const formatRecordDate = (date?: string) => {
     if (!date) return '';
     const parsed = new Date(`${date.slice(0, 10)}T00:00:00`);
     if (Number.isNaN(parsed.getTime())) return date;
-    return parsed.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
+    return parsed.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
-  const renderSharedContent = () => {
+  const formatCommentTime = (value?: any) => {
+    const date = value?.toDate?.() || (value ? new Date(value) : null);
+    if (!date || Number.isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getPreviewText = (item: SharedRecordListItem) => {
+    const formats = Array.isArray(item.formats) ? item.formats : [];
+    const preview = formats.map((format) => String(format.sayuText || '').trim()).find(Boolean) || '';
+    return preview.length > 160 ? `${preview.slice(0, 160)}...` : preview;
+  };
+
+  const handleSubmitComment = async () => {
+    if (!user?.uid || !selectedItem) {
+      toast.error('댓글을 작성하려면 로그인이 필요합니다.');
+      return;
+    }
+
+    const body = commentBody.trim();
+    if (!body) {
+      toast.error('댓글을 입력하세요.');
+      return;
+    }
+
+    setCommentSubmitting(true);
+    try {
+      await firestoreService.addSharedRecordComment(selectedItem.id, body);
+      setCommentBody('');
+      await loadComments(selectedItem.id);
+      toast.success('댓글을 등록했습니다.');
+    } catch (error: any) {
+      console.error('SAYU-함께보기 댓글 등록 실패:', error);
+      if (String(error?.message || '').includes('COMMENT_LOGIN_REQUIRED')) {
+        toast.error('댓글을 작성하려면 로그인이 필요합니다.');
+      } else {
+        toast.error('댓글 등록에 실패했습니다.');
+      }
+    } finally {
+      setCommentSubmitting(false);
+    }
+  };
+
+  const renderList = () => {
     if (authLoading || loading) {
       return (
         <div className="rounded-2xl p-8 text-center bg-white" style={{ border: '1px solid #D1FAE5' }}>
@@ -127,15 +190,13 @@ export function SayuTogetherPage() {
     return (
       <div className="space-y-3">
         {items.map((item) => {
+          const isSelected = selectedId === item.id;
           const formats = Array.isArray(item.formats) ? item.formats : [];
-          const preview = formats
-            .map((format) => String(format.sayuText || '').trim())
-            .find(Boolean) || '';
           return (
             <article
               key={item.id}
               className="bg-white rounded-xl p-4 shadow-sm"
-              style={{ border: '1px solid #D1FAE5' }}
+              style={{ border: isSelected ? '1.5px solid #0F766E' : '1px solid #D1FAE5' }}
             >
               <div className="flex items-start justify-between gap-3">
                 <div style={{ minWidth: 0 }}>
@@ -158,15 +219,150 @@ export function SayuTogetherPage() {
                   ))}
                 </div>
               </div>
-              {preview && (
+              {getPreviewText(item) && (
                 <p className="text-sm mt-3" style={{ color: '#334155', lineHeight: 1.7 }}>
-                  {preview.length > 160 ? `${preview.slice(0, 160)}...` : preview}
+                  {getPreviewText(item)}
                 </p>
               )}
+              <button
+                type="button"
+                onClick={() => setSelectedId(item.id)}
+                className="mt-3 w-full sm:w-auto"
+                style={{
+                  minHeight: 34,
+                  padding: '0 14px',
+                  borderRadius: 8,
+                  border: '1px solid #0F766E',
+                  background: isSelected ? '#0F766E' : '#FFFFFF',
+                  color: isSelected ? '#FFFFFF' : '#0F766E',
+                  fontSize: 12,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                }}
+              >
+                {isSelected ? '상세 보는 중' : '상세 보기'}
+              </button>
             </article>
           );
         })}
       </div>
+    );
+  };
+
+  const renderDetail = () => {
+    if (!user?.uid || !selectedItem) return null;
+    const formats = Array.isArray(selectedItem.formats) ? selectedItem.formats : [];
+
+    return (
+      <section
+        className="mt-5 bg-white rounded-2xl p-5 shadow-sm"
+        style={{ border: '1px solid #D1FAE5' }}
+      >
+        <div className="mb-4">
+          <h2 className="text-xl font-bold" style={{ color: '#1A3C6E' }}>
+            {selectedItem.title || 'SAYU 기록'}
+          </h2>
+          <p className="text-xs mt-1" style={{ color: '#64748B' }}>
+            {selectedItem.nickname || 'HARU 회원'} · {formatRecordDate(selectedItem.recordDate)}
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {formats.map((format) => (
+            <article
+              key={`${selectedItem.id}_${format.formatKey || format.formatLabel}`}
+              style={{ borderTop: '1px solid #E2E8F0', paddingTop: 14 }}
+            >
+              <p className="text-xs font-bold mb-2" style={{ color: '#0F766E' }}>
+                {format.formatLabel || 'SAYU'}
+              </p>
+              <p className="text-sm whitespace-pre-wrap" style={{ color: '#334155', lineHeight: 1.85 }}>
+                {format.sayuText || ''}
+              </p>
+            </article>
+          ))}
+        </div>
+
+        <div className="mt-6 pt-5" style={{ borderTop: '1px solid #E2E8F0' }}>
+          <h3 className="text-sm font-bold mb-3" style={{ color: '#1A3C6E' }}>
+            댓글
+          </h3>
+
+          {commentsLoading ? (
+            <p className="text-sm" style={{ color: '#64748B' }}>댓글을 불러오고 있습니다.</p>
+          ) : comments.length === 0 ? (
+            <p className="text-sm" style={{ color: '#94A3B8' }}>아직 댓글이 없습니다.</p>
+          ) : (
+            <div className="space-y-3">
+              {comments.map((comment) => (
+                <div
+                  key={comment.id}
+                  className="rounded-lg p-3"
+                  style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0' }}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-bold" style={{ color: '#0F766E' }}>
+                      {comment.displayName || '익명 사용자'}
+                    </p>
+                    <p className="text-[10px]" style={{ color: '#94A3B8' }}>
+                      {formatCommentTime(comment.createdAt)}
+                    </p>
+                  </div>
+                  <p className="text-sm mt-1 whitespace-pre-wrap" style={{ color: '#334155', lineHeight: 1.6 }}>
+                    {comment.body}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-4">
+            {!user?.uid && (
+              <p className="text-sm mb-2" style={{ color: '#B42318' }}>
+                댓글을 작성하려면 로그인이 필요합니다.
+              </p>
+            )}
+            <textarea
+              value={commentBody}
+              onChange={(event) => setCommentBody(event.target.value)}
+              disabled={!user?.uid || commentSubmitting}
+              placeholder="댓글을 입력하세요"
+              rows={3}
+              className="w-full"
+              style={{
+                border: '1px solid #CBD5E1',
+                borderRadius: 10,
+                padding: 12,
+                fontSize: 14,
+                resize: 'vertical',
+                background: user?.uid ? '#FFFFFF' : '#F1F5F9',
+                color: '#334155',
+                outline: 'none',
+              }}
+            />
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={handleSubmitComment}
+                disabled={!user?.uid || commentSubmitting || !commentBody.trim()}
+                style={{
+                  minHeight: 36,
+                  padding: '0 16px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: !user?.uid || commentSubmitting || !commentBody.trim() ? '#CBD5E1' : '#0F766E',
+                  color: '#FFFFFF',
+                  fontSize: 13,
+                  fontWeight: 800,
+                  cursor: !user?.uid || commentSubmitting || !commentBody.trim() ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {commentSubmitting ? '등록 중...' : '댓글 등록'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
     );
   };
 
@@ -209,7 +405,8 @@ export function SayuTogetherPage() {
         </p>
       </div>
 
-      {renderSharedContent()}
+      {renderList()}
+      {renderDetail()}
     </div>
   );
 }

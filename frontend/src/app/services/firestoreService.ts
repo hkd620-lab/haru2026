@@ -1,5 +1,6 @@
 import { 
   collection, 
+  addDoc,
   doc, 
   setDoc, 
   getDoc, 
@@ -10,9 +11,11 @@ import {
   query, 
   where, 
   orderBy,
+  limit,
+  serverTimestamp,
   Timestamp 
 } from 'firebase/firestore';
-import { db } from '../../firebase';  // ✅ 수정됨: ../firebase → ../../firebase
+import { auth, db } from '../../firebase';  // ✅ 수정됨: ../firebase → ../../firebase
 import { 
   RecordFormatKorean,
   DiaryStats,
@@ -63,6 +66,19 @@ export interface SharedRecordPayload {
   recordDate: string;
   isActive: true;
   formats: SharedRecordFormat[];
+}
+
+export interface SharedRecordListItem extends SharedRecordPayload {
+  id: string;
+}
+
+export interface SharedRecordComment {
+  id: string;
+  ownerUid: string;
+  displayName: string;
+  body: string;
+  createdAt?: any;
+  isDeleted?: boolean;
 }
 
 const PUBLIC_ALLOWED_FORMATS: RecordFormat[] = [
@@ -333,6 +349,54 @@ class FirestoreService {
       sharedRecordId: deleteField(),
       updatedAt: new Date().toISOString(),
     });
+  }
+
+  async getSharedRecords(): Promise<SharedRecordListItem[]> {
+    const sharedQuery = query(
+      collection(db, 'shared_records'),
+      where('isActive', '==', true),
+      limit(50),
+    );
+    const snapshot = await getDocs(sharedQuery);
+    return snapshot.docs
+      .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as SharedRecordListItem)
+      .sort((a, b) => {
+        const aTime = a.publishedAt?.toMillis?.() ?? 0;
+        const bTime = b.publishedAt?.toMillis?.() ?? 0;
+        return bTime - aTime;
+      });
+  }
+
+  async getSharedRecordComments(sharedRecordId: string): Promise<SharedRecordComment[]> {
+    const commentsQuery = query(
+      collection(db, 'shared_records', sharedRecordId, 'comments'),
+      orderBy('createdAt', 'asc'),
+    );
+    const snapshot = await getDocs(commentsQuery);
+    return snapshot.docs
+      .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as SharedRecordComment)
+      .filter((comment) => comment.isDeleted !== true);
+  }
+
+  async addSharedRecordComment(sharedRecordId: string, body: string): Promise<string> {
+    const currentUser = auth.currentUser;
+    if (!currentUser?.uid) {
+      throw new Error('COMMENT_LOGIN_REQUIRED');
+    }
+
+    const trimmedBody = body.trim();
+    if (!trimmedBody) {
+      throw new Error('COMMENT_BODY_REQUIRED');
+    }
+
+    const commentRef = await addDoc(collection(db, 'shared_records', sharedRecordId, 'comments'), {
+      ownerUid: currentUser.uid,
+      displayName: currentUser.displayName || '익명 사용자',
+      body: trimmedBody,
+      createdAt: serverTimestamp(),
+      isDeleted: false,
+    });
+    return commentRef.id;
   }
 
   /**

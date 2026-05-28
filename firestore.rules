@@ -87,13 +87,15 @@ service cloud.firestore {
           && activeSharedRecord(sharedId)
           && request.resource.data.keys().hasOnly([
             "ownerUid",
-            "nickname",
-            "text",
-            "createdAt"
+            "displayName",
+            "body",
+            "createdAt",
+            "isDeleted"
           ])
           && request.resource.data.ownerUid == request.auth.uid
-          && request.resource.data.text is string
-          && request.resource.data.nickname is string;
+          && request.resource.data.displayName is string
+          && request.resource.data.body is string
+          && request.resource.data.isDeleted == false;
 
         allow update: if false;
 
