@@ -52,7 +52,7 @@ export function BottomNav() {
                 }}
               >
                 <Icon className="w-5 h-5 mb-1" strokeWidth={isActive ? 2.5 : 2} />
-                <span className="text-[10px] sm:text-xs tracking-wide">
+                <span className="flex min-h-[24px] max-w-[64px] items-center justify-center text-center text-[10px] leading-[1.15] tracking-wide break-keep sm:max-w-[78px] sm:text-xs">
                   {item.label}
                 </span>
               </Link>
