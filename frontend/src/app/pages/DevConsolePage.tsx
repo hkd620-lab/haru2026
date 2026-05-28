@@ -57,6 +57,13 @@ const DEV_TOOLS: DevTool[] = [
     path: '/admin/checklist',
     color: '#10b981',
   },
+  {
+    icon: '🔎',
+    label: '명작탐정비서 임시 화면',
+    description: '잊힌 책·채널·영상·음악 탐정 (개발자 검토용 껍데기)',
+    path: '/dev/masterpiece-detective',
+    color: '#B85C2E',
+  },
 ];
 
 export function DevConsolePage() {
