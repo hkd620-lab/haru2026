@@ -60,7 +60,7 @@ export function SayuTogetherPage() {
       setItems(next);
       setSelectedId((current) => {
         if (current && next.some((item) => item.id === current)) return current;
-        return next[0]?.id || '';
+        return '';
       });
     } catch (error) {
       console.error('SAYU-함께보기 공개 글 불러오기 실패:', error);
@@ -189,7 +189,7 @@ export function SayuTogetherPage() {
       await firestoreService.unpublishSharedRecord(user.uid, item.sourceRecordId);
       const nextItems = items.filter((nextItem) => nextItem.id !== item.id);
       setItems(nextItems);
-      setSelectedId((current) => current === item.id ? nextItems[0]?.id || '' : current);
+      setSelectedId((current) => current === item.id ? '' : current);
       setComments([]);
       toast.success('SAYU-함께보기에서 삭제했습니다.');
     } catch (error) {
@@ -314,7 +314,7 @@ export function SayuTogetherPage() {
                     cursor: 'pointer',
                   }}
                 >
-                  {isSelected ? '상세 보는 중' : '상세 보기'}
+                  상세 보기
                 </button>
                 {isOwnItem && (
                   <>
@@ -381,6 +381,24 @@ export function SayuTogetherPage() {
         style={{ border: '1px solid #D1FAE5' }}
       >
         <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => setSelectedId('')}
+            style={{
+              minHeight: 34,
+              padding: '0 12px',
+              borderRadius: 8,
+              border: '1px solid #CBD5E1',
+              background: '#FFFFFF',
+              color: '#475569',
+              fontSize: 12,
+              fontWeight: 800,
+              cursor: 'pointer',
+              marginBottom: 14,
+            }}
+          >
+            ← 목록으로
+          </button>
           <h2 className="text-xl font-bold" style={{ color: '#1A3C6E' }}>
             {selectedItem.title || 'SAYU 기록'}
           </h2>
@@ -593,8 +611,7 @@ export function SayuTogetherPage() {
         </p>
       </div>
 
-      {renderList()}
-      {renderDetail()}
+      {selectedItem ? renderDetail() : renderList()}
     </div>
   );
 }
