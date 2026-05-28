@@ -1,4 +1,5 @@
 import { type ReactNode, useMemo, useState } from 'react';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -92,6 +93,9 @@ const DUMMY_EVIDENCE = [
   '환불 요청 메시지',
 ];
 
+const CLAIM_REASON_AI_LIMIT = 3;
+const CLAIM_REASON_AI_NOTICE = '본 문장은 연습용 AI 초안이며 실제 법률자문이 아닙니다.';
+
 function formatAmount(value: string) {
   const digits = value.replace(/[^\d]/g, '');
   if (!digits) return value.trim() || '금액 미입력';
@@ -150,6 +154,8 @@ export function LawsuitPracticePage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [state, setState] = useState<LawsuitPracticeState>(INITIAL_STATE);
+  const [claimReasonAiRemaining, setClaimReasonAiRemaining] = useState(CLAIM_REASON_AI_LIMIT);
+  const [isGeneratingClaimReason, setIsGeneratingClaimReason] = useState(false);
 
   const isFinalStep = step === STEP_LABELS.length - 1;
   const isCompleted = Boolean(state.mockCaseNumber);
@@ -177,6 +183,8 @@ export function LawsuitPracticePage() {
   const resetPractice = () => {
     setStep(0);
     setState(INITIAL_STATE);
+    setClaimReasonAiRemaining(CLAIM_REASON_AI_LIMIT);
+    setIsGeneratingClaimReason(false);
   };
 
   const loginPractice = () => {
@@ -214,6 +222,51 @@ export function LawsuitPracticePage() {
       claimPurpose: prev.claimPurpose.trim() || buildClaimPurpose(prev),
       mockCaseNumber: makeMockCaseNumber(),
     }));
+  };
+
+  const generateClaimReasonDraft = async () => {
+    if (isGeneratingClaimReason || claimReasonAiRemaining <= 0) return;
+    if (
+      state.claimReason.trim() &&
+      !window.confirm('이미 작성하신 청구원인이 있습니다. AI 초안으로 교체하시겠습니까?')
+    ) {
+      return;
+    }
+
+    setIsGeneratingClaimReason(true);
+    console.log('전자소송연습비서 청구원인 AI 초안 요청', {
+      caseType: state.caseType,
+      remainingBefore: claimReasonAiRemaining,
+    });
+
+    try {
+      const functions = getFunctions(undefined, 'asia-northeast3');
+      const fn = httpsCallable(functions, 'generateLawsuitClaimReason');
+      const result = await fn({
+        caseType: state.caseType,
+        caseName: state.caseName || '',
+        suitAmount: state.suitAmount || '',
+        plaintiffName: state.plaintiffName || '',
+        defendantName: state.defendantName || '',
+        claimPurpose: state.claimPurpose || claimExample,
+      });
+      const responseData = result.data as { claimReasonText?: string };
+      const claimReasonText = (responseData.claimReasonText || '').trim();
+      if (!claimReasonText) {
+        throw new Error('EMPTY_CLAIM_REASON_TEXT');
+      }
+
+      updateState('claimReason', `${CLAIM_REASON_AI_NOTICE}\n\n${claimReasonText}`);
+      setClaimReasonAiRemaining((prev) => Math.max(prev - 1, 0));
+      console.log('전자소송연습비서 청구원인 AI 초안 완료', {
+        remainingAfter: Math.max(claimReasonAiRemaining - 1, 0),
+      });
+    } catch (error) {
+      console.error('전자소송연습비서 청구원인 AI 초안 실패:', error);
+      alert('청구원인 AI 초안 작성에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setIsGeneratingClaimReason(false);
+    }
   };
 
   return (
@@ -530,6 +583,33 @@ export function LawsuitPracticePage() {
             {step === 7 && (
               <div>
                 <SectionTitle title="청구원인" subtitle="왜 소송을 하는지 거래 경위와 분쟁 사정을 적습니다." />
+                <div className="mb-4 rounded-lg border border-[#dbe3ec] bg-[#f8fafc] p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-extrabold text-[#1f2937]">청구원인 AI 초안</p>
+                      <p className="mt-1 text-sm leading-6 text-[#64748b]">
+                        입력한 사건 정보만 바탕으로 연습용 초안을 작성합니다.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={generateClaimReasonDraft}
+                      disabled={isGeneratingClaimReason || claimReasonAiRemaining <= 0}
+                      className="lawsuit-button inline-flex items-center justify-center bg-[#185FA5] px-5 text-white disabled:bg-[#94a3b8]"
+                    >
+                      {isGeneratingClaimReason
+                        ? '작성 중...'
+                        : state.claimReason.trim()
+                          ? `재생성 (${claimReasonAiRemaining}회 남음)`
+                          : `AI 초안 작성 (${claimReasonAiRemaining}회 남음)`}
+                    </button>
+                  </div>
+                  {claimReasonAiRemaining <= 0 && (
+                    <p className="mt-3 text-sm font-bold text-[#b42318]">
+                      AI 초안 사용 횟수를 모두 사용했습니다.
+                    </p>
+                  )}
+                </div>
                 <textarea
                   value={state.claimReason}
                   onChange={(event) => updateState('claimReason', event.target.value)}
