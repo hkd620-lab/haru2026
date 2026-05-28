@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -7,81 +8,93 @@ import {
   FileText,
   RotateCcw,
   Scale,
+  UploadCloud,
 } from 'lucide-react';
 
-type Stage = 'start' | 'question' | 'result';
+type DocType = '민사소장';
+type CaseType = '중고거래';
 
-type AnswerKey =
-  | 'item'
-  | 'amount'
-  | 'tradeDate'
-  | 'problem'
-  | 'seller'
-  | 'evidence';
+type LawsuitPracticeState = {
+  isLoggedIn: boolean;
+  userName: string;
+  docType: DocType;
+  caseType: CaseType;
+  agreed: boolean;
+  caseName: string;
+  suitAmount: string;
+  plaintiffName: string;
+  plaintiffBirth: string;
+  defendantName: string;
+  claimPurpose: string;
+  claimReason: string;
+  evidenceList: string[];
+  mockCaseNumber: string;
+};
 
-type Answers = Record<AnswerKey, string>;
-
-type Question = {
-  key: AnswerKey;
+type ReviewRow = {
   label: string;
-  prompt: string;
-  placeholder: string;
-  helper: string;
+  value: string;
 };
 
-const INITIAL_ANSWERS: Answers = {
-  item: '',
-  amount: '',
-  tradeDate: '',
-  problem: '',
-  seller: '',
-  evidence: '',
+const INITIAL_STATE: LawsuitPracticeState = {
+  isLoggedIn: false,
+  userName: '홍길동',
+  docType: '민사소장',
+  caseType: '중고거래',
+  agreed: false,
+  caseName: '',
+  suitAmount: '',
+  plaintiffName: '',
+  plaintiffBirth: '',
+  defendantName: '',
+  claimPurpose: '',
+  claimReason: '',
+  evidenceList: [],
+  mockCaseNumber: '',
 };
 
-const QUESTIONS: Question[] = [
+const STEP_LABELS = [
+  '로그인',
+  '서류',
+  '유형',
+  '동의',
+  '기본',
+  '당사자',
+  '청구취지',
+  '청구원인',
+  '증거',
+  '확인',
+  '제출',
+];
+
+const CASE_CARDS = [
   {
-    key: 'item',
-    label: '거래 물건',
-    prompt: '무엇을 거래했나요?',
-    placeholder: '예: 중고 노트북, 아이폰, 카메라 렌즈',
-    helper: '상품명과 약속한 상태를 함께 적으면 사건 정리가 쉬워집니다.',
+    label: '중고거래 분쟁',
+    body: '미배송, 환불 거부, 하자 물품 사건을 연습합니다.',
+    enabled: true,
   },
   {
-    key: 'amount',
-    label: '거래 금액',
-    prompt: '얼마를 지급했나요?',
-    placeholder: '예: 480000원',
-    helper: '입금액, 배송비, 추가 송금액이 있으면 모두 적어주세요.',
+    label: '임대차 보증금',
+    body: '다음 버전에서 추가 예정입니다.',
+    enabled: false,
   },
   {
-    key: 'tradeDate',
-    label: '거래 일자',
-    prompt: '언제 결제하거나 거래를 약속했나요?',
-    placeholder: '예: 2026년 5월 20일 계좌이체',
-    helper: '정확한 날짜를 모르면 대략적인 순서라도 적어도 됩니다.',
-  },
-  {
-    key: 'problem',
-    label: '분쟁 내용',
-    prompt: '무슨 문제가 생겼나요?',
-    placeholder: '예: 입금 후 판매자가 연락을 끊고 물건을 보내지 않았습니다.',
-    helper: '미배송, 하자, 환불 거부, 연락 두절 중 해당되는 내용을 적어주세요.',
-  },
-  {
-    key: 'seller',
-    label: '상대방 정보',
-    prompt: '상대방을 특정할 수 있는 정보가 있나요?',
-    placeholder: '예: 닉네임, 계좌번호 끝자리, 휴대폰 번호, 플랫폼 채팅방',
-    helper: '전자소송에서는 상대방 특정 가능성이 중요합니다.',
-  },
-  {
-    key: 'evidence',
-    label: '증거 자료',
-    prompt: '지금 가지고 있는 증거는 무엇인가요?',
-    placeholder: '예: 채팅 캡처, 입금확인증, 게시글 캡처, 택배 조회 내역',
-    helper: '증거 이름만 적어도 결과 화면에서 정리해 드립니다.',
+    label: '임금 체불',
+    body: '다음 버전에서 추가 예정입니다.',
+    enabled: false,
   },
 ];
+
+const DUMMY_EVIDENCE = [
+  '채팅 캡처',
+  '입금확인증',
+  '판매글 캡처',
+  '배송 조회 내역',
+  '환불 요청 메시지',
+];
+
+const CLAIM_REASON_AI_LIMIT = 3;
+const CLAIM_REASON_AI_NOTICE = '본 문장은 연습용 AI 초안이며 실제 법률자문이 아닙니다.';
 
 function formatAmount(value: string) {
   const digits = value.replace(/[^\d]/g, '');
@@ -96,99 +109,183 @@ function splitEvidence(value: string) {
     .filter(Boolean);
 }
 
-function buildTimeline(answers: Answers) {
-  const evidence = splitEvidence(answers.evidence);
+function buildClaimPurpose(state: LawsuitPracticeState) {
+  return `피고는 원고에게 금 ${formatAmount(state.suitAmount)}을 지급하라.`;
+}
+
+function buildPracticeTimeline(state: LawsuitPracticeState) {
   return [
     {
-      title: '거래 약속',
-      body: `${answers.item || '거래 물건'} 거래를 약속했습니다.`,
+      title: '소장 기본정보 확인',
+      body: `${state.caseName || '사건명 미입력'} 사건의 소가를 ${formatAmount(
+        state.suitAmount,
+      )} 기준으로 확인합니다.`,
     },
     {
-      title: '대금 지급',
-      body: `${answers.tradeDate || '거래 일자 미입력'}에 ${formatAmount(
-        answers.amount,
-      )} 지급 사실을 정리합니다.`,
+      title: '당사자 정보 점검',
+      body: `원고 ${state.plaintiffName || '원고명 미입력'}와 피고 ${
+        state.defendantName || '피고명 미입력'
+      }의 표시가 맞는지 다시 확인합니다.`,
     },
     {
-      title: '분쟁 발생',
-      body: answers.problem || '미배송, 하자, 환불 거부 등 분쟁 내용을 보완해야 합니다.',
+      title: '청구취지 검토',
+      body: state.claimPurpose || buildClaimPurpose(state),
     },
     {
-      title: '상대방 특정',
+      title: '청구원인 보완',
       body:
-        answers.seller ||
-        '닉네임, 계좌, 휴대폰, 플랫폼 채팅방 등 상대방 특정 자료를 더 모아야 합니다.',
+        state.claimReason ||
+        '거래 경위, 대금 지급, 미배송 또는 환불 거부 사정을 날짜 순서로 보완합니다.',
     },
     {
-      title: '증거 정리',
-      body: evidence.length
-        ? `${evidence.join(', ')} 자료를 소장 첨부자료 후보로 분류합니다.`
-        : '채팅, 입금내역, 게시글, 배송내역 등 증거명을 입력해야 합니다.',
+      title: '증거 첨부 준비',
+      body: state.evidenceList.length
+        ? `${state.evidenceList.join(', ')} 자료를 첨부서류 후보로 정리합니다.`
+        : '채팅 캡처, 입금확인증, 판매글 캡처 등 증거자료를 첨부 후보로 준비합니다.',
     },
   ];
 }
 
+function makeMockCaseNumber() {
+  return `2026가소${Math.floor(10000 + Math.random() * 90000)}`;
+}
+
 export function LawsuitPracticePage() {
   const navigate = useNavigate();
-  const [stage, setStage] = useState<Stage>('start');
-  const [selectedCase, setSelectedCase] = useState('used-trade');
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<Answers>(INITIAL_ANSWERS);
+  const [state, setState] = useState<LawsuitPracticeState>(INITIAL_STATE);
+  const [claimReasonAiRemaining, setClaimReasonAiRemaining] = useState(CLAIM_REASON_AI_LIMIT);
+  const [isGeneratingClaimReason, setIsGeneratingClaimReason] = useState(false);
 
-  const currentQuestion = QUESTIONS[step];
-  const progress = Math.round(((step + 1) / QUESTIONS.length) * 100);
-  const timeline = useMemo(() => buildTimeline(answers), [answers]);
-  const evidenceItems = splitEvidence(answers.evidence);
+  const isFinalStep = step === STEP_LABELS.length - 1;
+  const isCompleted = Boolean(state.mockCaseNumber);
+  const claimExample = useMemo(() => buildClaimPurpose(state), [state.suitAmount]);
+  const timeline = useMemo(() => buildPracticeTimeline(state), [state]);
+  const reviewRows = useMemo<ReviewRow[]>(
+    () => [
+      { label: '사건명', value: state.caseName || '미입력' },
+      { label: '소가', value: formatAmount(state.suitAmount) },
+      { label: '원고', value: state.plaintiffName || '미입력' },
+      { label: '피고', value: state.defendantName || '미입력' },
+      { label: '청구취지', value: state.claimPurpose || claimExample },
+      { label: '청구원인', value: state.claimReason || '미입력' },
+    ],
+    [claimExample, state],
+  );
 
-  const updateAnswer = (key: AnswerKey, value: string) => {
-    setAnswers((prev) => ({ ...prev, [key]: value }));
+  const updateState = <K extends keyof LawsuitPracticeState>(
+    key: K,
+    value: LawsuitPracticeState[K],
+  ) => {
+    setState((prev) => ({ ...prev, [key]: value }));
   };
 
   const resetPractice = () => {
-    setStage('start');
     setStep(0);
-    setSelectedCase('used-trade');
-    setAnswers(INITIAL_ANSWERS);
+    setState(INITIAL_STATE);
+    setClaimReasonAiRemaining(CLAIM_REASON_AI_LIMIT);
+    setIsGeneratingClaimReason(false);
+  };
+
+  const loginPractice = () => {
+    setState((prev) => ({ ...prev, isLoggedIn: true }));
+    setStep(1);
+  };
+
+  const addEvidence = () => {
+    setState((prev) => {
+      const seed = splitEvidence(DUMMY_EVIDENCE.join(', '));
+      const nextItem = seed[prev.evidenceList.length % seed.length] || '증거자료';
+      return { ...prev, evidenceList: [...prev.evidenceList, nextItem] };
+    });
   };
 
   const moveNext = () => {
-    if (step < QUESTIONS.length - 1) {
-      setStep((prev) => prev + 1);
-      return;
+    if (step === 3 && !state.agreed) return;
+    if (step === 6 && !state.claimPurpose.trim()) {
+      updateState('claimPurpose', claimExample);
     }
-    setStage('result');
+    setStep((prev) => Math.min(prev + 1, STEP_LABELS.length - 1));
   };
 
   const moveBack = () => {
-    if (stage === 'result') {
-      setStage('question');
-      setStep(QUESTIONS.length - 1);
+    if (isCompleted) {
+      updateState('mockCaseNumber', '');
       return;
     }
-    if (stage === 'question' && step > 0) {
-      setStep((prev) => prev - 1);
+    setStep((prev) => Math.max(prev - 1, 0));
+  };
+
+  const submitPractice = () => {
+    setState((prev) => ({
+      ...prev,
+      claimPurpose: prev.claimPurpose.trim() || buildClaimPurpose(prev),
+      mockCaseNumber: makeMockCaseNumber(),
+    }));
+  };
+
+  const generateClaimReasonDraft = async () => {
+    if (isGeneratingClaimReason || claimReasonAiRemaining <= 0) return;
+    if (
+      state.claimReason.trim() &&
+      !window.confirm('이미 작성하신 청구원인이 있습니다. AI 초안으로 교체하시겠습니까?')
+    ) {
       return;
     }
-    setStage('start');
+
+    setIsGeneratingClaimReason(true);
+    console.log('전자소송연습비서 청구원인 AI 초안 요청', {
+      caseType: state.caseType,
+      remainingBefore: claimReasonAiRemaining,
+    });
+
+    try {
+      const functions = getFunctions(undefined, 'asia-northeast3');
+      const fn = httpsCallable(functions, 'generateLawsuitClaimReason');
+      const result = await fn({
+        caseType: state.caseType,
+        caseName: state.caseName || '',
+        suitAmount: state.suitAmount || '',
+        plaintiffName: state.plaintiffName || '',
+        defendantName: state.defendantName || '',
+        claimPurpose: state.claimPurpose || claimExample,
+      });
+      const responseData = result.data as { claimReasonText?: string };
+      const claimReasonText = (responseData.claimReasonText || '').trim();
+      if (!claimReasonText) {
+        throw new Error('EMPTY_CLAIM_REASON_TEXT');
+      }
+
+      updateState('claimReason', `${CLAIM_REASON_AI_NOTICE}\n\n${claimReasonText}`);
+      setClaimReasonAiRemaining((prev) => Math.max(prev - 1, 0));
+      console.log('전자소송연습비서 청구원인 AI 초안 완료', {
+        remainingAfter: Math.max(claimReasonAiRemaining - 1, 0),
+      });
+    } catch (error) {
+      console.error('전자소송연습비서 청구원인 AI 초안 실패:', error);
+      alert('청구원인 AI 초안 작성에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setIsGeneratingClaimReason(false);
+    }
   };
 
   return (
-    <main className="min-h-screen bg-[#FEFBE8] text-[#1A3C6E] px-4 py-5 sm:px-6">
+    <main className="min-h-screen bg-[#f4f6f8] text-[#1f2937] px-4 py-5 sm:px-6">
       <style>{`
         .lawsuit-shell {
           max-width: 980px;
           margin: 0 auto;
-          padding-bottom: 96px;
+          padding-bottom: 176px;
         }
         .lawsuit-card {
           background: #fff;
-          border: 1px solid #e5dfd0;
-          border-radius: 18px;
-          box-shadow: 0 18px 44px -34px rgba(26, 60, 110, 0.38);
+          border: 1px solid #dbe3ec;
+          border-radius: 12px;
+          box-shadow: 0 18px 44px -34px rgba(24, 95, 165, 0.34);
         }
         .lawsuit-button {
           min-height: 46px;
-          border-radius: 12px;
+          border-radius: 8px;
           font-weight: 700;
           transition: transform 120ms ease, background 160ms ease, border-color 160ms ease;
         }
@@ -205,9 +302,22 @@ export function LawsuitPracticePage() {
           grid-template-columns: 32px minmax(0, 1fr);
           gap: 12px;
         }
+        .lawsuit-field {
+          width: 100%;
+          border-radius: 8px;
+          border: 1px solid #cbd5e1;
+          background: #fff;
+          padding: 12px 14px;
+          color: #1f2937;
+          outline: none;
+        }
+        .lawsuit-field:focus {
+          border-color: #185FA5;
+          box-shadow: 0 0 0 3px rgba(24, 95, 165, 0.12);
+        }
         @media (max-width: 720px) {
           .lawsuit-shell {
-            padding-bottom: 112px;
+            padding-bottom: 192px;
           }
           .lawsuit-grid {
             grid-template-columns: 1fr;
@@ -216,11 +326,15 @@ export function LawsuitPracticePage() {
       `}</style>
 
       <div className="lawsuit-shell">
+        <div className="sticky top-0 z-20 -mx-4 mb-4 bg-[#b42318] px-4 py-2 text-center text-xs font-extrabold text-white shadow-sm sm:-mx-6">
+          연습용 모의 화면입니다. 실제 법원에 제출되지 않습니다
+        </div>
+
         <header className="mb-5 flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={() => navigate('/v2')}
-            className="lawsuit-button inline-flex items-center gap-2 border border-[#d8d1bc] bg-white px-4 text-sm text-[#4A5A2C]"
+            className="lawsuit-button inline-flex items-center gap-2 border border-[#cbd5e1] bg-white px-4 text-sm text-[#185FA5]"
           >
             <ArrowLeft className="h-4 w-4" />
             HARU 홈
@@ -228,231 +342,433 @@ export function LawsuitPracticePage() {
           <button
             type="button"
             onClick={resetPractice}
-            className="lawsuit-button inline-flex items-center gap-2 border border-[#d8d1bc] bg-white px-4 text-sm text-[#7A6F5A]"
+            className="lawsuit-button inline-flex items-center gap-2 border border-[#cbd5e1] bg-white px-4 text-sm text-[#475569]"
           >
             <RotateCcw className="h-4 w-4" />
             초기화
           </button>
         </header>
 
-        <section className="lawsuit-card mb-4 overflow-hidden">
-          <div className="border-b border-[#e5dfd0] bg-[#f5f0e8] px-5 py-4 sm:px-7">
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[11px] font-bold tracking-[0.16em] text-[#B85C2E]">
-              <Scale className="h-3.5 w-3.5" />
-              LAWSUIT PRACTICE V1
+        <section className="lawsuit-card overflow-hidden">
+          <div className="bg-[#185FA5] px-5 py-5 text-white sm:px-7">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="mb-2 inline-flex items-center gap-2 rounded bg-white/14 px-3 py-1 text-[11px] font-bold tracking-[0.16em] text-white">
+                  <Scale className="h-3.5 w-3.5" />
+                  LAWSUIT PRACTICE V2
+                </div>
+                <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+                  전자소송연습비서
+                </h1>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-[#dceeff]">
+                  중고거래 분쟁을 전자소송 화면 흐름처럼 11단계로 정리합니다.
+                </p>
+              </div>
+              {state.isLoggedIn && (
+                <div className="rounded bg-white px-3 py-2 text-sm font-extrabold text-[#185FA5]">
+                  {state.userName}님(연습)
+                </div>
+              )}
             </div>
-            <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
-              전자소송연습비서
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#5f6673]">
-              중고거래 분쟁을 질문 순서대로 정리하고, 전자소송 준비용 사건 타임라인을
-              만들어봅니다.
-            </p>
           </div>
 
-          {stage === 'start' && (
-            <div className="px-5 py-6 sm:px-7">
-              <div className="mb-5 flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-bold">사건 유형 선택</h2>
-                  <p className="mt-1 text-sm text-[#6b7280]">
-                    v1은 중고거래 대금반환 흐름만 동작합니다.
-                  </p>
-                </div>
-                <span className="rounded-full bg-[#e0e8b8] px-3 py-1 text-xs font-bold text-[#4A5A2C]">
-                  미저장 연습
-                </span>
-              </div>
-
-              <div className="lawsuit-grid">
-                <button
-                  type="button"
-                  onClick={() => setSelectedCase('used-trade')}
-                  className="min-h-[150px] rounded-2xl border bg-[#f9faf3] p-5 text-left"
-                  style={{
-                    borderColor: selectedCase === 'used-trade' ? '#4A5A2C' : '#e5dfd0',
-                  }}
-                >
-                  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-white text-[#4A5A2C]">
-                    <FileText className="h-5 w-5" />
-                  </div>
-                  <div className="text-base font-extrabold">중고거래 분쟁</div>
-                  <div className="mt-2 text-sm leading-5 text-[#6b7280]">
-                    미배송, 환불 거부, 하자 물품 사건을 연습합니다.
-                  </div>
-                  <div className="mt-4 inline-flex items-center gap-1 rounded-full bg-[#1A3C6E] px-3 py-1 text-xs font-bold text-white">
-                    선택됨
-                  </div>
-                </button>
-
-                {['임대차 보증금', '임금 체불'].map((label) => (
-                  <button
-                    key={label}
-                    type="button"
-                    disabled
-                    className="min-h-[150px] rounded-2xl border border-dashed border-[#d8d1bc] bg-white p-5 text-left opacity-70"
-                  >
-                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-[#f5f0e8] text-[#7A6F5A]">
-                      <Scale className="h-5 w-5" />
+          <div className="border-b border-[#dbe3ec] bg-white px-4 py-4 sm:px-6">
+            <div className="grid grid-cols-11 gap-1">
+              {STEP_LABELS.map((label, index) => {
+                const status =
+                  index === step ? 'current' : index < step || isCompleted ? 'done' : 'todo';
+                return (
+                  <div key={label} className="min-w-0">
+                    <div
+                      className={
+                        status === 'current'
+                          ? 'h-2 rounded-full bg-[#185FA5]'
+                          : status === 'done'
+                            ? 'h-2 rounded-full bg-[#9fc8ed]'
+                            : 'h-2 rounded-full bg-[#d8dee7]'
+                      }
+                    />
+                    <div
+                      className={
+                        status === 'current'
+                          ? 'mt-2 truncate text-center text-[10px] font-extrabold text-[#185FA5]'
+                          : 'mt-2 truncate text-center text-[10px] font-bold text-[#64748b]'
+                      }
+                    >
+                      {index + 1}. {label}
                     </div>
-                    <div className="text-base font-extrabold text-[#7A6F5A]">{label}</div>
-                    <div className="mt-2 text-sm leading-5 text-[#8a8f98]">
-                      다음 버전에서 추가 예정입니다.
-                    </div>
-                    <div className="mt-4 inline-flex items-center gap-1 rounded-full border border-[#e5dfd0] px-3 py-1 text-xs font-bold text-[#7A6F5A]">
-                      준비중
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setStage('question')}
-                className="lawsuit-button mt-6 inline-flex w-full items-center justify-center gap-2 bg-[#1A3C6E] px-5 text-white"
-              >
-                중고거래 사건 연습 시작
-                <ChevronRight className="h-4 w-4" />
-              </button>
+                  </div>
+                );
+              })}
             </div>
-          )}
+          </div>
 
-          {stage === 'question' && (
-            <div className="px-5 py-6 sm:px-7">
-              <div className="mb-5">
-                <div className="mb-2 flex items-center justify-between text-xs font-bold text-[#7A6F5A]">
-                  <span>
-                    STEP {step + 1} / {QUESTIONS.length}
-                  </span>
-                  <span>{progress}%</span>
+          <div className="px-5 py-6 sm:px-7">
+            {step === 0 && (
+              <div>
+                <SectionTitle title="로그인" subtitle="연습용 인증 버튼 중 하나를 선택하세요." />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={loginPractice}
+                    className="lawsuit-button border border-[#185FA5] bg-white px-5 text-[#185FA5]"
+                  >
+                    공동인증서 로그인(연습)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={loginPractice}
+                    className="lawsuit-button bg-[#185FA5] px-5 text-white"
+                  >
+                    간편인증(연습)
+                  </button>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-[#ede8dc]">
-                  <div
-                    className="h-full rounded-full bg-[#4A5A2C]"
-                    style={{ width: `${progress}%` }}
+              </div>
+            )}
+
+            {step === 1 && (
+              <div>
+                <SectionTitle title="서류 선택" subtitle="이번 V2에서는 민사 소장만 활성화됩니다." />
+                <div className="grid gap-3 sm:grid-cols-4">
+                  {['민사 소장', '지급명령', '답변서', '준비서면'].map((label, index) => (
+                    <button
+                      key={label}
+                      type="button"
+                      disabled={index !== 0}
+                      className={
+                        index === 0
+                          ? 'min-h-[132px] rounded-lg border border-[#185FA5] bg-[#f3f9ff] p-4 text-left'
+                          : 'min-h-[132px] rounded-lg border border-dashed border-[#cbd5e1] bg-[#f8fafc] p-4 text-left opacity-70'
+                      }
+                    >
+                      <FileText className={index === 0 ? 'mb-4 h-6 w-6 text-[#185FA5]' : 'mb-4 h-6 w-6 text-[#94a3b8]'} />
+                      <div className="font-extrabold">{label}</div>
+                      <div className="mt-2 text-sm text-[#64748b]">
+                        {index === 0 ? '선택됨' : '다음 버전 예정'}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div>
+                <SectionTitle title="사건유형 선택" subtitle="중고거래 분쟁만 실제 흐름을 진행합니다." />
+                <div className="lawsuit-grid">
+                  {CASE_CARDS.map((card) => (
+                    <button
+                      key={card.label}
+                      type="button"
+                      disabled={!card.enabled}
+                      className={
+                        card.enabled
+                          ? 'min-h-[150px] rounded-lg border border-[#185FA5] bg-[#f3f9ff] p-5 text-left'
+                          : 'min-h-[150px] rounded-lg border border-dashed border-[#cbd5e1] bg-[#f8fafc] p-5 text-left opacity-70'
+                      }
+                    >
+                      <div className={card.enabled ? 'mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-white text-[#185FA5]' : 'mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-white text-[#94a3b8]'}>
+                        <Scale className="h-5 w-5" />
+                      </div>
+                      <div className="text-base font-extrabold">{card.label}</div>
+                      <div className="mt-2 text-sm leading-5 text-[#64748b]">{card.body}</div>
+                      <div className={card.enabled ? 'mt-4 inline-flex rounded bg-[#185FA5] px-3 py-1 text-xs font-bold text-white' : 'mt-4 inline-flex rounded border border-[#cbd5e1] px-3 py-1 text-xs font-bold text-[#64748b]'}>
+                        {card.enabled ? '선택됨' : '다음 버전 예정'}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div>
+                <SectionTitle title="전자소송 동의" subtitle="연습 화면임을 확인해야 다음 단계로 이동할 수 있습니다." />
+                <div className="rounded-lg border border-[#cbd5e1] bg-[#f8fafc] p-5 text-sm leading-7 text-[#475569]">
+                  본 화면은 전자소송 절차를 익히기 위한 모의 작성 화면입니다. 입력한 내용은
+                  법원에 제출되지 않으며, 현재 라운드에서는 저장·AI 작성·Functions 호출을 하지
+                  않습니다.
+                </div>
+                <label className="mt-5 flex items-center gap-3 text-sm font-extrabold text-[#1f2937]">
+                  <input
+                    type="checkbox"
+                    checked={state.agreed}
+                    onChange={(event) => updateState('agreed', event.target.checked)}
+                    className="h-5 w-5 accent-[#185FA5]"
                   />
+                  동의합니다
+                </label>
+                {!state.agreed && (
+                  <p className="mt-3 text-sm font-bold text-[#b42318]">
+                    체크 후 다음 단계로 이동할 수 있습니다.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {step === 4 && (
+              <div>
+                <SectionTitle title="사건기본정보" subtitle="사건명과 소가를 입력합니다." />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="사건명">
+                    <input
+                      value={state.caseName}
+                      onChange={(event) => updateState('caseName', event.target.value)}
+                      placeholder="예: 중고 노트북 대금반환 청구"
+                      className="lawsuit-field"
+                    />
+                  </Field>
+                  <Field label="소가(소송금액)">
+                    <input
+                      value={state.suitAmount}
+                      onChange={(event) => updateState('suitAmount', event.target.value)}
+                      placeholder="예: 480000원"
+                      className="lawsuit-field"
+                    />
+                    <p className="mt-2 text-sm font-bold text-[#185FA5]">
+                      표시 금액: {formatAmount(state.suitAmount)}
+                    </p>
+                  </Field>
                 </div>
               </div>
+            )}
 
-              <div className="mb-4 inline-flex rounded-full bg-[#f5f0e8] px-3 py-1 text-xs font-bold text-[#B85C2E]">
-                {currentQuestion.label}
+            {step === 5 && (
+              <div>
+                <SectionTitle title="당사자 입력" subtitle="피고 실명은 상대방 특정자료와 별도로 입력합니다." />
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <Field label="원고(나) 이름">
+                    <input
+                      value={state.plaintiffName}
+                      onChange={(event) => updateState('plaintiffName', event.target.value)}
+                      placeholder="예: 홍길동"
+                      className="lawsuit-field"
+                    />
+                  </Field>
+                  <Field label="원고 생년월일">
+                    <input
+                      value={state.plaintiffBirth}
+                      onChange={(event) => updateState('plaintiffBirth', event.target.value)}
+                      placeholder="예: 1990.01.01"
+                      className="lawsuit-field"
+                    />
+                  </Field>
+                  <Field label="피고(상대방) 이름">
+                    <input
+                      value={state.defendantName}
+                      onChange={(event) => updateState('defendantName', event.target.value)}
+                      placeholder="예: 김철수"
+                      className="lawsuit-field"
+                    />
+                  </Field>
+                </div>
               </div>
-              <h2 className="text-xl font-extrabold tracking-tight">
-                {currentQuestion.prompt}
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-[#6b7280]">
-                {currentQuestion.helper}
-              </p>
+            )}
 
-              <textarea
-                value={answers[currentQuestion.key]}
-                onChange={(event) => updateAnswer(currentQuestion.key, event.target.value)}
-                placeholder={currentQuestion.placeholder}
-                className="mt-5 min-h-[160px] w-full resize-none rounded-2xl border border-[#d8d1bc] bg-[#fffdf4] p-4 text-base leading-7 text-[#1A3C6E] outline-none focus:border-[#1A3C6E]"
-              />
+            {step === 6 && (
+              <div>
+                <SectionTitle title="청구취지" subtitle="법원에 구하는 결론을 짧게 정리합니다." />
+                <div className="mb-4 rounded-lg border border-[#bfd7ef] bg-[#f3f9ff] p-4 text-sm leading-6 text-[#185FA5]">
+                  예시: {claimExample}
+                </div>
+                <textarea
+                  value={state.claimPurpose}
+                  onChange={(event) => updateState('claimPurpose', event.target.value)}
+                  placeholder={claimExample}
+                  className="lawsuit-field min-h-[150px] resize-none leading-7"
+                />
+              </div>
+            )}
 
-              <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-between">
+            {step === 7 && (
+              <div>
+                <SectionTitle title="청구원인" subtitle="왜 소송을 하는지 거래 경위와 분쟁 사정을 적습니다." />
+                <div className="mb-4 rounded-lg border border-[#dbe3ec] bg-[#f8fafc] p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-extrabold text-[#1f2937]">청구원인 AI 초안</p>
+                      <p className="mt-1 text-sm leading-6 text-[#64748b]">
+                        입력한 사건 정보만 바탕으로 연습용 초안을 작성합니다.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={generateClaimReasonDraft}
+                      disabled={isGeneratingClaimReason || claimReasonAiRemaining <= 0}
+                      className="lawsuit-button inline-flex items-center justify-center bg-[#185FA5] px-5 text-white disabled:bg-[#94a3b8]"
+                    >
+                      {isGeneratingClaimReason
+                        ? '작성 중...'
+                        : state.claimReason.trim()
+                          ? `재생성 (${claimReasonAiRemaining}회 남음)`
+                          : `AI 초안 작성 (${claimReasonAiRemaining}회 남음)`}
+                    </button>
+                  </div>
+                  {claimReasonAiRemaining <= 0 && (
+                    <p className="mt-3 text-sm font-bold text-[#b42318]">
+                      AI 초안 사용 횟수를 모두 사용했습니다.
+                    </p>
+                  )}
+                </div>
+                <textarea
+                  value={state.claimReason}
+                  onChange={(event) => updateState('claimReason', event.target.value)}
+                  placeholder="예: 원고는 피고에게 중고 노트북 대금을 송금했으나, 피고는 물건을 보내지 않고 환불도 거부하고 있습니다."
+                  className="lawsuit-field min-h-[190px] resize-none leading-7"
+                />
+              </div>
+            )}
+
+            {step === 8 && (
+              <div>
+                <SectionTitle title="증거·첨부서류" subtitle="실제 업로드 없이 연습용 증거 항목만 추가합니다." />
+                <div className="rounded-lg border-2 border-dashed border-[#9fb7d1] bg-[#f8fafc] p-6 text-center">
+                  <UploadCloud className="mx-auto mb-3 h-8 w-8 text-[#185FA5]" />
+                  <p className="font-extrabold">첨부서류 업로드 영역(연습)</p>
+                  <p className="mt-2 text-sm text-[#64748b]">파일은 업로드되지 않습니다.</p>
+                </div>
                 <button
                   type="button"
-                  onClick={moveBack}
-                  className="lawsuit-button inline-flex items-center justify-center gap-2 border border-[#d8d1bc] bg-white px-5 text-[#4A5A2C]"
+                  onClick={addEvidence}
+                  className="lawsuit-button mt-4 bg-[#185FA5] px-5 text-white"
                 >
-                  <ArrowLeft className="h-4 w-4" />
-                  이전
+                  증거 추가(연습)
                 </button>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {(state.evidenceList.length ? state.evidenceList : ['채팅 캡처', '입금확인증']).map(
+                    (item) => (
+                      <span
+                        key={item}
+                        className="rounded bg-[#e8f2fb] px-3 py-1 text-xs font-bold text-[#185FA5]"
+                      >
+                        {item}
+                      </span>
+                    ),
+                  )}
+                </div>
+              </div>
+            )}
+
+            {step === 9 && (
+              <div>
+                <SectionTitle title="작성 확인" subtitle="입력한 주요 내용을 제출 전 표로 확인합니다." />
+                <div className="overflow-hidden rounded-lg border border-[#cbd5e1]">
+                  {reviewRows.map((row) => (
+                    <div key={row.label} className="grid grid-cols-[120px_minmax(0,1fr)] border-b border-[#e2e8f0] last:border-b-0">
+                      <div className="bg-[#f8fafc] px-4 py-3 text-sm font-extrabold text-[#475569]">
+                        {row.label}
+                      </div>
+                      <div className="whitespace-pre-wrap px-4 py-3 text-sm leading-6 text-[#1f2937]">
+                        {row.value}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {step === 10 && !isCompleted && (
+              <div>
+                <SectionTitle title="전자서명·제출" subtitle="연습용 제출 버튼을 누르면 모의 사건번호가 생성됩니다." />
                 <button
                   type="button"
-                  onClick={moveNext}
-                  className="lawsuit-button inline-flex items-center justify-center gap-2 bg-[#1A3C6E] px-5 text-white"
+                  onClick={submitPractice}
+                  className="lawsuit-button inline-flex w-full items-center justify-center gap-2 bg-[#185FA5] px-5 text-white"
                 >
-                  {step === QUESTIONS.length - 1 ? '타임라인 만들기' : '다음 질문'}
+                  소장 제출하기(연습)
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
-            </div>
-          )}
+            )}
 
-          {stage === 'result' && (
-            <div className="px-5 py-6 sm:px-7">
-              <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-[#e0e8b8] px-3 py-1 text-xs font-bold text-[#4A5A2C]">
-                    <CheckCircle2 className="h-4 w-4" />
-                    결과 생성 완료
+            {step === 10 && isCompleted && (
+              <div>
+                <div className="mb-6 text-center">
+                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#e8f5e9] text-[#2f7d32]">
+                    <CheckCircle2 className="h-8 w-8" />
                   </div>
-                  <h2 className="text-xl font-extrabold tracking-tight">
-                    중고거래 사건 타임라인
-                  </h2>
-                  <p className="mt-2 text-sm leading-6 text-[#6b7280]">
-                    입력값은 화면 안에서만 사용되며 Firestore에 저장하지 않습니다.
+                  <h2 className="text-2xl font-extrabold text-[#1f2937]">접수완료(연습)</h2>
+                  <p className="mt-2 text-lg font-extrabold text-[#185FA5]">
+                    모의 사건번호: {state.mockCaseNumber}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStage('question');
-                    setStep(0);
-                  }}
-                  className="lawsuit-button inline-flex items-center justify-center gap-2 border border-[#d8d1bc] bg-white px-4 text-sm text-[#4A5A2C]"
-                >
-                  답변 수정
-                </button>
-              </div>
 
-              <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-                <div className="rounded-2xl border border-[#e5dfd0] bg-[#fffdf4] p-5">
+                <div className="rounded-lg border border-[#dbe3ec] bg-[#f8fafc] p-5">
+                  <h3 className="mb-4 font-extrabold">앞으로의 진행 안내</h3>
                   <div className="space-y-5">
                     {timeline.map((item, index) => (
                       <div key={item.title} className="lawsuit-timeline">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1A3C6E] text-sm font-extrabold text-white">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#185FA5] text-sm font-extrabold text-white">
                           {index + 1}
                         </div>
                         <div>
                           <div className="text-base font-extrabold">{item.title}</div>
-                          <p className="mt-1 text-sm leading-6 text-[#5f6673]">{item.body}</p>
+                          <p className="mt-1 text-sm leading-6 text-[#475569]">{item.body}</p>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <aside className="space-y-4">
-                  <div className="rounded-2xl border border-[#e5dfd0] bg-white p-5">
-                    <h3 className="font-extrabold">청구 취지 연습 문장</h3>
-                    <p className="mt-3 text-sm leading-6 text-[#5f6673]">
-                      피고는 원고에게 {formatAmount(answers.amount)} 및 이에 대한 지연손해금을
-                      지급하라는 취지로 정리할 수 있습니다.
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-[#e5dfd0] bg-white p-5">
-                    <h3 className="font-extrabold">증거 후보</h3>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {(evidenceItems.length ? evidenceItems : ['채팅 캡처', '입금확인증']).map(
-                        (item) => (
-                          <span
-                            key={item}
-                            className="rounded-full bg-[#f5f0e8] px-3 py-1 text-xs font-bold text-[#4A5A2C]"
-                          >
-                            {item}
-                          </span>
-                        ),
-                      )}
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-[#f0c8c8] bg-[#fff5f5] p-5">
-                    <h3 className="font-extrabold text-[#a33a3a]">주의</h3>
-                    <p className="mt-3 text-sm leading-6 text-[#7a4a4a]">
-                      이 화면은 소송 연습용 정리 도구입니다. 실제 제출 전에는 관할,
-                      상대방 인적사항, 청구원인, 증거 적합성을 별도로 확인해야 합니다.
-                    </p>
-                  </div>
-                </aside>
+                <button
+                  type="button"
+                  onClick={resetPractice}
+                  className="lawsuit-button mt-6 inline-flex w-full items-center justify-center gap-2 border border-[#185FA5] bg-white px-5 text-[#185FA5]"
+                >
+                  처음부터 다시 연습
+                </button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </section>
       </div>
+
+      <div
+        className="fixed inset-x-0 z-20 border-t border-[#dbe3ec] bg-white/96 px-4 py-3 backdrop-blur"
+        style={{ bottom: 'calc(64px + env(safe-area-inset-bottom))' }}
+      >
+        <div className="mx-auto flex max-w-[980px] justify-between gap-3">
+          <button
+            type="button"
+            onClick={moveBack}
+            disabled={step === 0}
+            className="lawsuit-button inline-flex min-w-[120px] items-center justify-center gap-2 border border-[#cbd5e1] bg-white px-5 text-[#185FA5] disabled:opacity-40"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            이전
+          </button>
+          {step !== 0 && !isFinalStep && (
+            <button
+              type="button"
+              onClick={moveNext}
+              disabled={step === 3 && !state.agreed}
+              className="lawsuit-button inline-flex min-w-[120px] items-center justify-center gap-2 bg-[#185FA5] px-5 text-white disabled:bg-[#94a3b8]"
+            >
+              다음
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
     </main>
+  );
+}
+
+function SectionTitle({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="mb-5">
+      <h2 className="text-xl font-extrabold tracking-tight text-[#1f2937]">{title}</h2>
+      <p className="mt-2 text-sm leading-6 text-[#64748b]">{subtitle}</p>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-extrabold text-[#475569]">{label}</span>
+      {children}
+    </label>
   );
 }
 

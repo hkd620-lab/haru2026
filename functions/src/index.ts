@@ -2892,6 +2892,7 @@ export const cleanupTtsUsage = onSchedule(
 export { generateBook } from "./bookStudio";
 export { analyzeFacebookZip } from "./snsAnalyzer";
 export { convertSnsToDiary } from "./snsToDiary";
+export { generateLawsuitClaimReason } from "./generateLawsuitClaimReason";
 export { convertToBookMaterial } from "./bookMaterial";
 export { gatherElderBookSources, buildElderBookOutline, assignElderBookSources, draftElderBookChapters, polishElderBookChapters } from "./elderBook";
 

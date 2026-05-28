@@ -1,5 +1,6 @@
 import { 
   collection, 
+  addDoc,
   doc, 
   setDoc, 
   getDoc, 
@@ -10,9 +11,11 @@ import {
   query, 
   where, 
   orderBy,
+  limit,
+  serverTimestamp,
   Timestamp 
 } from 'firebase/firestore';
-import { db } from '../../firebase';  // ✅ 수정됨: ../firebase → ../../firebase
+import { auth, db } from '../../firebase';  // ✅ 수정됨: ../firebase → ../../firebase
 import { 
   RecordFormatKorean,
   DiaryStats,
@@ -44,6 +47,69 @@ export interface GardenCrops {
   crops: string[];
   updatedAt: string;
 }
+
+export interface SharedRecordFormat {
+  formatKey: string;
+  formatLabel: string;
+  sayuText: string;
+}
+
+export interface SharedRecordPayload {
+  ownerUid: string;
+  sourcePath: string;
+  sourceRecordId: string;
+  title: string;
+  nickname: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  publishedAt: Timestamp;
+  recordDate: string;
+  isActive: true;
+  formats: SharedRecordFormat[];
+}
+
+export interface SharedRecordListItem extends SharedRecordPayload {
+  id: string;
+}
+
+export interface SharedRecordComment {
+  id: string;
+  ownerUid: string;
+  displayName: string;
+  body: string;
+  createdAt?: any;
+  isDeleted?: boolean;
+}
+
+const PUBLIC_ALLOWED_FORMATS: RecordFormat[] = [
+  '일기',
+  '에세이',
+  '여행기록',
+  '텃밭일지',
+  '애완동물관찰일지',
+  '메모',
+  '독서사유',
+];
+
+const PUBLIC_FORMAT_PREFIX: Record<RecordFormat, string> = {
+  '일기': 'diary',
+  '에세이': 'essay',
+  '선교보고': 'mission',
+  '일반보고': 'report',
+  '업무일지': 'work',
+  '여행기록': 'travel',
+  '독서사유': 'reading',
+  '텃밭일지': 'garden',
+  '애완동물관찰일지': 'pet',
+  '육아일기': 'child',
+  'HARU주식관리': 'stock',
+  '주식거래일지': 'stock',
+  '메모': 'memo',
+  'HARUraw': 'haruraw',
+  'HARU보조장부': 'ledger',
+};
+
+const getCleanText = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
 
 class FirestoreService {
   // 기존 기록 관련 함수들
@@ -148,6 +214,189 @@ class FirestoreService {
   async deleteRecord(userId: string, recordId: string) {
     const recordRef = doc(db, 'users', userId, 'records', recordId);
     await deleteDoc(recordRef);
+  }
+
+  getPublicAllowedFormats() {
+    return PUBLIC_ALLOWED_FORMATS;
+  }
+
+  getPublishableSharedFormats(record: HaruRecord): SharedRecordFormat[] {
+    const recordFormats = Array.isArray(record.formats) ? record.formats : [];
+    const formatsToCheck = PUBLIC_ALLOWED_FORMATS.filter((format) => {
+      const prefix = PUBLIC_FORMAT_PREFIX[format];
+      return recordFormats.includes(format) || Boolean(getCleanText(record[`${prefix}_sayu`])) || Boolean(getCleanText(record[`${prefix}_final_sayu`]));
+    });
+
+    return formatsToCheck
+      .map((format) => {
+        const prefix = PUBLIC_FORMAT_PREFIX[format];
+        const sayuText = getCleanText(record[`${prefix}_sayu`]) || getCleanText(record[`${prefix}_final_sayu`]);
+        if (!sayuText) return null;
+        return {
+          formatKey: prefix,
+          formatLabel: format,
+          sayuText,
+        };
+      })
+      .filter((item): item is SharedRecordFormat => Boolean(item));
+  }
+
+  canRecordBePublished(record: HaruRecord): boolean {
+    return this.getPublishableSharedFormats(record).length > 0;
+  }
+
+  buildSharedRecordPayload(
+    userId: string,
+    record: HaruRecord,
+    userProfile: { nickname?: string },
+    createdAt: Timestamp = Timestamp.now(),
+  ): SharedRecordPayload {
+    const nickname = getCleanText(userProfile.nickname);
+    if (!nickname) {
+      throw new Error('PUBLIC_NICKNAME_REQUIRED');
+    }
+
+    const formats = this.getPublishableSharedFormats(record);
+    if (formats.length === 0) {
+      throw new Error('PUBLIC_SAYU_REQUIRED');
+    }
+
+    const firstFormat = formats[0];
+    const title =
+      getCleanText(record[`${firstFormat.formatKey}_ai_title`]) ||
+      getCleanText(record[`${firstFormat.formatKey}_title`]) ||
+      (firstFormat.formatKey === 'reading'
+        ? getCleanText(record.reading_book_title || record.reading_title)
+        : '') ||
+      firstFormat.sayuText.split('\n').map((line) => line.trim()).find(Boolean)?.slice(0, 40) ||
+      `${firstFormat.formatLabel} 기록`;
+
+    const now = Timestamp.now();
+    return {
+      ownerUid: userId,
+      sourcePath: `users/${userId}/records/${record.id}`,
+      sourceRecordId: record.id,
+      title,
+      nickname,
+      createdAt,
+      updatedAt: now,
+      publishedAt: now,
+      recordDate: record.date || record.id,
+      isActive: true,
+      formats,
+    };
+  }
+
+  async publishRecordToShared(userId: string, recordId: string): Promise<string> {
+    const recordRef = doc(db, 'users', userId, 'records', recordId);
+    const recordSnap = await getDoc(recordRef);
+    if (!recordSnap.exists()) {
+      throw new Error('PUBLIC_RECORD_NOT_FOUND');
+    }
+
+    const record = { id: recordSnap.id, ...recordSnap.data() } as HaruRecord;
+    const userProfile = await this.getUserProfile(userId);
+    const existingSharedId = getCleanText(record.sharedRecordId);
+    const sharedRef = existingSharedId
+      ? doc(db, 'shared_records', existingSharedId)
+      : doc(collection(db, 'shared_records'));
+
+    const existingSharedSnap = existingSharedId ? await getDoc(sharedRef) : null;
+    if (existingSharedSnap?.exists() && existingSharedSnap.data().ownerUid !== userId) {
+      throw new Error('PUBLIC_OWNER_MISMATCH');
+    }
+
+    const existingCreatedAt = existingSharedSnap?.exists() && existingSharedSnap.data().createdAt instanceof Timestamp
+      ? existingSharedSnap.data().createdAt
+      : Timestamp.now();
+    const payload = this.buildSharedRecordPayload(userId, record, userProfile, existingCreatedAt);
+
+    await setDoc(sharedRef, payload, { merge: true });
+    await updateDoc(recordRef, {
+      isPublic: true,
+      sharedRecordId: sharedRef.id,
+      updatedAt: new Date().toISOString(),
+    });
+
+    return sharedRef.id;
+  }
+
+  async unpublishSharedRecord(userId: string, recordId: string): Promise<void> {
+    const recordRef = doc(db, 'users', userId, 'records', recordId);
+    const recordSnap = await getDoc(recordRef);
+    if (!recordSnap.exists()) {
+      throw new Error('PUBLIC_RECORD_NOT_FOUND');
+    }
+
+    const record = { id: recordSnap.id, ...recordSnap.data() } as HaruRecord;
+    const sharedRecordId = getCleanText(record.sharedRecordId);
+    if (sharedRecordId) {
+      const sharedRef = doc(db, 'shared_records', sharedRecordId);
+      const sharedSnap = await getDoc(sharedRef);
+      if (sharedSnap.exists()) {
+        if (sharedSnap.data().ownerUid !== userId) {
+          throw new Error('PUBLIC_OWNER_MISMATCH');
+        }
+        await updateDoc(sharedRef, {
+          isActive: false,
+          updatedAt: Timestamp.now(),
+        });
+      }
+    }
+
+    await updateDoc(recordRef, {
+      isPublic: false,
+      sharedRecordId: deleteField(),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  async getSharedRecords(): Promise<SharedRecordListItem[]> {
+    const sharedQuery = query(
+      collection(db, 'shared_records'),
+      where('isActive', '==', true),
+      limit(50),
+    );
+    const snapshot = await getDocs(sharedQuery);
+    return snapshot.docs
+      .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as SharedRecordListItem)
+      .sort((a, b) => {
+        const aTime = a.publishedAt?.toMillis?.() ?? 0;
+        const bTime = b.publishedAt?.toMillis?.() ?? 0;
+        return bTime - aTime;
+      });
+  }
+
+  async getSharedRecordComments(sharedRecordId: string): Promise<SharedRecordComment[]> {
+    const commentsQuery = query(
+      collection(db, 'shared_records', sharedRecordId, 'comments'),
+      orderBy('createdAt', 'asc'),
+    );
+    const snapshot = await getDocs(commentsQuery);
+    return snapshot.docs
+      .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as SharedRecordComment)
+      .filter((comment) => comment.isDeleted !== true);
+  }
+
+  async addSharedRecordComment(sharedRecordId: string, body: string): Promise<string> {
+    const currentUser = auth.currentUser;
+    if (!currentUser?.uid) {
+      throw new Error('COMMENT_LOGIN_REQUIRED');
+    }
+
+    const trimmedBody = body.trim();
+    if (!trimmedBody) {
+      throw new Error('COMMENT_BODY_REQUIRED');
+    }
+
+    const commentRef = await addDoc(collection(db, 'shared_records', sharedRecordId, 'comments'), {
+      ownerUid: currentUser.uid,
+      displayName: currentUser.displayName || '익명 사용자',
+      body: trimmedBody,
+      createdAt: serverTimestamp(),
+      isDeleted: false,
+    });
+    return commentRef.id;
   }
 
   /**

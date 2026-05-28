@@ -1,6 +1,109 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && request.auth.uid == "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
+    }
+
+    function sharedRecordAllowedKeys() {
+      return [
+        "ownerUid",
+        "sourcePath",
+        "sourceRecordId",
+        "title",
+        "nickname",
+        "createdAt",
+        "updatedAt",
+        "publishedAt",
+        "recordDate",
+        "isActive",
+        "formats"
+      ];
+    }
+
+    function sharedRecordForbiddenKeys() {
+      return [
+        "rawText",
+        "originalText",
+        "content",
+        "photoUrl",
+        "imageUrl",
+        "imageUrls",
+        "images",
+        "location",
+        "lat",
+        "lng",
+        "latitude",
+        "longitude",
+        "email",
+        "displayName",
+        "realName",
+        "uid"
+      ];
+    }
+
+    function validSharedRecordPayload() {
+      return request.resource.data.keys().hasOnly(sharedRecordAllowedKeys())
+        && !request.resource.data.keys().hasAny(sharedRecordForbiddenKeys())
+        && request.resource.data.ownerUid is string
+        && request.resource.data.sourcePath is string
+        && request.resource.data.sourceRecordId is string
+        && request.resource.data.title is string
+        && request.resource.data.nickname is string
+        && request.resource.data.recordDate is string
+        && request.resource.data.isActive is bool
+        && request.resource.data.formats is list;
+    }
+
+    function activeSharedRecord(sharedId) {
+      return get(/databases/$(database)/documents/shared_records/$(sharedId)).data.isActive == true;
+    }
+
+    match /shared_records/{sharedId} {
+      allow read: if signedIn() && resource.data.isActive == true;
+
+      allow create: if signedIn()
+        && validSharedRecordPayload()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.isActive == true;
+
+      allow update: if signedIn()
+        && resource.data.ownerUid == request.auth.uid
+        && validSharedRecordPayload()
+        && request.resource.data.ownerUid == resource.data.ownerUid;
+
+      allow delete: if signedIn()
+        && resource.data.ownerUid == request.auth.uid;
+
+      match /comments/{commentId} {
+        allow read: if signedIn() && activeSharedRecord(sharedId);
+
+        allow create: if signedIn()
+          && activeSharedRecord(sharedId)
+          && request.resource.data.keys().hasOnly([
+            "ownerUid",
+            "displayName",
+            "body",
+            "createdAt",
+            "isDeleted"
+          ])
+          && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.displayName is string
+          && request.resource.data.body is string
+          && request.resource.data.isDeleted == false;
+
+        allow update: if false;
+
+        allow delete: if signedIn()
+          && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      }
+    }
+
     match /users/{userId}/records/{recordId} {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow write: if (request.auth != null && request.auth.uid == userId)

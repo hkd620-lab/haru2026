@@ -35,6 +35,8 @@ const FORMAT_FIRST_FIELD: Record<string, string> = {
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 const PAGE_SIZE = 10;
+const PUBLIC_SAYU_REQUIRED_MESSAGE = '먼저 SAYU 다듬기를 완료한 뒤 공개할 수 있습니다.';
+const PUBLIC_ALLOWED_FORMAT_KEYS = new Set(['diary', 'essay', 'travel', 'garden', 'pet', 'memo', 'reading']);
 
 interface AiLog { id: string; title?: string; source?: string; createdAt?: string; [key: string]: any; }
 interface Chapter { id: string; bookId: string; title: string; sourceTitle: string; content: string; order: number; }
@@ -377,6 +379,8 @@ export function SayuPage() {
     images?: string[];
     title?: string;
     aiTitle?: string;
+    isPublic?: boolean;
+    sharedRecordId?: string;
   }>({
     isOpen: false,
     content: '',
@@ -429,6 +433,7 @@ export function SayuPage() {
   const [expandedChapterIds, setExpandedChapterIds] = useState<Set<string>>(new Set());
   const [ttsPlaying, setTtsPlaying] = useState<string | null>(null);
   const [ttsLoading, setTtsLoading] = useState<string | null>(null);
+  const [sharingRecordId, setSharingRecordId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [draggingBookIdx, setDraggingBookIdx] = useState<number | null>(null);
   const [draggingChapterInfo, setDraggingChapterInfo] = useState<{ bookId: string; idx: number } | null>(null);
@@ -1504,6 +1509,8 @@ export function SayuPage() {
       firestoreId: record.id,
       title: (record[`${formatKey}_title`] as string) || '',
       aiTitle: (record[`${formatKey}_ai_title`] as string) || '',
+      isPublic: record.isPublic === true,
+      sharedRecordId: typeof record.sharedRecordId === 'string' ? record.sharedRecordId : '',
       dateLabel: new Date(dateStr + 'T00:00:00').toLocaleDateString('ko-KR', {
         month: 'long',
         day: 'numeric',
@@ -1586,6 +1593,10 @@ export function SayuPage() {
         [ratingKey]: rating,
       });
 
+      if (record.isPublic === true) {
+        await firestoreService.publishRecordToShared(user!.uid, record.id);
+      }
+
       setRecords((prev) =>
         prev.map((r) =>
           r.id === record.id
@@ -1598,6 +1609,75 @@ export function SayuPage() {
     } catch (error) {
       console.error('저장 실패:', error);
       toast.error('저장에 실패했습니다.');
+    }
+  };
+
+  const handleToggleSharedRecord = async (record: HaruRecord) => {
+    if (!user?.uid) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+
+    const isPublic = record.isPublic === true;
+    const publishable = firestoreService.canRecordBePublished(record);
+
+    if (!isPublic && !publishable) {
+      toast.error(PUBLIC_SAYU_REQUIRED_MESSAGE);
+      return;
+    }
+
+    const confirmed = window.confirm(
+      isPublic
+        ? '공개를 취소하면 SAYU-함께보기에서 더 이상 보이지 않습니다.'
+        : '이 기록의 SAYU 다듬은 본문을 HARU 회원들과 함께 볼 수 있게 공개합니다.\n원문, 사진, 위치, 이메일, UID는 공개되지 않습니다.',
+    );
+    if (!confirmed) return;
+
+    setSharingRecordId(record.id);
+    try {
+      if (isPublic) {
+        await firestoreService.unpublishSharedRecord(user.uid, record.id);
+        setRecords((prev) =>
+          prev.map((item) =>
+            item.id === record.id
+              ? { ...item, isPublic: false, sharedRecordId: undefined }
+              : item,
+          ),
+        );
+        setSayuModalState((prev) =>
+          prev.firestoreId === record.id
+            ? { ...prev, isPublic: false, sharedRecordId: '' }
+            : prev,
+        );
+        toast.success('SAYU-함께보기 공개를 취소했습니다.');
+      } else {
+        const sharedRecordId = await firestoreService.publishRecordToShared(user.uid, record.id);
+        setRecords((prev) =>
+          prev.map((item) =>
+            item.id === record.id
+              ? { ...item, isPublic: true, sharedRecordId }
+              : item,
+          ),
+        );
+        setSayuModalState((prev) =>
+          prev.firestoreId === record.id
+            ? { ...prev, isPublic: true, sharedRecordId }
+            : prev,
+        );
+        toast.success('SAYU-함께보기에 공개했습니다.');
+      }
+    } catch (error: any) {
+      console.error('SAYU 공개 상태 변경 실패:', error);
+      const message = String(error?.message || '');
+      if (message.includes('PUBLIC_NICKNAME_REQUIRED')) {
+        toast.error('공개하려면 먼저 설정에서 닉네임을 입력해 주세요.');
+      } else if (message.includes('PUBLIC_SAYU_REQUIRED')) {
+        toast.error(PUBLIC_SAYU_REQUIRED_MESSAGE);
+      } else {
+        toast.error('공개 상태를 변경하지 못했습니다.');
+      }
+    } finally {
+      setSharingRecordId(null);
     }
   };
 
@@ -2880,6 +2960,60 @@ export function SayuPage() {
         formatKey={sayuModalState.formatKey}
         firestoreId={sayuModalState.firestoreId}
         title={sayuModalState.title}
+        publicControl={(() => {
+          const record = sayuModalState.firestoreId
+            ? records.find((item) => item.id === sayuModalState.firestoreId)
+            : undefined;
+          const formatKey = sayuModalState.formatKey || '';
+          if (!record || !PUBLIC_ALLOWED_FORMAT_KEYS.has(formatKey)) return null;
+
+          const isPublic = record.isPublic === true;
+          const publishable = firestoreService.canRecordBePublished(record);
+          const busy = sharingRecordId === record.id;
+          return (
+            <div
+              style={{
+                padding: 14,
+                borderRadius: 10,
+                border: '1px solid #D1FAE5',
+                backgroundColor: isPublic ? '#ECFDF5' : '#FFFFFF',
+              }}
+            >
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                <div style={{ minWidth: 0, flex: '1 1 220px' }}>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#0F766E' }}>
+                    SAYU-함께보기 공개
+                  </p>
+                  <p style={{ margin: '4px 0 0', fontSize: 12, lineHeight: 1.5, color: publishable ? '#64748B' : '#B42318' }}>
+                    {publishable
+                      ? 'SAYU 다듬은 본문만 공개됩니다. 원문, 사진, 위치, 이메일, UID는 공개되지 않습니다.'
+                      : PUBLIC_SAYU_REQUIRED_MESSAGE}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleToggleSharedRecord(record)}
+                  disabled={busy || (!isPublic && !publishable)}
+                  style={{
+                    minHeight: 36,
+                    padding: '0 14px',
+                    borderRadius: 999,
+                    border: 'none',
+                    backgroundColor: isPublic ? '#B42318' : publishable ? '#0F766E' : '#CBD5E1',
+                    color: '#FFFFFF',
+                    fontSize: 12,
+                    fontWeight: 800,
+                    cursor: busy || (!isPublic && !publishable) ? 'not-allowed' : 'pointer',
+                    opacity: busy ? 0.72 : 1,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {busy ? '처리 중...' : isPublic ? '공개 취소' : '공개하기'}
+                </button>
+              </div>
+            </div>
+          );
+        })()}
         onRefresh={undefined}
       />
 

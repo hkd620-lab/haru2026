@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { X, Printer, Copy, Download, FileText } from 'lucide-react';
 import { toast } from 'sonner';
@@ -32,6 +32,7 @@ export interface SayuModalProps {
   onRefresh?: () => void;
   firestoreId?: string;
   title?: string;
+  publicControl?: ReactNode;
 }
 
 export function formatDateToKorean(dateStr: string): string {
@@ -63,6 +64,7 @@ export function SayuModal({
   onRefresh,
   firestoreId,
   title,
+  publicControl,
 }: SayuModalProps) {
   const { isPremium } = useSubscription();
   const { user: currentUser } = useAuth();
@@ -1497,6 +1499,12 @@ export function SayuModal({
                   >
                     {isUploadingImage ? '⏳ 업로드 중...' : `📷 사진 추가 (${localImages.length}/3)`}
                   </button>
+                </div>
+              )}
+
+              {publicControl && (
+                <div style={{ marginBottom: '16px' }}>
+                  {publicControl}
                 </div>
               )}
 
