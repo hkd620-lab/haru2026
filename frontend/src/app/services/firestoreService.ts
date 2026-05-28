@@ -60,6 +60,7 @@ export interface SharedRecordPayload {
   sourceRecordId: string;
   title: string;
   nickname: string;
+  publicPhotoUrls: string[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
   publishedAt: Timestamp;
@@ -110,6 +111,22 @@ const PUBLIC_FORMAT_PREFIX: Record<RecordFormat, string> = {
 };
 
 const getCleanText = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
+
+const getPublicImageUrls = (value: unknown): string[] => {
+  let source: unknown = value;
+  if (typeof value === 'string') {
+    try {
+      source = JSON.parse(value);
+    } catch {
+      source = value;
+    }
+  }
+
+  const values = Array.isArray(source) ? source : [source];
+  return values
+    .map((item) => getCleanText(item))
+    .filter((url) => /^https?:\/\//i.test(url));
+};
 
 class FirestoreService {
   // 기존 기록 관련 함수들
@@ -245,6 +262,14 @@ class FirestoreService {
     return this.getPublishableSharedFormats(record).length > 0;
   }
 
+  getPublishableSharedPhotoUrls(
+    record: HaruRecord,
+    formats: SharedRecordFormat[] = this.getPublishableSharedFormats(record),
+  ): string[] {
+    const urls = formats.flatMap((format) => getPublicImageUrls(record[`${format.formatKey}_images`]));
+    return Array.from(new Set(urls)).slice(0, 12);
+  }
+
   buildSharedRecordPayload(
     userId: string,
     record: HaruRecord,
@@ -278,6 +303,7 @@ class FirestoreService {
       sourceRecordId: record.id,
       title,
       nickname,
+      publicPhotoUrls: this.getPublishableSharedPhotoUrls(record, formats),
       createdAt,
       updatedAt: now,
       publishedAt: now,

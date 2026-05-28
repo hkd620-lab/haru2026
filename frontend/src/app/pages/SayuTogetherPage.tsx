@@ -113,6 +113,13 @@ export function SayuTogetherPage() {
     return preview.length > 160 ? `${preview.slice(0, 160)}...` : preview;
   };
 
+  const getPhotoUrls = (item: SharedRecordListItem) => {
+    if (!Array.isArray(item.publicPhotoUrls)) return [];
+    return item.publicPhotoUrls
+      .map((url) => String(url || '').trim())
+      .filter((url) => /^https?:\/\//i.test(url));
+  };
+
   const handleSubmitComment = async () => {
     if (!user?.uid || !selectedItem) {
       toast.error('댓글을 작성하려면 로그인이 필요합니다.');
@@ -192,6 +199,7 @@ export function SayuTogetherPage() {
         {items.map((item) => {
           const isSelected = selectedId === item.id;
           const formats = Array.isArray(item.formats) ? item.formats : [];
+          const photoUrls = getPhotoUrls(item);
           return (
             <article
               key={item.id}
@@ -219,6 +227,19 @@ export function SayuTogetherPage() {
                   ))}
                 </div>
               </div>
+              {photoUrls.length > 0 && (
+                <div
+                  className="mt-3 overflow-hidden rounded-lg"
+                  style={{ border: '1px solid #E2E8F0', aspectRatio: '16 / 9', background: '#F8FAFC' }}
+                >
+                  <img
+                    src={photoUrls[0]}
+                    alt="공개된 SAYU 사진"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    loading="lazy"
+                  />
+                </div>
+              )}
               {getPreviewText(item) && (
                 <p className="text-sm mt-3" style={{ color: '#334155', lineHeight: 1.7 }}>
                   {getPreviewText(item)}
@@ -252,6 +273,7 @@ export function SayuTogetherPage() {
   const renderDetail = () => {
     if (!user?.uid || !selectedItem) return null;
     const formats = Array.isArray(selectedItem.formats) ? selectedItem.formats : [];
+    const photoUrls = getPhotoUrls(selectedItem);
 
     return (
       <section
@@ -266,6 +288,30 @@ export function SayuTogetherPage() {
             {selectedItem.nickname || 'HARU 회원'} · {formatRecordDate(selectedItem.recordDate)}
           </p>
         </div>
+
+        {photoUrls.length > 0 && (
+          <div
+            className="mb-5 grid gap-2"
+            style={{
+              gridTemplateColumns: photoUrls.length === 1 ? '1fr' : 'repeat(auto-fit, minmax(140px, 1fr))',
+            }}
+          >
+            {photoUrls.map((url, index) => (
+              <div
+                key={`${selectedItem.id}_photo_${index}`}
+                className="overflow-hidden rounded-xl"
+                style={{ border: '1px solid #E2E8F0', aspectRatio: photoUrls.length === 1 ? '16 / 9' : '1 / 1', background: '#F8FAFC' }}
+              >
+                <img
+                  src={url}
+                  alt={`공개된 SAYU 사진 ${index + 1}`}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  loading="lazy"
+                />
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="space-y-4">
           {formats.map((format) => (
