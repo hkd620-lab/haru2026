@@ -13,6 +13,7 @@ import { LibraryPage } from './pages/LibraryPage';
 import { LoginPage } from './pages/LoginPage';
 import { AuthCallbackPage } from './pages/AuthCallbackPage';
 import { SayuPage } from './pages/SayuPage';
+import { SayuTogetherPage } from './pages/SayuTogetherPage';
 import { MergePage } from './pages/MergePage';
 import { MergeViewerPage } from './pages/MergeViewerPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -131,6 +132,7 @@ function App() {
               <Route path="/record" element={<RecordPage />} />
               <Route path="/library" element={<LibraryPage />} />
               <Route path="/sayu" element={<SayuPage />} />
+              <Route path="/sayu-together" element={<SayuTogetherPage />} />
               <Route path="/merge" element={<MergePage />} />
               <Route path="/merge-viewer" element={<MergeViewerPage />} />
               <Route path="/settings" element={<SettingsPage />} />

@@ -1,4 +1,4 @@
-import { Home, BookOpen, Sparkles, Settings, Library, Wrench } from 'lucide-react';
+import { Home, BookOpen, Sparkles, Settings, Library, Wrench, Users } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { getOrigin } from '../services/v2Origin';
@@ -17,7 +17,8 @@ export function BottomNav() {
 
   const baseItems = [
     { path: homePath, icon: Home, label: 'HARU' },
-    { path: '/sayu', icon: Sparkles, label: 'SAYU·다듬기' },
+    { path: '/sayu', icon: Sparkles, label: 'SAYU·나의 기록' },
+    { path: '/sayu-together', icon: Users, label: 'SAYU·함께보기' },
     { path: '/settings', icon: Settings, label: '설정' },
   ];
 
@@ -26,9 +27,9 @@ export function BottomNav() {
     : { path: '/recovery', icon: Library, label: '원기충전소' };
 
   const navItems = [
-    ...baseItems.slice(0, 2),
+    ...baseItems.slice(0, 3),
     thirdSlot,
-    ...baseItems.slice(2),
+    ...baseItems.slice(3),
   ];
 
   return (
