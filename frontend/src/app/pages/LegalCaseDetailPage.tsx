@@ -60,6 +60,7 @@ const emptyDocumentForm: DocumentFormState = {
 };
 
 const LEGAL_CASE_STATUSES: LegalCaseStatus[] = [
+  '제출준비',
   '제출완료',
   '송달확인중',
   '보정필요',
