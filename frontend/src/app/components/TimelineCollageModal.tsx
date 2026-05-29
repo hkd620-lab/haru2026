@@ -276,16 +276,17 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
   };
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || step !== 'generating') return;
 
-    const handleEscape = (event: KeyboardEvent) => {
+    const blockEscapeWhileGenerating = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       event.preventDefault();
-      handleClose();
+      event.stopPropagation();
+      toast.info('생성 중입니다. 완료 후 닫을 수 있습니다.');
     };
 
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
+    window.addEventListener('keydown', blockEscapeWhileGenerating, true);
+    return () => window.removeEventListener('keydown', blockEscapeWhileGenerating, true);
   }, [isOpen, step]);
 
   if (!isOpen) return null;
