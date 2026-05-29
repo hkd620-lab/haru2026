@@ -31,6 +31,7 @@ type Agent = {
   stroke: string;
   path: string | null;
   action?: 'timeline';
+  developerOnly?: boolean;
   state?: Record<string, unknown>;
   icon: ReactNode;
   beta?: boolean;
@@ -403,6 +404,24 @@ const AGENTS: Agent[] = [
         <path d="M4 7h6l2 2h8v10a2 2 0 01-2 2H6a2 2 0 01-2-2z" />
         <path d="M8 13h8" />
         <path d="M8 17h5" />
+      </>
+    ),
+  },
+  {
+    label: '명작탐정비서',
+    sub: '잊혔지만 다시 소개할 가치가 있는 책·채널·영상·음악을 찾아 기록합니다.',
+    tag: 'CURATION · 명작',
+    variant: 'lilac',
+    stroke: '#5A4E7A',
+    path: '/dev/masterpiece-detective',
+    beta: true,
+    developerOnly: true,
+    icon: (
+      <>
+        <path d="M4 19V5a2 2 0 012-2h8l4 4v12a2 2 0 01-2 2H6a2 2 0 01-2-2z" />
+        <path d="M14 3v5h5" />
+        <circle cx="10" cy="13" r="3" />
+        <path d="M12.5 15.5L15 18" />
       </>
     ),
   },
@@ -1217,7 +1236,7 @@ export function HomePageV2() {
               gap: 14,
             }}
           >
-            {AGENTS.map((a) => {
+            {AGENTS.filter((a) => !a.developerOnly || isDeveloper).map((a) => {
               const disabled = a.path === null && !a.action;
               return (
               <button
