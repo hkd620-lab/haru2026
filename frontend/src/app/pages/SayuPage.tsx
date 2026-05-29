@@ -8,7 +8,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { SayuTitleAnimation } from '../components/SayuTitleAnimation';
 import { toast } from 'sonner';
 import { SayuModal } from '../components/SayuModal';
-import { TimelineCollageModal } from '../components/TimelineCollageModal';
 import { CATEGORY_FORMATS, FORMAT_PREFIX, FORMAT_EMOJI, READING_ENTRY_TYPES, READING_STATUS } from '../types/haruTypes';
 import type { RecordFormat } from '../types/haruTypes';
 import { collection, getDocs, getDoc, orderBy, query, deleteDoc, doc, writeBatch, updateDoc, limit, setDoc, serverTimestamp, arrayUnion, increment } from 'firebase/firestore';
@@ -353,7 +352,6 @@ export function SayuPage() {
   const [selectedAssistantDate, setSelectedAssistantDate] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [sayuTab, setSayuTab] = useState<'records' | 'assistants'>('records');
-  const [timelineModalOpen, setTimelineModalOpen] = useState(false);
   const [expandedSayuGroups, setExpandedSayuGroups] = useState<Set<string>>(new Set());
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고', 'SNS검색기록', '내가 읽은 책', 'HARU주식관리']));
   const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
@@ -2673,32 +2671,6 @@ export function SayuPage() {
       {viewMode === 'list' && renderGroupedEntryList(activeEntries)}
       {viewMode === 'calendar' && renderEntryCalendar(activeEntries)}
 
-      {/* HARU타임라인 — 사유기록 탭에서 독립 비서 후보처럼 노출 */}
-      {sayuTab === 'records' && (
-        <div style={{ marginTop: 16, marginBottom: 8 }}>
-          <button
-            type="button"
-            onClick={() => setTimelineModalOpen(true)}
-            style={{
-              width: '100%', padding: '16px',
-              backgroundColor: '#FFFFFF', color: '#1A3C6E',
-              border: '2px solid #2A4C7E', borderRadius: 14,
-              fontSize: 15, fontWeight: 800, cursor: 'pointer',
-              letterSpacing: '0.02em', textAlign: 'left',
-              boxShadow: '0 2px 10px rgba(26,60,110,0.08)',
-            }}
-          >
-            <span style={{ display: 'block', fontSize: 16, marginBottom: 6 }}>🌱 HARU타임라인</span>
-            <span style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#666', lineHeight: 1.6 }}>
-              여러 날짜의 사진 기록을 시간순으로 묶어 변화의 흐름을 한 장으로 보여줍니다.
-            </span>
-          </button>
-          <p style={{ fontSize: 12, color: '#888', textAlign: 'center', marginTop: 6, lineHeight: 1.6 }}>
-            흩어진 하루의 사진들을 연결해 식물, 건강, 가족, 프로젝트의 변화를 한눈에 볼 수 있는 기록 자산으로 만듭니다.
-          </p>
-        </div>
-      )}
-
       {/* ─── 달력 뷰 ─── */}
       {false && sayuTab === 'records' && viewMode === 'calendar' && (
         <div>
@@ -3168,14 +3140,6 @@ export function SayuPage() {
         </div>
       </div>
 
-      {timelineModalOpen && user?.uid && (
-        <TimelineCollageModal
-          isOpen={timelineModalOpen}
-          onClose={() => setTimelineModalOpen(false)}
-          records={records}
-          uid={user.uid}
-        />
-      )}
     </>
   );
 }

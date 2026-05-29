@@ -25,6 +25,7 @@ interface TimelineCollageModalProps {
   onClose: () => void;
   records: HaruRecord[];
   uid: string;
+  isLoadingRecords?: boolean;
 }
 
 const FORMAT_PREFIXES = [
@@ -158,7 +159,7 @@ const CHANGE_RECORD_ASSISTANT_TITLE = 'HARU타임라인';
 const CHANGE_RECORD_ASSISTANT_DESCRIPTION = '여러 날짜의 사진 기록을 시간순으로 묶어 변화의 흐름을 한 장으로 보여줍니다.';
 const CHANGE_RECORD_ASSISTANT_HELP = '흩어진 하루의 사진들을 연결해 식물, 건강, 가족, 프로젝트의 변화를 한눈에 볼 수 있는 기록 자산으로 만듭니다.';
 
-export function TimelineCollageModal({ isOpen, onClose, records, uid }: TimelineCollageModalProps) {
+export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingRecords = false }: TimelineCollageModalProps) {
   const [selected, setSelected] = useState<PhotoItem[]>([]);
   const [title, setTitle] = useState('');
   const [step, setStep] = useState<'select' | 'generating' | 'done'>('select');
@@ -168,7 +169,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
   const [dateTo, setDateTo] = useState('');
   const generatingRef = useRef(false);
 
-  const allPhotos = extractPhotos(records);
+  const allPhotos = isLoadingRecords ? [] : extractPhotos(records);
   const filteredPhotos = allPhotos.filter((photo) => matchesPhotoSearch(photo, searchText, dateFrom, dateTo));
 
   const toggle = (photo: PhotoItem) => {
@@ -447,7 +448,9 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
               {/* 선택 현황 */}
               <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <p style={{ fontSize: 13, color: '#666', margin: 0 }}>
-                  {allPhotos.length > 0
+                  {isLoadingRecords
+                    ? '사진 기록 불러오는 중'
+                    : allPhotos.length > 0
                     ? `총 ${allPhotos.length}장 · 표시 ${filteredPhotos.length}장 · ${selected.length}장 선택됨`
                     : '사진 있는 기록 없음'}
                 </p>
@@ -522,12 +525,18 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
                 </div>
               )}
 
+              {isLoadingRecords && (
+                <div style={{ textAlign: 'center', padding: '50px 0', color: '#999' }}>
+                  <p style={{ fontSize: 14, margin: 0 }}>사진 기록을 불러오는 중입니다.</p>
+                </div>
+              )}
+
               {/* 사진 없는 경우 */}
-              {allPhotos.length === 0 && (
+              {!isLoadingRecords && allPhotos.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '50px 0', color: '#bbb' }}>
                   <p style={{ fontSize: 40, marginBottom: 12 }}>📷</p>
-                  <p style={{ fontSize: 14, color: '#999', margin: 0 }}>HARU타임라인을 만들려면 사진이 포함된 기록이 필요합니다.</p>
-                  <p style={{ fontSize: 12, marginTop: 6, lineHeight: 1.6 }}>식물, 건강, 가족, 프로젝트 사진을 며칠에 걸쳐 기록한 뒤 다시 시도해 주세요.</p>
+                  <p style={{ fontSize: 14, color: '#999', margin: 0 }}>아직 타임라인으로 묶을 사진 기록이 없습니다.</p>
+                  <p style={{ fontSize: 12, marginTop: 6, lineHeight: 1.6 }}>사진이 포함된 HARU 기록을 먼저 저장해 주세요.</p>
                 </div>
               )}
               {allPhotos.length > 0 && filteredPhotos.length === 0 && (
