@@ -445,14 +445,36 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
                       borderRadius: 12,
                       backgroundColor: '#f7fbf2',
                       color: '#355524',
-                      padding: '12px 14px',
-                      fontSize: 15,
-                      fontWeight: 800,
+                      padding: '14px 16px',
                       cursor: 'pointer',
                       textAlign: 'left',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12,
                     }}
                   >
-                    새 성장타임라인 만들기
+                    <span style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+                      <span style={{ fontSize: 15, fontWeight: 800 }}>새 성장타임라인 만들기</span>
+                      <span style={{ fontSize: 12, color: '#7b8b72', fontWeight: 600 }}>
+                        모바일 갤러리 사진을 선택해 촬영일 순으로 정리합니다.
+                      </span>
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        flexShrink: 0,
+                        borderRadius: 10,
+                        backgroundColor: '#4E6B2A',
+                        color: '#fff',
+                        padding: '9px 12px',
+                        fontSize: 13,
+                        fontWeight: 800,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      사진 선택 시작
+                    </span>
                   </button>
                 ) : (
                   <GrowthTimelineCreator
