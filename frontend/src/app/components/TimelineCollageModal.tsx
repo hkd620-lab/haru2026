@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { storage, db } from '../../firebase';
 import { HaruRecord } from '../services/firestoreService';
 import { toast } from 'sonner';
@@ -154,6 +154,10 @@ async function loadImg(url: string): Promise<HTMLImageElement> {
   });
 }
 
+const CHANGE_RECORD_ASSISTANT_TITLE = 'HARU타임라인';
+const CHANGE_RECORD_ASSISTANT_DESCRIPTION = '여러 날짜의 사진 기록을 시간순으로 묶어 변화의 흐름을 한 장으로 보여줍니다.';
+const CHANGE_RECORD_ASSISTANT_HELP = '흩어진 하루의 사진들을 연결해 식물, 건강, 가족, 프로젝트의 변화를 한눈에 볼 수 있는 기록 자산으로 만듭니다.';
+
 export function TimelineCollageModal({ isOpen, onClose, records, uid }: TimelineCollageModalProps) {
   const [selected, setSelected] = useState<PhotoItem[]>([]);
   const [title, setTitle] = useState('');
@@ -162,6 +166,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
   const [searchText, setSearchText] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const generatingRef = useRef(false);
 
   const allPhotos = extractPhotos(records);
   const filteredPhotos = allPhotos.filter((photo) => matchesPhotoSearch(photo, searchText, dateFrom, dateTo));
@@ -186,10 +191,15 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
   };
 
   const generate = async () => {
+    if (step === 'generating' || generatingRef.current) {
+      toast.info('생성 중입니다. 잠시만 기다려주세요.');
+      return;
+    }
     if (selected.length < 4) {
       toast.warning('최소 4장을 선택해주세요.');
       return;
     }
+    generatingRef.current = true;
     setStep('generating');
 
     try {
@@ -219,7 +229,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
       ctx.fillRect(0, 0, W, 6);
 
       // 제목
-      const resolvedTitle = title.trim() || '성장 타임라인';
+      const resolvedTitle = title.trim() || CHANGE_RECORD_ASSISTANT_TITLE;
       ctx.fillStyle = '#1A3C6E';
       ctx.font = 'bold 30px sans-serif';
       ctx.textAlign = 'center';
@@ -292,7 +302,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
       const url = await getDownloadURL(storageRef);
 
       // Firestore 저장
-      await addDoc(collection(db, 'users', uid, 'timelines'), {
+      await setDoc(doc(db, 'users', uid, 'timelines', id), {
         timelineImageUrl: url,
         timelineCreatedAt: new Date().toISOString(),
         title: resolvedTitle,
@@ -311,11 +321,13 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
       });
 
       setResultUrl(url);
+      generatingRef.current = false;
       setStep('done');
-      toast.success('타임라인이 저장되었습니다!');
+      toast.success('HARU타임라인이 저장되었습니다!');
     } catch (err) {
-      console.error('타임라인 생성 실패:', err);
+      console.error('HARU타임라인 생성 실패:', err);
       toast.error('생성에 실패했습니다. 다시 시도해주세요.');
+      generatingRef.current = false;
       setStep('select');
     }
   };
@@ -324,43 +336,18 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
     if (!resultUrl) return;
     try {
       await navigator.clipboard.writeText(resultUrl);
-      toast.success('링크가 복사되었습니다! 카카오톡 등에 붙여넣기 하세요.');
+      toast.success('링크가 복사되었습니다.');
     } catch {
       toast.error('복사에 실패했습니다.');
     }
   };
 
-  const shareTimeline = async () => {
-    if (!resultUrl) return;
-    const shareTitle = title.trim() || '성장 타임라인';
-
-    if (navigator.share) {
-      try {
-        // 이미지 파일로 직접 공유 시도
-        const resp = await fetch(resultUrl);
-        const blob = await resp.blob();
-        const file = new File([blob], '성장타임라인.png', { type: 'image/png' });
-        if (navigator.canShare?.({ files: [file] })) {
-          await navigator.share({ title: shareTitle, files: [file] });
-          return;
-        }
-        // 파일 공유 불가 시 URL 공유
-        await navigator.share({ title: shareTitle, url: resultUrl });
-      } catch (err) {
-        if ((err as Error).name !== 'AbortError') {
-          copyLink();
-        }
-      }
-    } else {
-      copyLink();
-    }
-  };
-
   const handleClose = () => {
-    if (step === 'generating') {
-      toast.info('생성이 끝나면 자동으로 결과가 표시됩니다.');
+    if (step === 'generating' || generatingRef.current) {
+      toast.info('생성 중입니다. 완료 후 닫을 수 있습니다.');
       return;
     }
+    generatingRef.current = false;
     setStep('select');
     setSelected([]);
     setTitle('');
@@ -372,18 +359,17 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
   };
 
   useEffect(() => {
-    if (!isOpen) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      if (step === 'generating') {
-        e.preventDefault();
-        toast.info('생성이 끝나면 자동으로 결과가 표시됩니다.');
-        return;
-      }
-      handleClose();
+    if (!isOpen || step !== 'generating') return;
+
+    const blockEscapeWhileGenerating = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopPropagation();
+      toast.info('생성 중입니다. 완료 후 닫을 수 있습니다.');
     };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+
+    window.addEventListener('keydown', blockEscapeWhileGenerating, true);
+    return () => window.removeEventListener('keydown', blockEscapeWhileGenerating, true);
   }, [isOpen, step]);
 
   if (!isOpen) return null;
@@ -419,19 +405,20 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
         }}>
           <div>
             <p style={{ fontSize: 17, fontWeight: 700, color: '#1A3C6E', margin: 0 }}>
-              🌱 성장 타임라인
+              🌱 HARU타임라인
             </p>
             <p style={{ fontSize: 12, color: '#888', margin: '2px 0 0' }}>
-              사진을 선택해 하나의 이미지로 만드세요
+              {CHANGE_RECORD_ASSISTANT_DESCRIPTION}
             </p>
           </div>
           <button
             onClick={handleClose}
             disabled={step === 'generating'}
+            title={step === 'generating' ? '생성 중입니다' : '닫기'}
             style={{
               background: 'none', border: 'none', fontSize: 20,
               cursor: step === 'generating' ? 'not-allowed' : 'pointer',
-              color: step === 'generating' ? '#ddd' : '#aaa',
+              color: step === 'generating' ? '#d0d0d0' : '#aaa',
             }}
           >
             ✕
@@ -447,7 +434,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
                 <input
                   value={title}
                   onChange={e => setTitle(e.target.value)}
-                  placeholder="타임라인 제목 (예: 포도 성장기 2026)"
+                  placeholder="HARU타임라인 제목 (예: 포도 성장기 2026)"
                   style={{
                     width: '100%', padding: '10px 14px',
                     border: '1px solid #d0dff0', borderRadius: 10,
@@ -465,12 +452,19 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
                     : '사진 있는 기록 없음'}
                 </p>
                 {selected.length > 0 && selected.length < 4 && (
-                  <span style={{ fontSize: 12, color: '#e57373' }}>4장 이상 선택하세요</span>
+                  <span style={{ fontSize: 12, color: '#e57373' }}>4~8장을 선택하세요</span>
                 )}
               </div>
               {allPhotos.length > 0 && (
                 <p style={{ fontSize: 12, color: '#888', margin: '0 0 12px' }}>
                   새 사진은 촬영일/시간/GPS가 있으면 자동 표시됩니다. 과거 사진은 기록일 기준일 수 있습니다.
+                  {' '}
+                  {CHANGE_RECORD_ASSISTANT_HELP}
+                </p>
+              )}
+              {allPhotos.length > 0 && allPhotos.length < 4 && (
+                <p style={{ fontSize: 12, color: '#e57373', margin: '0 0 12px', lineHeight: 1.6 }}>
+                  HARU타임라인을 만들려면 사진이 포함된 기록이 필요합니다. 식물, 건강, 가족, 프로젝트 사진을 며칠에 걸쳐 기록한 뒤 다시 시도해 주세요.
                 </p>
               )}
               {allPhotos.length > 0 && (
@@ -532,8 +526,8 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
               {allPhotos.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '50px 0', color: '#bbb' }}>
                   <p style={{ fontSize: 40, marginBottom: 12 }}>📷</p>
-                  <p style={{ fontSize: 14, color: '#999' }}>사진이 포함된 기록이 없습니다.</p>
-                  <p style={{ fontSize: 12, marginTop: 4 }}>형식 기록에 사진을 추가하면 여기에 나타납니다.</p>
+                  <p style={{ fontSize: 14, color: '#999', margin: 0 }}>HARU타임라인을 만들려면 사진이 포함된 기록이 필요합니다.</p>
+                  <p style={{ fontSize: 12, marginTop: 6, lineHeight: 1.6 }}>식물, 건강, 가족, 프로젝트 사진을 며칠에 걸쳐 기록한 뒤 다시 시도해 주세요.</p>
                 </div>
               )}
               {allPhotos.length > 0 && filteredPhotos.length === 0 && (
@@ -682,8 +676,9 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
           {step === 'generating' && (
             <div style={{ padding: '80px 20px', textAlign: 'center' }}>
               <p style={{ fontSize: 48, marginBottom: 16 }}>🌱</p>
-              <p style={{ fontSize: 16, fontWeight: 700, color: '#1A3C6E' }}>타임라인 생성 중...</p>
-              <p style={{ fontSize: 13, color: '#888', marginTop: 8 }}>사진 {selected.length}장을 합성하고 있습니다</p>
+              <p style={{ fontSize: 16, fontWeight: 700, color: '#1A3C6E' }}>HARU타임라인 생성 중...</p>
+              <p style={{ fontSize: 13, color: '#888', marginTop: 8 }}>사진 {selected.length}장을 날짜순으로 합성하고 있습니다</p>
+              <p style={{ fontSize: 12, color: '#aaa', marginTop: 6 }}>생성 중에는 창을 닫을 수 없습니다.</p>
             </div>
           )}
 
@@ -691,31 +686,17 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
           {step === 'done' && resultUrl && (
             <div style={{ padding: '20px' }}>
               <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E', textAlign: 'center', marginBottom: 14 }}>
-                🎉 타임라인 완성!
+                🎉 HARU타임라인 완성!
               </p>
               <img
                 src={resultUrl}
-                alt="성장 타임라인"
+                alt="HARU타임라인 결과"
                 style={{
                   width: '100%', borderRadius: 12,
                   border: '1px solid #d0dff0', marginBottom: 16,
                   display: 'block',
                 }}
               />
-              {/* 공유하기 (기장 검토용) */}
-              <button
-                onClick={shareTimeline}
-                style={{
-                  width: '100%', padding: '14px',
-                  backgroundColor: '#1A3C6E', color: '#fff',
-                  border: 'none', borderRadius: 10,
-                  fontSize: 15, fontWeight: 700, cursor: 'pointer',
-                  marginBottom: 8,
-                }}
-              >
-                📤 공유하기 (카카오톡 등)
-              </button>
-
               {/* 링크 복사 */}
               <button
                 onClick={copyLink}
@@ -733,7 +714,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
               {/* 이미지 저장 */}
               <a
                 href={resultUrl}
-                download="성장타임라인.png"
+                download="HARU타임라인.png"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
@@ -791,7 +772,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
                 fontSize: 16, fontWeight: 700, cursor: 'pointer',
               }}
             >
-              🌱 타임라인 생성하기
+              🌱 HARU타임라인 생성하기
             </button>
           </div>
         )}
