@@ -34,12 +34,12 @@ function formatDateLabel(value: string) {
   return `${yyyy}.${mm}.${dd}`;
 }
 
-function daysFromPrevious(items: GrowthTimelineDocumentItem[], index: number) {
+function daysFromStart(items: GrowthTimelineDocumentItem[], index: number) {
   if (index === 0) return '';
-  const prev = new Date(`${items[index - 1].takenDate}T00:00:00`);
+  const start = new Date(`${items[0].takenDate}T00:00:00`);
   const current = new Date(`${items[index].takenDate}T00:00:00`);
-  if (Number.isNaN(prev.getTime()) || Number.isNaN(current.getTime())) return '';
-  const days = Math.round((current.getTime() - prev.getTime()) / 86400000);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(current.getTime())) return '';
+  const days = Math.round((current.getTime() - start.getTime()) / 86400000);
   if (days === 0) return '같은 날';
   return `${days}일 후`;
 }
@@ -77,20 +77,66 @@ export function GrowthTimelineDocumentModal({
 
   if (!isOpen) return null;
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (!isPremium) {
       alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 3,000원으로 시작해 보세요!');
       window.location.href = '/subscription';
       return;
     }
+    if (printRequested) return;
+    const root = document.querySelector('.growth-timeline-print-root') as HTMLElement | null;
+    if (!root) return;
+    setPrintRequested(true);
+
+    // 1) 원격(스토리지) 이미지가 모두 로드된 뒤에 인쇄 — 라이브러리에서 다시 열 때 빈 페이지 방지
+    const images = Array.from(root.querySelectorAll('img'));
+    await Promise.all(
+      images.map(img =>
+        img.complete && img.naturalWidth > 0
+          ? Promise.resolve()
+          : new Promise<void>(resolve => {
+              img.addEventListener('load', () => resolve(), { once: true });
+              img.addEventListener('error', () => resolve(), { once: true });
+            }),
+      ),
+    );
+
+    // 2) 인쇄 대상만 body 직속으로 복제 — 모달의 fixed/overflow 부모 레이아웃 때문에 생기던 빈 페이지 방지
+    const clone = root.cloneNode(true) as HTMLElement;
+    // cloneNode는 사용자가 입력한 폼 값(value)을 복사하지 않으므로 직접 반영 (편집 모드 제목/메모 보존)
+    const originalFields = root.querySelectorAll('input, textarea');
+    const clonedFields = clone.querySelectorAll('input, textarea');
+    originalFields.forEach((field, i) => {
+      const target = clonedFields[i] as HTMLInputElement | HTMLTextAreaElement | undefined;
+      if (!target) return;
+      if (target.tagName === 'TEXTAREA') {
+        target.textContent = (field as HTMLTextAreaElement).value;
+      } else {
+        target.setAttribute('value', (field as HTMLInputElement).value);
+      }
+    });
+    const portal = document.createElement('div');
+    portal.className = 'growth-timeline-print-portal';
+    portal.appendChild(clone);
+    document.body.appendChild(portal);
+
     const originalTitle = document.title;
     document.title = `HARU타임라인_${filenameSafeTitle(resolvedTitle)}.pdf`;
-    setPrintRequested(true);
-    window.print();
-    setTimeout(() => {
+
+    let cleaned = false;
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
       document.title = originalTitle;
+      if (portal.parentNode) portal.parentNode.removeChild(portal);
       setPrintRequested(false);
-    }, 1000);
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+
+    window.print();
+    // afterprint 미지원 환경 대비 fallback
+    setTimeout(cleanup, 1500);
   };
 
   return (
@@ -207,7 +253,7 @@ export function GrowthTimelineDocumentModal({
               }}
             >
               {sortedItems.map((item, index) => {
-                const gapLabel = daysFromPrevious(sortedItems, index);
+                const gapLabel = daysFromStart(sortedItems, index);
                 return (
                   <figure
                     key={`${item.url}-${item.order}-${index}`}
@@ -356,6 +402,11 @@ export function GrowthTimelineDocumentModal({
           }
         }
 
+        /* 인쇄용 복제본은 화면에서는 보이지 않게 (인쇄 시 flash 방지) */
+        .growth-timeline-print-portal {
+          display: none;
+        }
+
         @media print {
           @page {
             size: A4;
@@ -369,32 +420,21 @@ export function GrowthTimelineDocumentModal({
             background: white !important;
           }
 
-          body * {
-            visibility: hidden !important;
+          /* 인쇄 복제본만 남기고 나머지 화면 요소는 모두 숨김 */
+          body > *:not(.growth-timeline-print-portal) {
+            display: none !important;
           }
 
-          .growth-timeline-modal-shell {
-            position: static !important;
-            inset: auto !important;
+          .growth-timeline-print-portal {
             display: block !important;
-            padding: 0 !important;
             background: white !important;
           }
 
-          .growth-timeline-print-root,
-          .growth-timeline-print-root * {
-            visibility: visible !important;
-          }
-
-          .growth-timeline-print-root {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
+          .growth-timeline-print-portal .growth-timeline-print-root {
             max-width: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
             min-height: auto !important;
-            padding: 18mm !important;
-            box-sizing: border-box !important;
             background: white !important;
           }
 
