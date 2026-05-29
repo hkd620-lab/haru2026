@@ -10,7 +10,7 @@ service firebase.storage {
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
-    // ✅ 변화기록 비서 PNG 업로드
+    // ✅ HARU타임라인 PNG 업로드
     match /users/{userId}/timelines/{fileName} {
       allow read: if request.auth != null
         && request.auth.uid == userId

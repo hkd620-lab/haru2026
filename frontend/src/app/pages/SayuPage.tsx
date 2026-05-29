@@ -2673,7 +2673,7 @@ export function SayuPage() {
       {viewMode === 'list' && renderGroupedEntryList(activeEntries)}
       {viewMode === 'calendar' && renderEntryCalendar(activeEntries)}
 
-      {/* 변화기록 비서 — 사유기록 탭에서 독립 비서 후보처럼 노출 */}
+      {/* HARU타임라인 — 사유기록 탭에서 독립 비서 후보처럼 노출 */}
       {sayuTab === 'records' && (
         <div style={{ marginTop: 16, marginBottom: 8 }}>
           <button
@@ -2688,7 +2688,7 @@ export function SayuPage() {
               boxShadow: '0 2px 10px rgba(26,60,110,0.08)',
             }}
           >
-            <span style={{ display: 'block', fontSize: 16, marginBottom: 6 }}>🧭 변화기록 비서</span>
+            <span style={{ display: 'block', fontSize: 16, marginBottom: 6 }}>🌱 HARU타임라인</span>
             <span style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#666', lineHeight: 1.6 }}>
               여러 날짜의 사진 기록을 시간순으로 묶어 변화의 흐름을 한 장으로 보여줍니다.
             </span>

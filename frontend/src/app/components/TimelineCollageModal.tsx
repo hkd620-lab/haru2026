@@ -87,7 +87,7 @@ async function loadImg(url: string): Promise<HTMLImageElement> {
   });
 }
 
-const CHANGE_RECORD_ASSISTANT_TITLE = '변화기록 비서';
+const CHANGE_RECORD_ASSISTANT_TITLE = 'HARU타임라인';
 const CHANGE_RECORD_ASSISTANT_DESCRIPTION = '여러 날짜의 사진 기록을 시간순으로 묶어 변화의 흐름을 한 장으로 보여줍니다.';
 const CHANGE_RECORD_ASSISTANT_HELP = '흩어진 하루의 사진들을 연결해 식물, 건강, 가족, 프로젝트의 변화를 한눈에 볼 수 있는 기록 자산으로 만듭니다.';
 
@@ -243,9 +243,9 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
       setResultUrl(url);
       generatingRef.current = false;
       setStep('done');
-      toast.success('변화기록이 저장되었습니다!');
+      toast.success('HARU타임라인이 저장되었습니다!');
     } catch (err) {
-      console.error('변화기록 생성 실패:', err);
+      console.error('HARU타임라인 생성 실패:', err);
       toast.error('생성에 실패했습니다. 다시 시도해주세요.');
       generatingRef.current = false;
       setStep('select');
@@ -322,7 +322,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
         }}>
           <div>
             <p style={{ fontSize: 17, fontWeight: 700, color: '#1A3C6E', margin: 0 }}>
-              🧭 변화기록 비서
+              🌱 HARU타임라인
             </p>
             <p style={{ fontSize: 12, color: '#888', margin: '2px 0 0' }}>
               {CHANGE_RECORD_ASSISTANT_DESCRIPTION}
@@ -351,7 +351,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
                 <input
                   value={title}
                   onChange={e => setTitle(e.target.value)}
-                  placeholder="변화기록 제목 (예: 포도 성장기 2026)"
+                  placeholder="HARU타임라인 제목 (예: 포도 성장기 2026)"
                   style={{
                     width: '100%', padding: '10px 14px',
                     border: '1px solid #d0dff0', borderRadius: 10,
@@ -379,7 +379,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
               )}
               {allPhotos.length > 0 && allPhotos.length < 4 && (
                 <p style={{ fontSize: 12, color: '#e57373', margin: '0 0 12px', lineHeight: 1.6 }}>
-                  변화기록을 만들려면 사진이 포함된 기록이 필요합니다. 식물, 건강, 가족, 프로젝트 사진을 며칠에 걸쳐 기록한 뒤 다시 시도해 주세요.
+                  HARU타임라인을 만들려면 사진이 포함된 기록이 필요합니다. 식물, 건강, 가족, 프로젝트 사진을 며칠에 걸쳐 기록한 뒤 다시 시도해 주세요.
                 </p>
               )}
 
@@ -387,7 +387,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
               {allPhotos.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '50px 0', color: '#bbb' }}>
                   <p style={{ fontSize: 40, marginBottom: 12 }}>📷</p>
-                  <p style={{ fontSize: 14, color: '#999', margin: 0 }}>변화기록을 만들려면 사진이 포함된 기록이 필요합니다.</p>
+                  <p style={{ fontSize: 14, color: '#999', margin: 0 }}>HARU타임라인을 만들려면 사진이 포함된 기록이 필요합니다.</p>
                   <p style={{ fontSize: 12, marginTop: 6, lineHeight: 1.6 }}>식물, 건강, 가족, 프로젝트 사진을 며칠에 걸쳐 기록한 뒤 다시 시도해 주세요.</p>
                 </div>
               )}
@@ -512,8 +512,8 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
           {/* 생성 중 */}
           {step === 'generating' && (
             <div style={{ padding: '80px 20px', textAlign: 'center' }}>
-              <p style={{ fontSize: 48, marginBottom: 16 }}>🧭</p>
-              <p style={{ fontSize: 16, fontWeight: 700, color: '#1A3C6E' }}>변화기록 생성 중...</p>
+              <p style={{ fontSize: 48, marginBottom: 16 }}>🌱</p>
+              <p style={{ fontSize: 16, fontWeight: 700, color: '#1A3C6E' }}>HARU타임라인 생성 중...</p>
               <p style={{ fontSize: 13, color: '#888', marginTop: 8 }}>사진 {selected.length}장을 날짜순으로 합성하고 있습니다</p>
               <p style={{ fontSize: 12, color: '#aaa', marginTop: 6 }}>생성 중에는 창을 닫을 수 없습니다.</p>
             </div>
@@ -523,11 +523,11 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
           {step === 'done' && resultUrl && (
             <div style={{ padding: '20px' }}>
               <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E', textAlign: 'center', marginBottom: 14 }}>
-                🎉 변화기록 완성!
+                🎉 HARU타임라인 완성!
               </p>
               <img
                 src={resultUrl}
-                alt="변화기록 비서 결과"
+                alt="HARU타임라인 결과"
                 style={{
                   width: '100%', borderRadius: 12,
                   border: '1px solid #d0dff0', marginBottom: 16,
@@ -551,7 +551,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
               {/* 이미지 저장 */}
               <a
                 href={resultUrl}
-                download="변화기록.png"
+                download="HARU타임라인.png"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
@@ -609,7 +609,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
                 fontSize: 16, fontWeight: 700, cursor: 'pointer',
               }}
             >
-              🧭 변화기록 생성하기
+              🌱 HARU타임라인 생성하기
             </button>
           </div>
         )}
