@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { storage, db } from '../../firebase';
 import { HaruRecord } from '../services/firestoreService';
 import { toast } from 'sonner';
@@ -50,6 +50,10 @@ function fmtDate(dateStr: string): string {
   return p.length === 3 ? `${p[0]}.${p[1]}.${p[2]}` : dateStr;
 }
 
+function sortPhotosByDate(photos: PhotoItem[]): PhotoItem[] {
+  return [...photos].sort((a, b) => a.date.localeCompare(b.date));
+}
+
 function getLayout(n: number): { cols: number; rows: number } {
   if (n <= 4) return { cols: 2, rows: 2 };
   if (n <= 6) return { cols: 2, rows: 3 };
@@ -83,11 +87,16 @@ async function loadImg(url: string): Promise<HTMLImageElement> {
   });
 }
 
+const CHANGE_RECORD_ASSISTANT_TITLE = '변화기록 비서';
+const CHANGE_RECORD_ASSISTANT_DESCRIPTION = '여러 날짜의 사진 기록을 시간순으로 묶어 변화의 흐름을 한 장으로 보여줍니다.';
+const CHANGE_RECORD_ASSISTANT_HELP = '흩어진 하루의 사진들을 연결해 식물, 건강, 가족, 프로젝트의 변화를 한눈에 볼 수 있는 기록 자산으로 만듭니다.';
+
 export function TimelineCollageModal({ isOpen, onClose, records, uid }: TimelineCollageModalProps) {
   const [selected, setSelected] = useState<PhotoItem[]>([]);
   const [title, setTitle] = useState('');
   const [step, setStep] = useState<'select' | 'generating' | 'done'>('select');
   const [resultUrl, setResultUrl] = useState<string | null>(null);
+  const generatingRef = useRef(false);
 
   const allPhotos = extractPhotos(records);
 
@@ -104,14 +113,26 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
     });
   };
 
+  const updateSelectedDate = (photoUrl: string, date: string) => {
+    setSelected(prev => prev.map(photo => (
+      photo.url === photoUrl ? { ...photo, date } : photo
+    )));
+  };
+
   const generate = async () => {
+    if (step === 'generating' || generatingRef.current) {
+      toast.info('생성 중입니다. 잠시만 기다려주세요.');
+      return;
+    }
     if (selected.length < 4) {
       toast.warning('최소 4장을 선택해주세요.');
       return;
     }
+    generatingRef.current = true;
     setStep('generating');
 
     try {
+      const timelinePhotos = sortPhotosByDate(selected);
       const PAD = 20;
       const GAP = 12;
       const TITLE_H = 90;
@@ -120,7 +141,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
       const PHOTO_H = Math.round(PHOTO_W * 0.72);
       const DATE_H = 30;
       const ROW_H = PHOTO_H + DATE_H + GAP;
-      const { rows } = getLayout(selected.length);
+      const { rows } = getLayout(timelinePhotos.length);
       const H = TITLE_H + rows * ROW_H + PAD;
 
       const canvas = document.createElement('canvas');
@@ -137,19 +158,19 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
       ctx.fillRect(0, 0, W, 6);
 
       // 제목
-      const resolvedTitle = title.trim() || '성장 타임라인';
+      const resolvedTitle = title.trim() || CHANGE_RECORD_ASSISTANT_TITLE;
       ctx.fillStyle = '#1A3C6E';
       ctx.font = 'bold 30px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(resolvedTitle, W / 2, 46);
 
       // 날짜 범위 부제
-      if (selected.length > 0) {
-        const first = fmtDate(selected[0].date);
-        const last = fmtDate(selected[selected.length - 1].date);
+      if (timelinePhotos.length > 0) {
+        const first = fmtDate(timelinePhotos[0].date);
+        const last = fmtDate(timelinePhotos[timelinePhotos.length - 1].date);
         ctx.fillStyle = '#888';
         ctx.font = '15px sans-serif';
-        ctx.fillText(`${first} ~ ${last}  ·  ${selected.length}장`, W / 2, 70);
+        ctx.fillText(`${first} ~ ${last}  ·  ${timelinePhotos.length}장`, W / 2, 70);
       }
 
       // 구분선
@@ -161,7 +182,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
       ctx.stroke();
 
       // 사진 배치
-      for (let i = 0; i < selected.length; i++) {
+      for (let i = 0; i < timelinePhotos.length; i++) {
         const col = i % 2;
         const row = Math.floor(i / 2);
         const x = PAD + col * (PHOTO_W + GAP);
@@ -173,7 +194,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
         ctx.fill();
 
         try {
-          const img = await loadImg(selected[i].url);
+          const img = await loadImg(timelinePhotos[i].url);
           const scale = Math.max(PHOTO_W / img.width, PHOTO_H / img.height);
           const sw = PHOTO_W / scale;
           const sh = PHOTO_H / scale;
@@ -196,7 +217,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
         ctx.fillStyle = '#555';
         ctx.font = '14px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(fmtDate(selected[i].date), x + PHOTO_W / 2, y + PHOTO_H + 20);
+        ctx.fillText(fmtDate(timelinePhotos[i].date), x + PHOTO_W / 2, y + PHOTO_H + 20);
       }
 
       // PNG Blob → Storage 업로드
@@ -210,21 +231,23 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
       const url = await getDownloadURL(storageRef);
 
       // Firestore 저장
-      await addDoc(collection(db, 'users', uid, 'timelines'), {
+      await setDoc(doc(db, 'users', uid, 'timelines', id), {
         timelineImageUrl: url,
         timelineCreatedAt: new Date().toISOString(),
         title: resolvedTitle,
-        photoCount: selected.length,
-        photoDates: selected.map(p => p.date),
+        photoCount: timelinePhotos.length,
+        photoDates: timelinePhotos.map(p => p.date),
         storageId: id,
       });
 
       setResultUrl(url);
+      generatingRef.current = false;
       setStep('done');
-      toast.success('타임라인이 저장되었습니다!');
+      toast.success('변화기록이 저장되었습니다!');
     } catch (err) {
-      console.error('타임라인 생성 실패:', err);
+      console.error('변화기록 생성 실패:', err);
       toast.error('생성에 실패했습니다. 다시 시도해주세요.');
+      generatingRef.current = false;
       setStep('select');
     }
   };
@@ -233,39 +256,18 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
     if (!resultUrl) return;
     try {
       await navigator.clipboard.writeText(resultUrl);
-      toast.success('링크가 복사되었습니다! 카카오톡 등에 붙여넣기 하세요.');
+      toast.success('링크가 복사되었습니다.');
     } catch {
       toast.error('복사에 실패했습니다.');
     }
   };
 
-  const shareTimeline = async () => {
-    if (!resultUrl) return;
-    const shareTitle = title.trim() || '성장 타임라인';
-
-    if (navigator.share) {
-      try {
-        // 이미지 파일로 직접 공유 시도
-        const resp = await fetch(resultUrl);
-        const blob = await resp.blob();
-        const file = new File([blob], '성장타임라인.png', { type: 'image/png' });
-        if (navigator.canShare?.({ files: [file] })) {
-          await navigator.share({ title: shareTitle, files: [file] });
-          return;
-        }
-        // 파일 공유 불가 시 URL 공유
-        await navigator.share({ title: shareTitle, url: resultUrl });
-      } catch (err) {
-        if ((err as Error).name !== 'AbortError') {
-          copyLink();
-        }
-      }
-    } else {
-      copyLink();
-    }
-  };
-
   const handleClose = () => {
+    if (step === 'generating' || generatingRef.current) {
+      toast.info('생성 중입니다. 완료 후 닫을 수 있습니다.');
+      return;
+    }
+    generatingRef.current = false;
     setStep('select');
     setSelected([]);
     setTitle('');
@@ -273,7 +275,23 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
     onClose();
   };
 
+  useEffect(() => {
+    if (!isOpen || step !== 'generating') return;
+
+    const blockEscapeWhileGenerating = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopPropagation();
+      toast.info('생성 중입니다. 완료 후 닫을 수 있습니다.');
+    };
+
+    window.addEventListener('keydown', blockEscapeWhileGenerating, true);
+    return () => window.removeEventListener('keydown', blockEscapeWhileGenerating, true);
+  }, [isOpen, step]);
+
   if (!isOpen) return null;
+
+  const selectedForPreview = sortPhotosByDate(selected);
 
   return (
     <div
@@ -304,15 +322,21 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
         }}>
           <div>
             <p style={{ fontSize: 17, fontWeight: 700, color: '#1A3C6E', margin: 0 }}>
-              🌱 성장 타임라인
+              🧭 변화기록 비서
             </p>
             <p style={{ fontSize: 12, color: '#888', margin: '2px 0 0' }}>
-              사진을 선택해 하나의 이미지로 만드세요
+              {CHANGE_RECORD_ASSISTANT_DESCRIPTION}
             </p>
           </div>
           <button
             onClick={handleClose}
-            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#aaa' }}
+            disabled={step === 'generating'}
+            title={step === 'generating' ? '생성 중입니다' : '닫기'}
+            style={{
+              background: 'none', border: 'none', fontSize: 20,
+              cursor: step === 'generating' ? 'not-allowed' : 'pointer',
+              color: step === 'generating' ? '#d0d0d0' : '#aaa',
+            }}
           >
             ✕
           </button>
@@ -327,7 +351,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
                 <input
                   value={title}
                   onChange={e => setTitle(e.target.value)}
-                  placeholder="타임라인 제목 (예: 포도 성장기 2026)"
+                  placeholder="변화기록 제목 (예: 포도 성장기 2026)"
                   style={{
                     width: '100%', padding: '10px 14px',
                     border: '1px solid #d0dff0', borderRadius: 10,
@@ -345,16 +369,26 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
                     : '사진 있는 기록 없음'}
                 </p>
                 {selected.length > 0 && selected.length < 4 && (
-                  <span style={{ fontSize: 12, color: '#e57373' }}>4장 이상 선택하세요</span>
+                  <span style={{ fontSize: 12, color: '#e57373' }}>4~8장을 선택하세요</span>
                 )}
               </div>
+              {allPhotos.length > 0 && (
+                <p style={{ fontSize: 12, color: '#888', margin: '0 0 12px' }}>
+                  {CHANGE_RECORD_ASSISTANT_HELP}
+                </p>
+              )}
+              {allPhotos.length > 0 && allPhotos.length < 4 && (
+                <p style={{ fontSize: 12, color: '#e57373', margin: '0 0 12px', lineHeight: 1.6 }}>
+                  변화기록을 만들려면 사진이 포함된 기록이 필요합니다. 식물, 건강, 가족, 프로젝트 사진을 며칠에 걸쳐 기록한 뒤 다시 시도해 주세요.
+                </p>
+              )}
 
               {/* 사진 없는 경우 */}
               {allPhotos.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '50px 0', color: '#bbb' }}>
                   <p style={{ fontSize: 40, marginBottom: 12 }}>📷</p>
-                  <p style={{ fontSize: 14, color: '#999' }}>사진이 포함된 기록이 없습니다.</p>
-                  <p style={{ fontSize: 12, marginTop: 4 }}>형식 기록에 사진을 추가하면 여기에 나타납니다.</p>
+                  <p style={{ fontSize: 14, color: '#999', margin: 0 }}>변화기록을 만들려면 사진이 포함된 기록이 필요합니다.</p>
+                  <p style={{ fontSize: 12, marginTop: 6, lineHeight: 1.6 }}>식물, 건강, 가족, 프로젝트 사진을 며칠에 걸쳐 기록한 뒤 다시 시도해 주세요.</p>
                 </div>
               )}
 
@@ -415,15 +449,73 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
                   );
                 })}
               </div>
+
+              {selected.length > 0 && (
+                <div style={{ marginTop: 16 }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: '#1A3C6E', margin: '0 0 8px' }}>
+                    선택 사진 날짜
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {selectedForPreview.map((photo, idx) => (
+                      <div
+                        key={`date-${photo.url}`}
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: '52px 1fr',
+                          gap: 10,
+                          alignItems: 'center',
+                          padding: 8,
+                          border: '1px solid #e5edf7',
+                          borderRadius: 10,
+                          backgroundColor: '#fafcff',
+                        }}
+                      >
+                        <div style={{ position: 'relative', width: 52, height: 52, borderRadius: 8, overflow: 'hidden' }}>
+                          <img
+                            src={photo.url}
+                            alt={photo.date}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                          />
+                          <div style={{
+                            position: 'absolute', top: 4, left: 4,
+                            width: 18, height: 18, borderRadius: '50%',
+                            backgroundColor: '#1A3C6E', color: '#fff',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 11, fontWeight: 700,
+                          }}>
+                            {idx + 1}
+                          </div>
+                        </div>
+                        <input
+                          type="date"
+                          value={photo.date}
+                          onChange={e => updateSelectedDate(photo.url, e.target.value)}
+                          style={{
+                            width: '100%',
+                            boxSizing: 'border-box',
+                            border: '1px solid #d0dff0',
+                            borderRadius: 8,
+                            padding: '9px 10px',
+                            fontSize: 14,
+                            color: '#1A3C6E',
+                            backgroundColor: '#fff',
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {/* 생성 중 */}
           {step === 'generating' && (
             <div style={{ padding: '80px 20px', textAlign: 'center' }}>
-              <p style={{ fontSize: 48, marginBottom: 16 }}>🌱</p>
-              <p style={{ fontSize: 16, fontWeight: 700, color: '#1A3C6E' }}>타임라인 생성 중...</p>
-              <p style={{ fontSize: 13, color: '#888', marginTop: 8 }}>사진 {selected.length}장을 합성하고 있습니다</p>
+              <p style={{ fontSize: 48, marginBottom: 16 }}>🧭</p>
+              <p style={{ fontSize: 16, fontWeight: 700, color: '#1A3C6E' }}>변화기록 생성 중...</p>
+              <p style={{ fontSize: 13, color: '#888', marginTop: 8 }}>사진 {selected.length}장을 날짜순으로 합성하고 있습니다</p>
+              <p style={{ fontSize: 12, color: '#aaa', marginTop: 6 }}>생성 중에는 창을 닫을 수 없습니다.</p>
             </div>
           )}
 
@@ -431,31 +523,17 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
           {step === 'done' && resultUrl && (
             <div style={{ padding: '20px' }}>
               <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E', textAlign: 'center', marginBottom: 14 }}>
-                🎉 타임라인 완성!
+                🎉 변화기록 완성!
               </p>
               <img
                 src={resultUrl}
-                alt="성장 타임라인"
+                alt="변화기록 비서 결과"
                 style={{
                   width: '100%', borderRadius: 12,
                   border: '1px solid #d0dff0', marginBottom: 16,
                   display: 'block',
                 }}
               />
-              {/* 공유하기 (기장 검토용) */}
-              <button
-                onClick={shareTimeline}
-                style={{
-                  width: '100%', padding: '14px',
-                  backgroundColor: '#1A3C6E', color: '#fff',
-                  border: 'none', borderRadius: 10,
-                  fontSize: 15, fontWeight: 700, cursor: 'pointer',
-                  marginBottom: 8,
-                }}
-              >
-                📤 공유하기 (카카오톡 등)
-              </button>
-
               {/* 링크 복사 */}
               <button
                 onClick={copyLink}
@@ -473,7 +551,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
               {/* 이미지 저장 */}
               <a
                 href={resultUrl}
-                download="성장타임라인.png"
+                download="변화기록.png"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
@@ -516,7 +594,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             }}>
               <p style={{ fontSize: 13, color: '#1A3C6E', margin: 0 }}>
-                {selected.length}장 선택 · {fmtDate(selected[0].date)} ~ {fmtDate(selected[selected.length - 1].date)}
+                {selectedForPreview.length}장 선택 · {fmtDate(selectedForPreview[0].date)} ~ {fmtDate(selectedForPreview[selectedForPreview.length - 1].date)}
               </p>
               <p style={{ fontSize: 12, color: '#888', margin: 0 }}>
                 {getLayout(selected.length).cols}×{getLayout(selected.length).rows}
@@ -531,7 +609,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
                 fontSize: 16, fontWeight: 700, cursor: 'pointer',
               }}
             >
-              🌱 타임라인 생성하기
+              🧭 변화기록 생성하기
             </button>
           </div>
         )}
