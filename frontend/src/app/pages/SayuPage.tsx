@@ -2673,24 +2673,28 @@ export function SayuPage() {
       {viewMode === 'list' && renderGroupedEntryList(activeEntries)}
       {viewMode === 'calendar' && renderEntryCalendar(activeEntries)}
 
-      {/* 성장 타임라인 — 사유기록 탭에서만 노출 */}
+      {/* 변화기록 비서 — 사유기록 탭에서 독립 비서 후보처럼 노출 */}
       {sayuTab === 'records' && (
         <div style={{ marginTop: 16, marginBottom: 8 }}>
           <button
             type="button"
             onClick={() => setTimelineModalOpen(true)}
             style={{
-              width: '100%', padding: '13px',
-              backgroundColor: '#1A3C6E', color: '#FAF9F6',
-              border: '2px solid #2A4C7E', borderRadius: 12,
-              fontSize: 15, fontWeight: 700, cursor: 'pointer',
-              letterSpacing: '0.04em',
+              width: '100%', padding: '16px',
+              backgroundColor: '#FFFFFF', color: '#1A3C6E',
+              border: '2px solid #2A4C7E', borderRadius: 14,
+              fontSize: 15, fontWeight: 800, cursor: 'pointer',
+              letterSpacing: '0.02em', textAlign: 'left',
+              boxShadow: '0 2px 10px rgba(26,60,110,0.08)',
             }}
           >
-            🌱 성장 타임라인 만들기
+            <span style={{ display: 'block', fontSize: 16, marginBottom: 6 }}>🧭 변화기록 비서</span>
+            <span style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#666', lineHeight: 1.6 }}>
+              여러 날짜의 사진 기록을 시간순으로 묶어 변화의 흐름을 한 장으로 보여줍니다.
+            </span>
           </button>
-          <p style={{ fontSize: 12, color: '#888', textAlign: 'center', marginTop: 6 }}>
-            사진 기록을 골라 한 장의 타임라인 이미지로 저장하세요
+          <p style={{ fontSize: 12, color: '#888', textAlign: 'center', marginTop: 6, lineHeight: 1.6 }}>
+            흩어진 하루의 사진들을 연결해 식물, 건강, 가족, 프로젝트의 변화를 한눈에 볼 수 있는 기록 자산으로 만듭니다.
           </p>
         </div>
       )}
