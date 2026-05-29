@@ -1,8 +1,11 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { setOrigin } from '../services/v2Origin';
 import { useAuth } from '../contexts/AuthContext';
+import { TimelineCollageModal } from '../components/TimelineCollageModal';
+import { firestoreService } from '../services/firestoreService';
+import type { HaruRecord } from '../services/firestoreService';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -27,6 +30,7 @@ type Agent = {
   variant: 'lilac' | 'green' | 'terracotta';
   stroke: string;
   path: string | null;
+  action?: 'timeline';
   state?: Record<string, unknown>;
   icon: ReactNode;
   beta?: boolean;
@@ -219,6 +223,26 @@ const RECORDS: RecordItem[] = [
 ];
 
 const AGENTS: Agent[] = [
+  {
+    label: 'HARU타임라인',
+    sub: '여러 날짜의 사진 기록을 시간순으로 묶어 변화의 흐름을 한 장으로 보여줍니다.',
+    tag: 'TIMELINE · 기록자산',
+    variant: 'green',
+    stroke: '#4A5A2C',
+    path: null,
+    action: 'timeline',
+    icon: (
+      <>
+        <path d="M4 17h16" />
+        <path d="M7 17V7" />
+        <path d="M12 17V4" />
+        <path d="M17 17v-7" />
+        <circle cx="7" cy="7" r="2" />
+        <circle cx="12" cy="4" r="2" />
+        <circle cx="17" cy="10" r="2" />
+      </>
+    ),
+  },
   {
     label: 'HARU미래전망',
     sub: '오늘의 한 줄 기록이 모여 당신의 미래를 전망합니다.',
@@ -468,11 +492,44 @@ export function HomePageV2() {
   const { user } = useAuth();
   const isDeveloper = user?.uid === DEVELOPER_UID;
   const today = useMemo(() => todayLabel(new Date()), []);
+  const [timelineModalOpen, setTimelineModalOpen] = useState(false);
+  const [timelineRecords, setTimelineRecords] = useState<HaruRecord[]>([]);
+  const [timelineRecordsLoaded, setTimelineRecordsLoaded] = useState(false);
+  const [timelineRecordsLoading, setTimelineRecordsLoading] = useState(false);
 
   // v2 진입을 sessionStorage에 기록 → 통계/합본 등 깊은 경로 닫기 시 v2 복귀용
   useEffect(() => {
     setOrigin('/v2');
   }, []);
+
+  useEffect(() => {
+    setTimelineRecords([]);
+    setTimelineRecordsLoaded(false);
+    setTimelineRecordsLoading(false);
+  }, [user?.uid]);
+
+  const openTimelineModal = async () => {
+    if (!user?.uid) {
+      navigate('/login');
+      return;
+    }
+
+    setTimelineModalOpen(true);
+    if (timelineRecordsLoaded || timelineRecordsLoading) return;
+
+    setTimelineRecordsLoading(true);
+    try {
+      const data = await firestoreService.getRecords(user.uid);
+      setTimelineRecords(data);
+      setTimelineRecordsLoaded(true);
+    } catch (error) {
+      console.error('HARU타임라인 기록 불러오기 실패:', error);
+      setTimelineRecords([]);
+      setTimelineRecordsLoaded(true);
+    } finally {
+      setTimelineRecordsLoading(false);
+    }
+  };
 
   return (
     <div
@@ -1161,7 +1218,7 @@ export function HomePageV2() {
             }}
           >
             {AGENTS.map((a) => {
-              const disabled = a.path === null;
+              const disabled = a.path === null && !a.action;
               return (
               <button
                 key={a.label}
@@ -1169,6 +1226,10 @@ export function HomePageV2() {
                 disabled={disabled}
                 aria-disabled={disabled}
                 onClick={() => {
+                  if (a.action === 'timeline') {
+                    openTimelineModal();
+                    return;
+                  }
                   if (!a.path) return;
                   navigate(a.path, { state: { ...(a.state || {}), from: '/v2' } });
                 }}
@@ -1405,6 +1466,16 @@ export function HomePageV2() {
           <span style={{ height: 1, flex: '0 0 60px', background: '#E5DFD0' }} />
         </div>
       </div>
+
+      {timelineModalOpen && user?.uid && (
+        <TimelineCollageModal
+          isOpen={timelineModalOpen}
+          onClose={() => setTimelineModalOpen(false)}
+          records={timelineRecords}
+          uid={user.uid}
+          isLoadingRecords={timelineRecordsLoading}
+        />
+      )}
     </div>
   );
 }
