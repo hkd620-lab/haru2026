@@ -23,6 +23,10 @@ interface GrowthTimelineDocumentModalProps {
   onFinalize?: () => void;
 }
 
+// A4(210×297mm) - 좌우/상하 14mm 여백 = 인쇄 가능 영역 (96dpi 기준 px)
+const PRINT_CONTENT_WIDTH_PX = 688; // 182mm
+const PRINT_CONTENT_HEIGHT_PX = 1016; // 269mm
+
 function sortItems(items: GrowthTimelineDocumentItem[]) {
   return [...items].sort((a, b) => a.takenDate.localeCompare(b.takenDate) || a.order - b.order);
 }
@@ -115,10 +119,42 @@ export function GrowthTimelineDocumentModal({
         target.setAttribute('value', (field as HTMLInputElement).value);
       }
     });
+    // 인쇄용 복제본은 화면 인라인 스타일을 그대로 쓰되, A4 인쇄폭에 맞춰 패딩만 제거
+    clone.style.maxWidth = 'none';
+    clone.style.margin = '0';
+    clone.style.padding = '0';
+    clone.style.minHeight = 'auto';
+    clone.style.width = `${PRINT_CONTENT_WIDTH_PX}px`;
+
+    // 3) 사진 전체를 A4 한 장에 담기 — 실제 높이를 잰 뒤 한 페이지에 맞게 축소(가운데 정렬)
+    const scaler = document.createElement('div');
+    scaler.className = 'growth-timeline-print-scaler';
+    scaler.style.width = `${PRINT_CONTENT_WIDTH_PX}px`;
+    scaler.appendChild(clone);
+
     const portal = document.createElement('div');
     portal.className = 'growth-timeline-print-portal';
-    portal.appendChild(clone);
+    // 화면 밖에서 실제 높이 측정 (aspect-ratio 기반이라 이미지 로드와 무관하게 결정적)
+    portal.style.position = 'fixed';
+    portal.style.left = '-10000px';
+    portal.style.top = '0';
+    portal.style.display = 'block';
+    portal.appendChild(scaler);
     document.body.appendChild(portal);
+
+    const naturalHeight = scaler.getBoundingClientRect().height;
+    const scale = naturalHeight > PRINT_CONTENT_HEIGHT_PX ? PRINT_CONTENT_HEIGHT_PX / naturalHeight : 1;
+    scaler.style.transform = `scale(${scale})`;
+    scaler.style.transformOrigin = '50% 0';
+
+    // 측정용 위치 해제 → 인쇄 시 CSS가 표시 제어, 높이는 축소분만큼만 차지하도록 고정
+    portal.style.position = 'static';
+    portal.style.left = 'auto';
+    portal.style.top = 'auto';
+    portal.style.display = '';
+    portal.style.width = `${PRINT_CONTENT_WIDTH_PX}px`;
+    portal.style.height = `${naturalHeight * scale}px`;
+    portal.style.overflow = 'hidden';
 
     const originalTitle = document.title;
     document.title = `HARU타임라인_${filenameSafeTitle(resolvedTitle)}.pdf`;
@@ -444,16 +480,9 @@ export function GrowthTimelineDocumentModal({
             visibility: hidden !important;
           }
 
-          .growth-timeline-grid {
-            display: grid !important;
-            grid-template-columns: repeat(2, 1fr) !important;
-            gap: 12mm 8mm !important;
-          }
-
-          .growth-timeline-cell {
-            break-inside: avoid !important;
-          }
-
+          /* 그리드 간격/패딩은 복제본 인라인 스타일을 그대로 사용 — 측정값과 인쇄 결과를 일치시켜
+             한 페이지 축소가 정확히 맞도록 함 (별도 print 오버라이드 없음) */
+          .growth-timeline-cell,
           .growth-timeline-cell img {
             break-inside: avoid !important;
           }
