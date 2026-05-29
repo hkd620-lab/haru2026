@@ -1,0 +1,369 @@
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { toast } from 'sonner';
+import { db, storage } from '../../firebase';
+import { readOriginalImageMeta } from '../services/photoMetadataService';
+
+type TimelineItem = {
+  url: string;
+  takenDate: string;
+  metadataSource: 'exif' | 'manual' | 'manualRequired';
+  memo: string;
+  order: number;
+};
+
+type DraftTimelineItem = TimelineItem & {
+  id: string;
+  file: File;
+  previewUrl: string;
+  originalName: string;
+};
+
+interface GrowthTimelineCreatorProps {
+  uid: string;
+  onDone?: () => void;
+}
+
+function todayKey() {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function fileExtension(file: File) {
+  const fromName = file.name.split('.').pop()?.toLowerCase();
+  if (fromName && /^[a-z0-9]+$/.test(fromName)) return fromName;
+  if (file.type === 'image/png') return 'png';
+  if (file.type === 'image/webp') return 'webp';
+  if (file.type === 'image/heic') return 'heic';
+  if (file.type === 'image/heif') return 'heif';
+  return 'jpg';
+}
+
+function sanitizeFileName(name: string) {
+  return name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80) || 'photo';
+}
+
+function sortDraftItems(items: DraftTimelineItem[]) {
+  return [...items].sort((a, b) => (
+    a.takenDate.localeCompare(b.takenDate) || a.order - b.order
+  ));
+}
+
+export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProps) {
+  const [title, setTitle] = useState('성장타임라인');
+  const [items, setItems] = useState<DraftTimelineItem[]>([]);
+  const [isReading, setIsReading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const previewUrlsRef = useRef<string[]>([]);
+  const today = todayKey();
+
+  const sortedItems = useMemo(() => sortDraftItems(items), [items]);
+  const needsDateCheck = sortedItems.some(item => item.metadataSource === 'manualRequired');
+
+  useEffect(() => {
+    previewUrlsRef.current = items.map(item => item.previewUrl);
+  }, [items]);
+
+  useEffect(() => () => {
+    previewUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
+  }, []);
+
+  const handleFiles = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []).filter(file => file.type.startsWith('image/'));
+    if (files.length === 0) return;
+
+    setIsReading(true);
+    try {
+      const nextItems: DraftTimelineItem[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const meta = await readOriginalImageMeta(file);
+        const hasExifDate = typeof meta.takenDate === 'string' && meta.takenDate.trim().length > 0;
+        nextItems.push({
+          id: `${Date.now()}_${i}_${Math.random().toString(36).slice(2, 8)}`,
+          file,
+          previewUrl: URL.createObjectURL(file),
+          originalName: file.name,
+          url: '',
+          takenDate: hasExifDate ? meta.takenDate! : today,
+          metadataSource: hasExifDate ? 'exif' : 'manualRequired',
+          memo: '',
+          order: items.length + i,
+        });
+      }
+      setItems(prev => sortDraftItems([...prev, ...nextItems]).map((item, index) => ({ ...item, order: index })));
+      toast.success(`${nextItems.length}장의 사진을 불러왔습니다.`);
+    } catch (error) {
+      console.error('성장타임라인 사진 읽기 실패:', error);
+      toast.error('사진 정보를 읽지 못했습니다.');
+    } finally {
+      setIsReading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const updateDate = (id: string, takenDate: string) => {
+    setItems(prev => sortDraftItems(prev.map(item => (
+      item.id === id ? { ...item, takenDate, metadataSource: 'manual' } : item
+    ))).map((item, index) => ({ ...item, order: index })));
+  };
+
+  const updateMemo = (id: string, memo: string) => {
+    setItems(prev => prev.map(item => (item.id === id ? { ...item, memo } : item)));
+  };
+
+  const removeItem = (id: string) => {
+    setItems(prev => {
+      const target = prev.find(item => item.id === id);
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return sortDraftItems(prev.filter(item => item.id !== id)).map((item, index) => ({ ...item, order: index }));
+    });
+  };
+
+  const saveTimeline = async () => {
+    if (isSaving) return;
+    if (sortedItems.length === 0) {
+      toast.warning('사진을 먼저 선택해주세요.');
+      return;
+    }
+
+    setIsSaving(true);
+    const timelineId = `growth_${Date.now()}`;
+    try {
+      const savedItems: TimelineItem[] = [];
+      for (let index = 0; index < sortedItems.length; index++) {
+        const item = sortedItems[index];
+        const safeName = sanitizeFileName(item.originalName);
+        const ext = fileExtension(item.file);
+        const fileName = `${timelineId}_${String(index + 1).padStart(2, '0')}_${safeName}.${ext}`;
+        const imageRef = ref(storage, `users/${uid}/format_photos/${fileName}`);
+        await uploadBytes(imageRef, item.file, { contentType: item.file.type || 'image/jpeg' });
+        const url = await getDownloadURL(imageRef);
+        savedItems.push({
+          url,
+          takenDate: item.takenDate,
+          metadataSource: item.metadataSource,
+          memo: item.memo.trim(),
+          order: index,
+        });
+      }
+
+      await setDoc(doc(db, 'users', uid, 'timelines', timelineId), {
+        title: title.trim() || '성장타임라인',
+        type: 'growth',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        items: savedItems,
+      });
+
+      toast.success('성장타임라인이 저장되었습니다.');
+      items.forEach(item => URL.revokeObjectURL(item.previewUrl));
+      setItems([]);
+      setTitle('성장타임라인');
+      onDone?.();
+    } catch (error) {
+      console.error('성장타임라인 저장 실패:', error);
+      toast.error('성장타임라인 저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ border: '1px solid #dbe8d2', borderRadius: 14, padding: 14, backgroundColor: '#fbfdf7', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
+        <div>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#355524' }}>새 성장타임라인 만들기</p>
+          <p style={{ margin: '3px 0 0', fontSize: 12, color: '#7b8b72' }}>모바일 갤러리 사진을 선택하면 촬영일 기준으로 정렬합니다.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isReading || isSaving}
+          style={{
+            border: 'none',
+            borderRadius: 10,
+            backgroundColor: '#4E6B2A',
+            color: '#fff',
+            padding: '10px 12px',
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: isReading || isSaving ? 'not-allowed' : 'pointer',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          사진 선택
+        </button>
+      </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={handleFiles}
+        style={{ display: 'none' }}
+      />
+
+      <input
+        value={title}
+        onChange={event => setTitle(event.target.value)}
+        placeholder="타임라인 제목"
+        disabled={isSaving}
+        style={{
+          width: '100%',
+          boxSizing: 'border-box',
+          border: '1px solid #d6e4cc',
+          borderRadius: 10,
+          padding: '10px 12px',
+          color: '#355524',
+          fontSize: 14,
+          outline: 'none',
+          marginBottom: 12,
+          backgroundColor: '#fff',
+        }}
+      />
+
+      {items.length === 0 ? (
+        <div style={{ padding: '24px 12px', textAlign: 'center', color: '#8b987f', fontSize: 13, border: '1px dashed #d6e4cc', borderRadius: 12 }}>
+          사진을 선택하면 EXIF 촬영일을 읽어 날짜순으로 미리 보여드립니다.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {needsDateCheck && (
+            <p style={{ margin: 0, color: '#b7791f', fontSize: 12, lineHeight: 1.5 }}>
+              촬영일이 없는 사진이 있습니다. 저장 전 날짜를 확인해주세요.
+            </p>
+          )}
+          {sortedItems.map((item, index) => (
+            <div
+              key={item.id}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '72px 1fr',
+                gap: 10,
+                padding: 10,
+                border: '1px solid #e1ead9',
+                borderRadius: 12,
+                backgroundColor: '#fff',
+              }}
+            >
+              <div style={{ position: 'relative', width: 72, height: 72, borderRadius: 10, overflow: 'hidden', backgroundColor: '#eef3e8' }}>
+                <img src={item.previewUrl} alt={item.originalName} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                <span style={{
+                  position: 'absolute',
+                  top: 5,
+                  left: 5,
+                  minWidth: 20,
+                  height: 20,
+                  borderRadius: 10,
+                  backgroundColor: '#4E6B2A',
+                  color: '#fff',
+                  fontSize: 11,
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  {index + 1}
+                </span>
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+                  <input
+                    type="date"
+                    value={item.takenDate}
+                    onChange={event => updateDate(item.id, event.target.value)}
+                    disabled={isSaving}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      border: '1px solid #d6e4cc',
+                      borderRadius: 8,
+                      padding: '8px 9px',
+                      fontSize: 13,
+                      color: '#355524',
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeItem(item.id)}
+                    disabled={isSaving}
+                    title="사진 제거"
+                    style={{
+                      width: 34,
+                      height: 34,
+                      border: '1px solid #ead7d7',
+                      borderRadius: 8,
+                      backgroundColor: '#fff7f7',
+                      color: '#a64b4b',
+                      cursor: isSaving ? 'not-allowed' : 'pointer',
+                      fontSize: 16,
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 7 }}>
+                  <span style={{
+                    fontSize: 11,
+                    color: item.metadataSource === 'manualRequired' ? '#9a6700' : '#63745a',
+                    backgroundColor: item.metadataSource === 'manualRequired' ? '#fff7dd' : '#eef6e9',
+                    borderRadius: 999,
+                    padding: '3px 7px',
+                    fontWeight: 700,
+                  }}>
+                    {item.metadataSource === 'exif' ? 'EXIF 촬영일' : item.metadataSource === 'manual' ? '직접 수정' : '날짜 확인 필요'}
+                  </span>
+                  <span style={{ fontSize: 11, color: '#8a9683', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {item.originalName}
+                  </span>
+                </div>
+                <input
+                  value={item.memo}
+                  onChange={event => updateMemo(item.id, event.target.value)}
+                  placeholder="메모"
+                  disabled={isSaving}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    border: '1px solid #e1ead9',
+                    borderRadius: 8,
+                    padding: '8px 9px',
+                    fontSize: 13,
+                    color: '#355524',
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={saveTimeline}
+        disabled={isReading || isSaving || sortedItems.length === 0}
+        style={{
+          width: '100%',
+          border: 'none',
+          borderRadius: 12,
+          backgroundColor: sortedItems.length === 0 ? '#d7dfcf' : '#1A3C6E',
+          color: '#fff',
+          padding: '13px 14px',
+          marginTop: 12,
+          fontSize: 15,
+          fontWeight: 800,
+          cursor: isReading || isSaving || sortedItems.length === 0 ? 'not-allowed' : 'pointer',
+        }}
+      >
+        {isSaving ? '저장 중...' : '성장타임라인 저장'}
+      </button>
+    </div>
+  );
+}

@@ -4,6 +4,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { storage, db } from '../../firebase';
 import { HaruRecord } from '../services/firestoreService';
 import { toast } from 'sonner';
+import { GrowthTimelineCreator } from './GrowthTimelineCreator';
 
 interface PhotoItem {
   url: string;
@@ -167,6 +168,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
   const [searchText, setSearchText] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [growthCreatorOpen, setGrowthCreatorOpen] = useState(false);
   const generatingRef = useRef(false);
 
   const allPhotos = isLoadingRecords ? [] : extractPhotos(records);
@@ -356,6 +358,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
     setSearchText('');
     setDateFrom('');
     setDateTo('');
+    setGrowthCreatorOpen(false);
     onClose();
   };
 
@@ -430,6 +433,31 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
           {/* 사진 선택 화면 */}
           {step === 'select' && (
             <div style={{ padding: '16px 16px 120px' }}>
+              <div style={{ marginBottom: 14 }}>
+                {!growthCreatorOpen ? (
+                  <button
+                    type="button"
+                    onClick={() => setGrowthCreatorOpen(true)}
+                    style={{
+                      width: '100%',
+                      border: '1px solid #dbe8d2',
+                      borderRadius: 12,
+                      backgroundColor: '#f7fbf2',
+                      color: '#355524',
+                      padding: '12px 14px',
+                      fontSize: 15,
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    새 성장타임라인 만들기
+                  </button>
+                ) : (
+                  <GrowthTimelineCreator uid={uid} onDone={() => setGrowthCreatorOpen(false)} />
+                )}
+              </div>
+
               {/* 제목 입력 */}
               <div style={{ marginBottom: 14 }}>
                 <input
