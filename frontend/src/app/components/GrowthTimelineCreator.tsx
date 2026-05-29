@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { collection, doc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { toast } from 'sonner';
 import { db, storage } from '../../firebase';
@@ -476,6 +476,25 @@ export function GrowthTimelineLibrary({ uid, refreshKey = 0 }: GrowthTimelineLib
   const [timelines, setTimelines] = useState<SavedGrowthTimeline[]>([]);
   const [selectedTimeline, setSelectedTimeline] = useState<SavedGrowthTimeline | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string>('');
+
+  const handleDelete = async (timeline: SavedGrowthTimeline) => {
+    if (deletingId) return;
+    const ok = window.confirm(`'${timeline.title}' 타임라인을 삭제할까요?\n삭제하면 되돌릴 수 없습니다.`);
+    if (!ok) return;
+    setDeletingId(timeline.id);
+    try {
+      await deleteDoc(doc(db, 'users', uid, 'timelines', timeline.id));
+      setTimelines(prev => prev.filter(item => item.id !== timeline.id));
+      setSelectedTimeline(prev => (prev?.id === timeline.id ? null : prev));
+      toast.success('타임라인을 삭제했습니다.');
+    } catch (error) {
+      console.error('타임라인 삭제 실패:', error);
+      toast.error('삭제에 실패했습니다.');
+    } finally {
+      setDeletingId('');
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -526,71 +545,90 @@ export function GrowthTimelineLibrary({ uid, refreshKey = 0 }: GrowthTimelineLib
       )}
 
       {timelines.length > 0 && (
-        <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
-            {timelines.map(timeline => {
-              const first = timeline.items[0];
-              const periodStart = timeline.periodStart || first?.takenDate || '';
-              const periodEnd = timeline.periodEnd || timeline.items[timeline.items.length - 1]?.takenDate || '';
-              const dateCheckCount = timeline.items.filter(item => item.metadataSource === 'manualRequired').length;
-              const savedLabel = timestampLabel(timeline.finalizedAt) || timestampLabel(timeline.updatedAt) || timestampLabel(timeline.createdAt);
-              return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {timelines.map(timeline => {
+            const periodStart = timeline.periodStart || timeline.items[0]?.takenDate || '';
+            const periodEnd = timeline.periodEnd || timeline.items[timeline.items.length - 1]?.takenDate || '';
+            const dateCheckCount = timeline.items.filter(item => item.metadataSource === 'manualRequired').length;
+            const savedLabel = timestampLabel(timeline.finalizedAt) || timestampLabel(timeline.updatedAt) || timestampLabel(timeline.createdAt);
+            const isDeleting = deletingId === timeline.id;
+            return (
+              <div
+                key={timeline.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  border: '1px solid #e4e8ee',
+                  borderRadius: 12,
+                  backgroundColor: '#fff',
+                  opacity: isDeleting ? 0.5 : 1,
+                }}
+              >
                 <button
                   type="button"
-                  key={timeline.id}
                   onClick={() => setSelectedTimeline(timeline)}
+                  disabled={isDeleting}
                   style={{
-                    width: '100%',
-                    border: '1px solid #e4e8ee',
-                    borderRadius: 12,
-                    backgroundColor: '#fff',
-                    padding: 0,
+                    flex: 1,
+                    minWidth: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    border: 'none',
+                    background: 'transparent',
+                    padding: '12px 6px 12px 14px',
                     textAlign: 'left',
-                    cursor: 'pointer',
-                    overflow: 'hidden',
+                    cursor: isDeleting ? 'default' : 'pointer',
                   }}
                 >
-                  <div style={{ width: '100%', aspectRatio: '16 / 9', backgroundColor: '#eef2f6', overflow: 'hidden' }}>
-                    {first?.url ? (
-                      <img src={first.url} alt={timeline.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                    ) : (
-                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9aa3ad', fontSize: 13 }}>
-                        대표사진 없음
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ padding: 11 }}>
-                    <p style={{ margin: 0, fontSize: 14, fontWeight: 900, color: '#1A3C6E', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: '50%', backgroundColor: '#4E6B2A', flexShrink: 0 }} />
+                  <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <span style={{ fontSize: 15, fontWeight: 800, color: '#1A3C6E', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {timeline.title}
-                    </p>
-                    <p style={{ margin: '6px 0 0', fontSize: 12, color: '#667486', lineHeight: 1.45 }}>
-                      {periodStart || '-'}{periodEnd && periodEnd !== periodStart ? ` ~ ${periodEnd}` : ''} · {timeline.itemCount || timeline.items.length}장
-                    </p>
-                    {savedLabel && (
-                      <p style={{ margin: '4px 0 0', fontSize: 11, color: '#98a3ad' }}>
-                        최종 저장 {savedLabel}
-                      </p>
-                    )}
+                    </span>
+                    <span style={{ fontSize: 12, color: '#7a8696', lineHeight: 1.4 }}>
+                      {periodStart || '-'}{periodEnd && periodEnd !== periodStart ? ` ~ ${periodEnd}` : ''} · {timeline.itemCount || timeline.items.length}장{savedLabel ? ` · 최종 저장 ${savedLabel}` : ''}
+                    </span>
                     {dateCheckCount > 0 && (
                       <span style={{
-                        display: 'inline-flex',
-                        marginTop: 8,
+                        alignSelf: 'flex-start',
+                        marginTop: 2,
                         borderRadius: 999,
                         backgroundColor: '#fff7dd',
                         color: '#9a6700',
-                        padding: '4px 8px',
+                        padding: '3px 8px',
                         fontSize: 11,
                         fontWeight: 800,
                       }}>
                         날짜 확인 필요 {dateCheckCount}장
                       </span>
                     )}
-                  </div>
+                  </span>
+                  <span aria-hidden="true" style={{ flexShrink: 0, color: '#b9c2cc', fontSize: 18, lineHeight: 1 }}>›</span>
                 </button>
-              );
-            })}
-          </div>
-        </>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(timeline)}
+                  disabled={isDeleting}
+                  aria-label="타임라인 삭제"
+                  style={{
+                    flexShrink: 0,
+                    border: 'none',
+                    borderLeft: '1px solid #eef1f5',
+                    background: 'transparent',
+                    color: '#b94a48',
+                    padding: '12px 14px',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: isDeleting ? 'default' : 'pointer',
+                  }}
+                >
+                  {isDeleting ? '삭제 중' : '삭제'}
+                </button>
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {selectedTimeline && (

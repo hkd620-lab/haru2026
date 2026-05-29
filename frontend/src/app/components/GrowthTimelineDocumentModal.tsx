@@ -197,55 +197,71 @@ export function GrowthTimelineDocumentModal({
               </div>
             </header>
 
-            <section style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <section
+              className="growth-timeline-grid"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: 20,
+                alignItems: 'start',
+              }}
+            >
               {sortedItems.map((item, index) => {
                 const gapLabel = daysFromPrevious(sortedItems, index);
                 return (
-                  <div
+                  <figure
                     key={`${item.url}-${item.order}-${index}`}
+                    className="growth-timeline-cell"
                     style={{
-                      display: 'grid',
-                      gridTemplateColumns: '110px 1fr',
-                      gap: 16,
-                      borderBottom: index === sortedItems.length - 1 ? 'none' : '1px solid #e7edf2',
-                      paddingBottom: index === sortedItems.length - 1 ? 0 : 18,
+                      margin: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 9,
                     }}
                   >
-                    <div>
-                      <p style={{ margin: 0, color: '#1A3C6E', fontSize: 15, fontWeight: 900 }}>
-                        {formatDateLabel(item.takenDate)}
-                      </p>
-                      <p style={{ margin: '6px 0 0', color: '#8a96a3', fontSize: 12 }}>
-                        {index === 0 ? '시작' : gapLabel}
-                      </p>
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          marginTop: 8,
-                          color: item.metadataSource === 'manualRequired' ? '#9a6700' : '#557047',
-                          backgroundColor: item.metadataSource === 'manualRequired' ? '#fff7dd' : '#eef6e9',
-                          borderRadius: 999,
-                          padding: '4px 8px',
-                          fontSize: 11,
-                          fontWeight: 800,
-                        }}
-                      >
-                        {metadataLabel(item.metadataSource)}
-                      </span>
-                    </div>
-                    <div style={{ minWidth: 0 }}>
+                    <div
+                      style={{
+                        width: '100%',
+                        aspectRatio: '4 / 3',
+                        backgroundColor: '#f1f4f7',
+                        borderRadius: 12,
+                        overflow: 'hidden',
+                      }}
+                    >
                       <img
                         src={item.url}
                         alt={formatDateLabel(item.takenDate)}
                         style={{
                           width: '100%',
-                          maxHeight: 420,
-                          objectFit: 'contain',
-                          backgroundColor: '#f1f4f7',
-                          borderRadius: 12,
+                          height: '100%',
+                          objectFit: 'cover',
                           display: 'block',
                         }}
                       />
+                    </div>
+                    <figcaption style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <span style={{ display: 'flex', alignItems: 'baseline', gap: 7, flexWrap: 'wrap' }}>
+                        <span style={{ color: '#1A3C6E', fontSize: 14, fontWeight: 900 }}>
+                          {formatDateLabel(item.takenDate)}
+                        </span>
+                        <span style={{ color: '#8a96a3', fontSize: 12 }}>
+                          {index === 0 ? '시작' : gapLabel}
+                        </span>
+                        {item.metadataSource === 'manualRequired' && (
+                          <span
+                            style={{
+                              color: '#9a6700',
+                              backgroundColor: '#fff7dd',
+                              borderRadius: 999,
+                              padding: '2px 7px',
+                              fontSize: 11,
+                              fontWeight: 800,
+                            }}
+                          >
+                            {metadataLabel(item.metadataSource)}
+                          </span>
+                        )}
+                      </span>
                       {editable ? (
                         <textarea
                           value={item.memo}
@@ -254,26 +270,27 @@ export function GrowthTimelineDocumentModal({
                           placeholder="이 순간의 설명을 적어주세요."
                           style={{
                             width: '100%',
-                            minHeight: 78,
+                            minHeight: 64,
                             boxSizing: 'border-box',
-                            marginTop: 10,
                             border: '1px solid #dce6ef',
                             borderRadius: 10,
-                            padding: '10px 11px',
+                            padding: '9px 10px',
                             color: '#2d3b48',
                             fontSize: 14,
-                            lineHeight: 1.55,
+                            lineHeight: 1.5,
                             resize: 'vertical',
                             outline: 'none',
                           }}
                         />
                       ) : (
-                        <p style={{ margin: '10px 0 0', color: item.memo ? '#2d3b48' : '#99a3ad', fontSize: 14, lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
-                          {item.memo || '설명 없음'}
-                        </p>
+                        item.memo ? (
+                          <p style={{ margin: 0, color: '#3a4753', fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                            {item.memo}
+                          </p>
+                        ) : null
                       )}
-                    </div>
-                  </div>
+                    </figcaption>
+                  </figure>
                 );
               })}
             </section>
@@ -333,13 +350,18 @@ export function GrowthTimelineDocumentModal({
       </div>
 
       <style>{`
-        @media (max-width: 640px) {
-          .growth-timeline-print-root > section > div {
+        @media (max-width: 600px) {
+          .growth-timeline-grid {
             grid-template-columns: 1fr !important;
           }
         }
 
         @media print {
+          @page {
+            size: A4;
+            margin: 14mm;
+          }
+
           body {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -382,12 +404,17 @@ export function GrowthTimelineDocumentModal({
             visibility: hidden !important;
           }
 
-          .growth-timeline-print-root img {
-            max-height: 120mm !important;
+          .growth-timeline-grid {
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 12mm 8mm !important;
+          }
+
+          .growth-timeline-cell {
             break-inside: avoid !important;
           }
 
-          .growth-timeline-print-root section > div {
+          .growth-timeline-cell img {
             break-inside: avoid !important;
           }
         }
