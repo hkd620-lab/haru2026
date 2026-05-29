@@ -466,6 +466,9 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
               </div>
               <GrowthTimelineLibrary uid={uid} refreshKey={growthTimelineRefreshKey} />
 
+              {/* ⬇️ 서버 사진 자동수집·콜라주 생성 흐름 — 갤러리 직접선택 MVP로 전환하며 화면에서 숨김.
+                  코드는 보존하며 되살리려면 아래 false 를 제거하면 됨. */}
+              {false && (<>
               {/* 제목 입력 */}
               <div style={{ marginBottom: 14 }}>
                 <input
@@ -714,6 +717,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
                   </div>
                 </div>
               )}
+              </>)}
             </div>
           )}
 
