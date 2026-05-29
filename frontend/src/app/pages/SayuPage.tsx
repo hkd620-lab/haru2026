@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { SayuTitleAnimation } from '../components/SayuTitleAnimation';
 import { toast } from 'sonner';
 import { SayuModal } from '../components/SayuModal';
+import { GrowthTimelineCard, countManualRequired, getGrowthTimelineRange, sortGrowthTimelineItems, type GrowthTimelineItem, type GrowthTimelineSummary } from '../components/GrowthTimelineCard';
 import { CATEGORY_FORMATS, FORMAT_PREFIX, FORMAT_EMOJI, READING_ENTRY_TYPES, READING_STATUS } from '../types/haruTypes';
 import type { RecordFormat } from '../types/haruTypes';
 import { collection, getDocs, getDoc, orderBy, query, deleteDoc, doc, writeBatch, updateDoc, limit, setDoc, serverTimestamp, arrayUnion, increment } from 'firebase/firestore';
@@ -418,6 +419,8 @@ export function SayuPage() {
   const [aiLogsLoaded, setAiLogsLoaded] = useState(false);
   const [aiLogsLoading, setAiLogsLoading] = useState(false);
   const [selectedAiLog, setSelectedAiLog] = useState<AiLog | null>(null);
+  const [growthTimelines, setGrowthTimelines] = useState<GrowthTimelineSummary[]>([]);
+  const [growthTimelinesLoading, setGrowthTimelinesLoading] = useState(false);
   const [aiSearch, setAiSearch] = useState('');
   const [aiPage, setAiPage] = useState(1);
   const [aiSearchMode, setAiSearchMode] = useState<'title' | 'content'>('title');
@@ -1008,6 +1011,106 @@ export function SayuPage() {
       }
     })();
   }, [collapsedCategories, isDeveloper, isPremium, plantCatalogLoaded]);
+
+  const dateKeyFromDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const timestampToMillis = (value: any) => {
+    if (!value) return 0;
+    if (typeof value.toMillis === 'function') return value.toMillis();
+    if (typeof value.toDate === 'function') {
+      const date = value.toDate();
+      return date instanceof Date && !Number.isNaN(date.getTime()) ? date.getTime() : 0;
+    }
+    if (typeof value.seconds === 'number') return value.seconds * 1000;
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      const parsed = new Date(value).getTime();
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  };
+
+  const timestampKeyFromTimelineId = (id: string) => {
+    const match = id.match(/\d{10,}/);
+    return match ? Number(match[0]) : 0;
+  };
+
+  const growthTimelineSortKey = (timeline: GrowthTimelineSummary) => (
+    timestampToMillis(timeline.updatedAt) ||
+    timestampToMillis(timeline.createdAt) ||
+    timestampKeyFromTimelineId(timeline.id)
+  );
+
+  const growthTimelineDateKey = (timeline: GrowthTimelineSummary) => {
+    const millis = growthTimelineSortKey(timeline);
+    return millis > 0 ? dateKeyFromDate(new Date(millis)) : dateKeyFromDate(new Date());
+  };
+
+  const normalizeGrowthTimelineItem = (item: any, index: number): GrowthTimelineItem | null => {
+    if (!item || typeof item.url !== 'string' || !item.url) return null;
+    const source = item.metadataSource === 'exif' || item.metadataSource === 'manual' || item.metadataSource === 'manualRequired'
+      ? item.metadataSource
+      : 'manualRequired';
+    const takenDate = typeof item.takenDate === 'string' && item.takenDate.trim()
+      ? item.takenDate.trim().slice(0, 10)
+      : dateKeyFromDate(new Date());
+
+    return {
+      url: item.url,
+      takenDate,
+      metadataSource: source,
+      memo: typeof item.memo === 'string' ? item.memo : '',
+      order: typeof item.order === 'number' ? item.order : index,
+    };
+  };
+
+  const normalizeGrowthTimeline = (id: string, data: any): GrowthTimelineSummary | null => {
+    if (data?.type !== 'growth') return null;
+    const items = (Array.isArray(data.items) ? data.items : [])
+      .map(normalizeGrowthTimelineItem)
+      .filter((item): item is GrowthTimelineItem => item !== null);
+
+    return {
+      id,
+      title: typeof data.title === 'string' && data.title.trim() ? data.title.trim() : '성장타임라인',
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
+      items: sortGrowthTimelineItems(items),
+    };
+  };
+
+  useEffect(() => {
+    if (sayuTab !== 'assistants' || !user?.uid) return;
+    let cancelled = false;
+
+    const loadGrowthTimelines = async () => {
+      setGrowthTimelinesLoading(true);
+      try {
+        const snap = await getDocs(collection(db, 'users', user.uid, 'timelines'));
+        if (cancelled) return;
+        const list = snap.docs
+          .map((docSnap) => normalizeGrowthTimeline(docSnap.id, docSnap.data()))
+          .filter((item): item is GrowthTimelineSummary => item !== null)
+          .sort((a, b) => growthTimelineSortKey(b) - growthTimelineSortKey(a) || b.id.localeCompare(a.id));
+        setGrowthTimelines(list);
+      } catch (error) {
+        console.error('성장타임라인 조회 실패:', error);
+        if (!cancelled) toast.error('성장타임라인을 불러오지 못했습니다.');
+      } finally {
+        if (!cancelled) setGrowthTimelinesLoading(false);
+      }
+    };
+
+    loadGrowthTimelines();
+    return () => {
+      cancelled = true;
+    };
+  }, [sayuTab, user?.uid]);
 
   // Fetch AI logs only for the legacy developer-only knowledge warehouse panel.
   useEffect(() => {
@@ -2119,6 +2222,26 @@ export function SayuPage() {
     .sort((a, b) => b.date.localeCompare(a.date) || a.label.localeCompare(b.label));
 
   const assistantEntries: FlatSayuEntry[] = [
+    ...growthTimelines
+      .map((timeline) => {
+        const date = growthTimelineDateKey(timeline);
+        const { startDate, endDate } = getGrowthTimelineRange(timeline.items);
+        const needsCheckCount = countManualRequired(timeline.items);
+        const rangeText = startDate
+          ? `${startDate}${endDate && endDate !== startDate ? ` ~ ${endDate}` : ''}`
+          : '날짜 없음';
+        return {
+          id: `growth_timeline_${timeline.id}`,
+          date,
+          label: '성장타임라인',
+          title: timeline.title.slice(0, 48),
+          subtitle: `${timeline.items.length}장 · ${rangeText}${needsCheckCount > 0 ? ` · 날짜 확인 ${needsCheckCount}` : ''}`,
+          color: '#4E6B2A',
+          onOpen: () => undefined,
+          extra: <GrowthTimelineCard timeline={timeline} />,
+        };
+      })
+      .filter((entry) => isCurrentMonthDate(entry.date)),
     ...records
       .filter((record) => (
         isCurrentMonthDate(record.date) &&
@@ -2243,7 +2366,7 @@ export function SayuPage() {
   );
 
   const renderGroupedEntryList = (entries: FlatSayuEntry[]) => {
-    if (loading && sayuTab === 'records') {
+    if ((loading && sayuTab === 'records') || (growthTimelinesLoading && sayuTab === 'assistants')) {
       return <p className="text-center py-8 text-sm" style={{ color: '#999' }}>불러오는 중...</p>;
     }
     if (entries.length === 0) {
@@ -2349,7 +2472,7 @@ export function SayuPage() {
   };
 
   const renderFlatEntryList = (entries: FlatSayuEntry[]) => {
-    if (loading && sayuTab === 'records') {
+    if ((loading && sayuTab === 'records') || (growthTimelinesLoading && sayuTab === 'assistants')) {
       return <p className="text-center py-8 text-sm" style={{ color: '#999' }}>불러오는 중...</p>;
     }
     if (entries.length === 0) {
