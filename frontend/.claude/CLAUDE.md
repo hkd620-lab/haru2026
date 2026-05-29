@@ -406,3 +406,22 @@ git checkout feature/new-formats
 - CI(Claude.ai)는 바이브 문장으로 지시
 - 딱딱한 지시서 형식(##작업목표 등) 금지
 - CC는 파일 직접 분석 후 자율적으로 최선의 방법으로 구현
+
+## 📄 HARU 타임라인 PDF 출력 법칙 (2026-05-30 확정 · 절대 준수)
+
+> 성장타임라인(문서형 HARU타임라인) PDF 저장 시 항상 이 규칙을 따른다.
+> 대상 파일: `frontend/src/app/components/GrowthTimelineDocumentModal.tsx`
+
+1. **페이지당 사진 6장 고정** — A4 한 장 = 2열 × 3행(사진 6장). `PRINT_PHOTOS_PER_PAGE = 6`.
+2. **6장 초과 시 다음 페이지로 분할** — 7장→2페이지(6+1), 12장→2페이지, 13장→3페이지.
+3. **구현 방식** — 인쇄 직전 단일 그리드를 6장씩 `.growth-timeline-print-page` 섹션으로 나누고,
+   각 섹션에 `break-after: page`(+`page-break-after: always`)를 적용. 마지막 섹션만 해제.
+   ❌ 실측 후 transform scale 축소 방식 금지(인쇄 컨텍스트에서 측정 실패해 2페이지로 깨졌던 이력).
+4. **사진 높이 고정 56mm** — `.growth-timeline-photo { aspect-ratio:auto; height:56mm }` (object-fit: cover).
+   헤더(컴팩트) + 6장이 A4 한 장(여백 14mm)에 정확히 들어가도록 계산된 값. 함부로 키우지 말 것.
+5. **헤더는 1페이지 상단에만** 표시(제목·기간·사진수·생성일). 제목 18pt.
+6. **빈 페이지 방지 2종 필수 유지** — ① 원격 이미지 로드 완료(`img.complete`) 후 `window.print()`,
+   ② 인쇄 대상을 `body` 직속으로 복제(`.growth-timeline-print-portal`)해 모달 fixed/overflow 부모 영향 차단.
+7. **날짜 간격 라벨** — '직전 사진 기준'이 아니라 **시작일(첫 사진) 기준 누적 일수**('N일 후'). 단조 증가.
+
+> ✅ 검증법: 헤드리스 Chrome `--print-to-pdf`로 6/7/12/13장 렌더 후 페이지 수가 1/2/2/3인지 확인.

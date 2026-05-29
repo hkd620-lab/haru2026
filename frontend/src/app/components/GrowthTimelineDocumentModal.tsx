@@ -23,9 +23,8 @@ interface GrowthTimelineDocumentModalProps {
   onFinalize?: () => void;
 }
 
-// A4(210×297mm) - 좌우/상하 14mm 여백 = 인쇄 가능 영역 (96dpi 기준 px)
-const PRINT_CONTENT_WIDTH_PX = 688; // 182mm
-const PRINT_CONTENT_HEIGHT_PX = 1016; // 269mm
+// HARU 타임라인 PDF 출력 법칙: A4 한 장에 사진 6장(2열×3행), 초과 시 다음 페이지로 분할
+const PRINT_PHOTOS_PER_PAGE = 6;
 
 function sortItems(items: GrowthTimelineDocumentItem[]) {
   return [...items].sort((a, b) => a.takenDate.localeCompare(b.takenDate) || a.order - b.order);
@@ -124,37 +123,25 @@ export function GrowthTimelineDocumentModal({
     clone.style.margin = '0';
     clone.style.padding = '0';
     clone.style.minHeight = 'auto';
-    clone.style.width = `${PRINT_CONTENT_WIDTH_PX}px`;
 
-    // 3) 사진 전체를 A4 한 장에 담기 — 실제 높이를 잰 뒤 한 페이지에 맞게 축소(가운데 정렬)
-    const scaler = document.createElement('div');
-    scaler.className = 'growth-timeline-print-scaler';
-    scaler.style.width = `${PRINT_CONTENT_WIDTH_PX}px`;
-    scaler.appendChild(clone);
+    // 3) HARU 타임라인 PDF 출력 법칙: A4 한 장에 사진 6장(2열×3행). 6장 초과 시 다음 페이지로 분할.
+    //    단일 그리드를 6장씩 페이지 섹션으로 나눠 페이지당 사진 수를 고정한다.
+    const grid = clone.querySelector('.growth-timeline-grid');
+    if (grid) {
+      const cells = Array.from(grid.children);
+      grid.remove();
+      for (let i = 0; i < cells.length; i += PRINT_PHOTOS_PER_PAGE) {
+        const page = document.createElement('section');
+        page.className = 'growth-timeline-print-page';
+        cells.slice(i, i + PRINT_PHOTOS_PER_PAGE).forEach(cell => page.appendChild(cell));
+        clone.appendChild(page);
+      }
+    }
 
     const portal = document.createElement('div');
     portal.className = 'growth-timeline-print-portal';
-    // 화면 밖에서 실제 높이 측정 (aspect-ratio 기반이라 이미지 로드와 무관하게 결정적)
-    portal.style.position = 'fixed';
-    portal.style.left = '-10000px';
-    portal.style.top = '0';
-    portal.style.display = 'block';
-    portal.appendChild(scaler);
+    portal.appendChild(clone);
     document.body.appendChild(portal);
-
-    const naturalHeight = scaler.getBoundingClientRect().height;
-    const scale = naturalHeight > PRINT_CONTENT_HEIGHT_PX ? PRINT_CONTENT_HEIGHT_PX / naturalHeight : 1;
-    scaler.style.transform = `scale(${scale})`;
-    scaler.style.transformOrigin = '50% 0';
-
-    // 측정용 위치 해제 → 인쇄 시 CSS가 표시 제어, 높이는 축소분만큼만 차지하도록 고정
-    portal.style.position = 'static';
-    portal.style.left = 'auto';
-    portal.style.top = 'auto';
-    portal.style.display = '';
-    portal.style.width = `${PRINT_CONTENT_WIDTH_PX}px`;
-    portal.style.height = `${naturalHeight * scale}px`;
-    portal.style.overflow = 'hidden';
 
     const originalTitle = document.title;
     document.title = `HARU타임라인_${filenameSafeTitle(resolvedTitle)}.pdf`;
@@ -302,6 +289,7 @@ export function GrowthTimelineDocumentModal({
                     }}
                   >
                     <div
+                      className="growth-timeline-photo"
                       style={{
                         width: '100%',
                         aspectRatio: '4 / 3',
@@ -480,8 +468,36 @@ export function GrowthTimelineDocumentModal({
             visibility: hidden !important;
           }
 
-          /* 그리드 간격/패딩은 복제본 인라인 스타일을 그대로 사용 — 측정값과 인쇄 결과를 일치시켜
-             한 페이지 축소가 정확히 맞도록 함 (별도 print 오버라이드 없음) */
+          /* 헤더는 1페이지 상단에만 — 사진 6장이 함께 들어갈 수 있도록 컴팩트하게 */
+          .growth-timeline-print-portal .growth-timeline-print-root > header {
+            border-bottom: 2px solid #1A3C6E !important;
+            padding-bottom: 6mm !important;
+            margin-bottom: 6mm !important;
+          }
+          .growth-timeline-print-portal .growth-timeline-print-root > header h1,
+          .growth-timeline-print-portal .growth-timeline-print-root > header input {
+            font-size: 18pt !important;
+          }
+
+          /* HARU 타임라인 PDF 출력 법칙: A4 한 장 = 2열×3행(사진 6장). 페이지 섹션마다 페이지 분할 */
+          .growth-timeline-print-page {
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 7mm 8mm !important;
+            break-after: page;
+            page-break-after: always;
+          }
+          .growth-timeline-print-page:last-child {
+            break-after: auto;
+            page-break-after: auto;
+          }
+
+          /* 6장이 한 페이지(헤더 포함)에 들어가도록 사진 높이 고정 */
+          .growth-timeline-print-page .growth-timeline-photo {
+            aspect-ratio: auto !important;
+            height: 56mm !important;
+          }
+
           .growth-timeline-cell,
           .growth-timeline-cell img {
             break-inside: avoid !important;
