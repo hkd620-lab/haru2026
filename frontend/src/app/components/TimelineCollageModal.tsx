@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, addDoc } from 'firebase/firestore';
 import { storage, db } from '../../firebase';
@@ -8,6 +8,16 @@ import { toast } from 'sonner';
 interface PhotoItem {
   url: string;
   date: string;
+  recordDate: string;
+  originalName?: string;
+  takenAt?: string;
+  takenDate?: string;
+  takenTime?: string;
+  latitude?: number;
+  longitude?: number;
+  locationLabel?: string;
+  metadataSource?: string;
+  formatPrefix?: string;
 }
 
 interface TimelineCollageModalProps {
@@ -25,19 +35,42 @@ const FORMAT_PREFIXES = [
 function extractPhotos(records: HaruRecord[]): PhotoItem[] {
   const photos: PhotoItem[] = [];
   for (const record of records) {
-    const date = record.date || record.id;
+    const recordDate = record.date || record.id;
     for (const prefix of FORMAT_PREFIXES) {
       const raw = record[`${prefix}_images`];
       if (!raw) continue;
       let urls: string[] = [];
+      let imageMeta: any[] = [];
       try {
         urls = typeof raw === 'string' ? JSON.parse(raw) : Array.isArray(raw) ? raw : [];
       } catch {
         continue;
       }
+      try {
+        const rawMeta = record[`${prefix}_imageMeta`];
+        const parsedMeta = typeof rawMeta === 'string' ? JSON.parse(rawMeta) : Array.isArray(rawMeta) ? rawMeta : [];
+        imageMeta = Array.isArray(parsedMeta) ? parsedMeta : [];
+      } catch {
+        imageMeta = [];
+      }
       for (const url of urls) {
         if (typeof url === 'string' && url.startsWith('http')) {
-          photos.push({ url, date });
+          const meta = imageMeta.find((item: any) => item?.url === url) || {};
+          const takenDate = meta.metadataSource === 'exif' ? String(meta.takenDate || '') : '';
+          photos.push({
+            url,
+            date: takenDate || recordDate,
+            recordDate,
+            originalName: typeof meta.originalName === 'string' && meta.originalName.trim() ? meta.originalName : getFileNameFromUrl(url),
+            takenAt: typeof meta.takenAt === 'string' ? meta.takenAt : '',
+            takenDate,
+            takenTime: typeof meta.takenTime === 'string' ? meta.takenTime : '',
+            latitude: typeof meta.latitude === 'number' ? meta.latitude : undefined,
+            longitude: typeof meta.longitude === 'number' ? meta.longitude : undefined,
+            locationLabel: typeof meta.locationLabel === 'string' ? meta.locationLabel : '',
+            metadataSource: typeof meta.metadataSource === 'string' ? meta.metadataSource : '',
+            formatPrefix: prefix,
+          });
         }
       }
     }
@@ -52,6 +85,40 @@ function fmtDate(dateStr: string): string {
 
 function sortPhotosByDate(photos: PhotoItem[]): PhotoItem[] {
   return [...photos].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function getFileNameFromUrl(url: string) {
+  try {
+    const parsedUrl = new URL(url);
+    const storagePath = decodeURIComponent(parsedUrl.pathname.split('/o/')[1]?.split('?')[0] || '');
+    return storagePath.split('/').pop() || '';
+  } catch {
+    return '';
+  }
+}
+
+function formatPhotoSubLabel(photo: PhotoItem) {
+  const parts = [
+    photo.takenTime ? photo.takenTime.slice(0, 5) : '',
+    photo.locationLabel || '',
+  ].filter(Boolean);
+  return parts.join(' · ');
+}
+
+function matchesPhotoSearch(photo: PhotoItem, searchText: string, dateFrom: string, dateTo: string) {
+  if (dateFrom && photo.date < dateFrom) return false;
+  if (dateTo && photo.date > dateTo) return false;
+  const query = searchText.trim().toLowerCase();
+  if (!query) return true;
+  const haystack = [
+    photo.date,
+    photo.recordDate,
+    photo.takenTime,
+    photo.originalName,
+    photo.locationLabel,
+    photo.formatPrefix,
+  ].filter(Boolean).join(' ').toLowerCase();
+  return haystack.includes(query);
 }
 
 function getLayout(n: number): { cols: number; rows: number } {
@@ -92,8 +159,12 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
   const [title, setTitle] = useState('');
   const [step, setStep] = useState<'select' | 'generating' | 'done'>('select');
   const [resultUrl, setResultUrl] = useState<string | null>(null);
+  const [searchText, setSearchText] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const allPhotos = extractPhotos(records);
+  const filteredPhotos = allPhotos.filter((photo) => matchesPhotoSearch(photo, searchText, dateFrom, dateTo));
 
   const toggle = (photo: PhotoItem) => {
     setSelected(prev => {
@@ -227,6 +298,15 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
         title: resolvedTitle,
         photoCount: timelinePhotos.length,
         photoDates: timelinePhotos.map(p => p.date),
+        photoMeta: timelinePhotos.map(p => ({
+          url: p.url,
+          displayDate: p.date,
+          recordDate: p.recordDate,
+          takenAt: p.takenAt || '',
+          takenTime: p.takenTime || '',
+          locationLabel: p.locationLabel || '',
+          originalName: p.originalName || '',
+        })),
         storageId: id,
       });
 
@@ -277,12 +357,34 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
   };
 
   const handleClose = () => {
+    if (step === 'generating') {
+      toast.info('생성이 끝나면 자동으로 결과가 표시됩니다.');
+      return;
+    }
     setStep('select');
     setSelected([]);
     setTitle('');
     setResultUrl(null);
+    setSearchText('');
+    setDateFrom('');
+    setDateTo('');
     onClose();
   };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (step === 'generating') {
+        e.preventDefault();
+        toast.info('생성이 끝나면 자동으로 결과가 표시됩니다.');
+        return;
+      }
+      handleClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, step]);
 
   if (!isOpen) return null;
 
@@ -325,7 +427,12 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
           </div>
           <button
             onClick={handleClose}
-            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#aaa' }}
+            disabled={step === 'generating'}
+            style={{
+              background: 'none', border: 'none', fontSize: 20,
+              cursor: step === 'generating' ? 'not-allowed' : 'pointer',
+              color: step === 'generating' ? '#ddd' : '#aaa',
+            }}
           >
             ✕
           </button>
@@ -354,7 +461,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
               <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <p style={{ fontSize: 13, color: '#666', margin: 0 }}>
                   {allPhotos.length > 0
-                    ? `총 ${allPhotos.length}장 · ${selected.length}장 선택됨`
+                    ? `총 ${allPhotos.length}장 · 표시 ${filteredPhotos.length}장 · ${selected.length}장 선택됨`
                     : '사진 있는 기록 없음'}
                 </p>
                 {selected.length > 0 && selected.length < 4 && (
@@ -363,8 +470,62 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
               </div>
               {allPhotos.length > 0 && (
                 <p style={{ fontSize: 12, color: '#888', margin: '0 0 12px' }}>
-                  표시 날짜는 기록일 기준입니다. 다른 날 찍은 사진은 선택 후 날짜를 바로잡으세요.
+                  새 사진은 촬영일/시간/GPS가 있으면 자동 표시됩니다. 과거 사진은 기록일 기준일 수 있습니다.
                 </p>
+              )}
+              {allPhotos.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <input
+                    value={searchText}
+                    onChange={e => setSearchText(e.target.value)}
+                    placeholder="사진 이름·장소·날짜 검색"
+                    style={{
+                      width: '100%',
+                      padding: '9px 12px',
+                      border: '1px solid #d0dff0',
+                      borderRadius: 10,
+                      fontSize: 14,
+                      color: '#1A3C6E',
+                      boxSizing: 'border-box',
+                      outline: 'none',
+                    }}
+                  />
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: 8,
+                    marginTop: 8,
+                  }}>
+                    <input
+                      type="date"
+                      value={dateFrom}
+                      onChange={e => setDateFrom(e.target.value)}
+                      style={{
+                        minWidth: 0,
+                        padding: '8px 10px',
+                        border: '1px solid #d0dff0',
+                        borderRadius: 9,
+                        fontSize: 13,
+                        color: '#1A3C6E',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                    <input
+                      type="date"
+                      value={dateTo}
+                      onChange={e => setDateTo(e.target.value)}
+                      style={{
+                        minWidth: 0,
+                        padding: '8px 10px',
+                        border: '1px solid #d0dff0',
+                        borderRadius: 9,
+                        fontSize: 13,
+                        color: '#1A3C6E',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                </div>
               )}
 
               {/* 사진 없는 경우 */}
@@ -375,6 +536,11 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
                   <p style={{ fontSize: 12, marginTop: 4 }}>형식 기록에 사진을 추가하면 여기에 나타납니다.</p>
                 </div>
               )}
+              {allPhotos.length > 0 && filteredPhotos.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '36px 0', color: '#999' }}>
+                  <p style={{ fontSize: 14, margin: 0 }}>검색 조건에 맞는 사진이 없습니다.</p>
+                </div>
+              )}
 
               {/* 사진 그리드 */}
               <div style={{
@@ -382,9 +548,10 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
                 gridTemplateColumns: 'repeat(3, 1fr)',
                 gap: 4,
               }}>
-                {allPhotos.map((photo, idx) => {
+                {filteredPhotos.map((photo, idx) => {
                   const selIdx = selected.findIndex(p => p.url === photo.url);
                   const isSel = selIdx !== -1;
+                  const subLabel = formatPhotoSubLabel(photo);
                   return (
                     <div
                       key={`${photo.url}-${idx}`}
@@ -415,6 +582,11 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
                         <p style={{ fontSize: 10, color: '#fff', margin: 0 }}>
                           {fmtDate(photo.date)}
                         </p>
+                        {subLabel && (
+                          <p style={{ fontSize: 9, color: '#eef5ff', margin: '1px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {subLabel}
+                          </p>
+                        )}
                       </div>
                       {/* 선택 번호 */}
                       {isSel && (
@@ -485,6 +657,19 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
                             backgroundColor: '#fff',
                           }}
                         />
+                        {(photo.takenTime || photo.locationLabel || photo.originalName) && (
+                          <p style={{
+                            gridColumn: '2',
+                            fontSize: 11,
+                            color: '#7a8ca5',
+                            margin: '-4px 0 0',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}>
+                            {[photo.originalName, photo.takenTime?.slice(0, 5), photo.locationLabel].filter(Boolean).join(' · ')}
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>

@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { toast } from 'sonner';
 import heic2any from 'heic2any';
+import * as exifr from 'exifr';
 import { LoadingOverlay } from './LoadingOverlay';
 import {
   makeReadingBookId,
@@ -61,6 +62,19 @@ type GrowthSubject = {
   subjectType: GrowthSubjectType;
   name: string;
   latestRecordDate?: string;
+};
+
+type UploadedImageMeta = {
+  url: string;
+  originalName: string;
+  takenAt?: string;
+  takenDate?: string;
+  takenTime?: string;
+  latitude?: number;
+  longitude?: number;
+  locationLabel?: string;
+  metadataSource: 'exif' | 'none';
+  uploadedAt: string;
 };
 
 // 형식별 입력 필드 정의
@@ -214,6 +228,73 @@ const DIARY_PREMIUM_FIELDS = [
 const DEVELOPER_UIDS = ['naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8'];
 const READING_BOOK_OCR_LIMIT = 20;
 
+function toLocalDateTimeParts(value: Date | string | number | undefined) {
+  if (!value) return {};
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return {};
+  const yyyy = String(date.getFullYear());
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mi = String(date.getMinutes()).padStart(2, '0');
+  const ss = String(date.getSeconds()).padStart(2, '0');
+  return {
+    takenAt: date.toISOString(),
+    takenDate: `${yyyy}-${mm}-${dd}`,
+    takenTime: `${hh}:${mi}:${ss}`,
+  };
+}
+
+function formatGpsLabel(latitude?: number, longitude?: number) {
+  if (typeof latitude !== 'number' || typeof longitude !== 'number') return '';
+  return `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+}
+
+async function readOriginalImageMeta(file: File): Promise<Omit<UploadedImageMeta, 'url' | 'uploadedAt'>> {
+  try {
+    const meta = await exifr.parse(file, {
+      tiff: true,
+      ifd0: true,
+      exif: true,
+      gps: true,
+      xmp: true,
+      iptc: true,
+      translateKeys: true,
+      translateValues: true,
+      reviveValues: true,
+    } as any);
+
+    const dateValue = meta?.DateTimeOriginal || meta?.CreateDate || meta?.ModifyDate || meta?.DateCreated;
+    const parts = toLocalDateTimeParts(dateValue);
+    const latitude = typeof meta?.latitude === 'number' ? meta.latitude : undefined;
+    const longitude = typeof meta?.longitude === 'number' ? meta.longitude : undefined;
+    const locationName = [
+      meta?.City,
+      meta?.State,
+      meta?.Country,
+      meta?.Location,
+      meta?.SubLocation,
+      meta?.ContentLocationName,
+    ].filter((v: any) => typeof v === 'string' && v.trim()).join(' ').trim();
+    const gpsLabel = formatGpsLabel(latitude, longitude);
+
+    return {
+      originalName: file.name,
+      ...parts,
+      latitude,
+      longitude,
+      locationLabel: locationName || gpsLabel || undefined,
+      metadataSource: parts.takenDate || gpsLabel ? 'exif' : 'none',
+    };
+  } catch (error) {
+    console.warn('사진 EXIF 읽기 실패:', error);
+    return {
+      originalName: file.name,
+      metadataSource: 'none',
+    };
+  }
+}
+
 export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, onSave }: FormatModalProps) {
   const { user } = useAuth();
   const { isPremium } = useSubscription();
@@ -228,6 +309,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   
   // 사진 관련 state
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploadedImageMeta, setUploadedImageMeta] = useState<UploadedImageMeta[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isExtractingBookText, setIsExtractingBookText] = useState(false);
@@ -382,6 +464,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       // 기존 이미지 불러오기
       const prefix = FORMAT_PREFIX[format];
       const imagesKey = `${prefix}_images`;
+      const imageMetaKey = `${prefix}_imageMeta`;
       if (initialData[imagesKey]) {
         try {
           const parsedImages = JSON.parse(initialData[imagesKey]);
@@ -392,6 +475,17 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
         }
       } else {
         setUploadedImages([]);
+      }
+      if (initialData[imageMetaKey]) {
+        try {
+          const parsedMeta = JSON.parse(initialData[imageMetaKey]);
+          const arr = Array.isArray(parsedMeta) ? parsedMeta : [];
+          setUploadedImageMeta(arr.filter((v: any) => typeof v?.url === 'string' && v.url.startsWith('http')));
+        } catch {
+          setUploadedImageMeta([]);
+        }
+      } else {
+        setUploadedImageMeta([]);
       }
 
       // 🌱 텃밭일지: Firestore에서 작물 목록 불러오기
@@ -458,12 +552,17 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const prefix = FORMAT_PREFIX[format];
   const sayuKey = `${prefix}_sayu`;
   const imagesKey = `${prefix}_images`;
+  const imageMetaKey = `${prefix}_imageMeta`;
   const existingSayu = initialData[sayuKey];
   const isStockFormat = format === 'HARU주식관리' || format === '주식거래일지';
 
   const handleChange = (key: string, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
+
+  const getUploadedImageMetaForSave = (urls = uploadedImages) => JSON.stringify(
+    uploadedImageMeta.filter((meta) => urls.includes(meta.url))
+  );
 
   const getGrowthSaveFields = () => {
     if (format !== '육아일기' && format !== '텃밭일지') return {};
@@ -583,6 +682,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
           [`${prefix}_style`]: 'simple',
           [`${prefix}_mode`]: 'ORIGINAL',
           [imagesKey]: JSON.stringify([]),
+          [imageMetaKey]: JSON.stringify([]),
         };
 
         await onSave({ ...dataToSave, _recordId: recordId });
@@ -660,6 +760,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
 
       dataToSave[`${prefix}_style`] = recordStyle;
       dataToSave[imagesKey] = JSON.stringify(uploadedImages);
+      dataToSave[imageMetaKey] = getUploadedImageMetaForSave();
 
       await onSave(dataToSave);
       toast.success('저장되었습니다!');
@@ -1052,6 +1153,7 @@ ${contentValues}`,
     try {
       const storage = getStorage();
       const newImageUrls: string[] = [];
+      const newImageMeta: UploadedImageMeta[] = [];
       const functionsInstance = getFunctions(undefined, 'asia-northeast3');
 
       for (const file of filesToUpload) {
@@ -1076,6 +1178,8 @@ ${contentValues}`,
           toast.error('로그인이 필요합니다.');
           continue;
         }
+
+        const originalMeta = await readOriginalImageMeta(file);
 
         // HEIC → JPG 변환 (Cloudinary convertHeic 임시 변환만 사용)
         let fileToProcess: File | Blob = file;
@@ -1120,6 +1224,11 @@ ${contentValues}`,
           await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
           const downloadUrl = await getDownloadURL(storageRef);
           newImageUrls.push(downloadUrl);
+          newImageMeta.push({
+            ...originalMeta,
+            url: downloadUrl,
+            uploadedAt: new Date().toISOString(),
+          });
           if (isStockFormat) {
             try {
               await extractStockTextFromImage(compressed);
@@ -1140,6 +1249,7 @@ ${contentValues}`,
       }
 
       setUploadedImages(prev => [...prev, ...newImageUrls]);
+      setUploadedImageMeta(prev => [...prev, ...newImageMeta]);
       toast.success(`${newImageUrls.length}장의 사진이 업로드되었습니다!`);
     } catch (error) {
       console.error('이미지 업로드 실패:', error);
@@ -1184,6 +1294,7 @@ ${contentValues}`,
       }
 
       setUploadedImages(prev => prev.filter((_, i) => i !== index));
+      setUploadedImageMeta(prev => prev.filter((meta) => meta.url !== imageUrl));
       toast.success('사진이 삭제되었습니다.');
     } catch (error: any) {
       console.error('이미지 삭제 실패:', error);
@@ -1202,6 +1313,7 @@ ${contentValues}`,
 
       if (ignorable) {
         setUploadedImages(prev => prev.filter((_, i) => i !== index));
+        setUploadedImageMeta(prev => prev.filter((meta) => meta.url !== imageUrl));
         toast.success('사진이 제거되었습니다.');
       } else {
         toast.error('사진 삭제에 실패했습니다.');
@@ -1244,6 +1356,7 @@ ${contentValues}`,
       ...getGrowthSaveFields(),
       [sayuKey]: originalContent,
       [imagesKey]: JSON.stringify(uploadedImages),
+      [imageMetaKey]: getUploadedImageMetaForSave(),
       [`${prefix}_style`]: recordStyle,
       [`${prefix}_mode`]: 'ORIGINAL',
     };
@@ -1280,6 +1393,7 @@ ${contentValues}`,
       ...getGrowthSaveFields(),
       [sayuKey]: polishedContent,
       [imagesKey]: JSON.stringify(uploadedImages),
+      [imageMetaKey]: getUploadedImageMetaForSave(),
       [`${prefix}_polished`]: true,
       [`${prefix}_polishedAt`]: new Date().toISOString(),
       [`${prefix}_mode`]: sayuMode,
@@ -1583,6 +1697,7 @@ ${contentValues}`,
         _recordId: `reading_note_${currentBookId}_${Date.now()}`,
         reading_started_at: formData.reading_started_at || startedAt,
         [imagesKey]: JSON.stringify(uploadedImages),
+        [imageMetaKey]: getUploadedImageMetaForSave(),
         [`${prefix}_style`]: 'premium',
         [`${prefix}_mode`]: 'PREMIUM',
         [`${prefix}_sayu`]: polished,
@@ -1616,6 +1731,7 @@ ${contentValues}`,
     const updateData: Record<string, any> = {
       ...formData,
       [imagesKey]: JSON.stringify(uploadedImages),
+      [imageMetaKey]: getUploadedImageMetaForSave(),
       [`${prefix}_style`]: recordStyle,
       [`${prefix}_mode`]: 'READING_FINAL',
       [`${prefix}_sayu`]: readingAnalysis,
