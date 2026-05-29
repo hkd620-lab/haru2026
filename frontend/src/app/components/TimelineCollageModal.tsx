@@ -441,11 +441,11 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
                     onClick={() => setGrowthCreatorOpen(true)}
                     style={{
                       width: '100%',
-                      border: '1px solid #dbe8d2',
+                      border: 'none',
                       borderRadius: 12,
-                      backgroundColor: '#f7fbf2',
-                      color: '#355524',
-                      padding: '14px 16px',
+                      backgroundColor: '#1A3C6E',
+                      color: '#fff',
+                      padding: '15px 16px',
                       cursor: 'pointer',
                       textAlign: 'left',
                       display: 'flex',
@@ -456,7 +456,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
                   >
                     <span style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
                       <span style={{ fontSize: 15, fontWeight: 800 }}>새 성장타임라인 만들기</span>
-                      <span style={{ fontSize: 12, color: '#7b8b72', fontWeight: 600 }}>
+                      <span style={{ fontSize: 12, color: '#dbe7f6', fontWeight: 600 }}>
                         모바일 갤러리 사진을 선택해 촬영일 순으로 정리합니다.
                       </span>
                     </span>
@@ -465,8 +465,8 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
                       style={{
                         flexShrink: 0,
                         borderRadius: 10,
-                        backgroundColor: '#4E6B2A',
-                        color: '#fff',
+                        backgroundColor: '#ffffff',
+                        color: '#1A3C6E',
                         padding: '9px 12px',
                         fontSize: 13,
                         fontWeight: 800,
