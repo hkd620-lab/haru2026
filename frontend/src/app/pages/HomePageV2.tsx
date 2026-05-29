@@ -512,7 +512,7 @@ export function HomePageV2() {
         /* === 모바일 최적화 (PWA 우선) === */
         @media (max-width: 640px) {
           /* 모든 pill / nav 버튼 텍스트 줄바꿈 금지 */
-          .v2-pill, [data-v2="bottom-nav-wrap"] nav button, [data-v2="hero-date-tag"], [data-v2="hero-date-chips"] > span { white-space: nowrap !important; }
+          .v2-pill, [data-v2="hero-date-tag"], [data-v2="hero-date-chips"] > span { white-space: nowrap !important; }
           /* 헤더 액션 pill을 아이콘만 표시 (텍스트 숨김) */
           [data-v2="header-actions"] .v2-pill { font-size: 0 !important; padding: 0 !important; width: 36px !important; height: 36px !important; gap: 0 !important; justify-content: center !important; }
           [data-v2="header-actions"] .v2-pill svg { width: 16px !important; height: 16px !important; }
@@ -587,10 +587,6 @@ export function HomePageV2() {
           [data-v2="pattern-strip"] { font-size: 9px !important; margin-top: 14px !important; gap: 4px !important; padding: 0 4px !important; }
           [data-v2="pattern-strip"] > span:first-of-type, [data-v2="pattern-strip"] > span:last-of-type { flex: 0 0 24px !important; }
 
-          [data-v2="bottom-nav-wrap"] { bottom: max(8px, env(safe-area-inset-bottom)) !important; padding: 0 6px !important; }
-          [data-v2="bottom-nav-wrap"] nav { padding: 3px !important; gap: 1px !important; max-width: 100% !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
-          [data-v2="bottom-nav-wrap"] nav button { padding: 7px 4px !important; font-size: 10px !important; gap: 4px !important; min-width: 0 !important; }
-          [data-v2="bottom-nav-wrap"] nav button svg { width: 12px !important; height: 12px !important; }
         }
       `}</style>
 
@@ -1409,59 +1405,6 @@ export function HomePageV2() {
           <span style={{ height: 1, flex: '0 0 60px', background: '#E5DFD0' }} />
         </div>
       </div>
-
-      {/* BOTTOM PILL NAV */}
-      <div
-        data-v2="bottom-nav-wrap"
-        style={{
-          position: 'fixed',
-          bottom: 24,
-          left: 0,
-          right: 0,
-          display: 'flex',
-          justifyContent: 'center',
-          pointerEvents: 'none',
-          zIndex: 50,
-        }}
-      >
-        <nav
-          aria-label="주 탐색"
-          style={{
-            pointerEvents: 'auto',
-            background: '#fff',
-            border: '1px solid #E5DFD0',
-            borderRadius: 999,
-            padding: 8,
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, minmax(140px, 1fr))',
-            gap: 4,
-            boxShadow: '0 16px 40px -20px rgba(74,90,44,0.35)',
-          }}
-          className="max-[820px]:!grid-cols-[repeat(3,minmax(96px,1fr))]"
-        >
-          <NavItem active onClick={() => navigate('/v2')}>
-            <NavSvg>
-              <path d="M3 11l9-8 9 8" />
-              <path d="M5 10v10h14V10" />
-            </NavSvg>
-            HARU 홈
-          </NavItem>
-          <NavItem onClick={() => navigate('/sayu')}>
-            <NavSvg>
-              <path d="M12 3v3M5 6l2 2M3 12h3M5 18l2-2M12 18v3M17 16l2 2M18 12h3M19 6l-2 2" />
-              <circle cx="12" cy="12" r="4" />
-            </NavSvg>
-            SAYU·다듬기
-          </NavItem>
-          <NavItem onClick={() => navigate('/settings')}>
-            <NavSvg>
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
-            </NavSvg>
-            설정
-          </NavItem>
-        </nav>
-      </div>
     </div>
   );
 }
@@ -1525,23 +1468,6 @@ function RecSvg({ stroke, children }: { stroke: string; children: ReactNode }) {
       height="26"
       viewBox="0 0 24 24"
       stroke={stroke}
-      strokeWidth="1.5"
-      fill="none"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      {children}
-    </svg>
-  );
-}
-
-function NavSvg({ children }: { children: ReactNode }) {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
       strokeWidth="1.5"
       fill="none"
       strokeLinecap="round"
@@ -1701,43 +1627,6 @@ function SectionHead({
         {badge}
       </span>
     </div>
-  );
-}
-
-function NavItem({
-  active,
-  onClick,
-  children,
-}: {
-  active?: boolean;
-  onClick?: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={active ? '' : 'v2-nav-item'}
-      style={{
-        background: active ? '#4A5A2C' : 'transparent',
-        border: 'none',
-        cursor: 'pointer',
-        padding: '12px 22px',
-        borderRadius: 999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        color: active ? '#F5F0E8' : '#888780',
-        fontSize: 13,
-        fontWeight: active ? 600 : 500,
-        letterSpacing: '-0.01em',
-        transition: 'background 180ms, color 180ms',
-        fontFamily: FONT_KR,
-      }}
-    >
-      {children}
-    </button>
   );
 }
 

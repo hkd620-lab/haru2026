@@ -10,10 +10,8 @@ export function BottomNav() {
   const { user } = useAuth();
   const isDeveloper = user?.uid === DEVELOPER_UID;
 
-  if (location.pathname === '/v2') return null;
-
   // v2에서 진입한 세션이면 HARU 버튼이 v2 홈으로 향하도록
-  const homePath = getOrigin() || '/';
+  const homePath = location.pathname === '/v2' ? '/v2' : getOrigin() || '/';
 
   const baseItems = [
     { path: homePath, icon: Home, label: 'HARU' },
