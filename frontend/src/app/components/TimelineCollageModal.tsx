@@ -4,7 +4,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { storage, db } from '../../firebase';
 import { HaruRecord } from '../services/firestoreService';
 import { toast } from 'sonner';
-import { GrowthTimelineCreator } from './GrowthTimelineCreator';
+import { GrowthTimelineCreator, GrowthTimelineLibrary } from './GrowthTimelineCreator';
 
 interface PhotoItem {
   url: string;
@@ -169,6 +169,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [growthCreatorOpen, setGrowthCreatorOpen] = useState(false);
+  const [growthTimelineRefreshKey, setGrowthTimelineRefreshKey] = useState(0);
   const generatingRef = useRef(false);
 
   const allPhotos = isLoadingRecords ? [] : extractPhotos(records);
@@ -454,9 +455,16 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
                     새 성장타임라인 만들기
                   </button>
                 ) : (
-                  <GrowthTimelineCreator uid={uid} onDone={() => setGrowthCreatorOpen(false)} />
+                  <GrowthTimelineCreator
+                    uid={uid}
+                    onDone={() => {
+                      setGrowthCreatorOpen(false);
+                      setGrowthTimelineRefreshKey(prev => prev + 1);
+                    }}
+                  />
                 )}
               </div>
+              <GrowthTimelineLibrary uid={uid} refreshKey={growthTimelineRefreshKey} />
 
               {/* 제목 입력 */}
               <div style={{ marginBottom: 14 }}>

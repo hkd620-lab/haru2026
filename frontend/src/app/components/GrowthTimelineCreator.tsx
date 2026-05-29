@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { toast } from 'sonner';
 import { db, storage } from '../../firebase';
@@ -24,6 +24,19 @@ interface GrowthTimelineCreatorProps {
   uid: string;
   onDone?: () => void;
 }
+
+interface GrowthTimelineLibraryProps {
+  uid: string;
+  refreshKey?: number;
+}
+
+type SavedGrowthTimeline = {
+  id: string;
+  title: string;
+  createdAt?: any;
+  updatedAt?: any;
+  items: TimelineItem[];
+};
 
 function todayKey() {
   const now = new Date();
@@ -51,6 +64,42 @@ function sortDraftItems(items: DraftTimelineItem[]) {
   return [...items].sort((a, b) => (
     a.takenDate.localeCompare(b.takenDate) || a.order - b.order
   ));
+}
+
+function sortTimelineItems(items: TimelineItem[]) {
+  return [...items].sort((a, b) => a.order - b.order || a.takenDate.localeCompare(b.takenDate));
+}
+
+function timestampLabel(value: any) {
+  const date = value?.toDate?.() || (typeof value === 'string' ? new Date(value) : null);
+  if (!date || Number.isNaN(date.getTime())) return '';
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}.${mm}.${dd}`;
+}
+
+function normalizeSavedTimeline(id: string, data: any): SavedGrowthTimeline | null {
+  if (data?.type !== 'growth') return null;
+  const rawItems = Array.isArray(data.items) ? data.items : [];
+  const items = rawItems
+    .filter((item: any) => typeof item?.url === 'string' && item.url.startsWith('http'))
+    .map((item: any, index: number): TimelineItem => ({
+      url: item.url,
+      takenDate: typeof item.takenDate === 'string' && item.takenDate ? item.takenDate : todayKey(),
+      metadataSource: item.metadataSource === 'exif' || item.metadataSource === 'manual' || item.metadataSource === 'manualRequired'
+        ? item.metadataSource
+        : 'manualRequired',
+      memo: typeof item.memo === 'string' ? item.memo : '',
+      order: typeof item.order === 'number' ? item.order : index,
+    }));
+  return {
+    id,
+    title: typeof data.title === 'string' && data.title.trim() ? data.title : '성장타임라인',
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt,
+    items: sortTimelineItems(items),
+  };
 }
 
 export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProps) {
@@ -364,6 +413,163 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
       >
         {isSaving ? '저장 중...' : '성장타임라인 저장'}
       </button>
+    </div>
+  );
+}
+
+export function GrowthTimelineLibrary({ uid, refreshKey = 0 }: GrowthTimelineLibraryProps) {
+  const [timelines, setTimelines] = useState<SavedGrowthTimeline[]>([]);
+  const [selectedId, setSelectedId] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadTimelines = async () => {
+      setIsLoading(true);
+      try {
+        const snap = await getDocs(collection(db, 'users', uid, 'timelines'));
+        if (cancelled) return;
+        const list = snap.docs
+          .map(docSnap => normalizeSavedTimeline(docSnap.id, docSnap.data()))
+          .filter((item): item is SavedGrowthTimeline => item !== null)
+          .sort((a, b) => {
+            const at = a.createdAt?.toMillis?.() || new Date(a.createdAt || 0).getTime() || 0;
+            const bt = b.createdAt?.toMillis?.() || new Date(b.createdAt || 0).getTime() || 0;
+            return bt - at;
+          });
+        setTimelines(list);
+        setSelectedId(prev => (prev && list.some(item => item.id === prev) ? prev : list[0]?.id || ''));
+      } catch (error) {
+        console.error('성장타임라인 목록 로드 실패:', error);
+        if (!cancelled) toast.error('성장타임라인 목록을 불러오지 못했습니다.');
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+
+    loadTimelines();
+    return () => {
+      cancelled = true;
+    };
+  }, [uid, refreshKey]);
+
+  const selected = timelines.find(item => item.id === selectedId);
+
+  return (
+    <div style={{ border: '1px solid #e4ecdc', borderRadius: 14, padding: 14, backgroundColor: '#fff', marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 12 }}>
+        <div>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#1A3C6E' }}>저장된 성장타임라인</p>
+          <p style={{ margin: '3px 0 0', fontSize: 12, color: '#7a8696' }}>
+            {isLoading ? '불러오는 중' : `${timelines.length}개 저장됨`}
+          </p>
+        </div>
+      </div>
+
+      {!isLoading && timelines.length === 0 && (
+        <div style={{ padding: '22px 12px', textAlign: 'center', color: '#9aa3ad', fontSize: 13, border: '1px dashed #e4e8ee', borderRadius: 12 }}>
+          아직 저장된 성장타임라인이 없습니다.
+        </div>
+      )}
+
+      {timelines.length > 0 && (
+        <>
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, marginBottom: 12 }}>
+            {timelines.map(timeline => {
+              const active = timeline.id === selectedId;
+              const first = timeline.items[0];
+              const last = timeline.items[timeline.items.length - 1];
+              return (
+                <button
+                  type="button"
+                  key={timeline.id}
+                  onClick={() => setSelectedId(timeline.id)}
+                  style={{
+                    minWidth: 190,
+                    border: active ? '2px solid #1A3C6E' : '1px solid #e4e8ee',
+                    borderRadius: 12,
+                    backgroundColor: active ? '#f2f6ff' : '#fff',
+                    padding: 10,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#1A3C6E', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {timeline.title}
+                  </p>
+                  <p style={{ margin: '5px 0 0', fontSize: 11, color: '#7a8696' }}>
+                    {timeline.items.length}장 · {first?.takenDate || '-'}{last && last.takenDate !== first?.takenDate ? ` ~ ${last.takenDate}` : ''}
+                  </p>
+                  {timeline.createdAt && (
+                    <p style={{ margin: '4px 0 0', fontSize: 11, color: '#9aa3ad' }}>
+                      저장 {timestampLabel(timeline.createdAt)}
+                    </p>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {selected && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {selected.items.map((item, index) => (
+                <div
+                  key={`${selected.id}-${item.url}-${index}`}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '76px 1fr',
+                    gap: 10,
+                    padding: 10,
+                    border: '1px solid #e8edf2',
+                    borderRadius: 12,
+                    backgroundColor: '#fbfcfe',
+                  }}
+                >
+                  <div style={{ position: 'relative', width: 76, height: 76, borderRadius: 10, overflow: 'hidden', backgroundColor: '#eef2f6' }}>
+                    <img src={item.url} alt={item.takenDate} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    <span style={{
+                      position: 'absolute',
+                      top: 5,
+                      left: 5,
+                      minWidth: 20,
+                      height: 20,
+                      borderRadius: 10,
+                      backgroundColor: '#1A3C6E',
+                      color: '#fff',
+                      fontSize: 11,
+                      fontWeight: 800,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      {index + 1}
+                    </span>
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', marginBottom: 6 }}>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: '#1A3C6E' }}>{item.takenDate}</span>
+                      <span style={{
+                        fontSize: 11,
+                        color: item.metadataSource === 'manualRequired' ? '#9a6700' : '#63745a',
+                        backgroundColor: item.metadataSource === 'manualRequired' ? '#fff7dd' : '#eef6e9',
+                        borderRadius: 999,
+                        padding: '3px 7px',
+                        fontWeight: 700,
+                      }}>
+                        {item.metadataSource === 'exif' ? 'EXIF 촬영일' : item.metadataSource === 'manual' ? '직접 수정' : '날짜 확인 필요'}
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 13, color: item.memo ? '#4c5967' : '#a0a8b0', lineHeight: 1.45 }}>
+                      {item.memo || '메모 없음'}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
