@@ -50,6 +50,10 @@ function fmtDate(dateStr: string): string {
   return p.length === 3 ? `${p[0]}.${p[1]}.${p[2]}` : dateStr;
 }
 
+function sortPhotosByDate(photos: PhotoItem[]): PhotoItem[] {
+  return [...photos].sort((a, b) => a.date.localeCompare(b.date));
+}
+
 function getLayout(n: number): { cols: number; rows: number } {
   if (n <= 4) return { cols: 2, rows: 2 };
   if (n <= 6) return { cols: 2, rows: 3 };
@@ -104,6 +108,12 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
     });
   };
 
+  const updateSelectedDate = (photoUrl: string, date: string) => {
+    setSelected(prev => prev.map(photo => (
+      photo.url === photoUrl ? { ...photo, date } : photo
+    )));
+  };
+
   const generate = async () => {
     if (selected.length < 4) {
       toast.warning('최소 4장을 선택해주세요.');
@@ -112,6 +122,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
     setStep('generating');
 
     try {
+      const timelinePhotos = sortPhotosByDate(selected);
       const PAD = 20;
       const GAP = 12;
       const TITLE_H = 90;
@@ -120,7 +131,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
       const PHOTO_H = Math.round(PHOTO_W * 0.72);
       const DATE_H = 30;
       const ROW_H = PHOTO_H + DATE_H + GAP;
-      const { rows } = getLayout(selected.length);
+      const { rows } = getLayout(timelinePhotos.length);
       const H = TITLE_H + rows * ROW_H + PAD;
 
       const canvas = document.createElement('canvas');
@@ -144,12 +155,12 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
       ctx.fillText(resolvedTitle, W / 2, 46);
 
       // 날짜 범위 부제
-      if (selected.length > 0) {
-        const first = fmtDate(selected[0].date);
-        const last = fmtDate(selected[selected.length - 1].date);
+      if (timelinePhotos.length > 0) {
+        const first = fmtDate(timelinePhotos[0].date);
+        const last = fmtDate(timelinePhotos[timelinePhotos.length - 1].date);
         ctx.fillStyle = '#888';
         ctx.font = '15px sans-serif';
-        ctx.fillText(`${first} ~ ${last}  ·  ${selected.length}장`, W / 2, 70);
+        ctx.fillText(`${first} ~ ${last}  ·  ${timelinePhotos.length}장`, W / 2, 70);
       }
 
       // 구분선
@@ -161,7 +172,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
       ctx.stroke();
 
       // 사진 배치
-      for (let i = 0; i < selected.length; i++) {
+      for (let i = 0; i < timelinePhotos.length; i++) {
         const col = i % 2;
         const row = Math.floor(i / 2);
         const x = PAD + col * (PHOTO_W + GAP);
@@ -173,7 +184,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
         ctx.fill();
 
         try {
-          const img = await loadImg(selected[i].url);
+          const img = await loadImg(timelinePhotos[i].url);
           const scale = Math.max(PHOTO_W / img.width, PHOTO_H / img.height);
           const sw = PHOTO_W / scale;
           const sh = PHOTO_H / scale;
@@ -196,7 +207,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
         ctx.fillStyle = '#555';
         ctx.font = '14px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(fmtDate(selected[i].date), x + PHOTO_W / 2, y + PHOTO_H + 20);
+        ctx.fillText(fmtDate(timelinePhotos[i].date), x + PHOTO_W / 2, y + PHOTO_H + 20);
       }
 
       // PNG Blob → Storage 업로드
@@ -214,8 +225,8 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
         timelineImageUrl: url,
         timelineCreatedAt: new Date().toISOString(),
         title: resolvedTitle,
-        photoCount: selected.length,
-        photoDates: selected.map(p => p.date),
+        photoCount: timelinePhotos.length,
+        photoDates: timelinePhotos.map(p => p.date),
         storageId: id,
       });
 
@@ -274,6 +285,8 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
   };
 
   if (!isOpen) return null;
+
+  const selectedForPreview = sortPhotosByDate(selected);
 
   return (
     <div
@@ -348,6 +361,11 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
                   <span style={{ fontSize: 12, color: '#e57373' }}>4장 이상 선택하세요</span>
                 )}
               </div>
+              {allPhotos.length > 0 && (
+                <p style={{ fontSize: 12, color: '#888', margin: '0 0 12px' }}>
+                  표시 날짜는 기록일 기준입니다. 다른 날 찍은 사진은 선택 후 날짜를 바로잡으세요.
+                </p>
+              )}
 
               {/* 사진 없는 경우 */}
               {allPhotos.length === 0 && (
@@ -415,6 +433,63 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
                   );
                 })}
               </div>
+
+              {selected.length > 0 && (
+                <div style={{ marginTop: 16 }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: '#1A3C6E', margin: '0 0 8px' }}>
+                    선택 사진 날짜
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {selectedForPreview.map((photo, idx) => (
+                      <div
+                        key={`date-${photo.url}`}
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: '52px 1fr',
+                          gap: 10,
+                          alignItems: 'center',
+                          padding: 8,
+                          border: '1px solid #e5edf7',
+                          borderRadius: 10,
+                          backgroundColor: '#fafcff',
+                        }}
+                      >
+                        <div style={{ position: 'relative', width: 52, height: 52, borderRadius: 8, overflow: 'hidden' }}>
+                          <img
+                            src={photo.url}
+                            alt={photo.date}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                          />
+                          <div style={{
+                            position: 'absolute', top: 4, left: 4,
+                            width: 18, height: 18, borderRadius: '50%',
+                            backgroundColor: '#1A3C6E', color: '#fff',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 11, fontWeight: 700,
+                          }}>
+                            {idx + 1}
+                          </div>
+                        </div>
+                        <input
+                          type="date"
+                          value={photo.date}
+                          onChange={e => updateSelectedDate(photo.url, e.target.value)}
+                          style={{
+                            width: '100%',
+                            boxSizing: 'border-box',
+                            border: '1px solid #d0dff0',
+                            borderRadius: 8,
+                            padding: '9px 10px',
+                            fontSize: 14,
+                            color: '#1A3C6E',
+                            backgroundColor: '#fff',
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -516,7 +591,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid }: Timeline
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             }}>
               <p style={{ fontSize: 13, color: '#1A3C6E', margin: 0 }}>
-                {selected.length}장 선택 · {fmtDate(selected[0].date)} ~ {fmtDate(selected[selected.length - 1].date)}
+                {selectedForPreview.length}장 선택 · {fmtDate(selectedForPreview[0].date)} ~ {fmtDate(selectedForPreview[selectedForPreview.length - 1].date)}
               </p>
               <p style={{ fontSize: 12, color: '#888', margin: 0 }}>
                 {getLayout(selected.length).cols}×{getLayout(selected.length).rows}
