@@ -1,0 +1,13 @@
+[
+  {
+    "origin": [
+      "https://haru2026-8abb8.web.app",
+      "https://haru2026-8abb8.firebaseapp.com",
+      "http://localhost:3000",
+      "http://localhost:5173"
+    ],
+    "method": ["GET", "HEAD"],
+    "responseHeader": ["Content-Type", "Authorization"],
+    "maxAgeSeconds": 3600
+  }
+]
