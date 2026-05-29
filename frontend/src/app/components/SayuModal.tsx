@@ -11,9 +11,20 @@ import { httpsCallable, getFunctions } from 'firebase/functions';
 import { db, storage, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../services/firestoreService';
+import { readOriginalImageMeta, type UploadedImageMeta } from '../services/photoMetadataService';
 
 const WEATHER_OPTIONS = ['쾌청', '흐림', '비', '눈'];
 const TEMPERATURE_OPTIONS = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
+
+function parseUploadedImageMeta(value: unknown): UploadedImageMeta[] {
+  try {
+    const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((meta: any) => typeof meta?.url === 'string' && meta.url.startsWith('http'));
+  } catch {
+    return [];
+  }
+}
 
 export interface SayuModalProps {
   isOpen: boolean;
@@ -508,8 +519,13 @@ export function SayuModal({
         .filter(url => typeof url === 'string' && url.trim().length > 0 && url.startsWith('http'));
       setLocalImages(newImages);
       const recordRef = doc(db, 'users', currentUser.uid, 'records', firestoreId);
+      const imageMetaKey = `${formatKey}_imageMeta`;
+      const recordSnap = await getDoc(recordRef);
+      const existingMeta = recordSnap.exists() ? parseUploadedImageMeta(recordSnap.data()[imageMetaKey]) : [];
+      const newImageMeta = existingMeta.filter((meta) => newImages.includes(meta.url));
       await updateDoc(recordRef, {
         [`${formatKey}_images`]: JSON.stringify(newImages),
+        [imageMetaKey]: JSON.stringify(newImageMeta),
       });
       await refreshPublicSharedRecord();
       toast.success('사진이 삭제되었습니다.');
@@ -531,14 +547,27 @@ export function SayuModal({
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 8);
       const fileName = `${recordDate}_${formatKey}_${timestamp}_${randomId}.jpg`;
+      const originalMeta = await readOriginalImageMeta(file);
       const imageRef = ref(storage, `users/${currentUser.uid}/format_photos/${fileName}`);
       await uploadBytes(imageRef, file);
       const url = await getDownloadURL(imageRef);
       const newImages = [...localImages, url];
       setLocalImages(newImages);
       const recordRef = doc(db, 'users', currentUser.uid, 'records', firestoreId);
+      const imageMetaKey = `${formatKey}_imageMeta`;
+      const recordSnap = await getDoc(recordRef);
+      const existingMeta = recordSnap.exists() ? parseUploadedImageMeta(recordSnap.data()[imageMetaKey]) : [];
+      const newImageMeta = [
+        ...existingMeta,
+        {
+          ...originalMeta,
+          url,
+          uploadedAt: new Date().toISOString(),
+        },
+      ].filter((meta) => newImages.includes(meta.url));
       await updateDoc(recordRef, {
         [`${formatKey}_images`]: JSON.stringify(newImages),
+        [imageMetaKey]: JSON.stringify(newImageMeta),
       });
       await refreshPublicSharedRecord();
       toast.success('사진이 추가되었습니다!');
