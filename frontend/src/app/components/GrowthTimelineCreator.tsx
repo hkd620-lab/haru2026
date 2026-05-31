@@ -352,7 +352,7 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
       const resolvedTitle = await createTimelineTitle(title, content);
 
       await firestoreService.saveRecord(uid, {
-        date: periodStart || todayKey(),
+        date: todayKey(),
         formats: ['성장타임라인'],
         format: '성장타임라인',
         recordType: 'growthTimeline',
