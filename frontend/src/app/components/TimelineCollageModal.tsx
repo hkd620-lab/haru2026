@@ -168,7 +168,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
   const [searchText, setSearchText] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [growthCreatorOpen, setGrowthCreatorOpen] = useState(false);
+  const [growthCreatorOpen, setGrowthCreatorOpen] = useState(true);
   const generatingRef = useRef(false);
 
   const allPhotos = isLoadingRecords ? [] : extractPhotos(records);
