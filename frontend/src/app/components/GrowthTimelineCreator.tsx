@@ -28,6 +28,8 @@ type DraftTimelineItem = TimelineItem & {
 interface GrowthTimelineCreatorProps {
   uid: string;
   onDone?: () => void;
+  initialFiles?: File[];
+  initialFilesKey?: number;
 }
 
 interface GrowthTimelineLibraryProps {
@@ -195,7 +197,7 @@ function normalizeSavedTimeline(id: string, data: any): SavedGrowthTimeline | nu
   };
 }
 
-export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProps) {
+export function GrowthTimelineCreator({ uid, onDone, initialFiles = [], initialFilesKey = 0 }: GrowthTimelineCreatorProps) {
   const [title, setTitle] = useState('성장타임라인');
   const [items, setItems] = useState<DraftTimelineItem[]>([]);
   const [isReading, setIsReading] = useState(false);
@@ -203,6 +205,7 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
   const [isDocumentOpen, setIsDocumentOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const previewUrlsRef = useRef<string[]>([]);
+  const processedInitialFilesKeyRef = useRef<number | null>(null);
   const today = todayKey();
 
   const sortedItems = useMemo(() => sortDraftItems(items), [items]);
@@ -228,8 +231,8 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
     previewUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
   }, []);
 
-  const handleFiles = async (event: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []).filter(file => file.type.startsWith('image/'));
+  const appendFiles = async (sourceFiles: File[]) => {
+    const files = sourceFiles.filter(file => file.type.startsWith('image/'));
     if (files.length === 0) return;
 
     setIsReading(true);
@@ -285,6 +288,17 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
       setIsReading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  useEffect(() => {
+    if (initialFiles.length === 0) return;
+    if (processedInitialFilesKeyRef.current === initialFilesKey) return;
+    processedInitialFilesKeyRef.current = initialFilesKey;
+    void appendFiles(initialFiles);
+  }, [initialFiles, initialFilesKey]);
+
+  const handleFiles = async (event: ChangeEvent<HTMLInputElement>) => {
+    await appendFiles(Array.from(event.target.files || []));
   };
 
   const updateDate = (id: string, takenDate: string) => {

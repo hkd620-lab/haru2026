@@ -1,5 +1,5 @@
-import type { CSSProperties, ReactNode } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import type { ChangeEvent, CSSProperties, ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { setOrigin } from '../services/v2Origin';
 import { useAuth } from '../contexts/AuthContext';
@@ -515,6 +515,9 @@ export function HomePageV2() {
   const [timelineRecords, setTimelineRecords] = useState<HaruRecord[]>([]);
   const [timelineRecordsLoaded, setTimelineRecordsLoaded] = useState(false);
   const [timelineRecordsLoading, setTimelineRecordsLoading] = useState(false);
+  const [timelineInitialFiles, setTimelineInitialFiles] = useState<File[]>([]);
+  const [timelineFileSelectKey, setTimelineFileSelectKey] = useState(0);
+  const timelineFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // v2 진입을 sessionStorage에 기록 → 통계/합본 등 깊은 경로 닫기 시 v2 복귀용
   useEffect(() => {
@@ -527,13 +530,7 @@ export function HomePageV2() {
     setTimelineRecordsLoading(false);
   }, [user?.uid]);
 
-  const openTimelineModal = async () => {
-    if (!user?.uid) {
-      navigate('/login');
-      return;
-    }
-
-    setTimelineModalOpen(true);
+  const loadTimelineRecords = async () => {
     if (timelineRecordsLoaded || timelineRecordsLoading) return;
 
     setTimelineRecordsLoading(true);
@@ -548,6 +545,27 @@ export function HomePageV2() {
     } finally {
       setTimelineRecordsLoading(false);
     }
+  };
+
+  const openTimelineModal = () => {
+    if (!user?.uid) {
+      navigate('/login');
+      return;
+    }
+
+    timelineFileInputRef.current?.click();
+    void loadTimelineRecords();
+  };
+
+  const handleTimelineFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []).filter(file => file.type.startsWith('image/'));
+    event.target.value = '';
+    if (files.length === 0) return;
+
+    setTimelineInitialFiles(files);
+    setTimelineFileSelectKey(prev => prev + 1);
+    setTimelineModalOpen(true);
+    void loadTimelineRecords();
   };
 
   return (
@@ -1486,13 +1504,27 @@ export function HomePageV2() {
         </div>
       </div>
 
+      <input
+        ref={timelineFileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={handleTimelineFileSelect}
+        style={{ display: 'none' }}
+      />
+
       {timelineModalOpen && user?.uid && (
         <TimelineCollageModal
           isOpen={timelineModalOpen}
-          onClose={() => setTimelineModalOpen(false)}
+          onClose={() => {
+            setTimelineModalOpen(false);
+            setTimelineInitialFiles([]);
+          }}
           records={timelineRecords}
           uid={user.uid}
           isLoadingRecords={timelineRecordsLoading}
+          initialGrowthFiles={timelineInitialFiles}
+          initialGrowthFilesKey={timelineFileSelectKey}
         />
       )}
     </div>
