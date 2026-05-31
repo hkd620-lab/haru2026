@@ -27,8 +27,6 @@ interface TimelineCollageModalProps {
   records: HaruRecord[];
   uid: string;
   isLoadingRecords?: boolean;
-  initialGrowthFiles?: File[];
-  initialGrowthFilesKey?: number;
 }
 
 const FORMAT_PREFIXES = [
@@ -162,15 +160,7 @@ const CHANGE_RECORD_ASSISTANT_TITLE = 'HARU타임라인';
 const CHANGE_RECORD_ASSISTANT_DESCRIPTION = '여러 날짜의 사진 기록을 시간순으로 묶어 변화의 흐름을 한 장으로 보여줍니다.';
 const CHANGE_RECORD_ASSISTANT_HELP = '흩어진 하루의 사진들을 연결해 식물, 건강, 가족, 프로젝트의 변화를 한눈에 볼 수 있는 기록 자산으로 만듭니다.';
 
-export function TimelineCollageModal({
-  isOpen,
-  onClose,
-  records,
-  uid,
-  isLoadingRecords = false,
-  initialGrowthFiles = [],
-  initialGrowthFilesKey = 0,
-}: TimelineCollageModalProps) {
+export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingRecords = false }: TimelineCollageModalProps) {
   const [selected, setSelected] = useState<PhotoItem[]>([]);
   const [title, setTitle] = useState('');
   const [step, setStep] = useState<'select' | 'generating' | 'done'>('select');
@@ -183,12 +173,6 @@ export function TimelineCollageModal({
 
   const allPhotos = isLoadingRecords ? [] : extractPhotos(records);
   const filteredPhotos = allPhotos.filter((photo) => matchesPhotoSearch(photo, searchText, dateFrom, dateTo));
-
-  useEffect(() => {
-    if (isOpen && initialGrowthFiles.length > 0) {
-      setGrowthCreatorOpen(true);
-    }
-  }, [isOpen, initialGrowthFilesKey, initialGrowthFiles.length]);
 
   const toggle = (photo: PhotoItem) => {
     setSelected(prev => {
@@ -494,8 +478,6 @@ export function TimelineCollageModal({
                 ) : (
                   <GrowthTimelineCreator
                     uid={uid}
-                    initialFiles={initialGrowthFiles}
-                    initialFilesKey={initialGrowthFilesKey}
                     onDone={() => {
                       setGrowthCreatorOpen(false);
                     }}
