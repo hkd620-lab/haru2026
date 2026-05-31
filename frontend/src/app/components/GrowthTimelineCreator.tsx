@@ -4,6 +4,10 @@ import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { toast } from 'sonner';
 import { db, storage } from '../../firebase';
 import { readOriginalImageMeta } from '../services/photoMetadataService';
+import {
+  getLocationCandidateFromGps,
+  type ReverseGeocodeCandidate,
+} from '../services/reverseGeocodeService';
 import { GrowthTimelineDocumentModal, type GrowthTimelineDocumentItem } from './GrowthTimelineDocumentModal';
 
 type TimelineItem = GrowthTimelineDocumentItem;
@@ -13,6 +17,10 @@ type DraftTimelineItem = TimelineItem & {
   file: File;
   previewUrl: string;
   originalName: string;
+  latitude?: number;
+  longitude?: number;
+  locationCandidate?: ReverseGeocodeCandidate;
+  locationStatus?: 'none' | 'loading' | 'found' | 'not_found' | 'error';
 };
 
 interface GrowthTimelineCreatorProps {
@@ -79,6 +87,25 @@ function timestampLabel(value: any) {
   return `${yyyy}.${mm}.${dd}`;
 }
 
+function locationCandidateLabel(item: Pick<DraftTimelineItem, 'locationCandidate' | 'locationStatus'>) {
+  if (item.locationStatus === 'loading') return '촬영장소 확인 중';
+  if (item.locationStatus === 'none') return '위치정보 없음';
+  if (item.locationStatus === 'not_found') return '촬영장소 후보 없음';
+  if (item.locationStatus === 'error') return '장소 확인 실패';
+  if (item.locationStatus === 'found') {
+    return item.locationCandidate?.regionLabel
+      || item.locationCandidate?.roadAddress
+      || item.locationCandidate?.jibunAddress
+      || '촬영장소 후보 있음';
+  }
+  return '';
+}
+
+function locationDetailLabel(candidate?: ReverseGeocodeCandidate) {
+  if (!candidate) return '';
+  return candidate.roadAddress || candidate.jibunAddress || '';
+}
+
 function normalizeSavedTimeline(id: string, data: any): SavedGrowthTimeline | null {
   if (data?.type !== 'growth') return null;
   if (data?.status && data.status !== 'final') return null;
@@ -127,6 +154,8 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
       metadataSource: item.metadataSource,
       memo: item.memo,
       order: index,
+      locationCandidate: item.locationCandidate,
+      locationStatus: item.locationStatus,
     })),
     [sortedItems]
   );
@@ -151,6 +180,27 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
         const file = files[i];
         const meta = await readOriginalImageMeta(file);
         const hasExifDate = typeof meta.takenDate === 'string' && meta.takenDate.trim().length > 0;
+        const latitude = typeof meta.latitude === 'number' ? meta.latitude : undefined;
+        const longitude = typeof meta.longitude === 'number' ? meta.longitude : undefined;
+        const hasGps = typeof latitude === 'number' && typeof longitude === 'number';
+        let locationCandidate: ReverseGeocodeCandidate | undefined;
+        let locationStatus: DraftTimelineItem['locationStatus'] = hasGps ? 'loading' : 'none';
+
+        if (hasGps) {
+          try {
+            const candidate = await getLocationCandidateFromGps(latitude, longitude);
+            if (candidate) {
+              locationCandidate = candidate;
+              locationStatus = 'found';
+            } else {
+              locationStatus = 'not_found';
+            }
+          } catch (error) {
+            console.warn('성장타임라인 촬영장소 후보 확인 실패');
+            locationStatus = 'error';
+          }
+        }
+
         nextItems.push({
           id: `${Date.now()}_${i}_${Math.random().toString(36).slice(2, 8)}`,
           file,
@@ -161,6 +211,10 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
           metadataSource: hasExifDate ? 'exif' : 'manualRequired',
           memo: '',
           order: items.length + i,
+          latitude,
+          longitude,
+          locationCandidate,
+          locationStatus,
         });
       }
       setItems(prev => sortDraftItems([...prev, ...nextItems]).map((item, index) => ({ ...item, order: index })));
@@ -414,6 +468,28 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
                     {item.originalName}
                   </span>
                 </div>
+                {locationCandidateLabel(item) && (
+                  <div style={{ marginBottom: 7, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <span
+                      style={{
+                        alignSelf: 'flex-start',
+                        fontSize: 11,
+                        color: item.locationStatus === 'found' ? '#37644a' : '#8a9683',
+                        backgroundColor: item.locationStatus === 'found' ? '#edf7f1' : '#f2f4f6',
+                        borderRadius: 999,
+                        padding: '3px 7px',
+                        fontWeight: 700,
+                      }}
+                    >
+                      촬영장소 후보: {locationCandidateLabel(item)}
+                    </span>
+                    {item.locationStatus === 'found' && locationDetailLabel(item.locationCandidate) && (
+                      <span style={{ fontSize: 11, color: '#8a9683', lineHeight: 1.4 }}>
+                        {locationDetailLabel(item.locationCandidate)}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <input
                   value={item.memo}
                   onChange={event => updateMemo(item.id, event.target.value)}

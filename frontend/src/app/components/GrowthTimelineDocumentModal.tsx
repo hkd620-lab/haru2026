@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useSubscription } from '../hooks/useSubscription';
+import type { ReverseGeocodeCandidate } from '../services/reverseGeocodeService';
 
 export type GrowthTimelineDocumentItem = {
   url: string;
@@ -8,6 +9,8 @@ export type GrowthTimelineDocumentItem = {
   metadataSource: 'exif' | 'manual' | 'manualRequired';
   memo: string;
   order: number;
+  locationCandidate?: ReverseGeocodeCandidate;
+  locationStatus?: 'none' | 'loading' | 'found' | 'not_found' | 'error';
 };
 
 interface GrowthTimelineDocumentModalProps {
@@ -51,6 +54,25 @@ function metadataLabel(source: GrowthTimelineDocumentItem['metadataSource']) {
   if (source === 'exif') return 'EXIF 촬영일';
   if (source === 'manual') return '직접 수정';
   return '날짜 확인 필요';
+}
+
+function locationCandidateLabel(item: GrowthTimelineDocumentItem) {
+  if (item.locationStatus === 'loading') return '촬영장소 확인 중';
+  if (item.locationStatus === 'none') return '위치정보 없음';
+  if (item.locationStatus === 'not_found') return '촬영장소 후보 없음';
+  if (item.locationStatus === 'error') return '장소 확인 실패';
+  if (item.locationStatus === 'found') {
+    return item.locationCandidate?.regionLabel
+      || item.locationCandidate?.roadAddress
+      || item.locationCandidate?.jibunAddress
+      || '촬영장소 후보 있음';
+  }
+  return '';
+}
+
+function locationDetailLabel(candidate?: ReverseGeocodeCandidate) {
+  if (!candidate) return '';
+  return candidate.roadAddress || candidate.jibunAddress || '';
 }
 
 function filenameSafeTitle(title: string) {
@@ -331,7 +353,26 @@ export function GrowthTimelineDocumentModal({
                             {metadataLabel(item.metadataSource)}
                           </span>
                         )}
+                        {editable && locationCandidateLabel(item) && (
+                          <span
+                            style={{
+                              color: item.locationStatus === 'found' ? '#37644a' : '#8a96a3',
+                              backgroundColor: item.locationStatus === 'found' ? '#edf7f1' : '#f2f4f6',
+                              borderRadius: 999,
+                              padding: '2px 7px',
+                              fontSize: 11,
+                              fontWeight: 800,
+                            }}
+                          >
+                            촬영장소 후보: {locationCandidateLabel(item)}
+                          </span>
+                        )}
                       </span>
+                      {editable && item.locationStatus === 'found' && locationDetailLabel(item.locationCandidate) && (
+                        <span style={{ color: '#7c8894', fontSize: 11, lineHeight: 1.4 }}>
+                          {locationDetailLabel(item.locationCandidate)}
+                        </span>
+                      )}
                       {editable ? (
                         <textarea
                           value={item.memo}
