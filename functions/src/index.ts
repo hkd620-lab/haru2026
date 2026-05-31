@@ -25,6 +25,7 @@ const GOOGLE_CLIENT_ID_SECRET = defineSecret('GOOGLE_CLIENT_ID');
 const GOOGLE_CLIENT_SECRET_SECRET = defineSecret('GOOGLE_CLIENT_SECRET');
 const KAKAO_CLIENT_ID_SECRET = defineSecret('KAKAO_CLIENT_ID');
 const KAKAO_CLIENT_SECRET_SECRET = defineSecret('KAKAO_CLIENT_SECRET');
+const KAKAO_REST_API_KEY_SECRET = defineSecret('KAKAO_REST_API_KEY');
 const NAVER_CLIENT_ID_SECRET = defineSecret('NAVER_CLIENT_ID');
 const NAVER_CLIENT_SECRET_SECRET = defineSecret('NAVER_CLIENT_SECRET');
 const PORTONE_API_SECRET = defineSecret('PORTONE_API_SECRET');
@@ -75,6 +76,124 @@ function getSafeOAuthError(error: any) {
     message: error?.message || String(error),
   };
 }
+
+function parseCoordinate(value: unknown, label: string): number {
+  const numeric = typeof value === 'number' ? value : Number(String(value ?? '').trim());
+  if (!Number.isFinite(numeric)) {
+    throw new HttpsError('invalid-argument', `${label} 좌표가 올바르지 않습니다`);
+  }
+  return numeric;
+}
+
+function buildKakaoRegionLabel(doc: any): string {
+  return [
+    doc?.region_1depth_name,
+    doc?.region_2depth_name,
+    doc?.region_3depth_name,
+  ]
+    .filter((part) => typeof part === 'string' && part.trim())
+    .join(' ');
+}
+
+function getSafeKakaoLocalError(error: any) {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data || {};
+    return {
+      message: error.message,
+      status: error.response?.status,
+      code: error.code,
+      kakaoErrorType: typeof data.errorType === 'string' ? data.errorType : undefined,
+      kakaoMessage: typeof data.message === 'string' ? data.message.slice(0, 120) : undefined,
+    };
+  }
+
+  return {
+    message: error?.message || String(error),
+  };
+}
+
+export const reverseGeocodeKakao = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [KAKAO_REST_API_KEY_SECRET],
+    timeoutSeconds: 15,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다');
+    }
+
+    const latitude = parseCoordinate(request.data?.latitude, 'latitude');
+    const longitude = parseCoordinate(request.data?.longitude, 'longitude');
+
+    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      throw new HttpsError('invalid-argument', '좌표 범위가 올바르지 않습니다');
+    }
+
+    const headers = {
+      Authorization: `KakaoAK ${KAKAO_REST_API_KEY_SECRET.value().trim()}`,
+      Accept: 'application/json',
+    };
+    const params = { x: String(longitude), y: String(latitude) };
+
+    try {
+      const [regionResp, addressResp] = await Promise.all([
+        axios.get('https://dapi.kakao.com/v2/local/geo/coord2regioncode.json', {
+          params,
+          headers,
+          timeout: 8000,
+        }),
+        axios.get('https://dapi.kakao.com/v2/local/geo/coord2address.json', {
+          params,
+          headers,
+          timeout: 8000,
+        }),
+      ]);
+
+      const regionDocs = Array.isArray(regionResp.data?.documents) ? regionResp.data.documents : [];
+      const addressDocs = Array.isArray(addressResp.data?.documents) ? addressResp.data.documents : [];
+      const regionDoc = regionDocs.find((doc: any) => doc?.region_type === 'H') || regionDocs[0] || null;
+      const addressDoc = addressDocs[0] || null;
+      const roadAddress = addressDoc?.road_address?.address_name || '';
+      const jibunAddress = addressDoc?.address?.address_name || '';
+      const regionLabel = buildKakaoRegionLabel(regionDoc);
+
+      if (!regionLabel && !roadAddress && !jibunAddress) {
+        return {
+          success: false,
+          reason: 'not_found',
+          latitude,
+          longitude,
+        };
+      }
+
+      return {
+        success: true,
+        latitude,
+        longitude,
+        regionLabel,
+        roadAddress,
+        jibunAddress,
+        region: regionDoc
+          ? {
+              sido: regionDoc.region_1depth_name || '',
+              sigungu: regionDoc.region_2depth_name || '',
+              eupmyeondong: regionDoc.region_3depth_name || '',
+              regionType: regionDoc.region_type || '',
+            }
+          : null,
+      };
+    } catch (error: any) {
+      logger.warn('카카오 좌표 주소 변환 실패:', getSafeKakaoLocalError(error));
+      return {
+        success: false,
+        reason: 'kakao_api_error',
+        latitude,
+        longitude,
+      };
+    }
+  }
+);
 
 function normalizeReadingBookField(s: unknown): string {
   return String(s || '')

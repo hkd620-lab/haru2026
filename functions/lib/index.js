@@ -36,8 +36,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = void 0;
-exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = void 0;
+exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.reverseGeocodeKakao = void 0;
+exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -62,6 +62,7 @@ const GOOGLE_CLIENT_ID_SECRET = (0, params_1.defineSecret)('GOOGLE_CLIENT_ID');
 const GOOGLE_CLIENT_SECRET_SECRET = (0, params_1.defineSecret)('GOOGLE_CLIENT_SECRET');
 const KAKAO_CLIENT_ID_SECRET = (0, params_1.defineSecret)('KAKAO_CLIENT_ID');
 const KAKAO_CLIENT_SECRET_SECRET = (0, params_1.defineSecret)('KAKAO_CLIENT_SECRET');
+const KAKAO_REST_API_KEY_SECRET = (0, params_1.defineSecret)('KAKAO_REST_API_KEY');
 const NAVER_CLIENT_ID_SECRET = (0, params_1.defineSecret)('NAVER_CLIENT_ID');
 const NAVER_CLIENT_SECRET_SECRET = (0, params_1.defineSecret)('NAVER_CLIENT_SECRET');
 const PORTONE_API_SECRET = (0, params_1.defineSecret)('PORTONE_API_SECRET');
@@ -108,6 +109,112 @@ function getSafeOAuthError(error) {
         message: (error === null || error === void 0 ? void 0 : error.message) || String(error),
     };
 }
+function parseCoordinate(value, label) {
+    const numeric = typeof value === 'number' ? value : Number(String(value !== null && value !== void 0 ? value : '').trim());
+    if (!Number.isFinite(numeric)) {
+        throw new https_2.HttpsError('invalid-argument', `${label} 좌표가 올바르지 않습니다`);
+    }
+    return numeric;
+}
+function buildKakaoRegionLabel(doc) {
+    return [
+        doc === null || doc === void 0 ? void 0 : doc.region_1depth_name,
+        doc === null || doc === void 0 ? void 0 : doc.region_2depth_name,
+        doc === null || doc === void 0 ? void 0 : doc.region_3depth_name,
+    ]
+        .filter((part) => typeof part === 'string' && part.trim())
+        .join(' ');
+}
+function getSafeKakaoLocalError(error) {
+    var _a, _b;
+    if (axios_1.default.isAxiosError(error)) {
+        const data = ((_a = error.response) === null || _a === void 0 ? void 0 : _a.data) || {};
+        return {
+            message: error.message,
+            status: (_b = error.response) === null || _b === void 0 ? void 0 : _b.status,
+            code: error.code,
+            kakaoErrorType: typeof data.errorType === 'string' ? data.errorType : undefined,
+            kakaoMessage: typeof data.message === 'string' ? data.message.slice(0, 120) : undefined,
+        };
+    }
+    return {
+        message: (error === null || error === void 0 ? void 0 : error.message) || String(error),
+    };
+}
+exports.reverseGeocodeKakao = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    secrets: [KAKAO_REST_API_KEY_SECRET],
+    timeoutSeconds: 15,
+}, async (request) => {
+    var _a, _b, _c, _d, _f, _g;
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다');
+    }
+    const latitude = parseCoordinate((_a = request.data) === null || _a === void 0 ? void 0 : _a.latitude, 'latitude');
+    const longitude = parseCoordinate((_b = request.data) === null || _b === void 0 ? void 0 : _b.longitude, 'longitude');
+    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+        throw new https_2.HttpsError('invalid-argument', '좌표 범위가 올바르지 않습니다');
+    }
+    const headers = {
+        Authorization: `KakaoAK ${KAKAO_REST_API_KEY_SECRET.value().trim()}`,
+        Accept: 'application/json',
+    };
+    const params = { x: String(longitude), y: String(latitude) };
+    try {
+        const [regionResp, addressResp] = await Promise.all([
+            axios_1.default.get('https://dapi.kakao.com/v2/local/geo/coord2regioncode.json', {
+                params,
+                headers,
+                timeout: 8000,
+            }),
+            axios_1.default.get('https://dapi.kakao.com/v2/local/geo/coord2address.json', {
+                params,
+                headers,
+                timeout: 8000,
+            }),
+        ]);
+        const regionDocs = Array.isArray((_c = regionResp.data) === null || _c === void 0 ? void 0 : _c.documents) ? regionResp.data.documents : [];
+        const addressDocs = Array.isArray((_d = addressResp.data) === null || _d === void 0 ? void 0 : _d.documents) ? addressResp.data.documents : [];
+        const regionDoc = regionDocs.find((doc) => (doc === null || doc === void 0 ? void 0 : doc.region_type) === 'H') || regionDocs[0] || null;
+        const addressDoc = addressDocs[0] || null;
+        const roadAddress = ((_f = addressDoc === null || addressDoc === void 0 ? void 0 : addressDoc.road_address) === null || _f === void 0 ? void 0 : _f.address_name) || '';
+        const jibunAddress = ((_g = addressDoc === null || addressDoc === void 0 ? void 0 : addressDoc.address) === null || _g === void 0 ? void 0 : _g.address_name) || '';
+        const regionLabel = buildKakaoRegionLabel(regionDoc);
+        if (!regionLabel && !roadAddress && !jibunAddress) {
+            return {
+                success: false,
+                reason: 'not_found',
+                latitude,
+                longitude,
+            };
+        }
+        return {
+            success: true,
+            latitude,
+            longitude,
+            regionLabel,
+            roadAddress,
+            jibunAddress,
+            region: regionDoc
+                ? {
+                    sido: regionDoc.region_1depth_name || '',
+                    sigungu: regionDoc.region_2depth_name || '',
+                    eupmyeondong: regionDoc.region_3depth_name || '',
+                    regionType: regionDoc.region_type || '',
+                }
+                : null,
+        };
+    }
+    catch (error) {
+        logger.warn('카카오 좌표 주소 변환 실패:', getSafeKakaoLocalError(error));
+        return {
+            success: false,
+            reason: 'kakao_api_error',
+            latitude,
+            longitude,
+        };
+    }
+});
 function normalizeReadingBookField(s) {
     return String(s || '')
         .normalize('NFC')
@@ -2512,6 +2619,8 @@ var snsAnalyzer_1 = require("./snsAnalyzer");
 Object.defineProperty(exports, "analyzeFacebookZip", { enumerable: true, get: function () { return snsAnalyzer_1.analyzeFacebookZip; } });
 var snsToDiary_1 = require("./snsToDiary");
 Object.defineProperty(exports, "convertSnsToDiary", { enumerable: true, get: function () { return snsToDiary_1.convertSnsToDiary; } });
+var generateLawsuitClaimReason_1 = require("./generateLawsuitClaimReason");
+Object.defineProperty(exports, "generateLawsuitClaimReason", { enumerable: true, get: function () { return generateLawsuitClaimReason_1.generateLawsuitClaimReason; } });
 var bookMaterial_1 = require("./bookMaterial");
 Object.defineProperty(exports, "convertToBookMaterial", { enumerable: true, get: function () { return bookMaterial_1.convertToBookMaterial; } });
 var elderBook_1 = require("./elderBook");
