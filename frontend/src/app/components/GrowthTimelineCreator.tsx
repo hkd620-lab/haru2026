@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { toast } from 'sonner';
 import { db, storage } from '../../firebase';
+import { firestoreService } from '../services/firestoreService';
 import { readOriginalImageMeta } from '../services/photoMetadataService';
 import {
   getLocationCandidateFromGps,
@@ -46,6 +48,13 @@ type SavedGrowthTimeline = {
   items: TimelineItem[];
 };
 
+type TimelineRecordItem = {
+  url: string;
+  takenDate: string;
+  memo: string;
+  order: number;
+};
+
 function todayKey() {
   const now = new Date();
   const yyyy = now.getFullYear();
@@ -85,6 +94,56 @@ function timestampLabel(value: any) {
   const mm = String(date.getMonth() + 1).padStart(2, '0');
   const dd = String(date.getDate()).padStart(2, '0');
   return `${yyyy}.${mm}.${dd}`;
+}
+
+function fallbackTitleDate() {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  return `${yyyy}.${mm}.${dd}`;
+}
+
+function formatDateLabel(value: string) {
+  if (!value) return '';
+  const [yyyy, mm, dd] = value.split('-');
+  if (!yyyy || !mm || !dd) return value;
+  return `${yyyy}.${mm}.${dd}`;
+}
+
+function buildTimelineSummary(items: TimelineRecordItem[], periodStart: string, periodEnd: string) {
+  const header = [
+    `기간: ${formatDateLabel(periodStart)}${periodEnd && periodEnd !== periodStart ? ` ~ ${formatDateLabel(periodEnd)}` : ''}`,
+    `사진: ${items.length}장`,
+  ].filter(Boolean).join('\n');
+  const body = items
+    .map((item, index) => {
+      const memo = item.memo.trim() || '설명 없음';
+      return `${index + 1}. ${formatDateLabel(item.takenDate)}\n${memo}`;
+    })
+    .join('\n\n');
+  return `${header}\n\n${body}`.trim();
+}
+
+async function createTimelineTitle(inputTitle: string, summary: string) {
+  const customTitle = inputTitle.trim();
+  const hasCustomTitle = customTitle.length > 0 && customTitle !== '성장타임라인';
+  const fallbackTitle = hasCustomTitle ? customTitle : `성장타임라인 ${fallbackTitleDate()}`;
+
+  try {
+    const fns = getFunctions(undefined, 'asia-northeast3');
+    const extractTitle = httpsCallable(fns, 'extractTitle');
+    const titleText = hasCustomTitle ? `${customTitle}\n\n${summary}` : summary;
+    if (titleText.trim().length <= 5) return fallbackTitle;
+    const result = await extractTitle({
+      text: titleText.slice(0, 1500),
+      format: '성장타임라인',
+    });
+    const aiTitle = String((result.data as any)?.title || '').trim();
+    return aiTitle || fallbackTitle;
+  } catch {
+    return fallbackTitle;
+  }
 }
 
 function locationCandidateLabel(item: Pick<DraftTimelineItem, 'locationCandidate' | 'locationStatus'>) {
@@ -271,7 +330,7 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
     setIsSaving(true);
     const timelineId = `growth_${Date.now()}`;
     try {
-      const savedItems: TimelineItem[] = [];
+      const savedItems: TimelineRecordItem[] = [];
       for (let index = 0; index < sortedItems.length; index++) {
         const item = sortedItems[index];
         const safeName = sanitizeFileName(item.originalName);
@@ -283,25 +342,26 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
         savedItems.push({
           url,
           takenDate: item.takenDate,
-          metadataSource: item.metadataSource,
           memo: item.memo.trim(),
           order: index,
         });
       }
       const periodStart = savedItems[0]?.takenDate || '';
       const periodEnd = savedItems[savedItems.length - 1]?.takenDate || '';
+      const content = buildTimelineSummary(savedItems, periodStart, periodEnd);
+      const resolvedTitle = await createTimelineTitle(title, content);
 
-      await setDoc(doc(db, 'users', uid, 'timelines', timelineId), {
-        title: title.trim() || '성장타임라인',
-        type: 'growth',
-        status: 'final',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        finalizedAt: serverTimestamp(),
+      await firestoreService.saveRecord(uid, {
+        date: periodStart || todayKey(),
+        formats: ['성장타임라인'],
+        format: '성장타임라인',
+        recordType: 'growthTimeline',
+        title: resolvedTitle,
+        content,
+        timelineItems: savedItems,
         periodStart,
         periodEnd,
         itemCount: savedItems.length,
-        items: savedItems,
       });
 
       toast.success('HARU타임라인이 최종 저장되었습니다.');

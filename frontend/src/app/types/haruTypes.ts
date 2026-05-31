@@ -24,6 +24,7 @@ export type RecordFormat =
   | 'HARU주식관리'
   | '주식거래일지'
   | '메모'
+  | '성장타임라인'
   | 'HARUraw'
   | 'HARU보조장부';
 
@@ -80,6 +81,7 @@ export const FORMAT_PREFIX: Record<RecordFormat, string> = {
   'HARU주식관리': 'stock',
   '주식거래일지': 'stock',
   '메모': 'memo',
+  '성장타임라인': 'growthTimeline',
   'HARUraw': 'haruraw',
   'HARU보조장부': 'ledger',
 };
@@ -98,6 +100,7 @@ export const PREFIX_TO_FORMAT: Record<string, RecordFormat> = {
   'child': '육아일기',
   'stock': 'HARU주식관리',
   'memo': '메모',
+  'growthTimeline': '성장타임라인',
   'haruraw': 'HARUraw',
   'ledger': 'HARU보조장부',
 };
@@ -117,6 +120,7 @@ export const FORMAT_EMOJI: Record<RecordFormat, string> = {
   'HARU주식관리': '📈',
   '주식거래일지': '📈',
   '메모': '📝',
+  '성장타임라인': '🌿',
   'HARUraw': '⚖️',
   'HARU보조장부': '🧾',
 };

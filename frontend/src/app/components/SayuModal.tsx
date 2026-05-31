@@ -16,6 +16,13 @@ import { readOriginalImageMeta, type UploadedImageMeta } from '../services/photo
 const WEATHER_OPTIONS = ['쾌청', '흐림', '비', '눈'];
 const TEMPERATURE_OPTIONS = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
 
+type GrowthTimelineEditItem = {
+  url: string;
+  takenDate: string;
+  memo: string;
+  order: number;
+};
+
 function parseUploadedImageMeta(value: unknown): UploadedImageMeta[] {
   try {
     const parsed = typeof value === 'string' ? JSON.parse(value) : value;
@@ -24,6 +31,18 @@ function parseUploadedImageMeta(value: unknown): UploadedImageMeta[] {
   } catch {
     return [];
   }
+}
+
+function sortTimelineItems(items: GrowthTimelineEditItem[]) {
+  return [...items].sort((a, b) => a.takenDate.localeCompare(b.takenDate) || a.order - b.order);
+}
+
+function getTimelinePeriod(items: GrowthTimelineEditItem[]) {
+  const sorted = sortTimelineItems(items);
+  return {
+    periodStart: sorted[0]?.takenDate || '',
+    periodEnd: sorted[sorted.length - 1]?.takenDate || '',
+  };
 }
 
 export interface SayuModalProps {
@@ -40,6 +59,7 @@ export interface SayuModalProps {
   temperature?: string;
   mood?: string;
   images?: string[];
+  timelineItems?: GrowthTimelineEditItem[];
   formatKey?: string;
   onRefresh?: () => void;
   firestoreId?: string;
@@ -72,6 +92,7 @@ export function SayuModal({
   temperature,
   mood,
   images = [],
+  timelineItems = [],
   formatKey,
   onRefresh,
   firestoreId,
@@ -96,8 +117,10 @@ export function SayuModal({
   const [editedWeather, setEditedWeather] = useState(weather || '');
   const [editedTemperature, setEditedTemperature] = useState(temperature || '');
   const [localImages, setLocalImages] = useState<string[]>(images || []);
+  const [editedTimelineItems, setEditedTimelineItems] = useState<GrowthTimelineEditItem[]>([]);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [editedTitle, setEditedTitle] = useState(title || '');
+  const isGrowthTimeline = formatKey === 'growthTimeline';
 
   const refreshPublicSharedRecord = async () => {
     if (!currentUser?.uid || !firestoreId) return;
@@ -429,6 +452,12 @@ export function SayuModal({
       setEditedTemperature(temperature || '');
       setEditedTitle(title || '');
       setLocalImages((images || []).filter(url => typeof url === 'string' && url.trim().length > 0 && url.startsWith('http')));
+      setEditedTimelineItems(sortTimelineItems(timelineItems).map((item, index) => ({
+        url: item.url,
+        takenDate: item.takenDate,
+        memo: item.memo,
+        order: index,
+      })));
       setIsSpecialDay((currentRating || 0) > 0);
       setViewMode('ai');
       setIsPrinting(false);
@@ -463,11 +492,37 @@ export function SayuModal({
         });
       }
     }
-  }, [isOpen, content, currentRating, images, format]);
+  }, [isOpen, content, currentRating, images, format, title, timelineItems]);
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      if (isGrowthTimeline) {
+        if (!currentUser || !firestoreId) return;
+        const sanitizedTimelineItems = sortTimelineItems(editedTimelineItems).map((item, index) => ({
+          url: item.url,
+          takenDate: item.takenDate,
+          memo: item.memo.trim(),
+          order: index,
+        }));
+        const { periodStart, periodEnd } = getTimelinePeriod(sanitizedTimelineItems);
+        const recordRef = doc(db, 'users', currentUser.uid, 'records', firestoreId);
+        await updateDoc(recordRef, {
+          title: editedTitle.trim() || '성장타임라인',
+          content: editedContent,
+          timelineItems: sanitizedTimelineItems,
+          date: periodStart || recordDate || '',
+          periodStart,
+          periodEnd,
+          itemCount: sanitizedTimelineItems.length,
+          updatedAt: new Date().toISOString(),
+        });
+        toast.success('✅ 성장타임라인이 저장되었습니다!');
+        await onRefresh?.();
+        onClose();
+        return;
+      }
+
       if (currentUser && firestoreId) {
         const recordRef = doc(db, 'users', currentUser.uid, 'records', firestoreId);
         const titleUpdate: Record<string, string> = {
@@ -1019,82 +1074,92 @@ export function SayuModal({
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               {/* 📝 텍스트 복사 버튼 (카톡용) */}
-              <button
-                onClick={handleCopyText}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: 8,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-                title="텍스트 복사 (카톡용)"
-              >
-                <FileText style={{ width: 20, height: 20, color: '#10b981' }} />
-              </button>
+              {!isGrowthTimeline && (
+                <button
+                  onClick={handleCopyText}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  title="텍스트 복사 (카톡용)"
+                >
+                  <FileText style={{ width: 20, height: 20, color: '#10b981' }} />
+                </button>
+              )}
 
               {/* 📋 이미지 복사 버튼 (Word용) */}
-              <button
-                onClick={handleCopyWithImages}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: 8,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-                title="이미지 복사 (Word/Gmail용)"
-              >
-                <Copy style={{ width: 20, height: 20, color: '#1A3C6E' }} />
-              </button>
+              {!isGrowthTimeline && (
+                <button
+                  onClick={handleCopyWithImages}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  title="이미지 복사 (Word/Gmail용)"
+                >
+                  <Copy style={{ width: 20, height: 20, color: '#1A3C6E' }} />
+                </button>
+              )}
               
               {/* 💾 PDF 저장 버튼 */}
-              <button
-                onClick={handleSavePDF}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: 8,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: isPremium ? 1 : 0.6,
-                }}
-                title={isPremium ? 'PDF 저장' : '🔒 PREMIUM 전용 기능'}
-              >
-                <Download style={{ width: 20, height: 20, color: 'currentColor' }} />
-                {!isPremium && <span className="ml-1 text-xs">🔒</span>}
-              </button>
+              {!isGrowthTimeline && (
+                <button
+                  onClick={handleSavePDF}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: isPremium ? 1 : 0.6,
+                  }}
+                  title={isPremium ? 'PDF 저장' : '🔒 PREMIUM 전용 기능'}
+                >
+                  <Download style={{ width: 20, height: 20, color: 'currentColor' }} />
+                  {!isPremium && <span className="ml-1 text-xs">🔒</span>}
+                </button>
+              )}
 
               {/* 구분선 */}
-              <div style={{ width: 1, height: 20, backgroundColor: '#e5e5e5', margin: '0 2px' }} />
+              {!isGrowthTimeline && (
+                <div style={{ width: 1, height: 20, backgroundColor: '#e5e5e5', margin: '0 2px' }} />
+              )}
 
               {/* 🖨️ 인쇄 버튼 */}
-              <button
-                onClick={handlePrint}
-                disabled={isPrinting}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: isPrinting ? 'not-allowed' : 'pointer',
-                  padding: 8,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: isPrinting ? 0.5 : 1,
-                }}
-                title="인쇄"
-              >
-                <Printer style={{ width: 20, height: 20, color: 'currentColor' }} />
-              </button>
+              {!isGrowthTimeline && (
+                <button
+                  onClick={handlePrint}
+                  disabled={isPrinting}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: isPrinting ? 'not-allowed' : 'pointer',
+                    padding: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: isPrinting ? 0.5 : 1,
+                  }}
+                  title="인쇄"
+                >
+                  <Printer style={{ width: 20, height: 20, color: 'currentColor' }} />
+                </button>
+              )}
               
               {/* 🗑 삭제 버튼 */}
-              {formatKey && recordDate && (
+              {formatKey && recordDate && !isGrowthTimeline && (
                 <button
                   onClick={() => setShowDeleteDialog(true)}
                   style={{
@@ -1285,8 +1350,74 @@ export function SayuModal({
                 </div>
               )}
 
+              {isGrowthTimeline && editedTimelineItems.length > 0 && (
+                <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <p style={{ margin: 0, fontSize: 13, color: '#1A3C6E', fontWeight: 800 }}>
+                    성장타임라인 사진별 기록
+                  </p>
+                  {editedTimelineItems.map((item, index) => (
+                    <div
+                      key={`${item.url}_${index}`}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '72px 1fr',
+                        gap: 10,
+                        padding: 10,
+                        border: '1px solid #e5e7eb',
+                        borderRadius: 10,
+                        backgroundColor: '#fff',
+                      }}
+                    >
+                      <img
+                        src={item.url}
+                        alt={`성장타임라인 사진 ${index + 1}`}
+                        style={{ width: 72, height: 72, borderRadius: 8, objectFit: 'cover', backgroundColor: '#f3f4f6' }}
+                      />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+                        <input
+                          type="date"
+                          value={item.takenDate}
+                          onChange={(event) => setEditedTimelineItems(prev => prev.map((entry, entryIndex) => (
+                            entryIndex === index ? { ...entry, takenDate: event.target.value } : entry
+                          )))}
+                          style={{
+                            width: '100%',
+                            boxSizing: 'border-box',
+                            border: '1px solid #d0dff0',
+                            borderRadius: 7,
+                            padding: '8px 9px',
+                            color: '#1A3C6E',
+                            fontSize: 13,
+                          }}
+                        />
+                        <textarea
+                          value={item.memo}
+                          onChange={(event) => setEditedTimelineItems(prev => prev.map((entry, entryIndex) => (
+                            entryIndex === index ? { ...entry, memo: event.target.value } : entry
+                          )))}
+                          placeholder="사진 설명"
+                          rows={2}
+                          style={{
+                            width: '100%',
+                            boxSizing: 'border-box',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: 7,
+                            padding: '8px 9px',
+                            color: '#333',
+                            fontSize: 13,
+                            lineHeight: 1.5,
+                            resize: 'vertical',
+                            fontFamily: 'inherit',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* 사진 표시 블록 */}
-              {(() => {
+              {!isGrowthTimeline && (() => {
                 const validImages = (localImages || []).filter(img => img && img !== '');
                 if (validImages.length === 0) return null;
                 const hideOnError = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -1519,7 +1650,7 @@ export function SayuModal({
                 }}
                 onChange={handleImageUpload}
               />
-              {localImages.length < 3 && (
+              {!isGrowthTimeline && localImages.length < 3 && (
                 <div style={{ marginBottom: '16px' }}>
                   <button
                     onClick={() => document.getElementById('sayu-image-upload')?.click()}

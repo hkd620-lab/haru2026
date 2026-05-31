@@ -4,7 +4,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { storage, db } from '../../firebase';
 import { HaruRecord } from '../services/firestoreService';
 import { toast } from 'sonner';
-import { GrowthTimelineCreator, GrowthTimelineLibrary } from './GrowthTimelineCreator';
+import { GrowthTimelineCreator } from './GrowthTimelineCreator';
 
 interface PhotoItem {
   url: string;
@@ -169,7 +169,6 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [growthCreatorOpen, setGrowthCreatorOpen] = useState(false);
-  const [growthTimelineRefreshKey, setGrowthTimelineRefreshKey] = useState(0);
   const generatingRef = useRef(false);
 
   const allPhotos = isLoadingRecords ? [] : extractPhotos(records);
@@ -481,12 +480,10 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
                     uid={uid}
                     onDone={() => {
                       setGrowthCreatorOpen(false);
-                      setGrowthTimelineRefreshKey(prev => prev + 1);
                     }}
                   />
                 )}
               </div>
-              <GrowthTimelineLibrary uid={uid} refreshKey={growthTimelineRefreshKey} />
 
               {/* ⬇️ 서버 사진 자동수집·콜라주 생성 흐름 — 갤러리 직접선택 MVP로 전환하며 화면에서 숨김.
                   코드는 보존하며 되살리려면 아래 false 를 제거하면 됨. */}

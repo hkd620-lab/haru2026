@@ -32,12 +32,39 @@ const FORMAT_FIRST_FIELD: Record<string, string> = {
   memo: 'memo_title',
   reading: 'reading_book_title',
   stock: 'stock_name',
+  growthTimeline: 'title',
 };
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 const PAGE_SIZE = 10;
 const PUBLIC_SAYU_REQUIRED_MESSAGE = '먼저 SAYU 다듬기를 완료한 뒤 공개할 수 있습니다.';
 const PUBLIC_ALLOWED_FORMAT_KEYS = new Set(['diary', 'essay', 'travel', 'garden', 'pet', 'memo', 'reading']);
+
+type GrowthTimelineRecordItem = {
+  url: string;
+  takenDate: string;
+  memo: string;
+  order: number;
+};
+
+function isGrowthTimelineRecord(record: any) {
+  return record?.recordType === 'growthTimeline'
+    || record?.format === '성장타임라인'
+    || (Array.isArray(record?.formats) && record.formats.includes('성장타임라인'));
+}
+
+function normalizeTimelineItems(value: unknown): GrowthTimelineRecordItem[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item: any) => typeof item?.url === 'string' && item.url.startsWith('http'))
+    .map((item: any, index: number) => ({
+      url: item.url,
+      takenDate: typeof item.takenDate === 'string' ? item.takenDate : '',
+      memo: typeof item.memo === 'string' ? item.memo : '',
+      order: typeof item.order === 'number' ? item.order : index,
+    }))
+    .sort((a, b) => a.takenDate.localeCompare(b.takenDate) || a.order - b.order);
+}
 
 interface AiLog { id: string; title?: string; source?: string; createdAt?: string; [key: string]: any; }
 interface Chapter { id: string; bookId: string; title: string; sourceTitle: string; content: string; order: number; }
@@ -127,6 +154,14 @@ function extractPreviewKeywords(text: string): string[] {
 // 레코드 본문 필드를 하나의 문자열로 합치는 헬퍼 (AI 추출과 fallback 양쪽에서 재사용)
 function getRecordSourceText(r: any, prefix: string): string {
   if (!r) return '';
+  if (prefix === 'growthTimeline') {
+    const items = normalizeTimelineItems(r.timelineItems);
+    return [
+      typeof r.title === 'string' ? r.title : '',
+      typeof r.content === 'string' ? r.content : '',
+      ...items.map((item) => item.memo),
+    ].filter((value) => value.trim()).join(' ');
+  }
   const parts: string[] = [];
   const sayu = r[`${prefix}_sayu`];
   if (typeof sayu === 'string') parts.push(sayu);
@@ -378,6 +413,7 @@ export function SayuPage() {
     temperature?: string;
     mood?: string;
     images?: string[];
+    timelineItems?: GrowthTimelineRecordItem[];
     title?: string;
     aiTitle?: string;
     isPublic?: boolean;
@@ -386,6 +422,7 @@ export function SayuPage() {
     isOpen: false,
     content: '',
     dateLabel: '',
+    timelineItems: [],
     title: '',
     aiTitle: '',
   });
@@ -1300,6 +1337,7 @@ export function SayuPage() {
     '독서사유': 'reading',
     '텃밭일지': 'garden', '애완동물관찰일지': 'pet', '육아일기': 'child',
     '메모': 'memo',
+    '성장타임라인': 'growthTimeline',
     'HARU주식관리': 'stock',
     '주식거래일지': 'stock',
   };
@@ -1317,6 +1355,11 @@ export function SayuPage() {
     let hasAnyWritten = false;
 
     dayRecords.forEach((record) => {
+      if (isGrowthTimelineRecord(record)) {
+        hasAnySaved = true;
+        hasAnyWritten = true;
+        return;
+      }
       if (!record.formats || record.formats.length === 0) return;
       record.formats.forEach((format) => {
         const prefix = ALL_FORMAT_PREFIXES[format];
@@ -1353,6 +1396,7 @@ export function SayuPage() {
     report:  '#6B7280',
     work:    '#0D9488',
     memo:    '#D97706',
+    growthTimeline: '#4E6B2A',
     haruraw: '#10b981',
     stock:   '#F59E0B',
   };
@@ -1364,6 +1408,10 @@ export function SayuPage() {
     const seen = new Set<string>();
     const dots: { prefix: string; color: string }[] = [];
     dayRecords.forEach((record) => {
+      if (isGrowthTimelineRecord(record) && !seen.has('growthTimeline')) {
+        seen.add('growthTimeline');
+        dots.push({ prefix: 'growthTimeline', color: FORMAT_COLORS['growthTimeline'] });
+      }
       if (record.formats?.includes('HARUraw' as any) && !seen.has('haruraw')) {
         seen.add('haruraw');
         dots.push({ prefix: 'haruraw', color: FORMAT_COLORS['haruraw'] });
@@ -1401,7 +1449,9 @@ export function SayuPage() {
     const availableFormats: { key: string; label: string; recordId: string }[] = [];
     dayRecords.forEach((record) => {
       const formatsForRecord =
-        Array.isArray(record.formats) && record.formats.length > 0
+        isGrowthTimelineRecord(record)
+          ? [{ label: '성장타임라인', prefix: 'growthTimeline' }]
+        : Array.isArray(record.formats) && record.formats.length > 0
           ? record.formats
               .map((format) => ({ label: String(format), prefix: ALL_FORMAT_PREFIXES[String(format)] }))
               .filter((item) => item.prefix)
@@ -1445,6 +1495,36 @@ export function SayuPage() {
         query: (record as any).haruraw_query || '',
         summary: (record as any).haruraw_summary || '',
         articles: (record as any).haruraw_articles || '',
+      });
+      return;
+    }
+
+    if (formatKey === 'growthTimeline' || isGrowthTimelineRecord(record)) {
+      const timelineItems = normalizeTimelineItems((record as any).timelineItems);
+      setSelectedDate(dateStr);
+      setSelectedDateFormats([{ key: 'growthTimeline', label: '성장타임라인', recordId: record.id }]);
+      setSayuModalState({
+        isOpen: true,
+        content: String((record as any).content || ''),
+        originalData: {},
+        format: '성장타임라인',
+        formatKey: 'growthTimeline',
+        firestoreId: record.id,
+        title: String((record as any).title || ''),
+        aiTitle: '',
+        isPublic: false,
+        sharedRecordId: '',
+        dateLabel: new Date(dateStr + 'T00:00:00').toLocaleDateString('ko-KR', {
+          month: 'long',
+          day: 'numeric',
+        }),
+        currentRating: 0,
+        recordDate: dateStr,
+        weather: record.weather,
+        temperature: record.temperature,
+        mood: record.mood,
+        images: timelineItems.slice(0, 3).map((item) => item.url),
+        timelineItems,
       });
       return;
     }
@@ -1523,6 +1603,7 @@ export function SayuPage() {
       temperature: record.temperature,
       mood: record.mood,
       images,
+      timelineItems: [],
     });
   };
 
@@ -1536,6 +1617,7 @@ export function SayuPage() {
       isOpen: false,
       content: '',
       dateLabel: '',
+      timelineItems: [],
     });
 
     const currentDate = selectedDate;
@@ -1553,6 +1635,14 @@ export function SayuPage() {
           const seenFormatKeys = new Set<string>();
           const availableFormats: { key: string; label: string; recordId?: string }[] = [];
           dayRecords.forEach((record) => {
+            if (isGrowthTimelineRecord(record)) {
+              const entryKey = `growthTimeline_${record.id}`;
+              if (!seenFormatKeys.has(entryKey)) {
+                seenFormatKeys.add(entryKey);
+                availableFormats.push({ key: 'growthTimeline', label: '성장타임라인', recordId: record.id });
+              }
+              return;
+            }
             if (!record.formats) return;
             record.formats.forEach((format) => {
               const prefix = ALL_FORMAT_PREFIXES[format];
@@ -2018,6 +2108,9 @@ export function SayuPage() {
   };
 
   const getRecordFormatsForList = (record: HaruRecord) => {
+    const formatsFromSpecial = isGrowthTimelineRecord(record)
+      ? [{ label: '성장타임라인', prefix: 'growthTimeline' }]
+      : [];
     const formatsFromRecord = Array.isArray(record.formats)
       ? record.formats
           .map((format) => ({
@@ -2033,7 +2126,7 @@ export function SayuPage() {
       .filter(({ prefix }) => getRecordSourceText(record, prefix).trim().length > 0);
 
     const seen = new Set<string>();
-    return [...formatsFromRecord, ...formatsFromFields].filter((item) => {
+    return [...formatsFromSpecial, ...formatsFromRecord, ...formatsFromFields].filter((item) => {
       if (seen.has(item.prefix)) return false;
       seen.add(item.prefix);
       return true;
@@ -2063,6 +2156,9 @@ export function SayuPage() {
 
   const hasCompletedFormatForRecord = (record: HaruRecord, prefix: string) => {
     if (isKnowledgeWarehouseRecord(record)) return false;
+    if (prefix === 'growthTimeline') {
+      return isGrowthTimelineRecord(record) && normalizeTimelineItems((record as any).timelineItems).length > 0;
+    }
     const sayu = record[`${prefix}_sayu`];
     const finalSayu = record[`${prefix}_final_sayu`];
     const status = record[`${prefix}_status`];
@@ -2075,6 +2171,9 @@ export function SayuPage() {
   };
 
   const getRecordDisplayTitle = (record: HaruRecord, prefix: string, label: string) => {
+    if (prefix === 'growthTimeline') {
+      return (String((record as any).title || '').trim() || label).slice(0, 48);
+    }
     const title =
       String(record[`${prefix}_ai_title`] || '').trim() ||
       String(record[`${prefix}_title`] || '').trim() ||
@@ -2106,16 +2205,37 @@ export function SayuPage() {
     .flatMap((record) =>
       getRecordFormatsForList(record)
         .filter(({ prefix }) => hasCompletedFormatForRecord(record, prefix))
-        .map(({ label, prefix }) => ({
-          id: `${record.id}_${prefix}`,
-          date: record.date,
-          label,
-          title: getRecordDisplayTitle(record, prefix, label),
-          subtitle: getRecordPreviewKeywords(record, prefix).slice(0, 4).join(' · '),
-          color: FORMAT_COLORS[prefix] ?? '#1A3C6E',
-          keywords: getRecordPreviewKeywords(record, prefix),
-          onOpen: () => openFormatSayu(record.date, prefix, label, record.id),
-        })),
+        .map(({ label, prefix }) => {
+          const timelineItems = prefix === 'growthTimeline'
+            ? normalizeTimelineItems((record as any).timelineItems)
+            : [];
+          const periodStart = String((record as any).periodStart || timelineItems[0]?.takenDate || record.date || '');
+          const periodEnd = String((record as any).periodEnd || timelineItems[timelineItems.length - 1]?.takenDate || '');
+          return {
+            id: `${record.id}_${prefix}`,
+            date: record.date,
+            label,
+            title: getRecordDisplayTitle(record, prefix, label),
+            subtitle: prefix === 'growthTimeline'
+              ? `${periodStart || '-'}${periodEnd && periodEnd !== periodStart ? ` ~ ${periodEnd}` : ''} · ${timelineItems.length || (record as any).itemCount || 0}장`
+              : getRecordPreviewKeywords(record, prefix).slice(0, 4).join(' · '),
+            color: FORMAT_COLORS[prefix] ?? '#1A3C6E',
+            keywords: getRecordPreviewKeywords(record, prefix),
+            onOpen: () => openFormatSayu(record.date, prefix, label, record.id),
+            extra: prefix === 'growthTimeline' && timelineItems[0]?.url ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 18px 12px 68px' }}>
+                <img
+                  src={timelineItems[0].url}
+                  alt="성장타임라인 대표사진"
+                  style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', border: '1px solid #e5e7eb', flexShrink: 0 }}
+                />
+                <span style={{ borderRadius: 999, backgroundColor: '#edf7f1', color: '#37644a', padding: '4px 9px', fontSize: 11, fontWeight: 800 }}>
+                  성장타임라인
+                </span>
+              </div>
+            ) : undefined,
+          };
+        }),
     )
     .sort((a, b) => b.date.localeCompare(a.date) || a.label.localeCompare(b.label));
 
@@ -2962,7 +3082,9 @@ export function SayuPage() {
         temperature={sayuModalState.temperature}
         mood={sayuModalState.mood}
         images={sayuModalState.images}
+        timelineItems={sayuModalState.timelineItems}
         formatKey={sayuModalState.formatKey}
+        onRefresh={fetchRecords}
         firestoreId={sayuModalState.firestoreId}
         title={sayuModalState.title}
         publicControl={(() => {
@@ -3019,7 +3141,6 @@ export function SayuPage() {
             </div>
           );
         })()}
-        onRefresh={undefined}
       />
 
       {/* HARUraw 모달 */}

@@ -106,6 +106,7 @@ const PUBLIC_FORMAT_PREFIX: Record<RecordFormat, string> = {
   'HARU주식관리': 'stock',
   '주식거래일지': 'stock',
   '메모': 'memo',
+  '성장타임라인': 'growthTimeline',
   'HARUraw': 'haruraw',
   'HARU보조장부': 'ledger',
 };
