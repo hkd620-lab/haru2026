@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { toast } from 'sonner';
@@ -613,9 +613,60 @@ export function GrowthTimelineLibrary({ uid, refreshKey = 0 }: GrowthTimelineLib
   const [selectedTimeline, setSelectedTimeline] = useState<SavedGrowthTimeline | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string>('');
+  const [editingId, setEditingId] = useState<string>('');
+  const [editingTitle, setEditingTitle] = useState('');
+  const [savingTitleId, setSavingTitleId] = useState<string>('');
+
+  const startTitleEdit = (timeline: SavedGrowthTimeline) => {
+    if (deletingId || savingTitleId) return;
+    setEditingId(timeline.id);
+    setEditingTitle(timeline.title);
+  };
+
+  const cancelTitleEdit = () => {
+    if (savingTitleId) return;
+    setEditingId('');
+    setEditingTitle('');
+  };
+
+  const saveTitleEdit = async (timeline: SavedGrowthTimeline) => {
+    if (savingTitleId || deletingId) return;
+    const nextTitle = editingTitle.trim();
+    if (!nextTitle) {
+      toast.warning('제목을 입력해주세요.');
+      return;
+    }
+    if (nextTitle === timeline.title) {
+      cancelTitleEdit();
+      return;
+    }
+
+    setSavingTitleId(timeline.id);
+    try {
+      const updatedAt = new Date().toISOString();
+      await updateDoc(doc(db, 'users', uid, 'timelines', timeline.id), {
+        title: nextTitle,
+        updatedAt,
+      });
+      setTimelines(prev => prev.map(item => (
+        item.id === timeline.id ? { ...item, title: nextTitle, updatedAt } : item
+      )));
+      setSelectedTimeline(prev => (
+        prev?.id === timeline.id ? { ...prev, title: nextTitle, updatedAt } : prev
+      ));
+      setEditingId('');
+      setEditingTitle('');
+      toast.success('타임라인 제목을 수정했습니다.');
+    } catch (error) {
+      console.error('타임라인 제목 수정 실패:', error);
+      toast.error('제목 수정에 실패했습니다.');
+    } finally {
+      setSavingTitleId('');
+    }
+  };
 
   const handleDelete = async (timeline: SavedGrowthTimeline) => {
-    if (deletingId) return;
+    if (deletingId || savingTitleId) return;
     const ok = window.confirm(`'${timeline.title}' 타임라인을 삭제할까요?\n삭제하면 되돌릴 수 없습니다.`);
     if (!ok) return;
     setDeletingId(timeline.id);
@@ -688,6 +739,8 @@ export function GrowthTimelineLibrary({ uid, refreshKey = 0 }: GrowthTimelineLib
             const dateCheckCount = timeline.items.filter(item => item.metadataSource === 'manualRequired').length;
             const savedLabel = timestampLabel(timeline.finalizedAt) || timestampLabel(timeline.updatedAt) || timestampLabel(timeline.createdAt);
             const isDeleting = deletingId === timeline.id;
+            const isEditing = editingId === timeline.id;
+            const isSavingTitle = savingTitleId === timeline.id;
             return (
               <div
                 key={timeline.id}
@@ -700,52 +753,144 @@ export function GrowthTimelineLibrary({ uid, refreshKey = 0 }: GrowthTimelineLib
                   opacity: isDeleting ? 0.5 : 1,
                 }}
               >
-                <button
-                  type="button"
-                  onClick={() => setSelectedTimeline(timeline)}
-                  disabled={isDeleting}
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    border: 'none',
-                    background: 'transparent',
-                    padding: '12px 6px 12px 14px',
-                    textAlign: 'left',
-                    cursor: isDeleting ? 'default' : 'pointer',
-                  }}
-                >
-                  <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: '50%', backgroundColor: '#4E6B2A', flexShrink: 0 }} />
-                  <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                    <span style={{ fontSize: 15, fontWeight: 800, color: '#1A3C6E', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {timeline.title}
-                    </span>
-                    <span style={{ fontSize: 12, color: '#7a8696', lineHeight: 1.4 }}>
-                      {periodStart || '-'}{periodEnd && periodEnd !== periodStart ? ` ~ ${periodEnd}` : ''} · {timeline.itemCount || timeline.items.length}장{savedLabel ? ` · 최종 저장 ${savedLabel}` : ''}
-                    </span>
-                    {dateCheckCount > 0 && (
-                      <span style={{
-                        alignSelf: 'flex-start',
-                        marginTop: 2,
-                        borderRadius: 999,
-                        backgroundColor: '#fff7dd',
-                        color: '#9a6700',
-                        padding: '3px 8px',
-                        fontSize: 11,
+                {isEditing ? (
+                  <div
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '12px 6px 12px 14px',
+                    }}
+                  >
+                    <input
+                      value={editingTitle}
+                      onChange={event => setEditingTitle(event.target.value)}
+                      onKeyDown={event => {
+                        if (event.key === 'Enter') saveTitleEdit(timeline);
+                        if (event.key === 'Escape') cancelTitleEdit();
+                      }}
+                      disabled={isSavingTitle}
+                      autoFocus
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        border: '1px solid #d0dff0',
+                        borderRadius: 8,
+                        padding: '9px 10px',
+                        color: '#1A3C6E',
+                        fontSize: 14,
                         fontWeight: 800,
-                      }}>
-                        날짜 확인 필요 {dateCheckCount}장
+                        outline: 'none',
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => saveTitleEdit(timeline)}
+                      disabled={isSavingTitle}
+                      style={{
+                        flexShrink: 0,
+                        border: 'none',
+                        borderRadius: 8,
+                        backgroundColor: '#1A3C6E',
+                        color: '#fff',
+                        padding: '9px 10px',
+                        fontSize: 12,
+                        fontWeight: 800,
+                        cursor: isSavingTitle ? 'default' : 'pointer',
+                      }}
+                    >
+                      {isSavingTitle ? '저장 중' : '저장'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={cancelTitleEdit}
+                      disabled={isSavingTitle}
+                      style={{
+                        flexShrink: 0,
+                        border: '1px solid #e4e8ee',
+                        borderRadius: 8,
+                        backgroundColor: '#fff',
+                        color: '#7a8696',
+                        padding: '8px 10px',
+                        fontSize: 12,
+                        fontWeight: 800,
+                        cursor: isSavingTitle ? 'default' : 'pointer',
+                      }}
+                    >
+                      취소
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTimeline(timeline)}
+                    disabled={isDeleting || !!savingTitleId}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      border: 'none',
+                      background: 'transparent',
+                      padding: '12px 6px 12px 14px',
+                      textAlign: 'left',
+                      cursor: isDeleting || savingTitleId ? 'default' : 'pointer',
+                    }}
+                  >
+                    <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: '50%', backgroundColor: '#4E6B2A', flexShrink: 0 }} />
+                    <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <span style={{ fontSize: 15, fontWeight: 800, color: '#1A3C6E', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {timeline.title}
                       </span>
-                    )}
-                  </span>
-                  <span aria-hidden="true" style={{ flexShrink: 0, color: '#b9c2cc', fontSize: 18, lineHeight: 1 }}>›</span>
-                </button>
+                      <span style={{ fontSize: 12, color: '#7a8696', lineHeight: 1.4 }}>
+                        {periodStart || '-'}{periodEnd && periodEnd !== periodStart ? ` ~ ${periodEnd}` : ''} · {timeline.itemCount || timeline.items.length}장{savedLabel ? ` · 최종 저장 ${savedLabel}` : ''}
+                      </span>
+                      {dateCheckCount > 0 && (
+                        <span style={{
+                          alignSelf: 'flex-start',
+                          marginTop: 2,
+                          borderRadius: 999,
+                          backgroundColor: '#fff7dd',
+                          color: '#9a6700',
+                          padding: '3px 8px',
+                          fontSize: 11,
+                          fontWeight: 800,
+                        }}>
+                          날짜 확인 필요 {dateCheckCount}장
+                        </span>
+                      )}
+                    </span>
+                    <span aria-hidden="true" style={{ flexShrink: 0, color: '#b9c2cc', fontSize: 18, lineHeight: 1 }}>›</span>
+                  </button>
+                )}
+                {!isEditing && (
+                  <button
+                    type="button"
+                    onClick={() => startTitleEdit(timeline)}
+                    disabled={isDeleting || !!savingTitleId}
+                    aria-label="타임라인 제목 수정"
+                    style={{
+                      flexShrink: 0,
+                      border: 'none',
+                      borderLeft: '1px solid #eef1f5',
+                      background: 'transparent',
+                      color: '#1A3C6E',
+                      padding: '12px 12px',
+                      fontSize: 13,
+                      fontWeight: 800,
+                      cursor: isDeleting || savingTitleId ? 'default' : 'pointer',
+                    }}
+                  >
+                    수정
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => handleDelete(timeline)}
-                  disabled={isDeleting}
+                  disabled={isDeleting || isEditing || !!savingTitleId}
                   aria-label="타임라인 삭제"
                   style={{
                     flexShrink: 0,
