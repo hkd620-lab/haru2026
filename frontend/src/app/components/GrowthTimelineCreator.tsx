@@ -54,6 +54,7 @@ type TimelineRecordItem = {
   takenDate: string;
   memo: string;
   order: number;
+  locationLabel?: string;
 };
 
 function todayKey() {
@@ -185,6 +186,7 @@ function normalizeSavedTimeline(id: string, data: any): SavedGrowthTimeline | nu
         : 'manualRequired',
       memo: typeof item.memo === 'string' ? item.memo : '',
       order: typeof item.order === 'number' ? item.order : index,
+      locationLabel: typeof item.locationLabel === 'string' ? item.locationLabel : '',
     }));
   const sortedItems = sortTimelineItems(items);
   return {
@@ -214,6 +216,7 @@ function normalizeRecordTimeline(id: string, data: any): SavedGrowthTimeline | n
       metadataSource: 'manual',
       memo: typeof item.memo === 'string' ? item.memo : '',
       order: typeof item.order === 'number' ? item.order : index,
+      locationLabel: typeof item.locationLabel === 'string' ? item.locationLabel : '',
     }));
   const sortedItems = sortTimelineItems(items);
   return {
@@ -250,6 +253,7 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
       order: index,
       locationCandidate: item.locationCandidate,
       locationStatus: item.locationStatus,
+      locationLabel: item.locationLabel,
     })),
     [sortedItems]
   );
@@ -278,6 +282,7 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
         const longitude = typeof meta.longitude === 'number' ? meta.longitude : undefined;
         const hasGps = typeof latitude === 'number' && typeof longitude === 'number';
         let locationCandidate: ReverseGeocodeCandidate | undefined;
+        let locationLabel = '';
         let locationStatus: DraftTimelineItem['locationStatus'] = hasGps ? 'loading' : 'none';
 
         if (hasGps) {
@@ -285,6 +290,12 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
             const candidate = await getLocationCandidateFromGps(latitude, longitude);
             if (candidate) {
               locationCandidate = candidate;
+              // 자동 인식한 장소명을 기본값으로 (사용자가 그대로 두거나 수정 가능)
+              locationLabel = candidate.placeName
+                || candidate.regionLabel
+                || candidate.roadAddress
+                || candidate.jibunAddress
+                || '';
               locationStatus = 'found';
             } else {
               locationStatus = 'not_found';
@@ -308,6 +319,7 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
           latitude,
           longitude,
           locationCandidate,
+          locationLabel,
           locationStatus,
         });
       }
@@ -330,6 +342,10 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
 
   const updateMemo = (id: string, memo: string) => {
     setItems(prev => prev.map(item => (item.id === id ? { ...item, memo } : item)));
+  };
+
+  const updateLocationLabel = (id: string, locationLabel: string) => {
+    setItems(prev => prev.map(item => (item.id === id ? { ...item, locationLabel } : item)));
   };
 
   const removeItem = (id: string) => {
@@ -379,6 +395,7 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
           takenDate: item.takenDate,
           memo: item.memo.trim(),
           order: index,
+          locationLabel: (item.locationLabel || '').trim(),
         });
       }
       const periodStart = savedItems[0]?.takenDate || '';
@@ -563,28 +580,50 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
                     {item.originalName}
                   </span>
                 </div>
-                {locationCandidateLabel(item) && (
-                  <div style={{ marginBottom: 7, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {item.locationStatus === 'found' || (item.locationLabel && item.locationLabel.trim()) ? (
+                  <div style={{ marginBottom: 7, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <span style={{ fontSize: 11, color: '#37644a', fontWeight: 700 }}>
+                      📍 이 장소가 맞나요? (다르면 직접 수정하세요)
+                    </span>
+                    <input
+                      value={item.locationLabel || ''}
+                      onChange={event => updateLocationLabel(item.id, event.target.value)}
+                      placeholder="촬영장소"
+                      disabled={isSaving}
+                      style={{
+                        width: '100%',
+                        boxSizing: 'border-box',
+                        border: '1px solid #cfe3d6',
+                        borderRadius: 8,
+                        padding: '8px 9px',
+                        fontSize: 16,
+                        color: '#1f3a26',
+                        backgroundColor: '#f7fbf8',
+                      }}
+                    />
+                    {locationDetailLabel(item.locationCandidate) && (
+                      <span style={{ fontSize: 11, color: '#8a9683', lineHeight: 1.4 }}>
+                        자동 인식: {locationDetailLabel(item.locationCandidate)}
+                      </span>
+                    )}
+                  </div>
+                ) : locationCandidateLabel(item) ? (
+                  <div style={{ marginBottom: 7 }}>
                     <span
                       style={{
-                        alignSelf: 'flex-start',
+                        display: 'inline-block',
                         fontSize: 11,
-                        color: item.locationStatus === 'found' ? '#37644a' : '#8a9683',
-                        backgroundColor: item.locationStatus === 'found' ? '#edf7f1' : '#f2f4f6',
+                        color: '#8a9683',
+                        backgroundColor: '#f2f4f6',
                         borderRadius: 999,
                         padding: '3px 7px',
                         fontWeight: 700,
                       }}
                     >
-                      촬영장소 후보: {locationCandidateLabel(item)}
+                      {locationCandidateLabel(item)}
                     </span>
-                    {item.locationStatus === 'found' && locationDetailLabel(item.locationCandidate) && (
-                      <span style={{ fontSize: 11, color: '#8a9683', lineHeight: 1.4 }}>
-                        {locationDetailLabel(item.locationCandidate)}
-                      </span>
-                    )}
                   </div>
-                )}
+                ) : null}
                 <input
                   value={item.memo}
                   onChange={event => updateMemo(item.id, event.target.value)}

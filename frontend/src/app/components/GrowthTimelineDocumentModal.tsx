@@ -11,6 +11,8 @@ export type GrowthTimelineDocumentItem = {
   order: number;
   locationCandidate?: ReverseGeocodeCandidate;
   locationStatus?: 'none' | 'loading' | 'found' | 'not_found' | 'error';
+  // 사용자가 확인·수정한 촬영장소명 (자동 인식값을 그대로 두거나 직접 고친 값)
+  locationLabel?: string;
 };
 
 interface GrowthTimelineDocumentModalProps {
@@ -58,6 +60,8 @@ function metadataLabel(source: GrowthTimelineDocumentItem['metadataSource']) {
 }
 
 function locationCandidateLabel(item: GrowthTimelineDocumentItem) {
+  // 사용자가 확인·수정한 장소명이 있으면 항상 그 값을 우선 표시
+  if (item.locationLabel && item.locationLabel.trim()) return item.locationLabel.trim();
   if (item.locationStatus === 'loading') return '촬영장소 확인 중';
   if (item.locationStatus === 'none') return '위치정보 없음';
   if (item.locationStatus === 'not_found') return '촬영장소 후보 없음';
