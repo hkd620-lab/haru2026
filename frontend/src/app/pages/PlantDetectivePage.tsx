@@ -118,6 +118,8 @@ type PhotoItem = {
   uploadedAt?: number;
   // 📍 사진 EXIF GPS → 카카오 역지오코딩으로 얻은 구/동 수준 지역명 (공개 안전 범위)
   regionLabel?: string;
+  // 📍 좌표 주변 장소명(POI) — 호텔·관광지 등 (예: 지리산 노고단, 남산서울타워)
+  placeName?: string;
 };
 
 type PlantImageMeta = {
@@ -130,6 +132,8 @@ type PlantImageMeta = {
   uploadedAt: number;
   // 📍 공개 도감에 노출 가능한 구/동 수준 지역명만 저장 (정밀 좌표·도로명은 저장하지 않음)
   regionLabel?: string;
+  // 📍 좌표 주변 장소명(POI) — 공개 도감에 함께 노출 (사용자 확인·수정 가능)
+  placeName?: string;
 };
 
 const MAX_PHOTOS = 5;
@@ -445,6 +449,20 @@ export function PlantDetectivePage() {
   const [userEditedScientificName, setUserEditedScientificName] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [shareToPublicCatalog, setShareToPublicCatalog] = useState(true);
+  // 📍 촬영장소 — 자동 인식(장소명/지역명)을 기본값으로, 사용자가 확인·수정 가능
+  const [confirmedLocation, setConfirmedLocation] = useState('');
+  const [locationTouched, setLocationTouched] = useState(false);
+  // 업로드한 사진들에서 대표 자동 인식 장소(장소명 우선, 없으면 구/동 지역명)
+  const autoDetectedLocation = useMemo(
+    () => photos.find((p) => p.placeName)?.placeName
+      || photos.find((p) => p.regionLabel)?.regionLabel
+      || '',
+    [photos],
+  );
+  // 사용자가 직접 수정하기 전이면 자동 인식값을 입력칸 기본값으로 채움
+  useEffect(() => {
+    if (!locationTouched) setConfirmedLocation(autoDetectedLocation);
+  }, [autoDetectedLocation, locationTouched]);
   const [confirmedSavedDocId, setConfirmedSavedDocId] = useState<string | null>(null);
   // 현재 결과를 plants/ 컬렉션에 한 번 저장했다면 그 plantId를 기억 — 재저장 시 update
   const [activePlantDocId, setActivePlantDocId] = useState<string | null>(null);
@@ -689,6 +707,8 @@ export function PlantDetectivePage() {
     setObsAiDifference('');
     setObsMemo('');
     setObsSavedAt(null);
+    // 촬영장소 수정 상태 초기화 → 새 사진의 자동 인식값이 다시 채워지도록
+    setLocationTouched(false);
   };
 
   // 🎯 최종 식물명 확정 state object — 향후 도감 저장 시 그대로 직렬화 가능한 형태로 유지
@@ -793,14 +813,16 @@ export function PlantDetectivePage() {
         }
         // 📍 압축 전 원본 file에서 EXIF GPS를 읽어 역지오코딩 (압축하면 GPS가 사라지므로 반드시 압축 앞단에서)
         let regionLabel: string | undefined;
+        let placeName: string | undefined;
         try {
           const meta = await readOriginalImageMeta(file);
           const latitude = typeof meta.latitude === 'number' ? meta.latitude : undefined;
           const longitude = typeof meta.longitude === 'number' ? meta.longitude : undefined;
           if (typeof latitude === 'number' && typeof longitude === 'number') {
             const candidate = await getLocationCandidateFromGps(latitude, longitude);
-            // 공개 도감 노출을 고려해 구/동 수준 지역명만 사용 (정밀 좌표·도로명은 저장하지 않음)
             if (candidate?.regionLabel) regionLabel = candidate.regionLabel;
+            // 장소명(POI)도 함께 사용 — 공개 도감에 노출(예: 지리산 노고단). 사용자가 확인·수정 가능.
+            if (candidate?.placeName) placeName = candidate.placeName;
           }
         } catch (e) {
           console.warn('식물탐정 촬영장소 확인 실패'); // GPS 없거나 실패해도 업로드는 계속 진행
@@ -816,6 +838,7 @@ export function PlantDetectivePage() {
           mimeType: original.type || file.type || 'image/jpeg',
           thumbnailMimeType: thumbnail.type || 'image/jpeg',
           regionLabel,
+          placeName,
         });
       }
       if (next.length > 0) {
@@ -1230,6 +1253,7 @@ export function PlantDetectivePage() {
           fileName: p.fileName || '',
           uploadedAt: p.uploadedAt || ts,
           regionLabel: p.regionLabel,
+          placeName: p.placeName,
         });
         continue;
       }
@@ -1246,6 +1270,7 @@ export function PlantDetectivePage() {
         fileName,
         uploadedAt: ts,
         regionLabel: p.regionLabel,
+        placeName: p.placeName,
       });
     }
     setActivePlantDocId(plantId);
@@ -1312,6 +1337,7 @@ export function PlantDetectivePage() {
           thumbnailFileName: p.thumbnailFileName || '',
           uploadedAt: p.uploadedAt || ts,
           regionLabel: p.regionLabel,
+          placeName: p.placeName,
         });
         continue;
       }
@@ -1338,6 +1364,7 @@ export function PlantDetectivePage() {
         thumbnailFileName,
         uploadedAt: ts,
         regionLabel: p.regionLabel,
+        placeName: p.placeName,
       });
     }
 
@@ -1355,8 +1382,10 @@ export function PlantDetectivePage() {
       result?.plantId?.latinName ||
       result?.gemini?.finalLatinName ||
       '';
-    // 📍 사진들 중 첫 지역명을 대표 촬영장소로 사용 (구/동 수준, 공개 도감 노출 안전)
+    // 📍 촬영장소: 사용자가 확인·수정한 값 우선 → 자동 인식 장소명 → 구/동 지역명 순
     const photoRegionLabel = imageMetas.find((meta) => meta.regionLabel)?.regionLabel || '';
+    const photoPlaceName = imageMetas.find((meta) => meta.placeName)?.placeName || '';
+    const resolvedLocation = confirmedLocation.trim() || photoPlaceName || photoRegionLabel;
     return {
       photoUrl: primaryImage?.imageUrl || '',
       thumbnailUrl: primaryImage?.thumbnailUrl || '',
@@ -1366,8 +1395,8 @@ export function PlantDetectivePage() {
       thumbnailFileName: primaryImage?.thumbnailFileName || '',
       uploadedAt: primaryImage?.uploadedAt || updatedAt,
       regionLabel: photoRegionLabel,
-      locationLabel: photoRegionLabel,
-      publicLocation: photoRegionLabel,
+      locationLabel: resolvedLocation,
+      publicLocation: resolvedLocation,
       imageMetas,
       storagePaths: imageMetas.map((meta) => meta.storagePath).filter(Boolean),
       thumbnailStoragePaths: imageMetas.map((meta) => meta.thumbnailStoragePath).filter(Boolean),
@@ -3436,6 +3465,46 @@ export function PlantDetectivePage() {
               />
               <p style={{ margin: 0, fontSize: 11, color: '#92996f', lineHeight: 1.55 }}>
                 작성한 관찰은 아래 <strong>📔 오늘 기록 저장</strong> 버튼을 누를 때 함께 저장됩니다.
+              </p>
+            </section>
+
+            {/* ========== 📍 촬영장소 확인·수정 ========== */}
+            <section
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+                marginBottom: 14,
+                padding: '12px 14px',
+                borderRadius: 10,
+                border: '1px solid #cfe3d6',
+                background: '#f7fbf8',
+              }}
+            >
+              <label style={{ fontSize: 13, fontWeight: 800, color: '#0F766E' }}>
+                📍 이 장소가 맞나요? (다르면 직접 수정하세요)
+              </label>
+              <input
+                value={confirmedLocation}
+                onChange={(e) => {
+                  setConfirmedLocation(e.target.value);
+                  setLocationTouched(true);
+                }}
+                placeholder="촬영장소 (예: 지리산 노고단)"
+                style={{
+                  borderRadius: 8,
+                  border: '1px solid #cfe3d6',
+                  padding: '10px 12px',
+                  background: '#fff',
+                  fontSize: 16,
+                  color: '#1f2a17',
+                  outline: 'none',
+                }}
+              />
+              <p style={{ margin: 0, fontSize: 11, color: '#6b7654', lineHeight: 1.55 }}>
+                {autoDetectedLocation
+                  ? `사진에서 '${autoDetectedLocation}' 으로 인식했어요. 공개도감에도 이 장소가 함께 표시됩니다.`
+                  : '사진에 위치정보가 없어요. 원하면 촬영장소를 직접 입력할 수 있어요.'}
               </p>
             </section>
 
