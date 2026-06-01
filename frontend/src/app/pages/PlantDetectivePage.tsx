@@ -13,6 +13,8 @@ import type { PlantAsset, PlantAssetSourceType } from '../types/haruTypes';
 import { lookupPlantAlias } from '../data/plantNameAliases';
 import { firestoreService } from '../services/firestoreService';
 import { useSubscription } from '../hooks/useSubscription';
+import { readOriginalImageMeta } from '../services/photoMetadataService';
+import { getLocationCandidateFromGps } from '../services/reverseGeocodeService';
 
 // ===========================================
 // 응답 타입 — functions/src/index.ts detectPlantAdvanced 와 동기
@@ -114,6 +116,8 @@ type PhotoItem = {
   fileName?: string;
   thumbnailFileName?: string;
   uploadedAt?: number;
+  // 📍 사진 EXIF GPS → 카카오 역지오코딩으로 얻은 구/동 수준 지역명 (공개 안전 범위)
+  regionLabel?: string;
 };
 
 type PlantImageMeta = {
@@ -124,6 +128,8 @@ type PlantImageMeta = {
   fileName: string;
   thumbnailFileName?: string;
   uploadedAt: number;
+  // 📍 공개 도감에 노출 가능한 구/동 수준 지역명만 저장 (정밀 좌표·도로명은 저장하지 않음)
+  regionLabel?: string;
 };
 
 const MAX_PHOTOS = 5;
@@ -785,6 +791,20 @@ export function PlantDetectivePage() {
           toast.error(`'${file.name}' 은 20MB를 초과해요.`);
           continue;
         }
+        // 📍 압축 전 원본 file에서 EXIF GPS를 읽어 역지오코딩 (압축하면 GPS가 사라지므로 반드시 압축 앞단에서)
+        let regionLabel: string | undefined;
+        try {
+          const meta = await readOriginalImageMeta(file);
+          const latitude = typeof meta.latitude === 'number' ? meta.latitude : undefined;
+          const longitude = typeof meta.longitude === 'number' ? meta.longitude : undefined;
+          if (typeof latitude === 'number' && typeof longitude === 'number') {
+            const candidate = await getLocationCandidateFromGps(latitude, longitude);
+            // 공개 도감 노출을 고려해 구/동 수준 지역명만 사용 (정밀 좌표·도로명은 저장하지 않음)
+            if (candidate?.regionLabel) regionLabel = candidate.regionLabel;
+          }
+        } catch (e) {
+          console.warn('식물탐정 촬영장소 확인 실패'); // GPS 없거나 실패해도 업로드는 계속 진행
+        }
         const { original, thumbnail } = await createPlantImageVariants(file);
         const base64 = await blobToBase64(original);
         const thumbnailBase64 = await blobToBase64(thumbnail);
@@ -795,6 +815,7 @@ export function PlantDetectivePage() {
           thumbnailBase64,
           mimeType: original.type || file.type || 'image/jpeg',
           thumbnailMimeType: thumbnail.type || 'image/jpeg',
+          regionLabel,
         });
       }
       if (next.length > 0) {
@@ -1208,6 +1229,7 @@ export function PlantDetectivePage() {
           storagePath: p.storagePath || '',
           fileName: p.fileName || '',
           uploadedAt: p.uploadedAt || ts,
+          regionLabel: p.regionLabel,
         });
         continue;
       }
@@ -1223,6 +1245,7 @@ export function PlantDetectivePage() {
         storagePath: path,
         fileName,
         uploadedAt: ts,
+        regionLabel: p.regionLabel,
       });
     }
     setActivePlantDocId(plantId);
@@ -1288,6 +1311,7 @@ export function PlantDetectivePage() {
           fileName: p.fileName || '',
           thumbnailFileName: p.thumbnailFileName || '',
           uploadedAt: p.uploadedAt || ts,
+          regionLabel: p.regionLabel,
         });
         continue;
       }
@@ -1313,6 +1337,7 @@ export function PlantDetectivePage() {
         fileName: originalFileName,
         thumbnailFileName,
         uploadedAt: ts,
+        regionLabel: p.regionLabel,
       });
     }
 
@@ -1330,6 +1355,8 @@ export function PlantDetectivePage() {
       result?.plantId?.latinName ||
       result?.gemini?.finalLatinName ||
       '';
+    // 📍 사진들 중 첫 지역명을 대표 촬영장소로 사용 (구/동 수준, 공개 도감 노출 안전)
+    const photoRegionLabel = imageMetas.find((meta) => meta.regionLabel)?.regionLabel || '';
     return {
       photoUrl: primaryImage?.imageUrl || '',
       thumbnailUrl: primaryImage?.thumbnailUrl || '',
@@ -1338,6 +1365,9 @@ export function PlantDetectivePage() {
       fileName: primaryImage?.fileName || '',
       thumbnailFileName: primaryImage?.thumbnailFileName || '',
       uploadedAt: primaryImage?.uploadedAt || updatedAt,
+      regionLabel: photoRegionLabel,
+      locationLabel: photoRegionLabel,
+      publicLocation: photoRegionLabel,
       imageMetas,
       storagePaths: imageMetas.map((meta) => meta.storagePath).filter(Boolean),
       thumbnailStoragePaths: imageMetas.map((meta) => meta.thumbnailStoragePath).filter(Boolean),
