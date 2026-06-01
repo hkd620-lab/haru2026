@@ -391,6 +391,7 @@ export function SayuPage() {
   const [expandedSayuGroups, setExpandedSayuGroups] = useState<Set<string>>(new Set());
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고', 'SNS검색기록', '내가 읽은 책', 'HARU주식관리']));
   const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
+  const [timelineRefreshKey, setTimelineRefreshKey] = useState(0);
   // 📊 통계/합치기 모달
   const [formatStatModal, setFormatStatModal] = useState<{
     isOpen: boolean;
@@ -2791,7 +2792,13 @@ export function SayuPage() {
       {renderViewModeTabs()}
 
       {sayuTab === 'assistants' && user?.uid && (
-        <GrowthTimelineLibrary uid={user.uid} />
+        <GrowthTimelineLibrary
+          uid={user.uid}
+          refreshKey={timelineRefreshKey}
+          onEditTimeline={(recordId, dateStr) =>
+            openFormatSayu(dateStr || '', 'growthTimeline', '성장타임라인', recordId)
+          }
+        />
       )}
 
       {viewMode === 'list' && renderGroupedEntryList(activeEntries)}
@@ -3084,7 +3091,10 @@ export function SayuPage() {
         images={sayuModalState.images}
         timelineItems={sayuModalState.timelineItems}
         formatKey={sayuModalState.formatKey}
-        onRefresh={fetchRecords}
+        onRefresh={async () => {
+          await fetchRecords();
+          setTimelineRefreshKey((key) => key + 1);
+        }}
         firestoreId={sayuModalState.firestoreId}
         title={sayuModalState.title}
         publicControl={(() => {

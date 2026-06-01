@@ -33,6 +33,7 @@ interface GrowthTimelineCreatorProps {
 interface GrowthTimelineLibraryProps {
   uid: string;
   refreshKey?: number;
+  onEditTimeline?: (recordId: string, dateStr: string) => void;
 }
 
 type SavedGrowthTimeline = {
@@ -637,7 +638,7 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
   );
 }
 
-export function GrowthTimelineLibrary({ uid, refreshKey = 0 }: GrowthTimelineLibraryProps) {
+export function GrowthTimelineLibrary({ uid, refreshKey = 0, onEditTimeline }: GrowthTimelineLibraryProps) {
   const [timelines, setTimelines] = useState<SavedGrowthTimeline[]>([]);
   const [selectedTimeline, setSelectedTimeline] = useState<SavedGrowthTimeline | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -955,6 +956,11 @@ export function GrowthTimelineLibrary({ uid, refreshKey = 0 }: GrowthTimelineLib
             || timestampLabel(selectedTimeline.createdAt)
           }
           onClose={() => setSelectedTimeline(null)}
+          onEdit={onEditTimeline ? () => {
+            const target = selectedTimeline;
+            setSelectedTimeline(null);
+            if (target) onEditTimeline(target.id, target.periodStart || '');
+          } : undefined}
         />
       )}
     </div>

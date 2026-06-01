@@ -24,6 +24,7 @@ interface GrowthTimelineDocumentModalProps {
   onTitleChange?: (title: string) => void;
   onMemoChange?: (order: number, memo: string) => void;
   onFinalize?: () => void;
+  onEdit?: () => void;
 }
 
 // HARU 타임라인 PDF 출력 법칙: A4 한 장에 사진 6장(2열×3행), 초과 시 다음 페이지로 분할
@@ -90,6 +91,7 @@ export function GrowthTimelineDocumentModal({
   onTitleChange,
   onMemoChange,
   onFinalize,
+  onEdit,
 }: GrowthTimelineDocumentModalProps) {
   const { isPremium } = useSubscription();
   const sortedItems = useMemo(() => sortItems(items), [items]);
@@ -419,6 +421,25 @@ export function GrowthTimelineDocumentModal({
             backgroundColor: '#fff',
           }}
         >
+          {onEdit && (
+            <button
+              type="button"
+              onClick={onEdit}
+              style={{
+                border: '1px solid #1A3C6E',
+                borderRadius: 10,
+                backgroundColor: '#fff',
+                color: '#1A3C6E',
+                padding: '10px 14px',
+                fontSize: 13,
+                fontWeight: 900,
+                cursor: 'pointer',
+              }}
+              title="사진·설명 편집 화면으로 이동"
+            >
+              ✏️ 사진·설명 편집
+            </button>
+          )}
           <button
             type="button"
             onClick={handlePrint}
