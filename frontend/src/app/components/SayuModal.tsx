@@ -635,6 +635,63 @@ export function SayuModal({
     }
   };
 
+  const handleTimelineImageAdd = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentUser || !firestoreId) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('이미지 파일만 추가할 수 있습니다.');
+      e.target.value = '';
+      return;
+    }
+
+    let uploadedFileName = '';
+    let shouldCleanupUploadedFile = false;
+    setIsUploadingImage(true);
+    try {
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 8);
+      uploadedFileName = `${firestoreId}_growthTimeline_${timestamp}_${randomId}.jpg`;
+      const originalMeta = await readOriginalImageMeta(file);
+      const imageRef = ref(storage, `users/${currentUser.uid}/format_photos/${uploadedFileName}`);
+      await uploadBytes(imageRef, file, { contentType: file.type || 'image/jpeg' });
+      shouldCleanupUploadedFile = true;
+      const url = await getDownloadURL(imageRef);
+      const today = new Date().toISOString().slice(0, 10);
+      const takenDate = originalMeta.takenDate || recordDate || today;
+      const nextTimelineItems = sortTimelineItems([
+        ...editedTimelineItems,
+        { url, takenDate, memo: '', order: editedTimelineItems.length },
+      ]).map((item, index) => ({ ...item, order: index }));
+      const { periodStart, periodEnd } = getTimelinePeriod(nextTimelineItems);
+
+      await updateDoc(doc(db, 'users', currentUser.uid, 'records', firestoreId), {
+        timelineItems: nextTimelineItems,
+        date: periodStart || recordDate || '',
+        periodStart,
+        periodEnd,
+        itemCount: nextTimelineItems.length,
+        updatedAt: new Date().toISOString(),
+      });
+      shouldCleanupUploadedFile = false;
+      setEditedTimelineItems(nextTimelineItems);
+      await refreshPublicSharedRecord();
+      toast.success('사진이 추가되었습니다!');
+    } catch (err) {
+      if (shouldCleanupUploadedFile && uploadedFileName && currentUser) {
+        try {
+          await deleteObject(ref(storage, `users/${currentUser.uid}/format_photos/${uploadedFileName}`));
+        } catch {
+          // 업로드 롤백 실패는 사용자 작업 흐름을 막지 않습니다.
+        }
+      }
+      console.error('타임라인 사진 추가 실패:', err);
+      toast.error('사진 추가에 실패했습니다.');
+    } finally {
+      setIsUploadingImage(false);
+      e.target.value = '';
+    }
+  };
+
   // 💾 원본 저장
   const handleSaveOriginal = async () => {
     if (!currentUser || !editedOriginalData || Object.keys(editedOriginalData).length === 0 || (!recordDate && !firestoreId)) return;
@@ -1413,6 +1470,45 @@ export function SayuModal({
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {isGrowthTimeline && (
+                <div style={{ marginBottom: '16px' }}>
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById('sayu-timeline-upload')?.click()}
+                    disabled={isUploadingImage}
+                    style={{
+                      padding: '8px 20px',
+                      fontSize: 13,
+                      borderRadius: 8,
+                      border: '1px dashed #1A3C6E',
+                      backgroundColor: '#FDF6C3',
+                      color: '#1A3C6E',
+                      cursor: isUploadingImage ? 'not-allowed' : 'pointer',
+                      opacity: isUploadingImage ? 0.5 : 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    {isUploadingImage ? '⏳ 업로드 중...' : '📷 타임라인 사진 추가'}
+                  </button>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    id="sayu-timeline-upload"
+                    style={{
+                      position: 'absolute',
+                      width: 0,
+                      height: 0,
+                      opacity: 0,
+                      overflow: 'hidden',
+                      pointerEvents: 'none',
+                    }}
+                    onChange={handleTimelineImageAdd}
+                  />
                 </div>
               )}
 
