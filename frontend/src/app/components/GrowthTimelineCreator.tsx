@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { collection, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { toast } from 'sonner';
@@ -188,6 +188,35 @@ function normalizeSavedTimeline(id: string, data: any): SavedGrowthTimeline | nu
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
     finalizedAt: data.finalizedAt,
+    periodStart: typeof data.periodStart === 'string' ? data.periodStart : sortedItems[0]?.takenDate,
+    periodEnd: typeof data.periodEnd === 'string' ? data.periodEnd : sortedItems[sortedItems.length - 1]?.takenDate,
+    itemCount: typeof data.itemCount === 'number' ? data.itemCount : sortedItems.length,
+    items: sortedItems,
+  };
+}
+
+// records 컬렉션(users/{uid}/records)에 recordType:'growthTimeline'로 저장된 타임라인 정규화
+function normalizeRecordTimeline(id: string, data: any): SavedGrowthTimeline | null {
+  if (data?.recordType !== 'growthTimeline') return null;
+  const rawItems = Array.isArray(data.timelineItems) ? data.timelineItems : [];
+  const items = rawItems
+    .filter((item: any) => typeof item?.url === 'string' && item.url.startsWith('http'))
+    .map((item: any, index: number): TimelineItem => ({
+      url: item.url,
+      takenDate: typeof item.takenDate === 'string' && item.takenDate ? item.takenDate : todayKey(),
+      // 저장된 record 항목은 날짜가 확정된 상태 → '날짜 확인 필요' 배지 방지
+      metadataSource: 'manual',
+      memo: typeof item.memo === 'string' ? item.memo : '',
+      order: typeof item.order === 'number' ? item.order : index,
+    }));
+  const sortedItems = sortTimelineItems(items);
+  return {
+    id,
+    title: typeof data.title === 'string' && data.title.trim() ? data.title : '성장타임라인',
+    status: 'final',
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt,
+    finalizedAt: undefined,
     periodStart: typeof data.periodStart === 'string' ? data.periodStart : sortedItems[0]?.takenDate,
     periodEnd: typeof data.periodEnd === 'string' ? data.periodEnd : sortedItems[sortedItems.length - 1]?.takenDate,
     itemCount: typeof data.itemCount === 'number' ? data.itemCount : sortedItems.length,
@@ -644,7 +673,7 @@ export function GrowthTimelineLibrary({ uid, refreshKey = 0 }: GrowthTimelineLib
     setSavingTitleId(timeline.id);
     try {
       const updatedAt = new Date().toISOString();
-      await updateDoc(doc(db, 'users', uid, 'timelines', timeline.id), {
+      await updateDoc(doc(db, 'users', uid, 'records', timeline.id), {
         title: nextTitle,
         updatedAt,
       });
@@ -671,7 +700,7 @@ export function GrowthTimelineLibrary({ uid, refreshKey = 0 }: GrowthTimelineLib
     if (!ok) return;
     setDeletingId(timeline.id);
     try {
-      await deleteDoc(doc(db, 'users', uid, 'timelines', timeline.id));
+      await deleteDoc(doc(db, 'users', uid, 'records', timeline.id));
       setTimelines(prev => prev.filter(item => item.id !== timeline.id));
       setSelectedTimeline(prev => (prev?.id === timeline.id ? null : prev));
       toast.success('타임라인을 삭제했습니다.');
@@ -689,10 +718,13 @@ export function GrowthTimelineLibrary({ uid, refreshKey = 0 }: GrowthTimelineLib
     const loadTimelines = async () => {
       setIsLoading(true);
       try {
-        const snap = await getDocs(collection(db, 'users', uid, 'timelines'));
+        const snap = await getDocs(query(
+          collection(db, 'users', uid, 'records'),
+          where('recordType', '==', 'growthTimeline'),
+        ));
         if (cancelled) return;
         const list = snap.docs
-          .map(docSnap => normalizeSavedTimeline(docSnap.id, docSnap.data()))
+          .map(docSnap => normalizeRecordTimeline(docSnap.id, docSnap.data()))
           .filter((item): item is SavedGrowthTimeline => item !== null)
           .sort((a, b) => {
             const at = a.finalizedAt?.toMillis?.() || a.updatedAt?.toMillis?.() || a.createdAt?.toMillis?.() || new Date(a.createdAt || 0).getTime() || 0;
