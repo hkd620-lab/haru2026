@@ -112,6 +112,62 @@ function getSafeKakaoLocalError(error: any) {
   };
 }
 
+// 좌표 주변 장소명(POI) 후보 조회 — 호텔/관광지/문화시설/음식점/카페 등
+// (예: 경주나한호텔, 롯데호텔). 행정구역·주소만으로는 부족한 경우를 보완한다.
+const KAKAO_POI_CATEGORY_CODES = ['AD5', 'AT4', 'CT1', 'FD6', 'CE7'];
+const KAKAO_POI_RADIUS_M = 100;
+
+async function lookupKakaoNearbyPlace(
+  headers: Record<string, string>,
+  x: string,
+  y: string
+): Promise<{ placeName: string; placeCategory: string } | null> {
+  try {
+    const responses = await Promise.all(
+      KAKAO_POI_CATEGORY_CODES.map((code) =>
+        axios
+          .get('https://dapi.kakao.com/v2/local/search/category.json', {
+            params: {
+              category_group_code: code,
+              x,
+              y,
+              radius: KAKAO_POI_RADIUS_M,
+              sort: 'distance',
+              size: 5,
+            },
+            headers,
+            timeout: 8000,
+          })
+          .catch(() => null)
+      )
+    );
+
+    let nearest: { name: string; category: string; distance: number } | null = null;
+    for (const resp of responses) {
+      const docs = Array.isArray(resp?.data?.documents) ? resp!.data.documents : [];
+      for (const doc of docs) {
+        const name = typeof doc?.place_name === 'string' ? doc.place_name.trim() : '';
+        if (!name) continue;
+        const parsed = Number(doc?.distance);
+        const distance = Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
+        if (!nearest || distance < nearest.distance) {
+          nearest = {
+            name,
+            category: typeof doc?.category_group_name === 'string' ? doc.category_group_name : '',
+            distance,
+          };
+        }
+      }
+    }
+
+    if (!nearest) return null;
+    return { placeName: nearest.name, placeCategory: nearest.category };
+  } catch (error: any) {
+    logger.warn('카카오 장소명 조회 실패:', getSafeKakaoLocalError(error));
+    return null;
+  }
+}
+
 export const reverseGeocodeKakao = onCall(
   {
     region: 'asia-northeast3',
@@ -137,7 +193,7 @@ export const reverseGeocodeKakao = onCall(
     const params = { x: String(longitude), y: String(latitude) };
 
     try {
-      const [regionResp, addressResp] = await Promise.all([
+      const [regionResp, addressResp, placeInfo] = await Promise.all([
         axios.get('https://dapi.kakao.com/v2/local/geo/coord2regioncode.json', {
           params,
           headers,
@@ -148,6 +204,7 @@ export const reverseGeocodeKakao = onCall(
           headers,
           timeout: 8000,
         }),
+        lookupKakaoNearbyPlace(headers, params.x, params.y),
       ]);
 
       const regionDocs = Array.isArray(regionResp.data?.documents) ? regionResp.data.documents : [];
@@ -171,6 +228,8 @@ export const reverseGeocodeKakao = onCall(
         success: true,
         latitude,
         longitude,
+        placeName: placeInfo?.placeName || '',
+        placeCategory: placeInfo?.placeCategory || '',
         regionLabel,
         roadAddress,
         jibunAddress,

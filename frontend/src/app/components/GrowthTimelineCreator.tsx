@@ -153,7 +153,8 @@ function locationCandidateLabel(item: Pick<DraftTimelineItem, 'locationCandidate
   if (item.locationStatus === 'not_found') return '촬영장소 후보 없음';
   if (item.locationStatus === 'error') return '장소 확인 실패';
   if (item.locationStatus === 'found') {
-    return item.locationCandidate?.regionLabel
+    return item.locationCandidate?.placeName
+      || item.locationCandidate?.regionLabel
       || item.locationCandidate?.roadAddress
       || item.locationCandidate?.jibunAddress
       || '촬영장소 후보 있음';
@@ -163,6 +164,10 @@ function locationCandidateLabel(item: Pick<DraftTimelineItem, 'locationCandidate
 
 function locationDetailLabel(candidate?: ReverseGeocodeCandidate) {
   if (!candidate) return '';
+  // 장소명이 메인으로 표시되면 지역·주소를 보조로 노출
+  if (candidate.placeName) {
+    return candidate.regionLabel || candidate.roadAddress || candidate.jibunAddress || '';
+  }
   return candidate.roadAddress || candidate.jibunAddress || '';
 }
 
