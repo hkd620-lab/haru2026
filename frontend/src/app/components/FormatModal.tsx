@@ -277,7 +277,16 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     hasFinalReflection: boolean;
     lastDate: string;
   };
+  type KnownReadingEntry = {
+    id: string;
+    date: string;
+    noteCreatedAt: string;
+    readingBookText: string;
+    readingJournal: string;
+    readingSayu: string;
+  };
   const [knownReadingBooks, setKnownReadingBooks] = useState<KnownReadingBook[]>([]);
+  const [readingEntriesByBook, setReadingEntriesByBook] = useState<Record<string, KnownReadingEntry[]>>({});
   const [selectedExistingBookId, setSelectedExistingBookId] = useState<string>(''); // '' = 새 책
   const [isReadingBookLocked, setIsReadingBookLocked] = useState(false);
   const [blockedBookMessage, setBlockedBookMessage] = useState<string>('');
@@ -312,6 +321,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       setShowCandidates(false);
       // 📚 독서사유 — 책 묶음 state 초기화 + 사용자 records 에서 책 목록 로드
       setKnownReadingBooks([]);
+      setReadingEntriesByBook({});
       setSelectedExistingBookId('');
       setIsReadingBookLocked(false);
       setBlockedBookMessage('');
@@ -323,6 +333,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
             const q = query(ref, where('formats', 'array-contains', '독서사유'));
             const snap = await getDocs(q);
             const byBookId = new Map<string, KnownReadingBook>();
+            const entriesByBookId = new Map<string, KnownReadingEntry[]>();
             snap.forEach((docSnap) => {
               const data = docSnap.data() as any;
               const title = String(data.bookTitle || data.reading_book_title || data.reading_title || '').trim();
@@ -338,6 +349,21 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
                 String(data.readingEntryType || '') === READING_ENTRY_TYPES.LEGACY_FINAL ||
                 String(data.reading_status || '') === 'completed';
               const date = String(data.date || '');
+              if (!isFinal) {
+                const entry: KnownReadingEntry = {
+                  id: docSnap.id,
+                  date,
+                  noteCreatedAt: String(data.reading_note_createdAt || data.updatedAt || data.createdAt || ''),
+                  readingBookText: String(data.reading_book_text || ''),
+                  readingJournal: String(data.reading_journal || ''),
+                  readingSayu: String(data.reading_sayu || ''),
+                };
+                if (entry.readingBookText.trim() || entry.readingJournal.trim() || entry.readingSayu.trim()) {
+                  const entries = entriesByBookId.get(bookId) || [];
+                  entries.push(entry);
+                  entriesByBookId.set(bookId, entries);
+                }
+              }
               const existing = byBookId.get(bookId);
               if (existing) {
                 existing.hasFinalReflection = existing.hasFinalReflection || isFinal;
@@ -360,7 +386,16 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
             const list = Array.from(byBookId.values()).sort((a, b) =>
               b.lastDate.localeCompare(a.lastDate),
             );
+            const entriesRecord: Record<string, KnownReadingEntry[]> = {};
+            entriesByBookId.forEach((entries, bookId) => {
+              entriesRecord[bookId] = entries.sort((a, b) =>
+                a.date.localeCompare(b.date) ||
+                a.noteCreatedAt.localeCompare(b.noteCreatedAt) ||
+                a.id.localeCompare(b.id),
+              );
+            });
             setKnownReadingBooks(list);
+            setReadingEntriesByBook(entriesRecord);
             // initialData에 책 정보가 있으면 자동으로 이어쓰기 모드 인식
             const initTitle = String((initialData as any)?.reading_book_title || '').trim();
             const initAuthor = String((initialData as any)?.reading_author || '').trim();
@@ -377,6 +412,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
           } catch (e) {
             console.warn('독서사유 책 목록 로드 실패:', e);
             setKnownReadingBooks([]);
+            setReadingEntriesByBook({});
           }
         })();
       }
@@ -1433,6 +1469,17 @@ ${contentValues}`,
     }));
   };
 
+  const prepareReadingAppend = (bookId: string) => {
+    onSelectExistingBook(bookId);
+    setReadingBookTextMode('photo');
+    setFormData((prev) => ({
+      ...prev,
+      reading_book_text: '',
+      reading_journal: '',
+    }));
+    toast.info('이 책에 오늘 내용을 새 회차로 추가해 주세요.');
+  };
+
   // 📚 책 제목/저자 직접 수정 시 final_reflection 차단 자동 체크
   const checkFinalReflectionBlock = (title: string, author: string) => {
     if (!title.trim()) {
@@ -1694,6 +1741,15 @@ ${contentValues}`,
     }) || (format === '텃밭일지' && crops.length > 0);
   })();
 
+  const selectedReadingEntries = format === '독서사유' && selectedExistingBookId
+    ? readingEntriesByBook[selectedExistingBookId] || []
+    : [];
+
+  const getReadingEntryPreview = (entry: KnownReadingEntry) => {
+    const preview = entry.readingJournal || entry.readingSayu || entry.readingBookText;
+    return preview.trim().replace(/\s+/g, ' ').slice(0, 180);
+  };
+
   return (
     <>
       {/* 메인 모달 */}
@@ -1897,6 +1953,7 @@ ${contentValues}`,
                             </span>
                             <span style={{ fontSize: 11, color: '#6b7280', fontWeight: 400, marginTop: 2 }}>
                               {b.author || '(저자 미기재)'}{b.lastDate ? ` · 마지막 ${b.lastDate}` : ''}
+                              {` · 누적 ${readingEntriesByBook[b.readingBookId]?.length || 0}회`}
                             </span>
                           </span>
                           <span style={{ fontSize: 10, color: '#10b981', fontWeight: 700, flexShrink: 0 }}>작성중 ▶</span>
@@ -2054,6 +2111,7 @@ ${contentValues}`,
                           }}
                         >
                           📖 {b.bookTitle}
+                          {` (${readingEntriesByBook[b.readingBookId]?.length || 0}회)`}
                         </button>
                       ))}
                   </div>
@@ -2076,6 +2134,88 @@ ${contentValues}`,
                       }}
                     >
                       ⚠️ {blockedBookMessage}
+                    </div>
+                  )}
+                  {selectedExistingBookId && (
+                    <div
+                      style={{
+                        marginTop: 12,
+                        padding: 12,
+                        border: '1px solid #d0dff0',
+                        borderRadius: 10,
+                        backgroundColor: '#fff',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
+                        <div>
+                          <p style={{ margin: 0, fontSize: 13, color: '#1A3C6E', fontWeight: 800 }}>
+                            누적 독서장 {selectedReadingEntries.length}회
+                          </p>
+                          <p style={{ margin: '3px 0 0', fontSize: 11, color: '#6b7280', lineHeight: 1.5 }}>
+                            이전 내용은 보존하고 오늘 내용은 새 회차로 추가됩니다.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => prepareReadingAppend(selectedExistingBookId)}
+                          style={{
+                            flexShrink: 0,
+                            padding: '8px 10px',
+                            border: '1px solid #10b981',
+                            borderRadius: 8,
+                            backgroundColor: '#ecfdf5',
+                            color: '#047857',
+                            cursor: 'pointer',
+                            fontSize: 12,
+                            fontWeight: 800,
+                          }}
+                        >
+                          + 오늘 내용 추가
+                        </button>
+                      </div>
+                      {selectedReadingEntries.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {selectedReadingEntries.map((entry, index) => (
+                            <div
+                              key={entry.id}
+                              style={{
+                                padding: '10px 12px',
+                                border: '1px solid #e5edf5',
+                                borderRadius: 8,
+                                backgroundColor: '#f8fbff',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                <span style={{ fontSize: 12, color: '#1A3C6E', fontWeight: 800 }}>
+                                  {index + 1}회차{entry.date ? ` · ${entry.date}` : ''}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => prepareReadingAppend(selectedExistingBookId)}
+                                  style={{
+                                    border: 'none',
+                                    background: 'transparent',
+                                    color: '#10b981',
+                                    cursor: 'pointer',
+                                    fontSize: 11,
+                                    fontWeight: 800,
+                                    padding: 0,
+                                  }}
+                                >
+                                  + 이 다음에 추가
+                                </button>
+                              </div>
+                              <p style={{ margin: '6px 0 0', fontSize: 12, color: '#4b5563', lineHeight: 1.5 }}>
+                                {getReadingEntryPreview(entry) || '내용 미리보기 없음'}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p style={{ margin: 0, fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
+                          아직 표시할 회차가 없습니다. 오늘 내용을 추가하면 이 책의 첫 회차로 쌓입니다.
+                        </p>
+                      )}
                     </div>
                   )}
                   <div
