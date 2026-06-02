@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart3, ChevronRight } from 'lucide-react';
 import { PageHeaderActions } from '../components/PageHeaderActions';
+import { useAuth } from '../contexts/AuthContext';
+import { firestoreService, type LibraryEntry } from '../services/firestoreService';
 
 type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '메모';
 
@@ -35,7 +37,10 @@ const categories: FormatCategory[] = [
 
 export function StatisticsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [assistantLibrary, setAssistantLibrary] = useState<LibraryEntry[]>([]);
+  const [assistantStatsLoading, setAssistantStatsLoading] = useState(false);
 
   const toggleCategory = (title: string) => {
     setExpandedCategory(expandedCategory === title ? null : title);
@@ -44,6 +49,40 @@ export function StatisticsPage() {
   const handleFormatClick = (format: RecordFormat) => {
   navigate(`/stats/${format}`);  // statistics → stats로 변경
 };
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setAssistantLibrary([]);
+      return;
+    }
+
+    setAssistantStatsLoading(true);
+    firestoreService.getLibraryByCategory(user.uid, '비서')
+      .then(setAssistantLibrary)
+      .catch((error) => {
+        console.warn('비서 library 통계 로딩 실패:', error);
+        setAssistantLibrary([]);
+      })
+      .finally(() => setAssistantStatsLoading(false));
+  }, [user?.uid]);
+
+  const assistantTypeCounts = assistantLibrary.reduce<Record<string, number>>((acc, entry) => {
+    acc[entry.type] = (acc[entry.type] || 0) + 1;
+    return acc;
+  }, {});
+  const assistantMonthCounts = assistantLibrary.reduce<Record<string, number>>((acc, entry) => {
+    const month = (entry.date || '').slice(0, 7);
+    if (month) acc[month] = (acc[month] || 0) + 1;
+    return acc;
+  }, {});
+  const assistantMonths = Object.entries(assistantMonthCounts)
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .slice(0, 6);
+  const maxAssistantMonthCount = Math.max(...assistantMonths.map(([, count]) => count), 1);
+  const typeLabel: Record<string, string> = {
+    book: '책',
+    timeline: '타임라인',
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
@@ -60,6 +99,69 @@ export function StatisticsPage() {
           형식별 기록을 분석하고 나의 성향을 확인하세요
         </p>
       </div>
+
+      {/* Assistant Library Pilot Stats */}
+      <section className="mb-6 bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="p-4 border-b" style={{ borderColor: '#e5e5e5' }}>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold" style={{ color: '#1A3C6E' }}>
+                비서 통계
+              </h2>
+              <p className="text-xs mt-1" style={{ color: '#999' }}>
+                책과 타임라인 library 인덱스 기준
+              </p>
+            </div>
+            <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}>
+              파일럿
+            </span>
+          </div>
+        </div>
+
+        <div className="p-4">
+          {assistantStatsLoading ? (
+            <p className="text-sm" style={{ color: '#999' }}>비서 통계를 불러오는 중...</p>
+          ) : assistantLibrary.length === 0 ? (
+            <p className="text-sm" style={{ color: '#999' }}>
+              아직 인덱싱된 비서 기록이 없습니다.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-2 gap-3">
+                {Object.entries(assistantTypeCounts).map(([type, count]) => (
+                  <div key={type} className="rounded-lg p-3" style={{ backgroundColor: '#FEFBE8', border: '1px solid #e5e5e5' }}>
+                    <p className="text-xs" style={{ color: '#999' }}>{typeLabel[type] || type}</p>
+                    <p className="text-xl font-bold mt-1" style={{ color: '#1A3C6E' }}>{count}개</p>
+                  </div>
+                ))}
+              </div>
+
+              {assistantMonths.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold mb-2" style={{ color: '#333' }}>월별 추이</p>
+                  <div className="flex flex-col gap-2">
+                    {assistantMonths.map(([month, count]) => (
+                      <div key={month} className="flex items-center gap-2">
+                        <span className="text-xs w-14" style={{ color: '#666' }}>{month}</span>
+                        <div className="flex-1 rounded-full overflow-hidden" style={{ backgroundColor: '#f3f4f6', height: 10 }}>
+                          <div
+                            style={{
+                              width: `${(count / maxAssistantMonthCount) * 100}%`,
+                              height: '100%',
+                              backgroundColor: '#1A3C6E',
+                            }}
+                          />
+                        </div>
+                        <span className="text-xs font-semibold w-8 text-right" style={{ color: '#1A3C6E' }}>{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* Info Box */}
       <div

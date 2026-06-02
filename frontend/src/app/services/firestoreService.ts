@@ -82,6 +82,26 @@ export interface SharedRecordComment {
   isDeleted?: boolean;
 }
 
+export interface LibraryEntryInput {
+  category: string;
+  type: string;
+  title: string;
+  date?: string;
+  summary?: string;
+  refPath: string;
+}
+
+export interface LibraryEntry extends Required<LibraryEntryInput> {
+  id: string;
+  createdAt?: any;
+}
+
+export interface LibraryBackfillPreview {
+  books: LibraryEntryInput[];
+  timelines: LibraryEntryInput[];
+  total: number;
+}
+
 const PUBLIC_ALLOWED_FORMATS: RecordFormat[] = [
   '일기',
   '에세이',
@@ -112,6 +132,42 @@ const PUBLIC_FORMAT_PREFIX: Record<RecordFormat, string> = {
 };
 
 const getCleanText = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
+
+const getTodayString = () => {
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = String(today.getMonth() + 1).padStart(2, '0');
+  const d = String(today.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+const dateFromFirestoreValue = (value: unknown) => {
+  if (value instanceof Timestamp) {
+    return value.toDate().toISOString().slice(0, 10);
+  }
+  if (
+    value &&
+    typeof value === 'object' &&
+    'seconds' in value &&
+    typeof (value as { seconds?: unknown }).seconds === 'number'
+  ) {
+    return new Date((value as { seconds: number }).seconds * 1000).toISOString().slice(0, 10);
+  }
+  if (typeof value === 'string' && value.length >= 10) {
+    return value.slice(0, 10);
+  }
+  return getTodayString();
+};
+
+const makeLibraryEntryId = (entry: LibraryEntryInput) => {
+  const source = `${entry.category}|${entry.type}|${entry.date || ''}|${entry.refPath}`;
+  let hash = 2166136261;
+  for (let i = 0; i < source.length; i += 1) {
+    hash ^= source.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `library_${(hash >>> 0).toString(36)}`;
+};
 
 const getPublicImageUrls = (value: unknown): string[] => {
   let source: unknown = value;
@@ -167,6 +223,88 @@ class FirestoreService {
       id: doc.id,
       ...doc.data(),
     })) as HaruRecord[];
+  }
+
+  async upsertLibraryEntry(userId: string, entry: LibraryEntryInput): Promise<string> {
+    const normalizedEntry: Required<LibraryEntryInput> = {
+      category: getCleanText(entry.category),
+      type: getCleanText(entry.type),
+      title: getCleanText(entry.title) || '제목 없음',
+      date: getCleanText(entry.date) || getTodayString(),
+      summary: getCleanText(entry.summary),
+      refPath: getCleanText(entry.refPath),
+    };
+
+    if (!normalizedEntry.category || !normalizedEntry.type || !normalizedEntry.refPath) {
+      throw new Error('library entry 필수값이 누락되었습니다.');
+    }
+
+    const entryId = makeLibraryEntryId(normalizedEntry);
+    const entryRef = doc(db, 'users', userId, 'library', entryId);
+    await setDoc(
+      entryRef,
+      {
+        ...normalizedEntry,
+        createdAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+    return entryId;
+  }
+
+  async getLibrary(userId: string): Promise<LibraryEntry[]> {
+    const libraryRef = collection(db, 'users', userId, 'library');
+    const q = query(libraryRef, orderBy('date', 'desc'));
+    const querySnapshot = await getDocs(q);
+
+    return querySnapshot.docs.map(libraryDoc => ({
+      id: libraryDoc.id,
+      ...libraryDoc.data(),
+    })) as LibraryEntry[];
+  }
+
+  async getLibraryByCategory(userId: string, category: string): Promise<LibraryEntry[]> {
+    const entries = await this.getLibrary(userId);
+    return entries.filter((entry) => entry.category === category);
+  }
+
+  async previewLibraryBackfill(userId: string): Promise<LibraryBackfillPreview> {
+    const booksSnapshot = await getDocs(
+      query(collection(db, 'books'), where('authorUid', '==', userId)),
+    );
+    const books = booksSnapshot.docs.map((bookDoc) => {
+      const data = bookDoc.data();
+      const title = getCleanText(data.title) || '제목 없는 책';
+      const totalChapters = typeof data.totalChapters === 'number' ? data.totalChapters : 0;
+      return {
+        category: '비서',
+        type: 'book',
+        title,
+        date: dateFromFirestoreValue(data.createdAt),
+        summary: totalChapters > 0 ? `생성된 챕터 ${totalChapters}개` : '책 생성 기록',
+        refPath: `books/${bookDoc.id}`,
+      };
+    });
+
+    const timelineSnapshot = await getDocs(collection(db, 'users', userId, 'growthSubjects'));
+    const timelines = timelineSnapshot.docs.map((timelineDoc) => {
+      const data = timelineDoc.data();
+      const title = getCleanText(data.name) || '이름 없는 타임라인';
+      return {
+        category: '비서',
+        type: 'timeline',
+        title,
+        date: dateFromFirestoreValue(data.createdAt || data.updatedAt || data.latestRecordDate),
+        summary: '성장타임라인 기록',
+        refPath: `users/${userId}/growthSubjects/${timelineDoc.id}`,
+      };
+    });
+
+    return {
+      books,
+      timelines,
+      total: books.length + timelines.length,
+    };
   }
 
   /**

@@ -3,6 +3,7 @@ import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router';
+import { firestoreService } from '../services/firestoreService';
 
 interface Source {
   sourceTitle: string;
@@ -102,6 +103,22 @@ export function BookCreate() {
 
       const data = response.data as GenerateResult;
       if (data.success) {
+        if (user?.uid && data.bookId) {
+          try {
+            const today = new Date();
+            const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            await firestoreService.upsertLibraryEntry(user.uid, {
+              category: '비서',
+              type: 'book',
+              title: title.trim(),
+              date,
+              summary: `생성된 챕터 ${data.totalChapters}개`,
+              refPath: `books/${data.bookId}`,
+            });
+          } catch (libraryError) {
+            console.warn('책 library 인덱싱 실패:', libraryError);
+          }
+        }
         setProgressMsg(`완료! 챕터 ${data.totalChapters}개가 생성되었습니다.`);
         setResults(data);
       }
