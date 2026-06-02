@@ -237,6 +237,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [readingBookTextMode, setReadingBookTextMode] = useState<'photo' | 'manual'>('photo');
   const [selectedBookOcrFiles, setSelectedBookOcrFiles] = useState<File[]>([]);
   const bookOcrInputRef = useRef<HTMLInputElement>(null);
+  const readingJournalRef = useRef<HTMLTextAreaElement>(null);
   const [selectedStockOcrFiles, setSelectedStockOcrFiles] = useState<File[]>([]);
   const [isExtractingStockText, setIsExtractingStockText] = useState(false);
   const stockOcrInputRef = useRef<HTMLInputElement>(null);
@@ -1471,13 +1472,17 @@ ${contentValues}`,
 
   const prepareReadingAppend = (bookId: string) => {
     onSelectExistingBook(bookId);
-    setReadingBookTextMode('photo');
+    setReadingBookTextMode('manual');
     setFormData((prev) => ({
       ...prev,
       reading_book_text: '',
       reading_journal: '',
     }));
-    toast.info('이 책에 오늘 내용을 새 회차로 추가해 주세요.');
+    window.setTimeout(() => {
+      readingJournalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      readingJournalRef.current?.focus();
+    }, 0);
+    toast.info('독서장 칸에 오늘 소감을 쓰면 새 회차로 추가됩니다.');
   };
 
   // 📚 책 제목/저자 직접 수정 시 final_reflection 차단 자동 체크
@@ -2170,7 +2175,7 @@ ${contentValues}`,
                             fontWeight: 800,
                           }}
                         >
-                          + 오늘 내용 추가
+                          + 오늘 소감 쓰기
                         </button>
                       </div>
                       {selectedReadingEntries.length > 0 ? (
@@ -2202,7 +2207,7 @@ ${contentValues}`,
                                     padding: 0,
                                   }}
                                 >
-                                  + 이 다음에 추가
+                                  + 다음 회차 쓰기
                                 </button>
                               </div>
                               <p style={{ margin: '6px 0 0', fontSize: 12, color: '#4b5563', lineHeight: 1.5 }}>
@@ -2586,6 +2591,7 @@ ${contentValues}`,
                               )}
                             </label>
                             <textarea
+                              ref={field.key === 'reading_journal' ? readingJournalRef : undefined}
                               value={formData[field.key] || ''}
                               onChange={(e) => {
                                 handleChange(field.key, e.target.value);
