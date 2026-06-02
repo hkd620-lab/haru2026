@@ -755,6 +755,18 @@ export function RecordPage() {
           },
           { merge: true },
         );
+        try {
+          await firestoreService.upsertLibraryEntry(user.uid, {
+            category: '비서',
+            type: 'timeline',
+            title: growthSubjectName,
+            date: savedDateStr,
+            summary: `${growthSubjectType === 'child' ? '육아' : '텃밭'} 성장타임라인`,
+            refPath: `users/${user.uid}/growthSubjects/${growthSubjectId}`,
+          });
+        } catch (libraryError) {
+          console.warn('타임라인 library 인덱싱 실패:', libraryError);
+        }
         await setDoc(
           doc(db, 'users', user.uid, 'growthSubjects', growthSubjectId, 'entries', recordId),
           {

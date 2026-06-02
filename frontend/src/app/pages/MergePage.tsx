@@ -3,7 +3,7 @@ import { Layers, X, FileSpreadsheet } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { MergeTitleAnimation } from '../components/MergeTitleAnimation';
 import { useAuth } from '../contexts/AuthContext';
-import { firestoreService } from '../services/firestoreService';
+import { firestoreService, type LibraryEntry } from '../services/firestoreService';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS, FORMAT_PREFIX } from '../types/haruTypes';
 import { useSubscription } from '../hooks/useSubscription';
@@ -35,6 +35,9 @@ export function MergePage() {
   // 📒 HARU보조장부 엑셀 저장 전용 상태
   const [ledgerPeriod, setLedgerPeriod] = useState<LedgerPeriod>('thisMonth');
   const [isExportingLedger, setIsExportingLedger] = useState(false);
+  const [assistantLibrary, setAssistantLibrary] = useState<LibraryEntry[]>([]);
+  const [assistantLibraryLoading, setAssistantLibraryLoading] = useState(false);
+  const [selectedLibraryIds, setSelectedLibraryIds] = useState<Set<string>>(new Set());
 
   const periodOptions: PeriodOption[] = [
     { id: 'weekly', title: '주간', description: '최근 7일 기준' },
@@ -58,6 +61,27 @@ export function MergePage() {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     setStartDate(getLocalDateString(thirtyDaysAgo));
   }, []);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setAssistantLibrary([]);
+      setSelectedLibraryIds(new Set());
+      return;
+    }
+
+    setAssistantLibraryLoading(true);
+    firestoreService.getLibraryByCategory(user.uid, '비서')
+      .then((entries) => {
+        setAssistantLibrary(entries);
+        setSelectedLibraryIds(new Set());
+      })
+      .catch((error) => {
+        console.warn('비서 library 합본 목록 로딩 실패:', error);
+        setAssistantLibrary([]);
+        setSelectedLibraryIds(new Set());
+      })
+      .finally(() => setAssistantLibraryLoading(false));
+  }, [user?.uid]);
 
   const handlePeriodSelect = (period: MergePeriod) => {
     setSelectedPeriod(period);
@@ -110,6 +134,27 @@ export function MergePage() {
     } finally {
       setIsExportingLedger(false);
     }
+  };
+
+  const toggleLibrarySelection = (entryId: string) => {
+    setSelectedLibraryIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(entryId)) {
+        next.delete(entryId);
+      } else {
+        next.add(entryId);
+      }
+      return next;
+    });
+  };
+
+  const selectedLibraryEntries = assistantLibrary
+    .filter((entry) => selectedLibraryIds.has(entry.id))
+    .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+  const libraryTypeLabel: Record<string, string> = {
+    book: '책',
+    timeline: '타임라인',
   };
 
   const handleRunMerge = async () => {
@@ -196,6 +241,47 @@ export function MergePage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col gap-3" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
+      <style>{`
+        .library-print-area { display: none; }
+        @media print {
+          .merge-screen-area { display: none !important; }
+          .library-print-area {
+            display: block !important;
+            background: #fff !important;
+            color: #111827 !important;
+            padding: 24px !important;
+          }
+          .library-print-card {
+            break-inside: avoid;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+          }
+        }
+      `}</style>
+      <div className="library-print-area">
+        <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>비서 합본</h1>
+        <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 20 }}>
+          책과 타임라인 library 인덱스 기준
+        </p>
+        {selectedLibraryEntries.map((entry) => (
+          <article key={entry.id} className="library-print-card">
+            <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>
+              {entry.date} · {libraryTypeLabel[entry.type] || entry.type}
+            </div>
+            <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 8px' }}>
+              {entry.title}
+            </h2>
+            {entry.summary && (
+              <p style={{ fontSize: 14, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>
+                {entry.summary}
+              </p>
+            )}
+          </article>
+        ))}
+      </div>
+      <div className="merge-screen-area">
       <PageHeaderActions onClose={() => navigate(getOrigin() || '/sayu')} />
       <div className="flex items-center">
         <MergeTitleAnimation />
@@ -228,6 +314,81 @@ export function MergePage() {
           </ul>
         </div>
       )}
+
+      <section className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="px-4 pt-3 pb-2 flex items-center justify-between gap-3">
+          <div>
+            <span style={{ fontSize: '13px', color: '#1A3C6E', fontWeight: 600 }}>
+              🗂 비서 합본
+            </span>
+            <p className="text-xs mt-1" style={{ color: '#999' }}>
+              책과 타임라인을 선택해 날짜순 카드로 출력합니다
+            </p>
+          </div>
+          <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}>
+            파일럿
+          </span>
+        </div>
+
+        <div className="px-3 pb-3">
+          {assistantLibraryLoading ? (
+            <p className="text-sm py-3" style={{ color: '#999' }}>비서 합본 목록을 불러오는 중...</p>
+          ) : assistantLibrary.length === 0 ? (
+            <p className="text-sm py-3" style={{ color: '#999' }}>아직 인덱싱된 비서 기록이 없습니다.</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {assistantLibrary.map((entry) => {
+                const isSelected = selectedLibraryIds.has(entry.id);
+                return (
+                  <label
+                    key={entry.id}
+                    className="flex items-start gap-3 rounded-lg p-3 cursor-pointer"
+                    style={{
+                      border: `1px solid ${isSelected ? '#1A3C6E' : '#e5e5e5'}`,
+                      backgroundColor: isSelected ? '#FDF6C3' : '#FEFBE8',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleLibrarySelection(entry.id)}
+                      style={{ marginTop: 3 }}
+                    />
+                    <span className="flex-1">
+                      <span className="flex items-center justify-between gap-2">
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E' }}>
+                          {entry.title}
+                        </span>
+                        <span style={{ fontSize: 11, color: '#999', flexShrink: 0 }}>
+                          {entry.date}
+                        </span>
+                      </span>
+                      <span style={{ display: 'block', fontSize: 11, color: '#666', marginTop: 4 }}>
+                        {libraryTypeLabel[entry.type] || entry.type} · {entry.summary || '요약 없음'}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => window.print()}
+            disabled={selectedLibraryEntries.length === 0}
+            className="w-full mt-3 py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              backgroundColor: '#1A3C6E',
+              color: '#FAF9F6',
+              fontWeight: 600,
+              fontSize: '14px',
+            }}
+          >
+            선택한 비서 합본 인쇄
+          </button>
+        </div>
+      </section>
 
       <section className="bg-white rounded-lg shadow-sm overflow-hidden">
         <div className="px-4 pt-3 pb-2 flex items-center gap-2">
@@ -521,6 +682,7 @@ export function MergePage() {
           </p>
         </section>
       )}
+      </div>
     </div>
   );
 }
