@@ -580,6 +580,7 @@ export function HomePageV2() {
         @media (max-width: 1100px) {
           [data-v2="hero-grid"] { grid-template-columns: 1fr !important; }
           [data-v2="records-grid"] { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+          [data-v2="tools-grid"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
           [data-v2="agents-grid"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
         }
         @media (max-width: 820px) {
@@ -641,6 +642,7 @@ export function HomePageV2() {
 
           /* 카드 그리드 강제 — Tailwind arbitrary breakpoint 미동작 우회 */
           [data-v2="records-grid"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; }
+          [data-v2="tools-grid"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; }
           [data-v2="agents-grid"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; }
 
           .v2-rec { padding: 12px 10px !important; gap: 6px !important; border-radius: 14px !important; }
@@ -1206,6 +1208,134 @@ export function HomePageV2() {
                   }}
                 >
                   {r.sub}
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* RECORD TOOLS SECTION */}
+        <section data-v2="section" style={{ marginBottom: 36 }}>
+          <SectionHead
+            iconBg="#E5DBC2"
+            iconStroke="#7A6F5A"
+            title="기록 도구"
+            sub="쌓인 기록을 통계로 보고 하나로 묶기"
+            badge="2가지"
+            badgeDot="#B85C2E"
+            icon={
+              <>
+                <path d="M4 19V5" />
+                <path d="M4 19h17" />
+                <path d="M8 16v-5" />
+                <path d="M12 16V8" />
+                <path d="M16 16v-3" />
+                <path d="M20 16V6" />
+              </>
+            }
+          />
+          <div
+            data-v2="tools-grid"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              gap: 14,
+            }}
+          >
+            {[
+              {
+                label: '기록통계',
+                sub: '형식별 흐름',
+                bg: '#DDD0E8',
+                stroke: '#5A4E7A',
+                path: '/stats',
+                icon: (
+                  <>
+                    <path d="M4 19V5" />
+                    <path d="M4 19h17" />
+                    <path d="M8 16v-5" />
+                    <path d="M12 16V8" />
+                    <path d="M16 16v-3" />
+                    <path d="M20 16V6" />
+                  </>
+                ),
+              },
+              {
+                label: '기록합본',
+                sub: '한 권으로 묶기',
+                bg: '#E0E8B8',
+                stroke: '#4A5A2C',
+                path: '/merge',
+                icon: (
+                  <>
+                    <path d="M4 5h7a4 4 0 014 4v12H8a4 4 0 00-4-4z" />
+                    <path d="M20 5h-7a4 4 0 00-4 4v12h7a4 4 0 014-4z" />
+                    <path d="M12 9h6" />
+                    <path d="M12 13h6" />
+                  </>
+                ),
+              },
+            ].map((tool) => (
+              <button
+                key={tool.label}
+                type="button"
+                onClick={() => navigate(tool.path, { state: { from: '/v2' } })}
+                className="v2-rec"
+                style={{
+                  background: '#fff',
+                  border: '1px solid #E5DFD0',
+                  borderRadius: 20,
+                  padding: '22px 18px 20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  gap: 14,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  transition:
+                    'transform 180ms cubic-bezier(0.22,0.61,0.36,1), box-shadow 180ms, border-color 180ms',
+                }}
+              >
+                <span
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 14,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: tool.bg,
+                    position: 'relative',
+                    zIndex: 1,
+                  }}
+                >
+                  <RecSvg stroke={tool.stroke}>{tool.icon}</RecSvg>
+                </span>
+                <span
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: '#2C2C2A',
+                    letterSpacing: '-0.01em',
+                    position: 'relative',
+                    zIndex: 1,
+                  }}
+                >
+                  {tool.label}
+                </span>
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: '#888780',
+                    marginTop: -8,
+                    letterSpacing: '0.04em',
+                    position: 'relative',
+                    zIndex: 1,
+                  }}
+                >
+                  {tool.sub}
                 </span>
               </button>
             ))}
