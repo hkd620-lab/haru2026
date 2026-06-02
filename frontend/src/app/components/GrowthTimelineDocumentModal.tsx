@@ -29,8 +29,8 @@ interface GrowthTimelineDocumentModalProps {
   onEdit?: () => void;
 }
 
-// HARU 타임라인 PDF 출력 법칙: A4 한 장에 사진 6장(2열×3행), 초과 시 다음 페이지로 분할
-const PRINT_PHOTOS_PER_PAGE = 6;
+// HARU 타임라인 PDF 출력 법칙: 표지 1페이지 + A4 한 장에 사진 4장(2열×2행), 초과 시 다음 페이지로 분할
+const PRINT_PHOTOS_PER_PAGE = 4;
 
 function sortItems(items: GrowthTimelineDocumentItem[]) {
   return [...items].sort((a, b) => a.takenDate.localeCompare(b.takenDate) || a.order - b.order);
@@ -157,8 +157,8 @@ export function GrowthTimelineDocumentModal({
     clone.style.padding = '0';
     clone.style.minHeight = 'auto';
 
-    // 3) HARU 타임라인 PDF 출력 법칙: A4 한 장에 사진 6장(2열×3행). 6장 초과 시 다음 페이지로 분할.
-    //    단일 그리드를 6장씩 페이지 섹션으로 나눠 페이지당 사진 수를 고정한다.
+    // 3) HARU 타임라인 PDF 출력 법칙: 표지 1페이지 + A4 한 장에 사진 4장(2열×2행).
+    //    단일 그리드를 4장씩 페이지 섹션으로 나눠 페이지당 사진 수를 고정한다.
     const grid = clone.querySelector('.growth-timeline-grid');
     if (grid) {
       const cells = Array.from(grid.children);
@@ -167,6 +167,11 @@ export function GrowthTimelineDocumentModal({
         const page = document.createElement('section');
         page.className = 'growth-timeline-print-page';
         cells.slice(i, i + PRINT_PHOTOS_PER_PAGE).forEach(cell => page.appendChild(cell));
+        const footer = document.createElement('div');
+        footer.className = 'growth-timeline-print-footer';
+        footer.textContent = `HARU Timeline · ${formatDateLabel(periodStart)}`
+          + (periodEnd && periodEnd !== periodStart ? ` ~ ${formatDateLabel(periodEnd)}` : '');
+        page.appendChild(footer);
         clone.appendChild(page);
       }
     }
@@ -269,6 +274,21 @@ export function GrowthTimelineDocumentModal({
               minHeight: '100%',
             }}
           >
+            <section className="growth-timeline-cover" aria-hidden="true">
+              <div className="growth-timeline-cover-photo">
+                {sortedItems[0]?.url && <img src={sortedItems[0].url} alt="" />}
+              </div>
+              <div className="growth-timeline-cover-meta">
+                <p className="growth-timeline-cover-brand">HARU Timeline · by JOYEL</p>
+                <h1 className="growth-timeline-cover-title">{resolvedTitle}</h1>
+                <p className="growth-timeline-cover-period">
+                  기간 {formatDateLabel(periodStart)}
+                  {periodEnd && periodEnd !== periodStart ? ` ~ ${formatDateLabel(periodEnd)}` : ''}
+                </p>
+                <p className="growth-timeline-cover-sub">사진 {sortedItems.length}장 · 생성일 {createdText}</p>
+              </div>
+            </section>
+
             <header style={{ borderBottom: '2px solid #1A3C6E', paddingBottom: 16, marginBottom: 18 }}>
               {editable ? (
                 <input
@@ -502,6 +522,11 @@ export function GrowthTimelineDocumentModal({
           display: none;
         }
 
+        /* 화면 모달은 현행 유지, 표지는 PDF에서만 표시 */
+        .growth-timeline-cover {
+          display: none;
+        }
+
         @media print {
           @page {
             size: A4;
@@ -539,22 +564,67 @@ export function GrowthTimelineDocumentModal({
             visibility: hidden !important;
           }
 
-          /* 헤더는 1페이지 상단에만 — 사진 6장이 함께 들어갈 수 있도록 컴팩트하게 */
-          .growth-timeline-print-portal .growth-timeline-print-root > header {
-            border-bottom: 2px solid #1A3C6E !important;
-            padding-bottom: 6mm !important;
-            margin-bottom: 6mm !important;
-          }
-          .growth-timeline-print-portal .growth-timeline-print-root > header h1,
-          .growth-timeline-print-portal .growth-timeline-print-root > header input {
-            font-size: 18pt !important;
+          /* 표지 1페이지 — 대표사진 크게 + 제목/기간/브랜드 */
+          .growth-timeline-print-portal .growth-timeline-cover {
+            display: flex !important;
+            flex-direction: column;
+            gap: 10mm;
+            break-after: page;
+            page-break-after: always;
+            min-height: 250mm;
           }
 
-          /* HARU 타임라인 PDF 출력 법칙: A4 한 장 = 2열×3행(사진 6장). 페이지 섹션마다 페이지 분할 */
+          .growth-timeline-cover-photo {
+            width: 100%;
+            height: 150mm;
+            border-radius: 4mm;
+            overflow: hidden;
+          }
+
+          .growth-timeline-cover-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+          }
+
+          .growth-timeline-cover-brand {
+            margin: 0;
+            color: #1A3C6E;
+            font-size: 11pt;
+            font-weight: 800;
+            letter-spacing: .12em;
+          }
+
+          .growth-timeline-cover-title {
+            margin: 4mm 0 0;
+            color: #1A3C6E;
+            font-size: 28pt;
+            line-height: 1.2;
+          }
+
+          .growth-timeline-cover-period {
+            margin: 6mm 0 0;
+            color: #5e6c7a;
+            font-size: 13pt;
+          }
+
+          .growth-timeline-cover-sub {
+            margin: 2mm 0 0;
+            color: #8a96a3;
+            font-size: 11pt;
+          }
+
+          /* 표지가 헤더를 대체 */
+          .growth-timeline-print-portal .growth-timeline-print-root > header {
+            display: none !important;
+          }
+
+          /* HARU 타임라인 PDF 출력 법칙: A4 한 장 = 2열×2행(사진 4장). 페이지 섹션마다 페이지 분할 */
           .growth-timeline-print-page {
             display: grid !important;
             grid-template-columns: repeat(2, 1fr) !important;
-            gap: 7mm 8mm !important;
+            gap: 10mm 10mm !important;
             break-after: page;
             page-break-after: always;
           }
@@ -563,15 +633,29 @@ export function GrowthTimelineDocumentModal({
             page-break-after: auto;
           }
 
-          /* 6장이 한 페이지(헤더 포함)에 들어가도록 사진 높이 고정 */
+          /* 4장 카드형이 한 페이지에 들어가도록 사진 높이 고정 */
           .growth-timeline-print-page .growth-timeline-photo {
             aspect-ratio: auto !important;
-            height: 56mm !important;
+            height: 78mm !important;
+          }
+
+          .growth-timeline-cell figcaption p,
+          .growth-timeline-cell figcaption textarea {
+            font-size: 14pt !important;
           }
 
           .growth-timeline-cell,
           .growth-timeline-cell img {
             break-inside: avoid !important;
+          }
+
+          .growth-timeline-print-footer {
+            grid-column: 1 / -1;
+            text-align: center;
+            margin-top: 5mm;
+            color: #9aa6b2;
+            font-size: 9pt;
+            letter-spacing: .04em;
           }
         }
       `}</style>
