@@ -1998,6 +1998,7 @@ export function SayuPage() {
         const prefix = FORMAT_PREFIX[format];
         const entries = monthRecords
           .filter((r) => {
+            if (prefix === 'reading' && !isCompletedReadingRecord(r)) return false;
             if (r.formats && r.formats.includes(format)) return true;
             return Object.keys(r).some((k) => k.startsWith(`${prefix}_`) && !k.endsWith('_sayu') && !k.endsWith('_rating') && !k.endsWith('_polished') && !k.endsWith('_images') && !k.endsWith('_stats'));
           })
@@ -2155,10 +2156,25 @@ export function SayuPage() {
     );
   };
 
+  const isCompletedReadingRecord = (record: HaruRecord) => {
+    const finalSayu = String((record as any).reading_final_sayu || '').trim();
+    const status = String((record as any).readingStatus || (record as any).reading_status || '').trim();
+    const entryType = String((record as any).entryType || (record as any).readingEntryType || '').trim();
+    return (
+      finalSayu.length > 0 ||
+      status === READING_STATUS.COMPLETED ||
+      entryType === READING_ENTRY_TYPES.FINAL ||
+      entryType === READING_ENTRY_TYPES.LEGACY_FINAL
+    );
+  };
+
   const hasCompletedFormatForRecord = (record: HaruRecord, prefix: string) => {
     if (isKnowledgeWarehouseRecord(record)) return false;
     if (prefix === 'growthTimeline') {
       return isGrowthTimelineRecord(record) && normalizeTimelineItems((record as any).timelineItems).length > 0;
+    }
+    if (prefix === 'reading') {
+      return isCompletedReadingRecord(record);
     }
     const sayu = record[`${prefix}_sayu`];
     const finalSayu = record[`${prefix}_final_sayu`];
