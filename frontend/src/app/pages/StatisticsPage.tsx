@@ -81,6 +81,7 @@ export function StatisticsPage() {
   const maxAssistantMonthCount = Math.max(...assistantMonths.map(([, count]) => count), 1);
   const typeLabel: Record<string, string> = {
     timeline: '타임라인',
+    plant: '식물탐정',
   };
 
   return (
@@ -108,7 +109,7 @@ export function StatisticsPage() {
                 비서 통계
               </h2>
               <p className="text-xs mt-1" style={{ color: '#999' }}>
-                타임라인 library 인덱스 기준
+                비서 library 인덱스 기준
               </p>
             </div>
             <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}>

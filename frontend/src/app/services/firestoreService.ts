@@ -106,12 +106,14 @@ export interface LibraryEntry extends Required<LibraryEntryInput> {
 export interface LibraryBackfillPreview {
   books: LibraryEntryInput[];
   timelines: LibraryEntryInput[];
+  plants: LibraryEntryInput[];
   total: number;
 }
 
 export interface LibraryBackfillRunResult {
   booksWritten: number;
   timelinesWritten: number;
+  plantsWritten: number;
   failed: string[];
   total: number;
 }
@@ -297,10 +299,30 @@ class FirestoreService {
       };
     });
 
+    const plantSnapshot = await getDocs(collection(db, 'users', userId, 'plants'));
+    const plants = plantSnapshot.docs.map((plantDoc) => {
+      const data = plantDoc.data();
+      const title =
+        getCleanText(data.displayName) ||
+        getCleanText(data.userConfirmedName) ||
+        getCleanText(data.finalGuess) ||
+        '이름 없는 식물';
+      const scientificName = getCleanText(data.scientificName);
+      return {
+        category: '비서',
+        type: 'plant',
+        title,
+        date: dateFromFirestoreValue(data.date || data.createdAt || data.updatedAt),
+        summary: scientificName ? `식물탐정 · ${scientificName}` : '식물탐정 기록',
+        refPath: `users/${userId}/plants/${plantDoc.id}`,
+      };
+    });
+
     return {
       books: [],
       timelines,
-      total: timelines.length,
+      plants,
+      total: timelines.length + plants.length,
     };
   }
 
@@ -309,6 +331,7 @@ class FirestoreService {
     const result: LibraryBackfillRunResult = {
       booksWritten: 0,
       timelinesWritten: 0,
+      plantsWritten: 0,
       failed: [],
       total: preview.total,
     };
@@ -319,6 +342,16 @@ class FirestoreService {
         result.timelinesWritten += 1;
       } catch (error) {
         console.warn('타임라인 library 백필 실패:', entry.refPath, error);
+        result.failed.push(entry.refPath);
+      }
+    }
+
+    for (const entry of preview.plants) {
+      try {
+        await this.upsertLibraryEntry(userId, entry);
+        result.plantsWritten += 1;
+      } catch (error) {
+        console.warn('식물탐정 library 백필 실패:', entry.refPath, error);
         result.failed.push(entry.refPath);
       }
     }
