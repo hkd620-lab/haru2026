@@ -43,6 +43,38 @@ function normalizeLength(value: unknown): BookLength {
     : "보통";
 }
 
+function sanitizeTitlePart(value: string): string {
+  return value
+    .replace(/^["'“”‘’]+|["'“”‘’]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseGeneratedChapterContent(rawContent: string): {
+  oneLineTitle: string;
+  content: string;
+} {
+  const normalized = String(rawContent || "").replace(/^\uFEFF/, "").trimStart();
+  const lines = normalized.split(/\r?\n/);
+  const firstLine = lines[0]?.trim() || "";
+  const match = firstLine.match(/^TITLE\s*:\s*(.+)$/i);
+
+  if (!match) {
+    return { oneLineTitle: "", content: rawContent };
+  }
+
+  return {
+    oneLineTitle: sanitizeTitlePart(match[1] || ""),
+    content: lines.slice(1).join("\n").trimStart(),
+  };
+}
+
+function buildChapterTitle(order: number, sourceTitle: string, oneLineTitle?: string): string {
+  const personName = sanitizeTitlePart(sourceTitle) || `소스 ${order}`;
+  const subtitle = sanitizeTitlePart(oneLineTitle || "");
+  return subtitle ? `${order}장 ${personName} — ${subtitle}` : `${order}장 ${personName}`;
+}
+
 export const generateBook = onCall(
   {
     region: "asia-northeast3",
@@ -129,6 +161,8 @@ export const generateBook = onCall(
 3. 소스 범위 안에서 장면이 보이도록 구체적 묘사 사용
 4. 문체는 선택된 ${selectedStyle} 지침을 따른다
 5. 분량은 ${lengthTarget}자 기준에 맞춘다
+6. 맨 첫 줄에는 반드시 TITLE: {한 줄 제목} 형식으로 제목만 출력하고, 다음 줄부터 본문을 작성한다
+7. TITLE에는 인물명과 장 번호를 넣지 말고, 한 줄 제목만 쓴다
 
 구성:
 1. 한 줄 후킹 (계속 읽고 싶게 — 진부한 요약 금지)
@@ -145,7 +179,12 @@ export const generateBook = onCall(
         messages: [{ role: "user", content: prompt }],
       });
 
-      const content = message.choices[0]?.message?.content || "";
+      const rawContent = message.choices[0]?.message?.content || "";
+      const parsedContent = parseGeneratedChapterContent(rawContent);
+      const order = existingCount + i + 1;
+      const safeSourceTitle = sourceTitle || `소스 ${i + 1}`;
+      const chapterTitle = buildChapterTitle(order, safeSourceTitle, parsedContent.oneLineTitle);
+      const content = parsedContent.content;
 
       const chapterRef = db
         .collection("books")
@@ -156,10 +195,10 @@ export const generateBook = onCall(
       await chapterRef.set({
         chapterId: chapterRef.id,
         bookId,
-        title: `${existingCount + i + 1}장`,
-        sourceTitle: sourceTitle || `소스 ${i + 1}`,
+        title: chapterTitle,
+        sourceTitle: safeSourceTitle,
         content,
-        order: existingCount + i + 1,
+        order,
         status: "draft",
         wordCount: content.length,
         promptVersion: PROMPT_VERSION,
@@ -169,7 +208,7 @@ export const generateBook = onCall(
         publishedAt: null,
       });
 
-      chapters.push({ chapterId: chapterRef.id, content, sourceTitle: sourceTitle || `소스 ${i + 1}` });
+      chapters.push({ chapterId: chapterRef.id, content, sourceTitle: safeSourceTitle });
 
       console.log(
         `[generateBook] 챕터 ${i + 1}/${sources.length} 완료`
@@ -237,4 +276,54 @@ export const generateBook = onCall(
 
     return { success: true, bookId, chapters, totalChapters };
   }
+);
+
+export const suggestChapterTitle = onCall(
+  {
+    region: "asia-northeast3",
+    secrets: [OPENAI_API_KEY],
+    timeoutSeconds: 120,
+  },
+  async (request) => {
+    if (!request.auth || request.auth.uid !== DEVELOPER_UID) {
+      throw new HttpsError("permission-denied", "권한 없음");
+    }
+
+    const { content, sourceTitle, order } = request.data as {
+      content?: string;
+      sourceTitle?: string;
+      order?: number;
+    };
+    const chapterContent = String(content || "").trim();
+    const numericOrder = Number(order);
+    const chapterOrder = Number.isFinite(numericOrder) && numericOrder > 0 ? numericOrder : 1;
+    const safeSourceTitle = sanitizeTitlePart(String(sourceTitle || "")) || `소스 ${chapterOrder}`;
+
+    if (!chapterContent) {
+      throw new HttpsError("invalid-argument", "본문이 필요합니다.");
+    }
+
+    const client = new OpenAI({ apiKey: OPENAI_API_KEY.value() });
+    const prompt = `아래 본문을 바탕으로 사람속으로 챕터의 한 줄 제목만 제안하세요.
+
+규칙:
+1. 출력은 제목 한 줄만
+2. 인물명, 장 번호, 따옴표, 접두어는 쓰지 않음
+3. 본문에 없는 사실·사건·감정 창작 금지
+4. 28자 이내의 자연스러운 한국어 제목
+
+[인물명]: ${safeSourceTitle}
+[본문]: ${chapterContent.slice(0, 6000)}`;
+
+    const message = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_completion_tokens: 80,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const oneLineTitle = sanitizeTitlePart(message.choices[0]?.message?.content || "");
+    return {
+      title: buildChapterTitle(chapterOrder, safeSourceTitle, oneLineTitle),
+    };
+  },
 );

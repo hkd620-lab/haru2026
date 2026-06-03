@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { collection, doc, getDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, doc, getDoc, query, orderBy, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -12,6 +12,7 @@ interface Chapter {
   title: string;
   content: string;
   order: number;
+  sourceTitle?: string;
 }
 
 export function BookReader() {
@@ -28,8 +29,13 @@ export function BookReader() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [ttsPlaying, setTtsPlaying] = useState<string | null>(null);
   const [ttsLoading, setTtsLoading] = useState<string | null>(null);
+  const [editingChapterId, setEditingChapterId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
+  const [titleSavingId, setTitleSavingId] = useState<string | null>(null);
+  const [titleSuggestingId, setTitleSuggestingId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fns = getFunctions(undefined, 'asia-northeast3');
+  const isDeveloper = user?.uid === DEVELOPER_UID;
 
   useEffect(() => {
     if (authLoading) return;
@@ -137,6 +143,60 @@ export function BookReader() {
     }
   };
 
+  const startTitleEdit = (chapter: Chapter) => {
+    if (!isDeveloper) return;
+    setEditingChapterId(chapter.id);
+    setEditingTitle(chapter.title || '');
+  };
+
+  const cancelTitleEdit = () => {
+    setEditingChapterId(null);
+    setEditingTitle('');
+  };
+
+  const saveChapterTitle = async (chapter: Chapter) => {
+    if (!bookId || !isDeveloper) return;
+    const nextTitle = editingTitle.trim();
+    if (!nextTitle) return;
+
+    setTitleSavingId(chapter.id);
+    try {
+      await updateDoc(doc(db, 'books', bookId, 'chapters', chapter.id), {
+        title: nextTitle,
+      });
+      cancelTitleEdit();
+    } catch (error) {
+      console.error('챕터 제목 저장 실패:', error);
+      window.alert('챕터 제목 저장에 실패했습니다.');
+    } finally {
+      setTitleSavingId(null);
+    }
+  };
+
+  const suggestTitle = async (chapter: Chapter, fallbackOrder: number) => {
+    if (!isDeveloper) return;
+
+    setTitleSuggestingId(chapter.id);
+    try {
+      const fn = httpsCallable(fns, 'suggestChapterTitle');
+      const res: any = await fn({
+        content: chapter.content || '',
+        sourceTitle: chapter.sourceTitle || '',
+        order: chapter.order || fallbackOrder,
+      });
+      const nextTitle = String(res.data?.title || '').trim();
+      if (nextTitle) {
+        setEditingChapterId(chapter.id);
+        setEditingTitle(nextTitle);
+      }
+    } catch (error) {
+      console.error('AI 챕터 제목 제안 실패:', error);
+      window.alert('AI 제목 제안에 실패했습니다.');
+    } finally {
+      setTitleSuggestingId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#FAF9F6' }}>
       {/* 헤더 */}
@@ -175,6 +235,9 @@ export function BookReader() {
           <div className="flex flex-col gap-3">
             {chapters.map((chapter, index) => {
               const isOpen = openIndex === index;
+              const isEditingTitle = editingChapterId === chapter.id;
+              const isSavingTitle = titleSavingId === chapter.id;
+              const isSuggestingTitle = titleSuggestingId === chapter.id;
               return (
                 <div
                   key={chapter.id}
@@ -186,31 +249,102 @@ export function BookReader() {
                   }}
                 >
                   {/* 챕터 헤더 */}
-                  <button
-                    className="w-full flex items-center justify-between px-5 py-4 text-left"
-                    onClick={() => setOpenIndex(isOpen ? null : index)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span
-                        className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
-                        style={{
-                          backgroundColor: isOpen ? '#1A3C6E' : '#e8edf5',
-                          color: isOpen ? '#ffffff' : '#1A3C6E',
-                        }}
+                  <div className="px-5 py-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <button
+                        type="button"
+                        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                        onClick={() => setOpenIndex(isOpen ? null : index)}
                       >
-                        {index + 1}
-                      </span>
-                      <span
-                        className="text-base font-semibold"
-                        style={{ color: '#1A3C6E' }}
-                      >
-                        {chapter.title}
-                      </span>
+                        <span
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                          style={{
+                            backgroundColor: isOpen ? '#1A3C6E' : '#e8edf5',
+                            color: isOpen ? '#ffffff' : '#1A3C6E',
+                          }}
+                        >
+                          {index + 1}
+                        </span>
+                        <span
+                          className="min-w-0 text-base font-semibold leading-snug"
+                          style={{ color: '#1A3C6E' }}
+                        >
+                          {chapter.title}
+                        </span>
+                      </button>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {isDeveloper && !isEditingTitle && (
+                          <>
+                            <button
+                              type="button"
+                              className="px-2 py-1 rounded-md text-sm font-medium"
+                              style={{ color: '#1A3C6E', backgroundColor: '#e8edf5' }}
+                              onClick={() => startTitleEdit(chapter)}
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              type="button"
+                              className="px-3 py-1 rounded-md text-xs font-semibold disabled:opacity-60"
+                              style={{ color: '#ffffff', backgroundColor: '#8B4789' }}
+                              disabled={isSuggestingTitle}
+                              onClick={() => suggestTitle(chapter, index + 1)}
+                            >
+                              {isSuggestingTitle ? '제안 중...' : 'AI 제목 제안'}
+                            </button>
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          className="px-1"
+                          style={{ color: '#1A3C6E', fontSize: 20 }}
+                          onClick={() => setOpenIndex(isOpen ? null : index)}
+                        >
+                          {isOpen ? '▲' : '▼'}
+                        </button>
+                      </div>
                     </div>
-                    <span style={{ color: '#1A3C6E', fontSize: 20 }}>
-                      {isOpen ? '▲' : '▼'}
-                    </span>
-                  </button>
+                    {isDeveloper && isEditingTitle && (
+                      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                        <input
+                          value={editingTitle}
+                          onChange={(event) => setEditingTitle(event.target.value)}
+                          className="min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
+                          style={{ borderColor: '#cfd8e6', color: '#1A3C6E' }}
+                          placeholder="예: 1장 김주하 — 흔들림 속에서도 품격을 지킨 사람"
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            className="px-3 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-60"
+                            style={{ backgroundColor: '#8B4789' }}
+                            disabled={isSuggestingTitle}
+                            onClick={() => suggestTitle(chapter, index + 1)}
+                          >
+                            {isSuggestingTitle ? '제안 중...' : 'AI 제목 제안'}
+                          </button>
+                          <button
+                            type="button"
+                            className="px-3 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-60"
+                            style={{ backgroundColor: '#1A3C6E' }}
+                            disabled={isSavingTitle || !editingTitle.trim()}
+                            onClick={() => saveChapterTitle(chapter)}
+                          >
+                            {isSavingTitle ? '저장 중...' : '저장'}
+                          </button>
+                          <button
+                            type="button"
+                            className="px-3 py-2 rounded-lg border text-xs font-semibold disabled:opacity-60"
+                            style={{ borderColor: '#d1d5db', color: '#4b5563' }}
+                            disabled={isSavingTitle}
+                            onClick={cancelTitleEdit}
+                          >
+                            취소
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   {/* 챕터 내용 */}
                   {isOpen && (
