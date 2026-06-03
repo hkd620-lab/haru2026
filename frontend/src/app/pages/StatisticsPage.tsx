@@ -102,6 +102,28 @@ export function StatisticsPage() {
   }, {});
   const topPlant = Object.entries(plantTitleCounts).sort((a, b) => b[1] - a[1])[0];
 
+  // 🌱 성장타임라인 전용 통계 (meta 기반)
+  const timelineEntries = assistantLibrary.filter((entry) => entry.type === 'timeline');
+  const timelineTotalRecords = timelineEntries.reduce(
+    (sum, entry) => sum + (entry.meta?.linkedRecordCount || 0),
+    0,
+  );
+  const timelineAvgRecords = timelineEntries.length
+    ? Math.round((timelineTotalRecords / timelineEntries.length) * 10) / 10
+    : 0;
+  const longestTimeline = [...timelineEntries].sort(
+    (a, b) => (b.meta?.durationDays || 0) - (a.meta?.durationDays || 0),
+  )[0];
+  const subjectLabel: Record<string, string> = { child: '육아', garden: '텃밭' };
+  const timelineSubjectCounts = timelineEntries.reduce<Record<string, number>>((acc, entry) => {
+    const st = entry.meta?.subjectType || '기타';
+    acc[st] = (acc[st] || 0) + 1;
+    return acc;
+  }, {});
+  const timelineSubjectText = Object.entries(timelineSubjectCounts)
+    .map(([st, c]) => `${subjectLabel[st] || st} ${c}`)
+    .join(' · ');
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
       <PageHeaderActions />
@@ -177,6 +199,38 @@ export function StatisticsPage() {
                       </p>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {timelineEntries.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold mb-2" style={{ color: '#333' }}>📌 성장타임라인 상세</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-lg p-3" style={{ backgroundColor: '#EEF6FF', border: '1px solid #d0dff0' }}>
+                      <p className="text-xs" style={{ color: '#999' }}>타임라인 수</p>
+                      <p className="text-xl font-bold mt-1" style={{ color: '#1A3C6E' }}>{timelineEntries.length}개</p>
+                    </div>
+                    <div className="rounded-lg p-3" style={{ backgroundColor: '#EEF6FF', border: '1px solid #d0dff0' }}>
+                      <p className="text-xs" style={{ color: '#999' }}>총 연결 기록</p>
+                      <p className="text-xl font-bold mt-1" style={{ color: '#1A3C6E' }}>{timelineTotalRecords}개</p>
+                    </div>
+                    <div className="rounded-lg p-3" style={{ backgroundColor: '#EEF6FF', border: '1px solid #d0dff0' }}>
+                      <p className="text-xs" style={{ color: '#999' }}>평균 기록 수</p>
+                      <p className="text-xl font-bold mt-1" style={{ color: '#1A3C6E' }}>{timelineAvgRecords}개</p>
+                    </div>
+                    <div className="rounded-lg p-3" style={{ backgroundColor: '#EEF6FF', border: '1px solid #d0dff0' }}>
+                      <p className="text-xs" style={{ color: '#999' }}>가장 오래 기록</p>
+                      <p className="text-sm font-bold mt-1 truncate" style={{ color: '#1A3C6E' }}>
+                        {longestTimeline ? `${longestTimeline.title} (${longestTimeline.meta?.durationDays || 0}일)` : '-'}
+                      </p>
+                    </div>
+                  </div>
+                  {timelineSubjectText && (
+                    <div className="mt-3 rounded-lg p-3" style={{ backgroundColor: '#EEF6FF', border: '1px solid #d0dff0' }}>
+                      <p className="text-xs" style={{ color: '#999' }}>주제별 타임라인</p>
+                      <p className="text-sm font-bold mt-1" style={{ color: '#1A3C6E' }}>{timelineSubjectText}</p>
+                    </div>
+                  )}
                 </div>
               )}
 

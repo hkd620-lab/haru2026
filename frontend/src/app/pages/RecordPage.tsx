@@ -4,7 +4,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Calendar } from 'lucide-react';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { useLocation, useNavigate } from 'react-router';
-import { firestoreService } from '../services/firestoreService';
+import { firestoreService, buildTimelineMeta } from '../services/firestoreService';
 import { getOrigin } from '../services/v2Origin';
 import { useAuth } from '../contexts/AuthContext';
 import { RecordTitleAnimation } from '../components/RecordTitleAnimation';
@@ -756,6 +756,7 @@ export function RecordPage() {
           { merge: true },
         );
         try {
+          const gsSnap = await getDoc(doc(db, 'users', user.uid, 'growthSubjects', growthSubjectId));
           await firestoreService.upsertLibraryEntry(user.uid, {
             category: '비서',
             type: 'timeline',
@@ -763,6 +764,7 @@ export function RecordPage() {
             date: savedDateStr,
             summary: `${growthSubjectType === 'child' ? '육아' : '텃밭'} 성장타임라인`,
             refPath: `users/${user.uid}/growthSubjects/${growthSubjectId}`,
+            meta: buildTimelineMeta(gsSnap.data() || {}),
           });
         } catch (libraryError) {
           console.warn('타임라인 library 인덱싱 실패:', libraryError);

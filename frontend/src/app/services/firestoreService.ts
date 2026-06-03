@@ -92,7 +92,39 @@ export interface PublishedBook {
 export interface LibraryEntryMeta {
   scientificName?: string;
   identificationStatus?: string;
+  subjectType?: string;
+  linkedRecordCount?: number;
+  firstRecordDate?: string;
+  latestRecordDate?: string;
+  durationDays?: number;
 }
+
+// 🌱 growthSubjects 원본 데이터 → 타임라인 통계 meta (백필·자동 인덱싱 공용)
+export const buildTimelineMeta = (data: any): LibraryEntryMeta => {
+  const subjectType = (data?.subjectType ?? '').toString().trim();
+  const dates = Array.isArray(data?.linkedRecordDates)
+    ? data.linkedRecordDates
+        .map((d: any) => (d ?? '').toString().trim())
+        .filter(Boolean)
+        .sort()
+    : [];
+  const firstRecordDate = dates[0] || '';
+  const latestRecordDate =
+    (data?.latestRecordDate ?? '').toString().trim() || dates[dates.length - 1] || '';
+  let durationDays = 0;
+  if (firstRecordDate && latestRecordDate) {
+    const diff =
+      (new Date(latestRecordDate).getTime() - new Date(firstRecordDate).getTime()) / 86400000;
+    if (Number.isFinite(diff)) durationDays = Math.max(0, Math.round(diff));
+  }
+  return {
+    subjectType,
+    linkedRecordCount: dates.length,
+    firstRecordDate,
+    latestRecordDate,
+    durationDays,
+  };
+};
 
 export interface LibraryEntryInput {
   category: string;
@@ -275,11 +307,20 @@ class FirestoreService {
       createdAt: serverTimestamp(),
     };
     if (entry.meta && typeof entry.meta === 'object') {
+      const m = entry.meta;
       const cleanedMeta: LibraryEntryMeta = {};
-      const sciName = getCleanText(entry.meta.scientificName);
-      const idStatus = getCleanText(entry.meta.identificationStatus);
+      const sciName = getCleanText(m.scientificName);
+      const idStatus = getCleanText(m.identificationStatus);
+      const subjectType = getCleanText(m.subjectType);
+      const firstRecordDate = getCleanText(m.firstRecordDate);
+      const latestRecordDate = getCleanText(m.latestRecordDate);
       if (sciName) cleanedMeta.scientificName = sciName;
       if (idStatus) cleanedMeta.identificationStatus = idStatus;
+      if (subjectType) cleanedMeta.subjectType = subjectType;
+      if (firstRecordDate) cleanedMeta.firstRecordDate = firstRecordDate;
+      if (latestRecordDate) cleanedMeta.latestRecordDate = latestRecordDate;
+      if (typeof m.linkedRecordCount === 'number') cleanedMeta.linkedRecordCount = m.linkedRecordCount;
+      if (typeof m.durationDays === 'number') cleanedMeta.durationDays = m.durationDays;
       if (Object.keys(cleanedMeta).length > 0) payload.meta = cleanedMeta;
     }
     await setDoc(entryRef, payload, { merge: true });
@@ -314,6 +355,7 @@ class FirestoreService {
         date: dateFromFirestoreValue(data.createdAt || data.updatedAt || data.latestRecordDate),
         summary: '성장타임라인 기록',
         refPath: `users/${userId}/growthSubjects/${timelineDoc.id}`,
+        meta: buildTimelineMeta(data),
       };
     });
 
