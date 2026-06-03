@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
+import { KNewsSection } from '../components/KNewsSection';
+import { TodayQuote } from '../components/TodayQuote';
 import { useAuth } from '../contexts/AuthContext';
 import {
   firestoreService,
@@ -703,13 +705,27 @@ export function SayuTogetherPage() {
   };
 
   const renderPublicContent = () => (
-    <div className="rounded-2xl p-8 text-center bg-white" style={{ border: '1px solid #E2E8F0' }}>
-      <p className="text-sm font-bold" style={{ color: '#1A3C6E' }}>
-        공개 콘텐츠를 준비하고 있습니다.
-      </p>
-      <p className="text-sm mt-2" style={{ color: '#64748B', lineHeight: 1.7 }}>
-        사람속으로 발행본과 SAYU 공개 기록 외에 함께 볼 콘텐츠를 이곳에 모을 예정입니다.
-      </p>
+    <div className="space-y-5">
+      <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: '1px solid #DBEAFE' }}>
+        <h2 className="text-base font-bold mb-3" style={{ color: '#1A3C6E' }}>
+          K뉴스
+        </h2>
+        <KNewsSection />
+      </section>
+
+      <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
+        <h2 className="text-base font-bold mb-3" style={{ color: '#1A3C6E' }}>
+          명언
+        </h2>
+        <TodayQuote defaultTab="classic" hideTabSwitcher />
+      </section>
+
+      <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
+        <h2 className="text-base font-bold mb-3" style={{ color: '#1A3C6E' }}>
+          성경말씀
+        </h2>
+        <TodayQuote defaultTab="bible" hideTabSwitcher />
+      </section>
     </div>
   );
 
