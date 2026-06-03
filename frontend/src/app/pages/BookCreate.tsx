@@ -1,10 +1,17 @@
 import { useState, useEffect } from 'react';
 import { httpsCallable } from 'firebase/functions';
-import { doc, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, query, updateDoc } from 'firebase/firestore';
 import { functions } from '../../firebase';
 import { db } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router';
+
+const STYLE_OPTIONS = ['감성서사', '다큐', '구술회고', '편지'] as const;
+const LENGTH_OPTIONS = [
+  { key: '짧게', label: '짧게', desc: '약 800자' },
+  { key: '보통', label: '보통', desc: '약 1,500자' },
+  { key: '길게', label: '길게', desc: '약 2,200자' },
+] as const;
 
 const FINAL_CHECKLIST = [
   '제목 명확',
@@ -16,6 +23,9 @@ const FINAL_CHECKLIST = [
   '민감·부적절 없음',
   '발행 가능',
 ];
+
+type BookStyle = (typeof STYLE_OPTIONS)[number];
+type BookLength = (typeof LENGTH_OPTIONS)[number]['key'];
 
 interface Source {
   sourceTitle: string;
@@ -45,6 +55,8 @@ export function BookCreate() {
 
   const [title, setTitle] = useState(existingBookTitle);
   const [sourceType, setSourceType] = useState<'nonfiction' | 'fiction' | 'mixed'>('nonfiction');
+  const [style, setStyle] = useState<BookStyle>('감성서사');
+  const [length, setLength] = useState<BookLength>('보통');
   const [sources, setSources] = useState<Source[]>([
     { sourceTitle: '', sourceText: '' },
   ]);
@@ -54,6 +66,45 @@ export function BookCreate() {
   const [error, setError] = useState<string | null>(null);
   const [checkedItems, setCheckedItems] = useState<string[]>([]);
   const [publishing, setPublishing] = useState(false);
+  const [legacyWarning, setLegacyWarning] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkPromptVersion = async () => {
+      if (!existingBookId) {
+        setLegacyWarning(false);
+        return;
+      }
+
+      try {
+        const bookSnap = await getDoc(doc(db, 'books', existingBookId));
+        const bookVersion = bookSnap.exists() ? bookSnap.data().promptVersion : undefined;
+        let isLegacy = !bookVersion || bookVersion === 'v1.0';
+
+        if (!isLegacy) {
+          const chapterSnap = await getDocs(
+            query(collection(db, 'books', existingBookId, 'chapters'), limit(20)),
+          );
+          isLegacy = chapterSnap.docs.some((chapterDoc) => {
+            const chapterVersion = chapterDoc.data().promptVersion;
+            return !chapterVersion || chapterVersion === 'v1.0';
+          });
+        }
+
+        if (!cancelled) setLegacyWarning(isLegacy);
+      } catch (err) {
+        console.warn('책 promptVersion 확인 실패:', err);
+        if (!cancelled) setLegacyWarning(false);
+      }
+    };
+
+    void checkPromptVersion();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [existingBookId]);
 
   // 소스 추가
   const addSource = () => {
@@ -112,6 +163,8 @@ export function BookCreate() {
         authorUid: user?.uid ?? '',
         existingBookId: existingBookId || undefined,
         sourceType,
+        style,
+        length,
       });
 
       clearInterval(progressInterval);
@@ -208,6 +261,75 @@ export function BookCreate() {
             ))}
           </div>
         </div>
+
+        {/* 문체·분량 선택 */}
+        <div
+          className="rounded-xl border p-4 flex flex-col gap-4"
+          style={{ backgroundColor: '#ffffff', borderColor: '#c7d6ea' }}
+        >
+          <div>
+            <label className="block text-sm font-semibold mb-2" style={{ color: '#1A3C6E' }}>
+              문체
+            </label>
+            <select
+              value={style}
+              onChange={(e) => setStyle(e.target.value as BookStyle)}
+              disabled={loading || Boolean(results)}
+              className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 disabled:opacity-60"
+              style={{
+                borderColor: '#d1d5db',
+                backgroundColor: '#ffffff',
+                color: '#1A3C6E',
+                fontSize: 16,
+              }}
+            >
+              {STYLE_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-2" style={{ color: '#1A3C6E' }}>
+              분량
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {LENGTH_OPTIONS.map((option) => (
+                <button
+                  key={option.key}
+                  onClick={() => setLength(option.key)}
+                  disabled={loading || Boolean(results)}
+                  className="rounded-lg border px-3 py-2 text-sm font-semibold transition-opacity disabled:opacity-60"
+                  style={{
+                    backgroundColor: length === option.key ? '#1A3C6E' : '#ffffff',
+                    color: length === option.key ? '#ffffff' : '#1A3C6E',
+                    borderColor: '#1A3C6E',
+                  }}
+                  type="button"
+                >
+                  <span className="block">{option.label}</span>
+                  <span
+                    className="block text-xs font-normal mt-0.5"
+                    style={{ color: length === option.key ? '#dbeafe' : '#6b7280' }}
+                  >
+                    {option.desc}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {legacyWarning && (
+          <p
+            className="text-sm rounded-lg px-4 py-3"
+            style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}
+          >
+            이 책은 구 버전(v1)으로 생성되어 새 문체가 섞일 수 있습니다. 그래도 이어쓰면 새 문체로 추가됩니다.
+          </p>
+        )}
 
         {/* 책 주제 입력 */}
         <div>

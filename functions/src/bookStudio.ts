@@ -13,6 +13,36 @@ interface Source {
   sourceText: string;
 }
 
+type BookStyle = "감성서사" | "다큐" | "구술회고" | "편지";
+type BookLength = "짧게" | "보통" | "길게";
+
+const PROMPT_VERSION = "v2.0";
+
+const STYLE_GUIDES: Record<BookStyle, string> = {
+  감성서사: "따뜻하고 잔잔하게, 감정의 결을 천천히",
+  다큐: "담백한 관찰자 시점, 사실 중심, 감정 절제",
+  구술회고: "누군가 직접 들려주는 듯한 인생 회고 어조",
+  편지: "독자에게 부치는 편지처럼 부드럽고 개인적",
+};
+
+const LENGTH_TARGETS: Record<BookLength, number> = {
+  짧게: 800,
+  보통: 1500,
+  길게: 2200,
+};
+
+function normalizeStyle(value: unknown): BookStyle {
+  return value === "다큐" || value === "구술회고" || value === "편지" || value === "감성서사"
+    ? value
+    : "감성서사";
+}
+
+function normalizeLength(value: unknown): BookLength {
+  return value === "짧게" || value === "길게" || value === "보통"
+    ? value
+    : "보통";
+}
+
 export const generateBook = onCall(
   {
     region: "asia-northeast3",
@@ -25,12 +55,19 @@ export const generateBook = onCall(
       throw new HttpsError("permission-denied", "권한 없음");
     }
 
-    const { title, sources, authorUid, existingBookId } = request.data as {
+    const { title, sources, authorUid, existingBookId, style, length } = request.data as {
       title: string;
       sources: Source[];
       authorUid: string;
       existingBookId?: string;
+      sourceType?: string;
+      style?: string;
+      length?: string;
     };
+    const selectedStyle = normalizeStyle(style);
+    const selectedLength = normalizeLength(length);
+    const styleGuide = STYLE_GUIDES[selectedStyle];
+    const lengthTarget = LENGTH_TARGETS[selectedLength];
 
     // 입력값 검증
     if (!title || !Array.isArray(sources) || sources.length === 0) {
@@ -54,7 +91,9 @@ export const generateBook = onCall(
         coverColor: "#1A3C6E",
         totalChapters: 0,
         totalReaders: 0,
-        promptVersion: "v1.0",
+        promptVersion: PROMPT_VERSION,
+        style: selectedStyle,
+        length: selectedLength,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
       bookId = bookRef.id;
@@ -78,26 +117,27 @@ export const generateBook = onCall(
     for (let i = 0; i < sources.length; i++) {
       const { sourceTitle, sourceText } = sources[i];
 
-      const prompt = `당신은 가볍고 재미있는 인물 이야기 작가입니다.
+      const prompt = `당신은 ${styleGuide} 인물 이야기 작가입니다.
 
 [책 주제]: ${title}
 [소스 제목]: ${sourceTitle || `소스 ${i + 1}`}
 [소스 자료]: ${sourceText}
 
-아래 규칙을 반드시 지키세요:
-- 소스 자료에 있는 정보만 사용 (추가 정보 절대 금지)
-- 구어체, 짧은 문장, 쉬운 단어 사용
-- 어려운 용어, 학문적 설명, 정치적 판단 금지
-- 교훈 강요 금지 (독자가 스스로 느끼게)
-- 전체 분량: 800~1,200자
+핵심 규칙(반드시 유지):
+1. 소스 자료에 있는 정보만 사용 — 추가 사실·사건·대화·감정 창작 금지, 추측 금지
+2. 교훈을 직접 강요하지 말 것 (독자가 스스로 느끼게)
+3. 소스 범위 안에서 장면이 보이도록 구체적 묘사 사용
+4. 문체는 선택된 ${selectedStyle} 지침을 따른다
+5. 분량은 ${lengthTarget}자 기준에 맞춘다
 
-아래 구조로 챕터 1개를 작성하세요:
-1. 한 줄 요약 (독자가 계속 읽고 싶게)
-2. 출발 (배경, 3~5문장)
-3. 문제/실패 (사건 3~5개)
-4. 전환점 (1~2개)
-5. 결과 + 교훈 (자연스럽게)
-6. 마지막 줄: 📚 근거: 노트북LM 분석 — ${sourceTitle || title}`;
+구성:
+1. 한 줄 후킹 (계속 읽고 싶게 — 진부한 요약 금지)
+2. 장면으로 여는 출발
+3. 문제·긴장·갈등 (구체 사건)
+4. 전환점 (내면 변화 포함)
+5. 변화/깨달음
+6. 여운 있는 마무리 (교훈 직접 서술 금지)
+7. 📚 근거: 노트북LM 분석 — ${sourceTitle || title}`;
 
       const message = await client.chat.completions.create({
         model: "gpt-4o",
@@ -122,7 +162,9 @@ export const generateBook = onCall(
         order: existingCount + i + 1,
         status: "draft",
         wordCount: content.length,
-        promptVersion: "v1.0",
+        promptVersion: PROMPT_VERSION,
+        style: selectedStyle,
+        length: selectedLength,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         publishedAt: null,
       });
@@ -135,10 +177,14 @@ export const generateBook = onCall(
     }
 
     // 심리 레이어 챕터 생성
-    const psychPrompt = `앞서 다룬 인물들의 공통점을 분석해 주세요.
+    const psychPrompt = `당신은 ${styleGuide} 인물 이야기 작가입니다.
+
+앞서 다룬 인물들의 공통점을 분석해 주세요.
 공통 원인 2~3개만 추출하고 각 1줄로 설명하세요.
 어려운 용어, 학문적 설명 금지.
-전체 분량: 300~400자.
+소스 자료 밖의 사실·사건·대화·감정 창작은 금지합니다.
+전체 톤은 ${selectedStyle} 문체를 따르고, 여운은 남기되 교훈을 직접 강요하지 마세요.
+전체 분량은 ${Math.max(300, Math.round(lengthTarget * 0.25))}자 기준에 맞춥니다.
 
 [책 주제]: ${title}
 [다룬 인물/소스]: ${sources.map((s, i) => s.sourceTitle || `소스 ${i + 1}`).join(', ')}`;
@@ -166,7 +212,9 @@ export const generateBook = onCall(
       order: existingCount + sources.length + 1,
       status: "draft",
       wordCount: psychContent.length,
-      promptVersion: "v1.0",
+      promptVersion: PROMPT_VERSION,
+      style: selectedStyle,
+      length: selectedLength,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       publishedAt: null,
     });
@@ -179,7 +227,13 @@ export const generateBook = onCall(
 
     // books/{bookId} totalChapters 업데이트
     const totalChapters = existingCount + chapters.length;
-    await db.collection("books").doc(bookId).update({ totalChapters });
+    await db.collection("books").doc(bookId).update({
+      totalChapters,
+      promptVersion: PROMPT_VERSION,
+      style: selectedStyle,
+      length: selectedLength,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
 
     return { success: true, bookId, chapters, totalChapters };
   }
