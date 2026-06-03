@@ -2326,7 +2326,7 @@ type NormalizedGrowthTimelinePdfItem = Required<Pick<GrowthTimelinePdfItem, 'url
   };
 };
 
-const GROWTH_TIMELINE_PDF_SCHEMA_VERSION = 1;
+const GROWTH_TIMELINE_PDF_SCHEMA_VERSION = 2;
 const GROWTH_TIMELINE_PDF_MAX_ITEMS = 80;
 
 function cleanTimelinePdfText(value: unknown, maxLength: number): string {
@@ -2563,6 +2563,7 @@ async function buildGrowthTimelinePdfBuffer(payload: ReturnType<typeof normalize
         doc.fillColor('#9aa6b2').fontSize(9).text(`HARU Timeline · ${periodText}`, margin, pageHeight - 54, {
           width: pageWidth - margin * 2,
           align: 'center',
+          lineBreak: false,
         });
       }
 
