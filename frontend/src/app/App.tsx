@@ -60,6 +60,8 @@ import { Footer } from './components/Footer';
 import { TodayQuote } from './components/TodayQuote';
 import { setupForegroundMessageListener, requestNotificationPermission } from './services/notificationService';
 
+const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+
 function AppInitializer() {
   const { user } = useAuth();
 
@@ -108,6 +110,13 @@ function HomeOrLanding() {
   return user ? <HomePageV2 /> : <LandingPage />;
 }
 
+function DeveloperBookStudioRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user?.uid !== DEVELOPER_UID) return <Navigate to="/" replace />;
+  return <BookStudio />;
+}
+
 function App() {
   return (
     <ThemeProvider>
@@ -146,9 +155,9 @@ function App() {
 
               {/* 원기충전소 (구 책스튜디오 — 2026-05-13 리브랜딩, 폐기 URL은 홈 리다이렉트) */}
               <Route path="/recovery" element={<BookStudio />} />
-              <Route path="/book-studio" element={<Navigate to="/" replace />} />
+              <Route path="/book-studio" element={<DeveloperBookStudioRoute />} />
               <Route path="/book-create" element={<BookCreate />} />
-              <Route path="/book-reader/:bookId" element={<Navigate to="/" replace />} />
+              <Route path="/book-reader/:bookId" element={<BookReader />} />
               <Route path="/news" element={<NewsPage />} />
               <Route path="/novel-studio" element={<NovelStudio />} />
               <Route path="/novel-synopsis" element={<NovelSynopsisPage />} />

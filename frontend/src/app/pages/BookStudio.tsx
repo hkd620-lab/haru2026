@@ -21,7 +21,7 @@ interface Book {
 type TabType = 'knews' | 'people' | 'quote' | 'bible';
 
 const STATUS_LABEL: Record<Book['status'], string> = {
-  serializing: '연재중',
+  serializing: '발행중',
   draft: '초안',
   private: '비공개',
 };
@@ -73,6 +73,12 @@ export function BookStudio() {
   };
 
   useEffect(() => {
+    if (!isDeveloper) {
+      setBooks([]);
+      setLoading(false);
+      return;
+    }
+
     const q = query(collection(db, 'books'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(
       q,
@@ -98,7 +104,7 @@ export function BookStudio() {
       }
     );
     return () => unsubscribe();
-  }, []);
+  }, [isDeveloper]);
 
   const tabButtonClass = (isActive: boolean) =>
     `flex-1 py-2.5 px-2 text-sm rounded-lg ${

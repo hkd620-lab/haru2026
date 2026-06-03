@@ -1,8 +1,21 @@
 import { useState, useEffect } from 'react';
 import { httpsCallable } from 'firebase/functions';
+import { doc, updateDoc } from 'firebase/firestore';
 import { functions } from '../../firebase';
+import { db } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router';
+
+const FINAL_CHECKLIST = [
+  '제목 명확',
+  '핵심 메시지 분명',
+  '목차 흐름 자연',
+  '분량·깊이 충분',
+  '중복 없음',
+  '읽을 가치',
+  '민감·부적절 없음',
+  '발행 가능',
+];
 
 interface Source {
   sourceTitle: string;
@@ -39,6 +52,8 @@ export function BookCreate() {
   const [progressMsg, setProgressMsg] = useState('');
   const [results, setResults] = useState<GenerateResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [checkedItems, setCheckedItems] = useState<string[]>([]);
+  const [publishing, setPublishing] = useState(false);
 
   // 소스 추가
   const addSource = () => {
@@ -71,6 +86,7 @@ export function BookCreate() {
     setError(null);
     setLoading(true);
     setResults(null);
+    setCheckedItems([]);
     setProgressMsg('');
 
     try {
@@ -111,6 +127,34 @@ export function BookCreate() {
       setProgressMsg('');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const allChecklistPassed = FINAL_CHECKLIST.every((item) => checkedItems.includes(item));
+
+  const toggleChecklistItem = (item: string) => {
+    setCheckedItems((prev) =>
+      prev.includes(item) ? prev.filter((next) => next !== item) : [...prev, item],
+    );
+  };
+
+  const handleFinalizeBook = async () => {
+    if (!results?.bookId || !allChecklistPassed) return;
+
+    setPublishing(true);
+    setError(null);
+    try {
+      await updateDoc(doc(db, 'books', results.bookId), {
+        status: 'serializing',
+        checklistPassed: true,
+      });
+      setProgressMsg('최종 생성 완료! 발행중으로 전환되었습니다.');
+      navigate('/book-studio');
+    } catch (err: unknown) {
+      console.error('책 최종 생성 실패:', err);
+      setError('최종 생성에 실패했습니다. 권한과 네트워크 상태를 확인해주세요.');
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -357,12 +401,46 @@ export function BookCreate() {
               </div>
             ))}
 
+            <div className="rounded-xl border p-4" style={{ backgroundColor: '#ffffff', borderColor: '#c7d6ea' }}>
+              <h3 className="text-sm font-semibold mb-3" style={{ color: '#1A3C6E' }}>
+                최종 생성 전 확인
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {FINAL_CHECKLIST.map((item) => (
+                  <label
+                    key={item}
+                    className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
+                    style={{
+                      borderColor: checkedItems.includes(item) ? '#10b981' : '#e5e7eb',
+                      backgroundColor: checkedItems.includes(item) ? '#ECFDF5' : '#ffffff',
+                      color: '#1A3C6E',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checkedItems.includes(item)}
+                      onChange={() => toggleChecklistItem(item)}
+                      style={{ width: 16, height: 16 }}
+                    />
+                    <span>{item}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs mt-3" style={{ color: '#6b7280' }}>
+                8개 항목을 모두 확인해야 최종 생성할 수 있습니다.
+              </p>
+            </div>
+
             <button
-              onClick={() => navigate('/book-studio')}
+              onClick={handleFinalizeBook}
+              disabled={!allChecklistPassed || publishing}
               className="w-full py-3 rounded-lg text-white font-semibold text-base"
-              style={{ backgroundColor: '#10b981' }}
+              style={{
+                backgroundColor: allChecklistPassed && !publishing ? '#10b981' : '#9ca3af',
+                cursor: allChecklistPassed && !publishing ? 'pointer' : 'not-allowed',
+              }}
             >
-              저장 완료 — 원기충전소로 이동
+              {publishing ? '최종 생성 중...' : '최종 생성'}
             </button>
           </div>
         )}

@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, doc, getDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { useAuth } from '../contexts/AuthContext';
+
+const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
 interface Chapter {
   id: string;
@@ -14,11 +17,14 @@ interface Chapter {
 export function BookReader() {
   const { bookId } = useParams<{ bookId: string }>();
   const [searchParams] = useSearchParams();
-  const bookTitle = searchParams.get('bookTitle') ?? '책 읽기';
+  const requestedBookTitle = searchParams.get('bookTitle') ?? '책 읽기';
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
 
+  const [bookTitle, setBookTitle] = useState(requestedBookTitle);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
+  const [canRead, setCanRead] = useState(false);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [ttsPlaying, setTtsPlaying] = useState<string | null>(null);
   const [ttsLoading, setTtsLoading] = useState<string | null>(null);
@@ -26,21 +32,66 @@ export function BookReader() {
   const fns = getFunctions(undefined, 'asia-northeast3');
 
   useEffect(() => {
-    if (!bookId) return;
+    if (authLoading) return;
+    if (!bookId || !user?.uid) {
+      navigate('/', { replace: true });
+      return;
+    }
+
+    let cancelled = false;
+    const checkBookAccess = async () => {
+      setLoading(true);
+      setCanRead(false);
+      setChapters([]);
+      try {
+        const bookSnap = await getDoc(doc(db, 'books', bookId));
+        const data = bookSnap.data() as { status?: string; title?: string } | undefined;
+        const isDeveloper = user.uid === DEVELOPER_UID;
+        const allowed = bookSnap.exists() && (data?.status === 'serializing' || isDeveloper);
+
+        if (!allowed) {
+          navigate('/', { replace: true });
+          return;
+        }
+
+        if (cancelled) return;
+        setBookTitle(data?.title || requestedBookTitle);
+        setCanRead(true);
+      } catch (error) {
+        console.error('책 접근 확인 실패:', error);
+        navigate('/', { replace: true });
+      }
+    };
+
+    checkBookAccess();
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, bookId, navigate, requestedBookTitle, user?.uid]);
+
+  useEffect(() => {
+    if (!bookId || !canRead) return;
     const q = query(
       collection(db, 'books', bookId, 'chapters'),
       orderBy('order')
     );
-    const unsub = onSnapshot(q, (snap) => {
-      const list = snap.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as Omit<Chapter, 'id'>),
-      }));
-      setChapters(list);
-      setLoading(false);
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const list = snap.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as Omit<Chapter, 'id'>),
+        }));
+        setChapters(list);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('챕터 로드 실패:', error);
+        navigate('/', { replace: true });
+      },
+    );
     return () => unsub();
-  }, [bookId]);
+  }, [bookId, canRead, navigate]);
 
   const handleTTS = async (text: string, key: string) => {
     if (ttsPlaying === key) {
