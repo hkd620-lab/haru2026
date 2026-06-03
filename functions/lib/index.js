@@ -36,8 +36,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateGrowthTimelinePdf = exports.generateMergePDFFast = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.reverseGeocodeKakao = void 0;
-exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = void 0;
+exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateGrowthTimelinePdf = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.reverseGeocodeKakao = void 0;
+exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -2007,79 +2007,6 @@ exports.extractStockTradeTextFromPhoto = (0, https_2.onCall)({
         logger.error('주식 거래 캡처 OCR 실패', { message: (_d = error === null || error === void 0 ? void 0 : error.message) === null || _d === void 0 ? void 0 : _d.slice(0, 200) });
         throw new https_2.HttpsError('internal', '거래 캡처 텍스트 추출에 실패했습니다. 사진을 더 또렷하게 올려 주세요.');
     }
-});
-exports.generateMergePDFFast = (0, https_2.onCall)({ region: 'asia-northeast3', memory: '1GiB', timeoutSeconds: 300 }, async (request) => {
-    const { title, dateRange, records } = request.data;
-    const fontPath = path.join(__dirname, 'fonts', 'NotoSansKR.ttf');
-    // 이미지 사전 다운로드
-    const recordsWithImages = await Promise.all(records.map(async (record) => {
-        const imageBuffers = [];
-        if (record.images && record.images.length > 0) {
-            for (const url of record.images) {
-                try {
-                    const res = await axios_1.default.get(url, { responseType: 'arraybuffer', timeout: 10000 });
-                    // sharp로 리사이징: 최대 800px, JPEG 품질 70% → 응답 크기 축소
-                    const resized = await sharp(Buffer.from(res.data))
-                        .resize({ width: 800, withoutEnlargement: true })
-                        .jpeg({ quality: 70 })
-                        .toBuffer();
-                    imageBuffers.push(resized);
-                }
-                catch (e) {
-                    logger.warn(`이미지 다운로드/리사이징 실패: ${url}`);
-                }
-            }
-        }
-        return { ...record, imageBuffers };
-    }));
-    return new Promise((resolve, reject) => {
-        try {
-            const doc = new PDFDocument({ size: 'A4', margin: 50 });
-            const chunks = [];
-            doc.on('data', (chunk) => chunks.push(chunk));
-            doc.on('end', () => {
-                const pdfBuffer = Buffer.concat(chunks);
-                resolve({ pdf: pdfBuffer.toString('base64') });
-            });
-            doc.on('error', reject);
-            // 표지
-            doc.font(fontPath).fontSize(22).fillColor('#1A3C6E').text(title, { align: 'center' });
-            doc.moveDown(0.5);
-            doc.fontSize(11).fillColor('#999999').text(dateRange, { align: 'center' });
-            doc.moveDown(2);
-            // 각 기록
-            recordsWithImages.forEach((record, idx) => {
-                if (idx > 0)
-                    doc.moveDown(1);
-                // 날짜
-                doc.fontSize(12).fillColor('#1A3C6E').font(fontPath).text(record.date);
-                // 구분선
-                doc.moveDown(0.3);
-                const y = doc.y;
-                doc.moveTo(50, y).lineTo(545, y).strokeColor('#E0E0E0').lineWidth(0.5).stroke();
-                doc.moveDown(0.5);
-                // 이미지
-                if (record.imageBuffers && record.imageBuffers.length > 0) {
-                    record.imageBuffers.forEach((imgBuffer) => {
-                        doc.image(imgBuffer, { width: 495, align: 'center' });
-                        doc.moveDown(0.5);
-                    });
-                }
-                // 본문
-                doc.fontSize(11).fillColor('#333333').font(fontPath).text(record.content || '', {
-                    lineGap: 4,
-                    paragraphGap: 4,
-                });
-            });
-            // 푸터 텍스트
-            doc.moveDown(2);
-            doc.fontSize(9).fillColor('#CCCCCC').text('HARU by JOYEL', { align: 'center' });
-            doc.end();
-        }
-        catch (err) {
-            reject(err);
-        }
-    });
 });
 const GROWTH_TIMELINE_PDF_SCHEMA_VERSION = 1;
 const GROWTH_TIMELINE_PDF_MAX_ITEMS = 80;
