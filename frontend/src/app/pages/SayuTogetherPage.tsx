@@ -11,7 +11,7 @@ import {
 } from '../services/firestoreService';
 import { toast } from 'sonner';
 
-type TogetherTab = 'shared' | 'people';
+type TogetherTab = 'shared' | 'people' | 'publicContent';
 
 export function SayuTogetherPage() {
   const navigate = useNavigate();
@@ -702,6 +702,17 @@ export function SayuTogetherPage() {
     );
   };
 
+  const renderPublicContent = () => (
+    <div className="rounded-2xl p-8 text-center bg-white" style={{ border: '1px solid #E2E8F0' }}>
+      <p className="text-sm font-bold" style={{ color: '#1A3C6E' }}>
+        공개 콘텐츠를 준비하고 있습니다.
+      </p>
+      <p className="text-sm mt-2" style={{ color: '#64748B', lineHeight: 1.7 }}>
+        사람속으로 발행본과 SAYU 공개 기록 외에 함께 볼 콘텐츠를 이곳에 모을 예정입니다.
+      </p>
+    </div>
+  );
+
   return (
     <div
       className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8"
@@ -741,10 +752,11 @@ export function SayuTogetherPage() {
         </p>
       </div>
 
-      <div className="mb-5 grid grid-cols-2 gap-2">
+      <div className="mb-5 grid grid-cols-3 gap-2">
         {([
           { key: 'shared', label: '구독자 사유' },
           { key: 'people', label: '사람속으로' },
+          { key: 'publicContent', label: '공개 콘텐츠' },
         ] as const).map((tab) => {
           const active = activeTab === tab.key;
           return (
@@ -774,7 +786,9 @@ export function SayuTogetherPage() {
 
       {activeTab === 'shared'
         ? (selectedItem ? renderDetail() : renderList())
-        : renderPublishedBooks()}
+        : activeTab === 'people'
+          ? renderPublishedBooks()
+          : renderPublicContent()}
     </div>
   );
 }

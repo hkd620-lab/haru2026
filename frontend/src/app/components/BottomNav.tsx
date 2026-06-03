@@ -1,4 +1,4 @@
-import { Home, BookOpen, Sparkles, Settings, Library, Wrench, Users } from 'lucide-react';
+import { Home, Sparkles, Settings, Wrench, Users } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { getOrigin } from '../services/v2Origin';
@@ -20,15 +20,13 @@ export function BottomNav() {
     { path: '/settings', icon: Settings, label: '설정' },
   ];
 
-  const thirdSlot = isDeveloper
-    ? { path: '/admin/console', icon: Wrench, label: '개발자 콘솔' }
-    : { path: '/recovery', icon: Library, label: '원기충전소' };
-
-  const navItems = [
-    ...baseItems.slice(0, 3),
-    thirdSlot,
-    ...baseItems.slice(3),
-  ];
+  const navItems = isDeveloper
+    ? [
+        ...baseItems.slice(0, 3),
+        { path: '/admin/console', icon: Wrench, label: '개발자 콘솔' },
+        ...baseItems.slice(3),
+      ]
+    : baseItems;
 
   return (
     <nav

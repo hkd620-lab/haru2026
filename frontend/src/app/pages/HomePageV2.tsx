@@ -360,20 +360,6 @@ const AGENTS: Agent[] = [
     ),
   },
   {
-    label: '원기충전소',
-    sub: '오늘 컨디션을 기록하면 AI가 맞춤 회복 루틴을 처방해드립니다.',
-    tag: 'CARE · 회복',
-    variant: 'green',
-    stroke: '#4A5A2C',
-    path: '/recovery',
-    icon: (
-      <>
-        <path d="M12 21s-8-5-8-12a5 5 0 019-3 5 5 0 019 3c0 7-8 12-8 12z" />
-        <path d="M9 12l2 2 4-4" />
-      </>
-    ),
-  },
-  {
     label: '하루식물탐정',
     sub: '잎과 열매 사진을 보고 식물 상태와 돌봄 힌트를 알려드립니다.',
     tag: 'GARDEN · 사진',
