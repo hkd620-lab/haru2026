@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, orderBy, query, doc, updateDoc, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, orderBy, query, doc, updateDoc, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation, useNavigate } from 'react-router';
@@ -7,6 +7,7 @@ import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { TodayQuote } from '../components/TodayQuote';
 import { KNewsSection } from '../components/KNewsSection';
+import { FINAL_CHECKLIST } from '../constants/bookChecklist';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -60,6 +61,10 @@ export function BookStudio() {
   const isDeveloper = user?.uid === DEVELOPER_UID;
   const [editingBookId, setEditingBookId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
+  const [publishTarget, setPublishTarget] = useState<Book | null>(null);
+  const [publishChecks, setPublishChecks] = useState<string[]>([]);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
+  const allPublishChecksPassed = FINAL_CHECKLIST.every((item) => publishChecks.includes(item));
 
   const handleTitleEdit = (book: Book) => {
     setEditingBookId(book.id);
@@ -70,6 +75,61 @@ export function BookStudio() {
     if (!editingTitle.trim()) return;
     await updateDoc(doc(db, 'books', bookId), { title: editingTitle.trim() });
     setEditingBookId(null);
+  };
+
+  const openPublishModal = (book: Book) => {
+    if (!isDeveloper) return;
+    setPublishTarget(book);
+    setPublishChecks([]);
+  };
+
+  const closePublishModal = () => {
+    if (statusUpdatingId) return;
+    setPublishTarget(null);
+    setPublishChecks([]);
+  };
+
+  const togglePublishCheck = (item: string) => {
+    setPublishChecks((prev) =>
+      prev.includes(item)
+        ? prev.filter((checked) => checked !== item)
+        : [...prev, item]
+    );
+  };
+
+  const confirmPublish = async () => {
+    if (!publishTarget || !isDeveloper || !allPublishChecksPassed) return;
+    setStatusUpdatingId(publishTarget.id);
+    try {
+      await updateDoc(doc(db, 'books', publishTarget.id), {
+        status: 'serializing',
+        checklistPassed: true,
+        publishedAt: serverTimestamp(),
+      });
+      setPublishTarget(null);
+      setPublishChecks([]);
+    } catch (error) {
+      console.error('책 발행 실패:', error);
+      window.alert('책 발행에 실패했습니다.');
+    } finally {
+      setStatusUpdatingId(null);
+    }
+  };
+
+  const changeBookStatus = async (book: Book, status: Book['status']) => {
+    if (!isDeveloper) return;
+    const nextLabel = STATUS_LABEL[status] ?? status;
+    if (!window.confirm(`이 책을 ${nextLabel} 상태로 변경할까요?`)) return;
+
+    setStatusUpdatingId(book.id);
+    try {
+      await updateDoc(doc(db, 'books', book.id), { status });
+    } catch (error) {
+      console.error('책 상태 변경 실패:', error);
+      window.alert('책 상태 변경에 실패했습니다.');
+    } finally {
+      setStatusUpdatingId(null);
+    }
   };
 
   useEffect(() => {
@@ -234,15 +294,54 @@ export function BookStudio() {
                           )}
                         </div>
                       )}
-                      <span
-                        className="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full"
-                        style={{
-                          backgroundColor: STATUS_COLOR[book.status] + '22',
-                          color: STATUS_COLOR[book.status],
-                        }}
-                      >
-                        {STATUS_LABEL[book.status] ?? book.status}
-                      </span>
+                      <div className="shrink-0 flex flex-col items-end gap-2">
+                        <span
+                          className="text-xs font-medium px-2 py-0.5 rounded-full"
+                          style={{
+                            backgroundColor: STATUS_COLOR[book.status] + '22',
+                            color: STATUS_COLOR[book.status],
+                          }}
+                        >
+                          {STATUS_LABEL[book.status] ?? book.status}
+                        </span>
+                        {isDeveloper && (
+                          <div className="flex flex-wrap justify-end gap-1">
+                            {book.status !== 'serializing' && (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); openPublishModal(book); }}
+                                disabled={statusUpdatingId === book.id}
+                                className="text-[11px] font-semibold px-2 py-1 rounded text-white disabled:opacity-60"
+                                style={{ backgroundColor: '#10b981' }}
+                              >
+                                발행
+                              </button>
+                            )}
+                            {book.status === 'serializing' && (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); changeBookStatus(book, 'private'); }}
+                                disabled={statusUpdatingId === book.id}
+                                className="text-[11px] font-semibold px-2 py-1 rounded text-white disabled:opacity-60"
+                                style={{ backgroundColor: '#6b7280' }}
+                              >
+                                비공개로
+                              </button>
+                            )}
+                            {book.status !== 'draft' && (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); changeBookStatus(book, 'draft'); }}
+                                disabled={statusUpdatingId === book.id}
+                                className="text-[11px] font-semibold px-2 py-1 rounded disabled:opacity-60"
+                                style={{ backgroundColor: '#f3f4f6', color: '#4b5563' }}
+                              >
+                                초안으로
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="mt-2 flex items-center justify-between">
                       <p className="text-sm" style={{ color: '#6b7280' }}>
@@ -273,6 +372,78 @@ export function BookStudio() {
           <TodayQuote defaultTab="bible" hideTabSwitcher />
         )}
       </div>
+
+      {isDeveloper && publishTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ backgroundColor: 'rgba(15, 23, 42, 0.45)' }}
+          onClick={closePublishModal}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
+            style={{ color: '#1A3C6E' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold text-gray-500">사람속으로 발행 확인</p>
+                <h2 className="mt-1 text-lg font-bold">{publishTarget.title || '(제목 없음)'}</h2>
+              </div>
+              <button
+                type="button"
+                onClick={closePublishModal}
+                className="text-xl leading-none"
+                style={{ color: '#64748b' }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {FINAL_CHECKLIST.map((item) => (
+                <label
+                  key={item}
+                  className="flex items-center gap-3 rounded-lg border px-3 py-2 text-sm"
+                  style={{ borderColor: '#dbeafe', backgroundColor: '#f8fafc' }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={publishChecks.includes(item)}
+                    onChange={() => togglePublishCheck(item)}
+                    className="h-4 w-4"
+                  />
+                  <span>{item}</span>
+                </label>
+              ))}
+            </div>
+
+            <p className="mt-3 text-xs text-gray-500">
+              8개 항목을 모두 확인해야 발행할 수 있습니다.
+            </p>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={closePublishModal}
+                disabled={!!statusUpdatingId}
+                className="rounded-lg border px-4 py-2 text-sm font-semibold disabled:opacity-60"
+                style={{ borderColor: '#d1d5db', color: '#4b5563' }}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={confirmPublish}
+                disabled={!allPublishChecksPassed || statusUpdatingId === publishTarget.id}
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                style={{ backgroundColor: '#10b981' }}
+              >
+                {statusUpdatingId === publishTarget.id ? '발행 중...' : '발행 확정'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
