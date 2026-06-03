@@ -55,6 +55,10 @@ type TimelineRecordItem = {
   memo: string;
   order: number;
   locationLabel?: string;
+  locationCandidate?: ReverseGeocodeCandidate;
+  locationStatus?: 'none' | 'loading' | 'found' | 'not_found' | 'error';
+  latitude?: number;
+  longitude?: number;
 };
 
 function todayKey() {
@@ -127,6 +131,21 @@ function buildTimelineSummary(items: TimelineRecordItem[], periodStart: string, 
   return `${header}\n\n${body}`.trim();
 }
 
+function serializeTimelineRecordItem(item: DraftTimelineItem, url: string, index: number): TimelineRecordItem {
+  const savedItem: TimelineRecordItem = {
+    url,
+    takenDate: item.takenDate,
+    memo: item.memo.trim(),
+    order: index,
+    locationLabel: (item.locationLabel || '').trim(),
+  };
+  if (item.locationStatus) savedItem.locationStatus = item.locationStatus;
+  if (item.locationCandidate) savedItem.locationCandidate = item.locationCandidate;
+  if (typeof item.latitude === 'number') savedItem.latitude = item.latitude;
+  if (typeof item.longitude === 'number') savedItem.longitude = item.longitude;
+  return savedItem;
+}
+
 async function createTimelineTitle(inputTitle: string, summary: string) {
   const customTitle = inputTitle.trim();
   const hasCustomTitle = customTitle.length > 0 && customTitle !== '성장타임라인';
@@ -187,6 +206,8 @@ function normalizeSavedTimeline(id: string, data: any): SavedGrowthTimeline | nu
       memo: typeof item.memo === 'string' ? item.memo : '',
       order: typeof item.order === 'number' ? item.order : index,
       locationLabel: typeof item.locationLabel === 'string' ? item.locationLabel : '',
+      locationCandidate: item.locationCandidate,
+      locationStatus: item.locationStatus,
     }));
   const sortedItems = sortTimelineItems(items);
   return {
@@ -217,6 +238,8 @@ function normalizeRecordTimeline(id: string, data: any): SavedGrowthTimeline | n
       memo: typeof item.memo === 'string' ? item.memo : '',
       order: typeof item.order === 'number' ? item.order : index,
       locationLabel: typeof item.locationLabel === 'string' ? item.locationLabel : '',
+      locationCandidate: item.locationCandidate,
+      locationStatus: item.locationStatus,
     }));
   const sortedItems = sortTimelineItems(items);
   return {
@@ -390,13 +413,7 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
         const imageRef = ref(storage, `users/${uid}/format_photos/${fileName}`);
         await uploadBytes(imageRef, item.file, { contentType: item.file.type || 'image/jpeg' });
         const url = await getDownloadURL(imageRef);
-        savedItems.push({
-          url,
-          takenDate: item.takenDate,
-          memo: item.memo.trim(),
-          order: index,
-          locationLabel: (item.locationLabel || '').trim(),
-        });
+        savedItems.push(serializeTimelineRecordItem(item, url, index));
       }
       const periodStart = savedItems[0]?.takenDate || '';
       const periodEnd = savedItems[savedItems.length - 1]?.takenDate || '';
