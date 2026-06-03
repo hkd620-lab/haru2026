@@ -86,8 +86,9 @@ export function StatisticsPage() {
 
   // 🌿 식물탐정 전용 통계 (meta 기반)
   const plantEntries = assistantLibrary.filter((entry) => entry.type === 'plant');
+  // 종류: 학명 우선, 없으면 식물 이름(title) 기준으로 distinct (옛 데이터는 학명이 비어 있음)
   const plantSpeciesCount = new Set(
-    plantEntries.map((entry) => entry.meta?.scientificName).filter(Boolean),
+    plantEntries.map((entry) => entry.meta?.scientificName || entry.title).filter(Boolean),
   ).size;
   const plantCorrectedCount = plantEntries.filter(
     (entry) => entry.meta?.identificationStatus === 'corrected',
