@@ -72,7 +72,7 @@ export function MergePage() {
     setAssistantLibraryLoading(true);
     firestoreService.getLibraryByCategory(user.uid, '비서')
       .then((entries) => {
-        setAssistantLibrary(entries);
+        setAssistantLibrary(entries.filter((entry) => entry.type !== 'book'));
         setSelectedLibraryIds(new Set());
       })
       .catch((error) => {
@@ -153,7 +153,6 @@ export function MergePage() {
     .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
   const libraryTypeLabel: Record<string, string> = {
-    book: '책',
     timeline: '타임라인',
   };
 
@@ -263,7 +262,7 @@ export function MergePage() {
       <div className="library-print-area">
         <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>비서 합본</h1>
         <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 20 }}>
-          책과 타임라인 library 인덱스 기준
+          타임라인 library 인덱스 기준
         </p>
         {selectedLibraryEntries.map((entry) => (
           <article key={entry.id} className="library-print-card">
@@ -322,7 +321,7 @@ export function MergePage() {
               🗂 비서 합본
             </span>
             <p className="text-xs mt-1" style={{ color: '#999' }}>
-              책과 타임라인을 선택해 날짜순 카드로 출력합니다
+              타임라인을 선택해 날짜순 카드로 출력합니다
             </p>
           </div>
           <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}>

@@ -10,6 +10,14 @@ service cloud.firestore {
         && request.auth.uid == "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
     }
 
+    function canReadBook(book) {
+      return signedIn() && (
+        isAdmin() ||
+        book.data.authorUid == request.auth.uid ||
+        book.data.status == 'serializing'
+      );
+    }
+
     function sharedRecordAllowedKeys() {
       return [
         "ownerUid",
@@ -150,16 +158,16 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
     match /books/{bookId} {
-      allow read: if request.auth != null;
+      allow read: if canReadBook(resource);
       allow write: if request.auth != null &&
         request.auth.uid == "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
       match /chapters/{chapterId} {
-        allow read: if request.auth != null;
+        allow read: if canReadBook(get(/databases/$(database)/documents/books/$(bookId)));
         allow write: if request.auth != null &&
           request.auth.uid == "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
       }
       match /characters/{charId} {
-        allow read: if request.auth != null;
+        allow read: if canReadBook(get(/databases/$(database)/documents/books/$(bookId)));
         allow write: if request.auth != null &&
           request.auth.uid == "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
       }
