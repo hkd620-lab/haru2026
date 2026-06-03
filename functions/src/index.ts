@@ -2384,6 +2384,329 @@ export const generateMergePDFFast = onCall({ region: 'asia-northeast3', memory: 
   });
 });
 
+type GrowthTimelinePdfItem = {
+  url: string;
+  takenDate: string;
+  memo?: string;
+  order?: number;
+  locationLabel?: string;
+  locationCandidate?: {
+    placeName?: string;
+    regionLabel?: string;
+    roadAddress?: string;
+    jibunAddress?: string;
+  };
+};
+
+type NormalizedGrowthTimelinePdfItem = Required<Pick<GrowthTimelinePdfItem, 'url' | 'takenDate' | 'memo' | 'order' | 'locationLabel'>> & {
+  locationCandidate: {
+    placeName: string;
+    regionLabel: string;
+    roadAddress: string;
+    jibunAddress: string;
+  };
+};
+
+const GROWTH_TIMELINE_PDF_SCHEMA_VERSION = 1;
+const GROWTH_TIMELINE_PDF_MAX_ITEMS = 80;
+
+function cleanTimelinePdfText(value: unknown, maxLength: number): string {
+  return String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
+}
+
+function formatTimelinePdfDate(value: string): string {
+  const [yyyy, mm, dd] = value.split('-');
+  if (!yyyy || !mm || !dd) return value || '-';
+  return `${yyyy}.${mm}.${dd}`;
+}
+
+function safeTimelinePdfFilename(title: string): string {
+  return `HARU타임라인_${(title || '성장타임라인').replace(/[\\/:*?"<>|]/g, '_').slice(0, 80)}.pdf`;
+}
+
+function getTimelinePdfLocationLabel(item: NormalizedGrowthTimelinePdfItem): string {
+  return item.locationLabel
+    || item.locationCandidate.placeName
+    || item.locationCandidate.regionLabel
+    || item.locationCandidate.roadAddress
+    || item.locationCandidate.jibunAddress
+    || '';
+}
+
+function getTimelinePdfLocationDetail(item: NormalizedGrowthTimelinePdfItem): string {
+  if (item.locationCandidate.placeName) {
+    return item.locationCandidate.regionLabel
+      || item.locationCandidate.roadAddress
+      || item.locationCandidate.jibunAddress
+      || '';
+  }
+  return item.locationCandidate.roadAddress || item.locationCandidate.jibunAddress || '';
+}
+
+function normalizeGrowthTimelinePdfPayload(data: any) {
+  const title = cleanTimelinePdfText(data?.title, 80) || '성장타임라인';
+  const createdLabel = cleanTimelinePdfText(data?.createdLabel, 30)
+    || formatTimelinePdfDate(new Date().toISOString().slice(0, 10));
+  const rawItems: GrowthTimelinePdfItem[] = Array.isArray(data?.items) ? data.items : [];
+
+  if (rawItems.length === 0) {
+    throw new HttpsError('invalid-argument', 'PDF로 만들 사진이 없습니다');
+  }
+  if (rawItems.length > GROWTH_TIMELINE_PDF_MAX_ITEMS) {
+    throw new HttpsError('invalid-argument', `사진은 최대 ${GROWTH_TIMELINE_PDF_MAX_ITEMS}장까지 PDF로 만들 수 있습니다`);
+  }
+
+  const items: NormalizedGrowthTimelinePdfItem[] = rawItems.map((item: GrowthTimelinePdfItem, index: number): NormalizedGrowthTimelinePdfItem => {
+    const url = cleanTimelinePdfText(item?.url, 2000);
+    if (!/^https?:\/\//.test(url)) {
+      throw new HttpsError('invalid-argument', '사진 URL이 올바르지 않습니다');
+    }
+    const takenDate = cleanTimelinePdfText(item?.takenDate, 20);
+    return {
+      url,
+      takenDate,
+      memo: cleanTimelinePdfText(item?.memo, 500),
+      order: Number.isFinite(Number(item?.order)) ? Number(item.order) : index,
+      locationLabel: cleanTimelinePdfText(item?.locationLabel, 120),
+      locationCandidate: {
+        placeName: cleanTimelinePdfText(item?.locationCandidate?.placeName, 120),
+        regionLabel: cleanTimelinePdfText(item?.locationCandidate?.regionLabel, 160),
+        roadAddress: cleanTimelinePdfText(item?.locationCandidate?.roadAddress, 180),
+        jibunAddress: cleanTimelinePdfText(item?.locationCandidate?.jibunAddress, 180),
+      },
+    };
+  }).sort((a, b) => a.takenDate.localeCompare(b.takenDate) || a.order - b.order);
+
+  return { title, createdLabel, items };
+}
+
+async function isPremiumUser(uid: string): Promise<boolean> {
+  if (DEVELOPER_UIDS.has(uid)) return true;
+  const subSnap = await db.doc(`users/${uid}/subscription/info`).get();
+  return subSnap.exists && subSnap.data()?.plan === 'premium';
+}
+
+function buildGrowthTimelinePdfHash(uid: string, payload: ReturnType<typeof normalizeGrowthTimelinePdfPayload>): string {
+  const stablePayload = JSON.stringify({
+    schemaVersion: GROWTH_TIMELINE_PDF_SCHEMA_VERSION,
+    uid,
+    title: payload.title,
+    createdLabel: payload.createdLabel,
+    items: payload.items,
+  });
+  return crypto.createHash('sha256').update(stablePayload).digest('hex');
+}
+
+async function prepareTimelinePdfImage(url: string, widthPt: number, heightPt: number): Promise<Buffer | null> {
+  try {
+    const response = await axios.get(url, {
+      responseType: 'arraybuffer',
+      timeout: 20000,
+      maxContentLength: 25 * 1024 * 1024,
+    });
+    const widthPx = Math.max(320, Math.round(widthPt * 2.4));
+    const heightPx = Math.max(240, Math.round(heightPt * 2.4));
+    return await sharp(Buffer.from(response.data))
+      .rotate()
+      .resize(widthPx, heightPx, { fit: 'cover' })
+      .jpeg({ quality: 84 })
+      .toBuffer();
+  } catch (error: any) {
+    logger.warn('타임라인 PDF 이미지 준비 실패:', {
+      message: error?.message || String(error),
+      urlPrefix: url.slice(0, 80),
+    });
+    return null;
+  }
+}
+
+function registerTimelinePdfFont(doc: any) {
+  const fontPath = path.join(__dirname, 'fonts', 'NotoSansKR.ttf');
+  if (fs.existsSync(fontPath)) {
+    doc.registerFont('NotoSansKR', fontPath);
+    doc.font('NotoSansKR');
+  }
+}
+
+async function buildGrowthTimelinePdfBuffer(payload: ReturnType<typeof normalizeGrowthTimelinePdfPayload>): Promise<Buffer> {
+  return await new Promise<Buffer>(async (resolve, reject) => {
+    const doc = new PDFDocument({
+      size: 'A4',
+      margin: 42,
+      info: {
+        Title: payload.title,
+        Author: 'HARU2026',
+        Subject: 'HARU Timeline',
+      },
+    });
+    const chunks: Buffer[] = [];
+    doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    try {
+      registerTimelinePdfFont(doc);
+      const pageWidth = doc.page.width;
+      const pageHeight = doc.page.height;
+      const margin = 42;
+      const brandColor = '#1A3C6E';
+      const mutedColor = '#6f7f8d';
+      const borderColor = '#e2e9f0';
+      const periodStart = payload.items[0]?.takenDate || '';
+      const periodEnd = payload.items[payload.items.length - 1]?.takenDate || '';
+      const periodText = `${formatTimelinePdfDate(periodStart)}${periodEnd && periodEnd !== periodStart ? ` ~ ${formatTimelinePdfDate(periodEnd)}` : ''}`;
+
+      const coverImage = payload.items[0] ? await prepareTimelinePdfImage(payload.items[0].url, pageWidth - margin * 2, 420) : null;
+      if (coverImage) {
+        doc.save();
+        doc.roundedRect(margin, margin, pageWidth - margin * 2, 420, 12).clip();
+        doc.image(coverImage, margin, margin, { width: pageWidth - margin * 2, height: 420 });
+        doc.restore();
+      } else {
+        doc.roundedRect(margin, margin, pageWidth - margin * 2, 420, 12).fill('#f1f4f7');
+      }
+
+      doc.fillColor(brandColor).fontSize(12).text('HARU Timeline · by JOYEL', margin, 500, {
+        width: pageWidth - margin * 2,
+      });
+      doc.fillColor(brandColor).fontSize(28).text(payload.title, margin, 526, {
+        width: pageWidth - margin * 2,
+        lineGap: 4,
+      });
+      doc.fillColor(mutedColor).fontSize(13).text(`기간 ${periodText}`, margin, 610);
+      doc.fillColor('#8a96a3').fontSize(11).text(`사진 ${payload.items.length}장 · 생성일 ${payload.createdLabel}`, margin, 632);
+
+      for (let i = 0; i < payload.items.length; i += 4) {
+        doc.addPage();
+        registerTimelinePdfFont(doc);
+        const batch = payload.items.slice(i, i + 4);
+        const gapX = 22;
+        const gapY = 22;
+        const cardW = (pageWidth - margin * 2 - gapX) / 2;
+        const cardH = 300;
+        const photoH = 198;
+        const cardPad = 10;
+        const yStart = 58;
+
+        for (let j = 0; j < batch.length; j += 1) {
+          const item = batch[j];
+          const col = j % 2;
+          const row = Math.floor(j / 2);
+          const x = margin + col * (cardW + gapX);
+          const y = yStart + row * (cardH + gapY);
+          const photoX = x + cardPad;
+          const photoY = y + cardPad;
+          const photoW = cardW - cardPad * 2;
+          const prepared = await prepareTimelinePdfImage(item.url, photoW, photoH);
+
+          doc.roundedRect(x, y, cardW, cardH, 10).fillAndStroke('#ffffff', borderColor);
+          if (prepared) {
+            doc.save();
+            doc.roundedRect(photoX, photoY, photoW, photoH, 8).clip();
+            doc.image(prepared, photoX, photoY, { width: photoW, height: photoH });
+            doc.restore();
+          } else {
+            doc.roundedRect(photoX, photoY, photoW, photoH, 8).fill('#f1f4f7');
+            doc.fillColor('#8a96a3').fontSize(10).text('사진을 불러오지 못했습니다', photoX + 12, photoY + photoH / 2 - 6, {
+              width: photoW - 24,
+              align: 'center',
+            });
+          }
+
+          const captionY = photoY + photoH + 10;
+          doc.fillColor(brandColor).fontSize(13).text(formatTimelinePdfDate(item.takenDate), photoX, captionY);
+          const locationLabel = getTimelinePdfLocationLabel(item);
+          const locationDetail = getTimelinePdfLocationDetail(item);
+          let textY = captionY + 19;
+          if (locationLabel) {
+            doc.fillColor('#37644a').fontSize(9).text(`촬영장소: ${locationLabel}`, photoX, textY, {
+              width: photoW,
+              height: 28,
+            });
+            textY += 23;
+          }
+          if (locationDetail && locationDetail !== locationLabel) {
+            doc.fillColor('#7c8894').fontSize(8.5).text(locationDetail, photoX, textY, {
+              width: photoW,
+              height: 18,
+            });
+            textY += 18;
+          }
+          if (item.memo) {
+            doc.fillColor('#3a4753').fontSize(9).text(item.memo, photoX, textY, {
+              width: photoW,
+              height: y + cardH - textY - cardPad,
+              lineGap: 2,
+            });
+          }
+        }
+
+        doc.fillColor('#9aa6b2').fontSize(9).text(`HARU Timeline · ${periodText}`, margin, pageHeight - 54, {
+          width: pageWidth - margin * 2,
+          align: 'center',
+        });
+      }
+
+      doc.end();
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+export const generateGrowthTimelinePdf = onCall(
+  { region: 'asia-northeast3', memory: '1GiB', timeoutSeconds: 300 },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다');
+    }
+
+    const uid = request.auth.uid;
+    if (!(await isPremiumUser(uid))) {
+      throw new HttpsError('permission-denied', 'PREMIUM 구독 후 이용 가능한 기능입니다');
+    }
+
+    const payload = normalizeGrowthTimelinePdfPayload(request.data);
+    const hash = buildGrowthTimelinePdfHash(uid, payload);
+    const filePath = `users/${uid}/timelinePdfs/${hash}.pdf`;
+    const file = bucket().file(filePath);
+    const [exists] = await file.exists();
+    const filename = safeTimelinePdfFilename(payload.title);
+
+    if (!exists) {
+      const pdfBuffer = await buildGrowthTimelinePdfBuffer(payload);
+      await file.save(pdfBuffer, {
+        resumable: false,
+        metadata: {
+          contentType: 'application/pdf',
+          metadata: {
+            uid,
+            hash,
+            schemaVersion: String(GROWTH_TIMELINE_PDF_SCHEMA_VERSION),
+            title: payload.title,
+            generatedAt: new Date().toISOString(),
+          },
+        },
+      });
+    }
+
+    const [downloadUrl] = await file.getSignedUrl({
+      action: 'read',
+      expires: Date.now() + 60 * 60 * 1000,
+      responseDisposition: `inline; filename*=UTF-8''${encodeURIComponent(filename)}`,
+    });
+
+    return {
+      success: true,
+      cached: exists,
+      hash,
+      filePath,
+      downloadUrl,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    };
+  }
+);
+
 // ===== 💳 결제 검증 (PortOne V2) =====
 export const verifyPayment = onCall(
   { region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] },

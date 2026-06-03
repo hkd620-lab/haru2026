@@ -36,8 +36,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateMergePDFFast = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.reverseGeocodeKakao = void 0;
-exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = void 0;
+exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.lawSearch = exports.removeAllTags = exports.verifyPayment = exports.generateGrowthTimelinePdf = exports.generateMergePDFFast = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.reverseGeocodeKakao = void 0;
+exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -51,6 +51,7 @@ const crypto = __importStar(require("crypto"));
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const PDFDocument = require('pdfkit');
 const sharp = require('sharp');
+const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 // Firebase Admin 초기화
 if (!admin.apps.length) {
@@ -141,6 +142,54 @@ function getSafeKakaoLocalError(error) {
         message: (error === null || error === void 0 ? void 0 : error.message) || String(error),
     };
 }
+// 좌표 주변 장소명(POI) 후보 조회 — 호텔/관광지/문화시설/음식점/카페 등
+// (예: 경주나한호텔, 롯데호텔). 행정구역·주소만으로는 부족한 경우를 보완한다.
+const KAKAO_POI_CATEGORY_CODES = ['AD5', 'AT4', 'CT1', 'FD6', 'CE7'];
+const KAKAO_POI_RADIUS_M = 100;
+async function lookupKakaoNearbyPlace(headers, x, y) {
+    var _a;
+    try {
+        const responses = await Promise.all(KAKAO_POI_CATEGORY_CODES.map((code) => axios_1.default
+            .get('https://dapi.kakao.com/v2/local/search/category.json', {
+            params: {
+                category_group_code: code,
+                x,
+                y,
+                radius: KAKAO_POI_RADIUS_M,
+                sort: 'distance',
+                size: 5,
+            },
+            headers,
+            timeout: 8000,
+        })
+            .catch(() => null)));
+        let nearest = null;
+        for (const resp of responses) {
+            const docs = Array.isArray((_a = resp === null || resp === void 0 ? void 0 : resp.data) === null || _a === void 0 ? void 0 : _a.documents) ? resp.data.documents : [];
+            for (const doc of docs) {
+                const name = typeof (doc === null || doc === void 0 ? void 0 : doc.place_name) === 'string' ? doc.place_name.trim() : '';
+                if (!name)
+                    continue;
+                const parsed = Number(doc === null || doc === void 0 ? void 0 : doc.distance);
+                const distance = Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
+                if (!nearest || distance < nearest.distance) {
+                    nearest = {
+                        name,
+                        category: typeof (doc === null || doc === void 0 ? void 0 : doc.category_group_name) === 'string' ? doc.category_group_name : '',
+                        distance,
+                    };
+                }
+            }
+        }
+        if (!nearest)
+            return null;
+        return { placeName: nearest.name, placeCategory: nearest.category };
+    }
+    catch (error) {
+        logger.warn('카카오 장소명 조회 실패:', getSafeKakaoLocalError(error));
+        return null;
+    }
+}
 exports.reverseGeocodeKakao = (0, https_2.onCall)({
     region: 'asia-northeast3',
     secrets: [KAKAO_REST_API_KEY_SECRET],
@@ -161,7 +210,7 @@ exports.reverseGeocodeKakao = (0, https_2.onCall)({
     };
     const params = { x: String(longitude), y: String(latitude) };
     try {
-        const [regionResp, addressResp] = await Promise.all([
+        const [regionResp, addressResp, placeInfo] = await Promise.all([
             axios_1.default.get('https://dapi.kakao.com/v2/local/geo/coord2regioncode.json', {
                 params,
                 headers,
@@ -172,6 +221,7 @@ exports.reverseGeocodeKakao = (0, https_2.onCall)({
                 headers,
                 timeout: 8000,
             }),
+            lookupKakaoNearbyPlace(headers, params.x, params.y),
         ]);
         const regionDocs = Array.isArray((_c = regionResp.data) === null || _c === void 0 ? void 0 : _c.documents) ? regionResp.data.documents : [];
         const addressDocs = Array.isArray((_d = addressResp.data) === null || _d === void 0 ? void 0 : _d.documents) ? addressResp.data.documents : [];
@@ -192,6 +242,8 @@ exports.reverseGeocodeKakao = (0, https_2.onCall)({
             success: true,
             latitude,
             longitude,
+            placeName: (placeInfo === null || placeInfo === void 0 ? void 0 : placeInfo.placeName) || '',
+            placeCategory: (placeInfo === null || placeInfo === void 0 ? void 0 : placeInfo.placeCategory) || '',
             regionLabel,
             roadAddress,
             jibunAddress,
@@ -2029,6 +2081,282 @@ exports.generateMergePDFFast = (0, https_2.onCall)({ region: 'asia-northeast3', 
         }
     });
 });
+const GROWTH_TIMELINE_PDF_SCHEMA_VERSION = 1;
+const GROWTH_TIMELINE_PDF_MAX_ITEMS = 80;
+function cleanTimelinePdfText(value, maxLength) {
+    return String(value !== null && value !== void 0 ? value : '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
+}
+function formatTimelinePdfDate(value) {
+    const [yyyy, mm, dd] = value.split('-');
+    if (!yyyy || !mm || !dd)
+        return value || '-';
+    return `${yyyy}.${mm}.${dd}`;
+}
+function safeTimelinePdfFilename(title) {
+    return `HARU타임라인_${(title || '성장타임라인').replace(/[\\/:*?"<>|]/g, '_').slice(0, 80)}.pdf`;
+}
+function getTimelinePdfLocationLabel(item) {
+    return item.locationLabel
+        || item.locationCandidate.placeName
+        || item.locationCandidate.regionLabel
+        || item.locationCandidate.roadAddress
+        || item.locationCandidate.jibunAddress
+        || '';
+}
+function getTimelinePdfLocationDetail(item) {
+    if (item.locationCandidate.placeName) {
+        return item.locationCandidate.regionLabel
+            || item.locationCandidate.roadAddress
+            || item.locationCandidate.jibunAddress
+            || '';
+    }
+    return item.locationCandidate.roadAddress || item.locationCandidate.jibunAddress || '';
+}
+function normalizeGrowthTimelinePdfPayload(data) {
+    const title = cleanTimelinePdfText(data === null || data === void 0 ? void 0 : data.title, 80) || '성장타임라인';
+    const createdLabel = cleanTimelinePdfText(data === null || data === void 0 ? void 0 : data.createdLabel, 30)
+        || formatTimelinePdfDate(new Date().toISOString().slice(0, 10));
+    const rawItems = Array.isArray(data === null || data === void 0 ? void 0 : data.items) ? data.items : [];
+    if (rawItems.length === 0) {
+        throw new https_2.HttpsError('invalid-argument', 'PDF로 만들 사진이 없습니다');
+    }
+    if (rawItems.length > GROWTH_TIMELINE_PDF_MAX_ITEMS) {
+        throw new https_2.HttpsError('invalid-argument', `사진은 최대 ${GROWTH_TIMELINE_PDF_MAX_ITEMS}장까지 PDF로 만들 수 있습니다`);
+    }
+    const items = rawItems.map((item, index) => {
+        var _a, _b, _c, _d;
+        const url = cleanTimelinePdfText(item === null || item === void 0 ? void 0 : item.url, 2000);
+        if (!/^https?:\/\//.test(url)) {
+            throw new https_2.HttpsError('invalid-argument', '사진 URL이 올바르지 않습니다');
+        }
+        const takenDate = cleanTimelinePdfText(item === null || item === void 0 ? void 0 : item.takenDate, 20);
+        return {
+            url,
+            takenDate,
+            memo: cleanTimelinePdfText(item === null || item === void 0 ? void 0 : item.memo, 500),
+            order: Number.isFinite(Number(item === null || item === void 0 ? void 0 : item.order)) ? Number(item.order) : index,
+            locationLabel: cleanTimelinePdfText(item === null || item === void 0 ? void 0 : item.locationLabel, 120),
+            locationCandidate: {
+                placeName: cleanTimelinePdfText((_a = item === null || item === void 0 ? void 0 : item.locationCandidate) === null || _a === void 0 ? void 0 : _a.placeName, 120),
+                regionLabel: cleanTimelinePdfText((_b = item === null || item === void 0 ? void 0 : item.locationCandidate) === null || _b === void 0 ? void 0 : _b.regionLabel, 160),
+                roadAddress: cleanTimelinePdfText((_c = item === null || item === void 0 ? void 0 : item.locationCandidate) === null || _c === void 0 ? void 0 : _c.roadAddress, 180),
+                jibunAddress: cleanTimelinePdfText((_d = item === null || item === void 0 ? void 0 : item.locationCandidate) === null || _d === void 0 ? void 0 : _d.jibunAddress, 180),
+            },
+        };
+    }).sort((a, b) => a.takenDate.localeCompare(b.takenDate) || a.order - b.order);
+    return { title, createdLabel, items };
+}
+async function isPremiumUser(uid) {
+    var _a;
+    if (DEVELOPER_UIDS.has(uid))
+        return true;
+    const subSnap = await db.doc(`users/${uid}/subscription/info`).get();
+    return subSnap.exists && ((_a = subSnap.data()) === null || _a === void 0 ? void 0 : _a.plan) === 'premium';
+}
+function buildGrowthTimelinePdfHash(uid, payload) {
+    const stablePayload = JSON.stringify({
+        schemaVersion: GROWTH_TIMELINE_PDF_SCHEMA_VERSION,
+        uid,
+        title: payload.title,
+        createdLabel: payload.createdLabel,
+        items: payload.items,
+    });
+    return crypto.createHash('sha256').update(stablePayload).digest('hex');
+}
+async function prepareTimelinePdfImage(url, widthPt, heightPt) {
+    try {
+        const response = await axios_1.default.get(url, {
+            responseType: 'arraybuffer',
+            timeout: 20000,
+            maxContentLength: 25 * 1024 * 1024,
+        });
+        const widthPx = Math.max(320, Math.round(widthPt * 2.4));
+        const heightPx = Math.max(240, Math.round(heightPt * 2.4));
+        return await sharp(Buffer.from(response.data))
+            .rotate()
+            .resize(widthPx, heightPx, { fit: 'cover' })
+            .jpeg({ quality: 84 })
+            .toBuffer();
+    }
+    catch (error) {
+        logger.warn('타임라인 PDF 이미지 준비 실패:', {
+            message: (error === null || error === void 0 ? void 0 : error.message) || String(error),
+            urlPrefix: url.slice(0, 80),
+        });
+        return null;
+    }
+}
+function registerTimelinePdfFont(doc) {
+    const fontPath = path.join(__dirname, 'fonts', 'NotoSansKR.ttf');
+    if (fs.existsSync(fontPath)) {
+        doc.registerFont('NotoSansKR', fontPath);
+        doc.font('NotoSansKR');
+    }
+}
+async function buildGrowthTimelinePdfBuffer(payload) {
+    return await new Promise(async (resolve, reject) => {
+        var _a, _b;
+        const doc = new PDFDocument({
+            size: 'A4',
+            margin: 42,
+            info: {
+                Title: payload.title,
+                Author: 'HARU2026',
+                Subject: 'HARU Timeline',
+            },
+        });
+        const chunks = [];
+        doc.on('data', (chunk) => chunks.push(chunk));
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+        doc.on('error', reject);
+        try {
+            registerTimelinePdfFont(doc);
+            const pageWidth = doc.page.width;
+            const pageHeight = doc.page.height;
+            const margin = 42;
+            const brandColor = '#1A3C6E';
+            const mutedColor = '#6f7f8d';
+            const borderColor = '#e2e9f0';
+            const periodStart = ((_a = payload.items[0]) === null || _a === void 0 ? void 0 : _a.takenDate) || '';
+            const periodEnd = ((_b = payload.items[payload.items.length - 1]) === null || _b === void 0 ? void 0 : _b.takenDate) || '';
+            const periodText = `${formatTimelinePdfDate(periodStart)}${periodEnd && periodEnd !== periodStart ? ` ~ ${formatTimelinePdfDate(periodEnd)}` : ''}`;
+            const coverImage = payload.items[0] ? await prepareTimelinePdfImage(payload.items[0].url, pageWidth - margin * 2, 420) : null;
+            if (coverImage) {
+                doc.save();
+                doc.roundedRect(margin, margin, pageWidth - margin * 2, 420, 12).clip();
+                doc.image(coverImage, margin, margin, { width: pageWidth - margin * 2, height: 420 });
+                doc.restore();
+            }
+            else {
+                doc.roundedRect(margin, margin, pageWidth - margin * 2, 420, 12).fill('#f1f4f7');
+            }
+            doc.fillColor(brandColor).fontSize(12).text('HARU Timeline · by JOYEL', margin, 500, {
+                width: pageWidth - margin * 2,
+            });
+            doc.fillColor(brandColor).fontSize(28).text(payload.title, margin, 526, {
+                width: pageWidth - margin * 2,
+                lineGap: 4,
+            });
+            doc.fillColor(mutedColor).fontSize(13).text(`기간 ${periodText}`, margin, 610);
+            doc.fillColor('#8a96a3').fontSize(11).text(`사진 ${payload.items.length}장 · 생성일 ${payload.createdLabel}`, margin, 632);
+            for (let i = 0; i < payload.items.length; i += 4) {
+                doc.addPage();
+                registerTimelinePdfFont(doc);
+                const batch = payload.items.slice(i, i + 4);
+                const gapX = 22;
+                const gapY = 22;
+                const cardW = (pageWidth - margin * 2 - gapX) / 2;
+                const cardH = 300;
+                const photoH = 198;
+                const cardPad = 10;
+                const yStart = 58;
+                for (let j = 0; j < batch.length; j += 1) {
+                    const item = batch[j];
+                    const col = j % 2;
+                    const row = Math.floor(j / 2);
+                    const x = margin + col * (cardW + gapX);
+                    const y = yStart + row * (cardH + gapY);
+                    const photoX = x + cardPad;
+                    const photoY = y + cardPad;
+                    const photoW = cardW - cardPad * 2;
+                    const prepared = await prepareTimelinePdfImage(item.url, photoW, photoH);
+                    doc.roundedRect(x, y, cardW, cardH, 10).fillAndStroke('#ffffff', borderColor);
+                    if (prepared) {
+                        doc.save();
+                        doc.roundedRect(photoX, photoY, photoW, photoH, 8).clip();
+                        doc.image(prepared, photoX, photoY, { width: photoW, height: photoH });
+                        doc.restore();
+                    }
+                    else {
+                        doc.roundedRect(photoX, photoY, photoW, photoH, 8).fill('#f1f4f7');
+                        doc.fillColor('#8a96a3').fontSize(10).text('사진을 불러오지 못했습니다', photoX + 12, photoY + photoH / 2 - 6, {
+                            width: photoW - 24,
+                            align: 'center',
+                        });
+                    }
+                    const captionY = photoY + photoH + 10;
+                    doc.fillColor(brandColor).fontSize(13).text(formatTimelinePdfDate(item.takenDate), photoX, captionY);
+                    const locationLabel = getTimelinePdfLocationLabel(item);
+                    const locationDetail = getTimelinePdfLocationDetail(item);
+                    let textY = captionY + 19;
+                    if (locationLabel) {
+                        doc.fillColor('#37644a').fontSize(9).text(`촬영장소: ${locationLabel}`, photoX, textY, {
+                            width: photoW,
+                            height: 28,
+                        });
+                        textY += 23;
+                    }
+                    if (locationDetail && locationDetail !== locationLabel) {
+                        doc.fillColor('#7c8894').fontSize(8.5).text(locationDetail, photoX, textY, {
+                            width: photoW,
+                            height: 18,
+                        });
+                        textY += 18;
+                    }
+                    if (item.memo) {
+                        doc.fillColor('#3a4753').fontSize(9).text(item.memo, photoX, textY, {
+                            width: photoW,
+                            height: y + cardH - textY - cardPad,
+                            lineGap: 2,
+                        });
+                    }
+                }
+                doc.fillColor('#9aa6b2').fontSize(9).text(`HARU Timeline · ${periodText}`, margin, pageHeight - 54, {
+                    width: pageWidth - margin * 2,
+                    align: 'center',
+                });
+            }
+            doc.end();
+        }
+        catch (error) {
+            reject(error);
+        }
+    });
+}
+exports.generateGrowthTimelinePdf = (0, https_2.onCall)({ region: 'asia-northeast3', memory: '1GiB', timeoutSeconds: 300 }, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다');
+    }
+    const uid = request.auth.uid;
+    if (!(await isPremiumUser(uid))) {
+        throw new https_2.HttpsError('permission-denied', 'PREMIUM 구독 후 이용 가능한 기능입니다');
+    }
+    const payload = normalizeGrowthTimelinePdfPayload(request.data);
+    const hash = buildGrowthTimelinePdfHash(uid, payload);
+    const filePath = `users/${uid}/timelinePdfs/${hash}.pdf`;
+    const file = bucket().file(filePath);
+    const [exists] = await file.exists();
+    const filename = safeTimelinePdfFilename(payload.title);
+    if (!exists) {
+        const pdfBuffer = await buildGrowthTimelinePdfBuffer(payload);
+        await file.save(pdfBuffer, {
+            resumable: false,
+            metadata: {
+                contentType: 'application/pdf',
+                metadata: {
+                    uid,
+                    hash,
+                    schemaVersion: String(GROWTH_TIMELINE_PDF_SCHEMA_VERSION),
+                    title: payload.title,
+                    generatedAt: new Date().toISOString(),
+                },
+            },
+        });
+    }
+    const [downloadUrl] = await file.getSignedUrl({
+        action: 'read',
+        expires: Date.now() + 60 * 60 * 1000,
+        responseDisposition: `inline; filename*=UTF-8''${encodeURIComponent(filename)}`,
+    });
+    return {
+        success: true,
+        cached: exists,
+        hash,
+        filePath,
+        downloadUrl,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    };
+});
 // ===== 💳 결제 검증 (PortOne V2) =====
 exports.verifyPayment = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] }, async (request) => {
     var _a, _b, _c, _d;
@@ -2615,6 +2943,7 @@ exports.cleanupTtsUsage = (0, scheduler_1.onSchedule)({
 });
 var bookStudio_1 = require("./bookStudio");
 Object.defineProperty(exports, "generateBook", { enumerable: true, get: function () { return bookStudio_1.generateBook; } });
+Object.defineProperty(exports, "suggestChapterTitle", { enumerable: true, get: function () { return bookStudio_1.suggestChapterTitle; } });
 var snsAnalyzer_1 = require("./snsAnalyzer");
 Object.defineProperty(exports, "analyzeFacebookZip", { enumerable: true, get: function () { return snsAnalyzer_1.analyzeFacebookZip; } });
 var snsToDiary_1 = require("./snsToDiary");
