@@ -17,6 +17,7 @@ import { db } from '../../firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useSubscription } from '../hooks/useSubscription';
 import { compressImage } from '../services/imageService';
+import type { ReverseGeocodeCandidate } from '../services/reverseGeocodeService';
 
 // 목록 뷰에서 제목으로 쓸 첫 번째 필드 키
 const FORMAT_FIRST_FIELD: Record<string, string> = {
@@ -45,6 +46,11 @@ type GrowthTimelineRecordItem = {
   takenDate: string;
   memo: string;
   order: number;
+  locationLabel?: string;
+  locationCandidate?: ReverseGeocodeCandidate;
+  locationStatus?: 'none' | 'loading' | 'found' | 'not_found' | 'error';
+  latitude?: number;
+  longitude?: number;
 };
 
 function isGrowthTimelineRecord(record: any) {
@@ -62,6 +68,11 @@ function normalizeTimelineItems(value: unknown): GrowthTimelineRecordItem[] {
       takenDate: typeof item.takenDate === 'string' ? item.takenDate : '',
       memo: typeof item.memo === 'string' ? item.memo : '',
       order: typeof item.order === 'number' ? item.order : index,
+      locationLabel: typeof item.locationLabel === 'string' ? item.locationLabel : '',
+      locationCandidate: item.locationCandidate,
+      locationStatus: item.locationStatus,
+      latitude: typeof item.latitude === 'number' ? item.latitude : undefined,
+      longitude: typeof item.longitude === 'number' ? item.longitude : undefined,
     }))
     .sort((a, b) => a.takenDate.localeCompare(b.takenDate) || a.order - b.order);
 }

@@ -12,6 +12,10 @@ import { db, storage, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../services/firestoreService';
 import { readOriginalImageMeta, type UploadedImageMeta } from '../services/photoMetadataService';
+import {
+  getLocationCandidateFromGps,
+  type ReverseGeocodeCandidate,
+} from '../services/reverseGeocodeService';
 
 const WEATHER_OPTIONS = ['쾌청', '흐림', '비', '눈'];
 const TEMPERATURE_OPTIONS = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
@@ -21,6 +25,11 @@ type GrowthTimelineEditItem = {
   takenDate: string;
   memo: string;
   order: number;
+  locationLabel?: string;
+  locationCandidate?: ReverseGeocodeCandidate;
+  locationStatus?: 'none' | 'loading' | 'found' | 'not_found' | 'error';
+  latitude?: number;
+  longitude?: number;
 };
 
 function parseUploadedImageMeta(value: unknown): UploadedImageMeta[] {
@@ -43,6 +52,41 @@ function getTimelinePeriod(items: GrowthTimelineEditItem[]) {
     periodStart: sorted[0]?.takenDate || '',
     periodEnd: sorted[sorted.length - 1]?.takenDate || '',
   };
+}
+
+function formatLocationCandidate(candidate?: ReverseGeocodeCandidate) {
+  if (!candidate) return '';
+  const place = candidate.placeName?.trim();
+  const address = (candidate.roadAddress || candidate.jibunAddress || candidate.regionLabel || '').trim();
+  if (place && address && place !== address) return `${place} · ${address}`;
+  return place || address;
+}
+
+function getTimelineLocationText(item: GrowthTimelineEditItem) {
+  const label = item.locationLabel?.trim();
+  if (label) return label;
+  const candidateLabel = formatLocationCandidate(item.locationCandidate);
+  if (candidateLabel) return candidateLabel;
+  if (item.locationStatus === 'loading') return '촬영장소 확인 중';
+  if (item.locationStatus === 'none') return 'GPS 위치정보 없음';
+  if (item.locationStatus === 'not_found') return '주소 후보 없음';
+  if (item.locationStatus === 'error') return '장소 확인 실패';
+  return '';
+}
+
+function serializeTimelineEditItem(item: GrowthTimelineEditItem, index: number): GrowthTimelineEditItem {
+  const savedItem: GrowthTimelineEditItem = {
+    url: item.url,
+    takenDate: item.takenDate,
+    memo: item.memo.trim(),
+    order: index,
+    locationLabel: (item.locationLabel || '').trim(),
+  };
+  if (item.locationCandidate) savedItem.locationCandidate = item.locationCandidate;
+  if (item.locationStatus) savedItem.locationStatus = item.locationStatus;
+  if (typeof item.latitude === 'number') savedItem.latitude = item.latitude;
+  if (typeof item.longitude === 'number') savedItem.longitude = item.longitude;
+  return savedItem;
 }
 
 export interface SayuModalProps {
@@ -457,6 +501,11 @@ export function SayuModal({
         takenDate: item.takenDate,
         memo: item.memo,
         order: index,
+        locationLabel: item.locationLabel,
+        locationCandidate: item.locationCandidate,
+        locationStatus: item.locationStatus,
+        latitude: item.latitude,
+        longitude: item.longitude,
       })));
       setIsSpecialDay((currentRating || 0) > 0);
       setViewMode('ai');
@@ -499,12 +548,7 @@ export function SayuModal({
     try {
       if (isGrowthTimeline) {
         if (!currentUser || !firestoreId) return;
-        const sanitizedTimelineItems = sortTimelineItems(editedTimelineItems).map((item, index) => ({
-          url: item.url,
-          takenDate: item.takenDate,
-          memo: item.memo.trim(),
-          order: index,
-        }));
+        const sanitizedTimelineItems = sortTimelineItems(editedTimelineItems).map(serializeTimelineEditItem);
         const { periodStart, periodEnd } = getTimelinePeriod(sanitizedTimelineItems);
         const recordRef = doc(db, 'users', currentUser.uid, 'records', firestoreId);
         await updateDoc(recordRef, {
@@ -658,18 +702,51 @@ export function SayuModal({
       const url = await getDownloadURL(imageRef);
       const today = new Date().toISOString().slice(0, 10);
       const takenDate = originalMeta.takenDate || recordDate || today;
+      const latitude = typeof originalMeta.latitude === 'number' ? originalMeta.latitude : undefined;
+      const longitude = typeof originalMeta.longitude === 'number' ? originalMeta.longitude : undefined;
+      const hasGps = typeof latitude === 'number' && typeof longitude === 'number';
+      let locationCandidate: ReverseGeocodeCandidate | undefined;
+      let locationStatus: GrowthTimelineEditItem['locationStatus'] = hasGps ? 'loading' : 'none';
+      let locationLabel = originalMeta.locationLabel || '';
+
+      if (hasGps) {
+        try {
+          const candidate = await getLocationCandidateFromGps(latitude, longitude);
+          if (candidate) {
+            locationCandidate = candidate;
+            locationLabel = formatLocationCandidate(candidate) || locationLabel;
+            locationStatus = 'found';
+          } else {
+            locationStatus = 'not_found';
+          }
+        } catch {
+          locationStatus = 'error';
+        }
+      }
+
       const nextTimelineItems = sortTimelineItems([
         ...editedTimelineItems,
-        { url, takenDate, memo: '', order: editedTimelineItems.length },
+        {
+          url,
+          takenDate,
+          memo: '',
+          order: editedTimelineItems.length,
+          locationLabel,
+          locationCandidate,
+          locationStatus,
+          latitude,
+          longitude,
+        },
       ]).map((item, index) => ({ ...item, order: index }));
-      const { periodStart, periodEnd } = getTimelinePeriod(nextTimelineItems);
+      const savedTimelineItems = nextTimelineItems.map(serializeTimelineEditItem);
+      const { periodStart, periodEnd } = getTimelinePeriod(savedTimelineItems);
 
       await updateDoc(doc(db, 'users', currentUser.uid, 'records', firestoreId), {
-        timelineItems: nextTimelineItems,
+        timelineItems: savedTimelineItems,
         date: periodStart || recordDate || '',
         periodStart,
         periodEnd,
-        itemCount: nextTimelineItems.length,
+        itemCount: savedTimelineItems.length,
         updatedAt: new Date().toISOString(),
       });
       shouldCleanupUploadedFile = false;
@@ -1447,6 +1524,33 @@ export function SayuModal({
                             fontSize: 13,
                           }}
                         />
+                        {getTimelineLocationText(item) && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <input
+                              value={getTimelineLocationText(item)}
+                              onChange={(event) => setEditedTimelineItems(prev => prev.map((entry, entryIndex) => (
+                                entryIndex === index ? { ...entry, locationLabel: event.target.value } : entry
+                              )))}
+                              placeholder="촬영장소"
+                              style={{
+                                width: '100%',
+                                boxSizing: 'border-box',
+                                border: '1px solid #cfe3d6',
+                                borderRadius: 7,
+                                padding: '7px 9px',
+                                color: '#24553b',
+                                backgroundColor: '#f7fbf8',
+                                fontSize: 12,
+                                fontWeight: 700,
+                              }}
+                            />
+                            {item.locationCandidate && formatLocationCandidate(item.locationCandidate) !== getTimelineLocationText(item) && (
+                              <span style={{ color: '#8a9683', fontSize: 11, lineHeight: 1.4 }}>
+                                자동 인식: {formatLocationCandidate(item.locationCandidate)}
+                              </span>
+                            )}
+                          </div>
+                        )}
                         <textarea
                           value={item.memo}
                           onChange={(event) => setEditedTimelineItems(prev => prev.map((entry, entryIndex) => (
