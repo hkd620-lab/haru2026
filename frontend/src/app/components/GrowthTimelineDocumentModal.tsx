@@ -384,7 +384,7 @@ export function GrowthTimelineDocumentModal({
                             {metadataLabel(item.metadataSource)}
                           </span>
                         )}
-                        {editable && locationCandidateLabel(item) && (
+                        {locationCandidateLabel(item) && (
                           <span
                             style={{
                               color: item.locationStatus === 'found' ? '#37644a' : '#8a96a3',
@@ -395,11 +395,11 @@ export function GrowthTimelineDocumentModal({
                               fontWeight: 800,
                             }}
                           >
-                            촬영장소 후보: {locationCandidateLabel(item)}
+                            촬영장소: {locationCandidateLabel(item)}
                           </span>
                         )}
                       </span>
-                      {editable && item.locationStatus === 'found' && locationDetailLabel(item.locationCandidate) && (
+                      {item.locationStatus === 'found' && locationDetailLabel(item.locationCandidate) && (
                         <span style={{ color: '#7c8894', fontSize: 11, lineHeight: 1.4 }}>
                           {locationDetailLabel(item.locationCandidate)}
                         </span>

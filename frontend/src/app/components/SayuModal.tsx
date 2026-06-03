@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { X, Printer, Copy, Download, FileText } from 'lucide-react';
 import { toast } from 'sonner';
@@ -89,6 +89,45 @@ function serializeTimelineEditItem(item: GrowthTimelineEditItem, index: number):
   return savedItem;
 }
 
+async function recoverTimelineLocationFromImage(item: GrowthTimelineEditItem): Promise<GrowthTimelineEditItem> {
+  if (getTimelineLocationText(item) || !item.url) return item;
+  try {
+    const response = await fetch(item.url);
+    if (!response.ok) return { ...item, locationStatus: 'error' };
+    const blob = await response.blob();
+    const name = decodeURIComponent(item.url.split('?')[0].split('/').pop() || 'timeline-photo.jpg');
+    const file = new File([blob], name, { type: blob.type || 'image/jpeg' });
+    const meta = await readOriginalImageMeta(file);
+    const latitude = typeof meta.latitude === 'number' ? meta.latitude : undefined;
+    const longitude = typeof meta.longitude === 'number' ? meta.longitude : undefined;
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+      return { ...item, locationStatus: 'none' };
+    }
+
+    const candidate = await getLocationCandidateFromGps(latitude, longitude);
+    if (!candidate) {
+      return {
+        ...item,
+        latitude,
+        longitude,
+        locationLabel: meta.locationLabel || '',
+        locationStatus: 'not_found',
+      };
+    }
+
+    return {
+      ...item,
+      latitude,
+      longitude,
+      locationCandidate: candidate,
+      locationLabel: formatLocationCandidate(candidate) || meta.locationLabel || '',
+      locationStatus: 'found',
+    };
+  } catch {
+    return { ...item, locationStatus: 'error' };
+  }
+}
+
 export interface SayuModalProps {
   isOpen: boolean;
   onClose: (deleted?: boolean) => void;
@@ -165,6 +204,7 @@ export function SayuModal({
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [editedTitle, setEditedTitle] = useState(title || '');
   const isGrowthTimeline = formatKey === 'growthTimeline';
+  const timelineLocationRecoveryKeyRef = useRef('');
 
   const refreshPublicSharedRecord = async () => {
     if (!currentUser?.uid || !firestoreId) return;
@@ -496,7 +536,7 @@ export function SayuModal({
       setEditedTemperature(temperature || '');
       setEditedTitle(title || '');
       setLocalImages((images || []).filter(url => typeof url === 'string' && url.trim().length > 0 && url.startsWith('http')));
-      setEditedTimelineItems(sortTimelineItems(timelineItems).map((item, index) => ({
+      const normalizedTimelineItems = sortTimelineItems(timelineItems).map((item, index) => ({
         url: item.url,
         takenDate: item.takenDate,
         memo: item.memo,
@@ -506,7 +546,36 @@ export function SayuModal({
         locationStatus: item.locationStatus,
         latitude: item.latitude,
         longitude: item.longitude,
-      })));
+      }));
+      setEditedTimelineItems(normalizedTimelineItems);
+      if (formatKey === 'growthTimeline' && normalizedTimelineItems.some(item => !getTimelineLocationText(item) && item.url)) {
+        const recoveryKey = `${firestoreId || recordDate || ''}:${normalizedTimelineItems.map(item => `${item.url}:${item.locationLabel || ''}:${item.locationStatus || ''}`).join('|')}`;
+        if (timelineLocationRecoveryKeyRef.current !== recoveryKey) {
+          timelineLocationRecoveryKeyRef.current = recoveryKey;
+          setEditedTimelineItems(prev => prev.map(item => (
+            !getTimelineLocationText(item) && item.url ? { ...item, locationStatus: 'loading' } : item
+          )));
+          void (async () => {
+            const recoveredItems = await Promise.all(normalizedTimelineItems.map(recoverTimelineLocationFromImage));
+            const changed = recoveredItems.some((item, index) => (
+              JSON.stringify(serializeTimelineEditItem(item, index)) !== JSON.stringify(serializeTimelineEditItem(normalizedTimelineItems[index], index))
+            ));
+            if (!changed) return;
+            const nextTimelineItems = sortTimelineItems(recoveredItems).map(serializeTimelineEditItem);
+            setEditedTimelineItems(nextTimelineItems);
+            if (!currentUser || !firestoreId || !nextTimelineItems.some(item => item.locationStatus === 'found')) return;
+            try {
+              await updateDoc(doc(db, 'users', currentUser.uid, 'records', firestoreId), {
+                timelineItems: nextTimelineItems,
+                updatedAt: new Date().toISOString(),
+              });
+              await refreshPublicSharedRecord();
+            } catch {
+              // 복구 실패는 화면 편집 흐름을 막지 않습니다.
+            }
+          })();
+        }
+      }
       setIsSpecialDay((currentRating || 0) > 0);
       setViewMode('ai');
       setIsPrinting(false);
@@ -541,7 +610,7 @@ export function SayuModal({
         });
       }
     }
-  }, [isOpen, content, currentRating, images, format, title, timelineItems]);
+  }, [isOpen, content, currentRating, images, format, title, timelineItems, formatKey, firestoreId, recordDate, currentUser?.uid]);
 
   const handleSave = async () => {
     setIsSaving(true);
