@@ -3,6 +3,11 @@ import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { AiLibraryPage } from './AiLibraryPage';
+import {
+  firestoreService,
+  type LibraryBackfillPreview,
+  type LibraryBackfillRunResult,
+} from '../services/firestoreService';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -70,12 +75,51 @@ export function DevConsolePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [activePanel, setActivePanel] = useState<'tools' | 'ai-library'>('tools');
+  const [backfillPreview, setBackfillPreview] = useState<LibraryBackfillPreview | null>(null);
+  const [backfillResult, setBackfillResult] = useState<LibraryBackfillRunResult | null>(null);
+  const [backfillLoading, setBackfillLoading] = useState<'preview' | 'run' | null>(null);
+  const [backfillError, setBackfillError] = useState<string | null>(null);
   const isDeveloper = user?.uid === DEVELOPER_UID;
 
   useEffect(() => {
     if (!user) return;
     if (!isDeveloper) navigate('/');
   }, [user, isDeveloper, navigate]);
+
+  const handlePreviewBackfill = async () => {
+    if (!user?.uid) return;
+
+    setBackfillLoading('preview');
+    setBackfillError(null);
+    setBackfillResult(null);
+    try {
+      const preview = await firestoreService.previewLibraryBackfill(user.uid);
+      setBackfillPreview(preview);
+    } catch (error) {
+      console.error('library 백필 미리보기 실패:', error);
+      setBackfillError('미리보기에 실패했습니다. 콘솔 로그를 확인하세요.');
+    } finally {
+      setBackfillLoading(null);
+    }
+  };
+
+  const handleRunBackfill = async () => {
+    if (!user?.uid) return;
+    const ok = window.confirm('과거 책·타임라인을 라이브러리에 인덱싱합니다. 실행할까요?');
+    if (!ok) return;
+
+    setBackfillLoading('run');
+    setBackfillError(null);
+    try {
+      const result = await firestoreService.runLibraryBackfill(user.uid);
+      setBackfillResult(result);
+    } catch (error) {
+      console.error('library 백필 실행 실패:', error);
+      setBackfillError('백필 실행에 실패했습니다. 콘솔 로그를 확인하세요.');
+    } finally {
+      setBackfillLoading(null);
+    }
+  };
 
   if (!user || !isDeveloper) return null;
 
@@ -102,6 +146,73 @@ export function DevConsolePage() {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-6">
+        <section className="bg-white rounded-2xl border border-gray-200 p-5 mb-5">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div>
+              <h2 className="font-bold text-lg" style={{ color: '#1A3C6E' }}>
+                라이브러리 백필
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                과거 책·타임라인을 비서 통계·합본용 library 인덱스로 연결
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handlePreviewBackfill}
+                disabled={backfillLoading !== null}
+                className="px-4 py-2 rounded-xl border border-gray-300 text-sm font-semibold disabled:opacity-50"
+              >
+                {backfillLoading === 'preview' ? '확인 중' : '미리보기'}
+              </button>
+              <button
+                type="button"
+                onClick={handleRunBackfill}
+                disabled={backfillLoading !== null}
+                className="px-4 py-2 rounded-xl text-white text-sm font-semibold disabled:opacity-50"
+                style={{ backgroundColor: '#1A3C6E' }}
+              >
+                {backfillLoading === 'run' ? '실행 중' : '실행'}
+              </button>
+            </div>
+          </div>
+
+          {backfillError && (
+            <p className="mt-4 text-sm font-medium text-red-600">
+              {backfillError}
+            </p>
+          )}
+
+          {backfillPreview && (
+            <div className="mt-4 rounded-xl bg-gray-50 border border-gray-100 p-4 text-sm text-gray-700">
+              <p className="font-semibold" style={{ color: '#1A3C6E' }}>
+                미리보기 결과
+              </p>
+              <p className="mt-1">
+                책 {backfillPreview.books.length}권 / 타임라인 {backfillPreview.timelines.length}개 / 합계 {backfillPreview.total}건
+              </p>
+            </div>
+          )}
+
+          {backfillResult && (
+            <div className="mt-4 rounded-xl bg-gray-50 border border-gray-100 p-4 text-sm text-gray-700">
+              <p className="font-semibold" style={{ color: '#1A3C6E' }}>
+                실행 결과
+              </p>
+              <p className="mt-1">
+                책 {backfillResult.booksWritten}건 / 타임라인 {backfillResult.timelinesWritten}건 / 실패 {backfillResult.failed.length}건
+              </p>
+              {backfillResult.failed.length > 0 && (
+                <ul className="mt-2 list-disc pl-5 text-red-600">
+                  {backfillResult.failed.slice(0, 5).map((refPath) => (
+                    <li key={refPath}>{refPath}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </section>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {DEV_TOOLS.map((tool) => (
             <button
