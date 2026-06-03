@@ -90,8 +90,10 @@ export function StatisticsPage() {
   const plantSpeciesCount = new Set(
     plantEntries.map((entry) => entry.meta?.scientificName || entry.title).filter(Boolean),
   ).size;
-  const plantCorrectedCount = plantEntries.filter(
-    (entry) => entry.meta?.identificationStatus === 'corrected',
+  const nowForPlant = new Date();
+  const currentMonthStr = `${nowForPlant.getFullYear()}-${String(nowForPlant.getMonth() + 1).padStart(2, '0')}`;
+  const plantThisMonthCount = plantEntries.filter(
+    (entry) => (entry.date || '').slice(0, 7) === currentMonthStr,
   ).length;
   const plantTitleCounts = plantEntries.reduce<Record<string, number>>((acc, entry) => {
     const t = entry.title || '이름 없음';
@@ -165,8 +167,8 @@ export function StatisticsPage() {
                       <p className="text-xl font-bold mt-1" style={{ color: '#2A5C3E' }}>{plantSpeciesCount}종</p>
                     </div>
                     <div className="rounded-lg p-3" style={{ backgroundColor: '#F0FFF4', border: '1px solid #d0ffe0' }}>
-                      <p className="text-xs" style={{ color: '#999' }}>내가 교정한 이름</p>
-                      <p className="text-xl font-bold mt-1" style={{ color: '#2A5C3E' }}>{plantCorrectedCount}개</p>
+                      <p className="text-xs" style={{ color: '#999' }}>이번 달 판독</p>
+                      <p className="text-xl font-bold mt-1" style={{ color: '#2A5C3E' }}>{plantThisMonthCount}개</p>
                     </div>
                     <div className="rounded-lg p-3" style={{ backgroundColor: '#F0FFF4', border: '1px solid #d0ffe0' }}>
                       <p className="text-xs" style={{ color: '#999' }}>가장 많이 본 식물</p>
