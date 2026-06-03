@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
+import { KNewsSection } from '../components/KNewsSection';
+import { TodayQuote } from '../components/TodayQuote';
 import { useAuth } from '../contexts/AuthContext';
 import {
   firestoreService,
@@ -11,7 +13,7 @@ import {
 } from '../services/firestoreService';
 import { toast } from 'sonner';
 
-type TogetherTab = 'shared' | 'people';
+type TogetherTab = 'shared' | 'people' | 'publicContent';
 
 export function SayuTogetherPage() {
   const navigate = useNavigate();
@@ -702,6 +704,31 @@ export function SayuTogetherPage() {
     );
   };
 
+  const renderPublicContent = () => (
+    <div className="space-y-5">
+      <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: '1px solid #DBEAFE' }}>
+        <h2 className="text-base font-bold mb-3" style={{ color: '#1A3C6E' }}>
+          K뉴스
+        </h2>
+        <KNewsSection />
+      </section>
+
+      <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
+        <h2 className="text-base font-bold mb-3" style={{ color: '#1A3C6E' }}>
+          명언
+        </h2>
+        <TodayQuote defaultTab="classic" hideTabSwitcher />
+      </section>
+
+      <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
+        <h2 className="text-base font-bold mb-3" style={{ color: '#1A3C6E' }}>
+          성경말씀
+        </h2>
+        <TodayQuote defaultTab="bible" hideTabSwitcher />
+      </section>
+    </div>
+  );
+
   return (
     <div
       className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8"
@@ -741,10 +768,11 @@ export function SayuTogetherPage() {
         </p>
       </div>
 
-      <div className="mb-5 grid grid-cols-2 gap-2">
+      <div className="mb-5 grid grid-cols-3 gap-2">
         {([
           { key: 'shared', label: '구독자 사유' },
           { key: 'people', label: '사람속으로' },
+          { key: 'publicContent', label: '공개 콘텐츠' },
         ] as const).map((tab) => {
           const active = activeTab === tab.key;
           return (
@@ -774,7 +802,9 @@ export function SayuTogetherPage() {
 
       {activeTab === 'shared'
         ? (selectedItem ? renderDetail() : renderList())
-        : renderPublishedBooks()}
+        : activeTab === 'people'
+          ? renderPublishedBooks()
+          : renderPublicContent()}
     </div>
   );
 }

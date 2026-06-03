@@ -134,8 +134,8 @@ export function KNewsPublisherPage() {
         createdAt: serverTimestamp(),
       });
 
-      toast.success('발행 완료! 원기충전소 K뉴스 탭에 노출됩니다.');
-      navigate('/recovery');
+      toast.success('발행 완료! SAYU-함께보기 공개 콘텐츠 영역에 노출될 준비가 되었습니다.');
+      navigate('/sayu-together');
     } catch (err: any) {
       console.error('K뉴스 발행 실패', err);
       toast.error(`발행 실패: ${err?.message || '알 수 없는 오류'}`);

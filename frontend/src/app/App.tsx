@@ -153,8 +153,8 @@ function App() {
               <Route path="/stats" element={<StatisticsPage />} />
               <Route path="/stats/:format" element={<FormatStatisticsPage />} />
 
-              {/* 원기충전소 (구 책스튜디오 — 2026-05-13 리브랜딩, 폐기 URL은 홈 리다이렉트) */}
-              <Route path="/recovery" element={<BookStudio />} />
+              {/* 원기충전소 폐기 URL은 SAYU-함께보기로 이동 */}
+              <Route path="/recovery" element={<Navigate to="/sayu-together" replace />} />
               <Route path="/book-studio" element={<DeveloperBookStudioRoute />} />
               <Route path="/book-create" element={<BookCreate />} />
               <Route path="/book-reader/:bookId" element={<BookReader />} />

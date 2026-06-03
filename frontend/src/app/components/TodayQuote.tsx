@@ -91,6 +91,7 @@ export function TodayQuote({ defaultTab, hideTabSwitcher = false }: TodayQuotePr
   if (!user || !todayQuote) return null;
   if (location.pathname === '/v2') return null;
   if (location.pathname === '/recovery' && !defaultTab) return null;
+  if (location.pathname === '/sayu-together' && !defaultTab) return null;
 
   const sourceLabel = isBible
     ? todayQuote.reference

@@ -54,7 +54,7 @@ export function HomePage() {
     { icon: "📝", label: "메모", format: "메모" },
   ];
 
-  // 🏛️ HARU 비서실 — 4×2 그리드 (8개)
+  // 🏛️ HARU 비서실
   const secretaryCards: {
     icon: string;
     label: string;
@@ -69,7 +69,6 @@ export function HomePage() {
     { icon: "✏️", label: "영어일기", path: "/diary-learn" },
     { icon: "📱", label: "SNS 가져오기", path: "/sns-records", accent: "#10b981" },
     { icon: "📈", label: "주식거래일지", path: "/record", state: { format: "주식거래일지" }, accent: "#10b981" },
-    { icon: "📚", label: "원기충전소", path: "/recovery", accent: "#10b981" },
   ];
 
   // 🔧 개발자 도구 — 4×1 그리드 (4개, 개발자만)
