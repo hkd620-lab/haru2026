@@ -5,24 +5,31 @@ import { PageHeaderActions } from '../components/PageHeaderActions';
 import { useAuth } from '../contexts/AuthContext';
 import {
   firestoreService,
+  type PublishedBook,
   type SharedRecordComment,
   type SharedRecordListItem,
 } from '../services/firestoreService';
 import { toast } from 'sonner';
 
+type TogetherTab = 'shared' | 'people';
+
 export function SayuTogetherPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, loading: authLoading } = useAuth();
+  const [activeTab, setActiveTab] = useState<TogetherTab>('shared');
   const [items, setItems] = useState<SharedRecordListItem[]>([]);
+  const [publishedBooks, setPublishedBooks] = useState<PublishedBook[]>([]);
   const [selectedId, setSelectedId] = useState('');
   const [comments, setComments] = useState<SharedRecordComment[]>([]);
   const [commentBody, setCommentBody] = useState('');
   const [loading, setLoading] = useState(false);
+  const [booksLoading, setBooksLoading] = useState(false);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [sharedActionId, setSharedActionId] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [booksErrorMessage, setBooksErrorMessage] = useState('');
   const fromPath = (location.state as any)?.from as string | undefined;
 
   const selectedItem = useMemo(
@@ -70,6 +77,21 @@ export function SayuTogetherPage() {
     }
   };
 
+  const loadPublishedBooks = async () => {
+    if (!user?.uid) return;
+    setBooksLoading(true);
+    setBooksErrorMessage('');
+    try {
+      const next = await firestoreService.getPublishedBooks();
+      setPublishedBooks(next);
+    } catch (error) {
+      console.error('사람속으로 발행본 불러오기 실패:', error);
+      setBooksErrorMessage('발행중인 사람속으로 책을 불러오지 못했습니다.');
+    } finally {
+      setBooksLoading(false);
+    }
+  };
+
   const loadComments = async (sharedRecordId: string) => {
     if (!sharedRecordId || !user?.uid) {
       setComments([]);
@@ -100,6 +122,16 @@ export function SayuTogetherPage() {
   }, [authLoading, user?.uid]);
 
   useEffect(() => {
+    if (authLoading || activeTab !== 'people') return;
+    if (!user?.uid) {
+      setPublishedBooks([]);
+      return;
+    }
+    loadPublishedBooks();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, authLoading, user?.uid]);
+
+  useEffect(() => {
     if (!selectedId || !user?.uid) {
       setComments([]);
       return;
@@ -119,6 +151,12 @@ export function SayuTogetherPage() {
     const date = value?.toDate?.() || (value ? new Date(value) : null);
     if (!date || Number.isNaN(date.getTime())) return '';
     return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatBookDate = (value?: any) => {
+    const date = value?.toDate?.() || (value ? new Date(value) : null);
+    if (!date || Number.isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
   const getPreviewText = (item: SharedRecordListItem) => {
@@ -572,6 +610,98 @@ export function SayuTogetherPage() {
     );
   };
 
+  const renderPublishedBooks = () => {
+    if (authLoading || booksLoading) {
+      return (
+        <div className="rounded-2xl p-8 text-center bg-white" style={{ border: '1px solid #DBEAFE' }}>
+          <p className="text-sm" style={{ color: '#1A3C6E' }}>발행중인 사람속으로 책을 불러오고 있습니다.</p>
+        </div>
+      );
+    }
+
+    if (!user?.uid) {
+      return (
+        <div className="rounded-2xl p-8 text-center bg-white" style={{ border: '1px solid #DBEAFE' }}>
+          <p className="text-sm" style={{ color: '#1A3C6E', lineHeight: 1.7 }}>
+            사람속으로 발행본은 로그인한 HARU 회원만 볼 수 있습니다.
+          </p>
+        </div>
+      );
+    }
+
+    if (booksErrorMessage) {
+      return (
+        <div className="rounded-2xl p-8 text-center bg-white" style={{ border: '1px solid #FECACA' }}>
+          <p className="text-sm" style={{ color: '#B42318', lineHeight: 1.7 }}>{booksErrorMessage}</p>
+        </div>
+      );
+    }
+
+    if (publishedBooks.length === 0) {
+      return (
+        <div className="rounded-2xl p-8 text-center bg-white" style={{ border: '1px solid #DBEAFE' }}>
+          <p className="text-sm" style={{ color: '#1A3C6E', lineHeight: 1.7 }}>
+            발행중인 사람속으로 책을 준비하고 있습니다.
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-3">
+        {publishedBooks.map((book) => (
+          <article
+            key={book.id}
+            className="bg-white rounded-xl p-4 shadow-sm"
+            style={{ border: '1px solid #DBEAFE' }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div style={{ minWidth: 0 }}>
+                <h2 className="text-base font-bold" style={{ color: '#1A3C6E' }}>
+                  {book.title || '사람속으로'}
+                </h2>
+                <p className="text-xs mt-1" style={{ color: '#64748B' }}>
+                  {formatBookDate(book.createdAt) || '발행일 준비중'}
+                </p>
+              </div>
+              <span
+                className="text-[10px] font-bold rounded-full px-2 py-1"
+                style={{ backgroundColor: '#ECFDF5', color: '#0F766E' }}
+              >
+                발행중
+              </span>
+            </div>
+            {book.summary && (
+              <p className="text-sm mt-3" style={{ color: '#334155', lineHeight: 1.7 }}>
+                {book.summary}
+              </p>
+            )}
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={() => navigate(`/book-reader/${book.id}`)}
+                className="w-full sm:w-auto"
+                style={{
+                  minHeight: 34,
+                  padding: '0 14px',
+                  borderRadius: 8,
+                  border: '1px solid #1A3C6E',
+                  background: '#1A3C6E',
+                  color: '#FFFFFF',
+                  fontSize: 12,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                }}
+              >
+                읽기
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div
       className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8"
@@ -611,7 +741,40 @@ export function SayuTogetherPage() {
         </p>
       </div>
 
-      {selectedItem ? renderDetail() : renderList()}
+      <div className="mb-5 grid grid-cols-2 gap-2">
+        {([
+          { key: 'shared', label: '구독자 사유' },
+          { key: 'people', label: '사람속으로' },
+        ] as const).map((tab) => {
+          const active = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => {
+                setActiveTab(tab.key);
+                setSelectedId('');
+              }}
+              style={{
+                minHeight: 42,
+                borderRadius: 10,
+                border: active ? '1.5px solid #0F766E' : '1px solid #CBD5E1',
+                background: active ? '#ECFDF5' : '#FFFFFF',
+                color: active ? '#0F766E' : '#475569',
+                fontSize: 13,
+                fontWeight: 800,
+                cursor: 'pointer',
+              }}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {activeTab === 'shared'
+        ? (selectedItem ? renderDetail() : renderList())
+        : renderPublishedBooks()}
     </div>
   );
 }

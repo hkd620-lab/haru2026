@@ -82,6 +82,13 @@ export interface SharedRecordComment {
   isDeleted?: boolean;
 }
 
+export interface PublishedBook {
+  id: string;
+  title: string;
+  summary: string;
+  createdAt?: any;
+}
+
 export interface LibraryEntryInput {
   category: string;
   type: string;
@@ -542,6 +549,43 @@ class FirestoreService {
         const bTime = b.publishedAt?.toMillis?.() ?? 0;
         return bTime - aTime;
       });
+  }
+
+  async getPublishedBooks(): Promise<PublishedBook[]> {
+    const booksQuery = query(
+      collection(db, 'books'),
+      where('status', '==', 'serializing'),
+      orderBy('createdAt', 'desc'),
+      limit(50),
+    );
+    const snapshot = await getDocs(booksQuery);
+
+    return Promise.all(
+      snapshot.docs.map(async (bookDoc) => {
+        const data = bookDoc.data();
+        let summary = getCleanText(data.summary || data.description || data.subtitle);
+
+        if (!summary) {
+          const chapterSnapshot = await getDocs(
+            query(
+              collection(db, 'books', bookDoc.id, 'chapters'),
+              orderBy('order', 'asc'),
+              limit(1),
+            ),
+          );
+          const firstChapter = chapterSnapshot.docs[0]?.data();
+          const content = getCleanText(firstChapter?.content);
+          summary = content.length > 160 ? `${content.slice(0, 160)}...` : content;
+        }
+
+        return {
+          id: bookDoc.id,
+          title: getCleanText(data.title) || '제목 없는 책',
+          summary,
+          createdAt: data.createdAt,
+        };
+      }),
+    );
   }
 
   async getSharedRecordComments(sharedRecordId: string): Promise<SharedRecordComment[]> {
