@@ -13,7 +13,8 @@ import {
 } from '../services/firestoreService';
 import { toast } from 'sonner';
 
-type TogetherTab = 'shared' | 'people' | 'publicContent';
+type TogetherTab = 'shared' | 'recovery';
+type RecoverySubTab = 'people' | 'knews' | 'quote' | 'bible';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -22,6 +23,7 @@ export function SayuTogetherPage() {
   const location = useLocation();
   const { user, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<TogetherTab>('shared');
+  const [recoverySub, setRecoverySub] = useState<RecoverySubTab>('people');
   const [items, setItems] = useState<SharedRecordListItem[]>([]);
   const [publishedBooks, setPublishedBooks] = useState<PublishedBook[]>([]);
   const [selectedId, setSelectedId] = useState('');
@@ -127,14 +129,14 @@ export function SayuTogetherPage() {
   }, [authLoading, user?.uid]);
 
   useEffect(() => {
-    if (authLoading || activeTab !== 'people') return;
+    if (authLoading || activeTab !== 'recovery' || recoverySub !== 'people') return;
     if (!user?.uid) {
       setPublishedBooks([]);
       return;
     }
     loadPublishedBooks();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, authLoading, user?.uid]);
+  }, [activeTab, recoverySub, authLoading, user?.uid]);
 
   useEffect(() => {
     if (!selectedId || !user?.uid) {
@@ -707,28 +709,94 @@ export function SayuTogetherPage() {
     );
   };
 
-  const renderPublicContent = () => (
-    <div className="space-y-5">
-      <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: '1px solid #DBEAFE' }}>
-        <h2 className="text-base font-bold mb-3" style={{ color: '#1A3C6E' }}>
-          K뉴스
-        </h2>
-        <KNewsSection />
-      </section>
+  const renderRecovery = () => (
+    <div>
+      <div className="mb-4 grid grid-cols-4 gap-2">
+        {([
+          { key: 'people', label: '사람속으로' },
+          { key: 'knews', label: 'K뉴스' },
+          { key: 'quote', label: '명언' },
+          { key: 'bible', label: '성경말씀' },
+        ] as const).map((sub) => {
+          const active = recoverySub === sub.key;
+          return (
+            <button
+              key={sub.key}
+              type="button"
+              onClick={() => {
+                setRecoverySub(sub.key);
+                setSelectedId('');
+              }}
+              style={{
+                minHeight: 38,
+                borderRadius: 9,
+                border: active ? '1.5px solid #0F766E' : '1px solid #CBD5E1',
+                background: active ? '#ECFDF5' : '#FFFFFF',
+                color: active ? '#0F766E' : '#475569',
+                fontSize: 12,
+                fontWeight: 800,
+                cursor: 'pointer',
+              }}
+            >
+              {sub.label}
+            </button>
+          );
+        })}
+      </div>
 
-      <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-        <h2 className="text-base font-bold mb-3" style={{ color: '#1A3C6E' }}>
-          명언
-        </h2>
-        <TodayQuote defaultTab="classic" hideTabSwitcher />
-      </section>
+      {recoverySub === 'people' && (
+        <>
+          {isDeveloper && (
+            <div className="mb-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => navigate('/book-studio', { state: { from: '/sayu-together' } })}
+                style={{
+                  minHeight: 36,
+                  padding: '0 14px',
+                  borderRadius: 8,
+                  border: '1px solid #1A3C6E',
+                  background: '#1A3C6E',
+                  color: '#FFFFFF',
+                  fontSize: 12,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                }}
+              >
+                사람속으로 관리
+              </button>
+            </div>
+          )}
+          {renderPublishedBooks()}
+        </>
+      )}
 
-      <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-        <h2 className="text-base font-bold mb-3" style={{ color: '#1A3C6E' }}>
-          성경말씀
-        </h2>
-        <TodayQuote defaultTab="bible" hideTabSwitcher />
-      </section>
+      {recoverySub === 'knews' && (
+        <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: '1px solid #DBEAFE' }}>
+          <h2 className="text-base font-bold mb-3" style={{ color: '#1A3C6E' }}>
+            K뉴스
+          </h2>
+          <KNewsSection />
+        </section>
+      )}
+
+      {recoverySub === 'quote' && (
+        <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
+          <h2 className="text-base font-bold mb-3" style={{ color: '#1A3C6E' }}>
+            명언
+          </h2>
+          <TodayQuote defaultTab="classic" hideTabSwitcher />
+        </section>
+      )}
+
+      {recoverySub === 'bible' && (
+        <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
+          <h2 className="text-base font-bold mb-3" style={{ color: '#1A3C6E' }}>
+            성경말씀
+          </h2>
+          <TodayQuote defaultTab="bible" hideTabSwitcher />
+        </section>
+      )}
     </div>
   );
 
@@ -771,11 +839,10 @@ export function SayuTogetherPage() {
         </p>
       </div>
 
-      <div className="mb-5 grid grid-cols-3 gap-2">
+      <div className="mb-5 grid grid-cols-2 gap-2">
         {([
           { key: 'shared', label: '구독자 사유' },
-          { key: 'people', label: '사람속으로' },
-          { key: 'publicContent', label: '공개 콘텐츠' },
+          { key: 'recovery', label: '원기충전소' },
         ] as const).map((tab) => {
           const active = activeTab === tab.key;
           return (
@@ -803,33 +870,9 @@ export function SayuTogetherPage() {
         })}
       </div>
 
-      {activeTab === 'people' && isDeveloper && (
-        <div className="mb-4 flex justify-end">
-          <button
-            type="button"
-            onClick={() => navigate('/book-studio', { state: { from: '/sayu-together' } })}
-            style={{
-              minHeight: 36,
-              padding: '0 14px',
-              borderRadius: 8,
-              border: '1px solid #1A3C6E',
-              background: '#1A3C6E',
-              color: '#FFFFFF',
-              fontSize: 12,
-              fontWeight: 800,
-              cursor: 'pointer',
-            }}
-          >
-            사람속으로 관리
-          </button>
-        </div>
-      )}
-
       {activeTab === 'shared'
         ? (selectedItem ? renderDetail() : renderList())
-        : activeTab === 'people'
-          ? renderPublishedBooks()
-          : renderPublicContent()}
+        : renderRecovery()}
     </div>
   );
 }
