@@ -84,6 +84,21 @@ export function StatisticsPage() {
     plant: '식물탐정',
   };
 
+  // 🌿 식물탐정 전용 통계 (meta 기반)
+  const plantEntries = assistantLibrary.filter((entry) => entry.type === 'plant');
+  const plantSpeciesCount = new Set(
+    plantEntries.map((entry) => entry.meta?.scientificName).filter(Boolean),
+  ).size;
+  const plantCorrectedCount = plantEntries.filter(
+    (entry) => entry.meta?.identificationStatus === 'corrected',
+  ).length;
+  const plantTitleCounts = plantEntries.reduce<Record<string, number>>((acc, entry) => {
+    const t = entry.title || '이름 없음';
+    acc[t] = (acc[t] || 0) + 1;
+    return acc;
+  }, {});
+  const topPlant = Object.entries(plantTitleCounts).sort((a, b) => b[1] - a[1])[0];
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
       <PageHeaderActions />
@@ -135,6 +150,32 @@ export function StatisticsPage() {
                   </div>
                 ))}
               </div>
+
+              {plantEntries.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold mb-2" style={{ color: '#333' }}>🌿 식물탐정 상세</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-lg p-3" style={{ backgroundColor: '#F0FFF4', border: '1px solid #d0ffe0' }}>
+                      <p className="text-xs" style={{ color: '#999' }}>판독 식물</p>
+                      <p className="text-xl font-bold mt-1" style={{ color: '#2A5C3E' }}>{plantEntries.length}개</p>
+                    </div>
+                    <div className="rounded-lg p-3" style={{ backgroundColor: '#F0FFF4', border: '1px solid #d0ffe0' }}>
+                      <p className="text-xs" style={{ color: '#999' }}>식물 종류</p>
+                      <p className="text-xl font-bold mt-1" style={{ color: '#2A5C3E' }}>{plantSpeciesCount}종</p>
+                    </div>
+                    <div className="rounded-lg p-3" style={{ backgroundColor: '#F0FFF4', border: '1px solid #d0ffe0' }}>
+                      <p className="text-xs" style={{ color: '#999' }}>내가 교정한 이름</p>
+                      <p className="text-xl font-bold mt-1" style={{ color: '#2A5C3E' }}>{plantCorrectedCount}개</p>
+                    </div>
+                    <div className="rounded-lg p-3" style={{ backgroundColor: '#F0FFF4', border: '1px solid #d0ffe0' }}>
+                      <p className="text-xs" style={{ color: '#999' }}>가장 많이 본 식물</p>
+                      <p className="text-sm font-bold mt-1 truncate" style={{ color: '#2A5C3E' }}>
+                        {topPlant ? `${topPlant[0]} (${topPlant[1]})` : '-'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {assistantMonths.length > 0 && (
                 <div>

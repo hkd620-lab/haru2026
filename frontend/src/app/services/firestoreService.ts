@@ -89,6 +89,11 @@ export interface PublishedBook {
   createdAt?: any;
 }
 
+export interface LibraryEntryMeta {
+  scientificName?: string;
+  identificationStatus?: string;
+}
+
 export interface LibraryEntryInput {
   category: string;
   type: string;
@@ -96,10 +101,18 @@ export interface LibraryEntryInput {
   date?: string;
   summary?: string;
   refPath: string;
+  meta?: LibraryEntryMeta;
 }
 
-export interface LibraryEntry extends Required<LibraryEntryInput> {
+export interface LibraryEntry {
   id: string;
+  category: string;
+  type: string;
+  title: string;
+  date: string;
+  summary: string;
+  refPath: string;
+  meta?: LibraryEntryMeta;
   createdAt?: any;
 }
 
@@ -257,14 +270,19 @@ class FirestoreService {
 
     const entryId = makeLibraryEntryId(normalizedEntry);
     const entryRef = doc(db, 'users', userId, 'library', entryId);
-    await setDoc(
-      entryRef,
-      {
-        ...normalizedEntry,
-        createdAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
+    const payload: Record<string, any> = {
+      ...normalizedEntry,
+      createdAt: serverTimestamp(),
+    };
+    if (entry.meta && typeof entry.meta === 'object') {
+      const cleanedMeta: LibraryEntryMeta = {};
+      const sciName = getCleanText(entry.meta.scientificName);
+      const idStatus = getCleanText(entry.meta.identificationStatus);
+      if (sciName) cleanedMeta.scientificName = sciName;
+      if (idStatus) cleanedMeta.identificationStatus = idStatus;
+      if (Object.keys(cleanedMeta).length > 0) payload.meta = cleanedMeta;
+    }
+    await setDoc(entryRef, payload, { merge: true });
     return entryId;
   }
 
@@ -308,6 +326,7 @@ class FirestoreService {
         getCleanText(data.finalGuess) ||
         '이름 없는 식물';
       const scientificName = getCleanText(data.scientificName);
+      const identificationStatus = getCleanText(data.identificationStatus);
       return {
         category: '비서',
         type: 'plant',
@@ -315,6 +334,7 @@ class FirestoreService {
         date: dateFromFirestoreValue(data.date || data.createdAt || data.updatedAt),
         summary: scientificName ? `식물탐정 · ${scientificName}` : '식물탐정 기록',
         refPath: `users/${userId}/plants/${plantDoc.id}`,
+        meta: { scientificName, identificationStatus },
       };
     });
 

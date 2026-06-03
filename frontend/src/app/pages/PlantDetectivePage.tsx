@@ -1606,6 +1606,10 @@ export function PlantDetectivePage() {
           date: today,
           summary: scientificName ? `식물탐정 · ${scientificName}` : '식물탐정 기록',
           refPath: `users/${user.uid}/plants/${targetPlantId}`,
+          meta: {
+            scientificName,
+            identificationStatus: correctedByUser ? 'corrected' : 'confirmed',
+          },
         });
       } catch (libraryError) {
         console.warn('식물탐정 library 인덱싱 실패:', libraryError);
