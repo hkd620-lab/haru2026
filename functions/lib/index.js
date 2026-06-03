@@ -2008,7 +2008,7 @@ exports.extractStockTradeTextFromPhoto = (0, https_2.onCall)({
         throw new https_2.HttpsError('internal', '거래 캡처 텍스트 추출에 실패했습니다. 사진을 더 또렷하게 올려 주세요.');
     }
 });
-const GROWTH_TIMELINE_PDF_SCHEMA_VERSION = 1;
+const GROWTH_TIMELINE_PDF_SCHEMA_VERSION = 2;
 const GROWTH_TIMELINE_PDF_MAX_ITEMS = 80;
 function cleanTimelinePdfText(value, maxLength) {
     return String(value !== null && value !== void 0 ? value : '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
@@ -2120,6 +2120,94 @@ function registerTimelinePdfFont(doc) {
         doc.font('NotoSansKR');
     }
 }
+function fitTimelinePdfLine(doc, text, width) {
+    const value = String(text || '').trim();
+    if (!value)
+        return '';
+    if (doc.widthOfString(value) <= width)
+        return value;
+    const suffix = '...';
+    if (doc.widthOfString(suffix) > width)
+        return '';
+    let low = 0;
+    let high = value.length;
+    let best = 0;
+    while (low <= high) {
+        const mid = Math.floor((low + high) / 2);
+        const candidate = `${value.slice(0, mid).trimEnd()}${suffix}`;
+        if (doc.widthOfString(candidate) <= width) {
+            best = mid;
+            low = mid + 1;
+        }
+        else {
+            high = mid - 1;
+        }
+    }
+    const prefix = value.slice(0, best).trimEnd();
+    return prefix ? `${prefix}${suffix}` : suffix;
+}
+function splitTimelinePdfLines(doc, text, width, maxLines) {
+    let remaining = String(text || '').trim();
+    const lines = [];
+    for (let lineIndex = 0; lineIndex < maxLines && remaining; lineIndex += 1) {
+        const isLastLine = lineIndex === maxLines - 1;
+        if (doc.widthOfString(remaining) <= width) {
+            lines.push(remaining);
+            break;
+        }
+        if (isLastLine) {
+            const fitted = fitTimelinePdfLine(doc, remaining, width);
+            if (fitted)
+                lines.push(fitted);
+            break;
+        }
+        let low = 1;
+        let high = remaining.length;
+        let best = 0;
+        while (low <= high) {
+            const mid = Math.floor((low + high) / 2);
+            const candidate = remaining.slice(0, mid).trimEnd();
+            if (candidate && doc.widthOfString(candidate) <= width) {
+                best = mid;
+                low = mid + 1;
+            }
+            else {
+                high = mid - 1;
+            }
+        }
+        if (best <= 0) {
+            const fitted = fitTimelinePdfLine(doc, remaining, width);
+            if (fitted)
+                lines.push(fitted);
+            break;
+        }
+        const prefix = remaining.slice(0, best);
+        const lastSpace = prefix.lastIndexOf(' ');
+        const cutAt = lastSpace >= Math.max(4, Math.floor(best * 0.55)) ? lastSpace : best;
+        const line = remaining.slice(0, cutAt).trim();
+        if (line)
+            lines.push(line);
+        remaining = remaining.slice(cutAt).trim();
+    }
+    return lines;
+}
+function drawTimelinePdfLines(doc, text, x, y, width, options) {
+    const availableLines = typeof options.maxHeight === 'number'
+        ? Math.floor(options.maxHeight / options.lineHeight)
+        : options.maxLines;
+    const maxLines = Math.max(0, Math.min(options.maxLines, availableLines));
+    if (maxLines <= 0)
+        return y;
+    doc.fillColor(options.color).fontSize(options.fontSize);
+    const lines = splitTimelinePdfLines(doc, text, width, maxLines);
+    lines.forEach((line, index) => {
+        doc.text(line, x, y + index * options.lineHeight, {
+            width,
+            lineBreak: false,
+        });
+    });
+    return y + lines.length * options.lineHeight;
+}
 async function buildGrowthTimelinePdfBuffer(payload) {
     return await new Promise(async (resolve, reject) => {
         var _a, _b;
@@ -2196,42 +2284,53 @@ async function buildGrowthTimelinePdfBuffer(payload) {
                     }
                     else {
                         doc.roundedRect(photoX, photoY, photoW, photoH, 8).fill('#f1f4f7');
-                        doc.fillColor('#8a96a3').fontSize(10).text('사진을 불러오지 못했습니다', photoX + 12, photoY + photoH / 2 - 6, {
-                            width: photoW - 24,
-                            align: 'center',
-                        });
+                        const fallbackText = '사진을 불러오지 못했습니다';
+                        doc.fillColor('#8a96a3').fontSize(10);
+                        const fallbackX = photoX + Math.max(0, (photoW - doc.widthOfString(fallbackText)) / 2);
+                        doc.text(fallbackText, fallbackX, photoY + photoH / 2 - 6, { lineBreak: false });
                     }
                     const captionY = photoY + photoH + 10;
-                    doc.fillColor(brandColor).fontSize(13).text(formatTimelinePdfDate(item.takenDate), photoX, captionY);
+                    const textBottom = y + cardH - cardPad;
+                    let textY = drawTimelinePdfLines(doc, formatTimelinePdfDate(item.takenDate), photoX, captionY, photoW, {
+                        color: brandColor,
+                        fontSize: 13,
+                        lineHeight: 16,
+                        maxLines: 1,
+                    }) + 3;
                     const locationLabel = getTimelinePdfLocationLabel(item);
                     const locationDetail = getTimelinePdfLocationDetail(item);
-                    let textY = captionY + 19;
                     if (locationLabel) {
-                        doc.fillColor('#37644a').fontSize(9).text(`촬영장소: ${locationLabel}`, photoX, textY, {
-                            width: photoW,
-                            height: 28,
-                        });
-                        textY += 23;
+                        textY = drawTimelinePdfLines(doc, `촬영장소: ${locationLabel}`, photoX, textY, photoW, {
+                            color: '#37644a',
+                            fontSize: 9,
+                            lineHeight: 11,
+                            maxLines: 2,
+                            maxHeight: textBottom - textY,
+                        }) + 2;
                     }
                     if (locationDetail && locationDetail !== locationLabel) {
-                        doc.fillColor('#7c8894').fontSize(8.5).text(locationDetail, photoX, textY, {
-                            width: photoW,
-                            height: 18,
-                        });
-                        textY += 18;
+                        textY = drawTimelinePdfLines(doc, locationDetail, photoX, textY, photoW, {
+                            color: '#7c8894',
+                            fontSize: 8.5,
+                            lineHeight: 10,
+                            maxLines: 1,
+                            maxHeight: textBottom - textY,
+                        }) + 2;
                     }
                     if (item.memo) {
-                        doc.fillColor('#3a4753').fontSize(9).text(item.memo, photoX, textY, {
-                            width: photoW,
-                            height: y + cardH - textY - cardPad,
-                            lineGap: 2,
+                        drawTimelinePdfLines(doc, item.memo, photoX, textY, photoW, {
+                            color: '#3a4753',
+                            fontSize: 9,
+                            lineHeight: 11,
+                            maxLines: 2,
+                            maxHeight: textBottom - textY,
                         });
                     }
                 }
-                doc.fillColor('#9aa6b2').fontSize(9).text(`HARU Timeline · ${periodText}`, margin, pageHeight - 54, {
-                    width: pageWidth - margin * 2,
-                    align: 'center',
-                });
+                const footerText = `HARU Timeline · ${periodText}`;
+                doc.fillColor('#9aa6b2').fontSize(9);
+                const footerX = margin + Math.max(0, (pageWidth - margin * 2 - doc.widthOfString(footerText)) / 2);
+                doc.text(footerText, footerX, pageHeight - 54, { lineBreak: false });
             }
             doc.end();
         }
