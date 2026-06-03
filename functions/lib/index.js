@@ -2008,7 +2008,7 @@ exports.extractStockTradeTextFromPhoto = (0, https_2.onCall)({
         throw new https_2.HttpsError('internal', '거래 캡처 텍스트 추출에 실패했습니다. 사진을 더 또렷하게 올려 주세요.');
     }
 });
-const GROWTH_TIMELINE_PDF_SCHEMA_VERSION = 2;
+const GROWTH_TIMELINE_PDF_SCHEMA_VERSION = 3;
 const GROWTH_TIMELINE_PDF_MAX_ITEMS = 80;
 function cleanTimelinePdfText(value, maxLength) {
     return String(value !== null && value !== void 0 ? value : '').replace(/\s+/g, ' ').trim().slice(0, maxLength);

@@ -2326,7 +2326,7 @@ type NormalizedGrowthTimelinePdfItem = Required<Pick<GrowthTimelinePdfItem, 'url
   };
 };
 
-const GROWTH_TIMELINE_PDF_SCHEMA_VERSION = 2;
+const GROWTH_TIMELINE_PDF_SCHEMA_VERSION = 3;
 const GROWTH_TIMELINE_PDF_MAX_ITEMS = 80;
 
 function cleanTimelinePdfText(value: unknown, maxLength: number): string {
