@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
+import { httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import { useSubscription } from '../hooks/useSubscription';
 import type { ReverseGeocodeCandidate } from '../services/reverseGeocodeService';
+import { functions } from '../../firebase';
 
 export type GrowthTimelineDocumentItem = {
   url: string;
@@ -28,6 +30,21 @@ interface GrowthTimelineDocumentModalProps {
   onFinalize?: () => void;
   onEdit?: () => void;
 }
+
+type GenerateGrowthTimelinePdfRequest = {
+  title: string;
+  createdLabel: string;
+  items: GrowthTimelineDocumentItem[];
+};
+
+type GenerateGrowthTimelinePdfResponse = {
+  success: boolean;
+  cached: boolean;
+  hash: string;
+  filePath: string;
+  downloadUrl: string;
+  expiresAt: string;
+};
 
 // HARU 타임라인 PDF 출력 법칙: 표지 1페이지 + A4 한 장에 사진 4장(2열×2행), 초과 시 다음 페이지로 분할
 const PRINT_PHOTOS_PER_PAGE = 4;
@@ -110,10 +127,11 @@ export function GrowthTimelineDocumentModal({
   const createdText = createdLabel || formatDateLabel(new Date().toISOString().slice(0, 10));
 
   const [printRequested, setPrintRequested] = useState(false);
+  const [serverPdfRequested, setServerPdfRequested] = useState(false);
 
   if (!isOpen) return null;
 
-  const handlePrint = async () => {
+  const handleBrowserPrint = async () => {
     if (!isPremium) {
       alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 3,000원으로 시작해 보세요!');
       window.location.href = '/subscription';
@@ -198,6 +216,46 @@ export function GrowthTimelineDocumentModal({
     window.print();
     // afterprint 미지원 환경 대비 fallback
     setTimeout(cleanup, 1500);
+  };
+
+  const handlePrint = async () => {
+    if (!isPremium) {
+      alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 3,000원으로 시작해 보세요!');
+      window.location.href = '/subscription';
+      return;
+    }
+    if (serverPdfRequested || printRequested) return;
+
+    setServerPdfRequested(true);
+    try {
+      const generatePdf = httpsCallable<
+        GenerateGrowthTimelinePdfRequest,
+        GenerateGrowthTimelinePdfResponse
+      >(functions, 'generateGrowthTimelinePdf', { timeout: 300000 });
+
+      const result = await generatePdf({
+        title: resolvedTitle,
+        createdLabel: createdText,
+        items: sortedItems,
+      });
+
+      if (!result.data?.downloadUrl) {
+        throw new Error('PDF URL이 없습니다');
+      }
+
+      const opened = window.open(result.data.downloadUrl, '_blank', 'noopener,noreferrer');
+      if (!opened) {
+        window.location.href = result.data.downloadUrl;
+      }
+
+      toast.success(result.data.cached ? '저장된 PDF를 열었습니다.' : 'PDF를 생성해 서버에 저장했습니다.');
+    } catch (error) {
+      console.error('서버 PDF 생성 실패:', error);
+      toast.error('서버 PDF 생성에 실패해 브라우저 PDF 저장으로 전환합니다.');
+      await handleBrowserPrint();
+    } finally {
+      setServerPdfRequested(false);
+    }
   };
 
   return (
@@ -472,7 +530,7 @@ export function GrowthTimelineDocumentModal({
           <button
             type="button"
             onClick={handlePrint}
-            disabled={printRequested || isSaving || sortedItems.length === 0}
+            disabled={serverPdfRequested || printRequested || isSaving || sortedItems.length === 0}
             style={{
               border: '1px solid #d9e3ec',
               borderRadius: 10,
@@ -481,12 +539,12 @@ export function GrowthTimelineDocumentModal({
               padding: '10px 12px',
               fontSize: 13,
               fontWeight: 800,
-              cursor: printRequested || isSaving || sortedItems.length === 0 ? 'not-allowed' : 'pointer',
+              cursor: serverPdfRequested || printRequested || isSaving || sortedItems.length === 0 ? 'not-allowed' : 'pointer',
               opacity: isPremium ? 1 : 0.66,
             }}
             title={isPremium ? 'PDF로 저장' : 'PREMIUM 전용 기능'}
           >
-            PDF로 저장{!isPremium ? ' 🔒' : ''}
+            {serverPdfRequested ? 'PDF 생성 중...' : `PDF로 저장${!isPremium ? ' 🔒' : ''}`}
           </button>
           {editable && onFinalize && (
             <button
