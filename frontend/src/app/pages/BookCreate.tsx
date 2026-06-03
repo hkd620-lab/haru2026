@@ -6,6 +6,7 @@ import { db } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router';
 import { FINAL_CHECKLIST } from '../constants/bookChecklist';
+import GrapeLoadingMini from '../components/GrapeLoadingMini';
 
 const STYLE_OPTIONS = ['감성서사', '다큐', '구술회고', '편지'] as const;
 const LENGTH_OPTIONS = [
@@ -552,7 +553,11 @@ export function BookCreate() {
                 cursor: allChecklistPassed && !publishing ? 'pointer' : 'not-allowed',
               }}
             >
-              {publishing ? '최종 생성 중...' : '최종 생성'}
+              {publishing ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <GrapeLoadingMini size={18} color="#fff" />최종 생성 중...
+                </span>
+              ) : '최종 생성'}
             </button>
           </div>
         )}

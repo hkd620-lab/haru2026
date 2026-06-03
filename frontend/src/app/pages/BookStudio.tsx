@@ -8,6 +8,7 @@ import { PageHeaderActions } from '../components/PageHeaderActions';
 import { TodayQuote } from '../components/TodayQuote';
 import { KNewsSection } from '../components/KNewsSection';
 import { FINAL_CHECKLIST } from '../constants/bookChecklist';
+import GrapeLoadingMini from '../components/GrapeLoadingMini';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -314,7 +315,7 @@ export function BookStudio() {
                                 className="text-[11px] font-semibold px-2 py-1 rounded text-white disabled:opacity-60"
                                 style={{ backgroundColor: '#10b981' }}
                               >
-                                발행
+                                {statusUpdatingId === book.id ? <GrapeLoadingMini size={14} color="#fff" /> : '발행'}
                               </button>
                             )}
                             {book.status === 'serializing' && (
@@ -325,7 +326,7 @@ export function BookStudio() {
                                 className="text-[11px] font-semibold px-2 py-1 rounded text-white disabled:opacity-60"
                                 style={{ backgroundColor: '#6b7280' }}
                               >
-                                비공개로
+                                {statusUpdatingId === book.id ? <GrapeLoadingMini size={14} color="#fff" /> : '비공개로'}
                               </button>
                             )}
                             {book.status !== 'draft' && (
@@ -336,7 +337,7 @@ export function BookStudio() {
                                 className="text-[11px] font-semibold px-2 py-1 rounded disabled:opacity-60"
                                 style={{ backgroundColor: '#f3f4f6', color: '#4b5563' }}
                               >
-                                초안으로
+                                {statusUpdatingId === book.id ? <GrapeLoadingMini size={14} color="#4b5563" /> : '초안으로'}
                               </button>
                             )}
                           </div>
@@ -438,7 +439,11 @@ export function BookStudio() {
                 className="rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
                 style={{ backgroundColor: '#10b981' }}
               >
-                {statusUpdatingId === publishTarget.id ? '발행 중...' : '발행 확정'}
+                {statusUpdatingId === publishTarget.id ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <GrapeLoadingMini size={16} color="#fff" />발행 중...
+                  </span>
+                ) : '발행 확정'}
               </button>
             </div>
           </div>
