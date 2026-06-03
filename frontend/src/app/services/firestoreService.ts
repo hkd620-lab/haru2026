@@ -102,6 +102,13 @@ export interface LibraryBackfillPreview {
   total: number;
 }
 
+export interface LibraryBackfillRunResult {
+  booksWritten: number;
+  timelinesWritten: number;
+  failed: string[];
+  total: number;
+}
+
 const PUBLIC_ALLOWED_FORMATS: RecordFormat[] = [
   '일기',
   '에세이',
@@ -305,6 +312,38 @@ class FirestoreService {
       timelines,
       total: books.length + timelines.length,
     };
+  }
+
+  async runLibraryBackfill(userId: string): Promise<LibraryBackfillRunResult> {
+    const preview = await this.previewLibraryBackfill(userId);
+    const result: LibraryBackfillRunResult = {
+      booksWritten: 0,
+      timelinesWritten: 0,
+      failed: [],
+      total: preview.total,
+    };
+
+    for (const entry of preview.books) {
+      try {
+        await this.upsertLibraryEntry(userId, entry);
+        result.booksWritten += 1;
+      } catch (error) {
+        console.warn('책 library 백필 실패:', entry.refPath, error);
+        result.failed.push(entry.refPath);
+      }
+    }
+
+    for (const entry of preview.timelines) {
+      try {
+        await this.upsertLibraryEntry(userId, entry);
+        result.timelinesWritten += 1;
+      } catch (error) {
+        console.warn('타임라인 library 백필 실패:', entry.refPath, error);
+        result.failed.push(entry.refPath);
+      }
+    }
+
+    return result;
   }
 
   /**
