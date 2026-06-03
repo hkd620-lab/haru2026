@@ -58,7 +58,7 @@ export function StatisticsPage() {
 
     setAssistantStatsLoading(true);
     firestoreService.getLibraryByCategory(user.uid, '비서')
-      .then(setAssistantLibrary)
+      .then((entries) => setAssistantLibrary(entries.filter((entry) => entry.type !== 'book')))
       .catch((error) => {
         console.warn('비서 library 통계 로딩 실패:', error);
         setAssistantLibrary([]);
@@ -80,7 +80,6 @@ export function StatisticsPage() {
     .slice(0, 6);
   const maxAssistantMonthCount = Math.max(...assistantMonths.map(([, count]) => count), 1);
   const typeLabel: Record<string, string> = {
-    book: '책',
     timeline: '타임라인',
   };
 
@@ -109,7 +108,7 @@ export function StatisticsPage() {
                 비서 통계
               </h2>
               <p className="text-xs mt-1" style={{ color: '#999' }}>
-                책과 타임라인 library 인덱스 기준
+                타임라인 library 인덱스 기준
               </p>
             </div>
             <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}>

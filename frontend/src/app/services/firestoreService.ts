@@ -276,23 +276,6 @@ class FirestoreService {
   }
 
   async previewLibraryBackfill(userId: string): Promise<LibraryBackfillPreview> {
-    const booksSnapshot = await getDocs(
-      query(collection(db, 'books'), where('authorUid', '==', userId)),
-    );
-    const books = booksSnapshot.docs.map((bookDoc) => {
-      const data = bookDoc.data();
-      const title = getCleanText(data.title) || '제목 없는 책';
-      const totalChapters = typeof data.totalChapters === 'number' ? data.totalChapters : 0;
-      return {
-        category: '비서',
-        type: 'book',
-        title,
-        date: dateFromFirestoreValue(data.createdAt),
-        summary: totalChapters > 0 ? `생성된 챕터 ${totalChapters}개` : '책 생성 기록',
-        refPath: `books/${bookDoc.id}`,
-      };
-    });
-
     const timelineSnapshot = await getDocs(collection(db, 'users', userId, 'growthSubjects'));
     const timelines = timelineSnapshot.docs.map((timelineDoc) => {
       const data = timelineDoc.data();
@@ -308,9 +291,9 @@ class FirestoreService {
     });
 
     return {
-      books,
+      books: [],
       timelines,
-      total: books.length + timelines.length,
+      total: timelines.length,
     };
   }
 
@@ -322,16 +305,6 @@ class FirestoreService {
       failed: [],
       total: preview.total,
     };
-
-    for (const entry of preview.books) {
-      try {
-        await this.upsertLibraryEntry(userId, entry);
-        result.booksWritten += 1;
-      } catch (error) {
-        console.warn('책 library 백필 실패:', entry.refPath, error);
-        result.failed.push(entry.refPath);
-      }
-    }
 
     for (const entry of preview.timelines) {
       try {
