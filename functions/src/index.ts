@@ -3067,7 +3067,7 @@ export const cleanupTtsUsage = onSchedule(
   }
 );
 
-export { generateBook } from "./bookStudio";
+export { generateBook, suggestChapterTitle } from "./bookStudio";
 export { analyzeFacebookZip } from "./snsAnalyzer";
 export { convertSnsToDiary } from "./snsToDiary";
 export { generateLawsuitClaimReason } from "./generateLawsuitClaimReason";
