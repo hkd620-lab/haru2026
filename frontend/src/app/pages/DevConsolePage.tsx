@@ -105,7 +105,7 @@ export function DevConsolePage() {
 
   const handleRunBackfill = async () => {
     if (!user?.uid) return;
-    const ok = window.confirm('과거 책·타임라인을 라이브러리에 인덱싱합니다. 실행할까요?');
+    const ok = window.confirm('과거 타임라인·식물탐정을 라이브러리에 인덱싱합니다. 실행할까요?');
     if (!ok) return;
 
     setBackfillLoading('run');
@@ -153,7 +153,7 @@ export function DevConsolePage() {
                 라이브러리 백필
               </h2>
               <p className="text-sm text-gray-600 mt-1">
-                과거 책·타임라인을 비서 통계·합본용 library 인덱스로 연결
+                과거 타임라인·식물탐정을 비서 통계·합본용 library 인덱스로 연결
               </p>
             </div>
             <div className="flex gap-2">
@@ -189,7 +189,7 @@ export function DevConsolePage() {
                 미리보기 결과
               </p>
               <p className="mt-1">
-                책 {backfillPreview.books.length}권 / 타임라인 {backfillPreview.timelines.length}개 / 합계 {backfillPreview.total}건
+                타임라인 {backfillPreview.timelines.length}개 / 식물탐정 {backfillPreview.plants.length}개 / 합계 {backfillPreview.total}건
               </p>
             </div>
           )}
@@ -200,7 +200,7 @@ export function DevConsolePage() {
                 실행 결과
               </p>
               <p className="mt-1">
-                책 {backfillResult.booksWritten}건 / 타임라인 {backfillResult.timelinesWritten}건 / 실패 {backfillResult.failed.length}건
+                타임라인 {backfillResult.timelinesWritten}건 / 식물탐정 {backfillResult.plantsWritten}건 / 실패 {backfillResult.failed.length}건
               </p>
               {backfillResult.failed.length > 0 && (
                 <ul className="mt-2 list-disc pl-5 text-red-600">

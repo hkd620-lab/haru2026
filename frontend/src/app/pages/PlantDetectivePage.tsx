@@ -1598,6 +1598,19 @@ export function PlantDetectivePage() {
         { merge: true },
       );
 
+      try {
+        await firestoreService.upsertLibraryEntry(user.uid, {
+          category: '비서',
+          type: 'plant',
+          title: displayName || name || '이름 없는 식물',
+          date: today,
+          summary: scientificName ? `식물탐정 · ${scientificName}` : '식물탐정 기록',
+          refPath: `users/${user.uid}/plants/${targetPlantId}`,
+        });
+      } catch (libraryError) {
+        console.warn('식물탐정 library 인덱싱 실패:', libraryError);
+      }
+
       if (shareToPublicCatalog) {
         const catalogDocId = makeCatalogDocId(name, scientificName);
         await setDoc(
