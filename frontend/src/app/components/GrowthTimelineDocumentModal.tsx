@@ -624,7 +624,8 @@ export function GrowthTimelineDocumentModal({
           .growth-timeline-print-page {
             display: grid !important;
             grid-template-columns: repeat(2, 1fr) !important;
-            gap: 10mm 10mm !important;
+            gap: 8mm 9mm !important;
+            align-content: start !important;
             break-after: page;
             page-break-after: always;
           }
@@ -634,14 +635,31 @@ export function GrowthTimelineDocumentModal({
           }
 
           /* 4장 카드형이 한 페이지에 들어가도록 사진 높이 고정 */
+          .growth-timeline-print-page .growth-timeline-cell {
+            box-sizing: border-box !important;
+            padding: 3mm !important;
+            border: 0.35mm solid #e2e9f0 !important;
+            border-radius: 4mm !important;
+            background: #ffffff !important;
+            gap: 2.4mm !important;
+          }
+
           .growth-timeline-print-page .growth-timeline-photo {
             aspect-ratio: auto !important;
-            height: 78mm !important;
+            height: 70mm !important;
+            border-radius: 3mm !important;
+            background: #f1f4f7 !important;
           }
 
           .growth-timeline-cell figcaption p,
           .growth-timeline-cell figcaption textarea {
-            font-size: 14pt !important;
+            font-size: 11pt !important;
+            line-height: 1.45 !important;
+            margin: 0 !important;
+          }
+
+          .growth-timeline-print-page .growth-timeline-cell figcaption {
+            gap: 2mm !important;
           }
 
           .growth-timeline-cell,
