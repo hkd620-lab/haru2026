@@ -5,6 +5,7 @@ import { functions } from '../../firebase';
 import { db } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router';
+import { FINAL_CHECKLIST } from '../constants/bookChecklist';
 
 const STYLE_OPTIONS = ['감성서사', '다큐', '구술회고', '편지'] as const;
 const LENGTH_OPTIONS = [
@@ -12,17 +13,6 @@ const LENGTH_OPTIONS = [
   { key: '보통', label: '보통', desc: '약 1,500자' },
   { key: '길게', label: '길게', desc: '약 2,200자' },
 ] as const;
-
-const FINAL_CHECKLIST = [
-  '제목 명확',
-  '핵심 메시지 분명',
-  '목차 흐름 자연',
-  '분량·깊이 충분',
-  '중복 없음',
-  '읽을 가치',
-  '민감·부적절 없음',
-  '발행 가능',
-];
 
 type BookStyle = (typeof STYLE_OPTIONS)[number];
 type BookLength = (typeof LENGTH_OPTIONS)[number]['key'];

@@ -15,6 +15,8 @@ import { toast } from 'sonner';
 
 type TogetherTab = 'shared' | 'people' | 'publicContent';
 
+const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+
 export function SayuTogetherPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -32,6 +34,7 @@ export function SayuTogetherPage() {
   const [sharedActionId, setSharedActionId] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [booksErrorMessage, setBooksErrorMessage] = useState('');
+  const isDeveloper = user?.uid === DEVELOPER_UID;
   const fromPath = (location.state as any)?.from as string | undefined;
 
   const selectedItem = useMemo(
@@ -799,6 +802,28 @@ export function SayuTogetherPage() {
           );
         })}
       </div>
+
+      {activeTab === 'people' && isDeveloper && (
+        <div className="mb-4 flex justify-end">
+          <button
+            type="button"
+            onClick={() => navigate('/book-studio', { state: { from: '/sayu-together' } })}
+            style={{
+              minHeight: 36,
+              padding: '0 14px',
+              borderRadius: 8,
+              border: '1px solid #1A3C6E',
+              background: '#1A3C6E',
+              color: '#FFFFFF',
+              fontSize: 12,
+              fontWeight: 800,
+              cursor: 'pointer',
+            }}
+          >
+            사람속으로 관리
+          </button>
+        </div>
+      )}
 
       {activeTab === 'shared'
         ? (selectedItem ? renderDetail() : renderList())
