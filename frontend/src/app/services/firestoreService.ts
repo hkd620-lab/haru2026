@@ -1516,11 +1516,16 @@ class FirestoreService {
   /**
    * 사용자 통계 가져오기
    */
-  async getStats(userId: string) {
+  async getStats(userId: string, startDate?: string, endDate?: string) {
     try {
-      const records = await this.getRecords(userId);
+      const records = startDate && endDate
+        ? await this.getRecordsInRange(userId, startDate, endDate)
+        : await this.getRecords(userId);
       
       console.log('===== 📊 통계 계산 시작 =====');
+      if (startDate && endDate) {
+        console.log('통계 기간:', startDate, '~', endDate);
+      }
       console.log('총 기록 개수:', records.length);
       
       // 총 기록 개수

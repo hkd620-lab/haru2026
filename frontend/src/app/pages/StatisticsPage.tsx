@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, ChevronRight } from 'lucide-react';
+import { BarChart3, Calendar, ChevronRight } from 'lucide-react';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService, type LibraryEntry } from '../services/firestoreService';
@@ -35,20 +35,94 @@ const categories: FormatCategory[] = [
   },
 ];
 
+type StatsPeriodMode = 'recentYear' | 'thisYear' | 'custom';
+
+interface StatsSummary {
+  totalRecords: number;
+  polishedCount: number;
+  sayuCount: number;
+  formatCounts: Record<string, number>;
+  formatSayuCounts: Record<string, number>;
+}
+
+function formatDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getStatsPeriodRange(mode: StatsPeriodMode, customStartDate: string, customEndDate: string) {
+  const today = new Date();
+  const end = formatDate(today);
+
+  if (mode === 'recentYear') {
+    const start = new Date(today);
+    start.setFullYear(start.getFullYear() - 1);
+    return {
+      start: formatDate(start),
+      end,
+      label: '최근 1년',
+    };
+  }
+
+  if (mode === 'thisYear') {
+    return {
+      start: `${today.getFullYear()}-01-01`,
+      end,
+      label: '올해',
+    };
+  }
+
+  return {
+    start: customStartDate,
+    end: customEndDate,
+    label: '직접 선택',
+  };
+}
+
 export function StatisticsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [assistantLibrary, setAssistantLibrary] = useState<LibraryEntry[]>([]);
   const [assistantStatsLoading, setAssistantStatsLoading] = useState(false);
+  const today = new Date();
+  const [periodMode, setPeriodMode] = useState<StatsPeriodMode>('recentYear');
+  const [customStartDate, setCustomStartDate] = useState(`${today.getFullYear()}-01-01`);
+  const [customEndDate, setCustomEndDate] = useState(formatDate(today));
+  const [stats, setStats] = useState<StatsSummary | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+
+  const periodRange = getStatsPeriodRange(periodMode, customStartDate, customEndDate);
 
   const toggleCategory = (title: string) => {
     setExpandedCategory(expandedCategory === title ? null : title);
   };
 
   const handleFormatClick = (format: RecordFormat) => {
-  navigate(`/stats/${format}`);  // statistics → stats로 변경
-};
+    const params = new URLSearchParams({
+      start: periodRange.start,
+      end: periodRange.end,
+    });
+    navigate(`/stats/${format}?${params.toString()}`);  // statistics → stats로 변경
+  };
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setStats(null);
+      return;
+    }
+
+    setStatsLoading(true);
+    firestoreService.getStats(user.uid, periodRange.start, periodRange.end)
+      .then((data) => setStats(data))
+      .catch((error) => {
+        console.warn('기록 통계 로딩 실패:', error);
+        setStats(null);
+      })
+      .finally(() => setStatsLoading(false));
+  }, [user?.uid, periodRange.start, periodRange.end]);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -66,11 +140,16 @@ export function StatisticsPage() {
       .finally(() => setAssistantStatsLoading(false));
   }, [user?.uid]);
 
-  const assistantTypeCounts = assistantLibrary.reduce<Record<string, number>>((acc, entry) => {
+  const periodAssistantLibrary = assistantLibrary.filter((entry) => {
+    const entryDate = entry.date || '';
+    return entryDate >= periodRange.start && entryDate <= periodRange.end;
+  });
+
+  const assistantTypeCounts = periodAssistantLibrary.reduce<Record<string, number>>((acc, entry) => {
     acc[entry.type] = (acc[entry.type] || 0) + 1;
     return acc;
   }, {});
-  const assistantMonthCounts = assistantLibrary.reduce<Record<string, number>>((acc, entry) => {
+  const assistantMonthCounts = periodAssistantLibrary.reduce<Record<string, number>>((acc, entry) => {
     const month = (entry.date || '').slice(0, 7);
     if (month) acc[month] = (acc[month] || 0) + 1;
     return acc;
@@ -85,7 +164,7 @@ export function StatisticsPage() {
   };
 
   // 🌿 식물탐정 전용 통계 (meta 기반)
-  const plantEntries = assistantLibrary.filter((entry) => entry.type === 'plant');
+  const plantEntries = periodAssistantLibrary.filter((entry) => entry.type === 'plant');
   // 종류: 학명 우선, 없으면 식물 이름(title) 기준으로 distinct (옛 데이터는 학명이 비어 있음)
   const plantSpeciesCount = new Set(
     plantEntries.map((entry) => entry.meta?.scientificName || entry.title).filter(Boolean),
@@ -103,7 +182,7 @@ export function StatisticsPage() {
   const topPlant = Object.entries(plantTitleCounts).sort((a, b) => b[1] - a[1])[0];
 
   // 🌱 성장타임라인 전용 통계 (meta 기반)
-  const timelineEntries = assistantLibrary.filter((entry) => entry.type === 'timeline');
+  const timelineEntries = periodAssistantLibrary.filter((entry) => entry.type === 'timeline');
   const timelineTotalRecords = timelineEntries.reduce(
     (sum, entry) => sum + (entry.meta?.linkedRecordCount || 0),
     0,
@@ -140,6 +219,100 @@ export function StatisticsPage() {
         </p>
       </div>
 
+      {/* Period Filter */}
+      <section className="mb-6 bg-white rounded-lg shadow-sm p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Calendar className="w-5 h-5" style={{ color: '#1A3C6E' }} />
+          <h2 className="text-sm font-semibold" style={{ color: '#333' }}>
+            기간 선택
+          </h2>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-4">
+          {[
+            { mode: 'recentYear' as const, label: '최근 1년' },
+            { mode: 'thisYear' as const, label: '올해' },
+            { mode: 'custom' as const, label: '직접 선택' },
+          ].map(({ mode, label }) => (
+            <button
+              key={mode}
+              onClick={() => setPeriodMode(mode)}
+              className="px-4 py-2 rounded-lg text-sm transition-all"
+              style={{
+                backgroundColor: periodMode === mode ? '#1A3C6E' : '#FEFBE8',
+                color: periodMode === mode ? '#FAF9F6' : '#333',
+                border: periodMode === mode ? '1px solid #1A3C6E' : '1px solid #e5e5e5',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {periodMode === 'custom' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+            <div>
+              <label htmlFor="stats-custom-start-date" className="text-xs mb-1 block" style={{ color: '#666' }}>시작일</label>
+              <input
+                id="stats-custom-start-date"
+                type="date"
+                value={customStartDate}
+                max={customEndDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg text-sm border border-gray-300"
+              />
+            </div>
+            <div>
+              <label htmlFor="stats-custom-end-date" className="text-xs mb-1 block" style={{ color: '#666' }}>종료일</label>
+              <input
+                id="stats-custom-end-date"
+                type="date"
+                value={customEndDate}
+                min={customStartDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg text-sm border border-gray-300"
+              />
+            </div>
+          </div>
+        )}
+
+        <p className="text-xs" style={{ color: '#666' }}>
+          {periodRange.label}: {periodRange.start} ~ {periodRange.end}
+        </p>
+      </section>
+
+      {/* Record Summary */}
+      <section className="mb-6 bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="p-4 border-b" style={{ borderColor: '#e5e5e5' }}>
+          <h2 className="text-lg font-semibold" style={{ color: '#1A3C6E' }}>
+            기록 통계
+          </h2>
+          <p className="text-xs mt-1" style={{ color: '#999' }}>
+            users/{'{uid}'}/records/{'{date}'} 기준
+          </p>
+        </div>
+        <div className="p-4">
+          {statsLoading ? (
+            <p className="text-sm" style={{ color: '#999' }}>기록 통계를 불러오는 중...</p>
+          ) : !stats ? (
+            <p className="text-sm" style={{ color: '#999' }}>기록 통계를 불러오지 못했습니다.</p>
+          ) : (
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: '총 기록', value: `${stats.totalRecords}개` },
+                { label: '다듬기 완료', value: `${stats.polishedCount}개` },
+                { label: 'SAYU 완료', value: `${stats.sayuCount}개` },
+              ].map(({ label, value }) => (
+                <div key={label} className="rounded-lg p-3 text-center" style={{ backgroundColor: '#FEFBE8', border: '1px solid #e5e5e5' }}>
+                  <p className="text-xs" style={{ color: '#999' }}>{label}</p>
+                  <p className="text-xl font-bold mt-1" style={{ color: '#1A3C6E' }}>{value}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* Assistant Library Pilot Stats */}
       <section className="mb-6 bg-white rounded-lg shadow-sm overflow-hidden">
         <div className="p-4 border-b" style={{ borderColor: '#e5e5e5' }}>
@@ -161,7 +334,7 @@ export function StatisticsPage() {
         <div className="p-4">
           {assistantStatsLoading ? (
             <p className="text-sm" style={{ color: '#999' }}>비서 통계를 불러오는 중...</p>
-          ) : assistantLibrary.length === 0 ? (
+          ) : periodAssistantLibrary.length === 0 ? (
             <p className="text-sm" style={{ color: '#999' }}>
               아직 인덱싱된 비서 기록이 없습니다.
             </p>

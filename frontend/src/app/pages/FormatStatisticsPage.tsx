@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { TrendingUp, Brain, Sparkles, Activity, Calendar, Star } from 'lucide-react';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { useState, useEffect } from 'react';
@@ -152,18 +152,22 @@ const FORMAT_METRICS: Record<RecordFormat, FormatMetric[]> = {
 export function FormatStatisticsPage() {
   const { format } = useParams<{ format: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { isPremium } = useSubscription();
 
   // 기간 선택 상태
-  const [periodMode, setPeriodMode] = useState<'week' | 'month' | 'custom'>('month');
+  const queryStartDate = searchParams.get('start');
+  const queryEndDate = searchParams.get('end');
+  const hasQueryRange = Boolean(queryStartDate && queryEndDate);
+  const [periodMode, setPeriodMode] = useState<'week' | 'month' | 'custom'>(() => hasQueryRange ? 'custom' : 'month');
   const today = new Date();
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1);
   const [selectedWeek, setSelectedWeek] = useState(1);
   
-  const [customStartDate, setCustomStartDate] = useState(formatDate(new Date(today.getFullYear(), today.getMonth(), 1)));
-  const [customEndDate, setCustomEndDate] = useState(formatDate(today));
+  const [customStartDate, setCustomStartDate] = useState(queryStartDate || formatDate(new Date(today.getFullYear(), today.getMonth(), 1)));
+  const [customEndDate, setCustomEndDate] = useState(queryEndDate || formatDate(today));
 
   // 데이터 로드 상태
   const [data, setData] = useState<any>(null);
@@ -225,7 +229,7 @@ export function FormatStatisticsPage() {
   // 전체 기록 로드 (그래프용)
   useEffect(() => {
     if (!user?.uid) return;
-    firestoreService.getRecords(user.uid).then((records) => {
+    firestoreService.getRecordsInRange(user.uid, periodInfo.start, periodInfo.end).then((records) => {
       const stockFormats = ['HARU주식관리', '주식거래일지'];
       setAllFormatRecords(records.filter((r) => {
         if (stockFormats.includes(formatType)) {
@@ -234,7 +238,7 @@ export function FormatStatisticsPage() {
         return r.formats && r.formats.includes(formatType);
       }));
     }).catch(() => setAllFormatRecords([]));
-  }, [user?.uid, formatType]);
+  }, [user?.uid, formatType, periodInfo.start, periodInfo.end]);
 
   const weeksInMonth = getWeeksInMonth(selectedYear, selectedMonth);
 
