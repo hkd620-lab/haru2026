@@ -163,6 +163,28 @@ export interface LibraryBackfillRunResult {
   total: number;
 }
 
+export interface AssistantPeriodStats {
+  typeCounts: Record<string, number>;
+  monthCounts: Record<string, number>;
+  plant: {
+    detectiveCount: number;
+    observationCount: number;
+    totalCount: number;
+    speciesCount: number;
+    topPlant?: { name: string; count: number };
+    monthCounts: Record<string, number>;
+  };
+  timeline: {
+    timelineCount: number;
+    linkedRecordCount: number;
+    avgRecords: number;
+    longestTimeline?: { title: string; durationDays: number };
+    subjectCounts: Record<string, number>;
+    subjectText: string;
+    monthCounts: Record<string, number>;
+  };
+}
+
 const PUBLIC_ALLOWED_FORMATS: RecordFormat[] = [
   '일기',
   '에세이',
@@ -218,6 +240,36 @@ const dateFromFirestoreValue = (value: unknown) => {
     return value.slice(0, 10);
   }
   return getTodayString();
+};
+
+const toDateKey = (value: unknown) => {
+  if (typeof value === 'string') return value.slice(0, 10);
+  return dateFromFirestoreValue(value).slice(0, 10);
+};
+
+const isDateInRange = (date: string, startDate: string, endDate: string) => {
+  return Boolean(date) && date >= startDate && date <= endDate;
+};
+
+const countByMonth = (counts: Record<string, number>, date: string) => {
+  const month = date.slice(0, 7);
+  if (month) counts[month] = (counts[month] || 0) + 1;
+};
+
+const getPlantStatsName = (entry: any) => {
+  return getCleanText(entry?.scientificName) ||
+    getCleanText(entry?.plantName) ||
+    getCleanText(entry?.title) ||
+    getCleanText(entry?.userConfirmedName) ||
+    getCleanText(entry?.aiKoName) ||
+    getCleanText(entry?.aiPrediction);
+};
+
+const getDurationDaysFromDates = (dates: string[]) => {
+  const sorted = dates.filter(Boolean).sort();
+  if (sorted.length < 2) return 0;
+  const diff = (new Date(sorted[sorted.length - 1]).getTime() - new Date(sorted[0]).getTime()) / 86400000;
+  return Number.isFinite(diff) ? Math.max(0, Math.round(diff)) : 0;
 };
 
 const makeLibraryEntryId = (entry: LibraryEntryInput) => {
@@ -341,6 +393,159 @@ class FirestoreService {
   async getLibraryByCategory(userId: string, category: string): Promise<LibraryEntry[]> {
     const entries = await this.getLibrary(userId);
     return entries.filter((entry) => entry.category === category);
+  }
+
+  async getAssistantPeriodStats(userId: string, startDate: string, endDate: string): Promise<AssistantPeriodStats> {
+    const [records, growthSubjectsSnapshot] = await Promise.all([
+      this.getRecords(userId),
+      getDocs(collection(db, 'users', userId, 'growthSubjects')),
+    ]);
+
+    const monthCounts: Record<string, number> = {};
+    const plantMonthCounts: Record<string, number> = {};
+    const timelineMonthCounts: Record<string, number> = {};
+    const plantNameCounts: Record<string, number> = {};
+    const plantSpecies = new Set<string>();
+    let detectiveCount = 0;
+    let observationCount = 0;
+
+    records.forEach((record) => {
+      const recordDate = toDateKey(record.date || record.id);
+      if (!isDateInRange(recordDate, startDate, endDate)) return;
+
+      const detectiveEntries = Array.isArray(record.plantDetective) ? record.plantDetective : [];
+      detectiveEntries.forEach((entry: any) => {
+        detectiveCount += 1;
+        countByMonth(monthCounts, recordDate);
+        countByMonth(plantMonthCounts, recordDate);
+        const name = getPlantStatsName(entry);
+        if (name) {
+          plantSpecies.add(name);
+          plantNameCounts[name] = (plantNameCounts[name] || 0) + 1;
+        }
+      });
+
+      const observationEntries = Array.isArray(record.plantObservation) ? record.plantObservation : [];
+      observationEntries.forEach((entry: any) => {
+        observationCount += 1;
+        countByMonth(monthCounts, recordDate);
+        countByMonth(plantMonthCounts, recordDate);
+        const name = getPlantStatsName(entry);
+        if (name) {
+          plantSpecies.add(name);
+          plantNameCounts[name] = (plantNameCounts[name] || 0) + 1;
+        }
+      });
+    });
+
+    const timelineStats: Array<{
+      title: string;
+      subjectType: string;
+      linkedRecordCount: number;
+      durationDays: number;
+      dates: string[];
+    }> = [];
+
+    growthSubjectsSnapshot.docs.forEach((timelineDoc) => {
+      const data = timelineDoc.data();
+      const dates = Array.isArray(data.linkedRecordDates)
+        ? data.linkedRecordDates
+            .map((date: any) => toDateKey(date))
+            .filter((date: string) => isDateInRange(date, startDate, endDate))
+            .sort()
+        : [];
+      if (dates.length === 0) return;
+      dates.forEach((date: string) => {
+        countByMonth(monthCounts, date);
+        countByMonth(timelineMonthCounts, date);
+      });
+      timelineStats.push({
+        title: getCleanText(data.name) || '이름 없는 타임라인',
+        subjectType: getCleanText(data.subjectType) || '기타',
+        linkedRecordCount: dates.length,
+        durationDays: getDurationDaysFromDates(dates),
+        dates,
+      });
+    });
+
+    records.forEach((record) => {
+      const formats = Array.isArray(record.formats) ? record.formats : [];
+      const isGrowthTimeline =
+        record.recordType === 'growthTimeline' ||
+        record.format === '성장타임라인' ||
+        formats.includes('성장타임라인' as RecordFormat);
+      if (!isGrowthTimeline) return;
+
+      const itemDates = Array.isArray(record.timelineItems)
+        ? record.timelineItems
+            .map((item: any) => toDateKey(item?.takenDate || record.date || record.id))
+            .filter((date: string) => isDateInRange(date, startDate, endDate))
+            .sort()
+        : [];
+      const recordDate = toDateKey(record.date || record.id);
+      const dates = itemDates.length > 0
+        ? itemDates
+        : isDateInRange(recordDate, startDate, endDate)
+          ? [recordDate]
+          : [];
+      if (dates.length === 0) return;
+      dates.forEach((date: string) => {
+        countByMonth(monthCounts, date);
+        countByMonth(timelineMonthCounts, date);
+      });
+      timelineStats.push({
+        title: getCleanText(record.title) || '성장타임라인',
+        subjectType: 'recordTimeline',
+        linkedRecordCount: dates.length,
+        durationDays: getDurationDaysFromDates(dates),
+        dates,
+      });
+    });
+
+    const topPlantEntry = Object.entries(plantNameCounts).sort((a, b) => b[1] - a[1])[0];
+    const subjectLabel: Record<string, string> = {
+      child: '육아',
+      garden: '텃밭',
+      recordTimeline: '성장',
+      기타: '기타',
+    };
+    const subjectCounts = timelineStats.reduce<Record<string, number>>((acc, item) => {
+      const key = item.subjectType || '기타';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    const subjectText = Object.entries(subjectCounts)
+      .map(([subject, count]) => `${subjectLabel[subject] || subject} ${count}`)
+      .join(' · ');
+    const linkedRecordCount = timelineStats.reduce((sum, item) => sum + item.linkedRecordCount, 0);
+    const longestTimeline = [...timelineStats].sort((a, b) => b.durationDays - a.durationDays)[0];
+
+    return {
+      typeCounts: {
+        plant: detectiveCount + observationCount,
+        timeline: timelineStats.length,
+      },
+      monthCounts,
+      plant: {
+        detectiveCount,
+        observationCount,
+        totalCount: detectiveCount + observationCount,
+        speciesCount: plantSpecies.size,
+        ...(topPlantEntry ? { topPlant: { name: topPlantEntry[0], count: topPlantEntry[1] } } : {}),
+        monthCounts: plantMonthCounts,
+      },
+      timeline: {
+        timelineCount: timelineStats.length,
+        linkedRecordCount,
+        avgRecords: timelineStats.length
+          ? Math.round((linkedRecordCount / timelineStats.length) * 10) / 10
+          : 0,
+        ...(longestTimeline ? { longestTimeline: { title: longestTimeline.title, durationDays: longestTimeline.durationDays } } : {}),
+        subjectCounts,
+        subjectText,
+        monthCounts: timelineMonthCounts,
+      },
+    };
   }
 
   async previewLibraryBackfill(userId: string): Promise<LibraryBackfillPreview> {

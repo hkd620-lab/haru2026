@@ -19,6 +19,7 @@ import { MergeViewerPage } from './pages/MergeViewerPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { StatisticsPage } from './pages/StatisticsPage';
 import { FormatStatisticsPage } from './pages/FormatStatisticsPage';
+import { AssistantStatisticsPage } from './pages/AssistantStatisticsPage';
 import SubscriptionPage from './pages/SubscriptionPage';
 import { BusinessInfoPage } from './pages/BusinessInfoPage';
 import { TermsPage } from './pages/TermsPage';
@@ -151,6 +152,7 @@ function App() {
               
               {/* 통계 페이지 */}
               <Route path="/stats" element={<StatisticsPage />} />
+              <Route path="/stats/assistant/:type" element={<AssistantStatisticsPage />} />
               <Route path="/stats/:format" element={<FormatStatisticsPage />} />
 
               {/* 원기충전소 폐기 URL은 SAYU-함께보기로 이동 */}

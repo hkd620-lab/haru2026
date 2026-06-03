@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { BarChart3, Calendar, ChevronRight } from 'lucide-react';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { useAuth } from '../contexts/AuthContext';
-import { firestoreService, type LibraryEntry } from '../services/firestoreService';
+import { firestoreService, type AssistantPeriodStats } from '../services/firestoreService';
 
 type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '메모';
 
@@ -85,7 +85,7 @@ export function StatisticsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
-  const [assistantLibrary, setAssistantLibrary] = useState<LibraryEntry[]>([]);
+  const [assistantStats, setAssistantStats] = useState<AssistantPeriodStats | null>(null);
   const [assistantStatsLoading, setAssistantStatsLoading] = useState(false);
   const today = new Date();
   const [periodMode, setPeriodMode] = useState<StatsPeriodMode>('recentYear');
@@ -108,6 +108,14 @@ export function StatisticsPage() {
     navigate(`/stats/${format}?${params.toString()}`);  // statistics → stats로 변경
   };
 
+  const handleAssistantClick = (assistantType: 'plant' | 'timeline') => {
+    const params = new URLSearchParams({
+      start: periodRange.start,
+      end: periodRange.end,
+    });
+    navigate(`/stats/assistant/${assistantType}?${params.toString()}`);
+  };
+
   useEffect(() => {
     if (!user?.uid) {
       setStats(null);
@@ -126,34 +134,22 @@ export function StatisticsPage() {
 
   useEffect(() => {
     if (!user?.uid) {
-      setAssistantLibrary([]);
+      setAssistantStats(null);
       return;
     }
 
     setAssistantStatsLoading(true);
-    firestoreService.getLibraryByCategory(user.uid, '비서')
-      .then((entries) => setAssistantLibrary(entries.filter((entry) => entry.type !== 'book')))
+    firestoreService.getAssistantPeriodStats(user.uid, periodRange.start, periodRange.end)
+      .then((data) => setAssistantStats(data))
       .catch((error) => {
-        console.warn('비서 library 통계 로딩 실패:', error);
-        setAssistantLibrary([]);
+        console.warn('비서 원본 기록 통계 로딩 실패:', error);
+        setAssistantStats(null);
       })
       .finally(() => setAssistantStatsLoading(false));
-  }, [user?.uid]);
+  }, [user?.uid, periodRange.start, periodRange.end]);
 
-  const periodAssistantLibrary = assistantLibrary.filter((entry) => {
-    const entryDate = entry.date || '';
-    return entryDate >= periodRange.start && entryDate <= periodRange.end;
-  });
-
-  const assistantTypeCounts = periodAssistantLibrary.reduce<Record<string, number>>((acc, entry) => {
-    acc[entry.type] = (acc[entry.type] || 0) + 1;
-    return acc;
-  }, {});
-  const assistantMonthCounts = periodAssistantLibrary.reduce<Record<string, number>>((acc, entry) => {
-    const month = (entry.date || '').slice(0, 7);
-    if (month) acc[month] = (acc[month] || 0) + 1;
-    return acc;
-  }, {});
+  const assistantTypeCounts = assistantStats?.typeCounts || {};
+  const assistantMonthCounts = assistantStats?.monthCounts || {};
   const assistantMonths = Object.entries(assistantMonthCounts)
     .sort((a, b) => b[0].localeCompare(a[0]))
     .slice(0, 6);
@@ -162,46 +158,9 @@ export function StatisticsPage() {
     timeline: '타임라인',
     plant: '식물탐정',
   };
-
-  // 🌿 식물탐정 전용 통계 (meta 기반)
-  const plantEntries = periodAssistantLibrary.filter((entry) => entry.type === 'plant');
-  // 종류: 학명 우선, 없으면 식물 이름(title) 기준으로 distinct (옛 데이터는 학명이 비어 있음)
-  const plantSpeciesCount = new Set(
-    plantEntries.map((entry) => entry.meta?.scientificName || entry.title).filter(Boolean),
-  ).size;
-  const nowForPlant = new Date();
-  const currentMonthStr = `${nowForPlant.getFullYear()}-${String(nowForPlant.getMonth() + 1).padStart(2, '0')}`;
-  const plantThisMonthCount = plantEntries.filter(
-    (entry) => (entry.date || '').slice(0, 7) === currentMonthStr,
-  ).length;
-  const plantTitleCounts = plantEntries.reduce<Record<string, number>>((acc, entry) => {
-    const t = entry.title || '이름 없음';
-    acc[t] = (acc[t] || 0) + 1;
-    return acc;
-  }, {});
-  const topPlant = Object.entries(plantTitleCounts).sort((a, b) => b[1] - a[1])[0];
-
-  // 🌱 성장타임라인 전용 통계 (meta 기반)
-  const timelineEntries = periodAssistantLibrary.filter((entry) => entry.type === 'timeline');
-  const timelineTotalRecords = timelineEntries.reduce(
-    (sum, entry) => sum + (entry.meta?.linkedRecordCount || 0),
-    0,
-  );
-  const timelineAvgRecords = timelineEntries.length
-    ? Math.round((timelineTotalRecords / timelineEntries.length) * 10) / 10
-    : 0;
-  const longestTimeline = [...timelineEntries].sort(
-    (a, b) => (b.meta?.durationDays || 0) - (a.meta?.durationDays || 0),
-  )[0];
-  const subjectLabel: Record<string, string> = { child: '육아', garden: '텃밭' };
-  const timelineSubjectCounts = timelineEntries.reduce<Record<string, number>>((acc, entry) => {
-    const st = entry.meta?.subjectType || '기타';
-    acc[st] = (acc[st] || 0) + 1;
-    return acc;
-  }, {});
-  const timelineSubjectText = Object.entries(timelineSubjectCounts)
-    .map(([st, c]) => `${subjectLabel[st] || st} ${c}`)
-    .join(' · ');
+  const assistantTotalCount = Object.values(assistantTypeCounts).reduce((sum, count) => sum + count, 0);
+  const plantStats = assistantStats?.plant;
+  const timelineStats = assistantStats?.timeline;
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
@@ -322,7 +281,7 @@ export function StatisticsPage() {
                 비서 통계
               </h2>
               <p className="text-xs mt-1" style={{ color: '#999' }}>
-                비서 library 인덱스 기준
+                원본 기록 날짜 기준
               </p>
             </div>
             <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}>
@@ -334,14 +293,14 @@ export function StatisticsPage() {
         <div className="p-4">
           {assistantStatsLoading ? (
             <p className="text-sm" style={{ color: '#999' }}>비서 통계를 불러오는 중...</p>
-          ) : periodAssistantLibrary.length === 0 ? (
+          ) : assistantTotalCount === 0 ? (
             <p className="text-sm" style={{ color: '#999' }}>
-              아직 인덱싱된 비서 기록이 없습니다.
+              선택한 기간에 타임라인 또는 식물탐정 기록이 없습니다.
             </p>
           ) : (
             <div className="flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-3">
-                {Object.entries(assistantTypeCounts).map(([type, count]) => (
+                {Object.entries(assistantTypeCounts).filter(([, count]) => count > 0).map(([type, count]) => (
                   <div key={type} className="rounded-lg p-3" style={{ backgroundColor: '#FEFBE8', border: '1px solid #e5e5e5' }}>
                     <p className="text-xs" style={{ color: '#999' }}>{typeLabel[type] || type}</p>
                     <p className="text-xl font-bold mt-1" style={{ color: '#1A3C6E' }}>{count}개</p>
@@ -349,59 +308,75 @@ export function StatisticsPage() {
                 ))}
               </div>
 
-              {plantEntries.length > 0 && (
+              {plantStats && plantStats.totalCount > 0 && (
                 <div>
-                  <p className="text-xs font-semibold mb-2" style={{ color: '#333' }}>🌿 식물탐정 상세</p>
+                  <button
+                    type="button"
+                    onClick={() => handleAssistantClick('plant')}
+                    className="flex items-center gap-1 mb-2"
+                  >
+                    <span className="text-xs font-semibold" style={{ color: '#333' }}>🌿 식물탐정 상세</span>
+                    <span className="text-xs" style={{ color: '#2A5C3E' }}>상세 보기</span>
+                    <ChevronRight className="w-4 h-4" style={{ color: '#2A5C3E' }} />
+                  </button>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="rounded-lg p-3" style={{ backgroundColor: '#F0FFF4', border: '1px solid #d0ffe0' }}>
                       <p className="text-xs" style={{ color: '#999' }}>판독 식물</p>
-                      <p className="text-xl font-bold mt-1" style={{ color: '#2A5C3E' }}>{plantEntries.length}개</p>
+                      <p className="text-xl font-bold mt-1" style={{ color: '#2A5C3E' }}>{plantStats.detectiveCount}개</p>
                     </div>
                     <div className="rounded-lg p-3" style={{ backgroundColor: '#F0FFF4', border: '1px solid #d0ffe0' }}>
                       <p className="text-xs" style={{ color: '#999' }}>식물 종류</p>
-                      <p className="text-xl font-bold mt-1" style={{ color: '#2A5C3E' }}>{plantSpeciesCount}종</p>
+                      <p className="text-xl font-bold mt-1" style={{ color: '#2A5C3E' }}>{plantStats.speciesCount}종</p>
                     </div>
                     <div className="rounded-lg p-3" style={{ backgroundColor: '#F0FFF4', border: '1px solid #d0ffe0' }}>
-                      <p className="text-xs" style={{ color: '#999' }}>이번 달 판독</p>
-                      <p className="text-xl font-bold mt-1" style={{ color: '#2A5C3E' }}>{plantThisMonthCount}개</p>
+                      <p className="text-xs" style={{ color: '#999' }}>관찰 기록</p>
+                      <p className="text-xl font-bold mt-1" style={{ color: '#2A5C3E' }}>{plantStats.observationCount}개</p>
                     </div>
                     <div className="rounded-lg p-3" style={{ backgroundColor: '#F0FFF4', border: '1px solid #d0ffe0' }}>
                       <p className="text-xs" style={{ color: '#999' }}>가장 많이 본 식물</p>
                       <p className="text-sm font-bold mt-1 truncate" style={{ color: '#2A5C3E' }}>
-                        {topPlant ? `${topPlant[0]} (${topPlant[1]})` : '-'}
+                        {plantStats.topPlant ? `${plantStats.topPlant.name} (${plantStats.topPlant.count})` : '-'}
                       </p>
                     </div>
                   </div>
                 </div>
               )}
 
-              {timelineEntries.length > 0 && (
+              {timelineStats && timelineStats.timelineCount > 0 && (
                 <div>
-                  <p className="text-xs font-semibold mb-2" style={{ color: '#333' }}>📌 성장타임라인 상세</p>
+                  <button
+                    type="button"
+                    onClick={() => handleAssistantClick('timeline')}
+                    className="flex items-center gap-1 mb-2"
+                  >
+                    <span className="text-xs font-semibold" style={{ color: '#333' }}>📌 성장타임라인 상세</span>
+                    <span className="text-xs" style={{ color: '#1A3C6E' }}>상세 보기</span>
+                    <ChevronRight className="w-4 h-4" style={{ color: '#1A3C6E' }} />
+                  </button>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="rounded-lg p-3" style={{ backgroundColor: '#EEF6FF', border: '1px solid #d0dff0' }}>
                       <p className="text-xs" style={{ color: '#999' }}>타임라인 수</p>
-                      <p className="text-xl font-bold mt-1" style={{ color: '#1A3C6E' }}>{timelineEntries.length}개</p>
+                      <p className="text-xl font-bold mt-1" style={{ color: '#1A3C6E' }}>{timelineStats.timelineCount}개</p>
                     </div>
                     <div className="rounded-lg p-3" style={{ backgroundColor: '#EEF6FF', border: '1px solid #d0dff0' }}>
                       <p className="text-xs" style={{ color: '#999' }}>총 연결 기록</p>
-                      <p className="text-xl font-bold mt-1" style={{ color: '#1A3C6E' }}>{timelineTotalRecords}개</p>
+                      <p className="text-xl font-bold mt-1" style={{ color: '#1A3C6E' }}>{timelineStats.linkedRecordCount}개</p>
                     </div>
                     <div className="rounded-lg p-3" style={{ backgroundColor: '#EEF6FF', border: '1px solid #d0dff0' }}>
                       <p className="text-xs" style={{ color: '#999' }}>평균 기록 수</p>
-                      <p className="text-xl font-bold mt-1" style={{ color: '#1A3C6E' }}>{timelineAvgRecords}개</p>
+                      <p className="text-xl font-bold mt-1" style={{ color: '#1A3C6E' }}>{timelineStats.avgRecords}개</p>
                     </div>
                     <div className="rounded-lg p-3" style={{ backgroundColor: '#EEF6FF', border: '1px solid #d0dff0' }}>
                       <p className="text-xs" style={{ color: '#999' }}>가장 오래 기록</p>
                       <p className="text-sm font-bold mt-1 truncate" style={{ color: '#1A3C6E' }}>
-                        {longestTimeline ? `${longestTimeline.title} (${longestTimeline.meta?.durationDays || 0}일)` : '-'}
+                        {timelineStats.longestTimeline ? `${timelineStats.longestTimeline.title} (${timelineStats.longestTimeline.durationDays}일)` : '-'}
                       </p>
                     </div>
                   </div>
-                  {timelineSubjectText && (
+                  {timelineStats.subjectText && (
                     <div className="mt-3 rounded-lg p-3" style={{ backgroundColor: '#EEF6FF', border: '1px solid #d0dff0' }}>
                       <p className="text-xs" style={{ color: '#999' }}>주제별 타임라인</p>
-                      <p className="text-sm font-bold mt-1" style={{ color: '#1A3C6E' }}>{timelineSubjectText}</p>
+                      <p className="text-sm font-bold mt-1" style={{ color: '#1A3C6E' }}>{timelineStats.subjectText}</p>
                     </div>
                   )}
                 </div>
