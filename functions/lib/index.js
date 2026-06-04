@@ -2481,8 +2481,8 @@ exports.lawSearch = (0, https_2.onCall)({
     };
     try {
         const { XMLParser } = await Promise.resolve().then(() => __importStar(require('fast-xml-parser')));
-        const LAW_API_KEY = LAW_API_KEY_SECRET.value();
-        const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
+        const LAW_API_KEY = LAW_API_KEY_SECRET.value().trim();
+        const GEMINI_KEY = GEMINI_API_KEY_SECRET.value().trim();
         const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
         const axiosConfig = {
             headers: {
@@ -2721,7 +2721,7 @@ exports.lawPrecedent = (0, https_2.onCall)({
     }
     logger.info('lawPrecedent 검색 키워드:', searchKeyword);
     // 2. 국가법령정보 OpenAPI 호출 (판례 검색)
-    const ocKey = LAW_API_KEY_SECRET.value();
+    const ocKey = LAW_API_KEY_SECRET.value().trim();
     const searchUrl = `https://www.law.go.kr/DRF/lawSearch.do?OC=${ocKey}&target=prec&type=JSON&query=${encodeURIComponent(searchKeyword)}&display=10`;
     let response;
     try {
