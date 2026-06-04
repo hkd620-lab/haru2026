@@ -11,6 +11,7 @@ import { httpsCallable, getFunctions } from 'firebase/functions';
 import { db, storage, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../services/firestoreService';
+import { compressImage } from '../services/imageService';
 import { readOriginalImageMeta, type UploadedImageMeta } from '../services/photoMetadataService';
 import {
   getLocationCandidateFromGps,
@@ -19,6 +20,8 @@ import {
 
 const WEATHER_OPTIONS = ['쾌청', '흐림', '비', '눈'];
 const TEMPERATURE_OPTIONS = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
+const TIMELINE_IMAGE_MAX_WIDTH = 1600;
+const TIMELINE_IMAGE_QUALITY = 0.82;
 
 type GrowthTimelineEditItem = {
   url: string;
@@ -717,7 +720,8 @@ export function SayuModal({
       const fileName = `${recordDate}_${formatKey}_${timestamp}_${randomId}.jpg`;
       const originalMeta = await readOriginalImageMeta(file);
       const imageRef = ref(storage, `users/${currentUser.uid}/format_photos/${fileName}`);
-      await uploadBytes(imageRef, file);
+      const compressed = await compressImage(file, TIMELINE_IMAGE_MAX_WIDTH, TIMELINE_IMAGE_QUALITY);
+      await uploadBytes(imageRef, compressed, { contentType: 'image/jpeg' });
       const url = await getDownloadURL(imageRef);
       const newImages = [...localImages, url];
       setLocalImages(newImages);
@@ -766,7 +770,8 @@ export function SayuModal({
       uploadedFileName = `${firestoreId}_growthTimeline_${timestamp}_${randomId}.jpg`;
       const originalMeta = await readOriginalImageMeta(file);
       const imageRef = ref(storage, `users/${currentUser.uid}/format_photos/${uploadedFileName}`);
-      await uploadBytes(imageRef, file, { contentType: file.type || 'image/jpeg' });
+      const compressed = await compressImage(file, TIMELINE_IMAGE_MAX_WIDTH, TIMELINE_IMAGE_QUALITY);
+      await uploadBytes(imageRef, compressed, { contentType: 'image/jpeg' });
       shouldCleanupUploadedFile = true;
       const url = await getDownloadURL(imageRef);
       const today = new Date().toISOString().slice(0, 10);

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { collection, deleteDoc, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { toast } from 'sonner';
 import { db, storage } from '../../firebase';
 import { firestoreService } from '../services/firestoreService';
+import { compressImage } from '../services/imageService';
 import { readOriginalImageMeta } from '../services/photoMetadataService';
 import {
   getLocationCandidateFromGps,
@@ -61,6 +62,9 @@ type TimelineRecordItem = {
   longitude?: number;
 };
 
+const TIMELINE_IMAGE_MAX_WIDTH = 1600;
+const TIMELINE_IMAGE_QUALITY = 0.82;
+
 function todayKey() {
   const now = new Date();
   const yyyy = now.getFullYear();
@@ -69,18 +73,43 @@ function todayKey() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function fileExtension(file: File) {
-  const fromName = file.name.split('.').pop()?.toLowerCase();
-  if (fromName && /^[a-z0-9]+$/.test(fromName)) return fromName;
-  if (file.type === 'image/png') return 'png';
-  if (file.type === 'image/webp') return 'webp';
-  if (file.type === 'image/heic') return 'heic';
-  if (file.type === 'image/heif') return 'heif';
-  return 'jpg';
-}
-
 function sanitizeFileName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80) || 'photo';
+}
+
+function removeFileExtension(name: string) {
+  return name.replace(/\.[^.]+$/, '');
+}
+
+function getOwnFormatPhotoPathFromUrl(imageUrl: string, uid: string) {
+  if (typeof imageUrl !== 'string' || !imageUrl.trim()) return null;
+  try {
+    const parsed = new URL(imageUrl);
+    const isFirebaseHost =
+      parsed.hostname === 'firebasestorage.googleapis.com' ||
+      parsed.hostname === 'storage.googleapis.com' ||
+      parsed.hostname.endsWith('.storage.googleapis.com');
+    if (!isFirebaseHost) return null;
+
+    const decodedPath = decodeURIComponent(parsed.pathname);
+    const targetPrefix = `users/${uid}/format_photos/`;
+    const objectMarker = `/o/${targetPrefix}`;
+    const objectIndex = decodedPath.indexOf(objectMarker);
+    if (objectIndex >= 0) {
+      const objectPath = decodedPath.slice(objectIndex + '/o/'.length);
+      return objectPath.startsWith(targetPrefix) ? objectPath : null;
+    }
+
+    const directMarker = `/${targetPrefix}`;
+    const directIndex = decodedPath.indexOf(directMarker);
+    if (directIndex >= 0) {
+      const objectPath = decodedPath.slice(directIndex + 1);
+      return objectPath.startsWith(targetPrefix) ? objectPath : null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 function sortDraftItems(items: DraftTimelineItem[]) {
@@ -412,11 +441,11 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
       const savedItems: TimelineRecordItem[] = [];
       for (let index = 0; index < sortedItems.length; index++) {
         const item = sortedItems[index];
-        const safeName = sanitizeFileName(item.originalName);
-        const ext = fileExtension(item.file);
-        const fileName = `${timelineId}_${String(index + 1).padStart(2, '0')}_${safeName}.${ext}`;
+        const safeName = sanitizeFileName(removeFileExtension(item.originalName));
+        const fileName = `${timelineId}_${String(index + 1).padStart(2, '0')}_${safeName}.jpg`;
         const imageRef = ref(storage, `users/${uid}/format_photos/${fileName}`);
-        await uploadBytes(imageRef, item.file, { contentType: item.file.type || 'image/jpeg' });
+        const compressed = await compressImage(item.file, TIMELINE_IMAGE_MAX_WIDTH, TIMELINE_IMAGE_QUALITY);
+        await uploadBytes(imageRef, compressed, { contentType: 'image/jpeg' });
         const url = await getDownloadURL(imageRef);
         savedItems.push(serializeTimelineRecordItem(item, url, index));
       }
@@ -768,11 +797,32 @@ export function GrowthTimelineLibrary({ uid, refreshKey = 0, onEditTimeline }: G
     const ok = window.confirm(`'${timeline.title}' 타임라인을 삭제할까요?\n삭제하면 되돌릴 수 없습니다.`);
     if (!ok) return;
     setDeletingId(timeline.id);
+    let imageCleanupFailed = false;
     try {
-      await deleteDoc(doc(db, 'users', uid, 'records', timeline.id));
+      const recordRef = doc(db, 'users', uid, 'records', timeline.id);
+      const recordSnap = await getDoc(recordRef);
+      const recordData = recordSnap.exists() ? recordSnap.data() : null;
+      const rawTimelineItems = Array.isArray(recordData?.timelineItems) ? recordData.timelineItems : [];
+      const imagePaths = Array.from(new Set(
+        rawTimelineItems
+          .map((item: any) => getOwnFormatPhotoPathFromUrl(item?.url, uid))
+          .filter((path: string | null): path is string => Boolean(path)),
+      ));
+
+      // PDF 캐시(timelinePdfs/)는 기록 삭제 시 고아로 남을 수 있음.
+      // 차기 정리 정책 검토 대상. 3차-A에서는 이미지 압축·이미지 삭제만 처리.
+      const imageCleanupResults = await Promise.allSettled(
+        imagePaths.map((path) => deleteObject(ref(storage, path))),
+      );
+      imageCleanupFailed = imageCleanupResults.some((result) => result.status === 'rejected');
+      if (imageCleanupFailed) {
+        console.warn('성장타임라인 일부 이미지 Storage 정리에 실패했습니다.', imageCleanupResults);
+      }
+
+      await deleteDoc(recordRef);
       setTimelines(prev => prev.filter(item => item.id !== timeline.id));
       setSelectedTimeline(prev => (prev?.id === timeline.id ? null : prev));
-      toast.success('타임라인을 삭제했습니다.');
+      toast.success(imageCleanupFailed ? '일부 이미지 정리에 실패했지만 기록은 삭제되었습니다.' : '타임라인을 삭제했습니다.');
     } catch (error) {
       console.error('타임라인 삭제 실패:', error);
       toast.error('삭제에 실패했습니다.');
