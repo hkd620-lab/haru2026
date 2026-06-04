@@ -2488,8 +2488,37 @@ exports.lawSearch = (0, https_2.onCall)({
             headers: {
                 Referer: 'https://haru2026.com/',
                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+                Connection: 'close',
             },
             timeout: 10000,
+        };
+        const getLawXmlWithRetry = async (url) => {
+            var _a;
+            let lastError;
+            for (let attempt = 1; attempt <= 3; attempt += 1) {
+                try {
+                    return await axios_1.default.get(url, axiosConfig);
+                }
+                catch (error) {
+                    lastError = error;
+                    const status = (_a = error === null || error === void 0 ? void 0 : error.response) === null || _a === void 0 ? void 0 : _a.status;
+                    const retriable = (error === null || error === void 0 ? void 0 : error.code) === 'ECONNRESET' ||
+                        (error === null || error === void 0 ? void 0 : error.code) === 'ETIMEDOUT' ||
+                        (error === null || error === void 0 ? void 0 : error.code) === 'ECONNABORTED' ||
+                        !(error === null || error === void 0 ? void 0 : error.response) ||
+                        status >= 500;
+                    if (!retriable || attempt === 3) {
+                        throw error;
+                    }
+                    logger.warn('HARUraw 법제처 API 재시도', {
+                        attempt,
+                        code: error === null || error === void 0 ? void 0 : error.code,
+                        status,
+                    });
+                    await new Promise((resolve) => setTimeout(resolve, attempt * 700));
+                }
+            }
+            throw lastError;
         };
         // 0단계: Gemini로 정확한 법령 이름 추출
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_KEY);
@@ -2513,7 +2542,7 @@ exports.lawSearch = (0, https_2.onCall)({
         console.log('HARUraw 추출 키워드:', lawKeyword);
         // 1단계: 법제처 검색
         const searchUrl = `https://www.law.go.kr/DRF/lawSearch.do?OC=${LAW_API_KEY}&target=law&type=XML&query=${encodeURIComponent(lawKeyword)}`;
-        const searchRes = await axios_1.default.get(searchUrl, axiosConfig);
+        const searchRes = await getLawXmlWithRetry(searchUrl);
         const searchJson = parser.parse(searchRes.data);
         const laws = ((_a = searchJson === null || searchJson === void 0 ? void 0 : searchJson.LawSearch) === null || _a === void 0 ? void 0 : _a.law) || ((_b = searchJson === null || searchJson === void 0 ? void 0 : searchJson.Law) === null || _b === void 0 ? void 0 : _b.law) || ((_c = searchJson === null || searchJson === void 0 ? void 0 : searchJson.LawList) === null || _c === void 0 ? void 0 : _c.law);
         if (!laws) {
@@ -2531,7 +2560,7 @@ exports.lawSearch = (0, https_2.onCall)({
         }
         // 2단계: 법령 전문 조회
         const serviceUrl = `https://www.law.go.kr/DRF/lawService.do?OC=${LAW_API_KEY}&target=law&MST=${mstId}&type=XML`;
-        const serviceRes = await axios_1.default.get(serviceUrl, axiosConfig);
+        const serviceRes = await getLawXmlWithRetry(serviceUrl);
         const lawJson = parser.parse(serviceRes.data);
         const jomuns = ((_f = (_d = lawJson === null || lawJson === void 0 ? void 0 : lawJson.법령) === null || _d === void 0 ? void 0 : _d.조문) === null || _f === void 0 ? void 0 : _f.조문단위) || [];
         const arrayJomuns = Array.isArray(jomuns) ? jomuns : [jomuns];

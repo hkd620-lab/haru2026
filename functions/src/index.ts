@@ -2866,8 +2866,40 @@ export const lawSearch = onCall(
         headers: {
           Referer: 'https://haru2026.com/',
           'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+          Connection: 'close',
         },
         timeout: 10000,
+      };
+
+      const getLawXmlWithRetry = async (url: string) => {
+        let lastError: any;
+        for (let attempt = 1; attempt <= 3; attempt += 1) {
+          try {
+            return await axios.get(url, axiosConfig);
+          } catch (error: any) {
+            lastError = error;
+            const status = error?.response?.status;
+            const retriable =
+              error?.code === 'ECONNRESET' ||
+              error?.code === 'ETIMEDOUT' ||
+              error?.code === 'ECONNABORTED' ||
+              !error?.response ||
+              status >= 500;
+
+            if (!retriable || attempt === 3) {
+              throw error;
+            }
+
+            logger.warn('HARUraw 법제처 API 재시도', {
+              attempt,
+              code: error?.code,
+              status,
+            });
+            await new Promise((resolve) => setTimeout(resolve, attempt * 700));
+          }
+        }
+
+        throw lastError;
       };
 
       // 0단계: Gemini로 정확한 법령 이름 추출
@@ -2895,7 +2927,7 @@ export const lawSearch = onCall(
 
       // 1단계: 법제처 검색
       const searchUrl = `https://www.law.go.kr/DRF/lawSearch.do?OC=${LAW_API_KEY}&target=law&type=XML&query=${encodeURIComponent(lawKeyword)}`;
-      const searchRes = await axios.get(searchUrl, axiosConfig);
+      const searchRes = await getLawXmlWithRetry(searchUrl);
       const searchJson = parser.parse(searchRes.data);
 
       const laws = searchJson?.LawSearch?.law || searchJson?.Law?.law || searchJson?.LawList?.law;
@@ -2920,7 +2952,7 @@ export const lawSearch = onCall(
 
       // 2단계: 법령 전문 조회
       const serviceUrl = `https://www.law.go.kr/DRF/lawService.do?OC=${LAW_API_KEY}&target=law&MST=${mstId}&type=XML`;
-      const serviceRes = await axios.get(serviceUrl, axiosConfig);
+      const serviceRes = await getLawXmlWithRetry(serviceUrl);
       const lawJson = parser.parse(serviceRes.data);
 
       const jomuns = lawJson?.법령?.조문?.조문단위 || [];
