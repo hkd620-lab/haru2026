@@ -2334,7 +2334,7 @@ export function SayuPage() {
         .sort((a, b) => b.date.localeCompare(a.date) || a.label.localeCompare(b.label));
   const activeSelectedDate = sayuTab === 'records' ? selectedDate : selectedAssistantDate;
   const setActiveSelectedDate = sayuTab === 'records' ? setSelectedDate : setSelectedAssistantDate;
-  const hasGrowthTimelineRecords = growthTimelineEntries.length > 0;
+  const hasGrowthTimelineRecords = records.some(isGrowthTimelineRecord);
   const shouldRenderListEntries = !(
     sayuTab === 'assistants'
     && hasGrowthTimelineRecords
