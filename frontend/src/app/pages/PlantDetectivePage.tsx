@@ -284,6 +284,26 @@ async function createPlantImageVariants(file: File): Promise<{ original: Blob; t
   return { original, thumbnail };
 }
 
+function removeUndefinedForFirestore<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item) => item !== undefined)
+      .map((item) => removeUndefinedForFirestore(item)) as T;
+  }
+  if (value && typeof value === 'object') {
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return value;
+    return Object.entries(value as Record<string, unknown>).reduce(
+      (cleaned, [key, entry]) => {
+        if (entry !== undefined) cleaned[key] = removeUndefinedForFirestore(entry);
+        return cleaned;
+      },
+      {} as Record<string, unknown>,
+    ) as T;
+  }
+  return value;
+}
+
 function normalizeConfidence(value: any): number | null {
   if (value === undefined || value === null || value === '') return null;
   const n = Number(value);
@@ -1386,7 +1406,7 @@ export function PlantDetectivePage() {
     const photoRegionLabel = imageMetas.find((meta) => meta.regionLabel)?.regionLabel || '';
     const photoPlaceName = imageMetas.find((meta) => meta.placeName)?.placeName || '';
     const resolvedLocation = confirmedLocation.trim() || photoPlaceName || photoRegionLabel;
-    return {
+    return removeUndefinedForFirestore({
       photoUrl: primaryImage?.imageUrl || '',
       thumbnailUrl: primaryImage?.thumbnailUrl || '',
       storagePath: primaryImage?.storagePath || '',
@@ -1413,7 +1433,7 @@ export function PlantDetectivePage() {
         plantNet: result?.plantNet || null,
         gemini: result?.gemini || null,
       },
-    };
+    });
   };
 
   const buildDisplayName = () => {
@@ -1484,7 +1504,7 @@ export function PlantDetectivePage() {
       };
       await setDoc(
         recordRef,
-        { date: today, plantDetective: arrayUnion(legacyEntry) },
+        { date: today, plantDetective: arrayUnion(removeUndefinedForFirestore(legacyEntry)) },
         { merge: true },
       );
 
@@ -1586,10 +1606,10 @@ export function PlantDetectivePage() {
           finalGuess: displayName,
           finalLatinName: displayLatin,
           confidence: topConfidence,
-          originalPlantIdResult: result.plantId,
-          originalPlantNetResult: result.plantNet,
-          geminiAnalysis: result.gemini,
-          meta: result.meta,
+          originalPlantIdResult: removeUndefinedForFirestore(result.plantId),
+          originalPlantNetResult: removeUndefinedForFirestore(result.plantNet),
+          geminiAnalysis: removeUndefinedForFirestore(result.gemini),
+          meta: removeUndefinedForFirestore(result.meta),
           source: 'user_confirmed',
           // 식별 상태: 사용자가 AI와 다른 이름을 넣으면 corrected, 그대로면 confirmed (AI 단독은 suspected)
           identificationStatus: correctedByUser ? 'corrected' : 'confirmed',
@@ -1633,10 +1653,10 @@ export function PlantDetectivePage() {
             imageUrl: imageUrls[0] || '',
             ...resultSaveFields,
             confidence: topConfidence,
-            originalPlantIdResult: result.plantId,
-            originalPlantNetResult: result.plantNet,
-            geminiAnalysis: result.gemini,
-            meta: result.meta,
+            originalPlantIdResult: removeUndefinedForFirestore(result.plantId),
+            originalPlantNetResult: removeUndefinedForFirestore(result.plantNet),
+            geminiAnalysis: removeUndefinedForFirestore(result.gemini),
+            meta: removeUndefinedForFirestore(result.meta),
             source: 'haru_plant_detective',
             watermarkText: 'HARU2026 식물탐정',
             visibility: 'public_readonly',
@@ -1849,7 +1869,7 @@ export function PlantDetectivePage() {
       };
       await setDoc(
         recordRef,
-        { date: today, plantObservation: arrayUnion(obsEntry) },
+        { date: today, plantObservation: arrayUnion(removeUndefinedForFirestore(obsEntry)) },
         { merge: true },
       );
 
@@ -1938,7 +1958,7 @@ export function PlantDetectivePage() {
         observation.length > 0 || aiDifference.length > 0 || memo.length > 0;
       const updatePayload: Record<string, any> = {
         date: today,
-        plantDetective: arrayUnion(legacyEntry),
+        plantDetective: arrayUnion(removeUndefinedForFirestore(legacyEntry)),
       };
       if (hasObsInput) {
         const obsEntry = {
@@ -1962,7 +1982,7 @@ export function PlantDetectivePage() {
           memo,
           createdAt,
         };
-        updatePayload.plantObservation = arrayUnion(obsEntry);
+        updatePayload.plantObservation = arrayUnion(removeUndefinedForFirestore(obsEntry));
       }
       await setDoc(recordRef, updatePayload, { merge: true });
 
