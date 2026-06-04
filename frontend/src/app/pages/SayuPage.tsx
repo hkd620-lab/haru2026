@@ -2230,7 +2230,7 @@ export function SayuPage() {
     return year === currentMonth.getFullYear() && month === currentMonth.getMonth() + 1;
   };
 
-  const recordEntries: FlatSayuEntry[] = records
+  const allRecordEntries: FlatSayuEntry[] = records
     .filter((record) => isCurrentMonthDate(record.date))
     .flatMap((record) =>
       getRecordFormatsForList(record)
@@ -2268,6 +2268,8 @@ export function SayuPage() {
         }),
     )
     .sort((a, b) => b.date.localeCompare(a.date) || a.label.localeCompare(b.label));
+  const growthTimelineEntries = allRecordEntries.filter((entry) => entry.label === GROWTH_TIMELINE_SAYU_LABEL);
+  const recordEntries = allRecordEntries.filter((entry) => entry.label !== GROWTH_TIMELINE_SAYU_LABEL);
 
   const assistantEntries: FlatSayuEntry[] = [
     ...records
@@ -2326,20 +2328,20 @@ export function SayuPage() {
   ].sort((a, b) => b.date.localeCompare(a.date) || a.label.localeCompare(b.label));
 
   const activeEntries = sayuTab === 'records' ? recordEntries : assistantEntries;
+  const activeCalendarEntries = sayuTab === 'records'
+    ? recordEntries
+    : [...growthTimelineEntries, ...assistantEntries]
+        .sort((a, b) => b.date.localeCompare(a.date) || a.label.localeCompare(b.label));
   const activeSelectedDate = sayuTab === 'records' ? selectedDate : selectedAssistantDate;
   const setActiveSelectedDate = sayuTab === 'records' ? setSelectedDate : setSelectedAssistantDate;
-  const hasGrowthTimelineRecords = records.some((record) => isGrowthTimelineRecord(record));
-  const recordEntriesWithoutTimelines = recordEntries.filter((entry) => entry.label !== GROWTH_TIMELINE_SAYU_LABEL);
-  const visibleListEntries = sayuTab === 'records' && hasGrowthTimelineRecords
-    ? recordEntriesWithoutTimelines
-    : activeEntries;
+  const hasGrowthTimelineRecords = growthTimelineEntries.length > 0;
   const shouldRenderListEntries = !(
-    sayuTab === 'records'
+    sayuTab === 'assistants'
     && hasGrowthTimelineRecords
-    && visibleListEntries.length === 0
+    && activeEntries.length === 0
   );
   const activeSelectedEntries = activeSelectedDate
-    ? activeEntries.filter((entry) => entry.date === activeSelectedDate)
+    ? activeCalendarEntries.filter((entry) => entry.date === activeSelectedDate)
     : [];
 
   const getDotsForEntriesDay = (date: Date | null, entries: FlatSayuEntry[]) => {
@@ -2830,7 +2832,7 @@ export function SayuPage() {
       {/* 목록 / 달력 segmented 탭 */}
       {renderViewModeTabs()}
 
-      {sayuTab === 'records' && viewMode === 'list' && user?.uid && hasGrowthTimelineRecords && (
+      {sayuTab === 'assistants' && viewMode === 'list' && user?.uid && hasGrowthTimelineRecords && (
         <GrowthTimelineLibrary
           uid={user.uid}
           refreshKey={timelineRefreshKey}
@@ -2840,8 +2842,8 @@ export function SayuPage() {
         />
       )}
 
-      {viewMode === 'list' && shouldRenderListEntries && renderGroupedEntryList(visibleListEntries)}
-      {viewMode === 'calendar' && renderEntryCalendar(activeEntries)}
+      {viewMode === 'list' && shouldRenderListEntries && renderGroupedEntryList(activeEntries)}
+      {viewMode === 'calendar' && renderEntryCalendar(activeCalendarEntries)}
 
       {/* ─── 달력 뷰 ─── */}
       {false && sayuTab === 'records' && viewMode === 'calendar' && (
