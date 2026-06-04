@@ -1,4 +1,4 @@
-import { X, TestTube2, Wand2, Upload, Trash2, Plus, Camera, FileText } from 'lucide-react';
+import { X, TestTube2, Wand2, Upload, Trash2, Plus, Camera, FileText, Pencil } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { getTestData } from '../data/testData';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -289,6 +289,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [knownReadingBooks, setKnownReadingBooks] = useState<KnownReadingBook[]>([]);
   const [readingEntriesByBook, setReadingEntriesByBook] = useState<Record<string, KnownReadingEntry[]>>({});
   const [selectedExistingBookId, setSelectedExistingBookId] = useState<string>(''); // '' = 새 책
+  const [editingReadingEntryId, setEditingReadingEntryId] = useState<string>('');
+  const [editingReadingEntryDate, setEditingReadingEntryDate] = useState<string>('');
   const [isReadingBookLocked, setIsReadingBookLocked] = useState(false);
   const [blockedBookMessage, setBlockedBookMessage] = useState<string>('');
   const isDeveloper = !!user?.uid && DEVELOPER_UIDS.includes(user.uid);
@@ -324,6 +326,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       setKnownReadingBooks([]);
       setReadingEntriesByBook({});
       setSelectedExistingBookId('');
+      setEditingReadingEntryId('');
+      setEditingReadingEntryDate('');
       setIsReadingBookLocked(false);
       setBlockedBookMessage('');
       if (format === '독서사유' && user?.uid) {
@@ -512,6 +516,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const imageMetaKey = `${prefix}_imageMeta`;
   const existingSayu = initialData[sayuKey];
   const isStockFormat = format === 'HARU주식관리' || format === '주식거래일지';
+  const isEditingReadingEntry = Boolean(editingReadingEntryId);
 
   const handleChange = (key: string, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -1446,6 +1451,8 @@ ${contentValues}`,
       return;
     }
     setSelectedExistingBookId(bookId);
+    setEditingReadingEntryId('');
+    setEditingReadingEntryDate('');
     setIsReadingBookLocked(true);
     setBlockedBookMessage('');
     setFormData((prev) => ({
@@ -1458,6 +1465,8 @@ ${contentValues}`,
   // 📚 "새 책 시작" — 잠금 해제 + 책 제목/저자 비우기
   const onStartNewBook = () => {
     setSelectedExistingBookId('');
+    setEditingReadingEntryId('');
+    setEditingReadingEntryDate('');
     setIsReadingBookLocked(false);
     setBlockedBookMessage('');
     setReadingBookTextMode('photo');
@@ -1472,6 +1481,8 @@ ${contentValues}`,
 
   const prepareReadingAppend = (bookId: string) => {
     onSelectExistingBook(bookId);
+    setEditingReadingEntryId('');
+    setEditingReadingEntryDate('');
     setReadingBookTextMode('manual');
     setFormData((prev) => ({
       ...prev,
@@ -1483,6 +1494,45 @@ ${contentValues}`,
       readingJournalRef.current?.focus();
     }, 0);
     toast.info('독서장 칸에 오늘 소감을 쓰면 새 회차로 추가됩니다.');
+  };
+
+  const prepareReadingEdit = (bookId: string, entry: KnownReadingEntry, entryIndex: number) => {
+    const book = knownReadingBooks.find((b) => b.readingBookId === bookId);
+    if (!book || book.hasFinalReflection) return;
+
+    onSelectExistingBook(bookId);
+    setEditingReadingEntryId(entry.id);
+    setEditingReadingEntryDate(entry.date);
+    setReadingBookTextMode('photo');
+    setFormData((prev) => ({
+      ...prev,
+      reading_book_title: book.bookTitle,
+      reading_author: book.author,
+      reading_started_at: prev.reading_started_at || entry.date || book.lastDate || '',
+      reading_book_text: entry.readingBookText,
+      reading_journal: entry.readingJournal,
+      reading_sayu: entry.readingSayu,
+      reading_note_createdAt: entry.noteCreatedAt || prev.reading_note_createdAt || '',
+    }));
+    setRecordStep('input');
+    window.setTimeout(() => {
+      readingJournalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      readingJournalRef.current?.focus();
+    }, 0);
+    toast.info(`${entryIndex + 1}회차를 수정 중입니다. 사진 추출 또는 직접 입력 후 저장하세요.`);
+  };
+
+  const cancelReadingEdit = () => {
+    setEditingReadingEntryId('');
+    setEditingReadingEntryDate('');
+    setReadingBookTextMode('manual');
+    setFormData((prev) => ({
+      ...prev,
+      reading_book_text: '',
+      reading_journal: '',
+      reading_sayu: '',
+    }));
+    toast.info('회차 수정을 취소했습니다.');
   };
 
   // 📚 책 제목/저자 직접 수정 시 final_reflection 차단 자동 체크
@@ -1663,10 +1713,13 @@ ${contentValues}`,
       const responseData = result.data as any;
       const polished = String(responseData?.text || '');
       const stats = responseData?.stats;
+      const now = new Date().toISOString();
+      const targetRecordId = editingReadingEntryId || `reading_note_${currentBookId}_${Date.now()}`;
 
       const updateData: Record<string, any> = {
         ...formData,
-        _recordId: `reading_note_${currentBookId}_${Date.now()}`,
+        _recordId: targetRecordId,
+        ...(editingReadingEntryDate ? { _recordDate: editingReadingEntryDate } : {}),
         reading_started_at: formData.reading_started_at || startedAt,
         [imagesKey]: JSON.stringify(uploadedImages),
         [imageMetaKey]: getUploadedImageMetaForSave(),
@@ -1674,9 +1727,12 @@ ${contentValues}`,
         [`${prefix}_mode`]: 'PREMIUM',
         [`${prefix}_sayu`]: polished,
         [`${prefix}_polished`]: true,
-        [`${prefix}_polishedAt`]: new Date().toISOString(),
-        [`${prefix}_note_createdAt`]: new Date().toISOString(),
-        [`${prefix}_accumulation_mode`]: 'append',
+        [`${prefix}_polishedAt`]: now,
+        [`${prefix}_note_createdAt`]: editingReadingEntryId
+          ? (formData.reading_note_createdAt || now)
+          : now,
+        [`${prefix}_note_updatedAt`]: now,
+        [`${prefix}_accumulation_mode`]: editingReadingEntryId ? 'edit' : 'append',
         ...buildReadingMeta('chapter_note'),
       };
       if (stats) updateData[`${prefix}_stats`] = stats;
@@ -1684,7 +1740,7 @@ ${contentValues}`,
 
       setIsSaving(true);
       await onSave(updateData);
-      toast.success('📖 독서장이 누적 저장되었습니다.');
+      toast.success(editingReadingEntryId ? '📖 독서장 회차가 수정되었습니다.' : '📖 독서장이 누적 저장되었습니다.');
       onClose();
     } catch (error: any) {
       console.error('중간기록 저장 실패:', error);
@@ -1749,6 +1805,12 @@ ${contentValues}`,
   const selectedReadingEntries = format === '독서사유' && selectedExistingBookId
     ? readingEntriesByBook[selectedExistingBookId] || []
     : [];
+  const editingReadingEntryIndex = editingReadingEntryId
+    ? selectedReadingEntries.findIndex((entry) => entry.id === editingReadingEntryId)
+    : -1;
+  const editingReadingEntryLabel = editingReadingEntryIndex >= 0
+    ? `${editingReadingEntryIndex + 1}회차${editingReadingEntryDate ? ` · ${editingReadingEntryDate}` : ''}`
+    : '';
 
   const getReadingEntryPreview = (entry: KnownReadingEntry) => {
     const preview = entry.readingJournal || entry.readingSayu || entry.readingBookText;
@@ -1800,7 +1862,7 @@ ${contentValues}`,
           >
             <div>
               <h2 style={{ fontSize: 18, color: '#1A3C6E', fontWeight: 600, margin: 0 }}>
-                {format === '독서사유' ? '독서장 작성' : `${format} 작성`}
+                {format === '독서사유' ? (isEditingReadingEntry ? '독서장 회차 수정' : '독서장 작성') : `${format} 작성`}
               </h2>
               {existingSayu && (
                 <p style={{ fontSize: 12, color: '#10b981', margin: '4px 0 0 0' }}>
@@ -2154,10 +2216,12 @@ ${contentValues}`,
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
                         <div>
                           <p style={{ margin: 0, fontSize: 13, color: '#1A3C6E', fontWeight: 800 }}>
-                            누적 독서장 {selectedReadingEntries.length}회
+                            {isEditingReadingEntry ? `${editingReadingEntryLabel} 수정 중` : `누적 독서장 ${selectedReadingEntries.length}회`}
                           </p>
                           <p style={{ margin: '3px 0 0', fontSize: 11, color: '#6b7280', lineHeight: 1.5 }}>
-                            이전 내용은 보존하고 오늘 내용은 새 회차로 추가됩니다.
+                            {isEditingReadingEntry
+                              ? '책 본문 사진 추출이나 직접 입력으로 기존 회차 내용을 보강할 수 있습니다.'
+                              : '이전 내용은 보존하고 오늘 내용은 새 회차로 추가됩니다.'}
                           </p>
                         </div>
                         <button
@@ -2185,30 +2249,52 @@ ${contentValues}`,
                               key={entry.id}
                               style={{
                                 padding: '10px 12px',
-                                border: '1px solid #e5edf5',
+                                border: editingReadingEntryId === entry.id ? '1.5px solid #1A3C6E' : '1px solid #e5edf5',
                                 borderRadius: 8,
-                                backgroundColor: '#f8fbff',
+                                backgroundColor: editingReadingEntryId === entry.id ? '#EEF3FA' : '#f8fbff',
                               }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                                 <span style={{ fontSize: 12, color: '#1A3C6E', fontWeight: 800 }}>
                                   {index + 1}회차{entry.date ? ` · ${entry.date}` : ''}
+                                  {editingReadingEntryId === entry.id ? ' · 수정 중' : ''}
                                 </span>
-                                <button
-                                  type="button"
-                                  onClick={() => prepareReadingAppend(selectedExistingBookId)}
-                                  style={{
-                                    border: 'none',
-                                    background: 'transparent',
-                                    color: '#10b981',
-                                    cursor: 'pointer',
-                                    fontSize: 11,
-                                    fontWeight: 800,
-                                    padding: 0,
-                                  }}
-                                >
-                                  + 다음 회차 쓰기
-                                </button>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => prepareReadingEdit(selectedExistingBookId, entry, index)}
+                                    style={{
+                                      border: 'none',
+                                      background: 'transparent',
+                                      color: '#1A3C6E',
+                                      cursor: 'pointer',
+                                      fontSize: 11,
+                                      fontWeight: 800,
+                                      padding: 0,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 3,
+                                    }}
+                                  >
+                                    <Pencil style={{ width: 12, height: 12 }} />
+                                    수정
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => prepareReadingAppend(selectedExistingBookId)}
+                                    style={{
+                                      border: 'none',
+                                      background: 'transparent',
+                                      color: '#10b981',
+                                      cursor: 'pointer',
+                                      fontSize: 11,
+                                      fontWeight: 800,
+                                      padding: 0,
+                                    }}
+                                  >
+                                    + 다음 회차
+                                  </button>
+                                </div>
                               </div>
                               <p style={{ margin: '6px 0 0', fontSize: 12, color: '#4b5563', lineHeight: 1.5 }}>
                                 {getReadingEntryPreview(entry) || '내용 미리보기 없음'}
@@ -3128,26 +3214,26 @@ ${contentValues}`,
                       다듬는 중...
                     </>
                   ) : (
-                    <>📖 독서장 추가하기</>
+                    <>{isEditingReadingEntry ? '📖 회차 수정 저장하기' : '📖 독서장 추가하기'}</>
                   )}
                 </button>
                 <button
-                  onClick={handleReadingFinishClick}
+                  onClick={isEditingReadingEntry ? cancelReadingEdit : handleReadingFinishClick}
                   disabled={isReadingFinishing || isSaving || isPolishing}
                   style={{
                     padding: '12px 16px',
                     fontSize: 14,
                     border: '1px solid #1A3C6E',
                     borderRadius: 8,
-                    backgroundColor: '#1A3C6E',
-                    color: '#FAF9F6',
+                    backgroundColor: isEditingReadingEntry ? '#fff' : '#1A3C6E',
+                    color: isEditingReadingEntry ? '#1A3C6E' : '#FAF9F6',
                     cursor: (isReadingFinishing || isSaving || isPolishing) ? 'not-allowed' : 'pointer',
                     opacity: (isReadingFinishing || isSaving || isPolishing) ? 0.7 : 1,
                     fontWeight: 700,
                   }}
-                  title="같은 책의 모든 chapter_note 를 모아 final_reflection 으로 마무리"
+                  title={isEditingReadingEntry ? '수정 중인 회차를 닫고 새 회차 입력으로 돌아가기' : '같은 책의 모든 chapter_note 를 모아 final_reflection 으로 마무리'}
                 >
-                  {isReadingFinishing ? '분석 중...' : '✨ 독서마무리하기'}
+                  {isEditingReadingEntry ? '수정 취소' : isReadingFinishing ? '분석 중...' : '✨ 독서마무리하기'}
                 </button>
               </div>
             ) : (
