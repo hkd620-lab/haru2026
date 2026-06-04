@@ -4,8 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { setOrigin } from '../services/v2Origin';
 import { useAuth } from '../contexts/AuthContext';
 import { TimelineCollageModal } from '../components/TimelineCollageModal';
-import { firestoreService } from '../services/firestoreService';
-import type { HaruRecord } from '../services/firestoreService';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -498,42 +496,19 @@ export function HomePageV2() {
   const isDeveloper = user?.uid === DEVELOPER_UID;
   const today = useMemo(() => todayLabel(new Date()), []);
   const [timelineModalOpen, setTimelineModalOpen] = useState(false);
-  const [timelineRecords, setTimelineRecords] = useState<HaruRecord[]>([]);
-  const [timelineRecordsLoaded, setTimelineRecordsLoaded] = useState(false);
-  const [timelineRecordsLoading, setTimelineRecordsLoading] = useState(false);
 
   // v2 진입을 sessionStorage에 기록 → 통계/합본 등 깊은 경로 닫기 시 v2 복귀용
   useEffect(() => {
     setOrigin('/v2');
   }, []);
 
-  useEffect(() => {
-    setTimelineRecords([]);
-    setTimelineRecordsLoaded(false);
-    setTimelineRecordsLoading(false);
-  }, [user?.uid]);
-
-  const openTimelineModal = async () => {
+  const openTimelineModal = () => {
     if (!user?.uid) {
       navigate('/login');
       return;
     }
 
     setTimelineModalOpen(true);
-    if (timelineRecordsLoaded || timelineRecordsLoading) return;
-
-    setTimelineRecordsLoading(true);
-    try {
-      const data = await firestoreService.getRecords(user.uid);
-      setTimelineRecords(data);
-      setTimelineRecordsLoaded(true);
-    } catch (error) {
-      console.error('HARU타임라인 기록 불러오기 실패:', error);
-      setTimelineRecords([]);
-      setTimelineRecordsLoaded(true);
-    } finally {
-      setTimelineRecordsLoading(false);
-    }
   };
 
   return (
@@ -1606,9 +1581,8 @@ export function HomePageV2() {
         <TimelineCollageModal
           isOpen={timelineModalOpen}
           onClose={() => setTimelineModalOpen(false)}
-          records={timelineRecords}
+          records={[]}
           uid={user.uid}
-          isLoadingRecords={timelineRecordsLoading}
         />
       )}
     </div>

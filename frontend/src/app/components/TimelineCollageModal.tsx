@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { doc, setDoc } from 'firebase/firestore';
-import { storage, db } from '../../firebase';
-import { HaruRecord } from '../services/firestoreService';
+import { storage } from '../../firebase';
+import { firestoreService } from '../services/firestoreService';
+import type { HaruRecord } from '../services/firestoreService';
 import { toast } from 'sonner';
 import { GrowthTimelineCreator } from './GrowthTimelineCreator';
 
@@ -87,6 +87,10 @@ function fmtDate(dateStr: string): string {
 
 function sortPhotosByDate(photos: PhotoItem[]): PhotoItem[] {
   return [...photos].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function getFileNameFromUrl(url: string) {
@@ -304,11 +308,36 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
       await uploadBytes(storageRef, blob, { contentType: 'image/png' });
       const url = await getDownloadURL(storageRef);
 
-      // Firestore 저장
-      await setDoc(doc(db, 'users', uid, 'timelines', id), {
+      const periodStart = timelinePhotos[0]?.date || todayKey();
+      const periodEnd = timelinePhotos[timelinePhotos.length - 1]?.date || periodStart;
+      const timelineItems = timelinePhotos.map((photo, index) => ({
+        url: photo.url,
+        takenDate: photo.date,
+        memo: '',
+        order: index,
+        locationLabel: photo.locationLabel || '',
+      }));
+      const content = [
+        `기간: ${fmtDate(periodStart)}${periodEnd && periodEnd !== periodStart ? ` ~ ${fmtDate(periodEnd)}` : ''}`,
+        `사진: ${timelinePhotos.length}장`,
+      ].join('\n');
+
+      // Firestore 저장: 성장타임라인도 하루 기록 경로(users/{uid}/records) 안에 보관
+      await firestoreService.saveRecord(uid, {
+        date: periodStart,
+        formats: ['성장타임라인'],
+        format: '성장타임라인',
+        recordType: 'growthTimeline',
+        type: 'growthTimeline',
+        source: 'growthTimeline',
         timelineImageUrl: url,
         timelineCreatedAt: new Date().toISOString(),
         title: resolvedTitle,
+        content,
+        timelineItems,
+        periodStart,
+        periodEnd,
+        itemCount: timelinePhotos.length,
         photoCount: timelinePhotos.length,
         photoDates: timelinePhotos.map(p => p.date),
         photoMeta: timelinePhotos.map(p => ({

@@ -102,12 +102,17 @@ function timestampLabel(value: any) {
   return `${yyyy}.${mm}.${dd}`;
 }
 
-function fallbackTitleDate() {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
+function fallbackTitleDate(value?: string) {
+  const date = value ? new Date(`${value}T00:00:00`) : new Date();
+  const source = Number.isNaN(date.getTime()) ? new Date() : date;
+  const yyyy = source.getFullYear();
+  const mm = String(source.getMonth() + 1).padStart(2, '0');
+  const dd = String(source.getDate()).padStart(2, '0');
   return `${yyyy}.${mm}.${dd}`;
+}
+
+function buildFallbackTimelineTitle(periodStart?: string) {
+  return `${fallbackTitleDate(periodStart)} 성장타임라인`;
 }
 
 function formatDateLabel(value: string) {
@@ -146,10 +151,10 @@ function serializeTimelineRecordItem(item: DraftTimelineItem, url: string, index
   return savedItem;
 }
 
-async function createTimelineTitle(inputTitle: string, summary: string) {
+async function createTimelineTitle(inputTitle: string, summary: string, defaultFallbackTitle: string) {
   const customTitle = inputTitle.trim();
   const hasCustomTitle = customTitle.length > 0 && customTitle !== '성장타임라인';
-  const fallbackTitle = hasCustomTitle ? customTitle : `성장타임라인 ${fallbackTitleDate()}`;
+  const fallbackTitle = hasCustomTitle ? customTitle : defaultFallbackTitle;
 
   try {
     const fns = getFunctions(undefined, 'asia-northeast3');
@@ -418,13 +423,15 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
       const periodStart = savedItems[0]?.takenDate || '';
       const periodEnd = savedItems[savedItems.length - 1]?.takenDate || '';
       const content = buildTimelineSummary(savedItems, periodStart, periodEnd);
-      const resolvedTitle = await createTimelineTitle(title, content);
+      const resolvedTitle = await createTimelineTitle(title, content, buildFallbackTimelineTitle(periodStart));
 
       await firestoreService.saveRecord(uid, {
         date: todayKey(),
         formats: ['성장타임라인'],
         format: '성장타임라인',
         recordType: 'growthTimeline',
+        type: 'growthTimeline',
+        source: 'growthTimeline',
         title: resolvedTitle,
         content,
         timelineItems: savedItems,

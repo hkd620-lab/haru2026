@@ -2326,6 +2326,16 @@ export function SayuPage() {
   const activeEntries = sayuTab === 'records' ? recordEntries : assistantEntries;
   const activeSelectedDate = sayuTab === 'records' ? selectedDate : selectedAssistantDate;
   const setActiveSelectedDate = sayuTab === 'records' ? setSelectedDate : setSelectedAssistantDate;
+  const hasGrowthTimelineRecords = records.some((record) => isGrowthTimelineRecord(record));
+  const recordEntriesWithoutTimelines = recordEntries.filter((entry) => entry.label !== '성장타임라인');
+  const visibleListEntries = sayuTab === 'records' && hasGrowthTimelineRecords
+    ? recordEntriesWithoutTimelines
+    : activeEntries;
+  const shouldRenderListEntries = !(
+    sayuTab === 'records'
+    && hasGrowthTimelineRecords
+    && visibleListEntries.length === 0
+  );
   const activeSelectedEntries = activeSelectedDate
     ? activeEntries.filter((entry) => entry.date === activeSelectedDate)
     : [];
@@ -2818,7 +2828,7 @@ export function SayuPage() {
       {/* 목록 / 달력 segmented 탭 */}
       {renderViewModeTabs()}
 
-      {sayuTab === 'assistants' && user?.uid && (
+      {sayuTab === 'records' && viewMode === 'list' && user?.uid && hasGrowthTimelineRecords && (
         <GrowthTimelineLibrary
           uid={user.uid}
           refreshKey={timelineRefreshKey}
@@ -2828,7 +2838,7 @@ export function SayuPage() {
         />
       )}
 
-      {viewMode === 'list' && renderGroupedEntryList(activeEntries)}
+      {viewMode === 'list' && shouldRenderListEntries && renderGroupedEntryList(visibleListEntries)}
       {viewMode === 'calendar' && renderEntryCalendar(activeEntries)}
 
       {/* ─── 달력 뷰 ─── */}
