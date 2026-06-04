@@ -40,6 +40,8 @@ const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 const PAGE_SIZE = 10;
 const PUBLIC_SAYU_REQUIRED_MESSAGE = '먼저 SAYU 다듬기를 완료한 뒤 공개할 수 있습니다.';
 const PUBLIC_ALLOWED_FORMAT_KEYS = new Set(['diary', 'essay', 'travel', 'garden', 'pet', 'memo', 'reading']);
+const GROWTH_TIMELINE_FORMAT_LABEL = '성장타임라인';
+const GROWTH_TIMELINE_SAYU_LABEL = 'HARU비서기록';
 
 type GrowthTimelineRecordItem = {
   url: string;
@@ -1462,7 +1464,7 @@ export function SayuPage() {
     dayRecords.forEach((record) => {
       const formatsForRecord =
         isGrowthTimelineRecord(record)
-          ? [{ label: '성장타임라인', prefix: 'growthTimeline' }]
+          ? [{ label: GROWTH_TIMELINE_SAYU_LABEL, prefix: 'growthTimeline' }]
         : Array.isArray(record.formats) && record.formats.length > 0
           ? record.formats
               .map((format) => ({ label: String(format), prefix: ALL_FORMAT_PREFIXES[String(format)] }))
@@ -1514,12 +1516,12 @@ export function SayuPage() {
     if (formatKey === 'growthTimeline' || isGrowthTimelineRecord(record)) {
       const timelineItems = normalizeTimelineItems((record as any).timelineItems);
       setSelectedDate(dateStr);
-      setSelectedDateFormats([{ key: 'growthTimeline', label: '성장타임라인', recordId: record.id }]);
+      setSelectedDateFormats([{ key: 'growthTimeline', label: GROWTH_TIMELINE_SAYU_LABEL, recordId: record.id }]);
       setSayuModalState({
         isOpen: true,
         content: String((record as any).content || ''),
         originalData: {},
-        format: '성장타임라인',
+        format: GROWTH_TIMELINE_SAYU_LABEL,
         formatKey: 'growthTimeline',
         firestoreId: record.id,
         title: String((record as any).title || ''),
@@ -1651,7 +1653,7 @@ export function SayuPage() {
               const entryKey = `growthTimeline_${record.id}`;
               if (!seenFormatKeys.has(entryKey)) {
                 seenFormatKeys.add(entryKey);
-                availableFormats.push({ key: 'growthTimeline', label: '성장타임라인', recordId: record.id });
+                availableFormats.push({ key: 'growthTimeline', label: GROWTH_TIMELINE_SAYU_LABEL, recordId: record.id });
               }
               return;
             }
@@ -2122,7 +2124,7 @@ export function SayuPage() {
 
   const getRecordFormatsForList = (record: HaruRecord) => {
     const formatsFromSpecial = isGrowthTimelineRecord(record)
-      ? [{ label: '성장타임라인', prefix: 'growthTimeline' }]
+      ? [{ label: GROWTH_TIMELINE_SAYU_LABEL, prefix: 'growthTimeline' }]
       : [];
     const formatsFromRecord = Array.isArray(record.formats)
       ? record.formats
@@ -2254,11 +2256,11 @@ export function SayuPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 18px 12px 68px' }}>
                 <img
                   src={timelineItems[0].url}
-                  alt="성장타임라인 대표사진"
+                  alt={`${GROWTH_TIMELINE_FORMAT_LABEL} 대표사진`}
                   style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', border: '1px solid #e5e7eb', flexShrink: 0 }}
                 />
                 <span style={{ borderRadius: 999, backgroundColor: '#edf7f1', color: '#37644a', padding: '4px 9px', fontSize: 11, fontWeight: 800 }}>
-                  성장타임라인
+                  {GROWTH_TIMELINE_SAYU_LABEL}
                 </span>
               </div>
             ) : undefined,
@@ -2327,7 +2329,7 @@ export function SayuPage() {
   const activeSelectedDate = sayuTab === 'records' ? selectedDate : selectedAssistantDate;
   const setActiveSelectedDate = sayuTab === 'records' ? setSelectedDate : setSelectedAssistantDate;
   const hasGrowthTimelineRecords = records.some((record) => isGrowthTimelineRecord(record));
-  const recordEntriesWithoutTimelines = recordEntries.filter((entry) => entry.label !== '성장타임라인');
+  const recordEntriesWithoutTimelines = recordEntries.filter((entry) => entry.label !== GROWTH_TIMELINE_SAYU_LABEL);
   const visibleListEntries = sayuTab === 'records' && hasGrowthTimelineRecords
     ? recordEntriesWithoutTimelines
     : activeEntries;
@@ -2833,7 +2835,7 @@ export function SayuPage() {
           uid={user.uid}
           refreshKey={timelineRefreshKey}
           onEditTimeline={(recordId, dateStr) =>
-            openFormatSayu(dateStr || '', 'growthTimeline', '성장타임라인', recordId)
+            openFormatSayu(dateStr || '', 'growthTimeline', GROWTH_TIMELINE_SAYU_LABEL, recordId)
           }
         />
       )}

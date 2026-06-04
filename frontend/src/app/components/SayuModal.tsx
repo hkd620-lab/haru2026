@@ -1274,6 +1274,11 @@ export function SayuModal({
                   {format}
                 </p>
               )}
+              {isGrowthTimeline && (
+                <p style={{ fontSize: 12, color: '#6B7280', marginTop: 4, marginBottom: 0, lineHeight: 1.4 }}>
+                  HARU 비서가 생성한 문서형 기록입니다. 제목을 눌러 다시 열고 수정할 수 있습니다.
+                </p>
+              )}
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               {/* 📝 텍스트 복사 버튼 (카톡용) */}
