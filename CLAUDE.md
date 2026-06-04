@@ -109,3 +109,73 @@ git checkout feature/new-formats
 - 작업 폴더에서 `.old`·`* 2.*` 백업 파일을 발견하면, **gitignore 대상이라 git 변화 0임을 확인한 뒤 삭제**할 것.
   (삭제해도 commit·머지·배포에 영향 없음. 이력은 git에 보존됨.)
 - ※ 예외: CLAUDE.md 수정 전 백업, 좀비(.zombie)·아카이브 파일 등 **의도적으로 보존하기로 한 파일**은 이 원칙에서 제외.
+
+## HARU2026 사용자 기록 저장 원칙
+
+HARU2026의 모든 사용자 기록은 다음 원칙을 따른다.
+
+1. 모든 사용자 기록은 반드시 아래 컬렉션 안에 저장한다.
+
+   `users/{uid}/records`
+
+2. 문서 내부 `date` 필드는 반드시 `YYYY-MM-DD` 형식으로 유지한다.
+
+3. 하루 단일 대표 기록은 아래 문서 ID를 사용할 수 있다.
+
+   `users/{uid}/records/{date}`
+
+   예:
+
+   `users/abc123/records/2026-06-04`
+
+4. 하루에 여러 개 생성될 수 있는 문서형 기록은 덮어쓰기 방지를 위해 아래 형식의 문서 ID를 사용할 수 있다.
+
+   `users/{uid}/records/{date}_{type}_{timestamp}`
+
+   예:
+
+   `users/abc123/records/2026-06-04_growthTimeline_1717460000000`
+
+5. 성장타임라인처럼 하루에 여러 개 생성 가능한 기록은 순수 `records/{date}`만 강제하지 않는다.
+
+6. `users/{uid}/timelines`, `users/{uid}/growthTimelines` 같은 우회 컬렉션은 만들지 않는다.
+
+7. 저장 경로를 변경하는 마이그레이션은 허대표님 승인 없이 진행하지 않는다.
+
+8. 기능 구현이나 리팩터링 중에도 `users/{uid}/records` 컬렉션 원칙을 유지한다.
+
+## HARU2026 PDF 생성 원칙
+
+HARU2026은 PDF 생성 방식에 따라 아래 원칙을 구분한다.
+
+### 1. 서버 PDFKit PDF
+
+서버 PDFKit으로 PDF를 생성할 때는 다음 원칙을 지킨다.
+
+- 자동 줄바꿈에만 의존하지 않는다.
+- 긴 텍스트는 수동 줄 계산을 우선한다.
+- `lineBreak: false` 적용 여부를 검토한다.
+- 텍스트 블록에는 `maxHeight` 또는 명확한 높이 제한을 둔다.
+- 페이지 넘김은 수동으로 제어한다.
+- 빈 페이지 발생 여부를 반드시 테스트한다.
+- PDF 캐시가 있는 기능은 레이아웃 변경 시 `schemaVersion`을 올려 기존 캐시와 분리한다.
+- Storage URL이 재사용되는 구조인지 확인한다.
+
+### 2. 브라우저 window.print PDF
+
+브라우저 `window.print()` 기반 PDF는 다음 원칙을 지킨다.
+
+- `@media print` CSS를 별도로 작성한다.
+- 화면 UI와 PDF 출력 UI를 가능하면 분리한다.
+- `page-break`, `break-before`, `break-after`, `break-inside`를 명확히 제어한다.
+- 이미지가 모두 로드된 뒤 print가 실행되도록 한다.
+- 모바일 Safari / iOS에서 깨질 수 있음을 전제로 검수한다.
+- 사진이 많은 문서형 기록은 서버 PDF 방식과 비교 검토한다.
+
+### 3. 하이브리드 원칙
+
+HARU2026 PDF는 하나의 방식만 고집하지 않는다.
+
+- 사진과 페이지 제어가 중요한 문서형 기록: 서버 PDFKit 우선 검토
+- 단순 기록 출력: 브라우저 `window.print()` 우선 검토
+- 비용, 안정성, 모바일 호환성을 함께 고려한다.
