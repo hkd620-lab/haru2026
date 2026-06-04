@@ -684,13 +684,18 @@ export function RecordPage() {
       typeof (formatData as any)._recordId === 'string' && (formatData as any)._recordId
         ? ((formatData as any)._recordId as string)
         : undefined;
+    const customRecordDate =
+      typeof (formatData as any)._recordDate === 'string' && (formatData as any)._recordDate
+        ? ((formatData as any)._recordDate as string)
+        : undefined;
+    const targetRecordDate = customRecordDate || savedDateStr;
     const formatsOverride = Array.isArray((formatData as any).formats)
       ? ((formatData as any).formats as string[])
       : undefined;
     const updateData: Record<string, any> = {};
     let hasContent = false;
     Object.entries(formatData).forEach(([key, value]) => {
-      if (key === '_recordId' || key === 'formats' || key.startsWith('_growth')) return;
+      if (key === '_recordId' || key === '_recordDate' || key === 'formats' || key.startsWith('_growth')) return;
       if (typeof value === 'string' && value.trim().length > 0) {
         updateData[key] = value;
         hasContent = true;
@@ -703,7 +708,7 @@ export function RecordPage() {
     try {
       const recordId = await firestoreService.saveRecord(user.uid, {
         ...(customRecordId ? { id: customRecordId } : {}),
-        date: savedDateStr,
+        date: targetRecordDate,
         weather,
         temperature,
         mood,
@@ -749,9 +754,9 @@ export function RecordPage() {
             name: growthSubjectName,
             ...(existingGrowthSubjectId ? {} : { createdAt: serverTimestamp() }),
             updatedAt: serverTimestamp(),
-            latestRecordDate: savedDateStr,
+            latestRecordDate: targetRecordDate,
             ...(photoUrls[0] ? { latestPhotoUrl: photoUrls[0] } : {}),
-            linkedRecordDates: arrayUnion(savedDateStr),
+            linkedRecordDates: arrayUnion(targetRecordDate),
           },
           { merge: true },
         );
@@ -761,7 +766,7 @@ export function RecordPage() {
             category: '비서',
             type: 'timeline',
             title: growthSubjectName,
-            date: savedDateStr,
+            date: targetRecordDate,
             summary: `${growthSubjectType === 'child' ? '육아' : '텃밭'} 성장타임라인`,
             refPath: `users/${user.uid}/growthSubjects/${growthSubjectId}`,
             meta: buildTimelineMeta(gsSnap.data() || {}),
@@ -772,7 +777,7 @@ export function RecordPage() {
         await setDoc(
           doc(db, 'users', user.uid, 'growthSubjects', growthSubjectId, 'entries', recordId),
           {
-            recordDate: savedDateStr,
+            recordDate: targetRecordDate,
             recordId,
             subjectType: growthSubjectType,
             subjectName: growthSubjectName,
