@@ -2938,18 +2938,18 @@ export const lawSearch = onCall(
         .filter((j: any) => j.articleStr !== '제undefined조' && j.content.length > 5);
 
       // 3단계: Gemini로 관련 조문만 선별 (최대 5개)
-      const allText = allJomuns
-        .map((j: any) => `${j.articleStr}(${j.title}): ${j.content}`)
+      const jomunCatalog = allJomuns
+        .map((j: any) => `${j.articleStr}(${j.title})`)
         .join('\n');
 
       const selectModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
       const selectResult = await selectModel.generateContent(
-        `다음은 ${lawName}의 조문 목록입니다.
+        `다음은 ${lawName}의 조문 목차입니다.
 사용자 질문 "${query}"과 가장 관련된 조문 번호를 최대 3개만 골라서
 쉼표로 구분하여 출력하세요. 조문 번호만 (예: 제311조,제312조,제307조)
 
-조문 목록:
-${allText.slice(0, 8000)}`
+조문 목차:
+${jomunCatalog}`
       );
 
       const selectedNums = selectResult.response.text()
