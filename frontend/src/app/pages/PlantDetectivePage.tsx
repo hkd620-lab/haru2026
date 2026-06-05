@@ -4,7 +4,7 @@ import { ArrowLeft, Camera, Leaf, Loader2, Search, X, Save, AlertTriangle, Chevr
 import { useLocation, useNavigate } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { doc, getDoc, setDoc, arrayUnion, collection, getDocs, query, where, limit, serverTimestamp, increment, orderBy, addDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, arrayUnion, collection, getDocs, query, where, limit, serverTimestamp, increment, orderBy, addDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { db, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -436,6 +436,7 @@ export function PlantDetectivePage() {
         idx?: number;
         entryIndex?: number;
         from?: string;
+        mode?: 'view' | 'edit';
       }
     | null;
   const selectedRecordId = sayuSelectedPlant?.recordId;
@@ -451,6 +452,7 @@ export function PlantDetectivePage() {
   const [result, setResult] = useState<AdvancedResult | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [savedToToday, setSavedToToday] = useState(false);
+  const [editingSavedEntryKey, setEditingSavedEntryKey] = useState<{ recordId: string; idx: number } | null>(null);
   const [activeTab, setActiveTab] = useState<'detect' | 'recent' | 'library' | 'diary' | 'catalog'>('detect');
   const [plantLibrary, setPlantLibrary] = useState<PlantLibraryItem[]>([]);
   const [plantDiary, setPlantDiary] = useState<PlantDiaryEntry[]>([]);
@@ -635,9 +637,14 @@ export function PlantDetectivePage() {
           ? entry.imageMetas
               .map((meta: any, index: number) => ({
                 imageUrl: String(meta?.imageUrl || meta?.downloadUrl || imageUrls[index] || '').trim(),
+                thumbnailUrl: String(meta?.thumbnailUrl || '').trim(),
                 storagePath: String(meta?.storagePath || '').trim(),
+                thumbnailStoragePath: String(meta?.thumbnailStoragePath || '').trim(),
                 fileName: String(meta?.fileName || '').trim(),
+                thumbnailFileName: String(meta?.thumbnailFileName || '').trim(),
                 uploadedAt: toFiniteNumber(meta?.uploadedAt) || createdAt || 0,
+                regionLabel: String(meta?.regionLabel || '').trim(),
+                placeName: String(meta?.placeName || '').trim(),
               }))
               .filter((meta: PlantImageMeta) => meta.imageUrl)
           : imageUrls.map((url: string, index: number) => ({
@@ -659,7 +666,18 @@ export function PlantDetectivePage() {
                 (index === 0 ? toFiniteNumber(entry.uploadedAt) : null) ||
                 createdAt ||
                 0,
+              regionLabel: '',
+              placeName: '',
             }));
+        const savedLocation = String(
+          entry.locationLabel ||
+            entry.publicLocation ||
+            entry.placeName ||
+            entry.regionLabel ||
+            savedImageMetas.find((meta) => meta.placeName)?.placeName ||
+            savedImageMetas.find((meta) => meta.regionLabel)?.regionLabel ||
+            '',
+        ).trim();
         setPhotos(imageUrls.map((url: string, index: number) => ({
           id: `saved_${selectedRecordId}_${selectedPlantIndex}_${index}`,
           previewUrl: url,
@@ -688,10 +706,13 @@ export function PlantDetectivePage() {
         setActivePlantImageMetas(savedImageMetas);
         setActivePlantCreatedAt(createdAt);
         setKoreanInfo(null);
-        setObsObservation('');
-        setObsAiDifference('');
-        setObsMemo('');
+        setObsObservation(String(entry.observation || '').trim());
+        setObsAiDifference(String(entry.aiDifference || '').trim());
+        setObsMemo(String(entry.memo || '').trim());
         setObsSavedAt(null);
+        setConfirmedLocation(savedLocation);
+        setLocationTouched(Boolean(savedLocation));
+        setEditingSavedEntryKey({ recordId: selectedRecordId, idx: selectedPlantIndex });
         setActiveTab('detect');
         setShowGuide(false);
         toast.success('선택한 식물 판독 기록을 열었습니다.');
@@ -710,6 +731,7 @@ export function PlantDetectivePage() {
   const resetSessionState = () => {
     setResult(null);
     setSavedToToday(false);
+    setEditingSavedEntryKey(null);
     setLibraryMatches([]);
     setCommunityCorrectionKnown(false);
     setUserConfirmedName('');
@@ -2009,9 +2031,126 @@ export function PlantDetectivePage() {
     }
   };
 
+  const updateSelectedPlantDetectiveRecord = async () => {
+    if (!user || !editingSavedEntryKey) {
+      toast.error('수정할 식물 기록을 찾을 수 없습니다.');
+      return;
+    }
+    if (!result) {
+      toast.info('먼저 식물 판독 기록을 불러와 주세요.');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const { recordId, idx } = editingSavedEntryKey;
+      const recordRef = doc(db, 'users', user.uid, 'records', recordId);
+      const recordSnap = await getDoc(recordRef);
+      const data = recordSnap.exists() ? recordSnap.data() : null;
+      const current = Array.isArray(data?.plantDetective) ? [...data.plantDetective] : [];
+      const prev = current[idx];
+      if (!prev || typeof prev !== 'object') {
+        throw new Error('수정할 식물 판독 기록을 찾을 수 없습니다.');
+      }
+
+      const updatedAt = Date.now();
+      const editedAt = new Date(updatedAt).toISOString();
+      const { name: displayName, latin: displayLatin, englishName, scientificName } = buildDisplayName();
+      const imageUrls = activePlantImageUrls.length > 0
+        ? activePlantImageUrls
+        : Array.isArray(prev.imageUrls)
+          ? prev.imageUrls.filter((url: any) => typeof url === 'string' && url.trim())
+          : typeof prev.imageUrl === 'string' && prev.imageUrl.trim()
+            ? [prev.imageUrl]
+            : [];
+      const imageMetas = activePlantImageMetas.length > 0
+        ? activePlantImageMetas
+        : imageUrls.map((url, imageIndex) => ({
+            imageUrl: url,
+            storagePath: Array.isArray(prev.storagePaths) ? String(prev.storagePaths[imageIndex] || '') : '',
+            fileName: Array.isArray(prev.fileNames) ? String(prev.fileNames[imageIndex] || '') : '',
+            uploadedAt:
+              toFiniteNumber(Array.isArray(prev.uploadedAts) ? prev.uploadedAts[imageIndex] : null) ||
+              toFiniteNumber(prev.uploadedAt) ||
+              updatedAt,
+          }));
+      const resultSaveFields = buildResultSaveFields(imageMetas, updatedAt);
+      const observation = obsObservation.trim();
+      const aiDifference = obsAiDifference.trim();
+      const memo = obsMemo.trim();
+      const userName = userConfirmedName.trim();
+      const editHistory = Array.isArray(prev.editHistory) ? prev.editHistory : [];
+      const resolvedLocation =
+        confirmedLocation.trim() ||
+        resultSaveFields.locationLabel ||
+        prev.locationLabel ||
+        prev.publicLocation ||
+        '';
+
+      current[idx] = removeUndefinedForFirestore({
+        ...prev,
+        ...resultSaveFields,
+        updatedAt,
+        editedAt,
+        editCount: editHistory.length + 1,
+        editHistory: [
+          ...editHistory,
+          {
+            editedAt,
+            previousTitle: String(prev.title || prev.plantName || ''),
+            previousUserConfirmedName: String(prev.userConfirmedName || prev.humanReportedName || ''),
+            previousEnglishName: String(prev.englishName || ''),
+            previousScientificName: String(prev.scientificName || prev.latinName || ''),
+            previousObservation: String(prev.observation || ''),
+            previousAiDifference: String(prev.aiDifference || ''),
+            previousMemo: String(prev.memo || ''),
+          },
+        ],
+        plantId: prev.plantId || activePlantDocId || '',
+        imageUrl: imageUrls[0] || prev.imageUrl || '',
+        imageUrls,
+        title: displayName,
+        plantName: displayName,
+        latinName: displayLatin,
+        englishName,
+        scientificName,
+        userConfirmedName: userName,
+        humanReportedName: userName || prev.humanReportedName || '',
+        aiKoName: result.plantNet?.koName || result.gemini?.finalGuess || prev.aiKoName || '',
+        aiPrediction: result.plantNet?.name || result.plantId?.name || result.gemini?.finalGuess || prev.aiPrediction || '',
+        condition: result.gemini?.analysis || prev.condition || '',
+        confidence: result.gemini?.confidence || prev.confidence || 'low',
+        warningSigns: result.gemini?.warning
+          ? [result.gemini.warning]
+          : Array.isArray(prev.warningSigns)
+            ? prev.warningSigns
+            : [],
+        note: result.gemini?.warning || prev.note || '',
+        observation,
+        aiDifference,
+        memo,
+        locationLabel: resolvedLocation,
+        publicLocation: resolvedLocation,
+      });
+
+      await updateDoc(recordRef, {
+        plantDetective: current,
+        updatedAt: serverTimestamp(),
+      });
+      setSavedToToday(true);
+      toast.success('식물 판독 기록을 수정했습니다.');
+    } catch (error: any) {
+      console.error('식물 판독 기록 수정 실패:', error);
+      toast.error(error?.message || '수정에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const gemini = result?.gemini;
   const showPoisonAlert = Boolean(gemini?.poisonousRisk || gemini?.warning);
   const userConfirmSaveDisabled = isConfirming || (!result && photos.length === 0);
+  const isEditingSavedEntry = editingSavedEntryKey !== null;
+  const primarySaveDisabled = isSaving || (!isEditingSavedEntry && savedToToday);
 
   return (
     <div style={{ minHeight: '100vh', background: '#FEFBE8', color: '#24301f' }}>
@@ -2468,7 +2607,7 @@ export function PlantDetectivePage() {
                   type="button"
                   onClick={() => removePhoto(p.id)}
                   aria-label="사진 제거"
-                  disabled={isAnalyzing}
+                  disabled={isAnalyzing || isEditingSavedEntry}
                   style={{
                     position: 'absolute',
                     top: 6,
@@ -2481,14 +2620,14 @@ export function PlantDetectivePage() {
                     color: '#fff',
                     display: 'grid',
                     placeItems: 'center',
-                    cursor: 'pointer',
+                    cursor: isAnalyzing || isEditingSavedEntry ? 'not-allowed' : 'pointer',
                   }}
                 >
                   <X size={14} />
                 </button>
               </div>
             ))}
-            {photos.length < MAX_PHOTOS && (
+            {photos.length < MAX_PHOTOS && !isEditingSavedEntry && (
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -2530,14 +2669,14 @@ export function PlantDetectivePage() {
             <button
               type="button"
               onClick={analyzePlant}
-              disabled={photos.length === 0 || isPreparing || isAnalyzing}
+              disabled={photos.length === 0 || isPreparing || isAnalyzing || isEditingSavedEntry}
               style={{
                 flex: 1,
                 height: 48,
                 borderRadius: 8,
                 border: '1px solid #B85C2E',
                 background:
-                  photos.length === 0 || isPreparing || isAnalyzing ? '#e7dfc8' : '#B85C2E',
+                  photos.length === 0 || isPreparing || isAnalyzing || isEditingSavedEntry ? '#e7dfc8' : '#B85C2E',
                 color: '#fff',
                 fontWeight: 900,
                 display: 'inline-flex',
@@ -2547,9 +2686,9 @@ export function PlantDetectivePage() {
               }}
             >
               {isAnalyzing ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
-              {isAnalyzing ? '교차검증 중...' : '식물 탐정 시작'}
+              {isEditingSavedEntry ? '불러온 기록' : isAnalyzing ? '교차검증 중...' : '식물 탐정 시작'}
             </button>
-            {photos.length > 0 && (
+            {photos.length > 0 && !isEditingSavedEntry && (
               <button
                 type="button"
                 onClick={clearAll}
@@ -3555,18 +3694,18 @@ export function PlantDetectivePage() {
                 lineHeight: 1.55,
               }}
             >
-              오늘의 관찰과 식물 정보를 함께 저장합니다
+              {isEditingSavedEntry ? '사유에서 불러온 식물 기록을 수정합니다' : '오늘의 관찰과 식물 정보를 함께 저장합니다'}
             </p>
             <button
               type="button"
-              onClick={saveTodayAllRecord}
-              disabled={isSaving || savedToToday}
+              onClick={isEditingSavedEntry ? updateSelectedPlantDetectiveRecord : saveTodayAllRecord}
+              disabled={primarySaveDisabled}
               style={{
                 width: '100%',
                 height: 52,
                 borderRadius: 10,
                 border: '1px solid #4A5A2C',
-                background: savedToToday ? '#e7dfc8' : isSaving ? '#7b8b4b' : '#4A5A2C',
+                background: primarySaveDisabled ? '#e7dfc8' : isSaving ? '#7b8b4b' : '#4A5A2C',
                 color: '#fff',
                 fontWeight: 900,
                 fontSize: 16,
@@ -3574,16 +3713,18 @@ export function PlantDetectivePage() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 8,
-                cursor: isSaving || savedToToday ? 'not-allowed' : 'pointer',
+                cursor: primarySaveDisabled ? 'not-allowed' : 'pointer',
               }}
-              title="오늘의 식물 기록과 관찰 내용을 함께 저장합니다"
+              title={isEditingSavedEntry ? '사유에서 불러온 식물 기록을 수정합니다' : '오늘의 식물 기록과 관찰 내용을 함께 저장합니다'}
             >
               {isSaving ? (
                 <Loader2 size={18} className="animate-spin" />
               ) : (
                 <span style={{ fontSize: 18 }}>📔</span>
               )}
-              {savedToToday ? '오늘 기록에 저장됨' : isSaving ? '저장 중...' : '오늘 기록 저장'}
+              {isEditingSavedEntry
+                ? isSaving ? '수정 중...' : '수정 저장'
+                : savedToToday ? '오늘 기록에 저장됨' : isSaving ? '저장 중...' : '오늘 기록 저장'}
             </button>
 
             <p style={{ fontSize: 11, color: '#7a725d', textAlign: 'center', lineHeight: 1.55 }}>
