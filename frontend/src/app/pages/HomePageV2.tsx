@@ -530,6 +530,8 @@ export function HomePageV2() {
         .v2-rec:active { transform: translateY(0) scale(0.99); }
         .v2-agent:hover { transform: translateY(-2px); box-shadow:0 12px 28px -18px rgba(74,90,44,0.25); }
         .v2-agent:active { transform: translateY(0) scale(0.99); }
+        .v2-preview:hover { transform: translateY(-1px); border-color:#D4DEA0; color:#4A5A2C; box-shadow:0 10px 22px -18px rgba(74,90,44,0.24); }
+        .v2-preview:active { transform: scale(0.99); }
         .v2-cta:hover { background:#3F4F26; }
         .v2-cta:active { transform: scale(0.99); }
         .v2-cta:hover .v2-cta-arrow { transform: translateX(4px); background: rgba(245,240,232,0.2); }
@@ -1191,6 +1193,34 @@ export function HomePageV2() {
               </>
             }
           />
+          <button
+            type="button"
+            onClick={() => navigate('/onboarding-preview', { state: { from: '/v2' } })}
+            className="v2-preview"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              border: '1px solid #E5DFD0',
+              background: '#fff',
+              color: '#7A6F5A',
+              borderRadius: 999,
+              padding: '8px 12px',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
+              margin: '-6px 0 14px',
+              transition:
+                'transform 160ms cubic-bezier(0.22,0.61,0.36,1), box-shadow 180ms, border-color 180ms, color 180ms',
+            }}
+          >
+            <PillSvg>
+              <path d="M4 19V5a2 2 0 012-2h8l4 4v12a2 2 0 01-2 2H6a2 2 0 01-2-2z" />
+              <path d="M14 3v5h5" />
+              <path d="M8 13h8M8 17h5" />
+            </PillSvg>
+            HARU2026 활용법 미리보기
+          </button>
           <div
             data-v2="agents-grid"
             style={{
