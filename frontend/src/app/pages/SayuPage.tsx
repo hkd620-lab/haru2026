@@ -42,6 +42,21 @@ const PUBLIC_SAYU_REQUIRED_MESSAGE = '먼저 SAYU 다듬기를 완료한 뒤 공
 const PUBLIC_ALLOWED_FORMAT_KEYS = new Set(['diary', 'essay', 'travel', 'garden', 'pet', 'memo', 'reading']);
 const GROWTH_TIMELINE_FORMAT_LABEL = '성장타임라인';
 const GROWTH_TIMELINE_SAYU_LABEL = 'HARU비서기록';
+type PlantSayuEntryType = 'detective' | 'diary' | 'library' | 'catalog';
+type PlantSayuFilter = 'all' | PlantSayuEntryType;
+const PLANT_SAYU_FILTERS: { key: PlantSayuFilter; label: string }[] = [
+  { key: 'all', label: '전체' },
+  { key: 'detective', label: '판독기록' },
+  { key: 'diary', label: '성장일기' },
+  { key: 'library', label: '도감기록' },
+  { key: 'catalog', label: '공개기록' },
+];
+const PLANT_SAYU_TYPE_LABEL: Record<PlantSayuEntryType, string> = {
+  detective: '판독기록',
+  diary: '성장일기',
+  library: '도감기록',
+  catalog: '공개기록',
+};
 
 type GrowthTimelineRecordItem = {
   url: string;
@@ -92,10 +107,55 @@ interface SayuPlantLibraryItem {
   finalLatinName?: string;
   imageUrl?: string;
   photos?: string[];
+  aiKoName?: string;
+  aiPrediction?: string;
+  description?: string;
+  featureSummary?: string;
+  features?: string;
+  characteristics?: string;
+  cultivationMemo?: string;
+  careMemo?: string;
+  memo?: string;
+  note?: string;
+  publicLocation?: string;
+  addressRegion?: string;
+  region?: string;
+  city?: string;
+  province?: string;
+  country?: string;
+  visibility?: string;
+  isPublic?: boolean;
+  publicAllowed?: boolean;
+  shareToPublic?: boolean;
+  sharedCatalogId?: string;
+  catalogId?: string;
+  ownerUid?: string;
+  uid?: string;
+  userId?: string;
+  createdBy?: string;
+  createdByUid?: string;
+  sourceUid?: string;
+  authorUid?: string;
+  contributorUid?: string;
+  sourcePath?: string;
+  refPath?: string;
+  geminiAnalysis?: {
+    analysis?: string;
+    warning?: string;
+    [key: string]: any;
+  };
   updatedAt?: any;
   createdAt?: any;
   observationCount?: number;
   watermarkText?: string;
+}
+interface PlantReadOnlyDetail {
+  type: PlantSayuEntryType;
+  title: string;
+  date: string;
+  subtitle?: string;
+  imageUrl?: string;
+  sections: { label: string; value: string }[];
 }
 interface SayuPlantDiaryEditKey {
   recordId: string;
@@ -507,6 +567,8 @@ export function SayuPage() {
   const [expandedPlantIds, setExpandedPlantIds] = useState<Set<string>>(new Set());
   const [selectedPlantEntryIds, setSelectedPlantEntryIds] = useState<Set<string>>(new Set());
   const [plantDeleteBusy, setPlantDeleteBusy] = useState(false);
+  const [plantSayuFilter, setPlantSayuFilter] = useState<PlantSayuFilter>('all');
+  const [plantReadOnlyDetail, setPlantReadOnlyDetail] = useState<PlantReadOnlyDetail | null>(null);
   const [plantLibraryItems, setPlantLibraryItems] = useState<SayuPlantLibraryItem[]>([]);
   const [plantCatalogItems, setPlantCatalogItems] = useState<SayuPlantLibraryItem[]>([]);
   const [plantLibraryLoaded, setPlantLibraryLoaded] = useState(false);
@@ -2104,9 +2166,175 @@ export function SayuPage() {
     subtitle?: string;
     color: string;
     keywords?: string[];
+    plantType?: PlantSayuEntryType;
     onOpen: () => void;
     extra?: ReactNode;
   };
+
+  const compactPlantText = (value: any, max = 90) => {
+    const text = String(value || '').replace(/\s+/g, ' ').trim();
+    return text.length > max ? `${text.slice(0, max)}...` : text;
+  };
+
+  const getPlantDateKeyFromValue = (value: any, fallback = '') => {
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+    if (value?.toDate && typeof value.toDate === 'function') return getLocalDateKey(value.toDate());
+    if (typeof value === 'number') return getLocalDateKey(value);
+    if (value) {
+      const parsed = new Date(value);
+      if (!Number.isNaN(parsed.getTime())) return getLocalDateKey(parsed);
+    }
+    return fallback || getLocalDateKey();
+  };
+
+  const getPlantItemDateKey = (item: any, fallback = '') => getPlantDateKeyFromValue(
+    item?.recordDate ||
+      item?.date ||
+      item?.updatedDate ||
+      item?.createdDate ||
+      item?.updatedAt ||
+      item?.createdAt,
+    fallback,
+  );
+
+  const getPlantImageUrl = (item: any) => {
+    const findUrl = (value: any): string => {
+      if (typeof value === 'string' && value.trim().startsWith('http')) return value.trim();
+      if (value && typeof value === 'object') {
+        return findUrl(value.thumbnailUrl || value.imageUrl || value.downloadUrl || value.url || value.photoUrl);
+      }
+      return '';
+    };
+    const direct = findUrl(item?.thumbnailUrl || item?.imageUrl || item?.latestPhotoUrl || item?.photoUrl);
+    if (direct) return direct;
+    for (const field of ['imageMetas', 'photos', 'imageUrls', 'growthPhotos'] as const) {
+      const arr = Array.isArray(item?.[field]) ? item[field] : [];
+      for (const value of arr) {
+        const url = findUrl(value);
+        if (url) return url;
+      }
+    }
+    return '';
+  };
+
+  const getPlantDisplayName = (item: any) =>
+    String(
+      item?.title ||
+        item?.displayName ||
+        item?.userConfirmedName ||
+        item?.humanReportedName ||
+        item?.plantName ||
+        item?.finalGuess ||
+        item?.aiKoName ||
+        item?.aiPrediction ||
+        '식물 이름 불확실',
+    ).trim();
+
+  const getPlantScientificLine = (item: any) =>
+    [item?.englishName || item?.aiPrediction, item?.scientificName || item?.finalLatinName || item?.latinName]
+      .filter((value) => String(value || '').trim())
+      .map((value) => String(value).trim())
+      .join(' / ');
+
+  const getPlantAiSummary = (item: any) =>
+    compactPlantText(
+      item?.condition ||
+        item?.geminiAnalysis?.analysis ||
+        item?.gemini?.analysis ||
+        item?.featureSummary ||
+        item?.description ||
+        item?.note ||
+        item?.warningSigns?.[0],
+    );
+
+  const getPlantMemoSummary = (item: any) =>
+    compactPlantText(item?.memo || item?.observation || item?.aiDifference || item?.cultivationMemo || item?.careMemo);
+
+  const getPublicPlantLocation = (item: any) =>
+    [item?.publicLocation, item?.addressRegion, item?.region, item?.city, item?.province, item?.country]
+      .map((value) => String(value || '').trim())
+      .find(Boolean) || '';
+
+  const isPublicPlantItem = (item: any) => (
+    item?.visibility === 'public_readonly' ||
+    item?.visibility === 'public' ||
+    item?.isPublic === true ||
+    item?.publicAllowed === true ||
+    item?.shareToPublic === true ||
+    Boolean(item?.sharedCatalogId || item?.catalogId)
+  );
+
+  const isOwnedCatalogItem = (item: any) => {
+    if (!user?.uid) return false;
+    const uid = user.uid;
+    const ownerCandidates = [
+      item?.ownerUid,
+      item?.uid,
+      item?.userId,
+      item?.createdBy,
+      item?.createdByUid,
+      item?.sourceUid,
+      item?.authorUid,
+      item?.contributorUid,
+    ].map((value) => String(value || '').trim()).filter(Boolean);
+    if (ownerCandidates.includes(uid)) return true;
+    return [item?.sourcePath, item?.refPath]
+      .map((value) => String(value || '').trim())
+      .some((path) => path.startsWith(`users/${uid}/`));
+  };
+
+  const openPlantReadOnlyDetail = (detail: PlantReadOnlyDetail) => {
+    setPlantReadOnlyDetail({
+      ...detail,
+      sections: detail.sections.filter((section) => section.value.trim()),
+    });
+  };
+
+  const renderPlantReadOnlyPreview = ({
+    imageUrl,
+    badge,
+    lines,
+    onOpen,
+  }: {
+    imageUrl?: string;
+    badge: string;
+    lines: string[];
+    onOpen: () => void;
+  }) => (
+    <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '0 18px 12px 68px' }}>
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt={`${badge} 대표사진`}
+          style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', border: '1px solid #e5e7eb', flexShrink: 0 }}
+        />
+      ) : (
+        <div
+          aria-hidden="true"
+          style={{ width: 52, height: 52, borderRadius: 8, backgroundColor: '#ecfdf5', border: '1px solid #d1fae5', display: 'grid', placeItems: 'center', color: '#15803d', flexShrink: 0 }}
+        >
+          <Leaf className="w-5 h-5" />
+        </div>
+      )}
+      <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+        <span style={{ alignSelf: 'flex-start', borderRadius: 999, backgroundColor: '#ecfdf5', color: '#15803d', padding: '3px 8px', fontSize: 11, fontWeight: 800 }}>
+          {badge}
+        </span>
+        {lines.filter(Boolean).slice(0, 2).map((line, idx) => (
+          <span key={idx} style={{ fontSize: 12, color: '#4B5563', lineHeight: 1.45, overflowWrap: 'anywhere', wordBreak: 'keep-all' }}>
+            {line}
+          </span>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={onOpen}
+        style={{ minHeight: 30, padding: '0 11px', borderRadius: 7, border: '1px solid #d8c98a', background: '#fff', color: '#4A5A2C', fontSize: 12, fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}
+      >
+        상세보기
+      </button>
+    </div>
+  );
 
   const getSayuGroupKey = (tab: 'records' | 'assistants', label: string) => `${tab}_${label}`;
 
@@ -2271,6 +2499,230 @@ export function SayuPage() {
   const growthTimelineEntries = allRecordEntries.filter((entry) => entry.label === GROWTH_TIMELINE_SAYU_LABEL);
   const recordEntries = allRecordEntries.filter((entry) => entry.label !== GROWTH_TIMELINE_SAYU_LABEL);
 
+  const plantDetectiveEntries: FlatSayuEntry[] = records
+    .filter((record) => isCurrentMonthDate(record.date) && !isKnowledgeWarehouseRecord(record))
+    .flatMap((record: any) =>
+      (Array.isArray(record.plantDetective) ? record.plantDetective : []).map((entry: any, idx: number) => {
+        const imageUrl = getPlantImageUrl(entry);
+        const title = getPlantDisplayName(entry).slice(0, 48);
+        const subtitle = getPlantScientificLine(entry);
+        const aiSummary = getPlantAiSummary(entry);
+        const memoSummary = getPlantMemoSummary(entry);
+        const onOpen = () => openPlantReadOnlyDetail({
+          type: 'detective',
+          title,
+          date: record.date,
+          subtitle,
+          imageUrl,
+          sections: [
+            { label: 'AI 판독 요약', value: aiSummary },
+            { label: '사용자 메모', value: memoSummary },
+            { label: '학명/영문명', value: subtitle },
+            { label: '촬영 지역', value: String(entry?.locationLabel || entry?.publicLocation || '').trim() },
+          ],
+        });
+        return {
+          id: `${record.id}_plant_detective_${idx}`,
+          date: record.date,
+          label: '하루식물탐정',
+          title,
+          subtitle,
+          color: '#10b981',
+          plantType: 'detective' as const,
+          onOpen,
+          extra: renderPlantReadOnlyPreview({
+            imageUrl,
+            badge: PLANT_SAYU_TYPE_LABEL.detective,
+            lines: [
+              aiSummary ? `AI 요약: ${aiSummary}` : '',
+              memoSummary ? `메모: ${memoSummary}` : '',
+            ],
+            onOpen,
+          }),
+        };
+      }),
+    );
+
+  const plantDiaryEntries: FlatSayuEntry[] = records
+    .filter((record) => !isKnowledgeWarehouseRecord(record))
+    .flatMap((record: any) =>
+      (Array.isArray(record.plantObservation) ? record.plantObservation : []).map((entry: any, idx: number) => {
+        const date = getPlantItemDateKey(entry, record.date);
+        const imageUrl = getPlantImageUrl(entry);
+        const title = getPlantDisplayName(entry).slice(0, 48);
+        const subtitle = [entry?.growthStage || entry?.stage || entry?.condition, getPlantScientificLine(entry)]
+          .filter((value) => String(value || '').trim())
+          .join(' / ');
+        const bodySummary = compactPlantText(entry?.observation || entry?.memo || entry?.content || entry?.note);
+        const stageSummary = compactPlantText(entry?.growthStage || entry?.stage || '');
+        const onOpen = () => openPlantReadOnlyDetail({
+          type: 'diary',
+          title,
+          date,
+          subtitle,
+          imageUrl,
+          sections: [
+            { label: '본문/메모 요약', value: bodySummary },
+            { label: '성장 단계', value: stageSummary },
+            { label: 'AI 차이/관찰', value: compactPlantText(entry?.aiDifference) },
+            { label: '기록 기준일', value: formatKoreanDate(getPlantItemDateKey(entry, record.date)) },
+          ],
+        });
+        return {
+          id: `${record.id}_plant_diary_${idx}`,
+          date,
+          label: '하루식물탐정',
+          title,
+          subtitle,
+          color: '#34a853',
+          plantType: 'diary' as const,
+          onOpen,
+          extra: renderPlantReadOnlyPreview({
+            imageUrl,
+            badge: PLANT_SAYU_TYPE_LABEL.diary,
+            lines: [
+              bodySummary,
+              stageSummary ? `성장 단계: ${stageSummary}` : '',
+            ],
+            onOpen,
+          }),
+        };
+      }),
+    )
+    .filter((entry) => isCurrentMonthDate(entry.date));
+
+  const plantLibraryEntries: FlatSayuEntry[] = plantLibraryItems
+    .map((item) => {
+      const date = getPlantItemDateKey(item);
+      const imageUrl = getPlantImageUrl(item);
+      const title = getPlantDisplayName(item).slice(0, 48);
+      const subtitle = getPlantScientificLine(item);
+      const featureSummary = compactPlantText(item.characteristics || item.features || item.featureSummary || item.description || item.geminiAnalysis?.analysis);
+      const memoSummary = compactPlantText(item.cultivationMemo || item.careMemo || item.memo || item.note);
+      const publicState = isPublicPlantItem(item) ? '공개 연결 있음' : '비공개/미공개';
+      const onOpen = () => openPlantReadOnlyDetail({
+        type: 'library',
+        title,
+        date,
+        subtitle,
+        imageUrl,
+        sections: [
+          { label: '학명/영문명', value: subtitle },
+          { label: '특징 설명', value: featureSummary },
+          { label: '재배 메모', value: memoSummary },
+          { label: '공개 여부', value: publicState },
+        ],
+      });
+      return {
+        id: `plant_library_${item.id}`,
+        date,
+        label: '하루식물탐정',
+        title,
+        subtitle,
+        color: '#4A5A2C',
+        plantType: 'library' as const,
+        onOpen,
+        extra: renderPlantReadOnlyPreview({
+          imageUrl,
+          badge: PLANT_SAYU_TYPE_LABEL.library,
+          lines: [
+            featureSummary ? `특징: ${featureSummary}` : '',
+            memoSummary ? `재배 메모: ${memoSummary}` : publicState,
+          ],
+          onOpen,
+        }),
+      };
+    })
+    .filter((entry) => isCurrentMonthDate(entry.date));
+
+  const plantPublicEntriesFromLibrary: FlatSayuEntry[] = plantLibraryItems
+    .filter(isPublicPlantItem)
+    .map((item) => {
+      const date = getPlantItemDateKey(item);
+      const imageUrl = getPlantImageUrl(item);
+      const title = getPlantDisplayName(item).slice(0, 48);
+      const subtitle = getPublicPlantLocation(item) || getPlantScientificLine(item);
+      const description = compactPlantText(item.description || item.featureSummary || item.characteristics || item.features || item.geminiAnalysis?.analysis);
+      const publicLocation = getPublicPlantLocation(item);
+      const onOpen = () => openPlantReadOnlyDetail({
+        type: 'catalog',
+        title,
+        date,
+        subtitle,
+        imageUrl,
+        sections: [
+          { label: '공개 제목/설명', value: description },
+          { label: '공개용 지역명', value: publicLocation },
+          { label: '학명/영문명', value: getPlantScientificLine(item) },
+        ],
+      });
+      return {
+        id: `plant_public_library_${item.id}`,
+        date,
+        label: '하루식물탐정',
+        title,
+        subtitle,
+        color: '#0f766e',
+        plantType: 'catalog' as const,
+        onOpen,
+        extra: renderPlantReadOnlyPreview({
+          imageUrl,
+          badge: PLANT_SAYU_TYPE_LABEL.catalog,
+          lines: [
+            description,
+            publicLocation ? `공개 지역: ${publicLocation}` : '공개 지역 미표시',
+          ],
+          onOpen,
+        }),
+      };
+    })
+    .filter((entry) => isCurrentMonthDate(entry.date));
+
+  const plantPublicEntriesFromCatalog: FlatSayuEntry[] = plantCatalogItems
+    .filter(isOwnedCatalogItem)
+    .map((item) => {
+      const date = getPlantItemDateKey(item);
+      const imageUrl = getPlantImageUrl(item);
+      const title = getPlantDisplayName(item).slice(0, 48);
+      const subtitle = getPublicPlantLocation(item) || getPlantScientificLine(item);
+      const description = compactPlantText(item.description || item.featureSummary || item.characteristics || item.features || item.geminiAnalysis?.analysis);
+      const publicLocation = getPublicPlantLocation(item);
+      const onOpen = () => openPlantReadOnlyDetail({
+        type: 'catalog',
+        title,
+        date,
+        subtitle,
+        imageUrl,
+        sections: [
+          { label: '공개 제목/설명', value: description },
+          { label: '공개용 지역명', value: publicLocation },
+          { label: '학명/영문명', value: getPlantScientificLine(item) },
+        ],
+      });
+      return {
+        id: `plant_public_catalog_${item.id}`,
+        date,
+        label: '하루식물탐정',
+        title,
+        subtitle,
+        color: '#0f766e',
+        plantType: 'catalog' as const,
+        onOpen,
+        extra: renderPlantReadOnlyPreview({
+          imageUrl,
+          badge: PLANT_SAYU_TYPE_LABEL.catalog,
+          lines: [
+            description,
+            publicLocation ? `공개 지역: ${publicLocation}` : '공개 지역 미표시',
+          ],
+          onOpen,
+        }),
+      };
+    })
+    .filter((entry) => isCurrentMonthDate(entry.date));
+
+  const plantPublicEntries = [...plantPublicEntriesFromLibrary, ...plantPublicEntriesFromCatalog];
+
   const assistantEntries: FlatSayuEntry[] = [
     ...records
       .filter((record) => (
@@ -2290,50 +2742,10 @@ export function SayuPage() {
         keywords: getRecordPreviewKeywords(record, 'haruraw'),
         onOpen: () => openFormatSayu(record.date, 'haruraw', 'HARUraw', record.id),
       })),
-    ...records
-      .filter((record) => isCurrentMonthDate(record.date) && !isKnowledgeWarehouseRecord(record))
-      .flatMap((record: any) =>
-        (Array.isArray(record.plantDetective) ? record.plantDetective : []).map((entry: any, idx: number) => ({
-          id: `${record.id}_plant_${idx}`,
-          date: record.date,
-          label: '하루식물탐정',
-          title: String(entry?.title || entry?.userConfirmedName || entry?.humanReportedName || entry?.aiKoName || entry?.aiPrediction || '식물 판독 결과').slice(0, 48),
-          subtitle: [entry?.englishName, entry?.scientificName || entry?.latinName].filter(Boolean).join(' / '),
-          color: '#10b981',
-          onOpen: () => navigate('/plant-detective', {
-            state: { from: 'sayu-plant-detective', recordId: record.id, idx, entryIndex: idx, mode: 'view' },
-          }),
-          extra: (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '0 18px 12px' }}>
-              <button
-                type="button"
-                onClick={() => navigate('/plant-detective', {
-                  state: { from: 'sayu-plant-detective', recordId: record.id, idx, entryIndex: idx, mode: 'edit' },
-                })}
-                style={{ minHeight: 28, padding: '0 10px', borderRadius: 7, border: '1px solid #bbf7d0', background: '#f0fdf4', color: '#15803d', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
-              >
-                수정
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate('/plant-detective', {
-                  state: { from: 'sayu-plant-detective', recordId: record.id, idx, entryIndex: idx, mode: 'view' },
-                })}
-                style={{ minHeight: 28, padding: '0 10px', borderRadius: 7, border: '1px solid #d8c98a', background: '#fff', color: '#4A5A2C', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
-              >
-                상세보기
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDeleteSinglePlantEntry(record.id, idx)}
-                style={{ minHeight: 28, padding: '0 10px', borderRadius: 7, border: '1px solid #fecaca', background: '#fff', color: '#dc2626', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
-              >
-                삭제
-              </button>
-            </div>
-          ),
-        })),
-      ),
+    ...plantDetectiveEntries,
+    ...plantDiaryEntries,
+    ...plantLibraryEntries,
+    ...plantPublicEntries,
   ].sort((a, b) => b.date.localeCompare(a.date) || a.label.localeCompare(b.label));
 
   const activeEntries = sayuTab === 'records' ? recordEntries : assistantEntries;
@@ -2451,6 +2863,16 @@ export function SayuPage() {
         {groups.map((group) => {
           const groupKey = getSayuGroupKey(sayuTab, group.label);
           const isExpanded = expandedSayuGroups.has(groupKey);
+          const isPlantGroup = group.label === '하루식물탐정';
+          const visibleGroupEntries = isPlantGroup && plantSayuFilter !== 'all'
+            ? group.entries.filter((entry) => entry.plantType === plantSayuFilter)
+            : group.entries;
+          const plantFilterCounts = PLANT_SAYU_FILTERS.reduce<Record<PlantSayuFilter, number>>((acc, filter) => {
+            acc[filter.key] = filter.key === 'all'
+              ? group.entries.length
+              : group.entries.filter((entry) => entry.plantType === filter.key).length;
+            return acc;
+          }, { all: 0, detective: 0, diary: 0, library: 0, catalog: 0 });
           return (
             <section key={groupKey} className="bg-white rounded-lg shadow-sm overflow-hidden">
               <button
@@ -2467,7 +2889,9 @@ export function SayuPage() {
                       {group.label}
                     </span>
                     <span style={{ color: '#6B7280', fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                      {group.entries.length}개
+                      {isPlantGroup && plantSayuFilter !== 'all'
+                        ? `${visibleGroupEntries.length}/${group.entries.length}개`
+                        : `${group.entries.length}개`}
                     </span>
                   </span>
                   <span style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4 }}>
@@ -2488,7 +2912,46 @@ export function SayuPage() {
 
               {isExpanded && (
                 <div style={{ borderTop: '1px solid #f0f0f0' }}>
-                  {group.entries.map((entry, idx) => (
+                  {isPlantGroup && (
+                    <div
+                      role="tablist"
+                      aria-label="하루식물탐정 세부 필터"
+                      style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '12px 14px', borderBottom: '1px solid #f0f0f0' }}
+                    >
+                      {PLANT_SAYU_FILTERS.map((filter) => {
+                        const active = plantSayuFilter === filter.key;
+                        return (
+                          <button
+                            key={filter.key}
+                            type="button"
+                            role="tab"
+                            aria-selected={active}
+                            onClick={() => setPlantSayuFilter(filter.key)}
+                            style={{
+                              minHeight: 32,
+                              padding: '0 11px',
+                              borderRadius: 999,
+                              border: active ? '1px solid #15803d' : '1px solid #d1fae5',
+                              backgroundColor: active ? '#15803d' : '#f0fdf4',
+                              color: active ? '#fff' : '#166534',
+                              fontSize: 12,
+                              fontWeight: 800,
+                              whiteSpace: 'nowrap',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {filter.label} {plantFilterCounts[filter.key]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {visibleGroupEntries.length === 0 && (
+                    <div style={{ padding: 18, fontSize: 13, color: '#9CA3AF', textAlign: 'center' }}>
+                      선택한 유형의 식물 기록이 없습니다.
+                    </div>
+                  )}
+                  {visibleGroupEntries.map((entry, idx) => (
                     <div key={entry.id} className={idx > 0 ? 'border-t' : ''} style={{ borderColor: '#f0f0f0' }}>
                       <button
                         type="button"
@@ -3202,6 +3665,66 @@ export function SayuPage() {
           );
         })()}
       />
+
+      {plantReadOnlyDetail && (
+        <div
+          onClick={() => setPlantReadOnlyDetail(null)}
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.46)', zIndex: 1000, display: 'flex', alignItems: 'flex-end' }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '100%', maxHeight: '82vh', backgroundColor: '#fff', borderRadius: '16px 16px 0 0', padding: 20, overflowY: 'auto' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
+              <div style={{ minWidth: 0 }}>
+                <span style={{ display: 'inline-flex', borderRadius: 999, backgroundColor: '#ecfdf5', color: '#15803d', padding: '4px 9px', fontSize: 11, fontWeight: 900, marginBottom: 8 }}>
+                  {PLANT_SAYU_TYPE_LABEL[plantReadOnlyDetail.type]}
+                </span>
+                <p style={{ margin: 0, fontSize: 18, fontWeight: 900, color: '#1A3C6E', lineHeight: 1.35, wordBreak: 'keep-all' }}>
+                  {plantReadOnlyDetail.title}
+                </p>
+                <p style={{ margin: '5px 0 0', fontSize: 12, color: '#6B7280' }}>
+                  {formatKoreanDate(plantReadOnlyDetail.date)}
+                  {plantReadOnlyDetail.subtitle ? ` · ${plantReadOnlyDetail.subtitle}` : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPlantReadOnlyDetail(null)}
+                aria-label="닫기"
+                style={{ width: 34, height: 34, borderRadius: 999, border: '1px solid #e5e7eb', background: '#fff', color: '#6B7280', cursor: 'pointer', flexShrink: 0 }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {plantReadOnlyDetail.imageUrl && (
+              <img
+                src={plantReadOnlyDetail.imageUrl}
+                alt={`${plantReadOnlyDetail.title} 대표사진`}
+                style={{ width: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 10, border: '1px solid #e5e7eb', marginBottom: 14 }}
+              />
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {plantReadOnlyDetail.sections.length > 0 ? (
+                plantReadOnlyDetail.sections.map((section) => (
+                  <section key={section.label} style={{ border: '1px solid #edf2f7', borderRadius: 10, padding: '12px 13px', backgroundColor: '#fbfdf9' }}>
+                    <p style={{ margin: '0 0 5px', fontSize: 11, fontWeight: 900, color: '#15803d' }}>{section.label}</p>
+                    <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'keep-all' }}>
+                      {section.value}
+                    </p>
+                  </section>
+                ))
+              ) : (
+                <p style={{ margin: 0, padding: 18, textAlign: 'center', fontSize: 13, color: '#9CA3AF' }}>
+                  표시할 상세 내용이 아직 없습니다.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* HARUraw 모달 */}
       {harurawModal.isOpen && (
