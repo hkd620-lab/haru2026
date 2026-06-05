@@ -57,6 +57,13 @@ const PLANT_SAYU_TYPE_LABEL: Record<PlantSayuEntryType, string> = {
   library: '도감기록',
   catalog: '공개기록',
 };
+const PLANT_SAYU_SOURCE_LABEL: Record<string, string> = {
+  user_confirmed: '사용자 확정',
+  haru_plant_detective: '하루식물탐정',
+  kindwise: 'Plant.id',
+  plantnet: 'PlantNet',
+  gemini: 'AI 분석',
+};
 
 type GrowthTimelineRecordItem = {
   url: string;
@@ -2535,8 +2542,11 @@ export function SayuPage() {
         const aiName = String(entry?.aiKoName || entry?.aiPrediction || '').trim();
         const scientificName = String(entry?.scientificName || entry?.latinName || entry?.finalLatinName || '').trim();
         const locationLabel = String(entry?.locationLabel || entry?.publicLocation || '').trim();
+        const sourceLabel = entry?.source
+          ? (PLANT_SAYU_SOURCE_LABEL[String(entry.source)] || String(entry.source))
+          : '';
         const sourceSummary = [
-          entry?.source,
+          sourceLabel,
           entry?.aiPrediction,
           entry?.englishName,
           entry?.confidence ? `신뢰도 ${entry.confidence}` : '',
@@ -2668,7 +2678,7 @@ export function SayuPage() {
           { label: '학명/영문명', value: subtitle },
           { label: '특징 설명', value: featureSummary },
           { label: '재배 메모', value: memoSummary },
-          { label: '도감 출처', value: 'users/{uid}/plants' },
+          { label: '도감 출처', value: '내 식물도감' },
         ],
       });
       return {
