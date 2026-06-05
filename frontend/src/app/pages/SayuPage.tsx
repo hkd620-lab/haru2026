@@ -149,13 +149,16 @@ interface SayuPlantLibraryItem {
   observationCount?: number;
   watermarkText?: string;
 }
+type PlantReadOnlyField = { label: string; value: string };
 interface PlantReadOnlyDetail {
   type: PlantSayuEntryType;
   title: string;
   date: string;
   subtitle?: string;
   imageUrl?: string;
-  sections: { label: string; value: string }[];
+  summary?: string;
+  coreFields: PlantReadOnlyField[];
+  detailSections: PlantReadOnlyField[];
 }
 interface SayuPlantDiaryEditKey {
   recordId: string;
@@ -569,6 +572,9 @@ export function SayuPage() {
   const [plantDeleteBusy, setPlantDeleteBusy] = useState(false);
   const [plantSayuFilter, setPlantSayuFilter] = useState<PlantSayuFilter>('all');
   const [plantReadOnlyDetail, setPlantReadOnlyDetail] = useState<PlantReadOnlyDetail | null>(null);
+  const [plantDetailIsWide, setPlantDetailIsWide] = useState(() => (
+    typeof window !== 'undefined' && window.innerWidth >= 768
+  ));
   const [plantLibraryItems, setPlantLibraryItems] = useState<SayuPlantLibraryItem[]>([]);
   const [plantCatalogItems, setPlantCatalogItems] = useState<SayuPlantLibraryItem[]>([]);
   const [plantLibraryLoaded, setPlantLibraryLoaded] = useState(false);
@@ -1083,6 +1089,14 @@ export function SayuPage() {
     setPlantLibraryItems([]);
     setPlantCatalogItems([]);
   }, [user?.uid]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const syncPlantDetailWidth = () => setPlantDetailIsWide(window.innerWidth >= 768);
+    syncPlantDetailWidth();
+    window.addEventListener('resize', syncPlantDetailWidth);
+    return () => window.removeEventListener('resize', syncPlantDetailWidth);
+  }, []);
 
   useEffect(() => {
     if (collapsedCategories.has('하루식물탐정')) return;
@@ -2176,6 +2190,13 @@ export function SayuPage() {
     return text.length > max ? `${text.slice(0, max)}...` : text;
   };
 
+  const compactPlantDetailText = (value: any, max = 220) => compactPlantText(value, max);
+
+  const filterPlantInfoFields = (fields: PlantReadOnlyField[]) =>
+    fields
+      .map((field) => ({ ...field, value: String(field.value || '').trim() }))
+      .filter((field) => field.value);
+
   const getPlantDateKeyFromValue = (value: any, fallback = '') => {
     if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
     if (value?.toDate && typeof value.toDate === 'function') return getLocalDateKey(value.toDate());
@@ -2286,7 +2307,9 @@ export function SayuPage() {
   const openPlantReadOnlyDetail = (detail: PlantReadOnlyDetail) => {
     setPlantReadOnlyDetail({
       ...detail,
-      sections: detail.sections.filter((section) => section.value.trim()),
+      summary: String(detail.summary || '').trim(),
+      coreFields: filterPlantInfoFields(detail.coreFields),
+      detailSections: filterPlantInfoFields(detail.detailSections),
     });
   };
 
@@ -2508,17 +2531,34 @@ export function SayuPage() {
         const subtitle = getPlantScientificLine(entry);
         const aiSummary = getPlantAiSummary(entry);
         const memoSummary = getPlantMemoSummary(entry);
+        const confirmedName = String(entry?.userConfirmedName || entry?.humanReportedName || entry?.title || '').trim();
+        const aiName = String(entry?.aiKoName || entry?.aiPrediction || '').trim();
+        const scientificName = String(entry?.scientificName || entry?.latinName || entry?.finalLatinName || '').trim();
+        const locationLabel = String(entry?.locationLabel || entry?.publicLocation || '').trim();
+        const sourceSummary = [
+          entry?.source,
+          entry?.aiPrediction,
+          entry?.englishName,
+          entry?.confidence ? `신뢰도 ${entry.confidence}` : '',
+        ].filter((value) => String(value || '').trim()).join(' · ');
         const onOpen = () => openPlantReadOnlyDetail({
           type: 'detective',
           title,
           date: record.date,
           subtitle,
           imageUrl,
-          sections: [
+          summary: '이 기록은 식물탐정이 판독하고 사용자가 확정한 식물 기록입니다.',
+          coreFields: [
+            { label: '사용자 확정명', value: confirmedName || title },
+            { label: 'AI 판독명', value: aiName },
+            { label: '학명', value: scientificName },
+            { label: '기록일', value: formatKoreanDate(record.date) },
+          ],
+          detailSections: [
             { label: 'AI 판독 요약', value: aiSummary },
+            { label: '판독 출처·후보', value: compactPlantDetailText(sourceSummary) },
+            { label: '촬영 지역', value: locationLabel },
             { label: '사용자 메모', value: memoSummary },
-            { label: '학명/영문명', value: subtitle },
-            { label: '촬영 지역', value: String(entry?.locationLabel || entry?.publicLocation || '').trim() },
           ],
         });
         return {
@@ -2555,17 +2595,28 @@ export function SayuPage() {
           .join(' / ');
         const bodySummary = compactPlantText(entry?.observation || entry?.memo || entry?.content || entry?.note);
         const stageSummary = compactPlantText(entry?.growthStage || entry?.stage || '');
+        const trace = getPlantDiaryTrace(entry, record.date);
+        const elapsedLabel = typeof entry?.daysAfterRecord === 'number'
+          ? formatDaysAfterRecord(entry.daysAfterRecord)
+          : trace.editedLabel.replace(/^.* · /, '');
         const onOpen = () => openPlantReadOnlyDetail({
           type: 'diary',
           title,
           date,
           subtitle,
           imageUrl,
-          sections: [
-            { label: '본문/메모 요약', value: bodySummary },
+          summary: '이 기록은 사용자가 직접 남긴 식물 성장 관찰 기록입니다.',
+          coreFields: [
+            { label: '식물명', value: title },
+            { label: '관찰일', value: formatKoreanDate(date) },
             { label: '성장 단계', value: stageSummary },
-            { label: 'AI 차이/관찰', value: compactPlantText(entry?.aiDifference) },
-            { label: '기록 기준일', value: formatKoreanDate(getPlantItemDateKey(entry, record.date)) },
+            { label: '경과일', value: elapsedLabel },
+          ],
+          detailSections: [
+            { label: '본문/메모 요약', value: bodySummary },
+            { label: 'AI 차이/관찰', value: compactPlantDetailText(entry?.aiDifference) },
+            { label: '기록 기준일', value: trace.recordLabel },
+            { label: '수정 이력', value: trace.editedLabel },
           ],
         });
         return {
@@ -2606,11 +2657,18 @@ export function SayuPage() {
         date,
         subtitle,
         imageUrl,
-        sections: [
+        summary: '이 기록은 사용자가 확정한 내 식물도감 기록입니다.',
+        coreFields: [
+          { label: '식물명', value: title },
+          { label: '학명', value: String(item.scientificName || item.finalLatinName || '').trim() },
+          { label: '최근 갱신일', value: formatKoreanDate(date) },
+          { label: '공개 여부', value: publicState },
+        ],
+        detailSections: [
           { label: '학명/영문명', value: subtitle },
           { label: '특징 설명', value: featureSummary },
           { label: '재배 메모', value: memoSummary },
-          { label: '공개 여부', value: publicState },
+          { label: '도감 출처', value: 'users/{uid}/plants' },
         ],
       });
       return {
@@ -2650,9 +2708,15 @@ export function SayuPage() {
         date,
         subtitle,
         imageUrl,
-        sections: [
-          { label: '공개 제목/설명', value: description },
+        summary: '이 기록은 공개 연결 정보가 확인된 식물 공개기록입니다.',
+        coreFields: [
+          { label: '공개 식물명', value: title },
           { label: '공개용 지역명', value: publicLocation },
+          { label: '공개 상태', value: '공개 읽기 전용' },
+          { label: '공개일', value: formatKoreanDate(date) },
+        ],
+        detailSections: [
+          { label: '공개 제목/설명', value: description },
           { label: '학명/영문명', value: getPlantScientificLine(item) },
         ],
       });
@@ -2693,9 +2757,15 @@ export function SayuPage() {
         date,
         subtitle,
         imageUrl,
-        sections: [
-          { label: '공개 제목/설명', value: description },
+        summary: '이 기록은 공개 연결 정보가 확인된 식물 공개기록입니다.',
+        coreFields: [
+          { label: '공개 식물명', value: title },
           { label: '공개용 지역명', value: publicLocation },
+          { label: '공개 상태', value: '공개 읽기 전용' },
+          { label: '공개일', value: formatKoreanDate(date) },
+        ],
+        detailSections: [
+          { label: '공개 제목/설명', value: description },
           { label: '학명/영문명', value: getPlantScientificLine(item) },
         ],
       });
@@ -3669,18 +3739,37 @@ export function SayuPage() {
       {plantReadOnlyDetail && (
         <div
           onClick={() => setPlantReadOnlyDetail(null)}
-          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.46)', zIndex: 1000, display: 'flex', alignItems: 'flex-end' }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(17,24,39,0.52)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: plantDetailIsWide ? 'center' : 'flex-end',
+            justifyContent: 'center',
+            padding: plantDetailIsWide ? 24 : '48px 0 0',
+          }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{ width: '100%', maxHeight: '82vh', backgroundColor: '#fff', borderRadius: '16px 16px 0 0', padding: 20, overflowY: 'auto' }}
+            style={{
+              width: '100%',
+              maxWidth: plantDetailIsWide ? 760 : '100%',
+              maxHeight: plantDetailIsWide ? '86vh' : '82vh',
+              backgroundColor: '#fff',
+              borderRadius: plantDetailIsWide ? 18 : '16px 16px 0 0',
+              padding: plantDetailIsWide ? 24 : 18,
+              overflowY: 'auto',
+              boxShadow: '0 24px 60px rgba(15,23,42,0.28)',
+              border: plantDetailIsWide ? '1px solid rgba(209,250,229,0.9)' : 'none',
+            }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 18 }}>
               <div style={{ minWidth: 0 }}>
-                <span style={{ display: 'inline-flex', borderRadius: 999, backgroundColor: '#ecfdf5', color: '#15803d', padding: '4px 9px', fontSize: 11, fontWeight: 900, marginBottom: 8 }}>
+                <span style={{ display: 'inline-flex', borderRadius: 999, backgroundColor: '#ecfdf5', color: '#15803d', padding: '4px 10px', fontSize: 11, fontWeight: 900, marginBottom: 9, border: '1px solid #bbf7d0' }}>
                   {PLANT_SAYU_TYPE_LABEL[plantReadOnlyDetail.type]}
                 </span>
-                <p style={{ margin: 0, fontSize: 18, fontWeight: 900, color: '#1A3C6E', lineHeight: 1.35, wordBreak: 'keep-all' }}>
+                <p style={{ margin: 0, fontSize: plantDetailIsWide ? 22 : 19, fontWeight: 900, color: '#1A3C6E', lineHeight: 1.34, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
                   {plantReadOnlyDetail.title}
                 </p>
                 <p style={{ margin: '5px 0 0', fontSize: 12, color: '#6B7280' }}>
@@ -3698,29 +3787,114 @@ export function SayuPage() {
               </button>
             </div>
 
-            {plantReadOnlyDetail.imageUrl && (
-              <img
-                src={plantReadOnlyDetail.imageUrl}
-                alt={`${plantReadOnlyDetail.title} 대표사진`}
-                style={{ width: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 10, border: '1px solid #e5e7eb', marginBottom: 14 }}
-              />
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: plantDetailIsWide ? 'minmax(230px, 0.92fr) minmax(0, 1.08fr)' : '1fr',
+                gap: 14,
+                alignItems: 'stretch',
+                marginBottom: 14,
+              }}
+            >
+              <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid #dbeafe', backgroundColor: '#f8fafc', minHeight: plantDetailIsWide ? 300 : 230 }}>
+                {plantReadOnlyDetail.imageUrl ? (
+                  <img
+                    src={plantReadOnlyDetail.imageUrl}
+                    alt={`${plantReadOnlyDetail.title} 대표사진`}
+                    style={{
+                      width: '100%',
+                      height: plantDetailIsWide ? 320 : 240,
+                      maxHeight: plantDetailIsWide ? 320 : 280,
+                      objectFit: 'cover',
+                      display: 'block',
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: '100%',
+                      height: plantDetailIsWide ? 320 : 240,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      color: '#15803d',
+                      backgroundColor: '#ecfdf5',
+                    }}
+                  >
+                    <Leaf className="w-8 h-8" />
+                    <span style={{ fontSize: 12, fontWeight: 800 }}>사진 없음</span>
+                  </div>
+                )}
+              </div>
+
+              <section style={{ borderRadius: 14, border: '1px solid #d1fae5', backgroundColor: '#f0fdf4', padding: 15 }}>
+                <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 900, color: '#166534' }}>핵심정보</p>
+                {plantReadOnlyDetail.coreFields.length > 0 ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: plantDetailIsWide ? '1fr 1fr' : '1fr', gap: 9 }}>
+                    {plantReadOnlyDetail.coreFields.map((field) => (
+                      <div key={field.label} style={{ minWidth: 0 }}>
+                        <p style={{ margin: '0 0 3px', fontSize: 10, fontWeight: 900, color: '#16a34a' }}>{field.label}</p>
+                        <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#1f2937', lineHeight: 1.45, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
+                          {field.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ margin: 0, fontSize: 13, color: '#6B7280' }}>핵심정보가 아직 없습니다.</p>
+                )}
+              </section>
+            </div>
+
+            {plantReadOnlyDetail.summary && (
+              <section style={{ borderRadius: 12, border: '1px solid #e5e7eb', backgroundColor: '#fffdf4', padding: '12px 14px', marginBottom: 14 }}>
+                <p style={{ margin: '0 0 5px', fontSize: 11, fontWeight: 900, color: '#92400e' }}>기록 요약</p>
+                <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.65, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
+                  {plantReadOnlyDetail.summary}
+                </p>
+              </section>
             )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {plantReadOnlyDetail.sections.length > 0 ? (
-                plantReadOnlyDetail.sections.map((section) => (
-                  <section key={section.label} style={{ border: '1px solid #edf2f7', borderRadius: 10, padding: '12px 13px', backgroundColor: '#fbfdf9' }}>
-                    <p style={{ margin: '0 0 5px', fontSize: 11, fontWeight: 900, color: '#15803d' }}>{section.label}</p>
-                    <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'keep-all' }}>
-                      {section.value}
-                    </p>
-                  </section>
-                ))
+            <section style={{ borderRadius: 14, border: '1px solid #edf2f7', backgroundColor: '#ffffff', padding: 14 }}>
+              <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 900, color: '#1A3C6E' }}>상세정보</p>
+              {plantReadOnlyDetail.detailSections.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                  {plantReadOnlyDetail.detailSections.map((section) => (
+                    <div key={section.label} style={{ borderRadius: 10, padding: '10px 11px', backgroundColor: '#f8fafc', border: '1px solid #eef2f7' }}>
+                      <p style={{ margin: '0 0 4px', fontSize: 10, fontWeight: 900, color: '#64748B' }}>{section.label}</p>
+                      <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
+                        {section.value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               ) : (
-                <p style={{ margin: 0, padding: 18, textAlign: 'center', fontSize: 13, color: '#9CA3AF' }}>
+                <p style={{ margin: 0, padding: 16, textAlign: 'center', fontSize: 13, color: '#9CA3AF' }}>
                   표시할 상세 내용이 아직 없습니다.
                 </p>
               )}
+            </section>
+
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+              <button
+                type="button"
+                onClick={() => setPlantReadOnlyDetail(null)}
+                style={{
+                  minHeight: 40,
+                  padding: '0 22px',
+                  borderRadius: 999,
+                  border: '1px solid #d8c98a',
+                  background: '#fff',
+                  color: '#4A5A2C',
+                  fontSize: 13,
+                  fontWeight: 900,
+                  cursor: 'pointer',
+                }}
+              >
+                닫기
+              </button>
             </div>
           </div>
         </div>
