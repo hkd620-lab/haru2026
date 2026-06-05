@@ -2450,11 +2450,20 @@ export function SayuPage() {
     const sayu = record[`${prefix}_sayu`];
     const finalSayu = record[`${prefix}_final_sayu`];
     const status = record[`${prefix}_status`];
+    // 작성된 본문이 있으면(아직 SAYU 다듬기/저장 전이어도) 목록에 노출한다.
+    // 예: 텃밭일지를 기록만 하고 SAYU 저장을 안 한 경우에도 사유 목록에서 보이도록.
+    const hasWrittenContent = Object.keys(record).some((key) =>
+      key.startsWith(`${prefix}_`) &&
+      !META_SUFFIXES.some((suffix) => key.endsWith(suffix)) &&
+      typeof record[key] === 'string' &&
+      (record[key] as string).trim().length > 0,
+    );
     return (
       (typeof sayu === 'string' && sayu.trim().length > 0) ||
       (typeof finalSayu === 'string' && finalSayu.trim().length > 0) ||
       record[`${prefix}_polished`] === true ||
-      status === 'completed'
+      status === 'completed' ||
+      hasWrittenContent
     );
   };
 
