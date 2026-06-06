@@ -1193,34 +1193,49 @@ export function HomePageV2() {
               </>
             }
           />
-          <button
-            type="button"
-            onClick={() => navigate('/onboarding-preview', { state: { from: '/v2' } })}
-            className="v2-preview"
+          <div
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
+              display: 'flex',
+              flexWrap: 'wrap',
               gap: 8,
-              border: '1px solid #E5DFD0',
-              background: '#fff',
-              color: '#7A6F5A',
-              borderRadius: 999,
-              padding: '8px 12px',
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
               margin: '-6px 0 14px',
-              transition:
-                'transform 160ms cubic-bezier(0.22,0.61,0.36,1), box-shadow 180ms, border-color 180ms, color 180ms',
             }}
           >
-            <PillSvg>
-              <path d="M4 19V5a2 2 0 012-2h8l4 4v12a2 2 0 01-2 2H6a2 2 0 01-2-2z" />
-              <path d="M14 3v5h5" />
-              <path d="M8 13h8M8 17h5" />
-            </PillSvg>
-            HARU2026 활용법 미리보기
-          </button>
+            {[
+              { label: '기존 preview 보기', path: '/onboarding-preview' },
+              { label: '경대preview 보기', path: '/gyeongdae-preview' },
+              { label: '온유preview 보기', path: '/onyu-preview' },
+            ].map((preview) => (
+              <button
+                key={preview.path}
+                type="button"
+                onClick={() => navigate(preview.path, { state: { from: '/v2' } })}
+                className="v2-preview"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  border: '1px solid #E5DFD0',
+                  background: '#fff',
+                  color: '#7A6F5A',
+                  borderRadius: 999,
+                  padding: '8px 12px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition:
+                    'transform 160ms cubic-bezier(0.22,0.61,0.36,1), box-shadow 180ms, border-color 180ms, color 180ms',
+                }}
+              >
+                <PillSvg>
+                  <path d="M4 19V5a2 2 0 012-2h8l4 4v12a2 2 0 01-2 2H6a2 2 0 01-2-2z" />
+                  <path d="M14 3v5h5" />
+                  <path d="M8 13h8M8 17h5" />
+                </PillSvg>
+                {preview.label}
+              </button>
+            ))}
+          </div>
           <div
             data-v2="agents-grid"
             style={{
