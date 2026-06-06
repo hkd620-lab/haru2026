@@ -1204,7 +1204,6 @@ export function HomePageV2() {
             {[
               { label: '기존 preview 보기', path: '/onboarding-preview' },
               { label: '경대preview 보기', path: '/gyeongdae-preview' },
-              { label: '온유preview 보기', path: '/onyu-preview' },
             ].map((preview) => (
               <button
                 key={preview.path}
