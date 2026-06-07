@@ -260,6 +260,73 @@ const FORMATS: { name: string; input: string; uses: string[] }[] = [
   { name: '업무일지', input: '오전 회의. 납기 협의함.', uses: ['통계', '합본', '월간 보고서'] },
 ];
 
+/* 탭 ② 라이브 입력 체험 — 정적(클라이언트 표시용). 실제 저장·AI 호출 없음. */
+const LIVE_CHIPS: { kind: string; value: string }[] = [
+  { kind: '형식', value: '하루기록' },
+  { kind: '감정', value: '평온' },
+  { kind: '주제', value: '일상·생활' },
+];
+const LIVE_FOLLOWUPS: string[] = [
+  '오늘 그 순간에 함께한 사람이 있었나요?',
+  '이 일이 왜 기억에 남았나요?',
+  '내일도 이어가고 싶은 작은 일이 있나요?',
+];
+
+// 탭 ③ 주차별 누적 인사이트 (1→2→3→4주차)
+const WEEK_STEPS: { week: number; label: string; insight: string }[] = [
+  { week: 1, label: '1주차', insight: '걷기와 산책으로 한 주를 시작했습니다. 완벽한 변화보다 “시작한 흔적”이 먼저 쌓입니다.' },
+  { week: 2, label: '2주차', insight: '가족 통화·시장 나들이가 더해졌습니다. 일상이 단순 반복이 아니라 생활 패턴으로 보이기 시작합니다.' },
+  { week: 3, label: '3주차', insight: '텃밭·단 음료 절제·꾸준한 걷기가 반복됩니다. 기록이 건강 관리의 참고자료가 되어 갑니다.' },
+  { week: 4, label: '4주차', insight: '수확·기도·가족과의 시간으로 한 달을 마무리합니다. 한 줄들이 모여 한 권의 책이 될 준비가 끝났습니다.' },
+];
+
+// 탭 ④ 합본 — AI 서술형 월간 에세이 (정적 하드코딩)
+const MONTHLY_ESSAY: string[] = [
+  '당신의 6월은 꾸준히 걸어온 한 달이었습니다. 강변 산책으로 시작한 첫 주부터, 무릎이 아픈 날에도 천천히 동네 한 바퀴를 돌며 몸을 움직이려는 마음이 기록 곳곳에 남아 있습니다.',
+  '가족은 이 한 달을 지탱한 따뜻한 축이었습니다. 손자 재민이의 영상통화에 한참 웃었고, 딸이 김치를 가져다주러 온 날 얼굴을 보며 좋아하셨습니다. 평범한 장면이지만 기록으로 남기니 삶을 받쳐 주는 순간들이 됩니다.',
+  '텃밭은 기쁨과 아쉬움이 함께 있던 자리였습니다. 호박 수꽃이 많이 피었고, 암꽃이 떨어지자 직접 인공수분을 시도하셨습니다. 고추 두 개를 처음 수확한 날의 뿌듯함도 또렷이 남았습니다.',
+  '몸을 살피려는 노력도 이어졌습니다. 단 음료를 끊고 물을 택했고, 저녁 식사 뒤 20분 걷기를 “꾸준히 해보려 한다”고 다짐하셨습니다. 작은 실천이 한 달 내내 흩어지지 않고 반복되었습니다.',
+  '비 오는 날에는 성경을 읽고, 아침 기도 뒤 마음이 차분해졌다고 적으셨습니다. 오랜 벗과 친구에게서 온 전화로 추억을 나눈 날들도 빠지지 않았습니다.',
+  '한 달을 돌아보며 “꾸준히 기록한 내가 대견하다”고 쓰셨습니다. 대단한 사건은 없었지만, 작은 하루들이 모여 건강·가족·텃밭·신앙이 깃든 한 권의 6월이 되었습니다.',
+];
+
+// 탭 ④ 통계 — 반복 단어 태그 + 문장형 해석 (정적)
+const REPEAT_WORDS: { word: string; count: number }[] = [
+  { word: '걷기·산책', count: 14 },
+  { word: '가족', count: 8 },
+  { word: '텃밭·호박', count: 7 },
+  { word: '기도·신앙', count: 5 },
+  { word: '무릎·건강', count: 4 },
+  { word: '감사', count: 3 },
+];
+const STAT_INTERP =
+  '이번 달은 건강·가족이 가장 자주 등장했습니다. 걷기 운동을 14번 언급했고, 가족 만남·통화가 8번 이어졌으며, 감정은 대체로 안정적이었습니다.';
+
+// 탭 ⑤ 미래보기 — 시간축 스위처 (1개월·1년·5년·100세)
+type FutureSpan = 'm1' | 'y1' | 'y5' | 'h100';
+const FUTURE_SPANS: { id: FutureSpan; label: string; body: string }[] = [
+  {
+    id: 'm1',
+    label: '1개월',
+    body: '이번 달 기록에서는 걷기·가족·텃밭이 반복되었습니다. 다음 달에도 식후 걷기와 기록 습관을 이어가면 생활 리듬을 더 안정적으로 살펴볼 수 있습니다.',
+  },
+  {
+    id: 'y1',
+    label: '1년',
+    body: '운동·식사 조절·가족과의 대화가 계속 기록되면, 1년 뒤에는 건강 관리의 흐름과 가족 시간의 변화가 더 선명하게 보일 수 있습니다.',
+  },
+  {
+    id: 'y5',
+    label: '5년',
+    body: '텃밭·독서·신앙·걷기 기록이 쌓이면, 내가 어떤 보람과 배움을 꾸준히 붙잡고 살아왔는지 돌아볼 방향을 제안할 수 있습니다.',
+  },
+  {
+    id: 'h100',
+    label: '100세',
+    body: '오래 남긴 기록은 단순한 일기가 아니라, 가족에게 남길 삶의 자료가 됩니다. 어떤 하루를 사랑했고 무엇에 감사했는지가 글과 사진으로 전해질 수 있습니다.',
+  },
+];
+
 /* ------------------------------------------------------------ 스타일 헬퍼 */
 
 const emoColor = (e: Emotion) => (e === 'good' ? EMO_GOOD : e === 'ok' ? EMO_OK : EMO_BAD);
@@ -405,7 +472,22 @@ export function OnyuPreviewPage() {
   const [exampleTab, setExampleTab] = useState<string>(EXAMPLES[0].key);
   const [mergeStatsTab, setMergeStatsTab] = useState<'merge' | 'stats'>('merge');
 
+  // 탭 ② 라이브 입력 체험 (정적 · 실제 저장/AI 호출 없음)
+  const [liveInput, setLiveInput] = useState('');
+  const [liveShown, setLiveShown] = useState(false);
+  // 탭 ③ 주차별 누적 스텝
+  const [pileupWeek, setPileupWeek] = useState(1);
+  // 탭 ⑤ 미래보기 시간축
+  const [futureSpan, setFutureSpan] = useState<FutureSpan>('m1');
+
   const activeExample = EXAMPLES.find((e) => e.key === exampleTab) ?? EXAMPLES[0];
+  const trimmedLive = liveInput.trim();
+  const activeFutureSpan = FUTURE_SPANS.find((f) => f.id === futureSpan) ?? FUTURE_SPANS[0];
+
+  // 라이브 입력 → SAYU 정리 형태로 감싸기 (클라이언트 템플릿, 내용 보존)
+  const liveSayu = trimmedLive
+    ? `${trimmedLive} 이 짧은 기록을 HARU2026이 읽기 좋게 정리하면, 그날의 장면과 그때의 마음이 함께 남습니다. 내용은 바꾸지 않고 표현만 다듬습니다.`
+    : '';
 
   return (
     <div
@@ -555,6 +637,141 @@ export function OnyuPreviewPage() {
         {/* ---------------------------------------------- 탭 ② 예시문 체험 */}
         {mainTab === 'examples' && (
           <section>
+            {/* 라이브 입력 체험 (정적 · 실제 저장/AI 호출 없음) */}
+            <div className="onyu-card" style={{ ...cardStyle, marginBottom: 18 }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: NAVY, marginBottom: 8 }}>
+                내 문장으로 직접 체험해 보기
+              </div>
+              <textarea
+                value={liveInput}
+                onChange={(e) => setLiveInput(e.target.value)}
+                placeholder="오늘 있었던 일을 한 줄로 적어보세요. 예) 저녁에 아내와 강변을 걸었다."
+                rows={3}
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  border: `1px solid ${BORDER}`,
+                  borderRadius: 12,
+                  padding: '12px 14px',
+                  fontSize: 16,
+                  lineHeight: 1.6,
+                  color: FG,
+                  fontFamily: FONT_KR,
+                  resize: 'vertical',
+                }}
+              />
+              <div style={{ fontSize: 13, color: FG2, marginTop: 8 }}>
+                체험용 미리보기입니다 · 실제 저장·AI 호출 아님
+              </div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 14 }}>
+                <button
+                  type="button"
+                  className="onyu-btn"
+                  onClick={() => setLiveShown(trimmedLive.length > 0)}
+                  style={{
+                    background: GREEN,
+                    color: '#fff',
+                    border: `1px solid ${GREEN}`,
+                    borderRadius: 999,
+                    padding: '10px 18px',
+                    fontSize: 15,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  내 문장으로 체험하기
+                </button>
+                <button
+                  type="button"
+                  className="onyu-btn"
+                  onClick={() => {
+                    setLiveInput('');
+                    setLiveShown(false);
+                  }}
+                  style={{
+                    background: '#FFFFFF',
+                    color: NAVY,
+                    border: `1px solid ${BORDER}`,
+                    borderRadius: 999,
+                    padding: '10px 18px',
+                    fontSize: 15,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  예시로 보기
+                </button>
+              </div>
+
+              {liveShown && trimmedLive && (
+                <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {/* ⓐ 내가 쓴 문장 */}
+                  <div
+                    style={{
+                      background: OFFWHITE,
+                      border: `1px solid ${BORDER}`,
+                      borderRadius: 12,
+                      padding: '12px 14px',
+                    }}
+                  >
+                    <div style={{ fontSize: 13, fontWeight: 800, color: FG2, marginBottom: 4 }}>
+                      내가 쓴 문장
+                    </div>
+                    <div style={{ fontSize: 17, color: FG, lineHeight: 1.6 }}>{trimmedLive}</div>
+                  </div>
+                  {/* ⓑ SAYU 정리 */}
+                  <div
+                    style={{
+                      background: '#F2FAF6',
+                      border: '1px solid #CFE6DB',
+                      borderRadius: 12,
+                      padding: '12px 14px',
+                    }}
+                  >
+                    <div style={{ fontSize: 13, fontWeight: 800, color: GREEN, marginBottom: 4 }}>
+                      SAYU가 정리한 형태
+                    </div>
+                    <div style={{ fontSize: 17, color: FG, lineHeight: 1.7 }}>{liveSayu}</div>
+                  </div>
+                  {/* ⓒ 자동 분류 미리보기 칩 */}
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: FG2, marginBottom: 8 }}>
+                      자동 분류 미리보기
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {LIVE_CHIPS.map((c) => (
+                        <span
+                          key={c.kind}
+                          style={{
+                            background: '#EAF0F9',
+                            border: '1px solid #CFE0F2',
+                            color: NAVY,
+                            fontSize: 13,
+                            fontWeight: 700,
+                            borderRadius: 999,
+                            padding: '5px 12px',
+                          }}
+                        >
+                          {c.kind} · {c.value}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  {/* ⓓ 이어 쓰기 질문 */}
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: FG2, marginBottom: 8 }}>
+                      이어 쓰기 질문
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: 20, color: FG, fontSize: 15, lineHeight: 1.8 }}>
+                      {LIVE_FOLLOWUPS.map((q) => (
+                        <li key={q}>{q}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
               {EXAMPLES.map((e) => {
                 const on = exampleTab === e.key;
@@ -646,16 +863,52 @@ export function OnyuPreviewPage() {
         {mainTab === 'pileup' && (
           <section>
             <div style={{ ...noteBoxStyle, marginBottom: 18 }}>
-              매일 짧게 쓴 일기 한 줄이 4주 동안 20개 쌓였습니다. 이 20개가 어떻게 한 권의 책(합본)이
-              되고, 어떤 흐름(통계)을 보여주는지 보세요.
+              매일 짧게 쓴 일기 한 줄이 4주 동안 20개 쌓였습니다. 1주차부터 한 주씩 눌러 보면 기록이
+              어떻게 쌓여 가는지 볼 수 있습니다.
             </div>
+
+            {/* 주차별 누적 스위처 */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+              {WEEK_STEPS.map((w) => {
+                const on = pileupWeek === w.week;
+                return (
+                  <button
+                    key={w.week}
+                    type="button"
+                    className="onyu-btn"
+                    onClick={() => setPileupWeek(w.week)}
+                    style={{
+                      background: on ? NAVY : '#FFFFFF',
+                      color: on ? '#FFFFFF' : NAVY,
+                      border: `1px solid ${on ? NAVY : BORDER}`,
+                      borderRadius: 999,
+                      padding: '9px 18px',
+                      fontSize: 15,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {w.label}까지
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ ...noteBoxStyle, marginBottom: 14 }}>
+              <b style={{ color: NAVY }}>
+                {WEEK_STEPS[pileupWeek - 1].label}까지 · 누적 {pileupWeek * 5}개
+              </b>
+              <br />
+              {WEEK_STEPS[pileupWeek - 1].insight}
+            </div>
+
             <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
-              {DIARIES.map((row) => (
+              {DIARIES.slice(0, pileupWeek * 5).map((row) => (
                 <DiaryRow key={row[0]} row={row} />
               ))}
             </div>
             <div style={{ ...noteBoxStyle, marginTop: 18 }}>
-              이렇게 흩어진 20개가 다음 탭에서 한 권의 책과 통계가 됩니다.
+              이렇게 한 주씩 쌓인 {pileupWeek * 5}개가 다음 탭에서 한 권의 책과 통계가 됩니다.
             </div>
           </section>
         )}
@@ -703,10 +956,26 @@ export function OnyuPreviewPage() {
                     <DiaryRow key={row[0]} row={row} />
                   ))}
                 </div>
-                <div style={{ padding: '18px 20px' }}>
+                {/* AI 서술형 월간 에세이 — 20개 일기를 한 편의 글로 */}
+                <div style={{ padding: '24px 28px', borderTop: `1px solid ${BORDER}` }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: GREEN, marginBottom: 4 }}>
+                    AI 서술형 월간 합본
+                  </div>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: NAVY, marginBottom: 14 }}>
+                    당신의 6월은 이런 한 달이었습니다
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {MONTHLY_ESSAY.map((para, i) => (
+                      <p key={i} style={{ margin: 0, fontSize: 16.5, color: FG, lineHeight: 1.9 }}>
+                        {para}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ padding: '0 20px 18px' }}>
                   <div style={noteBoxStyle}>
-                    흩어져 있던 20개의 짧은 기록이 한 권의 책으로 묶입니다. PDF로 저장해 가족과 나누거나,
-                    연말에 1년치를 모아 '2025년 나의 일기'로 만들 수 있습니다.
+                    흩어져 있던 20개의 짧은 기록이 한 편의 글과 한 권의 책으로 묶입니다. PDF로 저장해 가족과
+                    나누거나, 연말에 1년치를 모아 '2025년 나의 일기'로 만들 수 있습니다.
                   </div>
                 </div>
               </div>
@@ -740,6 +1009,34 @@ export function OnyuPreviewPage() {
                   </div>
                   <div style={{ fontSize: 13, color: FG2, marginBottom: 14 }}>AI 자동 분석</div>
                   <BarChart data={TOPICS} color={GREEN} />
+                </div>
+
+                {/* 반복 단어 태그 + 문장형 해석 */}
+                <div className="onyu-card" style={cardStyle}>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: NAVY, marginBottom: 4 }}>
+                    자주 나온 단어
+                  </div>
+                  <div style={{ fontSize: 13, color: FG2, marginBottom: 14 }}>
+                    20개 기록에서 반복된 표현
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                    {REPEAT_WORDS.map((w) => (
+                      <span
+                        key={w.word}
+                        style={{
+                          background: '#EAF6F0',
+                          color: '#0B7A57',
+                          fontSize: 14,
+                          fontWeight: 700,
+                          borderRadius: 999,
+                          padding: '6px 14px',
+                        }}
+                      >
+                        {w.word} <span style={{ opacity: 0.7 }}>×{w.count}</span>
+                      </span>
+                    ))}
+                  </div>
+                  <div style={noteBoxStyle}>{STAT_INTERP}</div>
                 </div>
 
                 <div className="onyu-card" style={cardStyle}>
@@ -799,9 +1096,53 @@ export function OnyuPreviewPage() {
                 fontWeight: 600,
               }}
             >
-              ⚠️ 미래보기는 미래를 맞히는 기능이 아닙니다. 지금까지의 기록을 바탕으로 내 생활·건강·관심사가
-              앞으로 어떤 방향으로 이어질 수 있는지 살펴보는 기능입니다.
+              ⚠️ 이 화면은 미래를 맞히는 기능이 아닙니다. 투자 수익·질병·수명을 예측하지 않으며, 의료·재무
+              판단을 대신하지 않습니다. 기록이 쌓이면 어떤 방향이 가능한지 보여줄 뿐입니다.
             </div>
+
+            {/* 시간축 스위처 (1개월·1년·5년·100세) */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+              {FUTURE_SPANS.map((f) => {
+                const on = futureSpan === f.id;
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    className="onyu-btn"
+                    onClick={() => setFutureSpan(f.id)}
+                    style={{
+                      background: on ? GREEN : '#FFFFFF',
+                      color: on ? '#FFFFFF' : FG,
+                      border: `1px solid ${on ? GREEN : BORDER}`,
+                      borderRadius: 999,
+                      padding: '9px 18px',
+                      fontSize: 15,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div
+              className="onyu-card"
+              style={{
+                ...cardStyle,
+                marginBottom: 20,
+                background: futureSpan === 'h100' ? '#F7FBF9' : '#FFFFFF',
+                borderColor: futureSpan === 'h100' ? '#CFE6DB' : BORDER,
+              }}
+            >
+              <div style={{ fontSize: 17, fontWeight: 800, color: NAVY, marginBottom: 8 }}>
+                {activeFutureSpan.label} 방향 보기
+              </div>
+              <div style={{ fontSize: 16.5, color: FG, lineHeight: 1.85 }}>
+                {activeFutureSpan.body}
+              </div>
+            </div>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {FUTURE_ITEMS.map((f) => (
                 <div key={f.cond} className="onyu-card" style={cardStyle}>
