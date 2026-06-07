@@ -1,691 +1,352 @@
-import type { ReactNode } from 'react';
-import { useMemo, useState } from 'react';
-import {
-  BarChart3,
-  BookMarked,
-  CalendarDays,
-  ChevronDown,
-  FileHeart,
-  HeartHandshake,
-  Leaf,
-  PenLine,
-  Search,
-  Sparkles,
-  Sprout,
-} from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowDown, ArrowLeft, ArrowRight, Home } from 'lucide-react';
 
-const FONT_KR =
-  "'Pretendard', 'Pretendard Variable', system-ui, sans-serif";
-const FONT_EN = "'Inter', system-ui, sans-serif";
-const FONT_SERIF = "'MaruBuri', 'Pretendard', serif";
+/* =========================================================================
+ * OnyuPreviewPage — 온유 preview (시박사 6탭 설계, 정적 체험용 UI)
+ * - 외부 API / Functions 무관, 순수 정적 컴포넌트 (실제 저장·AI 호출 없음)
+ * - 스토리 흐름: 단문 하나(②) → 20개로 쌓임(③) → 한 권의 책+통계(④)
+ *                → 미래 흐름(⑤) → 비서 연결 정직한 안내(⑥)
+ * - 스타일: 기존 preview 패턴(인라인 style + 인라인 <style>) + HARU 브랜드 컬러
+ * - 탭⑥ 연결수준 구분은 기장본(ea3b5858) "정직한 안내" 섹션에서 흡수
+ * ========================================================================= */
 
-type SceneId = 'first' | 'month' | 'assistant';
-type LinkLevel = '실제 전달' | '느슨한 연결' | '이동 안내' | '향후 연결 예정';
+const NAVY = '#1A3C6E';
+const OFFWHITE = '#FAF9F6';
+const GREEN = '#10b981';
+const EMO_GOOD = '#10b981';
+const EMO_OK = '#EF9F27';
+const EMO_BAD = '#E24B4A';
+const BORDER = '#E5DFD0';
+const FG = '#2C2C2A';
+const FG2 = '#6B6458';
 
-type Scene = {
-  id: SceneId;
+const FONT_KR = "'Pretendard', 'Pretendard Variable', system-ui, sans-serif";
+
+/* ---------------------------------------------------------------- 데이터 */
+
+type MainTabKey = 'terms' | 'examples' | 'pileup' | 'mergeStats' | 'future' | 'assistants';
+
+const MAIN_TABS: { key: MainTabKey; label: string }[] = [
+  { key: 'terms', label: '① 쉬운 용어 풀이' },
+  { key: 'examples', label: '② 예시문 체험' },
+  { key: 'pileup', label: '③ 20개가 쌓이면' },
+  { key: 'mergeStats', label: '④ 합본·통계' },
+  { key: 'future', label: '⑤ 미래보기' },
+  { key: 'assistants', label: '⑥ 비서 연결' },
+];
+
+// 탭 ① 용어 대응표
+const TERMS: { term: string; desc: string }[] = [
+  {
+    term: '기록틀',
+    desc: '막막하지 않게 미리 준비된 입력 양식. "오늘 먹은 것·찍은 사진·느낀 생각"을 따로 물어봐 줍니다.',
+  },
+  {
+    term: '합본',
+    desc: '여러 날의 기록을 한 문서로 묶어보는 기능. 흩어진 기록이 한 권의 책이 됩니다.',
+  },
+  {
+    term: '통계',
+    desc: '내가 얼마나, 어떤 주제로 기록했는지 숫자와 그래프로 보는 기능.',
+  },
+  {
+    term: '비서',
+    desc: '내 기록을 읽고 정리·분석·활용을 도와주는 기능.',
+  },
+  {
+    term: 'SAYU(사유)',
+    desc: '내 기록을 다시 읽고 의미를 찾아주는 사유 공간. 내용은 바꾸지 않고 표현만 다듬습니다.',
+  },
+  {
+    term: '미래보기',
+    desc: '지금까지의 기록을 바탕으로 앞으로의 변화 가능성을 살펴보는 기능.',
+  },
+];
+
+// 탭 ② 예시문 4개 (STEP1 → SAYU 다듬음 → STEP2 → 이어짐 → STEP3)
+type Example = {
+  key: string;
   label: string;
-  title: string;
-  short: string;
-  refined: string;
-  outcome: string[];
+  step1: string;
+  step2: string;
+  step3: { name: string; use: string }[];
 };
 
-const scenes: Scene[] = [
+const EXAMPLES: Example[] = [
   {
-    id: 'first',
-    label: '첫 기록',
-    title: '처음 쓰는 사람도 한 줄이면 충분합니다',
-    short: '오늘은 별일 없었다. 그래도 저녁 공기가 좋았다.',
-    refined:
-      '오늘은 특별한 사건은 없었지만, 저녁 공기를 느끼며 하루를 조용히 마무리했다. 별일 없는 하루도 기록해두면 나중에 내 생활의 온도를 보여주는 자료가 된다.',
-    outcome: ['SAYU 문장 정리', '감정 태그 생성 예시', '하루기록으로 축적', '나중에 월간 회고 재료'],
+    key: 'daily',
+    label: '하루기록',
+    step1: '오늘 옥상에 올라가 호박꽃을 봤다. 수꽃은 많이 피었는데 암꽃은 몇 개 떨어졌다.',
+    step2:
+      '오늘 옥상 텃밭에서 호박꽃을 관찰했다. 수꽃은 많이 피었지만 암꽃은 노랗게 변하며 떨어지는 것이 보여 아쉬움이 있었다. 앞으로는 아침 시간에 꽃 상태를 확인하고, 필요하면 인공수분을 시도해 보기로 했다.',
+    step3: [
+      { name: '식물탐정', use: '호박 성장 상태와 병해충을 사진으로 확인' },
+      { name: '성장타임라인', use: '사진과 날짜를 묶어 변화 과정 보기' },
+      { name: 'SAYU', use: '식물을 돌보며 느낀 마음 정리' },
+      { name: '통계', use: '이번 달 식물 기록 횟수 확인' },
+      { name: '합본', use: '옥상텃밭 관찰기 문서로 묶기' },
+      { name: '미래보기', use: '앞으로 열매 맺힐 가능성과 관리 방향' },
+    ],
   },
   {
-    id: 'month',
-    label: '한 달 후',
-    title: '짧은 기록이 모이면 생활의 모양이 보입니다',
-    short: '산책, 식사, 가족 대화, 텃밭 관찰을 조금씩 남겼다.',
-    refined:
-      '한 달 동안 남긴 짧은 기록에는 산책, 식사 조절, 가족과의 대화, 텃밭 관찰이 반복해서 나타났다. 작게 적은 문장들이 모여 생활 습관과 마음의 흐름을 보여준다.',
-    outcome: ['월간 생활문서 예시', '반복 주제 통계', '감정 흐름 보기', '미래보기 참고자료'],
+    key: 'health',
+    label: '건강기록',
+    step1: '저녁 먹고 20분 걸었다. 단 음료는 안 마셨다.',
+    step2:
+      '오늘 저녁 식사 후 20분 걷기를 실천했다. 식후 혈당 관리를 위해 단 음료를 마시지 않았고, 물로 대신했다. 작은 실천이지만 당화혈색소를 낮추기 위한 생활 습관 관리로 의미가 있다.',
+    step3: [
+      { name: '건강기록', use: '식사·운동·음료 습관 저장' },
+      { name: '통계', use: '운동 횟수, 걷기 기록, 식후 관리 흐름' },
+      { name: '합본', use: '한 달 건강관리 기록으로 묶기' },
+      { name: 'SAYU', use: '건강을 지키려는 마음과 실천 이유 정리' },
+      { name: '미래보기', use: '현재 습관이 계속될 때의 변화 가능성' },
+    ],
   },
   {
-    id: 'assistant',
-    label: '비서 활용',
-    title: '필요한 순간에 관련 비서가 다시 꺼내 씁니다',
-    short: '건강, 가족, 식물, 독서 기록을 목적별로 다시 보고 싶다.',
-    refined:
-      '쌓인 기록은 단순 보관으로 끝나지 않고, 건강관리·가족 추억·식물 관찰·독서사유처럼 목적에 맞는 비서에서 다시 활용할 수 있는 자료가 된다.',
-    outcome: ['건강관리 비서 참고', '가족·추억 정리 예시', '식물탐정 이동 안내', '독서사유 확장'],
-  },
-];
-
-const gentleFlow = [
-  {
-    icon: <PenLine size={20} />,
-    title: '한 줄로 시작',
-    body: '길게 쓰지 않아도 됩니다. 오늘 기억나는 한 장면만 남깁니다.',
+    key: 'reading',
+    label: '독서사유',
+    step1: '오늘 책에서 부족함이 사람을 더 노력하게 만든다는 문장이 인상 깊었다.',
+    step2:
+      "오늘 읽은 책에서 '부족함이 사람을 더 노력하게 만든다'는 내용이 마음에 남았다. 완전함보다 부족함이 오히려 성장의 출발점이 될 수 있다는 생각을 하게 되었다. 내 삶에서도 부족함을 부끄러워하기보다, 다시 배우고 움직이게 하는 힘으로 받아들이고 싶다.",
+    step3: [
+      { name: '독서사유', use: '책에서 얻은 생각 저장' },
+      { name: 'SAYU', use: '내 삶과 연결된 의미 정리' },
+      { name: '합본', use: '독서노트 또는 사유문집으로 묶기' },
+      { name: '통계', use: '한 달 독서 기록 횟수 확인' },
+      { name: '미래보기', use: '반복되는 생각의 방향과 관심 주제' },
+    ],
   },
   {
-    icon: <Sparkles size={20} />,
-    title: '읽기 좋게 정리',
-    body: 'SAYU가 짧은 문장을 부드러운 기록 문장으로 바꿔보는 예시를 보여줍니다.',
-  },
-  {
-    icon: <CalendarDays size={20} />,
-    title: '시간이 쌓임',
-    body: '며칠, 몇 주가 지나면 기록 사이의 반복과 변화가 보이기 시작합니다.',
-  },
-  {
-    icon: <BookMarked size={20} />,
-    title: '문서로 묶임',
-    body: '한 달의 기록은 생활문서, 사유문집, 관찰기 같은 형태로 다시 읽을 수 있습니다.',
-  },
-  {
-    icon: <BarChart3 size={20} />,
-    title: '흐름으로 보임',
-    body: '자주 나온 주제, 감정, 습관을 숫자와 간단한 막대그래프로 확인합니다.',
-  },
-  {
-    icon: <HeartHandshake size={20} />,
-    title: '비서와 이어짐',
-    body: '필요한 비서에서 기록을 참고하거나 사용자가 직접 이어서 활용하는 구조를 안내합니다.',
+    key: 'timeline',
+    label: '성장타임라인',
+    step1: '호박이 자라는 사진을 며칠 동안 찍었다.',
+    step2:
+      '며칠 동안 옥상 텃밭의 호박 성장 과정을 사진으로 남겼다. 처음에는 꽃과 작은 씨방만 보였지만, 시간이 지나면서 잎과 줄기, 열매의 변화가 조금씩 드러났다. 사진을 날짜순으로 보면 식물이 자라는 과정이 하나의 이야기처럼 이어진다.',
+    step3: [
+      { name: '성장타임라인', use: '여러 장의 사진을 날짜순 이야기로 정리' },
+      { name: '합본', use: '호박 성장기 문서로 묶기' },
+      { name: 'PDF', use: '가족·지인에게 보여줄 문서로 저장' },
+      { name: 'SAYU', use: '식물을 키우며 느낀 보람 정리' },
+      { name: '통계', use: '식물 사진 기록 횟수 확인' },
+      { name: '미래보기', use: '앞으로 어떤 관리가 필요한지' },
+    ],
   },
 ];
 
-const monthlyNotes = [
+// 탭 ③ / ④ 공용 — 20개 일기 [날짜, 요일, 본문, 감정]
+type Emotion = 'good' | 'ok' | 'bad';
+const DIARIES: [string, string, string, Emotion][] = [
+  ['6/2', '월', '오늘 강변 산책을 했다. 아침 공기가 맑아 걷기에 좋았다.', 'good'],
+  ['6/3', '화', '무릎이 좀 쑤셨지만 천천히 동네 한 바퀴를 돌았다.', 'ok'],
+  ['6/4', '수', '손자 재민이가 영상통화를 걸어와 한참 웃었다.', 'good'],
+  ['6/5', '목', '텃밭 상추가 제법 자랐다. 저녁 반찬으로 뜯어 먹었다.', 'good'],
+  ['6/6', '금', '비가 와서 집에서 성경을 읽으며 하루를 보냈다.', 'ok'],
+  ['6/9', '월', '새 한 주의 시작. 다시 걷기 운동을 시작했다.', 'good'],
+  ['6/10', '화', '아내와 시장에 다녀왔다. 오랜만의 외출이 즐거웠다.', 'good'],
+  ['6/11', '수', '허리가 결려 하루 종일 누워 쉬었다. 조금 답답했다.', 'bad'],
+  ['6/12', '목', '몸이 한결 나아져 다시 산책을 나갔다.', 'ok'],
+  ['6/13', '금', '교회 구역예배에서 오랜 벗들을 만나 반가웠다.', 'good'],
+  ['6/16', '월', '텃밭 호박꽃이 피기 시작했다. 수꽃이 많다.', 'good'],
+  ['6/17', '화', '단 음료를 끊고 물을 마시기로 마음먹었다.', 'ok'],
+  ['6/18', '수', '저녁 먹고 20분 걸었다. 꾸준히 해보려 한다.', 'good'],
+  ['6/19', '목', '딸이 김치를 가져다주러 왔다. 얼굴 보니 좋았다.', 'good'],
+  ['6/20', '금', '무릎이 또 아팠다. 무리하지 않고 스트레칭만 했다.', 'bad'],
+  ['6/23', '월', '호박 암꽃이 떨어져 인공수분을 시도해 보았다.', 'ok'],
+  ['6/24', '화', '아침 기도 후 마음이 차분해졌다. 걷기도 빠짐없이.', 'good'],
+  ['6/25', '수', '오랜 친구에게서 전화가 왔다. 추억을 나눴다.', 'good'],
+  ['6/26', '목', '텃밭에서 고추 두 개를 처음 수확했다. 뿌듯했다.', 'good'],
+  ['6/27', '금', '한 달을 돌아보니 꾸준히 기록한 내가 대견하다.', 'good'],
+];
+
+// 탭 ④ 통계
+const STAT_CARDS: { label: string; value: number }[] = [
+  { label: '이번 달 일기 편수', value: 20 },
+  { label: '기록한 날', value: 20 },
+  { label: '걷기 운동 언급', value: 14 },
+  { label: '가족 만남·통화', value: 8 },
+];
+const WEEKLY: { label: string; value: number }[] = [
+  { label: '1주차', value: 5 },
+  { label: '2주차', value: 5 },
+  { label: '3주차', value: 5 },
+  { label: '4주차', value: 5 },
+];
+const TOPICS: { label: string; value: number }[] = [
+  { label: '건강·운동', value: 14 },
+  { label: '가족', value: 8 },
+  { label: '텃밭·식물', value: 7 },
+  { label: '신앙·기도', value: 5 },
+];
+
+// 탭 ⑤ 미래보기
+const FUTURE_ITEMS: { cond: string; result: string }[] = [
   {
-    day: '1주차',
-    text: '산책과 수면 기록이 시작되었다.',
-    tags: ['산책', '수면', '시작'],
+    cond: '운동 기록이 꾸준히 늘고 있다면',
+    result: '앞으로 건강 관리가 더 안정될 가능성을 보여줍니다.',
   },
   {
-    day: '2주차',
-    text: '식사 조절과 가족 대화가 반복되었다.',
-    tags: ['건강', '가족', '대화'],
+    cond: '식물 기록에서 암꽃이 자주 떨어진다면',
+    result: '물·햇빛·수분 상태를 더 살펴보자는 관리 방향을 제안할 수 있습니다.',
   },
   {
-    day: '3주차',
-    text: '텃밭 관찰과 독서 문장이 함께 남았다.',
-    tags: ['텃밭', '독서', '사유'],
-  },
-  {
-    day: '4주차',
-    text: '이번 달을 돌아보며 꾸준함을 확인했다.',
-    tags: ['회고', '꾸준함', '감사'],
+    cond: '독서사유에서 반복되는 단어가 있다면',
+    result: '요즘 내가 어떤 주제에 관심을 두고 있는지 보여줍니다.',
   },
 ];
 
-const topicBars = [
-  { label: '건강', count: 7 },
-  { label: '가족', count: 5 },
-  { label: '산책', count: 5 },
-  { label: '텃밭', count: 4 },
-  { label: '독서·사유', count: 3 },
-];
+/* 탭 ⑥ 비서 연결 — 정직한 안내 (기장본 ea3b5858 흡수)
+ * 연결 수준 4단계를 배지로 정직하게 구분. 과장 금지. */
+type LinkLevel = '실제 연결' | '느슨한 연결' | '이동 안내' | '향후 연결 예정';
 
-const assistantCards: Array<{
-  name: string;
-  icon: ReactNode;
-  records: string;
-  help: string;
-  level: LinkLevel;
-}> = [
+const LEVEL_STYLES: Record<LinkLevel, { bg: string; border: string; color: string }> = {
+  '실제 연결': { bg: '#E5F4EC', border: '#B7E2CC', color: '#0B7A57' },
+  '느슨한 연결': { bg: '#EAF0F9', border: '#CFE0F2', color: NAVY },
+  '이동 안내': { bg: '#FCEFE4', border: '#F0D2B6', color: '#B85C2E' },
+  '향후 연결 예정': { bg: '#F1EEE7', border: '#DED7C6', color: '#7A6F5A' },
+};
+
+const LEVEL_DESCRIPTIONS: Record<LinkLevel, string> = {
+  '실제 연결': '기록을 들고 해당 비서로 바로 이어지는 연결입니다.',
+  '느슨한 연결': '같은 기록 저장소나 정리 결과를 바탕으로 나중에 활용할 수 있는 연결입니다.',
+  '이동 안내': '비서 페이지로 이동하지만 기록 데이터 자동 전달은 아직 없는 안내입니다.',
+  '향후 연결 예정': '현재는 미리보기 안내만 가능하고, 앞으로 확장될 연결입니다.',
+};
+
+const ASSISTANT_CARDS: { name: string; records: string; help: string; level: LinkLevel }[] = [
   {
     name: 'SAYU 사유비서',
-    icon: <Sparkles size={20} />,
     records: '일상, 감정, 가족 대화, 독서 문장',
-    help: '짧은 기록을 읽기 좋은 문장과 사유로 정리합니다.',
+    help: '짧은 기록을 읽기 좋은 문장과 사유로 정리합니다. 내용은 바꾸지 않습니다.',
     level: '느슨한 연결',
   },
   {
     name: '건강관리 비서',
-    icon: <HeartHandshake size={20} />,
     records: '산책, 식사, 수면, 체중, 단 음료 절제',
     help: '생활습관 흐름을 참고자료로 정리합니다. 의료 판단은 하지 않습니다.',
     level: '느슨한 연결',
   },
   {
     name: '식물탐정',
-    icon: <Leaf size={20} />,
     records: '텃밭 사진, 호박꽃 관찰, 식물 변화',
     help: '식물 상태 확인과 관리 방향 참고로 이어질 수 있습니다.',
     level: '이동 안내',
   },
   {
     name: '기록통계 비서',
-    icon: <BarChart3 size={20} />,
     records: '기록 빈도, 반복 단어, 감정 흐름',
     help: '한 달 기록의 패턴을 숫자와 흐름으로 보여줍니다.',
     level: '느슨한 연결',
   },
   {
     name: '미래보기 비서',
-    icon: <Sprout size={20} />,
     records: '반복 습관, 관심 주제, 생활 흐름',
     help: '미래를 맞히지 않고 앞으로 살펴볼 방향을 제안합니다.',
     level: '향후 연결 예정',
   },
   {
     name: '가족·추억 비서',
-    icon: <FileHeart size={20} />,
     records: '가족 대화, 여행 사진, 감사 기록',
     help: '가족과 추억을 나중에 다시 꺼내볼 자료로 정리합니다.',
     level: '향후 연결 예정',
   },
 ];
 
-const levelStyles: Record<LinkLevel, { bg: string; border: string; color: string }> = {
-  '실제 전달': { bg: '#E0E8B8', border: '#D4DEA0', color: '#4A5A2C' },
-  '느슨한 연결': { bg: '#DDD0E8', border: '#C9C0DE', color: '#5A4E7A' },
-  '이동 안내': { bg: '#F5E5DC', border: '#E8B894', color: '#B85C2E' },
-  '향후 연결 예정': { bg: '#E5DFD0', border: '#D4CDB9', color: '#7A6F5A' },
+// 탭 ⑥ 하단 — 다른 기록틀
+const FORMATS: { name: string; input: string; uses: string[] }[] = [
+  { name: '반려동물 관찰', input: '코코 밥 반 공기. 좀 처져 보임.', uses: ['약사도우미', '통계', '합본'] },
+  { name: '여행기록', input: '경주 갔다옴. 석굴암 좋았음.', uses: ['성장타임라인', 'PDF', '합본'] },
+  { name: '메모', input: '노후 준비. 연금. 건강보험.', uses: ['AI 자동 제목', 'SAYU', '검색'] },
+  { name: '업무일지', input: '오전 회의. 납기 협의함.', uses: ['통계', '합본', '월간 보고서'] },
+];
+
+/* ------------------------------------------------------------ 스타일 헬퍼 */
+
+const emoColor = (e: Emotion) => (e === 'good' ? EMO_GOOD : e === 'ok' ? EMO_OK : EMO_BAD);
+const emoLabel = (e: Emotion) => (e === 'good' ? '좋음' : e === 'ok' ? '보통' : '나쁨');
+
+const cardStyle: React.CSSProperties = {
+  background: '#FFFFFF',
+  border: `1px solid ${BORDER}`,
+  borderRadius: 18,
+  padding: '22px 24px',
+  boxShadow: '0 14px 34px -30px rgba(26,60,110,0.45)',
 };
 
-export function OnyuPreviewPage() {
-  const [activeSceneId, setActiveSceneId] = useState<SceneId>('first');
-  const [showMonthlyNotes, setShowMonthlyNotes] = useState(false);
-  const activeScene = useMemo(
-    () => scenes.find((scene) => scene.id === activeSceneId) || scenes[0],
-    [activeSceneId],
-  );
+const noteBoxStyle: React.CSSProperties = {
+  background: '#F3F6FB',
+  border: `1px solid #D7E1F0`,
+  borderRadius: 14,
+  padding: '16px 18px',
+  color: NAVY,
+  fontSize: 16,
+  lineHeight: 1.7,
+};
 
-  const scrollTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+/* ------------------------------------------------------- 작은 렌더 헬퍼들 */
 
+function DiaryRow({ row }: { row: [string, string, string, Emotion] }) {
+  const [date, day, text, emo] = row;
   return (
     <div
-      className="min-h-screen"
       style={{
-        background: 'linear-gradient(180deg, #F5F0E8 0%, #EDE8DC 100%)',
-        color: '#2C2C2A',
-        fontFamily: FONT_KR,
-        fontSize: 14,
-        lineHeight: 1.65,
+        display: 'flex',
+        gap: 14,
+        alignItems: 'flex-start',
+        padding: '14px 16px',
+        borderBottom: `1px solid ${BORDER}`,
       }}
     >
-      <style>{`
-        .onyu-button:hover { transform: translateY(-1px); box-shadow: 0 12px 26px -20px rgba(74,90,44,0.45); }
-        .onyu-button:active { transform: scale(0.99); }
-        .onyu-card:hover { transform: translateY(-2px); box-shadow: 0 16px 34px -26px rgba(74,90,44,0.34); }
-        .onyu-tab:hover { border-color: #D4DEA0; color: #4A5A2C; }
-        @media (max-width: 760px) {
-          [data-onyu="page"] { padding: 18px 14px 96px !important; }
-          [data-onyu="hero"] { padding: 26px 18px !important; }
-          [data-onyu="hero-title"] { font-size: 31px !important; }
-          [data-onyu="hero-actions"] { flex-direction: column !important; align-items: stretch !important; }
-          [data-onyu="hero-actions"] button { width: 100% !important; justify-content: center !important; }
-          [data-onyu="grid-2"], [data-onyu="grid-3"] { grid-template-columns: 1fr !important; }
-          [data-onyu="scene-tabs"] { grid-template-columns: 1fr !important; }
-          [data-onyu="section-title"] { font-size: 23px !important; }
-        }
-      `}</style>
-
-      <div
-        data-onyu="page"
-        style={{ maxWidth: 1120, margin: '0 auto', padding: '34px 28px 132px' }}
+      <div style={{ flex: '0 0 64px', fontWeight: 700, color: NAVY, fontSize: 16 }}>
+        {date}
+        <span style={{ color: FG2, fontWeight: 600, marginLeft: 4 }}>({day})</span>
+      </div>
+      <div style={{ flex: 1, fontSize: 17, lineHeight: 1.6, color: FG }}>{text}</div>
+      <span
+        style={{
+          flex: '0 0 auto',
+          alignSelf: 'center',
+          background: emoColor(emo),
+          color: '#fff',
+          fontSize: 13,
+          fontWeight: 700,
+          borderRadius: 999,
+          padding: '3px 12px',
+        }}
       >
-        <section
-          data-onyu="hero"
-          style={{
-            background: '#FFFFFF',
-            border: '1px solid #E5DFD0',
-            borderRadius: 24,
-            padding: '44px 46px',
-            boxShadow: '0 16px 40px -34px rgba(74,90,44,0.5)',
-          }}
-        >
-          <Badge icon={<Sparkles size={14} />}>ONYU PREVIEW</Badge>
-          <h1
-            data-onyu="hero-title"
-            style={{
-              fontFamily: FONT_SERIF,
-              fontSize: 45,
-              lineHeight: 1.16,
-              color: '#4A5A2C',
-              margin: '20px 0 16px',
-              letterSpacing: 0,
-              maxWidth: 760,
-            }}
-          >
-            처음 쓰는 사람도
-            <br />
-            편안하게 이해하는 HARU2026
-          </h1>
-          <p style={{ maxWidth: 820, margin: 0, color: '#5F5D55', fontSize: 15, lineHeight: 1.85 }}>
-            온유preview는 HARU2026을 처음 만나는 사용자가 부담 없이 이해하도록
-            만든 비교용 정적 페이지입니다. 한 줄 기록이 정리되고, 쌓이고,
-            다시 활용되는 과정을 부드럽게 보여줍니다.
-          </p>
-          <div
-            data-onyu="hero-actions"
-            style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 26 }}
-          >
-            <ScrollButton onClick={() => scrollTo('onyu-scenes')}>한 줄 기록 체험 보기</ScrollButton>
-            <ScrollButton onClick={() => scrollTo('onyu-month')}>한 달 흐름 보기</ScrollButton>
-            <ScrollButton onClick={() => scrollTo('onyu-assistants')}>비서 연결 보기</ScrollButton>
-          </div>
-        </section>
-
-        <Section
-          id="onyu-promise"
-          icon={<HeartHandshake size={20} />}
-          title="온유preview의 설명 방식"
-          body="기능을 많이 나열하기보다, 사용자가 ‘아, 이렇게 쓰는구나’를 느끼도록 쉬운 장면 중심으로 설명합니다."
-        >
-          <div data-onyu="grid-3" style={gridStyle(3)}>
-            <InfoCard>
-              <h3 style={cardTitleStyle}>겁내지 않아도 되는 기록</h3>
-              <p style={cardTextStyle}>긴 글이 아니어도 됩니다. 하루의 작은 장면 하나면 시작할 수 있습니다.</p>
-            </InfoCard>
-            <InfoCard>
-              <h3 style={cardTitleStyle}>나중에 다시 읽히는 기록</h3>
-              <p style={cardTextStyle}>짧은 문장은 SAYU 정리, 합본, 통계 예시를 통해 다시 읽을 수 있는 자료가 됩니다.</p>
-            </InfoCard>
-            <InfoCard>
-              <h3 style={cardTitleStyle}>과장하지 않는 연결</h3>
-              <p style={cardTextStyle}>모든 비서가 자동 처리한다는 표현 없이, 현재 연결 수준을 정직하게 안내합니다.</p>
-            </InfoCard>
-          </div>
-        </Section>
-
-        <Section
-          id="onyu-flow"
-          icon={<Sprout size={20} />}
-          title="기록이 자라는 순서"
-          body="한 줄 기록에서 시작해 월간 자료와 비서 활용 예시로 이어지는 흐름을 정적 UI로 보여줍니다."
-        >
-          <div data-onyu="grid-3" style={gridStyle(6)}>
-            {gentleFlow.map((step, index) => (
-              <InfoCard key={step.title}>
-                <div style={{ color: '#4A5A2C' }}>{step.icon}</div>
-                <span style={{ color: '#B85C2E', fontFamily: FONT_EN, fontSize: 11, fontWeight: 800 }}>
-                  STEP {index + 1}
-                </span>
-                <h3 style={cardTitleStyle}>{step.title}</h3>
-                <p style={cardTextStyle}>{step.body}</p>
-              </InfoCard>
-            ))}
-          </div>
-        </Section>
-
-        <Section
-          id="onyu-scenes"
-          icon={<PenLine size={20} />}
-          title="한 줄 기록 체험"
-          body="실제 저장이나 AI 호출 없이, 정적 예시로 한 줄 기록이 어떻게 정리되는지 보여줍니다."
-        >
-          <div
-            data-onyu="scene-tabs"
-            style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}
-          >
-            {scenes.map((scene) => {
-              const active = activeScene.id === scene.id;
-              return (
-                <button
-                  key={scene.id}
-                  type="button"
-                  onClick={() => setActiveSceneId(scene.id)}
-                  className="onyu-tab"
-                  style={{
-                    border: `1px solid ${active ? '#D4DEA0' : '#E5DFD0'}`,
-                    background: active ? '#E0E8B8' : '#FFFFFF',
-                    color: active ? '#4A5A2C' : '#7A6F5A',
-                    borderRadius: 14,
-                    padding: '11px 12px',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    transition: 'border-color 160ms, color 160ms, background 160ms',
-                  }}
-                >
-                  {scene.label}
-                </button>
-              );
-            })}
-          </div>
-          <div data-onyu="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1.15fr', gap: 14, marginTop: 16 }}>
-            <InfoCard>
-              <PanelLabel>{activeScene.title}</PanelLabel>
-              <h3 style={{ ...cardTitleStyle, color: '#4A5A2C' }}>짧은 입력</h3>
-              <p style={largeTextStyle}>{activeScene.short}</p>
-            </InfoCard>
-            <InfoCard>
-              <PanelLabel>SAYU 정리 예시</PanelLabel>
-              <p style={largeTextStyle}>{activeScene.refined}</p>
-            </InfoCard>
-          </div>
-          <InfoCard>
-            <PanelLabel>이어지는 활용 예시</PanelLabel>
-            <TagRow tags={activeScene.outcome} />
-          </InfoCard>
-        </Section>
-
-        <Section
-          id="onyu-month"
-          icon={<CalendarDays size={20} />}
-          title="한 달이 지나면 이런 자료가 됩니다"
-          body="정적 예시 기록을 바탕으로 월간 합본, 통계, 반복 단어를 부드럽게 보여줍니다."
-        >
-          <div data-onyu="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            <InfoCard>
-              <h3 style={cardTitleStyle}>월간 생활문서 미리보기</h3>
-              <p style={cardTextStyle}>
-                이번 달 기록에는 산책, 가족 대화, 수면, 식사 조절, 텃밭 관찰이
-                반복해서 나타났다. 큰 사건보다 작은 실천이 쌓였고, 그 기록은
-                내 생활의 리듬을 다시 보는 자료가 되었다.
-              </p>
-              <p style={cardTextStyle}>
-                아래 내용은 정적 예시 데이터로 만든 미리보기입니다. 실제
-                서비스에서는 사용자의 기록을 바탕으로 생성됩니다.
-              </p>
-            </InfoCard>
-            <InfoCard>
-              <h3 style={cardTitleStyle}>반복 주제 통계</h3>
-              <BarRows rows={topicBars} max={7} />
-            </InfoCard>
-          </div>
-
-          <button
-            type="button"
-            className="onyu-button"
-            onClick={() => setShowMonthlyNotes((value) => !value)}
-            style={primaryButtonStyle}
-          >
-            <ChevronDown size={17} />
-            {showMonthlyNotes ? '4주 예시 접기' : '4주 예시 펼쳐보기'}
-          </button>
-
-          {showMonthlyNotes && (
-            <div data-onyu="grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, marginTop: 14 }}>
-              {monthlyNotes.map((note) => (
-                <InfoCard key={note.day}>
-                  <PanelLabel>{note.day}</PanelLabel>
-                  <p style={cardTextStyle}>{note.text}</p>
-                  <TagRow tags={note.tags} />
-                </InfoCard>
-              ))}
-            </div>
-          )}
-        </Section>
-
-        <Section
-          id="onyu-search"
-          icon={<Search size={20} />}
-          title="나중에 다시 찾을 수 있는 자료"
-          body="기록은 적는 순간보다, 나중에 다시 필요해지는 순간에 더 큰 힘을 가질 수 있습니다."
-        >
-          <div data-onyu="grid-3" style={gridStyle(3)}>
-            <InfoCard>
-              <h3 style={cardTitleStyle}>회고할 때</h3>
-              <p style={cardTextStyle}>한 달 동안 무엇을 반복했고 어떤 감정이 많았는지 살펴봅니다.</p>
-            </InfoCard>
-            <InfoCard>
-              <h3 style={cardTitleStyle}>정리할 때</h3>
-              <p style={cardTextStyle}>가족, 건강, 식물, 독서 같은 주제를 따로 모아 문서처럼 읽습니다.</p>
-            </InfoCard>
-            <InfoCard>
-              <h3 style={cardTitleStyle}>도움이 필요할 때</h3>
-              <p style={cardTextStyle}>관련 비서에서 참고하거나 사용자가 선택해 이어서 활용합니다.</p>
-            </InfoCard>
-          </div>
-        </Section>
-
-        <Section
-          id="onyu-assistants"
-          icon={<HeartHandshake size={20} />}
-          title="비서 연결은 이렇게 안내합니다"
-          body="온유preview는 연결을 과장하지 않고, 어떤 기록이 어떤 비서와 이어질 수 있는지 카드로 설명합니다."
-        >
-          <div data-onyu="grid-3" style={gridStyle(3)}>
-            {assistantCards.map((assistant) => (
-              <InfoCard key={assistant.name}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
-                  <span style={{ color: '#4A5A2C' }}>{assistant.icon}</span>
-                  <LevelBadge level={assistant.level} />
-                </div>
-                <h3 style={{ ...cardTitleStyle, marginTop: 12 }}>{assistant.name}</h3>
-                <PanelLabel>연결되는 기록</PanelLabel>
-                <p style={cardTextStyle}>{assistant.records}</p>
-                <PanelLabel>도와주는 일</PanelLabel>
-                <p style={cardTextStyle}>{assistant.help}</p>
-              </InfoCard>
-            ))}
-          </div>
-        </Section>
-
-        <Section
-          id="onyu-safety"
-          icon={<FileHeart size={20} />}
-          title="정직한 안내"
-          body="이번 페이지는 비교용 정적 프리뷰입니다. 실제 기능 연결은 최종 통합 단계에서 따로 검토합니다."
-        >
-          <InfoCard>
-            <p style={largeTextStyle}>
-              현재 모든 비서가 모든 기록을 완전 자동으로 가져가는 것은 아닙니다.
-              일부는 기록을 참고하거나, 일부는 사용자가 선택해 이어서 사용할 수
-              있으며, 일부 연결은 앞으로 확장될 예정입니다.
-            </p>
-          </InfoCard>
-          <div data-onyu="grid-3" style={{ ...gridStyle(4), marginTop: 14 }}>
-            {(['실제 전달', '느슨한 연결', '이동 안내', '향후 연결 예정'] as LinkLevel[]).map((level) => (
-              <InfoCard key={level}>
-                <LevelBadge level={level} />
-                <p style={{ ...cardTextStyle, marginTop: 12 }}>{connectionDescriptions[level]}</p>
-              </InfoCard>
-            ))}
-          </div>
-        </Section>
-
-        <section
-          style={{
-            marginTop: 34,
-            background: '#4A5A2C',
-            color: '#FFFFFF',
-            borderRadius: 24,
-            padding: '28px 26px',
-          }}
-        >
-          <h2 style={{ fontFamily: FONT_SERIF, fontSize: 26, margin: 0, letterSpacing: 0 }}>
-            HARU2026은 천천히 쌓이는 기록을 다시 쓸 수 있게 돕습니다.
-          </h2>
-          <p style={{ color: 'rgba(255,255,255,0.78)', margin: '10px 0 0', maxWidth: 820 }}>
-            이 페이지에는 Firestore 저장, Functions 호출, AI API 호출, 실제
-            핸드오프, 실제 PDF 생성 기능이 없습니다. 비교 검토를 위한 정적 UI만
-            포함합니다.
-          </p>
-        </section>
-      </div>
+        {emoLabel(emo)}
+      </span>
     </div>
   );
 }
 
-const connectionDescriptions: Record<LinkLevel, string> = {
-  '실제 전달': '기록을 들고 비서로 들어가는 연결입니다.',
-  '느슨한 연결': '같은 기록 저장소나 정리 결과를 바탕으로 나중에 활용할 수 있는 연결입니다.',
-  '이동 안내': '비서 페이지로 이동하지만 기록 데이터 전달은 없는 안내입니다.',
-  '향후 연결 예정': '현재는 프리뷰 안내만 가능하고, 추후 확장될 연결입니다.',
-};
-
-function Section({
-  id,
-  icon,
-  title,
-  body,
-  children,
-}: {
-  id: string;
-  icon: ReactNode;
-  title: string;
-  body: string;
-  children: ReactNode;
-}) {
+function BarChart({ data, color }: { data: { label: string; value: number }[]; color: string }) {
+  const max = Math.max(...data.map((d) => d.value), 1);
   return (
-    <section id={id} style={{ marginTop: 34, scrollMarginTop: 20 }}>
-      <div style={{ maxWidth: 850, marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#4A5A2C' }}>
-          <span
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 12,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: '#E0E8B8',
-              flexShrink: 0,
-            }}
-          >
-            {icon}
-          </span>
-          <h2
-            data-onyu="section-title"
-            style={{
-              fontFamily: FONT_SERIF,
-              fontSize: 27,
-              lineHeight: 1.3,
-              color: '#2C2C2A',
-              margin: 0,
-              letterSpacing: 0,
-            }}
-          >
-            {title}
-          </h2>
-        </div>
-        <p style={{ color: '#5F5D55', lineHeight: 1.8, margin: '12px 0 0' }}>{body}</p>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function InfoCard({ children }: { children: ReactNode }) {
-  return (
-    <article
-      className="onyu-card"
-      style={{
-        background: '#FFFFFF',
-        border: '1px solid #E5DFD0',
-        borderRadius: 18,
-        padding: 18,
-        transition: 'transform 180ms cubic-bezier(0.22,0.61,0.36,1), box-shadow 180ms',
-      }}
-    >
-      {children}
-    </article>
-  );
-}
-
-function Badge({ icon, children }: { icon: ReactNode; children: ReactNode }) {
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 8,
-        border: '1px solid #E5DFD0',
-        borderRadius: 999,
-        padding: '6px 12px',
-        color: '#7A6F5A',
-        fontFamily: FONT_EN,
-        fontSize: 11,
-        fontWeight: 800,
-        letterSpacing: 0,
-        background: '#F8F5ED',
-      }}
-    >
-      {icon}
-      {children}
-    </span>
-  );
-}
-
-function ScrollButton({ children, onClick }: { children: ReactNode; onClick: () => void }) {
-  return (
-    <button type="button" className="onyu-button" onClick={onClick} style={secondaryButtonStyle}>
-      {children}
-    </button>
-  );
-}
-
-function PanelLabel({ children }: { children: ReactNode }) {
-  return (
-    <div
-      style={{
-        color: '#B85C2E',
-        fontFamily: FONT_EN,
-        fontSize: 11,
-        fontWeight: 800,
-        letterSpacing: 0,
-        textTransform: 'uppercase',
-        marginBottom: 8,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function TagRow({ tags }: { tags: string[] }) {
-  return (
-    <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
-      {tags.map((tag) => (
-        <span
-          key={tag}
-          style={{
-            background: '#F8F5ED',
-            border: '1px solid #E5DFD0',
-            color: '#7A6F5A',
-            borderRadius: 999,
-            padding: '4px 9px',
-            fontSize: 12,
-            fontWeight: 700,
-          }}
-        >
-          {tag}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function BarRows({ rows, max }: { rows: Array<{ label: string; count: number }>; max: number }) {
-  return (
-    <div style={{ display: 'grid', gap: 10 }}>
-      {rows.map((row) => (
-        <div key={row.label}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {data.map((d) => (
+        <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ flex: '0 0 90px', fontSize: 15, color: FG, fontWeight: 600 }}>{d.label}</div>
           <div
             style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              gap: 12,
-              color: '#4C4A43',
-              fontSize: 13,
-              fontWeight: 700,
-            }}
-          >
-            <span>{row.label}</span>
-            <span>{row.count}회</span>
-          </div>
-          <div
-            style={{
-              height: 9,
-              background: '#F5F0E8',
+              flex: 1,
+              background: '#EEF1F5',
               borderRadius: 999,
+              height: 22,
               overflow: 'hidden',
-              marginTop: 5,
             }}
           >
-            <span
+            <div
               style={{
-                display: 'block',
+                width: `${(d.value / max) * 100}%`,
                 height: '100%',
-                width: `${Math.max(8, Math.round((row.count / max) * 100))}%`,
-                background: 'linear-gradient(90deg, #7A8B4E 0%, #D4DEA0 100%)',
+                background: color,
                 borderRadius: 999,
               }}
             />
+          </div>
+          <div style={{ flex: '0 0 46px', textAlign: 'right', fontWeight: 700, color }}>
+            {d.value}
           </div>
         </div>
       ))}
@@ -694,19 +355,19 @@ function BarRows({ rows, max }: { rows: Array<{ label: string; count: number }>;
 }
 
 function LevelBadge({ level }: { level: LinkLevel }) {
-  const style = levelStyles[level];
+  const s = LEVEL_STYLES[level];
   return (
     <span
       style={{
         display: 'inline-flex',
         alignItems: 'center',
         borderRadius: 999,
-        padding: '5px 9px',
-        background: style.bg,
-        border: `1px solid ${style.border}`,
-        color: style.color,
-        fontSize: 11,
-        fontWeight: 800,
+        padding: '4px 11px',
+        background: s.bg,
+        border: `1px solid ${s.border}`,
+        color: s.color,
+        fontSize: 12,
+        fontWeight: 700,
         whiteSpace: 'nowrap',
       }}
     >
@@ -715,65 +376,577 @@ function LevelBadge({ level }: { level: LinkLevel }) {
   );
 }
 
-const cardTitleStyle = {
-  fontFamily: FONT_SERIF,
-  color: '#2C2C2A',
-  fontSize: 18,
-  lineHeight: 1.35,
-  margin: '0 0 8px',
-  letterSpacing: 0,
-} as const;
+/* 화살표 커넥터 (STEP 사이) */
+function ArrowConnector({ text }: { text: string }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 4,
+        padding: '14px 0',
+      }}
+    >
+      <ArrowDown size={22} color={GREEN} />
+      <span style={{ fontSize: 14, color: GREEN, fontWeight: 700 }}>{text}</span>
+    </div>
+  );
+}
 
-const cardTextStyle = {
-  color: '#5F5D55',
-  fontSize: 13,
-  lineHeight: 1.7,
-  margin: '0 0 10px',
-} as const;
+/* ============================================================ 메인 컴포넌트 */
 
-const largeTextStyle = {
-  color: '#4C4A43',
-  fontSize: 15,
-  lineHeight: 1.8,
-  margin: 0,
-} as const;
+export function OnyuPreviewPage() {
+  const navigate = useNavigate();
+  const goBack = () => navigate(-1);
+  const goHome = () => navigate('/');
 
-const primaryButtonStyle = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 8,
-  border: '1px solid #4A5A2C',
-  background: '#4A5A2C',
-  color: '#FFFFFF',
-  borderRadius: 999,
-  padding: '11px 15px',
-  fontWeight: 800,
-  cursor: 'pointer',
-  transition: 'transform 160ms, box-shadow 180ms',
-  marginTop: 14,
-} as const;
+  const [mainTab, setMainTab] = useState<MainTabKey>('terms');
+  const [exampleTab, setExampleTab] = useState<string>(EXAMPLES[0].key);
+  const [mergeStatsTab, setMergeStatsTab] = useState<'merge' | 'stats'>('merge');
 
-const secondaryButtonStyle = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  border: '1px solid #E5DFD0',
-  background: '#FFFFFF',
-  color: '#4A5A2C',
-  borderRadius: 999,
-  padding: '11px 15px',
-  fontWeight: 800,
-  cursor: 'pointer',
-  transition: 'transform 160ms, box-shadow 180ms',
-} as const;
+  const activeExample = EXAMPLES.find((e) => e.key === exampleTab) ?? EXAMPLES[0];
 
-function gridStyle(columns: number) {
-  return {
-    display: 'grid',
-    gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-    gap: 14,
-  };
+  return (
+    <div
+      className="min-h-screen"
+      style={{
+        background: `linear-gradient(180deg, ${OFFWHITE} 0%, #F1EFE9 100%)`,
+        color: FG,
+        fontFamily: FONT_KR,
+        fontSize: 16,
+        lineHeight: 1.7,
+      }}
+    >
+      <style>{`
+        .onyu-btn { transition: transform .15s ease, box-shadow .15s ease, background .15s ease; }
+        .onyu-btn:hover { transform: translateY(-1px); }
+        .onyu-btn:active { transform: scale(0.99); }
+        .onyu-card:hover { transform: translateY(-2px); box-shadow: 0 18px 38px -28px rgba(26,60,110,0.4); }
+        @media (max-width: 760px) {
+          [data-onyu="page"] { padding: 18px 14px 110px !important; }
+          [data-onyu="hero"] { padding: 24px 18px !important; }
+          [data-onyu="hero-title"] { font-size: 26px !important; }
+          [data-onyu="grid2"] { grid-template-columns: 1fr !important; }
+          [data-onyu="grid4"] { grid-template-columns: 1fr 1fr !important; }
+          [data-onyu="section-title"] { font-size: 22px !important; }
+          [data-onyu="step3-grid"] { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+
+      <div data-onyu="page" style={{ maxWidth: 920, margin: '0 auto', padding: '28px 24px 120px' }}>
+        {/* 상단 바 (뒤로가기 / 홈) */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
+          <button
+            type="button"
+            className="onyu-btn"
+            onClick={goBack}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: '#FFFFFF',
+              border: `1px solid ${BORDER}`,
+              borderRadius: 999,
+              padding: '9px 16px',
+              fontSize: 15,
+              fontWeight: 700,
+              color: NAVY,
+              cursor: 'pointer',
+            }}
+          >
+            <ArrowLeft size={18} /> 뒤로가기
+          </button>
+          <button
+            type="button"
+            className="onyu-btn"
+            onClick={goHome}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: '#FFFFFF',
+              border: `1px solid ${BORDER}`,
+              borderRadius: 999,
+              padding: '9px 16px',
+              fontSize: 15,
+              fontWeight: 700,
+              color: NAVY,
+              cursor: 'pointer',
+            }}
+          >
+            <Home size={18} /> 홈
+          </button>
+        </div>
+
+        {/* 히어로 */}
+        <section
+          data-onyu="hero"
+          style={{
+            background: '#FFFFFF',
+            border: `1px solid ${BORDER}`,
+            borderRadius: 22,
+            padding: '34px 36px',
+            marginBottom: 22,
+            boxShadow: '0 16px 40px -34px rgba(26,60,110,0.5)',
+          }}
+        >
+          <div style={{ fontSize: 14, fontWeight: 700, color: GREEN, letterSpacing: 1 }}>
+            HARU2026 미리보기
+          </div>
+          <h1
+            data-onyu="hero-title"
+            style={{ fontSize: 32, fontWeight: 900, color: NAVY, margin: '8px 0 10px' }}
+          >
+            짧게 적어도, 한 권의 책이 됩니다
+          </h1>
+          <p style={{ fontSize: 17, color: FG2, margin: 0 }}>
+            단문 하나가 → 20개로 쌓이고 → 한 권의 책과 통계가 되고 → 앞으로의 흐름과 비서 연결까지
+            보여줍니다.
+          </p>
+        </section>
+
+        {/* 메인 탭 바 */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 22 }}>
+          {MAIN_TABS.map((t) => {
+            const on = mainTab === t.key;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                className="onyu-btn"
+                onClick={() => setMainTab(t.key)}
+                style={{
+                  background: on ? NAVY : '#FFFFFF',
+                  color: on ? '#FFFFFF' : NAVY,
+                  border: `1px solid ${on ? NAVY : BORDER}`,
+                  borderRadius: 999,
+                  padding: '10px 16px',
+                  fontSize: 15,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ---------------------------------------------- 탭 ① 쉬운 용어 풀이 */}
+        {mainTab === 'terms' && (
+          <section>
+            <div style={{ ...noteBoxStyle, marginBottom: 18 }}>
+              HARU2026은 그냥 일기장이 아닙니다. 조금만 적어도 나중에 꺼내 쓸 수 있는 내 자료가 됩니다.
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {TERMS.map((t) => (
+                <div key={t.term} className="onyu-card" style={cardStyle}>
+                  <div style={{ fontSize: 19, fontWeight: 800, color: NAVY, marginBottom: 6 }}>
+                    {t.term}
+                  </div>
+                  <div style={{ fontSize: 16, color: FG, lineHeight: 1.7 }}>{t.desc}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ---------------------------------------------- 탭 ② 예시문 체험 */}
+        {mainTab === 'examples' && (
+          <section>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
+              {EXAMPLES.map((e) => {
+                const on = exampleTab === e.key;
+                return (
+                  <button
+                    key={e.key}
+                    type="button"
+                    className="onyu-btn"
+                    onClick={() => setExampleTab(e.key)}
+                    style={{
+                      background: on ? GREEN : '#FFFFFF',
+                      color: on ? '#FFFFFF' : FG,
+                      border: `1px solid ${on ? GREEN : BORDER}`,
+                      borderRadius: 999,
+                      padding: '9px 16px',
+                      fontSize: 15,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {e.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="onyu-card" style={cardStyle}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: FG2, marginBottom: 6 }}>
+                STEP 1 · 짧게 쓴 것
+              </div>
+              <div style={{ fontSize: 18, color: FG, lineHeight: 1.7 }}>{activeExample.step1}</div>
+            </div>
+
+            <ArrowConnector text="SAYU가 표현을 다듬습니다 · 내용은 그대로" />
+
+            <div className="onyu-card" style={{ ...cardStyle, borderColor: '#CFE6DB' }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: GREEN, marginBottom: 6 }}>
+                STEP 2 · HARU가 정리
+              </div>
+              <div style={{ fontSize: 18, color: FG, lineHeight: 1.8 }}>{activeExample.step2}</div>
+            </div>
+
+            <ArrowConnector text="이 기록이 이렇게 이어집니다" />
+
+            <div className="onyu-card" style={cardStyle}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: FG2, marginBottom: 12 }}>
+                STEP 3 · 이어지는 활용
+              </div>
+              <div
+                data-onyu="step3-grid"
+                style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}
+              >
+                {activeExample.step3.map((s) => (
+                  <div
+                    key={s.name}
+                    style={{
+                      display: 'flex',
+                      gap: 10,
+                      alignItems: 'flex-start',
+                      background: OFFWHITE,
+                      border: `1px solid ${BORDER}`,
+                      borderRadius: 12,
+                      padding: '12px 14px',
+                    }}
+                  >
+                    <span
+                      style={{
+                        flex: '0 0 auto',
+                        background: NAVY,
+                        color: '#fff',
+                        fontSize: 13,
+                        fontWeight: 700,
+                        borderRadius: 8,
+                        padding: '4px 10px',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {s.name}
+                    </span>
+                    <span style={{ fontSize: 15, color: FG, lineHeight: 1.6 }}>{s.use}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ---------------------------------------------- 탭 ③ 20개가 쌓이면 */}
+        {mainTab === 'pileup' && (
+          <section>
+            <div style={{ ...noteBoxStyle, marginBottom: 18 }}>
+              매일 짧게 쓴 일기 한 줄이 4주 동안 20개 쌓였습니다. 이 20개가 어떻게 한 권의 책(합본)이
+              되고, 어떤 흐름(통계)을 보여주는지 보세요.
+            </div>
+            <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
+              {DIARIES.map((row) => (
+                <DiaryRow key={row[0]} row={row} />
+              ))}
+            </div>
+            <div style={{ ...noteBoxStyle, marginTop: 18 }}>
+              이렇게 흩어진 20개가 다음 탭에서 한 권의 책과 통계가 됩니다.
+            </div>
+          </section>
+        )}
+
+        {/* ---------------------------------------------- 탭 ④ 합본·통계 */}
+        {mainTab === 'mergeStats' && (
+          <section>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
+              {(['merge', 'stats'] as const).map((k) => {
+                const on = mergeStatsTab === k;
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    className="onyu-btn"
+                    onClick={() => setMergeStatsTab(k)}
+                    style={{
+                      background: on ? NAVY : '#FFFFFF',
+                      color: on ? '#FFFFFF' : NAVY,
+                      border: `1px solid ${on ? NAVY : BORDER}`,
+                      borderRadius: 999,
+                      padding: '10px 22px',
+                      fontSize: 16,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {k === 'merge' ? '합본' : '통계'}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 합본 */}
+            {mergeStatsTab === 'merge' && (
+              <div className="onyu-card" style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
+                <div style={{ background: NAVY, color: '#fff', padding: '30px 28px' }}>
+                  <div style={{ fontSize: 26, fontWeight: 900 }}>김복순의 6월 일기</div>
+                  <div style={{ fontSize: 15, opacity: 0.85, marginTop: 8 }}>
+                    2025.06.02 ~ 06.27 · 총 20편 · 작성일 20일
+                  </div>
+                </div>
+                <div>
+                  {DIARIES.map((row) => (
+                    <DiaryRow key={row[0]} row={row} />
+                  ))}
+                </div>
+                <div style={{ padding: '18px 20px' }}>
+                  <div style={noteBoxStyle}>
+                    흩어져 있던 20개의 짧은 기록이 한 권의 책으로 묶입니다. PDF로 저장해 가족과 나누거나,
+                    연말에 1년치를 모아 '2025년 나의 일기'로 만들 수 있습니다.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 통계 */}
+            {mergeStatsTab === 'stats' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                <div
+                  data-onyu="grid4"
+                  style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}
+                >
+                  {STAT_CARDS.map((c) => (
+                    <div key={c.label} style={{ ...cardStyle, padding: '18px 16px', textAlign: 'center' }}>
+                      <div style={{ fontSize: 32, fontWeight: 900, color: NAVY }}>{c.value}</div>
+                      <div style={{ fontSize: 14, color: FG2, marginTop: 6 }}>{c.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="onyu-card" style={cardStyle}>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: NAVY, marginBottom: 14 }}>
+                    주차별 기록 편수
+                  </div>
+                  <BarChart data={WEEKLY} color={NAVY} />
+                </div>
+
+                <div className="onyu-card" style={cardStyle}>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: NAVY, marginBottom: 4 }}>
+                    자주 등장한 주제
+                  </div>
+                  <div style={{ fontSize: 13, color: FG2, marginBottom: 14 }}>AI 자동 분석</div>
+                  <BarChart data={TOPICS} color={GREEN} />
+                </div>
+
+                <div className="onyu-card" style={cardStyle}>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: NAVY, marginBottom: 14 }}>
+                    하루 감정 흐름
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+                    {DIARIES.map((row) => (
+                      <div
+                        key={row[0]}
+                        title={`${row[0]} (${row[1]}) · ${emoLabel(row[3])}`}
+                        style={{ width: 22, height: 22, borderRadius: '50%', background: emoColor(row[3]) }}
+                      />
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+                    {(['good', 'ok', 'bad'] as Emotion[]).map((e) => (
+                      <div key={e} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span
+                          style={{
+                            width: 14,
+                            height: 14,
+                            borderRadius: '50%',
+                            background: emoColor(e),
+                            display: 'inline-block',
+                          }}
+                        />
+                        <span style={{ fontSize: 14, color: FG2 }}>{emoLabel(e)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={noteBoxStyle}>
+                  숫자와 그래프로 보니 6월의 나가 한눈에 보입니다. 건강을 가장 많이 신경 썼고, 가족과
+                  자주 교류했으며, 감정은 대체로 안정적이었습니다. 이 흐름이 다음 탭 미래보기의 재료가
+                  됩니다.
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ---------------------------------------------- 탭 ⑤ 미래보기 */}
+        {mainTab === 'future' && (
+          <section>
+            <div
+              style={{
+                background: '#FCF4E6',
+                border: '1px solid #F0D9A8',
+                borderRadius: 14,
+                padding: '18px 20px',
+                color: '#8A5A12',
+                fontSize: 16,
+                lineHeight: 1.7,
+                marginBottom: 20,
+                fontWeight: 600,
+              }}
+            >
+              ⚠️ 미래보기는 미래를 맞히는 기능이 아닙니다. 지금까지의 기록을 바탕으로 내 생활·건강·관심사가
+              앞으로 어떤 방향으로 이어질 수 있는지 살펴보는 기능입니다.
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {FUTURE_ITEMS.map((f) => (
+                <div key={f.cond} className="onyu-card" style={cardStyle}>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: NAVY, marginBottom: 8 }}>
+                    {f.cond}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 16, color: FG }}>
+                    <ArrowRight size={20} color={GREEN} style={{ flex: '0 0 auto', marginTop: 2 }} />
+                    <span>{f.result}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ---------------------------------------------- 탭 ⑥ 비서 연결 (정직한 안내) */}
+        {mainTab === 'assistants' && (
+          <section>
+            <div style={{ ...noteBoxStyle, marginBottom: 8 }}>
+              온유preview는 비서 연결을 과장하지 않습니다. 어떤 기록이 어떤 비서와 이어지는지, 그리고 그
+              연결이 지금 실제로 작동하는지 / 앞으로 확장될 예정인지 배지로 솔직하게 구분해 보여줍니다.
+            </div>
+
+            {/* 연결 수준 범례 */}
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 10,
+                margin: '14px 0 18px',
+              }}
+            >
+              {(['실제 연결', '느슨한 연결', '이동 안내', '향후 연결 예정'] as LinkLevel[]).map((lv) => (
+                <div
+                  key={lv}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: FG2 }}
+                >
+                  <LevelBadge level={lv} />
+                  <span>{LEVEL_DESCRIPTIONS[lv]}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* 비서 카드 */}
+            <div
+              data-onyu="grid2"
+              style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}
+            >
+              {ASSISTANT_CARDS.map((a) => (
+                <div key={a.name} className="onyu-card" style={cardStyle}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 10,
+                      marginBottom: 12,
+                    }}
+                  >
+                    <span style={{ fontSize: 18, fontWeight: 800, color: NAVY }}>{a.name}</span>
+                    <LevelBadge level={a.level} />
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: GREEN, marginBottom: 4 }}>
+                    연결되는 기록
+                  </div>
+                  <div style={{ fontSize: 15, color: FG, marginBottom: 10, lineHeight: 1.6 }}>
+                    {a.records}
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: GREEN, marginBottom: 4 }}>
+                    도와주는 일
+                  </div>
+                  <div style={{ fontSize: 15, color: FG, lineHeight: 1.6 }}>{a.help}</div>
+                </div>
+              ))}
+            </div>
+
+            <div
+              style={{
+                marginTop: 20,
+                background: '#F1EEE7',
+                border: `1px solid ${BORDER}`,
+                borderRadius: 14,
+                padding: '16px 18px',
+                fontSize: 15,
+                color: FG2,
+                lineHeight: 1.7,
+              }}
+            >
+              현재 모든 비서가 모든 기록을 완전 자동으로 가져가는 것은 아닙니다. 일부는 기록을 참고하고,
+              일부는 사용자가 선택해 이어서 사용하며, 일부 연결은 앞으로 확장될 예정입니다. 이 페이지는
+              실제 저장·AI 호출 없는 비교용 정적 미리보기입니다.
+            </div>
+
+            {/* 다른 기록틀 (탭 ⑥ 하단 작은 섹션) */}
+            <h2
+              data-onyu="section-title"
+              style={{ fontSize: 24, fontWeight: 800, color: NAVY, margin: '30px 0 14px' }}
+            >
+              이런 기록틀도 있습니다
+            </h2>
+            <div data-onyu="grid2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              {FORMATS.map((f) => (
+                <div key={f.name} className="onyu-card" style={cardStyle}>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: NAVY, marginBottom: 10 }}>
+                    {f.name}
+                  </div>
+                  <div
+                    style={{
+                      background: OFFWHITE,
+                      border: `1px solid ${BORDER}`,
+                      borderRadius: 10,
+                      padding: '10px 12px',
+                      fontSize: 15,
+                      color: FG,
+                      marginBottom: 12,
+                    }}
+                  >
+                    “{f.input}”
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {f.uses.map((u) => (
+                      <span
+                        key={u}
+                        style={{
+                          background: '#EAF6F0',
+                          color: '#0B7A57',
+                          fontSize: 13,
+                          fontWeight: 700,
+                          borderRadius: 999,
+                          padding: '4px 12px',
+                        }}
+                      >
+                        {u}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default OnyuPreviewPage;

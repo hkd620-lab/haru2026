@@ -10,6 +10,7 @@ import { HomePageV2 } from './pages/HomePageV2';
 import { LandingPage } from './pages/LandingPage';
 import { OnboardingPreviewPage } from './pages/OnboardingPreviewPage';
 import { GyeongdaePreviewPage } from './pages/GyeongdaePreviewPage';
+import { OnyuPreviewPage } from './pages/OnyuPreviewPage';
 import { RecordPage } from './pages/RecordPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { LoginPage } from './pages/LoginPage';
@@ -137,6 +138,7 @@ function App() {
               <Route path="/v2" element={<HomePageV2 />} />
               <Route path="/onboarding-preview" element={<OnboardingPreviewPage />} />
               <Route path="/gyeongdae-preview" element={<GyeongdaePreviewPage />} />
+              <Route path="/onyu-preview" element={<OnyuPreviewPage />} />
 
               {/* v1 백업 라우트 (구 HomePage 보존, 롤백/비교용) */}
               <Route path="/v1-legacy" element={<HomePage />} />
