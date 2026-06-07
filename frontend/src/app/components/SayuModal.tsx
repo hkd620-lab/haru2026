@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { useSubscription } from '../hooks/useSubscription';
 import { useLoading } from '../contexts/LoadingContext';
 import { HaruLogoAnimation } from './HaruLogoAnimation';
-import { doc, getDoc, updateDoc, deleteDoc, deleteField, arrayRemove } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, arrayRemove } from 'firebase/firestore';
 import { ref, listAll, deleteObject, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { httpsCallable, getFunctions } from 'firebase/functions';
 import { db, storage, functions } from '../../firebase';
@@ -20,6 +20,7 @@ import {
 
 const WEATHER_OPTIONS = ['쾌청', '흐림', '비', '눈'];
 const TEMPERATURE_OPTIONS = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
+const MOOD_OPTIONS = ['기쁨', '평온', '무미', '울적', '번잡'];
 const TIMELINE_IMAGE_MAX_WIDTH = 1600;
 const TIMELINE_IMAGE_QUALITY = 0.82;
 
@@ -202,6 +203,15 @@ export function SayuModal({
   const [isRefining, setIsRefining] = useState(false);
   const [editedWeather, setEditedWeather] = useState(weather || '');
   const [editedTemperature, setEditedTemperature] = useState(temperature || '');
+  const [editedMood, setEditedMood] = useState(mood || '');
+  const [weatherTags, setWeatherTags] = useState<string[]>(WEATHER_OPTIONS);
+  const [temperatureTags, setTemperatureTags] = useState<string[]>(TEMPERATURE_OPTIONS);
+  const [moodTags, setMoodTags] = useState<string[]>(MOOD_OPTIONS);
+  const [showEnvInput, setShowEnvInput] = useState({
+    weather: false,
+    temperature: false,
+    mood: false,
+  });
   const [localImages, setLocalImages] = useState<string[]>(images || []);
   const [editedTimelineItems, setEditedTimelineItems] = useState<GrowthTimelineEditItem[]>([]);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -216,6 +226,79 @@ export function SayuModal({
     if (recordSnap.exists() && recordSnap.data().isPublic === true) {
       await firestoreService.publishRecordToShared(currentUser.uid, firestoreId);
     }
+  };
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+
+    const mergeWithDefaults = (saved: unknown, defaults: string[]) => {
+      const savedTags = Array.isArray(saved) ? saved.filter((tag) => typeof tag === 'string') : [];
+      const missingDefaults = defaults.filter((tag) => !savedTags.includes(tag));
+      return [...missingDefaults, ...savedTags];
+    };
+
+    const loadEnvTags = async () => {
+      try {
+        const tagRef = doc(db, 'users', currentUser.uid, 'settings', 'customTags');
+        const tagSnap = await getDoc(tagRef);
+        if (!tagSnap.exists()) return;
+
+        const data = tagSnap.data();
+        setWeatherTags(mergeWithDefaults(data.weather, WEATHER_OPTIONS));
+        setTemperatureTags(mergeWithDefaults(data.temperature, TEMPERATURE_OPTIONS));
+        setMoodTags(mergeWithDefaults(data.mood, MOOD_OPTIONS));
+      } catch (error) {
+        console.error('환경 태그 로드 실패:', error);
+      }
+    };
+
+    loadEnvTags();
+  }, [currentUser?.uid]);
+
+  const saveEnvTags = async (nextWeather: string[], nextTemperature: string[], nextMood: string[]) => {
+    if (!currentUser?.uid) return;
+    await setDoc(
+      doc(db, 'users', currentUser.uid, 'settings', 'customTags'),
+      {
+        weather: nextWeather,
+        temperature: nextTemperature,
+        mood: nextMood,
+      },
+      { merge: true },
+    );
+  };
+
+  const handleAddEnvTag = async (type: 'weather' | 'temperature' | 'mood') => {
+    const inputEl = document.getElementById(`sayu-env-input-${type}`) as HTMLInputElement | null;
+    const nextTag = inputEl?.value?.trim() || '';
+    if (!nextTag) return;
+    if ([...nextTag].length > 4) {
+      toast.error('4글자 이하로 입력해주세요');
+      return;
+    }
+
+    const currentTags = type === 'weather' ? weatherTags : type === 'temperature' ? temperatureTags : moodTags;
+    const defaultTags = type === 'weather' ? WEATHER_OPTIONS : type === 'temperature' ? TEMPERATURE_OPTIONS : MOOD_OPTIONS;
+    if (currentTags.length - defaultTags.length >= 4) {
+      toast.error('최대 4개까지 추가 가능합니다');
+      return;
+    }
+    if (currentTags.includes(nextTag)) {
+      toast.error('이미 추가된 태그입니다');
+      return;
+    }
+
+    const updatedTags = [...currentTags, nextTag];
+    const nextWeather = type === 'weather' ? updatedTags : weatherTags;
+    const nextTemperature = type === 'temperature' ? updatedTags : temperatureTags;
+    const nextMood = type === 'mood' ? updatedTags : moodTags;
+
+    setWeatherTags(nextWeather);
+    setTemperatureTags(nextTemperature);
+    setMoodTags(nextMood);
+    await saveEnvTags(nextWeather, nextTemperature, nextMood);
+    if (inputEl) inputEl.value = '';
+    setShowEnvInput((prev) => ({ ...prev, [type]: false }));
   };
 
   // 🗑 형식 삭제
@@ -537,6 +620,7 @@ export function SayuModal({
       setEditedContent(content);
       setEditedWeather(weather || '');
       setEditedTemperature(temperature || '');
+      setEditedMood(mood || '');
       setEditedTitle(title || '');
       setLocalImages((images || []).filter(url => typeof url === 'string' && url.trim().length > 0 && url.startsWith('http')));
       const normalizedTimelineItems = sortTimelineItems(timelineItems).map((item, index) => ({
@@ -644,6 +728,7 @@ export function SayuModal({
         const titleUpdate: Record<string, string> = {
           weather: editedWeather,
           temperature: editedTemperature,
+          mood: editedMood,
         };
         if (formatKey) {
           titleUpdate[`${formatKey}_title`] = editedTitle.trim();
@@ -1019,6 +1104,109 @@ export function SayuModal({
             </div>
           );
         })}
+      </div>
+    );
+  };
+
+  const renderEnvTags = (
+    type: 'weather' | 'temperature' | 'mood',
+    tags: string[],
+    selectedValue: string,
+    onSelect: (value: string) => void,
+  ) => {
+    const defaultCount =
+      type === 'weather'
+        ? WEATHER_OPTIONS.length
+        : type === 'temperature'
+          ? TEMPERATURE_OPTIONS.length
+          : MOOD_OPTIONS.length;
+    const customCount = tags.length - defaultCount;
+
+    return (
+      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
+        {tags.map((tag) => (
+          <button
+            key={tag}
+            onClick={() => onSelect(tag)}
+            style={{
+              fontSize: 11,
+              padding: '3px 8px',
+              borderRadius: 6,
+              border: selectedValue === tag ? 'none' : '1px solid #d0dff0',
+              backgroundColor: selectedValue === tag ? '#1A3C6E' : '#FDF6C3',
+              color: selectedValue === tag ? '#FAF9F6' : '#1A3C6E',
+              cursor: 'pointer',
+            }}
+          >
+            {tag}
+          </button>
+        ))}
+        {showEnvInput[type] ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <input
+              id={`sayu-env-input-${type}`}
+              type="text"
+              placeholder="최대 4자"
+              style={{
+                width: 64,
+                padding: '3px 6px',
+                borderRadius: 6,
+                border: '1px solid #d0dff0',
+                fontSize: 12,
+                textAlign: 'center',
+              }}
+              autoFocus
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') handleAddEnvTag(type);
+                if (event.key === 'Escape') {
+                  setShowEnvInput((prev) => ({ ...prev, [type]: false }));
+                }
+              }}
+            />
+            <button
+              onClick={() => handleAddEnvTag(type)}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                color: '#1A3C6E',
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              확인
+            </button>
+            <button
+              onClick={() => setShowEnvInput((prev) => ({ ...prev, [type]: false }))}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                color: '#999',
+                fontSize: 11,
+                cursor: 'pointer',
+              }}
+            >
+              취소
+            </button>
+          </div>
+        ) : customCount < 4 ? (
+          <button
+            onClick={() => setShowEnvInput((prev) => ({ ...prev, [type]: true }))}
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: 999,
+              border: 'none',
+              backgroundColor: '#e5e7eb',
+              color: '#555',
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            +
+          </button>
+        ) : null}
       </div>
     );
   };
@@ -1498,67 +1686,20 @@ export function SayuModal({
                     {/* 날씨 선택 */}
                     <div>
                       <p style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>날씨</p>
-                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                        {WEATHER_OPTIONS.map((w) => (
-                          <button
-                            key={w}
-                            onClick={() => setEditedWeather(w)}
-                            style={{
-                              fontSize: 11,
-                              padding: '3px 8px',
-                              borderRadius: 6,
-                              border: editedWeather === w ? 'none' : '1px solid #d0dff0',
-                              backgroundColor: editedWeather === w ? '#1A3C6E' : '#FDF6C3',
-                              color: editedWeather === w ? '#FAF9F6' : '#1A3C6E',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            {w}
-                          </button>
-                        ))}
-                      </div>
+                      {renderEnvTags('weather', weatherTags, editedWeather, setEditedWeather)}
                     </div>
 
                     {/* 기온 선택 */}
                     <div>
                       <p style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>기온</p>
-                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                        {TEMPERATURE_OPTIONS.map((t) => (
-                          <button
-                            key={t}
-                            onClick={() => setEditedTemperature(t)}
-                            style={{
-                              fontSize: 11,
-                              padding: '3px 8px',
-                              borderRadius: 6,
-                              border: editedTemperature === t ? 'none' : '1px solid #d0dff0',
-                              backgroundColor: editedTemperature === t ? '#1A3C6E' : '#FDF6C3',
-                              color: editedTemperature === t ? '#FAF9F6' : '#1A3C6E',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            {t}
-                          </button>
-                        ))}
-                      </div>
+                      {renderEnvTags('temperature', temperatureTags, editedTemperature, setEditedTemperature)}
                     </div>
 
-                    {/* 기분 */}
-                    {mood && (
-                      <div>
-                        <p style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>기분</p>
-                        <span style={{
-                          fontSize: '12px',
-                          padding: '4px 10px',
-                          borderRadius: '6px',
-                          backgroundColor: '#FDF6C3',
-                          color: '#1A3C6E',
-                          border: '1px solid #d0dff0'
-                        }}>
-                          {mood}
-                        </span>
-                      </div>
-                    )}
+                    {/* 기분 선택 */}
+                    <div>
+                      <p style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>기분</p>
+                      {renderEnvTags('mood', moodTags, editedMood, setEditedMood)}
+                    </div>
                   </div>
                 </div>
               )}
