@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { DiaryLearnModal } from '../components/DiaryLearnModal';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { Calendar } from 'lucide-react';
+import { Calendar, Check, Pencil, X } from 'lucide-react';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { useLocation, useNavigate } from 'react-router';
 import { firestoreService, buildTimelineMeta } from '../services/firestoreService';
@@ -35,6 +35,7 @@ type Mood = '기쁨' | '평온' | '무미' | '울적' | '번잡';
 type Weather = '쾌청' | '흐림' | '비' | '눈';
 type Temperature = '폭염' | '온난' | '쾌적' | '쌀쌀' | '혹한';
 type GrowthSubjectType = 'child' | 'garden';
+type EnvTagType = 'weather' | 'temperature' | 'mood';
 
 const DEFAULT_WEATHER = ['쾌청', '흐림', '비', '눈'];
 const DEFAULT_TEMPERATURE = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
@@ -43,11 +44,25 @@ const DEFAULT_MOOD = ['기쁨', '평온', '무미', '울적', '번잡'];
 function SortableTagItem({
   id,
   isSelected,
+  canEdit = false,
+  isEditing = false,
+  editValue = '',
   onClick,
+  onStartEdit,
+  onEditValueChange,
+  onConfirmEdit,
+  onCancelEdit,
 }: {
   id: string;
   isSelected: boolean;
+  canEdit?: boolean;
+  isEditing?: boolean;
+  editValue?: string;
   onClick: () => void;
+  onStartEdit?: () => void;
+  onEditValueChange?: (value: string) => void;
+  onConfirmEdit?: () => void;
+  onCancelEdit?: () => void;
 }) {
   const {
     attributes,
@@ -69,20 +84,72 @@ function SortableTagItem({
         zIndex: isDragging ? 999 : 'auto',
       }}
     >
-      <button
-        onClick={onClick}
-        {...attributes}
-        {...listeners}
-        className="px-2.5 py-1 rounded-lg text-xs transition-all select-none"
-        style={{
-          backgroundColor: isSelected ? '#1A3C6E' : '#FEFBE8',
-          color: isSelected ? '#FAF9F6' : '#333333',
-          border: isSelected ? 'none' : '1px solid #e5e5e5',
-          cursor: 'grab',
-        }}
-      >
-        {id}
-      </button>
+      {isEditing ? (
+        <div
+          className="flex items-center gap-1"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <input
+            value={editValue}
+            onChange={(e) => onEditValueChange?.(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') onConfirmEdit?.();
+              if (e.key === 'Escape') onCancelEdit?.();
+            }}
+            className="w-16 px-2 py-1 border rounded-lg text-xs text-center"
+            style={{ fontSize: 16 }}
+            autoFocus
+          />
+          <button
+            type="button"
+            aria-label="태그 이름 저장"
+            onClick={onConfirmEdit}
+            className="w-6 h-6 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: '#1A3C6E', color: '#FAF9F6' }}
+          >
+            <Check className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            aria-label="태그 이름 수정 취소"
+            onClick={onCancelEdit}
+            className="w-6 h-6 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: '#e5e7eb', color: '#555' }}
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={onClick}
+            {...attributes}
+            {...listeners}
+            className="px-2.5 py-1 rounded-lg text-xs transition-all select-none"
+            style={{
+              backgroundColor: isSelected ? '#1A3C6E' : '#FEFBE8',
+              color: isSelected ? '#FAF9F6' : '#333333',
+              border: isSelected ? 'none' : '1px solid #e5e5e5',
+              cursor: 'grab',
+            }}
+          >
+            {id}
+          </button>
+          {canEdit && (
+            <button
+              type="button"
+              aria-label={`${id} 태그 이름 수정`}
+              onClick={onStartEdit}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="w-6 h-6 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: '#eef2f7', color: '#555' }}
+            >
+              <Pencil className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -183,6 +250,7 @@ export function RecordPage() {
   const [temperatureTags, setTemperatureTags] = useState<string[]>(DEFAULT_TEMPERATURE);
   const [moodTags, setMoodTags] = useState<string[]>(DEFAULT_MOOD);
   const [showInput, setShowInput] = useState<{ weather: boolean; temperature: boolean; mood: boolean }>({ weather: false, temperature: false, mood: false });
+  const [editingTag, setEditingTag] = useState<{ type: EnvTagType; original: string; value: string } | null>(null);
 
   // 항상 최신 태그값 참조용 ref
   const weatherTagsRef = useRef<string[]>([]);
@@ -301,10 +369,7 @@ export function RecordPage() {
     })
   );
 
-  const handleDragEnd = async (
-    event: DragEndEvent,
-    type: 'weather' | 'temperature' | 'mood'
-  ) => {
+  const handleDragEnd = async (event: DragEndEvent, type: EnvTagType) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
@@ -330,7 +395,7 @@ export function RecordPage() {
     await saveTags(newWeather, newTemperature, newMood);
   };
 
-  const handleMoveTag = async (type: 'weather' | 'temperature' | 'mood', index: number, direction: 'left' | 'right') => {
+  const handleMoveTag = async (type: EnvTagType, index: number, direction: 'left' | 'right') => {
     const arr = type === 'weather' ? weatherTags : type === 'temperature' ? temperatureTags : moodTags;
     const setArr = type === 'weather' ? setWeatherTags : type === 'temperature' ? setTemperatureTags : setMoodTags;
     const tags = [...arr];
@@ -345,7 +410,66 @@ export function RecordPage() {
     );
   };
 
-  const handleAddCustomTag = async (type: 'weather' | 'temperature' | 'mood') => {
+  const getEnvTagConfig = (type: EnvTagType) => {
+    if (type === 'weather') {
+      return { tags: weatherTags, setTags: setWeatherTags, defaults: DEFAULT_WEATHER };
+    }
+    if (type === 'temperature') {
+      return { tags: temperatureTags, setTags: setTemperatureTags, defaults: DEFAULT_TEMPERATURE };
+    }
+    return { tags: moodTags, setTags: setMoodTags, defaults: DEFAULT_MOOD };
+  };
+
+  const getSelectedEnvValue = (type: EnvTagType) => {
+    if (type === 'weather') return weather;
+    if (type === 'temperature') return temperature;
+    return mood;
+  };
+
+  const setSelectedEnvValue = (type: EnvTagType, value: string) => {
+    if (type === 'weather') setWeather(value as Weather);
+    else if (type === 'temperature') setTemperature(value as Temperature);
+    else setMood(value as Mood);
+  };
+
+  const handleRenameCustomTag = async () => {
+    if (!editingTag) return;
+
+    const { type, original, value } = editingTag;
+    const nextTag = value.trim();
+    if (!nextTag) {
+      toast.error('태그 이름을 입력해주세요');
+      return;
+    }
+    if ([...nextTag].length > 4) {
+      toast.error('4글자 이하로 입력해주세요');
+      return;
+    }
+
+    const { tags, setTags, defaults } = getEnvTagConfig(type);
+    if (defaults.includes(original)) {
+      setEditingTag(null);
+      return;
+    }
+    if (nextTag !== original && tags.includes(nextTag)) {
+      toast.error('이미 추가된 태그입니다');
+      return;
+    }
+
+    const updated = tags.map((tag) => (tag === original ? nextTag : tag));
+    setTags(updated);
+    if (getSelectedEnvValue(type) === original) {
+      setSelectedEnvValue(type, nextTag);
+    }
+    await saveTags(
+      type === 'weather' ? updated : weatherTags,
+      type === 'temperature' ? updated : temperatureTags,
+      type === 'mood' ? updated : moodTags,
+    );
+    setEditingTag(null);
+  };
+
+  const handleAddCustomTag = async (type: EnvTagType) => {
     const inputEl = document.getElementById(`custom-input-${type}`) as HTMLInputElement;
     const trimmed = inputEl?.value?.trim() || '';
     if (!trimmed) return;
@@ -353,7 +477,7 @@ export function RecordPage() {
     const arr = type === 'weather' ? weatherTags : type === 'temperature' ? temperatureTags : moodTags;
     const setArr = type === 'weather' ? setWeatherTags : type === 'temperature' ? setTemperatureTags : setMoodTags;
     const defaultArr = type === 'weather' ? DEFAULT_WEATHER : type === 'temperature' ? DEFAULT_TEMPERATURE : DEFAULT_MOOD;
-    if (arr.length - defaultArr.length >= 4) { toast.error('최대 4개까지 추가 가능합니다'); return; }
+    if (arr.filter((tag) => !defaultArr.includes(tag)).length >= 4) { toast.error('최대 4개까지 추가 가능합니다'); return; }
     if (arr.includes(trimmed)) { toast.error('이미 추가된 태그입니다'); return; }
     const updated = [...arr, trimmed];
     setArr(updated);
@@ -366,12 +490,11 @@ export function RecordPage() {
     setShowInput({ ...showInput, [type]: false });
   };
 
-  const renderCustomTags = (type: 'weather' | 'temperature' | 'mood') => {
+  const renderCustomTags = (type: EnvTagType) => {
     const tags = type === 'weather' ? weatherTags
       : type === 'temperature' ? temperatureTags : moodTags;
-    const defaultCount = type === 'weather' ? DEFAULT_WEATHER.length
-      : type === 'temperature' ? DEFAULT_TEMPERATURE.length : DEFAULT_MOOD.length;
-    const customCount = tags.length - defaultCount;
+    const defaultArr = type === 'weather' ? DEFAULT_WEATHER : type === 'temperature' ? DEFAULT_TEMPERATURE : DEFAULT_MOOD;
+    const customCount = tags.filter((tag) => !defaultArr.includes(tag)).length;
 
     return (
       <>
@@ -389,16 +512,28 @@ export function RecordPage() {
                 (type === 'weather' && weather === tag) ||
                 (type === 'temperature' && temperature === tag) ||
                 (type === 'mood' && mood === tag);
+              const isEditing = editingTag?.type === type && editingTag.original === tag;
               return (
                 <SortableTagItem
                   key={tag}
                   id={tag}
                   isSelected={isSelected}
+                  canEdit={!defaultArr.includes(tag)}
+                  isEditing={isEditing}
+                  editValue={isEditing ? editingTag.value : tag}
                   onClick={() => {
                     if (type === 'weather') setWeather(tag as Weather);
                     else if (type === 'temperature') setTemperature(tag as Temperature);
                     else setMood(tag as Mood);
                   }}
+                  onStartEdit={() => setEditingTag({ type, original: tag, value: tag })}
+                  onEditValueChange={(value) =>
+                    setEditingTag((prev) =>
+                      prev?.type === type && prev.original === tag ? { ...prev, value } : prev,
+                    )
+                  }
+                  onConfirmEdit={handleRenameCustomTag}
+                  onCancelEdit={() => setEditingTag(null)}
                 />
               );
             })}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
-import { X, Printer, Copy, Download, FileText } from 'lucide-react';
+import { Check, Pencil, X, Printer, Copy, Download, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSubscription } from '../hooks/useSubscription';
 import { useLoading } from '../contexts/LoadingContext';
@@ -17,12 +17,177 @@ import {
   getLocationCandidateFromGps,
   type ReverseGeocodeCandidate,
 } from '../services/reverseGeocodeService';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const WEATHER_OPTIONS = ['쾌청', '흐림', '비', '눈'];
 const TEMPERATURE_OPTIONS = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
 const MOOD_OPTIONS = ['기쁨', '평온', '무미', '울적', '번잡'];
 const TIMELINE_IMAGE_MAX_WIDTH = 1600;
 const TIMELINE_IMAGE_QUALITY = 0.82;
+type EnvTagType = 'weather' | 'temperature' | 'mood';
+
+function SortableEnvTagItem({
+  id,
+  isSelected,
+  canEdit,
+  isEditing,
+  editValue,
+  onSelect,
+  onStartEdit,
+  onEditValueChange,
+  onConfirmEdit,
+  onCancelEdit,
+}: {
+  id: string;
+  isSelected: boolean;
+  canEdit: boolean;
+  isEditing: boolean;
+  editValue: string;
+  onSelect: () => void;
+  onStartEdit: () => void;
+  onEditValueChange: (value: string) => void;
+  onConfirmEdit: () => void;
+  onCancelEdit: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        touchAction: 'none',
+        zIndex: isDragging ? 999 : 'auto',
+      }}
+    >
+      {isEditing ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} onPointerDown={(event) => event.stopPropagation()}>
+          <input
+            value={editValue}
+            onChange={(event) => onEditValueChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') onConfirmEdit();
+              if (event.key === 'Escape') onCancelEdit();
+            }}
+            style={{
+              width: 64,
+              padding: '3px 6px',
+              borderRadius: 6,
+              border: '1px solid #d0dff0',
+              fontSize: 12,
+              textAlign: 'center',
+            }}
+            autoFocus
+          />
+          <button
+            type="button"
+            aria-label="태그 이름 저장"
+            onClick={onConfirmEdit}
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: 999,
+              border: 'none',
+              backgroundColor: '#1A3C6E',
+              color: '#FAF9F6',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+            }}
+          >
+            <Check size={14} />
+          </button>
+          <button
+            type="button"
+            aria-label="태그 이름 수정 취소"
+            onClick={onCancelEdit}
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: 999,
+              border: 'none',
+              backgroundColor: '#e5e7eb',
+              color: '#555',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+            }}
+          >
+            <X size={14} />
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button
+            type="button"
+            onClick={onSelect}
+            {...attributes}
+            {...listeners}
+            style={{
+              fontSize: 11,
+              padding: '3px 8px',
+              borderRadius: 6,
+              border: isSelected ? 'none' : '1px solid #d0dff0',
+              backgroundColor: isSelected ? '#1A3C6E' : '#FDF6C3',
+              color: isSelected ? '#FAF9F6' : '#1A3C6E',
+              cursor: 'grab',
+            }}
+          >
+            {id}
+          </button>
+          {canEdit && (
+            <button
+              type="button"
+              aria-label={`${id} 태그 이름 수정`}
+              onClick={onStartEdit}
+              onPointerDown={(event) => event.stopPropagation()}
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 999,
+                border: 'none',
+                backgroundColor: '#eef2f7',
+                color: '#555',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              <Pencil size={12} />
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 type GrowthTimelineEditItem = {
   url: string;
@@ -212,12 +377,37 @@ export function SayuModal({
     temperature: false,
     mood: false,
   });
+  const [editingEnvTag, setEditingEnvTag] = useState<{ type: EnvTagType; original: string; value: string } | null>(null);
   const [localImages, setLocalImages] = useState<string[]>(images || []);
   const [editedTimelineItems, setEditedTimelineItems] = useState<GrowthTimelineEditItem[]>([]);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [editedTitle, setEditedTitle] = useState(title || '');
   const isGrowthTimeline = formatKey === 'growthTimeline';
   const timelineLocationRecoveryKeyRef = useRef('');
+  const weatherTagsRef = useRef<string[]>(WEATHER_OPTIONS);
+  const temperatureTagsRef = useRef<string[]>(TEMPERATURE_OPTIONS);
+  const moodTagsRef = useRef<string[]>(MOOD_OPTIONS);
+
+  const envSensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { delay: 200, tolerance: 5 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 5 },
+    }),
+  );
+
+  useEffect(() => {
+    weatherTagsRef.current = weatherTags;
+  }, [weatherTags]);
+
+  useEffect(() => {
+    temperatureTagsRef.current = temperatureTags;
+  }, [temperatureTags]);
+
+  useEffect(() => {
+    moodTagsRef.current = moodTags;
+  }, [moodTags]);
 
   const refreshPublicSharedRecord = async () => {
     if (!currentUser?.uid || !firestoreId) return;
@@ -268,7 +458,94 @@ export function SayuModal({
     );
   };
 
-  const handleAddEnvTag = async (type: 'weather' | 'temperature' | 'mood') => {
+  const getEnvTagConfig = (type: EnvTagType) => {
+    if (type === 'weather') {
+      return { tags: weatherTags, setTags: setWeatherTags, defaults: WEATHER_OPTIONS };
+    }
+    if (type === 'temperature') {
+      return { tags: temperatureTags, setTags: setTemperatureTags, defaults: TEMPERATURE_OPTIONS };
+    }
+    return { tags: moodTags, setTags: setMoodTags, defaults: MOOD_OPTIONS };
+  };
+
+  const getSelectedEnvValue = (type: EnvTagType) => {
+    if (type === 'weather') return editedWeather;
+    if (type === 'temperature') return editedTemperature;
+    return editedMood;
+  };
+
+  const setSelectedEnvValue = (type: EnvTagType, value: string) => {
+    if (type === 'weather') setEditedWeather(value);
+    else if (type === 'temperature') setEditedTemperature(value);
+    else setEditedMood(value);
+  };
+
+  const handleEnvDragEnd = async (event: DragEndEvent, type: EnvTagType) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const tags =
+      type === 'weather'
+        ? weatherTagsRef.current
+        : type === 'temperature'
+          ? temperatureTagsRef.current
+          : moodTagsRef.current;
+
+    const oldIndex = tags.indexOf(active.id as string);
+    const newIndex = tags.indexOf(over.id as string);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove([...tags], oldIndex, newIndex);
+    const nextWeather = type === 'weather' ? reordered : weatherTagsRef.current;
+    const nextTemperature = type === 'temperature' ? reordered : temperatureTagsRef.current;
+    const nextMood = type === 'mood' ? reordered : moodTagsRef.current;
+
+    setWeatherTags(nextWeather);
+    setTemperatureTags(nextTemperature);
+    setMoodTags(nextMood);
+    await saveEnvTags(nextWeather, nextTemperature, nextMood);
+  };
+
+  const handleRenameEnvTag = async () => {
+    if (!editingEnvTag) return;
+
+    const { type, original, value } = editingEnvTag;
+    const nextTag = value.trim();
+    if (!nextTag) {
+      toast.error('태그 이름을 입력해주세요');
+      return;
+    }
+    if ([...nextTag].length > 4) {
+      toast.error('4글자 이하로 입력해주세요');
+      return;
+    }
+
+    const { tags, defaults } = getEnvTagConfig(type);
+    if (defaults.includes(original)) {
+      setEditingEnvTag(null);
+      return;
+    }
+    if (nextTag !== original && tags.includes(nextTag)) {
+      toast.error('이미 추가된 태그입니다');
+      return;
+    }
+
+    const updated = tags.map((tag) => (tag === original ? nextTag : tag));
+    const nextWeather = type === 'weather' ? updated : weatherTags;
+    const nextTemperature = type === 'temperature' ? updated : temperatureTags;
+    const nextMood = type === 'mood' ? updated : moodTags;
+
+    setWeatherTags(nextWeather);
+    setTemperatureTags(nextTemperature);
+    setMoodTags(nextMood);
+    if (getSelectedEnvValue(type) === original) {
+      setSelectedEnvValue(type, nextTag);
+    }
+    await saveEnvTags(nextWeather, nextTemperature, nextMood);
+    setEditingEnvTag(null);
+  };
+
+  const handleAddEnvTag = async (type: EnvTagType) => {
     const inputEl = document.getElementById(`sayu-env-input-${type}`) as HTMLInputElement | null;
     const nextTag = inputEl?.value?.trim() || '';
     if (!nextTag) return;
@@ -279,7 +556,7 @@ export function SayuModal({
 
     const currentTags = type === 'weather' ? weatherTags : type === 'temperature' ? temperatureTags : moodTags;
     const defaultTags = type === 'weather' ? WEATHER_OPTIONS : type === 'temperature' ? TEMPERATURE_OPTIONS : MOOD_OPTIONS;
-    if (currentTags.length - defaultTags.length >= 4) {
+    if (currentTags.filter((tag) => !defaultTags.includes(tag)).length >= 4) {
       toast.error('최대 4개까지 추가 가능합니다');
       return;
     }
@@ -1109,38 +1386,51 @@ export function SayuModal({
   };
 
   const renderEnvTags = (
-    type: 'weather' | 'temperature' | 'mood',
+    type: EnvTagType,
     tags: string[],
     selectedValue: string,
     onSelect: (value: string) => void,
   ) => {
-    const defaultCount =
+    const defaultTags =
       type === 'weather'
-        ? WEATHER_OPTIONS.length
+        ? WEATHER_OPTIONS
         : type === 'temperature'
-          ? TEMPERATURE_OPTIONS.length
-          : MOOD_OPTIONS.length;
-    const customCount = tags.length - defaultCount;
+          ? TEMPERATURE_OPTIONS
+          : MOOD_OPTIONS;
+    const customCount = tags.filter((tag) => !defaultTags.includes(tag)).length;
 
     return (
       <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
-        {tags.map((tag) => (
-          <button
-            key={tag}
-            onClick={() => onSelect(tag)}
-            style={{
-              fontSize: 11,
-              padding: '3px 8px',
-              borderRadius: 6,
-              border: selectedValue === tag ? 'none' : '1px solid #d0dff0',
-              backgroundColor: selectedValue === tag ? '#1A3C6E' : '#FDF6C3',
-              color: selectedValue === tag ? '#FAF9F6' : '#1A3C6E',
-              cursor: 'pointer',
-            }}
-          >
-            {tag}
-          </button>
-        ))}
+        <DndContext
+          sensors={envSensors}
+          collisionDetection={closestCenter}
+          onDragEnd={(event) => handleEnvDragEnd(event, type)}
+        >
+          <SortableContext items={tags} strategy={horizontalListSortingStrategy}>
+            {tags.map((tag) => {
+              const isEditing = editingEnvTag?.type === type && editingEnvTag.original === tag;
+              return (
+                <SortableEnvTagItem
+                  key={tag}
+                  id={tag}
+                  isSelected={selectedValue === tag}
+                  canEdit={!defaultTags.includes(tag)}
+                  isEditing={isEditing}
+                  editValue={isEditing ? editingEnvTag.value : tag}
+                  onSelect={() => onSelect(tag)}
+                  onStartEdit={() => setEditingEnvTag({ type, original: tag, value: tag })}
+                  onEditValueChange={(value) =>
+                    setEditingEnvTag((prev) =>
+                      prev?.type === type && prev.original === tag ? { ...prev, value } : prev,
+                    )
+                  }
+                  onConfirmEdit={handleRenameEnvTag}
+                  onCancelEdit={() => setEditingEnvTag(null)}
+                />
+              );
+            })}
+          </SortableContext>
+        </DndContext>
         {showEnvInput[type] ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <input
