@@ -1,9 +1,10 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { setOrigin } from '../services/v2Origin';
 import { useAuth } from '../contexts/AuthContext';
 import { TimelineCollageModal } from '../components/TimelineCollageModal';
+import { shouldShowAssistantOnboarding } from '../services/assistantOnboardingService';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -492,15 +493,58 @@ function todayLabel(now: Date) {
 
 export function HomePageV2() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const location = useLocation();
+  const { user, loading: authLoading } = useAuth();
   const isDeveloper = user?.uid === DEVELOPER_UID;
   const today = useMemo(() => todayLabel(new Date()), []);
   const [timelineModalOpen, setTimelineModalOpen] = useState(false);
+  const [onboardingGateReady, setOnboardingGateReady] = useState(false);
 
   // v2 진입을 sessionStorage에 기록 → 통계/합본 등 깊은 경로 닫기 시 v2 복귀용
   useEffect(() => {
     setOrigin('/v2');
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkOnboardingGate = async () => {
+      if (authLoading) {
+        setOnboardingGateReady(false);
+        return;
+      }
+
+      if (!user?.uid || location.pathname.startsWith('/onboarding')) {
+        setOnboardingGateReady(true);
+        return;
+      }
+
+      setOnboardingGateReady(false);
+      try {
+        const shouldShow = await shouldShowAssistantOnboarding(user.uid);
+        if (cancelled) return;
+
+        if (shouldShow) {
+          navigate('/onboarding', {
+            replace: true,
+            state: { from: location.pathname || '/v2' },
+          });
+          return;
+        }
+
+        setOnboardingGateReady(true);
+      } catch (error) {
+        console.warn('신규 사용자 온보딩 확인 실패:', error);
+        if (!cancelled) setOnboardingGateReady(true);
+      }
+    };
+
+    checkOnboardingGate();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, user?.uid, location.pathname, navigate]);
 
   const openTimelineModal = () => {
     if (!user?.uid) {
@@ -510,6 +554,17 @@ export function HomePageV2() {
 
     setTimelineModalOpen(true);
   };
+
+  if (authLoading || !onboardingGateReady) {
+    return (
+      <div
+        className="min-h-screen"
+        style={{
+          background: 'linear-gradient(180deg, #F5F0E8 0%, #EDE8DC 100%)',
+        }}
+      />
+    );
+  }
 
   return (
     <div
@@ -530,8 +585,6 @@ export function HomePageV2() {
         .v2-rec:active { transform: translateY(0) scale(0.99); }
         .v2-agent:hover { transform: translateY(-2px); box-shadow:0 12px 28px -18px rgba(74,90,44,0.25); }
         .v2-agent:active { transform: translateY(0) scale(0.99); }
-        .v2-preview:hover { transform: translateY(-1px); border-color:#D4DEA0; color:#4A5A2C; box-shadow:0 10px 22px -18px rgba(74,90,44,0.24); }
-        .v2-preview:active { transform: scale(0.99); }
         .v2-cta:hover { background:#3F4F26; }
         .v2-cta:active { transform: scale(0.99); }
         .v2-cta:hover .v2-cta-arrow { transform: translateX(4px); background: rgba(245,240,232,0.2); }
@@ -1193,49 +1246,6 @@ export function HomePageV2() {
               </>
             }
           />
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 8,
-              margin: '-6px 0 14px',
-            }}
-          >
-            {[
-              { label: '기존 preview 보기', path: '/onboarding-preview' },
-              { label: '경대preview 보기', path: '/gyeongdae-preview' },
-              { label: '온유preview 보기', path: '/onyu-preview' },
-            ].map((preview) => (
-              <button
-                key={preview.path}
-                type="button"
-                onClick={() => navigate(preview.path, { state: { from: '/v2' } })}
-                className="v2-preview"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  border: '1px solid #E5DFD0',
-                  background: '#fff',
-                  color: '#7A6F5A',
-                  borderRadius: 999,
-                  padding: '8px 12px',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition:
-                    'transform 160ms cubic-bezier(0.22,0.61,0.36,1), box-shadow 180ms, border-color 180ms, color 180ms',
-                }}
-              >
-                <PillSvg>
-                  <path d="M4 19V5a2 2 0 012-2h8l4 4v12a2 2 0 01-2 2H6a2 2 0 01-2-2z" />
-                  <path d="M14 3v5h5" />
-                  <path d="M8 13h8M8 17h5" />
-                </PillSvg>
-                {preview.label}
-              </button>
-            ))}
-          </div>
           <div
             data-v2="agents-grid"
             style={{

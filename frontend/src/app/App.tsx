@@ -11,6 +11,8 @@ import { LandingPage } from './pages/LandingPage';
 import { OnboardingPreviewPage } from './pages/OnboardingPreviewPage';
 import { GyeongdaePreviewPage } from './pages/GyeongdaePreviewPage';
 import { OnyuPreviewPage } from './pages/OnyuPreviewPage';
+import { AssistantOnboardingPage } from './pages/AssistantOnboardingPage';
+import { AssistantOnboardingDetailPage } from './pages/AssistantOnboardingDetailPage';
 import { RecordPage } from './pages/RecordPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { LoginPage } from './pages/LoginPage';
@@ -136,6 +138,12 @@ function App() {
 
               {/* v2 홈 (CD Reposeful 디자인 미리보기 — 메인 승격됨, 호환용 유지) */}
               <Route path="/v2" element={<HomePageV2 />} />
+
+              {/* 실제 신규 사용자 온보딩 */}
+              <Route path="/onboarding" element={<AssistantOnboardingPage />} />
+              <Route path="/onboarding/detail" element={<AssistantOnboardingDetailPage />} />
+
+              {/* 비교용 preview 라우트 */}
               <Route path="/onboarding-preview" element={<OnboardingPreviewPage />} />
               <Route path="/gyeongdae-preview" element={<GyeongdaePreviewPage />} />
               <Route path="/onyu-preview" element={<OnyuPreviewPage />} />
