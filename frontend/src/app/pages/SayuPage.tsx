@@ -158,6 +158,47 @@ interface SayuPlantLibraryItem {
   watermarkText?: string;
 }
 type PlantReadOnlyField = { label: string; value: string };
+type PlantDetectiveAnalysisImage = { imageBase64: string; mimeType: string };
+type PlantDetectiveAdvancedResult = {
+  plantId: {
+    name: string;
+    latinName: string;
+    confidence: number | null;
+    isPlantProbability: number | null;
+    family?: string;
+    genus?: string;
+    alternatives: { name: string; latinName: string; probability: number | null }[];
+    url: string | null;
+  } | null;
+  plantNet: {
+    name: string;
+    scientificName: string;
+    confidence: number | null;
+    koName?: string | null;
+    scientificKey?: string | null;
+    family?: string;
+    genus?: string;
+    alternatives: { name: string; scientificName: string; score: number | null }[];
+  } | null;
+  gemini: {
+    finalGuess: string;
+    finalLatinName: string;
+    analysis: string;
+    warning: string;
+    edible: 'unknown' | 'yes' | 'no';
+    poisonousRisk: boolean;
+    similarSpecies: string[];
+    needMorePhotos: string[];
+    confidence: 'high' | 'medium' | 'low';
+  } | null;
+  meta: {
+    imageCount: number;
+    plantNetAvailable: boolean;
+    geminiError: string | null;
+    plantIdStatus?: 'enabled' | 'disabled';
+    plantIdDisabledReason?: string | null;
+  };
+};
 interface PlantReadOnlyDetail {
   type: PlantSayuEntryType;
   title: string;
@@ -183,6 +224,38 @@ const emptyPlantDiaryDraft = {
   aiDifference: '',
   memo: '',
 };
+
+function readPlantDetectiveBlobBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      resolve(result.split(',')[1] || result);
+    };
+    reader.onerror = () => reject(new Error('FILE_READER_ERROR'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+function removeUndefinedForFirestore<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item) => item !== undefined)
+      .map((item) => removeUndefinedForFirestore(item)) as T;
+  }
+  if (value && typeof value === 'object') {
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return value;
+    return Object.entries(value as Record<string, unknown>).reduce(
+      (cleaned, [key, entry]) => {
+        if (entry !== undefined) cleaned[key] = removeUndefinedForFirestore(entry);
+        return cleaned;
+      },
+      {} as Record<string, unknown>,
+    ) as T;
+  }
+  return value;
+}
 
 // SAYU 리스트 키워드 미리보기용 fallback 추출기
 // 저장 구조는 건드리지 않고 화면 표시 fallback으로만 사용
@@ -823,14 +896,146 @@ export function SayuPage() {
       throw new Error('사진 파일만 추가할 수 있어요.');
     }
     const compressed = await compressImage(file, 1024, 0.82);
+    const mimeType = compressed.type || file.type || 'image/jpeg';
+    const imageBase64 = await readPlantDetectiveBlobBase64(compressed);
     const storage = getStorage();
     const ts = Date.now();
     const storageRef = ref(storage, `users/${user!.uid}/format_photos/${recordId}_plant_detective_${idx}_${ts}.jpg`);
-    await uploadBytes(storageRef, compressed, { contentType: compressed.type || file.type || 'image/jpeg' });
-    return getDownloadURL(storageRef);
+    await uploadBytes(storageRef, compressed, { contentType: mimeType });
+    const url = await getDownloadURL(storageRef);
+    return { url, imageBase64, mimeType };
   };
 
-  // 해당 record 의 plantDetective 배열을 복사 → idx 원소의 imageUrls 에 새 URL append → updateDoc.
+  const selectPlantDetectiveReanalysisUrls = (imageUrls: string[], uploadedUrl: string) => {
+    const existing = imageUrls
+      .map((url) => String(url || '').trim())
+      .filter((url, index, arr) => url.startsWith('http') && url !== uploadedUrl && arr.indexOf(url) === index);
+    return existing.length <= 4 ? existing : [existing[0], ...existing.slice(-3)];
+  };
+
+  const fetchPlantDetectiveImageForAnalysis = async (imageUrl: string): Promise<PlantDetectiveAnalysisImage | null> => {
+    try {
+      const response = await fetch(imageUrl);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob = await response.blob();
+      if (!blob.type.startsWith('image/')) throw new Error('NOT_IMAGE');
+      const file = new File([blob], 'plant-detective-existing.jpg', { type: blob.type || 'image/jpeg' });
+      const compressed = await compressImage(file, 1024, 0.82);
+      return {
+        imageBase64: await readPlantDetectiveBlobBase64(compressed),
+        mimeType: compressed.type || blob.type || 'image/jpeg',
+      };
+    } catch (e) {
+      console.warn('기존 식물 판독 사진을 재탐색 입력으로 읽지 못했습니다:', e);
+      return null;
+    }
+  };
+
+  const reanalyzePlantDetectivePhotos = async (
+    nextImageUrls: string[],
+    uploaded: { url: string; imageBase64: string; mimeType: string },
+  ): Promise<{ result: PlantDetectiveAdvancedResult; imageCount: number }> => {
+    const existingUrls = selectPlantDetectiveReanalysisUrls(nextImageUrls, uploaded.url);
+    const existingImages = await Promise.all(existingUrls.map(fetchPlantDetectiveImageForAnalysis));
+    const images = [
+      ...existingImages.filter((image): image is PlantDetectiveAnalysisImage => Boolean(image)),
+      { imageBase64: uploaded.imageBase64, mimeType: uploaded.mimeType },
+    ].slice(-5);
+    if (images.length === 0) {
+      throw new Error('재탐색할 사진을 준비하지 못했습니다.');
+    }
+    const fns = getFunctions(undefined, 'asia-northeast3');
+    const detect = httpsCallable<
+      { images: PlantDetectiveAnalysisImage[] },
+      PlantDetectiveAdvancedResult
+    >(fns, 'detectPlantAdvanced');
+    const response = await detect({ images });
+    return { result: response.data, imageCount: images.length };
+  };
+
+  const buildPlantDetectiveReanalysisFields = (
+    previous: any,
+    result: PlantDetectiveAdvancedResult,
+    uploadedUrl: string,
+    imageCount: number,
+    updatedAt: number,
+  ) => {
+    const userName = String(previous?.userConfirmedName || previous?.humanReportedName || '').trim();
+    const aiKoName = String(result.plantNet?.koName || result.gemini?.finalGuess || previous?.aiKoName || '').trim();
+    const aiPrediction = String(result.plantNet?.name || result.plantId?.name || result.gemini?.finalGuess || previous?.aiPrediction || '').trim();
+    const scientificName = String(result.plantNet?.scientificName || result.plantId?.latinName || result.gemini?.finalLatinName || previous?.scientificName || previous?.latinName || '').trim();
+    const displayName = userName || aiKoName || aiPrediction || String(previous?.title || previous?.plantName || '식물 이름 불확실').trim();
+    const reanalysisHistory = Array.isArray(previous?.plantReanalysisHistory)
+      ? previous.plantReanalysisHistory
+      : [];
+    const taxonomy = result.plantId?.family || result.plantId?.genus || result.plantNet?.family || result.plantNet?.genus
+      ? {
+          family: result.plantId?.family || result.plantNet?.family || '',
+          genus: result.plantId?.genus || result.plantNet?.genus || '',
+        }
+      : previous?.taxonomy || null;
+
+    return removeUndefinedForFirestore({
+      title: displayName,
+      plantName: displayName,
+      latinName: scientificName,
+      scientificName,
+      englishName: aiPrediction || previous?.englishName || '',
+      aiKoName,
+      aiPrediction,
+      identificationConfidence:
+        typeof result.plantId?.confidence === 'number'
+          ? result.plantId.confidence
+          : previous?.identificationConfidence ?? null,
+      isPlantProbability:
+        typeof result.plantId?.isPlantProbability === 'number'
+          ? result.plantId.isPlantProbability
+          : previous?.isPlantProbability ?? null,
+      alternativeCandidates: Array.isArray(result.plantId?.alternatives)
+        ? result.plantId.alternatives
+        : Array.isArray(previous?.alternativeCandidates)
+          ? previous.alternativeCandidates
+          : [],
+      taxonomy,
+      identifiedBy: result.plantId ? 'kindwise' : result.plantNet ? 'plantnet' : 'gemini',
+      condition: result.gemini?.analysis || previous?.condition || '',
+      confidence: result.gemini?.confidence || previous?.confidence || 'low',
+      warningSigns: result.gemini?.warning
+        ? [result.gemini.warning]
+        : Array.isArray(previous?.warningSigns)
+          ? previous.warningSigns
+          : [],
+      note: result.gemini?.warning || previous?.note || '',
+      aiScientificName: scientificName,
+      plantNetResult: result.plantNet || null,
+      plantIdResult: result.plantId || null,
+      plantIdError: result.plantId ? null : 'Plant.id 결과를 가져오지 못했습니다.',
+      providerResults: {
+        plantId: result.plantId || null,
+        plantNet: result.plantNet || null,
+        gemini: result.gemini || null,
+      },
+      geminiAnalysis: result.gemini || null,
+      meta: result.meta || null,
+      plantReanalysisStatus: 'completed',
+      plantReanalyzedAt: updatedAt,
+      plantReanalysisImageCount: result.meta?.imageCount || imageCount,
+      plantReanalysisAddedPhotoUrl: uploadedUrl,
+      plantReanalysisHistory: [
+        ...reanalysisHistory,
+        {
+          reanalyzedAt: new Date(updatedAt).toISOString(),
+          addedPhotoUrl: uploadedUrl,
+          imageCount: result.meta?.imageCount || imageCount,
+          previousAiKoName: String(previous?.aiKoName || '').trim(),
+          previousAiPrediction: String(previous?.aiPrediction || '').trim(),
+          previousScientificName: String(previous?.scientificName || previous?.latinName || '').trim(),
+        },
+      ].slice(-10),
+    });
+  };
+
+  // 해당 record 의 plantDetective 배열을 복사 → idx 원소의 imageUrls 에 새 URL append → 새 사진까지 포함해 재탐색한다.
   // imageUrl 이 없던 항목은 첫 추가 사진을 대표 이미지로도 지정한다. arrayUnion 미사용(객체 배열).
   const handleAddPlantDetectivePhoto = async (recordId: string, idx: number, file: File | null) => {
     if (!file) return;
@@ -844,16 +1049,46 @@ export function SayuPage() {
     setPlantDetectivePhotoBusy(true);
     let uploadedUrl = '';
     try {
-      uploadedUrl = await uploadSayuPlantDetectivePhoto(recordId, idx, file);
+      const uploaded = await uploadSayuPlantDetectivePhoto(recordId, idx, file);
+      uploadedUrl = uploaded.url;
       const target = { ...current[idx] };
       const existingImageUrls = Array.isArray(target.imageUrls) ? target.imageUrls : [];
-      const nextImageUrls = existingImageUrls.includes(uploadedUrl)
-        ? existingImageUrls
-        : [...existingImageUrls, uploadedUrl];
+      const primaryImageUrl = String(target.imageUrl || '').trim();
+      const baseImageUrls = primaryImageUrl && primaryImageUrl.startsWith('http') && !existingImageUrls.includes(primaryImageUrl)
+        ? [primaryImageUrl, ...existingImageUrls]
+        : existingImageUrls;
+      const nextImageUrls = baseImageUrls.includes(uploadedUrl)
+        ? baseImageUrls
+        : [...baseImageUrls, uploadedUrl];
       target.imageUrls = nextImageUrls;
       if (!String(target.imageUrl || '').trim()) {
         target.imageUrl = uploadedUrl;
       }
+      target.updatedAt = Date.now();
+
+      let reanalysisDone = false;
+      let reanalysisImageCount = 1;
+      try {
+        const reanalysis = await reanalyzePlantDetectivePhotos(nextImageUrls, uploaded);
+        reanalysisImageCount = reanalysis.imageCount;
+        Object.assign(
+          target,
+          buildPlantDetectiveReanalysisFields(
+            target,
+            reanalysis.result,
+            uploadedUrl,
+            reanalysis.imageCount,
+            target.updatedAt,
+          ),
+        );
+        reanalysisDone = true;
+      } catch (analysisError: any) {
+        console.warn('식물 판독 재탐색 실패 — 사진은 기록에 보존합니다:', analysisError);
+        target.plantReanalysisStatus = 'failed';
+        target.plantReanalysisError = String(analysisError?.message || '재탐색 실패').slice(0, 180);
+        target.plantReanalysisAddedPhotoUrl = uploadedUrl;
+      }
+
       const next = [...current];
       next[idx] = target;
       await updateDoc(doc(db, 'users', user.uid, 'records', recordId), { plantDetective: next });
@@ -861,12 +1096,58 @@ export function SayuPage() {
         prev.map((r) => (r.id === recordId ? ({ ...r, plantDetective: next } as HaruRecord) : r)),
       );
       // 열려 있는 상세 팝업도 즉시 갱신 → 새로고침 없이 새 사진 반영
-      setPlantReadOnlyDetail((prev) =>
-        prev && prev.recordId === recordId && prev.entryIdx === idx
-          ? { ...prev, imageUrl: String(prev.imageUrl || '').trim() || uploadedUrl, imageUrls: nextImageUrls }
-          : prev,
-      );
-      toast.success('사진을 추가했습니다.');
+      setPlantReadOnlyDetail((prev) => {
+        if (!prev || prev.recordId !== recordId || prev.entryIdx !== idx) return prev;
+        const updatedTitle = getPlantDisplayName(target).slice(0, 48);
+        const aiSummary = getPlantAiSummary(target);
+        const memoSummary = getPlantMemoSummary(target);
+        const confirmedName = String(target?.userConfirmedName || target?.humanReportedName || target?.title || '').trim();
+        const aiName = String(target?.aiKoName || target?.aiPrediction || '').trim();
+        const scientificName = String(target?.scientificName || target?.latinName || target?.finalLatinName || '').trim();
+        const locationLabel = String(target?.locationLabel || target?.publicLocation || '').trim();
+        const sourceLabel = target?.source
+          ? (PLANT_SAYU_SOURCE_LABEL[String(target.source)] || String(target.source))
+          : '';
+        const sourceSummary = [
+          sourceLabel,
+          target?.aiPrediction,
+          target?.englishName,
+          target?.confidence ? `신뢰도 ${target.confidence}` : '',
+        ].filter((value) => String(value || '').trim()).join(' · ');
+        return {
+          ...prev,
+          title: updatedTitle,
+          subtitle: getPlantScientificLine(target),
+          imageUrl: String(prev.imageUrl || '').trim() || uploadedUrl,
+          imageUrls: nextImageUrls,
+          summary: reanalysisDone
+            ? '새 사진을 기존 판독 증거에 더해 식물탐정이 다시 분석한 기록입니다.'
+            : prev.summary,
+          coreFields: filterPlantInfoFields([
+            { label: '사용자 확정명', value: confirmedName || updatedTitle },
+            { label: 'AI 판독명', value: aiName },
+            { label: '학명', value: scientificName },
+            { label: '기록일', value: formatKoreanDate(record.date) },
+          ]),
+          detailSections: filterPlantInfoFields([
+            { label: 'AI 판독 요약', value: aiSummary },
+            { label: '판독 출처·후보', value: compactPlantDetailText(sourceSummary) },
+            {
+              label: '재탐색 정보',
+              value: reanalysisDone
+                ? `새 사진을 포함한 ${reanalysisImageCount}장 기준으로 다시 분석했습니다.`
+                : '사진은 추가됐지만 재탐색 결과를 받지 못했습니다. 잠시 후 다시 시도해 주세요.',
+            },
+            { label: '촬영 지역', value: locationLabel },
+            { label: '사용자 메모', value: memoSummary },
+          ]),
+        };
+      });
+      if (reanalysisDone) {
+        toast.success('사진을 추가하고 새 사진 기준 재탐색을 완료했습니다.');
+      } else {
+        toast.warning('사진은 추가했습니다. 재탐색은 잠시 후 다시 시도해 주세요.');
+      }
     } catch (e) {
       console.error('식물 판독 사진 추가 실패:', e);
       toast.error('사진 추가에 실패했습니다.');
@@ -4082,10 +4363,10 @@ export function SayuPage() {
                     cursor: plantDetectivePhotoBusy ? 'wait' : 'pointer',
                   }}
                 >
-                  {plantDetectivePhotoBusy ? '업로드 중...' : '사진 추가'}
+                  {plantDetectivePhotoBusy ? '재탐색 중...' : '사진 추가 후 재탐색'}
                 </button>
                 <p style={{ margin: '9px 0 0', fontSize: 11, color: '#6B7280' }}>
-                  이 사진은 해당 판독 기록에만 추가됩니다.
+                  새 사진은 기존 판독 사진과 함께 다시 분석되어 해당 기록에 반영됩니다.
                 </p>
               </section>
             )}
