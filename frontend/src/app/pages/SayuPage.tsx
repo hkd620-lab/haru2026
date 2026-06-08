@@ -1048,6 +1048,7 @@ export function SayuPage() {
     if (!current[idx]) { toast.error('해당 판독 기록을 찾을 수 없습니다.'); return; }
     setPlantDetectivePhotoBusy(true);
     let uploadedUrl = '';
+    let uploadedPhotoPersisted = false;
     try {
       const uploaded = await uploadSayuPlantDetectivePhoto(recordId, idx, file);
       uploadedUrl = uploaded.url;
@@ -1065,6 +1066,11 @@ export function SayuPage() {
         target.imageUrl = uploadedUrl;
       }
       target.updatedAt = Date.now();
+
+      const next = [...current];
+      next[idx] = target;
+      await updateDoc(doc(db, 'users', user.uid, 'records', recordId), { plantDetective: next });
+      uploadedPhotoPersisted = true;
 
       let reanalysisDone = false;
       let reanalysisImageCount = 1;
@@ -1089,7 +1095,6 @@ export function SayuPage() {
         target.plantReanalysisAddedPhotoUrl = uploadedUrl;
       }
 
-      const next = [...current];
       next[idx] = target;
       await updateDoc(doc(db, 'users', user.uid, 'records', recordId), { plantDetective: next });
       setRecords((prev) =>
@@ -1149,11 +1154,16 @@ export function SayuPage() {
         toast.warning('사진은 추가했습니다. 재탐색은 잠시 후 다시 시도해 주세요.');
       }
     } catch (e) {
-      console.error('식물 판독 사진 추가 실패:', e);
-      toast.error('사진 추가에 실패했습니다.');
-      // Storage 업로드는 됐는데 Firestore update 가 실패한 경우 업로드 파일 정리 시도(best-effort)
-      if (uploadedUrl) {
-        try { await deleteSayuPlantDiaryStoredPhoto(uploadedUrl); } catch { /* ignore */ }
+      if (uploadedPhotoPersisted) {
+        console.error('식물 판독 재탐색 결과 저장 실패:', e);
+        toast.warning('사진은 추가했습니다. 재탐색 결과 저장에 실패했습니다.');
+      } else {
+        console.error('식물 판독 사진 추가 실패:', e);
+        toast.error('사진 추가에 실패했습니다.');
+        // Storage 업로드는 됐는데 Firestore update 가 실패한 경우 업로드 파일 정리 시도(best-effort)
+        if (uploadedUrl) {
+          try { await deleteSayuPlantDiaryStoredPhoto(uploadedUrl); } catch { /* ignore */ }
+        }
       }
     } finally {
       setPlantDetectivePhotoBusy(false);
@@ -2636,9 +2646,9 @@ export function SayuPage() {
     ]
       .map((value) => String(value || '').trim())
       .find(Boolean);
-    if (stableId) return `id:${stableId}`;
     const name = normalizePlantMergeText(getPlantDisplayName(item));
     const dateKey = String(date || '').slice(0, 10);
+    if (stableId) return dateKey ? `id:${dateKey}:${stableId}` : `id:${stableId}`;
     return name && dateKey ? `name:${dateKey}:${name}` : `entry:${fallbackId}`;
   };
 
