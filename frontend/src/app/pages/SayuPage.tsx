@@ -57,6 +57,7 @@ const PLANT_SAYU_TYPE_LABEL: Record<PlantSayuEntryType, string> = {
   library: '도감기록',
   catalog: '공개기록',
 };
+const PLANT_SAYU_TYPE_ORDER: PlantSayuEntryType[] = ['detective', 'diary', 'library', 'catalog'];
 const PLANT_SAYU_SOURCE_LABEL: Record<string, string> = {
   user_confirmed: '사용자 확정',
   haru_plant_detective: '하루식물탐정',
@@ -2256,6 +2257,8 @@ export function SayuPage() {
     color: string;
     keywords?: string[];
     plantType?: PlantSayuEntryType;
+    plantMergeKey?: string;
+    plantTypeBadges?: PlantSayuEntryType[];
     onOpen: () => void;
     extra?: ReactNode;
   };
@@ -2331,6 +2334,63 @@ export function SayuPage() {
       .filter((value) => String(value || '').trim())
       .map((value) => String(value).trim())
       .join(' / ');
+
+  const normalizePlantMergeText = (value: any) =>
+    String(value || '').trim().toLowerCase().replace(/[\s()[\]{}'"`.,:;|/\\_-]+/g, '');
+
+  const getPlantPathId = (value: any) => {
+    const text = String(value || '').trim();
+    const match = text.match(/(?:^|\/)plants\/([^/]+)/);
+    return match?.[1] || '';
+  };
+
+  const getPlantMergeKey = (item: any, date: string, fallbackId: string, includeItemId = false) => {
+    const stableId = [
+      item?.plantId,
+      item?.linkedPlantId,
+      item?.plantRecordId,
+      getPlantPathId(item?.refPath),
+      getPlantPathId(item?.sourcePath),
+      includeItemId ? item?.id : '',
+    ]
+      .map((value) => String(value || '').trim())
+      .find(Boolean);
+    if (stableId) return `id:${stableId}`;
+    const name = normalizePlantMergeText(getPlantDisplayName(item));
+    const dateKey = String(date || '').slice(0, 10);
+    return name && dateKey ? `name:${dateKey}:${name}` : `entry:${fallbackId}`;
+  };
+
+  const mergePlantSayuEntriesForAll = (entries: FlatSayuEntry[]) => {
+    const buckets = entries.reduce((map, entry) => {
+      const key = entry.plantMergeKey || entry.id;
+      const bucket = map.get(key) || [];
+      bucket.push(entry);
+      map.set(key, bucket);
+      return map;
+    }, new Map<string, FlatSayuEntry[]>());
+
+    return Array.from(buckets.entries())
+      .map(([key, bucket]) => {
+        const sorted = [...bucket].sort((a, b) => {
+          const dateOrder = b.date.localeCompare(a.date);
+          if (dateOrder !== 0) return dateOrder;
+          const aTypeOrder = a.plantType ? PLANT_SAYU_TYPE_ORDER.indexOf(a.plantType) : PLANT_SAYU_TYPE_ORDER.length;
+          const bTypeOrder = b.plantType ? PLANT_SAYU_TYPE_ORDER.indexOf(b.plantType) : PLANT_SAYU_TYPE_ORDER.length;
+          return aTypeOrder - bTypeOrder || a.title.localeCompare(b.title);
+        });
+        const representative = sorted[0];
+        const plantTypeBadges = PLANT_SAYU_TYPE_ORDER.filter((type) =>
+          bucket.some((entry) => entry.plantType === type),
+        );
+        return {
+          ...representative,
+          id: bucket.length > 1 ? `plant_all_${key}` : representative.id,
+          plantTypeBadges,
+        };
+      })
+      .sort((a, b) => b.date.localeCompare(a.date) || a.title.localeCompare(b.title));
+  };
 
   const getPlantAiSummary = (item: any) =>
     compactPlantText(
@@ -2669,6 +2729,7 @@ export function SayuPage() {
           subtitle,
           color: '#10b981',
           plantType: 'detective' as const,
+          plantMergeKey: getPlantMergeKey(entry, record.date, `${record.id}_plant_detective_${idx}`),
           onOpen,
           extra: renderPlantReadOnlyPreview({
             imageUrl,
@@ -2727,6 +2788,7 @@ export function SayuPage() {
           subtitle,
           color: '#34a853',
           plantType: 'diary' as const,
+          plantMergeKey: getPlantMergeKey(entry, date, `${record.id}_plant_diary_${idx}`),
           onOpen,
           extra: renderPlantReadOnlyPreview({
             imageUrl,
@@ -2779,6 +2841,7 @@ export function SayuPage() {
         subtitle,
         color: '#4A5A2C',
         plantType: 'library' as const,
+        plantMergeKey: getPlantMergeKey(item, date, `plant_library_${item.id}`, true),
         onOpen,
         extra: renderPlantReadOnlyPreview({
           imageUrl,
@@ -2828,6 +2891,7 @@ export function SayuPage() {
         subtitle,
         color: '#0f766e',
         plantType: 'catalog' as const,
+        plantMergeKey: getPlantMergeKey(item, date, `plant_public_library_${item.id}`, true),
         onOpen,
         extra: renderPlantReadOnlyPreview({
           imageUrl,
@@ -2877,6 +2941,7 @@ export function SayuPage() {
         subtitle,
         color: '#0f766e',
         plantType: 'catalog' as const,
+        plantMergeKey: getPlantMergeKey(item, date, `plant_public_catalog_${item.id}`),
         onOpen,
         extra: renderPlantReadOnlyPreview({
           imageUrl,
@@ -3034,12 +3099,15 @@ export function SayuPage() {
           const groupKey = getSayuGroupKey(sayuTab, group.label);
           const isExpanded = expandedSayuGroups.has(groupKey);
           const isPlantGroup = group.label === '하루식물탐정';
-          const visibleGroupEntries = isPlantGroup && plantSayuFilter !== 'all'
-            ? group.entries.filter((entry) => entry.plantType === plantSayuFilter)
+          const plantAllEntries = isPlantGroup ? mergePlantSayuEntriesForAll(group.entries) : group.entries;
+          const visibleGroupEntries = isPlantGroup
+            ? plantSayuFilter === 'all'
+              ? plantAllEntries
+              : group.entries.filter((entry) => entry.plantType === plantSayuFilter)
             : group.entries;
           const plantFilterCounts = PLANT_SAYU_FILTERS.reduce<Record<PlantSayuFilter, number>>((acc, filter) => {
             acc[filter.key] = filter.key === 'all'
-              ? group.entries.length
+              ? plantAllEntries.length
               : group.entries.filter((entry) => entry.plantType === filter.key).length;
             return acc;
           }, { all: 0, detective: 0, diary: 0, library: 0, catalog: 0 });
@@ -3059,9 +3127,7 @@ export function SayuPage() {
                       {group.label}
                     </span>
                     <span style={{ color: '#6B7280', fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                      {isPlantGroup && plantSayuFilter !== 'all'
-                        ? `${visibleGroupEntries.length}/${group.entries.length}개`
-                        : `${group.entries.length}개`}
+                      {isPlantGroup ? `${visibleGroupEntries.length}개` : `${group.entries.length}개`}
                     </span>
                   </span>
                   <span style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4 }}>
@@ -3134,6 +3200,26 @@ export function SayuPage() {
                         </span>
                         <span className="flex-1" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 2 }}>
                           <span className="text-sm truncate" style={{ color: '#333' }}>{entry.title}</span>
+                          {isPlantGroup && plantSayuFilter === 'all' && entry.plantTypeBadges && entry.plantTypeBadges.length > 0 && (
+                            <span style={{ display: 'flex', flexWrap: 'wrap', gap: 4, paddingTop: 2 }}>
+                              {entry.plantTypeBadges.map((type) => (
+                                <span
+                                  key={type}
+                                  style={{
+                                    borderRadius: 999,
+                                    backgroundColor: '#ecfdf5',
+                                    color: '#15803d',
+                                    padding: '2px 7px',
+                                    fontSize: 10,
+                                    fontWeight: 800,
+                                    lineHeight: 1.3,
+                                  }}
+                                >
+                                  {PLANT_SAYU_TYPE_LABEL[type]}
+                                </span>
+                              ))}
+                            </span>
+                          )}
                           {entry.subtitle && (
                             <span style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4, overflowWrap: 'anywhere', wordBreak: 'keep-all', display: 'block' }}>
                               {entry.subtitle}
