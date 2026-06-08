@@ -499,6 +499,19 @@ export function HomePageV2() {
   const today = useMemo(() => todayLabel(new Date()), []);
   const [timelineModalOpen, setTimelineModalOpen] = useState(false);
   const [onboardingGateReady, setOnboardingGateReady] = useState(false);
+  const [onboardingBannerHidden, setOnboardingBannerHidden] = useState(() => {
+    try {
+      return typeof window !== 'undefined'
+        && localStorage.getItem('haru_home_onboarding_banner_dismissed') === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  const dismissOnboardingBanner = () => {
+    setOnboardingBannerHidden(true);
+    try { localStorage.setItem('haru_home_onboarding_banner_dismissed', '1'); } catch { /* ignore */ }
+  };
 
   // v2 진입을 sessionStorage에 기록 → 통계/합본 등 깊은 경로 닫기 시 v2 복귀용
   useEffect(() => {
@@ -847,6 +860,97 @@ export function HomePageV2() {
             </button>
           </div>
         </header>
+
+        {/* 온보딩(사용 안내) 배너 — 처음 사용자가 클릭 한 번으로 안내를 다시 볼 수 있게 */}
+        {!onboardingBannerHidden && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              background: 'linear-gradient(135deg, #4A5A2C 0%, #5C6E36 100%)',
+              color: '#F5F0E8',
+              borderRadius: 18,
+              padding: '14px 16px',
+              marginBottom: 20,
+              boxShadow: '0 10px 28px -18px rgba(74,90,44,0.55)',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => navigate('/onboarding')}
+              style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                background: 'transparent',
+                border: 'none',
+                color: 'inherit',
+                cursor: 'pointer',
+                textAlign: 'left',
+                minWidth: 0,
+              }}
+            >
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  background: 'rgba(245,240,232,0.18)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  fontSize: 20,
+                }}
+              >
+                👋
+              </span>
+              <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                <span style={{ fontSize: 14, fontWeight: 800 }}>처음이신가요? HARU 사용 안내 보기</span>
+                <span style={{ fontSize: 11, opacity: 0.85 }}>
+                  기록·SAYU·비서실을 1분 만에 둘러보세요
+                </span>
+              </span>
+              <span
+                aria-hidden="true"
+                style={{
+                  marginLeft: 'auto',
+                  fontSize: 13,
+                  fontWeight: 800,
+                  whiteSpace: 'nowrap',
+                  background: 'rgba(245,240,232,0.2)',
+                  borderRadius: 999,
+                  padding: '6px 12px',
+                  flexShrink: 0,
+                }}
+              >
+                안내 보기 →
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={dismissOnboardingBanner}
+              aria-label="안내 배너 닫기"
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: 999,
+                border: '1px solid rgba(245,240,232,0.4)',
+                background: 'transparent',
+                color: 'inherit',
+                cursor: 'pointer',
+                flexShrink: 0,
+                fontSize: 14,
+                lineHeight: 1,
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* HERO ROW */}
         <div
