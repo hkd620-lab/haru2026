@@ -354,6 +354,21 @@ export function LandingPage() {
         </div>
       </nav>
 
+      <div className="lp-wrap lp-onboarding">
+        <button type="button" className="lp-onboarding__button" onClick={() => navigate('/onboarding')}>
+          <span className="lp-onboarding__icon" aria-hidden="true">
+            <Icon name="spark" size={20} color={C.bg} sw={1.8} />
+          </span>
+          <span className="lp-onboarding__copy">
+            <span className="lp-onboarding__title">처음이신가요? HARU 사용 안내 보기</span>
+            <span className="lp-onboarding__desc">기록·SAYU·비서실을 1분 만에 둘러보세요</span>
+          </span>
+          <span className="lp-onboarding__cta">
+            안내 보기<Icon name="arrowR" size={15} color={C.bg} sw={2} />
+          </span>
+        </button>
+      </div>
+
       {/* ───── Hero ───── */}
       <section className="lp-hero" id="top">
         <div className="lp-hero__deco"><span /><span /></div>
@@ -673,6 +688,16 @@ const LP_CSS = `
 .lp-nav__links a:hover{background:rgba(0,0,0,0.04);}
 .lp-nav__cta{display:flex;align-items:center;gap:8px;}
 @media(max-width:760px){.lp-nav__links{display:none;}}
+
+.lp-onboarding{padding-top:18px;position:relative;z-index:2;}
+.lp-onboarding__button{width:100%;border:0;border-radius:18px;background:linear-gradient(135deg,var(--olive-dark),#5C6E36);color:var(--bg);box-shadow:0 16px 36px -24px rgba(74,90,44,.65);padding:14px 16px;display:flex;align-items:center;gap:13px;text-align:left;cursor:pointer;transition:transform var(--dur) var(--ease),box-shadow var(--dur) var(--ease),filter var(--dur) var(--ease);}
+.lp-onboarding__button:hover{transform:translateY(-1px);box-shadow:0 20px 42px -24px rgba(74,90,44,.75);filter:saturate(1.04);}
+.lp-onboarding__icon{width:40px;height:40px;border-radius:12px;background:rgba(245,240,232,.18);display:grid;place-items:center;flex:0 0 auto;}
+.lp-onboarding__copy{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1;}
+.lp-onboarding__title{font-size:14px;font-weight:800;line-height:1.35;color:var(--bg);}
+.lp-onboarding__desc{font-size:11px;line-height:1.45;color:rgba(245,240,232,.84);}
+.lp-onboarding__cta{display:inline-flex;align-items:center;gap:6px;border-radius:999px;background:rgba(245,240,232,.2);padding:7px 13px;font-size:13px;font-weight:800;white-space:nowrap;flex:0 0 auto;}
+@media(max-width:640px){.lp-onboarding{padding:12px 14px 0;}.lp-onboarding__button{align-items:flex-start;padding:13px 14px;border-radius:16px;}.lp-onboarding__icon{width:36px;height:36px;border-radius:11px;}.lp-onboarding__cta{display:none;}.lp-onboarding__title{font-size:13px;}.lp-onboarding__desc{font-size:10.5px;}}
 
 .lp-hero{padding-top:clamp(48px,8vw,88px);padding-bottom:clamp(56px,8vw,104px);position:relative;}
 .lp-hero__grid{display:grid;grid-template-columns:1.05fr 1fr;gap:clamp(40px,6vw,88px);align-items:center;}
