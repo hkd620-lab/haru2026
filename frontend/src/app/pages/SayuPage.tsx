@@ -166,6 +166,10 @@ interface PlantReadOnlyDetail {
   summary?: string;
   coreFields: PlantReadOnlyField[];
   detailSections: PlantReadOnlyField[];
+  // 판독기록(detective) 항목에 한해 사진 추가가 가능하도록 record/idx 와 추가 사진 목록을 함께 전달한다.
+  recordId?: string;
+  entryIdx?: number;
+  imageUrls?: string[];
 }
 interface SayuPlantDiaryEditKey {
   recordId: string;
@@ -592,6 +596,8 @@ export function SayuPage() {
   const [plantDiaryInputMode, setPlantDiaryInputMode] = useState<SayuPlantDiaryInputMode>('append');
   const [plantDiaryDraft, setPlantDiaryDraft] = useState(emptyPlantDiaryDraft);
   const [plantDiarySaving, setPlantDiarySaving] = useState(false);
+  const [plantDetectivePhotoBusy, setPlantDetectivePhotoBusy] = useState(false);
+  const plantDetectivePhotoInputRef = useRef<HTMLInputElement>(null);
 
   // === SAYU 키워드 미리보기 백필 (IntersectionObserver) ===
   const kwInflightRef = useRef<Set<string>>(new Set());
@@ -808,6 +814,68 @@ export function SayuPage() {
     }
     const storage = getStorage();
     await deleteObject(ref(storage, `users/${user.uid}/format_photos/${fileName}`));
+  };
+
+  // 판독기록(plantDetective[idx]) 항목에 사진 1장을 추가 업로드한다. 기존 format_photos 경로 패턴 재사용.
+  const uploadSayuPlantDetectivePhoto = async (recordId: string, idx: number, file: File) => {
+    if (!file.type.startsWith('image/')) {
+      throw new Error('사진 파일만 추가할 수 있어요.');
+    }
+    const compressed = await compressImage(file, 1024, 0.82);
+    const storage = getStorage();
+    const ts = Date.now();
+    const storageRef = ref(storage, `users/${user!.uid}/format_photos/${recordId}_plant_detective_${idx}_${ts}.jpg`);
+    await uploadBytes(storageRef, compressed, { contentType: compressed.type || file.type || 'image/jpeg' });
+    return getDownloadURL(storageRef);
+  };
+
+  // 해당 record 의 plantDetective 배열을 복사 → idx 원소의 imageUrls 에 새 URL append → updateDoc.
+  // imageUrl 이 없던 항목은 첫 추가 사진을 대표 이미지로도 지정한다. arrayUnion 미사용(객체 배열).
+  const handleAddPlantDetectivePhoto = async (recordId: string, idx: number, file: File | null) => {
+    if (!file) return;
+    if (!user?.uid) { toast.error('로그인이 필요합니다.'); return; }
+    if (!recordId) { toast.error('기록을 찾을 수 없습니다.'); return; }
+    const record = records.find((r) => r.id === recordId);
+    const current = Array.isArray((record as any)?.plantDetective)
+      ? [...((record as any).plantDetective as any[])]
+      : [];
+    if (!current[idx]) { toast.error('해당 판독 기록을 찾을 수 없습니다.'); return; }
+    setPlantDetectivePhotoBusy(true);
+    let uploadedUrl = '';
+    try {
+      uploadedUrl = await uploadSayuPlantDetectivePhoto(recordId, idx, file);
+      const target = { ...current[idx] };
+      const existingImageUrls = Array.isArray(target.imageUrls) ? target.imageUrls : [];
+      const nextImageUrls = existingImageUrls.includes(uploadedUrl)
+        ? existingImageUrls
+        : [...existingImageUrls, uploadedUrl];
+      target.imageUrls = nextImageUrls;
+      if (!String(target.imageUrl || '').trim()) {
+        target.imageUrl = uploadedUrl;
+      }
+      const next = [...current];
+      next[idx] = target;
+      await updateDoc(doc(db, 'users', user.uid, 'records', recordId), { plantDetective: next });
+      setRecords((prev) =>
+        prev.map((r) => (r.id === recordId ? ({ ...r, plantDetective: next } as HaruRecord) : r)),
+      );
+      // 열려 있는 상세 팝업도 즉시 갱신 → 새로고침 없이 새 사진 반영
+      setPlantReadOnlyDetail((prev) =>
+        prev && prev.recordId === recordId && prev.entryIdx === idx
+          ? { ...prev, imageUrl: String(prev.imageUrl || '').trim() || uploadedUrl, imageUrls: nextImageUrls }
+          : prev,
+      );
+      toast.success('사진을 추가했습니다.');
+    } catch (e) {
+      console.error('식물 판독 사진 추가 실패:', e);
+      toast.error('사진 추가에 실패했습니다.');
+      // Storage 업로드는 됐는데 Firestore update 가 실패한 경우 업로드 파일 정리 시도(best-effort)
+      if (uploadedUrl) {
+        try { await deleteSayuPlantDiaryStoredPhoto(uploadedUrl); } catch { /* ignore */ }
+      }
+    } finally {
+      setPlantDetectivePhotoBusy(false);
+    }
   };
 
   const removePlantDiaryPhotoRefs = async (plantId: string, imageUrls: string[]) => {
@@ -2560,12 +2628,25 @@ export function SayuPage() {
           entry?.englishName,
           entry?.confidence ? `신뢰도 ${entry.confidence}` : '',
         ].filter((value) => String(value || '').trim()).join(' · ');
+        const detectiveImageUrls: string[] = (() => {
+          const urls: string[] = [];
+          const add = (value: any) => {
+            const url = typeof value === 'string' ? value.trim() : '';
+            if (url && url.startsWith('http') && !urls.includes(url)) urls.push(url);
+          };
+          add(imageUrl);
+          if (Array.isArray(entry?.imageUrls)) entry.imageUrls.forEach(add);
+          return urls;
+        })();
         const onOpen = () => openPlantReadOnlyDetail({
           type: 'detective',
           title,
           date: record.date,
           subtitle,
           imageUrl,
+          recordId: record.id,
+          entryIdx: idx,
+          imageUrls: detectiveImageUrls,
           summary: '이 기록은 식물탐정이 판독하고 사용자가 확정한 식물 기록입니다.',
           coreFields: [
             { label: '사용자 확정명', value: confirmedName || title },
@@ -3866,6 +3947,62 @@ export function SayuPage() {
                 )}
               </section>
             </div>
+
+            {plantReadOnlyDetail.type === 'detective'
+              && plantReadOnlyDetail.recordId
+              && typeof plantReadOnlyDetail.entryIdx === 'number' && (
+              <section style={{ borderRadius: 14, border: '1px solid #d1fae5', backgroundColor: '#f0fdf4', padding: 14, marginBottom: 14 }}>
+                <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 900, color: '#166534' }}>사진</p>
+                {Array.isArray(plantReadOnlyDetail.imageUrls) && plantReadOnlyDetail.imageUrls.length > 0 && (
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                    {plantReadOnlyDetail.imageUrls.map((url, i) => (
+                      <img
+                        key={`${url}_${i}`}
+                        src={url}
+                        alt={`판독 사진 ${i + 1}`}
+                        style={{ width: 64, height: 64, borderRadius: 8, objectFit: 'cover', border: '1px solid #bbf7d0', flexShrink: 0 }}
+                      />
+                    ))}
+                  </div>
+                )}
+                <input
+                  ref={plantDetectivePhotoInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    const recordId = plantReadOnlyDetail.recordId || '';
+                    const idx = plantReadOnlyDetail.entryIdx;
+                    if (file && recordId && typeof idx === 'number') {
+                      handleAddPlantDetectivePhoto(recordId, idx, file);
+                    }
+                    e.target.value = '';
+                  }}
+                />
+                <button
+                  type="button"
+                  disabled={plantDetectivePhotoBusy}
+                  onClick={() => plantDetectivePhotoInputRef.current?.click()}
+                  style={{
+                    minHeight: 40,
+                    padding: '0 18px',
+                    borderRadius: 10,
+                    border: '1px solid #15803d',
+                    background: plantDetectivePhotoBusy ? '#86efac' : '#15803d',
+                    color: '#fff',
+                    fontSize: 13,
+                    fontWeight: 900,
+                    cursor: plantDetectivePhotoBusy ? 'wait' : 'pointer',
+                  }}
+                >
+                  {plantDetectivePhotoBusy ? '업로드 중...' : '사진 추가'}
+                </button>
+                <p style={{ margin: '9px 0 0', fontSize: 11, color: '#6B7280' }}>
+                  이 사진은 해당 판독 기록에만 추가됩니다.
+                </p>
+              </section>
+            )}
 
             {plantReadOnlyDetail.summary && (
               <section style={{ borderRadius: 12, border: '1px solid #e5e7eb', backgroundColor: '#fffdf4', padding: '12px 14px', marginBottom: 14 }}>
