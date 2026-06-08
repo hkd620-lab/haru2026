@@ -22,6 +22,8 @@
   padding: 9px 16px;
   background: #171717;
   gap: 8px;
+  /* min-width:0 — flex 자식이 부모를 밀어내지 않도록 */
+  min-width: 0;
 }
 
 .haru-news-preview__brand {
@@ -30,6 +32,7 @@
   color: #f8f5ee;
   letter-spacing: 0.06em;
   white-space: nowrap;
+  flex-shrink: 0; /* 브랜드명은 항상 우선 표시 */
 }
 
 .haru-news-preview__tagline {
@@ -37,12 +40,45 @@
   color: #b5a98f;
   letter-spacing: 0.08em;
   white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1 1 auto; /* 남는 공간 채우되 줄어들 수 있음 */
 }
 
 .haru-news-preview__date {
   font-size: 10px;
   color: #7a7060;
   white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* 360px 이하: 헤더 요소를 2줄로 허용 — 잘림 방지 */
+@media (max-width: 360px) {
+  .haru-news-preview__header {
+    flex-wrap: wrap;
+    row-gap: 3px;
+    align-items: flex-start;
+  }
+
+  /* tagline: 브랜드 옆에서 줄바꿈 허용, 전체 너비 차지 */
+  .haru-news-preview__tagline {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    flex: 0 1 100%;
+    order: 3; /* 날짜 뒤로 */
+  }
+
+  .haru-news-preview__brand {
+    order: 1;
+  }
+
+  .haru-news-preview__date {
+    order: 2;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 }
 
 /* 구분선 */
