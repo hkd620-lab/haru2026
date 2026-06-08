@@ -4,6 +4,7 @@ import { BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { GrapeAnimation } from '../components/GrapeAnimation';
 import { useAuth } from '../contexts/AuthContext';
+import HaruNewsPreview from '../components/HaruNewsPreview';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -46,7 +47,7 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#EDE9F5' }}>
+    <div className="min-h-screen" style={{ backgroundColor: '#EDE9F5', overflowY: 'auto' }}>
       {isLoading && (
         <div
           className="fixed inset-0 z-50 flex flex-col items-center justify-center"
@@ -60,7 +61,12 @@ export function LoginPage() {
           </p>
         </div>
       )}
-      <div className="max-w-md w-full px-6">
+      <div style={{ maxWidth: 680, margin: '0 auto', padding: '32px 20px 48px' }}>
+        {/* 신문기사형 서비스 소개 */}
+        <HaruNewsPreview />
+
+        {/* 기존 로그인 카드 — 인증 로직 무수정 */}
+        <div className="max-w-md w-full mx-auto">
         <div className="text-center mb-8">
           <BookOpen className="w-16 h-16 mx-auto mb-4" style={{ color: '#1A3C6E' }} />
           <h1 className="text-3xl font-bold mb-2" style={{ color: '#1A3C6E' }}>
@@ -136,7 +142,8 @@ export function LoginPage() {
             </p>
           </div>
         </div>
-      </div>
+        </div>{/* /max-w-md */}
+      </div>{/* /container */}
     </div>
   );
 }

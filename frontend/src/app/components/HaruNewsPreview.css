@@ -1,0 +1,242 @@
+/* HaruNewsPreview.css
+   모든 클래스는 .haru-news-preview 로 시작 — 기존 전역 스타일 간섭 없음
+*/
+
+.haru-news-preview {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto 24px;
+  background: #f8f5ee;
+  border: 1px solid #d7cdbe;
+  border-radius: 14px;
+  overflow: hidden;
+  font-family: 'Noto Serif KR', 'Georgia', 'Times New Roman', serif;
+  color: #171717;
+}
+
+/* 상단 헤더 바 */
+.haru-news-preview__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 16px;
+  background: #171717;
+  gap: 8px;
+}
+
+.haru-news-preview__brand {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f8f5ee;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.haru-news-preview__tagline {
+  font-size: 10px;
+  color: #b5a98f;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.haru-news-preview__date {
+  font-size: 10px;
+  color: #7a7060;
+  white-space: nowrap;
+}
+
+/* 구분선 */
+.haru-news-preview__divider {
+  height: 3px;
+  background: linear-gradient(90deg, #58311f 0%, #c09060 55%, #d7cdbe 100%);
+}
+
+/* 본문 영역 */
+.haru-news-preview__body {
+  padding: 20px 22px 18px;
+}
+
+/* 태그 */
+.haru-news-preview__tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  color: #58311f;
+  background: #f2e7d8;
+  border: 1px solid #d7cdbe;
+  border-radius: 3px;
+  padding: 2px 8px;
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+  font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif;
+}
+
+/* 헤드라인 */
+.haru-news-preview__headline {
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.38;
+  color: #171717;
+  margin: 0 0 10px;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+/* 부제목 */
+.haru-news-preview__subhead {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.65;
+  color: #5f5a52;
+  margin: 0 0 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #d7cdbe;
+  word-break: keep-all;
+  font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif;
+}
+
+/* 리드문 */
+.haru-news-preview__lead {
+  font-size: 13px;
+  line-height: 1.85;
+  color: #2e2b26;
+  margin: 0 0 18px;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+/* 4단계 박스 */
+.haru-news-preview__steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.haru-news-preview__step {
+  background: #fffdf8;
+  border: 1px solid #d7cdbe;
+  border-radius: 8px;
+  padding: 11px 10px 10px;
+  text-align: center;
+}
+
+.haru-news-preview__step-num {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  color: #58311f;
+  letter-spacing: 0.06em;
+  margin-bottom: 5px;
+  font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif;
+}
+
+.haru-news-preview__step-title {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #171717;
+  line-height: 1.3;
+  margin-bottom: 4px;
+  word-break: keep-all;
+  font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif;
+}
+
+.haru-news-preview__step-desc {
+  display: block;
+  font-size: 9.5px;
+  color: #7a7060;
+  line-height: 1.4;
+  word-break: keep-all;
+  font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif;
+}
+
+/* 화살표 연결 — step 사이에 → 표시 */
+.haru-news-preview__step:not(:last-child) {
+  position: relative;
+}
+
+/* 마무리 강조 박스 */
+.haru-news-preview__highlight {
+  background: #f3eee6;
+  border-left: 3px solid #58311f;
+  border-radius: 0 6px 6px 0;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #3a2a1a;
+  line-height: 1.6;
+  word-break: keep-all;
+  font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif;
+}
+
+/* 하단 푸터 */
+.haru-news-preview__footer {
+  padding: 8px 22px 10px;
+  border-top: 1px solid #d7cdbe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.haru-news-preview__footer-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #b5a98f;
+  flex-shrink: 0;
+}
+
+.haru-news-preview__footer-text {
+  font-size: 10px;
+  color: #7a7060;
+  letter-spacing: 0.04em;
+  font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif;
+}
+
+/* 모바일 대응 — 760px 이하 */
+@media (max-width: 760px) {
+  .haru-news-preview {
+    border-radius: 10px;
+    margin-bottom: 16px;
+  }
+
+  .haru-news-preview__body {
+    padding: 16px 16px 14px;
+  }
+
+  .haru-news-preview__headline {
+    font-size: 16px;
+  }
+
+  .haru-news-preview__lead {
+    font-size: 12px;
+    line-height: 1.75;
+  }
+
+  .haru-news-preview__steps {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .haru-news-preview__step {
+    display: flex;
+    align-items: flex-start;
+    text-align: left;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .haru-news-preview__step-num {
+    flex-shrink: 0;
+    margin-bottom: 0;
+    padding-top: 1px;
+  }
+
+  .haru-news-preview__step-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+}
