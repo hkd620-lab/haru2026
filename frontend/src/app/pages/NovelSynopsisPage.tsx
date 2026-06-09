@@ -203,7 +203,15 @@ export function NovelSynopsisPage() {
       const functions = getFunctions(undefined, 'asia-northeast3');
       const fn = httpsCallable(functions, 'generateHaruProphecy');
       const result: any = await fn(buildPayload(analysis, 'story'));
-      navigate('/novel-story', { state: { story: result.data.text, settings, fromRecord } });
+      navigate('/novel-story', {
+        state: {
+          story: result.data.text,
+          settings,
+          fromRecord,
+          protagonistName: navProtagonistName,
+          timeOption,
+        }
+      });
     } catch (error: any) {
       const msg = error?.message || '생성에 실패했습니다. 다시 시도해주세요.';
       toast.error(msg);
@@ -232,6 +240,31 @@ export function NovelSynopsisPage() {
 【나에게 일어난 사건】\n${a.events || '(미입력)'}\n
 【일상에서 이룬 일】\n${a.dailyAchieve || '(미입력)'}`.trim();
   };
+
+  const navPersonsList = Array.isArray(navPersons) ? navPersons : [];
+  const personSummaryFromNav = navPersonsList
+    .map((p: any) => [p?.name, p?.relation].filter(Boolean).join(' - '))
+    .filter(Boolean)
+    .join(', ');
+  const charsSummary = personSummaryFromNav || [analysis.chars, analysis.relationship].filter(Boolean).join(' / ');
+  const currentAgeText = navCurrentAge !== null && navCurrentAge !== undefined && navCurrentAge !== '' ? `${navCurrentAge}세` : '';
+  const futureAgeText = navFutureAge !== null && navFutureAge !== undefined && navFutureAge !== '' ? `${navFutureAge}세` : '';
+  const ageSummary = currentAgeText && futureAgeText
+    ? `${currentAgeText} → ${futureAgeText}`
+    : currentAgeText || futureAgeText;
+  const protagonistDetail = [ageSummary, (navProtagonistName || ageSummary) && timeOption ? `(${timeOption})` : ''].filter(Boolean).join(' ');
+  const protagonistSummary = navProtagonistName || ageSummary
+    ? [navProtagonistName, protagonistDetail].filter(Boolean).join(' · ')
+    : '';
+  const summaryRows = [
+    { label: '🧑 주인공', value: protagonistSummary },
+    { label: '🎯 초목표', value: analysis.desire || navExtractedGoal },
+    { label: '⛓ 극복할 것', value: analysis.shackle },
+    { label: '👥 등장인물', value: charsSummary },
+    { label: '⚡ 사건 모티브', value: analysis.motive },
+    { label: '📌 주요 사건', value: analysis.events || navExtractedEvent },
+    { label: '🎯 주제', value: analysis.theme },
+  ].filter(row => String(row.value || '').trim());
 
   // ─────────────────────────────────────
   // RENDER — 자유 창작 모드 (기존 UI 그대로)
@@ -369,8 +402,8 @@ export function NovelSynopsisPage() {
         borderRadius: 10, padding: '10px 12px', marginBottom: 16,
         fontSize: 12, color: '#633806', lineHeight: 1.7,
       }}>
-        💡 좌측 표를 수정하면 우측 시놉시스에 즉시 반영됩니다.
-        최대 3차까지 다시 생성할 수 있습니다. (현재 {synopsisRound}차)
+        💡 왼쪽은 이야기 설정 요약, 오른쪽은 시놉시스 미리보기입니다.
+        설정을 바꾸려면 요약 카드의 버튼으로 돌아가세요. (현재 {synopsisRound}차)
       </div>
 
       <ProphecyDiagram analysis={{
@@ -390,98 +423,77 @@ export function NovelSynopsisPage() {
       }} className="haru-split">
         <div style={{ background: '#fff', borderRadius: 14, padding: 16, border: '0.5px solid #e5e7eb' }}>
           <h3 style={{ fontSize: 14, fontWeight: 700, color: '#1A3C6E', marginTop: 0, marginBottom: 14 }}>
-            📊 10항목 분석표 (수정 가능)
+            📋 이야기 설정 요약
           </h3>
-          {[
-            { key: 'motive', label: '1. 사건 모티브', chips: ANALYSIS_MOTIVE_CHIPS, placeholder: '예) 65세가 된 지금, 과거에 다른 선택을 했다면...' },
-            { key: 'theme', label: '2. 주제·기획의도', chips: ANALYSIS_THEME_CHIPS, placeholder: '예) 끊임없는 노력과 절제로 역경을 이겨내며 삶을 지켜가는 과정' },
-            { key: 'threeLiner', label: '3. 세 줄 스토리', chips: null, placeholder: '1줄: 주인공은 ~한 상황에 처해있다\n2줄: ~한 사건이 일어난다\n3줄: 결국 ~하게 된다', rows: 3 },
-            { key: '__persons', label: '4. 등장인물 & 관계', chips: null, placeholder: '' },
-            { key: 'personality', label: '5. 등장인물별 성격', chips: ANALYSIS_PERSONALITY_CHIPS, placeholder: '또는 직접 입력...' },
-            { key: 'desire', label: '6. 초목표', chips: ANALYSIS_GOAL_CHIPS, placeholder: '예) 내가 시작한 일이 세상에 쓸모있게 남는 것' },
-            { key: 'shackle', label: '7. 주인공이 극복할 것', chips: ANALYSIS_SHACKLE_CHIPS, placeholder: '예) 과거의 좌절과 실패, 포기로 인한 처참함' },
-            { key: 'events', label: '8. 나에게 일어난 사건', chips: ANALYSIS_EVENT_CHIPS, placeholder: '예) 아내와 오토바이로 시장 가다 자동차와 접촉사고가 났다' },
-            { key: 'dailyAchieve', label: '9. 일상에서 이룬 일', chips: ANALYSIS_DAILY_ACHIEVE_CHIPS, placeholder: '예) 아내와 함께 시장을 갔다' },
-          ].map(({ key, label, chips, placeholder, rows }) => {
-            // 4번 등장인물 & 관계: chars + relationship 두 input
-            if (key === '__persons') {
-              return (
-                <div key={key} style={{ marginBottom: 12 }}>
-                  <p style={{ fontSize: 12, fontWeight: 600, color: '#1A3C6E', marginBottom: 6, marginTop: 0 }}>{label}</p>
-                  <input
-                    value={analysis.chars}
-                    onChange={e => setAnalysis(prev => ({ ...prev, chars: e.target.value }))}
-                    placeholder="이름 또는 관계 (예: 배우자)"
-                    style={{ width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 16, color: '#374151', outline: 'none', boxSizing: 'border-box', marginBottom: 6 }}
-                  />
-                  <textarea
-                    value={analysis.relationship}
-                    onChange={e => setAnalysis(prev => ({ ...prev, relationship: e.target.value }))}
-                    placeholder="관계 설명 (예: 든든한 지지자, 때론 날카로운 조언자)"
-                    rows={2}
-                    style={{ width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 16, color: '#374151', outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
-                  />
-                </div>
-              );
-            }
-            const value = (analysis as any)[key] || '';
-            return (
-              <div key={key} style={{ marginBottom: 12 }}>
-                <p style={{ fontSize: 12, fontWeight: 600, color: '#1A3C6E', marginBottom: 6, marginTop: 0 }}>{label}</p>
-                {chips && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-                    {chips.map((opt: string, i: number) => {
-                      const active = isAnalysisChipActive(value, opt);
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => setAnalysis(prev => ({ ...prev, [key]: toggleAnalysisChip((prev as any)[key] || '', opt) }))}
-                          style={{
-                            padding: '5px 10px', borderRadius: 16, fontSize: 11,
-                            border: active ? '1.5px solid #1A3C6E' : '0.5px solid #e5e7eb',
-                            background: active ? '#1A3C6E' : '#fff',
-                            color: active ? '#fff' : '#374151',
-                            cursor: 'pointer',
-                          }}
-                        >{opt}</button>
-                      );
-                    })}
-                  </div>
-                )}
-                <textarea
-                  value={value}
-                  onChange={e => setAnalysis(prev => ({ ...prev, [key]: e.target.value }))}
-                  placeholder={placeholder}
-                  rows={rows || 2}
-                  style={{ width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 16, color: '#374151', outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
-                />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {summaryRows.map((row, idx) => (
+              <div key={idx} style={{ borderBottom: idx < summaryRows.length - 1 ? '0.5px solid #f3f4f6' : 'none', paddingBottom: 10 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#1A3C6E', margin: '0 0 4px' }}>{row.label}</p>
+                <p style={{
+                  fontSize: 13, color: '#374151', lineHeight: 1.7,
+                  whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0,
+                }}>
+                  {row.value}
+                </p>
               </div>
-            );
-          })}
+            ))}
+          </div>
+          <button
+            onClick={() => navigate(-1)}
+            style={{
+              marginTop: 16, padding: '8px 12px', borderRadius: 10,
+              border: '1px solid #d1d5db', background: '#fff',
+              color: '#1A3C6E', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            ← 설정으로 돌아가기
+          </button>
+          <p style={{ fontSize: 11, color: '#9ca3af', lineHeight: 1.7, margin: '12px 0 0' }}>
+            설정을 바꾸고 싶으면 위 버튼으로 돌아가세요.<br />
+            시놉시스를 확인한 후 최종 이야기를 생성하세요.
+          </p>
         </div>
 
         <div style={{ background: '#fff', borderRadius: 14, padding: 20, border: '1.5px solid #C7D2FE' }}>
           <h3 style={{ fontSize: 14, fontWeight: 700, color: '#1A3C6E', marginTop: 0, marginBottom: 14 }}>
             🔮 {synopsisRound}차 시놉시스 미리보기
           </h3>
-          <pre style={{
-            fontSize: 13, color: '#374151', lineHeight: 1.9,
-            whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-            margin: 0, fontFamily: 'inherit', maxHeight: 600, overflowY: 'auto',
-          }}>
-            {renderAnalysisAsText(analysis)}
-          </pre>
-
-          {synopsis && (
-            <div style={{ marginTop: 20, paddingTop: 14, borderTop: '0.5px dashed #d1d5db' }}>
-              <p style={{ fontSize: 11, color: '#9ca3af', marginBottom: 6 }}>
-                🤖 AI가 생성한 시놉시스 본문
+          {!synopsis ? (
+            <div style={{
+              background: '#EEF2FF', border: '1px solid #C7D2FE',
+              borderRadius: 12, padding: '24px 18px', textAlign: 'center',
+            }}>
+              <p style={{ fontSize: 14, color: '#1A3C6E', fontWeight: 700, lineHeight: 1.8, margin: 0 }}>
+                🔮 AI가 설정 내용을 바탕으로 당신의 미래 이야기를 쓰고 있습니다.
               </p>
-              <p style={{
-                fontSize: 13, color: '#374151', lineHeight: 1.9,
-                whiteSpace: 'pre-wrap', margin: 0,
-              }}>{synopsis}</p>
+              <p style={{ fontSize: 12, color: '#374151', lineHeight: 1.8, margin: '14px 0' }}>
+                "사주는 태어난 날을 봅니다.<br />
+                HARU미래전망은 당신이 살아온 날을 봅니다."
+              </p>
+              <p style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>
+                잠시만 기다려주세요.
+              </p>
             </div>
+          ) : (
+            <>
+              <pre style={{
+                fontSize: 13, color: '#374151', lineHeight: 1.9,
+                whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                margin: 0, fontFamily: 'inherit', maxHeight: 600, overflowY: 'auto',
+              }}>
+                {renderAnalysisAsText(analysis)}
+              </pre>
+
+              <div style={{ marginTop: 20, paddingTop: 14, borderTop: '0.5px dashed #d1d5db' }}>
+                <p style={{ fontSize: 11, color: '#9ca3af', marginBottom: 6 }}>
+                  🤖 AI가 생성한 시놉시스 본문
+                </p>
+                <p style={{
+                  fontSize: 13, color: '#374151', lineHeight: 1.9,
+                  whiteSpace: 'pre-wrap', margin: 0,
+                }}>{synopsis}</p>
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -508,7 +520,8 @@ export function NovelSynopsisPage() {
             borderRadius: 10, padding: '10px 12px',
             fontSize: 12, color: '#15803D', textAlign: 'center',
           }}>
-            ✅ 3차 시놉시스까지 완료. 더는 재생성할 수 없습니다. 표는 자유롭게 수정 가능.
+            ✅ 3차 시놉시스까지 완료되었습니다.<br />
+            마음에 드는 시놉시스를 고른 후 이야기를 생성하세요.
           </div>
         )}
 

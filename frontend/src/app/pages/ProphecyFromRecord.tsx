@@ -814,329 +814,8 @@ export function RecordProphecyPage() {
               <p style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E' }}>{selectedRecord?.title}</p>
             </div>
 
-            {/* === 1. 사건 모티브 === */}
-            <div style={styles.card}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginBottom: 4 }}>1. 사건 모티브</p>
-              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>이야기를 움직이는 핵심 사건의 계기는 무엇인가요?</p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-                {EVENT_MOTIVE_CHIPS.map((opt, i) => {
-                  const active = isChipActive(extractedMotive, opt);
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => setExtractedMotive(toggleChip(extractedMotive, opt))}
-                      style={{
-                        padding: '6px 12px', borderRadius: 16, fontSize: 12,
-                        border: active ? '1.5px solid #1A3C6E' : '0.5px solid #e5e7eb',
-                        background: active ? '#1A3C6E' : '#fff',
-                        color: active ? '#fff' : '#374151',
-                        cursor: 'pointer',
-                      }}
-                    >{opt}</button>
-                  );
-                })}
-              </div>
-              <textarea
-                value={extractedMotive}
-                onChange={e => setExtractedMotive(e.target.value)}
-                placeholder="예) 65세가 된 지금, 과거에 다른 선택을 했다면..."
-                rows={2}
-                style={{
-                  width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
-                  padding: '8px 10px', fontSize: 16, resize: 'none', outline: 'none',
-                  lineHeight: 1.6, fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
-                }}
-              />
-            </div>
-
-            {/* === 2. 주제·기획의도 === */}
-            <div style={styles.card}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginBottom: 4 }}>2. 주제·기획의도</p>
-              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>이 이야기가 궁극적으로 말하고 싶은 것은 무엇인가요?</p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-                {THEME_CHIPS.map((opt, i) => {
-                  const active = isChipActive(extractedTheme, opt);
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => setExtractedTheme(toggleChip(extractedTheme, opt))}
-                      style={{
-                        padding: '6px 12px', borderRadius: 16, fontSize: 12,
-                        border: active ? '1.5px solid #1A3C6E' : '0.5px solid #e5e7eb',
-                        background: active ? '#1A3C6E' : '#fff',
-                        color: active ? '#fff' : '#374151',
-                        cursor: 'pointer',
-                      }}
-                    >{opt}</button>
-                  );
-                })}
-              </div>
-              <textarea
-                value={extractedTheme}
-                onChange={e => setExtractedTheme(e.target.value)}
-                placeholder="예) 끊임없는 노력과 절제로 역경을 이겨내며 삶을 지켜가는 과정"
-                rows={2}
-                style={{
-                  width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
-                  padding: '8px 10px', fontSize: 16, resize: 'none', outline: 'none',
-                  lineHeight: 1.6, fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
-                }}
-              />
-            </div>
-
-            {/* === 3. 세 줄 스토리 === */}
-            <div style={styles.card}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginBottom: 4 }}>3. 세 줄 스토리</p>
-              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>이야기의 흐름을 세 줄로 요약해주세요.</p>
-              <textarea
-                value={extractedThreeLiner}
-                onChange={e => setExtractedThreeLiner(e.target.value)}
-                placeholder={'1줄: 주인공은 ~한 상황에 처해있다\n2줄: ~한 사건이 일어난다\n3줄: 결국 ~하게 된다'}
-                rows={3}
-                style={{
-                  width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
-                  padding: '8px 10px', fontSize: 16, resize: 'none', outline: 'none',
-                  lineHeight: 1.6, fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
-                }}
-              />
-            </div>
-
-            {/* === 4. 등장인물 & 관계 === */}
-            <div style={styles.card}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginBottom: 4 }}>4. 등장인물 & 관계</p>
-              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 6, lineHeight: 1.6 }}>내 삶에 영향을 주는 사람들을 추가해주세요.</p>
-              <p style={{ fontSize: 11, color: '#9ca3af', marginBottom: 12, lineHeight: 1.6 }}>
-                예시: 배우자-든든한 지지자 / 멘토-방향을 잡아준 사람 / 경쟁자-나를 자극하는 존재 / 자녀-포기 못하는 이유 / 오랜 친구-힘들 때 곁에 있는 사람
-              </p>
-              {persons.map((p, idx) => (
-                <div key={idx} style={{
-                  background: '#F5F4EE', borderRadius: 8, padding: 10, marginBottom: 8,
-                }}>
-                  <div style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
-                    <input
-                      value={p.name}
-                      onChange={e => setPersons(prev => prev.map((q, i) => i === idx ? { ...q, name: e.target.value } : q))}
-                      placeholder="이름 또는 관계 (예: 배우자)"
-                      style={{ flex: 1, border: '0.5px solid #e5e7eb', borderRadius: 6, padding: '6px 8px', fontSize: 16, color: '#374151', outline: 'none', boxSizing: 'border-box' }}
-                    />
-                    {persons.length > 1 && (
-                      <button
-                        onClick={() => setPersons(prev => prev.filter((_, i) => i !== idx))}
-                        style={{
-                          width: 26, height: 26, borderRadius: '50%',
-                          border: '0.5px solid #e5e7eb', background: '#fff',
-                          color: '#9ca3af', fontSize: 12, cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                        }}
-                      >✕</button>
-                    )}
-                  </div>
-                  <textarea
-                    value={p.relation}
-                    onChange={e => setPersons(prev => prev.map((q, i) => i === idx ? { ...q, relation: e.target.value } : q))}
-                    placeholder="관계 설명 (예: 든든한 지지자, 때론 날카로운 조언자)"
-                    rows={1}
-                    style={{
-                      width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 6,
-                      padding: '6px 8px', fontSize: 16, resize: 'none', outline: 'none',
-                      lineHeight: 1.6, fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
-                    }}
-                  />
-                </div>
-              ))}
-              <button
-                onClick={() => setPersons(prev => [...prev, { name: '', relation: '', personality: '' }])}
-                style={{
-                  width: '100%', padding: '8px', borderRadius: 8,
-                  border: '1px dashed #1A3C6E', background: '#fff', color: '#1A3C6E',
-                  fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                }}
-              >+ 인물 추가</button>
-            </div>
-
-            {/* === 5. 등장인물별 성격 === */}
-            <div style={styles.card}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginBottom: 4 }}>5. 등장인물별 성격</p>
-              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 12, lineHeight: 1.6 }}>각 인물의 성격을 선택하거나 직접 입력해주세요.</p>
-              {persons.filter(p => p.name.trim()).length === 0 && (
-                <p style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', padding: '12px 0' }}>
-                  먼저 위 4번에서 인물을 추가해주세요.
-                </p>
-              )}
-              {persons.map((p, idx) => p.name.trim() ? (
-                <div key={idx} style={{ marginBottom: 14, paddingBottom: 10, borderBottom: idx < persons.length - 1 ? '0.5px solid #e5e7eb' : 'none' }}>
-                  <p style={{ fontSize: 12, fontWeight: 500, color: '#1A3C6E', marginBottom: 8 }}>{p.name}</p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-                    {PERSONALITY_CHIPS.map((opt, i) => {
-                      const active = isChipActive(p.personality, opt);
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => setPersons(prev => prev.map((q, j) => j === idx ? { ...q, personality: toggleChip(q.personality, opt) } : q))}
-                          style={{
-                            padding: '6px 12px', borderRadius: 16, fontSize: 11,
-                            border: active ? '1.5px solid #1A3C6E' : '0.5px solid #e5e7eb',
-                            background: active ? '#1A3C6E' : '#fff',
-                            color: active ? '#fff' : '#374151',
-                            cursor: 'pointer',
-                          }}
-                        >{opt}</button>
-                      );
-                    })}
-                  </div>
-                  <textarea
-                    value={p.personality}
-                    onChange={e => setPersons(prev => prev.map((q, j) => j === idx ? { ...q, personality: e.target.value } : q))}
-                    placeholder="또는 직접 입력..."
-                    rows={1}
-                    style={{
-                      width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 6,
-                      padding: '6px 8px', fontSize: 16, resize: 'none', outline: 'none',
-                      lineHeight: 1.6, fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
-                    }}
-                  />
-                </div>
-              ) : null)}
-            </div>
-
-            {/* === 6. 초목표 === */}
-            <div style={styles.card}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginBottom: 4 }}>6. 초목표</p>
-              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>주인공이 궁극적으로 이루고 싶은 것은 무엇인가요?</p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-                {GOAL_CHIPS_NEW.map((opt, i) => {
-                  const active = isChipActive(extractedGoal, opt);
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => setExtractedGoal(toggleChip(extractedGoal, opt))}
-                      style={{
-                        padding: '6px 12px', borderRadius: 16, fontSize: 12,
-                        border: active ? '1.5px solid #1A3C6E' : '0.5px solid #e5e7eb',
-                        background: active ? '#1A3C6E' : '#fff',
-                        color: active ? '#fff' : '#374151',
-                        cursor: 'pointer',
-                      }}
-                    >{opt}</button>
-                  );
-                })}
-              </div>
-              <textarea
-                value={extractedGoal}
-                onChange={e => setExtractedGoal(e.target.value)}
-                placeholder="예) 내가 시작한 일이 세상에 쓸모있게 남는 것"
-                rows={2}
-                style={{
-                  width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
-                  padding: '8px 10px', fontSize: 16, resize: 'none', outline: 'none',
-                  lineHeight: 1.6, fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
-                }}
-              />
-            </div>
-
-            {/* === 7. 주인공이 극복할 것 === */}
-            <div style={styles.card}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginBottom: 4 }}>7. 주인공이 극복할 것</p>
-              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>주인공의 발목을 잡는 것은 무엇인가요?</p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-                {SHACKLE_CHIPS_NEW.map((opt, i) => {
-                  const active = isChipActive(extractedShackle, opt);
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => setExtractedShackle(toggleChip(extractedShackle, opt))}
-                      style={{
-                        padding: '6px 12px', borderRadius: 16, fontSize: 12,
-                        border: active ? '1.5px solid #1A3C6E' : '0.5px solid #e5e7eb',
-                        background: active ? '#1A3C6E' : '#fff',
-                        color: active ? '#fff' : '#374151',
-                        cursor: 'pointer',
-                      }}
-                    >{opt}</button>
-                  );
-                })}
-              </div>
-              <textarea
-                value={extractedShackle}
-                onChange={e => setExtractedShackle(e.target.value)}
-                placeholder="예) 과거의 좌절과 실패, 포기로 인한 처참함"
-                rows={2}
-                style={{
-                  width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
-                  padding: '8px 10px', fontSize: 16, resize: 'none', outline: 'none',
-                  lineHeight: 1.6, fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
-                }}
-              />
-            </div>
-
-            {/* === 8. 나에게 일어난 사건 === */}
-            <div style={styles.card}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginBottom: 4 }}>8. 나에게 일어난 사건</p>
-              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>신문에 날 만한 크고 작은 사건을 입력해주세요.</p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-                {EVENT_CHIPS.map((opt, i) => {
-                  const active = isChipActive(extractedEvent, opt);
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => setExtractedEvent(toggleChip(extractedEvent, opt))}
-                      style={{
-                        padding: '6px 12px', borderRadius: 16, fontSize: 12,
-                        border: active ? '1.5px solid #1A3C6E' : '0.5px solid #e5e7eb',
-                        background: active ? '#1A3C6E' : '#fff',
-                        color: active ? '#fff' : '#374151',
-                        cursor: 'pointer',
-                      }}
-                    >{opt}</button>
-                  );
-                })}
-              </div>
-              <textarea
-                value={extractedEvent}
-                onChange={e => setExtractedEvent(e.target.value)}
-                placeholder="예) 아내와 오토바이로 시장 가다 자동차와 접촉사고가 났다"
-                rows={2}
-                style={{
-                  width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
-                  padding: '8px 10px', fontSize: 16, resize: 'none', outline: 'none',
-                  lineHeight: 1.6, fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
-                }}
-              />
-            </div>
-
-            {/* === 9. 일상에서 이룬 일 === */}
-            <div style={styles.card}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginBottom: 4 }}>9. 일상에서 이룬 일</p>
-              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>소소하지만 나에게 의미있는 일상의 성취를 입력해주세요.</p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-                {DAILY_ACHIEVE_CHIPS.map((opt, i) => {
-                  const active = isChipActive(extractedDailyAchieve, opt);
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => setExtractedDailyAchieve(toggleChip(extractedDailyAchieve, opt))}
-                      style={{
-                        padding: '6px 12px', borderRadius: 16, fontSize: 12,
-                        border: active ? '1.5px solid #1A3C6E' : '0.5px solid #e5e7eb',
-                        background: active ? '#1A3C6E' : '#fff',
-                        color: active ? '#fff' : '#374151',
-                        cursor: 'pointer',
-                      }}
-                    >{opt}</button>
-                  );
-                })}
-              </div>
-              <textarea
-                value={extractedDailyAchieve}
-                onChange={e => setExtractedDailyAchieve(e.target.value)}
-                placeholder="예) 아내와 함께 시장을 갔다"
-                rows={2}
-                style={{
-                  width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
-                  padding: '8px 10px', fontSize: 16, resize: 'none', outline: 'none',
-                  lineHeight: 1.6, fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
-                }}
-              />
+            <div style={{ ...styles.card, background: '#EEF3FA', border: '0.5px solid #B5D4F4', padding: '8px 12px', marginBottom: 8 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#1A3C6E', margin: 0 }}>🎬 1막 — 주인공</p>
             </div>
 
             <div style={styles.card}>
@@ -1144,10 +823,10 @@ export function RecordProphecyPage() {
                 이 이야기의 주인공 이름 {!nameMode && <span style={{ color: '#ef4444' }}>*선택 필요</span>}
               </p>
               <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>
-                {profileRealName && profileNickname
-                  ? '본명·닉네임 둘 다 등록되어 있습니다. 이번 이야기에 어떤 이름을 쓸지 매번 선택해 주세요.'
-                  : 'AI가 임의로 이름을 만들지 않도록, 이번 단편에서 사용할 이름을 선택해 주세요.'}
-                {!profileRealName && !profileNickname && ' (설정 → 내 정보에서 본명/닉네임을 먼저 등록하면 매번 입력하지 않아도 됩니다.)'}
+                이 이야기의 주인공은 바로 당신입니다.<br />
+                어떤 이름으로 불리고 싶으신가요?<br />
+                본명·닉네임이 등록되어 있으면 선택하시고,<br />
+                이번 이야기만을 위한 특별한 이름을 직접 입력하셔도 됩니다.
               </p>
               <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
                 <button
@@ -1188,7 +867,7 @@ export function RecordProphecyPage() {
                   maxLength={20}
                   value={customName}
                   onChange={e => setCustomName(e.target.value)}
-                  placeholder="이번 이야기에서 쓸 이름 (최대 20자)"
+                  placeholder="예) 경대 / 아버지 / 나 / 허선생 (최대 20자)"
                   style={{
                     width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
                     padding: '8px 10px', fontSize: 16, outline: 'none',
@@ -1201,7 +880,8 @@ export function RecordProphecyPage() {
             <div style={styles.card}>
               <p style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E', marginBottom: 4 }}>현재 나이 (만)</p>
               <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>
-                AI가 미래 시점의 나이를 정확히 계산하기 위해 필요합니다.
+                이 이야기는 지금 이 나이에서 시작됩니다.<br />
+                AI가 미래 시점의 나이를 정확히 계산하는 데 필요합니다.
               </p>
               <input
                 type="number"
@@ -1219,13 +899,390 @@ export function RecordProphecyPage() {
               />
             </div>
 
+            {/* === 3. 초목표 === */}
             <div style={styles.card}>
-              <p style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E', marginBottom: 12 }}>시간 배경</p>
-              <div style={{ display: 'flex', gap: 6 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginBottom: 4 }}>3. 초목표 — 주인공이 가장 간절히 원하는 것</p>
+              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>
+                주인공이 이 이야기에서 가장 원하는 것은 무엇인가요?<br />
+                거창하지 않아도 됩니다.<br />
+                지금 당신이 가장 원하는 것을 솔직하게 써주세요.<br />
+                이것이 이야기의 엔진이 됩니다.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                {GOAL_CHIPS_NEW.map((opt, i) => {
+                  const active = isChipActive(extractedGoal, opt);
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => setExtractedGoal(toggleChip(extractedGoal, opt))}
+                      style={{
+                        padding: '6px 12px', borderRadius: 16, fontSize: 12,
+                        border: active ? '1.5px solid #1A3C6E' : '0.5px solid #e5e7eb',
+                        background: active ? '#1A3C6E' : '#fff',
+                        color: active ? '#fff' : '#374151',
+                        cursor: 'pointer',
+                      }}
+                    >{opt}</button>
+                  );
+                })}
+              </div>
+              <textarea
+                value={extractedGoal}
+                onChange={e => setExtractedGoal(e.target.value)}
+                placeholder={'예) 내가 만든 앱이 세상에 남아 누군가에게 도움이 되는 것\n또는: 아내와 함께 건강하게 오래 사는 것'}
+                rows={2}
+                style={{
+                  width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
+                  padding: '8px 10px', fontSize: 16, resize: 'none', outline: 'none',
+                  lineHeight: 1.6, fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            {/* === 4. 주인공이 극복할 것 === */}
+            <div style={styles.card}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginBottom: 4 }}>4. 주인공이 극복할 것 — 꿈을 향해 가는 길에 발목을 잡는 것</p>
+              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>
+                그 꿈을 향해 가는 길에 무엇이 방해가 되나요?<br />
+                약점을 솔직하게 인정하는 것이 이야기를 진짜로 만듭니다.<br />
+                천만 관객을 모은 영화의 주인공은 모두 약점이 있었습니다.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                {SHACKLE_CHIPS_NEW.map((opt, i) => {
+                  const active = isChipActive(extractedShackle, opt);
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => setExtractedShackle(toggleChip(extractedShackle, opt))}
+                      style={{
+                        padding: '6px 12px', borderRadius: 16, fontSize: 12,
+                        border: active ? '1.5px solid #1A3C6E' : '0.5px solid #e5e7eb',
+                        background: active ? '#1A3C6E' : '#fff',
+                        color: active ? '#fff' : '#374151',
+                        cursor: 'pointer',
+                      }}
+                    >{opt}</button>
+                  );
+                })}
+              </div>
+              <textarea
+                value={extractedShackle}
+                onChange={e => setExtractedShackle(e.target.value)}
+                placeholder={'예) 나이가 들수록 새로운 것에 도전하는 것이 두렵다\n또는: 시작은 잘 하는데 끝을 못 맺는 습관'}
+                rows={2}
+                style={{
+                  width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
+                  padding: '8px 10px', fontSize: 16, resize: 'none', outline: 'none',
+                  lineHeight: 1.6, fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            <div style={{ ...styles.card, background: '#EEF3FA', border: '0.5px solid #B5D4F4', padding: '8px 12px', marginBottom: 8 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#1A3C6E', margin: 0 }}>🌍 2막 — 세계</p>
+            </div>
+
+            <div style={styles.card}>
+              <p style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E', marginBottom: 4 }}>5. 시간 배경 — 이 이야기가 그리는 미래</p>
+              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>
+                지금으로부터 몇 년 후를 그리고 싶으신가요?<br />
+                주인공과 세계가 세워진 지금, 이 이야기의 시제를 정합니다.
+              </p>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {TIME_OPTIONS.map(t => (
                   <button key={t} style={styles.pill(timeOption === t)} onClick={() => setTimeOption(t)}>{t}</button>
                 ))}
               </div>
+            </div>
+
+            {/* === 6. 등장인물 & 관계 === */}
+            <div style={styles.card}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginBottom: 4 }}>6. 등장인물 & 관계 — 주인공을 둘러싼 사람들</p>
+              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 12, lineHeight: 1.6 }}>
+                당신의 삶에서 중요한 사람들을 떠올려보세요.<br />
+                이름보다 '이 사람과 나의 관계'가 더 중요합니다.<br />
+                배우자, 자녀, 오랜 친구, 멘토... 이 이야기에 함께 나올 사람을 추가해주세요.
+              </p>
+              {persons.map((p, idx) => (
+                <div key={idx} style={{
+                  background: '#F5F4EE', borderRadius: 8, padding: 10, marginBottom: 8,
+                }}>
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
+                    <input
+                      value={p.name}
+                      onChange={e => setPersons(prev => prev.map((q, i) => i === idx ? { ...q, name: e.target.value } : q))}
+                      placeholder="예) 아내 / 딸 찬미 / 오랜 친구 / 직장 후배"
+                      style={{ flex: 1, border: '0.5px solid #e5e7eb', borderRadius: 6, padding: '6px 8px', fontSize: 16, color: '#374151', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                    {persons.length > 1 && (
+                      <button
+                        onClick={() => setPersons(prev => prev.filter((_, i) => i !== idx))}
+                        style={{
+                          width: 26, height: 26, borderRadius: '50%',
+                          border: '0.5px solid #e5e7eb', background: '#fff',
+                          color: '#9ca3af', fontSize: 12, cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                        }}
+                      >✕</button>
+                    )}
+                  </div>
+                  <textarea
+                    value={p.relation}
+                    onChange={e => setPersons(prev => prev.map((q, i) => i === idx ? { ...q, relation: e.target.value } : q))}
+                    placeholder={'예) 든든한 지지자, 힘들 때 할 말은 꼭 하는 사람\n예) 포기할 수 없는 이유, 볼 때마다 힘이 나는 존재\n예) 20년 지기, 힘들 때 제일 먼저 연락하게 되는 사람'}
+                    rows={2}
+                    style={{
+                      width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 6,
+                      padding: '6px 8px', fontSize: 16, resize: 'none', outline: 'none',
+                      lineHeight: 1.6, fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+              ))}
+              <button
+                onClick={() => setPersons(prev => [...prev, { name: '', relation: '', personality: '' }])}
+                style={{
+                  width: '100%', padding: '8px', borderRadius: 8,
+                  border: '1px dashed #1A3C6E', background: '#fff', color: '#1A3C6E',
+                  fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                }}
+              >+ 인물 추가</button>
+            </div>
+
+            {/* === 7. 등장인물별 성격 === */}
+            <div style={styles.card}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginBottom: 4 }}>7. 등장인물별 성격</p>
+              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 12, lineHeight: 1.6 }}>
+                위에서 추가한 사람들의 성격을 선택하거나 직접 입력해주세요.<br />
+                그 사람을 생각했을 때 가장 먼저 떠오르는 단어는 무엇인가요?
+              </p>
+              {persons.filter(p => p.name.trim()).length === 0 && (
+                <p style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', padding: '12px 0' }}>
+                  먼저 위 6번에서 인물을 추가해주세요.
+                </p>
+              )}
+              {persons.map((p, idx) => p.name.trim() ? (
+                <div key={idx} style={{ marginBottom: 14, paddingBottom: 10, borderBottom: idx < persons.length - 1 ? '0.5px solid #e5e7eb' : 'none' }}>
+                  <p style={{ fontSize: 12, fontWeight: 500, color: '#1A3C6E', marginBottom: 8 }}>{p.name}</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                    {PERSONALITY_CHIPS.map((opt, i) => {
+                      const active = isChipActive(p.personality, opt);
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => setPersons(prev => prev.map((q, j) => j === idx ? { ...q, personality: toggleChip(q.personality, opt) } : q))}
+                          style={{
+                            padding: '6px 12px', borderRadius: 16, fontSize: 11,
+                            border: active ? '1.5px solid #1A3C6E' : '0.5px solid #e5e7eb',
+                            background: active ? '#1A3C6E' : '#fff',
+                            color: active ? '#fff' : '#374151',
+                            cursor: 'pointer',
+                          }}
+                        >{opt}</button>
+                      );
+                    })}
+                  </div>
+                  <textarea
+                    value={p.personality}
+                    onChange={e => setPersons(prev => prev.map((q, j) => j === idx ? { ...q, personality: e.target.value } : q))}
+                    placeholder={'예) 따뜻하지만 할 말은 꼭 하는 사람\n예) 감성적이고 눈치가 빠름, 가끔 예민함'}
+                    rows={2}
+                    style={{
+                      width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 6,
+                      padding: '6px 8px', fontSize: 16, resize: 'none', outline: 'none',
+                      lineHeight: 1.6, fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+              ) : null)}
+            </div>
+
+            <div style={{ ...styles.card, background: '#EEF3FA', border: '0.5px solid #B5D4F4', padding: '8px 12px', marginBottom: 8 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#1A3C6E', margin: 0 }}>⚡ 3막 — 사건</p>
+            </div>
+
+            {/* === 8. 사건 모티브 === */}
+            <div style={styles.card}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginBottom: 4 }}>8. 사건 모티브 — 이야기를 터뜨리는 도화선</p>
+              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>
+                이 이야기를 시작하게 만드는 계기는 무엇인가요?<br />
+                '어느 날 갑자기 ~한 일이 생겼다'로 한번 생각해보세요.<br />
+                아주 작은 계기도 위대한 이야기의 시작이 됩니다.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                {EVENT_MOTIVE_CHIPS.map((opt, i) => {
+                  const active = isChipActive(extractedMotive, opt);
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => setExtractedMotive(toggleChip(extractedMotive, opt))}
+                      style={{
+                        padding: '6px 12px', borderRadius: 16, fontSize: 12,
+                        border: active ? '1.5px solid #1A3C6E' : '0.5px solid #e5e7eb',
+                        background: active ? '#1A3C6E' : '#fff',
+                        color: active ? '#fff' : '#374151',
+                        cursor: 'pointer',
+                      }}
+                    >{opt}</button>
+                  );
+                })}
+              </div>
+              <textarea
+                value={extractedMotive}
+                onChange={e => setExtractedMotive(e.target.value)}
+                placeholder={'예) 65세 생일날, 수십 년 전 포기했던 꿈이 다시 눈앞에 나타났다\n예) 건강검진에서 예상치 못한 결과를 받은 날, 모든 것이 달라 보였다'}
+                rows={2}
+                style={{
+                  width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
+                  padding: '8px 10px', fontSize: 16, resize: 'none', outline: 'none',
+                  lineHeight: 1.6, fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            {/* === 9. 나에게 일어난 사건 === */}
+            <div style={styles.card}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginBottom: 4 }}>9. 나에게 일어난 사건 — 이야기 속 플롯 포인트</p>
+              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>
+                이 이야기 속에서 주인공에게 어떤 일들이 일어났나요?<br />
+                신문에 날 만한 큰 사건이 아니어도 됩니다.<br />
+                당신에게 의미있었던 일이면 충분합니다.<br />
+                여러 가지를 쉼표로 이어 써주셔도 됩니다.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                {EVENT_CHIPS.map((opt, i) => {
+                  const active = isChipActive(extractedEvent, opt);
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => setExtractedEvent(toggleChip(extractedEvent, opt))}
+                      style={{
+                        padding: '6px 12px', borderRadius: 16, fontSize: 12,
+                        border: active ? '1.5px solid #1A3C6E' : '0.5px solid #e5e7eb',
+                        background: active ? '#1A3C6E' : '#fff',
+                        color: active ? '#fff' : '#374151',
+                        cursor: 'pointer',
+                      }}
+                    >{opt}</button>
+                  );
+                })}
+              </div>
+              <textarea
+                value={extractedEvent}
+                onChange={e => setExtractedEvent(e.target.value)}
+                placeholder={'예) 앱의 첫 유료 구독자가 생겼다, 아내와 제주도 여행을 다녀왔다\n예) 오랜 친구와 20년 만에 재회했다, 뜻밖의 자리에서 인정을 받았다'}
+                rows={2}
+                style={{
+                  width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
+                  padding: '8px 10px', fontSize: 16, resize: 'none', outline: 'none',
+                  lineHeight: 1.6, fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            {/* === 10. 일상에서 이룬 일 === */}
+            <div style={styles.card}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginBottom: 4 }}>10. 일상에서 이룬 일 — 이야기에 온기를 더하는 소소한 성취</p>
+              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>
+                소소하지만 당신에게 의미있는 일상의 성취를 적어주세요.<br />
+                큰 사건들 사이에 이런 장면이 있어야<br />
+                이야기가 영화처럼 살아납니다.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                {DAILY_ACHIEVE_CHIPS.map((opt, i) => {
+                  const active = isChipActive(extractedDailyAchieve, opt);
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => setExtractedDailyAchieve(toggleChip(extractedDailyAchieve, opt))}
+                      style={{
+                        padding: '6px 12px', borderRadius: 16, fontSize: 12,
+                        border: active ? '1.5px solid #1A3C6E' : '0.5px solid #e5e7eb',
+                        background: active ? '#1A3C6E' : '#fff',
+                        color: active ? '#fff' : '#374151',
+                        cursor: 'pointer',
+                      }}
+                    >{opt}</button>
+                  );
+                })}
+              </div>
+              <textarea
+                value={extractedDailyAchieve}
+                onChange={e => setExtractedDailyAchieve(e.target.value)}
+                placeholder={'예) 매일 아침 30분씩 산책을 시작했다\n예) 오래 미뤄온 서재 정리를 드디어 끝냈다, 아내에게 처음으로 저녁을 해줬다'}
+                rows={2}
+                style={{
+                  width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
+                  padding: '8px 10px', fontSize: 16, resize: 'none', outline: 'none',
+                  lineHeight: 1.6, fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            <div style={{ ...styles.card, background: '#EEF3FA', border: '0.5px solid #B5D4F4', padding: '8px 12px', marginBottom: 8 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#1A3C6E', margin: 0 }}>🎯 4막 — 이야기 완성하기</p>
+            </div>
+
+            {/* === 11. 주제·기획의도 === */}
+            <div style={styles.card}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginBottom: 4 }}>11. 주제·기획의도 — 이 이야기가 끝났을 때 남는 것</p>
+              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>
+                모든 항목을 다 채운 지금, 이 이야기가 말하고 싶은 것이 보이시나요?<br />
+                독자가 이야기를 덮은 뒤 마음에 무엇을 가져갔으면 하나요?<br />
+                거창하지 않아도 됩니다.<br />
+                주제는 계획하는 게 아니라 이야기가 끝나고 발견되는 것입니다.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                {THEME_CHIPS.map((opt, i) => {
+                  const active = isChipActive(extractedTheme, opt);
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => setExtractedTheme(toggleChip(extractedTheme, opt))}
+                      style={{
+                        padding: '6px 12px', borderRadius: 16, fontSize: 12,
+                        border: active ? '1.5px solid #1A3C6E' : '0.5px solid #e5e7eb',
+                        background: active ? '#1A3C6E' : '#fff',
+                        color: active ? '#fff' : '#374151',
+                        cursor: 'pointer',
+                      }}
+                    >{opt}</button>
+                  );
+                })}
+              </div>
+              <textarea
+                value={extractedTheme}
+                onChange={e => setExtractedTheme(e.target.value)}
+                placeholder={'예) 포기를 모르는 사람의 늦은 꽃피움\n예) 평범한 일상 속에서 찾아낸 삶의 진짜 의미'}
+                rows={2}
+                style={{
+                  width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
+                  padding: '8px 10px', fontSize: 16, resize: 'none', outline: 'none',
+                  lineHeight: 1.6, fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            {/* === 12. 세 줄 스토리 === */}
+            <div style={styles.card}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#1A3C6E', marginBottom: 4 }}>12. 세 줄 스토리 — 이 이야기의 로그라인</p>
+              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>
+                모든 설정이 끝났습니다.<br />
+                이제 이 이야기를 딱 세 줄로 요약해보세요.<br />
+                AI가 이 세 줄을 이야기의 뼈대로 삼아 단편을 완성합니다.<br />
+                잘 쓰려고 하지 마세요. 솔직하게 써주시면 됩니다.
+              </p>
+              <textarea
+                value={extractedThreeLiner}
+                onChange={e => setExtractedThreeLiner(e.target.value)}
+                placeholder={'1줄: 65세의 나는 여전히 세상을 바꾸고 싶다\n2줄: 건강과 나이라는 현실에 부딪히지만 포기하지 않는다\n3줄: 결국 작은 한 걸음이 세상에 흔적을 남긴다'}
+                rows={3}
+                style={{
+                  width: '100%', border: '0.5px solid #e5e7eb', borderRadius: 8,
+                  padding: '8px 10px', fontSize: 16, resize: 'none', outline: 'none',
+                  lineHeight: 1.6, fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
+                }}
+              />
             </div>
 
             {(() => {

@@ -8,6 +8,8 @@ export function NovelStoryPage() {
   const location = useLocation();
   const story: string = location.state?.story || '';
   const fromRecord: boolean = location.state?.fromRecord || false;
+  const protagonistName: string = location.state?.protagonistName || '';
+  const timeOption: string = location.state?.timeOption || '';
 
   const handleCopy = async () => {
     try {
@@ -83,6 +85,9 @@ export function NovelStoryPage() {
         }}>
           <div style={{ textAlign: 'center', marginBottom: 22 }}>
             <div style={{ fontSize: 32, marginBottom: 6 }}>🔮</div>
+            <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 4, marginBottom: 0 }}>
+              {protagonistName ? `${protagonistName}의 이야기` : '나의 이야기'} · {timeOption || ''}
+            </p>
             <p style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>
               사주는 태어난 날을 봅니다.<br />
               HARU미래전망은 당신이 살아온 날을 봅니다.
