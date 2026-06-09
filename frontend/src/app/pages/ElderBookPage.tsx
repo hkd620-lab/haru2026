@@ -164,8 +164,9 @@ export function ElderBookPage() {
     <div style={{ minHeight: '100vh', background: OFFWHITE, color: NAVY, paddingBottom: 80 }}>
       <div style={{ position: 'sticky', top: 0, zIndex: 10, background: OFFWHITE, borderBottom: '1px solid #e5e5e5', padding: '14px 16px' }}>
         <PageHeaderActions onClose={() => navigate('/admin/console')} />
-        <h1 style={{ fontSize: 20, fontWeight: 800, margin: '8px 0 2px' }}>📖 65노인 책 출간</h1>
-        <p style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>{BOOK_TITLE}</p>
+        <h1 style={{ fontSize: 20, fontWeight: 800, margin: '8px 0 2px' }}>📖 65노인 책 편집·출간</h1>
+        <p style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>대상: books/{ELDER_BOOK_ID}</p>
+        <p style={{ fontSize: 12, color: '#9CA3AF', margin: '2px 0 0' }}>{BOOK_TITLE}</p>
       </div>
 
       <div style={{ maxWidth: 680, margin: '0 auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 14 }}>

@@ -117,6 +117,9 @@ function BookMaterialPanel({ uid }: { uid: string }) {
 
       {!collapsed && (
         <div style={{ borderTop: '1px solid #F3F4F6', padding: '10px 14px 14px' }}>
+          <p style={{ fontSize: 12, color: '#6B7280', margin: '0 0 10px', lineHeight: 1.5 }}>
+            최종 편집·출간은 개발자 콘솔 → "65노인 책 편집·출간" 에서 진행
+          </p>
           <button
             onClick={() => navigate('/admin/elder-book')}
             style={{

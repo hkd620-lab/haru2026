@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { PageHeaderActions } from '../components/PageHeaderActions';
@@ -12,6 +12,7 @@ import {
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
 interface DevTool {
+  sectionLabel?: string;
   icon: string;
   label: string;
   description: string;
@@ -28,24 +29,25 @@ const DEV_TOOLS: DevTool[] = [
     color: '#6366F1',
   },
   {
-    icon: '📖',
-    label: '새 책 만들기',
-    description: 'AI로 챕터 자동 생성 (사람속으로)',
-    path: '/book-create',
+    sectionLabel: '책 만들기 관리',
+    icon: '📝',
+    label: '기록에서 책 만들기',
+    description: 'bookMaterial 소재 → books 초안 생성',
+    path: '/admin/record-book',
     color: '#1A3C6E',
   },
   {
     icon: '👴',
-    label: '65노인 책 출간',
-    description: '지식창고 소재로 책 엮기 (65세 할아버지)',
+    label: '65노인 책 편집·출간',
+    description: 'books/book_haru2026_ai_platform 편집·출간 관리',
     path: '/admin/elder-book',
     color: '#1A3C6E',
   },
   {
-    icon: '📝',
-    label: '기록물생성',
-    description: '선택한 책소재로 편집 가능한 기록물 가편 생성',
-    path: '/admin/record-book',
+    icon: '📖',
+    label: '새 책 만들기',
+    description: '소스 텍스트 직접 입력 → AI 책 초안 생성 (기록 흐름과 별도)',
+    path: '/book-create',
     color: '#1A3C6E',
   },
   {
@@ -215,25 +217,33 @@ export function DevConsolePage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {DEV_TOOLS.map((tool) => (
-            <button
-              key={tool.path}
-              onClick={() => {
-                if (tool.path === 'ai-library') {
-                  setActivePanel('ai-library');
-                  return;
-                }
-                navigate(tool.path);
-              }}
-              className="bg-white rounded-2xl border border-gray-200 p-5 text-left hover:shadow-md transition-shadow"
-            >
-              <div className="text-3xl mb-3">{tool.icon}</div>
-              <h3 className="font-bold text-base mb-1" style={{ color: tool.color }}>
-                {tool.label}
-              </h3>
-              <p className="text-sm text-gray-600">
-                {tool.description}
-              </p>
-            </button>
+            <Fragment key={tool.path}>
+              {tool.sectionLabel && (
+                <div className="sm:col-span-2 pt-2">
+                  <h2 className="font-bold text-lg" style={{ color: '#1A3C6E' }}>
+                    {tool.sectionLabel}
+                  </h2>
+                </div>
+              )}
+              <button
+                onClick={() => {
+                  if (tool.path === 'ai-library') {
+                    setActivePanel('ai-library');
+                    return;
+                  }
+                  navigate(tool.path);
+                }}
+                className="bg-white rounded-2xl border border-gray-200 p-5 text-left hover:shadow-md transition-shadow"
+              >
+                <div className="text-3xl mb-3">{tool.icon}</div>
+                <h3 className="font-bold text-base mb-1" style={{ color: tool.color }}>
+                  {tool.label}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {tool.description}
+                </p>
+              </button>
+            </Fragment>
           ))}
         </div>
       </div>

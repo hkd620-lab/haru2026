@@ -418,9 +418,9 @@ export function RecordBookPage() {
     <div style={{ minHeight: '100vh', background: OFFWHITE, color: NAVY, paddingBottom: 90 }}>
       <div style={{ position: 'sticky', top: 0, zIndex: 10, background: OFFWHITE, borderBottom: '1px solid #E5E7EB', padding: '14px 16px' }}>
         <PageHeaderActions onClose={() => navigate('/admin/console')} />
-        <h1 style={{ fontSize: 22, fontWeight: 800, margin: '8px 0 2px' }}>📝 기록물생성</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 800, margin: '8px 0 2px' }}>📝 기록에서 책 만들기</h1>
         <p style={{ fontSize: 13, color: '#6B7280', margin: 0 }}>
-          지식창고의 책소재만 골라 기록물 가편을 만들고 직접 편집합니다.
+          users/{'{uid}'}/records의 bookMaterial 소재 → books 컬렉션 초안 생성 도구
         </p>
       </div>
 

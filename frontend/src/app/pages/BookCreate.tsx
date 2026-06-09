@@ -221,6 +221,9 @@ export function BookCreate() {
             {existingBookId ? '챕터 추가' : '새 책 만들기'}
           </h1>
         </div>
+        <p className="max-w-2xl mx-auto mt-2 text-xs" style={{ color: '#6B7280' }}>
+          소스 텍스트 직접 입력 → AI 책 초안 생성 (기록 기반 흐름과 별도)
+        </p>
       </div>
 
       {/* 본문 */}
