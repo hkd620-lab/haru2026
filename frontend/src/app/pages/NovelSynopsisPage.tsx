@@ -97,7 +97,7 @@ export function NovelSynopsisPage() {
 
   const handleGenerateStoryLegacy = async () => {
     setIsGenerating(true);
-    showLoading('🔮 AI가 당신의 이야기를 쓰고 있습니다... 잠시만 기다려주세요.');
+    showLoading('🔮 AI가 당신만의 이야기를 쓰고 있습니다...\n좋은 이야기는 시간이 걸립니다. 잠시만 기다려주세요.');
     try {
       const functions = getFunctions(undefined, 'asia-northeast3');
       const fn = httpsCallable(functions, 'generateHaruProphecy');
@@ -198,7 +198,10 @@ export function NovelSynopsisPage() {
 
   const handleGenerateStory = async () => {
     setIsGenerating(true);
-    showLoading('🔮 AI가 당신의 이야기를 쓰고 있습니다... 잠시만 기다려주세요.');
+    const loadingMsg = navProtagonistName
+      ? `🔮 ${navProtagonistName}의 ${timeOption} 이야기를 쓰고 있습니다...\n좋은 이야기는 시간이 걸립니다. 잠시만 기다려주세요.`
+      : '🔮 AI가 당신의 이야기를 쓰고 있습니다...\n좋은 이야기는 시간이 걸립니다. 잠시만 기다려주세요.';
+    showLoading(loadingMsg);
     try {
       const functions = getFunctions(undefined, 'asia-northeast3');
       const fn = httpsCallable(functions, 'generateHaruProphecy');

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { ChevronLeft, Printer, Copy } from 'lucide-react';
 import { toast } from 'sonner';
@@ -10,6 +11,7 @@ export function NovelStoryPage() {
   const fromRecord: boolean = location.state?.fromRecord || false;
   const protagonistName: string = location.state?.protagonistName || '';
   const timeOption: string = location.state?.timeOption || '';
+  const [reaction, setReaction] = useState<'touched' | 'wow' | 'retry' | null>(null);
 
   const handleCopy = async () => {
     try {
@@ -23,6 +25,29 @@ export function NovelStoryPage() {
   const handlePrint = () => {
     document.title = `HARU미래전망_이야기_${new Date().toISOString().slice(0, 10)}.pdf`;
     window.print();
+  };
+
+  const handleShare = async () => {
+    const shareTitle = protagonistName
+      ? `${protagonistName}의 ${timeOption || ''} 이야기 — HARU미래전망`
+      : `나의 ${timeOption || ''} 이야기 — HARU미래전망`;
+    const preview = story.slice(0, 200).trim();
+    const shareText = `${preview}...\n\n나도 내 이야기를 만들어보세요 👉 https://haru2026.com`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: shareTitle, text: shareText });
+      } catch {
+        // 사용자가 취소한 경우 무시
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(`${shareTitle}\n\n${shareText}`);
+        toast.success('📋 이야기를 클립보드에 복사했습니다. 가족에게 붙여넣기 해보세요!');
+      } catch {
+        toast.error('공유에 실패했습니다.');
+      }
+    }
   };
 
   if (!story) {
@@ -100,6 +125,62 @@ export function NovelStoryPage() {
               fontFamily: '"Nanum Myeongjo", "Noto Serif KR", serif',
             }}
           >{story}</p>
+        </div>
+
+        {/* 감정 반응 버튼 */}
+        <div className="no-print" style={{ marginTop: 24, marginBottom: 8 }}>
+          <p style={{
+            fontSize: 12, color: '#9ca3af', textAlign: 'center', marginBottom: 12,
+          }}>
+            이 이야기가 마음에 닿으셨나요?
+          </p>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+            {([
+              { key: 'touched', emoji: '😢', label: '울컥했어요' },
+              { key: 'wow',     emoji: '✨', label: '소름돋았어요' },
+              { key: 'retry',   emoji: '🤔', label: '다시 써볼게요' },
+            ] as const).map(({ key, emoji, label }) => (
+              <button
+                key={key}
+                onClick={() => {
+                  setReaction(key);
+                  if (key === 'retry') {
+                    navigate('/novel-synopsis', { state: location.state });
+                  } else {
+                    toast.success(
+                      key === 'touched'
+                        ? '이 이야기가 당신 마음에 닿았군요 🤍'
+                        : '당신의 인생이 그만큼 특별합니다 ✨'
+                    );
+                  }
+                }}
+                style={{
+                  padding: '10px 18px', borderRadius: 99, fontSize: 13, fontWeight: 600,
+                  border: reaction === key ? '2px solid #1A3C6E' : '1.5px solid #e5e7eb',
+                  background: reaction === key ? '#1A3C6E' : '#fff',
+                  color: reaction === key ? '#fff' : '#374151',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {emoji} {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 가족에게 보내기 */}
+        <div className="no-print" style={{ marginBottom: 8 }}>
+          <button
+            onClick={handleShare}
+            style={{
+              width: '100%', padding: '13px', borderRadius: 12, border: 'none',
+              background: '#10b981', color: '#fff',
+              fontSize: 14, fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            📤 가족에게 보내기
+          </button>
         </div>
 
         <div className="no-print" style={{ display: 'flex', gap: 10, marginTop: 16 }}>
