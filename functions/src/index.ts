@@ -4570,20 +4570,31 @@ ${mandatoryBlock ? mandatoryBlock + '\n\n' : ''}${type === 'story'
 `;
       } else {
         const motiveLabel = motiveCustom || motive;
+        const eventsStr = Array.isArray(events) && events.length > 0
+          ? events.map((e: any) => `${e.isCore ? '[핵심] ' : ''}${e.title}${e.timing ? `(${e.timing})` : ''}${e.impact ? ': ' + e.impact : ''}`).join(' / ')
+          : '';
+        const charsStr = Array.isArray(chars) && chars.length > 0
+          ? chars.map((c: any) => `${c.name || c.role}(${c.role})${c.personalities?.length ? ' — ' + c.personalities.join(', ') : ''}${c.desires?.length ? ' / 욕망: ' + c.desires.join(', ') : ''}${c.shackles?.length ? ' / 족쇄: ' + c.shackles.join(', ') : ''}`).join('\n')
+          : '';
         userPrompt = `
+[창작 모드]: 사전설정 창작
 [예언 모티브]: ${motiveLabel}
-[인물 설정]: ${JSON.stringify(chars || [])}
+[시간 배경]: ${timeOption || '3년 후'}
 [탄생 배경]: ${birth || ''}
-[욕망]: ${desire || ''}
+[핵심 욕망]: ${desire || ''}
 [족쇄]: ${shackle || ''}
-[사건]: ${JSON.stringify(events || [])}
-[운]: ${luck || ''}
+[주요 사건]: ${eventsStr || ''}
+[운의 전환점]: ${luck || ''}
 [불운]: ${unluck || ''}
 [서사 스타일]: ${narrative || ''}
+[등장인물]:
+${charsStr}
 
+위 설정을 바탕으로 ${timeOption || '3년 후'}의 이야기를 예언 소설 형식으로 작성해주세요.
+욕망과 족쇄의 긴장이 이야기를 이끌어야 합니다. 주인공이 족쇄를 극복하며 욕망에 다가가는 과정을 생생하게 그려주세요.
 ${type === 'story'
-  ? '위 설정을 바탕으로 A4 5페이지 분량(4000~6000자)의 이야기를 소설 형식으로 작성해주세요.'
-  : '위 설정을 바탕으로 A4 1페이지 분량(800~1200자)의 시놉시스를 작성해주세요.'}
+  ? 'A4 5페이지 분량(4000~6000자). 기승전결 구조로 작성.'
+  : 'A4 1페이지 분량(800~1200자)의 시놉시스. 핵심 줄거리만 간결하게.'}
 `;
       }
 
