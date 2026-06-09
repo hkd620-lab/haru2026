@@ -11,6 +11,7 @@ import {
   getLocationCandidateFromGps,
   type ReverseGeocodeCandidate,
 } from '../services/reverseGeocodeService';
+import { GrapeAnimation } from './GrapeAnimation';
 import { GrowthTimelineDocumentModal, type GrowthTimelineDocumentItem } from './GrowthTimelineDocumentModal';
 
 type TimelineItem = GrowthTimelineDocumentItem;
@@ -485,6 +486,27 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
 
   return (
     <div style={{ border: '1px solid #dbe8d2', borderRadius: 14, padding: 14, backgroundColor: '#fbfdf7', marginBottom: 16 }}>
+      {(isReading || isSaving) && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: 'rgba(237,233,245,0.92)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <div style={{ width: 240, height: 320 }}>
+            <GrapeAnimation />
+          </div>
+          <p style={{ marginTop: 12, fontSize: 13, fontWeight: 600, color: '#1A3C6E' }}>
+            {isReading ? '사진을 읽는 중...' : '타임라인을 저장하는 중...'}
+          </p>
+        </div>
+      )}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
         <div>
           <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#355524' }}>새 성장타임라인 만들기</p>

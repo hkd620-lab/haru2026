@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useSubscription } from '../hooks/useSubscription';
 import type { ReverseGeocodeCandidate } from '../services/reverseGeocodeService';
 import { functions } from '../../firebase';
+import { GrapeAnimation } from './GrapeAnimation';
 
 export type GrowthTimelineDocumentItem = {
   url: string;
@@ -272,6 +273,27 @@ export function GrowthTimelineDocumentModal({
         padding: '18px 12px',
       }}
     >
+      {serverPdfRequested && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: 'rgba(237,233,245,0.92)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <div style={{ width: 240, height: 320 }}>
+            <GrapeAnimation />
+          </div>
+          <p style={{ marginTop: 12, fontSize: 13, fontWeight: 600, color: '#1A3C6E' }}>
+            PDF를 생성하는 중...
+          </p>
+        </div>
+      )}
       <div
         style={{
           width: 'min(880px, 100%)',
