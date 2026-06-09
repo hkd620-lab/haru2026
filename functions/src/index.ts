@@ -4396,9 +4396,13 @@ export const generateHaruProphecy = onCall(
     const DEV_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
     const isDeveloper = uid === DEV_UID;
 
-    // 하루 1회 체크 (개발자 제외)
-    if (!isDeveloper && usage.daily === today && usage.dailyCount >= 1) {
-      throw new HttpsError('resource-exhausted', '오늘은 이미 예언을 생성했습니다. 내일 다시 시도해주세요.');
+    // 하루 타입별 생성 제한 체크 (개발자 제외)
+    const dailyLimit = type === 'story' ? 1 : 5;
+    if (!isDeveloper && usage.daily === today && usage.dailyCount >= dailyLimit) {
+      const msg = type === 'story'
+        ? '오늘의 이야기 생성을 완료했습니다. 내일 새로운 이야기를 만들어보세요.'
+        : '오늘의 시놉시스 생성 횟수(5회)를 모두 사용했습니다. 내일 다시 시도해주세요.';
+      throw new HttpsError('resource-exhausted', msg);
     }
     // 월 30회 체크 (개발자 제외)
     if (!isDeveloper && usage.monthly === thisMonth && usage.monthlyCount >= 30) {
@@ -4517,6 +4521,28 @@ ${protagonistNameBlock}
         const goalLine = prophecyGoal ? `[사용자의 초목표/바람]: ${prophecyGoal}` : '';
         const wallLine = prophecyWall ? `[지금 가장 넘고 싶은 것]: ${prophecyWall}` : '';
         const goalBlock = [goalTypeLine, goalLine, wallLine].filter(Boolean).join('\n');
+        const personsNameList = (() => {
+          const names: string[] = [];
+          if (Array.isArray(persons)) {
+            persons.forEach((p: any) => {
+              if (p?.name?.trim()) names.push(p.name.trim());
+            });
+          }
+          if (extractedChars) names.push(extractedChars);
+          return [...new Set(names)].join(', ');
+        })();
+
+        const mandatoryBlock = [
+          personsNameList
+            ? `[등장인물 반드시 언급 — 절대 준수]\n다음 인물의 이름 또는 호칭이 이야기 본문 안에 반드시 1회 이상 자연스럽게 등장해야 합니다. AI가 임의로 다른 이름을 만들지 않습니다.\n→ ${personsNameList}`
+            : '',
+          threeLinerStr
+            ? `[세 줄 스토리 구조 강제]\n아래 세 줄을 이야기의 기승전결 뼈대로 반드시 따르세요.\n첫 줄이 기(발단), 두 번째 줄이 승·전(전개·위기), 세 번째 줄이 결(해소)이 되어야 합니다.\n→ ${threeLinerStr}`
+            : '',
+          dailyAchieveStr
+            ? `[일상 장면 삽입 — 필수]\n아래 [일상에서 이룬 일]을 이야기 중간에 구체적인 생활 장면으로 반드시 한 번 묘사해주세요. 소소하지만 진짜 같은 장면이 이야기에 온기를 줍니다.\n→ ${dailyAchieveStr}`
+            : '',
+        ].filter(Boolean).join('\n\n');
 
         const hasAge = typeof currentAge === 'number' && currentAge > 0;
         const ageBlock = hasAge
@@ -4538,7 +4564,7 @@ ${recordContent}
 기록 속 인물, 감정, 사건을 최대한 살려서 "내 이야기 같다"는 느낌이 들게 해주세요.
 ${hasAge ? `반드시 주인공이 ${futureAge}세인 것을 전제로 묘사하세요. 어떤 경우에도 ${futureAge}세와 모순되는 연령대 표현을 사용하지 마세요.\n` : ''}${sanitizedProtagonistName ? `위 이야기 전체에서 주인공 이름은 반드시 "${sanitizedProtagonistName}"이며, 절대 다른 이름을 임의로 생성하지 않습니다. "${sanitizedProtagonistName}" 또는 인칭대명사만 사용하세요.\n` : ''}${goalBlock ? '특히 위 [사용자의 예언 목표]에 명시된 예언 유형·초목표·넘고 싶은 것을 시놉시스/서사 전체에 반드시 자연스럽게 반영해주세요. 사용자의 초목표가 어떻게 되어가는지, 사용자가 넘고 싶다고 말한 것을 어떻게 마주하는지 이야기 속에 분명히 드러나야 합니다.\n' : ''}예언 종류: ${prophecyType}
 
-${type === 'story'
+${mandatoryBlock ? mandatoryBlock + '\n\n' : ''}${type === 'story'
   ? '분량: A4 5페이지 분량 (4000~6000자). 기승전결 구조로 작성.'
   : '분량: A4 1페이지 분량 시놉시스 (800~1200자). 핵심 줄거리만 간결하게.'}
 `;
@@ -4563,7 +4589,7 @@ ${type === 'story'
 
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
       const model = genAI.getGenerativeModel({
-        model: 'gemini-3.1-flash-lite',
+        model: type === 'story' ? 'gemini-2.5-flash' : 'gemini-3.1-flash-lite',
         systemInstruction: systemPrompt,
       });
 
