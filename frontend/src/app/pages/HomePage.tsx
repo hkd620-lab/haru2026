@@ -239,6 +239,46 @@ export function HomePage() {
             남기다
           </p>
 
+          {/* 첫 기록 넛지 배너 — 오늘 기록 0건일 때만 노출 */}
+          {user?.uid && todayFormatCount === 0 && (
+            <button
+              type="button"
+              onClick={() => navigate("/record")}
+              style={{
+                width: "100%",
+                marginBottom: 14,
+                padding: "13px 16px",
+                borderRadius: 12,
+                border: "1.5px dashed #1A3C6E",
+                background: "#EEF3FB",
+                color: "#1A3C6E",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                textAlign: "left",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <span style={{ fontSize: 22 }}>✏️</span>
+              <span>
+                오늘 첫 기록을 남겨볼까요?
+                <span
+                  style={{
+                    display: "block",
+                    fontSize: 11,
+                    fontWeight: 400,
+                    color: "#4A6FA5",
+                    marginTop: 1,
+                  }}
+                >
+                  아래 형식 중 하나를 눌러 시작하세요
+                </span>
+              </span>
+            </button>
+          )}
+
           {/* 📕 HARU 기록 — 5×2 (10개) */}
           <section style={{ marginBottom: 18 }}>
             <p style={sectionLabel}>📕 HARU 기록</p>
