@@ -1,5 +1,4 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
 import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 
@@ -40,8 +39,10 @@ export function ProphecyHubPage() {
         </p>
       </div>
 
-      {/* 카드 3개 (세로 배치) */}
+      {/* 카드 2개 (세로 배치) */}
       <div className="flex flex-col gap-4">
+
+        {/* ── 내 기록으로 미래전망 ── */}
         <button
           type="button"
           onClick={() => navigate('/record-prophecy')}
@@ -59,49 +60,48 @@ export function ProphecyHubPage() {
           </p>
         </button>
 
-        <button
-          type="button"
-          onClick={() => toast.info('준비 중입니다. 곧 만나요! 🚀')}
-          className="w-full text-left rounded-2xl p-6 transition-all hover:shadow-lg active:scale-[0.99] touch-manipulation"
-          style={{
-            backgroundColor: '#1A3C6E',
-            color: '#fff',
-            boxShadow: '0 6px 16px -10px rgba(26,60,110,0.4)',
-          }}
-        >
-          <div className="text-3xl mb-3">🌐</div>
-          <h2 className="text-lg font-bold mb-1.5">사전설정으로 미래전망</h2>
-          <p className="text-sm leading-relaxed mb-3" style={{ color: 'rgba(255,255,255,0.8)' }}>
-            미래인재상 전망 등 — 곧 만나요!
-          </p>
-          <span
-            className="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full"
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.15)',
-              color: 'rgba(255,255,255,0.85)',
-              letterSpacing: '0.02em',
-            }}
-          >
-            🚧 준비 중
-          </span>
-        </button>
-
+        {/* ── 사전설정으로 미래전망 ── */}
         <button
           type="button"
           onClick={() => navigate('/novel-studio')}
           className="w-full text-left rounded-2xl p-6 transition-all hover:shadow-lg active:scale-[0.99] touch-manipulation"
           style={{
-            backgroundColor: '#1A3C6E',
+            backgroundColor: '#2C4A7C',
             color: '#fff',
-            boxShadow: '0 6px 16px -10px rgba(26,60,110,0.4)',
+            boxShadow: '0 6px 16px -10px rgba(44,74,124,0.4)',
           }}
         >
-          <div className="text-3xl mb-3">✍️</div>
-          <h2 className="text-lg font-bold mb-1.5">나도 작가</h2>
-          <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.8)' }}>
-            처음부터 직접 설정하여 나만의 미래전망 이야기를 만듭니다
+          <div className="text-3xl mb-3">🎬</div>
+          <h2 className="text-lg font-bold mb-2">사전설정으로 미래전망</h2>
+          <p className="text-sm leading-relaxed mb-4" style={{ color: 'rgba(255,255,255,0.88)' }}>
+            기록이 없어도 됩니다. 전문 시나리오 창작법에서 발췌한 질문들에 답하면,
+            AI가 나만의 미래 이야기를 만들어 드립니다.
+          </p>
+          {/* 단계 안내 태그 3개 */}
+          <div className="flex flex-wrap gap-2">
+            {[
+              { icon: '🔥', text: '욕망 — 내가 진짜 원하는 것' },
+              { icon: '⛓', text: '족쇄 — 나를 붙잡는 것' },
+              { icon: '⚡', text: '사건 — 삶을 바꾼 순간' },
+            ].map(({ icon, text }) => (
+              <span
+                key={text}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full"
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.15)',
+                  color: 'rgba(255,255,255,0.9)',
+                  letterSpacing: '0.01em',
+                }}
+              >
+                {icon} {text}
+              </span>
+            ))}
+          </div>
+          <p className="text-[11px] mt-3 leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
+            욕망과 족쇄의 긴장이 이야기의 엔진입니다. 질문에 답하는 과정 자체가 나를 발견하는 시간이 됩니다.
           </p>
         </button>
+
       </div>
     </div>
   );
