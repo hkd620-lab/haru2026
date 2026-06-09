@@ -760,6 +760,7 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
 export function GrowthTimelineLibrary({ uid, refreshKey = 0, onEditTimeline }: GrowthTimelineLibraryProps) {
   const [timelines, setTimelines] = useState<SavedGrowthTimeline[]>([]);
   const [selectedTimeline, setSelectedTimeline] = useState<SavedGrowthTimeline | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string>('');
   const [editingId, setEditingId] = useState<string>('');
@@ -889,25 +890,54 @@ export function GrowthTimelineLibrary({ uid, refreshKey = 0, onEditTimeline }: G
 
   return (
     <div style={{ border: '1px solid #e4ecdc', borderRadius: 14, padding: 14, backgroundColor: '#fff', marginBottom: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 12 }}>
+      <button
+        type="button"
+        onClick={() => setIsExpanded(prev => !prev)}
+        aria-expanded={isExpanded}
+        style={{
+          width: '100%',
+          border: 'none',
+          background: 'transparent',
+          padding: 0,
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: 12,
+          alignItems: 'center',
+          marginBottom: isExpanded ? 12 : 0,
+          textAlign: 'left',
+          cursor: 'pointer',
+        }}
+      >
         <div>
-          <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#1A3C6E' }}>HARU비서기록</p>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#1A3C6E' }}>HARU타임라인</p>
           <p style={{ margin: '3px 0 0', fontSize: 12, color: '#7a8696' }}>
             {isLoading ? '불러오는 중' : `${timelines.length}개 저장됨`}
           </p>
           <p style={{ margin: '3px 0 0', fontSize: 12, color: '#6B7280', lineHeight: 1.4 }}>
-            HARU 비서가 생성한 문서형 기록입니다. 제목을 눌러 다시 열고 수정할 수 있습니다.
+            HARU타임라인 문서형 기록입니다. 펼친 뒤 제목을 눌러 다시 열고 수정할 수 있습니다.
           </p>
         </div>
-      </div>
+        <span
+          aria-hidden="true"
+          style={{
+            color: '#9CA3AF',
+            fontSize: 18,
+            lineHeight: 1,
+            transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+            transition: 'transform 0.15s',
+          }}
+        >
+          ›
+        </span>
+      </button>
 
-      {!isLoading && timelines.length === 0 && (
+      {isExpanded && !isLoading && timelines.length === 0 && (
         <div style={{ padding: '22px 12px', textAlign: 'center', color: '#9aa3ad', fontSize: 13, border: '1px dashed #e4e8ee', borderRadius: 12 }}>
-          아직 저장된 HARU비서기록이 없습니다.
+          아직 저장된 HARU타임라인이 없습니다.
         </div>
       )}
 
-      {timelines.length > 0 && (
+      {isExpanded && timelines.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {timelines.map(timeline => {
             const periodStart = timeline.periodStart || timeline.items[0]?.takenDate || '';
