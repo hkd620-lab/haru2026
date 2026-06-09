@@ -211,6 +211,9 @@ export function NovelSynopsisPage() {
           story: result.data.text,
           settings,
           fromRecord,
+          recordDate,
+          recordTitle,
+          recordFormat,
           protagonistName: navProtagonistName,
           timeOption,
         }

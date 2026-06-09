@@ -3,15 +3,29 @@ import { useNavigate, useLocation } from 'react-router';
 import { ChevronLeft, Printer, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeaderActions } from '../components/PageHeaderActions';
+import { useAuth } from '../contexts/AuthContext';
+import { firestoreService } from '../services/firestoreService';
 
 export function NovelStoryPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const story: string = location.state?.story || '';
   const fromRecord: boolean = location.state?.fromRecord || false;
   const protagonistName: string = location.state?.protagonistName || '';
   const timeOption: string = location.state?.timeOption || '';
+  const recordDate: string = location.state?.recordDate || '';
+  const recordTitle: string = location.state?.recordTitle || '';
+  const recordFormat: string = location.state?.recordFormat || '';
   const [reaction, setReaction] = useState<'touched' | 'wow' | 'retry' | null>(null);
+  const [savingToRecord, setSavingToRecord] = useState(false);
+  const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
+  const [publishingShared, setPublishingShared] = useState(false);
+
+  const storyLabel = timeOption ? `${timeOption} 이야기` : '이야기';
+  const shareTitle = protagonistName
+    ? `${protagonistName}의 ${storyLabel} — HARU미래전망`
+    : `나의 ${storyLabel} — HARU미래전망`;
 
   const handleCopy = async () => {
     try {
@@ -28,11 +42,7 @@ export function NovelStoryPage() {
   };
 
   const handleShare = async () => {
-    const shareTitle = protagonistName
-      ? `${protagonistName}의 ${timeOption || ''} 이야기 — HARU미래전망`
-      : `나의 ${timeOption || ''} 이야기 — HARU미래전망`;
-    const preview = story.slice(0, 200).trim();
-    const shareText = `${preview}...\n\n나도 내 이야기를 만들어보세요 👉 https://haru2026.com`;
+    const shareText = `${story.trim()}\n\n나도 내 이야기를 만들어보세요 👉 https://haru2026.com`;
 
     if (navigator.share) {
       try {
@@ -47,6 +57,89 @@ export function NovelStoryPage() {
       } catch {
         toast.error('공유에 실패했습니다.');
       }
+    }
+  };
+
+  const buildStoryRecord = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const publishDate = recordDate || today;
+    const storyTitle = shareTitle.replace(' — HARU미래전망', '');
+    return {
+      date: publishDate,
+      formats: ['에세이'],
+      content: story,
+      essay_title: storyTitle,
+      essay_ai_title: storyTitle,
+      essay_sayu: story,
+      future_story_source: {
+        type: 'HARU미래전망',
+        protagonistName,
+        timeOption,
+        fromRecord,
+        recordTitle,
+        recordDate,
+        recordFormat,
+      },
+    };
+  };
+
+  const handleSaveToMyRecord = async () => {
+    if (!user?.uid) {
+      toast.error('로그인 후 나의 기록에 저장할 수 있습니다.');
+      return;
+    }
+    if (savedRecordId) {
+      toast('이미 나의 기록에 저장되어 있습니다.');
+      return;
+    }
+    setSavingToRecord(true);
+    try {
+      const id = await firestoreService.saveRecord(user.uid, buildStoryRecord());
+      setSavedRecordId(id);
+      toast.success('나의 기록에 저장했습니다. 기록 페이지에서 확인할 수 있어요.');
+    } catch {
+      toast.error('저장에 실패했습니다.');
+    } finally {
+      setSavingToRecord(false);
+    }
+  };
+
+  const handlePublishTogether = async () => {
+    if (!user?.uid) {
+      toast.error('로그인 후 SAYU-함께보기에 공개할 수 있습니다.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      '최종 이야기를 SAYU-함께보기에 공개합니다.\n이야기 본문과 제목만 공개되며 이메일, UID, 원문 기록 위치는 공개되지 않습니다.',
+    );
+    if (!confirmed) return;
+
+    setPublishingShared(true);
+    try {
+      const profile = await firestoreService.getUserProfile(user.uid);
+      if (!String(profile.nickname || '').trim()) {
+        toast.error('공개하려면 먼저 설정에서 닉네임을 입력해 주세요.');
+        return;
+      }
+
+      // 이미 나의 기록에 저장된 경우 재사용, 아니면 새로 저장
+      const recordId = savedRecordId ?? await firestoreService.saveRecord(user.uid, buildStoryRecord());
+      if (!savedRecordId) setSavedRecordId(recordId);
+
+      await firestoreService.publishRecordToShared(user.uid, recordId);
+      toast.success('최종 이야기를 SAYU-함께보기에 공개했습니다.');
+      navigate('/sayu-together');
+    } catch (error: any) {
+      console.error('미래전망 이야기 공개 실패:', error);
+      const message = String(error?.message || '');
+      if (message.includes('PUBLIC_NICKNAME_REQUIRED')) {
+        toast.error('공개하려면 먼저 설정에서 닉네임을 입력해 주세요.');
+      } else {
+        toast.error('SAYU-함께보기 공개에 실패했습니다.');
+      }
+    } finally {
+      setPublishingShared(false);
     }
   };
 
@@ -180,6 +273,40 @@ export function NovelStoryPage() {
             }}
           >
             📤 가족에게 보내기
+          </button>
+        </div>
+
+        {/* 나의 기록에 저장 */}
+        <div className="no-print" style={{ marginBottom: 8 }}>
+          <button
+            onClick={handleSaveToMyRecord}
+            disabled={savingToRecord || !!savedRecordId}
+            style={{
+              width: '100%', padding: '13px', borderRadius: 12,
+              border: '1.5px solid #1A3C6E',
+              background: savedRecordId ? '#EEF2FF' : '#fff',
+              color: savedRecordId ? '#1A3C6E' : '#1A3C6E',
+              fontSize: 14, fontWeight: 700,
+              cursor: (savingToRecord || !!savedRecordId) ? 'default' : 'pointer',
+            }}
+          >
+            {savingToRecord ? '저장 중...' : savedRecordId ? '✅ 나의 기록에 저장됨' : '📚 나의 기록에 저장'}
+          </button>
+        </div>
+
+        <div className="no-print" style={{ marginBottom: 8 }}>
+          <button
+            onClick={handlePublishTogether}
+            disabled={publishingShared}
+            style={{
+              width: '100%', padding: '13px', borderRadius: 12, border: 'none',
+              background: publishingShared ? '#94a3b8' : '#0F766E',
+              color: '#fff',
+              fontSize: 14, fontWeight: 700,
+              cursor: publishingShared ? 'wait' : 'pointer',
+            }}
+          >
+            {publishingShared ? '공개 중...' : '🌿 SAYU·함께보기에 공개'}
           </button>
         </div>
 
