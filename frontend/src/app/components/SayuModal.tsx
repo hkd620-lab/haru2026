@@ -1114,6 +1114,13 @@ export function SayuModal({
     }
   };
 
+  const removeTimelineItem = (index: number) => {
+    if (isSaving || isUploadingImage) return;
+    setEditedTimelineItems(prev => sortTimelineItems(
+      prev.filter((_, entryIndex) => entryIndex !== index),
+    ).map((item, order) => ({ ...item, order })));
+  };
+
   const handleTimelineImageAdd = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !currentUser || !firestoreId) return;
@@ -2012,11 +2019,41 @@ export function SayuModal({
                         backgroundColor: '#fff',
                       }}
                     >
-                      <img
-                        src={item.url}
-                        alt={`성장타임라인 사진 ${index + 1}`}
-                        style={{ width: 72, height: 72, borderRadius: 8, objectFit: 'cover', backgroundColor: '#f3f4f6' }}
-                      />
+                      <div style={{ position: 'relative', width: 72, height: 72, borderRadius: 8, overflow: 'hidden', backgroundColor: '#f3f4f6' }}>
+                        <img
+                          src={item.url}
+                          alt={`성장타임라인 사진 ${index + 1}`}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeTimelineItem(index)}
+                          disabled={isSaving || isUploadingImage}
+                          aria-label={`성장타임라인 사진 ${index + 1} 삭제`}
+                          title="사진 삭제"
+                          style={{
+                            position: 'absolute',
+                            top: 5,
+                            right: 5,
+                            width: 24,
+                            height: 24,
+                            border: 'none',
+                            borderRadius: '50%',
+                            backgroundColor: 'rgba(0,0,0,0.72)',
+                            color: '#fff',
+                            fontSize: 15,
+                            fontWeight: 800,
+                            lineHeight: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: isSaving || isUploadingImage ? 'not-allowed' : 'pointer',
+                            opacity: isSaving || isUploadingImage ? 0.55 : 1,
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
                         <input
                           type="date"
