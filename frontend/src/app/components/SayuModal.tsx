@@ -215,6 +215,10 @@ function sortTimelineItems(items: GrowthTimelineEditItem[]) {
   return [...items].sort((a, b) => a.takenDate.localeCompare(b.takenDate) || a.order - b.order);
 }
 
+function reindexTimelineItems(items: GrowthTimelineEditItem[]) {
+  return sortTimelineItems(items).map((item, order) => ({ ...item, order }));
+}
+
 function getTimelinePeriod(items: GrowthTimelineEditItem[]) {
   const sorted = sortTimelineItems(items);
   return {
@@ -256,6 +260,22 @@ function serializeTimelineEditItem(item: GrowthTimelineEditItem, index: number):
   if (typeof item.latitude === 'number') savedItem.latitude = item.latitude;
   if (typeof item.longitude === 'number') savedItem.longitude = item.longitude;
   return savedItem;
+}
+
+function getUrlFromUnknownPhotoItem(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (!value || typeof value !== 'object') return '';
+  const item = value as Record<string, unknown>;
+  const url = item.url || item.imageUrl || item.downloadUrl || item.photoUrl || item.thumbnailUrl;
+  return typeof url === 'string' ? url : '';
+}
+
+function filterTimelinePhotoRefs(value: unknown, activeUrls: Set<string>) {
+  if (!Array.isArray(value)) return value;
+  return value.filter((item) => {
+    const url = getUrlFromUnknownPhotoItem(item);
+    return !url || activeUrls.has(url);
+  });
 }
 
 async function recoverTimelineLocationFromImage(item: GrowthTimelineEditItem): Promise<GrowthTimelineEditItem> {
@@ -384,6 +404,7 @@ export function SayuModal({
   const [editedTitle, setEditedTitle] = useState(title || '');
   const isGrowthTimeline = formatKey === 'growthTimeline';
   const timelineLocationRecoveryKeyRef = useRef('');
+  const editedTimelineItemsRef = useRef<GrowthTimelineEditItem[]>([]);
   const weatherTagsRef = useRef<string[]>(WEATHER_OPTIONS);
   const temperatureTagsRef = useRef<string[]>(TEMPERATURE_OPTIONS);
   const moodTagsRef = useRef<string[]>(MOOD_OPTIONS);
@@ -408,6 +429,10 @@ export function SayuModal({
   useEffect(() => {
     moodTagsRef.current = moodTags;
   }, [moodTags]);
+
+  useEffect(() => {
+    editedTimelineItemsRef.current = editedTimelineItems;
+  }, [editedTimelineItems]);
 
   const refreshPublicSharedRecord = async () => {
     if (!currentUser?.uid || !firestoreId) return;
@@ -900,7 +925,7 @@ export function SayuModal({
       setEditedMood(mood || '');
       setEditedTitle(title || '');
       setLocalImages((images || []).filter(url => typeof url === 'string' && url.trim().length > 0 && url.startsWith('http')));
-      const normalizedTimelineItems = sortTimelineItems(timelineItems).map((item, index) => ({
+      const normalizedTimelineItems = reindexTimelineItems(timelineItems.map((item, index) => ({
         url: item.url,
         takenDate: item.takenDate,
         memo: item.memo,
@@ -910,22 +935,41 @@ export function SayuModal({
         locationStatus: item.locationStatus,
         latitude: item.latitude,
         longitude: item.longitude,
-      }));
+      })));
+      editedTimelineItemsRef.current = normalizedTimelineItems;
       setEditedTimelineItems(normalizedTimelineItems);
       if (formatKey === 'growthTimeline' && normalizedTimelineItems.some(item => !getTimelineLocationText(item) && item.url)) {
         const recoveryKey = `${firestoreId || recordDate || ''}:${normalizedTimelineItems.map(item => `${item.url}:${item.locationLabel || ''}:${item.locationStatus || ''}`).join('|')}`;
         if (timelineLocationRecoveryKeyRef.current !== recoveryKey) {
           timelineLocationRecoveryKeyRef.current = recoveryKey;
-          setEditedTimelineItems(prev => prev.map(item => (
-            !getTimelineLocationText(item) && item.url ? { ...item, locationStatus: 'loading' } : item
-          )));
+          setEditedTimelineItems(prev => {
+            const next = prev.map(item => (
+              !getTimelineLocationText(item) && item.url ? { ...item, locationStatus: 'loading' } : item
+            ));
+            editedTimelineItemsRef.current = next;
+            return next;
+          });
           void (async () => {
             const recoveredItems = await Promise.all(normalizedTimelineItems.map(recoverTimelineLocationFromImage));
-            const changed = recoveredItems.some((item, index) => (
-              JSON.stringify(serializeTimelineEditItem(item, index)) !== JSON.stringify(serializeTimelineEditItem(normalizedTimelineItems[index], index))
+            const recoveredByUrl = new Map(recoveredItems.map((item) => [item.url, item]));
+            const currentItems = editedTimelineItemsRef.current;
+            const nextTimelineItems = reindexTimelineItems(currentItems.map((item) => {
+              const recovered = recoveredByUrl.get(item.url);
+              if (!recovered) return item;
+              return {
+                ...item,
+                locationLabel: recovered.locationLabel,
+                locationCandidate: recovered.locationCandidate,
+                locationStatus: recovered.locationStatus,
+                latitude: recovered.latitude,
+                longitude: recovered.longitude,
+              };
+            })).map(serializeTimelineEditItem);
+            const changed = nextTimelineItems.length !== currentItems.length || nextTimelineItems.some((item, index) => (
+              JSON.stringify(serializeTimelineEditItem(item, index)) !== JSON.stringify(serializeTimelineEditItem(currentItems[index], index))
             ));
             if (!changed) return;
-            const nextTimelineItems = sortTimelineItems(recoveredItems).map(serializeTimelineEditItem);
+            editedTimelineItemsRef.current = nextTimelineItems;
             setEditedTimelineItems(nextTimelineItems);
             if (!currentUser || !firestoreId || !nextTimelineItems.some(item => item.locationStatus === 'found')) return;
             try {
@@ -981,10 +1025,13 @@ export function SayuModal({
     try {
       if (isGrowthTimeline) {
         if (!currentUser || !firestoreId) return;
-        const sanitizedTimelineItems = sortTimelineItems(editedTimelineItems).map(serializeTimelineEditItem);
+        const sanitizedTimelineItems = reindexTimelineItems(editedTimelineItemsRef.current).map(serializeTimelineEditItem);
         const { periodStart, periodEnd } = getTimelinePeriod(sanitizedTimelineItems);
         const recordRef = doc(db, 'users', currentUser.uid, 'records', firestoreId);
-        await updateDoc(recordRef, {
+        const recordSnap = await getDoc(recordRef);
+        const recordData = recordSnap.exists() ? recordSnap.data() : {};
+        const activeUrls = new Set(sanitizedTimelineItems.map((item) => item.url));
+        const timelineUpdate: Record<string, unknown> = {
           title: editedTitle.trim() || '성장타임라인',
           content: editedContent,
           timelineItems: sanitizedTimelineItems,
@@ -992,8 +1039,20 @@ export function SayuModal({
           periodStart,
           periodEnd,
           itemCount: sanitizedTimelineItems.length,
+          photoCount: sanitizedTimelineItems.length,
+          photoDates: sanitizedTimelineItems.map((item) => item.takenDate).filter(Boolean),
           updatedAt: new Date().toISOString(),
+        };
+        for (const field of ['photoMeta', 'imageUrls', 'photos', 'growthPhotos'] as const) {
+          if (Array.isArray(recordData[field])) {
+            timelineUpdate[field] = filterTimelinePhotoRefs(recordData[field], activeUrls);
+          }
+        }
+        console.debug('[SayuModal:growthTimeline] saveTimelineItems', {
+          count: sanitizedTimelineItems.length,
+          urls: sanitizedTimelineItems.map((item) => item.url),
         });
+        await updateDoc(recordRef, timelineUpdate);
         toast.success('✅ 성장타임라인이 저장되었습니다!');
         await onRefresh?.();
         onClose();
@@ -1114,11 +1173,20 @@ export function SayuModal({
     }
   };
 
-  const removeTimelineItem = (index: number) => {
+  const removeTimelineItem = (url: string) => {
     if (isSaving || isUploadingImage) return;
-    setEditedTimelineItems(prev => sortTimelineItems(
-      prev.filter((_, entryIndex) => entryIndex !== index),
-    ).map((item, order) => ({ ...item, order })));
+    setEditedTimelineItems(prev => {
+      const source = editedTimelineItemsRef.current.length || prev.length ? editedTimelineItemsRef.current : prev;
+      const next = reindexTimelineItems(source.filter((item) => item.url !== url));
+      editedTimelineItemsRef.current = next;
+      console.debug('[SayuModal:growthTimeline] removeTimelineItem', {
+        removedUrl: url,
+        beforeCount: source.length,
+        afterCount: next.length,
+        remainingUrls: next.map((item) => item.url),
+      });
+      return next;
+    });
   };
 
   const handleTimelineImageAdd = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2027,7 +2095,7 @@ export function SayuModal({
                         />
                         <button
                           type="button"
-                          onClick={() => removeTimelineItem(index)}
+                          onClick={() => removeTimelineItem(item.url)}
                           disabled={isSaving || isUploadingImage}
                           aria-label={`성장타임라인 사진 ${index + 1} 삭제`}
                           title="사진 삭제"
