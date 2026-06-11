@@ -22,6 +22,7 @@ import { SayuTogetherPage } from './pages/SayuTogetherPage';
 import { MergePage } from './pages/MergePage';
 import { MergeViewerPage } from './pages/MergeViewerPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { VaultPage } from './pages/VaultPage';
 import { StatisticsPage } from './pages/StatisticsPage';
 import { FormatStatisticsPage } from './pages/FormatStatisticsPage';
 import { AssistantStatisticsPage } from './pages/AssistantStatisticsPage';
@@ -163,6 +164,7 @@ function App() {
               <Route path="/merge" element={<MergePage />} />
               <Route path="/merge-viewer" element={<MergeViewerPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/vault" element={<VaultPage />} />
               
               {/* 통계 페이지 */}
               <Route path="/stats" element={<StatisticsPage />} />

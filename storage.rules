@@ -10,6 +10,16 @@ service firebase.storage {
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
+    // 정보금고 확인용 압축 이미지
+    match /users/{userId}/vault/images/{itemId}/{fileName} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.contentType.matches('image/.*')
+        && request.resource.size < 5 * 1024 * 1024;
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
     // ✅ HARU타임라인 PNG 업로드
     match /users/{userId}/timelines/{fileName} {
       allow read: if request.auth != null
