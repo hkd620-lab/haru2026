@@ -54,6 +54,7 @@ type VaultItem = {
   id: string;
   title: string;
   category: VaultCategory;
+  content: string;
   fields: VaultField[];
   memo?: string;
   originalLink?: string;
@@ -65,8 +66,7 @@ type VaultItem = {
 type VaultForm = {
   title: string;
   category: VaultCategory;
-  fields: VaultField[];
-  memo: string;
+  content: string;
   originalLink: string;
   imageMetas: VaultImageMeta[];
 };
@@ -89,9 +89,8 @@ const CATEGORY_LABELS = CATEGORIES.reduce<Record<string, string>>((acc, item) =>
 
 const EMPTY_FORM: VaultForm = {
   title: '',
-  category: 'business',
-  fields: [{ label: '', value: '', masked: true }],
-  memo: '',
+  category: 'bank',
+  content: '',
   originalLink: '',
   imageMetas: [],
 };
@@ -204,12 +203,13 @@ async function compressImage(file: File): Promise<{ blob: Blob; width: number; h
 }
 
 function itemToForm(item?: VaultItem): VaultForm {
-  if (!item) return { ...EMPTY_FORM, fields: [...EMPTY_FORM.fields], imageMetas: [] };
+  if (!item) return { ...EMPTY_FORM, imageMetas: [] };
+  const content = item.content || item.memo ||
+    (item.fields?.length ? item.fields.map((f) => `${f.label}: ${f.value}`).join('\n') : '');
   return {
     title: item.title || '',
-    category: item.category || 'business',
-    fields: item.fields?.length ? item.fields.map((field) => ({ ...field })) : [{ label: '', value: '', masked: true }],
-    memo: item.memo || '',
+    category: item.category || 'bank',
+    content,
     originalLink: item.originalLink || '',
     imageMetas: item.imageMetas?.map((image) => ({ ...image })) || [],
   };
@@ -249,6 +249,7 @@ export function VaultPage() {
             id: snap.id,
             title: String(data.title || '제목 없음'),
             category: isVaultCategory(data.category) ? data.category : 'etc',
+            content: typeof data.content === 'string' ? data.content : '',
             fields: normalizeFields(data.fields),
             memo: typeof data.memo === 'string' ? data.memo : '',
             originalLink: typeof data.originalLink === 'string' ? data.originalLink : '',
@@ -299,27 +300,6 @@ export function VaultPage() {
   };
 
   const isEditorOpen = editorOpen;
-
-  const updateField = (index: number, next: Partial<VaultField>) => {
-    setForm((prev) => ({
-      ...prev,
-      fields: prev.fields.map((field, fieldIndex) => (fieldIndex === index ? { ...field, ...next } : field)),
-    }));
-  };
-
-  const addField = () => {
-    setForm((prev) => ({
-      ...prev,
-      fields: [...prev.fields, { label: '', value: '', masked: true }],
-    }));
-  };
-
-  const removeField = (index: number) => {
-    setForm((prev) => ({
-      ...prev,
-      fields: prev.fields.length > 1 ? prev.fields.filter((_, fieldIndex) => fieldIndex !== index) : prev.fields,
-    }));
-  };
 
   const handleFilesChange = (event: ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(event.target.files || []);
@@ -395,21 +375,9 @@ export function VaultPage() {
     }
 
     const title = form.title.trim();
-    const fields = form.fields
-      .map((field) => ({
-        label: field.label.trim(),
-        value: field.value.trim(),
-        masked: Boolean(field.masked),
-      }))
-      .filter((field) => field.label || field.value);
 
     if (!title) {
-      toast.error('제목을 입력해주세요.');
-      return;
-    }
-
-    if (!fields.length) {
-      toast.error('주요 정보 필드를 1개 이상 입력해주세요.');
+      toast.error('정보 이름을 입력해주세요.');
       return;
     }
 
@@ -423,8 +391,7 @@ export function VaultPage() {
       const basePayload = {
         title,
         category: form.category,
-        fields,
-        memo: form.memo.trim(),
+        content: form.content.trim(),
         originalLink: form.originalLink.trim(),
         updatedAt: serverTimestamp(),
       };
@@ -485,12 +452,13 @@ export function VaultPage() {
   };
 
   const handleCopy = async (item: VaultItem) => {
+    const contentText = item.content || item.memo ||
+      item.fields.map((f) => `${f.label}: ${f.value}`).join('\n');
     const text = [
       item.title,
       CATEGORY_LABELS[item.category],
-      ...item.fields.map((field) => `${field.label}: ${field.value}`),
-      item.memo ? `메모: ${item.memo}` : '',
-      item.originalLink ? `원본 보관 링크: ${item.originalLink}` : '',
+      contentText,
+      item.originalLink ? `원본 파일 링크: ${item.originalLink}` : '',
     ]
       .filter(Boolean)
       .join('\n');
@@ -589,14 +557,13 @@ export function VaultPage() {
                   ) : null}
                 </div>
 
-                <div className="vault-field-list">
-                  {item.fields.slice(0, 4).map((field, index) => (
-                    <div className="vault-field-row" key={`${field.label}-${index}`}>
-                      <span className="vault-field-label">{field.label || '항목'}</span>
-                      <span className="vault-field-value">{field.masked ? maskValue(field.value) : field.value}</span>
-                    </div>
-                  ))}
-                </div>
+                {(() => {
+                  const preview = item.content || item.memo ||
+                    item.fields.map((f) => `${f.label}: ${f.value}`).join('\n');
+                  return preview ? (
+                    <p className="vault-content-preview">{preview.slice(0, 100)}{preview.length > 100 ? '…' : ''}</p>
+                  ) : null;
+                })()}
 
                 <div className="vault-card-actions">
                   <button type="button" className="vault-secondary-button" onClick={() => setViewingItem(item)}>
@@ -631,17 +598,17 @@ export function VaultPage() {
             <div className="vault-modal-body">
               <div className="vault-form-grid">
                 <label className="vault-label">
-                  제목
+                  정보 이름
                   <input
                     className="vault-input"
                     value={form.title}
                     onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-                    placeholder="예: 사업자등록증"
+                    placeholder="예: 카카오뱅크 하루랩 계좌"
                   />
                 </label>
 
                 <label className="vault-label">
-                  카테고리
+                  분류
                   <select
                     className="vault-select"
                     value={form.category}
@@ -656,62 +623,26 @@ export function VaultPage() {
                 </label>
               </div>
 
-              <section className="vault-form-section">
-                <h3>주요 정보 필드</h3>
-                {form.fields.map((field, index) => (
-                  <div className="vault-edit-field" key={index}>
-                    <input
-                      className="vault-input"
-                      value={field.label}
-                      onChange={(event) => updateField(index, { label: event.target.value })}
-                      placeholder="항목명"
-                    />
-                    <input
-                      className="vault-input"
-                      value={field.value}
-                      onChange={(event) => updateField(index, { value: event.target.value })}
-                      placeholder="값"
-                    />
-                    <label className="vault-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(field.masked)}
-                        onChange={(event) => updateField(index, { masked: event.target.checked })}
-                      />
-                      마스킹
-                    </label>
-                    <button type="button" className="vault-ghost-button" onClick={() => removeField(index)} disabled={form.fields.length <= 1}>
-                      삭제
-                    </button>
-                  </div>
-                ))}
-                <button type="button" className="vault-secondary-button" onClick={addField}>
-                  <Plus size={15} /> 필드 추가
-                </button>
-              </section>
-
               <label className="vault-label">
-                메모
+                내용
                 <textarea
-                  className="vault-textarea"
-                  value={form.memo}
-                  onChange={(event) => setForm((prev) => ({ ...prev, memo: event.target.value }))}
-                  placeholder="추가로 기억할 내용을 적어두세요."
+                  className="vault-textarea vault-textarea-lg"
+                  value={form.content}
+                  onChange={(event) => setForm((prev) => ({ ...prev, content: event.target.value }))}
+                  placeholder={'은행: 카카오뱅크\n계좌번호: 3333-00-0000000\n예금주: 하루랩\n용도: 포트원 정산용'}
                 />
               </label>
+              <p className="vault-help">비밀번호, OTP, 보안카드 전체번호는 저장하지 마세요.</p>
 
               <label className="vault-label">
-                원본 보관 링크
+                원본 파일 링크
                 <input
                   className="vault-input"
                   value={form.originalLink}
                   onChange={(event) => setForm((prev) => ({ ...prev, originalLink: event.target.value }))}
-                  placeholder="예: Google Drive 링크"
+                  placeholder="Google Drive 원본 링크"
                 />
               </label>
-              <p className="vault-help">
-                제출용 원본은 Google Drive 또는 홈택스/정부24 발급본을 사용하세요. HARU 정보금고에는 확인용 압축 이미지만 저장됩니다.
-              </p>
 
               <section className="vault-form-section">
                 <h3>확인용 이미지 업로드</h3>
@@ -778,21 +709,15 @@ export function VaultPage() {
               </button>
             </div>
             <div className="vault-modal-body">
-              <section className="vault-detail-block">
-                {viewingItem.fields.map((field, index) => (
-                  <div className="vault-field-row" key={`${field.label}-${index}`}>
-                    <span className="vault-field-label">{field.label || '항목'}</span>
-                    <span className="vault-field-value">{field.value}</span>
-                  </div>
-                ))}
-              </section>
-
-              {viewingItem.memo ? (
-                <section className="vault-form-section">
-                  <h3>메모</h3>
-                  <p style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{viewingItem.memo}</p>
-                </section>
-              ) : null}
+              {(() => {
+                const text = viewingItem.content || viewingItem.memo ||
+                  viewingItem.fields.map((f) => `${f.label}: ${f.value}`).join('\n');
+                return text ? (
+                  <section className="vault-detail-block">
+                    <p style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.8, fontSize: '0.95rem' }}>{text}</p>
+                  </section>
+                ) : null;
+              })()}
 
               {viewingItem.originalLink ? (
                 <section className="vault-form-section">
