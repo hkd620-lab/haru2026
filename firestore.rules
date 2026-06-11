@@ -120,7 +120,7 @@ service cloud.firestore {
         || userId == "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
-    match /users/{userId}/vault/items/{itemId} {
+    match /users/{userId}/vaultItems/{itemId} {
       allow read, write, delete: if request.auth != null && request.auth.uid == userId;
     }
     match /users/{userId}/growthSubjects/{subjectId} {

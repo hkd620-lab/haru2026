@@ -239,7 +239,7 @@ export function VaultPage() {
     }
 
     setIsLoading(true);
-    const q = query(collection(db, `users/${user.uid}/vault/items`), orderBy('updatedAt', 'desc'));
+    const q = query(collection(db, `users/${user.uid}/vaultItems`), orderBy('updatedAt', 'desc'));
     return onSnapshot(
       q,
       (snapshot) => {
@@ -431,7 +431,7 @@ export function VaultPage() {
 
       let itemId = editingItem?.id;
       if (!itemId) {
-        const docRef = await addDoc(collection(db, `users/${user.uid}/vault/items`), {
+        const docRef = await addDoc(collection(db, `users/${user.uid}/vaultItems`), {
           ...basePayload,
           imageMetas: [],
           createdAt: serverTimestamp(),
@@ -442,7 +442,7 @@ export function VaultPage() {
       const uploadedMetas = await uploadPendingImages(itemId);
       const imageMetas = [...form.imageMetas, ...uploadedMetas].slice(0, MAX_IMAGES_PER_ITEM);
       await setDoc(
-        doc(db, `users/${user.uid}/vault/items/${itemId}`),
+        doc(db, `users/${user.uid}/vaultItems/${itemId}`),
         {
           ...basePayload,
           imageMetas,
@@ -476,7 +476,7 @@ export function VaultPage() {
     try {
       const images = item.imageMetas || [];
       await Promise.allSettled(images.map((image) => (image.path ? deleteObject(ref(storage, image.path)) : Promise.resolve())));
-      await deleteDoc(doc(db, `users/${user.uid}/vault/items/${item.id}`));
+      await deleteDoc(doc(db, `users/${user.uid}/vaultItems/${item.id}`));
       toast.success('정보금고 항목을 삭제했습니다.');
     } catch (error) {
       console.error('정보금고 삭제 실패:', error);
