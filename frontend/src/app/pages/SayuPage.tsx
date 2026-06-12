@@ -551,6 +551,7 @@ export function SayuPage() {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [sayuTab, setSayuTab] = useState<'records' | 'assistants'>('records');
   const [sayuScope, setSayuScope] = useState<'month' | 'all'>('month');
+  const [selectedSayuLabels, setSelectedSayuLabels] = useState<{ records: string; assistants: string }>({ records: '', assistants: '' });
   const [sayuSearchInput, setSayuSearchInput] = useState('');
   const [debouncedSayuSearch, setDebouncedSayuSearch] = useState('');
   const [allVisibleCount, setAllVisibleCount] = useState(SAYU_ALL_PAGE_SIZE);
@@ -3332,13 +3333,40 @@ export function SayuPage() {
     ? recordEntries
     : [...growthTimelineEntries, ...assistantEntries]
         .sort((a, b) => b.date.localeCompare(a.date) || a.label.localeCompare(b.label));
+  const getSayuLabelOptions = (entries: FlatSayuEntry[]) => Array.from(entries.reduce((map, entry) => {
+    const option = map.get(entry.label) || {
+      label: entry.label,
+      color: entry.color,
+      latestDate: entry.date,
+      count: 0,
+    };
+    option.count += 1;
+    if (entry.date > option.latestDate) option.latestDate = entry.date;
+    if (!option.color) option.color = entry.color;
+    map.set(entry.label, option);
+    return map;
+  }, new Map<string, { label: string; color: string; latestDate: string; count: number }>()).values())
+    .sort((a, b) => b.latestDate.localeCompare(a.latestDate) || a.label.localeCompare(b.label));
+  const sayuLabelOptions = getSayuLabelOptions(activeEntries);
+  const selectedSayuLabelCandidate = sayuTab === 'records' ? selectedSayuLabels.records : selectedSayuLabels.assistants;
+  const effectiveSayuLabel = sayuLabelOptions.some((option) => option.label === selectedSayuLabelCandidate)
+    ? selectedSayuLabelCandidate
+    : sayuLabelOptions[0]?.label || '';
+  const setActiveSayuLabel = (label: string) => {
+    setSelectedSayuLabels((prev) => ({ ...prev, [sayuTab]: label }));
+    setSelectedDate('');
+    setSelectedAssistantDate('');
+  };
+  const isEffectiveSayuLabel = (entry: FlatSayuEntry) => !effectiveSayuLabel || entry.label === effectiveSayuLabel;
+  const labelScopedActiveEntries = activeEntries.filter(isEffectiveSayuLabel);
+  const labelScopedCalendarEntries = activeCalendarEntries.filter(isEffectiveSayuLabel);
   const activeSelectedDate = sayuTab === 'records' ? selectedDate : selectedAssistantDate;
   const setActiveSelectedDate = sayuTab === 'records' ? setSelectedDate : setSelectedAssistantDate;
   const hasGrowthTimelineRecords = records.some(isGrowthTimelineRecord);
   const shouldRenderListEntries = !(
     sayuTab === 'assistants'
     && hasGrowthTimelineRecords
-    && activeEntries.length === 0
+    && labelScopedActiveEntries.length === 0
   );
   const normalizedSayuSearch = debouncedSayuSearch.toLowerCase();
   const matchesSayuSearch = (entry: FlatSayuEntry) => {
@@ -3346,8 +3374,8 @@ export function SayuPage() {
     const fallbackText = buildSearchText(entry.label, entry.title, entry.subtitle, entry.keywords);
     return (entry.searchText || fallbackText).includes(normalizedSayuSearch);
   };
-  const filteredActiveEntries = activeEntries.filter(matchesSayuSearch);
-  const filteredActiveCalendarEntries = activeCalendarEntries.filter(matchesSayuSearch);
+  const filteredActiveEntries = labelScopedActiveEntries.filter(matchesSayuSearch);
+  const filteredActiveCalendarEntries = labelScopedCalendarEntries.filter(matchesSayuSearch);
   const displayedAllEntries = filteredActiveEntries.slice(0, allVisibleCount);
   const hasMoreAllEntries = sayuScope === 'all' && filteredActiveEntries.length > displayedAllEntries.length;
   const activeSelectedEntries = activeSelectedDate
@@ -3472,6 +3500,45 @@ export function SayuPage() {
       })}
     </div>
   );
+
+  const renderSayuFormatSelector = () => {
+    if (sayuLabelOptions.length <= 1) return null;
+    return (
+      <div
+        role="tablist"
+        aria-label="SAYU 형식 선택"
+        style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 10, marginBottom: 2 }}
+      >
+        {sayuLabelOptions.map((option) => {
+          const active = effectiveSayuLabel === option.label;
+          return (
+            <button
+              key={option.label}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setActiveSayuLabel(option.label)}
+              style={{
+                minHeight: 34,
+                padding: '0 11px',
+                borderRadius: 999,
+                border: active ? `1px solid ${option.color}` : '1px solid #D9D2EC',
+                backgroundColor: active ? '#FFFFFF' : '#F8F7FC',
+                color: active ? '#1A3C6E' : '#6B7280',
+                fontSize: 12,
+                fontWeight: active ? 800 : 700,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                boxShadow: active ? '0 1px 2px rgba(26,60,110,0.12)' : 'none',
+              }}
+            >
+              {option.label} {option.count}
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
 
   const renderSayuSearchBox = () => (
     <div
@@ -3977,6 +4044,7 @@ export function SayuPage() {
       </div>
 
       {renderSayuScopeTabs()}
+      {renderSayuFormatSelector()}
 
       {/* 월 선택 — 헤딩 + 변경 칩 (카드 제거) */}
       {sayuScope === 'month' && (
