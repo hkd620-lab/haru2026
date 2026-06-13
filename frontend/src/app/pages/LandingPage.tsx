@@ -171,11 +171,11 @@ const PH_RECORDS: { name: string; icon: string; hue: Hue }[] = [
   { name: '일기', icon: 'diary', hue: 'green' },
   { name: '에세이', icon: 'pen', hue: 'lilac' },
   { name: '독서', icon: 'book', hue: 'terracotta' },
-  { name: '주식', icon: 'invest', hue: 'green' },
   { name: '여행', icon: 'plane', hue: 'lilac' },
   { name: '텃밭', icon: 'seed', hue: 'green' },
   { name: '반려', icon: 'paw', hue: 'terracotta' },
   { name: '메모', icon: 'memo', hue: 'lilac' },
+  { name: '업무', icon: 'briefcase', hue: 'green' },
 ];
 const PH_AGENTS: { name: string; sub: string; icon: string; hue: Hue }[] = [
   { name: '하루LAW', sub: '법령·판례', icon: 'law', hue: 'terracotta' },
