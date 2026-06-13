@@ -92,6 +92,12 @@ const FLOW = [
   { n: '05', t: '평생 자산',   d: '책 소재가 되고, 회고 자료가 되고, 다음 세대에 남길 기록이 됩니다.' },
 ];
 
+const HERO_FLOW = [
+  { t: '한 줄 기록', d: '짧게 남김', icon: 'memo', hue: 'green' as Hue },
+  { t: 'SAYU 정리', d: '사유로 정리', icon: 'spark', hue: 'lilac' as Hue },
+  { t: '타임라인·미래전망', d: '다음 선택 참고', icon: 'chart', hue: 'terracotta' as Hue },
+];
+
 const PRICING = [
   {
     plan: 'LIGHT', price: '₩4,000', period: '/월',
@@ -405,6 +411,25 @@ export function LandingPage() {
                   </p>
                 </div>
               </article>
+            </div>
+            <div className="lp-mini-flow" aria-label="HARU2026 3단계 흐름">
+              <p className="lp-mini-flow__lead">
+                오늘 한 줄을 남기면, HARU가 읽기 좋은 기록으로 정리하고 나중에 다시 꺼내 쓸 자료로 바꿉니다.
+              </p>
+              <div className="lp-mini-flow__steps">
+                {HERO_FLOW.map((step, i) => (
+                  <div className="lp-mini-flow__item" key={step.t}>
+                    <span className="lp-mini-flow__ico" style={{ background: hueBg[step.hue] }}>
+                      <Icon name={step.icon} size={17} color={hueFg[step.hue]} sw={1.8} />
+                    </span>
+                    <span className="lp-mini-flow__copy">
+                      <strong>{step.t}</strong>
+                      <span>{step.d}</span>
+                    </span>
+                    {i < HERO_FLOW.length - 1 && <span className="lp-mini-flow__arrow" aria-hidden="true">→</span>}
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="lp-hero__cta-row">
               <button className="lp-btn lp-btn--primary" onClick={goToLogin}>
@@ -732,6 +757,17 @@ const LP_CSS = `
 .lp-value-card h2{font-size:15px;font-weight:800;line-height:1.35;letter-spacing:-0.01em;color:var(--fg);margin:0 0 6px;}
 .lp-value-card p{font-size:13px;line-height:1.58;color:var(--fg-2);margin:0;}
 @media(max-width:640px){.lp-value-cards{grid-template-columns:1fr;margin:-8px 0 22px;}.lp-value-card{padding:14px;grid-template-columns:38px 1fr;gap:11px;border-radius:16px;}.lp-value-card__ico{width:38px;height:38px;border-radius:12px;}.lp-value-card h2{font-size:14px;}.lp-value-card p{font-size:12.5px;line-height:1.55;}}
+.lp-mini-flow{max-width:680px;margin:-8px 0 22px;padding:12px 13px;border:1px solid rgba(229,223,208,0.9);border-radius:16px;background:rgba(255,255,255,0.54);}
+.lp-mini-flow__lead{margin:0 0 9px;color:var(--fg);font-size:13px;font-weight:700;line-height:1.45;}
+.lp-mini-flow__steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}
+.lp-mini-flow__item{position:relative;display:flex;align-items:center;gap:7px;min-width:0;padding:8px 24px 8px 8px;border-radius:13px;background:rgba(245,240,232,0.72);}
+.lp-mini-flow__ico{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;flex:0 0 auto;}
+.lp-mini-flow__copy{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.lp-mini-flow__copy strong{color:var(--fg);font-size:12.5px;font-weight:800;line-height:1.2;}
+.lp-mini-flow__copy span{color:var(--fg-2);font-size:10.5px;line-height:1.3;}
+.lp-mini-flow__arrow{position:absolute;top:50%;right:8px;transform:translateY(-50%);color:var(--olive);font-size:16px;font-weight:800;line-height:1;}
+@media(max-width:760px){.lp-mini-flow__steps{grid-template-columns:1fr;}.lp-mini-flow__item{padding:8px 11px;}.lp-mini-flow__arrow{position:static;transform:none;margin-left:auto;padding-left:8px;}}
+@media(max-width:640px){.lp-mini-flow{margin:-6px 0 20px;padding:11px;border-radius:15px;}.lp-mini-flow__lead{font-size:12.5px;line-height:1.45;}.lp-mini-flow__copy strong{font-size:12px;}.lp-mini-flow__copy span{font-size:10.5px;}}
 .lp-hero__cta-row{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:22px;}
 .lp-hero__login{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:30px;}
 .lp-hero__login-title{font-size:14px;color:var(--fg-2);margin-right:4px;font-weight:600;}
