@@ -3,8 +3,10 @@ import ReactDOM from 'react-dom/client'
 import App from './app/App'
 import './styles/index.css'
 
-// 일회성 SW 캐시 강제 reset — v2 모바일 레이아웃 stale 캐시 이슈 해결
-const SW_RESET_KEY = 'haru-sw-reset-v3-sayu-plant-diary-2026-05-23';
+document.getElementById('kakao-guide')?.remove();
+
+// 일회성 SW 캐시 강제 reset — 랜딩 Safari 차단 안내 stale 캐시 제거
+const SW_RESET_KEY = 'haru-sw-reset-v4-remove-kakao-safari-notice-2026-06-13';
 if (typeof window !== 'undefined' && !localStorage.getItem(SW_RESET_KEY)) {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then((regs) => {
