@@ -18,6 +18,7 @@ interface DevTool {
   description: string;
   path: string;
   color: string;
+  state?: { format?: string; category?: string };
 }
 
 const DEV_TOOLS: DevTool[] = [
@@ -69,6 +70,45 @@ const DEV_TOOLS: DevTool[] = [
     label: '명작탐정비서 임시 화면',
     description: '잊힌 책·채널·영상·음악 탐정 (개발자 검토용 껍데기)',
     path: '/dev/masterpiece-detective',
+    color: '#B85C2E',
+  },
+  {
+    sectionLabel: '홈에서 숨긴 기록·비서 (개발자 전용)',
+    icon: '⛪',
+    label: '선교보고',
+    description: '길 위의 소식 — 홈 비노출, 여기서만 작성',
+    path: '/record',
+    state: { format: '선교보고' },
+    color: '#5A4E7A',
+  },
+  {
+    icon: '📋',
+    label: '일반보고',
+    description: '사실 정리 — 홈 비노출, 여기서만 작성',
+    path: '/record',
+    state: { format: '일반보고' },
+    color: '#7A6F5A',
+  },
+  {
+    icon: '📈',
+    label: '주식거래일지 (HARU주식)',
+    description: '거래와 복기 — 홈 비노출, 여기서만 작성',
+    path: '/record',
+    state: { format: '주식거래일지' },
+    color: '#4A5A2C',
+  },
+  {
+    icon: '📦',
+    label: 'HARU 기록탐정',
+    description: 'Drive 문서·이미지·PDF 정리 — 홈 비노출',
+    path: '/asset-explorer',
+    color: '#5A4E7A',
+  },
+  {
+    icon: '✍️',
+    label: '나도작가',
+    description: 'AI 글쓰기·단편소설 — 홈 비노출',
+    path: '/novel-studio',
     color: '#B85C2E',
   },
 ];
@@ -231,7 +271,7 @@ export function DevConsolePage() {
                     setActivePanel('ai-library');
                     return;
                   }
-                  navigate(tool.path);
+                  navigate(tool.path, tool.state ? { state: tool.state } : undefined);
                 }}
                 className="bg-white rounded-2xl border border-gray-200 p-5 text-left hover:shadow-md transition-shadow"
               >

@@ -521,9 +521,10 @@ export function HomePageV2() {
   const location = useLocation();
   const { user, loading: authLoading } = useAuth();
   const isDeveloper = user?.uid === DEVELOPER_UID;
+  // 숨김 기록은 개발자에게도 홈에서 비노출 (개발자는 개발자 콘솔에서 사용)
   const visibleRecords = useMemo(
-    () => RECORDS.filter((r) => isDeveloper || !HIDDEN_RECORD_FORMATS.has(r.format)),
-    [isDeveloper],
+    () => RECORDS.filter((r) => !HIDDEN_RECORD_FORMATS.has(r.format)),
+    [],
   );
   const today = useMemo(() => todayLabel(new Date()), []);
   const [timelineModalOpen, setTimelineModalOpen] = useState(false);
@@ -1388,7 +1389,7 @@ export function HomePageV2() {
             }}
           >
             {AGENTS.filter(
-              (a) => isDeveloper || (!a.developerOnly && !HIDDEN_AGENT_LABELS.has(a.label)),
+              (a) => !a.developerOnly && !HIDDEN_AGENT_LABELS.has(a.label),
             ).map((a) => {
               const disabled = a.path === null && !a.action;
               return (
