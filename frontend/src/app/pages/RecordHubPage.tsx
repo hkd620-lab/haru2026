@@ -3,6 +3,10 @@ import { useAuth } from '../contexts/AuthContext';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
+// 일반 사용자 메뉴에서 숨기는 기록형식/비서 (개발자에게는 그대로 노출)
+const HIDDEN_RECORD_FORMATS = new Set(['선교보고', '일반보고', '주식거래일지']);
+const HIDDEN_CARD_LABELS = new Set(['주식거래일지']);
+
 export function RecordHubPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -133,7 +137,9 @@ export function RecordHubPage() {
               gap: 8,
             }}
           >
-            {workRecords.map(({ label, format }) => (
+            {workRecords
+              .filter(({ format }) => isDeveloper || !HIDDEN_RECORD_FORMATS.has(format))
+              .map(({ label, format }) => (
               <button
                 key={label}
                 type="button"
@@ -156,7 +162,9 @@ export function RecordHubPage() {
               gap: 10,
             }}
           >
-            {knowledgeCards.map((card) => (
+            {knowledgeCards
+              .filter((card) => isDeveloper || !HIDDEN_CARD_LABELS.has(card.label))
+              .map((card) => (
               <button
                 key={card.label}
                 type="button"
