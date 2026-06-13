@@ -2,6 +2,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { InAppBrowserLoginGuide } from '../components/InAppBrowserLoginGuide';
+import { getInAppBrowserInfo, type InAppBrowserInfo } from '../utils/inAppBrowser';
 
 /* ────────────────────────────────────────────────────────────
    HARU by JOYEL — 랜딩 (CD "Reposeful" 디자인 핸드오프 구현)
@@ -279,6 +281,7 @@ export function LandingPage() {
   const navigate = useNavigate();
   const { user, loading, googleSignIn } = useAuth();
   const [isLoginLoading, setIsLoginLoading] = useState(false);
+  const [inAppBrowserGuide, setInAppBrowserGuide] = useState<InAppBrowserInfo | null>(null);
 
   useEffect(() => {
     if (!loading && user) {
@@ -294,10 +297,24 @@ export function LandingPage() {
     );
   }
 
-  const goToLogin = () => navigate('/login');
+  const guardInAppBrowserLogin = () => {
+    const info = getInAppBrowserInfo();
+    if (info.isInAppBrowser) {
+      setIsLoginLoading(false);
+      setInAppBrowserGuide(info);
+      return true;
+    }
+    return false;
+  };
+
+  const goToLogin = () => {
+    if (guardInAppBrowserLogin()) return;
+    navigate('/login');
+  };
   const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   const handleGoogleLogin = async () => {
+    if (guardInAppBrowserLogin()) return;
     setIsLoginLoading(true);
     if (import.meta.env.DEV) {
       try {
@@ -316,6 +333,7 @@ export function LandingPage() {
   };
 
   const handleKakaoLogin = () => {
+    if (guardInAppBrowserLogin()) return;
     setIsLoginLoading(true);
     setTimeout(() => {
       window.location.href = 'https://kakaologinstart-6ieesxet3q-du.a.run.app';
@@ -323,6 +341,7 @@ export function LandingPage() {
   };
 
   const handleNaverLogin = () => {
+    if (guardInAppBrowserLogin()) return;
     setIsLoginLoading(true);
     setTimeout(() => {
       window.location.href = 'https://naverloginstart-6ieesxet3q-du.a.run.app';
@@ -338,6 +357,11 @@ export function LandingPage() {
   return (
     <div className="lp-page">
       <style>{LP_CSS}</style>
+      <InAppBrowserLoginGuide
+        open={Boolean(inAppBrowserGuide)}
+        browserInfo={inAppBrowserGuide}
+        onClose={() => setInAppBrowserGuide(null)}
+      />
 
       {/* ───── Top nav ───── */}
       <nav className="lp-nav">
