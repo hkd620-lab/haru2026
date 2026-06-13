@@ -61,6 +61,7 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
+        importScripts: ['/sw-landing-refresh.js'],
         navigateFallback: null,
         navigateFallbackDenylist: [/^\/firebase-messaging-sw\.js/],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
