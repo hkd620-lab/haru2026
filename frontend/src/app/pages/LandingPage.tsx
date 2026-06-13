@@ -179,7 +179,7 @@ const PH_RECORDS: { name: string; icon: string; hue: Hue }[] = [
 ];
 const PH_AGENTS: { name: string; sub: string; icon: string; hue: Hue }[] = [
   { name: '하루LAW', sub: '법령·판례', icon: 'law', hue: 'terracotta' },
-  { name: '영어성경', sub: '듣기·해석', icon: 'bible', hue: 'green' },
+  { name: 'HARU미래전망', sub: '기록 기반', icon: 'chart', hue: 'green' },
 ];
 
 function HaruPhone() {
@@ -380,6 +380,32 @@ export function LandingPage() {
               HARU2026은 하루의 기록, 생각, 건강, 배움, 발견을 모아<br />
               필요한 순간에 다시 활용할 수 있도록 돕는 <strong style={{ color: C.fg, fontWeight: 600 }}>AI 기록 플랫폼</strong>입니다.
             </p>
+            <div className="lp-value-cards" aria-label="HARU2026 핵심 가치">
+              <article className="lp-value-card">
+                <div className="lp-value-card__ico" style={{ background: hueBg.green }}>
+                  <Icon name="bookbind" size={20} color={hueFg.green} sw={1.7} />
+                </div>
+                <div>
+                  <h2>내 기록이 자서전의 재료가 됩니다</h2>
+                  <p>
+                    하루의 짧은 기록도 쌓이면 삶의 흐름을 보여주는 자료가 됩니다.
+                    HARU타임라인은 흩어진 기록을 시간의 흐름으로 정리해 나만의 생활 자산으로 바꿉니다.
+                  </p>
+                </div>
+              </article>
+              <article className="lp-value-card">
+                <div className="lp-value-card__ico" style={{ background: hueBg.lilac }}>
+                  <Icon name="chart" size={20} color={hueFg.lilac} sw={1.7} />
+                </div>
+                <div>
+                  <h2>오늘의 기록이 미래전망의 근거가 됩니다</h2>
+                  <p>
+                    HARU미래전망은 막연한 예측이 아니라, 사용자가 남긴 기록을 바탕으로
+                    생활 변화와 가능성을 살펴보는 기능입니다.
+                  </p>
+                </div>
+              </article>
+            </div>
             <div className="lp-hero__cta-row">
               <button className="lp-btn lp-btn--primary" onClick={goToLogin}>
                 무료로 시작하기<Icon name="arrowR" size={18} sw={2} />
@@ -700,6 +726,12 @@ const LP_CSS = `
 .lp-hero__grid{display:grid;grid-template-columns:1.05fr 1fr;gap:clamp(40px,6vw,88px);align-items:center;}
 @media(max-width:920px){.lp-hero__grid{grid-template-columns:1fr;}.lp-hero__visual{order:-1;min-height:480px;}}
 .lp-hero__sub{font-size:var(--lp-lead);color:var(--fg-2);line-height:1.65;margin:0 0 32px;max-width:52ch;}
+.lp-value-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:-10px 0 26px;max-width:680px;}
+.lp-value-card{background:rgba(255,255,255,0.78);border:1px solid var(--border);border-radius:18px;padding:16px;display:grid;grid-template-columns:42px 1fr;gap:12px;align-items:flex-start;box-shadow:0 12px 28px -24px rgba(74,90,44,0.32);}
+.lp-value-card__ico{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;flex-shrink:0;}
+.lp-value-card h2{font-size:15px;font-weight:800;line-height:1.35;letter-spacing:-0.01em;color:var(--fg);margin:0 0 6px;}
+.lp-value-card p{font-size:13px;line-height:1.58;color:var(--fg-2);margin:0;}
+@media(max-width:640px){.lp-value-cards{grid-template-columns:1fr;margin:-8px 0 22px;}.lp-value-card{padding:14px;grid-template-columns:38px 1fr;gap:11px;border-radius:16px;}.lp-value-card__ico{width:38px;height:38px;border-radius:12px;}.lp-value-card h2{font-size:14px;}.lp-value-card p{font-size:12.5px;line-height:1.55;}}
 .lp-hero__cta-row{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:22px;}
 .lp-hero__login{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:30px;}
 .lp-hero__login-title{font-size:14px;color:var(--fg-2);margin-right:4px;font-weight:600;}
