@@ -31,7 +31,7 @@ const agentBorder: Record<Hue, string> = { green: C.lightGreen, lilac: C.lilac, 
 
 const SHOW_PRICING = import.meta.env.VITE_SHOW_PRICING === 'true';
 
-/* ── 실제 기록 형식 14개 (현재 앱 기준) ── */
+/* ── 기록 형식 11개 (홈 화면 일반 사용자 노출 기준과 일치) ── */
 const FORMATS: { name: string; icon: string; hue: Hue; cat: string; badge?: string }[] = [
   { name: '일기',         icon: 'diary',     hue: 'green',      cat: '생활' },
   { name: '에세이',       icon: 'pen',       hue: 'lilac',      cat: '생활' },
@@ -40,12 +40,9 @@ const FORMATS: { name: string; icon: string; hue: Hue; cat: string; badge?: stri
   { name: '텃밭일지',     icon: 'seed',      hue: 'green',      cat: '생활' },
   { name: '애완동물관찰일지', icon: 'paw',   hue: 'terracotta', cat: '생활' },
   { name: '육아일기',     icon: 'baby',      hue: 'lilac',      cat: '생활' },
-  { name: '선교보고',     icon: 'church',    hue: 'green',      cat: '업무' },
-  { name: '일반보고',     icon: 'chart',     hue: 'terracotta', cat: '업무' },
   { name: '업무일지',     icon: 'briefcase', hue: 'lilac',      cat: '업무' },
   { name: '메모',         icon: 'memo',      hue: 'green',      cat: '업무', badge: 'AI 제목' },
   { name: 'HARU보조장부', icon: 'bookbind',  hue: 'terracotta', cat: '업무' },
-  { name: 'HARU주식관리', icon: 'invest',    hue: 'green',      cat: '자산' },
   { name: '하루LAW',      icon: 'law',       hue: 'terracotta', cat: '전문' },
 ];
 
@@ -474,10 +471,10 @@ export function LandingPage() {
       {/* ───── Formats (실제 14) ───── */}
       <section className="lp-section lp-section--soft tight" id="formats">
         <div className="lp-wrap">
-          <div className="lp-cap">FORMATS · 14가지로 시작합니다</div>
+          <div className="lp-cap">FORMATS · 11가지로 시작합니다</div>
           <h2 className="lp-h2">한 줄에도 자리가 있습니다.</h2>
           <p className="lp-lead" style={{ maxWidth: 600 }}>
-            생활·업무·자산·전문 영역까지, 무엇을 적을지 정하면 어떻게 정리될지가 따라옵니다.
+            생활·업무·전문 영역까지, 무엇을 적을지 정하면 어떻게 정리될지가 따라옵니다.
             새로운 분야는 형식이 자라며 계속 더해지고 있습니다.
           </p>
           <div className="lp-formats">
