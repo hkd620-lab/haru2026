@@ -206,6 +206,7 @@ function App() {
               {/* 관리자 페이지 */}
               <Route path="/admin/checklist" element={<AdminChecklistPage />} />
               <Route path="/admin/console" element={<DevConsolePage />} />
+              <Route path="/admin/dev-console" element={<DevConsolePage />} />
               <Route path="/admin/elder-book" element={<ElderBookPage />} />
               <Route path="/admin/record-book" element={<RecordBookPage />} />
               <Route path="/admin/k-news-publisher" element={<KNewsPublisherPage />} />

@@ -8,6 +8,15 @@ import { shouldShowAssistantOnboarding } from '../services/assistantOnboardingSe
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
+// 일반 사용자 메뉴에서 숨기는 기록형식/비서 (개발자에게는 그대로 노출, 코드·FormatModal은 보존)
+const HIDDEN_RECORD_FORMATS = new Set(['선교보고', '일반보고', '주식거래일지']);
+const HIDDEN_AGENT_LABELS = new Set([
+  'HARU주식',
+  '📦 HARU 기록탐정',
+  '명작탐정비서',
+  '나도작가',
+]);
+
 const FONT_KR =
   "'Pretendard', 'Pretendard Variable', system-ui, sans-serif";
 const FONT_EN = "'Inter', system-ui, sans-serif";
@@ -512,6 +521,10 @@ export function HomePageV2() {
   const location = useLocation();
   const { user, loading: authLoading } = useAuth();
   const isDeveloper = user?.uid === DEVELOPER_UID;
+  const visibleRecords = useMemo(
+    () => RECORDS.filter((r) => isDeveloper || !HIDDEN_RECORD_FORMATS.has(r.format)),
+    [isDeveloper],
+  );
   const today = useMemo(() => todayLabel(new Date()), []);
   const [timelineModalOpen, setTimelineModalOpen] = useState(false);
   const [onboardingGateReady, setOnboardingGateReady] = useState(false);
@@ -1265,7 +1278,7 @@ export function HomePageV2() {
             iconStroke="#4A5A2C"
             title="HARU 기록"
             sub="매일의 한 줄, 평생의 자산"
-            badge="12가지 형식"
+            badge={`${visibleRecords.length}가지 형식`}
             badgeDot="#7A8B4E"
             icon={
               <>
@@ -1283,7 +1296,7 @@ export function HomePageV2() {
               gap: 14,
             }}
           >
-            {RECORDS.map((r) => (
+            {visibleRecords.map((r) => (
               <button
                 key={r.label}
                 type="button"
@@ -1374,7 +1387,9 @@ export function HomePageV2() {
               gap: 14,
             }}
           >
-            {AGENTS.filter((a) => !a.developerOnly || isDeveloper).map((a) => {
+            {AGENTS.filter(
+              (a) => isDeveloper || (!a.developerOnly && !HIDDEN_AGENT_LABELS.has(a.label)),
+            ).map((a) => {
               const disabled = a.path === null && !a.action;
               return (
               <button

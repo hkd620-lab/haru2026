@@ -6,6 +6,10 @@ import { clearOrigin } from "../services/v2Origin";
 
 const DEVELOPER_UID = "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
 
+// 일반 사용자 메뉴에서 숨기는 기록형식/비서 (개발자에게는 그대로 노출)
+const HIDDEN_RECORD_FORMATS = new Set(["선교보고", "일반보고", "주식거래일지"]);
+const HIDDEN_SECRETARY_LABELS = new Set(["주식거래일지"]);
+
 export function HomePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -289,7 +293,9 @@ export function HomePage() {
                 gap: 4,
               }}
             >
-              {recordCards.map((card) => (
+              {recordCards
+                .filter((card) => isDeveloper || !HIDDEN_RECORD_FORMATS.has(card.format))
+                .map((card) => (
                 <button
                   key={card.label}
                   type="button"
@@ -315,7 +321,9 @@ export function HomePage() {
                 gap: 4,
               }}
             >
-              {secretaryCards.map((card) => (
+              {secretaryCards
+                .filter((card) => isDeveloper || !HIDDEN_SECRETARY_LABELS.has(card.label))
+                .map((card) => (
                 <button
                   key={card.label}
                   type="button"
