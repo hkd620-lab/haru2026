@@ -210,9 +210,13 @@ function HaruPhone() {
           <div className="ph-hero">
             <div className="ph-hero__decoA" />
             <div className="ph-hero__decoB" />
-            <div className="ph-hero__cap">2026 · NOV · FRI</div>
-            <div className="ph-hero__date">11월 6일</div>
-            <div className="ph-hero__pill">오늘 3건</div>
+            <div className="ph-hero__cap">GOOD MORNING</div>
+            <div className="ph-hero__date">오늘도 편하게 기록해볼까요?</div>
+            <p className="ph-hero__copy">
+              생각나는 대로 편하게 기록하세요.<br />
+              HARU가 당신의 기록을<br />
+              자서전과 미래전망으로 이어줍니다.
+            </p>
           </div>
 
           <div className="ph-section">HARU 기록</div>
@@ -908,7 +912,8 @@ const LP_CSS = `
 .ph-hero__decoA{position:absolute;top:-14px;right:20px;width:60px;height:60px;border-radius:50%;background:var(--light-green);opacity:0.45;}
 .ph-hero__decoB{position:absolute;top:14px;right:-8px;width:44px;height:44px;border-radius:50%;background:var(--lilac);opacity:0.5;}
 .ph-hero__cap{font-family:var(--lp-en);font-size:9px;font-weight:500;letter-spacing:3px;color:var(--fg-muted);text-transform:uppercase;position:relative;}
-.ph-hero__date{font-size:26px;font-weight:600;letter-spacing:-0.01em;color:var(--fg);margin-top:2px;}
+.ph-hero__date{font-size:19px;font-weight:700;letter-spacing:0;color:var(--fg);margin-top:5px;line-height:1.25;position:relative;}
+.ph-hero__copy{position:relative;margin:9px 0 0;color:var(--fg-2);font-size:11px;font-weight:500;line-height:1.52;}
 .ph-hero__pill{margin-top:8px;display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;background:var(--green-light);color:var(--olive-dark);font-size:9px;font-weight:600;}
 .ph-hero__pill::before{content:"";width:5px;height:5px;border-radius:999px;background:var(--olive);}
 .ph-section{font-size:11px;font-weight:600;color:var(--fg);margin:6px 16px;}
@@ -925,4 +930,5 @@ const LP_CSS = `
 .ph-tab{margin-top:6px;padding:8px 0 10px;border-top:1px solid var(--border);background:#fff;display:grid;grid-template-columns:repeat(3,1fr);}
 .ph-tab__item{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:8px;color:var(--fg-muted);}
 .ph-tab__item.active{color:var(--olive-dark);font-weight:600;}
+@media(max-width:360px){.lp-phone{width:288px;height:576px;border-radius:38px;padding:12px;}.lp-phone__inner{border-radius:28px;}.lp-phone__notch{width:78px;height:19px;}.ph-head{padding:32px 14px 7px;}.ph-hero{margin:4px 12px 8px;padding:14px;}.ph-hero__date{font-size:17px;}.ph-hero__copy{font-size:10px;line-height:1.48;}.ph-grid{margin:0 12px 10px;}.ph-agents{margin:0 12px 10px;}.ph-cta{margin:0 12px;padding:10px 12px;}}
 `;
