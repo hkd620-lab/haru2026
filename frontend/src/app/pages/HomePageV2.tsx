@@ -15,6 +15,7 @@ const HIDDEN_AGENT_LABELS = new Set([
   '📦 HARU 기록탐정',
   '명작탐정비서',
   '나도작가',
+  '영어성경',
 ]);
 
 const FONT_KR =
