@@ -5,14 +5,28 @@ import { toast } from 'sonner';
 import { GrapeAnimation } from '../components/GrapeAnimation';
 import { useAuth } from '../contexts/AuthContext';
 import HaruNewsPreview from '../components/HaruNewsPreview';
+import { InAppBrowserLoginGuide } from '../components/InAppBrowserLoginGuide';
+import { getInAppBrowserInfo, type InAppBrowserInfo } from '../utils/inAppBrowser';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const { googleSignIn } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [inAppBrowserGuide, setInAppBrowserGuide] = useState<InAppBrowserInfo | null>(null);
+
+  const guardInAppBrowserLogin = () => {
+    const info = getInAppBrowserInfo();
+    if (info.isInAppBrowser) {
+      setIsLoading(false);
+      setInAppBrowserGuide(info);
+      return true;
+    }
+    return false;
+  };
 
   // Google 로그인 - dev: Firebase SDK popup / prod: Cloud Functions 흐름
   const handleGoogleLogin = async () => {
+    if (guardInAppBrowserLogin()) return;
     setIsLoading(true);
     if (import.meta.env.DEV) {
       try {
@@ -32,6 +46,7 @@ export function LoginPage() {
 
   // 카카오 로그인
   const handleKakaoLogin = () => {
+    if (guardInAppBrowserLogin()) return;
     setIsLoading(true);
     setTimeout(() => {
       window.location.href = 'https://kakaologinstart-6ieesxet3q-du.a.run.app';
@@ -40,6 +55,7 @@ export function LoginPage() {
 
   // 네이버 로그인
   const handleNaverLogin = () => {
+    if (guardInAppBrowserLogin()) return;
     setIsLoading(true);
     setTimeout(() => {
       window.location.href = 'https://naverloginstart-6ieesxet3q-du.a.run.app';
@@ -48,6 +64,11 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#EDE9F5', overflowY: 'auto' }}>
+      <InAppBrowserLoginGuide
+        open={Boolean(inAppBrowserGuide)}
+        browserInfo={inAppBrowserGuide}
+        onClose={() => setInAppBrowserGuide(null)}
+      />
       {isLoading && (
         <div
           className="fixed inset-0 z-50 flex flex-col items-center justify-center"
