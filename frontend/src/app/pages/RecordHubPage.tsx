@@ -138,7 +138,7 @@ export function RecordHubPage() {
             }}
           >
             {workRecords
-              .filter(({ format }) => isDeveloper || !HIDDEN_RECORD_FORMATS.has(format))
+              .filter(({ format }) => !HIDDEN_RECORD_FORMATS.has(format))
               .map(({ label, format }) => (
               <button
                 key={label}
@@ -163,7 +163,7 @@ export function RecordHubPage() {
             }}
           >
             {knowledgeCards
-              .filter((card) => isDeveloper || !HIDDEN_CARD_LABELS.has(card.label))
+              .filter((card) => !HIDDEN_CARD_LABELS.has(card.label))
               .map((card) => (
               <button
                 key={card.label}

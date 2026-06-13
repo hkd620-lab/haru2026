@@ -294,7 +294,7 @@ export function HomePage() {
               }}
             >
               {recordCards
-                .filter((card) => isDeveloper || !HIDDEN_RECORD_FORMATS.has(card.format))
+                .filter((card) => !HIDDEN_RECORD_FORMATS.has(card.format))
                 .map((card) => (
                 <button
                   key={card.label}
@@ -322,7 +322,7 @@ export function HomePage() {
               }}
             >
               {secretaryCards
-                .filter((card) => isDeveloper || !HIDDEN_SECRETARY_LABELS.has(card.label))
+                .filter((card) => !HIDDEN_SECRETARY_LABELS.has(card.label))
                 .map((card) => (
                 <button
                   key={card.label}
