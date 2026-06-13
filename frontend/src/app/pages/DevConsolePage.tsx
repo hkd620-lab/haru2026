@@ -111,6 +111,13 @@ const DEV_TOOLS: DevTool[] = [
     path: '/novel-studio',
     color: '#B85C2E',
   },
+  {
+    icon: '📖',
+    label: '영어성경',
+    description: '듣기·말하기·해석·단어·문법 — 홈 비노출',
+    path: '/bible',
+    color: '#B85C2E',
+  },
 ];
 
 export function DevConsolePage() {
