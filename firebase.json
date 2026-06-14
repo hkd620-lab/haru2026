@@ -39,6 +39,14 @@
     ],
     "rewrites": [
       {
+        "source": "/welcome",
+        "destination": "/welcome/index.html"
+      },
+      {
+        "source": "/welcome-thumb.png",
+        "destination": "/welcome-thumb.png"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
