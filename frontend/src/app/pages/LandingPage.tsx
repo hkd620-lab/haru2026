@@ -215,9 +215,9 @@ function HaruPhone() {
             <div className="ph-hero__cap">GOOD MORNING</div>
             <div className="ph-hero__date">오늘도 편하게 기록해볼까요?</div>
             <p className="ph-hero__copy">
-              생각나는 대로 편하게 기록하세요.<br />
-              HARU가 당신의 기록을<br />
-              자서전과 미래전망으로 이어줍니다.
+              <span className="ph-copy__line">HARU2026은 구독자님의 흩어진 기록을 하나로 엮어</span>
+              <span className="ph-copy__line">자서전과 1·5·10년 후 미래전망으로 생성해 드립니다.</span>
+              <span className="ph-copy__line">원본을 살린 분류·통계·텍스트 마이닝까지, HARU2026이 함께합니다.</span>
             </p>
           </div>
 
@@ -938,11 +938,13 @@ const LP_CSS = `
 .ph-hero__cap{font-family:var(--lp-en);font-size:9px;font-weight:500;letter-spacing:3px;color:var(--fg-muted);text-transform:uppercase;position:relative;}
 .ph-hero__date{font-size:19px;font-weight:700;letter-spacing:0;color:var(--fg);margin-top:5px;line-height:1.25;position:relative;}
 .ph-hero__copy{position:relative;margin:9px 0 0;color:var(--fg-2);font-size:11px;font-weight:500;line-height:1.52;}
+.ph-copy__line{display:block;width:128%;white-space:nowrap;transform:scaleX(0.78);transform-origin:left center;}
 .ph-hero__pill{margin-top:8px;display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;background:var(--green-light);color:var(--olive-dark);font-size:9px;font-weight:600;}
 .ph-hero__pill::before{content:"";width:5px;height:5px;border-radius:999px;background:var(--olive);}
 .ph-section{font-size:11px;font-weight:600;color:var(--fg);margin:6px 16px;}
-.ph-grid{margin:0 14px 12px;display:grid;grid-template-columns:repeat(4,1fr);gap:5px;}
-.ph-cell{background:#fff;border:1px solid var(--border);border-radius:12px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.ph-grid{margin:0 14px 12px;display:flex;flex-direction:row;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+.ph-grid::-webkit-scrollbar{display:none;}
+.ph-cell{flex:0 0 68px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:4px;}
 .ph-cell__ico{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;}
 .ph-cell__lbl{font-size:8px;font-weight:500;color:var(--fg);}
 .ph-agents{margin:0 14px 12px;display:grid;grid-template-columns:1fr 1fr;gap:6px;}
