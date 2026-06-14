@@ -63,9 +63,11 @@ export function InAppBrowserLoginGuide({ open, browserInfo, onClose }: InAppBrow
           기본 브라우저에서 열어주세요
         </h2>
         <p style={{ margin: '12px 0 0', color: '#5F5749', fontSize: 14, lineHeight: 1.65 }}>
-          소셜 로그인은 카카오톡 같은 앱 안의 브라우저에서 제한될 수 있습니다.
-          <br />
-          오른쪽 위 메뉴를 눌러 Safari 또는 Chrome에서 다시 열어주세요.
+          소셜 로그인은 카카오톡 내 브라우저에서 제한됩니다.
+          {browserInfo?.isIOS
+            ? <><br />화면 하단 또는 오른쪽 위 <strong>···</strong> 메뉴 → <strong>Safari로 열기</strong>를 눌러주세요.</>
+            : <><br />아래 버튼으로 Chrome에서 여시거나, 주소를 복사해 Chrome·기본 브라우저에 붙여넣어 주세요.</>
+          }
         </p>
         {browserInfo?.appName && (
           <p style={{ margin: '10px 0 0', color: '#888780', fontSize: 12, lineHeight: 1.5 }}>
@@ -105,7 +107,7 @@ export function InAppBrowserLoginGuide({ open, browserInfo, onClose }: InAppBrow
               cursor: 'pointer',
             }}
           >
-            {copied ? '주소가 복사됐습니다' : '주소 복사하기'}
+            {copied ? '복사됨 — Chrome·Safari에 붙여넣어 주세요' : '주소 복사하기'}
           </button>
           <button
             type="button"
