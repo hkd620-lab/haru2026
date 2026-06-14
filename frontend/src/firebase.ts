@@ -25,8 +25,14 @@ export const db = initializeFirestore(app, {
 export const functions = getFunctions(app, 'asia-northeast3');
 export const storage = getStorage(app);
 
-// 🔔 Firebase Messaging 인스턴스 (SW 등록은 notificationService에서 명시적으로 처리)
-export const messaging = getMessaging(app);
+// 🔔 Firebase Messaging 인스턴스 — WKWebView 등 미지원 환경에서 getMessaging()이 예외를 던지는 것을 방지
+// isSupported() 확인 후에만 초기화하고, 그 전까지는 null 유지
+export let messaging: ReturnType<typeof getMessaging> | null = null;
+isSupported().then((supported) => {
+  if (supported) messaging = getMessaging(app);
+}).catch(() => {
+  // 지원하지 않는 환경(iOS WKWebView 등)에서는 null 그대로 유지
+});
 
 const aiLibraryConfig = {
   apiKey: import.meta.env.VITE_AI_LIBRARY_FIREBASE_API_KEY,
