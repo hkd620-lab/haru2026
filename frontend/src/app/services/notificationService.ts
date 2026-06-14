@@ -1,4 +1,4 @@
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
 import { doc, setDoc, updateDoc, getDoc, arrayRemove } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
@@ -51,6 +51,9 @@ export async function cleanupDuplicateTokens(userId: string): Promise<void> {
 
 export async function requestNotificationPermission(userId: string): Promise<boolean> {
   try {
+    const supported = await isSupported();
+    if (!supported) return false;
+
     const permission = await Notification.requestPermission();
 
     if (permission !== 'granted') {
@@ -158,17 +161,19 @@ export async function removeCurrentToken(userId: string): Promise<void> {
 
 // 포그라운드 메시지 수신 리스너 (앱이 켜져 있을 때)
 export function setupForegroundMessageListener(): void {
-  const messaging = getMessaging();
-  onMessage(messaging, (payload) => {
-    console.log('[FCM] 포그라운드 메시지 수신:', payload);
-    
-    const { title, body } = payload.notification || {};
-    if (Notification.permission === 'granted' && title) {
-      new Notification(title, {
-        body: body,
-        icon: '/favicon.ico', // 아이콘 경로 확인 필요
-      });
-    }
-  });
+  isSupported().then((supported) => {
+    if (!supported) return;
+    const messaging = getMessaging();
+    onMessage(messaging, (payload) => {
+      console.log('[FCM] 포그라운드 메시지 수신:', payload);
+      const { title, body } = payload.notification || {};
+      if (Notification.permission === 'granted' && title) {
+        new Notification(title, {
+          body: body,
+          icon: '/favicon.ico',
+        });
+      }
+    });
+  }).catch(() => {});
 }
 
