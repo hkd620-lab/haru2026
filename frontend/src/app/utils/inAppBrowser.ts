@@ -6,7 +6,9 @@ export type InAppBrowserInfo = {
 };
 
 const IN_APP_RULES: Array<{ name: string; pattern: RegExp }> = [
-  { name: '카카오톡', pattern: /KAKAOTALK/i },
+  // KAKAOTALK/i : 구버전 대문자(KAKAOTALK), 신버전 혼합(KakaoTalk) 모두 매칭
+  // com\.kakao\.talk : 일부 Android 기기에서 패키지명이 UA에 포함되는 변형 대응
+  { name: '카카오톡', pattern: /KAKAOTALK|com\.kakao\.talk/i },
   { name: '네이버', pattern: /NAVER|NAVER\(inapp/i },
   { name: '라인', pattern: /Line\//i },
   { name: '인스타그램', pattern: /Instagram/i },
@@ -57,5 +59,7 @@ export function openCurrentPageInChrome() {
   if (typeof window === 'undefined') return;
   const { protocol, host, pathname, search, hash } = window.location;
   const scheme = protocol.replace(':', '') || 'https';
-  window.location.href = `intent://${host}${pathname}${search}${hash}#Intent;scheme=${scheme};package=com.android.chrome;end`;
+  const fullUrl = `${scheme}://${host}${pathname}${search}${hash}`;
+  // S.browser_fallback_url: Chrome 미설치 단말에서 기본 브라우저로 폴백
+  window.location.href = `intent://${host}${pathname}${search}${hash}#Intent;scheme=${scheme};package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(fullUrl)};end`;
 }
