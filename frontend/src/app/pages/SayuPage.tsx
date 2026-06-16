@@ -1124,7 +1124,7 @@ export function SayuPage() {
           sourceLabel,
           target?.aiPrediction,
           target?.englishName,
-          target?.confidence ? `신뢰도 ${target.confidence}` : '',
+          target?.confidence ? `PlantNet 신뢰도 ${target.confidence}` : '',
         ].filter((value) => String(value || '').trim()).join(' · ');
         return {
           ...prev,
@@ -1137,7 +1137,7 @@ export function SayuPage() {
             : prev.summary,
           coreFields: filterPlantInfoFields([
             { label: '사용자 확정명', value: confirmedName || updatedTitle },
-            { label: 'AI 판독명', value: aiName },
+            { label: 'PlantNet 판독명', value: aiName },
             { label: '학명', value: scientificName },
             { label: '기록일', value: formatKoreanDate(record.date) },
           ]),
@@ -1174,6 +1174,55 @@ export function SayuPage() {
       }
     } finally {
       setPlantDetectivePhotoBusy(false);
+    }
+  };
+
+  const handleDeletePlantDetectivePhoto = async (recordId: string, idx: number, imageUrl: string) => {
+    if (!user?.uid) { toast.error('로그인이 필요합니다.'); return; }
+    if (!window.confirm('이 사진을 삭제할까요?\n삭제하면 현재 식물탐정 기록에서 이 사진이 제외됩니다.')) return;
+
+    const record = records.find((r) => r.id === recordId);
+    const current = Array.isArray((record as any)?.plantDetective)
+      ? [...((record as any).plantDetective as any[])]
+      : [];
+    const target = current[idx] ? { ...current[idx] } : null;
+    if (!target) { toast.error('해당 판독 기록을 찾을 수 없습니다.'); return; }
+
+    const currentUrls: string[] = [];
+    const addUrl = (value: any) => {
+      const url = typeof value === 'string' ? value.trim() : '';
+      if (url && url.startsWith('http') && !currentUrls.includes(url)) currentUrls.push(url);
+    };
+    addUrl(target.imageUrl);
+    if (Array.isArray(target.imageUrls)) target.imageUrls.forEach(addUrl);
+    if (currentUrls.length <= 1) return;
+
+    const nextImageUrls = currentUrls.filter((url) => url !== imageUrl);
+    if (nextImageUrls.length === currentUrls.length) return;
+
+    target.imageUrls = nextImageUrls;
+    target.imageUrl = nextImageUrls[0] || '';
+    target.updatedAt = Date.now();
+
+    const next = [...current];
+    next[idx] = target;
+    try {
+      await updateDoc(doc(db, 'users', user.uid, 'records', recordId), { plantDetective: next });
+      setRecords((prev) =>
+        prev.map((r) => (r.id === recordId ? ({ ...r, plantDetective: next } as HaruRecord) : r)),
+      );
+      setPlantReadOnlyDetail((prev) => {
+        if (!prev || prev.recordId !== recordId || prev.entryIdx !== idx) return prev;
+        return {
+          ...prev,
+          imageUrl: prev.imageUrl === imageUrl ? nextImageUrls[0] : prev.imageUrl,
+          imageUrls: nextImageUrls,
+        };
+      });
+      toast.success('사진을 현재 식물탐정 기록에서 제외했습니다.');
+    } catch (error) {
+      console.error('식물 판독 사진 삭제 실패:', error);
+      toast.error('사진 삭제에 실패했습니다.');
     }
   };
 
@@ -3016,7 +3065,7 @@ export function SayuPage() {
           sourceLabel,
           entry?.aiPrediction,
           entry?.englishName,
-          entry?.confidence ? `신뢰도 ${entry.confidence}` : '',
+          entry?.confidence ? `PlantNet 신뢰도 ${entry.confidence}` : '',
         ].filter((value) => String(value || '').trim()).join(' · ');
         const detectiveImageUrls: string[] = (() => {
           const urls: string[] = [];
@@ -3040,7 +3089,7 @@ export function SayuPage() {
           summary: '이 기록은 식물탐정이 판독하고 사용자가 확정한 식물 기록입니다.',
           coreFields: [
             { label: '사용자 확정명', value: confirmedName || title },
-            { label: 'AI 판독명', value: aiName },
+            { label: 'PlantNet 판독명', value: aiName },
             { label: '학명', value: scientificName },
             { label: '기록일', value: formatKoreanDate(record.date) },
           ],
@@ -4579,19 +4628,80 @@ export function SayuPage() {
               && plantReadOnlyDetail.recordId
               && typeof plantReadOnlyDetail.entryIdx === 'number' && (
               <section style={{ borderRadius: 14, border: '1px solid #d1fae5', backgroundColor: '#f0fdf4', padding: 14, marginBottom: 14 }}>
-                <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 900, color: '#166534' }}>사진</p>
-                {Array.isArray(plantReadOnlyDetail.imageUrls) && plantReadOnlyDetail.imageUrls.length > 0 && (
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-                    {plantReadOnlyDetail.imageUrls.map((url, i) => (
-                      <img
-                        key={`${url}_${i}`}
-                        src={url}
-                        alt={`판독 사진 ${i + 1}`}
-                        style={{ width: 64, height: 64, borderRadius: 8, objectFit: 'cover', border: '1px solid #bbf7d0', flexShrink: 0 }}
-                      />
-                    ))}
-                  </div>
-                )}
+                {(() => {
+                  const detectiveImages = (Array.isArray(plantReadOnlyDetail.imageUrls) ? plantReadOnlyDetail.imageUrls : [])
+                    .map((url) => String(url || '').trim())
+                    .filter((url, index, arr) => url.startsWith('http') && arr.indexOf(url) === index);
+                  return (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+                        <p style={{ margin: 0, fontSize: 12, fontWeight: 900, color: '#166534' }}>현재 판독 사진</p>
+                        <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: '#047857' }}>
+                          판독에 사용된 사진 {detectiveImages.length}장
+                        </p>
+                      </div>
+                      {detectiveImages.length > 0 && (
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: plantDetailIsWide ? 'repeat(3, minmax(0, 1fr))' : 'repeat(2, minmax(0, 1fr))',
+                            gap: 8,
+                            marginBottom: 12,
+                          }}
+                        >
+                          {detectiveImages.map((url, i) => (
+                            <div
+                              key={`${url}_${i}`}
+                              style={{
+                                position: 'relative',
+                                aspectRatio: '1 / 1',
+                                borderRadius: 8,
+                                overflow: 'hidden',
+                                border: '1px solid #bbf7d0',
+                                backgroundColor: '#fff',
+                              }}
+                            >
+                              <img
+                                src={url}
+                                alt={`판독 사진 ${i + 1}`}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                              />
+                              {detectiveImages.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeletePlantDetectivePhoto(
+                                    plantReadOnlyDetail.recordId || '',
+                                    plantReadOnlyDetail.entryIdx as number,
+                                    url,
+                                  )}
+                                  style={{
+                                    position: 'absolute',
+                                    top: 6,
+                                    right: 6,
+                                    minWidth: 28,
+                                    height: 28,
+                                    borderRadius: 999,
+                                    border: '1px solid rgba(255,255,255,0.85)',
+                                    backgroundColor: 'rgba(17,24,39,0.82)',
+                                    color: '#fff',
+                                    fontSize: 14,
+                                    fontWeight: 900,
+                                    lineHeight: 1,
+                                    cursor: 'pointer',
+                                  }}
+                                  aria-label={`판독 사진 ${i + 1} 삭제`}
+                                  title="삭제"
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
                 <input
                   ref={plantDetectivePhotoInputRef}
                   type="file"
@@ -4623,7 +4733,7 @@ export function SayuPage() {
                     cursor: plantDetectivePhotoBusy ? 'wait' : 'pointer',
                   }}
                 >
-                  {plantDetectivePhotoBusy ? '재탐색 중...' : '사진 추가 후 재탐색'}
+                  {plantDetectivePhotoBusy ? '다시 판독 중...' : '사진 추가 · 다시 판독'}
                 </button>
                 <p style={{ margin: '9px 0 0', fontSize: 11, color: '#6B7280' }}>
                   새 사진은 기존 판독 사진과 함께 다시 분석되어 해당 기록에 반영됩니다.
