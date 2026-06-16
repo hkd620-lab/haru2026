@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom';
 export function BusinessInfoPage() {
   const navigate = useNavigate();
   const rows = [
+    { label: '상호명', value: '하루랩 (HaruLab)' },
     { label: '서비스명', value: 'HARU2026' },
-    { label: '운영', value: '조이L허경대 (베타)' },
-    { label: '기획·개발', value: '허경대' },
-    { label: '정식 등록', value: '준비 중' },
-    { label: '주소', value: '서울특별시 구로구 디지털로31길 41, 611-2-4호(구로동, 이앤씨벤처드림타워6차)' },
-    { label: '연락처', value: '0502-1916-8643' },
-    { label: '이메일', value: 'hkd620@gmail.com' },
+    { label: '대표자', value: '허경대' },
+    { label: '사업자등록번호', value: '354-23-02490' },
+    { label: '사업장 주소', value: '서울특별시 구로구 구로동' },
+    { label: '연락처', value: '050219336740' },
+    { label: '이메일', value: 'harul2026lab@gmail.com' },
+    { label: '통신판매업 신고번호', value: '확인 후 추가 예정' },
     { label: '서비스 URL', value: 'https://haru2026.com' },
   ];
 

@@ -92,6 +92,10 @@ const HARU_DRIVE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfun
 const ONEDRIVE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/oneDriveCallback';
 const ONEDRIVE_OAUTH_SCOPE = 'offline_access Files.ReadWrite User.Read';
 const db = admin.firestore();
+const SUBSCRIPTION_PLANS = {
+    3500: 'basic',
+    5000: 'premium',
+};
 function getSafeOAuthError(error) {
     var _a, _b;
     if (axios_1.default.isAxiosError(error)) {
@@ -2245,7 +2249,7 @@ async function buildGrowthTimelinePdfBuffer(payload) {
             else {
                 doc.roundedRect(margin, margin, pageWidth - margin * 2, 420, 12).fill('#f1f4f7');
             }
-            doc.fillColor(brandColor).fontSize(12).text('HARU Timeline · by JOYEL', margin, 500, {
+            doc.fillColor(brandColor).fontSize(12).text('HARU Timeline · by HaruLab', margin, 500, {
                 width: pageWidth - margin * 2,
             });
             doc.fillColor(brandColor).fontSize(28).text(payload.title, margin, 526, {
@@ -2408,10 +2412,11 @@ exports.verifyPayment = (0, https_2.onCall)({ region: 'asia-northeast3', secrets
     if (payment.status !== 'PAID') {
         throw new https_2.HttpsError('failed-precondition', '결제가 완료되지 않았습니다.');
     }
-    // 금액 검증 (월 3,000원 고정)
+    // 금액 검증 (베이직 3,500원 / 프리미엄 5,000원)
     const paidAmount = (_c = (_b = payment.amount) === null || _b === void 0 ? void 0 : _b.total) !== null && _c !== void 0 ? _c : payment.totalAmount;
-    if (paidAmount !== 3000) {
-        logger.error(`금액 불일치: 기대 3000, 실제 ${paidAmount}`);
+    const plan = SUBSCRIPTION_PLANS[paidAmount];
+    if (!plan) {
+        logger.error(`금액 불일치: 기대 3500 또는 5000, 실제 ${paidAmount}`);
         throw new https_2.HttpsError('invalid-argument', '결제 금액이 올바르지 않습니다.');
     }
     // 중복 처리 방지
@@ -2425,7 +2430,7 @@ exports.verifyPayment = (0, https_2.onCall)({ region: 'asia-northeast3', secrets
     const endDate = new Date();
     endDate.setMonth(endDate.getMonth() + 1);
     await subRef.set({
-        plan: 'premium',
+        plan,
         startDate: now.toISOString(),
         endDate: endDate.toISOString(),
         paymentId,
@@ -4043,20 +4048,31 @@ ${mandatoryBlock ? mandatoryBlock + '\n\n' : ''}${type === 'story'
         }
         else {
             const motiveLabel = motiveCustom || motive;
+            const eventsStr = Array.isArray(events) && events.length > 0
+                ? events.map((e) => `${e.isCore ? '[핵심] ' : ''}${e.title}${e.timing ? `(${e.timing})` : ''}${e.impact ? ': ' + e.impact : ''}`).join(' / ')
+                : '';
+            const charsStr = Array.isArray(chars) && chars.length > 0
+                ? chars.map((c) => { var _a, _b, _c; return `${c.name || c.role}(${c.role})${((_a = c.personalities) === null || _a === void 0 ? void 0 : _a.length) ? ' — ' + c.personalities.join(', ') : ''}${((_b = c.desires) === null || _b === void 0 ? void 0 : _b.length) ? ' / 욕망: ' + c.desires.join(', ') : ''}${((_c = c.shackles) === null || _c === void 0 ? void 0 : _c.length) ? ' / 족쇄: ' + c.shackles.join(', ') : ''}`; }).join('\n')
+                : '';
             userPrompt = `
+[창작 모드]: 사전설정 창작
 [예언 모티브]: ${motiveLabel}
-[인물 설정]: ${JSON.stringify(chars || [])}
+[시간 배경]: ${timeOption || '3년 후'}
 [탄생 배경]: ${birth || ''}
-[욕망]: ${desire || ''}
+[핵심 욕망]: ${desire || ''}
 [족쇄]: ${shackle || ''}
-[사건]: ${JSON.stringify(events || [])}
-[운]: ${luck || ''}
+[주요 사건]: ${eventsStr || ''}
+[운의 전환점]: ${luck || ''}
 [불운]: ${unluck || ''}
 [서사 스타일]: ${narrative || ''}
+[등장인물]:
+${charsStr}
 
+위 설정을 바탕으로 ${timeOption || '3년 후'}의 이야기를 예언 소설 형식으로 작성해주세요.
+욕망과 족쇄의 긴장이 이야기를 이끌어야 합니다. 주인공이 족쇄를 극복하며 욕망에 다가가는 과정을 생생하게 그려주세요.
 ${type === 'story'
-                ? '위 설정을 바탕으로 A4 5페이지 분량(4000~6000자)의 이야기를 소설 형식으로 작성해주세요.'
-                : '위 설정을 바탕으로 A4 1페이지 분량(800~1200자)의 시놉시스를 작성해주세요.'}
+                ? 'A4 5페이지 분량(4000~6000자). 기승전결 구조로 작성.'
+                : 'A4 1페이지 분량(800~1200자)의 시놉시스. 핵심 줄거리만 간결하게.'}
 `;
         }
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());

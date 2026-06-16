@@ -6,7 +6,7 @@ import { InAppBrowserLoginGuide } from '../components/InAppBrowserLoginGuide';
 import { getInAppBrowserInfo, type InAppBrowserInfo } from '../utils/inAppBrowser';
 
 /* ────────────────────────────────────────────────────────────
-   HARU by JOYEL — 랜딩 (CD "Reposeful" 디자인 핸드오프 구현)
+   HARU by HaruLab — 랜딩 (CD "Reposeful" 디자인 핸드오프 구현)
    · 디자인: 색·타이포·레이아웃은 CD 시안 기준
    · 데이터: 형식·비서실은 실제 앱 기준 (역할·숫자 정확)
    · 로그인/Firestore/Functions/라우터는 건드리지 않음
@@ -102,15 +102,15 @@ const HERO_FLOW = [
 
 const PRICING = [
   {
-    plan: 'LIGHT', price: '₩4,000', period: '/월',
-    note: '기록하고 정리하는 기본 구독 · AI 비서 월 10회',
-    bullets: ['목적별 기록 형식', 'SAYU BASIC 다듬기', '통계 · 합본'],
+    plan: '베이직', price: '₩3,500', period: '/월',
+    note: '기록하고 정리하는 기본 구독',
+    bullets: ['12종 기록 형식', 'SAYU AI 다듬기', '기록 저장 및 조회'],
     highlight: false, badge: '',
   },
   {
-    plan: 'PREMIUM', price: '₩5,000', period: '/월',
-    note: '기록을 해석하고 활용하는 확장 구독 · AI 비서 일 2회 / 월 40회',
-    bullets: ['LIGHT 모든 기능', '전문 AI 비서실', 'SAYU PREMIUM'],
+    plan: '프리미엄', price: '₩5,000', period: '/월',
+    note: '기록을 해석하고 활용하는 확장 구독',
+    bullets: ['베이직 모든 기능', 'SAYU PDF 저장', '월간/분기/연간 통계'],
     highlight: true, badge: 'RECOMMENDED',
   },
 ];
@@ -201,7 +201,7 @@ function HaruPhone() {
               <div className="ph-mark"><GrapeMark size={16} color="#F5F0E8" accent={C.peach} /></div>
               <div className="ph-titleblock">
                 <div className="ph-title">HARU</div>
-                <div className="ph-by">BY JOYEL</div>
+                <div className="ph-by">BY HaruLab</div>
               </div>
             </div>
             <div style={{ width: 28, height: 28, borderRadius: 999, border: `1px solid ${C.border}`, background: '#fff', display: 'grid', placeItems: 'center', color: C.fg2 }}>
@@ -370,7 +370,7 @@ export function LandingPage() {
             <div className="lp-nav__mark"><GrapeMark size={20} color={C.bg} accent={C.peach} /></div>
             <div>
               <div className="lp-nav__name">HARU</div>
-              <div className="lp-nav__by">BY JOYEL</div>
+              <div className="lp-nav__by">BY HaruLab</div>
             </div>
           </a>
           <div className="lp-nav__links">
@@ -636,7 +636,7 @@ export function LandingPage() {
                 HARU는 글재주를 다투는 도구가 아니라, 평생 쌓아온 자신의 이야기를
                 제 자리에 모아두는 도구입니다."
               </p>
-              <div className="lp-creator__sig">— 주식회사 조이엘 (JOYEL Inc.) · 창립자 노트</div>
+              <div className="lp-creator__sig">— 하루랩 (HaruLab) · 창립자 노트</div>
             </div>
           </div>
         </div>
@@ -661,7 +661,7 @@ export function LandingPage() {
                       <li key={b}><Icon name="check" size={15} color={p.highlight ? C.peach : C.olive} sw={2.2} />{b}</li>
                     ))}
                   </ul>
-                  <button className="lp-btn lp-btn--primary" style={{ width: '100%' }} onClick={goToLogin}>7일 무료 체험 시작</button>
+                  <button className="lp-btn lp-btn--primary" style={{ width: '100%' }} onClick={() => window.location.href = '/subscription'}>구독 시작</button>
                 </div>
               ))}
             </div>
