@@ -666,9 +666,15 @@ export function SayuPage() {
   const isDeveloper = user?.uid === DEVELOPER_UID;
 
   // HARUraw modal
-  const [harurawModal, setHarurawModal] = useState<{ isOpen: boolean; query: string; summary: string; articles: string; }>({
-    isOpen: false, query: '', summary: '', articles: '',
+  const [harurawModal, setHarurawModal] = useState<{ isOpen: boolean; query: string; summary: string; articles: string; recordId: string; shareStatus: string; }>({
+    isOpen: false, query: '', summary: '', articles: '', recordId: '', shareStatus: '',
   });
+  const [haruLawShareState, setHaruLawShareState] = useState<{
+    step: 'idle' | 'loading' | 'preview' | 'publishing';
+    previewId?: string;
+    preview?: { title: string; anonymizedQuestion: string; summary: string; judgmentType: string; relatedStatutes: { title: string; article: string; easySummary: string }[]; disclaimer?: string };
+    expiresAt?: string;
+  }>({ step: 'idle' });
 
   // 생활/업무 per-format pagination: maps "formatKey_categoryKey" -> page number
   const [formatPages, setFormatPages] = useState<Record<string, number>>({});
@@ -2085,7 +2091,10 @@ export function SayuPage() {
         query: (record as any).haruraw_query || '',
         summary: (record as any).haruraw_summary || '',
         articles: (record as any).haruraw_articles || '',
+        recordId: record.id,
+        shareStatus: (record as any).haruLawShareStatus || '',
       });
+      setHaruLawShareState({ step: 'idle' });
       return;
     }
 
@@ -2360,6 +2369,59 @@ export function SayuPage() {
       }
     } finally {
       setSharingRecordId(null);
+    }
+  };
+
+  // 하루LAW 익명 공유: 미리보기 생성
+  const handleHaruLawSharePreview = async () => {
+    if (!user?.uid) { toast.error('로그인이 필요합니다.'); return; }
+    const { recordId } = harurawModal;
+    if (!recordId) return;
+    setHaruLawShareState({ step: 'loading' });
+    try {
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const fn = httpsCallable<{ sourceRecordId: string }, { previewId: string; preview: any; expiresAt: string }>(fns, 'prepareHaruLawSharePreview');
+      const res = await fn({ sourceRecordId: recordId });
+      setHaruLawShareState({ step: 'preview', previewId: res.data.previewId, preview: res.data.preview, expiresAt: res.data.expiresAt });
+    } catch (err: any) {
+      setHaruLawShareState({ step: 'idle' });
+      toast.error(String(err?.message || '미리보기 생성에 실패했습니다.'));
+    }
+  };
+
+  // 하루LAW 익명 공유: 공유 신청 확정
+  const handleHaruLawPublish = async () => {
+    if (!user?.uid || !haruLawShareState.previewId) return;
+    setHaruLawShareState(prev => ({ ...prev, step: 'publishing' }));
+    try {
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const fn = httpsCallable<{ previewId: string }, { cardId: string; status: string; message: string }>(fns, 'publishHaruLawSharedCard');
+      const res = await fn({ previewId: haruLawShareState.previewId! });
+      setHarurawModal(prev => ({ ...prev, shareStatus: res.data.status }));
+      setRecords(prev => prev.map(r => r.id === harurawModal.recordId ? { ...r, haruLawShareStatus: res.data.status } : r));
+      setHaruLawShareState({ step: 'idle' });
+      toast.success(res.data.message);
+    } catch (err: any) {
+      setHaruLawShareState({ step: 'idle' });
+      toast.error(String(err?.message || '공유 신청에 실패했습니다.'));
+    }
+  };
+
+  // 하루LAW 익명 공유: 공유 취소
+  const handleHaruLawUnpublish = async () => {
+    if (!user?.uid) return;
+    const { recordId } = harurawModal;
+    if (!recordId) return;
+    if (!window.confirm('익명 공유를 취소하면 함께보기에서 내려갑니다.')) return;
+    try {
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const fn = httpsCallable<{ sourceRecordId: string }, { cardId: string; status: string }>(fns, 'unpublishHaruLawSharedCard');
+      await fn({ sourceRecordId: recordId });
+      setHarurawModal(prev => ({ ...prev, shareStatus: 'withdrawn' }));
+      setRecords(prev => prev.map(r => r.id === recordId ? { ...r, haruLawShareStatus: 'withdrawn' } : r));
+      toast.success('익명 공유가 취소되었습니다.');
+    } catch (err: any) {
+      toast.error(String(err?.message || '공유 취소에 실패했습니다.'));
     }
   };
 
@@ -4855,7 +4917,7 @@ export function SayuPage() {
       {/* HARUraw 모달 */}
       {harurawModal.isOpen && (
         <div
-          onClick={() => setHarurawModal({ isOpen: false, query: '', summary: '', articles: '' })}
+          onClick={() => { setHarurawModal({ isOpen: false, query: '', summary: '', articles: '', recordId: '', shareStatus: '' }); setHaruLawShareState({ step: 'idle' }); }}
           style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 12px' }}
         >
           <div
@@ -4864,7 +4926,7 @@ export function SayuPage() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E', display: 'flex', alignItems: 'center', gap: 6 }}><Scale className="w-4 h-4" /> 하루LAW 분석 기록</p>
-              <button onClick={() => setHarurawModal({ isOpen: false, query: '', summary: '', articles: '' })}
+              <button onClick={() => { setHarurawModal({ isOpen: false, query: '', summary: '', articles: '', recordId: '', shareStatus: '' }); setHaruLawShareState({ step: 'idle' }); }}
                 style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#999' }}>✕</button>
             </div>
             {(() => {
@@ -4939,12 +5001,106 @@ export function SayuPage() {
                     </ul>
                   </div>
 
-                  <div style={{ ...sectionStyle, backgroundColor: '#FFFBEB', borderColor: '#FDE68A', marginBottom: 0 }}>
+                  <div style={{ ...sectionStyle, backgroundColor: '#FFFBEB', borderColor: '#FDE68A', marginBottom: 12 }}>
                     <p style={labelStyle}>주의사항</p>
                     <p style={{ fontSize: 12, color: '#92400E', lineHeight: 1.7, margin: 0 }}>
                       본 내용은 법령 정보 제공 목적이며, 전문적인 법률 자문을 대체하지 않습니다. 구체적인 사건은 관련 자료를 가지고 전문가 상담을 받으시기 바랍니다.
                     </p>
                   </div>
+
+                  {/* 하루LAW PREMIUM 익명 공유 */}
+                  {(isPremium || isDeveloper) && (() => {
+                    const ss = harurawModal.shareStatus;
+                    const active = ss === 'pending' || ss === 'published';
+
+                    if (haruLawShareState.step === 'loading') {
+                      return (
+                        <div style={{ ...sectionStyle, backgroundColor: '#F0F4FF', borderColor: '#C7D9F8', marginBottom: 0, textAlign: 'center' }}>
+                          <p style={{ fontSize: 13, color: '#1A3C6E', margin: 0 }}>개인정보 익명화 중... (약 20~40초)</p>
+                        </div>
+                      );
+                    }
+
+                    if (haruLawShareState.step === 'publishing') {
+                      return (
+                        <div style={{ ...sectionStyle, backgroundColor: '#F0F4FF', borderColor: '#C7D9F8', marginBottom: 0, textAlign: 'center' }}>
+                          <p style={{ fontSize: 13, color: '#1A3C6E', margin: 0 }}>공유 신청 중...</p>
+                        </div>
+                      );
+                    }
+
+                    if (haruLawShareState.step === 'preview' && haruLawShareState.preview) {
+                      const pv = haruLawShareState.preview;
+                      const judgmentColors: Record<string, string> = { possible: '#059669', caution: '#D97706', need_check: '#2563EB' };
+                      const judgmentLabels: Record<string, string> = { possible: '가능성 있음', caution: '주의 필요', need_check: '추가 확인 필요' };
+                      return (
+                        <div style={{ ...sectionStyle, backgroundColor: '#F0FDF4', borderColor: '#A7F3D0', marginBottom: 0 }}>
+                          <p style={{ ...labelStyle, color: '#065F46' }}>익명 공유 미리보기 — 이 내용이 함께보기에 공개됩니다</p>
+                          <p style={{ fontSize: 14, fontWeight: 700, color: '#064E3B', marginBottom: 6 }}>{pv.title}</p>
+                          <p style={{ fontSize: 13, color: '#374151', marginBottom: 6, lineHeight: 1.6 }}>{pv.anonymizedQuestion}</p>
+                          <p style={{ fontSize: 13, color: '#374151', marginBottom: 8, lineHeight: 1.6 }}>{pv.summary}</p>
+                          {pv.judgmentType && (
+                            <p style={{ fontSize: 12, fontWeight: 700, color: judgmentColors[pv.judgmentType] || '#374151', marginBottom: 8 }}>
+                              판단 유형: {judgmentLabels[pv.judgmentType] || pv.judgmentType}
+                            </p>
+                          )}
+                          {pv.relatedStatutes?.length > 0 && (
+                            <ul style={{ margin: '0 0 10px', paddingLeft: 16, fontSize: 12, color: '#4B5563', lineHeight: 1.6 }}>
+                              {pv.relatedStatutes.map((s, i) => (
+                                <li key={i}><strong>{s.title} {s.article}</strong> — {s.easySummary}</li>
+                              ))}
+                            </ul>
+                          )}
+                          <p style={{ fontSize: 11, color: '#6B7280', marginBottom: 10 }}>※ 개인정보는 AI로 익명화 처리되었습니다. 위 내용을 확인 후 공유 신청하세요.</p>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button
+                              onClick={handleHaruLawPublish}
+                              style={{ flex: 1, padding: '10px 0', backgroundColor: '#065F46', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                            >
+                              확인하고 공유 신청
+                            </button>
+                            <button
+                              onClick={() => setHaruLawShareState({ step: 'idle' })}
+                              style={{ padding: '10px 16px', backgroundColor: '#F3F4F6', color: '#374151', border: 'none', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}
+                            >
+                              취소
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (active) {
+                      return (
+                        <div style={{ ...sectionStyle, backgroundColor: '#F0FDF4', borderColor: '#A7F3D0', marginBottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <p style={{ fontSize: 13, color: '#065F46', margin: 0 }}>
+                            {ss === 'pending' ? '⏳ 익명 공유 신청 완료 — 관리자 검수 중' : '✅ 함께보기에 공개 중'}
+                          </p>
+                          <button
+                            onClick={handleHaruLawUnpublish}
+                            style={{ padding: '6px 12px', backgroundColor: '#FEE2E2', color: '#991B1B', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          >
+                            공유 취소
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div style={{ ...sectionStyle, backgroundColor: '#F0F4FF', borderColor: '#C7D9F8', marginBottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: '#1A3C6E', margin: '0 0 2px' }}>PREMIUM 익명 공유</p>
+                          <p style={{ fontSize: 11, color: '#6B7280', margin: 0 }}>개인정보를 AI로 제거 후 다른 PREMIUM 회원과 공유합니다</p>
+                        </div>
+                        <button
+                          onClick={handleHaruLawSharePreview}
+                          style={{ padding: '8px 14px', backgroundColor: '#1A3C6E', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: 12 }}
+                        >
+                          공유 준비
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </>
               );
             })()}
