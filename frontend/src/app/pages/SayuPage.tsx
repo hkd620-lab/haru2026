@@ -1522,6 +1522,9 @@ export function SayuPage() {
   useEffect(() => {
     setCollapsedCategories(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고', 'SNS검색기록', '내가 읽은 책', 'HARU주식관리']));
     setExpandedFormats(new Set());
+    if (location.pathname === '/sayu') {
+      setSayuTab('records');
+    }
   }, [location.pathname]);
 
   useEffect(() => {
@@ -3375,9 +3378,7 @@ export function SayuPage() {
 
   const activeEntries = sayuTab === 'records'
     ? recordEntries
-    : sayuScope === 'all'
-      ? [...growthTimelineEntries, ...assistantEntries].sort((a, b) => b.date.localeCompare(a.date) || a.label.localeCompare(b.label))
-      : assistantEntries;
+    : [...growthTimelineEntries, ...assistantEntries].sort((a, b) => b.date.localeCompare(a.date) || a.label.localeCompare(b.label));
   const activeCalendarEntries = sayuTab === 'records'
     ? recordEntries
     : [...growthTimelineEntries, ...assistantEntries]
@@ -3400,7 +3401,7 @@ export function SayuPage() {
   const selectedSayuLabelCandidate = sayuTab === 'records' ? selectedSayuLabels.records : selectedSayuLabels.assistants;
   const effectiveSayuLabel = sayuLabelOptions.some((option) => option.label === selectedSayuLabelCandidate)
     ? selectedSayuLabelCandidate
-    : sayuLabelOptions[0]?.label || '';
+    : '';
   const setActiveSayuLabel = (label: string) => {
     setSelectedSayuLabels((prev) => ({ ...prev, [sayuTab]: label }));
     setSelectedDate('');
@@ -3430,6 +3431,21 @@ export function SayuPage() {
   const activeSelectedEntries = activeSelectedDate
     ? filteredActiveCalendarEntries.filter((entry) => entry.date === activeSelectedDate)
     : [];
+  const countScopeLabel = sayuScope === 'all' ? '전체' : '이달';
+  const currentViewTitle = sayuScope === 'all' ? '전체 나의 기록' : `${monthName} 나의 기록`;
+  const getSayuDisplayLabel = (label: string) => {
+    if (label === '하루식물탐정') return '식물탐정';
+    return label;
+  };
+  const searchPlaceholder = effectiveSayuLabel
+    ? `${getSayuDisplayLabel(effectiveSayuLabel)} 기록 검색`
+    : sayuScope === 'all'
+      ? '전체 기록 검색'
+      : `${monthName} 기록 검색`;
+  const resultCountLabel = debouncedSayuSearch
+    ? `검색 결과 ${filteredActiveEntries.length}건`
+    : `${countScopeLabel} 결과 ${filteredActiveEntries.length}건`;
+  const formatCountLabel = (count: number) => `${countScopeLabel} ${count}건`;
 
   useEffect(() => {
     if (sayuScope !== 'all' || !hasMoreAllEntries) return;
@@ -3551,18 +3567,26 @@ export function SayuPage() {
   );
 
   const renderSayuFormatSelector = () => {
-    if (sayuLabelOptions.length <= 1) return null;
+    if (sayuLabelOptions.length === 0) return null;
+    const allCount = activeEntries.length;
+    const options = [
+      { label: '', displayLabel: '전체', color: '#1A3C6E', count: allCount },
+      ...sayuLabelOptions.map((option) => ({
+        ...option,
+        displayLabel: getSayuDisplayLabel(option.label),
+      })),
+    ];
     return (
       <div
         role="tablist"
         aria-label="SAYU 형식 선택"
         style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 10, marginBottom: 2 }}
       >
-        {sayuLabelOptions.map((option) => {
+        {options.map((option) => {
           const active = effectiveSayuLabel === option.label;
           return (
             <button
-              key={option.label}
+              key={option.label || 'all'}
               type="button"
               role="tab"
               aria-selected={active}
@@ -3581,7 +3605,7 @@ export function SayuPage() {
                 boxShadow: active ? '0 1px 2px rgba(26,60,110,0.12)' : 'none',
               }}
             >
-              {option.label} {option.count}
+              {option.displayLabel} · {formatCountLabel(option.count)}
             </button>
           );
         })}
@@ -3609,7 +3633,7 @@ export function SayuPage() {
         aria-label="SAYU 결과 검색"
         value={sayuSearchInput}
         onChange={(event) => setSayuSearchInput(event.target.value)}
-        placeholder={sayuScope === 'all' ? '전체 결과 검색' : '이 달 결과 검색'}
+        placeholder={searchPlaceholder}
         style={{
           width: '100%',
           minWidth: 0,
@@ -3622,7 +3646,7 @@ export function SayuPage() {
         }}
       />
       <span style={{ color: '#9CA3AF', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
-        {filteredActiveEntries.length}개
+        {resultCountLabel}
       </span>
     </div>
   );
@@ -3674,6 +3698,39 @@ export function SayuPage() {
               ? plantAllEntries
               : group.entries.filter((entry) => entry.plantType === plantSayuFilter)
             : group.entries;
+          const groupDisplayLabel = getSayuDisplayLabel(group.label);
+          const groupCount = isPlantGroup ? visibleGroupEntries.length : group.entries.length;
+          const groupMonthLabel = `${currentMonth.getMonth() + 1}월`;
+          const groupCopy = (() => {
+            if (group.label === GROWTH_TIMELINE_SAYU_LABEL) {
+              return {
+                title: GROWTH_TIMELINE_SAYU_LABEL,
+                subtitle: sayuScope === 'all'
+                  ? `시간의 흐름을 모아둔 기록 ${groupCount}건`
+                  : `${groupMonthLabel}의 흐름을 모아둔 기록 ${groupCount}건`,
+                description: '날짜별 기록을 펼쳐 다시 확인할 수 있습니다.',
+              };
+            }
+            if (group.label === '하루LAW') {
+              return {
+                title: '하루LAW',
+                subtitle: `생활 속 법률 관련 기록 ${groupCount}건`,
+                description: `최근 기록 ${formatListDate(group.latestDate)} · 법률 관련 기록과 사유를 모아두었습니다.`,
+              };
+            }
+            if (isPlantGroup) {
+              return {
+                title: '식물탐정',
+                subtitle: `식물 관찰과 판독 기록 ${groupCount}건`,
+                description: '사진으로 확인한 식물 기록과 관리 메모를 모아두었습니다.',
+              };
+            }
+            return {
+              title: groupDisplayLabel,
+              subtitle: `${formatCountLabel(groupCount)}`,
+              description: `최근 기록 ${formatListDate(group.latestDate)} · 기록과 사유를 모아두었습니다.`,
+            };
+          })();
           const plantFilterCounts = PLANT_SAYU_FILTERS.reduce<Record<PlantSayuFilter, number>>((acc, filter) => {
             acc[filter.key] = filter.key === 'all'
               ? plantAllEntries.length
@@ -3693,14 +3750,17 @@ export function SayuPage() {
                 <span className="flex-1" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 2 }}>
                   <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minWidth: 0 }}>
                     <span className="text-base font-semibold truncate" style={{ color: '#1A3C6E', minWidth: 0 }}>
-                      {group.label}
+                      {groupCopy.title}
                     </span>
                     <span style={{ color: '#6B7280', fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                      {isPlantGroup ? `${visibleGroupEntries.length}개` : `${group.entries.length}개`}
+                      {formatCountLabel(groupCount)}
                     </span>
                   </span>
+                  <span style={{ fontSize: 12, color: '#4B5563', lineHeight: 1.45, fontWeight: 700 }}>
+                    {groupCopy.subtitle}
+                  </span>
                   <span style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4 }}>
-                    최근 기록 {formatListDate(group.latestDate)}
+                    {groupCopy.description}
                   </span>
                 </span>
                 <ChevronRight
@@ -4093,15 +4153,13 @@ export function SayuPage() {
       </div>
 
       {renderSayuScopeTabs()}
-      {renderSayuFormatSelector()}
 
-      {/* 월 선택 — 헤딩 + 변경 칩 (카드 제거) */}
-      {sayuScope === 'month' && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1A3C6E', margin: 0 }}>
-            {monthName}
-          </h2>
-          <div style={{ display: 'flex', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1A3C6E', margin: 0, lineHeight: 1.25 }}>
+          {currentViewTitle}
+        </h2>
+        {sayuScope === 'month' && (
+          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
             <button
               type="button"
               onClick={handlePrevMonth}
@@ -4131,30 +4189,18 @@ export function SayuPage() {
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {renderSayuSearchBox()}
+      {renderSayuFormatSelector()}
 
       {/* 목록 / 달력 segmented 탭 */}
       {sayuScope === 'month' && renderViewModeTabs()}
 
-      {sayuScope === 'month' && sayuTab === 'assistants' && viewMode === 'list' && user?.uid && hasGrowthTimelineRecords && (
-        <GrowthTimelineLibrary
-          uid={user.uid}
-          refreshKey={timelineRefreshKey}
-          onEditTimeline={(recordId, dateStr) =>
-            openFormatSayu(dateStr || '', 'growthTimeline', GROWTH_TIMELINE_SAYU_LABEL, recordId)
-          }
-        />
-      )}
-
       {sayuScope === 'all' ? (
         <>
-          {renderFlatEntryList(displayedAllEntries)}
-          <div ref={allSayuLoadMoreRef} style={{ minHeight: 42, display: 'grid', placeItems: 'center', color: '#7A6A4F', fontSize: 12, fontWeight: 700 }}>
-            {hasMoreAllEntries ? '더 불러오는 중...' : filteredActiveEntries.length > 0 ? '마지막 결과입니다' : ''}
-          </div>
+          {renderGroupedEntryList(filteredActiveEntries)}
         </>
       ) : (
         <>
