@@ -4563,66 +4563,23 @@ export function SayuPage() {
               </button>
             </div>
 
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: plantDetailIsWide ? 'minmax(230px, 0.92fr) minmax(0, 1.08fr)' : '1fr',
-                gap: 14,
-                alignItems: 'stretch',
-                marginBottom: 14,
-              }}
-            >
-              <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid #dbeafe', backgroundColor: '#f8fafc', minHeight: plantDetailIsWide ? 300 : 230 }}>
-                {plantReadOnlyDetail.imageUrl ? (
-                  <img
-                    src={plantReadOnlyDetail.imageUrl}
-                    alt={`${plantReadOnlyDetail.title} 대표사진`}
-                    style={{
-                      width: '100%',
-                      height: plantDetailIsWide ? 320 : 240,
-                      maxHeight: plantDetailIsWide ? 320 : 280,
-                      objectFit: 'cover',
-                      display: 'block',
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: '100%',
-                      height: plantDetailIsWide ? 320 : 240,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 8,
-                      color: '#15803d',
-                      backgroundColor: '#ecfdf5',
-                    }}
-                  >
-                    <Leaf className="w-8 h-8" />
-                    <span style={{ fontSize: 12, fontWeight: 800 }}>사진 없음</span>
-                  </div>
-                )}
-              </div>
-
-              <section style={{ borderRadius: 14, border: '1px solid #d1fae5', backgroundColor: '#f0fdf4', padding: 15 }}>
-                <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 900, color: '#166534' }}>핵심정보</p>
-                {plantReadOnlyDetail.coreFields.length > 0 ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: plantDetailIsWide ? '1fr 1fr' : '1fr', gap: 9 }}>
-                    {plantReadOnlyDetail.coreFields.map((field) => (
-                      <div key={field.label} style={{ minWidth: 0 }}>
-                        <p style={{ margin: '0 0 3px', fontSize: 10, fontWeight: 900, color: '#16a34a' }}>{field.label}</p>
-                        <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#1f2937', lineHeight: 1.45, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
-                          {field.value}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p style={{ margin: 0, fontSize: 13, color: '#6B7280' }}>핵심정보가 아직 없습니다.</p>
-                )}
-              </section>
-            </div>
+            <section style={{ borderRadius: 14, border: '1px solid #d1fae5', backgroundColor: '#f0fdf4', padding: 15, marginBottom: 14 }}>
+              <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 900, color: '#166534' }}>핵심정보</p>
+              {plantReadOnlyDetail.coreFields.length > 0 ? (
+                <div style={{ display: 'grid', gridTemplateColumns: plantDetailIsWide ? 'repeat(4, minmax(0, 1fr))' : '1fr', gap: 9 }}>
+                  {plantReadOnlyDetail.coreFields.map((field) => (
+                    <div key={field.label} style={{ minWidth: 0 }}>
+                      <p style={{ margin: '0 0 3px', fontSize: 10, fontWeight: 900, color: '#16a34a' }}>{field.label}</p>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#1f2937', lineHeight: 1.45, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
+                        {field.value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ margin: 0, fontSize: 13, color: '#6B7280' }}>핵심정보가 아직 없습니다.</p>
+              )}
+            </section>
 
             {plantReadOnlyDetail.type === 'detective'
               && plantReadOnlyDetail.recordId
