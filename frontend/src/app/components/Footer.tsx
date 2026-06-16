@@ -15,7 +15,7 @@ export function Footer() {
       marginBottom: 'calc(var(--bottomnav-height, 80px) + env(safe-area-inset-bottom, 0px))',
     }}>
       <p>상호명: 하루랩 (HaruLab) &nbsp;|&nbsp; 대표자: 허경대 &nbsp;|&nbsp; 사업자등록번호: 354-23-02490</p>
-      <p>사업장 주소: 서울특별시 구로구 중앙로5길 62 &nbsp;|&nbsp; 통신판매업 신고번호: 확인 후 추가 예정</p>
+      <p>사업장 주소: 서울특별시 구로구 중앙로5길 62</p>
       <p>연락처: 050219336740 &nbsp;|&nbsp; 이메일: harul2026lab@gmail.com</p>
       <p>
         <a href="/subscription" style={{ color: '#777', textDecoration: 'underline' }}>구독/요금</a>
