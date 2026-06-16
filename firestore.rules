@@ -334,5 +334,21 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == uid;
       }
     }
+
+    // ⚖️ 하루LAW 익명 공유 카드 — PREMIUM 검수 완료 카드만 열람 허용
+    match /sharedHaruLawCards/{cardId} {
+      allow read: if signedIn() && resource.data.status == 'published';
+      allow write: if false;
+    }
+
+    // ⚖️ 하루LAW 공유 카드 소유자 메타 — 클라이언트 직접 접근 불가 (Admin SDK 전용)
+    match /sharedHaruLawCardMeta/{cardId} {
+      allow read, write: if false;
+    }
+
+    // ⚖️ 하루LAW 공유 미리보기 임시 문서 — 클라이언트 직접 접근 불가 (Admin SDK 전용)
+    match /haruLawSharePreviews/{previewId} {
+      allow read, write: if false;
+    }
   }
 }

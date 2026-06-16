@@ -61,6 +61,22 @@ const SUBSCRIPTION_PLANS: Record<number, 'basic' | 'premium'> = {
   3500: 'basic',
   5000: 'premium',
 };
+const HARU_LAW_SHARE_DISCLAIMER = '본 내용은 법령 정보 제공 목적이며, 전문적인 법률·세무 자문을 대체하지 않습니다.\n구체적인 사건은 관련 자료를 가지고 전문가 상담을 받으시기 바랍니다.';
+const HARU_LAW_SHARE_PREVIEW_TTL_MS = 30 * 60 * 1000;
+const HARU_LAW_SHARE_DAILY_PREVIEW_LIMIT = 3;
+
+type HaruLawSharePreview = {
+  title: string;
+  anonymizedQuestion: string;
+  summary: string;
+  judgmentType: 'possible' | 'caution' | 'need_check';
+  relatedStatutes: {
+    title: string;
+    article?: string;
+    easySummary: string;
+  }[];
+  disclaimer: string;
+};
 
 function getSafeOAuthError(error: any) {
   if (axios.isAxiosError(error)) {
@@ -2833,6 +2849,200 @@ export const removeAllTags = onRequest(
   }
 );
 
+function isDeveloperUid(uid: string): boolean {
+  return DEVELOPER_UIDS.has(uid);
+}
+
+async function assertHaruLawPremiumAccess(uid: string): Promise<void> {
+  if (isDeveloperUid(uid)) return;
+
+  const subSnap = await db.doc(`users/${uid}/subscription/info`).get();
+  const plan = String(subSnap.data()?.plan || '').toLowerCase();
+  const endDate = subSnap.data()?.endDate;
+  const endTime = typeof endDate === 'string' ? Date.parse(endDate) : Number.NaN;
+  const expired = Number.isFinite(endTime) && endTime < Date.now();
+
+  if (plan !== 'premium' || expired) {
+    throw new HttpsError('permission-denied', '하루LAW 익명 공유는 PREMIUM 구독자 전용 기능입니다.');
+  }
+}
+
+function getKstDateKey(): string {
+  return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+async function enforceHaruLawSharePreviewLimit(uid: string): Promise<void> {
+  if (isDeveloperUid(uid)) return;
+
+  const usageRef = db.doc(`users/${uid}/haruLawShareUsage/${getKstDateKey()}`);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(usageRef);
+    const used = Number(snap.data()?.previewCount || 0);
+    if (used >= HARU_LAW_SHARE_DAILY_PREVIEW_LIMIT) {
+      throw new HttpsError('resource-exhausted', '하루LAW 익명 공유 미리보기는 하루 3회까지 만들 수 있습니다.');
+    }
+
+    tx.set(usageRef, {
+      previewCount: admin.firestore.FieldValue.increment(1),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: snap.exists ? snap.data()?.createdAt || admin.firestore.FieldValue.serverTimestamp() : admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  });
+}
+
+async function getOwnedHaruLawRecord(uid: string, sourceRecordId: unknown) {
+  if (typeof sourceRecordId !== 'string' || !sourceRecordId.trim()) {
+    throw new HttpsError('invalid-argument', 'sourceRecordId가 필요합니다.');
+  }
+
+  const recordRef = db.collection('users').doc(uid).collection('records').doc(sourceRecordId.trim());
+  const recordSnap = await recordRef.get();
+  if (!recordSnap.exists) {
+    throw new HttpsError('not-found', '원본 하루LAW 기록을 찾을 수 없습니다.');
+  }
+
+  const record = recordSnap.data() || {};
+  const formats = Array.isArray(record.formats) ? record.formats : [];
+  const isHaruRaw = formats.includes('HARUraw')
+    || typeof record.haruraw_query === 'string'
+    || typeof record.haruraw_summary === 'string';
+
+  if (!isHaruRaw) {
+    throw new HttpsError('failed-precondition', '하루LAW 기록만 익명 공유를 신청할 수 있습니다.');
+  }
+
+  return { recordRef, recordSnap, record };
+}
+
+function removeHaruLawSensitiveInfo(input: unknown): string {
+  return String(input || '')
+    .replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, '[이메일 제거]')
+    .replace(/\b\d{2,3}[-.\s]?\d{3,4}[-.\s]?\d{4}\b/g, '[전화번호 제거]')
+    .replace(/\b\d{6}[-\s]?[1-4]\d{6}\b/g, '[주민등록번호 제거]')
+    .replace(/\b\d{3}[-\s]?\d{2}[-\s]?\d{5}\b/g, '[사업자등록번호 제거]')
+    .replace(/\b\d{2,6}[-\s]\d{2,6}[-\s]\d{2,8}\b/g, '[계좌번호 제거]')
+    .replace(/(?:주식회사|유한회사|\(주\)|㈜|회사|법인)\s*[가-힣A-Za-z0-9&.\- ]{2,30}/g, '[회사명 제거]')
+    .replace(/[가-힣A-Za-z0-9&.\- ]{2,30}\s*(?:주식회사|유한회사|\(주\)|㈜|회사|법인)/g, '[회사명 제거]')
+    .replace(/(?:이름|성명|연락처|전화번호|주소|회사명|사업자등록번호|계좌번호|주민등록번호)\s*[:：]?\s*[^\n,.;]{1,80}/g, '[식별정보 제거]')
+    .replace(/([가-힣]{2,}(시|군|구)\s*){1,3}[가-힣0-9\s\-]+(로|길)\s*\d*/g, '[주소 제거]');
+}
+
+function hasHaruLawSensitivePattern(input: unknown): boolean {
+  const text = String(input || '');
+  return [
+    /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/,
+    /\b\d{2,3}[-.\s]?\d{3,4}[-.\s]?\d{4}\b/,
+    /\b\d{6}[-\s]?[1-4]\d{6}\b/,
+    /\b\d{3}[-\s]?\d{2}[-\s]?\d{5}\b/,
+    /\b\d{2,6}[-\s]\d{2,6}[-\s]\d{2,8}\b/,
+    /(?:주식회사|유한회사|\(주\)|㈜|회사|법인)\s*[가-힣A-Za-z0-9&.\- ]{2,30}/,
+    /[가-힣A-Za-z0-9&.\- ]{2,30}\s*(?:주식회사|유한회사|\(주\)|㈜|회사|법인)/,
+    /([가-힣]{2,}(시|군|구)\s*){1,3}[가-힣0-9\s\-]+(로|길)\s*\d*/,
+  ].some((pattern) => pattern.test(text));
+}
+
+function clampHaruLawText(input: unknown, maxLength: number): string {
+  return removeHaruLawSensitiveInfo(input)
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength);
+}
+
+function softenHaruLawPublicText(input: unknown): string {
+  return clampHaruLawText(input, 1200)
+    .replace(/합법입니다/g, '가능성이 있습니다')
+    .replace(/문제없습니다/g, '사례관계에 따라 달라질 수 있습니다')
+    .replace(/반드시 인정됩니다/g, '인정될 가능성이 있습니다')
+    .replace(/무조건 가능합니다/g, '가능성이 있습니다');
+}
+
+function parseHaruLawPublicStatutes(rawArticles: unknown): HaruLawSharePreview['relatedStatutes'] {
+  return String(rawArticles || '')
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((block) => {
+      const headerMatch = block.match(/^\[([^\]]+)\]\s*([^\n]+)/);
+      const title = clampHaruLawText(headerMatch?.[1] || '관련 법령', 60) || '관련 법령';
+      const article = clampHaruLawText(headerMatch?.[2] || '관련 조문', 80) || '관련 조문';
+      return {
+        title,
+        article,
+        easySummary: '공개용 사례 판단에 참고할 관련 조문입니다. 구체적 적용은 사실관계에 따라 달라질 수 있습니다.',
+      };
+    });
+}
+
+function parseGeminiJsonObject(text: string): any {
+  const cleaned = text
+    .replace(/```json/gi, '')
+    .replace(/```/g, '')
+    .trim();
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start < 0 || end < start) {
+    throw new HttpsError('internal', '익명화 응답을 해석할 수 없습니다.');
+  }
+  return JSON.parse(cleaned.slice(start, end + 1));
+}
+
+function normalizeHaruLawPreview(raw: any, fallbackStatutes: HaruLawSharePreview['relatedStatutes']): HaruLawSharePreview {
+  const judgmentType = ['possible', 'caution', 'need_check'].includes(raw?.judgmentType)
+    ? raw.judgmentType
+    : 'need_check';
+  const relatedStatutes = Array.isArray(raw?.relatedStatutes)
+    ? raw.relatedStatutes.slice(0, 3).map((item: any) => ({
+      title: clampHaruLawText(item?.title || '관련 법령', 60) || '관련 법령',
+      article: clampHaruLawText(item?.article || '', 80) || undefined,
+      easySummary: softenHaruLawPublicText(item?.easySummary || '사례관계에 따라 적용 여부가 달라질 수 있습니다.').slice(0, 240),
+    }))
+    : fallbackStatutes;
+
+  return {
+    title: clampHaruLawText(raw?.title || '하루LAW 익명 공유 사례', 80) || '하루LAW 익명 공유 사례',
+    anonymizedQuestion: softenHaruLawPublicText(raw?.anonymizedQuestion || '').slice(0, 600),
+    summary: softenHaruLawPublicText(raw?.summary || '').slice(0, 900),
+    judgmentType,
+    relatedStatutes: relatedStatutes.length > 0 ? relatedStatutes : [{
+      title: '관련 법령',
+      article: '관련 조문',
+      easySummary: '사례관계에 따라 적용 여부가 달라질 수 있습니다.',
+    }],
+    disclaimer: HARU_LAW_SHARE_DISCLAIMER,
+  };
+}
+
+function assertHaruLawPreviewSafe(preview: HaruLawSharePreview): void {
+  const combined = [
+    preview.title,
+    preview.anonymizedQuestion,
+    preview.summary,
+    preview.disclaimer,
+    ...preview.relatedStatutes.flatMap((item) => [item.title, item.article || '', item.easySummary]),
+  ].join('\n');
+
+  if (
+    !preview.title ||
+    !preview.anonymizedQuestion ||
+    !preview.summary ||
+    hasHaruLawSensitivePattern(combined)
+  ) {
+    throw new HttpsError(
+      'failed-precondition',
+      '개인정보 보호를 위해 공유 미리보기를 만들 수 없습니다. 내용을 줄이거나 개인정보를 제거한 뒤 다시 시도해 주세요.'
+    );
+  }
+}
+
+function getHaruLawSharedCardId(uid: string, sourceRecordId: string): string {
+  return crypto
+    .createHash('sha256')
+    .update(`haruLawShare:${uid}:${sourceRecordId}`)
+    .digest('hex')
+    .slice(0, 32);
+}
+
 // ===== ⚖️ HARUraw — 법령 검색 + Gemini 해석 =====
 export const lawSearch = onCall(
   {
@@ -3053,6 +3263,259 @@ ${lawText}`
       logger.error('HARUraw 법령 검색 실패:', error);
       throw new HttpsError('internal', '법령 검색에 실패했습니다.');
     }
+  }
+);
+
+export const prepareHaruLawSharePreview = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+    timeoutSeconds: 300,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const uid = request.auth.uid;
+    await assertHaruLawPremiumAccess(uid);
+    await enforceHaruLawSharePreviewLimit(uid);
+
+    try {
+      const { record } = await getOwnedHaruLawRecord(uid, request.data?.sourceRecordId);
+      const sourceRecordId = String(request.data.sourceRecordId).trim();
+      const sourceRecordDate = String(record.date || '');
+      const redactedQuery = clampHaruLawText(record.haruraw_query || '', 1200);
+      const redactedSummary = clampHaruLawText(record.haruraw_summary || '', 3000);
+      const redactedArticles = clampHaruLawText(record.haruraw_articles || '', 5000);
+      const fallbackStatutes = parseHaruLawPublicStatutes(record.haruraw_articles);
+
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value().trim());
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
+      const result = await model.generateContent(`다음 하루LAW 기록을 다른 PREMIUM 구독자가 참고할 수 있는 익명 공개 카드로 바꾸세요.
+
+반드시 JSON 객체만 출력하세요. 마크다운 코드블록은 사용하지 마세요.
+필드는 title, anonymizedQuestion, summary, judgmentType, relatedStatutes만 사용하세요.
+judgmentType은 possible, caution, need_check 중 하나입니다.
+relatedStatutes는 최대 3개이며 각 항목은 title, article, easySummary를 가집니다.
+
+절대 포함 금지:
+- 이름, 연락처, 주소, 이메일, 회사명, 사업자등록번호, 계좌번호, 주민등록번호
+- 원문 질문 전체
+- 원문 답변 전체
+- 원문 조문 전체
+- ownerUid 또는 사용자를 식별할 수 있는 내용
+
+법률 표현 원칙:
+- "합법입니다", "문제없습니다", "반드시 인정됩니다", "무조건 가능합니다" 같은 단정 표현 금지
+- "가능성이 있습니다", "주의가 필요합니다", "추가 확인이 필요합니다", "사례관계에 따라 달라질 수 있습니다"처럼 표현
+
+입력은 이미 1차 정규식 익명화를 거친 자료입니다. 그래도 남은 식별 가능 정보가 있으면 제거하세요.
+
+[질문]
+${redactedQuery}
+
+[AI 분석]
+${redactedSummary}
+
+[관련 조문 요약 원천]
+${redactedArticles}`);
+
+      const preview = normalizeHaruLawPreview(parseGeminiJsonObject(result.response.text()), fallbackStatutes);
+      assertHaruLawPreviewSafe(preview);
+
+      const previewId = crypto.randomBytes(16).toString('hex');
+      const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + HARU_LAW_SHARE_PREVIEW_TTL_MS);
+      await db.collection('haruLawSharePreviews').doc(previewId).set({
+        ownerUid: uid,
+        sourceRecordId,
+        sourceRecordDate,
+        preview,
+        status: 'ready',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        expiresAt,
+      });
+
+      return {
+        success: true,
+        previewId,
+        expiresAt: expiresAt.toDate().toISOString(),
+        preview,
+      };
+    } catch (error: any) {
+      if (error instanceof HttpsError) throw error;
+      logger.error('하루LAW 익명 공유 미리보기 실패:', error);
+      throw new HttpsError(
+        'internal',
+        '개인정보 보호를 위해 공유 미리보기를 만들 수 없습니다. 내용을 줄이거나 개인정보를 제거한 뒤 다시 시도해 주세요.'
+      );
+    }
+  }
+);
+
+export const publishHaruLawSharedCard = onCall(
+  {
+    region: 'asia-northeast3',
+    timeoutSeconds: 120,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const uid = request.auth.uid;
+    await assertHaruLawPremiumAccess(uid);
+
+    const previewId = request.data?.previewId;
+    if (typeof previewId !== 'string' || !previewId.trim()) {
+      throw new HttpsError('invalid-argument', 'previewId가 필요합니다.');
+    }
+
+    const previewRef = db.collection('haruLawSharePreviews').doc(previewId.trim());
+    const previewSnap = await previewRef.get();
+    if (!previewSnap.exists) {
+      throw new HttpsError('not-found', '공유 미리보기를 찾을 수 없습니다.');
+    }
+
+    const previewData = previewSnap.data() || {};
+    if (previewData.ownerUid !== uid) {
+      throw new HttpsError('permission-denied', '공유 미리보기 소유자가 아닙니다.');
+    }
+
+    const expiresAt = previewData.expiresAt;
+    if (!expiresAt?.toMillis || expiresAt.toMillis() < Date.now()) {
+      throw new HttpsError('failed-precondition', '공유 미리보기 유효 시간이 지났습니다. 다시 미리보기를 만들어 주세요.');
+    }
+
+    const sourceRecordId = String(previewData.sourceRecordId || '');
+    const { recordRef, record } = await getOwnedHaruLawRecord(uid, sourceRecordId);
+    const preview = normalizeHaruLawPreview(previewData.preview, parseHaruLawPublicStatutes(record.haruraw_articles));
+    assertHaruLawPreviewSafe(preview);
+
+    const cardId = getHaruLawSharedCardId(uid, sourceRecordId);
+    const cardRef = db.collection('sharedHaruLawCards').doc(cardId);
+    const metaRef = db.collection('sharedHaruLawCardMeta').doc(cardId);
+    let finalStatus = 'pending';
+    let alreadySubmitted = false;
+
+    await db.runTransaction(async (tx) => {
+      const metaSnap = await tx.get(metaRef);
+      const currentStatus = String(metaSnap.data()?.status || '');
+
+      if (currentStatus === 'pending' || currentStatus === 'published') {
+        finalStatus = currentStatus;
+        alreadySubmitted = true;
+        tx.update(previewRef, {
+          status: 'used',
+          usedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return;
+      }
+
+      const now = admin.firestore.FieldValue.serverTimestamp();
+      tx.set(cardRef, {
+        category: 'haruLaw',
+        status: 'pending',
+        title: preview.title,
+        anonymizedQuestion: preview.anonymizedQuestion,
+        summary: preview.summary,
+        judgmentType: preview.judgmentType,
+        relatedStatutes: preview.relatedStatutes,
+        disclaimer: preview.disclaimer,
+        createdAt: now,
+        updatedAt: now,
+      }, { merge: false });
+
+      tx.set(metaRef, {
+        ownerUid: uid,
+        sourceRecordId,
+        sourceRecordDate: String(record.date || previewData.sourceRecordDate || ''),
+        status: 'pending',
+        createdAt: now,
+        updatedAt: now,
+      }, { merge: false });
+
+      tx.update(recordRef, {
+        haruLawShareStatus: 'pending',
+        haruLawSharedCardId: cardId,
+        haruLawSharedUpdatedAt: now,
+      });
+
+      tx.update(previewRef, {
+        status: 'used',
+        usedAt: now,
+        cardId,
+      });
+    });
+
+    return {
+      success: true,
+      cardId,
+      status: finalStatus,
+      alreadySubmitted,
+      message: alreadySubmitted
+        ? '이미 익명 공유 신청이 접수된 하루LAW 기록입니다.'
+        : '익명 공유 신청이 접수되었습니다. 관리자 검수 후 사유-함께보기에 표시됩니다.',
+    };
+  }
+);
+
+export const unpublishHaruLawSharedCard = onCall(
+  {
+    region: 'asia-northeast3',
+    timeoutSeconds: 120,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const uid = request.auth.uid;
+    const sourceRecordId = typeof request.data?.sourceRecordId === 'string'
+      ? request.data.sourceRecordId.trim()
+      : '';
+    const explicitCardId = typeof request.data?.cardId === 'string'
+      ? request.data.cardId.trim()
+      : '';
+    const cardId = explicitCardId || (sourceRecordId ? getHaruLawSharedCardId(uid, sourceRecordId) : '');
+
+    if (!cardId) {
+      throw new HttpsError('invalid-argument', 'cardId 또는 sourceRecordId가 필요합니다.');
+    }
+
+    const cardRef = db.collection('sharedHaruLawCards').doc(cardId);
+    const metaRef = db.collection('sharedHaruLawCardMeta').doc(cardId);
+    const metaSnap = await metaRef.get();
+    if (!metaSnap.exists) {
+      throw new HttpsError('not-found', '공유 카드 메타 정보를 찾을 수 없습니다.');
+    }
+
+    const meta = metaSnap.data() || {};
+    if (meta.ownerUid !== uid && !isDeveloperUid(uid)) {
+      throw new HttpsError('permission-denied', '공유 취소 권한이 없습니다.');
+    }
+
+    await db.runTransaction(async (tx) => {
+      const now = admin.firestore.FieldValue.serverTimestamp();
+      tx.set(cardRef, {
+        status: 'withdrawn',
+        updatedAt: now,
+      }, { merge: true });
+      tx.set(metaRef, {
+        status: 'withdrawn',
+        updatedAt: now,
+      }, { merge: true });
+
+      if (typeof meta.ownerUid === 'string' && typeof meta.sourceRecordId === 'string') {
+        const recordRef = db.collection('users').doc(meta.ownerUid).collection('records').doc(meta.sourceRecordId);
+        tx.set(recordRef, {
+          haruLawShareStatus: 'withdrawn',
+          haruLawSharedUpdatedAt: now,
+        }, { merge: true });
+      }
+    });
+
+    return { success: true, cardId, status: 'withdrawn' };
   }
 );
 
