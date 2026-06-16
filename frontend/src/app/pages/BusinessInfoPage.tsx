@@ -7,7 +7,7 @@ export function BusinessInfoPage() {
     { label: '서비스명', value: 'HARU2026' },
     { label: '대표자', value: '허경대' },
     { label: '사업자등록번호', value: '354-23-02490' },
-    { label: '사업장 주소', value: '서울특별시 구로구 구로동' },
+    { label: '사업장 주소', value: '서울특별시 구로구 중앙로5길 62' },
     { label: '연락처', value: '050219336740' },
     { label: '이메일', value: 'harul2026lab@gmail.com' },
     { label: '통신판매업 신고번호', value: '확인 후 추가 예정' },
