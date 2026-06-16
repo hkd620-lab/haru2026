@@ -11,9 +11,9 @@ import { RecordTitleAnimation } from '../components/RecordTitleAnimation';
 import { FormatModal } from '../components/FormatModal';
 import GrapeLoadingMini from '../components/GrapeLoadingMini';
 import { toast } from 'sonner';
-import { RecordFormat, Category, CATEGORY_FORMATS, FORMAT_PREFIX } from '../types/haruTypes';
+import { RecordFormat, Category, CATEGORY_FORMATS } from '../types/haruTypes';
 import { db } from '../../firebase';
-import { doc, getDoc, setDoc, serverTimestamp, collection, query as fsQuery, where, getDocs, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, arrayUnion } from 'firebase/firestore';
 import {
   DndContext,
   closestCenter,
@@ -286,15 +286,6 @@ export function RecordPage() {
   const [savedDateStr, setSavedDateStr] = useState('');
   const [savedRecordId, setSavedRecordId] = useState('');
   const [savedFormat, setSavedFormat] = useState<RecordFormat | null>(null);
-  // ─── HARU 메모 (비공개 AI 보조 관찰 메모) ───
-  // firestoreService.saveRecord는 docId를 `${date}_${ts}` 로 만들기 때문에
-  // 한 날에 여러 doc이 생긴다 → date 단일 ID 가 아닌 query 로 수집해야 한다.
-  type TodayRecordDoc = { id: string; data: Record<string, any> };
-  const [todayRecords, setTodayRecords] = useState<TodayRecordDoc[]>([]);
-  // key: `${docId}_${prefix}` — 같은 형식이 doc 별로 따로 메모를 가질 수 있게.
-  const [haruMemos, setHaruMemos] = useState<Record<string, { content: string; createdAt?: any; model?: string; source?: string }>>({});
-  const [generatingMemoFor, setGeneratingMemoFor] = useState<string | null>(null);
-  const [todayRecordTick, setTodayRecordTick] = useState(0);
   const [lawQuery, setLawQuery] = useState('');
   const [lawGuideConfirmed, setLawGuideConfirmed] = useState(false);
   const [lawLoading, setLawLoading] = useState(false);
@@ -940,117 +931,9 @@ export function RecordPage() {
       }
       setSavedRecordId(recordId);
       toast.success('내용이 저장되었습니다!');
-      // 저장 직후 HARU 메모 섹션이 새 데이터를 인지하도록 refresh
-      setTodayRecordTick((t) => t + 1);
     } catch (error) {
       console.error('저장 실패:', error);
       toast.error('내용 저장에 실패했습니다.');
-    }
-  };
-
-  // ─── HARU 메모: 오늘의 모든 records fetch (date 단일 ID가 아닌 query) ───
-  useEffect(() => {
-    let cancelled = false;
-    const fetchToday = async () => {
-      if (!user?.uid) {
-        setTodayRecords([]);
-        setHaruMemos({});
-        return;
-      }
-      try {
-        const dateStr = getLocalDateString(currentDate);
-        const q = fsQuery(
-          collection(db, 'users', user.uid, 'records'),
-          where('date', '==', dateStr),
-        );
-        const snap = await getDocs(q);
-        if (cancelled) return;
-        const docs: TodayRecordDoc[] = [];
-        const memos: Record<string, any> = {};
-        snap.forEach((d) => {
-          const data = d.data() || {};
-          docs.push({ id: d.id, data });
-          const docMemos = (data.haruMemos || {}) as Record<string, any>;
-          Object.entries(docMemos).forEach(([prefix, memo]) => {
-            memos[`${d.id}_${prefix}`] = memo;
-          });
-        });
-        // 최신 doc 먼저 (createdAt 또는 docId 끝의 timestamp 기준)
-        docs.sort((a, b) => {
-          const tA = Number(String(a.id).split('_').pop()) || 0;
-          const tB = Number(String(b.id).split('_').pop()) || 0;
-          return tB - tA;
-        });
-        setTodayRecords(docs);
-        setHaruMemos(memos);
-      } catch (e) {
-        console.warn('오늘 records fetch 실패 (HARU 메모용):', e);
-      }
-    };
-    fetchToday();
-    return () => {
-      cancelled = true;
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid, currentDate, todayRecordTick]);
-
-  // ─── HARU 메모 생성 호출 (사용자 클릭 시만, 자동 생성 금지) ───
-  const generateMemoForFormat = async (formatType: RecordFormat, prefix: string, docId: string) => {
-    if (!user?.uid || !docId) {
-      toast.info('먼저 기록을 작성해 주세요.');
-      return;
-    }
-    const targetDoc = todayRecords.find((r) => r.id === docId);
-    if (!targetDoc) {
-      toast.info('기록을 찾지 못했습니다. 새로고침 후 다시 시도해 주세요.');
-      return;
-    }
-    const key = `${docId}_${prefix}`;
-    setGeneratingMemoFor(key);
-    try {
-      const dateStr = getLocalDateString(currentDate);
-      const fields: Record<string, string> = {};
-      Object.keys(targetDoc.data).forEach((k) => {
-        if (k.startsWith(`${prefix}_`) && typeof targetDoc.data[k] === 'string') {
-          fields[k] = targetDoc.data[k] as string;
-        }
-      });
-      if (Object.keys(fields).length === 0) {
-        toast.warning('해당 형식의 본문이 없습니다.');
-        return;
-      }
-      const fns = getFunctions(undefined, 'asia-northeast3');
-      const fn = httpsCallable<
-        { formatType: string; fields: Record<string, string>; date: string },
-        { content: string }
-      >(fns, 'generateHaruMemo');
-      const res = await fn({ formatType: String(formatType), fields, date: dateStr });
-      const content = (res.data as any)?.content || '';
-      if (!content) {
-        toast.warning('생성된 메모가 비어 있습니다.');
-        return;
-      }
-      const memoEntry = {
-        content,
-        createdAt: serverTimestamp(),
-        model: 'gemini-3.1-flash-lite',
-        source: 'haru_ai',
-      };
-      await setDoc(
-        doc(db, 'users', user.uid, 'records', docId),
-        { haruMemos: { [prefix]: memoEntry } },
-        { merge: true },
-      );
-      setHaruMemos((prev) => ({
-        ...prev,
-        [key]: { ...memoEntry, createdAt: Date.now() } as any,
-      }));
-      toast.success('HARU 메모가 저장되었습니다.');
-    } catch (err: any) {
-      console.error('HARU 메모 생성 실패:', err);
-      toast.error(err?.message || 'HARU 메모 생성에 실패했습니다.');
-    } finally {
-      setGeneratingMemoFor(null);
     }
   };
 
@@ -1487,111 +1370,6 @@ export function RecordPage() {
           )}
 
         </section>
-
-        {/* ─── HARU 메모 (비공개 AI 보조 관찰 메모) ─── */}
-        {(() => {
-          // 오늘의 모든 docs(같은 날 여러 record doc) × 작성된 형식 = 카드 한 장
-          type Item = { docId: string; format: RecordFormat; prefix: string };
-          const items: Item[] = [];
-          const META_SUFFIX = ['_sayu','_final_sayu','_polished','_polishedAt','_mode','_stats','_images','_rating','_keywords','_ai_title','_tags','_space','_style','_status','_completedAt','_reflection_questions','_reflection_answers','_entries_snapshot'];
-          const formatEntries = Object.entries(FORMAT_PREFIX) as Array<[RecordFormat, string]>;
-          todayRecords.forEach(({ id: docId, data }) => {
-            formatEntries.forEach(([format, prefix]) => {
-              // 1) 본문 필드 (prefix_*) 존재 또는
-              // 2) data.formats 배열에 형식명 포함 → 작성된 것으로 인정
-              const hasContent = Object.keys(data).some((k) =>
-                k.startsWith(`${prefix}_`)
-                && !META_SUFFIX.some((s) => k.endsWith(s))
-                && typeof data[k] === 'string'
-                && (data[k] as string).trim().length > 0
-              );
-              const inFormats = Array.isArray((data as any).formats)
-                && (data as any).formats.includes(format);
-              if (hasContent || inFormats) {
-                // 같은 doc에 같은 prefix가 중복 추가되지 않도록
-                if (!items.find((it) => it.docId === docId && it.prefix === prefix)) {
-                  items.push({ docId, format, prefix });
-                }
-              }
-            });
-          });
-          if (items.length === 0) return null;
-          return (
-            <section className="bg-white rounded-lg p-3 shadow-sm">
-              <div className="mb-2">
-                <h2 className="text-xs tracking-wider" style={{ color: '#666666' }}>
-                  HARU 메모
-                </h2>
-                <p className="text-xs mt-0.5" style={{ color: '#999999' }}>
-                  오늘 작성한 기록을 AI가 조용히 관찰합니다 · 비공개 보조 메모
-                </p>
-              </div>
-              <div className="space-y-2">
-                {items.map(({ docId, format, prefix }) => {
-                  const key = `${docId}_${prefix}`;
-                  const memo = haruMemos[key];
-                  const isGenerating = generatingMemoFor === key;
-                  return (
-                    <div
-                      key={key}
-                      className="rounded-lg"
-                      style={{ border: '1px solid #ECE6F5', padding: 12, background: '#fff' }}
-                    >
-                      <div className="flex items-center justify-between mb-2" style={{ gap: 8 }}>
-                        <div className="text-sm font-semibold" style={{ color: '#1A3C6E' }}>
-                          {format}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => generateMemoForFormat(format, prefix, docId)}
-                          disabled={isGenerating}
-                          className="text-xs flex-shrink-0"
-                          style={{
-                            padding: '6px 12px',
-                            borderRadius: 6,
-                            border: '1px solid #1A3C6E',
-                            background: isGenerating ? '#f3f4f6' : memo ? '#fff' : '#1A3C6E',
-                            color: isGenerating ? '#999' : memo ? '#1A3C6E' : '#fff',
-                            fontWeight: 600,
-                            cursor: isGenerating ? 'wait' : 'pointer',
-                          }}
-                        >
-                          {isGenerating
-                            ? 'HARU 메모를 정리하는 중입니다…'
-                            : memo
-                              ? 'HARU 메모 다시생성'
-                              : 'HARU 메모 생성'}
-                        </button>
-                      </div>
-                      {memo?.content && (
-                        <div
-                          className="rounded"
-                          style={{ background: '#F6F4FB', padding: '10px 12px', border: '1px solid #ECE6F5' }}
-                        >
-                          <div className="text-xs font-semibold mb-1" style={{ color: '#1A3C6E' }}>
-                            HARU 메모
-                          </div>
-                          <p
-                            className="text-sm"
-                            style={{ color: '#333', whiteSpace: 'pre-wrap', lineHeight: 1.6, margin: 0 }}
-                          >
-                            {memo.content}
-                          </p>
-                          <p
-                            className="mt-2"
-                            style={{ fontSize: 11, color: '#999', margin: 0, paddingTop: 6, borderTop: '1px dashed #e2dded' }}
-                          >
-                            이 메모는 비공개 기록 보조 기능이며 공개 댓글 기능이 아닙니다.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })()}
 
       </div>
     </div>
