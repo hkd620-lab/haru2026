@@ -8,35 +8,30 @@ interface SubscriptionModalProps {
 
 const plans = [
   {
-    id: 'monthly',
-    name: '월간',
-    nameEn: 'Monthly',
-    price: '₩9,900',
+    id: 'basic',
+    name: '베이직',
+    nameEn: 'Basic',
+    price: '₩3,500',
     period: '/월',
     features: [
-      '무제한 기록 작성',
-      'AI 다이제스트 생성',
-      'PDF 내보내기',
-      '통계 및 인사이트',
-      '클라우드 동기화',
+      '12종 기록 형식',
+      'SAYU AI 다듬기',
+      '기록 저장 및 조회',
+      'TEXT/HTML 출력',
     ],
     popular: false,
   },
   {
-    id: 'annual',
-    name: '연간',
-    nameEn: 'Annual',
-    price: '₩99,000',
-    period: '/년',
-    originalPrice: '₩118,800',
-    discount: '17% 할인',
+    id: 'premium',
+    name: '프리미엄',
+    nameEn: 'Premium',
+    price: '₩5,000',
+    period: '/월',
     features: [
-      '무제한 기록 작성',
-      'AI 다이제스트 생성',
-      'PDF 내보내기',
-      '통계 및 인사이트',
-      '클라우드 동기화',
-      '우선 고객 지원',
+      '베이직 모든 기능',
+      'SAYU PDF 저장',
+      '월간/분기/연간 기록합침',
+      '월간/분기/연간 통계',
     ],
     popular: true,
   },
@@ -46,7 +41,7 @@ export function SubscriptionModal({ open, onClose, daysRemaining }: Subscription
   if (!open) return null;
 
   const handleSubscribe = (planId: string) => {
-    alert(`${planId} 플랜 구독 준비 중입니다`);
+    window.location.href = `/subscription?plan=${planId}`;
   };
 
   return (
@@ -127,20 +122,6 @@ export function SubscriptionModal({ open, onClose, daysRemaining }: Subscription
                   <p className="text-xs mb-4" style={{ color: '#999999' }}>
                     {plan.nameEn}
                   </p>
-                  
-                  {plan.originalPrice && (
-                    <div className="mb-2">
-                      <span className="text-sm line-through" style={{ color: '#999999' }}>
-                        {plan.originalPrice}
-                      </span>
-                      <span 
-                        className="ml-2 text-xs px-2 py-1 rounded"
-                        style={{ backgroundColor: '#003366', color: '#F9F8F3' }}
-                      >
-                        {plan.discount}
-                      </span>
-                    </div>
-                  )}
                   
                   <div className="flex items-baseline justify-center">
                     <span className="text-3xl md:text-4xl" style={{ color: '#003366' }}>

@@ -14,9 +14,20 @@ export function Footer() {
       background: '#fff',
       marginBottom: 'calc(var(--bottomnav-height, 80px) + env(safe-area-inset-bottom, 0px))',
     }}>
-      <p>© 2026 HARU2026 · 조이L허경대</p>
-      <p>주소: 서울특별시 구로구 디지털로31길 41, 611-2-4호(구로동, 이앤씨벤처드림타워6차)</p>
-      <p>대표전화: 0502-1916-8643 &nbsp;|&nbsp; 이메일: hkd620@gmail.com</p>
+      <p>상호명: 하루랩 (HaruLab) &nbsp;|&nbsp; 대표자: 허경대 &nbsp;|&nbsp; 사업자등록번호: 354-23-02490</p>
+      <p>사업장 주소: 서울특별시 구로구 구로동 &nbsp;|&nbsp; 통신판매업 신고번호: 확인 후 추가 예정</p>
+      <p>연락처: 050219336740 &nbsp;|&nbsp; 이메일: harul2026lab@gmail.com</p>
+      <p>
+        <a href="/subscription" style={{ color: '#777', textDecoration: 'underline' }}>구독/요금</a>
+        &nbsp;|&nbsp;
+        <a href="/business-info" style={{ color: '#777', textDecoration: 'underline' }}>사업자 정보</a>
+        &nbsp;|&nbsp;
+        <a href="/terms" style={{ color: '#777', textDecoration: 'underline' }}>이용약관</a>
+        &nbsp;|&nbsp;
+        <a href="/privacy" style={{ color: '#777', textDecoration: 'underline' }}>개인정보처리방침</a>
+        &nbsp;|&nbsp;
+        <a href="/refund" style={{ color: '#777', textDecoration: 'underline' }}>환불정책</a>
+      </p>
     </footer>
   );
 }

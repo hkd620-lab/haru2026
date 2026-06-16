@@ -57,6 +57,10 @@ const ONEDRIVE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunct
 const ONEDRIVE_OAUTH_SCOPE = 'offline_access Files.ReadWrite User.Read';
 
 const db = admin.firestore();
+const SUBSCRIPTION_PLANS: Record<number, 'basic' | 'premium'> = {
+  3500: 'basic',
+  5000: 'premium',
+};
 
 function getSafeOAuthError(error: any) {
   if (axios.isAxiosError(error)) {
@@ -2585,7 +2589,7 @@ async function buildGrowthTimelinePdfBuffer(payload: ReturnType<typeof normalize
         doc.roundedRect(margin, margin, pageWidth - margin * 2, 420, 12).fill('#f1f4f7');
       }
 
-      doc.fillColor(brandColor).fontSize(12).text('HARU Timeline · by JOYEL', margin, 500, {
+      doc.fillColor(brandColor).fontSize(12).text('HARU Timeline · by HaruLab', margin, 500, {
         width: pageWidth - margin * 2,
       });
       doc.fillColor(brandColor).fontSize(28).text(payload.title, margin, 526, {
@@ -2770,10 +2774,11 @@ export const verifyPayment = onCall(
       throw new HttpsError('failed-precondition', '결제가 완료되지 않았습니다.');
     }
 
-    // 금액 검증 (월 3,000원 고정)
+    // 금액 검증 (베이직 3,500원 / 프리미엄 5,000원)
     const paidAmount = payment.amount?.total ?? payment.totalAmount;
-    if (paidAmount !== 3000) {
-      logger.error(`금액 불일치: 기대 3000, 실제 ${paidAmount}`);
+    const plan = SUBSCRIPTION_PLANS[paidAmount];
+    if (!plan) {
+      logger.error(`금액 불일치: 기대 3500 또는 5000, 실제 ${paidAmount}`);
       throw new HttpsError('invalid-argument', '결제 금액이 올바르지 않습니다.');
     }
 
@@ -2790,7 +2795,7 @@ export const verifyPayment = onCall(
     endDate.setMonth(endDate.getMonth() + 1);
 
     await subRef.set({
-      plan: 'premium',
+      plan,
       startDate: now.toISOString(),
       endDate: endDate.toISOString(),
       paymentId,

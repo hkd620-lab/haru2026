@@ -17,7 +17,7 @@ const sections = [
   },
   {
     title: '환불 문의',
-    content: 'hkd620@gmail.com',
+    content: 'harul2026lab@gmail.com',
   },
   {
     title: '처리 기간',

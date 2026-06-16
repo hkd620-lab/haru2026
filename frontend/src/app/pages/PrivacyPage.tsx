@@ -21,7 +21,7 @@ const sections = [
   },
   {
     title: '6. 개인정보 관리 책임자',
-    content: '성명: 허경대\n문의 이메일: hkd620@gmail.com',
+    content: '성명: 허경대\n문의 이메일: harul2026lab@gmail.com',
   },
 ];
 

@@ -134,7 +134,7 @@ export function GrowthTimelineDocumentModal({
 
   const handleBrowserPrint = async () => {
     if (!isPremium) {
-      alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 3,000원으로 시작해 보세요!');
+      alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 5,000원으로 시작해 보세요!');
       window.location.href = '/subscription';
       return;
     }
@@ -221,7 +221,7 @@ export function GrowthTimelineDocumentModal({
 
   const handlePrint = async () => {
     if (!isPremium) {
-      alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 3,000원으로 시작해 보세요!');
+      alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 5,000원으로 시작해 보세요!');
       window.location.href = '/subscription';
       return;
     }
@@ -359,7 +359,7 @@ export function GrowthTimelineDocumentModal({
                 {sortedItems[0]?.url && <img src={sortedItems[0].url} alt="" />}
               </div>
               <div className="growth-timeline-cover-meta">
-                <p className="growth-timeline-cover-brand">HARU Timeline · by JOYEL</p>
+                <p className="growth-timeline-cover-brand">HARU Timeline · by HaruLab</p>
                 <h1 className="growth-timeline-cover-title">{resolvedTitle}</h1>
                 <p className="growth-timeline-cover-period">
                   기간 {formatDateLabel(periodStart)}
