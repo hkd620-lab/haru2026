@@ -10,7 +10,6 @@ export function BusinessInfoPage() {
     { label: '사업장 주소', value: '서울특별시 구로구 중앙로5길 62' },
     { label: '연락처', value: '050219336740' },
     { label: '이메일', value: 'harul2026lab@gmail.com' },
-    { label: '통신판매업 신고번호', value: '확인 후 추가 예정' },
     { label: '서비스 URL', value: 'https://haru2026.com' },
   ];
 
