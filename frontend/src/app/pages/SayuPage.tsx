@@ -4863,12 +4863,17 @@ export function SayuPage() {
             style={{ width: '100%', maxWidth: 1040, maxHeight: '86vh', margin: '0 auto', backgroundColor: '#fff', borderRadius: 16, padding: 20, overflowY: 'auto', boxShadow: '0 24px 60px rgba(0,0,0,0.22)' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E', display: 'flex', alignItems: 'center', gap: 6 }}><Scale className="w-4 h-4" /> 하루LAW 검색 기록</p>
+              <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E', display: 'flex', alignItems: 'center', gap: 6 }}><Scale className="w-4 h-4" /> 하루LAW 분석 기록</p>
               <button onClick={() => setHarurawModal({ isOpen: false, query: '', summary: '', articles: '' })}
                 style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#999' }}>✕</button>
             </div>
             {(() => {
               const cleanedSummary = cleanHaruLawMarkdown(harurawModal.summary);
+              const summaryLines = cleanedSummary.split('\n').filter(Boolean);
+              const coreSummary = summaryLines[0] || '관련 조문을 바탕으로 검토가 필요합니다. 사례관계에 따라 실제 판단은 달라질 수 있습니다.';
+              const analysisLines = summaryLines.length > 1
+                ? summaryLines.slice(1)
+                : ['아래 관련 조문과 실제 사실관계를 함께 확인해야 합니다. 단정적인 결론보다 가능성, 주의점, 추가 확인 사항을 중심으로 검토하세요.'];
               const lawArticles = parseHaruLawArticles(harurawModal.articles);
               const sectionStyle = {
                 padding: 16,
@@ -4885,18 +4890,12 @@ export function SayuPage() {
                     <p style={{ fontSize: 15, color: '#1A3C6E', fontWeight: 700, lineHeight: 1.6, margin: 0 }}>{harurawModal.query}</p>
                   </div>
 
-                  {cleanedSummary && (
-                    <div style={sectionStyle}>
-                      <p style={labelStyle}>핵심 답변</p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {cleanedSummary.split('\n').filter(Boolean).map((line, idx) => (
-                          <p key={idx} style={{ fontSize: 14, color: '#374151', lineHeight: 1.7, margin: 0 }}>
-                            {line}
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <div style={sectionStyle}>
+                    <p style={labelStyle}>핵심 답변</p>
+                    <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.7, margin: 0 }}>
+                      {coreSummary}
+                    </p>
+                  </div>
 
                   {lawArticles.length > 0 && (
                     <div style={sectionStyle}>
@@ -4922,6 +4921,17 @@ export function SayuPage() {
                   )}
 
                   <div style={sectionStyle}>
+                    <p style={labelStyle}>AI 분석</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {analysisLines.map((line, idx) => (
+                        <p key={idx} style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.7, margin: 0 }}>
+                          {line}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={sectionStyle}>
                     <p style={labelStyle}>실무 조언</p>
                     <ul style={{ margin: 0, paddingLeft: 18, color: '#374151', fontSize: 13, lineHeight: 1.7 }}>
                       <li>관련 계약서, 영수증, 문자, 이메일 등 사실관계를 보여주는 자료를 함께 보관하세요.</li>
@@ -4932,7 +4942,7 @@ export function SayuPage() {
                   <div style={{ ...sectionStyle, backgroundColor: '#FFFBEB', borderColor: '#FDE68A', marginBottom: 0 }}>
                     <p style={labelStyle}>주의사항</p>
                     <p style={{ fontSize: 12, color: '#92400E', lineHeight: 1.7, margin: 0 }}>
-                      이 내용은 일반적인 정보이며, 실제 법적 조치나 신고 전에는 변호사 등 전문가 확인이 필요합니다.
+                      본 내용은 법령 정보 제공 목적이며, 전문적인 법률 자문을 대체하지 않습니다. 구체적인 사건은 관련 자료를 가지고 전문가 상담을 받으시기 바랍니다.
                     </p>
                   </div>
                 </>

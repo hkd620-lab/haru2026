@@ -699,7 +699,7 @@ export function RecordPage() {
         haruraw_simple: `${activeLawQuery}\n\n${lawSummary}`,
       });
       setLawSaved(true);
-      toast.success('하루LAW 자문 결과가 저장되었습니다!');
+      toast.success('하루LAW 분석 결과가 사유-나의 기록에 저장되었습니다.');
       setTimeout(() => navigate('/sayu'), 1000);
     } catch (err) {
       toast.error('저장에 실패했습니다.');
@@ -1202,6 +1202,33 @@ export function RecordPage() {
               )}
 
 
+              {lawResults.length > 0 && (
+                <div style={{
+                  backgroundColor: '#fff',
+                  border: '1px solid #D9E5FF',
+                  borderRadius: 12,
+                  padding: 14,
+                  marginBottom: 10,
+                  boxShadow: '0 1px 2px rgba(26,60,110,0.06)',
+                }}>
+                  <p style={{ fontSize: 12, color: '#6B7280', fontWeight: 800, marginBottom: 6 }}>질문</p>
+                  <p style={{ fontSize: 14, color: '#1A3C6E', fontWeight: 700, lineHeight: 1.6, marginBottom: 12 }}>
+                    {activeLawQuery}
+                  </p>
+                  <p style={{ fontSize: 12, color: '#6B7280', fontWeight: 800, marginBottom: 6 }}>핵심 답변</p>
+                  <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.7, marginBottom: 12 }}>
+                    {lawSummary || '관련 조문을 바탕으로 검토가 필요합니다. 사례관계에 따라 실제 판단은 달라질 수 있습니다.'}
+                  </p>
+                  <p style={{ fontSize: 12, color: '#6B7280', fontWeight: 800, marginBottom: 6 }}>AI 분석</p>
+                  <p style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.7, marginBottom: 12 }}>
+                    아래 관련 조문을 기준으로 쉬운 해석을 확인할 수 있습니다. 단정적인 결론이 아니라 가능성, 주의점, 추가 확인이 필요한 부분을 중심으로 보세요.
+                  </p>
+                  <p style={{ fontSize: 11, color: '#92400E', lineHeight: 1.6, margin: 0 }}>
+                    본 내용은 법령 정보 제공 목적이며, 전문적인 법률 자문을 대체하지 않습니다.
+                  </p>
+                </div>
+              )}
+
               {/* 법령 카드 목록 */}
               {lawResults.map((article, idx) => (
                 <div key={idx} style={{
@@ -1248,23 +1275,11 @@ export function RecordPage() {
                     >
                       💡 AI 해석보기
                     </button>
-                    <button
-                      onClick={() => handlePrecedent(article, idx)}
-                      style={{
-                        flex: 1, padding: '6px 0', fontSize: 11, fontWeight: 600,
-                        backgroundColor: openCard?.idx === idx && openCard?.type === 'prec'
-                          ? '#166534' : '#f0fdf4',
-                        color: openCard?.idx === idx && openCard?.type === 'prec'
-                          ? '#fff' : '#166534',
-                        border: '1px solid #bbf7d0', borderRadius: 6, cursor: 'pointer',
-                      }}
-                    >
-                      ⚖️ 판례 보기
-                    </button>
+                    {/* 1차 버전에서는 판례 숨김 */}
                   </div>
 
                   {/* 인라인 결과 펼침 */}
-                  {openCard?.idx === idx && (
+                  {openCard?.idx === idx && openCard.type === 'explain' && (
                     <div style={{ marginTop: 10, borderRadius: 8, overflow: 'hidden' }}>
                       {openCard.loading ? (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: 16 }}>
@@ -1297,10 +1312,10 @@ export function RecordPage() {
                       cursor: lawSaved ? 'default' : 'pointer',
                     }}
                   >
-                    {lawSaved ? '✅ 저장 완료!' : isSavingLaw ? '저장 중...' : '💾 이 검색 결과 저장하기'}
+                    {lawSaved ? '✅ 저장 완료!' : isSavingLaw ? '저장 중...' : '💾 사유-나의 기록에 저장'}
                   </button>
                   <p style={{ marginTop: 8, fontSize: 12, color: '#6B7280', lineHeight: 1.5, textAlign: 'center' }}>
-                    저장한 하루LAW 기록은 SAYU-나의 기록에서 다시 확인할 수 있습니다.
+                    분석 결과는 사유-나의 기록에 저장해 나중에 다시 확인할 수 있습니다.
                   </p>
                 </div>
               )}
