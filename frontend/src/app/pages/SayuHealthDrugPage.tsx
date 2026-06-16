@@ -27,6 +27,7 @@ type DrugResponse = {
   totalCount: number;
   pageNo: number;
   numOfRows: number;
+  searchedTerms?: string[];
   resultCode?: string;
   resultMsg?: string;
   disclaimer?: string;
@@ -43,14 +44,17 @@ type RecognizedDrug = {
 
 type AnalyzeResponse = {
   success: boolean;
-  recognized?: RecognizedDrug[];
-  extractedName: string;
-  confidence: 'high' | 'medium' | 'low' | 'none';
+  rawText?: string;
+  candidates?: Array<{
+    name: string;
+    dosage?: string;
+    confidence?: number;
+  }>;
+  extractedName?: string;
+  confidence?: 'high' | 'medium' | 'low' | 'none';
   aiNote: string;
-  items: DrugItem[];
-  totalCount: number;
-  searchUsedName?: string;
-  fallbackUsed?: boolean;
+  items?: DrugItem[];
+  totalCount?: number;
   disclaimer: string;
 };
 
@@ -61,6 +65,12 @@ type PhotoSlot = {
 };
 
 const MAX_PHOTOS = 3;
+const SAFETY_NOTICE = [
+  '이 정보는 참고용 공식 의약품 정보입니다.',
+  'HARU는 진단, 처방, 복약 변경을 하지 않습니다.',
+  '복용 여부, 용량 변경, 중단은 반드시 의사 또는 약사와 상담하세요.',
+  '응급 증상이 있으면 즉시 119 또는 응급실을 이용하세요.',
+];
 
 function stripDocTags(raw?: string) {
   if (!raw) return '';
@@ -246,6 +256,7 @@ export function SayuHealthDrugPage() {
   const [searched, setSearched] = useState(false);
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [showOthersGroups, setShowOthersGroups] = useState<Set<number>>(new Set());
+  const [confirmedInput, setConfirmedInput] = useState(false);
 
   const toggleOthers = (gIdx: number) => {
     setShowOthersGroups((prev) => {
@@ -277,7 +288,8 @@ export function SayuHealthDrugPage() {
       return;
     }
     setLoading(true);
-    setAiResult(null);
+    setOpenKey(null);
+    setShowOthersGroups(new Set());
     try {
       const functions = getFunctions(undefined, 'asia-northeast3');
       const fn = httpsCallable<any, DrugResponse>(functions, 'getDrugInfo');
@@ -293,10 +305,8 @@ export function SayuHealthDrugPage() {
         },
       ]);
       setSearched(true);
-      const firstSeq = list[0]?.ITEM_SEQ;
-      setOpenKey(firstSeq ? `seq-${firstSeq}` : list.length > 0 ? '0-0' : null);
       if (list.length === 0) {
-        toast.info('검색 결과가 없습니다. 약 이름을 다시 확인해 주세요.');
+        toast.info('공식 정보에서 정확히 찾지 못했습니다. 약봉지 원문을 다시 확인하거나 약사에게 문의하세요.');
       }
     } catch (e: any) {
       console.error('[Drug] search failed', e);
@@ -358,6 +368,7 @@ export function SayuHealthDrugPage() {
       if (newSlots.length > 0) {
         setPhotos((prev) => [...prev, ...newSlots]);
         setAiResult(null);
+        setConfirmedInput(false);
       }
     } finally {
       setPhotoProcessing(false);
@@ -372,6 +383,7 @@ export function SayuHealthDrugPage() {
       return prev.filter((p) => p.id !== id);
     });
     setAiResult(null);
+    setConfirmedInput(false);
   };
 
   const runAiAnalysis = async () => {
@@ -387,43 +399,16 @@ export function SayuHealthDrugPage() {
       const data = res.data;
       setAiResult(data);
 
-      // 신 응답(recognized 배열) 우선, 구 응답 폴백
-      const recognized: RecognizedDrug[] = Array.isArray(data?.recognized) && data.recognized.length > 0
-        ? data.recognized
-        : data?.extractedName
-          ? [{
-              extractedName: data.extractedName,
-              confidence: data.confidence,
-              items: Array.isArray(data?.items) ? data.items : [],
-              totalCount: data?.totalCount || 0,
-              searchUsedName: data.searchUsedName,
-              fallbackUsed: data.fallbackUsed,
-            }]
-          : [];
+      const candidates = Array.isArray(data?.candidates) ? data.candidates : [];
+      setRecognizedList([]);
+      setSearched(false);
+      setOpenKey(null);
+      setShowOthersGroups(new Set());
+      setConfirmedInput(false);
 
-      setRecognizedList(recognized);
-      setSearched(true);
-
-      // 첫 번째 약의 함량 매칭된 카드(없으면 첫 items[0])를 ITEM_SEQ 기반 key로 자동 펼침
-      setOpenKey(pickAutoOpenKey(recognized));
-
-      if (recognized.length > 0) {
-        // 첫 약 이름은 텍스트 입력란에도 채움 (편의)
-        setItemName(recognized[0].extractedName);
-        const total = recognized.length;
-        const foundCount = recognized.filter((r) => r.items.length > 0).length;
-        if (total === 1) {
-          const r = recognized[0];
-          if (r.items.length === 0) {
-            toast.info(`"${r.extractedName}" 약은 식약처 DB에서 찾지 못했습니다.`);
-          } else if (r.fallbackUsed && r.searchUsedName) {
-            toast.success(`"${r.extractedName}" 인식 → "${r.searchUsedName}" 시리즈로 검색됨`);
-          } else {
-            toast.success(`"${r.extractedName}" 인식됨`);
-          }
-        } else {
-          toast.success(`약 ${total}개 인식됨${foundCount < total ? ` (식약처 검색 ${foundCount}/${total})` : ''}`);
-        }
+      if (candidates.length > 0) {
+        setItemName(candidates[0].name);
+        toast.success(`약 이름 후보 ${candidates.length}개를 추출했습니다. 약봉지 원문과 대조해 확인하세요.`);
       } else {
         toast.warning(data?.aiNote || '약 이름을 인식하지 못했습니다.');
       }
@@ -458,6 +443,11 @@ export function SayuHealthDrugPage() {
     low: '#B85C2E',
     none: '#888780',
   };
+  const candidateConfidenceLabel = (confidence?: number) => {
+    if (typeof confidence !== 'number') return '확인 필요';
+    return `${Math.round(confidence * 100)}%`;
+  };
+  const aiCandidates = Array.isArray(aiResult?.candidates) ? aiResult.candidates : [];
 
   return (
     <div
@@ -491,11 +481,29 @@ export function SayuHealthDrugPage() {
           className="text-2xl md:text-3xl font-bold tracking-tight"
           style={{ color: '#1A3C6E' }}
         >
-          💊 약봉지 보고 약정보 얻기
+          💊 약 이름 확인하고 공식 약정보 찾기
         </h1>
         <p className="text-sm mt-1.5" style={{ color: '#666', lineHeight: 1.6 }}>
-          약 이름을 직접 입력하거나, 약봉지 사진을 찍으면 AI가 약 이름을 인식해 식약처 자료를 보여드립니다.
+          약 이름을 직접 입력하거나, 약봉지 사진에서 약 이름 후보를 추출할 수 있습니다.
+          AI 인식 결과는 틀릴 수 있으므로 반드시 약봉지 원문과 대조해 확인하세요.
+          확인된 약 이름으로 식약처 등 공식 의약품 정보를 찾아드립니다.
+          복용 여부, 용량 변경, 중단은 의사 또는 약사와 상담하세요.
         </p>
+      </div>
+
+      <div
+        className="mb-4 rounded-xl p-4"
+        style={{
+          backgroundColor: '#FBEEE5',
+          border: '1px solid #E8B894',
+          color: '#7A4A1E',
+          fontSize: 12,
+          lineHeight: 1.65,
+        }}
+      >
+        {SAFETY_NOTICE.map((line) => (
+          <div key={line}>{line}</div>
+        ))}
       </div>
 
       {/* === 1. 텍스트 입력 검색 === */}
@@ -515,30 +523,48 @@ export function SayuHealthDrugPage() {
             marginBottom: 6,
           }}
         >
-          약 이름으로 직접 검색
+          약 이름 직접 검색
         </div>
         <input
           type="text"
           value={itemName}
-          onChange={(e) => setItemName(e.target.value)}
-          placeholder="예) 타이레놀, 게보린, 베아제"
+          onChange={(e) => {
+            setItemName(e.target.value);
+            setConfirmedInput(false);
+          }}
+          placeholder="예) 텔미누보정40/2.5mg, 타이레놀정500mg"
           style={inputStyle}
         />
+
+        {aiResult && (
+          <label
+            className="mt-3 flex items-start gap-2"
+            style={{ fontSize: 12, color: '#4A5A2C', lineHeight: 1.5, cursor: 'pointer' }}
+          >
+            <input
+              type="checkbox"
+              checked={confirmedInput}
+              onChange={(e) => setConfirmedInput(e.target.checked)}
+              style={{ marginTop: 2 }}
+            />
+            <span>약봉지 원문과 확인했습니다</span>
+          </label>
+        )}
 
         <div className="flex justify-end mt-4">
           <button
             type="submit"
-            disabled={loading || analyzing}
+            disabled={loading || analyzing || (Boolean(aiResult) && !confirmedInput)}
             className="rounded-xl px-5 py-3 text-sm font-semibold transition-all active:scale-[0.98]"
             style={{
               backgroundColor: '#4A5A2C',
               color: '#fff',
-              opacity: loading || analyzing ? 0.6 : 1,
-              cursor: loading || analyzing ? 'wait' : 'pointer',
+              opacity: loading || analyzing || (Boolean(aiResult) && !confirmedInput) ? 0.6 : 1,
+              cursor: loading || analyzing ? 'wait' : (Boolean(aiResult) && !confirmedInput) ? 'not-allowed' : 'pointer',
               boxShadow: '0 4px 10px -6px rgba(74,90,44,0.6)',
             }}
           >
-            {loading ? '검색 중…' : '🔍 약정보 검색'}
+            {loading ? '검색 중...' : aiResult ? '이 약 이름으로 공식 정보 찾기' : '약 이름 직접 검색'}
           </button>
         </div>
       </form>
@@ -560,7 +586,7 @@ export function SayuHealthDrugPage() {
           }}
         >
           <div style={{ fontSize: 12, fontWeight: 600, color: '#4A5A2C' }}>
-            📷 약봉지 사진으로 AI 분석 ({photos.length}/{MAX_PHOTOS})
+            약봉지 사진에서 약 이름 추출하기 BETA ({photos.length}/{MAX_PHOTOS})
           </div>
         </div>
 
@@ -697,15 +723,15 @@ export function SayuHealthDrugPage() {
             {analyzing ? (
               <>
                 <GrapeLoadingMini size={18} color="#fff" />
-                AI 분석 중…
+              AI 추출 중...
               </>
             ) : (
-              <>🔬 AI 약봉지 분석</>
+              <>약봉지 사진에서 약 이름 추출하기 BETA</>
             )}
           </button>
         </div>
 
-        {aiResult && !analyzing && recognizedList.length > 0 && (
+        {aiResult && !analyzing && (
           <div
             style={{
               marginTop: 12,
@@ -719,30 +745,41 @@ export function SayuHealthDrugPage() {
             }}
           >
             <div style={{ fontWeight: 700, color: '#1A3C6E', marginBottom: 6 }}>
-              AI 인식 결과: {recognizedList.length}개 약
+              AI가 추정한 약 이름 후보입니다. 반드시 확인하세요.
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {recognizedList.map((r, i) => (
-                <span
+            {aiCandidates.length > 0 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {aiCandidates.map((c, i) => (
+                <button
                   key={`pill-${i}`}
+                  type="button"
+                  onClick={() => {
+                    setItemName(c.name);
+                    setConfirmedInput(false);
+                  }}
                   style={{
                     fontSize: 11,
                     fontWeight: 600,
                     color: '#2C2C2A',
                     background: '#fff',
-                    border: `1px solid ${confidenceColor[r.confidence]}`,
-                    borderLeft: `4px solid ${confidenceColor[r.confidence]}`,
+                    border: '1px solid #D4DEA0',
+                    borderLeft: '4px solid #B85C2E',
                     padding: '3px 8px',
                     borderRadius: 6,
+                    cursor: 'pointer',
                   }}
                 >
-                  {r.extractedName}
-                  <span style={{ color: confidenceColor[r.confidence], marginLeft: 4, fontSize: 10 }}>
-                    · {confidenceLabel[r.confidence]}
+                  {c.name}
+                  {c.dosage && <span style={{ color: '#7A6F5A', marginLeft: 4 }}>· {c.dosage}</span>}
+                  <span style={{ color: '#B85C2E', marginLeft: 4, fontSize: 10 }}>
+                    · {candidateConfidenceLabel(c.confidence)}
                   </span>
-                </span>
-              ))}
-            </div>
+                </button>
+                ))}
+              </div>
+            ) : (
+              <div style={{ color: '#7A6F5A', fontSize: 11 }}>약 이름 후보를 찾지 못했습니다.</div>
+            )}
             {aiResult.aiNote && (
               <div style={{ color: '#7A6F5A', fontSize: 11, marginTop: 6 }}>{aiResult.aiNote}</div>
             )}

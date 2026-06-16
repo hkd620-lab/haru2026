@@ -4999,6 +4999,58 @@ async function callDrugApi(params: Record<string, string>): Promise<any> {
   throw lastError || new Error('식약처 API endpoint를 찾을 수 없습니다');
 }
 
+function buildDrugSearchTerms(raw: string): string[] {
+  const original = raw.trim();
+  const terms: string[] = [];
+  const add = (s: string) => {
+    const v = s.trim().replace(/\s+/g, ' ');
+    if (v && !terms.includes(v)) terms.push(v);
+  };
+
+  add(original);
+  add(original.replace(/(\d+(?:[./]\d+)*)m\b/gi, '$1mg'));
+
+  const withoutDosage = original
+    .replace(/\d+(\.\d+)?\s*\/\s*\d+(\.\d+)?\s*(밀리그램|마이크로그램|mg|m|g|ml|mcg|µg|μg|IU|%)?/gi, '')
+    .replace(/\d+(\.\d+)?\s*(밀리그램|마이크로그램|mg|m|g|ml|mcg|µg|μg|IU|%)/gi, '')
+    .replace(/\([^)]*\)/g, '')
+    .replace(/[\/·,]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  add(withoutDosage);
+
+  const firstWord = withoutDosage.match(/[가-힣A-Za-z]+/)?.[0] || '';
+  add(firstWord);
+
+  if (firstWord.endsWith('정') && firstWord.length > 2) {
+    add(firstWord.slice(0, -1));
+  }
+
+  return terms.slice(0, 5);
+}
+
+function parseDrugItemsFromResponse(resp: any): { items: any[]; totalCount: number; pageNo?: number; numOfRows?: number; resultCode: string; resultMsg: string } {
+  const data = resp?.data;
+  const root = data?.response ?? data;
+  const header = root?.header;
+  const body = root?.body;
+  const rawItems = body?.items;
+  let items: any[] = [];
+  if (Array.isArray(rawItems)) {
+    items = rawItems;
+  } else if (rawItems?.item) {
+    items = Array.isArray(rawItems.item) ? rawItems.item : [rawItems.item];
+  }
+
+  return {
+    items,
+    totalCount: parseInt(String(body?.totalCount ?? '0'), 10) || 0,
+    pageNo: body?.pageNo,
+    numOfRows: body?.numOfRows,
+    resultCode: header?.resultCode ?? '',
+    resultMsg: header?.resultMsg ?? '',
+  };
+}
 
 export const getDrugInfo = onCall(
   {
@@ -5019,58 +5071,59 @@ export const getDrugInfo = onCall(
     const pageNo = Math.max(1, parseInt(String(d.pageNo ?? '1'), 10) || 1);
     const numOfRows = Math.min(20, Math.max(1, parseInt(String(d.numOfRows ?? '10'), 10) || 10));
 
-    const params: Record<string, string> = {
-      serviceKey: DRUG_API_KEY_SECRET.value(),
-      pageNo: String(pageNo),
-      numOfRows: String(numOfRows),
-      type: 'json',
-      item_name: itemName,
-    };
+    const searchTerms = buildDrugSearchTerms(itemName);
+    const seen = new Set<string>();
+    const mergedItems: any[] = [];
+    let totalCount = 0;
+    let resultCode = '';
+    let resultMsg = '';
 
-    let resp: any;
-    try {
-      resp = await callDrugApi(params);
-    } catch (err: any) {
-      throw new HttpsError('internal', '식약처 서버에 연결할 수 없습니다');
-    }
+    for (const term of searchTerms) {
+      const params: Record<string, string> = {
+        serviceKey: DRUG_API_KEY_SECRET.value(),
+        pageNo: String(pageNo),
+        numOfRows: String(numOfRows),
+        type: 'json',
+        item_name: term,
+      };
 
-    const data = resp?.data;
-    const root = data?.response ?? data;
-    const header = root?.header;
-    const body = root?.body;
-    const resultCode = header?.resultCode ?? '';
-    const resultMsg = header?.resultMsg ?? '';
-
-    if (resultCode && resultCode !== '00' && resultCode !== '0') {
-      logger.warn('식약처 API 비정상 응답:', { resultCode, resultMsg });
-      if (resultCode === '03') {
-        return {
-          success: true,
-          items: [],
-          totalCount: 0,
-          pageNo,
-          numOfRows,
-          resultCode,
-          resultMsg,
-        };
+      let resp: any;
+      try {
+        resp = await callDrugApi(params);
+      } catch (err: any) {
+        if (term === searchTerms[0] && searchTerms.length === 1) {
+          throw new HttpsError('internal', '식약처 서버에 연결할 수 없습니다');
+        }
+        continue;
       }
-      throw new HttpsError('internal', `식약처 API 오류 (${resultCode}): ${resultMsg}`);
-    }
 
-    const rawItems = body?.items;
-    let items: any[] = [];
-    if (Array.isArray(rawItems)) {
-      items = rawItems;
-    } else if (rawItems?.item) {
-      items = Array.isArray(rawItems.item) ? rawItems.item : [rawItems.item];
+      const parsed = parseDrugItemsFromResponse(resp);
+      resultCode = parsed.resultCode;
+      resultMsg = parsed.resultMsg;
+
+      if (resultCode && resultCode !== '00' && resultCode !== '0') {
+        logger.warn('식약처 API 비정상 응답:', { resultCode, resultMsg, term });
+        if (resultCode !== '03') {
+          throw new HttpsError('internal', `식약처 API 오류 (${resultCode}): ${resultMsg}`);
+        }
+      }
+
+      totalCount += parsed.totalCount;
+      for (const item of parsed.items) {
+        const key = item?.ITEM_SEQ || `${item?.ITEM_NAME || ''}__${item?.ENTP_NAME || ''}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        mergedItems.push(item);
+      }
     }
 
     return {
       success: true,
-      items,
-      totalCount: parseInt(String(body?.totalCount ?? '0'), 10) || 0,
-      pageNo: parseInt(String(body?.pageNo ?? pageNo), 10) || pageNo,
-      numOfRows: parseInt(String(body?.numOfRows ?? numOfRows), 10) || numOfRows,
+      items: mergedItems.slice(0, numOfRows),
+      totalCount: Math.max(totalCount, mergedItems.length),
+      pageNo,
+      numOfRows,
+      searchedTerms: searchTerms,
       resultCode,
       resultMsg,
       disclaimer: '본 정보는 식품의약품안전처 공공데이터를 활용한 참고용이며, 의료 행위·처방을 대체하지 않습니다.',
@@ -5401,16 +5454,16 @@ export const getHospitalList = onCall(
 
 // ===== 🔬 약봉지 AI 사진 분석 (SAYU건강관리 - Gemini Vision) =====
 // 입력: 사진 base64 배열 (1~3장)
-// 처리: Gemini Vision으로 약 이름만 추출 → 식약처 API로 공식 정보 조회
+// 처리: Gemini Vision으로 약 이름 후보만 추출 (공식 약정보 검색은 사용자가 확인 후 별도 실행)
 // 개인정보 안전장치:
 //   1) 프롬프트에 환자·의사·병원 정보 무시 명시
 //   2) 사진·개인정보 로그 차단 (장수·바이트 길이만 로깅)
 //   3) 분석 후 사진 즉시 폐기 (Storage 저장 없음)
-//   4) 추출 결과는 식약처 공식 데이터로 한 번 더 검증
+//   4) 사용자 확인 전 공식 약정보를 자동 확정하지 않음
 export const analyzeDrugPhoto = onCall(
   {
     region: 'asia-northeast3',
-    secrets: [GEMINI_API_KEY_SECRET, DRUG_API_KEY_SECRET],
+    secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 60,
     memory: '512MiB',
   },
@@ -5463,11 +5516,12 @@ export const analyzeDrugPhoto = onCall(
 위 무시 대상은 응답에 절대 포함하지 말고, 내부적으로도 텍스트화하지 마세요.
 
 [출력 형식 — JSON 한 줄, 마크다운 금지]
-{"drugs": [{"name": "약 이름1", "confidence": "high|medium|low"}, {"name": "약 이름2", "confidence": "high|medium|low"}], "note": "한 줄 메모"}
+{"drugs": [{"name": "약 이름1", "dosage": "500mg", "confidence": 0.86}, {"name": "약 이름2", "confidence": 0.62}], "note": "한 줄 메모"}
 
 [규칙]
 - 약 이름이 하나도 없으면 drugs=[] (빈 배열), note="약봉지 사진이 아닙니다" 또는 사유
-- 약마다 confidence 개별 평가 (흐릿한 약은 "low")
+- confidence는 0~1 숫자로 개별 평가
+- 보이는 함량이 있으면 dosage에 넣고, 없으면 생략
 - 같은 약이 여러 번 보이면 한 번만 포함
 - 추측·환각 금지. 확실하지 않은 이름은 포함하지 마세요.
 - 최대 10개까지만 추출`;
@@ -5475,8 +5529,7 @@ export const analyzeDrugPhoto = onCall(
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
     const visionModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
 
-    type DrugConfidence = 'high' | 'medium' | 'low' | 'none';
-    type ParsedDrug = { name: string; confidence: DrugConfidence };
+    type ParsedDrug = { name: string; dosage?: string; confidence?: number };
 
     let parsedDrugs: ParsedDrug[] = [];
     let aiNote = '';
@@ -5508,10 +5561,12 @@ export const analyzeDrugPhoto = onCall(
         const key = name.toLowerCase().replace(/\s+/g, '');
         if (seen.has(key)) continue;
         seen.add(key);
-        const c = String(item?.confidence ?? 'medium').trim().toLowerCase();
-        const confidence: DrugConfidence =
-          (['high', 'medium', 'low', 'none'].includes(c) ? c : 'medium') as DrugConfidence;
-        parsedDrugs.push({ name, confidence });
+        const rawConfidence = Number(item?.confidence);
+        const confidence = Number.isFinite(rawConfidence)
+          ? Math.max(0, Math.min(1, rawConfidence))
+          : undefined;
+        const dosage = String(item?.dosage ?? '').trim().slice(0, 30) || undefined;
+        parsedDrugs.push({ name, dosage, confidence });
         if (parsedDrugs.length >= 10) break;
       }
 
@@ -5519,10 +5574,7 @@ export const analyzeDrugPhoto = onCall(
       if (parsedDrugs.length === 0 && parsed?.drugName) {
         const name = String(parsed.drugName).trim().slice(0, 60);
         if (name) {
-          const c = String(parsed?.confidence ?? 'none').trim().toLowerCase();
-          const confidence: DrugConfidence =
-            (['high', 'medium', 'low', 'none'].includes(c) ? c : 'none') as DrugConfidence;
-          parsedDrugs.push({ name, confidence });
+          parsedDrugs.push({ name });
         }
       }
     } catch (err: any) {
@@ -5534,153 +5586,28 @@ export const analyzeDrugPhoto = onCall(
     // 사진 base64 즉시 메모리 해제 (분석 끝났으니 보관 안 함)
     images.length = 0;
 
-    const disclaimer = 'AI 분석은 참고용이며, 정확한 정보는 식약처 자료를 우선합니다. 약 이름만 추출하며, 환자·의사 등 개인정보는 저장·전송하지 않습니다.';
+    const disclaimer = 'AI가 추정한 약 이름 후보입니다. 반드시 약봉지 원문과 대조해 확인한 뒤 공식 의약품 정보를 검색하세요.';
 
     if (parsedDrugs.length === 0) {
       return {
         success: true,
-        recognized: [],
+        rawText: aiNote || '',
+        candidates: [],
         extractedName: '',
-        confidence: 'none' as DrugConfidence,
+        confidence: 'none',
         aiNote: aiNote || '약 이름을 인식하지 못했습니다. 사진을 더 또렷이 찍거나 약 이름을 직접 입력해 주세요.',
-        items: [],
-        totalCount: 0,
         disclaimer,
       };
     }
 
-    // === 2단계: 추출된 약 이름들 각각 식약처 API 폴백 검색 ===
-    // 식약처 DB는 함량·표기 차이로 정확명 매칭이 안 될 수 있어 단계별 폴백
-    const searchDrug = async (name: string): Promise<{ items: any[]; totalCount: number }> => {
-      const params: Record<string, string> = {
-        serviceKey: DRUG_API_KEY_SECRET.value(),
-        pageNo: '1',
-        numOfRows: '10',
-        type: 'json',
-        item_name: name,
-      };
-      try {
-        const resp = await callDrugApi(params);
-        const root = resp?.data?.response ?? resp?.data;
-        const body = root?.body;
-        const rawItems = body?.items;
-        let items: any[] = [];
-        if (Array.isArray(rawItems)) items = rawItems;
-        else if (rawItems?.item) items = Array.isArray(rawItems.item) ? rawItems.item : [rawItems.item];
-        const totalCount = parseInt(String(body?.totalCount ?? '0'), 10) || items.length;
-        return { items, totalCount };
-      } catch {
-        return { items: [], totalCount: 0 };
-      }
-    };
-
-    // 함량·용량·괄호·슬래시 등을 제거해 베이스 약명만 추출
-    // "텔미누보정40/2.5mg" → "텔미누보정"
-    const stripDosage = (s: string): string =>
-      s
-        .replace(/\d+(\.\d+)?\s*\/\s*\d+(\.\d+)?\s*(mg|g|ml|mcg|µg|μg|IU|%)?/gi, '')
-        .replace(/\d+(\.\d+)?\s*(mg|g|ml|mcg|µg|μg|IU|%)/gi, '')
-        .replace(/\([^)]*\)/g, '')
-        .replace(/[\/·,]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-    // 한글·영문 단어만 추출 (더 적극적 폴백)
-    const baseWord = (s: string): string => {
-      const m = s.match(/[가-힣A-Za-z]+/g);
-      return m ? m[0] : '';
-    };
-
-    // 약 1개에 대한 3단 폴백 검색
-    const searchWithFallback = async (extractedName: string) => {
-      let items: any[] = [];
-      let totalCount = 0;
-      let searchUsedName = extractedName;
-      let stageUsed: 'original' | 'stripDosage' | 'baseWord' | 'none' = 'none';
-
-      const r1 = await searchDrug(extractedName);
-      logger.info('식약처 검색 단계', {
-        stage: 'original',
-        name: extractedName,
-        totalCount: r1.totalCount,
-        op: _drugApiUrlCache?.split('/').pop() || '?',
-      });
-      if (r1.totalCount > 0) {
-        items = r1.items;
-        totalCount = r1.totalCount;
-        stageUsed = 'original';
-      } else {
-        const stripped = stripDosage(extractedName);
-        if (stripped && stripped !== extractedName && stripped.length >= 2) {
-          const r2 = await searchDrug(stripped);
-          logger.info('식약처 검색 단계', {
-            stage: 'stripDosage',
-            name: stripped,
-            totalCount: r2.totalCount,
-            op: _drugApiUrlCache?.split('/').pop() || '?',
-          });
-          if (r2.totalCount > 0) {
-            items = r2.items;
-            totalCount = r2.totalCount;
-            searchUsedName = stripped;
-            stageUsed = 'stripDosage';
-          } else {
-            const word = baseWord(stripped);
-            if (word && word !== stripped && word.length >= 2) {
-              const r3 = await searchDrug(word);
-              logger.info('식약처 검색 단계', {
-                stage: 'baseWord',
-                name: word,
-                totalCount: r3.totalCount,
-                op: _drugApiUrlCache?.split('/').pop() || '?',
-              });
-              items = r3.items;
-              totalCount = r3.totalCount;
-              searchUsedName = word;
-              stageUsed = 'baseWord';
-            }
-          }
-        }
-      }
-      logger.info('식약처 검색 최종', {
-        extractedName,
-        finalName: searchUsedName,
-        totalCount,
-        stageUsed,
-        op: _drugApiUrlCache?.split('/').pop() || '?',
-      });
-      return { items, totalCount, searchUsedName, fallbackUsed: searchUsedName !== extractedName };
-    };
-
-    // 각 약에 대해 병렬 검색
-    const recognized = await Promise.all(
-      parsedDrugs.map(async (d) => {
-        const r = await searchWithFallback(d.name);
-        return {
-          extractedName: d.name,
-          confidence: d.confidence,
-          items: r.items,
-          totalCount: r.totalCount,
-          searchUsedName: r.searchUsedName,
-          fallbackUsed: r.fallbackUsed,
-        };
-      })
-    );
-
-    // 하위 호환: 첫 번째 약 기준 단일 필드도 함께 반환
-    const first = recognized[0];
-
     return {
       success: true,
-      recognized,
-      // 하위 호환 (구 클라이언트가 깨지지 않도록 첫 번째 약 기준)
-      extractedName: first.extractedName,
-      confidence: first.confidence,
+      rawText: aiNote || '',
+      candidates: parsedDrugs,
+      // 하위 호환: 첫 후보명만 제공하되 약정보 확정값으로 쓰지 않음
+      extractedName: parsedDrugs[0]?.name || '',
+      confidence: 'none',
       aiNote,
-      items: first.items,
-      totalCount: first.totalCount,
-      searchUsedName: first.searchUsedName,
-      fallbackUsed: first.fallbackUsed,
       disclaimer,
     };
   }
