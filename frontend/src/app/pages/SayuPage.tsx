@@ -67,6 +67,62 @@ const PLANT_SAYU_SOURCE_LABEL: Record<string, string> = {
   gemini: 'AI 분석',
 };
 
+type HaruLawArticleView = {
+  lawName: string;
+  articleStr: string;
+  title: string;
+  content: string;
+};
+
+function getLawEasySummary(title?: string, article?: string, description?: string): string {
+  const text = `${title ?? ''} ${article ?? ''} ${description ?? ''}`;
+
+  if (text.includes('불산입') || text.includes('제33조')) {
+    return '❌ 경비로 인정되지 않을 수 있어요';
+  }
+
+  if (text.includes('필요경비') || text.includes('제27조')) {
+    return '✅ 경비로 인정될 가능성이 있어요';
+  }
+
+  return '⚖️ 사실관계에 따라 달라질 수 있어요';
+}
+
+function cleanHaruLawMarkdown(text: string): string {
+  return String(text ?? '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line !== '---')
+    .map((line) => line.replace(/^#{1,6}\s*/, '').replace(/\*\*/g, '').replace(/^\s*[-*]\s+/, ''))
+    .join('\n')
+    .trim();
+}
+
+function parseHaruLawArticles(text: string): HaruLawArticleView[] {
+  return cleanHaruLawMarkdown(text)
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((block) => {
+      const [firstLine = '', ...contentLines] = block.split('\n');
+      const match = firstLine.match(/^\[([^\]]+)\]\s*(.+?)\((.*?)\)\s*$/);
+      if (match) {
+        return {
+          lawName: match[1].trim(),
+          articleStr: match[2].trim(),
+          title: match[3].trim(),
+          content: contentLines.join('\n').trim(),
+        };
+      }
+      return {
+        lawName: '',
+        articleStr: firstLine.trim(),
+        title: '',
+        content: contentLines.join('\n').trim(),
+      };
+    });
+}
+
 type GrowthTimelineRecordItem = {
   url: string;
   takenDate: string;
@@ -4800,38 +4856,88 @@ export function SayuPage() {
       {harurawModal.isOpen && (
         <div
           onClick={() => setHarurawModal({ isOpen: false, query: '', summary: '', articles: '' })}
-          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-end' }}
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 12px' }}
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ width: '100%', maxHeight: '80vh', backgroundColor: '#fff', borderRadius: '16px 16px 0 0', padding: 20, overflowY: 'auto' }}
+            style={{ width: '100%', maxWidth: 1040, maxHeight: '86vh', margin: '0 auto', backgroundColor: '#fff', borderRadius: 16, padding: 20, overflowY: 'auto', boxShadow: '0 24px 60px rgba(0,0,0,0.22)' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E', display: 'flex', alignItems: 'center', gap: 6 }}><Scale className="w-4 h-4" /> 하루LAW 검색 기록</p>
               <button onClick={() => setHarurawModal({ isOpen: false, query: '', summary: '', articles: '' })}
                 style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#999' }}>✕</button>
             </div>
-            <div style={{ padding: 12, backgroundColor: '#f0f4ff', borderRadius: 8, marginBottom: 12 }}>
-              <p style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>검색 질문</p>
-              <p style={{ fontSize: 14, color: '#1A3C6E', fontWeight: 600 }}>{harurawModal.query}</p>
-            </div>
-            {harurawModal.summary && (
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ marginBottom: 6 }}>
-                  <p style={{ fontSize: 11, color: '#888' }}>💡 AI 분석</p>
-                </div>
-                {renderStyledContent(harurawModal.summary)}
-              </div>
-            )}
-            {harurawModal.articles && (
-              <div style={{ marginBottom: 16 }}>
-                <p style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>📋 관련 법조문</p>
-                {renderStyledContent(harurawModal.articles)}
-              </div>
-            )}
-            <p style={{ fontSize: 10, color: '#bbb', textAlign: 'center', marginTop: 8 }}>
-              본 내용은 법령 정보 제공 목적이며, 전문적인 법률 자문을 대체할 수 없습니다.
-            </p>
+            {(() => {
+              const cleanedSummary = cleanHaruLawMarkdown(harurawModal.summary);
+              const lawArticles = parseHaruLawArticles(harurawModal.articles);
+              const sectionStyle = {
+                padding: 16,
+                borderRadius: 12,
+                border: '1px solid #E5E7EB',
+                backgroundColor: '#fff',
+                marginBottom: 12,
+              };
+              const labelStyle = { fontSize: 12, color: '#6B7280', fontWeight: 800, marginBottom: 8 };
+              return (
+                <>
+                  <div style={{ ...sectionStyle, backgroundColor: '#F0F4FF', borderColor: '#C7D9F8' }}>
+                    <p style={labelStyle}>질문</p>
+                    <p style={{ fontSize: 15, color: '#1A3C6E', fontWeight: 700, lineHeight: 1.6, margin: 0 }}>{harurawModal.query}</p>
+                  </div>
+
+                  {cleanedSummary && (
+                    <div style={sectionStyle}>
+                      <p style={labelStyle}>핵심 답변</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {cleanedSummary.split('\n').filter(Boolean).map((line, idx) => (
+                          <p key={idx} style={{ fontSize: 14, color: '#374151', lineHeight: 1.7, margin: 0 }}>
+                            {line}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {lawArticles.length > 0 && (
+                    <div style={sectionStyle}>
+                      <p style={labelStyle}>관련 법조문</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {lawArticles.map((article, idx) => (
+                          <div key={`${article.lawName}_${article.articleStr}_${idx}`} style={{ padding: 12, borderRadius: 10, backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB' }}>
+                            <p style={{ fontSize: 13, fontWeight: 800, color: '#1A3C6E', marginBottom: 6 }}>
+                              {getLawEasySummary(article.title, `${article.lawName} ${article.articleStr}`, article.content)}
+                            </p>
+                            <p style={{ fontSize: 13, fontWeight: 800, color: '#111827', marginBottom: article.content ? 6 : 0 }}>
+                              {[article.lawName, article.articleStr, article.title].filter(Boolean).join(' · ')}
+                            </p>
+                            {article.content && (
+                              <p style={{ fontSize: 12, color: '#4B5563', lineHeight: 1.6, margin: 0 }}>
+                                {article.content}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={sectionStyle}>
+                    <p style={labelStyle}>실무 조언</p>
+                    <ul style={{ margin: 0, paddingLeft: 18, color: '#374151', fontSize: 13, lineHeight: 1.7 }}>
+                      <li>관련 계약서, 영수증, 문자, 이메일 등 사실관계를 보여주는 자료를 함께 보관하세요.</li>
+                      <li>언제, 어디서, 누구와, 어떤 이유로 발생한 일인지 기록해 두면 나중에 판단하기 쉽습니다.</li>
+                    </ul>
+                  </div>
+
+                  <div style={{ ...sectionStyle, backgroundColor: '#FFFBEB', borderColor: '#FDE68A', marginBottom: 0 }}>
+                    <p style={labelStyle}>주의사항</p>
+                    <p style={{ fontSize: 12, color: '#92400E', lineHeight: 1.7, margin: 0 }}>
+                      이 내용은 일반적인 정보이며, 실제 법적 조치나 신고 전에는 변호사 등 전문가 확인이 필요합니다.
+                    </p>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}

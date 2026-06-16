@@ -41,6 +41,20 @@ const DEFAULT_WEATHER = ['쾌청', '흐림', '비', '눈'];
 const DEFAULT_TEMPERATURE = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
 const DEFAULT_MOOD = ['기쁨', '평온', '무미', '울적', '번잡'];
 
+function getLawEasySummary(title?: string, article?: string, description?: string): string {
+  const text = `${title ?? ''} ${article ?? ''} ${description ?? ''}`;
+
+  if (text.includes('불산입') || text.includes('제33조')) {
+    return '❌ 경비로 인정되지 않을 수 있어요';
+  }
+
+  if (text.includes('필요경비') || text.includes('제27조')) {
+    return '✅ 경비로 인정될 가능성이 있어요';
+  }
+
+  return '⚖️ 사실관계에 따라 달라질 수 있어요';
+}
+
 function SortableTagItem({
   id,
   isSelected,
@@ -1311,6 +1325,10 @@ export function RecordPage() {
                   backgroundColor: '#fff', border: '1px solid #e0e0e0',
                   borderRadius: 8, padding: 12, marginBottom: 8,
                 }}>
+                  <p style={{ fontSize: 13, fontWeight: 800, color: '#1A3C6E', marginBottom: 8 }}>
+                    {getLawEasySummary(article.title, `${article.lawName} ${article.articleStr}`, article.content)}
+                  </p>
+
                   {/* 법령 뱃지 + 법령명 */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                     <span style={{
@@ -1345,7 +1363,7 @@ export function RecordPage() {
                         border: '1px solid #c7d9f8', borderRadius: 6, cursor: 'pointer',
                       }}
                     >
-                      💡 AI자문
+                      💡 AI 해석보기
                     </button>
                     <button
                       onClick={() => handlePrecedent(article, idx)}
@@ -1358,7 +1376,7 @@ export function RecordPage() {
                         border: '1px solid #bbf7d0', borderRadius: 6, cursor: 'pointer',
                       }}
                     >
-                      ⚖️ 판례
+                      ⚖️ 판례 보기
                     </button>
                   </div>
 
@@ -1380,25 +1398,28 @@ export function RecordPage() {
 
               {/* 저장 버튼 */}
               {lawResults.length > 0 && (
-                <button
-                  onClick={handleSaveLawResult}
-                  disabled={isSavingLaw || lawSaved}
-                  style={{
-                    width: '100%',
-                    padding: '10px 0',
-                    marginTop: 4,
-                    marginBottom: 12,
-                    backgroundColor: lawSaved ? '#10b981' : '#1A3C6E',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 8,
-                    fontWeight: 600,
-                    fontSize: 13,
-                    cursor: lawSaved ? 'default' : 'pointer',
-                  }}
-                >
-                  {lawSaved ? '✅ 저장 완료!' : isSavingLaw ? '저장 중...' : '💾 이 검색 결과 저장하기'}
-                </button>
+                <div style={{ marginTop: 4, marginBottom: 12 }}>
+                  <button
+                    onClick={handleSaveLawResult}
+                    disabled={isSavingLaw || lawSaved}
+                    style={{
+                      width: '100%',
+                      padding: '10px 0',
+                      backgroundColor: lawSaved ? '#10b981' : '#1A3C6E',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 8,
+                      fontWeight: 600,
+                      fontSize: 13,
+                      cursor: lawSaved ? 'default' : 'pointer',
+                    }}
+                  >
+                    {lawSaved ? '✅ 저장 완료!' : isSavingLaw ? '저장 중...' : '💾 이 검색 결과 저장하기'}
+                  </button>
+                  <p style={{ marginTop: 8, fontSize: 12, color: '#6B7280', lineHeight: 1.5, textAlign: 'center' }}>
+                    저장한 하루LAW 기록은 SAYU-나의 기록에서 다시 확인할 수 있습니다.
+                  </p>
+                </div>
               )}
 
               {/* 검색 이력 목록 */}
