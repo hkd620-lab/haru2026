@@ -350,5 +350,10 @@ service cloud.firestore {
     match /haruLawSharePreviews/{previewId} {
       allow read, write: if false;
     }
+
+    // 건강관리 약 목록
+    match /users/{uid}/health/{document=**} {
+      allow read, write, delete: if request.auth != null && request.auth.uid == uid;
+    }
   }
 }

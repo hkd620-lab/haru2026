@@ -12,8 +12,8 @@ import {
   where, 
   orderBy,
   limit,
+  Timestamp,
   serverTimestamp,
-  Timestamp 
 } from 'firebase/firestore';
 import { auth, db } from '../../firebase';  // ✅ 수정됨: ../firebase → ../../firebase
 import { 
@@ -297,6 +297,32 @@ const getPublicImageUrls = (value: unknown): string[] => {
     .map((item) => getCleanText(item))
     .filter((url) => /^https?:\/\//i.test(url));
 };
+
+export type MedicationDoseStatus = 'selected' | 'unknown' | 'not_applicable';
+export type MedicationPrescriptionType = '전문의약품' | '일반의약품' | 'unknown';
+
+export interface MedicationSaveInput {
+  drugName: string;
+  displayName: string;
+  selectedDose?: string;
+  doseStatus: MedicationDoseStatus;
+  ingredient?: string;
+  category?: string;
+  prescriptionType?: MedicationPrescriptionType;
+  efficacySummary: string;
+  sideEffectSummary: string[];
+  source: 'official-drug-api';
+  officialItemSeq?: string;
+  originalDrugData?: unknown;
+  doseOptions?: string[];
+  memo?: string;
+}
+
+export interface UserMedication extends MedicationSaveInput {
+  id: string;
+  addedAt?: Timestamp;
+  updatedAt?: Timestamp;
+}
 
 class FirestoreService {
   // 기존 기록 관련 함수들
@@ -921,6 +947,56 @@ class FirestoreService {
       isDeleted: false,
     });
     return commentRef.id;
+  }
+
+  async getHealthMedications(userId: string): Promise<UserMedication[]> {
+    const medicationsRef = collection(db, 'users', userId, 'health', 'medications', 'items');
+    const q = query(medicationsRef, orderBy('addedAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+
+    return querySnapshot.docs.map((snapshot) => ({
+      id: snapshot.id,
+      ...snapshot.data(),
+    })) as UserMedication[];
+  }
+
+  async saveHealthMedication(userId: string, medicationData: MedicationSaveInput): Promise<string> {
+    const medicationsRef = collection(db, 'users', userId, 'health', 'medications', 'items');
+    const medicationRef = doc(medicationsRef);
+    const cleanData = stripUndefined(medicationData) as Record<string, unknown>;
+
+    await setDoc(medicationRef, {
+      ...cleanData,
+      addedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    return medicationRef.id;
+  }
+
+  async updateHealthMedicationDose(
+    userId: string,
+    medicationId: string,
+    selectedDose: string | undefined,
+    doseStatus: MedicationDoseStatus
+  ) {
+    const medicationRef = doc(db, 'users', userId, 'health', 'medications', 'items', medicationId);
+    const medicationSnap = await getDoc(medicationRef);
+    const medication = medicationSnap.data() as UserMedication | undefined;
+    const drugName = medication?.drugName || medication?.displayName || '';
+    const displayName = selectedDose ? `${drugName} ${selectedDose}` : drugName;
+
+    await updateDoc(medicationRef, {
+      selectedDose: selectedDose || deleteField(),
+      doseStatus,
+      displayName,
+      updatedAt: serverTimestamp(),
+    });
+  }
+
+  async deleteHealthMedication(userId: string, medicationId: string) {
+    const medicationRef = doc(db, 'users', userId, 'health', 'medications', 'items', medicationId);
+    await deleteDoc(medicationRef);
   }
 
   /**
@@ -1965,6 +2041,30 @@ class FirestoreService {
       throw error;
     }
   }
+}
+
+function stripUndefined(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((entry) => stripUndefined(entry));
+  }
+
+  if (
+    value &&
+    typeof value === 'object' &&
+    Object.getPrototypeOf(value) === Object.prototype
+  ) {
+    return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>(
+      (acc, [key, entry]) => {
+        if (entry !== undefined) {
+          acc[key] = stripUndefined(entry);
+        }
+        return acc;
+      },
+      {}
+    );
+  }
+
+  return value;
 }
 
 export const firestoreService = new FirestoreService();
