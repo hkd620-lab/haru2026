@@ -256,8 +256,12 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [showCandidates, setShowCandidates] = useState(false);
 
   // 기록 스타일 선택
-  const [recordStyle, setRecordStyle] = useState<RecordStyle>('simple');
-  const [recordStep, setRecordStep] = useState<'select' | 'input'>('select');
+  const [recordStyle, setRecordStyle] = useState<RecordStyle>(
+    format === '독서사유' || format === 'HARU보조장부' ? 'premium' : 'simple',
+  );
+  const [recordStep, setRecordStep] = useState<'select' | 'input'>(
+    format === 'HARU보조장부' ? 'input' : 'select',
+  );
 
   // 🌱 텃밭일지 전용: 작물 목록 관리
   const [crops, setCrops] = useState<string[]>([]);
@@ -317,9 +321,10 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       setReadingOcrUsedCount(null);
 
       const isStockFormat = format === 'HARU주식관리' || format === '주식거래일지';
-      setRecordStyle(format === '독서사유' || isStockFormat ? 'premium' : 'simple');
-      // 독서사유는 select 단계에서 "이어작성 / 새작성" 분기. 주식 형식은 input 직진.
-      setRecordStep(isStockFormat ? 'input' : 'select');
+      const isLedgerFormat = format === 'HARU보조장부';
+      setRecordStyle(format === '독서사유' || isStockFormat || isLedgerFormat ? 'premium' : 'simple');
+      // 독서사유는 select 단계에서 "이어작성 / 새작성" 분기. 주식/보조장부 형식은 input 직진.
+      setRecordStep(isStockFormat || isLedgerFormat ? 'input' : 'select');
       setStockCandidates([]);
       setShowCandidates(false);
       // 📚 독서사유 — 책 묶음 state 초기화 + 사용자 records 에서 책 목록 로드

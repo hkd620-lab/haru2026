@@ -1033,6 +1033,10 @@ class FirestoreService {
         if (stockFormats.includes(format)) {
           return (r.formats && r.formats.some((f: string) => stockFormats.includes(f))) || Boolean(r.stock_name);
         }
+        if (format === 'HARU보조장부') {
+          return (r.formats && r.formats.includes(format)) ||
+            Object.keys(r).some((key) => key.startsWith('ledger_') && typeof r[key] === 'string' && r[key].trim().length > 0);
+        }
         return r.formats && r.formats.includes(format);
       });
       
@@ -1061,6 +1065,7 @@ class FirestoreService {
         '육아일기': 'parenting',
         'HARU주식관리': 'stock',
         '주식거래일지': 'stock',
+        'HARU보조장부': 'ledger',
       };
 
       const prefix = prefixMap[format];
@@ -1837,6 +1842,7 @@ class FirestoreService {
         { name: '육아일기', prefix: 'child' },
         { name: 'HARU주식관리', prefix: 'stock' },
         { name: '주식거래일지', prefix: 'stock' },
+        { name: 'HARU보조장부', prefix: 'ledger' },
       ];
       
       records.forEach((record, index) => {
@@ -1853,6 +1859,13 @@ class FirestoreService {
             formatCounts[format] = (formatCounts[format] || 0) + 1;
             console.log(`  → ${format} 카운트 증가: ${formatCounts[format]}`);
           });
+        }
+        if (
+          (!Array.isArray(record.formats) || !record.formats.includes('HARU보조장부' as RecordFormat)) &&
+          Object.keys(record).some((key) => key.startsWith('ledger_') && typeof record[key] === 'string' && record[key].trim().length > 0)
+        ) {
+          formatCounts['HARU보조장부'] = (formatCounts['HARU보조장부'] || 0) + 1;
+          console.log(`  → HARU보조장부 ledger_* 보정 카운트 증가: ${formatCounts['HARU보조장부']}`);
         }
         
         // 각 형식별 SAYU 체크 (SAYU 완료 통계용)

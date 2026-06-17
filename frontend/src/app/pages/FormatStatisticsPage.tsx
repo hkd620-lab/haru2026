@@ -235,6 +235,10 @@ export function FormatStatisticsPage() {
         if (stockFormats.includes(formatType)) {
           return (r.formats && r.formats.some((f: string) => stockFormats.includes(f))) || Boolean((r as any).stock_name);
         }
+        if (formatType === 'HARU보조장부') {
+          return (r.formats && r.formats.includes(formatType)) ||
+            Object.keys(r).some((key) => key.startsWith('ledger_') && typeof (r as any)[key] === 'string' && (r as any)[key].trim().length > 0);
+        }
         return r.formats && r.formats.includes(formatType);
       }));
     }).catch(() => setAllFormatRecords([]));
