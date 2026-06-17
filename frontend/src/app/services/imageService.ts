@@ -1,5 +1,30 @@
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import heic2any from 'heic2any';
 import { storage } from '../../firebase';
+
+/**
+* 📱 HEIC/HEIF(아이폰·삼성 고효율 사진)를 JPEG로 변환합니다.
+* 안드로이드 크롬은 HEIC를 <img>로 디코딩하지 못해 압축 단계에서 실패합니다.
+* (iOS는 업로드 시 자동으로 JPEG로 변환하므로 아이폰에서는 문제가 없었음)
+* JPEG/PNG/WEBP 등은 변환 없이 그대로 반환합니다.
+*/
+async function normalizeHeicToJpeg(file: File): Promise<File> {
+  const isHeic =
+    file.type === 'image/heic' ||
+    file.type === 'image/heif' ||
+    /\.(heic|heif)$/i.test(file.name);
+  if (!isHeic) return file;
+  try {
+    const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+    const blob = Array.isArray(converted) ? converted[0] : converted;
+    const newName = file.name.replace(/\.(heic|heif)$/i, '.jpg') || 'photo.jpg';
+    console.log('📱 HEIC→JPEG 변환 완료:', newName);
+    return new File([blob], newName, { type: 'image/jpeg' });
+  } catch (e) {
+    console.warn('HEIC→JPEG 변환 실패, 원본으로 시도:', e);
+    return file;
+  }
+}
 
 /**
 * Canvas API를 이용해 이미지를 압축합니다.
@@ -8,10 +33,12 @@ import { storage } from '../../firebase';
 * @param quality JPEG 품질 (0~1), 기본값 0.85
 */
 export async function compressImage(
-  file: File,
+  inputFile: File,
   maxWidth = 800,
   quality = 0.85
 ): Promise<Blob> {
+  // 📱 갤럭시 등 안드로이드 대응: 캔버스 압축 전에 HEIC를 JPEG로 먼저 변환
+  const file = await normalizeHeicToJpeg(inputFile);
   return new Promise((resolve, reject) => {
     const img = new Image();
 
