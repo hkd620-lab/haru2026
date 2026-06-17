@@ -5,7 +5,7 @@ import { PageHeaderActions } from '../components/PageHeaderActions';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService, type AssistantPeriodStats } from '../services/firestoreService';
 
-type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '메모';
+type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '메모' | 'HARU보조장부';
 
 interface FormatCategory {
   title: string;
@@ -27,7 +27,7 @@ const categories: FormatCategory[] = [
   },
   {
     title: '업무',
-    formats: ['일반보고', '업무일지', '선교보고', '메모'],
+    formats: ['일반보고', '업무일지', '선교보고', '메모', 'HARU보조장부'],
     icon: '💼',
     color: '#2A5C3E',
     bgColor: '#F0FFF4',

@@ -34,6 +34,7 @@ const FORMAT_FIRST_FIELD: Record<string, string> = {
   reading: 'reading_book_title',
   stock: 'stock_name',
   growthTimeline: 'title',
+  ledger: 'ledger_date',
 };
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
@@ -406,6 +407,56 @@ function getRecordPreviewKeywords(r: any, prefix: string): string[] {
     return stored.filter((s: any) => typeof s === 'string' && s.trim()).slice(0, 6);
   }
   return extractPreviewKeywords(getRecordSourceText(r, prefix));
+}
+
+function getLedgerValue(record: any, keys: string[]): string {
+  for (const key of keys) {
+    const value = record?.[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  }
+  return '';
+}
+
+function formatLedgerAmount(value: unknown): string {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  const normalized = text.replace(/,/g, '');
+  const match = normalized.match(/-?\d+(?:\.\d+)?/);
+  if (!match) return text;
+  const amount = Number(match[0]);
+  if (!Number.isFinite(amount)) return text;
+  return normalized.replace(match[0], amount.toLocaleString('ko-KR'));
+}
+
+function hasLedgerAttachment(record: any): boolean {
+  const raw = record?.ledger_images;
+  if (typeof raw !== 'string' || !raw.trim()) return false;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.some((url) => typeof url === 'string' && url.startsWith('http'));
+  } catch {
+    return false;
+  }
+}
+
+function buildLedgerDisplay(record: any) {
+  const transactionAt = getLedgerValue(record, ['ledger_transactionAt', 'ledger_date']);
+  const type = getLedgerValue(record, ['ledger_type']);
+  const category = getLedgerValue(record, ['ledger_category', 'ledger_item']);
+  const partner = getLedgerValue(record, ['ledger_partner']);
+  const amount = formatLedgerAmount(getLedgerValue(record, ['ledger_amount']));
+  const payment = getLedgerValue(record, ['ledger_paymentMethod', 'ledger_payment']);
+  const proof = getLedgerValue(record, ['ledger_proofType', 'ledger_proof']);
+  const memo = getLedgerValue(record, ['ledger_memo']);
+  const simple = getLedgerValue(record, ['ledger_simple']);
+  const title = [transactionAt, type, category].filter(Boolean).join(' · ') || simple || 'HARU보조장부';
+  const subtitleParts = [partner, amount, payment, proof, hasLedgerAttachment(record) ? '사진 첨부' : '']
+    .filter(Boolean);
+  return {
+    title: title.slice(0, 48),
+    subtitle: (subtitleParts.length > 0 ? subtitleParts.join(' · ') : memo || simple).slice(0, 80),
+  };
 }
 
 // IntersectionObserver 백필 메타
@@ -1936,6 +1987,7 @@ export function SayuPage() {
     '성장타임라인': 'growthTimeline',
     'HARU주식관리': 'stock',
     '주식거래일지': 'stock',
+    'HARU보조장부': 'ledger',
   };
 
   const META_SUFFIXES = ['_sayu', '_final_sayu', '_polished', '_polishedAt', '_mode', '_stats', '_images', '_imageMeta', '_rating', '_status', '_completedAt', '_reflection_questions', '_reflection_answers', '_entries_snapshot'];
@@ -1995,6 +2047,7 @@ export function SayuPage() {
     growthTimeline: '#4E6B2A',
     haruraw: '#10b981',
     stock:   '#F59E0B',
+    ledger:  '#7A6F5A',
   };
 
   const getFormatDotsForDay = (date: Date | null): { prefix: string; color: string }[] => {
@@ -3086,6 +3139,9 @@ export function SayuPage() {
     if (prefix === 'growthTimeline') {
       return (String((record as any).title || '').trim() || label).slice(0, 48);
     }
+    if (prefix === 'ledger') {
+      return buildLedgerDisplay(record).title;
+    }
     const title =
       String(record[`${prefix}_ai_title`] || '').trim() ||
       String(record[`${prefix}_title`] || '').trim() ||
@@ -3134,9 +3190,10 @@ export function SayuPage() {
           const periodEnd = String((record as any).periodEnd || timelineItems[timelineItems.length - 1]?.takenDate || '');
           const keywords = getRecordPreviewKeywords(record, prefix);
           const title = getRecordDisplayTitle(record, prefix, label);
+          const ledgerDisplay = prefix === 'ledger' ? buildLedgerDisplay(record) : null;
           const subtitle = prefix === 'growthTimeline'
             ? `${periodStart || '-'}${periodEnd && periodEnd !== periodStart ? ` ~ ${periodEnd}` : ''} · ${timelineItems.length || (record as any).itemCount || 0}장`
-            : keywords.slice(0, 4).join(' · ');
+            : ledgerDisplay?.subtitle || keywords.slice(0, 4).join(' · ');
           return {
             id: `${record.id}_${prefix}`,
             date: record.date,
