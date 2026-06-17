@@ -35,6 +35,7 @@ const OPENAI_API_KEY_SECRET = defineSecret('OPENAI_API_KEY');
 const COLLECTOR_SECRET_KEY = defineSecret('COLLECTOR_SECRET_KEY');
 const ONBID_API_KEY_SECRET = defineSecret('ONBID_API_KEY');
 const DRUG_API_KEY_SECRET = defineSecret('DRUG_API_KEY');
+const DRUG_API_SERVICE_KEY_SECRET = defineSecret('DRUG_API_SERVICE_KEY');
 const HIRA_API_KEY_SECRET = defineSecret('HIRA_API_KEY');
 const KINDWISE_PLANT_ID_API_KEY_SECRET = defineSecret('KINDWISE_PLANT_ID_API_KEY');
 const PLANTNET_API_KEY_SECRET = defineSecret('PLANTNET_API_KEY');
@@ -364,6 +365,135 @@ async function getOrCreateUnifiedUid(email: string, provider: string): Promise<s
     throw error;
   }
 }
+
+type DrugApiItem = Record<string, any>;
+
+const DRUG_API_BASE_URL =
+  'https://apis.data.go.kr/1471000/DrbEasyDrugInfoService/getDrbEasyDrugList';
+
+function normalizeDrugSearchTerm(input: string): string {
+  return input
+    .replace(/\d+(?:[.,]\d+)?(?:\s*\/\s*\d+(?:[.,]\d+)?)+\s*(?:mg|m|g|ml|mcg|ug|iu|㎎|μg|밀리그램|마이크로그램|그램|밀리리터|%)?/gi, ' ')
+    .replace(/\d+(?:[.,]\d+)?\s*(?:mg|g|ml|mcg|ug|iu|㎎|μg|밀리그램|마이크로그램|그램|밀리리터|%)/gi, ' ')
+    .replace(/[()[\]{}<>]/g, ' ')
+    .replace(/[,:;]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function encodeServiceKeyForQuery(serviceKey: string): string {
+  return /%[0-9A-Fa-f]{2}/.test(serviceKey) ? serviceKey : encodeURIComponent(serviceKey);
+}
+
+function readDrugApiItems(data: any): DrugApiItem[] {
+  const items = data?.body?.items;
+  if (Array.isArray(items)) return items;
+  if (Array.isArray(items?.item)) return items.item;
+  if (items?.item && typeof items.item === 'object') return [items.item];
+  if (Array.isArray(data?.items)) return data.items;
+  return [];
+}
+
+function readDrugTotalCount(data: any, fallback: number): number {
+  const totalCount = Number(data?.body?.totalCount ?? data?.totalCount);
+  return Number.isFinite(totalCount) ? totalCount : fallback;
+}
+
+function readDrugField(item: DrugApiItem, keys: string[]): string {
+  for (const key of keys) {
+    const value = item[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return '';
+}
+
+function normalizeDrugApiItem(item: DrugApiItem) {
+  return {
+    itemSeq: readDrugField(item, ['itemSeq', 'ITEM_SEQ']),
+    itemName: readDrugField(item, ['itemName', 'ITEM_NAME']),
+    entpName: readDrugField(item, ['entpName', 'ENTP_NAME']),
+    ingredient: readDrugField(item, ['ingredient', 'MATERIAL_NAME', 'mainIngredient']),
+    category: readDrugField(item, ['category', 'CLASS_NAME', 'className']),
+    prescriptionType: readDrugField(item, ['prescriptionType', 'ETC_OTC_CODE', 'etcOtcName']),
+    efficacyText: readDrugField(item, ['efficacyText', 'efcyQesitm', 'EE_DOC_DATA']),
+    useMethodText: readDrugField(item, ['useMethodText', 'useMethodQesitm', 'UD_DOC_DATA']),
+    warningText: readDrugField(item, ['warningText', 'atpnWarnQesitm']),
+    cautionText: readDrugField(item, ['cautionText', 'atpnQesitm', 'NB_DOC_DATA']),
+    interactionText: readDrugField(item, ['interactionText', 'intrcQesitm']),
+    sideEffectText: readDrugField(item, ['sideEffectText', 'seQesitm']),
+    source: 'official-drug-api',
+    original: item,
+  };
+}
+
+export const searchOfficialDrugs = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [DRUG_API_SERVICE_KEY_SECRET],
+    timeoutSeconds: 30,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const originalInput = typeof request.data?.originalInput === 'string'
+      ? request.data.originalInput.trim()
+      : '';
+    const queryInput = typeof request.data?.query === 'string'
+      ? request.data.query.trim()
+      : originalInput;
+    const query = normalizeDrugSearchTerm(queryInput);
+
+    if (query.length < 2) {
+      throw new HttpsError('invalid-argument', '약 이름을 2자 이상 입력해주세요.');
+    }
+
+    const serviceKey = DRUG_API_SERVICE_KEY_SECRET.value().trim();
+    if (!serviceKey) {
+      throw new HttpsError('failed-precondition', '공식 의약품 API 키가 설정되지 않았습니다.');
+    }
+
+    const url =
+      `${DRUG_API_BASE_URL}?serviceKey=${encodeServiceKeyForQuery(serviceKey)}` +
+      `&type=json&pageNo=1&numOfRows=30&itemName=${encodeURIComponent(query)}`;
+
+    try {
+      const response = await axios.get(url, {
+        timeout: 12000,
+        validateStatus: (status) => status >= 200 && status < 500,
+      });
+
+      if (response.status >= 400) {
+        logger.error('공식 의약품 API 오류 응답:', {
+          status: response.status,
+          data: response.data,
+        });
+        throw new HttpsError('internal', '공식 의약품 검색 서버 응답이 올바르지 않습니다.');
+      }
+
+      const items = readDrugApiItems(response.data)
+        .map(normalizeDrugApiItem)
+        .filter((item) => item.itemName);
+
+      return {
+        query,
+        originalInput,
+        totalCount: readDrugTotalCount(response.data, items.length),
+        items,
+      };
+    } catch (error: any) {
+      if (error instanceof HttpsError) throw error;
+      logger.error('공식 의약품 검색 실패:', {
+        message: error?.message,
+        response: error?.response?.data,
+      });
+      throw new HttpsError('internal', '공식 의약품 검색에 실패했습니다.');
+    }
+  }
+);
 
 // ===== 🎨 AI 다듬기 =====
 export const polishContent = onCall(

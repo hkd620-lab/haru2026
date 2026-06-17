@@ -73,6 +73,7 @@ export function HomePage() {
     { icon: "✏️", label: "영어일기", path: "/diary-learn" },
     { icon: "📱", label: "SNS 가져오기", path: "/sns-records", accent: "#10b981" },
     { icon: "📈", label: "주식거래일지", path: "/record", state: { format: "주식거래일지" }, accent: "#10b981" },
+    { icon: "💊", label: "건강관리", path: "/health", accent: "#10b981" },
   ];
 
   // 🔧 개발자 도구 — 4×1 그리드 (4개, 개발자만)

@@ -62,6 +62,7 @@ import { SayuHealthLibraryPage } from './pages/SayuHealthLibraryPage';
 import { PlantDetectivePage } from './pages/PlantDetectivePage';
 import { AssetExplorerPage } from './pages/AssetExplorerPage';
 import { MasterpieceDetectivePage } from './pages/MasterpieceDetectivePage';
+import { HealthMedicationPage } from './pages/HealthMedicationPage';
 import { BottomNav } from './components/BottomNav';
 import { Footer } from './components/Footer';
 import { TodayQuote } from './components/TodayQuote';
@@ -197,6 +198,7 @@ function App() {
               <Route path="/sayu-health/drug" element={<SayuHealthDrugPage />} />
               <Route path="/sayu-health/hospital" element={<SayuHealthHospitalPage />} />
               <Route path="/sayu-health/library" element={<SayuHealthLibraryPage />} />
+              <Route path="/health" element={<HealthMedicationPage />} />
 
               {/* 영어성경학습 */}
               <Route path="/bible" element={<BiblePage />} />
