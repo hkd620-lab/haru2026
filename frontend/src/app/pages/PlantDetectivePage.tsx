@@ -845,7 +845,9 @@ export function PlantDetectivePage() {
     const next: PhotoItem[] = [];
     try {
       for (const file of incoming) {
-        if (!file.type.startsWith('image/')) {
+        // 갤럭시 등 일부 안드로이드는 HEIC를 빈 MIME으로 전달 → 확장자도 함께 허용
+        const isImageLike = file.type.startsWith('image/') || /\.(heic|heif)$/i.test(file.name);
+        if (!isImageLike) {
           toast.error(`'${file.name}' 은 사진 파일이 아니에요.`);
           continue;
         }
@@ -1720,7 +1722,8 @@ export function PlantDetectivePage() {
       toast.error('로그인이 필요합니다.');
       return;
     }
-    if (!file.type.startsWith('image/')) {
+    // 갤럭시 등 일부 안드로이드는 HEIC를 빈 MIME으로 전달 → 확장자도 함께 허용
+    if (!file.type.startsWith('image/') && !/\.(heic|heif)$/i.test(file.name)) {
       toast.error('사진 파일만 추가할 수 있어요.');
       return;
     }
@@ -2659,7 +2662,7 @@ export function PlantDetectivePage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/*,.heic,.heif"
             multiple
             onChange={handleFileChange}
             style={{ display: 'none' }}
@@ -4271,7 +4274,7 @@ function PlantLibraryPanel({
                 성장사진 추가
                 <input
                   type="file"
-                  accept="image/jpeg,image/png,image/webp"
+                  accept="image/*,.heic,.heif"
                   disabled={uploadingId === p.id}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => {
                     const file = e.target.files?.[0];
