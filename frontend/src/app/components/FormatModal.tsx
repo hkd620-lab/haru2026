@@ -55,6 +55,23 @@ interface StockOcrResult {
   }>;
 }
 
+interface LedgerOcrFields {
+  transactionAt?: string | null;
+  type?: string | null;
+  category?: string | null;
+  partner?: string | null;
+  amount?: string | number | null;
+  paymentMethod?: string | null;
+  proofType?: string | null;
+  memo?: string | null;
+}
+
+interface LedgerOcrResult {
+  rawText?: string;
+  fields?: LedgerOcrFields;
+  warnings?: string[];
+}
+
 type GrowthSubjectType = 'child' | 'garden';
 
 type GrowthSubject = {
@@ -214,6 +231,16 @@ const DIARY_PREMIUM_FIELDS = [
 
 const DEVELOPER_UIDS = ['naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8'];
 const READING_BOOK_OCR_LIMIT = 20;
+const LEDGER_OCR_PREVIEW_FIELDS: { key: keyof LedgerOcrFields; label: string }[] = [
+  { key: 'transactionAt', label: '거래일시' },
+  { key: 'type', label: '거래종류' },
+  { key: 'category', label: '항목' },
+  { key: 'partner', label: '거래처' },
+  { key: 'amount', label: '금액' },
+  { key: 'paymentMethod', label: '결제수단' },
+  { key: 'proofType', label: '증빙' },
+  { key: 'memo', label: '메모' },
+];
 
 export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, onSave }: FormatModalProps) {
   const { user } = useAuth();
@@ -241,6 +268,10 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [selectedStockOcrFiles, setSelectedStockOcrFiles] = useState<File[]>([]);
   const [isExtractingStockText, setIsExtractingStockText] = useState(false);
   const stockOcrInputRef = useRef<HTMLInputElement>(null);
+  const [selectedLedgerOcrFiles, setSelectedLedgerOcrFiles] = useState<File[]>([]);
+  const [isExtractingLedgerText, setIsExtractingLedgerText] = useState(false);
+  const [ledgerOcrResult, setLedgerOcrResult] = useState<LedgerOcrResult | null>(null);
+  const ledgerOcrInputRef = useRef<HTMLInputElement>(null);
 
   // 📈 HARU주식관리: 카톡 TXT 내보내기 파싱 state
   const [isCsvParsing, setIsCsvParsing] = useState(false);
@@ -319,6 +350,9 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       setReadingBookTextMode('photo');
       setShowModeSelect(false);
       setReadingOcrUsedCount(null);
+      setSelectedLedgerOcrFiles([]);
+      setIsExtractingLedgerText(false);
+      setLedgerOcrResult(null);
 
       const isStockFormat = format === 'HARU주식관리' || format === '주식거래일지';
       const isLedgerFormat = format === 'HARU보조장부';
@@ -521,6 +555,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const imageMetaKey = `${prefix}_imageMeta`;
   const existingSayu = initialData[sayuKey];
   const isStockFormat = format === 'HARU주식관리' || format === '주식거래일지';
+  const isLedgerFormat = format === 'HARU보조장부';
   const isEditingReadingEntry = Boolean(editingReadingEntryId);
 
   const handleChange = (key: string, value: string) => {
@@ -1102,6 +1137,133 @@ ${contentValues}`,
     } finally {
       setIsExtractingStockText(false);
     }
+  };
+
+  const clearLedgerOcrInput = () => {
+    if (ledgerOcrInputRef.current) {
+      ledgerOcrInputRef.current.value = '';
+    }
+  };
+
+  const handleLedgerOcrPhotoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    if (!isLedgerFormat) {
+      clearLedgerOcrInput();
+      return;
+    }
+
+    const selected: File[] = [];
+    for (const file of Array.from(files).slice(0, 3)) {
+      const lowerName = file.name.toLowerCase();
+      const isHeic = file.type === 'image/heic' || file.type === 'image/heif' ||
+        lowerName.endsWith('.heic') || lowerName.endsWith('.heif');
+      if (!file.type.startsWith('image/') && !isHeic) {
+        toast.warning(`${file.name}은 이미지 파일이 아닙니다.`);
+        continue;
+      }
+      if (file.size > 20 * 1024 * 1024) {
+        toast.warning(`${file.name}은 20MB를 초과하여 건너뜁니다.`);
+        continue;
+      }
+      selected.push(file);
+    }
+
+    setSelectedLedgerOcrFiles(selected);
+    setLedgerOcrResult(null);
+    if (selected.length > 0) {
+      toast.success(`${selected.length}장의 장부 자료 사진을 추가했습니다. 텍스트 추출을 눌러주세요.`);
+    }
+    clearLedgerOcrInput();
+  };
+
+  const handleExtractSelectedLedgerText = async () => {
+    if (!isLedgerFormat) return;
+    if (selectedLedgerOcrFiles.length === 0) {
+      toast.warning('먼저 영수증·통장 캡처 사진을 추가해 주세요.');
+      return;
+    }
+    if (!user?.uid) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+
+    setIsExtractingLedgerText(true);
+    try {
+      const images: { mimeType: string; dataBase64: string }[] = [];
+      for (const file of selectedLedgerOcrFiles) {
+        try {
+          const compressed = await prepareBookOcrImage(file);
+          const dataBase64 = await blobToBase64String(compressed);
+          images.push({ mimeType: 'image/jpeg', dataBase64 });
+        } catch (imageError: any) {
+          console.error('보조장부 OCR 이미지 준비 실패:', imageError);
+          toast.warning(`${file.name} 사진을 읽지 못해 건너뜁니다.`);
+        }
+      }
+
+      if (images.length === 0) {
+        toast.warning('추출할 수 있는 이미지가 없습니다.');
+        return;
+      }
+
+      const functionsInstance = getFunctions(undefined, 'asia-northeast3');
+      const extractLedgerTextFunc = httpsCallable(functionsInstance, 'extractLedgerTextFromImage');
+      const result = await extractLedgerTextFunc({ images });
+      setLedgerOcrResult(result.data as LedgerOcrResult);
+      toast.success('추출 결과가 준비되었습니다. 확인 후 입력칸에 반영해 주세요.');
+    } catch (error: any) {
+      console.error('보조장부 OCR 실패:', error);
+      toast.error(String(error?.message || '영수증·통장 캡처 텍스트 추출에 실패했습니다.'));
+    } finally {
+      setIsExtractingLedgerText(false);
+    }
+  };
+
+  const applyLedgerOcrResult = () => {
+    const fields = ledgerOcrResult?.fields || {};
+    const pick = (value: unknown) => String(value ?? '').trim();
+    const transactionAt = pick(fields.transactionAt);
+    const type = pick(fields.type);
+    const category = pick(fields.category);
+    const partner = pick(fields.partner);
+    const amount = pick(fields.amount);
+    const paymentMethod = pick(fields.paymentMethod);
+    const proofType = pick(fields.proofType);
+    const memo = pick(fields.memo);
+
+    if (![transactionAt, type, category, partner, amount, paymentMethod, proofType, memo].some(Boolean)) {
+      toast.warning('반영할 추출 필드가 없습니다. 직접 입력해 주세요.');
+      return;
+    }
+
+    setFormData((prev) => {
+      const next: Record<string, string> = { ...prev };
+      if (transactionAt) {
+        next.ledger_transactionAt = transactionAt;
+        next.ledger_date = transactionAt;
+      }
+      if (type) next.ledger_type = type;
+      if (category) {
+        next.ledger_category = category;
+        next.ledger_item = category;
+      }
+      if (partner) next.ledger_partner = partner;
+      if (amount) next.ledger_amount = amount;
+      if (paymentMethod) {
+        next.ledger_paymentMethod = paymentMethod;
+        next.ledger_payment = paymentMethod;
+      }
+      if (proofType) {
+        next.ledger_proofType = proofType;
+        next.ledger_proof = proofType;
+      }
+      if (memo) next.ledger_memo = memo;
+      return next;
+    });
+    setSelectedLedgerOcrFiles([]);
+    setLedgerOcrResult(null);
+    toast.success('추출 결과를 보조장부 입력칸에 반영했습니다.');
   };
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -2629,6 +2791,262 @@ ${contentValues}`,
                 />
               )}
 
+              {isLedgerFormat && (
+                <div
+                  style={{
+                    padding: 12,
+                    border: '1px solid #d0dff0',
+                    borderRadius: 10,
+                    backgroundColor: '#f8fbff',
+                  }}
+                >
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A3C6E', marginBottom: 8, fontWeight: 700 }}>
+                    <Camera style={{ width: 15, height: 15 }} />
+                    영수증·통장캡처에서 텍스트 추출
+                  </label>
+                  <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
+                    사진은 저장하지 않고 추출 결과를 확인한 뒤, 입력칸에 반영할 때만 장부 값으로 들어갑니다.
+                  </p>
+                  <input
+                    ref={ledgerOcrInputRef}
+                    type="file"
+                    accept="image/*,.heic,.heif"
+                    multiple
+                    onChange={handleLedgerOcrPhotoSelect}
+                    style={{ display: 'none' }}
+                  />
+                  <div style={{ display: 'grid', gridTemplateColumns: selectedLedgerOcrFiles.length > 0 ? '1fr 1fr' : '1fr', gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() => ledgerOcrInputRef.current?.click()}
+                      disabled={isExtractingLedgerText}
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        border: '1px dashed #1A3C6E',
+                        borderRadius: 8,
+                        backgroundColor: '#fff',
+                        color: '#1A3C6E',
+                        cursor: isExtractingLedgerText ? 'wait' : 'pointer',
+                        opacity: isExtractingLedgerText ? 0.55 : 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        fontSize: 13,
+                        fontWeight: 700,
+                      }}
+                    >
+                      <Upload style={{ width: 16, height: 16 }} />
+                      사진 선택
+                      {selectedLedgerOcrFiles.length > 0 ? ` (${selectedLedgerOcrFiles.length}장)` : ''}
+                    </button>
+                    {selectedLedgerOcrFiles.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleExtractSelectedLedgerText}
+                        disabled={isExtractingLedgerText}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          border: 'none',
+                          borderRadius: 8,
+                          backgroundColor: '#1A3C6E',
+                          color: '#fff',
+                          cursor: isExtractingLedgerText ? 'wait' : 'pointer',
+                          opacity: isExtractingLedgerText ? 0.6 : 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                          fontSize: 13,
+                          fontWeight: 800,
+                        }}
+                      >
+                        <FileText style={{ width: 16, height: 16 }} />
+                        {isExtractingLedgerText ? '텍스트 추출 중...' : '텍스트 추출'}
+                      </button>
+                    )}
+                  </div>
+
+                  {selectedLedgerOcrFiles.length > 0 && (
+                    <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {selectedLedgerOcrFiles.map((file) => (
+                        <div
+                          key={`${file.name}-${file.size}-${file.lastModified}`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 8,
+                            padding: '7px 9px',
+                            borderRadius: 8,
+                            backgroundColor: '#fff',
+                            border: '1px solid #e5e7eb',
+                          }}
+                        >
+                          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, color: '#374151' }}>
+                            {file.name}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedLedgerOcrFiles((prev) => prev.filter((item) => item !== file));
+                              setLedgerOcrResult(null);
+                            }}
+                            disabled={isExtractingLedgerText}
+                            style={{
+                              width: 24,
+                              height: 24,
+                              border: 'none',
+                              borderRadius: 8,
+                              backgroundColor: '#f3f4f6',
+                              color: '#6b7280',
+                              cursor: isExtractingLedgerText ? 'wait' : 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <X style={{ width: 14, height: 14 }} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {ledgerOcrResult && (
+                    <div
+                      style={{
+                        marginTop: 12,
+                        padding: 12,
+                        borderRadius: 10,
+                        backgroundColor: '#fff',
+                        border: '1px solid #dbeafe',
+                      }}
+                    >
+                      <div style={{ fontSize: 13, color: '#1A3C6E', fontWeight: 800, marginBottom: 8 }}>
+                        추출 결과 미리보기
+                      </div>
+                      {ledgerOcrResult.rawText?.trim() && (
+                        <pre
+                          style={{
+                            margin: '0 0 10px',
+                            maxHeight: 120,
+                            overflow: 'auto',
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word',
+                            padding: 10,
+                            borderRadius: 8,
+                            backgroundColor: '#f9fafb',
+                            border: '1px solid #e5e7eb',
+                            color: '#374151',
+                            fontSize: 12,
+                            lineHeight: 1.5,
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          {ledgerOcrResult.rawText}
+                        </pre>
+                      )}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(132px, 1fr))', gap: 8 }}>
+                        {LEDGER_OCR_PREVIEW_FIELDS.map((field) => {
+                          const value = String(ledgerOcrResult.fields?.[field.key] ?? '').trim();
+                          return (
+                            <div
+                              key={field.key}
+                              style={{
+                                padding: 8,
+                                borderRadius: 8,
+                                border: '1px solid #e5e7eb',
+                                backgroundColor: value ? '#f8fbff' : '#fafafa',
+                                minHeight: 54,
+                              }}
+                            >
+                              <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4, fontWeight: 700 }}>
+                                {field.label}
+                              </div>
+                              <div style={{ fontSize: 12, color: value ? '#111827' : '#9ca3af', lineHeight: 1.4, wordBreak: 'break-word' }}>
+                                {value || '빈값'}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {Array.isArray(ledgerOcrResult.warnings) && ledgerOcrResult.warnings.length > 0 && (
+                        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {ledgerOcrResult.warnings.map((warning, index) => (
+                            <div key={`${warning}-${index}`} style={{ fontSize: 12, color: '#92400e', lineHeight: 1.45 }}>
+                              {warning}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
+                        <button
+                          type="button"
+                          onClick={applyLedgerOcrResult}
+                          style={{
+                            padding: '10px 12px',
+                            border: 'none',
+                            borderRadius: 8,
+                            backgroundColor: '#10b981',
+                            color: '#fff',
+                            fontSize: 13,
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          입력칸에 반영
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLedgerOcrResult(null);
+                            ledgerOcrInputRef.current?.click();
+                          }}
+                          style={{
+                            padding: '10px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: 8,
+                            backgroundColor: '#fff',
+                            color: '#374151',
+                            fontSize: 13,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          다시 추출
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedLedgerOcrFiles([]);
+                          setLedgerOcrResult(null);
+                          clearLedgerOcrInput();
+                        }}
+                        style={{
+                          width: '100%',
+                          marginTop: 8,
+                          padding: '9px 12px',
+                          border: 'none',
+                          borderRadius: 8,
+                          backgroundColor: '#f3f4f6',
+                          color: '#4b5563',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        직접 입력하기
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* 프리미엄 스타일: FORMAT_FIELDS 그대로 */}
               {recordStyle === 'premium' && !isStockFormat && (
                 <>
@@ -2869,7 +3287,7 @@ ${contentValues}`,
                 </div>
               )}
 
-              {/* 📸 사진 업로드 섹션 — 독서사유 책본문 사진은 OCR 후 저장하지 않음 */}
+              {/* 📸 사진 업로드 섹션 — 독서사유/주식 OCR 사진은 저장하지 않음. 보조장부는 OCR(비저장)과 사진첨부(저장) 둘 다 제공 */}
               {format !== '독서사유' && !isStockFormat && (
               <div>
                 <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 4, fontWeight: 500 }}>

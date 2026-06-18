@@ -2453,6 +2453,209 @@ export const extractStockTradeTextFromPhoto = onCall(
   },
 );
 
+type LedgerOcrImageInput = {
+  mimeType?: unknown;
+  dataBase64?: unknown;
+  imageBase64?: unknown;
+};
+
+const LEDGER_OCR_ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+function cleanLedgerOcrText(value: unknown, maxLength: number): string {
+  return String(value ?? '')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .trim()
+    .slice(0, maxLength);
+}
+
+function maskLedgerSensitiveText(value: unknown, maxLength: number): string {
+  const cleaned = cleanLedgerOcrText(value, maxLength);
+  return cleaned
+    .replace(/(?:\d[\s-]?){8,}\d/g, (match) => {
+      const digits = match.replace(/\D/g, '');
+      if (digits.length < 8) return match;
+      if (digits.length <= 12) return `${digits.slice(0, 2)}****${digits.slice(-2)}`;
+      return `${digits.slice(0, 4)}****${digits.slice(-4)}`;
+    })
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]');
+}
+
+function parseLedgerJsonObject(text: string): any {
+  const cleaned = text
+    .replace(/```json/gi, '')
+    .replace(/```/g, '')
+    .trim();
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start < 0 || end < start) {
+    throw new Error('NO_JSON_OBJECT');
+  }
+  return JSON.parse(cleaned.slice(start, end + 1));
+}
+
+function normalizeLedgerType(value: unknown): string {
+  const compact = cleanLedgerOcrText(value, 20).replace(/\s+/g, '');
+  return ['수입', '지출', '이체', '기타'].find((type) => compact.includes(type)) || '';
+}
+
+// ===== 📒 HARU보조장부 영수증/통장 캡처 → 임시 장부 필드 추출 (이미지 비저장) =====
+export const extractLedgerTextFromImage = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+    memory: '512MiB',
+    timeoutSeconds: 60,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const rawImages = Array.isArray(request.data?.images) ? request.data.images : [];
+    if (rawImages.length === 0) {
+      throw new HttpsError('invalid-argument', '이미지 데이터가 필요합니다.');
+    }
+    if (rawImages.length > 3) {
+      throw new HttpsError('invalid-argument', '이미지는 최대 3장까지 처리할 수 있습니다.');
+    }
+
+    const inlineParts: any[] = [];
+    let totalImageKb = 0;
+    for (const rawImage of rawImages) {
+      const image = rawImage as LedgerOcrImageInput;
+      const mimeType = String(image?.mimeType || 'image/jpeg').toLowerCase().trim();
+      if (!LEDGER_OCR_ALLOWED_MIME_TYPES.has(mimeType)) {
+        throw new HttpsError('invalid-argument', 'JPG, PNG, WEBP 이미지만 처리할 수 있습니다.');
+      }
+
+      let dataBase64 = String(image?.dataBase64 || image?.imageBase64 || '')
+        .replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '');
+      if (!dataBase64) {
+        throw new HttpsError('invalid-argument', '이미지 base64 데이터가 비어 있습니다.');
+      }
+
+      const imageKb = Math.round(dataBase64.length * 0.75 / 1024);
+      if (imageKb > 7 * 1024) {
+        dataBase64 = '';
+        throw new HttpsError('invalid-argument', '사진이 너무 큽니다. 한 장당 7MB 이하로 줄여주세요.');
+      }
+      totalImageKb += imageKb;
+      inlineParts.push({
+        inlineData: {
+          data: dataBase64,
+          mimeType,
+        },
+      });
+      dataBase64 = '';
+    }
+
+    const clearInlineParts = () => {
+      for (const part of inlineParts) {
+        if (part?.inlineData?.data) {
+          part.inlineData.data = '';
+        }
+      }
+    };
+
+    try {
+      logger.info('extractLedgerTextFromImage 호출', {
+        uid: request.auth.uid.slice(0, 8) + '…',
+        imageCount: inlineParts.length,
+        totalImageKb,
+      });
+
+      const prompt = `영수증, 통장 거래내역, 계좌이체 캡처, 카드매출전표 이미지에서 HARU보조장부 입력에 필요한 텍스트와 필드를 추출하세요.
+
+[절대 규칙]
+- 이미지에 보이는 내용만 사용하고, 보이지 않는 값은 추측하지 마세요.
+- 확실하지 않은 값은 빈 문자열로 둡니다.
+- 계좌번호, 카드번호, 승인번호, 전화번호처럼 긴 식별번호는 원문과 메모에서 ****로 마스킹하세요.
+- 세무 신고용 확정 판단을 하지 마세요. 보조장부 입력 후보만 만듭니다.
+- 응답은 JSON 객체만 반환하고 코드펜스/설명 문장은 쓰지 마세요.
+
+[필드 기준]
+- transactionAt: 거래일시 또는 거래일. 확실할 때만 작성.
+- type: 수입, 지출, 이체, 기타 중 하나. 확실하지 않으면 빈 문자열.
+- category: 항목. 예: 식대, 사무용품, 컨설팅 매출, 임대료.
+- partner: 거래처/상호/입금자/출금처.
+- amount: 금액. 화면에 보이는 금액과 통화 단위를 최대한 유지.
+- paymentMethod: 계좌이체, 신용카드, 현금, 체크카드, 간편결제 등.
+- proofType: 영수증, 카드매출전표, 세금계산서, 현금영수증, 통장거래내역 등.
+- memo: 장부 입력자가 참고할 짧은 메모. 민감번호는 마스킹.
+
+{
+  "rawText": "이미지에서 읽은 주요 원문. 민감번호는 마스킹",
+  "fields": {
+    "transactionAt": "",
+    "type": "",
+    "category": "",
+    "partner": "",
+    "amount": "",
+    "paymentMethod": "",
+    "proofType": "",
+    "memo": ""
+  },
+  "warnings": []
+}`;
+
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+      const result = await model.generateContent([
+        prompt,
+        ...inlineParts,
+      ]);
+
+      const responseText = result.response.text()
+        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/```\s*$/i, '')
+        .trim();
+      clearInlineParts();
+
+      const warnings: string[] = [];
+      let parsed: any = {};
+      try {
+        parsed = parseLedgerJsonObject(responseText);
+      } catch {
+        parsed = { rawText: responseText, fields: {} };
+        warnings.push('추출 결과 형식이 불안정해 원문 위주로 표시합니다.');
+      }
+
+      const rawFields = parsed?.fields && typeof parsed.fields === 'object' ? parsed.fields : {};
+      const fields = {
+        transactionAt: cleanLedgerOcrText(rawFields.transactionAt, 80),
+        type: normalizeLedgerType(rawFields.type),
+        category: maskLedgerSensitiveText(rawFields.category, 120),
+        partner: maskLedgerSensitiveText(rawFields.partner, 160),
+        amount: cleanLedgerOcrText(rawFields.amount, 80),
+        paymentMethod: maskLedgerSensitiveText(rawFields.paymentMethod, 80),
+        proofType: maskLedgerSensitiveText(rawFields.proofType, 80),
+        memo: maskLedgerSensitiveText(rawFields.memo, 500),
+      };
+
+      const parsedWarnings = Array.isArray(parsed?.warnings)
+        ? parsed.warnings
+          .map((warning: unknown) => cleanLedgerOcrText(warning, 180))
+          .filter(Boolean)
+        : [];
+      const hasAnyField = Object.values(fields).some((value) => String(value || '').trim());
+      if (!hasAnyField) {
+        warnings.push('장부 입력 필드를 충분히 찾지 못했습니다. 직접 확인해 주세요.');
+      }
+
+      return {
+        rawText: maskLedgerSensitiveText(parsed?.rawText || parsed?.text || responseText, 12000),
+        fields,
+        warnings: Array.from(new Set([...warnings, ...parsedWarnings])).slice(0, 6),
+      };
+    } catch (error: any) {
+      clearInlineParts();
+      if (error instanceof HttpsError) throw error;
+      logger.error('보조장부 이미지 텍스트 추출 실패', { message: error?.message?.slice(0, 200) });
+      throw new HttpsError('internal', '영수증·통장 캡처 텍스트 추출에 실패했습니다. 사진을 더 또렷하게 올려 주세요.');
+    }
+  },
+);
+
 type GrowthTimelinePdfItem = {
   url: string;
   takenDate: string;
