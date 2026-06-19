@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HARU 온보딩 — 다듬기→도움 시뮬레이션 (프로토타입)</title>
+<style>
+  :root{
+    --deep:#1A3C6E; --off:#FAF9F6; --green:#10b981; --ink:#23303f;
+    --muted:#8a93a0; --line:#ece8df; --card:#fff;
+    --law:#E08A2E; --health:#13a07a; --future:#7A5FB0;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--off);color:var(--ink);font-size:16px;line-height:1.6;
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:430px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;position:relative;overflow-x:hidden;}
+  .proto-flag{
+    background:repeating-linear-gradient(45deg,#fff4e0,#fff4e0 10px,#ffe9c7 10px,#ffe9c7 20px);
+    color:#9a6a1a;font-size:11.5px;font-weight:600;text-align:center;padding:6px 10px;border-bottom:1px solid #f0dcb8;
+  }
+  header{padding:22px 22px 4px;}
+  .brand{font-size:12px;font-weight:700;letter-spacing:2px;color:var(--deep);opacity:.8;}
+  h1{font-size:22px;line-height:1.36;margin:11px 0 7px;color:var(--deep);font-weight:800;letter-spacing:-.3px;}
+  .sub{font-size:13.5px;color:var(--muted);margin:0;}
+
+  /* 단계 라벨 */
+  .step{display:flex;align-items:center;gap:8px;margin:18px 18px 8px;font-size:12px;font-weight:800;color:var(--deep);}
+  .step .b{width:20px;height:20px;border-radius:50%;background:var(--deep);color:#fff;display:grid;place-items:center;font-size:11px;}
+  .step .s{font-weight:600;color:var(--muted);font-size:11.5px;}
+
+  /* 원문(거친 단문) */
+  .raw{margin:0 18px;background:#fffdf7;border:1px dashed #d9d2bf;border-radius:14px;padding:14px 16px;}
+  .raw .ln{font-size:14.5px;color:#7c7866;padding:3px 0;display:flex;gap:8px;}
+  .raw .ln::before{content:"·";color:#c3bca6;}
+
+  /* 변환 배지 */
+  .conv{display:flex;align-items:center;gap:8px;justify-content:center;margin:12px 0 2px;}
+  .conv .pill{background:#eafaf3;color:#0c8a5f;border:1px solid #cdeede;border-radius:999px;padding:6px 13px;font-size:12px;font-weight:700;}
+  .conv .pill b{font-weight:800;}
+
+  /* 다듬어진 글 */
+  .polished{margin:0 18px;background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:16px 17px;box-shadow:0 3px 14px rgba(26,60,110,.05);}
+  .polished .ptop{display:flex;align-items:center;gap:7px;margin-bottom:9px;}
+  .polished .ptitle{font-size:12.5px;font-weight:700;color:var(--deep);}
+  .polished .ptag{margin-left:auto;font-size:10.5px;color:#aab0b8;}
+  .polished p{margin:0;font-size:15.5px;line-height:1.95;color:#34404e;}
+
+  mark{border-radius:6px;padding:1px 5px;font-weight:650;cursor:pointer;border-bottom:2px solid transparent;}
+  mark::after{content:"›";font-weight:800;margin-left:3px;opacity:.6;font-size:13px;}
+  mark.law{background:#fbecd8;color:#9a5a14;border-bottom-color:var(--law);}
+  mark.health{background:#d9f5ec;color:#0a6e54;border-bottom-color:var(--health);}
+  mark.future{background:#ece4f7;color:#574079;border-bottom-color:var(--future);}
+  .tapnote{text-align:center;font-size:12px;color:var(--muted);margin:12px 18px 4px;}
+  .tapnote b{color:var(--deep);}
+
+  .foot{margin-top:auto;padding:16px 16px calc(16px + env(safe-area-inset-bottom));position:sticky;bottom:0;
+    background:linear-gradient(180deg,rgba(250,249,246,0),var(--off) 30%);}
+  .primary{width:100%;border:none;border-radius:14px;padding:15px;font-size:16px;font-weight:800;color:#fff;
+    background:var(--deep);cursor:pointer;letter-spacing:-.2px;box-shadow:0 6px 16px rgba(26,60,110,.22);}
+  .primary:active{transform:translateY(1px);}
+  .skip{display:block;width:100%;text-align:center;margin-top:11px;background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;}
+
+  /* ── 시뮬레이션 bottom sheet ── */
+  .scrim{position:fixed;inset:0;background:rgba(20,28,40,.42);opacity:0;pointer-events:none;transition:.22s;z-index:40;}
+  .scrim.show{opacity:1;pointer-events:auto;}
+  .sheet{
+    position:fixed;left:50%;bottom:0;transform:translateX(-50%) translateY(102%);
+    width:100%;max-width:430px;background:#fff;border-radius:22px 22px 0 0;z-index:41;
+    transition:transform .26s cubic-bezier(.2,.8,.2,1);box-shadow:0 -10px 40px rgba(0,0,0,.18);
+    padding:8px 18px calc(20px + env(safe-area-inset-bottom));
+  }
+  .sheet.show{transform:translateX(-50%) translateY(0);}
+  .grip{width:38px;height:4px;border-radius:3px;background:#e2ddd2;margin:8px auto 12px;}
+  .sheet .shead{display:flex;align-items:center;gap:11px;margin-bottom:6px;}
+  .sheet .sico{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;font-size:22px;color:#fff;flex:0 0 44px;}
+  .sheet .srole{font-size:17px;font-weight:800;color:var(--ink);}
+  .sheet .sserve{font-size:12px;color:var(--muted);margin-top:1px;}
+  .sim{margin:12px 0 8px;border:1px solid var(--line);border-radius:14px;padding:13px 14px;background:var(--off);}
+  .sim .simlabel{font-size:10.5px;font-weight:800;letter-spacing:.3px;color:#b08a3a;background:#fff6e6;border:1px solid #f0e1c2;display:inline-block;padding:2px 8px;border-radius:999px;margin-bottom:8px;}
+  .sim .simbody{font-size:14px;color:#3a4654;line-height:1.62;}
+  .sim .simbody .law-k{color:#9a5a14;font-weight:700;}
+  .brandline{font-size:11.5px;color:#aab0b8;margin-top:4px;}
+  .brandline b{color:#8a93a0;font-weight:700;}
+  .sheet .sclose{width:100%;margin-top:12px;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;background:var(--off);color:var(--deep);border:1px solid var(--line);cursor:pointer;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="proto-flag">🧪 온보딩 프로토타입 · 디자인 실험용 · 실제 비서 연결은 시뮬레이션</div>
+
+  <header>
+    <div class="brand">HARU</div>
+    <h1>짧게 써도 괜찮아요.<br/>HARU가 다듬고, 도와드릴게요</h1>
+    <p class="sub">생각나는 대로 적기만 하면 됩니다.</p>
+  </header>
+
+  <div class="step"><span class="b">1</span>이렇게 짧게 적으면 <span class="s">— 생각난 대로, 단어만</span></div>
+  <div class="raw">
+    <div class="ln">집주인이 전세보증금 제때 못준다고 함</div>
+    <div class="ln">무릎 아파서 운동 며칠 쉼</div>
+    <div class="ln">내일부터 다시 걷기 시작할 예정</div>
+    <div class="ln">올해 목표 — 꾸준한 사람 되기</div>
+  </div>
+
+  <div class="conv"><span class="pill">✨ <b>SAYU</b>가 원문 그대로, 문장만 다듬었어요</span></div>
+
+  <div class="step"><span class="b">2</span>이렇게 정리돼요 <span class="s">— 내용·감정은 그대로</span></div>
+  <div class="polished">
+    <div class="ptop"><span>📔</span><span class="ptitle">오늘의 일기</span><span class="ptag">다듬은 글</span></div>
+    <p>
+      오늘 집주인에게서 <mark class="law" data-k="law">전세보증금</mark>을 제때 돌려주기 어렵다는 연락을 받았다.
+      <mark class="health" data-k="health">무릎이 아파</mark> 며칠 운동을 쉬었지만, 내일부터는 다시 걷기를 시작하려 한다.
+      올해 목표는 <mark class="future" data-k="future">꾸준한 사람</mark>이 되는 것이다.
+    </p>
+  </div>
+
+  <div class="tapnote"><b>밑줄 친 단어를 눌러보세요.</b> HARU가 그 부분을 어떻게 돕는지 보여드려요.</div>
+
+  <div class="foot">
+    <button class="primary" onclick="toast('실제 앱에서는 내 일기 작성 화면으로 이동합니다')">나도 짧게 써보기 ✏️</button>
+    <button class="skip" onclick="toast('다시 보지 않기')">건너뛰기</button>
+  </div>
+</div>
+
+<div class="scrim" id="scrim" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet">
+  <div class="grip"></div>
+  <div class="shead">
+    <div class="sico" id="sico"></div>
+    <div>
+      <div class="srole" id="srole"></div>
+      <div class="sserve" id="sserve"></div>
+    </div>
+  </div>
+  <div class="sim">
+    <div class="simlabel">✨ 예시 미리보기 — 실제 앱에서 이렇게 도와드려요</div>
+    <div class="simbody" id="simbody"></div>
+    <div class="brandline" id="sbrand"></div>
+  </div>
+  <button class="sclose" onclick="closeSheet()">닫기</button>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  const SIM = {
+    law:{ ico:"⚖️", color:"#E08A2E", role:"법률 도우미", serve:"계약·보증금·분쟁 이야기를 도와드려요",
+      body:'<span class="law-k">전세보증금</span> 반환은 「주택임대차보호법」이 보호합니다. 임대인이 반환을 미루면 ‘임차권등기명령’을 신청해 보증금을 지킬 수 있어요. 실제 앱에서는 관련 법령·판례를 쉬운 말로 정리해 드립니다.',
+      brand:"HARU의 <b>하루LAW</b>" },
+    health:{ ico:"🩺", color:"#13a07a", role:"건강 도우미", serve:"증상·약 이야기를 도와드려요",
+      body:'무릎 통증이 반복되면 정형외과 진료가 좋아요. 증상을 적어두면 가까운 병원과 맞는 진료과를 같이 찾아드립니다.',
+      brand:"HARU의 <b>건강관리</b>" },
+    future:{ ico:"🔮", color:"#7A5FB0", role:"미래 그리기", serve:"다짐·목표가 쌓이면 미래를 그려드려요",
+      body:'‘꾸준한 사람이 되자’는 다짐이 기록으로 쌓이면, 몇 년 뒤 달라진 당신의 하루를 한 편의 이야기로 그려드립니다.',
+      brand:"HARU의 <b>미래전망</b>" },
+  };
+
+  function openSheet(k){
+    const s=SIM[k];
+    document.getElementById('sico').style.background=s.color;
+    document.getElementById('sico').textContent=s.ico;
+    document.getElementById('srole').textContent=s.role;
+    document.getElementById('sserve').textContent=s.serve;
+    document.getElementById('simbody').innerHTML=s.body;
+    document.getElementById('sbrand').innerHTML=s.brand;
+    document.getElementById('scrim').classList.add('show');
+    document.getElementById('sheet').classList.add('show');
+  }
+  function closeSheet(){
+    document.getElementById('scrim').classList.remove('show');
+    document.getElementById('sheet').classList.remove('show');
+  }
+  document.querySelectorAll('mark').forEach(m=>m.addEventListener('click',()=>openSheet(m.dataset.k)));
+
+  let t;
+  function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(t);t=setTimeout(()=>el.classList.remove('show'),1700);}
+</script>
+<style>
+  #toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%) translateY(12px);background:#23303f;color:#fff;font-size:13px;padding:10px 16px;border-radius:999px;opacity:0;pointer-events:none;transition:.22s;z-index:60;box-shadow:0 8px 20px rgba(0,0,0,.2);max-width:80%;text-align:center;}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</body>
+</html>
