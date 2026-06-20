@@ -12,6 +12,7 @@ type AssistantRecommendationCardsProps = {
 
 const CATEGORY_ACCENT: Record<AssistantRecommendation['category'], string> = {
   health: '#0F766E',
+  hospital: '#0F766E',
   medicine: '#2563EB',
   law: '#7C2D12',
   finance: '#7A6F5A',
@@ -19,9 +20,18 @@ const CATEGORY_ACCENT: Record<AssistantRecommendation['category'], string> = {
   childcare: '#B45309',
   travel: '#0369A1',
   life: '#6D28D9',
+  pet: '#B85C2E',
 };
 
-const SAFETY_NOTE_CATEGORIES = new Set<AssistantRecommendation['category']>(['health', 'medicine', 'law', 'finance']);
+const ASSISTANT_CONNECTION_CATEGORIES = new Set<AssistantRecommendation['category']>([
+  'health',
+  'hospital',
+  'medicine',
+  'law',
+  'plant',
+]);
+
+const SAFETY_NOTE_CATEGORIES = new Set<AssistantRecommendation['category']>(['health', 'hospital', 'medicine', 'law', 'finance']);
 
 function formatKeywordQuestion(keywords: string[]) {
   const visibleKeywords = keywords.slice(0, 2).filter(Boolean);
@@ -65,6 +75,7 @@ export function AssistantRecommendationCards({
       <div style={{ display: 'grid', gap: 10 }}>
         {visibleRecommendations.map((recommendation) => {
           const accent = CATEGORY_ACCENT[recommendation.category];
+          const isAssistantConnection = ASSISTANT_CONNECTION_CATEGORIES.has(recommendation.category);
           return (
             <article
               key={recommendation.id}
@@ -79,7 +90,7 @@ export function AssistantRecommendationCards({
                 {formatKeywordQuestion(recommendation.matchedKeywords)}
               </p>
               <p style={{ margin: '0 0 10px', fontSize: 13, lineHeight: 1.55, color: '#334155' }}>
-                관련된 비서와 연결해드릴까요?
+                {isAssistantConnection ? '관련된 비서와 연결해드릴까요?' : '관련 기록 형식으로 정리해볼까요?'}
               </p>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                 <div style={{ minWidth: 0, flex: '1 1 190px' }}>
@@ -112,7 +123,7 @@ export function AssistantRecommendationCards({
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  네, 연결할게요
+                  {recommendation.actionLabel}
                 </button>
                 <button
                   type="button"
