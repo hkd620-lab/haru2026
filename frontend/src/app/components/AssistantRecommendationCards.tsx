@@ -103,3 +103,64 @@ export function AssistantRecommendationCards({
     </section>
   );
 }
+
+export function AssistantPendingDialog({
+  message,
+  onClose,
+}: {
+  message: string;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="비서 연결 준비 중"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1300,
+        backgroundColor: 'rgba(15, 23, 42, 0.42)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 420,
+          borderRadius: 10,
+          backgroundColor: '#FFFFFF',
+          padding: 18,
+          boxShadow: '0 18px 38px rgba(15, 23, 42, 0.24)',
+        }}
+      >
+        <p style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#1A3C6E' }}>
+          비서 연결 준비 중
+        </p>
+        <p style={{ margin: '10px 0 16px', fontSize: 13, lineHeight: 1.65, color: '#334155' }}>
+          {message}
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            width: '100%',
+            minHeight: 40,
+            borderRadius: 8,
+            border: 'none',
+            backgroundColor: '#1A3C6E',
+            color: '#FFFFFF',
+            fontSize: 13,
+            fontWeight: 800,
+            cursor: 'pointer',
+          }}
+        >
+          확인
+        </button>
+      </div>
+    </div>
+  );
+}
