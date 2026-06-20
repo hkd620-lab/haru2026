@@ -99,9 +99,6 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
 export const ASSISTANT_RECOMMENDATION_SAFETY_NOTE =
   'AI 비서는 생활 기록을 바탕으로 정리와 확인을 돕는 기능이며, 의료·법률·재무 전문가의 판단을 대체하지 않습니다.';
 
-export const ASSISTANT_RECOMMENDATION_PENDING_MESSAGE =
-  '이 비서는 곧 기록과 연결되어 사용할 수 있도록 준비 중입니다. 현재는 기록 안의 관련 고민을 감지하는 단계입니다.';
-
 export function getAssistantRecommendations(
   text: string,
   formats: string[] = [],
