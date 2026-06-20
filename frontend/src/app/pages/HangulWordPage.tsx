@@ -1,11 +1,12 @@
 import { type ChangeEvent, type DragEvent, useEffect, useRef, useState } from 'react';
-import { AlertCircle, ExternalLink, FileText, UploadCloud } from 'lucide-react';
+import { AlertCircle, ExternalLink, FileText, Plus, UploadCloud } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 const HANCOM_DOCS_URL = 'https://www.hancomdocs.com/ko/mydrive/all';
+const HANCOM_NEW_DOC_URL = 'https://webhwp.hancomdocs.com/webhwp/?mode=HWP_EDITOR';
 
 export function HangulWordPage() {
   const { user } = useAuth();
@@ -49,6 +50,10 @@ export function HangulWordPage() {
     const file = event.target.files?.[0];
     if (file) handleFile(file);
     event.target.value = '';
+  };
+
+  const handleNewDoc = () => {
+    window.location.href = HANCOM_NEW_DOC_URL;
   };
 
   const messageColor =
@@ -111,7 +116,7 @@ export function HangulWordPage() {
             여기에 파일을 끌어다 놓으면 한컴독스로 이동합니다.
           </p>
 
-          <div className="mt-5 flex justify-center">
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -120,6 +125,15 @@ export function HangulWordPage() {
             >
               <FileText size={16} />
               파일 선택
+            </button>
+            <button
+              type="button"
+              onClick={handleNewDoc}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white"
+              style={{ backgroundColor: '#2BA86E', borderRadius: 8 }}
+            >
+              <Plus size={16} />
+              새 한글 문서
             </button>
           </div>
 
