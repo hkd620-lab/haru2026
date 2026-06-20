@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import type { AssistantRecommendation } from '../utils/assistantRecommendations';
 import { ASSISTANT_RECOMMENDATION_SAFETY_NOTE } from '../utils/assistantRecommendations';
 
@@ -20,6 +21,15 @@ const CATEGORY_ACCENT: Record<AssistantRecommendation['category'], string> = {
   life: '#6D28D9',
 };
 
+const SAFETY_NOTE_CATEGORIES = new Set<AssistantRecommendation['category']>(['health', 'medicine', 'law', 'finance']);
+
+function formatKeywordQuestion(keywords: string[]) {
+  const visibleKeywords = keywords.slice(0, 2).filter(Boolean);
+  if (visibleKeywords.length === 0) return '이 기록에서 챙겨볼 이야기가 보여요.';
+  const keywordText = visibleKeywords.map((keyword) => `'${keyword}'`).join(', ');
+  return `이 기록에서 ${keywordText} 이야기가 보여요.`;
+}
+
 export function AssistantRecommendationCards({
   recommendations,
   title,
@@ -27,7 +37,15 @@ export function AssistantRecommendationCards({
   privacyNote,
   onSelect,
 }: AssistantRecommendationCardsProps) {
-  if (recommendations.length === 0) return null;
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const visibleRecommendations = useMemo(
+    () => recommendations.filter((recommendation) => !dismissedIds.has(recommendation.id)),
+    [recommendations, dismissedIds],
+  );
+
+  if (visibleRecommendations.length === 0) return null;
+
+  const showSafetyNote = visibleRecommendations.some((recommendation) => SAFETY_NOTE_CATEGORIES.has(recommendation.category));
 
   return (
     <section
@@ -45,7 +63,7 @@ export function AssistantRecommendationCards({
         {description}
       </p>
       <div style={{ display: 'grid', gap: 10 }}>
-        {recommendations.map((recommendation) => {
+        {visibleRecommendations.map((recommendation) => {
           const accent = CATEGORY_ACCENT[recommendation.category];
           return (
             <article
@@ -57,6 +75,12 @@ export function AssistantRecommendationCards({
                 backgroundColor: '#FFFFFF',
               }}
             >
+              <p style={{ margin: '0 0 4px', fontSize: 13, lineHeight: 1.6, fontWeight: 800, color: '#1A3C6E' }}>
+                {formatKeywordQuestion(recommendation.matchedKeywords)}
+              </p>
+              <p style={{ margin: '0 0 10px', fontSize: 13, lineHeight: 1.55, color: '#334155' }}>
+                관련된 비서와 연결해드릴까요?
+              </p>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                 <div style={{ minWidth: 0, flex: '1 1 190px' }}>
                   <p style={{ margin: 0, fontSize: 14, fontWeight: 900, color: accent }}>
@@ -66,12 +90,18 @@ export function AssistantRecommendationCards({
                     감지된 키워드: {recommendation.matchedKeywords.join(', ')}
                   </p>
                 </div>
+              </div>
+              <p style={{ margin: '8px 0 0', fontSize: 12, lineHeight: 1.55, color: '#334155' }}>
+                {recommendation.description}
+              </p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
                 <button
                   type="button"
                   onClick={() => onSelect(recommendation)}
+                  aria-label={recommendation.actionLabel}
                   style={{
-                    minHeight: 34,
-                    padding: '0 12px',
+                    minHeight: 36,
+                    padding: '0 14px',
                     borderRadius: 8,
                     border: 'none',
                     backgroundColor: accent,
@@ -82,12 +112,27 @@ export function AssistantRecommendationCards({
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {recommendation.actionLabel}
+                  네, 연결할게요
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDismissedIds((prev) => new Set(prev).add(recommendation.id))}
+                  style={{
+                    minHeight: 36,
+                    padding: '0 14px',
+                    borderRadius: 8,
+                    border: `1px solid ${accent}33`,
+                    backgroundColor: '#FFFFFF',
+                    color: '#64748B',
+                    fontSize: 12,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  지금은 괜찮아요
                 </button>
               </div>
-              <p style={{ margin: '8px 0 0', fontSize: 12, lineHeight: 1.55, color: '#334155' }}>
-                {recommendation.description}
-              </p>
             </article>
           );
         })}
@@ -97,70 +142,11 @@ export function AssistantRecommendationCards({
           {privacyNote}
         </p>
       )}
-      <p style={{ margin: '6px 0 0', fontSize: 11, lineHeight: 1.5, color: '#8A6B35' }}>
-        {ASSISTANT_RECOMMENDATION_SAFETY_NOTE}
-      </p>
+      {showSafetyNote && (
+        <p style={{ margin: '6px 0 0', fontSize: 11, lineHeight: 1.5, color: '#8A6B35' }}>
+          {ASSISTANT_RECOMMENDATION_SAFETY_NOTE}
+        </p>
+      )}
     </section>
-  );
-}
-
-export function AssistantPendingDialog({
-  message,
-  onClose,
-}: {
-  message: string;
-  onClose: () => void;
-}) {
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="비서 연결 준비 중"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1300,
-        backgroundColor: 'rgba(15, 23, 42, 0.42)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: 420,
-          borderRadius: 10,
-          backgroundColor: '#FFFFFF',
-          padding: 18,
-          boxShadow: '0 18px 38px rgba(15, 23, 42, 0.24)',
-        }}
-      >
-        <p style={{ margin: 0, fontSize: 15, fontWeight: 900, color: '#1A3C6E' }}>
-          비서 연결 준비 중
-        </p>
-        <p style={{ margin: '10px 0 16px', fontSize: 13, lineHeight: 1.65, color: '#334155' }}>
-          {message}
-        </p>
-        <button
-          type="button"
-          onClick={onClose}
-          style={{
-            width: '100%',
-            minHeight: 40,
-            borderRadius: 8,
-            border: 'none',
-            backgroundColor: '#1A3C6E',
-            color: '#FFFFFF',
-            fontSize: 13,
-            fontWeight: 800,
-            cursor: 'pointer',
-          }}
-        >
-          확인
-        </button>
-      </div>
-    </div>
   );
 }

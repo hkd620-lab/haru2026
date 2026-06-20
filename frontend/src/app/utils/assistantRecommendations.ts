@@ -55,6 +55,7 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     category: 'finance',
     description: '기록 속 돈, 지출, 세금, 사업 비용 관련 내용을 정리할 수 있습니다.',
     actionLabel: '재무 비서와 연결',
+    targetPath: '/record',
     keywords: ['지출', '수입', '매출', '세금', '카드', '계좌', '국민연금', '건강보험', '사업자', '부가세', '비용', '영수증', '통장', '입금', '출금', '재무', '회계'],
   },
   {
@@ -72,6 +73,7 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     category: 'childcare',
     description: '기록 속 자녀, 교육, 성장, 상담 고민을 정리하는 데 도움을 드립니다.',
     actionLabel: '육아·교육 비서와 연결',
+    targetPath: '/record',
     keywords: ['아이', '자녀', '육아', '학교', '학생', '상담', '학습', '공부', '성장', '진로', '선생님', '친구', '교육'],
   },
   {
@@ -80,6 +82,7 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     category: 'travel',
     description: '기록 속 여행 일정, 장소, 이동, 준비사항을 정리할 수 있습니다.',
     actionLabel: '여행 비서와 연결',
+    targetPath: '/record',
     keywords: ['여행', '숙소', '일정', '교통', '맛집', '관광', '주차', '기차', '비행기', '렌터카', '코스', '제주', '일본', '오사카', '설악산'],
   },
   {
@@ -88,15 +91,13 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     category: 'life',
     description: '기록 속 생활 고민을 정리하고 다음 행동을 제안해드립니다.',
     actionLabel: '생활 비서와 연결',
+    targetPath: '/record',
     keywords: ['걱정', '고민', '불안', '준비', '정리', '계획', '해야 할 일', '문제', '해결', '방법'],
   },
 ];
 
 export const ASSISTANT_RECOMMENDATION_SAFETY_NOTE =
   'AI 비서는 생활 기록을 바탕으로 정리와 확인을 돕는 기능이며, 의료·법률·재무 전문가의 판단을 대체하지 않습니다.';
-
-export const ASSISTANT_RECOMMENDATION_PENDING_MESSAGE =
-  '이 비서는 곧 기록과 연결되어 사용할 수 있도록 준비 중입니다. 현재는 기록 안의 관련 고민을 감지하는 단계입니다.';
 
 export function getAssistantRecommendations(
   text: string,

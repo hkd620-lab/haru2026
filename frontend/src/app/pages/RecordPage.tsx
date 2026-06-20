@@ -10,11 +10,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { RecordTitleAnimation } from '../components/RecordTitleAnimation';
 import { FormatModal } from '../components/FormatModal';
 import GrapeLoadingMini from '../components/GrapeLoadingMini';
-import { AssistantPendingDialog, AssistantRecommendationCards } from '../components/AssistantRecommendationCards';
+import { AssistantRecommendationCards } from '../components/AssistantRecommendationCards';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS } from '../types/haruTypes';
 import {
-  ASSISTANT_RECOMMENDATION_PENDING_MESSAGE,
   buildRecommendationTextFromFields,
   getAssistantRecommendations,
   type AssistantRecommendation,
@@ -291,10 +290,8 @@ export function RecordPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [formatModalOpen, setFormatModalOpen] = useState(false);
   const [savedDateStr, setSavedDateStr] = useState('');
-  const [savedRecordId, setSavedRecordId] = useState('');
   const [savedFormat, setSavedFormat] = useState<RecordFormat | null>(null);
   const [savedAssistantRecommendations, setSavedAssistantRecommendations] = useState<AssistantRecommendation[]>([]);
-  const [assistantPendingMessage, setAssistantPendingMessage] = useState('');
   const [lawQuery, setLawQuery] = useState('');
   const [lawGuideConfirmed, setLawGuideConfirmed] = useState(false);
   const [lawLoading, setLawLoading] = useState(false);
@@ -608,7 +605,6 @@ export function RecordPage() {
     }
     const dateStr = getLocalDateString(currentDate);
     setSavedDateStr(dateStr);
-    setSavedRecordId('');
     setSavedAssistantRecommendations([]);
     setSavedFormat(format);
     setSelectedFormats([format]);
@@ -651,7 +647,6 @@ export function RecordPage() {
     // Firestore 저장 없이 FormatModal만 열기
     const dateStr = getLocalDateString(currentDate);
     setSavedDateStr(dateStr);
-    setSavedRecordId('');
     setSavedFormat(selectedFormats[0]);
     setFormatModalOpen(true);
   };
@@ -720,17 +715,10 @@ export function RecordPage() {
 
   const handleAssistantRecommendationSelect = (recommendation: AssistantRecommendation) => {
     if (recommendation.targetPath) {
-      navigate(recommendation.targetPath, {
-        state: {
-          from: '/record',
-          sourceRecordId: savedRecordId,
-          sourceRecordDate: savedDateStr,
-        },
-      });
+      navigate(recommendation.targetPath);
       return;
     }
 
-    setAssistantPendingMessage(ASSISTANT_RECOMMENDATION_PENDING_MESSAGE);
   };
 
   const handleEasyExplain = async (article: any, idx: number) => {
@@ -960,7 +948,6 @@ export function RecordPage() {
           { merge: true },
         );
       }
-      setSavedRecordId(recordId);
       setSavedAssistantRecommendations(nextRecommendations);
       toast.success('내용이 저장되었습니다!');
     } catch (error) {
@@ -1055,7 +1042,6 @@ export function RecordPage() {
                   if (category === 'HARU주식관리') {
                     const dateStr = getLocalDateString(currentDate);
                     setSavedDateStr(dateStr);
-                    setSavedRecordId('');
                     setSavedFormat('HARU주식관리');
                     setSelectedFormats(['HARU주식관리']);
                     setFormatModalOpen(true);
@@ -1489,12 +1475,6 @@ export function RecordPage() {
           </button>
         </div>
       </div>
-    )}
-    {assistantPendingMessage && (
-      <AssistantPendingDialog
-        message={assistantPendingMessage}
-        onClose={() => setAssistantPendingMessage('')}
-      />
     )}
       {/* 나도작가 안내 모달 */}
       {showNovelIntro && (
