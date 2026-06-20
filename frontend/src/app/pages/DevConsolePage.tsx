@@ -73,6 +73,13 @@ const DEV_TOOLS: DevTool[] = [
     color: '#B85C2E',
   },
   {
+    icon: '📄',
+    label: '한글워드',
+    description: 'HWP/HWPX 문서 한컴독스 이동 도구',
+    path: '/dev/hangul-word',
+    color: '#1A3C6E',
+  },
+  {
     sectionLabel: '홈에서 숨긴 기록·비서 (개발자 전용)',
     icon: '⛪',
     label: '선교보고',

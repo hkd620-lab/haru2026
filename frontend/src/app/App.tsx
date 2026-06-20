@@ -62,6 +62,7 @@ import { SayuHealthLibraryPage } from './pages/SayuHealthLibraryPage';
 import { PlantDetectivePage } from './pages/PlantDetectivePage';
 import { AssetExplorerPage } from './pages/AssetExplorerPage';
 import { MasterpieceDetectivePage } from './pages/MasterpieceDetectivePage';
+import { HangulWordPage } from './pages/HangulWordPage';
 import { HealthMedicationPage } from './pages/HealthMedicationPage';
 import { BottomNav } from './components/BottomNav';
 import { Footer } from './components/Footer';
@@ -215,6 +216,7 @@ function App() {
 
               {/* 개발자 전용 임시 화면 */}
               <Route path="/dev/masterpiece-detective" element={<MasterpieceDetectivePage />} />
+              <Route path="/dev/hangul-word" element={<HangulWordPage />} />
 
               {/* 구독 페이지 */}
               <Route path="/subscription" element={<SubscriptionPage />} />
