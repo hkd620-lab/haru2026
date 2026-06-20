@@ -1,5 +1,5 @@
 import { type ChangeEvent, type DragEvent, useEffect, useRef, useState } from 'react';
-import { AlertCircle, ExternalLink, FileText, Plus, UploadCloud } from 'lucide-react';
+import { AlertCircle, ExternalLink, FileText, UploadCloud } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { PageHeaderActions } from '../components/PageHeaderActions';
@@ -49,10 +49,6 @@ export function HangulWordPage() {
     const file = event.target.files?.[0];
     if (file) handleFile(file);
     event.target.value = '';
-  };
-
-  const handleNewDoc = () => {
-    window.location.href = HANCOM_DOCS_URL;
   };
 
   const messageColor =
@@ -115,7 +111,7 @@ export function HangulWordPage() {
             여기에 파일을 끌어다 놓으면 한컴독스로 이동합니다.
           </p>
 
-          <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <div className="mt-5 flex justify-center">
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -125,20 +121,7 @@ export function HangulWordPage() {
               <FileText size={16} />
               파일 선택
             </button>
-            <button
-              type="button"
-              onClick={handleNewDoc}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white"
-              style={{ backgroundColor: '#2BA86E', borderRadius: 8 }}
-            >
-              <Plus size={16} />
-              + 새 한글 문서
-            </button>
           </div>
-          <p className="mt-3 text-xs text-gray-500 leading-relaxed">
-            새 문서 버튼을 누르면 한컴독스로 이동합니다.<br />
-            거기서 "새 문서 만들기"를 눌러주세요.
-          </p>
 
           <input
             ref={fileInputRef}
