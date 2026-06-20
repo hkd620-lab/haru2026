@@ -12,6 +12,13 @@ import { FormatModal } from '../components/FormatModal';
 import GrapeLoadingMini from '../components/GrapeLoadingMini';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS } from '../types/haruTypes';
+import {
+  ASSISTANT_RECOMMENDATION_PENDING_MESSAGE,
+  ASSISTANT_RECOMMENDATION_SAFETY_NOTE,
+  buildRecommendationTextFromFields,
+  getAssistantRecommendations,
+  type AssistantRecommendation,
+} from '../utils/assistantRecommendations';
 import { db } from '../../firebase';
 import { doc, getDoc, setDoc, serverTimestamp, collection, arrayUnion } from 'firebase/firestore';
 import {
@@ -286,6 +293,7 @@ export function RecordPage() {
   const [savedDateStr, setSavedDateStr] = useState('');
   const [savedRecordId, setSavedRecordId] = useState('');
   const [savedFormat, setSavedFormat] = useState<RecordFormat | null>(null);
+  const [savedAssistantRecommendations, setSavedAssistantRecommendations] = useState<AssistantRecommendation[]>([]);
   const [lawQuery, setLawQuery] = useState('');
   const [lawGuideConfirmed, setLawGuideConfirmed] = useState(false);
   const [lawLoading, setLawLoading] = useState(false);
@@ -600,6 +608,7 @@ export function RecordPage() {
     const dateStr = getLocalDateString(currentDate);
     setSavedDateStr(dateStr);
     setSavedRecordId('');
+    setSavedAssistantRecommendations([]);
     setSavedFormat(format);
     setSelectedFormats([format]);
     setFormatModalOpen(true);
