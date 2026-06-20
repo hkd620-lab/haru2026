@@ -2529,13 +2529,7 @@ export function SayuPage() {
 
   const handleAssistantRecommendationSelect = (recommendation: AssistantRecommendation) => {
     if (recommendation.targetPath) {
-      navigate(recommendation.targetPath, {
-        state: {
-          from: '/sayu',
-          sourceRecordId: sayuModalState.firestoreId,
-          sourceRecordDate: sayuModalState.recordDate,
-        },
-      });
+      navigate(recommendation.targetPath);
       return;
     }
 

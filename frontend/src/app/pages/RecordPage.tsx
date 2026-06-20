@@ -291,7 +291,6 @@ export function RecordPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [formatModalOpen, setFormatModalOpen] = useState(false);
   const [savedDateStr, setSavedDateStr] = useState('');
-  const [savedRecordId, setSavedRecordId] = useState('');
   const [savedFormat, setSavedFormat] = useState<RecordFormat | null>(null);
   const [savedAssistantRecommendations, setSavedAssistantRecommendations] = useState<AssistantRecommendation[]>([]);
   const [assistantPendingMessage, setAssistantPendingMessage] = useState('');
@@ -608,7 +607,6 @@ export function RecordPage() {
     }
     const dateStr = getLocalDateString(currentDate);
     setSavedDateStr(dateStr);
-    setSavedRecordId('');
     setSavedAssistantRecommendations([]);
     setSavedFormat(format);
     setSelectedFormats([format]);
@@ -651,7 +649,6 @@ export function RecordPage() {
     // Firestore 저장 없이 FormatModal만 열기
     const dateStr = getLocalDateString(currentDate);
     setSavedDateStr(dateStr);
-    setSavedRecordId('');
     setSavedFormat(selectedFormats[0]);
     setFormatModalOpen(true);
   };
@@ -720,13 +717,7 @@ export function RecordPage() {
 
   const handleAssistantRecommendationSelect = (recommendation: AssistantRecommendation) => {
     if (recommendation.targetPath) {
-      navigate(recommendation.targetPath, {
-        state: {
-          from: '/record',
-          sourceRecordId: savedRecordId,
-          sourceRecordDate: savedDateStr,
-        },
-      });
+      navigate(recommendation.targetPath);
       return;
     }
 
@@ -960,7 +951,6 @@ export function RecordPage() {
           { merge: true },
         );
       }
-      setSavedRecordId(recordId);
       setSavedAssistantRecommendations(nextRecommendations);
       toast.success('내용이 저장되었습니다!');
     } catch (error) {
@@ -1055,7 +1045,6 @@ export function RecordPage() {
                   if (category === 'HARU주식관리') {
                     const dateStr = getLocalDateString(currentDate);
                     setSavedDateStr(dateStr);
-                    setSavedRecordId('');
                     setSavedFormat('HARU주식관리');
                     setSelectedFormats(['HARU주식관리']);
                     setFormatModalOpen(true);
