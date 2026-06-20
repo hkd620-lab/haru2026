@@ -38,7 +38,7 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     description: '약 이름을 기준으로 효능과 주의사항을 간단히 확인할 수 있습니다.',
     actionLabel: '약 정보 확인',
     targetPath: '/sayu-health/drug',
-    keywords: ['약', '약봉지', '처방', '복용', '부작용', '알약', '정제', '캡슐', '연고', '진통제', '혈압약', '당뇨약'],
+    keywords: ['혈압약', '당뇨약', '약봉지', '약 복용', '처방', '진통제', '알약', '정제', '캡슐', '연고', '부작용'],
   },
   {
     id: 'law',
@@ -65,7 +65,41 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     description: '기록 속 식물 상태, 병충해, 물주기 고민을 정리하고 관리 방향을 확인할 수 있습니다.',
     actionLabel: '식물탐정과 연결',
     targetPath: '/plant-detective',
-    keywords: ['식물', '텃밭', '잎', '벌레', '병충해', '농약', '물주기', '수국', '케일', '고추', '상추', '호박', '난초', '작약', '대추', '감나무', '비파'],
+    keywords: [
+      '식물',
+      '텃밭',
+      '수확',
+      '파종',
+      '심다',
+      '심었다',
+      '모종',
+      '밭',
+      '콩',
+      '호랑이콩',
+      '강낭콩',
+      '옥수수',
+      '작물',
+      '재배',
+      '새싹',
+      '발아',
+      '거름',
+      '잎',
+      '줄기',
+      '벌레',
+      '병충해',
+      '농약',
+      '물주기',
+      '수국',
+      '케일',
+      '고추',
+      '상추',
+      '호박',
+      '난초',
+      '작약',
+      '대추',
+      '감나무',
+      '비파',
+    ],
   },
   {
     id: 'childcare',
@@ -99,6 +133,29 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
 export const ASSISTANT_RECOMMENDATION_SAFETY_NOTE =
   'AI 비서는 생활 기록을 바탕으로 정리와 확인을 돕는 기능이며, 의료·법률·재무 전문가의 판단을 대체하지 않습니다.';
 
+const KOREAN_PARTICLES = '(?:은|는|이|가|을|를|에|에서|으로|로|도|만|과|와|의)?';
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function matchesKeyword(source: string, keyword: string): boolean {
+  const normalizedKeyword = keyword.toLowerCase();
+  if (normalizedKeyword.length === 1) {
+    const boundaryPattern = new RegExp(
+      `(^|[^가-힣a-z0-9])${escapeRegExp(normalizedKeyword)}${KOREAN_PARTICLES}(?=$|[^가-힣a-z0-9])`,
+      'i',
+    );
+    return boundaryPattern.test(source);
+  }
+
+  return source.includes(normalizedKeyword);
+}
+
+function getMatchedKeywordWeight(recommendation: AssistantRecommendation): number {
+  return recommendation.matchedKeywords.reduce((total, keyword) => total + keyword.length, 0);
+}
+
 export function getAssistantRecommendations(
   text: string,
   formats: string[] = [],
@@ -107,7 +164,7 @@ export function getAssistantRecommendations(
   if (!source.trim()) return [];
 
   return RECOMMENDATION_RULES.map((rule) => {
-    const matchedKeywords = rule.keywords.filter((keyword) => source.includes(keyword.toLowerCase()));
+    const matchedKeywords = rule.keywords.filter((keyword) => matchesKeyword(source, keyword));
     if (matchedKeywords.length === 0) return null;
 
     return {
@@ -119,7 +176,14 @@ export function getAssistantRecommendations(
       targetPath: rule.targetPath,
       matchedKeywords: Array.from(new Set(matchedKeywords)).slice(0, 5),
     };
-  }).filter((item): item is AssistantRecommendation => Boolean(item));
+  })
+    .filter((item): item is AssistantRecommendation => Boolean(item))
+    .sort((first, second) => {
+      const matchedCountGap = second.matchedKeywords.length - first.matchedKeywords.length;
+      if (matchedCountGap !== 0) return matchedCountGap;
+      return getMatchedKeywordWeight(second) - getMatchedKeywordWeight(first);
+    })
+    .slice(0, 2);
 }
 
 export function buildRecommendationTextFromFields(fields: Record<string, unknown>): string {
