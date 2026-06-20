@@ -8,9 +8,16 @@ import { useAuth } from '../contexts/AuthContext';
 import { SayuTitleAnimation } from '../components/SayuTitleAnimation';
 import { toast } from 'sonner';
 import { SayuModal } from '../components/SayuModal';
+import { AssistantRecommendationCards } from '../components/AssistantRecommendationCards';
 import { GrowthTimelineLibrary } from '../components/GrowthTimelineCreator';
 import { CATEGORY_FORMATS, FORMAT_PREFIX, FORMAT_EMOJI, READING_ENTRY_TYPES, READING_STATUS } from '../types/haruTypes';
 import type { RecordFormat } from '../types/haruTypes';
+import {
+  ASSISTANT_RECOMMENDATION_PENDING_MESSAGE,
+  buildRecommendationTextFromFields,
+  getAssistantRecommendations,
+  type AssistantRecommendation,
+} from '../utils/assistantRecommendations';
 import { collection, getDocs, getDoc, orderBy, query, deleteDoc, doc, writeBatch, updateDoc, limit, setDoc, serverTimestamp, arrayUnion, increment } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db } from '../../firebase';
@@ -2519,6 +2526,21 @@ export function SayuPage() {
     }
   };
 
+  const handleAssistantRecommendationSelect = (recommendation: AssistantRecommendation) => {
+    if (recommendation.targetPath) {
+      navigate(recommendation.targetPath, {
+        state: {
+          from: '/sayu',
+          sourceRecordId: sayuModalState.firestoreId,
+          sourceRecordDate: sayuModalState.recordDate,
+        },
+      });
+      return;
+    }
+
+    toast.info(ASSISTANT_RECOMMENDATION_PENDING_MESSAGE);
+  };
+
   // Delete an AI log
   const handleDeleteAiLog = async (id: string) => {
     try {
@@ -4729,6 +4751,36 @@ export function SayuPage() {
                 </button>
               </div>
             </div>
+          );
+        })()}
+        assistantContent={(() => {
+          const record = sayuModalState.firestoreId
+            ? records.find((item) => item.id === sayuModalState.firestoreId)
+            : undefined;
+          const formatKey = sayuModalState.formatKey || '';
+          if (!record || !formatKey) return null;
+
+          const recommendations = getAssistantRecommendations(
+            [
+              getRecordSourceText(record, formatKey),
+              sayuModalState.content,
+              buildRecommendationTextFromFields(sayuModalState.originalData || {}),
+            ].filter(Boolean).join('\n\n'),
+            [
+              sayuModalState.format || '',
+              ...(Array.isArray(record.formats) ? record.formats.map((format) => String(format)) : []),
+            ],
+          );
+
+          if (recommendations.length === 0) return null;
+
+          return (
+            <AssistantRecommendationCards
+              recommendations={recommendations}
+              title="이 기록과 연결 가능한 AI 비서"
+              description="기록에 담긴 고민을 바탕으로 도움받을 수 있는 비서를 추천합니다."
+              onSelect={handleAssistantRecommendationSelect}
+            />
           );
         })()}
       />

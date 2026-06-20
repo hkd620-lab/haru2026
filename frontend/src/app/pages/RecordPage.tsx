@@ -10,11 +10,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { RecordTitleAnimation } from '../components/RecordTitleAnimation';
 import { FormatModal } from '../components/FormatModal';
 import GrapeLoadingMini from '../components/GrapeLoadingMini';
+import { AssistantRecommendationCards } from '../components/AssistantRecommendationCards';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS } from '../types/haruTypes';
 import {
   ASSISTANT_RECOMMENDATION_PENDING_MESSAGE,
-  ASSISTANT_RECOMMENDATION_SAFETY_NOTE,
   buildRecommendationTextFromFields,
   getAssistantRecommendations,
   type AssistantRecommendation,
@@ -717,6 +717,21 @@ export function RecordPage() {
     }
   };
 
+  const handleAssistantRecommendationSelect = (recommendation: AssistantRecommendation) => {
+    if (recommendation.targetPath) {
+      navigate(recommendation.targetPath, {
+        state: {
+          from: '/record',
+          sourceRecordId: savedRecordId,
+          sourceRecordDate: savedDateStr,
+        },
+      });
+      return;
+    }
+
+    toast.info(ASSISTANT_RECOMMENDATION_PENDING_MESSAGE);
+  };
+
   const handleEasyExplain = async (article: any, idx: number) => {
     if (openCard?.idx === idx && openCard?.type === 'explain') {
       setOpenCard(null);
@@ -870,6 +885,12 @@ export function RecordPage() {
         } : {}),
         ...updateData,
       });
+      const recommendationFormats = formatsOverride ?? selectedFormats;
+      const recommendationText = buildRecommendationTextFromFields(updateData);
+      const nextRecommendations = getAssistantRecommendations(
+        recommendationText,
+        recommendationFormats.map((format) => String(format)),
+      );
       if (shouldSaveGrowthEntry && growthSubjectId && growthSubjectType) {
         const sourceFormat = growthSubjectType === 'child' ? '육아일지' : '텃밭일지';
         const prefix = growthSubjectType === 'child' ? 'child' : 'garden';
@@ -939,6 +960,7 @@ export function RecordPage() {
         );
       }
       setSavedRecordId(recordId);
+      setSavedAssistantRecommendations(nextRecommendations);
       toast.success('내용이 저장되었습니다!');
     } catch (error) {
       console.error('저장 실패:', error);
@@ -1410,6 +1432,62 @@ export function RecordPage() {
         recordId={savedDateStr}
         onSave={handleSaveFormatData}
       />
+    )}
+    {savedAssistantRecommendations.length > 0 && !formatModalOpen && (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="기록 속 비서 연결"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.42)',
+          zIndex: 1100,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 16,
+        }}
+      >
+        <div
+          style={{
+            width: '100%',
+            maxWidth: 520,
+            maxHeight: '86vh',
+            overflowY: 'auto',
+            borderRadius: 12,
+            backgroundColor: '#FFFFFF',
+            padding: 16,
+            boxShadow: '0 20px 44px rgba(15, 23, 42, 0.24)',
+          }}
+        >
+          <AssistantRecommendationCards
+            recommendations={savedAssistantRecommendations}
+            title="이 기록에서 도움받을 수 있는 AI 비서를 찾았습니다."
+            description="기록 속 고민 키워드를 바탕으로 필요한 비서와 연결할 수 있습니다."
+            privacyNote="선택한 경우에만 해당 기록 내용을 비서에게 전달합니다."
+            onSelect={handleAssistantRecommendationSelect}
+          />
+          <button
+            type="button"
+            onClick={() => setSavedAssistantRecommendations([])}
+            style={{
+              width: '100%',
+              minHeight: 40,
+              marginTop: 12,
+              borderRadius: 8,
+              border: '1px solid #D7D2E8',
+              backgroundColor: '#FFFFFF',
+              color: '#1A3C6E',
+              fontSize: 13,
+              fontWeight: 800,
+              cursor: 'pointer',
+            }}
+          >
+            닫기
+          </button>
+        </div>
+      </div>
     )}
       {/* 나도작가 안내 모달 */}
       {showNovelIntro && (

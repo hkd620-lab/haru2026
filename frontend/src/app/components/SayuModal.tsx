@@ -337,6 +337,7 @@ export interface SayuModalProps {
   firestoreId?: string;
   title?: string;
   publicControl?: ReactNode;
+  assistantContent?: ReactNode;
 }
 
 export function formatDateToKorean(dateStr: string): string {
@@ -370,6 +371,7 @@ export function SayuModal({
   firestoreId,
   title,
   publicControl,
+  assistantContent,
 }: SayuModalProps) {
   const { isPremium } = useSubscription();
   const { user: currentUser } = useAuth();
@@ -2528,6 +2530,11 @@ export function SayuModal({
             </div>
           ) : (
             renderOriginalData()
+          )}
+          {assistantContent && (
+            <div style={{ marginTop: 16 }}>
+              {assistantContent}
+            </div>
           )}
         </div>
 
