@@ -8,7 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { SayuTitleAnimation } from '../components/SayuTitleAnimation';
 import { toast } from 'sonner';
 import { SayuModal } from '../components/SayuModal';
-import { AssistantRecommendationCards } from '../components/AssistantRecommendationCards';
+import { AssistantPendingDialog, AssistantRecommendationCards } from '../components/AssistantRecommendationCards';
 import { GrowthTimelineLibrary } from '../components/GrowthTimelineCreator';
 import { CATEGORY_FORMATS, FORMAT_PREFIX, FORMAT_EMOJI, READING_ENTRY_TYPES, READING_STATUS } from '../types/haruTypes';
 import type { RecordFormat } from '../types/haruTypes';
@@ -708,6 +708,7 @@ export function SayuPage() {
     title: '',
     aiTitle: '',
   });
+  const [assistantPendingMessage, setAssistantPendingMessage] = useState('');
 
   // 📚 내가 읽은 책 — final_reflection 카드 펼침 상태
   const [expandedFinalReadingIds, setExpandedFinalReadingIds] = useState<Set<string>>(new Set());
@@ -2538,7 +2539,7 @@ export function SayuPage() {
       return;
     }
 
-    toast.info(ASSISTANT_RECOMMENDATION_PENDING_MESSAGE);
+    setAssistantPendingMessage(ASSISTANT_RECOMMENDATION_PENDING_MESSAGE);
   };
 
   // Delete an AI log
@@ -4784,6 +4785,13 @@ export function SayuPage() {
           );
         })()}
       />
+
+      {assistantPendingMessage && (
+        <AssistantPendingDialog
+          message={assistantPendingMessage}
+          onClose={() => setAssistantPendingMessage('')}
+        />
+      )}
 
       {plantReadOnlyDetail && (
         <div

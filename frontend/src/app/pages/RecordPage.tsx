@@ -10,7 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { RecordTitleAnimation } from '../components/RecordTitleAnimation';
 import { FormatModal } from '../components/FormatModal';
 import GrapeLoadingMini from '../components/GrapeLoadingMini';
-import { AssistantRecommendationCards } from '../components/AssistantRecommendationCards';
+import { AssistantPendingDialog, AssistantRecommendationCards } from '../components/AssistantRecommendationCards';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS } from '../types/haruTypes';
 import {
@@ -294,6 +294,7 @@ export function RecordPage() {
   const [savedRecordId, setSavedRecordId] = useState('');
   const [savedFormat, setSavedFormat] = useState<RecordFormat | null>(null);
   const [savedAssistantRecommendations, setSavedAssistantRecommendations] = useState<AssistantRecommendation[]>([]);
+  const [assistantPendingMessage, setAssistantPendingMessage] = useState('');
   const [lawQuery, setLawQuery] = useState('');
   const [lawGuideConfirmed, setLawGuideConfirmed] = useState(false);
   const [lawLoading, setLawLoading] = useState(false);
@@ -729,7 +730,7 @@ export function RecordPage() {
       return;
     }
 
-    toast.info(ASSISTANT_RECOMMENDATION_PENDING_MESSAGE);
+    setAssistantPendingMessage(ASSISTANT_RECOMMENDATION_PENDING_MESSAGE);
   };
 
   const handleEasyExplain = async (article: any, idx: number) => {
@@ -1488,6 +1489,12 @@ export function RecordPage() {
           </button>
         </div>
       </div>
+    )}
+    {assistantPendingMessage && (
+      <AssistantPendingDialog
+        message={assistantPendingMessage}
+        onClose={() => setAssistantPendingMessage('')}
+      />
     )}
       {/* 나도작가 안내 모달 */}
       {showNovelIntro && (
