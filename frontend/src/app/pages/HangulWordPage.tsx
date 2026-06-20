@@ -6,7 +6,6 @@ import { PageHeaderActions } from '../components/PageHeaderActions';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 const HANCOM_DOCS_URL = 'https://www.hancomdocs.com/ko/mydrive/all';
-const HANCOM_NEW_DOC_URL = 'https://webhwp.hancomdocs.com/webhwp/?mode=HWP_EDITOR';
 
 export function HangulWordPage() {
   const { user } = useAuth();
@@ -53,7 +52,7 @@ export function HangulWordPage() {
   };
 
   const handleNewDoc = () => {
-    window.location.href = HANCOM_NEW_DOC_URL;
+    window.location.href = HANCOM_DOCS_URL;
   };
 
   const messageColor =
@@ -133,9 +132,13 @@ export function HangulWordPage() {
               style={{ backgroundColor: '#2BA86E', borderRadius: 8 }}
             >
               <Plus size={16} />
-              새 한글 문서
+              + 새 한글 문서
             </button>
           </div>
+          <p className="mt-3 text-xs text-gray-500 leading-relaxed">
+            새 문서 버튼을 누르면 한컴독스로 이동합니다.<br />
+            거기서 "새 문서 만들기"를 눌러주세요.
+          </p>
 
           <input
             ref={fileInputRef}
