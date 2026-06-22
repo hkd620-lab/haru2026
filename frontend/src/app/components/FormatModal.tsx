@@ -22,7 +22,7 @@ import { findGrowthLMS, type GrowthGender } from '../../data/growthLMS';
 import { calcAgeInMonths, calcPercentile } from '../../utils/growthCalc';
 import { GrowthChart } from '../../components/GrowthChart';
 
-type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | 'HARU주식관리' | '주식거래일지' | '메모' | 'HARU보조장부';
+type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '성장기록' | 'HARU주식관리' | '주식거래일지' | '메모' | 'HARU보조장부';
 type SayuMode = 'BASIC' | 'PREMIUM';
 
 interface FormatModalProps {
@@ -170,6 +170,9 @@ const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placehol
     { key: 'child_activity', label: '활동', placeholder: '놀이터에서 친구들과 그네를 탔습니다.', rows: 3 },
     { key: 'child_emotion', label: '부모의 마음', placeholder: '아이가 자라는 모습을 보니 뿌듯하고 감사합니다.', rows: 3 },
     { key: 'child_space', label: '여백', placeholder: '자유롭게 작성하세요.', rows: 2 },
+  ],
+  성장기록: [
+    { key: 'growth_note', label: '기록 메모 (선택)', placeholder: '예: 건강검진에서 측정한 기록입니다.', rows: 2 },
   ],
   메모: [
     { key: 'memo_title', label: '제목', placeholder: '오늘의 메모 제목을 입력하세요.', rows: 1 },
@@ -354,7 +357,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
 
   useEffect(() => {
     if (isOpen) {
-      setFormData(format === '육아일기' ? { ...initialData, child_measuredate: initialData.child_measuredate || getTodayInputValue() } : initialData);
+      setFormData((format === '육아일기' || format === '성장기록') ? { ...initialData, child_measuredate: initialData.child_measuredate || getTodayInputValue() } : initialData);
       setGrowthSubjectBirthdate('');
       setGrowthSubjectGender('');
       setPolishedContent('');
@@ -523,10 +526,10 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
         })();
       }
 
-      if ((format === '육아일기' || format === '텃밭일지') && user?.uid) {
+      if ((format === '육아일기' || format === '텃밭일지' || format === '성장기록') && user?.uid) {
         (async () => {
           try {
-            const subjectType: GrowthSubjectType = format === '육아일기' ? 'child' : 'garden';
+            const subjectType: GrowthSubjectType = format === '텃밭일지' ? 'garden' : 'child';
             const db = getFirestore();
             const subjectsRef = collection(db, 'users', user.uid, 'growthSubjects');
             const q = query(subjectsRef, where('subjectType', '==', subjectType));
@@ -593,7 +596,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const childWeightPercentile = childWeightValue !== null && childWeightLms
     ? calcPercentile(childWeightValue, childWeightLms.L, childWeightLms.M, childWeightLms.S)
     : null;
-  const shouldShowGrowthResult = format === '육아일기' && childHeightPercentile !== null && childWeightPercentile !== null;
+  const shouldShowGrowthResult = format === '성장기록' && childHeightPercentile !== null && childWeightPercentile !== null;
   const growthResultNeedsConsultation = [childHeightPercentile, childWeightPercentile]
     .filter((value): value is number => value !== null)
     .some((value) => value < 3 || value > 97);
@@ -619,9 +622,9 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   );
 
   const getGrowthSaveFields = () => {
-    if (format !== '육아일기' && format !== '텃밭일지') return {};
+    if (format !== '육아일기' && format !== '텃밭일지' && format !== '성장기록') return {};
 
-    const subjectType: GrowthSubjectType = format === '육아일기' ? 'child' : 'garden';
+    const subjectType: GrowthSubjectType = format === '텃밭일지' ? 'garden' : 'child';
     const selectedSubject = selectedGrowthSubject;
     const newName = newGrowthSubjectName.trim();
     const subjectName = newName || selectedSubject?.name || '';
@@ -632,8 +635,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       _growthSubjectId: newName ? '' : selectedGrowthSubjectId,
       _growthSubjectType: subjectType,
       _growthSubjectName: subjectName,
-      ...(format === '육아일기' && effectiveGrowthSubjectBirthdate ? { _growthSubjectBirthdate: effectiveGrowthSubjectBirthdate } : {}),
-      ...(format === '육아일기' && effectiveGrowthSubjectGender ? { _growthSubjectGender: effectiveGrowthSubjectGender } : {}),
+      ...(format !== '텃밭일지' && effectiveGrowthSubjectBirthdate ? { _growthSubjectBirthdate: effectiveGrowthSubjectBirthdate } : {}),
+      ...(format !== '텃밭일지' && effectiveGrowthSubjectGender ? { _growthSubjectGender: effectiveGrowthSubjectGender } : {}),
     };
   };
 
@@ -2691,7 +2694,7 @@ ${contentValues}`,
                 </div>
               )}
 
-              {(format === '육아일기' || format === '텃밭일지') && (
+              {(format === '육아일기' || format === '텃밭일지' || format === '성장기록') && (
                 <div
                   style={{
                     padding: 12,
@@ -2710,7 +2713,7 @@ ${contentValues}`,
                       const nextSubject = growthSubjects.find((subject) => subject.id === nextId);
                       setSelectedGrowthSubjectId(nextId);
                       if (nextId) setNewGrowthSubjectName('');
-                      if (format === '육아일기') {
+                      if (format !== '텃밭일지') {
                         setGrowthSubjectBirthdate(nextSubject?.birthdate || '');
                         setGrowthSubjectGender(nextSubject?.gender || '');
                       }
@@ -2741,14 +2744,14 @@ ${contentValues}`,
                     onChange={(e) => {
                       setNewGrowthSubjectName(e.target.value);
                       if (e.target.value.trim()) {
-                        if (selectedGrowthSubjectId && format === '육아일기') {
+                        if (selectedGrowthSubjectId && format !== '텃밭일지') {
                           setGrowthSubjectBirthdate('');
                           setGrowthSubjectGender('');
                         }
                         setSelectedGrowthSubjectId('');
                       }
                     }}
-                    placeholder={format === '육아일기' ? '새 대상 추가: 아이 이름 또는 별칭' : '새 대상 추가: 작물명 또는 식물명'}
+                    placeholder={format === '텃밭일지' ? '새 대상 추가: 작물명 또는 식물명' : '새 대상 추가: 아이 이름 또는 별칭'}
                     style={{
                       width: '100%',
                       boxSizing: 'border-box',
@@ -2761,7 +2764,7 @@ ${contentValues}`,
                       outline: 'none',
                     }}
                   />
-                  {format === '육아일기' && (
+                  {format !== '텃밭일지' && (
                     <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
                       <label style={{ display: 'block', fontSize: 13, color: '#1A3C6E', fontWeight: 700 }}>
                         생년월일
@@ -2813,14 +2816,14 @@ ${contentValues}`,
                     </div>
                   )}
                   <p style={{ margin: '8px 0 0', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
-                    {format === '육아일기'
-                      ? '아이의 성장기록으로 함께 저장됩니다.'
-                      : '작물의 성장과정으로 함께 저장됩니다.'}
+                    {format === '텃밭일지'
+                      ? '작물의 성장과정으로 함께 저장됩니다.'
+                      : '아이의 성장기록으로 함께 저장됩니다.'}
                   </p>
                 </div>
               )}
 
-              {format === '육아일기' && (
+              {format === '성장기록' && (
                 <div
                   style={{
                     padding: 12,

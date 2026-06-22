@@ -21,6 +21,7 @@ export type RecordFormat =
   | '텃밭일지'
   | '애완동물관찰일지'
   | '육아일기'
+  | '성장기록'
   | 'HARU주식관리'
   | '주식거래일지'
   | '메모'
@@ -40,7 +41,7 @@ export type Category = '생활' | '업무' | 'AI대화' | 'HARU주식관리' | '
 
 // 카테고리별 형식 분류
 export const CATEGORY_FORMATS: Record<Category, RecordFormat[]> = {
-  '생활': ['일기', '에세이', '여행기록', '독서사유', '텃밭일지', '애완동물관찰일지', '육아일기'],
+  '생활': ['일기', '에세이', '여행기록', '독서사유', '텃밭일지', '애완동물관찰일지', '육아일기', '성장기록'],
   '업무': ['선교보고', '일반보고', '업무일지', '메모', 'HARU보조장부'],
   'AI대화': ['ChatGPT', 'Claude', 'Gemini', '기타'] as any[],
   'HARU주식관리': ['HARU주식관리', '주식거래일지'],
@@ -59,6 +60,7 @@ export const ALL_FORMATS: RecordFormat[] = [
   '텃밭일지',
   '애완동물관찰일지',
   '육아일기',
+  '성장기록',
   'HARU주식관리',
   '주식거래일지',
   '메모',
@@ -78,6 +80,7 @@ export const FORMAT_PREFIX: Record<RecordFormat, string> = {
   '텃밭일지': 'garden',
   '애완동물관찰일지': 'pet',
   '육아일기': 'child',
+  '성장기록': 'growth',
   'HARU주식관리': 'stock',
   '주식거래일지': 'stock',
   '메모': 'memo',
@@ -98,6 +101,7 @@ export const PREFIX_TO_FORMAT: Record<string, RecordFormat> = {
   'garden': '텃밭일지',
   'pet': '애완동물관찰일지',
   'child': '육아일기',
+  'growth': '성장기록',
   'stock': 'HARU주식관리',
   'memo': '메모',
   'growthTimeline': '성장타임라인',
@@ -117,6 +121,7 @@ export const FORMAT_EMOJI: Record<RecordFormat, string> = {
   '텃밭일지': '🌱',
   '애완동물관찰일지': '🐾',
   '육아일기': '👶',
+  '성장기록': '📏',
   'HARU주식관리': '📈',
   '주식거래일지': '📈',
   '메모': '📝',
