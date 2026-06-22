@@ -598,8 +598,17 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     .filter((value): value is number => value !== null)
     .some((value) => value < 3 || value > 97);
   const growthStatusMessage = growthResultNeedsConsultation
-    ? '전문의 상담을 권장합니다'
-    : '또래 평균 범위에서 건강하게 자라고 있어요 👶';
+    ? "전문의 상담을 권장합니다"
+    : "또래 평균 범위에서 건강하게 자라고 있어요 👶";
+  const formatGrowthPercentileMessage = (percentile: number) => {
+    if (percentile === 50) {
+      return { main: "또래 평균이에요", sub: "(딱 중간 수준)" };
+    }
+    if (percentile > 50) {
+      return { main: "또래보다 큰 편이에요", sub: "(100명 중 상위 " + (100 - percentile) + "% 수준)" };
+    }
+    return { main: "또래보다 작은 편이에요", sub: "(100명 중 하위 " + percentile + "% 수준)" };
+  };
 
   const handleChange = (key: string, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -2880,16 +2889,24 @@ ${contentValues}`,
                     <div style={{ marginTop: 12, padding: 12, borderRadius: 8, backgroundColor: '#fff', border: '1px solid #a7f3d0' }}>
                       <div style={{ display: 'grid', gap: 8 }}>
                         <div style={{ fontSize: 15, color: '#064e3b', fontWeight: 800 }}>👶 성장 분석 결과</div>
-                        {childHeightPercentile !== null && (
-                          <div style={{ fontSize: 14, color: '#064e3b', fontWeight: 700 }}>
-                            키 백분위: 또래 100명 중 {childHeightPercentile}번째
-                          </div>
-                        )}
-                        {childWeightPercentile !== null && (
-                          <div style={{ fontSize: 14, color: '#064e3b', fontWeight: 700 }}>
-                            몸무게 백분위: 또래 100명 중 {childWeightPercentile}번째
-                          </div>
-                        )}
+                        {childHeightPercentile !== null && (() => {
+                          const message = formatGrowthPercentileMessage(childHeightPercentile);
+                          return (
+                            <div style={{ display: "grid", gap: 3 }}>
+                              <div style={{ fontSize: 14, color: "#064e3b", fontWeight: 700 }}>키: {message.main}</div>
+                              <div style={{ fontSize: 12, color: "#047857" }}>{message.sub}</div>
+                            </div>
+                          );
+                        })()}
+                        {childWeightPercentile !== null && (() => {
+                          const message = formatGrowthPercentileMessage(childWeightPercentile);
+                          return (
+                            <div style={{ display: "grid", gap: 3 }}>
+                              <div style={{ fontSize: 14, color: "#064e3b", fontWeight: 700 }}>몸무게: {message.main}</div>
+                              <div style={{ fontSize: 12, color: "#047857" }}>{message.sub}</div>
+                            </div>
+                          );
+                        })()}
                         <div style={{ fontSize: 13, color: '#047857', lineHeight: 1.5 }}>
                           {growthStatusMessage}
                         </div>
