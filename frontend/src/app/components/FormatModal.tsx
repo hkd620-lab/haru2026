@@ -749,6 +749,12 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     const testData = getTestData(format);
     if (testData) {
       setFormData(testData);
+      if (format === '육아일기') {
+        setSelectedGrowthSubjectId('');
+        setNewGrowthSubjectName(String(testData.child_name || '').trim());
+        setGrowthSubjectBirthdate(testData._growthSubjectBirthdate || '');
+        setGrowthSubjectGender(testData._growthSubjectGender === 'M' || testData._growthSubjectGender === 'F' ? testData._growthSubjectGender : '');
+      }
     }
   };
 

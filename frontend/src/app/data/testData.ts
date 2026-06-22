@@ -85,14 +85,16 @@ export function getTestData(format: RecordFormat): Record<string, string> | null
       return {
         child_simple: '아이와 공원 나들이. 신나게 뛰어놀았음.',
         child_name: '하은 (15개월)',
-        child_growth: '키 80cm, 체중 11kg, 혼자 걷기 3일째, 오늘 "엄마" 첫 발음함',
+        child_growth: '키 78cm, 체중 10kg, 혼자 걷기 3일째, 오늘 "엄마" 첫 발음함',
         child_meal: '아침: 미음+바나나\n점심: 소고기 야채죽\n저녁: 두부 계란찜+당근',
         child_activity: '놀이터 그네 탐, 처음엔 무서워하다 곧 웃으며 즐거워했음',
         child_emotion: '아이 웃는 모습에 하루 피로가 사라졌음, 매 순간이 선물임',
-        child_height: '76.5',
-        child_weight: '9.8',
-        child_headcircum: '45.0',
+        child_height: '78.0',
+        child_weight: '10.0',
+        child_headcircum: '46.0',
         child_measuredate: '2026-06-22',
+        _growthSubjectBirthdate: '2025-03-22',
+        _growthSubjectGender: 'F',
       };
 
     case '메모':
