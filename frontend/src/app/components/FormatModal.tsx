@@ -4,7 +4,6 @@ import { getTestData } from '../data/testData';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase/firestore';
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { compressImage } from '../services/imageService';
 import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
@@ -19,9 +18,11 @@ import {
   READING_ENTRY_TYPES,
   READING_STATUS,
 } from '../types/haruTypes';
-import { calcGrowthPercentile, type GrowthGender } from '../../data/growthLMS';
+import { findGrowthLMS, type GrowthGender } from '../../data/growthLMS';
+import { calcAgeInMonths, calcPercentile } from '../../utils/growthCalc';
+import { GrowthChart } from '../../components/GrowthChart';
 
-type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | 'HARU주식관리' | '주식거래일지' | '메모' | 'HARU보조장부';
+type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '성장기록' | 'HARU주식관리' | '주식거래일지' | '메모' | 'HARU보조장부';
 type SayuMode = 'BASIC' | 'PREMIUM';
 
 interface FormatModalProps {
@@ -85,14 +86,6 @@ type GrowthSubject = {
   latestRecordDate?: string;
 };
 
-type GrowthChartMetric = 'height' | 'weight';
-
-type GrowthChartPoint = {
-  date: string;
-  height?: number;
-  weight?: number;
-};
-
 const getTodayInputValue = () => new Date().toISOString().slice(0, 10);
 
 const toPositiveNumber = (value?: string) => {
@@ -100,19 +93,6 @@ const toPositiveNumber = (value?: string) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 
-const getAgeMonths = (birthdate: string, measuredate: string) => {
-  const birth = new Date(birthdate + "T00:00:00");
-  const measure = new Date(measuredate + "T00:00:00");
-  if (Number.isNaN(birth.getTime()) || Number.isNaN(measure.getTime()) || measure < birth) return null;
-  let months = (measure.getFullYear() - birth.getFullYear()) * 12 + (measure.getMonth() - birth.getMonth());
-  if (measure.getDate() < birth.getDate()) months -= 1;
-  return Math.max(0, Math.min(83, months));
-};
-
-const getGrowthStatusMessage = (percentile: number) => {
-  if (percentile < 3 || percentile > 97) return "전문의 상담을 권장합니다";
-  return "또래 평균 범위에서 건강하게 자라고 있어요 👶";
-};
 // 형식별 입력 필드 정의
 const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placeholder: string; rows?: number }[]> = {
   일기: [
@@ -190,6 +170,9 @@ const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placehol
     { key: 'child_activity', label: '활동', placeholder: '놀이터에서 친구들과 그네를 탔습니다.', rows: 3 },
     { key: 'child_emotion', label: '부모의 마음', placeholder: '아이가 자라는 모습을 보니 뿌듯하고 감사합니다.', rows: 3 },
     { key: 'child_space', label: '여백', placeholder: '자유롭게 작성하세요.', rows: 2 },
+  ],
+  성장기록: [
+    { key: 'growth_note', label: '기록 메모 (선택)', placeholder: '예: 건강검진에서 측정한 기록입니다.', rows: 2 },
   ],
   메모: [
     { key: 'memo_title', label: '제목', placeholder: '오늘의 메모 제목을 입력하세요.', rows: 1 },
@@ -334,8 +317,6 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [newGrowthSubjectName, setNewGrowthSubjectName] = useState('');
   const [growthSubjectBirthdate, setGrowthSubjectBirthdate] = useState('');
   const [growthSubjectGender, setGrowthSubjectGender] = useState<GrowthGender | ''>('');
-  const [growthChartData, setGrowthChartData] = useState<GrowthChartPoint[]>([]);
-  const [growthChartMetric, setGrowthChartMetric] = useState<GrowthChartMetric>('height');
   const [isReadingFinishing, setIsReadingFinishing] = useState(false);
   const [showReadingFinishModal, setShowReadingFinishModal] = useState(false);
   const [readingAnalysis, setReadingAnalysis] = useState('');
@@ -376,10 +357,9 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
 
   useEffect(() => {
     if (isOpen) {
-      setFormData(format === '육아일기' ? { ...initialData, child_measuredate: initialData.child_measuredate || getTodayInputValue() } : initialData);
+      setFormData((format === '육아일기' || format === '성장기록') ? { ...initialData, child_measuredate: initialData.child_measuredate || getTodayInputValue() } : initialData);
       setGrowthSubjectBirthdate('');
       setGrowthSubjectGender('');
-      setGrowthChartData([]);
       setPolishedContent('');
       setShowPolishModal(false);
       setShowReadingFinishModal(false);
@@ -546,10 +526,10 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
         })();
       }
 
-      if ((format === '육아일기' || format === '텃밭일지') && user?.uid) {
+      if ((format === '육아일기' || format === '텃밭일지' || format === '성장기록') && user?.uid) {
         (async () => {
           try {
-            const subjectType: GrowthSubjectType = format === '육아일기' ? 'child' : 'garden';
+            const subjectType: GrowthSubjectType = format === '텃밭일지' ? 'garden' : 'child';
             const db = getFirestore();
             const subjectsRef = collection(db, 'users', user.uid, 'growthSubjects');
             const q = query(subjectsRef, where('subjectType', '==', subjectType));
@@ -578,28 +558,6 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
             setNewGrowthSubjectName('');
           }
         })();
-      if (format === '육아일기' && user?.uid) {
-        (async () => {
-          try {
-            const db = getFirestore();
-            const recordsRef = collection(db, 'users', user.uid, 'records');
-            const snap = await getDocs(recordsRef);
-            const points: GrowthChartPoint[] = [];
-            snap.forEach((docSnap) => {
-              const data = docSnap.data() as any;
-              const date = String(data.child_measuredate || data.date || '').slice(0, 10);
-              const height = toPositiveNumber(String(data.child_height || ''));
-              const weight = toPositiveNumber(String(data.child_weight || ''));
-              if (!date || (height === null && weight === null)) return;
-              points.push({ date, ...(height !== null ? { height } : {}), ...(weight !== null ? { weight } : {}) });
-            });
-            setGrowthChartData(points.sort((a, b) => a.date.localeCompare(b.date)));
-          } catch (e) {
-            console.warn('육아 성장 그래프 데이터 로드 실패:', e);
-            setGrowthChartData([]);
-          }
-        })();
-      }
       } else {
         setGrowthSubjects([]);
         setSelectedGrowthSubjectId('');
@@ -623,33 +581,37 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const effectiveGrowthSubjectBirthdate = selectedGrowthSubject?.birthdate || growthSubjectBirthdate;
   const effectiveGrowthSubjectGender = selectedGrowthSubject?.gender || growthSubjectGender;
   const childMeasuredate = formData.child_measuredate || getTodayInputValue();
-  const childAgeMonths = effectiveGrowthSubjectBirthdate ? getAgeMonths(effectiveGrowthSubjectBirthdate, childMeasuredate) : null;
+  const childAgeMonths = effectiveGrowthSubjectBirthdate ? calcAgeInMonths(effectiveGrowthSubjectBirthdate, childMeasuredate) : null;
   const childHeightValue = toPositiveNumber(formData.child_height);
   const childWeightValue = toPositiveNumber(formData.child_weight);
-  const childHeightPercentile = effectiveGrowthSubjectGender && childAgeMonths !== null && childHeightValue !== null
-    ? calcGrowthPercentile('height', effectiveGrowthSubjectGender, childAgeMonths, childHeightValue)
+  const childHeightLms = effectiveGrowthSubjectGender && childAgeMonths !== null && childHeightValue !== null
+    ? findGrowthLMS('height', effectiveGrowthSubjectGender, childAgeMonths)
+    : undefined;
+  const childWeightLms = effectiveGrowthSubjectGender && childAgeMonths !== null && childWeightValue !== null
+    ? findGrowthLMS('weight', effectiveGrowthSubjectGender, childAgeMonths)
+    : undefined;
+  const childHeightPercentile = childHeightValue !== null && childHeightLms
+    ? calcPercentile(childHeightValue, childHeightLms.L, childHeightLms.M, childHeightLms.S)
     : null;
-  const childWeightPercentile = effectiveGrowthSubjectGender && childAgeMonths !== null && childWeightValue !== null
-    ? calcGrowthPercentile('weight', effectiveGrowthSubjectGender, childAgeMonths, childWeightValue)
+  const childWeightPercentile = childWeightValue !== null && childWeightLms
+    ? calcPercentile(childWeightValue, childWeightLms.L, childWeightLms.M, childWeightLms.S)
     : null;
-  const shouldShowGrowthResult = format === '육아일기' && (childHeightPercentile !== null || childWeightPercentile !== null);
+  const shouldShowGrowthResult = format === '성장기록' && childHeightPercentile !== null && childWeightPercentile !== null;
   const growthResultNeedsConsultation = [childHeightPercentile, childWeightPercentile]
     .filter((value): value is number => value !== null)
     .some((value) => value < 3 || value > 97);
   const growthStatusMessage = growthResultNeedsConsultation
-    ? '전문의 상담을 권장합니다'
-    : '또래 평균 범위에서 건강하게 자라고 있어요 👶';
-  const growthHeightChartCount = growthChartData.filter((point) => typeof point.height === 'number').length;
-  const growthWeightChartCount = growthChartData.filter((point) => typeof point.weight === 'number').length;
-  const resolvedGrowthChartMetric: GrowthChartMetric = growthChartMetric === 'height' && growthHeightChartCount >= 2
-    ? 'height'
-    : growthChartMetric === 'weight' && growthWeightChartCount >= 2
-      ? 'weight'
-      : growthHeightChartCount >= 2
-        ? 'height'
-        : 'weight';
-  const activeGrowthChartData = growthChartData.filter((point) => typeof point[resolvedGrowthChartMetric] === 'number');
-  const hasGrowthChartData = growthHeightChartCount >= 2 || growthWeightChartCount >= 2;
+    ? "전문의 상담을 권장합니다"
+    : "또래 평균 범위에서 건강하게 자라고 있어요 👶";
+  const formatGrowthPercentileMessage = (percentile: number) => {
+    if (percentile === 50) {
+      return { main: "또래 평균이에요", sub: "(딱 중간 수준)" };
+    }
+    if (percentile > 50) {
+      return { main: "또래보다 큰 편이에요", sub: "(100명 중 상위 " + (100 - percentile) + "% 수준)" };
+    }
+    return { main: "또래보다 작은 편이에요", sub: "(100명 중 하위 " + percentile + "% 수준)" };
+  };
 
   const handleChange = (key: string, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -660,9 +622,9 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   );
 
   const getGrowthSaveFields = () => {
-    if (format !== '육아일기' && format !== '텃밭일지') return {};
+    if (format !== '육아일기' && format !== '텃밭일지' && format !== '성장기록') return {};
 
-    const subjectType: GrowthSubjectType = format === '육아일기' ? 'child' : 'garden';
+    const subjectType: GrowthSubjectType = format === '텃밭일지' ? 'garden' : 'child';
     const selectedSubject = selectedGrowthSubject;
     const newName = newGrowthSubjectName.trim();
     const subjectName = newName || selectedSubject?.name || '';
@@ -673,8 +635,9 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       _growthSubjectId: newName ? '' : selectedGrowthSubjectId,
       _growthSubjectType: subjectType,
       _growthSubjectName: subjectName,
-      ...(format === '육아일기' && effectiveGrowthSubjectBirthdate ? { _growthSubjectBirthdate: effectiveGrowthSubjectBirthdate } : {}),
-      ...(format === '육아일기' && effectiveGrowthSubjectGender ? { _growthSubjectGender: effectiveGrowthSubjectGender } : {}),
+      _sourceFormat: format,
+      ...(format !== '텃밭일지' && effectiveGrowthSubjectBirthdate ? { _growthSubjectBirthdate: effectiveGrowthSubjectBirthdate } : {}),
+      ...(format !== '텃밭일지' && effectiveGrowthSubjectGender ? { _growthSubjectGender: effectiveGrowthSubjectGender } : {}),
     };
   };
 
@@ -799,6 +762,12 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     const testData = getTestData(format);
     if (testData) {
       setFormData(testData);
+      if (format === '육아일기') {
+        setSelectedGrowthSubjectId('');
+        setNewGrowthSubjectName(String(testData.child_name || '').trim());
+        setGrowthSubjectBirthdate(testData._growthSubjectBirthdate || '');
+        setGrowthSubjectGender(testData._growthSubjectGender === 'M' || testData._growthSubjectGender === 'F' ? testData._growthSubjectGender : '');
+      }
     }
   };
 
@@ -2726,7 +2695,7 @@ ${contentValues}`,
                 </div>
               )}
 
-              {(format === '육아일기' || format === '텃밭일지') && (
+              {(format === '육아일기' || format === '텃밭일지' || format === '성장기록') && (
                 <div
                   style={{
                     padding: 12,
@@ -2745,7 +2714,7 @@ ${contentValues}`,
                       const nextSubject = growthSubjects.find((subject) => subject.id === nextId);
                       setSelectedGrowthSubjectId(nextId);
                       if (nextId) setNewGrowthSubjectName('');
-                      if (format === '육아일기') {
+                      if (format !== '텃밭일지') {
                         setGrowthSubjectBirthdate(nextSubject?.birthdate || '');
                         setGrowthSubjectGender(nextSubject?.gender || '');
                       }
@@ -2776,14 +2745,14 @@ ${contentValues}`,
                     onChange={(e) => {
                       setNewGrowthSubjectName(e.target.value);
                       if (e.target.value.trim()) {
-                        if (selectedGrowthSubjectId && format === '육아일기') {
+                        if (selectedGrowthSubjectId && format !== '텃밭일지') {
                           setGrowthSubjectBirthdate('');
                           setGrowthSubjectGender('');
                         }
                         setSelectedGrowthSubjectId('');
                       }
                     }}
-                    placeholder={format === '육아일기' ? '새 대상 추가: 아이 이름 또는 별칭' : '새 대상 추가: 작물명 또는 식물명'}
+                    placeholder={format === '텃밭일지' ? '새 대상 추가: 작물명 또는 식물명' : '새 대상 추가: 아이 이름 또는 별칭'}
                     style={{
                       width: '100%',
                       boxSizing: 'border-box',
@@ -2796,7 +2765,7 @@ ${contentValues}`,
                       outline: 'none',
                     }}
                   />
-                  {format === '육아일기' && (
+                  {format !== '텃밭일지' && (
                     <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
                       <label style={{ display: 'block', fontSize: 13, color: '#1A3C6E', fontWeight: 700 }}>
                         생년월일
@@ -2848,14 +2817,14 @@ ${contentValues}`,
                     </div>
                   )}
                   <p style={{ margin: '8px 0 0', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
-                    {format === '육아일기'
-                      ? '아이의 성장기록으로 함께 저장됩니다.'
-                      : '작물의 성장과정으로 함께 저장됩니다.'}
+                    {format === '텃밭일지'
+                      ? '작물의 성장과정으로 함께 저장됩니다.'
+                      : '아이의 성장기록으로 함께 저장됩니다.'}
                   </p>
                 </div>
               )}
 
-              {format === '육아일기' && (
+              {format === '성장기록' && (
                 <div
                   style={{
                     padding: 12,
@@ -2865,7 +2834,7 @@ ${contentValues}`,
                   }}
                 >
                   <label style={{ display: 'block', fontSize: 13, color: '#047857', marginBottom: 8, fontWeight: 700 }}>
-                    성장 수치
+                    오늘 성장 기록 (선택)
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
                     {[
@@ -2923,68 +2892,38 @@ ${contentValues}`,
                   {shouldShowGrowthResult && (
                     <div style={{ marginTop: 12, padding: 12, borderRadius: 8, backgroundColor: '#fff', border: '1px solid #a7f3d0' }}>
                       <div style={{ display: 'grid', gap: 8 }}>
-                        {childHeightPercentile !== null && (
-                          <div style={{ fontSize: 14, color: '#064e3b', fontWeight: 700 }}>
-                            키 백분위: 또래 100명 중 {childHeightPercentile}번째
-                          </div>
-                        )}
-                        {childWeightPercentile !== null && (
-                          <div style={{ fontSize: 14, color: '#064e3b', fontWeight: 700 }}>
-                            몸무게 백분위: 또래 100명 중 {childWeightPercentile}번째
-                          </div>
-                        )}
+                        <div style={{ fontSize: 15, color: '#064e3b', fontWeight: 800 }}>👶 성장 분석 결과</div>
+                        {childHeightPercentile !== null && (() => {
+                          const message = formatGrowthPercentileMessage(childHeightPercentile);
+                          return (
+                            <div style={{ display: "grid", gap: 3 }}>
+                              <div style={{ fontSize: 14, color: "#064e3b", fontWeight: 700 }}>키: {message.main}</div>
+                              <div style={{ fontSize: 12, color: "#047857" }}>{message.sub}</div>
+                            </div>
+                          );
+                        })()}
+                        {childWeightPercentile !== null && (() => {
+                          const message = formatGrowthPercentileMessage(childWeightPercentile);
+                          return (
+                            <div style={{ display: "grid", gap: 3 }}>
+                              <div style={{ fontSize: 14, color: "#064e3b", fontWeight: 700 }}>몸무게: {message.main}</div>
+                              <div style={{ fontSize: 12, color: "#047857" }}>{message.sub}</div>
+                            </div>
+                          );
+                        })()}
                         <div style={{ fontSize: 13, color: '#047857', lineHeight: 1.5 }}>
                           {growthStatusMessage}
                         </div>
                         <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5, whiteSpace: 'pre-line' }}>
-                          {'이 결과는 공식 성장도표 기반 참고 정보입니다.\n정확한 평가는 소아과 전문의와 상담하세요.'}
+                          {'※ 이 결과는 공식 성장도표 기반 참고 정보입니다.\n정확한 평가는 소아과 전문의와 상담하세요.'}
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {hasGrowthChartData && activeGrowthChartData.length >= 2 && (
-                    <div style={{ marginTop: 12, padding: 12, borderRadius: 8, backgroundColor: '#fff', border: '1px solid #a7f3d0' }}>
-                      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                        {(['height', 'weight'] as GrowthChartMetric[]).map((metric) => (
-                          <button
-                            key={metric}
-                            type="button"
-                            onClick={() => setGrowthChartMetric(metric)}
-                            style={{
-                              padding: '8px 12px',
-                              borderRadius: 8,
-                              border: resolvedGrowthChartMetric === metric ? '1px solid #10b981' : '1px solid #d1d5db',
-                              backgroundColor: resolvedGrowthChartMetric === metric ? '#ecfdf5' : '#fff',
-                              color: resolvedGrowthChartMetric === metric ? '#047857' : '#374151',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            {metric === 'height' ? '키' : '몸무게'}
-                          </button>
-                        ))}
-                      </div>
-                      <div style={{ width: '100%', height: 220 }}>
-                        <ResponsiveContainer>
-                          <LineChart data={activeGrowthChartData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#d1fae5" />
-                            <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} width={38} />
-                            <Tooltip />
-                            <Line
-                              type="monotone"
-                              dataKey={resolvedGrowthChartMetric}
-                              stroke="#10b981"
-                              strokeWidth={3}
-                              dot={{ r: 3 }}
-                              name={resolvedGrowthChartMetric === 'height' ? '키(cm)' : '몸무게(kg)'}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                  )}
+                  <div style={{ marginTop: 12 }}>
+                    <GrowthChart userId={user?.uid} />
+                  </div>
                 </div>
               )}
               {/* 🌱 텃밭일지: 작물 목록 UI */}
