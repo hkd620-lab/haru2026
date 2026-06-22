@@ -829,6 +829,14 @@ export function RecordPage() {
       typeof (formatData as any)._growthSubjectId === 'string' && (formatData as any)._growthSubjectId
         ? ((formatData as any)._growthSubjectId as string)
         : undefined;
+    const growthSubjectBirthdate =
+      typeof (formatData as any)._growthSubjectBirthdate === 'string' && (formatData as any)._growthSubjectBirthdate
+        ? ((formatData as any)._growthSubjectBirthdate as string)
+        : undefined;
+    const growthSubjectGender =
+      (formatData as any)._growthSubjectGender === 'M' || (formatData as any)._growthSubjectGender === 'F'
+        ? ((formatData as any)._growthSubjectGender as 'M' | 'F')
+        : undefined;
     const shouldSaveGrowthEntry = Boolean(growthSubjectName && growthSubjectType);
     const growthSubjectId = shouldSaveGrowthEntry
       ? existingGrowthSubjectId || doc(collection(db, 'users', user.uid, 'growthSubjects')).id
@@ -871,6 +879,8 @@ export function RecordPage() {
           growthSubjectId,
           growthSubjectType,
           growthSubjectName,
+          ...(growthSubjectBirthdate ? { growthSubjectBirthdate } : {}),
+          ...(growthSubjectGender ? { growthSubjectGender } : {}),
         } : {}),
         ...updateData,
       });
@@ -911,6 +921,8 @@ export function RecordPage() {
           {
             subjectType: growthSubjectType,
             name: growthSubjectName,
+            ...(growthSubjectBirthdate ? { birthdate: growthSubjectBirthdate } : {}),
+            ...(growthSubjectGender ? { gender: growthSubjectGender } : {}),
             ...(existingGrowthSubjectId ? {} : { createdAt: serverTimestamp() }),
             updatedAt: serverTimestamp(),
             latestRecordDate: targetRecordDate,
@@ -940,6 +952,8 @@ export function RecordPage() {
             recordId,
             subjectType: growthSubjectType,
             subjectName: growthSubjectName,
+            ...(growthSubjectBirthdate ? { subjectBirthdate: growthSubjectBirthdate } : {}),
+            ...(growthSubjectGender ? { subjectGender: growthSubjectGender } : {}),
             memo,
             ...(photoUrls.length > 0 ? { photoUrls } : {}),
             createdAt: serverTimestamp(),
