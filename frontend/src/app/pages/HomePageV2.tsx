@@ -468,6 +468,22 @@ const AGENTS: Agent[] = [
     ),
   },
   {
+    label: 'HARU우리아이건강돌봄',
+    sub: '성장기록 · 또래 백분위 · 예방접종 일정 — 아이 건강을 HARU와 함께.',
+    tag: 'CARE · 아이건강',
+    variant: 'teal',
+    stroke: '#0F766E',
+    path: '/child-health',
+    beta: true,
+    icon: (
+      <>
+        <path d="M9 12c0-1.66 1.34-3 3-3s3 1.34 3 3-1.34 3-3 3-3-1.34-3-3z" />
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+        <path d="M8 7l-1-2M16 7l1-2" />
+      </>
+    ),
+  },
+  {
     label: '나도작가',
     sub: 'AI와 함께 글쓰기 — 시놉시스부터 단편소설까지 손쉽게 완성합니다.',
     tag: 'WRITE · 창작',
@@ -488,18 +504,21 @@ const agentBg = {
   lilac: 'linear-gradient(135deg, #DDD0E8 0%, #ffffff 65%)',
   green: 'linear-gradient(135deg, #E0E8B8 0%, #ffffff 65%)',
   terracotta: 'linear-gradient(135deg, #F5E5DC 0%, #ffffff 65%)',
+  teal: 'linear-gradient(135deg, #CCFBF1 0%, #ffffff 65%)',
 } as const;
 
 const agentBorder = {
   lilac: '#C9C0DE',
   green: '#D4DEA0',
   terracotta: '#E8B894',
+  teal: '#5EEAD4',
 } as const;
 
 const agentText = {
   lilac: '#5A4E7A',
   green: '#4A5A2C',
   terracotta: '#B85C2E',
+  teal: '#0F766E',
 } as const;
 
 function todayLabel(now: Date) {
