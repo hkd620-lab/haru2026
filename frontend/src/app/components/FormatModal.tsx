@@ -635,6 +635,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       _growthSubjectId: newName ? '' : selectedGrowthSubjectId,
       _growthSubjectType: subjectType,
       _growthSubjectName: subjectName,
+      _sourceFormat: format,
       ...(format !== '텃밭일지' && effectiveGrowthSubjectBirthdate ? { _growthSubjectBirthdate: effectiveGrowthSubjectBirthdate } : {}),
       ...(format !== '텃밭일지' && effectiveGrowthSubjectGender ? { _growthSubjectGender: effectiveGrowthSubjectGender } : {}),
     };

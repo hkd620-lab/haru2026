@@ -891,7 +891,10 @@ export function RecordPage() {
         recommendationFormats.map((format) => String(format)),
       );
       if (shouldSaveGrowthEntry && growthSubjectId && growthSubjectType) {
-        const sourceFormat = growthSubjectType === 'child' ? '육아일지' : '텃밭일지';
+        const sourceFormat =
+          typeof (formatData as any)._sourceFormat === 'string' && (formatData as any)._sourceFormat
+            ? ((formatData as any)._sourceFormat as string)
+            : growthSubjectType === 'child' ? '육아일기' : '텃밭일지';
         const prefix = growthSubjectType === 'child' ? 'child' : 'garden';
         const memo =
           String(updateData[`${prefix}_simple`] || '').trim() ||
