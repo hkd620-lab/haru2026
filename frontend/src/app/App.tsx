@@ -59,6 +59,9 @@ import { SayuHealthEbsPage } from './pages/SayuHealthEbsPage';
 import { SayuHealthDrugPage } from './pages/SayuHealthDrugPage';
 import { SayuHealthHospitalPage } from './pages/SayuHealthHospitalPage';
 import { SayuHealthLibraryPage } from './pages/SayuHealthLibraryPage';
+import { ChildHealthHubPage } from './pages/ChildHealthHubPage';
+import { ChildHealthGrowthPage } from './pages/ChildHealthGrowthPage';
+import { ChildHealthVaccinePage } from './pages/ChildHealthVaccinePage';
 import { PlantDetectivePage } from './pages/PlantDetectivePage';
 import { AssetExplorerPage } from './pages/AssetExplorerPage';
 import { MasterpieceDetectivePage } from './pages/MasterpieceDetectivePage';
@@ -199,6 +202,11 @@ function App() {
               <Route path="/sayu-health/drug" element={<SayuHealthDrugPage />} />
               <Route path="/sayu-health/hospital" element={<SayuHealthHospitalPage />} />
               <Route path="/sayu-health/library" element={<SayuHealthLibraryPage />} />
+
+              {/* HARU우리아이건강돌봄 (허브 + 하위) */}
+              <Route path="/child-health" element={<ChildHealthHubPage />} />
+              <Route path="/child-health/growth" element={<ChildHealthGrowthPage />} />
+              <Route path="/child-health/vaccination" element={<ChildHealthVaccinePage />} />
               <Route path="/health" element={<HealthMedicationPage />} />
 
               {/* 영어성경학습 */}
