@@ -3215,7 +3215,7 @@ export const subscribeWithBillingKey = onCall(
       plan,
       status: 'active',
       billingKey,
-      payMethod: payMethod || null,
+      payMethod: typeof payMethod === 'string' ? payMethod : null,
       startDate: now.toISOString(),
       endDate: nextBillingDate.toISOString(),
       nextBillingDate: nextBillingDate.toISOString(),
