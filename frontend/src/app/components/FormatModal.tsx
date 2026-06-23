@@ -206,7 +206,9 @@ const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placehol
   ],
   'HARU보조장부': [
     { key: 'ledger_date', label: '거래일시', placeholder: '예: 2026.05.18 14:30', rows: 1 },
-    { key: 'ledger_type', label: '거래종류', placeholder: '예: 수입 / 지출', rows: 1 },
+    { key: 'ledger_type', label: '거래종류', placeholder: '', rows: 1 },
+    { key: 'ledger_usageType', label: '사용구분', placeholder: '', rows: 1 },
+    { key: 'ledger_category', label: '분류', placeholder: '', rows: 1 },
     { key: 'ledger_item', label: '항목', placeholder: '예: 컨설팅 매출 / 사무실 임대료 / 식대', rows: 1 },
     { key: 'ledger_partner', label: '거래처', placeholder: '예: (주)민들레 / 김철수님', rows: 1 },
     { key: 'ledger_amount', label: '금액', placeholder: '예: 1,200,000원', rows: 1 },
@@ -3312,7 +3314,110 @@ ${contentValues}`,
                       </div>
                     : fields
                       .filter((field) => !(format === '독서사유' && field.key === 'reading_book_text'))
+                      .filter((field) => !(isLedgerFormat && field.key === 'ledger_item'))
                       .map((field) => {
+                        // 🧾 HARU보조장부 — 거래종류 버튼 그룹
+                        if (isLedgerFormat && field.key === 'ledger_type') {
+                          const ledgerTypeOptions = ['수입', '지출'] as const;
+                          return (
+                            <div key={field.key}>
+                              <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
+                                거래종류
+                              </label>
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                {ledgerTypeOptions.map((option) => (
+                                  <button
+                                    key={option}
+                                    type="button"
+                                    onClick={() => {
+                                      handleChange('ledger_type', option);
+                                      const incomeCategories = ['매출', '기타수입'];
+                                      const expenseCategories = ['식비', '교통비', '통신비', '소프트웨어', '광고비', '교육비', '사무용품', '기타'];
+                                      const valid = option === '수입' ? incomeCategories : expenseCategories;
+                                      if (formData.ledger_category && !valid.includes(formData.ledger_category)) {
+                                        handleChange('ledger_category', '');
+                                        handleChange('ledger_item', '');
+                                      }
+                                    }}
+                                    style={{
+                                      flex: 1, padding: '10px', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                                      border: formData.ledger_type === option ? 'none' : '1px solid #e5e7eb',
+                                      backgroundColor: formData.ledger_type === option ? (option === '수입' ? '#10b981' : '#ef4444') : '#fff',
+                                      color: formData.ledger_type === option ? '#fff' : '#374151',
+                                    }}
+                                  >
+                                    {option === '수입' ? '💰 수입' : '📤 지출'}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        }
+                        // 🧾 HARU보조장부 — 사용구분 버튼 그룹
+                        if (isLedgerFormat && field.key === 'ledger_usageType') {
+                          const usageOptions = ['사업용', '개인용'] as const;
+                          return (
+                            <div key={field.key}>
+                              <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
+                                사용구분
+                              </label>
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                {usageOptions.map((option) => (
+                                  <button
+                                    key={option}
+                                    type="button"
+                                    onClick={() => handleChange('ledger_usageType', option)}
+                                    style={{
+                                      flex: 1, padding: '10px', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                                      border: formData.ledger_usageType === option ? 'none' : '1px solid #e5e7eb',
+                                      backgroundColor: formData.ledger_usageType === option ? '#1A3C6E' : '#fff',
+                                      color: formData.ledger_usageType === option ? '#fff' : '#374151',
+                                    }}
+                                  >
+                                    {option}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        }
+                        // 🧾 HARU보조장부 — 분류 칩 선택
+                        if (isLedgerFormat && field.key === 'ledger_category') {
+                          const currentLedgerType = String(formData.ledger_type || '').trim();
+                          const incomeCategories = ['매출', '기타수입'];
+                          const expenseCategories = ['식비', '교통비', '통신비', '소프트웨어', '광고비', '교육비', '사무용품', '기타'];
+                          const categoryOptions = currentLedgerType === '수입' ? incomeCategories
+                            : currentLedgerType === '지출' ? expenseCategories : [];
+                          if (categoryOptions.length === 0) return <div key={field.key} />;
+                          return (
+                            <div key={field.key}>
+                              <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
+                                분류
+                              </label>
+                              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                {categoryOptions.map((option) => (
+                                  <button
+                                    key={option}
+                                    type="button"
+                                    onClick={() => {
+                                      handleChange('ledger_category', option);
+                                      handleChange('ledger_item', option);
+                                    }}
+                                    style={{
+                                      padding: '8px 14px', borderRadius: 20, fontSize: 13, cursor: 'pointer',
+                                      border: formData.ledger_category === option ? 'none' : '1px solid #e5e7eb',
+                                      backgroundColor: formData.ledger_category === option ? '#7A6F5A' : '#fff',
+                                      color: formData.ledger_category === option ? '#fff' : '#374151',
+                                      fontWeight: formData.ledger_category === option ? 700 : 400,
+                                    }}
+                                  >
+                                    {option}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        }
                         // 📚 독서사유 — 이어쓰기 모드면 책 제목·저자 readonly
                         const isReadingBookField =
                           format === '독서사유' &&
@@ -3355,6 +3460,12 @@ ${contentValues}`,
                         );
                       })
                   }
+                  {isLedgerFormat && (
+                    <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9ca3af', lineHeight: 1.6 }}>
+                      이 기능은 개인 및 사업자의 수입·지출 기록을 돕기 위한 보조장부입니다.<br />
+                      세무 신고나 회계 자문을 대체하지 않습니다.
+                    </p>
+                  )}
                 </>
               )}
 
