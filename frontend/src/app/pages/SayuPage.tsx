@@ -2789,6 +2789,28 @@ export function SayuPage() {
     const expenseCategoryMap: Record<string, number> = {};
 
     for (const r of ledgerRecords) {
+      // ledger_entries (다건) 우선 처리
+      const entriesRaw = (r as any).ledger_entries;
+      if (entriesRaw && typeof entriesRaw === 'string') {
+        try {
+          const entries = JSON.parse(entriesRaw);
+          if (Array.isArray(entries) && entries.length > 0) {
+            for (const entry of entries) {
+              const eType = String(entry.transactionType || '').trim();
+              const eAmt = parseAmount(String(entry.amount || ''));
+              const eCat = String(entry.category || '').trim();
+              if (eType === '수입') {
+                totalIncome += eAmt;
+              } else if (eType === '지출') {
+                totalExpense += eAmt;
+                if (eCat) expenseCategoryMap[eCat] = (expenseCategoryMap[eCat] || 0) + eAmt;
+              }
+            }
+            continue; // 단건 필드 fallback 건너뜀
+          }
+        } catch {}
+      }
+      // 단건 필드 fallback (기존 기록 호환)
       const rawType = getLedgerValue(r, ['ledger_type']);
       const rawAmount = getLedgerValue(r, ['ledger_amount']);
       const rawCategory = getLedgerValue(r, ['ledger_category', 'ledger_item']);
