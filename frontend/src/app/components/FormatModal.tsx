@@ -75,6 +75,35 @@ interface LedgerOcrResult {
   warnings?: string[];
 }
 
+interface LedgerEntry {
+  id: string;
+  transactionType: string;
+  usageType: string;
+  category: string;
+  date: string;
+  vendor: string;
+  amount: string;
+  paymentMethod: string;
+  memo: string;
+  ocrSourceFile?: string;
+  ocrRawText?: string;
+}
+
+function newLedgerEntry(overrides?: Partial<LedgerEntry>): LedgerEntry {
+  return {
+    id: Math.random().toString(36).slice(2, 9),
+    transactionType: '지출',
+    usageType: '사업용',
+    category: '',
+    date: '',
+    vendor: '',
+    amount: '',
+    paymentMethod: '',
+    memo: '',
+    ...overrides,
+  };
+}
+
 type GrowthSubjectType = 'child' | 'garden';
 
 type GrowthSubject = {
@@ -289,6 +318,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [isExtractingLedgerText, setIsExtractingLedgerText] = useState(false);
   const [ledgerOcrResult, setLedgerOcrResult] = useState<LedgerOcrResult | null>(null);
   const [ledgerOcrPerFileResults, setLedgerOcrPerFileResults] = useState<{ fileName: string; rawText?: string; fields?: LedgerOcrFields; warnings?: string[] }[]>([]);
+  const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([newLedgerEntry()]);
   const ledgerOcrInputRef = useRef<HTMLInputElement>(null);
 
   // 📈 HARU주식관리: 카톡 TXT 내보내기 파싱 state
@@ -379,6 +409,40 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
 
       const isStockFormat = format === 'HARU주식관리' || format === '주식거래일지';
       const isLedgerFormat = format === 'HARU보조장부';
+
+      if (isLedgerFormat) {
+        const stored = (initialData as any).ledger_entries;
+        if (stored && typeof stored === 'string') {
+          try {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setLedgerEntries(parsed.map((e: any) => newLedgerEntry({
+                ...e,
+                id: Math.random().toString(36).slice(2, 9),
+              })));
+            } else {
+              setLedgerEntries([newLedgerEntry()]);
+            }
+          } catch {
+            setLedgerEntries([newLedgerEntry()]);
+          }
+        } else if ((initialData as any).ledger_type || (initialData as any).ledger_amount) {
+          setLedgerEntries([newLedgerEntry({
+            transactionType: String((initialData as any).ledger_type || ''),
+            usageType: String((initialData as any).ledger_usageType || '사업용'),
+            category: String((initialData as any).ledger_category || (initialData as any).ledger_item || ''),
+            date: String((initialData as any).ledger_date || ''),
+            vendor: String((initialData as any).ledger_partner || ''),
+            amount: String((initialData as any).ledger_amount || ''),
+            paymentMethod: String((initialData as any).ledger_paymentMethod || (initialData as any).ledger_payment || ''),
+            memo: String((initialData as any).ledger_memo || ''),
+          })]);
+        } else {
+          setLedgerEntries([newLedgerEntry()]);
+        }
+      } else {
+        setLedgerEntries([newLedgerEntry()]);
+      }
       setRecordStyle(format === '독서사유' || isStockFormat || isLedgerFormat ? 'premium' : 'simple');
       // 독서사유는 select 단계에서 "이어작성 / 새작성" 분기. 주식/보조장부 형식은 input 직진.
       setRecordStep(isStockFormat || isLedgerFormat ? 'input' : 'select');
@@ -1294,6 +1358,25 @@ ${contentValues}`,
 
       setLedgerOcrPerFileResults(perFileResults);
 
+      // OCR 결과에서 ledgerEntries 자동 생성 (파일 1개 = 거래 1건 기본값)
+      const generatedEntries: LedgerEntry[] = perFileResults.map(item =>
+        newLedgerEntry({
+          transactionType: '지출',
+          usageType: '사업용',
+          category: '기타',
+          date: String(item.fields?.transactionAt || '').trim(),
+          vendor: String(item.fields?.partner || '').trim(),
+          amount: String(item.fields?.amount || '').trim(),
+          paymentMethod: String(item.fields?.paymentMethod || '').trim(),
+          memo: '',
+          ocrSourceFile: item.fileName,
+          ocrRawText: item.rawText,
+        }),
+      );
+      if (generatedEntries.length > 0) {
+        setLedgerEntries(generatedEntries);
+      }
+
       // applyLedgerOcrResult 가 사용하는 combined result — 파일별 첫 non-null 값 우선
       const combinedFields: LedgerOcrFields = {};
       const fieldKeys: (keyof LedgerOcrFields)[] = ['transactionAt', 'type', 'category', 'partner', 'amount', 'paymentMethod', 'proofType', 'memo'];
@@ -1549,7 +1632,64 @@ ${contentValues}`,
     }
   };
 
+  const handleSaveLedgerEntries = async () => {
+    if (ledgerEntries.length === 0) {
+      toast.warning('거래 내역이 없습니다. 거래를 최소 1건 입력해 주세요.');
+      return;
+    }
+    const emptyAmounts = ledgerEntries.filter(e => !e.amount.trim()).length;
+    const emptyVendors = ledgerEntries.filter(e => !e.vendor.trim()).length;
+    if (emptyAmounts > 0 || emptyVendors > 0) {
+      const parts: string[] = [];
+      if (emptyAmounts > 0) parts.push(`금액 미입력 ${emptyAmounts}건`);
+      if (emptyVendors > 0) parts.push(`거래처 미입력 ${emptyVendors}건`);
+      const ok = window.confirm(`${parts.join(', ')}이 있습니다. 그래도 저장하시겠습니까?`);
+      if (!ok) return;
+    }
+    const first = ledgerEntries[0];
+    const autoTitle = [first.date, first.transactionType, first.vendor || 'HARU보조장부']
+      .filter(Boolean).join(' · ') || 'HARU보조장부';
+    const originalContent = ledgerEntries.map((e, i) => {
+      const parts = [e.date, e.transactionType, e.usageType, e.category, e.vendor, e.amount, e.paymentMethod].filter(Boolean);
+      return `[거래 ${i + 1}] ${parts.join(' · ')}${e.memo ? '\n메모: ' + e.memo : ''}`;
+    }).join('\n\n');
+    const dataToSave: Record<string, any> = {
+      ...formData,
+      [sayuKey]: originalContent,
+      [imagesKey]: JSON.stringify(uploadedImages),
+      [imageMetaKey]: getUploadedImageMetaForSave(),
+      [`${prefix}_style`]: recordStyle,
+      [`${prefix}_mode`]: 'ORIGINAL',
+      [`${prefix}_title`]: autoTitle,
+      ledger_type: first.transactionType,
+      ledger_usageType: first.usageType,
+      ledger_category: first.category,
+      ledger_item: first.category,
+      ledger_date: first.date,
+      ledger_partner: first.vendor,
+      ledger_amount: first.amount,
+      ledger_payment: first.paymentMethod,
+      ledger_paymentMethod: first.paymentMethod,
+      ledger_memo: first.memo,
+      ledger_entries: JSON.stringify(ledgerEntries),
+    };
+    setIsSaving(true);
+    try {
+      await onSave(dataToSave);
+      toast.success(`보조장부 ${ledgerEntries.length}건이 저장되었습니다!`);
+      onClose();
+    } catch (error) {
+      console.error('저장 중 오류:', error);
+      toast.error('저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSaveOriginalAsSayu = async () => {
+    if (isLedgerFormat) {
+      return handleSaveLedgerEntries();
+    }
     const currentTitle = (formData[`${prefix}_title`] || (format === '독서사유' ? formData.reading_book_title : '') || (isStockFormat ? formData.stock_name : '') || '').trim();
     if (!currentTitle) {
       toast.warning('제목을 입력해 주세요. 제목이 있어야 나중에 목록에서 내용을 확인하기 편합니다.');
@@ -3336,112 +3476,194 @@ ${contentValues}`,
                           </div>
                         ))}
                       </div>
-                    : fields
-                      .filter((field) => !(format === '독서사유' && field.key === 'reading_book_text'))
-                      .filter((field) => !(isLedgerFormat && field.key === 'ledger_item'))
-                      .map((field) => {
-                        // 🧾 HARU보조장부 — 거래종류 버튼 그룹
-                        if (isLedgerFormat && field.key === 'ledger_type') {
-                          const ledgerTypeOptions = ['수입', '지출'] as const;
-                          return (
-                            <div key={field.key}>
-                              <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
-                                거래종류
-                              </label>
-                              <div style={{ display: 'flex', gap: 8 }}>
-                                {ledgerTypeOptions.map((option) => (
-                                  <button
-                                    key={option}
-                                    type="button"
-                                    onClick={() => {
-                                      handleChange('ledger_type', option);
-                                      const incomeCategories = ['매출', '기타수입'];
-                                      const expenseCategories = ['식비', '교통비', '통신비', '소프트웨어', '광고비', '교육비', '사무용품', '기타'];
-                                      const valid = option === '수입' ? incomeCategories : expenseCategories;
-                                      if (formData.ledger_category && !valid.includes(formData.ledger_category)) {
-                                        handleChange('ledger_category', '');
-                                        handleChange('ledger_item', '');
-                                      }
-                                    }}
-                                    style={{
-                                      flex: 1, padding: '10px', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: 'pointer',
-                                      border: formData.ledger_type === option ? 'none' : '1px solid #e5e7eb',
-                                      backgroundColor: formData.ledger_type === option ? (option === '수입' ? '#10b981' : '#ef4444') : '#fff',
-                                      color: formData.ledger_type === option ? '#fff' : '#374151',
-                                    }}
-                                  >
-                                    {option === '수입' ? '💰 수입' : '📤 지출'}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        }
-                        // 🧾 HARU보조장부 — 사용구분 버튼 그룹
-                        if (isLedgerFormat && field.key === 'ledger_usageType') {
-                          const usageOptions = ['사업용', '개인용'] as const;
-                          return (
-                            <div key={field.key}>
-                              <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
-                                사용구분
-                              </label>
-                              <div style={{ display: 'flex', gap: 8 }}>
-                                {usageOptions.map((option) => (
-                                  <button
-                                    key={option}
-                                    type="button"
-                                    onClick={() => handleChange('ledger_usageType', option)}
-                                    style={{
-                                      flex: 1, padding: '10px', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: 'pointer',
-                                      border: formData.ledger_usageType === option ? 'none' : '1px solid #e5e7eb',
-                                      backgroundColor: formData.ledger_usageType === option ? '#1A3C6E' : '#fff',
-                                      color: formData.ledger_usageType === option ? '#fff' : '#374151',
-                                    }}
-                                  >
-                                    {option}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        }
-                        // 🧾 HARU보조장부 — 분류 칩 선택
-                        if (isLedgerFormat && field.key === 'ledger_category') {
-                          const currentLedgerType = String(formData.ledger_type || '').trim();
+                    : isLedgerFormat ? (
+                      /* 🧾 HARU보조장부 — 다건 거래 입력 카드 */
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {ledgerEntries.some(e => e.ocrSourceFile) && (
+                          <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 12px', fontSize: 12, color: '#92400e', lineHeight: 1.6 }}>
+                            AI가 사진에서 거래 후보를 자동 입력했습니다.<br />
+                            저장 전 날짜·금액·거래처를 반드시 확인하세요.
+                          </div>
+                        )}
+                        {ledgerEntries.map((entry, idx) => {
                           const incomeCategories = ['매출', '기타수입'];
                           const expenseCategories = ['식비', '교통비', '통신비', '소프트웨어', '광고비', '교육비', '사무용품', '기타'];
-                          const categoryOptions = currentLedgerType === '수입' ? incomeCategories
-                            : currentLedgerType === '지출' ? expenseCategories : [];
-                          if (categoryOptions.length === 0) return <div key={field.key} />;
+                          const categoryOptions = entry.transactionType === '수입' ? incomeCategories : entry.transactionType === '지출' ? expenseCategories : [];
+                          const fieldLabelStyle: React.CSSProperties = { display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 5, fontWeight: 500 };
+                          const fieldInputStyle: React.CSSProperties = { width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid #e5e5e5', borderRadius: 7, backgroundColor: '#fff', color: '#333', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' };
                           return (
-                            <div key={field.key}>
-                              <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
-                                분류
-                              </label>
-                              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                {categoryOptions.map((option) => (
+                            <div key={entry.id} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 14, backgroundColor: '#fafafa' }}>
+                              {/* 카드 헤더 */}
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: '#1A3C6E' }}>
+                                  거래 {idx + 1}
+                                  {entry.ocrSourceFile && (
+                                    <span style={{ fontSize: 11, color: '#9ca3af', marginLeft: 6, fontWeight: 400 }}>
+                                      📷 {entry.ocrSourceFile}
+                                    </span>
+                                  )}
+                                </div>
+                                {ledgerEntries.length > 1 && (
                                   <button
-                                    key={option}
                                     type="button"
-                                    onClick={() => {
-                                      handleChange('ledger_category', option);
-                                      handleChange('ledger_item', option);
-                                    }}
-                                    style={{
-                                      padding: '8px 14px', borderRadius: 20, fontSize: 13, cursor: 'pointer',
-                                      border: formData.ledger_category === option ? 'none' : '1px solid #e5e7eb',
-                                      backgroundColor: formData.ledger_category === option ? '#7A6F5A' : '#fff',
-                                      color: formData.ledger_category === option ? '#fff' : '#374151',
-                                      fontWeight: formData.ledger_category === option ? 700 : 400,
-                                    }}
+                                    onClick={() => setLedgerEntries(prev => prev.filter(e => e.id !== entry.id))}
+                                    style={{ padding: '4px 10px', border: '1px solid #fca5a5', borderRadius: 6, backgroundColor: '#fff', color: '#ef4444', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                                   >
-                                    {option}
+                                    삭제
                                   </button>
-                                ))}
+                                )}
+                              </div>
+                              {/* 거래종류 + 사용구분 */}
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+                                <div>
+                                  <label style={fieldLabelStyle}>거래종류</label>
+                                  <div style={{ display: 'flex', gap: 5 }}>
+                                    {(['수입', '지출'] as const).map(opt => (
+                                      <button
+                                        key={opt}
+                                        type="button"
+                                        onClick={() => setLedgerEntries(prev => prev.map(e => e.id === entry.id ? { ...e, transactionType: opt, category: '' } : e))}
+                                        style={{
+                                          flex: 1, padding: '7px 4px', borderRadius: 7, fontSize: 12, fontWeight: entry.transactionType === opt ? 700 : 400, cursor: 'pointer',
+                                          border: entry.transactionType === opt ? 'none' : '1px solid #e5e7eb',
+                                          backgroundColor: entry.transactionType === opt ? (opt === '수입' ? '#10b981' : '#ef4444') : '#fff',
+                                          color: entry.transactionType === opt ? '#fff' : '#374151',
+                                        }}
+                                      >
+                                        {opt === '수입' ? '💰 수입' : '📤 지출'}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                                <div>
+                                  <label style={fieldLabelStyle}>사용구분</label>
+                                  <div style={{ display: 'flex', gap: 5 }}>
+                                    {(['사업용', '개인용'] as const).map(opt => (
+                                      <button
+                                        key={opt}
+                                        type="button"
+                                        onClick={() => setLedgerEntries(prev => prev.map(e => e.id === entry.id ? { ...e, usageType: opt } : e))}
+                                        style={{
+                                          flex: 1, padding: '7px 4px', borderRadius: 7, fontSize: 12, fontWeight: entry.usageType === opt ? 700 : 400, cursor: 'pointer',
+                                          border: entry.usageType === opt ? 'none' : '1px solid #e5e7eb',
+                                          backgroundColor: entry.usageType === opt ? '#1A3C6E' : '#fff',
+                                          color: entry.usageType === opt ? '#fff' : '#374151',
+                                        }}
+                                      >
+                                        {opt}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                              {/* 분류 chips */}
+                              {categoryOptions.length > 0 && (
+                                <div style={{ marginBottom: 10 }}>
+                                  <label style={fieldLabelStyle}>분류</label>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                                    {categoryOptions.map(opt => (
+                                      <button
+                                        key={opt}
+                                        type="button"
+                                        onClick={() => setLedgerEntries(prev => prev.map(e => e.id === entry.id ? { ...e, category: opt } : e))}
+                                        style={{
+                                          padding: '5px 11px', borderRadius: 18, fontSize: 12, cursor: 'pointer',
+                                          border: entry.category === opt ? 'none' : '1px solid #e5e7eb',
+                                          backgroundColor: entry.category === opt ? '#7A6F5A' : '#fff',
+                                          color: entry.category === opt ? '#fff' : '#374151',
+                                          fontWeight: entry.category === opt ? 700 : 400,
+                                        }}
+                                      >
+                                        {opt}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {/* 날짜 / 거래처 / 금액 / 결제수단 */}
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                                <div>
+                                  <label style={fieldLabelStyle}>거래일시</label>
+                                  <input
+                                    type="text"
+                                    value={entry.date}
+                                    placeholder="예: 2026.05.18"
+                                    onChange={e => setLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, date: e.target.value } : en))}
+                                    style={fieldInputStyle}
+                                  />
+                                </div>
+                                <div>
+                                  <label style={fieldLabelStyle}>
+                                    거래처
+                                    {!entry.vendor.trim() && entry.ocrSourceFile && (
+                                      <span style={{ color: '#f59e0b', marginLeft: 4, fontSize: 10 }}>확인필요</span>
+                                    )}
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={entry.vendor}
+                                    placeholder="예: (주)민들레"
+                                    onChange={e => setLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, vendor: e.target.value } : en))}
+                                    style={fieldInputStyle}
+                                  />
+                                </div>
+                                <div>
+                                  <label style={fieldLabelStyle}>
+                                    금액
+                                    {!entry.amount.trim() && entry.ocrSourceFile && (
+                                      <span style={{ color: '#f59e0b', marginLeft: 4, fontSize: 10 }}>확인필요</span>
+                                    )}
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={entry.amount}
+                                    placeholder="예: 15,000원"
+                                    onChange={e => setLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, amount: e.target.value } : en))}
+                                    style={fieldInputStyle}
+                                  />
+                                </div>
+                                <div>
+                                  <label style={fieldLabelStyle}>결제수단</label>
+                                  <input
+                                    type="text"
+                                    value={entry.paymentMethod}
+                                    placeholder="예: 신용카드"
+                                    onChange={e => setLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, paymentMethod: e.target.value } : en))}
+                                    style={fieldInputStyle}
+                                  />
+                                </div>
+                              </div>
+                              {/* 메모 */}
+                              <div>
+                                <label style={fieldLabelStyle}>메모</label>
+                                <textarea
+                                  value={entry.memo}
+                                  placeholder="관련 메모 (선택사항)"
+                                  rows={2}
+                                  onChange={e => setLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, memo: e.target.value } : en))}
+                                  style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid #e5e5e5', borderRadius: 7, resize: 'vertical', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                                />
                               </div>
                             </div>
                           );
-                        }
+                        })}
+                        {/* 거래 추가 버튼 */}
+                        <button
+                          type="button"
+                          onClick={() => setLedgerEntries(prev => [...prev, newLedgerEntry()])}
+                          style={{ width: '100%', padding: '10px', border: '1px dashed #d1d5db', borderRadius: 8, backgroundColor: '#fff', color: '#6b7280', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          + 거래 추가
+                        </button>
+                        {/* 면책 문구 */}
+                        <p style={{ margin: 0, fontSize: 12, color: '#9ca3af', lineHeight: 1.6 }}>
+                          이 기능은 개인 및 사업자의 수입·지출 기록을 돕기 위한 보조장부입니다.<br />
+                          세무 신고나 회계 자문을 대체하지 않습니다.
+                        </p>
+                      </div>
+                    ) : fields
+                      .filter((field) => !(format === '독서사유' && field.key === 'reading_book_text'))
+                      .map((field) => {
                         // 📚 독서사유 — 이어쓰기 모드면 책 제목·저자 readonly
                         const isReadingBookField =
                           format === '독서사유' &&
@@ -3484,12 +3706,6 @@ ${contentValues}`,
                         );
                       })
                   }
-                  {isLedgerFormat && (
-                    <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9ca3af', lineHeight: 1.6 }}>
-                      이 기능은 개인 및 사업자의 수입·지출 기록을 돕기 위한 보조장부입니다.<br />
-                      세무 신고나 회계 자문을 대체하지 않습니다.
-                    </p>
-                  )}
                 </>
               )}
 
@@ -4053,6 +4269,26 @@ ${contentValues}`,
                   {isEditingReadingEntry ? '수정 취소' : isReadingFinishing ? '분석 중...' : '✨ 독서마무리하기'}
                 </button>
               </div>
+            ) : isLedgerFormat ? (
+              /* 🧾 HARU보조장부 전용 저장 버튼 */
+              <button
+                onClick={handleSaveOriginalAsSayu}
+                disabled={isSaving}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  fontSize: 15,
+                  border: 'none',
+                  borderRadius: 8,
+                  backgroundColor: '#1A3C6E',
+                  color: '#fff',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  opacity: isSaving ? 0.7 : 1,
+                  fontWeight: 700,
+                }}
+              >
+                {isSaving ? '저장 중...' : `거래 저장하기 (${ledgerEntries.length}건)`}
+              </button>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <button
