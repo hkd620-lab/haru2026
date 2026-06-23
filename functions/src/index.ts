@@ -3156,6 +3156,78 @@ export const verifyPayment = onCall(
   }
 );
 
+// ===== 💳 정기결제 시작 (PortOne V2 빌링키) =====
+export const subscribeWithBillingKey = onCall(
+  { region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const uid = request.auth.uid;
+    const { billingKey, plan, payMethod } = request.data || {};
+
+    if (!billingKey || typeof billingKey !== 'string') {
+      throw new HttpsError('invalid-argument', 'billingKey가 필요합니다.');
+    }
+
+    if (plan !== 'basic' && plan !== 'premium') {
+      throw new HttpsError('invalid-argument', 'plan 값이 올바르지 않습니다.');
+    }
+
+    const amount = plan === 'basic' ? 3500 : 5000;
+    const orderName = plan === 'basic' ? 'HARU 베이직 월 구독' : 'HARU 프리미엄 월 구독';
+    const paymentId = `haru-${uid}-${Date.now()}`;
+
+    let payment: any;
+    try {
+      const portoneRes = await axios.post(
+        `https://api.portone.io/payments/${encodeURIComponent(paymentId)}/billing-key`,
+        {
+          billingKey,
+          orderName,
+          amount: { total: amount },
+          currency: 'KRW',
+        },
+        { headers: { Authorization: `PortOne ${PORTONE_API_SECRET.value().trim()}` } }
+      );
+      payment = portoneRes.data;
+    } catch (e: any) {
+      logger.error('PortOne 빌링키 첫 결제 실패:', e?.response?.data || e.message);
+      throw new HttpsError('internal', '첫 결제에 실패했습니다.');
+    }
+
+    if (payment?.status && payment.status !== 'PAID') {
+      logger.error('PortOne 빌링키 첫 결제 미완료:', {
+        uid,
+        paymentId,
+        status: payment.status,
+      });
+      throw new HttpsError('failed-precondition', '첫 결제가 완료되지 않았습니다.');
+    }
+
+    const now = new Date();
+    const nextBillingDate = new Date(now);
+    nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+
+    const subRef = db.doc(`users/${uid}/subscription/info`);
+    await subRef.set({
+      plan,
+      status: 'active',
+      billingKey,
+      payMethod: typeof payMethod === 'string' ? payMethod : null,
+      startDate: now.toISOString(),
+      endDate: nextBillingDate.toISOString(),
+      nextBillingDate: nextBillingDate.toISOString(),
+      paymentId,
+      updatedAt: now.toISOString(),
+    });
+
+    logger.info('✅ 정기구독 시작 — uid: %s, plan: %s, paymentId: %s', uid, plan, paymentId);
+    return { success: true };
+  }
+);
+
 // ===== 🗑️ 일회성 마이그레이션: 모든 사용자 _tags 필드 일괄 삭제 =====
 export const removeAllTags = onRequest(
   { region: 'asia-northeast3' },

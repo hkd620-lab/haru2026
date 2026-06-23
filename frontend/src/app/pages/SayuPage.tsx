@@ -2763,6 +2763,99 @@ export function SayuPage() {
     return `${month}/${day}`;
   };
 
+  // ─── 기장비서 월간 요약 ───
+  const getLedgerMonthlySummary = () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth() + 1;
+    const monthRecords = records.filter((r) => {
+      const [y, m] = r.date.split('-').map(Number);
+      return y === year && m === month;
+    });
+    const ledgerRecords = monthRecords.filter((r) =>
+      Object.keys(r).some((k) => k.startsWith('ledger_') && !k.endsWith('_sayu') && !k.endsWith('_images')),
+    );
+    if (ledgerRecords.length === 0) return null;
+
+    const parseAmount = (value: unknown): number => {
+      const text = String(value || '').replace(/,/g, '').replace(/원/g, '').trim();
+      const match = text.match(/-?\d+(?:\.\d+)?/);
+      if (!match) return 0;
+      const num = Number(match[0]);
+      return Number.isFinite(num) ? Math.abs(num) : 0;
+    };
+
+    let totalIncome = 0;
+    let totalExpense = 0;
+    const expenseCategoryMap: Record<string, number> = {};
+
+    for (const r of ledgerRecords) {
+      const rawType = getLedgerValue(r, ['ledger_type']);
+      const rawAmount = getLedgerValue(r, ['ledger_amount']);
+      const rawCategory = getLedgerValue(r, ['ledger_category', 'ledger_item']);
+      const amt = parseAmount(rawAmount);
+      if (rawType === '수입') {
+        totalIncome += amt;
+      } else if (rawType === '지출') {
+        totalExpense += amt;
+        if (rawCategory) {
+          expenseCategoryMap[rawCategory] = (expenseCategoryMap[rawCategory] || 0) + amt;
+        }
+      }
+    }
+
+    const balance = totalIncome - totalExpense;
+    const topCategory = Object.entries(expenseCategoryMap).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+    const comment = topCategory
+      ? `이번 달 지출 중 ${topCategory} 비중이 가장 높습니다.`
+      : ledgerRecords.length > 0
+      ? `이번 달 보조장부 ${ledgerRecords.length}건이 기록됐습니다.`
+      : '';
+
+    return { totalIncome, totalExpense, balance, comment, count: ledgerRecords.length };
+  };
+
+  const renderLedgerMonthlySummary = () => {
+    if (sayuTab !== 'records') return null;
+    const summary = getLedgerMonthlySummary();
+    if (!summary) return null;
+    const { totalIncome, totalExpense, balance, comment } = summary;
+    if (totalIncome === 0 && totalExpense === 0) return null;
+    const fmtKrw = (n: number) => n.toLocaleString('ko-KR') + '원';
+    return (
+      <div style={{
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: '14px 16px',
+        marginBottom: 10,
+        border: '1px solid #e5e7eb',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+      }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: '#7A6F5A', marginBottom: 10 }}>
+          📒 이번 달 기장 요약
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
+          <div style={{ textAlign: 'center', padding: '8px 4px', backgroundColor: '#f0fdf4', borderRadius: 8 }}>
+            <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 2 }}>수입</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#10b981' }}>{fmtKrw(totalIncome)}</div>
+          </div>
+          <div style={{ textAlign: 'center', padding: '8px 4px', backgroundColor: '#fff5f5', borderRadius: 8 }}>
+            <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 2 }}>지출</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#ef4444' }}>{fmtKrw(totalExpense)}</div>
+          </div>
+          <div style={{ textAlign: 'center', padding: '8px 4px', backgroundColor: '#f8f9fa', borderRadius: 8 }}>
+            <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 2 }}>예상 잔액</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: balance >= 0 ? '#1A3C6E' : '#ef4444' }}>
+              {balance >= 0 ? '' : '-'}{fmtKrw(Math.abs(balance))}
+            </div>
+          </div>
+        </div>
+        {comment && (
+          <p style={{ margin: 0, fontSize: 11, color: '#6b7280', lineHeight: 1.5 }}>{comment}</p>
+        )}
+      </div>
+    );
+  };
+
   const toggleCategory = (category: string) => {
     setCollapsedCategories((prev) => {
       const next = new Set(prev);
@@ -4392,6 +4485,7 @@ export function SayuPage() {
         </>
       ) : (
         <>
+          {viewMode === 'list' && renderLedgerMonthlySummary()}
           {viewMode === 'list' && shouldRenderListEntries && renderGroupedEntryList(filteredActiveEntries)}
           {viewMode === 'calendar' && renderEntryCalendar(filteredActiveCalendarEntries)}
         </>

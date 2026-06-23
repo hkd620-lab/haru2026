@@ -5,6 +5,11 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 type PaidPlan = 'basic' | 'premium';
+type BillingKeyResponse = {
+  code?: string;
+  message?: string;
+  billingKey?: string;
+};
 
 const PLANS: Record<PaidPlan, {
   title: string;
@@ -55,7 +60,7 @@ export default function SubscriptionPage() {
     }
   }, [searchParams]);
 
-  const handleSubscribe = async (method: 'kakao' | 'toss') => {
+  const handleSubscribe = async () => {
     if (authLoading) return;
     if (!user) {
       alert('로그인이 필요합니다.');
@@ -66,32 +71,36 @@ export default function SubscriptionPage() {
 
     try {
       const plan = PLANS[selectedPlan];
-      const paymentId = `haru-${Date.now()}`;
+      const issueId = `haru-billing-${Date.now()}`;
 
-      const response = await PortOne.requestPayment({
+      const response = await (PortOne as any).requestIssueBillingKey({
         storeId: import.meta.env.VITE_PORTONE_STORE_ID,
-        channelKey: method === 'kakao'
-          ? import.meta.env.VITE_PORTONE_CHANNEL_KEY
-          : import.meta.env.VITE_PORTONE_TOSS_CHANNEL_KEY,
-        paymentId: paymentId,
-        orderName: plan.orderName,
-        totalAmount: plan.amount,
-        currency: 'KRW',
-        payMethod: 'EASY_PAY',
-        easyPay: method === 'toss' ? { easyPayProvider: 'TOSSPAY' } : undefined,
+        channelKey: import.meta.env.VITE_PORTONE_TOSS_CHANNEL_KEY,
+        billingKeyMethod: 'CARD',
+        issueId,
+        issueName: plan.orderName,
         customer: {
           email: user.email || '',
         },
-      });
+      }) as BillingKeyResponse;
 
       if (response?.code) {
-        alert('결제가 취소되었습니다.');
+        alert('카드 등록이 취소되었습니다.');
         return;
       }
 
+      const billingKey = response?.billingKey;
+      if (!billingKey) {
+        throw new Error('빌링키 발급 결과가 올바르지 않습니다.');
+      }
+
       const functions = getFunctions(undefined, 'asia-northeast3');
-      const verifyPayment = httpsCallable(functions, 'verifyPayment');
-      await verifyPayment({ paymentId });
+      const subscribeWithBillingKey = httpsCallable(functions, 'subscribeWithBillingKey');
+      await subscribeWithBillingKey({
+        billingKey,
+        plan: selectedPlan,
+        payMethod: 'card',
+      });
 
       alert(`🎉 ${plan.title} 구독이 완료되었습니다!`);
       window.location.href = '/';
@@ -160,23 +169,15 @@ export default function SubscriptionPage() {
         </p>
 
         <button
-          onClick={() => handleSubscribe('kakao')}
+          onClick={() => handleSubscribe()}
           disabled={loading || authLoading}
-          className="w-full bg-[#FEE500] hover:bg-[#F6D800] text-[#3C1E1E] font-black text-base py-4 rounded-2xl transition-colors disabled:opacity-50 mb-3"
+          className="w-full bg-[#1A3C6E] hover:bg-[#142f57] text-white font-black text-base py-4 rounded-2xl transition-colors disabled:opacity-50 mb-3"
         >
-          {loading ? '결제 처리 중...' : '💛 카카오페이로 결제하기'}
-        </button>
-
-        <button
-          onClick={() => handleSubscribe('toss')}
-          disabled={loading || authLoading}
-          className="w-full bg-[#10b981] hover:bg-[#059669] text-white font-black text-base py-4 rounded-2xl transition-colors disabled:opacity-50 mb-3"
-        >
-          {loading ? '결제 처리 중...' : '💳 토스페이로 결제하기'}
+          {loading ? '결제 처리 중...' : '💳 카드·간편결제로 구독하기'}
         </button>
 
         <p className="text-center text-xs text-gray-400 mb-2">
-          카카오페이 · 신용카드 · 체크카드 결제 가능
+          신용/체크카드 · 카카오페이 · 토스페이 결제 가능
         </p>
 
         <button
