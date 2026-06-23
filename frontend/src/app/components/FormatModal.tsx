@@ -288,6 +288,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [selectedLedgerOcrFiles, setSelectedLedgerOcrFiles] = useState<File[]>([]);
   const [isExtractingLedgerText, setIsExtractingLedgerText] = useState(false);
   const [ledgerOcrResult, setLedgerOcrResult] = useState<LedgerOcrResult | null>(null);
+  const [ledgerOcrPerFileResults, setLedgerOcrPerFileResults] = useState<{ fileName: string; rawText?: string; fields?: LedgerOcrFields; warnings?: string[] }[]>([]);
   const ledgerOcrInputRef = useRef<HTMLInputElement>(null);
 
   // 📈 HARU주식관리: 카톡 TXT 내보내기 파싱 state
@@ -374,6 +375,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       setSelectedLedgerOcrFiles([]);
       setIsExtractingLedgerText(false);
       setLedgerOcrResult(null);
+      setLedgerOcrPerFileResults([]);
 
       const isStockFormat = format === 'HARU주식관리' || format === '주식거래일지';
       const isLedgerFormat = format === 'HARU보조장부';
@@ -1219,8 +1221,12 @@ ${contentValues}`,
       return;
     }
 
+    const allFiles = Array.from(files);
+    if (allFiles.length > 10) {
+      toast.warning('HARU보조장부는 한 번에 최대 10장까지 첨부할 수 있습니다. 카드 사용내역이 많으면 여러 번 나누어 기록해 주세요.');
+    }
     const selected: File[] = [];
-    for (const file of Array.from(files).slice(0, 3)) {
+    for (const file of allFiles.slice(0, 10)) {
       const lowerName = file.name.toLowerCase();
       const isHeic = file.type === 'image/heic' || file.type === 'image/heif' ||
         lowerName.endsWith('.heic') || lowerName.endsWith('.heif');
@@ -1256,27 +1262,52 @@ ${contentValues}`,
 
     setIsExtractingLedgerText(true);
     try {
-      const images: { mimeType: string; dataBase64: string }[] = [];
+      const functionsInstance = getFunctions(undefined, 'asia-northeast3');
+      const extractLedgerTextFunc = httpsCallable(functionsInstance, 'extractLedgerTextFromImage');
+      const perFileResults: { fileName: string; rawText?: string; fields?: LedgerOcrFields; warnings?: string[] }[] = [];
+
       for (const file of selectedLedgerOcrFiles) {
+        let dataBase64: string;
         try {
           const compressed = await prepareBookOcrImage(file);
-          const dataBase64 = await blobToBase64String(compressed);
-          images.push({ mimeType: 'image/jpeg', dataBase64 });
+          dataBase64 = await blobToBase64String(compressed);
         } catch (imageError: any) {
-          console.error('보조장부 OCR 이미지 준비 실패:', imageError);
+          console.error('보조장부 OCR 이미지 준비 실패:', file.name, imageError);
           toast.warning(`${file.name} 사진을 읽지 못해 건너뜁니다.`);
+          continue;
+        }
+        try {
+          const result = await extractLedgerTextFunc({ images: [{ mimeType: 'image/jpeg', dataBase64 }] });
+          const data = result.data as LedgerOcrResult;
+          console.log(`[보조장부 OCR] ${file.name}:`, data);
+          perFileResults.push({ fileName: file.name, rawText: data.rawText, fields: data.fields, warnings: data.warnings });
+        } catch (callError: any) {
+          console.error('보조장부 OCR 호출 실패:', file.name, callError);
+          perFileResults.push({ fileName: file.name, warnings: ['추출에 실패했습니다.'] });
         }
       }
 
-      if (images.length === 0) {
+      if (perFileResults.length === 0) {
         toast.warning('추출할 수 있는 이미지가 없습니다.');
         return;
       }
 
-      const functionsInstance = getFunctions(undefined, 'asia-northeast3');
-      const extractLedgerTextFunc = httpsCallable(functionsInstance, 'extractLedgerTextFromImage');
-      const result = await extractLedgerTextFunc({ images });
-      setLedgerOcrResult(result.data as LedgerOcrResult);
+      setLedgerOcrPerFileResults(perFileResults);
+
+      // applyLedgerOcrResult 가 사용하는 combined result — 파일별 첫 non-null 값 우선
+      const combinedFields: LedgerOcrFields = {};
+      const fieldKeys: (keyof LedgerOcrFields)[] = ['transactionAt', 'type', 'category', 'partner', 'amount', 'paymentMethod', 'proofType', 'memo'];
+      for (const key of fieldKeys) {
+        for (const r of perFileResults) {
+          const v = r.fields?.[key];
+          if (v !== undefined && v !== null && String(v).trim()) {
+            (combinedFields as any)[key] = v;
+            break;
+          }
+        }
+      }
+      setLedgerOcrResult({ fields: combinedFields });
+
       toast.success('추출 결과가 준비되었습니다. 확인 후 입력칸에 반영해 주세요.');
     } catch (error: any) {
       console.error('보조장부 OCR 실패:', error);
@@ -1329,6 +1360,7 @@ ${contentValues}`,
     });
     setSelectedLedgerOcrFiles([]);
     setLedgerOcrResult(null);
+    setLedgerOcrPerFileResults([]);
     toast.success('추출 결과를 보조장부 입력칸에 반영했습니다.');
   };
 
@@ -1336,9 +1368,10 @@ ${contentValues}`,
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
-    const remainingSlots = 3 - uploadedImages.length;
+    const maxPhotos = format === 'HARU보조장부' ? 10 : 3;
+    const remainingSlots = maxPhotos - uploadedImages.length;
     if (remainingSlots <= 0) {
-      toast.warning('최대 3장까지만 업로드할 수 있습니다.');
+      toast.warning(`최대 ${maxPhotos}장까지만 업로드할 수 있습니다.`);
       return;
     }
 
@@ -3147,7 +3180,7 @@ ${contentValues}`,
                     </div>
                   )}
 
-                  {ledgerOcrResult && (
+                  {ledgerOcrPerFileResults.length > 0 && (
                     <div
                       style={{
                         marginTop: 12,
@@ -3157,63 +3190,52 @@ ${contentValues}`,
                         border: '1px solid #dbeafe',
                       }}
                     >
-                      <div style={{ fontSize: 13, color: '#1A3C6E', fontWeight: 800, marginBottom: 8 }}>
-                        추출 결과 미리보기
+                      <div style={{ fontSize: 13, color: '#1A3C6E', fontWeight: 800, marginBottom: 10 }}>
+                        사진별 추출 결과
                       </div>
-                      {ledgerOcrResult.rawText?.trim() && (
-                        <pre
-                          style={{
-                            margin: '0 0 10px',
-                            maxHeight: 120,
-                            overflow: 'auto',
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-word',
-                            padding: 10,
-                            borderRadius: 8,
-                            backgroundColor: '#f9fafb',
-                            border: '1px solid #e5e7eb',
-                            color: '#374151',
-                            fontSize: 12,
-                            lineHeight: 1.5,
-                            fontFamily: 'inherit',
-                          }}
-                        >
-                          {ledgerOcrResult.rawText}
-                        </pre>
-                      )}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(132px, 1fr))', gap: 8 }}>
-                        {LEDGER_OCR_PREVIEW_FIELDS.map((field) => {
-                          const value = String(ledgerOcrResult.fields?.[field.key] ?? '').trim();
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {ledgerOcrPerFileResults.map((item, idx) => {
+                          const f = item.fields || {};
+                          const extractedParts = [
+                            String(f.transactionAt ?? '').trim(),
+                            String(f.partner ?? '').trim(),
+                            String(f.amount ?? '').trim(),
+                            String(f.type ?? '').trim(),
+                            String(f.category ?? '').trim(),
+                            String(f.paymentMethod ?? '').trim(),
+                            String(f.proofType ?? '').trim(),
+                          ].filter(Boolean);
+                          const extractedText = extractedParts.length > 0
+                            ? extractedParts.join(', ')
+                            : '추출된 내용이 없습니다.';
+                          const confirmMsg = Array.isArray(item.warnings) && item.warnings.length > 0
+                            ? item.warnings[0]
+                            : '날짜, 금액, 거래처가 맞는지 확인하세요.';
                           return (
                             <div
-                              key={field.key}
+                              key={idx}
                               style={{
-                                padding: 8,
+                                padding: '10px 12px',
                                 borderRadius: 8,
+                                backgroundColor: '#f8fbff',
                                 border: '1px solid #e5e7eb',
-                                backgroundColor: value ? '#f8fbff' : '#fafafa',
-                                minHeight: 54,
                               }}
                             >
-                              <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4, fontWeight: 700 }}>
-                                {field.label}
+                              <div style={{ fontSize: 12, color: '#1A3C6E', fontWeight: 700, marginBottom: 6 }}>
+                                [{item.fileName}]
                               </div>
-                              <div style={{ fontSize: 12, color: value ? '#111827' : '#9ca3af', lineHeight: 1.4, wordBreak: 'break-word' }}>
-                                {value || '빈값'}
+                              <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.6 }}>
+                                <span style={{ color: '#6b7280', fontWeight: 600 }}>추출 내용: </span>
+                                {extractedText}
+                              </div>
+                              <div style={{ fontSize: 11, color: '#92400e', marginTop: 4, lineHeight: 1.5 }}>
+                                <span style={{ fontWeight: 600 }}>확인 필요: </span>
+                                {confirmMsg}
                               </div>
                             </div>
                           );
                         })}
                       </div>
-                      {Array.isArray(ledgerOcrResult.warnings) && ledgerOcrResult.warnings.length > 0 && (
-                        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {ledgerOcrResult.warnings.map((warning, index) => (
-                            <div key={`${warning}-${index}`} style={{ fontSize: 12, color: '#92400e', lineHeight: 1.45 }}>
-                              {warning}
-                            </div>
-                          ))}
-                        </div>
-                      )}
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
                         <button
                           type="button"
@@ -3235,6 +3257,7 @@ ${contentValues}`,
                           type="button"
                           onClick={() => {
                             setLedgerOcrResult(null);
+                            setLedgerOcrPerFileResults([]);
                             ledgerOcrInputRef.current?.click();
                           }}
                           style={{
@@ -3256,6 +3279,7 @@ ${contentValues}`,
                         onClick={() => {
                           setSelectedLedgerOcrFiles([]);
                           setLedgerOcrResult(null);
+                          setLedgerOcrPerFileResults([]);
                           clearLedgerOcrInput();
                         }}
                         style={{
@@ -3631,10 +3655,12 @@ ${contentValues}`,
               {format !== '독서사유' && !isStockFormat && (
               <div>
                 <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 4, fontWeight: 500 }}>
-                  📸 사진 <span style={{ fontWeight: 400, color: '#9ca3af' }}>(선택사항)</span>
+                  📸 {isLedgerFormat ? '증빙사진' : '사진'} <span style={{ fontWeight: 400, color: '#9ca3af' }}>(선택사항)</span>
                 </label>
                 <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 8, marginTop: 0 }}>
-                  사진 없이도 저장할 수 있습니다 · 최대 3장 · PNG, JPG, JPEG, WEBP, HEIC
+                  {isLedgerFormat
+                    ? '사진 없이도 저장할 수 있습니다 · 최대 10장 · PNG, JPG, JPEG, WEBP, HEIC'
+                    : '사진 없이도 저장할 수 있습니다 · 최대 3장 · PNG, JPG, JPEG, WEBP, HEIC'}
                 </p>
                 <input
                   ref={fileInputRef}
@@ -3669,7 +3695,7 @@ ${contentValues}`,
                 ) : (
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading || uploadedImages.length >= 3}
+                    disabled={isUploading || uploadedImages.length >= (isLedgerFormat ? 10 : 3)}
                     style={{
                       width: '100%',
                       padding: '10px 16px',
@@ -3678,21 +3704,49 @@ ${contentValues}`,
                       borderRadius: 8,
                       backgroundColor: '#f9fafb',
                       color: '#6b7280',
-                      cursor: isUploading || uploadedImages.length >= 3 ? 'not-allowed' : 'pointer',
+                      cursor: isUploading || uploadedImages.length >= (isLedgerFormat ? 10 : 3) ? 'not-allowed' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: 8,
-                      opacity: isUploading || uploadedImages.length >= 3 ? 0.5 : 1,
+                      opacity: isUploading || uploadedImages.length >= (isLedgerFormat ? 10 : 3) ? 0.5 : 1,
                     }}
                   >
                     <Upload style={{ width: 16, height: 16 }} />
-                    {isUploading ? '업로드 중...' : `사진 추가 (${uploadedImages.length}/3)`}
+                    {isUploading ? '업로드 중...' : isLedgerFormat
+                      ? `증빙사진 선택 (${uploadedImages.length}/10)`
+                      : `사진 추가 (${uploadedImages.length}/3)`}
                   </button>
                 )}
 
                 {uploadedImages.length > 0 && (
                   <div style={{ marginTop: 12 }}>
+                    {/* 4장 이상: 보조장부 전용 — 3열 그리드 */}
+                    {uploadedImages.length >= 4 && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                        {uploadedImages.map((url, index) => (
+                          <div key={index} style={{ position: 'relative', width: '100%', aspectRatio: '1/1' }}>
+                            <img
+                              src={url}
+                              alt={`증빙사진 ${index + 1}`}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e5e5' }}
+                            />
+                            <button
+                              onClick={() => handleDeleteImage(url, index)}
+                              style={{
+                                position: 'absolute', top: 4, right: 4,
+                                width: 24, height: 24, borderRadius: '50%',
+                                backgroundColor: '#ef4444', color: '#fff',
+                                border: 'none', cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+                              }}
+                            >
+                              <Trash2 style={{ width: 13, height: 13 }} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {/* 1장: 큰 사진 1개 */}
                     {uploadedImages.length === 1 && (
                       <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3' }}>
