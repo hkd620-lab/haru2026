@@ -10,7 +10,7 @@ interface EpubExportRequest {
 
 interface EpubExportResponse {
   success: boolean;
-  base64: string;
+  downloadUrl: string;
   fileName: string;
   count: number;
 }
@@ -23,22 +23,14 @@ export async function exportRecordsToEpub(
   const exportEpub = httpsCallable<EpubExportRequest, EpubExportResponse>(functions, 'exportEpub');
 
   const result = await exportEpub({ startDate, endDate });
-  const { base64, fileName, count } = result.data;
+  const { downloadUrl, fileName, count } = result.data;
 
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  const blob = new Blob([bytes], { type: 'application/epub+zip' });
-  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
+  a.href = downloadUrl;
   a.download = fileName;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
 
   return { count, fileName };
 }

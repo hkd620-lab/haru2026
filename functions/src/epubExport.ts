@@ -192,12 +192,21 @@ export const exportEpub = onCall(
     };
 
     const epubBuffer = await Epub(epubOptions, chapters);
-    const base64 = epubBuffer.toString('base64');
+    const fileName = `HARU_기록_${startDate}_${endDate}.epub`;
+
+    const bucket = admin.storage().bucket();
+    const filePath = `epub/${uid}/${fileName}`;
+    const fileRef = bucket.file(filePath);
+    await fileRef.save(epubBuffer, { contentType: 'application/epub+zip' });
+    const [downloadUrl] = await fileRef.getSignedUrl({
+      action: 'read',
+      expires: Date.now() + 10 * 60 * 1000, // 10분
+    });
 
     return {
       success: true,
-      base64,
-      fileName: `HARU_기록_${startDate}_${endDate}.epub`,
+      downloadUrl,
+      fileName,
       count: chapters.length,
     };
   },
