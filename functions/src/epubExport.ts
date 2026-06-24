@@ -17,6 +17,24 @@ const EPUB_INCLUDE_FORMATS = [
   '메모', '성장타임라인',
 ];
 
+const FORMAT_PREFIX: Record<string, string> = {
+  '일기': 'diary',
+  '에세이': 'essay',
+  '선교보고': 'mission',
+  '일반보고': 'report',
+  '업무일지': 'work',
+  '여행기록': 'travel',
+  '독서사유': 'reading',
+  '텃밭일지': 'garden',
+  '애완동물관찰일지': 'pet',
+  '육아일기': 'child',
+  '성장기록': 'growth',
+  'HARU주식관리': 'stock',
+  '주식거래일지': 'stock',
+  '메모': 'memo',
+  '성장타임라인': 'growthTimeline',
+};
+
 function dateLabel(date: string): string {
   return date.replace(/-/g, '.');
 }
@@ -30,11 +48,23 @@ function recordToHtml(record: Record<string, any>): string {
   // 제목
   const title = record.title || record.ai_title;
   if (title) lines.push(`<h2>${String(title)}</h2>`);
-  // 본문 (우선순위: sayu → simple → content → growth_note)
-  const body = record.sayu ?? record.simple ?? record.content ?? record.growth_note;
-  if (body != null && body !== '') {
-    lines.push(`<div>${String(body).replace(/\n/g, '<br/>')}</div>`);
-  } else {
+  // 본문 — prefix 기반 필드 수집
+  const formats: string[] = Array.isArray(record.formats) ? record.formats : [];
+  const includedFormats = formats.filter((f) => EPUB_INCLUDE_FORMATS.includes(f));
+  const prefix = FORMAT_PREFIX[includedFormats[0]] ?? null;
+  let bodyAdded = false;
+  if (prefix) {
+    const bodyParts: string[] = [];
+    for (const [key, val] of Object.entries(record)) {
+      if (!key.startsWith(prefix + '_') || typeof val !== 'string' || val === '') continue;
+      bodyParts.push(`${key.slice(prefix.length + 1)}: ${val}`);
+    }
+    if (bodyParts.length > 0) {
+      lines.push(`<div>${bodyParts.join('<br/>')}</div>`);
+      bodyAdded = true;
+    }
+  }
+  if (!bodyAdded) {
     lines.push('<p>(내용 없음)</p>');
   }
   // 이미지 (키 이름이 'imageMeta'로 끝나는 배열 필드)
