@@ -5,6 +5,7 @@ import { PageHeaderActions } from '../components/PageHeaderActions';
 import { KNewsSection } from '../components/KNewsSection';
 import { TodayQuote } from '../components/TodayQuote';
 import { useAuth } from '../contexts/AuthContext';
+import { exportRecordsToEpub } from '../services/epubExportService';
 import {
   firestoreService,
   type PublishedBook,
@@ -14,7 +15,7 @@ import {
 import { toast } from 'sonner';
 
 type TogetherTab = 'shared' | 'recovery';
-type RecoverySubTab = 'people' | 'knews' | 'quote' | 'bible';
+type RecoverySubTab = 'people' | 'knews' | 'quote' | 'bible' | 'epub';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -35,6 +36,9 @@ export function SayuTogetherPage() {
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [sharedActionId, setSharedActionId] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [epubStartDate, setEpubStartDate] = useState('');
+  const [epubEndDate, setEpubEndDate] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
   const [booksErrorMessage, setBooksErrorMessage] = useState('');
   const isDeveloper = user?.uid === DEVELOPER_UID;
   const fromPath = (location.state as any)?.from as string | undefined;
@@ -709,14 +713,28 @@ export function SayuTogetherPage() {
     );
   };
 
+  const handleEpubExport = async () => {
+    if (!epubStartDate || !epubEndDate) return;
+    setIsExporting(true);
+    try {
+      const { count, fileName } = await exportRecordsToEpub(epubStartDate, epubEndDate);
+      alert(`✅ EPUB 생성 완료! ${count}개 기록 → ${fileName}`);
+    } catch (e: any) {
+      alert(`❌ 오류: ${e.message}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const renderRecovery = () => (
     <div>
-      <div className="mb-4 grid grid-cols-4 gap-2">
+      <div className="mb-4 grid grid-cols-5 gap-2">
         {([
           { key: 'people', label: '사람속으로' },
           { key: 'knews', label: 'K뉴스' },
           { key: 'quote', label: '명언' },
           { key: 'bible', label: '성경말씀' },
+          { key: 'epub', label: 'EPUB' },
         ] as const).map((sub) => {
           const active = recoverySub === sub.key;
           return (
@@ -795,6 +813,58 @@ export function SayuTogetherPage() {
             성경말씀
           </h2>
           <TodayQuote defaultTab="bible" hideTabSwitcher />
+        </section>
+      )}
+
+      {recoverySub === 'epub' && (
+        <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: '1px solid #DBEAFE' }}>
+          <h2 className="text-base font-bold mb-2" style={{ color: '#1A3C6E' }}>
+            📖 EPUB 내보내기
+          </h2>
+          <p style={{ fontSize: 13, color: '#6B7280', margin: '0 0 14px' }}>
+            날짜 범위를 선택하면 해당 기간 기록을 EPUB 파일로 다운로드합니다.
+          </p>
+          {!user?.uid ? (
+            <p style={{ fontSize: 13, color: '#B42318' }}>로그인 후 이용할 수 있습니다.</p>
+          ) : (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <label style={{ fontSize: 13, color: '#1A3C6E' }}>
+                시작일&nbsp;
+                <input
+                  type="date"
+                  value={epubStartDate}
+                  onChange={(e) => setEpubStartDate(e.target.value)}
+                  style={{ border: '1px solid #CBD5E1', borderRadius: 8, padding: '9px 10px', fontSize: 14 }}
+                />
+              </label>
+              <label style={{ fontSize: 13, color: '#1A3C6E' }}>
+                종료일&nbsp;
+                <input
+                  type="date"
+                  value={epubEndDate}
+                  onChange={(e) => setEpubEndDate(e.target.value)}
+                  style={{ border: '1px solid #CBD5E1', borderRadius: 8, padding: '9px 10px', fontSize: 14 }}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={handleEpubExport}
+                disabled={isExporting || !epubStartDate || !epubEndDate}
+                style={{
+                  border: 0,
+                  borderRadius: 8,
+                  padding: '10px 16px',
+                  background: epubStartDate && epubEndDate ? '#1A3C6E' : '#CBD5E1',
+                  color: '#fff',
+                  fontWeight: 800,
+                  fontSize: 14,
+                  cursor: isExporting || !epubStartDate || !epubEndDate ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {isExporting ? '생성 중...' : '📥 EPUB 다운로드'}
+              </button>
+            </div>
+          )}
         </section>
       )}
     </div>
