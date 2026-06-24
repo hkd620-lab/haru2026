@@ -6,6 +6,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 interface EpubExportRequest {
   startDate: string;
   endDate: string;
+  format?: string;
 }
 
 interface EpubExportResponse {
@@ -18,11 +19,12 @@ interface EpubExportResponse {
 export async function exportRecordsToEpub(
   startDate: string,
   endDate: string,
-): Promise<{ count: number; fileName: string }> {
+  format?: string,
+): Promise<{ count: number; fileName: string; downloadUrl: string }> {
   const functions = getFunctions(undefined, 'asia-northeast3');
   const exportEpub = httpsCallable<EpubExportRequest, EpubExportResponse>(functions, 'exportEpub');
 
-  const result = await exportEpub({ startDate, endDate });
+  const result = await exportEpub({ startDate, endDate, ...(format ? { format } : {}) });
   const { downloadUrl, fileName, count } = result.data;
 
   const a = document.createElement('a');
@@ -32,5 +34,5 @@ export async function exportRecordsToEpub(
   a.click();
   document.body.removeChild(a);
 
-  return { count, fileName };
+  return { count, fileName, downloadUrl };
 }

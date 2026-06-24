@@ -5,6 +5,7 @@ import { RecordFormat } from '../services/firestoreService';
 import { getOrigin } from '../services/v2Origin';
 import { toast } from 'sonner';
 import { exportRecordsToEpub } from '../services/epubExportService';
+import GrapeLoadingMini from '../components/GrapeLoadingMini';
 
 
 interface ViewerRecord {
@@ -160,7 +161,7 @@ export function MergeViewerPage() {
   const handleSaveEPUB = async () => {
     setEpubLoading(true);
     try {
-      const { count, fileName } = await exportRecordsToEpub(startDate, endDate);
+      const { count, fileName } = await exportRecordsToEpub(startDate, endDate, format as string);
       toast.success(`EPUB 저장 완료 — ${count}개 기록 · ${fileName}`);
     } catch (err) {
       console.error('EPUB 저장 실패:', err);
@@ -837,7 +838,9 @@ export function MergeViewerPage() {
                 className="w-full py-3 rounded-lg text-sm font-semibold transition-all hover:opacity-90 flex items-center justify-center gap-2 mb-3 disabled:opacity-50"
                 style={{ backgroundColor: '#1A3C6E', color: '#FEFBE8' }}
               >
-                {epubLoading ? '⏳ EPUB 생성 중...' : '📚 EPUB 저장'}
+                {epubLoading
+                  ? <><GrapeLoadingMini size={18} color="#FEFBE8" /> EPUB 생성 중...</>
+                  : '📚 EPUB 저장'}
               </button>
               {/* 취소 버튼 */}
               <button
