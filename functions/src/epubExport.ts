@@ -41,28 +41,55 @@ function dateLabel(date: string): string {
 
 function recordToHtml(record: Record<string, any>): string {
   const lines: string[] = [];
-  // 날씨
+
+  // 날씨/기분
   if (record.weather) lines.push(`<p>날씨: ${record.weather}${record.temperature ? ` / ${record.temperature}` : ''}</p>`);
-  // 기분
   if (record.mood) lines.push(`<p>기분: ${record.mood}</p>`);
+
   // 제목
   const title = record.title || record.ai_title;
   if (title) lines.push(`<h2>${String(title)}</h2>`);
-  // 본문 — sayu/simple 우선, 없으면 prefix 기반 필드 수집
+
+  // 본문
+  const formats: string[] = Array.isArray(record.formats) ? record.formats : [];
+  const includedFormats = formats.filter((f) => EPUB_INCLUDE_FORMATS.includes(f));
+  const firstFormat = includedFormats[0] ?? null;
+  const prefix = firstFormat ? (FORMAT_PREFIX[firstFormat] ?? null) : null;
   let bodyAdded = false;
-  const bodyText = record.sayu ?? record.simple ?? null;
-  if (bodyText) {
-    lines.push(`<div>${String(bodyText).replace(/\n/g, '<br/>')}</div>`);
-    bodyAdded = true;
-  }
-  if (!bodyAdded) {
-    const formats: string[] = Array.isArray(record.formats) ? record.formats : [];
-    const includedFormats = formats.filter((f) => EPUB_INCLUDE_FORMATS.includes(f));
-    const prefix = FORMAT_PREFIX[includedFormats[0]] ?? null;
-    if (prefix) {
+
+  if (firstFormat === '성장기록') {
+    // 성장기록 전용: growth_sayu → growth_note 본문 + child_* 측정값
+    const growthBody = record.growth_sayu ?? record.growth_note ?? null;
+    if (growthBody) {
+      lines.push(`<div>${String(growthBody).replace(/\n/g, '<br/>')}</div>`);
+      bodyAdded = true;
+    }
+    const measurements: string[] = [];
+    if (record.child_measuredate) measurements.push(`측정일: ${record.child_measuredate}`);
+    if (record.child_height) measurements.push(`키: ${record.child_height}`);
+    if (record.child_weight) measurements.push(`몸무게: ${record.child_weight}`);
+    if (record.child_headcircum) measurements.push(`머리둘레: ${record.child_headcircum}`);
+    if (measurements.length > 0) {
+      lines.push(`<p>${measurements.join('<br/>')}</p>`);
+      bodyAdded = true;
+    }
+  } else if (prefix) {
+    // 일반 포맷 — prefix_sayu → prefix_simple → prefix_content 우선
+    const bodyText = record[`${prefix}_sayu`] ?? record[`${prefix}_simple`] ?? record[`${prefix}_content`] ?? null;
+    if (bodyText) {
+      lines.push(`<div>${String(bodyText).replace(/\n/g, '<br/>')}</div>`);
+      bodyAdded = true;
+    }
+    if (!bodyAdded) {
+      // 블랙리스트 제외 prefix_ 필드 조합
+      const SUFFIX_BLACKLIST = new Set([
+        '_sayu', '_simple', '_content', '_mode', '_style',
+        '_polishedAt', '_final_sayu', '_imageMeta',
+      ]);
       const bodyParts: string[] = [];
       for (const [key, val] of Object.entries(record)) {
         if (!key.startsWith(prefix + '_') || typeof val !== 'string' || val === '') continue;
+        if (SUFFIX_BLACKLIST.has(key.slice(prefix.length))) continue;
         bodyParts.push(`${key.slice(prefix.length + 1)}: ${val}`);
       }
       if (bodyParts.length > 0) {
@@ -71,28 +98,31 @@ function recordToHtml(record: Record<string, any>): string {
       }
     }
   }
+
   if (!bodyAdded) {
     lines.push('<p>(내용 없음)</p>');
   }
-  // 이미지 — imageMeta 필드 (배열 또는 JSON 문자열 모두 처리)
-  for (const [key, val] of Object.entries(record)) {
-    if (!key.endsWith('imageMeta')) continue;
-    let items: any[] = [];
-    if (Array.isArray(val)) {
-      items = val;
-    } else if (typeof val === 'string') {
-      try { const parsed = JSON.parse(val); if (Array.isArray(parsed)) items = parsed; } catch { /* 무시 */ }
-    }
-    for (const item of items) {
-      if (item?.url) lines.push(`<img src="${item.url}" style="max-width:100%;margin:8px 0;">`);
-    }
-  }
-  // 이미지 — images 필드 (URL 문자열 배열)
-  if (Array.isArray(record.images)) {
+
+  // 이미지 — record.images 배열 우선, 없으면 imageMeta 필드
+  if (Array.isArray(record.images) && record.images.length > 0) {
     for (const url of record.images) {
       if (typeof url === 'string' && url) lines.push(`<img src="${url}" style="max-width:100%;margin:8px 0;">`);
     }
+  } else {
+    for (const [key, val] of Object.entries(record)) {
+      if (!key.endsWith('imageMeta')) continue;
+      let items: any[] = [];
+      if (Array.isArray(val)) {
+        items = val;
+      } else if (typeof val === 'string') {
+        try { const parsed = JSON.parse(val); if (Array.isArray(parsed)) items = parsed; } catch { /* 무시 */ }
+      }
+      for (const item of items) {
+        if (item?.url) lines.push(`<img src="${item.url}" style="max-width:100%;margin:8px 0;">`);
+      }
+    }
   }
+
   return lines.join('\n');
 }
 
@@ -143,7 +173,7 @@ export const exportEpub = onCall(
       title: `HARU 기록 ${dateLabel(startDate)} ~ ${dateLabel(endDate)}`,
       author: 'HARU2026',
       lang: 'ko',
-      css: 'body { column-count: 1 !important; columns: 1 !important; } * { column-count: unset; }',
+      css: 'body,html{column-count:1!important;columns:1!important;column-width:auto!important;}*{column-count:unset!important;}',
     };
 
     const epubBuffer = await Epub(epubOptions, chapters);
