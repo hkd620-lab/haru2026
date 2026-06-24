@@ -4,37 +4,165 @@
  * 외부 라이브러리 없이 최소 사양의 Office Open XML(.xlsx) 파일을 생성한다.
  * - ZIP은 "stored"(무압축) 방식으로 생성 — DEFLATE/Zip 라이브러리 불필요
  * - inline string 셀로 sharedStrings.xml 생략
- * - 단일 시트 워크북 (HARU보조장부)
+ * - 시트 2개: 거래상세내역 + 계정과목집계
  */
 
 import type { HaruRecord } from './firestoreService';
 
-// ===== ledger 컬럼 정의 (지시서 고정 순서) =====
-const LEDGER_COLUMNS: { header: string; field: string }[] = [
-  { header: '날짜',     field: 'ledger_date' },
-  { header: '거래구분', field: 'ledger_type' },
-  { header: '항목',     field: 'ledger_item' },
-  { header: '거래처',   field: 'ledger_partner' },
-  { header: '금액',     field: 'ledger_amount' },
-  { header: '결제수단', field: 'ledger_payment' },
-  { header: '증빙유형', field: 'ledger_proof' },
-  { header: '업무메모', field: 'ledger_memo' },
+// ===== 계정과목 자동 매핑 =====
+const ACCOUNT_KEYWORD_MAP: [string, string][] = [
+  ['OPENAI', '지급수수료'],
+  ['ANTHROPIC', '지급수수료'],
+  ['GOOGLE', '지급수수료'],
+  ['AWS', '지급수수료'],
+  ['AZURE', '지급수수료'],
+  ['CLAUDE', '지급수수료'],
+  ['NOTION', '지급수수료'],
+  ['SLACK', '지급수수료'],
+  ['ZOOM', '지급수수료'],
+  ['KT', '통신비'],
+  ['SKT', '통신비'],
+  ['LG U+', '통신비'],
+  ['LGU+', '통신비'],
+  ['택시', '여비교통비'],
+  ['지하철', '여비교통비'],
+  ['KTX', '여비교통비'],
+  ['버스', '여비교통비'],
+  ['주유', '차량유지비'],
+  ['주차', '차량유지비'],
+  ['카페', '복리후생비'],
+  ['커피', '복리후생비'],
+  ['식당', '복리후생비'],
+  ['음식', '복리후생비'],
+  ['한식', '복리후생비'],
+  ['호텔', '접대비'],
+  ['리조트', '접대비'],
+  ['골프', '접대비'],
 ];
 
-// ===== ledger 기록 판단 (ledger_* 필드를 하나라도 보유) =====
-function isLedgerRecord(r: HaruRecord): boolean {
-  return Object.keys(r).some((k) => k.startsWith('ledger_'));
+const ACCOUNT_CATEGORY_MAP: Record<string, string> = {
+  '식비': '복리후생비',
+  '교통': '여비교통비',
+  '통신': '통신비',
+  '소프트웨어': '지급수수료',
+  '클라우드': '지급수수료',
+  '사무용품': '소모품비',
+  '광고': '광고선전비',
+  '접대': '접대비',
+  '교육': '교육훈련비',
+  '차량': '차량유지비',
+};
+
+function inferAccountCode(vendor: string, category: string): string {
+  const upperVendor = vendor.toUpperCase();
+  for (const [keyword, account] of ACCOUNT_KEYWORD_MAP) {
+    if (upperVendor.includes(keyword.toUpperCase())) return account;
+  }
+  for (const [cat, account] of Object.entries(ACCOUNT_CATEGORY_MAP)) {
+    if (category.includes(cat)) return account;
+  }
+  return '잡비';
 }
 
-// ===== ledger 행 추출 =====
-function extractLedgerRow(r: HaruRecord): (string | number)[] {
-  return LEDGER_COLUMNS.map((c) => {
-    const v = (r as any)[c.field];
-    if (v == null) return '';
-    if (typeof v === 'string') return v;
-    if (typeof v === 'number') return v;
-    return String(v);
-  });
+// ===== 증빙 종류 판단 =====
+function inferEvidenceType(vendor: string, paymentMethod: string, proof: string): string {
+  if (proof && proof.trim()) return proof.trim();
+  const upperVendor = vendor.toUpperCase();
+  if (
+    upperVendor.includes('OPENAI') || upperVendor.includes('ANTHROPIC') ||
+    upperVendor.includes('GOOGLE') || upperVendor.includes('AWS') ||
+    upperVendor.includes('AZURE')
+  ) {
+    return '해외결제(공제불가)';
+  }
+  const pm = paymentMethod;
+  if (pm.includes('신용카드') || pm.includes('체크카드')) return '신용카드매출전표';
+  if (pm.includes('계좌') || pm.includes('이체')) return '계좌이체';
+  if (pm.includes('현금')) return '현금영수증';
+  return '기타';
+}
+
+// ===== 부가세 공제 여부 =====
+function inferVatDeductible(vendor: string, accountCode: string): string {
+  const upperVendor = vendor.toUpperCase();
+  if (
+    upperVendor.includes('OPENAI') || upperVendor.includes('ANTHROPIC') ||
+    upperVendor.includes('GOOGLE') || upperVendor.includes('AWS') ||
+    upperVendor.includes('AZURE')
+  ) {
+    return '불가(해외)';
+  }
+  if (accountCode === '접대비') return '한도내공제';
+  return '공제가능';
+}
+
+// ===== 금액 문자열 → 숫자 파싱 =====
+function parseAmount(amountStr: string): number {
+  if (!amountStr) return 0;
+  const cleaned = amountStr.replace(/[^0-9.-]/g, '');
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? 0 : n;
+}
+
+// ===== 확장된 거래 행 타입 =====
+interface ExpandedEntry {
+  date: string;
+  transactionType: string;
+  usageType: string;
+  category: string;
+  vendor: string;
+  amount: string;
+  paymentMethod: string;
+  memo: string;
+  foreignAmount: string;
+  foreignCurrency: string;
+  exchangeRate: string;
+  proof: string;
+}
+
+// ===== 레코드 → 확장 항목 목록 (multi-entry 지원) =====
+function expandRecord(r: HaruRecord): ExpandedEntry[] {
+  const stored = (r as any).ledger_entries;
+  if (stored && typeof stored === 'string') {
+    try {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((e: any) => ({
+          date: String(e.date || ''),
+          transactionType: String(e.transactionType || ''),
+          usageType: String(e.usageType || '사업용'),
+          category: String(e.category || ''),
+          vendor: String(e.vendor || ''),
+          amount: String(e.amount || ''),
+          paymentMethod: String(e.paymentMethod || ''),
+          memo: String(e.memo || ''),
+          foreignAmount: String(e.foreignAmount || ''),
+          foreignCurrency: String(e.foreignCurrency || ''),
+          exchangeRate: String(e.exchangeRate || ''),
+          proof: '',
+        }));
+      }
+    } catch { /* ignore parse error → fallback */ }
+  }
+  return [{
+    date: String((r as any).ledger_date || r.date || ''),
+    transactionType: String((r as any).ledger_type || ''),
+    usageType: String((r as any).ledger_usageType || '사업용'),
+    category: String((r as any).ledger_category || (r as any).ledger_item || ''),
+    vendor: String((r as any).ledger_partner || ''),
+    amount: String((r as any).ledger_amount || ''),
+    paymentMethod: String((r as any).ledger_payment || (r as any).ledger_paymentMethod || ''),
+    memo: String((r as any).ledger_memo || ''),
+    foreignAmount: '',
+    foreignCurrency: '',
+    exchangeRate: '',
+    proof: String((r as any).ledger_proof || ''),
+  }];
+}
+
+// ===== ledger 기록 판단 =====
+function isLedgerRecord(r: HaruRecord): boolean {
+  return Object.keys(r).some((k) => k.startsWith('ledger_'));
 }
 
 // ===========================================
@@ -78,70 +206,66 @@ function makeZip(files: ZipFile[]): Uint8Array {
   const parts: Uint8Array[] = [];
   let offset = 0;
 
-  // Local file headers + data
   for (const e of entries) {
     e.offset = offset;
     const header = new Uint8Array(30 + e.nameBytes.length);
     const view = new DataView(header.buffer);
-    view.setUint32(0, 0x04034b50, true);              // local file header signature
-    view.setUint16(4, 20, true);                      // version needed
-    view.setUint16(6, 0x0800, true);                  // general purpose flags (UTF-8 names)
-    view.setUint16(8, 0, true);                       // compression method = stored
-    view.setUint16(10, 0, true);                      // last mod time
-    view.setUint16(12, 0x21, true);                   // last mod date (1980-01-01)
-    view.setUint32(14, e.crc, true);                  // CRC32
-    view.setUint32(18, e.data.length, true);          // compressed size
-    view.setUint32(22, e.data.length, true);          // uncompressed size
-    view.setUint16(26, e.nameBytes.length, true);     // filename length
-    view.setUint16(28, 0, true);                      // extra length
+    view.setUint32(0, 0x04034b50, true);
+    view.setUint16(4, 20, true);
+    view.setUint16(6, 0x0800, true);
+    view.setUint16(8, 0, true);
+    view.setUint16(10, 0, true);
+    view.setUint16(12, 0x21, true);
+    view.setUint32(14, e.crc, true);
+    view.setUint32(18, e.data.length, true);
+    view.setUint32(22, e.data.length, true);
+    view.setUint16(26, e.nameBytes.length, true);
+    view.setUint16(28, 0, true);
     header.set(e.nameBytes, 30);
     parts.push(header);
     parts.push(e.data);
     offset += header.length + e.data.length;
   }
 
-  // Central directory
   const centralStart = offset;
   let centralSize = 0;
   for (const e of entries) {
     const cd = new Uint8Array(46 + e.nameBytes.length);
     const view = new DataView(cd.buffer);
-    view.setUint32(0, 0x02014b50, true);              // central directory header signature
-    view.setUint16(4, 20, true);                      // version made by
-    view.setUint16(6, 20, true);                      // version needed
-    view.setUint16(8, 0x0800, true);                  // flags
-    view.setUint16(10, 0, true);                      // compression method
-    view.setUint16(12, 0, true);                      // last mod time
-    view.setUint16(14, 0x21, true);                   // last mod date
-    view.setUint32(16, e.crc, true);                  // CRC32
-    view.setUint32(20, e.data.length, true);          // compressed size
-    view.setUint32(24, e.data.length, true);          // uncompressed size
-    view.setUint16(28, e.nameBytes.length, true);     // filename length
-    view.setUint16(30, 0, true);                      // extra length
-    view.setUint16(32, 0, true);                      // comment length
-    view.setUint16(34, 0, true);                      // disk number
-    view.setUint16(36, 0, true);                      // internal attrs
-    view.setUint32(38, 0, true);                      // external attrs
-    view.setUint32(42, e.offset, true);               // local header offset
+    view.setUint32(0, 0x02014b50, true);
+    view.setUint16(4, 20, true);
+    view.setUint16(6, 20, true);
+    view.setUint16(8, 0x0800, true);
+    view.setUint16(10, 0, true);
+    view.setUint16(12, 0, true);
+    view.setUint16(14, 0x21, true);
+    view.setUint32(16, e.crc, true);
+    view.setUint32(20, e.data.length, true);
+    view.setUint32(24, e.data.length, true);
+    view.setUint16(28, e.nameBytes.length, true);
+    view.setUint16(30, 0, true);
+    view.setUint16(32, 0, true);
+    view.setUint16(34, 0, true);
+    view.setUint16(36, 0, true);
+    view.setUint32(38, 0, true);
+    view.setUint32(42, e.offset, true);
     cd.set(e.nameBytes, 46);
     parts.push(cd);
     centralSize += cd.length;
   }
 
-  // End of central directory
   const eocd = new Uint8Array(22);
   const view = new DataView(eocd.buffer);
-  view.setUint32(0, 0x06054b50, true);                // EOCD signature
-  view.setUint16(4, 0, true);                         // disk number
-  view.setUint16(6, 0, true);                         // disk where CD starts
-  view.setUint16(8, entries.length, true);            // num entries on disk
-  view.setUint16(10, entries.length, true);           // total num entries
-  view.setUint32(12, centralSize, true);              // CD size
-  view.setUint32(16, centralStart, true);             // CD offset
-  view.setUint16(20, 0, true);                        // comment length
+  view.setUint32(0, 0x06054b50, true);
+  view.setUint16(4, 0, true);
+  view.setUint16(6, 0, true);
+  view.setUint16(8, entries.length, true);
+  view.setUint16(10, entries.length, true);
+  view.setUint32(12, centralSize, true);
+  view.setUint32(16, centralStart, true);
+  view.setUint16(20, 0, true);
   parts.push(eocd);
 
-  // Concatenate
   let total = 0;
   for (const p of parts) total += p.length;
   const out = new Uint8Array(total);
@@ -154,7 +278,7 @@ function makeZip(files: ZipFile[]): Uint8Array {
 }
 
 // ===========================================
-// XLSX 콘텐츠
+// XLSX 콘텐츠 빌더
 // ===========================================
 function escapeXml(s: string): string {
   return s
@@ -163,7 +287,6 @@ function escapeXml(s: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;')
-    // XML 1.0에서 허용되지 않는 제어문자 제거
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
 }
 
@@ -198,41 +321,52 @@ function buildSheetXml(rows: (string | number)[][]): string {
   return xml;
 }
 
-const CONTENT_TYPES_XML =
-  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-  '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
-  '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
-  '<Default Extension="xml" ContentType="application/xml"/>' +
-  '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
-  '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' +
-  '</Types>';
-
-const ROOT_RELS_XML =
-  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-  '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
-  '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
-  '</Relationships>';
-
-const WORKBOOK_XML =
-  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-  '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
-  '<sheets><sheet name="HARU보조장부" sheetId="1" r:id="rId1"/></sheets>' +
-  '</workbook>';
-
-const WORKBOOK_RELS_XML =
-  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-  '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
-  '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>' +
-  '</Relationships>';
-
-function buildXlsx(rows: (string | number)[][]): Uint8Array {
+// 다중 시트 XLSX 생성
+function buildXlsxMultiSheet(sheets: { name: string; rows: (string | number)[][] }[]): Uint8Array {
   const enc = new TextEncoder();
+
+  const contentTypesXml =
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+    '<Default Extension="xml" ContentType="application/xml"/>' +
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+    sheets.map((_, i) =>
+      `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`
+    ).join('') +
+    '</Types>';
+
+  const rootRelsXml =
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+    '</Relationships>';
+
+  const workbookXml =
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+    '<sheets>' +
+    sheets.map((s, i) => `<sheet name="${escapeXml(s.name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('') +
+    '</sheets>' +
+    '</workbook>';
+
+  const workbookRelsXml =
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    sheets.map((_, i) =>
+      `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`
+    ).join('') +
+    '</Relationships>';
+
   return makeZip([
-    { name: '[Content_Types].xml',        data: enc.encode(CONTENT_TYPES_XML) },
-    { name: '_rels/.rels',                data: enc.encode(ROOT_RELS_XML) },
-    { name: 'xl/workbook.xml',            data: enc.encode(WORKBOOK_XML) },
-    { name: 'xl/_rels/workbook.xml.rels', data: enc.encode(WORKBOOK_RELS_XML) },
-    { name: 'xl/worksheets/sheet1.xml',   data: enc.encode(buildSheetXml(rows)) },
+    { name: '[Content_Types].xml',        data: enc.encode(contentTypesXml) },
+    { name: '_rels/.rels',                data: enc.encode(rootRelsXml) },
+    { name: 'xl/workbook.xml',            data: enc.encode(workbookXml) },
+    { name: 'xl/_rels/workbook.xml.rels', data: enc.encode(workbookRelsXml) },
+    ...sheets.map((s, i) => ({
+      name: `xl/worksheets/sheet${i + 1}.xml`,
+      data: enc.encode(buildSheetXml(s.rows)),
+    })),
   ]);
 }
 
@@ -255,7 +389,6 @@ export function periodRange(period: LedgerPeriod): { start?: string; end?: strin
     return { start: today, end: today };
   }
   if (period === 'thisWeek') {
-    // 월요일 시작 (일=0, 월=1 ... 일을 7로 취급)
     const dow = now.getDay() === 0 ? 7 : now.getDay();
     const monday = new Date(now);
     monday.setDate(now.getDate() - (dow - 1));
@@ -282,36 +415,85 @@ export function exportLedgerToXlsx(
 ): LedgerExportResult {
   const { start, end } = periodRange(period);
 
-  // 1) ledger 기록만 추출
   const ledgerRecords = records.filter(isLedgerRecord);
 
-  // 2) 기간 필터
   const filtered = ledgerRecords.filter((r) => {
     if (start && r.date < start) return false;
     if (end && r.date > end) return false;
     return true;
   });
 
-  // 3) 날짜순(오래된 → 최신) 정렬
   filtered.sort((a, b) => {
-    // ledger_date(거래일시) 우선, 없으면 레코드 date
     const ad = String((a as any).ledger_date || a.date || '');
     const bd = String((b as any).ledger_date || b.date || '');
     return ad.localeCompare(bd);
   });
 
-  // 4) 시트 행 구성
-  const header = LEDGER_COLUMNS.map((c) => c.header);
-  const rows: (string | number)[][] = [header];
-  filtered.forEach((r) => rows.push(extractLedgerRow(r)));
+  // ── 시트1: 거래 상세내역 ──
+  const detailHeader: (string | number)[] = [
+    'No', '날짜', '시간', '수입/지출', '사업용구분', '거래처', '계정과목',
+    '외화금액', '통화', '적용환율', '원화금액(원)', '결제수단', '증빙종류', '부가세공제', '메모/적요',
+  ];
 
-  // 5) XLSX 바이너리 생성
-  const xlsx = buildXlsx(rows);
+  const detailRows: (string | number)[][] = [detailHeader];
+  const accountSummary: Record<string, number> = {};
+  let rowNo = 0;
 
-  // 6) 파일명
+  for (const r of filtered) {
+    const entries = expandRecord(r);
+    for (const e of entries) {
+      rowNo++;
+      // 날짜/시간 분리: "2026.05.18 14:30" → date="2026.05.18", time="14:30"
+      const dateTimeParts = e.date.trim().split(/\s+/);
+      const dateStr = dateTimeParts[0] || '';
+      const timeStr = dateTimeParts[1] || '';
+
+      const accountCode = inferAccountCode(e.vendor, e.category);
+      const evidenceType = inferEvidenceType(e.vendor, e.paymentMethod, e.proof);
+      const vatDeductible = inferVatDeductible(e.vendor, accountCode);
+      const amountNum = parseAmount(e.amount);
+
+      detailRows.push([
+        rowNo,
+        dateStr,
+        timeStr,
+        e.transactionType,
+        e.usageType,
+        e.vendor,
+        accountCode,
+        e.foreignAmount || '',
+        e.foreignCurrency || '',
+        e.exchangeRate || '',
+        amountNum > 0 ? amountNum : e.amount,
+        e.paymentMethod,
+        evidenceType,
+        vatDeductible,
+        e.memo,
+      ]);
+
+      if (amountNum > 0) {
+        accountSummary[accountCode] = (accountSummary[accountCode] ?? 0) + amountNum;
+      }
+    }
+  }
+
+  // ── 시트2: 계정과목별 집계 ──
+  const summaryHeader: (string | number)[] = ['계정과목', '합계(원)', '비고'];
+  const summaryRows: (string | number)[][] = [summaryHeader];
+  const sortedAccounts = Object.entries(accountSummary).sort((a, b) => b[1] - a[1]);
+  for (const [code, total] of sortedAccounts) {
+    summaryRows.push([code, total, '']);
+  }
+  const grandTotal = sortedAccounts.reduce((s, [, v]) => s + v, 0);
+  summaryRows.push(['합  계', grandTotal, '']);
+
+  const xlsx = buildXlsxMultiSheet([
+    { name: '거래상세내역', rows: detailRows },
+    { name: '계정과목집계', rows: summaryRows },
+  ]);
+
   const fileName = buildFileName(period, start);
 
-  // 7) 다운로드
   const blob = new Blob([xlsx], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
@@ -322,10 +504,9 @@ export function exportLedgerToXlsx(
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  // 지연 해제 — Safari/Firefox 호환
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-  return { count: filtered.length, fileName };
+  return { count: rowNo, fileName };
 }
 
 function buildFileName(period: LedgerPeriod, start?: string): string {
