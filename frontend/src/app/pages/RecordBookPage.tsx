@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { exportRecordsToEpub } from '../services/epubExportService';
 import {
   collection,
   deleteDoc,
@@ -169,6 +170,9 @@ export function RecordBookPage() {
   const [chapters, setChapters] = useState<EditableChapter[]>([]);
   const [editingTitle, setEditingTitle] = useState('');
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [epubStartDate, setEpubStartDate] = useState('');
+  const [epubEndDate, setEpubEndDate] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -412,6 +416,19 @@ export function RecordBookPage() {
     setChapters(next.map((chapter, order) => ({ ...chapter, order })));
   };
 
+  const handleEpubExport = async () => {
+    if (!epubStartDate || !epubEndDate) return;
+    setIsExporting(true);
+    try {
+      const { count, fileName } = await exportRecordsToEpub(epubStartDate, epubEndDate);
+      alert(`✅ EPUB 생성 완료! ${count}개 기록 → ${fileName}`);
+    } catch (e: any) {
+      alert(`❌ 오류: ${e.message}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (!user || !isDeveloper) return null;
 
   return (
@@ -588,6 +605,47 @@ export function RecordBookPage() {
             </div>
           </section>
         )}
+        <section style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, padding: 16 }}>
+          <h2 style={{ fontSize: 17, fontWeight: 800, margin: '0 0 10px' }}>📖 EPUB 내보내기</h2>
+          <p style={{ fontSize: 13, color: '#6B7280', margin: '0 0 12px' }}>
+            날짜 범위를 선택하면 해당 기간 기록을 EPUB 파일로 다운로드합니다.
+          </p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <label style={{ fontSize: 13, color: NAVY }}>
+              시작일&nbsp;
+              <input
+                type="date"
+                value={epubStartDate}
+                onChange={(e) => setEpubStartDate(e.target.value)}
+                style={{ border: '1px solid #D1D5DB', borderRadius: 8, padding: '9px 10px', fontSize: 14 }}
+              />
+            </label>
+            <label style={{ fontSize: 13, color: NAVY }}>
+              종료일&nbsp;
+              <input
+                type="date"
+                value={epubEndDate}
+                onChange={(e) => setEpubEndDate(e.target.value)}
+                style={{ border: '1px solid #D1D5DB', borderRadius: 8, padding: '9px 10px', fontSize: 14 }}
+              />
+            </label>
+            <button
+              onClick={handleEpubExport}
+              disabled={isExporting || !epubStartDate || !epubEndDate}
+              style={{
+                border: 0,
+                borderRadius: 8,
+                padding: '10px 16px',
+                background: epubStartDate && epubEndDate ? NAVY : '#CBD5E1',
+                color: '#fff',
+                fontWeight: 800,
+                fontSize: 14,
+              }}
+            >
+              {isExporting ? '생성 중...' : '📥 EPUB 다운로드'}
+            </button>
+          </div>
+        </section>
       </div>
     </div>
   );
