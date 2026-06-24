@@ -8405,3 +8405,5 @@ export const getKoreanPlantInfo = onCall(
     }
   },
 );
+
+export { exportEpub } from './epubExport';
