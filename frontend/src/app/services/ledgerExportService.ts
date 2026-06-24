@@ -516,3 +516,19 @@ function buildFileName(period: LedgerPeriod, start?: string): string {
   if (period === 'thisWeek' && start) return `HARU_보조장부_${start}_주간.xlsx`;
   return 'HARU_보조장부.xlsx';
 }
+
+// 특정 연/월 기준 내보내기 — SayuPage 기장 요약 카드용
+export function exportLedgerForMonth(
+  records: HaruRecord[],
+  year: number,
+  month: number, // 1-indexed
+): LedgerExportResult {
+  const ym = `${year}-${String(month).padStart(2, '0')}`;
+
+  const monthRecords = records.filter((r) => {
+    if (!Object.keys(r).some((k) => k.startsWith('ledger_'))) return false;
+    return r.date.startsWith(ym);
+  });
+
+  return exportLedgerToXlsx(monthRecords, 'all');
+}

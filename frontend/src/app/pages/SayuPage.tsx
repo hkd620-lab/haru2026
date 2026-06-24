@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { ChevronLeft, ChevronRight, Info, Leaf, Briefcase, BookOpen, Scale, Cpu, Volume2, Pause, Search } from 'lucide-react';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
+import { exportLedgerForMonth } from '../services/ledgerExportService';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { useAuth } from '../contexts/AuthContext';
 import { SayuTitleAnimation } from '../components/SayuTitleAnimation';
@@ -2874,6 +2875,32 @@ export function SayuPage() {
         {comment && (
           <p style={{ margin: 0, fontSize: 11, color: '#6b7280', lineHeight: 1.5 }}>{comment}</p>
         )}
+        <button
+          onClick={() => {
+            const year = currentMonth.getFullYear();
+            const month = currentMonth.getMonth() + 1;
+            const result = exportLedgerForMonth(records, year, month);
+            if (result.count === 0) {
+              toast.warning('해당 월의 보조장부 내역이 없습니다.');
+            } else {
+              toast.success(`📒 ${result.count}건 → ${result.fileName} 저장됨`);
+            }
+          }}
+          style={{
+            marginTop: 10,
+            width: '100%',
+            padding: '8px 0',
+            backgroundColor: '#1A3C6E',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 8,
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          📥 {currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월 엑셀 내보내기
+        </button>
       </div>
     );
   };
