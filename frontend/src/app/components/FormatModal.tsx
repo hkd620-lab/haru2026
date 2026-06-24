@@ -85,6 +85,9 @@ interface LedgerEntry {
   amount: string;
   paymentMethod: string;
   memo: string;
+  foreignAmount: string;
+  foreignCurrency: string;
+  exchangeRate: string;
   ocrSourceFile?: string;
   ocrRawText?: string;
 }
@@ -100,6 +103,9 @@ function newLedgerEntry(overrides?: Partial<LedgerEntry>): LedgerEntry {
     amount: '',
     paymentMethod: '',
     memo: '',
+    foreignAmount: '',
+    foreignCurrency: '',
+    exchangeRate: '',
     ...overrides,
   };
 }
@@ -3632,6 +3638,58 @@ ${contentValues}`,
                                     style={fieldInputStyle}
                                   />
                                 </div>
+                              </div>
+                              {/* 외화 거래 (선택) */}
+                              <div style={{ marginBottom: 8 }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6b7280', cursor: 'pointer', userSelect: 'none' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={entry.foreignCurrency !== ''}
+                                    onChange={e => setLedgerEntries(prev => prev.map(en => en.id === entry.id
+                                      ? { ...en, foreignCurrency: e.target.checked ? 'USD' : '', foreignAmount: e.target.checked ? en.foreignAmount : '', exchangeRate: e.target.checked ? en.exchangeRate : '' }
+                                      : en))}
+                                    style={{ width: 14, height: 14, accentColor: '#1A3C6E' }}
+                                  />
+                                  외화 거래 (해외결제·외화입금)
+                                </label>
+                                {entry.foreignCurrency !== '' && (
+                                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 1fr', gap: 6, marginTop: 6 }}>
+                                    <div>
+                                      <label style={{ ...fieldLabelStyle, fontSize: 11 }}>외화금액</label>
+                                      <input
+                                        type="text"
+                                        value={entry.foreignAmount}
+                                        placeholder="예: 5.00"
+                                        onChange={e => setLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, foreignAmount: e.target.value } : en))}
+                                        style={{ ...fieldInputStyle, fontSize: 12 }}
+                                      />
+                                    </div>
+                                    <div>
+                                      <label style={{ ...fieldLabelStyle, fontSize: 11 }}>통화</label>
+                                      <select
+                                        value={entry.foreignCurrency}
+                                        onChange={e => setLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, foreignCurrency: e.target.value } : en))}
+                                        style={{ width: '100%', padding: '8px 4px', fontSize: 12, border: '1px solid #e5e5e5', borderRadius: 7, outline: 'none', boxSizing: 'border-box' }}
+                                      >
+                                        <option value="USD">USD</option>
+                                        <option value="EUR">EUR</option>
+                                        <option value="JPY">JPY</option>
+                                        <option value="GBP">GBP</option>
+                                        <option value="CNY">CNY</option>
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <label style={{ ...fieldLabelStyle, fontSize: 11 }}>적용환율</label>
+                                      <input
+                                        type="text"
+                                        value={entry.exchangeRate}
+                                        placeholder="예: 1,349"
+                                        onChange={e => setLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, exchangeRate: e.target.value } : en))}
+                                        style={{ ...fieldInputStyle, fontSize: 12 }}
+                                      />
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                               {/* 메모 */}
                               <div>
