@@ -30,8 +30,8 @@ function recordToHtml(record: Record<string, any>): string {
   // 제목
   const title = record.title || record.ai_title;
   if (title) lines.push(`<h2>${String(title)}</h2>`);
-  // 본문 (우선순위: sayu → simple → content)
-  const body = record.sayu ?? record.simple ?? record.content;
+  // 본문 (우선순위: sayu → simple → content → growth_note)
+  const body = record.sayu ?? record.simple ?? record.content ?? record.growth_note;
   if (body != null && body !== '') {
     lines.push(`<div>${String(body).replace(/\n/g, '<br/>')}</div>`);
   } else {
@@ -96,6 +96,7 @@ export const exportEpub = onCall(
       title: `HARU 기록 ${dateLabel(startDate)} ~ ${dateLabel(endDate)}`,
       author: 'HARU2026',
       lang: 'ko',
+      css: 'body { column-count: 1 !important; columns: 1 !important; } * { column-count: unset; }',
     };
 
     const epubBuffer = await Epub(epubOptions, chapters);
