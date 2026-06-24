@@ -57,7 +57,22 @@ function recordToHtml(record: Record<string, any>): string {
   const prefix = firstFormat ? (FORMAT_PREFIX[firstFormat] ?? null) : null;
   let bodyAdded = false;
 
-  if (firstFormat === '성장기록') {
+  if (record.recordType === 'growthTimeline') {
+    // 성장타임라인: content 필드(buildTimelineSummary 결과) + timelineItems 사진
+    if (record.content) {
+      lines.push(`<div>${String(record.content).replace(/\n/g, '<br/>')}</div>`);
+      bodyAdded = true;
+    }
+    const items = Array.isArray(record.timelineItems) ? record.timelineItems : [];
+    for (const item of items) {
+      if (item?.url) {
+        const cap = [item.takenDate, item.locationLabel, item.memo].filter(Boolean).join(' · ');
+        lines.push(`<img src="${item.url}" style="max-width:100%;margin:8px 0;">`);
+        if (cap) lines.push(`<p style="font-size:0.85em;color:#666;">${cap}</p>`);
+        bodyAdded = true;
+      }
+    }
+  } else if (firstFormat === '성장기록') {
     // 성장기록 전용: growth_sayu → growth_note 본문 + child_* 측정값
     const growthBody = record.growth_sayu ?? record.growth_note ?? null;
     if (growthBody) {
