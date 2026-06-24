@@ -48,32 +48,49 @@ function recordToHtml(record: Record<string, any>): string {
   // 제목
   const title = record.title || record.ai_title;
   if (title) lines.push(`<h2>${String(title)}</h2>`);
-  // 본문 — prefix 기반 필드 수집
-  const formats: string[] = Array.isArray(record.formats) ? record.formats : [];
-  const includedFormats = formats.filter((f) => EPUB_INCLUDE_FORMATS.includes(f));
-  const prefix = FORMAT_PREFIX[includedFormats[0]] ?? null;
+  // 본문 — sayu/simple 우선, 없으면 prefix 기반 필드 수집
   let bodyAdded = false;
-  if (prefix) {
-    const bodyParts: string[] = [];
-    for (const [key, val] of Object.entries(record)) {
-      if (!key.startsWith(prefix + '_') || typeof val !== 'string' || val === '') continue;
-      bodyParts.push(`${key.slice(prefix.length + 1)}: ${val}`);
-    }
-    if (bodyParts.length > 0) {
-      lines.push(`<div>${bodyParts.join('<br/>')}</div>`);
-      bodyAdded = true;
+  const bodyText = record.sayu ?? record.simple ?? null;
+  if (bodyText) {
+    lines.push(`<div>${String(bodyText).replace(/\n/g, '<br/>')}</div>`);
+    bodyAdded = true;
+  }
+  if (!bodyAdded) {
+    const formats: string[] = Array.isArray(record.formats) ? record.formats : [];
+    const includedFormats = formats.filter((f) => EPUB_INCLUDE_FORMATS.includes(f));
+    const prefix = FORMAT_PREFIX[includedFormats[0]] ?? null;
+    if (prefix) {
+      const bodyParts: string[] = [];
+      for (const [key, val] of Object.entries(record)) {
+        if (!key.startsWith(prefix + '_') || typeof val !== 'string' || val === '') continue;
+        bodyParts.push(`${key.slice(prefix.length + 1)}: ${val}`);
+      }
+      if (bodyParts.length > 0) {
+        lines.push(`<div>${bodyParts.join('<br/>')}</div>`);
+        bodyAdded = true;
+      }
     }
   }
   if (!bodyAdded) {
     lines.push('<p>(내용 없음)</p>');
   }
-  // 이미지 (키 이름이 'imageMeta'로 끝나는 배열 필드)
+  // 이미지 — imageMeta 필드 (배열 또는 JSON 문자열 모두 처리)
   for (const [key, val] of Object.entries(record)) {
-    if (!key.endsWith('imageMeta') || !Array.isArray(val)) continue;
-    for (const item of val) {
-      if (item?.url) {
-        lines.push(`<img src="${item.url}" style="max-width:100%;margin:8px 0;">`);
-      }
+    if (!key.endsWith('imageMeta')) continue;
+    let items: any[] = [];
+    if (Array.isArray(val)) {
+      items = val;
+    } else if (typeof val === 'string') {
+      try { const parsed = JSON.parse(val); if (Array.isArray(parsed)) items = parsed; } catch { /* 무시 */ }
+    }
+    for (const item of items) {
+      if (item?.url) lines.push(`<img src="${item.url}" style="max-width:100%;margin:8px 0;">`);
+    }
+  }
+  // 이미지 — images 필드 (URL 문자열 배열)
+  if (Array.isArray(record.images)) {
+    for (const url of record.images) {
+      if (typeof url === 'string' && url) lines.push(`<img src="${url}" style="max-width:100%;margin:8px 0;">`);
     }
   }
   return lines.join('\n');
