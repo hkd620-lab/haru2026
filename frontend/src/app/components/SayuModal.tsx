@@ -11,6 +11,8 @@ import { httpsCallable, getFunctions } from 'firebase/functions';
 import { db, storage, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../services/firestoreService';
+import { exportRecordsToEpub } from '../services/epubExportService';
+import GrapeLoadingMini from './GrapeLoadingMini';
 import { compressImage } from '../services/imageService';
 import { readOriginalImageMeta, type UploadedImageMeta } from '../services/photoMetadataService';
 import {
@@ -403,6 +405,7 @@ export function SayuModal({
   const [localImages, setLocalImages] = useState<string[]>(images || []);
   const [editedTimelineItems, setEditedTimelineItems] = useState<GrowthTimelineEditItem[]>([]);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isExportingEpub, setIsExportingEpub] = useState(false);
   const [editedTitle, setEditedTitle] = useState(title || '');
   const isGrowthTimeline = formatKey === 'growthTimeline';
   const timelineLocationRecoveryKeyRef = useRef('');
@@ -746,6 +749,29 @@ export function SayuModal({
     setTimeout(() => {
       document.title = originalTitle;
     }, 1000);
+  };
+
+  // 📖 EPUB 저장 (단건)
+  const handleSaveEpub = async () => {
+    if (!isPremium) {
+      alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 5,000원으로 시작해 보세요!');
+      window.location.href = '/subscription';
+      return;
+    }
+    if (!firestoreId) {
+      toast.error('저장된 기록이 없습니다.');
+      return;
+    }
+    setIsExportingEpub(true);
+    try {
+      const date = firestoreId;
+      const { fileName } = await exportRecordsToEpub(date, date, format);
+      toast.success(`📖 EPUB 생성 완료! ${fileName}`);
+    } catch (e: any) {
+      toast.error(`EPUB 생성 실패: ${e.message}`);
+    } finally {
+      setIsExportingEpub(false);
+    }
   };
 
   // 📋 복사 (Word/Gmail용 - HTML)
@@ -1897,6 +1923,29 @@ export function SayuModal({
                 >
                   <Download style={{ width: 20, height: 20, color: 'currentColor' }} />
                   {!isPremium && <span className="ml-1 text-xs">🔒</span>}
+                </button>
+              )}
+
+              {/* 📖 EPUB 저장 버튼 */}
+              {!isGrowthTimeline && (
+                <button
+                  onClick={handleSaveEpub}
+                  disabled={isExportingEpub}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: isExportingEpub ? 'not-allowed' : 'pointer',
+                    padding: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: isPremium ? 1 : 0.6,
+                  }}
+                  title={isPremium ? 'EPUB 저장' : '🔒 PREMIUM 전용 기능'}
+                >
+                  {isExportingEpub
+                    ? <GrapeLoadingMini size={20} color="#1A3C6E" />
+                    : <span style={{ fontSize: 18 }}>📖</span>}
                 </button>
               )}
 
