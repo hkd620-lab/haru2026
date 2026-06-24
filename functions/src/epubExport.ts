@@ -153,7 +153,7 @@ export const exportEpub = onCall(
     }
     const uid = request.auth.uid;
 
-    const { startDate, endDate } = request.data as { startDate: string; endDate: string };
+    const { startDate, endDate, format } = request.data as { startDate: string; endDate: string; format?: string };
     if (!startDate || !endDate || startDate > endDate) {
       throw new HttpsError('invalid-argument', '날짜 범위가 올바르지 않습니다.');
     }
@@ -175,6 +175,7 @@ export const exportEpub = onCall(
       const formats: string[] = Array.isArray(record.formats) ? record.formats : [];
       const includedFormats = formats.filter((f) => EPUB_INCLUDE_FORMATS.includes(f));
       if (includedFormats.length === 0) return;
+      if (format && !includedFormats.includes(format)) return;
       const title = `${dateLabel(record.date)} [${includedFormats.join(' · ')}]`;
       const content = recordToHtml(record);
       chapters.push({ title, content });
@@ -185,14 +186,18 @@ export const exportEpub = onCall(
     }
 
     const epubOptions = {
-      title: `HARU 기록 ${dateLabel(startDate)} ~ ${dateLabel(endDate)}`,
+      title: format
+        ? `HARU ${format} ${dateLabel(startDate)} ~ ${dateLabel(endDate)}`
+        : `HARU 기록 ${dateLabel(startDate)} ~ ${dateLabel(endDate)}`,
       author: 'HARU2026',
       lang: 'ko',
       css: 'body,html{column-count:1!important;columns:1!important;column-width:auto!important;}*{column-count:unset!important;}',
     };
 
     const epubBuffer = await Epub(epubOptions, chapters);
-    const fileName = `HARU_기록_${startDate}_${endDate}.epub`;
+    const fileName = format
+      ? `HARU_${format}_${startDate}_${endDate}.epub`
+      : `HARU_기록_${startDate}_${endDate}.epub`;
 
     const bucket = admin.storage().bucket();
     const filePath = `epub/${uid}/${fileName}`;
