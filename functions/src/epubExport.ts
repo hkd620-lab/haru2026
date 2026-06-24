@@ -23,15 +23,30 @@ function dateLabel(date: string): string {
 
 function recordToHtml(record: Record<string, any>): string {
   const lines: string[] = [];
+  // 날씨
   if (record.weather) lines.push(`<p>날씨: ${record.weather}${record.temperature ? ` / ${record.temperature}` : ''}</p>`);
+  // 기분
   if (record.mood) lines.push(`<p>기분: ${record.mood}</p>`);
-  if (record.content) lines.push(`<div>${String(record.content).replace(/\n/g, '<br/>')}</div>`);
-  const skip = new Set(['id', 'date', 'weather', 'temperature', 'mood', 'content', 'formats', 'createdAt', 'updatedAt']);
-  for (const [key, val] of Object.entries(record)) {
-    if (skip.has(key) || val == null || val === '') continue;
-    lines.push(`<p><strong>${key}:</strong> ${String(val)}</p>`);
+  // 제목
+  const title = record.title || record.ai_title;
+  if (title) lines.push(`<h2>${String(title)}</h2>`);
+  // 본문 (우선순위: sayu → simple → content)
+  const body = record.sayu ?? record.simple ?? record.content;
+  if (body != null && body !== '') {
+    lines.push(`<div>${String(body).replace(/\n/g, '<br/>')}</div>`);
+  } else {
+    lines.push('<p>(내용 없음)</p>');
   }
-  return lines.join('\n') || '<p>(내용 없음)</p>';
+  // 이미지 (키 이름이 'imageMeta'로 끝나는 배열 필드)
+  for (const [key, val] of Object.entries(record)) {
+    if (!key.endsWith('imageMeta') || !Array.isArray(val)) continue;
+    for (const item of val) {
+      if (item?.url) {
+        lines.push(`<img src="${item.url}" style="max-width:100%;margin:8px 0;">`);
+      }
+    }
+  }
+  return lines.join('\n');
 }
 
 export const exportEpub = onCall(
