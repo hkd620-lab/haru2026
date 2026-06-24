@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, X, Printer, Download, FileText } from 'lucid
 import { RecordFormat } from '../services/firestoreService';
 import { getOrigin } from '../services/v2Origin';
 import { toast } from 'sonner';
+import { exportRecordsToEpub } from '../services/epubExportService';
 
 
 interface ViewerRecord {
@@ -31,6 +32,7 @@ export function MergeViewerPage() {
   const [currentPage, setCurrentPage] = useState(0);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [coverImage, setCoverImage] = useState<string | null>(null);
+  const [epubLoading, setEpubLoading] = useState(false);
 
   if (!state || !state.records || state.records.length === 0) {
     return (
@@ -150,6 +152,22 @@ export function MergeViewerPage() {
     setTimeout(() => {
       document.title = originalTitle;
     }, 1000);
+  };
+
+  // ========================================
+  // 📚 EPUB 저장
+  // ========================================
+  const handleSaveEPUB = async () => {
+    setEpubLoading(true);
+    try {
+      const { count, fileName } = await exportRecordsToEpub(startDate, endDate);
+      toast.success(`EPUB 저장 완료 — ${count}개 기록 · ${fileName}`);
+    } catch (err) {
+      console.error('EPUB 저장 실패:', err);
+      toast.error('EPUB 저장에 실패했습니다. 다시 시도해 주세요.');
+    } finally {
+      setEpubLoading(false);
+    }
   };
 
   // 사진 레이아웃 렌더링 (인쇄용)
@@ -811,6 +829,15 @@ export function MergeViewerPage() {
                 style={{ backgroundColor: '#10b981', color: '#FEFBE8' }}
               >
                 💾 PDF 저장
+              </button>
+              {/* EPUB 저장 버튼 */}
+              <button
+                onClick={() => { setShowPreviewModal(false); handleSaveEPUB(); }}
+                disabled={epubLoading}
+                className="w-full py-3 rounded-lg text-sm font-semibold transition-all hover:opacity-90 flex items-center justify-center gap-2 mb-3 disabled:opacity-50"
+                style={{ backgroundColor: '#1A3C6E', color: '#FEFBE8' }}
+              >
+                {epubLoading ? '⏳ EPUB 생성 중...' : '📚 EPUB 저장'}
               </button>
               {/* 취소 버튼 */}
               <button
