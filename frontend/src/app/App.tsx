@@ -67,6 +67,7 @@ import { AssetExplorerPage } from './pages/AssetExplorerPage';
 import { MasterpieceDetectivePage } from './pages/MasterpieceDetectivePage';
 import { HangulWordPage } from './pages/HangulWordPage';
 import { HealthMedicationPage } from './pages/HealthMedicationPage';
+import { HouseholdPage } from './pages/HouseholdPage';
 import { BottomNav } from './components/BottomNav';
 import { Footer } from './components/Footer';
 import { TodayQuote } from './components/TodayQuote';
@@ -162,6 +163,7 @@ function App() {
               <Route path="/auth/callback" element={<AuthCallbackPage />} />
               
               {/* 기존 페이지들 */}
+              <Route path="/household" element={<HouseholdPage />} />
               <Route path="/record" element={<RecordPage />} />
               <Route path="/library" element={<LibraryPage />} />
               <Route path="/sayu" element={<SayuPage />} />
