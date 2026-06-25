@@ -1336,7 +1336,7 @@ export function HomePageV2() {
               <button
                 key={r.label}
                 type="button"
-                onClick={() => navigate('/record', { state: { format: r.format, from: '/v2' } })}
+                onClick={() => navigate(r.format === 'HARU가계부' ? '/household' : '/record', { state: { format: r.format, from: '/v2' } })}
                 className="v2-rec"
                 style={{
                   background: '#fff',
