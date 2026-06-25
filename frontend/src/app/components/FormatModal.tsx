@@ -22,7 +22,7 @@ import { findGrowthLMS, type GrowthGender } from '../../data/growthLMS';
 import { calcAgeInMonths, calcPercentile } from '../../utils/growthCalc';
 import { GrowthChart } from '../../components/GrowthChart';
 
-type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '성장기록' | 'HARU주식관리' | '주식거래일지' | '메모' | 'HARU보조장부';
+type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '성장기록' | 'HARU주식관리' | '주식거래일지' | '메모' | 'HARU보조장부' | 'HARU가계부';
 type SayuMode = 'BASIC' | 'PREMIUM';
 
 interface FormatModalProps {
@@ -109,6 +109,36 @@ function newLedgerEntry(overrides?: Partial<LedgerEntry>): LedgerEntry {
     foreignCurrency: '',
     exchangeRate: '',
     customCategory: '',
+    ...overrides,
+  };
+}
+
+// ===== HARU가계부 =====
+const HOUSEHOLD_CATEGORIES = ['식비', '교통비', '통신비', '주거비', '공과금', '의료비', '교육비', '문화생활', '쇼핑', '구독료', '기타'] as const;
+const HOUSEHOLD_PAYMENT_METHODS = ['현금', '체크카드', '신용카드', '계좌이체', '카카오페이', '네이버페이', '기타'] as const;
+
+interface HouseholdEntry {
+  id: string;
+  transactionType: '수입' | '지출' | '이체';
+  category: string;
+  date: string;
+  vendor: string;
+  amount: string;
+  paymentMethod: string;
+  memo: string;
+  ocrSourceFile?: string;
+}
+
+function newHouseholdEntry(overrides?: Partial<HouseholdEntry>): HouseholdEntry {
+  return {
+    id: Math.random().toString(36).slice(2, 9),
+    transactionType: '지출',
+    category: '',
+    date: '',
+    vendor: '',
+    amount: '',
+    paymentMethod: '',
+    memo: '',
     ...overrides,
   };
 }
@@ -329,6 +359,11 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [ledgerOcrPerFileResults, setLedgerOcrPerFileResults] = useState<{ fileName: string; rawText?: string; fields?: LedgerOcrFields; warnings?: string[] }[]>([]);
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([newLedgerEntry()]);
   const ledgerOcrInputRef = useRef<HTMLInputElement>(null);
+  // 📒 HARU가계부
+  const [householdEntries, setHouseholdEntries] = useState<HouseholdEntry[]>([newHouseholdEntry()]);
+  const [selectedHouseholdOcrFiles, setSelectedHouseholdOcrFiles] = useState<File[]>([]);
+  const [isExtractingHouseholdText, setIsExtractingHouseholdText] = useState(false);
+  const householdOcrInputRef = useRef<HTMLInputElement>(null);
 
   // 📈 HARU주식관리: 카톡 TXT 내보내기 파싱 state
   const [isCsvParsing, setIsCsvParsing] = useState(false);
@@ -415,9 +450,12 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       setIsExtractingLedgerText(false);
       setLedgerOcrResult(null);
       setLedgerOcrPerFileResults([]);
+      setSelectedHouseholdOcrFiles([]);
+      setIsExtractingHouseholdText(false);
 
       const isStockFormat = format === 'HARU주식관리' || format === '주식거래일지';
       const isLedgerFormat = format === 'HARU보조장부';
+      const isHouseholdFormat = format === 'HARU가계부';
 
       if (isLedgerFormat) {
         const stored = (initialData as any).ledger_entries;
@@ -452,9 +490,29 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       } else {
         setLedgerEntries([newLedgerEntry()]);
       }
-      setRecordStyle(format === '독서사유' || isStockFormat || isLedgerFormat ? 'premium' : 'simple');
-      // 독서사유는 select 단계에서 "이어작성 / 새작성" 분기. 주식/보조장부 형식은 input 직진.
-      setRecordStep(isStockFormat || isLedgerFormat ? 'input' : 'select');
+      // 가계부 초기화
+      if (isHouseholdFormat) {
+        const stored = (initialData as any).household_entries;
+        if (stored && typeof stored === 'string') {
+          try {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setHouseholdEntries(parsed.map((e: any) => newHouseholdEntry({ ...e })));
+            } else {
+              setHouseholdEntries([newHouseholdEntry()]);
+            }
+          } catch {
+            setHouseholdEntries([newHouseholdEntry()]);
+          }
+        } else {
+          setHouseholdEntries([newHouseholdEntry()]);
+        }
+      } else {
+        setHouseholdEntries([newHouseholdEntry()]);
+      }
+      setRecordStyle(format === '독서사유' || isStockFormat || isLedgerFormat || isHouseholdFormat ? 'premium' : 'simple');
+      // 독서사유는 select 단계에서 "이어작성 / 새작성" 분기. 주식/보조장부/가계부 형식은 input 직진.
+      setRecordStep(isStockFormat || isLedgerFormat || isHouseholdFormat ? 'input' : 'select');
       setStockCandidates([]);
       setShowCandidates(false);
       // 📚 독서사유 — 책 묶음 state 초기화 + 사용자 records 에서 책 목록 로드
@@ -654,6 +712,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const existingSayu = initialData[sayuKey];
   const isStockFormat = format === 'HARU주식관리' || format === '주식거래일지';
   const isLedgerFormat = format === 'HARU보조장부';
+  const isHouseholdFormat = format === 'HARU가계부';
   const selectedGrowthSubject = growthSubjects.find((subject) => subject.id === selectedGrowthSubjectId);
   const effectiveGrowthSubjectBirthdate = selectedGrowthSubject?.birthdate || growthSubjectBirthdate;
   const effectiveGrowthSubjectGender = selectedGrowthSubject?.gender || growthSubjectGender;
@@ -1732,9 +1791,124 @@ ${contentValues}`,
     }
   };
 
+  // ===== 📒 HARU가계부 OCR 핸들러 =====
+  const handleHouseholdOcrPhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(e.target.files || []);
+    if (selected.length === 0) return;
+    setSelectedHouseholdOcrFiles((prev) => [...prev, ...selected].slice(0, 5));
+    if (householdOcrInputRef.current) householdOcrInputRef.current.value = '';
+  };
+
+  const handleExtractHouseholdText = async () => {
+    if (!isHouseholdFormat || selectedHouseholdOcrFiles.length === 0) return;
+    if (!user?.uid) { toast.error('로그인이 필요합니다.'); return; }
+
+    setIsExtractingHouseholdText(true);
+    try {
+      const functionsInstance = getFunctions(undefined, 'asia-northeast3');
+      const extractFunc = httpsCallable(functionsInstance, 'extractHouseholdTextFromImage');
+      const perFileResults: { fileName: string; transactions?: any[]; fields?: any }[] = [];
+
+      for (const file of selectedHouseholdOcrFiles) {
+        let dataBase64: string;
+        try {
+          const compressed = await prepareBookOcrImage(file);
+          dataBase64 = await blobToBase64String(compressed);
+        } catch {
+          toast.warning(`${file.name} 사진을 읽지 못해 건너뜁니다.`);
+          continue;
+        }
+        try {
+          const result = await extractFunc({ images: [{ mimeType: 'image/jpeg', dataBase64 }] });
+          const data = result.data as any;
+          perFileResults.push({ fileName: file.name, transactions: data.transactions, fields: data.fields });
+        } catch {
+          perFileResults.push({ fileName: file.name });
+        }
+      }
+
+      if (perFileResults.length === 0) { toast.warning('추출할 수 있는 이미지가 없습니다.'); return; }
+
+      const generated: HouseholdEntry[] = [];
+      let total = 0;
+      for (const item of perFileResults) {
+        const txList = item.transactions?.length ? item.transactions : item.fields ? [item.fields] : [];
+        total += txList.length;
+        for (const tx of txList) {
+          generated.push(newHouseholdEntry({
+            transactionType: tx.type === '수입' ? '수입' : tx.type === '이체' ? '이체' : '지출',
+            category: String(tx.category || '').trim() || '기타',
+            date: String(tx.transactionAt || '').trim(),
+            vendor: String(tx.partner || '').trim(),
+            amount: String(tx.amount || '').trim(),
+            paymentMethod: String(tx.paymentMethod || '').trim(),
+            memo: String(tx.memo || '').trim(),
+            ocrSourceFile: item.fileName,
+          }));
+        }
+      }
+      if (generated.length > 0) setHouseholdEntries(generated);
+
+      if (total > 1) toast.success(`거래 ${total}건이 감지되었습니다. 분류를 확인해 주세요.`);
+      else toast.success('추출 완료. 입력 내용을 확인해 주세요.');
+    } catch (error: any) {
+      toast.error(String(error?.message || '영수증 텍스트 추출에 실패했습니다.'));
+    } finally {
+      setIsExtractingHouseholdText(false);
+    }
+  };
+
+  // ===== 📒 HARU가계부 저장 핸들러 =====
+  const handleSaveHouseholdEntries = async () => {
+    if (householdEntries.length === 0) { toast.warning('거래 내역을 입력해 주세요.'); return; }
+    const emptyAmounts = householdEntries.filter(e => !e.amount.trim()).length;
+    const emptyVendors = householdEntries.filter(e => !e.vendor.trim()).length;
+    if (emptyAmounts > 0) { toast.warning(`금액이 비어 있는 거래(${emptyAmounts}건)를 확인해 주세요.`); return; }
+    if (emptyVendors > 0) { toast.warning(`사용처가 비어 있는 거래(${emptyVendors}건)를 확인해 주세요.`); return; }
+
+    const first = householdEntries[0];
+    const autoTitle = [first.date, first.transactionType, first.vendor || 'HARU가계부'].filter(Boolean).join(' · ') || 'HARU가계부';
+    const originalContent = householdEntries.map((e, i) => {
+      const parts = [e.date, e.transactionType, e.category, e.vendor, e.amount, e.paymentMethod].filter(Boolean);
+      return `[거래 ${i + 1}] ${parts.join(' · ')}${e.memo ? '\n메모: ' + e.memo : ''}`;
+    }).join('\n\n');
+
+    const prefix = 'household';
+    const dataToSave: Record<string, any> = {
+      ...formData,
+      household_sayu: originalContent,
+      [`${prefix}_style`]: 'premium',
+      [`${prefix}_mode`]: 'ORIGINAL',
+      [`${prefix}_title`]: autoTitle,
+      household_type: first.transactionType,
+      household_category: first.category,
+      household_date: first.date,
+      household_vendor: first.vendor,
+      household_amount: first.amount,
+      household_payment: first.paymentMethod,
+      household_memo: first.memo,
+      household_entries: JSON.stringify(householdEntries),
+    };
+
+    setIsSaving(true);
+    try {
+      await onSave(dataToSave);
+      toast.success(`가계부 ${householdEntries.length}건이 저장되었습니다!`);
+      onClose();
+    } catch (error) {
+      console.error('저장 중 오류:', error);
+      toast.error('저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSaveOriginalAsSayu = async () => {
     if (isLedgerFormat) {
       return handleSaveLedgerEntries();
+    }
+    if (isHouseholdFormat) {
+      return handleSaveHouseholdEntries();
     }
     const currentTitle = (formData[`${prefix}_title`] || (format === '독서사유' ? formData.reading_book_title : '') || (isStockFormat ? formData.stock_name : '') || '').trim();
     if (!currentTitle) {
@@ -3488,6 +3662,59 @@ ${contentValues}`,
                 </div>
               )}
 
+              {/* 📒 HARU가계부 OCR 섹션 */}
+              {isHouseholdFormat && (
+                <div style={{ padding: 12, border: '1px solid #d0f0d0', borderRadius: 10, backgroundColor: '#f6fff6' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A6E1A', marginBottom: 8, fontWeight: 700 }}>
+                    <Camera style={{ width: 15, height: 15 }} />
+                    영수증에서 자동 입력
+                  </label>
+                  <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
+                    사진은 저장하지 않고 추출 결과를 입력칸에 자동 반영합니다.
+                  </p>
+                  <input
+                    ref={householdOcrInputRef}
+                    type="file"
+                    accept="image/*,.heic,.heif"
+                    multiple
+                    onChange={handleHouseholdOcrPhotoSelect}
+                    style={{ display: 'none' }}
+                  />
+                  <div style={{ display: 'grid', gridTemplateColumns: selectedHouseholdOcrFiles.length > 0 ? '1fr 1fr' : '1fr', gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() => householdOcrInputRef.current?.click()}
+                      disabled={isExtractingHouseholdText}
+                      style={{ width: '100%', padding: '10px 14px', border: '1px dashed #1A6E1A', borderRadius: 8, backgroundColor: '#fff', color: '#1A6E1A', cursor: isExtractingHouseholdText ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13, fontWeight: 700 }}
+                    >
+                      <Upload style={{ width: 16, height: 16 }} />
+                      사진 선택{selectedHouseholdOcrFiles.length > 0 ? ` (${selectedHouseholdOcrFiles.length}장)` : ''}
+                    </button>
+                    {selectedHouseholdOcrFiles.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleExtractHouseholdText}
+                        disabled={isExtractingHouseholdText}
+                        style={{ width: '100%', padding: '10px 14px', border: 'none', borderRadius: 8, backgroundColor: '#1A6E1A', color: '#fff', cursor: isExtractingHouseholdText ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13, fontWeight: 800 }}
+                      >
+                        <FileText style={{ width: 16, height: 16 }} />
+                        {isExtractingHouseholdText ? '추출 중...' : '텍스트 추출'}
+                      </button>
+                    )}
+                  </div>
+                  {selectedHouseholdOcrFiles.length > 0 && (
+                    <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {selectedHouseholdOcrFiles.map((file) => (
+                        <span key={`${file.name}-${file.size}`} style={{ fontSize: 11, padding: '3px 8px', backgroundColor: '#e0f7e0', borderRadius: 10, color: '#1A6E1A' }}>
+                          {file.name}
+                          <button type="button" onClick={() => setSelectedHouseholdOcrFiles(prev => prev.filter(f => f !== file))} style={{ marginLeft: 4, border: 'none', background: 'none', cursor: 'pointer', color: '#666', fontSize: 11 }}>×</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* 프리미엄 스타일: FORMAT_FIELDS 그대로 */}
               {recordStyle === 'premium' && !isStockFormat && (
                 <>
@@ -3780,6 +4007,106 @@ ${contentValues}`,
                           이 기능은 개인 및 사업자의 수입·지출 기록을 돕기 위한 보조장부입니다.<br />
                           세무 신고나 회계 자문을 대체하지 않습니다.
                         </p>
+                      </div>
+                    ) : isHouseholdFormat ? (
+                      /* 📒 HARU가계부 — 다건 거래 입력 카드 */
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {householdEntries.some(e => e.ocrSourceFile) && (
+                          <div style={{ backgroundColor: '#f0fff4', border: '1px solid #86efac', borderRadius: 8, padding: '10px 12px', fontSize: 12, color: '#166534', lineHeight: 1.6 }}>
+                            AI가 사진에서 거래 후보를 자동 입력했습니다.<br />
+                            저장 전 날짜·금액·사용처를 반드시 확인하세요.
+                          </div>
+                        )}
+                        {householdEntries.map((entry, idx) => {
+                          const categoryOptions = HOUSEHOLD_CATEGORIES;
+                          const fieldLabelStyle: React.CSSProperties = { display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 5, fontWeight: 500 };
+                          const fieldInputStyle: React.CSSProperties = { width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid #e5e5e5', borderRadius: 7, backgroundColor: '#fff', color: '#333', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' };
+                          return (
+                            <div key={entry.id} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 14, backgroundColor: '#fafafa' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: '#166534' }}>
+                                  거래 {idx + 1}
+                                  {entry.ocrSourceFile && <span style={{ fontSize: 11, color: '#9ca3af', marginLeft: 6, fontWeight: 400 }}>📷 {entry.ocrSourceFile}</span>}
+                                </div>
+                                {householdEntries.length > 1 && (
+                                  <button type="button" onClick={() => setHouseholdEntries(prev => prev.filter(e => e.id !== entry.id))}
+                                    style={{ padding: '4px 10px', border: '1px solid #fca5a5', borderRadius: 6, backgroundColor: '#fff', color: '#ef4444', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                                    삭제
+                                  </button>
+                                )}
+                              </div>
+                              {/* 거래종류 */}
+                              <div style={{ marginBottom: 10 }}>
+                                <label style={fieldLabelStyle}>거래종류</label>
+                                <div style={{ display: 'flex', gap: 5 }}>
+                                  {(['수입', '지출', '이체'] as const).map(opt => (
+                                    <button key={opt} type="button"
+                                      onClick={() => setHouseholdEntries(prev => prev.map(e => e.id === entry.id ? { ...e, transactionType: opt } : e))}
+                                      style={{ flex: 1, padding: '7px 4px', borderRadius: 7, fontSize: 12, fontWeight: entry.transactionType === opt ? 700 : 400, cursor: 'pointer', border: entry.transactionType === opt ? 'none' : '1px solid #e5e7eb', backgroundColor: entry.transactionType === opt ? (opt === '수입' ? '#10b981' : opt === '이체' ? '#3b82f6' : '#ef4444') : '#fff', color: entry.transactionType === opt ? '#fff' : '#374151' }}>
+                                      {opt === '수입' ? '💰 수입' : opt === '이체' ? '🔄 이체' : '📤 지출'}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                              {/* 카테고리 */}
+                              <div style={{ marginBottom: 10 }}>
+                                <label style={fieldLabelStyle}>카테고리</label>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                                  {categoryOptions.map(opt => (
+                                    <button key={opt} type="button"
+                                      onClick={() => setHouseholdEntries(prev => prev.map(e => e.id === entry.id ? { ...e, category: opt } : e))}
+                                      style={{ padding: '5px 11px', borderRadius: 18, fontSize: 12, cursor: 'pointer', border: entry.category === opt ? 'none' : '1px solid #e5e7eb', backgroundColor: entry.category === opt ? '#166534' : '#fff', color: entry.category === opt ? '#fff' : '#374151', fontWeight: entry.category === opt ? 700 : 400 }}>
+                                      {opt}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                              {/* 날짜·금액 */}
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+                                <div>
+                                  <label style={fieldLabelStyle}>날짜</label>
+                                  <input type="text" placeholder="2026.06.25" value={entry.date} style={{ ...fieldInputStyle, fontSize: 16 }}
+                                    onChange={e => setHouseholdEntries(prev => prev.map(en => en.id === entry.id ? { ...en, date: e.target.value } : en))} />
+                                </div>
+                                <div>
+                                  <label style={fieldLabelStyle}>금액</label>
+                                  <input type="text" inputMode="numeric" placeholder="50000" value={entry.amount} style={{ ...fieldInputStyle, fontSize: 16 }}
+                                    onChange={e => setHouseholdEntries(prev => prev.map(en => en.id === entry.id ? { ...en, amount: e.target.value } : en))} />
+                                </div>
+                              </div>
+                              {/* 사용처 */}
+                              <div style={{ marginBottom: 10 }}>
+                                <label style={fieldLabelStyle}>사용처</label>
+                                <input type="text" placeholder="마트, 편의점, 카페 등" value={entry.vendor} style={{ ...fieldInputStyle, fontSize: 16 }}
+                                  onChange={e => setHouseholdEntries(prev => prev.map(en => en.id === entry.id ? { ...en, vendor: e.target.value } : en))} />
+                              </div>
+                              {/* 결제수단 */}
+                              <div style={{ marginBottom: 10 }}>
+                                <label style={fieldLabelStyle}>결제수단</label>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                                  {HOUSEHOLD_PAYMENT_METHODS.map(opt => (
+                                    <button key={opt} type="button"
+                                      onClick={() => setHouseholdEntries(prev => prev.map(e => e.id === entry.id ? { ...e, paymentMethod: opt } : e))}
+                                      style={{ padding: '5px 11px', borderRadius: 18, fontSize: 12, cursor: 'pointer', border: entry.paymentMethod === opt ? 'none' : '1px solid #e5e7eb', backgroundColor: entry.paymentMethod === opt ? '#1A3C6E' : '#fff', color: entry.paymentMethod === opt ? '#fff' : '#374151', fontWeight: entry.paymentMethod === opt ? 700 : 400 }}>
+                                      {opt}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                              {/* 메모 */}
+                              <div>
+                                <label style={fieldLabelStyle}>메모 (선택)</label>
+                                <input type="text" placeholder="참고사항" value={entry.memo} style={{ ...fieldInputStyle, fontSize: 16 }}
+                                  onChange={e => setHouseholdEntries(prev => prev.map(en => en.id === entry.id ? { ...en, memo: e.target.value } : en))} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {/* 거래 추가 버튼 */}
+                        <button type="button" onClick={() => setHouseholdEntries(prev => [...prev, newHouseholdEntry()])}
+                          style={{ width: '100%', padding: '10px', border: '1px dashed #86efac', borderRadius: 8, backgroundColor: '#f0fff4', color: '#166534', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                          + 거래 추가
+                        </button>
                       </div>
                     ) : fields
                       .filter((field) => !(format === '독서사유' && field.key === 'reading_book_text'))
@@ -4394,20 +4721,18 @@ ${contentValues}`,
               <button
                 onClick={handleSaveOriginalAsSayu}
                 disabled={isSaving}
-                style={{
-                  width: '100%',
-                  padding: '14px',
-                  fontSize: 15,
-                  border: 'none',
-                  borderRadius: 8,
-                  backgroundColor: '#1A3C6E',
-                  color: '#fff',
-                  cursor: isSaving ? 'not-allowed' : 'pointer',
-                  opacity: isSaving ? 0.7 : 1,
-                  fontWeight: 700,
-                }}
+                style={{ width: '100%', padding: '14px', fontSize: 15, border: 'none', borderRadius: 8, backgroundColor: '#1A3C6E', color: '#fff', cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.7 : 1, fontWeight: 700 }}
               >
                 {isSaving ? '저장 중...' : `거래 저장하기 (${ledgerEntries.length}건)`}
+              </button>
+            ) : isHouseholdFormat ? (
+              /* 📒 HARU가계부 전용 저장 버튼 */
+              <button
+                onClick={handleSaveHouseholdEntries}
+                disabled={isSaving}
+                style={{ width: '100%', padding: '14px', fontSize: 15, border: 'none', borderRadius: 8, backgroundColor: '#166534', color: '#fff', cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.7 : 1, fontWeight: 700 }}
+              >
+                {isSaving ? '저장 중...' : `거래 저장하기 (${householdEntries.length}건)`}
               </button>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

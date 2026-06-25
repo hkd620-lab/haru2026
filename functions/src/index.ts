@@ -2669,6 +2669,145 @@ export const extractLedgerTextFromImage = onCall(
   },
 );
 
+// ===== 📒 HARU가계부 영수증 OCR =====
+export const extractHouseholdTextFromImage = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+    memory: '512MiB',
+    timeoutSeconds: 60,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const rawImages = Array.isArray(request.data?.images) ? request.data.images : [];
+    if (rawImages.length === 0) {
+      throw new HttpsError('invalid-argument', '이미지 데이터가 필요합니다.');
+    }
+    if (rawImages.length > 3) {
+      throw new HttpsError('invalid-argument', '이미지는 최대 3장까지 처리할 수 있습니다.');
+    }
+
+    const inlineParts: any[] = [];
+    let totalImageKb = 0;
+    for (const rawImage of rawImages) {
+      const image = rawImage as LedgerOcrImageInput;
+      const mimeType = String(image?.mimeType || 'image/jpeg').toLowerCase().trim();
+      if (!LEDGER_OCR_ALLOWED_MIME_TYPES.has(mimeType)) {
+        throw new HttpsError('invalid-argument', 'JPG, PNG, WEBP 이미지만 처리할 수 있습니다.');
+      }
+      let dataBase64 = String(image?.dataBase64 || image?.imageBase64 || '')
+        .replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '');
+      if (!dataBase64) {
+        throw new HttpsError('invalid-argument', '이미지 base64 데이터가 비어 있습니다.');
+      }
+      const imageKb = Math.round(dataBase64.length * 0.75 / 1024);
+      if (imageKb > 7 * 1024) {
+        throw new HttpsError('invalid-argument', '사진이 너무 큽니다. 한 장당 7MB 이하로 줄여주세요.');
+      }
+      totalImageKb += imageKb;
+      inlineParts.push({ inlineData: { data: dataBase64, mimeType } });
+      dataBase64 = '';
+    }
+
+    const clearParts = () => {
+      for (const part of inlineParts) {
+        if (part?.inlineData?.data) part.inlineData.data = '';
+      }
+    };
+
+    try {
+      logger.info('extractHouseholdTextFromImage 호출', {
+        uid: request.auth.uid.slice(0, 8) + '…',
+        imageCount: inlineParts.length,
+        totalImageKb,
+      });
+
+      const prompt = `영수증·통장 거래내역·카드매출전표 이미지에서 가계부 정보를 추출해줘.
+거래가 여러 건이면 모두 추출해서 JSON 배열로 반환해줘.
+
+[절대 규칙]
+- 이미지에 보이는 내용만 사용하고, 보이지 않는 값은 추측하지 마세요.
+- 계좌번호·카드번호·승인번호 같은 민감 번호는 ****로 마스킹하세요.
+- 광고·이벤트·포인트 안내 등 실제 거래가 아닌 항목은 제외하세요.
+- 응답은 JSON 객체만 반환하고 코드펜스/설명 문장은 쓰지 마세요.
+
+{
+  "rawText": "이미지에서 읽은 주요 원문 (민감번호 마스킹)",
+  "transactions": [
+    {
+      "transactionAt": "YYYY.MM.DD 또는 YYYY.MM.DD HH:MM",
+      "type": "수입 또는 지출 또는 이체",
+      "category": "식비|교통비|통신비|주거비|공과금|의료비|교육비|문화생활|쇼핑|구독료|기타 중 하나",
+      "partner": "사용처명 또는 입금처",
+      "amount": "금액(숫자만 또는 통화 포함)",
+      "paymentMethod": "현금|체크카드|신용카드|계좌이체|카카오페이|네이버페이|기타 중 하나",
+      "memo": "기타 참고사항"
+    }
+  ],
+  "warnings": []
+}`;
+
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+      const result = await model.generateContent([prompt, ...inlineParts]);
+
+      const responseText = result.response.text()
+        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/```\s*$/i, '')
+        .trim();
+      clearParts();
+
+      const warnings: string[] = [];
+      let parsed: any = {};
+      try {
+        parsed = parseLedgerJsonObject(responseText);
+      } catch {
+        parsed = { rawText: responseText, fields: {} };
+        warnings.push('추출 결과 형식이 불안정해 원문 위주로 표시합니다.');
+      }
+
+      const sanitizeTx = (t: any) => ({
+        transactionAt: cleanLedgerOcrText(t?.transactionAt, 80),
+        type: normalizeLedgerType(t?.type),
+        category: cleanLedgerOcrText(t?.category, 60),
+        partner: maskLedgerSensitiveText(t?.partner, 160),
+        amount: cleanLedgerOcrText(t?.amount, 80),
+        paymentMethod: maskLedgerSensitiveText(t?.paymentMethod, 80),
+        memo: maskLedgerSensitiveText(t?.memo, 500),
+      });
+
+      const rawTransactions: any[] = Array.isArray(parsed?.transactions) && parsed.transactions.length > 0
+        ? parsed.transactions
+        : parsed?.fields && typeof parsed.fields === 'object'
+          ? [parsed.fields]
+          : [];
+      const transactions = rawTransactions.map(sanitizeTx);
+
+      const parsedWarnings = Array.isArray(parsed?.warnings)
+        ? parsed.warnings.map((w: unknown) => cleanLedgerOcrText(w, 180)).filter(Boolean)
+        : [];
+      if (transactions.length === 0) {
+        warnings.push('가계부 입력 필드를 충분히 찾지 못했습니다. 직접 확인해 주세요.');
+      }
+
+      return {
+        rawText: maskLedgerSensitiveText(parsed?.rawText || parsed?.text || responseText, 12000),
+        transactions,
+        fields: transactions[0] ?? {},
+        warnings: Array.from(new Set([...warnings, ...parsedWarnings])).slice(0, 6),
+      };
+    } catch (error: any) {
+      clearParts();
+      if (error instanceof HttpsError) throw error;
+      logger.error('가계부 이미지 텍스트 추출 실패', { message: error?.message?.slice(0, 200) });
+      throw new HttpsError('internal', '영수증 텍스트 추출에 실패했습니다. 사진을 더 또렷하게 올려 주세요.');
+    }
+  },
+);
+
 type GrowthTimelinePdfItem = {
   url: string;
   takenDate: string;
