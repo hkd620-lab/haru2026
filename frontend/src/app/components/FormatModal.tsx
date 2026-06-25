@@ -284,6 +284,7 @@ const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placehol
     { key: 'ledger_proof', label: '증빙', placeholder: '예: 세금계산서 / 현금영수증 / 카드매출전표', rows: 1 },
     { key: 'ledger_memo', label: '업무 메모', placeholder: '관련 업무 흐름·특이사항을 자유롭게 작성하세요 (보조장부 — 세무 신고용 정식 장부 아님)', rows: 4 },
   ],
+  'HARU가계부': [],
 };
 
 // 형식별 prefix 매핑
