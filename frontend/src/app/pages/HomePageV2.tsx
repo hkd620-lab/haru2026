@@ -223,6 +223,7 @@ const RECORDS: RecordItem[] = [
     bg: '#E5DBC2',
     stroke: '#7A6F5A',
     format: 'HARU보조장부',
+    developerOnly: true,
     icon: (
       <>
         <path d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z" />
@@ -541,10 +542,10 @@ export function HomePageV2() {
   const location = useLocation();
   const { user, loading: authLoading } = useAuth();
   const isDeveloper = user?.uid === DEVELOPER_UID;
-  // 숨김 기록은 개발자에게도 홈에서 비노출 (개발자는 개발자 콘솔에서 사용)
+  // 숨김 기록 + 개발자 전용 항목은 일반 사용자 홈에서 비노출
   const visibleRecords = useMemo(
-    () => RECORDS.filter((r) => !HIDDEN_RECORD_FORMATS.has(r.format)),
-    [],
+    () => RECORDS.filter((r) => !HIDDEN_RECORD_FORMATS.has(r.format) && (!r.developerOnly || isDeveloper)),
+    [isDeveloper],
   );
   const today = useMemo(() => todayLabel(new Date()), []);
   const [timelineModalOpen, setTimelineModalOpen] = useState(false);
