@@ -90,6 +90,7 @@ interface LedgerEntry {
   exchangeRate: string;
   ocrSourceFile?: string;
   ocrRawText?: string;
+  customCategory: string;
 }
 
 function newLedgerEntry(overrides?: Partial<LedgerEntry>): LedgerEntry {
@@ -106,6 +107,7 @@ function newLedgerEntry(overrides?: Partial<LedgerEntry>): LedgerEntry {
     foreignAmount: '',
     foreignCurrency: '',
     exchangeRate: '',
+    customCategory: '',
     ...overrides,
   };
 }
@@ -1657,8 +1659,14 @@ ${contentValues}`,
       .filter(Boolean).join(' · ') || 'HARU보조장부';
     const originalContent = ledgerEntries.map((e, i) => {
       const parts = [e.date, e.transactionType, e.usageType, e.category, e.vendor, e.amount, e.paymentMethod].filter(Boolean);
-      return `[거래 ${i + 1}] ${parts.join(' · ')}${e.memo ? '\n메모: ' + e.memo : ''}`;
+      const memoWithPrefix = e.category === '기타' && e.customCategory.trim()
+        ? `[${e.customCategory.trim()}] ${e.memo}`
+        : e.memo;
+      return `[거래 ${i + 1}] ${parts.join(' · ')}${memoWithPrefix ? '\n메모: ' + memoWithPrefix : ''}`;
     }).join('\n\n');
+    const firstMemoWithPrefix = first.category === '기타' && first.customCategory.trim()
+      ? `[${first.customCategory.trim()}] ${first.memo}`
+      : first.memo;
     const dataToSave: Record<string, any> = {
       ...formData,
       [sayuKey]: originalContent,
@@ -1676,7 +1684,7 @@ ${contentValues}`,
       ledger_amount: first.amount,
       ledger_payment: first.paymentMethod,
       ledger_paymentMethod: first.paymentMethod,
-      ledger_memo: first.memo,
+      ledger_memo: firstMemoWithPrefix,
       ledger_entries: JSON.stringify(ledgerEntries),
     };
     setIsSaving(true);
@@ -3493,7 +3501,7 @@ ${contentValues}`,
                         )}
                         {ledgerEntries.map((entry, idx) => {
                           const incomeCategories = ['매출', '기타수입'];
-                          const expenseCategories = ['식비', '교통비', '통신비', '소프트웨어', '광고비', '교육비', '사무용품', '기타'];
+                          const expenseCategories = ['식비', '교통비', '통신비', '소프트웨어', '광고비', '교육비', '사무용품', '복리후생비', '접대비', '지급수수료', '기타'];
                           const categoryOptions = entry.transactionType === '수입' ? incomeCategories : entry.transactionType === '지출' ? expenseCategories : [];
                           const fieldLabelStyle: React.CSSProperties = { display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 5, fontWeight: 500 };
                           const fieldInputStyle: React.CSSProperties = { width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid #e5e5e5', borderRadius: 7, backgroundColor: '#fff', color: '#333', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' };
@@ -3584,6 +3592,28 @@ ${contentValues}`,
                                       </button>
                                     ))}
                                   </div>
+                                  {/* 기타 선택 시 계정과목 직접입력 */}
+                                  {entry.category === '기타' && (
+                                    <div style={{ marginTop: 6 }}>
+                                      <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 4 }}>
+                                        계정과목 직접입력
+                                      </label>
+                                      <input
+                                        type="text"
+                                        placeholder="예: 복리후생비"
+                                        value={entry.customCategory ?? ''}
+                                        onChange={e => setLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, customCategory: e.target.value } : en))}
+                                        style={{
+                                          width: '100%',
+                                          padding: '8px 10px',
+                                          border: '1px solid #ddd',
+                                          borderRadius: 8,
+                                          fontSize: 14,
+                                          boxSizing: 'border-box',
+                                        }}
+                                      />
+                                    </div>
+                                  )}
                                 </div>
                               )}
                               {/* 날짜 / 거래처 / 금액 / 결제수단 */}
