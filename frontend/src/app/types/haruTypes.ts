@@ -9,7 +9,7 @@
 // 형식 타입 정의
 // ===========================================
 
-// 10가지 기록 형식 (+ HARU주식관리, HARUraw, HARU보조장부 보조 형식)
+// 10가지 기록 형식 (+ HARU주식관리, HARUraw, HARU보조장부, HARU가계부 보조 형식)
 export type RecordFormat =
   | '일기'
   | '에세이'
@@ -27,7 +27,8 @@ export type RecordFormat =
   | '메모'
   | '성장타임라인'
   | 'HARUraw'
-  | 'HARU보조장부';
+  | 'HARU보조장부'
+  | 'HARU가계부';
 
 // 기존 코드 호환성을 위한 alias
 export type RecordFormatKorean = RecordFormat;
@@ -41,7 +42,7 @@ export type Category = '생활' | '업무' | 'AI대화' | 'HARU주식관리' | '
 
 // 카테고리별 형식 분류
 export const CATEGORY_FORMATS: Record<Category, RecordFormat[]> = {
-  '생활': ['일기', '에세이', '여행기록', '독서사유', '텃밭일지', '애완동물관찰일지', '육아일기', '성장기록'],
+  '생활': ['일기', '에세이', '여행기록', '독서사유', '텃밭일지', '애완동물관찰일지', '육아일기', '성장기록', 'HARU가계부'],
   '업무': ['선교보고', '일반보고', '업무일지', '메모', 'HARU보조장부'],
   'AI대화': ['ChatGPT', 'Claude', 'Gemini', '기타'] as any[],
   'HARU주식관리': ['HARU주식관리', '주식거래일지'],
@@ -65,6 +66,7 @@ export const ALL_FORMATS: RecordFormat[] = [
   '주식거래일지',
   '메모',
   'HARU보조장부',
+  'HARU가계부',
   'HARUraw',
 ];
 
@@ -87,6 +89,7 @@ export const FORMAT_PREFIX: Record<RecordFormat, string> = {
   '성장타임라인': 'growthTimeline',
   'HARUraw': 'haruraw',
   'HARU보조장부': 'ledger',
+  'HARU가계부': 'household',
 };
 
 // prefix에서 형식명 찾기 (역매핑)
@@ -107,6 +110,7 @@ export const PREFIX_TO_FORMAT: Record<string, RecordFormat> = {
   'growthTimeline': '성장타임라인',
   'haruraw': 'HARUraw',
   'ledger': 'HARU보조장부',
+  'household': 'HARU가계부',
 };
 
 // 형식별 이모지 (선택사항)
@@ -128,6 +132,7 @@ export const FORMAT_EMOJI: Record<RecordFormat, string> = {
   '성장타임라인': '🌿',
   'HARUraw': '⚖️',
   'HARU보조장부': '🧾',
+  'HARU가계부': '📒',
 };
 
 // ===========================================
