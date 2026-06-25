@@ -4,6 +4,7 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getStorage } from 'firebase-admin/storage';
 import { defineSecret } from 'firebase-functions/params';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { google } from 'googleapis';
 import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
 import axios from 'axios';
@@ -41,6 +42,7 @@ const KINDWISE_PLANT_ID_API_KEY_SECRET = defineSecret('KINDWISE_PLANT_ID_API_KEY
 const PLANTNET_API_KEY_SECRET = defineSecret('PLANTNET_API_KEY');
 const MICROSOFT_CLIENT_ID_SECRET = defineSecret('MICROSOFT_CLIENT_ID');
 const MICROSOFT_CLIENT_SECRET_SECRET = defineSecret('MICROSOFT_CLIENT_SECRET');
+const GOOGLE_DRIVE_SERVICE_ACCOUNT_SECRET = defineSecret('GOOGLE_DRIVE_SERVICE_ACCOUNT');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
 
 // Storage 버킷
@@ -8414,6 +8416,119 @@ export const getKoreanPlantInfo = onCall(
       });
       return nibrEmptyResponse('api_unavailable');
     }
+  },
+);
+
+// ===== 📁 보조장부 영수증 → 구글 드라이브 자동 업로드 =====
+const DRIVE_ROOT_FOLDER_ID = '1mzrd3lgMRrCBRCowN0VfmvKhE_5IyJ9X';
+
+async function getDriveClient(serviceAccountJson: string) {
+  const credentials = JSON.parse(serviceAccountJson);
+  const auth = new google.auth.GoogleAuth({
+    credentials,
+    scopes: ['https://www.googleapis.com/auth/drive.file'],
+  });
+  return google.drive({ version: 'v3', auth });
+}
+
+async function findDriveFolder(
+  driveClient: ReturnType<typeof google.drive>,
+  name: string,
+  parentId: string,
+): Promise<string | null> {
+  const res = await driveClient.files.list({
+    q: `name='${name}' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`,
+    fields: 'files(id)',
+    spaces: 'drive',
+  });
+  return res.data.files?.[0]?.id ?? null;
+}
+
+async function createDriveFolder(
+  driveClient: ReturnType<typeof google.drive>,
+  name: string,
+  parentId: string,
+): Promise<string> {
+  const res = await driveClient.files.create({
+    requestBody: {
+      name,
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [parentId],
+    },
+    fields: 'id',
+  });
+  return res.data.id!;
+}
+
+async function getOrCreateMonthFolder(
+  driveClient: ReturnType<typeof google.drive>,
+  year: string,
+  month: string,
+): Promise<string> {
+  let yearFolderId = await findDriveFolder(driveClient, year, DRIVE_ROOT_FOLDER_ID);
+  if (!yearFolderId) yearFolderId = await createDriveFolder(driveClient, year, DRIVE_ROOT_FOLDER_ID);
+
+  const monthLabel = `${month}월`;
+  let monthFolderId = await findDriveFolder(driveClient, monthLabel, yearFolderId);
+  if (!monthFolderId) monthFolderId = await createDriveFolder(driveClient, monthLabel, yearFolderId);
+
+  return monthFolderId;
+}
+
+export const uploadReceiptToDrive = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [GOOGLE_DRIVE_SERVICE_ACCOUNT_SECRET],
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const { imageUrls, date, merchant, category, amount } = request.data as {
+      imageUrls: string[];
+      date: string;
+      merchant: string;
+      category: string;
+      amount: string | number;
+    };
+
+    if (!imageUrls?.length || !date) {
+      throw new HttpsError('invalid-argument', 'imageUrls와 date는 필수입니다.');
+    }
+
+    const year = date.substring(0, 4);
+    const month = date.substring(5, 7);
+    const dateCompact = date.replace(/-/g, '');
+    const safeMerchant = (merchant || '').replace(/[/\\?%*:|"<>]/g, '_').substring(0, 20);
+    const safeCategory = (category || '').replace(/[/\\?%*:|"<>]/g, '_').substring(0, 20);
+
+    const serviceAccountJson = GOOGLE_DRIVE_SERVICE_ACCOUNT_SECRET.value();
+    const driveClient = await getDriveClient(serviceAccountJson);
+    const folderId = await getOrCreateMonthFolder(driveClient, year, month);
+
+    const { Readable } = await import('stream');
+    const results: { fileId: string | null | undefined; webViewLink: string | null | undefined; fileName: string }[] = [];
+
+    for (let i = 0; i < imageUrls.length; i++) {
+      const url = imageUrls[i];
+      const suffix = imageUrls.length > 1 ? `_${i + 1}` : '';
+      const fileName = `${dateCompact}_${safeMerchant}_${safeCategory}_${amount}${suffix}.png`;
+
+      const imageRes = await axios.get(url, { responseType: 'arraybuffer' });
+      const buffer = Buffer.from(imageRes.data);
+      const stream = Readable.from(buffer);
+
+      const uploadRes = await driveClient.files.create({
+        requestBody: { name: fileName, parents: [folderId] },
+        media: { mimeType: 'image/png', body: stream },
+        fields: 'id,webViewLink',
+      });
+
+      results.push({ fileId: uploadRes.data.id, webViewLink: uploadRes.data.webViewLink, fileName });
+    }
+
+    return { results };
   },
 );
 

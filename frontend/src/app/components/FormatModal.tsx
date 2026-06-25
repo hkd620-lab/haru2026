@@ -1705,6 +1705,24 @@ ${contentValues}`,
     try {
       await onSave(dataToSave);
       toast.success(`보조장부 ${ledgerEntries.length}건이 저장되었습니다!`);
+
+      // 영수증 이미지가 있으면 구글 드라이브 자동 업로드 (비동기, 실패해도 저장은 완료)
+      if (uploadedImages.length > 0) {
+        const functionsInstance = getFunctions(undefined, 'asia-northeast3');
+        const uploadReceiptFn = httpsCallable(functionsInstance, 'uploadReceiptToDrive');
+        uploadReceiptFn({
+          imageUrls: uploadedImages,
+          date: first.date || new Date().toISOString().substring(0, 10),
+          merchant: first.vendor || '',
+          category: first.category === '기타' && first.customCategory?.trim()
+            ? first.customCategory.trim()
+            : (first.category || ''),
+          amount: first.amount || '',
+        }).catch((e) => {
+          console.error('구글 드라이브 업로드 실패:', e);
+        });
+      }
+
       onClose();
     } catch (error) {
       console.error('저장 중 오류:', error);
