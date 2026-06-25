@@ -269,6 +269,29 @@ export function DevConsolePage() {
           )}
         </section>
 
+        <section className="bg-white rounded-2xl border border-gray-200 p-5 mb-5">
+          <h2 className="font-bold text-lg mb-3" style={{ color: '#1A3C6E' }}>
+            📒 HARU보조장부 (사업자 전용)
+          </h2>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => navigate('/records', { state: { format: 'HARU보조장부' } })}
+              className="px-4 py-2 rounded-xl text-white text-sm font-semibold"
+              style={{ backgroundColor: '#1A3C6E' }}
+            >
+              보조장부 작성
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/sayu', { state: { filterFormat: 'HARU보조장부' } })}
+              className="px-4 py-2 rounded-xl border border-gray-300 text-sm font-semibold"
+            >
+              보조장부 목록
+            </button>
+          </div>
+        </section>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {DEV_TOOLS.map((tool) => (
             <Fragment key={tool.path}>

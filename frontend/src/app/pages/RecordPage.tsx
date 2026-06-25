@@ -1394,7 +1394,9 @@ export function RecordPage() {
   )
           ) : selectedCategory ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {CATEGORY_FORMATS[selectedCategory].map((format) => {
+              {CATEGORY_FORMATS[selectedCategory]
+                .filter((format) => format !== 'HARU보조장부' || DEVELOPER_UIDS.includes(user?.uid || ''))
+                .map((format) => {
                 return (
                   <button
                     key={format}
