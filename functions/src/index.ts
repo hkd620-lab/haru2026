@@ -2564,13 +2564,15 @@ export const extractLedgerTextFromImage = onCall(
         totalImageKb,
       });
 
-      const prompt = `영수증, 통장 거래내역, 계좌이체 캡처, 카드매출전표 이미지에서 HARU보조장부 입력에 필요한 텍스트와 필드를 추출하세요.
+      const prompt = `영수증, 통장 거래내역, 계좌이체 캡처, 카드매출전표 이미지에서 HARU보조장부 입력에 필요한 모든 거래내역을 추출하세요.
 
 [절대 규칙]
 - 이미지에 보이는 내용만 사용하고, 보이지 않는 값은 추측하지 마세요.
 - 확실하지 않은 값은 빈 문자열로 둡니다.
 - 계좌번호, 카드번호, 승인번호, 전화번호처럼 긴 식별번호는 원문과 메모에서 ****로 마스킹하세요.
 - 세무 신고용 확정 판단을 하지 마세요. 보조장부 입력 후보만 만듭니다.
+- 거래가 여러 건이면 모두 추출해서 transactions 배열에 담아주세요.
+- 광고·이벤트·포인트 안내 등 실제 거래가 아닌 항목은 제외하세요.
 - 응답은 JSON 객체만 반환하고 코드펜스/설명 문장은 쓰지 마세요.
 
 [필드 기준]
@@ -2585,16 +2587,18 @@ export const extractLedgerTextFromImage = onCall(
 
 {
   "rawText": "이미지에서 읽은 주요 원문. 민감번호는 마스킹",
-  "fields": {
-    "transactionAt": "",
-    "type": "",
-    "category": "",
-    "partner": "",
-    "amount": "",
-    "paymentMethod": "",
-    "proofType": "",
-    "memo": ""
-  },
+  "transactions": [
+    {
+      "transactionAt": "",
+      "type": "",
+      "category": "",
+      "partner": "",
+      "amount": "",
+      "paymentMethod": "",
+      "proofType": "",
+      "memo": ""
+    }
+  ],
   "warnings": []
 }`;
 
@@ -2620,31 +2624,38 @@ export const extractLedgerTextFromImage = onCall(
         warnings.push('추출 결과 형식이 불안정해 원문 위주로 표시합니다.');
       }
 
-      const rawFields = parsed?.fields && typeof parsed.fields === 'object' ? parsed.fields : {};
-      const fields = {
-        transactionAt: cleanLedgerOcrText(rawFields.transactionAt, 80),
-        type: normalizeLedgerType(rawFields.type),
-        category: maskLedgerSensitiveText(rawFields.category, 120),
-        partner: maskLedgerSensitiveText(rawFields.partner, 160),
-        amount: cleanLedgerOcrText(rawFields.amount, 80),
-        paymentMethod: maskLedgerSensitiveText(rawFields.paymentMethod, 80),
-        proofType: maskLedgerSensitiveText(rawFields.proofType, 80),
-        memo: maskLedgerSensitiveText(rawFields.memo, 500),
-      };
+      const sanitizeTx = (t: any) => ({
+        transactionAt: cleanLedgerOcrText(t?.transactionAt, 80),
+        type: normalizeLedgerType(t?.type),
+        category: maskLedgerSensitiveText(t?.category, 120),
+        partner: maskLedgerSensitiveText(t?.partner, 160),
+        amount: cleanLedgerOcrText(t?.amount, 80),
+        paymentMethod: maskLedgerSensitiveText(t?.paymentMethod, 80),
+        proofType: maskLedgerSensitiveText(t?.proofType, 80),
+        memo: maskLedgerSensitiveText(t?.memo, 500),
+      });
+
+      // 다건 transactions 배열 파싱. 구버전 fields 포맷도 fallback 지원
+      const rawTransactions: any[] = Array.isArray(parsed?.transactions) && parsed.transactions.length > 0
+        ? parsed.transactions
+        : parsed?.fields && typeof parsed.fields === 'object'
+          ? [parsed.fields]
+          : [];
+      const transactions = rawTransactions.map(sanitizeTx);
 
       const parsedWarnings = Array.isArray(parsed?.warnings)
         ? parsed.warnings
           .map((warning: unknown) => cleanLedgerOcrText(warning, 180))
           .filter(Boolean)
         : [];
-      const hasAnyField = Object.values(fields).some((value) => String(value || '').trim());
-      if (!hasAnyField) {
+      if (transactions.length === 0) {
         warnings.push('장부 입력 필드를 충분히 찾지 못했습니다. 직접 확인해 주세요.');
       }
 
       return {
         rawText: maskLedgerSensitiveText(parsed?.rawText || parsed?.text || responseText, 12000),
-        fields,
+        transactions,
+        fields: transactions[0] ?? {},
         warnings: Array.from(new Set([...warnings, ...parsedWarnings])).slice(0, 6),
       };
     } catch (error: any) {

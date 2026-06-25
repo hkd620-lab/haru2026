@@ -71,6 +71,7 @@ interface LedgerOcrFields {
 
 interface LedgerOcrResult {
   rawText?: string;
+  transactions?: LedgerOcrFields[];
   fields?: LedgerOcrFields;
   warnings?: string[];
 }
@@ -1336,7 +1337,7 @@ ${contentValues}`,
     try {
       const functionsInstance = getFunctions(undefined, 'asia-northeast3');
       const extractLedgerTextFunc = httpsCallable(functionsInstance, 'extractLedgerTextFromImage');
-      const perFileResults: { fileName: string; rawText?: string; fields?: LedgerOcrFields; warnings?: string[] }[] = [];
+      const perFileResults: { fileName: string; rawText?: string; transactions?: LedgerOcrFields[]; fields?: LedgerOcrFields; warnings?: string[] }[] = [];
 
       for (const file of selectedLedgerOcrFiles) {
         let dataBase64: string;
@@ -1352,7 +1353,7 @@ ${contentValues}`,
           const result = await extractLedgerTextFunc({ images: [{ mimeType: 'image/jpeg', dataBase64 }] });
           const data = result.data as LedgerOcrResult;
           console.log(`[보조장부 OCR] ${file.name}:`, data);
-          perFileResults.push({ fileName: file.name, rawText: data.rawText, fields: data.fields, warnings: data.warnings });
+          perFileResults.push({ fileName: file.name, rawText: data.rawText, transactions: data.transactions, fields: data.fields, warnings: data.warnings });
         } catch (callError: any) {
           console.error('보조장부 OCR 호출 실패:', file.name, callError);
           perFileResults.push({ fileName: file.name, warnings: ['추출에 실패했습니다.'] });
@@ -1366,21 +1367,30 @@ ${contentValues}`,
 
       setLedgerOcrPerFileResults(perFileResults);
 
-      // OCR 결과에서 ledgerEntries 자동 생성 (파일 1개 = 거래 1건 기본값)
-      const generatedEntries: LedgerEntry[] = perFileResults.map(item =>
-        newLedgerEntry({
-          transactionType: '지출',
-          usageType: '사업용',
-          category: '기타',
-          date: String(item.fields?.transactionAt || '').trim(),
-          vendor: String(item.fields?.partner || '').trim(),
-          amount: String(item.fields?.amount || '').trim(),
-          paymentMethod: String(item.fields?.paymentMethod || '').trim(),
-          memo: '',
-          ocrSourceFile: item.fileName,
-          ocrRawText: item.rawText,
-        }),
-      );
+      // OCR 결과에서 ledgerEntries 자동 생성 — 파일 1장에서 다건 거래 분리 지원
+      const generatedEntries: LedgerEntry[] = [];
+      let totalDetected = 0;
+      for (const item of perFileResults) {
+        const txList = item.transactions && item.transactions.length > 0
+          ? item.transactions
+          : item.fields ? [item.fields] : [];
+        totalDetected += txList.length;
+        for (const tx of txList) {
+          generatedEntries.push(newLedgerEntry({
+            transactionType: tx.type === '수입' ? '수입' : '지출',
+            usageType: '사업용',
+            category: '기타',
+            date: String(tx.transactionAt || '').trim(),
+            vendor: String(tx.partner || '').trim(),
+            amount: String(tx.amount || '').trim(),
+            paymentMethod: String(tx.paymentMethod || '').trim(),
+            memo: '',
+            ocrSourceFile: item.fileName,
+            ocrRawText: item.rawText,
+            customCategory: '',
+          }));
+        }
+      }
       if (generatedEntries.length > 0) {
         setLedgerEntries(generatedEntries);
       }
@@ -1399,7 +1409,11 @@ ${contentValues}`,
       }
       setLedgerOcrResult({ fields: combinedFields });
 
-      toast.success('추출 결과가 준비되었습니다. 확인 후 입력칸에 반영해 주세요.');
+      if (totalDetected > 1) {
+        toast.success(`거래 ${totalDetected}건이 감지되었습니다. 분류를 확인해 주세요.`);
+      } else {
+        toast.success('추출 결과가 준비되었습니다. 확인 후 입력칸에 반영해 주세요.');
+      }
     } catch (error: any) {
       console.error('보조장부 OCR 실패:', error);
       toast.error(String(error?.message || '영수증·통장 캡처 텍스트 추출에 실패했습니다.'));
