@@ -1706,8 +1706,8 @@ ${contentValues}`,
       await onSave(dataToSave);
       toast.success(`보조장부 ${ledgerEntries.length}건이 저장되었습니다!`);
 
-      // 영수증 이미지가 있으면 구글 드라이브 자동 업로드 (비동기, 실패해도 저장은 완료)
-      if (uploadedImages.length > 0) {
+      // 허 대표님 계정만 구글 드라이브 자동 업로드 (비동기, 실패해도 저장은 완료)
+      if (isDeveloper && uploadedImages.length > 0) {
         const functionsInstance = getFunctions(undefined, 'asia-northeast3');
         const uploadReceiptFn = httpsCallable(functionsInstance, 'uploadReceiptToDrive');
         uploadReceiptFn({
