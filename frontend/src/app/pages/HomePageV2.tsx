@@ -231,6 +231,20 @@ const RECORDS: RecordItem[] = [
       </>
     ),
   },
+  {
+    label: 'HARU가계부',
+    sub: '수입·지출 기록',
+    bg: '#D4EDD4',
+    stroke: '#166534',
+    format: 'HARU가계부',
+    icon: (
+      <>
+        <path d="M2 7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z" />
+        <path d="M16 12a2 2 0 1 0 4 0 2 2 0 0 0-4 0" />
+        <path d="M6 9h4M6 12h2" />
+      </>
+    ),
+  },
 ];
 
 const AGENTS: Agent[] = [
