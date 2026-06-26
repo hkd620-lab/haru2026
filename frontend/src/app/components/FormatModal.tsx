@@ -92,6 +92,7 @@ interface LedgerEntry {
   ocrSourceFile?: string;
   ocrRawText?: string;
   customCategory: string;
+  businessTrack: 'haru2026' | 'external' | '';
 }
 
 function newLedgerEntry(overrides?: Partial<LedgerEntry>): LedgerEntry {
@@ -109,6 +110,7 @@ function newLedgerEntry(overrides?: Partial<LedgerEntry>): LedgerEntry {
     foreignCurrency: '',
     exchangeRate: '',
     customCategory: '',
+    businessTrack: '',
     ...overrides,
   };
 }
@@ -1717,6 +1719,11 @@ ${contentValues}`,
   const handleSaveLedgerEntries = async () => {
     if (ledgerEntries.length === 0) {
       toast.warning('거래 내역이 없습니다. 거래를 최소 1건 입력해 주세요.');
+      return;
+    }
+    const emptyBusinessTrack = ledgerEntries.filter(e => !e.businessTrack).length;
+    if (emptyBusinessTrack > 0) {
+      toast.error('사업구분을 선택해주세요. (HARU2026 / 외부용역)');
       return;
     }
     const emptyAmounts = ledgerEntries.filter(e => !e.amount.trim()).length;
@@ -3805,6 +3812,26 @@ ${contentValues}`,
                                         }}
                                       >
                                         {opt === '수입' ? '💰 수입' : '📤 지출'}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                                <div>
+                                  <label style={fieldLabelStyle}>사업구분 *</label>
+                                  <div style={{ display: 'flex', gap: 5 }}>
+                                    {(['haru2026', 'external'] as const).map(opt => (
+                                      <button
+                                        key={opt}
+                                        type="button"
+                                        onClick={() => setLedgerEntries(prev => prev.map(e => e.id === entry.id ? { ...e, businessTrack: opt } : e))}
+                                        style={{
+                                          flex: 1, padding: '7px 4px', borderRadius: 7, fontSize: 12, fontWeight: entry.businessTrack === opt ? 700 : 400, cursor: 'pointer',
+                                          border: entry.businessTrack === opt ? 'none' : '1px solid #d0dff0',
+                                          backgroundColor: entry.businessTrack === opt ? '#1A3C6E' : '#FEFBE8',
+                                          color: entry.businessTrack === opt ? '#fff' : '#1A3C6E',
+                                        }}
+                                      >
+                                        {opt === 'haru2026' ? 'HARU2026' : '외부용역'}
                                       </button>
                                     ))}
                                   </div>

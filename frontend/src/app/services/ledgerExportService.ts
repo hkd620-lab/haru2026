@@ -108,6 +108,7 @@ function parseAmount(amountStr: string): number {
 interface ExpandedEntry {
   date: string;
   transactionType: string;
+  businessTrack: string;
   usageType: string;
   category: string;
   vendor: string;
@@ -130,6 +131,7 @@ function expandRecord(r: HaruRecord): ExpandedEntry[] {
         return parsed.map((e: any) => ({
           date: String(e.date || ''),
           transactionType: String(e.transactionType || ''),
+          businessTrack: String(e.businessTrack || ''),
           usageType: String(e.usageType || '사업용'),
           category: String(e.category || ''),
           vendor: String(e.vendor || ''),
@@ -147,6 +149,7 @@ function expandRecord(r: HaruRecord): ExpandedEntry[] {
   return [{
     date: String((r as any).ledger_date || r.date || ''),
     transactionType: String((r as any).ledger_type || ''),
+    businessTrack: String((r as any).ledger_businessTrack || ''),
     usageType: String((r as any).ledger_usageType || '사업용'),
     category: String((r as any).ledger_category || (r as any).ledger_item || ''),
     vendor: String((r as any).ledger_partner || ''),
@@ -431,7 +434,7 @@ export function exportLedgerToXlsx(
 
   // ── 시트1: 거래 상세내역 ──
   const detailHeader: (string | number)[] = [
-    'No', '날짜', '시간', '수입/지출', '사업용구분', '거래처', '계정과목',
+    'No', '날짜', '시간', '수입/지출', '사업구분', '사업용구분', '거래처', '계정과목',
     '외화금액', '통화', '적용환율', '원화금액(원)', '결제수단', '증빙종류', '부가세공제', '메모/적요',
   ];
 
@@ -458,6 +461,7 @@ export function exportLedgerToXlsx(
         dateStr,
         timeStr,
         e.transactionType,
+        e.businessTrack,
         e.usageType,
         e.vendor,
         accountCode,
