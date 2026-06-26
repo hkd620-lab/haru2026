@@ -1,214 +1,195 @@
-import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { getOrigin } from '../services/v2Origin';
-import { PageHeaderActions } from '../components/PageHeaderActions';
+import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { httpsCallable } from 'firebase/functions';
+import { AlertTriangle, ArrowLeft, Loader2, PawPrint, Search } from 'lucide-react';
+import { functions } from '../../firebase';
+import { petFoodSafetyDB } from '../../data/petFoodSafetyDB';
 
-type RiskLevel = 'safe' | 'small_amount' | 'caution' | 'danger' | 'emergency';
-
-type FoodRule = {
-  keywords: string[];
-  name: string;
-  level: RiskLevel;
-  reason: string;
-  action: string;
+type PetFoodCheckResult = {
+  riskLevel: 'safe' | 'caution' | 'danger' | 'emergency' | 'unknown';
+  answer: string;
+  reason?: string;
+  symptoms?: string[];
+  emergency: boolean;
+  geminiText?: string | null;
+  source?: string | null;
 };
 
-const FOOD_RULES: FoodRule[] = [
-  {
-    keywords: ['포도', '건포도', '청포도'],
-    name: '포도 / 건포도',
-    level: 'emergency',
-    reason: '강아지·고양이 모두 신부전을 유발할 수 있습니다. 소량도 위험합니다.',
-    action: '즉시 동물병원에 문의하세요.',
-  },
-  {
-    keywords: ['양파', '파', '대파', '쪽파', '마늘'],
-    name: '양파 / 파 / 마늘류',
-    level: 'danger',
-    reason: '적혈구를 파괴해 빈혈을 유발합니다. 익힌 것도 위험합니다.',
-    action: '먹은 양이 많거나 증상이 있으면 병원 상담이 필요합니다.',
-  },
-  {
-    keywords: ['초콜릿', '카카오', '코코아'],
-    name: '초콜릿 / 카카오',
-    level: 'emergency',
-    reason: '테오브로민 성분이 신경계와 심장에 영향을 줍니다. 다크 초콜릿이 특히 위험합니다.',
-    action: '즉시 동물병원에 문의하세요.',
-  },
-  {
-    keywords: ['자일리톨', '무설탕 껌'],
-    name: '자일리톨 (무설탕 껌·캔디)',
-    level: 'emergency',
-    reason: '강아지에게 혈당 급강하와 간부전을 일으킬 수 있습니다.',
-    action: '즉시 동물병원에 문의하세요.',
-  },
-  {
-    keywords: ['아보카도'],
-    name: '아보카도',
-    level: 'danger',
-    reason: '퍼신 성분이 구토, 설사, 호흡 곤란을 유발할 수 있습니다.',
-    action: '먹은 직후라면 병원 상담을 권합니다.',
-  },
-  {
-    keywords: ['커피', '카페인', '녹차', '홍차'],
-    name: '카페인 (커피·차)',
-    level: 'danger',
-    reason: '신경계 과흥분을 유발합니다. 소량도 소형견에게 위험합니다.',
-    action: '먹은 양이 많거나 증상이 있으면 병원 상담이 필요합니다.',
-  },
-  {
-    keywords: ['고구마', '삶은 고구마', '찐 고구마'],
-    name: '고구마 (삶은 것)',
-    level: 'small_amount',
-    reason: '소량은 괜찮지만 당 함량이 높아 많이 먹으면 소화 문제가 생길 수 있습니다.',
-    action: '소량만 가끔 주세요. 당뇨가 있는 반려동물은 피하세요.',
-  },
-  {
-    keywords: ['참치', '참치 통조림'],
-    name: '참치 (통조림)',
-    level: 'caution',
-    reason: '고양이에게 소량은 괜찮지만, 나트륨과 수은 함량이 높아 자주 주면 좋지 않습니다.',
-    action: '가끔 소량만 주세요. 주식으로 삼지 마세요.',
-  },
-  {
-    keywords: ['닭고기', '삶은 닭', '닭 가슴살'],
-    name: '닭고기 (삶은 것)',
-    level: 'safe',
-    reason: '양념 없이 삶은 닭가슴살은 강아지·고양이 모두 좋은 단백질 간식입니다.',
-    action: '양념 없이 조리해서 소량씩 주세요.',
-  },
-  {
-    keywords: ['당근', '삶은 당근'],
-    name: '당근',
-    level: 'safe',
-    reason: '저칼로리 채소로 강아지에게 좋은 간식입니다. 고양이는 먹어도 무해합니다.',
-    action: '생것은 잘게 썰거나 삶아서 주면 좋습니다.',
-  },
-];
-
-const RISK_CONFIG: Record<RiskLevel, { label: string; color: string; bg: string; emoji: string }> = {
-  safe:         { label: '먹어도 됩니다',    color: '#10b981', bg: '#f0fdf4', emoji: '✅' },
-  small_amount: { label: '소량은 괜찮습니다', color: '#3b82f6', bg: '#eff6ff', emoji: '🔵' },
-  caution:      { label: '주의가 필요합니다', color: '#f59e0b', bg: '#fffbeb', emoji: '⚠️' },
-  danger:       { label: '먹이면 안 됩니다',  color: '#ef4444', bg: '#fff5f5', emoji: '🚫' },
-  emergency:    { label: '즉시 병원 문의',    color: '#dc2626', bg: '#fef2f2', emoji: '🚨' },
+const riskStyles: Record<PetFoodCheckResult['riskLevel'], string> = {
+  emergency: 'bg-red-100 text-red-700',
+  danger: 'bg-orange-100 text-orange-700',
+  caution: 'bg-yellow-100 text-yellow-700',
+  safe: 'bg-green-100 text-green-700',
+  unknown: 'bg-gray-100 text-gray-600',
 };
 
-function findFoodRule(query: string): FoodRule | null {
-  const normalized = query.toLowerCase().replace(/\s/g, '');
-  return FOOD_RULES.find((rule) =>
-    rule.keywords.some((kw) => normalized.includes(kw.replace(/\s/g, '')))
-  ) ?? null;
-}
+const riskLabels: Record<PetFoodCheckResult['riskLevel'], string> = {
+  emergency: '응급',
+  danger: '위험',
+  caution: '주의',
+  safe: '안전',
+  unknown: '미등록',
+};
 
 export function PetHealthFoodPage() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const fromPath = (location.state as any)?.from as string | undefined;
+  const [input, setInput] = useState('');
+  const [result, setResult] = useState<PetFoodCheckResult | null>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const [query, setQuery] = useState('');
-  const [result, setResult] = useState<FoodRule | null | 'not_found'>(null);
+  const sampleItems = useMemo(() => petFoodSafetyDB.slice(0, 6).flatMap((item) => item.nameKo.slice(0, 1)), []);
 
-  const closeToOrigin = () => {
-    if (fromPath) { navigate(fromPath); return; }
-    const origin = getOrigin();
-    if (origin) { navigate(origin); return; }
-    if (window.history.length > 1) navigate(-1);
-    else navigate('/pet-health');
+  const handleCheck = async () => {
+    const foodName = input.trim();
+    if (!foodName) {
+      setError('식품명을 입력해주세요.');
+      setResult(null);
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setResult(null);
+
+    try {
+      const petFoodCheck = httpsCallable(functions, 'petFoodCheck');
+      const response = await petFoodCheck({ foodName });
+      setResult(response.data as PetFoodCheckResult);
+    } catch (err) {
+      console.error('petFoodCheck failed:', err);
+      setError('확인 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setLoading(false);
+    }
   };
-
-  const handleCheck = () => {
-    if (!query.trim()) return;
-    const found = findFoodRule(query);
-    setResult(found ?? 'not_found');
-  };
-
-  const riskInfo = result && result !== 'not_found' ? RISK_CONFIG[result.level] : null;
 
   return (
-    <div
-      className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8"
-      style={{ minHeight: 'calc(100vh - 56px - 80px)' }}
-    >
-      <PageHeaderActions onClose={closeToOrigin} />
+    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 md:py-8" style={{ minHeight: 'calc(100vh - 56px - 80px)' }}>
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className="mb-5 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#D8E1EA] bg-white text-[#1A3C6E] shadow-sm transition hover:bg-[#FAF9F6]"
+        aria-label="뒤로가기"
+      >
+        <ArrowLeft size={20} aria-hidden />
+      </button>
 
-      <div className="mb-5">
-        <h1 className="text-xl font-bold" style={{ color: '#1A3C6E' }}>
-          🍖 먹어도 되나요?
-        </h1>
-        <p className="text-sm mt-1" style={{ color: '#666', lineHeight: 1.5 }}>
-          음식명을 입력하면 반려동물에게 안전한지 확인합니다.
-        </p>
-      </div>
+      <section className="rounded-[8px] border border-[#E6E1D8] bg-[#FAF9F6] p-5 shadow-sm sm:p-6">
+        <div className="mb-5 flex items-start gap-3">
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-[8px] bg-white text-[#10b981] shadow-sm">
+            <PawPrint size={26} aria-hidden />
+          </div>
+          <div>
+            <div className="mb-1 text-[11px] font-semibold tracking-[0.14em] text-[#1A3C6E]">HARU PET CARE</div>
+            <h1 className="text-2xl font-bold text-[#1A3C6E] md:text-3xl">🐾 먹어도 되나요?</h1>
+            <p className="mt-2 text-sm leading-6 text-[#5F666D]">
+              HARU 안전 DB에 등록된 식품만 판정하고, AI는 안내문 정리에만 사용합니다.
+            </p>
+          </div>
+        </div>
 
-      <div className="mb-4">
-        <textarea
-          value={query}
-          onChange={(e) => { setQuery(e.target.value); setResult(null); }}
-          placeholder="예) 강아지가 포도를 먹었어요. / 고양이가 참치를 먹어도 되나요?"
-          rows={3}
-          style={{
-            width: '100%',
-            boxSizing: 'border-box',
-            padding: '12px 14px',
-            borderRadius: 10,
-            border: '1px solid #d1d5db',
-            fontSize: 14,
-            lineHeight: 1.6,
-            fontFamily: 'inherit',
-            resize: 'vertical',
-            outline: 'none',
-          }}
-        />
-        <button
-          onClick={handleCheck}
-          disabled={!query.trim()}
-          style={{
-            marginTop: 8,
-            width: '100%',
-            padding: '12px',
-            borderRadius: 10,
-            border: 'none',
-            background: query.trim() ? '#7C3AED' : '#e5e7eb',
-            color: query.trim() ? '#fff' : '#9ca3af',
-            fontSize: 14,
-            fontWeight: 700,
-            cursor: query.trim() ? 'pointer' : 'not-allowed',
-          }}
-        >
-          확인하기
-        </button>
-      </div>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <label className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#8A949E]" size={18} aria-hidden />
+            <input
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !loading) handleCheck();
+              }}
+              placeholder="예) 포도, 초콜릿, 당근"
+              className="h-12 w-full rounded-[8px] border border-[#D8E1EA] bg-white pl-10 pr-4 text-sm text-[#2C2C2A] outline-none transition placeholder:text-[#A5ADB5] focus:border-[#1A3C6E] focus:ring-2 focus:ring-[#1A3C6E]/15"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={handleCheck}
+            disabled={loading}
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-[#1A3C6E] px-5 text-sm font-semibold text-white transition hover:bg-[#14305A] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? <Loader2 className="animate-spin" size={18} aria-hidden /> : <Search size={18} aria-hidden />}
+            확인하기
+          </button>
+        </div>
 
-      {result === 'not_found' && (
-        <div style={{ padding: 16, borderRadius: 10, background: '#f9fafb', border: '1px solid #e5e7eb' }}>
-          <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.6 }}>
-            해당 음식에 대한 정보가 없습니다.<br />
-            확실하지 않은 경우 동물병원에 문의하거나, 먹이지 않는 것이 안전합니다.
-          </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {sampleItems.map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setInput(item)}
+              className="rounded-full border border-[#D8E1EA] bg-white px-3 py-1 text-xs font-medium text-[#1A3C6E] transition hover:border-[#10b981] hover:text-[#0F8D68]"
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {error && (
+        <div className="mt-4 rounded-[8px] border border-red-100 bg-red-50 p-4 text-sm text-red-700">
+          {error}
         </div>
       )}
 
-      {result && result !== 'not_found' && riskInfo && (
-        <div style={{ padding: 16, borderRadius: 10, background: riskInfo.bg, border: `1px solid ${riskInfo.color}33` }}>
-          <p style={{ fontSize: 18, fontWeight: 800, color: riskInfo.color, marginBottom: 4 }}>
-            {riskInfo.emoji} {result.name}
-          </p>
-          <p style={{ fontSize: 15, fontWeight: 700, color: riskInfo.color, marginBottom: 12 }}>
-            {riskInfo.label}
-          </p>
-          <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, marginBottom: 8 }}>
-            <strong>이유:</strong> {result.reason}
-          </p>
-          <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>
-            <strong>다음 행동:</strong> {result.action}
-          </p>
-        </div>
-      )}
+      {result && (
+        <section className="mt-4 rounded-[8px] border border-[#E6E1D8] bg-white p-5 shadow-sm sm:p-6">
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${riskStyles[result.riskLevel]}`}>
+              {riskLabels[result.riskLevel]}
+            </span>
+            <h2 className="text-xl font-bold text-[#2C2C2A]">{result.answer}</h2>
+          </div>
 
-      <p className="text-xs mt-6" style={{ color: '#aaa', lineHeight: 1.6 }}>
-        이 결과는 일반적인 안내이며 진료를 대체하지 않습니다. 증상이 있거나 판단이 어려우면 동물병원에 문의하세요.
-      </p>
+          {result.riskLevel === 'unknown' ? (
+            <p className="rounded-[8px] bg-[#F3F4F6] p-4 text-sm leading-6 text-[#4B5563]">
+              HARU 안전 DB에 등록되지 않은 식품입니다. 수의사 또는 동물병원에 직접 문의해 주세요.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {result.geminiText && (
+                <p className="text-sm leading-7 text-[#374151]">{result.geminiText}</p>
+              )}
+
+              {result.reason && (
+                <div className="rounded-[8px] bg-[#FAF9F6] p-4 text-sm leading-6 text-[#4B5563]">
+                  <span className="font-semibold text-[#1A3C6E]">근거: </span>
+                  {result.reason}
+                </div>
+              )}
+
+              {result.symptoms && result.symptoms.length > 0 && (
+                <div>
+                  <div className="mb-2 text-xs font-semibold tracking-[0.08em] text-[#6B7280]">주의 증상</div>
+                  <div className="flex flex-wrap gap-2">
+                    {result.symptoms.map((symptom) => (
+                      <span key={symptom} className="rounded-full bg-[#EEF4F8] px-3 py-1 text-xs font-medium text-[#1A3C6E]">
+                        {symptom}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {result.emergency && (
+                <div className="flex items-center gap-2 rounded-[8px] border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+                  <AlertTriangle size={18} aria-hidden />
+                  즉시 동물병원에 연락하세요
+                </div>
+              )}
+
+              <div className="text-xs leading-5 text-[#6B7280]">
+                출처: {result.source || 'ASPCA'} / 수의학 자료 기반 HARU 안전 DB
+              </div>
+            </div>
+          )}
+
+          <div className="mt-5 border-t border-[#EEF0F2] pt-4 text-xs font-medium text-[#6B7280]">
+            이 안내는 진료를 대신하지 않습니다.
+          </div>
+        </section>
+      )}
     </div>
   );
 }
