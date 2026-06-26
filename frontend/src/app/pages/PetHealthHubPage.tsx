@@ -1,7 +1,10 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
 import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
+import { db } from '../../firebase';
+import { useAuth } from '../contexts/AuthContext';
 
 type SubFeature = {
   path: string;
@@ -51,7 +54,26 @@ const FEATURES: SubFeature[] = [
 export function PetHealthHubPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const fromPath = (location.state as any)?.from as string | undefined;
+  const [recentLogs, setRecentLogs] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    (async () => {
+      try {
+        const q = query(
+          collection(db, 'users', user.uid, 'petHealthLogs'),
+          orderBy('createdAt', 'desc'),
+          limit(3),
+        );
+        const snap = await getDocs(q);
+        setRecentLogs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      } catch (e) {
+        console.warn('petHealthLogs 로드 실패:', e);
+      }
+    })();
+  }, [user?.uid]);
 
   const closeToOrigin = () => {
     if (fromPath) { navigate(fromPath); return; }
@@ -153,6 +175,40 @@ export function PetHealthHubPage() {
           </button>
         ))}
       </div>
+
+      {recentLogs.length > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: '#6b7280', marginBottom: 8, letterSpacing: '0.05em' }}>
+            최근 확인 기록
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {recentLogs.map((log: any) => {
+              const riskColor: Record<string, string> = {
+                safe: '#10b981', caution: '#f59e0b', danger: '#ef4444',
+                emergency: '#dc2626', observe: '#10b981', consult: '#3b82f6',
+                urgent: '#f59e0b', unknown: '#9ca3af',
+              };
+              const color = riskColor[log.riskLevel] ?? '#9ca3af';
+              return (
+                <div key={log.id} style={{
+                  padding: '10px 14px', borderRadius: 8, background: '#fff',
+                  border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 10,
+                }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color, background: `${color}15`,
+                    padding: '2px 7px', borderRadius: 99, flexShrink: 0 }}>
+                    {log.type === 'food' ? '먹거리' : '증상'}
+                  </span>
+                  <span style={{ fontSize: 13, color: '#374151', flex: 1, overflow: 'hidden',
+                    whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                    {log.petName !== '이름 미입력' ? `${log.petName} · ` : ''}{log.query}
+                  </span>
+                  <span style={{ fontSize: 11, color: '#9ca3af', flexShrink: 0 }}>{log.checkedAt}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <p className="text-xs mt-6 text-center" style={{ color: '#aaa', lineHeight: 1.6 }}>
         AI 결과는 참고용입니다. 반려동물 상태가 심각하거나 판단이 어려운 경우 동물병원을 방문하세요.

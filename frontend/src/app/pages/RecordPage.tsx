@@ -11,6 +11,7 @@ import { RecordTitleAnimation } from '../components/RecordTitleAnimation';
 import { FormatModal } from '../components/FormatModal';
 import GrapeLoadingMini from '../components/GrapeLoadingMini';
 import { AssistantRecommendationCards } from '../components/AssistantRecommendationCards';
+import { PetHealthAlert, detectPetAlertLevel, type PetAlertLevel } from '../components/PetHealthAlert';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS } from '../types/haruTypes';
 import {
@@ -289,6 +290,7 @@ export function RecordPage() {
   const [selectedFormats, setSelectedFormats] = useState<RecordFormat[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [formatModalOpen, setFormatModalOpen] = useState(false);
+  const [petAlertLevel, setPetAlertLevel] = useState<PetAlertLevel>(null);
   const [savedDateStr, setSavedDateStr] = useState('');
   const [savedFormat, setSavedFormat] = useState<RecordFormat | null>(null);
   const [savedAssistantRecommendations, setSavedAssistantRecommendations] = useState<AssistantRecommendation[]>([]);
@@ -308,6 +310,15 @@ export function RecordPage() {
     content: string;
     loading: boolean;
   } | null>(null);
+  const petAlertTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (petAlertTimerRef.current) {
+        window.clearTimeout(petAlertTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const count = parseInt(localStorage.getItem('envToastCount') || '0');
@@ -965,6 +976,23 @@ export function RecordPage() {
           { merge: true },
         );
       }
+      if (
+        savedFormat === '애완동물관찰일지' ||
+        recommendationFormats.map((format) => String(format)).includes('애완동물관찰일지') ||
+        recommendationFormats.map((format) => String(format)).includes('pet')
+      ) {
+        const level = detectPetAlertLevel(updateData as Record<string, string>);
+        if (level) {
+          setPetAlertLevel(level);
+          if (petAlertTimerRef.current) {
+            window.clearTimeout(petAlertTimerRef.current);
+          }
+          petAlertTimerRef.current = window.setTimeout(() => {
+            setPetAlertLevel(null);
+            petAlertTimerRef.current = null;
+          }, 8000);
+        }
+      }
       setSavedAssistantRecommendations(nextRecommendations);
       toast.success('내용이 저장되었습니다!');
     } catch (error) {
@@ -1495,6 +1523,16 @@ export function RecordPage() {
         </div>
       </div>
     )}
+    <PetHealthAlert
+      level={petAlertLevel}
+      onDismiss={() => {
+        setPetAlertLevel(null);
+        if (petAlertTimerRef.current) {
+          window.clearTimeout(petAlertTimerRef.current);
+          petAlertTimerRef.current = null;
+        }
+      }}
+    />
       {/* 나도작가 안내 모달 */}
       {showNovelIntro && (
         <div
