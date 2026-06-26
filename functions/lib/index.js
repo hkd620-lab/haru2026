@@ -36,14 +36,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.subscribeWithBillingKey = exports.verifyPayment = exports.generateGrowthTimelinePdf = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
-exports.exportEpub = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = void 0;
+exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.subscribeWithBillingKey = exports.verifyPayment = exports.generateGrowthTimelinePdf = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
+exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
 const storage_1 = require("firebase-admin/storage");
 const params_1 = require("firebase-functions/params");
 const generative_ai_1 = require("@google/generative-ai");
+const googleapis_1 = require("googleapis");
 const admin = __importStar(require("firebase-admin"));
 const logger = __importStar(require("firebase-functions/logger"));
 const axios_1 = __importDefault(require("axios"));
@@ -79,6 +80,7 @@ const KINDWISE_PLANT_ID_API_KEY_SECRET = (0, params_1.defineSecret)('KINDWISE_PL
 const PLANTNET_API_KEY_SECRET = (0, params_1.defineSecret)('PLANTNET_API_KEY');
 const MICROSOFT_CLIENT_ID_SECRET = (0, params_1.defineSecret)('MICROSOFT_CLIENT_ID');
 const MICROSOFT_CLIENT_SECRET_SECRET = (0, params_1.defineSecret)('MICROSOFT_CLIENT_SECRET');
+const GOOGLE_DRIVE_SERVICE_ACCOUNT_SECRET = (0, params_1.defineSecret)('GOOGLE_DRIVE_SERVICE_ACCOUNT');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
 // Storage 버킷
 const bucket = () => (0, storage_1.getStorage)().bucket();
@@ -2174,7 +2176,7 @@ exports.extractLedgerTextFromImage = (0, https_2.onCall)({
     memory: '512MiB',
     timeoutSeconds: 60,
 }, async (request) => {
-    var _a, _b;
+    var _a, _b, _c;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -2226,13 +2228,15 @@ exports.extractLedgerTextFromImage = (0, https_2.onCall)({
             imageCount: inlineParts.length,
             totalImageKb,
         });
-        const prompt = `영수증, 통장 거래내역, 계좌이체 캡처, 카드매출전표 이미지에서 HARU보조장부 입력에 필요한 텍스트와 필드를 추출하세요.
+        const prompt = `영수증, 통장 거래내역, 계좌이체 캡처, 카드매출전표 이미지에서 HARU보조장부 입력에 필요한 모든 거래내역을 추출하세요.
 
 [절대 규칙]
 - 이미지에 보이는 내용만 사용하고, 보이지 않는 값은 추측하지 마세요.
 - 확실하지 않은 값은 빈 문자열로 둡니다.
 - 계좌번호, 카드번호, 승인번호, 전화번호처럼 긴 식별번호는 원문과 메모에서 ****로 마스킹하세요.
 - 세무 신고용 확정 판단을 하지 마세요. 보조장부 입력 후보만 만듭니다.
+- 거래가 여러 건이면 모두 추출해서 transactions 배열에 담아주세요.
+- 광고·이벤트·포인트 안내 등 실제 거래가 아닌 항목은 제외하세요.
 - 응답은 JSON 객체만 반환하고 코드펜스/설명 문장은 쓰지 마세요.
 
 [필드 기준]
@@ -2247,16 +2251,18 @@ exports.extractLedgerTextFromImage = (0, https_2.onCall)({
 
 {
   "rawText": "이미지에서 읽은 주요 원문. 민감번호는 마스킹",
-  "fields": {
-    "transactionAt": "",
-    "type": "",
-    "category": "",
-    "partner": "",
-    "amount": "",
-    "paymentMethod": "",
-    "proofType": "",
-    "memo": ""
-  },
+  "transactions": [
+    {
+      "transactionAt": "",
+      "type": "",
+      "category": "",
+      "partner": "",
+      "amount": "",
+      "paymentMethod": "",
+      "proofType": "",
+      "memo": ""
+    }
+  ],
   "warnings": []
 }`;
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
@@ -2279,29 +2285,35 @@ exports.extractLedgerTextFromImage = (0, https_2.onCall)({
             parsed = { rawText: responseText, fields: {} };
             warnings.push('추출 결과 형식이 불안정해 원문 위주로 표시합니다.');
         }
-        const rawFields = (parsed === null || parsed === void 0 ? void 0 : parsed.fields) && typeof parsed.fields === 'object' ? parsed.fields : {};
-        const fields = {
-            transactionAt: cleanLedgerOcrText(rawFields.transactionAt, 80),
-            type: normalizeLedgerType(rawFields.type),
-            category: maskLedgerSensitiveText(rawFields.category, 120),
-            partner: maskLedgerSensitiveText(rawFields.partner, 160),
-            amount: cleanLedgerOcrText(rawFields.amount, 80),
-            paymentMethod: maskLedgerSensitiveText(rawFields.paymentMethod, 80),
-            proofType: maskLedgerSensitiveText(rawFields.proofType, 80),
-            memo: maskLedgerSensitiveText(rawFields.memo, 500),
-        };
+        const sanitizeTx = (t) => ({
+            transactionAt: cleanLedgerOcrText(t === null || t === void 0 ? void 0 : t.transactionAt, 80),
+            type: normalizeLedgerType(t === null || t === void 0 ? void 0 : t.type),
+            category: maskLedgerSensitiveText(t === null || t === void 0 ? void 0 : t.category, 120),
+            partner: maskLedgerSensitiveText(t === null || t === void 0 ? void 0 : t.partner, 160),
+            amount: cleanLedgerOcrText(t === null || t === void 0 ? void 0 : t.amount, 80),
+            paymentMethod: maskLedgerSensitiveText(t === null || t === void 0 ? void 0 : t.paymentMethod, 80),
+            proofType: maskLedgerSensitiveText(t === null || t === void 0 ? void 0 : t.proofType, 80),
+            memo: maskLedgerSensitiveText(t === null || t === void 0 ? void 0 : t.memo, 500),
+        });
+        // 다건 transactions 배열 파싱. 구버전 fields 포맷도 fallback 지원
+        const rawTransactions = Array.isArray(parsed === null || parsed === void 0 ? void 0 : parsed.transactions) && parsed.transactions.length > 0
+            ? parsed.transactions
+            : (parsed === null || parsed === void 0 ? void 0 : parsed.fields) && typeof parsed.fields === 'object'
+                ? [parsed.fields]
+                : [];
+        const transactions = rawTransactions.map(sanitizeTx);
         const parsedWarnings = Array.isArray(parsed === null || parsed === void 0 ? void 0 : parsed.warnings)
             ? parsed.warnings
                 .map((warning) => cleanLedgerOcrText(warning, 180))
                 .filter(Boolean)
             : [];
-        const hasAnyField = Object.values(fields).some((value) => String(value || '').trim());
-        if (!hasAnyField) {
+        if (transactions.length === 0) {
             warnings.push('장부 입력 필드를 충분히 찾지 못했습니다. 직접 확인해 주세요.');
         }
         return {
             rawText: maskLedgerSensitiveText((parsed === null || parsed === void 0 ? void 0 : parsed.rawText) || (parsed === null || parsed === void 0 ? void 0 : parsed.text) || responseText, 12000),
-            fields,
+            transactions,
+            fields: (_b = transactions[0]) !== null && _b !== void 0 ? _b : {},
             warnings: Array.from(new Set([...warnings, ...parsedWarnings])).slice(0, 6),
         };
     }
@@ -2309,8 +2321,137 @@ exports.extractLedgerTextFromImage = (0, https_2.onCall)({
         clearInlineParts();
         if (error instanceof https_2.HttpsError)
             throw error;
-        logger.error('보조장부 이미지 텍스트 추출 실패', { message: (_b = error === null || error === void 0 ? void 0 : error.message) === null || _b === void 0 ? void 0 : _b.slice(0, 200) });
+        logger.error('보조장부 이미지 텍스트 추출 실패', { message: (_c = error === null || error === void 0 ? void 0 : error.message) === null || _c === void 0 ? void 0 : _c.slice(0, 200) });
         throw new https_2.HttpsError('internal', '영수증·통장 캡처 텍스트 추출에 실패했습니다. 사진을 더 또렷하게 올려 주세요.');
+    }
+});
+// ===== 📒 HARU가계부 영수증 OCR =====
+exports.extractHouseholdTextFromImage = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+    memory: '512MiB',
+    timeoutSeconds: 60,
+}, async (request) => {
+    var _a, _b, _c;
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const rawImages = Array.isArray((_a = request.data) === null || _a === void 0 ? void 0 : _a.images) ? request.data.images : [];
+    if (rawImages.length === 0) {
+        throw new https_2.HttpsError('invalid-argument', '이미지 데이터가 필요합니다.');
+    }
+    if (rawImages.length > 3) {
+        throw new https_2.HttpsError('invalid-argument', '이미지는 최대 3장까지 처리할 수 있습니다.');
+    }
+    const inlineParts = [];
+    let totalImageKb = 0;
+    for (const rawImage of rawImages) {
+        const image = rawImage;
+        const mimeType = String((image === null || image === void 0 ? void 0 : image.mimeType) || 'image/jpeg').toLowerCase().trim();
+        if (!LEDGER_OCR_ALLOWED_MIME_TYPES.has(mimeType)) {
+            throw new https_2.HttpsError('invalid-argument', 'JPG, PNG, WEBP 이미지만 처리할 수 있습니다.');
+        }
+        let dataBase64 = String((image === null || image === void 0 ? void 0 : image.dataBase64) || (image === null || image === void 0 ? void 0 : image.imageBase64) || '')
+            .replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '');
+        if (!dataBase64) {
+            throw new https_2.HttpsError('invalid-argument', '이미지 base64 데이터가 비어 있습니다.');
+        }
+        const imageKb = Math.round(dataBase64.length * 0.75 / 1024);
+        if (imageKb > 7 * 1024) {
+            throw new https_2.HttpsError('invalid-argument', '사진이 너무 큽니다. 한 장당 7MB 이하로 줄여주세요.');
+        }
+        totalImageKb += imageKb;
+        inlineParts.push({ inlineData: { data: dataBase64, mimeType } });
+        dataBase64 = '';
+    }
+    const clearParts = () => {
+        var _a;
+        for (const part of inlineParts) {
+            if ((_a = part === null || part === void 0 ? void 0 : part.inlineData) === null || _a === void 0 ? void 0 : _a.data)
+                part.inlineData.data = '';
+        }
+    };
+    try {
+        logger.info('extractHouseholdTextFromImage 호출', {
+            uid: request.auth.uid.slice(0, 8) + '…',
+            imageCount: inlineParts.length,
+            totalImageKb,
+        });
+        const prompt = `영수증·통장 거래내역·카드매출전표 이미지에서 가계부 정보를 추출해줘.
+거래가 여러 건이면 모두 추출해서 JSON 배열로 반환해줘.
+
+[절대 규칙]
+- 이미지에 보이는 내용만 사용하고, 보이지 않는 값은 추측하지 마세요.
+- 계좌번호·카드번호·승인번호 같은 민감 번호는 ****로 마스킹하세요.
+- 광고·이벤트·포인트 안내 등 실제 거래가 아닌 항목은 제외하세요.
+- 응답은 JSON 객체만 반환하고 코드펜스/설명 문장은 쓰지 마세요.
+
+{
+  "rawText": "이미지에서 읽은 주요 원문 (민감번호 마스킹)",
+  "transactions": [
+    {
+      "transactionAt": "YYYY.MM.DD 또는 YYYY.MM.DD HH:MM",
+      "type": "수입 또는 지출 또는 이체",
+      "category": "식비|교통비|통신비|주거비|공과금|의료비|교육비|문화생활|쇼핑|구독료|기타 중 하나",
+      "partner": "사용처명 또는 입금처",
+      "amount": "금액(숫자만 또는 통화 포함)",
+      "paymentMethod": "현금|체크카드|신용카드|계좌이체|카카오페이|네이버페이|기타 중 하나",
+      "memo": "기타 참고사항"
+    }
+  ],
+  "warnings": []
+}`;
+        const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+        const result = await model.generateContent([prompt, ...inlineParts]);
+        const responseText = result.response.text()
+            .replace(/^```(?:json)?\s*/i, '')
+            .replace(/```\s*$/i, '')
+            .trim();
+        clearParts();
+        const warnings = [];
+        let parsed = {};
+        try {
+            parsed = parseLedgerJsonObject(responseText);
+        }
+        catch {
+            parsed = { rawText: responseText, fields: {} };
+            warnings.push('추출 결과 형식이 불안정해 원문 위주로 표시합니다.');
+        }
+        const sanitizeTx = (t) => ({
+            transactionAt: cleanLedgerOcrText(t === null || t === void 0 ? void 0 : t.transactionAt, 80),
+            type: normalizeLedgerType(t === null || t === void 0 ? void 0 : t.type),
+            category: cleanLedgerOcrText(t === null || t === void 0 ? void 0 : t.category, 60),
+            partner: maskLedgerSensitiveText(t === null || t === void 0 ? void 0 : t.partner, 160),
+            amount: cleanLedgerOcrText(t === null || t === void 0 ? void 0 : t.amount, 80),
+            paymentMethod: maskLedgerSensitiveText(t === null || t === void 0 ? void 0 : t.paymentMethod, 80),
+            memo: maskLedgerSensitiveText(t === null || t === void 0 ? void 0 : t.memo, 500),
+        });
+        const rawTransactions = Array.isArray(parsed === null || parsed === void 0 ? void 0 : parsed.transactions) && parsed.transactions.length > 0
+            ? parsed.transactions
+            : (parsed === null || parsed === void 0 ? void 0 : parsed.fields) && typeof parsed.fields === 'object'
+                ? [parsed.fields]
+                : [];
+        const transactions = rawTransactions.map(sanitizeTx);
+        const parsedWarnings = Array.isArray(parsed === null || parsed === void 0 ? void 0 : parsed.warnings)
+            ? parsed.warnings.map((w) => cleanLedgerOcrText(w, 180)).filter(Boolean)
+            : [];
+        if (transactions.length === 0) {
+            warnings.push('가계부 입력 필드를 충분히 찾지 못했습니다. 직접 확인해 주세요.');
+        }
+        return {
+            rawText: maskLedgerSensitiveText((parsed === null || parsed === void 0 ? void 0 : parsed.rawText) || (parsed === null || parsed === void 0 ? void 0 : parsed.text) || responseText, 12000),
+            transactions,
+            fields: (_b = transactions[0]) !== null && _b !== void 0 ? _b : {},
+            warnings: Array.from(new Set([...warnings, ...parsedWarnings])).slice(0, 6),
+        };
+    }
+    catch (error) {
+        clearParts();
+        if (error instanceof https_2.HttpsError)
+            throw error;
+        logger.error('가계부 이미지 텍스트 추출 실패', { message: (_c = error === null || error === void 0 ? void 0 : error.message) === null || _c === void 0 ? void 0 : _c.slice(0, 200) });
+        throw new https_2.HttpsError('internal', '영수증 텍스트 추출에 실패했습니다. 사진을 더 또렷하게 올려 주세요.');
     }
 });
 const GROWTH_TIMELINE_PDF_SCHEMA_VERSION = 3;
@@ -7350,5 +7491,152 @@ exports.getKoreanPlantInfo = (0, https_2.onCall)({
         return nibrEmptyResponse('api_unavailable');
     }
 });
+// ===== 📁 보조장부 영수증 → 구글 드라이브 자동 업로드 =====
+const DRIVE_ROOT_FOLDER_ID = '1mzrd3lgMRrCBRCowN0VfmvKhE_5IyJ9X';
+async function getDriveClient(serviceAccountJson) {
+    const credentials = JSON.parse(serviceAccountJson);
+    const auth = new googleapis_1.google.auth.GoogleAuth({
+        credentials,
+        scopes: ['https://www.googleapis.com/auth/drive.file'],
+    });
+    return googleapis_1.google.drive({ version: 'v3', auth });
+}
+async function findDriveFolder(driveClient, name, parentId) {
+    var _a, _b, _c;
+    const res = await driveClient.files.list({
+        q: `name='${name}' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`,
+        fields: 'files(id)',
+        spaces: 'drive',
+    });
+    return (_c = (_b = (_a = res.data.files) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.id) !== null && _c !== void 0 ? _c : null;
+}
+async function createDriveFolder(driveClient, name, parentId) {
+    const res = await driveClient.files.create({
+        requestBody: {
+            name,
+            mimeType: 'application/vnd.google-apps.folder',
+            parents: [parentId],
+        },
+        fields: 'id',
+    });
+    return res.data.id;
+}
+async function getOrCreateMonthFolder(driveClient, year, month) {
+    let yearFolderId = await findDriveFolder(driveClient, year, DRIVE_ROOT_FOLDER_ID);
+    if (!yearFolderId)
+        yearFolderId = await createDriveFolder(driveClient, year, DRIVE_ROOT_FOLDER_ID);
+    const monthLabel = `${month}월`;
+    let monthFolderId = await findDriveFolder(driveClient, monthLabel, yearFolderId);
+    if (!monthFolderId)
+        monthFolderId = await createDriveFolder(driveClient, monthLabel, yearFolderId);
+    return monthFolderId;
+}
+exports.uploadReceiptToDrive = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    secrets: [GOOGLE_DRIVE_SERVICE_ACCOUNT_SECRET],
+}, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const { imageUrls, date, merchant, category, amount } = request.data;
+    if (!(imageUrls === null || imageUrls === void 0 ? void 0 : imageUrls.length) || !date) {
+        throw new https_2.HttpsError('invalid-argument', 'imageUrls와 date는 필수입니다.');
+    }
+    const year = date.substring(0, 4);
+    const month = date.substring(5, 7);
+    const dateCompact = date.replace(/-/g, '');
+    const safeMerchant = (merchant || '').replace(/[/\\?%*:|"<>]/g, '_').substring(0, 20);
+    const safeCategory = (category || '').replace(/[/\\?%*:|"<>]/g, '_').substring(0, 20);
+    const serviceAccountJson = GOOGLE_DRIVE_SERVICE_ACCOUNT_SECRET.value();
+    const driveClient = await getDriveClient(serviceAccountJson);
+    const folderId = await getOrCreateMonthFolder(driveClient, year, month);
+    const { Readable } = await Promise.resolve().then(() => __importStar(require('stream')));
+    const results = [];
+    for (let i = 0; i < imageUrls.length; i++) {
+        const url = imageUrls[i];
+        const suffix = imageUrls.length > 1 ? `_${i + 1}` : '';
+        const fileName = `${dateCompact}_${safeMerchant}_${safeCategory}_${amount}${suffix}.png`;
+        const imageRes = await axios_1.default.get(url, { responseType: 'arraybuffer' });
+        const buffer = Buffer.from(imageRes.data);
+        const stream = Readable.from(buffer);
+        const uploadRes = await driveClient.files.create({
+            requestBody: { name: fileName, parents: [folderId] },
+            media: { mimeType: 'image/png', body: stream },
+            fields: 'id,webViewLink',
+        });
+        results.push({ fileId: uploadRes.data.id, webViewLink: uploadRes.data.webViewLink, fileName });
+    }
+    return { results };
+});
 var epubExport_1 = require("./epubExport");
 Object.defineProperty(exports, "exportEpub", { enumerable: true, get: function () { return epubExport_1.exportEpub; } });
+// ─────────────────────────────────────────
+// 반려동물 식품 안전 확인 (petFoodCheck)
+// ─────────────────────────────────────────
+exports.petFoodCheck = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+}, async (request) => {
+    var _a, _b, _c;
+    const { foodName } = request.data;
+    if (!foodName || foodName.trim().length === 0) {
+        throw new https_2.HttpsError('invalid-argument', '식품명을 입력해주세요.');
+    }
+    const DB = [
+        { nameKo: ['포도', '건포도'], nameEn: ['grape', 'raisin'], riskLevel: 'emergency', answer: '절대 금지', reason: '신장 손상 유발, 소량도 치명적', symptoms: ['구토', '무기력', '신부전'], emergency: true, source: 'ASPCA' },
+        { nameKo: ['초콜릿'], nameEn: ['chocolate'], riskLevel: 'emergency', answer: '절대 금지', reason: '테오브로민 중독', symptoms: ['구토', '경련', '심부전'], emergency: true, source: 'ASPCA' },
+        { nameKo: ['자일리톨'], nameEn: ['xylitol'], riskLevel: 'emergency', answer: '절대 금지', reason: '저혈당·간부전 유발', symptoms: ['구토', '경련', '황달'], emergency: true, source: 'ASPCA' },
+        { nameKo: ['양파'], nameEn: ['onion'], riskLevel: 'danger', answer: '위험', reason: '적혈구 파괴 (용혈성 빈혈)', symptoms: ['빈혈', '무기력', '구토'], emergency: true, source: 'ASPCA' },
+        { nameKo: ['마늘'], nameEn: ['garlic'], riskLevel: 'danger', answer: '위험', reason: '양파보다 5배 독성', symptoms: ['빈혈', '구토'], emergency: true, source: 'ASPCA' },
+        { nameKo: ['대파', '쪽파', '부추'], nameEn: ['green onion', 'chive'], riskLevel: 'danger', answer: '위험', reason: '파 종류 전체 독성', symptoms: ['빈혈', '구토'], emergency: true, source: 'ASPCA' },
+        { nameKo: ['알코올', '술', '맥주', '소주'], nameEn: ['alcohol', 'beer'], riskLevel: 'danger', answer: '절대 금지', reason: '신경계·간 손상', symptoms: ['구토', '경련', '혼수'], emergency: true, source: 'ASPCA' },
+        { nameKo: ['카페인', '커피', '녹차'], nameEn: ['caffeine', 'coffee'], riskLevel: 'danger', answer: '위험', reason: '심박수 증가, 경련 유발', symptoms: ['떨림', '경련'], emergency: true, source: 'ASPCA' },
+        { nameKo: ['아보카도'], nameEn: ['avocado'], riskLevel: 'danger', answer: '위험', reason: '퍼신(Persin) 독소', symptoms: ['구토', '호흡곤란'], emergency: true, source: 'ASPCA' },
+        { nameKo: ['마카다미아'], nameEn: ['macadamia'], riskLevel: 'danger', answer: '위험', reason: '신경·근육 독성', symptoms: ['다리 떨림', '고열'], emergency: true, source: 'ASPCA' },
+        { nameKo: ['닭뼈', '생선뼈', '뼈'], nameEn: ['chicken bone'], riskLevel: 'danger', answer: '위험', reason: '내장 천공 유발', symptoms: ['구토', '혈변'], emergency: true, source: 'ASPCA' },
+        { nameKo: ['참치', '참치캔'], nameEn: ['tuna'], riskLevel: 'caution', answer: '소량만', reason: '과다 시 수은 중독', emergency: false, source: 'PetMD' },
+        { nameKo: ['생고기', '날고기'], nameEn: ['raw meat'], riskLevel: 'caution', answer: '주의', reason: '살모넬라 위험', emergency: false, source: 'AVMA' },
+        { nameKo: ['우유', '유제품'], nameEn: ['milk'], riskLevel: 'caution', answer: '소량만', reason: '유당불내증', emergency: false, source: 'PetMD' },
+        { nameKo: ['날달걀', '생달걀'], nameEn: ['raw egg'], riskLevel: 'caution', answer: '익혀서', reason: '날것은 살모넬라', emergency: false, source: 'ASPCA' },
+        { nameKo: ['감자'], nameEn: ['potato'], riskLevel: 'caution', answer: '익힌 것만', reason: '날감자·녹색감자는 솔라닌 독소', emergency: false, source: 'ASPCA' },
+        { nameKo: ['사과'], nameEn: ['apple'], riskLevel: 'safe', answer: '먹어도 돼요', reason: '씨앗 제거 후 소량은 안전', emergency: false, source: 'ASPCA' },
+        { nameKo: ['바나나'], nameEn: ['banana'], riskLevel: 'safe', answer: '먹어도 돼요', reason: '소량은 안전', emergency: false, source: 'ASPCA' },
+        { nameKo: ['고구마'], nameEn: ['sweet potato'], riskLevel: 'safe', answer: '먹어도 돼요', reason: '익혀서 소량', emergency: false, source: 'ASPCA' },
+        { nameKo: ['당근'], nameEn: ['carrot'], riskLevel: 'safe', answer: '먹어도 돼요', reason: '저칼로리, 치아 건강에 좋음', emergency: false, source: 'ASPCA' },
+        { nameKo: ['브로콜리'], nameEn: ['broccoli'], riskLevel: 'safe', answer: '소량은 괜찮아요', reason: '소량은 안전', emergency: false, source: 'ASPCA' },
+    ];
+    const query = foodName.toLowerCase().trim();
+    const matched = DB.find(item => item.nameKo.some(k => k.toLowerCase().includes(query) || query.includes(k.toLowerCase())) ||
+        item.nameEn.some(e => e.toLowerCase().includes(query) || query.includes(e.toLowerCase())));
+    if (!matched) {
+        return {
+            riskLevel: 'unknown',
+            answer: 'DB 미등록',
+            emergency: false,
+            geminiText: null,
+            source: null,
+        };
+    }
+    const apiKey = GEMINI_API_KEY_SECRET.value();
+    const genAI = new generative_ai_1.GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const prompt = `아래 반려동물 식품 안전 정보를 바탕으로 보호자에게 전달할 안내문을 작성해.
+판정 결과를 바꾸거나 추가 판단하지 마.
+위험도: ${matched.riskLevel}
+이유: ${matched.reason}
+증상: ${(_b = (_a = matched.symptoms) === null || _a === void 0 ? void 0 : _a.join(', ')) !== null && _b !== void 0 ? _b : '해당 없음'}
+응급 여부: ${matched.emergency ? '응급' : '일반'}
+2~4문장으로 간결하게 정리해.
+마지막에는 반드시 "이 안내는 진료를 대신하지 않습니다."를 붙여.`;
+    const result = await model.generateContent(prompt);
+    const geminiText = result.response.text();
+    return {
+        riskLevel: matched.riskLevel,
+        answer: matched.answer,
+        reason: matched.reason,
+        symptoms: (_c = matched.symptoms) !== null && _c !== void 0 ? _c : [],
+        emergency: matched.emergency,
+        geminiText,
+        source: matched.source,
+    };
+});

@@ -62,6 +62,10 @@ import { SayuHealthLibraryPage } from './pages/SayuHealthLibraryPage';
 import { ChildHealthHubPage } from './pages/ChildHealthHubPage';
 import { ChildHealthGrowthPage } from './pages/ChildHealthGrowthPage';
 import { ChildHealthVaccinePage } from './pages/ChildHealthVaccinePage';
+import { PetHealthHubPage } from './pages/PetHealthHubPage';
+import { PetHealthFoodPage } from './pages/PetHealthFoodPage';
+import { PetHealthSymptomPage } from './pages/PetHealthSymptomPage';
+import { PetHealthVaccinePage } from './pages/PetHealthVaccinePage';
 import { PlantDetectivePage } from './pages/PlantDetectivePage';
 import { AssetExplorerPage } from './pages/AssetExplorerPage';
 import { MasterpieceDetectivePage } from './pages/MasterpieceDetectivePage';
@@ -209,6 +213,11 @@ function App() {
               <Route path="/child-health" element={<ChildHealthHubPage />} />
               <Route path="/child-health/growth" element={<ChildHealthGrowthPage />} />
               <Route path="/child-health/vaccination" element={<ChildHealthVaccinePage />} />
+              {/* HARU 반려동물건강돌봄비서 */}
+              <Route path="/pet-health" element={<PetHealthHubPage />} />
+              <Route path="/pet-health/food" element={<PetHealthFoodPage />} />
+              <Route path="/pet-health/symptom" element={<PetHealthSymptomPage />} />
+              <Route path="/pet-health/vaccine" element={<PetHealthVaccinePage />} />
               <Route path="/health" element={<HealthMedicationPage />} />
 
               {/* 영어성경학습 */}
