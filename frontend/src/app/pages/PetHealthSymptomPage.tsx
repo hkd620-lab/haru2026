@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
+import { db } from '../../firebase';
+import { useAuth } from '../contexts/AuthContext';
 
 type RiskLevel = 'observe' | 'consult' | 'urgent' | 'emergency';
 
@@ -89,9 +92,11 @@ function findSymptomRule(query: string): SymptomRule | null {
 export function PetHealthSymptomPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const fromPath = (location.state as any)?.from as string | undefined;
 
   const [query, setQuery] = useState('');
+  const [petName, setPetName] = useState('');
   const [result, setResult] = useState<SymptomRule | null | 'not_found'>(null);
 
   const closeToOrigin = () => {
@@ -106,6 +111,18 @@ export function PetHealthSymptomPage() {
     if (!query.trim()) return;
     const found = findSymptomRule(query);
     setResult(found ?? 'not_found');
+
+    if (user?.uid && found) {
+      addDoc(collection(db, 'users', user.uid, 'petHealthLogs'), {
+        type: 'symptom',
+        petName: petName.trim() || '이름 미입력',
+        query: query.trim(),
+        riskLevel: found.level,
+        answer: found.possibleCauses,
+        checkedAt: new Date().toISOString().slice(0, 10),
+        createdAt: serverTimestamp(),
+      }).catch((e) => console.warn('petHealthLogs 저장 실패:', e));
+    }
   };
 
   const riskInfo = result && result !== 'not_found' ? RISK_CONFIG[result.level] : null;
@@ -127,6 +144,16 @@ export function PetHealthSymptomPage() {
       </div>
 
       <div className="mb-4">
+        <input
+          value={petName}
+          onChange={(e) => { setPetName(e.target.value); }}
+          placeholder="반려동물 이름 (선택) — 예) 뭉치, 나비"
+          style={{
+            display: 'block', width: '100%', boxSizing: 'border-box',
+            marginBottom: 8, padding: '8px 12px', borderRadius: 8,
+            border: '1px solid #d1d5db', fontSize: 14, fontFamily: 'inherit', outline: 'none',
+          }}
+        />
         <textarea
           value={query}
           onChange={(e) => { setQuery(e.target.value); setResult(null); }}
