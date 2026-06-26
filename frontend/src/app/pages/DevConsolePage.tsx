@@ -276,7 +276,7 @@ export function DevConsolePage() {
           <div className="flex gap-3">
             <button
               type="button"
-              onClick={() => navigate('/records', { state: { format: 'HARU보조장부' } })}
+              onClick={() => navigate('/record', { state: { format: 'HARU보조장부' } })}
               className="px-4 py-2 rounded-xl text-white text-sm font-semibold"
               style={{ backgroundColor: '#1A3C6E' }}
             >
