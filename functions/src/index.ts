@@ -497,6 +497,35 @@ export const searchOfficialDrugs = onCall(
   }
 );
 
+// ===== 💬 SAYU AI 한마디 프롬프트 생성 =====
+function buildAiCommentPrompt(polishedText: string, formatGroup: 'rich' | 'balanced' | 'conservative'): string {
+  const toneGuide =
+    formatGroup === 'rich'
+      ? '감정에 공감하고 따뜻하게 위로하는 친구처럼'
+      : formatGroup === 'balanced'
+      ? '작은 노력을 알아보고 격려하는 친구처럼'
+      : '수고를 인정하고 간결하게 응원하는 친구처럼';
+
+  return `다음 기록을 읽고 ${toneGuide} 짧은 한마디를 남겨줘.
+
+[엄격한 규칙]
+- 정확히 1~2문장. 절대 3문장 이상 금지.
+- 50자 이내 (한글 기준).
+- 존댓말 금지. 친근하고 자연스러운 말투.
+- 마크다운·이모지·따옴표·번호 금지. 텍스트만 출력.
+- 평가·충고·교훈 금지.
+- 칭찬을 과하게 하지 말 것.
+
+[예시 톤]
+(일기) "오늘 그런 마음이었구나. 잘 버텼어."
+(텃밭) "하나하나 돌보는 손길이 느껴져."
+(여행) "그 순간이 눈앞에 그려지는 것 같아."
+(업무) "오늘도 수고 많았어."
+
+기록 내용:
+${polishedText.slice(0, 500)}`;
+}
+
 // ===== 🎨 AI 다듬기 =====
 export const polishContent = onCall(
   { 
@@ -598,9 +627,26 @@ export const polishContent = onCall(
         stats = await analyzeStats(text, format, GEMINI_API_KEY_SECRET.value());
       }
 
-      return { 
+      // ===== 💬 AI 한마디 생성 (SAYU와 동시, 별도 호출 없음) =====
+      let aiComment = '';
+      try {
+        const commentModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+        const commentPrompt = buildAiCommentPrompt(polishedText, formatGroup);
+        const commentResult = await commentModel.generateContent(commentPrompt);
+        const rawComment = (commentResult.response.text() || '').trim();
+        aiComment = rawComment
+          .replace(/^["'`*#\-•·]+|["'`*#\-•·]+$/g, '')
+          .replace(/\*\*|__/g, '')
+          .trim()
+          .slice(0, 50);
+      } catch (commentErr) {
+        console.warn('[polishContent] AI 한마디 생성 실패:', commentErr);
+      }
+
+      return {
         text: polishedText,
-        stats: stats
+        stats: stats,
+        aiComment: aiComment,
       };
 
     } catch (error: any) {

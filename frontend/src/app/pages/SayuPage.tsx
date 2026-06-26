@@ -698,6 +698,7 @@ export function SayuPage() {
     timelineItems?: GrowthTimelineRecordItem[];
     title?: string;
     aiTitle?: string;
+    aiComment?: string;
     isPublic?: boolean;
     sharedRecordId?: string;
   }>({
@@ -2249,6 +2250,7 @@ export function SayuPage() {
       firestoreId: record.id,
       title: (record[`${formatKey}_title`] as string) || '',
       aiTitle: (record[`${formatKey}_ai_title`] as string) || '',
+      aiComment: (record[`${formatKey}_ai_comment`] as string) || '',
       isPublic: record.isPublic === true,
       sharedRecordId: typeof record.sharedRecordId === 'string' ? record.sharedRecordId : '',
       dateLabel: new Date(dateStr + 'T00:00:00').toLocaleDateString('ko-KR', {
@@ -4833,6 +4835,7 @@ export function SayuPage() {
         }}
         firestoreId={sayuModalState.firestoreId}
         title={sayuModalState.title}
+        aiComment={sayuModalState.aiComment}
         publicControl={(() => {
           const record = sayuModalState.firestoreId
             ? records.find((item) => item.id === sayuModalState.firestoreId)

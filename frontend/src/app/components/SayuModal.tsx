@@ -338,6 +338,7 @@ export interface SayuModalProps {
   onRefresh?: () => void;
   firestoreId?: string;
   title?: string;
+  aiComment?: string;
   publicControl?: ReactNode;
   assistantContent?: ReactNode;
 }
@@ -372,6 +373,7 @@ export function SayuModal({
   onRefresh,
   firestoreId,
   title,
+  aiComment = '',
   publicControl,
   assistantContent,
 }: SayuModalProps) {
@@ -390,6 +392,7 @@ export function SayuModal({
   const [editedOriginalData, setEditedOriginalData] = useState<Record<string, string>>(originalData || {});
   const [isSavingOriginal, setIsSavingOriginal] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
+  const [localAiComment, setLocalAiComment] = useState(aiComment);
   const [editedWeather, setEditedWeather] = useState(weather || '');
   const [editedTemperature, setEditedTemperature] = useState(temperature || '');
   const [editedMood, setEditedMood] = useState(mood || '');
@@ -1013,6 +1016,7 @@ export function SayuModal({
         }
       }
       setIsSpecialDay((currentRating || 0) > 0);
+      setLocalAiComment(aiComment || '');
       setViewMode('ai');
       setIsPrinting(false);
       setShowDeleteDialog(false);
@@ -1046,7 +1050,7 @@ export function SayuModal({
         });
       }
     }
-  }, [isOpen, content, currentRating, images, format, title, timelineItems, formatKey, firestoreId, recordDate, currentUser?.uid]);
+  }, [isOpen, content, currentRating, images, format, title, aiComment, timelineItems, formatKey, firestoreId, recordDate, currentUser?.uid]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -1344,12 +1348,18 @@ export function SayuModal({
         format: formatKey,
         mode: 'PREMIUM',
       });
-      const responseData = result.data as { text: string };
+      const responseData = result.data as { text: string; aiComment?: string };
       const polished = responseData.text;
+      const newAiComment = typeof responseData.aiComment === 'string' ? responseData.aiComment : '';
       const docId = firestoreId || recordDate!;
       const recordRef = doc(db, 'users', currentUser.uid, 'records', docId);
-      await updateDoc(recordRef, { [`${formatKey}_sayu`]: polished });
+      const updatePayload: Record<string, string> = { [`${formatKey}_sayu`]: polished };
+      if (newAiComment) {
+        updatePayload[`${formatKey}_ai_comment`] = newAiComment;
+      }
+      await updateDoc(recordRef, updatePayload);
       setEditedContent(polished);
+      if (newAiComment) setLocalAiComment(newAiComment);
       setViewMode('ai');
       toast.success('✨ 다시 다듬기가 완료되었습니다!');
     } catch (error) {
@@ -2576,6 +2586,38 @@ export function SayuModal({
                 }}
                 placeholder="SAYU 내용을 자유롭게 수정하세요..."
               />
+              {/* 💬 AI 한마디 */}
+              {localAiComment && (
+                <div style={{
+                  marginTop: 16,
+                  padding: '12px 16px',
+                  backgroundColor: '#FDF6C3',
+                  borderRadius: 10,
+                  border: '1px solid #e8d87a',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 8,
+                }}>
+                  <span style={{ fontSize: 18, lineHeight: 1, flexShrink: 0 }}>💬</span>
+                  <div>
+                    <p style={{
+                      margin: 0,
+                      fontSize: 11,
+                      color: '#a08c2a',
+                      fontWeight: 700,
+                      marginBottom: 4,
+                      letterSpacing: '0.5px',
+                    }}>AI 한마디</p>
+                    <p style={{
+                      margin: 0,
+                      fontSize: 14,
+                      color: '#4a3d00',
+                      lineHeight: 1.6,
+                      fontStyle: 'italic',
+                    }}>{localAiComment}</p>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             renderOriginalData()
