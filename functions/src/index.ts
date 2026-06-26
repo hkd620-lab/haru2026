@@ -8766,6 +8766,16 @@ export const petFoodCheck = onCall(
       { nameKo: ['고구마'], nameEn: ['sweet potato'], riskLevel: 'safe', answer: '먹어도 돼요', reason: '익혀서 소량', emergency: false, source: 'ASPCA' },
       { nameKo: ['당근'], nameEn: ['carrot'], riskLevel: 'safe', answer: '먹어도 돼요', reason: '저칼로리, 치아 건강에 좋음', emergency: false, source: 'ASPCA' },
       { nameKo: ['브로콜리'], nameEn: ['broccoli'], riskLevel: 'safe', answer: '소량은 괜찮아요', reason: '소량은 안전', emergency: false, source: 'ASPCA' },
+      // ── 2026-06-26 추가 ──
+      { nameKo: ['땅콩', '피넛', '땅콩버터'], nameEn: ['peanut', 'peanut butter'], riskLevel: 'caution', answer: '소량은 괜찮지만 주의가 필요합니다.', reason: '무염·무가공 땅콩 소량은 독성은 없으나 지방 함량이 높아 과다 섭취 시 췌장염 위험. 땅콩버터는 자일리톨 함유 여부 확인 필수.', symptoms: ['구토', '설사', '무기력'], emergency: false, source: 'AKC' },
+      { nameKo: ['익힌 계란', '삶은 계란', '계란', '달걀', '삶은 달걀'], nameEn: ['cooked egg', 'boiled egg', 'egg'], riskLevel: 'safe', answer: '익힌 계란은 먹여도 됩니다.', reason: '완전히 익힌 계란은 단백질 공급원으로 안전합니다. 날달걀은 살모넬라 위험이 있으니 반드시 익혀서 주세요.', emergency: false, source: 'AKC' },
+      { nameKo: ['연어', '익힌 연어', '구운 연어'], nameEn: ['salmon', 'cooked salmon'], riskLevel: 'safe', answer: '익힌 연어는 먹여도 됩니다.', reason: '완전히 익힌 연어는 오메가-3가 풍부합니다. 생연어는 기생충 위험이 있으니 반드시 익혀서 주세요.', emergency: false, source: 'AKC' },
+      { nameKo: ['생연어', '생선회', '회', '날생선'], nameEn: ['raw fish', 'raw salmon', 'sashimi'], riskLevel: 'caution', answer: '생선회·날생선은 주의가 필요합니다.', reason: '기생충 및 박테리아 감염 위험. 반드시 완전히 익혀서 주세요.', symptoms: ['구토', '설사', '무기력'], emergency: false, source: 'AKC' },
+      { nameKo: ['수박', '멜론'], nameEn: ['watermelon', 'melon'], riskLevel: 'safe', answer: '씨와 껍질을 제거하면 먹어도 됩니다.', reason: '과육은 수분이 풍부해 여름 간식으로 좋습니다. 씨앗과 껍질은 반드시 제거하세요.', emergency: false, source: 'AKC' },
+      { nameKo: ['블루베리', '딸기'], nameEn: ['blueberry', 'strawberry'], riskLevel: 'safe', answer: '소량은 먹여도 됩니다.', reason: '항산화 성분이 풍부해 소량의 간식으로 안전합니다. 당분이 있어 많이 주지 마세요.', emergency: false, source: 'AKC' },
+      { nameKo: ['버섯', '표고버섯', '양송이'], nameEn: ['mushroom'], riskLevel: 'caution', answer: '마트 식용 버섯은 소량 괜찮지만 야생 버섯은 위험합니다.', reason: '마트용 식용 버섯(표고·양송이)은 소량 무해. 야생 버섯은 독성이 있어 절대 금지.', symptoms: ['구토', '설사', '경련'], emergency: false, source: 'ASPCA' },
+      { nameKo: ['닭고기', '닭가슴살', '삶은 닭', '익힌 닭'], nameEn: ['chicken', 'chicken breast'], riskLevel: 'safe', answer: '양념 없이 익힌 닭고기는 먹여도 됩니다.', reason: '양념 없이 완전히 익힌 닭가슴살은 좋은 단백질 공급원입니다. 닭뼈는 위험하므로 반드시 제거하세요.', emergency: false, source: 'AKC' },
+      { nameKo: ['쌀', '밥', '흰밥', '쌀밥'], nameEn: ['rice', 'cooked rice'], riskLevel: 'safe', answer: '소량은 먹여도 됩니다.', reason: '소화가 잘 되는 탄수화물 공급원으로 소량은 안전합니다. 주식으로 삼으면 영양 불균형이 생길 수 있어요.', emergency: false, source: 'PetMD' },
     ];
 
     const query = foodName.toLowerCase().trim();
