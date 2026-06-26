@@ -499,6 +499,20 @@ const AGENTS: Agent[] = [
     ),
   },
   {
+    label: 'HARU반려동물건강돌봄',
+    sub: '먹어도 되나요? · 아픈 징조 · 예방접종 — 반려동물 건강을 HARU와 함께.',
+    tag: 'CARE · 반려동물',
+    variant: 'lilac',
+    stroke: '#7C3AED',
+    path: '/pet-health',
+    beta: true,
+    icon: (
+      <>
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      </>
+    ),
+  },
+  {
     label: '나도작가',
     sub: 'AI와 함께 글쓰기 — 시놉시스부터 단편소설까지 손쉽게 완성합니다.',
     tag: 'WRITE · 창작',
