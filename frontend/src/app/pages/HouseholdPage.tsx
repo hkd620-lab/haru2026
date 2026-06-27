@@ -148,7 +148,7 @@ export function HouseholdPage() {
     for (const e of thisMonthEntries) {
       const amt = parseAmount(e.amount);
       if (e.transactionType === '수입') income += amt;
-      else if (e.transactionType === '지출') expense += amt;
+      else if (e.transactionType === '지출' || e.transactionType === '이체') expense += amt;
     }
     return { income, expense, balance: income - expense };
   }, [thisMonthEntries]);
@@ -176,7 +176,7 @@ export function HouseholdPage() {
           if (!e.date.startsWith(ym)) continue;
           const amt = parseAmount(e.amount);
           if (e.transactionType === '수입') inc += amt;
-          else if (e.transactionType === '지출') exp += amt;
+          else if (e.transactionType === '지출' || e.transactionType === '이체') exp += amt;
         }
       }
       const label = ym.substring(5) + '월';

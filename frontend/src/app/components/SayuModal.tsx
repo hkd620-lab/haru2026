@@ -115,7 +115,7 @@ function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: st
   });
 
   const income = entries.reduce((sum, entry) => entry.transactionType === '수입' ? sum + parseHouseholdAmount(entry.amount) : sum, 0);
-  const expense = entries.reduce((sum, entry) => entry.transactionType === '지출' ? sum + parseHouseholdAmount(entry.amount) : sum, 0);
+  const expense = entries.reduce((sum, entry) => (entry.transactionType === '지출' || entry.transactionType === '이체') ? sum + parseHouseholdAmount(entry.amount) : sum, 0);
   const balance = income - expense;
   const money = (value: number) => `${value.toLocaleString()}원`;
 
@@ -125,7 +125,7 @@ function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: st
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
           {[
             { label: '총수입', value: `+${money(income)}`, color: '#059669' },
-            { label: '총지출', value: `-${money(expense)}`, color: '#dc2626' },
+            { label: '지출+이체', value: `-${money(expense)}`, color: '#dc2626' },
             { label: '잔액', value: money(balance), color: balance >= 0 ? '#059669' : '#dc2626' },
           ].map((item) => (
             <div key={item.label} style={{ minWidth: 0 }}>
