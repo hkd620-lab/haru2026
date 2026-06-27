@@ -236,12 +236,6 @@ export function HouseholdPage() {
           ←
         </button>
         <span style={{ fontWeight: 700, fontSize: 18, color: '#166534' }}>HARU가계부</span>
-        <button
-          onClick={() => navigate('/record', { state: { format: 'HARU가계부', from: '/household' } })}
-          style={{ marginLeft: 'auto', background: '#166534', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 14px', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
-        >
-          + 새 기록
-        </button>
       </div>
 
       <div style={{ padding: '16px 16px 0' }}>
@@ -358,6 +352,35 @@ export function HouseholdPage() {
           )}
         </div>
       </div>
+
+      {/* FAB — 새 기록 */}
+      <button
+        onPointerDown={() => navigate('/record', { state: { format: 'HARU가계부', from: '/household' } })}
+        style={{
+          position: 'fixed',
+          bottom: 88,
+          right: 20,
+          width: 56,
+          height: 56,
+          borderRadius: '50%',
+          background: '#166534',
+          color: '#fff',
+          border: 'none',
+          boxShadow: '0 4px 14px rgba(22,101,52,0.45)',
+          fontSize: 28,
+          fontWeight: 700,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 900,
+          touchAction: 'manipulation',
+          WebkitTapHighlightColor: 'transparent',
+        }}
+        aria-label="새 기록 추가"
+      >
+        +
+      </button>
 
       {/* 예산 설정 모달 */}
       {showBudgetModal && (
