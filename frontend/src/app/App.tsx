@@ -213,11 +213,13 @@ function App() {
               <Route path="/child-health" element={<ChildHealthHubPage />} />
               <Route path="/child-health/growth" element={<ChildHealthGrowthPage />} />
               <Route path="/child-health/vaccination" element={<ChildHealthVaccinePage />} />
+
               {/* HARU 반려동물건강돌봄비서 */}
               <Route path="/pet-health" element={<PetHealthHubPage />} />
               <Route path="/pet-health/food" element={<PetHealthFoodPage />} />
               <Route path="/pet-health/symptom" element={<PetHealthSymptomPage />} />
               <Route path="/pet-health/vaccine" element={<PetHealthVaccinePage />} />
+
               <Route path="/health" element={<HealthMedicationPage />} />
 
               {/* 영어성경학습 */}

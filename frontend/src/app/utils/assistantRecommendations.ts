@@ -113,11 +113,11 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
   },
   {
     id: 'pet',
-    title: 'HARU 반려동물 기록 비서',
+    title: 'HARU 반려동물건강돌봄비서',
     category: 'pet',
-    description: '기록 속 반려동물의 행동, 건강, 식사, 산책 내용을 애완동물관찰일지로 정리할 수 있습니다.',
-    actionLabel: '애완동물관찰일지로 정리',
-    targetPath: '/record',
+    description: '기록 속 반려동물의 먹거리 안전, 아픈 징조, 예방접종 내용을 확인하고 기록할 수 있습니다.',
+    actionLabel: '반려동물 건강돌봄비서와 연결',
+    targetPath: '/pet-health',
     keywords: ['강아지', '고양이', '반려견', '반려묘', '애완동물', '반려동물', '사료', '배변', '산책', '짖음', '구토', '피부', '동물병원', '예방접종'],
   },
   {
