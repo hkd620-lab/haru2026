@@ -43,6 +43,141 @@ const TIMELINE_IMAGE_MAX_WIDTH = 1600;
 const TIMELINE_IMAGE_QUALITY = 0.82;
 type EnvTagType = 'weather' | 'temperature' | 'mood';
 
+type HouseholdSayuEntry = {
+  date: string;
+  transactionType: string;
+  category: string;
+  vendor: string;
+  amount: string;
+  paymentMethod: string;
+  memo: string;
+};
+
+function parseHouseholdAmount(value: string): number {
+  const n = parseFloat(String(value || '').replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function parseHouseholdEntriesForSayu(data?: Record<string, string>): HouseholdSayuEntry[] {
+  const stored = data?.household_entries;
+  if (!stored) return [];
+  try {
+    const parsed = JSON.parse(stored);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((entry: any) => ({
+      date: String(entry.date || ''),
+      transactionType: String(entry.transactionType || ''),
+      category: String(entry.category || ''),
+      vendor: String(entry.vendor || ''),
+      amount: String(entry.amount || ''),
+      paymentMethod: String(entry.paymentMethod || ''),
+      memo: String(entry.memo || ''),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function formatHouseholdDate(date: string): string {
+  return date.match(/^\d{4}\.(\d{2})\.(\d{2})/)?.slice(1).join('/') || date;
+}
+
+function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: string) {
+  if (entries.length === 0) {
+    return (
+      <textarea
+        value={fallbackText}
+        readOnly
+        style={{
+          width: '100%',
+          minHeight: '400px',
+          padding: '20px',
+          fontSize: 15,
+          lineHeight: 1.8,
+          border: '1px solid #e5e5e5',
+          borderRadius: 8,
+          backgroundColor: '#fff',
+          color: '#333',
+          resize: 'vertical',
+          fontFamily: 'inherit',
+          outline: 'none',
+          whiteSpace: 'pre-wrap',
+        }}
+      />
+    );
+  }
+
+  const sortedEntries = [...entries].sort((a, b) => {
+    const dateCompare = b.date.localeCompare(a.date);
+    if (dateCompare !== 0) return dateCompare;
+    const order: Record<string, number> = { '수입': 0, '이체': 1, '지출': 2 };
+    return (order[a.transactionType] ?? 9) - (order[b.transactionType] ?? 9);
+  });
+
+  const income = entries.reduce((sum, entry) => entry.transactionType === '수입' ? sum + parseHouseholdAmount(entry.amount) : sum, 0);
+  const expense = entries.reduce((sum, entry) => entry.transactionType === '지출' ? sum + parseHouseholdAmount(entry.amount) : sum, 0);
+  const balance = income - expense;
+  const money = (value: number) => `${value.toLocaleString()}원`;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+          {[
+            { label: '총수입', value: `+${money(income)}`, color: '#059669' },
+            { label: '총지출', value: `-${money(expense)}`, color: '#dc2626' },
+            { label: '잔액', value: money(balance), color: balance >= 0 ? '#059669' : '#dc2626' },
+          ].map((item) => (
+            <div key={item.label} style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 700 }}>{item.label}</div>
+              <div style={{ fontSize: 16, color: item.color, fontWeight: 800, wordBreak: 'break-word' }}>{item.value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {sortedEntries.map((entry, index) => {
+          const isIncome = entry.transactionType === '수입';
+          const isTransfer = entry.transactionType === '이체';
+          const amount = parseHouseholdAmount(entry.amount);
+          const color = isIncome ? '#059669' : isTransfer ? '#2563eb' : '#dc2626';
+          const bg = isIncome ? '#ecfdf5' : isTransfer ? '#eff6ff' : '#fef2f2';
+          const icon = isIncome ? '↑' : isTransfer ? '↔' : '↓';
+          const title = isTransfer
+            ? entry.memo || '이체'
+            : isIncome
+              ? entry.vendor || entry.category || '수입'
+              : entry.vendor || entry.category || '지출';
+          const detailLabel = isTransfer ? '메모' : isIncome ? '출처' : '사용처';
+          const detail = isTransfer ? entry.memo || '이체' : title;
+          const meta = [entry.category || entry.transactionType, entry.paymentMethod, entry.date].filter(Boolean).join(' · ');
+          return (
+            <div key={`${entry.date}_${entry.amount}_${index}`} style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 34, height: 34, borderRadius: '50%', backgroundColor: bg, color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 900, flexShrink: 0 }}>
+                  {icon}
+                </div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color, whiteSpace: 'nowrap' }}>[{entry.transactionType || '거래'}]</span>
+                    <span style={{ fontSize: 17, fontWeight: 900, color, textAlign: 'right' }}>
+                      {isIncome ? '+' : isTransfer ? '' : '-'}{money(amount)}
+                    </span>
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 13, color: '#374151', lineHeight: 1.5, overflowWrap: 'anywhere' }}>
+                    {detailLabel}: {detail} · {meta.replace(entry.date, formatHouseholdDate(entry.date))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function SortableEnvTagItem({
   id,
   isSelected,
@@ -408,6 +543,8 @@ export function SayuModal({
   const [isExportingEpub, setIsExportingEpub] = useState(false);
   const [editedTitle, setEditedTitle] = useState(title || '');
   const isGrowthTimeline = formatKey === 'growthTimeline';
+  const isHouseholdSayu = formatKey === 'household' || format === 'HARU가계부' || Boolean(editedOriginalData.household_entries);
+  const householdSayuEntries = isHouseholdSayu ? parseHouseholdEntriesForSayu(editedOriginalData) : [];
   const timelineLocationRecoveryKeyRef = useRef('');
   const editedTimelineItemsRef = useRef<GrowthTimelineEditItem[]>([]);
   const weatherTagsRef = useRef<string[]>(WEATHER_OPTIONS);
@@ -2090,6 +2227,10 @@ export function SayuModal({
                 />
               </div>
 
+              {isHouseholdSayu ? (
+                renderHouseholdSayuView(householdSayuEntries, editedOriginalData.household_sayu || editedContent)
+              ) : (
+              <>
               {/* 환경 정보 */}
               {(recordDate || weather || temperature || mood) && (
                 <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e5e5' }}>
@@ -2576,6 +2717,8 @@ export function SayuModal({
                 }}
                 placeholder="SAYU 내용을 자유롭게 수정하세요..."
               />
+              </>
+              )}
             </div>
           ) : (
             renderOriginalData()
