@@ -421,24 +421,31 @@ function SummaryCard({ label, value, color }: { label: string; value: string; co
 function EntryRow({ entry }: { entry: ExpandedEntry }) {
   const amt = parseAmount(entry.amount);
   const isIncome = entry.transactionType === '수입';
+  const isTransfer = entry.transactionType === '이체';
+  const displayTitle = isTransfer
+    ? entry.memo || '이체'
+    : isIncome
+      ? entry.vendor || entry.category || '수입'
+      : entry.vendor || entry.category || '-';
+  const displayDate = entry.date.match(/^\d{4}\.(\d{2})\.(\d{2})/)?.slice(1).join('/') || entry.date;
   return (
     <div style={{ padding: '10px 16px', borderBottom: '1px solid #f9fafb', display: 'flex', alignItems: 'center', gap: 10 }}>
       <div style={{
         width: 36, height: 36, borderRadius: '50%',
-        background: isIncome ? '#d1fae5' : '#fee2e2',
+        background: isIncome ? '#d1fae5' : isTransfer ? '#dbeafe' : '#fee2e2',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 16, flexShrink: 0,
       }}>
-        {isIncome ? '↑' : '↓'}
+        {isIncome ? '↑' : isTransfer ? '↔' : '↓'}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {entry.vendor || entry.category || '-'}
+          {displayTitle}
         </div>
-        <div style={{ fontSize: 12, color: '#9ca3af' }}>{entry.date} · {entry.category}</div>
+        <div style={{ fontSize: 12, color: '#9ca3af' }}>{displayDate} · {entry.category || entry.transactionType}</div>
       </div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: isIncome ? '#10b981' : '#ef4444', flexShrink: 0 }}>
-        {isIncome ? '+' : '-'}{amt.toLocaleString()}원
+      <div style={{ fontSize: 14, fontWeight: 700, color: isIncome ? '#10b981' : isTransfer ? '#2563eb' : '#ef4444', flexShrink: 0 }}>
+        {isIncome ? '+' : isTransfer ? '' : '-'}{amt.toLocaleString()}원
       </div>
     </div>
   );

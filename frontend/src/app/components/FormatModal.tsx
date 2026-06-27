@@ -117,6 +117,7 @@ function newLedgerEntry(overrides?: Partial<LedgerEntry>): LedgerEntry {
 
 // ===== HARU가계부 =====
 const HOUSEHOLD_CATEGORIES = ['식비', '교통비', '통신비', '주거비', '공과금', '의료비', '교육비', '문화생활', '쇼핑', '구독료', '기타'] as const;
+const INCOME_CATEGORIES = ['월급', '부수입', '용돈', '환급', '투자수익', '기타수입'] as const;
 const HOUSEHOLD_PAYMENT_METHODS = ['현금', '체크카드', '신용카드', '계좌이체', '카카오페이', '네이버페이', '기타'] as const;
 
 interface HouseholdEntry {
@@ -143,6 +144,11 @@ function newHouseholdEntry(overrides?: Partial<HouseholdEntry>): HouseholdEntry 
     memo: '',
     ...overrides,
   };
+}
+
+function parseHouseholdAmount(value: string): number {
+  const n = parseFloat(String(value || '').replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(n) ? n : 0;
 }
 
 type GrowthSubjectType = 'child' | 'garden';
@@ -1877,9 +1883,16 @@ ${contentValues}`,
 
     const first = householdEntries[0];
     const autoTitle = [first.date, first.transactionType, first.vendor || 'HARU가계부'].filter(Boolean).join(' · ') || 'HARU가계부';
-    const originalContent = householdEntries.map((e, i) => {
-      const parts = [e.date, e.transactionType, e.category, e.vendor, e.amount, e.paymentMethod].filter(Boolean);
-      return `[거래 ${i + 1}] ${parts.join(' · ')}${e.memo ? '\n메모: ' + e.memo : ''}`;
+    const originalContent = householdEntries.map((e) => {
+      const amount = parseHouseholdAmount(e.amount).toLocaleString();
+      if (e.transactionType === '수입') {
+        return `[수입] ${e.date} ${amount}원${e.vendor ? ` (${e.vendor})` : ''}${e.memo ? '\n메모: ' + e.memo : ''}`;
+      }
+      if (e.transactionType === '이체') {
+        return `[이체] ${e.date} ${amount}원${e.paymentMethod ? ` → ${e.paymentMethod}` : ''}${e.memo ? '\n메모: ' + e.memo : ''}`;
+      }
+      const details = [e.vendor, e.category, e.paymentMethod].filter(Boolean).join(' / ');
+      return `[지출] ${e.date} ${amount}원${details ? ` ${details}` : ''}${e.memo ? '\n메모: ' + e.memo : ''}`;
     }).join('\n\n');
 
     const prefix = 'household';
@@ -4047,9 +4060,18 @@ ${contentValues}`,
                           </div>
                         )}
                         {householdEntries.map((entry, idx) => {
-                          const categoryOptions = HOUSEHOLD_CATEGORIES;
+                          const categoryOptions = entry.transactionType === '수입' ? INCOME_CATEGORIES : HOUSEHOLD_CATEGORIES;
                           const fieldLabelStyle: React.CSSProperties = { display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 5, fontWeight: 500 };
                           const fieldInputStyle: React.CSSProperties = { width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid #e5e5e5', borderRadius: 7, backgroundColor: '#fff', color: '#333', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' };
+                          const updateTransactionType = (transactionType: HouseholdEntry['transactionType']) => {
+                            setHouseholdEntries(prev => prev.map(e => e.id === entry.id ? {
+                              ...e,
+                              transactionType,
+                              category: transactionType === '이체' ? '이체' : '',
+                              vendor: transactionType === '이체' ? '' : e.vendor,
+                              paymentMethod: transactionType === '이체' ? (e.paymentMethod || '계좌이체') : e.paymentMethod,
+                            } : e));
+                          };
                           return (
                             <div key={entry.id} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 14, backgroundColor: '#fafafa' }}>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -4070,7 +4092,7 @@ ${contentValues}`,
                                 <div style={{ display: 'flex', gap: 5 }}>
                                   {(['수입', '지출', '이체'] as const).map(opt => (
                                     <button key={opt} type="button"
-                                      onClick={() => setHouseholdEntries(prev => prev.map(e => e.id === entry.id ? { ...e, transactionType: opt } : e))}
+                                      onClick={() => updateTransactionType(opt)}
                                       style={{ flex: 1, padding: '7px 4px', borderRadius: 7, fontSize: 12, fontWeight: entry.transactionType === opt ? 700 : 400, cursor: 'pointer', border: entry.transactionType === opt ? 'none' : '1px solid #e5e7eb', backgroundColor: entry.transactionType === opt ? (opt === '수입' ? '#10b981' : opt === '이체' ? '#3b82f6' : '#ef4444') : '#fff', color: entry.transactionType === opt ? '#fff' : '#374151' }}>
                                       {opt === '수입' ? '💰 수입' : opt === '이체' ? '🔄 이체' : '📤 지출'}
                                     </button>
@@ -4078,18 +4100,20 @@ ${contentValues}`,
                                 </div>
                               </div>
                               {/* 카테고리 */}
-                              <div style={{ marginBottom: 10 }}>
-                                <label style={fieldLabelStyle}>카테고리</label>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                                  {categoryOptions.map(opt => (
-                                    <button key={opt} type="button"
-                                      onClick={() => setHouseholdEntries(prev => prev.map(e => e.id === entry.id ? { ...e, category: opt } : e))}
-                                      style={{ padding: '5px 11px', borderRadius: 18, fontSize: 12, cursor: 'pointer', border: entry.category === opt ? 'none' : '1px solid #e5e7eb', backgroundColor: entry.category === opt ? '#166534' : '#fff', color: entry.category === opt ? '#fff' : '#374151', fontWeight: entry.category === opt ? 700 : 400 }}>
-                                      {opt}
-                                    </button>
-                                  ))}
+                              {entry.transactionType !== '이체' && (
+                                <div style={{ marginBottom: 10 }}>
+                                  <label style={fieldLabelStyle}>카테고리</label>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                                    {categoryOptions.map(opt => (
+                                      <button key={opt} type="button"
+                                        onClick={() => setHouseholdEntries(prev => prev.map(e => e.id === entry.id ? { ...e, category: opt } : e))}
+                                        style={{ padding: '5px 11px', borderRadius: 18, fontSize: 12, cursor: 'pointer', border: entry.category === opt ? 'none' : '1px solid #e5e7eb', backgroundColor: entry.category === opt ? '#166534' : '#fff', color: entry.category === opt ? '#fff' : '#374151', fontWeight: entry.category === opt ? 700 : 400 }}>
+                                        {opt}
+                                      </button>
+                                    ))}
+                                  </div>
                                 </div>
-                              </div>
+                              )}
                               {/* 날짜·금액 */}
                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
                                 <div>
@@ -4103,31 +4127,33 @@ ${contentValues}`,
                                     onChange={e => setHouseholdEntries(prev => prev.map(en => en.id === entry.id ? { ...en, amount: e.target.value } : en))} />
                                 </div>
                               </div>
-                              {/* 사용처 — 지출일 때만 표시 */}
-                              {entry.transactionType === '지출' && (
+                              {/* 사용처/출처 */}
+                              {entry.transactionType !== '이체' && (
                                 <div style={{ marginBottom: 10 }}>
-                                  <label style={fieldLabelStyle}>사용처</label>
-                                  <input type="text" placeholder="마트, 편의점, 카페 등" value={entry.vendor} style={{ ...fieldInputStyle, fontSize: 16 }}
+                                  <label style={fieldLabelStyle}>{entry.transactionType === '수입' ? '출처/내역 (선택)' : '사용처'}</label>
+                                  <input type="text" placeholder={entry.transactionType === '수입' ? '회사명, 거래처, 출처 등' : '마트, 편의점, 카페 등'} value={entry.vendor} style={{ ...fieldInputStyle, fontSize: 16 }}
                                     onChange={e => setHouseholdEntries(prev => prev.map(en => en.id === entry.id ? { ...en, vendor: e.target.value } : en))} />
                                 </div>
                               )}
                               {/* 결제수단 */}
-                              <div style={{ marginBottom: 10 }}>
-                                <label style={fieldLabelStyle}>결제수단</label>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                                  {HOUSEHOLD_PAYMENT_METHODS.map(opt => (
-                                    <button key={opt} type="button"
-                                      onClick={() => setHouseholdEntries(prev => prev.map(e => e.id === entry.id ? { ...e, paymentMethod: opt } : e))}
-                                      style={{ padding: '5px 11px', borderRadius: 18, fontSize: 12, cursor: 'pointer', border: entry.paymentMethod === opt ? 'none' : '1px solid #e5e7eb', backgroundColor: entry.paymentMethod === opt ? '#1A3C6E' : '#fff', color: entry.paymentMethod === opt ? '#fff' : '#374151', fontWeight: entry.paymentMethod === opt ? 700 : 400 }}>
-                                      {opt}
-                                    </button>
-                                  ))}
+                              {entry.transactionType !== '이체' && (
+                                <div style={{ marginBottom: 10 }}>
+                                  <label style={fieldLabelStyle}>결제수단</label>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                                    {HOUSEHOLD_PAYMENT_METHODS.map(opt => (
+                                      <button key={opt} type="button"
+                                        onClick={() => setHouseholdEntries(prev => prev.map(e => e.id === entry.id ? { ...e, paymentMethod: opt } : e))}
+                                        style={{ padding: '5px 11px', borderRadius: 18, fontSize: 12, cursor: 'pointer', border: entry.paymentMethod === opt ? 'none' : '1px solid #e5e7eb', backgroundColor: entry.paymentMethod === opt ? '#1A3C6E' : '#fff', color: entry.paymentMethod === opt ? '#fff' : '#374151', fontWeight: entry.paymentMethod === opt ? 700 : 400 }}>
+                                        {opt}
+                                      </button>
+                                    ))}
+                                  </div>
                                 </div>
-                              </div>
+                              )}
                               {/* 메모 */}
                               <div>
                                 <label style={fieldLabelStyle}>메모 (선택)</label>
-                                <input type="text" placeholder="참고사항" value={entry.memo} style={{ ...fieldInputStyle, fontSize: 16 }}
+                                <input type="text" placeholder={entry.transactionType === '이체' ? '어디서 → 어디로 (예: 급여통장 → 생활비통장)' : '참고사항'} value={entry.memo} style={{ ...fieldInputStyle, fontSize: 16 }}
                                   onChange={e => setHouseholdEntries(prev => prev.map(en => en.id === entry.id ? { ...en, memo: e.target.value } : en))} />
                               </div>
                             </div>
