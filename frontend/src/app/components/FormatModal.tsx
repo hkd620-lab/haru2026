@@ -1870,9 +1870,10 @@ ${contentValues}`,
   const handleSaveHouseholdEntries = async () => {
     if (householdEntries.length === 0) { toast.warning('거래 내역을 입력해 주세요.'); return; }
     const emptyAmounts = householdEntries.filter(e => !e.amount.trim()).length;
-    const emptyVendors = householdEntries.filter(e => !e.vendor.trim()).length;
+    // 수입·이체는 사용처가 없어도 됨 — 지출만 체크
+    const emptyVendors = householdEntries.filter(e => e.transactionType === '지출' && !e.vendor.trim()).length;
     if (emptyAmounts > 0) { toast.warning(`금액이 비어 있는 거래(${emptyAmounts}건)를 확인해 주세요.`); return; }
-    if (emptyVendors > 0) { toast.warning(`사용처가 비어 있는 거래(${emptyVendors}건)를 확인해 주세요.`); return; }
+    if (emptyVendors > 0) { toast.warning(`사용처가 비어 있는 지출 거래(${emptyVendors}건)를 확인해 주세요.`); return; }
 
     const first = householdEntries[0];
     const autoTitle = [first.date, first.transactionType, first.vendor || 'HARU가계부'].filter(Boolean).join(' · ') || 'HARU가계부';
@@ -4102,12 +4103,14 @@ ${contentValues}`,
                                     onChange={e => setHouseholdEntries(prev => prev.map(en => en.id === entry.id ? { ...en, amount: e.target.value } : en))} />
                                 </div>
                               </div>
-                              {/* 사용처 */}
-                              <div style={{ marginBottom: 10 }}>
-                                <label style={fieldLabelStyle}>사용처</label>
-                                <input type="text" placeholder="마트, 편의점, 카페 등" value={entry.vendor} style={{ ...fieldInputStyle, fontSize: 16 }}
-                                  onChange={e => setHouseholdEntries(prev => prev.map(en => en.id === entry.id ? { ...en, vendor: e.target.value } : en))} />
-                              </div>
+                              {/* 사용처 — 지출일 때만 표시 */}
+                              {entry.transactionType === '지출' && (
+                                <div style={{ marginBottom: 10 }}>
+                                  <label style={fieldLabelStyle}>사용처</label>
+                                  <input type="text" placeholder="마트, 편의점, 카페 등" value={entry.vendor} style={{ ...fieldInputStyle, fontSize: 16 }}
+                                    onChange={e => setHouseholdEntries(prev => prev.map(en => en.id === entry.id ? { ...en, vendor: e.target.value } : en))} />
+                                </div>
+                              )}
                               {/* 결제수단 */}
                               <div style={{ marginBottom: 10 }}>
                                 <label style={fieldLabelStyle}>결제수단</label>
