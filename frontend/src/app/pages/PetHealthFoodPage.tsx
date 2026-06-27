@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { AlertTriangle, ArrowLeft, Loader2, PawPrint, Search } from 'lucide-react';
-import { functions } from '../../firebase';
+import { db, functions } from '../../firebase';
 import { petFoodSafetyDB } from '../../data/petFoodSafetyDB';
+import { useAuth } from '../contexts/AuthContext';
 
 type PetFoodCheckResult = {
   riskLevel: 'safe' | 'caution' | 'danger' | 'emergency' | 'unknown';
@@ -33,7 +35,9 @@ const riskLabels: Record<PetFoodCheckResult['riskLevel'], string> = {
 
 export function PetHealthFoodPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [input, setInput] = useState('');
+  const [petName, setPetName] = useState('');
   const [result, setResult] = useState<PetFoodCheckResult | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -55,7 +59,20 @@ export function PetHealthFoodPage() {
     try {
       const petFoodCheck = httpsCallable(functions, 'petFoodCheck');
       const response = await petFoodCheck({ foodName });
-      setResult(response.data as PetFoodCheckResult);
+      const data = response.data as PetFoodCheckResult;
+      setResult(data);
+
+      if (user?.uid) {
+        addDoc(collection(db, 'users', user.uid, 'petHealthLogs'), {
+          type: 'food',
+          petName: petName.trim() || '이름 미입력',
+          query: foodName,
+          riskLevel: data.riskLevel,
+          answer: data.answer,
+          checkedAt: new Date().toISOString().slice(0, 10),
+          createdAt: serverTimestamp(),
+        }).catch((e) => console.warn('petHealthLogs 저장 실패:', e));
+      }
     } catch (err) {
       console.error('petFoodCheck failed:', err);
       setError('확인 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.');
@@ -87,6 +104,15 @@ export function PetHealthFoodPage() {
               HARU 안전 DB에 등록된 식품만 판정하고, AI는 안내문 정리에만 사용합니다.
             </p>
           </div>
+        </div>
+
+        <div className="mb-3">
+          <input
+            value={petName}
+            onChange={(e) => setPetName(e.target.value)}
+            placeholder="반려동물 이름 (선택) — 예) 뭉치, 나비"
+            className="h-10 w-full rounded-[8px] border border-[#D8E1EA] bg-white px-4 text-sm text-[#2C2C2A] outline-none placeholder:text-[#A5ADB5] focus:border-[#1A3C6E]"
+          />
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row">

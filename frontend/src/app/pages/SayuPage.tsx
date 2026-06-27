@@ -42,6 +42,7 @@ const FORMAT_FIRST_FIELD: Record<string, string> = {
   stock: 'stock_name',
   growthTimeline: 'title',
   ledger: 'ledger_date',
+  household: 'household_title',
 };
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
@@ -1994,6 +1995,7 @@ export function SayuPage() {
     'HARU주식관리': 'stock',
     '주식거래일지': 'stock',
     'HARU보조장부': 'ledger',
+    'HARU가계부': 'household',
   };
 
   const META_SUFFIXES = ['_sayu', '_final_sayu', '_polished', '_polishedAt', '_mode', '_stats', '_images', '_imageMeta', '_rating', '_status', '_completedAt', '_reflection_questions', '_reflection_answers', '_entries_snapshot'];
@@ -2054,6 +2056,7 @@ export function SayuPage() {
     haruraw: '#10b981',
     stock:   '#F59E0B',
     ledger:  '#7A6F5A',
+    household: '#166534',
   };
 
   const getFormatDotsForDay = (date: Date | null): { prefix: string; color: string }[] => {

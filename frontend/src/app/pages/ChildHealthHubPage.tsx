@@ -29,9 +29,8 @@ const FEATURES: SubFeature[] = [
   {
     path: '/child-health/vaccination',
     title: '예방접종 일정',
-    sub: '월령별 예방접종 일정 안내 (준비 중)',
-    desc: '아이 생년월일을 입력하면 다음 예방접종 시기와 종류를 안내합니다.',
-    comingSoon: true,
+    sub: '생년월일 입력 → 월령별 접종 일정 확인',
+    desc: '아이 생년월일을 입력하면 완료된 접종, 이번 달 접종, 다가오는 접종을 한눈에 확인합니다.',
     icon: (
       <>
         <path d="M3 3l18 18" />

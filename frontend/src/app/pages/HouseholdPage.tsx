@@ -344,7 +344,14 @@ export function HouseholdPage() {
             </div>
           ) : (
             [...thisMonthEntries]
-              .sort((a, b) => b.date.localeCompare(a.date))
+              .sort((a, b) => {
+                // 날짜 내림차순
+                const dateCmp = b.date.localeCompare(a.date);
+                if (dateCmp !== 0) return dateCmp;
+                // 같은 날짜 내: 수입 → 이체 → 지출 순
+                const typeOrder: Record<string, number> = { '수입': 0, '이체': 1, '지출': 2 };
+                return (typeOrder[a.transactionType] ?? 9) - (typeOrder[b.transactionType] ?? 9);
+              })
               .map((e, i) => (
                 <EntryRow key={i} entry={e} />
               ))
