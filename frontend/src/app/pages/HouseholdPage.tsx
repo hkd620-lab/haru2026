@@ -44,13 +44,16 @@ interface ExpandedEntry {
 }
 
 function expandRecord(r: HaruRecord): ExpandedEntry[] {
+  // YYYY-MM-DD → YYYY.MM.DD 변환 (월별 필터 형식 통일)
+  const toDisplayDate = (s: string) => String(s || '').replace(/-/g, '.');
+  const fallbackDate = toDisplayDate((r as any).household_date || r.date || '');
   const stored = (r as any).household_entries;
   if (stored && typeof stored === 'string') {
     try {
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed.map((e: any) => ({
-          date: String(e.date || ''),
+          date: String(e.date || fallbackDate),
           transactionType: String(e.transactionType || ''),
           category: String(e.category || ''),
           vendor: String(e.vendor || ''),
@@ -62,7 +65,7 @@ function expandRecord(r: HaruRecord): ExpandedEntry[] {
     } catch { /* ignore */ }
   }
   return [{
-    date: String((r as any).household_date || r.date || ''),
+    date: fallbackDate,
     transactionType: String((r as any).household_type || ''),
     category: String((r as any).household_category || '기타'),
     vendor: String((r as any).household_vendor || ''),

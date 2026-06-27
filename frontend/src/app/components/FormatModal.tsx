@@ -133,11 +133,13 @@ interface HouseholdEntry {
 }
 
 function newHouseholdEntry(overrides?: Partial<HouseholdEntry>): HouseholdEntry {
+  const today = new Date();
+  const defaultDate = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
   return {
     id: Math.random().toString(36).slice(2, 9),
     transactionType: '지출',
     category: '',
-    date: '',
+    date: defaultDate,
     vendor: '',
     amount: '',
     paymentMethod: '',
