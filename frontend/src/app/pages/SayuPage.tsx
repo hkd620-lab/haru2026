@@ -256,6 +256,17 @@ type PlantDetectiveAdvancedResult = {
     similarSpecies: string[];
     needMorePhotos: string[];
     confidence: 'high' | 'medium' | 'low';
+    growthStage?: string;
+    growthStagePercent?: number | null;
+    healthScore?: number | null;
+    pestDiseaseWatch?: string;
+    wateringAdvice?: string;
+    fertilizerAdvice?: string;
+    expectedHarvest?: string;
+    autoDiary?: string;
+    previousPhotoComparison?: string;
+    yearOverYearComparison?: string;
+    careSummary?: string;
   } | null;
   meta: {
     imageCount: number;
@@ -1232,7 +1243,6 @@ export function SayuPage() {
       setPlantReadOnlyDetail((prev) => {
         if (!prev || prev.recordId !== recordId || prev.entryIdx !== idx) return prev;
         const updatedTitle = getPlantDisplayName(target).slice(0, 48);
-        const aiSummary = getPlantAiSummary(target);
         const memoSummary = getPlantMemoSummary(target);
         const confirmedName = String(target?.userConfirmedName || target?.humanReportedName || target?.title || '').trim();
         const aiName = String(target?.aiKoName || target?.aiPrediction || '').trim();
@@ -1262,9 +1272,7 @@ export function SayuPage() {
             { label: '학명', value: scientificName },
             { label: '기록일', value: formatKoreanDate(record.date) },
           ]),
-          detailSections: filterPlantInfoFields([
-            { label: 'AI 판독 요약', value: aiSummary },
-            { label: '판독 출처·후보', value: compactPlantDetailText(sourceSummary) },
+          detailSections: buildPlantDetectiveDetailSections(target, sourceSummary, [
             {
               label: '재탐색 정보',
               value: reanalysisDone
@@ -3035,6 +3043,92 @@ export function SayuPage() {
       .map((value) => String(value).trim())
       .join(' / ');
 
+  const getPlantKnownName = (item: any) =>
+    String(item?.userConfirmedName || item?.humanReportedName || item?.title || item?.plantName || item?.aiKoName || '').trim();
+
+  const getPlantEnglishName = (item: any) =>
+    String(item?.englishName || item?.aiPrediction || item?.originalPlantNetResult?.name || '').trim();
+
+  const getPlantScientificName = (item: any) =>
+    String(item?.scientificName || item?.latinName || item?.finalLatinName || item?.originalPlantNetResult?.scientificName || '').trim();
+
+  const getPlantConfidenceLine = (item: any) => {
+    const raw = String(item?.confidence || item?.originalPlantNetResult?.confidence || '').trim();
+    if (!raw) return '';
+    const normalized = raw.toLowerCase();
+    const stars = normalized.includes('high') || normalized.includes('높')
+      ? '★★★★★'
+      : normalized.includes('medium') || normalized.includes('보통')
+        ? '★★★☆☆'
+        : normalized.includes('low') || normalized.includes('낮')
+          ? '★★☆☆☆'
+          : '★★★★☆';
+    return `${stars} ${raw} (PlantNet)`;
+  };
+
+  const buildPlantProfileText = (item: any) => {
+    const koreanName = getPlantKnownName(item);
+    const englishName = getPlantEnglishName(item);
+    const scientificName = getPlantScientificName(item);
+    const confidence = getPlantConfidenceLine(item);
+    return [
+      koreanName || englishName ? `식물명\n${koreanName}${englishName && englishName !== koreanName ? ` (${englishName})` : ''}` : '',
+      scientificName ? `학명\n${scientificName}` : '',
+      confidence ? `신뢰도\n${confidence}` : '',
+    ].filter(Boolean).join('\n\n');
+  };
+
+  const buildPlantDoctorText = (item: any) => {
+    const assistant = item?.plantAssistant || {};
+    const stage = String(item?.growthStage || assistant?.growthStage || item?.stage || item?.phenology || '').trim();
+    const stagePercent = item?.growthStagePercent ?? assistant?.growthStagePercent;
+    const healthScore = String(item?.healthScore ?? assistant?.healthScore ?? item?.health ?? '').trim();
+    const aiOpinion = String(
+      item?.careAdvice ||
+        assistant?.careSummary ||
+        assistant?.wateringAdvice ||
+        item?.aiCareAdvice ||
+        item?.geminiAnalysis?.careAdvice ||
+        item?.recommendation ||
+        '',
+    ).trim();
+    const warning = String(
+      item?.warning ||
+        assistant?.pestDiseaseWatch ||
+        item?.warningSigns?.[0] ||
+        item?.pestDiseaseWarning ||
+        item?.riskNote ||
+        '',
+    ).trim();
+    const watering = String(item?.wateringAdvice || assistant?.wateringAdvice || '').trim();
+    const fertilizer = String(item?.fertilizerAdvice || assistant?.fertilizerAdvice || '').trim();
+    const harvest = String(item?.expectedHarvest || assistant?.expectedHarvest || item?.harvestEstimate || item?.harvestWindow || '').trim();
+    const autoDiary = String(item?.autoGrowthDiary || assistant?.autoDiary || '').trim();
+    const previousCompare = String(item?.previousPhotoComparison || assistant?.previousPhotoComparison || '').trim();
+    const yearCompare = String(item?.yearOverYearComparison || assistant?.yearOverYearComparison || '').trim();
+    return [
+      stage ? `현재 생육단계\n● ${stage}${typeof stagePercent === 'number' ? ` (약 ${stagePercent}%)` : ''}` : '',
+      healthScore ? `현재 상태\n건강도 ${healthScore}` : '',
+      aiOpinion ? `AI 의견\n${aiOpinion}` : '',
+      warning ? `주의사항\n${warning}` : '',
+      watering ? `물 주는 시기\n${watering}` : '',
+      fertilizer ? `비료 추천\n${fertilizer}` : '',
+      harvest ? `예상 수확\n${harvest}` : '',
+      autoDiary ? `성장일기 자동 작성\n${autoDiary}` : '',
+      previousCompare ? `이전 사진과 비교\n${previousCompare}` : '',
+      yearCompare ? `올해와 작년 비교\n${yearCompare}` : '',
+    ].filter(Boolean).join('\n\n');
+  };
+
+  const buildPlantDetectiveDetailSections = (item: any, sourceSummary = '', extraSections: PlantReadOnlyField[] = []) =>
+    filterPlantInfoFields([
+      { label: '식물 프로필', value: buildPlantProfileText(item) },
+      { label: 'AI 판독 요약', value: getPlantAiSummary(item) },
+      { label: 'AI 관리 의견', value: buildPlantDoctorText(item) },
+      { label: '판독 출처·후보', value: sourceSummary },
+      ...extraSections,
+    ]);
+
   const normalizePlantMergeText = (value: any) =>
     String(value || '').trim().toLowerCase().replace(/[\s()[\]{}'"`.,:;|/\\_-]+/g, '');
 
@@ -3431,12 +3525,10 @@ export function SayuPage() {
             { label: '학명', value: scientificName },
             { label: '기록일', value: formatKoreanDate(record.date) },
           ],
-          detailSections: [
-            { label: 'AI 판독 요약', value: aiSummary },
-            { label: '판독 출처·후보', value: compactPlantDetailText(sourceSummary) },
+          detailSections: buildPlantDetectiveDetailSections(entry, sourceSummary, [
             { label: '촬영 지역', value: locationLabel },
             { label: '사용자 메모', value: memoSummary },
-          ],
+          ]),
         });
         return {
           id: `${record.id}_plant_detective_${idx}`,

@@ -7396,6 +7396,17 @@ type CrossVerificationResult = {
   similarSpecies: string[];
   needMorePhotos: string[];
   confidence: 'high' | 'medium' | 'low';
+  growthStage: string;
+  growthStagePercent: number | null;
+  healthScore: number | null;
+  pestDiseaseWatch: string;
+  wateringAdvice: string;
+  fertilizerAdvice: string;
+  expectedHarvest: string;
+  autoDiary: string;
+  previousPhotoComparison: string;
+  yearOverYearComparison: string;
+  careSummary: string;
 };
 
 async function callGeminiCrossVerification(
@@ -7469,7 +7480,18 @@ ${plantNetSummary ? JSON.stringify(plantNetSummary, null, 2) : '(호출 실패 �
   "poisonousRisk": true | false,
   "similarSpecies": ["유사종1 (구분 포인트)", "유사종2 (구분 포인트)"],
   "needMorePhotos": ["꽃이 핀 모습이 필요합니다", ...],
-  "confidence": "high | medium | low"
+  "confidence": "high | medium | low",
+  "growthStage": "현재 생육단계. 예: 발아기, 활착기, 잎 성장기, 개화기, 열매 비대기, 성숙기, 휴면기, 불확실",
+  "growthStagePercent": 0,
+  "healthScore": 0,
+  "pestDiseaseWatch": "사진에서 보이는 병충해 위험 또는 점검 포인트. 없거나 불확실하면 빈 문자열",
+  "wateringAdvice": "물 주는 시기와 방법을 사진 상태 기준으로 한 문장",
+  "fertilizerAdvice": "비료 추천을 생육단계 기준으로 한 문장",
+  "expectedHarvest": "수확 예상. 수확 작물이 아니거나 불확실하면 빈 문자열",
+  "autoDiary": "성장일기 자동 작성용 1~2문장",
+  "previousPhotoComparison": "이전 사진이 없으면 '이전 사진이 없어 비교는 다음 촬영부터 가능합니다.'",
+  "yearOverYearComparison": "작년 기록이 없으면 '작년 같은 시기 기록이 있으면 성장 속도를 비교할 수 있습니다.'",
+  "careSummary": "오늘 사용자가 바로 할 일 1~2문장"
 }`;
 
   const genAI = new GoogleGenerativeAI(apiKey);
@@ -7505,6 +7527,21 @@ ${plantNetSummary ? JSON.stringify(plantNetSummary, null, 2) : '(호출 실패 �
     similarSpecies: normList(parsed?.similarSpecies),
     needMorePhotos: normList(parsed?.needMorePhotos),
     confidence,
+    growthStage: String(parsed?.growthStage || '').slice(0, 80),
+    growthStagePercent: typeof parsed?.growthStagePercent === 'number'
+      ? Math.max(0, Math.min(100, Math.round(parsed.growthStagePercent)))
+      : null,
+    healthScore: typeof parsed?.healthScore === 'number'
+      ? Math.max(0, Math.min(100, Math.round(parsed.healthScore)))
+      : null,
+    pestDiseaseWatch: String(parsed?.pestDiseaseWatch || '').slice(0, 240),
+    wateringAdvice: String(parsed?.wateringAdvice || '').slice(0, 240),
+    fertilizerAdvice: String(parsed?.fertilizerAdvice || '').slice(0, 240),
+    expectedHarvest: String(parsed?.expectedHarvest || '').slice(0, 120),
+    autoDiary: String(parsed?.autoDiary || '').slice(0, 320),
+    previousPhotoComparison: String(parsed?.previousPhotoComparison || '').slice(0, 240),
+    yearOverYearComparison: String(parsed?.yearOverYearComparison || '').slice(0, 240),
+    careSummary: String(parsed?.careSummary || '').slice(0, 240),
   };
 }
 
