@@ -82,7 +82,7 @@ function formatHouseholdDate(date: string): string {
   return date.match(/^\d{4}\.(\d{2})\.(\d{2})/)?.slice(1).join('/') || date;
 }
 
-function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: string) {
+function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: string, totalEntries?: HouseholdSayuEntry[]) {
   if (entries.length === 0) {
     return (
       <textarea
@@ -114,8 +114,9 @@ function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: st
     return (order[a.transactionType] ?? 9) - (order[b.transactionType] ?? 9);
   });
 
-  const income = entries.reduce((sum, entry) => entry.transactionType === '수입' ? sum + parseHouseholdAmount(entry.amount) : sum, 0);
-  const expense = entries.reduce((sum, entry) => (entry.transactionType === '지출' || entry.transactionType === '이체') ? sum + parseHouseholdAmount(entry.amount) : sum, 0);
+  const summaryEntries = totalEntries && totalEntries.length > 0 ? totalEntries : entries;
+  const income = summaryEntries.reduce((sum, entry) => entry.transactionType === '수입' ? sum + parseHouseholdAmount(entry.amount) : sum, 0);
+  const expense = summaryEntries.reduce((sum, entry) => (entry.transactionType === '지출' || entry.transactionType === '이체') ? sum + parseHouseholdAmount(entry.amount) : sum, 0);
   const balance = income - expense;
   const money = (value: number) => `${value.toLocaleString()}원`;
 
@@ -124,7 +125,7 @@ function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: st
       <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: 16 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
           {[
-            { label: '총수입', value: `+${money(income)}`, color: '#059669' },
+            { label: totalEntries && totalEntries.length > 0 ? '전체수입' : '총수입', value: `+${money(income)}`, color: '#059669' },
             { label: '지출+이체', value: `-${money(expense)}`, color: '#dc2626' },
             { label: '잔액', value: money(balance), color: balance >= 0 ? '#059669' : '#dc2626' },
           ].map((item) => (
@@ -476,6 +477,7 @@ export interface SayuModalProps {
   aiComment?: string;
   publicControl?: ReactNode;
   assistantContent?: ReactNode;
+  allHouseholdEntries?: HouseholdSayuEntry[];
 }
 
 export function formatDateToKorean(dateStr: string): string {
@@ -511,6 +513,7 @@ export function SayuModal({
   aiComment = '',
   publicControl,
   assistantContent,
+  allHouseholdEntries,
 }: SayuModalProps) {
   const { isPremium } = useSubscription();
   const { user: currentUser } = useAuth();
@@ -2238,7 +2241,7 @@ export function SayuModal({
               </div>
 
               {isHouseholdSayu ? (
-                renderHouseholdSayuView(householdSayuEntries, editedOriginalData.household_sayu || editedContent)
+                renderHouseholdSayuView(householdSayuEntries, editedOriginalData.household_sayu || editedContent, allHouseholdEntries)
               ) : (
               <>
               {/* 환경 정보 */}
@@ -2765,6 +2768,13 @@ export function SayuModal({
           ) : (
             renderOriginalData()
           )}
+
+          {/* AI 비서 추천 — 스크롤 영역 안에 배치 (footer가 아니라 content 아래) */}
+          {viewMode === 'ai' && assistantContent && (
+            <div style={{ marginTop: 16, marginBottom: 8 }}>
+              {assistantContent}
+            </div>
+          )}
         </div>
 
         {/* Footer - AI 탭일 때만 별점/저장 버튼 표시 */}
@@ -2842,12 +2852,6 @@ export function SayuModal({
               <p style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', marginTop: 6 }}>
                 AI가 이 기록을 분석해 미래 서사를 만들어줍니다
               </p>
-            </div>
-          )}
-
-          {assistantContent && (
-            <div style={{ marginBottom: 12 }}>
-              {assistantContent}
             </div>
           )}
 
