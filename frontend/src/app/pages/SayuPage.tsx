@@ -5108,6 +5108,33 @@ export function SayuPage() {
             </div>
           );
         })()}
+        allHouseholdEntries={(() => {
+          const formatKey = sayuModalState.formatKey || '';
+          const isHousehold = formatKey === 'household' || sayuModalState.format === 'HARU가계부';
+          if (!isHousehold) return undefined;
+          const allEntries: { date: string; transactionType: string; category: string; vendor: string; amount: string; paymentMethod: string; memo: string }[] = [];
+          for (const rec of records) {
+            const stored = (rec as any).household_entries;
+            if (!stored) continue;
+            try {
+              const parsed = JSON.parse(stored);
+              if (Array.isArray(parsed)) {
+                for (const e of parsed) {
+                  allEntries.push({
+                    date: String(e.date || ''),
+                    transactionType: String(e.transactionType || ''),
+                    category: String(e.category || ''),
+                    vendor: String(e.vendor || ''),
+                    amount: String(e.amount || ''),
+                    paymentMethod: String(e.paymentMethod || ''),
+                    memo: String(e.memo || ''),
+                  });
+                }
+              }
+            } catch { /* skip */ }
+          }
+          return allEntries.length > 0 ? allEntries : undefined;
+        })()}
       />
 
       {plantReadOnlyDetail && (
