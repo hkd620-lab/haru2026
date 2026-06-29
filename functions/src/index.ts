@@ -963,6 +963,199 @@ export const clearKeywordsCache = onCall(
   }
 );
 
+const RESULT_CHAT_ALLOWED_SAFETY_MODES = new Set([
+  'reflection',
+  'writing',
+  'report',
+  'plant_basic',
+  'timeline_basic',
+]);
+
+function clampResultChatText(value: unknown, max = 8000): string {
+  return String(value || '').trim().slice(0, max);
+}
+
+function getResultThreadId(sourceKey: string, sourceIndex?: number): string {
+  const safeKey = sourceKey.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80);
+  return typeof sourceIndex === 'number' ? `${safeKey}_${sourceIndex}` : safeKey;
+}
+
+function getPlantDetectiveResult(record: Record<string, any>, sourceIndex?: number): string {
+  if (typeof sourceIndex !== 'number' || sourceIndex < 0) return '';
+  const entries = Array.isArray(record.plantDetective) ? record.plantDetective : [];
+  const item = entries[sourceIndex];
+  if (!item) return '';
+  const parts = [
+    item.userConfirmedName || item.humanReportedName || item.title || item.plantName,
+    item.aiKoName ? `AI 판독명: ${item.aiKoName}` : '',
+    item.aiPrediction ? `예측명: ${item.aiPrediction}` : '',
+    item.scientificName || item.latinName ? `학명: ${item.scientificName || item.latinName}` : '',
+    item.condition ? `상태: ${item.condition}` : '',
+    item.note ? `메모: ${item.note}` : '',
+    item.memo ? `사용자 메모: ${item.memo}` : '',
+    item.geminiAnalysis?.analysis ? `AI 분석: ${item.geminiAnalysis.analysis}` : '',
+    item.geminiAnalysis?.careAdvice ? `관리 조언: ${item.geminiAnalysis.careAdvice}` : '',
+    item.geminiAnalysis?.warning ? `주의: ${item.geminiAnalysis.warning}` : '',
+  ];
+  return parts.map((part) => String(part || '').trim()).filter(Boolean).join('\n');
+}
+
+function getGrowthTimelineResult(record: Record<string, any>): string {
+  const items = Array.isArray(record.timelineItems) ? record.timelineItems : [];
+  const itemText = items
+    .map((item: any, index: number) => [
+      `[${index + 1}]`,
+      item.takenDate ? `날짜: ${item.takenDate}` : '',
+      item.memo ? `메모: ${item.memo}` : '',
+      item.locationLabel ? `위치: ${item.locationLabel}` : '',
+    ].filter(Boolean).join(' '))
+    .filter(Boolean)
+    .join('\n');
+  return [
+    record.title ? `제목: ${record.title}` : '',
+    record.content ? `내용: ${record.content}` : '',
+    itemText,
+  ].filter((part) => String(part || '').trim()).join('\n\n');
+}
+
+function getRecordResultBySourceKey(record: Record<string, any>, sourceKey: string, sourceIndex?: number): string {
+  if (sourceKey === 'plantDetective') return getPlantDetectiveResult(record, sourceIndex);
+  if (sourceKey === 'growthTimeline') return getGrowthTimelineResult(record);
+  const value = record[sourceKey];
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function getSafetyModeGuide(safetyMode: string): string {
+  switch (safetyMode) {
+    case 'writing':
+      return '글쓰기 보조 모드다. 원문 의도와 사실을 보존하고 표현, 구조, 제목, 요약 중심으로 돕는다.';
+    case 'report':
+      return '보고 정리 모드다. 진행 상황, 누락 가능성, 다음 행동을 사실 중심으로 정리한다.';
+    case 'plant_basic':
+      return '식물 기본 관리 모드다. 사진과 기록 기반 추정임을 밝히고 식용, 독성, 농약, 치료 판단은 단정하지 않는다.';
+    case 'timeline_basic':
+      return '타임라인 관찰 모드다. 시간 흐름과 변화 포인트를 정리하되 건강·발달 진단은 하지 않는다.';
+    case 'reflection':
+    default:
+      return '성찰 보조 모드다. 감정과 생각을 존중하고 기록에 드러난 흐름을 차분히 정리한다.';
+  }
+}
+
+export const chatWithResult = onCall(
+  {
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+    timeoutSeconds: 60,
+  },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const uid = request.auth.uid;
+    const recordId = clampResultChatText(request.data?.recordId, 160);
+    const sourceKey = clampResultChatText(request.data?.sourceKey, 80);
+    const question = clampResultChatText(request.data?.question, 1200);
+    const safetyMode = clampResultChatText(request.data?.safetyMode, 40);
+    const systemGuide = clampResultChatText(request.data?.systemGuide, 1200);
+    const rawSourceIndex = request.data?.sourceIndex;
+    const sourceIndex = typeof rawSourceIndex === 'number' && Number.isInteger(rawSourceIndex)
+      ? rawSourceIndex
+      : undefined;
+
+    if (!recordId || !sourceKey || !question) {
+      throw new HttpsError('invalid-argument', 'recordId, sourceKey, question이 필요합니다.');
+    }
+    if (!RESULT_CHAT_ALLOWED_SAFETY_MODES.has(safetyMode)) {
+      throw new HttpsError('invalid-argument', '지원하지 않는 safetyMode입니다.');
+    }
+
+    const recordRef = db.collection('users').doc(uid).collection('records').doc(recordId);
+    const recordSnap = await recordRef.get();
+    if (!recordSnap.exists) {
+      throw new HttpsError('not-found', '기록을 찾을 수 없습니다.');
+    }
+
+    const record = recordSnap.data() || {};
+    const sourceResult = clampResultChatText(getRecordResultBySourceKey(record, sourceKey, sourceIndex), 9000);
+    if (!sourceResult) {
+      throw new HttpsError('failed-precondition', '대화할 결과물이 없습니다.');
+    }
+
+    const threadId = getResultThreadId(sourceKey, sourceIndex);
+    const threadRef = recordRef.collection('resultThreads').doc(threadId);
+    const messagesRef = threadRef.collection('messages');
+    const recentSnap = await messagesRef.orderBy('createdAt', 'desc').limit(8).get();
+    const recentMessages = recentSnap.docs
+      .map((docSnap) => docSnap.data())
+      .reverse()
+      .map((message) => `${message.role === 'user' ? '사용자' : 'AI'}: ${clampResultChatText(message.content, 1000)}`)
+      .join('\n');
+
+    const prompt = `당신은 HARU2026의 결과물 기반 대화 비서입니다.
+
+[공통 원칙]
+- 반드시 제공된 결과물과 현재 질문을 근거로 답한다.
+- 결과물에 없는 사실은 지어내지 않는다.
+- 확인되지 않는 내용은 "이 결과물만으로는 확인되지 않습니다"라고 말한다.
+- 사용자의 원문 감정과 의도를 존중한다.
+- 답변은 실행 가능한 다음 행동 1~3개로 마무리한다.
+- 과장된 칭찬, 단정적 예측, 전문가 판단 대체 표현을 금지한다.
+
+[모드 제한]
+${getSafetyModeGuide(safetyMode)}
+
+[형식별 지침]
+${systemGuide || '(추가 지침 없음)'}
+
+[결과물]
+${sourceResult}
+
+[최근 대화]
+${recentMessages || '(아직 없음)'}
+
+[현재 질문]
+${question}
+
+한국어로 답변하세요.`;
+
+    try {
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+      const result = await model.generateContent(prompt);
+      const answer = clampResultChatText(result.response.text(), 5000);
+      if (!answer) {
+        throw new Error('empty_answer');
+      }
+
+      const now = admin.firestore.FieldValue.serverTimestamp();
+      await messagesRef.add({
+        role: 'user',
+        content: question,
+        createdAt: now,
+      });
+      await messagesRef.add({
+        role: 'assistant',
+        content: answer,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      await threadRef.set({
+        sourceKey,
+        sourceIndex: typeof sourceIndex === 'number' ? sourceIndex : null,
+        safetyMode,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        messageCount: admin.firestore.FieldValue.increment(2),
+        lastMessagePreview: answer.slice(0, 160),
+      }, { merge: true });
+
+      return { threadId, answer };
+    } catch (error: any) {
+      logger.error('chatWithResult 실패:', { message: error?.message, recordId, sourceKey, safetyMode });
+      throw new HttpsError('internal', 'AI 응답 생성에 실패했습니다.');
+    }
+  }
+);
+
 // ===== 🏷️ 기존 기록 AI 제목 일괄 생성 =====
 export const generateTitlesForAll = onCall(
   {

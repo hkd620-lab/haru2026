@@ -10,9 +10,12 @@ import { SayuTitleAnimation } from '../components/SayuTitleAnimation';
 import { toast } from 'sonner';
 import { SayuModal } from '../components/SayuModal';
 import { AssistantRecommendationCards } from '../components/AssistantRecommendationCards';
+import { ResultChatButton } from '../components/ResultChatButton';
+import { ResultChatModal } from '../components/ResultChatModal';
 import { GrowthTimelineLibrary } from '../components/GrowthTimelineCreator';
 import { CATEGORY_FORMATS, FORMAT_PREFIX, FORMAT_EMOJI, READING_ENTRY_TYPES, READING_STATUS } from '../types/haruTypes';
 import type { RecordFormat } from '../types/haruTypes';
+import { getResultChatConfig, getResultChatConfigForFormatKey, type ResultChatConfig } from '../config/resultChatConfig';
 import {
   buildRecommendationTextFromFields,
   getAssistantRecommendations,
@@ -54,6 +57,14 @@ const GROWTH_TIMELINE_FORMAT_LABEL = '성장타임라인';
 const GROWTH_TIMELINE_SAYU_LABEL = 'HARU타임라인';
 type PlantSayuEntryType = 'detective' | 'diary' | 'library' | 'catalog';
 type PlantSayuFilter = 'all' | PlantSayuEntryType;
+type ResultChatModalState = {
+  isOpen: boolean;
+  recordId: string;
+  sourceIndex?: number;
+  title: string;
+  dateLabel: string;
+  config: ResultChatConfig | null;
+};
 const PLANT_SAYU_FILTERS: { key: PlantSayuFilter; label: string }[] = [
   { key: 'all', label: '전체' },
   { key: 'detective', label: '판독기록' },
@@ -410,6 +421,35 @@ function getRecordSourceText(r: any, prefix: string): string {
     if (typeof v === 'string' && v.trim()) parts.push(v);
   });
   return parts.join(' ');
+}
+
+function getResultChatSourceKey(formatKey: string, record?: Record<string, any>): string {
+  if (formatKey === 'growthTimeline') return 'growthTimeline';
+  if (formatKey === 'reading' && typeof record?.reading_final_sayu === 'string' && record.reading_final_sayu.trim()) {
+    return 'reading_final_sayu';
+  }
+  return `${formatKey}_sayu`;
+}
+
+function hasResultChatSource(record: Record<string, any> | undefined, formatKey: string, displayedContent?: string): boolean {
+  if (!record || !formatKey) return false;
+  const config = getResultChatConfigForFormatKey(formatKey, record);
+  if (!config) return false;
+  if (formatKey === 'growthTimeline') {
+    return String(record.content || '').trim().length > 0 || normalizeTimelineItems(record.timelineItems).length > 0;
+  }
+  const sourceKey = getResultChatSourceKey(formatKey, record);
+  return String(record[sourceKey] || displayedContent || '').trim().length > 0;
+}
+
+function buildPlantChatSourceText(detail: PlantReadOnlyDetail): string {
+  return [
+    detail.title,
+    detail.subtitle,
+    detail.summary,
+    ...detail.coreFields.map((field) => `${field.label}: ${field.value}`),
+    ...detail.detailSections.map((field) => `${field.label}: ${field.value}`),
+  ].filter((value) => String(value || '').trim()).join('\n');
 }
 
 // AI로그(하루AI지식창고)의 본문 추출
@@ -795,6 +835,13 @@ export function SayuPage() {
   const [plantDeleteBusy, setPlantDeleteBusy] = useState(false);
   const [plantSayuFilter, setPlantSayuFilter] = useState<PlantSayuFilter>('all');
   const [plantReadOnlyDetail, setPlantReadOnlyDetail] = useState<PlantReadOnlyDetail | null>(null);
+  const [resultChatState, setResultChatState] = useState<ResultChatModalState>({
+    isOpen: false,
+    recordId: '',
+    title: '',
+    dateLabel: '',
+    config: null,
+  });
   const [plantDetailIsWide, setPlantDetailIsWide] = useState(() => (
     typeof window !== 'undefined' && window.innerWidth >= 768
   ));
@@ -2222,7 +2269,9 @@ export function SayuPage() {
       }
     });
 
-    let sayuContent = record[sayuKey] || record[`${formatKey}_final_sayu`] || '';
+    let sayuContent = formatKey === 'reading'
+      ? record[`${formatKey}_final_sayu`] || record[sayuKey] || ''
+      : record[sayuKey] || record[`${formatKey}_final_sayu`] || '';
     if (!sayuContent) {
       const originalFields = Object.keys(record)
         .filter(k =>
@@ -2544,6 +2593,27 @@ export function SayuPage() {
       return;
     }
 
+  };
+
+  const openResultChat = (params: {
+    recordId: string;
+    config: ResultChatConfig;
+    title: string;
+    dateLabel: string;
+    sourceIndex?: number;
+  }) => {
+    setResultChatState({
+      isOpen: true,
+      recordId: params.recordId,
+      sourceIndex: params.sourceIndex,
+      title: params.title,
+      dateLabel: params.dateLabel,
+      config: params.config,
+    });
+  };
+
+  const closeResultChat = () => {
+    setResultChatState((prev) => ({ ...prev, isOpen: false }));
   };
 
   // Delete an AI log
@@ -4991,6 +5061,12 @@ export function SayuPage() {
             : undefined;
           const formatKey = sayuModalState.formatKey || '';
           if (!record || !formatKey) return null;
+          const chatConfig = getResultChatConfigForFormatKey(formatKey, record as Record<string, unknown>);
+          const shouldShowResultChat = Boolean(
+            chatConfig &&
+            sayuModalState.firestoreId &&
+            hasResultChatSource(record as Record<string, any>, formatKey, sayuModalState.content),
+          );
 
           const recommendations = getAssistantRecommendations(
             [
@@ -5004,15 +5080,32 @@ export function SayuPage() {
             ],
           );
 
-          if (recommendations.length === 0) return null;
+          if (!shouldShowResultChat && recommendations.length === 0) return null;
 
           return (
-            <AssistantRecommendationCards
-              recommendations={recommendations}
-              title="이 기록과 연결 가능한 AI 비서"
-              description="기록에 담긴 고민을 바탕으로 도움받을 수 있는 비서를 추천합니다."
-              onSelect={handleAssistantRecommendationSelect}
-            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {shouldShowResultChat && chatConfig && (
+                <ResultChatButton
+                  onClick={() => openResultChat({
+                    recordId: sayuModalState.firestoreId || '',
+                    config: {
+                      ...chatConfig,
+                      sourceKey: getResultChatSourceKey(formatKey, record as Record<string, any>),
+                    },
+                    title: sayuModalState.title || sayuModalState.aiTitle || sayuModalState.format || chatConfig.label,
+                    dateLabel: sayuModalState.recordDate || sayuModalState.dateLabel || '',
+                  })}
+                />
+              )}
+              {recommendations.length > 0 && (
+                <AssistantRecommendationCards
+                  recommendations={recommendations}
+                  title="이 기록과 연결 가능한 AI 비서"
+                  description="기록에 담긴 고민을 바탕으로 도움받을 수 있는 비서를 추천합니다."
+                  onSelect={handleAssistantRecommendationSelect}
+                />
+              )}
+            </div>
           );
         })()}
       />
@@ -5231,6 +5324,28 @@ export function SayuPage() {
                 </p>
               )}
             </section>
+
+            {plantReadOnlyDetail.type === 'detective'
+              && plantReadOnlyDetail.recordId
+              && typeof plantReadOnlyDetail.entryIdx === 'number'
+              && buildPlantChatSourceText(plantReadOnlyDetail).trim().length > 0
+              && (() => {
+                const config = getResultChatConfig('plantDetective');
+                if (!config) return null;
+                return (
+                  <div style={{ marginTop: 14 }}>
+                    <ResultChatButton
+                      onClick={() => openResultChat({
+                        recordId: plantReadOnlyDetail.recordId || '',
+                        sourceIndex: plantReadOnlyDetail.entryIdx,
+                        config,
+                        title: plantReadOnlyDetail.title,
+                        dateLabel: plantReadOnlyDetail.date,
+                      })}
+                    />
+                  </div>
+                );
+              })()}
 
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
               <button
@@ -5532,6 +5647,19 @@ export function SayuPage() {
           <p>{sayuModalState.content}</p>
         </div>
       </div>
+
+      {user?.uid && resultChatState.isOpen && resultChatState.config && resultChatState.recordId && (
+        <ResultChatModal
+          isOpen={resultChatState.isOpen}
+          onClose={closeResultChat}
+          uid={user.uid}
+          recordId={resultChatState.recordId}
+          sourceIndex={resultChatState.sourceIndex}
+          title={resultChatState.title}
+          dateLabel={resultChatState.dateLabel}
+          config={resultChatState.config}
+        />
+      )}
 
     </>
   );
