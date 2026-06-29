@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { db } from '../../firebase';
 import type { ResultChatConfig } from '../config/resultChatConfig';
 import { chatWithResult, type ResultChatMessage } from '../services/resultChatService';
+import { firestoreService } from '../services/firestoreService';
 
 type ResultChatModalProps = {
   isOpen: boolean;
@@ -35,6 +36,8 @@ export function ResultChatModal({
   const [question, setQuestion] = useState('');
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [savedSet, setSavedSet] = useState<Set<number>>(new Set());
+  const [savingIndex, setSavingIndex] = useState<number | null>(null);
 
   const threadId = useMemo(() => getThreadId(config.sourceKey, sourceIndex), [config.sourceKey, sourceIndex]);
 
@@ -92,6 +95,31 @@ export function ResultChatModal({
       setQuestion(trimmed);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveAsMemo = async (content: string, index: number) => {
+    const text = content.trim();
+    if (!text || savingIndex !== null || savedSet.has(index)) return;
+    setSavingIndex(index);
+    try {
+      await firestoreService.saveResultChatMemo(uid, {
+        answer: text,
+        sourceRecordId: recordId,
+        sourceKey: config.sourceKey,
+        label: config.label,
+      });
+      setSavedSet((prev) => {
+        const next = new Set(prev);
+        next.add(index);
+        return next;
+      });
+      toast.success('메모로 저장했습니다.');
+    } catch (error) {
+      console.error('메모 저장 실패:', error);
+      toast.error('메모 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      setSavingIndex(null);
     }
   };
 
@@ -180,18 +208,47 @@ export function ResultChatModal({
                 style={{
                   alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start',
                   maxWidth: '88%',
-                  borderRadius: 12,
-                  padding: '10px 12px',
-                  backgroundColor: message.role === 'user' ? '#1A3C6E' : '#F1F5F9',
-                  color: message.role === 'user' ? '#FFFFFF' : '#1F2937',
-                  fontSize: 13,
-                  lineHeight: 1.65,
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'keep-all',
-                  overflowWrap: 'anywhere',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: message.role === 'user' ? 'flex-end' : 'flex-start',
+                  gap: 4,
                 }}
               >
-                {message.content}
+                <div
+                  style={{
+                    borderRadius: 12,
+                    padding: '10px 12px',
+                    backgroundColor: message.role === 'user' ? '#1A3C6E' : '#F1F5F9',
+                    color: message.role === 'user' ? '#FFFFFF' : '#1F2937',
+                    fontSize: 13,
+                    lineHeight: 1.65,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'keep-all',
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  {message.content}
+                </div>
+                {message.role === 'assistant' && message.content.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => saveAsMemo(message.content, index)}
+                    disabled={savingIndex === index || savedSet.has(index)}
+                    style={{
+                      minHeight: 28,
+                      padding: '0 10px',
+                      borderRadius: 999,
+                      border: '1px solid #CBD5E1',
+                      backgroundColor: savedSet.has(index) ? '#F1F5F9' : '#FFFFFF',
+                      color: savedSet.has(index) ? '#16A34A' : '#1A3C6E',
+                      fontSize: 11,
+                      fontWeight: 800,
+                      cursor: savingIndex === index || savedSet.has(index) ? 'default' : 'pointer',
+                    }}
+                  >
+                    {savedSet.has(index) ? '✓ 메모 저장됨' : savingIndex === index ? '저장 중...' : '메모로 저장'}
+                  </button>
+                )}
               </div>
             ))}
             {loading && <p style={{ margin: 0, color: '#64748B', fontSize: 12 }}>AI가 답변을 정리하는 중...</p>}

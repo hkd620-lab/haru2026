@@ -339,6 +339,23 @@ class FirestoreService {
     return recordId;
   }
 
+  // 결과물 기반 AI 대화 답변을 '메모' 기록으로 저장 (saveRecord 재사용 → users/{uid}/records/{date}_{ts})
+  async saveResultChatMemo(
+    userId: string,
+    params: { answer: string; sourceRecordId: string; sourceKey: string; label: string },
+  ): Promise<string> {
+    return this.saveRecord(userId, {
+      date: getTodayString(),
+      formats: ['메모'] as RecordFormat[],
+      content: '',
+      memo_title: `AI 대화 메모 — ${params.label}`.slice(0, 60),
+      memo_content: params.answer,
+      source: 'result_ai_chat',
+      sourceRecordId: params.sourceRecordId,
+      sourceKey: params.sourceKey,
+    });
+  }
+
   async getRecord(userId: string, date: string): Promise<HaruRecord | null> {
     const recordRef = doc(db, 'users', userId, 'records', date);
     const recordSnap = await getDoc(recordRef);
