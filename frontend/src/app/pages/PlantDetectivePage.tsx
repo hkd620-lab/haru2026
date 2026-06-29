@@ -51,6 +51,17 @@ type GeminiSection = {
   similarSpecies: string[];
   needMorePhotos: string[];
   confidence: 'high' | 'medium' | 'low';
+  growthStage?: string;
+  growthStagePercent?: number | null;
+  healthScore?: number | null;
+  pestDiseaseWatch?: string;
+  wateringAdvice?: string;
+  fertilizerAdvice?: string;
+  expectedHarvest?: string;
+  autoDiary?: string;
+  previousPhotoComparison?: string;
+  yearOverYearComparison?: string;
+  careSummary?: string;
 };
 
 type AdvancedResult = {
@@ -1430,6 +1441,21 @@ export function PlantDetectivePage() {
     const photoRegionLabel = imageMetas.find((meta) => meta.regionLabel)?.regionLabel || '';
     const photoPlaceName = imageMetas.find((meta) => meta.placeName)?.placeName || '';
     const resolvedLocation = confirmedLocation.trim() || photoPlaceName || photoRegionLabel;
+    const assistant = result?.gemini
+      ? removeUndefinedForFirestore({
+          growthStage: result.gemini.growthStage || '',
+          growthStagePercent: result.gemini.growthStagePercent ?? null,
+          healthScore: result.gemini.healthScore ?? null,
+          pestDiseaseWatch: result.gemini.pestDiseaseWatch || '',
+          wateringAdvice: result.gemini.wateringAdvice || '',
+          fertilizerAdvice: result.gemini.fertilizerAdvice || '',
+          expectedHarvest: result.gemini.expectedHarvest || '',
+          autoDiary: result.gemini.autoDiary || '',
+          previousPhotoComparison: result.gemini.previousPhotoComparison || '',
+          yearOverYearComparison: result.gemini.yearOverYearComparison || '',
+          careSummary: result.gemini.careSummary || '',
+        })
+      : null;
     return removeUndefinedForFirestore({
       photoUrl: primaryImage?.imageUrl || '',
       thumbnailUrl: primaryImage?.thumbnailUrl || '',
@@ -1449,6 +1475,18 @@ export function PlantDetectivePage() {
       uploadedAts: imageMetas.map((meta) => meta.uploadedAt),
       thumbnailUrls: imageMetas.map((meta) => meta.thumbnailUrl).filter(Boolean),
       aiScientificName,
+      plantAssistant: assistant,
+      growthStage: result?.gemini?.growthStage || '',
+      growthStagePercent: result?.gemini?.growthStagePercent ?? null,
+      healthScore: result?.gemini?.healthScore ?? null,
+      careAdvice: result?.gemini?.careSummary || result?.gemini?.wateringAdvice || '',
+      wateringAdvice: result?.gemini?.wateringAdvice || '',
+      fertilizerAdvice: result?.gemini?.fertilizerAdvice || '',
+      pestDiseaseWarning: result?.gemini?.pestDiseaseWatch || '',
+      expectedHarvest: result?.gemini?.expectedHarvest || '',
+      autoGrowthDiary: result?.gemini?.autoDiary || '',
+      previousPhotoComparison: result?.gemini?.previousPhotoComparison || '',
+      yearOverYearComparison: result?.gemini?.yearOverYearComparison || '',
       plantNetResult: result?.plantNet || null,
       plantIdResult: result?.plantId || null,
       plantIdError: result?.plantId ? null : 'Plant.id 결과를 가져오지 못했습니다.',
@@ -2910,6 +2948,52 @@ export function PlantDetectivePage() {
                   {gemini.poisonousRisk && (
                     <Badge text="독성 위험 있음" color="#7F1D1D" bg="#FEE2E2" />
                   )}
+                </div>
+              </ResultCard>
+            )}
+
+            {gemini && (
+              <ResultCard
+                title="🩺 AI 식물 비서"
+                accent="#15803D"
+                bg="#F0FDF4"
+              >
+                <div style={{ display: 'grid', gap: 10 }}>
+                  {(gemini.growthStage || typeof gemini.healthScore === 'number') && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
+                      {gemini.growthStage && (
+                        <div style={{ border: '1px solid #BBF7D0', borderRadius: 10, padding: 10, background: '#FFFFFF' }}>
+                          <div style={{ fontSize: 11, color: '#166534', fontWeight: 900, marginBottom: 4 }}>현재 생육단계</div>
+                          <div style={{ fontSize: 14, color: '#14532D', fontWeight: 900 }}>
+                            {gemini.growthStage}
+                            {typeof gemini.growthStagePercent === 'number' ? ` · 약 ${gemini.growthStagePercent}%` : ''}
+                          </div>
+                        </div>
+                      )}
+                      {typeof gemini.healthScore === 'number' && (
+                        <div style={{ border: '1px solid #BBF7D0', borderRadius: 10, padding: 10, background: '#FFFFFF' }}>
+                          <div style={{ fontSize: 11, color: '#166534', fontWeight: 900, marginBottom: 4 }}>현재 상태</div>
+                          <div style={{ fontSize: 14, color: '#14532D', fontWeight: 900 }}>건강도 {gemini.healthScore}점</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {[
+                    { label: 'AI 의견', value: gemini.careSummary },
+                    { label: '병충해 감시', value: gemini.pestDiseaseWatch || gemini.warning },
+                    { label: '물 주는 시기', value: gemini.wateringAdvice },
+                    { label: '비료 추천', value: gemini.fertilizerAdvice },
+                    { label: '예상 수확', value: gemini.expectedHarvest },
+                    { label: '성장일기 자동 작성', value: gemini.autoDiary },
+                    { label: '이전 사진과 비교', value: gemini.previousPhotoComparison },
+                    { label: '올해와 작년 비교', value: gemini.yearOverYearComparison },
+                  ].filter((item) => String(item.value || '').trim()).map((item) => (
+                    <div key={item.label} style={{ border: '1px solid #DCFCE7', borderRadius: 10, padding: '9px 10px', background: '#FFFFFF' }}>
+                      <div style={{ fontSize: 11, color: '#15803D', fontWeight: 900, marginBottom: 4 }}>{item.label}</div>
+                      <div style={{ fontSize: 13, color: '#1F2937', lineHeight: 1.55, fontWeight: 700 }}>{item.value}</div>
+                    </div>
+                  ))}
                 </div>
               </ResultCard>
             )}

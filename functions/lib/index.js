@@ -472,6 +472,32 @@ exports.searchOfficialDrugs = (0, https_2.onCall)({
         throw new https_2.HttpsError('internal', '공식 의약품 검색에 실패했습니다.');
     }
 });
+// ===== 💬 SAYU AI 한마디 프롬프트 생성 =====
+function buildAiCommentPrompt(polishedText, formatGroup) {
+    const toneGuide = formatGroup === 'rich'
+        ? '감정에 공감하고 따뜻하게 위로하는 친구처럼'
+        : formatGroup === 'balanced'
+            ? '작은 노력을 알아보고 격려하는 친구처럼'
+            : '수고를 인정하고 간결하게 응원하는 친구처럼';
+    return `다음 기록을 읽고 ${toneGuide} 짧은 한마디를 남겨줘.
+
+[엄격한 규칙]
+- 정확히 1~2문장. 절대 3문장 이상 금지.
+- 50자 이내 (한글 기준).
+- 존댓말 금지. 친근하고 자연스러운 말투.
+- 마크다운·이모지·따옴표·번호 금지. 텍스트만 출력.
+- 평가·충고·교훈 금지.
+- 칭찬을 과하게 하지 말 것.
+
+[예시 톤]
+(일기) "오늘 그런 마음이었구나. 잘 버텼어."
+(텃밭) "하나하나 돌보는 손길이 느껴져."
+(여행) "그 순간이 눈앞에 그려지는 것 같아."
+(업무) "오늘도 수고 많았어."
+
+기록 내용:
+${polishedText.slice(0, 500)}`;
+}
 // ===== 🎨 AI 다듬기 =====
 exports.polishContent = (0, https_2.onCall)({
     region: 'asia-northeast3',
@@ -568,9 +594,26 @@ exports.polishContent = (0, https_2.onCall)({
         if (format) {
             stats = await analyzeStats(text, format, GEMINI_API_KEY_SECRET.value());
         }
+        // ===== 💬 AI 한마디 생성 (SAYU와 동시, 별도 호출 없음) =====
+        let aiComment = '';
+        try {
+            const commentModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+            const commentPrompt = buildAiCommentPrompt(polishedText, formatGroup);
+            const commentResult = await commentModel.generateContent(commentPrompt);
+            const rawComment = (commentResult.response.text() || '').trim();
+            aiComment = rawComment
+                .replace(/^["'`*#\-•·]+|["'`*#\-•·]+$/g, '')
+                .replace(/\*\*|__/g, '')
+                .trim()
+                .slice(0, 50);
+        }
+        catch (commentErr) {
+            console.warn('[polishContent] AI 한마디 생성 실패:', commentErr);
+        }
         return {
             text: polishedText,
-            stats: stats
+            stats: stats,
+            aiComment: aiComment,
         };
     }
     catch (error) {
@@ -6533,7 +6576,18 @@ ${plantNetSummary ? JSON.stringify(plantNetSummary, null, 2) : '(호출 실패 �
   "poisonousRisk": true | false,
   "similarSpecies": ["유사종1 (구분 포인트)", "유사종2 (구분 포인트)"],
   "needMorePhotos": ["꽃이 핀 모습이 필요합니다", ...],
-  "confidence": "high | medium | low"
+  "confidence": "high | medium | low",
+  "growthStage": "현재 생육단계. 예: 발아기, 활착기, 잎 성장기, 개화기, 열매 비대기, 성숙기, 휴면기, 불확실",
+  "growthStagePercent": 0,
+  "healthScore": 0,
+  "pestDiseaseWatch": "사진에서 보이는 병충해 위험 또는 점검 포인트. 없거나 불확실하면 빈 문자열",
+  "wateringAdvice": "물 주는 시기와 방법을 사진 상태 기준으로 한 문장",
+  "fertilizerAdvice": "비료 추천을 생육단계 기준으로 한 문장",
+  "expectedHarvest": "수확 예상. 수확 작물이 아니거나 불확실하면 빈 문자열",
+  "autoDiary": "성장일기 자동 작성용 1~2문장",
+  "previousPhotoComparison": "이전 사진이 없으면 '이전 사진이 없어 비교는 다음 촬영부터 가능합니다.'",
+  "yearOverYearComparison": "작년 기록이 없으면 '작년 같은 시기 기록이 있으면 성장 속도를 비교할 수 있습니다.'",
+  "careSummary": "오늘 사용자가 바로 할 일 1~2문장"
 }`;
     const genAI = new generative_ai_1.GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
@@ -6564,6 +6618,21 @@ ${plantNetSummary ? JSON.stringify(plantNetSummary, null, 2) : '(호출 실패 �
         similarSpecies: normList(parsed === null || parsed === void 0 ? void 0 : parsed.similarSpecies),
         needMorePhotos: normList(parsed === null || parsed === void 0 ? void 0 : parsed.needMorePhotos),
         confidence,
+        growthStage: String((parsed === null || parsed === void 0 ? void 0 : parsed.growthStage) || '').slice(0, 80),
+        growthStagePercent: typeof (parsed === null || parsed === void 0 ? void 0 : parsed.growthStagePercent) === 'number'
+            ? Math.max(0, Math.min(100, Math.round(parsed.growthStagePercent)))
+            : null,
+        healthScore: typeof (parsed === null || parsed === void 0 ? void 0 : parsed.healthScore) === 'number'
+            ? Math.max(0, Math.min(100, Math.round(parsed.healthScore)))
+            : null,
+        pestDiseaseWatch: String((parsed === null || parsed === void 0 ? void 0 : parsed.pestDiseaseWatch) || '').slice(0, 240),
+        wateringAdvice: String((parsed === null || parsed === void 0 ? void 0 : parsed.wateringAdvice) || '').slice(0, 240),
+        fertilizerAdvice: String((parsed === null || parsed === void 0 ? void 0 : parsed.fertilizerAdvice) || '').slice(0, 240),
+        expectedHarvest: String((parsed === null || parsed === void 0 ? void 0 : parsed.expectedHarvest) || '').slice(0, 120),
+        autoDiary: String((parsed === null || parsed === void 0 ? void 0 : parsed.autoDiary) || '').slice(0, 320),
+        previousPhotoComparison: String((parsed === null || parsed === void 0 ? void 0 : parsed.previousPhotoComparison) || '').slice(0, 240),
+        yearOverYearComparison: String((parsed === null || parsed === void 0 ? void 0 : parsed.yearOverYearComparison) || '').slice(0, 240),
+        careSummary: String((parsed === null || parsed === void 0 ? void 0 : parsed.careSummary) || '').slice(0, 240),
     };
 }
 exports.detectPlantAdvanced = (0, https_2.onCall)({

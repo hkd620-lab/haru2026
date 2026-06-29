@@ -10,9 +10,12 @@ import { SayuTitleAnimation } from '../components/SayuTitleAnimation';
 import { toast } from 'sonner';
 import { SayuModal } from '../components/SayuModal';
 import { AssistantRecommendationCards } from '../components/AssistantRecommendationCards';
+import { ResultChatButton } from '../components/ResultChatButton';
+import { ResultChatModal } from '../components/ResultChatModal';
 import { GrowthTimelineLibrary } from '../components/GrowthTimelineCreator';
 import { CATEGORY_FORMATS, FORMAT_PREFIX, FORMAT_EMOJI, READING_ENTRY_TYPES, READING_STATUS } from '../types/haruTypes';
 import type { RecordFormat } from '../types/haruTypes';
+import { getResultChatConfig, getResultChatConfigForFormatKey, type ResultChatConfig } from '../config/resultChatConfig';
 import {
   buildRecommendationTextFromFields,
   getAssistantRecommendations,
@@ -54,6 +57,14 @@ const GROWTH_TIMELINE_FORMAT_LABEL = '성장타임라인';
 const GROWTH_TIMELINE_SAYU_LABEL = 'HARU타임라인';
 type PlantSayuEntryType = 'detective' | 'diary' | 'library' | 'catalog';
 type PlantSayuFilter = 'all' | PlantSayuEntryType;
+type ResultChatModalState = {
+  isOpen: boolean;
+  recordId: string;
+  sourceIndex?: number;
+  title: string;
+  dateLabel: string;
+  config: ResultChatConfig | null;
+};
 const PLANT_SAYU_FILTERS: { key: PlantSayuFilter; label: string }[] = [
   { key: 'all', label: '전체' },
   { key: 'detective', label: '판독기록' },
@@ -256,6 +267,17 @@ type PlantDetectiveAdvancedResult = {
     similarSpecies: string[];
     needMorePhotos: string[];
     confidence: 'high' | 'medium' | 'low';
+    growthStage?: string;
+    growthStagePercent?: number | null;
+    healthScore?: number | null;
+    pestDiseaseWatch?: string;
+    wateringAdvice?: string;
+    fertilizerAdvice?: string;
+    expectedHarvest?: string;
+    autoDiary?: string;
+    previousPhotoComparison?: string;
+    yearOverYearComparison?: string;
+    careSummary?: string;
   } | null;
   meta: {
     imageCount: number;
@@ -399,6 +421,35 @@ function getRecordSourceText(r: any, prefix: string): string {
     if (typeof v === 'string' && v.trim()) parts.push(v);
   });
   return parts.join(' ');
+}
+
+function getResultChatSourceKey(formatKey: string, record?: Record<string, any>): string {
+  if (formatKey === 'growthTimeline') return 'growthTimeline';
+  if (formatKey === 'reading' && typeof record?.reading_final_sayu === 'string' && record.reading_final_sayu.trim()) {
+    return 'reading_final_sayu';
+  }
+  return `${formatKey}_sayu`;
+}
+
+function hasResultChatSource(record: Record<string, any> | undefined, formatKey: string, displayedContent?: string): boolean {
+  if (!record || !formatKey) return false;
+  const config = getResultChatConfigForFormatKey(formatKey, record);
+  if (!config) return false;
+  if (formatKey === 'growthTimeline') {
+    return String(record.content || '').trim().length > 0 || normalizeTimelineItems(record.timelineItems).length > 0;
+  }
+  const sourceKey = getResultChatSourceKey(formatKey, record);
+  return String(record[sourceKey] || displayedContent || '').trim().length > 0;
+}
+
+function buildPlantChatSourceText(detail: PlantReadOnlyDetail): string {
+  return [
+    detail.title,
+    detail.subtitle,
+    detail.summary,
+    ...detail.coreFields.map((field) => `${field.label}: ${field.value}`),
+    ...detail.detailSections.map((field) => `${field.label}: ${field.value}`),
+  ].filter((value) => String(value || '').trim()).join('\n');
 }
 
 // AI로그(하루AI지식창고)의 본문 추출
@@ -784,6 +835,13 @@ export function SayuPage() {
   const [plantDeleteBusy, setPlantDeleteBusy] = useState(false);
   const [plantSayuFilter, setPlantSayuFilter] = useState<PlantSayuFilter>('all');
   const [plantReadOnlyDetail, setPlantReadOnlyDetail] = useState<PlantReadOnlyDetail | null>(null);
+  const [resultChatState, setResultChatState] = useState<ResultChatModalState>({
+    isOpen: false,
+    recordId: '',
+    title: '',
+    dateLabel: '',
+    config: null,
+  });
   const [plantDetailIsWide, setPlantDetailIsWide] = useState(() => (
     typeof window !== 'undefined' && window.innerWidth >= 768
   ));
@@ -1232,7 +1290,6 @@ export function SayuPage() {
       setPlantReadOnlyDetail((prev) => {
         if (!prev || prev.recordId !== recordId || prev.entryIdx !== idx) return prev;
         const updatedTitle = getPlantDisplayName(target).slice(0, 48);
-        const aiSummary = getPlantAiSummary(target);
         const memoSummary = getPlantMemoSummary(target);
         const confirmedName = String(target?.userConfirmedName || target?.humanReportedName || target?.title || '').trim();
         const aiName = String(target?.aiKoName || target?.aiPrediction || '').trim();
@@ -1262,9 +1319,7 @@ export function SayuPage() {
             { label: '학명', value: scientificName },
             { label: '기록일', value: formatKoreanDate(record.date) },
           ]),
-          detailSections: filterPlantInfoFields([
-            { label: 'AI 판독 요약', value: aiSummary },
-            { label: '판독 출처·후보', value: compactPlantDetailText(sourceSummary) },
+          detailSections: buildPlantDetectiveDetailSections(target, sourceSummary, [
             {
               label: '재탐색 정보',
               value: reanalysisDone
@@ -2214,7 +2269,9 @@ export function SayuPage() {
       }
     });
 
-    let sayuContent = record[sayuKey] || record[`${formatKey}_final_sayu`] || '';
+    let sayuContent = formatKey === 'reading'
+      ? record[`${formatKey}_final_sayu`] || record[sayuKey] || ''
+      : record[sayuKey] || record[`${formatKey}_final_sayu`] || '';
     if (!sayuContent) {
       const originalFields = Object.keys(record)
         .filter(k =>
@@ -2536,6 +2593,27 @@ export function SayuPage() {
       return;
     }
 
+  };
+
+  const openResultChat = (params: {
+    recordId: string;
+    config: ResultChatConfig;
+    title: string;
+    dateLabel: string;
+    sourceIndex?: number;
+  }) => {
+    setResultChatState({
+      isOpen: true,
+      recordId: params.recordId,
+      sourceIndex: params.sourceIndex,
+      title: params.title,
+      dateLabel: params.dateLabel,
+      config: params.config,
+    });
+  };
+
+  const closeResultChat = () => {
+    setResultChatState((prev) => ({ ...prev, isOpen: false }));
   };
 
   // Delete an AI log
@@ -3035,6 +3113,92 @@ export function SayuPage() {
       .map((value) => String(value).trim())
       .join(' / ');
 
+  const getPlantKnownName = (item: any) =>
+    String(item?.userConfirmedName || item?.humanReportedName || item?.title || item?.plantName || item?.aiKoName || '').trim();
+
+  const getPlantEnglishName = (item: any) =>
+    String(item?.englishName || item?.aiPrediction || item?.originalPlantNetResult?.name || '').trim();
+
+  const getPlantScientificName = (item: any) =>
+    String(item?.scientificName || item?.latinName || item?.finalLatinName || item?.originalPlantNetResult?.scientificName || '').trim();
+
+  const getPlantConfidenceLine = (item: any) => {
+    const raw = String(item?.confidence || item?.originalPlantNetResult?.confidence || '').trim();
+    if (!raw) return '';
+    const normalized = raw.toLowerCase();
+    const stars = normalized.includes('high') || normalized.includes('높')
+      ? '★★★★★'
+      : normalized.includes('medium') || normalized.includes('보통')
+        ? '★★★☆☆'
+        : normalized.includes('low') || normalized.includes('낮')
+          ? '★★☆☆☆'
+          : '★★★★☆';
+    return `${stars} ${raw} (PlantNet)`;
+  };
+
+  const buildPlantProfileText = (item: any) => {
+    const koreanName = getPlantKnownName(item);
+    const englishName = getPlantEnglishName(item);
+    const scientificName = getPlantScientificName(item);
+    const confidence = getPlantConfidenceLine(item);
+    return [
+      koreanName || englishName ? `식물명\n${koreanName}${englishName && englishName !== koreanName ? ` (${englishName})` : ''}` : '',
+      scientificName ? `학명\n${scientificName}` : '',
+      confidence ? `신뢰도\n${confidence}` : '',
+    ].filter(Boolean).join('\n\n');
+  };
+
+  const buildPlantDoctorText = (item: any) => {
+    const assistant = item?.plantAssistant || {};
+    const stage = String(item?.growthStage || assistant?.growthStage || item?.stage || item?.phenology || '').trim();
+    const stagePercent = item?.growthStagePercent ?? assistant?.growthStagePercent;
+    const healthScore = String(item?.healthScore ?? assistant?.healthScore ?? item?.health ?? '').trim();
+    const aiOpinion = String(
+      item?.careAdvice ||
+        assistant?.careSummary ||
+        assistant?.wateringAdvice ||
+        item?.aiCareAdvice ||
+        item?.geminiAnalysis?.careAdvice ||
+        item?.recommendation ||
+        '',
+    ).trim();
+    const warning = String(
+      item?.warning ||
+        assistant?.pestDiseaseWatch ||
+        item?.warningSigns?.[0] ||
+        item?.pestDiseaseWarning ||
+        item?.riskNote ||
+        '',
+    ).trim();
+    const watering = String(item?.wateringAdvice || assistant?.wateringAdvice || '').trim();
+    const fertilizer = String(item?.fertilizerAdvice || assistant?.fertilizerAdvice || '').trim();
+    const harvest = String(item?.expectedHarvest || assistant?.expectedHarvest || item?.harvestEstimate || item?.harvestWindow || '').trim();
+    const autoDiary = String(item?.autoGrowthDiary || assistant?.autoDiary || '').trim();
+    const previousCompare = String(item?.previousPhotoComparison || assistant?.previousPhotoComparison || '').trim();
+    const yearCompare = String(item?.yearOverYearComparison || assistant?.yearOverYearComparison || '').trim();
+    return [
+      stage ? `현재 생육단계\n● ${stage}${typeof stagePercent === 'number' ? ` (약 ${stagePercent}%)` : ''}` : '',
+      healthScore ? `현재 상태\n건강도 ${healthScore}` : '',
+      aiOpinion ? `AI 의견\n${aiOpinion}` : '',
+      warning ? `주의사항\n${warning}` : '',
+      watering ? `물 주는 시기\n${watering}` : '',
+      fertilizer ? `비료 추천\n${fertilizer}` : '',
+      harvest ? `예상 수확\n${harvest}` : '',
+      autoDiary ? `성장일기 자동 작성\n${autoDiary}` : '',
+      previousCompare ? `이전 사진과 비교\n${previousCompare}` : '',
+      yearCompare ? `올해와 작년 비교\n${yearCompare}` : '',
+    ].filter(Boolean).join('\n\n');
+  };
+
+  const buildPlantDetectiveDetailSections = (item: any, sourceSummary = '', extraSections: PlantReadOnlyField[] = []) =>
+    filterPlantInfoFields([
+      { label: '식물 프로필', value: buildPlantProfileText(item) },
+      { label: 'AI 판독 요약', value: getPlantAiSummary(item) },
+      { label: 'AI 관리 의견', value: buildPlantDoctorText(item) },
+      { label: '판독 출처·후보', value: sourceSummary },
+      ...extraSections,
+    ]);
+
   const normalizePlantMergeText = (value: any) =>
     String(value || '').trim().toLowerCase().replace(/[\s()[\]{}'"`.,:;|/\\_-]+/g, '');
 
@@ -3431,12 +3595,10 @@ export function SayuPage() {
             { label: '학명', value: scientificName },
             { label: '기록일', value: formatKoreanDate(record.date) },
           ],
-          detailSections: [
-            { label: 'AI 판독 요약', value: aiSummary },
-            { label: '판독 출처·후보', value: compactPlantDetailText(sourceSummary) },
+          detailSections: buildPlantDetectiveDetailSections(entry, sourceSummary, [
             { label: '촬영 지역', value: locationLabel },
             { label: '사용자 메모', value: memoSummary },
-          ],
+          ]),
         });
         return {
           id: `${record.id}_plant_detective_${idx}`,
@@ -4899,6 +5061,12 @@ export function SayuPage() {
             : undefined;
           const formatKey = sayuModalState.formatKey || '';
           if (!record || !formatKey) return null;
+          const chatConfig = getResultChatConfigForFormatKey(formatKey, record as Record<string, unknown>);
+          const shouldShowResultChat = Boolean(
+            chatConfig &&
+            sayuModalState.firestoreId &&
+            hasResultChatSource(record as Record<string, any>, formatKey, sayuModalState.content),
+          );
 
           const recommendations = getAssistantRecommendations(
             [
@@ -4912,15 +5080,32 @@ export function SayuPage() {
             ],
           );
 
-          if (recommendations.length === 0) return null;
+          if (!shouldShowResultChat && recommendations.length === 0) return null;
 
           return (
-            <AssistantRecommendationCards
-              recommendations={recommendations}
-              title="이 기록과 연결 가능한 AI 비서"
-              description="기록에 담긴 고민을 바탕으로 도움받을 수 있는 비서를 추천합니다."
-              onSelect={handleAssistantRecommendationSelect}
-            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {shouldShowResultChat && chatConfig && (
+                <ResultChatButton
+                  onClick={() => openResultChat({
+                    recordId: sayuModalState.firestoreId || '',
+                    config: {
+                      ...chatConfig,
+                      sourceKey: getResultChatSourceKey(formatKey, record as Record<string, any>),
+                    },
+                    title: sayuModalState.title || sayuModalState.aiTitle || sayuModalState.format || chatConfig.label,
+                    dateLabel: sayuModalState.recordDate || sayuModalState.dateLabel || '',
+                  })}
+                />
+              )}
+              {recommendations.length > 0 && (
+                <AssistantRecommendationCards
+                  recommendations={recommendations}
+                  title="이 기록과 연결 가능한 AI 비서"
+                  description="기록에 담긴 고민을 바탕으로 도움받을 수 있는 비서를 추천합니다."
+                  onSelect={handleAssistantRecommendationSelect}
+                />
+              )}
+            </div>
           );
         })()}
       />
@@ -5139,6 +5324,28 @@ export function SayuPage() {
                 </p>
               )}
             </section>
+
+            {plantReadOnlyDetail.type === 'detective'
+              && plantReadOnlyDetail.recordId
+              && typeof plantReadOnlyDetail.entryIdx === 'number'
+              && buildPlantChatSourceText(plantReadOnlyDetail).trim().length > 0
+              && (() => {
+                const config = getResultChatConfig('plantDetective');
+                if (!config) return null;
+                return (
+                  <div style={{ marginTop: 14 }}>
+                    <ResultChatButton
+                      onClick={() => openResultChat({
+                        recordId: plantReadOnlyDetail.recordId || '',
+                        sourceIndex: plantReadOnlyDetail.entryIdx,
+                        config,
+                        title: plantReadOnlyDetail.title,
+                        dateLabel: plantReadOnlyDetail.date,
+                      })}
+                    />
+                  </div>
+                );
+              })()}
 
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
               <button
@@ -5440,6 +5647,19 @@ export function SayuPage() {
           <p>{sayuModalState.content}</p>
         </div>
       </div>
+
+      {user?.uid && resultChatState.isOpen && resultChatState.config && resultChatState.recordId && (
+        <ResultChatModal
+          isOpen={resultChatState.isOpen}
+          onClose={closeResultChat}
+          uid={user.uid}
+          recordId={resultChatState.recordId}
+          sourceIndex={resultChatState.sourceIndex}
+          title={resultChatState.title}
+          dateLabel={resultChatState.dateLabel}
+          config={resultChatState.config}
+        />
+      )}
 
     </>
   );
