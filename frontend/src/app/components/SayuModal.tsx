@@ -2765,11 +2765,6 @@ export function SayuModal({
           ) : (
             renderOriginalData()
           )}
-          {assistantContent && (
-            <div style={{ marginTop: 16 }}>
-              {assistantContent}
-            </div>
-          )}
         </div>
 
         {/* Footer - AI 탭일 때만 별점/저장 버튼 표시 */}
@@ -2847,6 +2842,12 @@ export function SayuModal({
               <p style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', marginTop: 6 }}>
                 AI가 이 기록을 분석해 미래 서사를 만들어줍니다
               </p>
+            </div>
+          )}
+
+          {assistantContent && (
+            <div style={{ marginBottom: 12 }}>
+              {assistantContent}
             </div>
           )}
 
