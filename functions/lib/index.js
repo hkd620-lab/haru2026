@@ -36,8 +36,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.subscribeWithBillingKey = exports.verifyPayment = exports.generateGrowthTimelinePdf = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
-exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = void 0;
+exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.subscribeWithBillingKey = exports.verifyPayment = exports.generateGrowthTimelinePdf = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
+exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -895,6 +895,186 @@ exports.clearKeywordsCache = (0, https_2.onCall)({ region: 'asia-northeast3' }, 
         await batch.commit();
     }
     return { docsExamined, docsUpdated, fieldsCleared };
+});
+const RESULT_CHAT_ALLOWED_SAFETY_MODES = new Set([
+    'reflection',
+    'writing',
+    'report',
+    'plant_basic',
+    'timeline_basic',
+]);
+function clampResultChatText(value, max = 8000) {
+    return String(value || '').trim().slice(0, max);
+}
+function getResultThreadId(sourceKey, sourceIndex) {
+    const safeKey = sourceKey.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80);
+    return typeof sourceIndex === 'number' ? `${safeKey}_${sourceIndex}` : safeKey;
+}
+function getPlantDetectiveResult(record, sourceIndex) {
+    var _a, _b, _c;
+    if (typeof sourceIndex !== 'number' || sourceIndex < 0)
+        return '';
+    const entries = Array.isArray(record.plantDetective) ? record.plantDetective : [];
+    const item = entries[sourceIndex];
+    if (!item)
+        return '';
+    const parts = [
+        item.userConfirmedName || item.humanReportedName || item.title || item.plantName,
+        item.aiKoName ? `AI 판독명: ${item.aiKoName}` : '',
+        item.aiPrediction ? `예측명: ${item.aiPrediction}` : '',
+        item.scientificName || item.latinName ? `학명: ${item.scientificName || item.latinName}` : '',
+        item.condition ? `상태: ${item.condition}` : '',
+        item.note ? `메모: ${item.note}` : '',
+        item.memo ? `사용자 메모: ${item.memo}` : '',
+        ((_a = item.geminiAnalysis) === null || _a === void 0 ? void 0 : _a.analysis) ? `AI 분석: ${item.geminiAnalysis.analysis}` : '',
+        ((_b = item.geminiAnalysis) === null || _b === void 0 ? void 0 : _b.careAdvice) ? `관리 조언: ${item.geminiAnalysis.careAdvice}` : '',
+        ((_c = item.geminiAnalysis) === null || _c === void 0 ? void 0 : _c.warning) ? `주의: ${item.geminiAnalysis.warning}` : '',
+    ];
+    return parts.map((part) => String(part || '').trim()).filter(Boolean).join('\n');
+}
+function getGrowthTimelineResult(record) {
+    const items = Array.isArray(record.timelineItems) ? record.timelineItems : [];
+    const itemText = items
+        .map((item, index) => [
+        `[${index + 1}]`,
+        item.takenDate ? `날짜: ${item.takenDate}` : '',
+        item.memo ? `메모: ${item.memo}` : '',
+        item.locationLabel ? `위치: ${item.locationLabel}` : '',
+    ].filter(Boolean).join(' '))
+        .filter(Boolean)
+        .join('\n');
+    return [
+        record.title ? `제목: ${record.title}` : '',
+        record.content ? `내용: ${record.content}` : '',
+        itemText,
+    ].filter((part) => String(part || '').trim()).join('\n\n');
+}
+function getRecordResultBySourceKey(record, sourceKey, sourceIndex) {
+    if (sourceKey === 'plantDetective')
+        return getPlantDetectiveResult(record, sourceIndex);
+    if (sourceKey === 'growthTimeline')
+        return getGrowthTimelineResult(record);
+    const value = record[sourceKey];
+    return typeof value === 'string' ? value.trim() : '';
+}
+function getSafetyModeGuide(safetyMode) {
+    switch (safetyMode) {
+        case 'writing':
+            return '글쓰기 보조 모드다. 원문 의도와 사실을 보존하고 표현, 구조, 제목, 요약 중심으로 돕는다.';
+        case 'report':
+            return '보고 정리 모드다. 진행 상황, 누락 가능성, 다음 행동을 사실 중심으로 정리한다.';
+        case 'plant_basic':
+            return '식물 기본 관리 모드다. 사진과 기록 기반 추정임을 밝히고 식용, 독성, 농약, 치료 판단은 단정하지 않는다.';
+        case 'timeline_basic':
+            return '타임라인 관찰 모드다. 시간 흐름과 변화 포인트를 정리하되 건강·발달 진단은 하지 않는다.';
+        case 'reflection':
+        default:
+            return '성찰 보조 모드다. 감정과 생각을 존중하고 기록에 드러난 흐름을 차분히 정리한다.';
+    }
+}
+exports.chatWithResult = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+    timeoutSeconds: 60,
+}, async (request) => {
+    var _a, _b, _c, _d, _f, _g, _h;
+    if (!((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid)) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    const recordId = clampResultChatText((_b = request.data) === null || _b === void 0 ? void 0 : _b.recordId, 160);
+    const sourceKey = clampResultChatText((_c = request.data) === null || _c === void 0 ? void 0 : _c.sourceKey, 80);
+    const question = clampResultChatText((_d = request.data) === null || _d === void 0 ? void 0 : _d.question, 1200);
+    const safetyMode = clampResultChatText((_f = request.data) === null || _f === void 0 ? void 0 : _f.safetyMode, 40);
+    const systemGuide = clampResultChatText((_g = request.data) === null || _g === void 0 ? void 0 : _g.systemGuide, 1200);
+    const rawSourceIndex = (_h = request.data) === null || _h === void 0 ? void 0 : _h.sourceIndex;
+    const sourceIndex = typeof rawSourceIndex === 'number' && Number.isInteger(rawSourceIndex)
+        ? rawSourceIndex
+        : undefined;
+    if (!recordId || !sourceKey || !question) {
+        throw new https_2.HttpsError('invalid-argument', 'recordId, sourceKey, question이 필요합니다.');
+    }
+    if (!RESULT_CHAT_ALLOWED_SAFETY_MODES.has(safetyMode)) {
+        throw new https_2.HttpsError('invalid-argument', '지원하지 않는 safetyMode입니다.');
+    }
+    const recordRef = db.collection('users').doc(uid).collection('records').doc(recordId);
+    const recordSnap = await recordRef.get();
+    if (!recordSnap.exists) {
+        throw new https_2.HttpsError('not-found', '기록을 찾을 수 없습니다.');
+    }
+    const record = recordSnap.data() || {};
+    const sourceResult = clampResultChatText(getRecordResultBySourceKey(record, sourceKey, sourceIndex), 9000);
+    if (!sourceResult) {
+        throw new https_2.HttpsError('failed-precondition', '대화할 결과물이 없습니다.');
+    }
+    const threadId = getResultThreadId(sourceKey, sourceIndex);
+    const threadRef = recordRef.collection('resultThreads').doc(threadId);
+    const messagesRef = threadRef.collection('messages');
+    const recentSnap = await messagesRef.orderBy('createdAt', 'desc').limit(8).get();
+    const recentMessages = recentSnap.docs
+        .map((docSnap) => docSnap.data())
+        .reverse()
+        .map((message) => `${message.role === 'user' ? '사용자' : 'AI'}: ${clampResultChatText(message.content, 1000)}`)
+        .join('\n');
+    const prompt = `당신은 HARU2026의 결과물 기반 대화 비서입니다.
+
+[공통 원칙]
+- 반드시 제공된 결과물과 현재 질문을 근거로 답한다.
+- 결과물에 없는 사실은 지어내지 않는다.
+- 확인되지 않는 내용은 "이 결과물만으로는 확인되지 않습니다"라고 말한다.
+- 사용자의 원문 감정과 의도를 존중한다.
+- 답변은 실행 가능한 다음 행동 1~3개로 마무리한다.
+- 과장된 칭찬, 단정적 예측, 전문가 판단 대체 표현을 금지한다.
+
+[모드 제한]
+${getSafetyModeGuide(safetyMode)}
+
+[형식별 지침]
+${systemGuide || '(추가 지침 없음)'}
+
+[결과물]
+${sourceResult}
+
+[최근 대화]
+${recentMessages || '(아직 없음)'}
+
+[현재 질문]
+${question}
+
+한국어로 답변하세요.`;
+    try {
+        const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+        const result = await model.generateContent(prompt);
+        const answer = clampResultChatText(result.response.text(), 5000);
+        if (!answer) {
+            throw new Error('empty_answer');
+        }
+        const now = admin.firestore.FieldValue.serverTimestamp();
+        await messagesRef.add({
+            role: 'user',
+            content: question,
+            createdAt: now,
+        });
+        await messagesRef.add({
+            role: 'assistant',
+            content: answer,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        await threadRef.set({
+            sourceKey,
+            sourceIndex: typeof sourceIndex === 'number' ? sourceIndex : null,
+            safetyMode,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            messageCount: admin.firestore.FieldValue.increment(2),
+            lastMessagePreview: answer.slice(0, 160),
+        }, { merge: true });
+        return { threadId, answer };
+    }
+    catch (error) {
+        logger.error('chatWithResult 실패:', { message: error === null || error === void 0 ? void 0 : error.message, recordId, sourceKey, safetyMode });
+        throw new https_2.HttpsError('internal', 'AI 응답 생성에 실패했습니다.');
+    }
 });
 // ===== 🏷️ 기존 기록 AI 제목 일괄 생성 =====
 exports.generateTitlesForAll = (0, https_2.onCall)({
