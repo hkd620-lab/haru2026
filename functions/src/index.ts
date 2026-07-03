@@ -64,6 +64,10 @@ const SUBSCRIPTION_PLANS: Record<number, 'basic' | 'premium'> = {
   3500: 'basic',
   5000: 'premium',
 };
+const SINGLE_PAYMENT_REVIEW_PRODUCT = {
+  orderName: 'HARU2026 단건 체험 이용권',
+  amount: 1000,
+};
 const HARU_LAW_SHARE_DISCLAIMER = '본 내용은 법령 정보 제공 목적이며, 전문적인 법률·세무 자문을 대체하지 않습니다.\n구체적인 사건은 관련 자료를 가지고 전문가 상담을 받으시기 바랍니다.';
 const HARU_LAW_SHARE_PREVIEW_TTL_MS = 30 * 60 * 1000;
 const HARU_LAW_SHARE_DAILY_PREVIEW_LIMIT = 3;
@@ -3615,6 +3619,76 @@ export const subscribeWithBillingKey = onCall(
     });
 
     logger.info('✅ 정기구독 시작 — uid: %s, plan: %s, paymentId: %s', uid, plan, paymentId);
+    return { success: true };
+  }
+);
+
+// ===== 💳 KG이니시스 심사용 일반(단건)결제 검증 =====
+export const verifySinglePayment = onCall(
+  { region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] },
+  async (request) => {
+    const paymentId = request.data?.paymentId;
+
+    if (!paymentId || typeof paymentId !== 'string') {
+      throw new HttpsError('invalid-argument', 'paymentId가 필요합니다.');
+    }
+
+    let payment: any;
+    try {
+      const portoneRes = await axios.get(
+        `https://api.portone.io/payments/${encodeURIComponent(paymentId)}`,
+        { headers: { Authorization: `PortOne ${PORTONE_API_SECRET.value().trim()}` } }
+      );
+      payment = portoneRes.data;
+    } catch (e: any) {
+      logger.error('PortOne 단건결제 조회 실패:', e?.response?.data || e.message);
+      throw new HttpsError('internal', '결제 정보를 조회할 수 없습니다.');
+    }
+
+    if (payment.status !== 'PAID') {
+      throw new HttpsError('failed-precondition', '결제가 완료되지 않았습니다.');
+    }
+
+    const paidAmount = payment.amount?.total ?? payment.totalAmount;
+    if (paidAmount !== SINGLE_PAYMENT_REVIEW_PRODUCT.amount) {
+      logger.error('단건결제 금액 불일치:', {
+        paymentId,
+        expected: SINGLE_PAYMENT_REVIEW_PRODUCT.amount,
+        actual: paidAmount,
+      });
+      throw new HttpsError('invalid-argument', '결제 금액이 올바르지 않습니다.');
+    }
+
+    const orderName = typeof payment.orderName === 'string' ? payment.orderName : '';
+    if (orderName && orderName !== SINGLE_PAYMENT_REVIEW_PRODUCT.orderName) {
+      logger.error('단건결제 상품명 불일치:', {
+        paymentId,
+        expected: SINGLE_PAYMENT_REVIEW_PRODUCT.orderName,
+        actual: orderName,
+      });
+      throw new HttpsError('invalid-argument', '결제 상품명이 올바르지 않습니다.');
+    }
+
+    const now = new Date().toISOString();
+    const singlePaymentRef = db.doc(`paymentReviews/single/payments/${paymentId}`);
+    const existing = await singlePaymentRef.get();
+    if (existing.exists) {
+      return { success: true, alreadyProcessed: true };
+    }
+
+    await singlePaymentRef.set({
+      paymentId,
+      orderName: SINGLE_PAYMENT_REVIEW_PRODUCT.orderName,
+      amount: SINGLE_PAYMENT_REVIEW_PRODUCT.amount,
+      status: payment.status,
+      type: 'single_review',
+      uid: request.auth?.uid || null,
+      guestAllowed: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    logger.info('✅ KG이니시스 심사용 단건결제 검증 완료 — paymentId: %s', paymentId);
     return { success: true };
   }
 );

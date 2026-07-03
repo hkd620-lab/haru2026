@@ -36,8 +36,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.subscribeWithBillingKey = exports.verifyPayment = exports.generateGrowthTimelinePdf = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
-exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = void 0;
+exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.verifySinglePayment = exports.subscribeWithBillingKey = exports.verifyPayment = exports.generateGrowthTimelinePdf = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
+exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -98,6 +98,10 @@ const db = admin.firestore();
 const SUBSCRIPTION_PLANS = {
     3500: 'basic',
     5000: 'premium',
+};
+const SINGLE_PAYMENT_REVIEW_PRODUCT = {
+    orderName: 'HARU2026 단건 체험 이용권',
+    amount: 1000,
 };
 const HARU_LAW_SHARE_DISCLAIMER = '본 내용은 법령 정보 제공 목적이며, 전문적인 법률·세무 자문을 대체하지 않습니다.\n구체적인 사건은 관련 자료를 가지고 전문가 상담을 받으시기 바랍니다.';
 const HARU_LAW_SHARE_PREVIEW_TTL_MS = 30 * 60 * 1000;
@@ -3159,6 +3163,63 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
         updatedAt: now.toISOString(),
     });
     logger.info('✅ 정기구독 시작 — uid: %s, plan: %s, paymentId: %s', uid, plan, paymentId);
+    return { success: true };
+});
+// ===== 💳 KG이니시스 심사용 일반(단건)결제 검증 =====
+exports.verifySinglePayment = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] }, async (request) => {
+    var _a, _b, _c, _d, _f;
+    const paymentId = (_a = request.data) === null || _a === void 0 ? void 0 : _a.paymentId;
+    if (!paymentId || typeof paymentId !== 'string') {
+        throw new https_2.HttpsError('invalid-argument', 'paymentId가 필요합니다.');
+    }
+    let payment;
+    try {
+        const portoneRes = await axios_1.default.get(`https://api.portone.io/payments/${encodeURIComponent(paymentId)}`, { headers: { Authorization: `PortOne ${PORTONE_API_SECRET.value().trim()}` } });
+        payment = portoneRes.data;
+    }
+    catch (e) {
+        logger.error('PortOne 단건결제 조회 실패:', ((_b = e === null || e === void 0 ? void 0 : e.response) === null || _b === void 0 ? void 0 : _b.data) || e.message);
+        throw new https_2.HttpsError('internal', '결제 정보를 조회할 수 없습니다.');
+    }
+    if (payment.status !== 'PAID') {
+        throw new https_2.HttpsError('failed-precondition', '결제가 완료되지 않았습니다.');
+    }
+    const paidAmount = (_d = (_c = payment.amount) === null || _c === void 0 ? void 0 : _c.total) !== null && _d !== void 0 ? _d : payment.totalAmount;
+    if (paidAmount !== SINGLE_PAYMENT_REVIEW_PRODUCT.amount) {
+        logger.error('단건결제 금액 불일치:', {
+            paymentId,
+            expected: SINGLE_PAYMENT_REVIEW_PRODUCT.amount,
+            actual: paidAmount,
+        });
+        throw new https_2.HttpsError('invalid-argument', '결제 금액이 올바르지 않습니다.');
+    }
+    const orderName = typeof payment.orderName === 'string' ? payment.orderName : '';
+    if (orderName && orderName !== SINGLE_PAYMENT_REVIEW_PRODUCT.orderName) {
+        logger.error('단건결제 상품명 불일치:', {
+            paymentId,
+            expected: SINGLE_PAYMENT_REVIEW_PRODUCT.orderName,
+            actual: orderName,
+        });
+        throw new https_2.HttpsError('invalid-argument', '결제 상품명이 올바르지 않습니다.');
+    }
+    const now = new Date().toISOString();
+    const singlePaymentRef = db.doc(`paymentReviews/single/payments/${paymentId}`);
+    const existing = await singlePaymentRef.get();
+    if (existing.exists) {
+        return { success: true, alreadyProcessed: true };
+    }
+    await singlePaymentRef.set({
+        paymentId,
+        orderName: SINGLE_PAYMENT_REVIEW_PRODUCT.orderName,
+        amount: SINGLE_PAYMENT_REVIEW_PRODUCT.amount,
+        status: payment.status,
+        type: 'single_review',
+        uid: ((_f = request.auth) === null || _f === void 0 ? void 0 : _f.uid) || null,
+        guestAllowed: true,
+        createdAt: now,
+        updatedAt: now,
+    });
+    logger.info('✅ KG이니시스 심사용 단건결제 검증 완료 — paymentId: %s', paymentId);
     return { success: true };
 });
 // ===== 🗑️ 일회성 마이그레이션: 모든 사용자 _tags 필드 일괄 삭제 =====
