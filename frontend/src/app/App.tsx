@@ -27,6 +27,7 @@ import { StatisticsPage } from './pages/StatisticsPage';
 import { FormatStatisticsPage } from './pages/FormatStatisticsPage';
 import { AssistantStatisticsPage } from './pages/AssistantStatisticsPage';
 import SubscriptionPage from './pages/SubscriptionPage';
+import SinglePaymentPage from './pages/SinglePaymentPage';
 import { BusinessInfoPage } from './pages/BusinessInfoPage';
 import { TermsPage } from './pages/TermsPage';
 import { PrivacyPage } from './pages/PrivacyPage';
@@ -241,6 +242,7 @@ function App() {
 
               {/* 구독 페이지 */}
               <Route path="/subscription" element={<SubscriptionPage />} />
+              <Route path="/payment/single" element={<SinglePaymentPage />} />
 
               {/* 법적 페이지 */}
               <Route path="/business-info" element={<BusinessInfoPage />} />
