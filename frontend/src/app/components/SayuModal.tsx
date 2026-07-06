@@ -1225,7 +1225,7 @@ export function SayuModal({
           urls: sanitizedTimelineItems.map((item) => item.url),
         });
         await updateDoc(recordRef, timelineUpdate);
-        toast.success('✅ 성장타임라인이 저장되었습니다!');
+        toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
         await onRefresh?.();
         onClose();
         return;
@@ -1244,7 +1244,7 @@ export function SayuModal({
         await updateDoc(recordRef, titleUpdate);
       }
       onSave(editedContent, isSpecialDay ? 1 : 0);
-      toast.success('✅ SAYU가 최종 저장되었습니다!');
+      toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
       onClose();
     } catch (error) {
       console.error('저장 실패:', error);
@@ -1460,7 +1460,7 @@ export function SayuModal({
       const docId = firestoreId || recordDate!;
       const recordRef = doc(db, 'users', currentUser.uid, 'records', docId);
       await updateDoc(recordRef, editedOriginalData);
-      toast.success('저장되었습니다 ✓');
+      toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
     } catch (error) {
       console.error('원본 저장 실패:', error);
       toast.error('저장 실패. 다시 시도해주세요.');

@@ -355,7 +355,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
       setResultUrl(url);
       generatingRef.current = false;
       setStep('done');
-      toast.success('HARU타임라인이 저장되었습니다!');
+      toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
     } catch (err) {
       console.error('HARU타임라인 생성 실패:', err);
       toast.error('생성에 실패했습니다. 다시 시도해주세요.');

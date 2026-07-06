@@ -1574,7 +1574,7 @@ export function PlantDetectivePage() {
       if (SHOW_PLANT_ID_RESULT && !result.plantId) {
         toast.info('Plant.id 결과는 가져오지 못했지만 다른 판독 결과는 저장할 수 있습니다.');
       }
-      toast.success(`오늘 기록(${today})에 저장되었습니다.`);
+      toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
     } catch (error: any) {
       console.error('식물탐정 저장 실패:', error);
       toast.error('저장 중 오류가 발생했습니다. 이미지 접근 또는 네트워크 상태를 확인하세요.');
@@ -1944,7 +1944,7 @@ export function PlantDetectivePage() {
       setObsAiDifference('');
       setObsMemo('');
       await loadPlantDiary();
-      toast.success('📔 오늘의 관찰이 저장되었습니다.');
+      toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
     } catch (error: any) {
       console.error('오늘의 관찰 저장 실패:', error);
       toast.error(error?.message || '저장에 실패했습니다.');
@@ -2063,7 +2063,7 @@ export function PlantDetectivePage() {
       if (SHOW_PLANT_ID_RESULT && !result.plantId) {
         toast.info('Plant.id 결과는 가져오지 못했지만 다른 판독 결과는 저장할 수 있습니다.');
       }
-      toast.success('오늘의 식물 기록과 관찰 내용을 저장했습니다.');
+      toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
     } catch (error: any) {
       console.error('통합 저장 실패:', error);
       toast.error('저장 중 오류가 발생했습니다. 이미지 접근 또는 네트워크 상태를 확인하세요.');

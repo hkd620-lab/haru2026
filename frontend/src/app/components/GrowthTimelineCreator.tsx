@@ -470,7 +470,7 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
         itemCount: savedItems.length,
       });
 
-      toast.success('HARU타임라인이 최종 저장되었습니다.');
+      toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
       items.forEach(item => URL.revokeObjectURL(item.previewUrl));
       setItems([]);
       setTitle('성장타임라인');

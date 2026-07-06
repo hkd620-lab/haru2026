@@ -269,7 +269,7 @@ export function SnsHaruTab() {
         source: 'facebook',
         _sns_origin: { id: record.id, timestamp: record.timestamp, text: record.text },
       } as any);
-      toast.success('일기로 저장되었습니다');
+      toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
     } catch (e: any) {
       console.error('AI 일기 변환 실패:', e);
       toast.error(e?.message || 'AI 변환에 실패했습니다.');

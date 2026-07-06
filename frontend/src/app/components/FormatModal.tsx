@@ -2005,7 +2005,7 @@ ${contentValues}`,
     setIsSaving(true);
     try {
       await onSave(dataToSave);
-      toast.success('SAYU에 저장되었습니다!');
+      toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
       onClose();
     } catch (error) {
       console.error('저장 중 오류:', error);
@@ -2052,7 +2052,7 @@ ${contentValues}`,
     setIsSaving(true);
     try {
       await onSave(updateData);
-      toast.success(`${format} SAYU가 저장되었습니다! (${sayuMode} 모드)`);
+      toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
       setShowPolishModal(false);
       onClose();
     } catch (error) {
@@ -2444,7 +2444,7 @@ ${contentValues}`,
     setIsSaving(true);
     try {
       await onSave(updateData);
-      toast.success('최종 독서사유가 저장되었습니다.');
+      toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
       setShowReadingFinishModal(false);
       onClose();
     } catch (error) {
