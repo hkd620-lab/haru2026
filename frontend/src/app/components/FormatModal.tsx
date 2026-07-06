@@ -313,6 +313,24 @@ const FORMAT_PREFIX: Record<RecordFormat, string> = {
   'HARU보조장부': 'ledger',
 };
 
+// 형식별 제목 입력 예시 (placeholder) — 형식 성격에 맞게 차별화
+const TITLE_EXAMPLE: Partial<Record<RecordFormat, string>> = {
+  '일기': '예: 오늘 하루',
+  '에세이': '예: 나이 든다는 것',
+  '여행기록': '예: 제주 3일차, 성산일출봉',
+  '텃밭일지': '예: 상추 모종 옮겨심기',
+  '애완동물관찰일지': '예: 초코, 예방접종 맞은 날',
+  '육아일기': '예: 첫 걸음마 뗀 날',
+  '성장기록': '예: 백일 사진',
+  '선교보고': '예: 3월 넷째 주 사역 보고',
+  '일반보고': '예: 3월 매출 현황 보고',
+  '업무일지': '예: 오늘 처리한 업무',
+  '메모': '예: 장보기 목록',
+  '주식거래일지': '예: 삼성전자 10주 매수',
+  'HARU보조장부': '예: 3월 거래처 입출금 정리',
+  'HARU가계부': '예: 3월 생활비 정리',
+};
+
 // 기록 스타일 타입
 type RecordStyle = 'simple' | 'premium';
 
@@ -2770,7 +2788,7 @@ ${contentValues}`,
                     type="text"
                     value={formData[`${prefix}_title`] || ''}
                     onChange={(e) => handleChange(`${prefix}_title`, e.target.value)}
-                    placeholder="제목을 입력해 주세요 (예: 오늘의 산책)"
+                    placeholder={`제목을 입력해 주세요 (${TITLE_EXAMPLE[format] ?? '예: 오늘의 산책'})`}
                     style={{
                       width: '100%', boxSizing: 'border-box',
                       padding: '10px 14px', fontSize: 16,

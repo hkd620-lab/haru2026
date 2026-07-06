@@ -544,7 +544,7 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
       <input
         value={title}
         onChange={event => setTitle(event.target.value)}
-        placeholder="타임라인 제목"
+        placeholder="타임라인 제목 (예: 백일 사진)"
         disabled={isSaving}
         style={{
           width: '100%',
