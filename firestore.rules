@@ -74,6 +74,21 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/shared_records/$(sharedId)).data.isActive == true;
     }
 
+    function userAttributionAllowedKeys() {
+      return [
+        "assistantOnboardingV1SeenAt",
+        "utmSource",
+        "utmMedium",
+        "utmCampaign",
+        "signupReferrerOrigin",
+        "signupAt"
+      ];
+    }
+
+    match /aiUsageLogs/{logId} {
+      allow read, write: if false;
+    }
+
     match /shared_records/{sharedId} {
       allow read: if signedIn() && resource.data.isActive == true;
 
@@ -112,6 +127,17 @@ service cloud.firestore {
         allow delete: if signedIn()
           && (resource.data.ownerUid == request.auth.uid || isAdmin());
       }
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(userAttributionAllowedKeys());
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(userAttributionAllowedKeys());
+      allow delete: if false;
     }
 
     match /users/{userId}/records/{recordId} {

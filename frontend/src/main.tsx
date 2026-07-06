@@ -1,9 +1,11 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './app/App'
+import { captureUtmParams } from './app/utils/utmAttribution'
 import './styles/index.css'
 
 document.getElementById('kakao-guide')?.remove();
+captureUtmParams();
 
 // 일회성 SW 캐시 강제 reset — 랜딩 Safari 차단 안내 stale 캐시 제거
 const SW_RESET_KEY = 'haru-sw-reset-v4-remove-kakao-safari-notice-2026-06-13';
