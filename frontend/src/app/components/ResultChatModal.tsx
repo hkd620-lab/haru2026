@@ -108,6 +108,8 @@ export function ResultChatModal({
         sourceRecordId: recordId,
         sourceKey: config.sourceKey,
         label: config.label,
+        sourceIndex,
+        threadId,
       });
       setSavedSet((prev) => {
         const next = new Set(prev);
