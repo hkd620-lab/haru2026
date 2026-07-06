@@ -55,6 +55,8 @@ const sharp = require('sharp');
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const aiUsageLogger_1 = require("./aiUsageLogger");
+// 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
+const genai_1 = require("@google/genai");
 // Firebase Admin 초기화
 if (!admin.apps.length) {
     admin.initializeApp();
@@ -1092,6 +1094,53 @@ function getRecordResultBySourceKey(record, sourceKey, sourceIndex) {
     const value = record[sourceKey];
     return typeof value === 'string' ? value.trim() : '';
 }
+// SAYU 결과물(_sayu)이 없는 원문/과거 기록도 대화 가능하도록 원문 본문으로 폴백.
+// 프론트(SayuPage) META_SUFFIXES와 동일한 제외 규칙으로 {prefix}_* 본문 필드를 모은다.
+const RESULT_CHAT_META_SUFFIXES = [
+    '_sayu', '_final_sayu', '_polished', '_polishedAt', '_mode', '_stats',
+    '_images', '_imageMeta', '_rating', '_status', '_completedAt',
+    '_reflection_questions', '_reflection_answers', '_entries_snapshot',
+];
+function getRecordOriginalContentByPrefix(record, prefix) {
+    if (!prefix)
+        return '';
+    const parts = [];
+    Object.keys(record).forEach((key) => {
+        if (!key.startsWith(`${prefix}_`))
+            return;
+        if (RESULT_CHAT_META_SUFFIXES.some((suffix) => key.endsWith(suffix)))
+            return;
+        const value = record[key];
+        if (typeof value === 'string' && value.trim())
+            parts.push(value.trim());
+    });
+    return parts.join('\n\n');
+}
+// 요금제별 결과물 대화 상한 — "한 대화창(스레드) 안에서 주고받기" 횟수.
+const PLAN_CHAT_LIMITS = { free: 1, basic: 2, premium: 4 };
+const RESULT_CHAT_LIMIT_NOTICES = {
+    free: '오늘 AI 대화를 잘 나누셨어요. 더 깊이 이야기 나누고 싶으시면 구독하고 이어가실 수 있습니다.',
+    basic: '오늘 AI 대화를 잘 나누셨어요. 더 많이 이야기 나누고 싶으시면 프리미엄에서 4번까지 이어가실 수 있습니다.',
+    premium: '이 대화를 깊이 나누셨네요. 다른 기록을 열어 새로운 대화를 시작해 보세요.',
+};
+// 요금제 조회 — subscription/info.plan (free/basic/premium). 개발자 UID는 premium 우회.
+async function getUserPlan(uid) {
+    var _a;
+    if (DEVELOPER_UIDS.has(uid))
+        return 'premium';
+    try {
+        const snap = await db.doc(`users/${uid}/subscription/info`).get();
+        const plan = String(((_a = snap.data()) === null || _a === void 0 ? void 0 : _a.plan) || '').toLowerCase();
+        if (plan === 'premium')
+            return 'premium';
+        if (plan === 'basic')
+            return 'basic';
+    }
+    catch (error) {
+        logger.warn('getUserPlan 조회 실패:', { uid, message: error === null || error === void 0 ? void 0 : error.message });
+    }
+    return 'free';
+}
 function getSafetyModeGuide(safetyMode) {
     switch (safetyMode) {
         case 'writing':
@@ -1112,7 +1161,7 @@ exports.chatWithResult = (0, https_2.onCall)({
     secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 60,
 }, async (request) => {
-    var _a, _b, _c, _d, _f, _g, _h;
+    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q;
     if (!((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid)) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -1138,13 +1187,49 @@ exports.chatWithResult = (0, https_2.onCall)({
         throw new https_2.HttpsError('not-found', '기록을 찾을 수 없습니다.');
     }
     const record = recordSnap.data() || {};
-    const sourceResult = clampResultChatText(getRecordResultBySourceKey(record, sourceKey, sourceIndex), 9000);
+    let sourceResult = clampResultChatText(getRecordResultBySourceKey(record, sourceKey, sourceIndex), 9000);
+    // _sayu 결과물이 없으면(원문만 저장했거나 과거 기록) 원문 본문으로 폴백해 대화 가능하게
+    if (!sourceResult && sourceKey.endsWith('_sayu')) {
+        const prefix = sourceKey.split('_')[0];
+        sourceResult = clampResultChatText(getRecordOriginalContentByPrefix(record, prefix), 9000);
+    }
     if (!sourceResult) {
         throw new https_2.HttpsError('failed-precondition', '대화할 결과물이 없습니다.');
     }
     const threadId = getResultThreadId(sourceKey, sourceIndex);
     const threadRef = recordRef.collection('resultThreads').doc(threadId);
     const messagesRef = threadRef.collection('messages');
+    // 🎫 요금제별 대화 횟수 제한 — messageCount(교환당 +2) 기준, 질문 횟수 = messageCount / 2
+    const plan = await getUserPlan(uid);
+    const threadSnap = await threadRef.get();
+    const priorMessageCount = Number(((_j = threadSnap.data()) === null || _j === void 0 ? void 0 : _j.messageCount) || 0);
+    const askedCount = Math.floor(priorMessageCount / 2);
+    const planLimit = (_k = PLAN_CHAT_LIMITS[plan]) !== null && _k !== void 0 ? _k : PLAN_CHAT_LIMITS.free;
+    if (askedCount >= planLimit) {
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid,
+            featureName: 'result_chat',
+            plan: AI_USAGE_PLAN,
+            model: null,
+            inputTokens: null,
+            outputTokens: null,
+            imageCount: 0,
+            externalApiProvider: null,
+            externalApiCalled: false,
+            groundingUsed: false,
+            requestId: null,
+            success: false,
+            errorCode: 'limit_reached',
+            isDev: DEVELOPER_UIDS.has(uid),
+        });
+        return {
+            threadId,
+            answer: '',
+            sources: [],
+            limitReached: true,
+            notice: (_l = RESULT_CHAT_LIMIT_NOTICES[plan]) !== null && _l !== void 0 ? _l : RESULT_CHAT_LIMIT_NOTICES.free,
+        };
+    }
     const recentSnap = await messagesRef.orderBy('createdAt', 'desc').limit(8).get();
     const recentMessages = recentSnap.docs
         .map((docSnap) => docSnap.data())
@@ -1154,9 +1239,10 @@ exports.chatWithResult = (0, https_2.onCall)({
     const prompt = `당신은 HARU2026의 결과물 기반 대화 비서입니다.
 
 [공통 원칙]
-- 반드시 제공된 결과물과 현재 질문을 근거로 답한다.
-- 결과물에 없는 사실은 지어내지 않는다.
-- 확인되지 않는 내용은 "이 결과물만으로는 확인되지 않습니다"라고 말한다.
+- 기록 결과물과 현재 질문을 최우선 근거로 삼는다.
+- 기록에 담긴 사실·감정·의도는 임의로 바꾸거나 재창작하지 않는다.
+- 다만 최신 정보나 기록 밖 외부 사실이 답변에 필요하면 웹검색을 활용해 정확히 확인한 뒤 답한다.
+- 기록에도 없고 웹검색으로도 확인되지 않으면 "확인되지 않습니다"라고 솔직히 말한다.
 - 사용자의 원문 감정과 의도를 존중한다.
 - 답변은 실행 가능한 다음 행동 1~3개로 마무리한다.
 - 과장된 칭찬, 단정적 예측, 전문가 판단 대체 표현을 금지한다.
@@ -1178,31 +1264,43 @@ ${question}
 
 한국어로 답변하세요.`;
     try {
-        const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+        // 신 SDK — 웹검색(google_search) 툴 기본 탑재. 검색 실행 여부는 모델이 질문마다 판단.
         const modelName = 'gemini-3.1-flash-lite';
-        const model = genAI.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent(prompt);
-        const usage = getGeminiUsage(result);
+        const ai = new genai_1.GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
+        const response = await ai.models.generateContent({
+            model: modelName,
+            contents: prompt,
+            config: { tools: [{ googleSearch: {} }] },
+        });
+        const answer = clampResultChatText(response.text || '', 5000);
+        if (!answer) {
+            throw new Error('empty_answer');
+        }
+        // 웹검색 grounding 메타데이터 추출
+        const grounding = (_o = (_m = response.candidates) === null || _m === void 0 ? void 0 : _m[0]) === null || _o === void 0 ? void 0 : _o.groundingMetadata;
+        const searchQueries = (grounding === null || grounding === void 0 ? void 0 : grounding.webSearchQueries) || [];
+        const groundingChunks = (grounding === null || grounding === void 0 ? void 0 : grounding.groundingChunks) || [];
+        const usedWebSearch = searchQueries.length > 0 || groundingChunks.length > 0;
+        const sources = groundingChunks
+            .map((chunk) => { var _a, _b; return ({ title: ((_a = chunk === null || chunk === void 0 ? void 0 : chunk.web) === null || _a === void 0 ? void 0 : _a.title) || '', uri: ((_b = chunk === null || chunk === void 0 ? void 0 : chunk.web) === null || _b === void 0 ? void 0 : _b.uri) || '' }); })
+            .filter((s) => s.uri);
+        const gUsage = response.usageMetadata;
         await (0, aiUsageLogger_1.logAiUsage)({
             uid,
             featureName: 'result_chat',
             plan: AI_USAGE_PLAN,
             model: modelName,
-            inputTokens: usage.inputTokens,
-            outputTokens: usage.outputTokens,
+            inputTokens: (_p = gUsage === null || gUsage === void 0 ? void 0 : gUsage.promptTokenCount) !== null && _p !== void 0 ? _p : null,
+            outputTokens: (_q = gUsage === null || gUsage === void 0 ? void 0 : gUsage.candidatesTokenCount) !== null && _q !== void 0 ? _q : null,
             imageCount: 0,
             externalApiProvider: null,
             externalApiCalled: false,
-            groundingUsed: false,
+            groundingUsed: usedWebSearch,
             requestId: null,
             success: true,
             errorCode: null,
             isDev: DEVELOPER_UIDS.has(uid),
         });
-        const answer = clampResultChatText(result.response.text(), 5000);
-        if (!answer) {
-            throw new Error('empty_answer');
-        }
         const now = admin.firestore.FieldValue.serverTimestamp();
         await messagesRef.add({
             role: 'user',
@@ -1212,6 +1310,7 @@ ${question}
         await messagesRef.add({
             role: 'assistant',
             content: answer,
+            sources: sources.length > 0 ? sources : [],
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
         await threadRef.set({
@@ -1222,7 +1321,7 @@ ${question}
             messageCount: admin.firestore.FieldValue.increment(2),
             lastMessagePreview: answer.slice(0, 160),
         }, { merge: true });
-        return { threadId, answer };
+        return { threadId, answer, sources };
     }
     catch (error) {
         logger.error('chatWithResult 실패:', { message: error === null || error === void 0 ? void 0 : error.message, recordId, sourceKey, safetyMode });
