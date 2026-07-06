@@ -370,6 +370,11 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: SayuPage.tsx (allRecordEntries·getMonthListData 필터, plantReadOnlyDetail 모달)
 - 교훈: SAYU 나의 기록 목록의 근본 소스는 allRecordEntries(평면 리스트/검색/달력). getMonthListData는 별개 그룹 목록. 메모 노출 제외 시 allRecordEntries를 먼저 봐야 함.
 
+### 2026-07-06 (3차)
+- 완료: 식물탐정에만 있던 '이 기록의 AI 대화 메모' 표시를 나머지 10개 형식(일기·에세이·일반보고·업무일지·여행·독서·독서완결·메모·텃밭·성장타임라인)으로 확장. SayuModal의 assistantContent(AI 뷰) footer에 sourceRecordId+sourceKey로 연결된 result_ai_chat 메모를 표시. 식물탐정 메모(sourceKey='plantDetective')는 ${formatKey}_sayu와 안 겹쳐 중복표시 없음.
+- 수정파일: SayuPage.tsx (assistantContent IIFE)
+- 참고: 비서(AI 비서실) 대화는 aiLogs 별개 시스템(현재 assistants 탭 로딩 `false &&`로 비활성). result_ai_chat 메모와 무관 — 필요 시 별도 작업.
+
 ---
 
 최종 업데이트: 2026.07.06

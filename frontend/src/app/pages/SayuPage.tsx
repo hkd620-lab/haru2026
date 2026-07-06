@@ -5072,6 +5072,16 @@ export function SayuPage() {
             hasResultChatSource(record as Record<string, any>, formatKey, sayuModalState.content),
           );
 
+          // 이 기록(sourceRecordId + sourceKey)에 연결된 AI 대화 메모 — 해당 형식 상세 안에서만 표시
+          const linkedSourceKey = getResultChatSourceKey(formatKey, record as Record<string, any>);
+          const linkedMemos = records
+            .filter((r) =>
+              (r as any).source === 'result_ai_chat'
+              && (r as any).sourceRecordId === sayuModalState.firestoreId
+              && (r as any).sourceKey === linkedSourceKey,
+            )
+            .sort((a, b) => String((b as any).createdAt || '').localeCompare(String((a as any).createdAt || '')));
+
           const recommendations = getAssistantRecommendations(
             [
               getRecordSourceText(record, formatKey),
@@ -5084,7 +5094,7 @@ export function SayuPage() {
             ],
           );
 
-          if (!shouldShowResultChat && recommendations.length === 0) return null;
+          if (!shouldShowResultChat && recommendations.length === 0 && linkedMemos.length === 0) return null;
 
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -5100,6 +5110,25 @@ export function SayuPage() {
                     dateLabel: sayuModalState.recordDate || sayuModalState.dateLabel || '',
                   })}
                 />
+              )}
+              {linkedMemos.length > 0 && (
+                <section style={{ borderRadius: 14, border: '1px solid #e5e7eb', backgroundColor: '#fafafa', padding: 14 }}>
+                  <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 900, color: '#1A3C6E' }}>
+                    이 기록의 AI 대화 메모 {linkedMemos.length}개
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                    {linkedMemos.map((m) => (
+                      <div key={m.id} style={{ borderRadius: 10, padding: '10px 11px', backgroundColor: '#fff', border: '1px solid #eef2f7' }}>
+                        <p style={{ margin: '0 0 4px', fontSize: 10, fontWeight: 900, color: '#94a3b8' }}>
+                          {formatKoreanDate((m as any).date || sayuModalState.recordDate || '')}
+                        </p>
+                        <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
+                          {(m as any).memo_content || ''}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
               )}
               {recommendations.length > 0 && (
                 <AssistantRecommendationCards
