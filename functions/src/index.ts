@@ -4,6 +4,8 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getStorage } from 'firebase-admin/storage';
 import { defineSecret } from 'firebase-functions/params';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+// 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
+import { GoogleGenAI } from '@google/genai';
 import { google } from 'googleapis';
 import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
@@ -1049,6 +1051,61 @@ function getRecordOriginalContentByPrefix(record: Record<string, any>, prefix: s
   return parts.join('\n\n');
 }
 
+// 요금제 조회 — subscription/info.plan (free/basic/premium). 개발자 UID는 premium 우회.
+async function getUserPlan(uid: string): Promise<'free' | 'basic' | 'premium'> {
+  if (DEVELOPER_UIDS.has(uid)) return 'premium';
+  try {
+    const snap = await db.doc(`users/${uid}/subscription/info`).get();
+    const plan = String(snap.data()?.plan || '').toLowerCase();
+    if (plan === 'premium') return 'premium';
+    if (plan === 'basic') return 'basic';
+  } catch (error) {
+    logger.warn('getUserPlan 조회 실패:', { uid, message: (error as any)?.message });
+  }
+  return 'free';
+}
+
+// AI 사용량 로깅 — 루트 aiUsage 상세 로그 + aiUsageMonthly 월별 카운터.
+// 비차단: 로깅 실패가 본 기능(대화)을 깨지 않도록 예외를 삼킨다.
+type AiUsageEntry = {
+  uid: string;
+  plan: string;
+  feature: string;
+  model: string;
+  usedWebSearch: boolean;
+  searchQueryCount: number;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  totalTokens: number | null;
+  success: boolean;
+  errorReason?: string | null;
+  recordId?: string;
+  sourceKey?: string;
+  threadId?: string;
+};
+
+async function logAiUsage(entry: AiUsageEntry): Promise<void> {
+  try {
+    const now = new Date();
+    const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    await db.collection('aiUsage').add({
+      ...entry,
+      errorReason: entry.errorReason ?? null,
+      yearMonth,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    await db.collection('aiUsageMonthly').doc(yearMonth).set({
+      calls: admin.firestore.FieldValue.increment(1),
+      webSearches: admin.firestore.FieldValue.increment(entry.usedWebSearch ? 1 : 0),
+      searchQueries: admin.firestore.FieldValue.increment(entry.searchQueryCount || 0),
+      [`byFeature.${entry.feature}`]: admin.firestore.FieldValue.increment(1),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  } catch (error) {
+    logger.warn('logAiUsage 실패(무시):', { message: (error as any)?.message, feature: entry.feature });
+  }
+}
+
 function getSafetyModeGuide(safetyMode: string): string {
   switch (safetyMode) {
     case 'writing':
@@ -1124,9 +1181,10 @@ export const chatWithResult = onCall(
     const prompt = `당신은 HARU2026의 결과물 기반 대화 비서입니다.
 
 [공통 원칙]
-- 반드시 제공된 결과물과 현재 질문을 근거로 답한다.
-- 결과물에 없는 사실은 지어내지 않는다.
-- 확인되지 않는 내용은 "이 결과물만으로는 확인되지 않습니다"라고 말한다.
+- 기록 결과물과 현재 질문을 최우선 근거로 삼는다.
+- 기록에 담긴 사실·감정·의도는 임의로 바꾸거나 재창작하지 않는다.
+- 다만 최신 정보나 기록 밖 외부 사실이 답변에 필요하면 웹검색을 활용해 정확히 확인한 뒤 답한다.
+- 기록에도 없고 웹검색으로도 확인되지 않으면 "확인되지 않습니다"라고 솔직히 말한다.
 - 사용자의 원문 감정과 의도를 존중한다.
 - 답변은 실행 가능한 다음 행동 1~3개로 마무리한다.
 - 과장된 칭찬, 단정적 예측, 전문가 판단 대체 표현을 금지한다.
@@ -1148,14 +1206,32 @@ ${question}
 
 한국어로 답변하세요.`;
 
+    const plan = await getUserPlan(uid);
+    const RESULT_CHAT_MODEL = 'gemini-3.1-flash-lite';
+
     try {
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
-      const result = await model.generateContent(prompt);
-      const answer = clampResultChatText(result.response.text(), 5000);
+      // 신 SDK — 웹검색(google_search) 툴 기본 탑재. 검색 실행 여부는 모델이 질문마다 판단.
+      const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
+      const response = await ai.models.generateContent({
+        model: RESULT_CHAT_MODEL,
+        contents: prompt,
+        config: { tools: [{ googleSearch: {} }] },
+      });
+
+      const answer = clampResultChatText(response.text || '', 5000);
       if (!answer) {
         throw new Error('empty_answer');
       }
+
+      // 웹검색 grounding 메타데이터 추출
+      const grounding = response.candidates?.[0]?.groundingMetadata;
+      const searchQueries: string[] = grounding?.webSearchQueries || [];
+      const groundingChunks: any[] = grounding?.groundingChunks || [];
+      const usedWebSearch = searchQueries.length > 0 || groundingChunks.length > 0;
+      const sources = groundingChunks
+        .map((chunk: any) => ({ title: chunk?.web?.title || '', uri: chunk?.web?.uri || '' }))
+        .filter((s: { title: string; uri: string }) => s.uri);
+      const usage = response.usageMetadata;
 
       const now = admin.firestore.FieldValue.serverTimestamp();
       await messagesRef.add({
@@ -1177,9 +1253,41 @@ ${question}
         lastMessagePreview: answer.slice(0, 160),
       }, { merge: true });
 
-      return { threadId, answer };
+      await logAiUsage({
+        uid,
+        plan,
+        feature: 'resultChat',
+        model: RESULT_CHAT_MODEL,
+        usedWebSearch,
+        searchQueryCount: searchQueries.length,
+        inputTokens: usage?.promptTokenCount ?? null,
+        outputTokens: usage?.candidatesTokenCount ?? null,
+        totalTokens: usage?.totalTokenCount ?? null,
+        success: true,
+        recordId,
+        sourceKey,
+        threadId,
+      });
+
+      return { threadId, answer, sources };
     } catch (error: any) {
       logger.error('chatWithResult 실패:', { message: error?.message, recordId, sourceKey, safetyMode });
+      await logAiUsage({
+        uid,
+        plan,
+        feature: 'resultChat',
+        model: RESULT_CHAT_MODEL,
+        usedWebSearch: false,
+        searchQueryCount: 0,
+        inputTokens: null,
+        outputTokens: null,
+        totalTokens: null,
+        success: false,
+        errorReason: String(error?.message || 'unknown').slice(0, 200),
+        recordId,
+        sourceKey,
+        threadId,
+      });
       throw new HttpsError('internal', 'AI 응답 생성에 실패했습니다.');
     }
   }

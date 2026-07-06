@@ -74,6 +74,16 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/shared_records/$(sharedId)).data.isActive == true;
     }
 
+    // AI 사용량 계량 로그 — 서버(admin SDK)만 기록. 클라이언트 쓰기 금지, 읽기는 관리자만.
+    match /aiUsage/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    match /aiUsageMonthly/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     match /shared_records/{sharedId} {
       allow read: if signedIn() && resource.data.isActive == true;
 
