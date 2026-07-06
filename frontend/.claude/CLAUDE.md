@@ -360,9 +360,19 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/src/app/services/firestoreService.ts, frontend/src/app/pages/ProphecyFromRecord.tsx, frontend/src/app/pages/SettingsPage.tsx
 - 다음할일: 성별·birthYear를 같은 profile 문서에 merge로 추가
 
+### 2026-07-06
+- 완료: 결과물 AI 대화 '메모 저장' payload에 sourceIndex·threadId 추가(신규분부터, 값 있을 때만 저장) → 출처 정확화. 실제 저장 문서(2026-07-06 메모)에서 sourceIndex=0·threadId=plantDetective_0 찍힘 확인.
+- 수정파일: firestoreService.ts(saveResultChatMemo), ResultChatModal.tsx(호출부)
+- 다음할일: (선택) 과거 메모 sourceIndex 소급 마이그레이션 검토
+
+### 2026-07-06 (2차)
+- 완료: 식물탐정 판독 상세(plantReadOnlyDetail)에 sourceRecordId+sourceIndex로 연결된 대화 메모를 '이 판독의 AI 대화 메모'로 표시 + 결과물 AI 대화 메모를 SAYU 목록·검색·달력에서 제외(근본 소스 allRecordEntries에서 source==='result_ai_chat' 필터). 정상 작동 확인.
+- 수정파일: SayuPage.tsx (allRecordEntries·getMonthListData 필터, plantReadOnlyDetail 모달)
+- 교훈: SAYU 나의 기록 목록의 근본 소스는 allRecordEntries(평면 리스트/검색/달력). getMonthListData는 별개 그룹 목록. 메모 노출 제외 시 allRecordEntries를 먼저 봐야 함.
+
 ---
 
-최종 업데이트: 2026.05.11
+최종 업데이트: 2026.07.06
 HARU2026 by JOYEL — 허 교장님 전용
 
 ## ⚠️ Git 브랜치 필수 원칙 (절대 준수)
