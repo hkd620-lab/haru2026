@@ -342,7 +342,14 @@ class FirestoreService {
   // 결과물 기반 AI 대화 답변을 '메모' 기록으로 저장 (saveRecord 재사용 → users/{uid}/records/{date}_{ts})
   async saveResultChatMemo(
     userId: string,
-    params: { answer: string; sourceRecordId: string; sourceKey: string; label: string },
+    params: {
+      answer: string;
+      sourceRecordId: string;
+      sourceKey: string;
+      label: string;
+      sourceIndex?: number;
+      threadId?: string;
+    },
   ): Promise<string> {
     return this.saveRecord(userId, {
       date: getTodayString(),
@@ -353,6 +360,9 @@ class FirestoreService {
       source: 'result_ai_chat',
       sourceRecordId: params.sourceRecordId,
       sourceKey: params.sourceKey,
+      // 출처 정확화: 같은 날짜에 판독이 여러 개일 때 어느 판독의 대화인지 구분 (신규 저장부터 적용)
+      ...(typeof params.sourceIndex === 'number' ? { sourceIndex: params.sourceIndex } : {}),
+      ...(params.threadId ? { threadId: params.threadId } : {}),
     });
   }
 
