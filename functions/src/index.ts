@@ -1051,6 +1051,14 @@ function getRecordOriginalContentByPrefix(record: Record<string, any>, prefix: s
   return parts.join('\n\n');
 }
 
+// 요금제별 결과물 대화 상한 — "한 대화창(스레드) 안에서 주고받기" 횟수.
+const PLAN_CHAT_LIMITS: Record<string, number> = { free: 1, basic: 2, premium: 4 };
+const RESULT_CHAT_LIMIT_NOTICES: Record<string, string> = {
+  free: '오늘 AI 대화를 잘 나누셨어요. 더 깊이 이야기 나누고 싶으시면 구독하고 이어가실 수 있습니다.',
+  basic: '오늘 AI 대화를 잘 나누셨어요. 더 많이 이야기 나누고 싶으시면 프리미엄에서 4번까지 이어가실 수 있습니다.',
+  premium: '이 대화를 깊이 나누셨네요. 다른 기록을 열어 새로운 대화를 시작해 보세요.',
+};
+
 // 요금제 조회 — subscription/info.plan (free/basic/premium). 개발자 UID는 premium 우회.
 async function getUserPlan(uid: string): Promise<'free' | 'basic' | 'premium'> {
   if (DEVELOPER_UIDS.has(uid)) return 'premium';
@@ -1171,6 +1179,31 @@ export const chatWithResult = onCall(
     const threadId = getResultThreadId(sourceKey, sourceIndex);
     const threadRef = recordRef.collection('resultThreads').doc(threadId);
     const messagesRef = threadRef.collection('messages');
+
+    // 🎫 요금제별 대화 횟수 제한 — messageCount(교환당 +2) 기준, 질문 횟수 = messageCount / 2
+    const plan = await getUserPlan(uid);
+    const RESULT_CHAT_MODEL = 'gemini-3.1-flash-lite';
+    const threadSnap = await threadRef.get();
+    const priorMessageCount = Number(threadSnap.data()?.messageCount || 0);
+    const askedCount = Math.floor(priorMessageCount / 2);
+    const planLimit = PLAN_CHAT_LIMITS[plan] ?? PLAN_CHAT_LIMITS.free;
+    if (askedCount >= planLimit) {
+      await logAiUsage({
+        uid, plan, feature: 'resultChat', model: RESULT_CHAT_MODEL,
+        usedWebSearch: false, searchQueryCount: 0,
+        inputTokens: null, outputTokens: null, totalTokens: null,
+        success: false, errorReason: 'limit_reached',
+        recordId, sourceKey, threadId,
+      });
+      return {
+        threadId,
+        answer: '',
+        sources: [],
+        limitReached: true,
+        notice: RESULT_CHAT_LIMIT_NOTICES[plan] ?? RESULT_CHAT_LIMIT_NOTICES.free,
+      };
+    }
+
     const recentSnap = await messagesRef.orderBy('createdAt', 'desc').limit(8).get();
     const recentMessages = recentSnap.docs
       .map((docSnap) => docSnap.data())
@@ -1206,9 +1239,6 @@ ${question}
 
 한국어로 답변하세요.`;
 
-    const plan = await getUserPlan(uid);
-    const RESULT_CHAT_MODEL = 'gemini-3.1-flash-lite';
-
     try {
       // 신 SDK — 웹검색(google_search) 툴 기본 탑재. 검색 실행 여부는 모델이 질문마다 판단.
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
@@ -1242,6 +1272,7 @@ ${question}
       await messagesRef.add({
         role: 'assistant',
         content: answer,
+        sources: sources.length > 0 ? sources : [],
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
       await threadRef.set({

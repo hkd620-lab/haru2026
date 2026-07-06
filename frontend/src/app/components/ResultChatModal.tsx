@@ -38,6 +38,7 @@ export function ResultChatModal({
   const [loaded, setLoaded] = useState(false);
   const [savedSet, setSavedSet] = useState<Set<number>>(new Set());
   const [savingIndex, setSavingIndex] = useState<number | null>(null);
+  const [limitNotice, setLimitNotice] = useState<string | null>(null);
 
   const threadId = useMemo(() => getThreadId(config.sourceKey, sourceIndex), [config.sourceKey, sourceIndex]);
 
@@ -46,6 +47,7 @@ export function ResultChatModal({
     let cancelled = false;
     setLoaded(false);
     setMessages([]);
+    setLimitNotice(null);
 
     const loadMessages = async () => {
       try {
@@ -71,7 +73,7 @@ export function ResultChatModal({
 
   const sendQuestion = async (text: string) => {
     const trimmed = text.trim();
-    if (!trimmed || loading) return;
+    if (!trimmed || loading || limitNotice) return;
 
     setLoading(true);
     setQuestion('');
@@ -87,7 +89,13 @@ export function ResultChatModal({
         safetyMode: config.safetyMode,
         systemGuide: config.systemGuide,
       });
-      setMessages((prev) => [...prev, { role: 'assistant', content: response.answer }]);
+      if (response.limitReached) {
+        // 요금제 대화 횟수 초과 — 방금 질문은 처리되지 않았으므로 되돌리고 안내만 표시
+        setMessages((prev) => prev.filter((item) => item !== optimistic));
+        setLimitNotice(response.notice || '대화 횟수 제한에 도달했습니다.');
+        return;
+      }
+      setMessages((prev) => [...prev, { role: 'assistant', content: response.answer, sources: response.sources }]);
     } catch (error: any) {
       console.error('결과 대화 실패:', error);
       toast.error(error?.message || 'AI 응답을 생성하지 못했습니다.');
@@ -231,6 +239,22 @@ export function ResultChatModal({
                 >
                   {message.content}
                 </div>
+                {message.role === 'assistant' && message.sources && message.sources.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 2, maxWidth: '100%' }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: '#94A3B8' }}>🔎 출처</span>
+                    {message.sources.map((src, i) => (
+                      <a
+                        key={`${src.uri}_${i}`}
+                        href={src.uri}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ fontSize: 11, color: '#2563EB', textDecoration: 'none', wordBreak: 'break-all', overflowWrap: 'anywhere' }}
+                      >
+                        {src.title || src.uri}
+                      </a>
+                    ))}
+                  </div>
+                )}
                 {message.role === 'assistant' && message.content.trim() && (
                   <button
                     type="button"
@@ -257,6 +281,12 @@ export function ResultChatModal({
           </div>
         </div>
 
+        {limitNotice && (
+          <div style={{ padding: '12px 16px', borderTop: '1px solid #E5E7EB', backgroundColor: '#FFFBEB', color: '#92400E', fontSize: 12.5, lineHeight: 1.6, fontWeight: 700, wordBreak: 'keep-all' }}>
+            {limitNotice}
+          </div>
+        )}
+
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -267,8 +297,8 @@ export function ResultChatModal({
           <input
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
-            disabled={loading}
-            placeholder="이 결과물에 대해 질문하기"
+            disabled={loading || !!limitNotice}
+            placeholder={limitNotice ? '대화 횟수에 도달했습니다' : '이 결과물에 대해 질문하기'}
             style={{
               flex: 1,
               minWidth: 0,
@@ -278,21 +308,22 @@ export function ResultChatModal({
               padding: '0 12px',
               fontSize: 14,
               outline: 'none',
+              backgroundColor: limitNotice ? '#F1F5F9' : '#FFFFFF',
             }}
           />
           <button
             type="submit"
-            disabled={loading || !question.trim()}
+            disabled={loading || !question.trim() || !!limitNotice}
             style={{
               minWidth: 70,
               height: 42,
               borderRadius: 10,
               border: 'none',
-              backgroundColor: loading || !question.trim() ? '#CBD5E1' : '#1A3C6E',
+              backgroundColor: loading || !question.trim() || !!limitNotice ? '#CBD5E1' : '#1A3C6E',
               color: '#FFFFFF',
               fontSize: 13,
               fontWeight: 900,
-              cursor: loading || !question.trim() ? 'not-allowed' : 'pointer',
+              cursor: loading || !question.trim() || !!limitNotice ? 'not-allowed' : 'pointer',
             }}
           >
             전송
