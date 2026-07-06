@@ -36,8 +36,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.verifySinglePayment = exports.subscribeWithBillingKey = exports.verifyPayment = exports.generateGrowthTimelinePdf = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
-exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = void 0;
+exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.subscribeWithBillingKey = exports.verifyPayment = exports.generateGrowthTimelinePdf = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
+exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -130,6 +130,17 @@ const SINGLE_PAYMENT_REVIEW_PRODUCT = {
 const HARU_LAW_SHARE_DISCLAIMER = '본 내용은 법령 정보 제공 목적이며, 전문적인 법률·세무 자문을 대체하지 않습니다.\n구체적인 사건은 관련 자료를 가지고 전문가 상담을 받으시기 바랍니다.';
 const HARU_LAW_SHARE_PREVIEW_TTL_MS = 30 * 60 * 1000;
 const HARU_LAW_SHARE_DAILY_PREVIEW_LIMIT = 3;
+function addOneMonth(date) {
+    const next = new Date(date);
+    next.setMonth(next.getMonth() + 1);
+    return next;
+}
+function getSubscriptionPlanAmount(plan) {
+    return plan === 'basic' ? 3500 : 5000;
+}
+function getSubscriptionOrderName(plan) {
+    return plan === 'basic' ? 'HARU 베이직 월 구독' : 'HARU 프리미엄 월 구독';
+}
 function getSafeOAuthError(error) {
     var _a, _b;
     if (axios_1.default.isAxiosError(error)) {
@@ -3418,8 +3429,8 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
     if (plan !== 'basic' && plan !== 'premium') {
         throw new https_2.HttpsError('invalid-argument', 'plan 값이 올바르지 않습니다.');
     }
-    const amount = plan === 'basic' ? 3500 : 5000;
-    const orderName = plan === 'basic' ? 'HARU 베이직 월 구독' : 'HARU 프리미엄 월 구독';
+    const amount = getSubscriptionPlanAmount(plan);
+    const orderName = getSubscriptionOrderName(plan);
     const paymentId = `haru-${uid}-${Date.now()}`;
     let payment;
     try {
@@ -3447,24 +3458,151 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
     const nextBillingDate = new Date(now);
     nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
     const subRef = db.doc(`users/${uid}/subscription/info`);
+    const billingRef = db.doc(`billingSubscriptions/${uid}`);
     await subRef.set({
         plan,
         status: 'active',
-        billingKey,
         payMethod: typeof payMethod === 'string' ? payMethod : null,
         startDate: now.toISOString(),
         endDate: nextBillingDate.toISOString(),
         nextBillingDate: nextBillingDate.toISOString(),
         paymentId,
+        provider: 'kg_inicis',
+        updatedAt: now.toISOString(),
+    });
+    await billingRef.set({
+        uid,
+        plan,
+        status: 'active',
+        billingKey,
+        payMethod: typeof payMethod === 'string' ? payMethod : null,
+        provider: 'kg_inicis',
+        amount,
+        orderName,
+        startDate: now.toISOString(),
+        endDate: nextBillingDate.toISOString(),
+        nextBillingDate: nextBillingDate.toISOString(),
+        lastPaymentId: paymentId,
         updatedAt: now.toISOString(),
     });
     logger.info('✅ 정기구독 시작 — uid: %s, plan: %s, paymentId: %s', uid, plan, paymentId);
     return { success: true };
 });
+// ===== 💳 KG이니시스 정기결제 반복 과금 =====
+exports.processRecurringSubscriptions = (0, scheduler_1.onSchedule)({
+    region: 'asia-northeast3',
+    schedule: 'every day 09:00',
+    timeZone: 'Asia/Seoul',
+    secrets: [PORTONE_API_SECRET],
+}, async () => {
+    var _a;
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const dueSnap = await db.collection('billingSubscriptions')
+        .where('status', '==', 'active')
+        .limit(100)
+        .get();
+    for (const docSnap of dueSnap.docs) {
+        const uid = docSnap.id;
+        const billingRef = docSnap.ref;
+        const data = docSnap.data();
+        if (data.provider !== 'kg_inicis')
+            continue;
+        if (typeof data.nextBillingDate !== 'string' || data.nextBillingDate > nowIso)
+            continue;
+        const billingKey = typeof data.billingKey === 'string' ? data.billingKey : '';
+        const plan = data.plan === 'basic' ? 'basic' : data.plan === 'premium' ? 'premium' : '';
+        if (!billingKey || !plan) {
+            await billingRef.set({
+                status: 'needs_attention',
+                lastBillingError: 'missing_billing_key_or_plan',
+                updatedAt: nowIso,
+            }, { merge: true });
+            continue;
+        }
+        const locked = await db.runTransaction(async (tx) => {
+            const fresh = await tx.get(billingRef);
+            const freshData = fresh.data() || {};
+            const lockUntil = typeof freshData.billingLockUntil === 'string'
+                ? Date.parse(freshData.billingLockUntil)
+                : 0;
+            if (freshData.status !== 'active')
+                return false;
+            if (freshData.provider !== 'kg_inicis')
+                return false;
+            if (typeof freshData.nextBillingDate !== 'string' || freshData.nextBillingDate > nowIso)
+                return false;
+            if (Number.isFinite(lockUntil) && lockUntil > Date.now())
+                return false;
+            tx.set(billingRef, {
+                billingLockUntil: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+                updatedAt: nowIso,
+            }, { merge: true });
+            return true;
+        });
+        if (!locked)
+            continue;
+        const amount = getSubscriptionPlanAmount(plan);
+        const orderName = getSubscriptionOrderName(plan);
+        const paymentId = `haru-recurring-${uid}-${Date.now()}`;
+        try {
+            const portoneRes = await axios_1.default.post(`https://api.portone.io/payments/${encodeURIComponent(paymentId)}/billing-key`, {
+                billingKey,
+                orderName,
+                amount: { total: amount },
+                currency: 'KRW',
+            }, { headers: { Authorization: `PortOne ${PORTONE_API_SECRET.value().trim()}` } });
+            const payment = portoneRes.data;
+            if ((payment === null || payment === void 0 ? void 0 : payment.status) && payment.status !== 'PAID') {
+                throw new Error(`recurring_payment_not_paid:${payment.status}`);
+            }
+            const nextBillingDate = addOneMonth(now);
+            const update = {
+                plan,
+                status: 'active',
+                payMethod: typeof data.payMethod === 'string' ? data.payMethod : null,
+                provider: 'kg_inicis',
+                amount,
+                orderName,
+                endDate: nextBillingDate.toISOString(),
+                nextBillingDate: nextBillingDate.toISOString(),
+                paymentId,
+                lastPaymentId: paymentId,
+                lastPaidAt: nowIso,
+                billingLockUntil: null,
+                lastBillingError: null,
+                updatedAt: nowIso,
+            };
+            await Promise.all([
+                db.doc(`users/${uid}/subscription/info`).set(update, { merge: true }),
+                billingRef.set({ ...update, billingKey }, { merge: true }),
+            ]);
+            logger.info('✅ KG이니시스 반복 과금 완료 — uid: %s, paymentId: %s', uid, paymentId);
+        }
+        catch (error) {
+            logger.error('KG이니시스 반복 과금 실패:', {
+                uid,
+                paymentId,
+                message: error === null || error === void 0 ? void 0 : error.message,
+                status: (_a = error === null || error === void 0 ? void 0 : error.response) === null || _a === void 0 ? void 0 : _a.status,
+            });
+            await billingRef.set({
+                billingLockUntil: null,
+                lastBillingError: (error === null || error === void 0 ? void 0 : error.message) || 'recurring_payment_failed',
+                lastBillingFailedAt: nowIso,
+                updatedAt: nowIso,
+            }, { merge: true });
+        }
+    }
+});
 // ===== 💳 KG이니시스 심사용 일반(단건)결제 검증 =====
 exports.verifySinglePayment = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] }, async (request) => {
-    var _a, _b, _c, _d, _f;
+    var _a, _b, _c, _d;
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
     const paymentId = (_a = request.data) === null || _a === void 0 ? void 0 : _a.paymentId;
+    const uid = request.auth.uid;
     if (!paymentId || typeof paymentId !== 'string') {
         throw new https_2.HttpsError('invalid-argument', 'paymentId가 필요합니다.');
     }
@@ -3509,9 +3647,10 @@ exports.verifySinglePayment = (0, https_2.onCall)({ region: 'asia-northeast3', s
         orderName: SINGLE_PAYMENT_REVIEW_PRODUCT.orderName,
         amount: SINGLE_PAYMENT_REVIEW_PRODUCT.amount,
         status: payment.status,
-        type: 'single_review',
-        uid: ((_f = request.auth) === null || _f === void 0 ? void 0 : _f.uid) || null,
-        guestAllowed: true,
+        type: 'single_payment',
+        uid,
+        guestAllowed: false,
+        provider: 'kg_inicis',
         createdAt: now,
         updatedAt: now,
     });

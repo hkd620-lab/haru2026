@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as PortOne from '@portone/browser-sdk/v2';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../config/firebase';
+import { useAuth } from '../contexts/AuthContext';
 
 type PaymentResponse = {
   code?: string;
@@ -16,20 +17,33 @@ const SINGLE_PAYMENT_PRODUCT = {
 };
 
 export default function SinglePaymentPage() {
+  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [resultMessage, setResultMessage] = useState('');
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-
-  const paymentId = useMemo(() => `haru-single-review-${Date.now()}`, []);
+  const redirectProcessedRef = useRef(false);
 
   useEffect(() => {
+    if (!user) return;
+    setFullName((prev) => prev || user.displayName || '');
+    setEmail((prev) => prev || user.email || '');
+  }, [user]);
+
+  useEffect(() => {
+    if (authLoading || redirectProcessedRef.current) return;
     const params = new URLSearchParams(window.location.search);
     const redirectedPaymentId = params.get('paymentId');
     if (!redirectedPaymentId) return;
+    redirectProcessedRef.current = true;
 
     let cancelled = false;
     const verifyRedirectPayment = async () => {
+      if (!user) {
+        setResultMessage('결제 확인을 위해 로그인이 필요합니다.');
+        return;
+      }
       setLoading(true);
       try {
         const verifySinglePayment = httpsCallable(functions, 'verifySinglePayment');
@@ -47,16 +61,27 @@ export default function SinglePaymentPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authLoading, user]);
 
   const handleSinglePayment = async () => {
+    if (authLoading) return;
+    if (!user) {
+      setResultMessage('로그인 후 결제할 수 있습니다.');
+      return;
+    }
     setLoading(true);
     setResultMessage('');
 
     try {
-      const inicisChannelKey = import.meta.env.VITE_PORTONE_INICIS_CHANNEL_KEY;
+      const inicisChannelKey = import.meta.env.VITE_PORTONE_INICIS_CHANNEL_KEY || import.meta.env.VITE_PORTONE_CHANNEL_KEY;
       if (!inicisChannelKey) {
         throw new Error('KG이니시스 일반결제 채널 키가 설정되지 않았습니다.');
+      }
+
+      const trimmedName = fullName.trim();
+      if (!trimmedName) {
+        setResultMessage('구매자 이름을 입력해 주세요.');
+        return;
       }
 
       const trimmedEmail = email.trim();
@@ -71,6 +96,7 @@ export default function SinglePaymentPage() {
         return;
       }
 
+      const paymentId = `haru-single-${user.uid}-${Date.now()}`;
       const response = await (PortOne as any).requestPayment({
         storeId: import.meta.env.VITE_PORTONE_STORE_ID,
         channelKey: inicisChannelKey,
@@ -80,7 +106,7 @@ export default function SinglePaymentPage() {
         currency: 'KRW',
         payMethod: 'CARD',
         customer: {
-          fullName: '비회원',
+          fullName: trimmedName,
           email: trimmedEmail,
           phoneNumber: normalizedPhone,
         },
@@ -93,8 +119,9 @@ export default function SinglePaymentPage() {
           },
         ],
         customData: {
-          purpose: 'kg_inicis_review_single_payment',
-          guestAllowed: true,
+          purpose: 'kg_inicis_single_payment',
+          guestAllowed: false,
+          uid: user.uid,
         },
         redirectUrl: `${window.location.origin}/payment/single`,
       }) as PaymentResponse | undefined;
@@ -129,9 +156,9 @@ export default function SinglePaymentPage() {
     <div className="min-h-screen bg-[#F7F4EC] flex items-center justify-center px-4 py-10">
       <section className="w-full max-w-md bg-white border border-[#e5decf] rounded-lg shadow-sm p-6">
         <div className="mb-6">
-          <p className="text-xs font-bold text-[#4F46E5] mb-2">KG이니시스 심사용 일반결제</p>
+          <p className="text-xs font-bold text-[#4F46E5] mb-2">KG이니시스 일반결제</p>
           <h1 className="text-2xl font-black text-[#1A3C6E] mb-2">HARU2026 단건 체험 이용권</h1>
-          <p className="text-sm text-gray-600">비회원도 결제창을 확인할 수 있는 심사용 단건 상품입니다.</p>
+          <p className="text-sm text-gray-600">로그인한 회원 계정 기준으로 KG이니시스 일반결제창을 엽니다.</p>
         </div>
 
         <div className="border-y border-gray-100 py-5 mb-5">
@@ -143,6 +170,21 @@ export default function SinglePaymentPage() {
             <span className="text-sm text-gray-500">결제금액</span>
             <span className="text-2xl font-black text-[#1A3C6E]">{SINGLE_PAYMENT_PRODUCT.amountLabel}</span>
           </div>
+        </div>
+
+        <div className="mb-5">
+          <label htmlFor="single-payment-name" className="mb-1.5 block text-sm text-gray-500">
+            구매자 이름 <span className="text-[#4F46E5]">(필수)</span>
+          </label>
+          <input
+            id="single-payment-name"
+            type="text"
+            autoComplete="name"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            placeholder="홍길동"
+            className="w-full rounded-lg border border-[#e5decf] px-4 py-3 text-base text-gray-800 outline-none focus:border-[#1A3C6E]"
+          />
         </div>
 
         <div className="mb-5">
@@ -195,7 +237,7 @@ export default function SinglePaymentPage() {
         )}
 
         <p className="mt-5 text-center text-xs leading-5 text-gray-400">
-          이 페이지는 KG이니시스 심사용 단건결제 확인 용도이며 HARU2026 구독 플랜과 분리되어 있습니다.
+          일반결제는 회원 계정 기준으로 처리되며 HARU2026 구독 플랜과 분리된 단건 상품입니다.
         </p>
       </section>
     </div>

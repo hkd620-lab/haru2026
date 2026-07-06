@@ -96,6 +96,20 @@ const HARU_LAW_SHARE_DISCLAIMER = '본 내용은 법령 정보 제공 목적이�
 const HARU_LAW_SHARE_PREVIEW_TTL_MS = 30 * 60 * 1000;
 const HARU_LAW_SHARE_DAILY_PREVIEW_LIMIT = 3;
 
+function addOneMonth(date: Date): Date {
+  const next = new Date(date);
+  next.setMonth(next.getMonth() + 1);
+  return next;
+}
+
+function getSubscriptionPlanAmount(plan: string): number {
+  return plan === 'basic' ? 3500 : 5000;
+}
+
+function getSubscriptionOrderName(plan: string): string {
+  return plan === 'basic' ? 'HARU 베이직 월 구독' : 'HARU 프리미엄 월 구독';
+}
+
 type HaruLawSharePreview = {
   title: string;
   anonymizedQuestion: string;
@@ -3869,8 +3883,8 @@ export const subscribeWithBillingKey = onCall(
       throw new HttpsError('invalid-argument', 'plan 값이 올바르지 않습니다.');
     }
 
-    const amount = plan === 'basic' ? 3500 : 5000;
-    const orderName = plan === 'basic' ? 'HARU 베이직 월 구독' : 'HARU 프리미엄 월 구독';
+    const amount = getSubscriptionPlanAmount(plan);
+    const orderName = getSubscriptionOrderName(plan);
     const paymentId = `haru-${uid}-${Date.now()}`;
 
     let payment: any;
@@ -3905,15 +3919,31 @@ export const subscribeWithBillingKey = onCall(
     nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
 
     const subRef = db.doc(`users/${uid}/subscription/info`);
+    const billingRef = db.doc(`billingSubscriptions/${uid}`);
     await subRef.set({
       plan,
       status: 'active',
-      billingKey,
       payMethod: typeof payMethod === 'string' ? payMethod : null,
       startDate: now.toISOString(),
       endDate: nextBillingDate.toISOString(),
       nextBillingDate: nextBillingDate.toISOString(),
       paymentId,
+      provider: 'kg_inicis',
+      updatedAt: now.toISOString(),
+    });
+    await billingRef.set({
+      uid,
+      plan,
+      status: 'active',
+      billingKey,
+      payMethod: typeof payMethod === 'string' ? payMethod : null,
+      provider: 'kg_inicis',
+      amount,
+      orderName,
+      startDate: now.toISOString(),
+      endDate: nextBillingDate.toISOString(),
+      nextBillingDate: nextBillingDate.toISOString(),
+      lastPaymentId: paymentId,
       updatedAt: now.toISOString(),
     });
 
@@ -3922,11 +3952,130 @@ export const subscribeWithBillingKey = onCall(
   }
 );
 
+// ===== 💳 KG이니시스 정기결제 반복 과금 =====
+export const processRecurringSubscriptions = onSchedule(
+  {
+    region: 'asia-northeast3',
+    schedule: 'every day 09:00',
+    timeZone: 'Asia/Seoul',
+    secrets: [PORTONE_API_SECRET],
+  },
+  async () => {
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const dueSnap = await db.collection('billingSubscriptions')
+      .where('status', '==', 'active')
+      .limit(100)
+      .get();
+
+    for (const docSnap of dueSnap.docs) {
+      const uid = docSnap.id;
+      const billingRef = docSnap.ref;
+      const data = docSnap.data();
+      if (data.provider !== 'kg_inicis') continue;
+      if (typeof data.nextBillingDate !== 'string' || data.nextBillingDate > nowIso) continue;
+      const billingKey = typeof data.billingKey === 'string' ? data.billingKey : '';
+      const plan = data.plan === 'basic' ? 'basic' : data.plan === 'premium' ? 'premium' : '';
+
+      if (!billingKey || !plan) {
+        await billingRef.set({
+          status: 'needs_attention',
+          lastBillingError: 'missing_billing_key_or_plan',
+          updatedAt: nowIso,
+        }, { merge: true });
+        continue;
+      }
+
+      const locked = await db.runTransaction(async (tx) => {
+        const fresh = await tx.get(billingRef);
+        const freshData = fresh.data() || {};
+        const lockUntil = typeof freshData.billingLockUntil === 'string'
+          ? Date.parse(freshData.billingLockUntil)
+          : 0;
+        if (freshData.status !== 'active') return false;
+        if (freshData.provider !== 'kg_inicis') return false;
+        if (typeof freshData.nextBillingDate !== 'string' || freshData.nextBillingDate > nowIso) return false;
+        if (Number.isFinite(lockUntil) && lockUntil > Date.now()) return false;
+
+        tx.set(billingRef, {
+          billingLockUntil: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+          updatedAt: nowIso,
+        }, { merge: true });
+        return true;
+      });
+      if (!locked) continue;
+
+      const amount = getSubscriptionPlanAmount(plan);
+      const orderName = getSubscriptionOrderName(plan);
+      const paymentId = `haru-recurring-${uid}-${Date.now()}`;
+
+      try {
+        const portoneRes = await axios.post(
+          `https://api.portone.io/payments/${encodeURIComponent(paymentId)}/billing-key`,
+          {
+            billingKey,
+            orderName,
+            amount: { total: amount },
+            currency: 'KRW',
+          },
+          { headers: { Authorization: `PortOne ${PORTONE_API_SECRET.value().trim()}` } }
+        );
+        const payment = portoneRes.data;
+        if (payment?.status && payment.status !== 'PAID') {
+          throw new Error(`recurring_payment_not_paid:${payment.status}`);
+        }
+
+        const nextBillingDate = addOneMonth(now);
+        const update = {
+          plan,
+          status: 'active',
+          payMethod: typeof data.payMethod === 'string' ? data.payMethod : null,
+          provider: 'kg_inicis',
+          amount,
+          orderName,
+          endDate: nextBillingDate.toISOString(),
+          nextBillingDate: nextBillingDate.toISOString(),
+          paymentId,
+          lastPaymentId: paymentId,
+          lastPaidAt: nowIso,
+          billingLockUntil: null,
+          lastBillingError: null,
+          updatedAt: nowIso,
+        };
+
+        await Promise.all([
+          db.doc(`users/${uid}/subscription/info`).set(update, { merge: true }),
+          billingRef.set({ ...update, billingKey }, { merge: true }),
+        ]);
+        logger.info('✅ KG이니시스 반복 과금 완료 — uid: %s, paymentId: %s', uid, paymentId);
+      } catch (error: any) {
+        logger.error('KG이니시스 반복 과금 실패:', {
+          uid,
+          paymentId,
+          message: error?.message,
+          status: error?.response?.status,
+        });
+        await billingRef.set({
+          billingLockUntil: null,
+          lastBillingError: error?.message || 'recurring_payment_failed',
+          lastBillingFailedAt: nowIso,
+          updatedAt: nowIso,
+        }, { merge: true });
+      }
+    }
+  }
+);
+
 // ===== 💳 KG이니시스 심사용 일반(단건)결제 검증 =====
 export const verifySinglePayment = onCall(
   { region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] },
   async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
     const paymentId = request.data?.paymentId;
+    const uid = request.auth.uid;
 
     if (!paymentId || typeof paymentId !== 'string') {
       throw new HttpsError('invalid-argument', 'paymentId가 필요합니다.');
@@ -3980,9 +4129,10 @@ export const verifySinglePayment = onCall(
       orderName: SINGLE_PAYMENT_REVIEW_PRODUCT.orderName,
       amount: SINGLE_PAYMENT_REVIEW_PRODUCT.amount,
       status: payment.status,
-      type: 'single_review',
-      uid: request.auth?.uid || null,
-      guestAllowed: true,
+      type: 'single_payment',
+      uid,
+      guestAllowed: false,
+      provider: 'kg_inicis',
       createdAt: now,
       updatedAt: now,
     });

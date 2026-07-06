@@ -140,6 +140,14 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /billingSubscriptions/{uid} {
+      allow read, write: if false;
+    }
+
+    match /paymentReviews/{document=**} {
+      allow read, write: if false;
+    }
+
     match /users/{userId}/records/{recordId} {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow write: if (request.auth != null && request.auth.uid == userId)

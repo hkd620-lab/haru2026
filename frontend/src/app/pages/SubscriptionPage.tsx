@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as PortOne from '@portone/browser-sdk/v2';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useSearchParams } from 'react-router-dom';
@@ -52,6 +52,10 @@ export default function SubscriptionPage() {
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PaidPlan>('premium');
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const redirectProcessedRef = useRef(false);
 
   useEffect(() => {
     const plan = searchParams.get('plan');
@@ -59,6 +63,54 @@ export default function SubscriptionPage() {
       setSelectedPlan(plan);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!user) return;
+    setFullName((prev) => prev || user.displayName || '');
+    setEmail((prev) => prev || user.email || '');
+  }, [user]);
+
+  useEffect(() => {
+    if (authLoading || redirectProcessedRef.current) return;
+    const redirectedCode = searchParams.get('code');
+    const redirectedBillingKey = searchParams.get('billingKey');
+    if (!redirectedCode && !redirectedBillingKey) return;
+
+    redirectProcessedRef.current = true;
+    if (redirectedCode) {
+      alert(searchParams.get('message') || '카드 등록이 취소되었습니다.');
+      return;
+    }
+
+    if (!user || !redirectedBillingKey) {
+      alert('정기결제 확인을 위해 로그인이 필요합니다.');
+      return;
+    }
+
+    const planParam = searchParams.get('plan');
+    const redirectedPlan: PaidPlan = planParam === 'basic' || planParam === 'premium' ? planParam : selectedPlan;
+    const functions = getFunctions(undefined, 'asia-northeast3');
+    const subscribeWithBillingKey = httpsCallable(functions, 'subscribeWithBillingKey');
+
+    setLoading(true);
+    subscribeWithBillingKey({
+      billingKey: redirectedBillingKey,
+      plan: redirectedPlan,
+      payMethod: 'kg_inicis_card',
+    })
+      .then(() => {
+        alert(`🎉 ${PLANS[redirectedPlan].title} 구독이 완료되었습니다!`);
+        window.history.replaceState({}, '', '/subscription');
+        window.location.href = '/';
+      })
+      .catch((error: any) => {
+        console.error('이니시스 정기결제 리다이렉트 처리 오류:', error);
+        alert(error?.message || '정기결제 처리 중 오류가 발생했습니다.');
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [authLoading, searchParams, selectedPlan, user]);
 
   const handleSubscribe = async () => {
     if (authLoading) return;
@@ -71,17 +123,43 @@ export default function SubscriptionPage() {
 
     try {
       const plan = PLANS[selectedPlan];
-      const issueId = `haru-billing-${Date.now()}`;
+      const inicisBillingChannelKey = import.meta.env.VITE_PORTONE_INICIS_BILLING_CHANNEL_KEY || import.meta.env.VITE_PORTONE_CHANNEL_KEY;
+      if (!inicisBillingChannelKey) {
+        throw new Error('KG이니시스 정기결제 채널 키가 설정되지 않았습니다.');
+      }
+
+      const trimmedName = fullName.trim();
+      if (!trimmedName) {
+        alert('구매자 이름을 입력해 주세요.');
+        return;
+      }
+
+      const trimmedEmail = email.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+        alert('이니시스 정기결제는 구매자 이메일이 필수입니다.');
+        return;
+      }
+
+      const normalizedPhone = phone.replace(/[^0-9]/g, '');
+      if (normalizedPhone.length < 10) {
+        alert('이니시스 정기결제는 구매자 휴대폰 번호가 필수입니다.');
+        return;
+      }
+
+      const issueId = `haru-inicis-billing-${user.uid}-${Date.now()}`;
 
       const response = await (PortOne as any).requestIssueBillingKey({
         storeId: import.meta.env.VITE_PORTONE_STORE_ID,
-        channelKey: import.meta.env.VITE_PORTONE_TOSS_CHANNEL_KEY,
+        channelKey: inicisBillingChannelKey,
         billingKeyMethod: 'CARD',
         issueId,
         issueName: plan.orderName,
         customer: {
-          email: user.email || '',
+          fullName: trimmedName,
+          email: trimmedEmail,
+          phoneNumber: normalizedPhone,
         },
+        redirectUrl: `${window.location.origin}/subscription?plan=${selectedPlan}`,
       }) as BillingKeyResponse;
 
       if (response?.code) {
@@ -99,7 +177,7 @@ export default function SubscriptionPage() {
       await subscribeWithBillingKey({
         billingKey,
         plan: selectedPlan,
-        payMethod: 'card',
+        payMethod: 'kg_inicis_card',
       });
 
       alert(`🎉 ${plan.title} 구독이 완료되었습니다!`);
@@ -133,7 +211,7 @@ export default function SubscriptionPage() {
           }}
         >
           <p className="text-sm font-bold mb-0.5">🎉 신규 가입 시 7일 프리미엄 무료 체험</p>
-          <p className="text-[11px] opacity-90">전 기능 7일간 무제한 체험 가능</p>
+              <p className="text-[11px] opacity-90">회원 계정 기준으로 구독 상태가 반영됩니다</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
@@ -165,19 +243,66 @@ export default function SubscriptionPage() {
         </div>
 
         <p className="text-center text-xs mb-3" style={{ color: '#10b981' }}>
-          ✓ {selected.title} {selected.priceLabel}/월 결제 완료 후 즉시 서비스 이용 가능합니다
+          ✓ {selected.title} {selected.priceLabel}/월 KG이니시스 정기결제 완료 후 즉시 서비스 이용 가능합니다
         </p>
+
+        <div className="bg-white rounded-2xl border border-gray-200 p-4 mb-4 space-y-3">
+          <div>
+            <label htmlFor="subscription-buyer-name" className="block text-xs font-bold text-gray-500 mb-1">
+              구매자 이름 <span className="text-[#10b981]">(필수)</span>
+            </label>
+            <input
+              id="subscription-buyer-name"
+              type="text"
+              autoComplete="name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="홍길동"
+              className="w-full rounded-xl border border-gray-200 px-3 py-3 text-sm text-gray-800 outline-none focus:border-[#1A3C6E]"
+            />
+          </div>
+          <div>
+            <label htmlFor="subscription-buyer-email" className="block text-xs font-bold text-gray-500 mb-1">
+              구매자 이메일 <span className="text-[#10b981]">(필수)</span>
+            </label>
+            <input
+              id="subscription-buyer-email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="example@email.com"
+              className="w-full rounded-xl border border-gray-200 px-3 py-3 text-sm text-gray-800 outline-none focus:border-[#1A3C6E]"
+            />
+          </div>
+          <div>
+            <label htmlFor="subscription-buyer-phone" className="block text-xs font-bold text-gray-500 mb-1">
+              휴대폰 번호 <span className="text-[#10b981]">(필수)</span>
+            </label>
+            <input
+              id="subscription-buyer-phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="01012345678"
+              className="w-full rounded-xl border border-gray-200 px-3 py-3 text-sm text-gray-800 outline-none focus:border-[#1A3C6E]"
+            />
+          </div>
+        </div>
 
         <button
           onClick={() => handleSubscribe()}
           disabled={loading || authLoading}
           className="w-full bg-[#1A3C6E] hover:bg-[#142f57] text-white font-black text-base py-4 rounded-2xl transition-colors disabled:opacity-50 mb-3"
         >
-          {loading ? '결제 처리 중...' : '💳 카드·간편결제로 구독하기'}
+          {loading ? '결제 처리 중...' : '💳 KG이니시스 정기결제창 열기'}
         </button>
 
         <p className="text-center text-xs text-gray-400 mb-2">
-          신용/체크카드 · 카카오페이 · 토스페이 결제 가능
+          모든 결제는 회원가입 또는 로그인 후 계정 기준으로 진행됩니다
         </p>
 
         <button
