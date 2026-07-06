@@ -36,8 +36,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.verifySinglePayment = exports.subscribeWithBillingKey = exports.verifyPayment = exports.generateGrowthTimelinePdf = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
-exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = void 0;
+exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.subscribeWithBillingKey = exports.verifyPayment = exports.generateGrowthTimelinePdf = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
+exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -54,6 +54,7 @@ const PDFDocument = require('pdfkit');
 const sharp = require('sharp');
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
+const aiUsageLogger_1 = require("./aiUsageLogger");
 // Firebase Admin 초기화
 if (!admin.apps.length) {
     admin.initializeApp();
@@ -87,7 +88,30 @@ const bucket = () => (0, storage_1.getStorage)().bucket();
 const DEVELOPER_UIDS = new Set([
     'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8',
 ]);
+const AI_USAGE_PLAN = 'beta';
 const READING_BOOK_OCR_LIMIT = 20;
+function getGeminiUsage(result) {
+    var _a;
+    const usage = ((_a = result === null || result === void 0 ? void 0 : result.response) === null || _a === void 0 ? void 0 : _a.usageMetadata) || (result === null || result === void 0 ? void 0 : result.usageMetadata) || {};
+    const inputTokens = Number(usage.promptTokenCount);
+    const outputTokens = Number(usage.candidatesTokenCount);
+    return {
+        inputTokens: Number.isFinite(inputTokens) ? inputTokens : null,
+        outputTokens: Number.isFinite(outputTokens) ? outputTokens : null,
+    };
+}
+function getAiUsageErrorCode(error) {
+    if (typeof (error === null || error === void 0 ? void 0 : error.code) === 'string' && error.code.trim())
+        return error.code.slice(0, 120);
+    if (typeof (error === null || error === void 0 ? void 0 : error.message) === 'string' && error.message.trim())
+        return error.message.slice(0, 120);
+    return 'unknown';
+}
+function createAiUsageRequestId() {
+    return typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : crypto.randomBytes(16).toString('hex');
+}
 const KAKAO_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/kakaoCallback';
 const NAVER_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/naverCallback';
 const GOOGLE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/googleCallback';
@@ -106,6 +130,17 @@ const SINGLE_PAYMENT_REVIEW_PRODUCT = {
 const HARU_LAW_SHARE_DISCLAIMER = '본 내용은 법령 정보 제공 목적이며, 전문적인 법률·세무 자문을 대체하지 않습니다.\n구체적인 사건은 관련 자료를 가지고 전문가 상담을 받으시기 바랍니다.';
 const HARU_LAW_SHARE_PREVIEW_TTL_MS = 30 * 60 * 1000;
 const HARU_LAW_SHARE_DAILY_PREVIEW_LIMIT = 3;
+function addOneMonth(date) {
+    const next = new Date(date);
+    next.setMonth(next.getMonth() + 1);
+    return next;
+}
+function getSubscriptionPlanAmount(plan) {
+    return plan === 'basic' ? 3500 : 5000;
+}
+function getSubscriptionOrderName(plan) {
+    return plan === 'basic' ? 'HARU 베이직 월 구독' : 'HARU 프리미엄 월 구독';
+}
 function getSafeOAuthError(error) {
     var _a, _b;
     if (axios_1.default.isAxiosError(error)) {
@@ -507,6 +542,7 @@ exports.polishContent = (0, https_2.onCall)({
     region: 'asia-northeast3',
     secrets: [GEMINI_API_KEY_SECRET] // 🔐 Secret 연결
 }, async (request) => {
+    var _a;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -587,23 +623,63 @@ exports.polishContent = (0, https_2.onCall)({
 본문만 자연스럽게 이어지는 문단으로 작성하세요.`;
         }
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value()); // 🔐 Secret 값 사용
+        const modelName = 'gemini-3.1-flash-lite';
         const model = genAI.getGenerativeModel({
-            model: "gemini-3.1-flash-lite",
+            model: modelName,
             systemInstruction: systemPrompt
         });
         const result = await model.generateContent(text);
+        const mainUsage = getGeminiUsage(result);
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid: request.auth.uid,
+            featureName: 'sayu_polish',
+            plan: AI_USAGE_PLAN,
+            model: modelName,
+            inputTokens: mainUsage.inputTokens,
+            outputTokens: mainUsage.outputTokens,
+            imageCount: 0,
+            externalApiProvider: null,
+            externalApiCalled: false,
+            groundingUsed: false,
+            requestId: null,
+            success: true,
+            errorCode: null,
+            isDev: DEVELOPER_UIDS.has(request.auth.uid),
+        });
         const polishedText = result.response.text();
         // ===== 통계 분석 (모든 형식) =====
         let stats = null;
         if (format) {
-            stats = await analyzeStats(text, format, GEMINI_API_KEY_SECRET.value());
+            stats = await analyzeStats(text, format, GEMINI_API_KEY_SECRET.value(), {
+                uid: request.auth.uid,
+                featureName: 'sayu_polish',
+                isDev: DEVELOPER_UIDS.has(request.auth.uid),
+            });
         }
         // ===== 💬 AI 한마디 생성 (SAYU와 동시, 별도 호출 없음) =====
         let aiComment = '';
         try {
-            const commentModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+            const commentModelName = 'gemini-3.1-flash-lite';
+            const commentModel = genAI.getGenerativeModel({ model: commentModelName });
             const commentPrompt = buildAiCommentPrompt(polishedText, formatGroup);
             const commentResult = await commentModel.generateContent(commentPrompt);
+            const commentUsage = getGeminiUsage(commentResult);
+            await (0, aiUsageLogger_1.logAiUsage)({
+                uid: request.auth.uid,
+                featureName: 'sayu_polish',
+                plan: AI_USAGE_PLAN,
+                model: commentModelName,
+                inputTokens: commentUsage.inputTokens,
+                outputTokens: commentUsage.outputTokens,
+                imageCount: 0,
+                externalApiProvider: null,
+                externalApiCalled: false,
+                groundingUsed: false,
+                requestId: null,
+                success: true,
+                errorCode: null,
+                isDev: DEVELOPER_UIDS.has(request.auth.uid),
+            });
             const rawComment = (commentResult.response.text() || '').trim();
             aiComment = rawComment
                 .replace(/^["'`*#\-•·]+|["'`*#\-•·]+$/g, '')
@@ -622,6 +698,24 @@ exports.polishContent = (0, https_2.onCall)({
     }
     catch (error) {
         console.error('AI 처리 실패:', error);
+        if ((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid) {
+            await (0, aiUsageLogger_1.logAiUsage)({
+                uid: request.auth.uid,
+                featureName: 'sayu_polish',
+                plan: AI_USAGE_PLAN,
+                model: null,
+                inputTokens: null,
+                outputTokens: null,
+                imageCount: 0,
+                externalApiProvider: null,
+                externalApiCalled: false,
+                groundingUsed: false,
+                requestId: null,
+                success: false,
+                errorCode: getAiUsageErrorCode(error),
+                isDev: DEVELOPER_UIDS.has(request.auth.uid),
+            });
+        }
         throw new https_2.HttpsError('internal', 'AI 처리에 실패했습니다.');
     }
 });
@@ -647,7 +741,8 @@ exports.extractTitle = (0, https_2.onCall)({
             throw new https_2.HttpsError('invalid-argument', '텍스트가 필요합니다.');
         }
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-        const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+        const modelName = 'gemini-3.1-flash-lite';
+        const model = genAI.getGenerativeModel({ model: modelName });
         const prompt = `다음 기록의 핵심을 담은 짧은 제목을 만들어주세요.
 제목만 한 줄로 출력하세요. 10자 이내. 따옴표·마크다운 기호(*, #) 없이 텍스트만.
 
@@ -771,6 +866,7 @@ exports.extractKeywords = (0, https_2.onCall)({
     region: 'asia-northeast3',
     secrets: [GEMINI_API_KEY_SECRET]
 }, async (request) => {
+    var _a;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -820,6 +916,23 @@ JSON 배열 한 줄만. 마크다운·번호·콜론·설명 절대 금지. 배�
 ${titleLine ? `제목: "${titleLine}"\n` : ''}기록 내용:
 ${text.slice(0, 4000)}`;
         const result = await model.generateContent(prompt);
+        const usage = getGeminiUsage(result);
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid: request.auth.uid,
+            featureName: 'law_keyword',
+            plan: AI_USAGE_PLAN,
+            model: 'gemini-3.1-flash-lite',
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens,
+            imageCount: 0,
+            externalApiProvider: null,
+            externalApiCalled: false,
+            groundingUsed: false,
+            requestId: null,
+            success: true,
+            errorCode: null,
+            isDev: DEVELOPER_UIDS.has(request.auth.uid),
+        });
         const raw = (result.response.text() || '').trim();
         const cleaned = raw
             .replace(/^```(?:json)?\s*/i, '')
@@ -853,6 +966,24 @@ ${text.slice(0, 4000)}`;
     }
     catch (error) {
         console.error('키워드 추출 실패:', error);
+        if ((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid) {
+            await (0, aiUsageLogger_1.logAiUsage)({
+                uid: request.auth.uid,
+                featureName: 'law_keyword',
+                plan: AI_USAGE_PLAN,
+                model: null,
+                inputTokens: null,
+                outputTokens: null,
+                imageCount: 0,
+                externalApiProvider: null,
+                externalApiCalled: false,
+                groundingUsed: false,
+                requestId: null,
+                success: false,
+                errorCode: getAiUsageErrorCode(error),
+                isDev: DEVELOPER_UIDS.has(request.auth.uid),
+            });
+        }
         throw new https_2.HttpsError('internal', '키워드 추출에 실패했습니다.');
     }
 });
@@ -1048,8 +1179,26 @@ ${question}
 한국어로 답변하세요.`;
     try {
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-        const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+        const modelName = 'gemini-3.1-flash-lite';
+        const model = genAI.getGenerativeModel({ model: modelName });
         const result = await model.generateContent(prompt);
+        const usage = getGeminiUsage(result);
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid,
+            featureName: 'result_chat',
+            plan: AI_USAGE_PLAN,
+            model: modelName,
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens,
+            imageCount: 0,
+            externalApiProvider: null,
+            externalApiCalled: false,
+            groundingUsed: false,
+            requestId: null,
+            success: true,
+            errorCode: null,
+            isDev: DEVELOPER_UIDS.has(uid),
+        });
         const answer = clampResultChatText(result.response.text(), 5000);
         if (!answer) {
             throw new Error('empty_answer');
@@ -1077,6 +1226,22 @@ ${question}
     }
     catch (error) {
         logger.error('chatWithResult 실패:', { message: error === null || error === void 0 ? void 0 : error.message, recordId, sourceKey, safetyMode });
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid,
+            featureName: 'result_chat',
+            plan: AI_USAGE_PLAN,
+            model: null,
+            inputTokens: null,
+            outputTokens: null,
+            imageCount: 0,
+            externalApiProvider: null,
+            externalApiCalled: false,
+            groundingUsed: false,
+            requestId: null,
+            success: false,
+            errorCode: getAiUsageErrorCode(error),
+            isDev: DEVELOPER_UIDS.has(uid),
+        });
         throw new https_2.HttpsError('internal', 'AI 응답 생성에 실패했습니다.');
     }
 });
@@ -1335,7 +1500,7 @@ JSON만 출력:
 }`
 };
 // ===== 📊 범용 통계 분석 함수 =====
-async function analyzeStats(text, format, apiKey) {
+async function analyzeStats(text, format, apiKey, usageContext) {
     try {
         const prompt = STATS_PROMPTS[format];
         if (!prompt) {
@@ -1347,10 +1512,30 @@ async function analyzeStats(text, format, apiKey) {
 기록 내용:
 ${text}`;
         const genAI = new generative_ai_1.GoogleGenerativeAI(apiKey);
+        const modelName = 'gemini-3.1-flash-lite';
         const model = genAI.getGenerativeModel({
-            model: "gemini-3.1-flash-lite"
+            model: modelName
         });
         const result = await model.generateContent(analysisPrompt);
+        if (usageContext) {
+            const usage = getGeminiUsage(result);
+            await (0, aiUsageLogger_1.logAiUsage)({
+                uid: usageContext.uid,
+                featureName: usageContext.featureName,
+                plan: AI_USAGE_PLAN,
+                model: modelName,
+                inputTokens: usage.inputTokens,
+                outputTokens: usage.outputTokens,
+                imageCount: 0,
+                externalApiProvider: null,
+                externalApiCalled: false,
+                groundingUsed: false,
+                requestId: null,
+                success: true,
+                errorCode: null,
+                isDev: usageContext.isDev,
+            });
+        }
         const responseText = result.response.text();
         // JSON 파싱
         const jsonMatch = responseText.match(/\{[\s\S]*\}/);
@@ -1364,6 +1549,24 @@ ${text}`;
     }
     catch (error) {
         console.error('통계 분석 실패:', error);
+        if (usageContext) {
+            await (0, aiUsageLogger_1.logAiUsage)({
+                uid: usageContext.uid,
+                featureName: usageContext.featureName,
+                plan: AI_USAGE_PLAN,
+                model: null,
+                inputTokens: null,
+                outputTokens: null,
+                imageCount: 0,
+                externalApiProvider: null,
+                externalApiCalled: false,
+                groundingUsed: false,
+                requestId: null,
+                success: false,
+                errorCode: getAiUsageErrorCode(error),
+                isDev: usageContext.isDev,
+            });
+        }
         return null;
     }
 }
@@ -2224,7 +2427,8 @@ exports.extractReadingBookTextFromPhoto = (0, https_2.onCall)({
 - 응답은 텍스트 본문만. 마크다운 코드펜스 금지
 - 사진에 책 본문이 없으면 빈 문자열만 반환`;
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-        const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+        const modelName = 'gemini-3.1-flash-lite';
+        const model = genAI.getGenerativeModel({ model: modelName });
         // 책 본문 사진 원본은 Storage/Firestore에 저장하지 않고 OCR 요청 메모리에서만 사용한다.
         const result = await model.generateContent([
             prompt,
@@ -2235,6 +2439,23 @@ exports.extractReadingBookTextFromPhoto = (0, https_2.onCall)({
                 },
             },
         ]);
+        const usage = getGeminiUsage(result);
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid,
+            featureName: 'book_ocr',
+            plan: AI_USAGE_PLAN,
+            model: modelName,
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens,
+            imageCount: 1,
+            externalApiProvider: null,
+            externalApiCalled: false,
+            groundingUsed: false,
+            requestId: null,
+            success: true,
+            errorCode: null,
+            isDev: DEVELOPER_UIDS.has(uid),
+        });
         const extractedText = result.response.text()
             .replace(/^```(?:text)?\s*/i, '')
             .replace(/```\s*$/i, '')
@@ -2268,6 +2489,22 @@ exports.extractReadingBookTextFromPhoto = (0, https_2.onCall)({
         if (error instanceof https_2.HttpsError)
             throw error;
         logger.error('독서 본문 OCR 실패', { message: (_b = error === null || error === void 0 ? void 0 : error.message) === null || _b === void 0 ? void 0 : _b.slice(0, 200) });
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid,
+            featureName: 'book_ocr',
+            plan: AI_USAGE_PLAN,
+            model: null,
+            inputTokens: null,
+            outputTokens: null,
+            imageCount: 1,
+            externalApiProvider: null,
+            externalApiCalled: false,
+            groundingUsed: false,
+            requestId: null,
+            success: false,
+            errorCode: getAiUsageErrorCode(error),
+            isDev: DEVELOPER_UIDS.has(uid),
+        });
         throw new https_2.HttpsError('internal', '책 본문 텍스트 변환에 실패했습니다. 사진을 더 또렷이 찍어 주세요.');
     }
 });
@@ -2449,10 +2686,11 @@ exports.extractLedgerTextFromImage = (0, https_2.onCall)({
             }
         }
     };
+    const imageCount = inlineParts.length;
     try {
         logger.info('extractLedgerTextFromImage 호출', {
             uid: request.auth.uid.slice(0, 8) + '…',
-            imageCount: inlineParts.length,
+            imageCount,
             totalImageKb,
         });
         const prompt = `영수증, 통장 거래내역, 계좌이체 캡처, 카드매출전표 이미지에서 HARU보조장부 입력에 필요한 모든 거래내역을 추출하세요.
@@ -2493,11 +2731,29 @@ exports.extractLedgerTextFromImage = (0, https_2.onCall)({
   "warnings": []
 }`;
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-        const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+        const modelName = 'gemini-3.1-flash-lite';
+        const model = genAI.getGenerativeModel({ model: modelName });
         const result = await model.generateContent([
             prompt,
             ...inlineParts,
         ]);
+        const usage = getGeminiUsage(result);
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid: request.auth.uid,
+            featureName: 'subleger_ocr',
+            plan: AI_USAGE_PLAN,
+            model: modelName,
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens,
+            imageCount,
+            externalApiProvider: null,
+            externalApiCalled: false,
+            groundingUsed: false,
+            requestId: null,
+            success: true,
+            errorCode: null,
+            isDev: DEVELOPER_UIDS.has(request.auth.uid),
+        });
         const responseText = result.response.text()
             .replace(/^```(?:json)?\s*/i, '')
             .replace(/```\s*$/i, '')
@@ -2549,6 +2805,22 @@ exports.extractLedgerTextFromImage = (0, https_2.onCall)({
         if (error instanceof https_2.HttpsError)
             throw error;
         logger.error('보조장부 이미지 텍스트 추출 실패', { message: (_c = error === null || error === void 0 ? void 0 : error.message) === null || _c === void 0 ? void 0 : _c.slice(0, 200) });
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid: request.auth.uid,
+            featureName: 'subleger_ocr',
+            plan: AI_USAGE_PLAN,
+            model: null,
+            inputTokens: null,
+            outputTokens: null,
+            imageCount: inlineParts.length,
+            externalApiProvider: null,
+            externalApiCalled: false,
+            groundingUsed: false,
+            requestId: null,
+            success: false,
+            errorCode: getAiUsageErrorCode(error),
+            isDev: DEVELOPER_UIDS.has(request.auth.uid),
+        });
         throw new https_2.HttpsError('internal', '영수증·통장 캡처 텍스트 추출에 실패했습니다. 사진을 더 또렷하게 올려 주세요.');
     }
 });
@@ -2598,10 +2870,11 @@ exports.extractHouseholdTextFromImage = (0, https_2.onCall)({
                 part.inlineData.data = '';
         }
     };
+    const imageCount = inlineParts.length;
     try {
         logger.info('extractHouseholdTextFromImage 호출', {
             uid: request.auth.uid.slice(0, 8) + '…',
-            imageCount: inlineParts.length,
+            imageCount,
             totalImageKb,
         });
         const prompt = `영수증·통장 거래내역·카드매출전표 이미지에서 가계부 정보를 추출해줘.
@@ -2629,8 +2902,26 @@ exports.extractHouseholdTextFromImage = (0, https_2.onCall)({
   "warnings": []
 }`;
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-        const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+        const modelName = 'gemini-3.1-flash-lite';
+        const model = genAI.getGenerativeModel({ model: modelName });
         const result = await model.generateContent([prompt, ...inlineParts]);
+        const usage = getGeminiUsage(result);
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid: request.auth.uid,
+            featureName: 'ledger_ocr',
+            plan: AI_USAGE_PLAN,
+            model: modelName,
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens,
+            imageCount,
+            externalApiProvider: null,
+            externalApiCalled: false,
+            groundingUsed: false,
+            requestId: null,
+            success: true,
+            errorCode: null,
+            isDev: DEVELOPER_UIDS.has(request.auth.uid),
+        });
         const responseText = result.response.text()
             .replace(/^```(?:json)?\s*/i, '')
             .replace(/```\s*$/i, '')
@@ -2678,6 +2969,22 @@ exports.extractHouseholdTextFromImage = (0, https_2.onCall)({
         if (error instanceof https_2.HttpsError)
             throw error;
         logger.error('가계부 이미지 텍스트 추출 실패', { message: (_c = error === null || error === void 0 ? void 0 : error.message) === null || _c === void 0 ? void 0 : _c.slice(0, 200) });
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid: request.auth.uid,
+            featureName: 'ledger_ocr',
+            plan: AI_USAGE_PLAN,
+            model: null,
+            inputTokens: null,
+            outputTokens: null,
+            imageCount: inlineParts.length,
+            externalApiProvider: null,
+            externalApiCalled: false,
+            groundingUsed: false,
+            requestId: null,
+            success: false,
+            errorCode: getAiUsageErrorCode(error),
+            isDev: DEVELOPER_UIDS.has(request.auth.uid),
+        });
         throw new https_2.HttpsError('internal', '영수증 텍스트 추출에 실패했습니다. 사진을 더 또렷하게 올려 주세요.');
     }
 });
@@ -3122,8 +3429,8 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
     if (plan !== 'basic' && plan !== 'premium') {
         throw new https_2.HttpsError('invalid-argument', 'plan 값이 올바르지 않습니다.');
     }
-    const amount = plan === 'basic' ? 3500 : 5000;
-    const orderName = plan === 'basic' ? 'HARU 베이직 월 구독' : 'HARU 프리미엄 월 구독';
+    const amount = getSubscriptionPlanAmount(plan);
+    const orderName = getSubscriptionOrderName(plan);
     const paymentId = `haru-${uid}-${Date.now()}`;
     let payment;
     try {
@@ -3151,24 +3458,151 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
     const nextBillingDate = new Date(now);
     nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
     const subRef = db.doc(`users/${uid}/subscription/info`);
+    const billingRef = db.doc(`billingSubscriptions/${uid}`);
     await subRef.set({
         plan,
         status: 'active',
-        billingKey,
         payMethod: typeof payMethod === 'string' ? payMethod : null,
         startDate: now.toISOString(),
         endDate: nextBillingDate.toISOString(),
         nextBillingDate: nextBillingDate.toISOString(),
         paymentId,
+        provider: 'kg_inicis',
+        updatedAt: now.toISOString(),
+    });
+    await billingRef.set({
+        uid,
+        plan,
+        status: 'active',
+        billingKey,
+        payMethod: typeof payMethod === 'string' ? payMethod : null,
+        provider: 'kg_inicis',
+        amount,
+        orderName,
+        startDate: now.toISOString(),
+        endDate: nextBillingDate.toISOString(),
+        nextBillingDate: nextBillingDate.toISOString(),
+        lastPaymentId: paymentId,
         updatedAt: now.toISOString(),
     });
     logger.info('✅ 정기구독 시작 — uid: %s, plan: %s, paymentId: %s', uid, plan, paymentId);
     return { success: true };
 });
+// ===== 💳 KG이니시스 정기결제 반복 과금 =====
+exports.processRecurringSubscriptions = (0, scheduler_1.onSchedule)({
+    region: 'asia-northeast3',
+    schedule: 'every day 09:00',
+    timeZone: 'Asia/Seoul',
+    secrets: [PORTONE_API_SECRET],
+}, async () => {
+    var _a;
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const dueSnap = await db.collection('billingSubscriptions')
+        .where('status', '==', 'active')
+        .limit(100)
+        .get();
+    for (const docSnap of dueSnap.docs) {
+        const uid = docSnap.id;
+        const billingRef = docSnap.ref;
+        const data = docSnap.data();
+        if (data.provider !== 'kg_inicis')
+            continue;
+        if (typeof data.nextBillingDate !== 'string' || data.nextBillingDate > nowIso)
+            continue;
+        const billingKey = typeof data.billingKey === 'string' ? data.billingKey : '';
+        const plan = data.plan === 'basic' ? 'basic' : data.plan === 'premium' ? 'premium' : '';
+        if (!billingKey || !plan) {
+            await billingRef.set({
+                status: 'needs_attention',
+                lastBillingError: 'missing_billing_key_or_plan',
+                updatedAt: nowIso,
+            }, { merge: true });
+            continue;
+        }
+        const locked = await db.runTransaction(async (tx) => {
+            const fresh = await tx.get(billingRef);
+            const freshData = fresh.data() || {};
+            const lockUntil = typeof freshData.billingLockUntil === 'string'
+                ? Date.parse(freshData.billingLockUntil)
+                : 0;
+            if (freshData.status !== 'active')
+                return false;
+            if (freshData.provider !== 'kg_inicis')
+                return false;
+            if (typeof freshData.nextBillingDate !== 'string' || freshData.nextBillingDate > nowIso)
+                return false;
+            if (Number.isFinite(lockUntil) && lockUntil > Date.now())
+                return false;
+            tx.set(billingRef, {
+                billingLockUntil: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+                updatedAt: nowIso,
+            }, { merge: true });
+            return true;
+        });
+        if (!locked)
+            continue;
+        const amount = getSubscriptionPlanAmount(plan);
+        const orderName = getSubscriptionOrderName(plan);
+        const paymentId = `haru-recurring-${uid}-${Date.now()}`;
+        try {
+            const portoneRes = await axios_1.default.post(`https://api.portone.io/payments/${encodeURIComponent(paymentId)}/billing-key`, {
+                billingKey,
+                orderName,
+                amount: { total: amount },
+                currency: 'KRW',
+            }, { headers: { Authorization: `PortOne ${PORTONE_API_SECRET.value().trim()}` } });
+            const payment = portoneRes.data;
+            if ((payment === null || payment === void 0 ? void 0 : payment.status) && payment.status !== 'PAID') {
+                throw new Error(`recurring_payment_not_paid:${payment.status}`);
+            }
+            const nextBillingDate = addOneMonth(now);
+            const update = {
+                plan,
+                status: 'active',
+                payMethod: typeof data.payMethod === 'string' ? data.payMethod : null,
+                provider: 'kg_inicis',
+                amount,
+                orderName,
+                endDate: nextBillingDate.toISOString(),
+                nextBillingDate: nextBillingDate.toISOString(),
+                paymentId,
+                lastPaymentId: paymentId,
+                lastPaidAt: nowIso,
+                billingLockUntil: null,
+                lastBillingError: null,
+                updatedAt: nowIso,
+            };
+            await Promise.all([
+                db.doc(`users/${uid}/subscription/info`).set(update, { merge: true }),
+                billingRef.set({ ...update, billingKey }, { merge: true }),
+            ]);
+            logger.info('✅ KG이니시스 반복 과금 완료 — uid: %s, paymentId: %s', uid, paymentId);
+        }
+        catch (error) {
+            logger.error('KG이니시스 반복 과금 실패:', {
+                uid,
+                paymentId,
+                message: error === null || error === void 0 ? void 0 : error.message,
+                status: (_a = error === null || error === void 0 ? void 0 : error.response) === null || _a === void 0 ? void 0 : _a.status,
+            });
+            await billingRef.set({
+                billingLockUntil: null,
+                lastBillingError: (error === null || error === void 0 ? void 0 : error.message) || 'recurring_payment_failed',
+                lastBillingFailedAt: nowIso,
+                updatedAt: nowIso,
+            }, { merge: true });
+        }
+    }
+});
 // ===== 💳 KG이니시스 심사용 일반(단건)결제 검증 =====
 exports.verifySinglePayment = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] }, async (request) => {
-    var _a, _b, _c, _d, _f;
+    var _a, _b, _c, _d;
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
     const paymentId = (_a = request.data) === null || _a === void 0 ? void 0 : _a.paymentId;
+    const uid = request.auth.uid;
     if (!paymentId || typeof paymentId !== 'string') {
         throw new https_2.HttpsError('invalid-argument', 'paymentId가 필요합니다.');
     }
@@ -3213,9 +3647,10 @@ exports.verifySinglePayment = (0, https_2.onCall)({ region: 'asia-northeast3', s
         orderName: SINGLE_PAYMENT_REVIEW_PRODUCT.orderName,
         amount: SINGLE_PAYMENT_REVIEW_PRODUCT.amount,
         status: payment.status,
-        type: 'single_review',
-        uid: ((_f = request.auth) === null || _f === void 0 ? void 0 : _f.uid) || null,
-        guestAllowed: true,
+        type: 'single_payment',
+        uid,
+        guestAllowed: false,
+        provider: 'kg_inicis',
         createdAt: now,
         updatedAt: now,
     });
@@ -3418,7 +3853,7 @@ exports.lawSearch = (0, https_2.onCall)({
     region: 'asia-northeast3',
     secrets: [LAW_API_KEY_SECRET, GEMINI_API_KEY_SECRET],
 }, async (request) => {
-    var _a, _b, _c, _d, _f;
+    var _a, _b, _c, _d, _f, _g;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -3479,7 +3914,8 @@ exports.lawSearch = (0, https_2.onCall)({
         };
         // 0단계: Gemini로 정확한 법령 이름 추출
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_KEY);
-        const kwModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+        const kwModelName = 'gemini-3.1-flash-lite';
+        const kwModel = genAI.getGenerativeModel({ model: kwModelName });
         const kwResult = await kwModel.generateContent(`다음 질문과 가장 관련된 대한민국 공식 법령 이름 1개만 출력하세요.
 반드시 법령 이름만, 다른 설명 없이.
 
@@ -3494,7 +3930,24 @@ exports.lawSearch = (0, https_2.onCall)({
 "사기" → 형법
 "폭행" → 형법
 
-질문: ${query}`);
+	질문: ${query}`);
+        const kwUsage = getGeminiUsage(kwResult);
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid: request.auth.uid,
+            featureName: 'law_search',
+            plan: AI_USAGE_PLAN,
+            model: kwModelName,
+            inputTokens: kwUsage.inputTokens,
+            outputTokens: kwUsage.outputTokens,
+            imageCount: 0,
+            externalApiProvider: 'gov_law',
+            externalApiCalled: true,
+            groundingUsed: false,
+            requestId: null,
+            success: true,
+            errorCode: null,
+            isDev: DEVELOPER_UIDS.has(request.auth.uid),
+        });
         const lawKeyword = kwResult.response.text().trim().split('\n')[0].trim();
         console.log('HARUraw 추출 키워드:', lawKeyword);
         // 1단계: 법제처 검색
@@ -3535,13 +3988,31 @@ exports.lawSearch = (0, https_2.onCall)({
         const jomunCatalog = allJomuns
             .map((j) => `${j.articleStr}(${j.title})`)
             .join('\n');
-        const selectModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+        const selectModelName = 'gemini-3.1-flash-lite';
+        const selectModel = genAI.getGenerativeModel({ model: selectModelName });
         const selectResult = await selectModel.generateContent(`다음은 ${lawName}의 조문 목차입니다.
 사용자 질문 "${query}"과 가장 관련된 조문 번호를 최대 3개만 골라서
 쉼표로 구분하여 출력하세요. 조문 번호만 (예: 제311조,제312조,제307조)
 
 조문 목차:
-${jomunCatalog}`);
+	${jomunCatalog}`);
+        const selectUsage = getGeminiUsage(selectResult);
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid: request.auth.uid,
+            featureName: 'law_search',
+            plan: AI_USAGE_PLAN,
+            model: selectModelName,
+            inputTokens: selectUsage.inputTokens,
+            outputTokens: selectUsage.outputTokens,
+            imageCount: 0,
+            externalApiProvider: 'gov_law',
+            externalApiCalled: true,
+            groundingUsed: false,
+            requestId: null,
+            success: true,
+            errorCode: null,
+            isDev: DEVELOPER_UIDS.has(request.auth.uid),
+        });
         const selectedNums = selectResult.response.text()
             .trim()
             .split(',')
@@ -3552,7 +4023,8 @@ ${jomunCatalog}`);
         // 선별 실패 시 상위 3개
         const finalJomuns = cleanedJomuns.length > 0 ? cleanedJomuns : allJomuns.slice(0, 3);
         // 4단계: Gemini로 전체 요약 생성
-        const summaryModel = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
+        const summaryModelName = 'gemini-2.5-pro';
+        const summaryModel = genAI.getGenerativeModel({ model: summaryModelName });
         const lawText = finalJomuns
             .map((j) => `${j.articleStr}(${j.title}): ${j.content}`)
             .join('\n');
@@ -3588,7 +4060,24 @@ ${jomunCatalog}`);
 
 사용자 질문: ${query}
 관련 법령(${lawName}):
-${lawText}`);
+	${lawText}`);
+        const summaryUsage = getGeminiUsage(summaryResult);
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid: request.auth.uid,
+            featureName: 'law_search',
+            plan: AI_USAGE_PLAN,
+            model: summaryModelName,
+            inputTokens: summaryUsage.inputTokens,
+            outputTokens: summaryUsage.outputTokens,
+            imageCount: 0,
+            externalApiProvider: 'gov_law',
+            externalApiCalled: true,
+            groundingUsed: false,
+            requestId: null,
+            success: true,
+            errorCode: null,
+            isDev: DEVELOPER_UIDS.has(request.auth.uid),
+        });
         return {
             success: true,
             data: finalJomuns,
@@ -3597,6 +4086,24 @@ ${lawText}`);
     }
     catch (error) {
         logger.error('HARUraw 법령 검색 실패:', error);
+        if ((_g = request.auth) === null || _g === void 0 ? void 0 : _g.uid) {
+            await (0, aiUsageLogger_1.logAiUsage)({
+                uid: request.auth.uid,
+                featureName: 'law_search',
+                plan: AI_USAGE_PLAN,
+                model: null,
+                inputTokens: null,
+                outputTokens: null,
+                imageCount: 0,
+                externalApiProvider: 'gov_law',
+                externalApiCalled: true,
+                groundingUsed: false,
+                requestId: null,
+                success: false,
+                errorCode: getAiUsageErrorCode(error),
+                isDev: DEVELOPER_UIDS.has(request.auth.uid),
+            });
+        }
         throw new https_2.HttpsError('internal', '법령 검색에 실패했습니다.');
     }
 });
@@ -3823,6 +4330,7 @@ exports.lawEasyExplain = (0, https_2.onCall)({
     secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 300,
 }, async (request) => {
+    var _a;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다');
     }
@@ -3832,8 +4340,9 @@ exports.lawEasyExplain = (0, https_2.onCall)({
     }
     try {
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+        const modelName = 'gemini-3.1-flash-lite';
         const model = genAI.getGenerativeModel({
-            model: 'gemini-3.1-flash-lite',
+            model: modelName,
             systemInstruction: `당신은 실무 경력 20년의 대한민국 법률 전문가입니다.
 사용자의 질문과 관련 법조문을 바탕으로, 반드시 아래 형식으로만 답변하세요.
 마크다운 기호(**, ##, --, >, __)는 절대 사용하지 마세요.
@@ -3864,6 +4373,23 @@ AI 의견:
             ? `[사용자 질문]: ${userQuery}\n\n[관련 법조문]: ${lawText}`
             : lawText;
         const result = await model.generateContent(prompt);
+        const usage = getGeminiUsage(result);
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid: request.auth.uid,
+            featureName: 'law_explain',
+            plan: AI_USAGE_PLAN,
+            model: modelName,
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens,
+            imageCount: 0,
+            externalApiProvider: null,
+            externalApiCalled: false,
+            groundingUsed: false,
+            requestId: null,
+            success: true,
+            errorCode: null,
+            isDev: DEVELOPER_UIDS.has(request.auth.uid),
+        });
         return {
             success: true,
             explanation: result.response.text(),
@@ -3871,6 +4397,24 @@ AI 의견:
     }
     catch (error) {
         logger.error('법령 해설 실패:', error);
+        if ((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid) {
+            await (0, aiUsageLogger_1.logAiUsage)({
+                uid: request.auth.uid,
+                featureName: 'law_explain',
+                plan: AI_USAGE_PLAN,
+                model: null,
+                inputTokens: null,
+                outputTokens: null,
+                imageCount: 0,
+                externalApiProvider: null,
+                externalApiCalled: false,
+                groundingUsed: false,
+                requestId: null,
+                success: false,
+                errorCode: getAiUsageErrorCode(error),
+                isDev: DEVELOPER_UIDS.has(request.auth.uid),
+            });
+        }
         throw new https_2.HttpsError('internal', '법령 해설에 실패했습니다.');
     }
 });
@@ -3888,13 +4432,16 @@ exports.lawPrecedent = (0, https_2.onCall)({
     if (!lawText || String(lawText).trim().length === 0) {
         throw new https_2.HttpsError('invalid-argument', '법령 정보가 필요합니다');
     }
+    const requestId = createAiUsageRequestId();
+    const isDev = DEVELOPER_UIDS.has(request.auth.uid);
     const DISCLAIMER = '이 정보는 국가법령정보센터에서 제공한 실제 판례입니다. AI 요약은 참고용이며, 정확한 내용은 법령정보센터에서 확인하세요.';
     const NO_RESULT_DISCLAIMER = '이 검색은 국가법령정보센터의 실제 판례 데이터를 기반으로 합니다.';
     const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
     // 1. Gemini로 검색 키워드 추출 (lawSearch 0단계 패턴)
     let searchKeyword = '';
+    const kwModelName = 'gemini-3.1-flash-lite';
     try {
-        const kwModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+        const kwModel = genAI.getGenerativeModel({ model: kwModelName });
         const kwResult = await kwModel.generateContent(`다음 법령 조문과 사용자 질문에 가장 관련된 판례 검색용 핵심 키워드 1개만 출력하세요.
 반드시 단일 명사로, 다른 설명 없이.
 
@@ -3911,6 +4458,23 @@ exports.lawPrecedent = (0, https_2.onCall)({
 
 법령: ${lawText}
 사용자 질문: ${userQuery || '없음'}`);
+        const usage = getGeminiUsage(kwResult);
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid: request.auth.uid,
+            featureName: 'law_precedent',
+            plan: AI_USAGE_PLAN,
+            model: kwModelName,
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens,
+            imageCount: 0,
+            externalApiProvider: 'gov_law',
+            externalApiCalled: true,
+            groundingUsed: false,
+            requestId,
+            success: true,
+            errorCode: null,
+            isDev,
+        });
         searchKeyword = kwResult.response.text().trim().split('\n')[0].trim();
         // 한글 1자 이상 포함 검증 (한자/기호만 나오면 폴백)
         if (!/[가-힣]/.test(searchKeyword) || searchKeyword.length === 0) {
@@ -3919,6 +4483,22 @@ exports.lawPrecedent = (0, https_2.onCall)({
     }
     catch (kwErr) {
         logger.warn('판례 키워드 추출 실패, 폴백 사용:', kwErr === null || kwErr === void 0 ? void 0 : kwErr.message);
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid: request.auth.uid,
+            featureName: 'law_precedent',
+            plan: AI_USAGE_PLAN,
+            model: kwModelName,
+            inputTokens: null,
+            outputTokens: null,
+            imageCount: 0,
+            externalApiProvider: 'gov_law',
+            externalApiCalled: true,
+            groundingUsed: false,
+            requestId,
+            success: false,
+            errorCode: getAiUsageErrorCode(kwErr),
+            isDev,
+        });
         searchKeyword = '';
     }
     // 키워드 추출 실패 시 폴백 (userQuery → lawText 첫 20자)
@@ -3946,6 +4526,22 @@ exports.lawPrecedent = (0, https_2.onCall)({
             status: (_a = apiErr === null || apiErr === void 0 ? void 0 : apiErr.response) === null || _a === void 0 ? void 0 : _a.status,
             code: apiErr === null || apiErr === void 0 ? void 0 : apiErr.code,
         });
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid: request.auth.uid,
+            featureName: 'law_precedent',
+            plan: AI_USAGE_PLAN,
+            model: null,
+            inputTokens: null,
+            outputTokens: null,
+            imageCount: 0,
+            externalApiProvider: 'gov_law',
+            externalApiCalled: true,
+            groundingUsed: false,
+            requestId,
+            success: false,
+            errorCode: getAiUsageErrorCode(apiErr),
+            isDev,
+        });
         throw new https_2.HttpsError('internal', '판례 검색 서버에 연결할 수 없습니다');
     }
     // 3. 응답 파싱
@@ -3955,6 +4551,22 @@ exports.lawPrecedent = (0, https_2.onCall)({
     // 4. 0건 또는 비정상 구조 처리
     if (!precSearch || totalCnt === 0 || !rawList) {
         logger.info('lawPrecedent 0건 응답:', { searchKeyword, userQuery: userQuery || '' });
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid: request.auth.uid,
+            featureName: 'law_precedent',
+            plan: AI_USAGE_PLAN,
+            model: null,
+            inputTokens: null,
+            outputTokens: null,
+            imageCount: 0,
+            externalApiProvider: 'gov_law',
+            externalApiCalled: true,
+            groundingUsed: false,
+            requestId,
+            success: true,
+            errorCode: null,
+            isDev,
+        });
         return {
             success: true,
             precedents: [],
@@ -3969,9 +4581,10 @@ exports.lawPrecedent = (0, https_2.onCall)({
     const top3 = precList.slice(0, 3);
     // 6. Gemini 일괄 요약 (메타데이터만, 환각 차단 시스템 프롬프트)
     let summaries = [];
+    const sumModelName = 'gemini-3.1-flash-lite';
     try {
         const sumModel = genAI.getGenerativeModel({
-            model: 'gemini-3.1-flash-lite',
+            model: sumModelName,
             systemInstruction: `당신은 실무 경력 20년의 대한민국 법률 전문가입니다.
 아래에 제공된 판례들은 국가법령정보센터에서 가져온 실제 판례입니다.
 사용자의 검색 키워드와 질문 맥락을 바탕으로, 각 판례를 사용자가 이해하기 쉽게 요약하세요.
@@ -4001,6 +4614,23 @@ JSON 배열로만 출력하세요. 다른 텍스트 없이.
 판례 목록:
 ${precLines}`;
         const sumResult = await sumModel.generateContent(sumPrompt);
+        const usage = getGeminiUsage(sumResult);
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid: request.auth.uid,
+            featureName: 'law_precedent',
+            plan: AI_USAGE_PLAN,
+            model: sumModelName,
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens,
+            imageCount: 0,
+            externalApiProvider: 'gov_law',
+            externalApiCalled: true,
+            groundingUsed: false,
+            requestId,
+            success: true,
+            errorCode: null,
+            isDev,
+        });
         let rawSum = sumResult.response.text().trim();
         rawSum = rawSum.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
         const parsed = JSON.parse(rawSum);
@@ -4010,6 +4640,22 @@ ${precLines}`;
     }
     catch (sumErr) {
         logger.warn('판례 요약 생성 실패, 기본값 사용:', sumErr === null || sumErr === void 0 ? void 0 : sumErr.message);
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid: request.auth.uid,
+            featureName: 'law_precedent',
+            plan: AI_USAGE_PLAN,
+            model: sumModelName,
+            inputTokens: null,
+            outputTokens: null,
+            imageCount: 0,
+            externalApiProvider: 'gov_law',
+            externalApiCalled: true,
+            groundingUsed: false,
+            requestId,
+            success: false,
+            errorCode: getAiUsageErrorCode(sumErr),
+            isDev,
+        });
         summaries = [];
     }
     // 7. 반환 객체 조립 (기존 호환 + 신규 필드)
@@ -6071,7 +6717,8 @@ exports.analyzeDrugPhoto = (0, https_2.onCall)({
 - 추측·환각 금지. 확실하지 않은 이름은 포함하지 마세요.
 - 최대 10개까지만 추출`;
     const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-    const visionModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+    const modelName = 'gemini-3.1-flash-lite';
+    const visionModel = genAI.getGenerativeModel({ model: modelName });
     let parsedDrugs = [];
     let aiNote = '';
     try {
@@ -6086,6 +6733,23 @@ exports.analyzeDrugPhoto = (0, https_2.onCall)({
         }
         const result = await visionModel.generateContent({
             contents: [{ role: 'user', parts }],
+        });
+        const usage = getGeminiUsage(result);
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid: request.auth.uid,
+            featureName: 'drug_photo',
+            plan: AI_USAGE_PLAN,
+            model: modelName,
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens,
+            imageCount: images.length,
+            externalApiProvider: null,
+            externalApiCalled: false,
+            groundingUsed: false,
+            requestId: null,
+            success: true,
+            errorCode: null,
+            isDev: DEVELOPER_UIDS.has(request.auth.uid),
         });
         let raw = result.response.text().trim();
         // 마크다운 코드펜스 제거
@@ -6123,6 +6787,22 @@ exports.analyzeDrugPhoto = (0, https_2.onCall)({
     catch (err) {
         // 🔒 에러 로그에도 사진·prompt 데이터 노출 금지
         logger.error('Gemini Vision 분석 실패', { message: (_d = err === null || err === void 0 ? void 0 : err.message) === null || _d === void 0 ? void 0 : _d.slice(0, 200) });
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid: request.auth.uid,
+            featureName: 'drug_photo',
+            plan: AI_USAGE_PLAN,
+            model: modelName,
+            inputTokens: null,
+            outputTokens: null,
+            imageCount: images.length,
+            externalApiProvider: null,
+            externalApiCalled: false,
+            groundingUsed: false,
+            requestId: null,
+            success: false,
+            errorCode: getAiUsageErrorCode(err),
+            isDev: DEVELOPER_UIDS.has(request.auth.uid),
+        });
         throw new https_2.HttpsError('internal', 'AI 분석 중 오류가 발생했습니다. 사진을 다시 찍어 주세요');
     }
     // 사진 base64 즉시 메모리 해제 (분석 끝났으니 보관 안 함)
@@ -6419,11 +7099,13 @@ ${nameHint}
   "note": "사진 분석은 참고용이라는 짧은 안내"
 }`;
     const genAI = new generative_ai_1.GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+    const modelName = 'gemini-3.1-flash-lite';
+    const model = genAI.getGenerativeModel({ model: modelName });
     const result = await model.generateContent([
         prompt,
         { inlineData: { data: base64, mimeType: mimeType || 'image/jpeg' } },
     ]);
+    const usage = getGeminiUsage(result);
     const text = result.response.text();
     const cleaned = text.replace(/```json|```/g, '').trim();
     const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
@@ -6442,6 +7124,7 @@ ${nameHint}
         actions: normalizeList(parsed === null || parsed === void 0 ? void 0 : parsed.actions),
         warningSigns: normalizeList(parsed === null || parsed === void 0 ? void 0 : parsed.warningSigns),
         note: String((parsed === null || parsed === void 0 ? void 0 : parsed.note) || '사진 분석은 참고용입니다. 상태가 악화되면 전문가에게 상담하세요.').slice(0, 200),
+        usage,
     };
 }
 exports.analyzePlantPhoto = (0, https_2.onCall)({
@@ -6450,7 +7133,7 @@ exports.analyzePlantPhoto = (0, https_2.onCall)({
     memory: '512MiB',
     timeoutSeconds: 60,
 }, async (request) => {
-    var _a, _b;
+    var _a, _b, _c, _d, _f, _g;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -6486,6 +7169,22 @@ exports.analyzePlantPhoto = (0, https_2.onCall)({
         advice = await callGeminiAdvice(cleanBase64, finalMime, GEMINI_API_KEY_SECRET.value(), kindwise === null || kindwise === void 0 ? void 0 : kindwise.topPlantName);
     }
     catch (err) {
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid: request.auth.uid,
+            featureName: 'plant_photo',
+            plan: AI_USAGE_PLAN,
+            model: 'gemini-3.1-flash-lite',
+            inputTokens: null,
+            outputTokens: null,
+            imageCount: 1,
+            externalApiProvider: 'kindwise',
+            externalApiCalled: true,
+            groundingUsed: false,
+            requestId: null,
+            success: false,
+            errorCode: getAiUsageErrorCode(err),
+            isDev: DEVELOPER_UIDS.has(request.auth.uid),
+        });
         if (err instanceof https_2.HttpsError)
             throw err;
         logger.error('Gemini 해설 실패', { message: err === null || err === void 0 ? void 0 : err.message, kindwiseError });
@@ -6504,12 +7203,28 @@ exports.analyzePlantPhoto = (0, https_2.onCall)({
         };
     }
     // 응답 합치기
+    await (0, aiUsageLogger_1.logAiUsage)({
+        uid: request.auth.uid,
+        featureName: 'plant_photo',
+        plan: AI_USAGE_PLAN,
+        model: 'gemini-3.1-flash-lite',
+        inputTokens: (_b = (_a = advice.usage) === null || _a === void 0 ? void 0 : _a.inputTokens) !== null && _b !== void 0 ? _b : null,
+        outputTokens: (_d = (_c = advice.usage) === null || _c === void 0 ? void 0 : _c.outputTokens) !== null && _d !== void 0 ? _d : null,
+        imageCount: 1,
+        externalApiProvider: 'kindwise',
+        externalApiCalled: true,
+        groundingUsed: false,
+        requestId: null,
+        success: true,
+        errorCode: null,
+        isDev: DEVELOPER_UIDS.has(request.auth.uid),
+    });
     return {
         // 표시용 이름: Kindwise top 우선 → Gemini fallback
         plantName: (kindwise === null || kindwise === void 0 ? void 0 : kindwise.topPlantName) || advice.plantName,
         latinName: (kindwise === null || kindwise === void 0 ? void 0 : kindwise.latinName) || '',
-        identificationConfidence: (_a = kindwise === null || kindwise === void 0 ? void 0 : kindwise.identificationProbability) !== null && _a !== void 0 ? _a : null, // 0~1
-        isPlantProbability: (_b = kindwise === null || kindwise === void 0 ? void 0 : kindwise.isPlantProbability) !== null && _b !== void 0 ? _b : null,
+        identificationConfidence: (_f = kindwise === null || kindwise === void 0 ? void 0 : kindwise.identificationProbability) !== null && _f !== void 0 ? _f : null, // 0~1
+        isPlantProbability: (_g = kindwise === null || kindwise === void 0 ? void 0 : kindwise.isPlantProbability) !== null && _g !== void 0 ? _g : null,
         alternativeCandidates: (kindwise === null || kindwise === void 0 ? void 0 : kindwise.alternativeCandidates) || [],
         taxonomy: kindwise === null || kindwise === void 0 ? void 0 : kindwise.taxonomy,
         kindwiseUrl: kindwise === null || kindwise === void 0 ? void 0 : kindwise.kindwiseUrl,
@@ -6952,6 +7667,22 @@ exports.detectPlantAdvanced = (0, https_2.onCall)({
     }
     // 둘 다 실패 + Gemini도 실패 → 사용자에게 에러
     if (!plantIdResult && !plantNetResult && !cross) {
+        await (0, aiUsageLogger_1.logAiUsage)({
+            uid: request.auth.uid,
+            featureName: 'plant_advanced',
+            plan: AI_USAGE_PLAN,
+            model: null,
+            inputTokens: null,
+            outputTokens: null,
+            imageCount: images.length,
+            externalApiProvider: 'kindwise',
+            externalApiCalled: ENABLE_KINDWISE_PLANT_ID,
+            groundingUsed: false,
+            requestId: null,
+            success: false,
+            errorCode: geminiError || 'plant_detection_failed',
+            isDev: DEVELOPER_UIDS.has(request.auth.uid),
+        });
         throw new https_2.HttpsError('internal', '식물 식별에 실패했습니다. 사진을 다시 찍어 주세요 (잎·꽃·줄기가 모두 보이도록).');
     }
     // 🌿 PlantNet top 결과 → 한국어명 검정 (캐시 우선, 실패 시 영어명 fallback)
@@ -6972,6 +7703,22 @@ exports.detectPlantAdvanced = (0, https_2.onCall)({
         plantNetConfidence,
         plantIdAlternativeScores: (plantIdResult === null || plantIdResult === void 0 ? void 0 : plantIdResult.alternativeCandidates.map((c) => c.probability)) || [],
         plantNetAlternativeScores: (plantNetResult === null || plantNetResult === void 0 ? void 0 : plantNetResult.alternatives.map((c) => c.score)) || [],
+    });
+    await (0, aiUsageLogger_1.logAiUsage)({
+        uid: request.auth.uid,
+        featureName: 'plant_advanced',
+        plan: AI_USAGE_PLAN,
+        model: null,
+        inputTokens: null,
+        outputTokens: null,
+        imageCount: images.length,
+        externalApiProvider: 'kindwise',
+        externalApiCalled: ENABLE_KINDWISE_PLANT_ID,
+        groundingUsed: false,
+        requestId: null,
+        success: true,
+        errorCode: null,
+        isDev: DEVELOPER_UIDS.has(request.auth.uid),
     });
     return {
         plantId: plantIdResult

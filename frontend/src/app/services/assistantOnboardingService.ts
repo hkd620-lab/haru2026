@@ -1,5 +1,6 @@
-import { collection, doc, getDoc, getDocs, limit, query, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, query, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { getSignupAttribution } from '../utils/utmAttribution';
 
 export const ASSISTANT_ONBOARDING_SEEN_FIELD = 'assistantOnboardingV1SeenAt';
 
@@ -27,9 +28,17 @@ export async function shouldShowAssistantOnboarding(uid: string): Promise<boolea
 
 export async function markAssistantOnboardingSeen(uid: string): Promise<string> {
   const seenAt = new Date().toISOString();
+  const userRef = doc(db, 'users', uid);
+  const userSnap = await getDoc(userRef);
+  const payload: Record<string, unknown> = { [ASSISTANT_ONBOARDING_SEEN_FIELD]: seenAt };
+
+  if (!userSnap.exists()) {
+    Object.assign(payload, getSignupAttribution(), { signupAt: serverTimestamp() });
+  }
+
   await setDoc(
-    doc(db, 'users', uid),
-    { [ASSISTANT_ONBOARDING_SEEN_FIELD]: seenAt },
+    userRef,
+    payload,
     { merge: true },
   );
   return seenAt;

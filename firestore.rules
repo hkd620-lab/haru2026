@@ -74,14 +74,19 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/shared_records/$(sharedId)).data.isActive == true;
     }
 
-    // AI 사용량 계량 로그 — 서버(admin SDK)만 기록. 클라이언트 쓰기 금지, 읽기는 관리자만.
-    match /aiUsage/{docId} {
-      allow read: if isAdmin();
-      allow write: if false;
+    function userAttributionAllowedKeys() {
+      return [
+        "assistantOnboardingV1SeenAt",
+        "utmSource",
+        "utmMedium",
+        "utmCampaign",
+        "signupReferrerOrigin",
+        "signupAt"
+      ];
     }
-    match /aiUsageMonthly/{docId} {
-      allow read: if isAdmin();
-      allow write: if false;
+
+    match /aiUsageLogs/{logId} {
+      allow read, write: if false;
     }
 
     match /shared_records/{sharedId} {
@@ -122,6 +127,25 @@ service cloud.firestore {
         allow delete: if signedIn()
           && (resource.data.ownerUid == request.auth.uid || isAdmin());
       }
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(userAttributionAllowedKeys());
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(userAttributionAllowedKeys());
+      allow delete: if false;
+    }
+
+    match /billingSubscriptions/{uid} {
+      allow read, write: if false;
+    }
+
+    match /paymentReviews/{document=**} {
+      allow read, write: if false;
     }
 
     match /users/{userId}/records/{recordId} {
