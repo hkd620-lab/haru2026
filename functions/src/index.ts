@@ -1029,6 +1029,26 @@ function getRecordResultBySourceKey(record: Record<string, any>, sourceKey: stri
   return typeof value === 'string' ? value.trim() : '';
 }
 
+// SAYU 결과물(_sayu)이 없는 원문/과거 기록도 대화 가능하도록 원문 본문으로 폴백.
+// 프론트(SayuPage) META_SUFFIXES와 동일한 제외 규칙으로 {prefix}_* 본문 필드를 모은다.
+const RESULT_CHAT_META_SUFFIXES = [
+  '_sayu', '_final_sayu', '_polished', '_polishedAt', '_mode', '_stats',
+  '_images', '_imageMeta', '_rating', '_status', '_completedAt',
+  '_reflection_questions', '_reflection_answers', '_entries_snapshot',
+];
+
+function getRecordOriginalContentByPrefix(record: Record<string, any>, prefix: string): string {
+  if (!prefix) return '';
+  const parts: string[] = [];
+  Object.keys(record).forEach((key) => {
+    if (!key.startsWith(`${prefix}_`)) return;
+    if (RESULT_CHAT_META_SUFFIXES.some((suffix) => key.endsWith(suffix))) return;
+    const value = record[key];
+    if (typeof value === 'string' && value.trim()) parts.push(value.trim());
+  });
+  return parts.join('\n\n');
+}
+
 function getSafetyModeGuide(safetyMode: string): string {
   switch (safetyMode) {
     case 'writing':
@@ -1081,7 +1101,12 @@ export const chatWithResult = onCall(
     }
 
     const record = recordSnap.data() || {};
-    const sourceResult = clampResultChatText(getRecordResultBySourceKey(record, sourceKey, sourceIndex), 9000);
+    let sourceResult = clampResultChatText(getRecordResultBySourceKey(record, sourceKey, sourceIndex), 9000);
+    // _sayu 결과물이 없으면(원문만 저장했거나 과거 기록) 원문 본문으로 폴백해 대화 가능하게
+    if (!sourceResult && sourceKey.endsWith('_sayu')) {
+      const prefix = sourceKey.split('_')[0];
+      sourceResult = clampResultChatText(getRecordOriginalContentByPrefix(record, prefix), 9000);
+    }
     if (!sourceResult) {
       throw new HttpsError('failed-precondition', '대화할 결과물이 없습니다.');
     }
