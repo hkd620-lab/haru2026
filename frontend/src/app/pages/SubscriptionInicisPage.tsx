@@ -12,15 +12,17 @@ type BillingKeyResponse = {
 
 type PaidPlan = 'basic' | 'premium';
 
-const INICIS_BILLING_PLANS: Record<PaidPlan, { title: string; orderName: string; priceLabel: string }> = {
+const INICIS_BILLING_PLANS: Record<PaidPlan, { title: string; orderName: string; amount: number; priceLabel: string }> = {
   basic: {
     title: '베이직',
     orderName: 'HARU 베이직 월 구독',
+    amount: 4000,
     priceLabel: '4,000원 / 월',
   },
   premium: {
     title: '프리미엄',
     orderName: 'HARU 프리미엄 월 구독',
+    amount: 6000,
     priceLabel: '6,000원 / 월',
   },
 };
@@ -121,6 +123,8 @@ export default function SubscriptionInicisPage() {
         storeId: import.meta.env.VITE_PORTONE_STORE_ID,
         channelKey: inicisBillingChannelKey,
         billingKeyMethod: 'EASY_PAY',
+        displayAmount: plan.amount,
+        currency: 'KRW',
         issueId,
         issueName: plan.orderName,
         customer: {

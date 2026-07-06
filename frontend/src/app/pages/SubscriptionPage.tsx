@@ -152,6 +152,8 @@ export default function SubscriptionPage() {
         storeId: import.meta.env.VITE_PORTONE_STORE_ID,
         channelKey: inicisBillingChannelKey,
         billingKeyMethod: 'EASY_PAY',
+        displayAmount: plan.amount,
+        currency: 'KRW',
         issueId,
         issueName: plan.orderName,
         customer: {
