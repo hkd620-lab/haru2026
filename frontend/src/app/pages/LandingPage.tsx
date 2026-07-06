@@ -102,13 +102,13 @@ const HERO_FLOW = [
 
 const PRICING = [
   {
-    plan: '베이직', price: '₩3,500', period: '/월',
+    plan: '베이직', price: '₩4,000', period: '/월',
     note: '기록하고 정리하는 기본 구독',
     bullets: ['12종 기록 형식', 'SAYU AI 다듬기', '기록 저장 및 조회'],
     highlight: false, badge: '',
   },
   {
-    plan: '프리미엄', price: '₩5,000', period: '/월',
+    plan: '프리미엄', price: '₩6,000', period: '/월',
     note: '기록을 해석하고 활용하는 확장 구독',
     bullets: ['베이직 모든 기능', 'SAYU PDF 저장', '월간/분기/연간 통계'],
     highlight: true, badge: 'RECOMMENDED',

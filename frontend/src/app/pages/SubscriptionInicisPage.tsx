@@ -16,12 +16,12 @@ const INICIS_BILLING_PLANS: Record<PaidPlan, { title: string; orderName: string;
   basic: {
     title: '베이직',
     orderName: 'HARU 베이직 월 구독',
-    priceLabel: '3,500원 / 월',
+    priceLabel: '4,000원 / 월',
   },
   premium: {
     title: '프리미엄',
     orderName: 'HARU 프리미엄 월 구독',
-    priceLabel: '5,000원 / 월',
+    priceLabel: '6,000원 / 월',
   },
 };
 

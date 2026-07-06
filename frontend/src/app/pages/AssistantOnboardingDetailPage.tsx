@@ -318,7 +318,7 @@ export function AssistantOnboardingDetailPage() {
           </div>
           <div style={priceCardStyle}>
             <div style={planNameStyle}>PREMIUM</div>
-            <div style={priceStyle}>₩5,000 / 월</div>
+            <div style={priceStyle}>₩6,000 / 월</div>
             <p style={bodyTextStyle}>합본, 통계, 더 넓은 기록 활용을 함께 쓰는 플랜입니다.</p>
             <div style={trialStyle}>7일 무료 체험 제공</div>
           </div>

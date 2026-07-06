@@ -24,7 +24,7 @@ export default function PremiumLock({ children, isPremium, message }: Props) {
           onClick={() => window.location.href = '/subscription'}
           className="bg-[#1A3C6E] text-white text-xs font-bold px-4 py-2 rounded-full hover:bg-[#10b981] transition-colors"
         >
-          월 5,000원으로 시작하기
+          월 6,000원으로 시작하기
         </button>
       </div>
     </div>

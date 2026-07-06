@@ -85,8 +85,8 @@ const ONEDRIVE_OAUTH_SCOPE = 'offline_access Files.ReadWrite User.Read';
 
 const db = admin.firestore();
 const SUBSCRIPTION_PLANS: Record<number, 'basic' | 'premium'> = {
-  3500: 'basic',
-  5000: 'premium',
+  4000: 'basic',
+  6000: 'premium',
 };
 const SINGLE_PAYMENT_REVIEW_PRODUCT = {
   orderName: 'HARU2026 단건 체험 이용권',
@@ -103,7 +103,7 @@ function addOneMonth(date: Date): Date {
 }
 
 function getSubscriptionPlanAmount(plan: string): number {
-  return plan === 'basic' ? 3500 : 5000;
+  return plan === 'basic' ? 4000 : 6000;
 }
 
 function getSubscriptionOrderName(plan: string): string {
@@ -3831,11 +3831,11 @@ export const verifyPayment = onCall(
       throw new HttpsError('failed-precondition', '결제가 완료되지 않았습니다.');
     }
 
-    // 금액 검증 (베이직 3,500원 / 프리미엄 5,000원)
+    // 금액 검증 (베이직 4,000원 / 프리미엄 6,000원)
     const paidAmount = payment.amount?.total ?? payment.totalAmount;
     const plan = SUBSCRIPTION_PLANS[paidAmount];
     if (!plan) {
-      logger.error(`금액 불일치: 기대 3500 또는 5000, 실제 ${paidAmount}`);
+      logger.error(`금액 불일치: 기대 4000 또는 6000, 실제 ${paidAmount}`);
       throw new HttpsError('invalid-argument', '결제 금액이 올바르지 않습니다.');
     }
 

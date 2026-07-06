@@ -504,7 +504,7 @@ export function MergePage() {
                 key={option.id}
                 onClick={() => {
                   if (isLocked) {
-                    alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 5,000원으로 시작해 보세요!');
+                    alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 6,000원으로 시작해 보세요!');
                     window.location.href = '/subscription';
                     return;
                   }

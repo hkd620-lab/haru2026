@@ -1084,7 +1084,7 @@ export function GyeongdaePreviewPage() {
             />
             <PriceCard
               name="PREMIUM"
-              price="₩5,000 / 월"
+              price="₩6,000 / 월"
               points={[
                 '합본, 통계, 미래보기 활용을 더 깊게 보고 싶은 분',
                 '건강, 가족, 텃밭, 독서 등 여러 기록을 관리하고 싶은 분',

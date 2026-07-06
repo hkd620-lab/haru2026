@@ -11,7 +11,7 @@ const plans = [
     id: 'basic',
     name: '베이직',
     nameEn: 'Basic',
-    price: '₩3,500',
+    price: '₩4,000',
     period: '/월',
     features: [
       '12종 기록 형식',
@@ -25,7 +25,7 @@ const plans = [
     id: 'premium',
     name: '프리미엄',
     nameEn: 'Premium',
-    price: '₩5,000',
+    price: '₩6,000',
     period: '/월',
     features: [
       '베이직 모든 기능',
