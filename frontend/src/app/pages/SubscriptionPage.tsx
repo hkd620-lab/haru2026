@@ -22,8 +22,8 @@ const PLANS: Record<PaidPlan, {
   basic: {
     title: '베이직',
     orderName: 'HARU 베이직 월 구독',
-    amount: 3500,
-    priceLabel: '₩3,500',
+    amount: 4000,
+    priceLabel: '₩4,000',
     description: '기록 생활을 안정적으로 이어가세요',
     features: [
       '12종 기록 형식',
@@ -35,8 +35,8 @@ const PLANS: Record<PaidPlan, {
   premium: {
     title: '프리미엄',
     orderName: 'HARU 프리미엄 월 구독',
-    amount: 5000,
-    priceLabel: '₩5,000',
+    amount: 6000,
+    priceLabel: '₩6,000',
     description: '기록을 더 깊게 활용하세요',
     features: [
       '베이직 모든 기능',

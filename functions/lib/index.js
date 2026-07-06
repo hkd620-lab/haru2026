@@ -120,8 +120,8 @@ const ONEDRIVE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunct
 const ONEDRIVE_OAUTH_SCOPE = 'offline_access Files.ReadWrite User.Read';
 const db = admin.firestore();
 const SUBSCRIPTION_PLANS = {
-    3500: 'basic',
-    5000: 'premium',
+    4000: 'basic',
+    6000: 'premium',
 };
 const SINGLE_PAYMENT_REVIEW_PRODUCT = {
     orderName: 'HARU2026 단건 체험 이용권',
@@ -136,7 +136,7 @@ function addOneMonth(date) {
     return next;
 }
 function getSubscriptionPlanAmount(plan) {
-    return plan === 'basic' ? 3500 : 5000;
+    return plan === 'basic' ? 4000 : 6000;
 }
 function getSubscriptionOrderName(plan) {
     return plan === 'basic' ? 'HARU 베이직 월 구독' : 'HARU 프리미엄 월 구독';
@@ -3388,11 +3388,11 @@ exports.verifyPayment = (0, https_2.onCall)({ region: 'asia-northeast3', secrets
     if (payment.status !== 'PAID') {
         throw new https_2.HttpsError('failed-precondition', '결제가 완료되지 않았습니다.');
     }
-    // 금액 검증 (베이직 3,500원 / 프리미엄 5,000원)
+    // 금액 검증 (베이직 4,000원 / 프리미엄 6,000원)
     const paidAmount = (_c = (_b = payment.amount) === null || _b === void 0 ? void 0 : _b.total) !== null && _c !== void 0 ? _c : payment.totalAmount;
     const plan = SUBSCRIPTION_PLANS[paidAmount];
     if (!plan) {
-        logger.error(`금액 불일치: 기대 3500 또는 5000, 실제 ${paidAmount}`);
+        logger.error(`금액 불일치: 기대 4000 또는 6000, 실제 ${paidAmount}`);
         throw new https_2.HttpsError('invalid-argument', '결제 금액이 올바르지 않습니다.');
     }
     // 중복 처리 방지
