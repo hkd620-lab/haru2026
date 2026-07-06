@@ -2799,6 +2799,8 @@ export function SayuPage() {
         const prefix = FORMAT_PREFIX[format];
         const entries = monthRecords
           .filter((r) => {
+            // 결과물 AI 대화 메모는 목록에서 제외 — 식물탐정 판독 상세 안에서만 표시
+            if ((r as any).source === 'result_ai_chat') return false;
             if (prefix === 'reading' && !isCompletedReadingRecord(r)) return false;
             if (r.formats && r.formats.includes(format)) return true;
             return Object.keys(r).some((k) => k.startsWith(`${prefix}_`) && !k.endsWith('_sayu') && !k.endsWith('_rating') && !k.endsWith('_polished') && !k.endsWith('_images') && !k.endsWith('_stats'));
@@ -5371,6 +5373,40 @@ export function SayuPage() {
                       })}
                     />
                   </div>
+                );
+              })()}
+
+            {plantReadOnlyDetail.type === 'detective'
+              && plantReadOnlyDetail.recordId
+              && typeof plantReadOnlyDetail.entryIdx === 'number'
+              && (() => {
+                // 이 판독(sourceRecordId + sourceIndex)에 연결된 AI 대화 메모만 모아서 표시
+                const linkedMemos = records
+                  .filter((r) =>
+                    (r as any).source === 'result_ai_chat'
+                    && (r as any).sourceRecordId === plantReadOnlyDetail.recordId
+                    && (r as any).sourceIndex === plantReadOnlyDetail.entryIdx,
+                  )
+                  .sort((a, b) => String((b as any).createdAt || '').localeCompare(String((a as any).createdAt || '')));
+                if (linkedMemos.length === 0) return null;
+                return (
+                  <section style={{ borderRadius: 14, border: '1px solid #e5e7eb', backgroundColor: '#fafafa', padding: 14, marginTop: 14 }}>
+                    <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 900, color: '#1A3C6E' }}>
+                      이 판독의 AI 대화 메모 {linkedMemos.length}개
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                      {linkedMemos.map((m) => (
+                        <div key={m.id} style={{ borderRadius: 10, padding: '10px 11px', backgroundColor: '#fff', border: '1px solid #eef2f7' }}>
+                          <p style={{ margin: '0 0 4px', fontSize: 10, fontWeight: 900, color: '#94a3b8' }}>
+                            {formatKoreanDate((m as any).date || plantReadOnlyDetail.date)}
+                          </p>
+                          <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
+                            {(m as any).memo_content || ''}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
                 );
               })()}
 
