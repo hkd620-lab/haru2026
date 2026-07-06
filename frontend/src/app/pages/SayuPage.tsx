@@ -3505,6 +3505,8 @@ export function SayuPage() {
 
   const allRecordEntries: FlatSayuEntry[] = records
     .filter((record) => isSayuScopeDate(record.date))
+    // 결과물 AI 대화 메모는 SAYU 목록·검색·달력에서 제외 — 식물탐정 판독 상세 안에서만 표시
+    .filter((record) => (record as any).source !== 'result_ai_chat')
     .flatMap((record) =>
       getRecordFormatsForList(record)
         .filter(({ prefix }) => hasCompletedFormatForRecord(record, prefix))
