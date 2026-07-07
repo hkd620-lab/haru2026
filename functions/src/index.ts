@@ -4051,6 +4051,83 @@ export const subscribeWithBillingKey = onCall(
   }
 );
 
+// ===== 💳 KG이니시스 정기구독 해지 =====
+export const cancelSubscription = onCall(
+  { region: 'asia-northeast3' },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const uid = request.auth.uid;
+    const nowIso = new Date().toISOString();
+    const subRef = db.doc(`users/${uid}/subscription/info`);
+    const billingRef = db.doc(`billingSubscriptions/${uid}`);
+
+    const result = await db.runTransaction(async (tx) => {
+      const [subSnap, billingSnap] = await Promise.all([
+        tx.get(subRef),
+        tx.get(billingRef),
+      ]);
+      const subData = subSnap.data() || {};
+      const billingData = billingSnap.data() || {};
+      const plan = subData.plan === 'basic' || subData.plan === 'premium'
+        ? subData.plan
+        : billingData.plan === 'basic' || billingData.plan === 'premium'
+          ? billingData.plan
+          : '';
+
+      if (!plan) {
+        throw new HttpsError('failed-precondition', '해지할 구독이 없습니다.');
+      }
+
+      if (subData.status === 'cancelled' || billingData.status === 'cancelled') {
+        return {
+          alreadyCancelled: true,
+          endDate: typeof subData.endDate === 'string' ? subData.endDate : null,
+        };
+      }
+
+      const endDate = typeof subData.endDate === 'string'
+        ? subData.endDate
+        : typeof billingData.endDate === 'string'
+          ? billingData.endDate
+          : nowIso;
+
+      tx.set(subRef, {
+        plan,
+        status: 'cancelled',
+        cancelAtPeriodEnd: true,
+        cancelledAt: nowIso,
+        endDate,
+        nextBillingDate: null,
+        updatedAt: nowIso,
+      }, { merge: true });
+
+      tx.set(billingRef, {
+        uid,
+        plan,
+        status: 'cancelled',
+        billingKey: null,
+        cancelAtPeriodEnd: true,
+        cancelledAt: nowIso,
+        endDate,
+        nextBillingDate: null,
+        billingLockUntil: null,
+        updatedAt: nowIso,
+      }, { merge: true });
+
+      return { alreadyCancelled: false, endDate };
+    });
+
+    logger.info('✅ 정기구독 해지 예약 — uid: %s, endDate: %s', uid, result.endDate);
+    return {
+      success: true,
+      ...result,
+    };
+  }
+);
+
 // ===== 💳 KG이니시스 정기결제 반복 과금 =====
 export const processRecurringSubscriptions = onSchedule(
   {
@@ -4062,6 +4139,41 @@ export const processRecurringSubscriptions = onSchedule(
   async () => {
     const now = new Date();
     const nowIso = now.toISOString();
+    const cancelledSnap = await db.collection('billingSubscriptions')
+      .where('status', '==', 'cancelled')
+      .limit(100)
+      .get();
+
+    for (const docSnap of cancelledSnap.docs) {
+      const uid = docSnap.id;
+      const billingRef = docSnap.ref;
+      const data = docSnap.data();
+      if (typeof data.endDate === 'string' && data.endDate > nowIso) continue;
+
+      const update = {
+        plan: 'free',
+        status: 'none',
+        paymentId: null,
+        billingKey: null,
+        nextBillingDate: null,
+        cancelAtPeriodEnd: false,
+        expiredAt: nowIso,
+        updatedAt: nowIso,
+      };
+
+      await Promise.all([
+        db.doc(`users/${uid}/subscription/info`).set(update, { merge: true }),
+        billingRef.set({
+          status: 'expired',
+          billingKey: null,
+          nextBillingDate: null,
+          expiredAt: nowIso,
+          updatedAt: nowIso,
+        }, { merge: true }),
+      ]);
+      logger.info('✅ 해지 구독 만료 처리 — uid: %s', uid);
+    }
+
     const dueSnap = await db.collection('billingSubscriptions')
       .where('status', '==', 'active')
       .limit(100)

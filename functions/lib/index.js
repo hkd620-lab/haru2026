@@ -36,8 +36,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.subscribeWithBillingKey = exports.verifyPayment = exports.generateGrowthTimelinePdf = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
-exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = void 0;
+exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.cancelSubscription = exports.subscribeWithBillingKey = exports.verifyPayment = exports.generateGrowthTimelinePdf = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
+exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -3587,6 +3587,70 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
     logger.info('✅ 정기구독 시작 — uid: %s, plan: %s, paymentId: %s', uid, plan, paymentId);
     return { success: true };
 });
+// ===== 💳 KG이니시스 정기구독 해지 =====
+exports.cancelSubscription = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    const nowIso = new Date().toISOString();
+    const subRef = db.doc(`users/${uid}/subscription/info`);
+    const billingRef = db.doc(`billingSubscriptions/${uid}`);
+    const result = await db.runTransaction(async (tx) => {
+        const [subSnap, billingSnap] = await Promise.all([
+            tx.get(subRef),
+            tx.get(billingRef),
+        ]);
+        const subData = subSnap.data() || {};
+        const billingData = billingSnap.data() || {};
+        const plan = subData.plan === 'basic' || subData.plan === 'premium'
+            ? subData.plan
+            : billingData.plan === 'basic' || billingData.plan === 'premium'
+                ? billingData.plan
+                : '';
+        if (!plan) {
+            throw new https_2.HttpsError('failed-precondition', '해지할 구독이 없습니다.');
+        }
+        if (subData.status === 'cancelled' || billingData.status === 'cancelled') {
+            return {
+                alreadyCancelled: true,
+                endDate: typeof subData.endDate === 'string' ? subData.endDate : null,
+            };
+        }
+        const endDate = typeof subData.endDate === 'string'
+            ? subData.endDate
+            : typeof billingData.endDate === 'string'
+                ? billingData.endDate
+                : nowIso;
+        tx.set(subRef, {
+            plan,
+            status: 'cancelled',
+            cancelAtPeriodEnd: true,
+            cancelledAt: nowIso,
+            endDate,
+            nextBillingDate: null,
+            updatedAt: nowIso,
+        }, { merge: true });
+        tx.set(billingRef, {
+            uid,
+            plan,
+            status: 'cancelled',
+            billingKey: null,
+            cancelAtPeriodEnd: true,
+            cancelledAt: nowIso,
+            endDate,
+            nextBillingDate: null,
+            billingLockUntil: null,
+            updatedAt: nowIso,
+        }, { merge: true });
+        return { alreadyCancelled: false, endDate };
+    });
+    logger.info('✅ 정기구독 해지 예약 — uid: %s, endDate: %s', uid, result.endDate);
+    return {
+        success: true,
+        ...result,
+    };
+});
 // ===== 💳 KG이니시스 정기결제 반복 과금 =====
 exports.processRecurringSubscriptions = (0, scheduler_1.onSchedule)({
     region: 'asia-northeast3',
@@ -3597,6 +3661,38 @@ exports.processRecurringSubscriptions = (0, scheduler_1.onSchedule)({
     var _a;
     const now = new Date();
     const nowIso = now.toISOString();
+    const cancelledSnap = await db.collection('billingSubscriptions')
+        .where('status', '==', 'cancelled')
+        .limit(100)
+        .get();
+    for (const docSnap of cancelledSnap.docs) {
+        const uid = docSnap.id;
+        const billingRef = docSnap.ref;
+        const data = docSnap.data();
+        if (typeof data.endDate === 'string' && data.endDate > nowIso)
+            continue;
+        const update = {
+            plan: 'free',
+            status: 'none',
+            paymentId: null,
+            billingKey: null,
+            nextBillingDate: null,
+            cancelAtPeriodEnd: false,
+            expiredAt: nowIso,
+            updatedAt: nowIso,
+        };
+        await Promise.all([
+            db.doc(`users/${uid}/subscription/info`).set(update, { merge: true }),
+            billingRef.set({
+                status: 'expired',
+                billingKey: null,
+                nextBillingDate: null,
+                expiredAt: nowIso,
+                updatedAt: nowIso,
+            }, { merge: true }),
+        ]);
+        logger.info('✅ 해지 구독 만료 처리 — uid: %s', uid);
+    }
     const dueSnap = await db.collection('billingSubscriptions')
         .where('status', '==', 'active')
         .limit(100)

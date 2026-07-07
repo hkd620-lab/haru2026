@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, Database, Download, Trash2, BarChart3, LogOut, User, Moon, Sun, Bell, BellOff, Clock, Megaphone, Sparkles, ShieldCheck } from 'lucide-react';
+import { Settings, Database, Download, Trash2, BarChart3, LogOut, User, Moon, Sun, Bell, BellOff, Clock, Megaphone, Sparkles, ShieldCheck, CreditCard } from 'lucide-react';
 import { firestoreService } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -17,10 +17,11 @@ const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 export function SettingsPage() {
   const { user, signOut } = useAuth();
   const { isDark, toggleTheme } = useTheme();
-  const { isPremium } = useSubscription();
+  const { subscription, isPremium, loading: subscriptionLoading } = useSubscription();
   const navigate = useNavigate();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
+  const [isCancellingSubscription, setIsCancellingSubscription] = useState(false);
   
   // 알림 관련 상태
   const [notificationEnabled, setNotificationEnabled] = useState(true);
@@ -62,6 +63,21 @@ export function SettingsPage() {
 
   const isAdmin = user?.uid === ADMIN_UID;
   const isDevUser = user?.email === 'hkd620@gmail.com';
+  const hasPaidSubscription = subscription.plan === 'basic' || subscription.plan === 'premium';
+  const canCancelSubscription = hasPaidSubscription && subscription.status === 'active';
+  const subscriptionPlanLabel = subscription.plan === 'basic'
+    ? '베이직'
+    : subscription.plan === 'premium'
+      ? '프리미엄'
+      : '무료';
+  const subscriptionStatusLabel = subscription.status === 'active'
+    ? '이용 중'
+    : subscription.status === 'cancelled'
+      ? '해지 예약됨'
+      : '미구독';
+  const subscriptionEndLabel = subscription.endDate
+    ? new Date(subscription.endDate).toLocaleDateString('ko-KR')
+    : null;
 
   useEffect(() => {
     if (user?.uid) {
@@ -436,6 +452,32 @@ export function SettingsPage() {
     navigate('/subscription');
   };
 
+  const handleCancelSubscription = async () => {
+    if (!user?.uid) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+
+    const message = subscriptionEndLabel
+      ? `구독을 해지하면 다음 결제는 중단되고 ${subscriptionEndLabel}까지 이용할 수 있습니다.\n\n정말 해지하시겠습니까?`
+      : '구독을 해지하면 다음 결제가 중단됩니다.\n\n정말 해지하시겠습니까?';
+    if (!confirm(message)) return;
+
+    setIsCancellingSubscription(true);
+    try {
+      const functions = getFunctions(undefined, 'asia-northeast3');
+      const cancelSubscription = httpsCallable(functions, 'cancelSubscription');
+      await cancelSubscription({});
+      toast.success('구독 해지가 예약되었습니다. 다음 결제는 진행되지 않습니다.');
+      setTimeout(() => window.location.reload(), 800);
+    } catch (error: any) {
+      console.error('구독 해지 실패:', error);
+      toast.error(error?.message || '구독 해지에 실패했습니다.');
+    } finally {
+      setIsCancellingSubscription(false);
+    }
+  };
+
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
       <div className="mb-8">
@@ -474,6 +516,73 @@ export function SettingsPage() {
           </div>
           {/* 장식용 원 */}
           <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/5 rounded-full blur-2xl"></div>
+        </section>
+
+        <section className="bg-white rounded-lg p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-5">
+            <CreditCard className="w-5 h-5" style={{ color: '#1A3C6E' }} />
+            <h2 className="text-base tracking-wide" style={{ color: '#333' }}>
+              구독 관리
+            </h2>
+          </div>
+
+          {subscriptionLoading ? (
+            <p className="text-sm" style={{ color: '#999' }}>구독 정보를 불러오는 중...</p>
+          ) : (
+            <div className="space-y-3">
+              <div
+                className="flex items-center justify-between gap-3 py-3 px-4 rounded-lg"
+                style={{ border: '1px solid #e5e5e5', backgroundColor: '#F9FAFB' }}
+              >
+                <div>
+                  <p className="text-sm" style={{ color: '#333', fontWeight: 700 }}>
+                    {subscriptionPlanLabel} 플랜
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: '#666' }}>
+                    {subscriptionStatusLabel}
+                    {subscriptionEndLabel ? ` · 이용 종료일 ${subscriptionEndLabel}` : ''}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleGoToSubscription}
+                  className="px-3 py-2 rounded-lg text-xs transition-all hover:opacity-90"
+                  style={{ backgroundColor: '#1A3C6E', color: '#fff', fontWeight: 700 }}
+                >
+                  플랜 보기
+                </button>
+              </div>
+
+              {canCancelSubscription && (
+                <button
+                  type="button"
+                  onClick={handleCancelSubscription}
+                  disabled={isCancellingSubscription}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-80 text-left disabled:opacity-50"
+                  style={{
+                    backgroundColor: '#FFF5F5',
+                    border: '1px solid #fca5a5',
+                  }}
+                >
+                  <Trash2 className="w-4 h-4 flex-shrink-0" style={{ color: '#dc2626' }} />
+                  <div>
+                    <p className="text-sm" style={{ color: '#dc2626', fontWeight: 600 }}>
+                      {isCancellingSubscription ? '구독 해지 처리 중...' : '구독 해지'}
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: '#999' }}>
+                      다음 결제를 중단하고 남은 기간까지 이용합니다.
+                    </p>
+                  </div>
+                </button>
+              )}
+
+              {subscription.status === 'cancelled' && (
+                <p className="text-xs leading-relaxed" style={{ color: '#999' }}>
+                  구독 해지가 예약되어 다음 결제는 진행되지 않습니다.
+                </p>
+              )}
+            </div>
+          )}
         </section>
 
         <section className="bg-white rounded-lg p-6 shadow-sm">
