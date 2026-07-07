@@ -59,6 +59,30 @@ const trimTitle = (value: string, limit = 54) => {
   return normalized.length > limit ? `${normalized.slice(0, limit - 1)}…` : normalized;
 };
 
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const highlightKeyword = (text: string, kw: string): ReactNode => {
+  if (!kw) return text;
+  const parts = text.split(new RegExp(`(${escapeRegExp(kw)})`, 'gi'));
+  if (parts.length <= 1) return text;
+  return parts.map((part, i) => (
+    i % 2 === 1
+      ? <span key={i} style={{ color: '#DC2626', fontWeight: 800 }}>{part}</span>
+      : part
+  ));
+};
+
+const buildPreviewSnippet = (text: string, kw: string, radius = 60) => {
+  if (!kw) return text.slice(0, 100) + (text.length > 100 ? '...' : '');
+  const idx = text.toLowerCase().indexOf(kw.toLowerCase());
+  if (idx === -1 || idx < 100) {
+    return text.slice(0, 100) + (text.length > 100 ? '...' : '');
+  }
+  const start = Math.max(0, idx - radius);
+  const end = Math.min(text.length, idx + kw.length + radius);
+  return `${start > 0 ? '…' : ''}${text.slice(start, end)}${end < text.length ? '…' : ''}`;
+};
+
 const isGenericStoredTitle = (record: HaruRecord, title?: string) => {
   const text = cleanText(title);
   if (!text) return true;
@@ -611,12 +635,13 @@ export function AiLibraryPage() {
             const isConverting = bookMaterialBusy.has(log.id);
             const displayTitle = getDisplayTitle(log, material);
             const materialPreview = material ? getMaterialPreviewText(log, material) : '';
+            const trimmedKeyword = keyword.trim();
             const displayText = material
               ? materialPreview
               : log.content
                 ? isExpanded
                   ? log.content
-                  : log.content.slice(0, 100) + (log.content.length > 100 ? '...' : '')
+                  : buildPreviewSnippet(log.content, trimmedKeyword)
                 : '';
             return (
             <div
@@ -674,11 +699,11 @@ export function AiLibraryPage() {
                 </span>
               </div>
               <p style={{ fontSize: '15px', fontWeight: 700, color: '#222', margin: '0 0 4px', lineHeight: 1.35 }}>
-                {displayTitle}
+                {highlightKeyword(displayTitle, trimmedKeyword)}
               </p>
               {!isGenericStoredTitle(log, log.title) && log.title && log.title !== displayTitle && (
                 <p style={{ fontSize: 11, color: '#8A94A6', margin: '0 0 6px' }}>
-                  원제목: {log.title}
+                  원제목: {highlightKeyword(log.title, trimmedKeyword)}
                 </p>
               )}
               {material && (
@@ -704,7 +729,7 @@ export function AiLibraryPage() {
                   border: material ? '1px solid #F0E4C2' : undefined,
                 }}
               >
-                {displayText}
+                {highlightKeyword(displayText, trimmedKeyword)}
               </p>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: '8px', flexWrap: 'wrap' }}>
                 <button
@@ -778,7 +803,7 @@ export function AiLibraryPage() {
                   {material && log.content && (
                     <div style={{ marginTop: 10 }}>
                       <MaterialBlock label="원문 대화" tint="#FFFFFF">
-                        {log.content}
+                        {highlightKeyword(log.content, trimmedKeyword)}
                       </MaterialBlock>
                     </div>
                   )}
