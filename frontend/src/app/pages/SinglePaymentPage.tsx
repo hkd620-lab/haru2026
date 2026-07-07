@@ -10,16 +10,36 @@ type PaymentResponse = {
   paymentId?: string;
 };
 
-const SINGLE_PAYMENT_PRODUCT = {
-  orderName: 'HARU2026 단건 체험 이용권',
-  amount: 1000,
-  amountLabel: '1,000원',
+type PaidPlan = 'basic' | 'premium';
+
+const SINGLE_PAYMENT_PRODUCTS: Record<PaidPlan, {
+  title: string;
+  orderName: string;
+  amount: number;
+  amountLabel: string;
+  description: string;
+}> = {
+  basic: {
+    title: '베이직',
+    orderName: 'HARU2026 베이직 1개월 이용권',
+    amount: 4000,
+    amountLabel: '4,000원',
+    description: '자동갱신 없이 30일 동안 베이직 기능을 이용합니다.',
+  },
+  premium: {
+    title: '프리미엄',
+    orderName: 'HARU2026 프리미엄 1개월 이용권',
+    amount: 6000,
+    amountLabel: '6,000원',
+    description: '자동갱신 없이 30일 동안 프리미엄 기능을 이용합니다.',
+  },
 };
 
 export default function SinglePaymentPage() {
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [resultMessage, setResultMessage] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState<PaidPlan>('premium');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -35,6 +55,7 @@ export default function SinglePaymentPage() {
     if (authLoading || redirectProcessedRef.current) return;
     const params = new URLSearchParams(window.location.search);
     const redirectedPaymentId = params.get('paymentId');
+    const redirectedPlan = params.get('plan') === 'basic' ? 'basic' : 'premium';
     if (!redirectedPaymentId) return;
     redirectProcessedRef.current = true;
 
@@ -47,8 +68,8 @@ export default function SinglePaymentPage() {
       setLoading(true);
       try {
         const verifySinglePayment = httpsCallable(functions, 'verifySinglePayment');
-        await verifySinglePayment({ paymentId: redirectedPaymentId });
-        if (!cancelled) setResultMessage('결제가 완료되었습니다.');
+        await verifySinglePayment({ paymentId: redirectedPaymentId, plan: redirectedPlan });
+        if (!cancelled) setResultMessage(`${SINGLE_PAYMENT_PRODUCTS[redirectedPlan].title} 1개월 이용권 결제가 완료되었습니다.`);
       } catch (error: any) {
         console.error('단건결제 검증 오류:', error);
         if (!cancelled) setResultMessage(error?.message || '결제 검증에 실패했습니다.');
@@ -66,13 +87,14 @@ export default function SinglePaymentPage() {
   const handleSinglePayment = async () => {
     if (authLoading) return;
     if (!user) {
-      setResultMessage('로그인 후 결제할 수 있습니다.');
+      setResultMessage('HARU2026 이용권은 기록 데이터와 연결되므로 로그인 후 결제할 수 있습니다.');
       return;
     }
     setLoading(true);
     setResultMessage('');
 
     try {
+      const product = SINGLE_PAYMENT_PRODUCTS[selectedPlan];
       const inicisChannelKey = import.meta.env.VITE_PORTONE_INICIS_CHANNEL_KEY || import.meta.env.VITE_PORTONE_CHANNEL_KEY;
       if (!inicisChannelKey) {
         throw new Error('KG이니시스 일반결제 채널 키가 설정되지 않았습니다.');
@@ -101,8 +123,8 @@ export default function SinglePaymentPage() {
         storeId: import.meta.env.VITE_PORTONE_STORE_ID,
         channelKey: inicisChannelKey,
         paymentId,
-        orderName: SINGLE_PAYMENT_PRODUCT.orderName,
-        totalAmount: SINGLE_PAYMENT_PRODUCT.amount,
+        orderName: product.orderName,
+        totalAmount: product.amount,
         currency: 'KRW',
         payMethod: 'CARD',
         customer: {
@@ -112,18 +134,22 @@ export default function SinglePaymentPage() {
         },
         products: [
           {
-            id: 'haru2026-single-review-pass',
-            name: SINGLE_PAYMENT_PRODUCT.orderName,
-            amount: SINGLE_PAYMENT_PRODUCT.amount,
+            id: `haru2026-${selectedPlan}-one-month-pass`,
+            name: product.orderName,
+            amount: product.amount,
             quantity: 1,
           },
         ],
         customData: {
-          purpose: 'kg_inicis_single_payment',
+          purpose: 'kg_inicis_one_month_pass',
+          paymentType: 'one_time',
+          billingType: 'single',
+          durationDays: 30,
+          plan: selectedPlan,
           guestAllowed: false,
           uid: user.uid,
         },
-        redirectUrl: `${window.location.origin}/payment/single`,
+        redirectUrl: `${window.location.origin}/payment/single?plan=${selectedPlan}`,
       }) as PaymentResponse | undefined;
 
       if (!response) {
@@ -142,8 +168,8 @@ export default function SinglePaymentPage() {
       }
 
       const verifySinglePayment = httpsCallable(functions, 'verifySinglePayment');
-      await verifySinglePayment({ paymentId: completedPaymentId });
-      setResultMessage('결제가 완료되었습니다.');
+      await verifySinglePayment({ paymentId: completedPaymentId, plan: selectedPlan });
+      setResultMessage(`${product.title} 1개월 이용권 결제가 완료되었습니다.`);
     } catch (error: any) {
       console.error('단건결제 오류:', error);
       setResultMessage(error?.message || '결제 중 오류가 발생했습니다.');
@@ -152,24 +178,52 @@ export default function SinglePaymentPage() {
     }
   };
 
+  const selectedProduct = SINGLE_PAYMENT_PRODUCTS[selectedPlan];
+
   return (
     <div className="min-h-screen bg-[#F7F4EC] flex items-center justify-center px-4 py-10">
       <section className="w-full max-w-md bg-white border border-[#e5decf] rounded-lg shadow-sm p-6">
         <div className="mb-6">
           <p className="text-xs font-bold text-[#4F46E5] mb-2">KG이니시스 일반결제</p>
-          <h1 className="text-2xl font-black text-[#1A3C6E] mb-2">HARU2026 단건 체험 이용권</h1>
-          <p className="text-sm text-gray-600">로그인한 회원 계정 기준으로 KG이니시스 일반결제창을 엽니다.</p>
+          <h1 className="text-2xl font-black text-[#1A3C6E] mb-2">HARU2026 1개월 이용권</h1>
+          <p className="text-sm text-gray-600">자동갱신 없는 30일 이용권입니다. 기록 데이터와 연결되므로 로그인 후 결제할 수 있습니다.</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 mb-5">
+          {(Object.keys(SINGLE_PAYMENT_PRODUCTS) as PaidPlan[]).map((planId) => {
+            const product = SINGLE_PAYMENT_PRODUCTS[planId];
+            const isSelected = selectedPlan === planId;
+
+            return (
+              <button
+                key={planId}
+                type="button"
+                onClick={() => setSelectedPlan(planId)}
+                disabled={loading}
+                className="rounded-lg border px-3 py-3 text-left transition-all disabled:opacity-50"
+                style={{
+                  borderColor: isSelected ? '#1A3C6E' : '#e5decf',
+                  backgroundColor: isSelected ? '#EEF4FF' : '#fff',
+                }}
+              >
+                <p className="text-sm font-black text-[#1A3C6E]">{product.title}</p>
+                <p className="mt-1 text-lg font-black text-gray-800">{product.amountLabel}</p>
+                <p className="mt-1 text-xs leading-4 text-gray-500">{product.description}</p>
+              </button>
+            );
+          })}
         </div>
 
         <div className="border-y border-gray-100 py-5 mb-5">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm text-gray-500">상품명</span>
-            <span className="text-sm font-bold text-gray-800">{SINGLE_PAYMENT_PRODUCT.orderName}</span>
+            <span className="text-sm font-bold text-gray-800">{selectedProduct.orderName}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-500">결제금액</span>
-            <span className="text-2xl font-black text-[#1A3C6E]">{SINGLE_PAYMENT_PRODUCT.amountLabel}</span>
+            <span className="text-2xl font-black text-[#1A3C6E]">{selectedProduct.amountLabel}</span>
           </div>
+          <p className="mt-3 text-xs text-gray-400">자동갱신 없음 · 정기결제 아님 · 30일 이용권</p>
         </div>
 
         <div className="mb-5">
@@ -227,7 +281,7 @@ export default function SinglePaymentPage() {
           disabled={loading}
           className="w-full rounded-lg bg-[#1A3C6E] px-4 py-4 text-base font-black text-white transition-colors hover:bg-[#142f57] disabled:opacity-50"
         >
-          {loading ? '결제 처리 중...' : '일반결제창 열기'}
+          {loading ? '결제 처리 중...' : `${selectedProduct.title} 1개월 이용권 결제`}
         </button>
 
         {resultMessage && (
@@ -237,7 +291,7 @@ export default function SinglePaymentPage() {
         )}
 
         <p className="mt-5 text-center text-xs leading-5 text-gray-400">
-          일반결제는 회원 계정 기준으로 처리되며 HARU2026 구독 플랜과 분리된 단건 상품입니다.
+          HARU2026 이용권은 기록 데이터와 연결되므로 회원 계정 기준으로만 처리됩니다.
         </p>
       </section>
     </div>

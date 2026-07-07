@@ -126,8 +126,18 @@ const SUBSCRIPTION_PLANS = {
     6000: 'premium',
 };
 const SINGLE_PAYMENT_REVIEW_PRODUCT = {
-    orderName: 'HARU2026 단건 체험 이용권',
-    amount: 1000,
+    orderName: 'HARU2026 1개월 이용권',
+    durationDays: 30,
+    plans: {
+        basic: {
+            orderName: 'HARU2026 베이직 1개월 이용권',
+            amount: 4000,
+        },
+        premium: {
+            orderName: 'HARU2026 프리미엄 1개월 이용권',
+            amount: 6000,
+        },
+    },
 };
 const HARU_LAW_SHARE_DISCLAIMER = '본 내용은 법령 정보 제공 목적이며, 전문적인 법률·세무 자문을 대체하지 않습니다.\n구체적인 사건은 관련 자료를 가지고 전문가 상담을 받으시기 바랍니다.';
 const HARU_LAW_SHARE_PREVIEW_TTL_MS = 30 * 60 * 1000;
@@ -1125,12 +1135,21 @@ const RESULT_CHAT_LIMIT_NOTICES = {
 };
 // 요금제 조회 — subscription/info.plan (free/basic/premium). 개발자 UID는 premium 우회.
 async function getUserPlan(uid) {
-    var _a;
     if (DEVELOPER_UIDS.has(uid))
         return 'premium';
     try {
         const snap = await db.doc(`users/${uid}/subscription/info`).get();
-        const plan = String(((_a = snap.data()) === null || _a === void 0 ? void 0 : _a.plan) || '').toLowerCase();
+        const data = snap.data() || {};
+        const plan = String(data.plan || '').toLowerCase();
+        const endDate = data.endDate;
+        const expiresAt = data.expiresAt;
+        const endTime = typeof endDate === 'string'
+            ? Date.parse(endDate)
+            : typeof (expiresAt === null || expiresAt === void 0 ? void 0 : expiresAt.toMillis) === 'function'
+                ? expiresAt.toMillis()
+                : Number.NaN;
+        if (Number.isFinite(endTime) && endTime < Date.now())
+            return 'free';
         if (plan === 'premium')
             return 'premium';
         if (plan === 'basic')
@@ -3790,67 +3809,108 @@ exports.processRecurringSubscriptions = (0, scheduler_1.onSchedule)({
         }
     }
 });
-// ===== 💳 KG이니시스 심사용 일반(단건)결제 검증 =====
+// ===== 💳 KG이니시스 일반(단건) 1개월 이용권 검증 =====
 exports.verifySinglePayment = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] }, async (request) => {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _f;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
     const paymentId = (_a = request.data) === null || _a === void 0 ? void 0 : _a.paymentId;
+    const requestedPlanRaw = (_b = request.data) === null || _b === void 0 ? void 0 : _b.plan;
     const uid = request.auth.uid;
     if (!paymentId || typeof paymentId !== 'string') {
         throw new https_2.HttpsError('invalid-argument', 'paymentId가 필요합니다.');
     }
+    if (requestedPlanRaw !== 'basic' && requestedPlanRaw !== 'premium') {
+        throw new https_2.HttpsError('invalid-argument', 'plan 값이 올바르지 않습니다.');
+    }
+    const requestedPlan = requestedPlanRaw;
+    const singleProduct = SINGLE_PAYMENT_REVIEW_PRODUCT.plans[requestedPlan];
     let payment;
     try {
         const portoneRes = await axios_1.default.get(`https://api.portone.io/payments/${encodeURIComponent(paymentId)}`, { headers: { Authorization: `PortOne ${PORTONE_API_SECRET.value().trim()}` } });
         payment = portoneRes.data;
     }
     catch (e) {
-        logger.error('PortOne 단건결제 조회 실패:', ((_b = e === null || e === void 0 ? void 0 : e.response) === null || _b === void 0 ? void 0 : _b.data) || e.message);
+        logger.error('PortOne 단건결제 조회 실패:', ((_c = e === null || e === void 0 ? void 0 : e.response) === null || _c === void 0 ? void 0 : _c.data) || e.message);
         throw new https_2.HttpsError('internal', '결제 정보를 조회할 수 없습니다.');
     }
     if (payment.status !== 'PAID') {
         throw new https_2.HttpsError('failed-precondition', '결제가 완료되지 않았습니다.');
     }
-    const paidAmount = (_d = (_c = payment.amount) === null || _c === void 0 ? void 0 : _c.total) !== null && _d !== void 0 ? _d : payment.totalAmount;
-    if (paidAmount !== SINGLE_PAYMENT_REVIEW_PRODUCT.amount) {
+    const paidAmount = (_f = (_d = payment.amount) === null || _d === void 0 ? void 0 : _d.total) !== null && _f !== void 0 ? _f : payment.totalAmount;
+    if (paidAmount !== singleProduct.amount) {
         logger.error('단건결제 금액 불일치:', {
             paymentId,
-            expected: SINGLE_PAYMENT_REVIEW_PRODUCT.amount,
+            plan: requestedPlan,
+            expected: singleProduct.amount,
             actual: paidAmount,
         });
         throw new https_2.HttpsError('invalid-argument', '결제 금액이 올바르지 않습니다.');
     }
     const orderName = typeof payment.orderName === 'string' ? payment.orderName : '';
-    if (orderName && orderName !== SINGLE_PAYMENT_REVIEW_PRODUCT.orderName) {
+    if (orderName && orderName !== singleProduct.orderName) {
         logger.error('단건결제 상품명 불일치:', {
             paymentId,
-            expected: SINGLE_PAYMENT_REVIEW_PRODUCT.orderName,
+            plan: requestedPlan,
+            expected: singleProduct.orderName,
             actual: orderName,
         });
         throw new https_2.HttpsError('invalid-argument', '결제 상품명이 올바르지 않습니다.');
     }
-    const now = new Date().toISOString();
+    const nowDate = new Date();
+    const expiresDate = new Date(nowDate);
+    expiresDate.setDate(expiresDate.getDate() + SINGLE_PAYMENT_REVIEW_PRODUCT.durationDays);
+    const now = nowDate.toISOString();
+    const expiresAt = admin.firestore.Timestamp.fromDate(expiresDate);
     const singlePaymentRef = db.doc(`paymentReviews/single/payments/${paymentId}`);
     const existing = await singlePaymentRef.get();
     if (existing.exists) {
         return { success: true, alreadyProcessed: true };
     }
-    await singlePaymentRef.set({
-        paymentId,
-        orderName: SINGLE_PAYMENT_REVIEW_PRODUCT.orderName,
-        amount: SINGLE_PAYMENT_REVIEW_PRODUCT.amount,
-        status: payment.status,
-        type: 'single_payment',
-        uid,
-        guestAllowed: false,
-        provider: 'kg_inicis',
-        createdAt: now,
-        updatedAt: now,
-    });
-    logger.info('✅ KG이니시스 심사용 단건결제 검증 완료 — paymentId: %s', paymentId);
-    return { success: true };
+    await Promise.all([
+        db.doc(`users/${uid}/subscription/info`).set({
+            status: 'active',
+            plan: requestedPlan,
+            paymentType: 'one_time',
+            billingType: 'single',
+            autoRenew: false,
+            startDate: now,
+            startedAt: admin.firestore.FieldValue.serverTimestamp(),
+            endDate: expiresDate.toISOString(),
+            expiresAt,
+            nextBillingDate: null,
+            lastPaymentId: paymentId,
+            lastPaidAmount: singleProduct.amount,
+            payMethod: 'kg_inicis_card',
+            provider: 'kg_inicis',
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true }),
+        singlePaymentRef.set({
+            paymentId,
+            orderName: singleProduct.orderName,
+            amount: singleProduct.amount,
+            status: payment.status,
+            type: 'single_payment',
+            paymentType: 'one_time',
+            billingType: 'single',
+            durationDays: SINGLE_PAYMENT_REVIEW_PRODUCT.durationDays,
+            plan: requestedPlan,
+            uid,
+            guestAllowed: false,
+            provider: 'kg_inicis',
+            grantResult: 'subscription_30days_granted',
+            grantedUntil: expiresAt,
+            createdAt: now,
+            updatedAt: now,
+        }),
+    ]);
+    logger.info('✅ KG이니시스 단건 1개월 이용권 검증 완료 — uid: %s, plan: %s, paymentId: %s', uid, requestedPlan, paymentId);
+    return {
+        success: true,
+        plan: requestedPlan,
+        expiresAt: expiresDate.toISOString(),
+    };
 });
 // ===== 🗑️ 일회성 마이그레이션: 모든 사용자 _tags 필드 일괄 삭제 =====
 exports.removeAllTags = (0, https_1.onRequest)({ region: 'asia-northeast3' }, async (req, res) => {

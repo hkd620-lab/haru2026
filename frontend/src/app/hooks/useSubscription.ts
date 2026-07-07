@@ -29,7 +29,21 @@ export function useSubscription() {
         const ref = doc(db, 'users', user.uid, 'subscription', 'info');
         const snap = await getDoc(ref);
         if (snap.exists()) {
-          setSubscription(snap.data() as SubscriptionInfo);
+          const data = snap.data() as SubscriptionInfo & { expiresAt?: { toMillis?: () => number } };
+          const endTime = data.endDate
+            ? Date.parse(data.endDate)
+            : typeof data.expiresAt?.toMillis === 'function'
+              ? data.expiresAt.toMillis()
+              : Number.NaN;
+          if (Number.isFinite(endTime) && endTime < Date.now()) {
+            setSubscription({
+              ...DEFAULT_SUBSCRIPTION,
+              endDate: data.endDate || null,
+              updatedAt: data.updatedAt || DEFAULT_SUBSCRIPTION.updatedAt,
+            });
+          } else {
+            setSubscription(data);
+          }
         } else {
           setSubscription(DEFAULT_SUBSCRIPTION);
         }
@@ -44,7 +58,7 @@ export function useSubscription() {
     fetchSubscription();
   }, [user]);
 
-  const isPremium = subscription.plan === 'premium';
+  const isPremium = subscription.plan === 'premium' && subscription.status === 'active';
 
   return { subscription, isPremium, loading };
 }
