@@ -11,7 +11,12 @@
   --soft: #eef6f3;
   --focus: #f2b84b;
   font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
     sans-serif;
 }
 
@@ -46,51 +51,57 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
+/* ── 레이아웃 ─────────────────────────────────────────────────────────────── */
+
 .app-shell {
   width: min(1280px, calc(100vw - 32px));
   margin: 0 auto;
   padding: 28px 0 40px;
 }
 
-.topbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 520px);
-  gap: 24px;
-  align-items: end;
-  margin-bottom: 24px;
+/* ── 상단 공지 ────────────────────────────────────────────────────────────── */
+
+.notice-banner {
+  padding: 10px 16px;
+  margin-bottom: 20px;
+  border: 1px solid #c8e6e0;
+  border-radius: 8px;
+  background: #f0faf7;
+  color: #1a5f49;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
-.topbar h1,
-.topbar p,
-.panel h2,
-.list-toolbar h2,
-.list-toolbar p,
-.candidate-card p,
-.candidate-card h3 {
-  margin: 0;
+/* ── 헤더 ─────────────────────────────────────────────────────────────────── */
+
+.topbar {
+  margin-bottom: 20px;
 }
 
 .topbar h1 {
-  font-size: 30px;
-  line-height: 1.18;
-  letter-spacing: 0;
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.2;
 }
 
 .topbar p {
-  margin-top: 8px;
+  margin: 8px 0 0;
   color: var(--muted);
   line-height: 1.55;
 }
 
-.summary-grid {
+/* ── 통계 바 (7개) ───────────────────────────────────────────────────────── */
+
+.stats-bar {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 8px;
+  margin-bottom: 24px;
 }
 
 .summary-item {
-  min-height: 72px;
-  padding: 12px;
+  min-height: 68px;
+  padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -99,14 +110,19 @@ textarea:focus-visible {
 .summary-item span {
   display: block;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .summary-item strong {
   display: block;
-  margin-top: 8px;
+  margin-top: 6px;
   font-size: 22px;
 }
+
+/* ── 워크스페이스 ─────────────────────────────────────────────────────────── */
 
 .workspace {
   display: grid;
@@ -130,9 +146,18 @@ textarea:focus-visible {
 
 .panel h2,
 .list-toolbar h2 {
+  margin: 0;
   font-size: 18px;
   line-height: 1.3;
 }
+
+/* ── 필드명 스타일 ────────────────────────────────────────────────────────── */
+
+.req {
+  color: var(--danger);
+}
+
+/* ── 입력 폼 ──────────────────────────────────────────────────────────────── */
 
 .candidate-form {
   display: grid;
@@ -147,6 +172,12 @@ label,
   color: #303a47;
   font-size: 14px;
   font-weight: 650;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 
 input,
@@ -172,12 +203,13 @@ textarea {
   line-height: 1.45;
 }
 
-.form-actions,
-.card-actions {
+.form-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
+
+/* ── 버튼 ─────────────────────────────────────────────────────────────────── */
 
 .primary-button,
 .ghost-button,
@@ -185,7 +217,8 @@ textarea {
 .copy-button,
 .record-button,
 .edit-button,
-.delete-button {
+.delete-button,
+.csv-button {
   min-height: 38px;
   border-radius: 6px;
   padding: 0 12px;
@@ -206,7 +239,8 @@ textarea {
 .ghost-button,
 .copy-button,
 .record-button,
-.edit-button {
+.edit-button,
+.csv-button {
   border: 1px solid var(--line);
   background: #fff;
   color: var(--text);
@@ -215,14 +249,49 @@ textarea {
 .ghost-button:hover,
 .copy-button:hover,
 .record-button:hover,
-.edit-button:hover {
+.edit-button:hover,
+.csv-button:hover {
   background: #f4f6f8;
 }
 
 .delete-button {
   background: #fff3f1;
   color: var(--danger);
+  border: 1px solid #ffd5d0;
 }
+
+/* ── CSV 섹션 ─────────────────────────────────────────────────────────────── */
+
+.csv-section {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.csv-section h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.csv-desc {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.csv-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.csv-import-label {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+/* ── 목록 패널 ────────────────────────────────────────────────────────────── */
 
 .list-panel {
   min-height: 520px;
@@ -239,16 +308,44 @@ textarea {
 }
 
 .list-toolbar p {
-  margin-top: 4px;
+  margin: 4px 0 0;
   color: var(--muted);
   font-size: 13px;
 }
 
-.toolbar-controls {
-  display: grid;
-  grid-template-columns: minmax(220px, 340px) 132px;
-  gap: 8px;
+.list-toolbar input[type="search"] {
+  width: 260px;
+  flex-shrink: 0;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
 }
+
+/* ── 필터 바 ──────────────────────────────────────────────────────────────── */
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  background: #fafbfc;
+}
+
+.filter-bar select {
+  height: 36px;
+  padding: 0 10px;
+  font-size: 13px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  width: auto;
+  min-width: 0;
+}
+
+/* ── 후보 목록 ────────────────────────────────────────────────────────────── */
 
 .candidate-list {
   display: grid;
@@ -262,6 +359,8 @@ textarea {
   text-align: center;
   line-height: 1.5;
 }
+
+/* ── 후보 카드 ────────────────────────────────────────────────────────────── */
 
 .candidate-card {
   display: grid;
@@ -281,6 +380,7 @@ textarea {
 }
 
 .candidate-name {
+  margin: 0;
   overflow-wrap: anywhere;
   font-size: 18px;
   line-height: 1.35;
@@ -295,16 +395,76 @@ textarea {
   font-size: 13px;
 }
 
+/* ── 태그 ─────────────────────────────────────────────────────────────────── */
+
+.candidate-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.tag {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #e9ecf0;
+  color: #3a4452;
+  white-space: nowrap;
+}
+
+/* 관심도별 색상 */
+.interest-tag[data-level="높음"] {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.interest-tag[data-level="매우높음"] {
+  background: #a7f3d0;
+  color: #064e3b;
+}
+
+.interest-tag[data-level="낮음"] {
+  background: #f1f3f5;
+  color: var(--muted);
+}
+
+/* HARU 안내 현황별 색상 */
+.haru-tag[data-haru="체험링크전달"] {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.haru-tag[data-haru="관심보임"] {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.haru-tag[data-haru="거절/무반응"] {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* 댓글 여부 */
+.comment-tag[data-comment="답글받음"] {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+/* ── 메타 / 메모 ──────────────────────────────────────────────────────────── */
+
 .candidate-meta,
 .candidate-memo {
-  margin-top: 10px;
+  margin: 10px 0 0;
   color: var(--muted);
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
 
 .candidate-meta {
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .candidate-memo {
@@ -312,15 +472,32 @@ textarea {
 }
 
 .draft-label {
+  display: grid;
+  gap: 7px;
   margin-top: 12px;
+  color: #303a47;
+  font-size: 14px;
+  font-weight: 650;
 }
 
 .draft-text {
   min-height: 112px;
   color: #26313d;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 11px 12px;
+  resize: vertical;
+  line-height: 1.45;
+  font: inherit;
 }
 
+/* ── 카드 액션 버튼 ───────────────────────────────────────────────────────── */
+
 .card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   align-content: start;
 }
 
@@ -328,8 +505,25 @@ textarea {
   width: 100%;
 }
 
+/* ── 하단 공지 ────────────────────────────────────────────────────────────── */
+
+.app-footer {
+  margin-top: 40px;
+  padding: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+/* ── 반응형: 980px ────────────────────────────────────────────────────────── */
+
 @media (max-width: 980px) {
-  .topbar,
+  .stats-bar {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .workspace {
     grid-template-columns: 1fr;
   }
@@ -339,22 +533,38 @@ textarea {
   }
 }
 
+/* ── 반응형: 680px ────────────────────────────────────────────────────────── */
+
 @media (max-width: 680px) {
   .app-shell {
     width: min(100vw - 20px, 1280px);
     padding-top: 18px;
   }
 
-  .summary-grid,
-  .toolbar-controls,
+  .stats-bar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .candidate-card,
   .candidate-head {
+    grid-template-columns: 1fr;
+  }
+
+  .field-row {
     grid-template-columns: 1fr;
   }
 
   .list-toolbar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .list-toolbar input[type="search"] {
+    width: 100%;
+  }
+
+  .filter-bar select {
+    flex: 1 1 130px;
   }
 
   .card-actions button {

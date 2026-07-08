@@ -8,39 +8,121 @@
   </head>
   <body>
     <main class="app-shell">
+      <div class="notice-banner" role="note">
+        이 도구는 네이버 블로그 이웃추가를 자동 실행하지 않습니다. 사용자가 직접 입력한 블로그
+        후보를 관리하고, 방문·댓글·신청 여부를 기록하는 수동 홍보 관리 도구입니다.
+      </div>
+
       <header class="topbar">
-        <div>
-          <h1>블로그 이웃관리 보조도구</h1>
-          <p>직접 입력한 후보를 정리하고, 수동 신청을 위한 멘트 초안을 준비합니다.</p>
-        </div>
-        <div class="summary-grid" aria-label="상태 요약" id="summaryGrid"></div>
+        <h1>블로그 이웃관리 보조도구</h1>
+        <p>직접 입력한 후보를 정리하고, 수동 신청을 위한 멘트 초안을 준비합니다.</p>
       </header>
+
+      <div class="stats-bar" aria-label="통계 요약" id="summaryGrid"></div>
 
       <section class="workspace">
         <aside class="panel entry-panel" aria-labelledby="entryTitle">
           <h2 id="entryTitle">후보 입력</h2>
           <form id="candidateForm" class="candidate-form">
             <label>
-              블로그 주소
-              <input id="blogUrl" name="blogUrl" type="url" inputmode="url" placeholder="https://blog.naver.com/example" required />
+              블로그 주소 <span class="req">*</span>
+              <input
+                id="blogUrl"
+                name="blogUrl"
+                type="url"
+                inputmode="url"
+                placeholder="https://blog.naver.com/example"
+                required
+              />
             </label>
             <label>
               표시 이름
-              <input id="displayName" name="displayName" type="text" placeholder="예: 식물 기록 블로그" />
+              <input
+                id="displayName"
+                name="displayName"
+                type="text"
+                placeholder="예: 식물 기록 블로그"
+              />
             </label>
             <label>
-              관심사 / 공통점
-              <input id="interest" name="interest" type="text" placeholder="예: 식물, 기록, 일상" />
+              관심분야
+              <select id="category" name="category">
+                <option value="AI">AI</option>
+                <option value="일기/기록">일기/기록</option>
+                <option value="중장년">중장년</option>
+                <option value="건강관리">건강관리</option>
+                <option value="교육">교육</option>
+                <option value="은퇴생활">은퇴생활</option>
+                <option value="블로그마케팅">블로그마케팅</option>
+                <option value="기타" selected>기타</option>
+              </select>
+            </label>
+            <label>
+              관심도
+              <select id="interestLevel" name="interestLevel">
+                <option value="낮음">낮음</option>
+                <option value="보통" selected>보통</option>
+                <option value="높음">높음</option>
+                <option value="매우높음">매우높음</option>
+              </select>
+            </label>
+            <div class="field-row">
+              <label>
+                마지막 방문일
+                <input id="lastVisitedAt" name="lastVisitedAt" type="date" />
+              </label>
+              <label>
+                다음 방문일
+                <input id="nextVisitAt" name="nextVisitAt" type="date" />
+              </label>
+            </div>
+            <label>
+              댓글 여부
+              <select id="commentStatus" name="commentStatus">
+                <option value="안함" selected>안함</option>
+                <option value="댓글남김">댓글남김</option>
+                <option value="답글받음">답글받음</option>
+              </select>
+            </label>
+            <label>
+              HARU 안내 여부
+              <select id="haruIntroStatus" name="haruIntroStatus">
+                <option value="미안내" selected>미안내</option>
+                <option value="간단소개">간단소개</option>
+                <option value="체험링크전달">체험링크전달</option>
+                <option value="관심보임">관심보임</option>
+                <option value="거절/무반응">거절/무반응</option>
+              </select>
             </label>
             <label>
               메모
-              <textarea id="memo" name="memo" rows="5" placeholder="방문 전 확인할 내용이나 신청 후 기록"></textarea>
+              <textarea
+                id="memo"
+                name="memo"
+                rows="4"
+                placeholder="방문 전 확인할 내용이나 신청 후 기록"
+              ></textarea>
             </label>
             <div class="form-actions">
               <button class="primary-button" type="submit">후보 저장</button>
               <button class="ghost-button" type="button" id="clearFormButton">비우기</button>
             </div>
           </form>
+
+          <div class="csv-section">
+            <h3>CSV 백업</h3>
+            <p class="csv-desc">
+              내보내기: 현재 목록 전체를 저장합니다.<br />가져오기: 기존에 내보낸 CSV를
+              불러옵니다.
+            </p>
+            <div class="csv-actions">
+              <button type="button" class="csv-button" id="exportCsvButton">내보내기</button>
+              <label class="csv-button csv-import-label" tabindex="0">
+                가져오기
+                <input type="file" id="importCsvInput" accept=".csv" hidden />
+              </label>
+            </div>
+          </div>
         </aside>
 
         <section class="list-panel" aria-labelledby="listTitle">
@@ -49,16 +131,56 @@
               <h2 id="listTitle">후보 목록</h2>
               <p id="listCount">0개</p>
             </div>
-            <div class="toolbar-controls">
-              <input id="searchInput" type="search" placeholder="주소, 이름, 메모 검색" aria-label="후보 검색" />
-              <select id="statusFilter" aria-label="상태 필터">
-                <option value="전체">전체</option>
-              </select>
-            </div>
+            <input
+              id="searchInput"
+              type="search"
+              placeholder="주소, 이름, 메모 검색"
+              aria-label="후보 검색"
+            />
+          </div>
+          <div class="filter-bar">
+            <select id="statusFilter" aria-label="상태 필터">
+              <option value="전체">상태: 전체</option>
+              <option value="후보">후보</option>
+              <option value="방문함">방문함</option>
+              <option value="신청함">신청함</option>
+              <option value="답변옴">답변옴</option>
+              <option value="보류">보류</option>
+              <option value="제외">제외</option>
+            </select>
+            <select id="categoryFilter" aria-label="관심분야 필터">
+              <option value="전체">분야: 전체</option>
+              <option value="AI">AI</option>
+              <option value="일기/기록">일기/기록</option>
+              <option value="중장년">중장년</option>
+              <option value="건강관리">건강관리</option>
+              <option value="교육">교육</option>
+              <option value="은퇴생활">은퇴생활</option>
+              <option value="블로그마케팅">블로그마케팅</option>
+              <option value="기타">기타</option>
+            </select>
+            <select id="interestFilter" aria-label="관심도 필터">
+              <option value="전체">관심도: 전체</option>
+              <option value="낮음">낮음</option>
+              <option value="보통">보통</option>
+              <option value="높음">높음</option>
+              <option value="매우높음">매우높음</option>
+            </select>
+            <select id="visitFilter" aria-label="방문 일정 필터">
+              <option value="전체">방문일: 전체</option>
+              <option value="오늘">오늘 방문할 대상</option>
+              <option value="지남">방문일 지남</option>
+              <option value="이번주">이번 주 방문 예정</option>
+            </select>
           </div>
           <div id="candidateList" class="candidate-list" aria-live="polite"></div>
         </section>
       </section>
+
+      <footer class="app-footer">
+        자동 클릭, 자동 신청, 크롤링, 캡차 우회 기능은 제공하지 않습니다. 네이버 이용약관을
+        준수하면서 직접 방문하고 직접 신청하는 수동 관계 관리 도구입니다.
+      </footer>
     </main>
 
     <template id="candidateTemplate">
@@ -70,6 +192,12 @@
               <a class="candidate-url" rel="noreferrer" target="_blank"></a>
             </div>
             <select class="status-select" aria-label="상태 변경"></select>
+          </div>
+          <div class="candidate-tags">
+            <span class="tag category-tag"></span>
+            <span class="tag interest-tag"></span>
+            <span class="tag comment-tag"></span>
+            <span class="tag haru-tag"></span>
           </div>
           <p class="candidate-meta"></p>
           <p class="candidate-memo"></p>
