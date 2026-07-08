@@ -300,6 +300,10 @@ function render() {
 
 elements.form.addEventListener("submit", upsertCandidate);
 elements.clearFormButton.addEventListener("click", resetForm);
+// URL 입력값이 바뀔 때마다 custom validity 초기화 (이전 검증 오류 해제)
+elements.blogUrl.addEventListener("input", () => {
+  elements.blogUrl.setCustomValidity("");
+});
 elements.searchInput.addEventListener("input", () => {
   state.search = elements.searchInput.value;
   renderList();
