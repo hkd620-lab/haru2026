@@ -11,6 +11,7 @@ import { db } from '../config/firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useSubscription } from '../hooks/useSubscription';
 import GrammarDashboard from './GrammarDashboard';
+import { BUSINESS_INFO, BUSINESS_INFO_TEXT } from '../components/BusinessInfoNotice';
 
 const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -1241,6 +1242,18 @@ export function SettingsPage() {
             ))}
           </div>
         </div>
+
+        <section className="bg-white rounded-lg p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <User className="w-5 h-5" style={{ color: '#1A3C6E' }} />
+            <h2 className="text-base tracking-wide" style={{ color: '#333' }}>
+              사업자 정보
+            </h2>
+          </div>
+          <p className="text-xs leading-6" style={{ color: '#666' }}>
+            {BUSINESS_INFO_TEXT} | 사이트 {BUSINESS_INFO.site}
+          </p>
+        </section>
 
         <div className="text-center py-8">
           <p className="text-xs mb-1" style={{ color: '#999' }}>

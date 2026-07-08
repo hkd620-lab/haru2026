@@ -244,6 +244,7 @@ function App() {
               {/* 구독 페이지 */}
               <Route path="/subscription" element={<SubscriptionPage />} />
               <Route path="/payment/single" element={<SinglePaymentPage />} />
+              <Route path="/single-payment" element={<SinglePaymentPage />} />
               <Route path="/subscription/inicis" element={<SubscriptionInicisPage />} />
 
               {/* 법적 페이지 */}

@@ -3,6 +3,7 @@ import * as PortOne from '@portone/browser-sdk/v2';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { BusinessInfoNotice } from '../components/BusinessInfoNotice';
 
 type PaymentResponse = {
   code?: string;
@@ -293,6 +294,8 @@ export default function SinglePaymentPage() {
         <p className="mt-5 text-center text-xs leading-5 text-gray-400">
           HARU2026 이용권은 기록 데이터와 연결되므로 회원 계정 기준으로만 처리됩니다.
         </p>
+
+        <BusinessInfoNotice className="mt-3" />
       </section>
     </div>
   );
