@@ -19,6 +19,7 @@ interface DevTool {
   path: string;
   color: string;
   state?: { format?: string; category?: string };
+  external?: boolean; // true이면 새 탭으로 열기
 }
 
 const DEV_TOOLS: DevTool[] = [
@@ -28,6 +29,16 @@ const DEV_TOOLS: DevTool[] = [
     description: 'AI 대화 저장·검색',
     path: 'ai-library',
     color: '#6366F1',
+  },
+  {
+    sectionLabel: '블로그 홍보 관리',
+    icon: '📋',
+    label: '이웃블로그 관리도구',
+    description:
+      '네이버 블로그 후보를 직접 입력하고, 방문·댓글·이웃신청·HARU 안내 상태를 수동으로 관리합니다. 자동 이웃추가나 크롤링 기능은 제공하지 않습니다.',
+    path: '/tools/blog-neighbor-assistant/',
+    color: '#126f56',
+    external: true,
   },
   {
     sectionLabel: '책 만들기 관리',
@@ -294,7 +305,7 @@ export function DevConsolePage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {DEV_TOOLS.map((tool) => (
-            <Fragment key={tool.path}>
+            <Fragment key={`${tool.path}-${tool.label}`}>
               {tool.sectionLabel && (
                 <div className="sm:col-span-2 pt-2">
                   <h2 className="font-bold text-lg" style={{ color: '#1A3C6E' }}>
@@ -306,6 +317,10 @@ export function DevConsolePage() {
                 onClick={() => {
                   if (tool.path === 'ai-library') {
                     setActivePanel('ai-library');
+                    return;
+                  }
+                  if (tool.external) {
+                    window.open(tool.path, '_blank', 'noopener,noreferrer');
                     return;
                   }
                   navigate(tool.path, tool.state ? { state: tool.state } : undefined);
