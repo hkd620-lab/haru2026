@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>블로그 이웃관리 보조도구</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>블로그 이웃관리 보조도구</h1>
+          <p>직접 입력한 후보를 정리하고, 수동 신청을 위한 멘트 초안을 준비합니다.</p>
+        </div>
+        <div class="summary-grid" aria-label="상태 요약" id="summaryGrid"></div>
+      </header>
+
+      <section class="workspace">
+        <aside class="panel entry-panel" aria-labelledby="entryTitle">
+          <h2 id="entryTitle">후보 입력</h2>
+          <form id="candidateForm" class="candidate-form">
+            <label>
+              블로그 주소
+              <input id="blogUrl" name="blogUrl" type="url" inputmode="url" placeholder="https://blog.naver.com/example" required />
+            </label>
+            <label>
+              표시 이름
+              <input id="displayName" name="displayName" type="text" placeholder="예: 식물 기록 블로그" />
+            </label>
+            <label>
+              관심사 / 공통점
+              <input id="interest" name="interest" type="text" placeholder="예: 식물, 기록, 일상" />
+            </label>
+            <label>
+              메모
+              <textarea id="memo" name="memo" rows="5" placeholder="방문 전 확인할 내용이나 신청 후 기록"></textarea>
+            </label>
+            <div class="form-actions">
+              <button class="primary-button" type="submit">후보 저장</button>
+              <button class="ghost-button" type="button" id="clearFormButton">비우기</button>
+            </div>
+          </form>
+        </aside>
+
+        <section class="list-panel" aria-labelledby="listTitle">
+          <div class="list-toolbar">
+            <div>
+              <h2 id="listTitle">후보 목록</h2>
+              <p id="listCount">0개</p>
+            </div>
+            <div class="toolbar-controls">
+              <input id="searchInput" type="search" placeholder="주소, 이름, 메모 검색" aria-label="후보 검색" />
+              <select id="statusFilter" aria-label="상태 필터">
+                <option value="전체">전체</option>
+              </select>
+            </div>
+          </div>
+          <div id="candidateList" class="candidate-list" aria-live="polite"></div>
+        </section>
+      </section>
+    </main>
+
+    <template id="candidateTemplate">
+      <article class="candidate-card">
+        <div class="card-main">
+          <div class="candidate-head">
+            <div>
+              <h3 class="candidate-name"></h3>
+              <a class="candidate-url" rel="noreferrer" target="_blank"></a>
+            </div>
+            <select class="status-select" aria-label="상태 변경"></select>
+          </div>
+          <p class="candidate-meta"></p>
+          <p class="candidate-memo"></p>
+          <label class="draft-label">
+            신청 멘트 초안
+            <textarea class="draft-text" rows="4"></textarea>
+          </label>
+        </div>
+        <div class="card-actions">
+          <button type="button" class="open-button">네이버에서 열기</button>
+          <button type="button" class="copy-button">멘트 복사</button>
+          <button type="button" class="record-button">수동 신청 기록</button>
+          <button type="button" class="edit-button">수정</button>
+          <button type="button" class="delete-button">삭제</button>
+        </div>
+      </article>
+    </template>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>
