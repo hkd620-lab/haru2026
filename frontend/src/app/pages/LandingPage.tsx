@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { InAppBrowserLoginGuide } from '../components/InAppBrowserLoginGuide';
 import { getInAppBrowserInfo, type InAppBrowserInfo } from '../utils/inAppBrowser';
+import { GrapeAnimation } from '../components/GrapeAnimation';
 
 /* ────────────────────────────────────────────────────────────
    HARU by HaruLab — 랜딩 (CD "Reposeful" 디자인 핸드오프 구현)
@@ -279,6 +280,7 @@ function HeroFloats() {
 
 export function LandingPage() {
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
   const { user, loading, googleSignIn } = useAuth();
   const [isLoginLoading, setIsLoginLoading] = useState(false);
   const [inAppBrowserGuide, setInAppBrowserGuide] = useState<InAppBrowserInfo | null>(null);
@@ -314,6 +316,7 @@ export function LandingPage() {
   const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   const handleGoogleLogin = async () => {
+    setIsLoading(true);
     if (guardInAppBrowserLogin()) return;
     setIsLoginLoading(true);
     if (import.meta.env.DEV) {
@@ -324,6 +327,7 @@ export function LandingPage() {
         console.error('[dev] Google login failed:', e);
         toast.error('Google 로그인 실패');
         setIsLoginLoading(false);
+        setIsLoading(false);
       }
       return;
     }
@@ -333,6 +337,7 @@ export function LandingPage() {
   };
 
   const handleKakaoLogin = () => {
+    setIsLoading(true);
     if (guardInAppBrowserLogin()) return;
     setIsLoginLoading(true);
     setTimeout(() => {
@@ -341,6 +346,7 @@ export function LandingPage() {
   };
 
   const handleNaverLogin = () => {
+    setIsLoading(true);
     if (guardInAppBrowserLogin()) return;
     setIsLoginLoading(true);
     setTimeout(() => {
@@ -356,7 +362,31 @@ export function LandingPage() {
 
   return (
     <div className="lp-page">
-      <style>{LP_CSS}</style>
+      {isLoading && (
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          backgroundColor: '#FAF9F6',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+        }}
+      >
+        <div style={{ width: 300, height: 400 }}>
+          <GrapeAnimation />
+        </div>
+        <p style={{ color: '#1A3C6E', marginTop: '16px', fontSize: '15px' }}>
+          로그인 중...
+        </p>
+      </div>
+    )}
+    <style>{LP_CSS}</style>
       <InAppBrowserLoginGuide
         open={Boolean(inAppBrowserGuide)}
         browserInfo={inAppBrowserGuide}
