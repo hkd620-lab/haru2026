@@ -152,7 +152,7 @@ export default function SubscriptionPage() {
       const response = await (PortOne as any).requestIssueBillingKey({
         storeId: import.meta.env.VITE_PORTONE_STORE_ID,
         channelKey: inicisBillingChannelKey,
-        billingKeyMethod: 'EASY_PAY',
+        billingKeyMethod: 'CARD',
         displayAmount: plan.amount,
         currency: 'KRW',
         issueId,
