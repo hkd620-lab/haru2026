@@ -154,9 +154,6 @@ export default function SubscriptionPage() {
         channelKey: inicisBillingChannelKey,
         billingKeyMethod: 'EASY_PAY',
         displayAmount: plan.amount,
-        amount: {
-          total: plan.amount,
-        },
         currency: 'KRW',
         issueId,
         issueName: plan.orderName,
