@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as PortOne from '@portone/browser-sdk/v2';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { BusinessInfoNotice } from '../components/BusinessInfoNotice';
 
@@ -307,6 +307,12 @@ export default function SubscriptionPage() {
 
         <p className="text-center text-xs text-gray-400 mb-2">
           모든 결제는 회원가입 또는 로그인 후 계정 기준으로 진행됩니다
+        </p>
+
+        <p className="text-center text-xs mb-2">
+          <Link to="/payment/single" className="text-[#1A3C6E] underline">
+            자동갱신 없이 1개월만 이용하려면 → 단건결제
+          </Link>
         </p>
 
         <BusinessInfoNotice className="mb-2" />

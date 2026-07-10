@@ -119,7 +119,8 @@ export default function SinglePaymentPage() {
         return;
       }
 
-      const paymentId = `haru-single-${user.uid}-${Date.now()}`;
+      // 이니시스 oid 제한(최대 40자)으로 uid 제외 — 사용자 연결은 verifySinglePayment 인증으로 처리
+      const paymentId = `haru-single-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const response = await (PortOne as any).requestPayment({
         storeId: import.meta.env.VITE_PORTONE_STORE_ID,
         channelKey: inicisChannelKey,
