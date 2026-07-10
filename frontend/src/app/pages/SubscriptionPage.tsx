@@ -147,7 +147,8 @@ export default function SubscriptionPage() {
         return;
       }
 
-      const issueId = `haru-inicis-billing-${user.uid}-${Date.now()}`;
+      // 이니시스 oid 제한(최대 40자)으로 uid 제외 — 사용자 연결은 subscribeWithBillingKey 인증으로 처리
+      const issueId = `haru-bk-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
       const response = await (PortOne as any).requestIssueBillingKey({
         storeId: import.meta.env.VITE_PORTONE_STORE_ID,
