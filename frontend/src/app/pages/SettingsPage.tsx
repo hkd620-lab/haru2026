@@ -453,6 +453,10 @@ export function SettingsPage() {
     navigate('/subscription');
   };
 
+  const handleGoToRefundPolicy = () => {
+    navigate('/refund');
+  };
+
   const handleCancelSubscription = async () => {
     if (!user?.uid) {
       toast.error('로그인이 필요합니다.');
@@ -576,6 +580,26 @@ export function SettingsPage() {
                   </div>
                 </button>
               )}
+
+              <button
+                type="button"
+                onClick={handleGoToRefundPolicy}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-80 text-left"
+                style={{
+                  backgroundColor: '#FDF6C3',
+                  border: '1px solid #d0dff0',
+                }}
+              >
+                <CreditCard className="w-4 h-4 flex-shrink-0" style={{ color: '#1A3C6E' }} />
+                <div>
+                  <p className="text-sm" style={{ color: '#1A3C6E', fontWeight: 600 }}>
+                    환불 문의
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: '#666' }}>
+                    환불 조건을 확인하고 이메일로 요청합니다.
+                  </p>
+                </div>
+              </button>
 
               {subscription.status === 'cancelled' && (
                 <p className="text-xs leading-relaxed" style={{ color: '#999' }}>
