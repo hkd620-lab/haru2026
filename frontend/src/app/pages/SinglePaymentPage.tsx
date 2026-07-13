@@ -35,6 +35,7 @@ const SINGLE_PAYMENT_PRODUCTS: Record<PaidPlan, {
     description: '자동갱신 없이 30일 동안 프리미엄 기능을 이용합니다.',
   },
 };
+const SINGLE_PAYMENT_PAY_METHOD = import.meta.env.VITE_PORTONE_SINGLE_PAYMENT_PAY_METHOD || 'EASY_PAY';
 
 export default function SinglePaymentPage() {
   const { user, loading: authLoading } = useAuth();
@@ -128,7 +129,7 @@ export default function SinglePaymentPage() {
         orderName: product.orderName,
         totalAmount: product.amount,
         currency: 'KRW',
-        payMethod: 'CARD',
+        payMethod: SINGLE_PAYMENT_PAY_METHOD,
         customer: {
           fullName: trimmedName,
           email: trimmedEmail,

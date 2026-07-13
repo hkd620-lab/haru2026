@@ -39,6 +39,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const KAKAO_USER_KEY = 'haru_kakao_user';
 const NAVER_USER_KEY = 'haru_naver_user';
 
+function clearLegacySocialUserCache() {
+  localStorage.removeItem(KAKAO_USER_KEY);
+  localStorage.removeItem(NAVER_USER_KEY);
+}
+
 const mapUser = (user: FirebaseUser): LocalUser => ({
   uid: user.uid,
   email: user.email ?? null,
@@ -62,31 +67,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // 2. Kakao 체크
-        const savedKakao = localStorage.getItem(KAKAO_USER_KEY);
-        if (savedKakao) {
-          try {
-            setUser(JSON.parse(savedKakao));
-            setLoading(false);
-            return;
-          } catch {
-            localStorage.removeItem(KAKAO_USER_KEY);
-          }
-        }
+        // Older builds stored Kakao/Naver users in localStorage without a
+        // Firebase Auth session. That makes Firestore requests fail rules.
+        clearLegacySocialUserCache();
 
-        // 3. Naver 체크
-        const savedNaver = localStorage.getItem(NAVER_USER_KEY);
-        if (savedNaver) {
-          try {
-            setUser(JSON.parse(savedNaver));
-            setLoading(false);
-            return;
-          } catch {
-            localStorage.removeItem(NAVER_USER_KEY);
-          }
-        }
-
-        // 4. Firebase 유저는 onAuthStateChanged가 loading=false 담당
+        // 2. Firebase 유저는 onAuthStateChanged가 loading=false 담당
         //    (이 시점에 setLoading(false)를 호출하면 onAuthStateChanged보다
         //     먼저 실행돼 user=null로 로그아웃된 것처럼 보이는 타이밍 버그 발생)
       } catch (error) {
@@ -101,14 +86,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         setUser(mapUser(firebaseUser));
-        localStorage.removeItem(KAKAO_USER_KEY);
-        localStorage.removeItem(NAVER_USER_KEY);
+        clearLegacySocialUserCache();
       } else {
-        const savedKakao = localStorage.getItem(KAKAO_USER_KEY);
-        const savedNaver = localStorage.getItem(NAVER_USER_KEY);
-        if (!savedKakao && !savedNaver) {
-          setUser(null);
-        }
+        clearLegacySocialUserCache();
+        setUser(null);
       }
       setLoading(false);
     });
@@ -176,7 +157,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         providerId: 'kakao',
       };
 
-      localStorage.setItem(KAKAO_USER_KEY, JSON.stringify(localUser));
       setUser(localUser);
     } catch (error: any) {
       console.error('Kakao sign in error:', error);
@@ -204,7 +184,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         providerId: 'naver',
       };
 
-      localStorage.setItem(NAVER_USER_KEY, JSON.stringify(localUser));
       setUser(localUser);
     } catch (error: any) {
       console.error('Naver sign in error:', error);
@@ -214,8 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
-      localStorage.removeItem(KAKAO_USER_KEY);
-      localStorage.removeItem(NAVER_USER_KEY);
+      clearLegacySocialUserCache();
       await firebaseSignOut(auth);
       setUser(null);
     } catch (error: any) {
