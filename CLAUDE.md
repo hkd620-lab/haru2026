@@ -217,3 +217,21 @@ git status --short
 - `/Users/heogyeongdae/HARU2026` 폴더는 현재 운영 기준 폴더가 아니다. 단, 로컬 전용 브랜치가 있을 수 있으므로 임의 삭제하지 않는다.
 - `main` 브랜치에서 직접 수정하지 않는다.
 - 기준 폴더를 혼동할 수 있는 `~/HARU2026`, `~/HARU2026/frontend` 같은 축약 경로 지시는 사용하지 않는다.
+
+## HARU2026 구 1번 폴더 격리 기록
+
+- 과거 작업 폴더였던 아래 경로는 현재 사용하지 않는다.
+
+```text
+/Users/heogyeongdae/HARU2026
+```
+
+- 이 폴더는 삭제하지 않고 아래 경로로 이름을 바꿔 격리했다.
+
+```text
+/Users/heogyeongdae/HARU2026_old_do_not_delete_yet
+```
+
+- 격리 폴더는 기준 작업 폴더가 아니며, 코드 수정·빌드·배포·commit·push 작업에 사용하지 않는다.
+- 기준 작업 폴더는 `/Users/heogyeongdae/Documents/my apps/HARU2026/haru2026-source`이다.
+- 격리 폴더는 중요한 단독 파일 확인이 끝나기 전까지 임의 삭제하지 않는다.
