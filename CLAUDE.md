@@ -193,3 +193,27 @@ HARU/SAYU의 하루 기록 저장 원칙은 `users/{uid}/records/{date}`를 유�
 정보금고 자료를 `users/{uid}/records/{date}` 하위로 옮기지 않는다.
 
 정보금고 항목은 캘린더, SAYU 월별 기록, 하루기록 통계와 섞이지 않도록 별도 보관한다.
+
+## HARU2026 작업 기준 경로 및 브랜치 규칙
+
+- 이 프로젝트의 현재 기준 작업 폴더는 아래 경로이다.
+
+```text
+/Users/heogyeongdae/Documents/my apps/HARU2026/haru2026-source
+```
+
+- 작업 시작 전 반드시 아래 명령으로 현재 위치와 브랜치를 확인한다.
+
+```bash
+pwd
+git branch --show-current
+git status --short
+```
+
+- `pwd` 결과가 위 기준 경로와 정확히 일치하지 않으면 작업을 중단하고 보고한다.
+- 모든 코드·문서 수정 작업은 `feature/new-formats` 브랜치에서 진행한다.
+- `git branch --show-current` 결과가 `feature/new-formats`가 아니면 수정 작업을 시작하지 않는다.
+- `git status --short` 결과가 clean이 아니면 먼저 미커밋 변경 내용을 확인하고, 임의로 섞어서 작업하지 않는다.
+- `/Users/heogyeongdae/HARU2026` 폴더는 현재 운영 기준 폴더가 아니다. 단, 로컬 전용 브랜치가 있을 수 있으므로 임의 삭제하지 않는다.
+- `main` 브랜치에서 직접 수정하지 않는다.
+- 기준 폴더를 혼동할 수 있는 `~/HARU2026`, `~/HARU2026/frontend` 같은 축약 경로 지시는 사용하지 않는다.
