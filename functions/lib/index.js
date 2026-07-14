@@ -153,6 +153,47 @@ function getSubscriptionPlanAmount(plan) {
 function getSubscriptionOrderName(plan) {
     return plan === 'basic' ? 'HARU 베이직 월 구독' : 'HARU 프리미엄 월 구독';
 }
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+function maskPaymentId(paymentId) {
+    if (paymentId.length <= 12)
+        return `${paymentId.slice(0, 3)}***`;
+    return `${paymentId.slice(0, 10)}...${paymentId.slice(-6)}`;
+}
+function getPortOneLookupError(error) {
+    var _a, _b;
+    const data = ((_a = error === null || error === void 0 ? void 0 : error.response) === null || _a === void 0 ? void 0 : _a.data) || {};
+    return {
+        message: error === null || error === void 0 ? void 0 : error.message,
+        status: (_b = error === null || error === void 0 ? void 0 : error.response) === null || _b === void 0 ? void 0 : _b.status,
+        type: typeof data.type === 'string' ? data.type : undefined,
+        code: typeof data.code === 'string' ? data.code : undefined,
+    };
+}
+async function fetchPortOnePayment(paymentId) {
+    const portoneRes = await axios_1.default.get(`https://api.portone.io/payments/${encodeURIComponent(paymentId)}`, { headers: { Authorization: `PortOne ${PORTONE_API_SECRET.value().trim()}` } });
+    return portoneRes.data;
+}
+async function fetchPortOnePaymentWithRetry(paymentId) {
+    var _a, _b;
+    const delaysMs = [0, 600, 1400, 2500];
+    let lastError;
+    for (const delayMs of delaysMs) {
+        if (delayMs > 0)
+            await sleep(delayMs);
+        try {
+            return await fetchPortOnePayment(paymentId);
+        }
+        catch (error) {
+            lastError = error;
+            const type = (_b = (_a = error === null || error === void 0 ? void 0 : error.response) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b.type;
+            if (type !== 'PAYMENT_NOT_FOUND')
+                break;
+        }
+    }
+    throw lastError;
+}
 function getSafeOAuthError(error) {
     var _a, _b;
     if (axios_1.default.isAxiosError(error)) {
@@ -3483,7 +3524,7 @@ exports.generateGrowthTimelinePdf = (0, https_2.onCall)({ region: 'asia-northeas
 });
 // ===== 💳 결제 검증 (PortOne V2) =====
 exports.verifyPayment = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] }, async (request) => {
-    var _a, _b, _c, _d;
+    var _a, _b, _c;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -3495,11 +3536,13 @@ exports.verifyPayment = (0, https_2.onCall)({ region: 'asia-northeast3', secrets
     // PortOne V2 결제 조회
     let payment;
     try {
-        const portoneRes = await axios_1.default.get(`https://api.portone.io/payments/${encodeURIComponent(paymentId)}`, { headers: { Authorization: `PortOne ${PORTONE_API_SECRET.value().trim()}` } });
-        payment = portoneRes.data;
+        payment = await fetchPortOnePayment(paymentId);
     }
     catch (e) {
-        logger.error('PortOne 결제 조회 실패:', ((_a = e === null || e === void 0 ? void 0 : e.response) === null || _a === void 0 ? void 0 : _a.data) || e.message);
+        logger.error('PortOne 결제 조회 실패:', {
+            paymentId: maskPaymentId(paymentId),
+            ...getPortOneLookupError(e),
+        });
         throw new https_2.HttpsError('internal', '결제 정보를 조회할 수 없습니다.');
     }
     // 결제 상태 검증
@@ -3507,7 +3550,7 @@ exports.verifyPayment = (0, https_2.onCall)({ region: 'asia-northeast3', secrets
         throw new https_2.HttpsError('failed-precondition', '결제가 완료되지 않았습니다.');
     }
     // 금액 검증 (베이직 4,000원 / 프리미엄 6,000원)
-    const paidAmount = (_c = (_b = payment.amount) === null || _b === void 0 ? void 0 : _b.total) !== null && _c !== void 0 ? _c : payment.totalAmount;
+    const paidAmount = (_b = (_a = payment.amount) === null || _a === void 0 ? void 0 : _a.total) !== null && _b !== void 0 ? _b : payment.totalAmount;
     const plan = SUBSCRIPTION_PLANS[paidAmount];
     if (!plan) {
         logger.error(`금액 불일치: 기대 4000 또는 6000, 실제 ${paidAmount}`);
@@ -3516,7 +3559,7 @@ exports.verifyPayment = (0, https_2.onCall)({ region: 'asia-northeast3', secrets
     // 중복 처리 방지
     const subRef = db.doc(`users/${uid}/subscription/info`);
     const existing = await subRef.get();
-    if (existing.exists && ((_d = existing.data()) === null || _d === void 0 ? void 0 : _d.paymentId) === paymentId) {
+    if (existing.exists && ((_c = existing.data()) === null || _c === void 0 ? void 0 : _c.paymentId) === paymentId) {
         return { success: true, alreadyProcessed: true };
     }
     // Firestore 저장
@@ -3811,7 +3854,7 @@ exports.processRecurringSubscriptions = (0, scheduler_1.onSchedule)({
 });
 // ===== 💳 KG이니시스 일반(단건) 1개월 이용권 검증 =====
 exports.verifySinglePayment = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] }, async (request) => {
-    var _a, _b, _c, _d, _f;
+    var _a, _b, _c, _d;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -3828,17 +3871,19 @@ exports.verifySinglePayment = (0, https_2.onCall)({ region: 'asia-northeast3', s
     const singleProduct = SINGLE_PAYMENT_REVIEW_PRODUCT.plans[requestedPlan];
     let payment;
     try {
-        const portoneRes = await axios_1.default.get(`https://api.portone.io/payments/${encodeURIComponent(paymentId)}`, { headers: { Authorization: `PortOne ${PORTONE_API_SECRET.value().trim()}` } });
-        payment = portoneRes.data;
+        payment = await fetchPortOnePaymentWithRetry(paymentId);
     }
     catch (e) {
-        logger.error('PortOne 단건결제 조회 실패:', ((_c = e === null || e === void 0 ? void 0 : e.response) === null || _c === void 0 ? void 0 : _c.data) || e.message);
+        logger.error('PortOne 단건결제 조회 실패:', {
+            paymentId: maskPaymentId(paymentId),
+            ...getPortOneLookupError(e),
+        });
         throw new https_2.HttpsError('internal', '결제 정보를 조회할 수 없습니다.');
     }
     if (payment.status !== 'PAID') {
         throw new https_2.HttpsError('failed-precondition', '결제가 완료되지 않았습니다.');
     }
-    const paidAmount = (_f = (_d = payment.amount) === null || _d === void 0 ? void 0 : _d.total) !== null && _f !== void 0 ? _f : payment.totalAmount;
+    const paidAmount = (_d = (_c = payment.amount) === null || _c === void 0 ? void 0 : _c.total) !== null && _d !== void 0 ? _d : payment.totalAmount;
     if (paidAmount !== singleProduct.amount) {
         logger.error('단건결제 금액 불일치:', {
             paymentId,
