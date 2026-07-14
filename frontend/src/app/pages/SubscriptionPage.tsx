@@ -198,6 +198,23 @@ export default function SubscriptionPage() {
 
   const selected = PLANS[selectedPlan];
 
+  if (!authLoading && !user) {
+    return (
+      <div className="min-h-screen bg-[#EDE9F5] flex items-center justify-center p-4">
+        <section className="w-full max-w-md rounded-2xl bg-white border border-gray-200 p-6 text-center shadow-sm">
+          <h1 className="text-2xl font-black text-[#1A3C6E] mb-3">HARU 구독 플랜</h1>
+          <p className="text-sm font-bold text-gray-700 mb-5">결제는 로그인 후 이용할 수 있습니다.</p>
+          <Link
+            to="/login"
+            className="block w-full rounded-2xl bg-[#1A3C6E] px-4 py-4 text-base font-black text-white transition-colors hover:bg-[#142f57]"
+          >
+            로그인하러 가기
+          </Link>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#EDE9F5] flex items-center justify-center p-4">
       <div className="w-full max-w-2xl">
