@@ -122,6 +122,51 @@ function getSubscriptionOrderName(plan: string): string {
   return plan === 'basic' ? 'HARU 베이직 월 구독' : 'HARU 프리미엄 월 구독';
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function maskPaymentId(paymentId: string): string {
+  if (paymentId.length <= 12) return `${paymentId.slice(0, 3)}***`;
+  return `${paymentId.slice(0, 10)}...${paymentId.slice(-6)}`;
+}
+
+function getPortOneLookupError(error: any) {
+  const data = error?.response?.data || {};
+  return {
+    message: error?.message,
+    status: error?.response?.status,
+    type: typeof data.type === 'string' ? data.type : undefined,
+    code: typeof data.code === 'string' ? data.code : undefined,
+  };
+}
+
+async function fetchPortOnePayment(paymentId: string): Promise<any> {
+  const portoneRes = await axios.get(
+    `https://api.portone.io/payments/${encodeURIComponent(paymentId)}`,
+    { headers: { Authorization: `PortOne ${PORTONE_API_SECRET.value().trim()}` } }
+  );
+  return portoneRes.data;
+}
+
+async function fetchPortOnePaymentWithRetry(paymentId: string): Promise<any> {
+  const delaysMs = [0, 600, 1400, 2500];
+  let lastError: any;
+
+  for (const delayMs of delaysMs) {
+    if (delayMs > 0) await sleep(delayMs);
+    try {
+      return await fetchPortOnePayment(paymentId);
+    } catch (error: any) {
+      lastError = error;
+      const type = error?.response?.data?.type;
+      if (type !== 'PAYMENT_NOT_FOUND') break;
+    }
+  }
+
+  throw lastError;
+}
+
 type HaruLawSharePreview = {
   title: string;
   anonymizedQuestion: string;
@@ -3934,13 +3979,12 @@ export const verifyPayment = onCall(
     // PortOne V2 결제 조회
     let payment: any;
     try {
-      const portoneRes = await axios.get(
-        `https://api.portone.io/payments/${encodeURIComponent(paymentId)}`,
-        { headers: { Authorization: `PortOne ${PORTONE_API_SECRET.value().trim()}` } }
-      );
-      payment = portoneRes.data;
+      payment = await fetchPortOnePayment(paymentId);
     } catch (e: any) {
-      logger.error('PortOne 결제 조회 실패:', e?.response?.data || e.message);
+      logger.error('PortOne 결제 조회 실패:', {
+        paymentId: maskPaymentId(paymentId),
+        ...getPortOneLookupError(e),
+      });
       throw new HttpsError('internal', '결제 정보를 조회할 수 없습니다.');
     }
 
@@ -4320,13 +4364,12 @@ export const verifySinglePayment = onCall(
 
     let payment: any;
     try {
-      const portoneRes = await axios.get(
-        `https://api.portone.io/payments/${encodeURIComponent(paymentId)}`,
-        { headers: { Authorization: `PortOne ${PORTONE_API_SECRET.value().trim()}` } }
-      );
-      payment = portoneRes.data;
+      payment = await fetchPortOnePaymentWithRetry(paymentId);
     } catch (e: any) {
-      logger.error('PortOne 단건결제 조회 실패:', e?.response?.data || e.message);
+      logger.error('PortOne 단건결제 조회 실패:', {
+        paymentId: maskPaymentId(paymentId),
+        ...getPortOneLookupError(e),
+      });
       throw new HttpsError('internal', '결제 정보를 조회할 수 없습니다.');
     }
 
