@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as PortOne from '@portone/browser-sdk/v2';
 import { httpsCallable } from 'firebase/functions';
+import { Link } from 'react-router-dom';
 import { functions } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -166,6 +167,24 @@ export default function SubscriptionInicisPage() {
       setLoading(false);
     }
   };
+
+  if (!authLoading && !user) {
+    return (
+      <div className="min-h-screen bg-[#F7F4EC] flex items-center justify-center px-4 py-10">
+        <section className="w-full max-w-md bg-white border border-[#e5decf] rounded-lg shadow-sm p-6 text-center">
+          <p className="text-xs font-bold text-[#4F46E5] mb-2">KG이니시스 정기결제</p>
+          <h1 className="text-2xl font-black text-[#1A3C6E] mb-3">HARU2026 정기구독 신청</h1>
+          <p className="text-sm font-bold text-gray-700 mb-5">결제는 로그인 후 이용할 수 있습니다.</p>
+          <Link
+            to="/login"
+            className="block w-full rounded-lg bg-[#1A3C6E] px-4 py-4 text-base font-black text-white transition-colors hover:bg-[#142f57]"
+          >
+            로그인하러 가기
+          </Link>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F7F4EC] flex items-center justify-center px-4 py-10">

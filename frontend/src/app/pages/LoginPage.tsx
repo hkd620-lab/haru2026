@@ -108,6 +108,10 @@ export function LoginPage() {
               <h2 className="text-xl font-semibold mb-6 text-center" style={{ color: '#333' }}>
                 로그인
               </h2>
+              <p className="mb-5 rounded-lg px-4 py-3 text-center text-sm leading-6" style={{ backgroundColor: '#F7F4EC', color: '#1A3C6E' }}>
+                HARU2026은 회원제 서비스입니다.<br />
+                결제 및 구독 신청은 로그인 후 이용할 수 있습니다.
+              </p>
 
               <div className="space-y-3">
                 {/* Google 로그인 */}

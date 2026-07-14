@@ -410,7 +410,7 @@ export function LandingPage() {
             <a href="#flow" onClick={(e) => { e.preventDefault(); scrollTo('flow'); }}>사용 흐름</a>
           </div>
           <div className="lp-nav__cta">
-            <button className="lp-btn lp-btn--primary lp-btn--sm" onClick={goToLogin}>무료로 시작하기</button>
+            <button className="lp-btn lp-btn--primary lp-btn--sm" onClick={goToLogin}>로그인하고 시작하기</button>
           </div>
         </div>
       </nav>
@@ -491,7 +491,7 @@ export function LandingPage() {
             </div>
             <div className="lp-hero__cta-row">
               <button className="lp-btn lp-btn--primary" onClick={goToLogin}>
-                무료로 시작하기<Icon name="arrowR" size={18} sw={2} />
+                로그인하고 시작하기<Icon name="arrowR" size={18} sw={2} />
               </button>
               <button className="lp-btn lp-btn--ghost" onClick={() => scrollTo('how')}>HARU가 하는 일 보기</button>
             </div>
@@ -711,7 +711,7 @@ export function LandingPage() {
               <h2>오늘의 기록은,<br />내일의 나를 돕는 자료가 됩니다.</h2>
               <p>한 줄도 좋고, 사진 한 장의 메모도 좋습니다. 쌓이는 일은 HARU가 합니다.</p>
               <div className="lp-final__cta-row">
-                <button className="lp-btn lp-btn--primary" onClick={goToLogin}>무료로 시작하기<Icon name="arrowR" size={18} sw={2} /></button>
+                <button className="lp-btn lp-btn--primary" onClick={goToLogin}>로그인하고 시작하기<Icon name="arrowR" size={18} sw={2} /></button>
                 <button className="lp-btn lp-btn--ghost" onClick={() => scrollTo(SHOW_PRICING ? 'pricing' : 'how')}>
                   {SHOW_PRICING ? '요금 · 구독 안내' : 'HARU 둘러보기'}
                 </button>
