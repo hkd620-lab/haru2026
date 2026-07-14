@@ -721,8 +721,9 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* 전역 Footer(App.tsx)가 법적 정보·약관/개인정보/환불 링크를 담당하므로
-          랜딩 자체 footer는 두지 않는다 (footer 중복 방지). */}
+      <footer className="lp-operator-footer">
+        <a href="/welcome">운영사 하루랩 소개</a>
+      </footer>
     </div>
   );
 }
@@ -955,6 +956,10 @@ const LP_CSS = `
 .lp-final .lp-btn--ghost{color:var(--bg);border-color:rgba(245,240,232,0.4);}
 .lp-final .lp-btn--ghost:hover{background:rgba(245,240,232,0.08);border-color:rgba(245,240,232,0.6);}
 .lp-final__cta-row{display:inline-flex;flex-wrap:wrap;justify-content:center;gap:12px;position:relative;z-index:1;}
+
+.lp-operator-footer{max-width:var(--lp-content);margin:0 auto;padding:0 24px 28px;text-align:center;}
+.lp-operator-footer a{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 14px;border-radius:999px;color:var(--fg-2);font-size:13px;font-weight:700;text-decoration:none;border:1px solid rgba(122,139,78,0.24);background:rgba(255,255,255,0.34);}
+.lp-operator-footer a:hover{color:var(--olive-dark);border-color:rgba(122,139,78,0.42);background:rgba(255,255,255,0.58);}
 
 .ph-stack{display:flex;flex-direction:column;height:100%;}
 .ph-head{display:flex;align-items:center;justify-content:space-between;padding:38px 16px 8px;}
