@@ -124,20 +124,24 @@ interface LedgerXlsxPreviewRow {
   selected: boolean;
   duplicate: boolean;
   canImport: boolean;
+  rawDate: string | number;
   date: string;
   vendor: string;
   amount: string;
   paymentMethod: string;
+  merchantLocation: string;
   approvalNumber: string;
+  nonDateWarnings: string[];
   warning: string;
 }
 
 const LEDGER_XLSX_PROOF = '카드명세서(XLSX) · 사용자 확인 필요';
 const LEDGER_XLSX_HEADERS = {
-  date: ['거래일', '승인일', '이용일자', '이용일', '거래일자', '승인일자'],
-  vendor: ['가맹점명', '이용가맹점', '거래처', '가맹점', '사용처'],
+  date: ['이용일자', '승인일자', '거래일', '승인일', '이용일', '거래일자'],
+  vendor: ['이용가맹점', '가맹점명', '거래처', '가맹점', '사용처'],
   amount: ['이용금액', '승인금액', '결제금액', '거래금액', '금액'],
-  paymentMethod: ['카드번호', '카드명', '결제수단', '이용카드', '카드'],
+  paymentMethod: ['이용카드', '카드명', '카드번호', '결제수단', '카드'],
+  merchantLocation: ['가맹점소재지', '소재지', '가맹점주소'],
   approvalNumber: ['승인번호'],
 } as const;
 
@@ -153,18 +157,20 @@ function normalizeLedgerXlsxHeader(value: unknown): string {
 function findLedgerXlsxColumn(value: unknown): LedgerXlsxColumn | null {
   const normalized = normalizeLedgerXlsxHeader(value);
   if (!normalized) return null;
+  // 국민카드 기업용 명세서의 "이번달 결제금액"은 실제 이용금액이 아니다.
+  if (normalized.includes('이번달결제금액')) return null;
   for (const [column, candidates] of Object.entries(LEDGER_XLSX_HEADERS) as [LedgerXlsxColumn, readonly string[]][]) {
-    if (candidates.some((candidate) => {
-      const normalizedCandidate = normalizeLedgerXlsxHeader(candidate);
-      return normalized === normalizedCandidate || normalized.includes(normalizedCandidate);
-    })) {
+    if (candidates.some((candidate) => normalized === normalizeLedgerXlsxHeader(candidate))) return column;
+  }
+  for (const [column, candidates] of Object.entries(LEDGER_XLSX_HEADERS) as [LedgerXlsxColumn, readonly string[]][]) {
+    if (candidates.some((candidate) => normalized.includes(normalizeLedgerXlsxHeader(candidate)))) {
       return column;
     }
   }
   return null;
 }
 
-function normalizeLedgerXlsxDate(value: unknown): { value: string; valid: boolean } {
+function normalizeLedgerXlsxDate(value: unknown, referenceYear: number): { value: string; valid: boolean } {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     const year = value.getFullYear();
     const month = String(value.getMonth() + 1).padStart(2, '0');
@@ -174,6 +180,13 @@ function normalizeLedgerXlsxDate(value: unknown): { value: string; valid: boolea
     const time = hours || minutes ? ` ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}` : '';
     return { value: `${year}-${month}-${day}${time}`, valid: true };
   }
+  if (typeof value === 'number' && Number.isFinite(value) && value >= 20000 && value <= 80000) {
+    const excelDate = new Date(Date.UTC(1899, 11, 30) + Math.floor(value) * 86400000);
+    return {
+      value: `${excelDate.getUTCFullYear()}-${String(excelDate.getUTCMonth() + 1).padStart(2, '0')}-${String(excelDate.getUTCDate()).padStart(2, '0')}`,
+      valid: true,
+    };
+  }
   const raw = String(value ?? '').trim();
   if (!raw) return { value: '', valid: false };
   const normalized = raw
@@ -181,15 +194,20 @@ function normalizeLedgerXlsxDate(value: unknown): { value: string; valid: boolea
     .replace(/\ub144|\uc6d4/g, '-')
     .replace(/\uc77c/g, '')
     .replace(/[./]/g, '-');
-  const isValidMonthDay = (month: string, day: string) => {
+  const isValidDate = (year: string, month: string, day: string) => {
+    const yearNumber = Number(year);
     const monthNumber = Number(month);
     const dayNumber = Number(day);
-    return monthNumber >= 1 && monthNumber <= 12 && dayNumber >= 1 && dayNumber <= 31;
+    const date = new Date(yearNumber, monthNumber - 1, dayNumber);
+    return yearNumber >= 1900
+      && date.getFullYear() === yearNumber
+      && date.getMonth() === monthNumber - 1
+      && date.getDate() === dayNumber;
   };
   const match = normalized.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(.*)$/);
   if (match) {
     const [, year, month, day, suffix] = match;
-    if (!isValidMonthDay(month, day)) return { value: raw, valid: false };
+    if (!isValidDate(year, month, day)) return { value: raw, valid: false };
     return {
       value: `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}${suffix.trim() ? ` ${suffix.trim()}` : ''}`,
       valid: true,
@@ -198,7 +216,7 @@ function normalizeLedgerXlsxDate(value: unknown): { value: string; valid: boolea
   const shortYearMatch = normalized.match(/^(\d{2})-(\d{1,2})-(\d{1,2})(.*)$/);
   if (shortYearMatch) {
     const [, year, month, day, suffix] = shortYearMatch;
-    if (!isValidMonthDay(month, day)) return { value: raw, valid: false };
+    if (!isValidDate(`20${year}`, month, day)) return { value: raw, valid: false };
     return {
       value: `20${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}${suffix.trim() ? ` ${suffix.trim()}` : ''}`,
       valid: true,
@@ -207,8 +225,17 @@ function normalizeLedgerXlsxDate(value: unknown): { value: string; valid: boolea
   const compactMatch = normalized.match(/^(\d{4})(\d{2})(\d{2})(.*)$/);
   if (compactMatch) {
     const [, year, month, day, suffix] = compactMatch;
-    if (!isValidMonthDay(month, day)) return { value: raw, valid: false };
+    if (!isValidDate(year, month, day)) return { value: raw, valid: false };
     return { value: `${year}-${month}-${day}${suffix.trim() ? ` ${suffix.trim()}` : ''}`, valid: true };
+  }
+  const monthDayDigits = raw.replace(/\D/g, '');
+  if (/^\d{3,4}$/.test(monthDayDigits)) {
+    const padded = monthDayDigits.padStart(4, '0');
+    const month = padded.slice(0, 2);
+    const day = padded.slice(2, 4);
+    if (isValidDate(String(referenceYear), month, day)) {
+      return { value: `${referenceYear}-${month}-${day}`, valid: true };
+    }
   }
   return { value: raw, valid: false };
 }
@@ -224,17 +251,18 @@ function normalizeLedgerXlsxAmount(value: unknown): { value: string; valid: bool
   return { value: `${amount.toLocaleString('ko-KR')}원`, valid: true };
 }
 
-function ledgerDuplicateBase(date: string, vendor: string, amount: string): string {
+function ledgerDuplicateKey(date: string, vendor: string, amount: string, cardInfo: string): string {
   return [
     date.replace(/[^0-9]/g, '').slice(0, 8),
     vendor.normalize('NFKC').toLowerCase().replace(/\s+/g, ''),
     amount.replace(/[^0-9-]/g, '').replace(/^(-?)0+(?=\d)/, '$1'),
+    cardInfo.normalize('NFKC').toLowerCase().replace(/\s+/g, ''),
   ].join('|');
 }
 
-function ledgerDuplicateKey(date: string, vendor: string, amount: string, approvalNumber: string): string {
-  const approval = approvalNumber.normalize('NFKC').replace(/\s+/g, '');
-  return `${ledgerDuplicateBase(date, vendor, amount)}|${approval}`;
+function isLedgerXlsxSummaryRow(row: unknown[]): boolean {
+  const rowText = row.map((cell) => String(cell ?? '').trim()).filter(Boolean).join(' ');
+  return /소계|합계|총계|\d+\s*건/.test(rowText);
 }
 
 function hashLedgerXlsxKey(value: string): string {
@@ -518,9 +546,11 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([newLedgerEntry()]);
   const ledgerOcrInputRef = useRef<HTMLInputElement>(null);
   const [ledgerXlsxPreviewRows, setLedgerXlsxPreviewRows] = useState<LedgerXlsxPreviewRow[]>([]);
+  const [ledgerXlsxYear, setLedgerXlsxYear] = useState(new Date().getFullYear());
   const [isReadingLedgerXlsx, setIsReadingLedgerXlsx] = useState(false);
   const [isSavingLedgerXlsx, setIsSavingLedgerXlsx] = useState(false);
   const ledgerXlsxInputRef = useRef<HTMLInputElement>(null);
+  const ledgerXlsxExistingKeysRef = useRef<Set<string>>(new Set());
   // 📒 HARU가계부
   const [householdEntries, setHouseholdEntries] = useState<HouseholdEntry[]>([newHouseholdEntry()]);
   const [selectedHouseholdOcrFiles, setSelectedHouseholdOcrFiles] = useState<File[]>([]);
@@ -613,6 +643,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       setLedgerOcrResult(null);
       setLedgerOcrPerFileResults([]);
       setLedgerXlsxPreviewRows([]);
+      setLedgerXlsxYear(new Date().getFullYear());
+      ledgerXlsxExistingKeysRef.current = new Set();
       setIsReadingLedgerXlsx(false);
       setIsSavingLedgerXlsx(false);
       setSelectedHouseholdOcrFiles([]);
@@ -1966,9 +1998,7 @@ ${contentValues}`,
     const recordsRef = collection(getFirestore(), 'users', user.uid, 'records');
     const recordsQuery = query(recordsRef, where('formats', 'array-contains', 'HARU보조장부'));
     const snapshot = await getDocs(recordsQuery);
-    const fullKeys = new Set<string>();
-    const baseKeys = new Set<string>();
-    const noApprovalBaseKeys = new Set<string>();
+    const keys = new Set<string>();
 
     snapshot.forEach((recordSnapshot) => {
       const record = recordSnapshot.data() as Record<string, any>;
@@ -1986,7 +2016,7 @@ ${contentValues}`,
           date: record.ledger_date || record.ledger_transactionAt,
           vendor: record.ledger_partner,
           amount: record.ledger_amount,
-          approvalNumber: record.ledger_approvalNumber || record.ledger_approval_number,
+          paymentMethod: record.ledger_paymentMethod || record.ledger_payment,
         }];
       }
 
@@ -1994,16 +2024,44 @@ ${contentValues}`,
         const date = String(entry.date || entry.transactionAt || '').trim();
         const vendor = String(entry.vendor || entry.partner || '').trim();
         const amount = String(entry.amount || '').trim();
-        const approvalNumber = String(entry.approvalNumber || entry.approval_number || '').trim();
+        const paymentMethod = String(entry.paymentMethod || entry.payment || '').trim();
         if (!date || !vendor || !amount) return;
-        const baseKey = ledgerDuplicateBase(date, vendor, amount);
-        baseKeys.add(baseKey);
-        if (approvalNumber) fullKeys.add(ledgerDuplicateKey(date, vendor, amount, approvalNumber));
-        else noApprovalBaseKeys.add(baseKey);
+        keys.add(ledgerDuplicateKey(date, vendor, amount, paymentMethod));
       });
     });
 
-    return { fullKeys, baseKeys, noApprovalBaseKeys };
+    return keys;
+  };
+
+  const rebuildLedgerXlsxPreviewRows = (
+    rows: LedgerXlsxPreviewRow[],
+    referenceYear: number,
+    existingKeys: Set<string>,
+  ) => {
+    const seenKeys = new Set(existingKeys);
+    return rows.map((row) => {
+      const dateResult = normalizeLedgerXlsxDate(row.rawDate, referenceYear);
+      const warnings = [...row.nonDateWarnings];
+      if (!row.rawDate) warnings.unshift('거래일을 읽지 못했습니다.');
+      else if (!dateResult.valid) warnings.unshift('거래일 형식을 확인해 주세요.');
+      const canImport = Boolean(dateResult.valid && row.vendor && row.amount && row.paymentMethod && !row.nonDateWarnings.some((warning) => warning.includes('형식을 확인')));
+      const key = ledgerDuplicateKey(dateResult.value, row.vendor, row.amount, row.paymentMethod);
+      const duplicate = canImport && seenKeys.has(key);
+      if (canImport) seenKeys.add(key);
+      return {
+        ...row,
+        selected: false,
+        duplicate,
+        canImport,
+        date: dateResult.value,
+        warning: warnings.join(' '),
+      };
+    });
+  };
+
+  const handleLedgerXlsxYearChange = (value: number) => {
+    setLedgerXlsxYear(value);
+    setLedgerXlsxPreviewRows((rows) => rebuildLedgerXlsxPreviewRows(rows, value, ledgerXlsxExistingKeysRef.current));
   };
 
   const handleLedgerXlsxSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -2024,30 +2082,48 @@ ${contentValues}`,
     setLedgerXlsxPreviewRows([]);
     try {
       const duplicateKeys = await getExistingLedgerDuplicateKeys();
-      const { default: readXlsxFile } = await import('read-excel-file/browser');
-      const workbookSheets = await readXlsxFile(file);
-      const parsedRows: Omit<LedgerXlsxPreviewRow, 'duplicate' | 'selected'>[] = [];
+      const XLSX = await import('xlsx');
+      const workbook = XLSX.read(await file.arrayBuffer(), {
+        type: 'array',
+        cellDates: false,
+        cellNF: false,
+        cellStyles: false,
+        cellText: false,
+        dense: true,
+        WTF: false,
+      });
+      let parsedRows: LedgerXlsxPreviewRow[] = [];
 
-      workbookSheets.forEach(({ data: rows }, sheetIndex) => {
+      for (let sheetIndex = 0; sheetIndex < workbook.SheetNames.length; sheetIndex += 1) {
+        const sheet = workbook.Sheets[workbook.SheetNames[sheetIndex]];
+        if (!sheet) continue;
+        const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+          header: 1,
+          defval: '',
+          raw: true,
+          blankrows: false,
+        });
         let headerIndex = -1;
         let headerMap: Partial<Record<LedgerXlsxColumn, number>> = {};
         let bestScore = 0;
-        rows.slice(0, 50).forEach((row, rowIndex) => {
+        rows.slice(0, 100).forEach((row, rowIndex) => {
           const candidateMap: Partial<Record<LedgerXlsxColumn, number>> = {};
           row.forEach((cell, columnIndex) => {
             const column = findLedgerXlsxColumn(cell);
             if (column && candidateMap[column] === undefined) candidateMap[column] = columnIndex;
           });
-          const score = ['date', 'vendor', 'amount'].filter((column) => candidateMap[column as LedgerXlsxColumn] !== undefined).length;
+          const score = ['date', 'vendor', 'amount', 'paymentMethod'].filter((column) => candidateMap[column as LedgerXlsxColumn] !== undefined).length;
           if (score > bestScore) {
             bestScore = score;
             headerIndex = rowIndex;
             headerMap = candidateMap;
           }
         });
-        if (headerIndex < 0 || bestScore < 2 || headerMap.amount === undefined) return;
+        if (headerIndex < 0 || bestScore < 4 || headerMap.amount === undefined) continue;
 
+        const sheetRows: LedgerXlsxPreviewRow[] = [];
         rows.slice(headerIndex + 1).forEach((row, relativeIndex) => {
+          if (isLedgerXlsxSummaryRow(row)) return;
           const readRawColumn = (column: LedgerXlsxColumn) => {
             const columnIndex = headerMap[column];
             return columnIndex === undefined ? '' : row[columnIndex] ?? '';
@@ -2057,57 +2133,57 @@ ${contentValues}`,
           const vendor = readTextColumn('vendor');
           const rawAmount = readRawColumn('amount');
           const paymentMethod = readTextColumn('paymentMethod');
+          const merchantLocation = readTextColumn('merchantLocation');
           const approvalNumber = readTextColumn('approvalNumber');
-          const meaningfulValues = [rawDate, vendor, rawAmount, paymentMethod, approvalNumber].filter(Boolean);
+          const meaningfulValues = [rawDate, vendor, rawAmount, paymentMethod, merchantLocation, approvalNumber].filter((value) => String(value ?? '').trim());
           if (meaningfulValues.length < 2) return;
 
-          const dateResult = normalizeLedgerXlsxDate(rawDate);
+          const dateResult = normalizeLedgerXlsxDate(rawDate, ledgerXlsxYear);
           const amountResult = normalizeLedgerXlsxAmount(rawAmount);
-          const warnings: string[] = [];
-          if (!rawDate) warnings.push('거래일을 읽지 못했습니다.');
-          else if (!dateResult.valid) warnings.push('거래일 형식을 확인해 주세요.');
-          if (!vendor) warnings.push('거래처를 읽지 못했습니다.');
-          if (!rawAmount) warnings.push('금액을 읽지 못했습니다.');
-          else if (!amountResult.valid) warnings.push('금액 형식을 확인해 주세요.');
-          if (!paymentMethod) warnings.push('결제수단·카드 정보가 없습니다.');
-          parsedRows.push({
+          const nonDateWarnings: string[] = [];
+          if (!vendor) nonDateWarnings.push('거래처를 읽지 못했습니다.');
+          if (!rawAmount) nonDateWarnings.push('금액을 읽지 못했습니다.');
+          else if (!amountResult.valid) nonDateWarnings.push('금액 형식을 확인해 주세요.');
+          if (!paymentMethod) nonDateWarnings.push('카드 정보를 읽지 못했습니다.');
+          const dateWarning = !rawDate
+            ? '거래일을 읽지 못했습니다.'
+            : !dateResult.valid ? '거래일 형식을 확인해 주세요.' : '';
+          sheetRows.push({
             id: `xlsx-${sheetIndex}-${headerIndex + relativeIndex + 1}`,
-            canImport: Boolean(dateResult.valid && vendor && amountResult.valid),
+            selected: false,
+            duplicate: false,
+            canImport: Boolean(dateResult.valid && vendor && amountResult.valid && paymentMethod),
+            rawDate: typeof rawDate === 'number' ? rawDate : String(rawDate ?? '').trim(),
             date: dateResult.value,
             vendor,
             amount: amountResult.value,
             paymentMethod,
+            merchantLocation,
             approvalNumber,
-            warning: warnings.join(' '),
+            nonDateWarnings,
+            warning: [dateWarning, ...nonDateWarnings].filter(Boolean).join(' '),
           });
         });
-      });
+        if (sheetRows.length > 0) {
+          parsedRows = sheetRows;
+          break;
+        }
+      }
 
       if (parsedRows.length === 0) {
-        toast.error('거래일·가맹점·금액 열을 찾지 못했습니다. 카드사 XLSX 명세서인지 확인해 주세요.');
+        toast.error('거래 헤더 또는 거래 내역을 찾지 못했습니다. 국민카드 XLSX 형식인지 확인해 주세요.');
         return;
       }
 
-      const seenFullKeys = new Set(duplicateKeys.fullKeys);
-      const seenBaseKeys = new Set(duplicateKeys.baseKeys);
-      const seenNoApprovalBaseKeys = new Set(duplicateKeys.noApprovalBaseKeys);
-      const previewRows = parsedRows.map((row) => {
-        const baseKey = ledgerDuplicateBase(row.date, row.vendor, row.amount);
-        const fullKey = ledgerDuplicateKey(row.date, row.vendor, row.amount, row.approvalNumber);
-        const duplicate = row.approvalNumber
-          ? seenFullKeys.has(fullKey) || seenNoApprovalBaseKeys.has(baseKey)
-          : seenBaseKeys.has(baseKey);
-        if (row.approvalNumber) seenFullKeys.add(fullKey);
-        else seenNoApprovalBaseKeys.add(baseKey);
-        seenBaseKeys.add(baseKey);
-        return { ...row, duplicate, selected: row.canImport && !duplicate };
-      });
+      ledgerXlsxExistingKeysRef.current = duplicateKeys;
+      const previewRows = rebuildLedgerXlsxPreviewRows(parsedRows, ledgerXlsxYear, duplicateKeys);
       setLedgerXlsxPreviewRows(previewRows);
       const duplicateCount = previewRows.filter((row) => row.duplicate).length;
-      toast.success(`XLSX 거래 ${previewRows.length}건을 읽었습니다.${duplicateCount ? ` 이미 반영된 ${duplicateCount}건은 해제했습니다.` : ''}`);
+      toast.success(`${previewRows.length}건의 거래를 찾았습니다.${duplicateCount ? ` 이미 반영된 거래 ${duplicateCount}건이 있습니다.` : ''}`);
     } catch (error) {
       console.error('HARU보조장부 XLSX 가져오기 실패:', error);
-      toast.error('XLSX 파일을 읽거나 기존 거래와 비교하지 못했습니다.');
+      const reason = error instanceof Error && error.message ? error.message : '알 수 없는 분석 오류';
+      toast.error(`파일을 읽지 못했습니다: ${reason}. 국민카드 XLSX 형식인지 확인해 주세요.`);
     } finally {
       setIsReadingLedgerXlsx(false);
     }
@@ -2124,7 +2200,8 @@ ${contentValues}`,
     let savedCount = 0;
     try {
       for (const row of selectedRows) {
-        const fingerprint = ledgerDuplicateKey(row.date, row.vendor, row.amount, row.approvalNumber);
+        const fingerprint = ledgerDuplicateKey(row.date, row.vendor, row.amount, row.paymentMethod);
+        const merchantLocationMemo = row.merchantLocation ? `가맹점 소재지: ${row.merchantLocation}` : '';
         const entry: LedgerEntry = newLedgerEntry({
           id: `xlsx-${hashLedgerXlsxKey(fingerprint)}`,
           transactionType: '지출',
@@ -2134,13 +2211,13 @@ ${contentValues}`,
           vendor: row.vendor,
           amount: row.amount,
           paymentMethod: row.paymentMethod,
-          memo: '',
+          memo: merchantLocationMemo,
           businessTrack: '',
           approvalNumber: row.approvalNumber,
           proofType: LEDGER_XLSX_PROOF,
         });
         const title = [row.date, row.vendor, row.amount].filter(Boolean).join(' · ');
-        const summary = [row.date, row.vendor, row.amount, row.paymentMethod, row.approvalNumber ? `승인번호 ${row.approvalNumber}` : '']
+        const summary = [row.date, row.vendor, row.amount, row.paymentMethod, merchantLocationMemo, row.approvalNumber ? `승인번호 ${row.approvalNumber}` : '']
           .filter(Boolean)
           .join(' · ');
         await onSave({
@@ -2159,7 +2236,7 @@ ${contentValues}`,
           ledger_proof: LEDGER_XLSX_PROOF,
           ledger_proofType: LEDGER_XLSX_PROOF,
           ledger_approvalNumber: row.approvalNumber,
-          ledger_memo: '',
+          ledger_memo: merchantLocationMemo,
           ledger_entries: JSON.stringify([entry]),
           ledger_sayu: summary,
           ledger_style: 'premium',
@@ -3863,7 +3940,10 @@ ${contentValues}`,
                   {ledgerXlsxPreviewRows.length > 0 && (
                     <div style={{ marginTop: 12 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-                        <strong style={{ fontSize: 13, color: '#312e81' }}>가져오기 미리보기</strong>
+                        <div>
+                          <strong style={{ display: 'block', fontSize: 13, color: '#312e81' }}>가져오기 미리보기</strong>
+                          <span style={{ fontSize: 12, color: '#4b5563' }}>{ledgerXlsxPreviewRows.length}건의 거래를 찾았습니다</span>
+                        </div>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#4b5563', cursor: 'pointer' }}>
                           <input
                             type="checkbox"
@@ -3874,11 +3954,25 @@ ${contentValues}`,
                           가져올 수 있는 거래 전체
                         </label>
                       </div>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, fontSize: 12, color: '#374151' }}>
+                        거래 기준 연도
+                        <select
+                          value={ledgerXlsxYear}
+                          onChange={(event) => handleLedgerXlsxYearChange(Number(event.target.value))}
+                          disabled={isSavingLedgerXlsx}
+                          style={{ padding: '6px 28px 6px 8px', border: '1px solid #c7d2fe', borderRadius: 6, backgroundColor: '#fff', color: '#312e81', fontSize: 12 }}
+                        >
+                          {Array.from({ length: 11 }, (_, index) => new Date().getFullYear() + 1 - index).map((year) => (
+                            <option key={year} value={year}>{year}년</option>
+                          ))}
+                        </select>
+                        <span style={{ color: '#6b7280' }}>연도가 없는 0617 같은 날짜에 적용됩니다.</span>
+                      </label>
                       <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, backgroundColor: '#fff' }}>
-                        <table style={{ width: '100%', minWidth: 860, borderCollapse: 'collapse', fontSize: 11 }}>
+                        <table style={{ width: '100%', minWidth: 1040, borderCollapse: 'collapse', fontSize: 11 }}>
                           <thead>
                             <tr style={{ backgroundColor: '#eef2ff', color: '#3730a3', textAlign: 'left' }}>
-                              {['선택', '거래일', '거래처 또는 가맹점명', '금액', '결제수단 또는 카드 정보', '승인번호', '경고'].map((label) => (
+                              {['선택', '거래일', '거래처', '이용금액', '카드명 또는 카드 끝번호', '가맹점 소재지', '승인번호', '가져오기 상태'].map((label) => (
                                 <th key={label} style={{ padding: '8px 7px', borderBottom: '1px solid #c7d2fe', whiteSpace: 'nowrap' }}>{label}</th>
                               ))}
                             </tr>
@@ -3900,9 +3994,11 @@ ${contentValues}`,
                                 <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{row.vendor || '-'}</td>
                                 <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6', whiteSpace: 'nowrap', textAlign: 'right' }}>{row.amount || '-'}</td>
                                 <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{row.paymentMethod || '-'}</td>
+                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{row.merchantLocation || '-'}</td>
                                 <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6', whiteSpace: 'nowrap' }}>{row.approvalNumber || '-'}</td>
                                 <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6', color: row.duplicate ? '#b45309' : row.warning ? '#b45309' : '#6b7280' }}>
-                                  {row.duplicate ? '이미 반영됨' : row.warning || '-'}
+                                  <strong>{row.duplicate ? '이미 반영됨' : !row.canImport ? '형식 확인 필요' : '신규'}</strong>
+                                  {row.warning && <span style={{ display: 'block', marginTop: 3, fontWeight: 400 }}>{row.warning}</span>}
                                 </td>
                               </tr>
                             ))}
