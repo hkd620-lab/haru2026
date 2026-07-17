@@ -162,12 +162,16 @@ function findLedgerXlsxColumn(value: unknown): LedgerXlsxColumn | null {
   for (const [column, candidates] of Object.entries(LEDGER_XLSX_HEADERS) as [LedgerXlsxColumn, readonly string[]][]) {
     if (candidates.some((candidate) => normalized === normalizeLedgerXlsxHeader(candidate))) return column;
   }
+  let bestPartialMatch: { column: LedgerXlsxColumn; length: number } | null = null;
   for (const [column, candidates] of Object.entries(LEDGER_XLSX_HEADERS) as [LedgerXlsxColumn, readonly string[]][]) {
-    if (candidates.some((candidate) => normalized.includes(normalizeLedgerXlsxHeader(candidate)))) {
-      return column;
+    for (const candidate of candidates) {
+      const normalizedCandidate = normalizeLedgerXlsxHeader(candidate);
+      if (normalized.includes(normalizedCandidate) && normalizedCandidate.length > (bestPartialMatch?.length ?? 0)) {
+        bestPartialMatch = { column, length: normalizedCandidate.length };
+      }
     }
   }
-  return null;
+  return bestPartialMatch?.column ?? null;
 }
 
 function normalizeLedgerXlsxDate(value: unknown, referenceYear: number): { value: string; valid: boolean } {
