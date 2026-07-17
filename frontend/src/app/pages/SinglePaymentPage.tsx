@@ -191,6 +191,9 @@ export default function SinglePaymentPage() {
           <p className="text-xs font-bold text-[#4F46E5] mb-2">KG이니시스 일반결제</p>
           <h1 className="text-2xl font-black text-[#1A3C6E] mb-3">HARU2026 1개월 이용권</h1>
           <p className="text-sm font-bold text-gray-700 mb-5">결제는 로그인 후 이용할 수 있습니다.</p>
+          <p className="text-xs leading-5 text-gray-500 mb-5">
+            비회원 구매는 제공하지 않습니다. 심사자는 전달받은 테스트 계정으로 로그인 후 일반결제 흐름을 확인할 수 있습니다.
+          </p>
           <Link
             to="/login"
             className="block w-full rounded-lg bg-[#1A3C6E] px-4 py-4 text-base font-black text-white transition-colors hover:bg-[#142f57]"
@@ -208,7 +211,21 @@ export default function SinglePaymentPage() {
         <div className="mb-6">
           <p className="text-xs font-bold text-[#4F46E5] mb-2">KG이니시스 일반결제</p>
           <h1 className="text-2xl font-black text-[#1A3C6E] mb-2">HARU2026 1개월 이용권</h1>
-          <p className="text-sm text-gray-600">자동갱신 없는 30일 이용권입니다. 기록 데이터와 연결되므로 로그인 후 결제할 수 있습니다.</p>
+          <p className="text-sm text-gray-600">자동갱신 없는 30일 이용권입니다. 정기결제와 구분되는 단건 일반결제 상품입니다.</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 mb-5 text-xs leading-5">
+          <div className="rounded-lg border border-[#4F46E5] bg-[#EEF4FF] p-3">
+            <p className="font-black text-[#1A3C6E] mb-1">일반결제</p>
+            <p className="text-gray-600">1회 결제 후 30일 이용</p>
+          </div>
+          <div className="rounded-lg border border-[#e5decf] p-3">
+            <p className="font-black text-gray-600 mb-1">정기결제</p>
+            <p className="text-gray-500">매월 자동결제 구독</p>
+            <Link to="/subscription" className="mt-1 inline-block font-bold text-[#1A3C6E] underline">
+              정기결제 보기
+            </Link>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2 mb-5">
@@ -307,13 +324,27 @@ export default function SinglePaymentPage() {
         </button>
 
         {resultMessage && (
-          <p className="mt-4 rounded-lg bg-gray-50 px-4 py-3 text-center text-sm font-bold text-gray-700">
-            {resultMessage}
-          </p>
+          <div className="mt-4 rounded-lg bg-gray-50 px-4 py-3 text-center">
+            <p className="text-sm font-bold text-gray-700">{resultMessage}</p>
+            {resultMessage.includes('완료') && (
+              <div className="mt-3 grid grid-cols-1 gap-2">
+                <Link to="/settings" className="rounded-lg bg-[#1A3C6E] px-4 py-3 text-sm font-black text-white">
+                  결제/구독 상태 확인
+                </Link>
+                <Link to="/" className="rounded-lg border border-gray-200 px-4 py-3 text-sm font-bold text-[#1A3C6E]">
+                  서비스 이용하기
+                </Link>
+              </div>
+            )}
+          </div>
         )}
 
         <p className="mt-5 text-center text-xs leading-5 text-gray-400">
           HARU2026 이용권은 기록 데이터와 연결되므로 회원 계정 기준으로만 처리됩니다.
+        </p>
+
+        <p className="mt-3 text-center text-xs leading-5 text-gray-400">
+          환불은 결제 후 7일 이내이고 서비스 이용 이력이 없는 경우 전액 환불이 가능합니다. <Link to="/refund" className="text-[#1A3C6E] underline">환불정책 확인</Link>
         </p>
 
         <BusinessInfoNotice className="mt-3" />

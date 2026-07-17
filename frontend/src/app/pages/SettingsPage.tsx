@@ -582,6 +582,20 @@ export function SettingsPage() {
                   구독 해지가 예약되어 다음 결제는 진행되지 않습니다.
                 </p>
               )}
+
+              <div className="rounded-lg px-4 py-3" style={{ backgroundColor: '#F9FAFB', border: '1px solid #e5e5e5' }}>
+                <p className="text-xs leading-relaxed" style={{ color: '#666' }}>
+                  구독은 언제든 해지할 수 있으며, 해지 후에는 다음 결제일부터 청구되지 않습니다. 이미 결제된 1개월 이용 기간은 종료일까지 사용할 수 있습니다.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate('/refund')}
+                  className="mt-2 text-xs underline"
+                  style={{ color: '#1A3C6E', fontWeight: 700 }}
+                >
+                  환불정책 확인
+                </button>
+              </div>
             </div>
           )}
         </section>

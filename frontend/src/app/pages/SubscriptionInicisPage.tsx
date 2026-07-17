@@ -16,13 +16,13 @@ type PaidPlan = 'basic' | 'premium';
 const INICIS_BILLING_PLANS: Record<PaidPlan, { title: string; orderName: string; amount: number; priceLabel: string }> = {
   basic: {
     title: '베이직',
-    orderName: 'HARU 베이직 월 구독',
+    orderName: 'HARU2026 베이직 1개월 정기구독',
     amount: 4000,
     priceLabel: '4,000원 / 월',
   },
   premium: {
     title: '프리미엄',
-    orderName: 'HARU 프리미엄 월 구독',
+    orderName: 'HARU2026 프리미엄 1개월 정기구독',
     amount: 6000,
     priceLabel: '6,000원 / 월',
   },
@@ -72,7 +72,7 @@ export default function SubscriptionInicisPage() {
         payMethod: 'kg_inicis_card',
       })
         .then(() => {
-          setResultMessage(`${INICIS_BILLING_PLANS[redirectedPlan].title} 정기결제가 완료되었습니다.`);
+          setResultMessage(`${INICIS_BILLING_PLANS[redirectedPlan].orderName} 결제가 완료되었습니다. 설정 화면에서 구독 상태를 확인할 수 있습니다.`);
           window.history.replaceState({}, '', '/subscription/inicis');
         })
         .catch((error: any) => {
@@ -159,7 +159,7 @@ export default function SubscriptionInicisPage() {
         plan: selectedPlan,
         payMethod: 'kg_inicis_card',
       });
-      setResultMessage(`${plan.title} 정기결제가 완료되었습니다.`);
+      setResultMessage(`${plan.orderName} 결제가 완료되었습니다. 설정 화면에서 구독 상태를 확인할 수 있습니다.`);
     } catch (error: any) {
       console.error('KG이니시스 정기결제 빌링키 발급 오류:', error);
       setResultMessage(error?.message || '정기결제 처리 중 오류가 발생했습니다.');
@@ -175,6 +175,9 @@ export default function SubscriptionInicisPage() {
           <p className="text-xs font-bold text-[#4F46E5] mb-2">KG이니시스 정기결제</p>
           <h1 className="text-2xl font-black text-[#1A3C6E] mb-3">HARU2026 정기구독 신청</h1>
           <p className="text-sm font-bold text-gray-700 mb-5">결제는 로그인 후 이용할 수 있습니다.</p>
+          <p className="text-xs leading-5 text-gray-500 mb-5">
+            비회원 구매는 제공하지 않습니다. 심사자는 전달받은 테스트 계정으로 로그인 후 정기결제 흐름을 확인할 수 있습니다.
+          </p>
           <Link
             to="/login"
             className="block w-full rounded-lg bg-[#1A3C6E] px-4 py-4 text-base font-black text-white transition-colors hover:bg-[#142f57]"
@@ -191,8 +194,22 @@ export default function SubscriptionInicisPage() {
       <section className="w-full max-w-md bg-white border border-[#e5decf] rounded-lg shadow-sm p-6">
         <div className="mb-6">
           <p className="text-xs font-bold text-[#4F46E5] mb-2">KG이니시스 정기결제</p>
-          <h1 className="text-2xl font-black text-[#1A3C6E] mb-2">HARU2026 정기구독 신청</h1>
-          <p className="text-sm text-gray-600">KG이니시스 정기결제창에서 카드를 등록하고 첫 결제를 진행합니다.</p>
+          <h1 className="text-2xl font-black text-[#1A3C6E] mb-2">HARU2026 1개월 정기구독</h1>
+          <p className="text-sm text-gray-600">1개월 단위로 자동 갱신되는 구독 상품입니다. KG이니시스 정기결제창에서 카드를 등록하고 첫 결제를 진행합니다.</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 mb-5 text-xs leading-5">
+          <div className="rounded-lg border border-[#e5decf] p-3">
+            <p className="font-black text-gray-600 mb-1">일반결제</p>
+            <p className="text-gray-500">1회 결제 후 30일 이용</p>
+            <Link to="/payment/single" className="mt-1 inline-block font-bold text-[#1A3C6E] underline">
+              일반결제 보기
+            </Link>
+          </div>
+          <div className="rounded-lg border border-[#4F46E5] bg-[#EEF4FF] p-3">
+            <p className="font-black text-[#1A3C6E] mb-1">정기결제</p>
+            <p className="text-gray-600">매월 자동결제 구독</p>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2 mb-5">
@@ -208,6 +225,7 @@ export default function SubscriptionInicisPage() {
               >
                 <div className="text-sm font-black text-[#1A3C6E]">{plan.title}</div>
                 <div className="mt-1 text-xs text-gray-500">{plan.priceLabel}</div>
+                <div className="mt-1 text-xs font-bold text-[#047857]">1개월 정기구독</div>
               </button>
             );
           })}
@@ -271,13 +289,26 @@ export default function SubscriptionInicisPage() {
         </button>
 
         {resultMessage && (
-          <p className="mt-4 rounded-lg bg-gray-50 px-4 py-3 text-center text-sm font-bold text-gray-700">
-            {resultMessage}
-          </p>
+          <div className="mt-4 rounded-lg bg-gray-50 px-4 py-3 text-center">
+            <p className="text-sm font-bold text-gray-700">{resultMessage}</p>
+            {resultMessage.includes('완료') && (
+              <div className="mt-3 grid grid-cols-1 gap-2">
+                <Link to="/settings" className="rounded-lg bg-[#1A3C6E] px-4 py-3 text-sm font-black text-white">
+                  구독 상태 확인
+                </Link>
+                <Link to="/" className="rounded-lg border border-gray-200 px-4 py-3 text-sm font-bold text-[#1A3C6E]">
+                  서비스 이용하기
+                </Link>
+              </div>
+            )}
+          </div>
         )}
 
         <p className="mt-5 text-center text-xs leading-5 text-gray-400">
           모든 정기결제는 회원가입 또는 로그인 후 계정 기준으로 진행됩니다.
+        </p>
+        <p className="mt-3 text-center text-xs leading-5 text-gray-400">
+          구독은 설정에서 해지할 수 있으며, 환불은 1개월 상품 환불정책에 따릅니다. <Link to="/refund" className="text-[#1A3C6E] underline">환불정책 확인</Link>
         </p>
       </section>
     </div>
