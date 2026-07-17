@@ -2087,26 +2087,33 @@ ${contentValues}`,
     try {
       const duplicateKeys = await getExistingLedgerDuplicateKeys();
       const XLSX = await import('xlsx');
-      const workbook = XLSX.read(await file.arrayBuffer(), {
+      const fileBytes = new Uint8Array(await file.arrayBuffer());
+      if (fileBytes.byteLength === 0) throw new Error('파일 내용이 비어 있습니다. iCloud에서 파일 다운로드를 완료한 뒤 다시 선택해 주세요');
+      const workbook = XLSX.read(fileBytes, {
         type: 'array',
         cellDates: false,
         cellNF: false,
         cellStyles: false,
         cellText: false,
-        dense: true,
+        dense: false,
         WTF: false,
       });
       let parsedRows: LedgerXlsxPreviewRow[] = [];
+      let scannedSheetCount = 0;
+      let scannedRowCount = 0;
+      let maxHeaderScore = 0;
 
       for (let sheetIndex = 0; sheetIndex < workbook.SheetNames.length; sheetIndex += 1) {
         const sheet = workbook.Sheets[workbook.SheetNames[sheetIndex]];
         if (!sheet) continue;
+        scannedSheetCount += 1;
         const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
           header: 1,
           defval: '',
           raw: true,
           blankrows: false,
         });
+        scannedRowCount += rows.length;
         let headerIndex = -1;
         let headerMap: Partial<Record<LedgerXlsxColumn, number>> = {};
         let bestScore = 0;
@@ -2123,6 +2130,7 @@ ${contentValues}`,
             headerMap = candidateMap;
           }
         });
+        maxHeaderScore = Math.max(maxHeaderScore, bestScore);
         if (headerIndex < 0 || bestScore < 4 || headerMap.amount === undefined) continue;
 
         const sheetRows: LedgerXlsxPreviewRow[] = [];
@@ -2175,7 +2183,7 @@ ${contentValues}`,
       }
 
       if (parsedRows.length === 0) {
-        toast.error('거래 헤더 또는 거래 내역을 찾지 못했습니다. 국민카드 XLSX 형식인지 확인해 주세요.');
+        toast.error(`거래 헤더 또는 거래 내역을 찾지 못했습니다. 시트 ${scannedSheetCount}개·${scannedRowCount}행에서 핵심 열 ${maxHeaderScore}/4개를 찾았습니다. 국민카드 XLSX 형식인지 확인해 주세요.`);
         return;
       }
 
