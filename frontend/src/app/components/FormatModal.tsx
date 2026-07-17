@@ -93,6 +93,8 @@ interface LedgerEntry {
   ocrRawText?: string;
   customCategory: string;
   businessTrack: 'haru2026' | 'external' | '';
+  approvalNumber?: string;
+  proofType?: string;
 }
 
 function newLedgerEntry(overrides?: Partial<LedgerEntry>): LedgerEntry {
@@ -111,8 +113,137 @@ function newLedgerEntry(overrides?: Partial<LedgerEntry>): LedgerEntry {
     exchangeRate: '',
     customCategory: '',
     businessTrack: '',
+    approvalNumber: '',
+    proofType: '',
     ...overrides,
   };
+}
+
+interface LedgerXlsxPreviewRow {
+  id: string;
+  selected: boolean;
+  duplicate: boolean;
+  canImport: boolean;
+  date: string;
+  vendor: string;
+  amount: string;
+  paymentMethod: string;
+  approvalNumber: string;
+  warning: string;
+}
+
+const LEDGER_XLSX_PROOF = '카드명세서(XLSX) · 사용자 확인 필요';
+const LEDGER_XLSX_HEADERS = {
+  date: ['거래일', '승인일', '이용일자', '이용일', '거래일자', '승인일자'],
+  vendor: ['가맹점명', '이용가맹점', '거래처', '가맹점', '사용처'],
+  amount: ['이용금액', '승인금액', '결제금액', '거래금액', '금액'],
+  paymentMethod: ['카드번호', '카드명', '결제수단', '이용카드', '카드'],
+  approvalNumber: ['승인번호'],
+} as const;
+
+type LedgerXlsxColumn = keyof typeof LEDGER_XLSX_HEADERS;
+
+function normalizeLedgerXlsxHeader(value: unknown): string {
+  return String(value ?? '')
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[\s_\-./()[\]{}:]/g, '');
+}
+
+function findLedgerXlsxColumn(value: unknown): LedgerXlsxColumn | null {
+  const normalized = normalizeLedgerXlsxHeader(value);
+  if (!normalized) return null;
+  for (const [column, candidates] of Object.entries(LEDGER_XLSX_HEADERS) as [LedgerXlsxColumn, readonly string[]][]) {
+    if (candidates.some((candidate) => {
+      const normalizedCandidate = normalizeLedgerXlsxHeader(candidate);
+      return normalized === normalizedCandidate || normalized.includes(normalizedCandidate);
+    })) {
+      return column;
+    }
+  }
+  return null;
+}
+
+function normalizeLedgerXlsxDate(value: unknown): { value: string; valid: boolean } {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    const hours = value.getHours();
+    const minutes = value.getMinutes();
+    const time = hours || minutes ? ` ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}` : '';
+    return { value: `${year}-${month}-${day}${time}`, valid: true };
+  }
+  const raw = String(value ?? '').trim();
+  if (!raw) return { value: '', valid: false };
+  const normalized = raw
+    .replace(/\s+/g, ' ')
+    .replace(/\ub144|\uc6d4/g, '-')
+    .replace(/\uc77c/g, '')
+    .replace(/[./]/g, '-');
+  const isValidMonthDay = (month: string, day: string) => {
+    const monthNumber = Number(month);
+    const dayNumber = Number(day);
+    return monthNumber >= 1 && monthNumber <= 12 && dayNumber >= 1 && dayNumber <= 31;
+  };
+  const match = normalized.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(.*)$/);
+  if (match) {
+    const [, year, month, day, suffix] = match;
+    if (!isValidMonthDay(month, day)) return { value: raw, valid: false };
+    return {
+      value: `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}${suffix.trim() ? ` ${suffix.trim()}` : ''}`,
+      valid: true,
+    };
+  }
+  const shortYearMatch = normalized.match(/^(\d{2})-(\d{1,2})-(\d{1,2})(.*)$/);
+  if (shortYearMatch) {
+    const [, year, month, day, suffix] = shortYearMatch;
+    if (!isValidMonthDay(month, day)) return { value: raw, valid: false };
+    return {
+      value: `20${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}${suffix.trim() ? ` ${suffix.trim()}` : ''}`,
+      valid: true,
+    };
+  }
+  const compactMatch = normalized.match(/^(\d{4})(\d{2})(\d{2})(.*)$/);
+  if (compactMatch) {
+    const [, year, month, day, suffix] = compactMatch;
+    if (!isValidMonthDay(month, day)) return { value: raw, valid: false };
+    return { value: `${year}-${month}-${day}${suffix.trim() ? ` ${suffix.trim()}` : ''}`, valid: true };
+  }
+  return { value: raw, valid: false };
+}
+
+function normalizeLedgerXlsxAmount(value: unknown): { value: string; valid: boolean } {
+  const raw = String(value ?? '').trim();
+  if (!raw) return { value: '', valid: false };
+  const isParenthesized = /^\(.*\)$/.test(raw);
+  const numberText = raw.replace(/[^0-9.-]/g, '');
+  const parsed = Number(numberText);
+  if (!numberText || !Number.isFinite(parsed)) return { value: raw, valid: false };
+  const amount = isParenthesized ? -Math.abs(parsed) : parsed;
+  return { value: `${amount.toLocaleString('ko-KR')}원`, valid: true };
+}
+
+function ledgerDuplicateBase(date: string, vendor: string, amount: string): string {
+  return [
+    date.replace(/[^0-9]/g, '').slice(0, 8),
+    vendor.normalize('NFKC').toLowerCase().replace(/\s+/g, ''),
+    amount.replace(/[^0-9-]/g, '').replace(/^(-?)0+(?=\d)/, '$1'),
+  ].join('|');
+}
+
+function ledgerDuplicateKey(date: string, vendor: string, amount: string, approvalNumber: string): string {
+  const approval = approvalNumber.normalize('NFKC').replace(/\s+/g, '');
+  return `${ledgerDuplicateBase(date, vendor, amount)}|${approval}`;
+}
+
+function hashLedgerXlsxKey(value: string): string {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
 }
 
 // ===== HARU가계부 =====
@@ -386,6 +517,10 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [ledgerOcrPerFileResults, setLedgerOcrPerFileResults] = useState<{ fileName: string; rawText?: string; fields?: LedgerOcrFields; warnings?: string[] }[]>([]);
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([newLedgerEntry()]);
   const ledgerOcrInputRef = useRef<HTMLInputElement>(null);
+  const [ledgerXlsxPreviewRows, setLedgerXlsxPreviewRows] = useState<LedgerXlsxPreviewRow[]>([]);
+  const [isReadingLedgerXlsx, setIsReadingLedgerXlsx] = useState(false);
+  const [isSavingLedgerXlsx, setIsSavingLedgerXlsx] = useState(false);
+  const ledgerXlsxInputRef = useRef<HTMLInputElement>(null);
   // 📒 HARU가계부
   const [householdEntries, setHouseholdEntries] = useState<HouseholdEntry[]>([newHouseholdEntry()]);
   const [selectedHouseholdOcrFiles, setSelectedHouseholdOcrFiles] = useState<File[]>([]);
@@ -477,6 +612,9 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       setIsExtractingLedgerText(false);
       setLedgerOcrResult(null);
       setLedgerOcrPerFileResults([]);
+      setLedgerXlsxPreviewRows([]);
+      setIsReadingLedgerXlsx(false);
+      setIsSavingLedgerXlsx(false);
       setSelectedHouseholdOcrFiles([]);
       setIsExtractingHouseholdText(false);
 
@@ -1820,6 +1958,225 @@ ${contentValues}`,
       toast.error('저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const getExistingLedgerDuplicateKeys = async () => {
+    if (!user?.uid) throw new Error('로그인이 필요합니다.');
+    const recordsRef = collection(getFirestore(), 'users', user.uid, 'records');
+    const recordsQuery = query(recordsRef, where('formats', 'array-contains', 'HARU보조장부'));
+    const snapshot = await getDocs(recordsQuery);
+    const fullKeys = new Set<string>();
+    const baseKeys = new Set<string>();
+    const noApprovalBaseKeys = new Set<string>();
+
+    snapshot.forEach((recordSnapshot) => {
+      const record = recordSnapshot.data() as Record<string, any>;
+      let entries: Record<string, any>[] = [];
+      if (typeof record.ledger_entries === 'string') {
+        try {
+          const parsed = JSON.parse(record.ledger_entries);
+          if (Array.isArray(parsed)) entries = parsed;
+        } catch {
+          entries = [];
+        }
+      }
+      if (entries.length === 0 && (record.ledger_date || record.ledger_partner || record.ledger_amount)) {
+        entries = [{
+          date: record.ledger_date || record.ledger_transactionAt,
+          vendor: record.ledger_partner,
+          amount: record.ledger_amount,
+          approvalNumber: record.ledger_approvalNumber || record.ledger_approval_number,
+        }];
+      }
+
+      entries.forEach((entry) => {
+        const date = String(entry.date || entry.transactionAt || '').trim();
+        const vendor = String(entry.vendor || entry.partner || '').trim();
+        const amount = String(entry.amount || '').trim();
+        const approvalNumber = String(entry.approvalNumber || entry.approval_number || '').trim();
+        if (!date || !vendor || !amount) return;
+        const baseKey = ledgerDuplicateBase(date, vendor, amount);
+        baseKeys.add(baseKey);
+        if (approvalNumber) fullKeys.add(ledgerDuplicateKey(date, vendor, amount, approvalNumber));
+        else noApprovalBaseKeys.add(baseKey);
+      });
+    });
+
+    return { fullKeys, baseKeys, noApprovalBaseKeys };
+  };
+
+  const handleLedgerXlsxSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.xlsx')) {
+      setLedgerXlsxPreviewRows([]);
+      toast.warning('현재는 XLSX 카드 명세서 파일만 가져올 수 있습니다.');
+      return;
+    }
+    if (!user?.uid) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+
+    setIsReadingLedgerXlsx(true);
+    setLedgerXlsxPreviewRows([]);
+    try {
+      const duplicateKeys = await getExistingLedgerDuplicateKeys();
+      const { default: readXlsxFile } = await import('read-excel-file/browser');
+      const workbookSheets = await readXlsxFile(file);
+      const parsedRows: Omit<LedgerXlsxPreviewRow, 'duplicate' | 'selected'>[] = [];
+
+      workbookSheets.forEach(({ data: rows }, sheetIndex) => {
+        let headerIndex = -1;
+        let headerMap: Partial<Record<LedgerXlsxColumn, number>> = {};
+        let bestScore = 0;
+        rows.slice(0, 50).forEach((row, rowIndex) => {
+          const candidateMap: Partial<Record<LedgerXlsxColumn, number>> = {};
+          row.forEach((cell, columnIndex) => {
+            const column = findLedgerXlsxColumn(cell);
+            if (column && candidateMap[column] === undefined) candidateMap[column] = columnIndex;
+          });
+          const score = ['date', 'vendor', 'amount'].filter((column) => candidateMap[column as LedgerXlsxColumn] !== undefined).length;
+          if (score > bestScore) {
+            bestScore = score;
+            headerIndex = rowIndex;
+            headerMap = candidateMap;
+          }
+        });
+        if (headerIndex < 0 || bestScore < 2 || headerMap.amount === undefined) return;
+
+        rows.slice(headerIndex + 1).forEach((row, relativeIndex) => {
+          const readRawColumn = (column: LedgerXlsxColumn) => {
+            const columnIndex = headerMap[column];
+            return columnIndex === undefined ? '' : row[columnIndex] ?? '';
+          };
+          const readTextColumn = (column: LedgerXlsxColumn) => String(readRawColumn(column)).trim();
+          const rawDate = readRawColumn('date');
+          const vendor = readTextColumn('vendor');
+          const rawAmount = readRawColumn('amount');
+          const paymentMethod = readTextColumn('paymentMethod');
+          const approvalNumber = readTextColumn('approvalNumber');
+          const meaningfulValues = [rawDate, vendor, rawAmount, paymentMethod, approvalNumber].filter(Boolean);
+          if (meaningfulValues.length < 2) return;
+
+          const dateResult = normalizeLedgerXlsxDate(rawDate);
+          const amountResult = normalizeLedgerXlsxAmount(rawAmount);
+          const warnings: string[] = [];
+          if (!rawDate) warnings.push('거래일을 읽지 못했습니다.');
+          else if (!dateResult.valid) warnings.push('거래일 형식을 확인해 주세요.');
+          if (!vendor) warnings.push('거래처를 읽지 못했습니다.');
+          if (!rawAmount) warnings.push('금액을 읽지 못했습니다.');
+          else if (!amountResult.valid) warnings.push('금액 형식을 확인해 주세요.');
+          if (!paymentMethod) warnings.push('결제수단·카드 정보가 없습니다.');
+          parsedRows.push({
+            id: `xlsx-${sheetIndex}-${headerIndex + relativeIndex + 1}`,
+            canImport: Boolean(dateResult.valid && vendor && amountResult.valid),
+            date: dateResult.value,
+            vendor,
+            amount: amountResult.value,
+            paymentMethod,
+            approvalNumber,
+            warning: warnings.join(' '),
+          });
+        });
+      });
+
+      if (parsedRows.length === 0) {
+        toast.error('거래일·가맹점·금액 열을 찾지 못했습니다. 카드사 XLSX 명세서인지 확인해 주세요.');
+        return;
+      }
+
+      const seenFullKeys = new Set(duplicateKeys.fullKeys);
+      const seenBaseKeys = new Set(duplicateKeys.baseKeys);
+      const seenNoApprovalBaseKeys = new Set(duplicateKeys.noApprovalBaseKeys);
+      const previewRows = parsedRows.map((row) => {
+        const baseKey = ledgerDuplicateBase(row.date, row.vendor, row.amount);
+        const fullKey = ledgerDuplicateKey(row.date, row.vendor, row.amount, row.approvalNumber);
+        const duplicate = row.approvalNumber
+          ? seenFullKeys.has(fullKey) || seenNoApprovalBaseKeys.has(baseKey)
+          : seenBaseKeys.has(baseKey);
+        if (row.approvalNumber) seenFullKeys.add(fullKey);
+        else seenNoApprovalBaseKeys.add(baseKey);
+        seenBaseKeys.add(baseKey);
+        return { ...row, duplicate, selected: row.canImport && !duplicate };
+      });
+      setLedgerXlsxPreviewRows(previewRows);
+      const duplicateCount = previewRows.filter((row) => row.duplicate).length;
+      toast.success(`XLSX 거래 ${previewRows.length}건을 읽었습니다.${duplicateCount ? ` 이미 반영된 ${duplicateCount}건은 해제했습니다.` : ''}`);
+    } catch (error) {
+      console.error('HARU보조장부 XLSX 가져오기 실패:', error);
+      toast.error('XLSX 파일을 읽거나 기존 거래와 비교하지 못했습니다.');
+    } finally {
+      setIsReadingLedgerXlsx(false);
+    }
+  };
+
+  const handleSaveLedgerXlsxRows = async () => {
+    const selectedRows = ledgerXlsxPreviewRows.filter((row) => row.selected && row.canImport && !row.duplicate);
+    if (selectedRows.length === 0) {
+      toast.warning('보조장부에 반영할 거래를 선택해 주세요.');
+      return;
+    }
+
+    setIsSavingLedgerXlsx(true);
+    let savedCount = 0;
+    try {
+      for (const row of selectedRows) {
+        const fingerprint = ledgerDuplicateKey(row.date, row.vendor, row.amount, row.approvalNumber);
+        const entry: LedgerEntry = newLedgerEntry({
+          id: `xlsx-${hashLedgerXlsxKey(fingerprint)}`,
+          transactionType: '지출',
+          usageType: '사업용',
+          category: '',
+          date: row.date,
+          vendor: row.vendor,
+          amount: row.amount,
+          paymentMethod: row.paymentMethod,
+          memo: '',
+          businessTrack: '',
+          approvalNumber: row.approvalNumber,
+          proofType: LEDGER_XLSX_PROOF,
+        });
+        const title = [row.date, row.vendor, row.amount].filter(Boolean).join(' · ');
+        const summary = [row.date, row.vendor, row.amount, row.paymentMethod, row.approvalNumber ? `승인번호 ${row.approvalNumber}` : '']
+          .filter(Boolean)
+          .join(' · ');
+        await onSave({
+          _recordId: `ledger_xlsx_${hashLedgerXlsxKey(fingerprint)}`,
+          _recordDate: row.date.slice(0, 10),
+          formats: ['HARU보조장부'],
+          ledger_title: title,
+          ledger_type: '지출',
+          ledger_usageType: '사업용',
+          ledger_date: row.date,
+          ledger_transactionAt: row.date,
+          ledger_partner: row.vendor,
+          ledger_amount: row.amount,
+          ledger_payment: row.paymentMethod,
+          ledger_paymentMethod: row.paymentMethod,
+          ledger_proof: LEDGER_XLSX_PROOF,
+          ledger_proofType: LEDGER_XLSX_PROOF,
+          ledger_approvalNumber: row.approvalNumber,
+          ledger_memo: '',
+          ledger_entries: JSON.stringify([entry]),
+          ledger_sayu: summary,
+          ledger_style: 'premium',
+          ledger_mode: 'ORIGINAL',
+        } as any);
+        savedCount += 1;
+      }
+      toast.success(`선택한 거래 ${savedCount}건을 보조장부에 반영했습니다.`);
+      setLedgerXlsxPreviewRows([]);
+      onClose();
+    } catch (error) {
+      console.error('HARU보조장부 XLSX 선택 거래 저장 실패:', error);
+      toast.error(savedCount > 0
+        ? `${savedCount}건 저장 후 중단됐습니다. 다시 시도해 주세요.`
+        : '선택한 거래 저장에 실패했습니다.');
+    } finally {
+      setIsSavingLedgerXlsx(false);
     }
   };
 
@@ -3453,6 +3810,126 @@ ${contentValues}`,
                     resize: 'vertical', fontFamily: 'inherit', outline: 'none',
                   }}
                 />
+              )}
+
+              {isLedgerFormat && (
+                <div
+                  style={{
+                    padding: 12,
+                    border: '1px solid #c7d2fe',
+                    borderRadius: 10,
+                    backgroundColor: '#f7f7ff',
+                  }}
+                >
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#3730a3', marginBottom: 8, fontWeight: 700 }}>
+                    <FileText style={{ width: 15, height: 15 }} />
+                    XLSX 카드 명세서 가져오기
+                  </label>
+                  <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
+                    원본 파일은 업로드하지 않으며, 선택하여 확정한 거래만 보조장부에 저장합니다.
+                  </p>
+                  <input
+                    ref={ledgerXlsxInputRef}
+                    type="file"
+                    accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    onChange={handleLedgerXlsxSelect}
+                    style={{ display: 'none' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => ledgerXlsxInputRef.current?.click()}
+                    disabled={isReadingLedgerXlsx || isSavingLedgerXlsx}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      border: '1px dashed #4f46e5',
+                      borderRadius: 8,
+                      backgroundColor: '#fff',
+                      color: '#3730a3',
+                      cursor: isReadingLedgerXlsx || isSavingLedgerXlsx ? 'wait' : 'pointer',
+                      opacity: isReadingLedgerXlsx || isSavingLedgerXlsx ? 0.6 : 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      fontSize: 13,
+                      fontWeight: 700,
+                    }}
+                  >
+                    <Upload style={{ width: 16, height: 16 }} />
+                    {isReadingLedgerXlsx ? 'XLSX 읽는 중...' : 'XLSX 파일 선택'}
+                  </button>
+
+                  {ledgerXlsxPreviewRows.length > 0 && (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                        <strong style={{ fontSize: 13, color: '#312e81' }}>가져오기 미리보기</strong>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#4b5563', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={ledgerXlsxPreviewRows.some((row) => row.canImport && !row.duplicate) && ledgerXlsxPreviewRows.filter((row) => row.canImport && !row.duplicate).every((row) => row.selected)}
+                            onChange={(e) => setLedgerXlsxPreviewRows((prev) => prev.map((row) => row.canImport && !row.duplicate ? { ...row, selected: e.target.checked } : row))}
+                            style={{ accentColor: '#4f46e5' }}
+                          />
+                          가져올 수 있는 거래 전체
+                        </label>
+                      </div>
+                      <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, backgroundColor: '#fff' }}>
+                        <table style={{ width: '100%', minWidth: 860, borderCollapse: 'collapse', fontSize: 11 }}>
+                          <thead>
+                            <tr style={{ backgroundColor: '#eef2ff', color: '#3730a3', textAlign: 'left' }}>
+                              {['선택', '거래일', '거래처 또는 가맹점명', '금액', '결제수단 또는 카드 정보', '승인번호', '경고'].map((label) => (
+                                <th key={label} style={{ padding: '8px 7px', borderBottom: '1px solid #c7d2fe', whiteSpace: 'nowrap' }}>{label}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {ledgerXlsxPreviewRows.map((row) => (
+                              <tr key={row.id} style={{ backgroundColor: row.duplicate ? '#f9fafb' : '#fff', color: row.duplicate ? '#9ca3af' : '#374151' }}>
+                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6', textAlign: 'center' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={row.selected}
+                                    disabled={row.duplicate || !row.canImport || isSavingLedgerXlsx}
+                                    onChange={(e) => setLedgerXlsxPreviewRows((prev) => prev.map((item) => item.id === row.id ? { ...item, selected: e.target.checked } : item))}
+                                    aria-label={`${row.vendor || '거래'} 선택`}
+                                    style={{ accentColor: '#4f46e5' }}
+                                  />
+                                </td>
+                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6', whiteSpace: 'nowrap' }}>{row.date || '-'}</td>
+                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{row.vendor || '-'}</td>
+                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6', whiteSpace: 'nowrap', textAlign: 'right' }}>{row.amount || '-'}</td>
+                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{row.paymentMethod || '-'}</td>
+                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6', whiteSpace: 'nowrap' }}>{row.approvalNumber || '-'}</td>
+                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6', color: row.duplicate ? '#b45309' : row.warning ? '#b45309' : '#6b7280' }}>
+                                  {row.duplicate ? '이미 반영됨' : row.warning || '-'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(90px, 0.35fr) minmax(210px, 1fr)', gap: 8, marginTop: 10 }}>
+                        <button
+                          type="button"
+                          onClick={() => setLedgerXlsxPreviewRows([])}
+                          disabled={isSavingLedgerXlsx}
+                          style={{ padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 8, backgroundColor: '#fff', color: '#374151', fontSize: 13, fontWeight: 700, cursor: isSavingLedgerXlsx ? 'not-allowed' : 'pointer' }}
+                        >
+                          취소
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSaveLedgerXlsxRows}
+                          disabled={isSavingLedgerXlsx || !ledgerXlsxPreviewRows.some((row) => row.selected && row.canImport && !row.duplicate)}
+                          style={{ padding: '10px 12px', border: 'none', borderRadius: 8, backgroundColor: '#4f46e5', color: '#fff', fontSize: 13, fontWeight: 800, cursor: isSavingLedgerXlsx ? 'wait' : 'pointer', opacity: isSavingLedgerXlsx || !ledgerXlsxPreviewRows.some((row) => row.selected && row.canImport && !row.duplicate) ? 0.55 : 1 }}
+                        >
+                          {isSavingLedgerXlsx ? '저장 중...' : '선택 거래를 보조장부에 반영'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
 
               {isLedgerFormat && (
