@@ -1,19 +1,23 @@
 const sections = [
   {
+    title: '적용 상품',
+    content: 'HARU2026 환불정책은 베이직 1개월 이용권, 프리미엄 1개월 이용권, 베이직 1개월 정기구독, 프리미엄 1개월 정기구독에 적용됩니다.',
+  },
+  {
     title: '전액 환불 조건',
-    content: '구독 결제 후 7일 이내이며, 서비스 이용 이력(기록 작성, AI 다듬기, 합본 출력 등)이 없는 경우 전액 환불이 가능합니다.',
+    content: '결제 후 7일 이내이며, 서비스 이용 이력(기록 작성, AI 다듬기, 합본 출력, PDF 저장 등)이 없는 경우 전액 환불이 가능합니다.',
   },
   {
-    title: '부분 환불 조건 (연간 구독)',
-    content: '연간 구독권의 경우, 결제일로부터 7일 초과 후 환불 요청 시 잔여 이용 기간에 비례한 부분 환불이 가능합니다.\n\n· 부분 환불 금액 = 결제 금액 × (잔여 일수 ÷ 365)\n· 단, 서비스 이용 이력이 있는 경우에도 부분 환불 신청이 가능합니다.',
+    title: '부분 환불 조건 (1개월 상품)',
+    content: '1개월 상품은 결제일로부터 7일 초과 후 환불 요청 시 잔여 이용 기간에 비례한 부분 환불을 검토합니다.\n\n· 부분 환불 기준 = 결제 금액 × (잔여 일수 ÷ 30)\n· 서비스 이용 이력이 있는 경우 이용 내역을 확인한 뒤 환불 가능 여부를 안내합니다.',
   },
   {
-    title: '부분 환불 조건 (월간 구독)',
-    content: '월간 구독권의 경우, 결제일로부터 7일 초과 후 환불 요청 시 잔여 이용 기간에 비례한 부분 환불이 가능합니다.\n\n· 부분 환불 금액 = 결제 금액 × (잔여 일수 ÷ 30)\n· 단, 서비스 이용 이력이 있는 경우에도 부분 환불 신청이 가능합니다.',
+    title: '정기결제 구독해지',
+    content: '정기결제 구독은 설정 > 구독 관리에서 언제든 해지할 수 있습니다. 해지하면 다음 결제일부터 청구되지 않으며, 이미 결제된 이용 기간은 종료일까지 계속 사용할 수 있습니다.',
   },
   {
     title: '환불 불가 조건',
-    content: '구독 만료일이 7일 미만으로 남은 경우 환불이 불가합니다.',
+    content: '이용 기간이 종료되었거나, 환불 요청 시점에 남은 이용 기간이 7일 미만인 경우 환불이 제한될 수 있습니다.',
   },
   {
     title: '환불 문의',
@@ -36,10 +40,10 @@ export function RefundPage() {
         style={{ position: 'fixed', top: '16px', right: '16px', width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#1A3C6E', color: 'white', fontSize: '18px', border: 'none', cursor: 'pointer', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       >✕</button>
       <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1A3C6E', marginBottom: 8 }}>
-        환불 정책
+        1개월 구독 및 이용권 환불 정책
       </h1>
       <p style={{ fontSize: 13, color: '#999', marginBottom: 32 }}>
-        시행일: 2026년 1월 1일
+        시행일: 2026년 1월 1일 · HARU2026 1개월 상품 기준
       </p>
       {sections.map((section) => (
         <div

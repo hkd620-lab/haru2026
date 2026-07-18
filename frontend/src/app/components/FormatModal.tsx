@@ -21,6 +21,24 @@ import {
 import { findGrowthLMS, type GrowthGender } from '../../data/growthLMS';
 import { calcAgeInMonths, calcPercentile } from '../../utils/growthCalc';
 import { GrowthChart } from '../../components/GrowthChart';
+import {
+  LEDGER_XLSX_PROOF,
+  classifyLedgerPreviewRows,
+  createLedgerDuplicateIndex,
+  createLedgerEntry as newLedgerEntry,
+  hashLedgerImportKey,
+  ledgerEntryAmount,
+  normalizeLedgerAmount,
+  normalizeLedgerDate,
+  parseLedgerWorkbook,
+  type LedgerDuplicateIndex,
+  type LedgerEntry,
+  type LedgerPeriodPreviewRow,
+} from '../services/ledgerPeriodImport';
+import {
+  getLedgerDuplicateIndexForDates,
+  saveLedgerPeriodEntriesBatch,
+} from '../services/ledgerPeriodSaveService';
 
 type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '성장기록' | 'HARU주식관리' | '주식거래일지' | '메모' | 'HARU보조장부' | 'HARU가계부';
 type SayuMode = 'BASIC' | 'PREMIUM';
@@ -76,207 +94,6 @@ interface LedgerOcrResult {
   warnings?: string[];
 }
 
-interface LedgerEntry {
-  id: string;
-  transactionType: string;
-  usageType: string;
-  category: string;
-  date: string;
-  vendor: string;
-  amount: string;
-  paymentMethod: string;
-  memo: string;
-  foreignAmount: string;
-  foreignCurrency: string;
-  exchangeRate: string;
-  ocrSourceFile?: string;
-  ocrRawText?: string;
-  customCategory: string;
-  businessTrack: 'haru2026' | 'external' | '';
-  approvalNumber?: string;
-  proofType?: string;
-}
-
-function newLedgerEntry(overrides?: Partial<LedgerEntry>): LedgerEntry {
-  return {
-    id: Math.random().toString(36).slice(2, 9),
-    transactionType: '지출',
-    usageType: '사업용',
-    category: '',
-    date: '',
-    vendor: '',
-    amount: '',
-    paymentMethod: '',
-    memo: '',
-    foreignAmount: '',
-    foreignCurrency: '',
-    exchangeRate: '',
-    customCategory: '',
-    businessTrack: '',
-    approvalNumber: '',
-    proofType: '',
-    ...overrides,
-  };
-}
-
-interface LedgerXlsxPreviewRow {
-  id: string;
-  selected: boolean;
-  duplicate: boolean;
-  canImport: boolean;
-  rawDate: string | number;
-  date: string;
-  vendor: string;
-  amount: string;
-  paymentMethod: string;
-  merchantLocation: string;
-  approvalNumber: string;
-  nonDateWarnings: string[];
-  warning: string;
-}
-
-const LEDGER_XLSX_PROOF = '카드명세서(XLSX) · 사용자 확인 필요';
-const LEDGER_XLSX_HEADERS = {
-  date: ['이용일자', '승인일자', '거래일', '승인일', '이용일', '거래일자'],
-  vendor: ['이용가맹점', '가맹점명', '거래처', '가맹점', '사용처'],
-  amount: ['이용금액', '승인금액', '결제금액', '거래금액', '금액'],
-  paymentMethod: ['이용카드', '카드명', '카드번호', '결제수단', '카드'],
-  merchantLocation: ['가맹점소재지', '소재지', '가맹점주소'],
-  approvalNumber: ['승인번호'],
-} as const;
-
-type LedgerXlsxColumn = keyof typeof LEDGER_XLSX_HEADERS;
-
-function normalizeLedgerXlsxHeader(value: unknown): string {
-  return String(value ?? '')
-    .normalize('NFKC')
-    .toLowerCase()
-    .replace(/[\s_\-./()[\]{}:]/g, '');
-}
-
-function findLedgerXlsxColumn(value: unknown): LedgerXlsxColumn | null {
-  const normalized = normalizeLedgerXlsxHeader(value);
-  if (!normalized) return null;
-  // 국민카드 기업용 명세서의 "이번달 결제금액"은 실제 이용금액이 아니다.
-  if (normalized.includes('이번달결제금액')) return null;
-  for (const [column, candidates] of Object.entries(LEDGER_XLSX_HEADERS) as [LedgerXlsxColumn, readonly string[]][]) {
-    if (candidates.some((candidate) => normalized === normalizeLedgerXlsxHeader(candidate))) return column;
-  }
-  let bestPartialMatch: { column: LedgerXlsxColumn; length: number } | null = null;
-  for (const [column, candidates] of Object.entries(LEDGER_XLSX_HEADERS) as [LedgerXlsxColumn, readonly string[]][]) {
-    for (const candidate of candidates) {
-      const normalizedCandidate = normalizeLedgerXlsxHeader(candidate);
-      if (normalized.includes(normalizedCandidate) && normalizedCandidate.length > (bestPartialMatch?.length ?? 0)) {
-        bestPartialMatch = { column, length: normalizedCandidate.length };
-      }
-    }
-  }
-  return bestPartialMatch?.column ?? null;
-}
-
-function normalizeLedgerXlsxDate(value: unknown, referenceYear: number): { value: string; valid: boolean } {
-  if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    const year = value.getFullYear();
-    const month = String(value.getMonth() + 1).padStart(2, '0');
-    const day = String(value.getDate()).padStart(2, '0');
-    const hours = value.getHours();
-    const minutes = value.getMinutes();
-    const time = hours || minutes ? ` ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}` : '';
-    return { value: `${year}-${month}-${day}${time}`, valid: true };
-  }
-  if (typeof value === 'number' && Number.isFinite(value) && value >= 20000 && value <= 80000) {
-    const excelDate = new Date(Date.UTC(1899, 11, 30) + Math.floor(value) * 86400000);
-    return {
-      value: `${excelDate.getUTCFullYear()}-${String(excelDate.getUTCMonth() + 1).padStart(2, '0')}-${String(excelDate.getUTCDate()).padStart(2, '0')}`,
-      valid: true,
-    };
-  }
-  const raw = String(value ?? '').trim();
-  if (!raw) return { value: '', valid: false };
-  const normalized = raw
-    .replace(/\s+/g, ' ')
-    .replace(/\ub144|\uc6d4/g, '-')
-    .replace(/\uc77c/g, '')
-    .replace(/[./]/g, '-');
-  const isValidDate = (year: string, month: string, day: string) => {
-    const yearNumber = Number(year);
-    const monthNumber = Number(month);
-    const dayNumber = Number(day);
-    const date = new Date(yearNumber, monthNumber - 1, dayNumber);
-    return yearNumber >= 1900
-      && date.getFullYear() === yearNumber
-      && date.getMonth() === monthNumber - 1
-      && date.getDate() === dayNumber;
-  };
-  const match = normalized.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(.*)$/);
-  if (match) {
-    const [, year, month, day, suffix] = match;
-    if (!isValidDate(year, month, day)) return { value: raw, valid: false };
-    return {
-      value: `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}${suffix.trim() ? ` ${suffix.trim()}` : ''}`,
-      valid: true,
-    };
-  }
-  const shortYearMatch = normalized.match(/^(\d{2})-(\d{1,2})-(\d{1,2})(.*)$/);
-  if (shortYearMatch) {
-    const [, year, month, day, suffix] = shortYearMatch;
-    if (!isValidDate(`20${year}`, month, day)) return { value: raw, valid: false };
-    return {
-      value: `20${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}${suffix.trim() ? ` ${suffix.trim()}` : ''}`,
-      valid: true,
-    };
-  }
-  const compactMatch = normalized.match(/^(\d{4})(\d{2})(\d{2})(.*)$/);
-  if (compactMatch) {
-    const [, year, month, day, suffix] = compactMatch;
-    if (!isValidDate(year, month, day)) return { value: raw, valid: false };
-    return { value: `${year}-${month}-${day}${suffix.trim() ? ` ${suffix.trim()}` : ''}`, valid: true };
-  }
-  const monthDayDigits = raw.replace(/\D/g, '');
-  if (/^\d{3,4}$/.test(monthDayDigits)) {
-    const padded = monthDayDigits.padStart(4, '0');
-    const month = padded.slice(0, 2);
-    const day = padded.slice(2, 4);
-    if (isValidDate(String(referenceYear), month, day)) {
-      return { value: `${referenceYear}-${month}-${day}`, valid: true };
-    }
-  }
-  return { value: raw, valid: false };
-}
-
-function normalizeLedgerXlsxAmount(value: unknown): { value: string; valid: boolean } {
-  const raw = String(value ?? '').trim();
-  if (!raw) return { value: '', valid: false };
-  const isParenthesized = /^\(.*\)$/.test(raw);
-  const numberText = raw.replace(/[^0-9.-]/g, '');
-  const parsed = Number(numberText);
-  if (!numberText || !Number.isFinite(parsed)) return { value: raw, valid: false };
-  const amount = isParenthesized ? -Math.abs(parsed) : parsed;
-  return { value: `${amount.toLocaleString('ko-KR')}원`, valid: true };
-}
-
-function ledgerDuplicateKey(date: string, vendor: string, amount: string, cardInfo: string): string {
-  return [
-    date.replace(/[^0-9]/g, '').slice(0, 8),
-    vendor.normalize('NFKC').toLowerCase().replace(/\s+/g, ''),
-    amount.replace(/[^0-9-]/g, '').replace(/^(-?)0+(?=\d)/, '$1'),
-    cardInfo.normalize('NFKC').toLowerCase().replace(/\s+/g, ''),
-  ].join('|');
-}
-
-function isLedgerXlsxSummaryRow(row: unknown[]): boolean {
-  const rowText = row.map((cell) => String(cell ?? '').trim()).filter(Boolean).join(' ');
-  return /소계|합계|총계|\d+\s*건/.test(rowText);
-}
-
-function hashLedgerXlsxKey(value: string): string {
-  let hash = 2166136261;
-  for (let i = 0; i < value.length; i += 1) {
-    hash ^= value.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return (hash >>> 0).toString(36);
-}
 
 // ===== HARU가계부 =====
 const HOUSEHOLD_CATEGORIES = ['식비', '교통비', '통신비', '주거비', '공과금', '의료비', '교육비', '문화생활', '쇼핑', '구독료', '기타'] as const;
@@ -496,6 +313,18 @@ const TITLE_EXAMPLE: Partial<Record<RecordFormat, string>> = {
 
 // 기록 스타일 타입
 type RecordStyle = 'simple' | 'premium';
+type LedgerInputMode = 'single' | 'period';
+type LedgerBulkFields = Pick<LedgerEntry, 'transactionType' | 'businessTrack' | 'usageType' | 'category' | 'proofType'>;
+
+interface LedgerPeriodResultState {
+  totalCount: number;
+  savedCount: number;
+  excludedCount: number;
+  duplicateExcludedCount: number;
+  savedDateCount: number;
+  failureCount: number;
+  message?: string;
+}
 
 const DIARY_PREMIUM_FIELDS = [
   { key: 'diary_오늘한일', label: '오늘한일' },
@@ -548,13 +377,23 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [ledgerOcrResult, setLedgerOcrResult] = useState<LedgerOcrResult | null>(null);
   const [ledgerOcrPerFileResults, setLedgerOcrPerFileResults] = useState<{ fileName: string; rawText?: string; fields?: LedgerOcrFields; warnings?: string[] }[]>([]);
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([newLedgerEntry()]);
+  const [ledgerInputMode, setLedgerInputMode] = useState<LedgerInputMode>('single');
   const ledgerOcrInputRef = useRef<HTMLInputElement>(null);
-  const [ledgerXlsxPreviewRows, setLedgerXlsxPreviewRows] = useState<LedgerXlsxPreviewRow[]>([]);
+  const [ledgerXlsxPreviewRows, setLedgerXlsxPreviewRows] = useState<LedgerPeriodPreviewRow[]>([]);
   const [ledgerXlsxYear, setLedgerXlsxYear] = useState(new Date().getFullYear());
   const [isReadingLedgerXlsx, setIsReadingLedgerXlsx] = useState(false);
   const [isSavingLedgerXlsx, setIsSavingLedgerXlsx] = useState(false);
+  const [expandedLedgerXlsxRowId, setExpandedLedgerXlsxRowId] = useState('');
+  const [ledgerPeriodResult, setLedgerPeriodResult] = useState<LedgerPeriodResultState | null>(null);
+  const [ledgerBulkFields, setLedgerBulkFields] = useState<LedgerBulkFields>({
+    transactionType: '',
+    businessTrack: '',
+    usageType: '',
+    category: '',
+    proofType: '',
+  });
   const ledgerXlsxInputRef = useRef<HTMLInputElement>(null);
-  const ledgerXlsxExistingKeysRef = useRef<Set<string>>(new Set());
+  const ledgerXlsxExistingIndexRef = useRef<LedgerDuplicateIndex>(createLedgerDuplicateIndex());
   // 📒 HARU가계부
   const [householdEntries, setHouseholdEntries] = useState<HouseholdEntry[]>([newHouseholdEntry()]);
   const [selectedHouseholdOcrFiles, setSelectedHouseholdOcrFiles] = useState<File[]>([]);
@@ -646,11 +485,21 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       setIsExtractingLedgerText(false);
       setLedgerOcrResult(null);
       setLedgerOcrPerFileResults([]);
+      setLedgerInputMode('single');
       setLedgerXlsxPreviewRows([]);
       setLedgerXlsxYear(new Date().getFullYear());
-      ledgerXlsxExistingKeysRef.current = new Set();
+      ledgerXlsxExistingIndexRef.current = createLedgerDuplicateIndex();
       setIsReadingLedgerXlsx(false);
       setIsSavingLedgerXlsx(false);
+      setExpandedLedgerXlsxRowId('');
+      setLedgerPeriodResult(null);
+      setLedgerBulkFields({
+        transactionType: '',
+        businessTrack: '',
+        usageType: '',
+        category: '',
+        proofType: '',
+      });
       setSelectedHouseholdOcrFiles([]);
       setIsExtractingHouseholdText(false);
 
@@ -1733,8 +1582,12 @@ ${contentValues}`,
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
+    const periodRow = ledgerInputMode === 'period'
+      ? ledgerXlsxPreviewRows.find((row) => row.id === expandedLedgerXlsxRowId)
+      : undefined;
+    const currentImageUrls = periodRow?.entry.imageUrls || uploadedImages;
     const maxPhotos = format === 'HARU보조장부' ? 10 : 3;
-    const remainingSlots = maxPhotos - uploadedImages.length;
+    const remainingSlots = maxPhotos - currentImageUrls.length;
     if (remainingSlots <= 0) {
       toast.warning(`최대 ${maxPhotos}장까지만 업로드할 수 있습니다.`);
       return;
@@ -1841,8 +1694,16 @@ ${contentValues}`,
         }
       }
 
-      setUploadedImages(prev => [...prev, ...newImageUrls]);
-      setUploadedImageMeta(prev => [...prev, ...newImageMeta]);
+      if (periodRow) {
+        updateLedgerPeriodEntry(periodRow.id, {
+          ...periodRow.entry,
+          imageUrls: [...currentImageUrls, ...newImageUrls],
+          imageMeta: [...(periodRow.entry.imageMeta || []), ...newImageMeta],
+        });
+      } else {
+        setUploadedImages(prev => [...prev, ...newImageUrls]);
+        setUploadedImageMeta(prev => [...prev, ...newImageMeta]);
+      }
       toast.success(`${newImageUrls.length}장의 사진이 업로드되었습니다!`);
     } catch (error) {
       console.error('이미지 업로드 실패:', error);
@@ -1869,6 +1730,21 @@ ${contentValues}`,
   }
 
   const handleDeleteImage = async (imageUrl: string, index: number) => {
+    const periodRow = ledgerInputMode === 'period'
+      ? ledgerXlsxPreviewRows.find((row) => row.id === expandedLedgerXlsxRowId)
+      : undefined;
+    const removeFromState = () => {
+      if (periodRow) {
+        updateLedgerPeriodEntry(periodRow.id, {
+          ...periodRow.entry,
+          imageUrls: (periodRow.entry.imageUrls || []).filter((_, imageIndex) => imageIndex !== index),
+          imageMeta: (periodRow.entry.imageMeta || []).filter((meta) => meta.url !== imageUrl),
+        });
+      } else {
+        setUploadedImages(prev => prev.filter((_, i) => i !== index));
+        setUploadedImageMeta(prev => prev.filter((meta) => meta.url !== imageUrl));
+      }
+    };
     try {
       const isCloudinary = typeof imageUrl === 'string' && imageUrl.includes('cloudinary.com');
 
@@ -1886,8 +1762,7 @@ ${contentValues}`,
         await deleteObject(imageRef);
       }
 
-      setUploadedImages(prev => prev.filter((_, i) => i !== index));
-      setUploadedImageMeta(prev => prev.filter((meta) => meta.url !== imageUrl));
+      removeFromState();
       toast.success('사진이 삭제되었습니다.');
     } catch (error: any) {
       console.error('이미지 삭제 실패:', error);
@@ -1905,8 +1780,7 @@ ${contentValues}`,
         msg.includes('이미 삭제');
 
       if (ignorable) {
-        setUploadedImages(prev => prev.filter((_, i) => i !== index));
-        setUploadedImageMeta(prev => prev.filter((meta) => meta.url !== imageUrl));
+        removeFromState();
         toast.success('사진이 제거되었습니다.');
       } else {
         toast.error('사진 삭제에 실패했습니다.');
@@ -1955,6 +1829,7 @@ ${contentValues}`,
       [`${prefix}_mode`]: 'ORIGINAL',
       [`${prefix}_title`]: autoTitle,
       ledger_type: first.transactionType,
+      ledger_businessTrack: first.businessTrack,
       ledger_usageType: first.usageType,
       ledger_category: first.category,
       ledger_item: first.category,
@@ -1963,6 +1838,9 @@ ${contentValues}`,
       ledger_amount: first.amount,
       ledger_payment: first.paymentMethod,
       ledger_paymentMethod: first.paymentMethod,
+      ledger_proof: first.proofType || '',
+      ledger_proofType: first.proofType || '',
+      ledger_approvalNumber: first.approvalNumber || '',
       ledger_memo: firstMemoWithPrefix,
       ledger_entries: JSON.stringify(ledgerEntries),
     };
@@ -1997,75 +1875,10 @@ ${contentValues}`,
     }
   };
 
-  const getExistingLedgerDuplicateKeys = async () => {
-    if (!user?.uid) throw new Error('로그인이 필요합니다.');
-    const recordsRef = collection(getFirestore(), 'users', user.uid, 'records');
-    const recordsQuery = query(recordsRef, where('formats', 'array-contains', 'HARU보조장부'));
-    const snapshot = await getDocs(recordsQuery);
-    const keys = new Set<string>();
-
-    snapshot.forEach((recordSnapshot) => {
-      const record = recordSnapshot.data() as Record<string, any>;
-      let entries: Record<string, any>[] = [];
-      if (typeof record.ledger_entries === 'string') {
-        try {
-          const parsed = JSON.parse(record.ledger_entries);
-          if (Array.isArray(parsed)) entries = parsed;
-        } catch {
-          entries = [];
-        }
-      }
-      if (entries.length === 0 && (record.ledger_date || record.ledger_partner || record.ledger_amount)) {
-        entries = [{
-          date: record.ledger_date || record.ledger_transactionAt,
-          vendor: record.ledger_partner,
-          amount: record.ledger_amount,
-          paymentMethod: record.ledger_paymentMethod || record.ledger_payment,
-        }];
-      }
-
-      entries.forEach((entry) => {
-        const date = String(entry.date || entry.transactionAt || '').trim();
-        const vendor = String(entry.vendor || entry.partner || '').trim();
-        const amount = String(entry.amount || '').trim();
-        const paymentMethod = String(entry.paymentMethod || entry.payment || '').trim();
-        if (!date || !vendor || !amount) return;
-        keys.add(ledgerDuplicateKey(date, vendor, amount, paymentMethod));
-      });
-    });
-
-    return keys;
-  };
-
-  const rebuildLedgerXlsxPreviewRows = (
-    rows: LedgerXlsxPreviewRow[],
-    referenceYear: number,
-    existingKeys: Set<string>,
-  ) => {
-    const seenKeys = new Set(existingKeys);
-    return rows.map((row) => {
-      const dateResult = normalizeLedgerXlsxDate(row.rawDate, referenceYear);
-      const warnings = [...row.nonDateWarnings];
-      if (!row.rawDate) warnings.unshift('거래일을 읽지 못했습니다.');
-      else if (!dateResult.valid) warnings.unshift('거래일 형식을 확인해 주세요.');
-      const canImport = Boolean(dateResult.valid && row.vendor && row.amount && row.paymentMethod && !row.nonDateWarnings.some((warning) => warning.includes('형식을 확인')));
-      const key = ledgerDuplicateKey(dateResult.value, row.vendor, row.amount, row.paymentMethod);
-      const duplicate = canImport && seenKeys.has(key);
-      if (canImport) seenKeys.add(key);
-      return {
-        ...row,
-        selected: false,
-        duplicate,
-        canImport,
-        date: dateResult.value,
-        warning: warnings.join(' '),
-      };
-    });
-  };
-
   const handleLedgerXlsxYearChange = (value: number) => {
     setLedgerXlsxYear(value);
-    setLedgerXlsxPreviewRows((rows) => rebuildLedgerXlsxPreviewRows(rows, value, ledgerXlsxExistingKeysRef.current));
+    setLedgerPeriodResult(null);
+    setLedgerXlsxPreviewRows((rows) => classifyLedgerPreviewRows(rows, value, ledgerXlsxExistingIndexRef.current));
   };
 
   const handleLedgerXlsxSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -2084,8 +1897,9 @@ ${contentValues}`,
 
     setIsReadingLedgerXlsx(true);
     setLedgerXlsxPreviewRows([]);
+    setLedgerPeriodResult(null);
+    setExpandedLedgerXlsxRowId('');
     try {
-      const duplicateKeys = await getExistingLedgerDuplicateKeys();
       const XLSX = await import('xlsx');
       const fileBytes = new Uint8Array(await file.arrayBuffer());
       if (fileBytes.byteLength === 0) throw new Error('파일 내용이 비어 있습니다. iCloud에서 파일 다운로드를 완료한 뒤 다시 선택해 주세요');
@@ -2098,100 +1912,20 @@ ${contentValues}`,
         dense: false,
         WTF: false,
       });
-      let parsedRows: LedgerXlsxPreviewRow[] = [];
-      let scannedSheetCount = 0;
-      let scannedRowCount = 0;
-      let maxHeaderScore = 0;
-
-      for (let sheetIndex = 0; sheetIndex < workbook.SheetNames.length; sheetIndex += 1) {
-        const sheet = workbook.Sheets[workbook.SheetNames[sheetIndex]];
-        if (!sheet) continue;
-        scannedSheetCount += 1;
-        const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
-          header: 1,
-          defval: '',
-          raw: true,
-          blankrows: false,
-        });
-        scannedRowCount += rows.length;
-        let headerIndex = -1;
-        let headerMap: Partial<Record<LedgerXlsxColumn, number>> = {};
-        let bestScore = 0;
-        rows.slice(0, 100).forEach((row, rowIndex) => {
-          const candidateMap: Partial<Record<LedgerXlsxColumn, number>> = {};
-          row.forEach((cell, columnIndex) => {
-            const column = findLedgerXlsxColumn(cell);
-            if (column && candidateMap[column] === undefined) candidateMap[column] = columnIndex;
-          });
-          const score = ['date', 'vendor', 'amount', 'paymentMethod'].filter((column) => candidateMap[column as LedgerXlsxColumn] !== undefined).length;
-          if (score > bestScore) {
-            bestScore = score;
-            headerIndex = rowIndex;
-            headerMap = candidateMap;
-          }
-        });
-        maxHeaderScore = Math.max(maxHeaderScore, bestScore);
-        if (headerIndex < 0 || bestScore < 4 || headerMap.amount === undefined) continue;
-
-        const sheetRows: LedgerXlsxPreviewRow[] = [];
-        rows.slice(headerIndex + 1).forEach((row, relativeIndex) => {
-          if (isLedgerXlsxSummaryRow(row)) return;
-          const readRawColumn = (column: LedgerXlsxColumn) => {
-            const columnIndex = headerMap[column];
-            return columnIndex === undefined ? '' : row[columnIndex] ?? '';
-          };
-          const readTextColumn = (column: LedgerXlsxColumn) => String(readRawColumn(column)).trim();
-          const rawDate = readRawColumn('date');
-          const vendor = readTextColumn('vendor');
-          const rawAmount = readRawColumn('amount');
-          const paymentMethod = readTextColumn('paymentMethod');
-          const merchantLocation = readTextColumn('merchantLocation');
-          const approvalNumber = readTextColumn('approvalNumber');
-          const meaningfulValues = [rawDate, vendor, rawAmount, paymentMethod, merchantLocation, approvalNumber].filter((value) => String(value ?? '').trim());
-          if (meaningfulValues.length < 2) return;
-
-          const dateResult = normalizeLedgerXlsxDate(rawDate, ledgerXlsxYear);
-          const amountResult = normalizeLedgerXlsxAmount(rawAmount);
-          const nonDateWarnings: string[] = [];
-          if (!vendor) nonDateWarnings.push('거래처를 읽지 못했습니다.');
-          if (!rawAmount) nonDateWarnings.push('금액을 읽지 못했습니다.');
-          else if (!amountResult.valid) nonDateWarnings.push('금액 형식을 확인해 주세요.');
-          if (!paymentMethod) nonDateWarnings.push('카드 정보를 읽지 못했습니다.');
-          const dateWarning = !rawDate
-            ? '거래일을 읽지 못했습니다.'
-            : !dateResult.valid ? '거래일 형식을 확인해 주세요.' : '';
-          sheetRows.push({
-            id: `xlsx-${sheetIndex}-${headerIndex + relativeIndex + 1}`,
-            selected: false,
-            duplicate: false,
-            canImport: Boolean(dateResult.valid && vendor && amountResult.valid && paymentMethod),
-            rawDate: typeof rawDate === 'number' ? rawDate : String(rawDate ?? '').trim(),
-            date: dateResult.value,
-            vendor,
-            amount: amountResult.value,
-            paymentMethod,
-            merchantLocation,
-            approvalNumber,
-            nonDateWarnings,
-            warning: [dateWarning, ...nonDateWarnings].filter(Boolean).join(' '),
-          });
-        });
-        if (sheetRows.length > 0) {
-          parsedRows = sheetRows;
-          break;
-        }
-      }
-
-      if (parsedRows.length === 0) {
-        toast.error(`거래 헤더 또는 거래 내역을 찾지 못했습니다. 시트 ${scannedSheetCount}개·${scannedRowCount}행에서 핵심 열 ${maxHeaderScore}/4개를 찾았습니다. 국민카드 XLSX 형식인지 확인해 주세요.`);
+      const parseResult = parseLedgerWorkbook(workbook, XLSX, ledgerXlsxYear);
+      if (parseResult.rows.length === 0) {
+        toast.error(`거래 헤더 또는 거래 내역을 찾지 못했습니다. 시트 ${parseResult.scannedSheetCount}개·${parseResult.scannedRowCount}행에서 핵심 열 ${parseResult.maxHeaderScore}/4개를 찾았습니다. 국민카드 XLSX 형식인지 확인해 주세요.`);
         return;
       }
-
-      ledgerXlsxExistingKeysRef.current = duplicateKeys;
-      const previewRows = rebuildLedgerXlsxPreviewRows(parsedRows, ledgerXlsxYear, duplicateKeys);
+      const parsedDates = parseResult.rows
+        .filter((row) => row.canImport)
+        .map((row) => row.entry.date.slice(0, 10));
+      const duplicateIndex = await getLedgerDuplicateIndexForDates(user.uid, parsedDates);
+      ledgerXlsxExistingIndexRef.current = duplicateIndex;
+      const previewRows = classifyLedgerPreviewRows(parseResult.rows, ledgerXlsxYear, duplicateIndex);
       setLedgerXlsxPreviewRows(previewRows);
-      const duplicateCount = previewRows.filter((row) => row.duplicate).length;
-      toast.success(`${previewRows.length}건의 거래를 찾았습니다.${duplicateCount ? ` 이미 반영된 거래 ${duplicateCount}건이 있습니다.` : ''}`);
+      const duplicateCount = previewRows.filter((row) => row.duplicateStatus).length;
+      toast.success(`${previewRows.length}건의 거래를 찾았습니다.${duplicateCount ? ` 중복 확인 거래 ${duplicateCount}건은 선택에서 제외했습니다.` : ''}`);
     } catch (error) {
       console.error('HARU보조장부 XLSX 가져오기 실패:', error);
       const reason = error instanceof Error && error.message ? error.message : '알 수 없는 분석 오류';
@@ -2201,69 +1935,129 @@ ${contentValues}`,
     }
   };
 
+  const updateLedgerPeriodEntry = (rowId: string, nextEntry: LedgerEntry) => {
+    setLedgerPeriodResult(null);
+    setLedgerXlsxPreviewRows((rows) => rows.map((row) => {
+      if (row.id !== rowId) return row;
+      const dateResult = normalizeLedgerDate(nextEntry.date, ledgerXlsxYear);
+      const amountResult = normalizeLedgerAmount(nextEntry.amount);
+      return {
+        ...row,
+        rawDate: nextEntry.date,
+        selected: row.selected,
+        duplicateStatus: row.duplicateStatus,
+        edited: true,
+        canImport: Boolean(dateResult.valid && nextEntry.vendor.trim() && amountResult.valid && nextEntry.paymentMethod.trim()),
+        warning: dateResult.valid && amountResult.valid ? '' : '수정한 거래일 또는 금액 형식을 확인해 주세요.',
+        entry: {
+          ...nextEntry,
+          date: dateResult.valid ? dateResult.value : nextEntry.date,
+          amount: amountResult.valid ? amountResult.value : nextEntry.amount,
+        },
+      };
+    }));
+  };
+
+  const applyLedgerBulkFields = () => {
+    const selectedCount = ledgerXlsxPreviewRows.filter((row) => row.selected && row.canImport).length;
+    if (selectedCount === 0) {
+      toast.warning('일괄 적용할 거래를 먼저 선택해 주세요.');
+      return;
+    }
+    const hasValue = Object.values(ledgerBulkFields).some(Boolean);
+    if (!hasValue) {
+      toast.warning('일괄 적용할 항목을 하나 이상 선택해 주세요.');
+      return;
+    }
+    setLedgerPeriodResult(null);
+    setLedgerXlsxPreviewRows((rows) => rows.map((row) => {
+      if (!row.selected || !row.canImport) return row;
+      const nextEntry = { ...row.entry };
+      if (ledgerBulkFields.transactionType) {
+        nextEntry.transactionType = ledgerBulkFields.transactionType;
+        if (nextEntry.category) nextEntry.category = '';
+      }
+      if (ledgerBulkFields.businessTrack) nextEntry.businessTrack = ledgerBulkFields.businessTrack;
+      if (ledgerBulkFields.usageType) nextEntry.usageType = ledgerBulkFields.usageType;
+      if (ledgerBulkFields.category) nextEntry.category = ledgerBulkFields.category;
+      if (ledgerBulkFields.proofType) nextEntry.proofType = ledgerBulkFields.proofType;
+      return { ...row, entry: nextEntry, edited: true };
+    }));
+    toast.success(`선택 거래 ${selectedCount}건에 공통 항목을 적용했습니다.`);
+  };
+
   const handleSaveLedgerXlsxRows = async () => {
-    const selectedRows = ledgerXlsxPreviewRows.filter((row) => row.selected && row.canImport && !row.duplicate);
+    const selectedRows = ledgerXlsxPreviewRows.filter((row) => row.selected && row.canImport);
     if (selectedRows.length === 0) {
       toast.warning('보조장부에 반영할 거래를 선택해 주세요.');
       return;
     }
+    const missingBusinessTrackCount = selectedRows.filter((row) => !row.entry.businessTrack).length;
+    if (missingBusinessTrackCount > 0) {
+      toast.error(`선택 거래 중 사업 구분을 확인하지 않은 거래가 ${missingBusinessTrackCount}건 있습니다.`);
+      return;
+    }
+    if (!user?.uid) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+    const selectedDates = selectedRows.map((row) => row.entry.date.slice(0, 10)).sort();
+    const periodStart = selectedDates[0];
+    const periodEnd = selectedDates[selectedDates.length - 1];
+    const displayDate = (date: string) => date.replace(/-/g, '.');
+    const confirmed = window.confirm(
+      `선택한 ${selectedRows.length}건을 ${displayDate(periodStart)}~${displayDate(periodEnd)}의 각 거래일에 나누어 저장합니다. 계속하시겠습니까?`,
+    );
+    if (!confirmed) return;
 
+    const duplicateUncheckedCount = ledgerXlsxPreviewRows
+      .filter((row) => !row.selected && Boolean(row.duplicateStatus)).length;
+    const manuallyExcludedCount = ledgerXlsxPreviewRows
+      .filter((row) => !row.selected && !row.duplicateStatus).length;
     setIsSavingLedgerXlsx(true);
-    let savedCount = 0;
     try {
-      for (const row of selectedRows) {
-        const fingerprint = ledgerDuplicateKey(row.date, row.vendor, row.amount, row.paymentMethod);
-        const merchantLocationMemo = row.merchantLocation ? `가맹점 소재지: ${row.merchantLocation}` : '';
-        const entry: LedgerEntry = newLedgerEntry({
-          id: `xlsx-${hashLedgerXlsxKey(fingerprint)}`,
-          transactionType: '지출',
-          usageType: '사업용',
-          category: '',
-          date: row.date,
-          vendor: row.vendor,
-          amount: row.amount,
-          paymentMethod: row.paymentMethod,
-          memo: merchantLocationMemo,
-          businessTrack: '',
-          approvalNumber: row.approvalNumber,
-          proofType: LEDGER_XLSX_PROOF,
-        });
-        const title = [row.date, row.vendor, row.amount].filter(Boolean).join(' · ');
-        const summary = [row.date, row.vendor, row.amount, row.paymentMethod, merchantLocationMemo, row.approvalNumber ? `승인번호 ${row.approvalNumber}` : '']
-          .filter(Boolean)
-          .join(' · ');
-        await onSave({
-          _recordId: `ledger_xlsx_${hashLedgerXlsxKey(fingerprint)}`,
-          _recordDate: row.date.slice(0, 10),
-          formats: ['HARU보조장부'],
-          ledger_title: title,
-          ledger_type: '지출',
-          ledger_usageType: '사업용',
-          ledger_date: row.date,
-          ledger_transactionAt: row.date,
-          ledger_partner: row.vendor,
-          ledger_amount: row.amount,
-          ledger_payment: row.paymentMethod,
-          ledger_paymentMethod: row.paymentMethod,
-          ledger_proof: LEDGER_XLSX_PROOF,
-          ledger_proofType: LEDGER_XLSX_PROOF,
-          ledger_approvalNumber: row.approvalNumber,
-          ledger_memo: merchantLocationMemo,
-          ledger_entries: JSON.stringify([entry]),
-          ledger_sayu: summary,
-          ledger_style: 'premium',
-          ledger_mode: 'ORIGINAL',
-        } as any);
-        savedCount += 1;
-      }
-      toast.success(`선택한 거래 ${savedCount}건을 보조장부에 반영했습니다.`);
-      setLedgerXlsxPreviewRows([]);
-      onClose();
+      const saveEntries = selectedRows.map((row) => ({
+        ...row.entry,
+        id: `xlsx-${hashLedgerImportKey([
+          row.entry.date,
+          row.entry.vendor,
+          row.entry.amount,
+          row.entry.paymentMethod,
+          row.entry.approvalNumber || '',
+        ].join('|'))}`,
+        forceDuplicate: Boolean(row.duplicateStatus),
+      }));
+      const result = await saveLedgerPeriodEntriesBatch(user.uid, saveEntries);
+      const duplicateExcludedCount = duplicateUncheckedCount + result.duplicateExcludedCount;
+      setLedgerPeriodResult({
+        totalCount: ledgerXlsxPreviewRows.length,
+        savedCount: result.savedCount,
+        excludedCount: manuallyExcludedCount,
+        duplicateExcludedCount,
+        savedDateCount: result.savedDates.length,
+        failureCount: 0,
+      });
+      const savedEntryIds = new Set(result.savedEntryIds);
+      const savedRowIds = new Set(selectedRows
+        .filter((_, index) => savedEntryIds.has(saveEntries[index].id))
+        .map((row) => row.id));
+      setLedgerXlsxPreviewRows((rows) => rows.map((row) => savedRowIds.has(row.id)
+        ? { ...row, selected: false, duplicateStatus: 'saved' }
+        : row));
+      toast.success(`총 ${ledgerXlsxPreviewRows.length}건 중 ${result.savedCount}건을 ${result.savedDates.length}개 날짜에 저장했습니다.`);
     } catch (error) {
       console.error('HARU보조장부 XLSX 선택 거래 저장 실패:', error);
-      toast.error(savedCount > 0
-        ? `${savedCount}건 저장 후 중단됐습니다. 다시 시도해 주세요.`
-        : '선택한 거래 저장에 실패했습니다.');
+      const reason = error instanceof Error ? error.message : '선택한 거래 저장에 실패했습니다.';
+      setLedgerPeriodResult({
+        totalCount: ledgerXlsxPreviewRows.length,
+        savedCount: 0,
+        excludedCount: manuallyExcludedCount,
+        duplicateExcludedCount: duplicateUncheckedCount,
+        savedDateCount: 0,
+        failureCount: selectedRows.length,
+        message: reason,
+      });
+      toast.error(`기간 저장에 실패했습니다. 저장된 거래는 없습니다: ${reason}`);
     } finally {
       setIsSavingLedgerXlsx(false);
     }
@@ -2914,6 +2708,40 @@ ${contentValues}`,
     }) || (format === '텃밭일지' && crops.length > 0);
   })();
 
+  const visibleLedgerEntries = ledgerInputMode === 'single'
+    ? ledgerEntries
+    : ledgerXlsxPreviewRows
+      .filter((row) => row.id === expandedLedgerXlsxRowId)
+      .map((row) => row.entry);
+  const activeUploadedImages = ledgerInputMode === 'period'
+    ? visibleLedgerEntries[0]?.imageUrls || []
+    : uploadedImages;
+  const setVisibleLedgerEntries = (updater: (entries: LedgerEntry[]) => LedgerEntry[]) => {
+    if (ledgerInputMode === 'single') {
+      setLedgerEntries(updater);
+      return;
+    }
+    const row = ledgerXlsxPreviewRows.find((item) => item.id === expandedLedgerXlsxRowId);
+    if (!row) return;
+    const nextEntries = updater([row.entry]);
+    if (nextEntries.length === 0) {
+      setExpandedLedgerXlsxRowId('');
+      return;
+    }
+    updateLedgerPeriodEntry(row.id, nextEntries[0]);
+  };
+  const ledgerPeriodDates = ledgerXlsxPreviewRows
+    .filter((row) => /^\d{4}-\d{2}-\d{2}/.test(row.entry.date))
+    .map((row) => row.entry.date.slice(0, 10))
+    .sort();
+  const ledgerPeriodStart = ledgerPeriodDates[0] || '';
+  const ledgerPeriodEnd = ledgerPeriodDates[ledgerPeriodDates.length - 1] || '';
+  const ledgerPeriodSelectedRows = ledgerXlsxPreviewRows.filter((row) => row.selected && row.canImport);
+  const ledgerPeriodTotalAmount = ledgerXlsxPreviewRows.reduce((sum, row) => sum + ledgerEntryAmount(row.entry), 0);
+  const ledgerPeriodSelectedAmount = ledgerPeriodSelectedRows.reduce((sum, row) => sum + ledgerEntryAmount(row.entry), 0);
+  const formatLedgerPeriodDate = (date: string) => date ? date.replace(/-/g, '.') : '-';
+  const formatLedgerPeriodAmount = (amount: number) => `${amount.toLocaleString('ko-KR')}원`;
+
   const selectedReadingEntries = format === '독서사유' && selectedExistingBookId
     ? readingEntriesByBook[selectedExistingBookId] || []
     : [];
@@ -2952,7 +2780,7 @@ ${contentValues}`,
           style={{
             backgroundColor: '#FAF9F6',
             borderRadius: 12,
-            maxWidth: 600,
+            maxWidth: isLedgerFormat && ledgerInputMode === 'period' ? 1240 : 600,
             width: '100%',
             maxHeight: '85vh',
             overflow: 'hidden',
@@ -2999,7 +2827,7 @@ ${contentValues}`,
           </div>
 
           {/* Test Data Button — 선택 화면에서 숨김 */}
-          {recordStep === 'input' && (
+          {recordStep === 'input' && !(isLedgerFormat && ledgerInputMode === 'period') && (
           <div style={{ padding: '16px 24px', backgroundColor: '#f8f9fa', borderBottom: '1px solid #e5e5e5' }}>
             <button
               onClick={handleFillTestData}
@@ -3205,27 +3033,56 @@ ${contentValues}`,
           {recordStep === 'input' && (
           <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              {/* 뒤로가기 + 모드 배지 */}
+              {/* 입력 방식 + 모드 배지 */}
               <div>
-                {format !== '독서사유' && (
+                {isLedgerFormat ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    {([
+                      { value: 'single', label: '단건 작성', description: '기존 방식 그대로 직접 입력' },
+                      { value: 'period', label: '기간 일괄 작성', description: 'XLSX 거래를 날짜별로 일괄 저장' },
+                    ] as const).map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          setLedgerInputMode(option.value);
+                          setExpandedLedgerXlsxRowId('');
+                          setLedgerPeriodResult(null);
+                        }}
+                        style={{
+                          padding: '12px 10px',
+                          border: ledgerInputMode === option.value ? '2px solid #1A3C6E' : '1px solid #d1d5db',
+                          borderRadius: 9,
+                          backgroundColor: ledgerInputMode === option.value ? '#EEF3FA' : '#fff',
+                          color: '#1A3C6E',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                        }}
+                      >
+                        <strong style={{ display: 'block', fontSize: 13 }}>{option.label}</strong>
+                        <span style={{ display: 'block', marginTop: 3, fontSize: 11, color: '#6b7280' }}>{option.description}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : format !== '독서사유' ? (
                   <button
                     onClick={() => setRecordStep('select')}
                     style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--color-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', marginBottom: '14px', padding: 0 }}
                   >
                     ← 방식 다시 선택
                   </button>
-                )}
-                <span style={{
+                ) : null}
+                {!isLedgerFormat && <span style={{
                   display: 'inline-block', fontSize: '11px', padding: '3px 10px', borderRadius: '20px', fontWeight: 500,
                   background: recordStyle === 'simple' ? '#dcfce7' : '#dbeafe',
                   color: recordStyle === 'simple' ? '#166534' : '#1e3a8a',
                 }}>
                   {format === '독서사유' ? '📚 진행형 독서 기록' : recordStyle === 'simple' ? '✏️ 간편 기록' : '📋 프리미엄 기록'}
-                </span>
+                </span>}
               </div>
 
               {/* 제목 입력 필드 — 독서사유는 reading_book_title 이 제목 역할이므로 숨김 */}
-              {format !== 'HARU주식관리' && format !== '독서사유' && (
+              {format !== 'HARU주식관리' && format !== '독서사유' && !(isLedgerFormat && ledgerInputMode === 'period') && (
                 <div>
                   <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 6, fontWeight: 600 }}>
                     📌 제목 <span style={{ color: '#ef4444', fontSize: 11 }}>*필수</span>
@@ -3901,7 +3758,7 @@ ${contentValues}`,
                 />
               )}
 
-              {isLedgerFormat && (
+              {isLedgerFormat && ledgerInputMode === 'period' && (
                 <div
                   style={{
                     padding: 12,
@@ -3951,21 +3808,32 @@ ${contentValues}`,
 
                   {ledgerXlsxPreviewRows.length > 0 && (
                     <div style={{ marginTop: 12 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
                         <div>
-                          <strong style={{ display: 'block', fontSize: 13, color: '#312e81' }}>가져오기 미리보기</strong>
-                          <span style={{ fontSize: 12, color: '#4b5563' }}>{ledgerXlsxPreviewRows.length}건의 거래를 찾았습니다</span>
+                          <strong style={{ display: 'block', fontSize: 13, color: '#312e81' }}>기간 거래표</strong>
+                          <span style={{ display: 'block', marginTop: 3, fontSize: 12, color: '#4b5563' }}>
+                            {formatLedgerPeriodDate(ledgerPeriodStart)}~{formatLedgerPeriodDate(ledgerPeriodEnd)} · 전체 {ledgerXlsxPreviewRows.length}건 · 전체 {formatLedgerPeriodAmount(ledgerPeriodTotalAmount)} · 선택 {ledgerPeriodSelectedRows.length}건 · 선택 {formatLedgerPeriodAmount(ledgerPeriodSelectedAmount)}
+                          </span>
                         </div>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#4b5563', cursor: 'pointer' }}>
                           <input
                             type="checkbox"
-                            checked={ledgerXlsxPreviewRows.some((row) => row.canImport && !row.duplicate) && ledgerXlsxPreviewRows.filter((row) => row.canImport && !row.duplicate).every((row) => row.selected)}
-                            onChange={(e) => setLedgerXlsxPreviewRows((prev) => prev.map((row) => row.canImport && !row.duplicate ? { ...row, selected: e.target.checked } : row))}
+                            checked={ledgerXlsxPreviewRows.some((row) => row.canImport && !row.duplicateStatus) && ledgerXlsxPreviewRows.filter((row) => row.canImport && !row.duplicateStatus).every((row) => row.selected)}
+                            onChange={(e) => setLedgerXlsxPreviewRows((prev) => prev.map((row) => row.canImport && !row.duplicateStatus ? { ...row, selected: e.target.checked } : row))}
                             style={{ accentColor: '#4f46e5' }}
                           />
-                          가져올 수 있는 거래 전체
+                          신규 거래 전체 선택
                         </label>
                       </div>
+                      {ledgerPeriodResult && (
+                        <div style={{ marginBottom: 10, padding: '11px 12px', borderRadius: 8, border: `1px solid ${ledgerPeriodResult.failureCount ? '#fecaca' : '#86efac'}`, backgroundColor: ledgerPeriodResult.failureCount ? '#fef2f2' : '#f0fdf4', color: ledgerPeriodResult.failureCount ? '#991b1b' : '#166534', fontSize: 12, lineHeight: 1.6 }}>
+                          <strong style={{ display: 'block' }}>
+                            총 {ledgerPeriodResult.totalCount}건 중 {ledgerPeriodResult.savedCount}건을 {ledgerPeriodResult.savedDateCount}개 날짜에 저장했습니다.
+                          </strong>
+                          <span>제외 {ledgerPeriodResult.excludedCount}건 · 중복 제외 {ledgerPeriodResult.duplicateExcludedCount}건 · 실패 {ledgerPeriodResult.failureCount}건</span>
+                          {ledgerPeriodResult.message && <span style={{ display: 'block' }}>{ledgerPeriodResult.message}</span>}
+                        </div>
+                      )}
                       <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, fontSize: 12, color: '#374151' }}>
                         거래 기준 연도
                         <select
@@ -3980,59 +3848,94 @@ ${contentValues}`,
                         </select>
                         <span style={{ color: '#6b7280' }}>연도가 없는 0617 같은 날짜에 적용됩니다.</span>
                       </label>
+                      <div style={{ marginBottom: 10, padding: 10, border: '1px solid #ddd6fe', borderRadius: 8, backgroundColor: '#fff' }}>
+                        <strong style={{ display: 'block', marginBottom: 8, fontSize: 12, color: '#4c1d95' }}>선택 거래 일괄 적용</strong>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 7 }}>
+                          <select value={ledgerBulkFields.transactionType} onChange={(e) => setLedgerBulkFields((prev) => ({ ...prev, transactionType: e.target.value }))} style={{ padding: '7px 8px', border: '1px solid #ddd6fe', borderRadius: 6, fontSize: 11 }}>
+                            <option value="">수입/지출 유지</option>
+                            <option value="수입">수입</option>
+                            <option value="지출">지출</option>
+                          </select>
+                          <select value={ledgerBulkFields.businessTrack} onChange={(e) => setLedgerBulkFields((prev) => ({ ...prev, businessTrack: e.target.value as LedgerEntry['businessTrack'] }))} style={{ padding: '7px 8px', border: '1px solid #ddd6fe', borderRadius: 6, fontSize: 11 }}>
+                            <option value="">사업 구분 유지</option>
+                            <option value="haru2026">HARU2026</option>
+                            <option value="external">외부용역</option>
+                          </select>
+                          <select value={ledgerBulkFields.usageType} onChange={(e) => setLedgerBulkFields((prev) => ({ ...prev, usageType: e.target.value }))} style={{ padding: '7px 8px', border: '1px solid #ddd6fe', borderRadius: 6, fontSize: 11 }}>
+                            <option value="">사용 구분 유지</option>
+                            <option value="사업용">사업용</option>
+                            <option value="개인용">개인용</option>
+                          </select>
+                          <select value={ledgerBulkFields.category || ''} onChange={(e) => setLedgerBulkFields((prev) => ({ ...prev, category: e.target.value }))} style={{ padding: '7px 8px', border: '1px solid #ddd6fe', borderRadius: 6, fontSize: 11 }}>
+                            <option value="">분류 유지</option>
+                            {['매출', '기타수입', '식비', '교통비', '통신비', '소프트웨어', '광고비', '교육비', '사무용품', '복리후생비', '접대비', '지급수수료', '기타'].map((category) => <option key={category} value={category}>{category}</option>)}
+                          </select>
+                          <select value={ledgerBulkFields.proofType || ''} onChange={(e) => setLedgerBulkFields((prev) => ({ ...prev, proofType: e.target.value }))} style={{ padding: '7px 8px', border: '1px solid #ddd6fe', borderRadius: 6, fontSize: 11 }}>
+                            <option value="">증빙유형 유지</option>
+                            <option value="카드매출전표">카드매출전표</option>
+                            <option value="현금영수증">현금영수증</option>
+                            <option value="세금계산서">세금계산서</option>
+                            <option value="계산서">계산서</option>
+                            <option value={LEDGER_XLSX_PROOF}>{LEDGER_XLSX_PROOF}</option>
+                            <option value="기타">기타</option>
+                          </select>
+                          <button type="button" onClick={applyLedgerBulkFields} disabled={isSavingLedgerXlsx} style={{ padding: '7px 10px', border: 'none', borderRadius: 6, backgroundColor: '#6d28d9', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                            선택 거래에 적용
+                          </button>
+                        </div>
+                      </div>
                       <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, backgroundColor: '#fff' }}>
-                        <table style={{ width: '100%', minWidth: 1040, borderCollapse: 'collapse', fontSize: 11 }}>
+                        <table style={{ width: '100%', minWidth: 1380, borderCollapse: 'collapse', fontSize: 11 }}>
                           <thead>
                             <tr style={{ backgroundColor: '#eef2ff', color: '#3730a3', textAlign: 'left' }}>
-                              {['선택', '거래일', '거래처', '이용금액', '카드명 또는 카드 끝번호', '가맹점 소재지', '승인번호', '가져오기 상태'].map((label) => (
+                              {['선택', '거래일', '거래처', '금액', '수입/지출', '사업 구분', '사용 구분', '분류', '결제수단', '상태', '상세 수정'].map((label) => (
                                 <th key={label} style={{ padding: '8px 7px', borderBottom: '1px solid #c7d2fe', whiteSpace: 'nowrap' }}>{label}</th>
                               ))}
                             </tr>
                           </thead>
                           <tbody>
                             {ledgerXlsxPreviewRows.map((row) => (
-                              <tr key={row.id} style={{ backgroundColor: row.duplicate ? '#f9fafb' : '#fff', color: row.duplicate ? '#9ca3af' : '#374151' }}>
+                              <tr key={row.id} style={{ backgroundColor: row.duplicateStatus ? '#fffbeb' : expandedLedgerXlsxRowId === row.id ? '#eef2ff' : '#fff', color: '#374151' }}>
                                 <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6', textAlign: 'center' }}>
                                   <input
                                     type="checkbox"
                                     checked={row.selected}
-                                    disabled={row.duplicate || !row.canImport || isSavingLedgerXlsx}
+                                    disabled={!row.canImport || isSavingLedgerXlsx}
                                     onChange={(e) => setLedgerXlsxPreviewRows((prev) => prev.map((item) => item.id === row.id ? { ...item, selected: e.target.checked } : item))}
-                                    aria-label={`${row.vendor || '거래'} 선택`}
+                                    aria-label={`${row.entry.vendor || '거래'} 선택`}
                                     style={{ accentColor: '#4f46e5' }}
                                   />
                                 </td>
-                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6', whiteSpace: 'nowrap' }}>{row.date || '-'}</td>
-                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{row.vendor || '-'}</td>
-                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6', whiteSpace: 'nowrap', textAlign: 'right' }}>{row.amount || '-'}</td>
-                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{row.paymentMethod || '-'}</td>
-                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{row.merchantLocation || '-'}</td>
-                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6', whiteSpace: 'nowrap' }}>{row.approvalNumber || '-'}</td>
-                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6', color: row.duplicate ? '#b45309' : row.warning ? '#b45309' : '#6b7280' }}>
-                                  <strong>{row.duplicate ? '이미 반영됨' : !row.canImport ? '형식 확인 필요' : '신규'}</strong>
+                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6', whiteSpace: 'nowrap' }}>{row.entry.date || '-'}</td>
+                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{row.entry.vendor || '-'}</td>
+                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6', whiteSpace: 'nowrap', textAlign: 'right' }}>{row.entry.amount || '-'}</td>
+                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{row.entry.transactionType}</td>
+                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{row.entry.businessTrack === 'haru2026' ? 'HARU2026' : row.entry.businessTrack === 'external' ? '외부용역' : '확인 필요'}</td>
+                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{row.entry.usageType || '-'}</td>
+                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{row.entry.category || '미분류'}</td>
+                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{row.entry.paymentMethod || '-'}</td>
+                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6', color: row.duplicateStatus || row.warning || !row.entry.businessTrack ? '#b45309' : '#047857' }}>
+                                  <strong>{row.duplicateStatus === 'saved' ? '이미 저장됨' : row.duplicateStatus === 'possible' ? '중복 가능성 있음' : !row.canImport ? '형식 확인 필요' : !row.entry.businessTrack ? '분류 확인 필요' : row.edited ? '수정됨' : '저장 준비'}</strong>
                                   {row.warning && <span style={{ display: 'block', marginTop: 3, fontWeight: 400 }}>{row.warning}</span>}
+                                </td>
+                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>
+                                  <button type="button" onClick={() => setExpandedLedgerXlsxRowId((current) => current === row.id ? '' : row.id)} style={{ padding: '5px 8px', border: '1px solid #a5b4fc', borderRadius: 6, backgroundColor: '#fff', color: '#3730a3', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                    {expandedLedgerXlsxRowId === row.id ? '닫기' : '상세 수정'}
+                                  </button>
                                 </td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(90px, 0.35fr) minmax(210px, 1fr)', gap: 8, marginTop: 10 }}>
+                      <div style={{ marginTop: 10 }}>
                         <button
                           type="button"
-                          onClick={() => setLedgerXlsxPreviewRows([])}
+                          onClick={() => { setLedgerXlsxPreviewRows([]); setExpandedLedgerXlsxRowId(''); setLedgerPeriodResult(null); }}
                           disabled={isSavingLedgerXlsx}
-                          style={{ padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 8, backgroundColor: '#fff', color: '#374151', fontSize: 13, fontWeight: 700, cursor: isSavingLedgerXlsx ? 'not-allowed' : 'pointer' }}
+                          style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: 8, backgroundColor: '#fff', color: '#374151', fontSize: 12, fontWeight: 700, cursor: isSavingLedgerXlsx ? 'not-allowed' : 'pointer' }}
                         >
-                          취소
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleSaveLedgerXlsxRows}
-                          disabled={isSavingLedgerXlsx || !ledgerXlsxPreviewRows.some((row) => row.selected && row.canImport && !row.duplicate)}
-                          style={{ padding: '10px 12px', border: 'none', borderRadius: 8, backgroundColor: '#4f46e5', color: '#fff', fontSize: 13, fontWeight: 800, cursor: isSavingLedgerXlsx ? 'wait' : 'pointer', opacity: isSavingLedgerXlsx || !ledgerXlsxPreviewRows.some((row) => row.selected && row.canImport && !row.duplicate) ? 0.55 : 1 }}
-                        >
-                          {isSavingLedgerXlsx ? '저장 중...' : '선택 거래를 보조장부에 반영'}
+                          현재 파일 초기화
                         </button>
                       </div>
                     </div>
@@ -4040,7 +3943,7 @@ ${contentValues}`,
                 </div>
               )}
 
-              {isLedgerFormat && (
+              {isLedgerFormat && ledgerInputMode === 'single' && (
                 <div
                   style={{
                     padding: 12,
@@ -4377,13 +4280,18 @@ ${contentValues}`,
                     : isLedgerFormat ? (
                       /* 🧾 HARU보조장부 — 다건 거래 입력 카드 */
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        {ledgerEntries.some(e => e.ocrSourceFile) && (
+                        {ledgerInputMode === 'period' && expandedLedgerXlsxRowId && (
+                          <div style={{ padding: '9px 12px', border: '1px solid #a5b4fc', borderRadius: 8, backgroundColor: '#eef2ff', color: '#3730a3', fontSize: 12, fontWeight: 700 }}>
+                            선택한 거래 상세 수정 · 단건 작성과 같은 입력 항목을 사용합니다.
+                          </div>
+                        )}
+                        {visibleLedgerEntries.some(e => e.ocrSourceFile) && (
                           <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 12px', fontSize: 12, color: '#92400e', lineHeight: 1.6 }}>
                             AI가 사진에서 거래 후보를 자동 입력했습니다.<br />
                             저장 전 날짜·금액·거래처를 반드시 확인하세요.
                           </div>
                         )}
-                        {ledgerEntries.map((entry, idx) => {
+                        {visibleLedgerEntries.map((entry, idx) => {
                           const incomeCategories = ['매출', '기타수입'];
                           const expenseCategories = ['식비', '교통비', '통신비', '소프트웨어', '광고비', '교육비', '사무용품', '복리후생비', '접대비', '지급수수료', '기타'];
                           const categoryOptions = entry.transactionType === '수입' ? incomeCategories : entry.transactionType === '지출' ? expenseCategories : [];
@@ -4401,10 +4309,10 @@ ${contentValues}`,
                                     </span>
                                   )}
                                 </div>
-                                {ledgerEntries.length > 1 && (
+                                {visibleLedgerEntries.length > 1 && (
                                   <button
                                     type="button"
-                                    onClick={() => setLedgerEntries(prev => prev.filter(e => e.id !== entry.id))}
+                                    onClick={() => setVisibleLedgerEntries(prev => prev.filter(e => e.id !== entry.id))}
                                     style={{ padding: '4px 10px', border: '1px solid #fca5a5', borderRadius: 6, backgroundColor: '#fff', color: '#ef4444', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                                   >
                                     삭제
@@ -4420,7 +4328,7 @@ ${contentValues}`,
                                       <button
                                         key={opt}
                                         type="button"
-                                        onClick={() => setLedgerEntries(prev => prev.map(e => e.id === entry.id ? { ...e, transactionType: opt, category: '' } : e))}
+                                        onClick={() => setVisibleLedgerEntries(prev => prev.map(e => e.id === entry.id ? { ...e, transactionType: opt, category: '' } : e))}
                                         style={{
                                           flex: 1, padding: '7px 4px', borderRadius: 7, fontSize: 12, fontWeight: entry.transactionType === opt ? 700 : 400, cursor: 'pointer',
                                           border: entry.transactionType === opt ? 'none' : '1px solid #e5e7eb',
@@ -4440,7 +4348,7 @@ ${contentValues}`,
                                       <button
                                         key={opt}
                                         type="button"
-                                        onClick={() => setLedgerEntries(prev => prev.map(e => e.id === entry.id ? { ...e, businessTrack: opt } : e))}
+                                        onClick={() => setVisibleLedgerEntries(prev => prev.map(e => e.id === entry.id ? { ...e, businessTrack: opt } : e))}
                                         style={{
                                           flex: 1, padding: '7px 4px', borderRadius: 7, fontSize: 12, fontWeight: entry.businessTrack === opt ? 700 : 400, cursor: 'pointer',
                                           border: entry.businessTrack === opt ? 'none' : '1px solid #d0dff0',
@@ -4460,7 +4368,7 @@ ${contentValues}`,
                                       <button
                                         key={opt}
                                         type="button"
-                                        onClick={() => setLedgerEntries(prev => prev.map(e => e.id === entry.id ? { ...e, usageType: opt } : e))}
+                                        onClick={() => setVisibleLedgerEntries(prev => prev.map(e => e.id === entry.id ? { ...e, usageType: opt } : e))}
                                         style={{
                                           flex: 1, padding: '7px 4px', borderRadius: 7, fontSize: 12, fontWeight: entry.usageType === opt ? 700 : 400, cursor: 'pointer',
                                           border: entry.usageType === opt ? 'none' : '1px solid #e5e7eb',
@@ -4483,7 +4391,7 @@ ${contentValues}`,
                                       <button
                                         key={opt}
                                         type="button"
-                                        onClick={() => setLedgerEntries(prev => prev.map(e => e.id === entry.id ? { ...e, category: opt } : e))}
+                                        onClick={() => setVisibleLedgerEntries(prev => prev.map(e => e.id === entry.id ? { ...e, category: opt } : e))}
                                         style={{
                                           padding: '5px 11px', borderRadius: 18, fontSize: 12, cursor: 'pointer',
                                           border: entry.category === opt ? 'none' : '1px solid #e5e7eb',
@@ -4506,7 +4414,7 @@ ${contentValues}`,
                                         type="text"
                                         placeholder="예: 복리후생비"
                                         value={entry.customCategory ?? ''}
-                                        onChange={e => setLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, customCategory: e.target.value } : en))}
+                                        onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, customCategory: e.target.value } : en))}
                                         style={{
                                           width: '100%',
                                           padding: '8px 10px',
@@ -4528,7 +4436,7 @@ ${contentValues}`,
                                     type="text"
                                     value={entry.date}
                                     placeholder="예: 2026.05.18"
-                                    onChange={e => setLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, date: e.target.value } : en))}
+                                    onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, date: e.target.value } : en))}
                                     style={fieldInputStyle}
                                   />
                                 </div>
@@ -4543,7 +4451,7 @@ ${contentValues}`,
                                     type="text"
                                     value={entry.vendor}
                                     placeholder="예: (주)민들레"
-                                    onChange={e => setLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, vendor: e.target.value } : en))}
+                                    onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, vendor: e.target.value } : en))}
                                     style={fieldInputStyle}
                                   />
                                 </div>
@@ -4558,7 +4466,7 @@ ${contentValues}`,
                                     type="text"
                                     value={entry.amount}
                                     placeholder="예: 15,000원"
-                                    onChange={e => setLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, amount: e.target.value } : en))}
+                                    onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, amount: e.target.value } : en))}
                                     style={fieldInputStyle}
                                   />
                                 </div>
@@ -4568,7 +4476,33 @@ ${contentValues}`,
                                     type="text"
                                     value={entry.paymentMethod}
                                     placeholder="예: 신용카드"
-                                    onChange={e => setLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, paymentMethod: e.target.value } : en))}
+                                    onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, paymentMethod: e.target.value } : en))}
+                                    style={fieldInputStyle}
+                                  />
+                                </div>
+                                <div>
+                                  <label style={fieldLabelStyle}>증빙유형</label>
+                                  <select
+                                    value={entry.proofType || ''}
+                                    onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, proofType: e.target.value } : en))}
+                                    style={fieldInputStyle}
+                                  >
+                                    <option value="">선택 안 함</option>
+                                    <option value="카드매출전표">카드매출전표</option>
+                                    <option value="현금영수증">현금영수증</option>
+                                    <option value="세금계산서">세금계산서</option>
+                                    <option value="계산서">계산서</option>
+                                    <option value={LEDGER_XLSX_PROOF}>{LEDGER_XLSX_PROOF}</option>
+                                    <option value="기타">기타</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label style={fieldLabelStyle}>승인번호</label>
+                                  <input
+                                    type="text"
+                                    value={entry.approvalNumber || ''}
+                                    placeholder="카드 승인번호 (선택사항)"
+                                    onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, approvalNumber: e.target.value } : en))}
                                     style={fieldInputStyle}
                                   />
                                 </div>
@@ -4579,7 +4513,7 @@ ${contentValues}`,
                                   <input
                                     type="checkbox"
                                     checked={entry.foreignCurrency !== ''}
-                                    onChange={e => setLedgerEntries(prev => prev.map(en => en.id === entry.id
+                                    onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id
                                       ? { ...en, foreignCurrency: e.target.checked ? 'USD' : '', foreignAmount: e.target.checked ? en.foreignAmount : '', exchangeRate: e.target.checked ? en.exchangeRate : '' }
                                       : en))}
                                     style={{ width: 14, height: 14, accentColor: '#1A3C6E' }}
@@ -4594,7 +4528,7 @@ ${contentValues}`,
                                         type="text"
                                         value={entry.foreignAmount}
                                         placeholder="예: 5.00"
-                                        onChange={e => setLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, foreignAmount: e.target.value } : en))}
+                                        onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, foreignAmount: e.target.value } : en))}
                                         style={{ ...fieldInputStyle, fontSize: 12 }}
                                       />
                                     </div>
@@ -4602,7 +4536,7 @@ ${contentValues}`,
                                       <label style={{ ...fieldLabelStyle, fontSize: 11 }}>통화</label>
                                       <select
                                         value={entry.foreignCurrency}
-                                        onChange={e => setLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, foreignCurrency: e.target.value } : en))}
+                                        onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, foreignCurrency: e.target.value } : en))}
                                         style={{ width: '100%', padding: '8px 4px', fontSize: 12, border: '1px solid #e5e5e5', borderRadius: 7, outline: 'none', boxSizing: 'border-box' }}
                                       >
                                         <option value="USD">USD</option>
@@ -4618,7 +4552,7 @@ ${contentValues}`,
                                         type="text"
                                         value={entry.exchangeRate}
                                         placeholder="예: 1,349"
-                                        onChange={e => setLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, exchangeRate: e.target.value } : en))}
+                                        onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, exchangeRate: e.target.value } : en))}
                                         style={{ ...fieldInputStyle, fontSize: 12 }}
                                       />
                                     </div>
@@ -4632,7 +4566,7 @@ ${contentValues}`,
                                   value={entry.memo}
                                   placeholder="관련 메모 (선택사항)"
                                   rows={2}
-                                  onChange={e => setLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, memo: e.target.value } : en))}
+                                  onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, memo: e.target.value } : en))}
                                   style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid #e5e5e5', borderRadius: 7, resize: 'vertical', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                                 />
                               </div>
@@ -4640,18 +4574,18 @@ ${contentValues}`,
                           );
                         })}
                         {/* 거래 추가 버튼 */}
-                        <button
+                        {ledgerInputMode === 'single' && <button
                           type="button"
                           onClick={() => setLedgerEntries(prev => [...prev, newLedgerEntry()])}
                           style={{ width: '100%', padding: '10px', border: '1px dashed #d1d5db', borderRadius: 8, backgroundColor: '#fff', color: '#6b7280', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                         >
                           + 거래 추가
-                        </button>
+                        </button>}
                         {/* 면책 문구 */}
-                        <p style={{ margin: 0, fontSize: 12, color: '#9ca3af', lineHeight: 1.6 }}>
+                        {ledgerInputMode === 'single' && <p style={{ margin: 0, fontSize: 12, color: '#9ca3af', lineHeight: 1.6 }}>
                           이 기능은 개인 및 사업자의 수입·지출 기록을 돕기 위한 보조장부입니다.<br />
                           세무 신고나 회계 자문을 대체하지 않습니다.
-                        </p>
+                        </p>}
                       </div>
                     ) : isHouseholdFormat ? (
                       /* 📒 HARU가계부 — 다건 거래 입력 카드 */
@@ -4975,7 +4909,7 @@ ${contentValues}`,
               )}
 
               {/* 📸 사진 업로드 섹션 — 독서사유/주식 OCR 사진은 저장하지 않음. 보조장부는 OCR(비저장)과 사진첨부(저장) 둘 다 제공 */}
-              {format !== '독서사유' && !isStockFormat && (
+              {format !== '독서사유' && !isStockFormat && (!(isLedgerFormat && ledgerInputMode === 'period') || Boolean(expandedLedgerXlsxRowId)) && (
               <div>
                 <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 4, fontWeight: 500 }}>
                   📸 {isLedgerFormat ? '증빙사진' : '사진'} <span style={{ fontWeight: 400, color: '#9ca3af' }}>(선택사항)</span>
@@ -4996,18 +4930,18 @@ ${contentValues}`,
                 {format === '일기' ? (
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading || uploadedImages.length >= 3}
+                    disabled={isUploading || activeUploadedImages.length >= 3}
                     style={{
                       width: '100%',
                       padding: '17px',
                       border: '1px solid #e4e4e4',
                       borderRadius: '20px',
                       backgroundColor: '#f7f7f7',
-                      cursor: isUploading || uploadedImages.length >= 3 ? 'not-allowed' : 'pointer',
+                      cursor: isUploading || activeUploadedImages.length >= 3 ? 'not-allowed' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      opacity: isUploading || uploadedImages.length >= 3 ? 0.5 : 1,
+                      opacity: isUploading || activeUploadedImages.length >= 3 ? 0.5 : 1,
                     }}
                   >
                     {isUploading
@@ -5018,7 +4952,7 @@ ${contentValues}`,
                 ) : (
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading || uploadedImages.length >= (isLedgerFormat ? 10 : 3)}
+                    disabled={isUploading || activeUploadedImages.length >= (isLedgerFormat ? 10 : 3)}
                     style={{
                       width: '100%',
                       padding: '10px 16px',
@@ -5027,27 +4961,27 @@ ${contentValues}`,
                       borderRadius: 8,
                       backgroundColor: '#f9fafb',
                       color: '#6b7280',
-                      cursor: isUploading || uploadedImages.length >= (isLedgerFormat ? 10 : 3) ? 'not-allowed' : 'pointer',
+                      cursor: isUploading || activeUploadedImages.length >= (isLedgerFormat ? 10 : 3) ? 'not-allowed' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: 8,
-                      opacity: isUploading || uploadedImages.length >= (isLedgerFormat ? 10 : 3) ? 0.5 : 1,
+                      opacity: isUploading || activeUploadedImages.length >= (isLedgerFormat ? 10 : 3) ? 0.5 : 1,
                     }}
                   >
                     <Upload style={{ width: 16, height: 16 }} />
                     {isUploading ? '업로드 중...' : isLedgerFormat
-                      ? `증빙사진 선택 (${uploadedImages.length}/10)`
-                      : `사진 추가 (${uploadedImages.length}/3)`}
+                      ? `증빙사진 선택 (${activeUploadedImages.length}/10)`
+                      : `사진 추가 (${activeUploadedImages.length}/3)`}
                   </button>
                 )}
 
-                {uploadedImages.length > 0 && (
+                {activeUploadedImages.length > 0 && (
                   <div style={{ marginTop: 12 }}>
                     {/* 4장 이상: 보조장부 전용 — 3열 그리드 */}
-                    {uploadedImages.length >= 4 && (
+                    {activeUploadedImages.length >= 4 && (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                        {uploadedImages.map((url, index) => (
+                        {activeUploadedImages.map((url, index) => (
                           <div key={index} style={{ position: 'relative', width: '100%', aspectRatio: '1/1' }}>
                             <img
                               src={url}
@@ -5071,10 +5005,10 @@ ${contentValues}`,
                       </div>
                     )}
                     {/* 1장: 큰 사진 1개 */}
-                    {uploadedImages.length === 1 && (
+                    {activeUploadedImages.length === 1 && (
                       <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3' }}>
                         <img
-                          src={uploadedImages[0]}
+                          src={activeUploadedImages[0]}
                           alt="업로드된 사진 1"
                           style={{
                             width: '100%',
@@ -5085,7 +5019,7 @@ ${contentValues}`,
                           }}
                         />
                         <button
-                          onClick={() => handleDeleteImage(uploadedImages[0], 0)}
+                          onClick={() => handleDeleteImage(activeUploadedImages[0], 0)}
                           style={{
                             position: 'absolute',
                             top: 8,
@@ -5109,9 +5043,9 @@ ${contentValues}`,
                     )}
 
                     {/* 2장: 균등 배치 */}
-                    {uploadedImages.length === 2 && (
+                    {activeUploadedImages.length === 2 && (
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                        {uploadedImages.map((url, index) => (
+                        {activeUploadedImages.map((url, index) => (
                           <div key={index} style={{ position: 'relative', width: '100%', aspectRatio: '1/1' }}>
                             <img
                               src={url}
@@ -5151,11 +5085,11 @@ ${contentValues}`,
                     )}
 
                     {/* 3장: 위 큰 1개 + 아래 작은 2개 */}
-                    {uploadedImages.length === 3 && (
+                    {activeUploadedImages.length === 3 && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3' }}>
                           <img
-                            src={uploadedImages[0]}
+                            src={activeUploadedImages[0]}
                             alt="업로드된 사진 1"
                             style={{
                               width: '100%',
@@ -5166,7 +5100,7 @@ ${contentValues}`,
                             }}
                           />
                           <button
-                            onClick={() => handleDeleteImage(uploadedImages[0], 0)}
+                            onClick={() => handleDeleteImage(activeUploadedImages[0], 0)}
                             style={{
                               position: 'absolute',
                               top: 8,
@@ -5189,7 +5123,7 @@ ${contentValues}`,
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                          {uploadedImages.slice(1).map((url, index) => (
+                          {activeUploadedImages.slice(1).map((url, index) => (
                             <div key={index + 1} style={{ position: 'relative', width: '100%', aspectRatio: '1/1' }}>
                               <img
                                 src={url}
@@ -5379,11 +5313,15 @@ ${contentValues}`,
             ) : isLedgerFormat ? (
               /* 🧾 HARU보조장부 전용 저장 버튼 */
               <button
-                onClick={handleSaveOriginalAsSayu}
-                disabled={isSaving}
-                style={{ width: '100%', padding: '14px', fontSize: 15, border: 'none', borderRadius: 8, backgroundColor: '#1A3C6E', color: '#fff', cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.7 : 1, fontWeight: 700 }}
+                onClick={ledgerInputMode === 'period' ? handleSaveLedgerXlsxRows : handleSaveOriginalAsSayu}
+                disabled={ledgerInputMode === 'period'
+                  ? isSavingLedgerXlsx || ledgerPeriodSelectedRows.length === 0
+                  : isSaving}
+                style={{ width: '100%', padding: '14px', fontSize: 15, border: 'none', borderRadius: 8, backgroundColor: '#1A3C6E', color: '#fff', cursor: isSaving || isSavingLedgerXlsx ? 'not-allowed' : 'pointer', opacity: isSaving || isSavingLedgerXlsx || (ledgerInputMode === 'period' && ledgerPeriodSelectedRows.length === 0) ? 0.7 : 1, fontWeight: 700 }}
               >
-                {isSaving ? '저장 중...' : `거래 저장하기 (${ledgerEntries.length}건)`}
+                {ledgerInputMode === 'period'
+                  ? isSavingLedgerXlsx ? '기간별 저장 중...' : `선택 거래 기간별 저장하기 (${ledgerPeriodSelectedRows.length}건)`
+                  : isSaving ? '저장 중...' : `거래 저장하기 (${ledgerEntries.length}건)`}
               </button>
             ) : isHouseholdFormat ? (
               /* 📒 HARU가계부 전용 저장 버튼 */

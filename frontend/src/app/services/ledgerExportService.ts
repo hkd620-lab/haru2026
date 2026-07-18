@@ -141,7 +141,7 @@ function expandRecord(r: HaruRecord): ExpandedEntry[] {
           foreignAmount: String(e.foreignAmount || ''),
           foreignCurrency: String(e.foreignCurrency || ''),
           exchangeRate: String(e.exchangeRate || ''),
-          proof: '',
+          proof: String(e.proofType || e.proof || ''),
         }));
       }
     } catch { /* ignore parse error → fallback */ }
