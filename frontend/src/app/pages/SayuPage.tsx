@@ -504,13 +504,17 @@ function buildLedgerDisplay(record: any) {
   const type = getLedgerValue(record, ['ledger_type']);
   const category = getLedgerValue(record, ['ledger_category', 'ledger_item']);
   const partner = getLedgerValue(record, ['ledger_partner']);
-  const amount = formatLedgerAmount(getLedgerValue(record, ['ledger_amount']));
+  const rawAmount = formatLedgerAmount(getLedgerValue(record, ['ledger_amount']));
+  const amount = rawAmount ? (rawAmount.endsWith('원') ? rawAmount : `${rawAmount}원`) : '';
   const payment = getLedgerValue(record, ['ledger_paymentMethod', 'ledger_payment']);
   const proof = getLedgerValue(record, ['ledger_proofType', 'ledger_proof']);
   const memo = getLedgerValue(record, ['ledger_memo']);
   const simple = getLedgerValue(record, ['ledger_simple']);
-  const title = [transactionAt, type, category].filter(Boolean).join(' · ') || simple || 'HARU보조장부';
-  const subtitleParts = [partner, amount, payment, proof, hasLedgerAttachment(record) ? '사진 첨부' : '']
+  // 제목: "[분류] 거래처 금액원" 형식 (분류 없으면 미분류로 표시)
+  const categoryLabel = category || '미분류';
+  const vendorAmount = [partner, amount].filter(Boolean).join(' ');
+  const title = vendorAmount ? `[${categoryLabel}] ${vendorAmount}` : (simple || 'HARU보조장부');
+  const subtitleParts = [transactionAt, type, payment, proof, hasLedgerAttachment(record) ? '사진 첨부' : '']
     .filter(Boolean);
   return {
     title: title.slice(0, 48),
