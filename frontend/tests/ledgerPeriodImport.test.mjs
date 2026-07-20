@@ -73,7 +73,16 @@ const mergePayload = buildLedgerPeriodRecordPayload(
 assert.deepEqual(mergePayload.formats, ['메모', 'HARU보조장부']);
 assert.equal(JSON.parse(mergePayload.ledger_entries).length, 2, '기존 거래 뒤에 새 거래가 추가되어야 한다.');
 assert.equal(Object.hasOwn(mergePayload, 'content'), false, '기존 일기·메모 필드는 덮어쓰기 payload에 포함하지 않아야 한다.');
-assert.equal(mergePayload.ledger_title, '[미분류] 기존 거래처 500원 등 2건', 'ledger_title은 [분류] 거래처 금액원 형식이어야 하고, 병합 건수가 2건 이상이면 "등 N건"을 붙여야 한다.');
+// ledger_title 등 문서 상단 요약 필드는 "가장 최근에 저장된" 거래(새로 추가된 거래) 기준이어야 한다.
+// 예전에 저장된 기존 거래(existingEntry)의 값이 그대로 남아있으면 안 된다 —
+// 그렇지 않으면 오늘 새로 분류를 다 지정해도 제목이 예전 "미분류" 값으로 굳어버리는 버그가 재발한다.
+assert.equal(
+  mergePayload.ledger_title,
+  `[미분류] ${classified[1].entry.vendor} ${classified[1].entry.amount} 등 2건`,
+  'ledger_title은 기존 거래가 아니라 이번에 새로 저장한 거래를 기준으로 [분류] 거래처 금액원 형식이어야 한다.',
+);
+assert.equal(mergePayload.ledger_category, classified[1].entry.category, '요약 필드는 기존 거래가 아니라 새 거래를 기준으로 해야 한다.');
+assert.equal(mergePayload.ledger_partner, classified[1].entry.vendor, '요약 필드는 기존 거래가 아니라 새 거래를 기준으로 해야 한다.');
 
 const singlePayload = buildLedgerPeriodRecordPayload(
   '2026-07-10',
