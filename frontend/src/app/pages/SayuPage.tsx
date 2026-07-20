@@ -21,7 +21,7 @@ import {
   getAssistantRecommendations,
   type AssistantRecommendation,
 } from '../utils/assistantRecommendations';
-import { collection, getDocs, getDoc, orderBy, query, deleteDoc, doc, writeBatch, updateDoc, limit, setDoc, serverTimestamp, arrayUnion, increment } from 'firebase/firestore';
+import { collection, getDocs, getDoc, orderBy, query, deleteDoc, doc, writeBatch, updateDoc, deleteField, limit, setDoc, serverTimestamp, arrayUnion, increment } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db } from '../../firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -2560,6 +2560,38 @@ export function SayuPage() {
     } catch { toast.error('삭제 실패'); }
   };
 
+  // HARU보조장부 목록에서 한 건만 바로 삭제 (같은 문서에 다른 형식이 섞여 있으면
+  // 문서 전체를 지우지 않고 ledger_* 필드만 지움 — 정확히 그 한 건만 삭제)
+  const handleDeleteLedgerEntry = async (recordId: string) => {
+    if (!user?.uid) return;
+    if (!window.confirm('이 보조장부 기록을 삭제하시겠습니까?\n삭제한 기록은 복구할 수 없습니다.')) return;
+    try {
+      const record = records.find((r) => r.id === recordId) as any;
+      const formats = Array.isArray(record?.formats) ? record.formats.map(String) : [];
+      const remainingFormats = formats.filter((f: string) => f !== 'HARU보조장부');
+      const recordRef = doc(db, 'users', user.uid, 'records', recordId);
+      if (remainingFormats.length === 0) {
+        await deleteDoc(recordRef);
+        setRecords((prev) => prev.filter((r) => r.id !== recordId));
+      } else {
+        const ledgerFieldNames = record ? Object.keys(record).filter((key) => key.startsWith('ledger_')) : [];
+        const updates: Record<string, unknown> = { formats: remainingFormats };
+        ledgerFieldNames.forEach((key) => { updates[key] = deleteField(); });
+        await updateDoc(recordRef, updates);
+        setRecords((prev) => prev.map((r) => {
+          if (r.id !== recordId) return r;
+          const next: any = { ...r, formats: remainingFormats };
+          ledgerFieldNames.forEach((key) => { delete next[key]; });
+          return next;
+        }));
+      }
+      toast.success('삭제되었습니다.');
+    } catch (error) {
+      console.error('HARU보조장부 기록 삭제 실패:', error);
+      toast.error('삭제에 실패했습니다.');
+    }
+  };
+
   const handleCopyRecord = async (recordId: string, formatKey: string) => {
     try {
       const record = records.find(r => r.id === recordId);
@@ -3033,6 +3065,7 @@ export function SayuPage() {
 
   type FlatSayuEntry = {
     id: string;
+    recordId?: string;
     date: string;
     label: string;
     title: string;
@@ -3528,6 +3561,7 @@ export function SayuPage() {
             : ledgerDisplay?.subtitle || keywords.slice(0, 4).join(' · ');
           return {
             id: `${record.id}_${prefix}`,
+            recordId: record.id,
             date: record.date,
             label,
             title,
@@ -4322,12 +4356,12 @@ export function SayuPage() {
                     </div>
                   )}
                   {visibleGroupEntries.map((entry, idx) => (
-                    <div key={entry.id} className={idx > 0 ? 'border-t' : ''} style={{ borderColor: '#f0f0f0' }}>
+                    <div key={entry.id} className={idx > 0 ? 'border-t' : ''} style={{ borderColor: '#f0f0f0', display: 'flex', alignItems: 'stretch' }}>
                       <button
                         type="button"
                         onClick={entry.onOpen}
-                        className="w-full flex items-center gap-3 px-4 text-left hover:bg-yellow-50 transition-colors"
-                        style={{ minHeight: 56, paddingLeft: 18 }}
+                        className="flex-1 flex items-center gap-3 px-4 text-left hover:bg-yellow-50 transition-colors"
+                        style={{ minHeight: 56, paddingLeft: 18, minWidth: 0 }}
                       >
                         <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: 36 }}>
                           {formatListDate(entry.date)}
@@ -4361,6 +4395,23 @@ export function SayuPage() {
                           )}
                         </span>
                       </button>
+                      {entry.label === 'HARU보조장부' && entry.recordId && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleDeleteLedgerEntry(entry.recordId!); }}
+                          aria-label="이 보조장부 기록 삭제"
+                          title="이 기록 삭제"
+                          style={{
+                            flexShrink: 0, width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            border: 'none', borderLeft: '1px solid #f0f0f0', backgroundColor: 'transparent',
+                            color: '#d1d5db', cursor: 'pointer', fontSize: 15,
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.backgroundColor = '#fef2f2'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = '#d1d5db'; e.currentTarget.style.backgroundColor = 'transparent'; }}
+                        >
+                          🗑
+                        </button>
+                      )}
                       {entry.extra}
                     </div>
                   ))}
@@ -4392,12 +4443,12 @@ export function SayuPage() {
     return (
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         {entries.map((entry, idx) => (
-          <div key={entry.id} className={idx > 0 ? 'border-t' : ''} style={{ borderColor: '#f0f0f0' }}>
+          <div key={entry.id} className={idx > 0 ? 'border-t' : ''} style={{ borderColor: '#f0f0f0', display: 'flex', alignItems: 'stretch' }}>
             <button
               type="button"
               onClick={entry.onOpen}
-              className="w-full flex items-center gap-3 px-4 text-left hover:bg-yellow-50 transition-colors"
-              style={{ minHeight: 56 }}
+              className="flex-1 flex items-center gap-3 px-4 text-left hover:bg-yellow-50 transition-colors"
+              style={{ minHeight: 56, minWidth: 0 }}
             >
               <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: 36 }}>
                 {formatListDate(entry.date)}
@@ -4415,6 +4466,23 @@ export function SayuPage() {
                 )}
               </span>
             </button>
+            {entry.label === 'HARU보조장부' && entry.recordId && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); handleDeleteLedgerEntry(entry.recordId!); }}
+                aria-label="이 보조장부 기록 삭제"
+                title="이 기록 삭제"
+                style={{
+                  flexShrink: 0, width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: 'none', borderLeft: '1px solid #f0f0f0', backgroundColor: 'transparent',
+                  color: '#d1d5db', cursor: 'pointer', fontSize: 15,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.backgroundColor = '#fef2f2'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = '#d1d5db'; e.currentTarget.style.backgroundColor = 'transparent'; }}
+              >
+                🗑
+              </button>
+            )}
             {entry.extra}
           </div>
         ))}

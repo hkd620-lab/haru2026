@@ -427,7 +427,11 @@ export function buildLedgerPeriodRecordPayload(
 ): Record<string, unknown> {
   const mergedEntries = [...extractLedgerEntries(existingData), ...newEntries];
   if (mergedEntries.length === 0) throw new Error('저장할 보조장부 거래가 없습니다.');
-  const first = mergedEntries[0];
+  // 문서 상단 요약 필드(title·category·partner·amount 등)는 이 날짜에 "가장 최근에
+  // 저장된" 거래를 기준으로 삼는다. mergedEntries[0]을 쓰면 예전에 저장된(분류 미지정 등)
+  // 기존 거래가 그대로 남아 있어, 오늘 새로 분류를 다 지정해도 제목이 그 예전 값
+  // ("미분류")으로 보이는 문제가 있었다.
+  const first = mergedEntries[mergedEntries.length - 1];
   const existingFormats = Array.isArray(existingData.formats)
     ? existingData.formats.filter((format): format is string => typeof format === 'string')
     : [];
