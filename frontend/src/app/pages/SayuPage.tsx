@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { ChevronLeft, ChevronRight, Info, Leaf, Briefcase, BookOpen, Scale, Cpu, Volume2, Pause, Search } from 'lucide-react';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
-import { exportLedgerForMonth } from '../services/ledgerExportService';
+import { exportLedgerForMonth, exportLedgerToXlsx } from '../services/ledgerExportService';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { useAuth } from '../contexts/AuthContext';
 import { SayuTitleAnimation } from '../components/SayuTitleAnimation';
@@ -3026,6 +3026,41 @@ export function SayuPage() {
     );
   };
 
+  // ─── 기장비서 전체 기간 엑셀 내보내기 (전체보기 탭용) ───
+  const renderLedgerAllExportButton = () => {
+    if (sayuTab !== 'records') return null;
+    const ledgerRecords = records.filter((r) =>
+      Object.keys(r).some((k) => k.startsWith('ledger_') && !k.endsWith('_sayu') && !k.endsWith('_images')),
+    );
+    if (ledgerRecords.length === 0) return null;
+    return (
+      <button
+        onClick={() => {
+          const result = exportLedgerToXlsx(records, 'all');
+          if (result.count === 0) {
+            toast.warning('보조장부 내역이 없습니다.');
+          } else {
+            toast.success(`📒 ${result.count}건 → ${result.fileName} 저장됨`);
+          }
+        }}
+        style={{
+          width: '100%',
+          padding: '10px 0',
+          backgroundColor: '#1A3C6E',
+          color: '#fff',
+          border: 'none',
+          borderRadius: 8,
+          fontSize: 13,
+          fontWeight: 600,
+          cursor: 'pointer',
+          marginBottom: 10,
+        }}
+      >
+        📥 전체 엑셀 내보내기
+      </button>
+    );
+  };
+
   const toggleCategory = (category: string) => {
     setCollapsedCategories((prev) => {
       const next = new Set(prev);
@@ -4773,6 +4808,7 @@ export function SayuPage() {
 
       {sayuScope === 'all' ? (
         <>
+          {renderLedgerAllExportButton()}
           {renderGroupedEntryList(filteredActiveEntries)}
         </>
       ) : (
