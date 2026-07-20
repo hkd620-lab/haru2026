@@ -405,18 +405,63 @@ export function ledgerEntryAmount(entry: Pick<LedgerEntry, 'amount'>): number {
   return Number.isFinite(amount) ? amount : 0;
 }
 
-function ledgerMemoForSave(entry: LedgerEntry): string {
+export function ledgerMemoForSave(entry: LedgerEntry): string {
   return entry.category === '기타' && entry.customCategory.trim()
     ? `[${entry.customCategory.trim()}] ${entry.memo}`.trim()
     : entry.memo;
 }
 
 // 저장 시 title 필드: "[분류] 거래처 금액원" 형식 (분류 없으면 미분류)
-function ledgerEntryTitle(entry: LedgerEntry): string {
+export function ledgerEntryTitle(entry: LedgerEntry): string {
   const categoryLabel = entry.category || '미분류';
   const amount = entry.amount ? (entry.amount.endsWith('원') ? entry.amount : `${entry.amount}원`) : '';
   const vendorAmount = [entry.vendor, amount].filter(Boolean).join(' ');
   return vendorAmount ? `[${categoryLabel}] ${vendorAmount}` : `[${categoryLabel}] 거래`;
+}
+
+// 거래 배열(같은 날짜에 병합 저장된 거래들)로부터 문서 상단 요약 필드를 다시 계산한다.
+// SayuPage에서 거래를 하나씩 개별 삭제한 뒤 남은 거래로 요약 필드를 갱신할 때 재사용한다.
+// (요약 필드는 항상 "가장 최근" 거래, 즉 배열의 마지막 항목을 기준으로 한다 — buildLedgerPeriodRecordPayload와 동일한 규칙)
+export function buildLedgerSummaryFieldsFromEntries(mergedEntries: LedgerEntry[]): Record<string, unknown> {
+  if (mergedEntries.length === 0) throw new Error('남은 보조장부 거래가 없습니다.');
+  const first = mergedEntries[mergedEntries.length - 1];
+  const imageUrls = Array.from(new Set(mergedEntries.flatMap((entry) => entry.imageUrls || [])));
+  const ledgerSayu = mergedEntries.map((entry, index) => {
+    const parts = [
+      entry.date,
+      entry.transactionType,
+      entry.usageType,
+      entry.category,
+      entry.vendor,
+      entry.amount,
+      entry.paymentMethod,
+    ].filter(Boolean);
+    const memo = ledgerMemoForSave(entry);
+    return `[거래 ${index + 1}] ${parts.join(' · ')}${memo ? `\n메모: ${memo}` : ''}`;
+  }).join('\n\n');
+  return {
+    ledger_title: mergedEntries.length > 1
+      ? `${ledgerEntryTitle(first)} 등 ${mergedEntries.length}건`
+      : ledgerEntryTitle(first),
+    ledger_type: first.transactionType,
+    ledger_businessTrack: first.businessTrack,
+    ledger_usageType: first.usageType,
+    ledger_category: first.category,
+    ledger_item: first.category,
+    ledger_date: first.date,
+    ledger_transactionAt: first.date,
+    ledger_partner: first.vendor,
+    ledger_amount: first.amount,
+    ledger_payment: first.paymentMethod,
+    ledger_paymentMethod: first.paymentMethod,
+    ledger_proof: first.proofType || '',
+    ledger_proofType: first.proofType || '',
+    ledger_approvalNumber: first.approvalNumber || '',
+    ledger_memo: ledgerMemoForSave(first),
+    ledger_entries: JSON.stringify(mergedEntries),
+    ledger_sayu: ledgerSayu,
+    ...(imageUrls.length > 0 ? { ledger_images: JSON.stringify(imageUrls) } : {}),
+  };
 }
 
 export function buildLedgerPeriodRecordPayload(

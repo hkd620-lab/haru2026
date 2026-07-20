@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router';
 import { ChevronLeft, ChevronRight, Info, Leaf, Briefcase, BookOpen, Scale, Cpu, Volume2, Pause, Search } from 'lucide-react';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
 import { exportLedgerForMonth, exportLedgerToXlsx } from '../services/ledgerExportService';
+import { buildLedgerSummaryFieldsFromEntries, type LedgerEntry } from '../services/ledgerPeriodImport';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { useAuth } from '../contexts/AuthContext';
 import { SayuTitleAnimation } from '../components/SayuTitleAnimation';
@@ -519,6 +520,27 @@ function buildLedgerDisplay(record: any) {
   return {
     title: title.slice(0, 48),
     subtitle: (subtitleParts.length > 0 ? subtitleParts.join(' · ') : memo || simple).slice(0, 80),
+  };
+}
+
+// 같은 날짜에 병합 저장된 거래 중 "이 거래 하나"의 제목·부제를 만든다 (SAYU 목록에서 거래별로 개별 표시하기 위함).
+function buildLedgerEntryDisplay(entry: any, record: any) {
+  const transactionAt = String(entry?.date || getLedgerValue(record, ['ledger_transactionAt', 'ledger_date']) || '');
+  const type = String(entry?.transactionType || '');
+  const category = String(entry?.category || '');
+  const partner = String(entry?.vendor || '');
+  const rawAmount = formatLedgerAmount(entry?.amount);
+  const amount = rawAmount ? (rawAmount.endsWith('원') ? rawAmount : `${rawAmount}원`) : '';
+  const payment = String(entry?.paymentMethod || '');
+  const proof = String(entry?.proofType || entry?.proof || '');
+  const memo = String(entry?.memo || '');
+  const categoryLabel = category || '미분류';
+  const vendorAmount = [partner, amount].filter(Boolean).join(' ');
+  const title = vendorAmount ? `[${categoryLabel}] ${vendorAmount}` : 'HARU보조장부';
+  const subtitleParts = [transactionAt, type, payment, proof].filter(Boolean);
+  return {
+    title: title.slice(0, 48),
+    subtitle: (subtitleParts.length > 0 ? subtitleParts.join(' · ') : memo).slice(0, 80),
   };
 }
 
@@ -2592,6 +2614,46 @@ export function SayuPage() {
     }
   };
 
+  // 같은 날짜에 여러 거래가 병합 저장된 경우, 그중 하나의 거래만 골라서 삭제한다.
+  // 삭제 후 남은 거래로 문서 상단 요약 필드(제목·분류·거래처 등)를 다시 계산해 갱신한다.
+  const handleDeleteLedgerSingleEntry = async (recordId: string, entryIndex: number) => {
+    if (!user?.uid) return;
+    if (!window.confirm('이 거래를 삭제하시겠습니까?\n삭제한 거래는 복구할 수 없습니다.')) return;
+    try {
+      const record = records.find((r) => r.id === recordId) as any;
+      if (!record) return;
+      const rawEntries = record.ledger_entries;
+      let entries: LedgerEntry[] = [];
+      if (typeof rawEntries === 'string') {
+        try {
+          const parsed = JSON.parse(rawEntries);
+          if (Array.isArray(parsed)) entries = parsed;
+        } catch { /* ignore */ }
+      }
+      if (entries.length <= 1) {
+        // 배열이 없거나(예전 단건 기록) 남는 거래가 없으면 기존 전체 삭제 동작으로 처리
+        await handleDeleteLedgerEntry(recordId);
+        return;
+      }
+      const remaining = entries.filter((_, idx) => idx !== entryIndex);
+      const summary = buildLedgerSummaryFieldsFromEntries(remaining);
+      const recordRef = doc(db, 'users', user.uid, 'records', recordId);
+      const updates: Record<string, unknown> = { ...summary };
+      if (!('ledger_images' in summary)) updates.ledger_images = deleteField();
+      await updateDoc(recordRef, updates);
+      setRecords((prev) => prev.map((r) => {
+        if (r.id !== recordId) return r;
+        const next: any = { ...r, ...summary };
+        if (!('ledger_images' in summary)) delete next.ledger_images;
+        return next;
+      }));
+      toast.success('삭제되었습니다.');
+    } catch (error) {
+      console.error('HARU보조장부 거래 삭제 실패:', error);
+      toast.error('삭제에 실패했습니다.');
+    }
+  };
+
   const handleCopyRecord = async (recordId: string, formatKey: string) => {
     try {
       const record = records.find(r => r.id === recordId);
@@ -3101,6 +3163,7 @@ export function SayuPage() {
   type FlatSayuEntry = {
     id: string;
     recordId?: string;
+    entryIndex?: number;
     date: string;
     label: string;
     title: string;
@@ -3582,7 +3645,52 @@ export function SayuPage() {
     .flatMap((record) =>
       getRecordFormatsForList(record)
         .filter(({ prefix }) => hasCompletedFormatForRecord(record, prefix))
-        .map(({ label, prefix }) => {
+        .flatMap(({ label, prefix }) => {
+          // HARU보조장부: 같은 날짜에 여러 거래가 한 문서(ledger_entries 배열)에 병합 저장되어 있어도,
+          // 목록에서는 거래 하나하나를 별도 항목으로 보여주고 삭제도 거래 단위로 할 수 있게 한다.
+          if (prefix === 'ledger') {
+            const rawEntries = (record as any).ledger_entries;
+            let ledgerEntries: any[] = [];
+            if (typeof rawEntries === 'string') {
+              try {
+                const parsed = JSON.parse(rawEntries);
+                if (Array.isArray(parsed)) ledgerEntries = parsed;
+              } catch { /* ignore parse error → 아래 fallback */ }
+            }
+            if (ledgerEntries.length === 0) {
+              // ledger_entries 배열이 없는 예전 단건 기록 — 레코드 전체를 하나의 항목으로 표시
+              const ledgerDisplay = buildLedgerDisplay(record);
+              return [{
+                id: `${record.id}_${prefix}`,
+                recordId: record.id,
+                date: record.date,
+                label,
+                title: ledgerDisplay.title,
+                subtitle: ledgerDisplay.subtitle,
+                color: FORMAT_COLORS[prefix] ?? '#1A3C6E',
+                keywords: getRecordPreviewKeywords(record, prefix),
+                searchText: buildSearchText(label, ledgerDisplay.title, ledgerDisplay.subtitle, getRecordSourceText(record, prefix)),
+                onOpen: () => openFormatSayu(record.date, prefix, label, record.id),
+              }];
+            }
+            return ledgerEntries.map((entry, entryIndex) => {
+              const display = buildLedgerEntryDisplay(entry, record);
+              return {
+                id: `${record.id}_${prefix}_${entryIndex}`,
+                recordId: record.id,
+                entryIndex,
+                date: record.date,
+                label,
+                title: display.title,
+                subtitle: display.subtitle,
+                color: FORMAT_COLORS[prefix] ?? '#1A3C6E',
+                keywords: [] as string[],
+                searchText: buildSearchText(label, display.title, display.subtitle),
+                onOpen: () => openFormatSayu(record.date, prefix, label, record.id),
+              };
+            });
+          }
+
           const timelineItems = prefix === 'growthTimeline'
             ? normalizeTimelineItems((record as any).timelineItems)
             : [];
@@ -3590,11 +3698,10 @@ export function SayuPage() {
           const periodEnd = String((record as any).periodEnd || timelineItems[timelineItems.length - 1]?.takenDate || '');
           const keywords = getRecordPreviewKeywords(record, prefix);
           const title = getRecordDisplayTitle(record, prefix, label);
-          const ledgerDisplay = prefix === 'ledger' ? buildLedgerDisplay(record) : null;
           const subtitle = prefix === 'growthTimeline'
             ? `${periodStart || '-'}${periodEnd && periodEnd !== periodStart ? ` ~ ${periodEnd}` : ''} · ${timelineItems.length || (record as any).itemCount || 0}장`
-            : ledgerDisplay?.subtitle || keywords.slice(0, 4).join(' · ');
-          return {
+            : keywords.slice(0, 4).join(' · ');
+          return [{
             id: `${record.id}_${prefix}`,
             recordId: record.id,
             date: record.date,
@@ -3617,7 +3724,7 @@ export function SayuPage() {
                 </span>
               </div>
             ) : undefined,
-          };
+          }];
         }),
     )
     .sort((a, b) => b.date.localeCompare(a.date) || a.label.localeCompare(b.label));
@@ -4433,7 +4540,7 @@ export function SayuPage() {
                       {entry.label === 'HARU보조장부' && entry.recordId && (
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); handleDeleteLedgerEntry(entry.recordId!); }}
+                          onClick={(e) => { e.stopPropagation(); typeof entry.entryIndex === 'number' ? handleDeleteLedgerSingleEntry(entry.recordId!, entry.entryIndex) : handleDeleteLedgerEntry(entry.recordId!); }}
                           aria-label="이 보조장부 기록 삭제"
                           title="이 기록 삭제"
                           style={{
@@ -4504,7 +4611,7 @@ export function SayuPage() {
             {entry.label === 'HARU보조장부' && entry.recordId && (
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); handleDeleteLedgerEntry(entry.recordId!); }}
+                onClick={(e) => { e.stopPropagation(); typeof entry.entryIndex === 'number' ? handleDeleteLedgerSingleEntry(entry.recordId!, entry.entryIndex) : handleDeleteLedgerEntry(entry.recordId!); }}
                 aria-label="이 보조장부 기록 삭제"
                 title="이 기록 삭제"
                 style={{
