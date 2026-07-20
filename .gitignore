@@ -48,3 +48,7 @@ frontend/.claude/*
 * 3.*
 archives/
 backup/
+
+# 보조장부 백업 JSON (개인 금융정보 — 커밋 금지)
+ledger_backup_*.json
+functions/ledger_backup_*.json
