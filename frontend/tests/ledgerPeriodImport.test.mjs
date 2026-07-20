@@ -73,5 +73,14 @@ const mergePayload = buildLedgerPeriodRecordPayload(
 assert.deepEqual(mergePayload.formats, ['메모', 'HARU보조장부']);
 assert.equal(JSON.parse(mergePayload.ledger_entries).length, 2, '기존 거래 뒤에 새 거래가 추가되어야 한다.');
 assert.equal(Object.hasOwn(mergePayload, 'content'), false, '기존 일기·메모 필드는 덮어쓰기 payload에 포함하지 않아야 한다.');
+assert.equal(mergePayload.ledger_title, '[미분류] 기존 거래처 500원 등 2건', 'ledger_title은 [분류] 거래처 금액원 형식이어야 하고, 병합 건수가 2건 이상이면 "등 N건"을 붙여야 한다.');
+
+const singlePayload = buildLedgerPeriodRecordPayload(
+  '2026-07-10',
+  {},
+  [createLedgerEntry({ id: 'solo', date: '2026-07-10', vendor: '우지커피 고척중앙점', amount: '18,200원', category: '식비', paymentMethod: '마스터4828' })],
+  '2026-07-17T00:00:00.000Z',
+);
+assert.equal(singlePayload.ledger_title, '[식비] 우지커피 고척중앙점 18,200원', '단건 저장 시 "등 N건" 없이 [분류] 거래처 금액원만 표시해야 한다.');
 
 console.log('ledgerPeriodImport: parse, date, summary filtering, duplicate classification, record merge passed');

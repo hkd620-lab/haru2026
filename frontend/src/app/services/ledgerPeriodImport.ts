@@ -411,6 +411,14 @@ function ledgerMemoForSave(entry: LedgerEntry): string {
     : entry.memo;
 }
 
+// 저장 시 title 필드: "[분류] 거래처 금액원" 형식 (분류 없으면 미분류)
+function ledgerEntryTitle(entry: LedgerEntry): string {
+  const categoryLabel = entry.category || '미분류';
+  const amount = entry.amount ? (entry.amount.endsWith('원') ? entry.amount : `${entry.amount}원`) : '';
+  const vendorAmount = [entry.vendor, amount].filter(Boolean).join(' ');
+  return vendorAmount ? `[${categoryLabel}] ${vendorAmount}` : `[${categoryLabel}] 거래`;
+}
+
 export function buildLedgerPeriodRecordPayload(
   date: string,
   existingData: Record<string, unknown>,
@@ -440,7 +448,9 @@ export function buildLedgerPeriodRecordPayload(
   return {
     date,
     formats: Array.from(new Set([...existingFormats, 'HARU보조장부'])),
-    ledger_title: `${date} · HARU보조장부 ${mergedEntries.length}건`,
+    ledger_title: mergedEntries.length > 1
+      ? `${ledgerEntryTitle(first)} 등 ${mergedEntries.length}건`
+      : ledgerEntryTitle(first),
     ledger_type: first.transactionType,
     ledger_businessTrack: first.businessTrack,
     ledger_usageType: first.usageType,
