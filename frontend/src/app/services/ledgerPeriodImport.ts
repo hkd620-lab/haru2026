@@ -1,4 +1,7 @@
-export type LedgerDuplicateStatus = 'saved' | 'possible' | '';
+// 'saved' = 이번 편집 세션에서 이미 저장 완료된 거래(재선택 방지용 표시).
+// 같은 날짜·거래처·금액의 거래도 항상 별개 거래로 저장하므로, Firestore 이력과 대조해
+// 자동으로 제외하는 중복 판정 로직은 두지 않는다.
+export type LedgerDuplicateStatus = 'saved' | '';
 
 export interface LedgerEntry {
   id: string;
@@ -34,12 +37,6 @@ export interface LedgerPeriodPreviewRow {
   warning: string;
   edited?: boolean;
   entry: LedgerEntry;
-}
-
-export interface LedgerDuplicateIndex {
-  baseKeys: Set<string>;
-  exactKeys: Set<string>;
-  noApprovalKeys: Set<string>;
 }
 
 export interface LedgerWorkbookParseResult {
@@ -210,52 +207,6 @@ export function normalizeLedgerAmount(value: unknown): { value: string; valid: b
   return { value: `${amount.toLocaleString('ko-KR')}원`, valid: true };
 }
 
-function normalizedApprovalNumber(value: unknown): string {
-  return String(value ?? '').normalize('NFKC').toLowerCase().replace(/\s+/g, '');
-}
-
-export function ledgerDuplicateBaseKey(entry: Pick<LedgerEntry, 'date' | 'vendor' | 'amount' | 'paymentMethod'>): string {
-  return [
-    entry.date.replace(/[^0-9]/g, '').slice(0, 8),
-    entry.vendor.normalize('NFKC').toLowerCase().replace(/\s+/g, ''),
-    entry.amount.replace(/[^0-9-]/g, '').replace(/^(-?)0+(?=\d)/, '$1'),
-    entry.paymentMethod.normalize('NFKC').toLowerCase().replace(/\s+/g, ''),
-  ].join('|');
-}
-
-export function ledgerDuplicateExactKey(entry: Pick<LedgerEntry, 'date' | 'vendor' | 'amount' | 'paymentMethod' | 'approvalNumber'>): string {
-  return `${ledgerDuplicateBaseKey(entry)}|${normalizedApprovalNumber(entry.approvalNumber)}`;
-}
-
-export function createLedgerDuplicateIndex(): LedgerDuplicateIndex {
-  return { baseKeys: new Set(), exactKeys: new Set(), noApprovalKeys: new Set() };
-}
-
-export function cloneLedgerDuplicateIndex(index: LedgerDuplicateIndex): LedgerDuplicateIndex {
-  return {
-    baseKeys: new Set(index.baseKeys),
-    exactKeys: new Set(index.exactKeys),
-    noApprovalKeys: new Set(index.noApprovalKeys),
-  };
-}
-
-export function addLedgerEntryToDuplicateIndex(index: LedgerDuplicateIndex, entry: LedgerEntry): void {
-  const baseKey = ledgerDuplicateBaseKey(entry);
-  const approvalNumber = normalizedApprovalNumber(entry.approvalNumber);
-  index.baseKeys.add(baseKey);
-  index.exactKeys.add(`${baseKey}|${approvalNumber}`);
-  if (!approvalNumber) index.noApprovalKeys.add(baseKey);
-}
-
-export function classifyLedgerDuplicate(index: LedgerDuplicateIndex, entry: LedgerEntry): LedgerDuplicateStatus {
-  const baseKey = ledgerDuplicateBaseKey(entry);
-  const approvalNumber = normalizedApprovalNumber(entry.approvalNumber);
-  if (!index.baseKeys.has(baseKey)) return '';
-  if (approvalNumber && index.exactKeys.has(`${baseKey}|${approvalNumber}`)) return 'saved';
-  if (!approvalNumber && index.noApprovalKeys.has(baseKey)) return 'saved';
-  return 'possible';
-}
-
 export function extractLedgerEntries(record: Record<string, unknown>): LedgerEntry[] {
   if (typeof record.ledger_entries === 'string') {
     try {
@@ -409,12 +360,13 @@ export function parseLedgerWorkbook(
   return { rows: parsedRows, scannedSheetCount, scannedRowCount, maxHeaderScore };
 }
 
+// 같은 날짜·거래처·금액이라도 실제로는 별개의 정상 거래일 수 있으므로(예: 하루 두 번 결제),
+// Firestore 저장 이력과 대조해 자동으로 제외·미체크하는 중복 판정은 하지 않는다.
+// canImport한 거래는 항상 기본 선택된다.
 export function classifyLedgerPreviewRows(
   rows: LedgerPeriodPreviewRow[],
   referenceYear: number,
-  existingIndex: LedgerDuplicateIndex,
 ): LedgerPeriodPreviewRow[] {
-  const fileIndex = createLedgerDuplicateIndex();
   return rows.map((row) => {
     const dateResult = normalizeLedgerDate(row.rawDate, referenceYear);
     const entry = { ...row.entry, date: dateResult.value };
@@ -428,14 +380,10 @@ export function classifyLedgerPreviewRows(
       && entry.paymentMethod
       && !row.nonDateWarnings.some((warning) => warning.includes('형식을 확인')),
     );
-    const storedStatus = canImport ? classifyLedgerDuplicate(existingIndex, entry) : '';
-    const fileStatus = canImport ? classifyLedgerDuplicate(fileIndex, entry) : '';
-    const duplicateStatus = storedStatus || (fileStatus ? 'possible' : '');
-    if (canImport) addLedgerEntryToDuplicateIndex(fileIndex, entry);
     return {
       ...row,
-      selected: canImport && !duplicateStatus,
-      duplicateStatus,
+      selected: canImport,
+      duplicateStatus: '',
       canImport,
       entry,
       warning: warnings.join(' '),

@@ -1,10 +1,8 @@
 import assert from 'node:assert/strict';
 import * as XLSX from 'xlsx';
 import {
-  addLedgerEntryToDuplicateIndex,
   buildLedgerPeriodRecordPayload,
   classifyLedgerPreviewRows,
-  createLedgerDuplicateIndex,
   createLedgerEntry,
   normalizeLedgerDate,
   parseLedgerWorkbook,
@@ -29,19 +27,14 @@ assert.equal(parsed.rows[0].entry.paymentMethod, '카드-0');
 assert.match(parsed.rows[0].entry.memo, /가맹점 소재지: 서울/);
 assert.equal(normalizeLedgerDate('0617', 2026).value, '2026-06-17');
 
-const duplicateIndex = createLedgerDuplicateIndex();
-addLedgerEntryToDuplicateIndex(duplicateIndex, createLedgerEntry({
-  date: '2026-06-17',
-  vendor: '거래처 1',
-  amount: '1,000원',
-  paymentMethod: '카드-0',
-  approvalNumber: 'A-1',
-}));
-const classified = classifyLedgerPreviewRows(parsed.rows, 2026, duplicateIndex);
-assert.equal(classified[0].duplicateStatus, 'saved', '승인번호까지 같은 거래는 이미 저장됨이어야 한다.');
-assert.equal(classified[0].selected, false, '이미 저장된 거래는 기본 선택 해제되어야 한다.');
-assert.equal(classified[1].selected, true, '신규 거래는 기본 선택되어야 한다.');
-assert.equal(classified.filter((row) => row.selected).length, 11);
+// 같은 날짜·거래처·금액이라도 실제로는 별개의 정상 거래일 수 있으므로(예: 하루 두 번 결제),
+// 과거 저장 이력과 대조해 자동으로 제외·미체크하는 중복 판정 로직은 두지 않는다.
+// canImport한 거래는 모두 기본 선택되어야 한다.
+const classified = classifyLedgerPreviewRows(parsed.rows, 2026);
+assert.equal(classified[0].duplicateStatus, '', '중복 여부와 무관하게 자동으로 제외 표시되지 않아야 한다.');
+assert.equal(classified[0].selected, true, '거래는 항상 기본 선택되어야 한다(중복 방지 로직 금지).');
+assert.equal(classified[1].selected, true, '거래는 항상 기본 선택되어야 한다(중복 방지 로직 금지).');
+assert.equal(classified.filter((row) => row.selected).length, 12, '소계·합계 제외 12건 모두 기본 선택되어야 한다.');
 
 // 항목1: 해외거래에서 '이용금액'(거래시점)과 '이번달 결제금액'(청구액)이 다르면 청구액을 우선한다.
 const overseasRows = [

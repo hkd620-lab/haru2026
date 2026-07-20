@@ -24,19 +24,16 @@ import { GrowthChart } from '../../components/GrowthChart';
 import {
   LEDGER_XLSX_PROOF,
   classifyLedgerPreviewRows,
-  createLedgerDuplicateIndex,
   createLedgerEntry as newLedgerEntry,
   hashLedgerImportKey,
   ledgerEntryAmount,
   normalizeLedgerAmount,
   normalizeLedgerDate,
   parseLedgerWorkbook,
-  type LedgerDuplicateIndex,
   type LedgerEntry,
   type LedgerPeriodPreviewRow,
 } from '../services/ledgerPeriodImport';
 import {
-  getLedgerDuplicateIndexForDates,
   saveLedgerPeriodEntriesBatch,
 } from '../services/ledgerPeriodSaveService';
 
@@ -320,10 +317,57 @@ interface LedgerPeriodResultState {
   totalCount: number;
   savedCount: number;
   excludedCount: number;
-  duplicateExcludedCount: number;
+  alreadySavedCount: number;
   savedDateCount: number;
   failureCount: number;
   message?: string;
+}
+
+// ===== HARU보조장부 XLSX 작업 중 상태 자동 저장(sessionStorage draft) =====
+const LEDGER_DRAFT_STORAGE_KEY = 'haru2026_ledger_draft';
+const LEDGER_DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // 24시간
+
+interface LedgerDraftPayload {
+  rows: LedgerPeriodPreviewRow[];
+  year: number;
+  savedAt: number;
+}
+
+function loadLedgerXlsxDraft(): LedgerDraftPayload | null {
+  try {
+    const raw = sessionStorage.getItem(LEDGER_DRAFT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as LedgerDraftPayload;
+    if (!parsed || !Array.isArray(parsed.rows) || parsed.rows.length === 0) return null;
+    if (Date.now() - (parsed.savedAt || 0) > LEDGER_DRAFT_TTL_MS) {
+      sessionStorage.removeItem(LEDGER_DRAFT_STORAGE_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveLedgerXlsxDraft(rows: LedgerPeriodPreviewRow[], year: number) {
+  try {
+    if (rows.length === 0) {
+      sessionStorage.removeItem(LEDGER_DRAFT_STORAGE_KEY);
+      return;
+    }
+    const payload: LedgerDraftPayload = { rows, year, savedAt: Date.now() };
+    sessionStorage.setItem(LEDGER_DRAFT_STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    // sessionStorage 용량 초과 등은 무시한다 — draft는 편의 기능이므로 저장 흐름을 막지 않는다.
+  }
+}
+
+function clearLedgerXlsxDraft() {
+  try {
+    sessionStorage.removeItem(LEDGER_DRAFT_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
 }
 
 const DIARY_PREMIUM_FIELDS = [
@@ -393,7 +437,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     proofType: '',
   });
   const ledgerXlsxInputRef = useRef<HTMLInputElement>(null);
-  const ledgerXlsxExistingIndexRef = useRef<LedgerDuplicateIndex>(createLedgerDuplicateIndex());
+  const ledgerDraftSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 📒 HARU가계부
   const [householdEntries, setHouseholdEntries] = useState<HouseholdEntry[]>([newHouseholdEntry()]);
   const [selectedHouseholdOcrFiles, setSelectedHouseholdOcrFiles] = useState<File[]>([]);
@@ -488,7 +532,6 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       setLedgerInputMode('single');
       setLedgerXlsxPreviewRows([]);
       setLedgerXlsxYear(new Date().getFullYear());
-      ledgerXlsxExistingIndexRef.current = createLedgerDuplicateIndex();
       setIsReadingLedgerXlsx(false);
       setIsSavingLedgerXlsx(false);
       setExpandedLedgerXlsxRowId('');
@@ -539,6 +582,23 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
         }
       } else {
         setLedgerEntries([newLedgerEntry()]);
+      }
+      // HARU보조장부 XLSX 작업 중 상태(sessionStorage draft) 이어하기 확인
+      if (isLedgerFormat) {
+        const draft = loadLedgerXlsxDraft();
+        if (draft) {
+          const doneCount = draft.rows.filter((row) => row.entry.category).length;
+          const resume = window.confirm(
+            `이전에 작업하던 카드 명세서가 있습니다.\n이어서 작업하시겠습니까? (${draft.rows.length}건, 분류 지정 ${doneCount}건 완료)`,
+          );
+          if (resume) {
+            setLedgerXlsxPreviewRows(draft.rows);
+            setLedgerXlsxYear(draft.year);
+            setLedgerInputMode('period');
+          } else {
+            clearLedgerXlsxDraft();
+          }
+        }
       }
       // 가계부 초기화
       if (isHouseholdFormat) {
@@ -751,6 +811,18 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  // HARU보조장부 XLSX 작업 중 상태 자동 저장 (분류/구분 변경마다 500ms debounce)
+  useEffect(() => {
+    if (!isOpen || format !== 'HARU보조장부') return;
+    if (ledgerDraftSaveTimerRef.current) clearTimeout(ledgerDraftSaveTimerRef.current);
+    ledgerDraftSaveTimerRef.current = setTimeout(() => {
+      saveLedgerXlsxDraft(ledgerXlsxPreviewRows, ledgerXlsxYear);
+    }, 500);
+    return () => {
+      if (ledgerDraftSaveTimerRef.current) clearTimeout(ledgerDraftSaveTimerRef.current);
+    };
+  }, [ledgerXlsxPreviewRows, ledgerXlsxYear, isOpen, format]);
 
   if (!isOpen) return null;
 
@@ -1878,7 +1950,7 @@ ${contentValues}`,
   const handleLedgerXlsxYearChange = (value: number) => {
     setLedgerXlsxYear(value);
     setLedgerPeriodResult(null);
-    setLedgerXlsxPreviewRows((rows) => classifyLedgerPreviewRows(rows, value, ledgerXlsxExistingIndexRef.current));
+    setLedgerXlsxPreviewRows((rows) => classifyLedgerPreviewRows(rows, value));
   };
 
   const handleLedgerXlsxSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1917,15 +1989,9 @@ ${contentValues}`,
         toast.error(`거래 헤더 또는 거래 내역을 찾지 못했습니다. 시트 ${parseResult.scannedSheetCount}개·${parseResult.scannedRowCount}행에서 핵심 열 ${parseResult.maxHeaderScore}/4개를 찾았습니다. 국민카드 XLSX 형식인지 확인해 주세요.`);
         return;
       }
-      const parsedDates = parseResult.rows
-        .filter((row) => row.canImport)
-        .map((row) => row.entry.date.slice(0, 10));
-      const duplicateIndex = await getLedgerDuplicateIndexForDates(user.uid, parsedDates);
-      ledgerXlsxExistingIndexRef.current = duplicateIndex;
-      const previewRows = classifyLedgerPreviewRows(parseResult.rows, ledgerXlsxYear, duplicateIndex);
+      const previewRows = classifyLedgerPreviewRows(parseResult.rows, ledgerXlsxYear);
       setLedgerXlsxPreviewRows(previewRows);
-      const duplicateCount = previewRows.filter((row) => row.duplicateStatus).length;
-      toast.success(`${previewRows.length}건의 거래를 찾았습니다.${duplicateCount ? ` 중복 확인 거래 ${duplicateCount}건은 선택에서 제외했습니다.` : ''}`);
+      toast.success(`${previewRows.length}건의 거래를 찾았습니다.`);
     } catch (error) {
       console.error('HARU보조장부 XLSX 가져오기 실패:', error);
       const reason = error instanceof Error && error.message ? error.message : '알 수 없는 분석 오류';
@@ -2010,13 +2076,16 @@ ${contentValues}`,
     );
     if (!confirmed) return;
 
-    const duplicateUncheckedCount = ledgerXlsxPreviewRows
-      .filter((row) => !row.selected && Boolean(row.duplicateStatus)).length;
+    // '이미 저장됨'은 이번 편집 세션에서 방금 저장에 성공한 거래에만 붙는 표시다.
+    // 같은 날짜·거래처·금액이라도 별개의 정상 거래로 보고 항상 저장 대상에 포함하므로,
+    // Firestore 과거 이력과 대조해 자동으로 걸러내는 절차는 없다.
+    const alreadySavedCount = ledgerXlsxPreviewRows
+      .filter((row) => !row.selected && row.duplicateStatus === 'saved').length;
     const manuallyExcludedCount = ledgerXlsxPreviewRows
-      .filter((row) => !row.selected && !row.duplicateStatus).length;
+      .filter((row) => !row.selected && row.duplicateStatus !== 'saved').length;
     setIsSavingLedgerXlsx(true);
     try {
-      const saveEntries = selectedRows.map((row) => ({
+      const saveEntries: LedgerEntry[] = selectedRows.map((row) => ({
         ...row.entry,
         id: `xlsx-${hashLedgerImportKey([
           row.entry.date,
@@ -2025,26 +2094,24 @@ ${contentValues}`,
           row.entry.paymentMethod,
           row.entry.approvalNumber || '',
         ].join('|'))}`,
-        forceDuplicate: Boolean(row.duplicateStatus),
       }));
       const result = await saveLedgerPeriodEntriesBatch(user.uid, saveEntries);
-      const duplicateExcludedCount = duplicateUncheckedCount + result.duplicateExcludedCount;
       setLedgerPeriodResult({
         totalCount: ledgerXlsxPreviewRows.length,
         savedCount: result.savedCount,
         excludedCount: manuallyExcludedCount,
-        duplicateExcludedCount,
+        alreadySavedCount,
         savedDateCount: result.savedDates.length,
         failureCount: 0,
       });
-      const savedEntryIds = new Set(result.savedEntryIds);
-      const savedRowIds = new Set(selectedRows
-        .filter((_, index) => savedEntryIds.has(saveEntries[index].id))
-        .map((row) => row.id));
+      const savedRowIds = new Set(selectedRows.map((row) => row.id));
       setLedgerXlsxPreviewRows((rows) => rows.map((row) => savedRowIds.has(row.id)
         ? { ...row, selected: false, duplicateStatus: 'saved' }
         : row));
-      toast.success(`총 ${ledgerXlsxPreviewRows.length}건 중 ${result.savedCount}건을 ${result.savedDates.length}개 날짜에 저장했습니다.`);
+      // 저장 성공 시에만 작업 중 상태(draft)를 지운다. 남은 미저장 거래가 있으면
+      // 위 debounce 효과가 곧바로 새 draft를 다시 저장한다.
+      clearLedgerXlsxDraft();
+      toast.success(`저장 완료: ${result.savedCount}건이 각 거래일에 저장되었습니다.`);
     } catch (error) {
       console.error('HARU보조장부 XLSX 선택 거래 저장 실패:', error);
       const reason = error instanceof Error ? error.message : '선택한 거래 저장에 실패했습니다.';
@@ -2052,11 +2119,12 @@ ${contentValues}`,
         totalCount: ledgerXlsxPreviewRows.length,
         savedCount: 0,
         excludedCount: manuallyExcludedCount,
-        duplicateExcludedCount: duplicateUncheckedCount,
+        alreadySavedCount,
         savedDateCount: 0,
         failureCount: selectedRows.length,
         message: reason,
       });
+      // 실패 시에는 창을 닫지 않고 분류 지정 상태(ledgerXlsxPreviewRows)를 그대로 유지한다.
       toast.error(`기간 저장에 실패했습니다. 저장된 거래는 없습니다: ${reason}`);
     } finally {
       setIsSavingLedgerXlsx(false);
@@ -3830,7 +3898,7 @@ ${contentValues}`,
                           <strong style={{ display: 'block' }}>
                             총 {ledgerPeriodResult.totalCount}건 중 {ledgerPeriodResult.savedCount}건을 {ledgerPeriodResult.savedDateCount}개 날짜에 저장했습니다.
                           </strong>
-                          <span>제외 {ledgerPeriodResult.excludedCount}건 · 중복 제외 {ledgerPeriodResult.duplicateExcludedCount}건 · 실패 {ledgerPeriodResult.failureCount}건</span>
+                          <span>제외 {ledgerPeriodResult.excludedCount}건 · 이미 저장됨 {ledgerPeriodResult.alreadySavedCount}건 · 실패 {ledgerPeriodResult.failureCount}건</span>
                           {ledgerPeriodResult.message && <span style={{ display: 'block' }}>{ledgerPeriodResult.message}</span>}
                         </div>
                       )}
@@ -3900,7 +3968,7 @@ ${contentValues}`,
                                   <input
                                     type="checkbox"
                                     checked={row.selected}
-                                    disabled={!row.canImport || isSavingLedgerXlsx}
+                                    disabled={!row.canImport || isSavingLedgerXlsx || row.duplicateStatus === 'saved'}
                                     onChange={(e) => setLedgerXlsxPreviewRows((prev) => prev.map((item) => item.id === row.id ? { ...item, selected: e.target.checked } : item))}
                                     aria-label={`${row.entry.vendor || '거래'} 선택`}
                                     style={{ accentColor: '#4f46e5' }}
@@ -3915,7 +3983,7 @@ ${contentValues}`,
                                 <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{row.entry.category || '미분류'}</td>
                                 <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{row.entry.paymentMethod || '-'}</td>
                                 <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6', color: row.duplicateStatus || row.warning || !row.entry.businessTrack ? '#b45309' : '#047857' }}>
-                                  <strong>{row.duplicateStatus === 'saved' ? '이미 저장됨' : row.duplicateStatus === 'possible' ? '중복 가능성 있음' : !row.canImport ? '형식 확인 필요' : !row.entry.businessTrack ? '분류 확인 필요' : row.edited ? '수정됨' : '저장 준비'}</strong>
+                                  <strong>{row.duplicateStatus === 'saved' ? '이미 저장됨' : !row.canImport ? '형식 확인 필요' : !row.entry.businessTrack ? '분류 확인 필요' : row.edited ? '수정됨' : '저장 준비'}</strong>
                                   {row.warning && <span style={{ display: 'block', marginTop: 3, fontWeight: 400 }}>{row.warning}</span>}
                                 </td>
                                 <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>

@@ -12,22 +12,13 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import {
-  addLedgerEntryToDuplicateIndex,
   buildLedgerPeriodRecordPayload,
-  classifyLedgerDuplicate,
-  createLedgerDuplicateIndex,
-  extractLedgerEntries,
   type LedgerEntry,
 } from './ledgerPeriodImport';
-
-export interface LedgerPeriodSaveEntry extends LedgerEntry {
-  forceDuplicate?: boolean;
-}
 
 export interface LedgerPeriodSaveResult {
   savedCount: number;
   savedEntryIds: string[];
-  duplicateExcludedCount: number;
   savedDates: string[];
 }
 
@@ -72,58 +63,26 @@ async function resolveTarget(
   };
 }
 
-export async function getLedgerDuplicateIndexForDates(userId: string, dates: string[]) {
-  const uniqueDates = Array.from(new Set(dates.map(dateOnly)));
-  const { recordsByDate } = await loadDateRecords(userId, uniqueDates);
-  const index = createLedgerDuplicateIndex();
-  recordsByDate.forEach((snapshots) => {
-    snapshots.forEach((snapshot) => {
-      extractLedgerEntries(snapshot.data()).forEach((entry) => addLedgerEntryToDuplicateIndex(index, entry));
-    });
-  });
-  return index;
-}
-
+// 같은 날짜·거래처·금액이라도 실제로는 별개의 정상 거래일 수 있으므로(예: 하루 두 번 결제),
+// Firestore에 이미 저장된 거래 이력과 대조해 자동으로 제외하는 로직은 두지 않는다.
+// 요청된 거래는 형식 검증만 통과하면 전부 저장 대상이 된다.
 export async function saveLedgerPeriodEntriesBatch(
   userId: string,
-  requestedEntries: LedgerPeriodSaveEntry[],
+  requestedEntries: LedgerEntry[],
 ): Promise<LedgerPeriodSaveResult> {
   if (!userId) throw new Error('로그인이 필요합니다.');
   if (requestedEntries.length === 0) throw new Error('저장할 거래가 없습니다.');
 
-  const dates = Array.from(new Set(requestedEntries.map((entry) => dateOnly(entry.date)))).sort();
-  const { recordsByDate } = await loadDateRecords(userId, dates);
-  const duplicateIndex = createLedgerDuplicateIndex();
-  recordsByDate.forEach((snapshots) => {
-    snapshots.forEach((snapshot) => {
-      extractLedgerEntries(snapshot.data()).forEach((entry) => addLedgerEntryToDuplicateIndex(duplicateIndex, entry));
-    });
-  });
-
-  const accepted: LedgerEntry[] = [];
-  let duplicateExcludedCount = 0;
-  requestedEntries.forEach((entry) => {
-    const duplicateStatus = classifyLedgerDuplicate(duplicateIndex, entry);
-    if (duplicateStatus && !entry.forceDuplicate) {
-      duplicateExcludedCount += 1;
-      return;
-    }
-    const { forceDuplicate: _forceDuplicate, ...cleanEntry } = entry;
-    accepted.push(cleanEntry);
-    addLedgerEntryToDuplicateIndex(duplicateIndex, cleanEntry);
-  });
-
-  if (accepted.length === 0) {
-    return { savedCount: 0, savedEntryIds: [], duplicateExcludedCount, savedDates: [] };
-  }
-
   const entriesByDate = new Map<string, LedgerEntry[]>();
-  accepted.forEach((entry) => {
+  requestedEntries.forEach((entry) => {
     const date = dateOnly(entry.date);
     entriesByDate.set(date, [...(entriesByDate.get(date) || []), entry]);
   });
 
-  const targets = await Promise.all(Array.from(entriesByDate.keys()).map(async (date) => ({
+  const dates = Array.from(entriesByDate.keys()).sort();
+  const { recordsByDate } = await loadDateRecords(userId, dates);
+
+  const targets = await Promise.all(dates.map(async (date) => ({
     date,
     ...(await resolveTarget(userId, date, recordsByDate.get(date) || [])),
   })));
@@ -140,9 +99,8 @@ export async function saveLedgerPeriodEntriesBatch(
 
   await batch.commit();
   return {
-    savedCount: accepted.length,
-    savedEntryIds: accepted.map((entry) => entry.id),
-    duplicateExcludedCount,
-    savedDates: Array.from(entriesByDate.keys()).sort(),
+    savedCount: requestedEntries.length,
+    savedEntryIds: requestedEntries.map((entry) => entry.id),
+    savedDates: dates,
   };
 }
