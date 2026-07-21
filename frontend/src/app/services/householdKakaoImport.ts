@@ -33,7 +33,7 @@ interface WorkbookLike {
 
 // 지출 vendor에 아래 키워드가 포함되면 '구독료'로 분류 (소문자 비교)
 const SUBSCRIPTION_KEYWORDS = [
-  'anthropic', 'claude', 'google', '구글', 'openai', 'chatgpt', 'microsoft', 'netflix', '구독',
+  'anthropic', 'claude', 'google', '구글', 'openai', 'chatgpt', 'microsoft', 'netflix', '구독', '유튜브', 'youtube',
 ];
 
 function newId(): string {
