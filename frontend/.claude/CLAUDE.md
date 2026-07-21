@@ -375,6 +375,12 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: SayuPage.tsx (assistantContent IIFE)
 - 참고: 비서(AI 비서실) 대화는 aiLogs 별개 시스템(현재 assistants 탭 로딩 `false &&`로 비활성). result_ai_chat 메모와 무관 — 필요 시 별도 작업.
 
+### 2026-07-21
+- 완료: HARU가계부에 카카오뱅크 거래내역 XLSX(암호 잠김) 불러오기 기능 신규 추가. Functions에 decryptKakaoXlsx callable 신설(office-crypto로 비밀번호 해제 전용, asia-northeast3, 인증 필수) — 배포 완료. 프론트에 파싱/매핑/월별 그룹핑 서비스(householdKakaoImport.ts) 신설, FormatModal 가계부 화면에 파일선택→비밀번호→미리보기(카테고리 수정·행 선택·문제행 경고)→월별 저장 UI 추가. household_* 스키마·HouseholdEntry 타입·Firestore 경로(users/{uid}/records) 불변.
+- 수정파일: functions/src/index.ts(decryptKakaoXlsx), functions/package.json(office-crypto 추가), frontend/src/app/services/householdKakaoImport.ts(신규), frontend/src/app/components/FormatModal.tsx(저장 헬퍼 추출 saveHouseholdEntriesBatch + 카카오뱅크 UI)
+- 검증: 매핑 로직 11개 케이스 실제 코드로 단위 검증 / decryptKakaoXlsx 실제 암호화 파일(msoffcrypto-tool 공식 테스트 픽스처)로 오답·정답 비밀번호 전체 경로 검증 / 파일선택→비번→해제→파싱 UI 흐름 실사용 검증 / 기존 수동 저장 회귀 없음 확인(로컬 실제 저장 테스트) / 프론트·Functions 빌드 통과 후 배포 완료
+- 다음할일: 실제 카카오뱅크 XLSX 파일로 미리보기 표·월별 저장 전체 흐름 사용자 확인 필요(테스트 중 진짜 카카오뱅크 형식 파일을 구하지 못해 매핑 규칙은 합성 데이터로만 검증됨)
+
 ---
 
 최종 업데이트: 2026.07.06
