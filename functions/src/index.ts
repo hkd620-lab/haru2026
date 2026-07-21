@@ -17,6 +17,8 @@ import * as path from 'path';
 import { logAiUsage } from './aiUsageLogger';
 // 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
 import { GoogleGenAI } from '@google/genai';
+// HARU가계부 카카오뱅크 XLSX 잠금 해제 전용 (msoffcrypto-tool TS 포트)
+import { OfficeFile, InvalidKeyError, DecryptionError } from 'office-crypto';
 
 // Firebase Admin 초기화
 if (!admin.apps.length) {
@@ -3523,6 +3525,54 @@ export const extractHouseholdTextFromImage = onCall(
         isDev: DEVELOPER_UIDS.has(request.auth.uid),
       });
       throw new HttpsError('internal', '영수증 텍스트 추출에 실패했습니다. 사진을 더 또렷하게 올려 주세요.');
+    }
+  },
+);
+
+// ===== 📒 HARU가계부 — 카카오뱅크 XLSX 잠금 해제 =====
+// 파싱·매핑·미리보기·저장은 프론트(householdKakaoImport.ts)에서 처리. 이 함수는 비밀번호 해제만 담당.
+export const decryptKakaoXlsx = onCall(
+  {
+    region: 'asia-northeast3',
+    memory: '256MiB',
+    timeoutSeconds: 30,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const fileBase64 = String(request.data?.fileBase64 || '');
+    const password = String(request.data?.password || '');
+    if (!fileBase64) {
+      throw new HttpsError('invalid-argument', '파일 데이터가 필요합니다.');
+    }
+    if (!password) {
+      throw new HttpsError('invalid-argument', '비밀번호를 입력해 주세요.');
+    }
+    const fileKb = Math.round((fileBase64.length * 0.75) / 1024);
+    if (fileKb > 10 * 1024) {
+      throw new HttpsError('invalid-argument', '파일이 너무 큽니다. 10MB 이하로 올려주세요.');
+    }
+
+    try {
+      logger.info('decryptKakaoXlsx 호출', {
+        uid: request.auth.uid.slice(0, 8) + '…',
+        fileKb,
+      });
+
+      const buf = Buffer.from(fileBase64, 'base64');
+      const file = OfficeFile(buf);
+      file.loadKey({ password, verifyPassword: true });
+      const decrypted = file.decrypt();
+
+      return { xlsxBase64: Buffer.from(decrypted).toString('base64') };
+    } catch (error: any) {
+      if (error instanceof InvalidKeyError || error instanceof DecryptionError) {
+        throw new HttpsError('invalid-argument', '비밀번호가 올바르지 않습니다.');
+      }
+      logger.error('decryptKakaoXlsx 실패', { message: error?.message?.slice(0, 200) });
+      throw new HttpsError('internal', String(error?.message || '파일을 해제하지 못했습니다.'));
     }
   },
 );
