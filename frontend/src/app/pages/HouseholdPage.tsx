@@ -143,14 +143,15 @@ export function HouseholdPage() {
     return result;
   }, [records, currentMonth]);
 
-  const { income, expense, balance } = useMemo(() => {
-    let income = 0, expense = 0;
+  const { income, expense, transfer, balance } = useMemo(() => {
+    let income = 0, expense = 0, transfer = 0;
     for (const e of thisMonthEntries) {
       const amt = parseAmount(e.amount);
       if (e.transactionType === '수입') income += amt;
-      else if (e.transactionType === '지출' || e.transactionType === '이체') expense += amt;
+      else if (e.transactionType === '지출') expense += amt;
+      else if (e.transactionType === '이체') transfer += amt;
     }
-    return { income, expense, balance: income - expense };
+    return { income, expense, transfer, balance: income - expense };
   }, [thisMonthEntries]);
 
   // 카테고리별 지출 집계 (파이차트)
@@ -170,17 +171,18 @@ export function HouseholdPage() {
   const monthlyData = useMemo(() => {
     return Array.from({ length: 6 }, (_, i) => {
       const ym = getYearMonth(i - 5);
-      let inc = 0, exp = 0;
+      let inc = 0, exp = 0, trf = 0;
       for (const r of records) {
         for (const e of expandRecord(r)) {
           if (!e.date.startsWith(ym)) continue;
           const amt = parseAmount(e.amount);
           if (e.transactionType === '수입') inc += amt;
-          else if (e.transactionType === '지출' || e.transactionType === '이체') exp += amt;
+          else if (e.transactionType === '지출') exp += amt;
+          else if (e.transactionType === '이체') trf += amt;
         }
       }
       const label = ym.substring(5) + '월';
-      return { month: label, 수입: inc, 지출: exp };
+      return { month: label, 수입: inc, 지출: exp, 이체: trf };
     });
   }, [records]);
 
@@ -244,8 +246,9 @@ export function HouseholdPage() {
           <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 8 }}>
             {currentMonth.replace('.', '년 ')}월
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
             <SummaryCard label="수입" value={fmt(income)} color="#10b981" />
+            <SummaryCard label="이체(충전)" value={fmt(transfer)} color="#2563eb" />
             <SummaryCard label="지출" value={fmt(expense)} color="#ef4444" />
             <SummaryCard label="잔액" value={fmt(balance)} color={balance >= 0 ? '#166534' : '#ef4444'} />
           </div>
@@ -295,7 +298,7 @@ export function HouseholdPage() {
               )}
 
               {/* 바차트 */}
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#6b7280', margin: '12px 0 8px' }}>최근 6개월 수입·지출</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#6b7280', margin: '12px 0 8px' }}>최근 6개월 수입·지출·이체</div>
               <div style={{ overflowX: 'auto' }}>
                 <BarChart width={330} height={200} data={monthlyData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
@@ -304,6 +307,7 @@ export function HouseholdPage() {
                   <BarLegend wrapperStyle={{ fontSize: 12 }} />
                   <Bar dataKey="지출" fill="#FF6B6B" radius={[3, 3, 0, 0]} />
                   <Bar dataKey="수입" fill="#4ECDC4" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="이체" fill="#3b82f6" radius={[3, 3, 0, 0]} />
                 </BarChart>
               </div>
             </div>
