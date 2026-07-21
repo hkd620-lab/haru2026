@@ -116,17 +116,19 @@ function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: st
 
   const summaryEntries = totalEntries && totalEntries.length > 0 ? totalEntries : entries;
   const income = summaryEntries.reduce((sum, entry) => entry.transactionType === '수입' ? sum + parseHouseholdAmount(entry.amount) : sum, 0);
-  const expense = summaryEntries.reduce((sum, entry) => (entry.transactionType === '지출' || entry.transactionType === '이체') ? sum + parseHouseholdAmount(entry.amount) : sum, 0);
+  const expense = summaryEntries.reduce((sum, entry) => entry.transactionType === '지출' ? sum + parseHouseholdAmount(entry.amount) : sum, 0);
+  const transfer = summaryEntries.reduce((sum, entry) => entry.transactionType === '이체' ? sum + parseHouseholdAmount(entry.amount) : sum, 0);
   const balance = income - expense;
   const money = (value: number) => `${value.toLocaleString()}원`;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
           {[
             { label: totalEntries && totalEntries.length > 0 ? '전체수입' : '총수입', value: `+${money(income)}`, color: '#059669' },
-            { label: '지출+이체', value: `-${money(expense)}`, color: '#dc2626' },
+            { label: '이체(충전)', value: money(transfer), color: '#2563eb' },
+            { label: '지출', value: `-${money(expense)}`, color: '#dc2626' },
             { label: '잔액', value: money(balance), color: balance >= 0 ? '#059669' : '#dc2626' },
           ].map((item) => (
             <div key={item.label} style={{ minWidth: 0 }}>

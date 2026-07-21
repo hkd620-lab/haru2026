@@ -87,6 +87,11 @@ function getYearMonth(offset = 0): string {
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
+// 월 비교 시 점(.)·대시(-) 구분자를 모두 인식하도록 정규화 — 저장 포맷은 바꾸지 않고 비교 시점에만 사용
+function toMonthKey(dateStr: string): string {
+  return dateStr.replace(/\./g, '-').slice(0, 7);
+}
+
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
 interface BudgetSettings {
@@ -135,9 +140,10 @@ export function HouseholdPage() {
   // 이번 달 항목 집계
   const thisMonthEntries = useMemo(() => {
     const result: ExpandedEntry[] = [];
+    const currentMonthKey = toMonthKey(currentMonth);
     for (const r of records) {
       for (const e of expandRecord(r)) {
-        if (e.date.startsWith(currentMonth)) result.push(e);
+        if (toMonthKey(e.date) === currentMonthKey) result.push(e);
       }
     }
     return result;
@@ -171,10 +177,11 @@ export function HouseholdPage() {
   const monthlyData = useMemo(() => {
     return Array.from({ length: 6 }, (_, i) => {
       const ym = getYearMonth(i - 5);
+      const ymKey = toMonthKey(ym);
       let inc = 0, exp = 0, trf = 0;
       for (const r of records) {
         for (const e of expandRecord(r)) {
-          if (!e.date.startsWith(ym)) continue;
+          if (toMonthKey(e.date) !== ymKey) continue;
           const amt = parseAmount(e.amount);
           if (e.transactionType === '수입') inc += amt;
           else if (e.transactionType === '지출') exp += amt;
