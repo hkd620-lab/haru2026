@@ -51,6 +51,12 @@ function parseKakaoAmount(raw: unknown): string {
   return String(Math.abs(n));
 }
 
+// 거래후잔액(E열) — 콤마 제거 후 숫자 문자열로. 비어있으면 undefined(손입력 기록과 동일하게 필드 자체를 생략).
+function parseKakaoBalanceAfter(raw: unknown): string | undefined {
+  const trimmed = String(raw ?? '').replace(/,/g, '').trim();
+  return trimmed === '' ? undefined : trimmed;
+}
+
 function normalizeVendor(raw: unknown): string {
   return String(raw ?? '').replace(/\s+/g, ' ').trim();
 }
@@ -129,6 +135,7 @@ export function parseKakaoBankWorkbook(
 
     const { type: transactionType, recognized } = mapTransactionType(cells[2], cells[6], accountHolderName);
     const amount = parseKakaoAmount(cells[3]);
+    const balanceAfter = parseKakaoBalanceAfter(cells[4]);
     const vendor = normalizeVendor(cells[6]);
     const paymentMethod = mapPaymentMethod(cells[5]);
     const category = mapCategory(transactionType, vendor);
@@ -148,6 +155,7 @@ export function parseKakaoBankWorkbook(
       paymentMethod,
       memo: '',
       ocrSourceFile: sourceFileName,
+      balanceAfter,
     };
 
     rows.push({

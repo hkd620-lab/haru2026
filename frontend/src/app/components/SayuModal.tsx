@@ -51,6 +51,7 @@ type HouseholdSayuEntry = {
   amount: string;
   paymentMethod: string;
   memo: string;
+  balanceAfter?: string;
 };
 
 function parseHouseholdAmount(value: string): number {
@@ -72,6 +73,7 @@ function parseHouseholdEntriesForSayu(data?: Record<string, string>): HouseholdS
       amount: String(entry.amount || ''),
       paymentMethod: String(entry.paymentMethod || ''),
       memo: String(entry.memo || ''),
+      balanceAfter: entry.balanceAfter ? String(entry.balanceAfter) : undefined,
     }));
   } catch {
     return [];
@@ -116,22 +118,48 @@ function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: st
 
   const summaryEntries = totalEntries && totalEntries.length > 0 ? totalEntries : entries;
   const income = summaryEntries.reduce((sum, entry) => entry.transactionType === '수입' ? sum + parseHouseholdAmount(entry.amount) : sum, 0);
-  const expense = summaryEntries.reduce((sum, entry) => (entry.transactionType === '지출' || entry.transactionType === '이체') ? sum + parseHouseholdAmount(entry.amount) : sum, 0);
-  const balance = income - expense;
+  const expense = summaryEntries.reduce((sum, entry) => entry.transactionType === '지출' ? sum + parseHouseholdAmount(entry.amount) : sum, 0);
+  const transfer = summaryEntries.reduce((sum, entry) => entry.transactionType === '이체' ? sum + parseHouseholdAmount(entry.amount) : sum, 0);
+  const totalIncome = income + transfer;
+  const balance = totalIncome - expense;
   const money = (value: number) => `${value.toLocaleString()}원`;
+
+  // 통장잔액 — summaryEntries 범위 안에서 날짜상 가장 마지막 거래의 거래후잔액 (동일 날짜면 배열상 뒤쪽을 채택)
+  let bankBalance = 0;
+  let hasBankBalance = false;
+  let lastBalanceDate = '';
+  for (const entry of summaryEntries) {
+    if (!entry.balanceAfter || !entry.date) continue;
+    if (entry.date >= lastBalanceDate) {
+      lastBalanceDate = entry.date;
+      bankBalance = parseHouseholdAmount(entry.balanceAfter);
+      hasBankBalance = true;
+    }
+  }
+
+  const summaryItems: { label: string; value: string; color: string; note?: string }[] = [
+    {
+      label: '전체수입',
+      value: `+${money(totalIncome)}`,
+      color: '#059669',
+      note: `순수입 ${income.toLocaleString()} + 충전 ${transfer.toLocaleString()}`,
+    },
+    { label: '지출', value: `-${money(expense)}`, color: '#dc2626' },
+    { label: '수지', value: money(balance), color: balance >= 0 ? '#059669' : '#dc2626' },
+    ...(hasBankBalance ? [{ label: '통장잔액', value: money(bankBalance), color: '#059669' }] : []),
+  ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-          {[
-            { label: totalEntries && totalEntries.length > 0 ? '전체수입' : '총수입', value: `+${money(income)}`, color: '#059669' },
-            { label: '지출+이체', value: `-${money(expense)}`, color: '#dc2626' },
-            { label: '잔액', value: money(balance), color: balance >= 0 ? '#059669' : '#dc2626' },
-          ].map((item) => (
+        <div style={{ display: 'grid', gridTemplateColumns: hasBankBalance ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr', gap: 10 }}>
+          {summaryItems.map((item) => (
             <div key={item.label} style={{ minWidth: 0 }}>
               <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 700 }}>{item.label}</div>
               <div style={{ fontSize: 16, color: item.color, fontWeight: 800, wordBreak: 'break-word' }}>{item.value}</div>
+              {item.note && (
+                <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 3, fontWeight: 500, wordBreak: 'keep-all' }}>{item.note}</div>
+              )}
             </div>
           ))}
         </div>
