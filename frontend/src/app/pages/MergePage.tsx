@@ -9,10 +9,22 @@ import { RecordFormat, Category, CATEGORY_FORMATS, FORMAT_PREFIX } from '../type
 import { useSubscription } from '../hooks/useSubscription';
 import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
-import { exportLedgerToXlsx, type LedgerPeriod } from '../services/ledgerExportService';
+import {
+  buildLedgerIncomeTaxReport,
+  buildLedgerVatReport,
+  exportLedgerIncomeTaxPrepToXlsx,
+  exportLedgerToXlsx,
+  exportLedgerVatPrepToXlsx,
+  type LedgerIncomeTaxReport,
+  type LedgerIncomeTaxReviewKey,
+  type LedgerPeriod,
+  type LedgerVatReport,
+  type LedgerVatReviewKey,
+} from '../services/ledgerExportService';
 
 type MergeFilter = 'special' | 'all';
 type MergePeriod = 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'custom';
+type LedgerVatPreset = 'custom' | 'firstPreliminary' | 'firstFinal' | 'secondPreliminary' | 'secondFinal';
 
 interface PeriodOption {
   id: MergePeriod;
@@ -35,6 +47,16 @@ export function MergePage() {
   // 📒 HARU보조장부 엑셀 저장 전용 상태
   const [ledgerPeriod, setLedgerPeriod] = useState<LedgerPeriod>('thisMonth');
   const [isExportingLedger, setIsExportingLedger] = useState(false);
+  const [ledgerVatPreset, setLedgerVatPreset] = useState<LedgerVatPreset>('custom');
+  const [ledgerVatYear, setLedgerVatYear] = useState(new Date().getFullYear());
+  const [ledgerVatStart, setLedgerVatStart] = useState('');
+  const [ledgerVatEnd, setLedgerVatEnd] = useState('');
+  const [ledgerVatReport, setLedgerVatReport] = useState<LedgerVatReport | null>(null);
+  const [isPreparingLedgerVat, setIsPreparingLedgerVat] = useState(false);
+  const [activeVatReviewKey, setActiveVatReviewKey] = useState<LedgerVatReviewKey | null>(null);
+  const [ledgerIncomeTaxReport, setLedgerIncomeTaxReport] = useState<LedgerIncomeTaxReport | null>(null);
+  const [isPreparingLedgerIncomeTax, setIsPreparingLedgerIncomeTax] = useState(false);
+  const [activeIncomeTaxReviewKey, setActiveIncomeTaxReviewKey] = useState<LedgerIncomeTaxReviewKey | null>(null);
   const [assistantLibrary, setAssistantLibrary] = useState<LibraryEntry[]>([]);
   const [assistantLibraryLoading, setAssistantLibraryLoading] = useState(false);
   const [selectedLibraryIds, setSelectedLibraryIds] = useState<Set<string>>(new Set());
@@ -57,9 +79,11 @@ export function MergePage() {
   useEffect(() => {
     const today = getLocalDateString(new Date());
     setEndDate(today);
+    setLedgerVatEnd(today);
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     setStartDate(getLocalDateString(thirtyDaysAgo));
+    setLedgerVatStart(getLocalDateString(thirtyDaysAgo));
   }, []);
 
   useEffect(() => {
@@ -136,6 +160,132 @@ export function MergePage() {
     }
   };
 
+  const getLedgerVatRange = () => {
+    const y = ledgerVatYear;
+    const ranges: Record<Exclude<LedgerVatPreset, 'custom'>, { start: string; end: string; label: string }> = {
+      firstPreliminary: { start: `${y}-01-01`, end: `${y}-03-31`, label: '1기 예정 참고' },
+      firstFinal: { start: `${y}-04-01`, end: `${y}-06-30`, label: '1기 확정 참고' },
+      secondPreliminary: { start: `${y}-07-01`, end: `${y}-09-30`, label: '2기 예정 참고' },
+      secondFinal: { start: `${y}-10-01`, end: `${y}-12-31`, label: '2기 확정 참고' },
+    };
+    if (ledgerVatPreset === 'custom') {
+      return { start: ledgerVatStart, end: ledgerVatEnd, label: '사용자 지정 기간' };
+    }
+    return ranges[ledgerVatPreset];
+  };
+
+  const handlePrepareLedgerVat = async () => {
+    if (!user) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+    const range = getLedgerVatRange();
+    if (!range.start || !range.end || range.start > range.end) {
+      toast.warning('부가세 신고 준비 기간을 확인해 주세요.');
+      return;
+    }
+    setIsPreparingLedgerVat(true);
+    setActiveVatReviewKey(null);
+    try {
+      const records = await firestoreService.getRecords(user.uid);
+      const report = buildLedgerVatReport(records, range.start, range.end);
+      setLedgerVatReport(report);
+      if (report.entries.length === 0) {
+        toast.warning('선택 기간의 보조장부 거래가 없습니다.');
+      } else {
+        toast.success(`부가세 신고 준비 집계 ${report.entries.length}건을 계산했습니다.`);
+      }
+    } catch (e) {
+      console.error('부가세 신고 준비 집계 실패:', e);
+      toast.error('부가세 신고 준비 집계에 실패했습니다.');
+    } finally {
+      setIsPreparingLedgerVat(false);
+    }
+  };
+
+  const handleExportLedgerVatPrep = async () => {
+    if (!user) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+    const range = getLedgerVatRange();
+    if (!range.start || !range.end || range.start > range.end) {
+      toast.warning('부가세 신고 준비 기간을 확인해 주세요.');
+      return;
+    }
+    setIsPreparingLedgerVat(true);
+    try {
+      const records = await firestoreService.getRecords(user.uid);
+      const result = exportLedgerVatPrepToXlsx(records, range.start, range.end, range.label);
+      if (result.count === 0) {
+        toast.warning('내보낼 사업용 매출·매입 거래가 없습니다.');
+      } else {
+        toast.success(`부가세 신고 준비자료 ${result.count}건이 ${result.fileName} 파일로 저장되었습니다.`);
+      }
+    } catch (e) {
+      console.error('부가세 신고 준비자료 저장 실패:', e);
+      toast.error('부가세 신고 준비자료 저장에 실패했습니다.');
+    } finally {
+      setIsPreparingLedgerVat(false);
+    }
+  };
+
+  const handlePrepareLedgerIncomeTax = async () => {
+    if (!user) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+    const range = getLedgerVatRange();
+    if (!range.start || !range.end || range.start > range.end) {
+      toast.warning('종합소득세 준비 기간을 확인해 주세요.');
+      return;
+    }
+    setIsPreparingLedgerIncomeTax(true);
+    setActiveIncomeTaxReviewKey(null);
+    try {
+      const records = await firestoreService.getRecords(user.uid);
+      const report = buildLedgerIncomeTaxReport(records, range.start, range.end);
+      setLedgerIncomeTaxReport(report);
+      if (report.entries.length === 0) {
+        toast.warning('선택 기간의 보조장부 거래가 없습니다.');
+      } else {
+        toast.success(`종합소득세 준비 집계 ${report.entries.length}건을 계산했습니다.`);
+      }
+    } catch (e) {
+      console.error('종합소득세 준비 집계 실패:', e);
+      toast.error('종합소득세 준비 집계에 실패했습니다.');
+    } finally {
+      setIsPreparingLedgerIncomeTax(false);
+    }
+  };
+
+  const handleExportLedgerIncomeTaxPrep = async () => {
+    if (!user) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+    const range = getLedgerVatRange();
+    if (!range.start || !range.end || range.start > range.end) {
+      toast.warning('종합소득세 준비 기간을 확인해 주세요.');
+      return;
+    }
+    setIsPreparingLedgerIncomeTax(true);
+    try {
+      const records = await firestoreService.getRecords(user.uid);
+      const result = exportLedgerIncomeTaxPrepToXlsx(records, range.start, range.end, range.label);
+      if (result.count === 0) {
+        toast.warning('내보낼 지출 거래가 없습니다.');
+      } else {
+        toast.success(`종합소득세 준비자료 ${result.count}건이 ${result.fileName} 파일로 저장되었습니다.`);
+      }
+    } catch (e) {
+      console.error('종합소득세 준비자료 저장 실패:', e);
+      toast.error('종합소득세 준비자료 저장에 실패했습니다.');
+    } finally {
+      setIsPreparingLedgerIncomeTax(false);
+    }
+  };
+
   const toggleLibrarySelection = (entryId: string) => {
     setSelectedLibraryIds((prev) => {
       const next = new Set(prev);
@@ -151,6 +301,29 @@ export function MergePage() {
   const selectedLibraryEntries = assistantLibrary
     .filter((entry) => selectedLibraryIds.has(entry.id))
     .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+  const vatReviewLabels: Record<LedgerVatReviewKey, string> = {
+    taxTypeReview: '과세유형 확인필요',
+    deductionReview: '매입세액 공제여부 확인필요',
+    hometaxUnchecked: '홈택스 미확인',
+    proofReview: '증빙 없음 또는 확인필요',
+    personal: '개인용 거래',
+    foreign: '해외거래',
+    taxableMissingAmounts: '공급가액/부가세 미입력 과세거래',
+  };
+  const activeVatReviewEntries = ledgerVatReport && activeVatReviewKey
+    ? ledgerVatReport.reviewEntries[activeVatReviewKey]
+    : [];
+  const incomeTaxReviewLabels: Record<LedgerIncomeTaxReviewKey, string> = {
+    expenseDeductionReview: '필요경비 확인필요',
+    assetTreatmentReview: '감가상각 검토',
+    personal: '개인용 거래',
+    proofReview: '증빙 확인필요',
+    businessUsageReview: '사업용 여부 확인필요',
+  };
+  const activeIncomeTaxReviewEntries = ledgerIncomeTaxReport && activeIncomeTaxReviewKey
+    ? ledgerIncomeTaxReport.reviewEntries[activeIncomeTaxReviewKey]
+    : [];
 
   const libraryTypeLabel: Record<string, string> = {
     timeline: '타임라인',
@@ -671,6 +844,237 @@ export function MergePage() {
               <FileSpreadsheet className="w-4 h-4" />
               <span>{isExportingLedger ? '저장 중...' : '보조장부 엑셀 저장'}</span>
             </button>
+          </div>
+
+          <div className="mx-3 my-2 p-3 rounded-lg" style={{ border: '1px solid #dbeafe', backgroundColor: '#f8fbff' }}>
+            <div className="flex items-center justify-between gap-2 mb-2" style={{ flexWrap: 'wrap' }}>
+              <strong style={{ fontSize: 13, color: '#1A3C6E' }}>부가세 신고 준비</strong>
+              <select
+                value={ledgerVatYear}
+                onChange={(e) => { setLedgerVatYear(Number(e.target.value)); setLedgerVatReport(null); setLedgerIncomeTaxReport(null); }}
+                style={{ padding: '6px 8px', border: '1px solid #bfdbfe', borderRadius: 6, fontSize: 12, backgroundColor: '#fff' }}
+              >
+                {Array.from({ length: 8 }, (_, index) => new Date().getFullYear() + 1 - index).map((year) => (
+                  <option key={year} value={year}>{year}년</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-1 mb-2">
+              {([
+                { id: 'custom', label: '사용자 지정 기간' },
+                { id: 'firstPreliminary', label: '1기 예정 참고' },
+                { id: 'firstFinal', label: '1기 확정 참고' },
+                { id: 'secondPreliminary', label: '2기 예정 참고' },
+                { id: 'secondFinal', label: '2기 확정 참고' },
+              ] as { id: LedgerVatPreset; label: string }[]).map((opt) => {
+                const isSelected = ledgerVatPreset === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => { setLedgerVatPreset(opt.id); setLedgerVatReport(null); setLedgerIncomeTaxReport(null); setActiveVatReviewKey(null); setActiveIncomeTaxReviewKey(null); }}
+                    style={{
+                      padding: '7px 6px',
+                      border: `1px solid ${isSelected ? '#1A3C6E' : '#dbeafe'}`,
+                      borderRadius: 6,
+                      backgroundColor: isSelected ? '#1A3C6E' : '#fff',
+                      color: isSelected ? '#fff' : '#1A3C6E',
+                      fontSize: 12,
+                      fontWeight: isSelected ? 700 : 500,
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {ledgerVatPreset === 'custom' && (
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <input
+                  type="date"
+                  value={ledgerVatStart}
+                  onChange={(e) => { setLedgerVatStart(e.target.value); setLedgerVatReport(null); setLedgerIncomeTaxReport(null); }}
+                  style={{ padding: '8px', border: '1px solid #dbeafe', borderRadius: 6, fontSize: 12 }}
+                />
+                <input
+                  type="date"
+                  value={ledgerVatEnd}
+                  onChange={(e) => { setLedgerVatEnd(e.target.value); setLedgerVatReport(null); setLedgerIncomeTaxReport(null); }}
+                  style={{ padding: '8px', border: '1px solid #dbeafe', borderRadius: 6, fontSize: 12 }}
+                />
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={handlePrepareLedgerVat}
+                disabled={isPreparingLedgerVat}
+                style={{ padding: '9px 10px', border: 'none', borderRadius: 7, backgroundColor: '#1A3C6E', color: '#fff', fontSize: 12, fontWeight: 700, opacity: isPreparingLedgerVat ? 0.6 : 1 }}
+              >
+                {isPreparingLedgerVat ? '집계 중...' : '신고 준비 집계'}
+              </button>
+              <button
+                type="button"
+                onClick={handleExportLedgerVatPrep}
+                disabled={isPreparingLedgerVat}
+                style={{ padding: '9px 10px', border: 'none', borderRadius: 7, backgroundColor: '#0f766e', color: '#fff', fontSize: 12, fontWeight: 700, opacity: isPreparingLedgerVat ? 0.6 : 1 }}
+              >
+                준비자료 XLSX 저장
+              </button>
+            </div>
+
+            {ledgerVatReport && (
+              <div style={{ marginTop: 12 }}>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    ['과세매출 공급가액', ledgerVatReport.sales.taxableSupply],
+                    ['매출 부가세', ledgerVatReport.sales.outputVat],
+                    ['과세매입 공급가액', ledgerVatReport.purchases.taxableSupply],
+                    ['공제가능 매입세액', ledgerVatReport.purchases.deductibleVat],
+                    ['불공제 매입세액', ledgerVatReport.purchases.nonDeductibleVat],
+                    ['예상 차감세액', ledgerVatReport.expectedVat],
+                  ].map(([label, value]) => (
+                    <div key={String(label)} style={{ padding: '8px 9px', border: '1px solid #e5e7eb', borderRadius: 7, backgroundColor: '#fff' }}>
+                      <div style={{ fontSize: 11, color: '#6b7280' }}>{label}</div>
+                      <div style={{ marginTop: 3, fontSize: 13, fontWeight: 800, color: '#111827' }}>{Math.round(Number(value)).toLocaleString('ko-KR')}원</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-1 mt-2">
+                  {(Object.keys(vatReviewLabels) as LedgerVatReviewKey[]).map((key) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setActiveVatReviewKey((current) => current === key ? null : key)}
+                      style={{
+                        padding: '7px 8px',
+                        border: `1px solid ${activeVatReviewKey === key ? '#f59e0b' : '#fde68a'}`,
+                        borderRadius: 6,
+                        backgroundColor: activeVatReviewKey === key ? '#fffbeb' : '#fff',
+                        color: '#92400e',
+                        fontSize: 11,
+                        textAlign: 'left',
+                      }}
+                    >
+                      {vatReviewLabels[key]}: <strong>{ledgerVatReport.reviewCounts[key]}건</strong>
+                    </button>
+                  ))}
+                </div>
+                {activeVatReviewKey && (
+                  <div style={{ marginTop: 8, padding: 9, border: '1px solid #fde68a', borderRadius: 7, backgroundColor: '#fff' }}>
+                    <strong style={{ display: 'block', marginBottom: 6, fontSize: 12, color: '#92400e' }}>
+                      {vatReviewLabels[activeVatReviewKey]} 거래
+                    </strong>
+                    {activeVatReviewEntries.length === 0 ? (
+                      <div style={{ fontSize: 12, color: '#6b7280' }}>해당 거래가 없습니다.</div>
+                    ) : (
+                      activeVatReviewEntries.slice(0, 12).map((entry, index) => (
+                        <div key={`${entry.date}-${entry.vendor}-${index}`} style={{ padding: '6px 0', borderTop: index === 0 ? 'none' : '1px solid #f3f4f6', fontSize: 12, color: '#374151', lineHeight: 1.5 }}>
+                          <strong>{entry.date}</strong> · {entry.vendor || '거래처 없음'} · {entry.amount || '금액 없음'} · {entry.reviewReasons.join(', ')}
+                        </div>
+                      ))
+                    )}
+                    {activeVatReviewEntries.length > 12 && (
+                      <div style={{ marginTop: 6, fontSize: 11, color: '#6b7280' }}>외 {activeVatReviewEntries.length - 12}건은 XLSX 준비자료에서 확인하세요.</div>
+                    )}
+                  </div>
+                )}
+                <p style={{ margin: '10px 0 0', fontSize: 11, color: '#6B7280', lineHeight: 1.6 }}>
+                  보조장부 기준 참고금액입니다. 실제 부가가치세 신고금액은 홈택스 자료와 실제 증빙을 확인해야 합니다.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="mx-3 my-2 p-3 rounded-lg" style={{ border: '1px solid #bbf7d0', backgroundColor: '#f7fef9' }}>
+            <div className="flex items-center justify-between gap-2 mb-2" style={{ flexWrap: 'wrap' }}>
+              <strong style={{ fontSize: 13, color: '#166534' }}>종합소득세 준비</strong>
+              <span style={{ fontSize: 11, color: '#6b7280' }}>현재 선택한 신고 준비 기간 기준</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={handlePrepareLedgerIncomeTax}
+                disabled={isPreparingLedgerIncomeTax}
+                style={{ padding: '9px 10px', border: 'none', borderRadius: 7, backgroundColor: '#166534', color: '#fff', fontSize: 12, fontWeight: 700, opacity: isPreparingLedgerIncomeTax ? 0.6 : 1 }}
+              >
+                {isPreparingLedgerIncomeTax ? '집계 중...' : '종합소득세 집계'}
+              </button>
+              <button
+                type="button"
+                onClick={handleExportLedgerIncomeTaxPrep}
+                disabled={isPreparingLedgerIncomeTax}
+                style={{ padding: '9px 10px', border: 'none', borderRadius: 7, backgroundColor: '#047857', color: '#fff', fontSize: 12, fontWeight: 700, opacity: isPreparingLedgerIncomeTax ? 0.6 : 1 }}
+              >
+                준비자료 XLSX 저장
+              </button>
+            </div>
+
+            {ledgerIncomeTaxReport && (
+              <div style={{ marginTop: 12 }}>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    ['총 수입', ledgerIncomeTaxReport.totalBusinessIncome],
+                    ['필요경비 인정 거래 합계', ledgerIncomeTaxReport.deductibleExpenseTotal],
+                    ['필요경비 불인정 거래 합계', ledgerIncomeTaxReport.nonDeductibleExpenseTotal],
+                    ['확인필요 거래 합계', ledgerIncomeTaxReport.reviewExpenseTotal],
+                    ['감가상각 검토 대상 합계', ledgerIncomeTaxReport.depreciableAssetReviewTotal],
+                    ['단순 예상 사업손익', ledgerIncomeTaxReport.estimatedBusinessProfit],
+                  ].map(([label, value]) => (
+                    <div key={String(label)} style={{ padding: '8px 9px', border: '1px solid #e5e7eb', borderRadius: 7, backgroundColor: '#fff' }}>
+                      <div style={{ fontSize: 11, color: '#6b7280' }}>{label}</div>
+                      <div style={{ marginTop: 3, fontSize: 13, fontWeight: 800, color: '#111827' }}>{Math.round(Number(value)).toLocaleString('ko-KR')}원</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-1 mt-2">
+                  {(Object.keys(incomeTaxReviewLabels) as LedgerIncomeTaxReviewKey[]).map((key) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setActiveIncomeTaxReviewKey((current) => current === key ? null : key)}
+                      style={{
+                        padding: '7px 8px',
+                        border: `1px solid ${activeIncomeTaxReviewKey === key ? '#22c55e' : '#bbf7d0'}`,
+                        borderRadius: 6,
+                        backgroundColor: activeIncomeTaxReviewKey === key ? '#f0fdf4' : '#fff',
+                        color: '#166534',
+                        fontSize: 11,
+                        textAlign: 'left',
+                      }}
+                    >
+                      {incomeTaxReviewLabels[key]}: <strong>{ledgerIncomeTaxReport.reviewCounts[key]}건</strong>
+                    </button>
+                  ))}
+                </div>
+                {activeIncomeTaxReviewKey && (
+                  <div style={{ marginTop: 8, padding: 9, border: '1px solid #bbf7d0', borderRadius: 7, backgroundColor: '#fff' }}>
+                    <strong style={{ display: 'block', marginBottom: 6, fontSize: 12, color: '#166534' }}>
+                      {incomeTaxReviewLabels[activeIncomeTaxReviewKey]} 거래
+                    </strong>
+                    {activeIncomeTaxReviewEntries.length === 0 ? (
+                      <div style={{ fontSize: 12, color: '#6b7280' }}>해당 거래가 없습니다.</div>
+                    ) : (
+                      activeIncomeTaxReviewEntries.slice(0, 12).map((entry, index) => (
+                        <div key={`${entry.date}-${entry.vendor}-${index}`} style={{ padding: '6px 0', borderTop: index === 0 ? 'none' : '1px solid #f3f4f6', fontSize: 12, color: '#374151', lineHeight: 1.5 }}>
+                          <strong>{entry.date}</strong> · {entry.vendor || '거래처 없음'} · {entry.amount || '금액 없음'} · {entry.reviewReasons.join(', ')}
+                        </div>
+                      ))
+                    )}
+                    {activeIncomeTaxReviewEntries.length > 12 && (
+                      <div style={{ marginTop: 6, fontSize: 11, color: '#6b7280' }}>외 {activeIncomeTaxReviewEntries.length - 12}건은 XLSX 준비자료에서 확인하세요.</div>
+                    )}
+                  </div>
+                )}
+                <p style={{ margin: '10px 0 0', fontSize: 11, color: '#6B7280', lineHeight: 1.6 }}>
+                  예상 사업손익은 보조장부 기준 참고금액입니다. 감가상각, 접대비 한도, 세무조정 및 다른 소득을 반영한 실제 종합소득세 신고금액과 다를 수 있습니다.
+                </p>
+              </div>
+            )}
           </div>
 
           <p

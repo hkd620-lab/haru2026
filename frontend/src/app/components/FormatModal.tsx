@@ -22,16 +22,31 @@ import { findGrowthLMS, type GrowthGender } from '../../data/growthLMS';
 import { calcAgeInMonths, calcPercentile } from '../../utils/growthCalc';
 import { GrowthChart } from '../../components/GrowthChart';
 import {
+  LEDGER_ASSET_TREATMENT_LABELS,
+  LEDGER_EXPENSE_DEDUCTION_LABELS,
   LEDGER_XLSX_PROOF,
+  LEDGER_HOMETAX_CHECK_LABELS,
+  LEDGER_VAT_DEDUCTION_LABELS,
+  LEDGER_VAT_TAX_TYPE_LABELS,
+  adjustLedgerTaxFieldsForUsage,
+  calculateVatIncludedAmounts,
   classifyLedgerPreviewRows,
   createLedgerEntry as newLedgerEntry,
+  defaultLedgerAssetTreatment,
+  defaultLedgerExpenseDeduction,
+  defaultLedgerVatDeduction,
   hashLedgerImportKey,
   ledgerEntryAmount,
   normalizeLedgerAmount,
   normalizeLedgerDate,
   parseLedgerWorkbook,
+  type LedgerAssetTreatment,
+  type LedgerExpenseDeduction,
+  type LedgerHometaxCheck,
   type LedgerEntry,
   type LedgerPeriodPreviewRow,
+  type LedgerVatDeduction,
+  type LedgerVatTaxType,
 } from '../services/ledgerPeriodImport';
 import {
   saveLedgerPeriodEntriesBatch,
@@ -319,7 +334,7 @@ const TITLE_EXAMPLE: Partial<Record<RecordFormat, string>> = {
 // 기록 스타일 타입
 type RecordStyle = 'simple' | 'premium';
 type LedgerInputMode = 'single' | 'period';
-type LedgerBulkFields = Pick<LedgerEntry, 'transactionType' | 'businessTrack' | 'usageType' | 'category' | 'proofType'>;
+type LedgerBulkFields = Pick<LedgerEntry, 'transactionType' | 'businessTrack' | 'usageType' | 'category' | 'proofType' | 'vatTaxType' | 'vatDeduction' | 'hometaxCheck' | 'expenseDeduction' | 'assetTreatment'>;
 
 interface LedgerPeriodResultState {
   totalCount: number;
@@ -443,6 +458,11 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     usageType: '',
     category: '',
     proofType: '',
+    vatTaxType: undefined,
+    vatDeduction: undefined,
+    hometaxCheck: undefined,
+    expenseDeduction: undefined,
+    assetTreatment: undefined,
   });
   const ledgerXlsxInputRef = useRef<HTMLInputElement>(null);
   const ledgerDraftSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -558,6 +578,11 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
         usageType: '',
         category: '',
         proofType: '',
+        vatTaxType: undefined,
+        vatDeduction: undefined,
+        hometaxCheck: undefined,
+        expenseDeduction: undefined,
+        assetTreatment: undefined,
       });
       setSelectedHouseholdOcrFiles([]);
       setIsExtractingHouseholdText(false);
@@ -1989,9 +2014,10 @@ ${contentValues}`,
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
-    if (!file.name.toLowerCase().endsWith('.xlsx')) {
+    const lowerFileName = file.name.toLowerCase();
+    if (!lowerFileName.endsWith('.xlsx') && !lowerFileName.endsWith('.xls')) {
       setLedgerXlsxPreviewRows([]);
-      toast.warning('현재는 XLSX 카드 명세서 파일만 가져올 수 있습니다.');
+      toast.warning('현재는 XLS/XLSX 카드 명세서 파일만 가져올 수 있습니다.');
       return;
     }
     if (!user?.uid) {
@@ -2018,7 +2044,7 @@ ${contentValues}`,
       });
       const parseResult = parseLedgerWorkbook(workbook, XLSX, ledgerXlsxYear);
       if (parseResult.rows.length === 0) {
-        toast.error(`거래 헤더 또는 거래 내역을 찾지 못했습니다. 시트 ${parseResult.scannedSheetCount}개·${parseResult.scannedRowCount}행에서 핵심 열 ${parseResult.maxHeaderScore}/4개를 찾았습니다. 국민카드 XLSX 형식인지 확인해 주세요.`);
+        toast.error(`거래 헤더 또는 거래 내역을 찾지 못했습니다. 시트 ${parseResult.scannedSheetCount}개·${parseResult.scannedRowCount}행에서 핵심 열 ${parseResult.maxHeaderScore}/4개를 찾았습니다. 국민카드 XLS/XLSX 형식인지 확인해 주세요.`);
         return;
       }
       const previewRows = classifyLedgerPreviewRows(parseResult.rows, ledgerXlsxYear);
@@ -2027,7 +2053,7 @@ ${contentValues}`,
     } catch (error) {
       console.error('HARU보조장부 XLSX 가져오기 실패:', error);
       const reason = error instanceof Error && error.message ? error.message : '알 수 없는 분석 오류';
-      toast.error(`파일을 읽지 못했습니다: ${reason}. 국민카드 XLSX 형식인지 확인해 주세요.`);
+      toast.error(`파일을 읽지 못했습니다: ${reason}. 국민카드 XLS/XLSX 형식인지 확인해 주세요.`);
     } finally {
       setIsReadingLedgerXlsx(false);
     }
@@ -2074,12 +2100,24 @@ ${contentValues}`,
       if (ledgerBulkFields.transactionType) {
         nextEntry.transactionType = ledgerBulkFields.transactionType;
         if (nextEntry.category) nextEntry.category = '';
+        nextEntry.vatDeduction = defaultLedgerVatDeduction(nextEntry);
+        nextEntry.expenseDeduction = defaultLedgerExpenseDeduction(nextEntry);
+        nextEntry.assetTreatment = defaultLedgerAssetTreatment(nextEntry);
       }
       if (ledgerBulkFields.businessTrack) nextEntry.businessTrack = ledgerBulkFields.businessTrack;
-      if (ledgerBulkFields.usageType) nextEntry.usageType = ledgerBulkFields.usageType;
+      if (ledgerBulkFields.usageType) {
+        nextEntry.usageType = ledgerBulkFields.usageType;
+        nextEntry.vatDeduction = defaultLedgerVatDeduction(nextEntry);
+        nextEntry.expenseDeduction = defaultLedgerExpenseDeduction(nextEntry);
+      }
       if (ledgerBulkFields.category) nextEntry.category = ledgerBulkFields.category;
       if (ledgerBulkFields.proofType) nextEntry.proofType = ledgerBulkFields.proofType;
-      return { ...row, entry: nextEntry, edited: true };
+      if (ledgerBulkFields.vatTaxType) nextEntry.vatTaxType = ledgerBulkFields.vatTaxType;
+      if (ledgerBulkFields.vatDeduction) nextEntry.vatDeduction = ledgerBulkFields.vatDeduction;
+      if (ledgerBulkFields.hometaxCheck) nextEntry.hometaxCheck = ledgerBulkFields.hometaxCheck;
+      if (ledgerBulkFields.expenseDeduction) nextEntry.expenseDeduction = ledgerBulkFields.expenseDeduction;
+      if (ledgerBulkFields.assetTreatment) nextEntry.assetTreatment = ledgerBulkFields.assetTreatment;
+      return { ...row, entry: adjustLedgerTaxFieldsForUsage(nextEntry), edited: true };
     }));
     toast.success(`선택 거래 ${selectedCount}건에 공통 항목을 적용했습니다.`);
   };
@@ -4020,7 +4058,7 @@ ${contentValues}`,
                 >
                   <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#3730a3', marginBottom: 8, fontWeight: 700 }}>
                     <FileText style={{ width: 15, height: 15 }} />
-                    XLSX 카드 명세서 가져오기
+                    XLS/XLSX 카드 명세서 가져오기
                   </label>
                   <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
                     원본 파일은 업로드하지 않으며, 선택하여 확정한 거래만 보조장부에 저장합니다.
@@ -4028,7 +4066,7 @@ ${contentValues}`,
                   <input
                     ref={ledgerXlsxInputRef}
                     type="file"
-                    accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     onChange={handleLedgerXlsxSelect}
                     style={{ display: 'none' }}
                   />
@@ -4054,7 +4092,7 @@ ${contentValues}`,
                     }}
                   >
                     <Upload style={{ width: 16, height: 16 }} />
-                    {isReadingLedgerXlsx ? 'XLSX 읽는 중...' : 'XLSX 파일 선택'}
+                    {isReadingLedgerXlsx ? 'XLS/XLSX 읽는 중...' : 'XLS/XLSX 파일 선택'}
                   </button>
 
                   {ledgerXlsxPreviewRows.length > 0 && (
@@ -4101,6 +4139,9 @@ ${contentValues}`,
                       </label>
                       <div style={{ marginBottom: 10, padding: 10, border: '1px solid #ddd6fe', borderRadius: 8, backgroundColor: '#fff' }}>
                         <strong style={{ display: 'block', marginBottom: 8, fontSize: 12, color: '#4c1d95' }}>선택 거래 일괄 적용</strong>
+                        <p style={{ margin: '0 0 8px', fontSize: 11, color: '#92400e', lineHeight: 1.5 }}>
+                          카드명세서 거래는 기본 사용구분이 사업용으로 표시되지만, 사업 관련 여부와 VAT 처리는 저장 전 직접 확인해 주세요.
+                        </p>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 7 }}>
                           <select value={ledgerBulkFields.transactionType} onChange={(e) => setLedgerBulkFields((prev) => ({ ...prev, transactionType: e.target.value }))} style={{ padding: '7px 8px', border: '1px solid #ddd6fe', borderRadius: 6, fontSize: 11 }}>
                             <option value="">수입/지출 유지</option>
@@ -4125,10 +4166,34 @@ ${contentValues}`,
                             <option value="">증빙유형 유지</option>
                             <option value="카드매출전표">카드매출전표</option>
                             <option value="현금영수증">현금영수증</option>
+                            <option value="현금영수증(지출증빙)">현금영수증(지출증빙)</option>
                             <option value="세금계산서">세금계산서</option>
+                            <option value="전자세금계산서">전자세금계산서</option>
                             <option value="계산서">계산서</option>
+                            <option value="전자계산서">전자계산서</option>
                             <option value={LEDGER_XLSX_PROOF}>{LEDGER_XLSX_PROOF}</option>
+                            <option value="증빙없음">증빙없음</option>
                             <option value="기타">기타</option>
+                          </select>
+                          <select value={ledgerBulkFields.vatTaxType || ''} onChange={(e) => setLedgerBulkFields((prev) => ({ ...prev, vatTaxType: (e.target.value || undefined) as LedgerVatTaxType | undefined }))} style={{ padding: '7px 8px', border: '1px solid #ddd6fe', borderRadius: 6, fontSize: 11 }}>
+                            <option value="">과세유형 유지</option>
+                            {Object.entries(LEDGER_VAT_TAX_TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                          </select>
+                          <select value={ledgerBulkFields.vatDeduction || ''} onChange={(e) => setLedgerBulkFields((prev) => ({ ...prev, vatDeduction: (e.target.value || undefined) as LedgerVatDeduction | undefined }))} style={{ padding: '7px 8px', border: '1px solid #ddd6fe', borderRadius: 6, fontSize: 11 }}>
+                            <option value="">공제 여부 유지</option>
+                            {Object.entries(LEDGER_VAT_DEDUCTION_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                          </select>
+                          <select value={ledgerBulkFields.hometaxCheck || ''} onChange={(e) => setLedgerBulkFields((prev) => ({ ...prev, hometaxCheck: (e.target.value || undefined) as LedgerHometaxCheck | undefined }))} style={{ padding: '7px 8px', border: '1px solid #ddd6fe', borderRadius: 6, fontSize: 11 }}>
+                            <option value="">홈택스 상태 유지</option>
+                            {Object.entries(LEDGER_HOMETAX_CHECK_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                          </select>
+                          <select value={ledgerBulkFields.expenseDeduction || ''} onChange={(e) => setLedgerBulkFields((prev) => ({ ...prev, expenseDeduction: (e.target.value || undefined) as LedgerExpenseDeduction | undefined }))} style={{ padding: '7px 8px', border: '1px solid #ddd6fe', borderRadius: 6, fontSize: 11 }}>
+                            <option value="">필요경비 여부 유지</option>
+                            {Object.entries(LEDGER_EXPENSE_DEDUCTION_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                          </select>
+                          <select value={ledgerBulkFields.assetTreatment || ''} onChange={(e) => setLedgerBulkFields((prev) => ({ ...prev, assetTreatment: (e.target.value || undefined) as LedgerAssetTreatment | undefined }))} style={{ padding: '7px 8px', border: '1px solid #ddd6fe', borderRadius: 6, fontSize: 11 }}>
+                            <option value="">비용 처리 방식 유지</option>
+                            {Object.entries(LEDGER_ASSET_TREATMENT_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                           </select>
                           <button type="button" onClick={applyLedgerBulkFields} disabled={isSavingLedgerXlsx} style={{ padding: '7px 10px', border: 'none', borderRadius: 6, backgroundColor: '#6d28d9', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                             선택 거래에 적용
@@ -4136,10 +4201,10 @@ ${contentValues}`,
                         </div>
                       </div>
                       <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, backgroundColor: '#fff' }}>
-                        <table style={{ width: '100%', minWidth: 1380, borderCollapse: 'collapse', fontSize: 11 }}>
+                        <table style={{ width: '100%', minWidth: 1740, borderCollapse: 'collapse', fontSize: 11 }}>
                           <thead>
                             <tr style={{ backgroundColor: '#eef2ff', color: '#3730a3', textAlign: 'left' }}>
-                              {['선택', '거래일', '거래처', '금액', '수입/지출', '사업 구분', '사용 구분', '분류', '결제수단', '상태', '상세 수정'].map((label) => (
+                              {['선택', '거래일', '거래처', '금액', '수입/지출', '사업 구분', '사용 구분', '분류', '과세유형', '홈택스', '필요경비', '비용처리', '결제수단', '상태', '상세 수정'].map((label) => (
                                 <th key={label} style={{ padding: '8px 7px', borderBottom: '1px solid #c7d2fe', whiteSpace: 'nowrap' }}>{label}</th>
                               ))}
                             </tr>
@@ -4164,6 +4229,10 @@ ${contentValues}`,
                                 <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{row.entry.businessTrack === 'haru2026' ? 'HARU2026' : row.entry.businessTrack === 'external' ? '외부용역' : '확인 필요'}</td>
                                 <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{row.entry.usageType || '-'}</td>
                                 <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{row.entry.category || '미분류'}</td>
+                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{LEDGER_VAT_TAX_TYPE_LABELS[row.entry.vatTaxType || 'review']}</td>
+                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{LEDGER_HOMETAX_CHECK_LABELS[row.entry.hometaxCheck || 'unchecked']}</td>
+                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{LEDGER_EXPENSE_DEDUCTION_LABELS[row.entry.expenseDeduction || defaultLedgerExpenseDeduction(row.entry)]}</td>
+                                <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{LEDGER_ASSET_TREATMENT_LABELS[row.entry.assetTreatment || defaultLedgerAssetTreatment(row.entry)]}</td>
                                 <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6' }}>{row.entry.paymentMethod || '-'}</td>
                                 <td style={{ padding: '8px 7px', borderBottom: '1px solid #f3f4f6', color: row.duplicateStatus || row.warning || !row.entry.businessTrack ? '#b45309' : '#047857' }}>
                                   <strong>{row.duplicateStatus === 'saved' ? '이미 저장됨' : !row.canImport ? '형식 확인 필요' : !row.entry.businessTrack ? '분류 확인 필요' : row.edited ? '수정됨' : '저장 준비'}</strong>
@@ -4759,7 +4828,7 @@ ${contentValues}`,
                                       <button
                                         key={opt}
                                         type="button"
-                                        onClick={() => setVisibleLedgerEntries(prev => prev.map(e => e.id === entry.id ? { ...e, transactionType: opt, category: '' } : e))}
+                                        onClick={() => setVisibleLedgerEntries(prev => prev.map(e => e.id === entry.id ? adjustLedgerTaxFieldsForUsage({ ...e, transactionType: opt, category: '' }) : e))}
                                         style={{
                                           flex: 1, padding: '7px 4px', borderRadius: 7, fontSize: 12, fontWeight: entry.transactionType === opt ? 700 : 400, cursor: 'pointer',
                                           border: entry.transactionType === opt ? 'none' : '1px solid #e5e7eb',
@@ -4799,7 +4868,7 @@ ${contentValues}`,
                                       <button
                                         key={opt}
                                         type="button"
-                                        onClick={() => setVisibleLedgerEntries(prev => prev.map(e => e.id === entry.id ? { ...e, usageType: opt } : e))}
+                                        onClick={() => setVisibleLedgerEntries(prev => prev.map(e => e.id === entry.id ? adjustLedgerTaxFieldsForUsage({ ...e, usageType: opt }) : e))}
                                         style={{
                                           flex: 1, padding: '7px 4px', borderRadius: 7, fontSize: 12, fontWeight: entry.usageType === opt ? 700 : 400, cursor: 'pointer',
                                           border: entry.usageType === opt ? 'none' : '1px solid #e5e7eb',
@@ -4921,9 +4990,13 @@ ${contentValues}`,
                                     <option value="">선택 안 함</option>
                                     <option value="카드매출전표">카드매출전표</option>
                                     <option value="현금영수증">현금영수증</option>
+                                    <option value="현금영수증(지출증빙)">현금영수증(지출증빙)</option>
                                     <option value="세금계산서">세금계산서</option>
+                                    <option value="전자세금계산서">전자세금계산서</option>
                                     <option value="계산서">계산서</option>
+                                    <option value="전자계산서">전자계산서</option>
                                     <option value={LEDGER_XLSX_PROOF}>{LEDGER_XLSX_PROOF}</option>
+                                    <option value="증빙없음">증빙없음</option>
                                     <option value="기타">기타</option>
                                   </select>
                                 </div>
@@ -4937,7 +5010,129 @@ ${contentValues}`,
                                     style={fieldInputStyle}
                                   />
                                 </div>
+                                <div style={{ gridColumn: '1 / -1', marginTop: 4, paddingTop: 8, borderTop: '1px solid #e5e7eb' }}>
+                                  <strong style={{ display: 'block', fontSize: 12, color: '#1A3C6E', marginBottom: 3 }}>[부가세]</strong>
+                                  <span style={{ fontSize: 11, color: '#6b7280' }}>과세유형, 공급가액, 부가세액, VAT 공제여부, 홈택스 확인을 별도로 관리합니다.</span>
+                                </div>
+                                <div>
+                                  <label style={fieldLabelStyle}>과세유형</label>
+                                  <select
+                                    value={entry.vatTaxType || 'review'}
+                                    onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, vatTaxType: e.target.value as LedgerVatTaxType } : en))}
+                                    style={fieldInputStyle}
+                                  >
+                                    {Object.entries(LEDGER_VAT_TAX_TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label style={fieldLabelStyle}>매입세액 공제 여부</label>
+                                  <select
+                                    value={entry.vatDeduction || defaultLedgerVatDeduction(entry)}
+                                    onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, vatDeduction: e.target.value as LedgerVatDeduction } : en))}
+                                    style={fieldInputStyle}
+                                  >
+                                    {Object.entries(LEDGER_VAT_DEDUCTION_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label style={fieldLabelStyle}>공급가액</label>
+                                  <input
+                                    type="text"
+                                    value={entry.supplyAmount || ''}
+                                    placeholder="예: 100,000원"
+                                    onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, supplyAmount: e.target.value } : en))}
+                                    style={fieldInputStyle}
+                                  />
+                                </div>
+                                <div>
+                                  <label style={fieldLabelStyle}>부가세액</label>
+                                  <input
+                                    type="text"
+                                    value={entry.vatAmount || ''}
+                                    placeholder="예: 10,000원"
+                                    onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, vatAmount: e.target.value } : en))}
+                                    style={fieldInputStyle}
+                                  />
+                                </div>
+                                <div>
+                                  <label style={fieldLabelStyle}>홈택스 확인상태</label>
+                                  <select
+                                    value={entry.hometaxCheck || 'unchecked'}
+                                    onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, hometaxCheck: e.target.value as LedgerHometaxCheck } : en))}
+                                    style={fieldInputStyle}
+                                  >
+                                    {Object.entries(LEDGER_HOMETAX_CHECK_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label style={fieldLabelStyle}>공제/확인 사유</label>
+                                  <input
+                                    type="text"
+                                    value={entry.vatDeductionReason || ''}
+                                    placeholder="예: 홈택스 자료 대조 필요"
+                                    onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, vatDeductionReason: e.target.value } : en))}
+                                    style={fieldInputStyle}
+                                  />
+                                </div>
+                                <div style={{ gridColumn: '1 / -1', marginTop: 4, paddingTop: 8, borderTop: '1px solid #e5e7eb' }}>
+                                  <strong style={{ display: 'block', fontSize: 12, color: '#166534', marginBottom: 3 }}>[종합소득세]</strong>
+                                  <span style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.5 }}>
+                                    사업 운영에 직접 사용한 구독료는 필요경비로 검토할 수 있습니다. 식사·접대비와 장비·고가 자산은 요건, 한도, 감가상각 여부 확인이 필요합니다.
+                                  </span>
+                                </div>
+                                <div>
+                                  <label style={fieldLabelStyle}>필요경비 여부</label>
+                                  <select
+                                    value={entry.expenseDeduction || defaultLedgerExpenseDeduction(entry)}
+                                    onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, expenseDeduction: e.target.value as LedgerExpenseDeduction } : en))}
+                                    style={fieldInputStyle}
+                                  >
+                                    {Object.entries(LEDGER_EXPENSE_DEDUCTION_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label style={fieldLabelStyle}>필요경비 사유</label>
+                                  <input
+                                    type="text"
+                                    list={`ledger-expense-reason-${entry.id}`}
+                                    value={entry.expenseDeductionReason || ''}
+                                    placeholder="예: 앱 운영 구독료"
+                                    onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, expenseDeductionReason: e.target.value } : en))}
+                                    style={fieldInputStyle}
+                                  />
+                                  <datalist id={`ledger-expense-reason-${entry.id}`}>
+                                    {['앱 운영 구독료', '클라우드 서버비', '소프트웨어 사용료', '광고비', '외주비', '사업 관련 식사', '접대비', '장비 구입', '개인사용', '기타'].map((reason) => (
+                                      <option key={reason} value={reason} />
+                                    ))}
+                                  </datalist>
+                                </div>
+                                <div>
+                                  <label style={fieldLabelStyle}>비용 처리 방식</label>
+                                  <select
+                                    value={entry.assetTreatment || defaultLedgerAssetTreatment(entry)}
+                                    onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, assetTreatment: e.target.value as LedgerAssetTreatment } : en))}
+                                    style={fieldInputStyle}
+                                  >
+                                    {Object.entries(LEDGER_ASSET_TREATMENT_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                                  </select>
+                                </div>
                               </div>
+                              {entry.vatTaxType === 'taxable' && !entry.foreignCurrency && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const result = calculateVatIncludedAmounts(entry.amount);
+                                    if (!result) {
+                                      toast.warning('금액을 먼저 입력해 주세요.');
+                                      return;
+                                    }
+                                    setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, ...result } : en));
+                                  }}
+                                  style={{ width: '100%', marginBottom: 8, padding: '8px 10px', border: '1px solid #a7f3d0', borderRadius: 7, backgroundColor: '#ecfdf5', color: '#047857', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                                >
+                                  부가세 포함 총액에서 공급가액/부가세액 계산
+                                </button>
+                              )}
                               {/* 외화 거래 (선택) */}
                               <div style={{ marginBottom: 8 }}>
                                 <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6b7280', cursor: 'pointer', userSelect: 'none' }}>
@@ -4945,7 +5140,14 @@ ${contentValues}`,
                                     type="checkbox"
                                     checked={entry.foreignCurrency !== ''}
                                     onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id
-                                      ? { ...en, foreignCurrency: e.target.checked ? 'USD' : '', foreignAmount: e.target.checked ? en.foreignAmount : '', exchangeRate: e.target.checked ? en.exchangeRate : '' }
+                                      ? {
+                                          ...en,
+                                          foreignCurrency: e.target.checked ? 'USD' : '',
+                                          foreignAmount: e.target.checked ? en.foreignAmount : '',
+                                          exchangeRate: e.target.checked ? en.exchangeRate : '',
+                                          vatTaxType: e.target.checked ? 'review' : en.vatTaxType,
+                                          vatDeduction: e.target.checked && en.transactionType === '지출' && en.usageType === '사업용' ? 'review' : en.vatDeduction,
+                                        }
                                       : en))}
                                     style={{ width: 14, height: 14, accentColor: '#1A3C6E' }}
                                   />

@@ -8,6 +8,22 @@
  */
 
 import type { HaruRecord } from './firestoreService';
+import {
+  LEDGER_ASSET_TREATMENT_LABELS,
+  LEDGER_EXPENSE_DEDUCTION_LABELS,
+  LEDGER_HOMETAX_CHECK_LABELS,
+  LEDGER_VAT_DEDUCTION_LABELS,
+  LEDGER_VAT_TAX_TYPE_LABELS,
+  LEDGER_XLSX_PROOF,
+  defaultLedgerAssetTreatment,
+  defaultLedgerExpenseDeduction,
+  defaultLedgerVatDeduction,
+  type LedgerAssetTreatment,
+  type LedgerExpenseDeduction,
+  type LedgerHometaxCheck,
+  type LedgerVatDeduction,
+  type LedgerVatTaxType,
+} from './ledgerPeriodImport';
 
 // ===== 계정과목 자동 매핑 =====
 const ACCOUNT_KEYWORD_MAP: [string, string][] = [
@@ -104,6 +120,45 @@ function parseAmount(amountStr: string): number {
   return isNaN(n) ? 0 : n;
 }
 
+function normalizeVatTaxType(value: unknown): LedgerVatTaxType {
+  return value === 'taxable' || value === 'zeroRated' || value === 'exempt' || value === 'nonTaxable' || value === 'review'
+    ? value
+    : 'review';
+}
+
+function normalizeVatDeduction(value: unknown, transactionType: string, usageType: string): LedgerVatDeduction {
+  if (value === 'deductible' || value === 'nonDeductible' || value === 'review' || value === 'notApplicable') return value;
+  return defaultLedgerVatDeduction({ transactionType, usageType });
+}
+
+function normalizeHometaxCheck(value: unknown): LedgerHometaxCheck {
+  return value === 'unchecked' || value === 'matched' || value === 'mismatch' || value === 'notFound' || value === 'manual'
+    ? value
+    : 'unchecked';
+}
+
+function normalizeExpenseDeduction(value: unknown, transactionType: string, usageType: string): LedgerExpenseDeduction {
+  if (value === 'deductible' || value === 'nonDeductible' || value === 'review' || value === 'notApplicable') return value;
+  return defaultLedgerExpenseDeduction({ transactionType, usageType });
+}
+
+function normalizeAssetTreatment(value: unknown, transactionType: string): LedgerAssetTreatment {
+  if (value === 'expense' || value === 'depreciableAsset' || value === 'review' || value === 'notApplicable') return value;
+  return defaultLedgerAssetTreatment({ transactionType });
+}
+
+function dateOnly(value: string): string {
+  return String(value || '').trim().slice(0, 10);
+}
+
+function isInRange(date: string, start?: string, end?: string): boolean {
+  const ymd = dateOnly(date);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return false;
+  if (start && ymd < start) return false;
+  if (end && ymd > end) return false;
+  return true;
+}
+
 // ===== 확장된 거래 행 타입 =====
 interface ExpandedEntry {
   date: string;
@@ -119,6 +174,103 @@ interface ExpandedEntry {
   foreignCurrency: string;
   exchangeRate: string;
   proof: string;
+  approvalNumber: string;
+  vatTaxType: LedgerVatTaxType;
+  supplyAmount: string;
+  vatAmount: string;
+  vatDeduction: LedgerVatDeduction;
+  vatDeductionReason: string;
+  hometaxCheck: LedgerHometaxCheck;
+  expenseDeduction: LedgerExpenseDeduction;
+  expenseDeductionReason: string;
+  assetTreatment: LedgerAssetTreatment;
+}
+
+export type LedgerVatReviewKey =
+  | 'taxTypeReview'
+  | 'deductionReview'
+  | 'hometaxUnchecked'
+  | 'proofReview'
+  | 'personal'
+  | 'foreign'
+  | 'taxableMissingAmounts';
+
+export interface LedgerVatReportEntry {
+  date: string;
+  transactionType: string;
+  businessTrack: string;
+  usageType: string;
+  category: string;
+  vendor: string;
+  amount: string;
+  amountNumber: number;
+  paymentMethod: string;
+  proof: string;
+  approvalNumber: string;
+  memo: string;
+  foreignAmount: string;
+  foreignCurrency: string;
+  exchangeRate: string;
+  vatTaxType: LedgerVatTaxType;
+  supplyAmount: string;
+  supplyAmountNumber: number;
+  vatAmount: string;
+  vatAmountNumber: number;
+  vatDeduction: LedgerVatDeduction;
+  vatDeductionReason: string;
+  hometaxCheck: LedgerHometaxCheck;
+  reviewReasons: string[];
+}
+
+export type LedgerIncomeTaxReviewKey =
+  | 'expenseDeductionReview'
+  | 'assetTreatmentReview'
+  | 'personal'
+  | 'proofReview'
+  | 'businessUsageReview';
+
+export interface LedgerIncomeTaxReportEntry extends ExpandedEntry {
+  amountNumber: number;
+  reviewReasons: string[];
+}
+
+export interface LedgerIncomeTaxReport {
+  start: string;
+  end: string;
+  totalBusinessIncome: number;
+  deductibleExpenseTotal: number;
+  nonDeductibleExpenseTotal: number;
+  reviewExpenseTotal: number;
+  depreciableAssetReviewTotal: number;
+  estimatedBusinessProfit: number;
+  entries: LedgerIncomeTaxReportEntry[];
+  reviewCounts: Record<LedgerIncomeTaxReviewKey, number>;
+  reviewEntries: Record<LedgerIncomeTaxReviewKey, LedgerIncomeTaxReportEntry[]>;
+}
+
+export interface LedgerVatReport {
+  start: string;
+  end: string;
+  sales: {
+    taxableSupply: number;
+    outputVat: number;
+    zeroRated: number;
+    exempt: number;
+    nonTaxable: number;
+    reviewCount: number;
+  };
+  purchases: {
+    taxableSupply: number;
+    inputVat: number;
+    deductibleVat: number;
+    nonDeductibleVat: number;
+    reviewVat: number;
+    reviewCount: number;
+  };
+  expectedVat: number;
+  reviewCounts: Record<LedgerVatReviewKey, number>;
+  entries: LedgerVatReportEntry[];
+  reviewEntries: Record<LedgerVatReviewKey, LedgerVatReportEntry[]>;
 }
 
 // ===== 레코드 → 확장 항목 목록 (multi-entry 지원) =====
@@ -142,6 +294,16 @@ function expandRecord(r: HaruRecord): ExpandedEntry[] {
           foreignCurrency: String(e.foreignCurrency || ''),
           exchangeRate: String(e.exchangeRate || ''),
           proof: String(e.proofType || e.proof || ''),
+          approvalNumber: String(e.approvalNumber || ''),
+          vatTaxType: normalizeVatTaxType(e.vatTaxType),
+          supplyAmount: String(e.supplyAmount || ''),
+          vatAmount: String(e.vatAmount || ''),
+          vatDeduction: normalizeVatDeduction(e.vatDeduction, String(e.transactionType || ''), String(e.usageType || '사업용')),
+          vatDeductionReason: String(e.vatDeductionReason || ''),
+          hometaxCheck: normalizeHometaxCheck(e.hometaxCheck),
+          expenseDeduction: normalizeExpenseDeduction(e.expenseDeduction, String(e.transactionType || ''), String(e.usageType || '사업용')),
+          expenseDeductionReason: String(e.expenseDeductionReason || ''),
+          assetTreatment: normalizeAssetTreatment(e.assetTreatment, String(e.transactionType || '')),
         }));
       }
     } catch { /* ignore parse error → fallback */ }
@@ -160,6 +322,16 @@ function expandRecord(r: HaruRecord): ExpandedEntry[] {
     foreignCurrency: '',
     exchangeRate: '',
     proof: String((r as any).ledger_proof || ''),
+    approvalNumber: String((r as any).ledger_approvalNumber || ''),
+    vatTaxType: normalizeVatTaxType((r as any).ledger_vatTaxType),
+    supplyAmount: String((r as any).ledger_supplyAmount || ''),
+    vatAmount: String((r as any).ledger_vatAmount || ''),
+    vatDeduction: normalizeVatDeduction((r as any).ledger_vatDeduction, String((r as any).ledger_type || ''), String((r as any).ledger_usageType || '사업용')),
+    vatDeductionReason: String((r as any).ledger_vatDeductionReason || ''),
+    hometaxCheck: normalizeHometaxCheck((r as any).ledger_hometaxCheck),
+    expenseDeduction: normalizeExpenseDeduction((r as any).ledger_expenseDeduction, String((r as any).ledger_type || ''), String((r as any).ledger_usageType || '사업용')),
+    expenseDeductionReason: String((r as any).ledger_expenseDeductionReason || ''),
+    assetTreatment: normalizeAssetTreatment((r as any).ledger_assetTreatment, String((r as any).ledger_type || '')),
   }];
 }
 
@@ -511,6 +683,394 @@ export function exportLedgerToXlsx(
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 
   return { count: rowNo, fileName };
+}
+
+function toVatReportEntry(entry: ExpandedEntry): LedgerVatReportEntry {
+  const amountNumber = parseAmount(entry.amount);
+  const supplyAmountNumber = parseAmount(entry.supplyAmount);
+  const vatAmountNumber = parseAmount(entry.vatAmount);
+  const proof = entry.proof.trim();
+  const isBusiness = entry.usageType === '사업용';
+  const isBusinessExpense = isBusiness && entry.transactionType === '지출';
+  const isForeign = Boolean(entry.foreignCurrency.trim() || entry.foreignAmount.trim());
+  const reviewReasons: string[] = [];
+
+  if (isBusiness && entry.vatTaxType === 'review') reviewReasons.push('과세유형 확인필요');
+  if (isBusinessExpense && entry.vatDeduction === 'review') reviewReasons.push('매입세액 공제여부 확인필요');
+  if (isBusiness && entry.hometaxCheck === 'unchecked') reviewReasons.push('홈택스 미확인');
+  if (!proof || proof === '증빙없음' || proof === LEDGER_XLSX_PROOF || proof.includes('확인 필요') || proof.includes('확인필요')) {
+    reviewReasons.push('증빙 없음 또는 확인필요');
+  }
+  if (entry.usageType === '개인용') reviewReasons.push('개인용 거래');
+  if (isForeign) reviewReasons.push('해외거래');
+  if (isBusiness && entry.vatTaxType === 'taxable' && (supplyAmountNumber <= 0 || vatAmountNumber <= 0)) {
+    reviewReasons.push('공급가액/부가세 미입력 과세거래');
+  }
+
+  return {
+    ...entry,
+    amountNumber,
+    supplyAmountNumber,
+    vatAmountNumber,
+    reviewReasons,
+  };
+}
+
+export function buildLedgerVatReport(records: HaruRecord[], start: string, end: string): LedgerVatReport {
+  const entries = records
+    .filter(isLedgerRecord)
+    .flatMap((record) => expandRecord(record))
+    .filter((entry) => isInRange(entry.date, start, end))
+    .map(toVatReportEntry)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.vendor.localeCompare(b.vendor));
+
+  const report: LedgerVatReport = {
+    start,
+    end,
+    sales: {
+      taxableSupply: 0,
+      outputVat: 0,
+      zeroRated: 0,
+      exempt: 0,
+      nonTaxable: 0,
+      reviewCount: 0,
+    },
+    purchases: {
+      taxableSupply: 0,
+      inputVat: 0,
+      deductibleVat: 0,
+      nonDeductibleVat: 0,
+      reviewVat: 0,
+      reviewCount: 0,
+    },
+    expectedVat: 0,
+    reviewCounts: {
+      taxTypeReview: 0,
+      deductionReview: 0,
+      hometaxUnchecked: 0,
+      proofReview: 0,
+      personal: 0,
+      foreign: 0,
+      taxableMissingAmounts: 0,
+    },
+    entries,
+    reviewEntries: {
+      taxTypeReview: [],
+      deductionReview: [],
+      hometaxUnchecked: [],
+      proofReview: [],
+      personal: [],
+      foreign: [],
+      taxableMissingAmounts: [],
+    },
+  };
+
+  for (const entry of entries) {
+    const isBusiness = entry.usageType === '사업용';
+    if (isBusiness && entry.transactionType === '수입') {
+      if (entry.vatTaxType === 'taxable') {
+        report.sales.taxableSupply += entry.supplyAmountNumber;
+        report.sales.outputVat += entry.vatAmountNumber;
+      } else if (entry.vatTaxType === 'zeroRated') {
+        report.sales.zeroRated += entry.supplyAmountNumber || entry.amountNumber;
+      } else if (entry.vatTaxType === 'exempt') {
+        report.sales.exempt += entry.supplyAmountNumber || entry.amountNumber;
+      } else if (entry.vatTaxType === 'nonTaxable') {
+        report.sales.nonTaxable += entry.supplyAmountNumber || entry.amountNumber;
+      } else {
+        report.sales.reviewCount += 1;
+      }
+    }
+
+    if (isBusiness && entry.transactionType === '지출') {
+      if (entry.vatTaxType === 'taxable') {
+        report.purchases.taxableSupply += entry.supplyAmountNumber;
+        report.purchases.inputVat += entry.vatAmountNumber;
+      }
+      if (entry.vatDeduction === 'deductible') report.purchases.deductibleVat += entry.vatAmountNumber;
+      if (entry.vatDeduction === 'nonDeductible') report.purchases.nonDeductibleVat += entry.vatAmountNumber;
+      if (entry.vatDeduction === 'review') {
+        report.purchases.reviewVat += entry.vatAmountNumber;
+        report.purchases.reviewCount += 1;
+      }
+    }
+
+    if (isBusiness && entry.vatTaxType === 'review') {
+      report.reviewCounts.taxTypeReview += 1;
+      report.reviewEntries.taxTypeReview.push(entry);
+    }
+    if (isBusiness && entry.transactionType === '지출' && entry.vatDeduction === 'review') {
+      report.reviewCounts.deductionReview += 1;
+      report.reviewEntries.deductionReview.push(entry);
+    }
+    if (isBusiness && entry.hometaxCheck === 'unchecked') {
+      report.reviewCounts.hometaxUnchecked += 1;
+      report.reviewEntries.hometaxUnchecked.push(entry);
+    }
+    const proof = entry.proof.trim();
+    if (!proof || proof === '증빙없음' || proof === LEDGER_XLSX_PROOF || proof.includes('확인 필요') || proof.includes('확인필요')) {
+      report.reviewCounts.proofReview += 1;
+      report.reviewEntries.proofReview.push(entry);
+    }
+    if (entry.usageType === '개인용') {
+      report.reviewCounts.personal += 1;
+      report.reviewEntries.personal.push(entry);
+    }
+    if (entry.foreignCurrency.trim() || entry.foreignAmount.trim()) {
+      report.reviewCounts.foreign += 1;
+      report.reviewEntries.foreign.push(entry);
+    }
+    if (isBusiness && entry.vatTaxType === 'taxable' && (entry.supplyAmountNumber <= 0 || entry.vatAmountNumber <= 0)) {
+      report.reviewCounts.taxableMissingAmounts += 1;
+      report.reviewEntries.taxableMissingAmounts.push(entry);
+    }
+  }
+
+  report.expectedVat = report.sales.outputVat - report.purchases.deductibleVat;
+  return report;
+}
+
+const VAT_DETAIL_HEADER: (string | number)[] = [
+  '날짜', '수입/지출', '사업구분', '사업용구분', '분류', '거래처', '총액', '공급가액', '부가세액',
+  '과세유형', '매입세액공제', '공제/확인 사유', '홈택스 확인', '증빙종류', '승인번호', '결제수단',
+  '외화금액', '통화', '적용환율', '메모', '확인사유',
+];
+
+function vatDetailRow(entry: LedgerVatReportEntry): (string | number)[] {
+  return [
+    entry.date,
+    entry.transactionType,
+    entry.businessTrack,
+    entry.usageType,
+    entry.category,
+    entry.vendor,
+    entry.amountNumber || entry.amount,
+    entry.supplyAmountNumber || entry.supplyAmount,
+    entry.vatAmountNumber || entry.vatAmount,
+    LEDGER_VAT_TAX_TYPE_LABELS[entry.vatTaxType],
+    LEDGER_VAT_DEDUCTION_LABELS[entry.vatDeduction],
+    entry.vatDeductionReason,
+    LEDGER_HOMETAX_CHECK_LABELS[entry.hometaxCheck],
+    entry.proof,
+    entry.approvalNumber,
+    entry.paymentMethod,
+    entry.foreignAmount,
+    entry.foreignCurrency,
+    entry.exchangeRate,
+    entry.memo,
+    entry.reviewReasons.join(' / '),
+  ];
+}
+
+export function exportLedgerVatPrepToXlsx(
+  records: HaruRecord[],
+  start: string,
+  end: string,
+  label = '사용자지정',
+): LedgerExportResult {
+  const report = buildLedgerVatReport(records, start, end);
+  const salesRows = report.entries.filter((entry) => entry.usageType === '사업용' && entry.transactionType === '수입');
+  const purchaseRows = report.entries.filter((entry) => entry.usageType === '사업용' && entry.transactionType === '지출');
+  const reviewRows = report.entries.filter((entry) => entry.reviewReasons.length > 0);
+  const totalReviewCount = Object.values(report.reviewCounts).reduce((sum, count) => sum + count, 0);
+
+  const summaryRows: (string | number)[][] = [
+    ['항목', '값'],
+    ['기간', `${start} ~ ${end}`],
+    ['프리셋', label],
+    ['과세매출 공급가액', report.sales.taxableSupply],
+    ['매출세액', report.sales.outputVat],
+    ['과세매입 공급가액', report.purchases.taxableSupply],
+    ['매입세액', report.purchases.inputVat],
+    ['공제가능 매입세액', report.purchases.deductibleVat],
+    ['불공제 매입세액', report.purchases.nonDeductibleVat],
+    ['확인필요', totalReviewCount],
+    ['예상 차감세액', report.expectedVat],
+    ['안내', '보조장부 기준 참고금액입니다. 실제 부가가치세 신고금액은 홈택스 자료와 실제 증빙을 확인해야 합니다.'],
+  ];
+
+  const xlsx = buildXlsxMultiSheet([
+    { name: 'VAT_Summary', rows: summaryRows },
+    { name: 'Sales', rows: [VAT_DETAIL_HEADER, ...salesRows.map(vatDetailRow)] },
+    { name: 'Purchases', rows: [VAT_DETAIL_HEADER, ...purchaseRows.map(vatDetailRow)] },
+    { name: 'Review_Required', rows: [VAT_DETAIL_HEADER, ...reviewRows.map(vatDetailRow)] },
+  ]);
+
+  const fileName = `HARU_부가세_신고준비자료_${start}_${end}.xlsx`;
+  const blob = new Blob([xlsx], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+  return { count: salesRows.length + purchaseRows.length, fileName };
+}
+
+function toIncomeTaxReportEntry(entry: ExpandedEntry): LedgerIncomeTaxReportEntry {
+  const amountNumber = parseAmount(entry.amount);
+  const proof = entry.proof.trim();
+  const reviewReasons: string[] = [];
+  const isExpense = entry.transactionType === '지출';
+
+  if (isExpense && entry.expenseDeduction === 'review') reviewReasons.push('필요경비 확인필요');
+  if (isExpense && entry.assetTreatment === 'depreciableAsset') reviewReasons.push('감가상각 검토 대상');
+  if (entry.usageType === '개인용') reviewReasons.push('개인용 거래');
+  if (!proof || proof === '증빙없음' || proof === LEDGER_XLSX_PROOF || proof.includes('확인 필요') || proof.includes('확인필요')) {
+    reviewReasons.push('증빙 확인필요');
+  }
+  if (!entry.usageType || (entry.usageType !== '사업용' && entry.usageType !== '개인용') || !entry.businessTrack) {
+    reviewReasons.push('사업용 여부 확인필요');
+  }
+
+  return {
+    ...entry,
+    amountNumber,
+    reviewReasons,
+  };
+}
+
+export function buildLedgerIncomeTaxReport(records: HaruRecord[], start: string, end: string): LedgerIncomeTaxReport {
+  const entries = records
+    .filter(isLedgerRecord)
+    .flatMap((record) => expandRecord(record))
+    .filter((entry) => isInRange(entry.date, start, end))
+    .map(toIncomeTaxReportEntry)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.vendor.localeCompare(b.vendor));
+
+  const report: LedgerIncomeTaxReport = {
+    start,
+    end,
+    totalBusinessIncome: 0,
+    deductibleExpenseTotal: 0,
+    nonDeductibleExpenseTotal: 0,
+    reviewExpenseTotal: 0,
+    depreciableAssetReviewTotal: 0,
+    estimatedBusinessProfit: 0,
+    entries,
+    reviewCounts: {
+      expenseDeductionReview: 0,
+      assetTreatmentReview: 0,
+      personal: 0,
+      proofReview: 0,
+      businessUsageReview: 0,
+    },
+    reviewEntries: {
+      expenseDeductionReview: [],
+      assetTreatmentReview: [],
+      personal: [],
+      proofReview: [],
+      businessUsageReview: [],
+    },
+  };
+
+  for (const entry of entries) {
+    const isBusinessIncome = entry.transactionType === '수입' && entry.usageType === '사업용';
+    const isExpense = entry.transactionType === '지출';
+    if (isBusinessIncome) {
+      report.totalBusinessIncome += entry.amountNumber;
+    }
+    if (isExpense && entry.expenseDeduction === 'deductible') {
+      report.deductibleExpenseTotal += entry.amountNumber;
+    }
+    if (isExpense && entry.expenseDeduction === 'nonDeductible') {
+      report.nonDeductibleExpenseTotal += entry.amountNumber;
+    }
+    if (isExpense && entry.expenseDeduction === 'review') {
+      report.reviewExpenseTotal += entry.amountNumber;
+      report.reviewCounts.expenseDeductionReview += 1;
+      report.reviewEntries.expenseDeductionReview.push(entry);
+    }
+    if (isExpense && entry.assetTreatment === 'depreciableAsset') {
+      report.depreciableAssetReviewTotal += entry.amountNumber;
+      report.reviewCounts.assetTreatmentReview += 1;
+      report.reviewEntries.assetTreatmentReview.push(entry);
+    }
+    if (entry.usageType === '개인용') {
+      report.reviewCounts.personal += 1;
+      report.reviewEntries.personal.push(entry);
+    }
+    const proof = entry.proof.trim();
+    if (!proof || proof === '증빙없음' || proof === LEDGER_XLSX_PROOF || proof.includes('확인 필요') || proof.includes('확인필요')) {
+      report.reviewCounts.proofReview += 1;
+      report.reviewEntries.proofReview.push(entry);
+    }
+    if (!entry.usageType || (entry.usageType !== '사업용' && entry.usageType !== '개인용') || !entry.businessTrack) {
+      report.reviewCounts.businessUsageReview += 1;
+      report.reviewEntries.businessUsageReview.push(entry);
+    }
+  }
+
+  report.estimatedBusinessProfit = report.totalBusinessIncome - report.deductibleExpenseTotal;
+  return report;
+}
+
+const INCOME_TAX_EXPENSE_HEADER: (string | number)[] = [
+  '거래일', '거래처', '금액', '분류', '사업용/개인용', '필요경비 여부', '필요경비 사유', '비용처리 방식', '증빙',
+];
+
+function incomeTaxExpenseRow(entry: LedgerIncomeTaxReportEntry): (string | number)[] {
+  return [
+    entry.date,
+    entry.vendor,
+    entry.amountNumber || entry.amount,
+    entry.category,
+    entry.usageType,
+    LEDGER_EXPENSE_DEDUCTION_LABELS[entry.expenseDeduction],
+    entry.expenseDeductionReason,
+    LEDGER_ASSET_TREATMENT_LABELS[entry.assetTreatment],
+    entry.proof,
+  ];
+}
+
+export function exportLedgerIncomeTaxPrepToXlsx(
+  records: HaruRecord[],
+  start: string,
+  end: string,
+  label = '사용자지정',
+): LedgerExportResult {
+  const report = buildLedgerIncomeTaxReport(records, start, end);
+  const expenseRows = report.entries.filter((entry) => entry.transactionType === '지출');
+  const reviewRows = expenseRows.filter((entry) => entry.expenseDeduction === 'review' || entry.assetTreatment === 'depreciableAsset');
+
+  const summaryRows: (string | number)[][] = [
+    ['항목', '값'],
+    ['기간', `${start} ~ ${end}`],
+    ['프리셋', label],
+    ['총 사업수입', report.totalBusinessIncome],
+    ['필요경비 인정 합계', report.deductibleExpenseTotal],
+    ['필요경비 불인정 합계', report.nonDeductibleExpenseTotal],
+    ['확인필요 합계', report.reviewExpenseTotal],
+    ['감가상각 검토 합계', report.depreciableAssetReviewTotal],
+    ['예상 사업손익', report.estimatedBusinessProfit],
+    ['안내', '예상 사업손익은 보조장부 기준 참고금액입니다. 감가상각, 접대비 한도, 세무조정 및 다른 소득을 반영한 실제 종합소득세 신고금액과 다를 수 있습니다.'],
+  ];
+
+  const xlsx = buildXlsxMultiSheet([
+    { name: 'IncomeTax_Summary', rows: summaryRows },
+    { name: 'Expenses', rows: [INCOME_TAX_EXPENSE_HEADER, ...expenseRows.map(incomeTaxExpenseRow)] },
+    { name: 'Expense_Review', rows: [INCOME_TAX_EXPENSE_HEADER, ...reviewRows.map(incomeTaxExpenseRow)] },
+  ]);
+
+  const fileName = `HARU_종합소득세_준비자료_${start}_${end}.xlsx`;
+  const blob = new Blob([xlsx], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+  return { count: expenseRows.length, fileName };
 }
 
 function buildFileName(period: LedgerPeriod, start?: string): string {
