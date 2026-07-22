@@ -145,7 +145,7 @@ function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: st
       note: `순수입 ${income.toLocaleString()} + 충전 ${transfer.toLocaleString()}`,
     },
     { label: '지출', value: `-${money(expense)}`, color: '#dc2626' },
-    { label: '수지', value: money(balance), color: balance >= 0 ? '#059669' : '#dc2626' },
+    { label: '수입 지출 차액', value: money(balance), color: balance >= 0 ? '#059669' : '#dc2626' },
     ...(hasBankBalance ? [{ label: '통장잔액', value: money(bankBalance), color: '#059669' }] : []),
   ];
 
