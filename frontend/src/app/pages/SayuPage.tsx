@@ -544,6 +544,58 @@ function buildLedgerEntryDisplay(entry: any, record: any) {
   };
 }
 
+function parseHouseholdDisplayAmount(value: unknown): number {
+  const n = parseFloat(String(value || '').replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(n) ? Math.abs(n) : 0;
+}
+
+function formatHouseholdDisplayMoney(value: number, signed = false): string {
+  const sign = signed && value > 0 ? '+' : '';
+  return `${sign}${value.toLocaleString('ko-KR')}원`;
+}
+
+function buildHouseholdSummaryTitle(record: any): string {
+  const stored = record?.household_entries;
+  if (typeof stored !== 'string') return '';
+
+  try {
+    const entries = JSON.parse(stored);
+    if (!Array.isArray(entries) || entries.length === 0) return '';
+
+    let income = 0;
+    let expense = 0;
+    let transfer = 0;
+    const months = new Set<string>();
+
+    for (const entry of entries) {
+      const date = String(entry?.date || '').replace(/\./g, '-');
+      const month = date.slice(0, 7);
+      if (/^\d{4}-\d{2}$/.test(month)) months.add(month);
+
+      const amount = parseHouseholdDisplayAmount(entry?.amount);
+      if (entry?.transactionType === '수입') income += amount;
+      if (entry?.transactionType === '이체') transfer += amount;
+      if (entry?.transactionType === '지출') expense += amount;
+    }
+
+    const totalIncome = income + transfer;
+    const balance = totalIncome - expense;
+    const [monthKey] = Array.from(months);
+    const label = months.size === 1
+      ? `${Number(monthKey.slice(0, 4))}년 ${Number(monthKey.slice(5, 7))}월 가계부`
+      : '전체 가계부';
+
+    return [
+      label,
+      `수입 ${formatHouseholdDisplayMoney(totalIncome)}`,
+      `지출 ${formatHouseholdDisplayMoney(expense)}`,
+      `수입 지출 차액 ${formatHouseholdDisplayMoney(balance, true)}`,
+    ].join(' · ');
+  } catch {
+    return '';
+  }
+}
+
 // IntersectionObserver 백필 메타
 type KwMeta =
   | { kind: 'record'; id: string; prefix: string; text: string }
@@ -2907,6 +2959,18 @@ export function SayuPage() {
             const firstFieldKey = FORMAT_FIRST_FIELD[prefix];
             const aiTitle = r[`${prefix}_ai_title`] as string | undefined;
             const validAiTitle = aiTitle && !/^[\d\s:.,\-\/]+$/.test(aiTitle.trim()) && aiTitle.trim().length >= 2 ? aiTitle : '';
+            const householdTitle = prefix === 'household' ? buildHouseholdSummaryTitle(r) : '';
+            if (householdTitle) {
+              return {
+                date: r.date,
+                title: householdTitle,
+                aiTitle: '',
+                hasSayu: !!r[`${prefix}_sayu`],
+                formatKey: prefix,
+                recordId: r.id,
+                keywords: getRecordPreviewKeywords(r, prefix),
+              };
+            }
             let rawTitle = (r[`${prefix}_title`] as string || '') || validAiTitle || (firstFieldKey ? (r[firstFieldKey] || '') : '');
             if (!rawTitle) {
               const fallbackKey = Object.keys(r).find(
@@ -3602,6 +3666,10 @@ export function SayuPage() {
     }
     if (prefix === 'ledger') {
       return buildLedgerDisplay(record).title;
+    }
+    if (prefix === 'household') {
+      const householdTitle = buildHouseholdSummaryTitle(record);
+      if (householdTitle) return householdTitle;
     }
     const title =
       String(record[`${prefix}_ai_title`] || '').trim() ||
