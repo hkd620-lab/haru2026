@@ -41,6 +41,7 @@ interface ExpandedEntry {
   amount: string;
   paymentMethod: string;
   memo: string;
+  balanceAfter?: string;
 }
 
 function expandRecord(r: HaruRecord): ExpandedEntry[] {
@@ -57,6 +58,7 @@ function expandRecord(r: HaruRecord): ExpandedEntry[] {
           amount: String(e.amount || ''),
           paymentMethod: String(e.paymentMethod || ''),
           memo: String(e.memo || ''),
+          balanceAfter: e.balanceAfter ? String(e.balanceAfter) : undefined,
         }));
       }
     } catch { /* ignore */ }
@@ -149,15 +151,24 @@ export function HouseholdPage() {
     return result;
   }, [records, currentMonth]);
 
-  const { income, expense, transfer, balance } = useMemo(() => {
+  const { income, expense, transfer, balance, bankBalance, hasBankBalance } = useMemo(() => {
     let income = 0, expense = 0, transfer = 0;
+    let lastDate = '';
+    let bankBalance = 0;
+    let hasBankBalance = false;
     for (const e of thisMonthEntries) {
       const amt = parseAmount(e.amount);
       if (e.transactionType === '수입') income += amt;
       else if (e.transactionType === '지출') expense += amt;
       else if (e.transactionType === '이체') transfer += amt;
+      // 통장잔액 — 이 범위 안에서 날짜상 가장 마지막 거래의 거래후잔액 (동일 날짜면 배열상 뒤쪽을 채택)
+      if (e.balanceAfter && e.date && e.date >= lastDate) {
+        lastDate = e.date;
+        bankBalance = parseAmount(e.balanceAfter);
+        hasBankBalance = true;
+      }
     }
-    return { income, expense, transfer, balance: income - expense };
+    return { income, expense, transfer, balance: income + transfer - expense, bankBalance, hasBankBalance };
   }, [thisMonthEntries]);
 
   // 카테고리별 지출 집계 (파이차트)
@@ -253,11 +264,18 @@ export function HouseholdPage() {
           <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 8 }}>
             {currentMonth.replace('.', '년 ')}월
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
-            <SummaryCard label="수입" value={fmt(income)} color="#10b981" />
-            <SummaryCard label="이체(충전)" value={fmt(transfer)} color="#2563eb" />
+          <div style={{ display: 'grid', gridTemplateColumns: hasBankBalance ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr', gap: 8 }}>
+            <SummaryCard
+              label="전체수입"
+              value={fmt(income + transfer)}
+              color="#10b981"
+              note={`순수입 ${income.toLocaleString()} + 충전 ${transfer.toLocaleString()}`}
+            />
             <SummaryCard label="지출" value={fmt(expense)} color="#ef4444" />
-            <SummaryCard label="잔액" value={fmt(balance)} color={balance >= 0 ? '#166534' : '#ef4444'} />
+            <SummaryCard label="수지" value={fmt(balance)} color={balance >= 0 ? '#166534' : '#ef4444'} />
+            {hasBankBalance && (
+              <SummaryCard label="통장잔액" value={fmt(bankBalance)} color="#166534" />
+            )}
           </div>
         </div>
 
@@ -443,11 +461,12 @@ export function HouseholdPage() {
 
 // ─── 서브 컴포넌트 ─────────────────────────────────────────────────────────────
 
-function SummaryCard({ label, value, color }: { label: string; value: string; color: string }) {
+function SummaryCard({ label, value, color, note }: { label: string; value: string; color: string; note?: string }) {
   return (
     <div style={{ textAlign: 'center' }}>
       <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 2 }}>{label}</div>
       <div style={{ fontSize: 14, fontWeight: 700, color }}>{value}</div>
+      {note && <div style={{ fontSize: 9, color: '#9ca3af', marginTop: 2, wordBreak: 'keep-all' }}>{note}</div>}
     </div>
   );
 }

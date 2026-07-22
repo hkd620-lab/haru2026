@@ -5360,7 +5360,7 @@ export function SayuPage() {
           const formatKey = sayuModalState.formatKey || '';
           const isHousehold = formatKey === 'household' || sayuModalState.format === 'HARU가계부';
           if (!isHousehold) return undefined;
-          const allEntries: { date: string; transactionType: string; category: string; vendor: string; amount: string; paymentMethod: string; memo: string }[] = [];
+          const allEntries: { date: string; transactionType: string; category: string; vendor: string; amount: string; paymentMethod: string; memo: string; balanceAfter?: string }[] = [];
           for (const rec of records) {
             const stored = (rec as any).household_entries;
             if (!stored) continue;
@@ -5376,6 +5376,7 @@ export function SayuPage() {
                     amount: String(e.amount || ''),
                     paymentMethod: String(e.paymentMethod || ''),
                     memo: String(e.memo || ''),
+                    balanceAfter: e.balanceAfter ? String(e.balanceAfter) : undefined,
                   });
                 }
               }

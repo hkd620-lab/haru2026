@@ -114,6 +114,7 @@ export interface HouseholdEntry {
   paymentMethod: string;
   memo: string;
   ocrSourceFile?: string;
+  balanceAfter?: string; // 거래 후 잔액(카카오뱅크 임포트 전용) — 손입력 기록엔 없음
 }
 
 function newHouseholdEntry(overrides?: Partial<HouseholdEntry>): HouseholdEntry {
