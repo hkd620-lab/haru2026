@@ -2386,7 +2386,9 @@ export function SayuPage() {
       format: formatLabel,
       formatKey,
       firestoreId: record.id,
-      title: (record[`${formatKey}_title`] as string) || '',
+      title: formatKey === 'household'
+        ? buildHouseholdSummaryTitle(record) || ((record[`${formatKey}_title`] as string) || '')
+        : (record[`${formatKey}_title`] as string) || '',
       aiTitle: (record[`${formatKey}_ai_title`] as string) || '',
       aiComment: (record[`${formatKey}_ai_comment`] as string) || '',
       isPublic: record.isPublic === true,
