@@ -5360,6 +5360,8 @@ export function SayuPage() {
           const formatKey = sayuModalState.formatKey || '';
           const isHousehold = formatKey === 'household' || sayuModalState.format === 'HARU가계부';
           if (!isHousehold) return undefined;
+          // 월별보기에서는 전체 합계를 넘기지 않는다 — SayuModal이 이 기록(그 달) 자체 entries만으로 요약을 집계하도록.
+          if (sayuScope !== 'all') return undefined;
           const allEntries: { date: string; transactionType: string; category: string; vendor: string; amount: string; paymentMethod: string; memo: string; balanceAfter?: string }[] = [];
           for (const rec of records) {
             const stored = (rec as any).household_entries;
