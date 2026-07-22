@@ -1944,7 +1944,8 @@ ${contentValues}`,
       const memoWithPrefix = e.category === '기타' && e.customCategory.trim()
         ? `[${e.customCategory.trim()}] ${e.memo}`
         : e.memo;
-      return `[거래 ${i + 1}] ${parts.join(' · ')}${memoWithPrefix ? '\n메모: ' + memoWithPrefix : ''}`;
+      const businessContextMemo = String(e.businessContextMemo || '').trim();
+      return `[거래 ${i + 1}] ${parts.join(' · ')}${memoWithPrefix ? '\n메모: ' + memoWithPrefix : ''}${businessContextMemo ? '\n업무 관련성 메모: ' + businessContextMemo : ''}`;
     }).join('\n\n');
     const firstMemoWithPrefix = first.category === '기타' && first.customCategory.trim()
       ? `[${first.customCategory.trim()}] ${first.memo}`
@@ -5105,6 +5106,19 @@ ${contentValues}`,
                                       <option key={reason} value={reason} />
                                     ))}
                                   </datalist>
+                                </div>
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                  <label style={fieldLabelStyle}>업무 관련성 메모</label>
+                                  <textarea
+                                    value={entry.businessContextMemo || ''}
+                                    placeholder="예: HARU2026 베타테스트 참가자 5명과 UX·기능 피드백 회의 후 식사 제공"
+                                    rows={3}
+                                    onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, businessContextMemo: e.target.value } : en))}
+                                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid #e5e5e5', borderRadius: 7, resize: 'vertical', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                                  />
+                                  <p style={{ margin: '5px 0 0', fontSize: 11, color: '#6b7280', lineHeight: 1.5 }}>
+                                    사업 관련 지출인 이유를 간단히 기록하세요. 참석자, 회의 목적, 테스트 내용 등을 적어두면 추후 증빙 확인에 도움이 됩니다.
+                                  </p>
                                 </div>
                                 <div>
                                   <label style={fieldLabelStyle}>비용 처리 방식</label>

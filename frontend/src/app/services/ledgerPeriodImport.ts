@@ -13,6 +13,7 @@ export interface LedgerEntry {
   amount: string;
   paymentMethod: string;
   memo: string;
+  businessContextMemo?: string;
   foreignAmount: string;
   foreignCurrency: string;
   exchangeRate: string;
@@ -134,6 +135,7 @@ export function createLedgerEntry(overrides?: Partial<LedgerEntry>): LedgerEntry
     amount: '',
     paymentMethod: '',
     memo: '',
+    businessContextMemo: '',
     foreignAmount: '',
     foreignCurrency: '',
     exchangeRate: '',
@@ -206,6 +208,7 @@ export function applyLedgerVatDefaults(entry: LedgerEntry): LedgerEntry {
     hometaxCheck,
     expenseDeduction,
     expenseDeductionReason: String(entry.expenseDeductionReason || ''),
+    businessContextMemo: String(entry.businessContextMemo || ''),
     assetTreatment,
   };
 }
@@ -397,6 +400,7 @@ export function extractLedgerEntries(record: Record<string, unknown>): LedgerEnt
           ...(entry as Partial<LedgerEntry>),
           id: String((entry as Partial<LedgerEntry>).id || Math.random().toString(36).slice(2, 9)),
           approvalNumber: String((entry as Partial<LedgerEntry>).approvalNumber || ''),
+          businessContextMemo: String((entry as Partial<LedgerEntry>).businessContextMemo || ''),
         }));
       }
     } catch {
@@ -419,6 +423,7 @@ export function extractLedgerEntries(record: Record<string, unknown>): LedgerEnt
     approvalNumber: String(record.ledger_approvalNumber || ''),
     proofType: String(record.ledger_proofType || record.ledger_proof || ''),
     memo: String(record.ledger_memo || ''),
+    businessContextMemo: '',
   })];
 }
 
@@ -520,6 +525,7 @@ export function parseLedgerWorkbook(
         amount: amountResult.value,
         paymentMethod,
         memo: merchantLocation ? `가맹점 소재지: ${merchantLocation}` : '',
+        businessContextMemo: '',
         approvalNumber,
         proofType: LEDGER_XLSX_PROOF,
       });
@@ -622,7 +628,8 @@ export function buildLedgerSummaryFieldsFromEntries(mergedEntries: LedgerEntry[]
       entry.paymentMethod,
     ].filter(Boolean);
     const memo = ledgerMemoForSave(entry);
-    return `[거래 ${index + 1}] ${parts.join(' · ')}${memo ? `\n메모: ${memo}` : ''}`;
+    const businessContextMemo = String(entry.businessContextMemo || '').trim();
+    return `[거래 ${index + 1}] ${parts.join(' · ')}${memo ? `\n메모: ${memo}` : ''}${businessContextMemo ? `\n업무 관련성 메모: ${businessContextMemo}` : ''}`;
   }).join('\n\n');
   return {
     ledger_title: mergedEntries.length > 1
@@ -677,7 +684,8 @@ export function buildLedgerPeriodRecordPayload(
       entry.paymentMethod,
     ].filter(Boolean);
     const memo = ledgerMemoForSave(entry);
-    return `[거래 ${index + 1}] ${parts.join(' · ')}${memo ? `\n메모: ${memo}` : ''}`;
+    const businessContextMemo = String(entry.businessContextMemo || '').trim();
+    return `[거래 ${index + 1}] ${parts.join(' · ')}${memo ? `\n메모: ${memo}` : ''}${businessContextMemo ? `\n업무 관련성 메모: ${businessContextMemo}` : ''}`;
   }).join('\n\n');
   return {
     date,

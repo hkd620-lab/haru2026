@@ -170,6 +170,7 @@ interface ExpandedEntry {
   amount: string;
   paymentMethod: string;
   memo: string;
+  businessContextMemo: string;
   foreignAmount: string;
   foreignCurrency: string;
   exchangeRate: string;
@@ -211,6 +212,7 @@ export interface LedgerVatReportEntry {
   foreignAmount: string;
   foreignCurrency: string;
   exchangeRate: string;
+  businessContextMemo: string;
   vatTaxType: LedgerVatTaxType;
   supplyAmount: string;
   supplyAmountNumber: number;
@@ -290,6 +292,7 @@ function expandRecord(r: HaruRecord): ExpandedEntry[] {
           amount: String(e.amount || ''),
           paymentMethod: String(e.paymentMethod || ''),
           memo: String(e.memo || ''),
+          businessContextMemo: String(e.businessContextMemo || ''),
           foreignAmount: String(e.foreignAmount || ''),
           foreignCurrency: String(e.foreignCurrency || ''),
           exchangeRate: String(e.exchangeRate || ''),
@@ -318,6 +321,7 @@ function expandRecord(r: HaruRecord): ExpandedEntry[] {
     amount: String((r as any).ledger_amount || ''),
     paymentMethod: String((r as any).ledger_payment || (r as any).ledger_paymentMethod || ''),
     memo: String((r as any).ledger_memo || ''),
+    businessContextMemo: '',
     foreignAmount: '',
     foreignCurrency: '',
     exchangeRate: '',
@@ -608,6 +612,7 @@ export function exportLedgerToXlsx(
   const detailHeader: (string | number)[] = [
     'No', '날짜', '시간', '수입/지출', '사업구분', '사업용구분', '거래처', '계정과목',
     '외화금액', '통화', '적용환율', '원화금액(원)', '결제수단', '증빙종류', '부가세공제', '메모/적요',
+    '업무 관련성 메모',
   ];
 
   const detailRows: (string | number)[][] = [detailHeader];
@@ -645,6 +650,7 @@ export function exportLedgerToXlsx(
         evidenceType,
         vatDeductible,
         e.memo,
+        e.businessContextMemo,
       ]);
 
       if (amountNum > 0) {
@@ -833,7 +839,7 @@ export function buildLedgerVatReport(records: HaruRecord[], start: string, end: 
 const VAT_DETAIL_HEADER: (string | number)[] = [
   '날짜', '수입/지출', '사업구분', '사업용구분', '분류', '거래처', '총액', '공급가액', '부가세액',
   '과세유형', '매입세액공제', '공제/확인 사유', '홈택스 확인', '증빙종류', '승인번호', '결제수단',
-  '외화금액', '통화', '적용환율', '메모', '확인사유',
+  '외화금액', '통화', '적용환율', '메모', '업무 관련성 메모', '확인사유',
 ];
 
 function vatDetailRow(entry: LedgerVatReportEntry): (string | number)[] {
@@ -858,6 +864,7 @@ function vatDetailRow(entry: LedgerVatReportEntry): (string | number)[] {
     entry.foreignCurrency,
     entry.exchangeRate,
     entry.memo,
+    entry.businessContextMemo,
     entry.reviewReasons.join(' / '),
   ];
 }
@@ -1011,7 +1018,8 @@ export function buildLedgerIncomeTaxReport(records: HaruRecord[], start: string,
 }
 
 const INCOME_TAX_EXPENSE_HEADER: (string | number)[] = [
-  '거래일', '거래처', '금액', '분류', '사업용/개인용', '필요경비 여부', '필요경비 사유', '비용처리 방식', '증빙',
+  '거래일', '거래처', '금액', '분류', '사업용/개인용', '필요경비 여부', '필요경비 사유',
+  '업무 관련성 메모', '비용처리 방식', '증빙',
 ];
 
 function incomeTaxExpenseRow(entry: LedgerIncomeTaxReportEntry): (string | number)[] {
@@ -1023,6 +1031,7 @@ function incomeTaxExpenseRow(entry: LedgerIncomeTaxReportEntry): (string | numbe
     entry.usageType,
     LEDGER_EXPENSE_DEDUCTION_LABELS[entry.expenseDeduction],
     entry.expenseDeductionReason,
+    entry.businessContextMemo,
     LEDGER_ASSET_TREATMENT_LABELS[entry.assetTreatment],
     entry.proof,
   ];
