@@ -24,7 +24,59 @@ export interface LedgerEntry {
   proofType?: string;
   imageUrls?: string[];
   imageMeta?: Record<string, unknown>[];
+  vatTaxType?: LedgerVatTaxType;
+  supplyAmount?: string;
+  vatAmount?: string;
+  vatDeduction?: LedgerVatDeduction;
+  vatDeductionReason?: string;
+  hometaxCheck?: LedgerHometaxCheck;
+  expenseDeduction?: LedgerExpenseDeduction;
+  expenseDeductionReason?: string;
+  assetTreatment?: LedgerAssetTreatment;
 }
+
+export type LedgerVatTaxType = 'taxable' | 'zeroRated' | 'exempt' | 'nonTaxable' | 'review';
+export type LedgerVatDeduction = 'deductible' | 'nonDeductible' | 'review' | 'notApplicable';
+export type LedgerHometaxCheck = 'unchecked' | 'matched' | 'mismatch' | 'notFound' | 'manual';
+export type LedgerExpenseDeduction = 'deductible' | 'nonDeductible' | 'review' | 'notApplicable';
+export type LedgerAssetTreatment = 'expense' | 'depreciableAsset' | 'review' | 'notApplicable';
+
+export const LEDGER_VAT_TAX_TYPE_LABELS: Record<LedgerVatTaxType, string> = {
+  taxable: '과세',
+  zeroRated: '영세율',
+  exempt: '면세',
+  nonTaxable: '과세대상아님',
+  review: '확인필요',
+};
+
+export const LEDGER_VAT_DEDUCTION_LABELS: Record<LedgerVatDeduction, string> = {
+  deductible: '공제',
+  nonDeductible: '불공제',
+  review: '확인필요',
+  notApplicable: '해당없음',
+};
+
+export const LEDGER_HOMETAX_CHECK_LABELS: Record<LedgerHometaxCheck, string> = {
+  unchecked: '미확인',
+  matched: '홈택스 확인',
+  mismatch: '불일치',
+  notFound: '자료없음',
+  manual: '수기확인',
+};
+
+export const LEDGER_EXPENSE_DEDUCTION_LABELS: Record<LedgerExpenseDeduction, string> = {
+  deductible: '인정',
+  nonDeductible: '불인정',
+  review: '확인필요',
+  notApplicable: '해당없음',
+};
+
+export const LEDGER_ASSET_TREATMENT_LABELS: Record<LedgerAssetTreatment, string> = {
+  expense: '당기 비용',
+  depreciableAsset: '감가상각 검토',
+  review: '확인필요',
+  notApplicable: '해당없음',
+};
 
 export interface LedgerPeriodPreviewRow {
   id: string;
@@ -61,6 +113,7 @@ interface WorkbookLike {
 
 const LEDGER_XLSX_HEADERS = {
   date: ['이용일자', '승인일자', '거래일', '승인일', '이용일', '거래일자'],
+  transactionTime: ['승인시간', '이용시간', '거래시간'],
   vendor: ['이용가맹점', '가맹점명', '거래처', '가맹점', '사용처'],
   amount: ['이용금액', '승인금액', '결제금액', '거래금액', '금액'],
   paymentMethod: ['이용카드', '카드명', '카드번호', '결제수단', '카드'],
@@ -71,7 +124,7 @@ const LEDGER_XLSX_HEADERS = {
 export const LEDGER_XLSX_PROOF = '카드명세서(XLSX) · 사용자 확인 필요';
 
 export function createLedgerEntry(overrides?: Partial<LedgerEntry>): LedgerEntry {
-  return {
+  return applyLedgerVatDefaults({
     id: Math.random().toString(36).slice(2, 9),
     transactionType: '지출',
     usageType: '사업용',
@@ -89,6 +142,122 @@ export function createLedgerEntry(overrides?: Partial<LedgerEntry>): LedgerEntry
     approvalNumber: '',
     proofType: '',
     ...overrides,
+  });
+}
+
+function isVatTaxType(value: unknown): value is LedgerVatTaxType {
+  return value === 'taxable' || value === 'zeroRated' || value === 'exempt' || value === 'nonTaxable' || value === 'review';
+}
+
+function isVatDeduction(value: unknown): value is LedgerVatDeduction {
+  return value === 'deductible' || value === 'nonDeductible' || value === 'review' || value === 'notApplicable';
+}
+
+function isHometaxCheck(value: unknown): value is LedgerHometaxCheck {
+  return value === 'unchecked' || value === 'matched' || value === 'mismatch' || value === 'notFound' || value === 'manual';
+}
+
+function isExpenseDeduction(value: unknown): value is LedgerExpenseDeduction {
+  return value === 'deductible' || value === 'nonDeductible' || value === 'review' || value === 'notApplicable';
+}
+
+function isAssetTreatment(value: unknown): value is LedgerAssetTreatment {
+  return value === 'expense' || value === 'depreciableAsset' || value === 'review' || value === 'notApplicable';
+}
+
+export function defaultLedgerVatDeduction(entry: Pick<LedgerEntry, 'transactionType' | 'usageType'>): LedgerVatDeduction {
+  if (entry.usageType === '개인용') return 'notApplicable';
+  if (entry.transactionType === '수입') return 'notApplicable';
+  if (entry.transactionType === '지출' && entry.usageType === '사업용') return 'review';
+  return 'review';
+}
+
+export function defaultLedgerExpenseDeduction(entry: Pick<LedgerEntry, 'transactionType' | 'usageType'>): LedgerExpenseDeduction {
+  if (entry.transactionType === '수입') return 'notApplicable';
+  if (entry.usageType === '개인용') return 'nonDeductible';
+  if (entry.transactionType === '지출' && entry.usageType === '사업용') return 'review';
+  return 'review';
+}
+
+export function defaultLedgerAssetTreatment(entry: Pick<LedgerEntry, 'transactionType'>): LedgerAssetTreatment {
+  if (entry.transactionType === '수입') return 'notApplicable';
+  return 'review';
+}
+
+export function applyLedgerVatDefaults(entry: LedgerEntry): LedgerEntry {
+  const vatTaxType = isVatTaxType(entry.vatTaxType) ? entry.vatTaxType : 'review';
+  const vatDeduction = isVatDeduction(entry.vatDeduction)
+    ? entry.vatDeduction
+    : defaultLedgerVatDeduction(entry);
+  const hometaxCheck = isHometaxCheck(entry.hometaxCheck) ? entry.hometaxCheck : 'unchecked';
+  const expenseDeduction = isExpenseDeduction(entry.expenseDeduction)
+    ? entry.expenseDeduction
+    : defaultLedgerExpenseDeduction(entry);
+  const assetTreatment = isAssetTreatment(entry.assetTreatment)
+    ? entry.assetTreatment
+    : defaultLedgerAssetTreatment(entry);
+  return {
+    ...entry,
+    vatTaxType,
+    supplyAmount: String(entry.supplyAmount || ''),
+    vatAmount: String(entry.vatAmount || ''),
+    vatDeduction,
+    vatDeductionReason: String(entry.vatDeductionReason || ''),
+    hometaxCheck,
+    expenseDeduction,
+    expenseDeductionReason: String(entry.expenseDeductionReason || ''),
+    assetTreatment,
+  };
+}
+
+export function adjustLedgerVatForUsage(entry: LedgerEntry): LedgerEntry {
+  if (entry.usageType === '개인용' || entry.transactionType === '수입') {
+    return { ...entry, vatDeduction: 'notApplicable' };
+  }
+  if (entry.transactionType === '지출' && entry.usageType === '사업용' && entry.vatDeduction === 'notApplicable') {
+    return { ...entry, vatDeduction: 'review' };
+  }
+  return applyLedgerVatDefaults(entry);
+}
+
+export function adjustLedgerIncomeTaxForUsage(entry: LedgerEntry): LedgerEntry {
+  const withDefaults = applyLedgerVatDefaults(entry);
+  if (withDefaults.transactionType === '수입') {
+    return {
+      ...withDefaults,
+      expenseDeduction: 'notApplicable',
+      assetTreatment: 'notApplicable',
+    };
+  }
+  if (withDefaults.usageType === '개인용') {
+    return {
+      ...withDefaults,
+      expenseDeduction: 'nonDeductible',
+      assetTreatment: withDefaults.assetTreatment === 'notApplicable' ? 'review' : withDefaults.assetTreatment,
+    };
+  }
+  if (withDefaults.transactionType === '지출' && withDefaults.usageType === '사업용') {
+    return {
+      ...withDefaults,
+      expenseDeduction: withDefaults.expenseDeduction === 'notApplicable' ? 'review' : withDefaults.expenseDeduction,
+      assetTreatment: withDefaults.assetTreatment === 'notApplicable' ? 'review' : withDefaults.assetTreatment,
+    };
+  }
+  return withDefaults;
+}
+
+export function adjustLedgerTaxFieldsForUsage(entry: LedgerEntry): LedgerEntry {
+  return adjustLedgerIncomeTaxForUsage(adjustLedgerVatForUsage(entry));
+}
+
+export function calculateVatIncludedAmounts(amountText: string): { supplyAmount: string; vatAmount: string } | null {
+  const amount = Number(String(amountText || '').replace(/[^0-9.-]/g, ''));
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  const supplyAmount = Math.round(amount / 1.1);
+  const vatAmount = amount - supplyAmount;
+  return {
+    supplyAmount: `${supplyAmount.toLocaleString('ko-KR')}원`,
+    vatAmount: `${vatAmount.toLocaleString('ko-KR')}원`,
   };
 }
 
@@ -181,6 +350,18 @@ export function normalizeLedgerDate(value: unknown, referenceYear: number): { va
     const [, year, month, day, suffix] = compactMatch;
     if (!isValidDate(year, month, day)) return { value: raw, valid: false };
     return { value: `${year}-${month}-${day}${suffix.trim() ? ` ${suffix.trim()}` : ''}`, valid: true };
+  }
+
+  const monthDayWithSuffixMatch = raw.match(/^(\d{1,2})(\d{2})(?:\s+(.+))?$/);
+  if (monthDayWithSuffixMatch) {
+    const [, monthRaw, day, suffix] = monthDayWithSuffixMatch;
+    const month = monthRaw.padStart(2, '0');
+    if (isValidDate(String(referenceYear), month, day)) {
+      return {
+        value: `${referenceYear}-${month}-${day}${suffix?.trim() ? ` ${suffix.trim()}` : ''}`,
+        valid: true,
+      };
+    }
   }
 
   const monthDayDigits = raw.replace(/\D/g, '');
@@ -306,17 +487,21 @@ export function parseLedgerWorkbook(
       };
       const readTextColumn = (column: LedgerXlsxColumn) => String(readRawColumn(column)).trim();
       const rawDate = readRawColumn('date');
+      const rawTime = readTextColumn('transactionTime');
+      const rawDateWithTime = rawTime && String(rawDate ?? '').trim()
+        ? `${String(rawDate).trim()} ${rawTime}`
+        : rawDate;
       const vendor = readTextColumn('vendor');
       const billedAmount = billedAmountIndex === undefined ? '' : row[billedAmountIndex] ?? '';
       const rawAmount = String(billedAmount ?? '').trim() ? billedAmount : readRawColumn('amount');
       const paymentMethod = readTextColumn('paymentMethod');
       const merchantLocation = readTextColumn('merchantLocation');
       const approvalNumber = readTextColumn('approvalNumber');
-      const meaningfulValues = [rawDate, vendor, rawAmount, paymentMethod, merchantLocation, approvalNumber]
+      const meaningfulValues = [rawDate, rawTime, vendor, rawAmount, paymentMethod, merchantLocation, approvalNumber]
         .filter((value) => String(value ?? '').trim());
       if (meaningfulValues.length < 2) return;
 
-      const dateResult = normalizeLedgerDate(rawDate, referenceYear);
+      const dateResult = normalizeLedgerDate(rawDateWithTime, referenceYear);
       const amountResult = normalizeLedgerAmount(rawAmount);
       const nonDateWarnings: string[] = [];
       if (!vendor) nonDateWarnings.push('거래처를 읽지 못했습니다.');
@@ -343,7 +528,7 @@ export function parseLedgerWorkbook(
         selected: false,
         duplicateStatus: '',
         canImport: Boolean(dateResult.valid && vendor && amountResult.valid && paymentMethod),
-        rawDate: typeof rawDate === 'number' ? rawDate : String(rawDate ?? '').trim(),
+        rawDate: typeof rawDateWithTime === 'number' ? rawDateWithTime : String(rawDateWithTime ?? '').trim(),
         merchantLocation,
         nonDateWarnings,
         warning: [dateWarning, ...nonDateWarnings].filter(Boolean).join(' '),
