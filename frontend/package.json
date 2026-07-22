@@ -84,7 +84,7 @@
     "@vitejs/plugin-legacy": "^6.1.1",
     "@vitejs/plugin-react": "4.7.0",
     "tailwindcss": "4.1.12",
-    "vite": "6.4.2",
+    "vite": "^6.4.3",
     "vite-plugin-pwa": "^1.2.0",
     "workbox-window": "^7.4.0"
   },
@@ -102,7 +102,7 @@
   },
   "pnpm": {
     "overrides": {
-      "vite": "6.4.2"
+      "vite": "6.4.3"
     }
   }
 }
