@@ -5360,6 +5360,24 @@ export function SayuPage() {
           const formatKey = sayuModalState.formatKey || '';
           const isHousehold = formatKey === 'household' || sayuModalState.format === 'HARU가계부';
           if (!isHousehold) return undefined;
+          // 월별 가계부 기록은 전체보기 목록에서 열어도 이 기록의 entries만으로 요약한다.
+          const currentRecord = sayuModalState.firestoreId
+            ? records.find((item) => item.id === sayuModalState.firestoreId)
+            : undefined;
+          const currentStored = currentRecord ? (currentRecord as any).household_entries : undefined;
+          if (typeof currentStored === 'string') {
+            try {
+              const parsed = JSON.parse(currentStored);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                const months = new Set(
+                  parsed
+                    .map((entry: any) => String(entry?.date || '').replace(/\./g, '-').slice(0, 7))
+                    .filter((month: string) => /^\d{4}-\d{2}$/.test(month)),
+                );
+                if (months.size === 1) return undefined;
+              }
+            } catch { /* fall through to scope fallback */ }
+          }
           // 월별보기에서는 전체 합계를 넘기지 않는다 — SayuModal이 이 기록(그 달) 자체 entries만으로 요약을 집계하도록.
           if (sayuScope !== 'all') return undefined;
           const allEntries: { date: string; transactionType: string; category: string; vendor: string; amount: string; paymentMethod: string; memo: string; balanceAfter?: string }[] = [];
