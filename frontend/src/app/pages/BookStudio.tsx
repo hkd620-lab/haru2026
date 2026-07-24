@@ -7,7 +7,7 @@ import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { TodayQuote } from '../components/TodayQuote';
 import { KNewsSection } from '../components/KNewsSection';
-import { FINAL_CHECKLIST } from '../constants/bookChecklist';
+import { BookPublishReviewModal } from '../components/BookPublishReviewModal';
 import GrapeLoadingMini from '../components/GrapeLoadingMini';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
@@ -23,7 +23,7 @@ interface Book {
 type TabType = 'knews' | 'people' | 'quote' | 'bible';
 
 const STATUS_LABEL: Record<Book['status'], string> = {
-  serializing: '발행중',
+  serializing: '발행됨',
   draft: '초안',
   private: '비공개',
 };
@@ -63,9 +63,7 @@ export function BookStudio() {
   const [editingBookId, setEditingBookId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [publishTarget, setPublishTarget] = useState<Book | null>(null);
-  const [publishChecks, setPublishChecks] = useState<string[]>([]);
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
-  const allPublishChecksPassed = FINAL_CHECKLIST.every((item) => publishChecks.includes(item));
 
   const handleTitleEdit = (book: Book) => {
     setEditingBookId(book.id);
@@ -81,25 +79,15 @@ export function BookStudio() {
   const openPublishModal = (book: Book) => {
     if (!isDeveloper) return;
     setPublishTarget(book);
-    setPublishChecks([]);
   };
 
   const closePublishModal = () => {
     if (statusUpdatingId) return;
     setPublishTarget(null);
-    setPublishChecks([]);
-  };
-
-  const togglePublishCheck = (item: string) => {
-    setPublishChecks((prev) =>
-      prev.includes(item)
-        ? prev.filter((checked) => checked !== item)
-        : [...prev, item]
-    );
   };
 
   const confirmPublish = async () => {
-    if (!publishTarget || !isDeveloper || !allPublishChecksPassed) return;
+    if (!publishTarget || !isDeveloper) return;
     setStatusUpdatingId(publishTarget.id);
     try {
       await updateDoc(doc(db, 'books', publishTarget.id), {
@@ -108,7 +96,6 @@ export function BookStudio() {
         publishedAt: serverTimestamp(),
       });
       setPublishTarget(null);
-      setPublishChecks([]);
     } catch (error) {
       console.error('책 발행 실패:', error);
       window.alert('책 발행에 실패했습니다.');
@@ -375,79 +362,12 @@ export function BookStudio() {
       </div>
 
       {isDeveloper && publishTarget && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-4"
-          style={{ backgroundColor: 'rgba(15, 23, 42, 0.45)' }}
-          onClick={closePublishModal}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
-            style={{ color: '#1A3C6E' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold text-gray-500">사람속으로 발행 확인</p>
-                <h2 className="mt-1 text-lg font-bold">{publishTarget.title || '(제목 없음)'}</h2>
-              </div>
-              <button
-                type="button"
-                onClick={closePublishModal}
-                className="text-xl leading-none"
-                style={{ color: '#64748b' }}
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-2">
-              {FINAL_CHECKLIST.map((item) => (
-                <label
-                  key={item}
-                  className="flex items-center gap-3 rounded-lg border px-3 py-2 text-sm"
-                  style={{ borderColor: '#dbeafe', backgroundColor: '#f8fafc' }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={publishChecks.includes(item)}
-                    onChange={() => togglePublishCheck(item)}
-                    className="h-4 w-4"
-                  />
-                  <span>{item}</span>
-                </label>
-              ))}
-            </div>
-
-            <p className="mt-3 text-xs text-gray-500">
-              8개 항목을 모두 확인해야 발행할 수 있습니다.
-            </p>
-
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={closePublishModal}
-                disabled={!!statusUpdatingId}
-                className="rounded-lg border px-4 py-2 text-sm font-semibold disabled:opacity-60"
-                style={{ borderColor: '#d1d5db', color: '#4b5563' }}
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={confirmPublish}
-                disabled={!allPublishChecksPassed || statusUpdatingId === publishTarget.id}
-                className="rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-                style={{ backgroundColor: '#10b981' }}
-              >
-                {statusUpdatingId === publishTarget.id ? (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <GrapeLoadingMini size={16} color="#fff" />발행 중...
-                  </span>
-                ) : '발행 확정'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <BookPublishReviewModal
+          book={{ id: publishTarget.id, title: publishTarget.title }}
+          publishing={statusUpdatingId === publishTarget.id}
+          onClose={closePublishModal}
+          onConfirmPublish={confirmPublish}
+        />
       )}
     </div>
   );
