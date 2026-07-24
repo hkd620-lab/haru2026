@@ -5829,6 +5829,7 @@ export const cleanupTtsUsage = onSchedule(
 );
 
 export { generateBook, suggestChapterTitle } from "./bookStudio";
+export { reviewBookForPublish, suggestBookPublishRevision, applyBookPublishRevision } from "./bookReview";
 export { analyzeFacebookZip } from "./snsAnalyzer";
 export { convertSnsToDiary } from "./snsToDiary";
 export { generateLawsuitClaimReason } from "./generateLawsuitClaimReason";

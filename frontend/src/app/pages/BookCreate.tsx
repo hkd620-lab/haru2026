@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router';
 import { FINAL_CHECKLIST } from '../constants/bookChecklist';
 import GrapeLoadingMini from '../components/GrapeLoadingMini';
+import { BookPublishReviewModal } from '../components/BookPublishReviewModal';
 
 const STYLE_OPTIONS = ['감성서사', '다큐', '구술회고', '편지'] as const;
 const LENGTH_OPTIONS = [
@@ -58,6 +59,8 @@ export function BookCreate() {
   const [checkedItems, setCheckedItems] = useState<string[]>([]);
   const [publishing, setPublishing] = useState(false);
   const [legacyWarning, setLegacyWarning] = useState(false);
+  // 최종 발행은 BookStudio와 동일한 AI 발행 검토 게이트(BookPublishReviewModal)를 반드시 거친다
+  const [showPublishModal, setShowPublishModal] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -543,12 +546,12 @@ export function BookCreate() {
                 ))}
               </div>
               <p className="text-xs mt-3" style={{ color: '#6b7280' }}>
-                8개 항목을 모두 확인해야 최종 생성할 수 있습니다.
+                8개 항목을 모두 확인한 뒤, AI 발행 검토를 통과해야 최종 생성할 수 있습니다.
               </p>
             </div>
 
             <button
-              onClick={handleFinalizeBook}
+              onClick={() => setShowPublishModal(true)}
               disabled={!allChecklistPassed || publishing}
               className="w-full py-3 rounded-lg text-white font-semibold text-base"
               style={{
@@ -560,11 +563,23 @@ export function BookCreate() {
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   <GrapeLoadingMini size={18} color="#fff" />최종 생성 중...
                 </span>
-              ) : '최종 생성'}
+              ) : 'AI 발행 검토 후 최종 생성'}
             </button>
           </div>
         )}
       </div>
+
+      {showPublishModal && results?.bookId && (
+        <BookPublishReviewModal
+          book={{ id: results.bookId, title: title.trim() }}
+          publishing={publishing}
+          onClose={() => {
+            if (publishing) return;
+            setShowPublishModal(false);
+          }}
+          onConfirmPublish={handleFinalizeBook}
+        />
+      )}
     </div>
   );
 }
