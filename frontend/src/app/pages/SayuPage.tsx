@@ -2497,7 +2497,7 @@ export function SayuPage() {
         )
       );
 
-      toast.success('SAYU가 저장되었습니다!');
+      toast.success('SAYU-나의기록에 저장되었습니다!');
     } catch (error) {
       console.error('저장 실패:', error);
       toast.error('저장에 실패했습니다.');
@@ -5109,7 +5109,7 @@ export function SayuPage() {
             </div>
             <div className="flex items-center gap-2">
               <div className="rounded-full flex-shrink-0" style={{ width: '8px', height: '8px', backgroundColor: '#1A3C6E', boxShadow: '0 0 0 1.5px rgba(26,60,110,0.25)' }} />
-              <span>SAYU 저장</span>
+              <span>SAYU-나의기록 저장</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="rounded-full flex-shrink-0" style={{ width: '8px', height: '8px', backgroundColor: '#F59E0B', boxShadow: '0 0 0 1.5px rgba(245,158,11,0.3)' }} />
