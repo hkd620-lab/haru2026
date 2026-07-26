@@ -2535,7 +2535,7 @@ ${contentValues}`,
     setIsSaving(true);
     try {
       await onSave(dataToSave);
-      toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
+      toast.success('SAYU-나의기록에 저장되었습니다.');
       onClose();
     } catch (error) {
       console.error('저장 중 오류:', error);
@@ -2582,7 +2582,7 @@ ${contentValues}`,
     setIsSaving(true);
     try {
       await onSave(updateData);
-      toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
+      toast.success('SAYU-나의기록에 저장되었습니다.');
       setShowPolishModal(false);
       onClose();
     } catch (error) {
@@ -2974,7 +2974,7 @@ ${contentValues}`,
     setIsSaving(true);
     try {
       await onSave(updateData);
-      toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
+      toast.success('SAYU-나의기록에 저장되었습니다.');
       setShowReadingFinishModal(false);
       onClose();
     } catch (error) {
@@ -6008,7 +6008,7 @@ ${contentValues}`,
                   ) : (
                     <>
                       <Wand2 style={{ width: 15, height: 15 }} />
-                      AI 다듬은 후 SAYU 저장
+                      AI 다듬은 후 SAYU-나의기록 저장
                     </>
                   )}
                 </button>
@@ -6030,7 +6030,7 @@ ${contentValues}`,
                     justifyContent: 'center',
                   }}
                 >
-                  {isSaving ? '저장 중...' : '다듬지 않고 SAYU 저장'}
+                  {isSaving ? '저장 중...' : '다듬지 않고 SAYU-나의기록 저장'}
                 </button>
               </div>
             )}
@@ -6152,7 +6152,7 @@ ${contentValues}`,
                   letterSpacing: '0.05em',
                 }}
               >
-                {isSaving ? '저장 중...' : '💾 SAYU 저장'}
+                {isSaving ? '저장 중...' : '💾 SAYU-나의기록 저장'}
               </button>
             </div>
           </div>
