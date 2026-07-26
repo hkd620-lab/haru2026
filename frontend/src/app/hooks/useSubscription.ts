@@ -19,7 +19,7 @@ export function useSubscription() {
     }
 
     if (DEVELOPER_UIDS.includes(user.uid)) {
-      setSubscription({ ...DEFAULT_SUBSCRIPTION, plan: 'premium' });
+      setSubscription({ ...DEFAULT_SUBSCRIPTION, plan: 'premium', status: 'active' });
       setLoading(false);
       return;
     }
