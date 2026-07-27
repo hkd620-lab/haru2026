@@ -53,6 +53,33 @@
         background: #faf9f6;
       }
 
+      .front-left-leaf {
+        position: absolute;
+        left: 12.1%;
+        top: 26.5%;
+        width: 8.5%;
+        height: auto;
+        pointer-events: none;
+        transform-origin: 58% 84%;
+        animation: leaf-breathe 3.05s ease-in-out infinite;
+        will-change: transform;
+      }
+
+      @keyframes leaf-breathe {
+        0%,
+        100% {
+          transform: rotate(0deg);
+        }
+
+        38% {
+          transform: rotate(-2.2deg);
+        }
+
+        72% {
+          transform: rotate(3deg);
+        }
+      }
+
       .hotspot {
         position: absolute;
         display: block;
@@ -153,6 +180,7 @@
     <main class="card-page" aria-label="하루lab 전자명함">
       <section class="card-frame side is-active" data-side="front" aria-label="명함 앞면">
         <img class="card-face" src="./front.png" alt="하루lab 명함 앞면" />
+        <img class="front-left-leaf" src="./front-leaf-left.png" alt="" aria-hidden="true" />
         <div class="hotspots" aria-label="앞면 링크">
           <a class="hotspot front-web" href="https://haru2026.com/" aria-label="하루2026 웹사이트 열기"></a>
         </div>
