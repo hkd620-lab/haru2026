@@ -5,7 +5,6 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { LoadingProvider } from './contexts/LoadingContext';
 import { Toaster } from 'sonner';
 import { useAuth } from './contexts/AuthContext';
-import { HomePage } from './pages/HomePage';
 import { HomePageV2 } from './pages/HomePageV2';
 import { LandingPage } from './pages/LandingPage';
 import { OnboardingPreviewPage } from './pages/OnboardingPreviewPage';
@@ -161,9 +160,6 @@ function App() {
               <Route path="/gyeongdae-preview" element={<GyeongdaePreviewPage />} />
               <Route path="/onyu-preview" element={<OnyuPreviewPage />} />
 
-              {/* v1 백업 라우트 (구 HomePage 보존, 롤백/비교용) */}
-              <Route path="/v1-legacy" element={<HomePage />} />
-              
               {/* 인증 */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/auth/callback" element={<AuthCallbackPage />} />
