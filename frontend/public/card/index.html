@@ -57,31 +57,13 @@
         background: #faf9f6;
       }
 
-      .front-left-leaf {
+      .front-pumpkin-animation {
         position: absolute;
-        left: 10.85%;
-        top: 24.1%;
-        width: 11.1%;
+        left: 10%;
+        top: 16.7%;
+        width: 19.6%;
         height: auto;
         pointer-events: none;
-        transform-origin: 58% 83%;
-        animation: leaf-breathe 3.05s ease-in-out infinite;
-        will-change: transform;
-      }
-
-      @keyframes leaf-breathe {
-        0%,
-        100% {
-          transform: rotate(0deg);
-        }
-
-        38% {
-          transform: rotate(-3.2deg);
-        }
-
-        72% {
-          transform: rotate(4.2deg);
-        }
       }
 
       .hotspot {
@@ -183,8 +165,14 @@
   <body>
     <main class="card-page" aria-label="하루lab 전자명함">
       <section class="card-frame side is-active" data-side="front" aria-label="명함 앞면">
-        <img class="card-face" src="./front.png" alt="하루lab 명함 앞면" />
-        <img class="front-left-leaf" src="./front-leaf-left.png" alt="" aria-hidden="true" />
+        <img class="card-face" src="./front-static.png" alt="하루lab 명함 앞면" />
+        <img
+          class="front-pumpkin-animation"
+          src="./pumpkin_3layers-animated.png"
+          alt=""
+          aria-hidden="true"
+          decoding="async"
+        />
         <div class="hotspots" aria-label="앞면 링크">
           <a class="hotspot front-web" href="https://haru2026.com/" aria-label="하루2026 웹사이트 열기"></a>
         </div>
