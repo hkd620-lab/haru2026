@@ -17,18 +17,21 @@ export default defineConfig({
     react(),
     tailwindcss(),
     {
-      name: 'serve-welcome-index',
+      name: 'serve-static-page-indexes',
       configureServer(server) {
-        server.middlewares.use('/welcome/', (req, res, next) => {
+        const serveStaticIndex = (basePath: string) => (req, res, next) => {
           if (req.url && req.url !== '/') {
             next()
             return
           }
 
-          const welcomePath = path.resolve(__dirname, 'public/welcome/index.html')
+          const staticPagePath = path.resolve(__dirname, `public/${basePath}/index.html`)
           res.setHeader('Content-Type', 'text/html; charset=utf-8')
-          res.end(fs.readFileSync(welcomePath, 'utf-8'))
-        })
+          res.end(fs.readFileSync(staticPagePath, 'utf-8'))
+        }
+
+        server.middlewares.use('/welcome/', serveStaticIndex('welcome'))
+        server.middlewares.use('/card/', serveStaticIndex('card'))
       },
     },
     VitePWA({

@@ -43,6 +43,10 @@
         "destination": "/welcome/index.html"
       },
       {
+        "source": "/card",
+        "destination": "/card/index.html"
+      },
+      {
         "source": "/welcome-thumb.png",
         "destination": "/welcome-thumb.png"
       },
