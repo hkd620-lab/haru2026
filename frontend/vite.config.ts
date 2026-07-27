@@ -1,5 +1,6 @@
 import legacy from '@vitejs/plugin-legacy'
 import { defineConfig } from 'vite'
+import fs from 'fs'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
@@ -15,6 +16,21 @@ export default defineConfig({
     }),
     react(),
     tailwindcss(),
+    {
+      name: 'serve-welcome-index',
+      configureServer(server) {
+        server.middlewares.use('/welcome/', (req, res, next) => {
+          if (req.url && req.url !== '/') {
+            next()
+            return
+          }
+
+          const welcomePath = path.resolve(__dirname, 'public/welcome/index.html')
+          res.setHeader('Content-Type', 'text/html; charset=utf-8')
+          res.end(fs.readFileSync(welcomePath, 'utf-8'))
+        })
+      },
+    },
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: null,
