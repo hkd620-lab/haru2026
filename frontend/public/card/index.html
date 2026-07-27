@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>하루lab 전자명함</title>
+    <meta name="description" content="하루lab 허경대 대표 전자명함" />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: #f4f1ea;
+        color: #333333;
+        font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+          "Noto Sans KR", sans-serif;
+      }
+
+      body {
+        display: grid;
+        place-items: center;
+        padding: 24px 14px;
+      }
+
+      .card-page {
+        display: grid;
+        gap: 16px;
+        width: min(100%, 1080px);
+      }
+
+      .card-frame {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1080 / 600;
+        filter: drop-shadow(0 14px 28px rgba(26, 60, 110, 0.14));
+      }
+
+      .card-face,
+      .hotspots {
+        position: absolute;
+        inset: 0;
+      }
+
+      .card-face {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        background: #faf9f6;
+      }
+
+      .hotspot {
+        position: absolute;
+        display: block;
+        border-radius: 4px;
+      }
+
+      .hotspot:focus-visible {
+        outline: 3px solid rgba(26, 60, 110, 0.75);
+        outline-offset: 2px;
+      }
+
+      .side {
+        display: none;
+      }
+
+      .side.is-active {
+        display: block;
+      }
+
+      .switcher {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        color: #645f55;
+        font-size: 16px;
+        line-height: 1;
+      }
+
+      .switcher button {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+        font: inherit;
+        min-width: 44px;
+        min-height: 36px;
+        padding: 0 4px;
+      }
+
+      .switcher button[aria-pressed="true"] {
+        color: #1a3c6e;
+        font-weight: 700;
+      }
+
+      .front-web {
+        left: 70.7%;
+        top: 80.8%;
+        width: 18.2%;
+        height: 8.3%;
+      }
+
+      .back-phone {
+        left: 18.7%;
+        top: 57.2%;
+        width: 23.5%;
+        height: 7.4%;
+      }
+
+      .back-email {
+        left: 18.7%;
+        top: 64.2%;
+        width: 31.8%;
+        height: 7.4%;
+      }
+
+      .back-web {
+        left: 18.7%;
+        top: 71.2%;
+        width: 29.5%;
+        height: 7.4%;
+      }
+
+      .back-qr {
+        left: 76.2%;
+        top: 53.2%;
+        width: 17.2%;
+        height: 29.8%;
+      }
+
+      @media (max-width: 560px) {
+        body {
+          padding: 18px 10px;
+        }
+
+        .card-page {
+          gap: 12px;
+        }
+
+        .switcher {
+          font-size: 15px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card-page" aria-label="하루lab 전자명함">
+      <section class="card-frame side is-active" data-side="front" aria-label="명함 앞면">
+        <img class="card-face" src="./front.png" alt="하루lab 명함 앞면" />
+        <div class="hotspots" aria-label="앞면 링크">
+          <a class="hotspot front-web" href="https://haru2026.com/" aria-label="하루2026 웹사이트 열기"></a>
+        </div>
+      </section>
+
+      <section class="card-frame side" data-side="back" aria-label="명함 뒷면">
+        <img class="card-face" src="./back.png" alt="하루lab 허경대 대표 명함 뒷면" />
+        <div class="hotspots" aria-label="뒷면 링크">
+          <a class="hotspot back-phone" href="tel:01063096107" aria-label="전화 걸기"></a>
+          <a class="hotspot back-email" href="mailto:harul2026lab@gmail.com" aria-label="이메일 보내기"></a>
+          <a class="hotspot back-web" href="https://haru2026.com/" aria-label="하루2026 웹사이트 열기"></a>
+          <a class="hotspot back-qr" href="https://haru2026.com/welcome/" aria-label="하루2026 환영 페이지 열기"></a>
+        </div>
+      </section>
+
+      <nav class="switcher" aria-label="명함 면 전환">
+        <button type="button" data-target="front" aria-pressed="true">앞면</button>
+        <span aria-hidden="true">|</span>
+        <button type="button" data-target="back" aria-pressed="false">뒷면</button>
+      </nav>
+    </main>
+
+    <script>
+      const sides = document.querySelectorAll("[data-side]");
+      const buttons = document.querySelectorAll("[data-target]");
+
+      buttons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const target = button.dataset.target;
+          sides.forEach((side) => {
+            side.classList.toggle("is-active", side.dataset.side === target);
+          });
+          buttons.forEach((item) => {
+            item.setAttribute("aria-pressed", String(item === button));
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
