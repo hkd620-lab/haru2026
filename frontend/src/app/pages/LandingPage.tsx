@@ -437,12 +437,13 @@ export function LandingPage() {
           <div>
             <div className="lp-cap">RECORD · UNDERSTAND · USE · DISCOVER</div>
             <h1 className="lp-h1">
-              흘러가는 하루를,<br />
-              <span style={{ color: C.oliveDark }}>다시 꺼내 쓸 수 있는</span> 기록으로.
+              haru2026<br />
+              <span style={{ color: C.oliveDark }}>하루2026</span><br />
+              두 장의 큰 잎이 호박을 키우다
             </h1>
             <p className="lp-hero__sub">
-              HARU2026은 하루의 기록, 생각, 건강, 배움, 발견을 모아<br />
-              필요한 순간에 다시 활용할 수 있도록 돕는 <strong style={{ color: C.fg, fontWeight: 600 }}>AI 기록 플랫폼</strong>입니다.
+              haru2026은 두 장의 큰 잎이 호박을 키우듯, 기록관리와 생활문제 해결로<br />
+              구독자의 삶을 튼튼하게 키워가는 <strong style={{ color: C.fg, fontWeight: 600 }}>AI 생활관리 플랫폼</strong>입니다.
             </p>
             <div className="lp-value-cards" aria-label="HARU2026 핵심 가치">
               <article className="lp-value-card">
