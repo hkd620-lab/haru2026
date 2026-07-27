@@ -41,7 +41,7 @@ export default defineConfig({
       manifest: {
         name: 'HARU2026',
         short_name: 'HARU',
-        description: 'HARU2026은 일상기록을 AI가 정리하고 검색·통계·분석해 삶의 자산으로 만드는 AI 생활관리 플랫폼입니다.',
+        description: 'haru2026(HARU2026)은 큰 잎 두 장이 호박을 키우듯, 생활기록 관리와 생활문제 해결을 돕는 AI(ai) 생활관리 플랫폼입니다.',
         lang: 'ko',
         theme_color: '#4F46E5',
         background_color: '#ffffff',
