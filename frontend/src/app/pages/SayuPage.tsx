@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { ChevronLeft, ChevronRight, Info, Leaf, Briefcase, BookOpen, Scale, Cpu, Volume2, Pause, Search } from 'lucide-react';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
@@ -3240,6 +3240,8 @@ export function SayuPage() {
     plantType?: PlantSayuEntryType;
     plantMergeKey?: string;
     plantTypeBadges?: PlantSayuEntryType[];
+    plantPreviewImageUrl?: string;
+    plantPreviewLines?: string[];
     onOpen: () => void;
     extra?: ReactNode;
   };
@@ -3561,6 +3563,104 @@ export function SayuPage() {
     </div>
   );
 
+  const renderPlantThumbnail = (entry: FlatSayuEntry) => (
+    entry.plantPreviewImageUrl ? (
+      <img
+        src={entry.plantPreviewImageUrl}
+        alt=""
+        style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', border: '1px solid #e5e7eb', flex: '0 0 48px', backgroundColor: '#f9fafb' }}
+      />
+    ) : (
+      <span
+        aria-hidden="true"
+        style={{ width: 48, height: 48, borderRadius: 8, backgroundColor: '#ecfdf5', border: '1px solid #d1fae5', display: 'grid', placeItems: 'center', color: '#15803d', flex: '0 0 48px' }}
+      >
+        <Leaf className="w-5 h-5" />
+      </span>
+    )
+  );
+
+  const plantLineClampStyle: CSSProperties = {
+    overflow: 'hidden',
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+    overflowWrap: 'break-word',
+    wordBreak: 'normal',
+  };
+
+  const renderPlantListRow = (entry: FlatSayuEntry, idx: number, options?: { showTypeBadges?: boolean }) => (
+    <div key={entry.id} className={idx > 0 ? 'border-t' : ''} style={{ borderColor: '#f0f0f0', display: 'flex', alignItems: 'stretch' }}>
+      <button
+        type="button"
+        onClick={entry.onOpen}
+        className="flex-1 flex items-center gap-3 px-4 text-left hover:bg-yellow-50 transition-colors"
+        style={{ minHeight: 64, paddingLeft: 18, minWidth: 0 }}
+      >
+        <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: 36 }}>
+          {formatListDate(entry.date)}
+        </span>
+        {renderPlantThumbnail(entry)}
+        <span className="flex-1" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 3 }}>
+          <span className="text-sm truncate" style={{ color: '#333', minWidth: 0 }}>
+            {entry.title}
+          </span>
+          {options?.showTypeBadges && entry.plantTypeBadges && entry.plantTypeBadges.length > 0 && (
+            <span style={{ display: 'flex', flexWrap: 'wrap', gap: 4, paddingTop: 1 }}>
+              {entry.plantTypeBadges.map((type) => (
+                <span
+                  key={type}
+                  style={{
+                    borderRadius: 999,
+                    backgroundColor: '#ecfdf5',
+                    color: '#15803d',
+                    padding: '2px 7px',
+                    fontSize: 10,
+                    fontWeight: 800,
+                    lineHeight: 1.3,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {PLANT_SAYU_TYPE_LABEL[type]}
+                </span>
+              ))}
+            </span>
+          )}
+          {entry.subtitle && (
+            <span style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4, ...plantLineClampStyle }}>
+              {entry.subtitle}
+            </span>
+          )}
+          {(entry.plantPreviewLines || []).filter(Boolean).slice(0, 1).map((line, lineIdx) => (
+            <span key={lineIdx} style={{ fontSize: 12, color: '#4B5563', lineHeight: 1.45, ...plantLineClampStyle }}>
+              {line}
+            </span>
+          ))}
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={entry.onOpen}
+        style={{
+          minHeight: 30,
+          padding: '0 11px',
+          borderRadius: 0,
+          border: 'none',
+          borderLeft: '1px solid #f0f0f0',
+          background: '#fff',
+          color: '#4A5A2C',
+          fontSize: 12,
+          fontWeight: 800,
+          cursor: 'pointer',
+          flexShrink: 0,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        상세보기
+      </button>
+    </div>
+  );
+
   const getSayuGroupKey = (tab: 'records' | 'assistants', label: string) => `${tab}_${label}`;
 
   const toggleSayuGroup = (groupKey: string) => {
@@ -3863,6 +3963,11 @@ export function SayuPage() {
           color: '#10b981',
           plantType: 'detective' as const,
           plantMergeKey: getPlantMergeKey(entry, record.date, `${record.id}_plant_detective_${idx}`),
+          plantPreviewImageUrl: imageUrl,
+          plantPreviewLines: [
+            aiSummary ? `AI 요약: ${aiSummary}` : '',
+            memoSummary ? `메모: ${memoSummary}` : '',
+          ],
           searchText: buildSearchText('하루식물탐정', title, subtitle, aiSummary, memoSummary, sourceSummary, confirmedName, aiName, scientificName, locationLabel),
           onOpen,
           extra: renderPlantReadOnlyPreview({
@@ -3923,6 +4028,11 @@ export function SayuPage() {
           color: '#34a853',
           plantType: 'diary' as const,
           plantMergeKey: getPlantMergeKey(entry, date, `${record.id}_plant_diary_${idx}`),
+          plantPreviewImageUrl: imageUrl,
+          plantPreviewLines: [
+            bodySummary,
+            stageSummary ? `성장 단계: ${stageSummary}` : '',
+          ],
           searchText: buildSearchText('하루식물탐정', title, subtitle, bodySummary, stageSummary, entry?.aiDifference, trace.recordLabel, trace.editedLabel),
           onOpen,
           extra: renderPlantReadOnlyPreview({
@@ -3977,6 +4087,11 @@ export function SayuPage() {
         color: '#4A5A2C',
         plantType: 'library' as const,
         plantMergeKey: getPlantMergeKey(item, date, `plant_library_${item.id}`, true),
+        plantPreviewImageUrl: imageUrl,
+        plantPreviewLines: [
+          featureSummary ? `특징: ${featureSummary}` : '',
+          memoSummary ? `재배 메모: ${memoSummary}` : publicState,
+        ],
         searchText: buildSearchText('하루식물탐정', title, subtitle, featureSummary, memoSummary, publicState),
         onOpen,
         extra: renderPlantReadOnlyPreview({
@@ -4028,6 +4143,11 @@ export function SayuPage() {
         color: '#0f766e',
         plantType: 'catalog' as const,
         plantMergeKey: getPlantMergeKey(item, date, `plant_public_library_${item.id}`, true),
+        plantPreviewImageUrl: imageUrl,
+        plantPreviewLines: [
+          description,
+          publicLocation ? `공개 지역: ${publicLocation}` : '공개 지역 미표시',
+        ],
         searchText: buildSearchText('하루식물탐정', title, subtitle, description, publicLocation),
         onOpen,
         extra: renderPlantReadOnlyPreview({
@@ -4079,6 +4199,11 @@ export function SayuPage() {
         color: '#0f766e',
         plantType: 'catalog' as const,
         plantMergeKey: getPlantMergeKey(item, date, `plant_public_catalog_${item.id}`),
+        plantPreviewImageUrl: imageUrl,
+        plantPreviewLines: [
+          description,
+          publicLocation ? `공개 지역: ${publicLocation}` : '공개 지역 미표시',
+        ],
         searchText: buildSearchText('하루식물탐정', title, subtitle, description, publicLocation),
         onOpen,
         extra: renderPlantReadOnlyPreview({
@@ -4567,7 +4692,7 @@ export function SayuPage() {
                       선택한 유형의 식물 기록이 없습니다.
                     </div>
                   )}
-                  {visibleGroupEntries.map((entry, idx) => (
+                  {visibleGroupEntries.map((entry, idx) => isPlantGroup ? renderPlantListRow(entry, idx, { showTypeBadges: plantSayuFilter === 'all' }) : (
                     <div key={entry.id} className={idx > 0 ? 'border-t' : ''} style={{ borderColor: '#f0f0f0', display: 'flex', alignItems: 'stretch' }}>
                       <button
                         type="button"
@@ -4654,7 +4779,7 @@ export function SayuPage() {
     }
     return (
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        {entries.map((entry, idx) => (
+        {entries.map((entry, idx) => entry.label === '하루식물탐정' ? renderPlantListRow(entry, idx) : (
           <div key={entry.id} className={idx > 0 ? 'border-t' : ''} style={{ borderColor: '#f0f0f0', display: 'flex', alignItems: 'stretch' }}>
             <button
               type="button"
