@@ -68,7 +68,7 @@ export function HomePage() {
   }[] = [
     { icon: "🔮", label: "HARU미래전망", path: "/prophecy-hub" },
     { icon: "⚖️", label: "하루LAW", path: "/record", state: { category: "하루LAW" } },
-    { icon: "🧾", label: "전자소송연습비서", path: "/lawsuit-practice", accent: "#b85c2e" },
+    { icon: "🧾", label: "전자소송연습비서", path: "/legal-assistant", accent: "#b85c2e" },
     { icon: "📖", label: "영어성경", path: "/bible" },
     { icon: "✏️", label: "영어일기", path: "/diary-learn" },
     { icon: "📱", label: "SNS 가져오기", path: "/sns-records", accent: "#10b981" },

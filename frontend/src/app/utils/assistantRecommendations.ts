@@ -56,7 +56,7 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     category: 'law',
     description: '기록 속 법률 고민을 사실관계 중심으로 정리하고 관련 법률 정보를 확인할 수 있습니다.',
     actionLabel: '하루LAW와 연결',
-    targetPath: '/lawsuit-practice',
+    targetPath: '/legal-assistant',
     keywords: ['계약', '소송', '임대차', '권리금', '보증금', '내용증명', '고소', '고발', '합의', '손해배상', '채권', '빌려준 돈', '차용증', '법률', '변호사', '행정사'],
   },
   {

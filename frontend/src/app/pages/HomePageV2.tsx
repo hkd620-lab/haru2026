@@ -323,7 +323,7 @@ const AGENTS: Agent[] = [
     tag: 'PRACTICE · V1',
     variant: 'terracotta',
     stroke: '#B85C2E',
-    path: '/lawsuit-practice',
+    path: '/legal-assistant',
     beta: true,
     icon: (
       <>

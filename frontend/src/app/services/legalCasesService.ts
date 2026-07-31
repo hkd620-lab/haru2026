@@ -11,7 +11,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
-import type { LegalCase, LegalDocument, SubmitChecklist } from '../types/legalCaseTypes';
+import type { LegalCase, LegalDocument, LegalPracticeDraft, SubmitChecklist } from '../types/legalCaseTypes';
 
 function legalCasesCollection(uid: string) {
   return collection(db, 'users', uid, 'legalCases');
@@ -71,6 +71,8 @@ export async function updateLegalCase(
 }
 
 export async function deleteLegalCase(uid: string, caseId: string): Promise<void> {
+  const documentsSnapshot = await getDocs(documentsCollection(uid, caseId));
+  await Promise.all(documentsSnapshot.docs.map((documentDoc) => deleteDoc(documentDoc.ref)));
   await deleteDoc(legalCaseDoc(uid, caseId));
 }
 
@@ -192,6 +194,42 @@ export async function createSampleLegalCase(uid: string): Promise<string> {
       savedFinalPdf: false,
       checkedAttachments: false,
       confirmedMyCaseList: false,
+    },
+  });
+}
+
+export async function createPracticeDraftLegalCase(
+  uid: string,
+  draft: Omit<LegalPracticeDraft, 'source' | 'savedAt'>,
+): Promise<string> {
+  const digits = draft.suitAmount.replace(/[^\d]/g, '');
+  const claimAmount = digits ? Number(digits) : undefined;
+  const title = draft.caseName.trim() || '전자소송 연습 기록';
+  const savedAt = new Date().toISOString();
+
+  return createLegalCase(uid, {
+    title,
+    caseType: '기타',
+    claimAmount,
+    status: '제출준비',
+    courtName: '연습 기록',
+    caseNumber: '연습 기록',
+    partyRole: '신청인/원고',
+    submittedAt: '',
+    memo: '전자소송연습비서에서 저장한 연습 기록입니다. 실제 법원 제출 사건이 아닙니다.',
+    checklistSubmit: {
+      confirmedSubmitScreen: false,
+      savedReceipt: false,
+      checkedCaseNumber: false,
+      confirmedFeePayment: false,
+      savedFinalPdf: false,
+      checkedAttachments: false,
+      confirmedMyCaseList: false,
+    },
+    practiceDraft: {
+      source: 'lawsuit-practice',
+      savedAt,
+      ...draft,
     },
   });
 }

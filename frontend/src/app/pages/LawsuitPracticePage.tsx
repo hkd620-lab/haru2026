@@ -1,6 +1,8 @@
 import { type ReactNode, useMemo, useState } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { createPracticeDraftLegalCase } from '../services/legalCasesService';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -179,10 +181,12 @@ function makeMockCaseNumber() {
 
 export function LawsuitPracticePage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [state, setState] = useState<LawsuitPracticeState>(INITIAL_STATE);
   const [claimReasonAiRemaining, setClaimReasonAiRemaining] = useState(CLAIM_REASON_AI_LIMIT);
   const [isGeneratingClaimReason, setIsGeneratingClaimReason] = useState(false);
+  const [isSavingPracticeCase, setIsSavingPracticeCase] = useState(false);
 
   const isFinalStep = step === STEP_LABELS.length - 1;
   const isCompleted = Boolean(state.mockCaseNumber);
@@ -251,6 +255,34 @@ export function LawsuitPracticePage() {
     }));
   };
 
+  const savePracticeAsCase = async () => {
+    if (!user?.uid) {
+      alert('로그인이 필요합니다. 로그인 후 다시 시도해주세요.');
+      navigate('/login');
+      return;
+    }
+
+    setIsSavingPracticeCase(true);
+    try {
+      const caseId = await createPracticeDraftLegalCase(user.uid, {
+        caseName: state.caseName.trim() || '전자소송 연습 기록',
+        suitAmount: state.suitAmount,
+        plaintiffName: state.plaintiffName,
+        defendantName: state.defendantName,
+        claimPurpose: state.claimPurpose.trim() || buildClaimPurpose(state),
+        claimReason: state.claimReason,
+        evidenceList: state.evidenceList,
+      });
+      alert('연습 내용을 사건으로 저장했습니다. 상태는 제출준비로 기록됩니다.');
+      navigate(`/legal-cases/${caseId}`);
+    } catch (error) {
+      console.error('전자소송 연습 결과 저장 실패:', error);
+      alert('연습 내용을 저장하지 못했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setIsSavingPracticeCase(false);
+    }
+  };
+
   const generateClaimReasonDraft = async () => {
     if (isGeneratingClaimReason || claimReasonAiRemaining <= 0) return;
     if (
@@ -277,16 +309,23 @@ export function LawsuitPracticePage() {
         defendantName: state.defendantName || '',
         claimPurpose: state.claimPurpose || claimExample,
       });
-      const responseData = result.data as { claimReasonText?: string };
+      const responseData = result.data as { claimReasonText?: string; quotaRemaining?: number };
       const claimReasonText = (responseData.claimReasonText || '').trim();
       if (!claimReasonText) {
         throw new Error('EMPTY_CLAIM_REASON_TEXT');
       }
 
       updateState('claimReason', `${CLAIM_REASON_AI_NOTICE}\n\n${claimReasonText}`);
-      setClaimReasonAiRemaining((prev) => Math.max(prev - 1, 0));
+      setClaimReasonAiRemaining((prev) =>
+        typeof responseData.quotaRemaining === 'number'
+          ? Math.max(responseData.quotaRemaining, 0)
+          : Math.max(prev - 1, 0),
+      );
       console.log('전자소송연습비서 청구원인 AI 초안 완료', {
-        remainingAfter: Math.max(claimReasonAiRemaining - 1, 0),
+        remainingAfter:
+          typeof responseData.quotaRemaining === 'number'
+            ? Math.max(responseData.quotaRemaining, 0)
+            : Math.max(claimReasonAiRemaining - 1, 0),
       });
     } catch (error) {
       console.error('전자소송연습비서 청구원인 AI 초안 실패:', error);
@@ -792,12 +831,21 @@ export function LawsuitPracticePage() {
 
                 <div className="mt-5 rounded-lg border border-[#bfd7ee] bg-[#f3f9ff] p-5">
                   <p className="text-sm leading-6 text-[#475569]">
-                    전자소송 절차를 익혔다면, 샘플 사건을 만들어 제출 후 체크리스트·송달확인·보정기한 관리를 연습해 보세요.
+                    전자소송 절차를 익혔다면, 지금 작성한 내용을 연습 기록으로 저장해 제출 전 준비 상태에서 이어서 확인할 수 있습니다.
                   </p>
                   <button
                     type="button"
+                    onClick={savePracticeAsCase}
+                    disabled={isSavingPracticeCase}
+                    className="lawsuit-button mt-4 inline-flex w-full items-center justify-center gap-2 bg-[#185FA5] px-5 text-white disabled:bg-[#94a3b8]"
+                  >
+                    {isSavingPracticeCase ? '저장 중...' : '이 내용으로 사건 만들기'}
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => navigate('/legal-cases')}
-                    className="lawsuit-button mt-4 inline-flex w-full items-center justify-center gap-2 bg-[#185FA5] px-5 text-white"
+                    className="lawsuit-button mt-3 inline-flex w-full items-center justify-center gap-2 border border-[#185FA5] bg-white px-5 text-[#185FA5]"
                   >
                     전자소송 체크리스트 비서로 이동
                     <ChevronRight className="h-4 w-4" />

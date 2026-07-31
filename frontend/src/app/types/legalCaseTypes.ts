@@ -14,8 +14,21 @@ export interface LegalCase {
   memo?: string;
   lastCheckedAt?: string;
   checklistSubmit: SubmitChecklist;
+  practiceDraft?: LegalPracticeDraft;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+}
+
+export interface LegalPracticeDraft {
+  source: 'lawsuit-practice';
+  caseName: string;
+  suitAmount: string;
+  plaintiffName: string;
+  defendantName: string;
+  claimPurpose: string;
+  claimReason: string;
+  evidenceList: string[];
+  savedAt: string;
 }
 
 export type LegalCaseType =
