@@ -605,8 +605,7 @@ export function LawsuitPracticePage() {
                 <SectionTitle title="전자소송 동의" subtitle="연습 화면임을 확인해야 다음 단계로 이동할 수 있습니다." />
                 <div className="rounded-lg border border-[#cbd5e1] bg-[#f8fafc] p-5 text-sm leading-7 text-[#475569]">
                   본 화면은 전자소송 절차를 익히기 위한 모의 작성 화면입니다. 입력한 내용은
-                  법원에 제출되지 않으며, 현재 라운드에서는 저장·AI 작성·Functions 호출을 하지
-                  않습니다.
+                  법원에 제출되지 않으며, AI 초안과 연습 기록 저장도 실제 법원 제출이 아닙니다.
                 </div>
                 <label className="mt-5 flex items-center gap-3 text-sm font-extrabold text-[#1f2937]">
                   <input
