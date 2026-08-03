@@ -53,7 +53,13 @@ import { RecordHubPage } from './pages/RecordHubPage';
 import { SnsRecordsPage } from './pages/SnsRecordsPage';
 import { OnbidRealEstatePage } from './pages/OnbidRealEstatePage';
 import LegalAssistantHomePage from './pages/LegalAssistantHomePage';
+import CourtDocumentHelperPage from './pages/CourtDocumentHelperPage';
+import LegalSelfLitigationGuidePage from './pages/LegalSelfLitigationGuidePage';
+import ELitigationBeginnerGuidePage from './pages/ELitigationBeginnerGuidePage';
 import { LawsuitPracticePage } from './pages/LawsuitPracticePage';
+import { EcourtPracticeSearchPage } from './pages/EcourtPracticeSearchPage';
+import { EcourtPracticeLoginPage } from './pages/EcourtPracticeLoginPage';
+import { EcourtPracticeRegisterPage } from './pages/EcourtPracticeRegisterPage';
 import LegalCasesPage from './pages/LegalCasesPage';
 import LegalCaseDetailPage from './pages/LegalCaseDetailPage';
 import { SayuHealthHubPage } from './pages/SayuHealthHubPage';
@@ -196,6 +202,12 @@ function App() {
               <Route path="/sns-records" element={<SnsRecordsPage />} />
               <Route path="/onbid-realestate" element={<OnbidRealEstatePage />} />
               <Route path="/legal-assistant" element={<LegalAssistantHomePage />} />
+              <Route path="/legal-assistant/beginner-guide" element={<ELitigationBeginnerGuidePage />} />
+              <Route path="/legal-assistant/document-helper" element={<CourtDocumentHelperPage />} />
+              <Route path="/legal-assistant/guide" element={<LegalSelfLitigationGuidePage />} />
+              <Route path="/lawsuit-practice/portal/search" element={<EcourtPracticeSearchPage />} />
+              <Route path="/lawsuit-practice/portal/login" element={<EcourtPracticeLoginPage />} />
+              <Route path="/lawsuit-practice/portal/register" element={<EcourtPracticeRegisterPage />} />
               <Route path="/lawsuit-practice" element={<LawsuitPracticePage />} />
               <Route path="/legal-cases" element={<LegalCasesPage />} />
               <Route path="/legal-cases/:caseId" element={<LegalCaseDetailPage />} />

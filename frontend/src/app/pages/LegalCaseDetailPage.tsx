@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { LegalCaseProgressMap } from '../components/LegalCaseProgressMap';
+import { LegalTermHelp } from '../components/LegalTermHelp';
 import { useAuth } from '../contexts/AuthContext';
 import {
   addDocument,
@@ -74,12 +75,54 @@ const LEGAL_CASE_STATUSES: LegalCaseStatus[] = [
 
 const LEGAL_DOCUMENT_TYPES: LegalDocumentType[] = [
   '보정명령',
+  '변론기일통지서',
+  '답변서',
+  '준비서면',
+  '송달통지',
+  '지급명령',
   '결정문',
   '기일통지서',
   '이행권고결정',
   '준비명령',
   '판결문',
   '기타',
+];
+
+const DELIVERY_EXAMPLES = [
+  {
+    title: '소장 부본',
+    body: '상대방이 법원에 제출한 소장의 복사본을 법원에서 받은 경우',
+  },
+  {
+    title: '보정명령',
+    body: '제출한 서류의 부족한 부분을 고치거나 추가하라는 법원 문서를 받은 경우',
+  },
+  {
+    title: '기일통지서',
+    body: '재판·변론·심문 날짜와 시간을 알리는 법원 문서를 받은 경우',
+  },
+  {
+    title: '출석요구서',
+    body: '법원이 정한 날짜에 출석하도록 알리는 문서를 받은 경우',
+  },
+  {
+    title: '준비명령',
+    body: '주장이나 자료를 준비하도록 알리는 법원 문서를 받은 경우',
+  },
+  {
+    title: '결정문·판결문',
+    body: '신청이나 재판에 관한 법원의 판단 문서를 받은 경우',
+  },
+];
+
+const NON_DELIVERY_EXAMPLES = [
+  '내가 법원에 제출한 소장',
+  '내가 제출한 보정서',
+  '내가 제출한 준비서면',
+  '내가 제출한 증거자료',
+  '법원에 전화한 내용을 적은 개인 메모',
+  '내가 임의로 계산한 날짜',
+  '아직 제출하지 않은 서류 초안',
 ];
 
 function getToday() {
@@ -121,6 +164,7 @@ export default function LegalCaseDetailPage() {
   const [memoDraft, setMemoDraft] = useState('');
   const [deliveryFormOpen, setDeliveryFormOpen] = useState(false);
   const [deadlineFormOpen, setDeadlineFormOpen] = useState(false);
+  const [showDeliveryExamples, setShowDeliveryExamples] = useState(false);
   const [deliveryForm, setDeliveryForm] = useState<DocumentFormState>({
     ...emptyDocumentForm,
     documentType: '기일통지서',
@@ -205,7 +249,7 @@ export default function LegalCaseDetailPage() {
       const today = getToday();
       await updateLastCheckedAt(user.uid, caseId, today);
       setLegalCase((prev) => (prev ? { ...prev, lastCheckedAt: today } : prev));
-      toast.success('오늘 송달확인일을 기록했습니다.');
+      toast.success('오늘 법원 문서 확인 기록을 저장했습니다.');
     } catch (error) {
       console.error('송달확인일 업데이트 실패:', error);
       toast.error('송달확인일을 저장하지 못했습니다.');
@@ -480,7 +524,9 @@ export default function LegalCaseDetailPage() {
                   <dd className="font-medium text-gray-900">{legalCase.title}</dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">사건번호</dt>
+                  <dt className="text-gray-500">
+                    <LegalTermHelp term="사건번호" />
+                  </dt>
                   <dd className="font-medium text-gray-900">{legalCase.caseNumber}</dd>
                 </div>
                 <div>
@@ -603,12 +649,20 @@ export default function LegalCaseDetailPage() {
         {activeTab === 'delivery' && (
           <section className="space-y-4">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-base font-semibold text-gray-900">송달기록</h2>
+              <h2 className="text-base font-semibold text-gray-900">
+                <LegalTermHelp term="송달" />
+                기록
+              </h2>
               <Button size="sm" onClick={() => setDeliveryFormOpen(true)}>
                 <Plus className="size-4" />
                 새 기록 추가
               </Button>
             </div>
+
+            <DeliveryGuide
+              showMore={showDeliveryExamples}
+              onToggleMore={() => setShowDeliveryExamples((prev) => !prev)}
+            />
 
             {deliveryFormOpen && (
               <DocumentForm
@@ -631,7 +685,7 @@ export default function LegalCaseDetailPage() {
 
             <DocumentList
               documents={documents}
-              emptyText="기록된 송달문서가 없습니다."
+              emptyText="아직 HARU에 기록한 법원 문서가 없습니다."
               onToggleComplete={toggleDocumentComplete}
               onEdit={startDocumentEdit}
               onDelete={removeDocument}
@@ -655,11 +709,31 @@ export default function LegalCaseDetailPage() {
         {activeTab === 'deadline' && (
           <section className="space-y-4">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-base font-semibold text-gray-900">보정·기한</h2>
+              <h2 className="text-base font-semibold text-gray-900">
+                <LegalTermHelp term="보정명령" />
+                ·기한
+              </h2>
               <Button size="sm" onClick={() => setDeadlineFormOpen(true)}>
                 <Plus className="size-4" />
                 새 기록 추가
               </Button>
+            </div>
+
+            <div className="rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+              <p className="font-semibold">송달기록과 보정·기한은 이렇게 구분합니다.</p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                <div className="rounded-md bg-white px-3 py-2">
+                  <p className="font-semibold">송달기록</p>
+                  <p className="text-xs leading-5 text-blue-800">법원에서 받은 문서를 확인하고 남기는 곳입니다.</p>
+                </div>
+                <div className="rounded-md bg-white px-3 py-2">
+                  <p className="font-semibold">보정·기한</p>
+                  <p className="text-xs leading-5 text-blue-800">받은 문서 중에서 내가 준비하거나 처리해야 할 일을 관리하는 곳입니다.</p>
+                </div>
+              </div>
+              <p className="mt-2 text-xs leading-5">
+                보정명령처럼 대응이 필요한 문서는 송달기록에도 남고, 보정·기한에서도 처리상태를 관리할 수 있습니다.
+              </p>
             </div>
 
             {deadlineFormOpen && (
@@ -703,6 +777,58 @@ export default function LegalCaseDetailPage() {
             </div>
           </section>
         )}
+      </div>
+    </div>
+  );
+}
+
+function DeliveryGuide({ showMore, onToggleMore }: { showMore: boolean; onToggleMore: () => void }) {
+  const visibleExamples = showMore ? DELIVERY_EXAMPLES : DELIVERY_EXAMPLES.slice(0, 4);
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+        <p className="font-semibold">송달기록이란?</p>
+        <p className="mt-1">
+          법원이 나에게 공식적으로 보낸 문서와, 그 문서를 언제 확인했는지 남기는 기록입니다.
+        </p>
+        <p className="mt-1 font-semibold">새 문서가 도착했는지는 전자소송포털에서 직접 확인해야 합니다.</p>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">송달기록에 해당하는 예</h3>
+            <p className="mt-1 text-xs leading-5 text-gray-500">예시입니다. 실제 사건 기록이 아닙니다.</p>
+          </div>
+          <Button type="button" variant="ghost" size="sm" onClick={onToggleMore}>
+            {showMore ? '예시 접기' : '예시 더 보기'}
+          </Button>
+        </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {visibleExamples.map((item) => (
+            <article key={item.title} className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2">
+              <p className="text-sm font-semibold text-gray-900">
+                {item.title === '보정명령' ? <LegalTermHelp term="보정명령" /> : item.title}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-gray-600">{item.body}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <h3 className="text-sm font-semibold text-gray-900">다음은 송달기록이 아닙니다</h3>
+        <p className="mt-1 text-xs leading-5 text-gray-600">
+          법원에서 받은 것은 송달기록, 내가 법원에 낸 것은 제출기록으로 구분합니다.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {NON_DELIVERY_EXAMPLES.map((item) => (
+            <span key={item} className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-600">
+              {item}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -875,6 +1001,10 @@ function DocumentList({
   mode: 'delivery' | 'deadline';
 }) {
   if (documents.length === 0) {
+    if (mode === 'delivery') {
+      return <DeliveryEmptyState emptyText={emptyText} />;
+    }
+
     return (
       <div className="rounded-lg border border-dashed border-gray-300 bg-white px-4 py-10 text-center text-sm text-gray-500">
         {emptyText}
@@ -923,6 +1053,31 @@ function DocumentList({
                   {getUserInputDueLabel(item.dueDateByUserInput)}
                 </p>
               )}
+              {item.dueDateTextFromDocument && (
+                <p className="mt-3 rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-xs leading-5 text-gray-600">
+                  문서에 적힌 기한 원문: {item.dueDateTextFromDocument}
+                </p>
+              )}
+              {item.requirements && item.requirements.length > 0 && (
+                <div className="mt-3 rounded-md border border-orange-100 bg-orange-50 px-3 py-2">
+                  <p className="text-xs font-semibold text-orange-800">법원이 요구한 사항</p>
+                  <ul className="mt-1 space-y-1 text-xs leading-5 text-orange-900">
+                    {item.requirements.map((requirement) => (
+                      <li key={requirement}>- {requirement}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {item.preparationItems && item.preparationItems.length > 0 && (
+                <div className="mt-3 rounded-md border border-blue-100 bg-blue-50 px-3 py-2">
+                  <p className="text-xs font-semibold text-blue-800">준비해야 할 자료</p>
+                  <ul className="mt-1 space-y-1 text-xs leading-5 text-blue-900">
+                    {item.preparationItems.map((preparationItem) => (
+                      <li key={preparationItem}>- {preparationItem}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {item.actionMemo && <p className="mt-3 text-sm leading-6 text-gray-700">{item.actionMemo}</p>}
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 <label className="flex items-center gap-2 text-sm text-gray-700">
@@ -960,6 +1115,48 @@ function DocumentList({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function DeliveryEmptyState({ emptyText }: { emptyText: string }) {
+  return (
+    <div className="space-y-3">
+      <div className="rounded-lg border border-dashed border-gray-300 bg-white px-4 py-8 text-center text-sm text-gray-500">
+        <p>{emptyText}</p>
+        <p className="mt-2 leading-6">
+          법원에서 문서를 받았다면 문서명, 받은 날짜, 사용자가 직접 확인한 기한과 처리상태를 기록해 보세요.
+        </p>
+      </div>
+      <article className="rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+        <p className="text-xs font-semibold text-blue-700">예시 · 실제 사건 기록이 아닙니다</p>
+        <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+          <div>
+            <dt className="text-xs text-blue-700">문서명</dt>
+            <dd className="font-semibold">보정명령</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-blue-700">받은 날짜</dt>
+            <dd className="font-semibold">2026년 8월 1일</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-blue-700">대응 필요</dt>
+            <dd className="font-semibold">예</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-blue-700">확인할 내용</dt>
+            <dd className="font-semibold">주소 관련 자료 보완</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-blue-700">사용자가 확인한 기한</dt>
+            <dd className="font-semibold">2026년 8월 8일</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-blue-700">상태</dt>
+            <dd className="font-semibold">준비 중</dd>
+          </div>
+        </dl>
+      </article>
     </div>
   );
 }
