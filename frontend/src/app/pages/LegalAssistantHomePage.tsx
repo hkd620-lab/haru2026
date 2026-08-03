@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ChevronRight, FileText, Loader2, Scale, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, ChevronRight, FileText, HelpCircle, Loader2, Scale, ShieldAlert } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { InlineHelpPopover, LegalTermHelp } from '../components/LegalTermHelp';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
 import { getLegalTodayTasks, type LegalTodayTask } from '../services/legalTodayService';
+import { E_LITIGATION_BEGINNER_GUIDE_STORAGE_KEY } from './ELitigationBeginnerGuidePage';
 
 const entranceCards = [
   {
@@ -24,10 +26,10 @@ const entranceCards = [
   },
   {
     title: '법원에서 문서를 받았어요',
-    description: '법원 문서 도우미 준비 중',
-    path: '',
+    description: '문서 원문을 확인하면서 요구사항과 사용자가 확인한 기한을 사건에 연결합니다.',
+    path: '/legal-assistant/document-helper',
     icon: ShieldAlert,
-    enabled: false,
+    enabled: true,
   },
 ];
 
@@ -40,6 +42,13 @@ export default function LegalAssistantHomePage() {
   useEffect(() => {
     if (!loading && !user) {
       navigate('/login');
+      return;
+    }
+    if (!loading && user) {
+      const beginnerGuideCompleted = localStorage.getItem(E_LITIGATION_BEGINNER_GUIDE_STORAGE_KEY);
+      if (!beginnerGuideCompleted) {
+        navigate('/legal-assistant/beginner-guide', { replace: true });
+      }
     }
   }, [loading, navigate, user]);
 
@@ -83,6 +92,76 @@ export default function LegalAssistantHomePage() {
           <span />
         </header>
 
+        <section className="rounded-lg border border-blue-100 bg-white p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-700">
+              <Scale className="size-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-900">전자소송비서는 법원 제출 전후의 확인을 돕는 기록 도구입니다.</p>
+              <p className="mt-2 text-sm leading-6 text-gray-600">
+                <LegalTermHelp term="전자소송" />
+                은 법원에 서류를 온라인으로 제출하고{' '}
+                <LegalTermHelp term="송달문서" />
+                ,{' '}
+                <LegalTermHelp term="보정명령" />
+                ,{' '}
+                <LegalTermHelp term="기일" />
+                ,{' '}
+                <LegalTermHelp term="제출서류" />
+                를 직접 확인하며 진행하는 절차입니다.
+                HARU는 처음 준비하는 <LegalTermHelp term="나홀로소송" /> 내용은 연습으로 정리하고, 이미 제출한 사건은 체크리스트와 오늘 할 일로 관리하도록 돕습니다.
+              </p>
+              <div className="mt-3 rounded-md border border-blue-100 bg-blue-50 px-3 py-3">
+                <p className="text-sm font-semibold text-blue-900">나홀로소송 전체 과정 보기</p>
+                <p className="mt-1 text-xs leading-5 text-blue-800">
+                  준비부터 제출, 송달, 보정, 판결 이후까지 전체 흐름을 먼저 살펴봅니다.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 border-blue-200 bg-white text-blue-700"
+                  onClick={() => navigate('/legal-assistant/guide')}
+                >
+                  나홀로소송 전체 과정 보기
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
+              <div className="mt-3 grid gap-2 text-xs leading-5 text-gray-600 sm:grid-cols-3">
+                <div className="rounded-md bg-gray-50 px-3 py-2">
+                  <span className="font-semibold text-gray-900">처음이라면</span>
+                  <br />
+                  새로 소송을 준비하고 있어요
+                </div>
+                <div className="rounded-md bg-gray-50 px-3 py-2">
+                  <span className="font-semibold text-gray-900">제출했다면</span>
+                  <br />
+                  이미 소송을 제출했어요
+                </div>
+                <div className="rounded-md bg-gray-50 px-3 py-2">
+                  <span className="font-semibold text-gray-900">문서를 받았다면</span>
+                  <br />
+                  법원에서 문서를 받았어요
+                </div>
+              </div>
+              <p className="mt-3 rounded-md border border-red-100 bg-red-50 px-3 py-2 text-xs leading-5 text-red-900">
+                HARU는 법률 판단, 제출기한 확정, 실제 법원 제출을 대신하지 않습니다. 법원 문서와 전자소송포털 안내를 직접 확인하세요.
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="mt-3 px-0 text-blue-700 hover:bg-transparent hover:text-blue-800"
+                onClick={() => navigate('/legal-assistant/beginner-guide')}
+              >
+                전자소송포털 처음 안내 다시 보기
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          </div>
+        </section>
+
         <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="text-base font-semibold text-gray-900">오늘 할 일</h2>
@@ -105,6 +184,25 @@ export default function LegalAssistantHomePage() {
                     <div>
                       <p className="text-sm font-semibold text-gray-900">{task.caseTitle}</p>
                       <p className="mt-1 text-sm text-gray-700">{task.message}</p>
+                      {task.type === 'delivery-check' && (
+                        <p className="mt-2 text-xs leading-5 text-gray-600">
+                          <InlineHelpPopover
+                            label={
+                              <span className="inline-flex items-center gap-1">
+                                <HelpCircle className="size-3.5" />
+                                무슨 뜻인가요?
+                              </span>
+                            }
+                            ariaLabel="법원 문서 확인 기록 설명 보기"
+                            title="법원 문서 확인 기록이란?"
+                            emphasis="새 송달문서가 도착했다는 뜻은 아닙니다."
+                            className="inline-flex align-baseline font-semibold text-blue-700 underline decoration-dotted underline-offset-4"
+                          >
+                            오늘 전자소송포털이나 법원이 보낸 문서함을 확인했다는 기록이 HARU에 아직 없다는 뜻입니다.
+                            직접 확인한 뒤 ‘오늘 확인했습니다’를 눌러 기록하세요.
+                          </InlineHelpPopover>
+                        </p>
+                      )}
                     </div>
                     <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700">
                       {task.title}
