@@ -64,8 +64,16 @@ export interface LegalDocument {
   caseId: string;
   title: string;
   documentType: LegalDocumentType;
+  courtName?: string;
+  caseNumber?: string;
+  documentWrittenAt?: string;
   receivedAt?: string;
+  receivedAtByUserInput?: string;
+  dueDateTextFromDocument?: string;
   dueDateByUserInput?: string;
+  userConfirmedDueDate?: boolean;
+  requirements?: string[];
+  preparationItems?: string[];
   requiresAction: boolean;
   actionStatus: ActionStatus;
   actionMemo?: string;
@@ -81,6 +89,11 @@ export type LegalDocumentType =
   | '기일통지서'
   | '이행권고결정'
   | '준비명령'
+  | '변론기일통지서'
+  | '답변서'
+  | '준비서면'
+  | '송달통지'
+  | '지급명령'
   | '판결문'
   | '기타';
 

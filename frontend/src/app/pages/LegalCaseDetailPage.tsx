@@ -1,12 +1,15 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, CheckCircle2, Loader2, Plus, RefreshCw } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, CheckCircle2, Edit3, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
+import { LegalCaseProgressMap } from '../components/LegalCaseProgressMap';
+import { LegalTermHelp } from '../components/LegalTermHelp';
 import { useAuth } from '../contexts/AuthContext';
 import {
   addDocument,
+  deleteDocument,
   getDocuments,
   getLegalCase,
   updateDocument,
@@ -14,6 +17,7 @@ import {
   updateLegalCase,
   updateSubmitChecklist,
 } from '../services/legalCasesService';
+import { getUserInputDueLabel, isUrgentUserInputDue } from '../services/legalTodayService';
 import {
   type ActionStatus,
   type LegalCase,
@@ -71,6 +75,11 @@ const LEGAL_CASE_STATUSES: LegalCaseStatus[] = [
 
 const LEGAL_DOCUMENT_TYPES: LegalDocumentType[] = [
   '보정명령',
+  '변론기일통지서',
+  '답변서',
+  '준비서면',
+  '송달통지',
+  '지급명령',
   '결정문',
   '기일통지서',
   '이행권고결정',
@@ -79,12 +88,51 @@ const LEGAL_DOCUMENT_TYPES: LegalDocumentType[] = [
   '기타',
 ];
 
+const DELIVERY_EXAMPLES = [
+  {
+    title: '소장 부본',
+    body: '상대방이 법원에 제출한 소장의 복사본을 법원에서 받은 경우',
+  },
+  {
+    title: '보정명령',
+    body: '제출한 서류의 부족한 부분을 고치거나 추가하라는 법원 문서를 받은 경우',
+  },
+  {
+    title: '기일통지서',
+    body: '재판·변론·심문 날짜와 시간을 알리는 법원 문서를 받은 경우',
+  },
+  {
+    title: '출석요구서',
+    body: '법원이 정한 날짜에 출석하도록 알리는 문서를 받은 경우',
+  },
+  {
+    title: '준비명령',
+    body: '주장이나 자료를 준비하도록 알리는 법원 문서를 받은 경우',
+  },
+  {
+    title: '결정문·판결문',
+    body: '신청이나 재판에 관한 법원의 판단 문서를 받은 경우',
+  },
+];
+
+const NON_DELIVERY_EXAMPLES = [
+  '내가 법원에 제출한 소장',
+  '내가 제출한 보정서',
+  '내가 제출한 준비서면',
+  '내가 제출한 증거자료',
+  '법원에 전화한 내용을 적은 개인 메모',
+  '내가 임의로 계산한 날짜',
+  '아직 제출하지 않은 서류 초안',
+];
+
 function getToday() {
   return new Date().toISOString().slice(0, 10);
 }
 
 function statusClassName(status: LegalCaseStatus) {
   switch (status) {
+    case '제출준비':
+      return 'border-purple-200 bg-purple-50 text-purple-700';
     case '제출완료':
       return 'border-blue-200 bg-blue-50 text-blue-700';
     case '송달확인중':
@@ -102,27 +150,10 @@ function statusClassName(status: LegalCaseStatus) {
   }
 }
 
-function getUserInputDueLabel(dateValue?: string) {
-  if (!dateValue) return '기한 미입력';
-  const due = new Date(`${dateValue}T00:00:00`);
-  const today = new Date(`${getToday()}T00:00:00`);
-  const diff = Math.ceil((due.getTime() - today.getTime()) / 86400000);
-  if (diff > 0) return `입력된 기한까지 D-${diff}`;
-  if (diff === 0) return '입력된 기한 당일입니다';
-  return '입력된 기한이 지났습니다 (기한 직접 확인 필요)';
-}
-
-function isUrgentUserInputDue(dateValue?: string) {
-  if (!dateValue) return false;
-  const due = new Date(`${dateValue}T00:00:00`);
-  const today = new Date(`${getToday()}T00:00:00`);
-  const diff = Math.ceil((due.getTime() - today.getTime()) / 86400000);
-  return diff <= 3;
-}
-
 export default function LegalCaseDetailPage() {
   const navigate = useNavigate();
   const { caseId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState<DetailTab>('info');
   const [legalCase, setLegalCase] = useState<LegalCase | null>(null);
@@ -133,6 +164,7 @@ export default function LegalCaseDetailPage() {
   const [memoDraft, setMemoDraft] = useState('');
   const [deliveryFormOpen, setDeliveryFormOpen] = useState(false);
   const [deadlineFormOpen, setDeadlineFormOpen] = useState(false);
+  const [showDeliveryExamples, setShowDeliveryExamples] = useState(false);
   const [deliveryForm, setDeliveryForm] = useState<DocumentFormState>({
     ...emptyDocumentForm,
     documentType: '기일통지서',
@@ -141,6 +173,8 @@ export default function LegalCaseDetailPage() {
     ...emptyDocumentForm,
     requiresAction: true,
   });
+  const [editingDocumentId, setEditingDocumentId] = useState<string | null>(null);
+  const [documentEditForm, setDocumentEditForm] = useState<DocumentFormState>(emptyDocumentForm);
 
   const checklistComplete = useMemo(() => {
     if (!legalCase) return false;
@@ -196,6 +230,18 @@ export default function LegalCaseDetailPage() {
     }
   }, [user?.uid, caseId]);
 
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'info' || tab === 'checklist' || tab === 'delivery' || tab === 'deadline') {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
+  const selectTab = (tab: DetailTab) => {
+    setActiveTab(tab);
+    setSearchParams({ tab });
+  };
+
   const markCheckedToday = async () => {
     if (!user?.uid || !caseId) return;
     setIsSaving(true);
@@ -203,7 +249,7 @@ export default function LegalCaseDetailPage() {
       const today = getToday();
       await updateLastCheckedAt(user.uid, caseId, today);
       setLegalCase((prev) => (prev ? { ...prev, lastCheckedAt: today } : prev));
-      toast.success('오늘 송달확인일을 기록했습니다.');
+      toast.success('오늘 법원 문서 확인 기록을 저장했습니다.');
     } catch (error) {
       console.error('송달확인일 업데이트 실패:', error);
       toast.error('송달확인일을 저장하지 못했습니다.');
@@ -270,6 +316,13 @@ export default function LegalCaseDetailPage() {
     setDeadlineForm((prev) => ({ ...prev, [key]: value }));
   };
 
+  const updateDocumentEditForm = <K extends keyof DocumentFormState>(
+    key: K,
+    value: DocumentFormState[K],
+  ) => {
+    setDocumentEditForm((prev) => ({ ...prev, [key]: value }));
+  };
+
   const submitDocument = async (
     event: FormEvent<HTMLFormElement>,
     form: DocumentFormState,
@@ -324,6 +377,76 @@ export default function LegalCaseDetailPage() {
     }
   };
 
+  const startDocumentEdit = (documentItem: LegalDocument) => {
+    setEditingDocumentId(documentItem.id);
+    setDocumentEditForm({
+      title: documentItem.title,
+      documentType: documentItem.documentType,
+      receivedAt: documentItem.receivedAt || '',
+      dueDateByUserInput: documentItem.dueDateByUserInput || '',
+      requiresAction: documentItem.requiresAction,
+      actionStatus: documentItem.actionStatus,
+      actionMemo: documentItem.actionMemo || '',
+      isCompleted: documentItem.isCompleted,
+      completedAt: documentItem.completedAt || '',
+    });
+  };
+
+  const submitDocumentEdit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!user?.uid || !caseId || !editingDocumentId) return;
+    const title = documentEditForm.title.trim();
+    if (!title) {
+      toast.error('문서명을 입력해 주세요.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await updateDocument(user.uid, caseId, editingDocumentId, {
+        title,
+        documentType: documentEditForm.documentType,
+        receivedAt: documentEditForm.receivedAt || undefined,
+        dueDateByUserInput: documentEditForm.dueDateByUserInput || undefined,
+        requiresAction: documentEditForm.requiresAction,
+        actionStatus: documentEditForm.actionStatus,
+        actionMemo: documentEditForm.actionMemo.trim() || undefined,
+        isCompleted: documentEditForm.isCompleted,
+        completedAt: documentEditForm.completedAt || undefined,
+      });
+      toast.success('문서 기록을 수정했습니다.');
+      setEditingDocumentId(null);
+      setDocumentEditForm(emptyDocumentForm);
+      await loadDetail();
+    } catch (error) {
+      console.error('문서 기록 수정 실패:', error);
+      toast.error('문서 기록을 수정하지 못했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const removeDocument = async (documentItem: LegalDocument) => {
+    if (!user?.uid || !caseId) return;
+    const firstConfirm = window.confirm(`'${documentItem.title}' 문서 기록을 삭제하시겠습니까?`);
+    if (!firstConfirm) return;
+
+    setIsSaving(true);
+    try {
+      await deleteDocument(user.uid, caseId, documentItem.id);
+      toast.success('문서 기록을 삭제했습니다.');
+      if (editingDocumentId === documentItem.id) {
+        setEditingDocumentId(null);
+      }
+      await loadDetail();
+    } catch (error) {
+      console.error('문서 기록 삭제 실패:', error);
+      toast.error('문서 기록을 삭제하지 못했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (loading || isLoading) {
     return (
       <div className="min-h-screen bg-[#FEFBE8] px-4 py-6">
@@ -354,6 +477,13 @@ export default function LegalCaseDetailPage() {
           </Button>
         </header>
 
+        <LegalCaseProgressMap
+          status={legalCase.status}
+          lastCheckedAt={legalCase.lastCheckedAt}
+          onMarkCheckedToday={markCheckedToday}
+          isSaving={isSaving}
+        />
+
         <nav className="grid grid-cols-4 rounded-lg border border-gray-200 bg-white p-1 text-sm shadow-sm">
           {[
             ['info', '사건정보'],
@@ -364,7 +494,7 @@ export default function LegalCaseDetailPage() {
             <button
               key={value}
               type="button"
-              onClick={() => setActiveTab(value as DetailTab)}
+              onClick={() => selectTab(value as DetailTab)}
               className={`rounded-md px-2 py-2 font-medium ${
                 activeTab === value ? 'bg-gray-900 text-white' : 'text-gray-600'
               }`}
@@ -382,6 +512,11 @@ export default function LegalCaseDetailPage() {
                 <Badge variant="outline" className={statusClassName(legalCase.status)}>
                   {legalCase.status}
                 </Badge>
+                {legalCase.practiceDraft && (
+                  <Badge variant="outline" className="border-purple-200 bg-purple-50 text-purple-700">
+                    연습 기록
+                  </Badge>
+                )}
               </div>
               <dl className="grid gap-3 text-sm sm:grid-cols-2">
                 <div>
@@ -389,7 +524,9 @@ export default function LegalCaseDetailPage() {
                   <dd className="font-medium text-gray-900">{legalCase.title}</dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">사건번호</dt>
+                  <dt className="text-gray-500">
+                    <LegalTermHelp term="사건번호" />
+                  </dt>
                   <dd className="font-medium text-gray-900">{legalCase.caseNumber}</dd>
                 </div>
                 <div>
@@ -512,12 +649,20 @@ export default function LegalCaseDetailPage() {
         {activeTab === 'delivery' && (
           <section className="space-y-4">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-base font-semibold text-gray-900">송달기록</h2>
+              <h2 className="text-base font-semibold text-gray-900">
+                <LegalTermHelp term="송달" />
+                기록
+              </h2>
               <Button size="sm" onClick={() => setDeliveryFormOpen(true)}>
                 <Plus className="size-4" />
                 새 기록 추가
               </Button>
             </div>
+
+            <DeliveryGuide
+              showMore={showDeliveryExamples}
+              onToggleMore={() => setShowDeliveryExamples((prev) => !prev)}
+            />
 
             {deliveryFormOpen && (
               <DocumentForm
@@ -540,9 +685,18 @@ export default function LegalCaseDetailPage() {
 
             <DocumentList
               documents={documents}
-              emptyText="기록된 송달문서가 없습니다."
+              emptyText="아직 HARU에 기록한 법원 문서가 없습니다."
               onToggleComplete={toggleDocumentComplete}
+              onEdit={startDocumentEdit}
+              onDelete={removeDocument}
+              editingDocumentId={editingDocumentId}
+              editForm={documentEditForm}
+              setEditForm={updateDocumentEditForm}
+              onCancelEdit={() => setEditingDocumentId(null)}
+              onSubmitEdit={submitDocumentEdit}
+              isSaving={isSaving}
               showDue={false}
+              mode="delivery"
             />
 
             <div className="rounded-md bg-gray-100 px-3 py-2 text-xs leading-5 text-gray-600">
@@ -555,11 +709,31 @@ export default function LegalCaseDetailPage() {
         {activeTab === 'deadline' && (
           <section className="space-y-4">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-base font-semibold text-gray-900">보정·기한</h2>
+              <h2 className="text-base font-semibold text-gray-900">
+                <LegalTermHelp term="보정명령" />
+                ·기한
+              </h2>
               <Button size="sm" onClick={() => setDeadlineFormOpen(true)}>
                 <Plus className="size-4" />
                 새 기록 추가
               </Button>
+            </div>
+
+            <div className="rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+              <p className="font-semibold">송달기록과 보정·기한은 이렇게 구분합니다.</p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                <div className="rounded-md bg-white px-3 py-2">
+                  <p className="font-semibold">송달기록</p>
+                  <p className="text-xs leading-5 text-blue-800">법원에서 받은 문서를 확인하고 남기는 곳입니다.</p>
+                </div>
+                <div className="rounded-md bg-white px-3 py-2">
+                  <p className="font-semibold">보정·기한</p>
+                  <p className="text-xs leading-5 text-blue-800">받은 문서 중에서 내가 준비하거나 처리해야 할 일을 관리하는 곳입니다.</p>
+                </div>
+              </div>
+              <p className="mt-2 text-xs leading-5">
+                보정명령처럼 대응이 필요한 문서는 송달기록에도 남고, 보정·기한에서도 처리상태를 관리할 수 있습니다.
+              </p>
             </div>
 
             {deadlineFormOpen && (
@@ -585,7 +759,16 @@ export default function LegalCaseDetailPage() {
               documents={deadlineDocuments}
               emptyText="기록된 보정·기한 항목이 없습니다."
               onToggleComplete={toggleDocumentComplete}
+              onEdit={startDocumentEdit}
+              onDelete={removeDocument}
+              editingDocumentId={editingDocumentId}
+              editForm={documentEditForm}
+              setEditForm={updateDocumentEditForm}
+              onCancelEdit={() => setEditingDocumentId(null)}
+              onSubmitEdit={submitDocumentEdit}
+              isSaving={isSaving}
               showDue
+              mode="deadline"
             />
 
             <div className="rounded-md bg-gray-100 px-3 py-2 text-xs leading-5 text-gray-600">
@@ -594,6 +777,58 @@ export default function LegalCaseDetailPage() {
             </div>
           </section>
         )}
+      </div>
+    </div>
+  );
+}
+
+function DeliveryGuide({ showMore, onToggleMore }: { showMore: boolean; onToggleMore: () => void }) {
+  const visibleExamples = showMore ? DELIVERY_EXAMPLES : DELIVERY_EXAMPLES.slice(0, 4);
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+        <p className="font-semibold">송달기록이란?</p>
+        <p className="mt-1">
+          법원이 나에게 공식적으로 보낸 문서와, 그 문서를 언제 확인했는지 남기는 기록입니다.
+        </p>
+        <p className="mt-1 font-semibold">새 문서가 도착했는지는 전자소송포털에서 직접 확인해야 합니다.</p>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">송달기록에 해당하는 예</h3>
+            <p className="mt-1 text-xs leading-5 text-gray-500">예시입니다. 실제 사건 기록이 아닙니다.</p>
+          </div>
+          <Button type="button" variant="ghost" size="sm" onClick={onToggleMore}>
+            {showMore ? '예시 접기' : '예시 더 보기'}
+          </Button>
+        </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {visibleExamples.map((item) => (
+            <article key={item.title} className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2">
+              <p className="text-sm font-semibold text-gray-900">
+                {item.title === '보정명령' ? <LegalTermHelp term="보정명령" /> : item.title}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-gray-600">{item.body}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <h3 className="text-sm font-semibold text-gray-900">다음은 송달기록이 아닙니다</h3>
+        <p className="mt-1 text-xs leading-5 text-gray-600">
+          법원에서 받은 것은 송달기록, 내가 법원에 낸 것은 제출기록으로 구분합니다.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {NON_DELIVERY_EXAMPLES.map((item) => (
+            <span key={item} className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-600">
+              {item}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -740,14 +975,36 @@ function DocumentList({
   documents,
   emptyText,
   onToggleComplete,
+  onEdit,
+  onDelete,
+  editingDocumentId,
+  editForm,
+  setEditForm,
+  onCancelEdit,
+  onSubmitEdit,
+  isSaving,
   showDue,
+  mode,
 }: {
   documents: LegalDocument[];
   emptyText: string;
   onToggleComplete: (documentItem: LegalDocument, checked: boolean) => void;
+  onEdit: (documentItem: LegalDocument) => void;
+  onDelete: (documentItem: LegalDocument) => void;
+  editingDocumentId: string | null;
+  editForm: DocumentFormState;
+  setEditForm: <K extends keyof DocumentFormState>(key: K, value: DocumentFormState[K]) => void;
+  onCancelEdit: () => void;
+  onSubmitEdit: (event: FormEvent<HTMLFormElement>) => void;
+  isSaving: boolean;
   showDue: boolean;
+  mode: 'delivery' | 'deadline';
 }) {
   if (documents.length === 0) {
+    if (mode === 'delivery') {
+      return <DeliveryEmptyState emptyText={emptyText} />;
+    }
+
     return (
       <div className="rounded-lg border border-dashed border-gray-300 bg-white px-4 py-10 text-center text-sm text-gray-500">
         {emptyText}
@@ -760,55 +1017,146 @@ function DocumentList({
       {documents.map((item) => {
         const urgent = showDue && isUrgentUserInputDue(item.dueDateByUserInput);
         return (
-          <article
-            key={item.id}
-            className={`rounded-lg border bg-white p-4 shadow-sm ${
-              urgent ? 'border-red-200' : 'border-gray-200'
-            }`}
-          >
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <h3 className="font-semibold text-gray-900">{item.title}</h3>
-                <p className="mt-1 text-sm text-gray-600">
-                  {item.documentType} · 수령일 {item.receivedAt || '미입력'}
-                </p>
-              </div>
-              <div className="flex flex-wrap justify-end gap-2">
-                {item.requiresAction && (
-                  <Badge variant="outline" className="border-orange-200 bg-orange-50 text-orange-700">
-                    대응 필요
+          <div key={item.id} className="space-y-2">
+            <article
+              className={`rounded-lg border bg-white p-4 shadow-sm ${
+                urgent ? 'border-red-200' : 'border-gray-200'
+              }`}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h3 className="font-semibold text-gray-900">{item.title}</h3>
+                  <p className="mt-1 text-sm text-gray-600">
+                    {item.documentType} · 수령일 {item.receivedAt || '미입력'}
+                  </p>
+                </div>
+                <div className="flex flex-wrap justify-end gap-2">
+                  {item.requiresAction && (
+                    <Badge variant="outline" className="border-orange-200 bg-orange-50 text-orange-700">
+                      대응 필요
+                    </Badge>
+                  )}
+                  <Badge
+                    variant="outline"
+                    className={
+                      item.isCompleted
+                        ? 'border-green-200 bg-green-50 text-green-700'
+                        : 'border-gray-200 bg-gray-50 text-gray-700'
+                    }
+                  >
+                    {item.actionStatus}
                   </Badge>
-                )}
-                <Badge
-                  variant="outline"
-                  className={
-                    item.isCompleted
-                      ? 'border-green-200 bg-green-50 text-green-700'
-                      : 'border-gray-200 bg-gray-50 text-gray-700'
-                  }
-                >
-                  {item.actionStatus}
-                </Badge>
+                </div>
               </div>
-            </div>
-            {showDue && (
-              <p className={`mt-3 text-sm ${urgent ? 'font-semibold text-red-700' : 'text-gray-600'}`}>
-                {getUserInputDueLabel(item.dueDateByUserInput)}
-              </p>
-            )}
-            {item.actionMemo && <p className="mt-3 text-sm leading-6 text-gray-700">{item.actionMemo}</p>}
-            <label className="mt-3 flex items-center gap-2 text-sm text-gray-700">
-              <input
-                type="checkbox"
-                checked={item.isCompleted}
-                onChange={(event) => onToggleComplete(item, event.target.checked)}
-                className="size-4"
+              {showDue && (
+                <p className={`mt-3 text-sm ${urgent ? 'font-semibold text-red-700' : 'text-gray-600'}`}>
+                  {getUserInputDueLabel(item.dueDateByUserInput)}
+                </p>
+              )}
+              {item.dueDateTextFromDocument && (
+                <p className="mt-3 rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-xs leading-5 text-gray-600">
+                  문서에 적힌 기한 원문: {item.dueDateTextFromDocument}
+                </p>
+              )}
+              {item.requirements && item.requirements.length > 0 && (
+                <div className="mt-3 rounded-md border border-orange-100 bg-orange-50 px-3 py-2">
+                  <p className="text-xs font-semibold text-orange-800">법원이 요구한 사항</p>
+                  <ul className="mt-1 space-y-1 text-xs leading-5 text-orange-900">
+                    {item.requirements.map((requirement) => (
+                      <li key={requirement}>- {requirement}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {item.preparationItems && item.preparationItems.length > 0 && (
+                <div className="mt-3 rounded-md border border-blue-100 bg-blue-50 px-3 py-2">
+                  <p className="text-xs font-semibold text-blue-800">준비해야 할 자료</p>
+                  <ul className="mt-1 space-y-1 text-xs leading-5 text-blue-900">
+                    {item.preparationItems.map((preparationItem) => (
+                      <li key={preparationItem}>- {preparationItem}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {item.actionMemo && <p className="mt-3 text-sm leading-6 text-gray-700">{item.actionMemo}</p>}
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={item.isCompleted}
+                    onChange={(event) => onToggleComplete(item, event.target.checked)}
+                    className="size-4"
+                  />
+                  처리 완료
+                </label>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => onEdit(item)}>
+                    <Edit3 className="size-4" />
+                    수정
+                  </Button>
+                  <Button type="button" variant="destructive" size="sm" onClick={() => onDelete(item)}>
+                    <Trash2 className="size-4" />
+                    삭제
+                  </Button>
+                </div>
+              </div>
+            </article>
+            {editingDocumentId === item.id && (
+              <DocumentForm
+                title="문서 기록 수정"
+                form={editForm}
+                setForm={setEditForm}
+                onCancel={onCancelEdit}
+                onSubmit={onSubmitEdit}
+                isSaving={isSaving}
+                mode={mode}
               />
-              처리 완료
-            </label>
-          </article>
+            )}
+          </div>
         );
       })}
+    </div>
+  );
+}
+
+function DeliveryEmptyState({ emptyText }: { emptyText: string }) {
+  return (
+    <div className="space-y-3">
+      <div className="rounded-lg border border-dashed border-gray-300 bg-white px-4 py-8 text-center text-sm text-gray-500">
+        <p>{emptyText}</p>
+        <p className="mt-2 leading-6">
+          법원에서 문서를 받았다면 문서명, 받은 날짜, 사용자가 직접 확인한 기한과 처리상태를 기록해 보세요.
+        </p>
+      </div>
+      <article className="rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+        <p className="text-xs font-semibold text-blue-700">예시 · 실제 사건 기록이 아닙니다</p>
+        <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+          <div>
+            <dt className="text-xs text-blue-700">문서명</dt>
+            <dd className="font-semibold">보정명령</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-blue-700">받은 날짜</dt>
+            <dd className="font-semibold">2026년 8월 1일</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-blue-700">대응 필요</dt>
+            <dd className="font-semibold">예</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-blue-700">확인할 내용</dt>
+            <dd className="font-semibold">주소 관련 자료 보완</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-blue-700">사용자가 확인한 기한</dt>
+            <dd className="font-semibold">2026년 8월 8일</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-blue-700">상태</dt>
+            <dd className="font-semibold">준비 중</dd>
+          </div>
+        </dl>
+      </article>
     </div>
   );
 }

@@ -261,7 +261,7 @@ export default function LegalCasesPage() {
         {todayUncheckedCount > 0 && (
           <div className="flex items-start gap-2 rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-900">
             <Bell className="mt-0.5 size-4 shrink-0" />
-            오늘 송달 확인이 기록되지 않은 사건이 {todayUncheckedCount}건 있습니다.
+            오늘 법원 문서 확인 기록이 없는 사건이 {todayUncheckedCount}건 있습니다.
           </div>
         )}
 

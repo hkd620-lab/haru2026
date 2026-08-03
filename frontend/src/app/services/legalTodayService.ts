@@ -138,8 +138,8 @@ export async function getLegalTodayTasks(uid: string): Promise<LegalTodayTask[]>
           type: 'delivery-check',
           caseId: item.id,
           caseTitle: item.title,
-          title: '송달 확인 필요',
-          message: '오늘 송달 확인이 기록되지 않았습니다.',
+          title: '법원 문서 확인 기록 필요',
+          message: '오늘 법원 문서 확인 기록이 없습니다.',
           tab: 'delivery',
           priority: 40,
         });
