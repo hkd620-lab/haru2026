@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
 import { addDocument, getLegalCases } from '../services/legalCasesService';
-import type { LegalCase, LegalDocumentType } from '../types/legalCaseTypes';
+import type { LegalCase, LegalDocument, LegalDocumentType } from '../types/legalCaseTypes';
 
 type DocumentHelperForm = {
   caseId: string;

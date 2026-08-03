@@ -2,9 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, ChevronLeft, ChevronRight, Expand, FileWarning, Search, ShieldAlert, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
+import { useAuth } from '../contexts/AuthContext';
 
 export const E_LITIGATION_BEGINNER_GUIDE_STORAGE_KEY =
   'haru_e_litigation_beginner_guide_completed';
+
+export function getELitigationBeginnerGuideStorageKey(uid: string) {
+  return `${E_LITIGATION_BEGINNER_GUIDE_STORAGE_KEY}:${uid}`;
+}
 
 type GuideTableRow = {
   label: string;
@@ -143,12 +148,9 @@ const START_OPTIONS = [
 
 const GUIDE_IMAGE_SRC = '/legal-assistant/e-litigation-integrated-search.png';
 
-function markBeginnerGuideCompleted() {
-  localStorage.setItem(E_LITIGATION_BEGINNER_GUIDE_STORAGE_KEY, 'true');
-}
-
 export default function ELitigationBeginnerGuidePage() {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const [hasStarted, setHasStarted] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [pendingOption, setPendingOption] = useState<string | null>(null);
@@ -161,6 +163,12 @@ export default function ELitigationBeginnerGuidePage() {
   const isLastStep = stepIndex === GUIDE_STEPS.length - 1;
 
   const stepProgress = useMemo(() => `${stepIndex + 1} / ${GUIDE_STEPS.length}`, [stepIndex]);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/login');
+    }
+  }, [loading, navigate, user]);
 
   useEffect(() => {
     if (hasStarted) {
@@ -184,6 +192,11 @@ export default function ELitigationBeginnerGuidePage() {
     const timer = window.setTimeout(() => setActiveTerm(null), 7000);
     return () => window.clearTimeout(timer);
   }, [activeTerm]);
+
+  const markBeginnerGuideCompleted = () => {
+    if (!user?.uid) return;
+    localStorage.setItem(getELitigationBeginnerGuideStorageKey(user.uid), 'true');
+  };
 
   const goHomeAfterCompletion = () => {
     markBeginnerGuideCompleted();
@@ -213,6 +226,18 @@ export default function ELitigationBeginnerGuidePage() {
     setPendingOption(null);
     setActiveTerm(null);
   };
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-[#FEFBE8] px-4 py-5 text-gray-900">
+        <div className="mx-auto flex max-w-3xl items-center justify-center py-20 text-sm text-gray-500">
+          전자소송포털 처음 안내를 준비하는 중입니다.
+        </div>
+      </main>
+    );
+  }
+
+  if (!user) return null;
 
   return (
     <main className="min-h-screen bg-[#FEFBE8] px-4 py-5 text-gray-900">

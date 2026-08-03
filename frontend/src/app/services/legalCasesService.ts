@@ -13,6 +13,31 @@ import {
 import { auth, db } from '../../firebase';
 import type { LegalCase, LegalDocument, LegalPracticeDraft, SubmitChecklist } from '../types/legalCaseTypes';
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== 'object') return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function omitUndefinedDeep<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item) => item !== undefined)
+      .map((item) => omitUndefinedDeep(item)) as T;
+  }
+
+  if (!isPlainObject(value)) {
+    return value;
+  }
+
+  return Object.entries(value).reduce<Record<string, unknown>>((acc, [key, item]) => {
+    if (item !== undefined) {
+      acc[key] = omitUndefinedDeep(item);
+    }
+    return acc;
+  }, {}) as T;
+}
+
 function legalCasesCollection(uid: string) {
   return collection(db, 'users', uid, 'legalCases');
 }
@@ -50,8 +75,9 @@ export async function createLegalCase(
   uid: string,
   data: Omit<LegalCase, 'id' | 'createdAt' | 'updatedAt'>,
 ): Promise<string> {
+  const safeData = omitUndefinedDeep(data);
   const result = await addDoc(legalCasesCollection(uid), {
-    ...data,
+    ...safeData,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -64,8 +90,9 @@ export async function updateLegalCase(
   data: Partial<LegalCase>,
 ): Promise<void> {
   const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...safeData } = data;
+  const cleanedData = omitUndefinedDeep(safeData);
   await updateDoc(legalCaseDoc(uid, caseId), {
-    ...safeData,
+    ...cleanedData,
     updatedAt: serverTimestamp(),
   });
 }
@@ -119,8 +146,9 @@ export async function addDocument(
   caseId: string,
   data: Omit<LegalDocument, 'id' | 'caseId' | 'createdAt' | 'updatedAt'>,
 ): Promise<string> {
+  const safeData = omitUndefinedDeep(data);
   const result = await addDoc(documentsCollection(uid, caseId), {
-    ...data,
+    ...safeData,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -140,9 +168,10 @@ export async function updateDocument(
     updatedAt: _updatedAt,
     ...safeData
   } = data;
+  const cleanedData = omitUndefinedDeep(safeData);
 
   await updateDoc(legalDocumentDoc(uid, caseId, documentId), {
-    ...safeData,
+    ...cleanedData,
     updatedAt: serverTimestamp(),
   });
 }
