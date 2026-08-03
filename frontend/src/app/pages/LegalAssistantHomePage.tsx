@@ -7,7 +7,7 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
 import { getLegalTodayTasks, type LegalTodayTask } from '../services/legalTodayService';
-import { E_LITIGATION_BEGINNER_GUIDE_STORAGE_KEY } from './ELitigationBeginnerGuidePage';
+import { getELitigationBeginnerGuideStorageKey } from './ELitigationBeginnerGuidePage';
 
 const entranceCards = [
   {
@@ -45,7 +45,9 @@ export default function LegalAssistantHomePage() {
       return;
     }
     if (!loading && user) {
-      const beginnerGuideCompleted = localStorage.getItem(E_LITIGATION_BEGINNER_GUIDE_STORAGE_KEY);
+      const beginnerGuideCompleted = localStorage.getItem(
+        getELitigationBeginnerGuideStorageKey(user.uid),
+      );
       if (!beginnerGuideCompleted) {
         navigate('/legal-assistant/beginner-guide', { replace: true });
       }
