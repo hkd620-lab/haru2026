@@ -1,5 +1,6 @@
 import { type CSSProperties, type ReactNode, useEffect, useId, useRef, useState } from 'react';
-import { legalTermDictionary, type LegalTerm } from '../data/legalTermDictionary';
+import { toast } from 'sonner';
+import { legalTermDetails, type LegalTerm } from '../data/legalTermDictionary';
 
 type PopoverPosition = {
   left: number;
@@ -8,6 +9,7 @@ type PopoverPosition = {
 };
 
 const LEGAL_HELP_EVENT = 'haru-legal-help-open';
+const LEGAL_TERM_TOAST_ID = 'haru-legal-term-toast';
 
 function makeSafeId(value: string) {
   return value.replace(/\s+/g, '-').replace(/[^\w-]/g, '');
@@ -19,6 +21,7 @@ export function InlineHelpPopover({
   title,
   children,
   emphasis,
+  onOpen,
   className = 'inline align-baseline font-semibold text-blue-700 underline decoration-dotted underline-offset-4',
 }: {
   label: ReactNode;
@@ -26,6 +29,7 @@ export function InlineHelpPopover({
   title?: string;
   children: ReactNode;
   emphasis?: string;
+  onOpen?: () => void;
   className?: string;
 }) {
   const generatedId = useId();
@@ -119,6 +123,7 @@ export function InlineHelpPopover({
           }
           updatePopoverPosition();
           window.dispatchEvent(new CustomEvent(LEGAL_HELP_EVENT, { detail: instanceId }));
+          onOpen?.();
           setIsOpen(true);
         }}
         className={className}
@@ -146,10 +151,82 @@ export function InlineHelpPopover({
   );
 }
 
+function showLegalTermToast(term: LegalTerm, expanded = false) {
+  const detail = legalTermDetails[term];
+
+  toast.custom(
+    (toastId) => (
+      <div className="w-[min(92vw,420px)] rounded-lg border border-[#bfd1e8] bg-white p-4 text-left shadow-xl">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-base font-extrabold text-[#162f55]">{detail.title}</p>
+            <p className="mt-2 text-sm font-bold leading-6 text-[#475569]">
+              {detail.shortDescription}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => toast.dismiss(toastId)}
+            className="min-h-8 shrink-0 rounded border border-[#cbd5e1] bg-white px-2 text-xs font-extrabold text-[#64748b]"
+          >
+            닫기
+          </button>
+        </div>
+        {expanded && (
+          <div className="mt-3 rounded-md border border-[#dbe3ec] bg-[#f8fafc] px-3 py-3 text-xs font-bold leading-5 text-[#475569]">
+            <p>{detail.actionGuide}</p>
+            <p className="mt-2 text-[#9a3412]">{detail.caution}</p>
+          </div>
+        )}
+        <div className="mt-3 flex justify-end gap-2">
+          {!expanded && (
+            <button
+              type="button"
+              onClick={() => showLegalTermToast(term, true)}
+              className="min-h-9 rounded bg-[#183c73] px-3 text-xs font-extrabold text-white"
+            >
+              자세히 보기
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => toast.dismiss(toastId)}
+            className="min-h-9 rounded border border-[#183c73] bg-white px-3 text-xs font-extrabold text-[#183c73]"
+          >
+            닫기
+          </button>
+        </div>
+      </div>
+    ),
+    {
+      id: LEGAL_TERM_TOAST_ID,
+      duration: expanded ? 8000 : 7000,
+      position: 'bottom-center',
+      className: 'mb-20',
+    },
+  );
+}
+
 export function LegalTermHelp({ term, className }: { term: LegalTerm; className?: string }) {
+  const detail = legalTermDetails[term];
+
   return (
-    <InlineHelpPopover label={term} ariaLabel={`${term} 뜻 보기`} className={className}>
-      {legalTermDictionary[term]}
+    <InlineHelpPopover
+      label={
+        <span className="inline-flex items-baseline gap-1">
+          <span>{term}</span>
+          <span aria-hidden="true" className="text-[0.82em] leading-none">
+            ⓘ
+          </span>
+        </span>
+      }
+      ariaLabel={`${term} 뜻 보기`}
+      className={className}
+      title={detail.title}
+      emphasis={detail.actionGuide}
+      onOpen={() => showLegalTermToast(term)}
+    >
+      {detail.shortDescription}
     </InlineHelpPopover>
   );
 }

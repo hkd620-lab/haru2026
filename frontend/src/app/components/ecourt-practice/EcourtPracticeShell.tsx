@@ -35,7 +35,7 @@ export function EcourtPracticeShell({ children }: EcourtPracticeShellProps) {
               className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded border border-[#e5b1b1] bg-white px-3 text-xs font-extrabold text-[#9f1f1f] sm:w-auto"
             >
               <ArrowLeft className="h-4 w-4" />
-              기존 연습으로
+              연습포털 홈
             </button>
           </div>
         </div>
@@ -43,7 +43,7 @@ export function EcourtPracticeShell({ children }: EcourtPracticeShellProps) {
         <header className="border border-[#d7dde5] bg-white">
           <div className="flex flex-col gap-4 border-b border-[#d7dde5] px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
             <Link
-              to="/lawsuit-practice/portal/search"
+              to="/lawsuit-practice"
               className="text-xl font-extrabold text-[#123a6b] sm:text-2xl"
             >
               전자소송 연습포털
