@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 
 // 운영 배포 확정 후 날짜 문자열 입력 (예: '2026년 8월 15일')
-const TERMS_EFFECTIVE_DATE = '';
+const TERMS_EFFECTIVE_DATE = '2026년 8월 4일';
 
 const articles = [
   {
