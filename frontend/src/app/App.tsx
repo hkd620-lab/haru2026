@@ -56,6 +56,7 @@ import LegalAssistantHomePage from './pages/LegalAssistantHomePage';
 import CourtDocumentHelperPage from './pages/CourtDocumentHelperPage';
 import LegalSelfLitigationGuidePage from './pages/LegalSelfLitigationGuidePage';
 import ELitigationBeginnerGuidePage from './pages/ELitigationBeginnerGuidePage';
+import { EcourtPracticeHomePage } from './pages/EcourtPracticeHomePage';
 import { LawsuitPracticePage } from './pages/LawsuitPracticePage';
 import { EcourtPracticeSearchPage } from './pages/EcourtPracticeSearchPage';
 import { EcourtPracticeLoginPage } from './pages/EcourtPracticeLoginPage';
@@ -206,9 +207,11 @@ function App() {
               <Route path="/legal-assistant/document-helper" element={<CourtDocumentHelperPage />} />
               <Route path="/legal-assistant/guide" element={<LegalSelfLitigationGuidePage />} />
               <Route path="/lawsuit-practice/portal/search" element={<EcourtPracticeSearchPage />} />
+              <Route path="/lawsuit-practice/login" element={<EcourtPracticeLoginPage />} />
               <Route path="/lawsuit-practice/portal/login" element={<EcourtPracticeLoginPage />} />
               <Route path="/lawsuit-practice/portal/register" element={<EcourtPracticeRegisterPage />} />
-              <Route path="/lawsuit-practice" element={<LawsuitPracticePage />} />
+              <Route path="/lawsuit-practice" element={<EcourtPracticeHomePage />} />
+              <Route path="/lawsuit-practice/practice" element={<LawsuitPracticePage />} />
               <Route path="/legal-cases" element={<LegalCasesPage />} />
               <Route path="/legal-cases/:caseId" element={<LegalCaseDetailPage />} />
               <Route path="/plant-detective" element={<PlantDetectivePage />} />

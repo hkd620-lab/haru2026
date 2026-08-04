@@ -148,7 +148,7 @@ export function EcourtPracticeLoginPage() {
               <button
                 type="button"
                 onClick={() =>
-                  navigate('/lawsuit-practice', {
+                  navigate('/lawsuit-practice/practice', {
                     state: { practicePortalLoginCompleted: true },
                   })
                 }

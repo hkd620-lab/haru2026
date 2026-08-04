@@ -671,7 +671,7 @@ export function LawsuitPracticePage() {
         <div className="mb-4 flex justify-end">
           <button
             type="button"
-            onClick={() => navigate('/lawsuit-practice/portal/search')}
+            onClick={() => navigate('/lawsuit-practice')}
             className="lawsuit-button inline-flex items-center justify-center border border-[#185FA5] bg-white px-4 text-sm text-[#185FA5]"
           >
             전자소송포털 화면부터 연습하기
