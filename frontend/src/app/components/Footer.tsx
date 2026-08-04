@@ -18,9 +18,17 @@ export function Footer() {
       <p>
         상호명: 하루랩 (HaruLab) &nbsp;|&nbsp; 대표자: 허경대 &nbsp;|&nbsp;
         사업자등록번호: {BUSINESS_INFO.businessNumber} &nbsp;|&nbsp;
-        통신판매업신고번호: {BUSINESS_INFO.mailOrderNumber}
+        통신판매업신고번호: {BUSINESS_INFO.mailOrderNumber} &nbsp;|&nbsp;
+        <a
+          href={`https://www.ftc.go.kr/bizCommPop.do?wrkr_no=${BUSINESS_INFO.businessNumber.replace(/-/g, '')}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: '#777', textDecoration: 'underline' }}
+        >
+          사업자정보확인
+        </a>
       </p>
-      <p>사업장 주소: 서울특별시 구로구 중앙로5길 62</p>
+      <p>사업장 주소: 서울특별시 구로구 중앙로5길 62, 3동 305호</p>
       <p>연락처: 050219336740 &nbsp;|&nbsp; 이메일: {BUSINESS_INFO.email} &nbsp;|&nbsp; 사이트: {BUSINESS_INFO.site}</p>
       <p>
         하루랩에서 운영하는 사이트에서 판매되는 모든 상품은 하루랩에서 책임지고 있습니다.<br />

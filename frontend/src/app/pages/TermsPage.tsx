@@ -94,7 +94,22 @@ const articles = [
 const businessInfo = [
   { label: '상호', value: '하루랩' },
   { label: '대표자', value: '허경대' },
-  { label: '사업자등록번호', value: '354-23-02490' },
+  {
+    label: '사업자등록번호',
+    value: (
+      <>
+        354-23-02490{' '}
+        <a
+          href="https://www.ftc.go.kr/bizCommPop.do?wrkr_no=3542302490"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: '#1A3C6E', textDecoration: 'underline' }}
+        >
+          사업자정보확인
+        </a>
+      </>
+    ),
+  },
   { label: '통신판매업신고번호', value: '제2026-서울구로-1247호' },
   { label: '사업장 소재지', value: '서울특별시 구로구 중앙로5길 62, 3동 305호' },
   { label: '고객문의', value: '0502-1933-6740 / harul2026lab@gmail.com' },

@@ -7,9 +7,24 @@ export function BusinessInfoPage() {
     { label: '상호명', value: '하루랩 (HaruLab)' },
     { label: '서비스명', value: 'HARU2026' },
     { label: '대표자', value: BUSINESS_INFO.representative },
-    { label: '사업자등록번호', value: BUSINESS_INFO.businessNumber },
+    {
+      label: '사업자등록번호',
+      value: (
+        <>
+          {BUSINESS_INFO.businessNumber}{' '}
+          <a
+            href={`https://www.ftc.go.kr/bizCommPop.do?wrkr_no=${BUSINESS_INFO.businessNumber.replace(/-/g, '')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: '#1A3C6E', textDecoration: 'underline' }}
+          >
+            사업자정보확인
+          </a>
+        </>
+      ),
+    },
     { label: '통신판매업신고번호', value: BUSINESS_INFO.mailOrderNumber },
-    { label: '사업장 주소', value: '서울특별시 구로구 중앙로5길 62' },
+    { label: '사업장 주소', value: '서울특별시 구로구 중앙로5길 62, 3동 305호' },
     { label: '연락처', value: '050219336740' },
     { label: '이메일', value: BUSINESS_INFO.email },
     { label: '서비스 URL', value: BUSINESS_INFO.site },
