@@ -40,6 +40,7 @@ import { BiblePage } from './pages/BiblePage';
 import VocabPage from './pages/VocabPage';
 import { DiaryLearnPage } from './pages/DiaryLearnPage';
 import { AdminChecklistPage } from './pages/AdminChecklistPage';
+import { AdminHaruLawReviewPage } from './pages/AdminHaruLawReviewPage';
 import { DevConsolePage } from './pages/DevConsolePage';
 import { ElderBookPage } from './pages/ElderBookPage';
 import { RecordBookPage } from './pages/RecordBookPage';
@@ -249,6 +250,7 @@ function App() {
               <Route path="/admin/elder-book" element={<ElderBookPage />} />
               <Route path="/admin/record-book" element={<RecordBookPage />} />
               <Route path="/admin/k-news-publisher" element={<KNewsPublisherPage />} />
+              <Route path="/admin/haru-law-review" element={<AdminHaruLawReviewPage />} />
 
               {/* 개발자 전용 임시 화면 */}
               <Route path="/dev/masterpiece-detective" element={<MasterpieceDetectivePage />} />

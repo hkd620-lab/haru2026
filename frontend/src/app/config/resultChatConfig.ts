@@ -4,7 +4,8 @@ export type ResultChatSafetyMode =
   | 'writing'
   | 'report'
   | 'plant_basic'
-  | 'timeline_basic';
+  | 'timeline_basic'
+  | 'legal_basic';
 
 export type ResultChatConfig = {
   sourceKey: string;
@@ -95,6 +96,14 @@ export const RESULT_CHAT_CONFIGS: Record<string, ResultChatConfig> = {
     safetyMode: 'plant_basic',
     quickQuestions: ['이 식물 상태는?', '물주기 조언은?', '주의할 신호는?', '다음 관찰점은?'],
     systemGuide: '식물 판독 결과와 사용자 메모를 바탕으로 식물 관리 참고 의견을 제공한다.',
+  },
+  haruraw_sayu: {
+    sourceKey: 'haruraw_sayu',
+    label: '하루LAW',
+    riskLevel: 'high',
+    safetyMode: 'legal_basic',
+    quickQuestions: ['이 조문을 쉽게 풀어줘', '어떤 자료를 챙겨야 하나?', '추가로 확인할 쟁점은?', '어디에 상담하면 되나?'],
+    systemGuide: '기록된 질문과 관련 법조문 범위 안에서만 참고 정보를 정리한다. 위법 여부나 승소 가능성을 단정하지 않고, 확인이 필요한 쟁점과 준비할 자료 중심으로 안내하며 전문가 상담 권유를 유지한다.',
   },
   growthTimeline: {
     sourceKey: 'growthTimeline',

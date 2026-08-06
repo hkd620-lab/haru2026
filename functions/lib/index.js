@@ -36,8 +36,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.analyzeFacebookZip = exports.applyBookPublishRevision = exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.cancelSubscription = exports.subscribeWithBillingKey = exports.verifyPayment = exports.generateGrowthTimelinePdf = exports.decryptKakaoXlsx = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
-exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = void 0;
+exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.reviewHaruLawSharedCard = exports.listPendingHaruLawSharedCards = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.cancelSubscription = exports.subscribeWithBillingKey = exports.verifyPayment = exports.generateGrowthTimelinePdf = exports.decryptKakaoXlsx = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
+exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.applyBookPublishRevision = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -1092,6 +1092,7 @@ const RESULT_CHAT_ALLOWED_SAFETY_MODES = new Set([
     'report',
     'plant_basic',
     'timeline_basic',
+    'legal_basic',
 ]);
 function clampResultChatText(value, max = 8000) {
     return String(value || '').trim().slice(0, max);
@@ -1213,6 +1214,15 @@ function getSafetyModeGuide(safetyMode) {
             return '식물 기본 관리 모드다. 사진과 기록 기반 추정임을 밝히고 식용, 독성, 농약, 치료 판단은 단정하지 않는다.';
         case 'timeline_basic':
             return '타임라인 관찰 모드다. 시간 흐름과 변화 포인트를 정리하되 건강·발달 진단은 하지 않는다.';
+        case 'legal_basic':
+            return [
+                '법률 정보 참고 모드다. 다음을 반드시 지킨다.',
+                '- 유죄·무죄, 승소·패소, 위법 여부를 단정하지 않는다. 가능성, 쟁점, 확인이 필요한 사항 중심으로 설명한다.',
+                '- 기록에 담긴 사실관계와 관련 법조문 범위 안에서만 답한다. 없는 사실을 추정해 덧붙이지 않는다.',
+                '- 구체적 사건의 결론이나 소송 전략을 확정적으로 제시하지 않는다.',
+                '- 답변 끝에 전문가(변호사) 상담 권유를 유지한다.',
+                '- 질문자가 피해자인지 피고발인인지 제3자인지 불명확하면 먼저 확인 질문을 한다.',
+            ].join('\n');
         case 'reflection':
         default:
             return '성찰 보조 모드다. 감정과 생각을 존중하고 기록에 드러난 흐름을 차분히 정리한다.';
@@ -4667,6 +4677,109 @@ exports.unpublishHaruLawSharedCard = (0, https_2.onCall)({
         }
     });
     return { success: true, cardId, status: 'withdrawn' };
+});
+// ⚖️ 하루LAW 익명 공유 검수 — 관리자 대기 목록 조회
+// sharedHaruLawCardMeta는 규칙상 클라이언트 직접 접근 불가(read,write: if false)이므로
+// 대기 카드 조회는 반드시 이 함수를 경유한다. 작성자 uid는 검수자에게 노출하지 않는다.
+exports.listPendingHaruLawSharedCards = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    timeoutSeconds: 60,
+}, async (request) => {
+    var _a;
+    if (!((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid)) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    if (!isDeveloperUid(request.auth.uid)) {
+        throw new https_2.HttpsError('permission-denied', '검수 권한이 없습니다.');
+    }
+    const metaSnap = await db
+        .collection('sharedHaruLawCardMeta')
+        .where('status', '==', 'pending')
+        .limit(100)
+        .get();
+    const cards = await Promise.all(metaSnap.docs.map(async (metaDoc) => {
+        var _a, _b, _c;
+        const cardSnap = await db.collection('sharedHaruLawCards').doc(metaDoc.id).get();
+        if (!cardSnap.exists)
+            return null;
+        const card = cardSnap.data() || {};
+        const meta = metaDoc.data() || {};
+        return {
+            cardId: metaDoc.id,
+            title: String(card.title || ''),
+            anonymizedQuestion: String(card.anonymizedQuestion || ''),
+            summary: String(card.summary || ''),
+            judgmentType: String(card.judgmentType || ''),
+            relatedStatutes: Array.isArray(card.relatedStatutes) ? card.relatedStatutes : [],
+            disclaimer: String(card.disclaimer || ''),
+            sourceRecordDate: String(meta.sourceRecordDate || ''),
+            requestedAtMs: (_c = (_b = (_a = meta.createdAt) === null || _a === void 0 ? void 0 : _a.toMillis) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : 0,
+        };
+    }));
+    const items = cards
+        .filter((item) => item !== null)
+        .sort((a, b) => a.requestedAtMs - b.requestedAtMs);
+    return { success: true, items, total: items.length };
+});
+// ⚖️ 하루LAW 익명 공유 검수 — 승인/반려 처리
+// pending 상태만 검수 대상이며, 승인 시 status가 'published'로 바뀌어야
+// firestore.rules의 read 조건(status == 'published')을 통과해 함께보기에 노출된다.
+exports.reviewHaruLawSharedCard = (0, https_2.onCall)({
+    region: 'asia-northeast3',
+    timeoutSeconds: 60,
+}, async (request) => {
+    var _a, _b, _c, _d;
+    if (!((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid)) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const reviewerUid = request.auth.uid;
+    if (!isDeveloperUid(reviewerUid)) {
+        throw new https_2.HttpsError('permission-denied', '검수 권한이 없습니다.');
+    }
+    const cardId = typeof ((_b = request.data) === null || _b === void 0 ? void 0 : _b.cardId) === 'string' ? request.data.cardId.trim() : '';
+    const action = (_c = request.data) === null || _c === void 0 ? void 0 : _c.action;
+    const rejectedReason = String(((_d = request.data) === null || _d === void 0 ? void 0 : _d.reason) || '').trim().slice(0, 300);
+    if (!cardId) {
+        throw new https_2.HttpsError('invalid-argument', 'cardId가 필요합니다.');
+    }
+    if (action !== 'approve' && action !== 'reject') {
+        throw new https_2.HttpsError('invalid-argument', "action은 'approve' 또는 'reject'여야 합니다.");
+    }
+    if (action === 'reject' && !rejectedReason) {
+        throw new https_2.HttpsError('invalid-argument', '반려 사유를 입력해 주세요.');
+    }
+    const nextStatus = action === 'approve' ? 'published' : 'rejected';
+    const cardRef = db.collection('sharedHaruLawCards').doc(cardId);
+    const metaRef = db.collection('sharedHaruLawCardMeta').doc(cardId);
+    await db.runTransaction(async (tx) => {
+        const metaSnap = await tx.get(metaRef);
+        if (!metaSnap.exists) {
+            throw new https_2.HttpsError('not-found', '공유 카드 메타 정보를 찾을 수 없습니다.');
+        }
+        const meta = metaSnap.data() || {};
+        if (String(meta.status || '') !== 'pending') {
+            throw new https_2.HttpsError('failed-precondition', '검수 대기 중인 카드가 아닙니다.');
+        }
+        const now = admin.firestore.FieldValue.serverTimestamp();
+        tx.set(cardRef, { status: nextStatus, updatedAt: now }, { merge: true });
+        tx.set(metaRef, {
+            status: nextStatus,
+            reviewedAt: now,
+            reviewedBy: reviewerUid,
+            rejectedReason: action === 'reject' ? rejectedReason : '',
+            updatedAt: now,
+        }, { merge: true });
+        if (typeof meta.ownerUid === 'string' && typeof meta.sourceRecordId === 'string') {
+            const recordRef = db.collection('users').doc(meta.ownerUid).collection('records').doc(meta.sourceRecordId);
+            tx.set(recordRef, {
+                haruLawShareStatus: nextStatus,
+                haruLawShareRejectedReason: action === 'reject' ? rejectedReason : '',
+                haruLawSharedUpdatedAt: now,
+            }, { merge: true });
+        }
+    });
+    logger.info('하루LAW 공유 검수 처리:', { cardId, action, reviewerUid });
+    return { success: true, cardId, status: nextStatus };
 });
 // ===== 법령 쉬운 해설 =====
 exports.lawEasyExplain = (0, https_2.onCall)({
