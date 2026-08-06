@@ -58,6 +58,160 @@ const DEVELOPER_UIDS = new Set([
 const AI_USAGE_PLAN = 'beta';
 const READING_BOOK_OCR_LIMIT = 20;
 
+type UserPlan = 'free' | 'basic' | 'premium' | 'developer';
+type ResultAnswerRoute = 'record_only' | 'professional_api' | 'web_search' | 'ambiguous' | 'high_risk_guidance';
+type ResultChatRiskLevel = 'low' | 'medium' | 'high';
+type ResultChatSafetyMode =
+  | 'reflection'
+  | 'writing'
+  | 'report'
+  | 'plant_basic'
+  | 'timeline_basic'
+  | 'legal_basic'
+  | 'medical_basic'
+  | 'finance_basic';
+type ExternalDataPolicy = 'record_first' | 'conditional_external' | 'official_source_first' | 'current_data_required';
+type ResultChatSourcePolicy = {
+  sourceKey: string;
+  label: string;
+  riskLevel: ResultChatRiskLevel;
+  safetyMode: ResultChatSafetyMode;
+  externalDataPolicy: ExternalDataPolicy;
+  systemGuide: string;
+};
+type ResultChatClassification = {
+  route: ResultAnswerRoute;
+  reasonCode: 'current_fact' | 'record_analysis' | 'official_data' | 'high_risk' | 'unclear';
+  confidence: number;
+};
+
+const RESULT_CHAT_MODEL_NAME = 'gemini-3.1-flash-lite';
+const RESULT_CHAT_QUESTION_MAX_LENGTH = 1200;
+const RESULT_CHAT_SOURCE_MAX_LENGTH = 9000;
+const RESULT_CHAT_PROMPT_SOURCE_MAX_LENGTH = 8000;
+const RESULT_CHAT_ANSWER_MAX_LENGTH = 5000;
+const RESULT_CHAT_HISTORY_LIMIT = 8;
+const RESULT_CHAT_HISTORY_ITEM_MAX_LENGTH = 1000;
+const RESULT_CHAT_MAX_OUTPUT_TOKENS = 1200;
+const RESULT_CHAT_CLASSIFIER_MAX_OUTPUT_TOKENS = 160;
+const RESULT_CHAT_LOCK_STALE_MS = 90000;
+const RESULT_CHAT_RATE_WINDOW_MS = 60000;
+const RESULT_CHAT_RATE_LIMIT = 12;
+const WEB_SEARCH_LIMITS: Record<UserPlan, number> = { free: 1, basic: 2, premium: 4, developer: 4 };
+const RESULT_CHAT_PLAN_LABELS: Record<UserPlan, string> = {
+  free: '무료 이용권',
+  basic: '기본 이용권',
+  premium: '프리미엄 이용권',
+  developer: '개발자 이용권',
+};
+const RESULT_ROUTE_LABELS: Record<ResultAnswerRoute, string> = {
+  record_only: '📘 나의 기록을 바탕으로 답변',
+  professional_api: '🏛 공식·전문자료를 확인한 답변',
+  web_search: '🌐 최신 외부자료를 확인한 답변',
+  ambiguous: '📘 나의 기록을 바탕으로 답변',
+  high_risk_guidance: '⚠️ 전문적인 확인이 필요한 안내',
+};
+
+const RESULT_CHAT_SOURCE_POLICIES: Record<string, ResultChatSourcePolicy> = {
+  diary_sayu: { sourceKey: 'diary_sayu', label: '일기', riskLevel: 'medium', safetyMode: 'reflection', externalDataPolicy: 'record_first', systemGuide: '사용자의 하루 기록을 바탕으로 감정 흐름과 다음 행동을 차분히 정리한다.' },
+  essay_sayu: { sourceKey: 'essay_sayu', label: '에세이', riskLevel: 'low', safetyMode: 'writing', externalDataPolicy: 'record_first', systemGuide: '글의 주제, 표현, 구조를 원문 의도를 해치지 않는 범위에서 돕는다.' },
+  mission_sayu: { sourceKey: 'mission_sayu', label: '선교보고', riskLevel: 'medium', safetyMode: 'report', externalDataPolicy: 'record_first', systemGuide: '선교 현장 기록을 바탕으로 은혜, 사역 흐름, 후속 확인사항을 기록 안에서 정리한다.' },
+  report_sayu: { sourceKey: 'report_sayu', label: '일반보고', riskLevel: 'low', safetyMode: 'report', externalDataPolicy: 'record_first', systemGuide: '보고 내용의 진행 상황, 성과, 누락 가능성, 다음 계획을 사실 중심으로 정리한다.' },
+  work_sayu: { sourceKey: 'work_sayu', label: '업무일지', riskLevel: 'medium', safetyMode: 'report', externalDataPolicy: 'record_first', systemGuide: '업무 기록을 바탕으로 우선순위, 미결 사항, 리스크를 실무적으로 정리한다.' },
+  travel_sayu: { sourceKey: 'travel_sayu', label: '여행기록', riskLevel: 'low', safetyMode: 'reflection', externalDataPolicy: 'conditional_external', systemGuide: '여행 기록의 장면, 감상, 기억할 요소를 정리한다. 운영시간, 날씨, 현재 일정은 외부 최신자료가 필요함을 구분한다.' },
+  reading_sayu: { sourceKey: 'reading_sayu', label: '독서사유', riskLevel: 'low', safetyMode: 'reflection', externalDataPolicy: 'record_first', systemGuide: '독서 기록에 드러난 생각의 흐름과 삶의 연결점을 원문 중심으로 정리한다.' },
+  reading_final_sayu: { sourceKey: 'reading_final_sayu', label: '최종 독서사유', riskLevel: 'low', safetyMode: 'reflection', externalDataPolicy: 'record_first', systemGuide: '누적 독서사유의 최종 결과를 바탕으로 반복 관심사와 적용점을 정리한다.' },
+  garden_sayu: { sourceKey: 'garden_sayu', label: '텃밭일지', riskLevel: 'medium', safetyMode: 'plant_basic', externalDataPolicy: 'conditional_external', systemGuide: '텃밭 기록을 바탕으로 관찰된 상태와 다음 관리 행동을 참고용으로 정리한다.' },
+  pet_sayu: { sourceKey: 'pet_sayu', label: '애완동물관찰일지', riskLevel: 'medium', safetyMode: 'medical_basic', externalDataPolicy: 'conditional_external', systemGuide: '반려동물 기록을 바탕으로 관찰 내용을 정리하되 진단, 치료, 약 복용 판단은 하지 않는다.' },
+  child_sayu: { sourceKey: 'child_sayu', label: '육아일기', riskLevel: 'medium', safetyMode: 'medical_basic', externalDataPolicy: 'conditional_external', systemGuide: '아이 기록과 보호자의 관찰을 정리하되 발달, 질병, 치료 판단은 단정하지 않는다.' },
+  growth_sayu: { sourceKey: 'growth_sayu', label: '성장기록', riskLevel: 'medium', safetyMode: 'timeline_basic', externalDataPolicy: 'conditional_external', systemGuide: '성장 측정 기록의 변화 흐름을 설명하되 건강·발달 진단은 하지 않는다.' },
+  memo_sayu: { sourceKey: 'memo_sayu', label: '메모', riskLevel: 'low', safetyMode: 'report', externalDataPolicy: 'record_first', systemGuide: '메모를 실행 가능한 항목과 확인할 점으로 간결하게 정리한다.' },
+  stock_sayu: { sourceKey: 'stock_sayu', label: 'HARU주식관리', riskLevel: 'high', safetyMode: 'finance_basic', externalDataPolicy: 'current_data_required', systemGuide: '주식 기록을 바탕으로 매매 판단을 정리하되 수익 보장, 매수·매도 단정, 현재 가격·뉴스 추측을 금지한다.' },
+  ledger_sayu: { sourceKey: 'ledger_sayu', label: 'HARU보조장부', riskLevel: 'medium', safetyMode: 'report', externalDataPolicy: 'record_first', systemGuide: '보조장부 기록을 바탕으로 분류, 누락 가능성, 업무 관련 메모를 정리한다. 세무 판단을 확정하지 않는다.' },
+  household_sayu: { sourceKey: 'household_sayu', label: 'HARU가계부', riskLevel: 'medium', safetyMode: 'finance_basic', externalDataPolicy: 'record_first', systemGuide: '가계부 기록을 바탕으로 지출 흐름과 다음 점검 항목을 정리한다. 금융·세무 결정을 단정하지 않는다.' },
+  plantDetective: { sourceKey: 'plantDetective', label: '하루식물탐정', riskLevel: 'medium', safetyMode: 'plant_basic', externalDataPolicy: 'conditional_external', systemGuide: '식물 판독 결과와 사용자 메모를 바탕으로 식물 관리 참고 의견을 제공한다.' },
+  haruraw_sayu: { sourceKey: 'haruraw_sayu', label: '하루LAW', riskLevel: 'high', safetyMode: 'legal_basic', externalDataPolicy: 'official_source_first', systemGuide: '기록된 질문과 관련 법조문 범위 안에서만 참고 정보를 정리한다. 위법 여부나 승소 가능성을 단정하지 않고, 확인이 필요한 쟁점과 준비할 자료 중심으로 안내하며 전문가 상담 권유를 유지한다.' },
+  growthTimeline: { sourceKey: 'growthTimeline', label: 'HARU타임라인', riskLevel: 'medium', safetyMode: 'timeline_basic', externalDataPolicy: 'record_first', systemGuide: '타임라인 결과의 시간 흐름과 관찰 포인트를 기록 안에서만 정리한다.' },
+};
+
+function normalizeResultChatQuestion(question: string): string {
+  return String(question || '').trim().replace(/\s+/g, ' ');
+}
+
+function hasAnyResultChatPattern(text: string, patterns: RegExp[]): boolean {
+  return patterns.some((pattern) => pattern.test(text));
+}
+
+const RESULT_CHAT_RECORD_ONLY_PATTERNS = [
+  /이\s*(기록|결과|내용|대화)/,
+  /현재\s*(기록|결과|대화|내용)/,
+  /기록에서/,
+  /오늘\s*(내\s*)?(감정|기분|마음|하루|일기|생각)/,
+  /(핵심|요약|정리|감정\s*흐름|우선순위|다음\s*(행동|할\s*일|계획)|제목|쉽게|표로|목록|문장|다듬|누락|미룬\s*일|기억할\s*장면|추억\s*글|삶의\s*적용|반복\s*관심사|사진별\s*차이|변화\s*흐름)/,
+  /(준비할\s*서류|챙겨야\s*할\s*자료|확인할\s*쟁점|관련\s*기록)/,
+];
+const RESULT_CHAT_CURRENT_FACT_PATTERNS = [
+  /오늘(?!\s*(내\s*)?(감정|기분|마음|하루|일기|생각))/,
+  /현재(?!\s*(기록|결과|대화|내용|내|이\s*기록))/,
+  /지금/,
+  /최신|최근|변경|바뀌|개정|가격|시세|날씨|운영\s*시간|영업\s*시간|일정|판례|법령|조항|공시|뉴스|부작용|복용법|예방접종\s*기준|하락한\s*이유|상승한\s*이유/,
+];
+const RESULT_CHAT_HIGH_RISK_PATTERNS = [
+  /(약|복용|처방|용량|치료|진단|수술|응급실|증상).*(끊|중단|바꿔|변경|늘려|줄여|괜찮|필요\s*없|안\s*가도)/,
+  /(끊어도|중단해도|응급실에\s*갈\s*필요가\s*없|병원에\s*안\s*가도)/,
+  /(승소|패소|이기나|질까|유죄|무죄|위법\s*여부|소송에서\s*이기|처벌\s*되|고소하면\s*이기)/,
+  /(지금\s*)?(사야|팔아|매수|매도|손절|익절|투자해도|수익\s*보장)/,
+];
+const RESULT_CHAT_AMBIGUOUS_EXTERNAL_PATTERNS = [
+  /(물|비료|햇빛|분갈이|가지치기).*(얼마|언제|어떻게|줘|주면|해야)/,
+  /(상태|성장|건강).*(어떤\s*것\s*같|괜찮|문제)/,
+  /(다음\s*여행지|여행지\s*추천|코스\s*추천|어디가\s*좋)/,
+  /(추천|좋을까|괜찮을까|어떻게\s*해야\s*할까)/,
+];
+
+function classifyResultChatByRules(question: string, policy: ResultChatSourcePolicy): ResultChatClassification | null {
+  const normalized = normalizeResultChatQuestion(question);
+  if (!normalized) return { route: 'record_only', reasonCode: 'record_analysis', confidence: 1 };
+  if (hasAnyResultChatPattern(normalized, RESULT_CHAT_HIGH_RISK_PATTERNS)) {
+    return { route: 'high_risk_guidance', reasonCode: 'high_risk', confidence: 0.9 };
+  }
+  if (hasAnyResultChatPattern(normalized, RESULT_CHAT_RECORD_ONLY_PATTERNS)) {
+    return { route: 'record_only', reasonCode: 'record_analysis', confidence: 0.88 };
+  }
+  if (hasAnyResultChatPattern(normalized, RESULT_CHAT_CURRENT_FACT_PATTERNS)) {
+    return {
+      route: 'web_search',
+      reasonCode: policy.externalDataPolicy === 'official_source_first' ? 'official_data' : 'current_fact',
+      confidence: 0.84,
+    };
+  }
+  if (
+    (policy.externalDataPolicy === 'conditional_external' || policy.externalDataPolicy === 'current_data_required') &&
+    hasAnyResultChatPattern(normalized, RESULT_CHAT_AMBIGUOUS_EXTERNAL_PATTERNS)
+  ) {
+    return { route: 'ambiguous', reasonCode: 'unclear', confidence: 0.72 };
+  }
+  if (policy.externalDataPolicy === 'current_data_required') {
+    return { route: 'ambiguous', reasonCode: 'unclear', confidence: 0.62 };
+  }
+  if (/어떻게|왜|어때|좋아|추천|가능|필요/.test(normalized) && normalized.length <= 80) {
+    return null;
+  }
+  return { route: 'record_only', reasonCode: 'record_analysis', confidence: 0.82 };
+}
+
+function coerceClassifierRoute(value: unknown): ResultAnswerRoute {
+  const route = String(value || '').trim();
+  if (route === 'record_only' || route === 'professional_api' || route === 'web_search' || route === 'ambiguous' || route === 'high_risk_guidance') return route;
+  return 'ambiguous';
+}
+
+function coerceUserPlan(value: unknown): UserPlan {
+  const plan = String(value || '').toLowerCase();
+  if (plan === 'developer' || plan === 'premium' || plan === 'basic') return plan;
+  return 'free';
+}
+
 function getGeminiUsage(result: any): { inputTokens: number | null; outputTokens: number | null } {
   const usage = result?.response?.usageMetadata || result?.usageMetadata || {};
   const inputTokens = Number(usage.promptTokenCount);
@@ -1158,13 +1312,15 @@ export const clearKeywordsCache = onCall(
   }
 );
 
-const RESULT_CHAT_ALLOWED_SAFETY_MODES = new Set([
+const RESULT_CHAT_ALLOWED_SAFETY_MODES = new Set<ResultChatSafetyMode>([
   'reflection',
   'writing',
   'report',
   'plant_basic',
   'timeline_basic',
   'legal_basic',
+  'medical_basic',
+  'finance_basic',
 ]);
 
 function clampResultChatText(value: unknown, max = 8000): string {
@@ -1241,17 +1397,9 @@ function getRecordOriginalContentByPrefix(record: Record<string, any>, prefix: s
   return parts.join('\n\n');
 }
 
-// 요금제별 결과물 대화 상한 — "한 대화창(스레드) 안에서 주고받기" 횟수.
-const PLAN_CHAT_LIMITS: Record<string, number> = { free: 1, basic: 2, premium: 4 };
-const RESULT_CHAT_LIMIT_NOTICES: Record<string, string> = {
-  free: '오늘 AI 대화를 잘 나누셨어요. 더 깊이 이야기 나누고 싶으시면 구독하고 이어가실 수 있습니다.',
-  basic: '오늘 AI 대화를 잘 나누셨어요. 더 많이 이야기 나누고 싶으시면 프리미엄에서 4번까지 이어가실 수 있습니다.',
-  premium: '이 대화를 깊이 나누셨네요. 다른 기록을 열어 새로운 대화를 시작해 보세요.',
-};
-
-// 요금제 조회 — subscription/info.plan (free/basic/premium). 개발자 UID는 premium 우회.
-async function getUserPlan(uid: string): Promise<'free' | 'basic' | 'premium'> {
-  if (DEVELOPER_UIDS.has(uid)) return 'premium';
+// 요금제 조회 — subscription/info.plan (free/basic/premium). 개발자 UID는 developer로 계측하고 premium 한도를 적용.
+async function getUserPlan(uid: string): Promise<UserPlan> {
+  if (DEVELOPER_UIDS.has(uid)) return 'developer';
   try {
     const snap = await db.doc(`users/${uid}/subscription/info`).get();
     const data = snap.data() || {};
@@ -1272,6 +1420,160 @@ async function getUserPlan(uid: string): Promise<'free' | 'basic' | 'premium'> {
   return 'free';
 }
 
+type ResultChatSearchPreference = 'auto' | 'record_only' | 'web_confirmed';
+
+type WebSearchUsage = {
+  limit: number;
+  usedCount: number;
+  reservedCount: number;
+  remainingCount: number;
+};
+
+type ReservedWebSearchSlot = WebSearchUsage & {
+  reserved: boolean;
+};
+
+const RESULT_CHAT_COST_PRICING = {
+  pricingVersion: 'raw-token-counts-v1',
+  currency: 'USD',
+  modelInputPerMillion: null as number | null,
+  modelOutputPerMillion: null as number | null,
+  searchPerUse: null as number | null,
+};
+
+function getWebSearchUsageFromData(data: Record<string, any> | undefined, plan: UserPlan): WebSearchUsage {
+  const usedCount = Math.max(0, Number(data?.webSearchUsedCount || 0));
+  const reservedCount = Math.max(0, Number(data?.webSearchReservedCount || 0));
+  const limit = WEB_SEARCH_LIMITS[plan] ?? WEB_SEARCH_LIMITS.free;
+  return {
+    limit,
+    usedCount,
+    reservedCount,
+    remainingCount: Math.max(0, limit - usedCount - reservedCount),
+  };
+}
+
+async function getThreadWebSearchUsage(
+  threadRef: admin.firestore.DocumentReference,
+  plan: UserPlan,
+): Promise<WebSearchUsage> {
+  const snap = await threadRef.get();
+  return getWebSearchUsageFromData(snap.data(), plan);
+}
+
+async function reserveWebSearchSlot(
+  threadRef: admin.firestore.DocumentReference,
+  plan: UserPlan,
+  sourceKey: string,
+  sourceIndex?: number,
+): Promise<ReservedWebSearchSlot> {
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(threadRef);
+    const current = getWebSearchUsageFromData(snap.data(), plan);
+    if (current.usedCount + current.reservedCount >= current.limit) {
+      return { ...current, reserved: false };
+    }
+    const reservedCount = current.reservedCount + 1;
+    tx.set(threadRef, {
+      sourceKey,
+      sourceIndex: typeof sourceIndex === 'number' ? sourceIndex : null,
+      webSearchReservedCount: reservedCount,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+    return {
+      ...current,
+      reservedCount,
+      remainingCount: Math.max(0, current.limit - current.usedCount - reservedCount),
+      reserved: true,
+    };
+  });
+}
+
+async function finalizeWebSearchSlot(
+  threadRef: admin.firestore.DocumentReference,
+  plan: UserPlan,
+  success: boolean,
+): Promise<WebSearchUsage> {
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(threadRef);
+    const current = getWebSearchUsageFromData(snap.data(), plan);
+    const reservedCount = Math.max(0, current.reservedCount - 1);
+    const usedCount = success ? current.usedCount + 1 : current.usedCount;
+    const next: Record<string, any> = {
+      webSearchReservedCount: reservedCount,
+      webSearchUsedCount: usedCount,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+    if (success) next.lastWebSearchAt = admin.firestore.FieldValue.serverTimestamp();
+    tx.set(threadRef, next, { merge: true });
+    return {
+      limit: current.limit,
+      usedCount,
+      reservedCount,
+      remainingCount: Math.max(0, current.limit - usedCount - reservedCount),
+    };
+  });
+}
+
+async function acquireResultChatLock(
+  threadRef: admin.firestore.DocumentReference,
+  requestId: string,
+): Promise<void> {
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(threadRef);
+    const data = snap.data() || {};
+    const activeRequestId = String(data.activeRequestId || '');
+    const activeAt = data.activeRequestStartedAt;
+    const activeMs = typeof activeAt?.toMillis === 'function' ? activeAt.toMillis() : 0;
+    if (activeRequestId && Date.now() - activeMs < RESULT_CHAT_LOCK_STALE_MS) {
+      throw new HttpsError('resource-exhausted', '질문이 연속으로 많이 접수되었습니다. 잠시 후 다시 시도해 주세요.');
+    }
+    tx.set(threadRef, {
+      activeRequestId: requestId,
+      activeRequestStartedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  });
+}
+
+async function releaseResultChatLock(
+  threadRef: admin.firestore.DocumentReference,
+  requestId: string,
+): Promise<void> {
+  try {
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(threadRef);
+      if (String(snap.data()?.activeRequestId || '') !== requestId) return;
+      tx.set(threadRef, {
+        activeRequestId: admin.firestore.FieldValue.delete(),
+        activeRequestStartedAt: admin.firestore.FieldValue.delete(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    });
+  } catch (error) {
+    logger.warn('result chat lock release 실패:', { requestId, message: (error as any)?.message });
+  }
+}
+
+async function enforceResultChatRateLimit(uid: string): Promise<void> {
+  const ref = db.doc(`users/${uid}/rateLimits/resultChat`);
+  await db.runTransaction(async (tx) => {
+    const now = Date.now();
+    const snap = await tx.get(ref);
+    const raw = Array.isArray(snap.data()?.recentRequestMs) ? snap.data()?.recentRequestMs : [];
+    const recent = raw
+      .map((value: unknown) => Number(value))
+      .filter((value: number) => Number.isFinite(value) && now - value < RESULT_CHAT_RATE_WINDOW_MS);
+    if (recent.length >= RESULT_CHAT_RATE_LIMIT) {
+      throw new HttpsError('resource-exhausted', '질문이 연속으로 많이 접수되었습니다. 잠시 후 다시 시도해 주세요.');
+    }
+    tx.set(ref, {
+      recentRequestMs: [...recent, now].slice(-RESULT_CHAT_RATE_LIMIT),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  });
+}
+
 function getSafetyModeGuide(safetyMode: string): string {
   switch (safetyMode) {
     case 'writing':
@@ -1282,6 +1584,22 @@ function getSafetyModeGuide(safetyMode: string): string {
       return '식물 기본 관리 모드다. 사진과 기록 기반 추정임을 밝히고 식용, 독성, 농약, 치료 판단은 단정하지 않는다.';
     case 'timeline_basic':
       return '타임라인 관찰 모드다. 시간 흐름과 변화 포인트를 정리하되 건강·발달 진단은 하지 않는다.';
+    case 'medical_basic':
+      return [
+        '건강·의약품 참고 모드다. 다음을 반드시 지킨다.',
+        '- 진단을 확정하거나 약 복용 중단·변경을 지시하지 않는다.',
+        '- 응급 증상 가능성이 있으면 의료기관 또는 119 등 긴급 도움을 안내한다.',
+        '- 사용자 기록, 공식자료, 일반 참고정보를 구분한다.',
+        '- 의료진 상담을 대체하지 않는다고 명확히 밝힌다.',
+      ].join('\n');
+    case 'finance_basic':
+      return [
+        '금융 참고 모드다. 다음을 반드시 지킨다.',
+        '- 수익을 보장하거나 매수·매도 결정을 단정하지 않는다.',
+        '- 현재 가격, 공시, 뉴스는 최신자료 확인 없이는 추측하지 않는다.',
+        '- 사용자의 기록과 외부 사실을 구분한다.',
+        '- 금융·세무 전문가 확인이 필요한 영역을 명확히 표시한다.',
+      ].join('\n');
     case 'legal_basic':
       return [
         '법률 정보 참고 모드다. 다음을 반드시 지킨다.',
@@ -1297,6 +1615,437 @@ function getSafetyModeGuide(safetyMode: string): string {
   }
 }
 
+function getResultChatSearchPreference(value: unknown): ResultChatSearchPreference {
+  const preference = String(value || '').trim();
+  if (preference === 'record_only' || preference === 'web_confirmed') return preference;
+  return 'auto';
+}
+
+function buildWebSearchNotice(plan: UserPlan, usage: WebSearchUsage): string {
+  return [
+    '🌐 최신 외부자료 확인이 필요한 질문입니다.',
+    '',
+    RESULT_CHAT_PLAN_LABELS[plan],
+    `이 결과의 최신자료 확인 ${usage.limit}회 중 ${usage.remainingCount}회 이용 가능`,
+    '',
+    '최신자료를 확인한 뒤 답변할까요?',
+  ].join('\n');
+}
+
+function buildAmbiguousNotice(plan: UserPlan, usage: WebSearchUsage): string {
+  return [
+    '어떤 방식으로 답변할까요?',
+    '',
+    '나의 기록만으로 답변할 수도 있고, 최신 외부자료를 함께 확인할 수도 있습니다.',
+    '',
+    RESULT_CHAT_PLAN_LABELS[plan],
+    `이 결과의 최신자료 확인 ${usage.limit}회 중 ${usage.remainingCount}회 이용 가능`,
+  ].join('\n');
+}
+
+function buildWebSearchExhaustedNotice(): string {
+  return [
+    '이 결과에서 이용할 수 있는 최신자료 확인을 모두 사용했습니다.',
+    '',
+    '나의 기록을 바탕으로 한 질문은 계속할 수 있습니다.',
+  ].join('\n');
+}
+
+function extractJsonObject(text: string): any | null {
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[0]);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeClassifierResult(value: any): ResultChatClassification {
+  const route = coerceClassifierRoute(value?.route);
+  const reasonCode = String(value?.reasonCode || '').trim();
+  const confidence = Number(value?.confidence);
+  return {
+    route,
+    reasonCode:
+      reasonCode === 'current_fact' ||
+      reasonCode === 'record_analysis' ||
+      reasonCode === 'official_data' ||
+      reasonCode === 'high_risk' ||
+      reasonCode === 'unclear'
+        ? reasonCode
+        : 'unclear',
+    confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : 0.5,
+  };
+}
+
+function coerceResultChatRouteForImplementedSources(classification: ResultChatClassification): ResultChatClassification {
+  if (classification.route !== 'professional_api') return classification;
+  return {
+    ...classification,
+    route: 'web_search',
+    reasonCode: 'official_data',
+    confidence: Math.min(classification.confidence, 0.82),
+  };
+}
+
+async function classifyResultChatQuestion(
+  ai: GoogleGenAI,
+  params: {
+    uid: string;
+    actualPlan: UserPlan;
+    recordId: string;
+    sourceKey: string;
+    question: string;
+    sourceResult: string;
+    requestId: string;
+    isDev: boolean;
+  },
+): Promise<ResultChatClassification> {
+  const policy = RESULT_CHAT_SOURCE_POLICIES[params.sourceKey];
+  const ruleResult = classifyResultChatByRules(params.question, policy);
+  if (ruleResult) return coerceResultChatRouteForImplementedSources(ruleResult);
+
+  const startedAt = Date.now();
+  try {
+    const prompt = `HARU2026 결과 대화 질문을 분류하세요. 웹검색 도구는 사용할 수 없습니다.
+
+반드시 JSON 하나만 반환하세요.
+{
+  "route": "record_only | professional_api | web_search | ambiguous | high_risk_guidance",
+  "reasonCode": "current_fact | record_analysis | official_data | high_risk | unclear",
+  "confidence": 0.0
+}
+
+[결과 유형]
+sourceKey: ${params.sourceKey}
+label: ${policy.label}
+riskLevel: ${policy.riskLevel}
+safetyMode: ${policy.safetyMode}
+externalDataPolicy: ${policy.externalDataPolicy}
+
+[저장 결과 일부]
+${clampResultChatText(params.sourceResult, 1600)}
+
+[질문]
+${params.question}`;
+
+    const response = await ai.models.generateContent({
+      model: RESULT_CHAT_MODEL_NAME,
+      contents: prompt,
+      config: {
+        maxOutputTokens: RESULT_CHAT_CLASSIFIER_MAX_OUTPUT_TOKENS,
+      },
+    });
+    const parsed = extractJsonObject(response.text || '');
+    const raw = normalizeClassifierResult(parsed || {});
+    const result = raw.confidence < 0.6
+      ? { route: 'ambiguous' as ResultAnswerRoute, reasonCode: 'unclear' as const, confidence: raw.confidence }
+      : raw;
+
+    const usage = response.usageMetadata;
+    await logAiUsage({
+      uid: params.uid,
+      featureName: 'result_chat_classifier',
+      plan: params.actualPlan,
+      actualPlan: params.actualPlan,
+      recordId: params.recordId,
+      sourceKey: params.sourceKey,
+      answerRoute: result.route,
+      model: RESULT_CHAT_MODEL_NAME,
+      inputTokens: usage?.promptTokenCount ?? null,
+      outputTokens: usage?.candidatesTokenCount ?? null,
+      imageCount: 0,
+      externalApiProvider: null,
+      externalApiCalled: false,
+      groundingUsed: false,
+      webSearchUsed: false,
+      professionalApiUsed: false,
+      searchSourceCount: 0,
+      latencyMs: Date.now() - startedAt,
+      pricingVersion: RESULT_CHAT_COST_PRICING.pricingVersion,
+      estimatedModelCost: null,
+      estimatedSearchCost: null,
+      estimatedTotalCost: null,
+      currency: RESULT_CHAT_COST_PRICING.currency,
+      requestId: params.requestId,
+      success: true,
+      errorCode: null,
+      isDev: params.isDev,
+    });
+
+    return coerceResultChatRouteForImplementedSources(result);
+  } catch (error: any) {
+    await logAiUsage({
+      uid: params.uid,
+      featureName: 'result_chat_classifier',
+      plan: params.actualPlan,
+      actualPlan: params.actualPlan,
+      recordId: params.recordId,
+      sourceKey: params.sourceKey,
+      answerRoute: 'ambiguous',
+      model: RESULT_CHAT_MODEL_NAME,
+      inputTokens: null,
+      outputTokens: null,
+      imageCount: 0,
+      externalApiProvider: null,
+      externalApiCalled: false,
+      groundingUsed: false,
+      webSearchUsed: false,
+      professionalApiUsed: false,
+      searchSourceCount: 0,
+      latencyMs: Date.now() - startedAt,
+      pricingVersion: RESULT_CHAT_COST_PRICING.pricingVersion,
+      estimatedModelCost: null,
+      estimatedSearchCost: null,
+      estimatedTotalCost: null,
+      currency: RESULT_CHAT_COST_PRICING.currency,
+      requestId: params.requestId,
+      success: false,
+      errorCode: getAiUsageErrorCode(error),
+      isDev: params.isDev,
+    });
+    return { route: 'ambiguous', reasonCode: 'unclear', confidence: 0.4 };
+  }
+}
+
+function buildResultChatPrompt(params: {
+  sourceResult: string;
+  recentMessages: string;
+  question: string;
+  route: ResultAnswerRoute;
+  safetyMode: ResultChatSafetyMode;
+  systemGuide: string;
+  recordOnlyChosen: boolean;
+}): string {
+  const routeGuide: Record<ResultAnswerRoute, string> = {
+    record_only: [
+      '첫 줄에 "📘 나의 기록을 바탕으로 답변"을 표시한다.',
+      '웹검색, 외부 최신자료, 기록 밖 사실 확인을 사용하지 않는다.',
+      params.recordOnlyChosen ? '사용자가 기록 기준 답변을 선택했으므로 현재 외부자료를 확인하지 않았음을 짧게 밝힌다.' : '',
+    ].filter(Boolean).join('\n'),
+    professional_api: [
+      '첫 줄에 "🏛 공식·전문자료를 확인한 답변"을 표시한다.',
+      '실제 확인한 공식·전문자료가 없는 경우 확인했다고 쓰지 않는다.',
+    ].join('\n'),
+    web_search: [
+      '첫 줄에 "🌐 최신 외부자료를 확인한 답변"을 표시한다.',
+      'Google Search Grounding으로 확인된 최신 외부자료와 저장 기록을 구분한다.',
+      '출처로 확인되지 않은 외부 사실은 단정하지 않는다.',
+    ].join('\n'),
+    ambiguous: [
+      '첫 줄에 "📘 나의 기록을 바탕으로 답변"을 표시한다.',
+      '현재 외부자료는 확인하지 않았음을 짧게 밝힌다.',
+    ].join('\n'),
+    high_risk_guidance: [
+      '첫 줄에 "⚠️ 전문적인 확인이 필요한 안내"를 표시한다.',
+      '기록만으로 진단, 법률 판단, 투자 결정을 확정할 수 없음을 명확히 밝힌다.',
+      '공식자료, 전문기관, 전문가에게 확인할 항목을 안전하게 정리한다.',
+    ].join('\n'),
+  };
+
+  return `당신은 HARU2026의 결과물 기반 대화 비서입니다.
+
+[공통 원칙]
+- 기록 결과물과 현재 질문을 최우선 근거로 삼는다.
+- 기록에 담긴 사실·감정·의도는 임의로 바꾸거나 재창작하지 않는다.
+- 없는 사실을 추정해 덧붙이지 않는다.
+- 사용자의 원문 감정과 의도를 존중한다.
+- 답변은 기본적으로 간결하게 쓰고, 실행 가능한 다음 행동 1~3개로 마무리한다.
+- 과장된 칭찬, 단정적 예측, 전문가 판단 대체 표현을 금지한다.
+
+[이번 답변 라우트]
+${params.route}
+${routeGuide[params.route]}
+
+[모드 제한]
+${getSafetyModeGuide(params.safetyMode)}
+
+[형식별 지침]
+${params.systemGuide || '(추가 지침 없음)'}
+
+[결과물]
+${clampResultChatText(params.sourceResult, RESULT_CHAT_PROMPT_SOURCE_MAX_LENGTH)}
+
+[최근 대화]
+${params.recentMessages || '(아직 없음)'}
+
+[현재 질문]
+${params.question}
+
+한국어로 답변하세요.`;
+}
+
+function getResultChatSources(response: any): { sources: { title: string; uri: string }[]; usedWebSearch: boolean } {
+  const grounding = response.candidates?.[0]?.groundingMetadata;
+  const searchQueries: string[] = grounding?.webSearchQueries || [];
+  const groundingChunks: any[] = grounding?.groundingChunks || [];
+  const sources = groundingChunks
+    .map((chunk: any) => ({ title: String(chunk?.web?.title || ''), uri: String(chunk?.web?.uri || '') }))
+    .filter((source: { title: string; uri: string }) => source.uri);
+  return {
+    sources,
+    usedWebSearch: searchQueries.length > 0 || groundingChunks.length > 0 || sources.length > 0,
+  };
+}
+
+function decorateResultChatAnswer(
+  answer: string,
+  route: ResultAnswerRoute,
+  usage?: WebSearchUsage,
+  recordOnlyChosen = false,
+): string {
+  const label = RESULT_ROUTE_LABELS[route];
+  const cleanAnswer = clampResultChatText(answer, RESULT_CHAT_ANSWER_MAX_LENGTH);
+  const preface: string[] = [label];
+  if ((route === 'record_only' || route === 'ambiguous') && recordOnlyChosen) {
+    preface.push('현재 외부자료는 확인하지 않았습니다.');
+  }
+  if (route === 'web_search' && usage) {
+    preface.push(`이 결과의 최신자료 확인 ${usage.remainingCount}회 남음`);
+  }
+  if (cleanAnswer.startsWith(label)) {
+    const missingExtra = preface.slice(1).filter((line) => !cleanAnswer.includes(line));
+    if (missingExtra.length === 0) return cleanAnswer;
+    const rest = cleanAnswer.slice(label.length).trim();
+    return `${label}\n${missingExtra.join('\n')}${rest ? `\n\n${rest}` : ''}`;
+  }
+  return `${preface.join('\n')}\n\n${cleanAnswer}`;
+}
+
+async function getRecentResultChatMessages(
+  messagesRef: admin.firestore.CollectionReference,
+): Promise<Record<string, any>[]> {
+  const recentSnap = await messagesRef.orderBy('createdAt', 'desc').limit(RESULT_CHAT_HISTORY_LIMIT).get();
+  return recentSnap.docs.map((docSnap) => docSnap.data()).reverse();
+}
+
+function formatRecentResultChatMessages(messages: Record<string, any>[]): string {
+  return messages
+    .map((message) => `${message.role === 'user' ? '사용자' : 'AI'}: ${clampResultChatText(message.content, RESULT_CHAT_HISTORY_ITEM_MAX_LENGTH)}`)
+    .join('\n');
+}
+
+function findReusableResultChatAnswer(
+  messages: Record<string, any>[],
+  question: string,
+  route: ResultAnswerRoute,
+): { answer: string; sources: { title: string; uri: string }[] } | null {
+  const normalizedQuestion = normalizeResultChatQuestion(question).toLowerCase();
+  for (let i = messages.length - 2; i >= 0; i -= 1) {
+    const userMessage = messages[i];
+    const assistantMessage = messages[i + 1];
+    if (userMessage?.role !== 'user' || assistantMessage?.role !== 'assistant') continue;
+    const priorQuestion = normalizeResultChatQuestion(String(userMessage.content || '')).toLowerCase();
+    if (priorQuestion !== normalizedQuestion) continue;
+    if (assistantMessage.answerRoute !== route) continue;
+    if (assistantMessage.webSearchUsed) continue;
+    const answer = clampResultChatText(assistantMessage.content, RESULT_CHAT_ANSWER_MAX_LENGTH);
+    if (!answer) continue;
+    const sources = Array.isArray(assistantMessage.sources) ? assistantMessage.sources : [];
+    return { answer, sources };
+  }
+  return null;
+}
+
+async function saveResultChatExchange(params: {
+  threadRef: admin.firestore.DocumentReference;
+  messagesRef: admin.firestore.CollectionReference;
+  question: string;
+  answer: string;
+  sources: { title: string; uri: string }[];
+  sourceKey: string;
+  sourceIndex?: number;
+  safetyMode: ResultChatSafetyMode;
+  answerRoute: ResultAnswerRoute;
+  model: string | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  latencyMs: number;
+  webSearchUsed: boolean;
+  professionalApiUsed: boolean;
+  cached?: boolean;
+}): Promise<void> {
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  await params.messagesRef.add({
+    role: 'user',
+    content: params.question,
+    createdAt: now,
+  });
+  await params.messagesRef.add({
+    role: 'assistant',
+    content: params.answer,
+    sources: params.sources.length > 0 ? params.sources : [],
+    answerRoute: params.answerRoute,
+    routeLabel: RESULT_ROUTE_LABELS[params.answerRoute],
+    webSearchUsed: params.webSearchUsed,
+    professionalApiUsed: params.professionalApiUsed,
+    inputTokens: params.inputTokens,
+    outputTokens: params.outputTokens,
+    model: params.model,
+    latencyMs: params.latencyMs,
+    cached: params.cached === true,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  await params.threadRef.set({
+    sourceKey: params.sourceKey,
+    sourceIndex: typeof params.sourceIndex === 'number' ? params.sourceIndex : null,
+    safetyMode: params.safetyMode,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    messageCount: admin.firestore.FieldValue.increment(2),
+    lastMessagePreview: params.answer.slice(0, 160),
+  }, { merge: true });
+}
+
+async function logResultChatUsage(params: {
+  uid: string;
+  actualPlan: UserPlan;
+  recordId: string;
+  sourceKey: string;
+  answerRoute: ResultAnswerRoute;
+  model: string | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  webSearchUsed: boolean;
+  professionalApiUsed: boolean;
+  searchSourceCount: number;
+  latencyMs: number | null;
+  requestId: string | null;
+  success: boolean;
+  errorCode: string | null;
+  isDev: boolean;
+}): Promise<void> {
+  await logAiUsage({
+    uid: params.uid,
+    featureName: 'result_chat',
+    plan: params.actualPlan,
+    actualPlan: params.actualPlan,
+    recordId: params.recordId,
+    sourceKey: params.sourceKey,
+    answerRoute: params.answerRoute,
+    model: params.model,
+    inputTokens: params.inputTokens,
+    outputTokens: params.outputTokens,
+    imageCount: 0,
+    externalApiProvider: null,
+    externalApiCalled: false,
+    groundingUsed: params.webSearchUsed,
+    webSearchUsed: params.webSearchUsed,
+    professionalApiUsed: params.professionalApiUsed,
+    searchSourceCount: params.searchSourceCount,
+    latencyMs: params.latencyMs,
+    pricingVersion: RESULT_CHAT_COST_PRICING.pricingVersion,
+    estimatedModelCost: null,
+    estimatedSearchCost: null,
+    estimatedTotalCost: null,
+    currency: RESULT_CHAT_COST_PRICING.currency,
+    requestId: params.requestId,
+    success: params.success,
+    errorCode: params.errorCode,
+    isDev: params.isDev,
+  });
+}
+
 export const chatWithResult = onCall(
   {
     region: 'asia-northeast3',
@@ -1309,20 +2058,28 @@ export const chatWithResult = onCall(
     }
 
     const uid = request.auth.uid;
+    const rawQuestion = String(request.data?.question || '').trim();
     const recordId = clampResultChatText(request.data?.recordId, 160);
     const sourceKey = clampResultChatText(request.data?.sourceKey, 80);
-    const question = clampResultChatText(request.data?.question, 1200);
+    const question = clampResultChatText(rawQuestion, RESULT_CHAT_QUESTION_MAX_LENGTH);
     const safetyMode = clampResultChatText(request.data?.safetyMode, 40);
-    const systemGuide = clampResultChatText(request.data?.systemGuide, 1200);
+    const searchPreference = getResultChatSearchPreference(request.data?.searchPreference);
     const rawSourceIndex = request.data?.sourceIndex;
     const sourceIndex = typeof rawSourceIndex === 'number' && Number.isInteger(rawSourceIndex)
       ? rawSourceIndex
       : undefined;
 
+    if (rawQuestion.length > RESULT_CHAT_QUESTION_MAX_LENGTH) {
+      throw new HttpsError('invalid-argument', '질문이 너무 깁니다. 핵심 내용을 조금 줄여 주세요.');
+    }
     if (!recordId || !sourceKey || !question) {
       throw new HttpsError('invalid-argument', 'recordId, sourceKey, question이 필요합니다.');
     }
-    if (!RESULT_CHAT_ALLOWED_SAFETY_MODES.has(safetyMode)) {
+    const policy = RESULT_CHAT_SOURCE_POLICIES[sourceKey];
+    if (!policy) {
+      throw new HttpsError('invalid-argument', '지원하지 않는 결과 대화 항목입니다.');
+    }
+    if (safetyMode && !RESULT_CHAT_ALLOWED_SAFETY_MODES.has(policy.safetyMode)) {
       throw new HttpsError('invalid-argument', '지원하지 않는 safetyMode입니다.');
     }
 
@@ -1333,11 +2090,11 @@ export const chatWithResult = onCall(
     }
 
     const record = recordSnap.data() || {};
-    let sourceResult = clampResultChatText(getRecordResultBySourceKey(record, sourceKey, sourceIndex), 9000);
+    let sourceResult = clampResultChatText(getRecordResultBySourceKey(record, sourceKey, sourceIndex), RESULT_CHAT_SOURCE_MAX_LENGTH);
     // _sayu 결과물이 없으면(원문만 저장했거나 과거 기록) 원문 본문으로 폴백해 대화 가능하게
     if (!sourceResult && sourceKey.endsWith('_sayu')) {
       const prefix = sourceKey.split('_')[0];
-      sourceResult = clampResultChatText(getRecordOriginalContentByPrefix(record, prefix), 9000);
+      sourceResult = clampResultChatText(getRecordOriginalContentByPrefix(record, prefix), RESULT_CHAT_SOURCE_MAX_LENGTH);
     }
     if (!sourceResult) {
       throw new HttpsError('failed-precondition', '대화할 결과물이 없습니다.');
@@ -1346,157 +2103,313 @@ export const chatWithResult = onCall(
     const threadId = getResultThreadId(sourceKey, sourceIndex);
     const threadRef = recordRef.collection('resultThreads').doc(threadId);
     const messagesRef = threadRef.collection('messages');
-
-    // 🎫 요금제별 대화 횟수 제한 — messageCount(교환당 +2) 기준, 질문 횟수 = messageCount / 2
-    const plan = await getUserPlan(uid);
-    const threadSnap = await threadRef.get();
-    const priorMessageCount = Number(threadSnap.data()?.messageCount || 0);
-    const askedCount = Math.floor(priorMessageCount / 2);
-    const planLimit = PLAN_CHAT_LIMITS[plan] ?? PLAN_CHAT_LIMITS.free;
-    if (askedCount >= planLimit) {
-      await logAiUsage({
-        uid,
-        featureName: 'result_chat',
-        plan: AI_USAGE_PLAN,
-        model: null,
-        inputTokens: null,
-        outputTokens: null,
-        imageCount: 0,
-        externalApiProvider: null,
-        externalApiCalled: false,
-        groundingUsed: false,
-        requestId: null,
-        success: false,
-        errorCode: 'limit_reached',
-        isDev: DEVELOPER_UIDS.has(uid),
-      });
-      return {
-        threadId,
-        answer: '',
-        sources: [],
-        limitReached: true,
-        notice: RESULT_CHAT_LIMIT_NOTICES[plan] ?? RESULT_CHAT_LIMIT_NOTICES.free,
-      };
-    }
-
-    const recentSnap = await messagesRef.orderBy('createdAt', 'desc').limit(8).get();
-    const recentMessages = recentSnap.docs
-      .map((docSnap) => docSnap.data())
-      .reverse()
-      .map((message) => `${message.role === 'user' ? '사용자' : 'AI'}: ${clampResultChatText(message.content, 1000)}`)
-      .join('\n');
-
-    const prompt = `당신은 HARU2026의 결과물 기반 대화 비서입니다.
-
-[공통 원칙]
-- 기록 결과물과 현재 질문을 최우선 근거로 삼는다.
-- 기록에 담긴 사실·감정·의도는 임의로 바꾸거나 재창작하지 않는다.
-- 다만 최신 정보나 기록 밖 외부 사실이 답변에 필요하면 웹검색을 활용해 정확히 확인한 뒤 답한다.
-- 기록에도 없고 웹검색으로도 확인되지 않으면 "확인되지 않습니다"라고 솔직히 말한다.
-- 사용자의 원문 감정과 의도를 존중한다.
-- 답변은 실행 가능한 다음 행동 1~3개로 마무리한다.
-- 과장된 칭찬, 단정적 예측, 전문가 판단 대체 표현을 금지한다.
-
-[모드 제한]
-${getSafetyModeGuide(safetyMode)}
-
-[형식별 지침]
-${systemGuide || '(추가 지침 없음)'}
-
-[결과물]
-${sourceResult}
-
-[최근 대화]
-${recentMessages || '(아직 없음)'}
-
-[현재 질문]
-${question}
-
-한국어로 답변하세요.`;
+    const actualPlan = coerceUserPlan(await getUserPlan(uid));
+    const isDev = DEVELOPER_UIDS.has(uid);
+    const requestId = createAiUsageRequestId();
+    let locked = false;
+    let reservedWebSearch = false;
+    let webSearchFinalized = false;
 
     try {
-      // 신 SDK — 웹검색(google_search) 툴 기본 탑재. 검색 실행 여부는 모델이 질문마다 판단.
-      const modelName = 'gemini-3.1-flash-lite';
+      await acquireResultChatLock(threadRef, requestId);
+      locked = true;
+      await enforceResultChatRateLimit(uid);
+
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
+      const classification = await classifyResultChatQuestion(ai, {
+        uid,
+        actualPlan,
+        recordId,
+        sourceKey,
+        question,
+        sourceResult,
+        requestId,
+        isDev,
+      });
+      const currentUsage = await getThreadWebSearchUsage(threadRef, actualPlan);
+      let answerRoute: ResultAnswerRoute = classification.route;
+      let recordOnlyChosen = false;
+
+      if (searchPreference === 'record_only') {
+        if (answerRoute === 'high_risk_guidance') {
+          answerRoute = 'high_risk_guidance';
+        } else if (answerRoute === 'web_search') {
+          return {
+            threadId,
+            answer: '',
+            sources: [],
+            answerRoute,
+            routeLabel: RESULT_ROUTE_LABELS.web_search,
+            requiresConfirmation: true,
+            confirmationType: 'web_search',
+            notice: buildWebSearchNotice(actualPlan, currentUsage),
+            plan: actualPlan,
+            planLabel: RESULT_CHAT_PLAN_LABELS[actualPlan],
+            webSearchLimit: currentUsage.limit,
+            webSearchUsedCount: currentUsage.usedCount,
+            webSearchRemainingCount: currentUsage.remainingCount,
+          };
+        } else {
+          answerRoute = 'record_only';
+          recordOnlyChosen = true;
+        }
+      } else if (searchPreference === 'web_confirmed') {
+        if (answerRoute === 'high_risk_guidance') {
+          answerRoute = 'high_risk_guidance';
+        } else if (answerRoute !== 'record_only') {
+          answerRoute = 'web_search';
+        }
+      } else if (answerRoute === 'web_search') {
+        return {
+          threadId,
+          answer: '',
+          sources: [],
+          answerRoute,
+          routeLabel: RESULT_ROUTE_LABELS.web_search,
+          requiresConfirmation: true,
+          confirmationType: 'web_search',
+          notice: buildWebSearchNotice(actualPlan, currentUsage),
+          plan: actualPlan,
+          planLabel: RESULT_CHAT_PLAN_LABELS[actualPlan],
+          webSearchLimit: currentUsage.limit,
+          webSearchUsedCount: currentUsage.usedCount,
+          webSearchRemainingCount: currentUsage.remainingCount,
+        };
+      } else if (answerRoute === 'ambiguous') {
+        return {
+          threadId,
+          answer: '',
+          sources: [],
+          answerRoute,
+          routeLabel: RESULT_ROUTE_LABELS.ambiguous,
+          requiresConfirmation: true,
+          confirmationType: 'ambiguous',
+          notice: buildAmbiguousNotice(actualPlan, currentUsage),
+          plan: actualPlan,
+          planLabel: RESULT_CHAT_PLAN_LABELS[actualPlan],
+          webSearchLimit: currentUsage.limit,
+          webSearchUsedCount: currentUsage.usedCount,
+          webSearchRemainingCount: currentUsage.remainingCount,
+        };
+      }
+
+      const recentMessageRows = await getRecentResultChatMessages(messagesRef);
+      const reusable = answerRoute !== 'web_search'
+        ? findReusableResultChatAnswer(recentMessageRows, question, answerRoute)
+        : null;
+      if (reusable) {
+        const latencyMs = 0;
+        await saveResultChatExchange({
+          threadRef,
+          messagesRef,
+          question,
+          answer: reusable.answer,
+          sources: reusable.sources,
+          sourceKey,
+          sourceIndex,
+          safetyMode: policy.safetyMode,
+          answerRoute,
+          model: null,
+          inputTokens: 0,
+          outputTokens: 0,
+          latencyMs,
+          webSearchUsed: false,
+          professionalApiUsed: false,
+          cached: true,
+        });
+        await logResultChatUsage({
+          uid,
+          actualPlan,
+          recordId,
+          sourceKey,
+          answerRoute,
+          model: null,
+          inputTokens: 0,
+          outputTokens: 0,
+          webSearchUsed: false,
+          professionalApiUsed: false,
+          searchSourceCount: reusable.sources.length,
+          latencyMs,
+          requestId,
+          success: true,
+          errorCode: null,
+          isDev,
+        });
+        return {
+          threadId,
+          answer: reusable.answer,
+          sources: reusable.sources,
+          answerRoute,
+          routeLabel: RESULT_ROUTE_LABELS[answerRoute],
+          webSearchUsed: false,
+          professionalApiUsed: false,
+          plan: actualPlan,
+          planLabel: RESULT_CHAT_PLAN_LABELS[actualPlan],
+          webSearchLimit: currentUsage.limit,
+          webSearchUsedCount: currentUsage.usedCount,
+          webSearchRemainingCount: currentUsage.remainingCount,
+        };
+      }
+
+      let usageForAnswer = currentUsage;
+      if (answerRoute === 'web_search') {
+        const reserved = await reserveWebSearchSlot(threadRef, actualPlan, sourceKey, sourceIndex);
+        if (!reserved.reserved) {
+          await logResultChatUsage({
+            uid,
+            actualPlan,
+            recordId,
+            sourceKey,
+            answerRoute,
+            model: null,
+            inputTokens: null,
+            outputTokens: null,
+            webSearchUsed: false,
+            professionalApiUsed: false,
+            searchSourceCount: 0,
+            latencyMs: null,
+            requestId,
+            success: false,
+            errorCode: 'web_search_limit_reached',
+            isDev,
+          });
+          return {
+            threadId,
+            answer: '',
+            sources: [],
+            answerRoute,
+            routeLabel: RESULT_ROUTE_LABELS.web_search,
+            limitReached: true,
+            notice: buildWebSearchExhaustedNotice(),
+            plan: actualPlan,
+            planLabel: RESULT_CHAT_PLAN_LABELS[actualPlan],
+            webSearchLimit: reserved.limit,
+            webSearchUsedCount: reserved.usedCount,
+            webSearchRemainingCount: reserved.remainingCount,
+          };
+        }
+        reservedWebSearch = true;
+        usageForAnswer = reserved;
+      }
+
+      const prompt = buildResultChatPrompt({
+        sourceResult,
+        recentMessages: formatRecentResultChatMessages(recentMessageRows),
+        question,
+        route: answerRoute,
+        safetyMode: policy.safetyMode,
+        systemGuide: policy.systemGuide,
+        recordOnlyChosen,
+      });
+      const startedAt = Date.now();
       const response = await ai.models.generateContent({
-        model: modelName,
+        model: RESULT_CHAT_MODEL_NAME,
         contents: prompt,
-        config: { tools: [{ googleSearch: {} }] },
+        config: answerRoute === 'web_search'
+          ? { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS }
+          : { maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
       });
 
-      const answer = clampResultChatText(response.text || '', 5000);
+      const latencyMs = Date.now() - startedAt;
+      const rawAnswer = clampResultChatText(response.text || '', RESULT_CHAT_ANSWER_MAX_LENGTH);
+      const { sources, usedWebSearch } = answerRoute === 'web_search'
+        ? getResultChatSources(response)
+        : { sources: [] as { title: string; uri: string }[], usedWebSearch: false };
+      if (answerRoute === 'web_search' && !usedWebSearch) {
+        throw new Error('web_search_not_grounded');
+      }
+
+      if (answerRoute === 'web_search') {
+        usageForAnswer = await finalizeWebSearchSlot(threadRef, actualPlan, true);
+        webSearchFinalized = true;
+      }
+
+      const answer = decorateResultChatAnswer(rawAnswer, answerRoute, usageForAnswer, recordOnlyChosen);
       if (!answer) {
         throw new Error('empty_answer');
       }
 
-      // 웹검색 grounding 메타데이터 추출
-      const grounding = response.candidates?.[0]?.groundingMetadata;
-      const searchQueries: string[] = grounding?.webSearchQueries || [];
-      const groundingChunks: any[] = grounding?.groundingChunks || [];
-      const usedWebSearch = searchQueries.length > 0 || groundingChunks.length > 0;
-      const sources = groundingChunks
-        .map((chunk: any) => ({ title: chunk?.web?.title || '', uri: chunk?.web?.uri || '' }))
-        .filter((s: { title: string; uri: string }) => s.uri);
       const gUsage = response.usageMetadata;
-
-      await logAiUsage({
+      await logResultChatUsage({
         uid,
-        featureName: 'result_chat',
-        plan: AI_USAGE_PLAN,
-        model: modelName,
+        actualPlan,
+        recordId,
+        sourceKey,
+        answerRoute,
+        model: RESULT_CHAT_MODEL_NAME,
         inputTokens: gUsage?.promptTokenCount ?? null,
         outputTokens: gUsage?.candidatesTokenCount ?? null,
-        imageCount: 0,
-        externalApiProvider: null,
-        externalApiCalled: false,
-        groundingUsed: usedWebSearch,
-        requestId: null,
+        webSearchUsed: answerRoute === 'web_search' && usedWebSearch,
+        professionalApiUsed: false,
+        searchSourceCount: sources.length,
+        latencyMs,
+        requestId,
         success: true,
         errorCode: null,
-        isDev: DEVELOPER_UIDS.has(uid),
+        isDev,
       });
 
-      const now = admin.firestore.FieldValue.serverTimestamp();
-      await messagesRef.add({
-        role: 'user',
-        content: question,
-        createdAt: now,
-      });
-      await messagesRef.add({
-        role: 'assistant',
-        content: answer,
-        sources: sources.length > 0 ? sources : [],
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-      await threadRef.set({
+      await saveResultChatExchange({
+        threadRef,
+        messagesRef,
+        question,
+        answer,
+        sources,
         sourceKey,
-        sourceIndex: typeof sourceIndex === 'number' ? sourceIndex : null,
-        safetyMode,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        messageCount: admin.firestore.FieldValue.increment(2),
-        lastMessagePreview: answer.slice(0, 160),
-      }, { merge: true });
+        sourceIndex,
+        safetyMode: policy.safetyMode,
+        answerRoute,
+        model: RESULT_CHAT_MODEL_NAME,
+        inputTokens: gUsage?.promptTokenCount ?? null,
+        outputTokens: gUsage?.candidatesTokenCount ?? null,
+        latencyMs,
+        webSearchUsed: answerRoute === 'web_search' && usedWebSearch,
+        professionalApiUsed: false,
+      });
 
-      return { threadId, answer, sources };
+      return {
+        threadId,
+        answer,
+        sources,
+        answerRoute,
+        routeLabel: RESULT_ROUTE_LABELS[answerRoute],
+        webSearchUsed: answerRoute === 'web_search' && usedWebSearch,
+        professionalApiUsed: false,
+        plan: actualPlan,
+        planLabel: RESULT_CHAT_PLAN_LABELS[actualPlan],
+        webSearchLimit: usageForAnswer.limit,
+        webSearchUsedCount: usageForAnswer.usedCount,
+        webSearchRemainingCount: usageForAnswer.remainingCount,
+      };
     } catch (error: any) {
+      if (reservedWebSearch && !webSearchFinalized) {
+        await finalizeWebSearchSlot(threadRef, actualPlan, false);
+      }
+      if (error instanceof HttpsError) {
+        throw error;
+      }
       logger.error('chatWithResult 실패:', { message: error?.message, recordId, sourceKey, safetyMode });
-      await logAiUsage({
+      await logResultChatUsage({
         uid,
-        featureName: 'result_chat',
-        plan: AI_USAGE_PLAN,
+        actualPlan,
+        recordId,
+        sourceKey,
+        answerRoute: 'ambiguous',
         model: null,
         inputTokens: null,
         outputTokens: null,
-        imageCount: 0,
-        externalApiProvider: null,
-        externalApiCalled: false,
-        groundingUsed: false,
-        requestId: null,
+        webSearchUsed: false,
+        professionalApiUsed: false,
+        searchSourceCount: 0,
+        latencyMs: null,
+        requestId,
         success: false,
         errorCode: getAiUsageErrorCode(error),
-        isDev: DEVELOPER_UIDS.has(uid),
+        isDev,
       });
       throw new HttpsError('internal', 'AI 응답 생성에 실패했습니다.');
+    } finally {
+      if (locked) await releaseResultChatLock(threadRef, requestId);
     }
   }
 );
