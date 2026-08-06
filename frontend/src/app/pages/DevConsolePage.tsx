@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useAuth } from '../contexts/AuthContext';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { AiLibraryPage } from './AiLibraryPage';
@@ -77,6 +78,13 @@ const DEV_TOOLS: DevTool[] = [
     color: '#10b981',
   },
   {
+    icon: '⚖️',
+    label: '하루LAW 익명 공유 검수',
+    description: '검수 대기 중인 익명 공유를 승인하거나 반려합니다.',
+    path: '/admin/haru-law-review',
+    color: '#065F46',
+  },
+  {
     icon: '🔎',
     label: '명작탐정비서 임시 화면',
     description: '잊힌 책·채널·영상·음악 탐정 (개발자 검토용 껍데기)',
@@ -146,12 +154,37 @@ export function DevConsolePage() {
   const [backfillResult, setBackfillResult] = useState<LibraryBackfillRunResult | null>(null);
   const [backfillLoading, setBackfillLoading] = useState<'preview' | 'run' | null>(null);
   const [backfillError, setBackfillError] = useState<string | null>(null);
+  const [haruLawPendingCount, setHaruLawPendingCount] = useState<number | null>(null);
   const isDeveloper = user?.uid === DEVELOPER_UID;
 
   useEffect(() => {
     if (!user) return;
     if (!isDeveloper) navigate('/');
   }, [user, isDeveloper, navigate]);
+
+  useEffect(() => {
+    if (!isDeveloper) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const functions = getFunctions(undefined, 'asia-northeast3');
+        const callable = httpsCallable<Record<string, never>, { items: unknown[] }>(
+          functions,
+          'listPendingHaruLawSharedCards',
+        );
+        const res = await callable({});
+        if (!cancelled) {
+          setHaruLawPendingCount(Array.isArray(res.data?.items) ? res.data.items.length : 0);
+        }
+      } catch (error) {
+        console.warn('하루LAW 검수 대기 건수 불러오기 실패:', error);
+        if (!cancelled) setHaruLawPendingCount(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isDeveloper]);
 
   const handlePreviewBackfill = async () => {
     if (!user?.uid) return;
@@ -334,6 +367,11 @@ export function DevConsolePage() {
                 <p className="text-sm text-gray-600">
                   {tool.description}
                 </p>
+                {tool.path === '/admin/haru-law-review' && haruLawPendingCount !== null && (
+                  <p className="mt-3 inline-flex rounded-full px-3 py-1 text-xs font-bold" style={{ backgroundColor: '#ECFDF5', color: '#047857' }}>
+                    검수 대기 {haruLawPendingCount}건
+                  </p>
+                )}
               </button>
             </Fragment>
           ))}

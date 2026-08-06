@@ -66,6 +66,10 @@ type ResultChatModalState = {
   dateLabel: string;
   config: ResultChatConfig | null;
 };
+type SayuNavigationState = {
+  filterFormat?: string;
+  openRecordId?: string;
+} | null;
 const PLANT_SAYU_FILTERS: { key: PlantSayuFilter; label: string }[] = [
   { key: 'all', label: '전체' },
   { key: 'detective', label: '판독기록' },
@@ -936,6 +940,7 @@ export function SayuPage() {
   const [plantDetectivePhotoBusy, setPlantDetectivePhotoBusy] = useState(false);
   const plantDetectivePhotoInputRef = useRef<HTMLInputElement>(null);
   const allSayuLoadMoreRef = useRef<HTMLDivElement | null>(null);
+  const sayuRouteStateLoadingRef = useRef('');
 
   // === SAYU 키워드 미리보기 백필 (IntersectionObserver) ===
   const kwInflightRef = useRef<Set<string>>(new Set());
@@ -2407,6 +2412,63 @@ export function SayuPage() {
     });
   };
 
+  useEffect(() => {
+    if (location.pathname !== '/sayu') return;
+    if (!user?.uid) return;
+
+    const routeState = (location.state ?? null) as SayuNavigationState;
+    const filterFormat = typeof routeState?.filterFormat === 'string' ? routeState.filterFormat.trim() : '';
+    const openRecordId = typeof routeState?.openRecordId === 'string' ? routeState.openRecordId.trim() : '';
+    if (!filterFormat && !openRecordId) return;
+
+    const routeKey = `${filterFormat}|${openRecordId}`;
+    setSayuTab('records');
+    setViewMode('list');
+    setSayuSearchInput('');
+    setDebouncedSayuSearch('');
+    if (filterFormat) {
+      setSelectedSayuLabels((prev) => ({ ...prev, records: filterFormat }));
+    }
+
+    if (!openRecordId) {
+      navigate('/sayu', { replace: true, state: null });
+      return;
+    }
+
+    const currentRecord = records.find((record) => record.id === openRecordId);
+    if (!currentRecord) {
+      if (sayuRouteStateLoadingRef.current === routeKey) return;
+      sayuRouteStateLoadingRef.current = routeKey;
+      (async () => {
+        try {
+          const data = await firestoreService.getRecords(user.uid);
+          setRecords(data);
+          if (!data.some((record) => record.id === openRecordId)) {
+            toast.error('저장한 메모를 찾지 못했습니다.');
+            navigate('/sayu', { replace: true, state: null });
+          }
+        } catch (error) {
+          console.error('저장한 메모 불러오기 실패:', error);
+          toast.error('저장한 메모를 불러오지 못했습니다.');
+          navigate('/sayu', { replace: true, state: null });
+        } finally {
+          sayuRouteStateLoadingRef.current = '';
+        }
+      })();
+      return;
+    }
+
+    const recordDate = String(currentRecord.date || '').slice(0, 10);
+    const parsedDate = new Date(`${recordDate}T00:00:00`);
+    if (!Number.isNaN(parsedDate.getTime())) {
+      setCurrentMonth(parsedDate);
+    }
+    setSayuScope('month');
+    openFormatSayu(recordDate, 'memo', filterFormat || '메모', openRecordId);
+    navigate('/sayu', { replace: true, state: null });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, location.state, user?.uid, records]);
+
   const handleFormatClick = (formatKey: string, formatLabel: string, recordId?: string) => {
     if (!selectedDate) return;
     openFormatSayu(selectedDate, formatKey, formatLabel, recordId);
@@ -3810,8 +3872,6 @@ export function SayuPage() {
 
   const allRecordEntries: FlatSayuEntry[] = records
     .filter((record) => isSayuScopeDate(record.date))
-    // 결과물 AI 대화 메모는 SAYU 목록·검색·달력에서 제외 — 식물탐정 판독 상세 안에서만 표시
-    .filter((record) => (record as any).source !== 'result_ai_chat')
     .flatMap((record) =>
       getRecordFormatsForList(record)
         .filter(({ prefix }) => hasCompletedFormatForRecord(record, prefix))
@@ -6080,12 +6140,23 @@ export function SayuPage() {
                                 관리자가 개인정보 노출과 게시 적합성을 확인한 후 승인하면 SAYU·함께보기에 게시됩니다.
                               </p>
                             </div>
-                            <button
-                              onClick={handleHaruLawUnpublish}
-                              style={{ padding: '6px 12px', backgroundColor: '#FEE2E2', color: '#991B1B', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                            >
-                              공유 취소
-                            </button>
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                              {isDeveloper && (
+                                <button
+                                  type="button"
+                                  onClick={() => navigate('/admin/haru-law-review')}
+                                  style={{ padding: '6px 12px', backgroundColor: '#065F46', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                >
+                                  지금 검수하기
+                                </button>
+                              )}
+                              <button
+                                onClick={handleHaruLawUnpublish}
+                                style={{ padding: '6px 12px', backgroundColor: '#FEE2E2', color: '#991B1B', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                              >
+                                공유 취소
+                              </button>
+                            </div>
                           </div>
                         </div>
                       );
