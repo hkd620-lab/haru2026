@@ -17,6 +17,7 @@ type ResultChatModalProps = {
   title: string;
   dateLabel: string;
   config: ResultChatConfig;
+  onMemoSaved?: (memoRecordId: string) => void;
 };
 
 function getThreadId(sourceKey: string, sourceIndex?: number) {
@@ -32,6 +33,7 @@ export function ResultChatModal({
   title,
   dateLabel,
   config,
+  onMemoSaved,
 }: ResultChatModalProps) {
   const navigate = useNavigate();
   const [messages, setMessages] = useState<ResultChatMessage[]>([]);
@@ -76,6 +78,10 @@ export function ResultChatModal({
 
   const openSavedMemo = (memoRecordId: string) => {
     if (!memoRecordId) return;
+    if (onMemoSaved) {
+      onMemoSaved(memoRecordId);
+      return;
+    }
     onClose();
     navigate('/sayu', {
       state: {
@@ -139,7 +145,8 @@ export function ResultChatModal({
         threadId,
       });
       setSavedMemoIds((prev) => ({ ...prev, [index]: memoRecordId }));
-      toast.success('나의 기록에 메모를 저장했습니다.');
+      toast.success('AI 답변을 나의 기록에 저장했습니다.');
+      openSavedMemo(memoRecordId);
     } catch (error) {
       console.error('메모 저장 실패:', error);
       toast.error('메모 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.');
