@@ -2352,9 +2352,14 @@ export function SayuPage() {
       }
     });
 
-    let sayuContent = formatKey === 'reading'
-      ? record[`${formatKey}_final_sayu`] || record[sayuKey] || ''
-      : record[sayuKey] || record[`${formatKey}_final_sayu`] || '';
+    const isResultChatMemo = formatKey === 'memo' && (record as any).source === 'result_ai_chat';
+    const resultChatSourceLabel = String((record as any).sourceLabel || '').trim()
+      || (String((record as any).sourceKey || '') === 'haruraw_sayu' ? '하루LAW' : 'AI 답변');
+    let sayuContent = isResultChatMemo
+      ? String((record as any).memo_content || '')
+      : formatKey === 'reading'
+        ? record[`${formatKey}_final_sayu`] || record[sayuKey] || ''
+        : record[sayuKey] || record[`${formatKey}_final_sayu`] || '';
     if (!sayuContent) {
       const originalFields = Object.keys(record)
         .filter(k =>
@@ -2391,11 +2396,15 @@ export function SayuPage() {
       format: formatLabel,
       formatKey,
       firestoreId: record.id,
-      title: formatKey === 'household'
+      title: isResultChatMemo
+        ? String((record as any).memo_title || `AI 답변 메모 · ${formatLabel}`)
+        : formatKey === 'household'
         ? buildHouseholdSummaryTitle(record) || ((record[`${formatKey}_title`] as string) || '')
         : (record[`${formatKey}_title`] as string) || '',
       aiTitle: (record[`${formatKey}_ai_title`] as string) || '',
-      aiComment: (record[`${formatKey}_ai_comment`] as string) || '',
+      aiComment: isResultChatMemo
+        ? `AI 답변 메모 · 출처: ${resultChatSourceLabel} · 저장일: ${formatKoreanDate(record.date)}`
+        : (record[`${formatKey}_ai_comment`] as string) || '',
       isPublic: record.isPublic === true,
       sharedRecordId: typeof record.sharedRecordId === 'string' ? record.sharedRecordId : '',
       dateLabel: new Date(dateStr + 'T00:00:00').toLocaleDateString('ko-KR', {
@@ -2830,6 +2839,20 @@ export function SayuPage() {
     setResultChatState((prev) => ({ ...prev, isOpen: false }));
   };
 
+  const openSavedResultChatMemo = (memoRecordId: string) => {
+    if (!memoRecordId) return;
+    closeResultChat();
+    setPlantReadOnlyDetail(null);
+    setHarurawModal({ isOpen: false, query: '', summary: '', articles: '', recordId: '', shareStatus: '' });
+    setHaruLawShareState({ step: 'idle' });
+    navigate('/sayu', {
+      state: {
+        filterFormat: '메모',
+        openRecordId: memoRecordId,
+      },
+    });
+  };
+
   // Delete an AI log
   const handleDeleteAiLog = async (id: string) => {
     try {
@@ -3013,8 +3036,6 @@ export function SayuPage() {
         const prefix = FORMAT_PREFIX[format];
         const entries = monthRecords
           .filter((r) => {
-            // 결과물 AI 대화 메모는 목록에서 제외 — 식물탐정 판독 상세 안에서만 표시
-            if ((r as any).source === 'result_ai_chat') return false;
             if (prefix === 'reading' && !isCompletedReadingRecord(r)) return false;
             if (r.formats && r.formats.includes(format)) return true;
             return Object.keys(r).some((k) => k.startsWith(`${prefix}_`) && !k.endsWith('_sayu') && !k.endsWith('_rating') && !k.endsWith('_polished') && !k.endsWith('_images') && !k.endsWith('_stats'));
@@ -6329,6 +6350,7 @@ export function SayuPage() {
           title={resultChatState.title}
           dateLabel={resultChatState.dateLabel}
           config={resultChatState.config}
+          onMemoSaved={openSavedResultChatMemo}
         />
       )}
 
