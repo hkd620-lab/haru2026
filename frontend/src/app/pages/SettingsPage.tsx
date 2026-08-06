@@ -766,6 +766,7 @@ export function SettingsPage() {
           </div>
         </section>
 
+        {isAdmin && (
         <section className="bg-white rounded-lg p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-5">
             <ShieldCheck className="w-5 h-5" style={{ color: '#1A3C6E' }} />
@@ -788,6 +789,7 @@ export function SettingsPage() {
             정보금고 열기
           </button>
         </section>
+        )}
 
         <section className="bg-white rounded-lg p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-5">

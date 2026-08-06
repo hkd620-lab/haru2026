@@ -255,6 +255,7 @@ const AGENTS: Agent[] = [
     variant: 'green',
     stroke: '#4A5A2C',
     path: '/vault',
+    developerOnly: true,
     icon: (
       <>
         <rect x="5" y="9" width="14" height="11" rx="2" />
@@ -1438,7 +1439,7 @@ export function HomePageV2() {
             }}
           >
             {AGENTS.filter(
-              (a) => !a.developerOnly && !HIDDEN_AGENT_LABELS.has(a.label),
+              (a) => (!a.developerOnly || isDeveloper) && !HIDDEN_AGENT_LABELS.has(a.label),
             ).map((a) => {
               const disabled = a.path === null && !a.action;
               return (
