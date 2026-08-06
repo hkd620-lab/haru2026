@@ -89,6 +89,18 @@ export interface PublishedBook {
   createdAt?: any;
 }
 
+// ⚖️ 하루LAW 익명 공유 카드 — 관리자 검수를 통과(status: 'published')한 카드만 조회된다.
+export interface PublishedHaruLawCard {
+  id: string;
+  title: string;
+  anonymizedQuestion: string;
+  summary: string;
+  judgmentType?: string;
+  relatedStatutes?: { title?: string; article?: string; easySummary?: string }[];
+  disclaimer?: string;
+  updatedAt?: any;
+}
+
 export interface LibraryEntryMeta {
   scientificName?: string;
   identificationStatus?: string;
@@ -900,6 +912,24 @@ class FirestoreService {
       .sort((a, b) => {
         const aTime = a.publishedAt?.toMillis?.() ?? 0;
         const bTime = b.publishedAt?.toMillis?.() ?? 0;
+        return bTime - aTime;
+      });
+  }
+
+  // ⚖️ 승인된 하루LAW 익명 공유 카드 — firestore.rules가 status == 'published'만 읽기 허용.
+  // 검수 중(pending)·반려(rejected)·취소(withdrawn) 카드는 규칙 단에서 차단된다.
+  async getPublishedHaruLawCards(): Promise<PublishedHaruLawCard[]> {
+    const cardsQuery = query(
+      collection(db, 'sharedHaruLawCards'),
+      where('status', '==', 'published'),
+      limit(50),
+    );
+    const snapshot = await getDocs(cardsQuery);
+    return snapshot.docs
+      .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as PublishedHaruLawCard)
+      .sort((a, b) => {
+        const aTime = a.updatedAt?.toMillis?.() ?? 0;
+        const bTime = b.updatedAt?.toMillis?.() ?? 0;
         return bTime - aTime;
       });
   }

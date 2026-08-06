@@ -5974,6 +5974,25 @@ export function SayuPage() {
                     </div>
                   </div>
 
+                  {/* 하루LAW 추가 질문 — 기존 결과물 AI 대화(ResultChatModal) 재사용 */}
+                  {harurawModal.recordId && (() => {
+                    const chatConfig = getResultChatConfig('haruraw_sayu');
+                    if (!chatConfig) return null;
+                    const harurawRecord = records.find((item) => item.id === harurawModal.recordId);
+                    return (
+                      <div style={{ marginBottom: 12 }}>
+                        <ResultChatButton
+                          onClick={() => openResultChat({
+                            recordId: harurawModal.recordId,
+                            config: chatConfig,
+                            title: harurawModal.query || chatConfig.label,
+                            dateLabel: (harurawRecord as any)?.date || '',
+                          })}
+                        />
+                      </div>
+                    );
+                  })()}
+
                   <div style={sectionStyle}>
                     <p style={labelStyle}>실무 조언</p>
                     <ul style={{ margin: 0, paddingLeft: 18, color: '#374151', fontSize: 13, lineHeight: 1.7 }}>
@@ -5992,7 +6011,6 @@ export function SayuPage() {
                   {/* 하루LAW PREMIUM 익명 공유 */}
                   {(isPremium || isDeveloper) && (() => {
                     const ss = harurawModal.shareStatus;
-                    const active = ss === 'pending' || ss === 'published';
 
                     if (haruLawShareState.step === 'loading') {
                       return (
@@ -6051,17 +6069,74 @@ export function SayuPage() {
                       );
                     }
 
-                    if (active) {
+                    if (ss === 'pending') {
                       return (
-                        <div style={{ ...sectionStyle, backgroundColor: '#F0FDF4', borderColor: '#A7F3D0', marginBottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <p style={{ fontSize: 13, color: '#065F46', margin: 0 }}>
-                            {ss === 'pending' ? '⏳ 익명 공유 신청 완료 — 관리자 검수 중' : '✅ 함께보기에 공개 중'}
-                          </p>
+                        <div style={{ ...sectionStyle, backgroundColor: '#F0FDF4', borderColor: '#A7F3D0', marginBottom: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                            <div>
+                              <p style={{ fontSize: 13, fontWeight: 700, color: '#065F46', margin: '0 0 4px' }}>⏳ 공유 검수 중</p>
+                              <p style={{ fontSize: 12, color: '#047857', lineHeight: 1.7, margin: 0 }}>
+                                익명 공유 신청이 접수되었습니다.<br />
+                                관리자가 개인정보 노출과 게시 적합성을 확인한 후 승인하면 SAYU·함께보기에 게시됩니다.
+                              </p>
+                            </div>
+                            <button
+                              onClick={handleHaruLawUnpublish}
+                              style={{ padding: '6px 12px', backgroundColor: '#FEE2E2', color: '#991B1B', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                            >
+                              공유 취소
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (ss === 'published') {
+                      return (
+                        <div style={{ ...sectionStyle, backgroundColor: '#F0FDF4', borderColor: '#A7F3D0', marginBottom: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                            <div>
+                              <p style={{ fontSize: 13, fontWeight: 700, color: '#065F46', margin: '0 0 4px' }}>✅ 공유 승인됨</p>
+                              <p style={{ fontSize: 12, color: '#047857', lineHeight: 1.7, margin: 0 }}>
+                                익명 공유가 승인되어 SAYU·함께보기에 게시되었습니다.
+                              </p>
+                            </div>
+                            <button
+                              onClick={handleHaruLawUnpublish}
+                              style={{ padding: '6px 12px', backgroundColor: '#FEE2E2', color: '#991B1B', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                            >
+                              공유 취소
+                            </button>
+                          </div>
                           <button
-                            onClick={handleHaruLawUnpublish}
-                            style={{ padding: '6px 12px', backgroundColor: '#FEE2E2', color: '#991B1B', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                            onClick={() => navigate('/sayu-together')}
+                            style={{ marginTop: 10, width: '100%', padding: '8px 12px', backgroundColor: '#065F46', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                           >
-                            공유 취소
+                            공유 글 보기
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    if (ss === 'rejected') {
+                      const rejectedReason = String((records.find((item) => item.id === harurawModal.recordId) as any)?.haruLawShareRejectedReason || '').trim();
+                      return (
+                        <div style={{ ...sectionStyle, backgroundColor: '#FEF2F2', borderColor: '#FECACA', marginBottom: 0 }}>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: '#991B1B', margin: '0 0 4px' }}>익명 공유가 승인되지 않았습니다</p>
+                          {rejectedReason ? (
+                            <p style={{ fontSize: 12, color: '#B42318', lineHeight: 1.7, margin: '0 0 10px' }}>
+                              사유: {rejectedReason}
+                            </p>
+                          ) : (
+                            <p style={{ fontSize: 12, color: '#B42318', lineHeight: 1.7, margin: '0 0 10px' }}>
+                              내용을 수정한 뒤 다시 신청하실 수 있습니다.
+                            </p>
+                          )}
+                          <button
+                            onClick={handleHaruLawSharePreview}
+                            style={{ width: '100%', padding: '8px 12px', backgroundColor: '#1A3C6E', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            다시 공유 신청
                           </button>
                         </div>
                       );

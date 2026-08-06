@@ -9,6 +9,7 @@ import { exportRecordsToEpub } from '../services/epubExportService';
 import {
   firestoreService,
   type PublishedBook,
+  type PublishedHaruLawCard,
   type SharedRecordComment,
   type SharedRecordListItem,
 } from '../services/firestoreService';
@@ -27,6 +28,8 @@ export function SayuTogetherPage() {
   const [recoverySub, setRecoverySub] = useState<RecoverySubTab>('people');
   const [items, setItems] = useState<SharedRecordListItem[]>([]);
   const [publishedBooks, setPublishedBooks] = useState<PublishedBook[]>([]);
+  const [lawCards, setLawCards] = useState<PublishedHaruLawCard[]>([]);
+  const [expandedLawCardId, setExpandedLawCardId] = useState('');
   const [selectedId, setSelectedId] = useState('');
   const [comments, setComments] = useState<SharedRecordComment[]>([]);
   const [commentBody, setCommentBody] = useState('');
@@ -88,6 +91,17 @@ export function SayuTogetherPage() {
     }
   };
 
+  // ⚖️ 승인된 하루LAW 익명 사례 — 실패해도 기존 공개 글 목록에 영향을 주지 않도록 조용히 비운다.
+  const loadHaruLawCards = async () => {
+    if (!user?.uid) return;
+    try {
+      setLawCards(await firestoreService.getPublishedHaruLawCards());
+    } catch (error) {
+      console.error('하루LAW 공개 사례 불러오기 실패:', error);
+      setLawCards([]);
+    }
+  };
+
   const loadPublishedBooks = async () => {
     if (!user?.uid) return;
     setBooksLoading(true);
@@ -126,9 +140,11 @@ export function SayuTogetherPage() {
       setItems([]);
       setSelectedId('');
       setComments([]);
+      setLawCards([]);
       return;
     }
     loadSharedRecords();
+    loadHaruLawCards();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user?.uid]);
 
@@ -247,6 +263,76 @@ export function SayuTogetherPage() {
     } finally {
       setSharedActionId('');
     }
+  };
+
+  // ⚖️ 관리자 검수를 통과한 하루LAW 익명 사례. 승인 건이 없으면 섹션 자체를 감춘다.
+  const renderHaruLawCards = () => {
+    if (lawCards.length === 0) return null;
+
+    const judgmentLabels: Record<string, string> = {
+      possible: '가능성 있음',
+      caution: '주의 필요',
+      need_check: '추가 확인 필요',
+    };
+
+    return (
+      <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: '1px solid #DBEAFE' }}>
+        <div className="mb-3">
+          <p className="text-sm font-bold" style={{ color: '#1A3C6E' }}>⚖️ 하루LAW 익명 사례</p>
+          <p className="text-xs mt-1" style={{ color: '#6B7280', lineHeight: 1.6 }}>
+            검수를 거쳐 개인정보를 제거한 뒤 공개된 사례입니다. 법률 자문이 아닌 참고 정보입니다.
+          </p>
+        </div>
+        <div className="space-y-2">
+          {lawCards.map((card) => {
+            const expanded = expandedLawCardId === card.id;
+            return (
+              <div key={card.id} className="rounded-xl" style={{ border: '1px solid #E5E7EB', backgroundColor: '#F9FAFB', padding: 12 }}>
+                <button
+                  type="button"
+                  onClick={() => setExpandedLawCardId(expanded ? '' : card.id)}
+                  className="w-full text-left"
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                >
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    {card.judgmentType && (
+                      <span className="text-xs font-bold" style={{ color: '#1A3C6E', backgroundColor: '#F0F4FF', borderRadius: 999, padding: '2px 8px' }}>
+                        {judgmentLabels[card.judgmentType] || card.judgmentType}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm font-bold" style={{ color: '#111827', lineHeight: 1.5 }}>{card.title}</p>
+                  <p className="text-xs mt-1" style={{ color: '#6B7280', lineHeight: 1.6 }}>{card.anonymizedQuestion}</p>
+                </button>
+
+                {expanded && (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-xs" style={{ color: '#374151', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{card.summary}</p>
+                    {Array.isArray(card.relatedStatutes) && card.relatedStatutes.length > 0 && (
+                      <div className="rounded-lg" style={{ backgroundColor: '#fff', border: '1px solid #E5E7EB', padding: 10 }}>
+                        {card.relatedStatutes.map((statute, idx) => (
+                          <div key={`${card.id}_statute_${idx}`} className={idx > 0 ? 'mt-2' : ''}>
+                            <p className="text-xs font-bold" style={{ color: '#111827' }}>
+                              {[statute.title, statute.article].filter(Boolean).join(' · ')}
+                            </p>
+                            {statute.easySummary && (
+                              <p className="text-xs mt-0.5" style={{ color: '#6B7280', lineHeight: 1.6 }}>{statute.easySummary}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {card.disclaimer && (
+                      <p className="text-xs" style={{ color: '#92400E', lineHeight: 1.6 }}>{card.disclaimer}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    );
   };
 
   const renderList = () => {
@@ -941,7 +1027,12 @@ export function SayuTogetherPage() {
       </div>
 
       {activeTab === 'shared'
-        ? (selectedItem ? renderDetail() : renderList())
+        ? (selectedItem ? renderDetail() : (
+            <div className="space-y-4">
+              {renderHaruLawCards()}
+              {renderList()}
+            </div>
+          ))
         : renderRecovery()}
     </div>
   );
