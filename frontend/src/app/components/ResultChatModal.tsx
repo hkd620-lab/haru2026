@@ -140,6 +140,7 @@ export function ResultChatModal({
         searchPreference,
       });
       if (response.requiresConfirmation && response.confirmationType) {
+        if (optimistic) setMessages((prev) => prev.filter((item) => item !== optimistic));
         setPendingConfirmation({
           question: trimmed,
           confirmationType: response.confirmationType,
@@ -166,6 +167,9 @@ export function ResultChatModal({
         webSearchUsed: response.webSearchUsed,
         professionalApiUsed: response.professionalApiUsed,
       }]);
+      if (typeof response.webSearchRemainingCount === 'number' && response.webSearchRemainingCount === 0) {
+        setStatusNotice('이 결과의 최신자료 확인은 모두 사용했습니다.\n나의 기록을 바탕으로 한 질문은 계속할 수 있습니다.');
+      }
     } catch (error: any) {
       console.error('결과 대화 실패:', error);
       toast.error(error?.message || 'AI 응답을 생성하지 못했습니다.');
@@ -294,7 +298,7 @@ export function ResultChatModal({
                   <button
                     type="button"
                     disabled={loading}
-                    onClick={() => sendQuestion(pendingConfirmation.question, 'record_only', { skipOptimisticUser: true })}
+                    onClick={() => sendQuestion(pendingConfirmation.question, 'record_only')}
                     style={{ minHeight: 34, padding: '0 12px', borderRadius: 8, border: '1px solid #94A3B8', backgroundColor: '#FFFFFF', color: '#1F2937', fontSize: 12, fontWeight: 900, cursor: loading ? 'wait' : 'pointer' }}
                   >
                     나의 기록으로 답변
@@ -303,7 +307,7 @@ export function ResultChatModal({
                 <button
                   type="button"
                   disabled={loading || pendingConfirmation.webSearchRemainingCount === 0}
-                  onClick={() => sendQuestion(pendingConfirmation.question, 'web_confirmed', { skipOptimisticUser: true })}
+                  onClick={() => sendQuestion(pendingConfirmation.question, 'web_confirmed')}
                   style={{
                     minHeight: 34,
                     padding: '0 12px',

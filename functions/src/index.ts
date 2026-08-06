@@ -146,6 +146,7 @@ const RESULT_CHAT_RECORD_ONLY_PATTERNS = [
   /이\s*(기록|결과|내용|대화)/,
   /현재\s*(기록|결과|대화|내용)/,
   /기록에서/,
+  /지금까지\s*(나눈|대화|내용|질문|답변)/,
   /오늘\s*(내\s*)?(감정|기분|마음|하루|일기|생각)/,
   /(핵심|요약|정리|감정\s*흐름|우선순위|다음\s*(행동|할\s*일|계획)|제목|쉽게|표로|목록|문장|다듬|누락|미룬\s*일|기억할\s*장면|추억\s*글|삶의\s*적용|반복\s*관심사|사진별\s*차이|변화\s*흐름)/,
   /(준비할\s*서류|챙겨야\s*할\s*자료|확인할\s*쟁점|관련\s*기록)/,
@@ -153,14 +154,14 @@ const RESULT_CHAT_RECORD_ONLY_PATTERNS = [
 const RESULT_CHAT_CURRENT_FACT_PATTERNS = [
   /오늘(?!\s*(내\s*)?(감정|기분|마음|하루|일기|생각))/,
   /현재(?!\s*(기록|결과|대화|내용|내|이\s*기록))/,
-  /지금/,
+  /지금(?!까지)/,
   /최신|최근|변경|바뀌|개정|가격|시세|날씨|운영\s*시간|영업\s*시간|일정|판례|법령|조항|공시|뉴스|부작용|복용법|예방접종\s*기준|하락한\s*이유|상승한\s*이유/,
 ];
 const RESULT_CHAT_HIGH_RISK_PATTERNS = [
   /(약|복용|처방|용량|치료|진단|수술|응급실|증상).*(끊|중단|바꿔|변경|늘려|줄여|괜찮|필요\s*없|안\s*가도)/,
   /(끊어도|중단해도|응급실에\s*갈\s*필요가\s*없|병원에\s*안\s*가도)/,
-  /(승소|패소|이기나|질까|유죄|무죄|위법\s*여부|소송에서\s*이기|처벌\s*되|고소하면\s*이기)/,
-  /(지금\s*)?(사야|팔아|매수|매도|손절|익절|투자해도|수익\s*보장)/,
+  /(승소|패소|이기나|이길\s*수|반드시\s*이길|질까|유죄|무죄|위법\s*여부|소송에서\s*이기|처벌\s*되|고소하면\s*이기)/,
+  /(지금\s*)?(사야|팔아|매수|매도|손절|익절|투자해도|수익\s*보장|반드시\s*수익)/,
 ];
 const RESULT_CHAT_AMBIGUOUS_EXTERNAL_PATTERNS = [
   /(물|비료|햇빛|분갈이|가지치기).*(얼마|언제|어떻게|줘|주면|해야)/,
@@ -1524,12 +1525,14 @@ async function acquireResultChatLock(
     const data = snap.data() || {};
     const activeRequestId = String(data.activeRequestId || '');
     const activeAt = data.activeRequestStartedAt;
-    const activeMs = typeof activeAt?.toMillis === 'function' ? activeAt.toMillis() : 0;
+    const activeMs = Number(data.activeRequestStartedMs || 0)
+      || (typeof activeAt?.toMillis === 'function' ? activeAt.toMillis() : 0);
     if (activeRequestId && Date.now() - activeMs < RESULT_CHAT_LOCK_STALE_MS) {
       throw new HttpsError('resource-exhausted', '질문이 연속으로 많이 접수되었습니다. 잠시 후 다시 시도해 주세요.');
     }
     tx.set(threadRef, {
       activeRequestId: requestId,
+      activeRequestStartedMs: Date.now(),
       activeRequestStartedAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
@@ -1546,6 +1549,7 @@ async function releaseResultChatLock(
       if (String(snap.data()?.activeRequestId || '') !== requestId) return;
       tx.set(threadRef, {
         activeRequestId: admin.firestore.FieldValue.delete(),
+        activeRequestStartedMs: admin.firestore.FieldValue.delete(),
         activeRequestStartedAt: admin.firestore.FieldValue.delete(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
@@ -1930,6 +1934,7 @@ function findReusableResultChatAnswer(
   messages: Record<string, any>[],
   question: string,
   route: ResultAnswerRoute,
+  options: { allowRecentWebSearchMs?: number } = {},
 ): { answer: string; sources: { title: string; uri: string }[] } | null {
   const normalizedQuestion = normalizeResultChatQuestion(question).toLowerCase();
   for (let i = messages.length - 2; i >= 0; i -= 1) {
@@ -1939,7 +1944,15 @@ function findReusableResultChatAnswer(
     const priorQuestion = normalizeResultChatQuestion(String(userMessage.content || '')).toLowerCase();
     if (priorQuestion !== normalizedQuestion) continue;
     if (assistantMessage.answerRoute !== route) continue;
-    if (assistantMessage.webSearchUsed) continue;
+    if (assistantMessage.webSearchUsed) {
+      const createdAtMs = typeof assistantMessage.createdAt?.toMillis === 'function'
+        ? assistantMessage.createdAt.toMillis()
+        : 0;
+      const allowRecent = Boolean(options.allowRecentWebSearchMs)
+        && createdAtMs > 0
+        && Date.now() - createdAtMs <= Number(options.allowRecentWebSearchMs);
+      if (!allowRecent) continue;
+    }
     const answer = clampResultChatText(assistantMessage.content, RESULT_CHAT_ANSWER_MAX_LENGTH);
     if (!answer) continue;
     const sources = Array.isArray(assistantMessage.sources) ? assistantMessage.sources : [];
@@ -2196,8 +2209,25 @@ export const chatWithResult = onCall(
       const recentMessageRows = await getRecentResultChatMessages(messagesRef);
       const reusable = answerRoute !== 'web_search'
         ? findReusableResultChatAnswer(recentMessageRows, question, answerRoute)
-        : null;
+        : findReusableResultChatAnswer(recentMessageRows, question, answerRoute, { allowRecentWebSearchMs: RESULT_CHAT_LOCK_STALE_MS });
       if (reusable) {
+        if (answerRoute === 'web_search') {
+          return {
+            threadId,
+            answer: reusable.answer,
+            sources: reusable.sources,
+            answerRoute,
+            routeLabel: RESULT_ROUTE_LABELS[answerRoute],
+            webSearchUsed: true,
+            professionalApiUsed: false,
+            plan: actualPlan,
+            planLabel: RESULT_CHAT_PLAN_LABELS[actualPlan],
+            webSearchLimit: currentUsage.limit,
+            webSearchUsedCount: currentUsage.usedCount,
+            webSearchRemainingCount: currentUsage.remainingCount,
+            cached: true,
+          };
+        }
         const latencyMs = 0;
         await saveResultChatExchange({
           threadRef,
