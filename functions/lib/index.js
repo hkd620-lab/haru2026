@@ -1673,6 +1673,7 @@ function buildResultChatPrompt(params) {
         ].join('\n'),
         web_search: [
             '첫 줄에 "🌐 최신 외부자료를 확인한 답변"을 표시한다.',
+            '반드시 Google Search 도구로 최신 정보를 검색한 뒤 답변한다. 검색 없이는 답변하지 않는다.',
             'Google Search Grounding으로 확인된 최신 외부자료와 저장 기록을 구분한다.',
             '출처로 확인되지 않은 외부 사실은 단정하지 않는다.',
         ].join('\n'),
@@ -1856,7 +1857,7 @@ exports.chatWithResult = (0, https_2.onCall)({
     secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 60,
 }, async (request) => {
-    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m;
+    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4;
     if (!((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid)) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -2127,10 +2128,20 @@ exports.chatWithResult = (0, https_2.onCall)({
         });
         const latencyMs = Date.now() - startedAt;
         const rawAnswer = clampResultChatText(response.text || '', RESULT_CHAT_ANSWER_MAX_LENGTH);
+        const finishReason = (_k = (_j = response.candidates) === null || _j === void 0 ? void 0 : _j[0]) === null || _k === void 0 ? void 0 : _k.finishReason;
         const { sources, usedWebSearch } = answerRoute === 'web_search'
             ? getResultChatSources(response)
             : { sources: [], usedWebSearch: false };
         if (answerRoute === 'web_search' && !usedWebSearch) {
+            logger.warn('chatWithResult web_search_not_grounded 진단:', {
+                finishReason,
+                hasCandidates: ((_m = (_l = response.candidates) === null || _l === void 0 ? void 0 : _l.length) !== null && _m !== void 0 ? _m : 0) > 0,
+                hasGroundingMetadata: !!((_p = (_o = response.candidates) === null || _o === void 0 ? void 0 : _o[0]) === null || _p === void 0 ? void 0 : _p.groundingMetadata),
+                webSearchQueriesCount: (_u = (_t = (_s = (_r = (_q = response.candidates) === null || _q === void 0 ? void 0 : _q[0]) === null || _r === void 0 ? void 0 : _r.groundingMetadata) === null || _s === void 0 ? void 0 : _s.webSearchQueries) === null || _t === void 0 ? void 0 : _t.length) !== null && _u !== void 0 ? _u : 0,
+                groundingChunksCount: (_z = (_y = (_x = (_w = (_v = response.candidates) === null || _v === void 0 ? void 0 : _v[0]) === null || _w === void 0 ? void 0 : _w.groundingMetadata) === null || _x === void 0 ? void 0 : _x.groundingChunks) === null || _y === void 0 ? void 0 : _y.length) !== null && _z !== void 0 ? _z : 0,
+                recordId,
+                sourceKey,
+            });
             throw new Error('web_search_not_grounded');
         }
         if (answerRoute === 'web_search') {
@@ -2149,8 +2160,8 @@ exports.chatWithResult = (0, https_2.onCall)({
             sourceKey,
             answerRoute,
             model: RESULT_CHAT_MODEL_NAME,
-            inputTokens: (_j = gUsage === null || gUsage === void 0 ? void 0 : gUsage.promptTokenCount) !== null && _j !== void 0 ? _j : null,
-            outputTokens: (_k = gUsage === null || gUsage === void 0 ? void 0 : gUsage.candidatesTokenCount) !== null && _k !== void 0 ? _k : null,
+            inputTokens: (_0 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.promptTokenCount) !== null && _0 !== void 0 ? _0 : null,
+            outputTokens: (_1 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.candidatesTokenCount) !== null && _1 !== void 0 ? _1 : null,
             webSearchUsed: answerRoute === 'web_search' && usedWebSearch,
             professionalApiUsed: false,
             searchSourceCount: sources.length,
@@ -2171,8 +2182,8 @@ exports.chatWithResult = (0, https_2.onCall)({
             safetyMode: policy.safetyMode,
             answerRoute,
             model: RESULT_CHAT_MODEL_NAME,
-            inputTokens: (_l = gUsage === null || gUsage === void 0 ? void 0 : gUsage.promptTokenCount) !== null && _l !== void 0 ? _l : null,
-            outputTokens: (_m = gUsage === null || gUsage === void 0 ? void 0 : gUsage.candidatesTokenCount) !== null && _m !== void 0 ? _m : null,
+            inputTokens: (_2 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.promptTokenCount) !== null && _2 !== void 0 ? _2 : null,
+            outputTokens: (_3 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.candidatesTokenCount) !== null && _3 !== void 0 ? _3 : null,
             latencyMs,
             webSearchUsed: answerRoute === 'web_search' && usedWebSearch,
             professionalApiUsed: false,
@@ -2199,7 +2210,17 @@ exports.chatWithResult = (0, https_2.onCall)({
         if (error instanceof https_2.HttpsError) {
             throw error;
         }
-        logger.error('chatWithResult 실패:', { message: error === null || error === void 0 ? void 0 : error.message, recordId, sourceKey, safetyMode });
+        logger.error('chatWithResult 실패:', {
+            errorName: error === null || error === void 0 ? void 0 : error.name,
+            errorMessage: error === null || error === void 0 ? void 0 : error.message,
+            errorStatus: error === null || error === void 0 ? void 0 : error.status,
+            errorCode: error === null || error === void 0 ? void 0 : error.code,
+            errorCause: String((_4 = error === null || error === void 0 ? void 0 : error.cause) !== null && _4 !== void 0 ? _4 : ''),
+            stack: error === null || error === void 0 ? void 0 : error.stack,
+            recordId,
+            sourceKey,
+            safetyMode,
+        });
         await logResultChatUsage({
             uid,
             actualPlan,
