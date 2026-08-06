@@ -5,7 +5,12 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router';
 import { db } from '../../firebase';
 import type { ResultChatConfig } from '../config/resultChatConfig';
-import { chatWithResult, type ResultChatMessage } from '../services/resultChatService';
+import {
+  chatWithResult,
+  type ResultChatConfirmationType,
+  type ResultChatMessage,
+  type ResultChatSearchPreference,
+} from '../services/resultChatService';
 import { firestoreService } from '../services/firestoreService';
 
 type ResultChatModalProps = {
@@ -23,6 +28,16 @@ type ResultChatModalProps = {
 function getThreadId(sourceKey: string, sourceIndex?: number) {
   return typeof sourceIndex === 'number' ? `${sourceKey}_${sourceIndex}` : sourceKey;
 }
+
+type PendingConfirmation = {
+  question: string;
+  confirmationType: ResultChatConfirmationType;
+  notice: string;
+  planLabel?: string;
+  webSearchLimit?: number;
+  webSearchUsedCount?: number;
+  webSearchRemainingCount?: number;
+};
 
 export function ResultChatModal({
   isOpen,
@@ -42,7 +57,8 @@ export function ResultChatModal({
   const [loaded, setLoaded] = useState(false);
   const [savedMemoIds, setSavedMemoIds] = useState<Record<number, string>>({});
   const [savingIndex, setSavingIndex] = useState<number | null>(null);
-  const [limitNotice, setLimitNotice] = useState<string | null>(null);
+  const [statusNotice, setStatusNotice] = useState<string | null>(null);
+  const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
 
   const threadId = useMemo(() => getThreadId(config.sourceKey, sourceIndex), [config.sourceKey, sourceIndex]);
 
@@ -51,7 +67,8 @@ export function ResultChatModal({
     let cancelled = false;
     setLoaded(false);
     setMessages([]);
-    setLimitNotice(null);
+    setStatusNotice(null);
+    setPendingConfirmation(null);
     setSavedMemoIds({});
 
     const loadMessages = async () => {
@@ -91,14 +108,26 @@ export function ResultChatModal({
     });
   };
 
-  const sendQuestion = async (text: string) => {
+  const getPreviousUserQuestion = (assistantIndex: number) => {
+    for (let i = assistantIndex - 1; i >= 0; i -= 1) {
+      if (messages[i]?.role === 'user') return messages[i].content;
+    }
+    return '';
+  };
+
+  const sendQuestion = async (
+    text: string,
+    searchPreference: ResultChatSearchPreference = 'auto',
+    options: { skipOptimisticUser?: boolean } = {},
+  ) => {
     const trimmed = text.trim();
-    if (!trimmed || loading || limitNotice) return;
+    if (!trimmed || loading) return;
 
     setLoading(true);
     setQuestion('');
-    const optimistic: ResultChatMessage = { role: 'user', content: trimmed };
-    setMessages((prev) => [...prev, optimistic]);
+    setStatusNotice(null);
+    const optimistic: ResultChatMessage | null = options.skipOptimisticUser ? null : { role: 'user', content: trimmed };
+    if (optimistic) setMessages((prev) => [...prev, optimistic]);
 
     try {
       const response = await chatWithResult({
@@ -108,18 +137,39 @@ export function ResultChatModal({
         question: trimmed,
         safetyMode: config.safetyMode,
         systemGuide: config.systemGuide,
+        searchPreference,
       });
-      if (response.limitReached) {
-        // 요금제 대화 횟수 초과 — 방금 질문은 처리되지 않았으므로 되돌리고 안내만 표시
-        setMessages((prev) => prev.filter((item) => item !== optimistic));
-        setLimitNotice(response.notice || '대화 횟수 제한에 도달했습니다.');
+      if (response.requiresConfirmation && response.confirmationType) {
+        setPendingConfirmation({
+          question: trimmed,
+          confirmationType: response.confirmationType,
+          notice: response.notice || '최신 외부자료를 확인하면 더 정확하게 답할 수 있습니다.',
+          planLabel: response.planLabel,
+          webSearchLimit: response.webSearchLimit,
+          webSearchUsedCount: response.webSearchUsedCount,
+          webSearchRemainingCount: response.webSearchRemainingCount,
+        });
         return;
       }
-      setMessages((prev) => [...prev, { role: 'assistant', content: response.answer, sources: response.sources }]);
+      setPendingConfirmation(null);
+      if (response.limitReached) {
+        if (optimistic) setMessages((prev) => prev.filter((item) => item !== optimistic));
+        setStatusNotice(response.notice || '이 결과에서 이용할 수 있는 최신자료 확인을 모두 사용했습니다.');
+        return;
+      }
+      setMessages((prev) => [...prev, {
+        role: 'assistant',
+        content: response.answer,
+        sources: response.sources,
+        answerRoute: response.answerRoute,
+        routeLabel: response.routeLabel,
+        webSearchUsed: response.webSearchUsed,
+        professionalApiUsed: response.professionalApiUsed,
+      }]);
     } catch (error: any) {
       console.error('결과 대화 실패:', error);
       toast.error(error?.message || 'AI 응답을 생성하지 못했습니다.');
-      setMessages((prev) => prev.filter((item) => item !== optimistic));
+      if (optimistic) setMessages((prev) => prev.filter((item) => item !== optimistic));
       setQuestion(trimmed);
     } finally {
       setLoading(false);
@@ -141,6 +191,7 @@ export function ResultChatModal({
         sourceRecordId: recordId,
         sourceKey: config.sourceKey,
         label: config.label,
+        question: getPreviousUserQuestion(index),
         sourceIndex,
         threadId,
       });
@@ -200,7 +251,8 @@ export function ResultChatModal({
 
         <div style={{ padding: 16, overflowY: 'auto', flex: 1 }}>
           <p style={{ margin: '0 0 12px', padding: 12, borderRadius: 10, backgroundColor: '#F8FAFC', color: '#475569', fontSize: 12, lineHeight: 1.6 }}>
-            이 대화는 해당 기록 결과물을 바탕으로 생성되며, 대화 내용은 이 기록에 함께 저장됩니다.
+            📘 나의 기록을 바탕으로 답변합니다.
+            {'\n'}편하게 추가 질문을 해보세요.
           </p>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
@@ -226,6 +278,60 @@ export function ResultChatModal({
               </button>
             ))}
           </div>
+
+          {pendingConfirmation && (
+            <div style={{ marginBottom: 14, padding: 14, borderRadius: 10, border: '1px solid #BFDBFE', backgroundColor: '#EFF6FF', color: '#1E3A8A' }}>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, fontWeight: 800, whiteSpace: 'pre-wrap' }}>
+                {pendingConfirmation.notice}
+              </p>
+              {typeof pendingConfirmation.webSearchLimit === 'number' && (
+                <p style={{ margin: '8px 0 0', fontSize: 12, lineHeight: 1.5, color: '#1D4ED8', fontWeight: 700 }}>
+                  {pendingConfirmation.planLabel || '이용권'} · 이 결과의 최신자료 확인 {pendingConfirmation.webSearchLimit}회 중 {pendingConfirmation.webSearchRemainingCount ?? 0}회 이용 가능
+                </p>
+              )}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+                {pendingConfirmation.confirmationType === 'ambiguous' && (
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => sendQuestion(pendingConfirmation.question, 'record_only', { skipOptimisticUser: true })}
+                    style={{ minHeight: 34, padding: '0 12px', borderRadius: 8, border: '1px solid #94A3B8', backgroundColor: '#FFFFFF', color: '#1F2937', fontSize: 12, fontWeight: 900, cursor: loading ? 'wait' : 'pointer' }}
+                  >
+                    나의 기록으로 답변
+                  </button>
+                )}
+                <button
+                  type="button"
+                  disabled={loading || pendingConfirmation.webSearchRemainingCount === 0}
+                  onClick={() => sendQuestion(pendingConfirmation.question, 'web_confirmed', { skipOptimisticUser: true })}
+                  style={{
+                    minHeight: 34,
+                    padding: '0 12px',
+                    borderRadius: 8,
+                    border: '1px solid #1A3C6E',
+                    backgroundColor: pendingConfirmation.webSearchRemainingCount === 0 ? '#E5E7EB' : '#1A3C6E',
+                    color: '#FFFFFF',
+                    fontSize: 12,
+                    fontWeight: 900,
+                    cursor: loading || pendingConfirmation.webSearchRemainingCount === 0 ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  최신자료 확인
+                </button>
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => {
+                    setQuestion(pendingConfirmation.question);
+                    setPendingConfirmation(null);
+                  }}
+                  style={{ minHeight: 34, padding: '0 12px', borderRadius: 8, border: '1px solid #CBD5E1', backgroundColor: '#FFFFFF', color: '#475569', fontSize: 12, fontWeight: 900, cursor: loading ? 'wait' : 'pointer' }}
+                >
+                  취소
+                </button>
+              </div>
+            </div>
+          )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minHeight: 180 }}>
             {!loaded && <p style={{ margin: 0, color: '#64748B', fontSize: 13 }}>대화를 불러오는 중...</p>}
@@ -303,9 +409,9 @@ export function ResultChatModal({
           </div>
         </div>
 
-        {limitNotice && (
+        {statusNotice && (
           <div style={{ padding: '12px 16px', borderTop: '1px solid #E5E7EB', backgroundColor: '#FFFBEB', color: '#92400E', fontSize: 12.5, lineHeight: 1.6, fontWeight: 700, wordBreak: 'keep-all' }}>
-            {limitNotice}
+            {statusNotice}
           </div>
         )}
 
@@ -319,8 +425,8 @@ export function ResultChatModal({
           <input
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
-            disabled={loading || !!limitNotice}
-            placeholder={limitNotice ? '대화 횟수에 도달했습니다' : '이 결과물에 대해 질문하기'}
+            disabled={loading}
+            placeholder="나의 기록을 바탕으로 자유롭게 질문해 보세요."
             style={{
               flex: 1,
               minWidth: 0,
@@ -330,22 +436,22 @@ export function ResultChatModal({
               padding: '0 12px',
               fontSize: 14,
               outline: 'none',
-              backgroundColor: limitNotice ? '#F1F5F9' : '#FFFFFF',
+              backgroundColor: '#FFFFFF',
             }}
           />
           <button
             type="submit"
-            disabled={loading || !question.trim() || !!limitNotice}
+            disabled={loading || !question.trim()}
             style={{
               minWidth: 70,
               height: 42,
               borderRadius: 10,
               border: 'none',
-              backgroundColor: loading || !question.trim() || !!limitNotice ? '#CBD5E1' : '#1A3C6E',
+              backgroundColor: loading || !question.trim() ? '#CBD5E1' : '#1A3C6E',
               color: '#FFFFFF',
               fontSize: 13,
               fontWeight: 900,
-              cursor: loading || !question.trim() || !!limitNotice ? 'not-allowed' : 'pointer',
+              cursor: loading || !question.trim() ? 'not-allowed' : 'pointer',
             }}
           >
             전송

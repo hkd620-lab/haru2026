@@ -444,7 +444,8 @@ function hasResultChatSource(record: Record<string, any> | undefined, formatKey:
     return String(record.content || '').trim().length > 0 || normalizeTimelineItems(record.timelineItems).length > 0;
   }
   const sourceKey = getResultChatSourceKey(formatKey, record);
-  return String(record[sourceKey] || displayedContent || '').trim().length > 0;
+  const candidate = String(record[sourceKey] || displayedContent || '').trim();
+  return candidate.length > 0 && candidate !== '내용 없음';
 }
 
 function buildPlantChatSourceText(detail: PlantReadOnlyDetail): string {

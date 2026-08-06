@@ -236,6 +236,46 @@ const getTodayString = () => {
   return `${y}-${m}-${d}`;
 };
 
+const cleanResultChatMemoTitleCandidate = (value: unknown) => {
+  return String(value || '')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/[#>*_`~[\](){}]/g, ' ')
+    .replace(/^\s*[-+•]\s*/gm, ' ')
+    .replace(/^\s*\d+[.)]\s*/gm, ' ')
+    .replace(/\b20\d{2}[./-]\d{1,2}[./-]\d{1,2}\b/g, ' ')
+    .replace(/\b20\d{2}\s*년\s*\d{1,2}\s*월\s*\d{1,2}\s*일\b/g, ' ')
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '이메일')
+    .replace(/\b01\d[-.\s]?\d{3,4}[-.\s]?\d{4}\b/g, '연락처')
+    .replace(/[^\p{L}\p{N}\s.,?!%+\-·]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const takeMeaningfulResultChatTitle = (value: unknown) => {
+  const cleaned = cleanResultChatMemoTitleCandidate(value)
+    .replace(/^(질문|답변|요약|제목)\s*[:：-]?\s*/i, '')
+    .trim();
+  if (!cleaned) return '';
+  const sentence = cleaned.split(/[.!?\n。]/).map((part) => part.trim()).find((part) => part.length >= 2) || cleaned;
+  return sentence.length > 36 ? `${sentence.slice(0, 35)}…` : sentence;
+};
+
+const extractMarkdownHeadingTitle = (answer: string) => {
+  const heading = answer
+    .split('\n')
+    .map((line) => line.trim())
+    .find((line) => /^#{1,3}\s+/.test(line));
+  return heading ? takeMeaningfulResultChatTitle(heading.replace(/^#{1,3}\s+/, '')) : '';
+};
+
+const buildResultChatMemoTitle = (label: string, question: unknown, answer: string) => {
+  const fromQuestion = takeMeaningfulResultChatTitle(question);
+  const fromHeading = extractMarkdownHeadingTitle(answer);
+  const fromAnswer = takeMeaningfulResultChatTitle(answer);
+  const contentTitle = fromQuestion || fromHeading || fromAnswer || 'AI 답변 정리';
+  return `AI 답변 메모 · ${label || 'AI 답변'} · ${contentTitle}`.slice(0, 90);
+};
+
 const dateFromFirestoreValue = (value: unknown) => {
   if (value instanceof Timestamp) {
     return value.toDate().toISOString().slice(0, 10);
@@ -359,6 +399,7 @@ class FirestoreService {
       sourceRecordId: string;
       sourceKey: string;
       label: string;
+      question?: string;
       sourceIndex?: number;
       threadId?: string;
     },
@@ -368,7 +409,7 @@ class FirestoreService {
       date: today,
       formats: ['메모'] as RecordFormat[],
       content: '',
-      memo_title: `AI 답변 메모 · ${params.label} · ${today}`.slice(0, 60),
+      memo_title: buildResultChatMemoTitle(params.label, params.question, params.answer),
       memo_content: params.answer,
       source: 'result_ai_chat',
       sourceRecordId: params.sourceRecordId,
