@@ -363,11 +363,12 @@ class FirestoreService {
       threadId?: string;
     },
   ): Promise<string> {
+    const today = getTodayString();
     return this.saveRecord(userId, {
-      date: getTodayString(),
+      date: today,
       formats: ['메모'] as RecordFormat[],
       content: '',
-      memo_title: `AI 대화 메모 — ${params.label}`.slice(0, 60),
+      memo_title: `AI 답변 메모 · ${params.label} · ${today}`.slice(0, 60),
       memo_content: params.answer,
       source: 'result_ai_chat',
       sourceRecordId: params.sourceRecordId,

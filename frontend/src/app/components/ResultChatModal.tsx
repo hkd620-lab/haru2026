@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router';
 import { db } from '../../firebase';
 import type { ResultChatConfig } from '../config/resultChatConfig';
 import { chatWithResult, type ResultChatMessage } from '../services/resultChatService';
@@ -32,11 +33,12 @@ export function ResultChatModal({
   dateLabel,
   config,
 }: ResultChatModalProps) {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<ResultChatMessage[]>([]);
   const [question, setQuestion] = useState('');
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const [savedSet, setSavedSet] = useState<Set<number>>(new Set());
+  const [savedMemoIds, setSavedMemoIds] = useState<Record<number, string>>({});
   const [savingIndex, setSavingIndex] = useState<number | null>(null);
   const [limitNotice, setLimitNotice] = useState<string | null>(null);
 
@@ -48,6 +50,7 @@ export function ResultChatModal({
     setLoaded(false);
     setMessages([]);
     setLimitNotice(null);
+    setSavedMemoIds({});
 
     const loadMessages = async () => {
       try {
@@ -70,6 +73,17 @@ export function ResultChatModal({
   }, [isOpen, uid, recordId, threadId]);
 
   if (!isOpen) return null;
+
+  const openSavedMemo = (memoRecordId: string) => {
+    if (!memoRecordId) return;
+    onClose();
+    navigate('/sayu', {
+      state: {
+        filterFormat: '메모',
+        openRecordId: memoRecordId,
+      },
+    });
+  };
 
   const sendQuestion = async (text: string) => {
     const trimmed = text.trim();
@@ -108,10 +122,15 @@ export function ResultChatModal({
 
   const saveAsMemo = async (content: string, index: number) => {
     const text = content.trim();
-    if (!text || savingIndex !== null || savedSet.has(index)) return;
+    if (!text || savingIndex !== null) return;
+    const savedMemoId = savedMemoIds[index];
+    if (savedMemoId) {
+      openSavedMemo(savedMemoId);
+      return;
+    }
     setSavingIndex(index);
     try {
-      await firestoreService.saveResultChatMemo(uid, {
+      const memoRecordId = await firestoreService.saveResultChatMemo(uid, {
         answer: text,
         sourceRecordId: recordId,
         sourceKey: config.sourceKey,
@@ -119,12 +138,8 @@ export function ResultChatModal({
         sourceIndex,
         threadId,
       });
-      setSavedSet((prev) => {
-        const next = new Set(prev);
-        next.add(index);
-        return next;
-      });
-      toast.success('메모로 저장했습니다.');
+      setSavedMemoIds((prev) => ({ ...prev, [index]: memoRecordId }));
+      toast.success('나의 기록에 메모를 저장했습니다.');
     } catch (error) {
       console.error('메모 저장 실패:', error);
       toast.error('메모 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.');
@@ -259,20 +274,20 @@ export function ResultChatModal({
                   <button
                     type="button"
                     onClick={() => saveAsMemo(message.content, index)}
-                    disabled={savingIndex === index || savedSet.has(index)}
+                    disabled={savingIndex === index}
                     style={{
                       minHeight: 28,
                       padding: '0 10px',
                       borderRadius: 999,
                       border: '1px solid #CBD5E1',
-                      backgroundColor: savedSet.has(index) ? '#F1F5F9' : '#FFFFFF',
-                      color: savedSet.has(index) ? '#16A34A' : '#1A3C6E',
+                      backgroundColor: savedMemoIds[index] ? '#F1F5F9' : '#FFFFFF',
+                      color: savedMemoIds[index] ? '#16A34A' : '#1A3C6E',
                       fontSize: 11,
                       fontWeight: 800,
-                      cursor: savingIndex === index || savedSet.has(index) ? 'default' : 'pointer',
+                      cursor: savingIndex === index ? 'wait' : 'pointer',
                     }}
                   >
-                    {savedSet.has(index) ? '✓ 메모 저장됨' : savingIndex === index ? '저장 중...' : '메모로 저장'}
+                    {savedMemoIds[index] ? '✓ 저장됨 · 메모 바로 보기' : savingIndex === index ? '저장 중...' : '나의 기록에 메모 저장'}
                   </button>
                 )}
               </div>
