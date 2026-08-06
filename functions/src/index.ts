@@ -1834,6 +1834,7 @@ function buildResultChatPrompt(params: {
     ].join('\n'),
     web_search: [
       '첫 줄에 "🌐 최신 외부자료를 확인한 답변"을 표시한다.',
+      '반드시 Google Search 도구로 최신 정보를 검색한 뒤 답변한다. 검색 없이는 답변하지 않는다.',
       'Google Search Grounding으로 확인된 최신 외부자료와 저장 기록을 구분한다.',
       '출처로 확인되지 않은 외부 사실은 단정하지 않는다.',
     ].join('\n'),
@@ -2342,10 +2343,20 @@ export const chatWithResult = onCall(
 
       const latencyMs = Date.now() - startedAt;
       const rawAnswer = clampResultChatText(response.text || '', RESULT_CHAT_ANSWER_MAX_LENGTH);
+      const finishReason = response.candidates?.[0]?.finishReason;
       const { sources, usedWebSearch } = answerRoute === 'web_search'
         ? getResultChatSources(response)
         : { sources: [] as { title: string; uri: string }[], usedWebSearch: false };
       if (answerRoute === 'web_search' && !usedWebSearch) {
+        logger.warn('chatWithResult web_search_not_grounded 진단:', {
+          finishReason,
+          hasCandidates: (response.candidates?.length ?? 0) > 0,
+          hasGroundingMetadata: !!response.candidates?.[0]?.groundingMetadata,
+          webSearchQueriesCount: response.candidates?.[0]?.groundingMetadata?.webSearchQueries?.length ?? 0,
+          groundingChunksCount: response.candidates?.[0]?.groundingMetadata?.groundingChunks?.length ?? 0,
+          recordId,
+          sourceKey,
+        });
         throw new Error('web_search_not_grounded');
       }
 
@@ -2418,7 +2429,17 @@ export const chatWithResult = onCall(
       if (error instanceof HttpsError) {
         throw error;
       }
-      logger.error('chatWithResult 실패:', { message: error?.message, recordId, sourceKey, safetyMode });
+      logger.error('chatWithResult 실패:', {
+        errorName: error?.name,
+        errorMessage: error?.message,
+        errorStatus: error?.status,
+        errorCode: error?.code,
+        errorCause: String(error?.cause ?? ''),
+        stack: error?.stack,
+        recordId,
+        sourceKey,
+        safetyMode,
+      });
       await logResultChatUsage({
         uid,
         actualPlan,
