@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { DiaryLearnModal } from '../components/DiaryLearnModal';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { ref as storageRef, uploadBytes } from 'firebase/storage';
 import { Calendar, Check, Pencil, X } from 'lucide-react';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { useLocation, useNavigate } from 'react-router';
@@ -19,8 +20,9 @@ import {
   getAssistantRecommendations,
   type AssistantRecommendation,
 } from '../utils/assistantRecommendations';
-import { db } from '../../firebase';
+import { db, storage } from '../../firebase';
 import { doc, getDoc, setDoc, serverTimestamp, collection, arrayUnion } from 'firebase/firestore';
+import { useSubscription } from '../hooks/useSubscription';
 import {
   DndContext,
   closestCenter,
@@ -247,6 +249,8 @@ export function RecordPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { subscription } = useSubscription();
+  const isLawPaidUser = subscription.plan !== 'free' && subscription.status === 'active';
   const [fromPath, setFromPath] = useState<string | null>(() => (location.state as any)?.from ?? null);
   const closeToOrigin = () => {
     if (fromPath) {
@@ -305,6 +309,10 @@ export function RecordPage() {
   const [activeLawQuery, setActiveLawQuery] = useState('');
   const [isSavingLaw, setIsSavingLaw] = useState(false);
   const [lawSaved, setLawSaved] = useState(false);
+  const [lawAttachments, setLawAttachments] = useState<{storagePath: string; mimeType: string; fileName: string}[]>([]);
+  const [activeLawAttachments, setActiveLawAttachments] = useState<{storagePath: string; mimeType: string; fileName: string}[]>([]);
+  const [uploadingLawFiles, setUploadingLawFiles] = useState(false);
+  const lawFileInputRef = useRef<HTMLInputElement>(null);
   const [openCard, setOpenCard] = useState<{
     idx: number;
     type: 'explain' | 'prec';
@@ -663,6 +671,46 @@ export function RecordPage() {
     setFormatModalOpen(true);
   };
 
+  const handleLawFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0 || !user?.uid) return;
+    const ALLOWED = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/heic', 'image/heif', 'application/pdf', 'text/plain']);
+    const MAX_IMAGE = 7 * 1024 * 1024;
+    const MAX_DOC = 50 * 1024 * 1024;
+    const toUpload = files.slice(0, 5 - lawAttachments.length);
+    for (const file of toUpload) {
+      if (!ALLOWED.has(file.type)) {
+        toast.error(`${file.name}: 지원하지 않는 형식입니다. (이미지·PDF·TXT만 가능)`);
+        if (e.target) e.target.value = '';
+        return;
+      }
+      const sizeLimit = file.type.startsWith('image/') ? MAX_IMAGE : MAX_DOC;
+      if (file.size > sizeLimit) {
+        toast.error(`${file.name}: 파일이 너무 큽니다. (이미지 7MB, PDF·TXT 50MB 이하)`);
+        if (e.target) e.target.value = '';
+        return;
+      }
+    }
+    setUploadingLawFiles(true);
+    try {
+      const uploaded: {storagePath: string; mimeType: string; fileName: string}[] = [];
+      const draftId = `draft_${Date.now()}`;
+      for (let i = 0; i < toUpload.length; i++) {
+        const file = toUpload[i];
+        const safeName = `${Date.now()}_${i}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+        const path = `users/${user.uid}/haruLawAttachments/${draftId}/${safeName}`;
+        await uploadBytes(storageRef(storage, path), file, { contentType: file.type });
+        uploaded.push({ storagePath: path, mimeType: file.type, fileName: file.name });
+      }
+      setLawAttachments(prev => [...prev, ...uploaded]);
+    } catch {
+      toast.error('파일 업로드에 실패했습니다. 다시 시도해 주세요.');
+    } finally {
+      setUploadingLawFiles(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
   const handleLawSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!lawQuery.trim()) return;
@@ -670,10 +718,14 @@ export function RecordPage() {
     setLawResults([]);
     setLawSummary('');
     setLawError('');
+    const attachmentsToSend = [...lawAttachments];
     try {
       const functions = getFunctions(undefined, 'asia-northeast3');
       const lawSearch = httpsCallable(functions, 'lawSearch');
-      const res: any = await lawSearch({ query: lawQuery });
+      const res: any = await lawSearch({
+        query: lawQuery,
+        ...(attachmentsToSend.length > 0 ? { attachments: attachmentsToSend } : {}),
+      });
       const data = res.data;
       if (!data.success) {
         setLawError(data.message || '검색 결과가 없습니다.');
@@ -681,6 +733,7 @@ export function RecordPage() {
       }
       setLawSaved(false);
       setActiveLawQuery(lawQuery);
+      setActiveLawAttachments(attachmentsToSend);
       setLawResults(data.data);
       setLawSummary(data.aiSummary);
       // 검색 이력 저장
@@ -714,6 +767,7 @@ export function RecordPage() {
         haruraw_summary: lawSummary,
         haruraw_articles: articlesText,
         haruraw_simple: `${activeLawQuery}\n\n${lawSummary}`,
+        ...(activeLawAttachments.length > 0 ? { haruraw_attachments: activeLawAttachments } : {}),
       });
       setLawSaved(true);
       toast.success('하루LAW 분석 결과가 사유-나의 기록에 저장되었습니다.');
@@ -1233,6 +1287,40 @@ export function RecordPage() {
                     }}
                   />
                   <button
+                    type="button"
+                    onClick={() => lawFileInputRef.current?.click()}
+                    disabled={!isLawPaidUser || uploadingLawFiles || lawAttachments.length >= 5}
+                    title={!isLawPaidUser ? '베이직·프리미엄 이용권 전용' : '파일 첨부 (이미지·PDF·TXT, 최대 5개)'}
+                    style={{
+                      padding: '10px 12px', backgroundColor: !isLawPaidUser ? '#e5e7eb' : '#EEF2FF',
+                      color: !isLawPaidUser ? '#9ca3af' : '#1A3C6E',
+                      border: '1.5px solid', borderColor: !isLawPaidUser ? '#d1d5db' : '#1A3C6E',
+                      borderRadius: 8, fontSize: 18, cursor: !isLawPaidUser ? 'not-allowed' : 'pointer',
+                      lineHeight: 1, position: 'relative',
+                    }}
+                  >
+                    📎
+                    {lawAttachments.length > 0 && (
+                      <span style={{
+                        position: 'absolute', top: -6, right: -6,
+                        backgroundColor: '#1A3C6E', color: '#fff',
+                        borderRadius: '50%', width: 16, height: 16,
+                        fontSize: 10, fontWeight: 700,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {lawAttachments.length}
+                      </span>
+                    )}
+                  </button>
+                  <input
+                    ref={lawFileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/heic,image/heif,application/pdf,text/plain"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={handleLawFileSelect}
+                  />
+                  <button
                     type="submit"
                     disabled={lawLoading}
                     style={{
@@ -1244,6 +1332,31 @@ export function RecordPage() {
                     법률자문
                   </button>
                 </div>
+                {/* 첨부 칩 */}
+                {lawAttachments.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                    {lawAttachments.map((att, i) => (
+                      <div key={att.storagePath} style={{
+                        display: 'flex', alignItems: 'center', gap: 4,
+                        backgroundColor: '#EEF2FF', borderRadius: 6,
+                        padding: '4px 8px', fontSize: 12, color: '#1A3C6E',
+                      }}>
+                        <span>{att.fileName.length > 22 ? att.fileName.slice(0, 19) + '...' : att.fileName}</span>
+                        <button
+                          type="button"
+                          onClick={() => setLawAttachments(prev => prev.filter((_, idx) => idx !== i))}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#6B7280', padding: 0, lineHeight: 1 }}
+                        >×</button>
+                      </div>
+                    ))}
+                    {uploadingLawFiles && <span style={{ fontSize: 12, color: '#6B7280', alignSelf: 'center' }}>업로드 중...</span>}
+                  </div>
+                )}
+                {!isLawPaidUser && (
+                  <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 6, marginBottom: 0 }}>
+                    📎 파일 첨부는 베이직·프리미엄 이용권 전용 기능입니다.
+                  </p>
+                )}
               </form>
 
               {/* 로딩 */}

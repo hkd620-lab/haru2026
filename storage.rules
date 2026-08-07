@@ -77,6 +77,7 @@ service firebase.storage {
         && (
           request.resource.contentType.matches('image/.*')
           || request.resource.contentType == 'application/pdf'
+          || request.resource.contentType == 'text/plain'
         )
         && request.resource.size < 50 * 1024 * 1024;
       allow delete: if request.auth != null && request.auth.uid == userId;

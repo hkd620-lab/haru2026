@@ -1856,9 +1856,12 @@ async function logResultChatUsage(params) {
         isDev: params.isDev,
     });
 }
-const HARULAW_ATTACH_ALLOWED = new Set(['image/png', 'image/jpeg', 'image/webp', 'application/pdf']);
+const HARULAW_ATTACH_ALLOWED = new Set([
+    'image/png', 'image/jpeg', 'image/webp', 'image/heic', 'image/heif',
+    'application/pdf', 'text/plain',
+]);
 const HARULAW_ATTACH_MAX_IMAGE = 7 * 1024 * 1024;
-const HARULAW_ATTACH_MAX_PDF = 50 * 1024 * 1024;
+const HARULAW_ATTACH_MAX_DOC = 50 * 1024 * 1024;
 exports.chatWithResult = (0, https_2.onCall)({
     region: 'asia-northeast3',
     secrets: [GEMINI_API_KEY_SECRET],
@@ -2145,7 +2148,7 @@ exports.chatWithResult = (0, https_2.onCall)({
                 throw new https_2.HttpsError('invalid-argument', '지원하지 않는 파일 형식입니다.');
             }
             const [buf] = await (0, storage_1.getStorage)().bucket().file(att.storagePath).download();
-            const sizeLimit = att.mimeType === 'application/pdf' ? HARULAW_ATTACH_MAX_PDF : HARULAW_ATTACH_MAX_IMAGE;
+            const sizeLimit = att.mimeType.startsWith('image/') ? HARULAW_ATTACH_MAX_IMAGE : HARULAW_ATTACH_MAX_DOC;
             if (buf.length > sizeLimit) {
                 throw new https_2.HttpsError('invalid-argument', '파일 크기가 허용 범위를 초과했습니다.');
             }
@@ -5075,14 +5078,25 @@ function getHaruLawSharedCardId(uid, sourceRecordId) {
 exports.lawSearch = (0, https_2.onCall)({
     region: 'asia-northeast3',
     secrets: [LAW_API_KEY_SECRET, GEMINI_API_KEY_SECRET],
+    timeoutSeconds: 90,
 }, async (request) => {
-    var _a, _b, _c, _d, _f, _g;
+    var _a, _b, _c, _d, _f, _g, _h;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    const uid = request.auth.uid;
     const { query } = request.data;
     if (!query || typeof query !== 'string' || !query.trim()) {
         throw new https_2.HttpsError('invalid-argument', '검색어가 필요합니다.');
+    }
+    const attachments = Array.isArray((_a = request.data) === null || _a === void 0 ? void 0 : _a.attachments)
+        ? request.data.attachments.slice(0, 5)
+        : [];
+    if (attachments.length > 0) {
+        const actualPlan = coerceUserPlan(await getUserPlan(uid));
+        if (actualPlan === 'free') {
+            throw new https_2.HttpsError('permission-denied', '파일 첨부는 베이직·프리미엄 이용권 전용 기능입니다.');
+        }
     }
     const { XMLParser } = await Promise.resolve().then(() => __importStar(require('fast-xml-parser')));
     const LAW_API_KEY = LAW_API_KEY_SECRET.value();
@@ -5098,6 +5112,20 @@ exports.lawSearch = (0, https_2.onCall)({
         const { XMLParser } = await Promise.resolve().then(() => __importStar(require('fast-xml-parser')));
         const LAW_API_KEY = LAW_API_KEY_SECRET.value().trim();
         const GEMINI_KEY = GEMINI_API_KEY_SECRET.value().trim();
+        const fileParts = [];
+        for (const att of attachments) {
+            if (!att.storagePath.startsWith(`users/${uid}/haruLawAttachments/`)) {
+                throw new https_2.HttpsError('permission-denied', '허용되지 않은 파일 경로입니다.');
+            }
+            if (!HARULAW_ATTACH_ALLOWED.has(att.mimeType)) {
+                throw new https_2.HttpsError('invalid-argument', '지원하지 않는 형식입니다.');
+            }
+            const [buf] = await (0, storage_1.getStorage)().bucket().file(att.storagePath).download();
+            const sizeLimit = att.mimeType.startsWith('image/') ? HARULAW_ATTACH_MAX_IMAGE : HARULAW_ATTACH_MAX_DOC;
+            if (buf.length > sizeLimit)
+                throw new https_2.HttpsError('invalid-argument', '파일 크기 초과입니다.');
+            fileParts.push({ inlineData: { mimeType: att.mimeType, data: buf.toString('base64') } });
+        }
         const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
         const axiosConfig = {
             headers: {
@@ -5177,7 +5205,7 @@ exports.lawSearch = (0, https_2.onCall)({
         const searchUrl = `https://www.law.go.kr/DRF/lawSearch.do?OC=${LAW_API_KEY}&target=law&type=XML&query=${encodeURIComponent(lawKeyword)}`;
         const searchRes = await getLawXmlWithRetry(searchUrl);
         const searchJson = parser.parse(searchRes.data);
-        const laws = ((_a = searchJson === null || searchJson === void 0 ? void 0 : searchJson.LawSearch) === null || _a === void 0 ? void 0 : _a.law) || ((_b = searchJson === null || searchJson === void 0 ? void 0 : searchJson.Law) === null || _b === void 0 ? void 0 : _b.law) || ((_c = searchJson === null || searchJson === void 0 ? void 0 : searchJson.LawList) === null || _c === void 0 ? void 0 : _c.law);
+        const laws = ((_b = searchJson === null || searchJson === void 0 ? void 0 : searchJson.LawSearch) === null || _b === void 0 ? void 0 : _b.law) || ((_c = searchJson === null || searchJson === void 0 ? void 0 : searchJson.Law) === null || _c === void 0 ? void 0 : _c.law) || ((_d = searchJson === null || searchJson === void 0 ? void 0 : searchJson.LawList) === null || _d === void 0 ? void 0 : _d.law);
         if (!laws) {
             return { success: false, message: '관련 법령을 찾지 못했습니다.', data: [], aiSummary: '' };
         }
@@ -5195,7 +5223,7 @@ exports.lawSearch = (0, https_2.onCall)({
         const serviceUrl = `https://www.law.go.kr/DRF/lawService.do?OC=${LAW_API_KEY}&target=law&MST=${mstId}&type=XML`;
         const serviceRes = await getLawXmlWithRetry(serviceUrl);
         const lawJson = parser.parse(serviceRes.data);
-        const jomuns = ((_f = (_d = lawJson === null || lawJson === void 0 ? void 0 : lawJson.법령) === null || _d === void 0 ? void 0 : _d.조문) === null || _f === void 0 ? void 0 : _f.조문단위) || [];
+        const jomuns = ((_g = (_f = lawJson === null || lawJson === void 0 ? void 0 : lawJson.법령) === null || _f === void 0 ? void 0 : _f.조문) === null || _g === void 0 ? void 0 : _g.조문단위) || [];
         const arrayJomuns = Array.isArray(jomuns) ? jomuns : [jomuns];
         // 전체 조문 정제
         const allJomuns = arrayJomuns
@@ -5251,7 +5279,7 @@ exports.lawSearch = (0, https_2.onCall)({
         const lawText = finalJomuns
             .map((j) => `${j.articleStr}(${j.title}): ${j.content}`)
             .join('\n');
-        const summaryResult = await summaryModel.generateContent(`당신은 실무 경력 20년의 대한민국 법률 전문가입니다.
+        const summaryPrompt = `당신은 실무 경력 20년의 대한민국 법률 전문가입니다.
 다음 원칙을 반드시 지키세요:
 
 [정확성 가드레일]
@@ -5268,7 +5296,7 @@ exports.lawSearch = (0, https_2.onCall)({
   주요 갈래를 모두 제시하라.
 - 이 원칙은 관할·기한·절차 등 분기되는 모든 법률 정보에 동일 적용된다.
 
-1. 사용자 질문을 정확히 이해하고 핵심 법적 쟁점을 파악하세요.
+1. 사용자 질문을 정확히 이해하고 핵심 법적 쟁점을 파악하세요.${fileParts.length > 0 ? '\n   (첨부 파일이 있으면 해당 내용을 질문 맥락으로 적극 활용하세요.)' : ''}
 2. 관련 법 조문을 근거로 명확한 법적 판단을 내려주세요.
 3. 어려운 법률 용어는 반드시 쉬운 말로 풀어 설명하세요.
 4. 실무적 행동 지침을 구체적으로 안내하세요.
@@ -5283,7 +5311,11 @@ exports.lawSearch = (0, https_2.onCall)({
 
 사용자 질문: ${query}
 관련 법령(${lawName}):
-	${lawText}`);
+	${lawText}`;
+        const summaryContents = fileParts.length > 0
+            ? [{ text: summaryPrompt }, ...fileParts]
+            : summaryPrompt;
+        const summaryResult = await summaryModel.generateContent(summaryContents);
         const summaryUsage = getGeminiUsage(summaryResult);
         await (0, aiUsageLogger_1.logAiUsage)({
             uid: request.auth.uid,
@@ -5309,7 +5341,7 @@ exports.lawSearch = (0, https_2.onCall)({
     }
     catch (error) {
         logger.error('HARUraw 법령 검색 실패:', error);
-        if ((_g = request.auth) === null || _g === void 0 ? void 0 : _g.uid) {
+        if ((_h = request.auth) === null || _h === void 0 ? void 0 : _h.uid) {
             await (0, aiUsageLogger_1.logAiUsage)({
                 uid: request.auth.uid,
                 featureName: 'law_search',
