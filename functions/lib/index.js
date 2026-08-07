@@ -1792,11 +1792,15 @@ function findReusableResultChatAnswer(messages, question, route, options = {}) {
 }
 async function saveResultChatExchange(params) {
     const now = admin.firestore.FieldValue.serverTimestamp();
-    await params.messagesRef.add({
+    const userMsg = {
         role: 'user',
         content: params.question,
         createdAt: now,
-    });
+    };
+    if (params.attachmentMeta && params.attachmentMeta.length > 0) {
+        userMsg.attachments = params.attachmentMeta;
+    }
+    await params.messagesRef.add(userMsg);
     await params.messagesRef.add({
         role: 'assistant',
         content: params.answer,
@@ -1852,12 +1856,15 @@ async function logResultChatUsage(params) {
         isDev: params.isDev,
     });
 }
+const HARULAW_ATTACH_ALLOWED = new Set(['image/png', 'image/jpeg', 'image/webp', 'application/pdf']);
+const HARULAW_ATTACH_MAX_IMAGE = 7 * 1024 * 1024;
+const HARULAW_ATTACH_MAX_PDF = 50 * 1024 * 1024;
 exports.chatWithResult = (0, https_2.onCall)({
     region: 'asia-northeast3',
     secrets: [GEMINI_API_KEY_SECRET],
-    timeoutSeconds: 60,
+    timeoutSeconds: 90,
 }, async (request) => {
-    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4;
+    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5;
     if (!((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid)) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -1872,6 +1879,9 @@ exports.chatWithResult = (0, https_2.onCall)({
     const sourceIndex = typeof rawSourceIndex === 'number' && Number.isInteger(rawSourceIndex)
         ? rawSourceIndex
         : undefined;
+    const attachments = Array.isArray((_j = request.data) === null || _j === void 0 ? void 0 : _j.attachments)
+        ? request.data.attachments.slice(0, 5)
+        : [];
     if (rawQuestion.length > RESULT_CHAT_QUESTION_MAX_LENGTH) {
         throw new https_2.HttpsError('invalid-argument', '질문이 너무 깁니다. 핵심 내용을 조금 줄여 주세요.');
     }
@@ -1913,6 +1923,14 @@ exports.chatWithResult = (0, https_2.onCall)({
         await acquireResultChatLock(threadRef, requestId);
         locked = true;
         await enforceResultChatRateLimit(uid);
+        if (attachments.length > 0) {
+            if (sourceKey !== 'haruraw_sayu') {
+                throw new https_2.HttpsError('failed-precondition', '첨부는 하루LAW 자문에서만 사용할 수 있습니다.');
+            }
+            if (actualPlan === 'free') {
+                throw new https_2.HttpsError('permission-denied', '파일 첨부는 베이직·프리미엄 이용권 전용 기능입니다.');
+            }
+        }
         const ai = new genai_1.GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
         const classification = await classifyResultChatQuestion(ai, {
             uid,
@@ -2118,27 +2136,45 @@ exports.chatWithResult = (0, https_2.onCall)({
             systemGuide: policy.systemGuide,
             recordOnlyChosen,
         });
+        const fileParts = [];
+        for (const att of attachments) {
+            if (!att.storagePath.startsWith(`users/${uid}/haruLawAttachments/`)) {
+                throw new https_2.HttpsError('permission-denied', '허용되지 않은 파일 경로입니다.');
+            }
+            if (!HARULAW_ATTACH_ALLOWED.has(att.mimeType)) {
+                throw new https_2.HttpsError('invalid-argument', '지원하지 않는 파일 형식입니다.');
+            }
+            const [buf] = await (0, storage_1.getStorage)().bucket().file(att.storagePath).download();
+            const sizeLimit = att.mimeType === 'application/pdf' ? HARULAW_ATTACH_MAX_PDF : HARULAW_ATTACH_MAX_IMAGE;
+            if (buf.length > sizeLimit) {
+                throw new https_2.HttpsError('invalid-argument', '파일 크기가 허용 범위를 초과했습니다.');
+            }
+            fileParts.push({ inlineData: { mimeType: att.mimeType, data: buf.toString('base64') } });
+        }
+        const geminiContents = fileParts.length > 0
+            ? [{ role: 'user', parts: [{ text: prompt }, ...fileParts] }]
+            : prompt;
         const startedAt = Date.now();
         const response = await ai.models.generateContent({
             model: RESULT_CHAT_MODEL_NAME,
-            contents: prompt,
+            contents: geminiContents,
             config: answerRoute === 'web_search'
                 ? { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS }
                 : { maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
         });
         const latencyMs = Date.now() - startedAt;
         const rawAnswer = clampResultChatText(response.text || '', RESULT_CHAT_ANSWER_MAX_LENGTH);
-        const finishReason = (_k = (_j = response.candidates) === null || _j === void 0 ? void 0 : _j[0]) === null || _k === void 0 ? void 0 : _k.finishReason;
+        const finishReason = (_l = (_k = response.candidates) === null || _k === void 0 ? void 0 : _k[0]) === null || _l === void 0 ? void 0 : _l.finishReason;
         const { sources, usedWebSearch } = answerRoute === 'web_search'
             ? getResultChatSources(response)
             : { sources: [], usedWebSearch: false };
         if (answerRoute === 'web_search' && !usedWebSearch) {
             logger.warn('chatWithResult web_search_not_grounded 진단:', {
                 finishReason,
-                hasCandidates: ((_m = (_l = response.candidates) === null || _l === void 0 ? void 0 : _l.length) !== null && _m !== void 0 ? _m : 0) > 0,
-                hasGroundingMetadata: !!((_p = (_o = response.candidates) === null || _o === void 0 ? void 0 : _o[0]) === null || _p === void 0 ? void 0 : _p.groundingMetadata),
-                webSearchQueriesCount: (_u = (_t = (_s = (_r = (_q = response.candidates) === null || _q === void 0 ? void 0 : _q[0]) === null || _r === void 0 ? void 0 : _r.groundingMetadata) === null || _s === void 0 ? void 0 : _s.webSearchQueries) === null || _t === void 0 ? void 0 : _t.length) !== null && _u !== void 0 ? _u : 0,
-                groundingChunksCount: (_z = (_y = (_x = (_w = (_v = response.candidates) === null || _v === void 0 ? void 0 : _v[0]) === null || _w === void 0 ? void 0 : _w.groundingMetadata) === null || _x === void 0 ? void 0 : _x.groundingChunks) === null || _y === void 0 ? void 0 : _y.length) !== null && _z !== void 0 ? _z : 0,
+                hasCandidates: ((_o = (_m = response.candidates) === null || _m === void 0 ? void 0 : _m.length) !== null && _o !== void 0 ? _o : 0) > 0,
+                hasGroundingMetadata: !!((_q = (_p = response.candidates) === null || _p === void 0 ? void 0 : _p[0]) === null || _q === void 0 ? void 0 : _q.groundingMetadata),
+                webSearchQueriesCount: (_v = (_u = (_t = (_s = (_r = response.candidates) === null || _r === void 0 ? void 0 : _r[0]) === null || _s === void 0 ? void 0 : _s.groundingMetadata) === null || _t === void 0 ? void 0 : _t.webSearchQueries) === null || _u === void 0 ? void 0 : _u.length) !== null && _v !== void 0 ? _v : 0,
+                groundingChunksCount: (_0 = (_z = (_y = (_x = (_w = response.candidates) === null || _w === void 0 ? void 0 : _w[0]) === null || _x === void 0 ? void 0 : _x.groundingMetadata) === null || _y === void 0 ? void 0 : _y.groundingChunks) === null || _z === void 0 ? void 0 : _z.length) !== null && _0 !== void 0 ? _0 : 0,
                 recordId,
                 sourceKey,
             });
@@ -2160,8 +2196,8 @@ exports.chatWithResult = (0, https_2.onCall)({
             sourceKey,
             answerRoute,
             model: RESULT_CHAT_MODEL_NAME,
-            inputTokens: (_0 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.promptTokenCount) !== null && _0 !== void 0 ? _0 : null,
-            outputTokens: (_1 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.candidatesTokenCount) !== null && _1 !== void 0 ? _1 : null,
+            inputTokens: (_1 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.promptTokenCount) !== null && _1 !== void 0 ? _1 : null,
+            outputTokens: (_2 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.candidatesTokenCount) !== null && _2 !== void 0 ? _2 : null,
             webSearchUsed: answerRoute === 'web_search' && usedWebSearch,
             professionalApiUsed: false,
             searchSourceCount: sources.length,
@@ -2182,11 +2218,14 @@ exports.chatWithResult = (0, https_2.onCall)({
             safetyMode: policy.safetyMode,
             answerRoute,
             model: RESULT_CHAT_MODEL_NAME,
-            inputTokens: (_2 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.promptTokenCount) !== null && _2 !== void 0 ? _2 : null,
-            outputTokens: (_3 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.candidatesTokenCount) !== null && _3 !== void 0 ? _3 : null,
+            inputTokens: (_3 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.promptTokenCount) !== null && _3 !== void 0 ? _3 : null,
+            outputTokens: (_4 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.candidatesTokenCount) !== null && _4 !== void 0 ? _4 : null,
             latencyMs,
             webSearchUsed: answerRoute === 'web_search' && usedWebSearch,
             professionalApiUsed: false,
+            attachmentMeta: attachments.length > 0
+                ? attachments.map((a) => ({ fileName: a.fileName, storagePath: a.storagePath, mimeType: a.mimeType }))
+                : undefined,
         });
         return {
             threadId,
@@ -2215,7 +2254,7 @@ exports.chatWithResult = (0, https_2.onCall)({
             errorMessage: error === null || error === void 0 ? void 0 : error.message,
             errorStatus: error === null || error === void 0 ? void 0 : error.status,
             errorCode: error === null || error === void 0 ? void 0 : error.code,
-            errorCause: String((_4 = error === null || error === void 0 ? void 0 : error.cause) !== null && _4 !== void 0 ? _4 : ''),
+            errorCause: String((_5 = error === null || error === void 0 ? void 0 : error.cause) !== null && _5 !== void 0 ? _5 : ''),
             stack: error === null || error === void 0 ? void 0 : error.stack,
             recordId,
             sourceKey,

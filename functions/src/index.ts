@@ -1979,13 +1979,18 @@ async function saveResultChatExchange(params: {
   webSearchUsed: boolean;
   professionalApiUsed: boolean;
   cached?: boolean;
+  attachmentMeta?: { fileName: string; storagePath: string; mimeType: string }[];
 }): Promise<void> {
   const now = admin.firestore.FieldValue.serverTimestamp();
-  await params.messagesRef.add({
+  const userMsg: Record<string, unknown> = {
     role: 'user',
     content: params.question,
     createdAt: now,
-  });
+  };
+  if (params.attachmentMeta && params.attachmentMeta.length > 0) {
+    userMsg.attachments = params.attachmentMeta;
+  }
+  await params.messagesRef.add(userMsg);
   await params.messagesRef.add({
     role: 'assistant',
     content: params.answer,
@@ -2060,11 +2065,20 @@ async function logResultChatUsage(params: {
   });
 }
 
+type HaruLawAttachmentRef = {
+  storagePath: string;
+  mimeType: string;
+  fileName: string;
+};
+const HARULAW_ATTACH_ALLOWED = new Set(['image/png', 'image/jpeg', 'image/webp', 'application/pdf']);
+const HARULAW_ATTACH_MAX_IMAGE = 7 * 1024 * 1024;
+const HARULAW_ATTACH_MAX_PDF = 50 * 1024 * 1024;
+
 export const chatWithResult = onCall(
   {
     region: 'asia-northeast3',
     secrets: [GEMINI_API_KEY_SECRET],
-    timeoutSeconds: 60,
+    timeoutSeconds: 90,
   },
   async (request) => {
     if (!request.auth?.uid) {
@@ -2082,6 +2096,9 @@ export const chatWithResult = onCall(
     const sourceIndex = typeof rawSourceIndex === 'number' && Number.isInteger(rawSourceIndex)
       ? rawSourceIndex
       : undefined;
+    const attachments: HaruLawAttachmentRef[] = Array.isArray(request.data?.attachments)
+      ? (request.data.attachments as HaruLawAttachmentRef[]).slice(0, 5)
+      : [];
 
     if (rawQuestion.length > RESULT_CHAT_QUESTION_MAX_LENGTH) {
       throw new HttpsError('invalid-argument', '질문이 너무 깁니다. 핵심 내용을 조금 줄여 주세요.');
@@ -2128,6 +2145,15 @@ export const chatWithResult = onCall(
       await acquireResultChatLock(threadRef, requestId);
       locked = true;
       await enforceResultChatRateLimit(uid);
+
+      if (attachments.length > 0) {
+        if (sourceKey !== 'haruraw_sayu') {
+          throw new HttpsError('failed-precondition', '첨부는 하루LAW 자문에서만 사용할 수 있습니다.');
+        }
+        if (actualPlan === 'free') {
+          throw new HttpsError('permission-denied', '파일 첨부는 베이직·프리미엄 이용권 전용 기능입니다.');
+        }
+      }
 
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
       const classification = await classifyResultChatQuestion(ai, {
@@ -2332,10 +2358,31 @@ export const chatWithResult = onCall(
         systemGuide: policy.systemGuide,
         recordOnlyChosen,
       });
+
+      const fileParts: { inlineData: { mimeType: string; data: string } }[] = [];
+      for (const att of attachments) {
+        if (!att.storagePath.startsWith(`users/${uid}/haruLawAttachments/`)) {
+          throw new HttpsError('permission-denied', '허용되지 않은 파일 경로입니다.');
+        }
+        if (!HARULAW_ATTACH_ALLOWED.has(att.mimeType)) {
+          throw new HttpsError('invalid-argument', '지원하지 않는 파일 형식입니다.');
+        }
+        const [buf] = await getStorage().bucket().file(att.storagePath).download();
+        const sizeLimit = att.mimeType === 'application/pdf' ? HARULAW_ATTACH_MAX_PDF : HARULAW_ATTACH_MAX_IMAGE;
+        if (buf.length > sizeLimit) {
+          throw new HttpsError('invalid-argument', '파일 크기가 허용 범위를 초과했습니다.');
+        }
+        fileParts.push({ inlineData: { mimeType: att.mimeType, data: buf.toString('base64') } });
+      }
+
+      const geminiContents = fileParts.length > 0
+        ? [{ role: 'user', parts: [{ text: prompt }, ...fileParts] }]
+        : prompt;
+
       const startedAt = Date.now();
       const response = await ai.models.generateContent({
         model: RESULT_CHAT_MODEL_NAME,
-        contents: prompt,
+        contents: geminiContents,
         config: answerRoute === 'web_search'
           ? { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS }
           : { maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
@@ -2406,6 +2453,9 @@ export const chatWithResult = onCall(
         latencyMs,
         webSearchUsed: answerRoute === 'web_search' && usedWebSearch,
         professionalApiUsed: false,
+        attachmentMeta: attachments.length > 0
+          ? attachments.map((a) => ({ fileName: a.fileName, storagePath: a.storagePath, mimeType: a.mimeType }))
+          : undefined,
       });
 
       return {

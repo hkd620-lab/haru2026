@@ -27,6 +27,12 @@ export type ResultChatMessage = {
   createdAt?: unknown;
 };
 
+export type HaruLawAttachmentRef = {
+  storagePath: string;
+  mimeType: string;
+  fileName: string;
+};
+
 export type ChatWithResultRequest = {
   recordId: string;
   sourceKey: string;
@@ -35,6 +41,7 @@ export type ChatWithResultRequest = {
   systemGuide: string;
   sourceIndex?: number;
   searchPreference?: ResultChatSearchPreference;
+  attachments?: HaruLawAttachmentRef[];
 };
 
 export type ChatWithResultResponse = {
