@@ -381,6 +381,11 @@ GitHub: hkd620-lab/haru2026
 - 검증: 매핑 로직 11개 케이스 실제 코드로 단위 검증 / decryptKakaoXlsx 실제 암호화 파일(msoffcrypto-tool 공식 테스트 픽스처)로 오답·정답 비밀번호 전체 경로 검증 / 파일선택→비번→해제→파싱 UI 흐름 실사용 검증 / 기존 수동 저장 회귀 없음 확인(로컬 실제 저장 테스트) / 프론트·Functions 빌드 통과 후 배포 완료
 - 다음할일: 실제 카카오뱅크 XLSX 파일로 미리보기 표·월별 저장 전체 흐름 사용자 확인 필요(테스트 중 진짜 카카오뱅크 형식 파일을 구하지 못해 매핑 규칙은 합성 데이터로만 검증됨)
 
+### 2026-08-07
+- 완료: SAYU 함께보기 고도화 3단계 — SayuTogetherPage '구독자SAYU' 탭을 세로 리스트에서 2단계 드릴다운([기록형식별]/[비서별] 진입 → 카테고리 칩+개수 배지 → 썸네일 그리드) + 상세 모달 구조로 교체. 데이터 로딩(getSharedRecords/getPublishedHaruLawCards, useEffect)은 손대지 않고 렌더만 교체. item.sourceAgent ?? '개인기록' 폴백 적용(하루LAW 카드는 별도 소스라 '하루LAW'로 고정 정규화), 카테고리는 실제 로드된 데이터에 존재하는 값만 동적 생성(빈 카테고리 없음). 원기충전소 탭·해당 로직은 완전히 미변경.
+- 수정파일: frontend/src/app/pages/SayuTogetherPage.tsx
+- 다음할일: 2단계(plant_catalog/하루식물탐정 도감 통합) 착수 전까지는 비서별 축이 sourceAgent 폴백에만 의존. main 병합·firestore.rules 배포는 2·3단계 완료 후 허대표 승인 받고 한 번에(rules 먼저) — 이번 커밋은 feature 브랜치 push까지만.
+
 ---
 
 최종 업데이트: 2026.07.06
