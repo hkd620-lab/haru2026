@@ -268,6 +268,7 @@ export function DiaryLearnPage() {
           id: recordId,
           date: dateStr,
           formats: ['직접작성영어일기' as any],
+          sourceAgent: '영어일기',
           english_diary_korean: trimmed,
           english_diary_english: englishText,
           english_diary_date: dateStr,

@@ -710,6 +710,7 @@ export function RecordPage() {
         mood,
         formats: ['HARUraw'],
         content: '',
+        sourceAgent: '하루LAW',
         haruraw_query: activeLawQuery,
         haruraw_summary: lawSummary,
         haruraw_articles: articlesText,

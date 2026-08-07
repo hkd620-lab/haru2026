@@ -330,6 +330,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
         recordType: 'growthTimeline',
         type: 'growthTimeline',
         source: 'growthTimeline',
+        sourceAgent: 'HARU타임라인',
         timelineImageUrl: url,
         timelineCreatedAt: new Date().toISOString(),
         title: resolvedTitle,
