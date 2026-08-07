@@ -5813,6 +5813,7 @@ export const lawSearch = onCall(
         if (buf.length > sizeLimit) throw new HttpsError('invalid-argument', '파일 크기 초과입니다.');
         fileParts.push({ inlineData: { mimeType: att.mimeType, data: buf.toString('base64') } });
       }
+      console.log('HARUraw 첨부 처리:', { 수신: attachments.length, 변환성공: fileParts.length });
 
       const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
       const axiosConfig = {

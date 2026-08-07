@@ -1322,7 +1322,7 @@ export function RecordPage() {
                   />
                   <button
                     type="submit"
-                    disabled={lawLoading}
+                    disabled={lawLoading || uploadingLawFiles}
                     style={{
                       padding: '10px 14px', backgroundColor: '#1A3C6E',
                       color: '#fff', border: 'none', borderRadius: 8,
