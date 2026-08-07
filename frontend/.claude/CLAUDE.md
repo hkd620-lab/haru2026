@@ -386,6 +386,11 @@ GitHub: hkd620-lab/haru2026
 - 수정파일: frontend/src/app/pages/SayuTogetherPage.tsx
 - 다음할일: 2단계(plant_catalog/하루식물탐정 도감 통합) 착수 전까지는 비서별 축이 sourceAgent 폴백에만 의존. main 병합·firestore.rules 배포는 2·3단계 완료 후 허대표 승인 받고 한 번에(rules 먼저) — 이번 커밋은 feature 브랜치 push까지만.
 
+### 2026-08-07 (2차)
+- 완료: SAYU 함께보기 보류① 실행 — 비서 경유 저장 4종(하루LAW/HARU타임라인×2진입점/영어일기/HARU우리아이건강돌봄)의 전용 저장 함수 페이로드에 sourceAgent 상수 1줄씩 추가. saveRecord() 시그니처·resolveSourceAgent() 폴백 로직은 무변경. 식물탐정(PlantDetectivePage) 저장부는 같은 날 대표문서 merge 충돌 위험 때문에 의도적으로 미적용 — 기존 plantDetective 배열 기반 폴백 유지. 비서명 문자열은 HomePageV2.tsx AGENTS label과 대조 후 일치시킴. RecordPage.tsx의 일반 폼 제출(개인기록 통로, 882라인 부근)은 확인만 하고 손대지 않음.
+- 수정파일: frontend/src/app/pages/RecordPage.tsx, frontend/src/app/components/GrowthTimelineCreator.tsx, frontend/src/app/components/TimelineCollageModal.tsx, frontend/src/app/pages/DiaryLearnPage.tsx, frontend/src/app/pages/ChildHealthGrowthPage.tsx
+- 다음할일: 신규 저장분부터만 적용(소급 마이그레이션 없음). HARU타임라인·영어일기·HARU우리아이건강돌봄이 만드는 형식(성장타임라인/직접작성영어일기/성장기록)은 PUBLIC_ALLOWED_FORMATS에 없어 sourceAgent를 심어도 아직 공개(공유) 자체가 안 됨 — 비서별 축에 실제로 보이려면 형식 공개범위 확장이 별도로 필요(이번 범위 밖, 허대표 판단 대기). main 병합·rules 배포는 2·3단계 완료 후 한 번에.
+
 ---
 
 최종 업데이트: 2026.07.06
