@@ -53,7 +53,10 @@ const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 const PAGE_SIZE = 10;
 const SAYU_ALL_PAGE_SIZE = 20;
 const PUBLIC_SAYU_REQUIRED_MESSAGE = '먼저 SAYU 다듬기를 완료한 뒤 공개할 수 있습니다.';
-const PUBLIC_ALLOWED_FORMAT_KEYS = new Set(['diary', 'essay', 'travel', 'garden', 'pet', 'memo', 'reading']);
+// firestoreService.ts의 PUBLIC_ALLOWED_FORMATS(핵심 10종)와 동일 집합 — 여기서도 별도 관리되므로 형식 추가 시 항상 함께 대조할 것
+const PUBLIC_ALLOWED_FORMAT_KEYS = new Set(['diary', 'essay', 'travel', 'garden', 'pet', 'memo', 'reading', 'child', 'work', 'household']);
+// 공개 시 별도 확인창을 띄우는 민감 형식 — 가감은 이 배열만 수정
+const SENSITIVE_PUBLIC_FORMATS: RecordFormat[] = ['HARU가계부', '업무일지'];
 const GROWTH_TIMELINE_FORMAT_LABEL = '성장타임라인';
 const GROWTH_TIMELINE_SAYU_LABEL = 'HARU타임라인';
 type PlantSayuEntryType = 'detective' | 'diary' | 'library' | 'catalog';
@@ -2590,11 +2593,17 @@ export function SayuPage() {
       return;
     }
 
-    const confirmed = window.confirm(
-      isPublic
-        ? '공개를 취소하면 SAYU-함께보기에서 더 이상 보이지 않습니다.'
-        : '이 기록의 SAYU 다듬은 본문과 사진을 HARU 회원들과 함께 볼 수 있게 공개합니다.\n원문, 위치, 이메일, UID는 공개되지 않습니다.',
-    );
+    // 민감 형식(가계부·업무일지 등)을 새로 공개하는 방향일 때만 전용 확인 문구 사용 — 그 외엔 기존 문구 그대로
+    const isSensitiveFormat = Array.isArray(record.formats)
+      && record.formats.some((format) => SENSITIVE_PUBLIC_FORMATS.includes(format));
+
+    const confirmMessage = isPublic
+      ? '공개를 취소하면 SAYU-함께보기에서 더 이상 보이지 않습니다.'
+      : isSensitiveFormat
+        ? '이 기록이 SAYU·함께보기에 공개됩니다. 사진과 내용을 다른 회원이 볼 수 있어요. 계속할까요?'
+        : '이 기록의 SAYU 다듬은 본문과 사진을 HARU 회원들과 함께 볼 수 있게 공개합니다.\n원문, 위치, 이메일, UID는 공개되지 않습니다.';
+
+    const confirmed = window.confirm(confirmMessage);
     if (!confirmed) return;
 
     setSharingRecordId(record.id);

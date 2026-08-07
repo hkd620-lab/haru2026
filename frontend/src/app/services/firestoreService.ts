@@ -67,6 +67,8 @@ export interface SharedRecordPayload {
   recordDate: string;
   isActive: true;
   formats: SharedRecordFormat[];
+  // 출처 비서 꼬리표 — 비서별 그룹핑용(3단계 UI). 레거시 문서엔 없을 수 있어 옵셔널.
+  sourceAgent?: string;
 }
 
 export interface SharedRecordListItem extends SharedRecordPayload {
@@ -197,16 +199,21 @@ export interface AssistantPeriodStats {
   };
 }
 
+// 공개 가능 형식 — 핵심 10종 전체 개방(2026-08 "공개는 구독자 선택" 정책)
 const PUBLIC_ALLOWED_FORMATS: RecordFormat[] = [
   '일기',
   '에세이',
   '여행기록',
+  '독서사유',
   '텃밭일지',
   '애완동물관찰일지',
+  '육아일기',
+  '업무일지',
   '메모',
-  '독서사유',
+  'HARU가계부',
 ];
 
+// RecordFormat 18종 전체 prefix — PUBLIC_ALLOWED_FORMATS가 참조하므로 누락 시 조용히 공개 불가 처리됨(성장기록·HARU가계부 보강)
 const PUBLIC_FORMAT_PREFIX: Record<RecordFormat, string> = {
   '일기': 'diary',
   '에세이': 'essay',
@@ -218,12 +225,14 @@ const PUBLIC_FORMAT_PREFIX: Record<RecordFormat, string> = {
   '텃밭일지': 'garden',
   '애완동물관찰일지': 'pet',
   '육아일기': 'child',
+  '성장기록': 'growth',
   'HARU주식관리': 'stock',
   '주식거래일지': 'stock',
   '메모': 'memo',
   '성장타임라인': 'growthTimeline',
   'HARUraw': 'haruraw',
   'HARU보조장부': 'ledger',
+  'HARU가계부': 'household',
 };
 
 const getCleanText = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
@@ -836,6 +845,19 @@ class FirestoreService {
     return Array.from(new Set(urls)).slice(0, 12);
   }
 
+  // 출처 비서 꼬리표 계산 — ① 원본에 이미 값이 있으면 우선 사용(신규 계측 저장분),
+  // ② 없으면 formats 기반 폴백. saveResultChatMemo의 source/sourceKey/sourceLabel 네이밍 컨벤션을 따름.
+  resolveSourceAgent(record: HaruRecord): string {
+    const explicit = getCleanText(record.sourceAgent);
+    if (explicit) return explicit;
+
+    const recordFormats = Array.isArray(record.formats) ? record.formats : [];
+    if (recordFormats.includes('HARUraw')) return '하루LAW';
+    if (Array.isArray(record.plantDetective) && record.plantDetective.length > 0) return '하루식물탐정';
+
+    return '개인기록';
+  }
+
   buildSharedRecordPayload(
     userId: string,
     record: HaruRecord,
@@ -876,6 +898,7 @@ class FirestoreService {
       recordDate: record.date || record.id,
       isActive: true,
       formats,
+      sourceAgent: this.resolveSourceAgent(record),
     };
   }
 

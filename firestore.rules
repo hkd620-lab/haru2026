@@ -31,7 +31,8 @@ service cloud.firestore {
         "publishedAt",
         "recordDate",
         "isActive",
-        "formats"
+        "formats",
+        "sourceAgent"
       ];
     }
 
@@ -67,7 +68,8 @@ service cloud.firestore {
         && (!request.resource.data.keys().hasAny(["publicPhotoUrls"]) || request.resource.data.publicPhotoUrls is list)
         && request.resource.data.recordDate is string
         && request.resource.data.isActive is bool
-        && request.resource.data.formats is list;
+        && request.resource.data.formats is list
+        && (!request.resource.data.keys().hasAny(["sourceAgent"]) || request.resource.data.sourceAgent is string);
     }
 
     function activeSharedRecord(sharedId) {
