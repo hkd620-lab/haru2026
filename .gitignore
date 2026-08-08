@@ -52,3 +52,6 @@ backup/
 # 보조장부 백업 JSON (개인 금융정보 — 커밋 금지)
 ledger_backup_*.json
 functions/ledger_backup_*.json
+
+# QA 회귀 테스트 결과물 (스크립트 실행 산출물 — 커밋 금지)
+scripts/qa/results/
