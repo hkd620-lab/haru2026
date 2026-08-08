@@ -5760,6 +5760,7 @@ export const lawSearch = onCall(
     region: 'asia-northeast3',
     secrets: [LAW_API_KEY_SECRET, GEMINI_API_KEY_SECRET],
     timeoutSeconds: 90,
+    memory: '1GiB',
   },
   async (request) => {
     if (!request.auth) {
