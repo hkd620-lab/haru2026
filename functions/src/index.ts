@@ -5990,7 +5990,7 @@ export const lawSearch = onCall(
       const finalJomuns = cleanedJomuns.length > 0 ? cleanedJomuns : allJomuns.slice(0, 3);
 
       // 4단계: Gemini로 전체 요약 생성
-      const summaryModelName = 'gemini-2.5-pro';
+      const summaryModelName = 'gemini-3.1-pro-preview';
       const summaryModel = genAI.getGenerativeModel({ model: summaryModelName });
       const lawText = finalJomuns
         .map((j: any) => `${j.articleStr}(${j.title}): ${j.content}`)
