@@ -5820,7 +5820,9 @@ export const lawSearch = onCall(
       const axiosConfig = {
         headers: {
           Referer: 'https://haru2026.com/',
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'application/xml, text/xml, */*',
+          'Accept-Language': 'ko-KR,ko;q=0.9',
           Connection: 'close',
         },
         timeout: 10000,
