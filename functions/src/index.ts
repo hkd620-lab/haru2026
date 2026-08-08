@@ -6140,7 +6140,7 @@ export const prepareHaruLawSharePreview = onCall(
       const fallbackStatutes = parseHaruLawPublicStatutes(record.haruraw_articles);
 
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value().trim());
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-pro-preview' });
       const result = await model.generateContent(`다음 하루LAW 기록을 다른 PREMIUM 구독자가 참고할 수 있는 익명 공개 카드로 바꾸세요.
 
 반드시 JSON 객체만 출력하세요. 마크다운 코드블록은 사용하지 마세요.
