@@ -47,7 +47,6 @@ type EnvTagType = 'weather' | 'temperature' | 'mood';
 const DEFAULT_WEATHER = ['쾌청', '흐림', '비', '눈'];
 const DEFAULT_TEMPERATURE = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
 const DEFAULT_MOOD = ['기쁨', '평온', '무미', '울적', '번잡'];
-const DEVELOPER_UIDS = ['naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8'];
 
 function getLawEasySummary(title?: string, article?: string, description?: string): string {
   const text = `${title ?? ''} ${article ?? ''} ${description ?? ''}`;
@@ -1424,7 +1423,6 @@ export function RecordPage() {
           ) : selectedCategory ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {CATEGORY_FORMATS[selectedCategory]
-                .filter((format) => format !== 'HARU보조장부' || DEVELOPER_UIDS.includes(user?.uid || ''))
                 .map((format) => {
                 return (
                   <button
