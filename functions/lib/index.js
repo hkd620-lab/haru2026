@@ -5207,12 +5207,12 @@ exports.lawSearch = (0, https_2.onCall)({
         // 선별 실패 시 상위 3개
         const finalJomuns = cleanedJomuns.length > 0 ? cleanedJomuns : allJomuns.slice(0, 3);
         // 4단계: Gemini로 전체 요약 생성
-        const summaryModelName = 'gemini-2.5-pro';
+        const summaryModelName = 'gemini-3.1-pro-preview';
         const summaryModel = genAI.getGenerativeModel({ model: summaryModelName });
         const lawText = finalJomuns
             .map((j) => `${j.articleStr}(${j.title}): ${j.content}`)
             .join('\n');
-        const summaryResult = await summaryModel.generateContent(`당신은 실무 경력 20년의 대한민국 법률 전문가입니다.
+        const summaryResult = await summaryModel.generateContent(`당신은 공식 법령을 사실원으로 확인하고 가능한 법적 쟁점과 다음 행동을 이해하기 쉽게 안내하는 AI 법률정보 도우미입니다.
 다음 원칙을 반드시 지키세요:
 
 [정확성 가드레일]
@@ -5229,16 +5229,24 @@ exports.lawSearch = (0, https_2.onCall)({
   주요 갈래를 모두 제시하라.
 - 이 원칙은 관할·기한·절차 등 분기되는 모든 법률 정보에 동일 적용된다.
 
+[사실관계·책임 판단 가드레일]
+- 사용자 질문과 제공 자료만으로 누가 가해자인지, 피해 정도, 인과관계, 과실, 책임 주체, 법률 적용요건이 확실하지 않으면 단정하지 마라.
+- 법조문을 찾았다는 이유만으로 바로 사용자 사건에 적용하지 말고, 사용자 사실관계 → 조문 적용요건 확인 → 해당 가능성 설명 → 추가 확인사항 안내 순서를 지켜라.
+- 사실관계가 충분히 확인되기 전에는 "책임을 인정하세요", "전액 보상하세요", "무조건 사과하세요"처럼 과실·책임 인정을 유도하는 단정적 행동을 권하지 마라.
+- 필요한 경우 "안전 확보 → 자료·기록 보존 → 사실관계 확인 → 보험·계약관계 확인 → 필요한 대응" 순서로 안내하라.
+- 형사절차, 민사 손해배상, 행정절차, 기타 필요한 절차를 가능한 범위에서 구분해 설명하라.
+- "~가 확인되는 경우", "~에 해당한다면", "~일 가능성이 있습니다", "추가 확인이 필요합니다" 같은 조건부 표현을 사용하라.
+
 1. 사용자 질문을 정확히 이해하고 핵심 법적 쟁점을 파악하세요.
-2. 관련 법 조문을 근거로 명확한 법적 판단을 내려주세요.
+2. 공식 법령 조문을 근거로 하되, 조문 적용요건과 사용자 사실관계의 확인 필요성을 먼저 설명하세요.
 3. 어려운 법률 용어는 반드시 쉬운 말로 풀어 설명하세요.
-4. 실무적 행동 지침을 구체적으로 안내하세요.
-   (예: "경찰서에 고소장을 제출하세요", "내용증명을 보내세요")
+4. 실무적 행동 지침은 조건부로 안내하고, 사실관계 확인 전 책임 인정이나 보상을 단정하지 마세요.
 5. 답변 구조:
-   ⚖️ 법적 판단: (핵심 결론 1~2문장)
-   📌 근거 조문: (관련 법 조문 언급)
-   💡 실무 조언: (당장 할 수 있는 행동)
-   ⚠️ 주의사항: (놓치기 쉬운 점)
+   📋 확인된 사실 / 추가 확인이 필요한 사실
+   ⚖️ 가능한 법적 쟁점
+   📌 관련 법령과 적용요건
+   💡 다음에 할 수 있는 일
+   ⚠️ 주의사항
 6. 마지막에 반드시 추가:
    "본 내용은 법령 정보 제공 목적이며, 전문적인 법률 자문을 대체할 수 없습니다."
 
@@ -5312,7 +5320,7 @@ exports.prepareHaruLawSharePreview = (0, https_2.onCall)({
         const redactedArticles = clampHaruLawText(record.haruraw_articles || '', 5000);
         const fallbackStatutes = parseHaruLawPublicStatutes(record.haruraw_articles);
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value().trim());
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.1-pro-preview' });
         const result = await model.generateContent(`다음 하루LAW 기록을 다른 PREMIUM 구독자가 참고할 수 있는 익명 공개 카드로 바꾸세요.
 
 반드시 JSON 객체만 출력하세요. 마크다운 코드블록은 사용하지 마세요.
