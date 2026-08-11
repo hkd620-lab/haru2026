@@ -2,6 +2,14 @@
   "projects": {
     "prod": "haru2026-8abb8"
   },
-  "targets": {},
+  "targets": {
+    "haru2026-8abb8": {
+      "hosting": {
+        "vault": [
+          "haru2026-vault"
+        ]
+      }
+    }
+  },
   "etags": {}
 }

@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "site": "haru2026-vault",
+    "target": "vault",
     "public": "vault-web/dist",
     "ignore": [
       "firebase.vault.json",
