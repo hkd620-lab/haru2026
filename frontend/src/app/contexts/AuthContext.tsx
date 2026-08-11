@@ -2,6 +2,9 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  EmailAuthProvider,
+  linkWithCredential,
+  sendPasswordResetEmail,
   signInWithRedirect,
   signInWithPopup,
   getRedirectResult,
@@ -20,6 +23,7 @@ export interface LocalUser {
   displayName: string | null;
   photoURL: string | null;
   providerId?: string;
+  providerIds?: string[];
 }
 
 interface AuthContextType {
@@ -27,6 +31,8 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<{ user: LocalUser | null }>;
+  resetPassword: (email: string) => Promise<void>;
+  linkEmailPassword: (email: string, password: string) => Promise<void>;
   googleSignIn: () => Promise<void>;
   kakaoSignIn: () => Promise<void>;
   naverSignIn: () => Promise<void>;
@@ -49,8 +55,40 @@ const mapUser = (user: FirebaseUser): LocalUser => ({
   email: user.email ?? null,
   displayName: user.displayName ?? user.email?.split('@')[0] ?? 'User',
   photoURL: user.photoURL ?? null,
-  providerId: user.providerData[0]?.providerId ?? 'password',
+  providerId: user.providerData[0]?.providerId ?? 'custom',
+  providerIds: user.providerData.map((provider) => provider.providerId),
 });
+
+function getAuthErrorMessage(error: any): string {
+  const code = error?.code || '';
+
+  switch (code) {
+    case 'auth/email-already-in-use':
+      return '이미 사용 중인 이메일입니다. 기존 로그인으로 접속한 뒤 설정에서 이메일 로그인을 추가해 주세요.';
+    case 'auth/invalid-email':
+      return '이메일 주소를 다시 확인해 주세요.';
+    case 'auth/weak-password':
+      return '비밀번호는 6자 이상으로 입력해 주세요.';
+    case 'auth/wrong-password':
+    case 'auth/invalid-credential':
+    case 'auth/user-not-found':
+      return '이메일 또는 비밀번호가 올바르지 않습니다.';
+    case 'auth/too-many-requests':
+      return '로그인 시도가 많습니다. 잠시 후 다시 시도해 주세요.';
+    case 'auth/account-exists-with-different-credential':
+      return '이미 다른 로그인 방식으로 사용 중인 이메일입니다. 기존 로그인으로 접속한 뒤 이메일 로그인을 추가해 주세요.';
+    case 'auth/provider-already-linked':
+      return '이미 이메일 로그인이 연결된 계정입니다.';
+    case 'auth/credential-already-in-use':
+      return '이 이메일 로그인은 다른 계정에 이미 연결되어 있습니다.';
+    case 'auth/requires-recent-login':
+      return '보안을 위해 다시 로그인한 뒤 시도해 주세요.';
+    case 'auth/missing-password':
+      return '비밀번호를 입력해 주세요.';
+    default:
+      return '인증 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<LocalUser | null>(null);
@@ -106,20 +144,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(auth, email.trim(), password);
     } catch (error: any) {
       console.error('Sign in error:', error);
-      throw new Error(error.message || '로그인 실패');
+      throw new Error(getAuthErrorMessage(error));
     }
   };
 
   const signUp = async (email: string, password: string) => {
+    if (auth.currentUser) {
+      throw new Error('이미 로그인되어 있습니다. 기존 계정에는 설정에서 이메일 로그인을 추가해 주세요.');
+    }
+
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
       return { user: mapUser(userCredential.user) };
     } catch (error: any) {
       console.error('Sign up error:', error);
-      throw new Error(error.message || '회원가입 실패');
+      throw new Error(getAuthErrorMessage(error));
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+    } catch (error: any) {
+      console.error('Password reset error:', error);
+      throw new Error(getAuthErrorMessage(error));
+    }
+  };
+
+  const linkEmailPassword = async (email: string, password: string) => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error('로그인이 필요합니다.');
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const currentEmail = currentUser.email?.trim().toLowerCase();
+    if (!currentEmail) {
+      throw new Error('현재 계정에 이메일 정보가 없어 연결할 수 없습니다.');
+    }
+    if (currentEmail.endsWith('@placeholder.local')) {
+      throw new Error('현재 소셜 계정의 이메일 정보가 없어 이메일 로그인을 추가할 수 없습니다.');
+    }
+    if (normalizedEmail !== currentEmail) {
+      throw new Error('현재 로그인한 계정의 이메일과 같은 주소만 연결할 수 있습니다.');
+    }
+
+    try {
+      const credential = EmailAuthProvider.credential(normalizedEmail, password);
+      const userCredential = await linkWithCredential(currentUser, credential);
+      setUser(mapUser(userCredential.user));
+    } catch (error: any) {
+      console.error('Link email/password error:', error);
+      throw new Error(getAuthErrorMessage(error));
     }
   };
 
@@ -213,6 +290,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     signIn,
     signUp,
+    resetPassword,
+    linkEmailPassword,
     googleSignIn,
     kakaoSignIn,
     naverSignIn,
