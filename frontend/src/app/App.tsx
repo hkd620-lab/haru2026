@@ -21,7 +21,6 @@ import { SayuTogetherPage } from './pages/SayuTogetherPage';
 import { MergePage } from './pages/MergePage';
 import { MergeViewerPage } from './pages/MergeViewerPage';
 import { SettingsPage } from './pages/SettingsPage';
-import { VaultPage } from './pages/VaultPage';
 import { StatisticsPage } from './pages/StatisticsPage';
 import { FormatStatisticsPage } from './pages/FormatStatisticsPage';
 import { AssistantStatisticsPage } from './pages/AssistantStatisticsPage';
@@ -144,15 +143,6 @@ function DeveloperBookStudioRoute() {
   return <BookStudio />;
 }
 
-function DeveloperVaultRoute() {
-  const { user, loading } = useAuth();
-  if (loading) return null;
-  if (user?.email?.toLowerCase() !== 'hkd620@gmail.com') {
-    return <Navigate to="/settings" replace />;
-  }
-  return <VaultPage />;
-}
-
 function App() {
   return (
     <ThemeProvider>
@@ -191,7 +181,7 @@ function App() {
               <Route path="/merge" element={<MergePage />} />
               <Route path="/merge-viewer" element={<MergeViewerPage />} />
               <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/vault" element={<DeveloperVaultRoute />} />
+              <Route path="/vault" element={<Navigate to="/settings" replace />} />
               
               {/* 통계 페이지 */}
               <Route path="/stats" element={<StatisticsPage />} />
