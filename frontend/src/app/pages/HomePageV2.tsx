@@ -249,23 +249,6 @@ const RECORDS: RecordItem[] = [
 
 const AGENTS: Agent[] = [
   {
-    label: '정보금고',
-    sub: '항상 필요한 내 핵심정보를 빠르게 확인합니다.',
-    tag: 'FREE · 핵심정보',
-    variant: 'green',
-    stroke: '#4A5A2C',
-    path: '/vault',
-    developerOnly: true,
-    icon: (
-      <>
-        <rect x="5" y="9" width="14" height="11" rx="2" />
-        <path d="M8 9V7a4 4 0 018 0v2" />
-        <path d="M12 13v3" />
-        <circle cx="12" cy="13" r="1" />
-      </>
-    ),
-  },
-  {
     label: 'HARU타임라인',
     sub: '여러 날짜의 사진 기록을 시간순으로 묶어 변화의 흐름을 한 장으로 보여줍니다.',
     tag: 'TIMELINE · 기록자산',

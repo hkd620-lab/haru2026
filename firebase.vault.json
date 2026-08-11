@@ -1,0 +1,28 @@
+{
+  "hosting": {
+    "site": "haru2026-vault",
+    "public": "vault-web/dist",
+    "ignore": [
+      "firebase.vault.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, max-age=0, must-revalidate"
+          }
+        ]
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

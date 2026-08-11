@@ -1,0 +1,133 @@
+html,
+body {
+  min-height: 100%;
+  background: #f5f0e8 !important;
+}
+
+body {
+  margin: 0;
+  font-family: Pretendard, system-ui, sans-serif;
+}
+
+.vault-app {
+  min-height: 100vh;
+  background: #f5f0e8;
+}
+
+.vault-app-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 20px;
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid #e5dfd0;
+  backdrop-filter: blur(12px);
+}
+
+.vault-app-brand {
+  margin: 0 0 4px;
+  color: #7a6f5a;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.vault-app-topbar h1,
+.vault-app-card h1 {
+  margin: 0;
+  color: #1a3c6e;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.vault-app-logout,
+.vault-app-primary,
+.vault-app-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.vault-app-logout {
+  padding: 10px 12px;
+  background: #f9fafb;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+}
+
+.vault-app-frame {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #f5f0e8;
+}
+
+.vault-app-card {
+  width: min(100%, 420px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 28px;
+  background: #fff;
+  border: 1px solid #e5dfd0;
+  border-radius: 8px;
+  box-shadow: 0 14px 36px rgba(26, 60, 110, 0.08);
+}
+
+.vault-app-card p {
+  margin: 0;
+  color: #666;
+  line-height: 1.65;
+}
+
+.vault-app-primary {
+  width: 100%;
+  margin-top: 8px;
+  padding: 13px 16px;
+  background: #1a3c6e;
+  color: #fff;
+}
+
+.vault-app-secondary {
+  width: 100%;
+  margin-top: 8px;
+  padding: 13px 16px;
+  background: #f9fafb;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+}
+
+.vault-app .vault-page {
+  min-height: calc(100vh - 74px);
+  padding-top: 22px;
+  padding-bottom: 48px;
+}
+
+@media (max-width: 640px) {
+  .vault-app-topbar {
+    align-items: flex-start;
+    padding: 12px 14px;
+  }
+
+  .vault-app-topbar h1,
+  .vault-app-card h1 {
+    font-size: 21px;
+  }
+
+  .vault-app-logout {
+    padding: 9px 10px;
+    white-space: nowrap;
+  }
+}
