@@ -66,7 +66,7 @@ export function SettingsPage() {
   const [isLinkingEmailLogin, setIsLinkingEmailLogin] = useState(false);
 
   const isAdmin = user?.uid === ADMIN_UID;
-  const isDevUser = user?.email === 'hkd620@gmail.com';
+  const isDevUser = user?.email?.toLowerCase() === 'hkd620@gmail.com';
   const hasEmailPasswordLogin = Boolean(user?.providerIds?.includes('password'));
   const canAddEmailPasswordLogin = Boolean(user?.email && !user.email.endsWith('@placeholder.local') && !hasEmailPasswordLogin);
   const hasPaidSubscription = subscription.plan === 'basic' || subscription.plan === 'premium';
@@ -92,7 +92,7 @@ export function SettingsPage() {
       loadQuoteType();
       loadProfileAge();
       cleanupDuplicateTokens(user.uid); // 앱 마운트 시 기존 중복 토큰 1회 정리
-      if (user.email === 'hkd620@gmail.com') {
+      if (user.email?.toLowerCase() === 'hkd620@gmail.com') {
         loadFcmTokens();
       }
     } else {
@@ -782,28 +782,30 @@ export function SettingsPage() {
           </div>
         </section>
 
-        <section className="bg-white rounded-lg p-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-5">
-            <ShieldCheck className="w-5 h-5" style={{ color: '#1A3C6E' }} />
-            <h2 className="text-base tracking-wide" style={{ color: '#333' }}>
-              정보금고
-            </h2>
-          </div>
+        {isDevUser && (
+          <section className="bg-white rounded-lg p-6 shadow-sm">
+            <div className="flex items-center gap-3 mb-5">
+              <ShieldCheck className="w-5 h-5" style={{ color: '#1A3C6E' }} />
+              <h2 className="text-base tracking-wide" style={{ color: '#333' }}>
+                정보금고
+              </h2>
+            </div>
 
-          <p className="text-xs mb-4" style={{ color: '#666', lineHeight: 1.7 }}>
-            은행계좌, 사업자등록번호, 보험, 차량, 행정·세금 정보처럼 항상 필요한 정보를 보관합니다.
-          </p>
+            <p className="text-xs mb-4" style={{ color: '#666', lineHeight: 1.7 }}>
+              은행계좌, 사업자등록번호, 보험, 차량, 행정·세금 정보처럼 항상 필요한 정보를 보관합니다.
+            </p>
 
-          <button
-            type="button"
-            onClick={() => navigate('/vault')}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm transition-all hover:opacity-90"
-            style={{ backgroundColor: '#1A3C6E', color: '#fff', fontWeight: 700 }}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            정보금고 열기
-          </button>
-        </section>
+            <button
+              type="button"
+              onClick={() => navigate('/vault')}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm transition-all hover:opacity-90"
+              style={{ backgroundColor: '#1A3C6E', color: '#fff', fontWeight: 700 }}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              정보금고 열기
+            </button>
+          </section>
+        )}
 
         <section className="bg-white rounded-lg p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-5">

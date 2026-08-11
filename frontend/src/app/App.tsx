@@ -144,6 +144,15 @@ function DeveloperBookStudioRoute() {
   return <BookStudio />;
 }
 
+function DeveloperVaultRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user?.email?.toLowerCase() !== 'hkd620@gmail.com') {
+    return <Navigate to="/settings" replace />;
+  }
+  return <VaultPage />;
+}
+
 function App() {
   return (
     <ThemeProvider>
@@ -182,7 +191,7 @@ function App() {
               <Route path="/merge" element={<MergePage />} />
               <Route path="/merge-viewer" element={<MergeViewerPage />} />
               <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/vault" element={<VaultPage />} />
+              <Route path="/vault" element={<DeveloperVaultRoute />} />
               
               {/* 통계 페이지 */}
               <Route path="/stats" element={<StatisticsPage />} />
