@@ -1792,11 +1792,15 @@ function findReusableResultChatAnswer(messages, question, route, options = {}) {
 }
 async function saveResultChatExchange(params) {
     const now = admin.firestore.FieldValue.serverTimestamp();
-    await params.messagesRef.add({
+    const userMessage = {
         role: 'user',
         content: params.question,
         createdAt: now,
-    });
+    };
+    if (params.attachmentMeta && params.attachmentMeta.length > 0) {
+        userMessage.attachments = params.attachmentMeta;
+    }
+    await params.messagesRef.add(userMessage);
     await params.messagesRef.add({
         role: 'assistant',
         content: params.answer,
@@ -1852,12 +1856,80 @@ async function logResultChatUsage(params) {
         isDev: params.isDev,
     });
 }
+const HARULAW_ATTACH_MAX_FILES = 5;
+const HARULAW_ATTACH_MAX_IMAGE_BYTES = 7 * 1024 * 1024;
+const HARULAW_ATTACH_MAX_PDF_BYTES = 50 * 1024 * 1024;
+function readHaruLawAttachments(raw) {
+    if (!Array.isArray(raw))
+        return [];
+    return raw.slice(0, HARULAW_ATTACH_MAX_FILES).map((item) => {
+        const source = item;
+        const storagePath = clampResultChatText(source === null || source === void 0 ? void 0 : source.storagePath, 512);
+        const mimeType = clampResultChatText(source === null || source === void 0 ? void 0 : source.mimeType, 120).toLowerCase();
+        const fileName = clampResultChatText(source === null || source === void 0 ? void 0 : source.fileName, 180);
+        if (!storagePath || !mimeType || !fileName) {
+            throw new https_2.HttpsError('invalid-argument', '첨부 파일 정보가 올바르지 않습니다.');
+        }
+        return { storagePath, mimeType, fileName };
+    });
+}
+function isAllowedHaruLawAttachmentMime(mimeType) {
+    return mimeType === 'application/pdf' || /^image\/[-+.\w]+$/i.test(mimeType);
+}
+function getHaruLawAttachmentSizeLimit(mimeType) {
+    return mimeType.startsWith('image/') ? HARULAW_ATTACH_MAX_IMAGE_BYTES : HARULAW_ATTACH_MAX_PDF_BYTES;
+}
+async function loadHaruLawAttachmentParts(uid, attachments) {
+    const fileParts = [];
+    const attachmentMeta = [];
+    for (const att of attachments) {
+        if (!att.storagePath.startsWith(`users/${uid}/haruLawAttachments/`)) {
+            throw new https_2.HttpsError('permission-denied', '허용되지 않은 파일 경로입니다.');
+        }
+        if (!isAllowedHaruLawAttachmentMime(att.mimeType)) {
+            throw new https_2.HttpsError('invalid-argument', '지원하지 않는 파일 형식입니다.');
+        }
+        const file = bucket().file(att.storagePath);
+        let metadata;
+        try {
+            [metadata] = await file.getMetadata();
+        }
+        catch (error) {
+            logger.warn('하루LAW 첨부 메타데이터 조회 실패:', { storagePath: att.storagePath, message: error === null || error === void 0 ? void 0 : error.message });
+            throw new https_2.HttpsError('not-found', '첨부 파일을 찾을 수 없습니다.');
+        }
+        const storedMimeType = String((metadata === null || metadata === void 0 ? void 0 : metadata.contentType) || '').trim().toLowerCase();
+        const effectiveMimeType = storedMimeType || att.mimeType;
+        if (!isAllowedHaruLawAttachmentMime(effectiveMimeType) || (storedMimeType && storedMimeType !== att.mimeType)) {
+            throw new https_2.HttpsError('invalid-argument', '첨부 파일 형식이 허용 범위와 다릅니다.');
+        }
+        const sizeLimit = getHaruLawAttachmentSizeLimit(effectiveMimeType);
+        const metadataSize = Number(metadata === null || metadata === void 0 ? void 0 : metadata.size);
+        if (Number.isFinite(metadataSize) && metadataSize > sizeLimit) {
+            throw new https_2.HttpsError('invalid-argument', '파일 크기가 허용 범위를 초과했습니다.');
+        }
+        let buf;
+        try {
+            [buf] = await file.download();
+        }
+        catch (error) {
+            logger.warn('하루LAW 첨부 다운로드 실패:', { storagePath: att.storagePath, message: error === null || error === void 0 ? void 0 : error.message });
+            throw new https_2.HttpsError('not-found', '첨부 파일을 다운로드하지 못했습니다.');
+        }
+        if (buf.length > sizeLimit) {
+            throw new https_2.HttpsError('invalid-argument', '파일 크기가 허용 범위를 초과했습니다.');
+        }
+        fileParts.push({ inlineData: { mimeType: effectiveMimeType, data: buf.toString('base64') } });
+        attachmentMeta.push({ storagePath: att.storagePath, mimeType: effectiveMimeType, fileName: att.fileName });
+    }
+    return { fileParts, attachmentMeta };
+}
 exports.chatWithResult = (0, https_2.onCall)({
     region: 'asia-northeast3',
     secrets: [GEMINI_API_KEY_SECRET],
-    timeoutSeconds: 60,
+    timeoutSeconds: 90,
 }, async (request) => {
-    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4;
+    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5;
     if (!((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid)) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -1872,6 +1944,7 @@ exports.chatWithResult = (0, https_2.onCall)({
     const sourceIndex = typeof rawSourceIndex === 'number' && Number.isInteger(rawSourceIndex)
         ? rawSourceIndex
         : undefined;
+    const attachments = readHaruLawAttachments((_j = request.data) === null || _j === void 0 ? void 0 : _j.attachments);
     if (rawQuestion.length > RESULT_CHAT_QUESTION_MAX_LENGTH) {
         throw new https_2.HttpsError('invalid-argument', '질문이 너무 깁니다. 핵심 내용을 조금 줄여 주세요.');
     }
@@ -1913,6 +1986,14 @@ exports.chatWithResult = (0, https_2.onCall)({
         await acquireResultChatLock(threadRef, requestId);
         locked = true;
         await enforceResultChatRateLimit(uid);
+        if (attachments.length > 0) {
+            if (sourceKey !== 'haruraw_sayu') {
+                throw new https_2.HttpsError('failed-precondition', '첨부는 하루LAW 자문에서만 사용할 수 있습니다.');
+            }
+            if (actualPlan === 'free') {
+                throw new https_2.HttpsError('permission-denied', '파일 첨부는 베이직·프리미엄 이용권 전용 기능입니다.');
+            }
+        }
         const ai = new genai_1.GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
         const classification = await classifyResultChatQuestion(ai, {
             uid,
@@ -1996,9 +2077,11 @@ exports.chatWithResult = (0, https_2.onCall)({
             };
         }
         const recentMessageRows = await getRecentResultChatMessages(messagesRef);
-        const reusable = answerRoute !== 'web_search'
-            ? findReusableResultChatAnswer(recentMessageRows, question, answerRoute)
-            : findReusableResultChatAnswer(recentMessageRows, question, answerRoute, { allowRecentWebSearchMs: RESULT_CHAT_LOCK_STALE_MS });
+        const reusable = attachments.length > 0
+            ? null
+            : answerRoute !== 'web_search'
+                ? findReusableResultChatAnswer(recentMessageRows, question, answerRoute)
+                : findReusableResultChatAnswer(recentMessageRows, question, answerRoute, { allowRecentWebSearchMs: RESULT_CHAT_LOCK_STALE_MS });
         if (reusable) {
             if (answerRoute === 'web_search') {
                 return {
@@ -2118,27 +2201,33 @@ exports.chatWithResult = (0, https_2.onCall)({
             systemGuide: policy.systemGuide,
             recordOnlyChosen,
         });
+        const { fileParts, attachmentMeta } = attachments.length > 0
+            ? await loadHaruLawAttachmentParts(uid, attachments)
+            : { fileParts: [], attachmentMeta: [] };
+        const contents = fileParts.length > 0
+            ? [{ role: 'user', parts: [{ text: prompt }, ...fileParts] }]
+            : prompt;
         const startedAt = Date.now();
         const response = await ai.models.generateContent({
             model: RESULT_CHAT_MODEL_NAME,
-            contents: prompt,
+            contents,
             config: answerRoute === 'web_search'
                 ? { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS }
                 : { maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
         });
         const latencyMs = Date.now() - startedAt;
         const rawAnswer = clampResultChatText(response.text || '', RESULT_CHAT_ANSWER_MAX_LENGTH);
-        const finishReason = (_k = (_j = response.candidates) === null || _j === void 0 ? void 0 : _j[0]) === null || _k === void 0 ? void 0 : _k.finishReason;
+        const finishReason = (_l = (_k = response.candidates) === null || _k === void 0 ? void 0 : _k[0]) === null || _l === void 0 ? void 0 : _l.finishReason;
         const { sources, usedWebSearch } = answerRoute === 'web_search'
             ? getResultChatSources(response)
             : { sources: [], usedWebSearch: false };
         if (answerRoute === 'web_search' && !usedWebSearch) {
             logger.warn('chatWithResult web_search_not_grounded 진단:', {
                 finishReason,
-                hasCandidates: ((_m = (_l = response.candidates) === null || _l === void 0 ? void 0 : _l.length) !== null && _m !== void 0 ? _m : 0) > 0,
-                hasGroundingMetadata: !!((_p = (_o = response.candidates) === null || _o === void 0 ? void 0 : _o[0]) === null || _p === void 0 ? void 0 : _p.groundingMetadata),
-                webSearchQueriesCount: (_u = (_t = (_s = (_r = (_q = response.candidates) === null || _q === void 0 ? void 0 : _q[0]) === null || _r === void 0 ? void 0 : _r.groundingMetadata) === null || _s === void 0 ? void 0 : _s.webSearchQueries) === null || _t === void 0 ? void 0 : _t.length) !== null && _u !== void 0 ? _u : 0,
-                groundingChunksCount: (_z = (_y = (_x = (_w = (_v = response.candidates) === null || _v === void 0 ? void 0 : _v[0]) === null || _w === void 0 ? void 0 : _w.groundingMetadata) === null || _x === void 0 ? void 0 : _x.groundingChunks) === null || _y === void 0 ? void 0 : _y.length) !== null && _z !== void 0 ? _z : 0,
+                hasCandidates: ((_o = (_m = response.candidates) === null || _m === void 0 ? void 0 : _m.length) !== null && _o !== void 0 ? _o : 0) > 0,
+                hasGroundingMetadata: !!((_q = (_p = response.candidates) === null || _p === void 0 ? void 0 : _p[0]) === null || _q === void 0 ? void 0 : _q.groundingMetadata),
+                webSearchQueriesCount: (_v = (_u = (_t = (_s = (_r = response.candidates) === null || _r === void 0 ? void 0 : _r[0]) === null || _s === void 0 ? void 0 : _s.groundingMetadata) === null || _t === void 0 ? void 0 : _t.webSearchQueries) === null || _u === void 0 ? void 0 : _u.length) !== null && _v !== void 0 ? _v : 0,
+                groundingChunksCount: (_0 = (_z = (_y = (_x = (_w = response.candidates) === null || _w === void 0 ? void 0 : _w[0]) === null || _x === void 0 ? void 0 : _x.groundingMetadata) === null || _y === void 0 ? void 0 : _y.groundingChunks) === null || _z === void 0 ? void 0 : _z.length) !== null && _0 !== void 0 ? _0 : 0,
                 recordId,
                 sourceKey,
             });
@@ -2160,8 +2249,8 @@ exports.chatWithResult = (0, https_2.onCall)({
             sourceKey,
             answerRoute,
             model: RESULT_CHAT_MODEL_NAME,
-            inputTokens: (_0 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.promptTokenCount) !== null && _0 !== void 0 ? _0 : null,
-            outputTokens: (_1 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.candidatesTokenCount) !== null && _1 !== void 0 ? _1 : null,
+            inputTokens: (_1 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.promptTokenCount) !== null && _1 !== void 0 ? _1 : null,
+            outputTokens: (_2 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.candidatesTokenCount) !== null && _2 !== void 0 ? _2 : null,
             webSearchUsed: answerRoute === 'web_search' && usedWebSearch,
             professionalApiUsed: false,
             searchSourceCount: sources.length,
@@ -2182,11 +2271,12 @@ exports.chatWithResult = (0, https_2.onCall)({
             safetyMode: policy.safetyMode,
             answerRoute,
             model: RESULT_CHAT_MODEL_NAME,
-            inputTokens: (_2 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.promptTokenCount) !== null && _2 !== void 0 ? _2 : null,
-            outputTokens: (_3 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.candidatesTokenCount) !== null && _3 !== void 0 ? _3 : null,
+            inputTokens: (_3 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.promptTokenCount) !== null && _3 !== void 0 ? _3 : null,
+            outputTokens: (_4 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.candidatesTokenCount) !== null && _4 !== void 0 ? _4 : null,
             latencyMs,
             webSearchUsed: answerRoute === 'web_search' && usedWebSearch,
             professionalApiUsed: false,
+            attachmentMeta: attachmentMeta.length > 0 ? attachmentMeta : undefined,
         });
         return {
             threadId,
@@ -2215,7 +2305,7 @@ exports.chatWithResult = (0, https_2.onCall)({
             errorMessage: error === null || error === void 0 ? void 0 : error.message,
             errorStatus: error === null || error === void 0 ? void 0 : error.status,
             errorCode: error === null || error === void 0 ? void 0 : error.code,
-            errorCause: String((_4 = error === null || error === void 0 ? void 0 : error.cause) !== null && _4 !== void 0 ? _4 : ''),
+            errorCause: String((_5 = error === null || error === void 0 ? void 0 : error.cause) !== null && _5 !== void 0 ? _5 : ''),
             stack: error === null || error === void 0 ? void 0 : error.stack,
             recordId,
             sourceKey,
@@ -5036,14 +5126,24 @@ function getHaruLawSharedCardId(uid, sourceRecordId) {
 exports.lawSearch = (0, https_2.onCall)({
     region: 'asia-northeast3',
     secrets: [LAW_API_KEY_SECRET, GEMINI_API_KEY_SECRET],
+    timeoutSeconds: 90,
+    memory: '1GiB',
 }, async (request) => {
-    var _a, _b, _c, _d, _f, _g;
+    var _a, _b, _c, _d, _f, _g, _h;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    const uid = request.auth.uid;
     const { query } = request.data;
     if (!query || typeof query !== 'string' || !query.trim()) {
         throw new https_2.HttpsError('invalid-argument', '검색어가 필요합니다.');
+    }
+    const attachments = readHaruLawAttachments((_a = request.data) === null || _a === void 0 ? void 0 : _a.attachments);
+    if (attachments.length > 0) {
+        const actualPlan = coerceUserPlan(await getUserPlan(uid));
+        if (actualPlan === 'free') {
+            throw new https_2.HttpsError('permission-denied', '파일 첨부는 베이직·프리미엄 이용권 전용 기능입니다.');
+        }
     }
     const { XMLParser } = await Promise.resolve().then(() => __importStar(require('fast-xml-parser')));
     const LAW_API_KEY = LAW_API_KEY_SECRET.value();
@@ -5059,6 +5159,9 @@ exports.lawSearch = (0, https_2.onCall)({
         const { XMLParser } = await Promise.resolve().then(() => __importStar(require('fast-xml-parser')));
         const LAW_API_KEY = LAW_API_KEY_SECRET.value().trim();
         const GEMINI_KEY = GEMINI_API_KEY_SECRET.value().trim();
+        const { fileParts } = attachments.length > 0
+            ? await loadHaruLawAttachmentParts(uid, attachments)
+            : { fileParts: [] };
         const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
         const axiosConfig = {
             headers: {
@@ -5138,7 +5241,7 @@ exports.lawSearch = (0, https_2.onCall)({
         const searchUrl = `https://www.law.go.kr/DRF/lawSearch.do?OC=${LAW_API_KEY}&target=law&type=XML&query=${encodeURIComponent(lawKeyword)}`;
         const searchRes = await getLawXmlWithRetry(searchUrl);
         const searchJson = parser.parse(searchRes.data);
-        const laws = ((_a = searchJson === null || searchJson === void 0 ? void 0 : searchJson.LawSearch) === null || _a === void 0 ? void 0 : _a.law) || ((_b = searchJson === null || searchJson === void 0 ? void 0 : searchJson.Law) === null || _b === void 0 ? void 0 : _b.law) || ((_c = searchJson === null || searchJson === void 0 ? void 0 : searchJson.LawList) === null || _c === void 0 ? void 0 : _c.law);
+        const laws = ((_b = searchJson === null || searchJson === void 0 ? void 0 : searchJson.LawSearch) === null || _b === void 0 ? void 0 : _b.law) || ((_c = searchJson === null || searchJson === void 0 ? void 0 : searchJson.Law) === null || _c === void 0 ? void 0 : _c.law) || ((_d = searchJson === null || searchJson === void 0 ? void 0 : searchJson.LawList) === null || _d === void 0 ? void 0 : _d.law);
         if (!laws) {
             return { success: false, message: '관련 법령을 찾지 못했습니다.', data: [], aiSummary: '' };
         }
@@ -5156,7 +5259,7 @@ exports.lawSearch = (0, https_2.onCall)({
         const serviceUrl = `https://www.law.go.kr/DRF/lawService.do?OC=${LAW_API_KEY}&target=law&MST=${mstId}&type=XML`;
         const serviceRes = await getLawXmlWithRetry(serviceUrl);
         const lawJson = parser.parse(serviceRes.data);
-        const jomuns = ((_f = (_d = lawJson === null || lawJson === void 0 ? void 0 : lawJson.법령) === null || _d === void 0 ? void 0 : _d.조문) === null || _f === void 0 ? void 0 : _f.조문단위) || [];
+        const jomuns = ((_g = (_f = lawJson === null || lawJson === void 0 ? void 0 : lawJson.법령) === null || _f === void 0 ? void 0 : _f.조문) === null || _g === void 0 ? void 0 : _g.조문단위) || [];
         const arrayJomuns = Array.isArray(jomuns) ? jomuns : [jomuns];
         // 전체 조문 정제
         const allJomuns = arrayJomuns
@@ -5212,7 +5315,7 @@ exports.lawSearch = (0, https_2.onCall)({
         const lawText = finalJomuns
             .map((j) => `${j.articleStr}(${j.title}): ${j.content}`)
             .join('\n');
-        const summaryResult = await summaryModel.generateContent(`당신은 공식 법령을 사실원으로 확인하고 가능한 법적 쟁점과 다음 행동을 이해하기 쉽게 안내하는 AI 법률정보 도우미입니다.
+        const summaryPrompt = `당신은 공식 법령을 사실원으로 확인하고 가능한 법적 쟁점과 다음 행동을 이해하기 쉽게 안내하는 AI 법률정보 도우미입니다.
 다음 원칙을 반드시 지키세요:
 
 [공식 법령 우선 원칙]
@@ -5221,6 +5324,7 @@ exports.lawSearch = (0, https_2.onCall)({
 - 제공된 법령만으로 판단하기 어려우면 추측하지 말고 추가 확인이 필요하다고 안내한다.
 - 조문의 문언뿐 아니라 해당 조문의 적용요건이 사용자 사실관계에 충족되는지 구분해서 설명한다.
 - 법령 내용과 모델의 일반지식이 충돌하면 이번 요청에서 제공된 공식 법령 내용을 우선한다.
+- 첨부파일이 있으면 사실관계 보조자료로만 활용하고, 법률상 결론은 반드시 이번 요청에서 제공된 공식 법령·조문을 우선 근거로 삼는다.
 
 [사실관계·책임 판단 가드레일]
 - 사용자 질문과 제공 자료만으로 누가 가해자인지, 피해 정도, 인과관계, 과실, 책임 주체, 법률 적용요건이 확실하지 않으면 단정하지 마라.
@@ -5245,7 +5349,11 @@ exports.lawSearch = (0, https_2.onCall)({
 
 사용자 질문: ${query}
 관련 법령(${lawName}):
-	${lawText}`);
+	${lawText}`;
+        const summaryContents = fileParts.length > 0
+            ? [{ text: summaryPrompt }, ...fileParts]
+            : summaryPrompt;
+        const summaryResult = await summaryModel.generateContent(summaryContents);
         const summaryUsage = getGeminiUsage(summaryResult);
         await (0, aiUsageLogger_1.logAiUsage)({
             uid: request.auth.uid,
@@ -5270,8 +5378,11 @@ exports.lawSearch = (0, https_2.onCall)({
         };
     }
     catch (error) {
+        if (error instanceof https_2.HttpsError) {
+            throw error;
+        }
         logger.error('HARUraw 법령 검색 실패:', error);
-        if ((_g = request.auth) === null || _g === void 0 ? void 0 : _g.uid) {
+        if ((_h = request.auth) === null || _h === void 0 ? void 0 : _h.uid) {
             await (0, aiUsageLogger_1.logAiUsage)({
                 uid: request.auth.uid,
                 featureName: 'law_search',

@@ -19,12 +19,19 @@ export type ResultChatMessage = {
   id?: string;
   role: ResultChatRole;
   content: string;
+  attachments?: HaruLawAttachmentRef[];
   sources?: ResultChatSource[];
   answerRoute?: ResultAnswerRoute;
   routeLabel?: string;
   webSearchUsed?: boolean;
   professionalApiUsed?: boolean;
   createdAt?: unknown;
+};
+
+export type HaruLawAttachmentRef = {
+  storagePath: string;
+  mimeType: string;
+  fileName: string;
 };
 
 export type ChatWithResultRequest = {
@@ -35,6 +42,7 @@ export type ChatWithResultRequest = {
   systemGuide: string;
   sourceIndex?: number;
   searchPreference?: ResultChatSearchPreference;
+  attachments?: HaruLawAttachmentRef[];
 };
 
 export type ChatWithResultResponse = {

@@ -1979,13 +1979,18 @@ async function saveResultChatExchange(params: {
   webSearchUsed: boolean;
   professionalApiUsed: boolean;
   cached?: boolean;
+  attachmentMeta?: { fileName: string; storagePath: string; mimeType: string }[];
 }): Promise<void> {
   const now = admin.firestore.FieldValue.serverTimestamp();
-  await params.messagesRef.add({
+  const userMessage: Record<string, unknown> = {
     role: 'user',
     content: params.question,
     createdAt: now,
-  });
+  };
+  if (params.attachmentMeta && params.attachmentMeta.length > 0) {
+    userMessage.attachments = params.attachmentMeta;
+  }
+  await params.messagesRef.add(userMessage);
   await params.messagesRef.add({
     role: 'assistant',
     content: params.answer,
@@ -2060,11 +2065,103 @@ async function logResultChatUsage(params: {
   });
 }
 
+type HaruLawAttachmentRef = {
+  storagePath: string;
+  mimeType: string;
+  fileName: string;
+};
+type HaruLawGeminiFilePart = {
+  inlineData: {
+    mimeType: string;
+    data: string;
+  };
+};
+
+const HARULAW_ATTACH_MAX_FILES = 5;
+const HARULAW_ATTACH_MAX_IMAGE_BYTES = 7 * 1024 * 1024;
+const HARULAW_ATTACH_MAX_PDF_BYTES = 50 * 1024 * 1024;
+
+function readHaruLawAttachments(raw: unknown): HaruLawAttachmentRef[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.slice(0, HARULAW_ATTACH_MAX_FILES).map((item) => {
+    const source = item as Partial<HaruLawAttachmentRef>;
+    const storagePath = clampResultChatText(source?.storagePath, 512);
+    const mimeType = clampResultChatText(source?.mimeType, 120).toLowerCase();
+    const fileName = clampResultChatText(source?.fileName, 180);
+    if (!storagePath || !mimeType || !fileName) {
+      throw new HttpsError('invalid-argument', '첨부 파일 정보가 올바르지 않습니다.');
+    }
+    return { storagePath, mimeType, fileName };
+  });
+}
+
+function isAllowedHaruLawAttachmentMime(mimeType: string): boolean {
+  return mimeType === 'application/pdf' || /^image\/[-+.\w]+$/i.test(mimeType);
+}
+
+function getHaruLawAttachmentSizeLimit(mimeType: string): number {
+  return mimeType.startsWith('image/') ? HARULAW_ATTACH_MAX_IMAGE_BYTES : HARULAW_ATTACH_MAX_PDF_BYTES;
+}
+
+async function loadHaruLawAttachmentParts(
+  uid: string,
+  attachments: HaruLawAttachmentRef[]
+): Promise<{ fileParts: HaruLawGeminiFilePart[]; attachmentMeta: HaruLawAttachmentRef[] }> {
+  const fileParts: HaruLawGeminiFilePart[] = [];
+  const attachmentMeta: HaruLawAttachmentRef[] = [];
+
+  for (const att of attachments) {
+    if (!att.storagePath.startsWith(`users/${uid}/haruLawAttachments/`)) {
+      throw new HttpsError('permission-denied', '허용되지 않은 파일 경로입니다.');
+    }
+    if (!isAllowedHaruLawAttachmentMime(att.mimeType)) {
+      throw new HttpsError('invalid-argument', '지원하지 않는 파일 형식입니다.');
+    }
+
+    const file = bucket().file(att.storagePath);
+    let metadata: any;
+    try {
+      [metadata] = await file.getMetadata();
+    } catch (error) {
+      logger.warn('하루LAW 첨부 메타데이터 조회 실패:', { storagePath: att.storagePath, message: (error as any)?.message });
+      throw new HttpsError('not-found', '첨부 파일을 찾을 수 없습니다.');
+    }
+
+    const storedMimeType = String(metadata?.contentType || '').trim().toLowerCase();
+    const effectiveMimeType = storedMimeType || att.mimeType;
+    if (!isAllowedHaruLawAttachmentMime(effectiveMimeType) || (storedMimeType && storedMimeType !== att.mimeType)) {
+      throw new HttpsError('invalid-argument', '첨부 파일 형식이 허용 범위와 다릅니다.');
+    }
+
+    const sizeLimit = getHaruLawAttachmentSizeLimit(effectiveMimeType);
+    const metadataSize = Number(metadata?.size);
+    if (Number.isFinite(metadataSize) && metadataSize > sizeLimit) {
+      throw new HttpsError('invalid-argument', '파일 크기가 허용 범위를 초과했습니다.');
+    }
+
+    let buf: Buffer;
+    try {
+      [buf] = await file.download();
+    } catch (error) {
+      logger.warn('하루LAW 첨부 다운로드 실패:', { storagePath: att.storagePath, message: (error as any)?.message });
+      throw new HttpsError('not-found', '첨부 파일을 다운로드하지 못했습니다.');
+    }
+    if (buf.length > sizeLimit) {
+      throw new HttpsError('invalid-argument', '파일 크기가 허용 범위를 초과했습니다.');
+    }
+
+    fileParts.push({ inlineData: { mimeType: effectiveMimeType, data: buf.toString('base64') } });
+    attachmentMeta.push({ storagePath: att.storagePath, mimeType: effectiveMimeType, fileName: att.fileName });
+  }
+
+  return { fileParts, attachmentMeta };
+}
+
 export const chatWithResult = onCall(
   {
     region: 'asia-northeast3',
     secrets: [GEMINI_API_KEY_SECRET],
-    timeoutSeconds: 60,
+    timeoutSeconds: 90,
   },
   async (request) => {
     if (!request.auth?.uid) {
@@ -2082,6 +2179,7 @@ export const chatWithResult = onCall(
     const sourceIndex = typeof rawSourceIndex === 'number' && Number.isInteger(rawSourceIndex)
       ? rawSourceIndex
       : undefined;
+    const attachments = readHaruLawAttachments(request.data?.attachments);
 
     if (rawQuestion.length > RESULT_CHAT_QUESTION_MAX_LENGTH) {
       throw new HttpsError('invalid-argument', '질문이 너무 깁니다. 핵심 내용을 조금 줄여 주세요.');
@@ -2128,6 +2226,15 @@ export const chatWithResult = onCall(
       await acquireResultChatLock(threadRef, requestId);
       locked = true;
       await enforceResultChatRateLimit(uid);
+
+      if (attachments.length > 0) {
+        if (sourceKey !== 'haruraw_sayu') {
+          throw new HttpsError('failed-precondition', '첨부는 하루LAW 자문에서만 사용할 수 있습니다.');
+        }
+        if (actualPlan === 'free') {
+          throw new HttpsError('permission-denied', '파일 첨부는 베이직·프리미엄 이용권 전용 기능입니다.');
+        }
+      }
 
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
       const classification = await classifyResultChatQuestion(ai, {
@@ -2208,9 +2315,11 @@ export const chatWithResult = onCall(
       }
 
       const recentMessageRows = await getRecentResultChatMessages(messagesRef);
-      const reusable = answerRoute !== 'web_search'
-        ? findReusableResultChatAnswer(recentMessageRows, question, answerRoute)
-        : findReusableResultChatAnswer(recentMessageRows, question, answerRoute, { allowRecentWebSearchMs: RESULT_CHAT_LOCK_STALE_MS });
+      const reusable = attachments.length > 0
+        ? null
+        : answerRoute !== 'web_search'
+          ? findReusableResultChatAnswer(recentMessageRows, question, answerRoute)
+          : findReusableResultChatAnswer(recentMessageRows, question, answerRoute, { allowRecentWebSearchMs: RESULT_CHAT_LOCK_STALE_MS });
       if (reusable) {
         if (answerRoute === 'web_search') {
           return {
@@ -2332,10 +2441,16 @@ export const chatWithResult = onCall(
         systemGuide: policy.systemGuide,
         recordOnlyChosen,
       });
+      const { fileParts, attachmentMeta } = attachments.length > 0
+        ? await loadHaruLawAttachmentParts(uid, attachments)
+        : { fileParts: [] as HaruLawGeminiFilePart[], attachmentMeta: [] as HaruLawAttachmentRef[] };
+      const contents: any = fileParts.length > 0
+        ? [{ role: 'user', parts: [{ text: prompt }, ...fileParts] }]
+        : prompt;
       const startedAt = Date.now();
       const response = await ai.models.generateContent({
         model: RESULT_CHAT_MODEL_NAME,
-        contents: prompt,
+        contents,
         config: answerRoute === 'web_search'
           ? { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS }
           : { maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
@@ -2406,6 +2521,7 @@ export const chatWithResult = onCall(
         latencyMs,
         webSearchUsed: answerRoute === 'web_search' && usedWebSearch,
         professionalApiUsed: false,
+        attachmentMeta: attachmentMeta.length > 0 ? attachmentMeta : undefined,
       });
 
       return {
@@ -5706,15 +5822,25 @@ export const lawSearch = onCall(
   {
     region: 'asia-northeast3',
     secrets: [LAW_API_KEY_SECRET, GEMINI_API_KEY_SECRET],
+    timeoutSeconds: 90,
+    memory: '1GiB',
   },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
 
+    const uid = request.auth.uid;
     const { query } = request.data;
     if (!query || typeof query !== 'string' || !query.trim()) {
       throw new HttpsError('invalid-argument', '검색어가 필요합니다.');
+    }
+    const attachments = readHaruLawAttachments(request.data?.attachments);
+    if (attachments.length > 0) {
+      const actualPlan = coerceUserPlan(await getUserPlan(uid));
+      if (actualPlan === 'free') {
+        throw new HttpsError('permission-denied', '파일 첨부는 베이직·프리미엄 이용권 전용 기능입니다.');
+      }
     }
 
     const { XMLParser } = await import('fast-xml-parser');
@@ -5733,6 +5859,9 @@ export const lawSearch = onCall(
       const { XMLParser } = await import('fast-xml-parser');
       const LAW_API_KEY = LAW_API_KEY_SECRET.value().trim();
       const GEMINI_KEY = GEMINI_API_KEY_SECRET.value().trim();
+      const { fileParts } = attachments.length > 0
+        ? await loadHaruLawAttachmentParts(uid, attachments)
+        : { fileParts: [] as HaruLawGeminiFilePart[] };
 
       const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
       const axiosConfig = {
@@ -5912,8 +6041,7 @@ export const lawSearch = onCall(
         .map((j: any) => `${j.articleStr}(${j.title}): ${j.content}`)
         .join('\n');
 
-      const summaryResult = await summaryModel.generateContent(
-        `당신은 공식 법령을 사실원으로 확인하고 가능한 법적 쟁점과 다음 행동을 이해하기 쉽게 안내하는 AI 법률정보 도우미입니다.
+      const summaryPrompt = `당신은 공식 법령을 사실원으로 확인하고 가능한 법적 쟁점과 다음 행동을 이해하기 쉽게 안내하는 AI 법률정보 도우미입니다.
 다음 원칙을 반드시 지키세요:
 
 [공식 법령 우선 원칙]
@@ -5922,6 +6050,7 @@ export const lawSearch = onCall(
 - 제공된 법령만으로 판단하기 어려우면 추측하지 말고 추가 확인이 필요하다고 안내한다.
 - 조문의 문언뿐 아니라 해당 조문의 적용요건이 사용자 사실관계에 충족되는지 구분해서 설명한다.
 - 법령 내용과 모델의 일반지식이 충돌하면 이번 요청에서 제공된 공식 법령 내용을 우선한다.
+- 첨부파일이 있으면 사실관계 보조자료로만 활용하고, 법률상 결론은 반드시 이번 요청에서 제공된 공식 법령·조문을 우선 근거로 삼는다.
 
 [사실관계·책임 판단 가드레일]
 - 사용자 질문과 제공 자료만으로 누가 가해자인지, 피해 정도, 인과관계, 과실, 책임 주체, 법률 적용요건이 확실하지 않으면 단정하지 마라.
@@ -5946,8 +6075,11 @@ export const lawSearch = onCall(
 
 사용자 질문: ${query}
 관련 법령(${lawName}):
-	${lawText}`
-      );
+	${lawText}`;
+      const summaryContents: any = fileParts.length > 0
+        ? [{ text: summaryPrompt }, ...fileParts]
+        : summaryPrompt;
+      const summaryResult = await summaryModel.generateContent(summaryContents);
       const summaryUsage = getGeminiUsage(summaryResult);
       await logAiUsage({
         uid: request.auth.uid,
@@ -5973,6 +6105,9 @@ export const lawSearch = onCall(
       };
 
     } catch (error: any) {
+      if (error instanceof HttpsError) {
+        throw error;
+      }
       logger.error('HARUraw 법령 검색 실패:', error);
       if (request.auth?.uid) {
         await logAiUsage({

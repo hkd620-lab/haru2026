@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { DiaryLearnModal } from '../components/DiaryLearnModal';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { Calendar, Check, Pencil, X } from 'lucide-react';
+import { Calendar, Check, Paperclip, Pencil, X } from 'lucide-react';
+import { ref as storageRef, uploadBytes } from 'firebase/storage';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { useLocation, useNavigate } from 'react-router';
 import { firestoreService, buildTimelineMeta } from '../services/firestoreService';
@@ -19,8 +20,9 @@ import {
   getAssistantRecommendations,
   type AssistantRecommendation,
 } from '../utils/assistantRecommendations';
-import { db } from '../../firebase';
+import { db, storage } from '../../firebase';
 import { doc, getDoc, setDoc, serverTimestamp, collection, arrayUnion } from 'firebase/firestore';
+import { useSubscription } from '../hooks/useSubscription';
 import {
   DndContext,
   closestCenter,
@@ -47,6 +49,23 @@ type EnvTagType = 'weather' | 'temperature' | 'mood';
 const DEFAULT_WEATHER = ['쾌청', '흐림', '비', '눈'];
 const DEFAULT_TEMPERATURE = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
 const DEFAULT_MOOD = ['기쁨', '평온', '무미', '울적', '번잡'];
+const HARULAW_ATTACH_MAX_FILES = 5;
+const HARULAW_ATTACH_ALLOWED_TYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+  'application/pdf',
+]);
+const HARULAW_ATTACH_MAX_IMAGE_BYTES = 7 * 1024 * 1024;
+const HARULAW_ATTACH_MAX_PDF_BYTES = 50 * 1024 * 1024;
+
+type HaruLawAttachmentRef = {
+  storagePath: string;
+  mimeType: string;
+  fileName: string;
+};
 
 function getLawEasySummary(title?: string, article?: string, description?: string): string {
   const text = `${title ?? ''} ${article ?? ''} ${description ?? ''}`;
@@ -246,6 +265,8 @@ export function RecordPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { subscription } = useSubscription();
+  const isLawPaidUser = subscription.status === 'active' && subscription.plan !== 'free';
   const [fromPath, setFromPath] = useState<string | null>(() => (location.state as any)?.from ?? null);
   const closeToOrigin = () => {
     if (fromPath) {
@@ -304,6 +325,10 @@ export function RecordPage() {
   const [activeLawQuery, setActiveLawQuery] = useState('');
   const [isSavingLaw, setIsSavingLaw] = useState(false);
   const [lawSaved, setLawSaved] = useState(false);
+  const [lawAttachments, setLawAttachments] = useState<HaruLawAttachmentRef[]>([]);
+  const [activeLawAttachments, setActiveLawAttachments] = useState<HaruLawAttachmentRef[]>([]);
+  const [uploadingLawFiles, setUploadingLawFiles] = useState(false);
+  const lawFileInputRef = useRef<HTMLInputElement>(null);
   const [openCard, setOpenCard] = useState<{
     idx: number;
     type: 'explain' | 'prec';
@@ -662,17 +687,84 @@ export function RecordPage() {
     setFormatModalOpen(true);
   };
 
+  const handleLawFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+    if (!user?.uid) {
+      toast.error('로그인이 필요합니다.');
+      event.target.value = '';
+      return;
+    }
+    if (!isLawPaidUser) {
+      toast.error('파일 첨부는 베이직·프리미엄 이용권 전용입니다.');
+      event.target.value = '';
+      return;
+    }
+
+    const remainingSlots = HARULAW_ATTACH_MAX_FILES - lawAttachments.length;
+    if (remainingSlots <= 0) {
+      toast.error('파일은 최대 5개까지 첨부할 수 있습니다.');
+      event.target.value = '';
+      return;
+    }
+
+    const toUpload = files.slice(0, remainingSlots);
+    for (const file of toUpload) {
+      if (!HARULAW_ATTACH_ALLOWED_TYPES.has(file.type)) {
+        toast.error(`${file.name}: PNG, JPEG, WebP, HEIC, PDF만 첨부할 수 있습니다.`);
+        event.target.value = '';
+        return;
+      }
+      const sizeLimit = file.type === 'application/pdf'
+        ? HARULAW_ATTACH_MAX_PDF_BYTES
+        : HARULAW_ATTACH_MAX_IMAGE_BYTES;
+      if (file.size > sizeLimit) {
+        toast.error(`${file.name}: 파일이 너무 큽니다. (이미지 7MB, PDF 50MB 이하)`);
+        event.target.value = '';
+        return;
+      }
+    }
+
+    setUploadingLawFiles(true);
+    try {
+      const uploaded: HaruLawAttachmentRef[] = [];
+      const draftId = `draft_${Date.now()}`;
+      for (let i = 0; i < toUpload.length; i += 1) {
+        const file = toUpload[i];
+        const safeName = `${Date.now()}_${i}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+        const path = `users/${user.uid}/haruLawAttachments/${draftId}/${safeName}`;
+        await uploadBytes(storageRef(storage, path), file, { contentType: file.type });
+        uploaded.push({ storagePath: path, mimeType: file.type, fileName: file.name });
+      }
+      setLawAttachments((prev) => [...prev, ...uploaded]);
+    } catch (error) {
+      console.error('하루LAW 첨부 업로드 실패:', error);
+      toast.error('파일 업로드에 실패했습니다. 다시 시도해 주세요.');
+    } finally {
+      setUploadingLawFiles(false);
+      event.target.value = '';
+    }
+  };
+
   const handleLawSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!lawQuery.trim()) return;
+    if (uploadingLawFiles) {
+      toast.info('파일 업로드가 끝난 뒤 전송해 주세요.');
+      return;
+    }
     setLawLoading(true);
     setLawResults([]);
     setLawSummary('');
     setLawError('');
+    const attachmentsToSend = [...lawAttachments];
     try {
       const functions = getFunctions(undefined, 'asia-northeast3');
       const lawSearch = httpsCallable(functions, 'lawSearch');
-      const res: any = await lawSearch({ query: lawQuery });
+      const res: any = await lawSearch({
+        query: lawQuery,
+        ...(attachmentsToSend.length > 0 ? { attachments: attachmentsToSend } : {}),
+      });
       const data = res.data;
       if (!data.success) {
         setLawError(data.message || '검색 결과가 없습니다.');
@@ -680,6 +772,7 @@ export function RecordPage() {
       }
       setLawSaved(false);
       setActiveLawQuery(lawQuery);
+      setActiveLawAttachments(attachmentsToSend);
       setLawResults(data.data);
       setLawSummary(data.aiSummary);
       // 검색 이력 저장
@@ -713,6 +806,7 @@ export function RecordPage() {
         haruraw_summary: lawSummary,
         haruraw_articles: articlesText,
         haruraw_simple: `${activeLawQuery}\n\n${lawSummary}`,
+        ...(activeLawAttachments.length > 0 ? { haruraw_attachments: activeLawAttachments } : {}),
       });
       setLawSaved(true);
       toast.success('하루LAW 분석 결과가 사유-나의 기록에 저장되었습니다.');
@@ -1224,6 +1318,7 @@ export function RecordPage() {
                     type="text"
                     value={lawQuery}
                     onChange={(e) => setLawQuery(e.target.value)}
+                    disabled={lawLoading || uploadingLawFiles}
                     placeholder="예: 내 딸아이가 친구로부터 사이버 괴롭힘을 당하고 있어요 어떻게 하면 좋을까요?"
                     style={{
                       flex: 1, padding: '10px 12px', fontSize: 16,
@@ -1232,17 +1327,95 @@ export function RecordPage() {
                     }}
                   />
                   <button
-                    type="submit"
-                    disabled={lawLoading}
+                    type="button"
+                    onClick={() => lawFileInputRef.current?.click()}
+                    disabled={!isLawPaidUser || lawLoading || uploadingLawFiles || lawAttachments.length >= HARULAW_ATTACH_MAX_FILES}
+                    title={!isLawPaidUser ? '베이직·프리미엄 이용권 전용' : '파일 첨부 (이미지·PDF, 최대 5개)'}
                     style={{
-                      padding: '10px 14px', backgroundColor: '#1A3C6E',
+                      padding: '10px 12px',
+                      backgroundColor: !isLawPaidUser ? '#E5E7EB' : '#EEF2FF',
+                      color: !isLawPaidUser ? '#9CA3AF' : '#1A3C6E',
+                      border: '1.5px solid',
+                      borderColor: !isLawPaidUser ? '#D1D5DB' : '#1A3C6E',
+                      borderRadius: 8,
+                      cursor: !isLawPaidUser || lawLoading || uploadingLawFiles || lawAttachments.length >= HARULAW_ATTACH_MAX_FILES ? 'not-allowed' : 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      position: 'relative',
+                    }}
+                  >
+                    <Paperclip size={16} />
+                    {lawAttachments.length > 0 && (
+                      <span style={{
+                        position: 'absolute',
+                        top: -6,
+                        right: -6,
+                        backgroundColor: '#1A3C6E',
+                        color: '#FFFFFF',
+                        borderRadius: '50%',
+                        width: 16,
+                        height: 16,
+                        fontSize: 10,
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>
+                        {lawAttachments.length}
+                      </span>
+                    )}
+                  </button>
+                  <input
+                    ref={lawFileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/heic,image/heif,application/pdf"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={handleLawFileSelect}
+                  />
+                  <button
+                    type="submit"
+                    disabled={lawLoading || uploadingLawFiles}
+                    style={{
+                      padding: '10px 14px', backgroundColor: lawLoading || uploadingLawFiles ? '#CBD5E1' : '#1A3C6E',
                       color: '#fff', border: 'none', borderRadius: 8,
-                      fontWeight: 600, fontSize: 13, cursor: 'pointer',
+                      fontWeight: 600, fontSize: 13, cursor: lawLoading || uploadingLawFiles ? 'not-allowed' : 'pointer',
                     }}
                   >
                     법률자문
                   </button>
                 </div>
+                {lawAttachments.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                    {lawAttachments.map((att, index) => (
+                      <div
+                        key={att.storagePath}
+                        style={{ display: 'flex', alignItems: 'center', gap: 5, backgroundColor: '#EEF2FF', borderRadius: 8, padding: '4px 8px', fontSize: 12, color: '#1A3C6E', maxWidth: 180 }}
+                      >
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {att.mimeType === 'application/pdf' ? 'PDF' : '이미지'} · {att.fileName}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setLawAttachments((prev) => prev.filter((_, itemIndex) => itemIndex !== index))}
+                          aria-label="첨부 제거"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#6B7280', padding: 0, lineHeight: 1 }}
+                        >
+                          x
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {uploadingLawFiles && (
+                  <p style={{ fontSize: 12, color: '#6B7280', margin: '6px 0 0' }}>파일 업로드 중...</p>
+                )}
+                {!isLawPaidUser && (
+                  <p style={{ fontSize: 11, color: '#9CA3AF', margin: '6px 0 0' }}>
+                    파일 첨부는 베이직·프리미엄 이용권 전용 기능입니다.
+                  </p>
+                )}
               </form>
 
               {/* 로딩 */}

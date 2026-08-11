@@ -1,17 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
-import { X } from 'lucide-react';
+import { Paperclip, X } from 'lucide-react';
+import { ref as storageRef, uploadBytes } from 'firebase/storage';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router';
-import { db } from '../../firebase';
+import { db, storage } from '../../firebase';
 import type { ResultChatConfig } from '../config/resultChatConfig';
 import {
   chatWithResult,
+  type HaruLawAttachmentRef,
   type ResultChatConfirmationType,
   type ResultChatMessage,
   type ResultChatSearchPreference,
 } from '../services/resultChatService';
 import { firestoreService } from '../services/firestoreService';
+import { useSubscription } from '../hooks/useSubscription';
 
 type ResultChatModalProps = {
   isOpen: boolean;
@@ -37,7 +40,20 @@ type PendingConfirmation = {
   webSearchLimit?: number;
   webSearchUsedCount?: number;
   webSearchRemainingCount?: number;
+  attachments?: HaruLawAttachmentRef[];
 };
+
+const HARULAW_ATTACH_MAX_FILES = 5;
+const HARULAW_ATTACH_ALLOWED_TYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+  'application/pdf',
+]);
+const HARULAW_ATTACH_MAX_IMAGE_BYTES = 7 * 1024 * 1024;
+const HARULAW_ATTACH_MAX_PDF_BYTES = 50 * 1024 * 1024;
 
 export function ResultChatModal({
   isOpen,
@@ -51,6 +67,8 @@ export function ResultChatModal({
   onMemoSaved,
 }: ResultChatModalProps) {
   const navigate = useNavigate();
+  const { subscription } = useSubscription();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [messages, setMessages] = useState<ResultChatMessage[]>([]);
   const [question, setQuestion] = useState('');
   const [loading, setLoading] = useState(false);
@@ -59,8 +77,12 @@ export function ResultChatModal({
   const [savingIndex, setSavingIndex] = useState<number | null>(null);
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
+  const [pendingAttachments, setPendingAttachments] = useState<HaruLawAttachmentRef[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
 
   const threadId = useMemo(() => getThreadId(config.sourceKey, sourceIndex), [config.sourceKey, sourceIndex]);
+  const isHaruLaw = config.sourceKey === 'haruraw_sayu';
+  const isPaidUser = subscription.status === 'active' && subscription.plan !== 'free';
 
   useEffect(() => {
     if (!isOpen || !uid || !recordId) return;
@@ -70,6 +92,7 @@ export function ResultChatModal({
     setStatusNotice(null);
     setPendingConfirmation(null);
     setSavedMemoIds({});
+    setPendingAttachments([]);
 
     const loadMessages = async () => {
       try {
@@ -115,18 +138,90 @@ export function ResultChatModal({
     return '';
   };
 
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+    if (!isHaruLaw || !isPaidUser) {
+      toast.error('파일 첨부는 하루LAW 베이직·프리미엄 이용권 전용입니다.');
+      event.target.value = '';
+      return;
+    }
+    if (!uid || !recordId) {
+      toast.error('첨부할 기록 정보를 확인하지 못했습니다.');
+      event.target.value = '';
+      return;
+    }
+
+    const remainingSlots = HARULAW_ATTACH_MAX_FILES - pendingAttachments.length;
+    if (remainingSlots <= 0) {
+      toast.error('파일은 최대 5개까지 첨부할 수 있습니다.');
+      event.target.value = '';
+      return;
+    }
+
+    const toUpload = files.slice(0, remainingSlots);
+    for (const file of toUpload) {
+      if (!HARULAW_ATTACH_ALLOWED_TYPES.has(file.type)) {
+        toast.error(`${file.name}: PNG, JPEG, WebP, HEIC, PDF만 첨부할 수 있습니다.`);
+        event.target.value = '';
+        return;
+      }
+      const sizeLimit = file.type === 'application/pdf'
+        ? HARULAW_ATTACH_MAX_PDF_BYTES
+        : HARULAW_ATTACH_MAX_IMAGE_BYTES;
+      if (file.size > sizeLimit) {
+        toast.error(`${file.name}: 파일이 너무 큽니다. (이미지 7MB, PDF 50MB 이하)`);
+        event.target.value = '';
+        return;
+      }
+    }
+
+    setUploadingFiles(true);
+    try {
+      const uploaded: HaruLawAttachmentRef[] = [];
+      for (let i = 0; i < toUpload.length; i += 1) {
+        const file = toUpload[i];
+        const safeName = `${Date.now()}_${i}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+        const path = `users/${uid}/haruLawAttachments/${recordId}/${safeName}`;
+        await uploadBytes(storageRef(storage, path), file, { contentType: file.type });
+        uploaded.push({ storagePath: path, mimeType: file.type, fileName: file.name });
+      }
+      setPendingAttachments((prev) => [...prev, ...uploaded]);
+    } catch (error) {
+      console.error('하루LAW 첨부 업로드 실패:', error);
+      toast.error('파일 업로드에 실패했습니다. 다시 시도해 주세요.');
+    } finally {
+      setUploadingFiles(false);
+      event.target.value = '';
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setPendingAttachments((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+  };
+
   const sendQuestion = async (
     text: string,
     searchPreference: ResultChatSearchPreference = 'auto',
-    options: { skipOptimisticUser?: boolean } = {},
+    options: { skipOptimisticUser?: boolean; attachments?: HaruLawAttachmentRef[] } = {},
   ) => {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
+    if (uploadingFiles) {
+      toast.info('파일 업로드가 끝난 뒤 전송해 주세요.');
+      return;
+    }
+
+    const attachmentsToSend = 'attachments' in options
+      ? options.attachments
+      : (pendingAttachments.length > 0 ? pendingAttachments : undefined);
 
     setLoading(true);
     setQuestion('');
     setStatusNotice(null);
-    const optimistic: ResultChatMessage | null = options.skipOptimisticUser ? null : { role: 'user', content: trimmed };
+    const optimistic: ResultChatMessage | null = options.skipOptimisticUser
+      ? null
+      : { role: 'user', content: trimmed, ...(attachmentsToSend?.length ? { attachments: attachmentsToSend } : {}) };
     if (optimistic) setMessages((prev) => [...prev, optimistic]);
 
     try {
@@ -138,6 +233,7 @@ export function ResultChatModal({
         safetyMode: config.safetyMode,
         systemGuide: config.systemGuide,
         searchPreference,
+        attachments: attachmentsToSend,
       });
       if (response.requiresConfirmation && response.confirmationType) {
         if (optimistic) setMessages((prev) => prev.filter((item) => item !== optimistic));
@@ -149,6 +245,7 @@ export function ResultChatModal({
           webSearchLimit: response.webSearchLimit,
           webSearchUsedCount: response.webSearchUsedCount,
           webSearchRemainingCount: response.webSearchRemainingCount,
+          attachments: attachmentsToSend,
         });
         return;
       }
@@ -158,6 +255,7 @@ export function ResultChatModal({
         setStatusNotice(response.notice || '이 결과에서 이용할 수 있는 최신자료 확인을 모두 사용했습니다.');
         return;
       }
+      setPendingAttachments([]);
       setMessages((prev) => [...prev, {
         role: 'assistant',
         content: response.answer,
@@ -264,7 +362,7 @@ export function ResultChatModal({
               <button
                 key={item}
                 type="button"
-                disabled={loading}
+                disabled={loading || uploadingFiles}
                 onClick={() => sendQuestion(item)}
                 style={{
                   minHeight: 34,
@@ -275,13 +373,36 @@ export function ResultChatModal({
                   color: '#4A5A2C',
                   fontSize: 12,
                   fontWeight: 800,
-                  cursor: loading ? 'wait' : 'pointer',
+                  cursor: loading || uploadingFiles ? 'wait' : 'pointer',
                 }}
               >
                 {item}
               </button>
             ))}
           </div>
+
+          {isHaruLaw && pendingAttachments.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+              {pendingAttachments.map((att, index) => (
+                <div
+                  key={att.storagePath}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 8px', borderRadius: 8, border: '1px solid #CBD5E1', backgroundColor: '#F8FAFC', fontSize: 12, color: '#334155', maxWidth: 180 }}
+                >
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {att.mimeType === 'application/pdf' ? 'PDF' : '이미지'} · {att.fileName}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeAttachment(index)}
+                    aria-label="첨부 제거"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#94A3B8', lineHeight: 1, fontSize: 14 }}
+                  >
+                    x
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
           {pendingConfirmation && (
             <div style={{ marginBottom: 14, padding: 14, borderRadius: 10, border: '1px solid #BFDBFE', backgroundColor: '#EFF6FF', color: '#1E3A8A' }}>
@@ -298,7 +419,7 @@ export function ResultChatModal({
                   <button
                     type="button"
                     disabled={loading}
-                    onClick={() => sendQuestion(pendingConfirmation.question, 'record_only')}
+                    onClick={() => sendQuestion(pendingConfirmation.question, 'record_only', { attachments: pendingConfirmation.attachments })}
                     style={{ minHeight: 34, padding: '0 12px', borderRadius: 8, border: '1px solid #94A3B8', backgroundColor: '#FFFFFF', color: '#1F2937', fontSize: 12, fontWeight: 900, cursor: loading ? 'wait' : 'pointer' }}
                   >
                     나의 기록으로 답변
@@ -307,7 +428,7 @@ export function ResultChatModal({
                 <button
                   type="button"
                   disabled={loading || pendingConfirmation.webSearchRemainingCount === 0}
-                  onClick={() => sendQuestion(pendingConfirmation.question, 'web_confirmed')}
+                  onClick={() => sendQuestion(pendingConfirmation.question, 'web_confirmed', { attachments: pendingConfirmation.attachments })}
                   style={{
                     minHeight: 34,
                     padding: '0 12px',
@@ -371,6 +492,19 @@ export function ResultChatModal({
                 >
                   {message.content}
                 </div>
+                {message.role === 'user' && message.attachments && message.attachments.length > 0 && (
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '100%' }}>
+                    {message.attachments.map((att) => (
+                      <span
+                        key={att.storagePath}
+                        style={{ maxWidth: 160, padding: '3px 7px', borderRadius: 999, backgroundColor: '#E0E7FF', color: '#1E3A8A', fontSize: 10.5, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        title={att.fileName}
+                      >
+                        {att.mimeType === 'application/pdf' ? 'PDF' : '이미지'} · {att.fileName}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 {message.role === 'assistant' && message.sources && message.sources.length > 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 2, maxWidth: '100%' }}>
                     <span style={{ fontSize: 10, fontWeight: 800, color: '#94A3B8' }}>🔎 출처</span>
@@ -424,42 +558,85 @@ export function ResultChatModal({
             event.preventDefault();
             sendQuestion(question);
           }}
-          style={{ padding: 14, borderTop: '1px solid #E5E7EB', display: 'flex', gap: 8, backgroundColor: '#FFFFFF' }}
+          style={{ padding: 14, borderTop: '1px solid #E5E7EB', display: 'flex', flexDirection: 'column', gap: 8, backgroundColor: '#FFFFFF' }}
         >
-          <input
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
-            disabled={loading}
-            placeholder="나의 기록을 바탕으로 자유롭게 질문해 보세요."
-            style={{
-              flex: 1,
-              minWidth: 0,
-              height: 42,
-              borderRadius: 10,
-              border: '1px solid #CBD5E1',
-              padding: '0 12px',
-              fontSize: 14,
-              outline: 'none',
-              backgroundColor: '#FFFFFF',
-            }}
-          />
-          <button
-            type="submit"
-            disabled={loading || !question.trim()}
-            style={{
-              minWidth: 70,
-              height: 42,
-              borderRadius: 10,
-              border: 'none',
-              backgroundColor: loading || !question.trim() ? '#CBD5E1' : '#1A3C6E',
-              color: '#FFFFFF',
-              fontSize: 13,
-              fontWeight: 900,
-              cursor: loading || !question.trim() ? 'not-allowed' : 'pointer',
-            }}
-          >
-            전송
-          </button>
+          {isHaruLaw && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/heic,image/heif,application/pdf"
+                multiple
+                style={{ display: 'none' }}
+                onChange={handleFileSelect}
+              />
+              {isPaidUser ? (
+                <button
+                  type="button"
+                  disabled={loading || uploadingFiles || pendingAttachments.length >= HARULAW_ATTACH_MAX_FILES}
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    alignSelf: 'flex-start',
+                    minHeight: 32,
+                    padding: '0 10px',
+                    borderRadius: 8,
+                    border: '1px solid #CBD5E1',
+                    backgroundColor: '#FFFFFF',
+                    color: '#475569',
+                    fontSize: 12,
+                    fontWeight: 800,
+                    cursor: loading || uploadingFiles || pendingAttachments.length >= HARULAW_ATTACH_MAX_FILES ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                  }}
+                >
+                  <Paperclip size={14} />
+                  {uploadingFiles ? '업로드 중...' : `파일 첨부 (${pendingAttachments.length}/${HARULAW_ATTACH_MAX_FILES})`}
+                </button>
+              ) : (
+                <p style={{ margin: 0, fontSize: 11, color: '#94A3B8' }}>
+                  파일 첨부는 베이직·프리미엄 이용권 전용입니다.
+                </p>
+              )}
+            </>
+          )}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              value={question}
+              onChange={(event) => setQuestion(event.target.value)}
+              disabled={loading || uploadingFiles}
+              placeholder="나의 기록을 바탕으로 자유롭게 질문해 보세요."
+              style={{
+                flex: 1,
+                minWidth: 0,
+                height: 42,
+                borderRadius: 10,
+                border: '1px solid #CBD5E1',
+                padding: '0 12px',
+                fontSize: 14,
+                outline: 'none',
+                backgroundColor: '#FFFFFF',
+              }}
+            />
+            <button
+              type="submit"
+              disabled={loading || uploadingFiles || !question.trim()}
+              style={{
+                minWidth: 70,
+                height: 42,
+                borderRadius: 10,
+                border: 'none',
+                backgroundColor: loading || uploadingFiles || !question.trim() ? '#CBD5E1' : '#1A3C6E',
+                color: '#FFFFFF',
+                fontSize: 13,
+                fontWeight: 900,
+                cursor: loading || uploadingFiles || !question.trim() ? 'not-allowed' : 'pointer',
+              }}
+            >
+              전송
+            </button>
+          </div>
         </form>
       </div>
     </div>
