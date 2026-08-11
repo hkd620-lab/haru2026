@@ -1,18 +1,29 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import { LogOut, ShieldCheck } from 'lucide-react';
 import { AuthProvider, useAuth } from '../../frontend/src/app/contexts/AuthContext';
 import { VaultPage } from '../../frontend/src/app/pages/VaultPage';
+import { loginWithGoogle } from '../../frontend/src/firebase';
 import '../../frontend/src/styles/index.css';
 import './styles.css';
 
 const DEVELOPER_EMAIL = 'hkd620@gmail.com';
 
 function VaultShell() {
-  const { user, loading, googleSignIn, signOut } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const isDeveloper = user?.email?.toLowerCase() === DEVELOPER_EMAIL;
+
+  const handleGoogleLogin = async () => {
+    try {
+      await loginWithGoogle();
+    } catch (error: any) {
+      if (error?.code === 'auth/popup-closed-by-user') return;
+      console.error('Vault Google login error:', error);
+      toast.error('Google 로그인에 실패했습니다. 다시 시도해 주세요.');
+    }
+  };
 
   if (loading) {
     return (
@@ -30,7 +41,7 @@ function VaultShell() {
           <p className="vault-app-brand">하루lab</p>
           <h1>정보금고</h1>
           <p>중요한 생활정보를 안전하게 확인합니다.</p>
-          <button type="button" className="vault-app-primary" onClick={googleSignIn}>
+          <button type="button" className="vault-app-primary" onClick={handleGoogleLogin}>
             Google 계정으로 로그인
           </button>
         </section>
