@@ -74,6 +74,7 @@ type HaruLawAttachmentRef = {
 type SayuNavigationState = {
   filterFormat?: string;
   openRecordId?: string;
+  tab?: 'records' | 'assistants';
 } | null;
 const PLANT_SAYU_FILTERS: { key: PlantSayuFilter; label: string }[] = [
   { key: 'all', label: '전체' },
@@ -2472,12 +2473,13 @@ export function SayuPage() {
     if (!filterFormat && !openRecordId) return;
 
     const routeKey = `${filterFormat}|${openRecordId}`;
-    setSayuTab('records');
+    const targetTab = routeState?.tab === 'assistants' || filterFormat === '하루LAW' ? 'assistants' : 'records';
+    setSayuTab(targetTab);
     setViewMode('list');
     setSayuSearchInput('');
     setDebouncedSayuSearch('');
     if (filterFormat) {
-      setSelectedSayuLabels((prev) => ({ ...prev, records: filterFormat }));
+      setSelectedSayuLabels((prev) => ({ ...prev, [targetTab]: filterFormat }));
     }
 
     if (!openRecordId) {
@@ -2514,7 +2516,11 @@ export function SayuPage() {
       setCurrentMonth(parsedDate);
     }
     setSayuScope('month');
-    openFormatSayu(recordDate, 'memo', filterFormat || '메모', openRecordId);
+    if (targetTab === 'assistants' && filterFormat === '하루LAW') {
+      openFormatSayu(recordDate, 'haruraw', 'HARUraw', openRecordId);
+    } else {
+      openFormatSayu(recordDate, 'memo', filterFormat || '메모', openRecordId);
+    }
     navigate('/sayu', { replace: true, state: null });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, location.state, user?.uid, records]);

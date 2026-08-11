@@ -795,14 +795,21 @@ export function RecordPage() {
       const articlesText = lawResults
         .map((a: any) => `[${a.lawName}] ${a.articleStr}(${a.title})\n${a.content}`)
         .join('\n\n');
+      const recordRef = doc(db, 'users', user.uid, 'records', dateStr);
+      const existingSnap = await getDoc(recordRef);
+      const existingRecord = existingSnap.exists() ? existingSnap.data() : null;
+      const existingFormats = Array.isArray(existingRecord?.formats) ? existingRecord.formats : [];
+      const mergedFormats = Array.from(new Set([...existingFormats, 'HARUraw'])) as RecordFormat[];
       await firestoreService.saveRecord(user.uid, {
+        id: dateStr,
         date: dateStr,
-        weather,
-        temperature,
-        mood,
-        formats: ['HARUraw'],
-        content: '',
+        weather: existingRecord?.weather || weather,
+        temperature: existingRecord?.temperature || temperature,
+        mood: existingRecord?.mood || mood,
+        formats: mergedFormats,
+        content: typeof existingRecord?.content === 'string' ? existingRecord.content : '',
         haruraw_query: activeLawQuery,
+        haruraw_sayu: lawSummary,
         haruraw_summary: lawSummary,
         haruraw_articles: articlesText,
         haruraw_simple: `${activeLawQuery}\n\n${lawSummary}`,
@@ -810,7 +817,7 @@ export function RecordPage() {
       });
       setLawSaved(true);
       toast.success('하루LAW 분석 결과가 사유-나의 기록에 저장되었습니다.');
-      setTimeout(() => navigate('/sayu'), 1000);
+      setTimeout(() => navigate('/sayu', { state: { filterFormat: '하루LAW' } }), 1000);
     } catch (err) {
       toast.error('저장에 실패했습니다.');
     } finally {
