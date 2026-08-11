@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { GrapeAnimation } from '../components/GrapeAnimation';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,9 +10,13 @@ import { getInAppBrowserInfo, type InAppBrowserInfo } from '../utils/inAppBrowse
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { googleSignIn } = useAuth();
+  const { googleSignIn, signIn, signUp, resetPassword } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [inAppBrowserGuide, setInAppBrowserGuide] = useState<InAppBrowserInfo | null>(null);
+  const [emailMode, setEmailMode] = useState<'login' | 'signup'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
 
   const guardInAppBrowserLogin = () => {
     const info = getInAppBrowserInfo();
@@ -62,6 +66,53 @@ export function LoginPage() {
     }, 1500);
   };
 
+  const handleEmailSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const normalizedEmail = email.trim();
+
+    if (!normalizedEmail || !password) {
+      toast.error('이메일과 비밀번호를 입력해 주세요.');
+      return;
+    }
+    if (emailMode === 'signup' && password !== passwordConfirm) {
+      toast.error('비밀번호 확인이 일치하지 않습니다.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      if (emailMode === 'login') {
+        await signIn(normalizedEmail, password);
+        toast.success('로그인되었습니다.');
+      } else {
+        await signUp(normalizedEmail, password);
+        toast.success('회원가입이 완료되었습니다.');
+      }
+      navigate('/');
+    } catch (error: any) {
+      toast.error(error?.message || '이메일 인증에 실패했습니다.');
+      setIsLoading(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail) {
+      toast.error('비밀번호를 재설정할 이메일을 입력해 주세요.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await resetPassword(normalizedEmail);
+      toast.success('비밀번호 재설정 메일을 보냈습니다.');
+    } catch (error: any) {
+      toast.error(error?.message || '비밀번호 재설정 메일 발송에 실패했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#EDE9F5', overflowY: 'auto' }}>
       <InAppBrowserLoginGuide
@@ -92,7 +143,7 @@ export function LoginPage() {
             <HaruNewsPreview />
           </div>
 
-          {/* 오른쪽: 기존 로그인 카드 — 인증 로직 무수정 */}
+          {/* 오른쪽: 로그인 카드 */}
           <div className="w-full lg:w-96 flex-shrink-0">
             <div className="text-center mb-8">
               <BookOpen className="w-16 h-16 mx-auto mb-4" style={{ color: '#1A3C6E' }} />
@@ -166,6 +217,115 @@ export function LoginPage() {
                   <span className="font-medium">네이버로 계속하기</span>
                 </button>
               </div>
+
+              <div className="flex items-center gap-3 my-6">
+                <div className="h-px flex-1" style={{ backgroundColor: '#E5E7EB' }} />
+                <span className="text-xs" style={{ color: '#999' }}>또는</span>
+                <div className="h-px flex-1" style={{ backgroundColor: '#E5E7EB' }} />
+              </div>
+
+              <form onSubmit={handleEmailSubmit} className="space-y-3">
+                <div className="flex rounded-lg p-1" style={{ backgroundColor: '#F3F4F6' }}>
+                  <button
+                    type="button"
+                    onClick={() => setEmailMode('login')}
+                    className="flex-1 rounded-md px-3 py-2 text-sm transition-all"
+                    style={{
+                      backgroundColor: emailMode === 'login' ? '#fff' : 'transparent',
+                      color: emailMode === 'login' ? '#1A3C6E' : '#6B7280',
+                      fontWeight: emailMode === 'login' ? 700 : 500,
+                    }}
+                  >
+                    로그인
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEmailMode('signup')}
+                    className="flex-1 rounded-md px-3 py-2 text-sm transition-all"
+                    style={{
+                      backgroundColor: emailMode === 'signup' ? '#fff' : 'transparent',
+                      color: emailMode === 'signup' ? '#1A3C6E' : '#6B7280',
+                      fontWeight: emailMode === 'signup' ? 700 : 500,
+                    }}
+                  >
+                    회원가입
+                  </button>
+                </div>
+
+                <label className="block">
+                  <span className="block text-xs mb-1" style={{ color: '#666', fontWeight: 700 }}>이메일</span>
+                  <input
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="email@example.com"
+                    className="w-full rounded-lg px-3 py-3 text-sm outline-none"
+                    style={{ border: '1px solid #E5E7EB', color: '#333' }}
+                    disabled={isLoading}
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="block text-xs mb-1" style={{ color: '#666', fontWeight: 700 }}>비밀번호</span>
+                  <input
+                    type="password"
+                    autoComplete={emailMode === 'login' ? 'current-password' : 'new-password'}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="6자 이상"
+                    className="w-full rounded-lg px-3 py-3 text-sm outline-none"
+                    style={{ border: '1px solid #E5E7EB', color: '#333' }}
+                    disabled={isLoading}
+                  />
+                </label>
+
+                {emailMode === 'signup' && (
+                  <label className="block">
+                    <span className="block text-xs mb-1" style={{ color: '#666', fontWeight: 700 }}>비밀번호 확인</span>
+                    <input
+                      type="password"
+                      autoComplete="new-password"
+                      value={passwordConfirm}
+                      onChange={(event) => setPasswordConfirm(event.target.value)}
+                      placeholder="비밀번호 다시 입력"
+                      className="w-full rounded-lg px-3 py-3 text-sm outline-none"
+                      style={{ border: '1px solid #E5E7EB', color: '#333' }}
+                      disabled={isLoading}
+                    />
+                  </label>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-all hover:opacity-90 disabled:opacity-50"
+                  style={{ backgroundColor: '#1A3C6E', color: '#fff', fontWeight: 700 }}
+                >
+                  <Mail className="w-4 h-4" />
+                  {emailMode === 'login' ? '이메일로 로그인' : '이메일로 회원가입'}
+                </button>
+
+                <div className="flex items-center justify-center gap-3 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setEmailMode(emailMode === 'login' ? 'signup' : 'login')}
+                    style={{ color: '#1A3C6E', fontWeight: 700 }}
+                    disabled={isLoading}
+                  >
+                    {emailMode === 'login' ? '회원가입' : '로그인으로 돌아가기'}
+                  </button>
+                  <span style={{ color: '#D1D5DB' }}>|</span>
+                  <button
+                    type="button"
+                    onClick={handlePasswordReset}
+                    style={{ color: '#1A3C6E', fontWeight: 700 }}
+                    disabled={isLoading}
+                  >
+                    비밀번호를 잊으셨나요?
+                  </button>
+                </div>
+              </form>
 
               <div className="mt-6 text-center">
                 <p className="text-xs" style={{ color: '#999' }}>

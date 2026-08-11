@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, Database, Download, Trash2, BarChart3, LogOut, User, Moon, Sun, Bell, BellOff, Clock, Megaphone, Sparkles, ShieldCheck, CreditCard } from 'lucide-react';
+import { Settings, Database, Download, Trash2, BarChart3, LogOut, User, Moon, Sun, Bell, BellOff, Clock, Megaphone, Sparkles, ShieldCheck, CreditCard, Mail } from 'lucide-react';
 import { firestoreService } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -16,7 +16,7 @@ import { BUSINESS_INFO, BUSINESS_INFO_TEXT } from '../components/BusinessInfoNot
 const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
 export function SettingsPage() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, linkEmailPassword } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const { subscription, isPremium, loading: subscriptionLoading } = useSubscription();
   const navigate = useNavigate();
@@ -61,9 +61,14 @@ export function SettingsPage() {
   const [profileRealName, setProfileRealName] = useState<string>('');
   const [profileNickname, setProfileNickname] = useState<string>('');
   const [isSavingName, setIsSavingName] = useState(false);
+  const [emailLoginPassword, setEmailLoginPassword] = useState('');
+  const [emailLoginPasswordConfirm, setEmailLoginPasswordConfirm] = useState('');
+  const [isLinkingEmailLogin, setIsLinkingEmailLogin] = useState(false);
 
   const isAdmin = user?.uid === ADMIN_UID;
   const isDevUser = user?.email === 'hkd620@gmail.com';
+  const hasEmailPasswordLogin = Boolean(user?.providerIds?.includes('password'));
+  const canAddEmailPasswordLogin = Boolean(user?.email && !user.email.endsWith('@placeholder.local') && !hasEmailPasswordLogin);
   const hasPaidSubscription = subscription.plan === 'basic' || subscription.plan === 'premium';
   const canCancelSubscription = hasPaidSubscription && subscription.status === 'active';
   const subscriptionPlanLabel = subscription.plan === 'basic'
@@ -446,6 +451,41 @@ export function SettingsPage() {
         console.error('로그아웃 실패:', error);
         toast.error('로그아웃 중 오류가 발생했습니다.');
       }
+    }
+  };
+
+  const handleLinkEmailLogin = async () => {
+    if (!user?.email) {
+      toast.error('현재 계정에 이메일 정보가 없습니다.');
+      return;
+    }
+    if (hasEmailPasswordLogin) {
+      toast.success('이미 이메일 로그인이 연결되어 있습니다.');
+      return;
+    }
+    if (!canAddEmailPasswordLogin) {
+      toast.error('현재 계정에는 이메일 로그인을 추가할 수 없습니다.');
+      return;
+    }
+    if (!emailLoginPassword || !emailLoginPasswordConfirm) {
+      toast.error('비밀번호를 입력해 주세요.');
+      return;
+    }
+    if (emailLoginPassword !== emailLoginPasswordConfirm) {
+      toast.error('비밀번호 확인이 일치하지 않습니다.');
+      return;
+    }
+
+    setIsLinkingEmailLogin(true);
+    try {
+      await linkEmailPassword(user.email, emailLoginPassword);
+      setEmailLoginPassword('');
+      setEmailLoginPasswordConfirm('');
+      toast.success('이메일 로그인이 추가되었습니다.');
+    } catch (error: any) {
+      toast.error(error?.message || '이메일 로그인 추가에 실패했습니다.');
+    } finally {
+      setIsLinkingEmailLogin(false);
     }
   };
 
@@ -1224,6 +1264,61 @@ export function SettingsPage() {
             <h2 className="text-base tracking-wide" style={{ color: '#333' }}>
               계정 관리
             </h2>
+          </div>
+
+          <div
+            className="mb-3 rounded-lg p-4"
+            style={{ backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB' }}
+          >
+            <div className="flex items-start gap-3">
+              <Mail className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#1A3C6E' }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm" style={{ color: '#374151', fontWeight: 700 }}>
+                  이메일 로그인
+                </p>
+                <p className="text-xs mt-0.5 leading-relaxed" style={{ color: '#9CA3AF' }}>
+                  {hasEmailPasswordLogin
+                    ? '현재 계정에 이메일 로그인이 연결되어 있습니다.'
+                    : canAddEmailPasswordLogin
+                      ? `${user?.email}로 이메일 로그인을 추가합니다. 기존 기록은 같은 UID에 그대로 유지됩니다.`
+                      : '현재 계정의 이메일 정보가 없어 이메일 로그인을 추가할 수 없습니다.'}
+                </p>
+
+                {canAddEmailPasswordLogin && (
+                  <div className="mt-3 space-y-2">
+                    <input
+                      type="password"
+                      autoComplete="new-password"
+                      value={emailLoginPassword}
+                      onChange={(event) => setEmailLoginPassword(event.target.value)}
+                      placeholder="새 비밀번호"
+                      disabled={isLinkingEmailLogin}
+                      className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                      style={{ border: '1px solid #E5E7EB', color: '#374151' }}
+                    />
+                    <input
+                      type="password"
+                      autoComplete="new-password"
+                      value={emailLoginPasswordConfirm}
+                      onChange={(event) => setEmailLoginPasswordConfirm(event.target.value)}
+                      placeholder="새 비밀번호 확인"
+                      disabled={isLinkingEmailLogin}
+                      className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                      style={{ border: '1px solid #E5E7EB', color: '#374151' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleLinkEmailLogin}
+                      disabled={isLinkingEmailLogin}
+                      className="w-full rounded-lg px-4 py-2 text-sm transition-all hover:opacity-90 disabled:opacity-50"
+                      style={{ backgroundColor: '#1A3C6E', color: '#fff', fontWeight: 700 }}
+                    >
+                      {isLinkingEmailLogin ? '추가 중...' : '이메일 로그인 추가'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           <button
