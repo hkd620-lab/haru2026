@@ -223,7 +223,6 @@ const RECORDS: RecordItem[] = [
     bg: '#E5DBC2',
     stroke: '#7A6F5A',
     format: 'HARU보조장부',
-    developerOnly: true,
     icon: (
       <>
         <path d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z" />
