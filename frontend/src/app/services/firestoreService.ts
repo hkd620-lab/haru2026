@@ -91,6 +91,13 @@ export interface PublishedBook {
   createdAt?: any;
 }
 
+export interface HomePersonalizationSettings {
+  selectedRecordFormats: string[];
+  selectedAgents: string[];
+  personalized?: boolean;
+  updatedAt?: any;
+}
+
 // ⚖️ 하루LAW 익명 공유 카드 — 관리자 검수를 통과(status: 'published')한 카드만 조회된다.
 export interface PublishedHaruLawCard {
   id: string;
@@ -2174,6 +2181,48 @@ class FirestoreService {
       await setDoc(profileRef, payload, { merge: true });
     } catch (error) {
       console.error('사용자 프로필 저장 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 홈 개인화 설정 조회 (users/{uid}/settings/homePersonalization)
+   */
+  async getHomePersonalization(userId: string): Promise<HomePersonalizationSettings | null> {
+    try {
+      const settingsRef = doc(db, 'users', userId, 'settings', 'homePersonalization');
+      const snap = await getDoc(settingsRef);
+      if (!snap.exists()) return null;
+      const data = snap.data() as Partial<HomePersonalizationSettings>;
+      return {
+        selectedRecordFormats: Array.isArray(data.selectedRecordFormats) ? data.selectedRecordFormats : [],
+        selectedAgents: Array.isArray(data.selectedAgents) ? data.selectedAgents : [],
+        personalized: data.personalized === true,
+        updatedAt: data.updatedAt,
+      };
+    } catch (error) {
+      console.error('홈 개인화 설정 불러오기 실패:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 홈 개인화 설정 저장 (users/{uid}/settings/homePersonalization)
+   */
+  async saveHomePersonalization(userId: string, data: {
+    selectedRecordFormats: string[];
+    selectedAgents: string[];
+  }): Promise<void> {
+    try {
+      const settingsRef = doc(db, 'users', userId, 'settings', 'homePersonalization');
+      await setDoc(settingsRef, {
+        selectedRecordFormats: data.selectedRecordFormats,
+        selectedAgents: data.selectedAgents,
+        personalized: true,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    } catch (error) {
+      console.error('홈 개인화 설정 저장 실패:', error);
       throw error;
     }
   }
