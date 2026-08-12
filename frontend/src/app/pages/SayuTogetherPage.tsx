@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
-import { KNewsSection } from '../components/KNewsSection';
 import { TodayChargeSection } from '../components/TodayChargeSection';
 import { useAuth } from '../contexts/AuthContext';
 import { exportRecordsToEpub } from '../services/epubExportService';
@@ -16,7 +15,7 @@ import {
 import { toast } from 'sonner';
 
 type TogetherTab = 'shared' | 'recovery';
-type RecoverySubTab = 'people' | 'knews' | 'todaycharge' | 'epub';
+type RecoverySubTab = 'people' | 'todaycharge' | 'epub';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -814,11 +813,10 @@ export function SayuTogetherPage() {
 
   const renderRecovery = () => (
     <div>
-      <div className="mb-4 grid grid-cols-4 gap-2">
+      <div className="mb-4 grid grid-cols-3 gap-2">
         {([
           { key: 'people', label: '사람속으로' },
-          { key: 'knews', label: 'K뉴스' },
-          { key: 'todaycharge', label: '오늘충전' },
+          { key: 'todaycharge', label: '오늘의 충전' },
           { key: 'epub', label: 'EPUB' },
         ] as const).map((sub) => {
           const active = recoverySub === sub.key;
@@ -874,19 +872,10 @@ export function SayuTogetherPage() {
         </>
       )}
 
-      {recoverySub === 'knews' && (
-        <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: '1px solid #DBEAFE' }}>
-          <h2 className="text-base font-bold mb-3" style={{ color: '#1A3C6E' }}>
-            K뉴스
-          </h2>
-          <KNewsSection />
-        </section>
-      )}
-
       {recoverySub === 'todaycharge' && (
         <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
           <h2 className="text-base font-bold mb-3" style={{ color: '#1A3C6E' }}>
-            오늘충전
+            오늘의 충전
           </h2>
           <TodayChargeSection />
         </section>

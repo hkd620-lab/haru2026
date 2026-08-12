@@ -216,7 +216,7 @@ export const TodayChargeSection: React.FC = () => {
       ) : (
         <div className="bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 p-8 text-center">
           <h3 className="font-bold text-base mb-1" style={{ color: '#1A3C6E' }}>
-            오늘충전 준비 중
+            오늘의 충전 준비 중
           </h3>
           <p className="text-sm text-gray-600">
             곧 새로운 충전 카드를 만나보세요
