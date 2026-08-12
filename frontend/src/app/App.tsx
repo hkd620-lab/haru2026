@@ -44,6 +44,7 @@ import { DevConsolePage } from './pages/DevConsolePage';
 import { ElderBookPage } from './pages/ElderBookPage';
 import { RecordBookPage } from './pages/RecordBookPage';
 import { KNewsPublisherPage } from './pages/KNewsPublisherPage';
+import { TodayChargePublisherPage } from './pages/TodayChargePublisherPage';
 import { NovelStudio } from './pages/NovelStudio';
 import { NovelSynopsisPage } from './pages/NovelSynopsisPage';
 import { NovelStoryPage } from './pages/NovelStoryPage';
@@ -249,6 +250,7 @@ function App() {
               <Route path="/admin/elder-book" element={<ElderBookPage />} />
               <Route path="/admin/record-book" element={<RecordBookPage />} />
               <Route path="/admin/k-news-publisher" element={<KNewsPublisherPage />} />
+              <Route path="/admin/today-charge" element={<TodayChargePublisherPage />} />
               <Route path="/admin/haru-law-review" element={<AdminHaruLawReviewPage />} />
 
               {/* 개발자 전용 임시 화면 */}

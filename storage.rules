@@ -73,6 +73,13 @@ service firebase.storage {
         && request.auth.uid == 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
     }
 
+    // ✅ 오늘충전 이미지 — 개발자만 발행, 인증 사용자 read
+    match /today-charge/{fileName} {
+      allow read: if request.auth != null;
+      allow write, delete: if request.auth != null
+        && request.auth.uid == 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+    }
+
     // 하루LAW 자문 첨부 파일: 본인 경로만 접근, 구독 권한은 Functions에서 추가 확인
     match /users/{userId}/haruLawAttachments/{recordId}/{fileName} {
       allow read: if request.auth != null && request.auth.uid == userId;
