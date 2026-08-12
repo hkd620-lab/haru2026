@@ -5079,6 +5079,7 @@ exports.lawSearch = (0, https_2.onCall)({
     region: 'asia-northeast3',
     secrets: [LAW_API_KEY_SECRET, GEMINI_API_KEY_SECRET],
     timeoutSeconds: 90,
+    memory: '1GiB',
 }, async (request) => {
     var _a, _b, _c, _d, _f, _g, _h;
     if (!request.auth) {
@@ -5126,11 +5127,14 @@ exports.lawSearch = (0, https_2.onCall)({
                 throw new https_2.HttpsError('invalid-argument', '파일 크기 초과입니다.');
             fileParts.push({ inlineData: { mimeType: att.mimeType, data: buf.toString('base64') } });
         }
+        console.log('HARUraw 첨부 처리:', { 수신: attachments.length, 변환성공: fileParts.length });
         const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
         const axiosConfig = {
             headers: {
                 Referer: 'https://haru2026.com/',
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'application/xml, text/xml, */*',
+                'Accept-Language': 'ko-KR,ko;q=0.9',
                 Connection: 'close',
             },
             timeout: 10000,
@@ -5274,12 +5278,15 @@ exports.lawSearch = (0, https_2.onCall)({
         // 선별 실패 시 상위 3개
         const finalJomuns = cleanedJomuns.length > 0 ? cleanedJomuns : allJomuns.slice(0, 3);
         // 4단계: Gemini로 전체 요약 생성
-        const summaryModelName = 'gemini-2.5-pro';
+        const summaryModelName = 'gemini-3.1-pro-preview';
         const summaryModel = genAI.getGenerativeModel({ model: summaryModelName });
         const lawText = finalJomuns
             .map((j) => `${j.articleStr}(${j.title}): ${j.content}`)
             .join('\n');
-        const summaryPrompt = `당신은 실무 경력 20년의 대한민국 법률 전문가입니다.
+        const summaryPrompt = `당신은 대한민국 법령 정보를 기반으로 실무적 조언을 제공하는 AI 법률정보 어시스턴트입니다.
+당신은 변호사가 아니며, 개별 사안에 대한 최종 법적 판단을 내리는 것이 아니라
+가능한 법적 쟁점과 다음 행동을 안내하는 역할입니다.
+
 다음 원칙을 반드시 지키세요:
 
 [정확성 가드레일]
@@ -5295,17 +5302,47 @@ exports.lawSearch = (0, https_2.onCall)({
 - 사용자가 선거의 종류나 구체적 상황을 밝히지 않았다면, 단정하기 전에
   주요 갈래를 모두 제시하라.
 - 이 원칙은 관할·기한·절차 등 분기되는 모든 법률 정보에 동일 적용된다.
+- 특정 법이 "장소"(학교 안/밖 등)만을 이유로 적용되지 않는다고 단정하지 마라.
+  법률의 적용 범위는 조문의 정의 규정을 근거로 판단하고, 확실치 않으면
+  "적용될 수 있다"는 가능성으로 안내하라.
+
+[사실관계·책임판단 가드레일] — 반드시 지킬 것
+- 사용자가 제공한 정보(질문·첨부파일)만으로 가해자·피해 정도·인과관계·
+  과실 여부 등 핵심 사실이 확정되지 않았다면, "책임이 매우 높습니다"처럼
+  단정적으로 결론짓지 마라. 대신 "~가 확인되면 책임이 인정될 수 있습니다"
+  같은 조건부 표현을 사용하라.
+- 법 조문을 근거로 제시하기 전에, 그 조문이 요구하는 적용 요건이 실제
+  사안과 맞는지 먼저 검토하라. (예: 민법 제756조 사용자책임은 "피용자가
+  업무상 행한 행위"가 요건이다 — 가해자가 직원이 아니라 제3자·다른 학생
+  등이라면 이 조문을 근거로 쓰지 마라.)
+- 미성년 가해자의 부모 책임을 언급할 때, 가해자에게 책임능력이 있는지에
+  따라 근거 조문이 달라진다(책임무능력자는 제755조 감독자책임, 책임능력이
+  있으면 부모 자신의 감독과실을 이유로 한 제750조가 원칙이다). 단정하지
+  말고 구분해 안내하라.
+- 사과·유감 표명을 조언할 때는 "과실을 인정하는 것"과 "감정적으로
+  공감하되 과실은 인정하지 않는 것"을 명확히 구분하라. 사실관계 확인
+  전에는 후자를 권하라. "무조건 책임을 인정하십시오" 같은 표현은 쓰지 마라.
+- 치료비·보상 등을 "전액 책임지겠다"고 먼저 제안하는 조언은 사실관계·
+  보험·계약관계 확인 전에는 권하지 마라. 우선순위는 안전확보→기록보존→
+  사실확인→보험/계약 확인 순이다.
+- "고소·고발"(형사절차)과 "손해배상청구"(민사절차)를 명확히 구분해서
+  설명하라. 사용자가 이를 섞어 쓰더라도 그대로 따라 쓰지 말고 구분해
+  안내하라.
 
 1. 사용자 질문을 정확히 이해하고 핵심 법적 쟁점을 파악하세요.${fileParts.length > 0 ? '\n   (첨부 파일이 있으면 해당 내용을 질문 맥락으로 적극 활용하세요.)' : ''}
-2. 관련 법 조문을 근거로 명확한 법적 판단을 내려주세요.
+2. 관련 법 조문을 근거로 답변하되, 사실관계가 불충분하면 결론을 단정하지
+   말고 조건부로 안내하세요.
 3. 어려운 법률 용어는 반드시 쉬운 말로 풀어 설명하세요.
-4. 실무적 행동 지침을 구체적으로 안내하세요.
-   (예: "경찰서에 고소장을 제출하세요", "내용증명을 보내세요")
+4. 실무적 행동 지침을 구체적으로, 우선순위 순서로 안내하세요.
 5. 답변 구조:
-   ⚖️ 법적 판단: (핵심 결론 1~2문장)
-   📌 근거 조문: (관련 법 조문 언급)
-   💡 실무 조언: (당장 할 수 있는 행동)
-   ⚠️ 주의사항: (놓치기 쉬운 점)
+   📋 확인된 사실 / 확인이 더 필요한 사실: (질문·첨부에서 파악된 사실과,
+   결론을 위해 추가로 필요한 사실을 짧게 구분)
+   ⚖️ 가능한 법적 쟁점: (확정적 결론이 아니라, 사실관계에 따라 문제될
+   수 있는 쟁점들을 제시)
+   📌 근거 조문: (관련 법 조문과 그 적용 요건)
+   💡 실무 조언: (당장 할 수 있는 행동, 우선순위 순서로)
+   ⚠️ 주의사항: (놓치기 쉬운 점. 섣부른 과실 인정·비용 부담 제안에
+   대한 주의 포함)
 6. 마지막에 반드시 추가:
    "본 내용은 법령 정보 제공 목적이며, 전문적인 법률 자문을 대체할 수 없습니다."
 
@@ -5383,7 +5420,7 @@ exports.prepareHaruLawSharePreview = (0, https_2.onCall)({
         const redactedArticles = clampHaruLawText(record.haruraw_articles || '', 5000);
         const fallbackStatutes = parseHaruLawPublicStatutes(record.haruraw_articles);
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value().trim());
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.1-pro-preview' });
         const result = await model.generateContent(`다음 하루LAW 기록을 다른 PREMIUM 구독자가 참고할 수 있는 익명 공개 카드로 바꾸세요.
 
 반드시 JSON 객체만 출력하세요. 마크다운 코드블록은 사용하지 마세요.
