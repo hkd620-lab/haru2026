@@ -51,7 +51,7 @@ const TodayChargeCard: React.FC<{ item: TodayChargeItem }> = ({ item }) => (
       )}
       <div className="flex items-center justify-between text-xs text-gray-500 border-t pt-2">
         <span>{formatTodayChargeDate(item.createdAt)}</span>
-        <span>· {item.curator || 'HARU2026'}</span>
+        <span>· {item.curator || 'haru2026'}</span>
       </div>
     </div>
   </article>
@@ -75,7 +75,7 @@ export const TodayChargeSection: React.FC = () => {
   return (
     <div>
       <p className="text-sm text-gray-600 mb-3">
-        오늘 마음을 다시 채우는 HARU의 짧은 충전 카드입니다.
+        오늘 마음을 다시 채우는 haru2026의 짧은 충전 카드입니다.
       </p>
 
       {loading ? (

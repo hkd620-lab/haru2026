@@ -62,7 +62,7 @@ export function TodayChargePublisherPage() {
         caption: caption.trim(),
         status: 'published',
         createdAt: serverTimestamp(),
-        curator: 'HARU2026',
+        curator: 'haru2026',
       });
 
       toast.success('오늘충전 발행 완료! SAYU-함께보기 오늘충전 탭에 노출됩니다.');
@@ -138,7 +138,7 @@ export function TodayChargePublisherPage() {
           </div>
 
           <div className="text-xs text-gray-500 pt-2 border-t border-gray-100">
-            큐레이터: HARU2026 · 발행일: 자동
+            큐레이터: haru2026 · 발행일: 자동
           </div>
         </section>
 
