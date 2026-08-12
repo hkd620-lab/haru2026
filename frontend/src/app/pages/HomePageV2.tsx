@@ -4,7 +4,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { setOrigin } from '../services/v2Origin';
 import { useAuth } from '../contexts/AuthContext';
 import { TimelineCollageModal } from '../components/TimelineCollageModal';
+import { HomePersonalizationModal } from '../components/HomePersonalizationModal';
 import { shouldShowAssistantOnboarding } from '../services/assistantOnboardingService';
+import { firestoreService, type HomePersonalizationSettings } from '../services/firestoreService';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -30,13 +32,14 @@ type RecordItem = {
   stroke: string;
   format: string;
   icon: ReactNode;
+  developerOnly?: boolean;
 };
 
 type Agent = {
   label: string;
   sub: string;
   tag: string;
-  variant: 'lilac' | 'green' | 'terracotta';
+  variant: 'lilac' | 'green' | 'terracotta' | 'teal';
   stroke: string;
   path: string | null;
   action?: 'timeline';
@@ -548,6 +551,11 @@ function todayLabel(now: Date) {
   };
 }
 
+function getAgentKey(agent: Agent) {
+  if (agent.action) return `action:${agent.action}`;
+  return `path:${agent.path || 'none'}:${JSON.stringify(agent.state || {})}`;
+}
+
 export function HomePageV2() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -558,8 +566,27 @@ export function HomePageV2() {
     () => RECORDS.filter((r) => !HIDDEN_RECORD_FORMATS.has(r.format) && (!r.developerOnly || isDeveloper)),
     [isDeveloper],
   );
+  const visibleAgents = useMemo(
+    () => AGENTS.filter(
+      (a) => (!a.developerOnly || isDeveloper) && !HIDDEN_AGENT_LABELS.has(a.label),
+    ),
+    [isDeveloper],
+  );
   const today = useMemo(() => todayLabel(new Date()), []);
   const [timelineModalOpen, setTimelineModalOpen] = useState(false);
+  const [personalizationModalOpen, setPersonalizationModalOpen] = useState(false);
+  const [personalizationSaving, setPersonalizationSaving] = useState(false);
+  const [personalization, setPersonalization] = useState<HomePersonalizationSettings | null>(null);
+  const [personalizationLoaded, setPersonalizationLoaded] = useState(false);
+  const [homeViewMode, setHomeViewMode] = useState<'my' | 'all'>('my');
+  const [myHaruBannerHidden, setMyHaruBannerHidden] = useState(() => {
+    try {
+      return typeof window !== 'undefined'
+        && localStorage.getItem('haru_home_my_haru_banner_dismissed') === '1';
+    } catch {
+      return false;
+    }
+  });
   const [onboardingGateReady, setOnboardingGateReady] = useState(false);
   const [onboardingBannerHidden, setOnboardingBannerHidden] = useState(() => {
     try {
@@ -573,6 +600,11 @@ export function HomePageV2() {
   const dismissOnboardingBanner = () => {
     setOnboardingBannerHidden(true);
     try { localStorage.setItem('haru_home_onboarding_banner_dismissed', '1'); } catch { /* ignore */ }
+  };
+
+  const dismissMyHaruBanner = () => {
+    setMyHaruBannerHidden(true);
+    try { localStorage.setItem('haru_home_my_haru_banner_dismissed', '1'); } catch { /* ignore */ }
   };
 
   // v2 진입을 sessionStorage에 기록 → 통계/합본 등 깊은 경로 닫기 시 v2 복귀용
@@ -621,6 +653,35 @@ export function HomePageV2() {
     };
   }, [authLoading, user?.uid, location.pathname, navigate]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadHomePersonalization = async () => {
+      if (authLoading) {
+        setPersonalizationLoaded(false);
+        return;
+      }
+
+      if (!user?.uid) {
+        setPersonalization(null);
+        setPersonalizationLoaded(true);
+        return;
+      }
+
+      setPersonalizationLoaded(false);
+      const settings = await firestoreService.getHomePersonalization(user.uid);
+      if (cancelled) return;
+      setPersonalization(settings);
+      setPersonalizationLoaded(true);
+    };
+
+    loadHomePersonalization();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, user?.uid]);
+
   const openTimelineModal = () => {
     if (!user?.uid) {
       navigate('/login');
@@ -630,7 +691,50 @@ export function HomePageV2() {
     setTimelineModalOpen(true);
   };
 
-  if (authLoading || !onboardingGateReady) {
+  const hasPersonalizedHome = personalization?.personalized === true;
+  const selectedRecordFormats = hasPersonalizedHome
+    ? personalization?.selectedRecordFormats || []
+    : visibleRecords.map((record) => record.format);
+  const selectedAgents = hasPersonalizedHome
+    ? personalization?.selectedAgents || []
+    : visibleAgents.map((agent) => getAgentKey(agent));
+  const selectedRecordSet = useMemo(() => new Set(selectedRecordFormats), [selectedRecordFormats]);
+  const selectedAgentSet = useMemo(() => new Set(selectedAgents), [selectedAgents]);
+  const homeRecords = homeViewMode === 'all'
+    ? visibleRecords
+    : visibleRecords.filter((record) => selectedRecordSet.has(record.format));
+  const homeAgents = homeViewMode === 'all'
+    ? visibleAgents
+    : visibleAgents.filter((agent) => selectedAgentSet.has(getAgentKey(agent)));
+  const isMyHaruEmpty = homeViewMode === 'my' && hasPersonalizedHome && homeRecords.length === 0 && homeAgents.length === 0;
+
+  const saveHomePersonalization = async (selection: {
+    selectedRecordFormats: string[];
+    selectedAgents: string[];
+  }) => {
+    if (!user?.uid) {
+      navigate('/login');
+      return;
+    }
+
+    setPersonalizationSaving(true);
+    try {
+      await firestoreService.saveHomePersonalization(user.uid, selection);
+      setPersonalization({
+        selectedRecordFormats: selection.selectedRecordFormats,
+        selectedAgents: selection.selectedAgents,
+        personalized: true,
+      });
+      setHomeViewMode('my');
+      setPersonalizationModalOpen(false);
+      setMyHaruBannerHidden(true);
+      try { localStorage.setItem('haru_home_my_haru_banner_dismissed', '1'); } catch { /* ignore */ }
+    } finally {
+      setPersonalizationSaving(false);
+    }
+  };
+
+  if (authLoading || !onboardingGateReady || !personalizationLoaded) {
     return (
       <div
         className="min-h-screen"
@@ -1304,14 +1408,167 @@ export function HomePageV2() {
           </aside>
         </div>
 
+        <section
+          data-v2="my-haru-controls"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            marginBottom: 22,
+            flexWrap: 'wrap',
+          }}
+        >
+          <div
+            role="tablist"
+            aria-label="홈 보기 전환"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: 4,
+              borderRadius: 999,
+              background: '#fff',
+              border: '1px solid #E5DFD0',
+              boxShadow: '0 8px 22px -18px rgba(74,90,44,0.22)',
+            }}
+          >
+            <HomeModeButton active={homeViewMode === 'my'} onClick={() => setHomeViewMode('my')}>
+              내 HARU
+            </HomeModeButton>
+            <HomeModeButton active={homeViewMode === 'all'} onClick={() => setHomeViewMode('all')}>
+              전체 보기
+            </HomeModeButton>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPersonalizationModalOpen(true)}
+            className="v2-pill"
+            style={{
+              ...pillStyle,
+              background: '#4A5A2C',
+              borderColor: '#4A5A2C',
+              color: '#F5F0E8',
+              fontWeight: 800,
+            }}
+          >
+            <PillSvg>
+              <path d="M4 7h16M4 12h16M4 17h16" />
+              <path d="M8 7v10M16 7v10" />
+            </PillSvg>
+            내 HARU 관리
+          </button>
+        </section>
+
+        {!hasPersonalizedHome && !myHaruBannerHidden && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              background: '#fff',
+              border: '1px solid #E5DFD0',
+              borderRadius: 18,
+              padding: '14px 16px',
+              marginBottom: 24,
+              color: '#2C2C2A',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setPersonalizationModalOpen(true)}
+              style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                background: 'transparent',
+                border: 'none',
+                color: 'inherit',
+                cursor: 'pointer',
+                textAlign: 'left',
+                minWidth: 0,
+              }}
+            >
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  background: '#E0E8B8',
+                  color: '#4A5A2C',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <PillSvg>
+                  <path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z" />
+                  <path d="M19 16l.8 1.8L21.5 18.5 19.7 19.3 19 21l-.8-1.7L16.5 18.5l1.7-.7z" />
+                </PillSvg>
+              </span>
+              <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                <span style={{ fontSize: 14, fontWeight: 800 }}>내 HARU를 만들어 보세요</span>
+                <span style={{ fontSize: 11, color: '#7A6F5A' }}>
+                  자주 사용하는 기록과 AI 비서만 골라 홈을 간단하게 만들 수 있습니다.
+                </span>
+              </span>
+              <span
+                aria-hidden="true"
+                style={{
+                  marginLeft: 'auto',
+                  fontSize: 13,
+                  fontWeight: 800,
+                  whiteSpace: 'nowrap',
+                  background: '#F5F0E8',
+                  borderRadius: 999,
+                  padding: '6px 12px',
+                  color: '#4A5A2C',
+                  flexShrink: 0,
+                }}
+              >
+                만들기 →
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={dismissMyHaruBanner}
+              aria-label="내 HARU 안내 닫기"
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: 999,
+                border: '1px solid #E5DFD0',
+                background: 'transparent',
+                color: '#7A6F5A',
+                cursor: 'pointer',
+                flexShrink: 0,
+                fontSize: 14,
+                lineHeight: 1,
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {isMyHaruEmpty && (
+          <EmptyMyHaru
+            onShowAll={() => setHomeViewMode('all')}
+            onManage={() => setPersonalizationModalOpen(true)}
+          />
+        )}
+
         {/* RECORDS SECTION */}
+        {!isMyHaruEmpty && (
         <section data-v2="section" style={{ marginBottom: 36 }}>
           <SectionHead
             iconBg="#E0E8B8"
             iconStroke="#4A5A2C"
             title="HARU 기록"
             sub="매일의 한 줄, 평생의 자산"
-            badge={`${visibleRecords.length}가지 형식`}
+            badge={`${homeRecords.length}가지 형식`}
             badgeDot="#7A8B4E"
             icon={
               <>
@@ -1329,7 +1586,7 @@ export function HomePageV2() {
               gap: 14,
             }}
           >
-            {visibleRecords.map((r) => (
+            {homeRecords.map((r) => (
               <button
                 key={r.label}
                 type="button"
@@ -1395,15 +1652,17 @@ export function HomePageV2() {
             ))}
           </div>
         </section>
+        )}
 
         {/* AGENTS SECTION */}
+        {!isMyHaruEmpty && (
         <section data-v2="section" style={{ marginBottom: 36 }}>
           <SectionHead
             iconBg="#DDD0E8"
             iconStroke="#5A4E7A"
             title="HARU 비서실"
             sub="일상 곁의 작은 AI 동료"
-            badge="AI 에이전시"
+            badge={`${homeAgents.length}가지 비서`}
             badgeDot="#5A4E7A"
             icon={
               <>
@@ -1420,9 +1679,7 @@ export function HomePageV2() {
               gap: 14,
             }}
           >
-            {AGENTS.filter(
-              (a) => (!a.developerOnly || isDeveloper) && !HIDDEN_AGENT_LABELS.has(a.label),
-            ).map((a) => {
+            {homeAgents.map((a) => {
               const disabled = a.path === null && !a.action;
               return (
               <button
@@ -1629,6 +1886,7 @@ export function HomePageV2() {
             </button>
           </div>
         </section>
+        )}
 
         {/* ANALYSIS TOOLS SECTION (구 RECORD TOOLS — 비서실 아래로 이동) */}
         <section data-v2="section" style={{ marginBottom: 36 }}>
@@ -1800,6 +2058,27 @@ export function HomePageV2() {
         </div>
       </div>
 
+      <HomePersonalizationModal
+        isOpen={personalizationModalOpen}
+        records={visibleRecords.map((record) => ({
+          key: record.format,
+          label: record.label,
+          sub: record.sub,
+        }))}
+        agents={visibleAgents.map((agent) => ({
+          key: getAgentKey(agent),
+          label: agent.label,
+          sub: agent.sub,
+        }))}
+        initialRecordKeys={selectedRecordFormats}
+        initialAgentKeys={selectedAgents}
+        saving={personalizationSaving}
+        onClose={() => {
+          if (!personalizationSaving) setPersonalizationModalOpen(false);
+        }}
+        onSave={saveHomePersonalization}
+      />
+
       {timelineModalOpen && user?.uid && (
         <TimelineCollageModal
           isOpen={timelineModalOpen}
@@ -1813,6 +2092,109 @@ export function HomePageV2() {
 }
 
 /* ----- helpers ----- */
+
+function HomeModeButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      style={{
+        border: 'none',
+        borderRadius: 999,
+        background: active ? '#4A5A2C' : 'transparent',
+        color: active ? '#F5F0E8' : '#7A6F5A',
+        padding: '8px 14px',
+        fontSize: 12,
+        fontWeight: 800,
+        cursor: 'pointer',
+        transition: 'background 160ms, color 160ms',
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function EmptyMyHaru({
+  onShowAll,
+  onManage,
+}: {
+  onShowAll: () => void;
+  onManage: () => void;
+}) {
+  return (
+    <section
+      style={{
+        background: '#fff',
+        border: '1px solid #E5DFD0',
+        borderRadius: 22,
+        padding: '34px 24px',
+        marginBottom: 36,
+        textAlign: 'center',
+      }}
+    >
+      <div
+        style={{
+          width: 54,
+          height: 54,
+          borderRadius: 16,
+          background: '#E0E8B8',
+          color: '#4A5A2C',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0 auto 14px',
+        }}
+      >
+        <RecSvg stroke="#4A5A2C">
+          <path d="M12 5v14M5 12h14" />
+        </RecSvg>
+      </div>
+      <h2
+        style={{
+          margin: 0,
+          fontFamily: FONT_SERIF,
+          fontSize: 24,
+          color: '#2C2C2A',
+          letterSpacing: 0,
+        }}
+      >
+        내 HARU가 비어 있습니다
+      </h2>
+      <p style={{ margin: '8px 0 18px', color: '#7A6F5A', fontSize: 13, lineHeight: 1.7 }}>
+        필요한 기록과 AI 비서를 골라 나만의 HARU를 만들어 보세요.
+      </p>
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+        <button type="button" onClick={onShowAll} style={pillStyle}>
+          전체 기능 보기
+        </button>
+        <button
+          type="button"
+          onClick={onManage}
+          style={{
+            ...pillStyle,
+            background: '#4A5A2C',
+            borderColor: '#4A5A2C',
+            color: '#F5F0E8',
+            fontWeight: 800,
+          }}
+        >
+          내 HARU 관리
+        </button>
+      </div>
+    </section>
+  );
+}
 
 const pillStyle: CSSProperties = {
   display: 'inline-flex',
