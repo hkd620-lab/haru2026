@@ -231,6 +231,7 @@ const PUBLIC_FORMAT_PREFIX: Record<RecordFormat, string> = {
   '성장타임라인': 'growthTimeline',
   'HARUraw': 'haruraw',
   'HARU보조장부': 'ledger',
+  '배뇨일지': 'voiding',
 };
 
 const getCleanText = (value: unknown) => (typeof value === 'string' ? value.trim() : '');

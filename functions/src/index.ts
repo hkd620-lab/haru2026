@@ -129,6 +129,7 @@ const RESULT_CHAT_SOURCE_POLICIES: Record<string, ResultChatSourcePolicy> = {
   stock_sayu: { sourceKey: 'stock_sayu', label: 'HARU주식관리', riskLevel: 'high', safetyMode: 'finance_basic', externalDataPolicy: 'current_data_required', systemGuide: '주식 기록을 바탕으로 매매 판단을 정리하되 수익 보장, 매수·매도 단정, 현재 가격·뉴스 추측을 금지한다.' },
   ledger_sayu: { sourceKey: 'ledger_sayu', label: 'HARU보조장부', riskLevel: 'medium', safetyMode: 'report', externalDataPolicy: 'record_first', systemGuide: '보조장부 기록을 바탕으로 분류, 누락 가능성, 업무 관련 메모를 정리한다. 세무 판단을 확정하지 않는다.' },
   household_sayu: { sourceKey: 'household_sayu', label: 'HARU가계부', riskLevel: 'medium', safetyMode: 'finance_basic', externalDataPolicy: 'record_first', systemGuide: '가계부 기록을 바탕으로 지출 흐름과 다음 점검 항목을 정리한다. 금융·세무 결정을 단정하지 않는다.' },
+  voiding_sayu: { sourceKey: 'voiding_sayu', label: '배뇨일지', riskLevel: 'medium', safetyMode: 'medical_basic', externalDataPolicy: 'record_first', systemGuide: '이미 계산된 배뇨 패턴 수치(총 음료섭취량, 총 배뇨량, 주간·야간 배뇨량, 야간뇨 비율, 배뇨 횟수)를 그대로 인용해 하루 흐름을 간결히 정리한다. 수치를 스스로 합산·재계산하지 않는다. 야간다뇨 여부, 질환명, 치료·투약 관련 판단은 하지 않으며 참고용 정리임을 유지한다.' },
   plantDetective: { sourceKey: 'plantDetective', label: '하루식물탐정', riskLevel: 'medium', safetyMode: 'plant_basic', externalDataPolicy: 'conditional_external', systemGuide: '식물 판독 결과와 사용자 메모를 바탕으로 식물 관리 참고 의견을 제공한다.' },
   haruraw_sayu: { sourceKey: 'haruraw_sayu', label: '하루LAW', riskLevel: 'high', safetyMode: 'legal_basic', externalDataPolicy: 'official_source_first', systemGuide: '기록된 질문과 관련 법조문 범위 안에서만 참고 정보를 정리한다. 위법 여부나 승소 가능성을 단정하지 않고, 확인이 필요한 쟁점과 준비할 자료 중심으로 안내하며 전문가 상담 권유를 유지한다.' },
   growthTimeline: { sourceKey: 'growthTimeline', label: 'HARU타임라인', riskLevel: 'medium', safetyMode: 'timeline_basic', externalDataPolicy: 'record_first', systemGuide: '타임라인 결과의 시간 흐름과 관찰 포인트를 기록 안에서만 정리한다.' },
@@ -829,6 +830,19 @@ export const polishContent = onCall(
         systemPrompt = `당신은 신중한 편집자입니다.
 원문을 최대한 유지하며 맞춤법과 어색한 표현만 교정하세요.
 존댓말 유지, 내용 추가 금지, 문단 분리 금지.`;
+      } else if (normalizedFormat === 'voiding') {
+        // 배뇨일지 — 계산된 수치를 인용해 하루 흐름을 간결히 정리, medical_basic 안전 모드
+        systemPrompt = `당신은 건강 기록 요약 도우미입니다.
+아래에 제공된 배뇨일지 계산 수치를 그대로 인용해 하루 패턴을 2~3문장으로 간결하고 따뜻하게 요약합니다.
+
+엄격한 금지:
+1. 수치를 스스로 합산·재계산하지 않는다. 제공된 숫자만 그대로 사용한다.
+2. 야간다뇨, 빈뇨, 질환명, 진단, 치료·투약 판단을 하지 않는다.
+3. 과도한 의학적 용어 사용 금지.
+4. 소제목, 마크다운 기호, 목록 형식 금지.
+
+마지막 문장에 "이 수치는 참고용 지표이며 진단이 아닙니다."를 자연스럽게 포함하세요.
+본문만 자연스럽게 이어지는 문장으로 작성하세요.`;
       } else if (formatGroup === 'rich') {
         // 풍성형 — 일기·에세이·여행기록
         systemPrompt = `당신은 한국 중장년층의 일상을 글로 빚어내는 에세이 작가입니다.
