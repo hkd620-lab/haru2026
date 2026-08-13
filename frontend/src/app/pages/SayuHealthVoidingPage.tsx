@@ -3,13 +3,15 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../services/firestoreService';
 import type { HaruRecord } from '../services/firestoreService';
 import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { calcVoidingStats } from '../utils/voidingStats';
-import type { VoidingEntry } from '../utils/voidingStats';
+import type { VoidingEntry, VoidingStats } from '../utils/voidingStats';
 import { exportVoidingToXlsx } from '../services/voidingExportService';
 
 // ─── 유틸 ────────────────────────────────────────────────────────────────────
@@ -41,6 +43,15 @@ function isVoidingRecord(r: HaruRecord): boolean {
   return Array.isArray((r as any).formats) && (r as any).formats.includes('배뇨일지');
 }
 
+function isSayuSafe(sayuText: string, s: VoidingStats): boolean {
+  const allowed = [
+    s.totalDrinkMl, s.totalVoidMl, s.dayVoidMl, s.nightVoidMl,
+    s.nightRatioPercent, s.totalVoidCount, s.dayVoidCount, s.nightVoidCount,
+  ];
+  const nums = (sayuText.match(/\d+(?:\.\d+)?/g) ?? []).map(Number).filter(n => n >= 5);
+  return nums.every(n => allowed.some(sv => Math.abs(sv - n) <= 1));
+}
+
 // ─── 컴포넌트 ─────────────────────────────────────────────────────────────────
 
 export function SayuHealthVoidingPage() {
@@ -53,6 +64,8 @@ export function SayuHealthVoidingPage() {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(getTodayStr());
   const [showChart, setShowChart] = useState(false);
+  const [isGeneratingSayu, setIsGeneratingSayu] = useState(false);
+  const [voidingSayuText, setVoidingSayuText] = useState<string | null>(null);
 
   const closeToOrigin = () => {
     if (fromPath) { navigate(fromPath); return; }
@@ -77,6 +90,11 @@ export function SayuHealthVoidingPage() {
     return records.find(r => r.date === selectedDate) ?? null;
   }, [records, selectedDate]);
 
+  // voiding_sayu 로드 (선택일·레코드 변경 시 동기화)
+  useEffect(() => {
+    setVoidingSayuText((todayRecord as any)?.voiding_sayu ?? null);
+  }, [todayRecord]);
+
   const { entries: todayEntries, bedtime: todayBedtime, waketime: todayWaketime } = useMemo(
     () => todayRecord ? parseVoidingRecord(todayRecord) : { entries: [], bedtime: '22:30', waketime: '06:30' },
     [todayRecord],
@@ -100,6 +118,30 @@ export function SayuHealthVoidingPage() {
   }, [records]);
 
   const hasAnyRecord = records.length > 0;
+
+  const handleGenerateSayu = async () => {
+    if (!user?.uid || isGeneratingSayu) return;
+    setIsGeneratingSayu(true);
+    try {
+      const statsText = `총 음료 섭취량 ${stats.totalDrinkMl}ml, 총 배뇨량 ${stats.totalVoidMl}ml, 주간 배뇨 ${stats.dayVoidMl}ml(${stats.dayVoidCount}회), 야간 배뇨 ${stats.nightVoidMl}ml(${stats.nightVoidCount}회), 야간뇨 비율 ${stats.nightRatioPercent}%, 총 배뇨 횟수 ${stats.totalVoidCount}회, 취침 ${todayBedtime} 기상 ${todayWaketime}`;
+      const fns = getFunctions(undefined, 'asia-northeast3');
+      const polish = httpsCallable<{ text: string; format: string; mode: string }, { result?: string }>(fns, 'polishContent');
+      const res = await polish({ text: statsText, format: 'voiding', mode: 'PREMIUM' });
+      const generated = res.data.result ?? '';
+      if (!generated || !isSayuSafe(generated, stats)) {
+        toast.error('AI 해석 검증 실패: 계산값과 불일치합니다.');
+        return;
+      }
+      await firestoreService.updateRecord(user.uid, selectedDate, { voiding_sayu: generated } as any);
+      setVoidingSayuText(generated);
+      toast.success('AI 해석이 저장되었습니다.');
+    } catch (e) {
+      console.error(e);
+      toast.error('AI 해석 생성에 실패했습니다.');
+    } finally {
+      setIsGeneratingSayu(false);
+    }
+  };
 
   // ─── 렌더링 ────────────────────────────────────────────────────────────────
 
@@ -224,6 +266,31 @@ export function SayuHealthVoidingPage() {
                     </div>
                   ))}
               </div>
+            </div>
+          )}
+
+          {/* AI 해석 */}
+          {todayEntries.length > 0 && (
+            <div style={cardStyle}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#374151', marginBottom: 10 }}>✨ AI 해석</div>
+              {voidingSayuText ? (
+                <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.75, margin: 0 }}>{voidingSayuText}</p>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '4px 0 8px' }}>
+                  <p style={{ fontSize: 13, color: '#9ca3af', margin: '0 0 10px' }}>
+                    오늘의 배뇨 패턴을 AI가 간결하게 정리해드립니다.
+                  </p>
+                  <button
+                    onClick={handleGenerateSayu}
+                    disabled={isGeneratingSayu}
+                    style={{ padding: '9px 20px', border: 'none', borderRadius: 8, backgroundColor: isGeneratingSayu ? '#e5e7eb' : '#7c3aed', color: isGeneratingSayu ? '#9ca3af' : '#fff', fontSize: 14, fontWeight: 600, cursor: isGeneratingSayu ? 'default' : 'pointer' }}>
+                    {isGeneratingSayu ? '생성 중...' : 'AI 해석 생성'}
+                  </button>
+                </div>
+              )}
+              <p style={{ fontSize: 11, color: '#d1d5db', margin: '8px 0 0', lineHeight: 1.5 }}>
+                AI가 인용한 수치는 위 계산값과 동일합니다. 의학적 진단이 아닙니다.
+              </p>
             </div>
           )}
 
