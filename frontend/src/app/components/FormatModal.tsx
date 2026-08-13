@@ -59,7 +59,7 @@ import {
   type KakaoXlsxPreviewRow,
 } from '../services/householdKakaoImport';
 
-type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '성장기록' | 'HARU주식관리' | '주식거래일지' | '메모' | 'HARU보조장부' | 'HARU가계부';
+type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '성장기록' | 'HARU주식관리' | '주식거래일지' | '메모' | 'HARU보조장부' | 'HARU가계부' | '배뇨일지';
 type SayuMode = 'BASIC' | 'PREMIUM';
 
 interface FormatModalProps {
@@ -293,6 +293,7 @@ const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placehol
     { key: 'ledger_memo', label: '업무 메모', placeholder: '관련 업무 흐름·특이사항을 자유롭게 작성하세요 (보조장부 — 세무 신고용 정식 장부 아님)', rows: 4 },
   ],
   'HARU가계부': [],
+  '배뇨일지': [],
 };
 
 // 형식별 prefix 매핑
@@ -329,6 +330,7 @@ const TITLE_EXAMPLE: Partial<Record<RecordFormat, string>> = {
   '주식거래일지': '예: 삼성전자 10주 매수',
   'HARU보조장부': '예: 3월 거래처 입출금 정리',
   'HARU가계부': '예: 3월 생활비 정리',
+  '배뇨일지': '예: 2026-08-13 배뇨일지',
 };
 
 // 기록 스타일 타입
@@ -479,6 +481,12 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [isDecryptingKakaoXlsx, setIsDecryptingKakaoXlsx] = useState(false);
   const [kakaoXlsxMonthGroups, setKakaoXlsxMonthGroups] = useState<KakaoXlsxMonthGroup[]>([]);
   const [isSavingKakaoXlsx, setIsSavingKakaoXlsx] = useState(false);
+
+  // 🚿 배뇨일지
+  const [voidingEntries, setVoidingEntries] = useState<import('../utils/voidingStats').VoidingEntry[]>([]);
+  const [voidingBedtime, setVoidingBedtime] = useState('22:30');
+  const [voidingWaketime, setVoidingWaketime] = useState('06:30');
+  const [voidingForm, setVoidingForm] = useState({ time: '', type: 'void' as 'drink' | 'void', amountMl: '', symptom: '' as import('../utils/voidingStats').VoidingSymptom | '', note: '' });
 
   // 📈 HARU주식관리: 카톡 TXT 내보내기 파싱 state
   const [isCsvParsing, setIsCsvParsing] = useState(false);
@@ -667,9 +675,27 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       } else {
         setHouseholdEntries([newHouseholdEntry()]);
       }
-      setRecordStyle(format === '독서사유' || isStockFormat || isLedgerFormat || isHouseholdFormat ? 'premium' : 'simple');
-      // 독서사유는 select 단계에서 "이어작성 / 새작성" 분기. 주식/보조장부/가계부 형식은 input 직진.
-      setRecordStep(isStockFormat || isLedgerFormat || isHouseholdFormat ? 'input' : 'select');
+      // 배뇨일지 초기화
+      const isVoidingFormatInit = format === '배뇨일지';
+      if (isVoidingFormatInit) {
+        const storedEntries = (initialData as any).voiding_entries;
+        if (storedEntries && typeof storedEntries === 'string') {
+          try {
+            const parsed = JSON.parse(storedEntries);
+            setVoidingEntries(Array.isArray(parsed) ? parsed : []);
+          } catch { setVoidingEntries([]); }
+        } else {
+          setVoidingEntries([]);
+        }
+        setVoidingBedtime(String((initialData as any).voiding_bedtime || '22:30'));
+        setVoidingWaketime(String((initialData as any).voiding_waketime || '06:30'));
+        setVoidingForm({ time: '', type: 'void', amountMl: '', symptom: '', note: '' });
+      } else {
+        setVoidingEntries([]);
+      }
+      setRecordStyle(format === '독서사유' || isStockFormat || isLedgerFormat || isHouseholdFormat || isVoidingFormatInit ? 'premium' : 'simple');
+      // 독서사유는 select 단계에서 "이어작성 / 새작성" 분기. 주식/보조장부/가계부/배뇨일지 형식은 input 직진.
+      setRecordStep(isStockFormat || isLedgerFormat || isHouseholdFormat || isVoidingFormatInit ? 'input' : 'select');
       setStockCandidates([]);
       setShowCandidates(false);
       // 📚 독서사유 — 책 묶음 state 초기화 + 사용자 records 에서 책 목록 로드
@@ -882,6 +908,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const isStockFormat = format === 'HARU주식관리' || format === '주식거래일지';
   const isLedgerFormat = format === 'HARU보조장부';
   const isHouseholdFormat = format === 'HARU가계부';
+  const isVoidingFormat = format === '배뇨일지';
   const selectedGrowthSubject = growthSubjects.find((subject) => subject.id === selectedGrowthSubjectId);
   const effectiveGrowthSubjectBirthdate = selectedGrowthSubject?.birthdate || growthSubjectBirthdate;
   const effectiveGrowthSubjectGender = selectedGrowthSubject?.gender || growthSubjectGender;
@@ -2320,6 +2347,31 @@ ${contentValues}`,
     try {
       await saveHouseholdEntriesBatch(householdEntries);
       toast.success(`가계부 ${householdEntries.length}건이 저장되었습니다!`);
+      onClose();
+    } catch (error) {
+      console.error('저장 중 오류:', error);
+      toast.error('저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // ===== 🚿 배뇨일지 저장 =====
+  const handleSaveVoidingEntries = async () => {
+    if (voidingEntries.length === 0) { toast.warning('기록 항목을 하나 이상 추가해 주세요.'); return; }
+    const today = new Date().toISOString().slice(0, 10);
+    const dataToSave: Record<string, unknown> = {
+      formats: ['배뇨일지'],
+      date: today,
+      title: formData.title || `${today} 배뇨일지`,
+      voiding_bedtime: voidingBedtime,
+      voiding_waketime: voidingWaketime,
+      voiding_entries: JSON.stringify(voidingEntries),
+    };
+    setIsSaving(true);
+    try {
+      await onSave(dataToSave as any);
+      toast.success(`배뇨일지 ${voidingEntries.length}건이 저장되었습니다!`);
       onClose();
     } catch (error) {
       console.error('저장 중 오류:', error);
@@ -5349,6 +5401,111 @@ ${contentValues}`,
                           + 거래 추가
                         </button>
                       </div>
+                    ) : isVoidingFormat ? (
+                      /* 🚿 배뇨일지 — 입력 카드 */
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        {/* 취침·기상 시각 */}
+                        <div style={{ border: '1px solid #e0e7ff', borderRadius: 10, padding: 14, backgroundColor: '#f5f3ff' }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#5b21b6', marginBottom: 10 }}>취침·기상 시각</div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                            {[{ label: '취침', val: voidingBedtime, set: setVoidingBedtime }, { label: '기상', val: voidingWaketime, set: setVoidingWaketime }].map(({ label, val, set }) => (
+                              <div key={label}>
+                                <label style={{ display: 'block', fontSize: 12, color: '#7c3aed', marginBottom: 4, fontWeight: 500 }}>{label} 시각</label>
+                                <input type="time" value={val} onChange={e => set(e.target.value)}
+                                  style={{ width: '100%', padding: '8px 10px', fontSize: 16, border: '1px solid #c4b5fd', borderRadius: 7, backgroundColor: '#fff', color: '#333', outline: 'none', boxSizing: 'border-box' }} />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        {/* 항목 추가 폼 */}
+                        <div style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 14, backgroundColor: '#fafafa' }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#0369a1', marginBottom: 10 }}>항목 추가</div>
+                          {/* 구분 선택 */}
+                          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                            {(['void', 'drink'] as const).map(t => (
+                              <button key={t} type="button"
+                                onClick={() => setVoidingForm(f => ({ ...f, type: t }))}
+                                style={{ flex: 1, padding: '8px 4px', borderRadius: 7, fontSize: 13, fontWeight: voidingForm.type === t ? 700 : 400, cursor: 'pointer', border: voidingForm.type === t ? 'none' : '1px solid #e5e7eb', backgroundColor: voidingForm.type === t ? (t === 'void' ? '#0369a1' : '#059669') : '#fff', color: voidingForm.type === t ? '#fff' : '#374151' }}>
+                                {t === 'void' ? '🚽 배뇨' : '💧 음료 섭취'}
+                              </button>
+                            ))}
+                          </div>
+                          {/* 시각·양 */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+                            <div>
+                              <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 500 }}>시각</label>
+                              <input type="time" value={voidingForm.time} onChange={e => setVoidingForm(f => ({ ...f, time: e.target.value }))}
+                                style={{ width: '100%', padding: '8px 10px', fontSize: 16, border: '1px solid #e5e5e5', borderRadius: 7, backgroundColor: '#fff', color: '#333', outline: 'none', boxSizing: 'border-box' }} />
+                            </div>
+                            <div>
+                              <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 500 }}>양 (ml)</label>
+                              <input type="number" inputMode="numeric" min={0} placeholder="200" value={voidingForm.amountMl}
+                                onChange={e => setVoidingForm(f => ({ ...f, amountMl: e.target.value }))}
+                                style={{ width: '100%', padding: '8px 10px', fontSize: 16, border: '1px solid #e5e5e5', borderRadius: 7, backgroundColor: '#fff', color: '#333', outline: 'none', boxSizing: 'border-box' }} />
+                            </div>
+                          </div>
+                          {/* 증상 (배뇨 시만) */}
+                          {voidingForm.type === 'void' && (
+                            <div style={{ marginBottom: 10 }}>
+                              <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 6, fontWeight: 500 }}>증상 (선택)</label>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                {(['절박감', '통증', '유실', '요의로 깸', '없음'] as const).map(sym => (
+                                  <button key={sym} type="button"
+                                    onClick={() => setVoidingForm(f => ({ ...f, symptom: f.symptom === sym ? '' : sym }))}
+                                    style={{ padding: '5px 11px', borderRadius: 18, fontSize: 12, cursor: 'pointer', border: voidingForm.symptom === sym ? 'none' : '1px solid #e5e7eb', backgroundColor: voidingForm.symptom === sym ? '#0369a1' : '#fff', color: voidingForm.symptom === sym ? '#fff' : '#374151', fontWeight: voidingForm.symptom === sym ? 700 : 400 }}>
+                                    {sym}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {/* 비고 */}
+                          <div style={{ marginBottom: 12 }}>
+                            <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 500 }}>비고 (선택)</label>
+                            <input type="text" placeholder="추가 메모" value={voidingForm.note}
+                              onChange={e => setVoidingForm(f => ({ ...f, note: e.target.value }))}
+                              style={{ width: '100%', padding: '8px 10px', fontSize: 16, border: '1px solid #e5e5e5', borderRadius: 7, backgroundColor: '#fff', color: '#333', outline: 'none', boxSizing: 'border-box' }} />
+                          </div>
+                          <button type="button"
+                            onClick={() => {
+                              if (!voidingForm.time) { toast.warning('시각을 입력해 주세요.'); return; }
+                              const ml = parseInt(voidingForm.amountMl, 10);
+                              if (isNaN(ml) || ml <= 0) { toast.warning('양(ml)을 입력해 주세요.'); return; }
+                              const newEntry: import('../utils/voidingStats').VoidingEntry = {
+                                id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                                time: voidingForm.time,
+                                type: voidingForm.type,
+                                amountMl: ml,
+                                ...(voidingForm.type === 'void' && voidingForm.symptom ? { symptom: voidingForm.symptom as import('../utils/voidingStats').VoidingSymptom } : {}),
+                                ...(voidingForm.note.trim() ? { note: voidingForm.note.trim() } : {}),
+                              };
+                              setVoidingEntries(prev => [...prev, newEntry].sort((a, b) => a.time.localeCompare(b.time)));
+                              setVoidingForm(f => ({ ...f, time: '', amountMl: '', symptom: '', note: '' }));
+                            }}
+                            style={{ width: '100%', padding: '10px', border: 'none', borderRadius: 8, backgroundColor: '#0369a1', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                            + 항목 추가
+                          </button>
+                        </div>
+                        {/* 입력된 항목 리스트 */}
+                        {voidingEntries.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 600, marginBottom: 2 }}>입력된 항목 ({voidingEntries.length}건)</div>
+                            {voidingEntries.map((e) => (
+                              <div key={e.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 8, backgroundColor: e.type === 'drink' ? '#f0fdf4' : '#eff6ff', fontSize: 13 }}>
+                                <span style={{ color: '#374151' }}>
+                                  <span style={{ fontWeight: 700, marginRight: 6 }}>{e.time}</span>
+                                  <span style={{ color: e.type === 'drink' ? '#059669' : '#0369a1', fontWeight: 600, marginRight: 4 }}>{e.type === 'drink' ? '💧 섭취' : '🚽 배뇨'}</span>
+                                  {e.amountMl}ml
+                                  {e.symptom && <span style={{ marginLeft: 6, color: '#9ca3af' }}>· {e.symptom}</span>}
+                                  {e.note && <span style={{ marginLeft: 6, color: '#9ca3af' }}>· {e.note}</span>}
+                                </span>
+                                <button type="button" onClick={() => setVoidingEntries(prev => prev.filter(x => x.id !== e.id))}
+                                  style={{ padding: '3px 8px', border: '1px solid #fca5a5', borderRadius: 5, backgroundColor: '#fff', color: '#ef4444', fontSize: 11, cursor: 'pointer', flexShrink: 0 }}>삭제</button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     ) : fields
                       .filter((field) => !(format === '독서사유' && field.key === 'reading_book_text'))
                       .map((field) => {
@@ -5556,7 +5713,7 @@ ${contentValues}`,
               )}
 
               {/* 📸 사진 업로드 섹션 — 독서사유/주식 OCR 사진은 저장하지 않음. 보조장부는 OCR(비저장)과 사진첨부(저장) 둘 다 제공 */}
-              {format !== '독서사유' && !isStockFormat && (!(isLedgerFormat && ledgerInputMode === 'period') || Boolean(expandedLedgerXlsxRowId)) && (
+              {format !== '독서사유' && !isStockFormat && !isVoidingFormat && (!(isLedgerFormat && ledgerInputMode === 'period') || Boolean(expandedLedgerXlsxRowId)) && (
               <div>
                 <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 4, fontWeight: 500 }}>
                   📸 {isLedgerFormat ? '증빙사진' : '사진'} <span style={{ fontWeight: 400, color: '#9ca3af' }}>(선택사항)</span>
@@ -5978,6 +6135,15 @@ ${contentValues}`,
                 style={{ width: '100%', padding: '14px', fontSize: 15, border: 'none', borderRadius: 8, backgroundColor: '#166534', color: '#fff', cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.7 : 1, fontWeight: 700 }}
               >
                 {isSaving ? '저장 중...' : `거래 저장하기 (${householdEntries.length}건)`}
+              </button>
+            ) : isVoidingFormat ? (
+              /* 🚿 배뇨일지 전용 저장 버튼 */
+              <button
+                onClick={handleSaveVoidingEntries}
+                disabled={isSaving}
+                style={{ width: '100%', padding: '14px', fontSize: 15, border: 'none', borderRadius: 8, backgroundColor: '#0369a1', color: '#fff', cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.7 : 1, fontWeight: 700 }}
+              >
+                {isSaving ? '저장 중...' : `배뇨일지 저장 (${voidingEntries.length}건)`}
               </button>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

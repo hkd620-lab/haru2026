@@ -66,6 +66,19 @@ const FEATURES: SubFeature[] = [
       </>
     ),
   },
+  {
+    path: '/sayu-health/voiding',
+    title: '배뇨일지',
+    sub: '음료·배뇨 기록으로 하루 패턴 확인',
+    desc: '시간별 기록을 입력하면 주간·야간 배뇨량과 야간뇨 비율을 자동으로 계산합니다.',
+    source: '자가 기록 기반 (진단 아님, 참고용)',
+    icon: (
+      <>
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" strokeWidth="1.5" />
+        <path d="M12 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" strokeWidth="1.5" />
+      </>
+    ),
+  },
 ];
 
 export function SayuHealthHubPage() {
