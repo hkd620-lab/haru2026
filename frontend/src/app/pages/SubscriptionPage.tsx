@@ -91,6 +91,8 @@ export default function SubscriptionPage() {
 
     const planParam = searchParams.get('plan');
     const redirectedPlan: PaidPlan = planParam === 'basic' || planParam === 'premium' ? planParam : selectedPlan;
+    const pmParam = searchParams.get('pm');
+    const redirectedPayMethod = pmParam === 'kakaopay' ? 'kakaopay' : 'kg_inicis_card';
     const functions = getFunctions(undefined, 'asia-northeast3');
     const subscribeWithBillingKey = httpsCallable(functions, 'subscribeWithBillingKey');
 
@@ -98,7 +100,7 @@ export default function SubscriptionPage() {
     subscribeWithBillingKey({
       billingKey: redirectedBillingKey,
       plan: redirectedPlan,
-      payMethod: 'kg_inicis_card',
+      payMethod: redirectedPayMethod,
     })
       .then(() => {
         setResultMessage(`${PLANS[redirectedPlan].orderName} 결제가 완료되었습니다. 설정 화면에서 구독 상태를 확인할 수 있습니다.`);
@@ -189,6 +191,88 @@ export default function SubscriptionPage() {
 
     } catch (e: any) {
       console.error('결제 오류:', e);
+      const msg = e?.message || '결제 중 오류가 발생했습니다. 다시 시도해 주세요.';
+      setResultMessage(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubscribeKakao = async () => {
+    if (authLoading) return;
+    if (!user) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+
+    setLoading(true);
+    setResultMessage('');
+
+    try {
+      const plan = PLANS[selectedPlan];
+      const kakaoBillingChannelKey = import.meta.env.VITE_PORTONE_KAKAOPAY_BILLING_CHANNEL_KEY;
+      if (!kakaoBillingChannelKey) {
+        throw new Error('카카오페이 정기결제 채널 키가 설정되지 않았습니다.');
+      }
+
+      const trimmedName = fullName.trim();
+      if (!trimmedName) {
+        alert('구매자 이름을 입력해 주세요.');
+        return;
+      }
+
+      const trimmedEmail = email.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+        alert('카카오페이 정기결제는 구매자 이메일이 필수입니다.');
+        return;
+      }
+
+      const normalizedPhone = phone.replace(/[^0-9]/g, '');
+      if (normalizedPhone.length < 10) {
+        alert('카카오페이 정기결제는 구매자 휴대폰 번호가 필수입니다.');
+        return;
+      }
+
+      const issueId = `haru-bk-kakao-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+      const response = await (PortOne as any).requestIssueBillingKey({
+        storeId: import.meta.env.VITE_PORTONE_STORE_ID,
+        channelKey: kakaoBillingChannelKey,
+        billingKeyMethod: 'EASY_PAY',
+        displayAmount: plan.amount,
+        currency: 'KRW',
+        issueId,
+        issueName: plan.orderName,
+        customer: {
+          fullName: trimmedName,
+          email: trimmedEmail,
+          phoneNumber: normalizedPhone,
+        },
+        redirectUrl: `${window.location.origin}/subscription?plan=${selectedPlan}&pm=kakaopay`,
+      }) as BillingKeyResponse;
+
+      if (response?.code) {
+        alert('카카오페이 등록이 취소되었습니다.');
+        return;
+      }
+
+      const billingKey = response?.billingKey;
+      if (!billingKey) {
+        throw new Error('빌링키 발급 결과가 올바르지 않습니다.');
+      }
+
+      const functions = getFunctions(undefined, 'asia-northeast3');
+      const subscribeWithBillingKey = httpsCallable(functions, 'subscribeWithBillingKey');
+      await subscribeWithBillingKey({
+        billingKey,
+        plan: selectedPlan,
+        payMethod: 'kakaopay',
+      });
+
+      setResultMessage(`${plan.orderName} 결제가 완료되었습니다. 설정 화면에서 구독 상태를 확인할 수 있습니다.`);
+
+    } catch (e: any) {
+      console.error('카카오페이 결제 오류:', e);
       const msg = e?.message || '결제 중 오류가 발생했습니다. 다시 시도해 주세요.';
       setResultMessage(msg);
     } finally {
@@ -343,6 +427,14 @@ export default function SubscriptionPage() {
           className="w-full bg-[#1A3C6E] hover:bg-[#142f57] text-white font-black text-base py-4 rounded-2xl transition-colors disabled:opacity-50 mb-3"
         >
           {loading ? '결제 처리 중...' : `${selected.title} 1개월 정기결제창 열기`}
+        </button>
+
+        <button
+          onClick={() => handleSubscribeKakao()}
+          disabled={loading || authLoading}
+          className="w-full bg-[#FEE500] hover:bg-[#f5dc00] text-[#191919] font-black text-base py-4 rounded-2xl transition-colors disabled:opacity-50 mb-3"
+        >
+          {loading ? '결제 처리 중...' : `${selected.title} 카카오페이로 정기결제`}
         </button>
 
         {resultMessage && (
