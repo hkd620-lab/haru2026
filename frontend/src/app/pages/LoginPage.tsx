@@ -44,7 +44,7 @@ export function LoginPage() {
       return;
     }
     setTimeout(() => {
-      window.location.href = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/googleLoginStart';
+      window.location.href = `https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/googleLoginStart?origin=${encodeURIComponent(window.location.origin)}`;
     }, 1500);
   };
 
@@ -53,7 +53,7 @@ export function LoginPage() {
     if (guardInAppBrowserLogin()) return;
     setIsLoading(true);
     setTimeout(() => {
-      window.location.href = 'https://kakaologinstart-6ieesxet3q-du.a.run.app';
+      window.location.href = `https://kakaologinstart-6ieesxet3q-du.a.run.app?origin=${encodeURIComponent(window.location.origin)}`;
     }, 1500);
   };
 
@@ -62,7 +62,7 @@ export function LoginPage() {
     if (guardInAppBrowserLogin()) return;
     setIsLoading(true);
     setTimeout(() => {
-      window.location.href = 'https://naverloginstart-6ieesxet3q-du.a.run.app';
+      window.location.href = `https://naverloginstart-6ieesxet3q-du.a.run.app?origin=${encodeURIComponent(window.location.origin)}`;
     }, 1500);
   };
 
