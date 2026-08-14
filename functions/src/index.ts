@@ -79,6 +79,15 @@ type ResultChatSourcePolicy = {
   externalDataPolicy: ExternalDataPolicy;
   systemGuide: string;
 };
+
+const HARULAW_RESPONSE_STRUCTURE_GUIDE = [
+  '- 법률 답변은 "확인된 사실", "추가 확인이 필요한 사실", "법적으로 말할 수 있는 범위", "현재 사건에 적용 가능한 판단", "사용자가 지금 해야 할 행동", "다음 단계로 넘어가는 조건", "주의사항"을 구분해 작성한다.',
+  '- 일반 법리와 현재 사건 적용을 분리한다. 법리상 검토 가능성이 있어도, 현재 사실관계만으로 요건 충족을 판단하기 어려우면 그 한계를 별도로 밝힌다.',
+  '- 근거가 충분히 확인되지 않은 상태에서는 "자의적", "주관적", "추측성", "명백히 부당", "불법", "위법", "약관 위반"이라고 표현하지 않는다.',
+  '- 위 표현은 법령, 약관, 판례 또는 확인된 사실관계가 충분히 뒷받침할 때만 사용한다.',
+  '- 기본 표현은 "현재 자료만으로는 확인되지 않습니다", "추가 확인이 필요합니다", "위법 여부를 단정하기 어렵습니다", "법리상 검토 가능성은 있으나 현재 사실관계만으로 판단하기 어렵습니다", "구체적인 판단 기준이 제시되지 않은 상태입니다"를 우선 사용한다.',
+  '- 행동 안내는 자료 확보, 상대방의 공식 답변 확보, 약관·계약서·공식 기준 확인, 보완 또는 재신청, 필요 시 민원·분쟁조정, 최종적으로 전문 법률 상담 또는 소송 검토 순서로 정리한다.',
+].join('\n');
 type ResultChatClassification = {
   route: ResultAnswerRoute;
   reasonCode: 'current_fact' | 'record_analysis' | 'official_data' | 'high_risk' | 'unclear';
@@ -131,7 +140,7 @@ const RESULT_CHAT_SOURCE_POLICIES: Record<string, ResultChatSourcePolicy> = {
   household_sayu: { sourceKey: 'household_sayu', label: 'HARU가계부', riskLevel: 'medium', safetyMode: 'finance_basic', externalDataPolicy: 'record_first', systemGuide: '가계부 기록을 바탕으로 지출 흐름과 다음 점검 항목을 정리한다. 금융·세무 결정을 단정하지 않는다.' },
   voiding_sayu: { sourceKey: 'voiding_sayu', label: '배뇨일지', riskLevel: 'medium', safetyMode: 'medical_basic', externalDataPolicy: 'record_first', systemGuide: '이미 계산된 배뇨 패턴 수치(총 음료섭취량, 총 배뇨량, 주간·야간 배뇨량, 야간뇨 비율, 배뇨 횟수)를 그대로 인용해 하루 흐름을 간결히 정리한다. 수치를 스스로 합산·재계산하지 않는다. 야간다뇨 여부, 질환명, 치료·투약 관련 판단은 하지 않으며 참고용 정리임을 유지한다.' },
   plantDetective: { sourceKey: 'plantDetective', label: '하루식물탐정', riskLevel: 'medium', safetyMode: 'plant_basic', externalDataPolicy: 'conditional_external', systemGuide: '식물 판독 결과와 사용자 메모를 바탕으로 식물 관리 참고 의견을 제공한다.' },
-  haruraw_sayu: { sourceKey: 'haruraw_sayu', label: '하루LAW', riskLevel: 'high', safetyMode: 'legal_basic', externalDataPolicy: 'official_source_first', systemGuide: '기록된 질문과 관련 법조문 범위 안에서만 참고 정보를 정리한다. 위법 여부나 승소 가능성을 단정하지 않고, 확인이 필요한 쟁점과 준비할 자료 중심으로 안내하며 전문가 상담 권유를 유지한다.' },
+  haruraw_sayu: { sourceKey: 'haruraw_sayu', label: '하루LAW', riskLevel: 'high', safetyMode: 'legal_basic', externalDataPolicy: 'official_source_first', systemGuide: ['기록된 질문과 관련 법조문 범위 안에서만 참고 정보를 정리한다. 법률 판단 AI가 아니라 생활 법률 대응 비서처럼, 지금 확인된 사실·아직 모르는 사실·지금 할 일을 사용자가 바로 구분할 수 있게 안내한다.', HARULAW_RESPONSE_STRUCTURE_GUIDE, '위법 여부나 승소 가능성을 단정하지 않고, 확인이 필요한 쟁점과 준비할 자료 중심으로 안내하며 전문가 상담 권유를 유지한다.'].join('\n') },
   growthTimeline: { sourceKey: 'growthTimeline', label: 'HARU타임라인', riskLevel: 'medium', safetyMode: 'timeline_basic', externalDataPolicy: 'record_first', systemGuide: '타임라인 결과의 시간 흐름과 관찰 포인트를 기록 안에서만 정리한다.' },
 };
 
@@ -1624,6 +1633,7 @@ function getSafetyModeGuide(safetyMode: string): string {
         '- 유죄·무죄, 승소·패소, 위법 여부를 단정하지 않는다. 가능성, 쟁점, 확인이 필요한 사항 중심으로 설명한다.',
         '- 기록에 담긴 사실관계와 관련 법조문 범위 안에서만 답한다. 없는 사실을 추정해 덧붙이지 않는다.',
         '- 구체적 사건의 결론이나 소송 전략을 확정적으로 제시하지 않는다.',
+        HARULAW_RESPONSE_STRUCTURE_GUIDE,
         '- 답변 끝에 전문가(변호사) 상담 권유를 유지한다.',
         '- 질문자가 피해자인지 피고발인인지 제3자인지 불명확하면 먼저 확인 질문을 한다.',
       ].join('\n');
@@ -6070,6 +6080,9 @@ export const lawSearch = onCall(
 - 사용자 질문과 제공 자료만으로 누가 가해자인지, 피해 정도, 인과관계, 과실, 책임 주체, 법률 적용요건이 확실하지 않으면 단정하지 마라.
 - 법조문을 찾았다는 이유만으로 바로 사용자 사건에 적용하지 말고, 사용자 사실관계 → 조문 적용요건 확인 → 해당 가능성 설명 → 추가 확인사항 안내 순서를 지켜라.
 - 사실관계가 충분히 확인되기 전에는 "책임을 인정하세요", "전액 보상하세요", "무조건 사과하세요"처럼 과실·책임 인정을 유도하는 단정적 행동을 권하지 마라.
+- 근거가 충분히 확인되지 않은 상태에서는 "자의적", "주관적", "추측성", "명백히 부당", "불법", "위법", "약관 위반"이라고 표현하지 마라.
+- 위 표현은 법령, 약관, 판례 또는 확인된 사실관계가 충분히 뒷받침할 때만 사용하라.
+- 기본적으로 "현재 자료만으로는 확인되지 않습니다", "추가 확인이 필요합니다", "위법 여부를 단정하기 어렵습니다", "법리상 검토 가능성은 있으나 현재 사실관계만으로 판단하기 어렵습니다", "구체적인 판단 기준이 제시되지 않은 상태입니다" 같은 표현을 우선 사용하라.
 - 필요한 경우 "안전 확보 → 자료·기록 보존 → 사실관계 확인 → 보험·계약관계 확인 → 필요한 대응" 순서로 안내하라.
 - 형사절차, 민사 손해배상, 행정절차, 기타 필요한 절차를 가능한 범위에서 구분해 설명하라.
 - "~가 확인되는 경우", "~에 해당한다면", "~일 가능성이 있습니다", "추가 확인이 필요합니다" 같은 조건부 표현을 사용하라.
@@ -6079,10 +6092,12 @@ export const lawSearch = onCall(
 3. 어려운 법률 용어는 반드시 쉬운 말로 풀어 설명하세요.
 4. 실무적 행동 지침은 조건부로 안내하고, 사실관계 확인 전 책임 인정이나 보상을 단정하지 마세요.
 5. 답변 구조:
-   📋 확인된 사실 / 추가 확인이 필요한 사실
-   ⚖️ 가능한 법적 쟁점
-   📌 관련 법령과 적용요건
-   💡 다음에 할 수 있는 일
+   📋 확인된 사실
+   🔎 추가 확인이 필요한 사실
+   ⚖️ 법적으로 말할 수 있는 범위
+   📌 현재 사건에 적용 가능한 판단
+   💡 사용자가 지금 해야 할 행동
+   ➡️ 다음 단계로 넘어가는 조건
    ⚠️ 주의사항
 6. 마지막에 반드시 추가:
    "본 내용은 법령 정보 제공 목적이며, 전문적인 법률 자문을 대체할 수 없습니다."
