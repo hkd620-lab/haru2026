@@ -58,6 +58,16 @@ const MICROSOFT_CLIENT_SECRET_SECRET = defineSecret('MICROSOFT_CLIENT_SECRET');
 const GOOGLE_DRIVE_SERVICE_ACCOUNT_SECRET = defineSecret('GOOGLE_DRIVE_SERVICE_ACCOUNT');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
 
+const ALLOWED_ORIGIN_PATTERNS = [
+  /^https:\/\/haru2026\.com$/,
+  /^https:\/\/haru2026-8abb8\.web\.app$/,
+  /^https:\/\/haru2026-8abb8--[a-z0-9-]+\.web\.app$/,
+];
+function resolveAllowedOrigin(origin: string | undefined): string {
+  if (origin && ALLOWED_ORIGIN_PATTERNS.some((p) => p.test(origin))) return origin;
+  return FRONTEND_URL;
+}
+
 // Storage 버킷
 const bucket = () => getStorage().bucket();
 const DEVELOPER_UIDS = new Set([
@@ -2970,11 +2980,13 @@ export const kakaoLoginStart = onRequest(
   async (req, res) => {
     try {
       const state = crypto.randomBytes(32).toString('hex');
+      const origin = typeof req.query.origin === 'string' ? req.query.origin : undefined;
 
       await db.collection('oauth_states').doc(state).set({
         provider: 'kakao',
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
+        ...(origin ? { origin } : {}),
       });
 
       const kakaoAuthUrl =
@@ -3090,9 +3102,10 @@ export const kakaoCallback = onRequest(
       }
 
       const customToken = await admin.auth().createCustomToken(uid);
+      const redirectOrigin = resolveAllowedOrigin(stateData?.origin);
 
       res.redirect(
-        `${FRONTEND_URL}/auth/callback?customToken=${customToken}&provider=kakao`
+        `${redirectOrigin}/auth/callback?customToken=${customToken}&provider=kakao`
       );
 
     } catch (error: any) {
@@ -3111,10 +3124,13 @@ export const naverLoginStart = onRequest(
     try {
       const state = crypto.randomBytes(32).toString('hex');
 
+      const origin = typeof req.query.origin === 'string' ? req.query.origin : undefined;
+
       await db.collection('oauth_states').doc(state).set({
         provider: 'naver',
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
+        ...(origin ? { origin } : {}),
       });
 
       const naverAuthUrl =
@@ -3191,9 +3207,10 @@ export const naverCallback = onRequest(
       }
 
       const customToken = await admin.auth().createCustomToken(uid);
+      const redirectOrigin = resolveAllowedOrigin(stateData?.origin);
 
       res.redirect(
-        `${FRONTEND_URL}/auth/callback?customToken=${customToken}&provider=naver`
+        `${redirectOrigin}/auth/callback?customToken=${customToken}&provider=naver`
       );
 
     } catch (error: any) {
@@ -3217,10 +3234,13 @@ export const googleLoginStart = onRequest(
       
       const state = crypto.randomBytes(32).toString('hex');
 
+      const origin = typeof req.query.origin === 'string' ? req.query.origin : undefined;
+
       await db.collection('oauth_states').doc(state).set({
         provider: 'google',
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
+        ...(origin ? { origin } : {}),
       });
 
       const googleAuthUrl =
@@ -3300,9 +3320,10 @@ export const googleCallback = onRequest(
       }
 
       const customToken = await admin.auth().createCustomToken(uid);
+      const redirectOrigin = resolveAllowedOrigin(stateData?.origin);
 
       res.redirect(
-        `${FRONTEND_URL}/auth/callback?customToken=${customToken}&provider=google`
+        `${redirectOrigin}/auth/callback?customToken=${customToken}&provider=google`
       );
 
     } catch (error: any) {
