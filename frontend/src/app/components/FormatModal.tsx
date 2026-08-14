@@ -486,7 +486,9 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [voidingEntries, setVoidingEntries] = useState<import('../utils/voidingStats').VoidingEntry[]>([]);
   const [voidingBedtime, setVoidingBedtime] = useState('22:30');
   const [voidingWaketime, setVoidingWaketime] = useState('06:30');
-  const [voidingForm, setVoidingForm] = useState({ time: '', type: 'void' as 'drink' | 'void', amountMl: '', symptom: '' as import('../utils/voidingStats').VoidingSymptom | '', note: '' });
+  const [voidingAmountInput, setVoidingAmountInput] = useState('');
+  const [editingVoidingId, setEditingVoidingId] = useState<string | null>(null);
+  const [editingVoidingEntry, setEditingVoidingEntry] = useState<{ time: string; amountMl: string; symptom: string; note: string }>({ time: '', amountMl: '', symptom: '', note: '' });
 
   // 📈 HARU주식관리: 카톡 TXT 내보내기 파싱 state
   const [isCsvParsing, setIsCsvParsing] = useState(false);
@@ -5402,7 +5404,7 @@ ${contentValues}`,
                         </button>
                       </div>
                     ) : isVoidingFormat ? (
-                      /* 🚿 배뇨일지 — 입력 카드 */
+                      /* 🚿 배뇨일지 — 원버튼 입력 */
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                         {/* 취침·기상 시각 */}
                         <div style={{ border: '1px solid #e0e7ff', borderRadius: 10, padding: 14, backgroundColor: '#f5f3ff' }}>
@@ -5410,98 +5412,108 @@ ${contentValues}`,
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                             {[{ label: '취침', val: voidingBedtime, set: setVoidingBedtime }, { label: '기상', val: voidingWaketime, set: setVoidingWaketime }].map(({ label, val, set }) => (
                               <div key={label}>
-                                <label style={{ display: 'block', fontSize: 12, color: '#7c3aed', marginBottom: 4, fontWeight: 500 }}>{label} 시각</label>
-                                <input type="time" value={val} onChange={e => set(e.target.value)}
+                                <label style={{ display: 'block', fontSize: 12, color: '#7c3aed', marginBottom: 4, fontWeight: 500 }}>{label}</label>
+                                <input type="text" inputMode="numeric" placeholder="22:30" value={val} onChange={e => set(e.target.value)}
                                   style={{ width: '100%', padding: '8px 10px', fontSize: 16, border: '1px solid #c4b5fd', borderRadius: 7, backgroundColor: '#fff', color: '#333', outline: 'none', boxSizing: 'border-box' }} />
                               </div>
                             ))}
                           </div>
                         </div>
-                        {/* 항목 추가 폼 */}
-                        <div style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 14, backgroundColor: '#fafafa' }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: '#0369a1', marginBottom: 10 }}>항목 추가</div>
-                          {/* 구분 선택 */}
-                          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                            {(['void', 'drink'] as const).map(t => (
-                              <button key={t} type="button"
-                                onClick={() => setVoidingForm(f => ({ ...f, type: t }))}
-                                style={{ flex: 1, padding: '8px 4px', borderRadius: 7, fontSize: 13, fontWeight: voidingForm.type === t ? 700 : 400, cursor: 'pointer', border: voidingForm.type === t ? 'none' : '1px solid #e5e7eb', backgroundColor: voidingForm.type === t ? (t === 'void' ? '#0369a1' : '#059669') : '#fff', color: voidingForm.type === t ? '#fff' : '#374151' }}>
-                                {t === 'void' ? '🚽 배뇨' : '💧 음료 섭취'}
-                              </button>
-                            ))}
-                          </div>
-                          {/* 시각·양 */}
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
-                            <div>
-                              <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 500 }}>시각</label>
-                              <input type="time" value={voidingForm.time} onChange={e => setVoidingForm(f => ({ ...f, time: e.target.value }))}
-                                style={{ width: '100%', padding: '8px 10px', fontSize: 16, border: '1px solid #e5e5e5', borderRadius: 7, backgroundColor: '#fff', color: '#333', outline: 'none', boxSizing: 'border-box' }} />
-                            </div>
-                            <div>
-                              <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 500 }}>양 (ml)</label>
-                              <input type="number" inputMode="numeric" min={0} placeholder="200" value={voidingForm.amountMl}
-                                onChange={e => setVoidingForm(f => ({ ...f, amountMl: e.target.value }))}
-                                style={{ width: '100%', padding: '8px 10px', fontSize: 16, border: '1px solid #e5e5e5', borderRadius: 7, backgroundColor: '#fff', color: '#333', outline: 'none', boxSizing: 'border-box' }} />
-                            </div>
-                          </div>
-                          {/* 증상 (배뇨 시만) */}
-                          {voidingForm.type === 'void' && (
-                            <div style={{ marginBottom: 10 }}>
-                              <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 6, fontWeight: 500 }}>증상 (선택)</label>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                {(['절박감', '통증', '유실', '요의로 깸', '없음'] as const).map(sym => (
-                                  <button key={sym} type="button"
-                                    onClick={() => setVoidingForm(f => ({ ...f, symptom: f.symptom === sym ? '' : sym }))}
-                                    style={{ padding: '5px 11px', borderRadius: 18, fontSize: 12, cursor: 'pointer', border: voidingForm.symptom === sym ? 'none' : '1px solid #e5e7eb', backgroundColor: voidingForm.symptom === sym ? '#0369a1' : '#fff', color: voidingForm.symptom === sym ? '#fff' : '#374151', fontWeight: voidingForm.symptom === sym ? 700 : 400 }}>
-                                    {sym}
-                                  </button>
-                                ))}
+                        {/* 원버튼 기록 */}
+                        {(() => {
+                          const now = new Date();
+                          const h = now.getHours(); const m = String(now.getMinutes()).padStart(2, '0');
+                          const label = `${h >= 12 ? '오후' : '오전'} ${h > 12 ? h - 12 : h || 12}:${m}`;
+                          const totalMl = voidingEntries.reduce((s, e) => s + e.amountMl, 0);
+                          return (
+                            <div style={{ border: '1px solid #bae6fd', borderRadius: 10, padding: 14, backgroundColor: '#f0f9ff' }}>
+                              <div style={{ fontSize: 13, color: '#374151', marginBottom: 10 }}>
+                                지금 시각: <strong>{label}</strong>
+                                {voidingEntries.length > 0 && <span style={{ marginLeft: 12, fontSize: 12, color: '#6b7280' }}>({voidingEntries.length}건 · {totalMl}ml)</span>}
                               </div>
+                              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="양 (ml)"
+                                  value={voidingAmountInput}
+                                  onChange={e => setVoidingAmountInput(e.target.value.replace(/[^0-9]/g, ''))}
+                                  onKeyDown={e => {
+                                    if (e.key !== 'Enter') return;
+                                    const n = new Date();
+                                    const t = `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+                                    const ml = parseInt(voidingAmountInput || '0', 10);
+                                    const entry: import('../utils/voidingStats').VoidingEntry = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), time: t, type: 'void', amountMl: isNaN(ml) ? 0 : ml };
+                                    setVoidingEntries(prev => [...prev, entry].sort((a,b) => a.time.localeCompare(b.time)));
+                                    setVoidingAmountInput('');
+                                  }}
+                                  style={{ flex: 1, padding: '12px', fontSize: 20, border: '2px solid #bae6fd', borderRadius: 8, backgroundColor: '#fff', color: '#333', outline: 'none', textAlign: 'center', fontWeight: 700 }} />
+                                <button type="button"
+                                  onClick={() => {
+                                    const n = new Date();
+                                    const t = `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+                                    const ml = parseInt(voidingAmountInput || '0', 10);
+                                    const entry: import('../utils/voidingStats').VoidingEntry = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), time: t, type: 'void', amountMl: isNaN(ml) ? 0 : ml };
+                                    setVoidingEntries(prev => [...prev, entry].sort((a,b) => a.time.localeCompare(b.time)));
+                                    setVoidingAmountInput('');
+                                  }}
+                                  style={{ padding: '12px 20px', border: 'none', borderRadius: 8, backgroundColor: '#0369a1', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>기록</button>
+                              </div>
+                              <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 6 }}>양을 모르면 비워도 됩니다</div>
                             </div>
-                          )}
-                          {/* 비고 */}
-                          <div style={{ marginBottom: 12 }}>
-                            <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 500 }}>비고 (선택)</label>
-                            <input type="text" placeholder="추가 메모" value={voidingForm.note}
-                              onChange={e => setVoidingForm(f => ({ ...f, note: e.target.value }))}
-                              style={{ width: '100%', padding: '8px 10px', fontSize: 16, border: '1px solid #e5e5e5', borderRadius: 7, backgroundColor: '#fff', color: '#333', outline: 'none', boxSizing: 'border-box' }} />
-                          </div>
-                          <button type="button"
-                            onClick={() => {
-                              if (!voidingForm.time) { toast.warning('시각을 입력해 주세요.'); return; }
-                              const ml = parseInt(voidingForm.amountMl, 10);
-                              if (isNaN(ml) || ml <= 0) { toast.warning('양(ml)을 입력해 주세요.'); return; }
-                              const newEntry: import('../utils/voidingStats').VoidingEntry = {
-                                id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-                                time: voidingForm.time,
-                                type: voidingForm.type,
-                                amountMl: ml,
-                                ...(voidingForm.type === 'void' && voidingForm.symptom ? { symptom: voidingForm.symptom as import('../utils/voidingStats').VoidingSymptom } : {}),
-                                ...(voidingForm.note.trim() ? { note: voidingForm.note.trim() } : {}),
-                              };
-                              setVoidingEntries(prev => [...prev, newEntry].sort((a, b) => a.time.localeCompare(b.time)));
-                              setVoidingForm(f => ({ ...f, time: '', amountMl: '', symptom: '', note: '' }));
-                            }}
-                            style={{ width: '100%', padding: '10px', border: 'none', borderRadius: 8, backgroundColor: '#0369a1', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                            + 항목 추가
-                          </button>
-                        </div>
-                        {/* 입력된 항목 리스트 */}
+                          );
+                        })()}
+                        {/* 오늘 기록 리스트 */}
                         {voidingEntries.length > 0 && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 600, marginBottom: 2 }}>입력된 항목 ({voidingEntries.length}건)</div>
-                            {voidingEntries.map((e) => (
-                              <div key={e.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 8, backgroundColor: e.type === 'drink' ? '#f0fdf4' : '#eff6ff', fontSize: 13 }}>
-                                <span style={{ color: '#374151' }}>
-                                  <span style={{ fontWeight: 700, marginRight: 6 }}>{e.time}</span>
-                                  <span style={{ color: e.type === 'drink' ? '#059669' : '#0369a1', fontWeight: 600, marginRight: 4 }}>{e.type === 'drink' ? '💧 섭취' : '🚽 배뇨'}</span>
-                                  {e.amountMl}ml
-                                  {e.symptom && <span style={{ marginLeft: 6, color: '#9ca3af' }}>· {e.symptom}</span>}
-                                  {e.note && <span style={{ marginLeft: 6, color: '#9ca3af' }}>· {e.note}</span>}
-                                </span>
-                                <button type="button" onClick={() => setVoidingEntries(prev => prev.filter(x => x.id !== e.id))}
-                                  style={{ padding: '3px 8px', border: '1px solid #fca5a5', borderRadius: 5, backgroundColor: '#fff', color: '#ef4444', fontSize: 11, cursor: 'pointer', flexShrink: 0 }}>삭제</button>
-                              </div>
+                            <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 600, marginBottom: 2 }}>
+                              오늘 기록 ({voidingEntries.length}건 · {voidingEntries.reduce((s,e) => s + e.amountMl, 0)}ml)
+                            </div>
+                            {voidingEntries.map(e => (
+                              editingVoidingId === e.id ? (
+                                <div key={e.id} style={{ border: '1px solid #0369a1', borderRadius: 8, padding: '10px 12px', backgroundColor: '#eff6ff', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                  <div style={{ display: 'flex', gap: 8 }}>
+                                    <input type="text" inputMode="numeric" placeholder="HH:MM" value={editingVoidingEntry.time}
+                                      onChange={ex => setEditingVoidingEntry(v => ({ ...v, time: ex.target.value }))}
+                                      style={{ flex: 1, padding: '6px 8px', fontSize: 14, border: '1px solid #bae6fd', borderRadius: 6, backgroundColor: '#fff', color: '#333', outline: 'none' }} />
+                                    <input type="text" inputMode="numeric" placeholder="ml" value={editingVoidingEntry.amountMl}
+                                      onChange={ex => setEditingVoidingEntry(v => ({ ...v, amountMl: ex.target.value.replace(/[^0-9]/g, '') }))}
+                                      style={{ flex: 1, padding: '6px 8px', fontSize: 14, border: '1px solid #bae6fd', borderRadius: 6, backgroundColor: '#fff', color: '#333', outline: 'none' }} />
+                                  </div>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                                    {(['절박감', '통증', '유실', '요의로 깸', '없음'] as const).map(sym => (
+                                      <button key={sym} type="button"
+                                        onClick={() => setEditingVoidingEntry(v => ({ ...v, symptom: v.symptom === sym ? '' : sym }))}
+                                        style={{ padding: '4px 10px', borderRadius: 14, fontSize: 11, cursor: 'pointer', border: editingVoidingEntry.symptom === sym ? 'none' : '1px solid #e5e7eb', backgroundColor: editingVoidingEntry.symptom === sym ? '#0369a1' : '#fff', color: editingVoidingEntry.symptom === sym ? '#fff' : '#374151', fontWeight: editingVoidingEntry.symptom === sym ? 700 : 400 }}>
+                                        {sym}
+                                      </button>
+                                    ))}
+                                  </div>
+                                  <div style={{ display: 'flex', gap: 6 }}>
+                                    <button type="button"
+                                      onClick={() => {
+                                        const ml = parseInt(editingVoidingEntry.amountMl || '0', 10);
+                                        const sym = (editingVoidingEntry.symptom as import('../utils/voidingStats').VoidingSymptom) || undefined;
+                                        setVoidingEntries(prev => prev.map(x => x.id !== e.id ? x : ({ ...x, time: editingVoidingEntry.time || x.time, amountMl: isNaN(ml) ? x.amountMl : ml, symptom: sym })).sort((a,b) => a.time.localeCompare(b.time)));
+                                        setEditingVoidingId(null);
+                                      }}
+                                      style={{ flex: 1, padding: '7px', border: 'none', borderRadius: 6, backgroundColor: '#0369a1', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>저장</button>
+                                    <button type="button"
+                                      onClick={() => { setVoidingEntries(prev => prev.filter(x => x.id !== e.id)); setEditingVoidingId(null); }}
+                                      style={{ padding: '7px 12px', border: '1px solid #fca5a5', borderRadius: 6, backgroundColor: '#fff', color: '#ef4444', fontSize: 13, cursor: 'pointer' }}>삭제</button>
+                                    <button type="button"
+                                      onClick={() => setEditingVoidingId(null)}
+                                      style={{ padding: '7px 12px', border: '1px solid #e5e7eb', borderRadius: 6, backgroundColor: '#fff', color: '#9ca3af', fontSize: 13, cursor: 'pointer' }}>취소</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <button key={e.id} type="button"
+                                  onClick={() => { setEditingVoidingId(e.id); setEditingVoidingEntry({ time: e.time, amountMl: String(e.amountMl), symptom: e.symptom || '', note: e.note || '' }); }}
+                                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 8, backgroundColor: '#eff6ff', fontSize: 13, cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                                  <span style={{ fontWeight: 700, color: '#374151', minWidth: 42 }}>{e.time}</span>
+                                  <span style={{ color: '#0369a1', fontWeight: 600 }}>🚽</span>
+                                  <span style={{ color: '#374151' }}>{e.amountMl > 0 ? `${e.amountMl}ml` : '—'}</span>
+                                  {e.symptom && <span style={{ color: '#9ca3af' }}>· {e.symptom}</span>}
+                                  <span style={{ marginLeft: 'auto', color: '#c4b5fd', fontSize: 11 }}>탭하여 수정</span>
+                                </button>
+                              )
                             ))}
                           </div>
                         )}

@@ -146,6 +146,16 @@ function buildXlsxMultiSheet(sheets: { name: string; rows: (string | number)[][]
 
 // ─── 배뇨일지 내보내기 ────────────────────────────────────────────────────────
 
+const HOUR_SLOTS_EXPORT = [5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,0,1,2,3,4];
+
+function formatHourLabelExport(h: number): string {
+  if (h === 0) return '자정';
+  if (h < 5) return `새벽${h}시`;
+  if (h < 12) return `오전${h}시`;
+  if (h === 12) return '오후12시';
+  return `오후${h - 12}시`;
+}
+
 export interface VoidingExportResult {
   count: number;
   fileName: string;
@@ -153,58 +163,79 @@ export interface VoidingExportResult {
 
 export function exportVoidingToXlsx(records: HaruRecord[]): VoidingExportResult {
   const filtered = records.filter(isVoidingRecord).sort((a, b) => a.date.localeCompare(b.date));
+  const days = filtered.slice(-4);
 
+  let rowCount = 0;
+  for (const r of filtered) rowCount += parseVoidingEntries(r).filter(e => e.type === 'void').length;
+
+  // 72시간 표준 양식 시트
+  const dayHeaders: (string | number)[] = ['시간대'];
+  for (let i = 0; i < days.length; i++) {
+    const label = i === days.length - 1 && days.length === 4 ? `4일째(아침)\n${days[i].date.slice(5)}` : `${i + 1}일째\n${days[i].date.slice(5)}`;
+    dayHeaders.push(label, '');
+  }
+
+  const subHeaders: (string | number)[] = [''];
+  for (let i = 0; i < days.length; i++) { subHeaders.push('분', 'ml'); }
+
+  const wakeRow: (string | number)[] = ['기상'];
+  const bedRow: (string | number)[] = ['취침'];
+  for (const r of days) {
+    wakeRow.push(String((r as any).voiding_waketime || '06:30'), '');
+    bedRow.push(String((r as any).voiding_bedtime || '22:30'), '');
+  }
+
+  const hourRows: (string | number)[][] = HOUR_SLOTS_EXPORT.map(hour => {
+    const row: (string | number)[] = [formatHourLabelExport(hour)];
+    for (const r of days) {
+      const entries = parseVoidingEntries(r).filter(e => parseInt(e.time.split(':')[0], 10) === hour && e.type === 'void');
+      const mins = entries.map(e => e.time.split(':')[1] || '00').join('/');
+      const mls = entries.map(e => e.amountMl > 0 ? String(e.amountMl) : '0').join('/');
+      row.push(entries.length > 0 ? mins : '', entries.length > 0 ? mls : '');
+    }
+    return row;
+  });
+
+  const totalRow: (string | number)[] = ['합계'];
+  for (const r of days) {
+    const entries = parseVoidingEntries(r);
+    const bedtime = String((r as any).voiding_bedtime || '22:30');
+    const waketime = String((r as any).voiding_waketime || '06:30');
+    const s = calcVoidingStats(entries, bedtime, waketime);
+    totalRow.push(`${s.totalVoidCount}회`, s.totalVoidMl);
+  }
+
+  const formRows: (string | number)[][] = [
+    ['72시간 배뇨양상 기능검사 (대한비뇨의학과학회 표준 양식 기반)'],
+    [],
+    dayHeaders,
+    subHeaders,
+    wakeRow,
+    bedRow,
+    ...hourRows,
+    totalRow,
+  ];
+
+  // 상세기록 시트
   const detailHeader: (string | number)[] = ['날짜', '시각', '구분', '양(ml)', '주간/야간', '증상', '비고'];
   const detailRows: (string | number)[][] = [detailHeader];
-  let rowCount = 0;
-
-  const summaryByDate: { date: string; totalVoidMl: number; nightVoidMl: number; nightRatio: number; totalVoidCount: number }[] = [];
-
   for (const r of filtered) {
     const entries = parseVoidingEntries(r);
     const bedtime = String((r as any).voiding_bedtime || '22:30');
     const waketime = String((r as any).voiding_waketime || '06:30');
-    const stats = calcVoidingStats(entries, bedtime, waketime);
-
     for (const e of entries) {
-      const dayNight = (() => {
-        const t = e.time.split(':').map(Number);
-        const tMin = t[0] * 60 + (t[1] || 0);
-        const b = bedtime.split(':').map(Number);
-        const bMin = b[0] * 60 + (b[1] || 0);
-        const w = waketime.split(':').map(Number);
-        const wMin = w[0] * 60 + (w[1] || 0);
-        const isNight = bMin > wMin ? (tMin > bMin || tMin < wMin) : (tMin > bMin && tMin < wMin);
-        return e.type === 'void' ? (isNight ? '야간' : '주간') : '-';
-      })();
-
-      detailRows.push([
-        r.date,
-        e.time,
-        e.type === 'drink' ? '음료 섭취' : '배뇨',
-        e.amountMl,
-        dayNight,
-        e.symptom || '',
-        e.note || '',
-      ]);
-      rowCount++;
+      const t = e.time.split(':').map(Number);
+      const tMin = t[0] * 60 + (t[1] || 0);
+      const b = bedtime.split(':').map(Number); const bMin = b[0] * 60 + (b[1] || 0);
+      const w = waketime.split(':').map(Number); const wMin = w[0] * 60 + (w[1] || 0);
+      const isNight = bMin > wMin ? (tMin > bMin || tMin < wMin) : (tMin > bMin && tMin < wMin);
+      detailRows.push([r.date, e.time, e.type === 'drink' ? '음료 섭취' : '배뇨', e.amountMl, e.type === 'void' ? (isNight ? '야간' : '주간') : '-', e.symptom || '', e.note || '']);
     }
-
-    summaryByDate.push({
-      date: r.date,
-      totalVoidMl: stats.totalVoidMl,
-      nightVoidMl: stats.nightVoidMl,
-      nightRatio: stats.nightRatioPercent,
-      totalVoidCount: stats.totalVoidCount,
-    });
   }
 
-  const summaryHeader: (string | number)[] = ['날짜', '총 배뇨량(ml)', '야간 배뇨량(ml)', '야간뇨 비율(%)', '총 배뇨 횟수'];
-  const summaryRows: (string | number)[][] = [summaryHeader, ...summaryByDate.map(s => [s.date, s.totalVoidMl, s.nightVoidMl, s.nightRatio, s.totalVoidCount])];
-
   const xlsx = buildXlsxMultiSheet([
+    { name: '72시간양식', rows: formRows },
     { name: '상세기록', rows: detailRows },
-    { name: '일별요약', rows: summaryRows },
   ]);
 
   const today = new Date().toISOString().slice(0, 10);
