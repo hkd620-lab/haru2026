@@ -7275,9 +7275,15 @@ mysentence와 korean은 반드시 채워야 합니다.
 규칙:
 - mysentence/korean이 비어있으면 반드시 채울 것
 - 다른 빈 필드는 해당 문법 요소가 없으면 빈 문자열 유지
-- 반드시 동일한 JSON 구조로만 응답
 - 마크다운 없이 순수 JSON만
-
+★ 응답 형식 (반드시 아래 두 개 필드를 가진 객체로만 응답):
+{
+  "changes": ["수정한 항목과 이유를 한 줄씩. 예: verb_example_en: 'He said the truth' → 'He told the truth' (say는 the truth와 함께 쓰지 않음)"],
+  "corrected": 수정된 전체 분석 JSON 객체 또는 null
+}
+- 수정할 것이 하나라도 있으면: changes에 변경 내역을 모두 적고, corrected에 수정 완료된 전체 분석 JSON을 담을 것
+- 수정할 것이 전혀 없으면: changes는 빈 배열 [], corrected는 null
+- corrected는 원본 분석 JSON과 동일한 필드 구조를 유지할 것 (필드를 새로 만들거나 없애지 말 것)
 분석 JSON:
 ${JSON.stringify(parsed, null, 2)}`;
 
@@ -7299,8 +7305,18 @@ ${JSON.stringify(parsed, null, 2)}`;
       const gptRaw = gptRes.data.choices[0].message.content.trim();
       const gptClean = gptRaw.replace(/```json|```/g, '').trim();
       const gptParsed = JSON.parse(gptClean);
-      verified = gptParsed.result ?? gptParsed;
-      gptChanges = gptParsed.changes ?? [];
+      gptChanges = Array.isArray(gptParsed.changes) ? gptParsed.changes : [];
+      if (gptParsed.corrected && typeof gptParsed.corrected === 'object') {
+        // 정상 경로: GPT가 수정본을 반환한 경우
+        verified = gptParsed.corrected;
+      } else if (gptChanges.length === 0 && !('corrected' in gptParsed) && gptParsed.mysentence !== undefined) {
+        // 하위호환 폴백: 구 형식(분석 JSON을 그대로 반환)으로 응답한 경우
+        verified = gptParsed;
+        logger.warn(`[getGrammarExplain] GPT가 구 형식으로 응답 (${verseKey}) — changes 미수집`);
+      } else {
+        // 수정 없음(corrected: null) → Gemini 원본 유지
+        verified = parsed;
+      }
       if (gptChanges.length > 0) {
         logger.info(`[getGrammarExplain] GPT-4o 수정 내역 (${verseKey}): ${JSON.stringify(gptChanges)}`);
       } else {
