@@ -145,6 +145,20 @@ function DeveloperBookStudioRoute() {
   return <BookStudio />;
 }
 
+function DeveloperDiaryLearnRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user?.uid !== DEVELOPER_UID) return <Navigate to="/" replace />;
+  return <DiaryLearnPage />;
+}
+
+function DeveloperBibleRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user?.uid !== DEVELOPER_UID) return <Navigate to="/" replace />;
+  return <BiblePage />;
+}
+
 function App() {
   return (
     <ThemeProvider>
@@ -240,10 +254,10 @@ function App() {
 
               <Route path="/health" element={<HealthMedicationPage />} />
 
-              {/* 영어성경학습 */}
-              <Route path="/bible" element={<BiblePage />} />
+              {/* 영어성경학습 — 개발자 전용 (품질 재설계 후 공개 예정) */}
+              <Route path="/bible" element={<DeveloperBibleRoute />} />
               <Route path="/vocab" element={<VocabPage />} />
-              <Route path="/diary-learn" element={<DiaryLearnPage />} />
+              <Route path="/diary-learn" element={<DeveloperDiaryLearnRoute />} />
 
               {/* 관리자 페이지 */}
               <Route path="/admin/checklist" element={<AdminChecklistPage />} />

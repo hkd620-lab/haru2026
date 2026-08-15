@@ -344,6 +344,7 @@ const AGENTS: Agent[] = [
     variant: 'lilac',
     stroke: '#5A4E7A',
     path: '/diary-learn',
+    developerOnly: true,
     icon: (
       <>
         <path d="M4 20h4l11-11-4-4L4 16z" />
