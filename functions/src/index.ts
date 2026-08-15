@@ -7145,8 +7145,17 @@ export const getGrammarExplain = onCall(
     const { verseKey, verseText } = request.data;
     if (!verseText) throw new HttpsError('invalid-argument', '절 내용이 필요합니다.');
 
+    // P0: 일기 문법 캐시는 사용자별 격리 (성경 캐시는 공용 유지)
+    // 프론트가 보낸 diary_* 키에 서버가 인증된 uid를 강제로 네임스페이싱한다.
+    let cacheKey = verseKey;
+    if ((verseKey || '').startsWith('diary_')) {
+      const uid = request.auth?.uid;
+      if (!uid) throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+      cacheKey = `diary_${uid}_${verseKey.slice('diary_'.length)}`;
+    }
+
     const db = admin.firestore();
-    const cacheRef = db.collection('grammarCache').doc(verseKey);
+    const cacheRef = db.collection('grammarCache').doc(cacheKey);
 
     // 1. 캐시 확인
     const cacheSnap = await cacheRef.get();
