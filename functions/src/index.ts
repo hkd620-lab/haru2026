@@ -49,6 +49,8 @@ const MICROSOFT_CLIENT_ID_SECRET = defineSecret('MICROSOFT_CLIENT_ID');
 const MICROSOFT_CLIENT_SECRET_SECRET = defineSecret('MICROSOFT_CLIENT_SECRET');
 const GOOGLE_DRIVE_SERVICE_ACCOUNT_SECRET = defineSecret('GOOGLE_DRIVE_SERVICE_ACCOUNT');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
+// 관리자 전용 기능 접근 제어용 UID
+const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
 // Storage 버킷
 const bucket = () => getStorage().bucket();
@@ -7331,6 +7333,9 @@ export const preloadChapterGrammar = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다');
     }
+    if (request.auth.uid !== ADMIN_UID) {
+      throw new HttpsError('permission-denied', '관리자 전용 기능입니다');
+    }
 
     const { book, chapter, verses, verseTexts } = request.data;
 
@@ -7498,7 +7503,7 @@ export const preloadChapterGrammar = onCall(
 
     // 6. 완료 후 관리자 FCM 알림
     const totalCorrected = results.filter(r => r.gptCorrected).length;
-    const adminUid = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+    const adminUid = ADMIN_UID;
     try {
       const settingsDoc = await db
         .collection('users').doc(adminUid)
