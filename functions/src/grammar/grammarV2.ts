@@ -4,7 +4,7 @@ import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
 import axios from 'axios';
 import { randomUUID } from 'crypto';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { logAiUsage } from '../aiUsageLogger';
 import {
   buildGrammarV2CacheKey,
@@ -40,6 +40,95 @@ const GEMINI_API_KEY_SECRET = defineSecret('GEMINI_API_KEY');
 const OPENAI_API_KEY_SECRET = defineSecret('OPENAI_API_KEY');
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 const AI_USAGE_PLAN = 'beta';
+
+const GRAMMAR_V2_SEMANTIC_RESPONSE_SCHEMA = {
+  type: SchemaType.OBJECT,
+  properties: {
+    difficulty: { type: SchemaType.STRING },
+    styleNote: { type: SchemaType.STRING },
+    translationNatural: { type: SchemaType.STRING },
+    chunks: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          id: { type: SchemaType.STRING },
+          order: { type: SchemaType.NUMBER },
+          text: { type: SchemaType.STRING },
+          role: { type: SchemaType.STRING },
+          level: { type: SchemaType.NUMBER },
+          parentId: { type: SchemaType.STRING, nullable: true },
+          meaning: { type: SchemaType.STRING },
+          note: { type: SchemaType.STRING },
+          termIds: {
+            type: SchemaType.ARRAY,
+            items: { type: SchemaType.STRING },
+          },
+        },
+        required: ['id', 'order', 'text', 'role', 'level', 'parentId', 'meaning', 'note', 'termIds'],
+      },
+    },
+    glossary: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          id: { type: SchemaType.STRING },
+          term: { type: SchemaType.STRING },
+          type: { type: SchemaType.STRING },
+          ipa: { type: SchemaType.STRING },
+          hangul: { type: SchemaType.STRING },
+          syllables: {
+            type: SchemaType.ARRAY,
+            items: { type: SchemaType.STRING },
+          },
+          hangulSyllables: {
+            type: SchemaType.ARRAY,
+            items: { type: SchemaType.STRING },
+          },
+          stressIndex: { type: SchemaType.NUMBER },
+          meaningKo: { type: SchemaType.STRING },
+          note: { type: SchemaType.STRING },
+        },
+        required: [
+          'id',
+          'term',
+          'type',
+          'ipa',
+          'hangul',
+          'syllables',
+          'hangulSyllables',
+          'stressIndex',
+          'meaningKo',
+          'note',
+        ],
+      },
+    },
+    keyPoints: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          order: { type: SchemaType.NUMBER },
+          pattern: { type: SchemaType.STRING },
+          meaningKo: { type: SchemaType.STRING },
+          why: { type: SchemaType.STRING },
+          example: {
+            type: SchemaType.OBJECT,
+            properties: {
+              en: { type: SchemaType.STRING },
+              ko: { type: SchemaType.STRING },
+            },
+            required: ['en', 'ko'],
+          },
+          caution: { type: SchemaType.STRING },
+        },
+        required: ['order', 'pattern', 'meaningKo', 'why', 'example', 'caution'],
+      },
+    },
+  },
+  required: ['difficulty', 'styleNote', 'translationNatural', 'chunks', 'glossary', 'keyPoints'],
+} as any;
 
 type TokenUsage = {
   inputTokens: number | null;
@@ -85,6 +174,21 @@ function openAiUsage(data: any): TokenUsage {
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isUsableGrammarV2Cache(value: unknown): value is GrammarV2CacheDocument {
+  if (!isRecord(value)) return false;
+  const verification = value.verification;
+  return (
+    value.schemaVersion === GRAMMAR_V2_SCHEMA_VERSION &&
+    value.promptVersion === GRAMMAR_V2_PROMPT_VERSION &&
+    isRecord(verification) &&
+    verification.status === 'passed'
+  );
+}
+
 function semanticWithoutPositions(payload: GrammarV2ValidatedSemanticPayload): GrammarV2SemanticPayload {
   return {
     ...payload,
@@ -105,14 +209,22 @@ function semanticWithoutPositions(payload: GrammarV2ValidatedSemanticPayload): G
   };
 }
 
-function normalizeVerifierResponse(value: GrammarV2VerifierResponse): GrammarV2VerifierResponse {
-  if (!value || !Array.isArray(value.changes)) {
+function normalizeVerifierResponse(value: unknown): GrammarV2VerifierResponse {
+  if (!isRecord(value) || !Array.isArray(value.changes)) {
     throw new Error('Invalid GPT verifier response: changes must be an array.');
   }
+  value.changes.forEach((change, index) => {
+    if (typeof change !== 'string') {
+      throw new Error(`Invalid GPT verifier response: changes[${index}] must be a string.`);
+    }
+  });
   if (value.corrected !== null && (typeof value.corrected !== 'object' || Array.isArray(value.corrected))) {
     throw new Error('Invalid GPT verifier response: corrected must be null or semantic payload.');
   }
-  return value;
+  return {
+    changes: value.changes,
+    corrected: value.corrected as GrammarV2SemanticPayload | null,
+  };
 }
 
 async function logGrammarV2Usage(params: {
@@ -157,6 +269,7 @@ async function generateSemanticPayload(params: {
       generationConfig: {
         temperature: 0.2,
         responseMimeType: 'application/json',
+        responseSchema: GRAMMAR_V2_SEMANTIC_RESPONSE_SCHEMA,
       } as any,
     });
     const result = await model.generateContent(params.prompt);
@@ -273,7 +386,8 @@ export const getGrammarExplainV2 = onCall(
       const context = loadCanonicalBibleContext(input);
       const cacheRef = admin.firestore().collection('grammarCache').doc(sourceKey);
       const cached = await cacheRef.get();
-      if (cached.exists) return cached.data();
+      const cachedData = cached.data();
+      if (isUsableGrammarV2Cache(cachedData)) return cachedData;
 
       const requestId = randomUUID();
       const generated = await generateSemanticPayload({
@@ -328,7 +442,7 @@ export const getGrammarExplainV2 = onCall(
         verification: {
           model: GRAMMAR_V2_VERIFY_MODEL,
           status: 'passed',
-          changes: verified.response.changes || [],
+          changes: verified.response.changes,
           inputTokens: verified.usage.inputTokens,
           outputTokens: verified.usage.outputTokens,
         },

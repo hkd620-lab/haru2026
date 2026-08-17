@@ -33,6 +33,12 @@ function requireNumber(value: unknown, path: string): number {
   return value;
 }
 
+function requireInteger(value: unknown, path: string): number {
+  const numberValue = requireNumber(value, path);
+  if (!Number.isInteger(numberValue)) fail(`${path} must be an integer.`);
+  return numberValue;
+}
+
 function requireStringArray(value: unknown, path: string): string[] {
   if (!Array.isArray(value)) fail(`${path} must be an array.`);
   return value.map((item, index) => requireString(item, `${path}[${index}]`));
@@ -71,15 +77,22 @@ function parseChunk(value: unknown, index: number): GrammarV2SemanticChunk {
 
 function parseGlossaryItem(value: unknown, index: number): GrammarV2GlossaryItem {
   if (!isPlainObject(value)) fail(`glossary[${index}] must be an object.`);
+  const syllables = requireStringArray(value.syllables, `glossary[${index}].syllables`);
+  if (syllables.length === 0) fail(`glossary[${index}].syllables must be a non-empty array.`);
+  const stressIndex = requireInteger(value.stressIndex, `glossary[${index}].stressIndex`);
+  if (stressIndex < 0 || stressIndex >= syllables.length) {
+    fail(`glossary[${index}].stressIndex must be a 0-based index within syllables.`);
+  }
+
   return {
     id: requireString(value.id, `glossary[${index}].id`),
     term: requireString(value.term, `glossary[${index}].term`),
     type: requireString(value.type, `glossary[${index}].type`),
     ipa: requireString(value.ipa, `glossary[${index}].ipa`),
     hangul: requireString(value.hangul, `glossary[${index}].hangul`),
-    syllables: requireStringArray(value.syllables, `glossary[${index}].syllables`),
+    syllables,
     hangulSyllables: requireStringArray(value.hangulSyllables, `glossary[${index}].hangulSyllables`),
-    stressIndex: requireNumber(value.stressIndex, `glossary[${index}].stressIndex`),
+    stressIndex,
     meaningKo: requireString(value.meaningKo, `glossary[${index}].meaningKo`),
     note: requireString(value.note, `glossary[${index}].note`),
   };
