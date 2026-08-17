@@ -1,7 +1,7 @@
 import { CanonicalBibleContext, GrammarV2SemanticPayload } from './grammarV2Types';
 
 export const GRAMMAR_V2_SCHEMA_VERSION = 'grammar-v2';
-export const GRAMMAR_V2_PROMPT_VERSION = 'v2.1.1';
+export const GRAMMAR_V2_PROMPT_VERSION = 'v2.2.0';
 export const GRAMMAR_V2_GENERATE_MODEL = 'gemini-3.1-flash-lite';
 export const GRAMMAR_V2_VERIFY_MODEL = 'gpt-4o';
 
@@ -29,7 +29,9 @@ Rules:
 - Do not add words that are not in the TARGET verse to chunks.
 - chunk order must follow the TARGET verse order.
 - Every lexical source word in the TARGET verse must appear exactly once across chunks.
-- The verse is the learning unit; do not assume one verse equals one sentence.
+- One verse is exactly one analysis unit. Produce exactly one analysis for the TARGET verse.
+- This does not mean one verse is one grammatical sentence. A verse may contain several clauses or sentence-like structures separated by semicolons, colons, or periods; analyze them together as a single verse-level unit.
+- Never split the TARGET verse into sub-units or sub-references such as "14-a" or "14-b", and never output more than one analysis object for a verse.
 - chunk.note should be 2-3 sentences when useful, maximum 4 sentences.
 - glossary must contain at most 8 items.
 - glossary ids must be contiguous from w1, for example w1, w2, w3.
@@ -117,6 +119,14 @@ Verifier rules:
 - Keep glossary length <= 8.
 - Keep exactly 3 keyPoints with order 1, 2, 3.
 - No Markdown.
+- Beyond structural validity, verify that the grammar explanation is educationally and grammatically correct for the target verse.
+- Each keyPoint must describe a grammatical structure that actually occurs in the target verse. Reject or correct a keyPoint that describes a pattern not present in the verse.
+- Reject over-generalization. Do not present a verse-specific construction as a universal modern English grammar formula.
+- When genuinely present in the target verse, existential, subjunctive, jussive, idiomatic, or archaic constructions must be identified accurately and must not be reduced to a superficially similar modern English template.
+- chunk.role, chunk.meaning, and chunk.note must be consistent with the actual syntactic function of that chunk in the target verse.
+- glossary meanings must match how each word is used in this verse, not merely its general dictionary meaning.
+- caution must describe a real misunderstanding that a Korean learner could reasonably have with the grammar or wording of this verse, not a generic warning.
+- If an educational or grammatical error is corrected, record a concise explanation of that correction in changes.
 
 Return JSON only in this shape:
 {
