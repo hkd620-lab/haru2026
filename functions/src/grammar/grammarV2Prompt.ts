@@ -1,7 +1,7 @@
 import { CanonicalBibleContext, GrammarV2SemanticPayload } from './grammarV2Types';
 
 export const GRAMMAR_V2_SCHEMA_VERSION = 'grammar-v2';
-export const GRAMMAR_V2_PROMPT_VERSION = 'v2.2.0';
+export const GRAMMAR_V2_PROMPT_VERSION = 'v2.2.1';
 export const GRAMMAR_V2_GENERATE_MODEL = 'gemini-3.1-flash-lite';
 export const GRAMMAR_V2_VERIFY_MODEL = 'gpt-4o';
 
@@ -33,12 +33,18 @@ Rules:
 - This does not mean one verse is one grammatical sentence. A verse may contain several clauses or sentence-like structures separated by semicolons, colons, or periods; analyze them together as a single verse-level unit.
 - Never split the TARGET verse into sub-units or sub-references such as "14-a" or "14-b", and never output more than one analysis object for a verse.
 - chunk.note should be 2-3 sentences when useful, maximum 4 sentences.
+- chunk.note must explain something useful about how this exact chunk works in the TARGET verse, not merely state a generic grammar rule.
+- When a chunk contains an archaic, idiomatic, existential, unusual, or easily confused construction, chunk.note should explicitly explain that verse-specific feature in beginner-friendly Korean.
+- Do not repeat chunk.meaning in chunk.note. Use note for grammar, structure, reference, or a likely learner misunderstanding.
 - glossary must contain at most 8 items.
 - glossary ids must be contiguous from w1, for example w1, w2, w3.
 - chunks[].termIds must only contain ids that exist in glossary.
 - If a chunk has no matching glossary item, use an empty termIds array.
 - Do not reference missing glossary ids in termIds.
 - keyPoints must contain exactly 3 items with order 1, 2, 3.
+- Each caution must address a concrete misunderstanding a beginner could have when reading this specific TARGET verse.
+- Anchor each caution to an actual word, phrase, or grammatical structure appearing in the TARGET verse. Avoid generic grammar advice that could be reused unchanged for many unrelated verses.
+- Prefer explaining how a learner might misread the expression and how to understand it correctly in this verse.
 - Use natural Korean for translationNatural and explanations.
 - No Markdown.
 - Return JSON only.
@@ -124,8 +130,16 @@ Verifier rules:
 - Reject over-generalization. Do not present a verse-specific construction as a universal modern English grammar formula.
 - When genuinely present in the target verse, existential, subjunctive, jussive, idiomatic, or archaic constructions must be identified accurately and must not be reduced to a superficially similar modern English template.
 - chunk.role, chunk.meaning, and chunk.note must be consistent with the actual syntactic function of that chunk in the target verse.
+- Verify that each chunk.note adds verse-specific learning value beyond chunk.meaning.
+- A chunk.note is insufficient if it merely states a broad grammar rule while failing to explain an unusual, archaic, idiomatic, existential, referential, or easily confused structure present in that chunk.
+- For learner-sensitive constructions, require chunk.note to explain how the construction functions in this verse and, when useful, how it differs from a superficially similar ordinary modern-English pattern.
+- Correct generic or misleading chunk.note content when a more verse-specific explanation is needed, and record that correction in changes.
 - glossary meanings must match how each word is used in this verse, not merely its general dictionary meaning.
 - caution must describe a real misunderstanding that a Korean learner could reasonably have with the grammar or wording of this verse, not a generic warning.
+- Verify each caution for verse-specific educational usefulness, not only grammatical truth.
+- A caution is insufficient if it is generic advice that could apply unchanged to many unrelated verses while missing a more important misunderstanding caused by an actual expression in the target verse.
+- Each caution should be anchored to a real word, phrase, or construction in the target verse and should help a beginner distinguish a likely wrong reading from the correct reading in this verse.
+- If a caution is technically true but educationally generic or misses a more important verse-specific misunderstanding, correct it and record the correction in changes.
 - If an educational or grammatical error is corrected, record a concise explanation of that correction in changes.
 
 Return JSON only in this shape:
