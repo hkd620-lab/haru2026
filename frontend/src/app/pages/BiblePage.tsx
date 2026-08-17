@@ -169,6 +169,8 @@ export function BiblePage() {
     if (!genesisData?.verses?.length) return;
     const user = getAuth().currentUser;
     if (!user) return;
+    // 문법 사전생성은 관리자 전용 (일반 사용자 자동 실행 시 API 비용 통제 불가)
+    if (user.uid !== DEV_UID) return;
     const verseTexts: Record<string, string> = {};
     const verses: string[] = [];
     genesisData.verses.forEach((verse: Verse) => {
