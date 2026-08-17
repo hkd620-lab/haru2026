@@ -1,7 +1,7 @@
 import { CanonicalBibleContext, GrammarV2SemanticPayload } from './grammarV2Types';
 
 export const GRAMMAR_V2_SCHEMA_VERSION = 'grammar-v2';
-export const GRAMMAR_V2_PROMPT_VERSION = 'v2.1.0';
+export const GRAMMAR_V2_PROMPT_VERSION = 'v2.1.1';
 export const GRAMMAR_V2_GENERATE_MODEL = 'gemini-3.1-flash-lite';
 export const GRAMMAR_V2_VERIFY_MODEL = 'gpt-4o';
 
@@ -32,6 +32,10 @@ Rules:
 - The verse is the learning unit; do not assume one verse equals one sentence.
 - chunk.note should be 2-3 sentences when useful, maximum 4 sentences.
 - glossary must contain at most 8 items.
+- glossary ids must be contiguous from w1, for example w1, w2, w3.
+- chunks[].termIds must only contain ids that exist in glossary.
+- If a chunk has no matching glossary item, use an empty termIds array.
+- Do not reference missing glossary ids in termIds.
 - keyPoints must contain exactly 3 items with order 1, 2, 3.
 - Use natural Korean for translationNatural and explanations.
 - No Markdown.
