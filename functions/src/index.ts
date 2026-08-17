@@ -10198,6 +10198,8 @@ export const detectPlantAdvanced = onCall(
   },
 );
 
+export { getGrammarExplainV2 } from './grammar/grammarV2';
+
 // ===========================================
 // 🌿 NIBR (국립생물자원관) 국가생물종목록 Open API 테스트 endpoint
 //   - process.env.NIBR_API_KEY 사용 (응답/로그에 절대 노출하지 않음)
