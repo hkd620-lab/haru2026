@@ -1,7 +1,7 @@
 import { CanonicalBibleContext, GrammarV2SemanticPayload } from './grammarV2Types';
 
 export const GRAMMAR_V2_SCHEMA_VERSION = 'grammar-v2';
-export const GRAMMAR_V2_PROMPT_VERSION = 'v2.2.2';
+export const GRAMMAR_V2_PROMPT_VERSION = 'v2.2.3';
 export const GRAMMAR_V2_GENERATE_MODEL = 'gemini-3.1-flash-lite';
 export const GRAMMAR_V2_VERIFY_MODEL = 'gpt-4o';
 
@@ -37,7 +37,7 @@ Rules:
 - When a chunk contains an archaic, idiomatic, existential, unusual, or easily confused construction, chunk.note should explicitly explain that verse-specific feature in beginner-friendly Korean.
 - Do not repeat chunk.meaning in chunk.note. Use note for grammar, structure, reference, or a likely learner misunderstanding.
 - For pronouns that are important to understanding the TARGET verse, explain what the pronoun refers to and, when needed, identify its antecedent — the noun or noun phrase it refers to. Do not mechanically explain obvious pronouns when doing so would not help interpretation.
-- If the same word is used in different grammatical structures or functions within the same TARGET verse and that difference matters for interpretation, explain the contrast in chunk.note or caution. Also explain when a familiar word is being used with a grammatical or contextual function different from its common dictionary meaning, but do not treat simple lexical repetition as something to explain.
+- If the same word or form appears more than once within the same TARGET verse and is used in different grammatical structures or functions, and that difference matters for interpretation, explaining each occurrence separately is not enough. Explicitly compare how the occurrences differ in structure or function, using chunk.note, caution, or keyPoint as appropriate. Also explain when a familiar word is being used with a grammatical or contextual function different from its common dictionary meaning, but do not treat simple lexical repetition as something to explain.
 - glossary must contain at most 8 items.
 - glossary ids must be contiguous from w1, for example w1, w2, w3.
 - chunks[].termIds must only contain ids that exist in glossary.
@@ -45,6 +45,7 @@ Rules:
 - Do not reference missing glossary ids in termIds.
 - keyPoints must contain exactly 3 items with order 1, 2, 3.
 - The 3 keyPoints should prioritize the core grammatical structures a beginner needs to understand the whole verse: the main sentence frame, major clause or phrase structures, core verb patterns, important modification relationships, and grammar relationships that control interpretation. Do not let detailed lexical collocations or individual word pairings take too many keyPoint slots; move such details to chunk.note when possible.
+- Each keyPoint.pattern must accurately represent a grammatical structure that actually appears in the TARGET verse. Do not make the explanation easier by mislabeling or changing the actual subject, object, complement, verb, infinitive, clause, phrase, modifier, existential structure, passive or active relation, or parallel structure.
 - Each caution must address a concrete misunderstanding a beginner could have when reading this specific TARGET verse.
 - Anchor each caution to an actual word, phrase, or grammatical structure appearing in the TARGET verse. Avoid generic grammar advice that could be reused unchanged for many unrelated verses.
 - Prefer explaining how a learner might misread the expression and how to understand it correctly in this verse.
@@ -138,9 +139,11 @@ Verifier rules:
 - For learner-sensitive constructions, require chunk.note to explain how the construction functions in this verse and, when useful, how it differs from a superficially similar ordinary modern-English pattern.
 - Correct generic or misleading chunk.note content when a more verse-specific explanation is needed, and record that correction in changes.
 - For pronouns that are important to understanding the target verse, verify that the explanation identifies what the pronoun refers to and, when needed, identifies its antecedent — the noun or noun phrase it refers to. Do not require mechanical explanation of obvious pronouns when it would not help interpretation.
-- If the same word is used in different grammatical structures or functions within the same TARGET verse and that difference matters for interpretation, verify that the contrast is explained in chunk.note or caution. Also verify explanations for familiar words used with grammatical or contextual functions different from their common dictionary meanings, while rejecting explanations that treat simple lexical repetition as important by itself.
+- If the same word or form appears more than once within the same TARGET verse and is used in different grammatical structures or functions, and that difference matters for interpretation, do not accept the payload as sufficient merely because each occurrence is explained separately. Verify that the occurrences are explicitly compared, and if the comparison is missing, add or revise the comparison in chunk.note, caution, or keyPoint and record the correction in changes. Also verify explanations for familiar words used with grammatical or contextual functions different from their common dictionary meanings, while rejecting explanations that treat simple lexical repetition as important by itself.
 - glossary meanings must match how each word is used in this verse, not merely its general dictionary meaning.
 - The 3 keyPoints must prioritize the core grammatical structures needed for a beginner to understand the whole verse, such as the main sentence frame, major clause or phrase structures, core verb patterns, important modification relationships, and grammar relationships that control interpretation. If detailed lexical collocations or individual word pairings occupy too many keyPoint slots, move them to chunk.note when possible and record the correction in changes.
+- Verify every keyPoint.pattern against the exact grammar of the target verse. Check that the pattern exists in the verse, accurately labels sentence parts such as subject, object, complement, verb, infinitive, clause, phrase, modifier, existential structure, passive or active relation, and parallel structure, and is not an over-simplified formula that changes the actual structure. Also verify that meaningKo, why, example, and caution do not contradict the pattern.
+- If a keyPoint.pattern is structurally wrong, do not treat it as acceptable and do not return corrected as null while that error remains. Correct the pattern and any inconsistent meaningKo, why, example, or caution, then record the correction in changes; if the original pattern cannot be corrected with confidence, replace that keyPoint with a structurally accurate keyPoint that is clearly present in the target verse.
 - caution must describe a real misunderstanding that a Korean learner could reasonably have with the grammar or wording of this verse, not a generic warning.
 - Verify each caution for verse-specific educational usefulness, not only grammatical truth.
 - A caution is insufficient if it is generic advice that could apply unchanged to many unrelated verses while missing a more important misunderstanding caused by an actual expression in the target verse.
