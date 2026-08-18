@@ -13,6 +13,8 @@ import {
   type PartyRole,
   type SubmitChecklist,
 } from '../types/legalCaseTypes';
+import { useSensitiveConsent } from '../hooks/useSensitiveConsent';
+import { SensitiveConsentGate } from '../components/SensitiveConsentGate';
 
 type CaseFormState = {
   title: string;
@@ -100,6 +102,7 @@ function needsDeliveryCheck(item: LegalCase) {
 export default function LegalCasesPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const { hasConsent, isSaving: isSavingConsent, grantConsent } = useSensitiveConsent('sensitiveLegal');
   const [cases, setCases] = useState<LegalCase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -216,6 +219,10 @@ export default function LegalCasesPage() {
         </div>
       </div>
     );
+  }
+
+  if (hasConsent === false) {
+    return <SensitiveConsentGate category="legal" isSaving={isSavingConsent} onAgree={grantConsent} />;
   }
 
   return (

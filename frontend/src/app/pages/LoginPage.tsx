@@ -2,11 +2,17 @@ import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { BookOpen, Mail } from 'lucide-react';
 import { toast } from 'sonner';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { GrapeAnimation } from '../components/GrapeAnimation';
 import { useAuth } from '../contexts/AuthContext';
 import HaruNewsPreview from '../components/HaruNewsPreview';
 import { InAppBrowserLoginGuide } from '../components/InAppBrowserLoginGuide';
 import { getInAppBrowserInfo, type InAppBrowserInfo } from '../utils/inAppBrowser';
+import { db } from '../config/firebase';
+
+// 회원가입 동의 시점에 기록해두는 약관/방침 버전 — 추후 개정 시 재동의 대상을 가려낼 때 사용
+const TERMS_VERSION = '2026-08-20';
+const PRIVACY_VERSION = '2026-08-20';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -17,6 +23,45 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
+
+  // 회원가입 동의 항목
+  const [agreeAge14, setAgreeAge14] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreePrivacy, setAgreePrivacy] = useState(false);
+  const [agreeOverseas, setAgreeOverseas] = useState(false);
+  const [agreeMarketing, setAgreeMarketing] = useState(false);
+
+  const requiredAgreementsChecked = agreeAge14 && agreeTerms && agreePrivacy && agreeOverseas;
+  const allAgreementsChecked = requiredAgreementsChecked && agreeMarketing;
+
+  const handleToggleAgreeAll = (checked: boolean) => {
+    setAgreeAge14(checked);
+    setAgreeTerms(checked);
+    setAgreePrivacy(checked);
+    setAgreeOverseas(checked);
+    setAgreeMarketing(checked);
+  };
+
+  const saveSignupConsents = async (uid: string) => {
+    const userRef = doc(db, 'users', uid);
+    await setDoc(
+      userRef,
+      {
+        consents: {
+          age14: true,
+          age19: true,
+          terms: true,
+          privacy: true,
+          overseasTransfer: true,
+          marketing: agreeMarketing,
+          agreedAt: serverTimestamp(),
+          termsVersion: TERMS_VERSION,
+          privacyVersion: PRIVACY_VERSION,
+        },
+      },
+      { merge: true },
+    );
+  };
 
   const guardInAppBrowserLogin = () => {
     const info = getInAppBrowserInfo();
@@ -78,6 +123,10 @@ export function LoginPage() {
       toast.error('비밀번호 확인이 일치하지 않습니다.');
       return;
     }
+    if (emailMode === 'signup' && !requiredAgreementsChecked) {
+      toast.error('필수 동의 항목을 모두 체크해 주세요.');
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -85,7 +134,10 @@ export function LoginPage() {
         await signIn(normalizedEmail, password);
         toast.success('로그인되었습니다.');
       } else {
-        await signUp(normalizedEmail, password);
+        const { user: newUser } = await signUp(normalizedEmail, password);
+        if (newUser?.uid) {
+          await saveSignupConsents(newUser.uid);
+        }
         toast.success('회원가입이 완료되었습니다.');
       }
       navigate('/');
@@ -218,6 +270,10 @@ export function LoginPage() {
                 </button>
               </div>
 
+              <p className="mt-2 text-center text-xs" style={{ color: '#9CA3AF' }}>
+                로그인 후 이용약관 및 개인정보 처리 동의 절차가 진행됩니다.
+              </p>
+
               <div className="flex items-center gap-3 my-6">
                 <div className="h-px flex-1" style={{ backgroundColor: '#E5E7EB' }} />
                 <span className="text-xs" style={{ color: '#999' }}>또는</span>
@@ -296,9 +352,89 @@ export function LoginPage() {
                   </label>
                 )}
 
+                {emailMode === 'signup' && (
+                  <div
+                    className="rounded-lg p-3 space-y-2"
+                    style={{ border: '1px solid #E5E7EB', backgroundColor: '#F9FAFB' }}
+                  >
+                    <label className="flex items-center gap-2 pb-2" style={{ borderBottom: '1px solid #E5E7EB' }}>
+                      <input
+                        type="checkbox"
+                        checked={allAgreementsChecked}
+                        onChange={(event) => handleToggleAgreeAll(event.target.checked)}
+                        disabled={isLoading}
+                      />
+                      <span className="text-sm" style={{ color: '#1A3C6E', fontWeight: 700 }}>전체 동의</span>
+                    </label>
+
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={agreeAge14}
+                          onChange={(event) => setAgreeAge14(event.target.checked)}
+                          disabled={isLoading}
+                        />
+                        <span className="text-xs" style={{ color: '#374151' }}>만 19세 이상입니다 <span style={{ color: '#dc2626' }}>(필수)</span></span>
+                      </label>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={agreeTerms}
+                          onChange={(event) => setAgreeTerms(event.target.checked)}
+                          disabled={isLoading}
+                        />
+                        <span className="text-xs" style={{ color: '#374151' }}>이용약관에 동의합니다 <span style={{ color: '#dc2626' }}>(필수)</span></span>
+                      </label>
+                      <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-xs" style={{ color: '#1A3C6E', textDecoration: 'underline' }}>보기</a>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={agreePrivacy}
+                          onChange={(event) => setAgreePrivacy(event.target.checked)}
+                          disabled={isLoading}
+                        />
+                        <span className="text-xs" style={{ color: '#374151' }}>개인정보 수집·이용에 동의합니다 <span style={{ color: '#dc2626' }}>(필수)</span></span>
+                      </label>
+                      <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-xs" style={{ color: '#1A3C6E', textDecoration: 'underline' }}>보기</a>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={agreeOverseas}
+                          onChange={(event) => setAgreeOverseas(event.target.checked)}
+                          disabled={isLoading}
+                        />
+                        <span className="text-xs" style={{ color: '#374151' }}>개인정보 국외 이전에 동의합니다 <span style={{ color: '#dc2626' }}>(필수)</span></span>
+                      </label>
+                      <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-xs" style={{ color: '#1A3C6E', textDecoration: 'underline' }}>보기</a>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={agreeMarketing}
+                          onChange={(event) => setAgreeMarketing(event.target.checked)}
+                          disabled={isLoading}
+                        />
+                        <span className="text-xs" style={{ color: '#374151' }}>마케팅 정보 수신에 동의합니다 <span style={{ color: '#9CA3AF' }}>(선택)</span></span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || (emailMode === 'signup' && !requiredAgreementsChecked)}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-all hover:opacity-90 disabled:opacity-50"
                   style={{ backgroundColor: '#1A3C6E', color: '#fff', fontWeight: 700 }}
                 >
