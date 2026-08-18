@@ -6,6 +6,8 @@ import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
 import { addDocument, getLegalCases } from '../services/legalCasesService';
 import type { LegalCase, LegalDocument, LegalDocumentType } from '../types/legalCaseTypes';
+import { useSensitiveConsent } from '../hooks/useSensitiveConsent';
+import { SensitiveConsentGate } from '../components/SensitiveConsentGate';
 
 type DocumentHelperForm = {
   caseId: string;
@@ -80,6 +82,7 @@ function buildActionMemo({
 export default function CourtDocumentHelperPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const { hasConsent, isSaving: isSavingConsent, grantConsent } = useSensitiveConsent('sensitiveLegal');
   const [cases, setCases] = useState<LegalCase[]>([]);
   const [form, setForm] = useState<DocumentHelperForm>(initialForm);
   const [requirements, setRequirements] = useState<string[]>(['']);
@@ -227,6 +230,10 @@ export default function CourtDocumentHelperPage() {
         </div>
       </main>
     );
+  }
+
+  if (hasConsent === false) {
+    return <SensitiveConsentGate category="legal" isSaving={isSavingConsent} onAgree={grantConsent} />;
   }
 
   return (
