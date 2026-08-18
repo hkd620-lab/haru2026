@@ -276,7 +276,7 @@ function ConsentGateScreen({
             <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <input type="checkbox" checked={agreeAge14} onChange={(e) => setAgreeAge14(e.target.checked)} disabled={isSaving} />
               <span style={{ fontSize: 13, color: '#374151' }}>
-                만 18세 이상입니다 <span style={{ color: '#dc2626' }}>(필수)</span>
+                만 19세 이상입니다 <span style={{ color: '#dc2626' }}>(필수)</span>
               </span>
             </label>
           </div>
@@ -605,6 +605,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         {
           consents: {
             age14: true,
+            age19: true,
             terms: true,
             privacy: true,
             overseasTransfer: true,
