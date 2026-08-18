@@ -15,6 +15,7 @@ const sharp = require('sharp');
 import * as fs from 'fs';
 import * as path from 'path';
 import { logAiUsage } from './aiUsageLogger';
+import { cancelSubscriptionForUid } from './subscriptionHelpers';
 // 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
 import { GoogleGenAI } from '@google/genai';
 // HARU가계부 카카오뱅크 XLSX 잠금 해제 전용 (msoffcrypto-tool TS 포트)
@@ -5281,6 +5282,8 @@ export const subscribeWithBillingKey = onCall(
 );
 
 // ===== 💳 KG이니시스 정기구독 해지 =====
+// 실제 해지 로직은 subscriptionHelpers.ts의 cancelSubscriptionForUid로 분리되어 있다.
+// (accountDeletion.ts의 requestAccountDeletion에서도 재사용하기 위함 — index.ts와의 순환 참조 방지)
 export const cancelSubscription = onCall(
   { region: 'asia-northeast3' },
   async (request) => {
@@ -5288,68 +5291,7 @@ export const cancelSubscription = onCall(
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
 
-    const uid = request.auth.uid;
-    const nowIso = new Date().toISOString();
-    const subRef = db.doc(`users/${uid}/subscription/info`);
-    const billingRef = db.doc(`billingSubscriptions/${uid}`);
-
-    const result = await db.runTransaction(async (tx) => {
-      const [subSnap, billingSnap] = await Promise.all([
-        tx.get(subRef),
-        tx.get(billingRef),
-      ]);
-      const subData = subSnap.data() || {};
-      const billingData = billingSnap.data() || {};
-      const plan = subData.plan === 'basic' || subData.plan === 'premium'
-        ? subData.plan
-        : billingData.plan === 'basic' || billingData.plan === 'premium'
-          ? billingData.plan
-          : '';
-
-      if (!plan) {
-        throw new HttpsError('failed-precondition', '해지할 구독이 없습니다.');
-      }
-
-      if (subData.status === 'cancelled' || billingData.status === 'cancelled') {
-        return {
-          alreadyCancelled: true,
-          endDate: typeof subData.endDate === 'string' ? subData.endDate : null,
-        };
-      }
-
-      const endDate = typeof subData.endDate === 'string'
-        ? subData.endDate
-        : typeof billingData.endDate === 'string'
-          ? billingData.endDate
-          : nowIso;
-
-      tx.set(subRef, {
-        plan,
-        status: 'cancelled',
-        cancelAtPeriodEnd: true,
-        cancelledAt: nowIso,
-        endDate,
-        nextBillingDate: null,
-        updatedAt: nowIso,
-      }, { merge: true });
-
-      tx.set(billingRef, {
-        uid,
-        plan,
-        status: 'cancelled',
-        billingKey: null,
-        cancelAtPeriodEnd: true,
-        cancelledAt: nowIso,
-        endDate,
-        nextBillingDate: null,
-        billingLockUntil: null,
-        updatedAt: nowIso,
-      }, { merge: true });
-
-      return { alreadyCancelled: false, endDate };
-    });
-
-    logger.info('✅ 정기구독 해지 예약 — uid: %s, endDate: %s', uid, result.endDate);
+    const result = await cancelSubscriptionForUid(request.auth.uid);
     return {
       success: true,
       ...result,
@@ -11517,3 +11459,9 @@ export const petFoodCheck = onCall(
     };
   },
 );
+
+export {
+  requestAccountDeletion,
+  cancelAccountDeletion,
+  executeScheduledDeletion,
+} from './accountDeletion';

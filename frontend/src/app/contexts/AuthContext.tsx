@@ -14,7 +14,9 @@ import {
   GoogleAuthProvider,
   User as FirebaseUser
 } from 'firebase/auth';
-import { auth } from '../config/firebase';
+import { doc, onSnapshot, Timestamp } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { auth, db } from '../config/firebase';
 import { cleanupDuplicateTokens } from '../services/notificationService';
 
 export interface LocalUser {
@@ -90,9 +92,106 @@ function getAuthErrorMessage(error: any): string {
   }
 }
 
+// 회원탈퇴 유예기간(pending_deletion) 중 표시하는 복구 안내 화면.
+// AuthProvider가 앱 최상위를 감싸므로, 여기서 children을 대체하면
+// 라우터(App.tsx)를 건드리지 않고도 서비스 전체 진입을 막을 수 있다.
+function AccountPendingDeletionScreen({
+  scheduledAt,
+  isRecovering,
+  onRecover,
+  onLogout,
+}: {
+  scheduledAt: Date | null;
+  isRecovering: boolean;
+  onRecover: () => void;
+  onLogout: () => void;
+}) {
+  const daysLeft = scheduledAt
+    ? Math.max(0, Math.ceil((scheduledAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
+
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#EDE9F5',
+        padding: '24px',
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 420,
+          width: '100%',
+          backgroundColor: '#fff',
+          borderRadius: 16,
+          padding: '32px 24px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+          textAlign: 'center',
+        }}
+      >
+        <h1 style={{ fontSize: 18, fontWeight: 700, color: '#1A3C6E', marginBottom: 12 }}>
+          회원탈퇴가 신청되어 있습니다
+        </h1>
+        <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.7, marginBottom: 8 }}>
+          {daysLeft !== null
+            ? `앞으로 ${daysLeft}일 후 계정과 모든 기록이 완전히 삭제됩니다.`
+            : '유예기간이 지나면 계정과 모든 기록이 완전히 삭제됩니다.'}
+        </p>
+        <p style={{ fontSize: 13, color: '#9CA3AF', lineHeight: 1.6, marginBottom: 28 }}>
+          계속 이용하시려면 아래 [계정 복구하기]를 눌러주세요.
+        </p>
+
+        <button
+          type="button"
+          onClick={onRecover}
+          disabled={isRecovering}
+          style={{
+            width: '100%',
+            padding: '12px 16px',
+            borderRadius: 10,
+            border: 'none',
+            backgroundColor: isRecovering ? '#93c5fd' : '#1A3C6E',
+            color: '#fff',
+            fontSize: 14,
+            fontWeight: 700,
+            cursor: isRecovering ? 'not-allowed' : 'pointer',
+            marginBottom: 10,
+          }}
+        >
+          {isRecovering ? '복구 처리 중...' : '계정 복구하기'}
+        </button>
+
+        <button
+          type="button"
+          onClick={onLogout}
+          disabled={isRecovering}
+          style={{
+            width: '100%',
+            padding: '12px 16px',
+            borderRadius: 10,
+            border: '1px solid #E5E7EB',
+            backgroundColor: '#fff',
+            color: '#4B5563',
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: isRecovering ? 'not-allowed' : 'pointer',
+          }}
+        >
+          로그아웃
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<LocalUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pendingDeletion, setPendingDeletion] = useState<{ scheduledAt: Date | null } | null>(null);
+  const [isRecoveringAccount, setIsRecoveringAccount] = useState(false);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -140,6 +239,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user?.uid) {
       cleanupDuplicateTokens(user.uid);
     }
+  }, [user?.uid]);
+
+  // 회원탈퇴 유예기간(accountStatus === 'pending_deletion') 여부를 실시간으로 확인한다.
+  // 복구(cancelAccountDeletion) 시 서버가 이 필드를 지우면 즉시 화면이 정상으로 돌아온다.
+  useEffect(() => {
+    if (!user?.uid) {
+      setPendingDeletion(null);
+      return;
+    }
+
+    const userRef = doc(db, 'users', user.uid);
+    const unsubscribe = onSnapshot(userRef, (snap) => {
+      const data = snap.data();
+      if (data?.accountStatus === 'pending_deletion') {
+        const scheduledAtValue = data.deletionScheduledAt;
+        const scheduledAt = scheduledAtValue instanceof Timestamp ? scheduledAtValue.toDate() : null;
+        setPendingDeletion({ scheduledAt });
+      } else {
+        setPendingDeletion(null);
+      }
+    });
+
+    return () => unsubscribe();
   }, [user?.uid]);
 
   const signIn = async (email: string, password: string) => {
@@ -285,6 +407,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(mapUser(auth.currentUser));
   };
 
+  const handleRecoverAccount = async () => {
+    setIsRecoveringAccount(true);
+    try {
+      const functions = getFunctions(undefined, 'asia-northeast3');
+      const cancelDeletion = httpsCallable(functions, 'cancelAccountDeletion');
+      await cancelDeletion({});
+      // pendingDeletion 상태는 위 onSnapshot 리스너가 자동으로 갱신한다.
+    } catch (error: any) {
+      console.error('계정 복구 실패:', error);
+      alert('계정 복구에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      setIsRecoveringAccount(false);
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -299,7 +436,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     updateUserProfile,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {pendingDeletion ? (
+        <AccountPendingDeletionScreen
+          scheduledAt={pendingDeletion.scheduledAt}
+          isRecovering={isRecoveringAccount}
+          onRecover={handleRecoverAccount}
+          onLogout={signOut}
+        />
+      ) : (
+        children
+      )}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

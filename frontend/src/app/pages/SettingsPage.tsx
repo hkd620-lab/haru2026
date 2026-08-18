@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, Database, Download, Trash2, BarChart3, LogOut, User, Moon, Sun, Bell, BellOff, Clock, Megaphone, Sparkles, CreditCard, Mail } from 'lucide-react';
+import { Settings, Database, Download, Trash2, BarChart3, LogOut, User, Moon, Sun, Bell, BellOff, Clock, Megaphone, Sparkles, CreditCard, Mail, UserX } from 'lucide-react';
 import { firestoreService } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -23,6 +23,9 @@ export function SettingsPage() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
   const [isCancellingSubscription, setIsCancellingSubscription] = useState(false);
+  const [showWithdrawalFlow, setShowWithdrawalFlow] = useState(false);
+  const [withdrawalConfirmText, setWithdrawalConfirmText] = useState('');
+  const [isRequestingWithdrawal, setIsRequestingWithdrawal] = useState(false);
   
   // 알림 관련 상태
   const [notificationEnabled, setNotificationEnabled] = useState(true);
@@ -451,6 +454,32 @@ export function SettingsPage() {
         console.error('로그아웃 실패:', error);
         toast.error('로그아웃 중 오류가 발생했습니다.');
       }
+    }
+  };
+
+  const handleRequestWithdrawal = async () => {
+    if (!user?.uid) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+    if (withdrawalConfirmText !== '탈퇴') {
+      toast.error('"탈퇴"를 정확히 입력해주세요.');
+      return;
+    }
+
+    setIsRequestingWithdrawal(true);
+    try {
+      const functions = getFunctions(undefined, 'asia-northeast3');
+      const requestDeletion = httpsCallable(functions, 'requestAccountDeletion');
+      await requestDeletion({});
+      toast.success('회원탈퇴가 접수되었습니다. 30일 이내 다시 로그인하시면 복구할 수 있습니다.');
+      await signOut();
+      navigate('/login');
+    } catch (error: any) {
+      console.error('회원탈퇴 신청 실패:', error);
+      toast.error(error?.message || '회원탈퇴 신청에 실패했습니다.');
+    } finally {
+      setIsRequestingWithdrawal(false);
     }
   };
 
@@ -931,7 +960,7 @@ export function SettingsPage() {
                 <Trash2 className="w-4 h-4" style={{ color: '#dc2626' }} />
                 <div>
                   <p className="text-sm" style={{ color: '#dc2626', fontWeight: 500 }}>
-                    모든 데이터 삭제
+                    기록 전체 삭제
                   </p>
                   <p className="text-xs mt-0.5" style={{ color: '#999' }}>
                     되돌릴 수 없습니다. 신중하게 결정하세요.
@@ -944,10 +973,10 @@ export function SettingsPage() {
                 style={{ backgroundColor: '#FFF5F5', border: '1px solid #fca5a5' }}
               >
                 <p className="text-sm mb-3" style={{ color: '#dc2626', fontWeight: 500 }}>
-                  ⚠️ 정말로 모든 데이터를 삭제하시겠습니까?
+                  ⚠️ 정말로 기록 전체를 삭제하시겠습니까?
                 </p>
                 <p className="text-xs mb-4" style={{ color: '#666' }}>
-                  삭제된 데이터는 복구할 수 없습니다.
+                  작성하신 기록이 모두 삭제됩니다. 건강·법률·성장기록 등 다른 정보와 계정은 유지됩니다.
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -1314,6 +1343,98 @@ export function SettingsPage() {
               </p>
             </div>
           </button>
+
+          {!showWithdrawalFlow ? (
+            <button
+              onClick={() => setShowWithdrawalFlow(true)}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-80 text-left mt-3"
+              style={{
+                backgroundColor: '#FFF5F5',
+                border: '1px solid #fca5a5',
+              }}
+            >
+              <UserX className="w-4 h-4" style={{ color: '#dc2626' }} />
+              <div>
+                <p className="text-sm" style={{ color: '#dc2626', fontWeight: 500 }}>
+                  회원탈퇴
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: '#999' }}>
+                  계정과 모든 기록을 삭제합니다
+                </p>
+              </div>
+            </button>
+          ) : (
+            <div
+              className="p-4 rounded-lg mt-3"
+              style={{ backgroundColor: '#FFF5F5', border: '1px solid #fca5a5' }}
+            >
+              <p className="text-sm mb-3" style={{ color: '#dc2626', fontWeight: 700 }}>
+                회원탈퇴를 하시면 다음과 같이 처리됩니다.
+              </p>
+              <ul
+                className="text-xs mb-4"
+                style={{ color: '#666', lineHeight: 1.8, paddingLeft: 16, listStyle: 'disc' }}
+              >
+                <li>정기결제가 즉시 해지됩니다</li>
+                <li>30일 동안 계정이 보관되며, 이 기간에 다시 로그인하시면 복구할 수 있습니다</li>
+                <li>30일이 지나면 기록·사진이 모두 삭제되며 되돌릴 수 없습니다</li>
+                <li>결제 기록은 법령에 따라 일정 기간 보관됩니다</li>
+              </ul>
+
+              <button
+                type="button"
+                onClick={handleExportData}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm transition-all hover:opacity-90 mb-4"
+                style={{ backgroundColor: '#1A3C6E', color: '#fff', fontWeight: 600 }}
+              >
+                <Download className="w-4 h-4" />
+                탈퇴 전 기록 내보내기
+              </button>
+
+              <label className="text-xs block mb-1" style={{ color: '#666' }}>
+                계속하려면 "탈퇴"를 입력하세요
+              </label>
+              <input
+                type="text"
+                value={withdrawalConfirmText}
+                onChange={(e) => setWithdrawalConfirmText(e.target.value)}
+                placeholder="탈퇴"
+                disabled={isRequestingWithdrawal}
+                className="w-full px-3 py-2 rounded-lg text-sm mb-3"
+                style={{ border: '1px solid #fca5a5', backgroundColor: '#fff', color: '#333' }}
+              />
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setShowWithdrawalFlow(false);
+                    setWithdrawalConfirmText('');
+                  }}
+                  disabled={isRequestingWithdrawal}
+                  className="flex-1 px-4 py-2 rounded-lg text-sm"
+                  style={{
+                    backgroundColor: '#fff',
+                    border: '1px solid #e5e5e5',
+                    color: '#666',
+                  }}
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleRequestWithdrawal}
+                  disabled={isRequestingWithdrawal || withdrawalConfirmText !== '탈퇴'}
+                  className="flex-1 px-4 py-2 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: '#dc2626',
+                    color: '#fff',
+                    fontWeight: 600,
+                  }}
+                >
+                  {isRequestingWithdrawal ? '처리 중...' : '탈퇴하기'}
+                </button>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* 서비스 정보 */}
