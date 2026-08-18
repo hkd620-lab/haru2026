@@ -374,7 +374,7 @@ export function LoginPage() {
                           onChange={(event) => setAgreeAge14(event.target.checked)}
                           disabled={isLoading}
                         />
-                        <span className="text-xs" style={{ color: '#374151' }}>만 14세 이상입니다 <span style={{ color: '#dc2626' }}>(필수)</span></span>
+                        <span className="text-xs" style={{ color: '#374151' }}>만 18세 이상입니다 <span style={{ color: '#dc2626' }}>(필수)</span></span>
                       </label>
                     </div>
 
