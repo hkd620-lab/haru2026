@@ -92,7 +92,7 @@ const FLOW = [
   { n: '02', t: 'AI 정리',     d: 'SAYU가 표현만 다듬어 읽기 좋은 글로 정돈합니다.' },
   { n: '03', t: '분류 · 검색', d: '형식과 날짜로 자동 분류되고, 키워드로 찾을 수 있습니다.' },
   { n: '04', t: '통계 · 합본', d: '월별·연도별로 흐름을 보여주고, 한 권으로 묶어 보관합니다.' },
-  { n: '05', t: '평생 자산',   d: '책 소재가 되고, 회고 자료가 되고, 다음 세대에 남길 기록이 됩니다.' },
+  { n: '05', t: '오래 남는 기록',   d: '책 소재가 되고, 회고 자료가 되고, 다음 세대에 남길 기록이 됩니다.' },
 ];
 
 const HERO_FLOW = [
@@ -506,7 +506,7 @@ export function LandingPage() {
             </div>
             <div className="lp-hero__trust">
               <span><Icon name="shield" size={18} color={C.olive} />원문 감정 그대로</span>
-              <span><Icon name="user" size={18} color={C.olive} />평생 사용을 위한 설계</span>
+              <span><Icon name="user" size={18} color={C.olive} />오래 쓰도록 만든 설계</span>
               <span><Icon name="archive" size={18} color={C.olive} />언제든 합본·내보내기</span>
             </div>
           </div>
@@ -522,7 +522,7 @@ export function LandingPage() {
         <div className="lp-wrap lp-divider__inner">
           <span><Icon name="shield" size={14} />원문 감정 보존</span>
           <span><Icon name="spark" size={14} />SAYU AI 정리</span>
-          <span><Icon name="archive" size={14} />평생 자산화</span>
+          <span><Icon name="archive" size={14} />기록 자산화</span>
           <span><Icon name="bookbind" size={14} />합본 · 책 소재</span>
           <span><Icon name="chart" size={14} />통계 · 회고</span>
         </div>
@@ -635,7 +635,7 @@ export function LandingPage() {
       <section className="lp-section" id="flow">
         <div className="lp-wrap">
           <div className="lp-cap">FLOW · 사용 흐름</div>
-          <h2 className="lp-h2">오늘의 한 줄이<br />평생 자료가 되기까지.</h2>
+          <h2 className="lp-h2">오늘의 한 줄이<br />오래 남는 자료가 되기까지.</h2>
           <p className="lp-lead" style={{ maxWidth: 580 }}>
             입력에서 보관까지 다섯 단계. 사용자는 첫 단계만, 나머지는 HARU가 합니다.
           </p>

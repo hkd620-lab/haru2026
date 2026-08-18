@@ -11,8 +11,8 @@ import { getInAppBrowserInfo, type InAppBrowserInfo } from '../utils/inAppBrowse
 import { db } from '../config/firebase';
 
 // 회원가입 동의 시점에 기록해두는 약관/방침 버전 — 추후 개정 시 재동의 대상을 가려낼 때 사용
-const TERMS_VERSION = '2026-08-18';
-const PRIVACY_VERSION = '2026-08-18';
+const TERMS_VERSION = '2026-08-20';
+const PRIVACY_VERSION = '2026-08-20';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -268,6 +268,10 @@ export function LoginPage() {
                   <span className="font-medium">네이버로 계속하기</span>
                 </button>
               </div>
+
+              <p className="mt-2 text-center text-xs" style={{ color: '#9CA3AF' }}>
+                로그인 후 이용약관 및 개인정보 처리 동의 절차가 진행됩니다.
+              </p>
 
               <div className="flex items-center gap-3 my-6">
                 <div className="h-px flex-1" style={{ backgroundColor: '#E5E7EB' }} />

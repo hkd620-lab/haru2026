@@ -20,8 +20,8 @@ import { auth, db } from '../config/firebase';
 import { cleanupDuplicateTokens } from '../services/notificationService';
 
 // LoginPage.tsx의 회원가입 동의와 동일한 버전 문자열 — 약관 개정 시 재동의 대상을 가려낼 때 사용
-const TERMS_VERSION = '2026-08-18';
-const PRIVACY_VERSION = '2026-08-18';
+const TERMS_VERSION = '2026-08-20';
+const PRIVACY_VERSION = '2026-08-20';
 
 export interface LocalUser {
   uid: string;
