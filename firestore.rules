@@ -87,7 +87,8 @@ service cloud.firestore {
         "utmMedium",
         "utmCampaign",
         "signupReferrerOrigin",
-        "signupAt"
+        "signupAt",
+        "consents"
       ];
     }
 
