@@ -654,25 +654,6 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ───── Creator note ───── */}
-      <section className="lp-section tight">
-        <div className="lp-wrap">
-          <div className="lp-creator">
-            <div className="lp-creator__avatar">許</div>
-            <div>
-              <div className="lp-cap" style={{ marginBottom: 14 }}>FROM THE FOUNDER</div>
-              <p className="lp-creator__body">
-                "평생을 가르치는 일에 썼습니다. 돌아보니 가장 아쉬운 것은, 매일 무언가를 적었지만
-                다시 꺼내 쓰기 어려운 형태로 남았다는 점이었습니다.
-                HARU는 글재주를 다투는 도구가 아니라, 평생 쌓아온 자신의 이야기를
-                제 자리에 모아두는 도구입니다."
-              </p>
-              <div className="lp-creator__sig">— 하루랩 (HaruLab) · 창립자 노트</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* ───── Pricing (flag 숨김, 노출 시 현재 정책만) ───── */}
       {SHOW_PRICING && (
         <section className="lp-section lp-section--soft tight" id="pricing">
@@ -919,12 +900,6 @@ const LP_CSS = `
 .lp-step__num{width:64px;height:64px;border-radius:999px;background:var(--card);border:1px solid var(--border);display:grid;place-items:center;font-family:var(--lp-en);font-size:18px;font-weight:600;color:var(--accent-active-dark);margin-bottom:18px;box-shadow:0 1px 3px rgba(74,90,44,0.06);}
 .lp-step__t{font-size:17px;font-weight:700;margin:0 0 6px;color:var(--fg);}
 .lp-step__d{font-size:14px;color:var(--fg-2);line-height:1.55;max-width:180px;}
-
-.lp-creator{background:var(--card);border:1px solid var(--border);border-radius:22px;padding:clamp(32px,5vw,56px);display:grid;grid-template-columns:80px 1fr;gap:clamp(20px,3vw,36px);align-items:flex-start;}
-@media(max-width:760px){.lp-creator{grid-template-columns:1fr;}}
-.lp-creator__avatar{width:80px;height:80px;border-radius:24px;background:linear-gradient(135deg,var(--lilac-light),var(--green-light));display:grid;place-items:center;font-family:var(--lp-serif);font-weight:700;font-size:30px;color:var(--olive-dark);}
-.lp-creator__body{font-family:var(--lp-serif);font-size:20px;line-height:1.85;color:var(--fg);margin:0;}
-.lp-creator__sig{margin-top:22px;font-size:14px;letter-spacing:0.04em;color:var(--fg-2);}
 
 .lp-trial-badge{display:inline-flex;align-items:center;gap:8px;background:var(--olive);color:#fff;border-radius:999px;padding:8px 20px;font-size:14px;font-weight:700;margin-bottom:18px;}
 .lp-plans{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;}
