@@ -1,12 +1,16 @@
 import { HttpsError } from 'firebase-functions/v2/https';
+import { defineSecret } from 'firebase-functions/params';
 import * as logger from 'firebase-functions/logger';
 import * as admin from 'firebase-admin';
+import axios from 'axios';
 
 if (!admin.apps.length) {
   admin.initializeApp();
 }
 
 const db = admin.firestore();
+
+export const PORTONE_API_SECRET = defineSecret('PORTONE_API_SECRET');
 
 // cancelSubscription(index.ts)과 requestAccountDeletion(accountDeletion.ts) 양쪽에서
 // 공유하는 정기구독 해지 로직. index.ts와 accountDeletion.ts 사이의 순환 참조를 피하기 위해
@@ -76,4 +80,56 @@ export async function cancelSubscriptionForUid(
 
   logger.info('✅ 정기구독 해지 예약 — uid: %s, endDate: %s', uid, result.endDate);
   return result;
+}
+
+// 포트원(PortOne)에 등록된 빌링키를 삭제한다. 문서: DELETE /billing-keys/{billingKey}
+// (https://developers.portone.io/api/rest-v2/payment.billingKey)
+// 이미 삭제된 빌링키를 다시 삭제 시도해도(재시도 상황) 404는 정상 케이스로 간주한다.
+async function revokePortOneBillingKey(billingKey: string, apiSecret: string): Promise<void> {
+  try {
+    await axios.delete(`https://api.portone.io/billing-keys/${encodeURIComponent(billingKey)}`, {
+      headers: { Authorization: `PortOne ${apiSecret.trim()}` },
+    });
+  } catch (error: any) {
+    if (error?.response?.status === 404) {
+      return;
+    }
+    throw error;
+  }
+}
+
+// 회원탈퇴 시 billingSubscriptions/{uid}에서 카드 인증정보(billingKey)만 즉시 제거하고,
+// 결제일시·금액·상품명·주문번호 등 거래 기록은 그대로 보존한다(전자상거래법 보존 대상).
+// 포트원 쪽 빌링키도 함께 삭제해, 탈퇴 후 카드사에 재청구가 발생할 수 있는 경로를 없앤다.
+// 3단계(executeScheduledDeletion)에서도 안전망으로 재사용하므로 멱등적으로 동작한다
+// (billingKey가 이미 없으면 아무 일도 하지 않는다).
+export async function revokeBillingKeyForWithdrawal(
+  uid: string,
+  portOneApiSecret: string,
+): Promise<void> {
+  const billingRef = db.doc(`billingSubscriptions/${uid}`);
+  const snap = await billingRef.get();
+  if (!snap.exists) return;
+
+  const billingKey = snap.data()?.billingKey;
+  const nowIso = new Date().toISOString();
+
+  if (typeof billingKey === 'string' && billingKey) {
+    try {
+      await revokePortOneBillingKey(billingKey, portOneApiSecret);
+      logger.info('✅ 포트원 빌링키 삭제 완료 — uid: %s', uid);
+    } catch (error: any) {
+      // 포트원 삭제가 실패해도 탈퇴 처리 자체를 막지 않는다. 다만 잔존 위험이 있으므로
+      // 반드시 로그로 남겨 별도 확인이 가능하도록 한다.
+      logger.error('⚠️ 포트원 빌링키 삭제 실패 — uid: %s, message: %s', uid, error?.message);
+    }
+  }
+
+  await billingRef.set(
+    {
+      billingKey: admin.firestore.FieldValue.delete(),
+      withdrawnAt: nowIso,
+    },
+    { merge: true },
+  );
 }

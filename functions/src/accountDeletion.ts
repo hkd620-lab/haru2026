@@ -3,7 +3,7 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { getStorage } from 'firebase-admin/storage';
 import * as logger from 'firebase-functions/logger';
 import * as admin from 'firebase-admin';
-import { cancelSubscriptionForUid } from './subscriptionHelpers';
+import { cancelSubscriptionForUid, revokeBillingKeyForWithdrawal, PORTONE_API_SECRET } from './subscriptionHelpers';
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -14,17 +14,24 @@ const db = admin.firestore();
 const DELETION_GRACE_PERIOD_DAYS = 30;
 
 // ===== 회원탈퇴 신청 =====
-// 실제 데이터 삭제는 하지 않는다. 정기결제를 먼저 해지하고,
-// users/{uid} 문서에 pending_deletion 플래그와 예정일만 기록한다.
-// (실제 삭제는 executeScheduledDeletion 스케줄 함수가 담당)
+// 실제 기록 데이터 삭제는 하지 않는다(30일 유예 후 executeScheduledDeletion이 담당).
+// 다만 카드 재청구 경로(billingKey)는 유예기간을 두지 않고 신청 즉시 제거한다 —
+// 정기결제 인증정보이므로 탈퇴 후에도 남아있으면 안 되는 위험 자산으로 취급한다.
 export const requestAccountDeletion = onCall(
-  { region: 'asia-northeast3' },
+  { region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
 
     const uid = request.auth.uid;
+
+    // 포트원 빌링키 삭제 + billingSubscriptions에서 billingKey 필드 즉시 제거(withdrawnAt 기록).
+    // 결제일시·금액·상품명·주문번호 등 거래 기록 필드는 건드리지 않고 보존한다.
+    // 포트원 API 호출이 실패해도 탈퇴 신청 자체는 막지 않는다(내부에서 에러를 로그로만 남김).
+    // ⚠️ 반드시 cancelSubscriptionForUid보다 먼저 호출한다 — 그 함수가 billingKey를 자체적으로
+    //    null로 덮어쓰기 때문에, 순서가 바뀌면 실제 빌링키 값을 읽지 못해 포트원 삭제가 스킵된다.
+    await revokeBillingKeyForWithdrawal(uid, PORTONE_API_SECRET.value());
 
     try {
       await cancelSubscriptionForUid(uid);
@@ -37,6 +44,11 @@ export const requestAccountDeletion = onCall(
         throw error;
       }
     }
+
+    // cancelSubscriptionForUid가 billingKey를 null로 다시 채워 넣으므로(구독 해지 로직 자체는
+    // 건드리지 않기 위해 그대로 둠), 필드 자체가 남지 않도록 한 번 더 정리한다.
+    // 이미 삭제된 빌링키라 포트원 API는 재호출되지 않고 Firestore 정리만 수행된다.
+    await revokeBillingKeyForWithdrawal(uid, PORTONE_API_SECRET.value());
 
     const now = new Date();
     const scheduledAt = new Date(now.getTime() + DELETION_GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000);
@@ -89,12 +101,14 @@ export const cancelAccountDeletion = onCall(
   },
 );
 
-// ===== 실제 삭제 (1단계 승인 범위) =====
+// ===== 실제 삭제 (1단계 승인 범위 + billingSubscriptions 처리 변경 승인분) =====
 // [삭제] users/{uid} 하위 서브컬렉션 전체, Storage users/{uid}/ 전체,
 //        email_to_uid, prophecyUsage, shared_records(+comments),
 //        sharedHaruLawCardMeta, haruLawSharePreviews
-// [보존] billingSubscriptions/{uid}, paymentReviews/single/payments/{id}
-//        — 삭제하지 않고 withdrawnAt 필드만 추가
+//        + billingSubscriptions/{uid}.billingKey(포트원 빌링키 포함) — 30일 유예 없이
+//          requestAccountDeletion 신청 즉시 삭제(아래 markBillingRecordsWithdrawn은 안전망)
+// [보존] billingSubscriptions/{uid}의 결제일시·금액·상품명·주문번호 등 거래기록,
+//        paymentReviews/single/payments/{id} — 삭제하지 않고 withdrawnAt 필드만 추가
 // [익명화] aiUsageLogs — uid 필드만 제거, 문서는 유지
 // [유지]  sharedHaruLawCards — 손대지 않음
 const USER_SUBCOLLECTIONS_TO_DELETE = [
@@ -181,11 +195,9 @@ async function anonymizeAiUsageLogs(uid: string): Promise<void> {
 }
 
 async function markBillingRecordsWithdrawn(uid: string, withdrawnAtIso: string): Promise<void> {
-  const billingRef = db.doc(`billingSubscriptions/${uid}`);
-  const billingSnap = await billingRef.get();
-  if (billingSnap.exists) {
-    await billingRef.set({ withdrawnAt: withdrawnAtIso }, { merge: true });
-  }
+  // billingKey 삭제는 requestAccountDeletion에서 신청 즉시 처리되지만, 그 시점에 실패했을
+  // 가능성에 대비해 여기서 한 번 더 시도한다(멱등적 — 이미 지워졌으면 아무 일도 하지 않음).
+  await revokeBillingKeyForWithdrawal(uid, PORTONE_API_SECRET.value());
 
   const paymentsSnap = await db
     .collection('paymentReviews/single/payments')
@@ -214,6 +226,7 @@ export const executeScheduledDeletion = onSchedule(
     schedule: 'every day 04:00',
     timeZone: 'Asia/Seoul',
     timeoutSeconds: 540,
+    secrets: [PORTONE_API_SECRET],
   },
   async () => {
     // Kill switch: config/accountDeletion.enabled 가 true가 아니면 즉시 종료한다.
