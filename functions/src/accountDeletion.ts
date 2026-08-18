@@ -26,6 +26,15 @@ export const requestAccountDeletion = onCall(
 
     const uid = request.auth.uid;
 
+    // Kill switch: config/accountDeletion.enabled 가 true가 아니면 즉시 종료한다.
+    // 활성화는 이 문서 필드를 별도 승인 후 수동으로 true로 바꾸는 방식으로만 한다.
+    const configSnap = await db.doc('config/accountDeletion').get();
+    const enabled = configSnap.exists && configSnap.data()?.enabled === true;
+    if (!enabled) {
+      logger.info('requestAccountDeletion: kill switch OFF(config/accountDeletion.enabled !== true) — 종료', { uid });
+      throw new HttpsError('failed-precondition', '회원탈퇴 기능이 현재 비활성화되어 있습니다.');
+    }
+
     // 포트원 빌링키 삭제 + billingSubscriptions에서 billingKey 필드 즉시 제거(withdrawnAt 기록).
     // 결제일시·금액·상품명·주문번호 등 거래 기록 필드는 건드리지 않고 보존한다.
     // 포트원 API 호출이 실패해도 탈퇴 신청 자체는 막지 않는다(내부에서 에러를 로그로만 남김).
