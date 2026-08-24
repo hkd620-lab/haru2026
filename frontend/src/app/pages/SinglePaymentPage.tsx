@@ -46,6 +46,7 @@ export default function SinglePaymentPage() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [withdrawalConsent, setWithdrawalConsent] = useState(false);
   const redirectProcessedRef = useRef(false);
 
   useEffect(() => {
@@ -91,6 +92,10 @@ export default function SinglePaymentPage() {
     if (authLoading) return;
     if (!user) {
       setResultMessage('HARU2026 이용권은 기록 데이터와 연결되므로 로그인 후 결제할 수 있습니다.');
+      return;
+    }
+    if (!withdrawalConsent) {
+      setResultMessage('청약철회 제한 및 환불정책 안내에 동의해 주세요.');
       return;
     }
     setLoading(true);
@@ -314,10 +319,29 @@ export default function SinglePaymentPage() {
           <p className="mt-1.5 text-xs text-gray-400">이니시스 일반결제 승인을 위해 휴대폰 번호가 필요합니다.</p>
         </div>
 
+        <div className="mb-5 rounded-lg border border-[#e5decf] bg-[#FAF8F2] p-4 text-xs leading-5 text-gray-600">
+          <p>서비스를 즉시 이용하면 청약철회 및 전액 환불이 제한될 수 있음에 동의합니다.</p>
+          <p className="mt-1">
+            결제 후 7일 이내이고 서비스 이용 이력이 없는 경우 전액 환불이 가능합니다.{' '}
+            <Link to="/refund" className="font-bold text-[#1A3C6E] underline">환불정책 확인</Link>
+          </p>
+          <label htmlFor="single-payment-withdrawal-consent" className="mt-3 flex items-start gap-2 cursor-pointer">
+            <input
+              id="single-payment-withdrawal-consent"
+              type="checkbox"
+              checked={withdrawalConsent}
+              onChange={(e) => setWithdrawalConsent(e.target.checked)}
+              className="mt-0.5"
+              style={{ accentColor: '#1A3C6E' }}
+            />
+            <span className="font-bold text-gray-800">청약철회 제한 및 환불정책 안내에 동의합니다.</span>
+          </label>
+        </div>
+
         <button
           type="button"
           onClick={handleSinglePayment}
-          disabled={loading}
+          disabled={loading || !withdrawalConsent}
           className="w-full rounded-lg bg-[#1A3C6E] px-4 py-4 text-base font-black text-white transition-colors hover:bg-[#142f57] disabled:opacity-50"
         >
           {loading ? '결제 처리 중...' : `${selectedProduct.title} 1개월 이용권 결제`}
