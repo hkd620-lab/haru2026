@@ -32,7 +32,7 @@ const agentBg: Record<Hue, string> = {
 };
 const agentBorder: Record<Hue, string> = { green: C.lightGreen, lilac: C.lilac, terracotta: C.peach };
 
-const SHOW_PRICING = import.meta.env.VITE_SHOW_PRICING === 'true';
+const SHOW_PRICING = true;
 
 /* ── 기록 형식 11개 (홈 화면 일반 사용자 노출 기준과 일치) ── */
 const FORMATS: { name: string; icon: string; hue: Hue; cat: string; badge?: string }[] = [
@@ -667,6 +667,7 @@ export function LandingPage() {
                   {p.badge && <span className="lp-plan__badge">{p.badge}</span>}
                   <div className="lp-plan__name">{p.plan}</div>
                   <div className="lp-plan__price">{p.price}<span>{p.period}</span></div>
+                  <div className="lp-plan__vat">부가세 포함</div>
                   <p className="lp-plan__note">{p.note}</p>
                   <ul className="lp-plan__list">
                     {p.bullets.map((b) => (
@@ -912,6 +913,8 @@ const LP_CSS = `
 .lp-plan--hl .lp-plan__price{color:var(--bg);}
 .lp-plan__price span{font-size:14px;font-weight:500;color:var(--fg-muted);margin-left:4px;}
 .lp-plan--hl .lp-plan__price span{color:rgba(245,240,232,0.6);}
+.lp-plan__vat{font-size:12px;font-weight:700;color:var(--fg-muted);margin-top:4px;}
+.lp-plan--hl .lp-plan__vat{color:rgba(245,240,232,0.75);}
 .lp-plan__note{font-size:12px;color:var(--fg-muted);margin:6px 0 20px;}
 .lp-plan--hl .lp-plan__note{color:rgba(245,240,232,0.6);}
 .lp-plan__list{list-style:none;padding:0;margin:0 0 22px;display:flex;flex-direction:column;gap:8px;}

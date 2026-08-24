@@ -278,6 +278,9 @@ export default function SubscriptionPage() {
                 </div>
                 <div className={`text-xs mb-2 ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>/ 월</div>
                 <div className={`text-xs font-bold mb-2 ${isSelected ? 'text-[#bbf7d0]' : 'text-[#047857]'}`}>
+                  부가세 포함
+                </div>
+                <div className={`text-xs font-bold mb-2 ${isSelected ? 'text-[#bbf7d0]' : 'text-[#047857]'}`}>
                   1개월 정기구독 · 매월 자동결제
                 </div>
                 <p className={`text-xs mb-3 ${isSelected ? 'text-gray-200' : 'text-gray-600'}`}>{plan.description}</p>
@@ -292,7 +295,7 @@ export default function SubscriptionPage() {
         </div>
 
         <p className="text-center text-xs mb-3" style={{ color: '#10b981' }}>
-          선택 상품: {selected.orderName} · {selected.priceLabel}/월 · KG이니시스 정기결제 완료 후 즉시 이용 가능
+          선택 상품: {selected.orderName} · {selected.priceLabel}/월 · 부가세 포함 · KG이니시스 정기결제 완료 후 즉시 이용 가능
         </p>
 
         <div className="bg-white rounded-2xl border border-gray-200 p-4 mb-4 space-y-3">

@@ -18,13 +18,13 @@ const INICIS_BILLING_PLANS: Record<PaidPlan, { title: string; orderName: string;
     title: '베이직',
     orderName: 'HARU2026 베이직 1개월 정기구독',
     amount: 4000,
-    priceLabel: '4,000원 / 월',
+    priceLabel: '4,000원 / 월 (부가세 포함)',
   },
   premium: {
     title: '프리미엄',
     orderName: 'HARU2026 프리미엄 1개월 정기구독',
     amount: 6000,
-    priceLabel: '6,000원 / 월',
+    priceLabel: '6,000원 / 월 (부가세 포함)',
   },
 };
 

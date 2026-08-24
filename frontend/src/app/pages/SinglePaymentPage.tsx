@@ -25,14 +25,14 @@ const SINGLE_PAYMENT_PRODUCTS: Record<PaidPlan, {
     title: '베이직',
     orderName: 'HARU2026 베이직 1개월 이용권',
     amount: 4000,
-    amountLabel: '4,000원',
+    amountLabel: '4,000원 (부가세 포함)',
     description: '자동갱신 없이 30일 동안 베이직 기능을 이용합니다.',
   },
   premium: {
     title: '프리미엄',
     orderName: 'HARU2026 프리미엄 1개월 이용권',
     amount: 6000,
-    amountLabel: '6,000원',
+    amountLabel: '6,000원 (부가세 포함)',
     description: '자동갱신 없이 30일 동안 프리미엄 기능을 이용합니다.',
   },
 };
