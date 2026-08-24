@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom';
+import type { ReactNode } from 'react';
 import { BUSINESS_INFO } from '../components/BusinessInfoNotice';
 
 export function BusinessInfoPage() {
   const navigate = useNavigate();
-  const rows = [
+  const rows: { label: string; value: ReactNode; href?: string }[] = [
     { label: '상호명', value: '하루랩 (HaruLab)' },
     { label: '서비스명', value: 'HARU2026' },
     { label: '대표자', value: BUSINESS_INFO.representative },
@@ -13,7 +14,7 @@ export function BusinessInfoPage() {
         <>
           {BUSINESS_INFO.businessNumber}{' '}
           <a
-            href={`https://www.ftc.go.kr/bizCommPop.do?wrkr_no=${BUSINESS_INFO.businessNumber.replace(/-/g, '')}`}
+            href={BUSINESS_INFO.ftcUrl}
             target="_blank"
             rel="noopener noreferrer"
             style={{ color: '#1A3C6E', textDecoration: 'underline' }}
@@ -24,10 +25,11 @@ export function BusinessInfoPage() {
       ),
     },
     { label: '통신판매업신고번호', value: BUSINESS_INFO.mailOrderNumber },
-    { label: '사업장 주소', value: '서울특별시 구로구 중앙로5길 62, 3동 305호' },
-    { label: '연락처', value: '050219336740' },
+    { label: '사업장 주소', value: BUSINESS_INFO.address },
+    { label: '연락처', value: BUSINESS_INFO.phone },
     { label: '이메일', value: BUSINESS_INFO.email },
     { label: '서비스 URL', value: BUSINESS_INFO.site },
+    { label: '공정위 사업자정보 확인', value: BUSINESS_INFO.ftcUrl, href: BUSINESS_INFO.ftcUrl },
   ];
 
   return (
@@ -41,7 +43,7 @@ export function BusinessInfoPage() {
       </h1>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
         <tbody>
-          {rows.map(({ label, value }) => (
+          {rows.map(({ label, value, href }) => (
             <tr key={label} style={{ borderBottom: '1px solid #e5e5e5' }}>
               <td
                 style={{
@@ -55,7 +57,20 @@ export function BusinessInfoPage() {
               >
                 {label}
               </td>
-              <td style={{ padding: '14px 16px', color: '#333' }}>{value}</td>
+              <td style={{ padding: '14px 16px', color: '#333' }}>
+                {href ? (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: '#1A3C6E', textDecoration: 'underline' }}
+                  >
+                    {value}
+                  </a>
+                ) : (
+                  value
+                )}
+              </td>
             </tr>
           ))}
         </tbody>

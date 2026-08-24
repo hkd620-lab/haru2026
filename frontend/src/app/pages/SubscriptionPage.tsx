@@ -57,6 +57,7 @@ export default function SubscriptionPage() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [resultMessage, setResultMessage] = useState('');
+  const [withdrawalConsent, setWithdrawalConsent] = useState(false);
   const redirectProcessedRef = useRef(false);
 
   useEffect(() => {
@@ -117,6 +118,10 @@ export default function SubscriptionPage() {
     if (authLoading) return;
     if (!user) {
       alert('로그인이 필요합니다.');
+      return;
+    }
+    if (!withdrawalConsent) {
+      alert('청약철회 제한 및 환불정책 안내에 동의해 주세요.');
       return;
     }
 
@@ -337,9 +342,28 @@ export default function SubscriptionPage() {
           </div>
         </div>
 
+        <div className="bg-white rounded-2xl border border-gray-200 p-4 mb-3 text-xs leading-5 text-gray-600">
+          <p>서비스를 즉시 이용하면 청약철회 및 전액 환불이 제한될 수 있음에 동의합니다.</p>
+          <p className="mt-1">
+            결제 후 7일 이내이고 서비스 이용 이력이 없는 경우 전액 환불이 가능합니다.{' '}
+            <Link to="/refund" className="font-bold text-[#1A3C6E] underline">환불정책 확인</Link>
+          </p>
+          <label htmlFor="subscription-withdrawal-consent" className="mt-3 flex items-start gap-2 cursor-pointer">
+            <input
+              id="subscription-withdrawal-consent"
+              type="checkbox"
+              checked={withdrawalConsent}
+              onChange={(e) => setWithdrawalConsent(e.target.checked)}
+              className="mt-0.5"
+              style={{ accentColor: '#1A3C6E' }}
+            />
+            <span className="font-bold text-gray-800">청약철회 제한 및 환불정책 안내에 동의합니다.</span>
+          </label>
+        </div>
+
         <button
           onClick={() => handleSubscribe()}
-          disabled={loading || authLoading}
+          disabled={loading || authLoading || !withdrawalConsent}
           className="w-full bg-[#1A3C6E] hover:bg-[#142f57] text-white font-black text-base py-4 rounded-2xl transition-colors disabled:opacity-50 mb-3"
         >
           {loading ? '결제 처리 중...' : `${selected.title} 1개월 정기결제창 열기`}
