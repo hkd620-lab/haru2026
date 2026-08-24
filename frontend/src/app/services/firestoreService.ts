@@ -15,6 +15,7 @@ import {
   Timestamp,
   serverTimestamp,
 } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { auth, db } from '../../firebase';  // ✅ 수정됨: ../firebase → ../../firebase
 import { 
   RecordFormatKorean,
@@ -385,6 +386,21 @@ export interface UserMedication extends MedicationSaveInput {
 }
 
 class FirestoreService {
+  private async recordPaidServiceUsage(
+    userId: string,
+    eventType: 'record_created' | 'record_updated',
+    details: Record<string, unknown>,
+  ): Promise<void> {
+    try {
+      if (!auth.currentUser || auth.currentUser.uid !== userId) return;
+      const functions = getFunctions(undefined, 'asia-northeast3');
+      const recordUsage = httpsCallable(functions, 'recordPaidServiceUsage');
+      await recordUsage({ eventType, details });
+    } catch (error) {
+      console.warn('유료 이용 개시 로그 기록 실패:', error);
+    }
+  }
+
   // 기존 기록 관련 함수들
   async saveRecord(userId: string, recordData: Partial<HaruRecord>): Promise<string> {
     // 수정 7: 같은 날 같은 형식 여러 개 작성 지원 — 고유 ID 생성
@@ -396,6 +412,12 @@ class FirestoreService {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }, { merge: true });
+    void this.recordPaidServiceUsage(userId, 'record_created', {
+      recordId,
+      date: recordData.date,
+      formats: Array.isArray(recordData.formats) ? recordData.formats.join(',') : undefined,
+      source: recordData.source,
+    });
     return recordId;
   }
 
@@ -800,6 +822,10 @@ class FirestoreService {
     console.log('  처리된 데이터:', processedData);
     
     await updateDoc(recordRef, processedData);
+    void this.recordPaidServiceUsage(userId, 'record_updated', {
+      recordId,
+      changedKeys: Object.keys(data).slice(0, 40).join(','),
+    });
   }
 
   async deleteRecord(userId: string, recordId: string) {

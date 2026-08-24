@@ -36,8 +36,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.reviewHaruLawSharedCard = exports.listPendingHaruLawSharedCards = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.cancelSubscription = exports.subscribeWithBillingKey = exports.verifyPayment = exports.generateGrowthTimelinePdf = exports.decryptKakaoXlsx = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
-exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.applyBookPublishRevision = void 0;
+exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.reviewHaruLawSharedCard = exports.listPendingHaruLawSharedCards = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.cancelSubscription = exports.subscribeWithBillingKey = exports.verifyPayment = exports.generateGrowthTimelinePdf = exports.decryptKakaoXlsx = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.recordPaidServiceUsage = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
+exports.executeScheduledDeletion = exports.cancelAccountDeletion = exports.requestAccountDeletion = exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.applyBookPublishRevision = exports.suggestBookPublishRevision = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -55,6 +55,7 @@ const sharp = require('sharp');
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const aiUsageLogger_1 = require("./aiUsageLogger");
+const subscriptionHelpers_1 = require("./subscriptionHelpers");
 // 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
 const genai_1 = require("@google/genai");
 // HARU가계부 카카오뱅크 XLSX 잠금 해제 전용 (msoffcrypto-tool TS 포트)
@@ -87,6 +88,8 @@ const MICROSOFT_CLIENT_ID_SECRET = (0, params_1.defineSecret)('MICROSOFT_CLIENT_
 const MICROSOFT_CLIENT_SECRET_SECRET = (0, params_1.defineSecret)('MICROSOFT_CLIENT_SECRET');
 const GOOGLE_DRIVE_SERVICE_ACCOUNT_SECRET = (0, params_1.defineSecret)('GOOGLE_DRIVE_SERVICE_ACCOUNT');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
+// 관리자 전용 기능 접근 제어용 UID
+const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 // Storage 버킷
 const bucket = () => (0, storage_1.getStorage)().bucket();
 const DEVELOPER_UIDS = new Set([
@@ -731,6 +734,7 @@ exports.polishContent = (0, https_2.onCall)({
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    const uid = request.auth.uid;
     try {
         const { text, mode = 'premium', format } = request.data;
         if (!text || typeof text !== 'string') {
@@ -889,6 +893,13 @@ exports.polishContent = (0, https_2.onCall)({
         catch (commentErr) {
             console.warn('[polishContent] AI 한마디 생성 실패:', commentErr);
         }
+        await logPaidServiceUsage(uid, 'ai_polish', {
+            format: normalizedFormat || 'unknown',
+            mode,
+            inputLength: text.length,
+        }).catch((error) => {
+            logger.warn('유료 이용 개시 로그 기록 실패(polishContent):', { uid, message: error === null || error === void 0 ? void 0 : error.message });
+        });
         return {
             text: polishedText,
             stats: stats,
@@ -1343,6 +1354,65 @@ async function getUserPlan(uid) {
     }
     return 'free';
 }
+const PAID_SERVICE_USAGE_EVENTS = new Set([
+    'record_created',
+    'record_updated',
+    'ai_polish',
+    'timeline_pdf',
+    'result_chat',
+]);
+async function logPaidServiceUsage(uid, eventType, details = {}) {
+    const plan = await getUserPlan(uid);
+    if (plan !== 'basic' && plan !== 'premium') {
+        return { logged: false, plan };
+    }
+    const nowIso = new Date().toISOString();
+    const eventId = `${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
+    const sanitizedDetails = Object.fromEntries(Object.entries(details)
+        .filter(([, value]) => value !== undefined && value !== null)
+        .map(([key, value]) => [key.slice(0, 80), typeof value === 'string' ? value.slice(0, 500) : value]));
+    const usageEventRef = db.doc(`paidServiceUsage/${uid}/events/${eventId}`);
+    const subscriptionRef = db.doc(`users/${uid}/subscription/info`);
+    await usageEventRef.set({
+        uid,
+        plan,
+        eventType,
+        details: sanitizedDetails,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAtIso: nowIso,
+    });
+    await db.runTransaction(async (tx) => {
+        var _a;
+        const subSnap = await tx.get(subscriptionRef);
+        const hasFirstUsage = Boolean((_a = subSnap.data()) === null || _a === void 0 ? void 0 : _a.hasPaidServiceUsage);
+        tx.set(subscriptionRef, {
+            hasPaidServiceUsage: true,
+            ...(hasFirstUsage ? {} : {
+                firstPaidServiceUsageAt: admin.firestore.FieldValue.serverTimestamp(),
+                firstPaidServiceUsageAtIso: nowIso,
+            }),
+            lastPaidServiceUsageAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastPaidServiceUsageAtIso: nowIso,
+            lastPaidServiceUsageType: eventType,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+    });
+    return { logged: true, plan };
+}
+exports.recordPaidServiceUsage = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
+    var _a, _b;
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const rawEventType = String(((_a = request.data) === null || _a === void 0 ? void 0 : _a.eventType) || '').trim();
+    if (!PAID_SERVICE_USAGE_EVENTS.has(rawEventType)) {
+        throw new https_2.HttpsError('invalid-argument', 'eventType 값이 올바르지 않습니다.');
+    }
+    const details = ((_b = request.data) === null || _b === void 0 ? void 0 : _b.details) && typeof request.data.details === 'object'
+        ? request.data.details
+        : {};
+    return logPaidServiceUsage(request.auth.uid, rawEventType, details);
+});
 const RESULT_CHAT_COST_PRICING = {
     pricingVersion: 'raw-token-counts-v1',
     currency: 'USD',
@@ -4511,6 +4581,13 @@ exports.generateGrowthTimelinePdf = (0, https_2.onCall)({ region: 'asia-northeas
         expires: Date.now() + 60 * 60 * 1000,
         responseDisposition: `inline; filename*=UTF-8''${encodeURIComponent(filename)}`,
     });
+    await logPaidServiceUsage(uid, 'timeline_pdf', {
+        itemCount: payload.items.length,
+        title: payload.title,
+        cached: exists,
+    }).catch((error) => {
+        logger.warn('유료 이용 개시 로그 기록 실패(generateGrowthTimelinePdf):', { uid, message: error === null || error === void 0 ? void 0 : error.message });
+    });
     return {
         success: true,
         cached: exists,
@@ -4648,64 +4725,15 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
     return { success: true };
 });
 // ===== 💳 KG이니시스 정기구독 해지 =====
-exports.cancelSubscription = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
+// 실제 해지 로직은 subscriptionHelpers.ts의 cancelSubscriptionForUid로 분리되어 있다.
+// (accountDeletion.ts의 requestAccountDeletion에서도 재사용하기 위함 — index.ts와의 순환 참조 방지)
+exports.cancelSubscription = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] }, async (request) => {
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
     const uid = request.auth.uid;
-    const nowIso = new Date().toISOString();
-    const subRef = db.doc(`users/${uid}/subscription/info`);
-    const billingRef = db.doc(`billingSubscriptions/${uid}`);
-    const result = await db.runTransaction(async (tx) => {
-        const [subSnap, billingSnap] = await Promise.all([
-            tx.get(subRef),
-            tx.get(billingRef),
-        ]);
-        const subData = subSnap.data() || {};
-        const billingData = billingSnap.data() || {};
-        const plan = subData.plan === 'basic' || subData.plan === 'premium'
-            ? subData.plan
-            : billingData.plan === 'basic' || billingData.plan === 'premium'
-                ? billingData.plan
-                : '';
-        if (!plan) {
-            throw new https_2.HttpsError('failed-precondition', '해지할 구독이 없습니다.');
-        }
-        if (subData.status === 'cancelled' || billingData.status === 'cancelled') {
-            return {
-                alreadyCancelled: true,
-                endDate: typeof subData.endDate === 'string' ? subData.endDate : null,
-            };
-        }
-        const endDate = typeof subData.endDate === 'string'
-            ? subData.endDate
-            : typeof billingData.endDate === 'string'
-                ? billingData.endDate
-                : nowIso;
-        tx.set(subRef, {
-            plan,
-            status: 'cancelled',
-            cancelAtPeriodEnd: true,
-            cancelledAt: nowIso,
-            endDate,
-            nextBillingDate: null,
-            updatedAt: nowIso,
-        }, { merge: true });
-        tx.set(billingRef, {
-            uid,
-            plan,
-            status: 'cancelled',
-            billingKey: null,
-            cancelAtPeriodEnd: true,
-            cancelledAt: nowIso,
-            endDate,
-            nextBillingDate: null,
-            billingLockUntil: null,
-            updatedAt: nowIso,
-        }, { merge: true });
-        return { alreadyCancelled: false, endDate };
-    });
-    logger.info('✅ 정기구독 해지 예약 — uid: %s, endDate: %s', uid, result.endDate);
+    await (0, subscriptionHelpers_1.revokeBillingKeyForUid)(uid, PORTONE_API_SECRET.value(), 'subscription_cancelled');
+    const result = await (0, subscriptionHelpers_1.cancelSubscriptionForUid)(uid);
     return {
         success: true,
         ...result,
@@ -4735,7 +4763,7 @@ exports.processRecurringSubscriptions = (0, scheduler_1.onSchedule)({
             plan: 'free',
             status: 'none',
             paymentId: null,
-            billingKey: null,
+            billingKey: admin.firestore.FieldValue.delete(),
             nextBillingDate: null,
             cancelAtPeriodEnd: false,
             expiredAt: nowIso,
@@ -4745,7 +4773,7 @@ exports.processRecurringSubscriptions = (0, scheduler_1.onSchedule)({
             db.doc(`users/${uid}/subscription/info`).set(update, { merge: true }),
             billingRef.set({
                 status: 'expired',
-                billingKey: null,
+                billingKey: admin.firestore.FieldValue.delete(),
                 nextBillingDate: null,
                 expiredAt: nowIso,
                 updatedAt: nowIso,
@@ -6491,6 +6519,9 @@ exports.preloadChapterGrammar = (0, https_2.onCall)({ region: 'asia-northeast3',
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다');
     }
+    if (request.auth.uid !== ADMIN_UID) {
+        throw new https_2.HttpsError('permission-denied', '관리자 전용 기능입니다');
+    }
     const { book, chapter, verses, verseTexts } = request.data;
     const results = [];
     for (const verseKey of verses) {
@@ -6641,7 +6672,7 @@ exports.preloadChapterGrammar = (0, https_2.onCall)({ region: 'asia-northeast3',
     }
     // 6. 완료 후 관리자 FCM 알림
     const totalCorrected = results.filter(r => r.gptCorrected).length;
-    const adminUid = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+    const adminUid = ADMIN_UID;
     try {
         const settingsDoc = await db
             .collection('users').doc(adminUid)
@@ -10139,3 +10170,7 @@ exports.petFoodCheck = (0, https_2.onCall)({
         source: matched.source,
     };
 });
+var accountDeletion_1 = require("./accountDeletion");
+Object.defineProperty(exports, "requestAccountDeletion", { enumerable: true, get: function () { return accountDeletion_1.requestAccountDeletion; } });
+Object.defineProperty(exports, "cancelAccountDeletion", { enumerable: true, get: function () { return accountDeletion_1.cancelAccountDeletion; } });
+Object.defineProperty(exports, "executeScheduledDeletion", { enumerable: true, get: function () { return accountDeletion_1.executeScheduledDeletion; } });

@@ -66,7 +66,7 @@ export async function cancelSubscriptionForUid(
       uid,
       plan,
       status: 'cancelled',
-      billingKey: null,
+      billingKey: admin.firestore.FieldValue.delete(),
       cancelAtPeriodEnd: true,
       cancelledAt: nowIso,
       endDate,
@@ -98,14 +98,16 @@ async function revokePortOneBillingKey(billingKey: string, apiSecret: string): P
   }
 }
 
-// 회원탈퇴 시 billingSubscriptions/{uid}에서 카드 인증정보(billingKey)만 즉시 제거하고,
+type BillingKeyRevocationReason = 'subscription_cancelled' | 'account_withdrawal';
+
+// billingSubscriptions/{uid}에서 카드 인증정보(billingKey)만 제거하고,
 // 결제일시·금액·상품명·주문번호 등 거래 기록은 그대로 보존한다(전자상거래법 보존 대상).
-// 포트원 쪽 빌링키도 함께 삭제해, 탈퇴 후 카드사에 재청구가 발생할 수 있는 경로를 없앤다.
-// 3단계(executeScheduledDeletion)에서도 안전망으로 재사용하므로 멱등적으로 동작한다
-// (billingKey가 이미 없으면 아무 일도 하지 않는다).
-export async function revokeBillingKeyForWithdrawal(
+// 포트원 쪽 빌링키도 함께 삭제해, 해지/탈퇴 후 카드사 재청구 경로를 없앤다.
+// 재시도 안전을 위해 멱등적으로 동작한다(billingKey가 이미 없으면 기록 필드만 보강).
+export async function revokeBillingKeyForUid(
   uid: string,
   portOneApiSecret: string,
+  reason: BillingKeyRevocationReason,
 ): Promise<void> {
   const billingRef = db.doc(`billingSubscriptions/${uid}`);
   const snap = await billingRef.get();
@@ -128,8 +130,17 @@ export async function revokeBillingKeyForWithdrawal(
   await billingRef.set(
     {
       billingKey: admin.firestore.FieldValue.delete(),
-      withdrawnAt: nowIso,
+      billingKeyRevokedAt: nowIso,
+      billingKeyRevocationReason: reason,
+      ...(reason === 'account_withdrawal' ? { withdrawnAt: nowIso } : {}),
     },
     { merge: true },
   );
+}
+
+export async function revokeBillingKeyForWithdrawal(
+  uid: string,
+  portOneApiSecret: string,
+): Promise<void> {
+  await revokeBillingKeyForUid(uid, portOneApiSecret, 'account_withdrawal');
 }

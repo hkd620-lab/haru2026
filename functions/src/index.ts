@@ -15,7 +15,7 @@ const sharp = require('sharp');
 import * as fs from 'fs';
 import * as path from 'path';
 import { logAiUsage } from './aiUsageLogger';
-import { cancelSubscriptionForUid } from './subscriptionHelpers';
+import { cancelSubscriptionForUid, revokeBillingKeyForUid } from './subscriptionHelpers';
 // 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
 import { GoogleGenAI } from '@google/genai';
 // HARU가계부 카카오뱅크 XLSX 잠금 해제 전용 (msoffcrypto-tool TS 포트)
@@ -805,6 +805,7 @@ export const polishContent = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    const uid = request.auth.uid;
     try {
       const { text, mode = 'premium', format } = request.data;
 
@@ -964,6 +965,14 @@ export const polishContent = onCall(
       } catch (commentErr) {
         console.warn('[polishContent] AI 한마디 생성 실패:', commentErr);
       }
+
+      await logPaidServiceUsage(uid, 'ai_polish', {
+        format: normalizedFormat || 'unknown',
+        mode,
+        inputLength: text.length,
+      }).catch((error) => {
+        logger.warn('유료 이용 개시 로그 기록 실패(polishContent):', { uid, message: error?.message });
+      });
 
       return {
         text: polishedText,
@@ -1446,6 +1455,89 @@ async function getUserPlan(uid: string): Promise<UserPlan> {
   }
   return 'free';
 }
+
+type PaidServiceUsageEvent =
+  | 'record_created'
+  | 'record_updated'
+  | 'ai_polish'
+  | 'timeline_pdf'
+  | 'result_chat';
+
+const PAID_SERVICE_USAGE_EVENTS = new Set<PaidServiceUsageEvent>([
+  'record_created',
+  'record_updated',
+  'ai_polish',
+  'timeline_pdf',
+  'result_chat',
+]);
+
+async function logPaidServiceUsage(
+  uid: string,
+  eventType: PaidServiceUsageEvent,
+  details: Record<string, unknown> = {},
+): Promise<{ logged: boolean; plan: UserPlan }> {
+  const plan = await getUserPlan(uid);
+  if (plan !== 'basic' && plan !== 'premium') {
+    return { logged: false, plan };
+  }
+
+  const nowIso = new Date().toISOString();
+  const eventId = `${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
+  const sanitizedDetails = Object.fromEntries(
+    Object.entries(details)
+      .filter(([, value]) => value !== undefined && value !== null)
+      .map(([key, value]) => [key.slice(0, 80), typeof value === 'string' ? value.slice(0, 500) : value]),
+  );
+
+  const usageEventRef = db.doc(`paidServiceUsage/${uid}/events/${eventId}`);
+  const subscriptionRef = db.doc(`users/${uid}/subscription/info`);
+
+  await usageEventRef.set({
+      uid,
+      plan,
+      eventType,
+      details: sanitizedDetails,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAtIso: nowIso,
+    });
+
+  await db.runTransaction(async (tx) => {
+    const subSnap = await tx.get(subscriptionRef);
+    const hasFirstUsage = Boolean(subSnap.data()?.hasPaidServiceUsage);
+    tx.set(subscriptionRef, {
+      hasPaidServiceUsage: true,
+      ...(hasFirstUsage ? {} : {
+        firstPaidServiceUsageAt: admin.firestore.FieldValue.serverTimestamp(),
+        firstPaidServiceUsageAtIso: nowIso,
+      }),
+      lastPaidServiceUsageAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastPaidServiceUsageAtIso: nowIso,
+      lastPaidServiceUsageType: eventType,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  });
+
+  return { logged: true, plan };
+}
+
+export const recordPaidServiceUsage = onCall(
+  { region: 'asia-northeast3' },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const rawEventType = String(request.data?.eventType || '').trim();
+    if (!PAID_SERVICE_USAGE_EVENTS.has(rawEventType as PaidServiceUsageEvent)) {
+      throw new HttpsError('invalid-argument', 'eventType 값이 올바르지 않습니다.');
+    }
+
+    const details = request.data?.details && typeof request.data.details === 'object'
+      ? request.data.details as Record<string, unknown>
+      : {};
+    return logPaidServiceUsage(request.auth.uid, rawEventType as PaidServiceUsageEvent, details);
+  },
+);
 
 type ResultChatSearchPreference = 'auto' | 'record_only' | 'web_confirmed';
 
@@ -5117,6 +5209,14 @@ export const generateGrowthTimelinePdf = onCall(
       responseDisposition: `inline; filename*=UTF-8''${encodeURIComponent(filename)}`,
     });
 
+    await logPaidServiceUsage(uid, 'timeline_pdf', {
+      itemCount: payload.items.length,
+      title: payload.title,
+      cached: exists,
+    }).catch((error) => {
+      logger.warn('유료 이용 개시 로그 기록 실패(generateGrowthTimelinePdf):', { uid, message: error?.message });
+    });
+
     return {
       success: true,
       cached: exists,
@@ -5285,13 +5385,15 @@ export const subscribeWithBillingKey = onCall(
 // 실제 해지 로직은 subscriptionHelpers.ts의 cancelSubscriptionForUid로 분리되어 있다.
 // (accountDeletion.ts의 requestAccountDeletion에서도 재사용하기 위함 — index.ts와의 순환 참조 방지)
 export const cancelSubscription = onCall(
-  { region: 'asia-northeast3' },
+  { region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
 
-    const result = await cancelSubscriptionForUid(request.auth.uid);
+    const uid = request.auth.uid;
+    await revokeBillingKeyForUid(uid, PORTONE_API_SECRET.value(), 'subscription_cancelled');
+    const result = await cancelSubscriptionForUid(uid);
     return {
       success: true,
       ...result,
@@ -5325,7 +5427,7 @@ export const processRecurringSubscriptions = onSchedule(
         plan: 'free',
         status: 'none',
         paymentId: null,
-        billingKey: null,
+        billingKey: admin.firestore.FieldValue.delete(),
         nextBillingDate: null,
         cancelAtPeriodEnd: false,
         expiredAt: nowIso,
@@ -5336,7 +5438,7 @@ export const processRecurringSubscriptions = onSchedule(
         db.doc(`users/${uid}/subscription/info`).set(update, { merge: true }),
         billingRef.set({
           status: 'expired',
-          billingKey: null,
+          billingKey: admin.firestore.FieldValue.delete(),
           nextBillingDate: null,
           expiredAt: nowIso,
           updatedAt: nowIso,
