@@ -15,6 +15,7 @@ import { AssistantOnboardingDetailPage } from './pages/AssistantOnboardingDetail
 import { RecordPage } from './pages/RecordPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { LoginPage } from './pages/LoginPage';
+import { EmailVerificationPage } from './pages/EmailVerificationPage';
 import { AuthCallbackPage } from './pages/AuthCallbackPage';
 import { SayuPage } from './pages/SayuPage';
 import { SayuTogetherPage } from './pages/SayuTogetherPage';
@@ -133,7 +134,11 @@ function AppInitializer() {
 function HomeOrLanding() {
   const { user, loading } = useAuth();
   if (loading) return null;
-  return user ? <HomePageV2 /> : <LandingPage />;
+  if (!user) return <LandingPage />;
+  const requiresEmailVerification =
+    Boolean(user.providerIds?.includes('password')) && user.emailVerified === false;
+  if (requiresEmailVerification) return <EmailVerificationPage />;
+  return <HomePageV2 />;
 }
 
 function DeveloperBookStudioRoute() {

@@ -12,6 +12,8 @@ import {
   onAuthStateChanged,
   updateProfile as firebaseUpdateProfile,
   GoogleAuthProvider,
+  sendEmailVerification,
+  reload,
   User as FirebaseUser
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
@@ -24,6 +26,7 @@ export interface LocalUser {
   photoURL: string | null;
   providerId?: string;
   providerIds?: string[];
+  emailVerified: boolean;
 }
 
 interface AuthContextType {
@@ -38,6 +41,8 @@ interface AuthContextType {
   naverSignIn: () => Promise<void>;
   signOut: () => Promise<void>;
   updateUserProfile: (updates: { displayName?: string; photoURL?: string }) => Promise<void>;
+  sendVerificationEmail: () => Promise<void>;
+  refreshCurrentUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -57,6 +62,7 @@ const mapUser = (user: FirebaseUser): LocalUser => ({
   photoURL: user.photoURL ?? null,
   providerId: user.providerData[0]?.providerId ?? 'custom',
   providerIds: user.providerData.map((provider) => provider.providerId),
+  emailVerified: user.emailVerified,
 });
 
 function getAuthErrorMessage(error: any): string {
@@ -158,6 +164,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      try {
+        await sendEmailVerification(userCredential.user);
+      } catch (verificationError) {
+        console.error('Verification email send error:', verificationError);
+      }
       return { user: mapUser(userCredential.user) };
     } catch (error: any) {
       console.error('Sign up error:', error);
@@ -232,6 +243,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           'User',
         photoURL: kakaoUser.photoURL || null,
         providerId: 'kakao',
+        emailVerified: true,
       };
 
       setUser(localUser);
@@ -259,6 +271,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           'User',
         photoURL: naverUser.photoURL || null,
         providerId: 'naver',
+        emailVerified: true,
       };
 
       setUser(localUser);
@@ -285,6 +298,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(mapUser(auth.currentUser));
   };
 
+  const sendVerificationEmail = async () => {
+    if (!auth.currentUser) return;
+    try {
+      await sendEmailVerification(auth.currentUser);
+    } catch (error: any) {
+      console.error('Send verification email error:', error);
+      throw new Error(getAuthErrorMessage(error));
+    }
+  };
+
+  const refreshCurrentUser = async () => {
+    if (!auth.currentUser) return;
+    try {
+      await reload(auth.currentUser);
+      setUser(mapUser(auth.currentUser));
+    } catch (error: any) {
+      console.error('Refresh current user error:', error);
+      throw new Error(getAuthErrorMessage(error));
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -297,6 +331,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     naverSignIn,
     signOut,
     updateUserProfile,
+    sendVerificationEmail,
+    refreshCurrentUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

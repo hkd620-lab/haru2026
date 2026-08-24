@@ -86,7 +86,7 @@ export function LoginPage() {
         toast.success('로그인되었습니다.');
       } else {
         await signUp(normalizedEmail, password);
-        toast.success('회원가입이 완료되었습니다.');
+        toast.success('인증메일을 보냈습니다. 메일함에서 인증을 완료한 뒤 다시 확인해 주세요.');
       }
       navigate('/');
     } catch (error: any) {
