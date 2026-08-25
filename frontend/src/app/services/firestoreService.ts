@@ -2054,6 +2054,10 @@ class FirestoreService {
     if (key.endsWith('_imageMeta')) return true;
     if (key.endsWith('_storagePath')) return true;
     if (key.endsWith('_storagePaths')) return true;
+    // UI 설정성 필드 — raw/records 원본에는 유지, summary/TXT 본문에서만 제외
+    if (key === 'rating' || key.endsWith('_rating')) return true;
+    if (key === 'style' || key.endsWith('_style')) return true;
+    if (key === 'mode' || key.endsWith('_mode')) return true;
     return false;
   }
 
