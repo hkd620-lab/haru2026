@@ -2048,6 +2048,15 @@ class FirestoreService {
     'storagePath', 'storagePaths',
   ]);
 
+  private isExportBodyExcluded(key: string): boolean {
+    if (this.EXPORT_EXCLUDED_FIELDS.has(key)) return true;
+    if (key.endsWith('_images')) return true;
+    if (key.endsWith('_imageMeta')) return true;
+    if (key.endsWith('_storagePath')) return true;
+    if (key.endsWith('_storagePaths')) return true;
+    return false;
+  }
+
   private readonly EXPORT_FORMAT_PREFIXES = [
     'diary', 'essay', 'mission', 'report', 'work', 'travel',
     'reading', 'garden', 'pet', 'child', 'parenting', 'stock',
@@ -2160,8 +2169,7 @@ class FirestoreService {
       recordsByDate[date] = groups[date].map(record => {
         const summary: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(record)) {
-          if (this.EXPORT_EXCLUDED_FIELDS.has(k)) continue;
-          if (k.endsWith('_images')) continue;
+          if (this.isExportBodyExcluded(k)) continue;
           if (v === null || v === undefined) continue;
           summary[k] = v;
         }
@@ -2223,8 +2231,7 @@ class FirestoreService {
         lines.push(`  [${formats}]`);
 
         for (const [key, value] of Object.entries(record)) {
-          if (this.EXPORT_EXCLUDED_FIELDS.has(key)) continue;
-          if (key.endsWith('_images')) continue;
+          if (this.isExportBodyExcluded(key)) continue;
           if (value === null || value === undefined) continue;
 
           let displayKey = key;
