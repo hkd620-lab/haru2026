@@ -2054,14 +2054,77 @@ class FirestoreService {
     'memo', 'growthTimeline', 'haruraw', 'ledger', 'voiding',
   ];
 
+  private toExportTimestamp(v: unknown): number {
+    if (!v) return 0;
+    // Firestore Timestamp instance (toMillis method)
+    if (typeof (v as any).toMillis === 'function') return (v as any).toMillis();
+    // Plain {seconds, nanoseconds} object
+    if (typeof (v as any).seconds === 'number') return (v as any).seconds * 1000;
+    // ISO string or date-parseable string
+    const ms = Date.parse(String(v));
+    return isNaN(ms) ? 0 : ms;
+  }
+
   private extractExportImages(record: HaruRecord): string[] {
-    const urls: string[] = [];
+    const refs = new Set<string>();
+
+    // *_images fields for all format prefixes
     for (const prefix of this.EXPORT_FORMAT_PREFIXES) {
       const val = record[`${prefix}_images`];
-      if (val) urls.push(...getPublicImageUrls(val));
+      if (val) getPublicImageUrls(val).forEach(u => refs.add(u));
     }
-    if (record.images) urls.push(...getPublicImageUrls(record.images));
-    return Array.from(new Set(urls));
+
+    // top-level images field
+    if (record.images) getPublicImageUrls(record.images).forEach(u => refs.add(u));
+
+    // imageMeta: may be array of {url, path, ...} or {url, path}
+    const addImageMeta = (meta: unknown) => {
+      if (!meta) return;
+      const arr = Array.isArray(meta) ? meta : [meta];
+      for (const item of arr) {
+        if (typeof item === 'object' && item !== null) {
+          const url = (item as any).url || (item as any).downloadUrl || (item as any).downloadURL;
+          const path = (item as any).path || (item as any).storagePath;
+          if (typeof url === 'string' && url.startsWith('https://')) refs.add(url);
+          else if (typeof path === 'string' && path) refs.add(path);
+        } else if (typeof item === 'string' && item) {
+          refs.add(item);
+        }
+      }
+    };
+    addImageMeta(record.imageMeta);
+
+    // storagePath / storagePaths
+    if (typeof record.storagePath === 'string' && record.storagePath) refs.add(record.storagePath);
+    if (record.storagePaths) {
+      const arr = Array.isArray(record.storagePaths) ? record.storagePaths : [record.storagePaths];
+      for (const p of arr) { if (typeof p === 'string' && p) refs.add(p); }
+    }
+
+    // scan all fields for photo/file/attachment keys that contain URL/path strings
+    const MEDIA_KEY_RE = /photo|file|attach/i;
+    for (const [k, v] of Object.entries(record)) {
+      if (!MEDIA_KEY_RE.test(k)) continue;
+      if (typeof v === 'string' && v) {
+        refs.add(v);
+      } else if (Array.isArray(v)) {
+        for (const item of v) { if (typeof item === 'string' && item) refs.add(item); }
+      }
+    }
+
+    // per-format imageMeta / photo / file / attach sub-fields
+    for (const prefix of this.EXPORT_FORMAT_PREFIXES) {
+      addImageMeta(record[`${prefix}_imageMeta`]);
+      for (const suffix of ['photo', 'file', 'attachment', 'attachments', 'photos']) {
+        const val = record[`${prefix}_${suffix}`];
+        if (typeof val === 'string' && val) refs.add(val);
+        else if (Array.isArray(val)) {
+          for (const item of val) { if (typeof item === 'string' && item) refs.add(item); }
+        }
+      }
+    }
+
+    return Array.from(refs);
   }
 
   private groupRecordsForExport(records: HaruRecord[]): Record<string, HaruRecord[]> {
@@ -2072,11 +2135,9 @@ class FirestoreService {
       groups[key].push(record);
     }
     for (const key of Object.keys(groups)) {
-      groups[key].sort((a, b) => {
-        const at = a.createdAt ? new Date(String(a.createdAt)).getTime() : 0;
-        const bt = b.createdAt ? new Date(String(b.createdAt)).getTime() : 0;
-        return bt - at;
-      });
+      groups[key].sort((a, b) =>
+        this.toExportTimestamp(b.createdAt) - this.toExportTimestamp(a.createdAt)
+      );
     }
     return groups;
   }
