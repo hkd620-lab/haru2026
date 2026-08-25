@@ -22,6 +22,7 @@ export function SettingsPage() {
   const navigate = useNavigate();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
+  const [isExportingText, setIsExportingText] = useState(false);
   const [isCancellingSubscription, setIsCancellingSubscription] = useState(false);
   const [showWithdrawalFlow, setShowWithdrawalFlow] = useState(false);
   const [withdrawalConfirmText, setWithdrawalConfirmText] = useState('');
@@ -382,30 +383,58 @@ export function SettingsPage() {
       toast.error('로그인이 필요합니다.');
       return;
     }
-    
+
     try {
       toast.info('데이터를 내보내는 중...');
-      
+
       const blob = await firestoreService.exportData(user.uid);
-      
+
       const today = new Date().toISOString().split('T')[0];
       const filename = `HARU_백업_${today}.json`;
-      
+
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.download = filename;
-      
+
       document.body.appendChild(link);
       link.click();
-      
+
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      
+
       toast.success('데이터 내보내기 완료!');
     } catch (error) {
       console.error('내보내기 실패:', error);
       toast.error('내보내기에 실패했습니다.');
+    }
+  };
+
+  const handleExportDataAsText = async () => {
+    if (!user?.uid) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+    setIsExportingText(true);
+    try {
+      toast.info('기록을 내보내는 중...');
+      const blob = await firestoreService.exportDataAsText(user.uid);
+      const today = new Date().toISOString().split('T')[0];
+      const filename = `HARU_기록_${today}.txt`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success('기록 내보내기 완료!');
+    } catch (error) {
+      console.error('TXT 내보내기 실패:', error);
+      toast.error('내보내기에 실패했습니다.');
+    } finally {
+      setIsExportingText(false);
     }
   };
 
@@ -921,7 +950,27 @@ export function SettingsPage() {
                   데이터 내보내기 (JSON)
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: '#999' }}>
-                  모든 기록을 JSON 파일로 저장합니다
+                  모든 기록을 날짜별로 정리한 JSON 파일로 저장합니다
+                </p>
+              </div>
+            </button>
+
+            <button
+              onClick={handleExportDataAsText}
+              disabled={isExportingText}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-80 text-left disabled:opacity-50"
+              style={{
+                backgroundColor: '#FDF6C3',
+                border: '1px solid #d0dff0',
+              }}
+            >
+              <Download className="w-4 h-4" style={{ color: '#1A3C6E' }} />
+              <div>
+                <p className="text-sm" style={{ color: '#1A3C6E', fontWeight: 500 }}>
+                  {isExportingText ? '내보내는 중...' : '기록 내보내기 (TXT)'}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: '#999' }}>
+                  내 기록을 날짜별로 읽기 쉬운 텍스트 파일로 저장합니다
                 </p>
               </div>
             </button>
@@ -1381,15 +1430,30 @@ export function SettingsPage() {
                 <li>결제 기록은 법령에 따라 일정 기간 보관됩니다</li>
               </ul>
 
-              <button
-                type="button"
-                onClick={handleExportData}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm transition-all hover:opacity-90 mb-4"
-                style={{ backgroundColor: '#1A3C6E', color: '#fff', fontWeight: 600 }}
-              >
-                <Download className="w-4 h-4" />
-                탈퇴 전 기록 내보내기
-              </button>
+              <p className="text-xs mb-3 p-3 rounded-lg leading-relaxed" style={{ backgroundColor: '#FFF3CD', color: '#856404' }}>
+                ⚠️ 사진·첨부파일은 JSON/TXT 파일에 직접 포함되지 않고 저장 위치 주소로 표시됩니다. 보관이 필요한 사진은 탈퇴 전에 직접 열어 저장해 주세요.
+              </p>
+              <div className="flex gap-2 mb-4">
+                <button
+                  type="button"
+                  onClick={handleExportData}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-all hover:opacity-90"
+                  style={{ backgroundColor: '#1A3C6E', color: '#fff', fontWeight: 600 }}
+                >
+                  <Download className="w-4 h-4" />
+                  탈퇴 전 내보내기 (JSON)
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportDataAsText}
+                  disabled={isExportingText}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-all hover:opacity-90 disabled:opacity-50"
+                  style={{ backgroundColor: '#4B6FA8', color: '#fff', fontWeight: 600 }}
+                >
+                  <Download className="w-4 h-4" />
+                  탈퇴 전 내보내기 (TXT)
+                </button>
+              </div>
 
               <label className="text-xs block mb-1" style={{ color: '#666' }}>
                 계속하려면 "탈퇴"를 입력하세요

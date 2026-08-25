@@ -2042,30 +2042,280 @@ class FirestoreService {
     }
   }
 
+  private readonly EXPORT_EXCLUDED_FIELDS = new Set([
+    'id', 'uid', 'userId', 'recordId', 'date', 'formats',
+    'createdAt', 'updatedAt', 'deletedAt', 'imageMeta',
+    'storagePath', 'storagePaths',
+  ]);
+
+  private isExportBodyExcluded(key: string): boolean {
+    if (this.EXPORT_EXCLUDED_FIELDS.has(key)) return true;
+    if (key.endsWith('_images')) return true;
+    if (key.endsWith('_imageMeta')) return true;
+    if (key.endsWith('_storagePath')) return true;
+    if (key.endsWith('_storagePaths')) return true;
+    // UI 설정성 필드 — raw/records 원본에는 유지, summary/TXT 본문에서만 제외
+    if (key === 'rating' || key.endsWith('_rating')) return true;
+    if (key === 'style' || key.endsWith('_style')) return true;
+    if (key === 'mode' || key.endsWith('_mode')) return true;
+    return false;
+  }
+
+  private readonly EXPORT_FORMAT_PREFIXES = [
+    'diary', 'essay', 'mission', 'report', 'work', 'travel',
+    'reading', 'garden', 'pet', 'child', 'parenting', 'stock',
+    'memo', 'growthTimeline', 'haruraw', 'ledger', 'voiding',
+  ];
+
+  private toExportTimestamp(v: unknown): number {
+    if (!v) return 0;
+    // Firestore Timestamp instance (toMillis method)
+    if (typeof (v as any).toMillis === 'function') return (v as any).toMillis();
+    // Plain {seconds, nanoseconds} object
+    if (typeof (v as any).seconds === 'number') return (v as any).seconds * 1000;
+    // ISO string or date-parseable string
+    const ms = Date.parse(String(v));
+    return isNaN(ms) ? 0 : ms;
+  }
+
+  private extractExportImages(record: HaruRecord): string[] {
+    const refs = new Set<string>();
+
+    // *_images fields for all format prefixes
+    for (const prefix of this.EXPORT_FORMAT_PREFIXES) {
+      const val = record[`${prefix}_images`];
+      if (val) getPublicImageUrls(val).forEach(u => refs.add(u));
+    }
+
+    // top-level images field
+    if (record.images) getPublicImageUrls(record.images).forEach(u => refs.add(u));
+
+    // imageMeta: may be array of {url, path, ...} or {url, path}
+    const addImageMeta = (meta: unknown) => {
+      if (!meta) return;
+      const arr = Array.isArray(meta) ? meta : [meta];
+      for (const item of arr) {
+        if (typeof item === 'object' && item !== null) {
+          const url = (item as any).url || (item as any).downloadUrl || (item as any).downloadURL;
+          const path = (item as any).path || (item as any).storagePath;
+          if (typeof url === 'string' && url.startsWith('https://')) refs.add(url);
+          else if (typeof path === 'string' && path) refs.add(path);
+        } else if (typeof item === 'string' && item) {
+          refs.add(item);
+        }
+      }
+    };
+    addImageMeta(record.imageMeta);
+
+    // storagePath / storagePaths
+    if (typeof record.storagePath === 'string' && record.storagePath) refs.add(record.storagePath);
+    if (record.storagePaths) {
+      const arr = Array.isArray(record.storagePaths) ? record.storagePaths : [record.storagePaths];
+      for (const p of arr) { if (typeof p === 'string' && p) refs.add(p); }
+    }
+
+    // scan all fields for photo/file/attachment keys that contain URL/path strings
+    const MEDIA_KEY_RE = /photo|file|attach/i;
+    for (const [k, v] of Object.entries(record)) {
+      if (!MEDIA_KEY_RE.test(k)) continue;
+      if (typeof v === 'string' && v) {
+        refs.add(v);
+      } else if (Array.isArray(v)) {
+        for (const item of v) { if (typeof item === 'string' && item) refs.add(item); }
+      }
+    }
+
+    // per-format imageMeta / photo / file / attach sub-fields
+    for (const prefix of this.EXPORT_FORMAT_PREFIXES) {
+      addImageMeta(record[`${prefix}_imageMeta`]);
+      for (const suffix of ['photo', 'file', 'attachment', 'attachments', 'photos']) {
+        const val = record[`${prefix}_${suffix}`];
+        if (typeof val === 'string' && val) refs.add(val);
+        else if (Array.isArray(val)) {
+          for (const item of val) { if (typeof item === 'string' && item) refs.add(item); }
+        }
+      }
+    }
+
+    return Array.from(refs);
+  }
+
+  private groupRecordsForExport(records: HaruRecord[]): Record<string, HaruRecord[]> {
+    const groups: Record<string, HaruRecord[]> = {};
+    for (const record of records) {
+      const key = record.date ? String(record.date).slice(0, 10) : '날짜 미지정';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(record);
+    }
+    for (const key of Object.keys(groups)) {
+      groups[key].sort((a, b) =>
+        this.toExportTimestamp(b.createdAt) - this.toExportTimestamp(a.createdAt)
+      );
+    }
+    return groups;
+  }
+
+  private sortedExportDates(groups: Record<string, HaruRecord[]>): string[] {
+    return Object.keys(groups).sort((a, b) => {
+      if (a === '날짜 미지정') return 1;
+      if (b === '날짜 미지정') return -1;
+      return b.localeCompare(a);
+    });
+  }
+
+  private buildJsonExportPayload(userId: string, records: HaruRecord[]): object {
+    const exportedAt = new Date().toISOString();
+    const groups = this.groupRecordsForExport(records);
+    const dates = this.sortedExportDates(groups);
+
+    const recordsByDate: Record<string, { summary: Record<string, unknown>; images: string[]; raw: HaruRecord }[]> = {};
+    for (const date of dates) {
+      recordsByDate[date] = groups[date].map(record => {
+        const summary: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(record)) {
+          if (this.isExportBodyExcluded(k)) continue;
+          if (v === null || v === undefined) continue;
+          summary[k] = v;
+        }
+        return { summary, images: this.extractExportImages(record), raw: record };
+      });
+    }
+
+    return {
+      exportInfo: {
+        service: 'HARU2026',
+        exportedAt,
+        totalRecords: records.length,
+        scope: 'all_records',
+        sortOrder: 'date_desc',
+        includesOriginalRecords: true,
+        includesImageFiles: false,
+        imageNote: '사진·첨부파일은 이 파일에 포함되지 않습니다. 사진이 있는 기록에는 저장 위치 주소가 표시됩니다. 계정 상태 또는 저장 권한에 따라 나중에 열리지 않을 수 있습니다.',
+      },
+      recordsByDate,
+      exportDate: exportedAt,
+      userId,
+      totalRecords: records.length,
+      records,
+    };
+  }
+
+  private buildTextExportContent(records: HaruRecord[]): string {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+    const lines: string[] = [
+      '============================',
+      'HARU2026 기록 내보내기',
+      '============================',
+      `내보내기 일시: ${dateStr}`,
+      '내보내기 범위: 전체 기록',
+      `총 기록 수: ${records.length}건`,
+      '정렬 기준: 기록 날짜 최신순, 같은 날짜 안에서는 작성일 최신순',
+      '',
+      '[사진·첨부파일 안내]',
+      '이 파일에는 이미지 파일 자체가 포함되어 있지 않습니다.',
+      '사진이 있는 기록에는 저장 위치 주소가 표시됩니다.',
+      '주소는 계정 상태 또는 저장 권한에 따라 나중에 열리지 않을 수 있습니다.',
+      '탈퇴 전에 사진을 보관하려면 해당 주소를 열어 직접 저장해 주세요.',
+      '============================',
+      '',
+    ];
+
+    const groups = this.groupRecordsForExport(records);
+    const dates = this.sortedExportDates(groups);
+
+    for (const date of dates) {
+      lines.push(`[ ${date} ]`, '');
+      for (const record of groups[date]) {
+        const formats = Array.isArray(record.formats) && record.formats.length > 0
+          ? record.formats.join(', ')
+          : '형식 없음';
+        lines.push(`  [${formats}]`);
+
+        for (const [key, value] of Object.entries(record)) {
+          if (this.isExportBodyExcluded(key)) continue;
+          if (value === null || value === undefined) continue;
+
+          let displayKey = key;
+          for (const prefix of this.EXPORT_FORMAT_PREFIXES) {
+            if (key.startsWith(`${prefix}_`)) {
+              displayKey = key.slice(prefix.length + 1);
+              break;
+            }
+          }
+
+          let displayValue: string;
+          try {
+            if (typeof value === 'string') {
+              const parsed = JSON.parse(value);
+              if (Array.isArray(parsed)) {
+                displayValue = (parsed as unknown[]).map(v => String(v ?? '')).filter(Boolean).join(', ');
+              } else if (parsed && typeof parsed === 'object') {
+                displayValue = Object.entries(parsed as Record<string, unknown>)
+                  .filter(([, v]) => v !== null && v !== undefined && String(v).trim())
+                  .map(([k, v]) => `${k}: ${v}`)
+                  .join(' / ');
+              } else {
+                displayValue = String(parsed ?? '');
+              }
+            } else if (Array.isArray(value)) {
+              displayValue = (value as unknown[]).map(v => String(v ?? '')).filter(Boolean).join(', ');
+            } else if (typeof value === 'object') {
+              displayValue = JSON.stringify(value);
+            } else {
+              displayValue = String(value);
+            }
+          } catch {
+            displayValue = typeof value === 'string' ? value : String(value);
+          }
+
+          if (!displayValue.trim()) continue;
+          lines.push(`  ${displayKey}: ${displayValue}`);
+        }
+
+        const images = this.extractExportImages(record);
+        if (images.length > 0) {
+          lines.push('  사진/첨부파일:');
+          images.forEach(url => lines.push(`    ${url}`));
+        } else {
+          lines.push('  사진/첨부파일: 없음');
+        }
+
+        lines.push('', '  ----', '');
+      }
+      lines.push('');
+    }
+
+    return lines.join('\n');
+  }
+
   /**
    * 모든 데이터 JSON으로 내보내기
    */
   async exportData(userId: string): Promise<Blob> {
     try {
       const records = await this.getRecords(userId);
-      
-      // 내보낼 데이터 구조
-      const exportData = {
-        exportDate: new Date().toISOString(),
-        userId: userId,
-        totalRecords: records.length,
-        records: records,
-      };
-      
-      // JSON 문자열로 변환 (들여쓰기 2칸)
-      const jsonString = JSON.stringify(exportData, null, 2);
-      
-      // Blob 생성
-      const blob = new Blob([jsonString], { type: 'application/json' });
-      
-      return blob;
+      const payload = this.buildJsonExportPayload(userId, records);
+      const jsonString = JSON.stringify(payload, null, 2);
+      return new Blob([jsonString], { type: 'application/json' });
     } catch (error) {
       console.error('데이터 내보내기 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 모든 기록을 TXT로 내보내기 (Blob 반환만 담당, 파일명·다운로드는 호출부에서 처리)
+   */
+  async exportDataAsText(userId: string): Promise<Blob> {
+    try {
+      const records = await this.getRecords(userId);
+      const text = this.buildTextExportContent(records);
+      return new Blob([text], { type: 'text/plain;charset=utf-8' });
+    } catch (error) {
+      console.error('TXT 내보내기 실패:', error);
       throw error;
     }
   }
