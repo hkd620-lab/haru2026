@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
@@ -40,6 +40,7 @@ export function TodayQuote({ defaultTab, hideTabSwitcher = false }: TodayQuotePr
   const { user } = useAuth();
   const { isPremium } = useSubscription();
   const location = useLocation();
+  const navigate = useNavigate();
   const [quoteType, setQuoteType] = useState<QuoteType>(defaultTab ?? 'classic');
 
   useEffect(() => {
@@ -74,7 +75,9 @@ export function TodayQuote({ defaultTab, hideTabSwitcher = false }: TodayQuotePr
   const handleQuoteTypeChange = async (next: QuoteType) => {
     if (next === quoteType) return;
     if (next === 'bible' && !isPremium) {
-      toast.error('구독자 전용 기능입니다');
+      toast('성경 말씀은 프리미엄 구독에서 이용할 수 있습니다.', {
+        action: { label: '구독하기', onClick: () => navigate('/subscription') },
+      });
       return;
     }
     setQuoteType(next);
@@ -133,8 +136,9 @@ export function TodayQuote({ defaultTab, hideTabSwitcher = false }: TodayQuotePr
                 backgroundColor: isBible ? '#1A3C6E' : 'transparent',
                 color: isBible ? '#fff' : 'rgba(26,60,110,0.55)',
               }}
+              title={isPremium ? '성경 말씀' : '🔒 성경 말씀 · 프리미엄 전용'}
             >
-              ✝️ 성경 말씀
+              ✝️ 성경 말씀{!isPremium && ' 🔒'}
             </button>
           </div>
         )}

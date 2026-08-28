@@ -6094,7 +6094,21 @@ export function SayuPage() {
                     </p>
                   </div>
 
-                  {/* 하루LAW PREMIUM 익명 공유 */}
+                  {/* 하루LAW PREMIUM 익명 공유 — 미구독자에게도 기능 존재와 조건을 알린다(잠금 안내) */}
+                  {!(isPremium || isDeveloper) && (
+                    <div style={{ ...sectionStyle, backgroundColor: '#F8FAFC', borderColor: '#E2E8F0', marginBottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: '#64748B', margin: '0 0 2px' }}>🔒 익명 공유 · 프리미엄 전용</p>
+                        <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>개인정보를 AI로 제거한 뒤 다른 프리미엄 회원과 공유할 수 있습니다.</p>
+                      </div>
+                      <button
+                        onClick={() => navigate('/subscription')}
+                        style={{ padding: '8px 14px', backgroundColor: '#fff', color: '#1A3C6E', border: '1px solid #CBD5E1', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: 12 }}
+                      >
+                        구독하기
+                      </button>
+                    </div>
+                  )}
                   {(isPremium || isDeveloper) && (() => {
                     const ss = harurawModal.shareStatus;
 

@@ -289,7 +289,7 @@ export function FormatStatisticsPage() {
           <button
             onClick={() => {
               if (!isPremium) {
-                alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 6,000원으로 시작해 보세요!');
+                alert('월간 통계는 프리미엄 구독에서 이용할 수 있습니다.\n주간 통계는 지금 요금제로 바로 볼 수 있습니다.');
                 window.location.href = '/subscription';
                 return;
               }
@@ -302,13 +302,14 @@ export function FormatStatisticsPage() {
               border: periodMode === 'month' ? 'none' : '1px solid #e5e5e5',
               opacity: isPremium ? 1 : 0.7,
             }}
+            title={isPremium ? '월간 통계' : '🔒 월간 통계 · 프리미엄 전용'}
           >
             월간{!isPremium && ' 🔒'}
           </button>
           <button
             onClick={() => {
               if (!isPremium) {
-                alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 6,000원으로 시작해 보세요!');
+                alert('사용자 정의 기간 통계는 프리미엄 구독에서 이용할 수 있습니다.\n주간 통계는 지금 요금제로 바로 볼 수 있습니다.');
                 window.location.href = '/subscription';
                 return;
               }
@@ -321,10 +322,16 @@ export function FormatStatisticsPage() {
               border: periodMode === 'custom' ? 'none' : '1px solid #e5e5e5',
               opacity: isPremium ? 1 : 0.7,
             }}
+            title={isPremium ? '사용자 정의 기간 통계' : '🔒 사용자 정의 기간 통계 · 프리미엄 전용'}
           >
             사용자 정의{!isPremium && ' 🔒'}
           </button>
         </div>
+        {!isPremium && (
+          <p className="text-xs mb-4" style={{ color: '#999' }}>
+            🔒 월간·사용자 정의 기간 통계는 프리미엄 구독에서 이용할 수 있습니다.
+          </p>
+        )}
 
         {/* 주간 선택 */}
         {periodMode === 'week' && (

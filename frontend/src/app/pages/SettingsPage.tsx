@@ -194,7 +194,9 @@ export function SettingsPage() {
     if (next === quoteType) return;
 
     if (next === 'bible' && !isPremium) {
-      toast.error('구독자 전용 기능입니다');
+      toast('성경 말씀은 프리미엄 구독에서 이용할 수 있습니다.', {
+        action: { label: '구독하기', onClick: () => navigate('/subscription') },
+      });
       return;
     }
 
@@ -831,7 +833,7 @@ export function SettingsPage() {
                     className="ml-1 text-xs"
                     style={{ color: quoteType === 'bible' ? '#fbbf24' : '#999' }}
                   >
-                    (구독자)
+                    🔒 프리미엄
                   </span>
                 )}
               </span>
@@ -840,7 +842,7 @@ export function SettingsPage() {
 
           {!isPremium && (
             <p className="text-xs mt-3" style={{ color: '#999' }}>
-              💡 성경 말씀은 구독자 전용 기능입니다.
+              💡 성경 말씀은 프리미엄 구독에서 이용할 수 있습니다.
             </p>
           )}
         </section>

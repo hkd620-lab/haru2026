@@ -911,7 +911,7 @@ export function SayuModal({
   // 💾 PDF 저장 (파일명 지정 후 window.print)
   const handleSavePDF = () => {
     if (!isPremium) {
-      alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 6,000원으로 시작해 보세요!');
+      alert('PDF 저장은 프리미엄 구독에서 이용할 수 있습니다.');
       window.location.href = '/subscription';
       return;
     }
@@ -926,7 +926,7 @@ export function SayuModal({
   // 📖 EPUB 저장 (단건)
   const handleSaveEpub = async () => {
     if (!isPaidUser) {
-      alert('베이직·프리미엄 구독 후 이용 가능한 기능입니다.\n월 4,000원으로 시작해 보세요!');
+      alert('EPUB 저장은 베이직 또는 프리미엄 구독 후 이용할 수 있습니다.');
       window.location.href = '/subscription';
       return;
     }
@@ -2098,7 +2098,7 @@ export function SayuModal({
                     justifyContent: 'center',
                     opacity: isPremium ? 1 : 0.6,
                   }}
-                  title={isPremium ? 'PDF 저장' : '🔒 PREMIUM 전용 기능'}
+                  title={isPremium ? 'PDF 저장' : '🔒 PDF 저장 · 프리미엄 전용'}
                 >
                   <Download style={{ width: 20, height: 20, color: 'currentColor' }} />
                   {!isPremium && <span className="ml-1 text-xs">🔒</span>}
@@ -2120,11 +2120,12 @@ export function SayuModal({
                     justifyContent: 'center',
                     opacity: isPaidUser ? 1 : 0.6,
                   }}
-                  title={isPaidUser ? 'EPUB 저장' : '🔒 베이직·프리미엄 전용 기능'}
+                  title={isPaidUser ? 'EPUB 저장' : '🔒 EPUB 저장 · 베이직·프리미엄'}
                 >
                   {isExportingEpub
                     ? <GrapeLoadingMini size={20} color="#1A3C6E" />
                     : <span style={{ fontSize: 18 }}>📖</span>}
+                  {!isPaidUser && <span className="ml-1 text-xs">🔒</span>}
                 </button>
               )}
 

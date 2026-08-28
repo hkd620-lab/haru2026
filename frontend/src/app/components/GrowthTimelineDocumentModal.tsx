@@ -134,7 +134,7 @@ export function GrowthTimelineDocumentModal({
 
   const handleBrowserPrint = async () => {
     if (!isPremium) {
-      alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 6,000원으로 시작해 보세요!');
+      alert('PDF로 저장은 프리미엄 구독에서 이용할 수 있습니다.');
       window.location.href = '/subscription';
       return;
     }
@@ -221,7 +221,7 @@ export function GrowthTimelineDocumentModal({
 
   const handlePrint = async () => {
     if (!isPremium) {
-      alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 6,000원으로 시작해 보세요!');
+      alert('PDF로 저장은 프리미엄 구독에서 이용할 수 있습니다.');
       window.location.href = '/subscription';
       return;
     }
@@ -564,7 +564,7 @@ export function GrowthTimelineDocumentModal({
               cursor: serverPdfRequested || printRequested || isSaving || sortedItems.length === 0 ? 'not-allowed' : 'pointer',
               opacity: isPremium ? 1 : 0.66,
             }}
-            title={isPremium ? 'PDF로 저장' : 'PREMIUM 전용 기능'}
+            title={isPremium ? 'PDF로 저장' : '🔒 PDF로 저장 · 프리미엄 전용'}
           >
             {serverPdfRequested ? 'PDF 생성 중...' : `PDF로 저장${!isPremium ? ' 🔒' : ''}`}
           </button>

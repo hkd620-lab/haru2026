@@ -677,7 +677,7 @@ export function MergePage() {
                 key={option.id}
                 onClick={() => {
                   if (isLocked) {
-                    alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 6,000원으로 시작해 보세요!');
+                    alert(`${option.title} 합본은 프리미엄 구독에서 이용할 수 있습니다.\n주간 합본은 지금 요금제로 바로 만들 수 있습니다.`);
                     window.location.href = '/subscription';
                     return;
                   }
@@ -700,6 +700,7 @@ export function MergePage() {
                   boxShadow: isSelected ? '0 2px 8px rgba(26,60,110,0.12)' : 'none',
                   opacity: isLocked ? 0.7 : 1,
                 }}
+                title={isLocked ? `🔒 ${option.title} 합본 · 프리미엄 전용` : option.description}
               >
                 <div
                   style={{

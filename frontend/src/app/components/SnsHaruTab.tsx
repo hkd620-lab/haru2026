@@ -231,7 +231,7 @@ export function SnsHaruTab() {
 
   const requirePremium = (action: string) => {
     if (!isPremium) {
-      toast(`'${action}'은(는) 구독 후 이용 가능한 기능입니다.`, {
+      toast(`'${action}'은(는) 프리미엄 구독에서 이용할 수 있습니다.`, {
         action: { label: '구독하기', onClick: () => navigate('/subscription') },
       });
       return false;
@@ -550,16 +550,37 @@ function ResultCard({
         </div>
       )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 6, marginTop: 12 }}>
-        <button type="button" onClick={onConvert} disabled={converting} style={smallBtnStyle(isPremium)}>
+        <button
+          type="button"
+          onClick={onConvert}
+          disabled={converting}
+          style={smallBtnStyle(isPremium)}
+          title={isPremium ? 'AI 일기로 변환' : '🔒 AI 일기로 변환 · 프리미엄 전용'}
+        >
           {converting ? '변환 중...' : `✏️ AI 일기${!isPremium ? ' 🔒' : ''}`}
         </button>
-        <button type="button" onClick={onProphecy} style={smallBtnStyle(isPremium)}>
+        <button
+          type="button"
+          onClick={onProphecy}
+          style={smallBtnStyle(isPremium)}
+          title={isPremium ? 'HARU미래전망으로 보내기' : '🔒 HARU미래전망 · 프리미엄 전용'}
+        >
           🔮 HARU미래전망{!isPremium && ' 🔒'}
         </button>
-        <button type="button" onClick={onPdf} style={smallBtnStyle(isPremium)}>
+        <button
+          type="button"
+          onClick={onPdf}
+          style={smallBtnStyle(isPremium)}
+          title={isPremium ? 'PDF 저장' : '🔒 PDF 저장 · 프리미엄 전용'}
+        >
           📄 PDF{!isPremium && ' 🔒'}
         </button>
       </div>
+      {!isPremium && (
+        <p style={{ margin: '6px 0 0', fontSize: 10.5, color: '#9CA3AF', lineHeight: 1.5 }}>
+          🔒 표시된 기능은 프리미엄 구독에서 이용할 수 있습니다.
+        </p>
+      )}
     </div>
   );
 }

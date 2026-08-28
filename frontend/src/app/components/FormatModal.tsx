@@ -1324,7 +1324,7 @@ ${contentValues}`,
       return;
     }
     if (!isPremium) {
-      alert('PREMIUM 구독 후 이용 가능한 기능입니다.');
+      alert('책 본문 사진 텍스트 변환은 프리미엄 구독에서 이용할 수 있습니다.');
       return;
     }
 
@@ -3594,9 +3594,11 @@ ${contentValues}`,
                       <span style={{ fontSize: 11, color: '#6b7280', whiteSpace: 'nowrap' }}>
                         {isDeveloper
                           ? '개발자 무제한'
-                          : readingOcrUsedCount === null
-                            ? `구독자 책 1권당 ${READING_BOOK_OCR_LIMIT}장`
-                            : `${readingOcrUsedCount}/${READING_BOOK_OCR_LIMIT}장`}
+                          : !isPremium
+                            ? `🔒 프리미엄 · 책 1권당 ${READING_BOOK_OCR_LIMIT}장`
+                            : readingOcrUsedCount === null
+                              ? `프리미엄 책 1권당 ${READING_BOOK_OCR_LIMIT}장`
+                              : `${readingOcrUsedCount}/${READING_BOOK_OCR_LIMIT}장`}
                       </span>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
@@ -3650,12 +3652,13 @@ ${contentValues}`,
                           type="button"
                           onClick={() => {
                             if (!isPremium) {
-                              alert('PREMIUM 구독 후 이용 가능한 기능입니다.');
+                              alert('책 본문 사진 텍스트 변환은 프리미엄 구독에서 이용할 수 있습니다.\n직접 입력은 지금 요금제로 바로 사용할 수 있습니다.');
                               return;
                             }
                             bookOcrInputRef.current?.click();
                           }}
                           disabled={isExtractingBookText || (!isDeveloper && readingOcrUsedCount !== null && readingOcrUsedCount >= READING_BOOK_OCR_LIMIT)}
+                          title={isPremium ? '책 본문 사진 추가' : '🔒 책 본문 사진 텍스트 변환 · 프리미엄 전용'}
                           style={{
                             width: '100%',
                             padding: '10px 14px',
@@ -3664,7 +3667,7 @@ ${contentValues}`,
                             backgroundColor: '#fff',
                             color: '#1A3C6E',
                             cursor: isExtractingBookText ? 'wait' : 'pointer',
-                            opacity: isExtractingBookText || (!isDeveloper && readingOcrUsedCount !== null && readingOcrUsedCount >= READING_BOOK_OCR_LIMIT) ? 0.55 : 1,
+                            opacity: !isPremium || isExtractingBookText || (!isDeveloper && readingOcrUsedCount !== null && readingOcrUsedCount >= READING_BOOK_OCR_LIMIT) ? 0.55 : 1,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -3676,7 +3679,13 @@ ${contentValues}`,
                           <Camera style={{ width: 16, height: 16 }} />
                           책 본문 사진 추가
                           {selectedBookOcrFiles.length > 0 ? ` (${selectedBookOcrFiles.length}장)` : ''}
+                          {!isPremium && ' 🔒'}
                         </button>
+                        {!isPremium && (
+                          <p style={{ margin: '6px 0 0', fontSize: 11, color: '#9CA3AF', lineHeight: 1.5 }}>
+                            사진 텍스트 변환은 프리미엄 구독에서 이용할 수 있습니다. '직접 입력'은 지금 요금제로 사용할 수 있습니다.
+                          </p>
+                        )}
                         {selectedBookOcrFiles.length > 0 && (
                           <button
                             type="button"

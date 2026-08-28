@@ -182,7 +182,7 @@ export function SnsRecordsPage() {
 
   const requirePremium = (action: string) => {
     if (!isPremium) {
-      toast(`'${action}'은(는) 구독 후 이용 가능한 기능입니다.`, {
+      toast(`'${action}'은(는) 프리미엄 구독에서 이용할 수 있습니다.`, {
         action: { label: '구독하기', onClick: () => navigate('/subscription') },
       });
       return false;
