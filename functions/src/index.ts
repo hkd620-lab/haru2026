@@ -7669,6 +7669,7 @@ export const analyzeRecordForProphecy = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await requirePaidSubscription(request.auth.uid);
     const { content, userAnalysis, round } = request.data;
     if (!content || typeof content !== 'string' || content.trim().length < 10) {
       throw new HttpsError('invalid-argument', '분석할 기록 내용이 너무 짧습니다.');
@@ -7823,6 +7824,7 @@ export const generateHaruProphecy = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await requirePaidSubscription(request.auth.uid);
 
     const { motive, motiveCustom, chars, birth, desire, shackle, events, luck, unluck, narrative, type,
             fromRecord, recordContent, recordTitle, recordDate, recordFormat, prophecyType, timeOption, question,

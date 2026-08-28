@@ -37,7 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.reviewHaruLawSharedCard = exports.listPendingHaruLawSharedCards = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.cancelSubscription = exports.subscribeWithBillingKey = exports.verifyPayment = exports.generateGrowthTimelinePdf = exports.decryptKakaoXlsx = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
-exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.applyBookPublishRevision = void 0;
+exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.getGrammarExplainV2 = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.applyBookPublishRevision = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -722,6 +722,7 @@ exports.polishContent = (0, https_2.onCall)({
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await requirePaidSubscription(request.auth.uid);
     try {
         const { text, mode = 'premium', format } = request.data;
         if (!text || typeof text !== 'string') {
@@ -1319,6 +1320,14 @@ async function getUserPlan(uid) {
         logger.warn('getUserPlan 조회 실패:', { uid, message: error === null || error === void 0 ? void 0 : error.message });
     }
     return 'free';
+}
+// 유료(베이직·프리미엄) 구독자만 통과 — AI 다듬기 등 유료 전용 서버 함수에서 사용.
+// 개발자 UID와 만료되지 않은 basic/premium은 getUserPlan이 이미 처리한다.
+async function requirePaidSubscription(uid) {
+    const plan = await getUserPlan(uid);
+    if (plan === 'free') {
+        throw new https_2.HttpsError('permission-denied', '베이직 또는 프리미엄 구독 후 이용할 수 있습니다.');
+    }
 }
 const RESULT_CHAT_COST_PRICING = {
     pricingVersion: 'raw-token-counts-v1',
@@ -6804,6 +6813,7 @@ exports.analyzeRecordForProphecy = (0, https_2.onCall)({
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await requirePaidSubscription(request.auth.uid);
     const { content, userAnalysis, round } = request.data;
     if (!content || typeof content !== 'string' || content.trim().length < 10) {
         throw new https_2.HttpsError('invalid-argument', '분석할 기록 내용이 너무 짧습니다.');
@@ -6954,6 +6964,7 @@ exports.generateHaruProphecy = (0, https_2.onCall)({
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await requirePaidSubscription(request.auth.uid);
     const { motive, motiveCustom, chars, birth, desire, shackle, events, luck, unluck, narrative, type, fromRecord, recordContent, recordTitle, recordDate, recordFormat, prophecyType, timeOption, question, extractedChars, extractedDesire, extractedShackle, extractedEvents, extractedRelationship, extractedPersonality, extractedMotive, extractedTheme, extractedOneLiner, extractedThreeLiner, prophecyGoalType, prophecyGoal, prophecyWall, extractedGoal, persons, extractedEvent, extractedDailyAchieve, currentAge, baseYear, futureYear, futureAge, protagonistName: rawProtagonistName } = request.data;
     // 서버측 한 번 더 sanitize (클라 우회 방지)
     const sanitizedProtagonistName = (() => {
@@ -9047,6 +9058,8 @@ exports.detectPlantAdvanced = (0, https_2.onCall)({
         },
     };
 });
+var grammarV2_1 = require("./grammar/grammarV2");
+Object.defineProperty(exports, "getGrammarExplainV2", { enumerable: true, get: function () { return grammarV2_1.getGrammarExplainV2; } });
 // ===========================================
 // 🌿 NIBR (국립생물자원관) 국가생물종목록 Open API 테스트 endpoint
 //   - process.env.NIBR_API_KEY 사용 (응답/로그에 절대 노출하지 않음)
