@@ -2767,6 +2767,10 @@ ${contentValues}`,
       setBlockedBookMessage('이미 마무리한 책입니다. 다시 읽는 기록은 새 독서사유로 시작해 주세요.');
       return;
     }
+    if (!isPaidUser) {
+      alert('베이직·프리미엄 구독 후 이용 가능한 기능입니다.');
+      return;
+    }
 
     setIsReadingFinishing(true);
     try {
@@ -2883,6 +2887,10 @@ ${entriesText}`,
     ].filter((v) => typeof v === 'string' && v.trim()).join('\n\n');
     if (!contentValues.trim()) {
       toast.error('본문 내용이나 독서장을 한 줄이라도 작성해 주세요.');
+      return;
+    }
+    if (!isPaidUser) {
+      alert('베이직·프리미엄 구독 후 이용 가능한 기능입니다.');
       return;
     }
 

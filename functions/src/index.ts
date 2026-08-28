@@ -792,6 +792,7 @@ export const polishContent = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await requirePaidSubscription(request.auth.uid);
     try {
       const { text, mode = 'premium', format } = request.data;
 
@@ -1419,6 +1420,15 @@ async function getUserPlan(uid: string): Promise<UserPlan> {
     logger.warn('getUserPlan 조회 실패:', { uid, message: (error as any)?.message });
   }
   return 'free';
+}
+
+// 유료(베이직·프리미엄) 구독자만 통과 — AI 다듬기 등 유료 전용 서버 함수에서 사용.
+// 개발자 UID와 만료되지 않은 basic/premium은 getUserPlan이 이미 처리한다.
+async function requirePaidSubscription(uid: string): Promise<void> {
+  const plan = await getUserPlan(uid);
+  if (plan === 'free') {
+    throw new HttpsError('permission-denied', '베이직 또는 프리미엄 구독 후 이용할 수 있습니다.');
+  }
 }
 
 type ResultChatSearchPreference = 'auto' | 'record_only' | 'web_confirmed';
