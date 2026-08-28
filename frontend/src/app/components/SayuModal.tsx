@@ -543,7 +543,8 @@ export function SayuModal({
   assistantContent,
   allHouseholdEntries,
 }: SayuModalProps) {
-  const { isPremium } = useSubscription();
+  const { isPremium, subscription } = useSubscription();
+  const isPaidUser = subscription.status === 'active' && subscription.plan !== 'free';
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
   const { showLoading, showLoadingWithProgress, updateProgress, hideLoading } = useLoading();
@@ -924,8 +925,8 @@ export function SayuModal({
 
   // 📖 EPUB 저장 (단건)
   const handleSaveEpub = async () => {
-    if (!isPremium) {
-      alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 6,000원으로 시작해 보세요!');
+    if (!isPaidUser) {
+      alert('베이직·프리미엄 구독 후 이용 가능한 기능입니다.\n월 4,000원으로 시작해 보세요!');
       window.location.href = '/subscription';
       return;
     }
@@ -2117,9 +2118,9 @@ export function SayuModal({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    opacity: isPremium ? 1 : 0.6,
+                    opacity: isPaidUser ? 1 : 0.6,
                   }}
-                  title={isPremium ? 'EPUB 저장' : '🔒 PREMIUM 전용 기능'}
+                  title={isPaidUser ? 'EPUB 저장' : '🔒 베이직·프리미엄 전용 기능'}
                 >
                   {isExportingEpub
                     ? <GrapeLoadingMini size={20} color="#1A3C6E" />
