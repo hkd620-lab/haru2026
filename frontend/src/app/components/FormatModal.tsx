@@ -417,7 +417,8 @@ const LEDGER_OCR_PREVIEW_FIELDS: { key: keyof LedgerOcrFields; label: string }[]
 
 export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, onSave }: FormatModalProps) {
   const { user } = useAuth();
-  const { isPremium } = useSubscription();
+  const { isPremium, subscription } = useSubscription();
+  const isPaidUser = subscription.status === 'active' && subscription.plan !== 'free';
   const [formData, setFormData] = useState<Record<string, string>>(initialData);
   const [isSaving, setIsSaving] = useState(false);
   const [isPolishing, setIsPolishing] = useState(false);
@@ -1197,8 +1198,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       return;
     }
 
-    if (!isPremium) {
-      alert('PREMIUM 구독 후 이용 가능한 기능입니다.');
+    if (!isPaidUser) {
+      alert('베이직·프리미엄 구독 후 이용 가능한 기능입니다.');
       return;
     }
     handlePolishWithMode('PREMIUM');

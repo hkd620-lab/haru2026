@@ -1610,10 +1610,6 @@ export function SayuPage() {
   };
 
   const openPublicPlantCatalog = () => {
-    if (!isPremium && !isDeveloper) {
-      toast.error('공개도감은 구독자 전용입니다.');
-      return;
-    }
     setPlantPopupType('catalog');
   };
 
@@ -1863,7 +1859,6 @@ export function SayuPage() {
 
   useEffect(() => {
     if (collapsedCategories.has('하루식물탐정')) return;
-    if (!isPremium && !isDeveloper) return;
     if (plantCatalogLoaded) return;
     (async () => {
       try {
@@ -1879,7 +1874,7 @@ export function SayuPage() {
         setPlantCatalogLoaded(true);
       }
     })();
-  }, [collapsedCategories, isDeveloper, isPremium, plantCatalogLoaded]);
+  }, [collapsedCategories, plantCatalogLoaded]);
 
   // Fetch AI logs only for the legacy developer-only knowledge warehouse panel.
   useEffect(() => {
