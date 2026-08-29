@@ -15,6 +15,7 @@ const sharp = require('sharp');
 import * as fs from 'fs';
 import * as path from 'path';
 import { logAiUsage } from './aiUsageLogger';
+import { enforceRateLimit } from './utils/rateLimit';
 // 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
 import { GoogleGenAI } from '@google/genai';
 // HARU가계부 카카오뱅크 XLSX 잠금 해제 전용 (msoffcrypto-tool TS 포트)
@@ -792,6 +793,7 @@ export const polishContent = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await enforceRateLimit(request.auth.uid, 'polishContent', 10, 60);
     try {
       const { text, mode = 'premium', format } = request.data;
 
@@ -3830,6 +3832,7 @@ export const extractReadingBookTextFromPhoto = onCall(
     }
 
     const uid = request.auth.uid;
+    await enforceRateLimit(uid, 'extractReadingBookTextFromPhoto', 5, 30);
     const isDeveloper = DEVELOPER_UIDS.has(uid);
     const d = request.data || {};
     const bookTitle = String(d.bookTitle || '').trim().slice(0, 200);
@@ -3995,6 +3998,7 @@ export const extractStockTradeTextFromPhoto = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await enforceRateLimit(request.auth.uid, 'extractStockTradeTextFromPhoto', 5, 30);
 
     let imageBase64 = String(request.data?.imageBase64 || '').replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '');
     const mimeType = String(request.data?.mimeType || 'image/jpeg').startsWith('image/')
@@ -4138,6 +4142,7 @@ export const extractLedgerTextFromImage = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await enforceRateLimit(request.auth.uid, 'extractLedgerTextFromImage', 5, 30);
 
     const rawImages = Array.isArray(request.data?.images) ? request.data.images : [];
     if (rawImages.length === 0) {
@@ -4342,6 +4347,7 @@ export const extractHouseholdTextFromImage = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await enforceRateLimit(request.auth.uid, 'extractHouseholdTextFromImage', 5, 30);
 
     const rawImages = Array.isArray(request.data?.images) ? request.data.images : [];
     if (rawImages.length === 0) {
@@ -4935,6 +4941,7 @@ export const generateGrowthTimelinePdf = onCall(
     }
 
     const uid = request.auth.uid;
+    await enforceRateLimit(uid, 'generateGrowthTimelinePdf', 3, 20);
 
     const payload = normalizeGrowthTimelinePdfPayload(request.data);
     const hash = buildGrowthTimelinePdfHash(uid, payload);
@@ -5689,6 +5696,7 @@ export const lawSearch = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await enforceRateLimit(request.auth.uid, 'lawSearch', 3, 20);
 
     const { query } = request.data;
     if (!query || typeof query !== 'string' || !query.trim()) {
@@ -5987,6 +5995,7 @@ export const prepareHaruLawSharePreview = onCall(
     }
 
     const uid = request.auth.uid;
+    await enforceRateLimit(uid, 'prepareHaruLawSharePreview', 3, 20);
     await enforceHaruLawSharePreviewLimit(uid);
 
     try {
@@ -9457,6 +9466,7 @@ export const analyzePlantPhoto = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await enforceRateLimit(request.auth.uid, 'analyzePlantPhoto', 5, 30);
 
     const { imageBase64, mimeType } = request.data as { imageBase64?: string; mimeType?: string };
     if (!imageBase64 || typeof imageBase64 !== 'string') {
