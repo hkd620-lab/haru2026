@@ -203,6 +203,12 @@ service cloud.firestore {
     match /users/{uid}/settings/{settingId} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
+    match /users/{uid}/monthlyAiUsage/{period} {
+      allow read, write: if false;
+    }
+    match /users/{uid}/rateLimits/{feature} {
+      allow read, write: if false;
+    }
     match /users/{uid}/readProgress/{bookId} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }

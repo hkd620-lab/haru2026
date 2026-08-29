@@ -36,8 +36,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.reviewHaruLawSharedCard = exports.listPendingHaruLawSharedCards = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.cancelSubscription = exports.subscribeWithBillingKey = exports.verifyPayment = exports.generateGrowthTimelinePdf = exports.decryptKakaoXlsx = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
-exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.getGrammarExplainV2 = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.applyBookPublishRevision = void 0;
+exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.reviewHaruLawSharedCard = exports.listPendingHaruLawSharedCards = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.cancelSubscription = exports.subscribeWithBillingKey = exports.verifyPayment = exports.generateGrowthTimelinePdf = exports.decryptKakaoXlsx = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.getMonthlyAiQuotaStatus = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
+exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.getGrammarExplainV2 = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.applyBookPublishRevision = exports.suggestBookPublishRevision = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -56,6 +56,7 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const aiUsageLogger_1 = require("./aiUsageLogger");
 const rateLimit_1 = require("./utils/rateLimit");
+const monthlyAiQuota_1 = require("./utils/monthlyAiQuota");
 // 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
 const genai_1 = require("@google/genai");
 // HARU가계부 카카오뱅크 XLSX 잠금 해제 전용 (msoffcrypto-tool TS 포트)
@@ -724,6 +725,7 @@ exports.polishContent = (0, https_2.onCall)({
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
     await (0, rateLimit_1.enforceRateLimit)(request.auth.uid, 'polishContent', 10, 60);
+    let monthlyQuotaReservation = null;
     try {
         const { text, mode = 'premium', format } = request.data;
         if (!text || typeof text !== 'string') {
@@ -732,6 +734,7 @@ exports.polishContent = (0, https_2.onCall)({
         if (text.length > 5000) {
             throw new https_2.HttpsError('invalid-argument', '텍스트는 5000자 이내여야 합니다.');
         }
+        monthlyQuotaReservation = await (0, monthlyAiQuota_1.reserveMonthlyAiQuota)(request.auth.uid, 'polishContent');
         // SAYU 형식별 3그룹 분기 (2026-05-13 도입)
         // 풍성형: 감성·문학 표현 환영
         // 균형형: 사실+감정 균형
@@ -876,6 +879,7 @@ exports.polishContent = (0, https_2.onCall)({
     }
     catch (error) {
         console.error('AI 처리 실패:', error);
+        await (0, monthlyAiQuota_1.rollbackMonthlyAiQuotaReservation)(monthlyQuotaReservation);
         if ((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid) {
             await (0, aiUsageLogger_1.logAiUsage)({
                 uid: request.auth.uid,
@@ -894,8 +898,18 @@ exports.polishContent = (0, https_2.onCall)({
                 isDev: DEVELOPER_UIDS.has(request.auth.uid),
             });
         }
+        if (error instanceof https_2.HttpsError) {
+            throw error;
+        }
         throw new https_2.HttpsError('internal', 'AI 처리에 실패했습니다.');
     }
+});
+exports.getMonthlyAiQuotaStatus = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
+    var _a;
+    if (!((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid)) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    return (0, monthlyAiQuota_1.getMonthlyAiQuotaStatus)(request.auth.uid);
 });
 // 숫자·기호만으로 이뤄진 제목인지 검사 (의미 없는 제목 걸러냄)
 function isValidTitle(title) {
@@ -1919,10 +1933,12 @@ exports.chatWithResult = (0, https_2.onCall)({
     let locked = false;
     let reservedWebSearch = false;
     let webSearchFinalized = false;
+    let monthlyQuotaReservation = null;
     try {
         await acquireResultChatLock(threadRef, requestId);
         locked = true;
         await enforceResultChatRateLimit(uid);
+        monthlyQuotaReservation = await (0, monthlyAiQuota_1.reserveMonthlyAiQuota)(uid, 'chatWithResult');
         const ai = new genai_1.GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
         const classification = await classifyResultChatQuestion(ai, {
             uid,
@@ -1942,6 +1958,8 @@ exports.chatWithResult = (0, https_2.onCall)({
                 answerRoute = 'high_risk_guidance';
             }
             else if (answerRoute === 'web_search') {
+                await (0, monthlyAiQuota_1.rollbackMonthlyAiQuotaReservation)(monthlyQuotaReservation);
+                monthlyQuotaReservation = null;
                 return {
                     threadId,
                     answer: '',
@@ -1972,6 +1990,8 @@ exports.chatWithResult = (0, https_2.onCall)({
             }
         }
         else if (answerRoute === 'web_search') {
+            await (0, monthlyAiQuota_1.rollbackMonthlyAiQuotaReservation)(monthlyQuotaReservation);
+            monthlyQuotaReservation = null;
             return {
                 threadId,
                 answer: '',
@@ -1989,6 +2009,8 @@ exports.chatWithResult = (0, https_2.onCall)({
             };
         }
         else if (answerRoute === 'ambiguous') {
+            await (0, monthlyAiQuota_1.rollbackMonthlyAiQuotaReservation)(monthlyQuotaReservation);
+            monthlyQuotaReservation = null;
             return {
                 threadId,
                 answer: '',
@@ -2083,6 +2105,8 @@ exports.chatWithResult = (0, https_2.onCall)({
         if (answerRoute === 'web_search') {
             const reserved = await reserveWebSearchSlot(threadRef, actualPlan, sourceKey, sourceIndex);
             if (!reserved.reserved) {
+                await (0, monthlyAiQuota_1.rollbackMonthlyAiQuotaReservation)(monthlyQuotaReservation);
+                monthlyQuotaReservation = null;
                 await logResultChatUsage({
                     uid,
                     actualPlan,
@@ -2214,6 +2238,7 @@ exports.chatWithResult = (0, https_2.onCall)({
         };
     }
     catch (error) {
+        await (0, monthlyAiQuota_1.rollbackMonthlyAiQuotaReservation)(monthlyQuotaReservation);
         if (reservedWebSearch && !webSearchFinalized) {
             await finalizeWebSearchSlot(threadRef, actualPlan, false);
         }

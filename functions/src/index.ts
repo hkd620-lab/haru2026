@@ -16,6 +16,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { logAiUsage } from './aiUsageLogger';
 import { enforceRateLimit } from './utils/rateLimit';
+import {
+  getMonthlyAiQuotaStatus as getMonthlyAiQuotaStatusForUser,
+  reserveMonthlyAiQuota,
+  rollbackMonthlyAiQuotaReservation,
+  type MonthlyAiQuotaReservation,
+} from './utils/monthlyAiQuota';
 // 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
 import { GoogleGenAI } from '@google/genai';
 // HARU가계부 카카오뱅크 XLSX 잠금 해제 전용 (msoffcrypto-tool TS 포트)
@@ -794,6 +800,7 @@ export const polishContent = onCall(
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
     await enforceRateLimit(request.auth.uid, 'polishContent', 10, 60);
+    let monthlyQuotaReservation: MonthlyAiQuotaReservation | null = null;
     try {
       const { text, mode = 'premium', format } = request.data;
 
@@ -803,6 +810,7 @@ export const polishContent = onCall(
       if (text.length > 5000) {
         throw new HttpsError('invalid-argument', '텍스트는 5000자 이내여야 합니다.');
       }
+      monthlyQuotaReservation = await reserveMonthlyAiQuota(request.auth.uid, 'polishContent');
 
       // SAYU 형식별 3그룹 분기 (2026-05-13 도입)
       // 풍성형: 감성·문학 표현 환영
@@ -949,6 +957,7 @@ export const polishContent = onCall(
 
     } catch (error: any) {
       console.error('AI 처리 실패:', error);
+      await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
       if (request.auth?.uid) {
         await logAiUsage({
           uid: request.auth.uid,
@@ -967,9 +976,22 @@ export const polishContent = onCall(
           isDev: DEVELOPER_UIDS.has(request.auth.uid),
         });
       }
+      if (error instanceof HttpsError) {
+        throw error;
+      }
       throw new HttpsError('internal', 'AI 처리에 실패했습니다.');
     }
   }
+);
+
+export const getMonthlyAiQuotaStatus = onCall(
+  { region: 'asia-northeast3' },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    return getMonthlyAiQuotaStatusForUser(request.auth.uid);
+  },
 );
 
 // 숫자·기호만으로 이뤄진 제목인지 검사 (의미 없는 제목 걸러냄)
@@ -2134,11 +2156,13 @@ export const chatWithResult = onCall(
     let locked = false;
     let reservedWebSearch = false;
     let webSearchFinalized = false;
+    let monthlyQuotaReservation: MonthlyAiQuotaReservation | null = null;
 
     try {
       await acquireResultChatLock(threadRef, requestId);
       locked = true;
       await enforceResultChatRateLimit(uid);
+      monthlyQuotaReservation = await reserveMonthlyAiQuota(uid, 'chatWithResult');
 
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
       const classification = await classifyResultChatQuestion(ai, {
@@ -2159,6 +2183,8 @@ export const chatWithResult = onCall(
         if (answerRoute === 'high_risk_guidance') {
           answerRoute = 'high_risk_guidance';
         } else if (answerRoute === 'web_search') {
+          await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
+          monthlyQuotaReservation = null;
           return {
             threadId,
             answer: '',
@@ -2185,6 +2211,8 @@ export const chatWithResult = onCall(
           answerRoute = 'web_search';
         }
       } else if (answerRoute === 'web_search') {
+        await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
+        monthlyQuotaReservation = null;
         return {
           threadId,
           answer: '',
@@ -2201,6 +2229,8 @@ export const chatWithResult = onCall(
           webSearchRemainingCount: currentUsage.remainingCount,
         };
       } else if (answerRoute === 'ambiguous') {
+        await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
+        monthlyQuotaReservation = null;
         return {
           threadId,
           answer: '',
@@ -2297,6 +2327,8 @@ export const chatWithResult = onCall(
       if (answerRoute === 'web_search') {
         const reserved = await reserveWebSearchSlot(threadRef, actualPlan, sourceKey, sourceIndex);
         if (!reserved.reserved) {
+          await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
+          monthlyQuotaReservation = null;
           await logResultChatUsage({
             uid,
             actualPlan,
@@ -2434,6 +2466,7 @@ export const chatWithResult = onCall(
         webSearchRemainingCount: usageForAnswer.remainingCount,
       };
     } catch (error: any) {
+      await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
       if (reservedWebSearch && !webSearchFinalized) {
         await finalizeWebSearchSlot(threadRef, actualPlan, false);
       }

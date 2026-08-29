@@ -241,7 +241,6 @@ export function SnsHaruTab() {
   };
 
   const handleConvertToDiary = async (record: SnsRecord) => {
-    if (!requirePaidSubscription('AI 일기로 변환')) return;
     if (!user) return;
     if (!record.text || record.text.trim().length === 0) {
       toast.info('변환할 텍스트가 없습니다.');
@@ -555,10 +554,10 @@ function ResultCard({
           type="button"
           onClick={onConvert}
           disabled={converting}
-          style={smallBtnStyle(isPaidUser)}
-          title={isPaidUser ? 'AI 일기로 변환' : '🔒 AI 일기로 변환 · 베이직·프리미엄 구독'}
+          style={smallBtnStyle(true)}
+          title="AI 일기로 변환"
         >
-          {converting ? '변환 중...' : `✏️ AI 일기${!isPaidUser ? ' 🔒' : ''}`}
+          {converting ? '변환 중...' : '✏️ AI 일기'}
         </button>
         <button
           type="button"

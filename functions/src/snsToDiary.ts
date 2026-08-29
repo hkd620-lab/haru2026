@@ -3,33 +3,13 @@ import { defineSecret } from 'firebase-functions/params';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
+import {
+  reserveMonthlyAiQuota,
+  rollbackMonthlyAiQuotaReservation,
+  type MonthlyAiQuotaReservation,
+} from './utils/monthlyAiQuota';
 
 const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
-const DEVELOPER_UIDS = new Set(['naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8']);
-
-async function hasPaidSubscription(uid: string): Promise<boolean> {
-  if (DEVELOPER_UIDS.has(uid)) return true;
-
-  try {
-    const snap = await admin.firestore().doc(`users/${uid}/subscription/info`).get();
-    const data = snap.data() || {};
-    const plan = String(data.plan || '').toLowerCase();
-    const endTime = typeof data.endDate === 'string'
-      ? Date.parse(data.endDate)
-      : typeof data.expiresAt?.toMillis === 'function'
-        ? data.expiresAt.toMillis()
-        : Number.NaN;
-
-    if (Number.isFinite(endTime) && endTime < Date.now()) return false;
-    return plan === 'basic' || plan === 'premium';
-  } catch (error) {
-    logger.warn('convertSnsToDiary: 구독정보 조회 실패', {
-      uid,
-      message: (error as any)?.message,
-    });
-    return false;
-  }
-}
 
 // 사용자 입력 이름의 prompt injection / 위험 문자 차단 (HARU예언과 동일 정책)
 function sanitizeName(raw: unknown): string {
@@ -51,12 +31,6 @@ export const convertSnsToDiary = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
-    if (!(await hasPaidSubscription(request.auth.uid))) {
-      throw new HttpsError(
-        'permission-denied',
-        '베이직 또는 프리미엄 구독 후 이용할 수 있습니다.',
-      );
-    }
 
     const { text, source, timestamp } = (request.data || {}) as {
       text?: string;
@@ -70,6 +44,9 @@ export const convertSnsToDiary = onCall(
     if (text.length > 5000) {
       throw new HttpsError('invalid-argument', '텍스트는 5000자 이내여야 합니다.');
     }
+
+    let monthlyQuotaReservation: MonthlyAiQuotaReservation | null = null;
+    monthlyQuotaReservation = await reserveMonthlyAiQuota(request.auth.uid, 'convertSnsToDiary');
 
     const sourceLabel = source === 'instagram' ? 'Instagram' : 'Facebook';
     const dateHint = timestamp
@@ -128,6 +105,8 @@ ${text}
       logger.info(`convertSnsToDiary 완료: uid=${request.auth.uid}, len=${diaryText.length}`);
       return { diaryText };
     } catch (error: any) {
+      await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
+      if (error instanceof HttpsError) throw error;
       logger.error('convertSnsToDiary 실패:', error);
       throw new HttpsError('internal', 'AI 변환에 실패했습니다.');
     }
