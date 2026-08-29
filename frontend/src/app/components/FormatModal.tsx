@@ -6,7 +6,6 @@ import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'fire
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { compressImage } from '../services/imageService';
 import { useAuth } from '../contexts/AuthContext';
-import { useSubscription } from '../hooks/useSubscription';
 import { toast } from 'sonner';
 import heic2any from 'heic2any';
 import { LoadingOverlay } from './LoadingOverlay';
@@ -415,8 +414,6 @@ const LEDGER_OCR_PREVIEW_FIELDS: { key: keyof LedgerOcrFields; label: string }[]
 
 export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, onSave }: FormatModalProps) {
   const { user } = useAuth();
-  const { isPremium, subscription } = useSubscription();
-  const isPaidUser = subscription.status === 'active' && subscription.plan !== 'free';
   const [formData, setFormData] = useState<Record<string, string>>(initialData);
   const [isSaving, setIsSaving] = useState(false);
   const [isPolishing, setIsPolishing] = useState(false);
@@ -1169,10 +1166,6 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       return;
     }
 
-    if (!isPaidUser) {
-      alert('베이직·프리미엄 구독 후 이용 가능한 기능입니다.');
-      return;
-    }
     handlePolishWithMode('PREMIUM');
   };
 
@@ -1323,11 +1316,6 @@ ${contentValues}`,
       toast.error('로그인이 필요합니다.');
       return;
     }
-    if (!isPremium) {
-      alert('책 본문 사진 텍스트 변환은 프리미엄 구독에서 이용할 수 있습니다.');
-      return;
-    }
-
     const bookTitle = String(formData.reading_book_title || '').trim();
     const author = String(formData.reading_author || '').trim();
     if (!bookTitle) {
@@ -2767,11 +2755,6 @@ ${contentValues}`,
       setBlockedBookMessage('이미 마무리한 책입니다. 다시 읽는 기록은 새 독서사유로 시작해 주세요.');
       return;
     }
-    if (!isPaidUser) {
-      alert('베이직·프리미엄 구독 후 이용 가능한 기능입니다.');
-      return;
-    }
-
     setIsReadingFinishing(true);
     try {
       const db = getFirestore();
@@ -2889,11 +2872,6 @@ ${entriesText}`,
       toast.error('본문 내용이나 독서장을 한 줄이라도 작성해 주세요.');
       return;
     }
-    if (!isPaidUser) {
-      alert('베이직·프리미엄 구독 후 이용 가능한 기능입니다.');
-      return;
-    }
-
     setIsPolishing(true);
     toast.info('AI가 중간기록을 다듬는 중...');
     try {
@@ -3126,7 +3104,7 @@ ${contentValues}`,
           </div>
 
           {/* Test Data Button — 선택 화면에서 숨김 */}
-          {recordStep === 'input' && !(isLedgerFormat && ledgerInputMode === 'period') && (
+          {isDeveloper && recordStep === 'input' && !(isLedgerFormat && ledgerInputMode === 'period') && (
           <div style={{ padding: '16px 24px', backgroundColor: '#f8f9fa', borderBottom: '1px solid #e5e5e5' }}>
             <button
               onClick={handleFillTestData}
@@ -3594,11 +3572,9 @@ ${contentValues}`,
                       <span style={{ fontSize: 11, color: '#6b7280', whiteSpace: 'nowrap' }}>
                         {isDeveloper
                           ? '개발자 무제한'
-                          : !isPremium
-                            ? `🔒 프리미엄 · 책 1권당 ${READING_BOOK_OCR_LIMIT}장`
-                            : readingOcrUsedCount === null
-                              ? `프리미엄 책 1권당 ${READING_BOOK_OCR_LIMIT}장`
-                              : `${readingOcrUsedCount}/${READING_BOOK_OCR_LIMIT}장`}
+                          : readingOcrUsedCount === null
+                            ? `책 1권당 ${READING_BOOK_OCR_LIMIT}장`
+                            : `${readingOcrUsedCount}/${READING_BOOK_OCR_LIMIT}장`}
                       </span>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
@@ -3651,14 +3627,10 @@ ${contentValues}`,
                         <button
                           type="button"
                           onClick={() => {
-                            if (!isPremium) {
-                              alert('책 본문 사진 텍스트 변환은 프리미엄 구독에서 이용할 수 있습니다.\n직접 입력은 지금 요금제로 바로 사용할 수 있습니다.');
-                              return;
-                            }
                             bookOcrInputRef.current?.click();
                           }}
                           disabled={isExtractingBookText || (!isDeveloper && readingOcrUsedCount !== null && readingOcrUsedCount >= READING_BOOK_OCR_LIMIT)}
-                          title={isPremium ? '책 본문 사진 추가' : '🔒 책 본문 사진 텍스트 변환 · 프리미엄 전용'}
+                          title="책 본문 사진 추가"
                           style={{
                             width: '100%',
                             padding: '10px 14px',
@@ -3667,7 +3639,7 @@ ${contentValues}`,
                             backgroundColor: '#fff',
                             color: '#1A3C6E',
                             cursor: isExtractingBookText ? 'wait' : 'pointer',
-                            opacity: !isPremium || isExtractingBookText || (!isDeveloper && readingOcrUsedCount !== null && readingOcrUsedCount >= READING_BOOK_OCR_LIMIT) ? 0.55 : 1,
+                            opacity: isExtractingBookText || (!isDeveloper && readingOcrUsedCount !== null && readingOcrUsedCount >= READING_BOOK_OCR_LIMIT) ? 0.55 : 1,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -3679,13 +3651,7 @@ ${contentValues}`,
                           <Camera style={{ width: 16, height: 16 }} />
                           책 본문 사진 추가
                           {selectedBookOcrFiles.length > 0 ? ` (${selectedBookOcrFiles.length}장)` : ''}
-                          {!isPremium && ' 🔒'}
                         </button>
-                        {!isPremium && (
-                          <p style={{ margin: '6px 0 0', fontSize: 11, color: '#9CA3AF', lineHeight: 1.5 }}>
-                            사진 텍스트 변환은 프리미엄 구독에서 이용할 수 있습니다. '직접 입력'은 지금 요금제로 사용할 수 있습니다.
-                          </p>
-                        )}
                         {selectedBookOcrFiles.length > 0 && (
                           <button
                             type="button"

@@ -543,7 +543,7 @@ export function SayuModal({
   assistantContent,
   allHouseholdEntries,
 }: SayuModalProps) {
-  const { isPremium, subscription } = useSubscription();
+  const { subscription } = useSubscription();
   const isPaidUser = subscription.status === 'active' && subscription.plan !== 'free';
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
@@ -910,11 +910,6 @@ export function SayuModal({
 
   // 💾 PDF 저장 (파일명 지정 후 window.print)
   const handleSavePDF = () => {
-    if (!isPremium) {
-      alert('PDF 저장은 프리미엄 구독에서 이용할 수 있습니다.');
-      window.location.href = '/subscription';
-      return;
-    }
     const originalTitle = document.title;
     document.title = `HARU_SAYU_${recordDate || 'sayu'}.pdf`;
     window.print();
@@ -2096,12 +2091,11 @@ export function SayuModal({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    opacity: isPremium ? 1 : 0.6,
+                    opacity: 1,
                   }}
-                  title={isPremium ? 'PDF 저장' : '🔒 PDF 저장 · 프리미엄 전용'}
+                  title="PDF 저장"
                 >
                   <Download style={{ width: 20, height: 20, color: 'currentColor' }} />
-                  {!isPremium && <span className="ml-1 text-xs">🔒</span>}
                 </button>
               )}
 

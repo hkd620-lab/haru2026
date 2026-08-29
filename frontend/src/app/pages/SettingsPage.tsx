@@ -18,7 +18,7 @@ const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 export function SettingsPage() {
   const { user, signOut, linkEmailPassword } = useAuth();
   const { isDark, toggleTheme } = useTheme();
-  const { subscription, isPremium, loading: subscriptionLoading } = useSubscription();
+  const { subscription, loading: subscriptionLoading } = useSubscription();
   const navigate = useNavigate();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
@@ -192,13 +192,6 @@ export function SettingsPage() {
   const handleQuoteTypeChange = async (next: 'classic' | 'bible') => {
     if (!user?.uid) return;
     if (next === quoteType) return;
-
-    if (next === 'bible' && !isPremium) {
-      toast('성경 말씀은 프리미엄 구독에서 이용할 수 있습니다.', {
-        action: { label: '구독하기', onClick: () => navigate('/subscription') },
-      });
-      return;
-    }
 
     setIsSavingQuoteType(true);
     try {
@@ -826,25 +819,9 @@ export function SettingsPage() {
               }}
             >
               <span>✝️</span>
-              <span>
-                성경 말씀
-                {!isPremium && (
-                  <span
-                    className="ml-1 text-xs"
-                    style={{ color: quoteType === 'bible' ? '#fbbf24' : '#999' }}
-                  >
-                    🔒 프리미엄
-                  </span>
-                )}
-              </span>
+              <span>성경 말씀</span>
             </button>
           </div>
-
-          {!isPremium && (
-            <p className="text-xs mt-3" style={{ color: '#999' }}>
-              💡 성경 말씀은 프리미엄 구독에서 이용할 수 있습니다.
-            </p>
-          )}
         </section>
 
         <section className="bg-white rounded-lg p-6 shadow-sm">

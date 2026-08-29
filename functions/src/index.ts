@@ -792,7 +792,6 @@ export const polishContent = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
-    await requirePaidSubscription(request.auth.uid);
     try {
       const { text, mode = 'premium', format } = request.data;
 
@@ -1422,7 +1421,7 @@ async function getUserPlan(uid: string): Promise<UserPlan> {
   return 'free';
 }
 
-// 유료(베이직·프리미엄) 구독자만 통과 — AI 다듬기 등 유료 전용 서버 함수에서 사용.
+// 유료(베이직·프리미엄) 구독자만 통과 — 일부 유료 전용 서버 함수에서 사용.
 // 개발자 UID와 만료되지 않은 basic/premium은 getUserPlan이 이미 처리한다.
 async function requirePaidSubscription(uid: string): Promise<void> {
   const plan = await getUserPlan(uid);
@@ -3853,14 +3852,6 @@ export const extractReadingBookTextFromPhoto = onCall(
       throw new HttpsError('invalid-argument', '사진이 너무 큽니다. 한 장당 7MB 이하로 줄여주세요.');
     }
 
-    if (!isDeveloper) {
-      const subSnap = await db.doc(`users/${uid}/subscription/info`).get();
-      const plan = String(subSnap.data()?.plan || '').toLowerCase();
-      if (plan !== 'premium') {
-        throw new HttpsError('permission-denied', '책 본문 사진 텍스트 변환은 PREMIUM 구독자 전용 기능입니다.');
-      }
-    }
-
     const usageRef = db.doc(`users/${uid}/readingOcrUsage/${bookId}`);
     let usedCount: number | null = null;
     let slotReserved = false;
@@ -4657,12 +4648,6 @@ function normalizeGrowthTimelinePdfPayload(data: any) {
   return { title, createdLabel, items };
 }
 
-async function isPremiumUser(uid: string): Promise<boolean> {
-  if (DEVELOPER_UIDS.has(uid)) return true;
-  const subSnap = await db.doc(`users/${uid}/subscription/info`).get();
-  return subSnap.exists && subSnap.data()?.plan === 'premium';
-}
-
 function buildGrowthTimelinePdfHash(uid: string, payload: ReturnType<typeof normalizeGrowthTimelinePdfPayload>): string {
   const stablePayload = JSON.stringify({
     schemaVersion: GROWTH_TIMELINE_PDF_SCHEMA_VERSION,
@@ -4950,9 +4935,6 @@ export const generateGrowthTimelinePdf = onCall(
     }
 
     const uid = request.auth.uid;
-    if (!(await isPremiumUser(uid))) {
-      throw new HttpsError('permission-denied', 'PREMIUM 구독 후 이용 가능한 기능입니다');
-    }
 
     const payload = normalizeGrowthTimelinePdfPayload(request.data);
     const hash = buildGrowthTimelinePdfHash(uid, payload);
@@ -5521,20 +5503,6 @@ function isDeveloperUid(uid: string): boolean {
   return DEVELOPER_UIDS.has(uid);
 }
 
-async function assertHaruLawPremiumAccess(uid: string): Promise<void> {
-  if (isDeveloperUid(uid)) return;
-
-  const subSnap = await db.doc(`users/${uid}/subscription/info`).get();
-  const plan = String(subSnap.data()?.plan || '').toLowerCase();
-  const endDate = subSnap.data()?.endDate;
-  const endTime = typeof endDate === 'string' ? Date.parse(endDate) : Number.NaN;
-  const expired = Number.isFinite(endTime) && endTime < Date.now();
-
-  if (plan !== 'premium' || expired) {
-    throw new HttpsError('permission-denied', '하루LAW 익명 공유는 PREMIUM 구독자 전용 기능입니다.');
-  }
-}
-
 function getKstDateKey(): string {
   return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
@@ -6019,7 +5987,6 @@ export const prepareHaruLawSharePreview = onCall(
     }
 
     const uid = request.auth.uid;
-    await assertHaruLawPremiumAccess(uid);
     await enforceHaruLawSharePreviewLimit(uid);
 
     try {
@@ -6033,7 +6000,7 @@ export const prepareHaruLawSharePreview = onCall(
 
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value().trim());
       const model = genAI.getGenerativeModel({ model: 'gemini-3.1-pro-preview' });
-      const result = await model.generateContent(`다음 하루LAW 기록을 다른 PREMIUM 구독자가 참고할 수 있는 익명 공개 카드로 바꾸세요.
+      const result = await model.generateContent(`다음 하루LAW 기록을 다른 사용자가 참고할 수 있는 익명 공개 카드로 바꾸세요.
 
 반드시 JSON 객체만 출력하세요. 마크다운 코드블록은 사용하지 마세요.
 필드는 title, anonymizedQuestion, summary, judgmentType, relatedStatutes만 사용하세요.
@@ -6105,7 +6072,6 @@ export const publishHaruLawSharedCard = onCall(
     }
 
     const uid = request.auth.uid;
-    await assertHaruLawPremiumAccess(uid);
 
     const previewId = request.data?.previewId;
     if (typeof previewId !== 'string' || !previewId.trim()) {

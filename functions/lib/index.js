@@ -722,7 +722,6 @@ exports.polishContent = (0, https_2.onCall)({
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
-    await requirePaidSubscription(request.auth.uid);
     try {
         const { text, mode = 'premium', format } = request.data;
         if (!text || typeof text !== 'string') {
@@ -1321,7 +1320,7 @@ async function getUserPlan(uid) {
     }
     return 'free';
 }
-// 유료(베이직·프리미엄) 구독자만 통과 — AI 다듬기 등 유료 전용 서버 함수에서 사용.
+// 유료(베이직·프리미엄) 구독자만 통과 — 일부 유료 전용 서버 함수에서 사용.
 // 개발자 UID와 만료되지 않은 basic/premium은 getUserPlan이 이미 처리한다.
 async function requirePaidSubscription(uid) {
     const plan = await getUserPlan(uid);
@@ -3360,7 +3359,7 @@ exports.extractReadingBookTextFromPhoto = (0, https_2.onCall)({
     memory: '512MiB',
     timeoutSeconds: 60,
 }, async (request) => {
-    var _a, _b;
+    var _a;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -3383,13 +3382,6 @@ exports.extractReadingBookTextFromPhoto = (0, https_2.onCall)({
     const imageKb = Math.round(imageBase64.length * 0.75 / 1024);
     if (imageKb > 7 * 1024) {
         throw new https_2.HttpsError('invalid-argument', '사진이 너무 큽니다. 한 장당 7MB 이하로 줄여주세요.');
-    }
-    if (!isDeveloper) {
-        const subSnap = await db.doc(`users/${uid}/subscription/info`).get();
-        const plan = String(((_a = subSnap.data()) === null || _a === void 0 ? void 0 : _a.plan) || '').toLowerCase();
-        if (plan !== 'premium') {
-            throw new https_2.HttpsError('permission-denied', '책 본문 사진 텍스트 변환은 PREMIUM 구독자 전용 기능입니다.');
-        }
     }
     const usageRef = db.doc(`users/${uid}/readingOcrUsage/${bookId}`);
     let usedCount = null;
@@ -3498,7 +3490,7 @@ exports.extractReadingBookTextFromPhoto = (0, https_2.onCall)({
         }
         if (error instanceof https_2.HttpsError)
             throw error;
-        logger.error('독서 본문 OCR 실패', { message: (_b = error === null || error === void 0 ? void 0 : error.message) === null || _b === void 0 ? void 0 : _b.slice(0, 200) });
+        logger.error('독서 본문 OCR 실패', { message: (_a = error === null || error === void 0 ? void 0 : error.message) === null || _a === void 0 ? void 0 : _a.slice(0, 200) });
         await (0, aiUsageLogger_1.logAiUsage)({
             uid,
             featureName: 'book_ocr',
@@ -4105,13 +4097,6 @@ function normalizeGrowthTimelinePdfPayload(data) {
     }).sort((a, b) => a.takenDate.localeCompare(b.takenDate) || a.order - b.order);
     return { title, createdLabel, items };
 }
-async function isPremiumUser(uid) {
-    var _a;
-    if (DEVELOPER_UIDS.has(uid))
-        return true;
-    const subSnap = await db.doc(`users/${uid}/subscription/info`).get();
-    return subSnap.exists && ((_a = subSnap.data()) === null || _a === void 0 ? void 0 : _a.plan) === 'premium';
-}
 function buildGrowthTimelinePdfHash(uid, payload) {
     const stablePayload = JSON.stringify({
         schemaVersion: GROWTH_TIMELINE_PDF_SCHEMA_VERSION,
@@ -4376,9 +4361,6 @@ exports.generateGrowthTimelinePdf = (0, https_2.onCall)({ region: 'asia-northeas
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다');
     }
     const uid = request.auth.uid;
-    if (!(await isPremiumUser(uid))) {
-        throw new https_2.HttpsError('permission-denied', 'PREMIUM 구독 후 이용 가능한 기능입니다');
-    }
     const payload = normalizeGrowthTimelinePdfPayload(request.data);
     const hash = buildGrowthTimelinePdfHash(uid, payload);
     const filePath = `users/${uid}/timelinePdfs/${hash}.pdf`;
@@ -4875,19 +4857,6 @@ exports.removeAllTags = (0, https_1.onRequest)({ region: 'asia-northeast3' }, as
 function isDeveloperUid(uid) {
     return DEVELOPER_UIDS.has(uid);
 }
-async function assertHaruLawPremiumAccess(uid) {
-    var _a, _b;
-    if (isDeveloperUid(uid))
-        return;
-    const subSnap = await db.doc(`users/${uid}/subscription/info`).get();
-    const plan = String(((_a = subSnap.data()) === null || _a === void 0 ? void 0 : _a.plan) || '').toLowerCase();
-    const endDate = (_b = subSnap.data()) === null || _b === void 0 ? void 0 : _b.endDate;
-    const endTime = typeof endDate === 'string' ? Date.parse(endDate) : Number.NaN;
-    const expired = Number.isFinite(endTime) && endTime < Date.now();
-    if (plan !== 'premium' || expired) {
-        throw new https_2.HttpsError('permission-denied', '하루LAW 익명 공유는 PREMIUM 구독자 전용 기능입니다.');
-    }
-}
 function getKstDateKey() {
     return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
@@ -5311,7 +5280,6 @@ exports.prepareHaruLawSharePreview = (0, https_2.onCall)({
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
     const uid = request.auth.uid;
-    await assertHaruLawPremiumAccess(uid);
     await enforceHaruLawSharePreviewLimit(uid);
     try {
         const { record } = await getOwnedHaruLawRecord(uid, (_a = request.data) === null || _a === void 0 ? void 0 : _a.sourceRecordId);
@@ -5323,7 +5291,7 @@ exports.prepareHaruLawSharePreview = (0, https_2.onCall)({
         const fallbackStatutes = parseHaruLawPublicStatutes(record.haruraw_articles);
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value().trim());
         const model = genAI.getGenerativeModel({ model: 'gemini-3.1-pro-preview' });
-        const result = await model.generateContent(`다음 하루LAW 기록을 다른 PREMIUM 구독자가 참고할 수 있는 익명 공개 카드로 바꾸세요.
+        const result = await model.generateContent(`다음 하루LAW 기록을 다른 사용자가 참고할 수 있는 익명 공개 카드로 바꾸세요.
 
 반드시 JSON 객체만 출력하세요. 마크다운 코드블록은 사용하지 마세요.
 필드는 title, anonymizedQuestion, summary, judgmentType, relatedStatutes만 사용하세요.
@@ -5387,7 +5355,6 @@ exports.publishHaruLawSharedCard = (0, https_2.onCall)({
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
     const uid = request.auth.uid;
-    await assertHaruLawPremiumAccess(uid);
     const previewId = (_a = request.data) === null || _a === void 0 ? void 0 : _a.previewId;
     if (typeof previewId !== 'string' || !previewId.trim()) {
         throw new https_2.HttpsError('invalid-argument', 'previewId가 필요합니다.');
