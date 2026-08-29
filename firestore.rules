@@ -162,6 +162,13 @@ service cloud.firestore {
       allow write: if (request.auth != null && request.auth.uid == userId)
         || userId == "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
       allow delete: if request.auth != null && request.auth.uid == userId;
+
+      // 결과물 AI 대화(Result Chat) 기록 — chatWithResult가 Admin SDK로만 쓰고,
+      // 클라이언트는 본인 기록만 읽음 (ResultChatModal.tsx 이전 대화 로드)
+      match /resultThreads/{threadId}/messages/{messageId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if false;
+      }
     }
     match /users/{userId}/vaultItems/{itemId} {
       allow read, write, delete: if isVaultDeveloper(userId);
