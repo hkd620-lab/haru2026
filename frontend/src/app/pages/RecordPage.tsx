@@ -808,6 +808,7 @@ export function RecordPage() {
         mood: existingRecord?.mood || mood,
         formats: mergedFormats,
         content: typeof existingRecord?.content === 'string' ? existingRecord.content : '',
+        sourceAgent: '하루LAW',
         haruraw_query: activeLawQuery,
         haruraw_sayu: lawSummary,
         haruraw_summary: lawSummary,

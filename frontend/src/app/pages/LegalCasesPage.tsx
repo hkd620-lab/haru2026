@@ -1,11 +1,11 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Bell, FilePlus2, Loader2, Plus } from 'lucide-react';
+import { ArrowLeft, Bell, FilePlus2, Loader2, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { useAuth } from '../contexts/AuthContext';
-import { createLegalCase, createSampleLegalCase, getLegalCases } from '../services/legalCasesService';
+import { createLegalCase, createSampleLegalCase, deleteLegalCase, getLegalCases } from '../services/legalCasesService';
 import {
   type LegalCase,
   type LegalCaseStatus,
@@ -108,6 +108,7 @@ export default function LegalCasesPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isCreatingSample, setIsCreatingSample] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [deletingCaseId, setDeletingCaseId] = useState<string | null>(null);
   const [form, setForm] = useState<CaseFormState>(initialForm);
 
   const todayUncheckedCount = useMemo(
@@ -207,6 +208,32 @@ export default function LegalCasesPage() {
       toast.error('샘플 사건을 생성하지 못했습니다.');
     } finally {
       setIsCreatingSample(false);
+    }
+  };
+
+  const removeCase = async (item: LegalCase) => {
+    if (!user?.uid) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+
+    const firstConfirm = window.confirm(`'${item.title}'을 삭제하시겠습니까?`);
+    if (!firstConfirm) return;
+    const secondConfirm = window.confirm(
+      '사건 정보와 관련 문서 기록이 함께 삭제됩니다. 삭제 후 복구할 수 없습니다.',
+    );
+    if (!secondConfirm) return;
+
+    setDeletingCaseId(item.id);
+    try {
+      await deleteLegalCase(user.uid, item.id);
+      toast.success('사건을 삭제했습니다.');
+      await loadCases();
+    } catch (error) {
+      console.error('전자소송 사건 삭제 실패:', error);
+      toast.error('사건을 삭제하지 못했습니다.');
+    } finally {
+      setDeletingCaseId(null);
     }
   };
 
@@ -423,11 +450,9 @@ export default function LegalCasesPage() {
         ) : (
           <section className="space-y-3">
             {cases.map((item) => (
-              <button
+              <article
                 key={item.id}
-                type="button"
-                onClick={() => navigate(`/legal-cases/${item.id}`)}
-                className="w-full rounded-lg border border-gray-200 bg-white p-4 text-left shadow-sm transition hover:border-gray-300 hover:shadow-md"
+                className="rounded-lg border border-gray-200 bg-white p-4 text-left shadow-sm"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
@@ -435,6 +460,11 @@ export default function LegalCasesPage() {
                     <p className="mt-1 text-sm text-gray-600">{item.caseNumber}</p>
                   </div>
                   <div className="flex flex-wrap justify-end gap-2">
+                    {item.practiceDraft && (
+                      <Badge variant="outline" className="border-purple-200 bg-purple-50 text-purple-700">
+                        연습 기록
+                      </Badge>
+                    )}
                     <Badge variant="outline" className={statusClassName(item.status)}>
                       {item.status}
                     </Badge>
@@ -449,7 +479,25 @@ export default function LegalCasesPage() {
                   <p>법원: {item.courtName}</p>
                   <p>마지막 송달확인일: {item.lastCheckedAt || '기록 없음'}</p>
                 </div>
-              </button>
+                <div className="mt-4 flex flex-wrap justify-end gap-2">
+                  <Button variant="outline" size="sm" onClick={() => navigate(`/legal-cases/${item.id}`)}>
+                    사건 열기
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => removeCase(item)}
+                    disabled={deletingCaseId === item.id}
+                  >
+                    {deletingCaseId === item.id ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="size-4" />
+                    )}
+                    삭제
+                  </Button>
+                </div>
+              </article>
             ))}
           </section>
         )}

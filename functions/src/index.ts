@@ -16,6 +16,13 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { logAiUsage } from './aiUsageLogger';
 import { cancelSubscriptionForUid, revokeBillingKeyForUid } from './subscriptionHelpers';
+import { enforceRateLimit } from './utils/rateLimit';
+import {
+  getMonthlyAiQuotaStatus as getMonthlyAiQuotaStatusForUser,
+  reserveMonthlyAiQuota,
+  rollbackMonthlyAiQuotaReservation,
+  type MonthlyAiQuotaReservation,
+} from './utils/monthlyAiQuota';
 // 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
 import { GoogleGenAI } from '@google/genai';
 // HARU가계부 카카오뱅크 XLSX 잠금 해제 전용 (msoffcrypto-tool TS 포트)
@@ -806,6 +813,8 @@ export const polishContent = onCall(
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
     const uid = request.auth.uid;
+    await enforceRateLimit(uid, 'polishContent', 10, 60);
+    let monthlyQuotaReservation: MonthlyAiQuotaReservation | null = null;
     try {
       const { text, mode = 'premium', format } = request.data;
 
@@ -815,6 +824,7 @@ export const polishContent = onCall(
       if (text.length > 5000) {
         throw new HttpsError('invalid-argument', '텍스트는 5000자 이내여야 합니다.');
       }
+      monthlyQuotaReservation = await reserveMonthlyAiQuota(request.auth.uid, 'polishContent');
 
       // SAYU 형식별 3그룹 분기 (2026-05-13 도입)
       // 풍성형: 감성·문학 표현 환영
@@ -982,6 +992,7 @@ export const polishContent = onCall(
 
     } catch (error: any) {
       console.error('AI 처리 실패:', error);
+      await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
       if (request.auth?.uid) {
         await logAiUsage({
           uid: request.auth.uid,
@@ -1000,9 +1011,22 @@ export const polishContent = onCall(
           isDev: DEVELOPER_UIDS.has(request.auth.uid),
         });
       }
+      if (error instanceof HttpsError) {
+        throw error;
+      }
       throw new HttpsError('internal', 'AI 처리에 실패했습니다.');
     }
   }
+);
+
+export const getMonthlyAiQuotaStatus = onCall(
+  { region: 'asia-northeast3' },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    return getMonthlyAiQuotaStatusForUser(request.auth.uid);
+  },
 );
 
 // 숫자·기호만으로 이뤄진 제목인지 검사 (의미 없는 제목 걸러냄)
@@ -1538,6 +1562,15 @@ export const recordPaidServiceUsage = onCall(
     return logPaidServiceUsage(request.auth.uid, rawEventType as PaidServiceUsageEvent, details);
   },
 );
+
+// 유료(베이직·프리미엄) 구독자만 통과 — 일부 유료 전용 서버 함수에서 사용.
+// 개발자 UID와 만료되지 않은 basic/premium은 getUserPlan이 이미 처리한다.
+async function requirePaidSubscription(uid: string): Promise<void> {
+  const plan = await getUserPlan(uid);
+  if (plan === 'free') {
+    throw new HttpsError('permission-denied', '베이직 또는 프리미엄 구독 후 이용할 수 있습니다.');
+  }
+}
 
 type ResultChatSearchPreference = 'auto' | 'record_only' | 'web_confirmed';
 
@@ -2340,6 +2373,7 @@ export const chatWithResult = onCall(
     let locked = false;
     let reservedWebSearch = false;
     let webSearchFinalized = false;
+    let monthlyQuotaReservation: MonthlyAiQuotaReservation | null = null;
 
     try {
       await acquireResultChatLock(threadRef, requestId);
@@ -2354,6 +2388,7 @@ export const chatWithResult = onCall(
           throw new HttpsError('permission-denied', '파일 첨부는 베이직·프리미엄 이용권 전용 기능입니다.');
         }
       }
+      monthlyQuotaReservation = await reserveMonthlyAiQuota(uid, 'chatWithResult');
 
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
       const classification = await classifyResultChatQuestion(ai, {
@@ -2374,6 +2409,8 @@ export const chatWithResult = onCall(
         if (answerRoute === 'high_risk_guidance') {
           answerRoute = 'high_risk_guidance';
         } else if (answerRoute === 'web_search') {
+          await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
+          monthlyQuotaReservation = null;
           return {
             threadId,
             answer: '',
@@ -2400,6 +2437,8 @@ export const chatWithResult = onCall(
           answerRoute = 'web_search';
         }
       } else if (answerRoute === 'web_search') {
+        await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
+        monthlyQuotaReservation = null;
         return {
           threadId,
           answer: '',
@@ -2416,6 +2455,8 @@ export const chatWithResult = onCall(
           webSearchRemainingCount: currentUsage.remainingCount,
         };
       } else if (answerRoute === 'ambiguous') {
+        await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
+        monthlyQuotaReservation = null;
         return {
           threadId,
           answer: '',
@@ -2514,6 +2555,8 @@ export const chatWithResult = onCall(
       if (answerRoute === 'web_search') {
         const reserved = await reserveWebSearchSlot(threadRef, actualPlan, sourceKey, sourceIndex);
         if (!reserved.reserved) {
+          await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
+          monthlyQuotaReservation = null;
           await logResultChatUsage({
             uid,
             actualPlan,
@@ -2658,6 +2701,7 @@ export const chatWithResult = onCall(
         webSearchRemainingCount: usageForAnswer.remainingCount,
       };
     } catch (error: any) {
+      await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
       if (reservedWebSearch && !webSearchFinalized) {
         await finalizeWebSearchSlot(threadRef, actualPlan, false);
       }
@@ -4056,6 +4100,7 @@ export const extractReadingBookTextFromPhoto = onCall(
     }
 
     const uid = request.auth.uid;
+    await enforceRateLimit(uid, 'extractReadingBookTextFromPhoto', 5, 30);
     const isDeveloper = DEVELOPER_UIDS.has(uid);
     const d = request.data || {};
     const bookTitle = String(d.bookTitle || '').trim().slice(0, 200);
@@ -4076,14 +4121,6 @@ export const extractReadingBookTextFromPhoto = onCall(
     const imageKb = Math.round(imageBase64.length * 0.75 / 1024);
     if (imageKb > 7 * 1024) {
       throw new HttpsError('invalid-argument', '사진이 너무 큽니다. 한 장당 7MB 이하로 줄여주세요.');
-    }
-
-    if (!isDeveloper) {
-      const subSnap = await db.doc(`users/${uid}/subscription/info`).get();
-      const plan = String(subSnap.data()?.plan || '').toLowerCase();
-      if (plan !== 'premium') {
-        throw new HttpsError('permission-denied', '책 본문 사진 텍스트 변환은 PREMIUM 구독자 전용 기능입니다.');
-      }
     }
 
     const usageRef = db.doc(`users/${uid}/readingOcrUsage/${bookId}`);
@@ -4229,6 +4266,7 @@ export const extractStockTradeTextFromPhoto = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await enforceRateLimit(request.auth.uid, 'extractStockTradeTextFromPhoto', 5, 30);
 
     let imageBase64 = String(request.data?.imageBase64 || '').replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '');
     const mimeType = String(request.data?.mimeType || 'image/jpeg').startsWith('image/')
@@ -4372,6 +4410,7 @@ export const extractLedgerTextFromImage = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await enforceRateLimit(request.auth.uid, 'extractLedgerTextFromImage', 5, 30);
 
     const rawImages = Array.isArray(request.data?.images) ? request.data.images : [];
     if (rawImages.length === 0) {
@@ -4576,6 +4615,7 @@ export const extractHouseholdTextFromImage = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await enforceRateLimit(request.auth.uid, 'extractHouseholdTextFromImage', 5, 30);
 
     const rawImages = Array.isArray(request.data?.images) ? request.data.images : [];
     if (rawImages.length === 0) {
@@ -4882,12 +4922,6 @@ function normalizeGrowthTimelinePdfPayload(data: any) {
   return { title, createdLabel, items };
 }
 
-async function isPremiumUser(uid: string): Promise<boolean> {
-  if (DEVELOPER_UIDS.has(uid)) return true;
-  const subSnap = await db.doc(`users/${uid}/subscription/info`).get();
-  return subSnap.exists && subSnap.data()?.plan === 'premium';
-}
-
 function buildGrowthTimelinePdfHash(uid: string, payload: ReturnType<typeof normalizeGrowthTimelinePdfPayload>): string {
   const stablePayload = JSON.stringify({
     schemaVersion: GROWTH_TIMELINE_PDF_SCHEMA_VERSION,
@@ -5175,9 +5209,7 @@ export const generateGrowthTimelinePdf = onCall(
     }
 
     const uid = request.auth.uid;
-    if (!(await isPremiumUser(uid))) {
-      throw new HttpsError('permission-denied', 'PREMIUM 구독 후 이용 가능한 기능입니다');
-    }
+    await enforceRateLimit(uid, 'generateGrowthTimelinePdf', 3, 20);
 
     const payload = normalizeGrowthTimelinePdfPayload(request.data);
     const hash = buildGrowthTimelinePdfHash(uid, payload);
@@ -5632,20 +5664,6 @@ function isDeveloperUid(uid: string): boolean {
   return DEVELOPER_UIDS.has(uid);
 }
 
-async function assertHaruLawPremiumAccess(uid: string): Promise<void> {
-  if (isDeveloperUid(uid)) return;
-
-  const subSnap = await db.doc(`users/${uid}/subscription/info`).get();
-  const plan = String(subSnap.data()?.plan || '').toLowerCase();
-  const endDate = subSnap.data()?.endDate;
-  const endTime = typeof endDate === 'string' ? Date.parse(endDate) : Number.NaN;
-  const expired = Number.isFinite(endTime) && endTime < Date.now();
-
-  if (plan !== 'premium' || expired) {
-    throw new HttpsError('permission-denied', '하루LAW 익명 공유는 PREMIUM 구독자 전용 기능입니다.');
-  }
-}
-
 function getKstDateKey(): string {
   return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
@@ -5834,6 +5852,7 @@ export const lawSearch = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await enforceRateLimit(request.auth.uid, 'lawSearch', 3, 20);
 
     const uid = request.auth.uid;
     const { query } = request.data;
@@ -6154,7 +6173,7 @@ export const prepareHaruLawSharePreview = onCall(
     }
 
     const uid = request.auth.uid;
-    await assertHaruLawPremiumAccess(uid);
+    await enforceRateLimit(uid, 'prepareHaruLawSharePreview', 3, 20);
     await enforceHaruLawSharePreviewLimit(uid);
 
     try {
@@ -6168,7 +6187,7 @@ export const prepareHaruLawSharePreview = onCall(
 
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value().trim());
       const model = genAI.getGenerativeModel({ model: 'gemini-3.1-pro-preview' });
-      const result = await model.generateContent(`다음 하루LAW 기록을 다른 PREMIUM 구독자가 참고할 수 있는 익명 공개 카드로 바꾸세요.
+      const result = await model.generateContent(`다음 하루LAW 기록을 다른 사용자가 참고할 수 있는 익명 공개 카드로 바꾸세요.
 
 반드시 JSON 객체만 출력하세요. 마크다운 코드블록은 사용하지 마세요.
 필드는 title, anonymizedQuestion, summary, judgmentType, relatedStatutes만 사용하세요.
@@ -6240,7 +6259,6 @@ export const publishHaruLawSharedCard = onCall(
     }
 
     const uid = request.auth.uid;
-    await assertHaruLawPremiumAccess(uid);
 
     const previewId = request.data?.previewId;
     if (typeof previewId !== 'string' || !previewId.trim()) {
@@ -7807,6 +7825,7 @@ export const analyzeRecordForProphecy = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await requirePaidSubscription(request.auth.uid);
     const { content, userAnalysis, round } = request.data;
     if (!content || typeof content !== 'string' || content.trim().length < 10) {
       throw new HttpsError('invalid-argument', '분석할 기록 내용이 너무 짧습니다.');
@@ -7961,6 +7980,7 @@ export const generateHaruProphecy = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await requirePaidSubscription(request.auth.uid);
 
     const { motive, motiveCustom, chars, birth, desire, shackle, events, luck, unluck, narrative, type,
             fromRecord, recordContent, recordTitle, recordDate, recordFormat, prophecyType, timeOption, question,
@@ -9627,6 +9647,7 @@ export const analyzePlantPhoto = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await enforceRateLimit(request.auth.uid, 'analyzePlantPhoto', 5, 30);
 
     const { imageBase64, mimeType } = request.data as { imageBase64?: string; mimeType?: string };
     if (!imageBase64 || typeof imageBase64 !== 'string') {
@@ -10345,6 +10366,8 @@ export const detectPlantAdvanced = onCall(
     };
   },
 );
+
+export { getGrammarExplainV2 } from './grammar/grammarV2';
 
 // ===========================================
 // 🌿 NIBR (국립생물자원관) 국가생물종목록 Open API 테스트 endpoint

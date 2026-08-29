@@ -2,8 +2,23 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as logger from 'firebase-functions/logger';
+import * as admin from 'firebase-admin';
+
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
 
 const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
+const db = admin.firestore();
+const DEVELOPER_UIDS = new Set([
+  'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8',
+]);
+// 현재 1차 운영값입니다. HARU 공식 최종 AI 정책 확정값이 아니며 한 곳에서 조정합니다.
+const CURRENT_CLAIM_REASON_DAILY_LIMITS: Record<'free' | 'basic' | 'premium', number> = {
+  free: 1,
+  basic: 3,
+  premium: 5,
+};
 const ALLOWED_CALLABLE_ORIGINS = [
   'https://haru2026-8abb8.web.app',
   'https://haru2026.com',
@@ -18,6 +33,73 @@ function sanitizeInput(raw: unknown, maxLength: number): string {
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, maxLength);
+}
+
+function getKstDateKey(): string {
+  return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+async function getUserPlan(uid: string): Promise<'free' | 'basic' | 'premium'> {
+  if (DEVELOPER_UIDS.has(uid)) return 'premium';
+
+  try {
+    const snap = await db.doc(`users/${uid}/subscription/info`).get();
+    const data = snap.data() || {};
+    const plan = String(data.plan || '').toLowerCase();
+    const endDate = data.endDate;
+    const expiresAt = data.expiresAt;
+    const endTime = typeof endDate === 'string'
+      ? Date.parse(endDate)
+      : typeof expiresAt?.toMillis === 'function'
+        ? expiresAt.toMillis()
+        : Number.NaN;
+
+    if (Number.isFinite(endTime) && endTime < Date.now()) return 'free';
+    if (plan === 'premium') return 'premium';
+    if (plan === 'basic') return 'basic';
+  } catch (error) {
+    logger.warn('전자소송 청구원인 구독정보 조회 실패:', {
+      uid,
+      message: (error as any)?.message,
+    });
+  }
+
+  return 'free';
+}
+
+async function enforceClaimReasonDailyLimit(uid: string): Promise<{
+  plan: 'free' | 'basic' | 'premium';
+  limit: number;
+  usedAfter: number;
+}> {
+  const plan = await getUserPlan(uid);
+  const limit = CURRENT_CLAIM_REASON_DAILY_LIMITS[plan] ?? CURRENT_CLAIM_REASON_DAILY_LIMITS.free;
+  const usageRef = db.doc(`users/${uid}/lawsuitClaimReasonUsage/${getKstDateKey()}`);
+
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(usageRef);
+    const used = Number(snap.data()?.count || 0);
+
+    if (!DEVELOPER_UIDS.has(uid) && used >= limit) {
+      throw new HttpsError(
+        'resource-exhausted',
+        `청구원인 AI 초안은 오늘 ${limit}회까지 사용할 수 있습니다.`,
+      );
+    }
+
+    const usedAfter = used + 1;
+    tx.set(usageRef, {
+      count: admin.firestore.FieldValue.increment(1),
+      plan,
+      limit,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: snap.exists
+        ? snap.data()?.createdAt || admin.firestore.FieldValue.serverTimestamp()
+        : admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    return { plan, limit, usedAfter };
+  });
 }
 
 export const generateLawsuitClaimReason = onCall(
@@ -69,6 +151,8 @@ export const generateLawsuitClaimReason = onCall(
       throw new HttpsError('invalid-argument', '청구원인 작성을 위한 사건 정보가 필요합니다.');
     }
 
+    const quota = await enforceClaimReasonDailyLimit(request.auth.uid);
+
     const systemPrompt = `당신은 소송 '연습' 보조 도구입니다. 법률자문이 아닙니다.
 사용자가 입력한 거래 경위 범위 안에서만 '청구원인'(소송을 하는 이유·거래 경위·분쟁 사정)을 자연스러운 문단으로 작성하세요.
 
@@ -110,9 +194,13 @@ ${safeClaimPurpose || '미입력'}
       const result = await model.generateContent(userPrompt);
       const claimReasonText = result.response.text().trim();
       logger.info(
-        `generateLawsuitClaimReason 완료: uid=${request.auth.uid}, len=${claimReasonText.length}`,
+        `generateLawsuitClaimReason 완료: uid=${request.auth.uid}, plan=${quota.plan}, used=${quota.usedAfter}/${quota.limit}, len=${claimReasonText.length}`,
       );
-      return { claimReasonText };
+      return {
+        claimReasonText,
+        quotaLimit: quota.limit,
+        quotaRemaining: Math.max(quota.limit - quota.usedAfter, 0),
+      };
     } catch (error: any) {
       logger.error('generateLawsuitClaimReason 실패:', error);
       throw new HttpsError('internal', '청구원인 AI 초안 작성에 실패했습니다.');

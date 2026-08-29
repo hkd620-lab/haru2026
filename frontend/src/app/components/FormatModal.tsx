@@ -6,7 +6,6 @@ import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'fire
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { compressImage } from '../services/imageService';
 import { useAuth } from '../contexts/AuthContext';
-import { useSubscription } from '../hooks/useSubscription';
 import { toast } from 'sonner';
 import heic2any from 'heic2any';
 import { LoadingOverlay } from './LoadingOverlay';
@@ -74,6 +73,17 @@ interface FormatModalProps {
 interface PolishResult {
   text: string;
 }
+
+type MonthlyAiQuotaStatus = {
+  plan: 'free' | 'basic' | 'premium';
+  used: number;
+  limit: number;
+  remaining: number;
+  period: string;
+  freeLimit: number;
+  basicLimit: number;
+  premiumLimit: number;
+};
 
 interface BookOcrResult {
   text?: string;
@@ -404,6 +414,11 @@ const DIARY_PREMIUM_FIELDS = [
 
 const DEVELOPER_UIDS = ['naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8'];
 const READING_BOOK_OCR_LIMIT = 20;
+const MONTHLY_AI_PLAN_LABELS: Record<MonthlyAiQuotaStatus['plan'], string> = {
+  free: '무료',
+  basic: '베이직',
+  premium: '프리미엄',
+};
 const LEDGER_OCR_PREVIEW_FIELDS: { key: keyof LedgerOcrFields; label: string }[] = [
   { key: 'transactionAt', label: '거래일시' },
   { key: 'type', label: '거래종류' },
@@ -417,7 +432,6 @@ const LEDGER_OCR_PREVIEW_FIELDS: { key: keyof LedgerOcrFields; label: string }[]
 
 export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, onSave }: FormatModalProps) {
   const { user } = useAuth();
-  const { isPremium } = useSubscription();
   const [formData, setFormData] = useState<Record<string, string>>(initialData);
   const [isSaving, setIsSaving] = useState(false);
   const [isPolishing, setIsPolishing] = useState(false);
@@ -426,6 +440,10 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [sayuMode, setSayuMode] = useState<SayuMode>('PREMIUM');
   const [showModeSelect, setShowModeSelect] = useState(false);
   const [polishStats, setPolishStats] = useState<any>(null);
+  const [monthlyAiQuotaStatus, setMonthlyAiQuotaStatus] = useState<MonthlyAiQuotaStatus | null>(null);
+  const [showMonthlyAiQuotaModal, setShowMonthlyAiQuotaModal] = useState(false);
+  const [isLoadingMonthlyAiQuota, setIsLoadingMonthlyAiQuota] = useState(false);
+  const [pendingPolishMode, setPendingPolishMode] = useState<SayuMode>('PREMIUM');
   
   // 사진 관련 state
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
@@ -1190,18 +1208,33 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     }
   };
 
-  const handlePolishClick = () => {
+  const handlePolishClick = async () => {
     const currentTitle = (formData[`${prefix}_title`] || (format === '독서사유' ? formData.reading_book_title : '') || (isStockFormat ? formData.stock_name : '') || '').trim();
     if (!currentTitle) {
       toast.warning('제목을 입력해 주세요. 제목이 있어야 나중에 목록에서 내용을 확인하기 편합니다.');
       return;
     }
 
-    if (!isPremium) {
-      alert('PREMIUM 구독 후 이용 가능한 기능입니다.');
-      return;
+    setPendingPolishMode('PREMIUM');
+    setIsLoadingMonthlyAiQuota(true);
+    try {
+      const functions = getFunctions(undefined, 'asia-northeast3');
+      const getMonthlyAiQuotaStatus = httpsCallable(functions, 'getMonthlyAiQuotaStatus');
+      const result = await getMonthlyAiQuotaStatus();
+      setMonthlyAiQuotaStatus(result.data as MonthlyAiQuotaStatus);
+      setShowMonthlyAiQuotaModal(true);
+    } catch (error) {
+      console.error('AI 도움 사용량 조회 실패:', error);
+      toast.error('AI 도움 사용량을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      setIsLoadingMonthlyAiQuota(false);
     }
-    handlePolishWithMode('PREMIUM');
+  };
+
+  const handleConfirmMonthlyAiPolish = () => {
+    const mode = pendingPolishMode;
+    setShowMonthlyAiQuotaModal(false);
+    handlePolishWithMode(mode);
   };
 
   const handlePolishWithMode = async (mode: SayuMode) => {
@@ -1278,7 +1311,12 @@ ${contentValues}`,
       toast.success('AI 다듬기 완료!');
     } catch (error: any) {
       console.error('AI 처리 실패:', error);
-      toast.error('AI 연결에 실패했습니다.');
+      const details = error?.details || error?.customData?._tokenResponse?.error;
+      if (details?.reason === 'MONTHLY_AI_QUOTA_EXCEEDED') {
+        toast.error(`이번 달 AI 도움 ${details.used}/${details.limit}회를 모두 사용했습니다.`);
+      } else {
+        toast.error('AI 연결에 실패했습니다.');
+      }
     } finally {
       setIsPolishing(false);
     }
@@ -1351,11 +1389,6 @@ ${contentValues}`,
       toast.error('로그인이 필요합니다.');
       return;
     }
-    if (!isPremium) {
-      alert('PREMIUM 구독 후 이용 가능한 기능입니다.');
-      return;
-    }
-
     const bookTitle = String(formData.reading_book_title || '').trim();
     const author = String(formData.reading_author || '').trim();
     if (!bookTitle) {
@@ -2820,7 +2853,6 @@ ${contentValues}`,
       setBlockedBookMessage('이미 마무리한 책입니다. 다시 읽는 기록은 새 독서사유로 시작해 주세요.');
       return;
     }
-
     setIsReadingFinishing(true);
     try {
       const db = getFirestore();
@@ -2938,7 +2970,6 @@ ${entriesText}`,
       toast.error('본문 내용이나 독서장을 한 줄이라도 작성해 주세요.');
       return;
     }
-
     setIsPolishing(true);
     toast.info('AI가 중간기록을 다듬는 중...');
     try {
@@ -3171,7 +3202,7 @@ ${contentValues}`,
           </div>
 
           {/* Test Data Button — 선택 화면에서 숨김 */}
-          {recordStep === 'input' && !(isLedgerFormat && ledgerInputMode === 'period') && (
+          {isDeveloper && recordStep === 'input' && !(isLedgerFormat && ledgerInputMode === 'period') && (
           <div style={{ padding: '16px 24px', backgroundColor: '#f8f9fa', borderBottom: '1px solid #e5e5e5' }}>
             <button
               onClick={handleFillTestData}
@@ -3640,7 +3671,7 @@ ${contentValues}`,
                         {isDeveloper
                           ? '개발자 무제한'
                           : readingOcrUsedCount === null
-                            ? `구독자 책 1권당 ${READING_BOOK_OCR_LIMIT}장`
+                            ? `책 1권당 ${READING_BOOK_OCR_LIMIT}장`
                             : `${readingOcrUsedCount}/${READING_BOOK_OCR_LIMIT}장`}
                       </span>
                     </div>
@@ -3694,13 +3725,10 @@ ${contentValues}`,
                         <button
                           type="button"
                           onClick={() => {
-                            if (!isPremium) {
-                              alert('PREMIUM 구독 후 이용 가능한 기능입니다.');
-                              return;
-                            }
                             bookOcrInputRef.current?.click();
                           }}
                           disabled={isExtractingBookText || (!isDeveloper && readingOcrUsedCount !== null && readingOcrUsedCount >= READING_BOOK_OCR_LIMIT)}
+                          title="책 본문 사진 추가"
                           style={{
                             width: '100%',
                             padding: '10px 14px',
@@ -5999,15 +6027,15 @@ ${contentValues}`,
               <div style={{ display: 'flex', flexDirection: 'row', gap: '10px' }}>
                 <button
                   onClick={handlePolishClick}
-                  disabled={isPolishing || isSaving}
+                  disabled={isPolishing || isSaving || isLoadingMonthlyAiQuota}
                   style={{
                     flex: 1, height: '56px',
                     fontSize: '14px', fontWeight: 500,
                     letterSpacing: '0.45px',
                     border: 'none', borderRadius: '20px',
                     backgroundColor: '#bbe8ee', color: '#000',
-                    cursor: (isPolishing || isSaving) ? 'not-allowed' : 'pointer',
-                    opacity: (isPolishing || isSaving) ? 0.7 : 1,
+                    cursor: (isPolishing || isSaving || isLoadingMonthlyAiQuota) ? 'not-allowed' : 'pointer',
+                    opacity: (isPolishing || isSaving || isLoadingMonthlyAiQuota) ? 0.7 : 1,
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   }}
                 >
@@ -6178,10 +6206,10 @@ ${contentValues}`,
                     gap: 6,
                   }}
                 >
-                  {isPolishing ? (
+                  {isPolishing || isLoadingMonthlyAiQuota ? (
                     <>
                       <Wand2 className="animate-spin" style={{ width: 15, height: 15 }} />
-                      AI 다듬는 중...
+                      {isLoadingMonthlyAiQuota ? 'AI 도움 확인 중...' : 'AI 다듬는 중...'}
                     </>
                   ) : (
                     <>
@@ -6331,6 +6359,102 @@ ${contentValues}`,
                 }}
               >
                 {isSaving ? '저장 중...' : '💾 SAYU-나의기록 저장'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMonthlyAiQuotaModal && monthlyAiQuotaStatus && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.55)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1300,
+            padding: 20,
+          }}
+          onClick={() => setShowMonthlyAiQuotaModal(false)}
+        >
+          <div
+            style={{
+              backgroundColor: '#fff',
+              borderRadius: 10,
+              width: '100%',
+              maxWidth: 440,
+              padding: 24,
+              boxShadow: '0 24px 60px rgba(0,0,0,0.22)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ margin: 0, fontSize: 20, color: '#1A3C6E', fontWeight: 800 }}>
+              AI 도움 사용 안내
+            </h2>
+            <div style={{ marginTop: 18, display: 'grid', gap: 8, fontSize: 14, color: '#374151', lineHeight: 1.6 }}>
+              <p style={{ margin: 0 }}>현재 요금제: {MONTHLY_AI_PLAN_LABELS[monthlyAiQuotaStatus.plan]}</p>
+              <p style={{ margin: 0 }}>
+                이번 달 AI 도움: <strong>{monthlyAiQuotaStatus.used} / {monthlyAiQuotaStatus.limit}회</strong>
+              </p>
+              <p style={{ margin: 0 }}>남은 AI 도움: {monthlyAiQuotaStatus.remaining}회</p>
+              <p style={{ margin: '8px 0 0', color: '#6B7280' }}>
+                무료 월 {monthlyAiQuotaStatus.freeLimit}회 · 베이직 월 {monthlyAiQuotaStatus.basicLimit}회 · 프리미엄 월 {monthlyAiQuotaStatus.premiumLimit}회
+              </p>
+              {monthlyAiQuotaStatus.remaining <= 0 && (
+                <p style={{ margin: '8px 0 0', color: '#B91C1C', fontWeight: 700 }}>
+                  이번 달 AI 도움을 모두 사용했습니다.
+                </p>
+              )}
+            </div>
+            <div style={{ marginTop: 22, display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              {monthlyAiQuotaStatus.remaining > 0 && (
+                <button
+                  type="button"
+                  onClick={handleConfirmMonthlyAiPolish}
+                  style={{
+                    padding: '10px 16px',
+                    border: 'none',
+                    borderRadius: 8,
+                    backgroundColor: '#10b981',
+                    color: '#fff',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  AI 다듬기 실행
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => { window.location.href = '/subscription'; }}
+                style={{
+                  padding: '10px 16px',
+                  border: '1px solid #1A3C6E',
+                  borderRadius: 8,
+                  backgroundColor: '#fff',
+                  color: '#1A3C6E',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                요금제 보기
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowMonthlyAiQuotaModal(false)}
+                style={{
+                  padding: '10px 16px',
+                  border: '1px solid #D1D5DB',
+                  borderRadius: 8,
+                  backgroundColor: '#fff',
+                  color: '#4B5563',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                취소
               </button>
             </div>
           </div>

@@ -19,6 +19,45 @@ type RecoverySubTab = 'people' | 'todaycharge' | 'ramen' | 'epub';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
+type SayuAxis = 'format' | 'agent';
+
+type SayuCategory = { key: string; label: string; count: number };
+
+type SayuCardView = {
+  cardKey: string;
+  kind: 'record' | 'lawCard';
+  title: string;
+  meta: string;
+  thumbnailUrl: string | null;
+  badges: string[];
+  formatLabels: string[];
+  agentLabel: string;
+  record?: SharedRecordListItem;
+  lawCard?: PublishedHaruLawCard;
+};
+
+const JUDGMENT_LABELS: Record<string, string> = {
+  possible: '가능성 있음',
+  caution: '주의 필요',
+  need_check: '추가 확인 필요',
+};
+
+// 비서별 그룹 라벨 — 1단계에서 저장한 sourceAgent 우선, 레거시 문서는 '개인기록' 폴백.
+// 확장 지점(2단계): plant_catalog를 같은 방식으로 정규화해 '하루식물탐정' 버킷에 합류시키면 됨.
+const resolveAgentLabel = (item: SharedRecordListItem): string => item.sourceAgent ?? '개인기록';
+
+const sayuChipStyle = (active: boolean) => ({
+  minHeight: 30,
+  padding: '0 12px',
+  borderRadius: 999,
+  border: active ? '1.5px solid #0F766E' : '1px solid #CBD5E1',
+  background: active ? '#0F766E' : '#FFFFFF',
+  color: active ? '#FFFFFF' : '#475569',
+  fontSize: 12,
+  fontWeight: 800,
+  cursor: 'pointer',
+});
+
 export function SayuTogetherPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,8 +67,10 @@ export function SayuTogetherPage() {
   const [items, setItems] = useState<SharedRecordListItem[]>([]);
   const [publishedBooks, setPublishedBooks] = useState<PublishedBook[]>([]);
   const [lawCards, setLawCards] = useState<PublishedHaruLawCard[]>([]);
-  const [expandedLawCardId, setExpandedLawCardId] = useState('');
   const [selectedId, setSelectedId] = useState('');
+  const [selectedLawCardId, setSelectedLawCardId] = useState('');
+  const [axis, setAxis] = useState<SayuAxis | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [comments, setComments] = useState<SharedRecordComment[]>([]);
   const [commentBody, setCommentBody] = useState('');
   const [loading, setLoading] = useState(false);
@@ -185,17 +226,105 @@ export function SayuTogetherPage() {
     return date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
-  const getPreviewText = (item: SharedRecordListItem) => {
-    const formats = Array.isArray(item.formats) ? item.formats : [];
-    const preview = formats.map((format) => String(format.sayuText || '').trim()).find(Boolean) || '';
-    return preview.length > 160 ? `${preview.slice(0, 160)}...` : preview;
-  };
-
   const getPhotoUrls = (item: SharedRecordListItem) => {
     if (!Array.isArray(item.publicPhotoUrls)) return [];
     return item.publicPhotoUrls
       .map((url) => String(url || '').trim())
       .filter((url) => /^https?:\/\//i.test(url));
+  };
+
+  const selectedLawCard = useMemo(
+    () => lawCards.find((card) => card.id === selectedLawCardId) || null,
+    [lawCards, selectedLawCardId],
+  );
+
+  // 렌더용 카드 변환 — items/lawCards 로딩 로직은 그대로, 화면 표시 형태만 통합
+  const sayuCards = useMemo<SayuCardView[]>(() => {
+    const recordCards: SayuCardView[] = items.map((item) => {
+      const formats = Array.isArray(item.formats) ? item.formats : [];
+      const formatLabels = formats.map((format) => format.formatLabel || 'SAYU');
+      return {
+        cardKey: `record_${item.id}`,
+        kind: 'record',
+        title: item.title || 'SAYU 기록',
+        meta: `${item.nickname || 'HARU 회원'} · ${formatRecordDate(item.recordDate)}`,
+        thumbnailUrl: getPhotoUrls(item)[0] || null,
+        badges: formatLabels,
+        formatLabels,
+        agentLabel: resolveAgentLabel(item),
+        record: item,
+      };
+    });
+
+    // 하루LAW 익명 사례 — 별도 컬렉션(sourceAgent 없음), '하루LAW' 비서 그룹으로 정규화.
+    // v5 규칙: 기록형식별 축에는 노출하지 않음(formatLabels 비움).
+    const lawCardCards: SayuCardView[] = lawCards.map((card) => ({
+      cardKey: `law_${card.id}`,
+      kind: 'lawCard',
+      title: card.title || '하루LAW 사례',
+      meta: card.anonymizedQuestion || '',
+      thumbnailUrl: null,
+      badges: card.judgmentType ? [JUDGMENT_LABELS[card.judgmentType] || card.judgmentType] : [],
+      formatLabels: [],
+      agentLabel: '하루LAW',
+      lawCard: card,
+    }));
+
+    return [...recordCards, ...lawCardCards];
+  }, [items, lawCards]);
+
+  const formatCategories = useMemo<SayuCategory[]>(() => {
+    const counts = new Map<string, number>();
+    sayuCards.forEach((card) => {
+      if (card.kind !== 'record') return;
+      card.formatLabels.forEach((label) => counts.set(label, (counts.get(label) || 0) + 1));
+    });
+    return Array.from(counts.entries()).map(([label, count]) => ({ key: label, label, count }));
+  }, [sayuCards]);
+
+  const agentCategories = useMemo<SayuCategory[]>(() => {
+    const counts = new Map<string, number>();
+    sayuCards.forEach((card) => {
+      counts.set(card.agentLabel, (counts.get(card.agentLabel) || 0) + 1);
+    });
+    return Array.from(counts.entries()).map(([label, count]) => ({ key: label, label, count }));
+  }, [sayuCards]);
+
+  const activeCategories = axis === 'agent' ? agentCategories : formatCategories;
+
+  const axisScopedCards = useMemo(() => {
+    if (axis === 'format') return sayuCards.filter((card) => card.kind === 'record');
+    if (axis === 'agent') return sayuCards;
+    return [];
+  }, [axis, sayuCards]);
+
+  const visibleCards = useMemo(() => {
+    if (selectedCategory === 'all') return axisScopedCards;
+    if (axis === 'format') return axisScopedCards.filter((card) => card.formatLabels.includes(selectedCategory));
+    return axisScopedCards.filter((card) => card.agentLabel === selectedCategory);
+  }, [axisScopedCards, axis, selectedCategory]);
+
+  const groupedSections = useMemo(() => {
+    if (selectedCategory !== 'all') return [];
+    return activeCategories.map((category) => ({
+      ...category,
+      cards: axis === 'format'
+        ? axisScopedCards.filter((card) => card.formatLabels.includes(category.key))
+        : axisScopedCards.filter((card) => card.agentLabel === category.key),
+    }));
+  }, [activeCategories, axisScopedCards, axis, selectedCategory]);
+
+  const openCard = (card: SayuCardView) => {
+    if (card.kind === 'record' && card.record) {
+      setSelectedId(card.record.id);
+    } else if (card.kind === 'lawCard' && card.lawCard) {
+      setSelectedLawCardId(card.lawCard.id);
+    }
+  };
+
+  const closeDetailModal = () => {
+    setSelectedId('');
+    setSelectedLawCardId('');
   };
 
   const handleSubmitComment = async () => {
@@ -264,286 +393,26 @@ export function SayuTogetherPage() {
     }
   };
 
-  // ⚖️ 관리자 검수를 통과한 하루LAW 익명 사례. 승인 건이 없으면 섹션 자체를 감춘다.
-  const renderHaruLawCards = () => {
-    if (lawCards.length === 0) return null;
-
-    const judgmentLabels: Record<string, string> = {
-      possible: '가능성 있음',
-      caution: '주의 필요',
-      need_check: '추가 확인 필요',
-    };
+  const renderRecordDetailBody = (item: SharedRecordListItem) => {
+    const formats = Array.isArray(item.formats) ? item.formats : [];
+    const photoUrls = getPhotoUrls(item);
+    const isOwnItem = item.ownerUid === user?.uid;
+    const isBusy = sharedActionId === item.id;
 
     return (
-      <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: '1px solid #DBEAFE' }}>
-        <div className="mb-3">
-          <p className="text-sm font-bold" style={{ color: '#1A3C6E' }}>⚖️ 하루LAW 익명 사례</p>
-          <p className="text-xs mt-1" style={{ color: '#6B7280', lineHeight: 1.6 }}>
-            검수를 거쳐 개인정보를 제거한 뒤 공개된 사례입니다. 법률 자문이 아닌 참고 정보입니다.
-          </p>
-        </div>
-        <div className="space-y-2">
-          {lawCards.map((card) => {
-            const expanded = expandedLawCardId === card.id;
-            return (
-              <div key={card.id} className="rounded-xl" style={{ border: '1px solid #E5E7EB', backgroundColor: '#F9FAFB', padding: 12 }}>
-                <button
-                  type="button"
-                  onClick={() => setExpandedLawCardId(expanded ? '' : card.id)}
-                  className="w-full text-left"
-                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                >
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    {card.judgmentType && (
-                      <span className="text-xs font-bold" style={{ color: '#1A3C6E', backgroundColor: '#F0F4FF', borderRadius: 999, padding: '2px 8px' }}>
-                        {judgmentLabels[card.judgmentType] || card.judgmentType}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm font-bold" style={{ color: '#111827', lineHeight: 1.5 }}>{card.title}</p>
-                  <p className="text-xs mt-1" style={{ color: '#6B7280', lineHeight: 1.6 }}>{card.anonymizedQuestion}</p>
-                </button>
-
-                {expanded && (
-                  <div className="mt-3 space-y-2">
-                    <p className="text-xs" style={{ color: '#374151', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{card.summary}</p>
-                    {Array.isArray(card.relatedStatutes) && card.relatedStatutes.length > 0 && (
-                      <div className="rounded-lg" style={{ backgroundColor: '#fff', border: '1px solid #E5E7EB', padding: 10 }}>
-                        {card.relatedStatutes.map((statute, idx) => (
-                          <div key={`${card.id}_statute_${idx}`} className={idx > 0 ? 'mt-2' : ''}>
-                            <p className="text-xs font-bold" style={{ color: '#111827' }}>
-                              {[statute.title, statute.article].filter(Boolean).join(' · ')}
-                            </p>
-                            {statute.easySummary && (
-                              <p className="text-xs mt-0.5" style={{ color: '#6B7280', lineHeight: 1.6 }}>{statute.easySummary}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {card.disclaimer && (
-                      <p className="text-xs" style={{ color: '#92400E', lineHeight: 1.6 }}>{card.disclaimer}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </section>
-    );
-  };
-
-  const renderList = () => {
-    if (authLoading || loading) {
-      return (
-        <div className="rounded-2xl p-8 text-center bg-white" style={{ border: '1px solid #D1FAE5' }}>
-          <p className="text-sm" style={{ color: '#0F766E' }}>공개된 SAYU 기록을 불러오고 있습니다.</p>
-        </div>
-      );
-    }
-
-    if (!user?.uid) {
-      return (
-        <div className="rounded-2xl p-8 text-center bg-white" style={{ border: '1px solid #D1FAE5' }}>
-          <p className="text-sm" style={{ color: '#0F766E', lineHeight: 1.7 }}>
-            SAYU-함께보기는 로그인한 HARU 회원만 볼 수 있습니다.
-          </p>
-        </div>
-      );
-    }
-
-    if (errorMessage) {
-      return (
-        <div className="rounded-2xl p-8 text-center bg-white" style={{ border: '1px solid #FECACA' }}>
-          <p className="text-sm" style={{ color: '#B42318', lineHeight: 1.7 }}>{errorMessage}</p>
-        </div>
-      );
-    }
-
-    if (items.length === 0) {
-      return (
-        <div
-          className="rounded-2xl p-8 text-center"
-          style={{
-            background: 'linear-gradient(135deg, #ECFDF5 0%, #ffffff 70%)',
-            border: '1px solid #D1FAE5',
-          }}
-        >
-          <p className="text-sm" style={{ color: '#0F766E', lineHeight: 1.7 }}>
-            공개된 기록을 준비하고 있습니다.<br />
-            곧 이곳에서 다른 회원들의 SAYU 기록을 만나보실 수 있어요.
-          </p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-3">
-        {items.map((item) => {
-          const isSelected = selectedId === item.id;
-          const formats = Array.isArray(item.formats) ? item.formats : [];
-          const photoUrls = getPhotoUrls(item);
-          const isOwnItem = item.ownerUid === user?.uid;
-          const isBusy = sharedActionId === item.id;
-          return (
-            <article
-              key={item.id}
-              className="bg-white rounded-xl p-4 shadow-sm"
-              style={{ border: isSelected ? '1.5px solid #0F766E' : '1px solid #D1FAE5' }}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div style={{ minWidth: 0 }}>
-                  <h2 className="text-base font-bold truncate" style={{ color: '#1A3C6E' }}>
-                    {item.title || 'SAYU 기록'}
-                  </h2>
-                  <p className="text-xs mt-1" style={{ color: '#64748B' }}>
-                    {item.nickname || 'HARU 회원'} · {formatRecordDate(item.recordDate)}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-1 justify-end">
-                  {formats.map((format) => (
-                    <span
-                      key={`${item.id}_${format.formatKey || format.formatLabel}`}
-                      className="text-[10px] font-bold rounded-full px-2 py-1"
-                      style={{ backgroundColor: '#ECFDF5', color: '#0F766E' }}
-                    >
-                      {format.formatLabel || 'SAYU'}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              {photoUrls.length > 0 && (
-                <div
-                  className="mt-3 overflow-hidden rounded-lg"
-                  style={{ border: '1px solid #E2E8F0', aspectRatio: '16 / 9', background: '#F8FAFC' }}
-                >
-                  <img
-                    src={photoUrls[0]}
-                    alt="공개된 SAYU 사진"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                    loading="lazy"
-                  />
-                </div>
-              )}
-              {getPreviewText(item) && (
-                <p className="text-sm mt-3" style={{ color: '#334155', lineHeight: 1.7 }}>
-                  {getPreviewText(item)}
-                </p>
-              )}
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedId(item.id)}
-                  className="w-full sm:w-auto"
-                  style={{
-                    minHeight: 34,
-                    padding: '0 14px',
-                    borderRadius: 8,
-                    border: '1px solid #0F766E',
-                    background: isSelected ? '#0F766E' : '#FFFFFF',
-                    color: isSelected ? '#FFFFFF' : '#0F766E',
-                    fontSize: 12,
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                  }}
-                >
-                  상세 보기
-                </button>
-                {isOwnItem && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => handleRefreshSharedRecord(item)}
-                      disabled={isBusy}
-                      className="w-full sm:w-auto"
-                      style={{
-                        minHeight: 34,
-                        padding: '0 14px',
-                        borderRadius: 8,
-                        border: '1px solid #CBD5E1',
-                        background: '#FFFFFF',
-                        color: '#475569',
-                        fontSize: 12,
-                        fontWeight: 800,
-                        cursor: isBusy ? 'wait' : 'pointer',
-                        opacity: isBusy ? 0.65 : 1,
-                      }}
-                    >
-                      사진 새로고침
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleUnpublishSharedRecord(item)}
-                      disabled={isBusy}
-                      className="w-full sm:w-auto"
-                      style={{
-                        minHeight: 34,
-                        padding: '0 14px',
-                        borderRadius: 8,
-                        border: '1px solid #FECACA',
-                        background: '#FEF2F2',
-                        color: '#B42318',
-                        fontSize: 12,
-                        fontWeight: 800,
-                        cursor: isBusy ? 'wait' : 'pointer',
-                        opacity: isBusy ? 0.65 : 1,
-                      }}
-                    >
-                      함께보기 삭제
-                    </button>
-                  </>
-                )}
-              </div>
-            </article>
-          );
-        })}
-      </div>
-    );
-  };
-
-  const renderDetail = () => {
-    if (!user?.uid || !selectedItem) return null;
-    const formats = Array.isArray(selectedItem.formats) ? selectedItem.formats : [];
-    const photoUrls = getPhotoUrls(selectedItem);
-    const isOwnItem = selectedItem.ownerUid === user.uid;
-    const isBusy = sharedActionId === selectedItem.id;
-
-    return (
-      <section
-        className="mt-5 bg-white rounded-2xl p-5 shadow-sm"
-        style={{ border: '1px solid #D1FAE5' }}
-      >
+      <>
         <div className="mb-4">
-          <button
-            type="button"
-            onClick={() => setSelectedId('')}
-            style={{
-              minHeight: 34,
-              padding: '0 12px',
-              borderRadius: 8,
-              border: '1px solid #CBD5E1',
-              background: '#FFFFFF',
-              color: '#475569',
-              fontSize: 12,
-              fontWeight: 800,
-              cursor: 'pointer',
-              marginBottom: 14,
-            }}
-          >
-            ← 목록으로
-          </button>
           <h2 className="text-xl font-bold" style={{ color: '#1A3C6E' }}>
-            {selectedItem.title || 'SAYU 기록'}
+            {item.title || 'SAYU 기록'}
           </h2>
           <p className="text-xs mt-1" style={{ color: '#64748B' }}>
-            {selectedItem.nickname || 'HARU 회원'} · {formatRecordDate(selectedItem.recordDate)}
+            {item.nickname || 'HARU 회원'} · {formatRecordDate(item.recordDate)}
           </p>
           {isOwnItem && (
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => handleRefreshSharedRecord(selectedItem)}
+                onClick={() => handleRefreshSharedRecord(item)}
                 disabled={isBusy}
                 style={{
                   minHeight: 34,
@@ -562,7 +431,7 @@ export function SayuTogetherPage() {
               </button>
               <button
                 type="button"
-                onClick={() => handleUnpublishSharedRecord(selectedItem)}
+                onClick={() => handleUnpublishSharedRecord(item)}
                 disabled={isBusy}
                 style={{
                   minHeight: 34,
@@ -592,7 +461,7 @@ export function SayuTogetherPage() {
           >
             {photoUrls.map((url, index) => (
               <div
-                key={`${selectedItem.id}_photo_${index}`}
+                key={`${item.id}_photo_${index}`}
                 className="overflow-hidden rounded-xl"
                 style={{ border: '1px solid #E2E8F0', aspectRatio: photoUrls.length === 1 ? '16 / 9' : '1 / 1', background: '#F8FAFC' }}
               >
@@ -610,7 +479,7 @@ export function SayuTogetherPage() {
         <div className="space-y-4">
           {formats.map((format) => (
             <article
-              key={`${selectedItem.id}_${format.formatKey || format.formatLabel}`}
+              key={`${item.id}_${format.formatKey || format.formatLabel}`}
               style={{ borderTop: '1px solid #E2E8F0', paddingTop: 14 }}
             >
               <p className="text-xs font-bold mb-2" style={{ color: '#0F766E' }}>
@@ -702,7 +571,267 @@ export function SayuTogetherPage() {
             </div>
           </div>
         </div>
-      </section>
+      </>
+    );
+  };
+
+  const renderLawCardDetailBody = (card: PublishedHaruLawCard) => (
+    <div>
+      {card.judgmentType && (
+        <span
+          className="text-xs font-bold"
+          style={{ color: '#1A3C6E', backgroundColor: '#F0F4FF', borderRadius: 999, padding: '2px 8px' }}
+        >
+          {JUDGMENT_LABELS[card.judgmentType] || card.judgmentType}
+        </span>
+      )}
+      <h2 className="text-xl font-bold mt-2" style={{ color: '#1A3C6E' }}>{card.title}</h2>
+      <p className="text-sm mt-2" style={{ color: '#6B7280', lineHeight: 1.7 }}>{card.anonymizedQuestion}</p>
+      <p className="text-sm mt-4 whitespace-pre-wrap" style={{ color: '#374151', lineHeight: 1.7 }}>{card.summary}</p>
+      {Array.isArray(card.relatedStatutes) && card.relatedStatutes.length > 0 && (
+        <div className="mt-4 rounded-lg" style={{ backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB', padding: 10 }}>
+          {card.relatedStatutes.map((statute, idx) => (
+            <div key={`${card.id}_statute_${idx}`} className={idx > 0 ? 'mt-2' : ''}>
+              <p className="text-xs font-bold" style={{ color: '#111827' }}>
+                {[statute.title, statute.article].filter(Boolean).join(' · ')}
+              </p>
+              {statute.easySummary && (
+                <p className="text-xs mt-0.5" style={{ color: '#6B7280', lineHeight: 1.6 }}>{statute.easySummary}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {card.disclaimer && (
+        <p className="text-xs mt-4" style={{ color: '#92400E', lineHeight: 1.6 }}>{card.disclaimer}</p>
+      )}
+    </div>
+  );
+
+  const renderDetailModal = () => {
+    if (!selectedItem && !selectedLawCard) return null;
+
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style={{ backgroundColor: 'rgba(15, 23, 42, 0.55)' }}
+        onClick={closeDetailModal}
+      >
+        <div
+          className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-5"
+          onClick={(event) => event.stopPropagation()}
+          style={{ border: '1px solid #D1FAE5' }}
+        >
+          <div className="mb-4 flex items-center justify-between">
+            <span className="text-xs font-bold" style={{ color: '#0F766E' }}>
+              {selectedLawCard ? '⚖️ 하루LAW 익명 사례' : 'SAYU 기록 상세'}
+            </span>
+            <button
+              type="button"
+              onClick={closeDetailModal}
+              aria-label="닫기"
+              style={{ border: 'none', background: 'none', fontSize: 20, color: '#94A3B8', cursor: 'pointer', lineHeight: 1 }}
+            >
+              ×
+            </button>
+          </div>
+          {selectedItem && renderRecordDetailBody(selectedItem)}
+          {selectedLawCard && renderLawCardDetailBody(selectedLawCard)}
+        </div>
+      </div>
+    );
+  };
+
+  const renderAxisEntry = () => (
+    <div className="grid grid-cols-2 gap-3">
+      {[
+        {
+          key: 'format' as const,
+          label: '기록형식별',
+          desc: '일기·에세이 등 형식으로 둘러보기',
+          count: sayuCards.filter((card) => card.kind === 'record').length,
+        },
+        {
+          key: 'agent' as const,
+          label: '비서별',
+          desc: '하루LAW 등 비서별로 둘러보기',
+          count: sayuCards.length,
+        },
+      ].map((entry) => (
+        <button
+          key={entry.key}
+          type="button"
+          onClick={() => { setAxis(entry.key); setSelectedCategory('all'); }}
+          className="text-left rounded-2xl p-5 bg-white shadow-sm"
+          style={{ border: '1px solid #D1FAE5' }}
+        >
+          <p className="text-base font-bold" style={{ color: '#1A3C6E' }}>{entry.label}</p>
+          <p className="text-xs mt-1.5" style={{ color: '#64748B', lineHeight: 1.6 }}>{entry.desc}</p>
+          <p className="text-[11px] mt-3 font-bold" style={{ color: '#0F766E' }}>{entry.count}개</p>
+        </button>
+      ))}
+    </div>
+  );
+
+  const renderCategoryChips = () => (
+    <div className="mb-4">
+      <button
+        type="button"
+        onClick={() => { setAxis(null); setSelectedCategory('all'); }}
+        style={{ background: 'none', border: 'none', padding: 0, marginBottom: 10, color: '#0F766E', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
+      >
+        ← 처음으로
+      </button>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => setSelectedCategory('all')} style={sayuChipStyle(selectedCategory === 'all')}>
+          전체 {axisScopedCards.length}
+        </button>
+        {activeCategories.map((category) => (
+          <button
+            key={category.key}
+            type="button"
+            onClick={() => setSelectedCategory(category.key)}
+            style={sayuChipStyle(selectedCategory === category.key)}
+          >
+            {category.label} {category.count}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderCardTile = (card: SayuCardView) => (
+    <button
+      key={card.cardKey}
+      type="button"
+      onClick={() => openCard(card)}
+      className="text-left rounded-xl overflow-hidden bg-white shadow-sm"
+      style={{ border: '1px solid #D1FAE5' }}
+    >
+      <div
+        className="flex items-center justify-center"
+        style={{
+          aspectRatio: '4 / 3',
+          background: card.thumbnailUrl ? undefined : 'linear-gradient(135deg, #ECFDF5 0%, #F0FDFA 100%)',
+        }}
+      >
+        {card.thumbnailUrl ? (
+          <img
+            src={card.thumbnailUrl}
+            alt=""
+            loading="lazy"
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+        ) : (
+          <span style={{ fontSize: 22 }}>{card.kind === 'lawCard' ? '⚖️' : '🌿'}</span>
+        )}
+      </div>
+      <div className="p-3">
+        <p className="text-sm font-bold truncate" style={{ color: '#1A3C6E' }}>{card.title}</p>
+        <p className="text-[11px] mt-1 truncate" style={{ color: '#64748B' }}>{card.meta}</p>
+        {card.badges.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {card.badges.slice(0, 3).map((badge) => (
+              <span
+                key={badge}
+                className="text-[10px] font-bold rounded-full px-2 py-0.5"
+                style={{ backgroundColor: '#ECFDF5', color: '#0F766E' }}
+              >
+                {badge}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </button>
+  );
+
+  const renderCardGrid = () => {
+    if (axisScopedCards.length === 0) {
+      return (
+        <div className="rounded-2xl p-8 text-center bg-white" style={{ border: '1px solid #D1FAE5' }}>
+          <p className="text-sm" style={{ color: '#0F766E' }}>아직 이 분류로 공개된 기록이 없습니다.</p>
+        </div>
+      );
+    }
+
+    if (selectedCategory === 'all') {
+      return (
+        <div className="space-y-6">
+          {groupedSections
+            .filter((section) => section.cards.length > 0)
+            .map((section) => (
+              <div key={section.key}>
+                <p className="text-xs font-bold mb-2" style={{ color: '#0F766E' }}>
+                  {section.label} <span style={{ color: '#94A3B8', fontWeight: 700 }}>{section.count}</span>
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {section.cards.map((card) => renderCardTile(card))}
+                </div>
+              </div>
+            ))}
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {visibleCards.map((card) => renderCardTile(card))}
+      </div>
+    );
+  };
+
+  const renderShared = () => {
+    if (authLoading || loading) {
+      return (
+        <div className="rounded-2xl p-8 text-center bg-white" style={{ border: '1px solid #D1FAE5' }}>
+          <p className="text-sm" style={{ color: '#0F766E' }}>공개된 SAYU 기록을 불러오고 있습니다.</p>
+        </div>
+      );
+    }
+
+    if (!user?.uid) {
+      return (
+        <div className="rounded-2xl p-8 text-center bg-white" style={{ border: '1px solid #D1FAE5' }}>
+          <p className="text-sm" style={{ color: '#0F766E', lineHeight: 1.7 }}>
+            SAYU-함께보기는 로그인한 HARU 회원만 볼 수 있습니다.
+          </p>
+        </div>
+      );
+    }
+
+    if (errorMessage) {
+      return (
+        <div className="rounded-2xl p-8 text-center bg-white" style={{ border: '1px solid #FECACA' }}>
+          <p className="text-sm" style={{ color: '#B42318', lineHeight: 1.7 }}>{errorMessage}</p>
+        </div>
+      );
+    }
+
+    if (sayuCards.length === 0) {
+      return (
+        <div
+          className="rounded-2xl p-8 text-center"
+          style={{
+            background: 'linear-gradient(135deg, #ECFDF5 0%, #ffffff 70%)',
+            border: '1px solid #D1FAE5',
+          }}
+        >
+          <p className="text-sm" style={{ color: '#0F766E', lineHeight: 1.7 }}>
+            공개된 기록을 준비하고 있습니다.<br />
+            곧 이곳에서 다른 회원들의 SAYU 기록을 만나보실 수 있어요.
+          </p>
+        </div>
+      );
+    }
+
+    if (!axis) return renderAxisEntry();
+
+    return (
+      <div>
+        {renderCategoryChips()}
+        {renderCardGrid()}
+      </div>
     );
   };
 
@@ -980,7 +1109,7 @@ export function SayuTogetherPage() {
 
       <div className="mb-5 grid grid-cols-2 gap-2">
         {([
-          { key: 'shared', label: '구독자 사유' },
+          { key: 'shared', label: '구독자SAYU' },
           { key: 'recovery', label: '원기충전소' },
         ] as const).map((tab) => {
           const active = activeTab === tab.key;
@@ -991,6 +1120,9 @@ export function SayuTogetherPage() {
               onClick={() => {
                 setActiveTab(tab.key);
                 setSelectedId('');
+                setSelectedLawCardId('');
+                setAxis(null);
+                setSelectedCategory('all');
               }}
               style={{
                 minHeight: 42,
@@ -1009,14 +1141,8 @@ export function SayuTogetherPage() {
         })}
       </div>
 
-      {activeTab === 'shared'
-        ? (selectedItem ? renderDetail() : (
-            <div className="space-y-4">
-              {renderHaruLawCards()}
-              {renderList()}
-            </div>
-          ))
-        : renderRecovery()}
+      {activeTab === 'shared' ? renderShared() : renderRecovery()}
+      {renderDetailModal()}
     </div>
   );
 }

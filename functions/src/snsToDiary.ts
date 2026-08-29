@@ -3,6 +3,11 @@ import { defineSecret } from 'firebase-functions/params';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
+import {
+  reserveMonthlyAiQuota,
+  rollbackMonthlyAiQuotaReservation,
+  type MonthlyAiQuotaReservation,
+} from './utils/monthlyAiQuota';
 
 const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
 
@@ -39,6 +44,9 @@ export const convertSnsToDiary = onCall(
     if (text.length > 5000) {
       throw new HttpsError('invalid-argument', '텍스트는 5000자 이내여야 합니다.');
     }
+
+    let monthlyQuotaReservation: MonthlyAiQuotaReservation | null = null;
+    monthlyQuotaReservation = await reserveMonthlyAiQuota(request.auth.uid, 'convertSnsToDiary');
 
     const sourceLabel = source === 'instagram' ? 'Instagram' : 'Facebook';
     const dateHint = timestamp
@@ -97,6 +105,8 @@ ${text}
       logger.info(`convertSnsToDiary 완료: uid=${request.auth.uid}, len=${diaryText.length}`);
       return { diaryText };
     } catch (error: any) {
+      await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
+      if (error instanceof HttpsError) throw error;
       logger.error('convertSnsToDiary 실패:', error);
       throw new HttpsError('internal', 'AI 변환에 실패했습니다.');
     }

@@ -154,7 +154,10 @@ export function FormatStatisticsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const { isPremium } = useSubscription();
+  const { isPremium, subscription, loading: subscriptionLoading } = useSubscription();
+  const isBasic = subscription.plan === 'basic' && subscription.status === 'active';
+  const canUseMonthly = isBasic || isPremium;
+  const canUseLongRange = isPremium;
 
   // 기간 선택 상태
   const queryStartDate = searchParams.get('start');
@@ -179,6 +182,16 @@ export function FormatStatisticsPage() {
   const formatType = format as RecordFormat;
   const metrics = FORMAT_METRICS[formatType] || [];
 
+  useEffect(() => {
+    if (subscriptionLoading) return;
+    if (periodMode === 'month' && !canUseMonthly) {
+      setPeriodMode('week');
+    }
+    if (periodMode === 'custom' && !canUseLongRange) {
+      setPeriodMode('week');
+    }
+  }, [canUseLongRange, canUseMonthly, periodMode, subscriptionLoading]);
+
   // 선택된 기간 정보 계산
   const periodInfo = 
     periodMode === 'week' ? getWeekRange(selectedYear, selectedMonth, selectedWeek) :
@@ -188,6 +201,14 @@ export function FormatStatisticsPage() {
   // 데이터 로드
   useEffect(() => {
     const fetchData = async () => {
+      if (subscriptionLoading) {
+        return;
+      }
+      if ((periodMode === 'month' && !canUseMonthly) || (periodMode === 'custom' && !canUseLongRange)) {
+        setData(null);
+        setLoading(false);
+        return;
+      }
       if (!user?.uid) {
         setLoading(false);
         return;
@@ -224,11 +245,15 @@ export function FormatStatisticsPage() {
     };
 
     fetchData();
-  }, [user?.uid, formatType, periodInfo.start, periodInfo.end]);
+  }, [canUseLongRange, canUseMonthly, formatType, periodInfo.end, periodInfo.start, periodMode, subscriptionLoading, user?.uid]);
 
   // 전체 기록 로드 (그래프용)
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!user?.uid || subscriptionLoading) return;
+    if ((periodMode === 'month' && !canUseMonthly) || (periodMode === 'custom' && !canUseLongRange)) {
+      setAllFormatRecords([]);
+      return;
+    }
     firestoreService.getRecordsInRange(user.uid, periodInfo.start, periodInfo.end).then((records) => {
       const stockFormats = ['HARU주식관리', '주식거래일지'];
       setAllFormatRecords(records.filter((r) => {
@@ -242,7 +267,7 @@ export function FormatStatisticsPage() {
         return r.formats && r.formats.includes(formatType);
       }));
     }).catch(() => setAllFormatRecords([]));
-  }, [user?.uid, formatType, periodInfo.start, periodInfo.end]);
+  }, [canUseLongRange, canUseMonthly, formatType, periodInfo.end, periodInfo.start, periodMode, subscriptionLoading, user?.uid]);
 
   const weeksInMonth = getWeeksInMonth(selectedYear, selectedMonth);
 
@@ -288,8 +313,8 @@ export function FormatStatisticsPage() {
           </button>
           <button
             onClick={() => {
-              if (!isPremium) {
-                alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 6,000원으로 시작해 보세요!');
+              if (!canUseMonthly) {
+                alert('월간 통계는 베이직 또는 프리미엄 구독에서 이용할 수 있습니다.');
                 window.location.href = '/subscription';
                 return;
               }
@@ -300,15 +325,16 @@ export function FormatStatisticsPage() {
               backgroundColor: periodMode === 'month' ? '#1A3C6E' : '#FEFBE8',
               color: periodMode === 'month' ? '#FAF9F6' : '#333',
               border: periodMode === 'month' ? 'none' : '1px solid #e5e5e5',
-              opacity: isPremium ? 1 : 0.7,
+              opacity: canUseMonthly ? 1 : 0.7,
             }}
+            title="월간 통계 · Basic+"
           >
-            월간{!isPremium && ' 🔒'}
+            월간 · Basic+{!canUseMonthly && ' 🔒'}
           </button>
           <button
             onClick={() => {
-              if (!isPremium) {
-                alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 6,000원으로 시작해 보세요!');
+              if (!canUseLongRange) {
+                alert('분기·연간·사용자 정의 장기간 통계는 프리미엄 구독에서 이용할 수 있습니다.');
                 window.location.href = '/subscription';
                 return;
               }
@@ -319,12 +345,18 @@ export function FormatStatisticsPage() {
               backgroundColor: periodMode === 'custom' ? '#1A3C6E' : '#FEFBE8',
               color: periodMode === 'custom' ? '#FAF9F6' : '#333',
               border: periodMode === 'custom' ? 'none' : '1px solid #e5e5e5',
-              opacity: isPremium ? 1 : 0.7,
+              opacity: canUseLongRange ? 1 : 0.7,
             }}
+            title="사용자 정의 기간 통계 · Premium"
           >
-            사용자 정의{!isPremium && ' 🔒'}
+            사용자 정의 · Premium{!canUseLongRange && ' 🔒'}
           </button>
         </div>
+        {!canUseLongRange && (
+          <p className="text-xs mb-4" style={{ color: '#999' }}>
+            베이직에서는 월간까지, 프리미엄에서는 분기·연간·사용자 정의 장기간 통계를 이용할 수 있습니다.
+          </p>
+        )}
 
         {/* 주간 선택 */}
         {periodMode === 'week' && (

@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
-import { useSubscription } from '../hooks/useSubscription';
 import type { ReverseGeocodeCandidate } from '../services/reverseGeocodeService';
 import { functions } from '../../firebase';
 import { GrapeAnimation } from './GrapeAnimation';
@@ -120,7 +119,6 @@ export function GrowthTimelineDocumentModal({
   onFinalize,
   onEdit,
 }: GrowthTimelineDocumentModalProps) {
-  const { isPremium } = useSubscription();
   const sortedItems = useMemo(() => sortItems(items), [items]);
   const periodStart = sortedItems[0]?.takenDate || '';
   const periodEnd = sortedItems[sortedItems.length - 1]?.takenDate || '';
@@ -133,11 +131,6 @@ export function GrowthTimelineDocumentModal({
   if (!isOpen) return null;
 
   const handleBrowserPrint = async () => {
-    if (!isPremium) {
-      alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 6,000원으로 시작해 보세요!');
-      window.location.href = '/subscription';
-      return;
-    }
     if (printRequested) return;
     const root = document.querySelector('.growth-timeline-print-root') as HTMLElement | null;
     if (!root) return;
@@ -220,11 +213,6 @@ export function GrowthTimelineDocumentModal({
   };
 
   const handlePrint = async () => {
-    if (!isPremium) {
-      alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 6,000원으로 시작해 보세요!');
-      window.location.href = '/subscription';
-      return;
-    }
     if (serverPdfRequested || printRequested) return;
 
     setServerPdfRequested(true);
@@ -562,11 +550,11 @@ export function GrowthTimelineDocumentModal({
               fontSize: 13,
               fontWeight: 800,
               cursor: serverPdfRequested || printRequested || isSaving || sortedItems.length === 0 ? 'not-allowed' : 'pointer',
-              opacity: isPremium ? 1 : 0.66,
+              opacity: 1,
             }}
-            title={isPremium ? 'PDF로 저장' : 'PREMIUM 전용 기능'}
+            title="PDF로 저장"
           >
-            {serverPdfRequested ? 'PDF 생성 중...' : `PDF로 저장${!isPremium ? ' 🔒' : ''}`}
+            {serverPdfRequested ? 'PDF 생성 중...' : 'PDF로 저장'}
           </button>
           {editable && onFinalize && (
             <button

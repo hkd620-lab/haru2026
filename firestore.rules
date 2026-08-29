@@ -37,7 +37,8 @@ service cloud.firestore {
         "publishedAt",
         "recordDate",
         "isActive",
-        "formats"
+        "formats",
+        "sourceAgent"
       ];
     }
 
@@ -73,7 +74,8 @@ service cloud.firestore {
         && (!request.resource.data.keys().hasAny(["publicPhotoUrls"]) || request.resource.data.publicPhotoUrls is list)
         && request.resource.data.recordDate is string
         && request.resource.data.isActive is bool
-        && request.resource.data.formats is list;
+        && request.resource.data.formats is list
+        && (!request.resource.data.keys().hasAny(["sourceAgent"]) || request.resource.data.sourceAgent is string);
     }
 
     function activeSharedRecord(sharedId) {
@@ -202,6 +204,12 @@ service cloud.firestore {
     match /users/{uid}/settings/{settingId} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
+    match /users/{uid}/monthlyAiUsage/{period} {
+      allow read, write: if false;
+    }
+    match /users/{uid}/rateLimits/{feature} {
+      allow read, write: if false;
+    }
     match /users/{uid}/readProgress/{bookId} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
@@ -239,7 +247,8 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
     match /prophecyUsage/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
     }
     match /grammarCache/{cacheId} {
       allow read: if request.auth != null && !cacheId.matches('diary_.*');

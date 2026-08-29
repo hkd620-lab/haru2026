@@ -36,8 +36,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.reviewHaruLawSharedCard = exports.listPendingHaruLawSharedCards = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.cancelSubscription = exports.subscribeWithBillingKey = exports.generateGrowthTimelinePdf = exports.decryptKakaoXlsx = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.recordPaidServiceUsage = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
-exports.executeScheduledDeletion = exports.cancelAccountDeletion = exports.requestAccountDeletion = exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.applyBookPublishRevision = void 0;
+exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.reviewHaruLawSharedCard = exports.listPendingHaruLawSharedCards = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.cancelSubscription = exports.subscribeWithBillingKey = exports.generateGrowthTimelinePdf = exports.decryptKakaoXlsx = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.recordPaidServiceUsage = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.getMonthlyAiQuotaStatus = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
+exports.executeScheduledDeletion = exports.cancelAccountDeletion = exports.requestAccountDeletion = exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.getGrammarExplainV2 = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.applyBookPublishRevision = exports.suggestBookPublishRevision = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -56,6 +56,8 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const aiUsageLogger_1 = require("./aiUsageLogger");
 const subscriptionHelpers_1 = require("./subscriptionHelpers");
+const rateLimit_1 = require("./utils/rateLimit");
+const monthlyAiQuota_1 = require("./utils/monthlyAiQuota");
 // 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
 const genai_1 = require("@google/genai");
 // HARU가계부 카카오뱅크 XLSX 잠금 해제 전용 (msoffcrypto-tool TS 포트)
@@ -735,6 +737,8 @@ exports.polishContent = (0, https_2.onCall)({
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
     const uid = request.auth.uid;
+    await (0, rateLimit_1.enforceRateLimit)(uid, 'polishContent', 10, 60);
+    let monthlyQuotaReservation = null;
     try {
         const { text, mode = 'premium', format } = request.data;
         if (!text || typeof text !== 'string') {
@@ -743,6 +747,7 @@ exports.polishContent = (0, https_2.onCall)({
         if (text.length > 5000) {
             throw new https_2.HttpsError('invalid-argument', '텍스트는 5000자 이내여야 합니다.');
         }
+        monthlyQuotaReservation = await (0, monthlyAiQuota_1.reserveMonthlyAiQuota)(request.auth.uid, 'polishContent');
         // SAYU 형식별 3그룹 분기 (2026-05-13 도입)
         // 풍성형: 감성·문학 표현 환영
         // 균형형: 사실+감정 균형
@@ -908,6 +913,7 @@ exports.polishContent = (0, https_2.onCall)({
     }
     catch (error) {
         console.error('AI 처리 실패:', error);
+        await (0, monthlyAiQuota_1.rollbackMonthlyAiQuotaReservation)(monthlyQuotaReservation);
         if ((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid) {
             await (0, aiUsageLogger_1.logAiUsage)({
                 uid: request.auth.uid,
@@ -926,8 +932,18 @@ exports.polishContent = (0, https_2.onCall)({
                 isDev: DEVELOPER_UIDS.has(request.auth.uid),
             });
         }
+        if (error instanceof https_2.HttpsError) {
+            throw error;
+        }
         throw new https_2.HttpsError('internal', 'AI 처리에 실패했습니다.');
     }
+});
+exports.getMonthlyAiQuotaStatus = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
+    var _a;
+    if (!((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid)) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    return (0, monthlyAiQuota_1.getMonthlyAiQuotaStatus)(request.auth.uid);
 });
 // 숫자·기호만으로 이뤄진 제목인지 검사 (의미 없는 제목 걸러냄)
 function isValidTitle(title) {
@@ -1413,6 +1429,14 @@ exports.recordPaidServiceUsage = (0, https_2.onCall)({ region: 'asia-northeast3'
         : {};
     return logPaidServiceUsage(request.auth.uid, rawEventType, details);
 });
+// 유료(베이직·프리미엄) 구독자만 통과 — 일부 유료 전용 서버 함수에서 사용.
+// 개발자 UID와 만료되지 않은 basic/premium은 getUserPlan이 이미 처리한다.
+async function requirePaidSubscription(uid) {
+    const plan = await getUserPlan(uid);
+    if (plan === 'free') {
+        throw new https_2.HttpsError('permission-denied', '베이직 또는 프리미엄 구독 후 이용할 수 있습니다.');
+    }
+}
 const RESULT_CHAT_COST_PRICING = {
     pricingVersion: 'raw-token-counts-v1',
     currency: 'USD',
@@ -2076,6 +2100,7 @@ exports.chatWithResult = (0, https_2.onCall)({
     let locked = false;
     let reservedWebSearch = false;
     let webSearchFinalized = false;
+    let monthlyQuotaReservation = null;
     try {
         await acquireResultChatLock(threadRef, requestId);
         locked = true;
@@ -2088,6 +2113,7 @@ exports.chatWithResult = (0, https_2.onCall)({
                 throw new https_2.HttpsError('permission-denied', '파일 첨부는 베이직·프리미엄 이용권 전용 기능입니다.');
             }
         }
+        monthlyQuotaReservation = await (0, monthlyAiQuota_1.reserveMonthlyAiQuota)(uid, 'chatWithResult');
         const ai = new genai_1.GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
         const classification = await classifyResultChatQuestion(ai, {
             uid,
@@ -2107,6 +2133,8 @@ exports.chatWithResult = (0, https_2.onCall)({
                 answerRoute = 'high_risk_guidance';
             }
             else if (answerRoute === 'web_search') {
+                await (0, monthlyAiQuota_1.rollbackMonthlyAiQuotaReservation)(monthlyQuotaReservation);
+                monthlyQuotaReservation = null;
                 return {
                     threadId,
                     answer: '',
@@ -2137,6 +2165,8 @@ exports.chatWithResult = (0, https_2.onCall)({
             }
         }
         else if (answerRoute === 'web_search') {
+            await (0, monthlyAiQuota_1.rollbackMonthlyAiQuotaReservation)(monthlyQuotaReservation);
+            monthlyQuotaReservation = null;
             return {
                 threadId,
                 answer: '',
@@ -2154,6 +2184,8 @@ exports.chatWithResult = (0, https_2.onCall)({
             };
         }
         else if (answerRoute === 'ambiguous') {
+            await (0, monthlyAiQuota_1.rollbackMonthlyAiQuotaReservation)(monthlyQuotaReservation);
+            monthlyQuotaReservation = null;
             return {
                 threadId,
                 answer: '',
@@ -2250,6 +2282,8 @@ exports.chatWithResult = (0, https_2.onCall)({
         if (answerRoute === 'web_search') {
             const reserved = await reserveWebSearchSlot(threadRef, actualPlan, sourceKey, sourceIndex);
             if (!reserved.reserved) {
+                await (0, monthlyAiQuota_1.rollbackMonthlyAiQuotaReservation)(monthlyQuotaReservation);
+                monthlyQuotaReservation = null;
                 await logResultChatUsage({
                     uid,
                     actualPlan,
@@ -2388,6 +2422,7 @@ exports.chatWithResult = (0, https_2.onCall)({
         };
     }
     catch (error) {
+        await (0, monthlyAiQuota_1.rollbackMonthlyAiQuotaReservation)(monthlyQuotaReservation);
         if (reservedWebSearch && !webSearchFinalized) {
             await finalizeWebSearchSlot(threadRef, actualPlan, false);
         }
@@ -3535,11 +3570,12 @@ exports.extractReadingBookTextFromPhoto = (0, https_2.onCall)({
     memory: '512MiB',
     timeoutSeconds: 60,
 }, async (request) => {
-    var _a, _b;
+    var _a;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
     const uid = request.auth.uid;
+    await (0, rateLimit_1.enforceRateLimit)(uid, 'extractReadingBookTextFromPhoto', 5, 30);
     const isDeveloper = DEVELOPER_UIDS.has(uid);
     const d = request.data || {};
     const bookTitle = String(d.bookTitle || '').trim().slice(0, 200);
@@ -3558,13 +3594,6 @@ exports.extractReadingBookTextFromPhoto = (0, https_2.onCall)({
     const imageKb = Math.round(imageBase64.length * 0.75 / 1024);
     if (imageKb > 7 * 1024) {
         throw new https_2.HttpsError('invalid-argument', '사진이 너무 큽니다. 한 장당 7MB 이하로 줄여주세요.');
-    }
-    if (!isDeveloper) {
-        const subSnap = await db.doc(`users/${uid}/subscription/info`).get();
-        const plan = String(((_a = subSnap.data()) === null || _a === void 0 ? void 0 : _a.plan) || '').toLowerCase();
-        if (plan !== 'premium') {
-            throw new https_2.HttpsError('permission-denied', '책 본문 사진 텍스트 변환은 PREMIUM 구독자 전용 기능입니다.');
-        }
     }
     const usageRef = db.doc(`users/${uid}/readingOcrUsage/${bookId}`);
     let usedCount = null;
@@ -3673,7 +3702,7 @@ exports.extractReadingBookTextFromPhoto = (0, https_2.onCall)({
         }
         if (error instanceof https_2.HttpsError)
             throw error;
-        logger.error('독서 본문 OCR 실패', { message: (_b = error === null || error === void 0 ? void 0 : error.message) === null || _b === void 0 ? void 0 : _b.slice(0, 200) });
+        logger.error('독서 본문 OCR 실패', { message: (_a = error === null || error === void 0 ? void 0 : error.message) === null || _a === void 0 ? void 0 : _a.slice(0, 200) });
         await (0, aiUsageLogger_1.logAiUsage)({
             uid,
             featureName: 'book_ocr',
@@ -3704,6 +3733,7 @@ exports.extractStockTradeTextFromPhoto = (0, https_2.onCall)({
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await (0, rateLimit_1.enforceRateLimit)(request.auth.uid, 'extractStockTradeTextFromPhoto', 5, 30);
     let imageBase64 = String(((_a = request.data) === null || _a === void 0 ? void 0 : _a.imageBase64) || '').replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '');
     const mimeType = String(((_b = request.data) === null || _b === void 0 ? void 0 : _b.mimeType) || 'image/jpeg').startsWith('image/')
         ? String(((_c = request.data) === null || _c === void 0 ? void 0 : _c.mimeType) || 'image/jpeg')
@@ -3829,6 +3859,7 @@ exports.extractLedgerTextFromImage = (0, https_2.onCall)({
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await (0, rateLimit_1.enforceRateLimit)(request.auth.uid, 'extractLedgerTextFromImage', 5, 30);
     const rawImages = Array.isArray((_a = request.data) === null || _a === void 0 ? void 0 : _a.images) ? request.data.images : [];
     if (rawImages.length === 0) {
         throw new https_2.HttpsError('invalid-argument', '이미지 데이터가 필요합니다.');
@@ -4020,6 +4051,7 @@ exports.extractHouseholdTextFromImage = (0, https_2.onCall)({
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await (0, rateLimit_1.enforceRateLimit)(request.auth.uid, 'extractHouseholdTextFromImage', 5, 30);
     const rawImages = Array.isArray((_a = request.data) === null || _a === void 0 ? void 0 : _a.images) ? request.data.images : [];
     if (rawImages.length === 0) {
         throw new https_2.HttpsError('invalid-argument', '이미지 데이터가 필요합니다.');
@@ -4279,13 +4311,6 @@ function normalizeGrowthTimelinePdfPayload(data) {
         };
     }).sort((a, b) => a.takenDate.localeCompare(b.takenDate) || a.order - b.order);
     return { title, createdLabel, items };
-}
-async function isPremiumUser(uid) {
-    var _a;
-    if (DEVELOPER_UIDS.has(uid))
-        return true;
-    const subSnap = await db.doc(`users/${uid}/subscription/info`).get();
-    return subSnap.exists && ((_a = subSnap.data()) === null || _a === void 0 ? void 0 : _a.plan) === 'premium';
 }
 function buildGrowthTimelinePdfHash(uid, payload) {
     const stablePayload = JSON.stringify({
@@ -4551,9 +4576,7 @@ exports.generateGrowthTimelinePdf = (0, https_2.onCall)({ region: 'asia-northeas
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다');
     }
     const uid = request.auth.uid;
-    if (!(await isPremiumUser(uid))) {
-        throw new https_2.HttpsError('permission-denied', 'PREMIUM 구독 후 이용 가능한 기능입니다');
-    }
+    await (0, rateLimit_1.enforceRateLimit)(uid, 'generateGrowthTimelinePdf', 3, 20);
     const payload = normalizeGrowthTimelinePdfPayload(request.data);
     const hash = buildGrowthTimelinePdfHash(uid, payload);
     const filePath = `users/${uid}/timelinePdfs/${hash}.pdf`;
@@ -4954,19 +4977,6 @@ exports.removeAllTags = (0, https_1.onRequest)({ region: 'asia-northeast3' }, as
 function isDeveloperUid(uid) {
     return DEVELOPER_UIDS.has(uid);
 }
-async function assertHaruLawPremiumAccess(uid) {
-    var _a, _b;
-    if (isDeveloperUid(uid))
-        return;
-    const subSnap = await db.doc(`users/${uid}/subscription/info`).get();
-    const plan = String(((_a = subSnap.data()) === null || _a === void 0 ? void 0 : _a.plan) || '').toLowerCase();
-    const endDate = (_b = subSnap.data()) === null || _b === void 0 ? void 0 : _b.endDate;
-    const endTime = typeof endDate === 'string' ? Date.parse(endDate) : Number.NaN;
-    const expired = Number.isFinite(endTime) && endTime < Date.now();
-    if (plan !== 'premium' || expired) {
-        throw new https_2.HttpsError('permission-denied', '하루LAW 익명 공유는 PREMIUM 구독자 전용 기능입니다.');
-    }
-}
 function getKstDateKey() {
     return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
@@ -5131,6 +5141,7 @@ exports.lawSearch = (0, https_2.onCall)({
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await (0, rateLimit_1.enforceRateLimit)(request.auth.uid, 'lawSearch', 3, 20);
     const uid = request.auth.uid;
     const { query } = request.data;
     if (!query || typeof query !== 'string' || !query.trim()) {
@@ -5416,7 +5427,7 @@ exports.prepareHaruLawSharePreview = (0, https_2.onCall)({
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
     const uid = request.auth.uid;
-    await assertHaruLawPremiumAccess(uid);
+    await (0, rateLimit_1.enforceRateLimit)(uid, 'prepareHaruLawSharePreview', 3, 20);
     await enforceHaruLawSharePreviewLimit(uid);
     try {
         const { record } = await getOwnedHaruLawRecord(uid, (_a = request.data) === null || _a === void 0 ? void 0 : _a.sourceRecordId);
@@ -5428,7 +5439,7 @@ exports.prepareHaruLawSharePreview = (0, https_2.onCall)({
         const fallbackStatutes = parseHaruLawPublicStatutes(record.haruraw_articles);
         const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value().trim());
         const model = genAI.getGenerativeModel({ model: 'gemini-3.1-pro-preview' });
-        const result = await model.generateContent(`다음 하루LAW 기록을 다른 PREMIUM 구독자가 참고할 수 있는 익명 공개 카드로 바꾸세요.
+        const result = await model.generateContent(`다음 하루LAW 기록을 다른 사용자가 참고할 수 있는 익명 공개 카드로 바꾸세요.
 
 반드시 JSON 객체만 출력하세요. 마크다운 코드블록은 사용하지 마세요.
 필드는 title, anonymizedQuestion, summary, judgmentType, relatedStatutes만 사용하세요.
@@ -5492,7 +5503,6 @@ exports.publishHaruLawSharedCard = (0, https_2.onCall)({
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
     const uid = request.auth.uid;
-    await assertHaruLawPremiumAccess(uid);
     const previewId = (_a = request.data) === null || _a === void 0 ? void 0 : _a.previewId;
     if (typeof previewId !== 'string' || !previewId.trim()) {
         throw new https_2.HttpsError('invalid-argument', 'previewId가 필요합니다.');
@@ -6921,6 +6931,7 @@ exports.analyzeRecordForProphecy = (0, https_2.onCall)({
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await requirePaidSubscription(request.auth.uid);
     const { content, userAnalysis, round } = request.data;
     if (!content || typeof content !== 'string' || content.trim().length < 10) {
         throw new https_2.HttpsError('invalid-argument', '분석할 기록 내용이 너무 짧습니다.');
@@ -7071,6 +7082,7 @@ exports.generateHaruProphecy = (0, https_2.onCall)({
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await requirePaidSubscription(request.auth.uid);
     const { motive, motiveCustom, chars, birth, desire, shackle, events, luck, unluck, narrative, type, fromRecord, recordContent, recordTitle, recordDate, recordFormat, prophecyType, timeOption, question, extractedChars, extractedDesire, extractedShackle, extractedEvents, extractedRelationship, extractedPersonality, extractedMotive, extractedTheme, extractedOneLiner, extractedThreeLiner, prophecyGoalType, prophecyGoal, prophecyWall, extractedGoal, persons, extractedEvent, extractedDailyAchieve, currentAge, baseYear, futureYear, futureAge, protagonistName: rawProtagonistName } = request.data;
     // 서버측 한 번 더 sanitize (클라 우회 방지)
     const sanitizedProtagonistName = (() => {
@@ -8546,6 +8558,7 @@ exports.analyzePlantPhoto = (0, https_2.onCall)({
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
+    await (0, rateLimit_1.enforceRateLimit)(request.auth.uid, 'analyzePlantPhoto', 5, 30);
     const { imageBase64, mimeType } = request.data;
     if (!imageBase64 || typeof imageBase64 !== 'string') {
         throw new https_2.HttpsError('invalid-argument', '이미지 데이터(imageBase64)가 필요합니다.');
@@ -9164,6 +9177,8 @@ exports.detectPlantAdvanced = (0, https_2.onCall)({
         },
     };
 });
+var grammarV2_1 = require("./grammar/grammarV2");
+Object.defineProperty(exports, "getGrammarExplainV2", { enumerable: true, get: function () { return grammarV2_1.getGrammarExplainV2; } });
 // ===========================================
 // 🌿 NIBR (국립생물자원관) 국가생물종목록 Open API 테스트 endpoint
 //   - process.env.NIBR_API_KEY 사용 (응답/로그에 절대 노출하지 않음)

@@ -6,7 +6,6 @@ import { httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import { db, storage, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { useSubscription } from '../hooks/useSubscription';
 import { GrapeAnimation } from '../components/GrapeAnimation';
 import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
@@ -48,7 +47,6 @@ export function SnsRecordsPage() {
     }
   };
   const { user, loading: authLoading } = useAuth();
-  const { isPremium, loading: subLoading } = useSubscription();
 
   const [tab, setTab] = useState<TabKey>('upload');
   const [source, setSource] = useState<Source>('facebook');
@@ -180,16 +178,6 @@ export function SnsRecordsPage() {
     }
   };
 
-  const requirePremium = (action: string) => {
-    if (!isPremium) {
-      toast(`'${action}'은(는) 구독 후 이용 가능한 기능입니다.`, {
-        action: { label: '구독하기', onClick: () => navigate('/subscription') },
-      });
-      return false;
-    }
-    return true;
-  };
-
   const filteredRecords = useMemo(() => {
     const kw = appliedSearch.keyword.trim().toLowerCase();
     const fromMs = appliedSearch.dateFrom ? new Date(appliedSearch.dateFrom + 'T00:00:00').getTime() : 0;
@@ -225,7 +213,6 @@ export function SnsRecordsPage() {
   };
 
   const handleSaveSearchResults = async () => {
-    if (!requirePremium('검색결과 저장')) return;
     if (!user) return;
     if (filteredRecords.length === 0) {
       toast.info('저장할 검색결과가 없습니다.');
@@ -257,11 +244,10 @@ export function SnsRecordsPage() {
   };
 
   const handleAutobioGenerate = () => {
-    if (!requirePremium('나의 이야기 시놉시스 생성')) return;
     toast.info('준비 중입니다');
   };
 
-  if (authLoading || subLoading) {
+  if (authLoading) {
     return (
       <div
         style={{

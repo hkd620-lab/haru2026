@@ -462,6 +462,7 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
         recordType: 'growthTimeline',
         type: 'growthTimeline',
         source: 'growthTimeline',
+        sourceAgent: 'HARU타임라인',
         title: resolvedTitle,
         content,
         timelineItems: savedItems,

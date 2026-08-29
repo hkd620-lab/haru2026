@@ -589,10 +589,6 @@ export function PlantDetectivePage() {
   };
 
   const loadPublicCatalog = async () => {
-    if (!isPremium && !isAdmin) {
-      setPublicCatalog([]);
-      return;
-    }
     try {
       const q = query(
         collection(db, 'plant_catalog'),
@@ -2265,10 +2261,6 @@ export function PlantDetectivePage() {
               key={key}
               type="button"
               onClick={() => {
-                if (key === 'catalog' && !isPremium && !isAdmin) {
-                  toast.error('공개도감은 구독자 전용입니다.');
-                  return;
-                }
                 setActiveTab(key as 'detect' | 'recent' | 'library' | 'diary' | 'catalog');
               }}
               style={{

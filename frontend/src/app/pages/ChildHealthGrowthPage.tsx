@@ -165,6 +165,7 @@ export function ChildHealthGrowthPage() {
         date: today,
         formats: ['성장기록'],
         content: '',
+        sourceAgent: 'HARU우리아이건강돌봄',
         growthSubjectId: subjectId,
         growthSubjectType: 'child',
         growthSubjectName: subjectName,

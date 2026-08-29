@@ -18,7 +18,7 @@ const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 export function SettingsPage() {
   const { user, signOut, linkEmailPassword } = useAuth();
   const { isDark, toggleTheme } = useTheme();
-  const { subscription, isPremium, loading: subscriptionLoading } = useSubscription();
+  const { subscription, loading: subscriptionLoading } = useSubscription();
   const navigate = useNavigate();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
@@ -70,7 +70,7 @@ export function SettingsPage() {
   const [isLinkingEmailLogin, setIsLinkingEmailLogin] = useState(false);
 
   const isAdmin = user?.uid === ADMIN_UID;
-  const isDevUser = user?.email === 'hkd620@gmail.com';
+  const isDevUser = user?.email?.toLowerCase() === 'hkd620@gmail.com';
   const hasEmailPasswordLogin = Boolean(user?.providerIds?.includes('password'));
   const canAddEmailPasswordLogin = Boolean(user?.email && !user.email.endsWith('@placeholder.local') && !hasEmailPasswordLogin);
   const hasPaidSubscription = subscription.plan === 'basic' || subscription.plan === 'premium';
@@ -96,7 +96,7 @@ export function SettingsPage() {
       loadQuoteType();
       loadProfileAge();
       cleanupDuplicateTokens(user.uid); // 앱 마운트 시 기존 중복 토큰 1회 정리
-      if (user.email === 'hkd620@gmail.com') {
+      if (user.email?.toLowerCase() === 'hkd620@gmail.com') {
         loadFcmTokens();
       }
     } else {
@@ -196,11 +196,6 @@ export function SettingsPage() {
   const handleQuoteTypeChange = async (next: 'classic' | 'bible') => {
     if (!user?.uid) return;
     if (next === quoteType) return;
-
-    if (next === 'bible' && !isPremium) {
-      toast.error('구독자 전용 기능입니다');
-      return;
-    }
 
     setIsSavingQuoteType(true);
     try {
@@ -906,25 +901,9 @@ export function SettingsPage() {
               }}
             >
               <span>✝️</span>
-              <span>
-                성경 말씀
-                {!isPremium && (
-                  <span
-                    className="ml-1 text-xs"
-                    style={{ color: quoteType === 'bible' ? '#fbbf24' : '#999' }}
-                  >
-                    (구독자)
-                  </span>
-                )}
-              </span>
+              <span>성경 말씀</span>
             </button>
           </div>
-
-          {!isPremium && (
-            <p className="text-xs mt-3" style={{ color: '#999' }}>
-              💡 성경 말씀은 구독자 전용 기능입니다.
-            </p>
-          )}
         </section>
 
         <section className="bg-white rounded-lg p-6 shadow-sm">

@@ -34,7 +34,7 @@ interface PeriodOption {
 
 export function MergePage() {
   const { user } = useAuth();
-  const { isPremium } = useSubscription();
+  const { isPremium, subscription } = useSubscription();
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<RecordFormat | null>(null);
@@ -68,6 +68,19 @@ export function MergePage() {
     { id: 'yearly', title: '연간', description: '12개월 기준' },
     { id: 'custom', title: '직접선택', description: '기간 직접 입력' },
   ];
+  const isBasic = subscription.plan === 'basic' && subscription.status === 'active';
+  const canUseMonthly = isBasic || isPremium;
+  const canUseLongRange = isPremium;
+  const getPeriodAccessLabel = (period: MergePeriod) => {
+    if (period === 'monthly') return 'Basic+';
+    if (period === 'quarterly' || period === 'yearly' || period === 'custom') return 'Premium';
+    return '';
+  };
+  const canUsePeriod = (period: MergePeriod) => {
+    if (period === 'monthly') return canUseMonthly;
+    if (period === 'quarterly' || period === 'yearly' || period === 'custom') return canUseLongRange;
+    return true;
+  };
 
   const getLocalDateString = (date: Date): string => {
     const y = date.getFullYear();
@@ -670,14 +683,17 @@ export function MergePage() {
         <div className="grid grid-cols-5 gap-0 px-3">
           {periodOptions.map((option, index) => {
             const isSelected = selectedPeriod === option.id;
-            const isPremiumRequired = ['monthly', 'quarterly', 'yearly', 'custom'].includes(option.id);
-            const isLocked = isPremiumRequired && !isPremium;
+            const accessLabel = getPeriodAccessLabel(option.id);
+            const isLocked = !canUsePeriod(option.id);
             return (
               <button
                 key={option.id}
                 onClick={() => {
                   if (isLocked) {
-                    alert('PREMIUM 구독 후 이용 가능한 기능입니다.\n월 6,000원으로 시작해 보세요!');
+                    const message = option.id === 'monthly'
+                      ? '월간 합본은 베이직 또는 프리미엄 구독에서 이용할 수 있습니다.'
+                      : '분기·연간·사용자정의 장기간 합본은 프리미엄 구독에서 이용할 수 있습니다.';
+                    alert(message);
                     window.location.href = '/subscription';
                     return;
                   }
@@ -700,6 +716,7 @@ export function MergePage() {
                   boxShadow: isSelected ? '0 2px 8px rgba(26,60,110,0.12)' : 'none',
                   opacity: isLocked ? 0.7 : 1,
                 }}
+                title={accessLabel ? `${option.title} 합본 · ${accessLabel}` : option.description}
               >
                 <div
                   style={{
@@ -711,7 +728,7 @@ export function MergePage() {
                   {option.title}{isLocked && ' 🔒'}
                 </div>
                 <div style={{ fontSize: '10px', color: isSelected ? '#555' : '#999' }}>
-                  {option.description}
+                  {accessLabel ? `${option.description} · ${accessLabel}` : option.description}
                 </div>
               </button>
             );

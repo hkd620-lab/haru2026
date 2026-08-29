@@ -58,7 +58,8 @@ const EMPTY_COND: SearchCondition = {
 export function SnsHaruTab() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isPremium } = useSubscription();
+  const { subscription } = useSubscription();
+  const isPaidUser = subscription.plan === 'basic' || subscription.plan === 'premium';
 
   const [records, setRecords] = useState<SnsRecord[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(false);
@@ -229,9 +230,9 @@ export function SnsHaruTab() {
     }
   };
 
-  const requirePremium = (action: string) => {
-    if (!isPremium) {
-      toast(`'${action}'은(는) 구독 후 이용 가능한 기능입니다.`, {
+  const requirePaidSubscription = (action: string) => {
+    if (!isPaidUser) {
+      toast(`'${action}'은(는) 베이직 또는 프리미엄 구독 후 이용할 수 있습니다.`, {
         action: { label: '구독하기', onClick: () => navigate('/subscription') },
       });
       return false;
@@ -240,7 +241,6 @@ export function SnsHaruTab() {
   };
 
   const handleConvertToDiary = async (record: SnsRecord) => {
-    if (!requirePremium('AI 일기로 변환')) return;
     if (!user) return;
     if (!record.text || record.text.trim().length === 0) {
       toast.info('변환할 텍스트가 없습니다.');
@@ -279,7 +279,7 @@ export function SnsHaruTab() {
   };
 
   const handleSendToProphecy = (record: SnsRecord) => {
-    if (!requirePremium('HARU미래전망으로 보내기')) return;
+    if (!requirePaidSubscription('HARU미래전망으로 보내기')) return;
     const date = formatDate(record.timestamp, 'iso');
     const incomingRecord = {
       id: record.id,
@@ -294,7 +294,7 @@ export function SnsHaruTab() {
   };
 
   const handleSavePdf = (_record: SnsRecord) => {
-    if (!requirePremium('PDF 저장')) return;
+    if (!requirePaidSubscription('PDF 저장')) return;
     toast.info('PDF 저장은 곧 활성화됩니다.');
   };
 
@@ -452,7 +452,7 @@ export function SnsHaruTab() {
                 <ResultCard
                   key={r.id}
                   record={r}
-                  isPremium={isPremium}
+                  isPaidUser={isPaidUser}
                   converting={convertingId === r.id}
                   onConvert={() => handleConvertToDiary(r)}
                   onProphecy={() => handleSendToProphecy(r)}
@@ -503,14 +503,14 @@ function ChipButton({
 
 function ResultCard({
   record,
-  isPremium,
+  isPaidUser,
   converting,
   onConvert,
   onProphecy,
   onPdf,
 }: {
   record: SnsRecord;
-  isPremium: boolean;
+  isPaidUser: boolean;
   converting: boolean;
   onConvert: () => void;
   onProphecy: () => void;
@@ -550,16 +550,37 @@ function ResultCard({
         </div>
       )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 6, marginTop: 12 }}>
-        <button type="button" onClick={onConvert} disabled={converting} style={smallBtnStyle(isPremium)}>
-          {converting ? '변환 중...' : `✏️ AI 일기${!isPremium ? ' 🔒' : ''}`}
+        <button
+          type="button"
+          onClick={onConvert}
+          disabled={converting}
+          style={smallBtnStyle(true)}
+          title="AI 일기로 변환"
+        >
+          {converting ? '변환 중...' : '✏️ AI 일기'}
         </button>
-        <button type="button" onClick={onProphecy} style={smallBtnStyle(isPremium)}>
-          🔮 HARU미래전망{!isPremium && ' 🔒'}
+        <button
+          type="button"
+          onClick={onProphecy}
+          style={smallBtnStyle(isPaidUser)}
+          title={isPaidUser ? 'HARU미래전망으로 보내기' : '🔒 HARU미래전망 · 베이직·프리미엄 구독'}
+        >
+          🔮 HARU미래전망{!isPaidUser && ' 🔒'}
         </button>
-        <button type="button" onClick={onPdf} style={smallBtnStyle(isPremium)}>
-          📄 PDF{!isPremium && ' 🔒'}
+        <button
+          type="button"
+          onClick={onPdf}
+          style={smallBtnStyle(isPaidUser)}
+          title={isPaidUser ? 'PDF 저장' : '🔒 PDF 저장 · 베이직·프리미엄 구독'}
+        >
+          📄 PDF{!isPaidUser && ' 🔒'}
         </button>
       </div>
+      {!isPaidUser && (
+        <p style={{ margin: '6px 0 0', fontSize: 10.5, color: '#9CA3AF', lineHeight: 1.5 }}>
+          🔒 표시된 기능은 베이직 또는 프리미엄 구독 후 이용할 수 있습니다.
+        </p>
+      )}
     </div>
   );
 }

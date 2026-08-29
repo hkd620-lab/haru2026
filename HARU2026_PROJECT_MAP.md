@@ -176,7 +176,7 @@ App.tsx 가 import 하지만 메뉴 미노출이라도 `<Route>` 에 마운트�
 | `sendBroadcastNotification` | onCall | asia-northeast3 | — | — | `functions/src/broadcastNotification.ts:6` | `SettingsPage.tsx:294` |
 | `convertHeic` | onCall | asia-northeast3 | — (Cloudinary) | (`CLOUDINARY_API_SECRET` env) | `index.ts:1168` | `FormatModal.tsx:602` |
 | `generateMergePDFFast` | onCall (1GiB, 300s) | asia-northeast3 | — | — | `index.ts:1198` | **활성 호출 없음** (구버전 MergeViewerPage backup 에만 존재) |
-| `verifyPayment` | onCall | asia-northeast3 | — | PORTONE_API_SECRET | `index.ts:1280` | `SubscriptionPage.tsx:45` |
+| `verifySinglePayment` | onCall | asia-northeast3 | — | PORTONE_API_SECRET | `functions/src/index.ts` | `SinglePaymentPage.tsx` |
 | `removeAllTags` | onRequest | asia-northeast3 | — | — | `index.ts:1345` | (관리자용; 활성 호출 없음) |
 | `lawSearch` | onCall | asia-northeast3 | gemini-3.1-flash-lite ×2 (키워드+조문선별) | LAW_API_KEY, GEMINI_API_KEY | `index.ts:1371, 1414, 1484` | `RecordPage.tsx:508` (활성), `HaruRawPage.tsx:33` (좀비 페이지) |
 | `lawEasyExplain` | onCall | asia-northeast3 | gemini-2.5-flash (`index.ts:1568`) ※ CLAUDE.md 는 2.5-pro 라고 적혀 있지만 코드는 flash | GEMINI_API_KEY | `index.ts:1548` | `RecordPage.tsx:588` |
@@ -344,7 +344,7 @@ find frontend/src functions/src -type f \( -name "*.old*" -o -name "*.bak*" \
 | **뉴스/AI 비서실** | `/news`, `/admin/k-news-publisher` | 작동 가능 — `refreshNews`, `extractKNewsMetadata` |
 | **영어성경학습** | `/bible`, `/vocab`, `/diary-learn` | 작동 가능 — `generateTTS`, `getVerseTranslation`, `getVerseWordMapping`, `getVerseQuiz`, `getGrammarExplain`, `getWordMeaning`, `translateToEnglish`, `preloadChapterGrammar` |
 | **관리자** | `/admin/checklist`, `/admin/console`, `/admin/k-news-publisher` | 작동 가능 (개발자 UID 한정 메뉴 노출) |
-| **결제·구독** | `/subscription` | 코드 작동 가능 — `verifyPayment` 호출. ※ CLAUDE.md: "베타 무료 운영 중, 결제 버튼 JSX 주석 처리 상태" |
+| **결제·구독** | `/subscription`, `/payment/single`, `/single-payment` | 정기결제는 `subscribeWithBillingKey`, 단건 결제는 `verifySinglePayment` 호출 |
 | **법적** | `/business-info`, `/terms`, `/privacy`, `/refund` | 작동 가능 (정적 페이지) |
 
 ### 7.2 기록 형식 10개 + HARUraw prefix 매핑 검증

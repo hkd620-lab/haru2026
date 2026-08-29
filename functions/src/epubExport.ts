@@ -141,6 +141,31 @@ function recordToHtml(record: Record<string, any>): string {
   return lines.join('\n');
 }
 
+const EPUB_DEVELOPER_UIDS = new Set([
+  'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8',
+]);
+
+// 유료(베이직·프리미엄) 구독자만 통과. index.ts의 getUserPlan과 동일한 판별 기준
+// (plan 값 + endDate/expiresAt 만료 확인)을 이 파일 안에서 독립적으로 적용한다 —
+// index.ts를 import하면 순환 참조가 생기므로 subscriptionHelpers.ts처럼 분리해 둔다.
+async function requirePaidSubscription(uid: string): Promise<void> {
+  if (EPUB_DEVELOPER_UIDS.has(uid)) return;
+  const snap = await db.doc(`users/${uid}/subscription/info`).get();
+  const data = snap.data() || {};
+  const plan = String(data.plan || '').toLowerCase();
+  const endDate = data.endDate;
+  const expiresAt = (data as { expiresAt?: { toMillis?: () => number } }).expiresAt;
+  const endTime = typeof endDate === 'string'
+    ? Date.parse(endDate)
+    : typeof expiresAt?.toMillis === 'function'
+      ? expiresAt.toMillis()
+      : Number.NaN;
+  const expired = Number.isFinite(endTime) && endTime < Date.now();
+  if (expired || (plan !== 'basic' && plan !== 'premium')) {
+    throw new HttpsError('permission-denied', '베이직 또는 프리미엄 구독 후 이용할 수 있습니다.');
+  }
+}
+
 export const exportEpub = onCall(
   {
     region: 'asia-northeast3',
@@ -152,6 +177,7 @@ export const exportEpub = onCall(
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
     const uid = request.auth.uid;
+    await requirePaidSubscription(uid);
 
     const { startDate, endDate, format } = request.data as { startDate: string; endDate: string; format?: string };
     if (!startDate || !endDate || startDate > endDate) {
