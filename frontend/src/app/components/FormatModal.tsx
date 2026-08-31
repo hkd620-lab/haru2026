@@ -3123,6 +3123,7 @@ ${contentValues}`,
   const editingReadingEntryIndex = editingReadingEntryId
     ? selectedReadingEntries.findIndex((entry) => entry.id === editingReadingEntryId)
     : -1;
+  const isEditingReadingEntry = editingReadingEntryIndex >= 0;
   const editingReadingEntryLabel = editingReadingEntryIndex >= 0
     ? `${editingReadingEntryIndex + 1}회차${editingReadingEntryDate ? ` · ${editingReadingEntryDate}` : ''}`
     : '';
