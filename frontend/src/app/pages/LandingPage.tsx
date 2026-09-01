@@ -32,7 +32,7 @@ const agentBg: Record<Hue, string> = {
 };
 const agentBorder: Record<Hue, string> = { green: C.lightGreen, lilac: C.lilac, terracotta: C.peach };
 
-const SHOW_PRICING = import.meta.env.VITE_SHOW_PRICING === 'true';
+const SHOW_PRICING = true;
 
 /* ── 기록 형식 11개 (홈 화면 일반 사용자 노출 기준과 일치) ── */
 const FORMATS: { name: string; icon: string; hue: Hue; cat: string; badge?: string }[] = [
@@ -92,7 +92,7 @@ const FLOW = [
   { n: '02', t: 'AI 정리',     d: 'SAYU가 표현만 다듬어 읽기 좋은 글로 정돈합니다.' },
   { n: '03', t: '분류 · 검색', d: '형식과 날짜로 자동 분류되고, 키워드로 찾을 수 있습니다.' },
   { n: '04', t: '통계 · 합본', d: '월별·연도별로 흐름을 보여주고, 한 권으로 묶어 보관합니다.' },
-  { n: '05', t: '평생 자산',   d: '책 소재가 되고, 회고 자료가 되고, 다음 세대에 남길 기록이 됩니다.' },
+  { n: '05', t: '오래 남는 기록',   d: '책 소재가 되고, 회고 자료가 되고, 다음 세대에 남길 기록이 됩니다.' },
 ];
 
 const HERO_FLOW = [
@@ -506,7 +506,7 @@ export function LandingPage() {
             </div>
             <div className="lp-hero__trust">
               <span><Icon name="shield" size={18} color={C.olive} />원문 감정 그대로</span>
-              <span><Icon name="user" size={18} color={C.olive} />평생 사용을 위한 설계</span>
+              <span><Icon name="user" size={18} color={C.olive} />오래 쓰도록 만든 설계</span>
               <span><Icon name="archive" size={18} color={C.olive} />언제든 합본·내보내기</span>
             </div>
           </div>
@@ -522,7 +522,7 @@ export function LandingPage() {
         <div className="lp-wrap lp-divider__inner">
           <span><Icon name="shield" size={14} />원문 감정 보존</span>
           <span><Icon name="spark" size={14} />SAYU AI 정리</span>
-          <span><Icon name="archive" size={14} />평생 자산화</span>
+          <span><Icon name="archive" size={14} />기록 자산화</span>
           <span><Icon name="bookbind" size={14} />합본 · 책 소재</span>
           <span><Icon name="chart" size={14} />통계 · 회고</span>
         </div>
@@ -635,7 +635,7 @@ export function LandingPage() {
       <section className="lp-section" id="flow">
         <div className="lp-wrap">
           <div className="lp-cap">FLOW · 사용 흐름</div>
-          <h2 className="lp-h2">오늘의 한 줄이<br />평생 자료가 되기까지.</h2>
+          <h2 className="lp-h2">오늘의 한 줄이<br />오래 남는 자료가 되기까지.</h2>
           <p className="lp-lead" style={{ maxWidth: 580 }}>
             입력에서 보관까지 다섯 단계. 사용자는 첫 단계만, 나머지는 HARU가 합니다.
           </p>
@@ -654,25 +654,6 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ───── Creator note ───── */}
-      <section className="lp-section tight">
-        <div className="lp-wrap">
-          <div className="lp-creator">
-            <div className="lp-creator__avatar">許</div>
-            <div>
-              <div className="lp-cap" style={{ marginBottom: 14 }}>FROM THE FOUNDER</div>
-              <p className="lp-creator__body">
-                "평생을 가르치는 일에 썼습니다. 돌아보니 가장 아쉬운 것은, 매일 무언가를 적었지만
-                다시 꺼내 쓰기 어려운 형태로 남았다는 점이었습니다.
-                HARU는 글재주를 다투는 도구가 아니라, 평생 쌓아온 자신의 이야기를
-                제 자리에 모아두는 도구입니다."
-              </p>
-              <div className="lp-creator__sig">— 하루랩 (HaruLab) · 창립자 노트</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* ───── Pricing (flag 숨김, 노출 시 현재 정책만) ───── */}
       {SHOW_PRICING && (
         <section className="lp-section lp-section--soft tight" id="pricing">
@@ -686,6 +667,7 @@ export function LandingPage() {
                   {p.badge && <span className="lp-plan__badge">{p.badge}</span>}
                   <div className="lp-plan__name">{p.plan}</div>
                   <div className="lp-plan__price">{p.price}<span>{p.period}</span></div>
+                  <div className="lp-plan__vat">부가세 포함</div>
                   <p className="lp-plan__note">{p.note}</p>
                   <ul className="lp-plan__list">
                     {p.bullets.map((b) => (
@@ -920,12 +902,6 @@ const LP_CSS = `
 .lp-step__t{font-size:17px;font-weight:700;margin:0 0 6px;color:var(--fg);}
 .lp-step__d{font-size:14px;color:var(--fg-2);line-height:1.55;max-width:180px;}
 
-.lp-creator{background:var(--card);border:1px solid var(--border);border-radius:22px;padding:clamp(32px,5vw,56px);display:grid;grid-template-columns:80px 1fr;gap:clamp(20px,3vw,36px);align-items:flex-start;}
-@media(max-width:760px){.lp-creator{grid-template-columns:1fr;}}
-.lp-creator__avatar{width:80px;height:80px;border-radius:24px;background:linear-gradient(135deg,var(--lilac-light),var(--green-light));display:grid;place-items:center;font-family:var(--lp-serif);font-weight:700;font-size:30px;color:var(--olive-dark);}
-.lp-creator__body{font-family:var(--lp-serif);font-size:20px;line-height:1.85;color:var(--fg);margin:0;}
-.lp-creator__sig{margin-top:22px;font-size:14px;letter-spacing:0.04em;color:var(--fg-2);}
-
 .lp-trial-badge{display:inline-flex;align-items:center;gap:8px;background:var(--olive);color:#fff;border-radius:999px;padding:8px 20px;font-size:14px;font-weight:700;margin-bottom:18px;}
 .lp-plans{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;}
 .lp-plan{position:relative;flex:1 1 260px;max-width:340px;background:var(--card);border:2px solid var(--border);border-radius:20px;padding:36px 28px;text-align:left;}
@@ -937,6 +913,8 @@ const LP_CSS = `
 .lp-plan--hl .lp-plan__price{color:var(--bg);}
 .lp-plan__price span{font-size:14px;font-weight:500;color:var(--fg-muted);margin-left:4px;}
 .lp-plan--hl .lp-plan__price span{color:rgba(245,240,232,0.6);}
+.lp-plan__vat{font-size:12px;font-weight:700;color:var(--fg-muted);margin-top:4px;}
+.lp-plan--hl .lp-plan__vat{color:rgba(245,240,232,0.75);}
 .lp-plan__note{font-size:12px;color:var(--fg-muted);margin:6px 0 20px;}
 .lp-plan--hl .lp-plan__note{color:rgba(245,240,232,0.6);}
 .lp-plan__list{list-style:none;padding:0;margin:0 0 22px;display:flex;flex-direction:column;gap:8px;}

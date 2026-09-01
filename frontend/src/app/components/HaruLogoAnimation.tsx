@@ -19,61 +19,84 @@ export function HaruLogoAnimation() {
 
   // HARU shimmer 반복
   useEffect(() => {
+    let cancelled = false;
+    let shimmerTimer: ReturnType<typeof setTimeout> | undefined;
     const totalLetterDuration = 0.15 * haruLetters.length + 0.65 + 0.2;
     const timer = setTimeout(() => {
-      if (!isMounted.current) return;
+      if (cancelled || !isMounted.current) return;
       setAnimationDone(true);
 
       const runShimmer = async () => {
-        if (!isMounted.current) return;
+        if (cancelled || !isMounted.current) return;
         await shimmerControls.start({
           x: ['-100%', '220%'],
           transition: { duration: 1.1, ease: 'easeInOut' },
         });
-        if (isMounted.current) {
-          setTimeout(runShimmer, 4500);
+        if (!cancelled && isMounted.current) {
+          shimmerTimer = setTimeout(runShimmer, 4500);
         }
       };
-      setTimeout(runShimmer, 400);
+      shimmerTimer = setTimeout(runShimmer, 400);
     }, totalLetterDuration * 1000);
 
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      if (shimmerTimer) clearTimeout(shimmerTimer);
+      shimmerControls.stop();
+    };
   }, [shimmerControls]);
 
   // by 조이L허경대 타이프라이터
   useEffect(() => {
+    let cancelled = false;
+    let interval: ReturnType<typeof setInterval> | undefined;
+    let blinkInterval: ReturnType<typeof setInterval> | undefined;
+    let hideCursorTimer: ReturnType<typeof setTimeout> | undefined;
     const startDelay = 1350; // HARU 끝나고 시작
     const charInterval = 80;  // 한 글자 간격
 
     const startTimer = setTimeout(() => {
-      if (!isMounted.current) return;
+      if (cancelled || !isMounted.current) return;
       setShowCursor(true);
 
       let idx = 0;
-      const interval = setInterval(() => {
-        if (!isMounted.current) { clearInterval(interval); return; }
+      interval = setInterval(() => {
+        if (cancelled || !isMounted.current) {
+          if (interval) clearInterval(interval);
+          return;
+        }
         idx += 1;
         setVisibleJoyelCount(idx);
         if (idx >= joyel.length) {
-          clearInterval(interval);
+          if (interval) clearInterval(interval);
           // 커서 깜빡임 시작
           let blink = true;
-          const blinkInterval = setInterval(() => {
-            if (!isMounted.current) { clearInterval(blinkInterval); return; }
+          blinkInterval = setInterval(() => {
+            if (cancelled || !isMounted.current) {
+              if (blinkInterval) clearInterval(blinkInterval);
+              return;
+            }
             blink = !blink;
             setCursorBlink(blink);
           }, 530);
           // 5초 후 커서 숨김
-          setTimeout(() => {
-            if (!isMounted.current) return;
+          hideCursorTimer = setTimeout(() => {
+            if (cancelled || !isMounted.current) return;
             setShowCursor(false);
-            clearInterval(blinkInterval);
+            if (blinkInterval) clearInterval(blinkInterval);
           }, 5000);
         }
       }, charInterval);
     }, startDelay);
 
-    return () => clearTimeout(startTimer);
+    return () => {
+      cancelled = true;
+      clearTimeout(startTimer);
+      if (interval) clearInterval(interval);
+      if (blinkInterval) clearInterval(blinkInterval);
+      if (hideCursorTimer) clearTimeout(hideCursorTimer);
+    };
   }, []);
 
   return (

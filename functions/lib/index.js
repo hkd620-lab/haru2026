@@ -36,8 +36,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.reviewHaruLawSharedCard = exports.listPendingHaruLawSharedCards = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.portoneWebhook = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.cancelSubscription = exports.subscribeWithBillingKey = exports.verifyPayment = exports.createSubscriptionBillingRequest = exports.createSinglePaymentRequest = exports.generateGrowthTimelinePdf = exports.decryptKakaoXlsx = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.getMonthlyAiQuotaStatus = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
-exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.getGrammarExplainV2 = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.applyBookPublishRevision = exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = void 0;
+exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.reviewHaruLawSharedCard = exports.listPendingHaruLawSharedCards = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.portoneWebhook = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.cancelSubscription = exports.subscribeWithBillingKey = exports.verifyPayment = exports.createSubscriptionBillingRequest = exports.createSinglePaymentRequest = exports.generateGrowthTimelinePdf = exports.decryptKakaoXlsx = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.recordPaidServiceUsage = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.getMonthlyAiQuotaStatus = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
+exports.executeScheduledDeletion = exports.cancelAccountDeletion = exports.requestAccountDeletion = exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.getGrammarExplainV2 = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.applyBookPublishRevision = exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -55,6 +55,7 @@ const sharp = require('sharp');
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const aiUsageLogger_1 = require("./aiUsageLogger");
+const subscriptionHelpers_1 = require("./subscriptionHelpers");
 const rateLimit_1 = require("./utils/rateLimit");
 const PortOne = __importStar(require("@portone/server-sdk"));
 const monthlyAiQuota_1 = require("./utils/monthlyAiQuota");
@@ -91,6 +92,8 @@ const MICROSOFT_CLIENT_ID_SECRET = (0, params_1.defineSecret)('MICROSOFT_CLIENT_
 const MICROSOFT_CLIENT_SECRET_SECRET = (0, params_1.defineSecret)('MICROSOFT_CLIENT_SECRET');
 const GOOGLE_DRIVE_SERVICE_ACCOUNT_SECRET = (0, params_1.defineSecret)('GOOGLE_DRIVE_SERVICE_ACCOUNT');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
+// 관리자 전용 기능 접근 제어용 UID
+const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 // Storage 버킷
 const bucket = () => (0, storage_1.getStorage)().bucket();
 const DEVELOPER_UIDS = new Set([
@@ -98,6 +101,14 @@ const DEVELOPER_UIDS = new Set([
 ]);
 const AI_USAGE_PLAN = 'beta';
 const READING_BOOK_OCR_LIMIT = 20;
+const HARULAW_RESPONSE_STRUCTURE_GUIDE = [
+    '- 법률 답변은 "확인된 사실", "추가 확인이 필요한 사실", "법적으로 말할 수 있는 범위", "현재 사건에 적용 가능한 판단", "사용자가 지금 해야 할 행동", "다음 단계로 넘어가는 조건", "주의사항"을 구분해 작성한다.',
+    '- 일반 법리와 현재 사건 적용을 분리한다. 법리상 검토 가능성이 있어도, 현재 사실관계만으로 요건 충족을 판단하기 어려우면 그 한계를 별도로 밝힌다.',
+    '- 근거가 충분히 확인되지 않은 상태에서는 "자의적", "주관적", "추측성", "명백히 부당", "불법", "위법", "약관 위반"이라고 표현하지 않는다.',
+    '- 위 표현은 법령, 약관, 판례 또는 확인된 사실관계가 충분히 뒷받침할 때만 사용한다.',
+    '- 기본 표현은 "현재 자료만으로는 확인되지 않습니다", "추가 확인이 필요합니다", "위법 여부를 단정하기 어렵습니다", "법리상 검토 가능성은 있으나 현재 사실관계만으로 판단하기 어렵습니다", "구체적인 판단 기준이 제시되지 않은 상태입니다"를 우선 사용한다.',
+    '- 행동 안내는 자료 확보, 상대방의 공식 답변 확보, 약관·계약서·공식 기준 확인, 보완 또는 재신청, 필요 시 민원·분쟁조정, 최종적으로 전문 법률 상담 또는 소송 검토 순서로 정리한다.',
+].join('\n');
 const RESULT_CHAT_MODEL_NAME = 'gemini-3.1-flash-lite';
 const RESULT_CHAT_QUESTION_MAX_LENGTH = 1200;
 const RESULT_CHAT_SOURCE_MAX_LENGTH = 9000;
@@ -141,8 +152,9 @@ const RESULT_CHAT_SOURCE_POLICIES = {
     stock_sayu: { sourceKey: 'stock_sayu', label: 'HARU주식관리', riskLevel: 'high', safetyMode: 'finance_basic', externalDataPolicy: 'current_data_required', systemGuide: '주식 기록을 바탕으로 매매 판단을 정리하되 수익 보장, 매수·매도 단정, 현재 가격·뉴스 추측을 금지한다.' },
     ledger_sayu: { sourceKey: 'ledger_sayu', label: 'HARU보조장부', riskLevel: 'medium', safetyMode: 'report', externalDataPolicy: 'record_first', systemGuide: '보조장부 기록을 바탕으로 분류, 누락 가능성, 업무 관련 메모를 정리한다. 세무 판단을 확정하지 않는다.' },
     household_sayu: { sourceKey: 'household_sayu', label: 'HARU가계부', riskLevel: 'medium', safetyMode: 'finance_basic', externalDataPolicy: 'record_first', systemGuide: '가계부 기록을 바탕으로 지출 흐름과 다음 점검 항목을 정리한다. 금융·세무 결정을 단정하지 않는다.' },
+    voiding_sayu: { sourceKey: 'voiding_sayu', label: '배뇨일지', riskLevel: 'medium', safetyMode: 'medical_basic', externalDataPolicy: 'record_first', systemGuide: '이미 계산된 배뇨 패턴 수치(총 음료섭취량, 총 배뇨량, 주간·야간 배뇨량, 야간뇨 비율, 배뇨 횟수)를 그대로 인용해 하루 흐름을 간결히 정리한다. 수치를 스스로 합산·재계산하지 않는다. 야간다뇨 여부, 질환명, 치료·투약 관련 판단은 하지 않으며 참고용 정리임을 유지한다.' },
     plantDetective: { sourceKey: 'plantDetective', label: '하루식물탐정', riskLevel: 'medium', safetyMode: 'plant_basic', externalDataPolicy: 'conditional_external', systemGuide: '식물 판독 결과와 사용자 메모를 바탕으로 식물 관리 참고 의견을 제공한다.' },
-    haruraw_sayu: { sourceKey: 'haruraw_sayu', label: '하루LAW', riskLevel: 'high', safetyMode: 'legal_basic', externalDataPolicy: 'official_source_first', systemGuide: '기록된 질문과 관련 법조문 범위 안에서만 참고 정보를 정리한다. 위법 여부나 승소 가능성을 단정하지 않고, 확인이 필요한 쟁점과 준비할 자료 중심으로 안내하며 전문가 상담 권유를 유지한다.' },
+    haruraw_sayu: { sourceKey: 'haruraw_sayu', label: '하루LAW', riskLevel: 'high', safetyMode: 'legal_basic', externalDataPolicy: 'official_source_first', systemGuide: ['기록된 질문과 관련 법조문 범위 안에서만 참고 정보를 정리한다. 법률 판단 AI가 아니라 생활 법률 대응 비서처럼, 지금 확인된 사실·아직 모르는 사실·지금 할 일을 사용자가 바로 구분할 수 있게 안내한다.', HARULAW_RESPONSE_STRUCTURE_GUIDE, '위법 여부나 승소 가능성을 단정하지 않고, 확인이 필요한 쟁점과 준비할 자료 중심으로 안내하며 전문가 상담 권유를 유지한다.'].join('\n') },
     growthTimeline: { sourceKey: 'growthTimeline', label: 'HARU타임라인', riskLevel: 'medium', safetyMode: 'timeline_basic', externalDataPolicy: 'record_first', systemGuide: '타임라인 결과의 시간 흐름과 관찰 포인트를 기록 안에서만 정리한다.' },
 };
 function normalizeResultChatQuestion(question) {
@@ -820,7 +832,8 @@ exports.polishContent = (0, https_2.onCall)({
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
-    await (0, rateLimit_1.enforceRateLimit)(request.auth.uid, 'polishContent', 10, 60);
+    const uid = request.auth.uid;
+    await (0, rateLimit_1.enforceRateLimit)(uid, 'polishContent', 10, 60);
     let monthlyQuotaReservation = null;
     try {
         const { text, mode = 'premium', format } = request.data;
@@ -858,6 +871,20 @@ exports.polishContent = (0, https_2.onCall)({
             systemPrompt = `당신은 신중한 편집자입니다.
 원문을 최대한 유지하며 맞춤법과 어색한 표현만 교정하세요.
 존댓말 유지, 내용 추가 금지, 문단 분리 금지.`;
+        }
+        else if (normalizedFormat === 'voiding') {
+            // 배뇨일지 — 계산된 수치를 인용해 하루 흐름을 간결히 정리, medical_basic 안전 모드
+            systemPrompt = `당신은 건강 기록 요약 도우미입니다.
+아래에 제공된 배뇨일지 계산 수치를 그대로 인용해 하루 패턴을 2~3문장으로 간결하고 따뜻하게 요약합니다.
+
+엄격한 금지:
+1. 수치를 스스로 합산·재계산하지 않는다. 제공된 숫자만 그대로 사용한다.
+2. 야간다뇨, 빈뇨, 질환명, 진단, 치료·투약 판단을 하지 않는다.
+3. 과도한 의학적 용어 사용 금지.
+4. 소제목, 마크다운 기호, 목록 형식 금지.
+
+마지막 문장에 "이 수치는 참고용 지표이며 진단이 아닙니다."를 자연스럽게 포함하세요.
+본문만 자연스럽게 이어지는 문장으로 작성하세요.`;
         }
         else if (formatGroup === 'rich') {
             // 풍성형 — 일기·에세이·여행기록
@@ -967,6 +994,13 @@ exports.polishContent = (0, https_2.onCall)({
         catch (commentErr) {
             console.warn('[polishContent] AI 한마디 생성 실패:', commentErr);
         }
+        await logPaidServiceUsage(uid, 'ai_polish', {
+            format: normalizedFormat || 'unknown',
+            mode,
+            inputLength: text.length,
+        }).catch((error) => {
+            logger.warn('유료 이용 개시 로그 기록 실패(polishContent):', { uid, message: error === null || error === void 0 ? void 0 : error.message });
+        });
         return {
             text: polishedText,
             stats: stats,
@@ -1432,6 +1466,65 @@ async function getUserPlan(uid) {
     }
     return 'free';
 }
+const PAID_SERVICE_USAGE_EVENTS = new Set([
+    'record_created',
+    'record_updated',
+    'ai_polish',
+    'timeline_pdf',
+    'result_chat',
+]);
+async function logPaidServiceUsage(uid, eventType, details = {}) {
+    const plan = await getUserPlan(uid);
+    if (plan !== 'basic' && plan !== 'premium') {
+        return { logged: false, plan };
+    }
+    const nowIso = new Date().toISOString();
+    const eventId = `${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
+    const sanitizedDetails = Object.fromEntries(Object.entries(details)
+        .filter(([, value]) => value !== undefined && value !== null)
+        .map(([key, value]) => [key.slice(0, 80), typeof value === 'string' ? value.slice(0, 500) : value]));
+    const usageEventRef = db.doc(`paidServiceUsage/${uid}/events/${eventId}`);
+    const subscriptionRef = db.doc(`users/${uid}/subscription/info`);
+    await usageEventRef.set({
+        uid,
+        plan,
+        eventType,
+        details: sanitizedDetails,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAtIso: nowIso,
+    });
+    await db.runTransaction(async (tx) => {
+        var _a;
+        const subSnap = await tx.get(subscriptionRef);
+        const hasFirstUsage = Boolean((_a = subSnap.data()) === null || _a === void 0 ? void 0 : _a.hasPaidServiceUsage);
+        tx.set(subscriptionRef, {
+            hasPaidServiceUsage: true,
+            ...(hasFirstUsage ? {} : {
+                firstPaidServiceUsageAt: admin.firestore.FieldValue.serverTimestamp(),
+                firstPaidServiceUsageAtIso: nowIso,
+            }),
+            lastPaidServiceUsageAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastPaidServiceUsageAtIso: nowIso,
+            lastPaidServiceUsageType: eventType,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+    });
+    return { logged: true, plan };
+}
+exports.recordPaidServiceUsage = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
+    var _a, _b;
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const rawEventType = String(((_a = request.data) === null || _a === void 0 ? void 0 : _a.eventType) || '').trim();
+    if (!PAID_SERVICE_USAGE_EVENTS.has(rawEventType)) {
+        throw new https_2.HttpsError('invalid-argument', 'eventType 값이 올바르지 않습니다.');
+    }
+    const details = ((_b = request.data) === null || _b === void 0 ? void 0 : _b.details) && typeof request.data.details === 'object'
+        ? request.data.details
+        : {};
+    return logPaidServiceUsage(request.auth.uid, rawEventType, details);
+});
 // 유료(베이직·프리미엄) 구독자만 통과 — 일부 유료 전용 서버 함수에서 사용.
 // 개발자 UID와 만료되지 않은 basic/premium은 getUserPlan이 이미 처리한다.
 async function requirePaidSubscription(uid) {
@@ -1596,6 +1689,7 @@ function getSafetyModeGuide(safetyMode) {
                 '- 유죄·무죄, 승소·패소, 위법 여부를 단정하지 않는다. 가능성, 쟁점, 확인이 필요한 사항 중심으로 설명한다.',
                 '- 기록에 담긴 사실관계와 관련 법조문 범위 안에서만 답한다. 없는 사실을 추정해 덧붙이지 않는다.',
                 '- 구체적 사건의 결론이나 소송 전략을 확정적으로 제시하지 않는다.',
+                HARULAW_RESPONSE_STRUCTURE_GUIDE,
                 '- 답변 끝에 전문가(변호사) 상담 권유를 유지한다.',
                 '- 질문자가 피해자인지 피고발인인지 제3자인지 불명확하면 먼저 확인 질문을 한다.',
             ].join('\n');
@@ -1912,11 +2006,15 @@ function findReusableResultChatAnswer(messages, question, route, options = {}) {
 }
 async function saveResultChatExchange(params) {
     const now = admin.firestore.FieldValue.serverTimestamp();
-    await params.messagesRef.add({
+    const userMessage = {
         role: 'user',
         content: params.question,
         createdAt: now,
-    });
+    };
+    if (params.attachmentMeta && params.attachmentMeta.length > 0) {
+        userMessage.attachments = params.attachmentMeta;
+    }
+    await params.messagesRef.add(userMessage);
     await params.messagesRef.add({
         role: 'assistant',
         content: params.answer,
@@ -1972,12 +2070,80 @@ async function logResultChatUsage(params) {
         isDev: params.isDev,
     });
 }
+const HARULAW_ATTACH_MAX_FILES = 5;
+const HARULAW_ATTACH_MAX_IMAGE_BYTES = 7 * 1024 * 1024;
+const HARULAW_ATTACH_MAX_PDF_BYTES = 50 * 1024 * 1024;
+function readHaruLawAttachments(raw) {
+    if (!Array.isArray(raw))
+        return [];
+    return raw.slice(0, HARULAW_ATTACH_MAX_FILES).map((item) => {
+        const source = item;
+        const storagePath = clampResultChatText(source === null || source === void 0 ? void 0 : source.storagePath, 512);
+        const mimeType = clampResultChatText(source === null || source === void 0 ? void 0 : source.mimeType, 120).toLowerCase();
+        const fileName = clampResultChatText(source === null || source === void 0 ? void 0 : source.fileName, 180);
+        if (!storagePath || !mimeType || !fileName) {
+            throw new https_2.HttpsError('invalid-argument', '첨부 파일 정보가 올바르지 않습니다.');
+        }
+        return { storagePath, mimeType, fileName };
+    });
+}
+function isAllowedHaruLawAttachmentMime(mimeType) {
+    return mimeType === 'application/pdf' || /^image\/[-+.\w]+$/i.test(mimeType);
+}
+function getHaruLawAttachmentSizeLimit(mimeType) {
+    return mimeType.startsWith('image/') ? HARULAW_ATTACH_MAX_IMAGE_BYTES : HARULAW_ATTACH_MAX_PDF_BYTES;
+}
+async function loadHaruLawAttachmentParts(uid, attachments) {
+    const fileParts = [];
+    const attachmentMeta = [];
+    for (const att of attachments) {
+        if (!att.storagePath.startsWith(`users/${uid}/haruLawAttachments/`)) {
+            throw new https_2.HttpsError('permission-denied', '허용되지 않은 파일 경로입니다.');
+        }
+        if (!isAllowedHaruLawAttachmentMime(att.mimeType)) {
+            throw new https_2.HttpsError('invalid-argument', '지원하지 않는 파일 형식입니다.');
+        }
+        const file = bucket().file(att.storagePath);
+        let metadata;
+        try {
+            [metadata] = await file.getMetadata();
+        }
+        catch (error) {
+            logger.warn('하루LAW 첨부 메타데이터 조회 실패:', { storagePath: att.storagePath, message: error === null || error === void 0 ? void 0 : error.message });
+            throw new https_2.HttpsError('not-found', '첨부 파일을 찾을 수 없습니다.');
+        }
+        const storedMimeType = String((metadata === null || metadata === void 0 ? void 0 : metadata.contentType) || '').trim().toLowerCase();
+        const effectiveMimeType = storedMimeType || att.mimeType;
+        if (!isAllowedHaruLawAttachmentMime(effectiveMimeType) || (storedMimeType && storedMimeType !== att.mimeType)) {
+            throw new https_2.HttpsError('invalid-argument', '첨부 파일 형식이 허용 범위와 다릅니다.');
+        }
+        const sizeLimit = getHaruLawAttachmentSizeLimit(effectiveMimeType);
+        const metadataSize = Number(metadata === null || metadata === void 0 ? void 0 : metadata.size);
+        if (Number.isFinite(metadataSize) && metadataSize > sizeLimit) {
+            throw new https_2.HttpsError('invalid-argument', '파일 크기가 허용 범위를 초과했습니다.');
+        }
+        let buf;
+        try {
+            [buf] = await file.download();
+        }
+        catch (error) {
+            logger.warn('하루LAW 첨부 다운로드 실패:', { storagePath: att.storagePath, message: error === null || error === void 0 ? void 0 : error.message });
+            throw new https_2.HttpsError('not-found', '첨부 파일을 다운로드하지 못했습니다.');
+        }
+        if (buf.length > sizeLimit) {
+            throw new https_2.HttpsError('invalid-argument', '파일 크기가 허용 범위를 초과했습니다.');
+        }
+        fileParts.push({ inlineData: { mimeType: effectiveMimeType, data: buf.toString('base64') } });
+        attachmentMeta.push({ storagePath: att.storagePath, mimeType: effectiveMimeType, fileName: att.fileName });
+    }
+    return { fileParts, attachmentMeta };
+}
 exports.chatWithResult = (0, https_2.onCall)({
     region: 'asia-northeast3',
     secrets: [GEMINI_API_KEY_SECRET],
-    timeoutSeconds: 60,
+    timeoutSeconds: 90,
 }, async (request) => {
-    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4;
+    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5;
     if (!((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid)) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -1992,6 +2158,7 @@ exports.chatWithResult = (0, https_2.onCall)({
     const sourceIndex = typeof rawSourceIndex === 'number' && Number.isInteger(rawSourceIndex)
         ? rawSourceIndex
         : undefined;
+    const attachments = readHaruLawAttachments((_j = request.data) === null || _j === void 0 ? void 0 : _j.attachments);
     if (rawQuestion.length > RESULT_CHAT_QUESTION_MAX_LENGTH) {
         throw new https_2.HttpsError('invalid-argument', '질문이 너무 깁니다. 핵심 내용을 조금 줄여 주세요.');
     }
@@ -2034,6 +2201,14 @@ exports.chatWithResult = (0, https_2.onCall)({
         await acquireResultChatLock(threadRef, requestId);
         locked = true;
         await enforceResultChatRateLimit(uid);
+        if (attachments.length > 0) {
+            if (sourceKey !== 'haruraw_sayu') {
+                throw new https_2.HttpsError('failed-precondition', '첨부는 하루LAW 자문에서만 사용할 수 있습니다.');
+            }
+            if (actualPlan === 'free') {
+                throw new https_2.HttpsError('permission-denied', '파일 첨부는 베이직·프리미엄 이용권 전용 기능입니다.');
+            }
+        }
         monthlyQuotaReservation = await (0, monthlyAiQuota_1.reserveMonthlyAiQuota)(uid, 'chatWithResult');
         const ai = new genai_1.GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
         const classification = await classifyResultChatQuestion(ai, {
@@ -2124,9 +2299,11 @@ exports.chatWithResult = (0, https_2.onCall)({
             };
         }
         const recentMessageRows = await getRecentResultChatMessages(messagesRef);
-        const reusable = answerRoute !== 'web_search'
-            ? findReusableResultChatAnswer(recentMessageRows, question, answerRoute)
-            : findReusableResultChatAnswer(recentMessageRows, question, answerRoute, { allowRecentWebSearchMs: RESULT_CHAT_LOCK_STALE_MS });
+        const reusable = attachments.length > 0
+            ? null
+            : answerRoute !== 'web_search'
+                ? findReusableResultChatAnswer(recentMessageRows, question, answerRoute)
+                : findReusableResultChatAnswer(recentMessageRows, question, answerRoute, { allowRecentWebSearchMs: RESULT_CHAT_LOCK_STALE_MS });
         if (reusable) {
             if (answerRoute === 'web_search') {
                 return {
@@ -2248,27 +2425,33 @@ exports.chatWithResult = (0, https_2.onCall)({
             systemGuide: policy.systemGuide,
             recordOnlyChosen,
         });
+        const { fileParts, attachmentMeta } = attachments.length > 0
+            ? await loadHaruLawAttachmentParts(uid, attachments)
+            : { fileParts: [], attachmentMeta: [] };
+        const contents = fileParts.length > 0
+            ? [{ role: 'user', parts: [{ text: prompt }, ...fileParts] }]
+            : prompt;
         const startedAt = Date.now();
         const response = await ai.models.generateContent({
             model: RESULT_CHAT_MODEL_NAME,
-            contents: prompt,
+            contents,
             config: answerRoute === 'web_search'
                 ? { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS }
                 : { maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
         });
         const latencyMs = Date.now() - startedAt;
         const rawAnswer = clampResultChatText(response.text || '', RESULT_CHAT_ANSWER_MAX_LENGTH);
-        const finishReason = (_k = (_j = response.candidates) === null || _j === void 0 ? void 0 : _j[0]) === null || _k === void 0 ? void 0 : _k.finishReason;
+        const finishReason = (_l = (_k = response.candidates) === null || _k === void 0 ? void 0 : _k[0]) === null || _l === void 0 ? void 0 : _l.finishReason;
         const { sources, usedWebSearch } = answerRoute === 'web_search'
             ? getResultChatSources(response)
             : { sources: [], usedWebSearch: false };
         if (answerRoute === 'web_search' && !usedWebSearch) {
             logger.warn('chatWithResult web_search_not_grounded 진단:', {
                 finishReason,
-                hasCandidates: ((_m = (_l = response.candidates) === null || _l === void 0 ? void 0 : _l.length) !== null && _m !== void 0 ? _m : 0) > 0,
-                hasGroundingMetadata: !!((_p = (_o = response.candidates) === null || _o === void 0 ? void 0 : _o[0]) === null || _p === void 0 ? void 0 : _p.groundingMetadata),
-                webSearchQueriesCount: (_u = (_t = (_s = (_r = (_q = response.candidates) === null || _q === void 0 ? void 0 : _q[0]) === null || _r === void 0 ? void 0 : _r.groundingMetadata) === null || _s === void 0 ? void 0 : _s.webSearchQueries) === null || _t === void 0 ? void 0 : _t.length) !== null && _u !== void 0 ? _u : 0,
-                groundingChunksCount: (_z = (_y = (_x = (_w = (_v = response.candidates) === null || _v === void 0 ? void 0 : _v[0]) === null || _w === void 0 ? void 0 : _w.groundingMetadata) === null || _x === void 0 ? void 0 : _x.groundingChunks) === null || _y === void 0 ? void 0 : _y.length) !== null && _z !== void 0 ? _z : 0,
+                hasCandidates: ((_o = (_m = response.candidates) === null || _m === void 0 ? void 0 : _m.length) !== null && _o !== void 0 ? _o : 0) > 0,
+                hasGroundingMetadata: !!((_q = (_p = response.candidates) === null || _p === void 0 ? void 0 : _p[0]) === null || _q === void 0 ? void 0 : _q.groundingMetadata),
+                webSearchQueriesCount: (_v = (_u = (_t = (_s = (_r = response.candidates) === null || _r === void 0 ? void 0 : _r[0]) === null || _s === void 0 ? void 0 : _s.groundingMetadata) === null || _t === void 0 ? void 0 : _t.webSearchQueries) === null || _u === void 0 ? void 0 : _u.length) !== null && _v !== void 0 ? _v : 0,
+                groundingChunksCount: (_0 = (_z = (_y = (_x = (_w = response.candidates) === null || _w === void 0 ? void 0 : _w[0]) === null || _x === void 0 ? void 0 : _x.groundingMetadata) === null || _y === void 0 ? void 0 : _y.groundingChunks) === null || _z === void 0 ? void 0 : _z.length) !== null && _0 !== void 0 ? _0 : 0,
                 recordId,
                 sourceKey,
             });
@@ -2290,8 +2473,8 @@ exports.chatWithResult = (0, https_2.onCall)({
             sourceKey,
             answerRoute,
             model: RESULT_CHAT_MODEL_NAME,
-            inputTokens: (_0 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.promptTokenCount) !== null && _0 !== void 0 ? _0 : null,
-            outputTokens: (_1 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.candidatesTokenCount) !== null && _1 !== void 0 ? _1 : null,
+            inputTokens: (_1 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.promptTokenCount) !== null && _1 !== void 0 ? _1 : null,
+            outputTokens: (_2 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.candidatesTokenCount) !== null && _2 !== void 0 ? _2 : null,
             webSearchUsed: answerRoute === 'web_search' && usedWebSearch,
             professionalApiUsed: false,
             searchSourceCount: sources.length,
@@ -2312,11 +2495,12 @@ exports.chatWithResult = (0, https_2.onCall)({
             safetyMode: policy.safetyMode,
             answerRoute,
             model: RESULT_CHAT_MODEL_NAME,
-            inputTokens: (_2 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.promptTokenCount) !== null && _2 !== void 0 ? _2 : null,
-            outputTokens: (_3 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.candidatesTokenCount) !== null && _3 !== void 0 ? _3 : null,
+            inputTokens: (_3 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.promptTokenCount) !== null && _3 !== void 0 ? _3 : null,
+            outputTokens: (_4 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.candidatesTokenCount) !== null && _4 !== void 0 ? _4 : null,
             latencyMs,
             webSearchUsed: answerRoute === 'web_search' && usedWebSearch,
             professionalApiUsed: false,
+            attachmentMeta: attachmentMeta.length > 0 ? attachmentMeta : undefined,
         });
         return {
             threadId,
@@ -2346,7 +2530,7 @@ exports.chatWithResult = (0, https_2.onCall)({
             errorMessage: error === null || error === void 0 ? void 0 : error.message,
             errorStatus: error === null || error === void 0 ? void 0 : error.status,
             errorCode: error === null || error === void 0 ? void 0 : error.code,
-            errorCause: String((_4 = error === null || error === void 0 ? void 0 : error.cause) !== null && _4 !== void 0 ? _4 : ''),
+            errorCause: String((_5 = error === null || error === void 0 ? void 0 : error.cause) !== null && _5 !== void 0 ? _5 : ''),
             stack: error === null || error === void 0 ? void 0 : error.stack,
             recordId,
             sourceKey,
@@ -4516,6 +4700,13 @@ exports.generateGrowthTimelinePdf = (0, https_2.onCall)({ region: 'asia-northeas
         expires: Date.now() + 60 * 60 * 1000,
         responseDisposition: `inline; filename*=UTF-8''${encodeURIComponent(filename)}`,
     });
+    await logPaidServiceUsage(uid, 'timeline_pdf', {
+        itemCount: payload.items.length,
+        title: payload.title,
+        cached: exists,
+    }).catch((error) => {
+        logger.warn('유료 이용 개시 로그 기록 실패(generateGrowthTimelinePdf):', { uid, message: error === null || error === void 0 ? void 0 : error.message });
+    });
     return {
         success: true,
         cached: exists,
@@ -4859,64 +5050,15 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
     return { success: true };
 });
 // ===== 💳 카카오페이 정기구독 해지 =====
-exports.cancelSubscription = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
+// 실제 해지 로직은 subscriptionHelpers.ts의 cancelSubscriptionForUid로 분리되어 있다.
+// (accountDeletion.ts의 requestAccountDeletion에서도 재사용하기 위함 — index.ts와의 순환 참조 방지)
+exports.cancelSubscription = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] }, async (request) => {
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
     const uid = request.auth.uid;
-    const nowIso = new Date().toISOString();
-    const subRef = db.doc(`users/${uid}/subscription/info`);
-    const billingRef = db.doc(`billingSubscriptions/${uid}`);
-    const result = await db.runTransaction(async (tx) => {
-        const [subSnap, billingSnap] = await Promise.all([
-            tx.get(subRef),
-            tx.get(billingRef),
-        ]);
-        const subData = subSnap.data() || {};
-        const billingData = billingSnap.data() || {};
-        const plan = subData.plan === 'basic' || subData.plan === 'premium'
-            ? subData.plan
-            : billingData.plan === 'basic' || billingData.plan === 'premium'
-                ? billingData.plan
-                : '';
-        if (!plan) {
-            throw new https_2.HttpsError('failed-precondition', '해지할 구독이 없습니다.');
-        }
-        if (subData.status === 'cancelled' || billingData.status === 'cancelled') {
-            return {
-                alreadyCancelled: true,
-                endDate: typeof subData.endDate === 'string' ? subData.endDate : null,
-            };
-        }
-        const endDate = typeof subData.endDate === 'string'
-            ? subData.endDate
-            : typeof billingData.endDate === 'string'
-                ? billingData.endDate
-                : nowIso;
-        tx.set(subRef, {
-            plan,
-            status: 'cancelled',
-            cancelAtPeriodEnd: true,
-            cancelledAt: nowIso,
-            endDate,
-            nextBillingDate: null,
-            updatedAt: nowIso,
-        }, { merge: true });
-        tx.set(billingRef, {
-            uid,
-            plan,
-            status: 'cancelled',
-            billingKey: null,
-            cancelAtPeriodEnd: true,
-            cancelledAt: nowIso,
-            endDate,
-            nextBillingDate: null,
-            billingLockUntil: null,
-            updatedAt: nowIso,
-        }, { merge: true });
-        return { alreadyCancelled: false, endDate };
-    });
-    logger.info('✅ 정기구독 해지 예약 — uid: %s, endDate: %s', uid, result.endDate);
+    await (0, subscriptionHelpers_1.revokeBillingKeyForUid)(uid, PORTONE_API_SECRET.value(), 'subscription_cancelled');
+    const result = await (0, subscriptionHelpers_1.cancelSubscriptionForUid)(uid);
     return {
         success: true,
         ...result,
@@ -4946,7 +5088,7 @@ exports.processRecurringSubscriptions = (0, scheduler_1.onSchedule)({
             plan: 'free',
             status: 'none',
             paymentId: null,
-            billingKey: null,
+            billingKey: admin.firestore.FieldValue.delete(),
             nextBillingDate: null,
             cancelAtPeriodEnd: false,
             expiredAt: nowIso,
@@ -4956,7 +5098,7 @@ exports.processRecurringSubscriptions = (0, scheduler_1.onSchedule)({
             db.doc(`users/${uid}/subscription/info`).set(update, { merge: true }),
             billingRef.set({
                 status: 'expired',
-                billingKey: null,
+                billingKey: admin.firestore.FieldValue.delete(),
                 nextBillingDate: null,
                 expiredAt: nowIso,
                 updatedAt: nowIso,
@@ -5586,15 +5728,25 @@ function getHaruLawSharedCardId(uid, sourceRecordId) {
 exports.lawSearch = (0, https_2.onCall)({
     region: 'asia-northeast3',
     secrets: [LAW_API_KEY_SECRET, GEMINI_API_KEY_SECRET],
+    timeoutSeconds: 90,
+    memory: '1GiB',
 }, async (request) => {
-    var _a, _b, _c, _d, _f, _g;
+    var _a, _b, _c, _d, _f, _g, _h;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
     await (0, rateLimit_1.enforceRateLimit)(request.auth.uid, 'lawSearch', 3, 20);
+    const uid = request.auth.uid;
     const { query } = request.data;
     if (!query || typeof query !== 'string' || !query.trim()) {
         throw new https_2.HttpsError('invalid-argument', '검색어가 필요합니다.');
+    }
+    const attachments = readHaruLawAttachments((_a = request.data) === null || _a === void 0 ? void 0 : _a.attachments);
+    if (attachments.length > 0) {
+        const actualPlan = coerceUserPlan(await getUserPlan(uid));
+        if (actualPlan === 'free') {
+            throw new https_2.HttpsError('permission-denied', '파일 첨부는 베이직·프리미엄 이용권 전용 기능입니다.');
+        }
     }
     const { XMLParser } = await Promise.resolve().then(() => __importStar(require('fast-xml-parser')));
     const LAW_API_KEY = LAW_API_KEY_SECRET.value();
@@ -5610,6 +5762,9 @@ exports.lawSearch = (0, https_2.onCall)({
         const { XMLParser } = await Promise.resolve().then(() => __importStar(require('fast-xml-parser')));
         const LAW_API_KEY = LAW_API_KEY_SECRET.value().trim();
         const GEMINI_KEY = GEMINI_API_KEY_SECRET.value().trim();
+        const { fileParts } = attachments.length > 0
+            ? await loadHaruLawAttachmentParts(uid, attachments)
+            : { fileParts: [] };
         const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
         const axiosConfig = {
             headers: {
@@ -5689,7 +5844,7 @@ exports.lawSearch = (0, https_2.onCall)({
         const searchUrl = `https://www.law.go.kr/DRF/lawSearch.do?OC=${LAW_API_KEY}&target=law&type=XML&query=${encodeURIComponent(lawKeyword)}`;
         const searchRes = await getLawXmlWithRetry(searchUrl);
         const searchJson = parser.parse(searchRes.data);
-        const laws = ((_a = searchJson === null || searchJson === void 0 ? void 0 : searchJson.LawSearch) === null || _a === void 0 ? void 0 : _a.law) || ((_b = searchJson === null || searchJson === void 0 ? void 0 : searchJson.Law) === null || _b === void 0 ? void 0 : _b.law) || ((_c = searchJson === null || searchJson === void 0 ? void 0 : searchJson.LawList) === null || _c === void 0 ? void 0 : _c.law);
+        const laws = ((_b = searchJson === null || searchJson === void 0 ? void 0 : searchJson.LawSearch) === null || _b === void 0 ? void 0 : _b.law) || ((_c = searchJson === null || searchJson === void 0 ? void 0 : searchJson.Law) === null || _c === void 0 ? void 0 : _c.law) || ((_d = searchJson === null || searchJson === void 0 ? void 0 : searchJson.LawList) === null || _d === void 0 ? void 0 : _d.law);
         if (!laws) {
             return { success: false, message: '관련 법령을 찾지 못했습니다.', data: [], aiSummary: '' };
         }
@@ -5707,7 +5862,7 @@ exports.lawSearch = (0, https_2.onCall)({
         const serviceUrl = `https://www.law.go.kr/DRF/lawService.do?OC=${LAW_API_KEY}&target=law&MST=${mstId}&type=XML`;
         const serviceRes = await getLawXmlWithRetry(serviceUrl);
         const lawJson = parser.parse(serviceRes.data);
-        const jomuns = ((_f = (_d = lawJson === null || lawJson === void 0 ? void 0 : lawJson.법령) === null || _d === void 0 ? void 0 : _d.조문) === null || _f === void 0 ? void 0 : _f.조문단위) || [];
+        const jomuns = ((_g = (_f = lawJson === null || lawJson === void 0 ? void 0 : lawJson.법령) === null || _f === void 0 ? void 0 : _f.조문) === null || _g === void 0 ? void 0 : _g.조문단위) || [];
         const arrayJomuns = Array.isArray(jomuns) ? jomuns : [jomuns];
         // 전체 조문 정제
         const allJomuns = arrayJomuns
@@ -5763,7 +5918,7 @@ exports.lawSearch = (0, https_2.onCall)({
         const lawText = finalJomuns
             .map((j) => `${j.articleStr}(${j.title}): ${j.content}`)
             .join('\n');
-        const summaryResult = await summaryModel.generateContent(`당신은 공식 법령을 사실원으로 확인하고 가능한 법적 쟁점과 다음 행동을 이해하기 쉽게 안내하는 AI 법률정보 도우미입니다.
+        const summaryPrompt = `당신은 공식 법령을 사실원으로 확인하고 가능한 법적 쟁점과 다음 행동을 이해하기 쉽게 안내하는 AI 법률정보 도우미입니다.
 다음 원칙을 반드시 지키세요:
 
 [공식 법령 우선 원칙]
@@ -5772,11 +5927,15 @@ exports.lawSearch = (0, https_2.onCall)({
 - 제공된 법령만으로 판단하기 어려우면 추측하지 말고 추가 확인이 필요하다고 안내한다.
 - 조문의 문언뿐 아니라 해당 조문의 적용요건이 사용자 사실관계에 충족되는지 구분해서 설명한다.
 - 법령 내용과 모델의 일반지식이 충돌하면 이번 요청에서 제공된 공식 법령 내용을 우선한다.
+- 첨부파일이 있으면 사실관계 보조자료로만 활용하고, 법률상 결론은 반드시 이번 요청에서 제공된 공식 법령·조문을 우선 근거로 삼는다.
 
 [사실관계·책임 판단 가드레일]
 - 사용자 질문과 제공 자료만으로 누가 가해자인지, 피해 정도, 인과관계, 과실, 책임 주체, 법률 적용요건이 확실하지 않으면 단정하지 마라.
 - 법조문을 찾았다는 이유만으로 바로 사용자 사건에 적용하지 말고, 사용자 사실관계 → 조문 적용요건 확인 → 해당 가능성 설명 → 추가 확인사항 안내 순서를 지켜라.
 - 사실관계가 충분히 확인되기 전에는 "책임을 인정하세요", "전액 보상하세요", "무조건 사과하세요"처럼 과실·책임 인정을 유도하는 단정적 행동을 권하지 마라.
+- 근거가 충분히 확인되지 않은 상태에서는 "자의적", "주관적", "추측성", "명백히 부당", "불법", "위법", "약관 위반"이라고 표현하지 마라.
+- 위 표현은 법령, 약관, 판례 또는 확인된 사실관계가 충분히 뒷받침할 때만 사용하라.
+- 기본적으로 "현재 자료만으로는 확인되지 않습니다", "추가 확인이 필요합니다", "위법 여부를 단정하기 어렵습니다", "법리상 검토 가능성은 있으나 현재 사실관계만으로 판단하기 어렵습니다", "구체적인 판단 기준이 제시되지 않은 상태입니다" 같은 표현을 우선 사용하라.
 - 필요한 경우 "안전 확보 → 자료·기록 보존 → 사실관계 확인 → 보험·계약관계 확인 → 필요한 대응" 순서로 안내하라.
 - 형사절차, 민사 손해배상, 행정절차, 기타 필요한 절차를 가능한 범위에서 구분해 설명하라.
 - "~가 확인되는 경우", "~에 해당한다면", "~일 가능성이 있습니다", "추가 확인이 필요합니다" 같은 조건부 표현을 사용하라.
@@ -5786,17 +5945,23 @@ exports.lawSearch = (0, https_2.onCall)({
 3. 어려운 법률 용어는 반드시 쉬운 말로 풀어 설명하세요.
 4. 실무적 행동 지침은 조건부로 안내하고, 사실관계 확인 전 책임 인정이나 보상을 단정하지 마세요.
 5. 답변 구조:
-   📋 확인된 사실 / 추가 확인이 필요한 사실
-   ⚖️ 가능한 법적 쟁점
-   📌 관련 법령과 적용요건
-   💡 다음에 할 수 있는 일
+   📋 확인된 사실
+   🔎 추가 확인이 필요한 사실
+   ⚖️ 법적으로 말할 수 있는 범위
+   📌 현재 사건에 적용 가능한 판단
+   💡 사용자가 지금 해야 할 행동
+   ➡️ 다음 단계로 넘어가는 조건
    ⚠️ 주의사항
 6. 마지막에 반드시 추가:
    "본 내용은 법령 정보 제공 목적이며, 전문적인 법률 자문을 대체할 수 없습니다."
 
 사용자 질문: ${query}
 관련 법령(${lawName}):
-	${lawText}`);
+	${lawText}`;
+        const summaryContents = fileParts.length > 0
+            ? [{ text: summaryPrompt }, ...fileParts]
+            : summaryPrompt;
+        const summaryResult = await summaryModel.generateContent(summaryContents);
         const summaryUsage = getGeminiUsage(summaryResult);
         await (0, aiUsageLogger_1.logAiUsage)({
             uid: request.auth.uid,
@@ -5821,8 +5986,11 @@ exports.lawSearch = (0, https_2.onCall)({
         };
     }
     catch (error) {
+        if (error instanceof https_2.HttpsError) {
+            throw error;
+        }
         logger.error('HARUraw 법령 검색 실패:', error);
-        if ((_g = request.auth) === null || _g === void 0 ? void 0 : _g.uid) {
+        if ((_h = request.auth) === null || _h === void 0 ? void 0 : _h.uid) {
             await (0, aiUsageLogger_1.logAiUsage)({
                 uid: request.auth.uid,
                 featureName: 'law_search',
@@ -6901,6 +7069,9 @@ exports.preloadChapterGrammar = (0, https_2.onCall)({ region: 'asia-northeast3',
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다');
     }
+    if (request.auth.uid !== ADMIN_UID) {
+        throw new https_2.HttpsError('permission-denied', '관리자 전용 기능입니다');
+    }
     const { book, chapter, verses, verseTexts } = request.data;
     const results = [];
     for (const verseKey of verses) {
@@ -7051,7 +7222,7 @@ exports.preloadChapterGrammar = (0, https_2.onCall)({ region: 'asia-northeast3',
     }
     // 6. 완료 후 관리자 FCM 알림
     const totalCorrected = results.filter(r => r.gptCorrected).length;
-    const adminUid = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+    const adminUid = ADMIN_UID;
     try {
         const settingsDoc = await db
             .collection('users').doc(adminUid)
@@ -10554,3 +10725,7 @@ exports.petFoodCheck = (0, https_2.onCall)({
         source: matched.source,
     };
 });
+var accountDeletion_1 = require("./accountDeletion");
+Object.defineProperty(exports, "requestAccountDeletion", { enumerable: true, get: function () { return accountDeletion_1.requestAccountDeletion; } });
+Object.defineProperty(exports, "cancelAccountDeletion", { enumerable: true, get: function () { return accountDeletion_1.cancelAccountDeletion; } });
+Object.defineProperty(exports, "executeScheduledDeletion", { enumerable: true, get: function () { return accountDeletion_1.executeScheduledDeletion; } });

@@ -58,7 +58,7 @@ import {
   type KakaoXlsxPreviewRow,
 } from '../services/householdKakaoImport';
 
-type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '성장기록' | 'HARU주식관리' | '주식거래일지' | '메모' | 'HARU보조장부' | 'HARU가계부';
+type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '성장기록' | 'HARU주식관리' | '주식거래일지' | '메모' | 'HARU보조장부' | 'HARU가계부' | '배뇨일지';
 type SayuMode = 'BASIC' | 'PREMIUM';
 
 interface FormatModalProps {
@@ -303,6 +303,7 @@ const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placehol
     { key: 'ledger_memo', label: '업무 메모', placeholder: '관련 업무 흐름·특이사항을 자유롭게 작성하세요 (보조장부 — 세무 신고용 정식 장부 아님)', rows: 4 },
   ],
   'HARU가계부': [],
+  '배뇨일지': [],
 };
 
 // 형식별 prefix 매핑
@@ -339,6 +340,7 @@ const TITLE_EXAMPLE: Partial<Record<RecordFormat, string>> = {
   '주식거래일지': '예: 삼성전자 10주 매수',
   'HARU보조장부': '예: 3월 거래처 입출금 정리',
   'HARU가계부': '예: 3월 생활비 정리',
+  '배뇨일지': '예: 2026-08-13 배뇨일지',
 };
 
 // 기록 스타일 타입
@@ -497,6 +499,14 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [isDecryptingKakaoXlsx, setIsDecryptingKakaoXlsx] = useState(false);
   const [kakaoXlsxMonthGroups, setKakaoXlsxMonthGroups] = useState<KakaoXlsxMonthGroup[]>([]);
   const [isSavingKakaoXlsx, setIsSavingKakaoXlsx] = useState(false);
+
+  // 🚿 배뇨일지
+  const [voidingEntries, setVoidingEntries] = useState<import('../utils/voidingStats').VoidingEntry[]>([]);
+  const [voidingBedtime, setVoidingBedtime] = useState('22:30');
+  const [voidingWaketime, setVoidingWaketime] = useState('06:30');
+  const [voidingAmountInput, setVoidingAmountInput] = useState('');
+  const [editingVoidingId, setEditingVoidingId] = useState<string | null>(null);
+  const [editingVoidingEntry, setEditingVoidingEntry] = useState<{ time: string; amountMl: string; symptom: string; note: string }>({ time: '', amountMl: '', symptom: '', note: '' });
 
   // 📈 HARU주식관리: 카톡 TXT 내보내기 파싱 state
   const [isCsvParsing, setIsCsvParsing] = useState(false);
@@ -685,9 +695,27 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       } else {
         setHouseholdEntries([newHouseholdEntry()]);
       }
-      setRecordStyle(format === '독서사유' || isStockFormat || isLedgerFormat || isHouseholdFormat ? 'premium' : 'simple');
-      // 독서사유는 select 단계에서 "이어작성 / 새작성" 분기. 주식/보조장부/가계부 형식은 input 직진.
-      setRecordStep(isStockFormat || isLedgerFormat || isHouseholdFormat ? 'input' : 'select');
+      // 배뇨일지 초기화
+      const isVoidingFormatInit = format === '배뇨일지';
+      if (isVoidingFormatInit) {
+        const storedEntries = (initialData as any).voiding_entries;
+        if (storedEntries && typeof storedEntries === 'string') {
+          try {
+            const parsed = JSON.parse(storedEntries);
+            setVoidingEntries(Array.isArray(parsed) ? parsed : []);
+          } catch { setVoidingEntries([]); }
+        } else {
+          setVoidingEntries([]);
+        }
+        setVoidingBedtime(String((initialData as any).voiding_bedtime || '22:30'));
+        setVoidingWaketime(String((initialData as any).voiding_waketime || '06:30'));
+        setVoidingForm({ time: '', type: 'void', amountMl: '', symptom: '', note: '' });
+      } else {
+        setVoidingEntries([]);
+      }
+      setRecordStyle(format === '독서사유' || isStockFormat || isLedgerFormat || isHouseholdFormat || isVoidingFormatInit ? 'premium' : 'simple');
+      // 독서사유는 select 단계에서 "이어작성 / 새작성" 분기. 주식/보조장부/가계부/배뇨일지 형식은 input 직진.
+      setRecordStep(isStockFormat || isLedgerFormat || isHouseholdFormat || isVoidingFormatInit ? 'input' : 'select');
       setStockCandidates([]);
       setShowCandidates(false);
       // 📚 독서사유 — 책 묶음 state 초기화 + 사용자 records 에서 책 목록 로드
@@ -900,6 +928,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const isStockFormat = format === 'HARU주식관리' || format === '주식거래일지';
   const isLedgerFormat = format === 'HARU보조장부';
   const isHouseholdFormat = format === 'HARU가계부';
+  const isVoidingFormat = format === '배뇨일지';
   const selectedGrowthSubject = growthSubjects.find((subject) => subject.id === selectedGrowthSubjectId);
   const effectiveGrowthSubjectBirthdate = selectedGrowthSubject?.birthdate || growthSubjectBirthdate;
   const effectiveGrowthSubjectGender = selectedGrowthSubject?.gender || growthSubjectGender;
@@ -2362,6 +2391,31 @@ ${contentValues}`,
     }
   };
 
+  // ===== 🚿 배뇨일지 저장 =====
+  const handleSaveVoidingEntries = async () => {
+    if (voidingEntries.length === 0) { toast.warning('기록 항목을 하나 이상 추가해 주세요.'); return; }
+    const today = new Date().toISOString().slice(0, 10);
+    const dataToSave: Record<string, unknown> = {
+      formats: ['배뇨일지'],
+      date: today,
+      title: formData.title || `${today} 배뇨일지`,
+      voiding_bedtime: voidingBedtime,
+      voiding_waketime: voidingWaketime,
+      voiding_entries: JSON.stringify(voidingEntries),
+    };
+    setIsSaving(true);
+    try {
+      await onSave(dataToSave as any);
+      toast.success(`배뇨일지 ${voidingEntries.length}건이 저장되었습니다!`);
+      onClose();
+    } catch (error) {
+      console.error('저장 중 오류:', error);
+      toast.error('저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // ===== 📒 HARU가계부 — 카카오뱅크 XLSX 불러오기 =====
   const handleKakaoXlsxFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -3069,6 +3123,7 @@ ${contentValues}`,
   const editingReadingEntryIndex = editingReadingEntryId
     ? selectedReadingEntries.findIndex((entry) => entry.id === editingReadingEntryId)
     : -1;
+  const isEditingReadingEntry = editingReadingEntryIndex >= 0;
   const editingReadingEntryLabel = editingReadingEntryIndex >= 0
     ? `${editingReadingEntryIndex + 1}회차${editingReadingEntryDate ? ` · ${editingReadingEntryDate}` : ''}`
     : '';
@@ -5377,6 +5432,121 @@ ${contentValues}`,
                           + 거래 추가
                         </button>
                       </div>
+                    ) : isVoidingFormat ? (
+                      /* 🚿 배뇨일지 — 원버튼 입력 */
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        {/* 취침·기상 시각 */}
+                        <div style={{ border: '1px solid #e0e7ff', borderRadius: 10, padding: 14, backgroundColor: '#f5f3ff' }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#5b21b6', marginBottom: 10 }}>취침·기상 시각</div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                            {[{ label: '취침', val: voidingBedtime, set: setVoidingBedtime }, { label: '기상', val: voidingWaketime, set: setVoidingWaketime }].map(({ label, val, set }) => (
+                              <div key={label}>
+                                <label style={{ display: 'block', fontSize: 12, color: '#7c3aed', marginBottom: 4, fontWeight: 500 }}>{label}</label>
+                                <input type="text" inputMode="numeric" placeholder="22:30" value={val} onChange={e => set(e.target.value)}
+                                  style={{ width: '100%', padding: '8px 10px', fontSize: 16, border: '1px solid #c4b5fd', borderRadius: 7, backgroundColor: '#fff', color: '#333', outline: 'none', boxSizing: 'border-box' }} />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        {/* 원버튼 기록 */}
+                        {(() => {
+                          const now = new Date();
+                          const h = now.getHours(); const m = String(now.getMinutes()).padStart(2, '0');
+                          const label = `${h >= 12 ? '오후' : '오전'} ${h > 12 ? h - 12 : h || 12}:${m}`;
+                          const totalMl = voidingEntries.reduce((s, e) => s + e.amountMl, 0);
+                          return (
+                            <div style={{ border: '1px solid #bae6fd', borderRadius: 10, padding: 14, backgroundColor: '#f0f9ff' }}>
+                              <div style={{ fontSize: 13, color: '#374151', marginBottom: 10 }}>
+                                지금 시각: <strong>{label}</strong>
+                                {voidingEntries.length > 0 && <span style={{ marginLeft: 12, fontSize: 12, color: '#6b7280' }}>({voidingEntries.length}건 · {totalMl}ml)</span>}
+                              </div>
+                              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="양 (ml)"
+                                  value={voidingAmountInput}
+                                  onChange={e => setVoidingAmountInput(e.target.value.replace(/[^0-9]/g, ''))}
+                                  onKeyDown={e => {
+                                    if (e.key !== 'Enter') return;
+                                    const n = new Date();
+                                    const t = `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+                                    const ml = parseInt(voidingAmountInput || '0', 10);
+                                    const entry: import('../utils/voidingStats').VoidingEntry = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), time: t, type: 'void', amountMl: isNaN(ml) ? 0 : ml };
+                                    setVoidingEntries(prev => [...prev, entry].sort((a,b) => a.time.localeCompare(b.time)));
+                                    setVoidingAmountInput('');
+                                  }}
+                                  style={{ flex: 1, padding: '12px', fontSize: 20, border: '2px solid #bae6fd', borderRadius: 8, backgroundColor: '#fff', color: '#333', outline: 'none', textAlign: 'center', fontWeight: 700 }} />
+                                <button type="button"
+                                  onClick={() => {
+                                    const n = new Date();
+                                    const t = `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+                                    const ml = parseInt(voidingAmountInput || '0', 10);
+                                    const entry: import('../utils/voidingStats').VoidingEntry = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), time: t, type: 'void', amountMl: isNaN(ml) ? 0 : ml };
+                                    setVoidingEntries(prev => [...prev, entry].sort((a,b) => a.time.localeCompare(b.time)));
+                                    setVoidingAmountInput('');
+                                  }}
+                                  style={{ padding: '12px 20px', border: 'none', borderRadius: 8, backgroundColor: '#0369a1', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>기록</button>
+                              </div>
+                              <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 6 }}>양을 모르면 비워도 됩니다</div>
+                            </div>
+                          );
+                        })()}
+                        {/* 오늘 기록 리스트 */}
+                        {voidingEntries.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 600, marginBottom: 2 }}>
+                              오늘 기록 ({voidingEntries.length}건 · {voidingEntries.reduce((s,e) => s + e.amountMl, 0)}ml)
+                            </div>
+                            {voidingEntries.map(e => (
+                              editingVoidingId === e.id ? (
+                                <div key={e.id} style={{ border: '1px solid #0369a1', borderRadius: 8, padding: '10px 12px', backgroundColor: '#eff6ff', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                  <div style={{ display: 'flex', gap: 8 }}>
+                                    <input type="text" inputMode="numeric" placeholder="HH:MM" value={editingVoidingEntry.time}
+                                      onChange={ex => setEditingVoidingEntry(v => ({ ...v, time: ex.target.value }))}
+                                      style={{ flex: 1, padding: '6px 8px', fontSize: 14, border: '1px solid #bae6fd', borderRadius: 6, backgroundColor: '#fff', color: '#333', outline: 'none' }} />
+                                    <input type="text" inputMode="numeric" placeholder="ml" value={editingVoidingEntry.amountMl}
+                                      onChange={ex => setEditingVoidingEntry(v => ({ ...v, amountMl: ex.target.value.replace(/[^0-9]/g, '') }))}
+                                      style={{ flex: 1, padding: '6px 8px', fontSize: 14, border: '1px solid #bae6fd', borderRadius: 6, backgroundColor: '#fff', color: '#333', outline: 'none' }} />
+                                  </div>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                                    {(['절박감', '통증', '유실', '요의로 깸', '없음'] as const).map(sym => (
+                                      <button key={sym} type="button"
+                                        onClick={() => setEditingVoidingEntry(v => ({ ...v, symptom: v.symptom === sym ? '' : sym }))}
+                                        style={{ padding: '4px 10px', borderRadius: 14, fontSize: 11, cursor: 'pointer', border: editingVoidingEntry.symptom === sym ? 'none' : '1px solid #e5e7eb', backgroundColor: editingVoidingEntry.symptom === sym ? '#0369a1' : '#fff', color: editingVoidingEntry.symptom === sym ? '#fff' : '#374151', fontWeight: editingVoidingEntry.symptom === sym ? 700 : 400 }}>
+                                        {sym}
+                                      </button>
+                                    ))}
+                                  </div>
+                                  <div style={{ display: 'flex', gap: 6 }}>
+                                    <button type="button"
+                                      onClick={() => {
+                                        const ml = parseInt(editingVoidingEntry.amountMl || '0', 10);
+                                        const sym = (editingVoidingEntry.symptom as import('../utils/voidingStats').VoidingSymptom) || undefined;
+                                        setVoidingEntries(prev => prev.map(x => x.id !== e.id ? x : ({ ...x, time: editingVoidingEntry.time || x.time, amountMl: isNaN(ml) ? x.amountMl : ml, symptom: sym })).sort((a,b) => a.time.localeCompare(b.time)));
+                                        setEditingVoidingId(null);
+                                      }}
+                                      style={{ flex: 1, padding: '7px', border: 'none', borderRadius: 6, backgroundColor: '#0369a1', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>저장</button>
+                                    <button type="button"
+                                      onClick={() => { setVoidingEntries(prev => prev.filter(x => x.id !== e.id)); setEditingVoidingId(null); }}
+                                      style={{ padding: '7px 12px', border: '1px solid #fca5a5', borderRadius: 6, backgroundColor: '#fff', color: '#ef4444', fontSize: 13, cursor: 'pointer' }}>삭제</button>
+                                    <button type="button"
+                                      onClick={() => setEditingVoidingId(null)}
+                                      style={{ padding: '7px 12px', border: '1px solid #e5e7eb', borderRadius: 6, backgroundColor: '#fff', color: '#9ca3af', fontSize: 13, cursor: 'pointer' }}>취소</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <button key={e.id} type="button"
+                                  onClick={() => { setEditingVoidingId(e.id); setEditingVoidingEntry({ time: e.time, amountMl: String(e.amountMl), symptom: e.symptom || '', note: e.note || '' }); }}
+                                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 8, backgroundColor: '#eff6ff', fontSize: 13, cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                                  <span style={{ fontWeight: 700, color: '#374151', minWidth: 42 }}>{e.time}</span>
+                                  <span style={{ color: '#0369a1', fontWeight: 600 }}>🚽</span>
+                                  <span style={{ color: '#374151' }}>{e.amountMl > 0 ? `${e.amountMl}ml` : '—'}</span>
+                                  {e.symptom && <span style={{ color: '#9ca3af' }}>· {e.symptom}</span>}
+                                  <span style={{ marginLeft: 'auto', color: '#c4b5fd', fontSize: 11 }}>탭하여 수정</span>
+                                </button>
+                              )
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     ) : fields
                       .filter((field) => !(format === '독서사유' && field.key === 'reading_book_text'))
                       .map((field) => {
@@ -5584,7 +5754,7 @@ ${contentValues}`,
               )}
 
               {/* 📸 사진 업로드 섹션 — 독서사유/주식 OCR 사진은 저장하지 않음. 보조장부는 OCR(비저장)과 사진첨부(저장) 둘 다 제공 */}
-              {format !== '독서사유' && !isStockFormat && (!(isLedgerFormat && ledgerInputMode === 'period') || Boolean(expandedLedgerXlsxRowId)) && (
+              {format !== '독서사유' && !isStockFormat && !isVoidingFormat && (!(isLedgerFormat && ledgerInputMode === 'period') || Boolean(expandedLedgerXlsxRowId)) && (
               <div>
                 <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 4, fontWeight: 500 }}>
                   📸 {isLedgerFormat ? '증빙사진' : '사진'} <span style={{ fontWeight: 400, color: '#9ca3af' }}>(선택사항)</span>
@@ -6006,6 +6176,15 @@ ${contentValues}`,
                 style={{ width: '100%', padding: '14px', fontSize: 15, border: 'none', borderRadius: 8, backgroundColor: '#166534', color: '#fff', cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.7 : 1, fontWeight: 700 }}
               >
                 {isSaving ? '저장 중...' : `거래 저장하기 (${householdEntries.length}건)`}
+              </button>
+            ) : isVoidingFormat ? (
+              /* 🚿 배뇨일지 전용 저장 버튼 */
+              <button
+                onClick={handleSaveVoidingEntries}
+                disabled={isSaving}
+                style={{ width: '100%', padding: '14px', fontSize: 15, border: 'none', borderRadius: 8, backgroundColor: '#0369a1', color: '#fff', cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.7 : 1, fontWeight: 700 }}
+              >
+                {isSaving ? '저장 중...' : `배뇨일지 저장 (${voidingEntries.length}건)`}
               </button>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

@@ -69,9 +69,15 @@ type ResultChatModalState = {
   dateLabel: string;
   config: ResultChatConfig | null;
 };
+type HaruLawAttachmentRef = {
+  storagePath: string;
+  mimeType: string;
+  fileName: string;
+};
 type SayuNavigationState = {
   filterFormat?: string;
   openRecordId?: string;
+  tab?: 'records' | 'assistants';
 } | null;
 const PLANT_SAYU_FILTERS: { key: PlantSayuFilter; label: string }[] = [
   { key: 'all', label: '전체' },
@@ -862,9 +868,43 @@ export function SayuPage() {
   const isDeveloper = user?.uid === DEVELOPER_UID;
 
   // HARUraw modal
-  const [harurawModal, setHarurawModal] = useState<{ isOpen: boolean; query: string; summary: string; articles: string; recordId: string; shareStatus: string; }>({
-    isOpen: false, query: '', summary: '', articles: '', recordId: '', shareStatus: '',
+  const [harurawModal, setHarurawModal] = useState<{ isOpen: boolean; query: string; summary: string; articles: string; recordId: string; shareStatus: string; attachments: HaruLawAttachmentRef[]; }>({
+    isOpen: false, query: '', summary: '', articles: '', recordId: '', shareStatus: '', attachments: [],
   });
+  const [harurawAttachmentUrls, setHarurawAttachmentUrls] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!harurawModal.isOpen || harurawModal.attachments.length === 0) {
+      setHarurawAttachmentUrls({});
+      return;
+    }
+
+    let cancelled = false;
+    const storage = getStorage();
+    (async () => {
+      const entries = await Promise.all(
+        harurawModal.attachments.map(async (att) => {
+          try {
+            const url = await getDownloadURL(ref(storage, att.storagePath));
+            return [att.storagePath, url] as const;
+          } catch (error) {
+            console.warn('하루LAW 첨부 URL 로드 실패:', att.storagePath, error);
+            return null;
+          }
+        })
+      );
+      if (cancelled) return;
+      const nextUrls: Record<string, string> = {};
+      entries.forEach((entry) => {
+        if (entry) nextUrls[entry[0]] = entry[1];
+      });
+      setHarurawAttachmentUrls(nextUrls);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [harurawModal.isOpen, harurawModal.attachments]);
   const [haruLawShareState, setHaruLawShareState] = useState<{
     step: 'idle' | 'loading' | 'preview' | 'publishing';
     previewId?: string;
@@ -2293,6 +2333,7 @@ export function SayuPage() {
         articles: (record as any).haruraw_articles || '',
         recordId: record.id,
         shareStatus: (record as any).haruLawShareStatus || '',
+        attachments: Array.isArray((record as any).haruraw_attachments) ? (record as any).haruraw_attachments : [],
       });
       setHaruLawShareState({ step: 'idle' });
       return;
@@ -2430,12 +2471,13 @@ export function SayuPage() {
     if (!filterFormat && !openRecordId) return;
 
     const routeKey = `${filterFormat}|${openRecordId}`;
-    setSayuTab('records');
+    const targetTab = routeState?.tab === 'assistants' || filterFormat === '하루LAW' ? 'assistants' : 'records';
+    setSayuTab(targetTab);
     setViewMode('list');
     setSayuSearchInput('');
     setDebouncedSayuSearch('');
     if (filterFormat) {
-      setSelectedSayuLabels((prev) => ({ ...prev, records: filterFormat }));
+      setSelectedSayuLabels((prev) => ({ ...prev, [targetTab]: filterFormat }));
     }
 
     if (!openRecordId) {
@@ -2472,7 +2514,11 @@ export function SayuPage() {
       setCurrentMonth(parsedDate);
     }
     setSayuScope('month');
-    openFormatSayu(recordDate, 'memo', filterFormat || '메모', openRecordId);
+    if (targetTab === 'assistants' && filterFormat === '하루LAW') {
+      openFormatSayu(recordDate, 'haruraw', 'HARUraw', openRecordId);
+    } else {
+      openFormatSayu(recordDate, 'memo', filterFormat || '메모', openRecordId);
+    }
     navigate('/sayu', { replace: true, state: null });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, location.state, user?.uid, records]);
@@ -2848,7 +2894,7 @@ export function SayuPage() {
     if (!memoRecordId) return;
     closeResultChat();
     setPlantReadOnlyDetail(null);
-    setHarurawModal({ isOpen: false, query: '', summary: '', articles: '', recordId: '', shareStatus: '' });
+    setHarurawModal({ isOpen: false, query: '', summary: '', articles: '', recordId: '', shareStatus: '', attachments: [] });
     setHaruLawShareState({ step: 'idle' });
     navigate('/sayu', {
       state: {
@@ -5984,7 +6030,7 @@ export function SayuPage() {
       {/* HARUraw 모달 */}
       {harurawModal.isOpen && (
         <div
-          onClick={() => { setHarurawModal({ isOpen: false, query: '', summary: '', articles: '', recordId: '', shareStatus: '' }); setHaruLawShareState({ step: 'idle' }); }}
+          onClick={() => { setHarurawModal({ isOpen: false, query: '', summary: '', articles: '', recordId: '', shareStatus: '', attachments: [] }); setHaruLawShareState({ step: 'idle' }); }}
           style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 12px' }}
         >
           <div
@@ -5993,7 +6039,7 @@ export function SayuPage() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E', display: 'flex', alignItems: 'center', gap: 6 }}><Scale className="w-4 h-4" /> 하루LAW 분석 기록</p>
-              <button onClick={() => { setHarurawModal({ isOpen: false, query: '', summary: '', articles: '', recordId: '', shareStatus: '' }); setHaruLawShareState({ step: 'idle' }); }}
+              <button onClick={() => { setHarurawModal({ isOpen: false, query: '', summary: '', articles: '', recordId: '', shareStatus: '', attachments: [] }); setHaruLawShareState({ step: 'idle' }); }}
                 style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#999' }}>✕</button>
             </div>
             {(() => {
@@ -6016,7 +6062,47 @@ export function SayuPage() {
                 <>
                   <div style={{ ...sectionStyle, backgroundColor: '#F0F4FF', borderColor: '#C7D9F8' }}>
                     <p style={labelStyle}>질문</p>
-                    <p style={{ fontSize: 15, color: '#1A3C6E', fontWeight: 700, lineHeight: 1.6, margin: 0 }}>{harurawModal.query}</p>
+                    <p style={{ fontSize: 15, color: '#1A3C6E', fontWeight: 700, lineHeight: 1.6, margin: harurawModal.attachments.length > 0 ? '0 0 12px' : 0 }}>{harurawModal.query}</p>
+                    {harurawModal.attachments.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {harurawModal.attachments.map((att) => {
+                          const url = harurawAttachmentUrls[att.storagePath];
+                          const isImage = att.mimeType.startsWith('image/');
+                          return (
+                            <button
+                              key={att.storagePath}
+                              type="button"
+                              disabled={!url}
+                              onClick={() => {
+                                if (url) window.open(url, '_blank', 'noopener,noreferrer');
+                              }}
+                              title={att.fileName}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                maxWidth: 190,
+                                padding: isImage && url ? 4 : '6px 10px',
+                                borderRadius: 8,
+                                border: '1px solid #C7D9F8',
+                                backgroundColor: '#FFFFFF',
+                                cursor: url ? 'pointer' : 'default',
+                                overflow: 'hidden',
+                              }}
+                            >
+                              {isImage && url ? (
+                                <img src={url} alt={att.fileName} style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4 }} />
+                              ) : (
+                                <span style={{ fontSize: 11, fontWeight: 900, color: '#1A3C6E' }}>PDF</span>
+                              )}
+                              <span style={{ fontSize: 12, color: '#1A3C6E', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {att.fileName}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
                   <div style={sectionStyle}>

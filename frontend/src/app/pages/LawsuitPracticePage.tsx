@@ -4,6 +4,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LegalTermHelp } from '../components/LegalTermHelp';
 import { createPracticeDraftLegalCase } from '../services/legalCasesService';
+import { useSensitiveConsent } from '../hooks/useSensitiveConsent';
+import { SensitiveConsentGate } from '../components/SensitiveConsentGate';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -387,6 +389,7 @@ export function LawsuitPracticePage() {
   const [pendingCaseType, setPendingCaseType] = useState<CaseType | null>(null);
   const [activeCauseExampleMode, setActiveCauseExampleMode] =
     useState<CauseExampleMode | null>(null);
+  const { hasConsent, isSaving: isSavingConsent, grantConsent } = useSensitiveConsent('sensitiveLegal');
 
   const isFinalStep = step === STEP_LABELS.length - 1;
   const isCompleted = Boolean(state.mockCaseNumber);
@@ -587,6 +590,10 @@ export function LawsuitPracticePage() {
       setIsGeneratingClaimReason(false);
     }
   };
+
+  if (hasConsent === false) {
+    return <SensitiveConsentGate category="legal" isSaving={isSavingConsent} onAgree={grantConsent} />;
+  }
 
   return (
     <main className="min-h-screen bg-[#f4f6f8] text-[#1f2937] px-4 py-5 sm:px-6">

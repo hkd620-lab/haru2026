@@ -1567,7 +1567,7 @@ export function HomePageV2() {
             iconBg="#E0E8B8"
             iconStroke="#4A5A2C"
             title="HARU 기록"
-            sub="매일의 한 줄, 평생의 자산"
+            sub="매일의 한 줄, 오래 남는 자산"
             badge={`${homeRecords.length}가지 형식`}
             badgeDot="#7A8B4E"
             icon={

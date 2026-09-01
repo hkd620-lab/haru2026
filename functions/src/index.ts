@@ -15,6 +15,7 @@ const sharp = require('sharp');
 import * as fs from 'fs';
 import * as path from 'path';
 import { logAiUsage } from './aiUsageLogger';
+import { cancelSubscriptionForUid, revokeBillingKeyForUid } from './subscriptionHelpers';
 import { enforceRateLimit } from './utils/rateLimit';
 import * as PortOne from '@portone/server-sdk';
 import {
@@ -58,6 +59,8 @@ const MICROSOFT_CLIENT_ID_SECRET = defineSecret('MICROSOFT_CLIENT_ID');
 const MICROSOFT_CLIENT_SECRET_SECRET = defineSecret('MICROSOFT_CLIENT_SECRET');
 const GOOGLE_DRIVE_SERVICE_ACCOUNT_SECRET = defineSecret('GOOGLE_DRIVE_SERVICE_ACCOUNT');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
+// 관리자 전용 기능 접근 제어용 UID
+const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
 // Storage 버킷
 const bucket = () => getStorage().bucket();
@@ -88,6 +91,15 @@ type ResultChatSourcePolicy = {
   externalDataPolicy: ExternalDataPolicy;
   systemGuide: string;
 };
+
+const HARULAW_RESPONSE_STRUCTURE_GUIDE = [
+  '- 법률 답변은 "확인된 사실", "추가 확인이 필요한 사실", "법적으로 말할 수 있는 범위", "현재 사건에 적용 가능한 판단", "사용자가 지금 해야 할 행동", "다음 단계로 넘어가는 조건", "주의사항"을 구분해 작성한다.',
+  '- 일반 법리와 현재 사건 적용을 분리한다. 법리상 검토 가능성이 있어도, 현재 사실관계만으로 요건 충족을 판단하기 어려우면 그 한계를 별도로 밝힌다.',
+  '- 근거가 충분히 확인되지 않은 상태에서는 "자의적", "주관적", "추측성", "명백히 부당", "불법", "위법", "약관 위반"이라고 표현하지 않는다.',
+  '- 위 표현은 법령, 약관, 판례 또는 확인된 사실관계가 충분히 뒷받침할 때만 사용한다.',
+  '- 기본 표현은 "현재 자료만으로는 확인되지 않습니다", "추가 확인이 필요합니다", "위법 여부를 단정하기 어렵습니다", "법리상 검토 가능성은 있으나 현재 사실관계만으로 판단하기 어렵습니다", "구체적인 판단 기준이 제시되지 않은 상태입니다"를 우선 사용한다.',
+  '- 행동 안내는 자료 확보, 상대방의 공식 답변 확보, 약관·계약서·공식 기준 확인, 보완 또는 재신청, 필요 시 민원·분쟁조정, 최종적으로 전문 법률 상담 또는 소송 검토 순서로 정리한다.',
+].join('\n');
 type ResultChatClassification = {
   route: ResultAnswerRoute;
   reasonCode: 'current_fact' | 'record_analysis' | 'official_data' | 'high_risk' | 'unclear';
@@ -138,8 +150,9 @@ const RESULT_CHAT_SOURCE_POLICIES: Record<string, ResultChatSourcePolicy> = {
   stock_sayu: { sourceKey: 'stock_sayu', label: 'HARU주식관리', riskLevel: 'high', safetyMode: 'finance_basic', externalDataPolicy: 'current_data_required', systemGuide: '주식 기록을 바탕으로 매매 판단을 정리하되 수익 보장, 매수·매도 단정, 현재 가격·뉴스 추측을 금지한다.' },
   ledger_sayu: { sourceKey: 'ledger_sayu', label: 'HARU보조장부', riskLevel: 'medium', safetyMode: 'report', externalDataPolicy: 'record_first', systemGuide: '보조장부 기록을 바탕으로 분류, 누락 가능성, 업무 관련 메모를 정리한다. 세무 판단을 확정하지 않는다.' },
   household_sayu: { sourceKey: 'household_sayu', label: 'HARU가계부', riskLevel: 'medium', safetyMode: 'finance_basic', externalDataPolicy: 'record_first', systemGuide: '가계부 기록을 바탕으로 지출 흐름과 다음 점검 항목을 정리한다. 금융·세무 결정을 단정하지 않는다.' },
+  voiding_sayu: { sourceKey: 'voiding_sayu', label: '배뇨일지', riskLevel: 'medium', safetyMode: 'medical_basic', externalDataPolicy: 'record_first', systemGuide: '이미 계산된 배뇨 패턴 수치(총 음료섭취량, 총 배뇨량, 주간·야간 배뇨량, 야간뇨 비율, 배뇨 횟수)를 그대로 인용해 하루 흐름을 간결히 정리한다. 수치를 스스로 합산·재계산하지 않는다. 야간다뇨 여부, 질환명, 치료·투약 관련 판단은 하지 않으며 참고용 정리임을 유지한다.' },
   plantDetective: { sourceKey: 'plantDetective', label: '하루식물탐정', riskLevel: 'medium', safetyMode: 'plant_basic', externalDataPolicy: 'conditional_external', systemGuide: '식물 판독 결과와 사용자 메모를 바탕으로 식물 관리 참고 의견을 제공한다.' },
-  haruraw_sayu: { sourceKey: 'haruraw_sayu', label: '하루LAW', riskLevel: 'high', safetyMode: 'legal_basic', externalDataPolicy: 'official_source_first', systemGuide: '기록된 질문과 관련 법조문 범위 안에서만 참고 정보를 정리한다. 위법 여부나 승소 가능성을 단정하지 않고, 확인이 필요한 쟁점과 준비할 자료 중심으로 안내하며 전문가 상담 권유를 유지한다.' },
+  haruraw_sayu: { sourceKey: 'haruraw_sayu', label: '하루LAW', riskLevel: 'high', safetyMode: 'legal_basic', externalDataPolicy: 'official_source_first', systemGuide: ['기록된 질문과 관련 법조문 범위 안에서만 참고 정보를 정리한다. 법률 판단 AI가 아니라 생활 법률 대응 비서처럼, 지금 확인된 사실·아직 모르는 사실·지금 할 일을 사용자가 바로 구분할 수 있게 안내한다.', HARULAW_RESPONSE_STRUCTURE_GUIDE, '위법 여부나 승소 가능성을 단정하지 않고, 확인이 필요한 쟁점과 준비할 자료 중심으로 안내하며 전문가 상담 권유를 유지한다.'].join('\n') },
   growthTimeline: { sourceKey: 'growthTimeline', label: 'HARU타임라인', riskLevel: 'medium', safetyMode: 'timeline_basic', externalDataPolicy: 'record_first', systemGuide: '타임라인 결과의 시간 흐름과 관찰 포인트를 기록 안에서만 정리한다.' },
 };
 
@@ -896,7 +909,8 @@ export const polishContent = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
-    await enforceRateLimit(request.auth.uid, 'polishContent', 10, 60);
+    const uid = request.auth.uid;
+    await enforceRateLimit(uid, 'polishContent', 10, 60);
     let monthlyQuotaReservation: MonthlyAiQuotaReservation | null = null;
     try {
       const { text, mode = 'premium', format } = request.data;
@@ -936,6 +950,19 @@ export const polishContent = onCall(
         systemPrompt = `당신은 신중한 편집자입니다.
 원문을 최대한 유지하며 맞춤법과 어색한 표현만 교정하세요.
 존댓말 유지, 내용 추가 금지, 문단 분리 금지.`;
+      } else if (normalizedFormat === 'voiding') {
+        // 배뇨일지 — 계산된 수치를 인용해 하루 흐름을 간결히 정리, medical_basic 안전 모드
+        systemPrompt = `당신은 건강 기록 요약 도우미입니다.
+아래에 제공된 배뇨일지 계산 수치를 그대로 인용해 하루 패턴을 2~3문장으로 간결하고 따뜻하게 요약합니다.
+
+엄격한 금지:
+1. 수치를 스스로 합산·재계산하지 않는다. 제공된 숫자만 그대로 사용한다.
+2. 야간다뇨, 빈뇨, 질환명, 진단, 치료·투약 판단을 하지 않는다.
+3. 과도한 의학적 용어 사용 금지.
+4. 소제목, 마크다운 기호, 목록 형식 금지.
+
+마지막 문장에 "이 수치는 참고용 지표이며 진단이 아닙니다."를 자연스럽게 포함하세요.
+본문만 자연스럽게 이어지는 문장으로 작성하세요.`;
       } else if (formatGroup === 'rich') {
         // 풍성형 — 일기·에세이·여행기록
         systemPrompt = `당신은 한국 중장년층의 일상을 글로 빚어내는 에세이 작가입니다.
@@ -1045,6 +1072,14 @@ export const polishContent = onCall(
       } catch (commentErr) {
         console.warn('[polishContent] AI 한마디 생성 실패:', commentErr);
       }
+
+      await logPaidServiceUsage(uid, 'ai_polish', {
+        format: normalizedFormat || 'unknown',
+        mode,
+        inputLength: text.length,
+      }).catch((error) => {
+        logger.warn('유료 이용 개시 로그 기록 실패(polishContent):', { uid, message: error?.message });
+      });
 
       return {
         text: polishedText,
@@ -1542,6 +1577,89 @@ async function getUserPlan(uid: string): Promise<UserPlan> {
   return 'free';
 }
 
+type PaidServiceUsageEvent =
+  | 'record_created'
+  | 'record_updated'
+  | 'ai_polish'
+  | 'timeline_pdf'
+  | 'result_chat';
+
+const PAID_SERVICE_USAGE_EVENTS = new Set<PaidServiceUsageEvent>([
+  'record_created',
+  'record_updated',
+  'ai_polish',
+  'timeline_pdf',
+  'result_chat',
+]);
+
+async function logPaidServiceUsage(
+  uid: string,
+  eventType: PaidServiceUsageEvent,
+  details: Record<string, unknown> = {},
+): Promise<{ logged: boolean; plan: UserPlan }> {
+  const plan = await getUserPlan(uid);
+  if (plan !== 'basic' && plan !== 'premium') {
+    return { logged: false, plan };
+  }
+
+  const nowIso = new Date().toISOString();
+  const eventId = `${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
+  const sanitizedDetails = Object.fromEntries(
+    Object.entries(details)
+      .filter(([, value]) => value !== undefined && value !== null)
+      .map(([key, value]) => [key.slice(0, 80), typeof value === 'string' ? value.slice(0, 500) : value]),
+  );
+
+  const usageEventRef = db.doc(`paidServiceUsage/${uid}/events/${eventId}`);
+  const subscriptionRef = db.doc(`users/${uid}/subscription/info`);
+
+  await usageEventRef.set({
+      uid,
+      plan,
+      eventType,
+      details: sanitizedDetails,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAtIso: nowIso,
+    });
+
+  await db.runTransaction(async (tx) => {
+    const subSnap = await tx.get(subscriptionRef);
+    const hasFirstUsage = Boolean(subSnap.data()?.hasPaidServiceUsage);
+    tx.set(subscriptionRef, {
+      hasPaidServiceUsage: true,
+      ...(hasFirstUsage ? {} : {
+        firstPaidServiceUsageAt: admin.firestore.FieldValue.serverTimestamp(),
+        firstPaidServiceUsageAtIso: nowIso,
+      }),
+      lastPaidServiceUsageAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastPaidServiceUsageAtIso: nowIso,
+      lastPaidServiceUsageType: eventType,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  });
+
+  return { logged: true, plan };
+}
+
+export const recordPaidServiceUsage = onCall(
+  { region: 'asia-northeast3' },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const rawEventType = String(request.data?.eventType || '').trim();
+    if (!PAID_SERVICE_USAGE_EVENTS.has(rawEventType as PaidServiceUsageEvent)) {
+      throw new HttpsError('invalid-argument', 'eventType 값이 올바르지 않습니다.');
+    }
+
+    const details = request.data?.details && typeof request.data.details === 'object'
+      ? request.data.details as Record<string, unknown>
+      : {};
+    return logPaidServiceUsage(request.auth.uid, rawEventType as PaidServiceUsageEvent, details);
+  },
+);
+
 // 유료(베이직·프리미엄) 구독자만 통과 — 일부 유료 전용 서버 함수에서 사용.
 // 개발자 UID와 만료되지 않은 basic/premium은 getUserPlan이 이미 처리한다.
 async function requirePaidSubscription(uid: string): Promise<void> {
@@ -1740,6 +1858,7 @@ function getSafetyModeGuide(safetyMode: string): string {
         '- 유죄·무죄, 승소·패소, 위법 여부를 단정하지 않는다. 가능성, 쟁점, 확인이 필요한 사항 중심으로 설명한다.',
         '- 기록에 담긴 사실관계와 관련 법조문 범위 안에서만 답한다. 없는 사실을 추정해 덧붙이지 않는다.',
         '- 구체적 사건의 결론이나 소송 전략을 확정적으로 제시하지 않는다.',
+        HARULAW_RESPONSE_STRUCTURE_GUIDE,
         '- 답변 끝에 전문가(변호사) 상담 권유를 유지한다.',
         '- 질문자가 피해자인지 피고발인인지 제3자인지 불명확하면 먼저 확인 질문을 한다.',
       ].join('\n');
@@ -2109,13 +2228,18 @@ async function saveResultChatExchange(params: {
   webSearchUsed: boolean;
   professionalApiUsed: boolean;
   cached?: boolean;
+  attachmentMeta?: { fileName: string; storagePath: string; mimeType: string }[];
 }): Promise<void> {
   const now = admin.firestore.FieldValue.serverTimestamp();
-  await params.messagesRef.add({
+  const userMessage: Record<string, unknown> = {
     role: 'user',
     content: params.question,
     createdAt: now,
-  });
+  };
+  if (params.attachmentMeta && params.attachmentMeta.length > 0) {
+    userMessage.attachments = params.attachmentMeta;
+  }
+  await params.messagesRef.add(userMessage);
   await params.messagesRef.add({
     role: 'assistant',
     content: params.answer,
@@ -2190,11 +2314,103 @@ async function logResultChatUsage(params: {
   });
 }
 
+type HaruLawAttachmentRef = {
+  storagePath: string;
+  mimeType: string;
+  fileName: string;
+};
+type HaruLawGeminiFilePart = {
+  inlineData: {
+    mimeType: string;
+    data: string;
+  };
+};
+
+const HARULAW_ATTACH_MAX_FILES = 5;
+const HARULAW_ATTACH_MAX_IMAGE_BYTES = 7 * 1024 * 1024;
+const HARULAW_ATTACH_MAX_PDF_BYTES = 50 * 1024 * 1024;
+
+function readHaruLawAttachments(raw: unknown): HaruLawAttachmentRef[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.slice(0, HARULAW_ATTACH_MAX_FILES).map((item) => {
+    const source = item as Partial<HaruLawAttachmentRef>;
+    const storagePath = clampResultChatText(source?.storagePath, 512);
+    const mimeType = clampResultChatText(source?.mimeType, 120).toLowerCase();
+    const fileName = clampResultChatText(source?.fileName, 180);
+    if (!storagePath || !mimeType || !fileName) {
+      throw new HttpsError('invalid-argument', '첨부 파일 정보가 올바르지 않습니다.');
+    }
+    return { storagePath, mimeType, fileName };
+  });
+}
+
+function isAllowedHaruLawAttachmentMime(mimeType: string): boolean {
+  return mimeType === 'application/pdf' || /^image\/[-+.\w]+$/i.test(mimeType);
+}
+
+function getHaruLawAttachmentSizeLimit(mimeType: string): number {
+  return mimeType.startsWith('image/') ? HARULAW_ATTACH_MAX_IMAGE_BYTES : HARULAW_ATTACH_MAX_PDF_BYTES;
+}
+
+async function loadHaruLawAttachmentParts(
+  uid: string,
+  attachments: HaruLawAttachmentRef[]
+): Promise<{ fileParts: HaruLawGeminiFilePart[]; attachmentMeta: HaruLawAttachmentRef[] }> {
+  const fileParts: HaruLawGeminiFilePart[] = [];
+  const attachmentMeta: HaruLawAttachmentRef[] = [];
+
+  for (const att of attachments) {
+    if (!att.storagePath.startsWith(`users/${uid}/haruLawAttachments/`)) {
+      throw new HttpsError('permission-denied', '허용되지 않은 파일 경로입니다.');
+    }
+    if (!isAllowedHaruLawAttachmentMime(att.mimeType)) {
+      throw new HttpsError('invalid-argument', '지원하지 않는 파일 형식입니다.');
+    }
+
+    const file = bucket().file(att.storagePath);
+    let metadata: any;
+    try {
+      [metadata] = await file.getMetadata();
+    } catch (error) {
+      logger.warn('하루LAW 첨부 메타데이터 조회 실패:', { storagePath: att.storagePath, message: (error as any)?.message });
+      throw new HttpsError('not-found', '첨부 파일을 찾을 수 없습니다.');
+    }
+
+    const storedMimeType = String(metadata?.contentType || '').trim().toLowerCase();
+    const effectiveMimeType = storedMimeType || att.mimeType;
+    if (!isAllowedHaruLawAttachmentMime(effectiveMimeType) || (storedMimeType && storedMimeType !== att.mimeType)) {
+      throw new HttpsError('invalid-argument', '첨부 파일 형식이 허용 범위와 다릅니다.');
+    }
+
+    const sizeLimit = getHaruLawAttachmentSizeLimit(effectiveMimeType);
+    const metadataSize = Number(metadata?.size);
+    if (Number.isFinite(metadataSize) && metadataSize > sizeLimit) {
+      throw new HttpsError('invalid-argument', '파일 크기가 허용 범위를 초과했습니다.');
+    }
+
+    let buf: Buffer;
+    try {
+      [buf] = await file.download();
+    } catch (error) {
+      logger.warn('하루LAW 첨부 다운로드 실패:', { storagePath: att.storagePath, message: (error as any)?.message });
+      throw new HttpsError('not-found', '첨부 파일을 다운로드하지 못했습니다.');
+    }
+    if (buf.length > sizeLimit) {
+      throw new HttpsError('invalid-argument', '파일 크기가 허용 범위를 초과했습니다.');
+    }
+
+    fileParts.push({ inlineData: { mimeType: effectiveMimeType, data: buf.toString('base64') } });
+    attachmentMeta.push({ storagePath: att.storagePath, mimeType: effectiveMimeType, fileName: att.fileName });
+  }
+
+  return { fileParts, attachmentMeta };
+}
+
 export const chatWithResult = onCall(
   {
     region: 'asia-northeast3',
     secrets: [GEMINI_API_KEY_SECRET],
-    timeoutSeconds: 60,
+    timeoutSeconds: 90,
   },
   async (request) => {
     if (!request.auth?.uid) {
@@ -2212,6 +2428,7 @@ export const chatWithResult = onCall(
     const sourceIndex = typeof rawSourceIndex === 'number' && Number.isInteger(rawSourceIndex)
       ? rawSourceIndex
       : undefined;
+    const attachments = readHaruLawAttachments(request.data?.attachments);
 
     if (rawQuestion.length > RESULT_CHAT_QUESTION_MAX_LENGTH) {
       throw new HttpsError('invalid-argument', '질문이 너무 깁니다. 핵심 내용을 조금 줄여 주세요.');
@@ -2259,6 +2476,15 @@ export const chatWithResult = onCall(
       await acquireResultChatLock(threadRef, requestId);
       locked = true;
       await enforceResultChatRateLimit(uid);
+
+      if (attachments.length > 0) {
+        if (sourceKey !== 'haruraw_sayu') {
+          throw new HttpsError('failed-precondition', '첨부는 하루LAW 자문에서만 사용할 수 있습니다.');
+        }
+        if (actualPlan === 'free') {
+          throw new HttpsError('permission-denied', '파일 첨부는 베이직·프리미엄 이용권 전용 기능입니다.');
+        }
+      }
       monthlyQuotaReservation = await reserveMonthlyAiQuota(uid, 'chatWithResult');
 
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
@@ -2346,9 +2572,11 @@ export const chatWithResult = onCall(
       }
 
       const recentMessageRows = await getRecentResultChatMessages(messagesRef);
-      const reusable = answerRoute !== 'web_search'
-        ? findReusableResultChatAnswer(recentMessageRows, question, answerRoute)
-        : findReusableResultChatAnswer(recentMessageRows, question, answerRoute, { allowRecentWebSearchMs: RESULT_CHAT_LOCK_STALE_MS });
+      const reusable = attachments.length > 0
+        ? null
+        : answerRoute !== 'web_search'
+          ? findReusableResultChatAnswer(recentMessageRows, question, answerRoute)
+          : findReusableResultChatAnswer(recentMessageRows, question, answerRoute, { allowRecentWebSearchMs: RESULT_CHAT_LOCK_STALE_MS });
       if (reusable) {
         if (answerRoute === 'web_search') {
           return {
@@ -2472,10 +2700,16 @@ export const chatWithResult = onCall(
         systemGuide: policy.systemGuide,
         recordOnlyChosen,
       });
+      const { fileParts, attachmentMeta } = attachments.length > 0
+        ? await loadHaruLawAttachmentParts(uid, attachments)
+        : { fileParts: [] as HaruLawGeminiFilePart[], attachmentMeta: [] as HaruLawAttachmentRef[] };
+      const contents: any = fileParts.length > 0
+        ? [{ role: 'user', parts: [{ text: prompt }, ...fileParts] }]
+        : prompt;
       const startedAt = Date.now();
       const response = await ai.models.generateContent({
         model: RESULT_CHAT_MODEL_NAME,
-        contents: prompt,
+        contents,
         config: answerRoute === 'web_search'
           ? { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS }
           : { maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
@@ -2546,6 +2780,7 @@ export const chatWithResult = onCall(
         latencyMs,
         webSearchUsed: answerRoute === 'web_search' && usedWebSearch,
         professionalApiUsed: false,
+        attachmentMeta: attachmentMeta.length > 0 ? attachmentMeta : undefined,
       });
 
       return {
@@ -5103,6 +5338,14 @@ export const generateGrowthTimelinePdf = onCall(
       responseDisposition: `inline; filename*=UTF-8''${encodeURIComponent(filename)}`,
     });
 
+    await logPaidServiceUsage(uid, 'timeline_pdf', {
+      itemCount: payload.items.length,
+      title: payload.title,
+      cached: exists,
+    }).catch((error) => {
+      logger.warn('유료 이용 개시 로그 기록 실패(generateGrowthTimelinePdf):', { uid, message: error?.message });
+    });
+
     return {
       success: true,
       cached: exists,
@@ -5483,75 +5726,18 @@ export const subscribeWithBillingKey = onCall(
 );
 
 // ===== 💳 카카오페이 정기구독 해지 =====
+// 실제 해지 로직은 subscriptionHelpers.ts의 cancelSubscriptionForUid로 분리되어 있다.
+// (accountDeletion.ts의 requestAccountDeletion에서도 재사용하기 위함 — index.ts와의 순환 참조 방지)
 export const cancelSubscription = onCall(
-  { region: 'asia-northeast3' },
+  { region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
 
     const uid = request.auth.uid;
-    const nowIso = new Date().toISOString();
-    const subRef = db.doc(`users/${uid}/subscription/info`);
-    const billingRef = db.doc(`billingSubscriptions/${uid}`);
-
-    const result = await db.runTransaction(async (tx) => {
-      const [subSnap, billingSnap] = await Promise.all([
-        tx.get(subRef),
-        tx.get(billingRef),
-      ]);
-      const subData = subSnap.data() || {};
-      const billingData = billingSnap.data() || {};
-      const plan = subData.plan === 'basic' || subData.plan === 'premium'
-        ? subData.plan
-        : billingData.plan === 'basic' || billingData.plan === 'premium'
-          ? billingData.plan
-          : '';
-
-      if (!plan) {
-        throw new HttpsError('failed-precondition', '해지할 구독이 없습니다.');
-      }
-
-      if (subData.status === 'cancelled' || billingData.status === 'cancelled') {
-        return {
-          alreadyCancelled: true,
-          endDate: typeof subData.endDate === 'string' ? subData.endDate : null,
-        };
-      }
-
-      const endDate = typeof subData.endDate === 'string'
-        ? subData.endDate
-        : typeof billingData.endDate === 'string'
-          ? billingData.endDate
-          : nowIso;
-
-      tx.set(subRef, {
-        plan,
-        status: 'cancelled',
-        cancelAtPeriodEnd: true,
-        cancelledAt: nowIso,
-        endDate,
-        nextBillingDate: null,
-        updatedAt: nowIso,
-      }, { merge: true });
-
-      tx.set(billingRef, {
-        uid,
-        plan,
-        status: 'cancelled',
-        billingKey: null,
-        cancelAtPeriodEnd: true,
-        cancelledAt: nowIso,
-        endDate,
-        nextBillingDate: null,
-        billingLockUntil: null,
-        updatedAt: nowIso,
-      }, { merge: true });
-
-      return { alreadyCancelled: false, endDate };
-    });
-
-    logger.info('✅ 정기구독 해지 예약 — uid: %s, endDate: %s', uid, result.endDate);
+    await revokeBillingKeyForUid(uid, PORTONE_API_SECRET.value(), 'subscription_cancelled');
+    const result = await cancelSubscriptionForUid(uid);
     return {
       success: true,
       ...result,
@@ -5585,7 +5771,7 @@ export const processRecurringSubscriptions = onSchedule(
         plan: 'free',
         status: 'none',
         paymentId: null,
-        billingKey: null,
+        billingKey: admin.firestore.FieldValue.delete(),
         nextBillingDate: null,
         cancelAtPeriodEnd: false,
         expiredAt: nowIso,
@@ -5596,7 +5782,7 @@ export const processRecurringSubscriptions = onSchedule(
         db.doc(`users/${uid}/subscription/info`).set(update, { merge: true }),
         billingRef.set({
           status: 'expired',
-          billingKey: null,
+          billingKey: admin.firestore.FieldValue.delete(),
           nextBillingDate: null,
           expiredAt: nowIso,
           updatedAt: nowIso,
@@ -6285,6 +6471,8 @@ export const lawSearch = onCall(
   {
     region: 'asia-northeast3',
     secrets: [LAW_API_KEY_SECRET, GEMINI_API_KEY_SECRET],
+    timeoutSeconds: 90,
+    memory: '1GiB',
   },
   async (request) => {
     if (!request.auth) {
@@ -6292,9 +6480,17 @@ export const lawSearch = onCall(
     }
     await enforceRateLimit(request.auth.uid, 'lawSearch', 3, 20);
 
+    const uid = request.auth.uid;
     const { query } = request.data;
     if (!query || typeof query !== 'string' || !query.trim()) {
       throw new HttpsError('invalid-argument', '검색어가 필요합니다.');
+    }
+    const attachments = readHaruLawAttachments(request.data?.attachments);
+    if (attachments.length > 0) {
+      const actualPlan = coerceUserPlan(await getUserPlan(uid));
+      if (actualPlan === 'free') {
+        throw new HttpsError('permission-denied', '파일 첨부는 베이직·프리미엄 이용권 전용 기능입니다.');
+      }
     }
 
     const { XMLParser } = await import('fast-xml-parser');
@@ -6313,6 +6509,9 @@ export const lawSearch = onCall(
       const { XMLParser } = await import('fast-xml-parser');
       const LAW_API_KEY = LAW_API_KEY_SECRET.value().trim();
       const GEMINI_KEY = GEMINI_API_KEY_SECRET.value().trim();
+      const { fileParts } = attachments.length > 0
+        ? await loadHaruLawAttachmentParts(uid, attachments)
+        : { fileParts: [] as HaruLawGeminiFilePart[] };
 
       const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
       const axiosConfig = {
@@ -6492,8 +6691,7 @@ export const lawSearch = onCall(
         .map((j: any) => `${j.articleStr}(${j.title}): ${j.content}`)
         .join('\n');
 
-      const summaryResult = await summaryModel.generateContent(
-        `당신은 공식 법령을 사실원으로 확인하고 가능한 법적 쟁점과 다음 행동을 이해하기 쉽게 안내하는 AI 법률정보 도우미입니다.
+      const summaryPrompt = `당신은 공식 법령을 사실원으로 확인하고 가능한 법적 쟁점과 다음 행동을 이해하기 쉽게 안내하는 AI 법률정보 도우미입니다.
 다음 원칙을 반드시 지키세요:
 
 [공식 법령 우선 원칙]
@@ -6502,11 +6700,15 @@ export const lawSearch = onCall(
 - 제공된 법령만으로 판단하기 어려우면 추측하지 말고 추가 확인이 필요하다고 안내한다.
 - 조문의 문언뿐 아니라 해당 조문의 적용요건이 사용자 사실관계에 충족되는지 구분해서 설명한다.
 - 법령 내용과 모델의 일반지식이 충돌하면 이번 요청에서 제공된 공식 법령 내용을 우선한다.
+- 첨부파일이 있으면 사실관계 보조자료로만 활용하고, 법률상 결론은 반드시 이번 요청에서 제공된 공식 법령·조문을 우선 근거로 삼는다.
 
 [사실관계·책임 판단 가드레일]
 - 사용자 질문과 제공 자료만으로 누가 가해자인지, 피해 정도, 인과관계, 과실, 책임 주체, 법률 적용요건이 확실하지 않으면 단정하지 마라.
 - 법조문을 찾았다는 이유만으로 바로 사용자 사건에 적용하지 말고, 사용자 사실관계 → 조문 적용요건 확인 → 해당 가능성 설명 → 추가 확인사항 안내 순서를 지켜라.
 - 사실관계가 충분히 확인되기 전에는 "책임을 인정하세요", "전액 보상하세요", "무조건 사과하세요"처럼 과실·책임 인정을 유도하는 단정적 행동을 권하지 마라.
+- 근거가 충분히 확인되지 않은 상태에서는 "자의적", "주관적", "추측성", "명백히 부당", "불법", "위법", "약관 위반"이라고 표현하지 마라.
+- 위 표현은 법령, 약관, 판례 또는 확인된 사실관계가 충분히 뒷받침할 때만 사용하라.
+- 기본적으로 "현재 자료만으로는 확인되지 않습니다", "추가 확인이 필요합니다", "위법 여부를 단정하기 어렵습니다", "법리상 검토 가능성은 있으나 현재 사실관계만으로 판단하기 어렵습니다", "구체적인 판단 기준이 제시되지 않은 상태입니다" 같은 표현을 우선 사용하라.
 - 필요한 경우 "안전 확보 → 자료·기록 보존 → 사실관계 확인 → 보험·계약관계 확인 → 필요한 대응" 순서로 안내하라.
 - 형사절차, 민사 손해배상, 행정절차, 기타 필요한 절차를 가능한 범위에서 구분해 설명하라.
 - "~가 확인되는 경우", "~에 해당한다면", "~일 가능성이 있습니다", "추가 확인이 필요합니다" 같은 조건부 표현을 사용하라.
@@ -6516,18 +6718,23 @@ export const lawSearch = onCall(
 3. 어려운 법률 용어는 반드시 쉬운 말로 풀어 설명하세요.
 4. 실무적 행동 지침은 조건부로 안내하고, 사실관계 확인 전 책임 인정이나 보상을 단정하지 마세요.
 5. 답변 구조:
-   📋 확인된 사실 / 추가 확인이 필요한 사실
-   ⚖️ 가능한 법적 쟁점
-   📌 관련 법령과 적용요건
-   💡 다음에 할 수 있는 일
+   📋 확인된 사실
+   🔎 추가 확인이 필요한 사실
+   ⚖️ 법적으로 말할 수 있는 범위
+   📌 현재 사건에 적용 가능한 판단
+   💡 사용자가 지금 해야 할 행동
+   ➡️ 다음 단계로 넘어가는 조건
    ⚠️ 주의사항
 6. 마지막에 반드시 추가:
    "본 내용은 법령 정보 제공 목적이며, 전문적인 법률 자문을 대체할 수 없습니다."
 
 사용자 질문: ${query}
 관련 법령(${lawName}):
-	${lawText}`
-      );
+	${lawText}`;
+      const summaryContents: any = fileParts.length > 0
+        ? [{ text: summaryPrompt }, ...fileParts]
+        : summaryPrompt;
+      const summaryResult = await summaryModel.generateContent(summaryContents);
       const summaryUsage = getGeminiUsage(summaryResult);
       await logAiUsage({
         uid: request.auth.uid,
@@ -6553,6 +6760,9 @@ export const lawSearch = onCall(
       };
 
     } catch (error: any) {
+      if (error instanceof HttpsError) {
+        throw error;
+      }
       logger.error('HARUraw 법령 검색 실패:', error);
       if (request.auth?.uid) {
         await logAiUsage({
@@ -7746,6 +7956,9 @@ export const preloadChapterGrammar = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다');
     }
+    if (request.auth.uid !== ADMIN_UID) {
+      throw new HttpsError('permission-denied', '관리자 전용 기능입니다');
+    }
 
     const { book, chapter, verses, verseTexts } = request.data;
 
@@ -7913,7 +8126,7 @@ export const preloadChapterGrammar = onCall(
 
     // 6. 완료 후 관리자 FCM 알림
     const totalCorrected = results.filter(r => r.gptCorrected).length;
-    const adminUid = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+    const adminUid = ADMIN_UID;
     try {
       const settingsDoc = await db
         .collection('users').doc(adminUid)
@@ -11932,3 +12145,9 @@ export const petFoodCheck = onCall(
     };
   },
 );
+
+export {
+  requestAccountDeletion,
+  cancelAccountDeletion,
+  executeScheduledDeletion,
+} from './accountDeletion';

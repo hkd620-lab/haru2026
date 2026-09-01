@@ -10,12 +10,15 @@ import {
   extractDrugSearchTerm,
   searchOfficialDrugs,
 } from '../services/drugService';
+import { useSensitiveConsent } from '../hooks/useSensitiveConsent';
+import { SensitiveConsentGate } from '../components/SensitiveConsentGate';
 
 const SAFETY_TEXT = 'HARU의 약 정보는 참고용입니다. 복용, 중단, 변경은 반드시 의사 또는 약사와 상담하세요.';
 const DOSING_TEXT = '복용법은 처방전과 약사의 안내를 따르세요.';
 
 export function HealthMedicationPage() {
   const { user } = useAuth();
+  const { hasConsent, isSaving: isSavingConsent, grantConsent } = useSensitiveConsent('sensitiveHealth');
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<DrugSearchResult[]>([]);
   const [medications, setMedications] = useState<UserMedication[]>([]);
@@ -170,6 +173,10 @@ export function HealthMedicationPage() {
       toast.error('내 약을 삭제하지 못했습니다.');
     }
   };
+
+  if (hasConsent === false) {
+    return <SensitiveConsentGate category="health" isSaving={isSavingConsent} onAgree={grantConsent} />;
+  }
 
   return (
     <main style={styles.page}>

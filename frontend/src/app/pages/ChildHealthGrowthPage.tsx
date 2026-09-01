@@ -10,6 +10,8 @@ import { findGrowthLMS, type GrowthGender } from '../../data/growthLMS';
 import { calcAgeInMonths, calcPercentile } from '../../utils/growthCalc';
 import { getOrigin } from '../services/v2Origin';
 import { toast } from 'sonner';
+import { useSensitiveConsent } from '../hooks/useSensitiveConsent';
+import { SensitiveConsentGate } from '../components/SensitiveConsentGate';
 
 type GrowthSubject = {
   id: string;
@@ -36,6 +38,7 @@ export function ChildHealthGrowthPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const fromPath = (location.state as any)?.from as string | undefined;
+  const { hasConsent, isSaving: isSavingConsent, grantConsent } = useSensitiveConsent('sensitiveHealth');
 
   const [subjects, setSubjects] = useState<GrowthSubject[]>([]);
   const [selectedId, setSelectedId] = useState('');
@@ -241,6 +244,10 @@ export function ChildHealthGrowthPage() {
     fontWeight: 700,
     marginBottom: 6,
   };
+
+  if (hasConsent === false) {
+    return <SensitiveConsentGate category="health" isSaving={isSavingConsent} onAgree={grantConsent} />;
+  }
 
   return (
     <div

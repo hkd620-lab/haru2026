@@ -89,7 +89,8 @@ service cloud.firestore {
         "utmMedium",
         "utmCampaign",
         "signupReferrerOrigin",
-        "signupAt"
+        "signupAt",
+        "consents"
       ];
     }
 
@@ -258,7 +259,7 @@ service cloud.firestore {
       allow write: if false;
     }
     match /grammarCache/{cacheId} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && !cacheId.matches('diary_.*');
       allow write: if false;
     }
     match /quizCache/{cacheId} {
@@ -343,6 +344,13 @@ service cloud.firestore {
 
     // ✅ K뉴스 카드뉴스 — 개발자만 발행/수정/삭제, 인증 사용자 read
     match /k_news/{docId} {
+      allow read: if request.auth != null;
+      allow write, delete: if request.auth != null
+        && request.auth.uid == 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+    }
+
+    // ✅ 오늘충전 — 개발자만 발행/수정/삭제, 인증 사용자 read
+    match /today_charge/{docId} {
       allow read: if request.auth != null;
       allow write, delete: if request.auth != null
         && request.auth.uid == 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';

@@ -32,6 +32,8 @@ import { db, storage } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import './VaultPage.css';
 
+const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+
 type VaultCategory = 'business' | 'bank' | 'tax' | 'vehicle' | 'insurance' | 'family' | 'etc';
 
 type VaultField = {
@@ -218,6 +220,7 @@ function itemToForm(item?: VaultItem): VaultForm {
 export function VaultPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const isDeveloper = user?.uid === DEVELOPER_UID;
   const [items, setItems] = useState<VaultItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<VaultCategory | 'all'>('all');
@@ -228,6 +231,8 @@ export function VaultPage() {
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [removedImagePaths, setRemovedImagePaths] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+
+  if (!loading && !isDeveloper) return null;
 
   useEffect(() => {
     if (loading) return;

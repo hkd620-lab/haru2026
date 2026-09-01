@@ -9,7 +9,7 @@
 // 형식 타입 정의
 // ===========================================
 
-// 10가지 기록 형식 (+ HARU주식관리, HARUraw, HARU보조장부, HARU가계부 보조 형식)
+// 10가지 기록 형식 (+ HARU주식관리, HARUraw, HARU보조장부, HARU가계부, 배뇨일지 보조 형식)
 export type RecordFormat =
   | '일기'
   | '에세이'
@@ -28,7 +28,8 @@ export type RecordFormat =
   | '성장타임라인'
   | 'HARUraw'
   | 'HARU보조장부'
-  | 'HARU가계부';
+  | 'HARU가계부'
+  | '배뇨일지';
 
 // 기존 코드 호환성을 위한 alias
 export type RecordFormatKorean = RecordFormat;

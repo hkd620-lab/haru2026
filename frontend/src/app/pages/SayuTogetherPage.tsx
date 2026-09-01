@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
-import { KNewsSection } from '../components/KNewsSection';
-import { TodayQuote } from '../components/TodayQuote';
+import { HaruRamenSection, TodayChargeSection } from '../components/TodayChargeSection';
 import { useAuth } from '../contexts/AuthContext';
 import { exportRecordsToEpub } from '../services/epubExportService';
 import {
@@ -16,7 +15,7 @@ import {
 import { toast } from 'sonner';
 
 type TogetherTab = 'shared' | 'recovery';
-type RecoverySubTab = 'people' | 'knews' | 'quote' | 'bible' | 'epub';
+type RecoverySubTab = 'people' | 'todaycharge' | 'ramen' | 'epub';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -943,12 +942,11 @@ export function SayuTogetherPage() {
 
   const renderRecovery = () => (
     <div>
-      <div className="mb-4 grid grid-cols-5 gap-2">
+      <div className="mb-4 grid grid-cols-4 gap-2">
         {([
           { key: 'people', label: '사람속으로' },
-          { key: 'knews', label: 'K뉴스' },
-          { key: 'quote', label: '명언' },
-          { key: 'bible', label: '성경말씀' },
+          { key: 'todaycharge', label: '오늘의 충전' },
+          { key: 'ramen', label: '하루라면' },
           { key: 'epub', label: 'EPUB' },
         ] as const).map((sub) => {
           const active = recoverySub === sub.key;
@@ -1004,30 +1002,15 @@ export function SayuTogetherPage() {
         </>
       )}
 
-      {recoverySub === 'knews' && (
-        <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: '1px solid #DBEAFE' }}>
-          <h2 className="text-base font-bold mb-3" style={{ color: '#1A3C6E' }}>
-            K뉴스
-          </h2>
-          <KNewsSection />
+      {recoverySub === 'todaycharge' && (
+        <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
+          <TodayChargeSection isDeveloper={isDeveloper} />
         </section>
       )}
 
-      {recoverySub === 'quote' && (
-        <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-          <h2 className="text-base font-bold mb-3" style={{ color: '#1A3C6E' }}>
-            명언
-          </h2>
-          <TodayQuote defaultTab="classic" hideTabSwitcher />
-        </section>
-      )}
-
-      {recoverySub === 'bible' && (
-        <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: '1px solid #E2E8F0' }}>
-          <h2 className="text-base font-bold mb-3" style={{ color: '#1A3C6E' }}>
-            성경말씀
-          </h2>
-          <TodayQuote defaultTab="bible" hideTabSwitcher />
+      {recoverySub === 'ramen' && (
+        <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: '1px solid #FED7AA' }}>
+          <HaruRamenSection isDeveloper={isDeveloper} />
         </section>
       )}
 

@@ -14,25 +14,32 @@ export function SayuTitleAnimation() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    let shimmerTimer: ReturnType<typeof setTimeout> | undefined;
     const totalDuration = 0.25 + chars.length * 0.17 + 0.65;
     const timer = setTimeout(() => {
-      if (!isMounted.current) return;
+      if (cancelled || !isMounted.current) return;
       setAnimationDone(true);
 
       const runShimmer = async () => {
-        if (!isMounted.current) return;
+        if (cancelled || !isMounted.current) return;
         await shimmerControls.start({
           x: ['-100%', '220%'],
           transition: { duration: 1.1, ease: 'easeInOut' },
         });
-        if (isMounted.current) {
-          setTimeout(runShimmer, 5000);
+        if (!cancelled && isMounted.current) {
+          shimmerTimer = setTimeout(runShimmer, 5000);
         }
       };
-      setTimeout(runShimmer, 200);
+      shimmerTimer = setTimeout(runShimmer, 200);
     }, totalDuration * 1000);
 
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      if (shimmerTimer) clearTimeout(shimmerTimer);
+      shimmerControls.stop();
+    };
   }, [shimmerControls]);
 
   return (
