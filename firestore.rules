@@ -152,7 +152,15 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /paymentRequests/{paymentId} {
+      allow read, write: if false;
+    }
+
     match /paymentReviews/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /portoneWebhookEvents/{eventId} {
       allow read, write: if false;
     }
 

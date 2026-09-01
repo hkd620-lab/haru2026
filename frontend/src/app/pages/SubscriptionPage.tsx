@@ -11,6 +11,14 @@ type BillingKeyResponse = {
   message?: string;
   billingKey?: string;
 };
+type SubscriptionBillingRequestResult = {
+  issueId: string;
+  storeId: string;
+  issueName: string;
+  amount: number;
+  currency: 'KRW';
+  customData: Record<string, unknown>;
+};
 
 const PLANS: Record<PaidPlan, {
   title: string;
@@ -77,6 +85,7 @@ export default function SubscriptionPage() {
     if (authLoading || redirectProcessedRef.current) return;
     const redirectedCode = searchParams.get('code');
     const redirectedBillingKey = searchParams.get('billingKey');
+    const redirectedIssueId = searchParams.get('issueId');
     if (!redirectedCode && !redirectedBillingKey) return;
 
     redirectProcessedRef.current = true;
@@ -85,7 +94,7 @@ export default function SubscriptionPage() {
       return;
     }
 
-    if (!user || !redirectedBillingKey) {
+    if (!user || !redirectedBillingKey || !redirectedIssueId) {
       alert('정기결제 확인을 위해 로그인이 필요합니다.');
       return;
     }
@@ -99,14 +108,15 @@ export default function SubscriptionPage() {
     subscribeWithBillingKey({
       billingKey: redirectedBillingKey,
       plan: redirectedPlan,
-      payMethod: 'kg_inicis_card',
+      issueId: redirectedIssueId,
+      payMethod: 'kakaopay_easy_pay',
     })
       .then(() => {
         setResultMessage(`${PLANS[redirectedPlan].orderName} 결제가 완료되었습니다. 설정 화면에서 구독 상태를 확인할 수 있습니다.`);
         window.history.replaceState({}, '', '/subscription');
       })
       .catch((error: any) => {
-        console.error('이니시스 정기결제 리다이렉트 처리 오류:', error);
+        console.error('카카오페이 정기결제 리다이렉트 처리 오류:', error);
         alert(error?.message || '정기결제 처리 중 오류가 발생했습니다.');
       })
       .finally(() => {
@@ -129,10 +139,11 @@ export default function SubscriptionPage() {
     setResultMessage('');
 
     try {
-      const plan = PLANS[selectedPlan];
-      const inicisBillingChannelKey = import.meta.env.VITE_PORTONE_INICIS_BILLING_CHANNEL_KEY || import.meta.env.VITE_PORTONE_CHANNEL_KEY;
-      if (!inicisBillingChannelKey) {
-        throw new Error('KG이니시스 정기결제 채널 키가 설정되지 않았습니다.');
+      const kakaoPayChannelKey = import.meta.env.VITE_PORTONE_KAKAOPAY_CHANNEL_KEY
+        || import.meta.env.VITE_PORTONE_KAKAOPAY_BILLING_CHANNEL_KEY
+        || import.meta.env.VITE_PORTONE_CHANNEL_KEY;
+      if (!kakaoPayChannelKey) {
+        throw new Error('카카오페이 결제 채널 키가 설정되지 않았습니다.');
       }
 
       const trimmedName = fullName.trim();
@@ -143,33 +154,39 @@ export default function SubscriptionPage() {
 
       const trimmedEmail = email.trim();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-        alert('이니시스 정기결제는 구매자 이메일이 필수입니다.');
+        alert('카카오페이 정기결제는 구매자 이메일이 필수입니다.');
         return;
       }
 
       const normalizedPhone = phone.replace(/[^0-9]/g, '');
       if (normalizedPhone.length < 10) {
-        alert('이니시스 정기결제는 구매자 휴대폰 번호가 필수입니다.');
+        alert('카카오페이 정기결제는 구매자 휴대폰 번호가 필수입니다.');
         return;
       }
 
-      // 이니시스 oid 제한(최대 40자)으로 uid 제외 — 사용자 연결은 subscribeWithBillingKey 인증으로 처리
-      const issueId = `haru-bk-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const functions = getFunctions(undefined, 'asia-northeast3');
+      const createSubscriptionBillingRequest = httpsCallable(functions, 'createSubscriptionBillingRequest');
+      const requestResult = await createSubscriptionBillingRequest({ plan: selectedPlan });
+      const billingRequest = requestResult.data as SubscriptionBillingRequestResult;
 
       const response = await (PortOne as any).requestIssueBillingKey({
-        storeId: import.meta.env.VITE_PORTONE_STORE_ID,
-        channelKey: inicisBillingChannelKey,
-        billingKeyMethod: 'CARD',
-        displayAmount: plan.amount,
-        currency: 'KRW',
-        issueId,
-        issueName: plan.orderName,
+        storeId: billingRequest.storeId,
+        channelKey: kakaoPayChannelKey,
+        billingKeyMethod: 'EASY_PAY',
+        displayAmount: billingRequest.amount,
+        amount: {
+          total: billingRequest.amount,
+        },
+        currency: billingRequest.currency,
+        issueId: billingRequest.issueId,
+        issueName: billingRequest.issueName,
         customer: {
           fullName: trimmedName,
           email: trimmedEmail,
           phoneNumber: normalizedPhone,
         },
-        redirectUrl: `${window.location.origin}/subscription?plan=${selectedPlan}`,
+        customData: billingRequest.customData,
+        redirectUrl: `${window.location.origin}/subscription?plan=${selectedPlan}&issueId=${billingRequest.issueId}`,
       }) as BillingKeyResponse;
 
       if (response?.code) {
@@ -182,15 +199,15 @@ export default function SubscriptionPage() {
         throw new Error('빌링키 발급 결과가 올바르지 않습니다.');
       }
 
-      const functions = getFunctions(undefined, 'asia-northeast3');
       const subscribeWithBillingKey = httpsCallable(functions, 'subscribeWithBillingKey');
       await subscribeWithBillingKey({
         billingKey,
         plan: selectedPlan,
-        payMethod: 'kg_inicis_card',
+        issueId: billingRequest.issueId,
+        payMethod: 'kakaopay_easy_pay',
       });
 
-      setResultMessage(`${plan.orderName} 결제가 완료되었습니다. 설정 화면에서 구독 상태를 확인할 수 있습니다.`);
+      setResultMessage(`${billingRequest.issueName} 결제가 완료되었습니다. 설정 화면에서 구독 상태를 확인할 수 있습니다.`);
 
     } catch (e: any) {
       console.error('결제 오류:', e);
@@ -229,7 +246,7 @@ export default function SubscriptionPage() {
 
         <div className="text-center mb-4">
           <h1 className="text-2xl font-black text-[#1A3C6E] mb-1">HARU 구독 플랜</h1>
-          <p className="text-sm text-gray-500">1개월 구독 상품을 선택하고 KG이니시스 정기결제를 진행합니다</p>
+          <p className="text-sm text-gray-500">1개월 구독 상품을 선택하고 카카오페이 정기결제를 진행합니다</p>
         </div>
 
         <div
@@ -292,7 +309,7 @@ export default function SubscriptionPage() {
         </div>
 
         <p className="text-center text-xs mb-3" style={{ color: '#10b981' }}>
-          선택 상품: {selected.orderName} · {selected.priceLabel}/월 · KG이니시스 정기결제 완료 후 즉시 이용 가능
+          선택 상품: {selected.orderName} · {selected.priceLabel}/월 · 카카오페이 정기결제 완료 후 즉시 이용 가능
         </p>
 
         <div className="bg-white rounded-2xl border border-gray-200 p-4 mb-4 space-y-3">
