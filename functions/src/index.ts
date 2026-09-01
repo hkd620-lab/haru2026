@@ -7098,6 +7098,12 @@ export { gatherElderBookSources, buildElderBookOutline, assignElderBookSources, 
 export const getWordMeaning = onCall(
   { region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] },
   async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    await enforceRateLimit(uid, 'getWordMeaning', 15, 80);
+
     const { word } = request.data;
     if (!word) throw new HttpsError('invalid-argument', '단어가 필요합니다.');
 
@@ -7141,6 +7147,12 @@ JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
 export const getGrammarExplain = onCall(
   { region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET, OPENAI_API_KEY_SECRET] },
   async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    await enforceRateLimit(uid, 'getGrammarExplain', 10, 60);
+
     const { verseKey, verseText } = request.data;
     if (!verseText) throw new HttpsError('invalid-argument', '절 내용이 필요합니다.');
 
@@ -7537,6 +7549,12 @@ export const preloadChapterGrammar = onCall(
 export const getVerseQuiz = onCall(
   { region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] },
   async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    await enforceRateLimit(uid, 'getVerseQuiz', 10, 60);
+
     const { verseKey, verseText, level = 'basic' } = request.data;
     if (!verseText) throw new HttpsError('invalid-argument', '절 내용이 필요합니다.');
 
@@ -7609,6 +7627,12 @@ JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
 export const translateToEnglish = onCall(
   { region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] },
   async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    await enforceRateLimit(uid, 'translateToEnglish', 10, 60);
+
     const text: string = request.data.text || '';
     if (!text) throw new Error('텍스트가 없습니다');
 
@@ -8253,6 +8277,12 @@ ${type === 'story'
 export const getVerseTranslation = onCall(
   { region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] },
   async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+  }
+  const uid = request.auth.uid;
+  await enforceRateLimit(uid, 'getVerseTranslation', 15, 80);
+
   const { verseKey, text } = request.data;
 
   // Firestore 캐시 확인
@@ -8279,6 +8309,12 @@ export const getVerseTranslation = onCall(
 export const getVerseWordMapping = onCall(
   { region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] },
   async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    await enforceRateLimit(uid, 'getVerseWordMapping', 15, 80);
+
     const { verseKey, enText, koText } = request.data;
     if (!enText || !koText) throw new HttpsError('invalid-argument', '영어/한국어 텍스트가 필요합니다.');
 
@@ -11426,6 +11462,12 @@ export const petFoodCheck = onCall(
     secrets: [GEMINI_API_KEY_SECRET],
   },
   async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    await enforceRateLimit(uid, 'petFoodCheck', 5, 30);
+
     const { foodName } = request.data as { foodName: string };
     if (!foodName || foodName.trim().length === 0) {
       throw new HttpsError('invalid-argument', '식품명을 입력해주세요.');

@@ -6265,6 +6265,11 @@ Object.defineProperty(exports, "draftElderBookChapters", { enumerable: true, get
 Object.defineProperty(exports, "polishElderBookChapters", { enumerable: true, get: function () { return elderBook_1.polishElderBookChapters; } });
 // ===== 단어 뜻 조회 =====
 exports.getWordMeaning = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] }, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    await (0, rateLimit_1.enforceRateLimit)(uid, 'getWordMeaning', 15, 80);
     const { word } = request.data;
     if (!word)
         throw new https_2.HttpsError('invalid-argument', '단어가 필요합니다.');
@@ -6299,6 +6304,11 @@ JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
 // ===== 문법 해설 =====
 exports.getGrammarExplain = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET, OPENAI_API_KEY_SECRET] }, async (request) => {
     var _a, _b;
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    await (0, rateLimit_1.enforceRateLimit)(uid, 'getGrammarExplain', 10, 60);
     const { verseKey, verseText } = request.data;
     if (!verseText)
         throw new https_2.HttpsError('invalid-argument', '절 내용이 필요합니다.');
@@ -6661,6 +6671,11 @@ exports.preloadChapterGrammar = (0, https_2.onCall)({ region: 'asia-northeast3',
 });
 // ===== 퀴즈 생성 =====
 exports.getVerseQuiz = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] }, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    await (0, rateLimit_1.enforceRateLimit)(uid, 'getVerseQuiz', 10, 60);
     const { verseKey, verseText, level = 'basic' } = request.data;
     if (!verseText)
         throw new https_2.HttpsError('invalid-argument', '절 내용이 필요합니다.');
@@ -6722,6 +6737,11 @@ JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
 });
 // 영어 일기 학습 — 한국어 → 영어 번역
 exports.translateToEnglish = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] }, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    await (0, rateLimit_1.enforceRateLimit)(uid, 'translateToEnglish', 10, 60);
     const text = request.data.text || '';
     if (!text)
         throw new Error('텍스트가 없습니다');
@@ -7336,6 +7356,11 @@ ${type === 'story'
 });
 exports.getVerseTranslation = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] }, async (request) => {
     var _a;
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    await (0, rateLimit_1.enforceRateLimit)(uid, 'getVerseTranslation', 15, 80);
     const { verseKey, text } = request.data;
     // Firestore 캐시 확인
     const cacheRef = db.collection('translationCache').doc(verseKey);
@@ -7354,6 +7379,11 @@ exports.getVerseTranslation = (0, https_2.onCall)({ region: 'asia-northeast3', s
     return { translation };
 });
 exports.getVerseWordMapping = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] }, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    await (0, rateLimit_1.enforceRateLimit)(uid, 'getVerseWordMapping', 15, 80);
     const { verseKey, enText, koText } = request.data;
     if (!enText || !koText)
         throw new https_2.HttpsError('invalid-argument', '영어/한국어 텍스트가 필요합니다.');
@@ -10059,6 +10089,11 @@ exports.petFoodCheck = (0, https_2.onCall)({
     secrets: [GEMINI_API_KEY_SECRET],
 }, async (request) => {
     var _a, _b, _c;
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    await (0, rateLimit_1.enforceRateLimit)(uid, 'petFoodCheck', 5, 30);
     const { foodName } = request.data;
     if (!foodName || foodName.trim().length === 0) {
         throw new https_2.HttpsError('invalid-argument', '식품명을 입력해주세요.');
