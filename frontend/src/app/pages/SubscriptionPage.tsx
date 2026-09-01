@@ -139,8 +139,8 @@ export default function SubscriptionPage() {
     setResultMessage('');
 
     try {
-      const kakaoPayChannelKey = import.meta.env.VITE_PORTONE_KAKAOPAY_CHANNEL_KEY
-        || import.meta.env.VITE_PORTONE_KAKAOPAY_BILLING_CHANNEL_KEY
+      const kakaoPayChannelKey = import.meta.env.VITE_PORTONE_KAKAOPAY_BILLING_CHANNEL_KEY
+        || import.meta.env.VITE_PORTONE_KAKAOPAY_CHANNEL_KEY
         || import.meta.env.VITE_PORTONE_CHANNEL_KEY;
       if (!kakaoPayChannelKey) {
         throw new Error('카카오페이 결제 채널 키가 설정되지 않았습니다.');
