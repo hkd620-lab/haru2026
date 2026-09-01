@@ -43,6 +43,14 @@ const KAKAO_REST_API_KEY_SECRET = defineSecret('KAKAO_REST_API_KEY');
 const NAVER_CLIENT_ID_SECRET = defineSecret('NAVER_CLIENT_ID');
 const NAVER_CLIENT_SECRET_SECRET = defineSecret('NAVER_CLIENT_SECRET');
 const PORTONE_API_SECRET = defineSecret('PORTONE_API_SECRET');
+
+// 결제수단(payMethod) → 결제대행사(provider) 매핑. 신규 결제수단 추가 시 이 맵에만 항목을 추가하면
+// subscribeWithBillingKey와 processRecurringSubscriptions 양쪽에 자동 반영됩니다.
+const SUBSCRIPTION_PROVIDER_BY_PAY_METHOD: Record<string, string> = {
+  kg_inicis_card: 'kg_inicis',
+  kakaopay: 'kakaopay',
+};
+const RECURRING_BILLING_SUPPORTED_PROVIDERS = Object.values(SUBSCRIPTION_PROVIDER_BY_PAY_METHOD);
 const LAW_API_KEY_SECRET = defineSecret('LAW_API_KEY');
 const GOOGLE_CLOUD_API_KEY_SECRET = defineSecret('GOOGLE_CLOUD_API_KEY');
 const OPENAI_API_KEY_SECRET = defineSecret('OPENAI_API_KEY');
@@ -59,6 +67,16 @@ const GOOGLE_DRIVE_SERVICE_ACCOUNT_SECRET = defineSecret('GOOGLE_DRIVE_SERVICE_A
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
 // 관리자 전용 기능 접근 제어용 UID
 const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+
+const ALLOWED_ORIGIN_PATTERNS = [
+  /^https:\/\/haru2026\.com$/,
+  /^https:\/\/haru2026-8abb8\.web\.app$/,
+  /^https:\/\/haru2026-8abb8--[a-z0-9-]+\.web\.app$/,
+];
+function resolveAllowedOrigin(origin: string | undefined): string {
+  if (origin && ALLOWED_ORIGIN_PATTERNS.some((p) => p.test(origin))) return origin;
+  return FRONTEND_URL;
+}
 
 // Storage 버킷
 const bucket = () => getStorage().bucket();
@@ -3111,11 +3129,13 @@ export const kakaoLoginStart = onRequest(
   async (req, res) => {
     try {
       const state = crypto.randomBytes(32).toString('hex');
+      const origin = typeof req.query.origin === 'string' ? req.query.origin : undefined;
 
       await db.collection('oauth_states').doc(state).set({
         provider: 'kakao',
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
+        ...(origin ? { origin } : {}),
       });
 
       const kakaoAuthUrl =
@@ -3231,9 +3251,10 @@ export const kakaoCallback = onRequest(
       }
 
       const customToken = await admin.auth().createCustomToken(uid);
+      const redirectOrigin = resolveAllowedOrigin(stateData?.origin);
 
       res.redirect(
-        `${FRONTEND_URL}/auth/callback?customToken=${customToken}&provider=kakao`
+        `${redirectOrigin}/auth/callback?customToken=${customToken}&provider=kakao`
       );
 
     } catch (error: any) {
@@ -3252,10 +3273,13 @@ export const naverLoginStart = onRequest(
     try {
       const state = crypto.randomBytes(32).toString('hex');
 
+      const origin = typeof req.query.origin === 'string' ? req.query.origin : undefined;
+
       await db.collection('oauth_states').doc(state).set({
         provider: 'naver',
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
+        ...(origin ? { origin } : {}),
       });
 
       const naverAuthUrl =
@@ -3332,9 +3356,10 @@ export const naverCallback = onRequest(
       }
 
       const customToken = await admin.auth().createCustomToken(uid);
+      const redirectOrigin = resolveAllowedOrigin(stateData?.origin);
 
       res.redirect(
-        `${FRONTEND_URL}/auth/callback?customToken=${customToken}&provider=naver`
+        `${redirectOrigin}/auth/callback?customToken=${customToken}&provider=naver`
       );
 
     } catch (error: any) {
@@ -3358,10 +3383,13 @@ export const googleLoginStart = onRequest(
       
       const state = crypto.randomBytes(32).toString('hex');
 
+      const origin = typeof req.query.origin === 'string' ? req.query.origin : undefined;
+
       await db.collection('oauth_states').doc(state).set({
         provider: 'google',
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
+        ...(origin ? { origin } : {}),
       });
 
       const googleAuthUrl =
@@ -3441,9 +3469,10 @@ export const googleCallback = onRequest(
       }
 
       const customToken = await admin.auth().createCustomToken(uid);
+      const redirectOrigin = resolveAllowedOrigin(stateData?.origin);
 
       res.redirect(
-        `${FRONTEND_URL}/auth/callback?customToken=${customToken}&provider=google`
+        `${redirectOrigin}/auth/callback?customToken=${customToken}&provider=google`
       );
 
     } catch (error: any) {
@@ -5279,6 +5308,11 @@ export const subscribeWithBillingKey = onCall(
       throw new HttpsError('invalid-argument', 'plan 값이 올바르지 않습니다.');
     }
 
+    const provider = SUBSCRIPTION_PROVIDER_BY_PAY_METHOD[payMethod];
+    if (!provider) {
+      throw new HttpsError('invalid-argument', '지원하지 않는 결제 수단입니다.');
+    }
+
     const amount = getSubscriptionPlanAmount(plan);
     const orderName = getSubscriptionOrderName(plan);
     const paymentId = `haru-${uid}-${Date.now()}`;
@@ -5324,7 +5358,7 @@ export const subscribeWithBillingKey = onCall(
       endDate: nextBillingDate.toISOString(),
       nextBillingDate: nextBillingDate.toISOString(),
       paymentId,
-      provider: 'kg_inicis',
+      provider,
       updatedAt: now.toISOString(),
     });
     await billingRef.set({
@@ -5333,7 +5367,7 @@ export const subscribeWithBillingKey = onCall(
       status: 'active',
       billingKey,
       payMethod: typeof payMethod === 'string' ? payMethod : null,
-      provider: 'kg_inicis',
+      provider,
       amount,
       orderName,
       startDate: now.toISOString(),
@@ -5423,7 +5457,7 @@ export const processRecurringSubscriptions = onSchedule(
       const uid = docSnap.id;
       const billingRef = docSnap.ref;
       const data = docSnap.data();
-      if (data.provider !== 'kg_inicis') continue;
+      if (!RECURRING_BILLING_SUPPORTED_PROVIDERS.includes(data.provider)) continue;
       if (typeof data.nextBillingDate !== 'string' || data.nextBillingDate > nowIso) continue;
       const billingKey = typeof data.billingKey === 'string' ? data.billingKey : '';
       const plan = data.plan === 'basic' ? 'basic' : data.plan === 'premium' ? 'premium' : '';
@@ -5444,7 +5478,7 @@ export const processRecurringSubscriptions = onSchedule(
           ? Date.parse(freshData.billingLockUntil)
           : 0;
         if (freshData.status !== 'active') return false;
-        if (freshData.provider !== 'kg_inicis') return false;
+        if (!RECURRING_BILLING_SUPPORTED_PROVIDERS.includes(freshData.provider)) return false;
         if (typeof freshData.nextBillingDate !== 'string' || freshData.nextBillingDate > nowIso) return false;
         if (Number.isFinite(lockUntil) && lockUntil > Date.now()) return false;
 
@@ -5481,7 +5515,7 @@ export const processRecurringSubscriptions = onSchedule(
           plan,
           status: 'active',
           payMethod: typeof data.payMethod === 'string' ? data.payMethod : null,
-          provider: 'kg_inicis',
+          provider: data.provider,
           amount,
           orderName,
           endDate: nextBillingDate.toISOString(),
