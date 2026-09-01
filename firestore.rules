@@ -307,11 +307,6 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // 단어장
-    match /vocabulary/{docId} {
-      allow read, write, delete: if request.auth != null;
-    }
-
     // 텃밭 작물
     match /gardenCrops/{docId} {
       allow read, write, delete: if request.auth != null;
