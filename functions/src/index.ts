@@ -17,6 +17,7 @@ import * as path from 'path';
 import { logAiUsage } from './aiUsageLogger';
 import { cancelSubscriptionForUid, revokeBillingKeyForUid } from './subscriptionHelpers';
 import { enforceRateLimit } from './utils/rateLimit';
+import * as PortOne from '@portone/server-sdk';
 import {
   getMonthlyAiQuotaStatus as getMonthlyAiQuotaStatusForUser,
   reserveMonthlyAiQuota,
@@ -43,6 +44,7 @@ const KAKAO_REST_API_KEY_SECRET = defineSecret('KAKAO_REST_API_KEY');
 const NAVER_CLIENT_ID_SECRET = defineSecret('NAVER_CLIENT_ID');
 const NAVER_CLIENT_SECRET_SECRET = defineSecret('NAVER_CLIENT_SECRET');
 const PORTONE_API_SECRET = defineSecret('PORTONE_API_SECRET');
+const PORTONE_WEBHOOK_SECRET = defineSecret('PORTONE_WEBHOOK_SECRET');
 const LAW_API_KEY_SECRET = defineSecret('LAW_API_KEY');
 const GOOGLE_CLOUD_API_KEY_SECRET = defineSecret('GOOGLE_CLOUD_API_KEY');
 const OPENAI_API_KEY_SECRET = defineSecret('OPENAI_API_KEY');
@@ -263,6 +265,10 @@ const ONEDRIVE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunct
 const ONEDRIVE_OAUTH_SCOPE = 'offline_access Files.ReadWrite User.Read';
 
 const db = admin.firestore();
+const HARU_PORTONE_STORE_ID = 'store-d9310c4a-b5e8-4f6e-9e92-88e6b119e838';
+const HARU_KAKAOPAY_PROVIDER = 'kakaopay';
+const HARU_KAKAOPAY_PAY_METHOD = 'kakaopay_easy_pay';
+const PAYMENT_REQUEST_TTL_MS = 30 * 60 * 1000;
 const SUBSCRIPTION_PLANS: Record<number, 'basic' | 'premium'> = {
   4000: 'basic',
   6000: 'premium',
@@ -296,7 +302,98 @@ function getSubscriptionPlanAmount(plan: string): number {
 }
 
 function getSubscriptionOrderName(plan: string): string {
-  return plan === 'basic' ? 'HARU 베이직 월 구독' : 'HARU 프리미엄 월 구독';
+  return plan === 'basic' ? 'HARU2026 베이직 1개월 정기구독' : 'HARU2026 프리미엄 1개월 정기구독';
+}
+
+function assertPaidPlan(plan: unknown): 'basic' | 'premium' {
+  if (plan !== 'basic' && plan !== 'premium') {
+    throw new HttpsError('invalid-argument', 'plan 값이 올바르지 않습니다.');
+  }
+  return plan;
+}
+
+function createPortOneRequestId(prefix: string): string {
+  return `haru-${prefix}-${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
+}
+
+function parsePortOneCustomData(raw: unknown): Record<string, any> {
+  if (!raw) return {};
+  if (typeof raw === 'object') return raw as Record<string, any>;
+  if (typeof raw !== 'string') return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function getPaymentAmountTotal(payment: any): number {
+  return Number(payment?.amount?.total ?? payment?.totalAmount ?? 0);
+}
+
+function getPaymentMethodLabel(payment: any): string | null {
+  const method = payment?.method;
+  if (!method || typeof method !== 'object') return null;
+  const easyPayProvider = method.easyPay?.provider || method.easyPayProvider;
+  const type = method.type || method.methodType || method.pgProvider;
+  return [type, easyPayProvider].filter(Boolean).join(':') || null;
+}
+
+function assertPaymentMatchesRequest(payment: any, requestData: any) {
+  if (payment?.storeId && payment.storeId !== HARU_PORTONE_STORE_ID) {
+    throw new HttpsError('invalid-argument', '결제 상점 정보가 올바르지 않습니다.');
+  }
+  if (payment?.currency && payment.currency !== 'KRW') {
+    throw new HttpsError('invalid-argument', '결제 통화가 올바르지 않습니다.');
+  }
+  if (getPaymentAmountTotal(payment) !== requestData.amount) {
+    logger.error('결제 금액 불일치:', {
+      paymentId: maskPaymentId(requestData.paymentId || requestData.id || ''),
+      expected: requestData.amount,
+      actual: getPaymentAmountTotal(payment),
+    });
+    throw new HttpsError('invalid-argument', '결제 금액이 올바르지 않습니다.');
+  }
+  const orderName = typeof payment?.orderName === 'string' ? payment.orderName : '';
+  if (orderName && orderName !== requestData.orderName) {
+    throw new HttpsError('invalid-argument', '결제 상품명이 올바르지 않습니다.');
+  }
+  const customData = parsePortOneCustomData(payment?.customData);
+  if (customData.uid && customData.uid !== requestData.uid) {
+    throw new HttpsError('invalid-argument', '결제 사용자 정보가 올바르지 않습니다.');
+  }
+  if (customData.plan && customData.plan !== requestData.plan) {
+    throw new HttpsError('invalid-argument', '결제 요금제 정보가 올바르지 않습니다.');
+  }
+  if (customData.paymentType && customData.paymentType !== requestData.paymentType) {
+    throw new HttpsError('invalid-argument', '결제 유형 정보가 올바르지 않습니다.');
+  }
+}
+
+function getPaymentRequestRef(id: string) {
+  return db.doc(`paymentRequests/${id}`);
+}
+
+function getWebhookEventId(webhook: any, paymentId: string): string {
+  const base = [
+    webhook?.type || 'unknown',
+    webhook?.timestamp || '',
+    paymentId,
+    webhook?.data?.transactionId || webhook?.data?.cancellationId || '',
+  ].join(':');
+  return crypto.createHash('sha256').update(base).digest('hex');
+}
+
+function isFinalFailedPaymentStatus(status: string): boolean {
+  return [
+    'FAILED',
+    'CANCELLED',
+    'PARTIAL_CANCELLED',
+    'PAY_PENDING',
+    'READY',
+    'VIRTUAL_ACCOUNT_ISSUED',
+  ].includes(status);
 }
 
 function sleep(ms: number): Promise<void> {
@@ -5260,7 +5357,194 @@ export const generateGrowthTimelinePdf = onCall(
   }
 );
 
-// ===== 💳 정기결제 시작 (PortOne V2 빌링키) =====
+// ===== 💳 결제 요청 생성 (PortOne V2 + KakaoPay) =====
+export const createSinglePaymentRequest = onCall(
+  { region: 'asia-northeast3' },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const uid = request.auth.uid;
+    const plan = assertPaidPlan(request.data?.plan);
+    const product = SINGLE_PAYMENT_REVIEW_PRODUCT.plans[plan];
+    const paymentId = createPortOneRequestId('single');
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + PAYMENT_REQUEST_TTL_MS);
+
+    await getPaymentRequestRef(paymentId).set({
+      uid,
+      paymentId,
+      plan,
+      paymentType: 'one_time',
+      billingType: 'single',
+      provider: HARU_KAKAOPAY_PROVIDER,
+      payMethod: HARU_KAKAOPAY_PAY_METHOD,
+      storeId: HARU_PORTONE_STORE_ID,
+      orderName: product.orderName,
+      amount: product.amount,
+      currency: 'KRW',
+      status: 'created',
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return {
+      paymentId,
+      storeId: HARU_PORTONE_STORE_ID,
+      orderName: product.orderName,
+      amount: product.amount,
+      currency: 'KRW',
+      customData: {
+        uid,
+        plan,
+        provider: HARU_KAKAOPAY_PROVIDER,
+        paymentType: 'one_time',
+        billingType: 'single',
+      },
+    };
+  }
+);
+
+export const createSubscriptionBillingRequest = onCall(
+  { region: 'asia-northeast3' },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const uid = request.auth.uid;
+    const plan = assertPaidPlan(request.data?.plan);
+    const amount = getSubscriptionPlanAmount(plan);
+    const issueName = getSubscriptionOrderName(plan);
+    const issueId = createPortOneRequestId('billing');
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + PAYMENT_REQUEST_TTL_MS);
+
+    await getPaymentRequestRef(issueId).set({
+      uid,
+      issueId,
+      plan,
+      paymentType: 'subscription',
+      billingType: 'billing_key_issue',
+      provider: HARU_KAKAOPAY_PROVIDER,
+      payMethod: HARU_KAKAOPAY_PAY_METHOD,
+      storeId: HARU_PORTONE_STORE_ID,
+      orderName: issueName,
+      amount,
+      currency: 'KRW',
+      status: 'created',
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return {
+      issueId,
+      storeId: HARU_PORTONE_STORE_ID,
+      issueName,
+      amount,
+      currency: 'KRW',
+      customData: {
+        uid,
+        plan,
+        provider: HARU_KAKAOPAY_PROVIDER,
+        paymentType: 'subscription',
+        billingType: 'billing_key_issue',
+      },
+    };
+  }
+);
+
+// ===== 💳 결제 검증 (PortOne V2) =====
+export const verifyPayment = onCall(
+  { region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const paymentId = request.data?.paymentId;
+    const uid = request.auth.uid;
+
+    if (!paymentId || typeof paymentId !== 'string') {
+      throw new HttpsError('invalid-argument', 'paymentId가 필요합니다.');
+    }
+
+    const orderRef = getPaymentRequestRef(paymentId);
+    const orderSnap = await orderRef.get();
+    if (!orderSnap.exists || orderSnap.data()?.uid !== uid) {
+      throw new HttpsError('permission-denied', '결제 요청 정보를 찾을 수 없습니다.');
+    }
+    const orderData = orderSnap.data() || {};
+    if (orderData.paymentType !== 'one_time' && orderData.paymentType !== 'subscription') {
+      throw new HttpsError('failed-precondition', '결제 요청 유형이 올바르지 않습니다.');
+    }
+
+    let payment: any;
+    try {
+      payment = await fetchPortOnePayment(paymentId);
+    } catch (e: any) {
+      logger.error('PortOne 결제 조회 실패:', {
+        paymentId: maskPaymentId(paymentId),
+        ...getPortOneLookupError(e),
+      });
+      throw new HttpsError('internal', '결제 정보를 조회할 수 없습니다.');
+    }
+
+    if (payment.status !== 'PAID') {
+      await orderRef.set({
+        status: payment.status || 'not_paid',
+        verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+      throw new HttpsError('failed-precondition', '결제가 완료되지 않았습니다.');
+    }
+
+    assertPaymentMatchesRequest(payment, orderData);
+
+    const nowDate = new Date();
+    const expiresDate = addOneMonth(nowDate);
+    const now = nowDate.toISOString();
+    const subRef = db.doc(`users/${uid}/subscription/info`);
+
+    await db.runTransaction(async (tx) => {
+      const freshOrder = await tx.get(orderRef);
+      const freshData = freshOrder.data() || {};
+      if (freshData.status === 'processed') return;
+
+      tx.set(subRef, {
+        plan: freshData.plan,
+        status: 'active',
+        paymentType: freshData.paymentType,
+        billingType: freshData.billingType,
+        autoRenew: freshData.paymentType === 'subscription',
+        startDate: now,
+        endDate: expiresDate.toISOString(),
+        nextBillingDate: freshData.paymentType === 'subscription' ? expiresDate.toISOString() : null,
+        paymentId,
+        lastPaymentId: paymentId,
+        lastPaidAmount: freshData.amount,
+        payMethod: HARU_KAKAOPAY_PAY_METHOD,
+        provider: HARU_KAKAOPAY_PROVIDER,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+      tx.set(orderRef, {
+        status: 'processed',
+        portoneStatus: payment.status,
+        paymentMethod: getPaymentMethodLabel(payment),
+        processedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    });
+
+    logger.info('✅ 카카오페이 결제 검증 완료 — uid: %s, paymentId: %s', uid, maskPaymentId(paymentId));
+    return { success: true };
+  }
+);
+
+// ===== 💳 정기결제 시작 (PortOne V2 빌링키 + KakaoPay) =====
 export const subscribeWithBillingKey = onCall(
   { region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] },
   async (request) => {
@@ -5269,86 +5553,179 @@ export const subscribeWithBillingKey = onCall(
     }
 
     const uid = request.auth.uid;
-    const { billingKey, plan, payMethod } = request.data || {};
+    const { billingKey, payMethod } = request.data || {};
+    const plan = assertPaidPlan(request.data?.plan);
+    const issueId = request.data?.issueId;
 
     if (!billingKey || typeof billingKey !== 'string') {
       throw new HttpsError('invalid-argument', 'billingKey가 필요합니다.');
     }
+    if (!issueId || typeof issueId !== 'string') {
+      throw new HttpsError('invalid-argument', 'issueId가 필요합니다.');
+    }
 
-    if (plan !== 'basic' && plan !== 'premium') {
-      throw new HttpsError('invalid-argument', 'plan 값이 올바르지 않습니다.');
+    const requestRef = getPaymentRequestRef(issueId);
+    const requestSnap = await requestRef.get();
+    if (!requestSnap.exists) {
+      throw new HttpsError('failed-precondition', '빌링키 발급 요청 정보를 찾을 수 없습니다.');
+    }
+    const requestData = requestSnap.data() || {};
+    if (requestData.uid !== uid || requestData.plan !== plan || requestData.paymentType !== 'subscription') {
+      throw new HttpsError('permission-denied', '빌링키 발급 요청 정보가 올바르지 않습니다.');
+    }
+    const requestExpiresAt = requestData.expiresAt?.toMillis?.() || 0;
+    if (requestExpiresAt && requestExpiresAt < Date.now()) {
+      throw new HttpsError('deadline-exceeded', '빌링키 발급 요청이 만료되었습니다. 다시 시도해 주세요.');
     }
 
     const amount = getSubscriptionPlanAmount(plan);
     const orderName = getSubscriptionOrderName(plan);
-    const paymentId = `haru-${uid}-${Date.now()}`;
+    const paymentId = createPortOneRequestId('subscription');
+    const paymentRef = getPaymentRequestRef(paymentId);
+    const locked = await db.runTransaction(async (tx) => {
+      const fresh = await tx.get(requestRef);
+      const freshData = fresh.data() || {};
+      if (freshData.status === 'processed' && freshData.lastPaymentId) return false;
+      if (freshData.status === 'charging') return false;
+      tx.set(requestRef, {
+        status: 'charging',
+        billingKeyIssuedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+      tx.set(paymentRef, {
+        uid,
+        paymentId,
+        issueId,
+        plan,
+        paymentType: 'subscription',
+        billingType: 'initial_billing',
+        provider: HARU_KAKAOPAY_PROVIDER,
+        payMethod: HARU_KAKAOPAY_PAY_METHOD,
+        storeId: HARU_PORTONE_STORE_ID,
+        orderName,
+        amount,
+        currency: 'KRW',
+        status: 'charging',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      return true;
+    });
+    if (!locked) {
+      return { success: true, alreadyProcessed: true };
+    }
 
     let payment: any;
     try {
       const portoneRes = await axios.post(
         `https://api.portone.io/payments/${encodeURIComponent(paymentId)}/billing-key`,
         {
+          storeId: HARU_PORTONE_STORE_ID,
           billingKey,
           orderName,
           amount: { total: amount },
           currency: 'KRW',
+          customData: JSON.stringify({
+            uid,
+            plan,
+            provider: HARU_KAKAOPAY_PROVIDER,
+            paymentType: 'subscription',
+            billingType: 'initial_billing',
+            issueId,
+          }),
         },
         { headers: { Authorization: `PortOne ${PORTONE_API_SECRET.value().trim()}` } }
       );
       payment = portoneRes.data;
     } catch (e: any) {
-      logger.error('PortOne 빌링키 첫 결제 실패:', e?.response?.data || e.message);
+      await Promise.all([
+        requestRef.set({
+          status: 'failed',
+          lastBillingError: e?.message || 'initial_billing_failed',
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true }),
+        paymentRef.set({
+          status: 'failed',
+          lastBillingError: e?.message || 'initial_billing_failed',
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true }),
+      ]);
+      logger.error('PortOne 카카오페이 빌링키 첫 결제 실패:', {
+        paymentId: maskPaymentId(paymentId),
+        status: e?.response?.status,
+        code: e?.response?.data?.code,
+        type: e?.response?.data?.type,
+      });
       throw new HttpsError('internal', '첫 결제에 실패했습니다.');
     }
 
     if (payment?.status && payment.status !== 'PAID') {
-      logger.error('PortOne 빌링키 첫 결제 미완료:', {
-        uid,
-        paymentId,
+      await paymentRef.set({
         status: payment.status,
-      });
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
       throw new HttpsError('failed-precondition', '첫 결제가 완료되지 않았습니다.');
     }
 
     const now = new Date();
-    const nextBillingDate = new Date(now);
-    nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
-
+    const nextBillingDate = addOneMonth(now);
+    const nowIso = now.toISOString();
     const subRef = db.doc(`users/${uid}/subscription/info`);
     const billingRef = db.doc(`billingSubscriptions/${uid}`);
-    await subRef.set({
-      plan,
-      status: 'active',
-      payMethod: typeof payMethod === 'string' ? payMethod : null,
-      startDate: now.toISOString(),
-      endDate: nextBillingDate.toISOString(),
-      nextBillingDate: nextBillingDate.toISOString(),
-      paymentId,
-      provider: 'kg_inicis',
-      updatedAt: now.toISOString(),
-    });
-    await billingRef.set({
-      uid,
-      plan,
-      status: 'active',
-      billingKey,
-      payMethod: typeof payMethod === 'string' ? payMethod : null,
-      provider: 'kg_inicis',
-      amount,
-      orderName,
-      startDate: now.toISOString(),
-      endDate: nextBillingDate.toISOString(),
-      nextBillingDate: nextBillingDate.toISOString(),
-      lastPaymentId: paymentId,
-      updatedAt: now.toISOString(),
+    await db.runTransaction(async (tx) => {
+      tx.set(subRef, {
+        plan,
+        status: 'active',
+        paymentType: 'subscription',
+        billingType: 'recurring',
+        autoRenew: true,
+        payMethod: typeof payMethod === 'string' ? payMethod : HARU_KAKAOPAY_PAY_METHOD,
+        startDate: nowIso,
+        endDate: nextBillingDate.toISOString(),
+        nextBillingDate: nextBillingDate.toISOString(),
+        paymentId,
+        lastPaymentId: paymentId,
+        lastPaidAmount: amount,
+        provider: HARU_KAKAOPAY_PROVIDER,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+      tx.set(billingRef, {
+        uid,
+        plan,
+        status: 'active',
+        billingKey,
+        payMethod: typeof payMethod === 'string' ? payMethod : HARU_KAKAOPAY_PAY_METHOD,
+        provider: HARU_KAKAOPAY_PROVIDER,
+        amount,
+        orderName,
+        startDate: nowIso,
+        endDate: nextBillingDate.toISOString(),
+        nextBillingDate: nextBillingDate.toISOString(),
+        lastPaymentId: paymentId,
+        lastPaidAt: nowIso,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+      tx.set(requestRef, {
+        status: 'processed',
+        lastPaymentId: paymentId,
+        processedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+      tx.set(paymentRef, {
+        status: 'processed',
+        portoneStatus: payment?.status || 'PAID',
+        paymentMethod: getPaymentMethodLabel(payment),
+        processedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
     });
 
-    logger.info('✅ 정기구독 시작 — uid: %s, plan: %s, paymentId: %s', uid, plan, paymentId);
+    logger.info('✅ 카카오페이 정기구독 시작 — uid: %s, plan: %s, paymentId: %s', uid, plan, maskPaymentId(paymentId));
     return { success: true };
   }
 );
 
-// ===== 💳 KG이니시스 정기구독 해지 =====
+// ===== 💳 카카오페이 정기구독 해지 =====
 // 실제 해지 로직은 subscriptionHelpers.ts의 cancelSubscriptionForUid로 분리되어 있다.
 // (accountDeletion.ts의 requestAccountDeletion에서도 재사용하기 위함 — index.ts와의 순환 참조 방지)
 export const cancelSubscription = onCall(
@@ -5368,7 +5745,7 @@ export const cancelSubscription = onCall(
   }
 );
 
-// ===== 💳 KG이니시스 정기결제 반복 과금 =====
+// ===== 💳 카카오페이 정기결제 반복 과금 =====
 export const processRecurringSubscriptions = onSchedule(
   {
     region: 'asia-northeast3',
@@ -5423,7 +5800,7 @@ export const processRecurringSubscriptions = onSchedule(
       const uid = docSnap.id;
       const billingRef = docSnap.ref;
       const data = docSnap.data();
-      if (data.provider !== 'kg_inicis') continue;
+      if (data.provider !== HARU_KAKAOPAY_PROVIDER) continue;
       if (typeof data.nextBillingDate !== 'string' || data.nextBillingDate > nowIso) continue;
       const billingKey = typeof data.billingKey === 'string' ? data.billingKey : '';
       const plan = data.plan === 'basic' ? 'basic' : data.plan === 'premium' ? 'premium' : '';
@@ -5444,7 +5821,7 @@ export const processRecurringSubscriptions = onSchedule(
           ? Date.parse(freshData.billingLockUntil)
           : 0;
         if (freshData.status !== 'active') return false;
-        if (freshData.provider !== 'kg_inicis') return false;
+        if (freshData.provider !== HARU_KAKAOPAY_PROVIDER) return false;
         if (typeof freshData.nextBillingDate !== 'string' || freshData.nextBillingDate > nowIso) return false;
         if (Number.isFinite(lockUntil) && lockUntil > Date.now()) return false;
 
@@ -5458,16 +5835,41 @@ export const processRecurringSubscriptions = onSchedule(
 
       const amount = getSubscriptionPlanAmount(plan);
       const orderName = getSubscriptionOrderName(plan);
-      const paymentId = `haru-recurring-${uid}-${Date.now()}`;
+      const paymentId = createPortOneRequestId('recurring');
+      const paymentRef = getPaymentRequestRef(paymentId);
+      await paymentRef.set({
+        uid,
+        paymentId,
+        plan,
+        paymentType: 'subscription',
+        billingType: 'recurring',
+        provider: HARU_KAKAOPAY_PROVIDER,
+        payMethod: typeof data.payMethod === 'string' ? data.payMethod : HARU_KAKAOPAY_PAY_METHOD,
+        storeId: HARU_PORTONE_STORE_ID,
+        orderName,
+        amount,
+        currency: 'KRW',
+        status: 'charging',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
 
       try {
         const portoneRes = await axios.post(
           `https://api.portone.io/payments/${encodeURIComponent(paymentId)}/billing-key`,
           {
+            storeId: HARU_PORTONE_STORE_ID,
             billingKey,
             orderName,
             amount: { total: amount },
             currency: 'KRW',
+            customData: JSON.stringify({
+              uid,
+              plan,
+              provider: HARU_KAKAOPAY_PROVIDER,
+              paymentType: 'subscription',
+              billingType: 'recurring',
+            }),
           },
           { headers: { Authorization: `PortOne ${PORTONE_API_SECRET.value().trim()}` } }
         );
@@ -5481,7 +5883,7 @@ export const processRecurringSubscriptions = onSchedule(
           plan,
           status: 'active',
           payMethod: typeof data.payMethod === 'string' ? data.payMethod : null,
-          provider: 'kg_inicis',
+          provider: HARU_KAKAOPAY_PROVIDER,
           amount,
           orderName,
           endDate: nextBillingDate.toISOString(),
@@ -5497,12 +5899,19 @@ export const processRecurringSubscriptions = onSchedule(
         await Promise.all([
           db.doc(`users/${uid}/subscription/info`).set(update, { merge: true }),
           billingRef.set({ ...update, billingKey }, { merge: true }),
+          paymentRef.set({
+            status: 'processed',
+            portoneStatus: payment?.status || 'PAID',
+            paymentMethod: getPaymentMethodLabel(payment),
+            processedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          }, { merge: true }),
         ]);
-        logger.info('✅ KG이니시스 반복 과금 완료 — uid: %s, paymentId: %s', uid, paymentId);
+        logger.info('✅ 카카오페이 반복 과금 완료 — uid: %s, paymentId: %s', uid, maskPaymentId(paymentId));
       } catch (error: any) {
-        logger.error('KG이니시스 반복 과금 실패:', {
+        logger.error('카카오페이 반복 과금 실패:', {
           uid,
-          paymentId,
+          paymentId: maskPaymentId(paymentId),
           message: error?.message,
           status: error?.response?.status,
         });
@@ -5512,12 +5921,17 @@ export const processRecurringSubscriptions = onSchedule(
           lastBillingFailedAt: nowIso,
           updatedAt: nowIso,
         }, { merge: true });
+        await paymentRef.set({
+          status: 'failed',
+          lastBillingError: error?.message || 'recurring_payment_failed',
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
       }
     }
   }
 );
 
-// ===== 💳 KG이니시스 일반(단건) 1개월 이용권 검증 =====
+// ===== 💳 카카오페이 일반(단건) 1개월 이용권 검증 =====
 export const verifySinglePayment = onCall(
   { region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] },
   async (request) => {
@@ -5526,17 +5940,21 @@ export const verifySinglePayment = onCall(
     }
 
     const paymentId = request.data?.paymentId;
-    const requestedPlanRaw = request.data?.plan;
     const uid = request.auth.uid;
 
     if (!paymentId || typeof paymentId !== 'string') {
       throw new HttpsError('invalid-argument', 'paymentId가 필요합니다.');
     }
-    if (requestedPlanRaw !== 'basic' && requestedPlanRaw !== 'premium') {
-      throw new HttpsError('invalid-argument', 'plan 값이 올바르지 않습니다.');
+    const orderRef = getPaymentRequestRef(paymentId);
+    const orderSnap = await orderRef.get();
+    if (!orderSnap.exists || orderSnap.data()?.uid !== uid) {
+      throw new HttpsError('permission-denied', '결제 요청 정보를 찾을 수 없습니다.');
     }
-
-    const requestedPlan: 'basic' | 'premium' = requestedPlanRaw;
+    const orderData = orderSnap.data() || {};
+    if (orderData.paymentType !== 'one_time' || orderData.billingType !== 'single') {
+      throw new HttpsError('failed-precondition', '단건 결제 요청 정보가 올바르지 않습니다.');
+    }
+    const requestedPlan = assertPaidPlan(orderData.plan);
     const singleProduct = SINGLE_PAYMENT_REVIEW_PRODUCT.plans[requestedPlan];
 
     let payment: any;
@@ -5554,27 +5972,7 @@ export const verifySinglePayment = onCall(
       throw new HttpsError('failed-precondition', '결제가 완료되지 않았습니다.');
     }
 
-    const paidAmount = payment.amount?.total ?? payment.totalAmount;
-    if (paidAmount !== singleProduct.amount) {
-      logger.error('단건결제 금액 불일치:', {
-        paymentId,
-        plan: requestedPlan,
-        expected: singleProduct.amount,
-        actual: paidAmount,
-      });
-      throw new HttpsError('invalid-argument', '결제 금액이 올바르지 않습니다.');
-    }
-
-    const orderName = typeof payment.orderName === 'string' ? payment.orderName : '';
-    if (orderName && orderName !== singleProduct.orderName) {
-      logger.error('단건결제 상품명 불일치:', {
-        paymentId,
-        plan: requestedPlan,
-        expected: singleProduct.orderName,
-        actual: orderName,
-      });
-      throw new HttpsError('invalid-argument', '결제 상품명이 올바르지 않습니다.');
-    }
+    assertPaymentMatchesRequest(payment, orderData);
 
     const nowDate = new Date();
     const expiresDate = new Date(nowDate);
@@ -5582,13 +5980,18 @@ export const verifySinglePayment = onCall(
     const now = nowDate.toISOString();
     const expiresAt = admin.firestore.Timestamp.fromDate(expiresDate);
     const singlePaymentRef = db.doc(`paymentReviews/single/payments/${paymentId}`);
-    const existing = await singlePaymentRef.get();
-    if (existing.exists) {
-      return { success: true, alreadyProcessed: true };
-    }
+    let alreadyProcessed = false;
+    await db.runTransaction(async (tx) => {
+      const [freshOrder, existing] = await Promise.all([
+        tx.get(orderRef),
+        tx.get(singlePaymentRef),
+      ]);
+      if (existing.exists || freshOrder.data()?.status === 'processed') {
+        alreadyProcessed = true;
+        return;
+      }
 
-    await Promise.all([
-      db.doc(`users/${uid}/subscription/info`).set({
+      tx.set(db.doc(`users/${uid}/subscription/info`), {
         status: 'active',
         plan: requestedPlan,
         paymentType: 'one_time',
@@ -5601,11 +6004,11 @@ export const verifySinglePayment = onCall(
         nextBillingDate: null,
         lastPaymentId: paymentId,
         lastPaidAmount: singleProduct.amount,
-        payMethod: 'kg_inicis_card',
-        provider: 'kg_inicis',
+        payMethod: HARU_KAKAOPAY_PAY_METHOD,
+        provider: HARU_KAKAOPAY_PROVIDER,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      }, { merge: true }),
-      singlePaymentRef.set({
+      }, { merge: true });
+      tx.set(singlePaymentRef, {
         paymentId,
         orderName: singleProduct.orderName,
         amount: singleProduct.amount,
@@ -5617,20 +6020,243 @@ export const verifySinglePayment = onCall(
         plan: requestedPlan,
         uid,
         guestAllowed: false,
-        provider: 'kg_inicis',
+        provider: HARU_KAKAOPAY_PROVIDER,
+        payMethod: HARU_KAKAOPAY_PAY_METHOD,
+        paymentMethod: getPaymentMethodLabel(payment),
         grantResult: 'subscription_30days_granted',
         grantedUntil: expiresAt,
         createdAt: now,
         updatedAt: now,
-      }),
-    ]);
+      });
+      tx.set(orderRef, {
+        status: 'processed',
+        portoneStatus: payment.status,
+        paymentMethod: getPaymentMethodLabel(payment),
+        processedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    });
 
-    logger.info('✅ KG이니시스 단건 1개월 이용권 검증 완료 — uid: %s, plan: %s, paymentId: %s', uid, requestedPlan, paymentId);
+    if (alreadyProcessed) {
+      return { success: true, alreadyProcessed: true };
+    }
+
+    logger.info('✅ 카카오페이 단건 1개월 이용권 검증 완료 — uid: %s, plan: %s, paymentId: %s', uid, requestedPlan, maskPaymentId(paymentId));
     return {
       success: true,
       plan: requestedPlan,
       expiresAt: expiresDate.toISOString(),
     };
+  }
+);
+
+// ===== 💳 PortOne V2 결제 웹훅 (KakaoPay) =====
+export const portoneWebhook = onRequest(
+  { region: 'asia-northeast3', secrets: [PORTONE_API_SECRET, PORTONE_WEBHOOK_SECRET] },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).send('Method Not Allowed');
+      return;
+    }
+
+    const rawPayload = (req as any).rawBody?.toString('utf8')
+      || (typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {}));
+    let webhook: any;
+    try {
+      webhook = await PortOne.Webhook.verify(
+        PORTONE_WEBHOOK_SECRET.value().trim(),
+        rawPayload,
+        req.headers
+      );
+    } catch (error: any) {
+      logger.warn('PortOne 웹훅 서명 검증 실패:', { message: error?.message });
+      res.status(400).send('Invalid webhook signature');
+      return;
+    }
+
+    if (PortOne.Webhook.isUnrecognizedWebhook(webhook)) {
+      logger.info('PortOne 미인식 웹훅 수신:', { type: String(webhook.type) });
+      res.status(200).send('ok');
+      return;
+    }
+
+    const paymentId = webhook?.data?.paymentId;
+    const storeId = webhook?.data?.storeId;
+    if (!paymentId || typeof paymentId !== 'string') {
+      logger.info('PortOne 결제 ID 없는 웹훅 ACK:', { type: webhook?.type });
+      res.status(200).send('ok');
+      return;
+    }
+    if (storeId && storeId !== HARU_PORTONE_STORE_ID) {
+      logger.warn('PortOne 웹훅 상점 불일치:', { type: webhook?.type, paymentId: maskPaymentId(paymentId) });
+      res.status(400).send('Store mismatch');
+      return;
+    }
+
+    const eventId = getWebhookEventId(webhook, paymentId);
+    const eventRef = db.doc(`portoneWebhookEvents/${eventId}`);
+    const existingEvent = await eventRef.get();
+    if (existingEvent.data()?.processedAt) {
+      res.status(200).send('ok');
+      return;
+    }
+
+    let payment: any;
+    try {
+      payment = await fetchPortOnePaymentWithRetry(paymentId);
+    } catch (error: any) {
+      await eventRef.set({
+        eventId,
+        type: webhook.type,
+        paymentId,
+        storeId: storeId || null,
+        status: 'lookup_failed',
+        lookupError: getPortOneLookupError(error),
+        receivedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+      logger.error('PortOne 웹훅 결제 재조회 실패:', {
+        paymentId: maskPaymentId(paymentId),
+        ...getPortOneLookupError(error),
+      });
+      res.status(500).send('Payment lookup failed');
+      return;
+    }
+
+    const orderRef = getPaymentRequestRef(paymentId);
+    const orderSnap = await orderRef.get();
+    const orderData = orderSnap.data() || null;
+    const portoneStatus = typeof payment?.status === 'string' ? payment.status : 'UNKNOWN';
+
+    if (orderData) {
+      try {
+        assertPaymentMatchesRequest(payment, orderData);
+      } catch (error: any) {
+        await eventRef.set({
+          eventId,
+          type: webhook.type,
+          paymentId,
+          storeId,
+          portoneStatus,
+          status: 'validation_failed',
+          validationError: error?.message || 'payment_mismatch',
+          receivedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        logger.error('PortOne 웹훅 결제 검증 불일치:', {
+          paymentId: maskPaymentId(paymentId),
+          message: error?.message,
+        });
+        res.status(400).send('Payment mismatch');
+        return;
+      }
+    }
+
+    await db.runTransaction(async (tx) => {
+      const freshEvent = await tx.get(eventRef);
+      if (freshEvent.data()?.processedAt) return;
+      let freshOrderData = orderData;
+      let singlePaymentAlreadyExists = false;
+      const singlePaymentRef = db.doc(`paymentReviews/single/payments/${paymentId}`);
+      if (orderData) {
+        const freshOrder = await tx.get(orderRef);
+        freshOrderData = freshOrder.data() || null;
+        if (freshOrderData?.paymentType === 'one_time' && freshOrderData?.billingType === 'single') {
+          singlePaymentAlreadyExists = (await tx.get(singlePaymentRef)).exists;
+        }
+      }
+
+      tx.set(eventRef, {
+        eventId,
+        type: webhook.type,
+        paymentId,
+        storeId: storeId || null,
+        transactionId: webhook?.data?.transactionId || null,
+        portoneStatus,
+        paymentType: freshOrderData?.paymentType || null,
+        billingType: freshOrderData?.billingType || null,
+        receivedAt: admin.firestore.FieldValue.serverTimestamp(),
+        processedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+
+      if (freshOrderData) {
+        tx.set(orderRef, {
+          portoneStatus,
+          webhookType: webhook.type,
+          paymentMethod: getPaymentMethodLabel(payment),
+          webhookReceivedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+      }
+
+      if (freshOrderData?.paymentType === 'one_time' && freshOrderData?.billingType === 'single' && portoneStatus === 'PAID') {
+        const uid = freshOrderData.uid;
+        const plan = freshOrderData.plan === 'basic' ? 'basic' : freshOrderData.plan === 'premium' ? 'premium' : null;
+        if (!uid || !plan || freshOrderData.status === 'processed' || singlePaymentAlreadyExists) return;
+        const nowDate = new Date();
+        const expiresDate = new Date(nowDate);
+        expiresDate.setDate(expiresDate.getDate() + SINGLE_PAYMENT_REVIEW_PRODUCT.durationDays);
+        const expiresAt = admin.firestore.Timestamp.fromDate(expiresDate);
+
+        tx.set(db.doc(`users/${uid}/subscription/info`), {
+          status: 'active',
+          plan,
+          paymentType: 'one_time',
+          billingType: 'single',
+          autoRenew: false,
+          startDate: nowDate.toISOString(),
+          startedAt: admin.firestore.FieldValue.serverTimestamp(),
+          endDate: expiresDate.toISOString(),
+          expiresAt,
+          nextBillingDate: null,
+          lastPaymentId: paymentId,
+          lastPaidAmount: freshOrderData.amount,
+          payMethod: HARU_KAKAOPAY_PAY_METHOD,
+          provider: HARU_KAKAOPAY_PROVIDER,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        tx.set(singlePaymentRef, {
+          paymentId,
+          orderName: freshOrderData.orderName,
+          amount: freshOrderData.amount,
+          status: portoneStatus,
+          type: 'single_payment',
+          paymentType: 'one_time',
+          billingType: 'single',
+          durationDays: SINGLE_PAYMENT_REVIEW_PRODUCT.durationDays,
+          plan,
+          uid,
+          guestAllowed: false,
+          provider: HARU_KAKAOPAY_PROVIDER,
+          payMethod: HARU_KAKAOPAY_PAY_METHOD,
+          paymentMethod: getPaymentMethodLabel(payment),
+          grantResult: 'subscription_30days_granted',
+          grantedUntil: expiresAt,
+          createdAt: nowDate.toISOString(),
+          updatedAt: nowDate.toISOString(),
+        }, { merge: true });
+        tx.set(orderRef, {
+          status: 'processed',
+          processedBy: 'webhook',
+          processedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+      } else if (freshOrderData && isFinalFailedPaymentStatus(portoneStatus)) {
+        tx.set(orderRef, {
+          status: portoneStatus.toLowerCase(),
+          failedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+      }
+    });
+
+    logger.info('✅ PortOne 카카오페이 웹훅 처리 완료:', {
+      type: webhook.type,
+      paymentId: maskPaymentId(paymentId),
+      portoneStatus,
+    });
+    res.status(200).send('ok');
   }
 );
 

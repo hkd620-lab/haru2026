@@ -609,10 +609,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const handleSaveConsents = async (marketing: boolean) => {
-    if (!user?.uid) return;
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      setUser(null);
+      setNeedsConsent(false);
+      return;
+    }
+
     setIsSavingConsent(true);
     try {
-      const userRef = doc(db, 'users', user.uid);
+      const userRef = doc(db, 'users', currentUser.uid);
       await setDoc(
         userRef,
         {
@@ -633,7 +639,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // needsConsent 상태는 위 onSnapshot 리스너가 자동으로 갱신한다.
     } catch (error: any) {
       console.error('동의 저장 실패:', error);
-      alert('처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+      alert(
+        error?.code === 'permission-denied'
+          ? '로그인 상태 확인이 필요합니다. 로그아웃 후 다시 로그인해 주세요.'
+          : '처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+      );
     } finally {
       setIsSavingConsent(false);
     }
