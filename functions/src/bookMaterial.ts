@@ -12,16 +12,12 @@ import { defineSecret } from 'firebase-functions/params';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
+import { isInternalDeveloperUid } from './internalEntitlements';
 
 const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
 
 const BOOK_PROJECT_ID = 'book_haru2026_ai_platform';
 const BOOK_TITLE = '65세 할아버지, AI와 HARU2026 플랫폼을 만들다';
-
-// 프로젝트 전반에서 동일하게 사용되는 개발자 UID (bookStudio.ts / SayuPage / NovelStudio 와 일치)
-const DEVELOPER_UIDS: ReadonlySet<string> = new Set([
-  'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8',
-]);
 
 function safeString(v: unknown, max: number): string {
   if (typeof v !== 'string') return '';
@@ -90,7 +86,7 @@ export const convertToBookMaterial = onCall(
     const uid = request.auth.uid;
 
     // 2) 개발자 UID 화이트리스트 (Gemini 비용 + 사적 책 프로젝트 보호)
-    if (!DEVELOPER_UIDS.has(uid)) {
+    if (!isInternalDeveloperUid(uid)) {
       logger.warn('convertToBookMaterial: 비개발자 호출 차단', { uid });
       throw new HttpsError('permission-denied', '책소재 변환은 개발자 전용 기능입니다.');
     }

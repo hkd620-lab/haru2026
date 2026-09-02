@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.approveSubscriptionRefund = exports.rejectSubscriptionRefund = exports.listSubscriptionRefundRequests = exports.requestSubscriptionRefund = void 0;
+exports.approveSubscriptionRefund = exports.rejectSubscriptionRefund = exports.listSubscriptionRefundRequests = exports.requestSubscriptionRefund = exports.getSubscriptionRefundEligibility = void 0;
 exports.syncSubscriptionRefundFromPortOnePayment = syncSubscriptionRefundFromPortOnePayment;
 const https_1 = require("firebase-functions/v2/https");
 const admin = __importStar(require("firebase-admin"));
@@ -44,11 +44,12 @@ const logger = __importStar(require("firebase-functions/logger"));
 const axios_1 = __importDefault(require("axios"));
 const subscriptionRefundsCore_1 = require("./subscriptionRefundsCore");
 const subscriptionHelpers_1 = require("./subscriptionHelpers");
+const internalEntitlements_1 = require("./internalEntitlements");
 if (!admin.apps.length) {
     admin.initializeApp();
 }
 const db = admin.firestore();
-const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+const ADMIN_UID = internalEntitlements_1.INTERNAL_ADMIN_UID;
 const HARU_PORTONE_STORE_ID = 'store-d9310c4a-b5e8-4f6e-9e92-88e6b119e838';
 const REFUND_LIST_LIMIT = 50;
 function refundRequestRef(refundRequestId) {
@@ -276,6 +277,78 @@ async function syncSubscriptionRefundFromPortOnePayment(paymentId, payment, proc
         await markSubscriptionRefundedFromPayment(docSnap.id, paymentId, payment, processedBy);
     }
 }
+function getLinkedSubscriptionPaymentIds(subscriptionData) {
+    const ids = [
+        subscriptionData.lastPaymentId,
+        subscriptionData.paymentId,
+    ]
+        .filter((value) => typeof value === 'string' && value.trim().length > 0)
+        .map((value) => value.trim());
+    return [...new Set(ids)].slice(0, 3);
+}
+function publicRefundEligibilityPayment(paymentId, paymentData) {
+    return {
+        paymentId,
+        productName: paymentData.orderName || 'HARU2026 정기구독',
+        paidAmount: Number(paymentData.amount || 0),
+        paymentDate: toIso(paymentData.processedAt || paymentData.createdAt),
+        paymentType: paymentData.paymentType || null,
+        billingType: paymentData.billingType || null,
+    };
+}
+exports.getSubscriptionRefundEligibility = (0, https_1.onCall)({ region: 'asia-northeast3' }, async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    const subscriptionSnap = await db.doc(`users/${uid}/subscription/info`).get();
+    const linkedPaymentIds = getLinkedSubscriptionPaymentIds(subscriptionSnap.data() || {});
+    if (linkedPaymentIds.length === 0) {
+        return {
+            canRequest: false,
+            hasPaidPayment: false,
+            reason: 'no_linked_payment_id',
+            payment: null,
+        };
+    }
+    for (const paymentId of linkedPaymentIds) {
+        const paymentSnap = await paymentRequestRef(paymentId).get();
+        if (!paymentSnap.exists)
+            continue;
+        const paymentData = paymentSnap.data() || {};
+        if (paymentData.uid !== uid)
+            continue;
+        if (!(0, subscriptionRefundsCore_1.isPaidFirestoreSubscriptionPaymentRequest)(uid, paymentData)) {
+            return {
+                canRequest: false,
+                hasPaidPayment: false,
+                reason: 'not_paid_subscription_payment',
+                payment: null,
+            };
+        }
+        const payment = publicRefundEligibilityPayment(paymentId, paymentData);
+        if ((0, subscriptionRefundsCore_1.hasRefundRequestMarker)(paymentData)) {
+            return {
+                canRequest: false,
+                hasPaidPayment: true,
+                reason: 'refund_request_exists',
+                payment,
+            };
+        }
+        return {
+            canRequest: true,
+            hasPaidPayment: true,
+            reason: null,
+            payment,
+        };
+    }
+    return {
+        canRequest: false,
+        hasPaidPayment: false,
+        reason: 'no_paid_payment_request',
+        payment: null,
+    };
+});
 exports.requestSubscriptionRefund = (0, https_1.onCall)({ region: 'asia-northeast3', secrets: [subscriptionHelpers_1.PORTONE_API_SECRET] }, async (request) => {
     var _a, _b, _c, _d, _e;
     if (!request.auth) {

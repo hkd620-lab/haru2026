@@ -31,6 +31,7 @@ import {
   GrammarV2ValidationError,
   validateGrammarV2SemanticPayload,
 } from './grammarV2Validator';
+import { isInternalDeveloperUid } from '../internalEntitlements';
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -38,7 +39,6 @@ if (!admin.apps.length) {
 
 const GEMINI_API_KEY_SECRET = defineSecret('GEMINI_API_KEY');
 const OPENAI_API_KEY_SECRET = defineSecret('OPENAI_API_KEY');
-const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 const AI_USAGE_PLAN = 'beta';
 
 const GRAMMAR_V2_SEMANTIC_RESPONSE_SCHEMA = {
@@ -252,7 +252,7 @@ async function logGrammarV2Usage(params: {
     requestId: params.requestId,
     success: params.success,
     errorCode: params.errorCode,
-    isDev: params.uid === DEVELOPER_UID,
+    isDev: isInternalDeveloperUid(params.uid),
   });
 }
 
@@ -376,7 +376,7 @@ export const getGrammarExplainV2 = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
-    if (request.auth.uid !== DEVELOPER_UID) {
+    if (!isInternalDeveloperUid(request.auth.uid)) {
       throw new HttpsError('permission-denied', 'grammar-v2 pilot is developer-only.');
     }
 

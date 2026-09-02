@@ -18,6 +18,8 @@ import {
   getPaymentAmountTotal,
   getPortOneCancellableAmount,
   getRefundWebhookSyncAction,
+  hasRefundRequestMarker,
+  isPaidFirestoreSubscriptionPaymentRequest,
   isProcessingRefundStatus,
   normalizeRefundReasonCode,
   sanitizeRefundDescription,
@@ -27,13 +29,14 @@ import {
   type SubscriptionRefundStatus,
 } from './subscriptionRefundsCore';
 import { cancelSubscriptionForUid, revokeBillingKeyForUid, PORTONE_API_SECRET } from './subscriptionHelpers';
+import { INTERNAL_ADMIN_UID } from './internalEntitlements';
 
 if (!admin.apps.length) {
   admin.initializeApp();
 }
 
 const db = admin.firestore();
-const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+const ADMIN_UID = INTERNAL_ADMIN_UID;
 const HARU_PORTONE_STORE_ID = 'store-d9310c4a-b5e8-4f6e-9e92-88e6b119e838';
 const REFUND_LIST_LIMIT = 50;
 
@@ -296,6 +299,88 @@ export async function syncSubscriptionRefundFromPortOnePayment(paymentId: string
     await markSubscriptionRefundedFromPayment(docSnap.id, paymentId, payment, processedBy);
   }
 }
+
+function getLinkedSubscriptionPaymentIds(subscriptionData: Record<string, any>): string[] {
+  const ids = [
+    subscriptionData.lastPaymentId,
+    subscriptionData.paymentId,
+  ]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .map((value) => value.trim());
+  return [...new Set(ids)].slice(0, 3);
+}
+
+function publicRefundEligibilityPayment(paymentId: string, paymentData: Record<string, any>) {
+  return {
+    paymentId,
+    productName: paymentData.orderName || 'HARU2026 정기구독',
+    paidAmount: Number(paymentData.amount || 0),
+    paymentDate: toIso(paymentData.processedAt || paymentData.createdAt),
+    paymentType: paymentData.paymentType || null,
+    billingType: paymentData.billingType || null,
+  };
+}
+
+export const getSubscriptionRefundEligibility = onCall(
+  { region: 'asia-northeast3' },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const uid = request.auth.uid;
+    const subscriptionSnap = await db.doc(`users/${uid}/subscription/info`).get();
+    const linkedPaymentIds = getLinkedSubscriptionPaymentIds(subscriptionSnap.data() || {});
+    if (linkedPaymentIds.length === 0) {
+      return {
+        canRequest: false,
+        hasPaidPayment: false,
+        reason: 'no_linked_payment_id',
+        payment: null,
+      };
+    }
+
+    for (const paymentId of linkedPaymentIds) {
+      const paymentSnap = await paymentRequestRef(paymentId).get();
+      if (!paymentSnap.exists) continue;
+      const paymentData = paymentSnap.data() || {};
+      if (paymentData.uid !== uid) continue;
+
+      if (!isPaidFirestoreSubscriptionPaymentRequest(uid, paymentData)) {
+        return {
+          canRequest: false,
+          hasPaidPayment: false,
+          reason: 'not_paid_subscription_payment',
+          payment: null,
+        };
+      }
+
+      const payment = publicRefundEligibilityPayment(paymentId, paymentData);
+      if (hasRefundRequestMarker(paymentData)) {
+        return {
+          canRequest: false,
+          hasPaidPayment: true,
+          reason: 'refund_request_exists',
+          payment,
+        };
+      }
+
+      return {
+        canRequest: true,
+        hasPaidPayment: true,
+        reason: null,
+        payment,
+      };
+    }
+
+    return {
+      canRequest: false,
+      hasPaidPayment: false,
+      reason: 'no_paid_payment_request',
+      payment: null,
+    };
+  },
+);
 
 export const requestSubscriptionRefund = onCall(
   { region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] },

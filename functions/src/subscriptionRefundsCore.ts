@@ -131,6 +131,29 @@ export function assertSubscriptionChargePayment(paymentRequest: Record<string, a
   }
 }
 
+export function isPaidFirestoreSubscriptionPaymentRequest(
+  uid: string,
+  paymentRequest: Record<string, any>,
+): boolean {
+  if (!uid || paymentRequest.uid !== uid) return false;
+  try {
+    assertSubscriptionChargePayment(paymentRequest);
+  } catch {
+    return false;
+  }
+  const status = String(paymentRequest.status || '').toUpperCase();
+  const portoneStatus = String(paymentRequest.portoneStatus || '').toUpperCase();
+  const amount = Number(paymentRequest.amount || 0);
+  const paid = status === 'PAID' || (status === 'PROCESSED' && portoneStatus === 'PAID');
+  return paid
+    && Number.isFinite(amount)
+    && amount > 0;
+}
+
+export function hasRefundRequestMarker(paymentRequest: Record<string, any>): boolean {
+  return Boolean(paymentRequest.refundRequestId || paymentRequest.refundStatus);
+}
+
 export function getPaymentAmountTotal(payment: Record<string, any>): number {
   const total = Number(payment?.amount?.total ?? payment?.totalAmount ?? 0);
   return Number.isFinite(total) ? total : 0;

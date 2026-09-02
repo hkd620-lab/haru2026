@@ -9,6 +9,8 @@ exports.assertAdminUid = assertAdminUid;
 exports.assertRefundRequesterOwnsPayment = assertRefundRequesterOwnsPayment;
 exports.assertRefundRequestMatchesPaymentRequest = assertRefundRequestMatchesPaymentRequest;
 exports.assertSubscriptionChargePayment = assertSubscriptionChargePayment;
+exports.isPaidFirestoreSubscriptionPaymentRequest = isPaidFirestoreSubscriptionPaymentRequest;
+exports.hasRefundRequestMarker = hasRefundRequestMarker;
 exports.getPaymentAmountTotal = getPaymentAmountTotal;
 exports.getPortOneCancellableAmount = getPortOneCancellableAmount;
 exports.assertPortOnePaymentIdentityMatchesStoredRequest = assertPortOnePaymentIdentityMatchesStoredRequest;
@@ -100,6 +102,26 @@ function assertSubscriptionChargePayment(paymentRequest) {
         || (billingType !== 'initial_billing' && billingType !== 'recurring')) {
         throw new SubscriptionRefundPolicyError('not_subscription_payment', '정기구독 결제만 환불 요청할 수 있습니다.');
     }
+}
+function isPaidFirestoreSubscriptionPaymentRequest(uid, paymentRequest) {
+    if (!uid || paymentRequest.uid !== uid)
+        return false;
+    try {
+        assertSubscriptionChargePayment(paymentRequest);
+    }
+    catch {
+        return false;
+    }
+    const status = String(paymentRequest.status || '').toUpperCase();
+    const portoneStatus = String(paymentRequest.portoneStatus || '').toUpperCase();
+    const amount = Number(paymentRequest.amount || 0);
+    const paid = status === 'PAID' || (status === 'PROCESSED' && portoneStatus === 'PAID');
+    return paid
+        && Number.isFinite(amount)
+        && amount > 0;
+}
+function hasRefundRequestMarker(paymentRequest) {
+    return Boolean(paymentRequest.refundRequestId || paymentRequest.refundStatus);
 }
 function getPaymentAmountTotal(payment) {
     var _a, _b, _c;
