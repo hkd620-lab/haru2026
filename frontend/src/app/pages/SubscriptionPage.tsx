@@ -6,6 +6,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { BusinessInfoNotice } from '../components/BusinessInfoNotice';
 
 type PaidPlan = 'basic' | 'premium';
+type SubscriptionPaymentMethod = 'card' | 'kakaopay';
+type SubscriptionPaymentProvider = 'kg_inicis' | 'kakaopay';
+type SubscriptionBillingKeyMethod = 'CARD' | 'EASY_PAY';
 type BillingKeyResponse = {
   code?: string;
   message?: string;
@@ -18,6 +21,13 @@ type SubscriptionBillingRequestResult = {
   amount: number;
   currency: 'KRW';
   customData: Record<string, unknown>;
+};
+type SubscriptionPaymentMethodConfig = {
+  label: string;
+  description: string;
+  provider: SubscriptionPaymentProvider;
+  payMethod: string;
+  billingKeyMethod: SubscriptionBillingKeyMethod;
 };
 
 const PLANS: Record<PaidPlan, {
@@ -56,6 +66,31 @@ const PLANS: Record<PaidPlan, {
   },
 };
 
+const SUBSCRIPTION_PAYMENT_METHODS: Record<SubscriptionPaymentMethod, SubscriptionPaymentMethodConfig> = {
+  card: {
+    label: '신용·체크카드',
+    description: 'KG이니시스 카드 정기결제',
+    provider: 'kg_inicis',
+    payMethod: 'kg_inicis_card',
+    billingKeyMethod: 'CARD',
+  },
+  kakaopay: {
+    label: '카카오페이',
+    description: '카카오페이 간편 정기결제',
+    provider: 'kakaopay',
+    payMethod: 'kakaopay_easy_pay',
+    billingKeyMethod: 'EASY_PAY',
+  },
+};
+
+function getSubscriptionPaymentMethod(value: string | null): SubscriptionPaymentMethod | null {
+  return value === 'card' || value === 'kakaopay' ? value : null;
+}
+
+function createClientPortOneRequestId(prefix: string): string {
+  return `haru-${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export default function SubscriptionPage() {
   const { user, loading: authLoading } = useAuth();
   const [searchParams] = useSearchParams();
@@ -66,12 +101,17 @@ export default function SubscriptionPage() {
   const [phone, setPhone] = useState('');
   const [resultMessage, setResultMessage] = useState('');
   const [withdrawalConsent, setWithdrawalConsent] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<SubscriptionPaymentMethod>('card');
   const redirectProcessedRef = useRef(false);
 
   useEffect(() => {
     const plan = searchParams.get('plan');
     if (plan === 'basic' || plan === 'premium') {
       setSelectedPlan(plan);
+    }
+    const paymentMethod = getSubscriptionPaymentMethod(searchParams.get('method'));
+    if (paymentMethod) {
+      setSelectedPaymentMethod(paymentMethod);
     }
   }, [searchParams]);
 
@@ -86,21 +126,29 @@ export default function SubscriptionPage() {
     const redirectedCode = searchParams.get('code');
     const redirectedBillingKey = searchParams.get('billingKey');
     const redirectedIssueId = searchParams.get('issueId');
+    const redirectedPaymentMethod = getSubscriptionPaymentMethod(searchParams.get('method'))
+      || (redirectedIssueId ? 'kakaopay' : 'card');
     if (!redirectedCode && !redirectedBillingKey) return;
 
     redirectProcessedRef.current = true;
+    setSelectedPaymentMethod(redirectedPaymentMethod);
     if (redirectedCode) {
       alert(searchParams.get('message') || '카드 등록이 취소되었습니다.');
       return;
     }
 
-    if (!user || !redirectedBillingKey || !redirectedIssueId) {
+    if (!user || !redirectedBillingKey) {
       alert('정기결제 확인을 위해 로그인이 필요합니다.');
+      return;
+    }
+    if (redirectedPaymentMethod === 'kakaopay' && !redirectedIssueId) {
+      alert('카카오페이 정기결제 요청 정보를 찾을 수 없습니다.');
       return;
     }
 
     const planParam = searchParams.get('plan');
     const redirectedPlan: PaidPlan = planParam === 'basic' || planParam === 'premium' ? planParam : selectedPlan;
+    const paymentMethodConfig = SUBSCRIPTION_PAYMENT_METHODS[redirectedPaymentMethod];
     const functions = getFunctions(undefined, 'asia-northeast3');
     const subscribeWithBillingKey = httpsCallable(functions, 'subscribeWithBillingKey');
 
@@ -108,15 +156,16 @@ export default function SubscriptionPage() {
     subscribeWithBillingKey({
       billingKey: redirectedBillingKey,
       plan: redirectedPlan,
-      issueId: redirectedIssueId,
-      payMethod: 'kakaopay_easy_pay',
+      provider: paymentMethodConfig.provider,
+      payMethod: paymentMethodConfig.payMethod,
+      ...(redirectedPaymentMethod === 'kakaopay' ? { issueId: redirectedIssueId } : {}),
     })
       .then(() => {
-        setResultMessage(`${PLANS[redirectedPlan].orderName} 결제가 완료되었습니다. 설정 화면에서 구독 상태를 확인할 수 있습니다.`);
+        setResultMessage(`${PLANS[redirectedPlan].orderName} ${paymentMethodConfig.label} 결제가 완료되었습니다. 설정 화면에서 구독 상태를 확인할 수 있습니다.`);
         window.history.replaceState({}, '', '/subscription');
       })
       .catch((error: any) => {
-        console.error('카카오페이 정기결제 리다이렉트 처리 오류:', error);
+        console.error(`${paymentMethodConfig.label} 정기결제 리다이렉트 처리 오류:`, error);
         alert(error?.message || '정기결제 처리 중 오류가 발생했습니다.');
       })
       .finally(() => {
@@ -139,13 +188,6 @@ export default function SubscriptionPage() {
     setResultMessage('');
 
     try {
-      const kakaoPayChannelKey = import.meta.env.VITE_PORTONE_KAKAOPAY_BILLING_CHANNEL_KEY
-        || import.meta.env.VITE_PORTONE_KAKAOPAY_CHANNEL_KEY
-        || import.meta.env.VITE_PORTONE_CHANNEL_KEY;
-      if (!kakaoPayChannelKey) {
-        throw new Error('카카오페이 결제 채널 키가 설정되지 않았습니다.');
-      }
-
       const trimmedName = fullName.trim();
       if (!trimmedName) {
         alert('구매자 이름을 입력해 주세요.');
@@ -154,25 +196,64 @@ export default function SubscriptionPage() {
 
       const trimmedEmail = email.trim();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-        alert('카카오페이 정기결제는 구매자 이메일이 필수입니다.');
+        alert('정기결제는 구매자 이메일이 필수입니다.');
         return;
       }
 
       const normalizedPhone = phone.replace(/[^0-9]/g, '');
       if (normalizedPhone.length < 10) {
-        alert('카카오페이 정기결제는 구매자 휴대폰 번호가 필수입니다.');
+        alert('정기결제는 구매자 휴대폰 번호가 필수입니다.');
         return;
       }
 
       const functions = getFunctions(undefined, 'asia-northeast3');
-      const createSubscriptionBillingRequest = httpsCallable(functions, 'createSubscriptionBillingRequest');
-      const requestResult = await createSubscriptionBillingRequest({ plan: selectedPlan });
-      const billingRequest = requestResult.data as SubscriptionBillingRequestResult;
+      const subscribeWithBillingKey = httpsCallable(functions, 'subscribeWithBillingKey');
+      const paymentMethodConfig = SUBSCRIPTION_PAYMENT_METHODS[selectedPaymentMethod];
+      let billingRequest: SubscriptionBillingRequestResult;
+      let channelKey = '';
+
+      if (selectedPaymentMethod === 'kakaopay') {
+        channelKey = import.meta.env.VITE_PORTONE_KAKAOPAY_BILLING_CHANNEL_KEY
+          || import.meta.env.VITE_PORTONE_KAKAOPAY_CHANNEL_KEY
+          || import.meta.env.VITE_PORTONE_CHANNEL_KEY;
+        if (!channelKey) {
+          throw new Error('카카오페이 결제 채널 키가 설정되지 않았습니다.');
+        }
+
+        const createSubscriptionBillingRequest = httpsCallable(functions, 'createSubscriptionBillingRequest');
+        const requestResult = await createSubscriptionBillingRequest({
+          plan: selectedPlan,
+          provider: paymentMethodConfig.provider,
+        });
+        billingRequest = requestResult.data as SubscriptionBillingRequestResult;
+      } else {
+        channelKey = import.meta.env.VITE_PORTONE_INICIS_BILLING_CHANNEL_KEY
+          || import.meta.env.VITE_PORTONE_CHANNEL_KEY;
+        if (!channelKey) {
+          throw new Error('KG이니시스 카드 정기결제 채널 키가 설정되지 않았습니다.');
+        }
+
+        billingRequest = {
+          issueId: createClientPortOneRequestId('bk'),
+          storeId: import.meta.env.VITE_PORTONE_STORE_ID,
+          issueName: selected.orderName,
+          amount: selected.amount,
+          currency: 'KRW',
+          customData: {
+            uid: user.uid,
+            plan: selectedPlan,
+            provider: paymentMethodConfig.provider,
+            payMethod: paymentMethodConfig.payMethod,
+            paymentType: 'subscription',
+            billingType: 'billing_key_issue',
+          },
+        };
+      }
 
       const response = await (PortOne as any).requestIssueBillingKey({
         storeId: billingRequest.storeId,
-        channelKey: kakaoPayChannelKey,
-        billingKeyMethod: 'EASY_PAY',
+        channelKey,
+        billingKeyMethod: paymentMethodConfig.billingKeyMethod,
         displayAmount: billingRequest.amount,
         amount: {
           total: billingRequest.amount,
@@ -186,7 +267,9 @@ export default function SubscriptionPage() {
           phoneNumber: normalizedPhone,
         },
         customData: billingRequest.customData,
-        redirectUrl: `${window.location.origin}/subscription?plan=${selectedPlan}&issueId=${billingRequest.issueId}`,
+        redirectUrl: selectedPaymentMethod === 'kakaopay'
+          ? `${window.location.origin}/subscription?plan=${selectedPlan}&method=kakaopay&issueId=${billingRequest.issueId}`
+          : `${window.location.origin}/subscription?plan=${selectedPlan}&method=card`,
       }) as BillingKeyResponse;
 
       if (response?.code) {
@@ -199,15 +282,15 @@ export default function SubscriptionPage() {
         throw new Error('빌링키 발급 결과가 올바르지 않습니다.');
       }
 
-      const subscribeWithBillingKey = httpsCallable(functions, 'subscribeWithBillingKey');
       await subscribeWithBillingKey({
         billingKey,
         plan: selectedPlan,
-        issueId: billingRequest.issueId,
-        payMethod: 'kakaopay_easy_pay',
+        provider: paymentMethodConfig.provider,
+        payMethod: paymentMethodConfig.payMethod,
+        ...(selectedPaymentMethod === 'kakaopay' ? { issueId: billingRequest.issueId } : {}),
       });
 
-      setResultMessage(`${billingRequest.issueName} 결제가 완료되었습니다. 설정 화면에서 구독 상태를 확인할 수 있습니다.`);
+      setResultMessage(`${billingRequest.issueName} ${paymentMethodConfig.label} 결제가 완료되었습니다. 설정 화면에서 구독 상태를 확인할 수 있습니다.`);
 
     } catch (e: any) {
       console.error('결제 오류:', e);
@@ -219,6 +302,7 @@ export default function SubscriptionPage() {
   };
 
   const selected = PLANS[selectedPlan];
+  const selectedPaymentOption = SUBSCRIPTION_PAYMENT_METHODS[selectedPaymentMethod];
 
   if (!authLoading && !user) {
     return (
@@ -246,7 +330,7 @@ export default function SubscriptionPage() {
 
         <div className="text-center mb-4">
           <h1 className="text-2xl font-black text-[#1A3C6E] mb-1">HARU 구독 플랜</h1>
-          <p className="text-sm text-gray-500">1개월 구독 상품을 선택하고 카카오페이 정기결제를 진행합니다</p>
+          <p className="text-sm text-gray-500">1개월 구독 상품과 결제수단을 선택합니다</p>
         </div>
 
         <div
@@ -311,8 +395,41 @@ export default function SubscriptionPage() {
           })}
         </div>
 
+        <div className="bg-white rounded-2xl border border-gray-200 p-4 mb-4">
+          <p className="text-sm font-black text-[#1A3C6E] mb-3">결제수단 선택</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {(Object.keys(SUBSCRIPTION_PAYMENT_METHODS) as SubscriptionPaymentMethod[]).map((method) => {
+              const option = SUBSCRIPTION_PAYMENT_METHODS[method];
+              const isSelected = selectedPaymentMethod === method;
+              return (
+                <label
+                  key={method}
+                  htmlFor={`subscription-payment-method-${method}`}
+                  className={`rounded-xl border-2 px-4 py-3 cursor-pointer transition-all ${isSelected ? 'border-[#1A3C6E] bg-[#EEF4FF]' : 'border-gray-200 bg-white hover:border-[#1A3C6E]/40'}`}
+                >
+                  <input
+                    id={`subscription-payment-method-${method}`}
+                    type="radio"
+                    name="subscription-payment-method"
+                    value={method}
+                    checked={isSelected}
+                    onChange={() => setSelectedPaymentMethod(method)}
+                    disabled={loading}
+                    className="sr-only"
+                  />
+                  <span className="flex items-center gap-2 text-sm font-black text-[#1A3C6E]">
+                    <span aria-hidden="true">{isSelected ? '●' : '○'}</span>
+                    {option.label}
+                  </span>
+                  <span className="mt-1 block text-xs text-gray-500">{option.description}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
         <p className="text-center text-xs mb-3" style={{ color: '#10b981' }}>
-          선택 상품: {selected.orderName} · {selected.priceLabel}/월 · 부가세 포함 · 카카오페이 정기결제 완료 후 즉시 이용 가능
+          선택 상품: {selected.orderName} · {selected.priceLabel}/월 · 부가세 포함 · {selectedPaymentOption.label} 정기결제 완료 후 즉시 이용 가능
         </p>
 
         <div className="bg-white rounded-2xl border border-gray-200 p-4 mb-4 space-y-3">
@@ -386,7 +503,7 @@ export default function SubscriptionPage() {
           disabled={loading || authLoading || !withdrawalConsent}
           className="w-full bg-[#1A3C6E] hover:bg-[#142f57] text-white font-black text-base py-4 rounded-2xl transition-colors disabled:opacity-50 mb-3"
         >
-          {loading ? '결제 처리 중...' : `${selected.title} 1개월 정기결제창 열기`}
+          {loading ? '결제 처리 중...' : `${selected.title} 1개월 ${selectedPaymentOption.label} 결제창 열기`}
         </button>
 
         {resultMessage && (
