@@ -14,6 +14,8 @@ const {
   getApproveRefundRecoveryAction,
   getPortOneCancellableAmount,
   getRefundWebhookSyncAction,
+  hasRefundRequestMarker,
+  isPaidFirestoreSubscriptionPaymentRequest,
   isProcessingRefundStatus,
   shouldMarkRefundedFromPortOne,
 } = require('../lib/subscriptionRefundsCore');
@@ -65,6 +67,31 @@ function run() {
     () => assertSubscriptionChargePayment({ ...paymentRequest, uid: 'user-a', paymentType: 'one_time', billingType: 'single' }),
     'not_subscription_payment',
   );
+  assert.equal(isPaidFirestoreSubscriptionPaymentRequest('user-a', {
+    ...paymentRequest,
+    status: 'processed',
+    portoneStatus: 'PAID',
+  }), true);
+  assert.equal(isPaidFirestoreSubscriptionPaymentRequest('user-a', {
+    ...paymentRequest,
+    status: 'processed',
+    portoneStatus: 'READY',
+  }), false);
+  assert.equal(isPaidFirestoreSubscriptionPaymentRequest('user-a', {
+    ...paymentRequest,
+    paymentType: 'one_time',
+    billingType: 'single',
+    status: 'processed',
+    portoneStatus: 'PAID',
+  }), false);
+  assert.equal(isPaidFirestoreSubscriptionPaymentRequest('user-b', {
+    ...paymentRequest,
+    status: 'processed',
+    portoneStatus: 'PAID',
+  }), false);
+  assert.equal(hasRefundRequestMarker({ ...paymentRequest }), false);
+  assert.equal(hasRefundRequestMarker({ ...paymentRequest, refundStatus: 'requested' }), true);
+  assert.equal(hasRefundRequestMarker({ ...paymentRequest, refundRequestId: 'subscription_payment_123' }), true);
 
   assertPortOnePaymentMatchesStoredRequest(paidPayment, paymentRequest, STORE_ID);
   expectPolicyError(

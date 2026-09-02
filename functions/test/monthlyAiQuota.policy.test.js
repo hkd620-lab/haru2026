@@ -5,8 +5,10 @@ const {
   getKstMonthKey,
   normalizeMonthlyAiPlan,
   previewMonthlyAiQuotaReservation,
+  resolveMonthlyAiPlanFromSubscriptionData,
   sanitizeMonthlyAiFeatureKey,
 } = require('../lib/utils/monthlyAiQuota');
+const { INTERNAL_ADMIN_UID } = require('../lib/internalEntitlements');
 
 function assertBoundary(plan, seedUsed, limit) {
   const beforeLast = previewMonthlyAiQuotaReservation({ usedCount: seedUsed }, plan, '2026-08');
@@ -23,6 +25,7 @@ function assertBoundary(plan, seedUsed, limit) {
 assertBoundary('free', 9, 10);
 assertBoundary('basic', 99, 100);
 assertBoundary('premium', 299, 300);
+assertBoundary('developer', 299, 300);
 
 let used = 0;
 for (const count of [3, 2, 2]) {
@@ -63,11 +66,28 @@ assert.deepStrictEqual(buildMonthlyAiQuotaStatus('basic', 10, '2026-08'), {
   freeLimit: 10,
   basicLimit: 100,
   premiumLimit: 300,
+  developerLimit: 300,
 });
 
 assert.strictEqual(normalizeMonthlyAiPlan('PREMIUM'), 'premium');
 assert.strictEqual(normalizeMonthlyAiPlan('basic'), 'basic');
 assert.strictEqual(normalizeMonthlyAiPlan('developer'), 'free');
+assert.strictEqual(resolveMonthlyAiPlanFromSubscriptionData(INTERNAL_ADMIN_UID, undefined), 'developer');
+assert.strictEqual(resolveMonthlyAiPlanFromSubscriptionData(INTERNAL_ADMIN_UID, {
+  plan: 'premium',
+  status: 'cancelled',
+  endDate: '2020-01-01T00:00:00.000Z',
+}), 'developer');
+assert.strictEqual(resolveMonthlyAiPlanFromSubscriptionData('normal-user', {
+  plan: 'premium',
+  status: 'cancelled',
+  endDate: '2020-01-01T00:00:00.000Z',
+}), 'free');
+assert.strictEqual(resolveMonthlyAiPlanFromSubscriptionData('normal-user', {
+  plan: 'basic',
+  status: 'active',
+  endDate: '2099-01-01T00:00:00.000Z',
+}), 'basic');
 assert.strictEqual(sanitizeMonthlyAiFeatureKey('bad/key.name'), 'bad_key_name');
 
 console.log('monthly AI quota policy tests passed');

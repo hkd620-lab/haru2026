@@ -1,4 +1,6 @@
 export type PlanType = 'free' | 'basic' | 'premium';
+export type EntitlementPlanType = PlanType | 'developer';
+export type SubscriptionEntitlementSource = 'none' | 'developer_grant' | 'paid_subscription';
 
 export interface SubscriptionInfo {
   plan: PlanType;
@@ -16,6 +18,13 @@ export interface SubscriptionInfo {
   lastPaidAmount?: number | null;
   hasPaidServiceUsage?: boolean;
   updatedAt: string;
+}
+
+export interface SubscriptionEntitlement {
+  plan: EntitlementPlanType;
+  source: SubscriptionEntitlementSource;
+  hasDeveloperGrant: boolean;
+  hasPaidAccess: boolean;
 }
 
 export const DEFAULT_SUBSCRIPTION: SubscriptionInfo = {

@@ -3,6 +3,7 @@ import { defineSecret } from 'firebase-functions/params';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as logger from 'firebase-functions/logger';
 import * as admin from 'firebase-admin';
+import { isInternalDeveloperUid } from './internalEntitlements';
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -10,9 +11,6 @@ if (!admin.apps.length) {
 
 const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
 const db = admin.firestore();
-const DEVELOPER_UIDS = new Set([
-  'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8',
-]);
 // 현재 1차 운영값입니다. HARU 공식 최종 AI 정책 확정값이 아니며 한 곳에서 조정합니다.
 const CURRENT_CLAIM_REASON_DAILY_LIMITS: Record<'free' | 'basic' | 'premium', number> = {
   free: 1,
@@ -40,7 +38,7 @@ function getKstDateKey(): string {
 }
 
 async function getUserPlan(uid: string): Promise<'free' | 'basic' | 'premium'> {
-  if (DEVELOPER_UIDS.has(uid)) return 'premium';
+  if (isInternalDeveloperUid(uid)) return 'premium';
 
   try {
     const snap = await db.doc(`users/${uid}/subscription/info`).get();
@@ -80,7 +78,7 @@ async function enforceClaimReasonDailyLimit(uid: string): Promise<{
     const snap = await tx.get(usageRef);
     const used = Number(snap.data()?.count || 0);
 
-    if (!DEVELOPER_UIDS.has(uid) && used >= limit) {
+    if (!isInternalDeveloperUid(uid) && used >= limit) {
       throw new HttpsError(
         'resource-exhausted',
         `청구원인 AI 초안은 오늘 ${limit}회까지 사용할 수 있습니다.`,

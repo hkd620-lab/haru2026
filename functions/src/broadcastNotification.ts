@@ -1,5 +1,6 @@
 import * as admin from 'firebase-admin';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { isInternalAdminUid } from './internalEntitlements';
 
 const db = admin.firestore();
 
@@ -7,10 +8,7 @@ export const sendBroadcastNotification = onCall(
   { region: 'asia-northeast3' },
   async (request) => {
     try {
-      // 관리자 확인 (허 교장님 UID만 허용)
-      const adminUid = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8'; // 나중에 실제 UID로 교체
-      
-      if (!request.auth || request.auth.uid !== adminUid) {
+      if (!isInternalAdminUid(request.auth?.uid)) {
         throw new HttpsError('permission-denied', '관리자만 사용할 수 있습니다.');
       }
 

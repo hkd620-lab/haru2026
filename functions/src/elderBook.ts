@@ -10,10 +10,9 @@ import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 import OpenAI from "openai";
+import { isInternalDeveloperUid } from "./internalEntitlements";
 
 const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
-
-const DEVELOPER_UID = "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
 const ELDER_BOOK_ID = "book_haru2026_ai_platform";
 const BOOK_PROJECT_ID = "book_haru2026_ai_platform";
 const BOOK_TITLE = "65세 할아버지, AI와 HARU2026 플랫폼을 만들다";
@@ -29,7 +28,7 @@ type GatheredSource = {
 };
 
 function assertDeveloper(request: any) {
-  if (!request.auth || request.auth.uid !== DEVELOPER_UID) {
+  if (!isInternalDeveloperUid(request.auth?.uid)) {
     throw new HttpsError("permission-denied", "권한 없음 (개발자 전용)");
   }
 }

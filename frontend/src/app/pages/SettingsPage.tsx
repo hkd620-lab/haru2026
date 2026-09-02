@@ -10,6 +10,10 @@ import { collection, doc, getDoc, limit, onSnapshot, orderBy, query, setDoc, whe
 import { db } from '../config/firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useSubscription } from '../hooks/useSubscription';
+import {
+  canRequestSubscriptionRefundFromPolicy,
+  resolveSubscriptionDisplay,
+} from '../utils/subscriptionDisplay';
 import GrammarDashboard from './GrammarDashboard';
 import { BUSINESS_INFO, BUSINESS_INFO_TEXT } from '../components/BusinessInfoNotice';
 
@@ -29,6 +33,22 @@ interface UserRefundRequest {
   reasonLabel?: string;
   publicMessage?: string;
   createdAt?: { toDate?: () => Date } | string | null;
+}
+
+interface SubscriptionRefundEligibilityPayment {
+  paymentId: string;
+  productName?: string | null;
+  paidAmount?: number | null;
+  paymentDate?: string | null;
+  paymentType?: string | null;
+  billingType?: string | null;
+}
+
+interface SubscriptionRefundEligibility {
+  canRequest: boolean;
+  hasPaidPayment: boolean;
+  reason?: string | null;
+  payment?: SubscriptionRefundEligibilityPayment | null;
 }
 
 const REFUND_REASON_OPTIONS: { value: RefundReasonCode; label: string }[] = [
@@ -69,13 +89,19 @@ function formatDateLabel(value: unknown): string {
 export function SettingsPage() {
   const { user, signOut, linkEmailPassword } = useAuth();
   const { isDark, toggleTheme } = useTheme();
-  const { subscription, loading: subscriptionLoading } = useSubscription();
+  const {
+    actualSubscription,
+    entitlement,
+    loading: subscriptionLoading,
+  } = useSubscription();
   const navigate = useNavigate();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
   const [isExportingText, setIsExportingText] = useState(false);
   const [isCancellingSubscription, setIsCancellingSubscription] = useState(false);
   const [refundRequests, setRefundRequests] = useState<UserRefundRequest[]>([]);
+  const [refundEligibility, setRefundEligibility] = useState<SubscriptionRefundEligibility | null>(null);
+  const [isLoadingRefundEligibility, setIsLoadingRefundEligibility] = useState(false);
   const [refundReasonCode, setRefundReasonCode] = useState<RefundReasonCode>('unused_within_7_days');
   const [refundDescription, setRefundDescription] = useState('');
   const [refundPolicyAgreed, setRefundPolicyAgreed] = useState(false);
@@ -130,35 +156,28 @@ export function SettingsPage() {
   const isDevUser = user?.email?.toLowerCase() === 'hkd620@gmail.com';
   const hasEmailPasswordLogin = Boolean(user?.providerIds?.includes('password'));
   const canAddEmailPasswordLogin = Boolean(user?.email && !user.email.endsWith('@placeholder.local') && !hasEmailPasswordLogin);
-  const hasPaidSubscription = subscription.plan === 'basic' || subscription.plan === 'premium';
-  const canCancelSubscription = hasPaidSubscription && subscription.status === 'active';
-  const subscriptionPlanLabel = subscription.plan === 'basic'
-    ? '베이직'
-    : subscription.plan === 'premium'
-      ? '프리미엄'
-      : '무료';
-  const subscriptionStatusLabel = subscription.status === 'active'
-    ? '이용 중'
-    : subscription.status === 'cancelled'
-      ? '해지 예약됨'
-      : '미구독';
-  const subscriptionPaymentId = subscription.lastPaymentId || subscription.paymentId || null;
-  const subscriptionPaidAmount = typeof subscription.lastPaidAmount === 'number'
-    ? subscription.lastPaidAmount
-    : subscription.plan === 'basic'
-      ? 4000
-      : subscription.plan === 'premium'
-        ? 6000
-        : null;
+  const refundPayment = refundEligibility?.payment || null;
+  const subscriptionDisplay = resolveSubscriptionDisplay(actualSubscription, entitlement, {
+    hasPaidPayment: Boolean(refundEligibility?.hasPaidPayment),
+    paidAmount: refundPayment?.paidAmount,
+  });
+  const hasActualPaidSubscription = actualSubscription.plan === 'basic' || actualSubscription.plan === 'premium';
+  const canCancelSubscription = hasActualPaidSubscription && actualSubscription.status === 'active';
+  const subscriptionPlanLabel = subscriptionDisplay.planLabel;
+  const subscriptionStatusLabel = subscriptionDisplay.statusLabel;
+  const subscriptionPaymentId = refundEligibility?.canRequest && refundPayment?.paymentId
+    ? refundPayment.paymentId
+    : null;
   const latestRefundRequest = refundRequests[0] || null;
   const processingRefundRequest = refundRequests.find((item) => REFUND_ACTIVE_STATUSES.has(item.status));
-  const canRequestSubscriptionRefund = Boolean(subscriptionPaymentId)
-    && hasPaidSubscription
-    && subscription.paymentType !== 'one_time'
-    && !processingRefundRequest
-    && latestRefundRequest?.status !== 'refunded';
-  const subscriptionEndLabel = subscription.endDate
-    ? new Date(subscription.endDate).toLocaleDateString('ko-KR')
+  const canRequestSubscriptionRefund = canRequestSubscriptionRefundFromPolicy({
+    eligibilityCanRequest: refundEligibility?.canRequest === true,
+    hasPaymentId: Boolean(subscriptionPaymentId),
+    hasProcessingRefundRequest: Boolean(processingRefundRequest),
+    latestRefundStatus: latestRefundRequest?.status,
+  });
+  const subscriptionEndLabel = actualSubscription.endDate
+    ? new Date(actualSubscription.endDate).toLocaleDateString('ko-KR')
     : null;
 
   useEffect(() => {
@@ -198,6 +217,37 @@ export function SettingsPage() {
       setRefundRequests([]);
     });
     return unsubscribe;
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setRefundEligibility(null);
+      return;
+    }
+
+    let cancelled = false;
+    const loadRefundEligibility = async () => {
+      setIsLoadingRefundEligibility(true);
+      try {
+        const functions = getFunctions(undefined, 'asia-northeast3');
+        const callable = httpsCallable<void, SubscriptionRefundEligibility>(
+          functions,
+          'getSubscriptionRefundEligibility',
+        );
+        const result = await callable();
+        if (!cancelled) setRefundEligibility(result.data);
+      } catch (error) {
+        console.warn('환불 가능 결제 확인 실패:', error);
+        if (!cancelled) setRefundEligibility(null);
+      } finally {
+        if (!cancelled) setIsLoadingRefundEligibility(false);
+      }
+    };
+
+    void loadRefundEligibility();
+    return () => {
+      cancelled = true;
+    };
   }, [user?.uid]);
 
   const loadProfileAge = async () => {
@@ -812,25 +862,35 @@ export function SettingsPage() {
                   <div>
                     <p style={{ color: '#999' }}>결제일</p>
                     <p className="mt-0.5" style={{ color: '#333', fontWeight: 700 }}>
-                      {formatDateLabel(latestRefundRequest?.paymentDate || subscription.startDate)}
+                      {formatDateLabel(latestRefundRequest?.paymentDate || refundPayment?.paymentDate)}
                     </p>
                   </div>
                   <div>
                     <p style={{ color: '#999' }}>상품명</p>
                     <p className="mt-0.5" style={{ color: '#333', fontWeight: 700 }}>
-                      {latestRefundRequest?.productName || `${subscriptionPlanLabel} 정기구독`}
+                      {latestRefundRequest?.productName
+                        || refundPayment?.productName
+                        || (subscriptionDisplay.isDeveloperGrant ? '개발자 우대 플랜' : `${subscriptionPlanLabel} 정기구독`)}
                     </p>
                   </div>
                   <div>
                     <p style={{ color: '#999' }}>결제금액</p>
                     <p className="mt-0.5" style={{ color: '#333', fontWeight: 700 }}>
-                      {formatWon(latestRefundRequest?.paidAmount || subscriptionPaidAmount)}
+                      {latestRefundRequest
+                        ? formatWon(latestRefundRequest.paidAmount)
+                        : subscriptionDisplay.amountLabel}
                     </p>
                   </div>
                   <div>
                     <p style={{ color: '#999' }}>환불 가능 예상금액</p>
                     <p className="mt-0.5" style={{ color: '#333', fontWeight: 700 }}>
-                      {latestRefundRequest ? formatWon(latestRefundRequest.refundableAmount) : '서버 검증 후 산정'}
+                      {latestRefundRequest
+                        ? formatWon(latestRefundRequest.refundableAmount)
+                        : isLoadingRefundEligibility
+                          ? '확인 중'
+                          : refundEligibility?.canRequest
+                            ? '서버 검증 후 산정'
+                            : '환불 가능 결제 없음'}
                     </p>
                   </div>
                   <div>
@@ -842,7 +902,11 @@ export function SettingsPage() {
                   <div>
                     <p style={{ color: '#999' }}>처리 상태</p>
                     <p className="mt-0.5" style={{ color: '#333', fontWeight: 700 }}>
-                      {latestRefundRequest ? REFUND_STATUS_LABELS[latestRefundRequest.status] : '요청 없음'}
+                      {latestRefundRequest
+                        ? REFUND_STATUS_LABELS[latestRefundRequest.status]
+                        : isLoadingRefundEligibility
+                          ? '결제 확인 중'
+                          : '요청 없음'}
                     </p>
                   </div>
                 </div>
@@ -942,7 +1006,7 @@ export function SettingsPage() {
                 )}
               </div>
 
-              {subscription.status === 'cancelled' && (
+              {actualSubscription.status === 'cancelled' && (
                 <p className="text-xs leading-relaxed" style={{ color: '#999' }}>
                   구독 해지가 예약되어 다음 결제는 진행되지 않습니다.
                 </p>

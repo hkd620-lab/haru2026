@@ -3,10 +3,9 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import OpenAI from "openai";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
+import { isInternalDeveloperUid } from "./internalEntitlements";
 
 const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
-
-const DEVELOPER_UID = "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
 
 interface Source {
   sourceTitle: string;
@@ -83,9 +82,10 @@ export const generateBook = onCall(
   },
   async (request) => {
     // 개발자 UID 체크
-    if (!request.auth || request.auth.uid !== DEVELOPER_UID) {
+    if (!isInternalDeveloperUid(request.auth?.uid)) {
       throw new HttpsError("permission-denied", "권한 없음");
     }
+    const uid = request.auth!.uid;
 
     const { title, sources, authorUid, existingBookId, style, length } = request.data as {
       title: string;
@@ -118,7 +118,7 @@ export const generateBook = onCall(
       await bookRef.set({
         bookId: bookRef.id,
         title,
-        authorUid: authorUid || request.auth.uid,
+        authorUid: authorUid || uid,
         status: "draft",
         coverColor: "#1A3C6E",
         totalChapters: 0,
@@ -285,7 +285,7 @@ export const suggestChapterTitle = onCall(
     timeoutSeconds: 120,
   },
   async (request) => {
-    if (!request.auth || request.auth.uid !== DEVELOPER_UID) {
+    if (!isInternalDeveloperUid(request.auth?.uid)) {
       throw new HttpsError("permission-denied", "권한 없음");
     }
 
