@@ -58,7 +58,7 @@ function formatDate(value?: string | null): string {
 }
 
 function canApprove(status: RefundStatus): boolean {
-  return status === 'requested' || status === 'reviewing' || status === 'approved' || status === 'failed';
+  return status === 'requested' || status === 'reviewing' || status === 'approved' || status === 'refunding' || status === 'failed';
 }
 
 function canReject(status: RefundStatus): boolean {

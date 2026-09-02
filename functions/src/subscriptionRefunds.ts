@@ -6,13 +6,18 @@ import {
   SUBSCRIPTION_REFUND_REASON_LABELS,
   assertAdminUid,
   assertNoDuplicateRefundRequest,
+  assertPortOnePaymentIdentityMatchesStoredRequest,
   assertPortOnePaymentMatchesStoredRequest,
   assertRefundRequestWindow,
+  assertRefundRequestMatchesPaymentRequest,
   assertRefundRequesterOwnsPayment,
   assertSubscriptionChargePayment,
+  createPortOneRefundIdempotencyKey,
   estimateSubscriptionRefundAmount,
+  getApproveRefundRecoveryAction,
   getPaymentAmountTotal,
   getPortOneCancellableAmount,
+  getRefundWebhookSyncAction,
   isProcessingRefundStatus,
   normalizeRefundReasonCode,
   sanitizeRefundDescription,
@@ -66,12 +71,31 @@ function toIso(value: any): string | null {
   return Number.isFinite(millis) ? new Date(millis).toISOString() : null;
 }
 
+function firstFiniteMillis(...values: any[]): number {
+  for (const value of values) {
+    const millis = toMillis(value);
+    if (Number.isFinite(millis) && millis > 0) return millis;
+  }
+  return Number.NaN;
+}
+
 function getPaidAtMillis(payment: any, paymentRequest: Record<string, any>): number {
-  return toMillis(payment?.paidAt)
-    || toMillis(payment?.statusChangedAt)
-    || toMillis(paymentRequest?.paidAt)
-    || toMillis(paymentRequest?.processedAt)
-    || toMillis(paymentRequest?.createdAt);
+  return firstFiniteMillis(
+    payment?.paidAt,
+    payment?.statusChangedAt,
+    paymentRequest?.paidAt,
+    paymentRequest?.processedAt,
+    paymentRequest?.createdAt,
+  );
+}
+
+function getRefundingStartedAtMillis(refundData: Record<string, any>): number {
+  return firstFiniteMillis(
+    refundData.refundingStartedAtIso,
+    refundData.refundingStartedAt,
+    refundData.approvedAt,
+    refundData.updatedAt,
+  );
 }
 
 function safePortOneError(error: any): string {
@@ -136,7 +160,7 @@ async function cancelPortOnePayment(paymentId: string, refundRequestId: string, 
     {
       headers: {
         Authorization: `PortOne ${PORTONE_API_SECRET.value().trim()}`,
-        'Idempotency-Key': `subscription-refund-${refundRequestId}`,
+        'Idempotency-Key': createPortOneRefundIdempotencyKey(refundRequestId),
       },
     },
   );
@@ -257,7 +281,7 @@ async function markSubscriptionRefundedFromPayment(
 export async function syncSubscriptionRefundFromPortOnePayment(paymentId: string, payment: any, processedBy = 'webhook'): Promise<void> {
   const directRef = refundRequestRef(`subscription_${paymentId}`);
   const directSnap = await directRef.get();
-  if (directSnap.exists) {
+  if (getRefundWebhookSyncAction(directSnap.exists, 0) === 'sync_direct') {
     await markSubscriptionRefundedFromPayment(directSnap.id, paymentId, payment, processedBy);
     return;
   }
@@ -267,6 +291,7 @@ export async function syncSubscriptionRefundFromPortOnePayment(paymentId: string
     .where('paymentId', '==', paymentId)
     .limit(5)
     .get();
+  if (getRefundWebhookSyncAction(false, snap.size) === 'ignore_orphan') return;
   for (const docSnap of snap.docs) {
     await markSubscriptionRefundedFromPayment(docSnap.id, paymentId, payment, processedBy);
   }
@@ -301,7 +326,7 @@ export const requestSubscriptionRefund = onCall(
       assertSubscriptionChargePayment(orderData);
 
       const payment = await fetchPortOnePaymentWithRetry(paymentId);
-      assertPortOnePaymentMatchesStoredRequest(payment, orderData, HARU_PORTONE_STORE_ID);
+      assertPortOnePaymentMatchesStoredRequest(payment, orderData, HARU_PORTONE_STORE_ID, { allowPartialCancelled: true });
 
       const paidAtMs = getPaidAtMillis(payment, orderData);
       assertRefundRequestWindow(paidAtMs, Date.now(), reasonCode);
@@ -528,9 +553,6 @@ export const approveSubscriptionRefund = onCall(
       if (requestData.status === 'refunded') {
         return { success: true, alreadyProcessed: true };
       }
-      if (requestData.status === 'refunding') {
-        return { success: true, alreadyProcessing: true };
-      }
       if (requestData.status === 'rejected') {
         throw new HttpsError('failed-precondition', '반려된 요청은 승인할 수 없습니다.');
       }
@@ -542,19 +564,45 @@ export const approveSubscriptionRefund = onCall(
       }
       const orderData = orderSnap.data() || {};
       assertSubscriptionChargePayment(orderData);
+      assertRefundRequestMatchesPaymentRequest(requestData, orderData);
 
       const payment = await fetchPortOnePaymentWithRetry(paymentId);
-      assertPortOnePaymentMatchesStoredRequest(payment, orderData, HARU_PORTONE_STORE_ID);
+      assertPortOnePaymentIdentityMatchesStoredRequest(payment, orderData, HARU_PORTONE_STORE_ID);
+      const recoveryAction = getApproveRefundRecoveryAction(
+        requestData.status,
+        payment,
+        Number(requestData.refundableAmount || requestData.requestedRefundAmount || requestData.paidAmount || 0),
+        getRefundingStartedAtMillis(requestData),
+        Date.now(),
+      );
+      if (recoveryAction === 'already_processed') {
+        return { success: true, alreadyProcessed: true };
+      }
+      if (recoveryAction === 'sync_refunded') {
+        const synced = await markSubscriptionRefundedFromPayment(refundRequestId, paymentId, payment, request.auth?.uid || 'admin');
+        return { success: true, status: synced ? 'refunded' : 'refunding', recovered: synced };
+      }
+      if (recoveryAction === 'already_processing') {
+        return { success: true, alreadyProcessing: true };
+      }
+      if (recoveryAction === 'blocked') {
+        throw new HttpsError('failed-precondition', '반려된 요청은 승인할 수 없습니다.');
+      }
+
+      assertPortOnePaymentMatchesStoredRequest(payment, orderData, HARU_PORTONE_STORE_ID, { allowPartialCancelled: true });
       const cancellableAmount = getPortOneCancellableAmount(payment);
       if (cancellableAmount <= 0) {
         throw new SubscriptionRefundPolicyError('already_refunded', '이미 전액 환불된 결제입니다.');
       }
 
+      const allowRetryFromRefunding = requestData.status === 'refunding'
+        && recoveryAction === 'retry_cancel';
+      const nowIso = new Date().toISOString();
       const locked = await db.runTransaction(async (tx) => {
         const fresh = await tx.get(requestRef);
         const freshData = fresh.data() || {};
         if (freshData.status === 'refunded') return false;
-        if (freshData.status === 'refunding') return false;
+        if (freshData.status === 'refunding' && !allowRetryFromRefunding) return false;
         if (freshData.status === 'rejected') {
           throw new HttpsError('failed-precondition', '반려된 요청은 승인할 수 없습니다.');
         }
@@ -562,6 +610,11 @@ export const approveSubscriptionRefund = onCall(
           status: 'refunding',
           approvedBy: request.auth?.uid,
           approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+          refundingStartedAt: admin.firestore.FieldValue.serverTimestamp(),
+          refundingStartedAtIso: nowIso,
+          refundingLastAttemptAt: admin.firestore.FieldValue.serverTimestamp(),
+          refundingLastAttemptAtIso: nowIso,
+          refundingAttemptCount: admin.firestore.FieldValue.increment(1),
           reviewedAt: admin.firestore.FieldValue.serverTimestamp(),
           refundableAmount: cancellableAmount,
           publicMessage: '환불 승인 후 결제 취소를 처리하고 있습니다.',
@@ -582,15 +635,19 @@ export const approveSubscriptionRefund = onCall(
             amountVerified: true,
           },
           audit: admin.firestore.FieldValue.arrayUnion({
-            action: 'approved_refunding',
+            action: allowRetryFromRefunding ? 'approved_refunding_retry' : 'approved_refunding',
             actorUid: request.auth?.uid,
-            at: new Date().toISOString(),
+            at: nowIso,
           }),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
         return true;
       });
       if (!locked) {
+        const freshAfterLock = await requestRef.get();
+        if (freshAfterLock.data()?.status === 'refunded') {
+          return { success: true, alreadyProcessed: true };
+        }
         return { success: true, alreadyProcessing: true };
       }
 
@@ -608,22 +665,46 @@ export const approveSubscriptionRefund = onCall(
         logger.info('구독 환불 승인 처리 완료:', { refundRequestId, paymentId: maskPaymentId(paymentId) });
         return { success: true, status: synced ? 'refunded' : 'refunding' };
       } catch (error: any) {
+        const refreshedAfterError = await fetchPortOnePaymentWithRetry(paymentId).catch(() => null);
+        if (refreshedAfterError) {
+          try {
+            assertPortOnePaymentIdentityMatchesStoredRequest(refreshedAfterError, orderData, HARU_PORTONE_STORE_ID);
+            const recovered = await markSubscriptionRefundedFromPayment(
+              refundRequestId,
+              paymentId,
+              refreshedAfterError,
+              request.auth?.uid || 'admin',
+            );
+            if (recovered) {
+              logger.info('구독 환불 승인 오류 후 PortOne 취소 상태 복구:', { refundRequestId, paymentId: maskPaymentId(paymentId) });
+              return { success: true, status: 'refunded', recovered: true };
+            }
+          } catch (syncError: any) {
+            logger.warn('구독 환불 승인 오류 후 취소 상태 복구 실패:', {
+              refundRequestId,
+              paymentId: maskPaymentId(paymentId),
+              message: syncError?.message,
+            });
+          }
+        }
         const safeErrorCode = safePortOneError(error);
-        await Promise.all([
-          requestRef.set({
+        await db.runTransaction(async (tx) => {
+          const fresh = await tx.get(requestRef);
+          if (fresh.data()?.status === 'refunded') return;
+          tx.set(requestRef, {
             status: 'failed',
             safeErrorCode,
             failedAt: admin.firestore.FieldValue.serverTimestamp(),
             publicMessage: '환불 처리 중 오류가 발생했습니다. 하루랩에서 확인 후 다시 처리합니다.',
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          }, { merge: true }),
-          paymentRequestRef(paymentId).set({
+          }, { merge: true });
+          tx.set(paymentRequestRef(paymentId), {
             refundStatus: 'failed',
             refundRequestId,
             refundErrorCode: safeErrorCode,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          }, { merge: true }),
-          internalRef.set({
+          }, { merge: true });
+          tx.set(internalRef, {
             cancelError: {
               safeErrorCode,
               status: error?.response?.status || null,
@@ -637,8 +718,8 @@ export const approveSubscriptionRefund = onCall(
               safeErrorCode,
             }),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          }, { merge: true }),
-        ]);
+          }, { merge: true });
+        });
         logger.error('구독 환불 승인 처리 실패:', { refundRequestId, paymentId: maskPaymentId(paymentId), safeErrorCode });
         throw new HttpsError('internal', 'PortOne 환불 처리에 실패했습니다.');
       }

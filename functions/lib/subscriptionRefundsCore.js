@@ -1,19 +1,24 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SUBSCRIPTION_REFUND_REASON_LABELS = exports.SUBSCRIPTION_REFUND_PROCESSING_STATUSES = exports.SUBSCRIPTION_REFUND_STATUSES = exports.SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS = exports.SUBSCRIPTION_REFUND_FULL_REFUND_DAYS = exports.SUBSCRIPTION_REFUND_REQUEST_WINDOW_DAYS = exports.SubscriptionRefundPolicyError = void 0;
+exports.SUBSCRIPTION_REFUND_REASON_LABELS = exports.SUBSCRIPTION_REFUND_PROCESSING_STATUSES = exports.SUBSCRIPTION_REFUND_STATUSES = exports.SUBSCRIPTION_REFUNDING_STALE_MS = exports.SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS = exports.SUBSCRIPTION_REFUND_FULL_REFUND_DAYS = exports.SUBSCRIPTION_REFUND_REQUEST_WINDOW_DAYS = exports.SubscriptionRefundPolicyError = void 0;
 exports.normalizeRefundReasonCode = normalizeRefundReasonCode;
 exports.sanitizeRefundDescription = sanitizeRefundDescription;
 exports.isProcessingRefundStatus = isProcessingRefundStatus;
+exports.createPortOneRefundIdempotencyKey = createPortOneRefundIdempotencyKey;
 exports.assertAdminUid = assertAdminUid;
 exports.assertRefundRequesterOwnsPayment = assertRefundRequesterOwnsPayment;
+exports.assertRefundRequestMatchesPaymentRequest = assertRefundRequestMatchesPaymentRequest;
 exports.assertSubscriptionChargePayment = assertSubscriptionChargePayment;
 exports.getPaymentAmountTotal = getPaymentAmountTotal;
 exports.getPortOneCancellableAmount = getPortOneCancellableAmount;
+exports.assertPortOnePaymentIdentityMatchesStoredRequest = assertPortOnePaymentIdentityMatchesStoredRequest;
 exports.assertPortOnePaymentMatchesStoredRequest = assertPortOnePaymentMatchesStoredRequest;
 exports.assertNoDuplicateRefundRequest = assertNoDuplicateRefundRequest;
 exports.assertRefundRequestWindow = assertRefundRequestWindow;
 exports.estimateSubscriptionRefundAmount = estimateSubscriptionRefundAmount;
 exports.shouldMarkRefundedFromPortOne = shouldMarkRefundedFromPortOne;
+exports.getApproveRefundRecoveryAction = getApproveRefundRecoveryAction;
+exports.getRefundWebhookSyncAction = getRefundWebhookSyncAction;
 class SubscriptionRefundPolicyError extends Error {
     constructor(policyCode, message) {
         super(message);
@@ -25,6 +30,7 @@ exports.SubscriptionRefundPolicyError = SubscriptionRefundPolicyError;
 exports.SUBSCRIPTION_REFUND_REQUEST_WINDOW_DAYS = 30;
 exports.SUBSCRIPTION_REFUND_FULL_REFUND_DAYS = 7;
 exports.SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS = 30;
+exports.SUBSCRIPTION_REFUNDING_STALE_MS = 10 * 60 * 1000;
 exports.SUBSCRIPTION_REFUND_STATUSES = [
     'requested',
     'reviewing',
@@ -69,6 +75,9 @@ function sanitizeRefundDescription(value) {
 function isProcessingRefundStatus(status) {
     return exports.SUBSCRIPTION_REFUND_PROCESSING_STATUSES.includes(status);
 }
+function createPortOneRefundIdempotencyKey(refundRequestId) {
+    return `"subscription-refund-${refundRequestId}"`;
+}
 function assertAdminUid(authUid, adminUid) {
     if (!authUid || authUid !== adminUid) {
         throw new SubscriptionRefundPolicyError('permission_denied', '관리자 권한이 필요합니다.');
@@ -77,6 +86,11 @@ function assertAdminUid(authUid, adminUid) {
 function assertRefundRequesterOwnsPayment(authUid, paymentRequest) {
     if (!authUid || paymentRequest.uid !== authUid) {
         throw new SubscriptionRefundPolicyError('not_owner', '본인 결제만 환불 요청할 수 있습니다.');
+    }
+}
+function assertRefundRequestMatchesPaymentRequest(refundRequest, paymentRequest) {
+    if (!refundRequest.uid || refundRequest.uid !== paymentRequest.uid) {
+        throw new SubscriptionRefundPolicyError('not_owner', '환불 요청과 결제 사용자 정보가 일치하지 않습니다.');
     }
 }
 function assertSubscriptionChargePayment(paymentRequest) {
@@ -103,18 +117,15 @@ function getPortOneCancellableAmount(payment) {
     const cancelledTotal = cancellations.reduce((sum, cancellation) => {
         var _a, _b, _c, _d;
         const status = String((cancellation === null || cancellation === void 0 ? void 0 : cancellation.status) || '').toUpperCase();
-        if (status === 'FAILED')
+        if (status !== 'SUCCEEDED' && status !== 'SUCCESS')
             return sum;
         const amount = Number((_d = (_c = (_b = (_a = cancellation === null || cancellation === void 0 ? void 0 : cancellation.amount) === null || _a === void 0 ? void 0 : _a.total) !== null && _b !== void 0 ? _b : cancellation === null || cancellation === void 0 ? void 0 : cancellation.totalAmount) !== null && _c !== void 0 ? _c : cancellation === null || cancellation === void 0 ? void 0 : cancellation.amount) !== null && _d !== void 0 ? _d : 0);
         return Number.isFinite(amount) ? sum + amount : sum;
     }, 0);
     return Math.max(0, total - cancelledTotal);
 }
-function assertPortOnePaymentMatchesStoredRequest(payment, paymentRequest, expectedStoreId) {
-    if (payment.status !== 'PAID') {
-        throw new SubscriptionRefundPolicyError('not_paid', '결제가 완료된 상태가 아닙니다.');
-    }
-    if (payment.storeId && payment.storeId !== expectedStoreId) {
+function assertPortOnePaymentIdentityMatchesStoredRequest(payment, paymentRequest, expectedStoreId) {
+    if (payment.storeId !== expectedStoreId) {
         throw new SubscriptionRefundPolicyError('store_mismatch', '결제 상점 정보가 일치하지 않습니다.');
     }
     if (payment.currency && payment.currency !== 'KRW') {
@@ -123,8 +134,16 @@ function assertPortOnePaymentMatchesStoredRequest(payment, paymentRequest, expec
     if (getPaymentAmountTotal(payment) !== Number(paymentRequest.amount)) {
         throw new SubscriptionRefundPolicyError('amount_mismatch', '결제 금액이 일치하지 않습니다.');
     }
+}
+function assertPortOnePaymentMatchesStoredRequest(payment, paymentRequest, expectedStoreId, options = {}) {
+    assertPortOnePaymentIdentityMatchesStoredRequest(payment, paymentRequest, expectedStoreId);
     if (getPortOneCancellableAmount(payment) <= 0) {
         throw new SubscriptionRefundPolicyError('already_refunded', '이미 전액 환불된 결제입니다.');
+    }
+    const status = String(payment.status || '').toUpperCase();
+    const refundableStatus = status === 'PAID' || (options.allowPartialCancelled === true && status === 'PARTIAL_CANCELLED');
+    if (!refundableStatus) {
+        throw new SubscriptionRefundPolicyError('not_paid', '결제가 완료된 상태가 아닙니다.');
     }
 }
 function assertNoDuplicateRefundRequest(existingStatus) {
@@ -166,4 +185,24 @@ function shouldMarkRefundedFromPortOne(payment, expectedRefundAmount) {
         return getPortOneCancellableAmount(payment) <= Math.max(0, total - expectedRefundAmount);
     }
     return false;
+}
+function getApproveRefundRecoveryAction(refundStatus, payment, expectedRefundAmount, refundingStartedAtMs, nowMs) {
+    if (refundStatus === 'refunded')
+        return 'already_processed';
+    if (refundStatus === 'rejected')
+        return 'blocked';
+    if (shouldMarkRefundedFromPortOne(payment, expectedRefundAmount))
+        return 'sync_refunded';
+    if (refundStatus !== 'refunding')
+        return 'retry_cancel';
+    if (!Number.isFinite(refundingStartedAtMs) || refundingStartedAtMs <= 0)
+        return 'retry_cancel';
+    return nowMs - refundingStartedAtMs >= exports.SUBSCRIPTION_REFUNDING_STALE_MS
+        ? 'retry_cancel'
+        : 'already_processing';
+}
+function getRefundWebhookSyncAction(hasDirectRefundRequest, matchingRefundRequestCount) {
+    if (hasDirectRefundRequest)
+        return 'sync_direct';
+    return matchingRefundRequestCount > 0 ? 'sync_matching' : 'ignore_orphan';
 }

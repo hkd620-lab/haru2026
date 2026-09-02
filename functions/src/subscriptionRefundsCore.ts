@@ -40,6 +40,7 @@ export class SubscriptionRefundPolicyError extends Error {
 export const SUBSCRIPTION_REFUND_REQUEST_WINDOW_DAYS = 30;
 export const SUBSCRIPTION_REFUND_FULL_REFUND_DAYS = 7;
 export const SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS = 30;
+export const SUBSCRIPTION_REFUNDING_STALE_MS = 10 * 60 * 1000;
 
 export const SUBSCRIPTION_REFUND_STATUSES: SubscriptionRefundStatus[] = [
   'requested',
@@ -94,6 +95,10 @@ export function isProcessingRefundStatus(status: unknown): boolean {
   return SUBSCRIPTION_REFUND_PROCESSING_STATUSES.includes(status as SubscriptionRefundStatus);
 }
 
+export function createPortOneRefundIdempotencyKey(refundRequestId: string): string {
+  return `"subscription-refund-${refundRequestId}"`;
+}
+
 export function assertAdminUid(authUid: string | undefined, adminUid: string): void {
   if (!authUid || authUid !== adminUid) {
     throw new SubscriptionRefundPolicyError('permission_denied', '관리자 권한이 필요합니다.');
@@ -103,6 +108,15 @@ export function assertAdminUid(authUid: string | undefined, adminUid: string): v
 export function assertRefundRequesterOwnsPayment(authUid: string, paymentRequest: Record<string, any>): void {
   if (!authUid || paymentRequest.uid !== authUid) {
     throw new SubscriptionRefundPolicyError('not_owner', '본인 결제만 환불 요청할 수 있습니다.');
+  }
+}
+
+export function assertRefundRequestMatchesPaymentRequest(
+  refundRequest: Record<string, any>,
+  paymentRequest: Record<string, any>,
+): void {
+  if (!refundRequest.uid || refundRequest.uid !== paymentRequest.uid) {
+    throw new SubscriptionRefundPolicyError('not_owner', '환불 요청과 결제 사용자 정보가 일치하지 않습니다.');
   }
 }
 
@@ -132,7 +146,7 @@ export function getPortOneCancellableAmount(payment: Record<string, any>): numbe
   const cancellations = Array.isArray(payment?.cancellations) ? payment.cancellations : [];
   const cancelledTotal = cancellations.reduce((sum: number, cancellation: Record<string, any>) => {
     const status = String(cancellation?.status || '').toUpperCase();
-    if (status === 'FAILED') return sum;
+    if (status !== 'SUCCEEDED' && status !== 'SUCCESS') return sum;
     const amount = Number(cancellation?.amount?.total ?? cancellation?.totalAmount ?? cancellation?.amount ?? 0);
     return Number.isFinite(amount) ? sum + amount : sum;
   }, 0);
@@ -140,15 +154,12 @@ export function getPortOneCancellableAmount(payment: Record<string, any>): numbe
   return Math.max(0, total - cancelledTotal);
 }
 
-export function assertPortOnePaymentMatchesStoredRequest(
+export function assertPortOnePaymentIdentityMatchesStoredRequest(
   payment: Record<string, any>,
   paymentRequest: Record<string, any>,
   expectedStoreId: string,
 ): void {
-  if (payment.status !== 'PAID') {
-    throw new SubscriptionRefundPolicyError('not_paid', '결제가 완료된 상태가 아닙니다.');
-  }
-  if (payment.storeId && payment.storeId !== expectedStoreId) {
+  if (payment.storeId !== expectedStoreId) {
     throw new SubscriptionRefundPolicyError('store_mismatch', '결제 상점 정보가 일치하지 않습니다.');
   }
   if (payment.currency && payment.currency !== 'KRW') {
@@ -157,8 +168,22 @@ export function assertPortOnePaymentMatchesStoredRequest(
   if (getPaymentAmountTotal(payment) !== Number(paymentRequest.amount)) {
     throw new SubscriptionRefundPolicyError('amount_mismatch', '결제 금액이 일치하지 않습니다.');
   }
+}
+
+export function assertPortOnePaymentMatchesStoredRequest(
+  payment: Record<string, any>,
+  paymentRequest: Record<string, any>,
+  expectedStoreId: string,
+  options: { allowPartialCancelled?: boolean } = {},
+): void {
+  assertPortOnePaymentIdentityMatchesStoredRequest(payment, paymentRequest, expectedStoreId);
   if (getPortOneCancellableAmount(payment) <= 0) {
     throw new SubscriptionRefundPolicyError('already_refunded', '이미 전액 환불된 결제입니다.');
+  }
+  const status = String(payment.status || '').toUpperCase();
+  const refundableStatus = status === 'PAID' || (options.allowPartialCancelled === true && status === 'PARTIAL_CANCELLED');
+  if (!refundableStatus) {
+    throw new SubscriptionRefundPolicyError('not_paid', '결제가 완료된 상태가 아닙니다.');
   }
 }
 
@@ -207,4 +232,41 @@ export function shouldMarkRefundedFromPortOne(payment: Record<string, any>, expe
     return getPortOneCancellableAmount(payment) <= Math.max(0, total - expectedRefundAmount);
   }
   return false;
+}
+
+export type ApproveRefundRecoveryAction =
+  | 'already_processed'
+  | 'sync_refunded'
+  | 'already_processing'
+  | 'retry_cancel'
+  | 'blocked';
+
+export type RefundWebhookSyncAction =
+  | 'sync_direct'
+  | 'sync_matching'
+  | 'ignore_orphan';
+
+export function getApproveRefundRecoveryAction(
+  refundStatus: unknown,
+  payment: Record<string, any>,
+  expectedRefundAmount: number,
+  refundingStartedAtMs: number,
+  nowMs: number,
+): ApproveRefundRecoveryAction {
+  if (refundStatus === 'refunded') return 'already_processed';
+  if (refundStatus === 'rejected') return 'blocked';
+  if (shouldMarkRefundedFromPortOne(payment, expectedRefundAmount)) return 'sync_refunded';
+  if (refundStatus !== 'refunding') return 'retry_cancel';
+  if (!Number.isFinite(refundingStartedAtMs) || refundingStartedAtMs <= 0) return 'retry_cancel';
+  return nowMs - refundingStartedAtMs >= SUBSCRIPTION_REFUNDING_STALE_MS
+    ? 'retry_cancel'
+    : 'already_processing';
+}
+
+export function getRefundWebhookSyncAction(
+  hasDirectRefundRequest: boolean,
+  matchingRefundRequestCount: number,
+): RefundWebhookSyncAction {
+  if (hasDirectRefundRequest) return 'sync_direct';
+  return matchingRefundRequestCount > 0 ? 'sync_matching' : 'ignore_orphan';
 }
