@@ -39,26 +39,45 @@ export async function cancelSubscriptionForUid(
       throw new HttpsError('failed-precondition', '해지할 구독이 없습니다.');
     }
 
-    if (subData.status === 'cancelled' || billingData.status === 'cancelled') {
-      return {
-        alreadyCancelled: true,
-        endDate: typeof subData.endDate === 'string' ? subData.endDate : null,
-      };
-    }
-
     const endDate = typeof subData.endDate === 'string'
       ? subData.endDate
       : typeof billingData.endDate === 'string'
         ? billingData.endDate
         : nowIso;
+    const cancelledAt = typeof subData.cancelledAt === 'string'
+      ? subData.cancelledAt
+      : typeof billingData.cancelledAt === 'string'
+        ? billingData.cancelledAt
+        : nowIso;
+
+    if (subData.status === 'cancelled' || billingData.status === 'cancelled') {
+      tx.set(subRef, {
+        plan,
+        status: 'cancelled',
+        autoRenew: false,
+        cancelAtPeriodEnd: true,
+        cancelledAt,
+        endDate,
+        nextBillingDate: null,
+        billingKey: admin.firestore.FieldValue.delete(),
+        updatedAt: nowIso,
+      }, { merge: true });
+
+      return {
+        alreadyCancelled: true,
+        endDate,
+      };
+    }
 
     tx.set(subRef, {
       plan,
       status: 'cancelled',
+      autoRenew: false,
       cancelAtPeriodEnd: true,
-      cancelledAt: nowIso,
+      cancelledAt,
       endDate,
       nextBillingDate: null,
+      billingKey: admin.firestore.FieldValue.delete(),
       updatedAt: nowIso,
     }, { merge: true });
 
