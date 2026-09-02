@@ -7805,8 +7805,6 @@ export const getGrammarExplain = onCall(
     // 프론트가 보낸 diary_* 키에 서버가 인증된 uid를 강제로 네임스페이싱한다.
     let cacheKey = verseKey;
     if ((verseKey || '').startsWith('diary_')) {
-      const uid = request.auth?.uid;
-      if (!uid) throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
       cacheKey = `diary_${uid}_${verseKey.slice('diary_'.length)}`;
     }
 
