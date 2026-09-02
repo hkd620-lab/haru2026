@@ -6,6 +6,7 @@
     "build": "tsc && mkdir -p lib/fonts && cp src/fonts/*.ttf lib/fonts/",
     "test:result-chat": "node test/resultChat.integration.js",
     "test:monthly-ai-quota": "node test/monthlyAiQuota.policy.test.js",
+    "test:subscription-refunds": "node test/subscriptionRefunds.policy.test.js",
     "deploy": "firebase deploy --only functions"
   },
   "engines": {

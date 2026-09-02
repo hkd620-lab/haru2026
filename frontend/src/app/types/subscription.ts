@@ -5,10 +5,16 @@ export interface SubscriptionInfo {
   startDate: string | null;
   endDate: string | null;
   paymentId: string | null;
+  lastPaymentId?: string | null;
   billingKey: string | null;
   nextBillingDate: string | null;
   status: 'active' | 'cancelled' | 'none';
   payMethod: string | null;
+  paymentType?: 'subscription' | 'one_time' | string | null;
+  billingType?: string | null;
+  provider?: string | null;
+  lastPaidAmount?: number | null;
+  hasPaidServiceUsage?: boolean;
   updatedAt: string;
 }
 

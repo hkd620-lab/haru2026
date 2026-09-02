@@ -6,7 +6,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { requestNotificationPermission, updateNotificationSettings, cleanupDuplicateTokens, removeCurrentToken } from '../services/notificationService';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, limit, onSnapshot, orderBy, query, setDoc, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useSubscription } from '../hooks/useSubscription';
@@ -14,6 +14,57 @@ import GrammarDashboard from './GrammarDashboard';
 import { BUSINESS_INFO, BUSINESS_INFO_TEXT } from '../components/BusinessInfoNotice';
 
 const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+
+type RefundReasonCode = 'unused_within_7_days' | 'service_issue' | 'duplicate_payment' | 'wrong_payment' | 'other';
+type RefundRequestStatus = 'requested' | 'reviewing' | 'approved' | 'refunding' | 'refunded' | 'rejected' | 'failed';
+
+interface UserRefundRequest {
+  id: string;
+  status: RefundRequestStatus;
+  paymentId?: string;
+  productName?: string;
+  paidAmount?: number;
+  refundableAmount?: number;
+  paymentDate?: string;
+  reasonLabel?: string;
+  publicMessage?: string;
+  createdAt?: { toDate?: () => Date } | string | null;
+}
+
+const REFUND_REASON_OPTIONS: { value: RefundReasonCode; label: string }[] = [
+  { value: 'unused_within_7_days', label: '결제 후 7일 이내 미사용' },
+  { value: 'service_issue', label: '서비스 이용 문제' },
+  { value: 'duplicate_payment', label: '중복 결제' },
+  { value: 'wrong_payment', label: '잘못된 결제' },
+  { value: 'other', label: '기타' },
+];
+
+const REFUND_STATUS_LABELS: Record<RefundRequestStatus, string> = {
+  requested: '접수됨',
+  reviewing: '검토 중',
+  approved: '승인됨',
+  refunding: '환불 처리 중',
+  refunded: '환불 완료',
+  rejected: '반려됨',
+  failed: '처리 실패',
+};
+
+const REFUND_ACTIVE_STATUSES = new Set<RefundRequestStatus>(['requested', 'reviewing', 'approved', 'refunding']);
+
+function formatWon(value: unknown): string {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount <= 0) return '확인 중';
+  return `${amount.toLocaleString('ko-KR')}원`;
+}
+
+function formatDateLabel(value: unknown): string {
+  if (!value) return '확인 중';
+  const date = typeof (value as any).toDate === 'function'
+    ? (value as any).toDate()
+    : new Date(String(value));
+  if (Number.isNaN(date.getTime())) return '확인 중';
+  return date.toLocaleDateString('ko-KR');
+}
 
 export function SettingsPage() {
   const { user, signOut, linkEmailPassword } = useAuth();
@@ -24,6 +75,12 @@ export function SettingsPage() {
   const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
   const [isExportingText, setIsExportingText] = useState(false);
   const [isCancellingSubscription, setIsCancellingSubscription] = useState(false);
+  const [refundRequests, setRefundRequests] = useState<UserRefundRequest[]>([]);
+  const [refundReasonCode, setRefundReasonCode] = useState<RefundReasonCode>('unused_within_7_days');
+  const [refundDescription, setRefundDescription] = useState('');
+  const [refundPolicyAgreed, setRefundPolicyAgreed] = useState(false);
+  const [showRefundForm, setShowRefundForm] = useState(false);
+  const [isRequestingRefund, setIsRequestingRefund] = useState(false);
   const [showWithdrawalFlow, setShowWithdrawalFlow] = useState(false);
   const [withdrawalConfirmText, setWithdrawalConfirmText] = useState('');
   const [isRequestingWithdrawal, setIsRequestingWithdrawal] = useState(false);
@@ -85,6 +142,21 @@ export function SettingsPage() {
     : subscription.status === 'cancelled'
       ? '해지 예약됨'
       : '미구독';
+  const subscriptionPaymentId = subscription.lastPaymentId || subscription.paymentId || null;
+  const subscriptionPaidAmount = typeof subscription.lastPaidAmount === 'number'
+    ? subscription.lastPaidAmount
+    : subscription.plan === 'basic'
+      ? 4000
+      : subscription.plan === 'premium'
+        ? 6000
+        : null;
+  const latestRefundRequest = refundRequests[0] || null;
+  const processingRefundRequest = refundRequests.find((item) => REFUND_ACTIVE_STATUSES.has(item.status));
+  const canRequestSubscriptionRefund = Boolean(subscriptionPaymentId)
+    && hasPaidSubscription
+    && subscription.paymentType !== 'one_time'
+    && !processingRefundRequest
+    && latestRefundRequest?.status !== 'refunded';
   const subscriptionEndLabel = subscription.endDate
     ? new Date(subscription.endDate).toLocaleDateString('ko-KR')
     : null;
@@ -102,6 +174,30 @@ export function SettingsPage() {
     } else {
       setLoadingStats(false);
     }
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setRefundRequests([]);
+      return;
+    }
+
+    const q = query(
+      collection(db, 'refundRequests'),
+      where('uid', '==', user.uid),
+      orderBy('createdAt', 'desc'),
+      limit(5),
+    );
+    const unsubscribe = onSnapshot(q, (snap) => {
+      setRefundRequests(snap.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...(docSnap.data() as Omit<UserRefundRequest, 'id'>),
+      })));
+    }, (error) => {
+      console.warn('환불 요청 상태 로딩 실패:', error);
+      setRefundRequests([]);
+    });
+    return unsubscribe;
   }, [user?.uid]);
 
   const loadProfileAge = async () => {
@@ -576,6 +672,40 @@ export function SettingsPage() {
     }
   };
 
+  const handleRequestSubscriptionRefund = async () => {
+    if (!user?.uid || !subscriptionPaymentId) {
+      toast.error('환불 요청 가능한 구독 결제를 찾을 수 없습니다.');
+      return;
+    }
+    if (!refundPolicyAgreed) {
+      toast.error('환불정책 확인에 동의해 주세요.');
+      return;
+    }
+    const ok = confirm('환불 요청이 접수되면 자동결제가 중단됩니다. 하루랩 확인 후 환불 결과를 알려드립니다.\n\n환불 요청을 접수할까요?');
+    if (!ok) return;
+
+    setIsRequestingRefund(true);
+    try {
+      const functions = getFunctions(undefined, 'asia-northeast3');
+      const requestRefund = httpsCallable(functions, 'requestSubscriptionRefund');
+      await requestRefund({
+        paymentId: subscriptionPaymentId,
+        reasonCode: refundReasonCode,
+        description: refundDescription,
+        policyAgreed: refundPolicyAgreed,
+      });
+      toast.success('환불 요청이 접수되었습니다. 자동결제는 중단됩니다.');
+      setShowRefundForm(false);
+      setRefundDescription('');
+      setRefundPolicyAgreed(false);
+    } catch (error: any) {
+      console.error('환불 요청 실패:', error);
+      toast.error(error?.message || '환불 요청에 실패했습니다.');
+    } finally {
+      setIsRequestingRefund(false);
+    }
+  };
+
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
       <div className="mb-8">
@@ -674,25 +804,143 @@ export function SettingsPage() {
                 </button>
               )}
 
-              <button
-                type="button"
-                onClick={handleGoToRefundPolicy}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-80 text-left"
-                style={{
-                  backgroundColor: '#FDF6C3',
-                  border: '1px solid #d0dff0',
-                }}
+              <div
+                className="rounded-lg px-4 py-3"
+                style={{ backgroundColor: '#F9FAFB', border: '1px solid #e5e5e5' }}
               >
-                <CreditCard className="w-4 h-4 flex-shrink-0" style={{ color: '#1A3C6E' }} />
-                <div>
-                  <p className="text-sm" style={{ color: '#1A3C6E', fontWeight: 600 }}>
-                    환불 문의
-                  </p>
-                  <p className="text-xs mt-0.5" style={{ color: '#666' }}>
-                    환불 조건을 확인하고 이메일로 요청합니다.
-                  </p>
+                <div className="grid grid-cols-2 gap-3 text-xs" style={{ color: '#666' }}>
+                  <div>
+                    <p style={{ color: '#999' }}>결제일</p>
+                    <p className="mt-0.5" style={{ color: '#333', fontWeight: 700 }}>
+                      {formatDateLabel(latestRefundRequest?.paymentDate || subscription.startDate)}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ color: '#999' }}>상품명</p>
+                    <p className="mt-0.5" style={{ color: '#333', fontWeight: 700 }}>
+                      {latestRefundRequest?.productName || `${subscriptionPlanLabel} 정기구독`}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ color: '#999' }}>결제금액</p>
+                    <p className="mt-0.5" style={{ color: '#333', fontWeight: 700 }}>
+                      {formatWon(latestRefundRequest?.paidAmount || subscriptionPaidAmount)}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ color: '#999' }}>환불 가능 예상금액</p>
+                    <p className="mt-0.5" style={{ color: '#333', fontWeight: 700 }}>
+                      {latestRefundRequest ? formatWon(latestRefundRequest.refundableAmount) : '서버 검증 후 산정'}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ color: '#999' }}>현재 구독 상태</p>
+                    <p className="mt-0.5" style={{ color: '#333', fontWeight: 700 }}>
+                      {subscriptionStatusLabel}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ color: '#999' }}>처리 상태</p>
+                    <p className="mt-0.5" style={{ color: '#333', fontWeight: 700 }}>
+                      {latestRefundRequest ? REFUND_STATUS_LABELS[latestRefundRequest.status] : '요청 없음'}
+                    </p>
+                  </div>
                 </div>
-              </button>
+
+                <p className="text-xs mt-3 leading-relaxed" style={{ color: '#666' }}>
+                  환불 처리 기준: 결제 후 7일 이내 미사용은 전액 환불, 그 외에는 1개월 이용기간 기준으로 하루랩 확인 후 산정합니다.
+                </p>
+                <p className="text-xs mt-2 p-3 rounded-lg leading-relaxed" style={{ backgroundColor: '#FFF3CD', color: '#856404' }}>
+                  구독 해지는 다음 결제를 중단하는 기능이며, 이미 결제된 금액은 자동 환불되지 않습니다. 환불 요청이 접수되면 자동결제가 중단되며, 하루랩의 확인 후 환불 결과를 알려드립니다.
+                </p>
+
+                {latestRefundRequest?.publicMessage && (
+                  <p className="text-xs mt-2 leading-relaxed" style={{ color: '#1A3C6E', fontWeight: 700 }}>
+                    {latestRefundRequest.publicMessage}
+                  </p>
+                )}
+
+                {!showRefundForm ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowRefundForm(true)}
+                    disabled={!canRequestSubscriptionRefund}
+                    className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{
+                      backgroundColor: canRequestSubscriptionRefund ? '#1A3C6E' : '#E5E7EB',
+                      color: canRequestSubscriptionRefund ? '#fff' : '#6B7280',
+                      fontWeight: 700,
+                    }}
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    환불 요청
+                  </button>
+                ) : (
+                  <div className="mt-3 space-y-3">
+                    <label className="text-xs block" style={{ color: '#666', fontWeight: 700 }}>
+                      환불 사유 선택
+                    </label>
+                    <select
+                      value={refundReasonCode}
+                      onChange={(event) => setRefundReasonCode(event.target.value as RefundReasonCode)}
+                      disabled={isRequestingRefund}
+                      className="w-full px-3 py-2 rounded-lg text-sm"
+                      style={{ border: '1px solid #d0dff0', backgroundColor: '#fff', color: '#333' }}
+                    >
+                      {REFUND_REASON_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    <label className="text-xs block" style={{ color: '#666', fontWeight: 700 }}>
+                      추가 설명
+                    </label>
+                    <textarea
+                      value={refundDescription}
+                      onChange={(event) => setRefundDescription(event.target.value)}
+                      rows={3}
+                      maxLength={1000}
+                      disabled={isRequestingRefund}
+                      className="w-full px-3 py-2 rounded-lg text-sm"
+                      style={{ border: '1px solid #d0dff0', backgroundColor: '#fff', color: '#333', resize: 'vertical' }}
+                    />
+
+                    <label className="flex items-start gap-2 text-xs leading-relaxed" style={{ color: '#333' }}>
+                      <input
+                        type="checkbox"
+                        checked={refundPolicyAgreed}
+                        onChange={(event) => setRefundPolicyAgreed(event.target.checked)}
+                        disabled={isRequestingRefund}
+                        className="mt-0.5"
+                      />
+                      <span>환불정책을 확인했으며, 하루랩 검토 후 환불 여부와 금액이 확정되는 것에 동의합니다.</span>
+                    </label>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowRefundForm(false)}
+                        disabled={isRequestingRefund}
+                        className="flex-1 px-4 py-2.5 rounded-lg text-sm"
+                        style={{ backgroundColor: '#fff', border: '1px solid #e5e5e5', color: '#666' }}
+                      >
+                        취소
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRequestSubscriptionRefund}
+                        disabled={isRequestingRefund || !refundPolicyAgreed}
+                        className="flex-1 px-4 py-2.5 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ backgroundColor: '#1A3C6E', color: '#fff', fontWeight: 700 }}
+                      >
+                        {isRequestingRefund ? '접수 중...' : '요청 접수'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {subscription.status === 'cancelled' && (
                 <p className="text-xs leading-relaxed" style={{ color: '#999' }}>
@@ -1409,6 +1657,14 @@ export function SettingsPage() {
                 <li>결제 기록은 법령에 따라 일정 기간 보관됩니다</li>
               </ul>
 
+              <p className="text-xs mb-3 p-3 rounded-lg leading-relaxed" style={{ backgroundColor: '#FFF3CD', color: '#856404' }}>
+                회원탈퇴만으로 결제금액이 자동 환불되지는 않습니다. 환불이 필요한 결제가 있다면 탈퇴 전에 먼저 환불을 요청해 주세요.
+              </p>
+              {processingRefundRequest && (
+                <p className="text-xs mb-3 p-3 rounded-lg leading-relaxed" style={{ backgroundColor: '#EEF2FF', color: '#1A3C6E', fontWeight: 700 }}>
+                  처리 중인 환불 요청이 있습니다: {REFUND_STATUS_LABELS[processingRefundRequest.status]}
+                </p>
+              )}
               <p className="text-xs mb-3 p-3 rounded-lg leading-relaxed" style={{ backgroundColor: '#FFF3CD', color: '#856404' }}>
                 ⚠️ 사진·첨부파일은 JSON/TXT 파일에 직접 포함되지 않고 저장 위치 주소로 표시됩니다. 보관이 필요한 사진은 탈퇴 전에 직접 열어 저장해 주세요.
               </p>

@@ -62,6 +62,19 @@ export async function cancelSubscriptionForUid(
         billingKey: admin.firestore.FieldValue.delete(),
         updatedAt: nowIso,
       }, { merge: true });
+      tx.set(billingRef, {
+        uid,
+        plan,
+        status: 'cancelled',
+        autoRenew: false,
+        billingKey: admin.firestore.FieldValue.delete(),
+        cancelAtPeriodEnd: true,
+        cancelledAt,
+        endDate,
+        nextBillingDate: null,
+        billingLockUntil: null,
+        updatedAt: nowIso,
+      }, { merge: true });
 
       return {
         alreadyCancelled: true,
@@ -85,6 +98,7 @@ export async function cancelSubscriptionForUid(
       uid,
       plan,
       status: 'cancelled',
+      autoRenew: false,
       billingKey: admin.firestore.FieldValue.delete(),
       cancelAtPeriodEnd: true,
       cancelledAt: nowIso,
