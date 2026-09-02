@@ -125,7 +125,12 @@ npm run build                          → 성공 (exit 0)
 |---|---|
 | 커밋 해시 | `a1f5f489` chore: 무인증 AI 7개 잠금 + 문법캐시 uid 격리 통합 빌드 |
 | staged 파일 | `functions/src/index.ts`, `functions/lib/index.js` (개별 add, `git add .` 미사용) |
-| push 대상 | `origin feature/ai-guard-grammar-isolation` |
+| push 대상 | `origin feature/ai-guard-grammar-isolation` (새 브랜치 생성 완료) |
+| 문서 커밋 | `62e7fc0a` docs: 체크리스트·완료보고 추가 |
+| PR | **#134** — https://github.com/hkd620-lab/haru2026/pull/134 |
+
+`gh` CLI는 이 환경에 없으나 GitHub MCP 도구로 PR 생성이 가능하여 정상 생성됨.
+지시서 §13에 따라 **PR 상태 백그라운드 감시(subscribe)는 설정하지 않았음.**
 
 **참고:** `functions/lib` 가 `.gitignore` 대상이라 `git add` 시 ignore 경고가 출력되지만,
 `functions/lib/index.js`는 이미 **추적 중인 파일(tracked)** 이라 정상적으로 스테이징됨.
