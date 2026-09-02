@@ -87,10 +87,6 @@ function getSubscriptionPaymentMethod(value: string | null): SubscriptionPayment
   return value === 'card' || value === 'kakaopay' ? value : null;
 }
 
-function createClientPortOneRequestId(prefix: string): string {
-  return `haru-${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
 export default function SubscriptionPage() {
   const { user, loading: authLoading } = useAuth();
   const [searchParams] = useSearchParams();
@@ -141,8 +137,8 @@ export default function SubscriptionPage() {
       alert('정기결제 확인을 위해 로그인이 필요합니다.');
       return;
     }
-    if (redirectedPaymentMethod === 'kakaopay' && !redirectedIssueId) {
-      alert('카카오페이 정기결제 요청 정보를 찾을 수 없습니다.');
+    if (!redirectedIssueId) {
+      alert('정기결제 요청 정보를 찾을 수 없습니다.');
       return;
     }
 
@@ -156,9 +152,9 @@ export default function SubscriptionPage() {
     subscribeWithBillingKey({
       billingKey: redirectedBillingKey,
       plan: redirectedPlan,
+      issueId: redirectedIssueId,
       provider: paymentMethodConfig.provider,
       payMethod: paymentMethodConfig.payMethod,
-      ...(redirectedPaymentMethod === 'kakaopay' ? { issueId: redirectedIssueId } : {}),
     })
       .then(() => {
         setResultMessage(`${PLANS[redirectedPlan].orderName} ${paymentMethodConfig.label} 결제가 완료되었습니다. 설정 화면에서 구독 상태를 확인할 수 있습니다.`);
@@ -208,8 +204,8 @@ export default function SubscriptionPage() {
 
       const functions = getFunctions(undefined, 'asia-northeast3');
       const subscribeWithBillingKey = httpsCallable(functions, 'subscribeWithBillingKey');
+      const createSubscriptionBillingRequest = httpsCallable(functions, 'createSubscriptionBillingRequest');
       const paymentMethodConfig = SUBSCRIPTION_PAYMENT_METHODS[selectedPaymentMethod];
-      let billingRequest: SubscriptionBillingRequestResult;
       let channelKey = '';
 
       if (selectedPaymentMethod === 'kakaopay') {
@@ -219,36 +215,19 @@ export default function SubscriptionPage() {
         if (!channelKey) {
           throw new Error('카카오페이 결제 채널 키가 설정되지 않았습니다.');
         }
-
-        const createSubscriptionBillingRequest = httpsCallable(functions, 'createSubscriptionBillingRequest');
-        const requestResult = await createSubscriptionBillingRequest({
-          plan: selectedPlan,
-          provider: paymentMethodConfig.provider,
-        });
-        billingRequest = requestResult.data as SubscriptionBillingRequestResult;
       } else {
         channelKey = import.meta.env.VITE_PORTONE_INICIS_BILLING_CHANNEL_KEY
           || import.meta.env.VITE_PORTONE_CHANNEL_KEY;
         if (!channelKey) {
           throw new Error('KG이니시스 카드 정기결제 채널 키가 설정되지 않았습니다.');
         }
-
-        billingRequest = {
-          issueId: createClientPortOneRequestId('bk'),
-          storeId: import.meta.env.VITE_PORTONE_STORE_ID,
-          issueName: selected.orderName,
-          amount: selected.amount,
-          currency: 'KRW',
-          customData: {
-            uid: user.uid,
-            plan: selectedPlan,
-            provider: paymentMethodConfig.provider,
-            payMethod: paymentMethodConfig.payMethod,
-            paymentType: 'subscription',
-            billingType: 'billing_key_issue',
-          },
-        };
       }
+
+      const requestResult = await createSubscriptionBillingRequest({
+        plan: selectedPlan,
+        provider: paymentMethodConfig.provider,
+      });
+      const billingRequest = requestResult.data as SubscriptionBillingRequestResult;
 
       const response = await (PortOne as any).requestIssueBillingKey({
         storeId: billingRequest.storeId,
@@ -267,9 +246,7 @@ export default function SubscriptionPage() {
           phoneNumber: normalizedPhone,
         },
         customData: billingRequest.customData,
-        redirectUrl: selectedPaymentMethod === 'kakaopay'
-          ? `${window.location.origin}/subscription?plan=${selectedPlan}&method=kakaopay&issueId=${billingRequest.issueId}`
-          : `${window.location.origin}/subscription?plan=${selectedPlan}&method=card`,
+        redirectUrl: `${window.location.origin}/subscription?plan=${selectedPlan}&method=${selectedPaymentMethod}&issueId=${billingRequest.issueId}`,
       }) as BillingKeyResponse;
 
       if (response?.code) {
@@ -285,9 +262,9 @@ export default function SubscriptionPage() {
       await subscribeWithBillingKey({
         billingKey,
         plan: selectedPlan,
+        issueId: billingRequest.issueId,
         provider: paymentMethodConfig.provider,
         payMethod: paymentMethodConfig.payMethod,
-        ...(selectedPaymentMethod === 'kakaopay' ? { issueId: billingRequest.issueId } : {}),
       });
 
       setResultMessage(`${billingRequest.issueName} ${paymentMethodConfig.label} 결제가 완료되었습니다. 설정 화면에서 구독 상태를 확인할 수 있습니다.`);

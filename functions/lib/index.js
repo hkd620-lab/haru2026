@@ -4930,69 +4930,70 @@ exports.verifyPayment = (0, https_2.onCall)({ region: 'asia-northeast3', secrets
 });
 // ===== 💳 정기결제 시작 (PortOne V2 빌링키) =====
 exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] }, async (request) => {
-    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m, _o;
+    var _a, _b, _c, _d, _f, _g, _h, _j;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
     const uid = request.auth.uid;
     const { billingKey } = request.data || {};
-    const plan = assertPaidPlan((_a = request.data) === null || _a === void 0 ? void 0 : _a.plan);
-    const issueId = typeof ((_b = request.data) === null || _b === void 0 ? void 0 : _b.issueId) === 'string' ? request.data.issueId.trim() : '';
+    const issueId = typeof ((_a = request.data) === null || _a === void 0 ? void 0 : _a.issueId) === 'string' ? request.data.issueId.trim() : '';
     if (!billingKey || typeof billingKey !== 'string') {
         throw new https_2.HttpsError('invalid-argument', 'billingKey가 필요합니다.');
     }
-    if (((_c = request.data) === null || _c === void 0 ? void 0 : _c.issueId) !== undefined && !issueId) {
-        throw new https_2.HttpsError('invalid-argument', 'issueId 값이 올바르지 않습니다.');
+    if (!issueId) {
+        throw new https_2.HttpsError('invalid-argument', 'issueId가 필요합니다.');
     }
-    let requestRef = null;
-    let provider = getRequestedPaymentProvider((_d = request.data) === null || _d === void 0 ? void 0 : _d.provider, HARU_INICIS_PROVIDER);
-    let payMethod = getProviderPayMethod(provider);
-    if (issueId) {
-        requestRef = getPaymentRequestRef(issueId);
-        const requestSnap = await requestRef.get();
-        if (!requestSnap.exists) {
-            throw new https_2.HttpsError('failed-precondition', '빌링키 발급 요청 정보를 찾을 수 없습니다.');
-        }
-        const requestData = requestSnap.data() || {};
-        if (requestData.uid !== uid || requestData.plan !== plan || requestData.paymentType !== 'subscription') {
-            throw new https_2.HttpsError('permission-denied', '빌링키 발급 요청 정보가 올바르지 않습니다.');
-        }
-        provider = getStoredPaymentProvider(requestData) || getRequestedPaymentProvider((_f = request.data) === null || _f === void 0 ? void 0 : _f.provider);
-        payMethod = getStoredPayMethod(requestData, provider);
-        const requestExpiresAt = ((_h = (_g = requestData.expiresAt) === null || _g === void 0 ? void 0 : _g.toMillis) === null || _h === void 0 ? void 0 : _h.call(_g)) || 0;
-        if (requestExpiresAt && requestExpiresAt < Date.now()) {
-            throw new https_2.HttpsError('deadline-exceeded', '빌링키 발급 요청이 만료되었습니다. 다시 시도해 주세요.');
-        }
+    const requestRef = getPaymentRequestRef(issueId);
+    const requestSnap = await requestRef.get();
+    if (!requestSnap.exists) {
+        throw new https_2.HttpsError('failed-precondition', '빌링키 발급 요청 정보를 찾을 수 없습니다.');
     }
-    else if (provider !== HARU_INICIS_PROVIDER) {
-        throw new https_2.HttpsError('invalid-argument', '카카오페이 정기결제는 issueId가 필요합니다.');
+    const requestData = requestSnap.data() || {};
+    if (requestData.uid !== uid || requestData.paymentType !== 'subscription' || requestData.billingType !== 'billing_key_issue') {
+        throw new https_2.HttpsError('permission-denied', '빌링키 발급 요청 정보가 올바르지 않습니다.');
+    }
+    const plan = assertPaidPlan(requestData.plan);
+    const provider = getStoredPaymentProvider(requestData);
+    if (!provider) {
+        throw new https_2.HttpsError('failed-precondition', '빌링키 발급 요청의 결제수단 정보가 올바르지 않습니다.');
+    }
+    const payMethod = getStoredPayMethod(requestData, provider);
+    const requestExpiresAt = ((_c = (_b = requestData.expiresAt) === null || _b === void 0 ? void 0 : _b.toMillis) === null || _c === void 0 ? void 0 : _c.call(_b)) || 0;
+    if (requestExpiresAt && requestExpiresAt < Date.now()) {
+        throw new https_2.HttpsError('deadline-exceeded', '빌링키 발급 요청이 만료되었습니다. 다시 시도해 주세요.');
     }
     const amount = getSubscriptionPlanAmount(plan);
     const orderName = getSubscriptionOrderName(plan);
     const paymentId = createPortOneRequestId('subscription');
     const paymentRef = getPaymentRequestRef(paymentId);
-    const requestRefForTx = requestRef;
     const locked = await db.runTransaction(async (tx) => {
-        if (requestRefForTx) {
-            const fresh = await tx.get(requestRefForTx);
-            const freshData = fresh.data() || {};
-            if (freshData.uid !== uid || freshData.plan !== plan || freshData.paymentType !== 'subscription') {
-                throw new https_2.HttpsError('permission-denied', '빌링키 발급 요청 정보가 올바르지 않습니다.');
-            }
-            if (freshData.status === 'processed' && freshData.lastPaymentId)
-                return false;
-            if (freshData.status === 'charging')
-                return false;
-            tx.set(requestRefForTx, {
-                status: 'charging',
-                billingKeyIssuedAt: admin.firestore.FieldValue.serverTimestamp(),
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            }, { merge: true });
+        const fresh = await tx.get(requestRef);
+        const freshData = fresh.data() || {};
+        const freshProvider = getStoredPaymentProvider(freshData);
+        if (freshData.uid !== uid
+            || freshData.plan !== plan
+            || freshData.paymentType !== 'subscription'
+            || freshData.billingType !== 'billing_key_issue'
+            || freshProvider !== provider) {
+            throw new https_2.HttpsError('permission-denied', '빌링키 발급 요청 정보가 올바르지 않습니다.');
         }
+        if (freshData.status === 'processed' && freshData.lastPaymentId)
+            return false;
+        if (freshData.status === 'charging' && freshData.lastPaymentId)
+            return false;
+        if (freshData.status !== 'created') {
+            throw new https_2.HttpsError('failed-precondition', '이미 처리 중이거나 실패한 빌링키 발급 요청입니다. 다시 시도해 주세요.');
+        }
+        tx.set(requestRef, {
+            status: 'charging',
+            billingKeyIssuedAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastPaymentId: paymentId,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
         tx.set(paymentRef, {
             uid,
             paymentId,
-            issueId: issueId || null,
+            issueId,
             plan,
             paymentType: 'subscription',
             billingType: 'initial_billing',
@@ -5026,7 +5027,7 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
                 payMethod,
                 paymentType: 'subscription',
                 billingType: 'initial_billing',
-                issueId: issueId || null,
+                issueId,
             }),
         }, { headers: { Authorization: `PortOne ${PORTONE_API_SECRET.value().trim()}` } });
         payment = portoneRes.data;
@@ -5039,19 +5040,17 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             }, { merge: true }),
         ];
-        if (requestRef) {
-            failureWrites.push(requestRef.set({
-                status: 'failed',
-                lastBillingError: (e === null || e === void 0 ? void 0 : e.message) || 'initial_billing_failed',
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            }, { merge: true }));
-        }
+        failureWrites.push(requestRef.set({
+            status: 'failed',
+            lastBillingError: (e === null || e === void 0 ? void 0 : e.message) || 'initial_billing_failed',
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true }));
         await Promise.all(failureWrites);
         logger.error(`PortOne ${getProviderLogLabel(provider)} 빌링키 첫 결제 실패:`, {
             paymentId: maskPaymentId(paymentId),
-            status: (_j = e === null || e === void 0 ? void 0 : e.response) === null || _j === void 0 ? void 0 : _j.status,
-            code: (_l = (_k = e === null || e === void 0 ? void 0 : e.response) === null || _k === void 0 ? void 0 : _k.data) === null || _l === void 0 ? void 0 : _l.code,
-            type: (_o = (_m = e === null || e === void 0 ? void 0 : e.response) === null || _m === void 0 ? void 0 : _m.data) === null || _o === void 0 ? void 0 : _o.type,
+            status: (_d = e === null || e === void 0 ? void 0 : e.response) === null || _d === void 0 ? void 0 : _d.status,
+            code: (_g = (_f = e === null || e === void 0 ? void 0 : e.response) === null || _f === void 0 ? void 0 : _f.data) === null || _g === void 0 ? void 0 : _g.code,
+            type: (_j = (_h = e === null || e === void 0 ? void 0 : e.response) === null || _h === void 0 ? void 0 : _h.data) === null || _j === void 0 ? void 0 : _j.type,
         });
         throw new https_2.HttpsError('internal', '첫 결제에 실패했습니다.');
     }
@@ -5100,14 +5099,12 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
             lastPaidAt: nowIso,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
-        if (requestRefForTx) {
-            tx.set(requestRefForTx, {
-                status: 'processed',
-                lastPaymentId: paymentId,
-                processedAt: admin.firestore.FieldValue.serverTimestamp(),
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            }, { merge: true });
-        }
+        tx.set(requestRef, {
+            status: 'processed',
+            lastPaymentId: paymentId,
+            processedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
         tx.set(paymentRef, {
             status: 'processed',
             portoneStatus: (payment === null || payment === void 0 ? void 0 : payment.status) || 'PAID',
@@ -5320,7 +5317,7 @@ exports.processRecurringSubscriptions = (0, scheduler_1.onSchedule)({
 });
 // ===== 💳 일반(단건) 1개월 이용권 검증 =====
 exports.verifySinglePayment = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] }, async (request) => {
-    var _a, _b, _c;
+    var _a, _b;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -5331,31 +5328,10 @@ exports.verifySinglePayment = (0, https_2.onCall)({ region: 'asia-northeast3', s
     }
     const orderRef = getPaymentRequestRef(paymentId);
     const orderSnap = await orderRef.get();
-    const orderExists = orderSnap.exists;
-    const directPlan = ((_b = request.data) === null || _b === void 0 ? void 0 : _b.plan) === 'basic' || ((_c = request.data) === null || _c === void 0 ? void 0 : _c.plan) === 'premium'
-        ? request.data.plan
-        : null;
-    const orderData = orderExists
-        ? (orderSnap.data() || {})
-        : {
-            uid,
-            paymentId,
-            plan: directPlan,
-            paymentType: 'one_time',
-            billingType: 'single',
-            provider: HARU_INICIS_PROVIDER,
-            payMethod: HARU_INICIS_CARD_PAY_METHOD,
-            storeId: HARU_PORTONE_STORE_ID,
-            orderName: directPlan ? SINGLE_PAYMENT_REVIEW_PRODUCT.plans[directPlan].orderName : '',
-            amount: directPlan ? SINGLE_PAYMENT_REVIEW_PRODUCT.plans[directPlan].amount : 0,
-            currency: 'KRW',
-        };
-    if (orderExists && orderData.uid !== uid) {
+    if (!orderSnap.exists || ((_b = orderSnap.data()) === null || _b === void 0 ? void 0 : _b.uid) !== uid) {
         throw new https_2.HttpsError('permission-denied', '결제 요청 정보를 찾을 수 없습니다.');
     }
-    if (!orderExists && !directPlan) {
-        throw new https_2.HttpsError('invalid-argument', '단건 결제 plan 값이 필요합니다.');
-    }
+    const orderData = orderSnap.data() || {};
     if (orderData.paymentType !== 'one_time' || orderData.billingType !== 'single') {
         throw new https_2.HttpsError('failed-precondition', '단건 결제 요청 정보가 올바르지 않습니다.');
     }
@@ -5386,15 +5362,17 @@ exports.verifySinglePayment = (0, https_2.onCall)({ region: 'asia-northeast3', s
     const singlePaymentRef = db.doc(`paymentReviews/single/payments/${paymentId}`);
     let alreadyProcessed = false;
     await db.runTransaction(async (tx) => {
-        let freshOrderData = orderData;
-        if (orderExists) {
-            const freshOrder = await tx.get(orderRef);
-            freshOrderData = freshOrder.data() || {};
-        }
-        const existing = await tx.get(singlePaymentRef);
-        if (existing.exists || (orderExists && freshOrderData.status === 'processed')) {
+        const [freshOrder, existing] = await Promise.all([
+            tx.get(orderRef),
+            tx.get(singlePaymentRef),
+        ]);
+        const freshOrderData = freshOrder.data() || {};
+        if (existing.exists || freshOrderData.status === 'processed') {
             alreadyProcessed = true;
             return;
+        }
+        if (freshOrderData.uid !== uid || freshOrderData.paymentType !== 'one_time' || freshOrderData.billingType !== 'single') {
+            throw new https_2.HttpsError('permission-denied', '결제 요청 정보가 올바르지 않습니다.');
         }
         const storedProvider = getStoredPaymentProvider(freshOrderData) || provider;
         const storedPayMethod = getStoredPayMethod(freshOrderData, storedProvider);
@@ -5435,15 +5413,13 @@ exports.verifySinglePayment = (0, https_2.onCall)({ region: 'asia-northeast3', s
             createdAt: now,
             updatedAt: now,
         });
-        if (orderExists) {
-            tx.set(orderRef, {
-                status: 'processed',
-                portoneStatus: payment.status,
-                paymentMethod: getPaymentMethodLabel(payment),
-                processedAt: admin.firestore.FieldValue.serverTimestamp(),
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            }, { merge: true });
-        }
+        tx.set(orderRef, {
+            status: 'processed',
+            portoneStatus: payment.status,
+            paymentMethod: getPaymentMethodLabel(payment),
+            processedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
     });
     if (alreadyProcessed) {
         return { success: true, alreadyProcessed: true };

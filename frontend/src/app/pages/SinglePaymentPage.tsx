@@ -11,6 +11,14 @@ type PaymentResponse = {
   message?: string;
   paymentId?: string;
 };
+type SinglePaymentRequestResult = {
+  paymentId: string;
+  storeId: string;
+  orderName: string;
+  amount: number;
+  currency: 'KRW';
+  customData: Record<string, unknown>;
+};
 
 type PaidPlan = 'basic' | 'premium';
 
@@ -72,7 +80,7 @@ export default function SinglePaymentPage() {
       setLoading(true);
       try {
         const verifySinglePayment = httpsCallable(functions, 'verifySinglePayment');
-        await verifySinglePayment({ paymentId: redirectedPaymentId, plan: redirectedPlan });
+        await verifySinglePayment({ paymentId: redirectedPaymentId });
         if (!cancelled) setResultMessage(`${SINGLE_PAYMENT_PRODUCTS[redirectedPlan].title} 1개월 이용권 결제가 완료되었습니다.`);
       } catch (error: any) {
         console.error('단건결제 검증 오류:', error);
@@ -102,7 +110,6 @@ export default function SinglePaymentPage() {
     setResultMessage('');
 
     try {
-      const product = SINGLE_PAYMENT_PRODUCTS[selectedPlan];
       const inicisChannelKey = import.meta.env.VITE_PORTONE_INICIS_CHANNEL_KEY || import.meta.env.VITE_PORTONE_CHANNEL_KEY;
       if (!inicisChannelKey) {
         throw new Error('KG이니시스 일반결제 채널 키가 설정되지 않았습니다.');
@@ -126,14 +133,19 @@ export default function SinglePaymentPage() {
         return;
       }
 
-      const paymentId = `haru-single-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const createSinglePaymentRequest = httpsCallable(functions, 'createSinglePaymentRequest');
+      const requestResult = await createSinglePaymentRequest({
+        plan: selectedPlan,
+        provider: 'kg_inicis',
+      });
+      const paymentRequest = requestResult.data as SinglePaymentRequestResult;
       const response = await (PortOne as any).requestPayment({
-        storeId: import.meta.env.VITE_PORTONE_STORE_ID,
+        storeId: paymentRequest.storeId,
         channelKey: inicisChannelKey,
-        paymentId,
-        orderName: product.orderName,
-        totalAmount: product.amount,
-        currency: 'KRW',
+        paymentId: paymentRequest.paymentId,
+        orderName: paymentRequest.orderName,
+        totalAmount: paymentRequest.amount,
+        currency: paymentRequest.currency,
         payMethod: SINGLE_PAYMENT_PAY_METHOD,
         customer: {
           fullName: trimmedName,
@@ -143,21 +155,16 @@ export default function SinglePaymentPage() {
         products: [
           {
             id: `haru2026-${selectedPlan}-one-month-pass`,
-            name: product.orderName,
-            amount: product.amount,
+            name: paymentRequest.orderName,
+            amount: paymentRequest.amount,
             quantity: 1,
           },
         ],
         customData: {
+          ...paymentRequest.customData,
           purpose: 'kg_inicis_one_month_pass',
-          paymentType: 'one_time',
-          billingType: 'single',
-          provider: 'kg_inicis',
-          payMethod: 'kg_inicis_card',
           durationDays: 30,
-          plan: selectedPlan,
           guestAllowed: false,
-          uid: user.uid,
         },
         redirectUrl: `${window.location.origin}/payment/single?plan=${selectedPlan}`,
       }) as PaymentResponse | undefined;
@@ -178,8 +185,8 @@ export default function SinglePaymentPage() {
       }
 
       const verifySinglePayment = httpsCallable(functions, 'verifySinglePayment');
-      await verifySinglePayment({ paymentId: completedPaymentId, plan: selectedPlan });
-      setResultMessage(`${product.title} 1개월 이용권 결제가 완료되었습니다.`);
+      await verifySinglePayment({ paymentId: completedPaymentId });
+      setResultMessage(`${SINGLE_PAYMENT_PRODUCTS[selectedPlan].title} 1개월 이용권 결제가 완료되었습니다.`);
     } catch (error: any) {
       console.error('단건결제 오류:', error);
       setResultMessage(error?.message || '결제 중 오류가 발생했습니다.');

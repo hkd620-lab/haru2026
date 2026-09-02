@@ -5616,64 +5616,67 @@ export const subscribeWithBillingKey = onCall(
 
     const uid = request.auth.uid;
     const { billingKey } = request.data || {};
-    const plan = assertPaidPlan(request.data?.plan);
     const issueId = typeof request.data?.issueId === 'string' ? request.data.issueId.trim() : '';
 
     if (!billingKey || typeof billingKey !== 'string') {
       throw new HttpsError('invalid-argument', 'billingKey가 필요합니다.');
     }
-    if (request.data?.issueId !== undefined && !issueId) {
-      throw new HttpsError('invalid-argument', 'issueId 값이 올바르지 않습니다.');
+    if (!issueId) {
+      throw new HttpsError('invalid-argument', 'issueId가 필요합니다.');
     }
 
-    let requestRef: admin.firestore.DocumentReference | null = null;
-    let provider = getRequestedPaymentProvider(request.data?.provider, HARU_INICIS_PROVIDER);
-    let payMethod = getProviderPayMethod(provider);
-
-    if (issueId) {
-      requestRef = getPaymentRequestRef(issueId);
-      const requestSnap = await requestRef.get();
-      if (!requestSnap.exists) {
-        throw new HttpsError('failed-precondition', '빌링키 발급 요청 정보를 찾을 수 없습니다.');
-      }
-      const requestData = requestSnap.data() || {};
-      if (requestData.uid !== uid || requestData.plan !== plan || requestData.paymentType !== 'subscription') {
-        throw new HttpsError('permission-denied', '빌링키 발급 요청 정보가 올바르지 않습니다.');
-      }
-      provider = getStoredPaymentProvider(requestData) || getRequestedPaymentProvider(request.data?.provider);
-      payMethod = getStoredPayMethod(requestData, provider);
-      const requestExpiresAt = requestData.expiresAt?.toMillis?.() || 0;
-      if (requestExpiresAt && requestExpiresAt < Date.now()) {
-        throw new HttpsError('deadline-exceeded', '빌링키 발급 요청이 만료되었습니다. 다시 시도해 주세요.');
-      }
-    } else if (provider !== HARU_INICIS_PROVIDER) {
-      throw new HttpsError('invalid-argument', '카카오페이 정기결제는 issueId가 필요합니다.');
+    const requestRef = getPaymentRequestRef(issueId);
+    const requestSnap = await requestRef.get();
+    if (!requestSnap.exists) {
+      throw new HttpsError('failed-precondition', '빌링키 발급 요청 정보를 찾을 수 없습니다.');
+    }
+    const requestData = requestSnap.data() || {};
+    if (requestData.uid !== uid || requestData.paymentType !== 'subscription' || requestData.billingType !== 'billing_key_issue') {
+      throw new HttpsError('permission-denied', '빌링키 발급 요청 정보가 올바르지 않습니다.');
+    }
+    const plan = assertPaidPlan(requestData.plan);
+    const provider = getStoredPaymentProvider(requestData);
+    if (!provider) {
+      throw new HttpsError('failed-precondition', '빌링키 발급 요청의 결제수단 정보가 올바르지 않습니다.');
+    }
+    const payMethod = getStoredPayMethod(requestData, provider);
+    const requestExpiresAt = requestData.expiresAt?.toMillis?.() || 0;
+    if (requestExpiresAt && requestExpiresAt < Date.now()) {
+      throw new HttpsError('deadline-exceeded', '빌링키 발급 요청이 만료되었습니다. 다시 시도해 주세요.');
     }
 
     const amount = getSubscriptionPlanAmount(plan);
     const orderName = getSubscriptionOrderName(plan);
     const paymentId = createPortOneRequestId('subscription');
     const paymentRef = getPaymentRequestRef(paymentId);
-    const requestRefForTx = requestRef;
     const locked = await db.runTransaction(async (tx) => {
-      if (requestRefForTx) {
-        const fresh = await tx.get(requestRefForTx);
-        const freshData = fresh.data() || {};
-        if (freshData.uid !== uid || freshData.plan !== plan || freshData.paymentType !== 'subscription') {
-          throw new HttpsError('permission-denied', '빌링키 발급 요청 정보가 올바르지 않습니다.');
-        }
-        if (freshData.status === 'processed' && freshData.lastPaymentId) return false;
-        if (freshData.status === 'charging') return false;
-        tx.set(requestRefForTx, {
-          status: 'charging',
-          billingKeyIssuedAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        }, { merge: true });
+      const fresh = await tx.get(requestRef);
+      const freshData = fresh.data() || {};
+      const freshProvider = getStoredPaymentProvider(freshData);
+      if (
+        freshData.uid !== uid
+        || freshData.plan !== plan
+        || freshData.paymentType !== 'subscription'
+        || freshData.billingType !== 'billing_key_issue'
+        || freshProvider !== provider
+      ) {
+        throw new HttpsError('permission-denied', '빌링키 발급 요청 정보가 올바르지 않습니다.');
       }
+      if (freshData.status === 'processed' && freshData.lastPaymentId) return false;
+      if (freshData.status === 'charging' && freshData.lastPaymentId) return false;
+      if (freshData.status !== 'created') {
+        throw new HttpsError('failed-precondition', '이미 처리 중이거나 실패한 빌링키 발급 요청입니다. 다시 시도해 주세요.');
+      }
+      tx.set(requestRef, {
+        status: 'charging',
+        billingKeyIssuedAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastPaymentId: paymentId,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
       tx.set(paymentRef, {
         uid,
         paymentId,
-        issueId: issueId || null,
+        issueId,
         plan,
         paymentType: 'subscription',
         billingType: 'initial_billing',
@@ -5710,7 +5713,7 @@ export const subscribeWithBillingKey = onCall(
             payMethod,
             paymentType: 'subscription',
             billingType: 'initial_billing',
-            issueId: issueId || null,
+            issueId,
           }),
         },
         { headers: { Authorization: `PortOne ${PORTONE_API_SECRET.value().trim()}` } }
@@ -5724,13 +5727,11 @@ export const subscribeWithBillingKey = onCall(
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true }),
       ];
-      if (requestRef) {
-        failureWrites.push(requestRef.set({
-          status: 'failed',
-          lastBillingError: e?.message || 'initial_billing_failed',
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        }, { merge: true }));
-      }
+      failureWrites.push(requestRef.set({
+        status: 'failed',
+        lastBillingError: e?.message || 'initial_billing_failed',
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true }));
       await Promise.all(failureWrites);
       logger.error(`PortOne ${getProviderLogLabel(provider)} 빌링키 첫 결제 실패:`, {
         paymentId: maskPaymentId(paymentId),
@@ -5787,14 +5788,12 @@ export const subscribeWithBillingKey = onCall(
         lastPaidAt: nowIso,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
-      if (requestRefForTx) {
-        tx.set(requestRefForTx, {
-          status: 'processed',
-          lastPaymentId: paymentId,
-          processedAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        }, { merge: true });
-      }
+      tx.set(requestRef, {
+        status: 'processed',
+        lastPaymentId: paymentId,
+        processedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
       tx.set(paymentRef, {
         status: 'processed',
         portoneStatus: payment?.status || 'PAID',
@@ -6042,32 +6041,10 @@ export const verifySinglePayment = onCall(
     }
     const orderRef = getPaymentRequestRef(paymentId);
     const orderSnap = await orderRef.get();
-    const orderExists = orderSnap.exists;
-    const directPlan: 'basic' | 'premium' | null = request.data?.plan === 'basic' || request.data?.plan === 'premium'
-      ? request.data.plan as 'basic' | 'premium'
-      : null;
-    const orderData = orderExists
-      ? (orderSnap.data() || {})
-      : {
-          uid,
-          paymentId,
-          plan: directPlan,
-          paymentType: 'one_time',
-          billingType: 'single',
-          provider: HARU_INICIS_PROVIDER,
-          payMethod: HARU_INICIS_CARD_PAY_METHOD,
-          storeId: HARU_PORTONE_STORE_ID,
-          orderName: directPlan ? SINGLE_PAYMENT_REVIEW_PRODUCT.plans[directPlan].orderName : '',
-          amount: directPlan ? SINGLE_PAYMENT_REVIEW_PRODUCT.plans[directPlan].amount : 0,
-          currency: 'KRW',
-        };
-
-    if (orderExists && orderData.uid !== uid) {
+    if (!orderSnap.exists || orderSnap.data()?.uid !== uid) {
       throw new HttpsError('permission-denied', '결제 요청 정보를 찾을 수 없습니다.');
     }
-    if (!orderExists && !directPlan) {
-      throw new HttpsError('invalid-argument', '단건 결제 plan 값이 필요합니다.');
-    }
+    const orderData = orderSnap.data() || {};
     if (orderData.paymentType !== 'one_time' || orderData.billingType !== 'single') {
       throw new HttpsError('failed-precondition', '단건 결제 요청 정보가 올바르지 않습니다.');
     }
@@ -6101,15 +6078,17 @@ export const verifySinglePayment = onCall(
     const singlePaymentRef = db.doc(`paymentReviews/single/payments/${paymentId}`);
     let alreadyProcessed = false;
     await db.runTransaction(async (tx) => {
-      let freshOrderData = orderData;
-      if (orderExists) {
-        const freshOrder = await tx.get(orderRef);
-        freshOrderData = freshOrder.data() || {};
-      }
-      const existing = await tx.get(singlePaymentRef);
-      if (existing.exists || (orderExists && freshOrderData.status === 'processed')) {
+      const [freshOrder, existing] = await Promise.all([
+        tx.get(orderRef),
+        tx.get(singlePaymentRef),
+      ]);
+      const freshOrderData = freshOrder.data() || {};
+      if (existing.exists || freshOrderData.status === 'processed') {
         alreadyProcessed = true;
         return;
+      }
+      if (freshOrderData.uid !== uid || freshOrderData.paymentType !== 'one_time' || freshOrderData.billingType !== 'single') {
+        throw new HttpsError('permission-denied', '결제 요청 정보가 올바르지 않습니다.');
       }
       const storedProvider = getStoredPaymentProvider(freshOrderData) || provider;
       const storedPayMethod = getStoredPayMethod(freshOrderData, storedProvider);
@@ -6151,15 +6130,13 @@ export const verifySinglePayment = onCall(
         createdAt: now,
         updatedAt: now,
       });
-      if (orderExists) {
-        tx.set(orderRef, {
-          status: 'processed',
-          portoneStatus: payment.status,
-          paymentMethod: getPaymentMethodLabel(payment),
-          processedAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        }, { merge: true });
-      }
+      tx.set(orderRef, {
+        status: 'processed',
+        portoneStatus: payment.status,
+        paymentMethod: getPaymentMethodLabel(payment),
+        processedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
     });
 
     if (alreadyProcessed) {
