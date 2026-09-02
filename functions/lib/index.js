@@ -37,7 +37,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.reviewHaruLawSharedCard = exports.listPendingHaruLawSharedCards = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.portoneWebhook = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.cancelSubscription = exports.subscribeWithBillingKey = exports.verifyPayment = exports.createSubscriptionBillingRequest = exports.createSinglePaymentRequest = exports.generateGrowthTimelinePdf = exports.decryptKakaoXlsx = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.recordPaidServiceUsage = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.getMonthlyAiQuotaStatus = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
-exports.executeScheduledDeletion = exports.cancelAccountDeletion = exports.requestAccountDeletion = exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.getGrammarExplainV2 = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.applyBookPublishRevision = exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = void 0;
+exports.requestSubscriptionRefund = exports.executeScheduledDeletion = exports.cancelAccountDeletion = exports.requestAccountDeletion = exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.getGrammarExplainV2 = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.applyBookPublishRevision = exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = void 0;
+exports.rejectSubscriptionRefund = exports.approveSubscriptionRefund = exports.listSubscriptionRefundRequests = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -56,6 +57,7 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const aiUsageLogger_1 = require("./aiUsageLogger");
 const subscriptionHelpers_1 = require("./subscriptionHelpers");
+const subscriptionRefunds_1 = require("./subscriptionRefunds");
 const rateLimit_1 = require("./utils/rateLimit");
 const PortOne = __importStar(require("@portone/server-sdk"));
 const monthlyAiQuota_1 = require("./utils/monthlyAiQuota");
@@ -5544,6 +5546,9 @@ exports.portoneWebhook = (0, https_1.onRequest)({ region: 'asia-northeast3', sec
         paymentId: maskPaymentId(paymentId),
         portoneStatus,
     });
+    if (portoneStatus === 'CANCELLED' || portoneStatus === 'PARTIAL_CANCELLED') {
+        await (0, subscriptionRefunds_1.syncSubscriptionRefundFromPortOnePayment)(paymentId, payment, 'webhook');
+    }
     res.status(200).send('ok');
 });
 // ===== 🗑️ 일회성 마이그레이션: 모든 사용자 _tags 필드 일괄 삭제 =====
@@ -10729,3 +10734,8 @@ var accountDeletion_1 = require("./accountDeletion");
 Object.defineProperty(exports, "requestAccountDeletion", { enumerable: true, get: function () { return accountDeletion_1.requestAccountDeletion; } });
 Object.defineProperty(exports, "cancelAccountDeletion", { enumerable: true, get: function () { return accountDeletion_1.cancelAccountDeletion; } });
 Object.defineProperty(exports, "executeScheduledDeletion", { enumerable: true, get: function () { return accountDeletion_1.executeScheduledDeletion; } });
+var subscriptionRefunds_2 = require("./subscriptionRefunds");
+Object.defineProperty(exports, "requestSubscriptionRefund", { enumerable: true, get: function () { return subscriptionRefunds_2.requestSubscriptionRefund; } });
+Object.defineProperty(exports, "listSubscriptionRefundRequests", { enumerable: true, get: function () { return subscriptionRefunds_2.listSubscriptionRefundRequests; } });
+Object.defineProperty(exports, "approveSubscriptionRefund", { enumerable: true, get: function () { return subscriptionRefunds_2.approveSubscriptionRefund; } });
+Object.defineProperty(exports, "rejectSubscriptionRefund", { enumerable: true, get: function () { return subscriptionRefunds_2.rejectSubscriptionRefund; } });

@@ -41,6 +41,7 @@ import VocabPage from './pages/VocabPage';
 import { DiaryLearnPage } from './pages/DiaryLearnPage';
 import { AdminChecklistPage } from './pages/AdminChecklistPage';
 import { AdminHaruLawReviewPage } from './pages/AdminHaruLawReviewPage';
+import { AdminSubscriptionRefundsPage } from './pages/AdminSubscriptionRefundsPage';
 import { DevConsolePage } from './pages/DevConsolePage';
 import { ElderBookPage } from './pages/ElderBookPage';
 import { RecordBookPage } from './pages/RecordBookPage';
@@ -259,6 +260,7 @@ function App() {
               <Route path="/admin/k-news-publisher" element={<KNewsPublisherPage />} />
               <Route path="/admin/today-charge" element={<TodayChargePublisherPage />} />
               <Route path="/admin/haru-law-review" element={<AdminHaruLawReviewPage />} />
+              <Route path="/admin/subscription-refunds" element={<AdminSubscriptionRefundsPage />} />
 
               {/* 개발자 전용 임시 화면 */}
               <Route path="/dev/masterpiece-detective" element={<MasterpieceDetectivePage />} />
