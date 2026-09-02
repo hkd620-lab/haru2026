@@ -37,8 +37,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.reviewHaruLawSharedCard = exports.listPendingHaruLawSharedCards = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.portoneWebhook = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.cancelSubscription = exports.subscribeWithBillingKey = exports.verifyPayment = exports.createSubscriptionBillingRequest = exports.createSinglePaymentRequest = exports.generateGrowthTimelinePdf = exports.decryptKakaoXlsx = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.recordPaidServiceUsage = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.getMonthlyAiQuotaStatus = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
-exports.requestSubscriptionRefund = exports.executeScheduledDeletion = exports.cancelAccountDeletion = exports.requestAccountDeletion = exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.getGrammarExplainV2 = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.applyBookPublishRevision = exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = void 0;
-exports.rejectSubscriptionRefund = exports.approveSubscriptionRefund = exports.listSubscriptionRefundRequests = void 0;
+exports.getSubscriptionRefundEligibility = exports.executeScheduledDeletion = exports.cancelAccountDeletion = exports.requestAccountDeletion = exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.getGrammarExplainV2 = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.applyBookPublishRevision = exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = void 0;
+exports.rejectSubscriptionRefund = exports.approveSubscriptionRefund = exports.listSubscriptionRefundRequests = exports.requestSubscriptionRefund = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -61,6 +61,7 @@ const subscriptionRefunds_1 = require("./subscriptionRefunds");
 const rateLimit_1 = require("./utils/rateLimit");
 const PortOne = __importStar(require("@portone/server-sdk"));
 const monthlyAiQuota_1 = require("./utils/monthlyAiQuota");
+const internalEntitlements_1 = require("./internalEntitlements");
 // 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
 const genai_1 = require("@google/genai");
 // HARU가계부 카카오뱅크 XLSX 잠금 해제 전용 (msoffcrypto-tool TS 포트)
@@ -95,12 +96,10 @@ const MICROSOFT_CLIENT_SECRET_SECRET = (0, params_1.defineSecret)('MICROSOFT_CLI
 const GOOGLE_DRIVE_SERVICE_ACCOUNT_SECRET = (0, params_1.defineSecret)('GOOGLE_DRIVE_SERVICE_ACCOUNT');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
 // 관리자 전용 기능 접근 제어용 UID
-const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+const ADMIN_UID = internalEntitlements_1.INTERNAL_ADMIN_UID;
 // Storage 버킷
 const bucket = () => (0, storage_1.getStorage)().bucket();
-const DEVELOPER_UIDS = new Set([
-    'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8',
-]);
+const DEVELOPER_UIDS = internalEntitlements_1.INTERNAL_DEVELOPER_UIDS;
 const AI_USAGE_PLAN = 'beta';
 const READING_BOOK_OCR_LIMIT = 20;
 const HARULAW_RESPONSE_STRUCTURE_GUIDE = [
@@ -1443,8 +1442,9 @@ function getRecordOriginalContentByPrefix(record, prefix) {
 }
 // 요금제 조회 — subscription/info.plan (free/basic/premium). 개발자 UID는 developer로 계측하고 premium 한도를 적용.
 async function getUserPlan(uid) {
-    if (DEVELOPER_UIDS.has(uid))
-        return 'developer';
+    const internalPlan = (0, internalEntitlements_1.resolveInternalPlan)(uid);
+    if (internalPlan)
+        return internalPlan;
     try {
         const snap = await db.doc(`users/${uid}/subscription/info`).get();
         const data = snap.data() || {};
@@ -2572,8 +2572,7 @@ exports.generateTitlesForAll = (0, https_2.onCall)({
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
-    const DEV_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
-    if (request.auth.uid !== DEV_UID) {
+    if (!(0, internalEntitlements_1.isInternalDeveloperUid)(request.auth.uid)) {
         throw new https_2.HttpsError('permission-denied', '개발자 전용 기능입니다');
     }
     const uid = request.auth.uid;
@@ -5116,6 +5115,10 @@ exports.processRecurringSubscriptions = (0, scheduler_1.onSchedule)({
         const uid = docSnap.id;
         const billingRef = docSnap.ref;
         const data = docSnap.data();
+        if ((0, internalEntitlements_1.shouldExcludeFromRecurringBilling)(uid)) {
+            logger.info('processRecurringSubscriptions.internal_entitlement_skipped', (0, internalEntitlements_1.buildRecurringBillingSkipLogContext)(uid, data));
+            continue;
+        }
         if (data.provider !== HARU_KAKAOPAY_PROVIDER)
             continue;
         if (typeof data.nextBillingDate !== 'string' || data.nextBillingDate > nowIso)
@@ -7434,8 +7437,7 @@ ${allItems.join('\n\n---\n\n')}
 exports.refreshNews = (0, https_2.onCall)({ secrets: [GEMINI_API_KEY_SECRET], region: 'asia-northeast3' }, async (request) => {
     var _a;
     // 개발자 UID — 향후 일반 사용자 개방 시 한도 체크 로직 추가 예정
-    const DEV_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
-    const isDeveloper = ((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid) === DEV_UID;
+    const isDeveloper = (0, internalEntitlements_1.isInternalDeveloperUid)((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid);
     if (!isDeveloper) {
         // TODO: 정식 출시 시 일반 사용자 한도 체크 로직 추가
         // 예: 일 1회 / 월 30회 한도, 또는 유료 구독자만 허용
@@ -7707,8 +7709,7 @@ exports.generateHaruProphecy = (0, https_2.onCall)({
     const usage = usageSnap.exists
         ? usageSnap.data()
         : { daily: '', dailyCount: 0, monthly: '', monthlyCount: 0 };
-    const DEV_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
-    const isDeveloper = uid === DEV_UID;
+    const isDeveloper = (0, internalEntitlements_1.isInternalDeveloperUid)(uid);
     // 하루 타입별 생성 제한 체크 (개발자 제외)
     const dailyLimit = type === 'story' ? 1 : 5;
     if (!isDeveloper && usage.daily === today && usage.dailyCount >= dailyLimit) {
@@ -7986,12 +7987,11 @@ exports.getCustomToken = (0, https_2.onCall)({
     secrets: [COLLECTOR_SECRET_KEY],
 }, async (request) => {
     var _a;
-    const DEV_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
     const provided = (_a = request.data) === null || _a === void 0 ? void 0 : _a.secretKey;
     if (provided !== COLLECTOR_SECRET_KEY.value()) {
         throw new https_2.HttpsError('permission-denied', '권한 없음');
     }
-    const token = await admin.auth().createCustomToken(DEV_UID);
+    const token = await admin.auth().createCustomToken(internalEntitlements_1.INTERNAL_ADMIN_UID);
     return { token };
 });
 // ===== 🏠 온비드 부동산 물건목록 조회 (공공데이터포털 KAMCO) =====
@@ -8953,8 +8953,7 @@ exports.extractKNewsMetadata = (0, https_2.onCall)({
     timeoutSeconds: 60,
 }, async (request) => {
     var _a;
-    const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
-    if (((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid) !== DEVELOPER_UID) {
+    if (!(0, internalEntitlements_1.isInternalDeveloperUid)((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid)) {
         throw new https_2.HttpsError('permission-denied', '개발자 전용 기능입니다.');
     }
     const { imageBase64, mimeType } = request.data;
@@ -10433,8 +10432,7 @@ exports.getKoreanPlantInfo = (0, https_2.onCall)({
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
     // 🇰🇷 NIBR 보강은 관리자(허대표) 전용 — 비관리자는 NIBR 호출 자체를 차단
-    const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
-    if (uid !== ADMIN_UID) {
+    if (!(0, internalEntitlements_1.isInternalAdminUid)(uid)) {
         throw new https_2.HttpsError('permission-denied', '관리자 전용 기능입니다.');
     }
     const sciInput = String(((_b = request.data) === null || _b === void 0 ? void 0 : _b.scientificName) || '').trim();
@@ -10735,6 +10733,7 @@ Object.defineProperty(exports, "requestAccountDeletion", { enumerable: true, get
 Object.defineProperty(exports, "cancelAccountDeletion", { enumerable: true, get: function () { return accountDeletion_1.cancelAccountDeletion; } });
 Object.defineProperty(exports, "executeScheduledDeletion", { enumerable: true, get: function () { return accountDeletion_1.executeScheduledDeletion; } });
 var subscriptionRefunds_2 = require("./subscriptionRefunds");
+Object.defineProperty(exports, "getSubscriptionRefundEligibility", { enumerable: true, get: function () { return subscriptionRefunds_2.getSubscriptionRefundEligibility; } });
 Object.defineProperty(exports, "requestSubscriptionRefund", { enumerable: true, get: function () { return subscriptionRefunds_2.requestSubscriptionRefund; } });
 Object.defineProperty(exports, "listSubscriptionRefundRequests", { enumerable: true, get: function () { return subscriptionRefunds_2.listSubscriptionRefundRequests; } });
 Object.defineProperty(exports, "approveSubscriptionRefund", { enumerable: true, get: function () { return subscriptionRefunds_2.approveSubscriptionRefund; } });

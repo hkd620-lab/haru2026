@@ -75,7 +75,7 @@ interface PolishResult {
 }
 
 type MonthlyAiQuotaStatus = {
-  plan: 'free' | 'basic' | 'premium';
+  plan: 'free' | 'basic' | 'premium' | 'developer';
   used: number;
   limit: number;
   remaining: number;
@@ -83,6 +83,7 @@ type MonthlyAiQuotaStatus = {
   freeLimit: number;
   basicLimit: number;
   premiumLimit: number;
+  developerLimit?: number;
 };
 
 interface BookOcrResult {
@@ -418,6 +419,7 @@ const MONTHLY_AI_PLAN_LABELS: Record<MonthlyAiQuotaStatus['plan'], string> = {
   free: '무료',
   basic: '베이직',
   premium: '프리미엄',
+  developer: '개발자',
 };
 const LEDGER_OCR_PREVIEW_FIELDS: { key: keyof LedgerOcrFields; label: string }[] = [
   { key: 'transactionAt', label: '거래일시' },

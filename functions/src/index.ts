@@ -25,6 +25,15 @@ import {
   rollbackMonthlyAiQuotaReservation,
   type MonthlyAiQuotaReservation,
 } from './utils/monthlyAiQuota';
+import {
+  INTERNAL_ADMIN_UID,
+  INTERNAL_DEVELOPER_UIDS,
+  buildRecurringBillingSkipLogContext,
+  isInternalAdminUid,
+  isInternalDeveloperUid,
+  resolveInternalPlan,
+  shouldExcludeFromRecurringBilling,
+} from './internalEntitlements';
 // 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
 import { GoogleGenAI } from '@google/genai';
 // HARU가계부 카카오뱅크 XLSX 잠금 해제 전용 (msoffcrypto-tool TS 포트)
@@ -61,13 +70,11 @@ const MICROSOFT_CLIENT_SECRET_SECRET = defineSecret('MICROSOFT_CLIENT_SECRET');
 const GOOGLE_DRIVE_SERVICE_ACCOUNT_SECRET = defineSecret('GOOGLE_DRIVE_SERVICE_ACCOUNT');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
 // 관리자 전용 기능 접근 제어용 UID
-const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+const ADMIN_UID = INTERNAL_ADMIN_UID;
 
 // Storage 버킷
 const bucket = () => getStorage().bucket();
-const DEVELOPER_UIDS = new Set([
-  'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8',
-]);
+const DEVELOPER_UIDS = INTERNAL_DEVELOPER_UIDS;
 const AI_USAGE_PLAN = 'beta';
 const READING_BOOK_OCR_LIMIT = 20;
 
@@ -1557,7 +1564,8 @@ function getRecordOriginalContentByPrefix(record: Record<string, any>, prefix: s
 
 // 요금제 조회 — subscription/info.plan (free/basic/premium). 개발자 UID는 developer로 계측하고 premium 한도를 적용.
 async function getUserPlan(uid: string): Promise<UserPlan> {
-  if (DEVELOPER_UIDS.has(uid)) return 'developer';
+  const internalPlan = resolveInternalPlan(uid);
+  if (internalPlan) return internalPlan;
   try {
     const snap = await db.doc(`users/${uid}/subscription/info`).get();
     const data = snap.data() || {};
@@ -2853,8 +2861,7 @@ export const generateTitlesForAll = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
-    const DEV_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
-    if (request.auth.uid !== DEV_UID) {
+    if (!isInternalDeveloperUid(request.auth.uid)) {
       throw new HttpsError('permission-denied', '개발자 전용 기능입니다');
     }
     const uid = request.auth.uid;
@@ -5801,6 +5808,13 @@ export const processRecurringSubscriptions = onSchedule(
       const uid = docSnap.id;
       const billingRef = docSnap.ref;
       const data = docSnap.data();
+      if (shouldExcludeFromRecurringBilling(uid)) {
+        logger.info(
+          'processRecurringSubscriptions.internal_entitlement_skipped',
+          buildRecurringBillingSkipLogContext(uid, data),
+        );
+        continue;
+      }
       if (data.provider !== HARU_KAKAOPAY_PROVIDER) continue;
       if (typeof data.nextBillingDate !== 'string' || data.nextBillingDate > nowIso) continue;
       const billingKey = typeof data.billingKey === 'string' ? data.billingKey : '';
@@ -8359,8 +8373,7 @@ export const refreshNews = onCall(
   { secrets: [GEMINI_API_KEY_SECRET], region: 'asia-northeast3' },
   async (request) => {
     // 개발자 UID — 향후 일반 사용자 개방 시 한도 체크 로직 추가 예정
-    const DEV_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
-    const isDeveloper = request.auth?.uid === DEV_UID;
+    const isDeveloper = isInternalDeveloperUid(request.auth?.uid);
 
     if (!isDeveloper) {
       // TODO: 정식 출시 시 일반 사용자 한도 체크 로직 추가
@@ -8650,8 +8663,7 @@ export const generateHaruProphecy = onCall(
       ? usageSnap.data()!
       : { daily: '', dailyCount: 0, monthly: '', monthlyCount: 0 };
 
-    const DEV_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
-    const isDeveloper = uid === DEV_UID;
+    const isDeveloper = isInternalDeveloperUid(uid);
 
     // 하루 타입별 생성 제한 체크 (개발자 제외)
     const dailyLimit = type === 'story' ? 1 : 5;
@@ -8947,12 +8959,11 @@ export const getCustomToken = onCall(
     secrets: [COLLECTOR_SECRET_KEY],
   },
   async (request) => {
-    const DEV_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
     const provided = request.data?.secretKey;
     if (provided !== COLLECTOR_SECRET_KEY.value()) {
       throw new HttpsError('permission-denied', '권한 없음');
     }
-    const token = await admin.auth().createCustomToken(DEV_UID);
+    const token = await admin.auth().createCustomToken(INTERNAL_ADMIN_UID);
     return { token };
   }
 );
@@ -10011,8 +10022,7 @@ export const extractKNewsMetadata = onCall(
     timeoutSeconds: 60,
   },
   async (request) => {
-    const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
-    if (request.auth?.uid !== DEVELOPER_UID) {
+    if (!isInternalDeveloperUid(request.auth?.uid)) {
       throw new HttpsError('permission-denied', '개발자 전용 기능입니다.');
     }
 
@@ -11729,8 +11739,7 @@ export const getKoreanPlantInfo = onCall(
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
     // 🇰🇷 NIBR 보강은 관리자(허대표) 전용 — 비관리자는 NIBR 호출 자체를 차단
-    const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
-    if (uid !== ADMIN_UID) {
+    if (!isInternalAdminUid(uid)) {
       throw new HttpsError('permission-denied', '관리자 전용 기능입니다.');
     }
 
@@ -12158,6 +12167,7 @@ export {
 } from './accountDeletion';
 
 export {
+  getSubscriptionRefundEligibility,
   requestSubscriptionRefund,
   listSubscriptionRefundRequests,
   approveSubscriptionRefund,

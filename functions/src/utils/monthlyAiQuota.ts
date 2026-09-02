@@ -1,12 +1,14 @@
 import * as admin from 'firebase-admin';
 import { HttpsError } from 'firebase-functions/v2/https';
+import { resolveInternalPlan } from '../internalEntitlements';
 
-export type MonthlyAiPlan = 'free' | 'basic' | 'premium';
+export type MonthlyAiPlan = 'free' | 'basic' | 'premium' | 'developer';
 
 export const MONTHLY_AI_QUOTA_LIMITS: Record<MonthlyAiPlan, number> = {
   free: 10,
   basic: 100,
   premium: 300,
+  developer: 300,
 };
 
 export type MonthlyAiQuotaStatus = {
@@ -18,6 +20,7 @@ export type MonthlyAiQuotaStatus = {
   freeLimit: number;
   basicLimit: number;
   premiumLimit: number;
+  developerLimit: number;
 };
 
 export type MonthlyAiQuotaReservation = MonthlyAiQuotaStatus & {
@@ -66,6 +69,7 @@ export function buildMonthlyAiQuotaStatus(
     freeLimit: MONTHLY_AI_QUOTA_LIMITS.free,
     basicLimit: MONTHLY_AI_QUOTA_LIMITS.basic,
     premiumLimit: MONTHLY_AI_QUOTA_LIMITS.premium,
+    developerLimit: MONTHLY_AI_QUOTA_LIMITS.developer,
   };
 }
 
@@ -87,19 +91,30 @@ export function previewMonthlyAiQuotaReservation(
 export async function resolveMonthlyAiPlan(uid: string): Promise<MonthlyAiPlan> {
   try {
     const snap = await admin.firestore().doc(`users/${uid}/subscription/info`).get();
-    const data = snap.data() || {};
-    const endDate = data.endDate;
-    const expiresAt = data.expiresAt;
-    const endTime = typeof endDate === 'string'
-      ? Date.parse(endDate)
-      : typeof expiresAt?.toMillis === 'function'
-        ? expiresAt.toMillis()
-        : Number.NaN;
-    if (Number.isFinite(endTime) && endTime < Date.now()) return 'free';
-    return normalizeMonthlyAiPlan(data.plan);
+    return resolveMonthlyAiPlanFromSubscriptionData(uid, snap.data(), Date.now());
   } catch {
-    return 'free';
+    return resolveInternalPlan(uid) || 'free';
   }
+}
+
+export function resolveMonthlyAiPlanFromSubscriptionData(
+  uid: string,
+  data: Record<string, any> | undefined,
+  nowMs = Date.now(),
+): MonthlyAiPlan {
+  const internalPlan = resolveInternalPlan(uid);
+  if (internalPlan) return internalPlan;
+
+  const subscriptionData = data || {};
+  const endDate = subscriptionData.endDate;
+  const expiresAt = subscriptionData.expiresAt;
+  const endTime = typeof endDate === 'string'
+    ? Date.parse(endDate)
+    : typeof expiresAt?.toMillis === 'function'
+      ? expiresAt.toMillis()
+      : Number.NaN;
+  if (Number.isFinite(endTime) && endTime < nowMs) return 'free';
+  return normalizeMonthlyAiPlan(subscriptionData.plan);
 }
 
 export async function getMonthlyAiQuotaStatus(uid: string): Promise<MonthlyAiQuotaStatus> {

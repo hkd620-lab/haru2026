@@ -41,15 +41,18 @@ exports.sanitizeMonthlyAiFeatureKey = sanitizeMonthlyAiFeatureKey;
 exports.buildMonthlyAiQuotaStatus = buildMonthlyAiQuotaStatus;
 exports.previewMonthlyAiQuotaReservation = previewMonthlyAiQuotaReservation;
 exports.resolveMonthlyAiPlan = resolveMonthlyAiPlan;
+exports.resolveMonthlyAiPlanFromSubscriptionData = resolveMonthlyAiPlanFromSubscriptionData;
 exports.getMonthlyAiQuotaStatus = getMonthlyAiQuotaStatus;
 exports.reserveMonthlyAiQuota = reserveMonthlyAiQuota;
 exports.rollbackMonthlyAiQuotaReservation = rollbackMonthlyAiQuotaReservation;
 const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
+const internalEntitlements_1 = require("../internalEntitlements");
 exports.MONTHLY_AI_QUOTA_LIMITS = {
     free: 10,
     basic: 100,
     premium: 300,
+    developer: 300,
 };
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 function getKstMonthKey(nowMs = Date.now()) {
@@ -81,6 +84,7 @@ function buildMonthlyAiQuotaStatus(plan, used, period = getKstMonthKey()) {
         freeLimit: exports.MONTHLY_AI_QUOTA_LIMITS.free,
         basicLimit: exports.MONTHLY_AI_QUOTA_LIMITS.basic,
         premiumLimit: exports.MONTHLY_AI_QUOTA_LIMITS.premium,
+        developerLimit: exports.MONTHLY_AI_QUOTA_LIMITS.developer,
     };
 }
 function previewMonthlyAiQuotaReservation(data, plan, period = getKstMonthKey()) {
@@ -96,21 +100,27 @@ function previewMonthlyAiQuotaReservation(data, plan, period = getKstMonthKey())
 async function resolveMonthlyAiPlan(uid) {
     try {
         const snap = await admin.firestore().doc(`users/${uid}/subscription/info`).get();
-        const data = snap.data() || {};
-        const endDate = data.endDate;
-        const expiresAt = data.expiresAt;
-        const endTime = typeof endDate === 'string'
-            ? Date.parse(endDate)
-            : typeof (expiresAt === null || expiresAt === void 0 ? void 0 : expiresAt.toMillis) === 'function'
-                ? expiresAt.toMillis()
-                : Number.NaN;
-        if (Number.isFinite(endTime) && endTime < Date.now())
-            return 'free';
-        return normalizeMonthlyAiPlan(data.plan);
+        return resolveMonthlyAiPlanFromSubscriptionData(uid, snap.data(), Date.now());
     }
     catch {
-        return 'free';
+        return (0, internalEntitlements_1.resolveInternalPlan)(uid) || 'free';
     }
+}
+function resolveMonthlyAiPlanFromSubscriptionData(uid, data, nowMs = Date.now()) {
+    const internalPlan = (0, internalEntitlements_1.resolveInternalPlan)(uid);
+    if (internalPlan)
+        return internalPlan;
+    const subscriptionData = data || {};
+    const endDate = subscriptionData.endDate;
+    const expiresAt = subscriptionData.expiresAt;
+    const endTime = typeof endDate === 'string'
+        ? Date.parse(endDate)
+        : typeof (expiresAt === null || expiresAt === void 0 ? void 0 : expiresAt.toMillis) === 'function'
+            ? expiresAt.toMillis()
+            : Number.NaN;
+    if (Number.isFinite(endTime) && endTime < nowMs)
+        return 'free';
+    return normalizeMonthlyAiPlan(subscriptionData.plan);
 }
 async function getMonthlyAiQuotaStatus(uid) {
     var _a;

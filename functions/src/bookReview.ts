@@ -7,10 +7,9 @@ import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 import OpenAI from "openai";
 import * as crypto from "crypto";
+import { isInternalDeveloperUid } from "./internalEntitlements";
 
 const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
-
-const DEVELOPER_UID = "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
 const OPENAI_MODEL = "gpt-5.5-2026-04-23";
 const PROMPT_VERSION = "publish-review-v1";
 const REVISION_PROMPT_VERSION = "publish-revision-v1";
@@ -119,7 +118,7 @@ const REVISION_SCOPE_GUIDE: Record<CriterionKey, string> = {
 };
 
 function assertDeveloper(request: any) {
-  if (!request.auth || request.auth.uid !== DEVELOPER_UID) {
+  if (!isInternalDeveloperUid(request.auth?.uid)) {
     throw new HttpsError("permission-denied", "권한 없음");
   }
 }

@@ -6,6 +6,7 @@
  */
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
+import { hasInternalPremiumAccess } from './internalEntitlements';
 import Epub from 'epub-gen-memory';
 
 const db = admin.firestore();
@@ -141,15 +142,11 @@ function recordToHtml(record: Record<string, any>): string {
   return lines.join('\n');
 }
 
-const EPUB_DEVELOPER_UIDS = new Set([
-  'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8',
-]);
-
 // 유료(베이직·프리미엄) 구독자만 통과. index.ts의 getUserPlan과 동일한 판별 기준
 // (plan 값 + endDate/expiresAt 만료 확인)을 이 파일 안에서 독립적으로 적용한다 —
 // index.ts를 import하면 순환 참조가 생기므로 subscriptionHelpers.ts처럼 분리해 둔다.
 async function requirePaidSubscription(uid: string): Promise<void> {
-  if (EPUB_DEVELOPER_UIDS.has(uid)) return;
+  if (hasInternalPremiumAccess(uid)) return;
   const snap = await db.doc(`users/${uid}/subscription/info`).get();
   const data = snap.data() || {};
   const plan = String(data.plan || '').toLowerCase();
