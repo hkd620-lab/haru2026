@@ -78,6 +78,14 @@ const DEV_TOOLS: DevTool[] = [
     color: '#10b981',
   },
   {
+    sectionLabel: '결제 관리',
+    icon: '💳',
+    label: '구독 환불 요청',
+    description: '구독 환불 요청 검토·승인·거절',
+    path: '/admin/subscription-refunds',
+    color: '#1A3C6E',
+  },
+  {
     icon: '⚖️',
     label: '하루LAW 익명 공유 검수',
     description: '검수 대기 중인 익명 공유를 승인하거나 반려합니다.',

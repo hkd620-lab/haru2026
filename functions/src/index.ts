@@ -16,6 +16,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { logAiUsage } from './aiUsageLogger';
 import { cancelSubscriptionForUid, revokeBillingKeyForUid } from './subscriptionHelpers';
+import { syncSubscriptionRefundFromPortOnePayment } from './subscriptionRefunds';
 import { enforceRateLimit } from './utils/rateLimit';
 import * as PortOne from '@portone/server-sdk';
 import {
@@ -6256,6 +6257,10 @@ export const portoneWebhook = onRequest(
       paymentId: maskPaymentId(paymentId),
       portoneStatus,
     });
+
+    if (portoneStatus === 'CANCELLED' || portoneStatus === 'PARTIAL_CANCELLED') {
+      await syncSubscriptionRefundFromPortOnePayment(paymentId, payment, 'webhook');
+    }
     res.status(200).send('ok');
   }
 );
@@ -12151,3 +12156,10 @@ export {
   cancelAccountDeletion,
   executeScheduledDeletion,
 } from './accountDeletion';
+
+export {
+  requestSubscriptionRefund,
+  listSubscriptionRefundRequests,
+  approveSubscriptionRefund,
+  rejectSubscriptionRefund,
+} from './subscriptionRefunds';
