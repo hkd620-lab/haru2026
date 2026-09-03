@@ -60,7 +60,8 @@ assert(subscribeSection.includes('tx.get(lockRef)'));
 assert(subscribeSection.includes('freshLockData.issueId !== issueId'));
 assert(subscribeSection.includes('billingKey,'));
 assert(subscribeSection.includes('lastPaymentId: newPaymentId'));
-assert(subscribeSection.includes("return { action: 'settle_existing', paymentId: freshData.lastPaymentId }"));
+assert(subscribeSection.includes("action: 'settle_existing'"));
+assert(subscribeSection.includes('customer: getStoredSubscriptionBillingCustomer(freshData)'));
 assertBefore(subscribeSection, "if (locked.action === 'settle_existing')", 'axios.post');
 
 assert(recoverSection.includes('const lockRef = getSubscriptionPaymentLockRef(uid)'));
