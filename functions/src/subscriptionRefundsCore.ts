@@ -37,10 +37,15 @@ export class SubscriptionRefundPolicyError extends Error {
   }
 }
 
-export const SUBSCRIPTION_REFUND_REQUEST_WINDOW_DAYS = 30;
 export const SUBSCRIPTION_REFUND_FULL_REFUND_DAYS = 7;
 export const SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS = 30;
+export const SUBSCRIPTION_REFUND_MIN_REMAINING_DAYS = 7;
 export const SUBSCRIPTION_REFUNDING_STALE_MS = 10 * 60 * 1000;
+export const SUBSCRIPTION_REFUND_REMAINING_WINDOW_EXEMPT_REASON_CODES: SubscriptionRefundReasonCode[] = [
+  'service_issue',
+  'duplicate_payment',
+  'wrong_payment',
+];
 
 export const SUBSCRIPTION_REFUND_STATUSES: SubscriptionRefundStatus[] = [
   'requested',
@@ -216,16 +221,53 @@ export function assertNoDuplicateRefundRequest(existingStatus: unknown): void {
   }
 }
 
-export function assertRefundRequestWindow(paidAtMs: number, nowMs: number, reasonCode: SubscriptionRefundReasonCode): void {
+export function isRefundRemainingWindowExempt(reasonCode: SubscriptionRefundReasonCode): boolean {
+  return SUBSCRIPTION_REFUND_REMAINING_WINDOW_EXEMPT_REASON_CODES.includes(reasonCode);
+}
+
+export function getSubscriptionRefundServicePeriodDays(
+  paidAtMs: number,
+  explicitPeriodEndMs?: number,
+  explicitServicePeriodDays?: number,
+): number {
+  void paidAtMs;
+  void explicitPeriodEndMs;
+  void explicitServicePeriodDays;
+  return SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS;
+}
+
+export function getSubscriptionRefundPeriodEndMs(
+  paidAtMs: number,
+  servicePeriodDays: number,
+  explicitPeriodEndMs?: number,
+): number {
+  if (
+    Number.isFinite(explicitPeriodEndMs)
+    && explicitPeriodEndMs !== undefined
+    && explicitPeriodEndMs > paidAtMs
+  ) {
+    return explicitPeriodEndMs;
+  }
+  return paidAtMs + Math.max(1, servicePeriodDays) * MS_PER_DAY;
+}
+
+export function assertRefundRequestWindow(
+  paidAtMs: number,
+  nowMs: number,
+  reasonCode: SubscriptionRefundReasonCode,
+  periodEndMs?: number,
+  servicePeriodDays = SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS,
+): void {
   if (!Number.isFinite(paidAtMs) || paidAtMs <= 0) {
     throw new SubscriptionRefundPolicyError('request_window_closed', '결제일을 확인할 수 없습니다.');
   }
-  if (reasonCode === 'service_issue' || reasonCode === 'duplicate_payment' || reasonCode === 'wrong_payment') {
-    return;
-  }
-  const elapsedDays = Math.floor(Math.max(0, nowMs - paidAtMs) / MS_PER_DAY);
-  if (elapsedDays > SUBSCRIPTION_REFUND_REQUEST_WINDOW_DAYS) {
-    throw new SubscriptionRefundPolicyError('request_window_closed', '환불 신청 가능 기간이 지났습니다.');
+  if (!isRefundRemainingWindowExempt(reasonCode)) {
+    const resolvedPeriodDays = getSubscriptionRefundServicePeriodDays(paidAtMs, periodEndMs, servicePeriodDays);
+    const resolvedPeriodEndMs = getSubscriptionRefundPeriodEndMs(paidAtMs, resolvedPeriodDays, periodEndMs);
+    const remainingMs = resolvedPeriodEndMs - nowMs;
+    if (remainingMs < SUBSCRIPTION_REFUND_MIN_REMAINING_DAYS * MS_PER_DAY) {
+      throw new SubscriptionRefundPolicyError('request_window_closed', '구독 만료 7일 미만인 결제는 환불을 신청할 수 없습니다.');
+    }
   }
 }
 
@@ -234,15 +276,71 @@ export function estimateSubscriptionRefundAmount(
   paidAtMs: number,
   nowMs: number,
   hasPaidServiceUsage: boolean,
+  servicePeriodDays = SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS,
 ): number {
   if (!Number.isFinite(paidAmount) || paidAmount <= 0) return 0;
-  const elapsedDays = Math.floor(Math.max(0, nowMs - paidAtMs) / MS_PER_DAY);
-  if (!hasPaidServiceUsage && elapsedDays <= SUBSCRIPTION_REFUND_FULL_REFUND_DAYS) {
+  void servicePeriodDays;
+  const resolvedPeriodDays = SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS;
+  const elapsedMs = Math.max(0, nowMs - paidAtMs);
+  if (!hasPaidServiceUsage && elapsedMs <= SUBSCRIPTION_REFUND_FULL_REFUND_DAYS * MS_PER_DAY) {
     return paidAmount;
   }
-  const usedDays = Math.min(SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS, Math.max(0, elapsedDays));
-  const usedAmount = (paidAmount / SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS) * usedDays;
+  const elapsedDays = Math.floor(elapsedMs / MS_PER_DAY);
+  const usedDays = Math.min(resolvedPeriodDays, Math.max(0, elapsedDays));
+  const usedAmount = (paidAmount / resolvedPeriodDays) * usedDays;
   return Math.max(0, Math.ceil(paidAmount - usedAmount));
+}
+
+export interface SubscriptionRefundCancellationAmounts {
+  targetRefundAmount: number;
+  alreadyRefundedAmount: number;
+  cancelAmountThisAttempt: number;
+}
+
+export function calculateSubscriptionRefundCancellationAmounts(
+  targetRefundAmountInput: unknown,
+  cancellableAmountInput: unknown,
+  paidAmountInput: unknown,
+): SubscriptionRefundCancellationAmounts {
+  const paidAmountRaw = Number(paidAmountInput);
+  const paidAmount = Number.isFinite(paidAmountRaw) && paidAmountRaw > 0
+    ? Math.ceil(paidAmountRaw)
+    : 0;
+  const targetRefundAmountRaw = Number(targetRefundAmountInput);
+  const targetRefundAmount = Number.isFinite(targetRefundAmountRaw) && targetRefundAmountRaw > 0
+    ? Math.min(paidAmount, Math.ceil(targetRefundAmountRaw))
+    : 0;
+  const cancellableAmountRaw = Number(cancellableAmountInput);
+  const cancellableAmount = Number.isFinite(cancellableAmountRaw) && cancellableAmountRaw > 0
+    ? Math.min(paidAmount, Math.ceil(cancellableAmountRaw))
+    : 0;
+  const alreadyRefundedAmount = Math.max(0, paidAmount - cancellableAmount);
+  const cancelAmountThisAttempt = Math.min(
+    cancellableAmount,
+    Math.max(0, targetRefundAmount - alreadyRefundedAmount),
+  );
+
+  return {
+    targetRefundAmount,
+    alreadyRefundedAmount,
+    cancelAmountThisAttempt,
+  };
+}
+
+export function resolveApprovedRefundAmount(
+  requestedRefundAmount: unknown,
+  cancellableAmount: number,
+  paidAmount: number,
+): number {
+  const requested = Number(requestedRefundAmount);
+  const targetRefundAmount = Number.isFinite(requested) && requested > 0
+    ? requested
+    : paidAmount;
+  return calculateSubscriptionRefundCancellationAmounts(
+    targetRefundAmount,
+    cancellableAmount,
+    paidAmount,
+  ).cancelAmountThisAttempt;
 }
 
 export function shouldMarkRefundedFromPortOne(payment: Record<string, any>, expectedRefundAmount: number): boolean {
