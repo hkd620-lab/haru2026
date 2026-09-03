@@ -113,39 +113,15 @@ function paymentScopedDataMatches(paymentId, data) {
     ].filter((value) => typeof value === 'string' && value.trim().length > 0);
     return linkedIds.length === 0 || linkedIds.includes(paymentId);
 }
-function getExplicitServicePeriodDays(data) {
-    for (const key of ['servicePeriodDays', 'billingPeriodDays', 'periodDays', 'subscriptionPeriodDays']) {
-        const value = Number(data[key]);
-        if (Number.isFinite(value) && value > 0) {
-            return Math.ceil(value);
-        }
-    }
-    const cycle = String(data.billingCycle
-        || data.subscriptionCycle
-        || data.interval
-        || data.intervalUnit
-        || data.periodUnit
-        || '').toLowerCase();
-    if (cycle.includes('month'))
-        return 30;
-    return undefined;
-}
 function getPaymentPeriodEndMillis(paymentId, ...sources) {
     for (const source of sources) {
         if (!source || !paymentScopedDataMatches(paymentId, source))
             continue;
-        const endMs = firstFiniteMillis(source.periodEndAt, source.periodEndDate, source.subscriptionEndDate, source.endDate, source.nextBillingDate);
+        const endMs = firstFiniteMillis(source.endDate, source.nextBillingDate);
         if (Number.isFinite(endMs) && endMs > 0)
             return endMs;
     }
     return Number.NaN;
-}
-function getPaymentServicePeriodDays(paymentId, paidAtMs, periodEndMs, ...sources) {
-    const explicitPeriodDays = sources
-        .filter((source) => source && paymentScopedDataMatches(paymentId, source))
-        .map(getExplicitServicePeriodDays)
-        .find((value) => typeof value === 'number' && value > 0);
-    return (0, subscriptionRefundsCore_1.getSubscriptionRefundServicePeriodDays)(paidAtMs, periodEndMs, explicitPeriodDays);
 }
 function subscriptionDocumentMatchesPayment(data, paymentId) {
     return paymentScopedDataMatches(paymentId, data)
@@ -476,15 +452,15 @@ exports.requestSubscriptionRefund = (0, https_1.onCall)({ region: 'asia-northeas
         ]);
         const subscriptionData = subscriptionSnap.data() || {};
         const billingData = billingSnap.data() || {};
-        const periodEndMs = getPaymentPeriodEndMillis(paymentId, orderData, subscriptionData, billingData);
-        const servicePeriodDays = getPaymentServicePeriodDays(paymentId, paidAtMs, periodEndMs, orderData, subscriptionData, billingData);
+        const periodEndMs = getPaymentPeriodEndMillis(paymentId, subscriptionData, billingData);
+        const servicePeriodDays = subscriptionRefundsCore_1.SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS;
         const resolvedPeriodEndMs = (0, subscriptionRefundsCore_1.getSubscriptionRefundPeriodEndMs)(paidAtMs, servicePeriodDays, periodEndMs);
         const nowMs = Date.now();
         (0, subscriptionRefundsCore_1.assertRefundRequestWindow)(paidAtMs, nowMs, reasonCode, resolvedPeriodEndMs, servicePeriodDays);
         const usageSummary = await buildUsageSummary(uid, paidAtMs);
         const paidAmount = Number(orderData.amount || (0, subscriptionRefundsCore_1.getPaymentAmountTotal)(payment));
         const cancellableAmount = (0, subscriptionRefundsCore_1.getPortOneCancellableAmount)(payment);
-        const targetRefundAmount = (0, subscriptionRefundsCore_1.estimateSubscriptionRefundAmount)(paidAmount, paidAtMs, nowMs, usageSummary.hasPaidServiceUsage, servicePeriodDays);
+        const targetRefundAmount = (0, subscriptionRefundsCore_1.estimateSubscriptionRefundAmount)(paidAmount, paidAtMs, nowMs, usageSummary.hasPaidServiceUsage);
         const refundAmounts = (0, subscriptionRefundsCore_1.calculateSubscriptionRefundCancellationAmounts)(targetRefundAmount, cancellableAmount, paidAmount);
         if (refundAmounts.targetRefundAmount <= 0) {
             throw new subscriptionRefundsCore_1.SubscriptionRefundPolicyError('nothing_to_refund', '환불 가능한 잔액이 없습니다.');

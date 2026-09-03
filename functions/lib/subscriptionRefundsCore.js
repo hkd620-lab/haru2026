@@ -187,17 +187,9 @@ function isRefundRemainingWindowExempt(reasonCode) {
     return exports.SUBSCRIPTION_REFUND_REMAINING_WINDOW_EXEMPT_REASON_CODES.includes(reasonCode);
 }
 function getSubscriptionRefundServicePeriodDays(paidAtMs, explicitPeriodEndMs, explicitServicePeriodDays) {
-    if (Number.isFinite(explicitServicePeriodDays)
-        && explicitServicePeriodDays !== undefined
-        && explicitServicePeriodDays > 0) {
-        return Math.max(1, Math.ceil(explicitServicePeriodDays));
-    }
-    if (Number.isFinite(paidAtMs)
-        && Number.isFinite(explicitPeriodEndMs)
-        && explicitPeriodEndMs !== undefined
-        && explicitPeriodEndMs > paidAtMs) {
-        return Math.max(1, Math.ceil((explicitPeriodEndMs - paidAtMs) / MS_PER_DAY));
-    }
+    void paidAtMs;
+    void explicitPeriodEndMs;
+    void explicitServicePeriodDays;
     return exports.SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS;
 }
 function getSubscriptionRefundPeriodEndMs(paidAtMs, servicePeriodDays, explicitPeriodEndMs) {
@@ -224,7 +216,8 @@ function assertRefundRequestWindow(paidAtMs, nowMs, reasonCode, periodEndMs, ser
 function estimateSubscriptionRefundAmount(paidAmount, paidAtMs, nowMs, hasPaidServiceUsage, servicePeriodDays = exports.SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS) {
     if (!Number.isFinite(paidAmount) || paidAmount <= 0)
         return 0;
-    const resolvedPeriodDays = Math.max(1, Math.ceil(servicePeriodDays));
+    void servicePeriodDays;
+    const resolvedPeriodDays = exports.SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS;
     const elapsedMs = Math.max(0, nowMs - paidAtMs);
     if (!hasPaidServiceUsage && elapsedMs <= exports.SUBSCRIPTION_REFUND_FULL_REFUND_DAYS * MS_PER_DAY) {
         return paidAmount;

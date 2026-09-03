@@ -230,23 +230,9 @@ export function getSubscriptionRefundServicePeriodDays(
   explicitPeriodEndMs?: number,
   explicitServicePeriodDays?: number,
 ): number {
-  if (
-    Number.isFinite(explicitServicePeriodDays)
-    && explicitServicePeriodDays !== undefined
-    && explicitServicePeriodDays > 0
-  ) {
-    return Math.max(1, Math.ceil(explicitServicePeriodDays));
-  }
-
-  if (
-    Number.isFinite(paidAtMs)
-    && Number.isFinite(explicitPeriodEndMs)
-    && explicitPeriodEndMs !== undefined
-    && explicitPeriodEndMs > paidAtMs
-  ) {
-    return Math.max(1, Math.ceil((explicitPeriodEndMs - paidAtMs) / MS_PER_DAY));
-  }
-
+  void paidAtMs;
+  void explicitPeriodEndMs;
+  void explicitServicePeriodDays;
   return SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS;
 }
 
@@ -293,7 +279,8 @@ export function estimateSubscriptionRefundAmount(
   servicePeriodDays = SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS,
 ): number {
   if (!Number.isFinite(paidAmount) || paidAmount <= 0) return 0;
-  const resolvedPeriodDays = Math.max(1, Math.ceil(servicePeriodDays));
+  void servicePeriodDays;
+  const resolvedPeriodDays = SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS;
   const elapsedMs = Math.max(0, nowMs - paidAtMs);
   if (!hasPaidServiceUsage && elapsedMs <= SUBSCRIPTION_REFUND_FULL_REFUND_DAYS * MS_PER_DAY) {
     return paidAmount;

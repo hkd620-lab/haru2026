@@ -141,11 +141,16 @@ function run() {
   assertRefundRequestWindow(now - 20 * DAY, now, 'unused_within_7_days', undefined, 30);
   expectPolicyError(() => assertRefundRequestWindow(now - 24 * DAY, now, 'unused_within_7_days', undefined, 30), 'request_window_closed');
   expectPolicyError(() => assertRefundRequestWindow(now - 24 * DAY, now, 'other', undefined, 30), 'request_window_closed');
+  expectPolicyError(() => assertRefundRequestWindow(now - DAY, now, 'other', now + 7 * DAY - 1, 30), 'request_window_closed');
+  assertRefundRequestWindow(now - DAY, now, 'other', now + 7 * DAY, 30);
   assertRefundRequestWindow(now - 24 * DAY, now, 'service_issue', undefined, 30);
   assertRefundRequestWindow(now - 24 * DAY, now, 'duplicate_payment', undefined, 30);
   assertRefundRequestWindow(now - 24 * DAY, now, 'wrong_payment', undefined, 30);
   assertRefundRequestWindow(now - 120 * DAY, now, 'duplicate_payment', now + 30 * DAY, 365);
   assert.equal(getSubscriptionRefundServicePeriodDays(now - 10 * DAY, now + 20 * DAY), 30);
+  assert.equal(getSubscriptionRefundServicePeriodDays(now - 10 * DAY, now + 21 * DAY), 30);
+  assert.equal(getSubscriptionRefundServicePeriodDays(now - 10 * DAY, now + 20 * DAY + 3000), 30);
+  assert.equal(getSubscriptionRefundServicePeriodDays(now - 10 * DAY, now + 18 * DAY), 30);
   assert.equal(getSubscriptionRefundPeriodEndMs(now - 10 * DAY, 30), now + 20 * DAY);
 
   assert.equal(estimateSubscriptionRefundAmount(4000, now - 3 * DAY, now, false), 4000);
@@ -153,6 +158,18 @@ function run() {
   assert.equal(estimateSubscriptionRefundAmount(4000, now - 7 * DAY - 1, now, false), 3067);
   assert.equal(estimateSubscriptionRefundAmount(4000, now - 3 * DAY, now, true), 3600);
   assert.equal(estimateSubscriptionRefundAmount(4000, now - 10 * DAY, now, true), 2667);
+  assert.equal(estimateSubscriptionRefundAmount(4000, now - 10 * DAY, now, true, 31), 2667);
+  assert.equal(estimateSubscriptionRefundAmount(4000, now - 10 * DAY, now, true, 28), 2667);
+  assert.equal(
+    estimateSubscriptionRefundAmount(
+      4000,
+      now - 10 * DAY,
+      now,
+      true,
+      getSubscriptionRefundServicePeriodDays(now - 10 * DAY, now + 21 * DAY + 3000),
+    ),
+    2667,
+  );
   assert.deepEqual(calculateSubscriptionRefundCancellationAmounts(2667, 3000, 4000), {
     targetRefundAmount: 2667,
     alreadyRefundedAmount: 1000,

@@ -4,6 +4,7 @@ import * as logger from 'firebase-functions/logger';
 import axios from 'axios';
 import {
   SUBSCRIPTION_REFUND_REASON_LABELS,
+  SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS,
   assertAdminUid,
   assertNoDuplicateRefundRequest,
   assertPortOnePaymentIdentityMatchesStoredRequest,
@@ -19,7 +20,6 @@ import {
   getPaymentAmountTotal,
   getPortOneCancellableAmount,
   getSubscriptionRefundPeriodEndMs,
-  getSubscriptionRefundServicePeriodDays,
   getRefundWebhookSyncAction,
   hasRefundRequestMarker,
   isPaidFirestoreSubscriptionPaymentRequest,
@@ -119,52 +119,16 @@ function paymentScopedDataMatches(paymentId: string, data: Record<string, any>):
   return linkedIds.length === 0 || linkedIds.includes(paymentId);
 }
 
-function getExplicitServicePeriodDays(data: Record<string, any>): number | undefined {
-  for (const key of ['servicePeriodDays', 'billingPeriodDays', 'periodDays', 'subscriptionPeriodDays']) {
-    const value = Number(data[key]);
-    if (Number.isFinite(value) && value > 0) {
-      return Math.ceil(value);
-    }
-  }
-
-  const cycle = String(
-    data.billingCycle
-    || data.subscriptionCycle
-    || data.interval
-    || data.intervalUnit
-    || data.periodUnit
-    || '',
-  ).toLowerCase();
-  if (cycle.includes('month')) return 30;
-  return undefined;
-}
-
 function getPaymentPeriodEndMillis(paymentId: string, ...sources: Record<string, any>[]): number {
   for (const source of sources) {
     if (!source || !paymentScopedDataMatches(paymentId, source)) continue;
     const endMs = firstFiniteMillis(
-      source.periodEndAt,
-      source.periodEndDate,
-      source.subscriptionEndDate,
       source.endDate,
       source.nextBillingDate,
     );
     if (Number.isFinite(endMs) && endMs > 0) return endMs;
   }
   return Number.NaN;
-}
-
-function getPaymentServicePeriodDays(
-  paymentId: string,
-  paidAtMs: number,
-  periodEndMs: number,
-  ...sources: Record<string, any>[]
-): number {
-  const explicitPeriodDays = sources
-    .filter((source) => source && paymentScopedDataMatches(paymentId, source))
-    .map(getExplicitServicePeriodDays)
-    .find((value): value is number => typeof value === 'number' && value > 0);
-  return getSubscriptionRefundServicePeriodDays(paidAtMs, periodEndMs, explicitPeriodDays);
 }
 
 function subscriptionDocumentMatchesPayment(data: Record<string, any>, paymentId: string): boolean {
@@ -533,8 +497,8 @@ export const requestSubscriptionRefund = onCall(
       ]);
       const subscriptionData = subscriptionSnap.data() || {};
       const billingData = billingSnap.data() || {};
-      const periodEndMs = getPaymentPeriodEndMillis(paymentId, orderData, subscriptionData, billingData);
-      const servicePeriodDays = getPaymentServicePeriodDays(paymentId, paidAtMs, periodEndMs, orderData, subscriptionData, billingData);
+      const periodEndMs = getPaymentPeriodEndMillis(paymentId, subscriptionData, billingData);
+      const servicePeriodDays = SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS;
       const resolvedPeriodEndMs = getSubscriptionRefundPeriodEndMs(paidAtMs, servicePeriodDays, periodEndMs);
       const nowMs = Date.now();
       assertRefundRequestWindow(paidAtMs, nowMs, reasonCode, resolvedPeriodEndMs, servicePeriodDays);
@@ -546,7 +510,6 @@ export const requestSubscriptionRefund = onCall(
         paidAtMs,
         nowMs,
         usageSummary.hasPaidServiceUsage,
-        servicePeriodDays,
       );
       const refundAmounts = calculateSubscriptionRefundCancellationAmounts(
         targetRefundAmount,
