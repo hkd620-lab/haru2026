@@ -153,7 +153,8 @@ assert(subscribeSection.includes("requestData.uid !== uid || requestData.payment
 assert(subscribeSection.includes('const plan = assertPaidPlan(requestData.plan)'));
 assert(subscribeSection.includes('const provider = getStoredPaymentProvider(requestData)'));
 assert(subscribeSection.includes("freshData.status === 'processed' || freshData.status === 'charging'"));
-assert(subscribeSection.includes("return { action: 'settle_existing', paymentId: freshData.lastPaymentId }"));
+assert(subscribeSection.includes("action: 'settle_existing'"));
+assert(subscribeSection.includes('customer: getStoredSubscriptionBillingCustomer(freshData)'));
 assert(subscribeSection.includes("if (locked.action === 'settle_existing')"));
 assert(subscribeSection.includes('existingPayment = await fetchPortOnePaymentWithRetry(paymentId)'));
 assert(subscribeSection.includes("throw new HttpsError('unavailable', '기존 첫 결제 상태를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.')"));
@@ -167,8 +168,10 @@ assert(!settleExistingBranch.includes('axios.post'));
 assertBefore(settleExistingBranch, 'isInitialBillingSubscriptionAlreadyProcessed', 'fetchPortOnePaymentWithRetry(paymentId)');
 assertBefore(subscribeSection, "if (locked.action === 'settle_existing')", 'axios.post');
 assert(subscribeSection.includes("status: 'charging'"));
-assert(subscribeSection.includes("lastBillingError: e?.message || 'initial_billing_uncertain'"));
-assert(subscribeSection.includes("throw new HttpsError('unavailable', '첫 결제 요청 결과를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.')"));
+assert(subscribeSection.includes('const billingError = getPortOneBillingErrorSummary(e)'));
+assert(subscribeSection.includes('if (billingError.terminal)'));
+assert(subscribeSection.includes("throw new HttpsError('failed-precondition', '첫 결제가 실패 또는 취소되었습니다.')"));
+assert(subscribeSection.includes("throw new HttpsError('unavailable', '첫 결제 요청 결과를 확인할 수 없습니다. 잠시 후 다시 확인해 주세요.')"));
 
 assert(initialBillingAlreadyProcessedSection.includes("requestData.status === 'processed'"));
 assert(initialBillingAlreadyProcessedSection.includes("paymentData.status === 'processed'"));
@@ -202,6 +205,11 @@ assert(recurringSection.includes('const provider = getStoredPaymentProvider(data
 assertBefore(recurringSection, 'shouldExcludeFromRecurringBilling(uid)', 'const provider = getStoredPaymentProvider(data)');
 assert(recurringSection.includes('provider,'));
 assert(recurringSection.includes('payMethod,'));
+assert(recurringSection.includes('const customer = getStoredSubscriptionBillingCustomer(data)'));
+assert(recurringSection.includes('missing_recurring_customer_info'));
+assert(recurringSection.includes('buildPortOneBillingKeyPaymentPayload({'));
+assert(recurringSection.includes('customer: lockedCustomer'));
+assert(recurringSection.includes('const billingError = getPortOneBillingErrorSummary(error)'));
 
 assert(verifySingleSection.includes('const orderRef = getPaymentRequestRef(paymentId)'));
 assert(verifySingleSection.includes('if (!orderSnap.exists || orderSnap.data()?.uid !== uid)'));

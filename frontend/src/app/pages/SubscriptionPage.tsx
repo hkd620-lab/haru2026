@@ -430,6 +430,11 @@ export default function SubscriptionPage() {
       const requestResult = await createSubscriptionBillingRequest({
         plan: selectedPlan,
         provider: paymentMethodConfig.provider,
+        customer: {
+          name: trimmedName,
+          email: trimmedEmail,
+          phoneNumber: normalizedPhone,
+        },
       });
       const billingRequest = requestResult.data as SubscriptionBillingRequestResult;
       if (billingRequest.pending === true) {
