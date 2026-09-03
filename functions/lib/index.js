@@ -36,9 +36,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = exports.reviewHaruLawSharedCard = exports.listPendingHaruLawSharedCards = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.portoneWebhook = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.cancelSubscription = exports.subscribeWithBillingKey = exports.verifyPayment = exports.createSubscriptionBillingRequest = exports.createSinglePaymentRequest = exports.generateGrowthTimelinePdf = exports.decryptKakaoXlsx = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.recordPaidServiceUsage = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.getMonthlyAiQuotaStatus = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
-exports.getSubscriptionRefundEligibility = exports.executeScheduledDeletion = exports.cancelAccountDeletion = exports.requestAccountDeletion = exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.getGrammarExplainV2 = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.applyBookPublishRevision = exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = void 0;
-exports.rejectSubscriptionRefund = exports.approveSubscriptionRefund = exports.listSubscriptionRefundRequests = exports.requestSubscriptionRefund = void 0;
+exports.lawPrecedent = exports.lawEasyExplain = exports.reviewHaruLawSharedCard = exports.listPendingHaruLawSharedCards = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.portoneWebhook = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.cancelSubscription = exports.subscribeWithBillingKey = exports.verifyPayment = exports.recoverSubscriptionBillingRequest = exports.createSubscriptionBillingRequest = exports.createSinglePaymentRequest = exports.generateGrowthTimelinePdf = exports.decryptKakaoXlsx = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.recordPaidServiceUsage = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.getMonthlyAiQuotaStatus = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
+exports.executeScheduledDeletion = exports.cancelAccountDeletion = exports.requestAccountDeletion = exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.getGrammarExplainV2 = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.applyBookPublishRevision = exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = void 0;
+exports.rejectSubscriptionRefund = exports.approveSubscriptionRefund = exports.listSubscriptionRefundRequests = exports.requestSubscriptionRefund = exports.getSubscriptionRefundEligibility = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -299,6 +299,28 @@ function getSubscriptionPlanAmount(plan) {
 function getSubscriptionOrderName(plan) {
     return plan === 'basic' ? 'HARU2026 베이직 1개월 정기구독' : 'HARU2026 프리미엄 1개월 정기구독';
 }
+function buildSubscriptionBillingRequestResponse(params) {
+    const payMethod = getProviderPayMethod(params.provider);
+    const amount = getSubscriptionPlanAmount(params.plan);
+    const issueName = getSubscriptionOrderName(params.plan);
+    return {
+        issueId: params.issueId,
+        storeId: HARU_PORTONE_STORE_ID,
+        issueName,
+        amount,
+        currency: 'KRW',
+        status: params.status,
+        existing: params.existing === true,
+        customData: {
+            uid: params.uid,
+            plan: params.plan,
+            provider: params.provider,
+            payMethod,
+            paymentType: 'subscription',
+            billingType: 'billing_key_issue',
+        },
+    };
+}
 function isHaruPaymentProvider(provider) {
     return provider === HARU_INICIS_PROVIDER || provider === HARU_KAKAOPAY_PROVIDER;
 }
@@ -406,6 +428,9 @@ function assertPaymentMatchesRequest(payment, requestData) {
 function getPaymentRequestRef(id) {
     return db.doc(`paymentRequests/${id}`);
 }
+function getSubscriptionPaymentLockRef(uid) {
+    return db.doc(`subscriptionPaymentLocks/${uid}`);
+}
 function getWebhookEventId(webhook, paymentId) {
     var _a, _b;
     const base = [
@@ -428,6 +453,15 @@ function isFinalFailedPaymentStatus(status) {
 }
 function isFailedOrCancelledPaymentStatus(status) {
     return ['FAILED', 'CANCELLED', 'PARTIAL_CANCELLED'].includes(status);
+}
+function normalizePaymentRequestStatus(status) {
+    return typeof status === 'string' ? status.trim().toLowerCase() : '';
+}
+function isActiveSubscriptionData(data, nowMs) {
+    if ((data === null || data === void 0 ? void 0 : data.status) !== 'active')
+        return false;
+    const endDate = typeof (data === null || data === void 0 ? void 0 : data.endDate) === 'string' ? Date.parse(data.endDate) : NaN;
+    return Number.isNaN(endDate) || endDate > nowMs;
 }
 function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -505,14 +539,16 @@ async function completeInitialBillingSubscription(params) {
     const nowIso = now.toISOString();
     const subRef = db.doc(`users/${params.uid}/subscription/info`);
     const billingRef = db.doc(`billingSubscriptions/${params.uid}`);
+    const lockRef = params.lockRef;
     let alreadyProcessed = false;
     await db.runTransaction(async (tx) => {
         var _a;
-        const [freshRequest, freshPayment, freshSubscription, freshBilling] = await Promise.all([
+        const [freshRequest, freshPayment, freshSubscription, freshBilling, freshLock] = await Promise.all([
             tx.get(params.requestRef),
             tx.get(params.paymentRef),
             tx.get(subRef),
             tx.get(billingRef),
+            tx.get(lockRef),
         ]);
         const requestData = freshRequest.data() || {};
         const paymentData = freshPayment.data() || {};
@@ -520,6 +556,7 @@ async function completeInitialBillingSubscription(params) {
         const billingData = freshBilling.data() || {};
         const requestProvider = getStoredPaymentProvider(requestData);
         const paymentProvider = getStoredPaymentProvider(paymentData);
+        const lockData = freshLock.data() || {};
         if (requestData.uid !== params.uid
             || requestData.plan !== params.plan
             || requestData.paymentType !== 'subscription'
@@ -527,6 +564,10 @@ async function completeInitialBillingSubscription(params) {
             || requestProvider !== params.provider
             || requestData.lastPaymentId !== params.paymentId) {
             throw new https_2.HttpsError('permission-denied', '빌링키 발급 요청 정보가 올바르지 않습니다.');
+        }
+        if (freshLock.exists
+            && (lockData.uid !== params.uid || lockData.issueId !== params.issueId)) {
+            throw new https_2.HttpsError('permission-denied', '초기 구독 결제 잠금 정보가 올바르지 않습니다.');
         }
         if (!freshPayment.exists
             || paymentData.uid !== params.uid
@@ -585,6 +626,7 @@ async function completeInitialBillingSubscription(params) {
         tx.set(params.requestRef, {
             status: 'processed',
             lastPaymentId: params.paymentId,
+            billingKey: admin.firestore.FieldValue.delete(),
             processedAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
@@ -595,11 +637,14 @@ async function completeInitialBillingSubscription(params) {
             processedAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
+        if (freshLock.exists) {
+            tx.delete(lockRef);
+        }
     });
     return { alreadyProcessed };
 }
-async function markInitialBillingPaymentPending(requestRef, paymentRef, portoneStatus) {
-    await Promise.all([
+async function markInitialBillingPaymentPending(requestRef, paymentRef, portoneStatus, lockRef) {
+    const writes = [
         requestRef.set({
             status: 'charging',
             portoneStatus,
@@ -610,13 +655,22 @@ async function markInitialBillingPaymentPending(requestRef, paymentRef, portoneS
             portoneStatus,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true }),
-    ]);
+    ];
+    if (lockRef) {
+        writes.push(lockRef.set({
+            status: 'charging',
+            portoneStatus,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true }));
+    }
+    await Promise.all(writes);
 }
-async function markInitialBillingPaymentFailed(requestRef, paymentRef, portoneStatus) {
-    await Promise.all([
+async function markInitialBillingPaymentFailed(requestRef, paymentRef, portoneStatus, lockRef) {
+    const writes = [
         requestRef.set({
             status: 'failed',
             portoneStatus,
+            billingKey: admin.firestore.FieldValue.delete(),
             failedAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true }),
@@ -626,7 +680,11 @@ async function markInitialBillingPaymentFailed(requestRef, paymentRef, portoneSt
             failedAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true }),
-    ]);
+    ];
+    if (lockRef) {
+        writes.push(lockRef.delete());
+    }
+    await Promise.all(writes);
 }
 async function settleInitialBillingPayment(params) {
     var _a;
@@ -653,10 +711,10 @@ async function settleInitialBillingPayment(params) {
             : { success: true };
     }
     if (isFailedOrCancelledPaymentStatus(portoneStatus)) {
-        await markInitialBillingPaymentFailed(params.requestRef, params.paymentRef, portoneStatus);
+        await markInitialBillingPaymentFailed(params.requestRef, params.paymentRef, portoneStatus, params.lockRef);
         throw new https_2.HttpsError('failed-precondition', '첫 결제가 실패 또는 취소되었습니다.');
     }
-    await markInitialBillingPaymentPending(params.requestRef, params.paymentRef, portoneStatus);
+    await markInitialBillingPaymentPending(params.requestRef, params.paymentRef, portoneStatus, params.lockRef);
     return { success: false, pending: true, status: portoneStatus };
 }
 function getSafeOAuthError(error) {
@@ -5006,40 +5064,260 @@ exports.createSubscriptionBillingRequest = (0, https_2.onCall)({ region: 'asia-n
     const payMethod = getProviderPayMethod(provider);
     const amount = getSubscriptionPlanAmount(plan);
     const issueName = getSubscriptionOrderName(plan);
-    const issueId = createPortOneRequestId('billing');
-    const now = new Date();
+    const nowMs = Date.now();
+    const now = new Date(nowMs);
     const expiresAt = new Date(now.getTime() + PAYMENT_REQUEST_TTL_MS);
-    await getPaymentRequestRef(issueId).set({
-        uid,
-        issueId,
-        plan,
-        paymentType: 'subscription',
-        billingType: 'billing_key_issue',
-        provider,
-        payMethod,
-        storeId: HARU_PORTONE_STORE_ID,
-        orderName: issueName,
-        amount,
-        currency: 'KRW',
-        status: 'created',
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-    return {
-        issueId,
-        storeId: HARU_PORTONE_STORE_ID,
-        issueName,
-        amount,
-        currency: 'KRW',
-        customData: {
+    const issueId = createPortOneRequestId('billing');
+    const lockRef = getSubscriptionPaymentLockRef(uid);
+    const newRequestRef = getPaymentRequestRef(issueId);
+    const subscriptionRef = db.doc(`users/${uid}/subscription/info`);
+    return db.runTransaction(async (tx) => {
+        var _a, _b;
+        const [lockSnap, subscriptionSnap] = await Promise.all([
+            tx.get(lockRef),
+            tx.get(subscriptionRef),
+        ]);
+        const subscriptionData = subscriptionSnap.data() || {};
+        if (isActiveSubscriptionData(subscriptionData, nowMs)) {
+            throw new https_2.HttpsError('failed-precondition', '이미 활성화된 정기구독이 있습니다.');
+        }
+        if (lockSnap.exists) {
+            const lockData = lockSnap.data() || {};
+            const lockedIssueId = typeof lockData.issueId === 'string' ? lockData.issueId : '';
+            if (lockData.uid !== uid || !lockedIssueId) {
+                throw new https_2.HttpsError('failed-precondition', '기존 정기결제 잠금 정보가 올바르지 않습니다.');
+            }
+            const lockedRequestRef = getPaymentRequestRef(lockedIssueId);
+            const lockedRequestSnap = await tx.get(lockedRequestRef);
+            if (!lockedRequestSnap.exists) {
+                throw new https_2.HttpsError('failed-precondition', '기존 정기결제 요청 정보를 확인할 수 없습니다.');
+            }
+            const lockedRequestData = lockedRequestSnap.data() || {};
+            const lockedProvider = getStoredPaymentProvider(lockedRequestData);
+            const lockedPlan = assertPaidPlan(lockedRequestData.plan);
+            const lockedStatus = normalizePaymentRequestStatus(lockedRequestData.status || lockData.status);
+            const hasStartedInitialBilling = typeof lockedRequestData.lastPaymentId === 'string'
+                || typeof lockData.lastPaymentId === 'string'
+                || !!lockedRequestData.billingKeyIssuedAt
+                || !!lockData.billingKeyIssuedAt;
+            if (lockedRequestData.uid !== uid
+                || lockedRequestData.paymentType !== 'subscription'
+                || lockedRequestData.billingType !== 'billing_key_issue'
+                || !lockedProvider) {
+                throw new https_2.HttpsError('failed-precondition', '기존 정기결제 요청 정보가 올바르지 않습니다.');
+            }
+            if (lockedStatus === 'failed' || lockedStatus === 'cancelled') {
+                // Confirmed terminal requests release the UID lock; the write below replaces it with a new request.
+            }
+            else if (lockedStatus === 'created' && !hasStartedInitialBilling) {
+                const lockedExpiresAt = ((_b = (_a = lockedRequestData.expiresAt) === null || _a === void 0 ? void 0 : _a.toMillis) === null || _b === void 0 ? void 0 : _b.call(_a)) || 0;
+                if (lockedExpiresAt && lockedExpiresAt < nowMs) {
+                    tx.set(lockedRequestRef, {
+                        status: 'cancelled',
+                        cancelReason: 'expired_without_initial_billing',
+                        cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
+                        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    }, { merge: true });
+                }
+                else {
+                    return buildSubscriptionBillingRequestResponse({
+                        uid,
+                        issueId: lockedIssueId,
+                        plan: lockedPlan,
+                        provider: lockedProvider,
+                        status: 'created',
+                        existing: true,
+                    });
+                }
+            }
+            else {
+                return {
+                    success: false,
+                    pending: true,
+                    status: lockedStatus || 'charging',
+                    issueId: lockedIssueId,
+                    plan: lockedPlan,
+                    provider: lockedProvider,
+                    payMethod: getProviderPayMethod(lockedProvider),
+                };
+            }
+        }
+        tx.set(newRequestRef, {
             uid,
+            issueId,
+            plan,
+            paymentType: 'subscription',
+            billingType: 'billing_key_issue',
+            provider,
+            payMethod,
+            storeId: HARU_PORTONE_STORE_ID,
+            orderName: issueName,
+            amount,
+            currency: 'KRW',
+            status: 'created',
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        tx.set(lockRef, {
+            uid,
+            issueId,
+            plan,
+            paymentType: 'subscription',
+            billingType: 'billing_key_issue',
+            provider,
+            payMethod,
+            storeId: HARU_PORTONE_STORE_ID,
+            orderName: issueName,
+            amount,
+            currency: 'KRW',
+            status: 'created',
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return buildSubscriptionBillingRequestResponse({
+            uid,
+            issueId,
+            plan,
+            provider,
+            status: 'created',
+            existing: false,
+        });
+    });
+});
+exports.recoverSubscriptionBillingRequest = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [PORTONE_API_SECRET] }, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    const lockRef = getSubscriptionPaymentLockRef(uid);
+    const lockSnap = await lockRef.get();
+    if (!lockSnap.exists) {
+        return { success: false, pending: false, status: 'none' };
+    }
+    const lockData = lockSnap.data() || {};
+    const issueId = typeof lockData.issueId === 'string' ? lockData.issueId : '';
+    if (lockData.uid !== uid || !issueId) {
+        throw new https_2.HttpsError('failed-precondition', '정기결제 잠금 정보가 올바르지 않습니다.');
+    }
+    const requestRef = getPaymentRequestRef(issueId);
+    const requestSnap = await requestRef.get();
+    if (!requestSnap.exists) {
+        throw new https_2.HttpsError('failed-precondition', '정기결제 요청 정보를 확인할 수 없습니다.');
+    }
+    const requestData = requestSnap.data() || {};
+    if (requestData.uid !== uid || requestData.paymentType !== 'subscription' || requestData.billingType !== 'billing_key_issue') {
+        throw new https_2.HttpsError('permission-denied', '정기결제 요청 정보가 올바르지 않습니다.');
+    }
+    const plan = assertPaidPlan(requestData.plan);
+    const provider = getStoredPaymentProvider(requestData);
+    if (!provider) {
+        throw new https_2.HttpsError('failed-precondition', '정기결제 요청의 결제수단 정보가 올바르지 않습니다.');
+    }
+    const payMethod = getStoredPayMethod(requestData, provider);
+    const status = normalizePaymentRequestStatus(requestData.status || lockData.status);
+    const lastPaymentId = typeof requestData.lastPaymentId === 'string'
+        ? requestData.lastPaymentId
+        : typeof lockData.lastPaymentId === 'string'
+            ? lockData.lastPaymentId
+            : '';
+    if (lastPaymentId) {
+        const paymentRef = getPaymentRequestRef(lastPaymentId);
+        const alreadyProcessed = await isInitialBillingSubscriptionAlreadyProcessed({
+            uid,
+            paymentId: lastPaymentId,
+            plan,
+            provider,
+            requestRef,
+            paymentRef,
+        });
+        if (alreadyProcessed) {
+            await lockRef.delete();
+            return { success: true, alreadyProcessed: true };
+        }
+        let existingPayment;
+        try {
+            existingPayment = await fetchPortOnePaymentWithRetry(lastPaymentId);
+        }
+        catch (error) {
+            await Promise.all([
+                requestRef.set({
+                    status: 'charging',
+                    lastLookupError: getPortOneLookupError(error),
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                }, { merge: true }),
+                paymentRef.set({
+                    status: 'lookup_failed',
+                    lastLookupError: getPortOneLookupError(error),
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                }, { merge: true }),
+                lockRef.set({
+                    status: 'charging',
+                    lastPaymentId,
+                    lastLookupError: getPortOneLookupError(error),
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                }, { merge: true }),
+            ]);
+            return {
+                success: false,
+                pending: true,
+                status: 'lookup_failed',
+                issueId,
+                plan,
+                provider,
+                payMethod,
+            };
+        }
+        const billingKey = typeof requestData.billingKey === 'string'
+            ? requestData.billingKey
+            : typeof lockData.billingKey === 'string'
+                ? lockData.billingKey
+                : '';
+        if (!billingKey) {
+            await markInitialBillingPaymentPending(requestRef, paymentRef, (existingPayment === null || existingPayment === void 0 ? void 0 : existingPayment.status) || 'UNKNOWN', lockRef);
+            return {
+                success: false,
+                pending: true,
+                status: 'billing_key_missing',
+                issueId,
+                plan,
+                provider,
+                payMethod,
+            };
+        }
+        return settleInitialBillingPayment({
+            uid,
+            issueId,
+            paymentId: lastPaymentId,
+            billingKey,
             plan,
             provider,
             payMethod,
-            paymentType: 'subscription',
-            billingType: 'billing_key_issue',
-        },
+            amount: getSubscriptionPlanAmount(plan),
+            orderName: getSubscriptionOrderName(plan),
+            payment: existingPayment,
+            requestRef,
+            paymentRef,
+            lockRef,
+        });
+    }
+    if (status === 'failed' || status === 'cancelled') {
+        await lockRef.delete();
+        return { success: false, pending: false, status };
+    }
+    const hasStartedInitialBilling = !!requestData.billingKeyIssuedAt || !!lockData.billingKeyIssuedAt;
+    if (status === 'created' && !hasStartedInitialBilling) {
+        return { success: false, pending: false, status: 'created' };
+    }
+    return {
+        success: false,
+        pending: true,
+        status: status || 'charging',
+        issueId,
+        plan,
+        provider,
+        payMethod,
     };
 });
 // ===== 💳 결제 검증 (PortOne V2) =====
@@ -5136,6 +5414,7 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
         throw new https_2.HttpsError('invalid-argument', 'issueId가 필요합니다.');
     }
     const requestRef = getPaymentRequestRef(issueId);
+    const lockRef = getSubscriptionPaymentLockRef(uid);
     const requestSnap = await requestRef.get();
     if (!requestSnap.exists) {
         throw new https_2.HttpsError('failed-precondition', '빌링키 발급 요청 정보를 찾을 수 없습니다.');
@@ -5159,8 +5438,12 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
     const newPaymentId = createPortOneRequestId('subscription');
     const newPaymentRef = getPaymentRequestRef(newPaymentId);
     const locked = await db.runTransaction(async (tx) => {
-        const fresh = await tx.get(requestRef);
+        const [fresh, freshLock] = await Promise.all([
+            tx.get(requestRef),
+            tx.get(lockRef),
+        ]);
         const freshData = fresh.data() || {};
+        const freshLockData = freshLock.data() || {};
         const freshProvider = getStoredPaymentProvider(freshData);
         if (freshData.uid !== uid
             || freshData.plan !== plan
@@ -5168,6 +5451,9 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
             || freshData.billingType !== 'billing_key_issue'
             || freshProvider !== provider) {
             throw new https_2.HttpsError('permission-denied', '빌링키 발급 요청 정보가 올바르지 않습니다.');
+        }
+        if (!freshLock.exists || freshLockData.uid !== uid || freshLockData.issueId !== issueId) {
+            throw new https_2.HttpsError('failed-precondition', '정기결제 잠금 정보가 올바르지 않습니다. 결제 상태를 다시 확인해 주세요.');
         }
         if ((freshData.status === 'processed' || freshData.status === 'charging')
             && typeof freshData.lastPaymentId === 'string'
@@ -5179,6 +5465,19 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
         }
         tx.set(requestRef, {
             status: 'charging',
+            billingKey,
+            billingKeyIssuedAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastPaymentId: newPaymentId,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        tx.set(lockRef, {
+            uid,
+            issueId,
+            plan,
+            provider,
+            payMethod,
+            status: 'charging',
+            billingKey,
             billingKeyIssuedAt: admin.firestore.FieldValue.serverTimestamp(),
             lastPaymentId: newPaymentId,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -5214,6 +5513,7 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
             paymentRef,
         });
         if (alreadyProcessed) {
+            await lockRef.delete();
             return { success: true, alreadyProcessed: true };
         }
         let existingPayment;
@@ -5224,6 +5524,12 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
             await Promise.all([
                 requestRef.set({
                     status: 'charging',
+                    lastLookupError: getPortOneLookupError(error),
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                }, { merge: true }),
+                lockRef.set({
+                    status: 'charging',
+                    lastPaymentId: paymentId,
                     lastLookupError: getPortOneLookupError(error),
                     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
                 }, { merge: true }),
@@ -5253,6 +5559,7 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
             payment: existingPayment,
             requestRef,
             paymentRef,
+            lockRef,
         });
     }
     let payment;
@@ -5287,6 +5594,12 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
                 lastBillingError: (e === null || e === void 0 ? void 0 : e.message) || 'initial_billing_uncertain',
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             }, { merge: true }),
+            lockRef.set({
+                status: 'charging',
+                lastPaymentId: paymentId,
+                lastBillingError: (e === null || e === void 0 ? void 0 : e.message) || 'initial_billing_uncertain',
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true }),
         ]);
         logger.error(`PortOne ${getProviderLogLabel(provider)} 빌링키 첫 결제 실패:`, {
             paymentId: maskPaymentId(paymentId),
@@ -5309,6 +5622,7 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
         payment,
         requestRef,
         paymentRef,
+        lockRef,
     });
     if (result.success) {
         logger.info('✅ %s 정기구독 시작 — uid: %s, plan: %s, paymentId: %s', getProviderLogLabel(provider), uid, plan, maskPaymentId(paymentId));

@@ -21,6 +21,13 @@ type SubscriptionBillingRequestResult = {
   amount: number;
   currency: 'KRW';
   customData: Record<string, unknown>;
+  success?: boolean;
+  pending?: boolean;
+  status?: string;
+  existing?: boolean;
+  plan?: PaidPlan;
+  provider?: SubscriptionPaymentProvider;
+  payMethod?: string;
 };
 type SubscriptionPaymentMethodConfig = {
   label: string;
@@ -46,7 +53,13 @@ type PendingSubscriptionRecovery = {
   plan: PaidPlan;
   method: SubscriptionPaymentMethod;
   issueId: string;
-  billingKey: string;
+  billingKey?: string;
+};
+type RecoverSubscriptionBillingRequestResult = SubscribeWithBillingKeyResult & {
+  issueId?: string;
+  plan?: PaidPlan;
+  provider?: SubscriptionPaymentProvider;
+  payMethod?: string;
 };
 
 const PLANS: Record<PaidPlan, {
@@ -108,6 +121,10 @@ function getSubscriptionPaymentMethod(value: string | null): SubscriptionPayment
   return value === 'card' || value === 'kakaopay' ? value : null;
 }
 
+function getSubscriptionPaymentMethodForProvider(provider: SubscriptionPaymentProvider | undefined): SubscriptionPaymentMethod {
+  return provider === 'kakaopay' ? 'kakaopay' : 'card';
+}
+
 function isSubscriptionPaymentComplete(result: SubscribeWithBillingKeyResult): boolean {
   return result.success === true && result.pending !== true;
 }
@@ -118,12 +135,12 @@ function parsePendingSubscriptionRecovery(value: string | null): PendingSubscrip
     const parsed = JSON.parse(value) as Partial<PendingSubscriptionRecovery>;
     const method = getSubscriptionPaymentMethod(parsed.method || null);
     const plan = parsed.plan === 'basic' || parsed.plan === 'premium' ? parsed.plan : null;
-    if (!plan || !method || !parsed.issueId || !parsed.billingKey) return null;
+    if (!plan || !method || !parsed.issueId) return null;
     return {
       plan,
       method,
       issueId: parsed.issueId,
-      billingKey: parsed.billingKey,
+      billingKey: typeof parsed.billingKey === 'string' && parsed.billingKey ? parsed.billingKey : undefined,
     };
   } catch {
     return null;
@@ -195,18 +212,29 @@ export default function SubscriptionPage() {
 
   const confirmPendingSubscription = async (recovery: PendingSubscriptionRecovery): Promise<boolean> => {
     const functions = getFunctions(undefined, 'asia-northeast3');
-    const subscribeWithBillingKey = httpsCallable<SubscribeWithBillingKeyRequest, SubscribeWithBillingKeyResult>(functions, 'subscribeWithBillingKey');
     const paymentMethodConfig = SUBSCRIPTION_PAYMENT_METHODS[recovery.method];
-    const result = await subscribeWithBillingKey({
-      billingKey: recovery.billingKey,
-      plan: recovery.plan,
-      issueId: recovery.issueId,
-      provider: paymentMethodConfig.provider,
-      payMethod: paymentMethodConfig.payMethod,
-    });
+    const result = recovery.billingKey
+      ? await httpsCallable<SubscribeWithBillingKeyRequest, SubscribeWithBillingKeyResult>(functions, 'subscribeWithBillingKey')({
+        billingKey: recovery.billingKey,
+        plan: recovery.plan,
+        issueId: recovery.issueId,
+        provider: paymentMethodConfig.provider,
+        payMethod: paymentMethodConfig.payMethod,
+      })
+      : await httpsCallable<Record<string, never>, RecoverSubscriptionBillingRequestResult>(functions, 'recoverSubscriptionBillingRequest')({});
     const subscribeResult = result.data;
 
     if (subscribeResult.pending === true) {
+      if ('issueId' in subscribeResult && subscribeResult.issueId && subscribeResult.plan) {
+        const method = getSubscriptionPaymentMethodForProvider(subscribeResult.provider);
+        setPendingSubscriptionRecovery({
+          plan: subscribeResult.plan,
+          method,
+          issueId: subscribeResult.issueId,
+        });
+        setSelectedPlan(subscribeResult.plan);
+        setSelectedPaymentMethod(method);
+      }
       setResultMessage(SUBSCRIPTION_PENDING_MESSAGE);
       return false;
     }
@@ -247,6 +275,41 @@ export default function SubscriptionPage() {
     setSelectedPaymentMethod(recovery.method);
     setResultMessage((prev) => prev || SUBSCRIPTION_PENDING_MESSAGE);
   }, []);
+
+  useEffect(() => {
+    if (authLoading || !user) return;
+    if (searchParams.get('billingKey') || searchParams.get('code')) return;
+    if (readPendingSubscriptionRecovery()) return;
+
+    let cancelled = false;
+    const recoverFromServer = async () => {
+      try {
+        const functions = getFunctions(undefined, 'asia-northeast3');
+        const recoverSubscriptionBillingRequest = httpsCallable<Record<string, never>, RecoverSubscriptionBillingRequestResult>(functions, 'recoverSubscriptionBillingRequest');
+        const result = await recoverSubscriptionBillingRequest({});
+        if (cancelled) return;
+        const recoveryResult = result.data;
+        if (recoveryResult.pending === true && recoveryResult.issueId && recoveryResult.plan) {
+          const method = getSubscriptionPaymentMethodForProvider(recoveryResult.provider);
+          setPendingSubscriptionRecovery({
+            plan: recoveryResult.plan,
+            method,
+            issueId: recoveryResult.issueId,
+          });
+          setSelectedPlan(recoveryResult.plan);
+          setSelectedPaymentMethod(method);
+          setResultMessage(SUBSCRIPTION_PENDING_MESSAGE);
+        }
+      } catch (error) {
+        console.error('서버 정기결제 복구 확인 오류:', error);
+      }
+    };
+
+    recoverFromServer();
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, searchParams, user]);
 
   useEffect(() => {
     if (authLoading || redirectProcessedRef.current) return;
@@ -369,6 +432,18 @@ export default function SubscriptionPage() {
         provider: paymentMethodConfig.provider,
       });
       const billingRequest = requestResult.data as SubscriptionBillingRequestResult;
+      if (billingRequest.pending === true) {
+        const method = getSubscriptionPaymentMethodForProvider(billingRequest.provider);
+        setPendingSubscriptionRecovery({
+          plan: billingRequest.plan || selectedPlan,
+          method,
+          issueId: billingRequest.issueId,
+        });
+        setSelectedPlan(billingRequest.plan || selectedPlan);
+        setSelectedPaymentMethod(method);
+        setResultMessage(SUBSCRIPTION_PENDING_MESSAGE);
+        return;
+      }
 
       const response = await (PortOne as any).requestIssueBillingKey({
         storeId: billingRequest.storeId,

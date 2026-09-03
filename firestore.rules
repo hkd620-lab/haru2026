@@ -157,6 +157,10 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /subscriptionPaymentLocks/{uid} {
+      allow read, write: if false;
+    }
+
     match /paymentReviews/{document=**} {
       allow read, write: if false;
     }

@@ -33,6 +33,8 @@ const webhookSection = section(indexSrc, 'export const portoneWebhook = onReques
 const initialBillingCompletionSection = section(indexSrc, 'async function completeInitialBillingSubscription', 'async function markInitialBillingPaymentPending');
 const initialBillingAlreadyProcessedSection = section(indexSrc, 'async function isInitialBillingSubscriptionAlreadyProcessed', 'async function completeInitialBillingSubscription');
 const initialBillingSettlementSection = section(indexSrc, 'async function settleInitialBillingPayment', 'type HaruLawSharePreview');
+const createSubscriptionSection = section(indexSrc, 'export const createSubscriptionBillingRequest = onCall', 'export const recoverSubscriptionBillingRequest = onCall');
+const recoverSubscriptionSection = section(indexSrc, 'export const recoverSubscriptionBillingRequest = onCall', '// ===== 💳 결제 검증 (PortOne V2) =====');
 const subscriptionRedirectSection = section(subscriptionPageSrc, 'const redirectedCode = searchParams.get', 'const handleSubscribe = async');
 const subscriptionHandleSection = section(subscriptionPageSrc, 'const handleSubscribe = async', 'const selected = PLANS');
 const subscriptionConfirmSection = section(subscriptionPageSrc, 'const confirmPendingSubscription = async', 'useEffect(() => {\n    const plan = searchParams.get');
@@ -54,7 +56,7 @@ assert(subscriptionPageSrc.includes('type PendingSubscriptionRecovery = {'));
 assert(subscriptionPageSrc.includes('plan: PaidPlan;'));
 assert(subscriptionPageSrc.includes('method: SubscriptionPaymentMethod;'));
 assert(subscriptionPageSrc.includes('issueId: string;'));
-assert(subscriptionPageSrc.includes('billingKey: string;'));
+assert(subscriptionPageSrc.includes('billingKey?: string;'));
 assert(subscriptionPageSrc.includes("const SUBSCRIPTION_PENDING_MESSAGE = '결제 상태를 확인하고 있습니다. 잠시 후 다시 확인해 주세요.'"));
 assert(subscriptionPageSrc.includes("const SUBSCRIPTION_RECOVERY_STORAGE_KEY = 'haru.subscription.pendingBillingKey'"));
 assert(subscriptionPageSrc.includes('window.sessionStorage.getItem(SUBSCRIPTION_RECOVERY_STORAGE_KEY)'));
@@ -64,6 +66,7 @@ assert(!subscriptionPageSrc.includes('localStorage'));
 assert(subscriptionPageSrc.includes('function isSubscriptionPaymentComplete(result: SubscribeWithBillingKeyResult): boolean'));
 assert(subscriptionPageSrc.includes('return result.success === true && result.pending !== true;'));
 assert(subscriptionPageSrc.includes('httpsCallable<SubscribeWithBillingKeyRequest, SubscribeWithBillingKeyResult>'));
+assert(subscriptionPageSrc.includes("httpsCallable<Record<string, never>, RecoverSubscriptionBillingRequestResult>(functions, 'recoverSubscriptionBillingRequest')"));
 const frontendSubscriptionComplete = (result) => result.success === true && result.pending !== true;
 assert.equal(frontendSubscriptionComplete({ success: true }), true);
 assert.equal(frontendSubscriptionComplete({ success: true, alreadyProcessed: true }), true);
@@ -71,11 +74,12 @@ assert.equal(frontendSubscriptionComplete({ success: true, pending: true, status
 assert.equal(frontendSubscriptionComplete({ success: false, status: 'FAILED' }), false);
 assert.equal(frontendSubscriptionComplete({ success: false, status: 'CANCELLED' }), false);
 
-assert(subscriptionConfirmSection.includes('const result = await subscribeWithBillingKey'));
+assert(subscriptionConfirmSection.includes('const result = recovery.billingKey'));
 assert(subscriptionConfirmSection.includes('billingKey: recovery.billingKey'));
 assert(subscriptionConfirmSection.includes('issueId: recovery.issueId'));
 assert(subscriptionConfirmSection.includes('provider: paymentMethodConfig.provider'));
 assert(subscriptionConfirmSection.includes('payMethod: paymentMethodConfig.payMethod'));
+assert(subscriptionConfirmSection.includes("recoverSubscriptionBillingRequest')({})"));
 assert(subscriptionConfirmSection.includes('if (subscribeResult.pending === true)'));
 assert(subscriptionConfirmSection.includes('setResultMessage(SUBSCRIPTION_PENDING_MESSAGE)'));
 const redirectPendingBranch = section(subscriptionConfirmSection, 'if (subscribeResult.pending === true)', 'if (!isSubscriptionPaymentComplete(subscribeResult))');
@@ -95,6 +99,8 @@ assertBefore(subscriptionRedirectSection, 'confirmPendingSubscription(recovery)'
 assert(subscriptionHandleSection.includes('const existingRecovery = pendingSubscriptionRecovery || readPendingSubscriptionRecovery()'));
 assert(subscriptionHandleSection.includes('setResultMessage(SUBSCRIPTION_PENDING_MESSAGE)'));
 assertBefore(subscriptionHandleSection, 'const existingRecovery = pendingSubscriptionRecovery || readPendingSubscriptionRecovery()', "const createSubscriptionBillingRequest = httpsCallable(functions, 'createSubscriptionBillingRequest')");
+assert(subscriptionHandleSection.includes('if (billingRequest.pending === true)'));
+assertBefore(subscriptionHandleSection, 'if (billingRequest.pending === true)', 'requestIssueBillingKey');
 assert(subscriptionHandleSection.includes('savePendingSubscriptionRecovery(recovery)'));
 assert(subscriptionHandleSection.includes('await confirmPendingSubscription(recovery)'));
 assertBefore(subscriptionHandleSection, 'savePendingSubscriptionRecovery(recovery)', 'await confirmPendingSubscription(recovery)');
@@ -107,6 +113,29 @@ assert(!subscriptionRetrySection.includes('requestIssueBillingKey'));
 assert(!subscriptionRetrySection.includes('createSubscriptionBillingRequest'));
 assert(subscriptionPageSrc.includes('hasPendingSubscriptionRecovery ? \'기존 정기결제 상태 확인 필요\''));
 assert(subscriptionPageSrc.includes('결제 상태 다시 확인'));
+
+assert(indexSrc.includes('function getSubscriptionPaymentLockRef(uid: string)'));
+assert(indexSrc.includes('return db.doc(`subscriptionPaymentLocks/${uid}`)'));
+assert(createSubscriptionSection.includes('const lockRef = getSubscriptionPaymentLockRef(uid)'));
+assert(createSubscriptionSection.includes('return db.runTransaction(async (tx) =>'));
+assert(createSubscriptionSection.includes('tx.get(lockRef)'));
+assert(createSubscriptionSection.includes('tx.get(subscriptionRef)'));
+assert(createSubscriptionSection.includes('isActiveSubscriptionData(subscriptionData, nowMs)'));
+assert(createSubscriptionSection.includes("throw new HttpsError('failed-precondition', '이미 활성화된 정기구독이 있습니다.')"));
+assert(createSubscriptionSection.includes('return buildSubscriptionBillingRequestResponse({'));
+assert(createSubscriptionSection.includes('existing: true'));
+assert(createSubscriptionSection.includes('pending: true'));
+assert(createSubscriptionSection.includes('tx.set(newRequestRef'));
+assert(createSubscriptionSection.includes('tx.set(lockRef'));
+
+assert(recoverSubscriptionSection.includes('const lockRef = getSubscriptionPaymentLockRef(uid)'));
+assert(recoverSubscriptionSection.includes('const requestRef = getPaymentRequestRef(issueId)'));
+assert(recoverSubscriptionSection.includes('requestData.uid !== uid'));
+assert(recoverSubscriptionSection.includes('const lastPaymentId = typeof requestData.lastPaymentId'));
+assert(recoverSubscriptionSection.includes('fetchPortOnePaymentWithRetry(lastPaymentId)'));
+assert(recoverSubscriptionSection.includes('return settleInitialBillingPayment({'));
+assert(recoverSubscriptionSection.includes('await lockRef.delete()'));
+assert(!recoverSubscriptionSection.includes('return { billingKey'));
 
 assert(singlePaymentPageSrc.includes("provider: 'kg_inicis'"));
 assert(singlePaymentPageSrc.includes("const KG_INICIS_SINGLE_PAYMENT_PAY_METHOD = 'CARD'"));
@@ -162,9 +191,9 @@ assert(initialBillingSettlementSection.includes("if (portoneStatus === 'PAID')")
 assert(initialBillingSettlementSection.includes('completeInitialBillingSubscription(params)'));
 assert(initialBillingSettlementSection.includes('? { success: true, alreadyProcessed: true }'));
 assert(initialBillingSettlementSection.includes("if (isFailedOrCancelledPaymentStatus(portoneStatus))"));
-assert(initialBillingSettlementSection.includes('await markInitialBillingPaymentFailed(params.requestRef, params.paymentRef, portoneStatus)'));
+assert(initialBillingSettlementSection.includes('await markInitialBillingPaymentFailed(params.requestRef, params.paymentRef, portoneStatus, params.lockRef)'));
 assert(initialBillingSettlementSection.includes("throw new HttpsError('failed-precondition', '첫 결제가 실패 또는 취소되었습니다.')"));
-assert(initialBillingSettlementSection.includes('await markInitialBillingPaymentPending(params.requestRef, params.paymentRef, portoneStatus)'));
+assert(initialBillingSettlementSection.includes('await markInitialBillingPaymentPending(params.requestRef, params.paymentRef, portoneStatus, params.lockRef)'));
 assert(initialBillingSettlementSection.includes('return { success: false, pending: true, status: portoneStatus }'));
 assert(!initialBillingSettlementSection.includes('axios.post'));
 
