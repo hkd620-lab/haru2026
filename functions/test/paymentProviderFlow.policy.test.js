@@ -33,6 +33,8 @@ const webhookSection = section(indexSrc, 'export const portoneWebhook = onReques
 const initialBillingCompletionSection = section(indexSrc, 'async function completeInitialBillingSubscription', 'async function markInitialBillingPaymentPending');
 const initialBillingAlreadyProcessedSection = section(indexSrc, 'async function isInitialBillingSubscriptionAlreadyProcessed', 'async function completeInitialBillingSubscription');
 const initialBillingSettlementSection = section(indexSrc, 'async function settleInitialBillingPayment', 'type HaruLawSharePreview');
+const subscriptionRedirectSection = section(subscriptionPageSrc, 'const redirectedCode = searchParams.get', 'const handleSubscribe = async');
+const subscriptionHandleSection = section(subscriptionPageSrc, 'const handleSubscribe = async', 'const selected = PLANS');
 
 assert(subscriptionPageSrc.includes("provider: 'kg_inicis'"));
 assert(subscriptionPageSrc.includes("provider: 'kakaopay'"));
@@ -41,6 +43,40 @@ assert(subscriptionPageSrc.includes("const createSubscriptionBillingRequest = ht
 assert(subscriptionPageSrc.includes("provider: paymentMethodConfig.provider"));
 assert(subscriptionPageSrc.includes('issueId: billingRequest.issueId'));
 assert(subscriptionPageSrc.includes('method=${selectedPaymentMethod}&issueId=${billingRequest.issueId}'));
+assert(subscriptionPageSrc.includes('type SubscribeWithBillingKeyResult = {'));
+assert(subscriptionPageSrc.includes('success: boolean;'));
+assert(subscriptionPageSrc.includes('alreadyProcessed?: boolean;'));
+assert(subscriptionPageSrc.includes('pending?: boolean;'));
+assert(subscriptionPageSrc.includes('status?: string;'));
+assert(subscriptionPageSrc.includes("const SUBSCRIPTION_PENDING_MESSAGE = '결제 상태를 확인하고 있습니다. 잠시 후 다시 확인해 주세요.'"));
+assert(subscriptionPageSrc.includes('function isSubscriptionPaymentComplete(result: SubscribeWithBillingKeyResult): boolean'));
+assert(subscriptionPageSrc.includes('return result.success === true && result.pending !== true;'));
+assert(subscriptionPageSrc.includes('httpsCallable<SubscribeWithBillingKeyRequest, SubscribeWithBillingKeyResult>'));
+const frontendSubscriptionComplete = (result) => result.success === true && result.pending !== true;
+assert.equal(frontendSubscriptionComplete({ success: true }), true);
+assert.equal(frontendSubscriptionComplete({ success: true, alreadyProcessed: true }), true);
+assert.equal(frontendSubscriptionComplete({ success: true, pending: true, status: 'PENDING' }), false);
+assert.equal(frontendSubscriptionComplete({ success: false, status: 'FAILED' }), false);
+assert.equal(frontendSubscriptionComplete({ success: false, status: 'CANCELLED' }), false);
+
+assert(subscriptionRedirectSection.includes('.then((result) =>'));
+assert(subscriptionRedirectSection.includes('const subscribeResult = result.data'));
+assert(subscriptionRedirectSection.includes('if (subscribeResult.pending === true)'));
+assert(subscriptionRedirectSection.includes('setResultMessage(SUBSCRIPTION_PENDING_MESSAGE)'));
+const redirectPendingBranch = section(subscriptionRedirectSection, 'if (subscribeResult.pending === true)', 'if (!isSubscriptionPaymentComplete(subscribeResult))');
+assert(!redirectPendingBranch.includes('결제가 완료되었습니다'));
+assert(!redirectPendingBranch.includes('window.history.replaceState'));
+assertBefore(subscriptionRedirectSection, 'if (subscribeResult.pending === true)', '결제가 완료되었습니다');
+assertBefore(subscriptionRedirectSection, 'if (!isSubscriptionPaymentComplete(subscribeResult))', '결제가 완료되었습니다');
+assertBefore(subscriptionRedirectSection, '결제가 완료되었습니다', 'window.history.replaceState');
+
+assert(subscriptionHandleSection.includes('const subscribeResult = await subscribeWithBillingKey'));
+assert(subscriptionHandleSection.includes('if (subscribeResult.data.pending === true)'));
+assert(subscriptionHandleSection.includes('setResultMessage(SUBSCRIPTION_PENDING_MESSAGE)'));
+const handlePendingBranch = section(subscriptionHandleSection, 'if (subscribeResult.data.pending === true)', 'if (!isSubscriptionPaymentComplete(subscribeResult.data))');
+assert(!handlePendingBranch.includes('결제가 완료되었습니다'));
+assertBefore(subscriptionHandleSection, 'if (subscribeResult.data.pending === true)', '결제가 완료되었습니다');
+assertBefore(subscriptionHandleSection, 'if (!isSubscriptionPaymentComplete(subscribeResult.data))', '결제가 완료되었습니다');
 
 assert(singlePaymentPageSrc.includes("provider: 'kg_inicis'"));
 assert(singlePaymentPageSrc.includes("const KG_INICIS_SINGLE_PAYMENT_PAY_METHOD = 'CARD'"));

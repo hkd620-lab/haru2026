@@ -29,6 +29,19 @@ type SubscriptionPaymentMethodConfig = {
   payMethod: string;
   billingKeyMethod: SubscriptionBillingKeyMethod;
 };
+type SubscribeWithBillingKeyRequest = {
+  billingKey: string;
+  plan: PaidPlan;
+  issueId: string;
+  provider: SubscriptionPaymentProvider;
+  payMethod: string;
+};
+type SubscribeWithBillingKeyResult = {
+  success: boolean;
+  alreadyProcessed?: boolean;
+  pending?: boolean;
+  status?: string;
+};
 
 const PLANS: Record<PaidPlan, {
   title: string;
@@ -82,9 +95,14 @@ const SUBSCRIPTION_PAYMENT_METHODS: Record<SubscriptionPaymentMethod, Subscripti
     billingKeyMethod: 'EASY_PAY',
   },
 };
+const SUBSCRIPTION_PENDING_MESSAGE = '결제 상태를 확인하고 있습니다. 잠시 후 다시 확인해 주세요.';
 
 function getSubscriptionPaymentMethod(value: string | null): SubscriptionPaymentMethod | null {
   return value === 'card' || value === 'kakaopay' ? value : null;
+}
+
+function isSubscriptionPaymentComplete(result: SubscribeWithBillingKeyResult): boolean {
+  return result.success === true && result.pending !== true;
 }
 
 export default function SubscriptionPage() {
@@ -146,7 +164,7 @@ export default function SubscriptionPage() {
     const redirectedPlan: PaidPlan = planParam === 'basic' || planParam === 'premium' ? planParam : selectedPlan;
     const paymentMethodConfig = SUBSCRIPTION_PAYMENT_METHODS[redirectedPaymentMethod];
     const functions = getFunctions(undefined, 'asia-northeast3');
-    const subscribeWithBillingKey = httpsCallable(functions, 'subscribeWithBillingKey');
+    const subscribeWithBillingKey = httpsCallable<SubscribeWithBillingKeyRequest, SubscribeWithBillingKeyResult>(functions, 'subscribeWithBillingKey');
 
     setLoading(true);
     subscribeWithBillingKey({
@@ -156,7 +174,15 @@ export default function SubscriptionPage() {
       provider: paymentMethodConfig.provider,
       payMethod: paymentMethodConfig.payMethod,
     })
-      .then(() => {
+      .then((result) => {
+        const subscribeResult = result.data;
+        if (subscribeResult.pending === true) {
+          setResultMessage(SUBSCRIPTION_PENDING_MESSAGE);
+          return;
+        }
+        if (!isSubscriptionPaymentComplete(subscribeResult)) {
+          throw new Error('정기결제 처리 결과가 완료 상태가 아닙니다.');
+        }
         setResultMessage(`${PLANS[redirectedPlan].orderName} ${paymentMethodConfig.label} 결제가 완료되었습니다. 설정 화면에서 구독 상태를 확인할 수 있습니다.`);
         window.history.replaceState({}, '', '/subscription');
       })
@@ -203,7 +229,7 @@ export default function SubscriptionPage() {
       }
 
       const functions = getFunctions(undefined, 'asia-northeast3');
-      const subscribeWithBillingKey = httpsCallable(functions, 'subscribeWithBillingKey');
+      const subscribeWithBillingKey = httpsCallable<SubscribeWithBillingKeyRequest, SubscribeWithBillingKeyResult>(functions, 'subscribeWithBillingKey');
       const createSubscriptionBillingRequest = httpsCallable(functions, 'createSubscriptionBillingRequest');
       const paymentMethodConfig = SUBSCRIPTION_PAYMENT_METHODS[selectedPaymentMethod];
       let channelKey = '';
@@ -259,13 +285,21 @@ export default function SubscriptionPage() {
         throw new Error('빌링키 발급 결과가 올바르지 않습니다.');
       }
 
-      await subscribeWithBillingKey({
+      const subscribeResult = await subscribeWithBillingKey({
         billingKey,
         plan: selectedPlan,
         issueId: billingRequest.issueId,
         provider: paymentMethodConfig.provider,
         payMethod: paymentMethodConfig.payMethod,
       });
+
+      if (subscribeResult.data.pending === true) {
+        setResultMessage(SUBSCRIPTION_PENDING_MESSAGE);
+        return;
+      }
+      if (!isSubscriptionPaymentComplete(subscribeResult.data)) {
+        throw new Error('정기결제 처리 결과가 완료 상태가 아닙니다.');
+      }
 
       setResultMessage(`${billingRequest.issueName} ${paymentMethodConfig.label} 결제가 완료되었습니다. 설정 화면에서 구독 상태를 확인할 수 있습니다.`);
 
