@@ -180,6 +180,16 @@ service cloud.firestore {
       allow write: if (request.auth != null && request.auth.uid == userId)
         || userId == "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
       allow delete: if request.auth != null && request.auth.uid == userId;
+
+      match /resultThreads/{threadId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if false;
+
+        match /messages/{messageId} {
+          allow read: if request.auth != null && request.auth.uid == userId;
+          allow write: if false;
+        }
+      }
     }
     match /users/{userId}/vaultItems/{itemId} {
       allow read, write, delete: if isVaultDeveloper(userId);
@@ -315,21 +325,6 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // 단어장
-    match /vocabulary/{docId} {
-      allow read, write, delete: if request.auth != null;
-    }
-
-    // 텃밭 작물
-    match /gardenCrops/{docId} {
-      allow read, write, delete: if request.auth != null;
-    }
-
-    // 소설 설정
-    match /novelSettings/{docId} {
-      allow read, write: if request.auth != null;
-    }
-
     // 성경 학습이력
     match /users/{userId}/bibleProgress/{docId} {
       allow read, write: if request.auth != null
@@ -338,6 +333,12 @@ service cloud.firestore {
 
     // 성경 단어장
     match /users/{userId}/bibleWordbook/{docId} {
+      allow read, write, delete: if request.auth != null
+        && request.auth.uid == userId;
+    }
+
+    // 성경 단어장 (실제 저장 경로 — BiblePage/VocabPage)
+    match /users/{userId}/vocabulary/{docId} {
       allow read, write, delete: if request.auth != null
         && request.auth.uid == userId;
     }
