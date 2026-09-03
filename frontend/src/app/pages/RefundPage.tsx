@@ -2,7 +2,7 @@ const sections = [
   {
     title: '적용 상품',
     content:
-      'HARU2026 환불정책은 베이직·프리미엄의 1개월 이용권 및 1개월 정기구독에 적용됩니다.',
+      'HARU2026 환불정책은 베이직·프리미엄의 월간·연간 구독 및 이용권에 적용됩니다.',
   },
   {
     title: '전액 환불',
@@ -13,6 +13,11 @@ const sections = [
     title: '부분 환불 (산정 기준)',
     content:
       '전액 환불 조건에 해당하지 않는 경우, 아래 계산식에 따라 환불해 드립니다.\n\n환불액 = 결제금액 − (결제금액 ÷ 이용기간 총일수 × 이용경과일수)\n\n· 이용경과일수는 결제일부터 환불 신청일까지로 계산합니다.\n· 원 단위 미만은 이용자에게 유리하도록 절상합니다.\n· 이용 이력이 있는 경우에도 위 계산식에 따라 동일하게 환불합니다.\n\n[예시] 베이직(4,000원) 결제 후 10일 사용 시\n4,000 − (4,000 ÷ 30 × 10) = 2,667원 환불',
+  },
+  {
+    title: '환불 불가 기준',
+    content:
+      '구독 만료까지 남은 기간이 7일 미만인 경우에는 환불이 어렵습니다.',
   },
   {
     title: '정기결제 구독 해지',
@@ -32,7 +37,7 @@ const sections = [
   {
     title: '환불 방법 및 처리 기간',
     content:
-      '환불은 결제하신 수단과 동일한 방법으로 처리함을 원칙으로 합니다. 동일한 방법으로 환불이 불가능한 경우 사전에 안내해 드립니다.\n\n환불 요청 확인 후 3영업일 이내에 처리됩니다.',
+      '환불은 결제하신 수단과 동일한 방법으로 처리함을 원칙으로 합니다. 동일한 방법으로 환불이 불가능한 경우 사전에 안내해 드립니다.\n\n환불 요청 확인 후 3~5영업일 이내에 처리됩니다.',
   },
   {
     title: '환불 문의',
@@ -51,10 +56,10 @@ export function RefundPage() {
         style={{ position: 'fixed', top: '16px', right: '16px', width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#1A3C6E', color: 'white', fontSize: '18px', border: 'none', cursor: 'pointer', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       >✕</button>
       <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1A3C6E', marginBottom: 8 }}>
-        1개월 구독 및 이용권 환불 정책
+        구독 및 이용권 환불 정책
       </h1>
       <p style={{ fontSize: 13, color: '#999', marginBottom: 32 }}>
-        시행일: 2026년 8월 20일 · HARU2026 1개월 상품 기준
+        시행일: 2026년 8월 20일 · HARU2026 월간·연간 상품 기준
       </p>
       {sections.map((section) => (
         <div

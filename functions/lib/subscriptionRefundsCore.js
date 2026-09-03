@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SUBSCRIPTION_REFUND_REASON_LABELS = exports.SUBSCRIPTION_REFUND_PROCESSING_STATUSES = exports.SUBSCRIPTION_REFUND_STATUSES = exports.SUBSCRIPTION_REFUNDING_STALE_MS = exports.SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS = exports.SUBSCRIPTION_REFUND_FULL_REFUND_DAYS = exports.SUBSCRIPTION_REFUND_REQUEST_WINDOW_DAYS = exports.SubscriptionRefundPolicyError = void 0;
+exports.SUBSCRIPTION_REFUND_REASON_LABELS = exports.SUBSCRIPTION_REFUND_PROCESSING_STATUSES = exports.SUBSCRIPTION_REFUND_STATUSES = exports.SUBSCRIPTION_REFUNDING_STALE_MS = exports.SUBSCRIPTION_REFUND_MIN_REMAINING_DAYS = exports.SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS = exports.SUBSCRIPTION_REFUND_FULL_REFUND_DAYS = exports.SubscriptionRefundPolicyError = void 0;
 exports.normalizeRefundReasonCode = normalizeRefundReasonCode;
 exports.sanitizeRefundDescription = sanitizeRefundDescription;
 exports.isProcessingRefundStatus = isProcessingRefundStatus;
@@ -16,8 +16,11 @@ exports.getPortOneCancellableAmount = getPortOneCancellableAmount;
 exports.assertPortOnePaymentIdentityMatchesStoredRequest = assertPortOnePaymentIdentityMatchesStoredRequest;
 exports.assertPortOnePaymentMatchesStoredRequest = assertPortOnePaymentMatchesStoredRequest;
 exports.assertNoDuplicateRefundRequest = assertNoDuplicateRefundRequest;
+exports.getSubscriptionRefundServicePeriodDays = getSubscriptionRefundServicePeriodDays;
+exports.getSubscriptionRefundPeriodEndMs = getSubscriptionRefundPeriodEndMs;
 exports.assertRefundRequestWindow = assertRefundRequestWindow;
 exports.estimateSubscriptionRefundAmount = estimateSubscriptionRefundAmount;
+exports.resolveApprovedRefundAmount = resolveApprovedRefundAmount;
 exports.shouldMarkRefundedFromPortOne = shouldMarkRefundedFromPortOne;
 exports.getApproveRefundRecoveryAction = getApproveRefundRecoveryAction;
 exports.getRefundWebhookSyncAction = getRefundWebhookSyncAction;
@@ -29,9 +32,9 @@ class SubscriptionRefundPolicyError extends Error {
     }
 }
 exports.SubscriptionRefundPolicyError = SubscriptionRefundPolicyError;
-exports.SUBSCRIPTION_REFUND_REQUEST_WINDOW_DAYS = 30;
 exports.SUBSCRIPTION_REFUND_FULL_REFUND_DAYS = 7;
 exports.SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS = 30;
+exports.SUBSCRIPTION_REFUND_MIN_REMAINING_DAYS = 7;
 exports.SUBSCRIPTION_REFUNDING_STALE_MS = 10 * 60 * 1000;
 exports.SUBSCRIPTION_REFUND_STATUSES = [
     'requested',
@@ -173,28 +176,63 @@ function assertNoDuplicateRefundRequest(existingStatus) {
         throw new SubscriptionRefundPolicyError('duplicate_request', '이미 등록된 환불 요청이 있습니다.');
     }
 }
-function assertRefundRequestWindow(paidAtMs, nowMs, reasonCode) {
+function getSubscriptionRefundServicePeriodDays(paidAtMs, explicitPeriodEndMs, explicitServicePeriodDays) {
+    if (Number.isFinite(explicitServicePeriodDays)
+        && explicitServicePeriodDays !== undefined
+        && explicitServicePeriodDays > 0) {
+        return Math.max(1, Math.ceil(explicitServicePeriodDays));
+    }
+    if (Number.isFinite(paidAtMs)
+        && Number.isFinite(explicitPeriodEndMs)
+        && explicitPeriodEndMs !== undefined
+        && explicitPeriodEndMs > paidAtMs) {
+        return Math.max(1, Math.ceil((explicitPeriodEndMs - paidAtMs) / MS_PER_DAY));
+    }
+    return exports.SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS;
+}
+function getSubscriptionRefundPeriodEndMs(paidAtMs, servicePeriodDays, explicitPeriodEndMs) {
+    if (Number.isFinite(explicitPeriodEndMs)
+        && explicitPeriodEndMs !== undefined
+        && explicitPeriodEndMs > paidAtMs) {
+        return explicitPeriodEndMs;
+    }
+    return paidAtMs + Math.max(1, servicePeriodDays) * MS_PER_DAY;
+}
+function assertRefundRequestWindow(paidAtMs, nowMs, reasonCode, periodEndMs, servicePeriodDays = exports.SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS) {
     if (!Number.isFinite(paidAtMs) || paidAtMs <= 0) {
         throw new SubscriptionRefundPolicyError('request_window_closed', '결제일을 확인할 수 없습니다.');
     }
-    if (reasonCode === 'service_issue' || reasonCode === 'duplicate_payment' || reasonCode === 'wrong_payment') {
-        return;
+    const resolvedPeriodDays = getSubscriptionRefundServicePeriodDays(paidAtMs, periodEndMs, servicePeriodDays);
+    const resolvedPeriodEndMs = getSubscriptionRefundPeriodEndMs(paidAtMs, resolvedPeriodDays, periodEndMs);
+    const remainingMs = resolvedPeriodEndMs - nowMs;
+    if (remainingMs < exports.SUBSCRIPTION_REFUND_MIN_REMAINING_DAYS * MS_PER_DAY) {
+        throw new SubscriptionRefundPolicyError('request_window_closed', '구독 만료 7일 미만인 결제는 환불을 신청할 수 없습니다.');
     }
-    const elapsedDays = Math.floor(Math.max(0, nowMs - paidAtMs) / MS_PER_DAY);
-    if (elapsedDays > exports.SUBSCRIPTION_REFUND_REQUEST_WINDOW_DAYS) {
-        throw new SubscriptionRefundPolicyError('request_window_closed', '환불 신청 가능 기간이 지났습니다.');
-    }
+    void reasonCode;
 }
-function estimateSubscriptionRefundAmount(paidAmount, paidAtMs, nowMs, hasPaidServiceUsage) {
+function estimateSubscriptionRefundAmount(paidAmount, paidAtMs, nowMs, hasPaidServiceUsage, servicePeriodDays = exports.SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS) {
     if (!Number.isFinite(paidAmount) || paidAmount <= 0)
         return 0;
+    const resolvedPeriodDays = Math.max(1, Math.ceil(servicePeriodDays));
     const elapsedDays = Math.floor(Math.max(0, nowMs - paidAtMs) / MS_PER_DAY);
     if (!hasPaidServiceUsage && elapsedDays <= exports.SUBSCRIPTION_REFUND_FULL_REFUND_DAYS) {
         return paidAmount;
     }
-    const usedDays = Math.min(exports.SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS, Math.max(0, elapsedDays));
-    const usedAmount = (paidAmount / exports.SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS) * usedDays;
+    const usedDays = Math.min(resolvedPeriodDays, Math.max(0, elapsedDays));
+    const usedAmount = (paidAmount / resolvedPeriodDays) * usedDays;
     return Math.max(0, Math.ceil(paidAmount - usedAmount));
+}
+function resolveApprovedRefundAmount(requestedRefundAmount, cancellableAmount, paidAmount) {
+    const requested = Number(requestedRefundAmount);
+    const fallback = Number(paidAmount);
+    const requestedOrFallback = Number.isFinite(requested) && requested > 0
+        ? requested
+        : fallback;
+    if (!Number.isFinite(cancellableAmount) || cancellableAmount <= 0)
+        return 0;
+    if (!Number.isFinite(requestedOrFallback) || requestedOrFallback <= 0)
+        return 0;
+    return Math.max(0, Math.min(cancellableAmount, Math.ceil(requestedOrFallback)));
 }
 function shouldMarkRefundedFromPortOne(payment, expectedRefundAmount) {
     const status = String((payment === null || payment === void 0 ? void 0 : payment.status) || '').toUpperCase();

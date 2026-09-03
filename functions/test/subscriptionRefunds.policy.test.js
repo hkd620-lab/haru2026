@@ -1,5 +1,6 @@
 const assert = require('assert');
 const {
+  SUBSCRIPTION_REFUND_MIN_REMAINING_DAYS,
   SUBSCRIPTION_REFUNDING_STALE_MS,
   SubscriptionRefundPolicyError,
   assertAdminUid,
@@ -13,10 +14,13 @@ const {
   estimateSubscriptionRefundAmount,
   getApproveRefundRecoveryAction,
   getPortOneCancellableAmount,
+  getSubscriptionRefundPeriodEndMs,
+  getSubscriptionRefundServicePeriodDays,
   getRefundWebhookSyncAction,
   hasRefundRequestMarker,
   isPaidFirestoreSubscriptionPaymentRequest,
   isProcessingRefundStatus,
+  resolveApprovedRefundAmount,
   shouldMarkRefundedFromPortOne,
 } = require('../lib/subscriptionRefundsCore');
 
@@ -126,12 +130,21 @@ function run() {
   assert.equal(isProcessingRefundStatus('rejected'), false);
 
   const now = Date.UTC(2026, 8, 2);
-  assertRefundRequestWindow(now - 29 * DAY, now, 'unused_within_7_days');
-  expectPolicyError(() => assertRefundRequestWindow(now - 31 * DAY, now, 'unused_within_7_days'), 'request_window_closed');
-  assertRefundRequestWindow(now - 120 * DAY, now, 'duplicate_payment');
+  assert.equal(SUBSCRIPTION_REFUND_MIN_REMAINING_DAYS, 7);
+  assertRefundRequestWindow(now - 20 * DAY, now, 'unused_within_7_days', undefined, 30);
+  expectPolicyError(() => assertRefundRequestWindow(now - 24 * DAY, now, 'unused_within_7_days', undefined, 30), 'request_window_closed');
+  assertRefundRequestWindow(now - 120 * DAY, now, 'duplicate_payment', now + 30 * DAY, 365);
+  assert.equal(getSubscriptionRefundServicePeriodDays(now - 10 * DAY, now + 20 * DAY), 30);
+  assert.equal(getSubscriptionRefundServicePeriodDays(now - 100 * DAY, now + 265 * DAY), 365);
+  assert.equal(getSubscriptionRefundPeriodEndMs(now - 10 * DAY, 30), now + 20 * DAY);
 
   assert.equal(estimateSubscriptionRefundAmount(4000, now - 3 * DAY, now, false), 4000);
+  assert.equal(estimateSubscriptionRefundAmount(4000, now - 3 * DAY, now, true), 3600);
   assert.equal(estimateSubscriptionRefundAmount(4000, now - 10 * DAY, now, true), 2667);
+  assert.equal(estimateSubscriptionRefundAmount(10000, now - 100 * DAY, now, true, 365), 7261);
+  assert.equal(resolveApprovedRefundAmount(2667, 4000, 4000), 2667);
+  assert.equal(resolveApprovedRefundAmount(6000, 4000, 6000), 4000);
+  assert.equal(resolveApprovedRefundAmount(undefined, 3000, 4000), 3000);
 
   assert.equal(getPortOneCancellableAmount({ ...paidPayment, cancellations: [{ status: 'SUCCEEDED', amount: { total: 1000 } }] }), 3000);
   assert.equal(getPortOneCancellableAmount({

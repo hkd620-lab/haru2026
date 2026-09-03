@@ -17,11 +17,14 @@ import {
   getApproveRefundRecoveryAction,
   getPaymentAmountTotal,
   getPortOneCancellableAmount,
+  getSubscriptionRefundPeriodEndMs,
+  getSubscriptionRefundServicePeriodDays,
   getRefundWebhookSyncAction,
   hasRefundRequestMarker,
   isPaidFirestoreSubscriptionPaymentRequest,
   isProcessingRefundStatus,
   normalizeRefundReasonCode,
+  resolveApprovedRefundAmount,
   sanitizeRefundDescription,
   shouldMarkRefundedFromPortOne,
   SubscriptionRefundPolicyError,
@@ -105,6 +108,69 @@ function safePortOneError(error: any): string {
   const data = error?.response?.data || {};
   const raw = data.code || data.type || error?.code || `http_${error?.response?.status || 'unknown'}`;
   return String(raw).replace(/[^a-zA-Z0-9_.:-]/g, '_').slice(0, 120);
+}
+
+function paymentScopedDataMatches(paymentId: string, data: Record<string, any>): boolean {
+  const linkedIds = [
+    data.paymentId,
+    data.lastPaymentId,
+    data.initialPaymentId,
+  ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+  return linkedIds.length === 0 || linkedIds.includes(paymentId);
+}
+
+function getExplicitServicePeriodDays(data: Record<string, any>): number | undefined {
+  for (const key of ['servicePeriodDays', 'billingPeriodDays', 'periodDays', 'subscriptionPeriodDays']) {
+    const value = Number(data[key]);
+    if (Number.isFinite(value) && value > 0) {
+      return Math.ceil(value);
+    }
+  }
+
+  const cycle = String(
+    data.billingCycle
+    || data.subscriptionCycle
+    || data.interval
+    || data.intervalUnit
+    || data.periodUnit
+    || '',
+  ).toLowerCase();
+  if (cycle.includes('annual') || cycle.includes('year')) return 365;
+  if (cycle.includes('month')) return 30;
+  return undefined;
+}
+
+function getPaymentPeriodEndMillis(paymentId: string, ...sources: Record<string, any>[]): number {
+  for (const source of sources) {
+    if (!source || !paymentScopedDataMatches(paymentId, source)) continue;
+    const endMs = firstFiniteMillis(
+      source.periodEndAt,
+      source.periodEndDate,
+      source.subscriptionEndDate,
+      source.endDate,
+      source.nextBillingDate,
+    );
+    if (Number.isFinite(endMs) && endMs > 0) return endMs;
+  }
+  return Number.NaN;
+}
+
+function getPaymentServicePeriodDays(
+  paymentId: string,
+  paidAtMs: number,
+  periodEndMs: number,
+  ...sources: Record<string, any>[]
+): number {
+  const explicitPeriodDays = sources
+    .filter((source) => source && paymentScopedDataMatches(paymentId, source))
+    .map(getExplicitServicePeriodDays)
+    .find((value): value is number => typeof value === 'number' && value > 0);
+  return getSubscriptionRefundServicePeriodDays(paidAtMs, periodEndMs, explicitPeriodDays);
+}
+
+function subscriptionDocumentMatchesPayment(data: Record<string, any>, paymentId: string): boolean {
+  return paymentScopedDataMatches(paymentId, data)
+    && (data.paymentId === paymentId || data.lastPaymentId === paymentId);
 }
 
 function toHttpsError(error: unknown): HttpsError {
@@ -236,6 +302,7 @@ async function markSubscriptionRefundedFromPayment(
   if (!refundSnap.exists) return false;
   const refundData = refundSnap.data() || {};
   if (refundData.status === 'refunded') return true;
+  const refundUid = String(refundData.uid || '');
 
   const expectedRefundAmount = Number(refundData.refundableAmount || refundData.requestedRefundAmount || refundData.paidAmount || 0);
   if (!shouldMarkRefundedFromPortOne(payment, expectedRefundAmount)) return false;
@@ -244,9 +311,16 @@ async function markSubscriptionRefundedFromPayment(
     const fresh = await tx.get(requestRef);
     const freshData = fresh.data() || {};
     if (freshData.status === 'refunded') return;
+    const uid = String(freshData.uid || refundUid || '');
+    const subRef = uid ? db.doc(`users/${uid}/subscription/info`) : null;
+    const billingRef = uid ? db.doc(`billingSubscriptions/${uid}`) : null;
+    const [subSnap, billingSnap] = uid && subRef && billingRef
+      ? await Promise.all([tx.get(subRef), tx.get(billingRef)])
+      : [null, null];
     const cancellableAmount = getPortOneCancellableAmount(payment);
     const paidAmount = getPaymentAmountTotal(payment) || Number(freshData.paidAmount || 0);
     const refundedAmount = Math.max(0, paidAmount - cancellableAmount);
+    const nowIso = new Date().toISOString();
     tx.set(requestRef, {
       status: 'refunded',
       refundedAmount,
@@ -263,6 +337,35 @@ async function markSubscriptionRefundedFromPayment(
       portoneStatus: payment.status || null,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
+    if (subRef && subscriptionDocumentMatchesPayment(subSnap?.data() || {}, paymentId)) {
+      tx.set(subRef, {
+        plan: 'free',
+        status: 'none',
+        autoRenew: false,
+        cancelAtPeriodEnd: false,
+        endDate: nowIso,
+        nextBillingDate: null,
+        paymentId: null,
+        billingKey: admin.firestore.FieldValue.delete(),
+        lastRefundedPaymentId: paymentId,
+        refundedSubscriptionEndedAt: nowIso,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    }
+    if (billingRef && subscriptionDocumentMatchesPayment(billingSnap?.data() || {}, paymentId)) {
+      tx.set(billingRef, {
+        status: 'expired',
+        autoRenew: false,
+        cancelAtPeriodEnd: false,
+        endDate: nowIso,
+        nextBillingDate: null,
+        billingKey: admin.firestore.FieldValue.delete(),
+        billingLockUntil: null,
+        lastRefundedPaymentId: paymentId,
+        refundedSubscriptionEndedAt: nowIso,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    }
     tx.set(internalRef, {
       lastWebhookSyncBy: processedBy,
       lastPaymentSnapshot: {
@@ -275,6 +378,11 @@ async function markSubscriptionRefundedFromPayment(
         actorUid: processedBy,
         at: new Date().toISOString(),
       }),
+      entitlementEnded: uid ? {
+        currentSubscriptionMatched: Boolean(subRef && subscriptionDocumentMatchesPayment(subSnap?.data() || {}, paymentId)),
+        billingSubscriptionMatched: Boolean(billingRef && subscriptionDocumentMatchesPayment(billingSnap?.data() || {}, paymentId)),
+        endedAt: nowIso,
+      } : null,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
   });
@@ -414,13 +522,23 @@ export const requestSubscriptionRefund = onCall(
       assertPortOnePaymentMatchesStoredRequest(payment, orderData, HARU_PORTONE_STORE_ID, { allowPartialCancelled: true });
 
       const paidAtMs = getPaidAtMillis(payment, orderData);
-      assertRefundRequestWindow(paidAtMs, Date.now(), reasonCode);
+      const [subscriptionSnap, billingSnap] = await Promise.all([
+        db.doc(`users/${uid}/subscription/info`).get(),
+        db.doc(`billingSubscriptions/${uid}`).get(),
+      ]);
+      const subscriptionData = subscriptionSnap.data() || {};
+      const billingData = billingSnap.data() || {};
+      const periodEndMs = getPaymentPeriodEndMillis(paymentId, orderData, subscriptionData, billingData);
+      const servicePeriodDays = getPaymentServicePeriodDays(paymentId, paidAtMs, periodEndMs, orderData, subscriptionData, billingData);
+      const resolvedPeriodEndMs = getSubscriptionRefundPeriodEndMs(paidAtMs, servicePeriodDays, periodEndMs);
+      const nowMs = Date.now();
+      assertRefundRequestWindow(paidAtMs, nowMs, reasonCode, resolvedPeriodEndMs, servicePeriodDays);
       const usageSummary = await buildUsageSummary(uid, paidAtMs);
       const paidAmount = Number(orderData.amount || getPaymentAmountTotal(payment));
       const cancellableAmount = getPortOneCancellableAmount(payment);
       const estimatedRefundAmount = Math.min(
         cancellableAmount,
-        estimateSubscriptionRefundAmount(paidAmount, paidAtMs, Date.now(), usageSummary.hasPaidServiceUsage),
+        estimateSubscriptionRefundAmount(paidAmount, paidAtMs, nowMs, usageSummary.hasPaidServiceUsage, servicePeriodDays),
       );
       if (estimatedRefundAmount <= 0) {
         throw new SubscriptionRefundPolicyError('nothing_to_refund', '환불 가능한 잔액이 없습니다.');
@@ -453,13 +571,15 @@ export const requestSubscriptionRefund = onCall(
           cancellableAmountAtRequest: cancellableAmount,
           currency: 'KRW',
           paymentDate: new Date(paidAtMs).toISOString(),
+          servicePeriodDays,
+          periodEndDate: new Date(resolvedPeriodEndMs).toISOString(),
           reasonCode,
           reasonLabel: SUBSCRIPTION_REFUND_REASON_LABELS[reasonCode],
           description,
           policyAgreed: true,
           hasPaidServiceUsage: usageSummary.hasPaidServiceUsage,
           needsUsageReview: usageSummary.hasPaidServiceUsage,
-          publicMessage: '환불 요청이 접수되었습니다. 자동결제는 중단되며, 하루랩 확인 후 결과를 알려드립니다.',
+          publicMessage: '환불 요청이 접수되었습니다. 자동결제는 중단되며, 3~5영업일 이내 확인 후 결과를 알려드립니다.',
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           createdAtIso: nowIso,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -478,6 +598,8 @@ export const requestSubscriptionRefund = onCall(
             amountVerified: true,
             cancellableAmount,
             estimatedRefundAmount,
+            servicePeriodDays,
+            periodEndDate: new Date(resolvedPeriodEndMs).toISOString(),
           },
           paymentSnapshot: {
             status: payment.status,
@@ -653,10 +775,15 @@ export const approveSubscriptionRefund = onCall(
 
       const payment = await fetchPortOnePaymentWithRetry(paymentId);
       assertPortOnePaymentIdentityMatchesStoredRequest(payment, orderData, HARU_PORTONE_STORE_ID);
+      const expectedRefundAmount = resolveApprovedRefundAmount(
+        requestData.refundableAmount || requestData.requestedRefundAmount,
+        getPortOneCancellableAmount(payment),
+        Number(requestData.paidAmount || orderData.amount || getPaymentAmountTotal(payment)),
+      );
       const recoveryAction = getApproveRefundRecoveryAction(
         requestData.status,
         payment,
-        Number(requestData.refundableAmount || requestData.requestedRefundAmount || requestData.paidAmount || 0),
+        expectedRefundAmount,
         getRefundingStartedAtMillis(requestData),
         Date.now(),
       );
@@ -678,6 +805,14 @@ export const approveSubscriptionRefund = onCall(
       const cancellableAmount = getPortOneCancellableAmount(payment);
       if (cancellableAmount <= 0) {
         throw new SubscriptionRefundPolicyError('already_refunded', '이미 전액 환불된 결제입니다.');
+      }
+      const approvedRefundAmount = resolveApprovedRefundAmount(
+        requestData.refundableAmount || requestData.requestedRefundAmount,
+        cancellableAmount,
+        Number(requestData.paidAmount || orderData.amount || getPaymentAmountTotal(payment)),
+      );
+      if (approvedRefundAmount <= 0) {
+        throw new SubscriptionRefundPolicyError('nothing_to_refund', '환불 가능한 잔액이 없습니다.');
       }
 
       const allowRetryFromRefunding = requestData.status === 'refunding'
@@ -701,7 +836,8 @@ export const approveSubscriptionRefund = onCall(
           refundingLastAttemptAtIso: nowIso,
           refundingAttemptCount: admin.firestore.FieldValue.increment(1),
           reviewedAt: admin.firestore.FieldValue.serverTimestamp(),
-          refundableAmount: cancellableAmount,
+          refundableAmount: approvedRefundAmount,
+          approvedRefundAmount,
           publicMessage: '환불 승인 후 결제 취소를 처리하고 있습니다.',
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
@@ -716,6 +852,7 @@ export const approveSubscriptionRefund = onCall(
           approvalValidation: {
             portoneStatus: payment.status,
             cancellableAmount,
+            approvedRefundAmount,
             storeIdVerified: true,
             amountVerified: true,
           },
@@ -737,7 +874,7 @@ export const approveSubscriptionRefund = onCall(
       }
 
       try {
-        const cancellation = await cancelPortOnePayment(paymentId, refundRequestId, cancellableAmount);
+        const cancellation = await cancelPortOnePayment(paymentId, refundRequestId, approvedRefundAmount);
         const refreshedPayment = await fetchPortOnePaymentWithRetry(paymentId).catch(() => payment);
         const synced = await markSubscriptionRefundedFromPayment(refundRequestId, paymentId, refreshedPayment, request.auth?.uid || 'admin');
         await internalRef.set({
