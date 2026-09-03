@@ -40,9 +40,12 @@ assert(subscriptionPageSrc.includes('issueId: billingRequest.issueId'));
 assert(subscriptionPageSrc.includes('method=${selectedPaymentMethod}&issueId=${billingRequest.issueId}'));
 
 assert(singlePaymentPageSrc.includes("provider: 'kg_inicis'"));
+assert(singlePaymentPageSrc.includes("const KG_INICIS_SINGLE_PAYMENT_PAY_METHOD = 'CARD'"));
 assert(singlePaymentPageSrc.includes("const createSinglePaymentRequest = httpsCallable(functions, 'createSinglePaymentRequest')"));
 assert(singlePaymentPageSrc.includes("const paymentRequest = requestResult.data as SinglePaymentRequestResult"));
 assert(singlePaymentPageSrc.includes('paymentId: paymentRequest.paymentId'));
+assert(singlePaymentPageSrc.includes('payMethod: KG_INICIS_SINGLE_PAYMENT_PAY_METHOD'));
+assert(!singlePaymentPageSrc.includes("import.meta.env.VITE_PORTONE_SINGLE_PAYMENT_PAY_METHOD || 'EASY_PAY'"));
 assert(!singlePaymentPageSrc.includes('`haru-single-${Date.now()}-${Math.random()'));
 assert(!singlePaymentPageSrc.includes('verifySinglePayment({ paymentId: completedPaymentId, plan: selectedPlan })'));
 
