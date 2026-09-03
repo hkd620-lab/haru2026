@@ -126,8 +126,6 @@ function getExplicitServicePeriodDays(data) {
         || data.intervalUnit
         || data.periodUnit
         || '').toLowerCase();
-    if (cycle.includes('annual') || cycle.includes('year'))
-        return 365;
     if (cycle.includes('month'))
         return 30;
     return undefined;
@@ -193,10 +191,10 @@ async function fetchPortOnePaymentWithRetry(paymentId) {
     }
     throw lastError;
 }
-async function cancelPortOnePayment(paymentId, refundRequestId, cancellableAmount) {
+async function cancelPortOnePayment(paymentId, refundRequestId, cancelAmountThisAttempt) {
     const response = await axios_1.default.post(`https://api.portone.io/payments/${encodeURIComponent(paymentId)}/cancel`, {
         storeId: HARU_PORTONE_STORE_ID,
-        amount: { total: cancellableAmount },
+        amount: { total: cancelAmountThisAttempt },
         reason: `HARU2026 subscription refund ${refundRequestId}`,
         requester: 'ADMIN',
     }, {
@@ -237,6 +235,9 @@ function publicRefundRequest(id, data) {
         paidAmount: data.paidAmount,
         refundableAmount: data.refundableAmount,
         requestedRefundAmount: data.requestedRefundAmount,
+        targetRefundAmount: data.targetRefundAmount,
+        alreadyRefundedAmount: data.alreadyRefundedAmount,
+        cancelAmountThisAttempt: data.cancelAmountThisAttempt,
         reasonCode: data.reasonCode,
         reasonLabel: data.reasonLabel,
         description: data.description || '',
@@ -264,8 +265,8 @@ async function markSubscriptionRefundedFromPayment(refundRequestId, paymentId, p
     if (refundData.status === 'refunded')
         return true;
     const refundUid = String(refundData.uid || '');
-    const expectedRefundAmount = Number(refundData.refundableAmount || refundData.requestedRefundAmount || refundData.paidAmount || 0);
-    if (!(0, subscriptionRefundsCore_1.shouldMarkRefundedFromPortOne)(payment, expectedRefundAmount))
+    const targetRefundAmount = Number(refundData.targetRefundAmount || refundData.refundableAmount || refundData.requestedRefundAmount || refundData.paidAmount || 0);
+    if (!(0, subscriptionRefundsCore_1.shouldMarkRefundedFromPortOne)(payment, targetRefundAmount))
         return false;
     await db.runTransaction(async (tx) => {
         const fresh = await tx.get(requestRef);
@@ -285,6 +286,9 @@ async function markSubscriptionRefundedFromPayment(refundRequestId, paymentId, p
         tx.set(requestRef, {
             status: 'refunded',
             refundedAmount,
+            targetRefundAmount,
+            alreadyRefundedAmount: refundedAmount,
+            cancellableAmountAfterRefund: cancellableAmount,
             portoneStatus: payment.status || null,
             refundedAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -480,8 +484,9 @@ exports.requestSubscriptionRefund = (0, https_1.onCall)({ region: 'asia-northeas
         const usageSummary = await buildUsageSummary(uid, paidAtMs);
         const paidAmount = Number(orderData.amount || (0, subscriptionRefundsCore_1.getPaymentAmountTotal)(payment));
         const cancellableAmount = (0, subscriptionRefundsCore_1.getPortOneCancellableAmount)(payment);
-        const estimatedRefundAmount = Math.min(cancellableAmount, (0, subscriptionRefundsCore_1.estimateSubscriptionRefundAmount)(paidAmount, paidAtMs, nowMs, usageSummary.hasPaidServiceUsage, servicePeriodDays));
-        if (estimatedRefundAmount <= 0) {
+        const targetRefundAmount = (0, subscriptionRefundsCore_1.estimateSubscriptionRefundAmount)(paidAmount, paidAtMs, nowMs, usageSummary.hasPaidServiceUsage, servicePeriodDays);
+        const refundAmounts = (0, subscriptionRefundsCore_1.calculateSubscriptionRefundCancellationAmounts)(targetRefundAmount, cancellableAmount, paidAmount);
+        if (refundAmounts.targetRefundAmount <= 0) {
             throw new subscriptionRefundsCore_1.SubscriptionRefundPolicyError('nothing_to_refund', '환불 가능한 잔액이 없습니다.');
         }
         const refundRequestId = `subscription_${paymentId}`;
@@ -505,8 +510,11 @@ exports.requestSubscriptionRefund = (0, https_1.onCall)({ region: 'asia-northeas
                 storeId: HARU_PORTONE_STORE_ID,
                 productName: orderData.orderName || 'HARU2026 정기구독',
                 paidAmount,
-                refundableAmount: estimatedRefundAmount,
-                requestedRefundAmount: estimatedRefundAmount,
+                refundableAmount: refundAmounts.cancelAmountThisAttempt,
+                requestedRefundAmount: refundAmounts.cancelAmountThisAttempt,
+                targetRefundAmount: refundAmounts.targetRefundAmount,
+                alreadyRefundedAmount: refundAmounts.alreadyRefundedAmount,
+                cancelAmountThisAttempt: refundAmounts.cancelAmountThisAttempt,
                 cancellableAmountAtRequest: cancellableAmount,
                 currency: 'KRW',
                 paymentDate: new Date(paidAtMs).toISOString(),
@@ -536,7 +544,9 @@ exports.requestSubscriptionRefund = (0, https_1.onCall)({ region: 'asia-northeas
                     storeIdVerified: true,
                     amountVerified: true,
                     cancellableAmount,
-                    estimatedRefundAmount,
+                    targetRefundAmount: refundAmounts.targetRefundAmount,
+                    alreadyRefundedAmount: refundAmounts.alreadyRefundedAmount,
+                    cancelAmountThisAttempt: refundAmounts.cancelAmountThisAttempt,
                     servicePeriodDays,
                     periodEndDate: new Date(resolvedPeriodEndMs).toISOString(),
                 },
@@ -580,7 +590,10 @@ exports.requestSubscriptionRefund = (0, https_1.onCall)({ region: 'asia-northeas
             success: true,
             refundRequestId,
             status: 'requested',
-            refundableAmount: estimatedRefundAmount,
+            refundableAmount: refundAmounts.cancelAmountThisAttempt,
+            targetRefundAmount: refundAmounts.targetRefundAmount,
+            alreadyRefundedAmount: refundAmounts.alreadyRefundedAmount,
+            cancelAmountThisAttempt: refundAmounts.cancelAmountThisAttempt,
         };
     }
     catch (error) {
@@ -702,8 +715,11 @@ exports.approveSubscriptionRefund = (0, https_1.onCall)({ region: 'asia-northeas
         (0, subscriptionRefundsCore_1.assertRefundRequestMatchesPaymentRequest)(requestData, orderData);
         const payment = await fetchPortOnePaymentWithRetry(paymentId);
         (0, subscriptionRefundsCore_1.assertPortOnePaymentIdentityMatchesStoredRequest)(payment, orderData, HARU_PORTONE_STORE_ID);
-        const expectedRefundAmount = (0, subscriptionRefundsCore_1.resolveApprovedRefundAmount)(requestData.refundableAmount || requestData.requestedRefundAmount, (0, subscriptionRefundsCore_1.getPortOneCancellableAmount)(payment), Number(requestData.paidAmount || orderData.amount || (0, subscriptionRefundsCore_1.getPaymentAmountTotal)(payment)));
-        const recoveryAction = (0, subscriptionRefundsCore_1.getApproveRefundRecoveryAction)(requestData.status, payment, expectedRefundAmount, getRefundingStartedAtMillis(requestData), Date.now());
+        const paidAmount = Number(requestData.paidAmount || orderData.amount || (0, subscriptionRefundsCore_1.getPaymentAmountTotal)(payment));
+        const cancellableAmount = (0, subscriptionRefundsCore_1.getPortOneCancellableAmount)(payment);
+        const targetRefundAmount = Number(requestData.targetRefundAmount || requestData.refundableAmount || requestData.requestedRefundAmount || paidAmount);
+        const approvalAmounts = (0, subscriptionRefundsCore_1.calculateSubscriptionRefundCancellationAmounts)(targetRefundAmount, cancellableAmount, paidAmount);
+        const recoveryAction = (0, subscriptionRefundsCore_1.getApproveRefundRecoveryAction)(requestData.status, payment, approvalAmounts.targetRefundAmount, getRefundingStartedAtMillis(requestData), Date.now());
         if (recoveryAction === 'already_processed') {
             return { success: true, alreadyProcessed: true };
         }
@@ -718,12 +734,10 @@ exports.approveSubscriptionRefund = (0, https_1.onCall)({ region: 'asia-northeas
             throw new https_1.HttpsError('failed-precondition', '반려된 요청은 승인할 수 없습니다.');
         }
         (0, subscriptionRefundsCore_1.assertPortOnePaymentMatchesStoredRequest)(payment, orderData, HARU_PORTONE_STORE_ID, { allowPartialCancelled: true });
-        const cancellableAmount = (0, subscriptionRefundsCore_1.getPortOneCancellableAmount)(payment);
         if (cancellableAmount <= 0) {
             throw new subscriptionRefundsCore_1.SubscriptionRefundPolicyError('already_refunded', '이미 전액 환불된 결제입니다.');
         }
-        const approvedRefundAmount = (0, subscriptionRefundsCore_1.resolveApprovedRefundAmount)(requestData.refundableAmount || requestData.requestedRefundAmount, cancellableAmount, Number(requestData.paidAmount || orderData.amount || (0, subscriptionRefundsCore_1.getPaymentAmountTotal)(payment)));
-        if (approvedRefundAmount <= 0) {
+        if (approvalAmounts.cancelAmountThisAttempt <= 0) {
             throw new subscriptionRefundsCore_1.SubscriptionRefundPolicyError('nothing_to_refund', '환불 가능한 잔액이 없습니다.');
         }
         const allowRetryFromRefunding = requestData.status === 'refunding'
@@ -750,8 +764,12 @@ exports.approveSubscriptionRefund = (0, https_1.onCall)({ region: 'asia-northeas
                 refundingLastAttemptAtIso: nowIso,
                 refundingAttemptCount: admin.firestore.FieldValue.increment(1),
                 reviewedAt: admin.firestore.FieldValue.serverTimestamp(),
-                refundableAmount: approvedRefundAmount,
-                approvedRefundAmount,
+                refundableAmount: approvalAmounts.cancelAmountThisAttempt,
+                requestedRefundAmount: approvalAmounts.cancelAmountThisAttempt,
+                targetRefundAmount: approvalAmounts.targetRefundAmount,
+                alreadyRefundedAmount: approvalAmounts.alreadyRefundedAmount,
+                cancelAmountThisAttempt: approvalAmounts.cancelAmountThisAttempt,
+                approvedRefundAmount: approvalAmounts.cancelAmountThisAttempt,
                 publicMessage: '환불 승인 후 결제 취소를 처리하고 있습니다.',
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             }, { merge: true });
@@ -766,7 +784,10 @@ exports.approveSubscriptionRefund = (0, https_1.onCall)({ region: 'asia-northeas
                 approvalValidation: {
                     portoneStatus: payment.status,
                     cancellableAmount,
-                    approvedRefundAmount,
+                    targetRefundAmount: approvalAmounts.targetRefundAmount,
+                    alreadyRefundedAmount: approvalAmounts.alreadyRefundedAmount,
+                    cancelAmountThisAttempt: approvalAmounts.cancelAmountThisAttempt,
+                    approvedRefundAmount: approvalAmounts.cancelAmountThisAttempt,
                     storeIdVerified: true,
                     amountVerified: true,
                 },
@@ -787,7 +808,7 @@ exports.approveSubscriptionRefund = (0, https_1.onCall)({ region: 'asia-northeas
             return { success: true, alreadyProcessing: true };
         }
         try {
-            const cancellation = await cancelPortOnePayment(paymentId, refundRequestId, approvedRefundAmount);
+            const cancellation = await cancelPortOnePayment(paymentId, refundRequestId, approvalAmounts.cancelAmountThisAttempt);
             const refreshedPayment = await fetchPortOnePaymentWithRetry(paymentId).catch(() => payment);
             const synced = await markSubscriptionRefundedFromPayment(refundRequestId, paymentId, refreshedPayment, ((_f = request.auth) === null || _f === void 0 ? void 0 : _f.uid) || 'admin');
             await internalRef.set({

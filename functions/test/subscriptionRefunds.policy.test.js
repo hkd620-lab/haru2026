@@ -10,6 +10,7 @@ const {
   assertRefundRequestMatchesPaymentRequest,
   assertRefundRequesterOwnsPayment,
   assertSubscriptionChargePayment,
+  calculateSubscriptionRefundCancellationAmounts,
   createPortOneRefundIdempotencyKey,
   estimateSubscriptionRefundAmount,
   getApproveRefundRecoveryAction,
@@ -59,6 +60,12 @@ function run() {
     status: 'CANCELLED',
     cancellableAmount: { total: 0 },
     cancellations: [{ status: 'SUCCEEDED', amount: { total: 4000 } }],
+  };
+  const targetReachedPartialCancelledPayment = {
+    ...paidPayment,
+    status: 'PARTIAL_CANCELLED',
+    cancellableAmount: { total: 1333 },
+    cancellations: [{ status: 'SUCCEEDED', amount: { total: 2667 } }],
   };
 
   assertRefundRequesterOwnsPayment('user-a', paymentRequest);
@@ -133,16 +140,36 @@ function run() {
   assert.equal(SUBSCRIPTION_REFUND_MIN_REMAINING_DAYS, 7);
   assertRefundRequestWindow(now - 20 * DAY, now, 'unused_within_7_days', undefined, 30);
   expectPolicyError(() => assertRefundRequestWindow(now - 24 * DAY, now, 'unused_within_7_days', undefined, 30), 'request_window_closed');
+  expectPolicyError(() => assertRefundRequestWindow(now - 24 * DAY, now, 'other', undefined, 30), 'request_window_closed');
+  assertRefundRequestWindow(now - 24 * DAY, now, 'service_issue', undefined, 30);
+  assertRefundRequestWindow(now - 24 * DAY, now, 'duplicate_payment', undefined, 30);
+  assertRefundRequestWindow(now - 24 * DAY, now, 'wrong_payment', undefined, 30);
   assertRefundRequestWindow(now - 120 * DAY, now, 'duplicate_payment', now + 30 * DAY, 365);
   assert.equal(getSubscriptionRefundServicePeriodDays(now - 10 * DAY, now + 20 * DAY), 30);
-  assert.equal(getSubscriptionRefundServicePeriodDays(now - 100 * DAY, now + 265 * DAY), 365);
   assert.equal(getSubscriptionRefundPeriodEndMs(now - 10 * DAY, 30), now + 20 * DAY);
 
   assert.equal(estimateSubscriptionRefundAmount(4000, now - 3 * DAY, now, false), 4000);
+  assert.equal(estimateSubscriptionRefundAmount(4000, now - 7 * DAY, now, false), 4000);
+  assert.equal(estimateSubscriptionRefundAmount(4000, now - 7 * DAY - 1, now, false), 3067);
   assert.equal(estimateSubscriptionRefundAmount(4000, now - 3 * DAY, now, true), 3600);
   assert.equal(estimateSubscriptionRefundAmount(4000, now - 10 * DAY, now, true), 2667);
-  assert.equal(estimateSubscriptionRefundAmount(10000, now - 100 * DAY, now, true, 365), 7261);
+  assert.deepEqual(calculateSubscriptionRefundCancellationAmounts(2667, 3000, 4000), {
+    targetRefundAmount: 2667,
+    alreadyRefundedAmount: 1000,
+    cancelAmountThisAttempt: 1667,
+  });
+  assert.deepEqual(calculateSubscriptionRefundCancellationAmounts(2667, 1333, 4000), {
+    targetRefundAmount: 2667,
+    alreadyRefundedAmount: 2667,
+    cancelAmountThisAttempt: 0,
+  });
+  assert.deepEqual(calculateSubscriptionRefundCancellationAmounts(2667, 1000, 4000), {
+    targetRefundAmount: 2667,
+    alreadyRefundedAmount: 3000,
+    cancelAmountThisAttempt: 0,
+  });
   assert.equal(resolveApprovedRefundAmount(2667, 4000, 4000), 2667);
+  assert.equal(resolveApprovedRefundAmount(2667, 3000, 4000), 1667);
   assert.equal(resolveApprovedRefundAmount(6000, 4000, 6000), 4000);
   assert.equal(resolveApprovedRefundAmount(undefined, 3000, 4000), 3000);
 
@@ -174,6 +201,10 @@ function run() {
   assert.equal(
     getApproveRefundRecoveryAction('requested', partialCancelledPayment, 3000, Number.NaN, now),
     'retry_cancel',
+  );
+  assert.equal(
+    getApproveRefundRecoveryAction('requested', targetReachedPartialCancelledPayment, 2667, Number.NaN, now),
+    'sync_refunded',
   );
   assert.equal(
     getApproveRefundRecoveryAction('refunded', paidPayment, 4000, now - 1000, now),

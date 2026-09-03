@@ -41,6 +41,11 @@ export const SUBSCRIPTION_REFUND_FULL_REFUND_DAYS = 7;
 export const SUBSCRIPTION_REFUND_SERVICE_PERIOD_DAYS = 30;
 export const SUBSCRIPTION_REFUND_MIN_REMAINING_DAYS = 7;
 export const SUBSCRIPTION_REFUNDING_STALE_MS = 10 * 60 * 1000;
+export const SUBSCRIPTION_REFUND_REMAINING_WINDOW_EXEMPT_REASON_CODES: SubscriptionRefundReasonCode[] = [
+  'service_issue',
+  'duplicate_payment',
+  'wrong_payment',
+];
 
 export const SUBSCRIPTION_REFUND_STATUSES: SubscriptionRefundStatus[] = [
   'requested',
@@ -216,6 +221,10 @@ export function assertNoDuplicateRefundRequest(existingStatus: unknown): void {
   }
 }
 
+export function isRefundRemainingWindowExempt(reasonCode: SubscriptionRefundReasonCode): boolean {
+  return SUBSCRIPTION_REFUND_REMAINING_WINDOW_EXEMPT_REASON_CODES.includes(reasonCode);
+}
+
 export function getSubscriptionRefundServicePeriodDays(
   paidAtMs: number,
   explicitPeriodEndMs?: number,
@@ -266,13 +275,14 @@ export function assertRefundRequestWindow(
   if (!Number.isFinite(paidAtMs) || paidAtMs <= 0) {
     throw new SubscriptionRefundPolicyError('request_window_closed', '결제일을 확인할 수 없습니다.');
   }
-  const resolvedPeriodDays = getSubscriptionRefundServicePeriodDays(paidAtMs, periodEndMs, servicePeriodDays);
-  const resolvedPeriodEndMs = getSubscriptionRefundPeriodEndMs(paidAtMs, resolvedPeriodDays, periodEndMs);
-  const remainingMs = resolvedPeriodEndMs - nowMs;
-  if (remainingMs < SUBSCRIPTION_REFUND_MIN_REMAINING_DAYS * MS_PER_DAY) {
-    throw new SubscriptionRefundPolicyError('request_window_closed', '구독 만료 7일 미만인 결제는 환불을 신청할 수 없습니다.');
+  if (!isRefundRemainingWindowExempt(reasonCode)) {
+    const resolvedPeriodDays = getSubscriptionRefundServicePeriodDays(paidAtMs, periodEndMs, servicePeriodDays);
+    const resolvedPeriodEndMs = getSubscriptionRefundPeriodEndMs(paidAtMs, resolvedPeriodDays, periodEndMs);
+    const remainingMs = resolvedPeriodEndMs - nowMs;
+    if (remainingMs < SUBSCRIPTION_REFUND_MIN_REMAINING_DAYS * MS_PER_DAY) {
+      throw new SubscriptionRefundPolicyError('request_window_closed', '구독 만료 7일 미만인 결제는 환불을 신청할 수 없습니다.');
+    }
   }
-  void reasonCode;
 }
 
 export function estimateSubscriptionRefundAmount(
@@ -284,13 +294,50 @@ export function estimateSubscriptionRefundAmount(
 ): number {
   if (!Number.isFinite(paidAmount) || paidAmount <= 0) return 0;
   const resolvedPeriodDays = Math.max(1, Math.ceil(servicePeriodDays));
-  const elapsedDays = Math.floor(Math.max(0, nowMs - paidAtMs) / MS_PER_DAY);
-  if (!hasPaidServiceUsage && elapsedDays <= SUBSCRIPTION_REFUND_FULL_REFUND_DAYS) {
+  const elapsedMs = Math.max(0, nowMs - paidAtMs);
+  if (!hasPaidServiceUsage && elapsedMs <= SUBSCRIPTION_REFUND_FULL_REFUND_DAYS * MS_PER_DAY) {
     return paidAmount;
   }
+  const elapsedDays = Math.floor(elapsedMs / MS_PER_DAY);
   const usedDays = Math.min(resolvedPeriodDays, Math.max(0, elapsedDays));
   const usedAmount = (paidAmount / resolvedPeriodDays) * usedDays;
   return Math.max(0, Math.ceil(paidAmount - usedAmount));
+}
+
+export interface SubscriptionRefundCancellationAmounts {
+  targetRefundAmount: number;
+  alreadyRefundedAmount: number;
+  cancelAmountThisAttempt: number;
+}
+
+export function calculateSubscriptionRefundCancellationAmounts(
+  targetRefundAmountInput: unknown,
+  cancellableAmountInput: unknown,
+  paidAmountInput: unknown,
+): SubscriptionRefundCancellationAmounts {
+  const paidAmountRaw = Number(paidAmountInput);
+  const paidAmount = Number.isFinite(paidAmountRaw) && paidAmountRaw > 0
+    ? Math.ceil(paidAmountRaw)
+    : 0;
+  const targetRefundAmountRaw = Number(targetRefundAmountInput);
+  const targetRefundAmount = Number.isFinite(targetRefundAmountRaw) && targetRefundAmountRaw > 0
+    ? Math.min(paidAmount, Math.ceil(targetRefundAmountRaw))
+    : 0;
+  const cancellableAmountRaw = Number(cancellableAmountInput);
+  const cancellableAmount = Number.isFinite(cancellableAmountRaw) && cancellableAmountRaw > 0
+    ? Math.min(paidAmount, Math.ceil(cancellableAmountRaw))
+    : 0;
+  const alreadyRefundedAmount = Math.max(0, paidAmount - cancellableAmount);
+  const cancelAmountThisAttempt = Math.min(
+    cancellableAmount,
+    Math.max(0, targetRefundAmount - alreadyRefundedAmount),
+  );
+
+  return {
+    targetRefundAmount,
+    alreadyRefundedAmount,
+    cancelAmountThisAttempt,
+  };
 }
 
 export function resolveApprovedRefundAmount(
@@ -299,13 +346,14 @@ export function resolveApprovedRefundAmount(
   paidAmount: number,
 ): number {
   const requested = Number(requestedRefundAmount);
-  const fallback = Number(paidAmount);
-  const requestedOrFallback = Number.isFinite(requested) && requested > 0
+  const targetRefundAmount = Number.isFinite(requested) && requested > 0
     ? requested
-    : fallback;
-  if (!Number.isFinite(cancellableAmount) || cancellableAmount <= 0) return 0;
-  if (!Number.isFinite(requestedOrFallback) || requestedOrFallback <= 0) return 0;
-  return Math.max(0, Math.min(cancellableAmount, Math.ceil(requestedOrFallback)));
+    : paidAmount;
+  return calculateSubscriptionRefundCancellationAmounts(
+    targetRefundAmount,
+    cancellableAmount,
+    paidAmount,
+  ).cancelAmountThisAttempt;
 }
 
 export function shouldMarkRefundedFromPortOne(payment: Record<string, any>, expectedRefundAmount: number): boolean {

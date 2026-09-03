@@ -912,7 +912,7 @@ export function SettingsPage() {
                 </div>
 
                 <p className="text-xs mt-3 leading-relaxed" style={{ color: '#666' }}>
-                  환불 처리 기준: 결제 후 7일 이내 미사용은 전액 환불, 그 외에는 월간·연간 구독의 잔여기간 기준으로 산정합니다. 만료 7일 미만이면 환불이 어렵습니다.
+                  환불 처리 기준: 결제 시각부터 7일(168시간) 이내 미사용은 전액 환불, 그 외에는 1개월 월간 구독의 잔여기간 기준으로 산정합니다. 일반 사유는 만료 7일 미만이면 환불이 어렵습니다.
                 </p>
                 <p className="text-xs mt-2 p-3 rounded-lg leading-relaxed" style={{ backgroundColor: '#FFF3CD', color: '#856404' }}>
                   구독 해지는 다음 결제를 중단하는 기능이며, 이미 결제된 금액은 자동 환불되지 않습니다. 환불 요청이 접수되면 자동결제가 중단되며, 3~5영업일 이내 확인 후 환불 결과를 알려드립니다.
