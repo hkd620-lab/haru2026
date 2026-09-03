@@ -7620,6 +7620,11 @@ Object.defineProperty(exports, "draftElderBookChapters", { enumerable: true, get
 Object.defineProperty(exports, "polishElderBookChapters", { enumerable: true, get: function () { return elderBook_1.polishElderBookChapters; } });
 // ===== 단어 뜻 조회 =====
 exports.getWordMeaning = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] }, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    await (0, rateLimit_1.enforceRateLimit)(uid, 'getWordMeaning', 15, 80);
     const { word } = request.data;
     if (!word)
         throw new https_2.HttpsError('invalid-argument', '단어가 필요합니다.');
@@ -7653,12 +7658,22 @@ JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
 });
 // ===== 문법 해설 =====
 exports.getGrammarExplain = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET, OPENAI_API_KEY_SECRET] }, async (request) => {
-    var _a, _b;
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    await (0, rateLimit_1.enforceRateLimit)(uid, 'getGrammarExplain', 10, 60);
     const { verseKey, verseText } = request.data;
     if (!verseText)
         throw new https_2.HttpsError('invalid-argument', '절 내용이 필요합니다.');
+    // P0: 일기 문법 캐시는 사용자별 격리 (성경 캐시는 공용 유지)
+    // 프론트가 보낸 diary_* 키에 서버가 인증된 uid를 강제로 네임스페이싱한다.
+    let cacheKey = verseKey;
+    if ((verseKey || '').startsWith('diary_')) {
+        cacheKey = `diary_${uid}_${verseKey.slice('diary_'.length)}`;
+    }
     const db = admin.firestore();
-    const cacheRef = db.collection('grammarCache').doc(verseKey);
+    const cacheRef = db.collection('grammarCache').doc(cacheKey);
     // 1. 캐시 확인
     const cacheSnap = await cacheRef.get();
     if (cacheSnap.exists) {
@@ -7782,9 +7797,15 @@ mysentence와 korean은 반드시 채워야 합니다.
 규칙:
 - mysentence/korean이 비어있으면 반드시 채울 것
 - 다른 빈 필드는 해당 문법 요소가 없으면 빈 문자열 유지
-- 반드시 동일한 JSON 구조로만 응답
 - 마크다운 없이 순수 JSON만
-
+★ 응답 형식 (반드시 아래 두 개 필드를 가진 객체로만 응답):
+{
+  "changes": ["수정한 항목과 이유를 한 줄씩. 예: verb_example_en: 'He said the truth' → 'He told the truth' (say는 the truth와 함께 쓰지 않음)"],
+  "corrected": 수정된 전체 분석 JSON 객체 또는 null
+}
+- 수정할 것이 하나라도 있으면: changes에 변경 내역을 모두 적고, corrected에 수정 완료된 전체 분석 JSON을 담을 것
+- 수정할 것이 전혀 없으면: changes는 빈 배열 [], corrected는 null
+- corrected는 원본 분석 JSON과 동일한 필드 구조를 유지할 것 (필드를 새로 만들거나 없애지 말 것)
 분석 JSON:
 ${JSON.stringify(parsed, null, 2)}`;
             const gptRes = await axios_1.default.post('https://api.openai.com/v1/chat/completions', {
@@ -7801,8 +7822,20 @@ ${JSON.stringify(parsed, null, 2)}`;
             const gptRaw = gptRes.data.choices[0].message.content.trim();
             const gptClean = gptRaw.replace(/```json|```/g, '').trim();
             const gptParsed = JSON.parse(gptClean);
-            verified = (_a = gptParsed.result) !== null && _a !== void 0 ? _a : gptParsed;
-            gptChanges = (_b = gptParsed.changes) !== null && _b !== void 0 ? _b : [];
+            gptChanges = Array.isArray(gptParsed.changes) ? gptParsed.changes : [];
+            if (gptParsed.corrected && typeof gptParsed.corrected === 'object') {
+                // 정상 경로: GPT가 수정본을 반환한 경우
+                verified = gptParsed.corrected;
+            }
+            else if (gptChanges.length === 0 && !('corrected' in gptParsed) && gptParsed.mysentence !== undefined) {
+                // 하위호환 폴백: 구 형식(분석 JSON을 그대로 반환)으로 응답한 경우
+                verified = gptParsed;
+                logger.warn(`[getGrammarExplain] GPT가 구 형식으로 응답 (${verseKey}) — changes 미수집`);
+            }
+            else {
+                // 수정 없음(corrected: null) → Gemini 원본 유지
+                verified = parsed;
+            }
             if (gptChanges.length > 0) {
                 logger.info(`[getGrammarExplain] GPT-4o 수정 내역 (${verseKey}): ${JSON.stringify(gptChanges)}`);
             }
@@ -8016,6 +8049,11 @@ exports.preloadChapterGrammar = (0, https_2.onCall)({ region: 'asia-northeast3',
 });
 // ===== 퀴즈 생성 =====
 exports.getVerseQuiz = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] }, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    await (0, rateLimit_1.enforceRateLimit)(uid, 'getVerseQuiz', 10, 60);
     const { verseKey, verseText, level = 'basic' } = request.data;
     if (!verseText)
         throw new https_2.HttpsError('invalid-argument', '절 내용이 필요합니다.');
@@ -8077,6 +8115,11 @@ JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
 });
 // 영어 일기 학습 — 한국어 → 영어 번역
 exports.translateToEnglish = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] }, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    await (0, rateLimit_1.enforceRateLimit)(uid, 'translateToEnglish', 10, 60);
     const text = request.data.text || '';
     if (!text)
         throw new Error('텍스트가 없습니다');
@@ -8689,6 +8732,11 @@ ${type === 'story'
 });
 exports.getVerseTranslation = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] }, async (request) => {
     var _a;
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    await (0, rateLimit_1.enforceRateLimit)(uid, 'getVerseTranslation', 15, 80);
     const { verseKey, text } = request.data;
     // Firestore 캐시 확인
     const cacheRef = db.collection('translationCache').doc(verseKey);
@@ -8707,6 +8755,11 @@ exports.getVerseTranslation = (0, https_2.onCall)({ region: 'asia-northeast3', s
     return { translation };
 });
 exports.getVerseWordMapping = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] }, async (request) => {
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    await (0, rateLimit_1.enforceRateLimit)(uid, 'getVerseWordMapping', 15, 80);
     const { verseKey, enText, koText } = request.data;
     if (!enText || !koText)
         throw new https_2.HttpsError('invalid-argument', '영어/한국어 텍스트가 필요합니다.');
@@ -11409,6 +11462,11 @@ exports.petFoodCheck = (0, https_2.onCall)({
     secrets: [GEMINI_API_KEY_SECRET],
 }, async (request) => {
     var _a, _b, _c;
+    if (!request.auth) {
+        throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    await (0, rateLimit_1.enforceRateLimit)(uid, 'petFoodCheck', 5, 30);
     const { foodName } = request.data;
     if (!foodName || foodName.trim().length === 0) {
         throw new https_2.HttpsError('invalid-argument', '식품명을 입력해주세요.');
