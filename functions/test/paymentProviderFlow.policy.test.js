@@ -30,6 +30,9 @@ const subscribeSection = section(indexSrc, 'export const subscribeWithBillingKey
 const recurringSection = section(indexSrc, 'export const processRecurringSubscriptions = onSchedule', '// ===== 💳 일반(단건) 1개월 이용권 검증 =====');
 const verifySingleSection = section(indexSrc, 'export const verifySinglePayment = onCall', '// ===== 💳 PortOne V2 결제 웹훅 =====');
 const webhookSection = section(indexSrc, 'export const portoneWebhook = onRequest', '// ===== 🗑️ 일회성 마이그레이션');
+const initialBillingCompletionSection = section(indexSrc, 'async function completeInitialBillingSubscription', 'async function markInitialBillingPaymentPending');
+const initialBillingAlreadyProcessedSection = section(indexSrc, 'async function isInitialBillingSubscriptionAlreadyProcessed', 'async function completeInitialBillingSubscription');
+const initialBillingSettlementSection = section(indexSrc, 'async function settleInitialBillingPayment', 'type HaruLawSharePreview');
 
 assert(subscriptionPageSrc.includes("provider: 'kg_inicis'"));
 assert(subscriptionPageSrc.includes("provider: 'kakaopay'"));
@@ -54,9 +57,50 @@ assert(subscribeSection.includes('const requestRef = getPaymentRequestRef(issueI
 assert(subscribeSection.includes("requestData.uid !== uid || requestData.paymentType !== 'subscription' || requestData.billingType !== 'billing_key_issue'"));
 assert(subscribeSection.includes('const plan = assertPaidPlan(requestData.plan)'));
 assert(subscribeSection.includes('const provider = getStoredPaymentProvider(requestData)'));
-assert(subscribeSection.includes("freshData.status === 'processed' && freshData.lastPaymentId"));
-assert(subscribeSection.includes("freshData.status === 'charging' && freshData.lastPaymentId"));
-assertBefore(subscribeSection, "freshData.status === 'charging' && freshData.lastPaymentId", 'axios.post');
+assert(subscribeSection.includes("freshData.status === 'processed' || freshData.status === 'charging'"));
+assert(subscribeSection.includes("return { action: 'settle_existing', paymentId: freshData.lastPaymentId }"));
+assert(subscribeSection.includes("if (locked.action === 'settle_existing')"));
+assert(subscribeSection.includes('existingPayment = await fetchPortOnePaymentWithRetry(paymentId)'));
+assert(subscribeSection.includes("throw new HttpsError('unavailable', '기존 첫 결제 상태를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.')"));
+assert(!subscribeSection.includes('return { success: true, alreadyProcessed: true };\n    }\n\n    let payment'));
+const settleExistingBranch = section(subscribeSection, "if (locked.action === 'settle_existing')", 'let payment: any;');
+assert(settleExistingBranch.includes('isInitialBillingSubscriptionAlreadyProcessed'));
+assert(settleExistingBranch.includes('return { success: true, alreadyProcessed: true }'));
+assert(settleExistingBranch.includes('fetchPortOnePaymentWithRetry(paymentId)'));
+assert(settleExistingBranch.includes('return settleInitialBillingPayment'));
+assert(!settleExistingBranch.includes('axios.post'));
+assertBefore(settleExistingBranch, 'isInitialBillingSubscriptionAlreadyProcessed', 'fetchPortOnePaymentWithRetry(paymentId)');
+assertBefore(subscribeSection, "if (locked.action === 'settle_existing')", 'axios.post');
+assert(subscribeSection.includes("status: 'charging'"));
+assert(subscribeSection.includes("lastBillingError: e?.message || 'initial_billing_uncertain'"));
+assert(subscribeSection.includes("throw new HttpsError('unavailable', '첫 결제 요청 결과를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.')"));
+
+assert(initialBillingAlreadyProcessedSection.includes("requestData.status === 'processed'"));
+assert(initialBillingAlreadyProcessedSection.includes("paymentData.status === 'processed'"));
+assert(initialBillingAlreadyProcessedSection.includes("subscriptionData.status === 'active'"));
+assert(initialBillingAlreadyProcessedSection.includes("billingData.status === 'active'"));
+assert(initialBillingAlreadyProcessedSection.includes('subscriptionData.lastPaymentId === params.paymentId'));
+assert(initialBillingAlreadyProcessedSection.includes('billingData.lastPaymentId === params.paymentId'));
+
+assert(initialBillingCompletionSection.includes('tx.set(subRef'));
+assert(initialBillingCompletionSection.includes('tx.set(billingRef'));
+assert(initialBillingCompletionSection.includes('tx.set(params.requestRef'));
+assert(initialBillingCompletionSection.includes('tx.set(params.paymentRef'));
+assert(initialBillingCompletionSection.includes("status: 'active'"));
+assert(initialBillingCompletionSection.includes("status: 'processed'"));
+assert(initialBillingCompletionSection.includes('const subscriptionAlreadyActive'));
+assert(initialBillingCompletionSection.includes('alreadyProcessed = true'));
+assert(initialBillingCompletionSection.includes('requestData.lastPaymentId !== params.paymentId'));
+
+assert(initialBillingSettlementSection.includes("if (portoneStatus === 'PAID')"));
+assert(initialBillingSettlementSection.includes('completeInitialBillingSubscription(params)'));
+assert(initialBillingSettlementSection.includes('? { success: true, alreadyProcessed: true }'));
+assert(initialBillingSettlementSection.includes("if (isFailedOrCancelledPaymentStatus(portoneStatus))"));
+assert(initialBillingSettlementSection.includes('await markInitialBillingPaymentFailed(params.requestRef, params.paymentRef, portoneStatus)'));
+assert(initialBillingSettlementSection.includes("throw new HttpsError('failed-precondition', '첫 결제가 실패 또는 취소되었습니다.')"));
+assert(initialBillingSettlementSection.includes('await markInitialBillingPaymentPending(params.requestRef, params.paymentRef, portoneStatus)'));
+assert(initialBillingSettlementSection.includes('return { success: false, pending: true, status: portoneStatus }'));
+assert(!initialBillingSettlementSection.includes('axios.post'));
 
 assert(recurringSection.includes('shouldExcludeFromRecurringBilling(uid)'));
 assert(recurringSection.includes('const provider = getStoredPaymentProvider(data)'));
