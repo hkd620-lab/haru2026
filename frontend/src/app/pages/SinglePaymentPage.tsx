@@ -44,7 +44,7 @@ const SINGLE_PAYMENT_PRODUCTS: Record<PaidPlan, {
     description: '자동갱신 없이 30일 동안 프리미엄 기능을 이용합니다.',
   },
 };
-const SINGLE_PAYMENT_PAY_METHOD = import.meta.env.VITE_PORTONE_SINGLE_PAYMENT_PAY_METHOD || 'EASY_PAY';
+const KG_INICIS_SINGLE_PAYMENT_PAY_METHOD = 'CARD';
 
 export default function SinglePaymentPage() {
   const { user, loading: authLoading } = useAuth();
@@ -110,11 +110,9 @@ export default function SinglePaymentPage() {
     setResultMessage('');
 
     try {
-      const kakaoPayChannelKey = import.meta.env.VITE_PORTONE_KAKAOPAY_CHANNEL_KEY
-        || import.meta.env.VITE_PORTONE_KAKAOPAY_BILLING_CHANNEL_KEY
-        || import.meta.env.VITE_PORTONE_CHANNEL_KEY;
-      if (!kakaoPayChannelKey) {
-        throw new Error('카카오페이 결제 채널 키가 설정되지 않았습니다.');
+      const inicisChannelKey = import.meta.env.VITE_PORTONE_INICIS_CHANNEL_KEY || import.meta.env.VITE_PORTONE_CHANNEL_KEY;
+      if (!inicisChannelKey) {
+        throw new Error('KG이니시스 일반결제 채널 키가 설정되지 않았습니다.');
       }
 
       const trimmedName = fullName.trim();
@@ -125,27 +123,30 @@ export default function SinglePaymentPage() {
 
       const trimmedEmail = email.trim();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-        setResultMessage('카카오페이 결제는 구매자 이메일이 필수입니다. 이메일을 입력해 주세요.');
+        setResultMessage('이니시스 일반결제는 구매자 이메일이 필수입니다. 이메일을 입력해 주세요.');
         return;
       }
 
       const normalizedPhone = phone.replace(/[^0-9]/g, '');
       if (normalizedPhone.length < 10) {
-        setResultMessage('카카오페이 결제는 구매자 휴대폰 번호가 필수입니다. 휴대폰 번호를 입력해 주세요.');
+        setResultMessage('이니시스 일반결제는 구매자 휴대폰 번호가 필수입니다. 휴대폰 번호를 입력해 주세요.');
         return;
       }
 
       const createSinglePaymentRequest = httpsCallable(functions, 'createSinglePaymentRequest');
-      const requestResult = await createSinglePaymentRequest({ plan: selectedPlan });
+      const requestResult = await createSinglePaymentRequest({
+        plan: selectedPlan,
+        provider: 'kg_inicis',
+      });
       const paymentRequest = requestResult.data as SinglePaymentRequestResult;
       const response = await (PortOne as any).requestPayment({
         storeId: paymentRequest.storeId,
-        channelKey: kakaoPayChannelKey,
+        channelKey: inicisChannelKey,
         paymentId: paymentRequest.paymentId,
         orderName: paymentRequest.orderName,
         totalAmount: paymentRequest.amount,
         currency: paymentRequest.currency,
-        payMethod: SINGLE_PAYMENT_PAY_METHOD,
+        payMethod: KG_INICIS_SINGLE_PAYMENT_PAY_METHOD,
         customer: {
           fullName: trimmedName,
           email: trimmedEmail,
@@ -161,7 +162,7 @@ export default function SinglePaymentPage() {
         ],
         customData: {
           ...paymentRequest.customData,
-          purpose: 'kakaopay_one_month_pass',
+          purpose: 'kg_inicis_one_month_pass',
           durationDays: 30,
           guestAllowed: false,
         },
@@ -200,7 +201,7 @@ export default function SinglePaymentPage() {
     return (
       <div className="min-h-screen bg-[#F7F4EC] flex items-center justify-center px-4 py-10">
         <section className="w-full max-w-md bg-white border border-[#e5decf] rounded-lg shadow-sm p-6 text-center">
-          <p className="text-xs font-bold text-[#4F46E5] mb-2">카카오페이 일반결제</p>
+          <p className="text-xs font-bold text-[#4F46E5] mb-2">KG이니시스 일반결제</p>
           <h1 className="text-2xl font-black text-[#1A3C6E] mb-3">HARU2026 1개월 이용권</h1>
           <p className="text-sm font-bold text-gray-700 mb-5">결제는 로그인 후 이용할 수 있습니다.</p>
           <p className="text-xs leading-5 text-gray-500 mb-5">
@@ -221,7 +222,7 @@ export default function SinglePaymentPage() {
     <div className="min-h-screen bg-[#F7F4EC] flex items-center justify-center px-4 py-10">
       <section className="w-full max-w-md bg-white border border-[#e5decf] rounded-lg shadow-sm p-6">
         <div className="mb-6">
-          <p className="text-xs font-bold text-[#4F46E5] mb-2">카카오페이 일반결제</p>
+          <p className="text-xs font-bold text-[#4F46E5] mb-2">KG이니시스 일반결제</p>
           <h1 className="text-2xl font-black text-[#1A3C6E] mb-2">HARU2026 1개월 이용권</h1>
           <p className="text-sm text-gray-600">자동갱신 없는 30일 이용권입니다. 정기결제와 구분되는 단건 일반결제 상품입니다.</p>
         </div>
@@ -306,7 +307,7 @@ export default function SinglePaymentPage() {
             placeholder="example@email.com"
             className="w-full rounded-lg border border-[#e5decf] px-4 py-3 text-base text-gray-800 outline-none focus:border-[#1A3C6E]"
           />
-          <p className="mt-1.5 text-xs text-gray-400">카카오페이 결제 영수증 발송을 위해 이메일이 필요합니다.</p>
+          <p className="mt-1.5 text-xs text-gray-400">결제 영수증 발송을 위해 이메일이 필요합니다.</p>
         </div>
 
         <div className="mb-5">
@@ -323,7 +324,7 @@ export default function SinglePaymentPage() {
             placeholder="01012345678"
             className="w-full rounded-lg border border-[#e5decf] px-4 py-3 text-base text-gray-800 outline-none focus:border-[#1A3C6E]"
           />
-          <p className="mt-1.5 text-xs text-gray-400">카카오페이 결제 승인을 위해 휴대폰 번호가 필요합니다.</p>
+          <p className="mt-1.5 text-xs text-gray-400">결제 승인을 위해 휴대폰 번호가 필요합니다.</p>
         </div>
 
         <div className="mb-5 rounded-lg border border-[#e5decf] bg-[#FAF8F2] p-4 text-xs leading-5 text-gray-600">
