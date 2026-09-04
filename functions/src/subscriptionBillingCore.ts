@@ -179,7 +179,7 @@ export function getRecurringBillingPeriodKey(nextBillingDate: string): string {
 }
 
 export function createDeterministicRecurringPaymentId(uid: string, billingPeriod: string): string {
-  const uidHash = crypto.createHash('sha256').update(uid).digest('hex').slice(0, 24);
+  const uidHash = crypto.createHash('sha256').update(uid).digest('hex').slice(0, 18);
   return `haru-recurring-${billingPeriod}-${uidHash}`;
 }
 

@@ -94,9 +94,15 @@ const recurringPaymentId = core.createDeterministicRecurringPaymentId('uid-1', '
 assert.equal(recurringPaymentId, core.createDeterministicRecurringPaymentId('uid-1', '2026-09-04'));
 assert.notEqual(recurringPaymentId, core.createDeterministicRecurringPaymentId('uid-1', '2026-10-04'));
 assert.notEqual(recurringPaymentId, core.createDeterministicRecurringPaymentId('uid-2', '2026-09-04'));
-assert.equal(recurringPaymentId.length, 50);
-assert(/^haru-recurring-2026-09-04-[a-f0-9]{24}$/.test(recurringPaymentId));
+assert.equal(recurringPaymentId.length, 44);
+assert(/^haru-recurring-2026-09-04-[a-f0-9]{18}$/.test(recurringPaymentId));
 assert(recurringPaymentId.length < 100);
+assert(
+  core.createDeterministicRecurringPaymentId(
+    'any-uid',
+    core.getRecurringBillingPeriodKey(new Date().toISOString()),
+  ).length <= 44,
+);
 
 assert(coreSrc.includes('export type NormalizedPaymentMethod = {'));
 assert(coreSrc.includes('pgProvider: string | null;'));
@@ -107,7 +113,7 @@ assert(coreSrc.includes('channelId: string | null;'));
 assert(coreSrc.includes('export function buildNormalizedPaymentMethodFields'));
 assert(coreSrc.includes('export function getRecurringBillingPeriodKey'));
 assert(coreSrc.includes('export function createDeterministicRecurringPaymentId'));
-assert(coreSrc.includes(".slice(0, 24)"));
+assert(coreSrc.includes(".slice(0, 18)"));
 assert(coreSrc.includes('payMethodType: normalized.payMethod'));
 assert(!coreSrc.includes("return 'kakao_pay';\n  }\n  return 'kg_inicis';"));
 

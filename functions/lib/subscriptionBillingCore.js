@@ -187,7 +187,7 @@ function getRecurringBillingPeriodKey(nextBillingDate) {
     return safe || 'unknown';
 }
 function createDeterministicRecurringPaymentId(uid, billingPeriod) {
-    const uidHash = crypto.createHash('sha256').update(uid).digest('hex').slice(0, 24);
+    const uidHash = crypto.createHash('sha256').update(uid).digest('hex').slice(0, 18);
     return `haru-recurring-${billingPeriod}-${uidHash}`;
 }
 function normalizeSpaces(value) {
