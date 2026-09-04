@@ -39,8 +39,9 @@ users/{uid}/records/{date} 구조 유지되는지 확인
 다른 경로로 바뀐 코드 없는지 체크
 
 ## ⚠️ Git 브랜치 필수 원칙 (절대 준수)
-- 모든 작업은 feature/new-formats 브랜치에서 진행
-- 작업 완료 후 feature/new-formats에 커밋·push한다.
+- 모든 작업은 지시받은(또는 실측 확인한) feature 브랜치에서 진행한다. 폴더(worktree)마다 활성 브랜치가 다르므로 `feature/new-formats` 같은 특정 브랜치명을 고정 전제하지 않는다.
+- 작업 시작 전 `git branch --show-current`로 실제 브랜치를 확인하고, 지시받은 브랜치와 다르면 임의로 전환하지 말고 허대표님께 확인한다.
+- 작업 완료 후 확인된 해당 feature 브랜치에 커밋·push한다.
 - 기본 흐름은 PR 생성 → preview 확인 → 허대표님 승인 또는 작업 성격 확인 → main merge → live 자동배포이다.
 - 문서 작업, 중간 검토, 승인 전 대규모 작업은 main 머지를 기계적으로 요구하지 않는다.
 - main merge와 live 배포는 작업 성격과 허대표님 승인 여부를 확인한 뒤 진행한다.
@@ -205,8 +206,8 @@ git status --short
 ```
 
 - `pwd` 결과가 위 기준 경로와 정확히 일치하지 않으면 작업을 중단하고 보고한다.
-- 모든 코드·문서 수정 작업은 `feature/new-formats` 브랜치에서 진행한다.
-- `git branch --show-current` 결과가 `feature/new-formats`가 아니면 수정 작업을 시작하지 않는다.
+- 모든 코드·문서 수정 작업은 지시받은 feature 브랜치에서 진행한다. 폴더(worktree)마다 활성 브랜치가 다를 수 있으므로 특정 브랜치명을 고정 전제하지 않는다.
+- `git branch --show-current`로 실제 브랜치를 확인하고, 지시받은 브랜치와 다르면 임의로 전환하지 말고 작업을 중단한 뒤 허대표님께 확인한다.
 - `git status --short` 결과가 clean이 아니면 먼저 미커밋 변경 내용을 확인하고, 임의로 섞어서 작업하지 않는다.
 - `/Users/heogyeongdae/HARU2026` 폴더는 현재 운영 기준 폴더가 아니다. 단, 로컬 전용 브랜치가 있을 수 있으므로 임의 삭제하지 않는다.
 - `main` 브랜치에서 직접 수정하지 않는다.
