@@ -87,6 +87,8 @@ const MICROSOFT_CLIENT_ID_SECRET = (0, params_1.defineSecret)('MICROSOFT_CLIENT_
 const MICROSOFT_CLIENT_SECRET_SECRET = (0, params_1.defineSecret)('MICROSOFT_CLIENT_SECRET');
 const GOOGLE_DRIVE_SERVICE_ACCOUNT_SECRET = (0, params_1.defineSecret)('GOOGLE_DRIVE_SERVICE_ACCOUNT');
 const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
+// 관리자 전용 기능 접근 제어용 UID
+const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 // Storage 버킷
 const bucket = () => (0, storage_1.getStorage)().bucket();
 const DEVELOPER_UIDS = new Set([
@@ -6119,12 +6121,13 @@ exports.generateTTS = (0, https_2.onCall)({
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
-    const { text, cacheKey, voice = 'nova' } = request.data;
+    const { text, cacheKey, voice = 'nova', quality = 'standard' } = request.data;
     if (!text || !cacheKey) {
         throw new https_2.HttpsError('invalid-argument', '텍스트와 캐시키가 필요합니다.');
     }
     const validVoices = ['nova', 'onyx', 'alloy', 'echo', 'fable', 'shimmer'];
     const safeVoice = validVoices.includes(voice) ? voice : 'nova';
+    const safeQuality = quality === 'native' ? 'native' : 'standard';
     const filePath = `ttsCache/${cacheKey}_${safeVoice}.mp3`;
     const file = bucket().file(filePath);
     try {
@@ -6169,11 +6172,11 @@ exports.generateTTS = (0, https_2.onCall)({
         for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
             try {
                 ttsResponse = await axios_1.default.post('https://api.openai.com/v1/audio/speech', {
-                    model: 'tts-1',
+                    model: safeQuality === 'native' ? 'tts-1-hd' : 'tts-1',
                     input: cleanedText,
                     voice: safeVoice,
                     response_format: 'mp3',
-                    speed: 0.95,
+                    speed: safeQuality === 'native' ? 0.92 : 0.95,
                 }, {
                     headers: {
                         'Authorization': `Bearer ${OPENAI_KEY}`,
@@ -6491,6 +6494,9 @@ exports.preloadChapterGrammar = (0, https_2.onCall)({ region: 'asia-northeast3',
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다');
     }
+    if (request.auth.uid !== ADMIN_UID) {
+        throw new https_2.HttpsError('permission-denied', '관리자 전용 기능입니다');
+    }
     const { book, chapter, verses, verseTexts } = request.data;
     const results = [];
     for (const verseKey of verses) {
@@ -6641,7 +6647,7 @@ exports.preloadChapterGrammar = (0, https_2.onCall)({ region: 'asia-northeast3',
     }
     // 6. 완료 후 관리자 FCM 알림
     const totalCorrected = results.filter(r => r.gptCorrected).length;
-    const adminUid = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+    const adminUid = ADMIN_UID;
     try {
         const settingsDoc = await db
             .collection('users').doc(adminUid)

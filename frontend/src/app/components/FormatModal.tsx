@@ -3092,6 +3092,7 @@ ${contentValues}`,
   const editingReadingEntryIndex = editingReadingEntryId
     ? selectedReadingEntries.findIndex((entry) => entry.id === editingReadingEntryId)
     : -1;
+  const isEditingReadingEntry = editingReadingEntryIndex >= 0;
   const editingReadingEntryLabel = editingReadingEntryIndex >= 0
     ? `${editingReadingEntryIndex + 1}회차${editingReadingEntryDate ? ` · ${editingReadingEntryDate}` : ''}`
     : '';
@@ -3211,8 +3212,20 @@ ${contentValues}`,
                 {/* 이어작성 카드 */}
                 <div
                   onClick={() => {
-                    if (knownReadingBooks.filter((b) => !b.hasFinalReflection).length === 0) {
+                    const activeReadingBooks = knownReadingBooks.filter((b) => !b.hasFinalReflection);
+                    if (activeReadingBooks.length === 0) {
                       toast.info('아직 작성중인 책이 없어요. "새작성"으로 시작해 보세요.');
+                      return;
+                    }
+                    if (activeReadingBooks.length === 1) {
+                      const book = activeReadingBooks[0];
+                      onSelectExistingBook(book.readingBookId);
+                      // initialData에 시작일이 없으면 기존 가장 오래된 record 기준 — 단순화로 lastDate 사용
+                      setFormData((prev) => ({
+                        ...prev,
+                        reading_started_at: prev.reading_started_at || book.lastDate || '',
+                      }));
+                      setRecordStep('input');
                       return;
                     }
                     // select 단계 유지 — 아래 책 리스트에서 선택
