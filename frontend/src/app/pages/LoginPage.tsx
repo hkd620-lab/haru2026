@@ -13,6 +13,7 @@ import { db } from '../config/firebase';
 // 회원가입 동의 시점에 기록해두는 약관/방침 버전 — 추후 개정 시 재동의 대상을 가려낼 때 사용
 const TERMS_VERSION = '2026-08-20';
 const PRIVACY_VERSION = '2026-08-20';
+const ENABLE_NAVER_LOGIN = import.meta.env.VITE_ENABLE_NAVER_LOGIN === 'true';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -104,6 +105,10 @@ export function LoginPage() {
 
   // 네이버 로그인
   const handleNaverLogin = () => {
+    if (!ENABLE_NAVER_LOGIN) {
+      toast.info('현재 네이버 로그인은 준비 중입니다. 이메일 로그인을 이용해 주세요.');
+      return;
+    }
     if (guardInAppBrowserLogin()) return;
     setIsLoading(true);
     setTimeout(() => {
@@ -215,6 +220,9 @@ export function LoginPage() {
                 HARU2026은 회원제 서비스입니다.<br />
                 결제 및 구독 신청은 로그인 후 이용할 수 있습니다.
               </p>
+              <p className="mb-5 rounded-lg px-4 py-3 text-center text-sm leading-6" style={{ backgroundColor: '#EFF6FF', color: '#1E3A8A' }}>
+                심사용 계정은 아래 이메일 로그인으로 접속해 주세요.
+              </p>
 
               <div className="space-y-3">
                 {/* Google 로그인 */}
@@ -253,21 +261,22 @@ export function LoginPage() {
                   <span className="font-medium">카카오로 계속하기</span>
                 </button>
 
-                {/* 네이버 로그인 */}
-                <button
-                  onClick={handleNaverLogin}
-                  className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-90"
-                  style={{
-                    backgroundColor: '#03C75A',
-                    color: '#ffffff',
-                    border: 'none',
-                  }}
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24">
-                    <path fill="#ffffff" d="M16.273 12.845L7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727v12.845z"/>
-                  </svg>
-                  <span className="font-medium">네이버로 계속하기</span>
-                </button>
+                {ENABLE_NAVER_LOGIN && (
+                  <button
+                    onClick={handleNaverLogin}
+                    className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-90"
+                    style={{
+                      backgroundColor: '#03C75A',
+                      color: '#ffffff',
+                      border: 'none',
+                    }}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24">
+                      <path fill="#ffffff" d="M16.273 12.845L7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727v12.845z"/>
+                    </svg>
+                    <span className="font-medium">네이버로 계속하기</span>
+                  </button>
+                )}
               </div>
 
               <p className="mt-2 text-center text-xs" style={{ color: '#9CA3AF' }}>

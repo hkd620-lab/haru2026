@@ -359,6 +359,224 @@ const getPublicImageUrls = (value: unknown): string[] => {
     .filter((url) => /^https?:\/\//i.test(url));
 };
 
+const EXPORT_INTERNAL_KEYS = new Set([
+  'id',
+  'uid',
+  'userId',
+  'recordId',
+  'date',
+  'formats',
+  'createdAt',
+  'updatedAt',
+  'deletedAt',
+  'imageMeta',
+  'storagePath',
+  'storagePaths',
+]);
+
+const EXPORT_IMAGE_KEY_PATTERN = /(image|photo|첨부|사진|file|attachment)/i;
+
+const formatExportDateTime = (value: unknown): string => {
+  if (value instanceof Timestamp) return value.toDate().toISOString();
+  if (
+    value &&
+    typeof value === 'object' &&
+    'seconds' in value &&
+    typeof (value as { seconds?: unknown }).seconds === 'number'
+  ) {
+    return new Date((value as { seconds: number }).seconds * 1000).toISOString();
+  }
+  return getCleanText(value);
+};
+
+const normalizeExportDate = (record: HaruRecord): string => {
+  const raw = getCleanText(record.date) || formatExportDateTime(record.createdAt);
+  return raw ? raw.slice(0, 10) : '날짜 미지정';
+};
+
+const getExportFormats = (record: HaruRecord): string[] => {
+  if (Array.isArray(record.formats) && record.formats.length > 0) {
+    return record.formats.map((format) => String(format)).filter(Boolean);
+  }
+  const format = getCleanText(record.format);
+  return format ? [format] : ['형식 미지정'];
+};
+
+const stripExportPrefix = (key: string): string => {
+  const withoutPrefix = key.replace(/^[a-zA-Z]+_/, '');
+  return withoutPrefix
+    .replace(/_/g, ' ')
+    .replace(/\burl\b/gi, 'URL')
+    .trim();
+};
+
+const parseExportValue = (value: unknown): unknown => {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  if (!/^[{[]/.test(trimmed)) return value;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return value;
+  }
+};
+
+const flattenExportValue = (value: unknown): string => {
+  const parsed = parseExportValue(value);
+  if (parsed === null || parsed === undefined) return '';
+  if (parsed instanceof Timestamp) return parsed.toDate().toISOString();
+  if (Array.isArray(parsed)) {
+    return parsed
+      .map((item) => flattenExportValue(item))
+      .filter(Boolean)
+      .join('\n');
+  }
+  if (typeof parsed === 'object') {
+    return Object.entries(parsed as Record<string, unknown>)
+      .map(([key, item]) => {
+        const text = flattenExportValue(item);
+        return text ? `${stripExportPrefix(key)}: ${text}` : '';
+      })
+      .filter(Boolean)
+      .join('\n');
+  }
+  return String(parsed).trim();
+};
+
+const collectExportImages = (value: unknown, output: Set<string>) => {
+  const parsed = parseExportValue(value);
+  if (!parsed) return;
+  if (typeof parsed === 'string') {
+    const text = parsed.trim();
+    if (/^https?:\/\//i.test(text) || text.startsWith('users/')) output.add(text);
+    return;
+  }
+  if (Array.isArray(parsed)) {
+    parsed.forEach((item) => collectExportImages(item, output));
+    return;
+  }
+  if (typeof parsed === 'object') {
+    Object.values(parsed as Record<string, unknown>).forEach((item) => collectExportImages(item, output));
+  }
+};
+
+const buildReadableExportRecord = (record: HaruRecord) => {
+  const images = new Set<string>();
+  const summaryFields = Object.entries(record)
+    .filter(([key, value]) => {
+      if (EXPORT_INTERNAL_KEYS.has(key)) return false;
+      if (EXPORT_IMAGE_KEY_PATTERN.test(key)) {
+        collectExportImages(value, images);
+        return false;
+      }
+      return flattenExportValue(value).length > 0;
+    })
+    .map(([key, value]) => ({
+      label: stripExportPrefix(key),
+      value: flattenExportValue(value),
+    }));
+
+  Object.entries(record)
+    .filter(([key]) => EXPORT_IMAGE_KEY_PATTERN.test(key))
+    .forEach(([, value]) => collectExportImages(value, images));
+
+  return {
+    id: record.id,
+    date: normalizeExportDate(record),
+    formats: getExportFormats(record),
+    title: getCleanText(record.title) || getCleanText(record.content)?.slice(0, 40) || '제목 없음',
+    createdAt: formatExportDateTime(record.createdAt),
+    updatedAt: formatExportDateTime(record.updatedAt),
+    summaryFields,
+    images: Array.from(images),
+    raw: record,
+  };
+};
+
+const buildDateGroupedExport = (records: HaruRecord[]) => {
+  const readableRecords = records
+    .map(buildReadableExportRecord)
+    .sort((a, b) => {
+      const dateCompare = b.date.localeCompare(a.date);
+      if (dateCompare !== 0) return dateCompare;
+      return (b.createdAt || '').localeCompare(a.createdAt || '');
+    });
+
+  const grouped = new Map<string, typeof readableRecords>();
+  readableRecords.forEach((record) => {
+    const group = grouped.get(record.date) || [];
+    group.push(record);
+    grouped.set(record.date, group);
+  });
+
+  return Array.from(grouped.entries()).map(([date, dateRecords]) => ({
+    date,
+    records: dateRecords,
+  }));
+};
+
+const buildTextExport = (recordsByDate: ReturnType<typeof buildDateGroupedExport>, exportedAt: string, totalRecords: number) => {
+  const lines: string[] = [
+    'HARU2026 기록 내보내기',
+    '',
+    `내보내기 일시: ${exportedAt}`,
+    `총 기록 수: ${totalRecords}건`,
+    '정렬 기준: 기록 날짜 최신순',
+    '',
+    '사진·첨부파일 안내:',
+    '- 이 TXT 파일에는 사진 이미지 자체가 들어 있지 않습니다.',
+    '- 사진이 있는 기록에는 사진을 확인할 수 있는 저장 위치 주소(URL)가 함께 표시됩니다.',
+    '- 사진을 확인하려면 해당 주소를 복사해 브라우저 주소창에 붙여넣어 열어 주세요.',
+    '- 회원탈퇴를 완료하면 기록 본문과 함께 업로드한 사진·첨부파일도 삭제되므로, 보관이 필요한 사진은 탈퇴 전에 따로 저장해 주세요.',
+    '- 사진 주소는 계정 또는 저장 권한 상태에 따라 나중에 열리지 않을 수 있습니다.',
+    '',
+    '==================================================',
+  ];
+
+  if (totalRecords === 0) {
+    lines.push('', '내보낼 기록이 없습니다.');
+    return lines.join('\n');
+  }
+
+  recordsByDate.forEach((group) => {
+    lines.push('', group.date, '==================================================', '');
+    group.records.forEach((record, index) => {
+      lines.push(
+        `[${index + 1}] ${record.formats.join(', ')}`,
+        `제목: ${record.title}`,
+        record.createdAt ? `작성일: ${record.createdAt}` : '',
+        record.updatedAt ? `수정일: ${record.updatedAt}` : '',
+        '',
+        '기록 내용:',
+      );
+
+      if (record.summaryFields.length === 0) {
+        lines.push('내용 없음');
+      } else {
+        record.summaryFields.forEach((field) => {
+          lines.push(`${field.label}: ${field.value}`);
+        });
+      }
+
+      lines.push('', '사진/첨부파일:');
+      if (record.images.length === 0) {
+        lines.push('없음');
+      } else {
+        record.images.forEach((image, imageIndex) => {
+          lines.push(
+            `${imageIndex + 1}. ${image}`,
+            '   확인 방법: 위 주소를 복사해 브라우저 주소창에 붙여넣으면 사진을 확인할 수 있습니다.',
+          );
+        });
+      }
+      lines.push('', '--------------------------------------------------', '');
+    });
+  });
+
+  return lines.filter((line, index, source) => !(line === '' && source[index - 1] === '')).join('\n');
+};
+
 export type MedicationDoseStatus = 'selected' | 'unknown' | 'not_applicable';
 export type MedicationPrescriptionType = '전문의약품' | '일반의약품' | 'unknown';
 
@@ -2048,24 +2266,54 @@ class FirestoreService {
   async exportData(userId: string): Promise<Blob> {
     try {
       const records = await this.getRecords(userId);
+      const exportedAt = new Date().toISOString();
+      const recordsByDate = buildDateGroupedExport(records);
       
-      // 내보낼 데이터 구조
       const exportData = {
-        exportDate: new Date().toISOString(),
-        userId: userId,
+        exportInfo: {
+          service: 'HARU2026',
+          exportedAt,
+          userId,
+          totalRecords: records.length,
+          sortOrder: 'date_desc',
+          imageNotice: '사진·첨부파일은 파일 자체가 아니라 저장 위치 주소로 포함됩니다.',
+          imageGuide: {
+            included: false,
+            description: '사진·첨부파일 파일 자체는 JSON/TXT 파일에 포함되지 않습니다.',
+            howToView: '각 기록의 images 항목에 표시된 URL을 브라우저 주소창에 붙여넣어 확인할 수 있습니다.',
+            beforeWithdrawal: '회원탈퇴를 완료하면 업로드한 사진·첨부파일도 삭제되므로, 보관이 필요한 사진은 탈퇴 전에 별도로 저장해 주세요.',
+            notice: '사진 주소는 계정 또는 저장 권한 상태에 따라 나중에 열리지 않을 수 있습니다.',
+          },
+        },
+        exportDate: exportedAt,
+        userId,
         totalRecords: records.length,
-        records: records,
+        recordsByDate,
+        records,
       };
       
-      // JSON 문자열로 변환 (들여쓰기 2칸)
       const jsonString = JSON.stringify(exportData, null, 2);
-      
-      // Blob 생성
       const blob = new Blob([jsonString], { type: 'application/json' });
       
       return blob;
     } catch (error) {
       console.error('데이터 내보내기 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 모든 기록을 날짜별 TXT로 내보내기
+   */
+  async exportDataAsText(userId: string): Promise<Blob> {
+    try {
+      const records = await this.getRecords(userId);
+      const exportedAt = new Date().toISOString();
+      const recordsByDate = buildDateGroupedExport(records);
+      const text = buildTextExport(recordsByDate, exportedAt, records.length);
+      return new Blob([text], { type: 'text/plain;charset=utf-8' });
+    } catch (error) {
+      console.error('TXT 데이터 내보내기 실패:', error);
       throw error;
     }
   }

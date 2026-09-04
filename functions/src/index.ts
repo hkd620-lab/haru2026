@@ -6975,12 +6975,13 @@ export const generateTTS = onCall(
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
 
-    const { text, cacheKey, voice = 'nova' } = request.data;
+    const { text, cacheKey, voice = 'nova', quality = 'standard' } = request.data;
     if (!text || !cacheKey) {
       throw new HttpsError('invalid-argument', '텍스트와 캐시키가 필요합니다.');
     }
     const validVoices = ['nova', 'onyx', 'alloy', 'echo', 'fable', 'shimmer'];
     const safeVoice = validVoices.includes(voice) ? voice : 'nova';
+    const safeQuality = quality === 'native' ? 'native' : 'standard';
     const filePath = `ttsCache/${cacheKey}_${safeVoice}.mp3`;
     const file = bucket().file(filePath);
 
@@ -7032,11 +7033,11 @@ export const generateTTS = onCall(
           ttsResponse = await axios.post(
             'https://api.openai.com/v1/audio/speech',
             {
-              model: 'tts-1',
+              model: safeQuality === 'native' ? 'tts-1-hd' : 'tts-1',
               input: cleanedText,
               voice: safeVoice,
               response_format: 'mp3',
-              speed: 0.95,
+              speed: safeQuality === 'native' ? 0.92 : 0.95,
             },
             {
               headers: {

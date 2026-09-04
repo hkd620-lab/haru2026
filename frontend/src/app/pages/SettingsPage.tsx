@@ -377,7 +377,7 @@ export function SettingsPage() {
     }
   };
 
-  const handleExportData = async () => {
+  const handleExportData = async (format: 'json' | 'txt' = 'json') => {
     if (!user?.uid) {
       toast.error('로그인이 필요합니다.');
       return;
@@ -386,10 +386,14 @@ export function SettingsPage() {
     try {
       toast.info('데이터를 내보내는 중...');
       
-      const blob = await firestoreService.exportData(user.uid);
+      const blob = format === 'txt'
+        ? await firestoreService.exportDataAsText(user.uid)
+        : await firestoreService.exportData(user.uid);
       
       const today = new Date().toISOString().split('T')[0];
-      const filename = `HARU_백업_${today}.json`;
+      const filename = format === 'txt'
+        ? `HARU_기록_${today}.txt`
+        : `HARU_백업_${today}.json`;
       
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -402,7 +406,7 @@ export function SettingsPage() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       
-      toast.success('데이터 내보내기 완료!');
+      toast.success(format === 'txt' ? 'TXT 기록 내보내기 완료!' : 'JSON 데이터 내보내기 완료!');
     } catch (error) {
       console.error('내보내기 실패:', error);
       toast.error('내보내기에 실패했습니다.');
@@ -908,7 +912,7 @@ export function SettingsPage() {
 
           <div className="space-y-3">
             <button
-              onClick={handleExportData}
+              onClick={() => handleExportData('json')}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-80 text-left"
               style={{
                 backgroundColor: '#FDF6C3',
@@ -921,7 +925,26 @@ export function SettingsPage() {
                   데이터 내보내기 (JSON)
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: '#999' }}>
-                  모든 기록을 JSON 파일로 저장합니다
+                  모든 기록을 날짜별로 정리한 JSON 파일로 저장합니다
+                </p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => handleExportData('txt')}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-80 text-left"
+              style={{
+                backgroundColor: '#F0FDF4',
+                border: '1px solid #bbf7d0',
+              }}
+            >
+              <Download className="w-4 h-4" style={{ color: '#047857' }} />
+              <div>
+                <p className="text-sm" style={{ color: '#047857', fontWeight: 500 }}>
+                  기록 내보내기 (TXT)
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: '#999' }}>
+                  내 기록을 날짜별로 읽기 쉬운 텍스트 파일로 저장합니다
                 </p>
               </div>
             </button>
@@ -1381,15 +1404,31 @@ export function SettingsPage() {
                 <li>결제 기록은 법령에 따라 일정 기간 보관됩니다</li>
               </ul>
 
-              <button
-                type="button"
-                onClick={handleExportData}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm transition-all hover:opacity-90 mb-4"
-                style={{ backgroundColor: '#1A3C6E', color: '#fff', fontWeight: 600 }}
-              >
-                <Download className="w-4 h-4" />
-                탈퇴 전 기록 내보내기
-              </button>
+              <p className="text-xs mb-3" style={{ color: '#666', lineHeight: 1.7 }}>
+                사진·첨부파일은 JSON/TXT 파일에 직접 포함되지 않고 저장 위치 주소로 표시됩니다.
+                보관이 필요한 사진은 탈퇴 전에 직접 열어 저장해 주세요.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+                <button
+                  type="button"
+                  onClick={() => handleExportData('json')}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm transition-all hover:opacity-90"
+                  style={{ backgroundColor: '#1A3C6E', color: '#fff', fontWeight: 600 }}
+                >
+                  <Download className="w-4 h-4" />
+                  내보내기 (JSON)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExportData('txt')}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm transition-all hover:opacity-90"
+                  style={{ backgroundColor: '#047857', color: '#fff', fontWeight: 600 }}
+                >
+                  <Download className="w-4 h-4" />
+                  내보내기 (TXT)
+                </button>
+              </div>
 
               <label className="text-xs block mb-1" style={{ color: '#666' }}>
                 계속하려면 "탈퇴"를 입력하세요

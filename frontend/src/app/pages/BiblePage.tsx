@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo, type CSSProperties } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -22,6 +22,16 @@ const showTTSLimitAlert = (err: any) => {
   if (msg.includes('한도') || code === 'functions/resource-exhausted' || code === 'resource-exhausted') {
     alert('오늘 TTS 사용 한도(500회)를 초과했습니다. 내일 다시 이용해주세요 😊');
   }
+};
+
+const grammarText = (value: unknown): string => {
+  if (typeof value === 'string') return value;
+  if (value == null) return '';
+  if (Array.isArray(value)) return value.map(grammarText).filter(Boolean).join(' ');
+  if (typeof value === 'object') {
+    return Object.values(value as Record<string, unknown>).map(grammarText).filter(Boolean).join(' ');
+  }
+  return String(value);
 };
 
 export function BiblePage() {
@@ -113,6 +123,7 @@ export function BiblePage() {
 
   // 문법 팝업
   const [grammarPopup, setGrammarPopup] = useState<{
+    verseKey?: string;
     verseText: string;
     loading: boolean;
     verb?: string;
@@ -293,44 +304,45 @@ export function BiblePage() {
   }, [genesisData, currentChapter, currentBook.prefix]);
 
   const handleGrammarClick = useCallback(async (verse: Verse) => {
-    setGrammarPopup({ verseText: verse.text, loading: true });
+    const verseKey = `${currentBook.prefix}_${currentChapter}_${verse.verse}`;
+    setGrammarPopup({ verseKey, verseText: verse.text, loading: true });
     try {
       const { getFunctions: gf, httpsCallable: hc } = await import('firebase/functions');
       const fns = gf(undefined, 'asia-northeast3');
       const fn = hc(fns, 'getGrammarExplain');
       const res: any = await fn({
-        verseKey: `${currentBook.prefix}_${currentChapter}_${verse.verse}`,
+        verseKey,
         verseText: verse.text,
       });
       const result = res.data;
       setGrammarPopup(prev => prev && ({
         ...prev,
         loading: false,
-        verb: result.verb || '',
-        verb_example_en: result.verb_example_en || '',
-        verb_example_ko: result.verb_example_ko || '',
-        preposition: result.preposition || '',
-        preposition_example_en: result.preposition_example_en || '',
-        preposition_example_ko: result.preposition_example_ko || '',
-        phrasal: result.phrasal || '',
-        phrasal_example_en: result.phrasal_example_en || '',
-        phrasal_example_ko: result.phrasal_example_ko || '',
-        relative: result.relative || '',
-        relative_example_en: result.relative_example_en || '',
-        relative_example_ko: result.relative_example_ko || '',
-        question: result.question || '',
-        question_example_en: result.question_example_en || '',
-        question_example_ko: result.question_example_ko || '',
-        exclamation: result.exclamation || '',
-        exclamation_example_en: result.exclamation_example_en || '',
-        exclamation_example_ko: result.exclamation_example_ko || '',
-        mysentence: result.mysentence || '',
-        korean: result.korean || '',
+        verb: grammarText(result.verb),
+        verb_example_en: grammarText(result.verb_example_en),
+        verb_example_ko: grammarText(result.verb_example_ko),
+        preposition: grammarText(result.preposition),
+        preposition_example_en: grammarText(result.preposition_example_en),
+        preposition_example_ko: grammarText(result.preposition_example_ko),
+        phrasal: grammarText(result.phrasal),
+        phrasal_example_en: grammarText(result.phrasal_example_en),
+        phrasal_example_ko: grammarText(result.phrasal_example_ko),
+        relative: grammarText(result.relative),
+        relative_example_en: grammarText(result.relative_example_en),
+        relative_example_ko: grammarText(result.relative_example_ko),
+        question: grammarText(result.question),
+        question_example_en: grammarText(result.question_example_en),
+        question_example_ko: grammarText(result.question_example_ko),
+        exclamation: grammarText(result.exclamation),
+        exclamation_example_en: grammarText(result.exclamation_example_en),
+        exclamation_example_ko: grammarText(result.exclamation_example_ko),
+        mysentence: grammarText(result.mysentence),
+        korean: grammarText(result.korean),
       }));
     } catch {
-      setGrammarPopup({ verseText: verse.text, loading: false });
+      setGrammarPopup({ verseKey, verseText: verse.text, loading: false });
     }
-  }, []);
+  }, [currentBook.prefix, currentChapter]);
 
   const handleTranslationClick = async (verse: { verse: number; text: string }) => {
     setTranslationPopup({ verse: verse.verse, text: verse.text, translation: '', loading: true });
@@ -1016,7 +1028,46 @@ export function BiblePage() {
     );
   };
 
-  const handleTTS = async (text: string, key: string) => {
+  const renderGrammarWords = (text: unknown, style: CSSProperties = {}) => {
+    const safeText = grammarText(text);
+    const words = safeText.trim().split(/\s+/).filter(Boolean);
+    return (
+      <span style={{ display: 'flex', flexWrap: 'wrap', gap: 4, lineHeight: 1.7, ...style }}>
+        {words.map((word, idx) => (
+          <span
+            key={`${word}_${idx}`}
+            onClick={(e) => { e.stopPropagation(); handleWordClick(word, safeText); }}
+            style={{
+              cursor: 'pointer',
+              borderRadius: 4,
+              padding: '0 2px',
+              transition: 'all 0.1s ease',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.backgroundColor = '#1A3C6E';
+              e.currentTarget.style.color = '#fff';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.color = '';
+            }}
+            onTouchStart={e => {
+              e.currentTarget.style.backgroundColor = '#1A3C6E';
+              e.currentTarget.style.color = '#fff';
+            }}
+            onTouchEnd={e => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.color = '';
+            }}
+          >
+            {word}
+          </span>
+        ))}
+      </span>
+    );
+  };
+
+  const handleTTS = async (text: string, key: string, options?: { quality?: 'standard' | 'native' }) => {
     // 현재 재생 중 → 일시정지
     if (ttsPlaying === key && ttsPaused !== key) {
       audioRef.current?.pause();
@@ -1049,8 +1100,9 @@ export function BiblePage() {
       const fns = getFunctions(undefined, 'asia-northeast3');
       const fn = httpsCallable(fns, 'generateTTS');
       const voiceParam = key.startsWith('verse_ko') ? koVoice : enVoice;
-      const cacheKey = `bible_${currentBook.prefix}_${currentChapter}_${key}_${voiceParam}`.slice(0, 80);
-      const res: any = await fn({ text, cacheKey, voice: voiceParam });
+      const quality = options?.quality === 'native' ? 'native' : 'standard';
+      const cacheKey = `bible_${currentBook.prefix}_${currentChapter}_${key}_${voiceParam}_${quality}`.slice(0, 80);
+      const res: any = await fn({ text, cacheKey, voice: voiceParam, quality });
 
       if (audioRef.current) audioRef.current.pause();
 
@@ -1143,6 +1195,29 @@ export function BiblePage() {
       setTtsLoading(null);
     }
   };
+
+  const renderNativeListenButton = (text: string, key: string) => (
+    <button
+      onClick={() => handleTTS(text, key, { quality: 'native' })}
+      title="원어민 발음 듣기"
+      style={{
+        width: 30,
+        height: 30,
+        borderRadius: 999,
+        border: '1px solid #BFDBFE',
+        backgroundColor: ttsPlaying === key ? '#DBEAFE' : '#fff',
+        color: '#1A3C6E',
+        cursor: 'pointer',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        marginLeft: 8,
+      }}
+    >
+      {ttsLoading === key ? <GrapeLoadingMini size={16} /> : '🔊'}
+    </button>
+  );
 
   const handleFullChapterTTS = async (startVerse?: number) => {
     const key = 'full_chapter';
@@ -3036,7 +3111,7 @@ export function BiblePage() {
           style={{
             position: 'fixed', inset: 0,
             backgroundColor: 'rgba(0,0,0,0.4)',
-            zIndex: 100, display: 'flex',
+            zIndex: 200, display: 'flex',
             alignItems: 'center', justifyContent: 'center',
           }}
         >
@@ -3092,14 +3167,14 @@ export function BiblePage() {
                   {wordPopup.meaning}
                 </p>
                 <button
-                  onClick={() => handleTTS(wordPopup.word, `word_${wordPopup.word}`)}
+                  onClick={() => handleTTS(wordPopup.word, `word_native_${wordPopup.word}`, { quality: 'native' })}
                   style={{
                     padding: '8px 20px', borderRadius: 20, border: 'none',
-                    backgroundColor: ttsPlaying === `word_${wordPopup.word}` ? '#8B4789' : '#1A3C6E',
+                    backgroundColor: ttsPlaying === `word_native_${wordPopup.word}` ? '#8B4789' : '#1A3C6E',
                     color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
                   }}
                 >
-                  {ttsLoading === `word_${wordPopup.word}` ? <GrapeLoadingMini size={20} /> : '🔊 발음 듣기'}
+                  {ttsLoading === `word_native_${wordPopup.word}` ? <GrapeLoadingMini size={20} /> : '🔊 발음 듣기'}
                 </button>
 
                 {/* 생활 예문 */}
@@ -3262,8 +3337,10 @@ export function BiblePage() {
               padding: '10px 14px', backgroundColor: '#f8faff',
               borderRadius: 8, marginBottom: 16, fontSize: 12,
               color: '#555', lineHeight: 1.6,
+              display: 'flex', alignItems: 'flex-start', gap: 8,
             }}>
-              {grammarPopup.verseText}
+              {renderGrammarWords(grammarPopup.verseText, { flex: 1 })}
+              {renderNativeListenButton(grammarPopup.verseText, `grammar_verse_${grammarPopup.verseKey || `${currentBook.prefix}_${currentChapter}`}`)}
             </div>
 
             {grammarPopup.loading ? (
@@ -3308,9 +3385,10 @@ export function BiblePage() {
                           <p style={{ fontSize: 12, fontWeight: 600, color: text, margin: '0 0 2px' }}>
                             📝 예문
                           </p>
-                          <p style={{ fontSize: 12, color: '#1A3C6E', fontWeight: 600, margin: '0 0 2px' }}>
-                            {exEn}
-                          </p>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                            {renderGrammarWords(exEn, { fontSize: 12, color: '#1A3C6E', fontWeight: 600, flex: 1 })}
+                            {renderNativeListenButton(exEn, `grammar_${key}_${grammarPopup.verseKey || `${currentBook.prefix}_${currentChapter}`}`)}
+                          </div>
                           {exKo && (
                             <p style={{ fontSize: 11, color: '#666', margin: 0 }}>
                               → {exKo}
@@ -3332,9 +3410,10 @@ export function BiblePage() {
                     <p style={{ fontSize: 12, fontWeight: 700, color: '#065F46', marginBottom: 4 }}>
                       ✏️ 나도 써볼게요
                     </p>
-                    <p style={{ fontSize: 14, fontWeight: 700, color: '#333', margin: '0 0 4px' }}>
-                      {grammarPopup.mysentence}
-                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                      {renderGrammarWords(grammarPopup.mysentence, { fontSize: 14, fontWeight: 700, color: '#333', flex: 1 })}
+                      {renderNativeListenButton(grammarPopup.mysentence, `grammar_mysentence_${grammarPopup.verseKey || `${currentBook.prefix}_${currentChapter}`}`)}
+                    </div>
                     {grammarPopup.korean && (
                       <p style={{ fontSize: 12, color: '#555', margin: 0 }}>
                         → {grammarPopup.korean}
