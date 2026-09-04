@@ -381,3 +381,38 @@ haru2026의 브랜드 철학은 다음 문구로 표현한다.
 호박 = "기록관리 + 생활문제 해결 → 구독자의 삶 성장"을 설명하는 브랜드 철학 상징
 
 향후 두 자산의 통합 또는 공식 로고 변경은 허대표님의 별도 결정 후 진행한다.
+
+## HARU2026 로컬 폴더 구조 정리 기록 (2026-09-04 추가, Cowork 조사)
+
+Cowork(claude-opus-5) 세션에서 로컬 폴더 구조를 실측 조사하고 정리했다. 시박사(ChatGPT)·기장(Codex)·cc(Claude Code) 모두 이 절을 기준으로 삼는다.
+
+### 확인된 사실
+
+- `haru2026-source`, `haru2026-main-deploy`, `haru2026-card-main`, `haru2026-harulaw-final`, `haru2026-inicis-customer-hotfix`, `haru2026-portone-deploy-20260828`, `haru2026-reading-continue-ux-main`, `haru2026-reading-hotfix`, `haru2026-reading-hotfix-main`, `haru2026-subscription-refunds`는 서로 다른 clone이 아니라 **하나의 저장소를 공유하는 git worktree**다. 공통 `.git`은 `haru2026-source/.git`에 있다.
+- 같은 브랜치(예: `main`)를 두 worktree에서 동시에 체크아웃할 수 없다. `haru2026-main-deploy`가 `main`을 물고 있으므로, 다른 worktree에서 `main`으로 전환하려 하면 실패한다.
+- `/Users/heogyeongdae/HARU2026_old_do_not_delete_yet`(구 `~/HARU2026`)는 위 worktree 목록에 포함되지 않는 **완전히 독립된 별도 clone**이었다. "격리된 구버전"이 아니라, 2026-09-03 배포(PR #134, main `b0249d6a`)가 실제로 실행된 저장소였음이 감사 로그(gcloud audit log)와 터미널 이력으로 확인됨. (이전에 "오래된 백업본"이라는 추정이 있었으나 실측 결과 틀린 것으로 확인됨.)
+- 위 독립 clone을 2026-09-04에 아래 경로로 이동·개명했다. git 이력·원격 추적 그대로 유지됨.
+
+  ```text
+  /Users/heogyeongdae/Documents/my apps/HARU2026/haru2026-deploy
+  ```
+
+### 현재 폴더 역할 (2026-09-04 기준)
+
+| 폴더 | 성격 | 역할 |
+|---|---|---|
+| `haru2026-source` | worktree | 실제 개발 작업 공간. 브랜치는 작업 내용에 따라 달라짐 — **작업 시작 전 반드시 `git branch --show-current`로 확인**할 것. 특정 브랜치 이름을 고정 전제하지 말 것 |
+| `haru2026-main-deploy` | worktree | `main` 전용. 로컬에서 최신 `main` 상태 확인용. 여기서 직접 코드 수정·커밋 금지 |
+| `haru2026-deploy` | 독립 clone | 실제 `firebase deploy` 실행에 쓰인 저장소(구 `~/HARU2026` → `~/HARU2026_old_do_not_delete_yet`). `main` 전용, 여기서도 직접 코드 수정 금지 |
+| 그 외 `haru2026-*` (card-main, harulaw-final, inicis-customer-hotfix, portone-deploy-*, reading-*, subscription-refunds) | worktree | 과거 개별 기능·hotfix 작업물. 각자 다른 브랜치를 물고 있음. 정리 전까지 조회만 하고 새 작업 시작하지 말 것 |
+
+### 이날 처리한 미커밋 작업
+
+- `haru2026-source`: 미커밋 4개 파일(TTS 원어민 발음, 독서 이어작성 UX, 성경 문법 단어 클릭)을 기존 브랜치 `feature/bible-preload-admin-only`에 커밋(`3323f445`). 재작업하지 말 것.
+- `haru2026-main-deploy`: 미커밋 7개 파일(기록 내보내기 TXT 옵션, 성경 단어 클릭/TTS, 로그인 개선)을 새 브랜치 `feature/records-export-txt-and-bible-tts`로 분리 커밋·push(`4ae84fbc`). PR 병합 여부는 허대표님 승인 대기 중. 재작업하지 말 것.
+
+### 원칙
+
+- `~/HARU2026`, `~/HARU2026_old_do_not_delete_yet` 같은 옛 경로는 더 이상 존재하지 않는다. 지시서·안내문에 사용하지 말 것.
+- 어느 폴더에서 작업하든 시작 전 `pwd` / `git branch --show-current` / `git status --short`로 실측 확인 후 시작한다. 문서에 적힌 경로·브랜치명을 그대로 믿지 않는다.
+- 배포 상태를 서술할 때는 `gcloud functions list --sort-by=~updateTime` 실측을 근거로 한다. 병합 여부만으로 배포 여부를 단정하지 않는다.
