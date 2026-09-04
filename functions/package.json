@@ -8,6 +8,7 @@
     "test:result-chat": "node test/resultChat.integration.js",
     "test:monthly-ai-quota": "node test/monthlyAiQuota.policy.test.js",
     "test:payment-provider-flow": "node test/paymentProviderFlow.policy.test.js",
+    "test:payment-method-normalization": "node test/paymentMethodNormalization.policy.test.js",
     "test:subscription-billing-customer": "node test/subscriptionBillingCustomer.policy.test.js",
     "test:subscription-payment-locks": "node test/subscriptionPaymentLocks.policy.test.js",
     "test:subscription-refunds": "node test/subscriptionRefunds.policy.test.js",

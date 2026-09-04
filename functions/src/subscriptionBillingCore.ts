@@ -1,3 +1,5 @@
+import * as crypto from 'crypto';
+
 export type SubscriptionBillingCustomer = {
   name: string;
   email: string;
@@ -11,6 +13,16 @@ export type PortOneBillingErrorSummary = {
   type?: string;
   code?: string;
   safeReason: string;
+};
+
+export type NormalizedPaymentMethodType = 'card' | 'easy_pay' | 'mobile' | 'transfer' | 'unknown';
+
+export type NormalizedPaymentMethod = {
+  pgProvider: string | null;
+  payMethod: NormalizedPaymentMethodType;
+  easyPayProvider: string | null;
+  cardCompany: string | null;
+  channelId: string | null;
 };
 
 export class SubscriptionBillingPolicyError extends Error {
@@ -30,6 +42,145 @@ const CUSTOMER_PHONE_MAX_DIGITS = 15;
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function stringValue(value: unknown): string | null {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed ? trimmed : null;
+  }
+  if (isPlainRecord(value)) {
+    return stringValue(value.code)
+      || stringValue(value.id)
+      || stringValue(value.name)
+      || stringValue(value.value);
+  }
+  return null;
+}
+
+function normalizeCode(value: unknown): string | null {
+  const raw = stringValue(value);
+  if (!raw) return null;
+  return raw
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+    .replace(/[^A-Za-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .toLowerCase() || null;
+}
+
+function normalizePgProvider(value: unknown): string | null {
+  const code = normalizeCode(value);
+  if (!code) return null;
+  if (code === 'html5_inicis' || code === 'inicis' || code === 'inicis_v2' || code === 'kg_inicis') {
+    return 'kg_inicis';
+  }
+  if (code === 'kakaopay' || code === 'kakao_pay') {
+    return 'kakao_pay';
+  }
+  return code;
+}
+
+function normalizePaymentMethodType(value: unknown): NormalizedPaymentMethodType {
+  const code = normalizeCode(value);
+  if (code === 'card') return 'card';
+  if (code === 'easy_pay' || code === 'easypay') return 'easy_pay';
+  if (code === 'mobile' || code === 'phone') return 'mobile';
+  if (code === 'transfer' || code === 'bank_transfer') return 'transfer';
+  return 'unknown';
+}
+
+function normalizeEasyPayProvider(value: unknown): string | null {
+  const code = normalizeCode(value);
+  if (!code) return null;
+  if (code === 'kakaopay' || code === 'kakao_pay') return 'kakao_pay';
+  if (code === 'naverpay' || code === 'naver_pay') return 'naver_pay';
+  if (code === 'tosspay' || code === 'toss_pay') return 'toss_pay';
+  return code;
+}
+
+function cardCompanyFrom(method: Record<string, unknown> | null): string | null {
+  if (!method) return null;
+  const card: Record<string, unknown> = isPlainRecord(method.card) ? method.card : {};
+  return normalizeCode(card.issuer)
+    || normalizeCode(card.publisher)
+    || normalizeCode(card.company)
+    || normalizeCode(card.cardCompany)
+    || normalizeCode(method.cardCompany);
+}
+
+export function normalizePortOnePaymentMethod(payment: unknown): NormalizedPaymentMethod {
+  const paymentRecord = isPlainRecord(payment) ? payment : {};
+  const method = isPlainRecord(paymentRecord.method) ? paymentRecord.method : {};
+  const easyPayMethod = isPlainRecord(method.easyPayMethod) ? method.easyPayMethod : {};
+  const easyPayLegacy = isPlainRecord(method.easyPay) ? method.easyPay : {};
+  const selectedChannel = isPlainRecord(paymentRecord.selectedChannel)
+    ? paymentRecord.selectedChannel
+    : isPlainRecord(paymentRecord.channel)
+      ? paymentRecord.channel
+      : {};
+
+  const methodType = normalizePaymentMethodType(method.type || method.methodType);
+  const nestedMethodType = normalizePaymentMethodType(easyPayMethod.type || easyPayMethod.methodType);
+  const payMethod = methodType === 'easy_pay'
+    ? 'easy_pay'
+    : methodType !== 'unknown'
+      ? methodType
+      : nestedMethodType;
+  const cardMethod = methodType === 'card'
+    ? method
+    : nestedMethodType === 'card'
+      ? easyPayMethod
+      : null;
+
+  return {
+    pgProvider: normalizePgProvider(
+      paymentRecord.pgProvider
+        || paymentRecord.pg_provider
+        || selectedChannel.pgProvider
+        || selectedChannel.pg_provider
+        || selectedChannel.provider,
+    ),
+    payMethod,
+    easyPayProvider: methodType === 'easy_pay'
+      ? normalizeEasyPayProvider(method.provider || method.easyPayProvider || easyPayLegacy.provider)
+      : null,
+    cardCompany: cardCompanyFrom(cardMethod),
+    channelId: stringValue(selectedChannel.id) || stringValue(paymentRecord.channelId),
+  };
+}
+
+export function buildNormalizedPaymentMethodFields(payment: unknown): {
+  pgProvider: string | null;
+  payMethodType: NormalizedPaymentMethodType;
+  easyPayProvider: string | null;
+  cardCompany: string | null;
+  paymentChannelId: string | null;
+} {
+  const normalized = normalizePortOnePaymentMethod(payment);
+  return {
+    pgProvider: normalized.pgProvider,
+    payMethodType: normalized.payMethod,
+    easyPayProvider: normalized.easyPayProvider,
+    cardCompany: normalized.cardCompany,
+    paymentChannelId: normalized.channelId,
+  };
+}
+
+export function getRecurringBillingPeriodKey(nextBillingDate: string): string {
+  const parsed = Date.parse(nextBillingDate);
+  if (Number.isFinite(parsed)) {
+    return new Date(parsed).toISOString().slice(0, 10);
+  }
+  const safe = nextBillingDate
+    .replace(/[^A-Za-z0-9_-]/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 32);
+  return safe || 'unknown';
+}
+
+export function createDeterministicRecurringPaymentId(uid: string, billingPeriod: string): string {
+  const uidHash = crypto.createHash('sha256').update(uid).digest('hex').slice(0, 24);
+  return `haru-recurring-${billingPeriod}-${uidHash}`;
 }
 
 function normalizeSpaces(value: string): string {

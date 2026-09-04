@@ -115,6 +115,7 @@ const SUBSCRIPTION_PAYMENT_METHODS: Record<SubscriptionPaymentMethod, Subscripti
   },
 };
 const SUBSCRIPTION_PENDING_MESSAGE = '결제 상태를 확인하고 있습니다. 잠시 후 다시 확인해 주세요.';
+const KAKAOPAY_BILLING_UNAVAILABLE_MESSAGE = '카카오페이 정기결제 준비 중입니다. 현재는 카드 정기결제를 이용해 주세요.';
 const SUBSCRIPTION_RECOVERY_STORAGE_KEY = 'haru.subscription.pendingBillingKey';
 
 function getSubscriptionPaymentMethod(value: string | null): SubscriptionPaymentMethod | null {
@@ -408,16 +409,14 @@ export default function SubscriptionPage() {
       }
 
       const functions = getFunctions(undefined, 'asia-northeast3');
-      const createSubscriptionBillingRequest = httpsCallable(functions, 'createSubscriptionBillingRequest');
       const paymentMethodConfig = SUBSCRIPTION_PAYMENT_METHODS[selectedPaymentMethod];
       let channelKey = '';
 
       if (selectedPaymentMethod === 'kakaopay') {
-        channelKey = import.meta.env.VITE_PORTONE_KAKAOPAY_BILLING_CHANNEL_KEY
-          || import.meta.env.VITE_PORTONE_KAKAOPAY_CHANNEL_KEY
-          || import.meta.env.VITE_PORTONE_CHANNEL_KEY;
+        channelKey = import.meta.env.VITE_PORTONE_KAKAOPAY_BILLING_CHANNEL_KEY;
         if (!channelKey) {
-          throw new Error('카카오페이 결제 채널 키가 설정되지 않았습니다.');
+          setResultMessage(KAKAOPAY_BILLING_UNAVAILABLE_MESSAGE);
+          return;
         }
       } else {
         channelKey = import.meta.env.VITE_PORTONE_INICIS_BILLING_CHANNEL_KEY
@@ -427,6 +426,7 @@ export default function SubscriptionPage() {
         }
       }
 
+      const createSubscriptionBillingRequest = httpsCallable(functions, 'createSubscriptionBillingRequest');
       const requestResult = await createSubscriptionBillingRequest({
         plan: selectedPlan,
         provider: paymentMethodConfig.provider,
@@ -537,6 +537,8 @@ export default function SubscriptionPage() {
   const selected = PLANS[selectedPlan];
   const selectedPaymentOption = SUBSCRIPTION_PAYMENT_METHODS[selectedPaymentMethod];
   const hasPendingSubscriptionRecovery = pendingSubscriptionRecovery !== null;
+  const isKakaoPayBillingReady = Boolean(import.meta.env.VITE_PORTONE_KAKAOPAY_BILLING_CHANNEL_KEY);
+  const selectedKakaoPayBillingUnavailable = selectedPaymentMethod === 'kakaopay' && !isKakaoPayBillingReady;
 
   if (!authLoading && !user) {
     return (
@@ -647,7 +649,14 @@ export default function SubscriptionPage() {
                     name="subscription-payment-method"
                     value={method}
                     checked={isSelected}
-                    onChange={() => setSelectedPaymentMethod(method)}
+                    onChange={() => {
+                      setSelectedPaymentMethod(method);
+                      if (method === 'kakaopay' && !isKakaoPayBillingReady) {
+                        setResultMessage(KAKAOPAY_BILLING_UNAVAILABLE_MESSAGE);
+                      } else if (resultMessage === KAKAOPAY_BILLING_UNAVAILABLE_MESSAGE) {
+                        setResultMessage('');
+                      }
+                    }}
                     disabled={loading}
                     className="sr-only"
                   />
@@ -656,6 +665,11 @@ export default function SubscriptionPage() {
                     {option.label}
                   </span>
                   <span className="mt-1 block text-xs text-gray-500">{option.description}</span>
+                  {method === 'kakaopay' && !isKakaoPayBillingReady && (
+                    <span className="mt-2 block text-xs font-bold text-[#b45309]">
+                      카카오페이 정기결제 준비 중
+                    </span>
+                  )}
                 </label>
               );
             })}
@@ -734,7 +748,7 @@ export default function SubscriptionPage() {
 
         <button
           onClick={() => handleSubscribe()}
-          disabled={loading || authLoading || !withdrawalConsent || hasPendingSubscriptionRecovery}
+          disabled={loading || authLoading || !withdrawalConsent || hasPendingSubscriptionRecovery || selectedKakaoPayBillingUnavailable}
           className="w-full bg-[#1A3C6E] hover:bg-[#142f57] text-white font-black text-base py-4 rounded-2xl transition-colors disabled:opacity-50 mb-3"
         >
           {loading ? '결제 처리 중...' : hasPendingSubscriptionRecovery ? '기존 정기결제 상태 확인 필요' : `${selected.title} 1개월 ${selectedPaymentOption.label} 결제창 열기`}

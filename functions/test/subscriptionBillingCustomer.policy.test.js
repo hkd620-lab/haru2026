@@ -56,6 +56,7 @@ const subscribeSection = section(indexSrc, 'export const subscribeWithBillingKey
 const recurringSection = section(indexSrc, 'export const processRecurringSubscriptions = onSchedule', '// ===== 💳 일반(단건) 1개월 이용권 검증 =====');
 const completionSection = section(indexSrc, 'async function completeInitialBillingSubscription', 'async function markInitialBillingPaymentPending');
 const userSubscriptionWriteSection = section(completionSection, 'tx.set(subRef', 'tx.set(billingRef');
+const recurringSettlementSection = section(indexSrc, 'async function settleRecurringBillingPayment', 'type HaruLawSharePreview');
 const failedSection = section(indexSrc, 'async function markInitialBillingPaymentFailed', 'async function markSubscriptionBillingRequestPreflightFailed');
 
 const normalizedCustomer = core.normalizeSubscriptionBillingCustomer({
@@ -148,8 +149,9 @@ assert(recurringSection.includes('const customer = getStoredSubscriptionBillingC
 assert(recurringSection.includes("lastBillingError: !billingKey || !plan"));
 assert(recurringSection.includes("'missing_recurring_customer_info'"));
 assert(recurringSection.includes('const freshCustomer = getStoredSubscriptionBillingCustomer(freshData)'));
-assert(recurringSection.includes('customer: lockedCustomer'));
-assert(recurringSection.includes('billingRef.set({ ...update, billingKey, customer: lockedCustomer }'));
+assert(recurringSection.includes('customer: recurringAction.customer'));
+assert(recurringSection.includes('billingKey: recurringAction.billingKey'));
+assert(!recurringSettlementSection.includes('billingKey:'));
 assertBefore(recurringSection, "'missing_recurring_customer_info'", 'axios.post');
 
 assert(subscribeSection.includes('const billingError = getPortOneBillingErrorSummary(e)'));
@@ -166,7 +168,8 @@ assertBefore(subscribeSection, 'await markInitialBillingPaymentFailed(requestRef
 
 assert(recurringSection.includes('if (billingError.terminal)'));
 assert(recurringSection.includes("status: 'needs_attention'"));
-assert(recurringSection.includes("status: 'charging'"));
+assert(recurringSection.includes("status: 'processing'"));
+assert(recurringSection.includes("status: 'lookup_failed'"));
 assert(recurringSection.includes('billingLockUntil: null'));
 
 const billingLogText = loggerSnippets([createSection, recoverSection, subscribeSection, recurringSection, completionSection].join('\n')).join('\n---\n');
