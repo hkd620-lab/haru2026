@@ -295,10 +295,18 @@ function addOneMonth(date) {
     return next;
 }
 function getSubscriptionPlanAmount(plan) {
-    return plan === 'basic' ? 4000 : 6000;
+    if (plan === 'basic')
+        return 4000;
+    if (plan === 'premium')
+        return 6000;
+    throw new https_2.HttpsError('invalid-argument', 'plan 값이 올바르지 않습니다.');
 }
 function getSubscriptionOrderName(plan) {
-    return plan === 'basic' ? 'HARU2026 베이직 1개월 정기구독' : 'HARU2026 프리미엄 1개월 정기구독';
+    if (plan === 'basic')
+        return 'HARU2026 베이직 1개월 정기구독';
+    if (plan === 'premium')
+        return 'HARU2026 프리미엄 1개월 정기구독';
+    throw new https_2.HttpsError('invalid-argument', 'plan 값이 올바르지 않습니다.');
 }
 function buildSubscriptionBillingRequestResponse(params) {
     const payMethod = getProviderPayMethod(params.provider);
@@ -358,6 +366,16 @@ function assertPaidPlan(plan) {
         throw new https_2.HttpsError('invalid-argument', 'plan 값이 올바르지 않습니다.');
     }
     return plan;
+}
+function isLaunchPurchasablePlan(plan) {
+    return plan === 'basic';
+}
+function assertLaunchPurchasablePlan(plan) {
+    const paidPlan = assertPaidPlan(plan);
+    if (!isLaunchPurchasablePlan(paidPlan)) {
+        throw new https_2.HttpsError('failed-precondition', '프리미엄 신규 결제는 준비 중입니다. 현재는 베이직 월 4,000원만 결제할 수 있습니다.');
+    }
+    return paidPlan;
 }
 function createPortOneRequestId(prefix) {
     return `haru-${prefix}-${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
@@ -1932,6 +1950,7 @@ async function getUserPlan(uid) {
         const snap = await db.doc(`users/${uid}/subscription/info`).get();
         const data = snap.data() || {};
         const plan = String(data.plan || '').toLowerCase();
+        const status = String(data.status || '').toLowerCase();
         const endDate = data.endDate;
         const expiresAt = data.expiresAt;
         const endTime = typeof endDate === 'string'
@@ -1940,6 +1959,8 @@ async function getUserPlan(uid) {
                 ? expiresAt.toMillis()
                 : Number.NaN;
         if (Number.isFinite(endTime) && endTime < Date.now())
+            return 'free';
+        if (status !== 'active' && status !== 'cancelled')
             return 'free';
         if (plan === 'premium')
             return 'premium';
@@ -5219,7 +5240,7 @@ exports.createSinglePaymentRequest = (0, https_2.onCall)({ region: 'asia-northea
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
     const uid = request.auth.uid;
-    const plan = assertPaidPlan((_a = request.data) === null || _a === void 0 ? void 0 : _a.plan);
+    const plan = assertLaunchPurchasablePlan((_a = request.data) === null || _a === void 0 ? void 0 : _a.plan);
     const provider = getRequestedPaymentProvider((_b = request.data) === null || _b === void 0 ? void 0 : _b.provider);
     const payMethod = getProviderPayMethod(provider);
     const product = SINGLE_PAYMENT_REVIEW_PRODUCT.plans[plan];
@@ -5265,7 +5286,7 @@ exports.createSubscriptionBillingRequest = (0, https_2.onCall)({ region: 'asia-n
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
     const uid = request.auth.uid;
-    const plan = assertPaidPlan((_a = request.data) === null || _a === void 0 ? void 0 : _a.plan);
+    const plan = assertLaunchPurchasablePlan((_a = request.data) === null || _a === void 0 ? void 0 : _a.plan);
     const provider = getRequestedPaymentProvider((_b = request.data) === null || _b === void 0 ? void 0 : _b.provider);
     const payMethod = getProviderPayMethod(provider);
     let customer;
@@ -5324,7 +5345,15 @@ exports.createSubscriptionBillingRequest = (0, https_2.onCall)({ region: 'asia-n
             }
             else if (lockedStatus === 'created' && !hasStartedInitialBilling) {
                 const lockedExpiresAt = ((_b = (_a = lockedRequestData.expiresAt) === null || _a === void 0 ? void 0 : _a.toMillis) === null || _b === void 0 ? void 0 : _b.call(_a)) || 0;
-                if (lockedExpiresAt && lockedExpiresAt < nowMs) {
+                if (!isLaunchPurchasablePlan(lockedPlan)) {
+                    tx.set(lockedRequestRef, {
+                        status: 'cancelled',
+                        cancelReason: 'premium_sales_not_open',
+                        cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
+                        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    }, { merge: true });
+                }
+                else if (lockedExpiresAt && lockedExpiresAt < nowMs) {
                     tx.set(lockedRequestRef, {
                         status: 'cancelled',
                         cancelReason: 'expired_without_initial_billing',
@@ -5355,12 +5384,13 @@ exports.createSubscriptionBillingRequest = (0, https_2.onCall)({ region: 'asia-n
                 }
             }
             else {
+                const reusableLockedPlan = assertLaunchPurchasablePlan(lockedPlan);
                 return {
                     success: false,
                     pending: true,
                     status: lockedStatus || 'charging',
                     issueId: lockedIssueId,
-                    plan: lockedPlan,
+                    plan: reusableLockedPlan,
                     provider: lockedProvider,
                     payMethod: getProviderPayMethod(lockedProvider),
                 };
@@ -5436,7 +5466,7 @@ exports.recoverSubscriptionBillingRequest = (0, https_2.onCall)({ region: 'asia-
     if (requestData.uid !== uid || requestData.paymentType !== 'subscription' || requestData.billingType !== 'billing_key_issue') {
         throw new https_2.HttpsError('permission-denied', '정기결제 요청 정보가 올바르지 않습니다.');
     }
-    const plan = assertPaidPlan(requestData.plan);
+    const plan = assertLaunchPurchasablePlan(requestData.plan);
     const provider = getStoredPaymentProvider(requestData);
     if (!provider) {
         throw new https_2.HttpsError('failed-precondition', '정기결제 요청의 결제수단 정보가 올바르지 않습니다.');
@@ -5572,6 +5602,7 @@ exports.verifyPayment = (0, https_2.onCall)({ region: 'asia-northeast3', secrets
     if (orderData.paymentType !== 'one_time' && orderData.paymentType !== 'subscription') {
         throw new https_2.HttpsError('failed-precondition', '결제 요청 유형이 올바르지 않습니다.');
     }
+    const purchasablePlan = assertLaunchPurchasablePlan(orderData.plan);
     let payment;
     try {
         payment = await fetchPortOnePayment(paymentId);
@@ -5604,6 +5635,9 @@ exports.verifyPayment = (0, https_2.onCall)({ region: 'asia-northeast3', secrets
         const freshData = freshOrder.data() || {};
         if (freshData.status === 'processed')
             return;
+        if (freshData.plan !== purchasablePlan || !isLaunchPurchasablePlan(freshData.plan)) {
+            throw new https_2.HttpsError('failed-precondition', '프리미엄 신규 결제는 준비 중입니다. 현재는 베이직 월 4,000원만 결제할 수 있습니다.');
+        }
         const provider = getStoredPaymentProvider(freshData) || HARU_KAKAOPAY_PROVIDER;
         const payMethod = getStoredPayMethod(freshData, provider);
         tx.set(subRef, {
@@ -5660,7 +5694,7 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
     if (requestData.uid !== uid || requestData.paymentType !== 'subscription' || requestData.billingType !== 'billing_key_issue') {
         throw new https_2.HttpsError('permission-denied', '빌링키 발급 요청 정보가 올바르지 않습니다.');
     }
-    const plan = assertPaidPlan(requestData.plan);
+    const plan = assertLaunchPurchasablePlan(requestData.plan);
     const provider = getStoredPaymentProvider(requestData);
     if (!provider) {
         throw new https_2.HttpsError('failed-precondition', '빌링키 발급 요청의 결제수단 정보가 올바르지 않습니다.');
@@ -6308,7 +6342,7 @@ exports.verifySinglePayment = (0, https_2.onCall)({ region: 'asia-northeast3', s
     if (orderData.paymentType !== 'one_time' || orderData.billingType !== 'single') {
         throw new https_2.HttpsError('failed-precondition', '단건 결제 요청 정보가 올바르지 않습니다.');
     }
-    const requestedPlan = assertPaidPlan(orderData.plan);
+    const requestedPlan = assertLaunchPurchasablePlan(orderData.plan);
     const singleProduct = SINGLE_PAYMENT_REVIEW_PRODUCT.plans[requestedPlan];
     const provider = getStoredPaymentProvider(orderData) || HARU_INICIS_PROVIDER;
     const payMethod = getStoredPayMethod(orderData, provider);
@@ -6348,6 +6382,9 @@ exports.verifySinglePayment = (0, https_2.onCall)({ region: 'asia-northeast3', s
         }
         if (freshOrderData.uid !== uid || freshOrderData.paymentType !== 'one_time' || freshOrderData.billingType !== 'single') {
             throw new https_2.HttpsError('permission-denied', '결제 요청 정보가 올바르지 않습니다.');
+        }
+        if (freshOrderData.plan !== requestedPlan || !isLaunchPurchasablePlan(freshOrderData.plan)) {
+            throw new https_2.HttpsError('failed-precondition', '프리미엄 신규 결제는 준비 중입니다. 현재는 베이직 월 4,000원만 결제할 수 있습니다.');
         }
         const storedProvider = getStoredPaymentProvider(freshOrderData) || provider;
         const storedPayMethod = getStoredPayMethod(freshOrderData, storedProvider);
@@ -6569,7 +6606,7 @@ exports.portoneWebhook = (0, https_1.onRequest)({ region: 'asia-northeast3', sec
         }
         if ((freshOrderData === null || freshOrderData === void 0 ? void 0 : freshOrderData.paymentType) === 'one_time' && (freshOrderData === null || freshOrderData === void 0 ? void 0 : freshOrderData.billingType) === 'single' && portoneStatus === 'PAID') {
             const uid = freshOrderData.uid;
-            const plan = freshOrderData.plan === 'basic' ? 'basic' : freshOrderData.plan === 'premium' ? 'premium' : null;
+            const plan = isLaunchPurchasablePlan(freshOrderData.plan) ? freshOrderData.plan : null;
             if (!uid || !plan || freshOrderData.status === 'processed' || singlePaymentAlreadyExists)
                 return;
             const provider = getStoredPaymentProvider(freshOrderData) || HARU_KAKAOPAY_PROVIDER;

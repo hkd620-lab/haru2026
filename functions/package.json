@@ -12,6 +12,7 @@
     "test:payment-method-normalization": "node test/paymentMethodNormalization.policy.test.js",
     "test:subscription-billing-customer": "node test/subscriptionBillingCustomer.policy.test.js",
     "test:subscription-payment-locks": "node test/subscriptionPaymentLocks.policy.test.js",
+    "test:subscription-launch-policy": "node test/subscriptionLaunchPolicy.policy.test.js",
     "test:subscription-refunds": "node test/subscriptionRefunds.policy.test.js",
     "deploy": "firebase deploy --only functions"
   },

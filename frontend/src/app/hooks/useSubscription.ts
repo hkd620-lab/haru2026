@@ -31,6 +31,10 @@ function isExpired(subscription: SubscriptionInfo): boolean {
   return Number.isFinite(endTime) && endTime < Date.now();
 }
 
+function hasUsableSubscriptionStatus(subscription: SubscriptionInfo): boolean {
+  return subscription.status === 'active' || subscription.status === 'cancelled';
+}
+
 function normalizeSubscription(data: Partial<SubscriptionInfo> | undefined): SubscriptionInfo {
   if (!data) return DEFAULT_SUBSCRIPTION;
   const plan = data.plan === 'basic' || data.plan === 'premium' ? data.plan : 'free';
@@ -71,14 +75,17 @@ function buildEffectiveSubscription(
     };
   }
 
-  if (!isExpired(actualSubscription) && isPaidSubscriptionPlan(actualSubscription)) {
+  if (!isExpired(actualSubscription) && isPaidSubscriptionPlan(actualSubscription) && hasUsableSubscriptionStatus(actualSubscription)) {
     return {
-      subscription: actualSubscription,
+      subscription: {
+        ...actualSubscription,
+        status: 'active',
+      },
       entitlement: {
         plan: actualSubscription.plan,
-        source: actualSubscription.status === 'active' ? 'paid_subscription' : 'none',
+        source: 'paid_subscription',
         hasDeveloperGrant: false,
-        hasPaidAccess: actualSubscription.status === 'active',
+        hasPaidAccess: true,
       },
     };
   }

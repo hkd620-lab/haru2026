@@ -88,6 +88,16 @@ assert.strictEqual(resolveMonthlyAiPlanFromSubscriptionData('normal-user', {
   status: 'active',
   endDate: '2099-01-01T00:00:00.000Z',
 }), 'basic');
+assert.strictEqual(resolveMonthlyAiPlanFromSubscriptionData('normal-user', {
+  plan: 'basic',
+  status: 'cancelled',
+  endDate: '2099-01-01T00:00:00.000Z',
+}), 'basic', '해지 예약 구독은 이용 종료일까지 기존 플랜으로 판정해야 함');
+assert.strictEqual(resolveMonthlyAiPlanFromSubscriptionData('normal-user', {
+  plan: 'premium',
+  status: 'none',
+  endDate: '2099-01-01T00:00:00.000Z',
+}), 'free', '활성/해지예약 상태가 아닌 플랜 잔여값은 권한으로 인정하지 않아야 함');
 assert.strictEqual(sanitizeMonthlyAiFeatureKey('bad/key.name'), 'bad_key_name');
 
 console.log('monthly AI quota policy tests passed');

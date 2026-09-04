@@ -161,7 +161,7 @@ assert(!singlePaymentPageSrc.includes('verifySinglePayment({ paymentId: complete
 assert(subscribeSection.includes("throw new HttpsError('invalid-argument', 'issueId가 필요합니다.')"));
 assert(subscribeSection.includes('const requestRef = getPaymentRequestRef(issueId)'));
 assert(subscribeSection.includes("requestData.uid !== uid || requestData.paymentType !== 'subscription' || requestData.billingType !== 'billing_key_issue'"));
-assert(subscribeSection.includes('const plan = assertPaidPlan(requestData.plan)'));
+assert(subscribeSection.includes('const plan = assertLaunchPurchasablePlan(requestData.plan)'));
 assert(subscribeSection.includes('const provider = getStoredPaymentProvider(requestData)'));
 assert(subscribeSection.includes("freshData.status === 'processed' || freshData.status === 'charging'"));
 assert(subscribeSection.includes("action: 'settle_existing'"));
@@ -238,7 +238,7 @@ assert(recurringSection.includes("status: 'lookup_failed'"));
 
 assert(verifySingleSection.includes('const orderRef = getPaymentRequestRef(paymentId)'));
 assert(verifySingleSection.includes('if (!orderSnap.exists || orderSnap.data()?.uid !== uid)'));
-assert(verifySingleSection.includes('const requestedPlan = assertPaidPlan(orderData.plan)'));
+assert(verifySingleSection.includes('const requestedPlan = assertLaunchPurchasablePlan(orderData.plan)'));
 assert(!verifySingleSection.includes('directPlan'));
 assert(!verifySingleSection.includes('!orderExists'));
 

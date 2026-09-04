@@ -28,6 +28,8 @@ const SINGLE_PAYMENT_PRODUCTS: Record<PaidPlan, {
   amount: number;
   amountLabel: string;
   description: string;
+  available: boolean;
+  badge?: string;
 }> = {
   basic: {
     title: '베이직',
@@ -35,22 +37,26 @@ const SINGLE_PAYMENT_PRODUCTS: Record<PaidPlan, {
     amount: 4000,
     amountLabel: '4,000원 (부가세 포함)',
     description: '자동갱신 없이 30일 동안 베이직 기능을 이용합니다.',
+    available: true,
   },
   premium: {
     title: '프리미엄',
     orderName: 'HARU2026 프리미엄 1개월 이용권',
     amount: 6000,
-    amountLabel: '6,000원 (부가세 포함)',
-    description: '자동갱신 없이 30일 동안 프리미엄 기능을 이용합니다.',
+    amountLabel: '6,000원 예정',
+    description: '프리미엄은 준비 중이며 이번 출시에서는 결제되지 않습니다.',
+    available: false,
+    badge: '준비 중',
   },
 };
 const KG_INICIS_SINGLE_PAYMENT_PAY_METHOD = 'CARD';
+const PREMIUM_COMING_SOON_MESSAGE = '프리미엄은 준비 중입니다. 현재는 베이직 4,000원 이용권만 결제할 수 있습니다.';
 
 export default function SinglePaymentPage() {
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [resultMessage, setResultMessage] = useState('');
-  const [selectedPlan, setSelectedPlan] = useState<PaidPlan>('premium');
+  const [selectedPlan, setSelectedPlan] = useState<PaidPlan>('basic');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -67,8 +73,16 @@ export default function SinglePaymentPage() {
     if (authLoading || redirectProcessedRef.current) return;
     const params = new URLSearchParams(window.location.search);
     const redirectedPaymentId = params.get('paymentId');
-    const redirectedPlan = params.get('plan') === 'basic' ? 'basic' : 'premium';
-    if (!redirectedPaymentId) return;
+    const redirectedPlanParam = params.get('plan');
+    if (!redirectedPaymentId) {
+      if (redirectedPlanParam === 'premium') setResultMessage(PREMIUM_COMING_SOON_MESSAGE);
+      return;
+    }
+    const redirectedPlan = redirectedPlanParam === 'basic' ? 'basic' : 'premium';
+    if (redirectedPlan === 'premium') {
+      setResultMessage(PREMIUM_COMING_SOON_MESSAGE);
+      return;
+    }
     redirectProcessedRef.current = true;
 
     let cancelled = false;
@@ -104,6 +118,10 @@ export default function SinglePaymentPage() {
     }
     if (!withdrawalConsent) {
       setResultMessage('청약철회 제한 및 환불정책 안내에 동의해 주세요.');
+      return;
+    }
+    if (selectedPlan !== 'basic') {
+      setResultMessage(PREMIUM_COMING_SOON_MESSAGE);
       return;
     }
     setLoading(true);
@@ -245,20 +263,33 @@ export default function SinglePaymentPage() {
           {(Object.keys(SINGLE_PAYMENT_PRODUCTS) as PaidPlan[]).map((planId) => {
             const product = SINGLE_PAYMENT_PRODUCTS[planId];
             const isSelected = selectedPlan === planId;
+            const isAvailable = product.available;
 
             return (
               <button
                 key={planId}
                 type="button"
-                onClick={() => setSelectedPlan(planId)}
-                disabled={loading}
+                onClick={() => {
+                  if (!isAvailable) return;
+                  setSelectedPlan(planId);
+                  if (resultMessage === PREMIUM_COMING_SOON_MESSAGE) setResultMessage('');
+                }}
+                disabled={loading || !isAvailable}
+                aria-disabled={!isAvailable}
                 className="rounded-lg border px-3 py-3 text-left transition-all disabled:opacity-50"
                 style={{
                   borderColor: isSelected ? '#1A3C6E' : '#e5decf',
                   backgroundColor: isSelected ? '#EEF4FF' : '#fff',
                 }}
               >
-                <p className="text-sm font-black text-[#1A3C6E]">{product.title}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-black text-[#1A3C6E]">{product.title}</p>
+                  {product.badge && (
+                    <span className="rounded-full bg-[#FEF3C7] px-2 py-1 text-[10px] font-black text-[#92400E]">
+                      {product.badge}
+                    </span>
+                  )}
+                </div>
                 <p className="mt-1 text-lg font-black text-gray-800">{product.amountLabel}</p>
                 <p className="mt-1 text-xs leading-4 text-gray-500">{product.description}</p>
               </button>
@@ -349,7 +380,7 @@ export default function SinglePaymentPage() {
         <button
           type="button"
           onClick={handleSinglePayment}
-          disabled={loading || !withdrawalConsent}
+          disabled={loading || !withdrawalConsent || selectedPlan !== 'basic'}
           className="w-full rounded-lg bg-[#1A3C6E] px-4 py-4 text-base font-black text-white transition-colors hover:bg-[#142f57] disabled:opacity-50"
         >
           {loading ? '결제 처리 중...' : `${selectedProduct.title} 1개월 이용권 결제`}

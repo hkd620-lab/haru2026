@@ -296,6 +296,7 @@ const HARU_KAKAOPAY_PROVIDER = 'kakaopay';
 const HARU_KAKAOPAY_PAY_METHOD = 'kakaopay_easy_pay';
 type HaruPaymentProvider = typeof HARU_INICIS_PROVIDER | typeof HARU_KAKAOPAY_PROVIDER;
 type HaruPaidPlan = 'basic' | 'premium';
+type HaruPurchasablePlan = 'basic';
 const PAYMENT_REQUEST_TTL_MS = 30 * 60 * 1000;
 const SUBSCRIPTION_PLANS: Record<number, 'basic' | 'premium'> = {
   4000: 'basic',
@@ -325,12 +326,16 @@ function addOneMonth(date: Date): Date {
   return next;
 }
 
-function getSubscriptionPlanAmount(plan: string): number {
-  return plan === 'basic' ? 4000 : 6000;
+function getSubscriptionPlanAmount(plan: HaruPaidPlan): number {
+  if (plan === 'basic') return 4000;
+  if (plan === 'premium') return 6000;
+  throw new HttpsError('invalid-argument', 'plan 값이 올바르지 않습니다.');
 }
 
-function getSubscriptionOrderName(plan: string): string {
-  return plan === 'basic' ? 'HARU2026 베이직 1개월 정기구독' : 'HARU2026 프리미엄 1개월 정기구독';
+function getSubscriptionOrderName(plan: HaruPaidPlan): string {
+  if (plan === 'basic') return 'HARU2026 베이직 1개월 정기구독';
+  if (plan === 'premium') return 'HARU2026 프리미엄 1개월 정기구독';
+  throw new HttpsError('invalid-argument', 'plan 값이 올바르지 않습니다.');
 }
 
 function buildSubscriptionBillingRequestResponse(params: {
@@ -405,6 +410,18 @@ function assertPaidPlan(plan: unknown): 'basic' | 'premium' {
     throw new HttpsError('invalid-argument', 'plan 값이 올바르지 않습니다.');
   }
   return plan;
+}
+
+function isLaunchPurchasablePlan(plan: unknown): plan is HaruPurchasablePlan {
+  return plan === 'basic';
+}
+
+function assertLaunchPurchasablePlan(plan: unknown): HaruPurchasablePlan {
+  const paidPlan = assertPaidPlan(plan);
+  if (!isLaunchPurchasablePlan(paidPlan)) {
+    throw new HttpsError('failed-precondition', '프리미엄 신규 결제는 준비 중입니다. 현재는 베이직 월 4,000원만 결제할 수 있습니다.');
+  }
+  return paidPlan;
 }
 
 function createPortOneRequestId(prefix: string): string {
@@ -2181,6 +2198,7 @@ async function getUserPlan(uid: string): Promise<UserPlan> {
     const snap = await db.doc(`users/${uid}/subscription/info`).get();
     const data = snap.data() || {};
     const plan = String(data.plan || '').toLowerCase();
+    const status = String(data.status || '').toLowerCase();
     const endDate = data.endDate;
     const expiresAt = data.expiresAt;
     const endTime = typeof endDate === 'string'
@@ -2189,6 +2207,7 @@ async function getUserPlan(uid: string): Promise<UserPlan> {
         ? expiresAt.toMillis()
         : Number.NaN;
     if (Number.isFinite(endTime) && endTime < Date.now()) return 'free';
+    if (status !== 'active' && status !== 'cancelled') return 'free';
     if (plan === 'premium') return 'premium';
     if (plan === 'basic') return 'basic';
   } catch (error) {
@@ -5997,7 +6016,7 @@ export const createSinglePaymentRequest = onCall(
     }
 
     const uid = request.auth.uid;
-    const plan = assertPaidPlan(request.data?.plan);
+    const plan = assertLaunchPurchasablePlan(request.data?.plan);
     const provider = getRequestedPaymentProvider(request.data?.provider);
     const payMethod = getProviderPayMethod(provider);
     const product = SINGLE_PAYMENT_REVIEW_PRODUCT.plans[plan];
@@ -6049,7 +6068,7 @@ export const createSubscriptionBillingRequest = onCall(
     }
 
     const uid = request.auth.uid;
-    const plan = assertPaidPlan(request.data?.plan);
+    const plan = assertLaunchPurchasablePlan(request.data?.plan);
     const provider = getRequestedPaymentProvider(request.data?.provider);
     const payMethod = getProviderPayMethod(provider);
     let customer: SubscriptionBillingCustomer;
@@ -6113,7 +6132,14 @@ export const createSubscriptionBillingRequest = onCall(
           // Confirmed terminal requests release the UID lock; the write below replaces it with a new request.
         } else if (lockedStatus === 'created' && !hasStartedInitialBilling) {
           const lockedExpiresAt = lockedRequestData.expiresAt?.toMillis?.() || 0;
-          if (lockedExpiresAt && lockedExpiresAt < nowMs) {
+          if (!isLaunchPurchasablePlan(lockedPlan)) {
+            tx.set(lockedRequestRef, {
+              status: 'cancelled',
+              cancelReason: 'premium_sales_not_open',
+              cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true });
+          } else if (lockedExpiresAt && lockedExpiresAt < nowMs) {
             tx.set(lockedRequestRef, {
               status: 'cancelled',
               cancelReason: 'expired_without_initial_billing',
@@ -6142,12 +6168,13 @@ export const createSubscriptionBillingRequest = onCall(
             });
           }
         } else {
+          const reusableLockedPlan = assertLaunchPurchasablePlan(lockedPlan);
           return {
             success: false,
             pending: true,
             status: lockedStatus || 'charging',
             issueId: lockedIssueId,
-            plan: lockedPlan,
+            plan: reusableLockedPlan,
             provider: lockedProvider,
             payMethod: getProviderPayMethod(lockedProvider),
           };
@@ -6233,7 +6260,7 @@ export const recoverSubscriptionBillingRequest = onCall(
       throw new HttpsError('permission-denied', '정기결제 요청 정보가 올바르지 않습니다.');
     }
 
-    const plan = assertPaidPlan(requestData.plan);
+    const plan = assertLaunchPurchasablePlan(requestData.plan);
     const provider = getStoredPaymentProvider(requestData);
     if (!provider) {
       throw new HttpsError('failed-precondition', '정기결제 요청의 결제수단 정보가 올바르지 않습니다.');
@@ -6381,6 +6408,7 @@ export const verifyPayment = onCall(
     if (orderData.paymentType !== 'one_time' && orderData.paymentType !== 'subscription') {
       throw new HttpsError('failed-precondition', '결제 요청 유형이 올바르지 않습니다.');
     }
+    const purchasablePlan = assertLaunchPurchasablePlan(orderData.plan);
 
     let payment: any;
     try {
@@ -6416,6 +6444,9 @@ export const verifyPayment = onCall(
       const freshOrder = await tx.get(orderRef);
       const freshData = freshOrder.data() || {};
       if (freshData.status === 'processed') return;
+      if (freshData.plan !== purchasablePlan || !isLaunchPurchasablePlan(freshData.plan)) {
+        throw new HttpsError('failed-precondition', '프리미엄 신규 결제는 준비 중입니다. 현재는 베이직 월 4,000원만 결제할 수 있습니다.');
+      }
       const provider = getStoredPaymentProvider(freshData) || HARU_KAKAOPAY_PROVIDER;
       const payMethod = getStoredPayMethod(freshData, provider);
 
@@ -6480,7 +6511,7 @@ export const subscribeWithBillingKey = onCall(
     if (requestData.uid !== uid || requestData.paymentType !== 'subscription' || requestData.billingType !== 'billing_key_issue') {
       throw new HttpsError('permission-denied', '빌링키 발급 요청 정보가 올바르지 않습니다.');
     }
-    const plan = assertPaidPlan(requestData.plan);
+    const plan = assertLaunchPurchasablePlan(requestData.plan);
     const provider = getStoredPaymentProvider(requestData);
     if (!provider) {
       throw new HttpsError('failed-precondition', '빌링키 발급 요청의 결제수단 정보가 올바르지 않습니다.');
@@ -7185,7 +7216,7 @@ export const verifySinglePayment = onCall(
     if (orderData.paymentType !== 'one_time' || orderData.billingType !== 'single') {
       throw new HttpsError('failed-precondition', '단건 결제 요청 정보가 올바르지 않습니다.');
     }
-    const requestedPlan = assertPaidPlan(orderData.plan);
+    const requestedPlan = assertLaunchPurchasablePlan(orderData.plan);
     const singleProduct = SINGLE_PAYMENT_REVIEW_PRODUCT.plans[requestedPlan];
     const provider = getStoredPaymentProvider(orderData) || HARU_INICIS_PROVIDER;
     const payMethod = getStoredPayMethod(orderData, provider);
@@ -7228,6 +7259,9 @@ export const verifySinglePayment = onCall(
       }
       if (freshOrderData.uid !== uid || freshOrderData.paymentType !== 'one_time' || freshOrderData.billingType !== 'single') {
         throw new HttpsError('permission-denied', '결제 요청 정보가 올바르지 않습니다.');
+      }
+      if (freshOrderData.plan !== requestedPlan || !isLaunchPurchasablePlan(freshOrderData.plan)) {
+        throw new HttpsError('failed-precondition', '프리미엄 신규 결제는 준비 중입니다. 현재는 베이직 월 4,000원만 결제할 수 있습니다.');
       }
       const storedProvider = getStoredPaymentProvider(freshOrderData) || provider;
       const storedPayMethod = getStoredPayMethod(freshOrderData, storedProvider);
@@ -7466,7 +7500,7 @@ export const portoneWebhook = onRequest(
 
       if (freshOrderData?.paymentType === 'one_time' && freshOrderData?.billingType === 'single' && portoneStatus === 'PAID') {
         const uid = freshOrderData.uid;
-        const plan = freshOrderData.plan === 'basic' ? 'basic' : freshOrderData.plan === 'premium' ? 'premium' : null;
+        const plan = isLaunchPurchasablePlan(freshOrderData.plan) ? freshOrderData.plan : null;
         if (!uid || !plan || freshOrderData.status === 'processed' || singlePaymentAlreadyExists) return;
         const provider = getStoredPaymentProvider(freshOrderData) || HARU_KAKAOPAY_PROVIDER;
         const payMethod = getStoredPayMethod(freshOrderData, provider);

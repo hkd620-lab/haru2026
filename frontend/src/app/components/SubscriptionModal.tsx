@@ -1,4 +1,4 @@
-import { X, Crown, Check, Sparkles } from 'lucide-react';
+import { X, Crown, Check } from 'lucide-react';
 
 interface SubscriptionModalProps {
   open: boolean;
@@ -8,32 +8,52 @@ interface SubscriptionModalProps {
 
 const plans = [
   {
+    id: 'free',
+    name: '무료',
+    nameEn: 'Free',
+    price: '₩0',
+    period: '/월',
+    features: [
+      '기본 기록 작성 및 조회',
+      'SAYU AI 다듬기 기존 제한 내 이용',
+      '독서 OCR 월 20장',
+      '결제·빌링키 등록 없음',
+    ],
+    popular: false,
+    available: false,
+    statusLabel: '현재 이용 가능',
+  },
+  {
     id: 'basic',
     name: '베이직',
     nameEn: 'Basic',
     price: '₩4,000',
     period: '/월',
     features: [
-      '12종 기록 형식',
-      'SAYU AI 다듬기',
-      '기록 저장 및 조회',
-      'TEXT/HTML 출력',
+      'EPUB 저장',
+      '하루LAW 결과 대화',
+      'SNS 하루탭',
+      '독서 OCR 월 100장',
     ],
-    popular: false,
+    popular: true,
+    available: true,
+    statusLabel: '구독 가능',
   },
   {
     id: 'premium',
     name: '프리미엄',
     nameEn: 'Premium',
-    price: '₩6,000',
+    price: '₩6,000 예정',
     period: '/월',
     features: [
-      '베이직 모든 기능',
-      'SAYU PDF 저장',
-      '월간/분기/연간 기록합침',
-      '월간/분기/연간 통계',
+      '독서 OCR 월 300장 예정',
+      '장기 범위 합본 준비 중',
+      '장기 범위 통계 준비 중',
+      '식물탐정 프리미엄 판정 유지',
     ],
-    popular: true,
+    popular: false,
+    available: false,
+    statusLabel: '준비 중',
   },
 ];
 
@@ -41,7 +61,8 @@ export function SubscriptionModal({ open, onClose, daysRemaining }: Subscription
   if (!open) return null;
 
   const handleSubscribe = (planId: string) => {
-    window.location.href = `/subscription?plan=${planId}`;
+    if (planId !== 'basic') return;
+    window.location.href = '/subscription?plan=basic';
   };
 
   return (
@@ -74,27 +95,18 @@ export function SubscriptionModal({ open, onClose, daysRemaining }: Subscription
             <div className="flex items-center justify-center gap-2 mb-3">
               <Crown className="w-8 h-8" style={{ color: '#F9F8F3' }} />
               <h2 className="text-2xl md:text-3xl tracking-wide" style={{ color: '#F9F8F3' }}>
-                프리미엄으로 업그레이드
+                HARU2026 구독 안내
               </h2>
             </div>
             <p className="text-sm mb-4" style={{ color: '#B5D5F0' }}>
-              HARU의 모든 기능을 제한 없이 사용하세요
+              현재 결제 가능한 유료 플랜은 베이직 월 4,000원입니다
             </p>
-            {daysRemaining > 0 && (
-              <div 
-                className="inline-block px-4 py-2 rounded-full text-xs"
-                style={{ backgroundColor: '#00336650', color: '#F9F8F3' }}
-              >
-                <Sparkles className="w-3 h-3 inline mr-1" />
-                무료 체험 {daysRemaining}일 남음
-              </div>
-            )}
           </div>
         </div>
 
         {/* Plans */}
         <div className="p-6 md:p-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {plans.map((plan) => (
               <div
                 key={plan.id}
@@ -110,7 +122,7 @@ export function SubscriptionModal({ open, onClose, daysRemaining }: Subscription
                     className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs"
                     style={{ backgroundColor: '#003366', color: '#F9F8F3' }}
                   >
-                    인기
+                    구독 가능
                   </div>
                 )}
 
@@ -121,6 +133,9 @@ export function SubscriptionModal({ open, onClose, daysRemaining }: Subscription
                   </h3>
                   <p className="text-xs mb-4" style={{ color: '#999999' }}>
                     {plan.nameEn}
+                  </p>
+                  <p className="mb-3 inline-block rounded-full px-3 py-1 text-xs" style={{ backgroundColor: '#EEF4FF', color: '#003366' }}>
+                    {plan.statusLabel}
                   </p>
                   
                   <div className="flex items-baseline justify-center">
@@ -148,14 +163,15 @@ export function SubscriptionModal({ open, onClose, daysRemaining }: Subscription
                 {/* Subscribe Button */}
                 <button
                   onClick={() => handleSubscribe(plan.id)}
-                  className="w-full py-3 rounded-lg text-sm tracking-wide transition-all hover:opacity-90"
+                  disabled={!plan.available}
+                  className="w-full py-3 rounded-lg text-sm tracking-wide transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                   style={{
                     backgroundColor: plan.popular ? '#003366' : '#F9F8F3',
                     color: plan.popular ? '#F9F8F3' : '#003366',
                     border: plan.popular ? 'none' : '1px solid #e5e5e5',
                   }}
                 >
-                  구독하기
+                  {plan.available ? '베이직 구독하기' : plan.statusLabel}
                 </button>
               </div>
             ))}
@@ -164,10 +180,10 @@ export function SubscriptionModal({ open, onClose, daysRemaining }: Subscription
           {/* Additional Info */}
           <div className="mt-8 pt-6 border-t text-center" style={{ borderColor: '#e5e5e5' }}>
             <p className="text-xs leading-relaxed mb-2" style={{ color: '#999999' }}>
-              모든 플랜은 언제든지 해지 가능합니다
+              베이직 구독은 설정 화면에서 언제든지 해지할 수 있습니다
             </p>
             <p className="text-xs leading-relaxed" style={{ color: '#999999' }}>
-              체험 기간 중 구독 시 남은 기간만큼 무료로 연장됩니다
+              프리미엄은 준비 중이며 이번 출시에서는 결제되지 않습니다
             </p>
           </div>
         </div>
