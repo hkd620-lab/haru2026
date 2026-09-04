@@ -37,6 +37,9 @@ import {
   reserveMonthlyAiQuota,
   rollbackMonthlyAiQuotaReservation,
   type MonthlyAiQuotaReservation,
+  reserveMonthlyOcrQuota,
+  rollbackMonthlyOcrQuotaReservation,
+  type MonthlyOcrQuotaReservation,
 } from './utils/monthlyAiQuota';
 import {
   INTERNAL_ADMIN_UID,
@@ -4836,33 +4839,44 @@ export const extractReadingBookTextFromPhoto = onCall(
       throw new HttpsError('invalid-argument', '사진이 너무 큽니다. 한 장당 7MB 이하로 줄여주세요.');
     }
 
+    let ocrQuotaReservation: MonthlyOcrQuotaReservation | null = null;
+    if (!isDeveloper) {
+      ocrQuotaReservation = await reserveMonthlyOcrQuota(uid);
+    }
+
     const usageRef = db.doc(`users/${uid}/readingOcrUsage/${bookId}`);
     let usedCount: number | null = null;
     let slotReserved = false;
 
     if (!isDeveloper) {
-      usedCount = await db.runTransaction(async (tx) => {
-        const snap = await tx.get(usageRef);
-        const current = Number(snap.data()?.photoCount || 0);
-        if (current >= READING_BOOK_OCR_LIMIT) {
-          throw new HttpsError('resource-exhausted', '책 한 권당 본문 사진은 총 20장까지 변환할 수 있습니다.');
-        }
-        const next = current + 1;
-        const dataToSave: Record<string, any> = {
-          bookId,
-          bookTitle,
-          author,
-          photoCount: next,
-          limit: READING_BOOK_OCR_LIMIT,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        };
-        if (!snap.exists) {
-          dataToSave.createdAt = admin.firestore.FieldValue.serverTimestamp();
-        }
-        tx.set(usageRef, dataToSave, { merge: true });
-        return next;
-      });
-      slotReserved = true;
+      try {
+        usedCount = await db.runTransaction(async (tx) => {
+          const snap = await tx.get(usageRef);
+          const current = Number(snap.data()?.photoCount || 0);
+          if (current >= READING_BOOK_OCR_LIMIT) {
+            throw new HttpsError('resource-exhausted', '책 한 권당 본문 사진은 총 20장까지 변환할 수 있습니다.');
+          }
+          const next = current + 1;
+          const dataToSave: Record<string, any> = {
+            bookId,
+            bookTitle,
+            author,
+            photoCount: next,
+            limit: READING_BOOK_OCR_LIMIT,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          };
+          if (!snap.exists) {
+            dataToSave.createdAt = admin.firestore.FieldValue.serverTimestamp();
+          }
+          tx.set(usageRef, dataToSave, { merge: true });
+          return next;
+        });
+        slotReserved = true;
+      } catch (error) {
+        // 권당 슬롯 예약 실패 시 이미 예약된 월간 OCR 쿼터도 함께 롤백 (요구사항 7)
+        await rollbackMonthlyOcrQuotaReservation(ocrQuotaReservation);
+        throw error;
+      }
     }
 
     try {
@@ -4944,6 +4958,7 @@ export const extractReadingBookTextFromPhoto = onCall(
           logger.warn('독서 OCR 사용량 롤백 실패', { message: rollbackError?.message });
         }
       }
+      await rollbackMonthlyOcrQuotaReservation(ocrQuotaReservation);
       if (error instanceof HttpsError) throw error;
       logger.error('독서 본문 OCR 실패', { message: error?.message?.slice(0, 200) });
       await logAiUsage({
