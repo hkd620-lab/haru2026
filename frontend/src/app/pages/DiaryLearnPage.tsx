@@ -8,6 +8,21 @@ import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import GrapeLoadingMini from '../components/GrapeLoadingMini';
 
+// getGrammarExplain 응답 방어: Gemini/GPT-4o가 한 문장에 동사가 여러 개일 때
+// (예: "I said I was tired") 프롬프트를 무시하고 문자열 대신
+// { said: "...", was: "..." } 같은 중첩 객체를 돌려주는 경우가 있어,
+// 그대로 렌더링하면 "Objects are not valid as a React child" 크래시가 난다.
+// 문자열이 아니면 값들을 합쳐 문자열로 만들어 항상 안전하게 렌더링한다.
+const toGrammarText = (v: unknown): string => {
+  if (typeof v === 'string') return v;
+  if (v && typeof v === 'object') {
+    return Object.values(v as Record<string, unknown>)
+      .filter((x) => typeof x === 'string' && x.trim())
+      .join(' / ');
+  }
+  return v == null ? '' : String(v);
+};
+
 interface DiaryItem {
   id: string;
   date: string;
@@ -414,26 +429,26 @@ export function DiaryLearnPage() {
       setGrammarPopup({
         verseText: text,
         loading: false,
-        verb: res.data.verb,
-        verb_example_en: res.data.verb_example_en,
-        verb_example_ko: res.data.verb_example_ko,
-        preposition: res.data.preposition,
-        preposition_example_en: res.data.preposition_example_en,
-        preposition_example_ko: res.data.preposition_example_ko,
-        phrasal: res.data.phrasal,
-        phrasal_example_en: res.data.phrasal_example_en,
-        phrasal_example_ko: res.data.phrasal_example_ko,
-        relative: res.data.relative,
-        relative_example_en: res.data.relative_example_en,
-        relative_example_ko: res.data.relative_example_ko,
-        question: res.data.question,
-        question_example_en: res.data.question_example_en,
-        question_example_ko: res.data.question_example_ko,
-        exclamation: res.data.exclamation,
-        exclamation_example_en: res.data.exclamation_example_en,
-        exclamation_example_ko: res.data.exclamation_example_ko,
-        mysentence: res.data.mysentence,
-        korean: res.data.korean,
+        verb: toGrammarText(res.data.verb),
+        verb_example_en: toGrammarText(res.data.verb_example_en),
+        verb_example_ko: toGrammarText(res.data.verb_example_ko),
+        preposition: toGrammarText(res.data.preposition),
+        preposition_example_en: toGrammarText(res.data.preposition_example_en),
+        preposition_example_ko: toGrammarText(res.data.preposition_example_ko),
+        phrasal: toGrammarText(res.data.phrasal),
+        phrasal_example_en: toGrammarText(res.data.phrasal_example_en),
+        phrasal_example_ko: toGrammarText(res.data.phrasal_example_ko),
+        relative: toGrammarText(res.data.relative),
+        relative_example_en: toGrammarText(res.data.relative_example_en),
+        relative_example_ko: toGrammarText(res.data.relative_example_ko),
+        question: toGrammarText(res.data.question),
+        question_example_en: toGrammarText(res.data.question_example_en),
+        question_example_ko: toGrammarText(res.data.question_example_ko),
+        exclamation: toGrammarText(res.data.exclamation),
+        exclamation_example_en: toGrammarText(res.data.exclamation_example_en),
+        exclamation_example_ko: toGrammarText(res.data.exclamation_example_ko),
+        mysentence: toGrammarText(res.data.mysentence),
+        korean: toGrammarText(res.data.korean),
       });
     } catch {
       setGrammarPopup({ verseText: text, loading: false });

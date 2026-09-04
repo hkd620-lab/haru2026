@@ -16,6 +16,21 @@ interface Verse {
 
 const DEV_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
+// getGrammarExplain 응답 방어: Gemini/GPT-4o가 한 문장에 동사가 여러 개일 때
+// (예: "God said... it was so") 프롬프트를 무시하고 문자열 대신
+// { said: "...", was: "..." } 같은 중첩 객체를 돌려주는 경우가 있어,
+// 그대로 렌더링하면 "Objects are not valid as a React child" 크래시가 난다.
+// 문자열이 아니면 값들을 합쳐 문자열로 만들어 항상 안전하게 렌더링한다.
+const toGrammarText = (v: unknown): string => {
+  if (typeof v === 'string') return v;
+  if (v && typeof v === 'object') {
+    return Object.values(v as Record<string, unknown>)
+      .filter((x) => typeof x === 'string' && x.trim())
+      .join(' / ');
+  }
+  return v == null ? '' : String(v);
+};
+
 const showTTSLimitAlert = (err: any) => {
   const msg = err?.message || '';
   const code = err?.code || '';
@@ -308,26 +323,26 @@ export function BiblePage() {
       setGrammarPopup(prev => prev && ({
         ...prev,
         loading: false,
-        verb: result.verb || '',
-        verb_example_en: result.verb_example_en || '',
-        verb_example_ko: result.verb_example_ko || '',
-        preposition: result.preposition || '',
-        preposition_example_en: result.preposition_example_en || '',
-        preposition_example_ko: result.preposition_example_ko || '',
-        phrasal: result.phrasal || '',
-        phrasal_example_en: result.phrasal_example_en || '',
-        phrasal_example_ko: result.phrasal_example_ko || '',
-        relative: result.relative || '',
-        relative_example_en: result.relative_example_en || '',
-        relative_example_ko: result.relative_example_ko || '',
-        question: result.question || '',
-        question_example_en: result.question_example_en || '',
-        question_example_ko: result.question_example_ko || '',
-        exclamation: result.exclamation || '',
-        exclamation_example_en: result.exclamation_example_en || '',
-        exclamation_example_ko: result.exclamation_example_ko || '',
-        mysentence: result.mysentence || '',
-        korean: result.korean || '',
+        verb: toGrammarText(result.verb),
+        verb_example_en: toGrammarText(result.verb_example_en),
+        verb_example_ko: toGrammarText(result.verb_example_ko),
+        preposition: toGrammarText(result.preposition),
+        preposition_example_en: toGrammarText(result.preposition_example_en),
+        preposition_example_ko: toGrammarText(result.preposition_example_ko),
+        phrasal: toGrammarText(result.phrasal),
+        phrasal_example_en: toGrammarText(result.phrasal_example_en),
+        phrasal_example_ko: toGrammarText(result.phrasal_example_ko),
+        relative: toGrammarText(result.relative),
+        relative_example_en: toGrammarText(result.relative_example_en),
+        relative_example_ko: toGrammarText(result.relative_example_ko),
+        question: toGrammarText(result.question),
+        question_example_en: toGrammarText(result.question_example_en),
+        question_example_ko: toGrammarText(result.question_example_ko),
+        exclamation: toGrammarText(result.exclamation),
+        exclamation_example_en: toGrammarText(result.exclamation_example_en),
+        exclamation_example_ko: toGrammarText(result.exclamation_example_ko),
+        mysentence: toGrammarText(result.mysentence),
+        korean: toGrammarText(result.korean),
       }));
     } catch {
       setGrammarPopup({ verseKey, verseText: verse.text, loading: false });
