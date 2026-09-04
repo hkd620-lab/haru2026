@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MONTHLY_AI_QUOTA_LIMITS = void 0;
+exports.MONTHLY_OCR_FEATURE_KEY = exports.MONTHLY_OCR_QUOTA_LIMITS = exports.MONTHLY_AI_QUOTA_LIMITS = void 0;
 exports.getKstMonthKey = getKstMonthKey;
 exports.normalizeMonthlyAiPlan = normalizeMonthlyAiPlan;
 exports.getMonthlyAiQuotaLimit = getMonthlyAiQuotaLimit;
@@ -45,6 +45,11 @@ exports.resolveMonthlyAiPlanFromSubscriptionData = resolveMonthlyAiPlanFromSubsc
 exports.getMonthlyAiQuotaStatus = getMonthlyAiQuotaStatus;
 exports.reserveMonthlyAiQuota = reserveMonthlyAiQuota;
 exports.rollbackMonthlyAiQuotaReservation = rollbackMonthlyAiQuotaReservation;
+exports.getMonthlyOcrQuotaLimit = getMonthlyOcrQuotaLimit;
+exports.buildMonthlyOcrQuotaStatus = buildMonthlyOcrQuotaStatus;
+exports.previewMonthlyOcrQuotaReservation = previewMonthlyOcrQuotaReservation;
+exports.reserveMonthlyOcrQuota = reserveMonthlyOcrQuota;
+exports.rollbackMonthlyOcrQuotaReservation = rollbackMonthlyOcrQuotaReservation;
 const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
 const internalEntitlements_1 = require("../internalEntitlements");
@@ -182,5 +187,91 @@ async function rollbackMonthlyAiQuotaReservation(reservation) {
     }
     catch (error) {
         console.warn('monthly AI quota rollback failed:', (error === null || error === void 0 ? void 0 : error.message) || error);
+    }
+}
+// ===== 📚 독서 OCR 전용 월간 쿼터 =====
+// 기존 usedCount(공용 AI 쿼터)와 별개로 byFeature.book_ocr 카운터만 사용한다.
+// 저장 위치는 동일한 users/{uid}/monthlyAiUsage/{period} 문서(신규 컬렉션 생성 없음).
+exports.MONTHLY_OCR_QUOTA_LIMITS = {
+    free: 20,
+    basic: 100,
+    premium: 300,
+    developer: 300,
+};
+exports.MONTHLY_OCR_FEATURE_KEY = 'book_ocr';
+function getMonthlyOcrQuotaLimit(plan) {
+    return exports.MONTHLY_OCR_QUOTA_LIMITS[plan];
+}
+function buildMonthlyOcrQuotaStatus(plan, used, period = getKstMonthKey()) {
+    const safeUsed = Math.max(0, Math.floor(Number.isFinite(used) ? used : 0));
+    const limit = getMonthlyOcrQuotaLimit(plan);
+    return {
+        plan,
+        used: safeUsed,
+        limit,
+        remaining: Math.max(0, limit - safeUsed),
+        period,
+    };
+}
+function previewMonthlyOcrQuotaReservation(data, plan, period = getKstMonthKey()) {
+    var _a;
+    const used = Math.max(0, Math.floor(Number(((_a = data === null || data === void 0 ? void 0 : data.byFeature) === null || _a === void 0 ? void 0 : _a[exports.MONTHLY_OCR_FEATURE_KEY]) || 0)));
+    const status = buildMonthlyOcrQuotaStatus(plan, used, period);
+    const allowed = used < status.limit;
+    return {
+        allowed,
+        status,
+        nextStatus: buildMonthlyOcrQuotaStatus(plan, allowed ? used + 1 : used, period),
+    };
+}
+async function reserveMonthlyOcrQuota(uid) {
+    const plan = await resolveMonthlyAiPlan(uid);
+    const period = getKstMonthKey();
+    const ref = admin.firestore().doc(`users/${uid}/monthlyAiUsage/${period}`);
+    return admin.firestore().runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        const preview = previewMonthlyOcrQuotaReservation(snap.data(), plan, period);
+        if (!preview.allowed) {
+            throw new https_1.HttpsError('resource-exhausted', '이번 달 독서 사진 변환을 모두 사용했습니다. 다음 달에 다시 이용해 주세요.', {
+                reason: 'MONTHLY_OCR_QUOTA_EXCEEDED',
+                plan: preview.status.plan,
+                used: preview.status.used,
+                limit: preview.status.limit,
+                remaining: preview.status.remaining,
+                period: preview.status.period,
+            });
+        }
+        const now = admin.firestore.FieldValue.serverTimestamp();
+        const update = {
+            period,
+            planAtLastUse: plan,
+            byFeature: {
+                [exports.MONTHLY_OCR_FEATURE_KEY]: admin.firestore.FieldValue.increment(1),
+            },
+            updatedAt: now,
+        };
+        if (!snap.exists)
+            update.createdAt = now;
+        tx.set(ref, update, { merge: true });
+        return {
+            ...preview.nextStatus,
+            uid,
+        };
+    });
+}
+async function rollbackMonthlyOcrQuotaReservation(reservation) {
+    if (!reservation)
+        return;
+    try {
+        const ref = admin.firestore().doc(`users/${reservation.uid}/monthlyAiUsage/${reservation.period}`);
+        await ref.set({
+            byFeature: {
+                [exports.MONTHLY_OCR_FEATURE_KEY]: admin.firestore.FieldValue.increment(-1),
+            },
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+    }
+    catch (error) {
+        console.warn('monthly OCR quota rollback failed:', (error === null || error === void 0 ? void 0 : error.message) || error);
     }
 }
