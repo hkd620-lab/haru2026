@@ -31,8 +31,8 @@ const plans = [
     period: '/월',
     features: [
       'EPUB 저장',
-      '하루LAW 결과 대화',
-      'SNS 하루탭',
+      '하루LAW 첨부파일',
+      '더 넉넉한 AI 이용',
       '독서 OCR 월 100장',
     ],
     popular: true,

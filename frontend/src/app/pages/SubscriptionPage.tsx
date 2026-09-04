@@ -81,8 +81,8 @@ const PLANS: Record<PaidPlan, {
     description: '1개월 단위로 자동 갱신되는 기본 구독입니다',
     features: [
       'EPUB 저장',
-      '하루LAW 결과 대화',
-      'SNS 하루탭',
+      '하루LAW 첨부파일',
+      '더 넉넉한 AI 이용',
       '독서 OCR 월 100장',
     ],
     ocrLimitLabel: '독서 OCR 월 100장',
