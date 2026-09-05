@@ -566,10 +566,10 @@ export default function SubscriptionPage() {
             비회원 구매는 제공하지 않습니다. 심사자는 전달받은 테스트 계정으로 로그인 후 구독/결제 흐름을 확인할 수 있습니다.
           </p>
           <Link
-            to="/login"
+            to="/login?mode=signup&from=subscription"
             className="block w-full rounded-2xl bg-[#1A3C6E] px-4 py-4 text-base font-black text-white transition-colors hover:bg-[#142f57]"
           >
-            로그인하러 가기
+            회원가입하고 구독하기
           </Link>
         </section>
       </div>
