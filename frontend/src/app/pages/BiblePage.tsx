@@ -345,7 +345,7 @@ export function BiblePage() {
     } catch {
       setGrammarPopup({ verseText: verse.text, loading: false });
     }
-  }, []);
+  }, [currentBook, currentChapter]);
 
   const handleTranslationClick = async (verse: { verse: number; text: string }) => {
     setTranslationPopup({ verse: verse.verse, text: verse.text, translation: '', loading: true });
