@@ -177,7 +177,7 @@ App.tsx 가 import 하지만 메뉴 미노출이라도 `<Route>` 에 마운트�
 | `convertHeic` | onCall | asia-northeast3 | — (Cloudinary) | (`CLOUDINARY_API_SECRET` env) | `index.ts:1168` | `FormatModal.tsx:602` |
 | `generateMergePDFFast` | onCall (1GiB, 300s) | asia-northeast3 | — | — | `index.ts:1198` | **활성 호출 없음** (구버전 MergeViewerPage backup 에만 존재) |
 | `verifySinglePayment` | onCall | asia-northeast3 | — | PORTONE_API_SECRET | `functions/src/index.ts` | `SinglePaymentPage.tsx` |
-| `removeAllTags` | onRequest | asia-northeast3 | — | — | `index.ts:1345` | (관리자용; 활성 호출 없음) |
+| `removeAllTags` | onRequest | asia-northeast3 | — | — | `index.ts` | 폐기됨: 항상 410 응답, 데이터 접근 없음 |
 | `lawSearch` | onCall | asia-northeast3 | gemini-3.1-flash-lite ×2 (키워드+조문선별) | LAW_API_KEY, GEMINI_API_KEY | `index.ts:1371, 1414, 1484` | `RecordPage.tsx:508` (활성), `HaruRawPage.tsx:33` (좀비 페이지) |
 | `lawEasyExplain` | onCall | asia-northeast3 | gemini-2.5-flash (`index.ts:1568`) ※ CLAUDE.md 는 2.5-pro 라고 적혀 있지만 코드는 flash | GEMINI_API_KEY | `index.ts:1548` | `RecordPage.tsx:588` |
 | `lawPrecedent` | onCall | asia-northeast3 | gemini-3.1-flash-lite(키워드) + gemini-2.5-flash(요약) | LAW_API_KEY, GEMINI_API_KEY | `index.ts:1613, 1638, 1723` | `RecordPage.tsx:621` |
@@ -208,7 +208,7 @@ App.tsx 가 import 하지만 메뉴 미노출이라도 `<Route>` 에 마운트�
 ### 3.2 잠재 좀비 Functions
 
 - `generateMergePDFFast` — 활성 frontend 에서 호출 없음 (`MergeViewerPage.tsx` 가 `window.print` 로 전환된 것으로 보임).
-- `removeAllTags` — onRequest 관리자 도구, 활성 호출 없음.
+- `removeAllTags` — 폐기된 onRequest 엔드포인트. 항상 410 응답하며 데이터에 접근하지 않음.
 - `getCustomToken` — 활성 호출 미확인.
 - `getHospitalList` — 활성 호출 미확인 (병원 페이지는 `analyzeSymptomsForSpecialty` 만 호출).
 - `generateBook` — `BookCreate` 페이지가 `/book-create` 라우트에서 `<Navigate>` 로 리다이렉트되므로 진입 불가. 함수는 export 중이나 실질 호출 경로 없음.
