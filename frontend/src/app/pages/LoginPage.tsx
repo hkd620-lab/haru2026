@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BookOpen, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -16,10 +16,13 @@ const PRIVACY_VERSION = '2026-08-20';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { googleSignIn, signIn, signUp, resetPassword } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [inAppBrowserGuide, setInAppBrowserGuide] = useState<InAppBrowserInfo | null>(null);
-  const [emailMode, setEmailMode] = useState<'login' | 'signup'>('login');
+  const [emailMode, setEmailMode] = useState<'login' | 'signup'>(() => (
+    searchParams.get('mode') === 'signup' ? 'signup' : 'login'
+  ));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
@@ -33,6 +36,7 @@ export function LoginPage() {
 
   const requiredAgreementsChecked = agreeAge14 && agreeTerms && agreePrivacy && agreeOverseas;
   const allAgreementsChecked = requiredAgreementsChecked && agreeMarketing;
+  const authTitle = emailMode === 'signup' ? '회원가입' : '로그인';
 
   const handleToggleAgreeAll = (checked: boolean) => {
     setAgreeAge14(checked);
@@ -181,7 +185,7 @@ export function LoginPage() {
             <GrapeAnimation />
           </div>
           <p className="mt-4 text-sm font-medium" style={{ color: '#1A3C6E' }}>
-            로그인 중...
+            {emailMode === 'signup' ? '회원가입 중...' : '로그인 중...'}
           </p>
         </div>
       )}
@@ -209,11 +213,11 @@ export function LoginPage() {
 
             <div className="bg-white rounded-lg shadow-md p-8">
               <h2 className="text-xl font-semibold mb-6 text-center" style={{ color: '#333' }}>
-                로그인
+                {authTitle}
               </h2>
               <p className="mb-5 rounded-lg px-4 py-3 text-center text-sm leading-6" style={{ backgroundColor: '#F7F4EC', color: '#1A3C6E' }}>
-                HARU2026은 회원제 서비스입니다.<br />
-                결제 및 구독 신청은 로그인 후 이용할 수 있습니다.
+                haru2026은 회원가입 후 로그인하여 이용하는 서비스입니다.<br />
+                무료 이용 및 유료 구독 신청은 로그인 후 가능합니다.
               </p>
 
               <div className="space-y-3">
@@ -271,7 +275,9 @@ export function LoginPage() {
               </div>
 
               <p className="mt-2 text-center text-xs" style={{ color: '#9CA3AF' }}>
-                로그인 후 이용약관 및 개인정보 처리 동의 절차가 진행됩니다.
+                {emailMode === 'signup'
+                  ? '회원가입 시 이용약관 및 개인정보 처리 동의가 필요합니다.'
+                  : '계정이 없다면 아래에서 회원가입으로 전환할 수 있습니다.'}
               </p>
 
               <div className="flex items-center gap-3 my-6">
@@ -465,7 +471,9 @@ export function LoginPage() {
 
               <div className="mt-6 text-center">
                 <p className="text-xs" style={{ color: '#999' }}>
-                  로그인하면 서비스 이용약관에 동의하게 됩니다
+                  {emailMode === 'signup'
+                    ? '회원가입 후 이메일 인증을 완료하면 서비스를 이용할 수 있습니다'
+                    : '로그인 후 무료 이용 및 유료 구독 신청이 가능합니다'}
                 </p>
               </div>
             </div>
