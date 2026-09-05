@@ -174,7 +174,7 @@ App.tsx 가 import 하지만 메뉴 미노출이라도 `<Route>` 에 마운트�
 | `sendTestNotification` | onCall | asia-northeast3 | — | — | `index.ts:1085` | `SettingsPage.tsx:341` |
 | `scheduledPushNotification` | onSchedule (`0 * * * *`) | asia-northeast3 | — | — | `functions/src/scheduledNotification.ts:4` | (스케줄) |
 | `sendBroadcastNotification` | onCall | asia-northeast3 | — | — | `functions/src/broadcastNotification.ts:6` | `SettingsPage.tsx:294` |
-| `convertHeic` | onCall | asia-northeast3 | — (Cloudinary) | (`CLOUDINARY_API_SECRET` env) | `index.ts:1168` | `FormatModal.tsx:602` |
+| `convertHeic` | onCall (인증, 20MB, 분당 5회/시간당 30회) | asia-northeast3 | — (Cloudinary) | (`CLOUDINARY_API_SECRET` env) | `functions/src/index.ts` | `FormatModal.tsx` |
 | `generateMergePDFFast` | onCall (1GiB, 300s) | asia-northeast3 | — | — | `index.ts:1198` | **활성 호출 없음** (구버전 MergeViewerPage backup 에만 존재) |
 | `verifySinglePayment` | onCall | asia-northeast3 | — | PORTONE_API_SECRET | `functions/src/index.ts` | `SinglePaymentPage.tsx` |
 | `removeAllTags` | onRequest | asia-northeast3 | — | — | `index.ts` | 폐기됨: 항상 410 응답, 데이터 접근 없음 |

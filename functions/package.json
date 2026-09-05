@@ -15,6 +15,7 @@
     "test:subscription-launch-policy": "node test/subscriptionLaunchPolicy.policy.test.js",
     "test:subscription-refunds": "node test/subscriptionRefunds.policy.test.js",
     "test:remove-all-tags-disabled": "node test/removeAllTagsDisabled.policy.test.js",
+    "test:convert-heic-guard": "node test/convertHeicGuard.policy.test.js",
     "deploy": "firebase deploy --only functions"
   },
   "engines": {

@@ -4718,14 +4718,36 @@ function isStorageObjectNotFound(error: any): boolean {
     message.includes('not found');
 }
 
+const CONVERT_HEIC_MAX_BYTES = 20 * 1024 * 1024;
+const CONVERT_HEIC_MAX_BASE64_LENGTH = Math.ceil(CONVERT_HEIC_MAX_BYTES / 3) * 4;
+
+function getBase64DecodedSizeBytes(value: string): number {
+  const padding = value.endsWith('==') ? 2 : value.endsWith('=') ? 1 : 0;
+  return (value.length / 4) * 3 - padding;
+}
+
 export const convertHeic = onCall(
   { region: 'asia-northeast3' },
   async (request) => {
-    const { imageBase64 } = request.data;
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const imageBase64 = request.data?.imageBase64;
 
     if (!imageBase64 || typeof imageBase64 !== 'string') {
       throw new HttpsError('invalid-argument', '이미지 데이터가 필요합니다.');
     }
+    if (
+      imageBase64.length > CONVERT_HEIC_MAX_BASE64_LENGTH ||
+      imageBase64.length % 4 !== 0 ||
+      !/^[A-Za-z0-9+/]*={0,2}$/.test(imageBase64) ||
+      getBase64DecodedSizeBytes(imageBase64) > CONVERT_HEIC_MAX_BYTES
+    ) {
+      throw new HttpsError('invalid-argument', 'HEIC 파일은 20MB 이하만 변환할 수 있습니다.');
+    }
+
+    await enforceRateLimit(request.auth.uid, 'convertHeic', 5, 30);
 
     configureCloudinary();
 
