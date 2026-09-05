@@ -111,7 +111,7 @@ export const cancelAccountDeletion = onCall(
 );
 
 // ===== 실제 삭제 (1단계 승인 범위 + billingSubscriptions 처리 변경 승인분) =====
-// [삭제] users/{uid} 하위 서브컬렉션 전체, Storage users/{uid}/ 전체,
+// [삭제] users/{uid} 하위 서브컬렉션 전체, Storage users/{uid}/ 전체 + profile_images/{uid}/,
 //        email_to_uid, prophecyUsage, shared_records(+comments),
 //        sharedHaruLawCardMeta, haruLawSharePreviews
 //        + billingSubscriptions/{uid}.billingKey(포트원 빌링키 포함) — 30일 유예 없이
@@ -133,12 +133,15 @@ const USER_SUBCOLLECTIONS_TO_DELETE = [
   'novelSettings',
   'bibleProgress',
   'bibleWordbook',
+  'vocabulary',
   'snsRecords',
+  'snsSearchHistory',
   'savedSearches',
   'timelines',
   'legalCases',
   'health',
   'petHealthLogs',
+  'petVaccineRecords',
   'lawsuitClaimReasonUsage',
 ];
 
@@ -147,17 +150,24 @@ const DELETION_BATCH_LIMIT = 20;
 
 async function deleteStorageFilesForUid(uid: string): Promise<number> {
   const bucket = getStorage().bucket();
-  const [files] = await bucket.getFiles({ prefix: `users/${uid}/` });
-  if (files.length === 0) return 0;
-  await Promise.all(
-    files.map((file) =>
-      file.delete().catch((error: any) => {
-        // 재시도 중 이미 삭제된 파일이면 조용히 넘어간다.
-        if (error?.code !== 404) throw error;
-      }),
-    ),
-  );
-  return files.length;
+  // users/{uid}/ 하위(기록 사진·타임라인·정보금고 이미지 등) + profile_images/{uid}/(프로필 사진,
+  // 최상위 별도 경로라 users/{uid}/ 스캔에 잡히지 않음) 둘 다 정리해야 스토리지에 파일이 안 남는다.
+  const prefixes = [`users/${uid}/`, `profile_images/${uid}/`];
+  let deletedCount = 0;
+  for (const prefix of prefixes) {
+    const [files] = await bucket.getFiles({ prefix });
+    if (files.length === 0) continue;
+    await Promise.all(
+      files.map((file) =>
+        file.delete().catch((error: any) => {
+          // 재시도 중 이미 삭제된 파일이면 조용히 넘어간다.
+          if (error?.code !== 404) throw error;
+        }),
+      ),
+    );
+    deletedCount += files.length;
+  }
+  return deletedCount;
 }
 
 async function deleteUserSubcollections(uid: string): Promise<void> {
