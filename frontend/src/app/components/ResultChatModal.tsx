@@ -353,8 +353,8 @@ export function ResultChatModal({
 
         <div style={{ padding: 16, overflowY: 'auto', flex: 1 }}>
           <p style={{ margin: '0 0 12px', padding: 12, borderRadius: 10, backgroundColor: '#F8FAFC', color: '#475569', fontSize: 12, lineHeight: 1.6 }}>
-            📘 나의 기록을 바탕으로 답변합니다.
-            {'\n'}편하게 추가 질문을 해보세요.
+            📘 나의 기록을 바탕으로 답변하고,
+            {'\n'}필요한 일반 정보도 함께 설명합니다.
           </p>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
