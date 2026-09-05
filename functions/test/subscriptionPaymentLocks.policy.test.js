@@ -27,7 +27,7 @@ const createSection = section(indexSrc, 'export const createSubscriptionBillingR
 const recoverSection = section(indexSrc, 'export const recoverSubscriptionBillingRequest = onCall', '// ===== 💳 결제 검증 (PortOne V2) =====');
 const subscribeSection = section(indexSrc, 'export const subscribeWithBillingKey = onCall', '// ===== 💳 정기구독 해지 =====');
 const completionSection = section(indexSrc, 'async function completeInitialBillingSubscription', 'async function markInitialBillingPaymentPending');
-const failedSection = section(indexSrc, 'async function markInitialBillingPaymentFailed', 'async function settleInitialBillingPayment');
+const failedSection = section(indexSrc, 'async function markInitialBillingPaymentFailed', 'async function markSubscriptionBillingRequestPreflightFailed');
 const retrySection = section(subscriptionPageSrc, 'const handleRetryPendingSubscription = async', 'const selected = PLANS');
 const handleSection = section(subscriptionPageSrc, 'const handleSubscribe = async', 'const selected = PLANS');
 const requestChargingWriteSection = section(subscribeSection, 'tx.set(requestRef, {', 'tx.set(lockRef, {');
@@ -80,7 +80,8 @@ assert(!recoverSection.includes('return { billingKey'));
 
 assert(completionSection.includes('tx.delete(lockRef)'));
 assert(completionSection.includes('billingKey: admin.firestore.FieldValue.delete()'));
-assert(failedSection.includes('lockRef.delete()'));
+assert(failedSection.includes('lockRef.set({'));
+assert(!failedSection.includes('lockRef.delete()'));
 
 assert(subscriptionPageSrc.includes("recoverSubscriptionBillingRequest')({})"));
 assert(subscriptionPageSrc.includes('if (billingRequest.pending === true)'));

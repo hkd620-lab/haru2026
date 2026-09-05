@@ -11,6 +11,7 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 
 export const PORTONE_API_SECRET = defineSecret('PORTONE_API_SECRET');
+export const PORTONE_BILLING_KEY_REVOKE_TIMEOUT_MS = 20_000;
 
 // cancelSubscription(index.ts)과 requestAccountDeletion(accountDeletion.ts) 양쪽에서
 // 공유하는 정기구독 해지 로직. index.ts와 accountDeletion.ts 사이의 순환 참조를 피하기 위해
@@ -120,11 +121,12 @@ export function getSafePortOneBillingKeyRevocationError(error: any) {
   const status = typeof error?.response?.status === 'number' ? error.response.status : undefined;
   const type = typeof data.type === 'string' ? data.type : undefined;
   const code = typeof data.code === 'string' ? data.code : undefined;
+  const axiosCode = typeof error?.code === 'string' ? error.code : undefined;
   return {
     status,
     type,
-    code,
-    safeReason: code || type || (typeof status === 'number' ? `HTTP_${status}` : 'PORTONE_BILLING_KEY_DELETE_FAILED'),
+    code: code || axiosCode,
+    safeReason: code || type || axiosCode || (typeof status === 'number' ? `HTTP_${status}` : 'PORTONE_BILLING_KEY_DELETE_FAILED'),
   };
 }
 
@@ -135,6 +137,7 @@ export async function revokePortOneBillingKey(billingKey: string, apiSecret: str
   try {
     await axios.delete(`https://api.portone.io/billing-keys/${encodeURIComponent(billingKey)}`, {
       headers: { Authorization: `PortOne ${apiSecret.trim()}` },
+      timeout: PORTONE_BILLING_KEY_REVOKE_TIMEOUT_MS,
     });
   } catch (error: any) {
     if (error?.response?.status === 404) {

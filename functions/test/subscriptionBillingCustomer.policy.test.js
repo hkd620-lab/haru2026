@@ -163,7 +163,8 @@ assertBefore(subscribeSection, 'if (billingError.terminal)', "throw new HttpsErr
 assert(subscribeSection.includes("lockRef.set({\n          status: 'charging',\n          lastPaymentId: paymentId"));
 assert(subscribeSection.includes("portoneStatus: billingError.portoneStatus"));
 assert(failedSection.includes("status: 'failed'"));
-assert(failedSection.includes('lockRef.delete()'));
+assert(failedSection.includes('lockRef.set({'));
+assert(!failedSection.includes('lockRef.delete()'));
 assertBefore(subscribeSection, 'await markInitialBillingPaymentFailed(requestRef, paymentRef, billingError.portoneStatus, lockRef)', "throw new HttpsError('failed-precondition', '첫 결제가 실패 또는 취소되었습니다.')");
 
 assert(recurringSection.includes('if (billingError.terminal)'));
