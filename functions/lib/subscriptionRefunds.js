@@ -45,6 +45,7 @@ const axios_1 = __importDefault(require("axios"));
 const subscriptionRefundsCore_1 = require("./subscriptionRefundsCore");
 const subscriptionHelpers_1 = require("./subscriptionHelpers");
 const internalEntitlements_1 = require("./internalEntitlements");
+const subscriptionBillingCore_1 = require("./subscriptionBillingCore");
 if (!admin.apps.length) {
     admin.initializeApp();
 }
@@ -244,6 +245,7 @@ async function markSubscriptionRefundedFromPayment(refundRequestId, paymentId, p
     const targetRefundAmount = Number(refundData.targetRefundAmount || refundData.refundableAmount || refundData.requestedRefundAmount || refundData.paidAmount || 0);
     if (!(0, subscriptionRefundsCore_1.shouldMarkRefundedFromPortOne)(payment, targetRefundAmount))
         return false;
+    const paymentMethodFields = (0, subscriptionBillingCore_1.buildNormalizedPaymentMethodFields)(payment);
     await db.runTransaction(async (tx) => {
         const fresh = await tx.get(requestRef);
         const freshData = fresh.data() || {};
@@ -266,6 +268,7 @@ async function markSubscriptionRefundedFromPayment(refundRequestId, paymentId, p
             alreadyRefundedAmount: refundedAmount,
             cancellableAmountAfterRefund: cancellableAmount,
             portoneStatus: payment.status || null,
+            ...paymentMethodFields,
             refundedAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             publicMessage: '환불이 완료되었습니다.',
@@ -276,6 +279,7 @@ async function markSubscriptionRefundedFromPayment(refundRequestId, paymentId, p
             refundedAmount,
             cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
             portoneStatus: payment.status || null,
+            ...paymentMethodFields,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
         if (subRef && subscriptionDocumentMatchesPayment((subSnap === null || subSnap === void 0 ? void 0 : subSnap.data()) || {}, paymentId)) {
@@ -465,6 +469,7 @@ exports.requestSubscriptionRefund = (0, https_1.onCall)({ region: 'asia-northeas
         if (refundAmounts.targetRefundAmount <= 0) {
             throw new subscriptionRefundsCore_1.SubscriptionRefundPolicyError('nothing_to_refund', '환불 가능한 잔액이 없습니다.');
         }
+        const paymentMethodFields = (0, subscriptionBillingCore_1.buildNormalizedPaymentMethodFields)(payment);
         const refundRequestId = `subscription_${paymentId}`;
         const nowIso = new Date().toISOString();
         const requestRef = refundRequestRef(refundRequestId);
@@ -483,6 +488,7 @@ exports.requestSubscriptionRefund = (0, https_1.onCall)({ region: 'asia-northeas
                 billingType: orderData.billingType,
                 provider: orderData.provider || null,
                 payMethod: orderData.payMethod || null,
+                ...paymentMethodFields,
                 storeId: HARU_PORTONE_STORE_ID,
                 productName: orderData.orderName || 'HARU2026 정기구독',
                 paidAmount,

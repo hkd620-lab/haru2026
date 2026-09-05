@@ -103,16 +103,25 @@ const HERO_FLOW = [
 
 const PRICING = [
   {
-    plan: '베이직', price: '₩4,000', period: '/월',
-    note: '기록하고 정리하는 기본 구독',
-    bullets: ['12종 기록 형식', 'SAYU AI 다듬기', '기록 저장 및 조회'],
-    highlight: false, badge: '',
+    plan: '무료', price: '₩0', period: '/월',
+    note: '결제 없이 기본 기록과 일부 AI 기능을 제한적으로 이용',
+    bullets: ['기본 기록 작성 및 조회', '일부 AI 기능 무료 한도 내 체험', '독서 OCR 월 20장'],
+    highlight: false, badge: '무료 시작',
+    available: true, buttonLabel: '무료로 시작하기', href: '/login',
   },
   {
-    plan: '프리미엄', price: '₩6,000', period: '/월',
-    note: '기록을 해석하고 활용하는 확장 구독',
-    bullets: ['베이직 모든 기능', 'SAYU PDF 저장', '월간/분기/연간 통계'],
-    highlight: true, badge: 'RECOMMENDED',
+    plan: '베이직', price: '₩4,000', period: '/월',
+    note: '더 넉넉한 기존 사용 한도와 유료 저장 기능',
+    bullets: ['EPUB 저장', '하루LAW 첨부파일', '독서 OCR 월 100장'],
+    highlight: true, badge: '결제 가능',
+    available: true, buttonLabel: '베이직 구독하기', href: '/subscription?plan=basic',
+  },
+  {
+    plan: '프리미엄', price: '₩6,000 예정', period: '/월',
+    note: '준비 중인 확장 플랜',
+    bullets: ['독서 OCR 월 300장 예정', '장기 범위 합본 준비 중', '장기 범위 통계 준비 중'],
+    highlight: false, badge: '준비 중',
+    available: false, buttonLabel: '준비 중', href: '',
   },
 ];
 
@@ -658,27 +667,37 @@ export function LandingPage() {
       {SHOW_PRICING && (
         <section className="lp-section lp-section--soft tight" id="pricing">
           <div className="lp-wrap" style={{ textAlign: 'center' }}>
-            <div className="lp-trial-badge">🎁 지금 가입하면 <strong>7일 무료 체험</strong></div>
+            <div className="lp-trial-badge">무료 0원 · 베이직 월 4,000원 · 프리미엄 준비 중</div>
             <h2 className="lp-h2" style={{ textAlign: 'center' }}>구독 요금 안내</h2>
-            <p className="lp-lead" style={{ margin: '0 auto 48px', textAlign: 'center' }}>하루의 기록이 쌓여 인생의 빅데이터가 됩니다.</p>
+            <p className="lp-lead" style={{ margin: '0 auto 48px', textAlign: 'center' }}>무료로 시작하고, 필요한 순간 베이직으로 확장할 수 있습니다.</p>
             <div className="lp-plans">
               {PRICING.map((p) => (
                 <div key={p.plan} className={`lp-plan${p.highlight ? ' lp-plan--hl' : ''}`}>
                   {p.badge && <span className="lp-plan__badge">{p.badge}</span>}
                   <div className="lp-plan__name">{p.plan}</div>
                   <div className="lp-plan__price">{p.price}<span>{p.period}</span></div>
-                  <div className="lp-plan__vat">부가세 포함</div>
+                  <div className="lp-plan__vat">{p.price === '₩0' ? '결제 없음' : '부가세 포함'}</div>
                   <p className="lp-plan__note">{p.note}</p>
                   <ul className="lp-plan__list">
                     {p.bullets.map((b) => (
                       <li key={b}><Icon name="check" size={15} color={p.highlight ? C.peach : C.olive} sw={2.2} />{b}</li>
                     ))}
                   </ul>
-                  <button className="lp-btn lp-btn--primary" style={{ width: '100%' }} onClick={() => window.location.href = '/subscription'}>구독 시작</button>
+                  <button
+                    className="lp-btn lp-btn--primary"
+                    style={{ width: '100%' }}
+                    disabled={!p.available}
+                    onClick={() => {
+                      if (!p.available || !p.href) return;
+                      window.location.href = p.href;
+                    }}
+                  >
+                    {p.buttonLabel}
+                  </button>
                 </div>
               ))}
             </div>
-            <p className="lp-plan__foot">7일 체험 기간 중 언제든 해지 가능 · 결제는 체험 종료 후 시작됩니다.</p>
+            <p className="lp-plan__foot">자동 체험 기간과 자동 유료 전환은 제공하지 않습니다. 베이직은 사용자가 직접 결제할 때만 시작됩니다.</p>
           </div>
         </section>
       )}

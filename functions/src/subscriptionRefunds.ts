@@ -33,6 +33,7 @@ import {
 } from './subscriptionRefundsCore';
 import { cancelSubscriptionForUid, revokeBillingKeyForUid, PORTONE_API_SECRET } from './subscriptionHelpers';
 import { INTERNAL_ADMIN_UID } from './internalEntitlements';
+import { buildNormalizedPaymentMethodFields } from './subscriptionBillingCore';
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -272,6 +273,7 @@ async function markSubscriptionRefundedFromPayment(
 
   const targetRefundAmount = Number(refundData.targetRefundAmount || refundData.refundableAmount || refundData.requestedRefundAmount || refundData.paidAmount || 0);
   if (!shouldMarkRefundedFromPortOne(payment, targetRefundAmount)) return false;
+  const paymentMethodFields = buildNormalizedPaymentMethodFields(payment);
 
   await db.runTransaction(async (tx) => {
     const fresh = await tx.get(requestRef);
@@ -294,6 +296,7 @@ async function markSubscriptionRefundedFromPayment(
       alreadyRefundedAmount: refundedAmount,
       cancellableAmountAfterRefund: cancellableAmount,
       portoneStatus: payment.status || null,
+      ...paymentMethodFields,
       refundedAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       publicMessage: '환불이 완료되었습니다.',
@@ -304,6 +307,7 @@ async function markSubscriptionRefundedFromPayment(
       refundedAmount,
       cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
       portoneStatus: payment.status || null,
+      ...paymentMethodFields,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
     if (subRef && subscriptionDocumentMatchesPayment(subSnap?.data() || {}, paymentId)) {
@@ -520,6 +524,7 @@ export const requestSubscriptionRefund = onCall(
         throw new SubscriptionRefundPolicyError('nothing_to_refund', '환불 가능한 잔액이 없습니다.');
       }
 
+      const paymentMethodFields = buildNormalizedPaymentMethodFields(payment);
       const refundRequestId = `subscription_${paymentId}`;
       const nowIso = new Date().toISOString();
       const requestRef = refundRequestRef(refundRequestId);
@@ -539,6 +544,7 @@ export const requestSubscriptionRefund = onCall(
           billingType: orderData.billingType,
           provider: orderData.provider || null,
           payMethod: orderData.payMethod || null,
+          ...paymentMethodFields,
           storeId: HARU_PORTONE_STORE_ID,
           productName: orderData.orderName || 'HARU2026 정기구독',
           paidAmount,

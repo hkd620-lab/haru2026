@@ -69,6 +69,9 @@ const PLANS: Record<PaidPlan, {
   priceLabel: string;
   description: string;
   features: string[];
+  ocrLimitLabel: string;
+  available: boolean;
+  badge?: string;
 }> = {
   basic: {
     title: '베이직',
@@ -77,24 +80,29 @@ const PLANS: Record<PaidPlan, {
     priceLabel: '₩4,000',
     description: '1개월 단위로 자동 갱신되는 기본 구독입니다',
     features: [
-      '12종 기록 형식',
-      'SAYU AI 다듬기',
-      '기록 저장 및 조회',
-      'TEXT/HTML 출력',
+      'EPUB 저장',
+      '하루LAW 첨부파일',
+      '더 넉넉한 AI 이용',
+      '독서 OCR 월 100장',
     ],
+    ocrLimitLabel: '독서 OCR 월 100장',
+    available: true,
   },
   premium: {
     title: '프리미엄',
     orderName: 'HARU2026 프리미엄 1개월 정기구독',
     amount: 6000,
-    priceLabel: '₩6,000',
-    description: '1개월 단위로 자동 갱신되는 확장 구독입니다',
+    priceLabel: '₩6,000 예정',
+    description: '프리미엄은 준비 중이며 이번 출시에서는 결제되지 않습니다',
     features: [
-      '베이직 모든 기능',
-      'SAYU PDF 저장',
-      '월간/분기/연간 기록합침',
-      '월간/분기/연간 통계',
+      '독서 OCR 월 300장 예정',
+      '장기 범위 합본 준비 중',
+      '장기 범위 통계 준비 중',
+      '식물탐정 프리미엄 판정 유지',
     ],
+    ocrLimitLabel: '독서 OCR 월 300장 예정',
+    available: false,
+    badge: '준비 중',
   },
 };
 
@@ -115,6 +123,8 @@ const SUBSCRIPTION_PAYMENT_METHODS: Record<SubscriptionPaymentMethod, Subscripti
   },
 };
 const SUBSCRIPTION_PENDING_MESSAGE = '결제 상태를 확인하고 있습니다. 잠시 후 다시 확인해 주세요.';
+const KAKAOPAY_BILLING_UNAVAILABLE_MESSAGE = '카카오페이 정기결제 준비 중입니다. 현재는 카드 정기결제를 이용해 주세요.';
+const PREMIUM_COMING_SOON_MESSAGE = '프리미엄은 준비 중입니다. 현재는 베이직 월 4,000원만 결제할 수 있습니다.';
 const SUBSCRIPTION_RECOVERY_STORAGE_KEY = 'haru.subscription.pendingBillingKey';
 
 function getSubscriptionPaymentMethod(value: string | null): SubscriptionPaymentMethod | null {
@@ -134,7 +144,7 @@ function parsePendingSubscriptionRecovery(value: string | null): PendingSubscrip
   try {
     const parsed = JSON.parse(value) as Partial<PendingSubscriptionRecovery>;
     const method = getSubscriptionPaymentMethod(parsed.method || null);
-    const plan = parsed.plan === 'basic' || parsed.plan === 'premium' ? parsed.plan : null;
+    const plan = parsed.plan === 'basic' ? parsed.plan : null;
     if (!plan || !method || !parsed.issueId) return null;
     return {
       plan,
@@ -190,7 +200,7 @@ export default function SubscriptionPage() {
   const { user, loading: authLoading } = useAuth();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<PaidPlan>('premium');
+  const [selectedPlan, setSelectedPlan] = useState<PaidPlan>('basic');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -252,8 +262,11 @@ export default function SubscriptionPage() {
 
   useEffect(() => {
     const plan = searchParams.get('plan');
-    if (plan === 'basic' || plan === 'premium') {
-      setSelectedPlan(plan);
+    if (plan === 'basic') {
+      setSelectedPlan('basic');
+    } else if (plan === 'premium') {
+      setSelectedPlan('basic');
+      setResultMessage(PREMIUM_COMING_SOON_MESSAGE);
     }
     const paymentMethod = getSubscriptionPaymentMethod(searchParams.get('method'));
     if (paymentMethod) {
@@ -337,7 +350,7 @@ export default function SubscriptionPage() {
     }
 
     const planParam = searchParams.get('plan');
-    const redirectedPlan: PaidPlan = planParam === 'basic' || planParam === 'premium' ? planParam : selectedPlan;
+    const redirectedPlan: PaidPlan = planParam === 'basic' ? 'basic' : selectedPlan;
     const recovery = {
       plan: redirectedPlan,
       method: redirectedPaymentMethod,
@@ -376,6 +389,10 @@ export default function SubscriptionPage() {
       alert('청약철회 제한 및 환불정책 안내에 동의해 주세요.');
       return;
     }
+    if (selectedPlan !== 'basic') {
+      setResultMessage(PREMIUM_COMING_SOON_MESSAGE);
+      return;
+    }
     const existingRecovery = pendingSubscriptionRecovery || readPendingSubscriptionRecovery();
     if (existingRecovery) {
       setPendingSubscriptionRecovery(existingRecovery);
@@ -408,16 +425,14 @@ export default function SubscriptionPage() {
       }
 
       const functions = getFunctions(undefined, 'asia-northeast3');
-      const createSubscriptionBillingRequest = httpsCallable(functions, 'createSubscriptionBillingRequest');
       const paymentMethodConfig = SUBSCRIPTION_PAYMENT_METHODS[selectedPaymentMethod];
       let channelKey = '';
 
       if (selectedPaymentMethod === 'kakaopay') {
-        channelKey = import.meta.env.VITE_PORTONE_KAKAOPAY_BILLING_CHANNEL_KEY
-          || import.meta.env.VITE_PORTONE_KAKAOPAY_CHANNEL_KEY
-          || import.meta.env.VITE_PORTONE_CHANNEL_KEY;
+        channelKey = import.meta.env.VITE_PORTONE_KAKAOPAY_BILLING_CHANNEL_KEY;
         if (!channelKey) {
-          throw new Error('카카오페이 결제 채널 키가 설정되지 않았습니다.');
+          setResultMessage(KAKAOPAY_BILLING_UNAVAILABLE_MESSAGE);
+          return;
         }
       } else {
         channelKey = import.meta.env.VITE_PORTONE_INICIS_BILLING_CHANNEL_KEY
@@ -427,6 +442,7 @@ export default function SubscriptionPage() {
         }
       }
 
+      const createSubscriptionBillingRequest = httpsCallable(functions, 'createSubscriptionBillingRequest');
       const requestResult = await createSubscriptionBillingRequest({
         plan: selectedPlan,
         provider: paymentMethodConfig.provider,
@@ -537,6 +553,8 @@ export default function SubscriptionPage() {
   const selected = PLANS[selectedPlan];
   const selectedPaymentOption = SUBSCRIPTION_PAYMENT_METHODS[selectedPaymentMethod];
   const hasPendingSubscriptionRecovery = pendingSubscriptionRecovery !== null;
+  const isKakaoPayBillingReady = Boolean(import.meta.env.VITE_PORTONE_KAKAOPAY_BILLING_CHANNEL_KEY);
+  const selectedKakaoPayBillingUnavailable = selectedPaymentMethod === 'kakaopay' && !isKakaoPayBillingReady;
 
   if (!authLoading && !user) {
     return (
@@ -560,7 +578,7 @@ export default function SubscriptionPage() {
 
   return (
     <div className="min-h-screen bg-[#EDE9F5] flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
+      <div className="w-full max-w-4xl">
 
         <div className="text-center mb-4">
           <h1 className="text-2xl font-black text-[#1A3C6E] mb-1">HARU 구독 플랜</h1>
@@ -595,19 +613,46 @@ export default function SubscriptionPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+          <div className="rounded-2xl p-5 text-left border-2 bg-white border-gray-200">
+            <div className="text-sm font-bold mb-1 text-[#1A3C6E]">무료</div>
+            <div className="text-3xl font-black mb-1 text-gray-800">₩0</div>
+            <div className="text-xs mb-2 text-gray-500">/ 월</div>
+            <div className="text-xs font-bold mb-2 text-[#047857]">결제·빌링키 등록 없음</div>
+            <p className="text-xs mb-3 text-gray-600">기본 기록 작성과 무료 허용 기능을 이용합니다.</p>
+            <ul className="space-y-1 text-xs text-gray-600">
+              <li>✓ 기본 기록 작성 및 조회</li>
+              <li>✓ SAYU AI 다듬기 기존 제한 내 이용</li>
+              <li>✓ 독서 OCR 월 20장</li>
+              <li>✓ 유료 기능은 구독 후 이용</li>
+            </ul>
+          </div>
           {(Object.keys(PLANS) as PaidPlan[]).map((planId) => {
             const plan = PLANS[planId];
             const isSelected = selectedPlan === planId;
+            const isAvailable = plan.available;
 
             return (
               <button
                 key={planId}
                 type="button"
-                onClick={() => setSelectedPlan(planId)}
-                className={`rounded-2xl p-5 text-left border-2 transition-all ${isSelected ? 'bg-[#1A3C6E] border-[#10b981] shadow-lg' : 'bg-white border-gray-200 hover:border-[#1A3C6E]/40'}`}
+                onClick={() => {
+                  if (!isAvailable) return;
+                  setSelectedPlan(planId);
+                  if (resultMessage === PREMIUM_COMING_SOON_MESSAGE) setResultMessage('');
+                }}
+                disabled={!isAvailable || loading}
+                aria-disabled={!isAvailable}
+                className={`rounded-2xl p-5 text-left border-2 transition-all disabled:cursor-not-allowed ${isSelected ? 'bg-[#1A3C6E] border-[#10b981] shadow-lg' : 'bg-white border-gray-200'} ${isAvailable ? 'hover:border-[#1A3C6E]/40' : 'opacity-70'}`}
               >
-                <div className={`text-sm font-bold mb-1 ${isSelected ? 'text-[#10b981]' : 'text-[#1A3C6E]'}`}>{plan.title}</div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className={`text-sm font-bold mb-1 ${isSelected ? 'text-[#10b981]' : 'text-[#1A3C6E]'}`}>{plan.title}</div>
+                  {plan.badge && (
+                    <span className={`rounded-full px-2 py-1 text-[10px] font-black ${isSelected ? 'bg-white/10 text-[#bbf7d0]' : 'bg-[#FEF3C7] text-[#92400E]'}`}>
+                      {plan.badge}
+                    </span>
+                  )}
+                </div>
                 <div className={`text-3xl font-black mb-1 ${isSelected ? 'text-white' : 'text-gray-800'}`}>
                   {plan.priceLabel}
                 </div>
@@ -616,7 +661,7 @@ export default function SubscriptionPage() {
                   부가세 포함
                 </div>
                 <div className={`text-xs font-bold mb-2 ${isSelected ? 'text-[#bbf7d0]' : 'text-[#047857]'}`}>
-                  1개월 정기구독 · 매월 자동결제
+                  {isAvailable ? '1개월 정기구독 · 매월 자동결제' : '이번 출시 결제 차단'}
                 </div>
                 <p className={`text-xs mb-3 ${isSelected ? 'text-gray-200' : 'text-gray-600'}`}>{plan.description}</p>
                 <ul className={`space-y-1 text-xs ${isSelected ? 'text-gray-100' : 'text-gray-600'}`}>
@@ -647,7 +692,14 @@ export default function SubscriptionPage() {
                     name="subscription-payment-method"
                     value={method}
                     checked={isSelected}
-                    onChange={() => setSelectedPaymentMethod(method)}
+                    onChange={() => {
+                      setSelectedPaymentMethod(method);
+                      if (method === 'kakaopay' && !isKakaoPayBillingReady) {
+                        setResultMessage(KAKAOPAY_BILLING_UNAVAILABLE_MESSAGE);
+                      } else if (resultMessage === KAKAOPAY_BILLING_UNAVAILABLE_MESSAGE) {
+                        setResultMessage('');
+                      }
+                    }}
                     disabled={loading}
                     className="sr-only"
                   />
@@ -656,6 +708,11 @@ export default function SubscriptionPage() {
                     {option.label}
                   </span>
                   <span className="mt-1 block text-xs text-gray-500">{option.description}</span>
+                  {method === 'kakaopay' && !isKakaoPayBillingReady && (
+                    <span className="mt-2 block text-xs font-bold text-[#b45309]">
+                      카카오페이 정기결제 준비 중
+                    </span>
+                  )}
                 </label>
               );
             })}
@@ -734,7 +791,7 @@ export default function SubscriptionPage() {
 
         <button
           onClick={() => handleSubscribe()}
-          disabled={loading || authLoading || !withdrawalConsent || hasPendingSubscriptionRecovery}
+          disabled={loading || authLoading || !withdrawalConsent || hasPendingSubscriptionRecovery || selectedKakaoPayBillingUnavailable || selectedPlan !== 'basic'}
           className="w-full bg-[#1A3C6E] hover:bg-[#142f57] text-white font-black text-base py-4 rounded-2xl transition-colors disabled:opacity-50 mb-3"
         >
           {loading ? '결제 처리 중...' : hasPendingSubscriptionRecovery ? '기존 정기결제 상태 확인 필요' : `${selected.title} 1개월 ${selectedPaymentOption.label} 결제창 열기`}

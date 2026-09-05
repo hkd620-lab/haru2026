@@ -922,7 +922,7 @@ export function GyeongdaePreviewPage() {
                 내 기록도 이렇게 모아보기
               </Button>
               <Button variant="primary" onClick={goLogin}>
-                7일 무료로 시작하기
+                무료로 시작하기
               </Button>
             </div>
           </Card>
@@ -1062,7 +1062,7 @@ export function GyeongdaePreviewPage() {
         <Section
           id="subscribe"
           icon={<Sparkles size={20} />}
-          title="7일 동안 내 기록으로 직접 확인해보세요"
+          title="무료로 시작하고 필요한 만큼 확장하세요"
           body="HARU2026은 하루 한 줄을 쌓아 나의 생활문서, 감정 흐름, 반복 주제, 미래보기 자료로 바꿔줍니다."
         >
           <p style={{ ...largeTextStyle, maxWidth: 760 }}>
@@ -1071,28 +1071,29 @@ export function GyeongdaePreviewPage() {
           </p>
           <div data-g-grid-2 style={{ ...gridStyle(2), marginTop: 16 }}>
             <PriceCard
-              name="LIGHT"
+              name="베이직"
               price="₩4,000 / 월"
               points={[
                 '하루 기록을 가볍게 시작하고 싶은 분',
-                'SAYU 정리와 기본 기록 관리를 쓰고 싶은 분',
-                '월간 생활문서를 경험해보고 싶은 분',
+                'EPUB 저장과 하루LAW 첨부파일을 쓰고 싶은 분',
+                '더 넉넉한 기존 사용 한도가 필요한 분',
               ]}
-              button="7일 무료로 시작하기"
-              featured={false}
+              button="베이직 구독하기"
+              featured
               onClick={goLogin}
             />
             <PriceCard
-              name="PREMIUM"
-              price="₩6,000 / 월"
+              name="프리미엄"
+              price="₩6,000 예정 / 월"
               points={[
-                '합본, 통계, 미래보기 활용을 더 깊게 보고 싶은 분',
+                '장기 범위 합본과 통계를 기다리는 분',
                 '건강, 가족, 텃밭, 독서 등 여러 기록을 관리하고 싶은 분',
-                '관련 비서 연결까지 활용하고 싶은 분',
+                '프리미엄 공개 후 확장 기능을 확인할 분',
               ]}
-              button="프리미엄으로 시작하기"
-              featured
-              onClick={goLogin}
+              button="준비 중"
+              featured={false}
+              disabled
+              onClick={() => undefined}
             />
           </div>
         </Section>
@@ -1108,7 +1109,7 @@ export function GyeongdaePreviewPage() {
               지금 한 줄부터 시작하기
             </Button>
             <Button variant="outlineLight" onClick={goLogin}>
-              7일 무료로 시작하기
+              무료로 시작하기
             </Button>
           </div>
         </section>
@@ -1231,6 +1232,7 @@ function PriceCard({
   button,
   featured,
   onClick,
+  disabled = false,
 }: {
   name: string;
   price: string;
@@ -1238,6 +1240,7 @@ function PriceCard({
   button: string;
   featured: boolean;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <Card
@@ -1246,7 +1249,7 @@ function PriceCard({
         boxShadow: featured ? '0 20px 44px -34px rgba(74,90,44,0.56)' : undefined,
       }}
     >
-      <PanelLabel>{featured ? '추천 플랜' : '가벼운 시작'}</PanelLabel>
+      <PanelLabel>{disabled ? '준비 중' : featured ? '추천 플랜' : '가벼운 시작'}</PanelLabel>
       <h3 style={{ ...cardTitleStyle, fontFamily: FONT_EN, fontSize: 22 }}>{name}</h3>
       <p style={{ ...cardTitleStyle, color: '#4A5A2C', fontSize: 28 }}>{price}</p>
       <PanelLabel>추천 대상</PanelLabel>
@@ -1255,7 +1258,7 @@ function PriceCard({
           <li key={point}>{point}</li>
         ))}
       </ul>
-      <Button variant={featured ? 'primary' : 'secondary'} onClick={onClick}>
+      <Button variant={featured ? 'primary' : 'secondary'} onClick={onClick} disabled={disabled}>
         {button}
       </Button>
     </Card>
@@ -1266,10 +1269,12 @@ function Button({
   variant,
   onClick,
   children,
+  disabled = false,
 }: {
   variant: 'primary' | 'secondary' | 'light' | 'outlineLight';
   onClick: () => void;
   children: ReactNode;
+  disabled?: boolean;
 }) {
   const styleByVariant: Record<typeof variant, CSSProperties> = {
     primary: {
@@ -1295,7 +1300,17 @@ function Button({
   };
 
   return (
-    <button type="button" className="g-page-button" onClick={onClick} style={{ ...buttonBaseStyle, ...styleByVariant[variant] }}>
+    <button
+      type="button"
+      className="g-page-button"
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        ...buttonBaseStyle,
+        ...styleByVariant[variant],
+        ...(disabled ? { opacity: 0.55, cursor: 'default' } : {}),
+      }}
+    >
       {children}
     </button>
   );

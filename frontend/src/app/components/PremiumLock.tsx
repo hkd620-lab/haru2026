@@ -18,13 +18,14 @@ export default function PremiumLock({ children, isPremium, message }: Props) {
         <span className="text-3xl mb-2">🔒</span>
         <p className="text-sm font-bold text-[#1A3C6E] mb-1">PREMIUM 기능</p>
         <p className="text-xs text-gray-500 mb-3 text-center px-4">
-          {message || '이 기능은 프리미엄 구독 후 이용 가능합니다'}
+          {message || '프리미엄은 준비 중입니다. 이번 출시에서는 결제되지 않습니다.'}
         </p>
         <button
-          onClick={() => window.location.href = '/subscription'}
-          className="bg-[#1A3C6E] text-white text-xs font-bold px-4 py-2 rounded-full hover:bg-[#10b981] transition-colors"
+          type="button"
+          disabled
+          className="bg-[#1A3C6E] text-white text-xs font-bold px-4 py-2 rounded-full opacity-60"
         >
-          월 6,000원으로 시작하기
+          프리미엄 준비 중
         </button>
       </div>
     </div>

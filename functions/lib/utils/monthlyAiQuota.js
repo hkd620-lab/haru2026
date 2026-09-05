@@ -116,6 +116,7 @@ function resolveMonthlyAiPlanFromSubscriptionData(uid, data, nowMs = Date.now())
     if (internalPlan)
         return internalPlan;
     const subscriptionData = data || {};
+    const status = String(subscriptionData.status || '').toLowerCase();
     const endDate = subscriptionData.endDate;
     const expiresAt = subscriptionData.expiresAt;
     const endTime = typeof endDate === 'string'
@@ -124,6 +125,8 @@ function resolveMonthlyAiPlanFromSubscriptionData(uid, data, nowMs = Date.now())
             ? expiresAt.toMillis()
             : Number.NaN;
     if (Number.isFinite(endTime) && endTime < nowMs)
+        return 'free';
+    if (status !== 'active' && status !== 'cancelled')
         return 'free';
     return normalizeMonthlyAiPlan(subscriptionData.plan);
 }

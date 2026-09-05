@@ -73,6 +73,16 @@ assert.strictEqual(resolveMonthlyAiPlanFromSubscriptionData('normal-user', {
   status: 'active',
   endDate: '2099-01-01T00:00:00.000Z',
 }), 'basic');
+assert.strictEqual(resolveMonthlyAiPlanFromSubscriptionData('normal-user', {
+  plan: 'premium',
+  status: 'cancelled',
+  endDate: '2099-01-01T00:00:00.000Z',
+}), 'premium', '해지 예약 프리미엄은 종료일까지 OCR 쿼터 판정에서도 유지되어야 함');
+assert.strictEqual(resolveMonthlyAiPlanFromSubscriptionData('normal-user', {
+  plan: 'basic',
+  status: 'none',
+  endDate: '2099-01-01T00:00:00.000Z',
+}), 'free', '활성/해지예약 상태가 아닌 플랜 잔여값은 OCR 권한으로 인정하지 않아야 함');
 
 // buildMonthlyOcrQuotaStatus 반환 형태 고정 (plan/used/limit/remaining/period)
 assert.deepStrictEqual(buildMonthlyOcrQuotaStatus('basic', 10, '2026-08'), {

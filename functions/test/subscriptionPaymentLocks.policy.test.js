@@ -30,6 +30,7 @@ const completionSection = section(indexSrc, 'async function completeInitialBilli
 const failedSection = section(indexSrc, 'async function markInitialBillingPaymentFailed', 'async function settleInitialBillingPayment');
 const retrySection = section(subscriptionPageSrc, 'const handleRetryPendingSubscription = async', 'const selected = PLANS');
 const handleSection = section(subscriptionPageSrc, 'const handleSubscribe = async', 'const selected = PLANS');
+const requestChargingWriteSection = section(subscribeSection, 'tx.set(requestRef, {', 'tx.set(lockRef, {');
 
 assert(indexSrc.includes('function getSubscriptionPaymentLockRef(uid: string)'));
 assert(indexSrc.includes('return db.doc(`subscriptionPaymentLocks/${uid}`)'));
@@ -59,6 +60,8 @@ assert(subscribeSection.includes('const lockRef = getSubscriptionPaymentLockRef(
 assert(subscribeSection.includes('tx.get(lockRef)'));
 assert(subscribeSection.includes('freshLockData.issueId !== issueId'));
 assert(subscribeSection.includes('billingKey,'));
+assert(requestChargingWriteSection.includes('billingKeyIssuedAt'));
+assert(!requestChargingWriteSection.includes('billingKey,'));
 assert(subscribeSection.includes('lastPaymentId: newPaymentId'));
 assert(subscribeSection.includes("action: 'settle_existing'"));
 assert(subscribeSection.includes('customer: getStoredSubscriptionBillingCustomer(freshData)'));

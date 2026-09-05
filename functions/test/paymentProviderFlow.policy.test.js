@@ -42,8 +42,8 @@ const subscriptionRetrySection = section(subscriptionPageSrc, 'const handleRetry
 
 assert(subscriptionPageSrc.includes("provider: 'kg_inicis'"));
 assert(subscriptionPageSrc.includes("provider: 'kakaopay'"));
+assert(subscriptionPageSrc.includes("const KAKAOPAY_BILLING_UNAVAILABLE_MESSAGE = '카카오페이 정기결제 준비 중입니다. 현재는 카드 정기결제를 이용해 주세요.'"));
 assert(!subscriptionPageSrc.includes('createClientPortOneRequestId'));
-assert(subscriptionPageSrc.includes("const createSubscriptionBillingRequest = httpsCallable(functions, 'createSubscriptionBillingRequest')"));
 assert(subscriptionPageSrc.includes("provider: paymentMethodConfig.provider"));
 assert(subscriptionPageSrc.includes('issueId: billingRequest.issueId'));
 assert(subscriptionPageSrc.includes('method=${selectedPaymentMethod}&issueId=${billingRequest.issueId}'));
@@ -99,6 +99,17 @@ assertBefore(subscriptionRedirectSection, 'confirmPendingSubscription(recovery)'
 assert(subscriptionHandleSection.includes('const existingRecovery = pendingSubscriptionRecovery || readPendingSubscriptionRecovery()'));
 assert(subscriptionHandleSection.includes('setResultMessage(SUBSCRIPTION_PENDING_MESSAGE)'));
 assertBefore(subscriptionHandleSection, 'const existingRecovery = pendingSubscriptionRecovery || readPendingSubscriptionRecovery()', "const createSubscriptionBillingRequest = httpsCallable(functions, 'createSubscriptionBillingRequest')");
+const kakaoChannelSection = section(
+  subscriptionHandleSection,
+  "if (selectedPaymentMethod === 'kakaopay') {",
+  "      } else {\n        channelKey = import.meta.env.VITE_PORTONE_INICIS_BILLING_CHANNEL_KEY",
+);
+assert(kakaoChannelSection.includes('channelKey = import.meta.env.VITE_PORTONE_KAKAOPAY_BILLING_CHANNEL_KEY;'));
+assert(!kakaoChannelSection.includes('VITE_PORTONE_KAKAOPAY_CHANNEL_KEY'));
+assert(!kakaoChannelSection.includes('VITE_PORTONE_CHANNEL_KEY'));
+assert(kakaoChannelSection.includes('setResultMessage(KAKAOPAY_BILLING_UNAVAILABLE_MESSAGE)'));
+assert(kakaoChannelSection.includes('return;'));
+assertBefore(subscriptionHandleSection, "if (selectedPaymentMethod === 'kakaopay')", "const createSubscriptionBillingRequest = httpsCallable(functions, 'createSubscriptionBillingRequest')");
 assert(subscriptionHandleSection.includes('if (billingRequest.pending === true)'));
 assertBefore(subscriptionHandleSection, 'if (billingRequest.pending === true)', 'requestIssueBillingKey');
 assert(subscriptionHandleSection.includes('savePendingSubscriptionRecovery(recovery)'));
@@ -150,7 +161,7 @@ assert(!singlePaymentPageSrc.includes('verifySinglePayment({ paymentId: complete
 assert(subscribeSection.includes("throw new HttpsError('invalid-argument', 'issueId가 필요합니다.')"));
 assert(subscribeSection.includes('const requestRef = getPaymentRequestRef(issueId)'));
 assert(subscribeSection.includes("requestData.uid !== uid || requestData.paymentType !== 'subscription' || requestData.billingType !== 'billing_key_issue'"));
-assert(subscribeSection.includes('const plan = assertPaidPlan(requestData.plan)'));
+assert(subscribeSection.includes('const plan = assertLaunchPurchasablePlan(requestData.plan)'));
 assert(subscribeSection.includes('const provider = getStoredPaymentProvider(requestData)'));
 assert(subscribeSection.includes("freshData.status === 'processed' || freshData.status === 'charging'"));
 assert(subscribeSection.includes("action: 'settle_existing'"));
@@ -184,6 +195,9 @@ assert(initialBillingCompletionSection.includes('tx.set(subRef'));
 assert(initialBillingCompletionSection.includes('tx.set(billingRef'));
 assert(initialBillingCompletionSection.includes('tx.set(params.requestRef'));
 assert(initialBillingCompletionSection.includes('tx.set(params.paymentRef'));
+assert(initialBillingCompletionSection.includes('const paymentMethodFields = getPortOnePaymentMethodWriteFields(params.payment)'));
+assert(initialBillingCompletionSection.includes('billingKeyIssued: true'));
+assert(initialBillingCompletionSection.includes('...paymentMethodFields'));
 assert(initialBillingCompletionSection.includes("status: 'active'"));
 assert(initialBillingCompletionSection.includes("status: 'processed'"));
 assert(initialBillingCompletionSection.includes('const subscriptionAlreadyActive'));
@@ -207,13 +221,24 @@ assert(recurringSection.includes('provider,'));
 assert(recurringSection.includes('payMethod,'));
 assert(recurringSection.includes('const customer = getStoredSubscriptionBillingCustomer(data)'));
 assert(recurringSection.includes('missing_recurring_customer_info'));
+assert(recurringSection.includes('const billingPeriod = getRecurringBillingPeriod(data.nextBillingDate)'));
+assert(recurringSection.includes('const paymentId = createRecurringPaymentId(uid, billingPeriod)'));
+assert(recurringSection.includes("status: 'processing'"));
+assert(recurringSection.includes('recurringAttemptStatus'));
+assert(recurringSection.includes('attemptCount: 1'));
+assert(recurringSection.includes("action: 'recover'"));
+assert(recurringSection.includes('fetchPortOnePaymentWithRetry(recurringAction.paymentId)'));
+assertBefore(recurringSection, 'const paymentRef = getPaymentRequestRef(paymentId)', 'axios.post');
 assert(recurringSection.includes('buildPortOneBillingKeyPaymentPayload({'));
-assert(recurringSection.includes('customer: lockedCustomer'));
+assert(recurringSection.includes('customer: recurringAction.customer'));
+assert(recurringSection.includes('billingPeriod: recurringAction.billingPeriod'));
+assert(recurringSection.includes("'Idempotency-Key': createPortOneIdempotencyKey(recurringAction.paymentId)"));
 assert(recurringSection.includes('const billingError = getPortOneBillingErrorSummary(error)'));
+assert(recurringSection.includes("status: 'lookup_failed'"));
 
 assert(verifySingleSection.includes('const orderRef = getPaymentRequestRef(paymentId)'));
 assert(verifySingleSection.includes('if (!orderSnap.exists || orderSnap.data()?.uid !== uid)'));
-assert(verifySingleSection.includes('const requestedPlan = assertPaidPlan(orderData.plan)'));
+assert(verifySingleSection.includes('const requestedPlan = assertLaunchPurchasablePlan(orderData.plan)'));
 assert(!verifySingleSection.includes('directPlan'));
 assert(!verifySingleSection.includes('!orderExists'));
 
@@ -222,5 +247,9 @@ assert(webhookSection.includes("freshOrderData?.billingType === 'single'"));
 assert(webhookSection.includes('tx.set(db.doc(`users/${uid}/subscription/info`)'));
 assert(webhookSection.includes('tx.set(singlePaymentRef'));
 assert(webhookSection.includes('const provider = getStoredPaymentProvider(freshOrderData)'));
+assert(webhookSection.includes("orderData?.paymentType === 'subscription' && orderData?.billingType === 'recurring'"));
+assert(webhookSection.includes('await settleRecurringBillingPayment({'));
+assert(webhookSection.includes("processedBy: 'webhook'"));
+assert(webhookSection.includes('recurringSettlementHandled'));
 
 console.log('payment provider flow policy tests passed');

@@ -305,22 +305,28 @@ export function AssistantOnboardingDetailPage() {
     },
     {
       id: 'plan',
-      title: '9. 구독과 무료체험',
-      subtitle: '먼저 7일 동안 써보고 결정할 수 있습니다.',
+      title: '9. 구독 플랜',
+      subtitle: '무료로 시작하고, 필요한 기능은 베이직으로 확장할 수 있습니다.',
       icon: <FileText size={20} />,
       children: (
-        <div data-assistant-detail="grid2" style={gridStyle(2)}>
+        <div data-assistant-detail="grid3" style={gridStyle(3)}>
           <div style={priceCardStyle}>
-            <div style={planNameStyle}>LIGHT</div>
-            <div style={priceStyle}>₩4,000 / 월</div>
-            <p style={bodyTextStyle}>가볍게 기록하고 SAYU 정리를 시작하는 기본 플랜입니다.</p>
-            <div style={trialStyle}>7일 무료 체험 제공</div>
+            <div style={planNameStyle}>무료</div>
+            <div style={priceStyle}>₩0 / 월</div>
+            <p style={bodyTextStyle}>기본 기록과 일부 AI 기능을 무료 한도 내에서 제한적으로 이용합니다.</p>
+            <div style={trialStyle}>결제 없음</div>
           </div>
           <div style={priceCardStyle}>
-            <div style={planNameStyle}>PREMIUM</div>
-            <div style={priceStyle}>₩6,000 / 월</div>
-            <p style={bodyTextStyle}>합본, 통계, 더 넓은 기록 활용을 함께 쓰는 플랜입니다.</p>
-            <div style={trialStyle}>7일 무료 체험 제공</div>
+            <div style={planNameStyle}>베이직</div>
+            <div style={priceStyle}>₩4,000 / 월</div>
+            <p style={bodyTextStyle}>EPUB 저장, 하루LAW 첨부파일, 더 넉넉한 기존 사용 한도를 제공합니다.</p>
+            <div style={trialStyle}>결제 가능</div>
+          </div>
+          <div style={priceCardStyle}>
+            <div style={planNameStyle}>프리미엄</div>
+            <div style={priceStyle}>₩6,000 예정 / 월</div>
+            <p style={bodyTextStyle}>장기 범위 합본과 통계는 준비 중이며 이번 출시에서는 결제되지 않습니다.</p>
+            <div style={trialStyle}>준비 중</div>
           </div>
         </div>
       ),
@@ -526,7 +532,7 @@ const twoColumnStyle: CSSProperties = {
   gap: 14,
 };
 
-const gridStyle = (columns: 2 | 4): CSSProperties => ({
+const gridStyle = (columns: 2 | 3 | 4): CSSProperties => ({
   display: 'grid',
   gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
   gap: 14,
