@@ -11,7 +11,10 @@ service firebase.storage {
     // 사용자별 이미지 업로드 허용 (records 내부)
     match /users/{userId}/records/{recordId}/{format}/images/{imageId} {
       allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.contentType.matches('image/.*')
+        && request.resource.size < 20 * 1024 * 1024;
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
@@ -32,7 +35,8 @@ service firebase.storage {
       allow write: if request.auth != null
         && request.auth.uid == userId
         && fileName.matches('.*\\.png')
-        && request.resource.contentType == 'image/png';
+        && request.resource.contentType == 'image/png'
+        && request.resource.size < 25 * 1024 * 1024;
       allow delete: if request.auth != null
         && request.auth.uid == userId
         && fileName.matches('.*\\.png');
@@ -41,7 +45,11 @@ service firebase.storage {
     // ✅ FormatModal 업로드 경로(users/{uid}/format_photos/...) 허용
     match /users/{userId}/format_photos/{fileName} {
       allow read: if request.auth != null && request.auth.uid == userId;
-      allow write, delete: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.contentType.matches('image/.*')
+        && request.resource.size < 15 * 1024 * 1024;
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
     // ✅ 하루식물탐정 사용자 확정 저장 경로(users/{uid}/plants/...) 허용
@@ -55,9 +63,14 @@ service firebase.storage {
     }
 
     // ✅ SNS 기록 가져오기 — Facebook ZIP 업로드 경로 (분석 후 함수가 삭제)
+    // 브라우저별 zip contentType 표기가 제각각이라 MIME은 제한하지 않고 크기만 제한
+    // (analyzeFacebookZip이 파일 전체를 메모리로 내려받으므로 대용량 유입 자체를 차단)
     match /users/{userId}/snsUploads/{fileName} {
       allow read: if request.auth != null && request.auth.uid == userId;
-      allow write, delete: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 100 * 1024 * 1024;
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
     // ✅ SNS 기록 가져오기 — 분석 결과 썸네일 (Functions가 생성·makePublic 처리)
@@ -78,6 +91,17 @@ service firebase.storage {
       allow read: if request.auth != null;
       allow write, delete: if request.auth != null
         && request.auth.uid == 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
+    }
+
+    // ✅ 프로필 이미지 업로드 경로(profile_images/{uid}/avatar.jpg) — 기존 규칙에 누락되어 있던 경로 추가
+    // (imageService.ts uploadProfileImage가 이미 이 경로로 업로드 중이나 이전까지 매칭되는 규칙이 없어 기본 거부 상태였음)
+    match /profile_images/{userId}/{fileName} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.contentType.matches('image/.*')
+        && request.resource.size < 5 * 1024 * 1024;
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
     // 하루LAW 자문 첨부 파일: 본인 경로만 접근, 구독 권한은 Functions에서 추가 확인
