@@ -163,7 +163,7 @@ assert(subscribeSection.includes('const requestRef = getPaymentRequestRef(issueI
 assert(subscribeSection.includes("requestData.uid !== uid || requestData.paymentType !== 'subscription' || requestData.billingType !== 'billing_key_issue'"));
 assert(subscribeSection.includes('const plan = assertLaunchPurchasablePlan(requestData.plan)'));
 assert(subscribeSection.includes('const provider = getStoredPaymentProvider(requestData)'));
-assert(subscribeSection.includes("freshData.status === 'processed' || freshData.status === 'charging'"));
+assert(subscribeSection.includes("['processed', 'charging', 'failed', 'cancelled', 'lookup_failed'].includes(freshStatus)"));
 assert(subscribeSection.includes("action: 'settle_existing'"));
 assert(subscribeSection.includes('customer: getStoredSubscriptionBillingCustomer(freshData)'));
 assert(subscribeSection.includes("if (locked.action === 'settle_existing')"));

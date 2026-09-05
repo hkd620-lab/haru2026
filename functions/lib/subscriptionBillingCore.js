@@ -43,6 +43,12 @@ exports.getStoredSubscriptionBillingCustomer = getStoredSubscriptionBillingCusto
 exports.assertStoredSubscriptionBillingCustomer = assertStoredSubscriptionBillingCustomer;
 exports.areSubscriptionBillingCustomersEqual = areSubscriptionBillingCustomersEqual;
 exports.buildPortOneBillingKeyPaymentPayload = buildPortOneBillingKeyPaymentPayload;
+exports.getInitialBillingKeyCleanup = getInitialBillingKeyCleanup;
+exports.isInitialBillingKeyCleanupComplete = isInitialBillingKeyCleanupComplete;
+exports.getCompleteInitialBillingKeyCleanup = getCompleteInitialBillingKeyCleanup;
+exports.isMatchingInitialBillingCleanupLock = isMatchingInitialBillingCleanupLock;
+exports.shouldBlockNewSubscriptionForInitialBillingCleanup = shouldBlockNewSubscriptionForInitialBillingCleanup;
+exports.resolveInitialBillingKeyCleanupReservation = resolveInitialBillingKeyCleanupReservation;
 exports.getPortOneBillingErrorSummary = getPortOneBillingErrorSummary;
 const crypto = __importStar(require("crypto"));
 class SubscriptionBillingPolicyError extends Error {
@@ -266,6 +272,161 @@ function buildPortOneBillingKeyPaymentPayload(params) {
             phoneNumber: params.customer.phoneNumber,
         },
         customData: JSON.stringify(params.customData),
+    };
+}
+function readString(value) {
+    return typeof value === 'string' ? value : '';
+}
+function normalizePaymentRequestStatus(status) {
+    return typeof status === 'string' ? status.trim().toLowerCase() : '';
+}
+function normalizePortOneStatus(status) {
+    return typeof status === 'string' ? status.trim().toUpperCase() : '';
+}
+function isFailedOrCancelledPaymentStatus(status) {
+    return ['FAILED', 'CANCELLED', 'PARTIAL_CANCELLED'].includes(status);
+}
+function isActiveSubscriptionData(data, nowMs) {
+    if ((data === null || data === void 0 ? void 0 : data.status) !== 'active')
+        return false;
+    const endDate = typeof (data === null || data === void 0 ? void 0 : data.endDate) === 'string' ? Date.parse(data.endDate) : NaN;
+    return Number.isNaN(endDate) || endDate > nowMs;
+}
+function getInitialBillingKeyCleanup(data) {
+    const cleanup = data === null || data === void 0 ? void 0 : data.initialBillingKeyCleanup;
+    if (!cleanup || typeof cleanup !== 'object')
+        return null;
+    const status = readString(cleanup.status);
+    const reason = readString(cleanup.reason);
+    return status ? { status, reason } : null;
+}
+function isInitialBillingKeyCleanupComplete(cleanup) {
+    return (cleanup === null || cleanup === void 0 ? void 0 : cleanup.status) === 'succeeded' || (cleanup === null || cleanup === void 0 ? void 0 : cleanup.status) === 'not_needed';
+}
+function getCompleteInitialBillingKeyCleanup(...docs) {
+    for (const doc of docs) {
+        const cleanup = getInitialBillingKeyCleanup(doc);
+        if (isInitialBillingKeyCleanupComplete(cleanup))
+            return cleanup;
+    }
+    return null;
+}
+function isMatchingInitialBillingCleanupLock(params) {
+    const lockData = params.lockData || {};
+    const lockPaymentId = readString(lockData.lastPaymentId);
+    return params.lockExists
+        && lockData.uid === params.uid
+        && lockData.issueId === params.issueId
+        && (!lockPaymentId || lockPaymentId === params.paymentId)
+        && lockData.paymentType === 'subscription'
+        && lockData.billingType === 'billing_key_issue'
+        && lockData.provider === params.provider;
+}
+function shouldBlockNewSubscriptionForInitialBillingCleanup(params) {
+    const requestData = params.requestData || {};
+    const lockData = params.lockData || {};
+    const status = normalizePaymentRequestStatus(requestData.status || lockData.status);
+    const cleanup = getCompleteInitialBillingKeyCleanup(requestData, lockData);
+    const hasStartedInitialBilling = typeof requestData.lastPaymentId === 'string'
+        || typeof lockData.lastPaymentId === 'string'
+        || !!requestData.billingKeyIssuedAt
+        || !!lockData.billingKeyIssuedAt;
+    const hasServerBillingKey = typeof lockData.billingKey === 'string' && lockData.billingKey.length > 0;
+    return hasStartedInitialBilling
+        && hasServerBillingKey
+        && (status === 'failed' || status === 'cancelled')
+        && !isInitialBillingKeyCleanupComplete(cleanup);
+}
+function resolveInitialBillingKeyCleanupReservation(input) {
+    const requestData = input.requestData || {};
+    const paymentData = input.paymentData || {};
+    const lockData = input.lockData || {};
+    const portoneStatus = normalizePortOneStatus(paymentData.portoneStatus || input.failurePortOneStatus || '');
+    const failureReason = readString(input.failureReason) || (portoneStatus ? `PORTONE_${portoneStatus}` : 'initial_charge_failed');
+    const completedCleanup = getCompleteInitialBillingKeyCleanup(requestData, paymentData, lockData);
+    if (completedCleanup) {
+        return {
+            shouldDelete: false,
+            status: completedCleanup.status,
+            reason: completedCleanup.reason || 'initial_charge_failed_cleanup_already_completed',
+            portoneStatus,
+            failureReason,
+            cleanupAlreadyComplete: true,
+        };
+    }
+    const requestProvider = readString(requestData.provider);
+    const paymentProvider = readString(paymentData.provider);
+    const requestMatches = input.requestExists
+        && requestData.uid === input.uid
+        && requestData.issueId === input.issueId
+        && requestData.lastPaymentId === input.paymentId
+        && requestData.paymentType === 'subscription'
+        && requestData.billingType === 'billing_key_issue'
+        && requestProvider === input.provider;
+    const paymentMatches = input.paymentExists
+        && paymentData.uid === input.uid
+        && paymentData.issueId === input.issueId
+        && paymentData.paymentId === input.paymentId
+        && paymentData.paymentType === 'subscription'
+        && paymentData.billingType === 'initial_billing'
+        && paymentProvider === input.provider;
+    const lockMatches = isMatchingInitialBillingCleanupLock({
+        uid: input.uid,
+        issueId: input.issueId,
+        paymentId: input.paymentId,
+        provider: input.provider,
+        lockExists: input.lockExists,
+        lockData,
+    });
+    const lockBillingKey = readString(lockData.billingKey);
+    const lockHasMatchingBillingKey = lockMatches && !!lockBillingKey && lockBillingKey === input.billingKey;
+    const requestStatus = normalizePaymentRequestStatus(requestData.status);
+    const paymentStatus = normalizePaymentRequestStatus(paymentData.status);
+    const lockStatus = normalizePaymentRequestStatus(lockData.status);
+    const initialChargeFailed = isFailedOrCancelledPaymentStatus(portoneStatus)
+        && (requestStatus === 'failed' || paymentStatus === 'failed' || lockStatus === 'failed');
+    let reason = '';
+    let status = 'not_needed';
+    if (!input.billingKey) {
+        reason = 'billing_key_missing';
+        status = 'unknown';
+    }
+    else if (!requestMatches || !paymentMatches || !lockMatches || !lockHasMatchingBillingKey) {
+        reason = 'billing_key_ownership_unconfirmed';
+        status = 'unknown';
+    }
+    else if (!requestData.billingKeyIssuedAt && !lockData.billingKeyIssuedAt) {
+        reason = 'billing_key_issue_unconfirmed';
+        status = 'unknown';
+    }
+    else if (requestStatus === 'processed' || paymentStatus === 'processed' || portoneStatus === 'PAID') {
+        reason = 'initial_charge_paid';
+    }
+    else if (!initialChargeFailed) {
+        reason = 'initial_charge_result_unconfirmed';
+        status = 'unknown';
+    }
+    else if (isActiveSubscriptionData(input.subscriptionData, input.nowMs)
+        || isActiveSubscriptionData(input.billingSubscriptionData, input.nowMs)) {
+        reason = 'active_subscription_exists';
+    }
+    if (reason) {
+        return {
+            shouldDelete: false,
+            status,
+            reason,
+            portoneStatus,
+            failureReason,
+            cleanupAlreadyComplete: false,
+        };
+    }
+    return {
+        shouldDelete: true,
+        status: 'unknown',
+        reason: 'initial_charge_failed',
+        portoneStatus,
+        failureReason,
+        cleanupAlreadyComplete: false,
     };
 }
 function getPortOneBillingErrorSummary(error) {

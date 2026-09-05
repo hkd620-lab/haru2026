@@ -687,6 +687,11 @@ async function completeInitialBillingSubscription(params) {
             lastPaymentId: params.paymentId,
             billingKeyIssued: true,
             billingKey: admin.firestore.FieldValue.delete(),
+            initialBillingKeyCleanup: {
+                status: 'not_needed',
+                reason: 'initial_charge_paid',
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
             ...paymentMethodFields,
             processedAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -696,6 +701,11 @@ async function completeInitialBillingSubscription(params) {
             portoneStatus: ((_a = params.payment) === null || _a === void 0 ? void 0 : _a.status) || 'PAID',
             paymentMethod,
             billingKeyIssued: true,
+            initialBillingKeyCleanup: {
+                status: 'not_needed',
+                reason: 'initial_charge_paid',
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
             ...paymentMethodFields,
             processedAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -733,7 +743,6 @@ async function markInitialBillingPaymentFailed(requestRef, paymentRef, portoneSt
         requestRef.set({
             status: 'failed',
             portoneStatus,
-            billingKey: admin.firestore.FieldValue.delete(),
             failedAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true }),
@@ -745,7 +754,12 @@ async function markInitialBillingPaymentFailed(requestRef, paymentRef, portoneSt
         }, { merge: true }),
     ];
     if (lockRef) {
-        writes.push(lockRef.delete());
+        writes.push(lockRef.set({
+            status: 'failed',
+            portoneStatus,
+            failedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true }));
     }
     await Promise.all(writes);
 }
@@ -761,6 +775,218 @@ async function markSubscriptionBillingRequestPreflightFailed(requestRef, lockRef
         }, { merge: true }),
         lockRef.delete(),
     ]);
+}
+function buildInitialBillingKeyCleanupWrite(status, reason, extra = {}) {
+    return {
+        initialBillingKeyCleanup: {
+            status,
+            reason,
+            ...extra,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+}
+function getSafeInitialBillingKeyCleanupOperationError(error) {
+    return {
+        name: typeof (error === null || error === void 0 ? void 0 : error.name) === 'string' ? error.name : undefined,
+        code: typeof (error === null || error === void 0 ? void 0 : error.code) === 'string' ? error.code : undefined,
+    };
+}
+async function writeInitialBillingKeyCleanupStatus(params, status, reason, extra = {}, options = {}) {
+    const batch = db.batch();
+    const cleanupWrite = buildInitialBillingKeyCleanupWrite(status, reason, extra);
+    const persistedWrite = options.removeStoredBillingKey
+        ? { ...cleanupWrite, billingKey: admin.firestore.FieldValue.delete() }
+        : cleanupWrite;
+    batch.set(params.requestRef, persistedWrite, { merge: true });
+    batch.set(params.paymentRef, persistedWrite, { merge: true });
+    if (options.deleteLock) {
+        batch.delete(params.lockRef);
+    }
+    else {
+        batch.set(params.lockRef, cleanupWrite, { merge: true });
+    }
+    await batch.commit();
+}
+async function markInitialBillingKeyCleanupUnknown(requestRef, paymentRef, lockRef, reason, portoneStatus, failureReason) {
+    const extra = { portoneStatus, failureReason };
+    const write = buildInitialBillingKeyCleanupWrite('unknown', reason, extra);
+    const writes = [
+        requestRef.set(write, { merge: true }),
+        paymentRef.set(write, { merge: true }),
+    ];
+    if (lockRef) {
+        writes.push(lockRef.set(write, { merge: true }));
+    }
+    await Promise.all(writes);
+}
+async function reserveInitialBillingKeyCleanupAfterFailure(params) {
+    const subRef = db.doc(`users/${params.uid}/subscription/info`);
+    const billingRef = db.doc(`billingSubscriptions/${params.uid}`);
+    let reservation = {
+        shouldDelete: false,
+        reason: 'not_checked',
+        portoneStatus: params.failurePortOneStatus,
+        failureReason: params.failureReason,
+    };
+    await db.runTransaction(async (tx) => {
+        const [requestSnap, paymentSnap, lockSnap, subscriptionSnap, billingSnap] = await Promise.all([
+            tx.get(params.requestRef),
+            tx.get(params.paymentRef),
+            tx.get(params.lockRef),
+            tx.get(subRef),
+            tx.get(billingRef),
+        ]);
+        const requestData = requestSnap.data() || {};
+        const paymentData = paymentSnap.data() || {};
+        const lockData = lockSnap.data() || {};
+        const subscriptionData = subscriptionSnap.data() || {};
+        const billingData = billingSnap.data() || {};
+        const normalizedRequestData = { ...requestData, provider: getStoredPaymentProvider(requestData) };
+        const normalizedPaymentData = { ...paymentData, provider: getStoredPaymentProvider(paymentData) };
+        const normalizedLockData = { ...lockData, provider: getStoredPaymentProvider(lockData) };
+        const decision = (0, subscriptionBillingCore_1.resolveInitialBillingKeyCleanupReservation)({
+            uid: params.uid,
+            issueId: params.issueId,
+            paymentId: params.paymentId,
+            billingKey: params.billingKey,
+            provider: params.provider,
+            failurePortOneStatus: params.failurePortOneStatus,
+            failureReason: params.failureReason,
+            nowMs: Date.now(),
+            requestExists: requestSnap.exists,
+            paymentExists: paymentSnap.exists,
+            lockExists: lockSnap.exists,
+            requestData: normalizedRequestData,
+            paymentData: normalizedPaymentData,
+            lockData: normalizedLockData,
+            subscriptionData,
+            billingSubscriptionData: billingData,
+        });
+        if (!decision.shouldDelete) {
+            const write = buildInitialBillingKeyCleanupWrite(decision.status, decision.reason, {
+                portoneStatus: decision.portoneStatus,
+                failureReason: decision.failureReason,
+            });
+            if (requestData.uid === params.uid) {
+                tx.set(params.requestRef, write, { merge: true });
+            }
+            if (paymentData.uid === params.uid && paymentData.issueId === params.issueId) {
+                tx.set(params.paymentRef, write, { merge: true });
+            }
+            if ((0, subscriptionBillingCore_1.isMatchingInitialBillingCleanupLock)({
+                uid: params.uid,
+                issueId: params.issueId,
+                paymentId: params.paymentId,
+                provider: params.provider,
+                lockExists: lockSnap.exists,
+                lockData: normalizedLockData,
+            })) {
+                tx.set(params.lockRef, write, { merge: true });
+            }
+            reservation = {
+                shouldDelete: false,
+                reason: decision.reason,
+                portoneStatus: decision.portoneStatus,
+                failureReason: decision.failureReason,
+            };
+            return;
+        }
+        const reserveWrite = buildInitialBillingKeyCleanupWrite('unknown', 'initial_charge_failed_cleanup_reserved', {
+            portoneStatus: decision.portoneStatus,
+            failureReason: decision.failureReason,
+            reservedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        tx.set(params.requestRef, reserveWrite, { merge: true });
+        tx.set(params.paymentRef, reserveWrite, { merge: true });
+        tx.set(params.lockRef, reserveWrite, { merge: true });
+        reservation = {
+            shouldDelete: true,
+            reason: decision.reason,
+            portoneStatus: decision.portoneStatus,
+            failureReason: decision.failureReason,
+        };
+    });
+    return reservation;
+}
+async function cleanupInitialBillingKeyAfterInitialChargeFailure(params) {
+    let reservation;
+    try {
+        reservation = await reserveInitialBillingKeyCleanupAfterFailure(params);
+    }
+    catch (error) {
+        logger.error('첫 결제 실패 후 빌링키 정리 상태 확인 실패:', {
+            uid: params.uid,
+            issueId: maskPaymentId(params.issueId),
+            paymentId: maskPaymentId(params.paymentId),
+            provider: params.provider,
+            ...getSafeInitialBillingKeyCleanupOperationError(error),
+        });
+        return;
+    }
+    if (!reservation.shouldDelete)
+        return;
+    try {
+        await (0, subscriptionHelpers_1.revokePortOneBillingKey)(params.billingKey, PORTONE_API_SECRET.value());
+    }
+    catch (error) {
+        const cleanupError = (0, subscriptionHelpers_1.getSafePortOneBillingKeyRevocationError)(error);
+        try {
+            await writeInitialBillingKeyCleanupStatus(params, 'failed', 'initial_charge_failed_cleanup_failed', {
+                portoneStatus: reservation.portoneStatus,
+                failureReason: reservation.failureReason,
+                failedAt: admin.firestore.FieldValue.serverTimestamp(),
+                error: cleanupError,
+            });
+        }
+        catch (writeError) {
+            logger.error('첫 결제 실패 후 빌링키 정리 실패 상태 기록 실패:', {
+                uid: params.uid,
+                issueId: maskPaymentId(params.issueId),
+                paymentId: maskPaymentId(params.paymentId),
+                provider: params.provider,
+                cleanupStatus: 'unknown',
+                ...getSafeInitialBillingKeyCleanupOperationError(writeError),
+            });
+        }
+        logger.error('PortOne 첫 결제 실패 후 빌링키 정리 실패:', {
+            uid: params.uid,
+            issueId: maskPaymentId(params.issueId),
+            paymentId: maskPaymentId(params.paymentId),
+            provider: params.provider,
+            cleanupStatus: 'failed',
+            ...cleanupError,
+        });
+        return;
+    }
+    try {
+        await writeInitialBillingKeyCleanupStatus(params, 'succeeded', 'initial_charge_failed_cleanup_succeeded', {
+            portoneStatus: reservation.portoneStatus,
+            failureReason: reservation.failureReason,
+            succeededAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, {
+            deleteLock: true,
+            removeStoredBillingKey: true,
+        });
+        logger.info('✅ PortOne 첫 결제 실패 후 빌링키 정리 완료:', {
+            uid: params.uid,
+            issueId: maskPaymentId(params.issueId),
+            paymentId: maskPaymentId(params.paymentId),
+            provider: params.provider,
+            cleanupStatus: 'succeeded',
+        });
+    }
+    catch (error) {
+        logger.error('첫 결제 실패 후 빌링키 정리 성공 상태 기록 실패:', {
+            uid: params.uid,
+            issueId: maskPaymentId(params.issueId),
+            paymentId: maskPaymentId(params.paymentId),
+            provider: params.provider,
+            cleanupStatus: 'unknown',
+            ...getSafeInitialBillingKeyCleanupOperationError(error),
+        });
+    }
 }
 async function settleInitialBillingPayment(params) {
     var _a;
@@ -788,9 +1014,22 @@ async function settleInitialBillingPayment(params) {
     }
     if (isFailedOrCancelledPaymentStatus(portoneStatus)) {
         await markInitialBillingPaymentFailed(params.requestRef, params.paymentRef, portoneStatus, params.lockRef);
+        await cleanupInitialBillingKeyAfterInitialChargeFailure({
+            uid: params.uid,
+            issueId: params.issueId,
+            paymentId: params.paymentId,
+            billingKey: params.billingKey,
+            provider: params.provider,
+            requestRef: params.requestRef,
+            paymentRef: params.paymentRef,
+            lockRef: params.lockRef,
+            failurePortOneStatus: portoneStatus,
+            failureReason: `PORTONE_${portoneStatus}`,
+        });
         throw new https_2.HttpsError('failed-precondition', '첫 결제가 실패 또는 취소되었습니다.');
     }
     await markInitialBillingPaymentPending(params.requestRef, params.paymentRef, portoneStatus, params.lockRef);
+    await markInitialBillingKeyCleanupUnknown(params.requestRef, params.paymentRef, params.lockRef, 'initial_charge_result_unconfirmed', portoneStatus, `PORTONE_${portoneStatus}`);
     return { success: false, pending: true, status: portoneStatus };
 }
 async function settleRecurringBillingPayment(params) {
@@ -5358,6 +5597,22 @@ exports.createSubscriptionBillingRequest = (0, https_2.onCall)({ region: 'asia-n
                 throw new https_2.HttpsError('failed-precondition', '기존 정기결제 요청 정보가 올바르지 않습니다.');
             }
             if (lockedStatus === 'failed' || lockedStatus === 'cancelled') {
+                if ((0, subscriptionBillingCore_1.shouldBlockNewSubscriptionForInitialBillingCleanup)({
+                    requestData: lockedRequestData,
+                    lockData,
+                })) {
+                    const cleanup = (0, subscriptionBillingCore_1.getInitialBillingKeyCleanup)(lockedRequestData)
+                        || (0, subscriptionBillingCore_1.getInitialBillingKeyCleanup)(lockData);
+                    return {
+                        success: false,
+                        pending: true,
+                        status: (cleanup === null || cleanup === void 0 ? void 0 : cleanup.status) === 'failed' ? 'cleanup_failed' : 'cleanup_pending',
+                        issueId: lockedIssueId,
+                        plan: assertLaunchPurchasablePlan(lockedPlan),
+                        provider: lockedProvider,
+                        payMethod: getProviderPayMethod(lockedProvider),
+                    };
+                }
                 // Confirmed terminal requests release the UID lock; the write below replaces it with a new request.
             }
             else if (lockedStatus === 'created' && !hasStartedInitialBilling) {
@@ -5542,10 +5797,10 @@ exports.recoverSubscriptionBillingRequest = (0, https_2.onCall)({ region: 'asia-
                 payMethod,
             };
         }
-        const billingKey = typeof requestData.billingKey === 'string'
-            ? requestData.billingKey
-            : typeof lockData.billingKey === 'string'
-                ? lockData.billingKey
+        const billingKey = typeof lockData.billingKey === 'string'
+            ? lockData.billingKey
+            : typeof requestData.billingKey === 'string'
+                ? requestData.billingKey
                 : '';
         if (!billingKey) {
             await markInitialBillingPaymentPending(requestRef, paymentRef, (existingPayment === null || existingPayment === void 0 ? void 0 : existingPayment.status) || 'UNKNOWN', lockRef);
@@ -5562,6 +5817,18 @@ exports.recoverSubscriptionBillingRequest = (0, https_2.onCall)({ region: 'asia-
         const customer = (0, subscriptionBillingCore_1.getStoredSubscriptionBillingCustomer)(requestData);
         if (!customer) {
             await markInitialBillingPaymentFailed(requestRef, paymentRef, (existingPayment === null || existingPayment === void 0 ? void 0 : existingPayment.status) || 'UNKNOWN', lockRef);
+            await cleanupInitialBillingKeyAfterInitialChargeFailure({
+                uid,
+                issueId,
+                paymentId: lastPaymentId,
+                billingKey,
+                provider,
+                requestRef,
+                paymentRef,
+                lockRef,
+                failurePortOneStatus: (existingPayment === null || existingPayment === void 0 ? void 0 : existingPayment.status) || 'UNKNOWN',
+                failureReason: 'stored_customer_invalid',
+            });
             throw new https_2.HttpsError('failed-precondition', '저장된 구매자 정보가 올바르지 않습니다. 다시 시도해 주세요.');
         }
         return settleInitialBillingPayment({
@@ -5582,6 +5849,22 @@ exports.recoverSubscriptionBillingRequest = (0, https_2.onCall)({ region: 'asia-
         });
     }
     if (status === 'failed' || status === 'cancelled') {
+        if ((0, subscriptionBillingCore_1.shouldBlockNewSubscriptionForInitialBillingCleanup)({
+            requestData,
+            lockData,
+        })) {
+            const cleanup = (0, subscriptionBillingCore_1.getInitialBillingKeyCleanup)(requestData)
+                || (0, subscriptionBillingCore_1.getInitialBillingKeyCleanup)(lockData);
+            return {
+                success: false,
+                pending: true,
+                status: (cleanup === null || cleanup === void 0 ? void 0 : cleanup.status) === 'failed' ? 'cleanup_failed' : 'cleanup_pending',
+                issueId,
+                plan,
+                provider,
+                payMethod,
+            };
+        }
         await lockRef.delete();
         return { success: false, pending: false, status };
     }
@@ -5749,12 +6032,15 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
         if (!freshLock.exists || freshLockData.uid !== uid || freshLockData.issueId !== issueId) {
             throw new https_2.HttpsError('failed-precondition', '정기결제 잠금 정보가 올바르지 않습니다. 결제 상태를 다시 확인해 주세요.');
         }
-        if ((freshData.status === 'processed' || freshData.status === 'charging')
+        const freshStatus = normalizePaymentRequestStatus(freshData.status);
+        if (['processed', 'charging', 'failed', 'cancelled', 'lookup_failed'].includes(freshStatus)
             && typeof freshData.lastPaymentId === 'string'
             && freshData.lastPaymentId) {
+            const storedBillingKey = typeof freshLockData.billingKey === 'string' ? freshLockData.billingKey : '';
             return {
                 action: 'settle_existing',
                 paymentId: freshData.lastPaymentId,
+                billingKey: storedBillingKey && storedBillingKey === billingKey ? storedBillingKey : null,
                 customer: (0, subscriptionBillingCore_1.getStoredSubscriptionBillingCustomer)(freshData),
             };
         }
@@ -5803,7 +6089,7 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-        return { action: 'charge', paymentId: newPaymentId, customer: freshCustomer };
+        return { action: 'charge', paymentId: newPaymentId, billingKey, customer: freshCustomer };
     });
     const paymentId = locked.paymentId;
     const paymentRef = getPaymentRequestRef(paymentId);
@@ -5850,15 +6136,38 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
             });
             throw new https_2.HttpsError('unavailable', '기존 첫 결제 상태를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.');
         }
+        if (!locked.billingKey) {
+            const existingPortOneStatus = typeof (existingPayment === null || existingPayment === void 0 ? void 0 : existingPayment.status) === 'string' ? existingPayment.status : 'UNKNOWN';
+            if (isFailedOrCancelledPaymentStatus(existingPortOneStatus)) {
+                await markInitialBillingPaymentFailed(requestRef, paymentRef, existingPortOneStatus, lockRef);
+            }
+            else {
+                await markInitialBillingPaymentPending(requestRef, paymentRef, existingPortOneStatus, lockRef);
+            }
+            await markInitialBillingKeyCleanupUnknown(requestRef, paymentRef, lockRef, 'billing_key_ownership_unconfirmed', existingPortOneStatus, `PORTONE_${existingPortOneStatus}`);
+            throw new https_2.HttpsError('failed-precondition', '정기결제 인증정보를 확인할 수 없습니다. 결제 상태를 다시 확인해 주세요.');
+        }
         if (!locked.customer) {
             await markInitialBillingPaymentFailed(requestRef, paymentRef, (existingPayment === null || existingPayment === void 0 ? void 0 : existingPayment.status) || 'UNKNOWN', lockRef);
+            await cleanupInitialBillingKeyAfterInitialChargeFailure({
+                uid,
+                issueId,
+                paymentId,
+                billingKey: locked.billingKey,
+                provider,
+                requestRef,
+                paymentRef,
+                lockRef,
+                failurePortOneStatus: (existingPayment === null || existingPayment === void 0 ? void 0 : existingPayment.status) || 'UNKNOWN',
+                failureReason: 'stored_customer_invalid',
+            });
             throw new https_2.HttpsError('failed-precondition', '저장된 구매자 정보가 올바르지 않습니다. 다시 시도해 주세요.');
         }
         return settleInitialBillingPayment({
             uid,
             issueId,
             paymentId,
-            billingKey,
+            billingKey: locked.billingKey,
             customer: locked.customer,
             plan,
             provider,
@@ -5917,6 +6226,18 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
                     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
                 }, { merge: true }),
             ]);
+            await cleanupInitialBillingKeyAfterInitialChargeFailure({
+                uid,
+                issueId,
+                paymentId,
+                billingKey: locked.billingKey,
+                provider,
+                requestRef,
+                paymentRef,
+                lockRef,
+                failurePortOneStatus: billingError.portoneStatus,
+                failureReason: billingError.safeReason,
+            });
             throw new https_2.HttpsError('failed-precondition', '첫 결제가 실패 또는 취소되었습니다.');
         }
         await Promise.all([
@@ -5940,13 +6261,14 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             }, { merge: true }),
         ]);
+        await markInitialBillingKeyCleanupUnknown(requestRef, paymentRef, lockRef, 'initial_charge_result_unconfirmed', billingError.portoneStatus, billingError.safeReason);
         throw new https_2.HttpsError('unavailable', '첫 결제 요청 결과를 확인할 수 없습니다. 잠시 후 다시 확인해 주세요.');
     }
     const result = await settleInitialBillingPayment({
         uid,
         issueId,
         paymentId,
-        billingKey,
+        billingKey: locked.billingKey,
         customer: locked.customer,
         plan,
         provider,
