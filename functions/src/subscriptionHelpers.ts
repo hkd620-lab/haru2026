@@ -115,10 +115,23 @@ export async function cancelSubscriptionForUid(
   return result;
 }
 
+export function getSafePortOneBillingKeyRevocationError(error: any) {
+  const data = error?.response?.data || {};
+  const status = typeof error?.response?.status === 'number' ? error.response.status : undefined;
+  const type = typeof data.type === 'string' ? data.type : undefined;
+  const code = typeof data.code === 'string' ? data.code : undefined;
+  return {
+    status,
+    type,
+    code,
+    safeReason: code || type || (typeof status === 'number' ? `HTTP_${status}` : 'PORTONE_BILLING_KEY_DELETE_FAILED'),
+  };
+}
+
 // 포트원(PortOne)에 등록된 빌링키를 삭제한다. 문서: DELETE /billing-keys/{billingKey}
 // (https://developers.portone.io/api/rest-v2/payment.billingKey)
 // 이미 삭제된 빌링키를 다시 삭제 시도해도(재시도 상황) 404는 정상 케이스로 간주한다.
-async function revokePortOneBillingKey(billingKey: string, apiSecret: string): Promise<void> {
+export async function revokePortOneBillingKey(billingKey: string, apiSecret: string): Promise<void> {
   try {
     await axios.delete(`https://api.portone.io/billing-keys/${encodeURIComponent(billingKey)}`, {
       headers: { Authorization: `PortOne ${apiSecret.trim()}` },
@@ -156,7 +169,10 @@ export async function revokeBillingKeyForUid(
     } catch (error: any) {
       // 포트원 삭제가 실패해도 탈퇴 처리 자체를 막지 않는다. 다만 잔존 위험이 있으므로
       // 반드시 로그로 남겨 별도 확인이 가능하도록 한다.
-      logger.error('⚠️ 포트원 빌링키 삭제 실패 — uid: %s, message: %s', uid, error?.message);
+      logger.error('⚠️ 포트원 빌링키 삭제 실패:', {
+        uid,
+        ...getSafePortOneBillingKeyRevocationError(error),
+      });
     }
   }
 
