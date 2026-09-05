@@ -101,6 +101,13 @@ class InstrumentedGoogleGenAI {
             candidates: [{}],
           };
         }
+        if (currentQuestion === '세계에서 가장 높은 산은?') {
+          return {
+            text: '이 대화는 현재 기록을 바탕으로 돕는 공간입니다. 이 기록에는 산이나 지리와 관련된 내용이 없어 답변을 최소화하겠습니다. 초한지와 삼국지 독서 기록에 관해 궁금한 점을 물어봐 주세요.',
+            usageMetadata: { promptTokenCount: 59, candidatesTokenCount: 25 },
+            candidates: [{}],
+          };
+        }
         return {
           text: '기록만 바탕으로 정리한 테스트 답변입니다.',
           usageMetadata: { promptTokenCount: 41, candidatesTokenCount: 11 },
@@ -306,6 +313,25 @@ async function run() {
   assert.strictEqual(threeKingdoms.answerRoute, 'record_only');
   assert.strictEqual(threeKingdoms.webSearchUsed, false);
   assert.ok(threeKingdoms.answer.includes('진수') || threeKingdoms.answer.includes('나관중') || threeKingdoms.answer.includes('삼국지'));
+
+  const unrelatedBefore = genaiCalls.length;
+  const unrelatedGeneral = await callable(USERS.free, {
+    recordId: 'reading',
+    sourceKey: 'reading_sayu',
+    question: '세계에서 가장 높은 산은?',
+    searchPreference: 'record_only',
+  });
+  assert.strictEqual(unrelatedGeneral.answerRoute, 'record_only');
+  assert.strictEqual(unrelatedGeneral.webSearchUsed, false);
+  assert.ok(unrelatedGeneral.answer.includes('기록을 바탕으로 돕는 공간'));
+  assert.ok(unrelatedGeneral.answer.includes('산이나 지리') || unrelatedGeneral.answer.includes('기록에는'));
+  const unrelatedCalls = genaiCalls.slice(unrelatedBefore);
+  assert.strictEqual(unrelatedCalls.length, 1);
+  assert.strictEqual(unrelatedCalls[0].hasGoogleSearchTool, false);
+  assert.ok(unrelatedCalls[0].contents.includes('질문이 현재 결과물과 직접 관련이 없다면'));
+  thread = await getThread(USERS.free, 'reading', 'reading_sayu');
+  assert.strictEqual(thread.webSearchUsedCount || 0, 0);
+  assert.strictEqual(thread.webSearchReservedCount || 0, 0);
 
   const quotaPeriod = getKstMonthKey();
   await db.doc(`users/${USERS.free}/monthlyAiUsage/${quotaPeriod}`).set({ usedCount: 10 }, { merge: true });
