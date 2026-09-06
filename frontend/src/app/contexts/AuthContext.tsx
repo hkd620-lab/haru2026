@@ -20,6 +20,7 @@ import { doc, onSnapshot, setDoc, serverTimestamp, Timestamp } from 'firebase/fi
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { auth, db } from '../config/firebase';
 import { cleanupDuplicateTokens } from '../services/notificationService';
+import { LoginProvider, mergeProviderIds, normalizeLoginProvider } from '../utils/loginProvider';
 
 // LoginPage.tsx의 회원가입 동의와 동일한 버전 문자열 — 약관 개정 시 재동의 대상을 가려낼 때 사용
 const TERMS_VERSION = '2026-08-20';
@@ -61,13 +62,28 @@ function clearLegacySocialUserCache() {
   localStorage.removeItem(NAVER_USER_KEY);
 }
 
+async function rememberLoginProvider(uid: string, provider: LoginProvider) {
+  try {
+    await setDoc(
+      doc(db, 'users', uid),
+      {
+        loginProvider: provider,
+        loginProviderUpdatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+  } catch (error) {
+    console.error('Login provider save error:', error);
+  }
+}
+
 const mapUser = (user: FirebaseUser): LocalUser => ({
   uid: user.uid,
   email: user.email ?? null,
   displayName: user.displayName ?? user.email?.split('@')[0] ?? 'User',
   photoURL: user.photoURL ?? null,
-  providerId: user.providerData[0]?.providerId ?? 'custom',
-  providerIds: user.providerData.map((provider) => provider.providerId),
+  providerId: normalizeLoginProvider(user.providerData[0]?.providerId) ?? user.providerData[0]?.providerId ?? 'custom',
+  providerIds: user.providerData.map((provider) => normalizeLoginProvider(provider.providerId) ?? provider.providerId),
   emailVerified: user.emailVerified,
 });
 
@@ -390,6 +406,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // 1. Redirect 로그인 체크 (Google 등)
         const result = await getRedirectResult(auth);
         if (result?.user) {
+          await rememberLoginProvider(result.user.uid, 'google');
           setUser(mapUser(result.user));
           setLoading(false);
           return;
@@ -445,6 +462,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userRef = doc(db, 'users', user.uid);
     const unsubscribe = onSnapshot(userRef, (snap) => {
       const data = snap.data();
+      const loginProvider = normalizeLoginProvider(data?.loginProvider);
+      if (loginProvider) {
+        setUser((currentUser) => currentUser?.uid === user.uid
+          ? {
+            ...currentUser,
+            providerId: loginProvider,
+            providerIds: mergeProviderIds(currentUser.providerIds, loginProvider),
+          }
+          : currentUser);
+      }
       if (data?.accountStatus === 'pending_deletion') {
         const scheduledAtValue = data.deletionScheduledAt;
         const scheduledAt = scheduledAtValue instanceof Timestamp ? scheduledAtValue.toDate() : null;
@@ -460,7 +487,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
+      const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      await rememberLoginProvider(userCredential.user.uid, 'password');
     } catch (error: any) {
       console.error('Sign in error:', error);
       throw new Error(getAuthErrorMessage(error));
@@ -479,6 +507,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (verificationError) {
         console.error('Verification email send error:', verificationError);
       }
+      await rememberLoginProvider(userCredential.user.uid, 'password');
       return { user: mapUser(userCredential.user) };
     } catch (error: any) {
       console.error('Sign up error:', error);
@@ -514,7 +543,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const credential = EmailAuthProvider.credential(normalizedEmail, password);
       const userCredential = await linkWithCredential(currentUser, credential);
-      setUser(mapUser(userCredential.user));
+      setUser((currentUser) => {
+        const mappedUser = mapUser(userCredential.user);
+        const currentProvider = normalizeLoginProvider(currentUser?.providerId);
+        if (currentProvider && currentProvider !== 'password') {
+          return {
+            ...mappedUser,
+            providerId: currentProvider,
+            providerIds: mergeProviderIds(mappedUser.providerIds, currentProvider),
+          };
+        }
+        return mappedUser;
+      });
     } catch (error: any) {
       console.error('Link email/password error:', error);
       throw new Error(getAuthErrorMessage(error));
@@ -525,7 +565,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const provider = new GoogleAuthProvider();
       if (import.meta.env.DEV) {
-        await signInWithPopup(auth, provider);
+        const userCredential = await signInWithPopup(auth, provider);
+        await rememberLoginProvider(userCredential.user.uid, 'google');
       } else {
         await signInWithRedirect(auth, provider);
       }
@@ -553,9 +594,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           'User',
         photoURL: kakaoUser.photoURL || null,
         providerId: 'kakao',
+        providerIds: ['kakao'],
         emailVerified: true,
       };
 
+      await rememberLoginProvider(kakaoUser.uid, 'kakao');
       setUser(localUser);
     } catch (error: any) {
       console.error('Kakao sign in error:', error);
@@ -581,9 +624,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           'User',
         photoURL: naverUser.photoURL || null,
         providerId: 'naver',
+        providerIds: ['naver'],
         emailVerified: true,
       };
 
+      await rememberLoginProvider(naverUser.uid, 'naver');
       setUser(localUser);
     } catch (error: any) {
       console.error('Naver sign in error:', error);
