@@ -90,8 +90,17 @@ service cloud.firestore {
         "utmCampaign",
         "signupReferrerOrigin",
         "signupAt",
+        "loginProvider",
+        "loginProviderUpdatedAt",
         "consents"
       ];
+    }
+
+    function validUserAttributionPayload() {
+      return (!request.resource.data.keys().hasAny(["loginProvider"]) ||
+        request.resource.data.loginProvider in ["naver", "google", "kakao", "password"])
+        && (!request.resource.data.keys().hasAny(["loginProviderUpdatedAt"]) ||
+          request.resource.data.loginProviderUpdatedAt is timestamp);
     }
 
     match /aiUsageLogs/{logId} {
@@ -142,10 +151,12 @@ service cloud.firestore {
       allow read: if signedIn() && request.auth.uid == uid;
       allow create: if signedIn()
         && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(userAttributionAllowedKeys());
+        && request.resource.data.keys().hasOnly(userAttributionAllowedKeys())
+        && validUserAttributionPayload();
       allow update: if signedIn()
         && request.auth.uid == uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(userAttributionAllowedKeys());
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(userAttributionAllowedKeys())
+        && validUserAttributionPayload();
       allow delete: if false;
     }
 

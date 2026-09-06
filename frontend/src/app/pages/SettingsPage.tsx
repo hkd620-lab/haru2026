@@ -14,6 +14,7 @@ import {
   canRequestSubscriptionRefundFromPolicy,
   resolveSubscriptionDisplay,
 } from '../utils/subscriptionDisplay';
+import { getLoginProviderLabel } from '../utils/loginProvider';
 import GrammarDashboard from './GrammarDashboard';
 import { BUSINESS_INFO, BUSINESS_INFO_TEXT } from '../components/BusinessInfoNotice';
 
@@ -156,6 +157,9 @@ export function SettingsPage() {
   const isDevUser = user?.email?.toLowerCase() === 'hkd620@gmail.com';
   const hasEmailPasswordLogin = Boolean(user?.providerIds?.includes('password'));
   const canAddEmailPasswordLogin = Boolean(user?.email && !user.email.endsWith('@placeholder.local') && !hasEmailPasswordLogin);
+  const loginProviderLabel = getLoginProviderLabel(user?.providerId);
+  const logoutAccountLabel = loginProviderLabel === '로그인 계정' ? loginProviderLabel : `${loginProviderLabel} 계정`;
+  const contactEmailLabel = user?.email || '이메일 정보 없음';
   const refundPayment = refundEligibility?.payment || null;
   const subscriptionDisplay = resolveSubscriptionDisplay(actualSubscription, entitlement, {
     hasPaidPayment: Boolean(refundEligibility?.hasPaidPayment),
@@ -1614,6 +1618,30 @@ export function SettingsPage() {
             className="mb-3 rounded-lg p-4"
             style={{ backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB' }}
           >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <p className="text-xs" style={{ color: '#9CA3AF', fontWeight: 700 }}>
+                  현재 로그인 방식
+                </p>
+                <p className="text-sm mt-1" style={{ color: '#374151', fontWeight: 700 }}>
+                  {loginProviderLabel}
+                </p>
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs" style={{ color: '#9CA3AF', fontWeight: 700 }}>
+                  연락 이메일
+                </p>
+                <p className="text-sm mt-1 truncate" style={{ color: '#374151', fontWeight: 700 }}>
+                  {contactEmailLabel}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div
+            className="mb-3 rounded-lg p-4"
+            style={{ backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB' }}
+          >
             <div className="flex items-start gap-3">
               <Mail className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#1A3C6E' }} />
               <div className="flex-1 min-w-0">
@@ -1624,7 +1652,12 @@ export function SettingsPage() {
                   {hasEmailPasswordLogin
                     ? '현재 계정에 이메일 로그인이 연결되어 있습니다.'
                     : canAddEmailPasswordLogin
-                      ? `${user?.email}로 이메일 로그인을 추가합니다. 기존 기록은 같은 UID에 그대로 유지됩니다.`
+                      ? (
+                        <>
+                          <span className="block">{contactEmailLabel}으로 이메일 로그인을 추가합니다.</span>
+                          <span className="block">기존 기록은 같은 UID에 그대로 유지됩니다.</span>
+                        </>
+                      )
                       : '현재 계정의 이메일 정보가 없어 이메일 로그인을 추가할 수 없습니다.'}
                 </p>
 
@@ -1679,7 +1712,7 @@ export function SettingsPage() {
                 로그아웃
               </p>
               <p className="text-xs mt-0.5" style={{ color: '#9CA3AF' }}>
-                현재 계정({user?.email || '게스트'})에서 로그아웃합니다
+                {logoutAccountLabel}에서 로그아웃합니다.
               </p>
             </div>
           </button>

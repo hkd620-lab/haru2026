@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { signInWithCustomToken } from 'firebase/auth';
-import { auth } from '../config/firebase';
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { auth, db } from '../config/firebase';
 import { toast } from 'sonner';
+import { normalizeLoginProvider } from '../utils/loginProvider';
 
 export function AuthCallbackPage() {
   const navigate = useNavigate();
@@ -13,6 +15,7 @@ export function AuthCallbackPage() {
         // URL에서 customToken 파라미터 가져오기
         const params = new URLSearchParams(window.location.search);
         const customToken = params.get('customToken');
+        const provider = normalizeLoginProvider(params.get('provider'));
         const error = params.get('error');
 
         if (error) {
@@ -30,7 +33,21 @@ export function AuthCallbackPage() {
         }
 
         // Firebase 커스텀 토큰으로 로그인
-        await signInWithCustomToken(auth, customToken);
+        const userCredential = await signInWithCustomToken(auth, customToken);
+        if (provider) {
+          try {
+            await setDoc(
+              doc(db, 'users', userCredential.user.uid),
+              {
+                loginProvider: provider,
+                loginProviderUpdatedAt: serverTimestamp(),
+              },
+              { merge: true },
+            );
+          } catch (providerSaveError) {
+            console.error('로그인 제공자 저장 실패:', providerSaveError);
+          }
+        }
         
         toast.success('로그인 성공!');
         navigate('/');
