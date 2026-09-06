@@ -259,7 +259,7 @@ function createAiUsageRequestId() {
 }
 const KAKAO_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/kakaoCallback';
 const NAVER_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/naverCallback';
-const GOOGLE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/googleCallback';
+const GOOGLE_REDIRECT_URI = 'https://haru2026.com/oauth/google/callback';
 const HARU_DRIVE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/haruDriveCallback';
 const ONEDRIVE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/oneDriveCallback';
 const ONEDRIVE_OAUTH_SCOPE = 'offline_access Files.ReadWrite User.Read';
