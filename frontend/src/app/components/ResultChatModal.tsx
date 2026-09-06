@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
 import { Paperclip, X } from 'lucide-react';
 import { ref as storageRef, uploadBytes } from 'firebase/storage';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { db, storage } from '../../firebase';
 import type { ResultChatConfig } from '../config/resultChatConfig';
 import {
@@ -15,6 +17,103 @@ import {
 } from '../services/resultChatService';
 import { firestoreService } from '../services/firestoreService';
 import { useSubscription } from '../hooks/useSubscription';
+
+const SAFE_MARKDOWN_LINK_PATTERN = /^https?:\/\//i;
+
+function isSafeMarkdownHref(href?: string): boolean {
+  return typeof href === 'string' && SAFE_MARKDOWN_LINK_PATTERN.test(href.trim());
+}
+
+const MD_HEADING_BASE: CSSProperties = { fontWeight: 800, lineHeight: 1.4, color: 'inherit' };
+const MD_H1_STYLE: CSSProperties = { ...MD_HEADING_BASE, fontSize: 17, margin: '8px 0 4px' };
+const MD_H2_STYLE: CSSProperties = { ...MD_HEADING_BASE, fontSize: 16, margin: '8px 0 4px' };
+const MD_H3_STYLE: CSSProperties = { ...MD_HEADING_BASE, fontSize: 15, margin: '6px 0 4px' };
+const MD_PARAGRAPH_STYLE: CSSProperties = { margin: '0 0 6px' };
+const MD_LIST_STYLE: CSSProperties = { margin: '2px 0 6px', paddingLeft: 20 };
+const MD_LIST_ITEM_STYLE: CSSProperties = { margin: '2px 0' };
+const MD_LINK_STYLE: CSSProperties = { color: '#2563EB', wordBreak: 'break-all', overflowWrap: 'anywhere' };
+const MD_BLOCKQUOTE_STYLE: CSSProperties = {
+  margin: '6px 0',
+  padding: '2px 10px',
+  borderLeft: '3px solid #CBD5E1',
+  opacity: 0.85,
+};
+const MD_HR_STYLE: CSSProperties = { border: 'none', borderTop: '1px solid #E2E8F0', margin: '10px 0' };
+const MD_CODE_FONT = 'ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace';
+const MD_PRE_STYLE: CSSProperties = {
+  margin: '6px 0',
+  padding: '10px 12px',
+  borderRadius: 8,
+  backgroundColor: '#0F172A',
+  color: '#E2E8F0',
+  fontSize: 12,
+  lineHeight: 1.5,
+  overflowX: 'auto',
+  fontFamily: MD_CODE_FONT,
+};
+const MD_INLINE_CODE_STYLE: CSSProperties = {
+  padding: '1px 5px',
+  borderRadius: 4,
+  backgroundColor: 'rgba(15, 23, 42, 0.08)',
+  fontSize: 12,
+  wordBreak: 'break-all',
+  fontFamily: MD_CODE_FONT,
+};
+const MD_TABLE_WRAP_STYLE: CSSProperties = { overflowX: 'auto', maxWidth: '100%', margin: '6px 0' };
+const MD_TABLE_STYLE: CSSProperties = { borderCollapse: 'collapse', fontSize: 12, minWidth: '100%' };
+const MD_TH_STYLE: CSSProperties = {
+  border: '1px solid #CBD5E1',
+  padding: '4px 8px',
+  backgroundColor: '#E2E8F0',
+  textAlign: 'left',
+  fontWeight: 800,
+};
+const MD_TD_STYLE: CSSProperties = { border: '1px solid #E2E8F0', padding: '4px 8px' };
+
+function MarkdownLink({ href, children }: { href?: string; children?: ReactNode }) {
+  if (!isSafeMarkdownHref(href)) {
+    return <span>{children}</span>;
+  }
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" style={MD_LINK_STYLE}>
+      {children}
+    </a>
+  );
+}
+
+function MarkdownCode({ className, children }: { className?: string; children?: ReactNode }) {
+  const isBlock = /language-/.test(className || '') || String(children).includes('\n');
+  if (isBlock) {
+    return <code className={className}>{children}</code>;
+  }
+  return <code style={MD_INLINE_CODE_STYLE}>{children}</code>;
+}
+
+const resultChatMarkdownComponents = {
+  h1: ({ children }: { children?: ReactNode }) => <h1 style={MD_H1_STYLE}>{children}</h1>,
+  h2: ({ children }: { children?: ReactNode }) => <h2 style={MD_H2_STYLE}>{children}</h2>,
+  h3: ({ children }: { children?: ReactNode }) => <h3 style={MD_H3_STYLE}>{children}</h3>,
+  h4: ({ children }: { children?: ReactNode }) => <h4 style={MD_H3_STYLE}>{children}</h4>,
+  h5: ({ children }: { children?: ReactNode }) => <h5 style={MD_H3_STYLE}>{children}</h5>,
+  h6: ({ children }: { children?: ReactNode }) => <h6 style={MD_H3_STYLE}>{children}</h6>,
+  p: ({ children }: { children?: ReactNode }) => <p style={MD_PARAGRAPH_STYLE}>{children}</p>,
+  ul: ({ children }: { children?: ReactNode }) => <ul style={MD_LIST_STYLE}>{children}</ul>,
+  ol: ({ children }: { children?: ReactNode }) => <ol style={MD_LIST_STYLE}>{children}</ol>,
+  li: ({ children }: { children?: ReactNode }) => <li style={MD_LIST_ITEM_STYLE}>{children}</li>,
+  strong: ({ children }: { children?: ReactNode }) => <strong style={{ fontWeight: 800 }}>{children}</strong>,
+  blockquote: ({ children }: { children?: ReactNode }) => <blockquote style={MD_BLOCKQUOTE_STYLE}>{children}</blockquote>,
+  hr: () => <hr style={MD_HR_STYLE} />,
+  a: MarkdownLink,
+  pre: ({ children }: { children?: ReactNode }) => <pre style={MD_PRE_STYLE}>{children}</pre>,
+  code: MarkdownCode,
+  table: ({ children }: { children?: ReactNode }) => (
+    <div style={MD_TABLE_WRAP_STYLE}>
+      <table style={MD_TABLE_STYLE}>{children}</table>
+    </div>
+  ),
+  th: ({ children }: { children?: ReactNode }) => <th style={MD_TH_STYLE}>{children}</th>,
+  td: ({ children }: { children?: ReactNode }) => <td style={MD_TD_STYLE}>{children}</td>,
+};
 
 type ResultChatModalProps = {
   isOpen: boolean;
@@ -485,12 +584,18 @@ export function ResultChatModal({
                     color: message.role === 'user' ? '#FFFFFF' : '#1F2937',
                     fontSize: 13,
                     lineHeight: 1.65,
-                    whiteSpace: 'pre-wrap',
+                    whiteSpace: message.role === 'user' ? 'pre-wrap' : 'normal',
                     wordBreak: 'keep-all',
                     overflowWrap: 'anywhere',
                   }}
                 >
-                  {message.content}
+                  {message.role === 'assistant' ? (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={resultChatMarkdownComponents}>
+                      {message.content}
+                    </ReactMarkdown>
+                  ) : (
+                    message.content
+                  )}
                 </div>
                 {message.role === 'user' && message.attachments && message.attachments.length > 0 && (
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '100%' }}>
