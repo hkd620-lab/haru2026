@@ -842,9 +842,15 @@ export function BiblePage() {
 
   const handleSaveVocab = async () => {
     if (!wordPopup) return;
+    if (wordPopup.validationStatus === 'safe_fallback') return;
     const entry = {
       word: wordPopup.word,
       meaning: wordPopup.meaning,
+      contextMeaning: wordPopup.contextMeaning || wordPopup.meaning,
+      partOfSpeech: wordPopup.partOfSpeech,
+      lemma: wordPopup.lemma || '',
+      inflection: wordPopup.inflection || '',
+      inflectionPattern: wordPopup.inflectionPattern || '',
       example: vocabExample.trim(),
       memo: vocabMemo.trim(),
       savedAt: new Date().toISOString(),
@@ -943,9 +949,23 @@ export function BiblePage() {
     phrasalVerbMeaning?: string;
     phrasalVerbExample?: string;
     phrasalVerbExampleKo?: string;
+    contextMeaning?: string;
+    referenceMeanings?: string[];
+    lemma?: string;
+    baseForm?: string;
+    inflection?: string;
+    inflectionPattern?: string;
+    phrase?: string;
+    phraseMeaning?: string;
+    bibleExample?: string;
+    bibleExampleKo?: string;
+    bibleReference?: string;
+    exampleNotice?: string;
+    validationStatus?: 'verified' | 'safe_fallback';
+    validationWarnings?: string[];
   } | null>(null);
 
-  const handleWordClick = useCallback(async (word: string, verseText?: string) => {
+  const handleWordClick = useCallback(async (word: string, verseText?: string, verseKey?: string) => {
     // 특수문자 제거
     const cleanWord = word.replace(/[^a-zA-Z]/g, '');
     if (!cleanWord) return;
@@ -957,38 +977,61 @@ export function BiblePage() {
       const { getFunctions: gf, httpsCallable: hc } = await import('firebase/functions');
       const fns = gf(undefined, 'asia-northeast3');
       const fn = hc(fns, 'getWordMeaning');
-      const res: any = await fn({ word: cleanWord });
-      setWordPopup({
+      const res: any = await fn({
         word: cleanWord,
-        meaning: res.data.meaning || '뜻을 찾을 수 없습니다.',
-        partOfSpeech: res.data.partOfSpeech || '',
-        phonetic: res.data.phonetic || '',
-        koreanPronunciation: res.data.koreanPronunciation || '',
+        source: 'bible',
+        verseText: verseText || '',
+        verseKey: verseKey || '',
+      });
+      const data = res.data || {};
+      const contextMeaning = data.contextMeaning || data.meaning || '';
+      const phrase = data.phrase || data.phrasalVerb || '';
+      const phraseMeaning = data.phraseMeaning || data.phrasalVerbMeaning || '';
+      setWordPopup({
+        word: data.selectedWord || cleanWord,
+        meaning: contextMeaning || '뜻을 찾을 수 없습니다.',
+        contextMeaning,
+        referenceMeanings: Array.isArray(data.referenceMeanings) ? data.referenceMeanings : [],
+        partOfSpeech: data.partOfSpeech || '',
+        lemma: data.lemma || data.baseForm || '',
+        baseForm: data.baseForm || data.lemma || '',
+        inflection: data.inflection || '',
+        inflectionPattern: data.inflectionPattern || '',
+        phonetic: data.phonetic || '',
+        koreanPronunciation: data.koreanPronunciation || '',
         loading: false,
-        example: res.data.example || '',
-        exampleKo: res.data.exampleKo || '',
-        phrasalVerb: res.data.phrasalVerb || '',
-        phrasalVerbMeaning: res.data.phrasalVerbMeaning || '',
-        phrasalVerbExample: res.data.phrasalVerbExample || '',
-        phrasalVerbExampleKo: res.data.phrasalVerbExampleKo || '',
+        example: data.example || '',
+        exampleKo: data.exampleKo || '',
+        phrasalVerb: phrase,
+        phrasalVerbMeaning: phraseMeaning,
+        phrase,
+        phraseMeaning,
+        phrasalVerbExample: data.phrasalVerbExample || '',
+        phrasalVerbExampleKo: data.phrasalVerbExampleKo || '',
+        bibleExample: data.bibleExample || '',
+        bibleExampleKo: data.bibleExampleKo || '',
+        bibleReference: data.bibleReference || '',
+        exampleNotice: data.exampleNotice || '',
+        validationStatus: data.validationStatus || 'verified',
+        validationWarnings: Array.isArray(data.validationWarnings) ? data.validationWarnings : [],
       });
     } catch {
       setWordPopup({ word: cleanWord, meaning: '오류가 발생했습니다.', partOfSpeech: '', phonetic: '', koreanPronunciation: '', loading: false });
     }
   }, []);
 
-  const renderVerseWithWords = (text: string, verseKey?: string) => {
+  const renderVerseWithWords = (text: string, highlightKey?: string, bibleVerseKey?: string) => {
     const words = text.trim().split(/\s+/);
     return (
       <p style={{ fontSize: 13, color: '#333', lineHeight: 1.8, margin: 0, flexWrap: 'wrap', display: 'flex', gap: '4px' }}>
         {words.map((word, idx) => {
-          const isHighlighted = verseKey && highlightedWord?.key === verseKey && highlightedWord?.index === idx;
+          const isHighlighted = highlightKey && highlightedWord?.key === highlightKey && highlightedWord?.index === idx;
           const cleanWord = word.replace(/[^a-zA-Z]/g, '');
           const isEnHighlighted = highlightedEnWords.length > 0 && highlightedEnWords.some(w => w.toLowerCase() === cleanWord.toLowerCase());
           return (
             <span
               key={idx}
-              onClick={(e) => { e.stopPropagation(); handleWordClick(word, text); }}
+              onClick={(e) => { e.stopPropagation(); handleWordClick(word, text, bibleVerseKey); }}
               style={{
                 cursor: 'pointer',
                 borderRadius: 4,
@@ -2619,7 +2662,11 @@ export function BiblePage() {
                   {verse.verse}
                 </span>
                 {selectedVerse === verse.verse ? (
-                  renderVerseWithWords(verse.text, `verse_${verse.verse}`)
+                  renderVerseWithWords(
+                    verse.text,
+                    `verse_${verse.verse}`,
+                    `${currentBook.prefix}_${currentChapter}_${verse.verse}`
+                  )
                 ) : (
                   <p style={{
                     fontSize: 13, color: '#333', lineHeight: 1.6, margin: 0,
@@ -3053,19 +3100,25 @@ export function BiblePage() {
             backgroundColor: 'rgba(0,0,0,0.4)',
             zIndex: 100, display: 'flex',
             alignItems: 'center', justifyContent: 'center',
+            padding: 'calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom))',
+            boxSizing: 'border-box',
           }}
         >
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              width: '90%', maxWidth: 360,
+              width: '100%', maxWidth: 420,
               backgroundColor: '#fff',
               borderRadius: 16,
-              padding: '24px 20px',
+              padding: '22px 20px calc(20px + env(safe-area-inset-bottom))',
+              maxHeight: 'calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom))',
+              overflowY: 'auto',
+              boxSizing: 'border-box',
+              overscrollBehavior: 'contain',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <p style={{ fontSize: 22, fontWeight: 800, color: '#1A3C6E', margin: 0 }}>
+              <p style={{ fontSize: 22, fontWeight: 800, color: '#1A3C6E', margin: 0, minWidth: 0, lineHeight: 1.2, wordBreak: 'break-word' }}>
                 {wordPopup.word}
               </p>
               <button
@@ -3077,7 +3130,10 @@ export function BiblePage() {
               <p style={{ color: '#999', fontSize: 14 }}>뜻을 찾는 중...</p>
             ) : (
               <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                <p style={{ fontSize: 19, color: '#222', fontWeight: 700, margin: '0 0 10px', lineHeight: 1.35, wordBreak: 'break-word' }}>
+                  {wordPopup.meaning}
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
                   {wordPopup.partOfSpeech && (
                     <span style={{
                       fontSize: 11, fontWeight: 600, color: '#8B4789',
@@ -3103,9 +3159,61 @@ export function BiblePage() {
                     </span>
                   )}
                 </div>
-                <p style={{ fontSize: 18, color: '#333', fontWeight: 600, margin: '8px 0 16px' }}>
-                  {wordPopup.meaning}
-                </p>
+                {(wordPopup.lemma || wordPopup.inflection || wordPopup.inflectionPattern) && (
+                  <div style={{
+                    background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 10,
+                    padding: '10px 12px', marginBottom: 12,
+                  }}>
+                    {wordPopup.lemma && (
+                      <div style={{ display: 'flex', gap: 8, fontSize: 13, color: '#333', lineHeight: 1.5 }}>
+                        <span style={{ color: '#6b7280', flex: '0 0 52px' }}>원형</span>
+                        <span style={{ fontWeight: 600, minWidth: 0, wordBreak: 'break-word' }}>{wordPopup.lemma}</span>
+                      </div>
+                    )}
+                    {wordPopup.inflection && (
+                      <div style={{ display: 'flex', gap: 8, fontSize: 13, color: '#333', lineHeight: 1.5 }}>
+                        <span style={{ color: '#6b7280', flex: '0 0 52px' }}>활용</span>
+                        <span style={{ minWidth: 0, wordBreak: 'break-word' }}>{wordPopup.inflection}</span>
+                      </div>
+                    )}
+                    {wordPopup.inflectionPattern && (
+                      <div style={{ display: 'flex', gap: 8, fontSize: 13, color: '#333', lineHeight: 1.5 }}>
+                        <span style={{ color: '#6b7280', flex: '0 0 52px' }}>변화</span>
+                        <span style={{ fontWeight: 600, minWidth: 0, wordBreak: 'break-word' }}>{wordPopup.inflectionPattern}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {wordPopup.referenceMeanings && wordPopup.referenceMeanings.length > 0 && (
+                  <div style={{ fontSize: 12, color: '#6b7280', margin: '0 0 12px', lineHeight: 1.5 }}>
+                    참고 뜻: {wordPopup.referenceMeanings.join(', ')}
+                  </div>
+                )}
+                {wordPopup.validationStatus === 'safe_fallback' && (
+                  <div style={{
+                    background: '#fff7ed', borderRadius: 10,
+                    padding: '10px 12px', marginBottom: 12,
+                    borderLeft: '3px solid #f97316',
+                  }}>
+                    <div style={{ fontSize: 12, color: '#9a3412', fontWeight: 600, lineHeight: 1.5 }}>
+                      검증된 단어뜻을 표시하지 않았습니다.
+                    </div>
+                    {wordPopup.exampleNotice && (
+                      <div style={{ fontSize: 12, color: '#9a3412', marginTop: 3, lineHeight: 1.5 }}>
+                        {wordPopup.exampleNotice}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {wordPopup.validationStatus !== 'safe_fallback' && wordPopup.exampleNotice && (
+                  <div style={{
+                    background: '#f8fafc', borderRadius: 10,
+                    padding: '9px 12px', marginBottom: 12,
+                    color: '#6b7280', fontSize: 12, lineHeight: 1.5,
+                  }}>
+                    {wordPopup.exampleNotice}
+                  </div>
+                )}
                 <button
                   onClick={() => handleTTS(wordPopup.word, `word_${wordPopup.word}`)}
                   style={{
@@ -3146,9 +3254,9 @@ export function BiblePage() {
                     borderLeft: '3px solid #f97316',
                   }}>
                     <div style={{ fontSize: 11, color: '#f97316', fontWeight: 600, marginBottom: 4 }}>
-                      🔗 구동사
+                      🔗 구동사·숙어
                     </div>
-                    <div style={{ fontSize: 14, color: '#333', fontWeight: 600 }}>
+                    <div style={{ fontSize: 14, color: '#333', fontWeight: 600, lineHeight: 1.45, wordBreak: 'break-word' }}>
                       {wordPopup.phrasalVerb}
                       {wordPopup.phrasalVerbMeaning && (
                         <span style={{ fontSize: 13, fontWeight: 400, color: '#666', marginLeft: 8 }}>
@@ -3220,6 +3328,13 @@ export function BiblePage() {
                     color: '#10b981', fontWeight: 500, padding: '8px 0',
                   }}>
                     ✅ 단어장에 저장되었습니다!
+                  </div>
+                ) : wordPopup.validationStatus === 'safe_fallback' ? (
+                  <div style={{
+                    textAlign: 'center', fontSize: 13,
+                    color: '#9a3412', fontWeight: 600, padding: '8px 0',
+                  }}>
+                    검증된 결과만 단어장에 저장할 수 있습니다.
                   </div>
                 ) : (
                   <button
