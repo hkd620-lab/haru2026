@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 import { db, storage } from '../../firebase';
 import type { ResultChatConfig } from '../config/resultChatConfig';
 import {
@@ -29,7 +30,10 @@ const MD_H1_STYLE: CSSProperties = { ...MD_HEADING_BASE, fontSize: 17, margin: '
 const MD_H2_STYLE: CSSProperties = { ...MD_HEADING_BASE, fontSize: 16, margin: '8px 0 4px' };
 const MD_H3_STYLE: CSSProperties = { ...MD_HEADING_BASE, fontSize: 15, margin: '6px 0 4px' };
 const MD_PARAGRAPH_STYLE: CSSProperties = { margin: '0 0 6px' };
-const MD_LIST_STYLE: CSSProperties = { margin: '2px 0 6px', paddingLeft: 20 };
+// Tailwind preflight sets `ul, ol { list-style: none }` globally, so bullets/numbers
+// must be restored explicitly (same pattern already used in PDFDigest.tsx / SettingsPage.tsx).
+const MD_UL_STYLE: CSSProperties = { margin: '2px 0 6px', paddingLeft: 20, listStyleType: 'disc' };
+const MD_OL_STYLE: CSSProperties = { margin: '2px 0 6px', paddingLeft: 20, listStyleType: 'decimal' };
 const MD_LIST_ITEM_STYLE: CSSProperties = { margin: '2px 0' };
 const MD_LINK_STYLE: CSSProperties = { color: '#2563EB', wordBreak: 'break-all', overflowWrap: 'anywhere' };
 const MD_BLOCKQUOTE_STYLE: CSSProperties = {
@@ -49,6 +53,7 @@ const MD_PRE_STYLE: CSSProperties = {
   fontSize: 12,
   lineHeight: 1.5,
   overflowX: 'auto',
+  whiteSpace: 'pre',
   fontFamily: MD_CODE_FONT,
 };
 const MD_INLINE_CODE_STYLE: CSSProperties = {
@@ -97,8 +102,8 @@ const resultChatMarkdownComponents = {
   h5: ({ children }: { children?: ReactNode }) => <h5 style={MD_H3_STYLE}>{children}</h5>,
   h6: ({ children }: { children?: ReactNode }) => <h6 style={MD_H3_STYLE}>{children}</h6>,
   p: ({ children }: { children?: ReactNode }) => <p style={MD_PARAGRAPH_STYLE}>{children}</p>,
-  ul: ({ children }: { children?: ReactNode }) => <ul style={MD_LIST_STYLE}>{children}</ul>,
-  ol: ({ children }: { children?: ReactNode }) => <ol style={MD_LIST_STYLE}>{children}</ol>,
+  ul: ({ children }: { children?: ReactNode }) => <ul style={MD_UL_STYLE}>{children}</ul>,
+  ol: ({ children }: { children?: ReactNode }) => <ol style={MD_OL_STYLE}>{children}</ol>,
   li: ({ children }: { children?: ReactNode }) => <li style={MD_LIST_ITEM_STYLE}>{children}</li>,
   strong: ({ children }: { children?: ReactNode }) => <strong style={{ fontWeight: 800 }}>{children}</strong>,
   blockquote: ({ children }: { children?: ReactNode }) => <blockquote style={MD_BLOCKQUOTE_STYLE}>{children}</blockquote>,
@@ -590,7 +595,7 @@ export function ResultChatModal({
                   }}
                 >
                   {message.role === 'assistant' ? (
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={resultChatMarkdownComponents}>
+                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={resultChatMarkdownComponents}>
                       {message.content}
                     </ReactMarkdown>
                   ) : (
