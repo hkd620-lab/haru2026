@@ -96,7 +96,7 @@ const PLANTNET_API_KEY_SECRET = (0, params_1.defineSecret)('PLANTNET_API_KEY');
 const MICROSOFT_CLIENT_ID_SECRET = (0, params_1.defineSecret)('MICROSOFT_CLIENT_ID');
 const MICROSOFT_CLIENT_SECRET_SECRET = (0, params_1.defineSecret)('MICROSOFT_CLIENT_SECRET');
 const GOOGLE_DRIVE_SERVICE_ACCOUNT_SECRET = (0, params_1.defineSecret)('GOOGLE_DRIVE_SERVICE_ACCOUNT');
-const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
+const FRONTEND_URL = 'https://haru2026.com';
 // 관리자 전용 기능 접근 제어용 UID
 const ADMIN_UID = internalEntitlements_1.INTERNAL_ADMIN_UID;
 // Storage 버킷

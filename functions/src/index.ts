@@ -106,7 +106,7 @@ const PLANTNET_API_KEY_SECRET = defineSecret('PLANTNET_API_KEY');
 const MICROSOFT_CLIENT_ID_SECRET = defineSecret('MICROSOFT_CLIENT_ID');
 const MICROSOFT_CLIENT_SECRET_SECRET = defineSecret('MICROSOFT_CLIENT_SECRET');
 const GOOGLE_DRIVE_SERVICE_ACCOUNT_SECRET = defineSecret('GOOGLE_DRIVE_SERVICE_ACCOUNT');
-const FRONTEND_URL = 'https://haru2026-8abb8.web.app';
+const FRONTEND_URL = 'https://haru2026.com';
 // 관리자 전용 기능 접근 제어용 UID
 const ADMIN_UID = INTERNAL_ADMIN_UID;
 
