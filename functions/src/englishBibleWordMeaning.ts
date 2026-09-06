@@ -6,6 +6,7 @@ export interface BibleWordMeaningContext {
   word: string;
   normalizedWord: string;
   verseText: string;
+  normalizedVerseText: string;
   verseKey: string;
 }
 
@@ -64,14 +65,7 @@ interface IrregularFormEntry {
   pattern: string;
 }
 
-type ContextPartOfSpeechHint =
-  | 'noun'
-  | 'verb'
-  | 'pastParticiple'
-  | 'properNoun'
-  | 'comparative'
-  | 'superlative'
-  | null;
+type ContextPartOfSpeechHint = 'pastParticiple' | null;
 
 const WORD_TOKEN_REGEX = /[A-Za-z]+(?:[’'][A-Za-z]+)?/g;
 const VERSE_KEY_REGEX = /^[a-z]+_\d+_\d+$/;
@@ -97,57 +91,6 @@ const HAVE_FORMS = new Set([
   'have',
   'having',
   'has',
-]);
-
-const VERB_PRECEDERS = new Set([
-  'i',
-  'we',
-  'you',
-  'ye',
-  'he',
-  'she',
-  'it',
-  'they',
-  'thou',
-  'to',
-  'will',
-  'shall',
-  'shalt',
-  'may',
-  'might',
-  'must',
-  'can',
-  'could',
-  'would',
-  'should',
-  'did',
-  'do',
-  'doth',
-  'does',
-]);
-
-const DETERMINERS = new Set([
-  'a',
-  'an',
-  'the',
-  'this',
-  'that',
-  'these',
-  'those',
-  'my',
-  'thy',
-  'thine',
-  'his',
-  'her',
-  'its',
-  'our',
-  'your',
-  'their',
-  'one',
-  'two',
-  'many',
-  'few',
-  'much',
 ]);
 
 const IRREGULAR_VERBS: IrregularVerbParadigm[] = [
@@ -221,28 +164,48 @@ export function normalizeBibleWord(value: unknown): string {
   return String(value || '').replace(/[^A-Za-z]/g, '').toLowerCase();
 }
 
+export function normalizeBibleVerseText(value: unknown): string {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+export function hashBibleVerseText(value: unknown): string {
+  return crypto.createHash('sha1').update(normalizeBibleVerseText(value)).digest('hex').slice(0, 16);
+}
+
 export function buildBibleWordMeaningContext(input: {
   word: unknown;
   verseText?: unknown;
   verseKey?: unknown;
 }): BibleWordMeaningContext {
   const word = String(input.word || '').replace(/[^A-Za-z]/g, '').trim();
-  const verseText = typeof input.verseText === 'string' ? input.verseText.trim() : '';
+  const verseText = normalizeBibleVerseText(input.verseText);
   const verseKey = typeof input.verseKey === 'string' ? input.verseKey.trim().toLowerCase() : '';
 
   return {
     word,
     normalizedWord: normalizeBibleWord(word),
     verseText,
+    normalizedVerseText: verseText,
     verseKey,
   };
 }
 
 export function buildBibleWordMeaningCacheKey(context: BibleWordMeaningContext): string {
-  const keyPart = VERSE_KEY_REGEX.test(context.verseKey)
-    ? context.verseKey
-    : crypto.createHash('sha1').update(context.verseText).digest('hex').slice(0, 16);
-  return `bible_${keyPart}_${context.normalizedWord}`;
+  return `bible_${context.verseKey}_${hashBibleVerseText(context.verseText)}_${context.normalizedWord}`;
+}
+
+export function isValidBibleVerseKey(value: unknown): boolean {
+  return typeof value === 'string' && VERSE_KEY_REGEX.test(value.trim().toLowerCase());
+}
+
+export function cachedBibleWordMeaningMatchesContext(
+  rawPayload: unknown,
+  context: BibleWordMeaningContext
+): boolean {
+  if (!isPlainObject(rawPayload)) return false;
+  return getString(rawPayload.verseKey).toLowerCase() === context.verseKey
+    && getString(rawPayload.normalizedVerseText) === context.normalizedVerseText
+    && getString(rawPayload.verseTextHash) === hashBibleVerseText(context.verseText);
 }
 
 export function tokenizeEnglishText(text: string): EnglishToken[] {
@@ -435,7 +398,7 @@ export function validateBibleWordMeaningPayload(
 
 export function buildSafeBibleWordMeaningFallback(
   context: BibleWordMeaningContext,
-  reason: string
+  reason?: string
 ): BibleWordMeaningPayload {
   const wordMissing = !verseContainsTargetWord(context);
   return {
@@ -466,7 +429,7 @@ export function buildSafeBibleWordMeaningFallback(
     bibleReference: '',
     exampleNotice: BIBLE_EXAMPLE_NOT_FOUND_MESSAGE,
     validationStatus: 'safe_fallback',
-    validationWarnings: [reason],
+    validationWarnings: reason ? ['word meaning validation failed'] : [],
   };
 }
 
@@ -515,37 +478,19 @@ function inferContextPartOfSpeechHint(context: BibleWordMeaningContext): Context
   const next = tokenIndex < tokens.length - 1 ? tokens[tokenIndex + 1].normalized : '';
   const irregular = IRREGULAR_FORM_LOOKUP.get(token.normalized);
 
-  if (startsWithUppercase(token.raw) && tokenIndex > 0) return 'properNoun';
-  if (irregular?.roles.has('participle') && (!irregular.roles.has('past') || BE_FORMS.has(previous) || HAVE_FORMS.has(previous))) {
+  if (irregular?.roles.has('participle') && (BE_FORMS.has(previous) || HAVE_FORMS.has(previous))) {
     return 'pastParticiple';
   }
-  if (previous === 'more' || token.normalized.endsWith('er')) return 'comparative';
-  if (previous === 'most' || token.normalized.endsWith('est')) return 'superlative';
-  if (DETERMINERS.has(previous)) return 'noun';
-  if (VERB_PRECEDERS.has(previous) && next) return 'verb';
+  void next;
   return null;
 }
 
-function startsWithUppercase(value: string): boolean {
-  return /^[A-Z]/.test(value);
-}
-
-function partOfSpeechMatchesHint(partOfSpeech: string, hint: Exclude<ContextPartOfSpeechHint, null>): boolean {
+function partOfSpeechMatchesHint(partOfSpeech: string, hint: 'pastParticiple'): boolean {
   const pos = partOfSpeech.toLowerCase();
   switch (hint) {
     case 'pastParticiple':
       return includesAny(pos, ['동사', '분사', '형용사', 'participle', 'adjective'])
         && includesAny(pos, ['분사', '수동', '과거', '형용사', 'participle', 'adjective']);
-    case 'noun':
-      return includesAny(pos, ['명사', 'noun']);
-    case 'properNoun':
-      return includesAny(pos, ['고유', '명사', 'proper', 'noun']);
-    case 'verb':
-      return includesAny(pos, ['동사', 'verb', '조동사']);
-    case 'comparative':
-      return includesAny(pos, ['형용사', '부사', '비교급', 'comparative', 'adjective', 'adverb']);
-    case 'superlative':
-      return includesAny(pos, ['형용사', '부사', '최상급', 'superlative', 'adjective', 'adverb']);
     default:
       return true;
   }

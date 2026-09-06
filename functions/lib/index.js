@@ -8374,25 +8374,41 @@ exports.getWordMeaning = (0, https_2.onCall)({ region: 'asia-northeast3', secret
     const requestedWord = String(word).replace(/[^a-zA-Z]/g, '').trim();
     if (!requestedWord)
         throw new https_2.HttpsError('invalid-argument', '영어 단어가 필요합니다.');
-    const isBibleWordRequest = source === 'bible' || Boolean(verseText) || Boolean(verseKey);
-    if (isBibleWordRequest) {
+    if (requestedWord.length > 64)
+        throw new https_2.HttpsError('invalid-argument', '단어가 너무 깁니다.');
+    const hasBibleContextFields = Boolean(verseText) || Boolean(verseKey);
+    if (source !== 'bible' && hasBibleContextFields) {
+        throw new https_2.HttpsError('invalid-argument', '성경 문맥 단어 조회는 source=bible 요청만 허용됩니다.');
+    }
+    if (source === 'bible') {
+        if (!(0, englishBibleWordMeaning_1.isValidBibleVerseKey)(verseKey)) {
+            throw new https_2.HttpsError('invalid-argument', '올바른 성경 구절 키가 필요합니다.');
+        }
         const context = (0, englishBibleWordMeaning_1.buildBibleWordMeaningContext)({ word: requestedWord, verseText, verseKey });
         if (!context.verseText) {
             throw new https_2.HttpsError('invalid-argument', '성경 단어뜻보기에는 구절 내용이 필요합니다.');
         }
+        if (context.verseText.length > 1200) {
+            throw new https_2.HttpsError('invalid-argument', '구절 내용이 너무 깁니다.');
+        }
         if (!(0, englishBibleWordMeaning_1.verseContainsTargetWord)(context)) {
             logger.warn(`[getWordMeaning] 선택 단어가 구절에 없음: ${requestedWord} (${context.verseKey || 'unknown'})`);
-            return (0, englishBibleWordMeaning_1.buildSafeBibleWordMeaningFallback)(context, 'target word is not present in the current verse.');
+            return (0, englishBibleWordMeaning_1.buildSafeBibleWordMeaningFallback)(context);
         }
         const cacheRef = db.collection('wordCache').doc((0, englishBibleWordMeaning_1.buildBibleWordMeaningCacheKey)(context));
         const cacheSnap = await cacheRef.get();
         if (cacheSnap.exists) {
-            const cachedValidation = (0, englishBibleWordMeaning_1.validateBibleWordMeaningPayload)(cacheSnap.data(), context);
-            if (cachedValidation.ok && cachedValidation.payload) {
+            const cachedData = cacheSnap.data();
+            const cachedValidation = (0, englishBibleWordMeaning_1.validateBibleWordMeaningPayload)(cachedData, context);
+            if ((0, englishBibleWordMeaning_1.cachedBibleWordMeaningMatchesContext)(cachedData, context) && cachedValidation.ok && cachedValidation.payload) {
                 logger.info(`[getWordMeaning] 성경 단어 캐시 히트: ${requestedWord} (${context.verseKey || 'unknown'})`);
                 return cachedValidation.payload;
             }
-            logger.warn(`[getWordMeaning] 성경 단어 캐시 검증 실패, 재생성: ${requestedWord} (${context.verseKey || 'unknown'})`, { errors: cachedValidation.errors, warnings: cachedValidation.warnings });
+            logger.warn(`[getWordMeaning] 성경 단어 캐시 검증 실패, 재생성: ${requestedWord} (${context.verseKey || 'unknown'})`, {
+                cacheMetadataMatches: (0, englishBibleWordMeaning_1.cachedBibleWordMeaningMatchesContext)(cachedData, context),
+                errors: cachedValidation.errors,
+                warnings: cachedValidation.warnings,
+            });
         }
         const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
         const { GoogleGenerativeAI } = await Promise.resolve().then(() => __importStar(require('@google/generative-ai')));
@@ -8408,8 +8424,10 @@ exports.getWordMeaning = (0, https_2.onCall)({ region: 'asia-northeast3', secret
                 if (validation.ok && validation.payload) {
                     await cacheRef.set({
                         ...validation.payload,
-                        verseKey: context.verseKey || null,
+                        verseKey: context.verseKey,
                         verseText: context.verseText,
+                        normalizedVerseText: context.normalizedVerseText,
+                        verseTextHash: (0, englishBibleWordMeaning_1.hashBibleVerseText)(context.verseText),
                         createdAt: admin.firestore.FieldValue.serverTimestamp(),
                     });
                     logger.info(`[getWordMeaning] 성경 단어 캐시 저장: ${requestedWord} (${context.verseKey || 'unknown'})`);
@@ -8423,7 +8441,8 @@ exports.getWordMeaning = (0, https_2.onCall)({ region: 'asia-northeast3', secret
                 logger.warn(`[getWordMeaning] 성경 단어 생성 파싱 실패 attempt=${attempt}: ${requestedWord} (${context.verseKey || 'unknown'})`, error);
             }
         }
-        return (0, englishBibleWordMeaning_1.buildSafeBibleWordMeaningFallback)(context, lastErrors.join(' / ') || 'AI response validation failed.');
+        logger.warn(`[getWordMeaning] 성경 단어 생성 최종 실패: ${requestedWord} (${context.verseKey})`, { lastErrors });
+        return (0, englishBibleWordMeaning_1.buildSafeBibleWordMeaningFallback)(context);
     }
     const cacheRef = db.collection('wordCache').doc(requestedWord.toLowerCase());
     // 1. 캐시 확인

@@ -8,6 +8,7 @@ const ts = require('typescript');
 const root = path.resolve(__dirname, '..');
 const sourcePath = path.join(root, 'src/englishBibleWordMeaning.ts');
 const source = fs.readFileSync(sourcePath, 'utf8');
+const indexSource = fs.readFileSync(path.join(root, 'src/index.ts'), 'utf8');
 const compiled = ts.transpileModule(source, {
   compilerOptions: {
     esModuleInterop: true,
@@ -27,6 +28,10 @@ const {
   buildBibleWordMeaningCacheKey,
   buildBibleWordMeaningContext,
   buildSafeBibleWordMeaningFallback,
+  cachedBibleWordMeaningMatchesContext,
+  hashBibleVerseText,
+  isValidBibleVerseKey,
+  normalizeBibleVerseText,
   validateBibleWordMeaningPayload,
 } = testModule.exports;
 
@@ -63,6 +68,103 @@ function validPayload(overrides = {}) {
 }
 
 {
+  const cases = [
+    {
+      word: 'water',
+      verseText: 'Jesus answered and said unto her, If thou knewest the gift of God, thou wouldest have asked of him, and he would have given thee living water.',
+      payload: {
+        selectedWord: 'water',
+        meaning: '물',
+        contextMeaning: '물',
+        partOfSpeech: '명사',
+        lemma: 'water',
+        inflection: '원형',
+      },
+    },
+    {
+      word: 'after',
+      verseText: 'And the tree yielding fruit after his kind.',
+      payload: {
+        selectedWord: 'after',
+        meaning: '~에 따라',
+        contextMeaning: '~에 따라',
+        partOfSpeech: '전치사',
+        lemma: 'after',
+        inflection: '원형',
+      },
+    },
+    {
+      word: 'priest',
+      verseText: 'And the priest shall burn the memorial of it.',
+      payload: {
+        selectedWord: 'priest',
+        meaning: '제사장',
+        contextMeaning: '제사장',
+        partOfSpeech: '명사',
+        lemma: 'priest',
+        inflection: '원형',
+      },
+    },
+    {
+      word: 'Let',
+      verseText: 'And God said, Let there be light.',
+      payload: {
+        selectedWord: 'Let',
+        meaning: '~하게 하라',
+        contextMeaning: '~하게 하라',
+        partOfSpeech: '동사',
+        lemma: 'let',
+        inflection: '명령형',
+      },
+    },
+    {
+      word: 'that',
+      verseText: 'And he that knew not did commit things worthy of stripes.',
+      payload: {
+        selectedWord: 'that',
+        meaning: '~하는 사람',
+        contextMeaning: '~하는 사람',
+        partOfSpeech: '관계대명사',
+        lemma: 'that',
+        inflection: '원형',
+      },
+    },
+    {
+      word: 'that',
+      verseText: 'And God saw the light, that it was good.',
+      payload: {
+        selectedWord: 'that',
+        meaning: '~라는 것을',
+        contextMeaning: '~라는 것을',
+        partOfSpeech: '접속사',
+        lemma: 'that',
+        inflection: '원형',
+      },
+    },
+    {
+      word: 'good',
+      verseText: 'And God saw the light, that it was good.',
+      payload: {
+        selectedWord: 'good',
+        meaning: '좋은',
+        contextMeaning: '좋은',
+        partOfSpeech: '형용사',
+        lemma: 'good',
+        inflection: '원형',
+      },
+    },
+  ];
+
+  for (const item of cases) {
+    const result = validate(
+      { word: item.word, verseText: item.verseText, verseKey: 'genesis_1_4' },
+      validPayload(item.payload)
+    );
+    assert.equal(result.ok, true, `${item.word} should pass: ${result.errors.join(', ')}`);
+  }
+}
+
+{
   const result = validate(
     {
       word: 'beaten',
@@ -84,6 +186,25 @@ function validPayload(overrides = {}) {
   assert.equal(result.ok, true);
   assert.equal(result.payload.lemma, 'beat');
   assert.equal(result.payload.inflectionPattern, 'beat - beat - beaten');
+
+  const wrongPartOfSpeech = validate(
+    {
+      word: 'beaten',
+      verseText: 'And that servant shall be beaten with many stripes.',
+      verseKey: 'luke_12_47',
+    },
+    validPayload({
+      selectedWord: 'beaten',
+      meaning: '매를 맞은',
+      contextMeaning: '매를 맞은',
+      partOfSpeech: '명사',
+      lemma: 'beat',
+      inflection: '과거분사',
+      inflectionPattern: 'beat - beat - beaten',
+    })
+  );
+  assert.equal(wrongPartOfSpeech.ok, false);
+  assert.match(wrongPartOfSpeech.errors.join('\n'), /partOfSpeech/);
 }
 
 {
@@ -133,19 +254,6 @@ function validPayload(overrides = {}) {
   );
   assert.equal(verbResult.ok, true);
 
-  const wrongVerbResult = validate(
-    {
-      word: 'light',
-      verseText: 'They light the lamp before evening.',
-      verseKey: 'test_1_1',
-    },
-    validPayload({
-      partOfSpeech: '명사',
-      inflection: '원형',
-    })
-  );
-  assert.equal(wrongVerbResult.ok, false);
-  assert.match(wrongVerbResult.errors.join('\n'), /partOfSpeech/);
 }
 
 {
@@ -263,10 +371,53 @@ function validPayload(overrides = {}) {
   const cacheB = buildBibleWordMeaningCacheKey(buildBibleWordMeaningContext({
     word: 'light',
     verseText: 'And God said, Let there be light.',
-    verseKey: 'genesis_1_3',
+    verseKey: 'genesis_1_4',
   }));
-  assert.equal(cacheA, 'bible_genesis_1_4_light');
+  assert.match(cacheA, /^bible_genesis_1_4_[0-9a-f]{16}_light$/);
   assert.notEqual(cacheA, cacheB);
+}
+
+{
+  const context = buildBibleWordMeaningContext({
+    word: 'light',
+    verseText: 'And God saw the light, that it was good.',
+    verseKey: 'genesis_1_4',
+  });
+  const cached = {
+    ...validPayload(),
+    selectedWord: 'light',
+    verseKey: 'genesis_1_4',
+    verseText: 'And God saw the light, that it was good.',
+    normalizedVerseText: normalizeBibleVerseText('And God saw the light, that it was good.'),
+    verseTextHash: hashBibleVerseText('And God saw the light, that it was good.'),
+  };
+  assert.equal(cachedBibleWordMeaningMatchesContext(cached, context), true);
+
+  const manipulated = {
+    ...cached,
+    verseText: 'And God said, Let there be light.',
+    normalizedVerseText: normalizeBibleVerseText('And God said, Let there be light.'),
+    verseTextHash: hashBibleVerseText('And God said, Let there be light.'),
+  };
+  assert.equal(cachedBibleWordMeaningMatchesContext(manipulated, context), false);
+
+  const validation = validateBibleWordMeaningPayload(manipulated, context);
+  assert.equal(validation.ok, true);
+  assert.equal(cachedBibleWordMeaningMatchesContext(manipulated, context), false);
+}
+
+{
+  assert.equal(isValidBibleVerseKey('genesis_1_4'), true);
+  assert.equal(isValidBibleVerseKey('Genesis 1:4'), false);
+  assert.equal(isValidBibleVerseKey('diary_user_1'), false);
+}
+
+{
+  assert.match(indexSource, /source !== 'bible' && hasBibleContextFields/);
+  assert.match(indexSource, /requestedWord\.length > 64/);
+  assert.match(indexSource, /context\.verseText\.length > 1200/);
+  assert.match(indexSource, /isValidBibleVerseKey\(verseKey\)/);
+  assert.match(indexSource, /cachedBibleWordMeaningMatchesContext\(cachedData, context\)/);
 }
 
 {

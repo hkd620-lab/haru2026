@@ -35,8 +35,12 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BIBLE_EXAMPLE_NOT_FOUND_MESSAGE = void 0;
 exports.normalizeBibleWord = normalizeBibleWord;
+exports.normalizeBibleVerseText = normalizeBibleVerseText;
+exports.hashBibleVerseText = hashBibleVerseText;
 exports.buildBibleWordMeaningContext = buildBibleWordMeaningContext;
 exports.buildBibleWordMeaningCacheKey = buildBibleWordMeaningCacheKey;
+exports.isValidBibleVerseKey = isValidBibleVerseKey;
+exports.cachedBibleWordMeaningMatchesContext = cachedBibleWordMeaningMatchesContext;
 exports.tokenizeEnglishText = tokenizeEnglishText;
 exports.verseContainsTargetWord = verseContainsTargetWord;
 exports.buildBibleWordMeaningPrompt = buildBibleWordMeaningPrompt;
@@ -67,55 +71,6 @@ const HAVE_FORMS = new Set([
     'have',
     'having',
     'has',
-]);
-const VERB_PRECEDERS = new Set([
-    'i',
-    'we',
-    'you',
-    'ye',
-    'he',
-    'she',
-    'it',
-    'they',
-    'thou',
-    'to',
-    'will',
-    'shall',
-    'shalt',
-    'may',
-    'might',
-    'must',
-    'can',
-    'could',
-    'would',
-    'should',
-    'did',
-    'do',
-    'doth',
-    'does',
-]);
-const DETERMINERS = new Set([
-    'a',
-    'an',
-    'the',
-    'this',
-    'that',
-    'these',
-    'those',
-    'my',
-    'thy',
-    'thine',
-    'his',
-    'her',
-    'its',
-    'our',
-    'your',
-    'their',
-    'one',
-    'two',
-    'many',
-    'few',
-    'much',
 ]);
 const IRREGULAR_VERBS = [
     { lemma: 'be', past: ['was', 'were', 'wast', 'wert'], participle: ['been'], pattern: 'be - was/were - been' },
@@ -177,22 +132,36 @@ function addIrregularVerbForm(lookup, form, lemma, role, pattern) {
 function normalizeBibleWord(value) {
     return String(value || '').replace(/[^A-Za-z]/g, '').toLowerCase();
 }
+function normalizeBibleVerseText(value) {
+    return String(value || '').replace(/\s+/g, ' ').trim();
+}
+function hashBibleVerseText(value) {
+    return crypto.createHash('sha1').update(normalizeBibleVerseText(value)).digest('hex').slice(0, 16);
+}
 function buildBibleWordMeaningContext(input) {
     const word = String(input.word || '').replace(/[^A-Za-z]/g, '').trim();
-    const verseText = typeof input.verseText === 'string' ? input.verseText.trim() : '';
+    const verseText = normalizeBibleVerseText(input.verseText);
     const verseKey = typeof input.verseKey === 'string' ? input.verseKey.trim().toLowerCase() : '';
     return {
         word,
         normalizedWord: normalizeBibleWord(word),
         verseText,
+        normalizedVerseText: verseText,
         verseKey,
     };
 }
 function buildBibleWordMeaningCacheKey(context) {
-    const keyPart = VERSE_KEY_REGEX.test(context.verseKey)
-        ? context.verseKey
-        : crypto.createHash('sha1').update(context.verseText).digest('hex').slice(0, 16);
-    return `bible_${keyPart}_${context.normalizedWord}`;
+    return `bible_${context.verseKey}_${hashBibleVerseText(context.verseText)}_${context.normalizedWord}`;
+}
+function isValidBibleVerseKey(value) {
+    return typeof value === 'string' && VERSE_KEY_REGEX.test(value.trim().toLowerCase());
+}
+function cachedBibleWordMeaningMatchesContext(rawPayload, context) {
+    if (!isPlainObject(rawPayload))
+        return false;
+    return getString(rawPayload.verseKey).toLowerCase() === context.verseKey
+        && getString(rawPayload.normalizedVerseText) === context.normalizedVerseText
+        && getString(rawPayload.verseTextHash) === hashBibleVerseText(context.verseText);
 }
 function tokenizeEnglishText(text) {
     const tokens = [];
@@ -395,7 +364,7 @@ function buildSafeBibleWordMeaningFallback(context, reason) {
         bibleReference: '',
         exampleNotice: exports.BIBLE_EXAMPLE_NOT_FOUND_MESSAGE,
         validationStatus: 'safe_fallback',
-        validationWarnings: [reason],
+        validationWarnings: reason ? ['word meaning validation failed'] : [],
     };
 }
 function isPlainObject(value) {
@@ -439,23 +408,11 @@ function inferContextPartOfSpeechHint(context) {
     const previous = tokenIndex > 0 ? tokens[tokenIndex - 1].normalized : '';
     const next = tokenIndex < tokens.length - 1 ? tokens[tokenIndex + 1].normalized : '';
     const irregular = IRREGULAR_FORM_LOOKUP.get(token.normalized);
-    if (startsWithUppercase(token.raw) && tokenIndex > 0)
-        return 'properNoun';
-    if ((irregular === null || irregular === void 0 ? void 0 : irregular.roles.has('participle')) && (!irregular.roles.has('past') || BE_FORMS.has(previous) || HAVE_FORMS.has(previous))) {
+    if ((irregular === null || irregular === void 0 ? void 0 : irregular.roles.has('participle')) && (BE_FORMS.has(previous) || HAVE_FORMS.has(previous))) {
         return 'pastParticiple';
     }
-    if (previous === 'more' || token.normalized.endsWith('er'))
-        return 'comparative';
-    if (previous === 'most' || token.normalized.endsWith('est'))
-        return 'superlative';
-    if (DETERMINERS.has(previous))
-        return 'noun';
-    if (VERB_PRECEDERS.has(previous) && next)
-        return 'verb';
+    void next;
     return null;
-}
-function startsWithUppercase(value) {
-    return /^[A-Z]/.test(value);
 }
 function partOfSpeechMatchesHint(partOfSpeech, hint) {
     const pos = partOfSpeech.toLowerCase();
@@ -463,16 +420,6 @@ function partOfSpeechMatchesHint(partOfSpeech, hint) {
         case 'pastParticiple':
             return includesAny(pos, ['동사', '분사', '형용사', 'participle', 'adjective'])
                 && includesAny(pos, ['분사', '수동', '과거', '형용사', 'participle', 'adjective']);
-        case 'noun':
-            return includesAny(pos, ['명사', 'noun']);
-        case 'properNoun':
-            return includesAny(pos, ['고유', '명사', 'proper', 'noun']);
-        case 'verb':
-            return includesAny(pos, ['동사', 'verb', '조동사']);
-        case 'comparative':
-            return includesAny(pos, ['형용사', '부사', '비교급', 'comparative', 'adjective', 'adverb']);
-        case 'superlative':
-            return includesAny(pos, ['형용사', '부사', '최상급', 'superlative', 'adjective', 'adverb']);
         default:
             return true;
     }

@@ -46,6 +46,9 @@ import {
   buildBibleWordMeaningContext,
   buildBibleWordMeaningPrompt,
   buildSafeBibleWordMeaningFallback,
+  cachedBibleWordMeaningMatchesContext,
+  hashBibleVerseText,
+  isValidBibleVerseKey,
   parseJsonObject,
   validateBibleWordMeaningPayload,
   verseContainsTargetWord,
@@ -9505,30 +9508,45 @@ export const getWordMeaning = onCall(
     const db = admin.firestore();
     const requestedWord = String(word).replace(/[^a-zA-Z]/g, '').trim();
     if (!requestedWord) throw new HttpsError('invalid-argument', '영어 단어가 필요합니다.');
+    if (requestedWord.length > 64) throw new HttpsError('invalid-argument', '단어가 너무 깁니다.');
 
-    const isBibleWordRequest = source === 'bible' || Boolean(verseText) || Boolean(verseKey);
+    const hasBibleContextFields = Boolean(verseText) || Boolean(verseKey);
+    if (source !== 'bible' && hasBibleContextFields) {
+      throw new HttpsError('invalid-argument', '성경 문맥 단어 조회는 source=bible 요청만 허용됩니다.');
+    }
 
-    if (isBibleWordRequest) {
+    if (source === 'bible') {
+      if (!isValidBibleVerseKey(verseKey)) {
+        throw new HttpsError('invalid-argument', '올바른 성경 구절 키가 필요합니다.');
+      }
       const context = buildBibleWordMeaningContext({ word: requestedWord, verseText, verseKey });
       if (!context.verseText) {
         throw new HttpsError('invalid-argument', '성경 단어뜻보기에는 구절 내용이 필요합니다.');
       }
+      if (context.verseText.length > 1200) {
+        throw new HttpsError('invalid-argument', '구절 내용이 너무 깁니다.');
+      }
       if (!verseContainsTargetWord(context)) {
         logger.warn(`[getWordMeaning] 선택 단어가 구절에 없음: ${requestedWord} (${context.verseKey || 'unknown'})`);
-        return buildSafeBibleWordMeaningFallback(context, 'target word is not present in the current verse.');
+        return buildSafeBibleWordMeaningFallback(context);
       }
 
       const cacheRef = db.collection('wordCache').doc(buildBibleWordMeaningCacheKey(context));
       const cacheSnap = await cacheRef.get();
       if (cacheSnap.exists) {
-        const cachedValidation = validateBibleWordMeaningPayload(cacheSnap.data(), context);
-        if (cachedValidation.ok && cachedValidation.payload) {
+        const cachedData = cacheSnap.data();
+        const cachedValidation = validateBibleWordMeaningPayload(cachedData, context);
+        if (cachedBibleWordMeaningMatchesContext(cachedData, context) && cachedValidation.ok && cachedValidation.payload) {
           logger.info(`[getWordMeaning] 성경 단어 캐시 히트: ${requestedWord} (${context.verseKey || 'unknown'})`);
           return cachedValidation.payload;
         }
         logger.warn(
           `[getWordMeaning] 성경 단어 캐시 검증 실패, 재생성: ${requestedWord} (${context.verseKey || 'unknown'})`,
-          { errors: cachedValidation.errors, warnings: cachedValidation.warnings }
+          {
+            cacheMetadataMatches: cachedBibleWordMeaningMatchesContext(cachedData, context),
+            errors: cachedValidation.errors,
+            warnings: cachedValidation.warnings,
+          }
         );
       }
 
@@ -9548,8 +9566,10 @@ export const getWordMeaning = onCall(
           if (validation.ok && validation.payload) {
             await cacheRef.set({
               ...validation.payload,
-              verseKey: context.verseKey || null,
+              verseKey: context.verseKey,
               verseText: context.verseText,
+              normalizedVerseText: context.normalizedVerseText,
+              verseTextHash: hashBibleVerseText(context.verseText),
               createdAt: admin.firestore.FieldValue.serverTimestamp(),
             });
             logger.info(`[getWordMeaning] 성경 단어 캐시 저장: ${requestedWord} (${context.verseKey || 'unknown'})`);
@@ -9570,7 +9590,8 @@ export const getWordMeaning = onCall(
         }
       }
 
-      return buildSafeBibleWordMeaningFallback(context, lastErrors.join(' / ') || 'AI response validation failed.');
+      logger.warn(`[getWordMeaning] 성경 단어 생성 최종 실패: ${requestedWord} (${context.verseKey})`, { lastErrors });
+      return buildSafeBibleWordMeaningFallback(context);
     }
 
     const cacheRef = db.collection('wordCache').doc(requestedWord.toLowerCase());

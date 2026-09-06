@@ -965,6 +965,22 @@ export function BiblePage() {
     validationWarnings?: string[];
   } | null>(null);
 
+  const closeWordPopup = useCallback(() => {
+    setWordPopup(null);
+    setVocabMemo('');
+    setVocabExample('');
+    setVocabSaved(false);
+  }, []);
+
+  useEffect(() => {
+    if (!wordPopup) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeWordPopup();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [closeWordPopup, wordPopup]);
+
   const handleWordClick = useCallback(async (word: string, verseText?: string, verseKey?: string) => {
     // 특수문자 제거
     const cleanWord = word.replace(/[^a-zA-Z]/g, '');
@@ -1016,7 +1032,16 @@ export function BiblePage() {
         validationWarnings: Array.isArray(data.validationWarnings) ? data.validationWarnings : [],
       });
     } catch {
-      setWordPopup({ word: cleanWord, meaning: '오류가 발생했습니다.', partOfSpeech: '', phonetic: '', koreanPronunciation: '', loading: false });
+      setWordPopup({
+        word: cleanWord,
+        meaning: '검증된 단어 뜻을 만들지 못했습니다.',
+        partOfSpeech: '',
+        phonetic: '',
+        koreanPronunciation: '',
+        loading: false,
+        validationStatus: 'safe_fallback',
+        exampleNotice: '이 단어가 직접 사용된 성경 예문을 찾지 못했습니다.',
+      });
     }
   }, []);
 
@@ -3094,7 +3119,7 @@ export function BiblePage() {
       {/* 단어 뜻 팝업 */}
       {wordPopup && (
         <div
-          onClick={() => { setWordPopup(null); setVocabMemo(''); setVocabExample(''); setVocabSaved(false); }}
+          onClick={closeWordPopup}
           style={{
             position: 'fixed', inset: 0,
             backgroundColor: 'rgba(0,0,0,0.4)',
@@ -3117,13 +3142,44 @@ export function BiblePage() {
               overscrollBehavior: 'contain',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <p style={{ fontSize: 22, fontWeight: 800, color: '#1A3C6E', margin: 0, minWidth: 0, lineHeight: 1.2, wordBreak: 'break-word' }}>
+            <div style={{
+              position: 'sticky',
+              top: -22,
+              zIndex: 1,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: 12,
+              margin: '-22px 0 16px',
+              padding: '18px 0 12px',
+              backgroundColor: '#fff',
+              borderBottom: '1px solid #f3f4f6',
+            }}>
+              <p style={{ fontSize: 22, fontWeight: 800, color: '#1A3C6E', margin: 0, minWidth: 0, lineHeight: 1.2, wordBreak: 'break-word', paddingRight: 8 }}>
                 {wordPopup.word}
               </p>
               <button
-                onClick={() => { setWordPopup(null); setVocabMemo(''); setVocabExample(''); setVocabSaved(false); }}
-                style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999' }}
+                type="button"
+                aria-label="단어뜻 창 닫기"
+                onClick={closeWordPopup}
+                style={{
+                  width: 44,
+                  height: 44,
+                  minWidth: 44,
+                  minHeight: 44,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: '#fff',
+                  border: 'none',
+                  borderRadius: 22,
+                  fontSize: 28,
+                  lineHeight: 1,
+                  cursor: 'pointer',
+                  color: '#6b7280',
+                  marginRight: -6,
+                  flexShrink: 0,
+                }}
               >✕</button>
             </div>
             {wordPopup.loading ? (
