@@ -307,6 +307,21 @@ async function run() {
   assert.ok(falsePremiseCalls[0].contents.includes('잘못된 전제'));
   assert.ok(falsePremiseCalls[0].contents.includes('그럴듯한 경력'));
 
+  // ambiguous 라우트: current_data_required 소스(stock_sayu)의 규칙 기반 분류는 Gemini 호출 없이
+  // 확정되므로, 거짓 전제 질문이라도 auto 환경에서는 사용자 확인 없이 답변이 생성되지 않아야 한다.
+  const ambiguousFalsePremiseBefore = genaiCalls.length;
+  const ambiguousFalsePremise = await callable(USERS.basic, {
+    recordId: 'stock',
+    sourceKey: 'stock_sayu',
+    question: '삼성전자 주식을 처음 만든 사람은 이도현 야 맞지?',
+    searchPreference: 'auto',
+  });
+  assert.strictEqual(ambiguousFalsePremise.answerRoute, 'ambiguous');
+  assert.strictEqual(ambiguousFalsePremise.requiresConfirmation, true);
+  assert.strictEqual(ambiguousFalsePremise.confirmationType, 'ambiguous');
+  assert.strictEqual(ambiguousFalsePremise.answer, '');
+  assert.strictEqual(genaiCalls.length, ambiguousFalsePremiseBefore);
+
   const personalFact = await callable(USERS.free, {
     recordId: 'reading',
     sourceKey: 'reading_sayu',
