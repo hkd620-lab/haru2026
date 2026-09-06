@@ -42,9 +42,11 @@ const aiLibraryConfig = {
   messagingSenderId: import.meta.env.VITE_AI_LIBRARY_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_AI_LIBRARY_FIREBASE_APP_ID,
 };
-const aiLibraryApp = getApps().find(a => a.name === 'aiLibrary')
-  || initializeApp(aiLibraryConfig, 'aiLibrary');
-export const aiLibraryDb = getFirestore(aiLibraryApp);
+const hasAiLibraryConfig = Object.values(aiLibraryConfig).every((value) => typeof value === 'string' && value.trim().length > 0);
+const aiLibraryApp = hasAiLibraryConfig
+  ? getApps().find(a => a.name === 'aiLibrary') || initializeApp(aiLibraryConfig, 'aiLibrary')
+  : null;
+export const aiLibraryDb = aiLibraryApp ? getFirestore(aiLibraryApp) : null;
 
 const provider = new GoogleAuthProvider();
 

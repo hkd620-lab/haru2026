@@ -4,6 +4,8 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
+    "validate:build-env": "node scripts/validate-build-env.mjs",
+    "prebuild": "npm run validate:build-env",
     "build": "vite build",
     "dev": "vite",
     "test:subscription-display": "node test/subscriptionDisplay.policy.test.cjs"
