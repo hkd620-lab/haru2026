@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { GrapeAnimation } from '../components/GrapeAnimation';
 import { useAuth } from '../contexts/AuthContext';
 import HaruNewsPreview from '../components/HaruNewsPreview';
 import { InAppBrowserLoginGuide } from '../components/InAppBrowserLoginGuide';
@@ -181,9 +180,23 @@ export function LoginPage() {
           className="fixed inset-0 z-50 flex flex-col items-center justify-center"
           style={{ backgroundColor: 'rgba(237, 233, 245, 0.95)' }}
         >
-          <div style={{ width: 300, height: 400 }}>
-            <GrapeAnimation />
-          </div>
+          <img
+            src="/brand/haru-pumpkin-logo.png"
+            alt="HARU2026"
+            style={{
+              width: 90,
+              height: 80,
+              objectFit: 'contain',
+            }}
+          />
+          <div
+            aria-hidden="true"
+            className="mt-6 h-8 w-8 animate-spin rounded-full"
+            style={{
+              border: '3px solid rgba(26, 60, 110, 0.18)',
+              borderTopColor: '#1A3C6E',
+            }}
+          />
           <p className="mt-4 text-sm font-medium" style={{ color: '#1A3C6E' }}>
             {emailMode === 'signup' ? '회원가입 중...' : '로그인 중...'}
           </p>
