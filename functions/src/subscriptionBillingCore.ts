@@ -351,6 +351,14 @@ export type InitialBillingKeyCleanupReservationDecision = {
   cleanupAlreadyComplete: boolean;
 };
 
+export type InitialBillingStoredRequestSettlementDecision = {
+  alreadyProcessed: boolean;
+  shouldContinueSettlement: boolean;
+  shouldWriteLock: boolean;
+  lockWritePolicy: 'existing_lock_only' | 'lock_write_forbidden';
+  reason: 'payment_request_already_processed' | 'existing_lock_can_be_updated' | 'lock_missing_write_forbidden';
+};
+
 function readString(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
@@ -393,6 +401,41 @@ export function getCompleteInitialBillingKeyCleanup(
     if (isInitialBillingKeyCleanupComplete(cleanup)) return cleanup;
   }
   return null;
+}
+
+export function resolveInitialBillingStoredRequestSettlement(params: {
+  paymentData: InitialBillingCleanupDocData;
+  lockExists: boolean;
+}): InitialBillingStoredRequestSettlementDecision {
+  const paymentStatus = normalizePaymentRequestStatus(params.paymentData?.status);
+
+  if (paymentStatus === 'processed') {
+    return {
+      alreadyProcessed: true,
+      shouldContinueSettlement: false,
+      shouldWriteLock: false,
+      lockWritePolicy: 'lock_write_forbidden',
+      reason: 'payment_request_already_processed',
+    };
+  }
+
+  if (params.lockExists) {
+    return {
+      alreadyProcessed: false,
+      shouldContinueSettlement: true,
+      shouldWriteLock: true,
+      lockWritePolicy: 'existing_lock_only',
+      reason: 'existing_lock_can_be_updated',
+    };
+  }
+
+  return {
+    alreadyProcessed: false,
+    shouldContinueSettlement: true,
+    shouldWriteLock: false,
+    lockWritePolicy: 'lock_write_forbidden',
+    reason: 'lock_missing_write_forbidden',
+  };
 }
 
 export function isMatchingInitialBillingCleanupLock(params: {

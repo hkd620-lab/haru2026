@@ -40,6 +40,7 @@ import {
   normalizePortOnePaymentMethod,
   normalizePortOnePaymentResponse,
   normalizeSubscriptionBillingCustomer,
+  resolveInitialBillingStoredRequestSettlement,
   resolveInitialBillingKeyCleanupReservation,
   shouldBlockNewSubscriptionForInitialBillingCleanup,
 } from './subscriptionBillingCore';
@@ -1257,6 +1258,13 @@ async function settleInitialBillingPaymentFromStoredRequest(params: {
   if (paymentData.paymentType !== 'subscription' || paymentData.billingType !== 'initial_billing') {
     return { handled: false, success: false };
   }
+  const earlySettlementDecision = resolveInitialBillingStoredRequestSettlement({
+    paymentData,
+    lockExists: false,
+  });
+  if (earlySettlementDecision.alreadyProcessed) {
+    return { handled: true, success: true, alreadyProcessed: true, status: portoneStatus };
+  }
   if (portoneStatus !== 'PAID') {
     return { handled: true, success: false, status: portoneStatus };
   }
@@ -1313,6 +1321,11 @@ async function settleInitialBillingPaymentFromStoredRequest(params: {
   const lockRef = getSubscriptionPaymentLockRef(uid);
   const lockSnap = await lockRef.get();
   const lockData = lockSnap.data() || {};
+  const settlementDecision = resolveInitialBillingStoredRequestSettlement({
+    paymentData,
+    lockExists: lockSnap.exists,
+  });
+  const pendingLockRef = settlementDecision.shouldWriteLock ? lockRef : null;
   const billingKey = typeof lockData.billingKey === 'string'
     ? lockData.billingKey
     : typeof requestData.billingKey === 'string'
@@ -1321,11 +1334,11 @@ async function settleInitialBillingPaymentFromStoredRequest(params: {
   const customer = getStoredSubscriptionBillingCustomer(requestData);
 
   if (!billingKey || !customer) {
-    await markInitialBillingPaymentPending(requestRef, paymentRef, portoneStatus, lockRef);
+    await markInitialBillingPaymentPending(requestRef, paymentRef, portoneStatus, pendingLockRef || undefined);
     await markInitialBillingKeyCleanupUnknown(
       requestRef,
       paymentRef,
-      lockRef,
+      pendingLockRef,
       billingKey ? 'stored_customer_invalid' : 'billing_key_ownership_unconfirmed',
       portoneStatus,
       `PORTONE_${portoneStatus}`,
@@ -8010,6 +8023,20 @@ export const portoneWebhook = onRequest(
       return;
     }
 
+    const orderRef = getPaymentRequestRef(paymentId);
+    const orderSnap = await orderRef.get();
+    const orderData = orderSnap.data() || null;
+    const orderStatus = normalizePaymentRequestStatus(orderData?.status);
+    if (
+      webhook.type === 'Transaction.Paid'
+      && orderData?.paymentType === 'subscription'
+      && orderData?.billingType === 'initial_billing'
+      && orderStatus === 'processed'
+    ) {
+      res.status(200).send('ok');
+      return;
+    }
+
     let payment: any;
     try {
       payment = await fetchPortOnePaymentWithRetry(paymentId);
@@ -8032,9 +8059,6 @@ export const portoneWebhook = onRequest(
       return;
     }
 
-    const orderRef = getPaymentRequestRef(paymentId);
-    const orderSnap = await orderRef.get();
-    const orderData = orderSnap.data() || null;
     const portoneStatus = getPortOnePaymentStatus(payment);
     const paymentMethodFields = getPortOnePaymentMethodWriteFields(payment);
     const paymentMethod = getPaymentMethodLabel(payment);

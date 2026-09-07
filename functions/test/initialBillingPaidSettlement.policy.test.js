@@ -89,10 +89,81 @@ assert.deepStrictEqual(JSON.parse(payload.customData), {
   billingType: 'initial_billing',
 });
 
+function settlementDecision(paymentData, lockExists) {
+  return core.resolveInitialBillingStoredRequestSettlement({
+    paymentData,
+    lockExists,
+  });
+}
+
+const delayedWebhookAfterSettlement = settlementDecision({
+  status: 'processed',
+  paymentType: 'subscription',
+  billingType: 'initial_billing',
+}, false);
+assert.equal(delayedWebhookAfterSettlement.alreadyProcessed, true);
+assert.equal(delayedWebhookAfterSettlement.shouldContinueSettlement, false);
+assert.equal(delayedWebhookAfterSettlement.shouldWriteLock, false);
+assert.equal(delayedWebhookAfterSettlement.lockWritePolicy, 'lock_write_forbidden');
+assert.equal(delayedWebhookAfterSettlement.reason, 'payment_request_already_processed');
+
+const delayedWebhookAfterCancellation = settlementDecision({
+  status: 'processed',
+  paymentType: 'subscription',
+  billingType: 'initial_billing',
+}, false);
+assert.equal(delayedWebhookAfterCancellation.alreadyProcessed, true);
+assert.equal(delayedWebhookAfterCancellation.shouldWriteLock, false);
+assert.equal(delayedWebhookAfterCancellation.reason, 'payment_request_already_processed');
+
+const delayedInitialWebhookAfterRecurringRenewal = settlementDecision({
+  status: 'processed',
+  lastPaymentId: 'initial-payment-id',
+  currentSubscriptionLastPaymentId: 'recurring-payment-id',
+  paymentType: 'subscription',
+  billingType: 'initial_billing',
+}, false);
+assert.equal(delayedInitialWebhookAfterRecurringRenewal.alreadyProcessed, true);
+assert.equal(delayedInitialWebhookAfterRecurringRenewal.shouldContinueSettlement, false);
+assert.equal(delayedInitialWebhookAfterRecurringRenewal.shouldWriteLock, false);
+
+const missingBillingKeyWithoutLock = settlementDecision({
+  status: 'pending',
+  paymentType: 'subscription',
+  billingType: 'initial_billing',
+}, false);
+assert.equal(missingBillingKeyWithoutLock.alreadyProcessed, false);
+assert.equal(missingBillingKeyWithoutLock.shouldContinueSettlement, true);
+assert.equal(missingBillingKeyWithoutLock.shouldWriteLock, false);
+assert.equal(missingBillingKeyWithoutLock.lockWritePolicy, 'lock_write_forbidden');
+assert.equal(missingBillingKeyWithoutLock.reason, 'lock_missing_write_forbidden');
+
+const missingBillingKeyWithExistingLock = settlementDecision({
+  status: 'pending',
+  paymentType: 'subscription',
+  billingType: 'initial_billing',
+}, true);
+assert.equal(missingBillingKeyWithExistingLock.alreadyProcessed, false);
+assert.equal(missingBillingKeyWithExistingLock.shouldContinueSettlement, true);
+assert.equal(missingBillingKeyWithExistingLock.shouldWriteLock, true);
+assert.equal(missingBillingKeyWithExistingLock.lockWritePolicy, 'existing_lock_only');
+assert.equal(missingBillingKeyWithExistingLock.reason, 'existing_lock_can_be_updated');
+
+const processedWithExistingLock = settlementDecision({
+  status: 'processed',
+  paymentType: 'subscription',
+  billingType: 'initial_billing',
+}, true);
+assert.equal(processedWithExistingLock.alreadyProcessed, true);
+assert.equal(processedWithExistingLock.shouldContinueSettlement, false);
+assert.equal(processedWithExistingLock.shouldWriteLock, false);
+assert.equal(processedWithExistingLock.lockWritePolicy, 'lock_write_forbidden');
+
 assert(coreSrc.includes('export function normalizePortOnePaymentResponse'));
 assert(coreSrc.includes('response.payment'));
 assert(coreSrc.includes('export function getPortOnePaymentStatus'));
 assert(coreSrc.includes('export function getPortOnePaymentId'));
+assert(coreSrc.includes('export function resolveInitialBillingStoredRequestSettlement'));
 
 const assertPaymentMatchesRequestSection = section(
   indexSrc,
@@ -134,6 +205,9 @@ const storedInitialSettlementSection = section(
   'async function settleRecurringBillingPayment',
 );
 assert(storedInitialSettlementSection.includes("paymentData.paymentType !== 'subscription' || paymentData.billingType !== 'initial_billing'"));
+assert(storedInitialSettlementSection.includes('resolveInitialBillingStoredRequestSettlement({'));
+assert(storedInitialSettlementSection.includes('earlySettlementDecision.alreadyProcessed'));
+assertBefore(storedInitialSettlementSection, 'earlySettlementDecision.alreadyProcessed', "if (portoneStatus !== 'PAID')");
 assert(storedInitialSettlementSection.includes("if (portoneStatus !== 'PAID')"));
 assert(storedInitialSettlementSection.includes('assertPaymentMatchesRequest(payment, paymentData)'));
 assert(storedInitialSettlementSection.includes("requestData.billingType !== 'billing_key_issue'"));
@@ -145,6 +219,9 @@ assert(storedInitialSettlementSection.includes('requestPayMethod !== payMethod')
 assert(storedInitialSettlementSection.includes('isInitialBillingSubscriptionAlreadyProcessed({'));
 assert(storedInitialSettlementSection.includes('return { handled: true, success: true, alreadyProcessed: true, status: portoneStatus }'));
 assert(storedInitialSettlementSection.includes('getStoredSubscriptionBillingCustomer(requestData)'));
+assert(storedInitialSettlementSection.includes('const pendingLockRef = settlementDecision.shouldWriteLock ? lockRef : null'));
+assert(storedInitialSettlementSection.includes('markInitialBillingPaymentPending(requestRef, paymentRef, portoneStatus, pendingLockRef || undefined)'));
+assert(storedInitialSettlementSection.includes('pendingLockRef,'));
 assert(storedInitialSettlementSection.includes('return { handled: true, success: false, pending: true, status: portoneStatus }'));
 assert(storedInitialSettlementSection.includes('const settlement = await settleInitialBillingPayment({'));
 assert(!storedInitialSettlementSection.includes('axios.post'));
@@ -176,6 +253,7 @@ assert(webhookSection.includes('initialBillingSettlementHandled'));
 assert(webhookSection.includes('initialBillingSettlementAlreadyProcessed'));
 assert(webhookSection.includes('PortOne initial billing 웹훅 중복 수신 후 정산 복구 실패'));
 assert(webhookSection.includes('PortOne initial billing 웹훅 정산 실패'));
+assert(webhookSection.includes("orderStatus === 'processed'"));
 const freshWebhookInitialSettlementSection = section(
   webhookSection,
   'let payment: any;',
