@@ -220,8 +220,10 @@ assert(storedInitialSettlementSection.includes('isInitialBillingSubscriptionAlre
 assert(storedInitialSettlementSection.includes('return { handled: true, success: true, alreadyProcessed: true, status: portoneStatus }'));
 assert(storedInitialSettlementSection.includes('getStoredSubscriptionBillingCustomer(requestData)'));
 assert(storedInitialSettlementSection.includes('const pendingLockRef = settlementDecision.shouldWriteLock ? lockRef : null'));
-assert(storedInitialSettlementSection.includes('markInitialBillingPaymentPending(requestRef, paymentRef, portoneStatus, pendingLockRef || undefined)'));
-assert(storedInitialSettlementSection.includes('pendingLockRef,'));
+assert(storedInitialSettlementSection.includes("return { handled: true, success: false, pending: false, status: 'none' }"));
+assert(storedInitialSettlementSection.includes('writeInitialBillingProgressIfLockActive({'));
+assert(storedInitialSettlementSection.includes('lockRef: pendingLockRef'));
+assert(storedInitialSettlementSection.includes('markInitialBillingKeyCleanupUnknownIfLockActive({'));
 assert(storedInitialSettlementSection.includes('return { handled: true, success: false, pending: true, status: portoneStatus }'));
 assert(storedInitialSettlementSection.includes('const settlement = await settleInitialBillingPayment({'));
 assert(!storedInitialSettlementSection.includes('axios.post'));

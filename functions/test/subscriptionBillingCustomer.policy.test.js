@@ -138,17 +138,19 @@ assert(subscriptionPageSrc.includes('customer: {\n          name: trimmedName,\n
 assert(subscriptionPageSrc.includes('customer: {\n          fullName: trimmedName,\n          email: trimmedEmail,\n          phoneNumber: normalizedPhone,\n        },'));
 
 assert(subscribeSection.includes('const requestCustomer = getStoredSubscriptionBillingCustomer(requestData)'));
-assert(subscribeSection.includes("markSubscriptionBillingRequestPreflightFailed(requestRef, lockRef, 'missing_customer_info')"));
+assert(subscribeSection.includes("markSubscriptionBillingRequestPreflightFailed(requestRef, lockRef, uid, issueId, 'missing_customer_info')"));
 assert(subscribeSection.includes('assertStoredSubscriptionBillingCustomer(freshData)'));
 assert(subscribeSection.includes('buildPortOneBillingKeyPaymentPayload({'));
 assert(subscribeSection.includes('customer: locked.customer'));
 assert(!subscribeSection.includes('request.data?.customer'));
-assertBefore(subscribeSection, "markSubscriptionBillingRequestPreflightFailed(requestRef, lockRef, 'missing_customer_info')", 'axios.post');
+assertBefore(subscribeSection, "markSubscriptionBillingRequestPreflightFailed(requestRef, lockRef, uid, issueId, 'missing_customer_info')", 'axios.post');
 assertBefore(subscribeSection, 'assertStoredSubscriptionBillingCustomer(freshData)', 'tx.set(newPaymentRef');
 assertBefore(subscribeSection, 'customer: locked.customer', 'customData: {');
 
 assert(recoverSection.includes('const customer = getStoredSubscriptionBillingCustomer(requestData)'));
-assert(recoverSection.includes('await markInitialBillingPaymentFailed(requestRef, paymentRef, existingPayment?.status || \'UNKNOWN\', lockRef)'));
+assert(recoverSection.includes('const writeResult = await writeInitialBillingProgressIfLockActive({'));
+assert(recoverSection.includes("status: 'failed'"));
+assert(recoverSection.includes('failedAt: admin.firestore.FieldValue.serverTimestamp()'));
 assert(recoverSection.includes('customer,'));
 
 assert(completionSection.includes('customer: params.customer'));
@@ -170,12 +172,13 @@ assert(subscribeSection.includes("throw new HttpsError('failed-precondition', '�
 assert(subscribeSection.includes("throw new HttpsError('unavailable', '첫 결제 요청 결과를 확인할 수 없습니다. 잠시 후 다시 확인해 주세요.')"));
 assertBefore(subscribeSection, 'if (billingError.terminal)', "throw new HttpsError('unavailable', '첫 결제 요청 결과를 확인할 수 없습니다. 잠시 후 다시 확인해 주세요.')");
 
-assert(subscribeSection.includes("lockRef.set({\n          status: 'charging',\n          lastPaymentId: paymentId"));
+assert(subscribeSection.includes('writeInitialBillingProgressIfLockActive({'));
+assert(subscribeSection.includes('lockWrite: {\n          status: \'charging\',\n          lastPaymentId: paymentId'));
 assert(subscribeSection.includes("portoneStatus: billingError.portoneStatus"));
 assert(failedSection.includes("status: 'failed'"));
 assert(failedSection.includes('lockRef.set({'));
 assert(!failedSection.includes('lockRef.delete()'));
-assertBefore(subscribeSection, 'await markInitialBillingPaymentFailed(requestRef, paymentRef, billingError.portoneStatus, lockRef)', "throw new HttpsError('failed-precondition', '첫 결제가 실패 또는 취소되었습니다.')");
+assertBefore(subscribeSection, 'const writeResult = await writeInitialBillingProgressIfLockActive({', "throw new HttpsError('failed-precondition', '첫 결제가 실패 또는 취소되었습니다.')");
 
 assert(recurringSection.includes('if (billingError.terminal)'));
 assert(recurringSection.includes("status: 'needs_attention'"));
