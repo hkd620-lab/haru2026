@@ -35,7 +35,9 @@ const recoverSection = section(indexSrc, 'export const recoverSubscriptionBillin
 const subscribeSection = section(indexSrc, 'export const subscribeWithBillingKey = onCall', '// ===== 💳 정기구독 해지 =====');
 const completionSection = section(indexSrc, 'async function completeInitialBillingSubscription', 'async function markInitialBillingPaymentPending');
 const failedSection = section(indexSrc, 'async function markInitialBillingPaymentFailed', 'async function markSubscriptionBillingRequestPreflightFailed');
-const recoverProgressWriteSection = section(indexSrc, 'async function writeRecoverInitialBillingProgressIfLockActive', 'async function markSubscriptionBillingRequestPreflightFailed');
+const conditionalDeleteSection = section(indexSrc, 'async function deleteSubscriptionPaymentLockIfMatching', 'async function writeInitialBillingProgressIfLockActive');
+const initialProgressWriteSection = section(indexSrc, 'async function writeInitialBillingProgressIfLockActive', 'async function markInitialBillingKeyCleanupUnknownIfLockActive');
+const cleanupUnknownWriteSection = section(indexSrc, 'async function markInitialBillingKeyCleanupUnknownIfLockActive', 'async function markSubscriptionBillingRequestPreflightFailed');
 const retrySection = section(subscriptionPageSrc, 'const handleRetryPendingSubscription = async', 'const selected = PLANS');
 const handleSection = section(subscriptionPageSrc, 'const handleSubscribe = async', 'const selected = PLANS');
 const requestChargingWriteSection = section(subscribeSection, 'tx.set(requestRef, {', 'tx.set(lockRef, {');
@@ -86,6 +88,14 @@ assert.equal(processedRequestBeforeRecoverWrite.action, 'skip_already_processed'
 assert.equal(processedRequestBeforeRecoverWrite.shouldWriteRequest, false);
 assert.equal(processedRequestBeforeRecoverWrite.shouldWritePayment, false);
 assert.equal(processedRequestBeforeRecoverWrite.shouldWriteLock, false);
+
+const processedPaymentBeforeRecoverWrite = recoverLockDecision({
+  requestData: { status: 'charging' },
+  paymentData: { status: 'processed' },
+});
+assert.equal(processedPaymentBeforeRecoverWrite.action, 'skip_already_processed');
+assert.equal(processedPaymentBeforeRecoverWrite.shouldWriteRequest, false);
+assert.equal(processedPaymentBeforeRecoverWrite.shouldWriteLock, false);
 
 const matchingLockBeforeRecoverWrite = recoverLockDecision();
 assert.equal(matchingLockBeforeRecoverWrite.action, 'write_existing_lock');
@@ -152,28 +162,33 @@ assert(recoverSection.includes('const requestRef = getPaymentRequestRef(issueId)
 assert(recoverSection.includes('requestData.uid !== uid'));
 assert(recoverSection.includes('const lastPaymentId = typeof requestData.lastPaymentId'));
 assert(recoverSection.includes('fetchPortOnePaymentWithRetry(lastPaymentId)'));
-assert(recoverSection.includes('writeRecoverInitialBillingProgressIfLockActive({'));
+assert(recoverSection.includes('writeInitialBillingProgressIfLockActive({'));
 assert(recoverSection.includes("writeResult === 'lock_missing'"));
 assert(recoverSection.includes("writeResult === 'already_processed'"));
 assert(recoverSection.includes('return settleInitialBillingPayment({'));
 assert(recoverSection.includes('status: \'lookup_failed\''));
-assert(recoverSection.includes('await lockRef.delete()'));
+assert(recoverSection.includes('deleteSubscriptionPaymentLockIfMatching(lockRef, uid, issueId)'));
 assert(!recoverSection.includes('return { billingKey'));
 assert(!recoverSection.includes('lockRef.set('));
 assert(!recoverSection.includes('markInitialBillingPaymentPending('));
 assert(!recoverSection.includes('markInitialBillingPaymentFailed('));
 
 assert(indexSrc.includes('resolveRecoverInitialBillingLockWrite'));
-assert(recoverProgressWriteSection.includes('return db.runTransaction(async (tx) =>'));
-assert(recoverProgressWriteSection.includes('tx.get(params.lockRef)'));
-assert(recoverProgressWriteSection.includes('tx.get(params.requestRef)'));
-assert(recoverProgressWriteSection.includes('tx.get(params.paymentRef)'));
-assert(recoverProgressWriteSection.includes("decision.action === 'skip_missing_lock'"));
-assert(recoverProgressWriteSection.includes("decision.action === 'skip_already_processed'"));
-assert(recoverProgressWriteSection.includes("decision.action === 'reject_mismatched_lock'"));
-assert(recoverProgressWriteSection.includes('tx.delete(params.lockRef)'));
-assert(recoverProgressWriteSection.includes('tx.set(params.lockRef, params.lockWrite, { merge: true })'));
-assertBefore(recoverProgressWriteSection, "decision.action === 'skip_missing_lock'", 'tx.set(params.lockRef, params.lockWrite, { merge: true })');
+assert(conditionalDeleteSection.includes('await db.runTransaction(async (tx) =>'));
+assert(conditionalDeleteSection.includes('const lockSnap = await tx.get(lockRef)'));
+assert(conditionalDeleteSection.includes('lockData.uid === uid && lockData.issueId === issueId'));
+assert(conditionalDeleteSection.includes('tx.delete(lockRef)'));
+assert(initialProgressWriteSection.includes('return db.runTransaction(async (tx) =>'));
+assert(initialProgressWriteSection.includes('tx.get(params.lockRef)'));
+assert(initialProgressWriteSection.includes('tx.get(params.requestRef)'));
+assert(initialProgressWriteSection.includes('tx.get(params.paymentRef)'));
+assert(initialProgressWriteSection.includes("decision.action === 'skip_missing_lock'"));
+assert(initialProgressWriteSection.includes("decision.action === 'skip_already_processed'"));
+assert(initialProgressWriteSection.includes("decision.action === 'reject_mismatched_lock'"));
+assert(initialProgressWriteSection.includes('tx.delete(params.lockRef)'));
+assert(initialProgressWriteSection.includes('tx.set(params.lockRef, params.lockWrite, { merge: true })'));
+assertBefore(initialProgressWriteSection, "decision.action === 'skip_missing_lock'", 'tx.set(params.lockRef, params.lockWrite, { merge: true })');
+assert(cleanupUnknownWriteSection.includes('return writeInitialBillingProgressIfLockActive({'));
 
 assert(completionSection.includes('tx.delete(lockRef)'));
 assert(completionSection.includes('billingKey: admin.firestore.FieldValue.delete()'));

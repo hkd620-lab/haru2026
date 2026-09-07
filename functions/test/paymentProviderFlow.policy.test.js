@@ -145,7 +145,7 @@ assert(recoverSubscriptionSection.includes('requestData.uid !== uid'));
 assert(recoverSubscriptionSection.includes('const lastPaymentId = typeof requestData.lastPaymentId'));
 assert(recoverSubscriptionSection.includes('fetchPortOnePaymentWithRetry(lastPaymentId)'));
 assert(recoverSubscriptionSection.includes('return settleInitialBillingPayment({'));
-assert(recoverSubscriptionSection.includes('await lockRef.delete()'));
+assert(recoverSubscriptionSection.includes('deleteSubscriptionPaymentLockIfMatching(lockRef, uid, issueId)'));
 assert(!recoverSubscriptionSection.includes('return { billingKey'));
 
 assert(singlePaymentPageSrc.includes("provider: 'kg_inicis'"));
@@ -209,9 +209,12 @@ assert(initialBillingSettlementSection.includes("if (portoneStatus === 'PAID')")
 assert(initialBillingSettlementSection.includes('completeInitialBillingSubscription({ ...params, payment })'));
 assert(initialBillingSettlementSection.includes('? { success: true, alreadyProcessed: true }'));
 assert(initialBillingSettlementSection.includes("if (isFailedOrCancelledPaymentStatus(portoneStatus))"));
-assert(initialBillingSettlementSection.includes('await markInitialBillingPaymentFailed(params.requestRef, params.paymentRef, portoneStatus, params.lockRef)'));
+assert(initialBillingSettlementSection.includes('const writeResult = await writeInitialBillingProgressIfLockActive({'));
+assert(initialBillingSettlementSection.includes("status: 'failed'"));
+assert(initialBillingSettlementSection.includes('failedAt: admin.firestore.FieldValue.serverTimestamp()'));
 assert(initialBillingSettlementSection.includes("throw new HttpsError('failed-precondition', '첫 결제가 실패 또는 취소되었습니다.')"));
-assert(initialBillingSettlementSection.includes('await markInitialBillingPaymentPending(params.requestRef, params.paymentRef, portoneStatus, params.lockRef)'));
+assert(initialBillingSettlementSection.includes('markInitialBillingKeyCleanupUnknownIfLockActive({'));
+assert(initialBillingSettlementSection.includes("status: 'pending'"));
 assert(initialBillingSettlementSection.includes('return { success: false, pending: true, status: portoneStatus }'));
 assert(!initialBillingSettlementSection.includes('axios.post'));
 

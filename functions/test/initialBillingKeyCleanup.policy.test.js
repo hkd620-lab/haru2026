@@ -75,11 +75,14 @@ assert(cleanupTypesSection.includes('lockRef: FirebaseFirestore.DocumentReferenc
 assert(cleanupTypesSection.includes('initialBillingKeyCleanup: {'));
 assert(cleanupTypesSection.includes("status,\n      reason,"));
 assert(cleanupTypesSection.includes('failureReason'));
-assert(cleanupTypesSection.includes('const batch = db.batch()'));
 assert(cleanupTypesSection.includes('removeStoredBillingKey'));
 assert(cleanupTypesSection.includes('billingKey: admin.firestore.FieldValue.delete()'));
-assert(cleanupTypesSection.includes('batch.delete(params.lockRef)'));
-assert(cleanupTypesSection.includes('batch.set(params.lockRef, cleanupWrite'));
+assert(cleanupTypesSection.includes('await db.runTransaction(async (tx) =>'));
+assert(cleanupTypesSection.includes('tx.get(params.lockRef)'));
+assert(cleanupTypesSection.includes('resolveRecoverInitialBillingLockWrite({'));
+assert(cleanupTypesSection.includes("decision.action !== 'write_existing_lock'"));
+assert(cleanupTypesSection.includes('tx.delete(params.lockRef)'));
+assert(cleanupTypesSection.includes('tx.set(params.lockRef, cleanupWrite'));
 
 assert(failedSection.includes("status: 'failed'"));
 assert(failedSection.includes('lockRef.set({'));
@@ -92,6 +95,8 @@ assert(reserveSection.includes('resolveInitialBillingKeyCleanupReservation({'));
 assert(reserveSection.includes('lockExists: lockSnap.exists'));
 assert(reserveSection.includes('lockData: normalizedLockData'));
 assert(reserveSection.includes('billingSubscriptionData: billingData'));
+assert(reserveSection.includes('const writeDecision = resolveRecoverInitialBillingLockWrite({'));
+assert(reserveSection.includes("writeDecision.action !== 'write_existing_lock'"));
 assert(reserveSection.includes('decision.status'));
 assert(reserveSection.includes('isMatchingInitialBillingCleanupLock({'));
 assert(reserveSection.includes('tx.set(params.lockRef, write'));
@@ -122,14 +127,15 @@ assert(!cleanupSection.includes('billingKeyHash'));
 
 assert(subscribeSection.includes("['processed', 'charging', 'failed', 'cancelled', 'lookup_failed'].includes(freshStatus)"));
 assert(subscribeSection.includes("billingKey: storedBillingKey && storedBillingKey === billingKey ? storedBillingKey : null"));
-assert(subscribeSection.includes("markInitialBillingKeyCleanupUnknown(\n          requestRef,\n          paymentRef,\n          lockRef,\n          'billing_key_ownership_unconfirmed'"));
+assert(subscribeSection.includes('markInitialBillingKeyCleanupUnknownIfLockActive({'));
+assert(subscribeSection.includes("reason: 'billing_key_ownership_unconfirmed'"));
 assert(subscribeSection.includes('billingKey: locked.billingKey'));
 assert(subscribeSection.includes('cleanupInitialBillingKeyAfterInitialChargeFailure({'));
 assert(subscribeSection.includes('lockRef,'));
-assertBefore(subscribeChargeErrorSection, 'await markInitialBillingPaymentFailed(requestRef, paymentRef, billingError.portoneStatus, lockRef)', 'cleanupInitialBillingKeyAfterInitialChargeFailure({');
+assertBefore(subscribeChargeErrorSection, 'const writeResult = await writeInitialBillingProgressIfLockActive({', 'cleanupInitialBillingKeyAfterInitialChargeFailure({');
 assertBefore(subscribeChargeErrorSection, 'cleanupInitialBillingKeyAfterInitialChargeFailure({', "throw new HttpsError('failed-precondition', '첫 결제가 실패 또는 취소되었습니다.')");
 assertBefore(subscribeChargeErrorSection, 'lastBillingError: billingError.safeReason', 'cleanupInitialBillingKeyAfterInitialChargeFailure({');
-assert(subscribeSection.includes("markInitialBillingKeyCleanupUnknown(\n        requestRef,\n        paymentRef,\n        lockRef,\n        'initial_charge_result_unconfirmed'"));
+assert(subscribeSection.includes("reason: 'initial_charge_result_unconfirmed'"));
 
 assert(recoverSection.includes("const billingKey = typeof lockData.billingKey === 'string'"));
 assert(recoverSection.includes('cleanupInitialBillingKeyAfterInitialChargeFailure({'));
@@ -143,9 +149,10 @@ assert(settlementSection.includes('completeInitialBillingSubscription({ ...param
 assert(settlementSection.includes('cleanupInitialBillingKeyAfterInitialChargeFailure({'));
 assert(settlementSection.includes('lockRef: params.lockRef'));
 assert(settlementSection.includes("failureReason: `PORTONE_${portoneStatus}`"));
-assertBefore(settlementSection, 'await markInitialBillingPaymentFailed(params.requestRef, params.paymentRef, portoneStatus, params.lockRef)', 'cleanupInitialBillingKeyAfterInitialChargeFailure({');
+assertBefore(settlementSection, 'const writeResult = await writeInitialBillingProgressIfLockActive({', 'cleanupInitialBillingKeyAfterInitialChargeFailure({');
 assertBefore(settlementSection, 'cleanupInitialBillingKeyAfterInitialChargeFailure({', "throw new HttpsError('failed-precondition', '첫 결제가 실패 또는 취소되었습니다.')");
-assert(settlementSection.includes("markInitialBillingKeyCleanupUnknown(\n    params.requestRef,\n    params.paymentRef,\n    params.lockRef,\n    'initial_charge_result_unconfirmed'"));
+assert(settlementSection.includes('markInitialBillingKeyCleanupUnknownIfLockActive({'));
+assert(settlementSection.includes("reason: 'initial_charge_result_unconfirmed'"));
 
 assert(completionSection.includes("status: 'not_needed'"));
 assert(completionSection.includes("reason: 'initial_charge_paid'"));
