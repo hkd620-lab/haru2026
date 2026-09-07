@@ -288,6 +288,32 @@ export function buildPortOneBillingKeyPaymentPayload(params: {
   };
 }
 
+export function normalizePortOnePaymentResponse(response: any): any {
+  if (
+    response
+    && typeof response === 'object'
+    && response.payment
+    && typeof response.payment === 'object'
+  ) {
+    return response.payment;
+  }
+  return response;
+}
+
+export function getPortOnePaymentStatus(payment: any): string {
+  const normalizedPayment = normalizePortOnePaymentResponse(payment);
+  return typeof normalizedPayment?.status === 'string' ? normalizedPayment.status : 'UNKNOWN';
+}
+
+export function getPortOnePaymentId(payment: any): string {
+  const normalizedPayment = normalizePortOnePaymentResponse(payment);
+  return typeof normalizedPayment?.paymentId === 'string'
+    ? normalizedPayment.paymentId
+    : typeof normalizedPayment?.id === 'string'
+      ? normalizedPayment.id
+      : '';
+}
+
 export type InitialBillingKeyCleanupStatus = 'succeeded' | 'failed' | 'not_needed' | 'unknown';
 
 export type InitialBillingKeyCleanupRecord = {

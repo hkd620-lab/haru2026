@@ -417,27 +417,40 @@ function createPortOneIdempotencyKey(paymentId) {
     return `"${safePaymentId}"`;
 }
 function assertPaymentMatchesRequest(payment, requestData) {
-    if ((payment === null || payment === void 0 ? void 0 : payment.storeId) && payment.storeId !== HARU_PORTONE_STORE_ID) {
+    const normalizedPayment = (0, subscriptionBillingCore_1.normalizePortOnePaymentResponse)(payment);
+    const expectedPaymentId = typeof requestData.paymentId === 'string' ? requestData.paymentId : '';
+    const actualPaymentId = (0, subscriptionBillingCore_1.getPortOnePaymentId)(normalizedPayment);
+    if (expectedPaymentId && actualPaymentId && actualPaymentId !== expectedPaymentId) {
+        logger.error('결제 ID 불일치:', {
+            expected: maskPaymentId(expectedPaymentId),
+            actual: maskPaymentId(actualPaymentId),
+        });
+        throw new https_2.HttpsError('invalid-argument', '결제 ID가 올바르지 않습니다.');
+    }
+    if ((normalizedPayment === null || normalizedPayment === void 0 ? void 0 : normalizedPayment.storeId) && normalizedPayment.storeId !== HARU_PORTONE_STORE_ID) {
         throw new https_2.HttpsError('invalid-argument', '결제 상점 정보가 올바르지 않습니다.');
     }
-    if ((payment === null || payment === void 0 ? void 0 : payment.currency) && payment.currency !== 'KRW') {
+    if ((normalizedPayment === null || normalizedPayment === void 0 ? void 0 : normalizedPayment.currency) && normalizedPayment.currency !== 'KRW') {
         throw new https_2.HttpsError('invalid-argument', '결제 통화가 올바르지 않습니다.');
     }
-    if (getPaymentAmountTotal(payment) !== requestData.amount) {
+    if (getPaymentAmountTotal(normalizedPayment) !== requestData.amount) {
         logger.error('결제 금액 불일치:', {
             paymentId: maskPaymentId(requestData.paymentId || requestData.id || ''),
             expected: requestData.amount,
-            actual: getPaymentAmountTotal(payment),
+            actual: getPaymentAmountTotal(normalizedPayment),
         });
         throw new https_2.HttpsError('invalid-argument', '결제 금액이 올바르지 않습니다.');
     }
-    const orderName = typeof (payment === null || payment === void 0 ? void 0 : payment.orderName) === 'string' ? payment.orderName : '';
+    const orderName = typeof (normalizedPayment === null || normalizedPayment === void 0 ? void 0 : normalizedPayment.orderName) === 'string' ? normalizedPayment.orderName : '';
     if (orderName && orderName !== requestData.orderName) {
         throw new https_2.HttpsError('invalid-argument', '결제 상품명이 올바르지 않습니다.');
     }
-    const customData = parsePortOneCustomData(payment === null || payment === void 0 ? void 0 : payment.customData);
+    const customData = parsePortOneCustomData(normalizedPayment === null || normalizedPayment === void 0 ? void 0 : normalizedPayment.customData);
     if (customData.uid && customData.uid !== requestData.uid) {
         throw new https_2.HttpsError('invalid-argument', '결제 사용자 정보가 올바르지 않습니다.');
+    }
+    if (customData.issueId && requestData.issueId && customData.issueId !== requestData.issueId) {
+        throw new https_2.HttpsError('invalid-argument', '결제 인증 요청 정보가 올바르지 않습니다.');
     }
     if (customData.plan && customData.plan !== requestData.plan) {
         throw new https_2.HttpsError('invalid-argument', '결제 요금제 정보가 올바르지 않습니다.');
@@ -536,7 +549,7 @@ function getPortOneLookupError(error) {
 }
 async function fetchPortOnePayment(paymentId) {
     const portoneRes = await axios_1.default.get(`https://api.portone.io/payments/${encodeURIComponent(paymentId)}`, { headers: { Authorization: `PortOne ${PORTONE_API_SECRET.value().trim()}` } });
-    return portoneRes.data;
+    return (0, subscriptionBillingCore_1.normalizePortOnePaymentResponse)(portoneRes.data);
 }
 async function fetchPortOnePaymentWithRetry(paymentId) {
     var _a, _b;
@@ -593,11 +606,11 @@ async function completeInitialBillingSubscription(params) {
     const subRef = db.doc(`users/${params.uid}/subscription/info`);
     const billingRef = db.doc(`billingSubscriptions/${params.uid}`);
     const lockRef = params.lockRef;
-    const paymentMethodFields = getPortOnePaymentMethodWriteFields(params.payment);
-    const paymentMethod = getPaymentMethodLabel(params.payment);
+    const payment = (0, subscriptionBillingCore_1.normalizePortOnePaymentResponse)(params.payment);
+    const paymentMethodFields = getPortOnePaymentMethodWriteFields(payment);
+    const paymentMethod = getPaymentMethodLabel(payment);
     let alreadyProcessed = false;
     await db.runTransaction(async (tx) => {
-        var _a;
         const [freshRequest, freshPayment, freshSubscription, freshBilling, freshLock] = await Promise.all([
             tx.get(params.requestRef),
             tx.get(params.paymentRef),
@@ -700,7 +713,7 @@ async function completeInitialBillingSubscription(params) {
         }, { merge: true });
         tx.set(params.paymentRef, {
             status: 'processed',
-            portoneStatus: ((_a = params.payment) === null || _a === void 0 ? void 0 : _a.status) || 'PAID',
+            portoneStatus: (0, subscriptionBillingCore_1.getPortOnePaymentStatus)(payment),
             paymentMethod,
             billingKeyIssued: true,
             initialBillingKeyCleanup: {
@@ -991,7 +1004,7 @@ async function cleanupInitialBillingKeyAfterInitialChargeFailure(params) {
     }
 }
 async function settleInitialBillingPayment(params) {
-    var _a;
+    const payment = (0, subscriptionBillingCore_1.normalizePortOnePaymentResponse)(params.payment);
     const paymentSnap = await params.paymentRef.get();
     if (!paymentSnap.exists) {
         throw new https_2.HttpsError('failed-precondition', '첫 결제 요청 정보를 찾을 수 없습니다.');
@@ -1006,10 +1019,10 @@ async function settleInitialBillingPayment(params) {
         || paymentProvider !== params.provider) {
         throw new https_2.HttpsError('permission-denied', '첫 결제 요청 정보가 올바르지 않습니다.');
     }
-    const portoneStatus = typeof ((_a = params.payment) === null || _a === void 0 ? void 0 : _a.status) === 'string' ? params.payment.status : 'UNKNOWN';
+    const portoneStatus = (0, subscriptionBillingCore_1.getPortOnePaymentStatus)(payment);
     if (portoneStatus === 'PAID') {
-        assertPaymentMatchesRequest(params.payment, paymentData);
-        const completion = await completeInitialBillingSubscription(params);
+        assertPaymentMatchesRequest(payment, paymentData);
+        const completion = await completeInitialBillingSubscription({ ...params, payment });
         return completion.alreadyProcessed
             ? { success: true, alreadyProcessed: true }
             : { success: true };
@@ -1034,8 +1047,102 @@ async function settleInitialBillingPayment(params) {
     await markInitialBillingKeyCleanupUnknown(params.requestRef, params.paymentRef, params.lockRef, 'initial_charge_result_unconfirmed', portoneStatus, `PORTONE_${portoneStatus}`);
     return { success: false, pending: true, status: portoneStatus };
 }
+async function settleInitialBillingPaymentFromStoredRequest(params) {
+    const payment = (0, subscriptionBillingCore_1.normalizePortOnePaymentResponse)(params.payment);
+    const portoneStatus = (0, subscriptionBillingCore_1.getPortOnePaymentStatus)(payment);
+    const paymentRef = getPaymentRequestRef(params.paymentId);
+    const paymentSnap = await paymentRef.get();
+    if (!paymentSnap.exists)
+        return { handled: false, success: false };
+    const paymentData = paymentSnap.data() || {};
+    if (paymentData.paymentType !== 'subscription' || paymentData.billingType !== 'initial_billing') {
+        return { handled: false, success: false };
+    }
+    if (portoneStatus !== 'PAID') {
+        return { handled: true, success: false, status: portoneStatus };
+    }
+    assertPaymentMatchesRequest(payment, paymentData);
+    const uid = typeof paymentData.uid === 'string' ? paymentData.uid : '';
+    const issueId = typeof paymentData.issueId === 'string' ? paymentData.issueId : '';
+    const plan = assertLaunchPurchasablePlan(paymentData.plan);
+    const provider = getStoredPaymentProvider(paymentData);
+    const payMethod = provider ? getStoredPayMethod(paymentData, provider) : '';
+    const amount = Number(paymentData.amount || 0);
+    const orderName = typeof paymentData.orderName === 'string' ? paymentData.orderName : '';
+    if (!uid || !issueId || !provider || !payMethod || amount !== getSubscriptionPlanAmount(plan) || paymentData.currency !== 'KRW' || !orderName) {
+        throw new https_2.HttpsError('failed-precondition', '첫 결제 요청 정보가 올바르지 않습니다.');
+    }
+    const requestRef = getPaymentRequestRef(issueId);
+    const requestSnap = await requestRef.get();
+    if (!requestSnap.exists) {
+        throw new https_2.HttpsError('failed-precondition', '정기결제 요청 정보를 확인할 수 없습니다.');
+    }
+    const requestData = requestSnap.data() || {};
+    const requestProvider = getStoredPaymentProvider(requestData);
+    const requestPayMethod = requestProvider ? getStoredPayMethod(requestData, requestProvider) : '';
+    if (requestData.uid !== uid
+        || requestData.issueId !== issueId
+        || requestData.plan !== plan
+        || requestData.paymentType !== 'subscription'
+        || requestData.billingType !== 'billing_key_issue'
+        || requestProvider !== provider
+        || requestPayMethod !== payMethod
+        || requestData.amount !== amount
+        || requestData.currency !== 'KRW'
+        || requestData.lastPaymentId !== params.paymentId) {
+        throw new https_2.HttpsError('permission-denied', '정기결제 요청 정보가 올바르지 않습니다.');
+    }
+    const alreadyProcessed = await isInitialBillingSubscriptionAlreadyProcessed({
+        uid,
+        paymentId: params.paymentId,
+        plan,
+        provider,
+        requestRef,
+        paymentRef,
+    });
+    if (alreadyProcessed) {
+        return { handled: true, success: true, alreadyProcessed: true, status: portoneStatus };
+    }
+    const lockRef = getSubscriptionPaymentLockRef(uid);
+    const lockSnap = await lockRef.get();
+    const lockData = lockSnap.data() || {};
+    const billingKey = typeof lockData.billingKey === 'string'
+        ? lockData.billingKey
+        : typeof requestData.billingKey === 'string'
+            ? requestData.billingKey
+            : '';
+    const customer = (0, subscriptionBillingCore_1.getStoredSubscriptionBillingCustomer)(requestData);
+    if (!billingKey || !customer) {
+        await markInitialBillingPaymentPending(requestRef, paymentRef, portoneStatus, lockRef);
+        await markInitialBillingKeyCleanupUnknown(requestRef, paymentRef, lockRef, billingKey ? 'stored_customer_invalid' : 'billing_key_ownership_unconfirmed', portoneStatus, `PORTONE_${portoneStatus}`);
+        return { handled: true, success: false, pending: true, status: portoneStatus };
+    }
+    const settlement = await settleInitialBillingPayment({
+        uid,
+        issueId,
+        paymentId: params.paymentId,
+        billingKey,
+        customer,
+        plan,
+        provider,
+        payMethod,
+        amount,
+        orderName,
+        payment,
+        requestRef,
+        paymentRef,
+        lockRef,
+    });
+    return {
+        handled: true,
+        success: settlement.success === true,
+        alreadyProcessed: settlement.alreadyProcessed === true,
+        pending: settlement.pending === true,
+        status: settlement.status,
+    };
+}
 async function settleRecurringBillingPayment(params) {
-    var _a;
+    const payment = (0, subscriptionBillingCore_1.normalizePortOnePaymentResponse)(params.payment);
     const paymentRef = getPaymentRequestRef(params.paymentId);
     const paymentSnap = await paymentRef.get();
     if (!paymentSnap.exists)
@@ -1049,10 +1156,10 @@ async function settleRecurringBillingPayment(params) {
     if (!uid || !provider) {
         throw new https_2.HttpsError('failed-precondition', '반복 결제 요청 정보가 올바르지 않습니다.');
     }
-    assertPaymentMatchesRequest(params.payment, paymentData);
-    const portoneStatus = typeof ((_a = params.payment) === null || _a === void 0 ? void 0 : _a.status) === 'string' ? params.payment.status : 'UNKNOWN';
-    const paymentMethodFields = getPortOnePaymentMethodWriteFields(params.payment);
-    const paymentMethod = getPaymentMethodLabel(params.payment);
+    assertPaymentMatchesRequest(payment, paymentData);
+    const portoneStatus = (0, subscriptionBillingCore_1.getPortOnePaymentStatus)(payment);
+    const paymentMethodFields = getPortOnePaymentMethodWriteFields(payment);
+    const paymentMethod = getPaymentMethodLabel(payment);
     const nowDate = new Date();
     const nowIso = nowDate.toISOString();
     const billingRef = db.doc(`billingSubscriptions/${uid}`);
@@ -6221,7 +6328,7 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
                 'Idempotency-Key': createPortOneIdempotencyKey(paymentId),
             },
         });
-        payment = portoneRes.data;
+        payment = (0, subscriptionBillingCore_1.normalizePortOnePaymentResponse)(portoneRes.data);
     }
     catch (e) {
         const billingError = (0, subscriptionBillingCore_1.getPortOneBillingErrorSummary)(e);
@@ -6595,7 +6702,7 @@ exports.processRecurringSubscriptions = (0, scheduler_1.onSchedule)({
                     'Idempotency-Key': createPortOneIdempotencyKey(recurringAction.paymentId),
                 },
             });
-            const payment = portoneRes.data;
+            const payment = (0, subscriptionBillingCore_1.normalizePortOnePaymentResponse)(portoneRes.data);
             const settled = await settleRecurringBillingPayment({
                 paymentId: recurringAction.paymentId,
                 payment,
@@ -6844,6 +6951,33 @@ exports.portoneWebhook = (0, https_1.onRequest)({ region: 'asia-northeast3', sec
         const duplicateOrderSnap = await getPaymentRequestRef(paymentId).get();
         const duplicateOrderData = duplicateOrderSnap.data() || null;
         const duplicateOrderStatus = normalizePaymentRequestStatus(duplicateOrderData === null || duplicateOrderData === void 0 ? void 0 : duplicateOrderData.status);
+        if (webhook.type === 'Transaction.Paid'
+            && (duplicateOrderData === null || duplicateOrderData === void 0 ? void 0 : duplicateOrderData.paymentType) === 'subscription'
+            && (duplicateOrderData === null || duplicateOrderData === void 0 ? void 0 : duplicateOrderData.billingType) === 'initial_billing'
+            && duplicateOrderStatus !== 'processed') {
+            try {
+                const duplicatePayment = await fetchPortOnePaymentWithRetry(paymentId);
+                const initialBillingSettlement = await settleInitialBillingPaymentFromStoredRequest({
+                    paymentId,
+                    payment: duplicatePayment,
+                    processedBy: 'webhook',
+                });
+                await eventRef.set({
+                    initialBillingSettlementHandled: initialBillingSettlement.handled,
+                    initialBillingSettlementStatus: initialBillingSettlement.status || (initialBillingSettlement.success ? 'paid' : 'unknown'),
+                    initialBillingSettlementAlreadyProcessed: initialBillingSettlement.alreadyProcessed === true,
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                }, { merge: true });
+            }
+            catch (error) {
+                logger.error('PortOne initial billing 웹훅 중복 수신 후 정산 복구 실패:', {
+                    paymentId: maskPaymentId(paymentId),
+                    ...getPortOneLookupError(error),
+                });
+                res.status(500).send('Initial billing settlement failed');
+                return;
+            }
+        }
         if ((duplicateOrderData === null || duplicateOrderData === void 0 ? void 0 : duplicateOrderData.paymentType) === 'subscription'
             && (duplicateOrderData === null || duplicateOrderData === void 0 ? void 0 : duplicateOrderData.billingType) === 'recurring'
             && !isPaidRecurringAttempt(duplicateOrderData)
@@ -6893,7 +7027,7 @@ exports.portoneWebhook = (0, https_1.onRequest)({ region: 'asia-northeast3', sec
     const orderRef = getPaymentRequestRef(paymentId);
     const orderSnap = await orderRef.get();
     const orderData = orderSnap.data() || null;
-    const portoneStatus = typeof (payment === null || payment === void 0 ? void 0 : payment.status) === 'string' ? payment.status : 'UNKNOWN';
+    const portoneStatus = (0, subscriptionBillingCore_1.getPortOnePaymentStatus)(payment);
     const paymentMethodFields = getPortOnePaymentMethodWriteFields(payment);
     const paymentMethod = getPaymentMethodLabel(payment);
     if (orderData) {
@@ -7025,6 +7159,35 @@ exports.portoneWebhook = (0, https_1.onRequest)({ region: 'asia-northeast3', sec
             }, { merge: true });
         }
     });
+    if (webhook.type === 'Transaction.Paid'
+        && (orderData === null || orderData === void 0 ? void 0 : orderData.paymentType) === 'subscription'
+        && (orderData === null || orderData === void 0 ? void 0 : orderData.billingType) === 'initial_billing') {
+        try {
+            const initialBillingSettlement = await settleInitialBillingPaymentFromStoredRequest({
+                paymentId,
+                payment,
+                processedBy: 'webhook',
+            });
+            await eventRef.set({
+                initialBillingSettlementHandled: initialBillingSettlement.handled,
+                initialBillingSettlementStatus: initialBillingSettlement.status || (initialBillingSettlement.success ? 'paid' : 'unknown'),
+                initialBillingSettlementAlreadyProcessed: initialBillingSettlement.alreadyProcessed === true,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true });
+        }
+        catch (error) {
+            await eventRef.set({
+                initialBillingSettlementError: getPortOneLookupError(error),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true });
+            logger.error('PortOne initial billing 웹훅 정산 실패:', {
+                paymentId: maskPaymentId(paymentId),
+                ...getPortOneLookupError(error),
+            });
+            res.status(500).send('Initial billing settlement failed');
+            return;
+        }
+    }
     if ((orderData === null || orderData === void 0 ? void 0 : orderData.paymentType) === 'subscription' && (orderData === null || orderData === void 0 ? void 0 : orderData.billingType) === 'recurring') {
         try {
             const recurringSettlement = await settleRecurringBillingPayment({

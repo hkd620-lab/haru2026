@@ -43,6 +43,9 @@ exports.getStoredSubscriptionBillingCustomer = getStoredSubscriptionBillingCusto
 exports.assertStoredSubscriptionBillingCustomer = assertStoredSubscriptionBillingCustomer;
 exports.areSubscriptionBillingCustomersEqual = areSubscriptionBillingCustomersEqual;
 exports.buildPortOneBillingKeyPaymentPayload = buildPortOneBillingKeyPaymentPayload;
+exports.normalizePortOnePaymentResponse = normalizePortOnePaymentResponse;
+exports.getPortOnePaymentStatus = getPortOnePaymentStatus;
+exports.getPortOnePaymentId = getPortOnePaymentId;
 exports.getInitialBillingKeyCleanup = getInitialBillingKeyCleanup;
 exports.isInitialBillingKeyCleanupComplete = isInitialBillingKeyCleanupComplete;
 exports.getCompleteInitialBillingKeyCleanup = getCompleteInitialBillingKeyCleanup;
@@ -275,6 +278,27 @@ function buildPortOneBillingKeyPaymentPayload(params) {
         },
         customData: JSON.stringify(params.customData),
     };
+}
+function normalizePortOnePaymentResponse(response) {
+    if (response
+        && typeof response === 'object'
+        && response.payment
+        && typeof response.payment === 'object') {
+        return response.payment;
+    }
+    return response;
+}
+function getPortOnePaymentStatus(payment) {
+    const normalizedPayment = normalizePortOnePaymentResponse(payment);
+    return typeof (normalizedPayment === null || normalizedPayment === void 0 ? void 0 : normalizedPayment.status) === 'string' ? normalizedPayment.status : 'UNKNOWN';
+}
+function getPortOnePaymentId(payment) {
+    const normalizedPayment = normalizePortOnePaymentResponse(payment);
+    return typeof (normalizedPayment === null || normalizedPayment === void 0 ? void 0 : normalizedPayment.paymentId) === 'string'
+        ? normalizedPayment.paymentId
+        : typeof (normalizedPayment === null || normalizedPayment === void 0 ? void 0 : normalizedPayment.id) === 'string'
+            ? normalizedPayment.id
+            : '';
 }
 function readString(value) {
     return typeof value === 'string' ? value : '';
