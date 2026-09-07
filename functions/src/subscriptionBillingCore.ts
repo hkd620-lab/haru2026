@@ -359,6 +359,14 @@ export type InitialBillingStoredRequestSettlementDecision = {
   reason: 'payment_request_already_processed' | 'existing_lock_can_be_updated' | 'lock_missing_write_forbidden';
 };
 
+export type RecoverInitialBillingLockWriteDecision = {
+  action: 'write_existing_lock' | 'skip_missing_lock' | 'skip_already_processed' | 'reject_mismatched_lock';
+  shouldWriteRequest: boolean;
+  shouldWritePayment: boolean;
+  shouldWriteLock: boolean;
+  reason: 'matching_lock_active' | 'lock_missing' | 'payment_request_already_processed' | 'mismatched_lock';
+};
+
 function readString(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
@@ -435,6 +443,57 @@ export function resolveInitialBillingStoredRequestSettlement(params: {
     shouldWriteLock: false,
     lockWritePolicy: 'lock_write_forbidden',
     reason: 'lock_missing_write_forbidden',
+  };
+}
+
+export function resolveRecoverInitialBillingLockWrite(params: {
+  uid: string;
+  issueId: string;
+  lockExists: boolean;
+  lockData: InitialBillingCleanupDocData;
+  requestData: InitialBillingCleanupDocData;
+  paymentData: InitialBillingCleanupDocData;
+}): RecoverInitialBillingLockWriteDecision {
+  const requestStatus = normalizePaymentRequestStatus(params.requestData?.status);
+  const paymentStatus = normalizePaymentRequestStatus(params.paymentData?.status);
+
+  if (requestStatus === 'processed' || paymentStatus === 'processed') {
+    return {
+      action: 'skip_already_processed',
+      shouldWriteRequest: false,
+      shouldWritePayment: false,
+      shouldWriteLock: false,
+      reason: 'payment_request_already_processed',
+    };
+  }
+
+  if (!params.lockExists) {
+    return {
+      action: 'skip_missing_lock',
+      shouldWriteRequest: false,
+      shouldWritePayment: false,
+      shouldWriteLock: false,
+      reason: 'lock_missing',
+    };
+  }
+
+  const lockData = params.lockData || {};
+  if (lockData.uid !== params.uid || lockData.issueId !== params.issueId) {
+    return {
+      action: 'reject_mismatched_lock',
+      shouldWriteRequest: false,
+      shouldWritePayment: false,
+      shouldWriteLock: false,
+      reason: 'mismatched_lock',
+    };
+  }
+
+  return {
+    action: 'write_existing_lock',
+    shouldWriteRequest: true,
+    shouldWritePayment: true,
+    shouldWriteLock: true,
+    reason: 'matching_lock_active',
   };
 }
 

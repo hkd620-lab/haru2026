@@ -778,6 +778,42 @@ async function markInitialBillingPaymentFailed(requestRef, paymentRef, portoneSt
     }
     await Promise.all(writes);
 }
+async function writeRecoverInitialBillingProgressIfLockActive(params) {
+    return db.runTransaction(async (tx) => {
+        const [freshLock, freshRequest, freshPayment] = await Promise.all([
+            tx.get(params.lockRef),
+            tx.get(params.requestRef),
+            tx.get(params.paymentRef),
+        ]);
+        const lockData = freshLock.data() || {};
+        const requestData = freshRequest.data() || {};
+        const paymentData = freshPayment.data() || {};
+        const decision = (0, subscriptionBillingCore_1.resolveRecoverInitialBillingLockWrite)({
+            uid: params.uid,
+            issueId: params.issueId,
+            lockExists: freshLock.exists,
+            lockData,
+            requestData,
+            paymentData,
+        });
+        if (decision.action === 'skip_already_processed') {
+            if (freshLock.exists && lockData.uid === params.uid && lockData.issueId === params.issueId) {
+                tx.delete(params.lockRef);
+            }
+            return 'already_processed';
+        }
+        if (decision.action === 'skip_missing_lock') {
+            return 'lock_missing';
+        }
+        if (decision.action === 'reject_mismatched_lock') {
+            throw new https_2.HttpsError('failed-precondition', '정기결제 잠금 정보가 올바르지 않습니다. 결제 상태를 다시 확인해 주세요.');
+        }
+        tx.set(params.requestRef, params.requestWrite, { merge: true });
+        tx.set(params.paymentRef, params.paymentWrite, { merge: true });
+        tx.set(params.lockRef, params.lockWrite, { merge: true });
+        return 'written';
+    });
+}
 async function markSubscriptionBillingRequestPreflightFailed(requestRef, lockRef, reason) {
     await Promise.all([
         requestRef.set({
@@ -5905,24 +5941,36 @@ exports.recoverSubscriptionBillingRequest = (0, https_2.onCall)({ region: 'asia-
             existingPayment = await fetchPortOnePaymentWithRetry(lastPaymentId);
         }
         catch (error) {
-            await Promise.all([
-                requestRef.set({
+            const lookupError = getPortOneLookupError(error);
+            const writeResult = await writeRecoverInitialBillingProgressIfLockActive({
+                uid,
+                issueId,
+                requestRef,
+                paymentRef,
+                lockRef,
+                requestWrite: {
                     status: 'charging',
-                    lastLookupError: getPortOneLookupError(error),
+                    lastLookupError: lookupError,
                     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                }, { merge: true }),
-                paymentRef.set({
+                },
+                paymentWrite: {
                     status: 'lookup_failed',
-                    lastLookupError: getPortOneLookupError(error),
+                    lastLookupError: lookupError,
                     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                }, { merge: true }),
-                lockRef.set({
+                },
+                lockWrite: {
                     status: 'charging',
                     lastPaymentId,
-                    lastLookupError: getPortOneLookupError(error),
+                    lastLookupError: lookupError,
                     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                }, { merge: true }),
-            ]);
+                },
+            });
+            if (writeResult === 'already_processed') {
+                return { success: true, alreadyProcessed: true };
+            }
+            if (writeResult === 'lock_missing') {
+                return { success: false, pending: false, status: 'none', issueId, plan, provider, payMethod };
+            }
             return {
                 success: false,
                 pending: true,
@@ -5939,7 +5987,35 @@ exports.recoverSubscriptionBillingRequest = (0, https_2.onCall)({ region: 'asia-
                 ? requestData.billingKey
                 : '';
         if (!billingKey) {
-            await markInitialBillingPaymentPending(requestRef, paymentRef, (existingPayment === null || existingPayment === void 0 ? void 0 : existingPayment.status) || 'UNKNOWN', lockRef);
+            const existingPortOneStatus = (0, subscriptionBillingCore_1.getPortOnePaymentStatus)(existingPayment);
+            const writeResult = await writeRecoverInitialBillingProgressIfLockActive({
+                uid,
+                issueId,
+                requestRef,
+                paymentRef,
+                lockRef,
+                requestWrite: {
+                    status: 'charging',
+                    portoneStatus: existingPortOneStatus,
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                },
+                paymentWrite: {
+                    status: 'pending',
+                    portoneStatus: existingPortOneStatus,
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                },
+                lockWrite: {
+                    status: 'charging',
+                    portoneStatus: existingPortOneStatus,
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                },
+            });
+            if (writeResult === 'already_processed') {
+                return { success: true, alreadyProcessed: true };
+            }
+            if (writeResult === 'lock_missing') {
+                return { success: false, pending: false, status: 'none', issueId, plan, provider, payMethod };
+            }
             return {
                 success: false,
                 pending: true,
@@ -5952,7 +6028,38 @@ exports.recoverSubscriptionBillingRequest = (0, https_2.onCall)({ region: 'asia-
         }
         const customer = (0, subscriptionBillingCore_1.getStoredSubscriptionBillingCustomer)(requestData);
         if (!customer) {
-            await markInitialBillingPaymentFailed(requestRef, paymentRef, (existingPayment === null || existingPayment === void 0 ? void 0 : existingPayment.status) || 'UNKNOWN', lockRef);
+            const existingPortOneStatus = (0, subscriptionBillingCore_1.getPortOnePaymentStatus)(existingPayment);
+            const writeResult = await writeRecoverInitialBillingProgressIfLockActive({
+                uid,
+                issueId,
+                requestRef,
+                paymentRef,
+                lockRef,
+                requestWrite: {
+                    status: 'failed',
+                    portoneStatus: existingPortOneStatus,
+                    failedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                },
+                paymentWrite: {
+                    status: 'failed',
+                    portoneStatus: existingPortOneStatus,
+                    failedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                },
+                lockWrite: {
+                    status: 'failed',
+                    portoneStatus: existingPortOneStatus,
+                    failedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                },
+            });
+            if (writeResult === 'already_processed') {
+                return { success: true, alreadyProcessed: true };
+            }
+            if (writeResult === 'lock_missing') {
+                return { success: false, pending: false, status: 'none', issueId, plan, provider, payMethod };
+            }
             await cleanupInitialBillingKeyAfterInitialChargeFailure({
                 uid,
                 issueId,
@@ -5962,7 +6069,7 @@ exports.recoverSubscriptionBillingRequest = (0, https_2.onCall)({ region: 'asia-
                 requestRef,
                 paymentRef,
                 lockRef,
-                failurePortOneStatus: (existingPayment === null || existingPayment === void 0 ? void 0 : existingPayment.status) || 'UNKNOWN',
+                failurePortOneStatus: existingPortOneStatus,
                 failureReason: 'stored_customer_invalid',
             });
             throw new https_2.HttpsError('failed-precondition', '저장된 구매자 정보가 올바르지 않습니다. 다시 시도해 주세요.');

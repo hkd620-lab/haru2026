@@ -50,6 +50,7 @@ exports.getInitialBillingKeyCleanup = getInitialBillingKeyCleanup;
 exports.isInitialBillingKeyCleanupComplete = isInitialBillingKeyCleanupComplete;
 exports.getCompleteInitialBillingKeyCleanup = getCompleteInitialBillingKeyCleanup;
 exports.resolveInitialBillingStoredRequestSettlement = resolveInitialBillingStoredRequestSettlement;
+exports.resolveRecoverInitialBillingLockWrite = resolveRecoverInitialBillingLockWrite;
 exports.isMatchingInitialBillingCleanupLock = isMatchingInitialBillingCleanupLock;
 exports.shouldBlockNewSubscriptionForInitialBillingCleanup = shouldBlockNewSubscriptionForInitialBillingCleanup;
 exports.resolveInitialBillingKeyCleanupReservation = resolveInitialBillingKeyCleanupReservation;
@@ -365,6 +366,46 @@ function resolveInitialBillingStoredRequestSettlement(params) {
         shouldWriteLock: false,
         lockWritePolicy: 'lock_write_forbidden',
         reason: 'lock_missing_write_forbidden',
+    };
+}
+function resolveRecoverInitialBillingLockWrite(params) {
+    var _a, _b;
+    const requestStatus = normalizePaymentRequestStatus((_a = params.requestData) === null || _a === void 0 ? void 0 : _a.status);
+    const paymentStatus = normalizePaymentRequestStatus((_b = params.paymentData) === null || _b === void 0 ? void 0 : _b.status);
+    if (requestStatus === 'processed' || paymentStatus === 'processed') {
+        return {
+            action: 'skip_already_processed',
+            shouldWriteRequest: false,
+            shouldWritePayment: false,
+            shouldWriteLock: false,
+            reason: 'payment_request_already_processed',
+        };
+    }
+    if (!params.lockExists) {
+        return {
+            action: 'skip_missing_lock',
+            shouldWriteRequest: false,
+            shouldWritePayment: false,
+            shouldWriteLock: false,
+            reason: 'lock_missing',
+        };
+    }
+    const lockData = params.lockData || {};
+    if (lockData.uid !== params.uid || lockData.issueId !== params.issueId) {
+        return {
+            action: 'reject_mismatched_lock',
+            shouldWriteRequest: false,
+            shouldWritePayment: false,
+            shouldWriteLock: false,
+            reason: 'mismatched_lock',
+        };
+    }
+    return {
+        action: 'write_existing_lock',
+        shouldWriteRequest: true,
+        shouldWritePayment: true,
+        shouldWriteLock: true,
+        reason: 'matching_lock_active',
     };
 }
 function isMatchingInitialBillingCleanupLock(params) {
