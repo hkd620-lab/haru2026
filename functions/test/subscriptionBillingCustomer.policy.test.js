@@ -96,8 +96,18 @@ const payload = core.buildPortOneBillingKeyPaymentPayload({
   },
 });
 assert.deepStrictEqual(payload.amount, { total: 9900 });
-assert.deepStrictEqual(payload.customer, normalizedCustomer);
+assert.notEqual(typeof payload.customer.name, 'string');
+assert.equal(payload.customer.name.full, normalizedCustomer.name);
+assert.equal(payload.customer.email, normalizedCustomer.email);
+assert.equal(payload.customer.phoneNumber, normalizedCustomer.phoneNumber);
+assert.equal(typeof payload.customData, 'string');
 assert.equal(JSON.parse(payload.customData).provider, 'kg_inicis');
+assert.deepStrictEqual(JSON.parse(payload.customData), {
+  uid: 'uid-1',
+  plan: 'premium',
+  provider: 'kg_inicis',
+  paymentType: 'subscription',
+});
 
 const invalidRequest = core.getPortOneBillingErrorSummary({
   response: { status: 400, data: { type: 'INVALID_REQUEST', message: 'missing customer' } },

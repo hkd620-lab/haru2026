@@ -267,7 +267,9 @@ function buildPortOneBillingKeyPaymentPayload(params) {
         amount: { total: params.amount },
         currency: params.currency,
         customer: {
-            name: params.customer.name,
+            name: {
+                full: params.customer.name,
+            },
             email: params.customer.email,
             phoneNumber: params.customer.phoneNumber,
         },
