@@ -92,7 +92,7 @@ export default function HaruNewsPreview() {
       {/* 푸터 */}
       <footer className="haru-news-preview__footer">
         <span className="haru-news-preview__footer-dot" aria-hidden="true" />
-        <span className="haru-news-preview__footer-text">HARU by JOYEL — 간편하게 입력하고, 쓸모있게 남깁니다</span>
+        <span className="haru-news-preview__footer-text">HARU2026 by 하루랩 — 간편하게 입력하고, 쓸모있게 남깁니다</span>
         <span className="haru-news-preview__footer-dot" aria-hidden="true" />
       </footer>
     </article>

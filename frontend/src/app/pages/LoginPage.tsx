@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { BookOpen, Mail } from 'lucide-react';
+import { Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { GrapeAnimation } from '../components/GrapeAnimation';
@@ -191,18 +191,27 @@ export function LoginPage() {
       )}
 
       {/* 데스크톱: 최대 1140px, 2열(소개 + 로그인) / 모바일: 1열 */}
-      <div style={{ maxWidth: 1140, margin: '0 auto', padding: '32px 20px 48px' }}>
+      <div style={{ maxWidth: 1140, margin: '0 auto', padding: '20px 20px 48px' }}>
         <div className="flex flex-col lg:flex-row lg:items-start gap-8">
 
           {/* 왼쪽: 신문기사형 서비스 소개 */}
-          <div className="w-full lg:flex-1 min-w-0">
+          <div className="w-full lg:flex-1 min-w-0 order-2 lg:order-1">
             <HaruNewsPreview />
           </div>
 
           {/* 오른쪽: 로그인 카드 */}
-          <div className="w-full lg:w-96 flex-shrink-0">
-            <div className="text-center mb-8">
-              <BookOpen className="w-16 h-16 mx-auto mb-4" style={{ color: '#1A3C6E' }} />
+          <div className="w-full lg:w-96 flex-shrink-0 order-1 lg:order-2">
+            <div className="text-center mb-5 sm:mb-8">
+              <img
+                src="/brand/haru-pumpkin-logo.png"
+                alt="HARU2026"
+                className="mx-auto mb-3 sm:mb-4"
+                style={{
+                  width: 72,
+                  height: 64,
+                  objectFit: 'contain',
+                }}
+              />
               <h1 className="text-3xl font-bold mb-2" style={{ color: '#1A3C6E' }}>
                 HARU2026
               </h1>
@@ -211,7 +220,7 @@ export function LoginPage() {
               </p>
             </div>
 
-            <div className="bg-white rounded-lg shadow-md p-8">
+            <div className="bg-white rounded-lg shadow-md p-6 sm:p-8">
               <h2 className="text-xl font-semibold mb-6 text-center" style={{ color: '#333' }}>
                 {authTitle}
               </h2>
@@ -260,9 +269,9 @@ export function LoginPage() {
                 {/* 네이버 로그인 */}
                 <button
                   onClick={handleNaverLogin}
-                  className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-90"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-all hover:opacity-90"
                   style={{
-                    backgroundColor: '#03C75A',
+                    backgroundColor: '#03A94D',
                     color: '#ffffff',
                     border: 'none',
                   }}
