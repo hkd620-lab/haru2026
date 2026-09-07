@@ -4428,6 +4428,7 @@ export const googleLoginStart = onRequest(
         `redirect_uri=${encodeURIComponent(GOOGLE_REDIRECT_URI)}&` +
         `response_type=code&` +
         `scope=email profile&` +
+        `prompt=select_account&` +
         `state=${state}`;
 
       res.redirect(googleAuthUrl);
