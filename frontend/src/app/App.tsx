@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect, type CSSProperties } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { LoadingProvider } from './contexts/LoadingContext';
@@ -151,6 +151,144 @@ function DeveloperBookStudioRoute() {
   return <BookStudio />;
 }
 
+function AppChrome() {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+  const hidePublicLandingBottomNav = loading || (!user && location.pathname === '/');
+  const appChromeStyle = hidePublicLandingBottomNav
+    ? ({ '--content-pb': '0px', '--bottomnav-height': '0px' } as CSSProperties)
+    : undefined;
+
+  return (
+    <div className="min-h-screen bg-[#FEFBE8] print:bg-white" style={appChromeStyle}>
+      <main style={{ paddingBottom: 'var(--content-pb)' }}>
+        <Routes>
+          {/* 홈 화면 — 비로그인 시 랜딩, 로그인 시 홈 */}
+          <Route path="/" element={<HomeOrLanding />} />
+
+          {/* v2 홈 (CD Reposeful 디자인 미리보기 — 메인 승격됨, 호환용 유지) */}
+          <Route path="/v2" element={<HomePageV2 />} />
+
+          {/* 실제 신규 사용자 온보딩 */}
+          <Route path="/onboarding" element={<AssistantOnboardingPage />} />
+          <Route path="/onboarding/detail" element={<AssistantOnboardingDetailPage />} />
+
+          {/* 비교용 preview 라우트 */}
+          <Route path="/onboarding-preview" element={<OnboardingPreviewPage />} />
+          <Route path="/gyeongdae-preview" element={<GyeongdaePreviewPage />} />
+          <Route path="/onyu-preview" element={<OnyuPreviewPage />} />
+
+          {/* 인증 */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
+
+          {/* 기존 페이지들 */}
+          <Route path="/household" element={<HouseholdPage />} />
+          <Route path="/record" element={<RecordPage />} />
+          <Route path="/library" element={<LibraryPage />} />
+          <Route path="/sayu" element={<SayuPage />} />
+          <Route path="/sayu-together" element={<SayuTogetherPage />} />
+          <Route path="/merge" element={<MergePage />} />
+          <Route path="/merge-viewer" element={<MergeViewerPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/vault" element={<Navigate to="/settings" replace />} />
+
+          {/* 통계 페이지 */}
+          <Route path="/stats" element={<StatisticsPage />} />
+          <Route path="/stats/assistant/:type" element={<AssistantStatisticsPage />} />
+          <Route path="/stats/:format" element={<FormatStatisticsPage />} />
+
+          {/* 원기충전소 폐기 URL은 SAYU-함께보기로 이동 */}
+          <Route path="/recovery" element={<Navigate to="/sayu-together" replace />} />
+          <Route path="/book-studio" element={<DeveloperBookStudioRoute />} />
+          <Route path="/book-create" element={<BookCreate />} />
+          <Route path="/book-reader/:bookId" element={<BookReader />} />
+          <Route path="/news" element={<NewsPage />} />
+          <Route path="/novel-studio" element={<NovelStudio />} />
+          <Route path="/novel-synopsis" element={<NovelSynopsisPage />} />
+          <Route path="/novel-story" element={<NovelStoryPage />} />
+          <Route path="/record-prophecy" element={<RecordProphecyPage />} />
+          <Route path="/prophecy-hub" element={<ProphecyHubPage />} />
+          <Route path="/record-hub" element={<HomeOrLanding />} />
+          <Route path="/sns-records" element={<SnsRecordsPage />} />
+          <Route path="/onbid-realestate" element={<OnbidRealEstatePage />} />
+          <Route path="/legal-assistant" element={<LegalAssistantHomePage />} />
+          <Route path="/legal-assistant/beginner-guide" element={<ELitigationBeginnerGuidePage />} />
+          <Route path="/legal-assistant/document-helper" element={<CourtDocumentHelperPage />} />
+          <Route path="/legal-assistant/guide" element={<LegalSelfLitigationGuidePage />} />
+          <Route path="/lawsuit-practice/portal/search" element={<EcourtPracticeSearchPage />} />
+          <Route path="/lawsuit-practice/login" element={<EcourtPracticeLoginPage />} />
+          <Route path="/lawsuit-practice/portal/login" element={<EcourtPracticeLoginPage />} />
+          <Route path="/lawsuit-practice/portal/register" element={<EcourtPracticeRegisterPage />} />
+          <Route path="/lawsuit-practice" element={<EcourtPracticeHomePage />} />
+          <Route path="/lawsuit-practice/practice" element={<LawsuitPracticePage />} />
+          <Route path="/legal-cases" element={<LegalCasesPage />} />
+          <Route path="/legal-cases/:caseId" element={<LegalCaseDetailPage />} />
+          <Route path="/plant-detective" element={<PlantDetectivePage />} />
+          <Route path="/asset-explorer" element={<AssetExplorerPage />} />
+
+          {/* HARU건강관리 (허브 + 3개 하위) */}
+          <Route path="/sayu-health" element={<SayuHealthHubPage />} />
+          <Route path="/sayu-health/ebs" element={<SayuHealthEbsPage />} />
+          <Route path="/sayu-health/drug" element={<SayuHealthDrugPage />} />
+          <Route path="/sayu-health/hospital" element={<SayuHealthHospitalPage />} />
+          <Route path="/sayu-health/library" element={<SayuHealthLibraryPage />} />
+          <Route path="/sayu-health/voiding" element={<SayuHealthVoidingPage />} />
+
+          {/* HARU우리아이건강돌봄 (허브 + 하위) */}
+          <Route path="/child-health" element={<ChildHealthHubPage />} />
+          <Route path="/child-health/growth" element={<ChildHealthGrowthPage />} />
+          <Route path="/child-health/vaccination" element={<ChildHealthVaccinePage />} />
+
+          {/* HARU 반려동물건강돌봄비서 */}
+          <Route path="/pet-health" element={<PetHealthHubPage />} />
+          <Route path="/pet-health/food" element={<PetHealthFoodPage />} />
+          <Route path="/pet-health/symptom" element={<PetHealthSymptomPage />} />
+          <Route path="/pet-health/vaccine" element={<PetHealthVaccinePage />} />
+
+          <Route path="/health" element={<HealthMedicationPage />} />
+
+          {/* 영어성경학습 */}
+          <Route path="/bible" element={<BiblePage />} />
+          <Route path="/vocab" element={<VocabPage />} />
+          <Route path="/diary-learn" element={<DiaryLearnPage />} />
+
+          {/* 관리자 페이지 */}
+          <Route path="/admin/checklist" element={<AdminChecklistPage />} />
+          <Route path="/admin/console" element={<DevConsolePage />} />
+          <Route path="/admin/dev-console" element={<DevConsolePage />} />
+          <Route path="/admin/elder-book" element={<ElderBookPage />} />
+          <Route path="/admin/record-book" element={<RecordBookPage />} />
+          <Route path="/admin/k-news-publisher" element={<KNewsPublisherPage />} />
+          <Route path="/admin/today-charge" element={<TodayChargePublisherPage />} />
+          <Route path="/admin/haru-law-review" element={<AdminHaruLawReviewPage />} />
+          <Route path="/admin/subscription-refunds" element={<AdminSubscriptionRefundsPage />} />
+
+          {/* 개발자 전용 임시 화면 */}
+          <Route path="/dev/masterpiece-detective" element={<MasterpieceDetectivePage />} />
+          <Route path="/dev/hangul-word" element={<HangulWordPage />} />
+
+          {/* 구독 페이지 */}
+          <Route path="/subscription" element={<SubscriptionPage />} />
+          <Route path="/payment/single" element={<SinglePaymentPage />} />
+          <Route path="/single-payment" element={<SinglePaymentPage />} />
+          <Route path="/subscription/inicis" element={<SubscriptionInicisPage />} />
+
+          {/* 법적 페이지 */}
+          <Route path="/business-info" element={<BusinessInfoPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/refund" element={<RefundPage />} />
+        </Routes>
+      </main>
+      <TodayQuote />
+      <Footer />
+      <BottomNav />
+      <Toaster position="top-center" toastOptions={{ className: 'no-print' }} />
+    </div>
+  );
+}
+
 function App() {
   return (
     <ThemeProvider>
@@ -158,132 +296,7 @@ function App() {
         <LoadingProvider>
         <AppInitializer />
         <BrowserRouter>
-        <div className="min-h-screen bg-[#FEFBE8] print:bg-white">
-          <main style={{ paddingBottom: 'var(--content-pb)' }}>
-            <Routes>
-              {/* 홈 화면 — 비로그인 시 랜딩, 로그인 시 홈 */}
-              <Route path="/" element={<HomeOrLanding />} />
-
-              {/* v2 홈 (CD Reposeful 디자인 미리보기 — 메인 승격됨, 호환용 유지) */}
-              <Route path="/v2" element={<HomePageV2 />} />
-
-              {/* 실제 신규 사용자 온보딩 */}
-              <Route path="/onboarding" element={<AssistantOnboardingPage />} />
-              <Route path="/onboarding/detail" element={<AssistantOnboardingDetailPage />} />
-
-              {/* 비교용 preview 라우트 */}
-              <Route path="/onboarding-preview" element={<OnboardingPreviewPage />} />
-              <Route path="/gyeongdae-preview" element={<GyeongdaePreviewPage />} />
-              <Route path="/onyu-preview" element={<OnyuPreviewPage />} />
-
-              {/* 인증 */}
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/auth/callback" element={<AuthCallbackPage />} />
-              
-              {/* 기존 페이지들 */}
-              <Route path="/household" element={<HouseholdPage />} />
-              <Route path="/record" element={<RecordPage />} />
-              <Route path="/library" element={<LibraryPage />} />
-              <Route path="/sayu" element={<SayuPage />} />
-              <Route path="/sayu-together" element={<SayuTogetherPage />} />
-              <Route path="/merge" element={<MergePage />} />
-              <Route path="/merge-viewer" element={<MergeViewerPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/vault" element={<Navigate to="/settings" replace />} />
-              
-              {/* 통계 페이지 */}
-              <Route path="/stats" element={<StatisticsPage />} />
-              <Route path="/stats/assistant/:type" element={<AssistantStatisticsPage />} />
-              <Route path="/stats/:format" element={<FormatStatisticsPage />} />
-
-              {/* 원기충전소 폐기 URL은 SAYU-함께보기로 이동 */}
-              <Route path="/recovery" element={<Navigate to="/sayu-together" replace />} />
-              <Route path="/book-studio" element={<DeveloperBookStudioRoute />} />
-              <Route path="/book-create" element={<BookCreate />} />
-              <Route path="/book-reader/:bookId" element={<BookReader />} />
-              <Route path="/news" element={<NewsPage />} />
-              <Route path="/novel-studio" element={<NovelStudio />} />
-              <Route path="/novel-synopsis" element={<NovelSynopsisPage />} />
-              <Route path="/novel-story" element={<NovelStoryPage />} />
-              <Route path="/record-prophecy" element={<RecordProphecyPage />} />
-              <Route path="/prophecy-hub" element={<ProphecyHubPage />} />
-              <Route path="/record-hub" element={<HomeOrLanding />} />
-              <Route path="/sns-records" element={<SnsRecordsPage />} />
-              <Route path="/onbid-realestate" element={<OnbidRealEstatePage />} />
-              <Route path="/legal-assistant" element={<LegalAssistantHomePage />} />
-              <Route path="/legal-assistant/beginner-guide" element={<ELitigationBeginnerGuidePage />} />
-              <Route path="/legal-assistant/document-helper" element={<CourtDocumentHelperPage />} />
-              <Route path="/legal-assistant/guide" element={<LegalSelfLitigationGuidePage />} />
-              <Route path="/lawsuit-practice/portal/search" element={<EcourtPracticeSearchPage />} />
-              <Route path="/lawsuit-practice/login" element={<EcourtPracticeLoginPage />} />
-              <Route path="/lawsuit-practice/portal/login" element={<EcourtPracticeLoginPage />} />
-              <Route path="/lawsuit-practice/portal/register" element={<EcourtPracticeRegisterPage />} />
-              <Route path="/lawsuit-practice" element={<EcourtPracticeHomePage />} />
-              <Route path="/lawsuit-practice/practice" element={<LawsuitPracticePage />} />
-              <Route path="/legal-cases" element={<LegalCasesPage />} />
-              <Route path="/legal-cases/:caseId" element={<LegalCaseDetailPage />} />
-              <Route path="/plant-detective" element={<PlantDetectivePage />} />
-              <Route path="/asset-explorer" element={<AssetExplorerPage />} />
-
-              {/* HARU건강관리 (허브 + 3개 하위) */}
-              <Route path="/sayu-health" element={<SayuHealthHubPage />} />
-              <Route path="/sayu-health/ebs" element={<SayuHealthEbsPage />} />
-              <Route path="/sayu-health/drug" element={<SayuHealthDrugPage />} />
-              <Route path="/sayu-health/hospital" element={<SayuHealthHospitalPage />} />
-              <Route path="/sayu-health/library" element={<SayuHealthLibraryPage />} />
-              <Route path="/sayu-health/voiding" element={<SayuHealthVoidingPage />} />
-
-              {/* HARU우리아이건강돌봄 (허브 + 하위) */}
-              <Route path="/child-health" element={<ChildHealthHubPage />} />
-              <Route path="/child-health/growth" element={<ChildHealthGrowthPage />} />
-              <Route path="/child-health/vaccination" element={<ChildHealthVaccinePage />} />
-
-              {/* HARU 반려동물건강돌봄비서 */}
-              <Route path="/pet-health" element={<PetHealthHubPage />} />
-              <Route path="/pet-health/food" element={<PetHealthFoodPage />} />
-              <Route path="/pet-health/symptom" element={<PetHealthSymptomPage />} />
-              <Route path="/pet-health/vaccine" element={<PetHealthVaccinePage />} />
-
-              <Route path="/health" element={<HealthMedicationPage />} />
-
-              {/* 영어성경학습 */}
-              <Route path="/bible" element={<BiblePage />} />
-              <Route path="/vocab" element={<VocabPage />} />
-              <Route path="/diary-learn" element={<DiaryLearnPage />} />
-
-              {/* 관리자 페이지 */}
-              <Route path="/admin/checklist" element={<AdminChecklistPage />} />
-              <Route path="/admin/console" element={<DevConsolePage />} />
-              <Route path="/admin/dev-console" element={<DevConsolePage />} />
-              <Route path="/admin/elder-book" element={<ElderBookPage />} />
-              <Route path="/admin/record-book" element={<RecordBookPage />} />
-              <Route path="/admin/k-news-publisher" element={<KNewsPublisherPage />} />
-              <Route path="/admin/today-charge" element={<TodayChargePublisherPage />} />
-              <Route path="/admin/haru-law-review" element={<AdminHaruLawReviewPage />} />
-              <Route path="/admin/subscription-refunds" element={<AdminSubscriptionRefundsPage />} />
-
-              {/* 개발자 전용 임시 화면 */}
-              <Route path="/dev/masterpiece-detective" element={<MasterpieceDetectivePage />} />
-              <Route path="/dev/hangul-word" element={<HangulWordPage />} />
-
-              {/* 구독 페이지 */}
-              <Route path="/subscription" element={<SubscriptionPage />} />
-              <Route path="/payment/single" element={<SinglePaymentPage />} />
-              <Route path="/single-payment" element={<SinglePaymentPage />} />
-              <Route path="/subscription/inicis" element={<SubscriptionInicisPage />} />
-
-              {/* 법적 페이지 */}
-              <Route path="/business-info" element={<BusinessInfoPage />} />
-              <Route path="/terms" element={<TermsPage />} />
-              <Route path="/privacy" element={<PrivacyPage />} />
-              <Route path="/refund" element={<RefundPage />} />
-            </Routes>
-          </main>
-          <TodayQuote />
-          <Footer />
-          <BottomNav />
-          <Toaster position="top-center" toastOptions={{ className: 'no-print' }} />
-        </div>
+        <AppChrome />
       </BrowserRouter>
         </LoadingProvider>
     </AuthProvider>

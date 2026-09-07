@@ -7,7 +7,7 @@ const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
 export function BottomNav() {
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const isDeveloper = user?.uid === DEVELOPER_UID;
 
   // v2에서 진입한 세션이면 HARU 버튼이 v2 홈으로 향하도록
@@ -28,6 +28,10 @@ export function BottomNav() {
         ...baseItems.slice(4),
       ]
     : baseItems;
+
+  if (loading || (!user && location.pathname === '/')) {
+    return null;
+  }
 
   return (
     <nav
