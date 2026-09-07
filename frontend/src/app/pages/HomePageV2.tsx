@@ -801,7 +801,7 @@ export function HomePageV2() {
           [data-v2="page"] { padding: 12px 12px 96px !important; }
           [data-v2="header"] { padding: 4px 0 12px !important; }
           [data-v2="logo"] { width: 38px !important; height: 38px !important; border-radius: 11px !important; }
-          [data-v2="logo"] svg { width: 19px !important; height: 22px !important; }
+          [data-v2="logo"] img { width: 28px !important; height: 25px !important; }
           [data-v2="brand-title"] { font-size: 17px !important; }
           [data-v2="brand-sub"] { font-size: 8px !important; letter-spacing: 2px !important; margin-top: 3px !important; }
           [data-v2="header-actions"] { gap: 6px !important; }
@@ -889,28 +889,25 @@ export function HomePageV2() {
                 width: 52,
                 height: 52,
                 borderRadius: 14,
-                background: '#4A5A2C',
+                background: '#FFFDF6',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 6px 20px -12px rgba(74,90,44,0.5)',
+                border: '1px solid rgba(74,90,44,0.16)',
+                boxShadow: '0 6px 20px -14px rgba(74,90,44,0.35)',
               }}
             >
-              <svg width="26" height="30" viewBox="0 0 22 26" fill="#F5F0E8" aria-hidden>
-                <circle cx="6" cy="10" r="3.6" />
-                <circle cx="11" cy="9" r="3.6" />
-                <circle cx="16" cy="10" r="3.6" />
-                <circle cx="8.5" cy="15" r="3.6" />
-                <circle cx="13.5" cy="15" r="3.6" />
-                <circle cx="11" cy="20" r="3.6" />
-                <path
-                  d="M11 6 Q12 3 14 2"
-                  stroke="#E8B894"
-                  strokeWidth="1.4"
-                  fill="none"
-                  strokeLinecap="round"
-                />
-              </svg>
+              <img
+                src="/brand/haru-pumpkin-logo.png"
+                alt=""
+                aria-hidden="true"
+                style={{
+                  width: 38,
+                  height: 34,
+                  objectFit: 'contain',
+                  display: 'block',
+                }}
+              />
             </div>
             <div style={{ lineHeight: 1 }}>
               <div

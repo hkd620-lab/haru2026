@@ -37,7 +37,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: null,
-      includeAssets: ['icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'],
+      includeAssets: ['icons/icon-192.png', 'icons/icon-512.png'],
       manifest: {
         name: 'HARU2026',
         short_name: 'HARU',

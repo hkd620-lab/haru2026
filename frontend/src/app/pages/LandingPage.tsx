@@ -406,7 +406,9 @@ export function LandingPage() {
       <nav className="lp-nav">
         <div className="lp-wrap lp-nav__inner">
           <a className="lp-nav__brand" href="#top" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
-            <div className="lp-nav__mark"><GrapeMark size={20} color={C.bg} accent={C.peach} /></div>
+            <div className="lp-nav__mark">
+              <img src="/brand/haru-pumpkin-logo.png" alt="" aria-hidden="true" />
+            </div>
             <div>
               <div className="lp-nav__name">HARU</div>
               <div className="lp-nav__by">BY HaruLab</div>
@@ -789,7 +791,8 @@ const LP_CSS = `
 .lp-nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(16px) saturate(140%);-webkit-backdrop-filter:blur(16px) saturate(140%);background:rgba(245,240,232,0.82);border-bottom:1px solid rgba(229,223,208,0.6);}
 .lp-nav__inner{display:flex;align-items:center;justify-content:space-between;height:72px;}
 .lp-nav__brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;}
-.lp-nav__mark{width:38px;height:38px;border-radius:11px;background:var(--accent-active-dark);display:grid;place-items:center;}
+.lp-nav__mark{width:38px;height:38px;border-radius:11px;background:#FFFDF6;border:1px solid rgba(74,90,44,0.16);box-shadow:0 6px 20px -14px rgba(74,90,44,0.35);display:grid;place-items:center;}
+.lp-nav__mark img{width:28px;height:25px;object-fit:contain;display:block;}
 .lp-nav__name{font-weight:700;font-size:19px;letter-spacing:-0.01em;line-height:1;}
 .lp-nav__by{font-family:var(--lp-en);font-size:10px;letter-spacing:0.18em;color:var(--fg-2);margin-top:4px;}
 .lp-nav__links{display:flex;align-items:center;gap:4px;}
