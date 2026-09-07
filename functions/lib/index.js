@@ -839,7 +839,7 @@ async function markInitialBillingKeyCleanupUnknownIfLockActive(params) {
         lockWrite: write,
     });
 }
-async function markSubscriptionBillingRequestPreflightFailed(requestRef, lockRef, reason) {
+async function markSubscriptionBillingRequestPreflightFailed(requestRef, lockRef, uid, issueId, reason) {
     await Promise.all([
         requestRef.set({
             status: 'failed',
@@ -849,7 +849,7 @@ async function markSubscriptionBillingRequestPreflightFailed(requestRef, lockRef
             failedAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true }),
-        lockRef.delete(),
+        deleteSubscriptionPaymentLockIfMatching(lockRef, uid, issueId),
     ]);
 }
 function buildInitialBillingKeyCleanupWrite(status, reason, extra = {}) {
@@ -6424,7 +6424,7 @@ exports.subscribeWithBillingKey = (0, https_2.onCall)({ region: 'asia-northeast3
     const existingInitialPaymentId = typeof requestData.lastPaymentId === 'string' ? requestData.lastPaymentId : '';
     const requestCustomer = (0, subscriptionBillingCore_1.getStoredSubscriptionBillingCustomer)(requestData);
     if (!requestCustomer && !existingInitialPaymentId) {
-        await markSubscriptionBillingRequestPreflightFailed(requestRef, lockRef, 'missing_customer_info');
+        await markSubscriptionBillingRequestPreflightFailed(requestRef, lockRef, uid, issueId, 'missing_customer_info');
         throw new https_2.HttpsError('failed-precondition', '구매자 정보가 올바르지 않습니다. 다시 시도해 주세요.');
     }
     const requestExpiresAt = ((_c = (_b = requestData.expiresAt) === null || _b === void 0 ? void 0 : _b.toMillis) === null || _c === void 0 ? void 0 : _c.call(_b)) || 0;

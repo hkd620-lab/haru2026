@@ -38,6 +38,7 @@ const failedSection = section(indexSrc, 'async function markInitialBillingPaymen
 const conditionalDeleteSection = section(indexSrc, 'async function deleteSubscriptionPaymentLockIfMatching', 'async function writeInitialBillingProgressIfLockActive');
 const initialProgressWriteSection = section(indexSrc, 'async function writeInitialBillingProgressIfLockActive', 'async function markInitialBillingKeyCleanupUnknownIfLockActive');
 const cleanupUnknownWriteSection = section(indexSrc, 'async function markInitialBillingKeyCleanupUnknownIfLockActive', 'async function markSubscriptionBillingRequestPreflightFailed');
+const preflightFailedSection = section(indexSrc, 'async function markSubscriptionBillingRequestPreflightFailed', 'type InitialBillingKeyCleanupParams');
 const retrySection = section(subscriptionPageSrc, 'const handleRetryPendingSubscription = async', 'const selected = PLANS');
 const handleSection = section(subscriptionPageSrc, 'const handleSubscribe = async', 'const selected = PLANS');
 const requestChargingWriteSection = section(subscribeSection, 'tx.set(requestRef, {', 'tx.set(lockRef, {');
@@ -194,6 +195,11 @@ assert(completionSection.includes('tx.delete(lockRef)'));
 assert(completionSection.includes('billingKey: admin.firestore.FieldValue.delete()'));
 assert(failedSection.includes('lockRef.set({'));
 assert(!failedSection.includes('lockRef.delete()'));
+assert(!indexSrc.includes('lockRef.delete()'));
+assert(preflightFailedSection.includes('uid: string'));
+assert(preflightFailedSection.includes('issueId: string'));
+assert(preflightFailedSection.includes('deleteSubscriptionPaymentLockIfMatching(lockRef, uid, issueId)'));
+assert(subscribeSection.includes("markSubscriptionBillingRequestPreflightFailed(requestRef, lockRef, uid, issueId, 'missing_customer_info')"));
 
 assert(subscriptionPageSrc.includes("recoverSubscriptionBillingRequest')({})"));
 assert(subscriptionPageSrc.includes('if (billingRequest.pending === true)'));

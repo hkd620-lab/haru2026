@@ -1009,6 +1009,8 @@ async function markInitialBillingKeyCleanupUnknownIfLockActive(params: {
 async function markSubscriptionBillingRequestPreflightFailed(
   requestRef: FirebaseFirestore.DocumentReference,
   lockRef: FirebaseFirestore.DocumentReference,
+  uid: string,
+  issueId: string,
   reason: string
 ) {
   await Promise.all([
@@ -1020,7 +1022,7 @@ async function markSubscriptionBillingRequestPreflightFailed(
       failedAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true }),
-    lockRef.delete(),
+    deleteSubscriptionPaymentLockIfMatching(lockRef, uid, issueId),
   ]);
 }
 
@@ -7362,7 +7364,7 @@ export const subscribeWithBillingKey = onCall(
     const existingInitialPaymentId = typeof requestData.lastPaymentId === 'string' ? requestData.lastPaymentId : '';
     const requestCustomer = getStoredSubscriptionBillingCustomer(requestData);
     if (!requestCustomer && !existingInitialPaymentId) {
-      await markSubscriptionBillingRequestPreflightFailed(requestRef, lockRef, 'missing_customer_info');
+      await markSubscriptionBillingRequestPreflightFailed(requestRef, lockRef, uid, issueId, 'missing_customer_info');
       throw new HttpsError('failed-precondition', '구매자 정보가 올바르지 않습니다. 다시 시도해 주세요.');
     }
     const requestExpiresAt = requestData.expiresAt?.toMillis?.() || 0;

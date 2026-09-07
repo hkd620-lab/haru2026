@@ -138,12 +138,12 @@ assert(subscriptionPageSrc.includes('customer: {\n          name: trimmedName,\n
 assert(subscriptionPageSrc.includes('customer: {\n          fullName: trimmedName,\n          email: trimmedEmail,\n          phoneNumber: normalizedPhone,\n        },'));
 
 assert(subscribeSection.includes('const requestCustomer = getStoredSubscriptionBillingCustomer(requestData)'));
-assert(subscribeSection.includes("markSubscriptionBillingRequestPreflightFailed(requestRef, lockRef, 'missing_customer_info')"));
+assert(subscribeSection.includes("markSubscriptionBillingRequestPreflightFailed(requestRef, lockRef, uid, issueId, 'missing_customer_info')"));
 assert(subscribeSection.includes('assertStoredSubscriptionBillingCustomer(freshData)'));
 assert(subscribeSection.includes('buildPortOneBillingKeyPaymentPayload({'));
 assert(subscribeSection.includes('customer: locked.customer'));
 assert(!subscribeSection.includes('request.data?.customer'));
-assertBefore(subscribeSection, "markSubscriptionBillingRequestPreflightFailed(requestRef, lockRef, 'missing_customer_info')", 'axios.post');
+assertBefore(subscribeSection, "markSubscriptionBillingRequestPreflightFailed(requestRef, lockRef, uid, issueId, 'missing_customer_info')", 'axios.post');
 assertBefore(subscribeSection, 'assertStoredSubscriptionBillingCustomer(freshData)', 'tx.set(newPaymentRef');
 assertBefore(subscribeSection, 'customer: locked.customer', 'customData: {');
 
