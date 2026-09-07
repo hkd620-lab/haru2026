@@ -139,7 +139,7 @@ assert(recoverSection.includes('shouldBlockNewSubscriptionForInitialBillingClean
 assert(recoverSection.includes("status: cleanup?.status === 'failed' ? 'cleanup_failed' : 'cleanup_pending'"));
 
 assert(settlementSection.includes("if (portoneStatus === 'PAID')"));
-assert(settlementSection.includes('completeInitialBillingSubscription(params)'));
+assert(settlementSection.includes('completeInitialBillingSubscription({ ...params, payment })'));
 assert(settlementSection.includes('cleanupInitialBillingKeyAfterInitialChargeFailure({'));
 assert(settlementSection.includes('lockRef: params.lockRef'));
 assert(settlementSection.includes("failureReason: `PORTONE_${portoneStatus}`"));

@@ -135,7 +135,8 @@ const recurringSection = section(indexSrc, 'export const processRecurringSubscri
 const recurringSettlementSection = section(indexSrc, 'async function settleRecurringBillingPayment', 'type HaruLawSharePreview');
 const webhookSection = section(indexSrc, 'export const portoneWebhook = onRequest', '// ===== 🗑️ 일회성 마이그레이션');
 
-assert(completionSection.includes('const paymentMethodFields = getPortOnePaymentMethodWriteFields(params.payment)'));
+assert(completionSection.includes('const payment = normalizePortOnePaymentResponse(params.payment)'));
+assert(completionSection.includes('const paymentMethodFields = getPortOnePaymentMethodWriteFields(payment)'));
 assert(completionSection.includes('billingKeyIssued: true'));
 assert(completionSection.includes('...paymentMethodFields'));
 assert(requestChargingWriteSection.includes('billingKeyIssuedAt'));

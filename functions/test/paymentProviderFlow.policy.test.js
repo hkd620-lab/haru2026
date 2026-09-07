@@ -195,7 +195,8 @@ assert(initialBillingCompletionSection.includes('tx.set(subRef'));
 assert(initialBillingCompletionSection.includes('tx.set(billingRef'));
 assert(initialBillingCompletionSection.includes('tx.set(params.requestRef'));
 assert(initialBillingCompletionSection.includes('tx.set(params.paymentRef'));
-assert(initialBillingCompletionSection.includes('const paymentMethodFields = getPortOnePaymentMethodWriteFields(params.payment)'));
+assert(initialBillingCompletionSection.includes('const payment = normalizePortOnePaymentResponse(params.payment)'));
+assert(initialBillingCompletionSection.includes('const paymentMethodFields = getPortOnePaymentMethodWriteFields(payment)'));
 assert(initialBillingCompletionSection.includes('billingKeyIssued: true'));
 assert(initialBillingCompletionSection.includes('...paymentMethodFields'));
 assert(initialBillingCompletionSection.includes("status: 'active'"));
@@ -205,7 +206,7 @@ assert(initialBillingCompletionSection.includes('alreadyProcessed = true'));
 assert(initialBillingCompletionSection.includes('requestData.lastPaymentId !== params.paymentId'));
 
 assert(initialBillingSettlementSection.includes("if (portoneStatus === 'PAID')"));
-assert(initialBillingSettlementSection.includes('completeInitialBillingSubscription(params)'));
+assert(initialBillingSettlementSection.includes('completeInitialBillingSubscription({ ...params, payment })'));
 assert(initialBillingSettlementSection.includes('? { success: true, alreadyProcessed: true }'));
 assert(initialBillingSettlementSection.includes("if (isFailedOrCancelledPaymentStatus(portoneStatus))"));
 assert(initialBillingSettlementSection.includes('await markInitialBillingPaymentFailed(params.requestRef, params.paymentRef, portoneStatus, params.lockRef)'));

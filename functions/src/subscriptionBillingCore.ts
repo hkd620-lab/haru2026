@@ -288,6 +288,32 @@ export function buildPortOneBillingKeyPaymentPayload(params: {
   };
 }
 
+export function normalizePortOnePaymentResponse(response: any): any {
+  if (
+    response
+    && typeof response === 'object'
+    && response.payment
+    && typeof response.payment === 'object'
+  ) {
+    return response.payment;
+  }
+  return response;
+}
+
+export function getPortOnePaymentStatus(payment: any): string {
+  const normalizedPayment = normalizePortOnePaymentResponse(payment);
+  return typeof normalizedPayment?.status === 'string' ? normalizedPayment.status : 'UNKNOWN';
+}
+
+export function getPortOnePaymentId(payment: any): string {
+  const normalizedPayment = normalizePortOnePaymentResponse(payment);
+  return typeof normalizedPayment?.paymentId === 'string'
+    ? normalizedPayment.paymentId
+    : typeof normalizedPayment?.id === 'string'
+      ? normalizedPayment.id
+      : '';
+}
+
 export type InitialBillingKeyCleanupStatus = 'succeeded' | 'failed' | 'not_needed' | 'unknown';
 
 export type InitialBillingKeyCleanupRecord = {
@@ -323,6 +349,14 @@ export type InitialBillingKeyCleanupReservationDecision = {
   portoneStatus: string;
   failureReason: string;
   cleanupAlreadyComplete: boolean;
+};
+
+export type InitialBillingStoredRequestSettlementDecision = {
+  alreadyProcessed: boolean;
+  shouldContinueSettlement: boolean;
+  shouldWriteLock: boolean;
+  lockWritePolicy: 'existing_lock_only' | 'lock_write_forbidden';
+  reason: 'payment_request_already_processed' | 'existing_lock_can_be_updated' | 'lock_missing_write_forbidden';
 };
 
 function readString(value: unknown): string {
@@ -367,6 +401,41 @@ export function getCompleteInitialBillingKeyCleanup(
     if (isInitialBillingKeyCleanupComplete(cleanup)) return cleanup;
   }
   return null;
+}
+
+export function resolveInitialBillingStoredRequestSettlement(params: {
+  paymentData: InitialBillingCleanupDocData;
+  lockExists: boolean;
+}): InitialBillingStoredRequestSettlementDecision {
+  const paymentStatus = normalizePaymentRequestStatus(params.paymentData?.status);
+
+  if (paymentStatus === 'processed') {
+    return {
+      alreadyProcessed: true,
+      shouldContinueSettlement: false,
+      shouldWriteLock: false,
+      lockWritePolicy: 'lock_write_forbidden',
+      reason: 'payment_request_already_processed',
+    };
+  }
+
+  if (params.lockExists) {
+    return {
+      alreadyProcessed: false,
+      shouldContinueSettlement: true,
+      shouldWriteLock: true,
+      lockWritePolicy: 'existing_lock_only',
+      reason: 'existing_lock_can_be_updated',
+    };
+  }
+
+  return {
+    alreadyProcessed: false,
+    shouldContinueSettlement: true,
+    shouldWriteLock: false,
+    lockWritePolicy: 'lock_write_forbidden',
+    reason: 'lock_missing_write_forbidden',
+  };
 }
 
 export function isMatchingInitialBillingCleanupLock(params: {

@@ -43,9 +43,13 @@ exports.getStoredSubscriptionBillingCustomer = getStoredSubscriptionBillingCusto
 exports.assertStoredSubscriptionBillingCustomer = assertStoredSubscriptionBillingCustomer;
 exports.areSubscriptionBillingCustomersEqual = areSubscriptionBillingCustomersEqual;
 exports.buildPortOneBillingKeyPaymentPayload = buildPortOneBillingKeyPaymentPayload;
+exports.normalizePortOnePaymentResponse = normalizePortOnePaymentResponse;
+exports.getPortOnePaymentStatus = getPortOnePaymentStatus;
+exports.getPortOnePaymentId = getPortOnePaymentId;
 exports.getInitialBillingKeyCleanup = getInitialBillingKeyCleanup;
 exports.isInitialBillingKeyCleanupComplete = isInitialBillingKeyCleanupComplete;
 exports.getCompleteInitialBillingKeyCleanup = getCompleteInitialBillingKeyCleanup;
+exports.resolveInitialBillingStoredRequestSettlement = resolveInitialBillingStoredRequestSettlement;
 exports.isMatchingInitialBillingCleanupLock = isMatchingInitialBillingCleanupLock;
 exports.shouldBlockNewSubscriptionForInitialBillingCleanup = shouldBlockNewSubscriptionForInitialBillingCleanup;
 exports.resolveInitialBillingKeyCleanupReservation = resolveInitialBillingKeyCleanupReservation;
@@ -276,6 +280,27 @@ function buildPortOneBillingKeyPaymentPayload(params) {
         customData: JSON.stringify(params.customData),
     };
 }
+function normalizePortOnePaymentResponse(response) {
+    if (response
+        && typeof response === 'object'
+        && response.payment
+        && typeof response.payment === 'object') {
+        return response.payment;
+    }
+    return response;
+}
+function getPortOnePaymentStatus(payment) {
+    const normalizedPayment = normalizePortOnePaymentResponse(payment);
+    return typeof (normalizedPayment === null || normalizedPayment === void 0 ? void 0 : normalizedPayment.status) === 'string' ? normalizedPayment.status : 'UNKNOWN';
+}
+function getPortOnePaymentId(payment) {
+    const normalizedPayment = normalizePortOnePaymentResponse(payment);
+    return typeof (normalizedPayment === null || normalizedPayment === void 0 ? void 0 : normalizedPayment.paymentId) === 'string'
+        ? normalizedPayment.paymentId
+        : typeof (normalizedPayment === null || normalizedPayment === void 0 ? void 0 : normalizedPayment.id) === 'string'
+            ? normalizedPayment.id
+            : '';
+}
 function readString(value) {
     return typeof value === 'string' ? value : '';
 }
@@ -312,6 +337,35 @@ function getCompleteInitialBillingKeyCleanup(...docs) {
             return cleanup;
     }
     return null;
+}
+function resolveInitialBillingStoredRequestSettlement(params) {
+    var _a;
+    const paymentStatus = normalizePaymentRequestStatus((_a = params.paymentData) === null || _a === void 0 ? void 0 : _a.status);
+    if (paymentStatus === 'processed') {
+        return {
+            alreadyProcessed: true,
+            shouldContinueSettlement: false,
+            shouldWriteLock: false,
+            lockWritePolicy: 'lock_write_forbidden',
+            reason: 'payment_request_already_processed',
+        };
+    }
+    if (params.lockExists) {
+        return {
+            alreadyProcessed: false,
+            shouldContinueSettlement: true,
+            shouldWriteLock: true,
+            lockWritePolicy: 'existing_lock_only',
+            reason: 'existing_lock_can_be_updated',
+        };
+    }
+    return {
+        alreadyProcessed: false,
+        shouldContinueSettlement: true,
+        shouldWriteLock: false,
+        lockWritePolicy: 'lock_write_forbidden',
+        reason: 'lock_missing_write_forbidden',
+    };
 }
 function isMatchingInitialBillingCleanupLock(params) {
     const lockData = params.lockData || {};
