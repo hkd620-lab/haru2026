@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import * as PortOne from '@portone/browser-sdk/v2';
+import { doc, getDoc } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { db } from '../config/firebase';
 import { BusinessInfoNotice } from '../components/BusinessInfoNotice';
 
 type PaidPlan = 'basic' | 'premium';
@@ -54,12 +56,28 @@ type PendingSubscriptionRecovery = {
   method: SubscriptionPaymentMethod;
   issueId: string;
   billingKey?: string;
+  // 이번 결제 시도가 시작된 시각(ms). 이전 구독/이용권 문서를 이번 결제 결과로 오인하지 않기 위해 사용한다.
+  startedAt?: number;
 };
 type RecoverSubscriptionBillingRequestResult = SubscribeWithBillingKeyResult & {
   issueId?: string;
   plan?: PaidPlan;
   provider?: SubscriptionPaymentProvider;
   payMethod?: string;
+};
+type SubscriptionPaymentStatus = 'idle' | 'processing' | 'syncing' | 'complete' | 'cancelled' | 'failed' | 'delayed';
+type ConfirmedSubscriptionSnapshot = {
+  plan: PaidPlan;
+  status: string;
+  nextBillingDate: string | null;
+};
+type SubscriptionInfoDoc = {
+  plan?: string;
+  status?: string;
+  paymentType?: string;
+  autoRenew?: boolean;
+  startDate?: string;
+  nextBillingDate?: string;
 };
 
 const PLANS: Record<PaidPlan, {
@@ -122,10 +140,17 @@ const SUBSCRIPTION_PAYMENT_METHODS: Record<SubscriptionPaymentMethod, Subscripti
     billingKeyMethod: 'EASY_PAY',
   },
 };
-const SUBSCRIPTION_PENDING_MESSAGE = '결제 상태를 확인하고 있습니다. 잠시 후 다시 확인해 주세요.';
+const SUBSCRIPTION_RESULT_CHECKING_MESSAGE = '결제 결과를 확인하고 있습니다. 이미 결제했다면 다시 결제하지 마세요.';
+const SUBSCRIPTION_NOT_STARTED_MESSAGE = '진행 중인 정기결제가 없습니다. 결제를 다시 시작할 수 있습니다.';
+const SUBSCRIPTION_SYNCING_MESSAGE = '결제가 완료되었습니다.';
+const SUBSCRIPTION_SYNCING_DETAIL = '구독 정보를 반영하고 있습니다. 잠시 후 자동으로 갱신됩니다.';
+const SUBSCRIPTION_PAID_WARNING = '이미 결제했다면 다시 결제하지 마세요.';
 const KAKAOPAY_BILLING_UNAVAILABLE_MESSAGE = '카카오페이 정기결제 준비 중입니다. 현재는 카드 정기결제를 이용해 주세요.';
 const PREMIUM_COMING_SOON_MESSAGE = '프리미엄은 준비 중입니다. 현재는 베이직 월 4,000원만 결제할 수 있습니다.';
 const SUBSCRIPTION_RECOVERY_STORAGE_KEY = 'haru.subscription.pendingBillingKey';
+const SUBSCRIPTION_STATUS_REFRESH_LIMIT = 5;
+const SUBSCRIPTION_STATUS_REFRESH_INTERVAL_MS = 4000;
+const SUBSCRIPTION_START_CLOCK_SKEW_MS = 5 * 60 * 1000;
 
 function getSubscriptionPaymentMethod(value: string | null): SubscriptionPaymentMethod | null {
   return value === 'card' || value === 'kakaopay' ? value : null;
@@ -151,6 +176,7 @@ function parsePendingSubscriptionRecovery(value: string | null): PendingSubscrip
       method,
       issueId: parsed.issueId,
       billingKey: typeof parsed.billingKey === 'string' && parsed.billingKey ? parsed.billingKey : undefined,
+      startedAt: typeof parsed.startedAt === 'number' && Number.isFinite(parsed.startedAt) ? parsed.startedAt : undefined,
     };
   } catch {
     return null;
@@ -196,6 +222,39 @@ function isTerminalSubscriptionError(error: any): boolean {
     && (message.includes('실패') || message.includes('취소'));
 }
 
+function formatWon(amount: number): string {
+  return amount.toLocaleString('ko-KR');
+}
+
+function formatSubscriptionDate(value: string | null): string | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function getSubscriptionButtonLabel(
+  plan: PaidPlan,
+  method: SubscriptionPaymentMethod,
+  isLoading: boolean,
+  hasPendingSubscriptionRecovery: boolean,
+): string {
+  if (isLoading) return '결제를 처리하고 있습니다…';
+  const pendingLabel = hasPendingSubscriptionRecovery ? '기존 정기결제 상태 확인 필요' : '';
+  if (pendingLabel) return pendingLabel;
+  const planAmount = formatWon(PLANS[plan].amount);
+  if (method === 'kakaopay') return `카카오페이로 월 ${planAmount}원 결제하고 구독 시작`;
+  return `카드로 월 ${planAmount}원 결제하고 구독 시작`;
+}
+
+function getPaymentCodeMessage(response: BillingKeyResponse | undefined): { status: SubscriptionPaymentStatus; message: string } {
+  const message = response?.message || '';
+  if (message.includes('취소') || message.toLowerCase().includes('cancel')) {
+    return { status: 'cancelled', message: '결제가 취소되었습니다. 요금은 청구되지 않습니다.' };
+  }
+  return { status: 'failed', message: message || '결제에 실패했습니다. 결제 내역을 확인한 후 다시 시도해 주세요.' };
+}
+
 export default function SubscriptionPage() {
   const { user, loading: authLoading } = useAuth();
   const [searchParams] = useSearchParams();
@@ -208,7 +267,12 @@ export default function SubscriptionPage() {
   const [withdrawalConsent, setWithdrawalConsent] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<SubscriptionPaymentMethod>('card');
   const [pendingSubscriptionRecovery, setPendingSubscriptionRecovery] = useState<PendingSubscriptionRecovery | null>(() => readPendingSubscriptionRecovery());
+  const [paymentStatus, setPaymentStatus] = useState<SubscriptionPaymentStatus>('idle');
+  const [statusRefreshAttempts, setStatusRefreshAttempts] = useState(0);
+  const [confirmedSubscription, setConfirmedSubscription] = useState<ConfirmedSubscriptionSnapshot | null>(null);
   const redirectProcessedRef = useRef(false);
+  const paymentInFlightRef = useRef(false);
+  const statusRefreshInFlightRef = useRef(false);
 
   const savePendingSubscriptionRecovery = (recovery: PendingSubscriptionRecovery) => {
     writePendingSubscriptionRecovery(recovery);
@@ -218,6 +282,103 @@ export default function SubscriptionPage() {
   const clearPendingSubscriptionRecovery = () => {
     removePendingSubscriptionRecovery();
     setPendingSubscriptionRecovery(null);
+  };
+
+  // 이번 결제 시도로 만들어진 구독인지 판정한다.
+  // users/{uid}/subscription/info 문서는 단건 이용권과 정기결제가 함께 쓰므로
+  // status === 'active' 만으로는 예전 구독·이용권을 이번 결제 결과로 오인할 수 있다.
+  const isSubscriptionFromCurrentAttempt = (data: SubscriptionInfoDoc, startedAt?: number): boolean => {
+    if (data.paymentType !== 'subscription' || data.autoRenew !== true) return false;
+    if (!startedAt) return true;
+    const startedDate = typeof data.startDate === 'string' ? Date.parse(data.startDate) : Number.NaN;
+    if (Number.isNaN(startedDate)) return false;
+    // 서버·클라이언트 시계 오차를 감안해 여유를 둔다.
+    return startedDate >= startedAt - SUBSCRIPTION_START_CLOCK_SKEW_MS;
+  };
+
+  const refreshSubscriptionSnapshot = async (expectedPlan?: PaidPlan, startedAt?: number): Promise<boolean> => {
+    if (!user?.uid) return false;
+    const snap = await getDoc(doc(db, 'users', user.uid, 'subscription', 'info'));
+    const data = snap.data() as SubscriptionInfoDoc | undefined;
+    const plan = data?.plan === 'basic' || data?.plan === 'premium' ? data.plan : null;
+    if (
+      snap.exists()
+      && data
+      && plan
+      && data.status === 'active'
+      && (!expectedPlan || plan === expectedPlan)
+      && isSubscriptionFromCurrentAttempt(data, startedAt)
+    ) {
+      setConfirmedSubscription({
+        plan,
+        status: 'active',
+        nextBillingDate: typeof data.nextBillingDate === 'string' ? data.nextBillingDate : null,
+      });
+      clearPendingSubscriptionRecovery();
+      setPaymentStatus('complete');
+      setResultMessage('구독이 시작되었습니다.');
+      return true;
+    }
+    return false;
+  };
+
+  const resetPaymentStatusToIdle = (message: string) => {
+    clearPendingSubscriptionRecovery();
+    setConfirmedSubscription(null);
+    setStatusRefreshAttempts(0);
+    setPaymentStatus('idle');
+    setResultMessage(message);
+  };
+
+  const refreshExistingSubscriptionRequest = async (startedAt?: number): Promise<boolean> => {
+    const functions = getFunctions(undefined, 'asia-northeast3');
+    const recoverSubscriptionBillingRequest = httpsCallable<Record<string, never>, RecoverSubscriptionBillingRequestResult>(functions, 'recoverSubscriptionBillingRequest');
+    const result = await recoverSubscriptionBillingRequest({});
+    const recoveryResult = result.data;
+
+    if (isSubscriptionPaymentComplete(recoveryResult)) {
+      const plan = recoveryResult.plan === 'basic' ? 'basic' : recoveryResult.plan === 'premium' ? 'premium' : undefined;
+      setPaymentStatus('syncing');
+      setResultMessage(SUBSCRIPTION_SYNCING_MESSAGE);
+      return refreshSubscriptionSnapshot(plan, startedAt);
+    }
+
+    if (recoveryResult.pending === true && recoveryResult.issueId && recoveryResult.plan) {
+      const method = getSubscriptionPaymentMethodForProvider(recoveryResult.provider);
+      const plan = recoveryResult.plan === 'premium' ? 'premium' : 'basic';
+      savePendingSubscriptionRecovery({
+        plan,
+        method,
+        issueId: recoveryResult.issueId,
+        startedAt,
+      });
+      setSelectedPlan(plan);
+      setSelectedPaymentMethod(method);
+      setPaymentStatus('delayed');
+      setResultMessage(SUBSCRIPTION_RESULT_CHECKING_MESSAGE);
+      return false;
+    }
+
+    if (isTerminalSubscriptionStatus(recoveryResult.status)) {
+      clearPendingSubscriptionRecovery();
+      setPaymentStatus('failed');
+      setResultMessage('결제 실패 또는 취소가 확인되었습니다. 요금이 청구되었는지 결제 내역을 먼저 확인해 주세요.');
+      return false;
+    }
+
+    // 서버가 "진행 중인 결제 없음"을 확정한 상태.
+    // 'none'  : 정기결제 잠금이 없음 (결제를 시작한 적이 없거나 이미 정리됨)
+    // 'created': 결제창을 열기 전 요청만 생성된 상태
+    // 이 경우 "이미 결제했다면 다시 결제하지 마세요" 경고를 띄우거나 결제 버튼을 잠그면 안 된다.
+    if (recoveryResult.pending !== true
+      && (recoveryResult.status === 'none' || recoveryResult.status === 'created')) {
+      resetPaymentStatusToIdle(SUBSCRIPTION_NOT_STARTED_MESSAGE);
+      return false;
+    }
+
+    setPaymentStatus('delayed');
+    setResultMessage(SUBSCRIPTION_RESULT_CHECKING_MESSAGE);
+    return false;
   };
 
   const confirmPendingSubscription = async (recovery: PendingSubscriptionRecovery): Promise<boolean> => {
@@ -237,15 +398,24 @@ export default function SubscriptionPage() {
     if (subscribeResult.pending === true) {
       if ('issueId' in subscribeResult && subscribeResult.issueId && subscribeResult.plan) {
         const method = getSubscriptionPaymentMethodForProvider(subscribeResult.provider);
-        setPendingSubscriptionRecovery({
+        savePendingSubscriptionRecovery({
           plan: subscribeResult.plan,
           method,
           issueId: subscribeResult.issueId,
+          startedAt: recovery.startedAt,
         });
         setSelectedPlan(subscribeResult.plan);
         setSelectedPaymentMethod(method);
+      } else {
+        savePendingSubscriptionRecovery({
+          plan: recovery.plan,
+          method: recovery.method,
+          issueId: recovery.issueId,
+          startedAt: recovery.startedAt,
+        });
       }
-      setResultMessage(SUBSCRIPTION_PENDING_MESSAGE);
+      setPaymentStatus('delayed');
+      setResultMessage(SUBSCRIPTION_RESULT_CHECKING_MESSAGE);
       return false;
     }
     if (!isSubscriptionPaymentComplete(subscribeResult)) {
@@ -256,7 +426,11 @@ export default function SubscriptionPage() {
     }
 
     clearPendingSubscriptionRecovery();
-    setResultMessage(`${PLANS[recovery.plan].orderName} ${paymentMethodConfig.label} 결제가 완료되었습니다. 설정 화면에서 구독 상태를 확인할 수 있습니다.`);
+    setResultMessage('결제가 완료되었습니다.');
+    setConfirmedSubscription(null);
+    setPaymentStatus('syncing');
+    setStatusRefreshAttempts(0);
+    await refreshSubscriptionSnapshot(recovery.plan, recovery.startedAt);
     return true;
   };
 
@@ -286,7 +460,8 @@ export default function SubscriptionPage() {
     setPendingSubscriptionRecovery(recovery);
     setSelectedPlan(recovery.plan);
     setSelectedPaymentMethod(recovery.method);
-    setResultMessage((prev) => prev || SUBSCRIPTION_PENDING_MESSAGE);
+    setPaymentStatus('delayed');
+    setResultMessage((prev) => prev || SUBSCRIPTION_RESULT_CHECKING_MESSAGE);
   }, []);
 
   useEffect(() => {
@@ -311,7 +486,8 @@ export default function SubscriptionPage() {
           });
           setSelectedPlan(recoveryResult.plan);
           setSelectedPaymentMethod(method);
-          setResultMessage(SUBSCRIPTION_PENDING_MESSAGE);
+          setPaymentStatus('delayed');
+          setResultMessage(SUBSCRIPTION_RESULT_CHECKING_MESSAGE);
         }
       } catch (error) {
         console.error('서버 정기결제 복구 확인 오류:', error);
@@ -398,11 +574,16 @@ export default function SubscriptionPage() {
       setPendingSubscriptionRecovery(existingRecovery);
       setSelectedPlan(existingRecovery.plan);
       setSelectedPaymentMethod(existingRecovery.method);
-      setResultMessage(SUBSCRIPTION_PENDING_MESSAGE);
+      setPaymentStatus('delayed');
+      setResultMessage(SUBSCRIPTION_RESULT_CHECKING_MESSAGE);
       return;
     }
 
+    if (paymentInFlightRef.current) return;
+    paymentInFlightRef.current = true;
+    const attemptStartedAt = Date.now();
     setLoading(true);
+    setPaymentStatus('processing');
     setResultMessage('');
 
     try {
@@ -455,14 +636,16 @@ export default function SubscriptionPage() {
       const billingRequest = requestResult.data as SubscriptionBillingRequestResult;
       if (billingRequest.pending === true) {
         const method = getSubscriptionPaymentMethodForProvider(billingRequest.provider);
-        setPendingSubscriptionRecovery({
+        savePendingSubscriptionRecovery({
           plan: billingRequest.plan || selectedPlan,
           method,
           issueId: billingRequest.issueId,
+          startedAt: attemptStartedAt,
         });
         setSelectedPlan(billingRequest.plan || selectedPlan);
         setSelectedPaymentMethod(method);
-        setResultMessage(SUBSCRIPTION_PENDING_MESSAGE);
+        setPaymentStatus('delayed');
+        setResultMessage(SUBSCRIPTION_RESULT_CHECKING_MESSAGE);
         return;
       }
 
@@ -486,8 +669,25 @@ export default function SubscriptionPage() {
         redirectUrl: `${window.location.origin}/subscription?plan=${selectedPlan}&method=${selectedPaymentMethod}&issueId=${billingRequest.issueId}`,
       }) as BillingKeyResponse;
 
+      setPaymentStatus('syncing');
+      setResultMessage(SUBSCRIPTION_RESULT_CHECKING_MESSAGE);
+
+      if (!response) {
+        savePendingSubscriptionRecovery({
+          plan: selectedPlan,
+          method: selectedPaymentMethod,
+          issueId: billingRequest.issueId,
+          startedAt: attemptStartedAt,
+        });
+        setPaymentStatus('delayed');
+        setResultMessage(SUBSCRIPTION_RESULT_CHECKING_MESSAGE);
+        return;
+      }
+
       if (response?.code) {
-        alert('카드 등록이 취소되었습니다.');
+        const codeResult = getPaymentCodeMessage(response);
+        setPaymentStatus(codeResult.status);
+        setResultMessage(codeResult.message);
         return;
       }
 
@@ -501,6 +701,7 @@ export default function SubscriptionPage() {
         method: selectedPaymentMethod,
         issueId: billingRequest.issueId,
         billingKey,
+        startedAt: attemptStartedAt,
       };
       savePendingSubscriptionRecovery(recovery);
 
@@ -516,11 +717,15 @@ export default function SubscriptionPage() {
     } catch (e: any) {
       console.error('결제 오류:', e);
       const msg = e?.message || '결제 중 오류가 발생했습니다. 다시 시도해 주세요.';
+      setPaymentStatus('failed');
       setResultMessage(msg);
     } finally {
       setLoading(false);
+      paymentInFlightRef.current = false;
     }
   };
+
+  const pendingRecoveryStartedAt = pendingSubscriptionRecovery?.startedAt;
 
   const handleRetryPendingSubscription = async () => {
     if (authLoading) return;
@@ -529,32 +734,83 @@ export default function SubscriptionPage() {
       return;
     }
     const recovery = pendingSubscriptionRecovery || readPendingSubscriptionRecovery();
-    if (!recovery) {
-      setResultMessage('');
-      return;
-    }
-
     setLoading(true);
     try {
-      setSelectedPlan(recovery.plan);
-      setSelectedPaymentMethod(recovery.method);
-      await confirmPendingSubscription(recovery);
+      if (recovery) {
+        setSelectedPlan(recovery.plan);
+        setSelectedPaymentMethod(recovery.method);
+      }
+      const active = await refreshSubscriptionSnapshot(recovery?.plan ?? selectedPlan, recovery?.startedAt);
+      if (active) return;
+      // Do not use `await confirmPendingSubscription(recovery)` for the refresh button.
+      // That path may call subscribeWithBillingKey when a stored billingKey exists.
+      // recoverSubscriptionBillingRequest only settles an existing payment, so it is
+      // also the correct call when no local recovery record survived.
+      await refreshExistingSubscriptionRequest(recovery?.startedAt);
     } catch (error: any) {
       console.error('정기결제 상태 재확인 오류:', error);
       if (isTerminalSubscriptionError(error)) {
         clearPendingSubscriptionRecovery();
       }
+      setPaymentStatus('delayed');
       setResultMessage(error?.message || '정기결제 상태 확인 중 오류가 발생했습니다. 잠시 후 다시 확인해 주세요.');
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    if (!user || loading || paymentStatus === 'complete') return;
+    if (paymentStatus !== 'syncing' && paymentStatus !== 'delayed') return;
+    if (statusRefreshAttempts >= SUBSCRIPTION_STATUS_REFRESH_LIMIT) return;
+
+    let disposed = false;
+    const timer = window.setTimeout(() => {
+      // 이전 자동 확인이 아직 끝나지 않았으면 건너뛴다.
+      // recoverSubscriptionBillingRequest는 PortOne 조회와 Firestore 정산 트랜잭션을
+      // 수행하므로 4초를 넘길 수 있고, 중복 호출을 만들면 안 된다.
+      if (statusRefreshInFlightRef.current) return;
+      statusRefreshInFlightRef.current = true;
+      const startedAt = pendingRecoveryStartedAt;
+      refreshSubscriptionSnapshot(selectedPlan, startedAt)
+        .then((active) => {
+          if (active) return;
+          return refreshExistingSubscriptionRequest(startedAt);
+        })
+        .catch((error) => {
+          console.error('구독 상태 자동 확인 오류:', error);
+        })
+        .finally(() => {
+          statusRefreshInFlightRef.current = false;
+          // 호출이 끝난 뒤에 카운트를 올려야 확인 횟수와 실제 호출 횟수가 일치한다.
+          if (!disposed) setStatusRefreshAttempts((count) => count + 1);
+        });
+    }, SUBSCRIPTION_STATUS_REFRESH_INTERVAL_MS);
+
+    return () => {
+      disposed = true;
+      window.clearTimeout(timer);
+    };
+  }, [loading, paymentStatus, pendingRecoveryStartedAt, selectedPlan, statusRefreshAttempts, user]);
+
+  // 자동 확인 횟수를 모두 썼는데도 결과가 확정되지 않은 상태.
+  // 결제 여부가 불확실하므로 결제 버튼은 계속 잠가 두고, 수동 재확인을 안내한다.
+  const statusRefreshExhausted = statusRefreshAttempts >= SUBSCRIPTION_STATUS_REFRESH_LIMIT
+    && (paymentStatus === 'syncing' || paymentStatus === 'delayed');
+
   const selected = PLANS[selectedPlan];
   const selectedPaymentOption = SUBSCRIPTION_PAYMENT_METHODS[selectedPaymentMethod];
   const hasPendingSubscriptionRecovery = pendingSubscriptionRecovery !== null;
   const isKakaoPayBillingReady = Boolean(import.meta.env.VITE_PORTONE_KAKAOPAY_BILLING_CHANNEL_KEY);
   const selectedKakaoPayBillingUnavailable = selectedPaymentMethod === 'kakaopay' && !isKakaoPayBillingReady;
+  const subscriptionButtonLabel = getSubscriptionButtonLabel(
+    selectedPlan,
+    selectedPaymentMethod,
+    loading,
+    hasPendingSubscriptionRecovery,
+  );
+  const shouldHoldPaymentButton = hasPendingSubscriptionRecovery || paymentStatus === 'syncing' || paymentStatus === 'complete' || paymentStatus === 'delayed';
+  const nextBillingDateLabel = formatSubscriptionDate(confirmedSubscription?.nextBillingDate || null);
 
   if (!authLoading && !user) {
     return (
@@ -723,6 +979,20 @@ export default function SubscriptionPage() {
           선택 상품: {selected.orderName} · {selected.priceLabel}/월 · 부가세 포함 · {selectedPaymentOption.label} 정기결제 완료 후 즉시 이용 가능
         </p>
 
+        <div className="bg-white rounded-2xl border border-[#10b981]/30 p-4 mb-4 text-sm leading-6 text-gray-700">
+          <p className="font-black text-[#1A3C6E] mb-2">
+            {selectedPaymentMethod === 'kakaopay' ? '카카오페이 결제 안내' : '카드 정기결제 안내'}
+          </p>
+          <ul className="space-y-1 text-xs sm:text-sm">
+            <li>결제수단 등록을 완료하면 선택한 요금이 바로 결제되고 구독이 시작됩니다.</li>
+            <li>이후 매월 결제 예정일에 자동결제됩니다.</li>
+            <li>자동결제는 설정 &gt; 구독 관리 화면에서 해지할 수 있습니다.</li>
+            {selectedPaymentMethod === 'card' && (
+              <li className="font-bold text-[#1A3C6E]">카드결제는 KG이니시스 결제창에서 안전하게 진행됩니다.</li>
+            )}
+          </ul>
+        </div>
+
         <div className="bg-white rounded-2xl border border-gray-200 p-4 mb-4 space-y-3">
           <div>
             <label htmlFor="subscription-buyer-name" className="block text-xs font-bold text-gray-500 mb-1">
@@ -791,23 +1061,53 @@ export default function SubscriptionPage() {
 
         <button
           onClick={() => handleSubscribe()}
-          disabled={loading || authLoading || !withdrawalConsent || hasPendingSubscriptionRecovery || selectedKakaoPayBillingUnavailable || selectedPlan !== 'basic'}
-          className="w-full bg-[#1A3C6E] hover:bg-[#142f57] text-white font-black text-base py-4 rounded-2xl transition-colors disabled:opacity-50 mb-3"
+          disabled={loading || authLoading || !withdrawalConsent || shouldHoldPaymentButton || selectedKakaoPayBillingUnavailable || selectedPlan !== 'basic'}
+          className="w-full bg-[#1A3C6E] hover:bg-[#142f57] text-white font-black text-sm sm:text-base leading-5 px-4 py-4 rounded-2xl transition-colors disabled:opacity-50 mb-2 break-keep"
         >
-          {loading ? '결제 처리 중...' : hasPendingSubscriptionRecovery ? '기존 정기결제 상태 확인 필요' : `${selected.title} 1개월 ${selectedPaymentOption.label} 결제창 열기`}
+          {subscriptionButtonLabel}
         </button>
+
+        {selectedPaymentMethod === 'card' && (
+          <p className="text-center text-xs leading-5 text-gray-500 mb-3">
+            카드결제는 KG이니시스 결제창에서 안전하게 진행됩니다.
+          </p>
+        )}
 
         {resultMessage && (
           <div className="rounded-2xl bg-white border border-[#10b981]/40 px-4 py-4 mb-3 text-center">
-            <p className="text-sm font-bold text-gray-800">{resultMessage}</p>
-            {hasPendingSubscriptionRecovery ? (
+            <p className="text-sm font-black text-[#1A3C6E]">{resultMessage}</p>
+            {(paymentStatus === 'syncing' || paymentStatus === 'delayed') && (
+              <div className="mt-2 space-y-1 text-xs leading-5 text-gray-600">
+                <p>{paymentStatus === 'syncing' ? SUBSCRIPTION_SYNCING_DETAIL : '결제 결과를 확인하고 있습니다. 잠시 후 자동으로 다시 확인합니다.'}</p>
+                <p className="font-black text-[#b45309]">{SUBSCRIPTION_PAID_WARNING}</p>
+                <p className="text-gray-400">
+                  자동 확인 {Math.min(statusRefreshAttempts, SUBSCRIPTION_STATUS_REFRESH_LIMIT)}/{SUBSCRIPTION_STATUS_REFRESH_LIMIT}
+                </p>
+                {statusRefreshExhausted && (
+                  <p className="font-bold text-gray-600">
+                    자동 확인이 끝났습니다. 아래 버튼으로 다시 확인하거나, 계속 확인되지 않으면 고객센터로 문의해 주세요.
+                  </p>
+                )}
+              </div>
+            )}
+            {paymentStatus === 'complete' && confirmedSubscription && (
+              <div className="mt-3 rounded-xl bg-[#F0FDF4] px-4 py-3 text-left text-xs leading-5 text-gray-700">
+                <p><span className="font-bold text-gray-500">현재 요금제</span> {PLANS[confirmedSubscription.plan].title}</p>
+                <p><span className="font-bold text-gray-500">구독 상태</span> 이용 중</p>
+                {nextBillingDateLabel && (
+                  <p><span className="font-bold text-gray-500">다음 결제 예정일</span> {nextBillingDateLabel}</p>
+                )}
+              </div>
+            )}
+            {(hasPendingSubscriptionRecovery || paymentStatus === 'syncing' || paymentStatus === 'delayed') ? (
               <button
                 type="button"
                 onClick={() => handleRetryPendingSubscription()}
                 disabled={loading || authLoading}
+                title="결제 상태 다시 확인"
                 className="mt-3 w-full rounded-xl bg-[#1A3C6E] px-4 py-3 text-sm font-black text-white disabled:opacity-50"
               >
-                {loading ? '결제 상태 확인 중...' : '결제 상태 다시 확인'}
+                {loading ? '구독 상태 확인 중...' : '구독 상태 새로고침'}
               </button>
             ) : (
               <div className="mt-3 flex flex-col sm:flex-row gap-2">
