@@ -44,7 +44,7 @@ const SINGLE_PAYMENT_PRODUCTS: Record<PaidPlan, {
     title: '프리미엄',
     orderName: 'HARU2026 프리미엄 1개월 이용권',
     amount: 6000,
-    amountLabel: '6,000원 (부가세 포함)',
+    amountLabel: '6,000원 예정',
     description: '프리미엄은 준비 중이며 이번 출시에서는 결제되지 않습니다.',
     available: false,
     badge: '준비 중',
@@ -63,10 +63,13 @@ function getSinglePaymentButtonLabel(product: typeof SINGLE_PAYMENT_PRODUCTS[Pai
   return `카드로 ${formatWon(product.amount)}원 결제하기`;
 }
 
+// PG가 돌려주는 code/message는 승인 결과를 서버에서 확인한 값이 아니다.
+// 승인 직후 통신이 끊긴 경우 실제로는 청구가 남아 있을 수 있으므로
+// "요금이 청구되지 않았다"고 단정하지 않는다.
 function getPaymentCodeMessage(response: PaymentResponse | undefined): { status: SinglePaymentStatus; message: string } {
   const message = response?.message || '';
   if (message.includes('취소') || message.toLowerCase().includes('cancel')) {
-    return { status: 'cancelled', message: '결제가 취소되었습니다. 요금은 청구되지 않습니다.' };
+    return { status: 'cancelled', message: '결제가 취소되었습니다. 결제 내역에 승인 건이 없는지 확인해 주세요.' };
   }
   return { status: 'failed', message: message || '결제에 실패했습니다. 결제 내역을 확인한 후 다시 시도해 주세요.' };
 }
@@ -223,8 +226,19 @@ export default function SinglePaymentPage() {
       setResultMessage(SINGLE_PAYMENT_CHECKING_MESSAGE);
 
       if (!response) {
+        // 확인할 방법 없이 "확인 중"으로 두면 안 된다. 서버로 승인 여부를 직접 확인한다.
         setPaymentStatus('checking');
         setResultMessage(SINGLE_PAYMENT_CHECKING_MESSAGE);
+        try {
+          const verifySinglePayment = httpsCallable(functions, 'verifySinglePayment');
+          await verifySinglePayment({ paymentId: paymentRequest.paymentId });
+          setPaymentStatus('complete');
+          setResultMessage('결제가 완료되었습니다.');
+        } catch (verifyError: any) {
+          console.error('단건결제 결과 확인 오류:', verifyError);
+          setPaymentStatus('failed');
+          setResultMessage('결제가 완료되지 않았습니다. 결제 내역을 확인한 후 다시 시도해 주세요.');
+        }
         return;
       }
 
@@ -256,6 +270,8 @@ export default function SinglePaymentPage() {
 
   const selectedProduct = SINGLE_PAYMENT_PRODUCTS[selectedPlan];
   const singlePaymentButtonLabel = getSinglePaymentButtonLabel(selectedProduct, loading);
+  // 결제가 완료됐거나 결과 확인 중일 때는 재결제를 막는다.
+  const shouldHoldPaymentButton = paymentStatus === 'complete' || paymentStatus === 'checking';
 
   if (!authLoading && !user) {
     return (
@@ -428,7 +444,7 @@ export default function SinglePaymentPage() {
         <button
           type="button"
           onClick={handleSinglePayment}
-          disabled={loading || !withdrawalConsent || selectedPlan !== 'basic'}
+          disabled={loading || !withdrawalConsent || selectedPlan !== 'basic' || shouldHoldPaymentButton}
           className="w-full rounded-lg bg-[#1A3C6E] px-4 py-4 text-sm font-black leading-5 text-white transition-colors hover:bg-[#142f57] disabled:opacity-50 sm:text-base"
         >
           {singlePaymentButtonLabel}

@@ -57,7 +57,22 @@ assert(subscriptionPageSrc.includes('plan: PaidPlan;'));
 assert(subscriptionPageSrc.includes('method: SubscriptionPaymentMethod;'));
 assert(subscriptionPageSrc.includes('issueId: string;'));
 assert(subscriptionPageSrc.includes('billingKey?: string;'));
-assert(subscriptionPageSrc.includes("const SUBSCRIPTION_PENDING_MESSAGE = '결제 상태를 확인하고 있습니다. 잠시 후 다시 확인해 주세요.'"));
+assert(subscriptionPageSrc.includes("const SUBSCRIPTION_RESULT_CHECKING_MESSAGE = '결제 결과를 확인하고 있습니다. 이미 결제했다면 다시 결제하지 마세요.'"));
+assert(subscriptionPageSrc.includes("const SUBSCRIPTION_NOT_STARTED_MESSAGE = '진행 중인 정기결제가 없습니다. 결제를 다시 시작할 수 있습니다.'"));
+// 정책 문자열이 주석으로만 남아 통과하는 일을 막는다.
+assert(!/^\s*\/\/.*setResultMessage\(SUBSCRIPTION_/m.test(subscriptionPageSrc));
+// users/{uid}/subscription/info는 단건 이용권과 정기결제가 공유하는 문서다.
+// status === 'active' 만으로 이번 결제 결과라고 단정하면 예전 구독·이용권을 오인한다.
+assert(subscriptionPageSrc.includes("if (data.paymentType !== 'subscription' || data.autoRenew !== true) return false;"));
+assert(subscriptionPageSrc.includes('isSubscriptionFromCurrentAttempt(data, startedAt)'));
+assert(subscriptionPageSrc.includes('startedAt?: number;'));
+// 서버가 진행 중인 결제가 없다고 확정하면 재결제 경고·결제 버튼 잠금을 풀어야 한다.
+assert(subscriptionPageSrc.includes("(recoveryResult.status === 'none' || recoveryResult.status === 'created')"));
+assert(subscriptionPageSrc.includes('resetPaymentStatusToIdle(SUBSCRIPTION_NOT_STARTED_MESSAGE)'));
+assert(subscriptionPageSrc.includes("setPaymentStatus('idle');"));
+// 자동 재확인은 중복 호출을 만들지 않는다.
+assert(subscriptionPageSrc.includes('if (statusRefreshInFlightRef.current) return;'));
+assert(subscriptionPageSrc.includes('statusRefreshInFlightRef.current = true;'));
 assert(subscriptionPageSrc.includes("const SUBSCRIPTION_RECOVERY_STORAGE_KEY = 'haru.subscription.pendingBillingKey'"));
 assert(subscriptionPageSrc.includes('window.sessionStorage.getItem(SUBSCRIPTION_RECOVERY_STORAGE_KEY)'));
 assert(subscriptionPageSrc.includes('window.sessionStorage.setItem(SUBSCRIPTION_RECOVERY_STORAGE_KEY, JSON.stringify(recovery))'));
@@ -81,7 +96,7 @@ assert(subscriptionConfirmSection.includes('provider: paymentMethodConfig.provid
 assert(subscriptionConfirmSection.includes('payMethod: paymentMethodConfig.payMethod'));
 assert(subscriptionConfirmSection.includes("recoverSubscriptionBillingRequest')({})"));
 assert(subscriptionConfirmSection.includes('if (subscribeResult.pending === true)'));
-assert(subscriptionConfirmSection.includes('setResultMessage(SUBSCRIPTION_PENDING_MESSAGE)'));
+assert(subscriptionConfirmSection.includes('setResultMessage(SUBSCRIPTION_RESULT_CHECKING_MESSAGE)'));
 const redirectPendingBranch = section(subscriptionConfirmSection, 'if (subscribeResult.pending === true)', 'if (!isSubscriptionPaymentComplete(subscribeResult))');
 assert(!redirectPendingBranch.includes('결제가 완료되었습니다'));
 assert(!redirectPendingBranch.includes('window.history.replaceState'));
@@ -97,7 +112,7 @@ assertBefore(subscriptionRedirectSection, 'savePendingSubscriptionRecovery(recov
 assertBefore(subscriptionRedirectSection, 'confirmPendingSubscription(recovery)', 'window.history.replaceState');
 
 assert(subscriptionHandleSection.includes('const existingRecovery = pendingSubscriptionRecovery || readPendingSubscriptionRecovery()'));
-assert(subscriptionHandleSection.includes('setResultMessage(SUBSCRIPTION_PENDING_MESSAGE)'));
+assert(subscriptionHandleSection.includes('setResultMessage(SUBSCRIPTION_RESULT_CHECKING_MESSAGE)'));
 assertBefore(subscriptionHandleSection, 'const existingRecovery = pendingSubscriptionRecovery || readPendingSubscriptionRecovery()', "const createSubscriptionBillingRequest = httpsCallable(functions, 'createSubscriptionBillingRequest')");
 const kakaoChannelSection = section(
   subscriptionHandleSection,
