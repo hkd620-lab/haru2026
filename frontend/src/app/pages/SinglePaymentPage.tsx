@@ -21,6 +21,7 @@ type SinglePaymentRequestResult = {
 };
 
 type PaidPlan = 'basic' | 'premium';
+type SinglePaymentStatus = 'idle' | 'processing' | 'complete' | 'cancelled' | 'failed' | 'checking';
 
 const SINGLE_PAYMENT_PRODUCTS: Record<PaidPlan, {
   title: string;
@@ -43,7 +44,7 @@ const SINGLE_PAYMENT_PRODUCTS: Record<PaidPlan, {
     title: '프리미엄',
     orderName: 'HARU2026 프리미엄 1개월 이용권',
     amount: 6000,
-    amountLabel: '6,000원 예정',
+    amountLabel: '6,000원 (부가세 포함)',
     description: '프리미엄은 준비 중이며 이번 출시에서는 결제되지 않습니다.',
     available: false,
     badge: '준비 중',
@@ -51,6 +52,24 @@ const SINGLE_PAYMENT_PRODUCTS: Record<PaidPlan, {
 };
 const KG_INICIS_SINGLE_PAYMENT_PAY_METHOD = 'CARD';
 const PREMIUM_COMING_SOON_MESSAGE = '프리미엄은 준비 중입니다. 현재는 베이직 4,000원 이용권만 결제할 수 있습니다.';
+const SINGLE_PAYMENT_CHECKING_MESSAGE = '결제 결과를 확인하고 있습니다. 이미 결제했다면 다시 결제하지 마세요.';
+
+function formatWon(amount: number): string {
+  return amount.toLocaleString('ko-KR');
+}
+
+function getSinglePaymentButtonLabel(product: typeof SINGLE_PAYMENT_PRODUCTS[PaidPlan], loading: boolean): string {
+  if (loading) return '결제를 처리하고 있습니다…';
+  return `카드로 ${formatWon(product.amount)}원 결제하기`;
+}
+
+function getPaymentCodeMessage(response: PaymentResponse | undefined): { status: SinglePaymentStatus; message: string } {
+  const message = response?.message || '';
+  if (message.includes('취소') || message.toLowerCase().includes('cancel')) {
+    return { status: 'cancelled', message: '결제가 취소되었습니다. 요금은 청구되지 않습니다.' };
+  }
+  return { status: 'failed', message: message || '결제에 실패했습니다. 결제 내역을 확인한 후 다시 시도해 주세요.' };
+}
 
 export default function SinglePaymentPage() {
   const { user, loading: authLoading } = useAuth();
@@ -61,7 +80,9 @@ export default function SinglePaymentPage() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [withdrawalConsent, setWithdrawalConsent] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<SinglePaymentStatus>('idle');
   const redirectProcessedRef = useRef(false);
+  const paymentInFlightRef = useRef(false);
 
   useEffect(() => {
     if (!user) return;
@@ -92,13 +113,21 @@ export default function SinglePaymentPage() {
         return;
       }
       setLoading(true);
+      setPaymentStatus('checking');
+      setResultMessage(SINGLE_PAYMENT_CHECKING_MESSAGE);
       try {
         const verifySinglePayment = httpsCallable(functions, 'verifySinglePayment');
         await verifySinglePayment({ paymentId: redirectedPaymentId });
-        if (!cancelled) setResultMessage(`${SINGLE_PAYMENT_PRODUCTS[redirectedPlan].title} 1개월 이용권 결제가 완료되었습니다.`);
+        if (!cancelled) {
+          setPaymentStatus('complete');
+          setResultMessage('결제가 완료되었습니다.');
+        }
       } catch (error: any) {
         console.error('단건결제 검증 오류:', error);
-        if (!cancelled) setResultMessage(error?.message || '결제 검증에 실패했습니다.');
+        if (!cancelled) {
+          setPaymentStatus('failed');
+          setResultMessage(error?.message || '결제 검증에 실패했습니다. 결제 내역을 확인한 후 다시 시도해 주세요.');
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -124,7 +153,10 @@ export default function SinglePaymentPage() {
       setResultMessage(PREMIUM_COMING_SOON_MESSAGE);
       return;
     }
+    if (paymentInFlightRef.current) return;
+    paymentInFlightRef.current = true;
     setLoading(true);
+    setPaymentStatus('processing');
     setResultMessage('');
 
     try {
@@ -187,13 +219,19 @@ export default function SinglePaymentPage() {
         redirectUrl: `${window.location.origin}/payment/single?plan=${selectedPlan}`,
       }) as PaymentResponse | undefined;
 
+      setPaymentStatus('checking');
+      setResultMessage(SINGLE_PAYMENT_CHECKING_MESSAGE);
+
       if (!response) {
-        setResultMessage('결제가 완료되지 않았습니다.');
+        setPaymentStatus('checking');
+        setResultMessage(SINGLE_PAYMENT_CHECKING_MESSAGE);
         return;
       }
 
       if (response.code) {
-        setResultMessage(response.message || '결제가 취소되었습니다.');
+        const codeResult = getPaymentCodeMessage(response);
+        setPaymentStatus(codeResult.status);
+        setResultMessage(codeResult.message);
         return;
       }
 
@@ -204,16 +242,20 @@ export default function SinglePaymentPage() {
 
       const verifySinglePayment = httpsCallable(functions, 'verifySinglePayment');
       await verifySinglePayment({ paymentId: completedPaymentId });
-      setResultMessage(`${SINGLE_PAYMENT_PRODUCTS[selectedPlan].title} 1개월 이용권 결제가 완료되었습니다.`);
+      setPaymentStatus('complete');
+      setResultMessage('결제가 완료되었습니다.');
     } catch (error: any) {
       console.error('단건결제 오류:', error);
-      setResultMessage(error?.message || '결제 중 오류가 발생했습니다.');
+      setPaymentStatus('failed');
+      setResultMessage(error?.message || '결제 중 오류가 발생했습니다. 결제 내역을 확인한 후 다시 시도해 주세요.');
     } finally {
       setLoading(false);
+      paymentInFlightRef.current = false;
     }
   };
 
   const selectedProduct = SINGLE_PAYMENT_PRODUCTS[selectedPlan];
+  const singlePaymentButtonLabel = getSinglePaymentButtonLabel(selectedProduct, loading);
 
   if (!authLoading && !user) {
     return (
@@ -309,6 +351,12 @@ export default function SinglePaymentPage() {
           <p className="mt-3 text-xs text-gray-400">자동갱신 없음 · 정기결제 아님 · 30일 이용권</p>
         </div>
 
+        <div className="mb-5 rounded-lg border border-[#4F46E5]/20 bg-[#EEF4FF] p-4 text-xs leading-5 text-gray-700">
+          <p className="mb-1 font-black text-[#1A3C6E]">KG이니시스 카드결제 안내</p>
+          <p>이번 결제 금액은 {formatWon(selectedProduct.amount)}원이며, 자동결제 없이 30일 이용권만 결제됩니다.</p>
+          <p className="mt-1 font-bold text-[#1A3C6E]">카드결제는 KG이니시스 결제창에서 안전하게 진행됩니다.</p>
+        </div>
+
         <div className="mb-5">
           <label htmlFor="single-payment-name" className="mb-1.5 block text-sm text-gray-500">
             구매자 이름 <span className="text-[#4F46E5]">(필수)</span>
@@ -381,15 +429,26 @@ export default function SinglePaymentPage() {
           type="button"
           onClick={handleSinglePayment}
           disabled={loading || !withdrawalConsent || selectedPlan !== 'basic'}
-          className="w-full rounded-lg bg-[#1A3C6E] px-4 py-4 text-base font-black text-white transition-colors hover:bg-[#142f57] disabled:opacity-50"
+          className="w-full rounded-lg bg-[#1A3C6E] px-4 py-4 text-sm font-black leading-5 text-white transition-colors hover:bg-[#142f57] disabled:opacity-50 sm:text-base"
         >
-          {loading ? '결제 처리 중...' : `${selectedProduct.title} 1개월 이용권 결제`}
+          {singlePaymentButtonLabel}
         </button>
 
         {resultMessage && (
           <div className="mt-4 rounded-lg bg-gray-50 px-4 py-3 text-center">
-            <p className="text-sm font-bold text-gray-700">{resultMessage}</p>
-            {resultMessage.includes('완료') && (
+            <p className="text-sm font-black text-gray-700">{resultMessage}</p>
+            {paymentStatus === 'checking' && (
+              <p className="mt-2 text-xs font-bold leading-5 text-[#b45309]">
+                이미 결제했다면 다시 결제하지 마세요.
+              </p>
+            )}
+            {paymentStatus === 'complete' && (
+              <div className="mt-2 rounded-lg bg-white px-3 py-2 text-xs leading-5 text-gray-600">
+                <p>{selectedProduct.title} 1개월 이용권이 확인되었습니다.</p>
+                <p>정기결제가 아니므로 다음 자동결제는 없습니다.</p>
+              </div>
+            )}
+            {paymentStatus === 'complete' && (
               <div className="mt-3 grid grid-cols-1 gap-2">
                 <Link to="/settings" className="rounded-lg bg-[#1A3C6E] px-4 py-3 text-sm font-black text-white">
                   결제/구독 상태 확인
