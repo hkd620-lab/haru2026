@@ -240,6 +240,15 @@ async function seed() {
       date: '2026-05-13',
       stock_sayu: '삼성전자 매수와 매도 기록이 있다. 매매 이유와 다음 점검 포인트를 남겼다.',
     },
+    timeline: {
+      formats: ['HARU타임라인'],
+      date: '2026-08-05',
+      title: '조이엘 진도 홍보 여행',
+      content: '진도에 도착해 바닷가를 둘러보고 홍보 일정을 정리했다.',
+      timelineItems: [
+        { takenDate: '2026-08-05', memo: '진도대교 앞에서 홍보물 촬영', locationLabel: '진도' },
+      ],
+    },
     reading: {
       formats: ['독서사유'],
       date: '2026-08-07',
@@ -622,6 +631,15 @@ async function run() {
   });
   assert.strictEqual(plantWeb.answerRoute, 'web_search');
   assert.strictEqual(plantWeb.webSearchUsed, true);
+
+  const timelinePlace = await callable(USERS.basic, {
+    recordId: 'timeline',
+    sourceKey: 'growthTimeline',
+    question: '진도에서 루어낚시할만한곳 추천부탁',
+    searchPreference: 'auto',
+  });
+  assert.strictEqual(timelinePlace.requiresConfirmation, true);
+  assert.strictEqual(typeof timelinePlace.webSearchLimit, 'number');
 
   const legalRisk = await callable(USERS.basic, {
     recordId: 'law',
