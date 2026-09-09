@@ -217,6 +217,18 @@ export function ResultChatModal({
       }
     };
 
+    loadMessages();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, uid, recordId, threadId]);
+
+  // 최신자료(외부검색) 잔여 횟수 조회는 대화 로딩과 분리한다.
+  // (구독 플랜이 늦게 로드될 때 대화·확인창·첨부 상태가 초기화되는 것을 막기 위함)
+  useEffect(() => {
+    if (!isOpen || !uid || !recordId) return;
+    let cancelled = false;
+
     const loadUsage = async () => {
       try {
         const threadSnap = await getDoc(doc(db, 'users', uid, 'records', recordId, 'resultThreads', threadId));
@@ -230,7 +242,6 @@ export function ResultChatModal({
       }
     };
 
-    loadMessages();
     loadUsage();
     return () => {
       cancelled = true;

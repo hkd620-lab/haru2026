@@ -632,6 +632,10 @@ async function run() {
   assert.strictEqual(plantWeb.answerRoute, 'web_search');
   assert.strictEqual(plantWeb.webSearchUsed, true);
 
+  // 기존 스위트가 basic 사용자 기준 분당 호출 상한(RESULT_CHAT_RATE_LIMIT=12)에 맞춰져 있어,
+  // 아래 타임라인 케이스를 추가하면서 카운터를 한 번 비운다. (라우팅 검증과 무관한 제약)
+  await db.collection('users').doc(USERS.basic).collection('rateLimits').doc('resultChat').delete().catch(() => {});
+
   const timelinePlace = await callable(USERS.basic, {
     recordId: 'timeline',
     sourceKey: 'growthTimeline',
@@ -640,6 +644,15 @@ async function run() {
   });
   assert.strictEqual(timelinePlace.requiresConfirmation, true);
   assert.strictEqual(typeof timelinePlace.webSearchLimit, 'number');
+
+  const timelineRecordOnly = await callable(USERS.basic, {
+    recordId: 'timeline',
+    sourceKey: 'growthTimeline',
+    question: '이 기록의 핵심을 정리해줘.',
+    searchPreference: 'auto',
+  });
+  assert.notStrictEqual(timelineRecordOnly.requiresConfirmation, true);
+  assert.strictEqual(timelineRecordOnly.answerRoute, 'record_only');
 
   const legalRisk = await callable(USERS.basic, {
     recordId: 'law',
