@@ -4003,6 +4003,7 @@ export function SayuPage() {
           const subtitle = prefix === 'growthTimeline'
             ? `${periodStart || '-'}${periodEnd && periodEnd !== periodStart ? ` ~ ${periodEnd}` : ''} · ${timelineItems.length || (record as any).itemCount || 0}장`
             : keywords.slice(0, 4).join(' · ');
+          const openEntry = () => openFormatSayu(record.date, prefix, label, record.id);
           return [{
             id: `${record.id}_${prefix}`,
             recordId: record.id,
@@ -4013,9 +4014,19 @@ export function SayuPage() {
             color: FORMAT_COLORS[prefix] ?? '#1A3C6E',
             keywords,
             searchText: buildSearchText(label, title, subtitle, keywords, getRecordSourceText(record, prefix)),
-            onOpen: () => openFormatSayu(record.date, prefix, label, record.id),
+            onOpen: openEntry,
             extra: prefix === 'growthTimeline' && timelineItems[0]?.url ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 18px 12px 68px' }}>
+              <button
+                type="button"
+                onClick={openEntry}
+                aria-label={`${title || GROWTH_TIMELINE_SAYU_LABEL} 열기`}
+                className="hover:bg-yellow-50 transition-colors"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44,
+                  padding: '0 18px 12px 66px', border: 'none', background: 'transparent',
+                  textAlign: 'left', cursor: 'pointer',
+                }}
+              >
                 <img
                   src={timelineItems[0].url}
                   alt={`${GROWTH_TIMELINE_FORMAT_LABEL} 대표사진`}
@@ -4024,7 +4035,7 @@ export function SayuPage() {
                 <span style={{ borderRadius: 999, backgroundColor: '#edf7f1', color: '#37644a', padding: '4px 9px', fontSize: 11, fontWeight: 800 }}>
                   {GROWTH_TIMELINE_SAYU_LABEL}
                 </span>
-              </div>
+              </button>
             ) : undefined,
           }];
         }),
@@ -4825,62 +4836,64 @@ export function SayuPage() {
                     </div>
                   )}
                   {visibleGroupEntries.map((entry, idx) => isPlantGroup ? renderPlantListRow(entry, idx, { showTypeBadges: plantSayuFilter === 'all' }) : (
-                    <div key={entry.id} className={idx > 0 ? 'border-t' : ''} style={{ borderColor: '#f0f0f0', display: 'flex', alignItems: 'stretch' }}>
-                      <button
-                        type="button"
-                        onClick={entry.onOpen}
-                        className="flex-1 flex items-center gap-3 px-4 text-left hover:bg-yellow-50 transition-colors"
-                        style={{ minHeight: 56, paddingLeft: 18, minWidth: 0 }}
-                      >
-                        <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: 36 }}>
-                          {formatListDate(entry.date)}
-                        </span>
-                        <span className="flex-1" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 2 }}>
-                          <span className="text-sm truncate" style={{ color: '#333' }}>{entry.title}</span>
-                          {isPlantGroup && plantSayuFilter === 'all' && entry.plantTypeBadges && entry.plantTypeBadges.length > 0 && (
-                            <span style={{ display: 'flex', flexWrap: 'wrap', gap: 4, paddingTop: 2 }}>
-                              {entry.plantTypeBadges.map((type) => (
-                                <span
-                                  key={type}
-                                  style={{
-                                    borderRadius: 999,
-                                    backgroundColor: '#ecfdf5',
-                                    color: '#15803d',
-                                    padding: '2px 7px',
-                                    fontSize: 10,
-                                    fontWeight: 800,
-                                    lineHeight: 1.3,
-                                  }}
-                                >
-                                  {PLANT_SAYU_TYPE_LABEL[type]}
-                                </span>
-                              ))}
-                            </span>
-                          )}
-                          {entry.subtitle && (
-                            <span style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4, overflowWrap: 'anywhere', wordBreak: 'keep-all', display: 'block' }}>
-                              {entry.subtitle}
-                            </span>
-                          )}
-                        </span>
-                      </button>
-                      {entry.label === 'HARU보조장부' && entry.recordId && (
+                    <div key={entry.id} className={idx > 0 ? 'border-t' : ''} style={{ borderColor: '#f0f0f0' }}>
+                      <div style={{ display: 'flex', alignItems: 'stretch' }}>
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); typeof entry.entryIndex === 'number' ? handleDeleteLedgerSingleEntry(entry.recordId!, entry.entryIndex) : handleDeleteLedgerEntry(entry.recordId!); }}
-                          aria-label="이 보조장부 기록 삭제"
-                          title="이 기록 삭제"
-                          style={{
-                            flexShrink: 0, width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            border: 'none', borderLeft: '1px solid #f0f0f0', backgroundColor: 'transparent',
-                            color: '#d1d5db', cursor: 'pointer', fontSize: 15,
-                          }}
-                          onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.backgroundColor = '#fef2f2'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.color = '#d1d5db'; e.currentTarget.style.backgroundColor = 'transparent'; }}
+                          onClick={entry.onOpen}
+                          className="flex-1 flex items-center gap-3 px-4 text-left hover:bg-yellow-50 transition-colors"
+                          style={{ minHeight: 56, paddingLeft: 18, minWidth: 0 }}
                         >
-                          🗑
+                          <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: 36 }}>
+                            {formatListDate(entry.date)}
+                          </span>
+                          <span className="flex-1" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 2 }}>
+                            <span className="text-sm truncate" style={{ color: '#333' }}>{entry.title}</span>
+                            {isPlantGroup && plantSayuFilter === 'all' && entry.plantTypeBadges && entry.plantTypeBadges.length > 0 && (
+                              <span style={{ display: 'flex', flexWrap: 'wrap', gap: 4, paddingTop: 2 }}>
+                                {entry.plantTypeBadges.map((type) => (
+                                  <span
+                                    key={type}
+                                    style={{
+                                      borderRadius: 999,
+                                      backgroundColor: '#ecfdf5',
+                                      color: '#15803d',
+                                      padding: '2px 7px',
+                                      fontSize: 10,
+                                      fontWeight: 800,
+                                      lineHeight: 1.3,
+                                    }}
+                                  >
+                                    {PLANT_SAYU_TYPE_LABEL[type]}
+                                  </span>
+                                ))}
+                              </span>
+                            )}
+                            {entry.subtitle && (
+                              <span style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4, overflowWrap: 'anywhere', wordBreak: 'keep-all', display: 'block' }}>
+                                {entry.subtitle}
+                              </span>
+                            )}
+                          </span>
                         </button>
-                      )}
+                        {entry.label === 'HARU보조장부' && entry.recordId && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); typeof entry.entryIndex === 'number' ? handleDeleteLedgerSingleEntry(entry.recordId!, entry.entryIndex) : handleDeleteLedgerEntry(entry.recordId!); }}
+                            aria-label="이 보조장부 기록 삭제"
+                            title="이 기록 삭제"
+                            style={{
+                              flexShrink: 0, width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              border: 'none', borderLeft: '1px solid #f0f0f0', backgroundColor: 'transparent',
+                              color: '#d1d5db', cursor: 'pointer', fontSize: 15,
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.backgroundColor = '#fef2f2'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = '#d1d5db'; e.currentTarget.style.backgroundColor = 'transparent'; }}
+                          >
+                            🗑
+                          </button>
+                        )}
+                      </div>
                       {entry.extra}
                     </div>
                   ))}
@@ -4912,46 +4925,48 @@ export function SayuPage() {
     return (
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         {entries.map((entry, idx) => entry.label === '하루식물탐정' ? renderPlantListRow(entry, idx) : (
-          <div key={entry.id} className={idx > 0 ? 'border-t' : ''} style={{ borderColor: '#f0f0f0', display: 'flex', alignItems: 'stretch' }}>
-            <button
-              type="button"
-              onClick={entry.onOpen}
-              className="flex-1 flex items-center gap-3 px-4 text-left hover:bg-yellow-50 transition-colors"
-              style={{ minHeight: 56, minWidth: 0 }}
-            >
-              <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: 36 }}>
-                {formatListDate(entry.date)}
-              </span>
-              <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: entry.color, flexShrink: 0 }} />
-              <span className="flex-1" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 2 }}>
-                <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
-                  <span className="text-sm truncate" style={{ color: '#333', flex: '1 1 auto', minWidth: 0 }}>{entry.title}</span>
-                  <span style={{ color: '#999', fontSize: 11, whiteSpace: 'nowrap', flexShrink: 0 }}>{entry.label}</span>
-                </span>
-                {entry.subtitle && (
-                  <span style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4, overflowWrap: 'anywhere', wordBreak: 'keep-all', display: 'block' }}>
-                    {entry.subtitle}
-                  </span>
-                )}
-              </span>
-            </button>
-            {entry.label === 'HARU보조장부' && entry.recordId && (
+          <div key={entry.id} className={idx > 0 ? 'border-t' : ''} style={{ borderColor: '#f0f0f0' }}>
+            <div style={{ display: 'flex', alignItems: 'stretch' }}>
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); typeof entry.entryIndex === 'number' ? handleDeleteLedgerSingleEntry(entry.recordId!, entry.entryIndex) : handleDeleteLedgerEntry(entry.recordId!); }}
-                aria-label="이 보조장부 기록 삭제"
-                title="이 기록 삭제"
-                style={{
-                  flexShrink: 0, width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: 'none', borderLeft: '1px solid #f0f0f0', backgroundColor: 'transparent',
-                  color: '#d1d5db', cursor: 'pointer', fontSize: 15,
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.backgroundColor = '#fef2f2'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = '#d1d5db'; e.currentTarget.style.backgroundColor = 'transparent'; }}
+                onClick={entry.onOpen}
+                className="flex-1 flex items-center gap-3 px-4 text-left hover:bg-yellow-50 transition-colors"
+                style={{ minHeight: 56, minWidth: 0 }}
               >
-                🗑
+                <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: 36 }}>
+                  {formatListDate(entry.date)}
+                </span>
+                <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: entry.color, flexShrink: 0 }} />
+                <span className="flex-1" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 2 }}>
+                  <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
+                    <span className="text-sm truncate" style={{ color: '#333', flex: '1 1 auto', minWidth: 0 }}>{entry.title}</span>
+                    <span style={{ color: '#999', fontSize: 11, whiteSpace: 'nowrap', flexShrink: 0 }}>{entry.label}</span>
+                  </span>
+                  {entry.subtitle && (
+                    <span style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4, overflowWrap: 'anywhere', wordBreak: 'keep-all', display: 'block' }}>
+                      {entry.subtitle}
+                    </span>
+                  )}
+                </span>
               </button>
-            )}
+              {entry.label === 'HARU보조장부' && entry.recordId && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); typeof entry.entryIndex === 'number' ? handleDeleteLedgerSingleEntry(entry.recordId!, entry.entryIndex) : handleDeleteLedgerEntry(entry.recordId!); }}
+                  aria-label="이 보조장부 기록 삭제"
+                  title="이 기록 삭제"
+                  style={{
+                    flexShrink: 0, width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    border: 'none', borderLeft: '1px solid #f0f0f0', backgroundColor: 'transparent',
+                    color: '#d1d5db', cursor: 'pointer', fontSize: 15,
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.backgroundColor = '#fef2f2'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = '#d1d5db'; e.currentTarget.style.backgroundColor = 'transparent'; }}
+                >
+                  🗑
+                </button>
+              )}
+            </div>
             {entry.extra}
           </div>
         ))}
