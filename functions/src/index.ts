@@ -244,6 +244,16 @@ const RESULT_CHAT_AMBIGUOUS_EXTERNAL_PATTERNS = [
   /(추천|좋을까|괜찮을까|어떻게\s*해야\s*할까)/,
 ];
 
+// 장소·상호·시설처럼 기록 안에 답이 없고 외부 최신정보가 필요한 질문
+// (기록 종류 정책과 무관하게 사용자에게 외부검색 여부를 먼저 묻는다)
+const RESULT_CHAT_EXTERNAL_PLACE_PATTERNS = [
+  /(맛집|식당|카페|숙소|펜션|호텔|리조트|명소|관광지|해수욕장|낚시\s*터|낚시\s*포인트|출조\s*포인트|여행\s*코스|드라이브\s*코스|등산\s*코스|둘레길|축제|주차장|가게|매장|전통\s*시장|병원|약국)/,
+  /(어디|어느\s*곳|어떤\s*곳|할\s*만한\s*곳|할만한\s*곳|가\s*볼\s*만한\s*곳|가볼만한\s*곳|갈\s*만한\s*곳|좋은\s*곳)/,
+];
+const RESULT_CHAT_EXTERNAL_INTENT_PATTERNS = [
+  /(추천|소개해|알려\s*줘|알려주|찾아\s*줘|찾아주|어디가\s*좋|어디\s*가면|가\s*볼까|갈까)/,
+];
+
 function classifyResultChatByRules(question: string, policy: ResultChatSourcePolicy): ResultChatClassification | null {
   const normalized = normalizeResultChatQuestion(question);
   if (!normalized) return { route: 'record_only', reasonCode: 'record_analysis', confidence: 1 };
@@ -259,6 +269,13 @@ function classifyResultChatByRules(question: string, policy: ResultChatSourcePol
       reasonCode: policy.externalDataPolicy === 'official_source_first' ? 'official_data' : 'current_fact',
       confidence: 0.84,
     };
+  }
+  // 장소·상호 탐색형 질문은 기록 종류 정책과 관계없이 외부검색 여부를 사용자에게 확인한다.
+  if (
+    hasAnyResultChatPattern(normalized, RESULT_CHAT_EXTERNAL_PLACE_PATTERNS) &&
+    hasAnyResultChatPattern(normalized, RESULT_CHAT_EXTERNAL_INTENT_PATTERNS)
+  ) {
+    return { route: 'ambiguous', reasonCode: 'unclear', confidence: 0.7 };
   }
   if (
     (policy.externalDataPolicy === 'conditional_external' || policy.externalDataPolicy === 'current_data_required') &&
@@ -3300,6 +3317,12 @@ async function classifyResultChatQuestion(
   "reasonCode": "current_fact | record_analysis | official_data | high_risk | unclear",
   "confidence": 0.0
 }
+
+[라우팅 기준]
+- record_only: 저장된 결과물 안에서 답할 수 있는 질문(요약, 정리, 감정 흐름, 내가 한 일, 다음 할 일).
+- web_search: 장소, 상호, 시설, 가격, 운영시간, 날씨, 일정, 법령처럼 기록 밖의 최신 사실이 필요한 질문.
+- ambiguous: 추천·조언 요청처럼 기록만으로도, 외부자료로도 답할 수 있어 사용자 확인이 필요한 질문.
+- 기록에 없는 정보를 요구하는 질문을 record_only 로 분류하지 않는다. 기록에 없으면 web_search 또는 ambiguous 로 분류한다.
 
 [결과 유형]
 sourceKey: ${params.sourceKey}

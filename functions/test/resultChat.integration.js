@@ -240,6 +240,15 @@ async function seed() {
       date: '2026-05-13',
       stock_sayu: '삼성전자 매수와 매도 기록이 있다. 매매 이유와 다음 점검 포인트를 남겼다.',
     },
+    timeline: {
+      formats: ['HARU타임라인'],
+      date: '2026-08-05',
+      title: '조이엘 진도 홍보 여행',
+      content: '진도에 도착해 바닷가를 둘러보고 홍보 일정을 정리했다.',
+      timelineItems: [
+        { takenDate: '2026-08-05', memo: '진도대교 앞에서 홍보물 촬영', locationLabel: '진도' },
+      ],
+    },
     reading: {
       formats: ['독서사유'],
       date: '2026-08-07',
@@ -252,6 +261,15 @@ async function seed() {
       await db.doc(`users/${uid}/records/${recordId}`).set(data);
     }
   }
+}
+
+// resultChat 분당 호출 상한(RESULT_CHAT_RATE_LIMIT) 카운터만 비운다.
+// 에뮬레이터에서만 동작하도록 가드해 운영 DB를 잘못 건드리지 않는다.
+async function resetResultChatRateLimit(uid) {
+  if (!process.env.FIRESTORE_EMULATOR_HOST) {
+    throw new Error('resetResultChatRateLimit은 FIRESTORE_EMULATOR_HOST가 설정된 에뮬레이터 환경에서만 호출할 수 있습니다.');
+  }
+  await db.collection('users').doc(uid).collection('rateLimits').doc('resultChat').delete().catch(() => {});
 }
 
 async function getThread(uid, recordId, threadId) {
@@ -277,6 +295,9 @@ function countWebSearchCalls() {
 
 async function run() {
   await seed();
+  for (const uid of Object.values(USERS)) {
+    await resetResultChatRateLimit(uid);
+  }
 
   const recordOnlyBefore = genaiCalls.length;
   const recordOnly = await callable(USERS.basic, {
@@ -622,6 +643,28 @@ async function run() {
   });
   assert.strictEqual(plantWeb.answerRoute, 'web_search');
   assert.strictEqual(plantWeb.webSearchUsed, true);
+
+  // 기존 스위트가 basic 사용자 기준 분당 호출 상한(RESULT_CHAT_RATE_LIMIT=12)에 맞춰져 있어,
+  // 아래 타임라인 케이스를 추가하면서 카운터를 한 번 비운다. (라우팅 검증과 무관한 제약)
+  await resetResultChatRateLimit(USERS.basic);
+
+  const timelinePlace = await callable(USERS.basic, {
+    recordId: 'timeline',
+    sourceKey: 'growthTimeline',
+    question: '진도에서 루어낚시할만한곳 추천부탁',
+    searchPreference: 'auto',
+  });
+  assert.strictEqual(timelinePlace.requiresConfirmation, true);
+  assert.strictEqual(typeof timelinePlace.webSearchLimit, 'number');
+
+  const timelineRecordOnly = await callable(USERS.basic, {
+    recordId: 'timeline',
+    sourceKey: 'growthTimeline',
+    question: '이 기록의 핵심을 정리해줘.',
+    searchPreference: 'auto',
+  });
+  assert.notStrictEqual(timelineRecordOnly.requiresConfirmation, true);
+  assert.strictEqual(timelineRecordOnly.answerRoute, 'record_only');
 
   const legalRisk = await callable(USERS.basic, {
     recordId: 'law',

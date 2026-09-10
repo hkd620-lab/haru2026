@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, orderBy, query } from 'firebase/firestore';
 import { Paperclip, X } from 'lucide-react';
 import { ref as storageRef, uploadBytes } from 'firebase/storage';
 import { toast } from 'sonner';
@@ -18,6 +18,9 @@ import {
 } from '../services/resultChatService';
 import { firestoreService } from '../services/firestoreService';
 import { useSubscription } from '../hooks/useSubscription';
+
+// functions/src/index.ts 의 WEB_SEARCH_LIMITS 와 동일하게 유지할 것
+const WEB_SEARCH_LIMITS_UI: Record<string, number> = { free: 1, basic: 2, premium: 4, developer: 4 };
 
 const SAFE_MARKDOWN_LINK_PATTERN = /^https?:\/\//i;
 
@@ -181,6 +184,7 @@ export function ResultChatModal({
   const [savingIndex, setSavingIndex] = useState<number | null>(null);
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
+  const [webSearchUsage, setWebSearchUsage] = useState<{ limit: number; remaining: number } | null>(null);
   const [pendingAttachments, setPendingAttachments] = useState<HaruLawAttachmentRef[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
 
@@ -217,6 +221,32 @@ export function ResultChatModal({
       cancelled = true;
     };
   }, [isOpen, uid, recordId, threadId]);
+
+  // 최신자료(외부검색) 잔여 횟수 조회는 대화 로딩과 분리한다.
+  // (구독 플랜이 늦게 로드될 때 대화·확인창·첨부 상태가 초기화되는 것을 막기 위함)
+  useEffect(() => {
+    if (!isOpen || !uid || !recordId) return;
+    let cancelled = false;
+    setWebSearchUsage(null);
+
+    const loadUsage = async () => {
+      try {
+        const threadSnap = await getDoc(doc(db, 'users', uid, 'records', recordId, 'resultThreads', threadId));
+        const data = threadSnap.data() as any;
+        const planKey = String(subscription?.plan || 'free');
+        const max = WEB_SEARCH_LIMITS_UI[planKey] ?? WEB_SEARCH_LIMITS_UI.free;
+        const used = Math.max(0, Number(data?.webSearchUsedCount || 0)) + Math.max(0, Number(data?.webSearchReservedCount || 0));
+        if (!cancelled) setWebSearchUsage({ limit: max, remaining: Math.max(0, max - used) });
+      } catch {
+        if (!cancelled) setWebSearchUsage(null);
+      }
+    };
+
+    loadUsage();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, uid, recordId, threadId, subscription?.plan]);
 
   if (!isOpen) return null;
 
@@ -339,6 +369,12 @@ export function ResultChatModal({
         searchPreference,
         attachments: attachmentsToSend,
       });
+      if (typeof response.webSearchLimit === 'number') {
+        setWebSearchUsage({
+          limit: response.webSearchLimit,
+          remaining: response.webSearchRemainingCount ?? 0,
+        });
+      }
       if (response.requiresConfirmation && response.confirmationType) {
         if (optimistic) setMessages((prev) => prev.filter((item) => item !== optimistic));
         setPendingConfirmation({
@@ -460,6 +496,12 @@ export function ResultChatModal({
             📘 나의 기록을 바탕으로 답변하고,
             {'\n'}필요한 일반 정보도 함께 설명합니다.
           </p>
+
+          {webSearchUsage && (
+            <p style={{ margin: '0 0 12px', fontSize: 11.5, fontWeight: 800, color: webSearchUsage.remaining > 0 ? '#1D4ED8' : '#B45309' }}>
+              🌐 이 결과의 최신자료(외부검색) 확인 {webSearchUsage.limit}회 중 {webSearchUsage.remaining}회 남음
+            </p>
+          )}
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
             {config.quickQuestions.slice(0, 5).map((item) => (
