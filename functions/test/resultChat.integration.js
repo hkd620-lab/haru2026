@@ -263,6 +263,15 @@ async function seed() {
   }
 }
 
+// resultChat 분당 호출 상한(RESULT_CHAT_RATE_LIMIT) 카운터만 비운다.
+// 에뮬레이터에서만 동작하도록 가드해 운영 DB를 잘못 건드리지 않는다.
+async function resetResultChatRateLimit(uid) {
+  if (!process.env.FIRESTORE_EMULATOR_HOST) {
+    throw new Error('resetResultChatRateLimit은 FIRESTORE_EMULATOR_HOST가 설정된 에뮬레이터 환경에서만 호출할 수 있습니다.');
+  }
+  await db.collection('users').doc(uid).collection('rateLimits').doc('resultChat').delete().catch(() => {});
+}
+
 async function getThread(uid, recordId, threadId) {
   const ref = db.doc(`users/${uid}/records/${recordId}/resultThreads/${threadId}`);
   const snap = await ref.get();
@@ -286,6 +295,9 @@ function countWebSearchCalls() {
 
 async function run() {
   await seed();
+  for (const uid of Object.values(USERS)) {
+    await resetResultChatRateLimit(uid);
+  }
 
   const recordOnlyBefore = genaiCalls.length;
   const recordOnly = await callable(USERS.basic, {
@@ -634,7 +646,7 @@ async function run() {
 
   // 기존 스위트가 basic 사용자 기준 분당 호출 상한(RESULT_CHAT_RATE_LIMIT=12)에 맞춰져 있어,
   // 아래 타임라인 케이스를 추가하면서 카운터를 한 번 비운다. (라우팅 검증과 무관한 제약)
-  await db.collection('users').doc(USERS.basic).collection('rateLimits').doc('resultChat').delete().catch(() => {});
+  await resetResultChatRateLimit(USERS.basic);
 
   const timelinePlace = await callable(USERS.basic, {
     recordId: 'timeline',

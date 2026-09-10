@@ -199,7 +199,6 @@ export function ResultChatModal({
     setMessages([]);
     setStatusNotice(null);
     setPendingConfirmation(null);
-    setWebSearchUsage(null);
     setSavedMemoIds({});
     setPendingAttachments([]);
 
@@ -228,6 +227,7 @@ export function ResultChatModal({
   useEffect(() => {
     if (!isOpen || !uid || !recordId) return;
     let cancelled = false;
+    setWebSearchUsage(null);
 
     const loadUsage = async () => {
       try {
