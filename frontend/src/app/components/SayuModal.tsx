@@ -13,6 +13,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../services/firestoreService';
 import { exportRecordsToEpub } from '../services/epubExportService';
 import GrapeLoadingMini from './GrapeLoadingMini';
+import { GrowthTimelineDocumentModal, type GrowthTimelineDocumentItem } from './GrowthTimelineDocumentModal';
 import { compressImage } from '../services/imageService';
 import { readOriginalImageMeta, type UploadedImageMeta } from '../services/photoMetadataService';
 import {
@@ -393,6 +394,28 @@ function getTimelinePeriod(items: GrowthTimelineEditItem[]) {
   };
 }
 
+// GrowthTimelineCreator의 buildTimelineSummary와 같은 형식. 사진·날짜·메모를 고치면
+// 자동 요약 본문도 같이 갱신해야 지운 메모가 기록·공개본에 남지 않는다.
+function formatTimelineDateLabel(value: string) {
+  if (!value) return '';
+  const [yyyy, mm, dd] = value.split('-');
+  if (!yyyy || !mm || !dd) return value;
+  return `${yyyy}.${mm}.${dd}`;
+}
+
+function buildTimelineSummaryText(items: GrowthTimelineEditItem[]) {
+  const sorted = sortTimelineItems(items);
+  const { periodStart, periodEnd } = getTimelinePeriod(sorted);
+  const header = [
+    `기간: ${formatTimelineDateLabel(periodStart)}${periodEnd && periodEnd !== periodStart ? ` ~ ${formatTimelineDateLabel(periodEnd)}` : ''}`,
+    `사진: ${sorted.length}장`,
+  ].join('\n');
+  const body = sorted
+    .map((item, index) => `${index + 1}. ${formatTimelineDateLabel(item.takenDate)}\n${item.memo.trim() || '설명 없음'}`)
+    .join('\n\n');
+  return `${header}\n\n${body}`.trim();
+}
+
 function formatLocationCandidate(candidate?: ReverseGeocodeCandidate) {
   if (!candidate) return '';
   const place = candidate.placeName?.trim();
@@ -575,6 +598,7 @@ export function SayuModal({
   const [localImages, setLocalImages] = useState<string[]>(images || []);
   const [editedTimelineItems, setEditedTimelineItems] = useState<GrowthTimelineEditItem[]>([]);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [showTimelineDocument, setShowTimelineDocument] = useState(false);
   const [isExportingEpub, setIsExportingEpub] = useState(false);
   const [editedTitle, setEditedTitle] = useState(title || '');
   const isGrowthTimeline = formatKey === 'growthTimeline';
@@ -582,6 +606,7 @@ export function SayuModal({
   const householdSayuEntries = isHouseholdSayu ? parseHouseholdEntriesForSayu(editedOriginalData) : [];
   const timelineLocationRecoveryKeyRef = useRef('');
   const editedTimelineItemsRef = useRef<GrowthTimelineEditItem[]>([]);
+  const openedTimelineSummaryRef = useRef('');
   const weatherTagsRef = useRef<string[]>(WEATHER_OPTIONS);
   const temperatureTagsRef = useRef<string[]>(TEMPERATURE_OPTIONS);
   const moodTagsRef = useRef<string[]>(MOOD_OPTIONS);
@@ -1014,6 +1039,29 @@ export function SayuModal({
     }
   };
 
+  // 📝 HARU타임라인 텍스트 복사 — 제목·본문만. 사진 URL·촬영 위치는 넣지 않습니다.
+  const handleCopyTimelineText = async () => {
+    try {
+      const titleText = editedTitle.trim() || title?.trim() || '성장타임라인';
+      await navigator.clipboard.writeText(`${titleText}\n\n${editedContent}`);
+      toast.success('✅ 텍스트가 복사되었습니다! 카톡에 붙여넣기 하세요.');
+    } catch (error) {
+      console.error('타임라인 텍스트 복사 실패:', error);
+      toast.error('❌ 복사에 실패했습니다.');
+    }
+  };
+
+  const timelineDocumentItems: GrowthTimelineDocumentItem[] = editedTimelineItems.map((item, index) => ({
+    url: item.url,
+    takenDate: item.takenDate,
+    metadataSource: 'manual',
+    memo: item.memo,
+    order: typeof item.order === 'number' ? item.order : index,
+    locationLabel: item.locationLabel,
+    locationCandidate: item.locationCandidate,
+    locationStatus: item.locationStatus,
+  }));
+
   // 📄 HTML 다운로드
   const handleDownloadHTML = () => {
     try {
@@ -1132,6 +1180,7 @@ export function SayuModal({
         longitude: item.longitude,
       })));
       editedTimelineItemsRef.current = normalizedTimelineItems;
+      openedTimelineSummaryRef.current = buildTimelineSummaryText(normalizedTimelineItems);
       setEditedTimelineItems(normalizedTimelineItems);
       if (formatKey === 'growthTimeline' && normalizedTimelineItems.some(item => !getTimelineLocationText(item) && item.url)) {
         const recoveryKey = `${firestoreId || recordDate || ''}:${normalizedTimelineItems.map(item => `${item.url}:${item.locationLabel || ''}:${item.locationStatus || ''}`).join('|')}`;
@@ -1184,6 +1233,7 @@ export function SayuModal({
       setViewMode('ai');
       setIsPrinting(false);
       setShowDeleteDialog(false);
+      setShowTimelineDocument(false);
       const baseData = originalData || {};
       setEditedOriginalData(baseData);
 
@@ -1227,9 +1277,15 @@ export function SayuModal({
         const recordSnap = await getDoc(recordRef);
         const recordData = recordSnap.exists() ? recordSnap.data() : {};
         const activeUrls = new Set(sanitizedTimelineItems.map((item) => item.url));
+        // 본문을 손대지 않은 자동 요약이면 바뀐 사진·날짜·메모에 맞춰 다시 만든다.
+        // 사용자가 직접 고쳐 쓴 본문은 그대로 지킨다.
+        const openedSummary = openedTimelineSummaryRef.current;
+        const nextContent = openedSummary && editedContent.trim() === openedSummary.trim()
+          ? buildTimelineSummaryText(sanitizedTimelineItems)
+          : editedContent;
         const timelineUpdate: Record<string, unknown> = {
           title: editedTitle.trim() || '성장타임라인',
-          content: editedContent,
+          content: nextContent,
           timelineItems: sanitizedTimelineItems,
           date: periodStart || recordDate || '',
           periodStart,
@@ -1249,6 +1305,12 @@ export function SayuModal({
           urls: sanitizedTimelineItems.map((item) => item.url),
         });
         await updateDoc(recordRef, timelineUpdate);
+        try {
+          await refreshPublicSharedRecord();
+        } catch (refreshError) {
+          console.error('함께보기 공개본 갱신 실패:', refreshError);
+          toast.warning('기록은 저장됐지만 함께보기 공개본 갱신에 실패했습니다.');
+        }
         toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
         await onRefresh?.();
         onClose();
@@ -1447,6 +1509,9 @@ export function SayuModal({
       ]).map((item, index) => ({ ...item, order: index }));
       const savedTimelineItems = nextTimelineItems.map(serializeTimelineEditItem);
       const { periodStart, periodEnd } = getTimelinePeriod(savedTimelineItems);
+      const openedSummary = openedTimelineSummaryRef.current;
+      const isAutoSummary = Boolean(openedSummary) && editedContent.trim() === openedSummary.trim();
+      const nextSummary = isAutoSummary ? buildTimelineSummaryText(savedTimelineItems) : '';
 
       await updateDoc(doc(db, 'users', currentUser.uid, 'records', firestoreId), {
         timelineItems: savedTimelineItems,
@@ -1455,8 +1520,13 @@ export function SayuModal({
         periodEnd,
         itemCount: savedTimelineItems.length,
         updatedAt: new Date().toISOString(),
+        ...(isAutoSummary ? { content: nextSummary } : {}),
       });
       shouldCleanupUploadedFile = false;
+      if (isAutoSummary) {
+        openedTimelineSummaryRef.current = nextSummary;
+        setEditedContent(nextSummary);
+      }
       setEditedTimelineItems(nextTimelineItems);
       await refreshPublicSharedRecord();
       toast.success('사진이 추가되었습니다!');
@@ -2041,6 +2111,46 @@ export function SayuModal({
               )}
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {/* 📝 HARU타임라인 텍스트 복사 (카톡용) */}
+              {isGrowthTimeline && (
+                <button
+                  onClick={handleCopyTimelineText}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  title="텍스트 복사 (카톡용)"
+                >
+                  <FileText style={{ width: 20, height: 20, color: '#10b981' }} />
+                </button>
+              )}
+
+              {/* 📑 HARU타임라인 문서 보기 (PDF·인쇄) */}
+              {isGrowthTimeline && (
+                <button
+                  onClick={() => setShowTimelineDocument(true)}
+                  disabled={timelineDocumentItems.length === 0}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: timelineDocumentItems.length === 0 ? 'not-allowed' : 'pointer',
+                    padding: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: timelineDocumentItems.length === 0 ? 0.4 : 1,
+                  }}
+                  title="문서로 보기 (PDF·인쇄)"
+                >
+                  <Download style={{ width: 20, height: 20, color: '#1A3C6E' }} />
+                </button>
+              )}
+
               {/* 📝 텍스트 복사 버튼 (카톡용) */}
               {!isGrowthTimeline && (
                 <button
@@ -2986,6 +3096,17 @@ export function SayuModal({
         )}
       </div>
       </div>
+      )}
+
+      {/* 📑 HARU타임라인 문서 보기 — SayuModal 오버레이 바깥 형제로 둬야 바깥 클릭 닫기가 걸리지 않습니다. */}
+      {isOpen && isGrowthTimeline && showTimelineDocument && (
+        <GrowthTimelineDocumentModal
+          isOpen
+          title={editedTitle.trim() || title || '성장타임라인'}
+          items={timelineDocumentItems}
+          createdLabel={(recordDate || '').replace(/-/g, '.')}
+          onClose={() => setShowTimelineDocument(false)}
+        />
       )}
 
       {/* 삭제 확인 다이얼로그 */}

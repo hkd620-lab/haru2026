@@ -208,6 +208,7 @@ export interface AssistantPeriodStats {
 }
 
 // 공개 가능 형식 — 핵심 10종 전체 개방(2026-08 "공개는 구독자 선택" 정책)
+// 2026-09 HARU타임라인 공개 추가(허 대표 결정) — content·사진만 공개, 위치 필드 제외
 const PUBLIC_ALLOWED_FORMATS: RecordFormat[] = [
   '일기',
   '에세이',
@@ -366,6 +367,33 @@ const getPublicImageUrls = (value: unknown): string[] => {
   return values
     .map((item) => getCleanText(item))
     .filter((url) => /^https?:\/\//i.test(url));
+};
+
+const isGrowthTimelineRecordForShare = (record: HaruRecord) =>
+  (record as any).recordType === 'growthTimeline'
+  || (record as any).format === '성장타임라인'
+  || (Array.isArray(record.formats) && record.formats.includes('성장타임라인'));
+
+// HARU타임라인 공개 사진 — 촬영순 정렬 후 최대 12장(첫 장·마지막 장 포함, 사이는 고르게).
+// URL 문자열만 뽑아 촬영 위치(locationLabel·latitude 등)가 공개본에 섞이지 않게 한다.
+const pickTimelineSharedPhotoUrls = (value: unknown, limit = 12): string[] => {
+  const sorted = (Array.isArray(value) ? value : [])
+    .map((item: any, index: number) => ({
+      url: getCleanText(item?.url),
+      takenDate: getCleanText(item?.takenDate),
+      order: typeof item?.order === 'number' ? item.order : index,
+    }))
+    .filter((item) => /^https?:\/\//i.test(item.url))
+    .sort((a, b) => a.takenDate.localeCompare(b.takenDate) || a.order - b.order);
+
+  const urls = Array.from(new Set(sorted.map((item) => item.url)));
+  if (urls.length <= limit) return urls;
+
+  const picked = new Set<string>();
+  for (let i = 0; i < limit; i += 1) {
+    picked.add(urls[Math.round((i * (urls.length - 1)) / (limit - 1))]);
+  }
+  return Array.from(picked);
 };
 
 export type MedicationDoseStatus = 'selected' | 'unknown' | 'not_applicable';
@@ -847,6 +875,11 @@ class FirestoreService {
   }
 
   getPublishableSharedFormats(record: HaruRecord): SharedRecordFormat[] {
+    if (isGrowthTimelineRecordForShare(record)) {
+      const text = getCleanText((record as any).content);
+      return text ? [{ formatKey: 'growthTimeline', formatLabel: 'HARU타임라인', sayuText: text }] : [];
+    }
+
     const recordFormats = Array.isArray(record.formats) ? record.formats : [];
     const formatsToCheck = PUBLIC_ALLOWED_FORMATS.filter((format) => {
       const prefix = PUBLIC_FORMAT_PREFIX[format];
@@ -875,6 +908,10 @@ class FirestoreService {
     record: HaruRecord,
     formats: SharedRecordFormat[] = this.getPublishableSharedFormats(record),
   ): string[] {
+    if (isGrowthTimelineRecordForShare(record)) {
+      return pickTimelineSharedPhotoUrls((record as any).timelineItems);
+    }
+
     const urls = formats.flatMap((format) => getPublicImageUrls(record[`${format.formatKey}_images`]));
     return Array.from(new Set(urls)).slice(0, 12);
   }
@@ -910,6 +947,7 @@ class FirestoreService {
 
     const firstFormat = formats[0];
     const title =
+      (isGrowthTimelineRecordForShare(record) ? getCleanText(record.title) : '') ||
       getCleanText(record[`${firstFormat.formatKey}_ai_title`]) ||
       getCleanText(record[`${firstFormat.formatKey}_title`]) ||
       (firstFormat.formatKey === 'reading'
