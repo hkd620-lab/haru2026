@@ -722,10 +722,8 @@ export function ResultChatModal({
                 margin: 0,
                 fontSize: 11.5,
                 fontWeight: 800,
+                lineHeight: 1.4,
                 color: webSearchUsage.remaining > 0 ? '#1D4ED8' : '#B45309',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
               }}
             >
               🌐 이 결과의 최신자료(외부검색) 확인 {webSearchUsage.limit}회 중 {webSearchUsage.remaining}회 남음
