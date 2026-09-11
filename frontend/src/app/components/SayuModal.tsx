@@ -394,6 +394,28 @@ function getTimelinePeriod(items: GrowthTimelineEditItem[]) {
   };
 }
 
+// GrowthTimelineCreator의 buildTimelineSummary와 같은 형식. 사진·날짜·메모를 고치면
+// 자동 요약 본문도 같이 갱신해야 지운 메모가 기록·공개본에 남지 않는다.
+function formatTimelineDateLabel(value: string) {
+  if (!value) return '';
+  const [yyyy, mm, dd] = value.split('-');
+  if (!yyyy || !mm || !dd) return value;
+  return `${yyyy}.${mm}.${dd}`;
+}
+
+function buildTimelineSummaryText(items: GrowthTimelineEditItem[]) {
+  const sorted = sortTimelineItems(items);
+  const { periodStart, periodEnd } = getTimelinePeriod(sorted);
+  const header = [
+    `기간: ${formatTimelineDateLabel(periodStart)}${periodEnd && periodEnd !== periodStart ? ` ~ ${formatTimelineDateLabel(periodEnd)}` : ''}`,
+    `사진: ${sorted.length}장`,
+  ].join('\n');
+  const body = sorted
+    .map((item, index) => `${index + 1}. ${formatTimelineDateLabel(item.takenDate)}\n${item.memo.trim() || '설명 없음'}`)
+    .join('\n\n');
+  return `${header}\n\n${body}`.trim();
+}
+
 function formatLocationCandidate(candidate?: ReverseGeocodeCandidate) {
   if (!candidate) return '';
   const place = candidate.placeName?.trim();
@@ -584,6 +606,7 @@ export function SayuModal({
   const householdSayuEntries = isHouseholdSayu ? parseHouseholdEntriesForSayu(editedOriginalData) : [];
   const timelineLocationRecoveryKeyRef = useRef('');
   const editedTimelineItemsRef = useRef<GrowthTimelineEditItem[]>([]);
+  const openedTimelineSummaryRef = useRef('');
   const weatherTagsRef = useRef<string[]>(WEATHER_OPTIONS);
   const temperatureTagsRef = useRef<string[]>(TEMPERATURE_OPTIONS);
   const moodTagsRef = useRef<string[]>(MOOD_OPTIONS);
@@ -1157,6 +1180,7 @@ export function SayuModal({
         longitude: item.longitude,
       })));
       editedTimelineItemsRef.current = normalizedTimelineItems;
+      openedTimelineSummaryRef.current = buildTimelineSummaryText(normalizedTimelineItems);
       setEditedTimelineItems(normalizedTimelineItems);
       if (formatKey === 'growthTimeline' && normalizedTimelineItems.some(item => !getTimelineLocationText(item) && item.url)) {
         const recoveryKey = `${firestoreId || recordDate || ''}:${normalizedTimelineItems.map(item => `${item.url}:${item.locationLabel || ''}:${item.locationStatus || ''}`).join('|')}`;
@@ -1253,9 +1277,15 @@ export function SayuModal({
         const recordSnap = await getDoc(recordRef);
         const recordData = recordSnap.exists() ? recordSnap.data() : {};
         const activeUrls = new Set(sanitizedTimelineItems.map((item) => item.url));
+        // 본문을 손대지 않은 자동 요약이면 바뀐 사진·날짜·메모에 맞춰 다시 만든다.
+        // 사용자가 직접 고쳐 쓴 본문은 그대로 지킨다.
+        const openedSummary = openedTimelineSummaryRef.current;
+        const nextContent = openedSummary && editedContent.trim() === openedSummary.trim()
+          ? buildTimelineSummaryText(sanitizedTimelineItems)
+          : editedContent;
         const timelineUpdate: Record<string, unknown> = {
           title: editedTitle.trim() || '성장타임라인',
-          content: editedContent,
+          content: nextContent,
           timelineItems: sanitizedTimelineItems,
           date: periodStart || recordDate || '',
           periodStart,
@@ -1479,6 +1509,9 @@ export function SayuModal({
       ]).map((item, index) => ({ ...item, order: index }));
       const savedTimelineItems = nextTimelineItems.map(serializeTimelineEditItem);
       const { periodStart, periodEnd } = getTimelinePeriod(savedTimelineItems);
+      const openedSummary = openedTimelineSummaryRef.current;
+      const isAutoSummary = Boolean(openedSummary) && editedContent.trim() === openedSummary.trim();
+      const nextSummary = isAutoSummary ? buildTimelineSummaryText(savedTimelineItems) : '';
 
       await updateDoc(doc(db, 'users', currentUser.uid, 'records', firestoreId), {
         timelineItems: savedTimelineItems,
@@ -1487,8 +1520,13 @@ export function SayuModal({
         periodEnd,
         itemCount: savedTimelineItems.length,
         updatedAt: new Date().toISOString(),
+        ...(isAutoSummary ? { content: nextSummary } : {}),
       });
       shouldCleanupUploadedFile = false;
+      if (isAutoSummary) {
+        openedTimelineSummaryRef.current = nextSummary;
+        setEditedContent(nextSummary);
+      }
       setEditedTimelineItems(nextTimelineItems);
       await refreshPublicSharedRecord();
       toast.success('사진이 추가되었습니다!');
