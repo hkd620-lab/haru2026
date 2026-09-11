@@ -187,6 +187,7 @@ export function ResultChatModal({
   const [webSearchUsage, setWebSearchUsage] = useState<{ limit: number; remaining: number } | null>(null);
   const [pendingAttachments, setPendingAttachments] = useState<HaruLawAttachmentRef[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const threadId = useMemo(() => getThreadId(config.sourceKey, sourceIndex), [config.sourceKey, sourceIndex]);
   const isHaruLaw = config.sourceKey === 'haruraw_sayu';
@@ -247,6 +248,15 @@ export function ResultChatModal({
       cancelled = true;
     };
   }, [isOpen, uid, recordId, threadId, subscription?.plan]);
+
+  // 확인창·새 답변이 항상 화면에 보이도록 대화 영역을 맨 아래로 스크롤
+  useEffect(() => {
+    const el = scrollAreaRef.current;
+    if (!el) return;
+    requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+  }, [messages.length, pendingConfirmation, loading, statusNotice]);
 
   if (!isOpen) return null;
 
@@ -491,17 +501,11 @@ export function ResultChatModal({
           </button>
         </header>
 
-        <div style={{ padding: 16, overflowY: 'auto', flex: 1 }}>
+        <div ref={scrollAreaRef} style={{ padding: 16, overflowY: 'auto', flex: 1 }}>
           <p style={{ margin: '0 0 12px', padding: 12, borderRadius: 10, backgroundColor: '#F8FAFC', color: '#475569', fontSize: 12, lineHeight: 1.6 }}>
             📘 나의 기록을 바탕으로 답변하고,
             {'\n'}필요한 일반 정보도 함께 설명합니다.
           </p>
-
-          {webSearchUsage && (
-            <p style={{ margin: '0 0 12px', fontSize: 11.5, fontWeight: 800, color: webSearchUsage.remaining > 0 ? '#1D4ED8' : '#B45309' }}>
-              🌐 이 결과의 최신자료(외부검색) 확인 {webSearchUsage.limit}회 중 {webSearchUsage.remaining}회 남음
-            </p>
-          )}
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
             {config.quickQuestions.slice(0, 5).map((item) => (
@@ -547,60 +551,6 @@ export function ResultChatModal({
                   </button>
                 </div>
               ))}
-            </div>
-          )}
-
-          {pendingConfirmation && (
-            <div style={{ marginBottom: 14, padding: 14, borderRadius: 10, border: '1px solid #BFDBFE', backgroundColor: '#EFF6FF', color: '#1E3A8A' }}>
-              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, fontWeight: 800, whiteSpace: 'pre-wrap' }}>
-                {pendingConfirmation.notice}
-              </p>
-              {typeof pendingConfirmation.webSearchLimit === 'number' && (
-                <p style={{ margin: '8px 0 0', fontSize: 12, lineHeight: 1.5, color: '#1D4ED8', fontWeight: 700 }}>
-                  {pendingConfirmation.planLabel || '이용권'} · 이 결과의 최신자료 확인 {pendingConfirmation.webSearchLimit}회 중 {pendingConfirmation.webSearchRemainingCount ?? 0}회 이용 가능
-                </p>
-              )}
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-                {pendingConfirmation.confirmationType === 'ambiguous' && (
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={() => sendQuestion(pendingConfirmation.question, 'record_only', { attachments: pendingConfirmation.attachments })}
-                    style={{ minHeight: 34, padding: '0 12px', borderRadius: 8, border: '1px solid #94A3B8', backgroundColor: '#FFFFFF', color: '#1F2937', fontSize: 12, fontWeight: 900, cursor: loading ? 'wait' : 'pointer' }}
-                  >
-                    나의 기록으로 답변
-                  </button>
-                )}
-                <button
-                  type="button"
-                  disabled={loading || pendingConfirmation.webSearchRemainingCount === 0}
-                  onClick={() => sendQuestion(pendingConfirmation.question, 'web_confirmed', { attachments: pendingConfirmation.attachments })}
-                  style={{
-                    minHeight: 34,
-                    padding: '0 12px',
-                    borderRadius: 8,
-                    border: '1px solid #1A3C6E',
-                    backgroundColor: pendingConfirmation.webSearchRemainingCount === 0 ? '#E5E7EB' : '#1A3C6E',
-                    color: '#FFFFFF',
-                    fontSize: 12,
-                    fontWeight: 900,
-                    cursor: loading || pendingConfirmation.webSearchRemainingCount === 0 ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  최신자료 확인
-                </button>
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={() => {
-                    setQuestion(pendingConfirmation.question);
-                    setPendingConfirmation(null);
-                  }}
-                  style={{ minHeight: 34, padding: '0 12px', borderRadius: 8, border: '1px solid #CBD5E1', backgroundColor: '#FFFFFF', color: '#475569', fontSize: 12, fontWeight: 900, cursor: loading ? 'wait' : 'pointer' }}
-                >
-                  취소
-                </button>
-              </div>
             </div>
           )}
 
@@ -697,6 +647,60 @@ export function ResultChatModal({
             ))}
             {loading && <p style={{ margin: 0, color: '#64748B', fontSize: 12 }}>AI가 답변을 정리하는 중...</p>}
           </div>
+
+          {pendingConfirmation && (
+            <div style={{ marginTop: 14, padding: 14, borderRadius: 10, border: '1px solid #BFDBFE', backgroundColor: '#EFF6FF', color: '#1E3A8A' }}>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, fontWeight: 800, whiteSpace: 'pre-wrap' }}>
+                {pendingConfirmation.notice}
+              </p>
+              {typeof pendingConfirmation.webSearchLimit === 'number' && (
+                <p style={{ margin: '8px 0 0', fontSize: 12, lineHeight: 1.5, color: '#1D4ED8', fontWeight: 700 }}>
+                  {pendingConfirmation.planLabel || '이용권'} · 이 결과의 최신자료 확인 {pendingConfirmation.webSearchLimit}회 중 {pendingConfirmation.webSearchRemainingCount ?? 0}회 이용 가능
+                </p>
+              )}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+                {pendingConfirmation.confirmationType === 'ambiguous' && (
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => sendQuestion(pendingConfirmation.question, 'record_only', { attachments: pendingConfirmation.attachments })}
+                    style={{ minHeight: 34, padding: '0 12px', borderRadius: 8, border: '1px solid #94A3B8', backgroundColor: '#FFFFFF', color: '#1F2937', fontSize: 12, fontWeight: 900, cursor: loading ? 'wait' : 'pointer' }}
+                  >
+                    나의 기록으로 답변
+                  </button>
+                )}
+                <button
+                  type="button"
+                  disabled={loading || pendingConfirmation.webSearchRemainingCount === 0}
+                  onClick={() => sendQuestion(pendingConfirmation.question, 'web_confirmed', { attachments: pendingConfirmation.attachments })}
+                  style={{
+                    minHeight: 34,
+                    padding: '0 12px',
+                    borderRadius: 8,
+                    border: '1px solid #1A3C6E',
+                    backgroundColor: pendingConfirmation.webSearchRemainingCount === 0 ? '#E5E7EB' : '#1A3C6E',
+                    color: '#FFFFFF',
+                    fontSize: 12,
+                    fontWeight: 900,
+                    cursor: loading || pendingConfirmation.webSearchRemainingCount === 0 ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  최신자료 확인
+                </button>
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => {
+                    setQuestion(pendingConfirmation.question);
+                    setPendingConfirmation(null);
+                  }}
+                  style={{ minHeight: 34, padding: '0 12px', borderRadius: 8, border: '1px solid #CBD5E1', backgroundColor: '#FFFFFF', color: '#475569', fontSize: 12, fontWeight: 900, cursor: loading ? 'wait' : 'pointer' }}
+                >
+                  취소
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {statusNotice && (
@@ -712,6 +716,19 @@ export function ResultChatModal({
           }}
           style={{ padding: 14, borderTop: '1px solid #E5E7EB', display: 'flex', flexDirection: 'column', gap: 8, backgroundColor: '#FFFFFF' }}
         >
+          {webSearchUsage && (
+            <p
+              style={{
+                margin: 0,
+                fontSize: 11.5,
+                fontWeight: 800,
+                lineHeight: 1.4,
+                color: webSearchUsage.remaining > 0 ? '#1D4ED8' : '#B45309',
+              }}
+            >
+              🌐 이 결과의 최신자료(외부검색) 확인 {webSearchUsage.limit}회 중 {webSearchUsage.remaining}회 남음
+            </p>
+          )}
           {isHaruLaw && (
             <>
               <input
