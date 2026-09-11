@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { InAppBrowserLoginGuide } from '../components/InAppBrowserLoginGuide';
 import { getInAppBrowserInfo, type InAppBrowserInfo } from '../utils/inAppBrowser';
 import { GrapeAnimation } from '../components/GrapeAnimation';
+import { beginLoginTrace, markLoginTrace } from '../utils/loginPerformance';
+import type { LoginProvider } from '../utils/loginProvider';
 
 /* ────────────────────────────────────────────────────────────
    HARU by HaruLab — 랜딩 (CD "Reposeful" 디자인 핸드오프 구현)
@@ -33,6 +35,11 @@ const agentBg: Record<Hue, string> = {
 const agentBorder: Record<Hue, string> = { green: C.lightGreen, lilac: C.lilac, terracotta: C.peach };
 
 const SHOW_PRICING = true;
+const SOCIAL_LOGIN_URLS: Record<Extract<LoginProvider, 'google' | 'kakao' | 'naver'>, string> = {
+  google: 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/googleLoginStart',
+  kakao: 'https://kakaologinstart-6ieesxet3q-du.a.run.app',
+  naver: 'https://naverloginstart-6ieesxet3q-du.a.run.app',
+};
 
 /* ── 기록 형식 11개 (홈 화면 일반 사용자 노출 기준과 일치) ── */
 const FORMATS: { name: string; icon: string; hue: Hue; cat: string; badge?: string }[] = [
@@ -299,6 +306,7 @@ export function LandingPage() {
   const guardInAppBrowserLogin = () => {
     const info = getInAppBrowserInfo();
     if (info.isInAppBrowser) {
+      setIsLoading(false);
       setIsLoginLoading(false);
       setInAppBrowserGuide(info);
       return true;
@@ -313,12 +321,16 @@ export function LandingPage() {
   const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   const handleGoogleLogin = async () => {
-    setIsLoading(true);
+    if (isLoginLoading) return;
     if (guardInAppBrowserLogin()) return;
+    setIsLoading(true);
     setIsLoginLoading(true);
+    beginLoginTrace('google');
     if (import.meta.env.DEV) {
       try {
+        markLoginTrace('T1_provider_redirect_requested');
         await googleSignIn();
+        markLoginTrace('T3_firebase_sign_in_complete');
         navigate('/');
       } catch (e: any) {
         console.error('[dev] Google login failed:', e);
@@ -328,27 +340,28 @@ export function LandingPage() {
       }
       return;
     }
-    setTimeout(() => {
-      window.location.href = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/googleLoginStart';
-    }, 1500);
+    markLoginTrace('T1_provider_redirect_requested');
+    window.location.assign(SOCIAL_LOGIN_URLS.google);
   };
 
   const handleKakaoLogin = () => {
-    setIsLoading(true);
+    if (isLoginLoading) return;
     if (guardInAppBrowserLogin()) return;
+    setIsLoading(true);
     setIsLoginLoading(true);
-    setTimeout(() => {
-      window.location.href = 'https://kakaologinstart-6ieesxet3q-du.a.run.app';
-    }, 1500);
+    beginLoginTrace('kakao');
+    markLoginTrace('T1_provider_redirect_requested');
+    window.location.assign(SOCIAL_LOGIN_URLS.kakao);
   };
 
   const handleNaverLogin = () => {
-    setIsLoading(true);
+    if (isLoginLoading) return;
     if (guardInAppBrowserLogin()) return;
+    setIsLoading(true);
     setIsLoginLoading(true);
-    setTimeout(() => {
-      window.location.href = 'https://naverloginstart-6ieesxet3q-du.a.run.app';
-    }, 1500);
+    beginLoginTrace('naver');
+    markLoginTrace('T1_provider_redirect_requested');
+    window.location.assign(SOCIAL_LOGIN_URLS.naver);
   };
 
   const socialLoginButtons = [

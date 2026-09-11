@@ -7,6 +7,7 @@ import { TimelineCollageModal } from '../components/TimelineCollageModal';
 import { HomePersonalizationModal } from '../components/HomePersonalizationModal';
 import { shouldShowAssistantOnboarding } from '../services/assistantOnboardingService';
 import { firestoreService, type HomePersonalizationSettings } from '../services/firestoreService';
+import { finishLoginTrace, markLoginTrace } from '../utils/loginPerformance';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -556,6 +557,16 @@ function getAgentKey(agent: Agent) {
   return `path:${agent.path || 'none'}:${JSON.stringify(agent.state || {})}`;
 }
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+    promise
+      .then(resolve)
+      .catch(reject)
+      .finally(() => clearTimeout(timeoutId));
+  });
+}
+
 export function HomePageV2() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -628,7 +639,11 @@ export function HomePageV2() {
 
       setOnboardingGateReady(false);
       try {
-        const shouldShow = await shouldShowAssistantOnboarding(user.uid);
+        const shouldShow = await withTimeout(
+          shouldShowAssistantOnboarding(user.uid),
+          3500,
+          'assistant onboarding check timed out',
+        );
         if (cancelled) return;
 
         if (shouldShow) {
@@ -669,10 +684,20 @@ export function HomePageV2() {
       }
 
       setPersonalizationLoaded(false);
-      const settings = await firestoreService.getHomePersonalization(user.uid);
-      if (cancelled) return;
-      setPersonalization(settings);
-      setPersonalizationLoaded(true);
+      try {
+        const settings = await withTimeout(
+          firestoreService.getHomePersonalization(user.uid),
+          2500,
+          'home personalization load timed out',
+        );
+        if (cancelled) return;
+        setPersonalization(settings);
+      } catch (error) {
+        console.warn('홈 개인화 설정 확인 실패:', error);
+        if (!cancelled) setPersonalization(null);
+      } finally {
+        if (!cancelled) setPersonalizationLoaded(true);
+      }
     };
 
     loadHomePersonalization();
@@ -681,6 +706,13 @@ export function HomePageV2() {
       cancelled = true;
     };
   }, [authLoading, user?.uid]);
+
+  useEffect(() => {
+    if (authLoading || !user?.uid || !onboardingGateReady) return;
+    markLoginTrace('T5_home_data_ready');
+    const frameId = window.requestAnimationFrame(() => finishLoginTrace('T6_home_interactive'));
+    return () => window.cancelAnimationFrame(frameId);
+  }, [authLoading, onboardingGateReady, user?.uid]);
 
   const openTimelineModal = () => {
     if (!user?.uid) {
@@ -706,7 +738,7 @@ export function HomePageV2() {
   const homeAgents = homeViewMode === 'all'
     ? visibleAgents
     : visibleAgents.filter((agent) => selectedAgentSet.has(getAgentKey(agent)));
-  const isMyHaruEmpty = homeViewMode === 'my' && hasPersonalizedHome && homeRecords.length === 0 && homeAgents.length === 0;
+  const isMyHaruEmpty = personalizationLoaded && homeViewMode === 'my' && hasPersonalizedHome && homeRecords.length === 0 && homeAgents.length === 0;
 
   const saveHomePersonalization = async (selection: {
     selectedRecordFormats: string[];
@@ -734,7 +766,7 @@ export function HomePageV2() {
     }
   };
 
-  if (authLoading || !onboardingGateReady || !personalizationLoaded) {
+  if (authLoading || !onboardingGateReady) {
     return (
       <div
         className="min-h-screen"
@@ -1456,7 +1488,7 @@ export function HomePageV2() {
           </button>
         </section>
 
-        {!hasPersonalizedHome && !myHaruBannerHidden && (
+        {personalizationLoaded && !hasPersonalizedHome && !myHaruBannerHidden && (
           <div
             style={{
               display: 'flex',
