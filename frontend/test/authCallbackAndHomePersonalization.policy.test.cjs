@@ -25,11 +25,28 @@ assert(authCallbackSrc.includes("failLoginTrace('missing_custom_token', 'missing
 assert(authCallbackSrc.includes("errorType === 'firebase_auth_error' ? 'firebase_custom_token_sign_in' : 'callback_processing'"));
 assert(!authCallbackSrc.includes('console.error(\'Firebase 로그인 실패:\', error)'));
 
-assert(homeSrc.includes('const isPersonalizationPending = !personalizationLoaded && homeViewMode === \'my\';'));
-assertBefore(homeSrc, 'setPersonalization(null);\n      setPersonalizationLoaded(false);', 'firestoreService.getHomePersonalization(user.uid)');
+assert(homeSrc.includes('const isPersonalizationPending = !effectivePersonalizationLoaded && homeViewMode === \'my\';'));
+assertBefore(homeSrc, 'setPersonalization(null);\n      setPersonalizationOwnerUid(null);\n      setPersonalizationLoaded(false);', 'firestoreService.getHomePersonalization(requestUid)');
 assert(homeSrc.includes('{isPersonalizationPending && <HomePersonalizationSkeleton />}'));
 assert(homeSrc.includes('{!isPersonalizationPending && !isMyHaruEmpty && ('));
-assert(homeSrc.includes('const selectedRecordFormats = !personalizationLoaded'));
-assert(homeSrc.includes('const selectedAgents = !personalizationLoaded'));
+assert(homeSrc.includes('const [personalizationOwnerUid, setPersonalizationOwnerUid] = useState<string | null>(null);'));
+assert(homeSrc.includes('const currentUserUidRef = useRef<string | null>(currentUserUid);'));
+assert(homeSrc.includes('currentUserUidRef.current = currentUserUid;'));
+assert(homeSrc.includes('const requestUid = currentUserUid;'));
+assert(homeSrc.includes('firestoreService.getHomePersonalization(requestUid)'));
+assert(homeSrc.includes('if (cancelled || currentUserUidRef.current !== requestUid) return;'));
+assert(homeSrc.includes('if (!cancelled && currentUserUidRef.current === requestUid)'));
+assert(homeSrc.includes('setPersonalizationOwnerUid(requestUid);'));
+assert(homeSrc.includes('const saveUid = currentUserUid;'));
+assert(homeSrc.includes('if (currentUserUidRef.current !== saveUid) return;'));
+assert(homeSrc.includes('setPersonalizationOwnerUid(saveUid);'));
+assert(homeSrc.includes('const personalizationMatchesCurrentUser = currentUserUid'));
+assert(homeSrc.includes('const effectivePersonalizationLoaded = currentUserUid'));
+assert(homeSrc.includes('const currentPersonalization = personalizationMatchesCurrentUser ? personalization : null;'));
+assert(homeSrc.includes('const hasPersonalizedHome = currentPersonalization?.personalized === true;'));
+assert(homeSrc.includes('const selectedRecordFormats = !effectivePersonalizationLoaded'));
+assert(homeSrc.includes('const selectedAgents = !effectivePersonalizationLoaded'));
+assert(!homeSrc.includes('const hasPersonalizedHome = personalization?.personalized === true;'));
+assert(!homeSrc.includes('const isPersonalizationPending = !personalizationLoaded && homeViewMode === \'my\';'));
 
 console.log('auth callback and home personalization policy tests passed');

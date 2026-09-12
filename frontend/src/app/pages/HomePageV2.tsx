@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { setOrigin } from '../services/v2Origin';
 import { useAuth } from '../contexts/AuthContext';
@@ -571,6 +571,9 @@ export function HomePageV2() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, loading: authLoading } = useAuth();
+  const currentUserUid = user?.uid ?? null;
+  const currentUserUidRef = useRef<string | null>(currentUserUid);
+  currentUserUidRef.current = currentUserUid;
   const isDeveloper = user?.uid === DEVELOPER_UID;
   // 숨김 기록 + 개발자 전용 항목은 일반 사용자 홈에서 비노출
   const visibleRecords = useMemo(
@@ -588,6 +591,7 @@ export function HomePageV2() {
   const [personalizationModalOpen, setPersonalizationModalOpen] = useState(false);
   const [personalizationSaving, setPersonalizationSaving] = useState(false);
   const [personalization, setPersonalization] = useState<HomePersonalizationSettings | null>(null);
+  const [personalizationOwnerUid, setPersonalizationOwnerUid] = useState<string | null>(null);
   const [personalizationLoaded, setPersonalizationLoaded] = useState(false);
   const [homeViewMode, setHomeViewMode] = useState<'my' | 'all'>('my');
   const [myHaruBannerHidden, setMyHaruBannerHidden] = useState(() => {
@@ -674,31 +678,39 @@ export function HomePageV2() {
     const loadHomePersonalization = async () => {
       if (authLoading) {
         setPersonalization(null);
+        setPersonalizationOwnerUid(null);
         setPersonalizationLoaded(false);
         return;
       }
 
-      if (!user?.uid) {
+      if (!currentUserUid) {
         setPersonalization(null);
+        setPersonalizationOwnerUid(null);
         setPersonalizationLoaded(true);
         return;
       }
 
+      const requestUid = currentUserUid;
       setPersonalization(null);
+      setPersonalizationOwnerUid(null);
       setPersonalizationLoaded(false);
       try {
         const settings = await withTimeout(
-          firestoreService.getHomePersonalization(user.uid),
+          firestoreService.getHomePersonalization(requestUid),
           2500,
           'home personalization load timed out',
         );
-        if (cancelled) return;
+        if (cancelled || currentUserUidRef.current !== requestUid) return;
         setPersonalization(settings);
+        setPersonalizationOwnerUid(requestUid);
       } catch (error) {
         console.warn('홈 개인화 설정 확인 실패:', error);
-        if (!cancelled) setPersonalization(null);
+        if (!cancelled && currentUserUidRef.current === requestUid) {
+          setPersonalization(null);
+          setPersonalizationOwnerUid(requestUid);
+        }
       } finally {
-        if (!cancelled) setPersonalizationLoaded(true);
+        if (!cancelled && currentUserUidRef.current === requestUid) setPersonalizationLoaded(true);
       }
     };
 
@@ -707,7 +719,7 @@ export function HomePageV2() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, user?.uid]);
+  }, [authLoading, currentUserUid]);
 
   useEffect(() => {
     if (authLoading || !user?.uid || !onboardingGateReady) return;
@@ -725,17 +737,24 @@ export function HomePageV2() {
     setTimelineModalOpen(true);
   };
 
-  const hasPersonalizedHome = personalization?.personalized === true;
-  const isPersonalizationPending = !personalizationLoaded && homeViewMode === 'my';
-  const selectedRecordFormats = !personalizationLoaded
+  const personalizationMatchesCurrentUser = currentUserUid
+    ? personalizationOwnerUid === currentUserUid
+    : personalizationOwnerUid === null;
+  const effectivePersonalizationLoaded = currentUserUid
+    ? personalizationLoaded && personalizationMatchesCurrentUser
+    : personalizationLoaded;
+  const currentPersonalization = personalizationMatchesCurrentUser ? personalization : null;
+  const hasPersonalizedHome = currentPersonalization?.personalized === true;
+  const isPersonalizationPending = !effectivePersonalizationLoaded && homeViewMode === 'my';
+  const selectedRecordFormats = !effectivePersonalizationLoaded
     ? []
     : hasPersonalizedHome
-    ? personalization?.selectedRecordFormats || []
+    ? currentPersonalization?.selectedRecordFormats || []
     : visibleRecords.map((record) => record.format);
-  const selectedAgents = !personalizationLoaded
+  const selectedAgents = !effectivePersonalizationLoaded
     ? []
     : hasPersonalizedHome
-    ? personalization?.selectedAgents || []
+    ? currentPersonalization?.selectedAgents || []
     : visibleAgents.map((agent) => getAgentKey(agent));
   const selectedRecordSet = useMemo(() => new Set(selectedRecordFormats), [selectedRecordFormats]);
   const selectedAgentSet = useMemo(() => new Set(selectedAgents), [selectedAgents]);
@@ -745,25 +764,28 @@ export function HomePageV2() {
   const homeAgents = homeViewMode === 'all'
     ? visibleAgents
     : visibleAgents.filter((agent) => selectedAgentSet.has(getAgentKey(agent)));
-  const isMyHaruEmpty = personalizationLoaded && homeViewMode === 'my' && hasPersonalizedHome && homeRecords.length === 0 && homeAgents.length === 0;
+  const isMyHaruEmpty = effectivePersonalizationLoaded && homeViewMode === 'my' && hasPersonalizedHome && homeRecords.length === 0 && homeAgents.length === 0;
 
   const saveHomePersonalization = async (selection: {
     selectedRecordFormats: string[];
     selectedAgents: string[];
   }) => {
-    if (!user?.uid) {
+    if (!currentUserUid) {
       navigate('/login');
       return;
     }
 
+    const saveUid = currentUserUid;
     setPersonalizationSaving(true);
     try {
-      await firestoreService.saveHomePersonalization(user.uid, selection);
+      await firestoreService.saveHomePersonalization(saveUid, selection);
+      if (currentUserUidRef.current !== saveUid) return;
       setPersonalization({
         selectedRecordFormats: selection.selectedRecordFormats,
         selectedAgents: selection.selectedAgents,
         personalized: true,
       });
+      setPersonalizationOwnerUid(saveUid);
       setHomeViewMode('my');
       setPersonalizationModalOpen(false);
       setMyHaruBannerHidden(true);
