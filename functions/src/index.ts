@@ -77,6 +77,10 @@ import {
   resolveInternalPlan,
   shouldExcludeFromRecurringBilling,
 } from './internalEntitlements';
+import {
+  consumeLoginOAuthStateWithDb,
+  type LoginOAuthProvider,
+} from './oauthStateCore';
 // 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
 import { GoogleGenAI } from '@google/genai';
 // HARU가계부 카카오뱅크 XLSX 잠금 해제 전용 (msoffcrypto-tool TS 포트)
@@ -334,28 +338,11 @@ const ONEDRIVE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunct
 const ONEDRIVE_OAUTH_SCOPE = 'offline_access Files.ReadWrite User.Read';
 
 const db = admin.firestore();
-type LoginOAuthProvider = 'kakao' | 'naver' | 'google';
 const OAUTH_TOKEN_TIMEOUT_MS = 10000;
 const OAUTH_PROFILE_TIMEOUT_MS = 8000;
 
-function getOAuthStateExpiryMs(data: Record<string, any> | undefined): number {
-  const expiresAt = data?.expiresAt;
-  return typeof expiresAt?.toMillis === 'function' ? expiresAt.toMillis() : 0;
-}
-
 async function consumeLoginOAuthState(state: string, provider: LoginOAuthProvider) {
-  const stateRef = db.collection('oauth_states').doc(state);
-  return db.runTransaction(async (tx) => {
-    const stateDoc = await tx.get(stateRef);
-    if (!stateDoc.exists) throw new Error('State not found');
-
-    const stateData = stateDoc.data();
-    if (stateData?.provider !== provider) throw new Error('State provider mismatch');
-    if (getOAuthStateExpiryMs(stateData) < Date.now()) throw new Error('State expired');
-
-    tx.delete(stateRef);
-    return stateData;
-  });
+  return consumeLoginOAuthStateWithDb(db, state, provider);
 }
 
 async function measureOAuthPhase<T>(

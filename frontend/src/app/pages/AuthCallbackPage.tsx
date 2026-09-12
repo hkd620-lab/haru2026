@@ -5,7 +5,7 @@ import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { toast } from 'sonner';
 import { normalizeLoginProvider } from '../utils/loginProvider';
-import { markLoginTrace } from '../utils/loginPerformance';
+import { failLoginTrace, markLoginTrace } from '../utils/loginPerformance';
 
 const callbackInProgressKeys = new Set<string>();
 const callbackCompletedKeys = new Set<string>();
@@ -63,18 +63,29 @@ function clearSensitiveCallbackUrl() {
   window.history.replaceState({}, document.title, window.location.pathname);
 }
 
+function classifyCallbackError(error: unknown) {
+  const code = typeof (error as { code?: unknown })?.code === 'string'
+    ? (error as { code: string }).code
+    : '';
+  if (/^auth\/[a-z0-9-]+$/.test(code)) return 'firebase_auth_error' as const;
+  return 'callback_unexpected_error' as const;
+}
+
 export function AuthCallbackPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
     const processCallback = async () => {
       markLoginTrace('T2_callback_arrived');
+      let callbackProvider: ReturnType<typeof normalizeLoginProvider> = null;
       try {
         const { customToken, provider, error } = readCallbackParams();
+        callbackProvider = provider;
 
         if (error) {
           clearSensitiveCallbackUrl();
-          console.error('로그인 오류:', error);
+          failLoginTrace('provider_error_param', 'provider_redirect_error', provider);
+          console.error('로그인 오류:', { provider, errorType: 'provider_redirect_error' });
           toast.error('로그인에 실패했습니다.');
           navigate('/login', { replace: true });
           return;
@@ -82,19 +93,20 @@ export function AuthCallbackPage() {
 
         if (!customToken) {
           if (callbackInProgressKeys.size > 0) return;
-          console.error('customToken이 없습니다');
+          failLoginTrace('missing_custom_token', 'missing_custom_token', provider);
+          console.error('customToken이 없습니다', { provider, errorType: 'missing_custom_token' });
           toast.error('인증 정보가 없습니다.');
           navigate('/login', { replace: true });
           return;
         }
 
         const callbackKey = getCallbackKey(customToken, provider);
+        clearSensitiveCallbackUrl();
         if (callbackInProgressKeys.has(callbackKey) || isCallbackCompleted(callbackKey)) {
           return;
         }
 
         callbackInProgressKeys.add(callbackKey);
-        clearSensitiveCallbackUrl();
 
         try {
           // Firebase 커스텀 토큰으로 로그인
@@ -120,7 +132,13 @@ export function AuthCallbackPage() {
           callbackInProgressKeys.delete(callbackKey);
         }
       } catch (error) {
-        console.error('Firebase 로그인 실패:', error);
+        const errorType = classifyCallbackError(error);
+        failLoginTrace(
+          errorType === 'firebase_auth_error' ? 'firebase_custom_token_sign_in' : 'callback_processing',
+          errorType,
+          callbackProvider,
+        );
+        console.error('Firebase 로그인 실패:', { provider: callbackProvider, errorType });
         toast.error('로그인 처리 중 오류가 발생했습니다.');
         navigate('/login', { replace: true });
       }

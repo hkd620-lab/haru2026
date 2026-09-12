@@ -673,6 +673,7 @@ export function HomePageV2() {
 
     const loadHomePersonalization = async () => {
       if (authLoading) {
+        setPersonalization(null);
         setPersonalizationLoaded(false);
         return;
       }
@@ -683,6 +684,7 @@ export function HomePageV2() {
         return;
       }
 
+      setPersonalization(null);
       setPersonalizationLoaded(false);
       try {
         const settings = await withTimeout(
@@ -724,10 +726,15 @@ export function HomePageV2() {
   };
 
   const hasPersonalizedHome = personalization?.personalized === true;
-  const selectedRecordFormats = hasPersonalizedHome
+  const isPersonalizationPending = !personalizationLoaded && homeViewMode === 'my';
+  const selectedRecordFormats = !personalizationLoaded
+    ? []
+    : hasPersonalizedHome
     ? personalization?.selectedRecordFormats || []
     : visibleRecords.map((record) => record.format);
-  const selectedAgents = hasPersonalizedHome
+  const selectedAgents = !personalizationLoaded
+    ? []
+    : hasPersonalizedHome
     ? personalization?.selectedAgents || []
     : visibleAgents.map((agent) => getAgentKey(agent));
   const selectedRecordSet = useMemo(() => new Set(selectedRecordFormats), [selectedRecordFormats]);
@@ -1582,7 +1589,9 @@ export function HomePageV2() {
           </div>
         )}
 
-        {isMyHaruEmpty && (
+        {isPersonalizationPending && <HomePersonalizationSkeleton />}
+
+        {!isPersonalizationPending && isMyHaruEmpty && (
           <EmptyMyHaru
             onShowAll={() => setHomeViewMode('all')}
             onManage={() => setPersonalizationModalOpen(true)}
@@ -1590,7 +1599,7 @@ export function HomePageV2() {
         )}
 
         {/* RECORDS SECTION */}
-        {!isMyHaruEmpty && (
+        {!isPersonalizationPending && !isMyHaruEmpty && (
         <section data-v2="section" style={{ marginBottom: 36 }}>
           <SectionHead
             iconBg="#E0E8B8"
@@ -1684,7 +1693,7 @@ export function HomePageV2() {
         )}
 
         {/* AGENTS SECTION */}
-        {!isMyHaruEmpty && (
+        {!isPersonalizationPending && !isMyHaruEmpty && (
         <section data-v2="section" style={{ marginBottom: 36 }}>
           <SectionHead
             iconBg="#DDD0E8"
@@ -2222,6 +2231,103 @@ function EmptyMyHaru({
         </button>
       </div>
     </section>
+  );
+}
+
+function HomePersonalizationSkeleton() {
+  const recordPlaceholders = Array.from({ length: 5 });
+  const agentPlaceholders = Array.from({ length: 4 });
+
+  return (
+    <div aria-label="내 HARU 불러오는 중" style={{ marginBottom: 36 }}>
+      <section data-v2="section" style={{ marginBottom: 36 }}>
+        <SectionHead
+          iconBg="#E0E8B8"
+          iconStroke="#4A5A2C"
+          title="HARU 기록"
+          sub="매일의 한 줄, 오래 남는 자산"
+          badge="확인 중"
+          badgeDot="#7A8B4E"
+          icon={
+            <>
+              <path d="M4 4h13a3 3 0 013 3v13H7a3 3 0 01-3-3V4z" />
+              <path d="M4 17a3 3 0 013-3h13" />
+              <path d="M9 8h7" />
+            </>
+          }
+        />
+        <div
+          data-v2="records-grid"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(5, 1fr)',
+            gap: 14,
+          }}
+        >
+          {recordPlaceholders.map((_, index) => (
+            <SkeletonCard key={`record-${index}`} />
+          ))}
+        </div>
+      </section>
+
+      <section data-v2="section" style={{ marginBottom: 36 }}>
+        <SectionHead
+          iconBg="#DDD0E8"
+          iconStroke="#5A4E7A"
+          title="HARU 비서실"
+          sub="일상 곁의 작은 AI 동료"
+          badge="확인 중"
+          badgeDot="#5A4E7A"
+          icon={
+            <>
+              <path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z" />
+              <path d="M19 16l.8 1.8L21.5 18.5 19.7 19.3 19 21l-.8-1.7L16.5 18.5l1.7-.7z" />
+            </>
+          }
+        />
+        <div
+          data-v2="agents-grid"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: 14,
+          }}
+        >
+          {agentPlaceholders.map((_, index) => (
+            <SkeletonCard key={`agent-${index}`} minHeight={148} />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SkeletonCard({ minHeight = 134 }: { minHeight?: number }) {
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        minHeight,
+        background: '#fff',
+        border: '1px solid #E5DFD0',
+        borderRadius: 20,
+        padding: '22px 18px 20px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 14,
+      }}
+    >
+      <span
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 14,
+          background: '#F5F0E8',
+        }}
+      />
+      <span style={{ width: '42%', height: 14, borderRadius: 999, background: '#F5F0E8' }} />
+      <span style={{ width: '64%', height: 10, borderRadius: 999, background: '#F5F0E8' }} />
+    </div>
   );
 }
 

@@ -9,11 +9,28 @@ type LoginTraceStep =
   | 'T5_home_data_ready'
   | 'T6_home_interactive';
 
+type LoginFailureStage =
+  | 'provider_error_param'
+  | 'missing_custom_token'
+  | 'firebase_custom_token_sign_in'
+  | 'callback_processing';
+
+type LoginFailureType =
+  | 'provider_redirect_error'
+  | 'missing_custom_token'
+  | 'firebase_auth_error'
+  | 'callback_unexpected_error';
+
 type LoginTrace = {
   traceId: string;
-  provider: LoginProvider;
+  provider: LoginProvider | 'unknown';
   startedAt: number;
   marks: Partial<Record<LoginTraceStep, number>>;
+  failure?: {
+    stage: LoginFailureStage;
+    errorType: LoginFailureType;
+    elapsedMs: number;
+  };
 };
 
 const ACTIVE_TRACE_KEY = 'haru.loginPerformanceTrace.v1';
@@ -124,6 +141,18 @@ function logTrace(trace: LoginTrace) {
   console.table(rows);
 }
 
+function logFailureTrace(trace: LoginTrace) {
+  if (!shouldLogTrace() || !trace.failure) return;
+
+  console.info('[HARU login trace failure]', {
+    traceId: trace.traceId,
+    provider: trace.provider,
+    stage: trace.failure.stage,
+    errorType: trace.failure.errorType,
+    elapsedMs: trace.failure.elapsedMs,
+  });
+}
+
 export function beginLoginTrace(provider: LoginProvider) {
   const startedAt = nowMs();
   const trace: LoginTrace = {
@@ -156,4 +185,32 @@ export function finishLoginTrace(step: LoginTraceStep = 'T6_home_interactive') {
   if (!trace) return;
   persistLastTrace(trace);
   logTrace(trace);
+}
+
+export function failLoginTrace(
+  stage: LoginFailureStage,
+  errorType: LoginFailureType,
+  providerOverride?: LoginProvider | null,
+) {
+  const failedAt = nowMs();
+  const existingTrace = readTrace();
+  const trace: LoginTrace = existingTrace || {
+    traceId: createTraceId(),
+    provider: providerOverride || 'unknown',
+    startedAt: failedAt,
+    marks: {},
+  };
+
+  if (providerOverride) {
+    trace.provider = providerOverride;
+  }
+
+  trace.failure = {
+    stage,
+    errorType,
+    elapsedMs: Math.max(0, Math.round(failedAt - trace.startedAt)),
+  };
+
+  persistLastTrace(trace);
+  logFailureTrace(trace);
 }

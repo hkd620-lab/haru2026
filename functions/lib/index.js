@@ -64,6 +64,7 @@ const englishBibleWordMeaning_1 = require("./englishBibleWordMeaning");
 const PortOne = __importStar(require("@portone/server-sdk"));
 const monthlyAiQuota_1 = require("./utils/monthlyAiQuota");
 const internalEntitlements_1 = require("./internalEntitlements");
+const oauthStateCore_1 = require("./oauthStateCore");
 // 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
 const genai_1 = require("@google/genai");
 // HARU가계부 카카오뱅크 XLSX 잠금 해제 전용 (msoffcrypto-tool TS 포트)
@@ -280,24 +281,8 @@ const ONEDRIVE_OAUTH_SCOPE = 'offline_access Files.ReadWrite User.Read';
 const db = admin.firestore();
 const OAUTH_TOKEN_TIMEOUT_MS = 10000;
 const OAUTH_PROFILE_TIMEOUT_MS = 8000;
-function getOAuthStateExpiryMs(data) {
-    const expiresAt = data === null || data === void 0 ? void 0 : data.expiresAt;
-    return typeof (expiresAt === null || expiresAt === void 0 ? void 0 : expiresAt.toMillis) === 'function' ? expiresAt.toMillis() : 0;
-}
 async function consumeLoginOAuthState(state, provider) {
-    const stateRef = db.collection('oauth_states').doc(state);
-    return db.runTransaction(async (tx) => {
-        const stateDoc = await tx.get(stateRef);
-        if (!stateDoc.exists)
-            throw new Error('State not found');
-        const stateData = stateDoc.data();
-        if ((stateData === null || stateData === void 0 ? void 0 : stateData.provider) !== provider)
-            throw new Error('State provider mismatch');
-        if (getOAuthStateExpiryMs(stateData) < Date.now())
-            throw new Error('State expired');
-        tx.delete(stateRef);
-        return stateData;
-    });
+    return (0, oauthStateCore_1.consumeLoginOAuthStateWithDb)(db, state, provider);
 }
 async function measureOAuthPhase(timings, phase, task) {
     const startedAt = Date.now();
