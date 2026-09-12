@@ -3315,6 +3315,7 @@ async function loadHaruLawAttachmentParts(uid, attachments) {
 }
 exports.chatWithResult = (0, https_2.onCall)({
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 90,
 }, async (request) => {
