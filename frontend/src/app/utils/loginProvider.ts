@@ -1,5 +1,7 @@
 export type LoginProvider = 'naver' | 'google' | 'kakao' | 'password';
 
+const LOGIN_PROVIDER_STORAGE_PREFIX = 'haru.loginProvider.v1:';
+
 const LOGIN_PROVIDER_ALIASES: Record<string, LoginProvider> = {
   naver: 'naver',
   google: 'google',
@@ -27,4 +29,25 @@ export function getLoginProviderLabel(value: unknown): string {
 
 export function mergeProviderIds(providerIds: string[] | undefined, provider: LoginProvider): string[] {
   return Array.from(new Set([...(providerIds ?? []), provider]));
+}
+
+function getLoginProviderStorageKey(uid: string): string {
+  return `${LOGIN_PROVIDER_STORAGE_PREFIX}${uid}`;
+}
+
+export function rememberLoginProviderLocally(uid: string, provider: LoginProvider) {
+  try {
+    window.localStorage.setItem(getLoginProviderStorageKey(uid), provider);
+  } catch (error) {
+    console.warn('Login provider local save error:', error);
+  }
+}
+
+export function readRememberedLoginProvider(uid: string): LoginProvider | null {
+  try {
+    return normalizeLoginProvider(window.localStorage.getItem(getLoginProviderStorageKey(uid)));
+  } catch (error) {
+    console.warn('Login provider local read error:', error);
+    return null;
+  }
 }
