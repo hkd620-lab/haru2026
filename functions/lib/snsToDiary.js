@@ -53,6 +53,7 @@ function sanitizeName(raw) {
 }
 exports.convertSnsToDiary = (0, https_1.onCall)({
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GEMINI_API_KEY],
     timeoutSeconds: 120,
 }, async (request) => {

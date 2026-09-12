@@ -3710,6 +3710,7 @@ exports.chatWithResult = (0, https_2.onCall)({
 // ===== 🏷️ 기존 기록 AI 제목 일괄 생성 =====
 exports.generateTitlesForAll = (0, https_2.onCall)({
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 300,
 }, async (request) => {
@@ -4390,6 +4391,7 @@ async function ensureHaruDriveFolder(accessToken) {
 // ===== 📦 HARU자산탐정: Google Drive 연결 시작 =====
 exports.startHaruDriveConnect = (0, https_2.onCall)({
     region: 'asia-northeast3',
+    memory: '512MiB',
     cors: [
         'https://haru2026-8abb8.web.app',
         'https://haru2026.com',
@@ -4423,6 +4425,7 @@ exports.startHaruDriveConnect = (0, https_2.onCall)({
 // ===== 📦 HARU자산탐정: Google Drive OAuth 콜백 =====
 exports.haruDriveCallback = (0, https_1.onRequest)({
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GOOGLE_CLIENT_ID_SECRET, GOOGLE_CLIENT_SECRET_SECRET],
 }, async (req, res) => {
     try {
@@ -4738,7 +4741,7 @@ function getBase64DecodedSizeBytes(value) {
     const padding = value.endsWith('==') ? 2 : value.endsWith('=') ? 1 : 0;
     return (value.length / 4) * 3 - padding;
 }
-exports.convertHeic = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
+exports.convertHeic = (0, https_2.onCall)({ region: 'asia-northeast3', memory: '512MiB' }, async (request) => {
     var _a;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
@@ -5494,7 +5497,7 @@ exports.extractHouseholdTextFromImage = (0, https_2.onCall)({
 // 파싱·매핑·미리보기·저장은 프론트(householdKakaoImport.ts)에서 처리. 이 함수는 비밀번호 해제만 담당.
 exports.decryptKakaoXlsx = (0, https_2.onCall)({
     region: 'asia-northeast3',
-    memory: '256MiB',
+    memory: '512MiB',
     timeoutSeconds: 30,
 }, async (request) => {
     var _a, _b, _c;
@@ -8202,6 +8205,7 @@ exports.lawSearch = (0, https_2.onCall)({
 });
 exports.prepareHaruLawSharePreview = (0, https_2.onCall)({
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 300,
 }, async (request) => {
@@ -8522,6 +8526,7 @@ exports.reviewHaruLawSharedCard = (0, https_2.onCall)({
 // ===== 법령 쉬운 해설 =====
 exports.lawEasyExplain = (0, https_2.onCall)({
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 300,
 }, async (request) => {
@@ -8616,6 +8621,7 @@ AI 의견:
 // ===== 법령 관련 판례 검색 (국가법령정보 OpenAPI 연동) =====
 exports.lawPrecedent = (0, https_2.onCall)({
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [LAW_API_KEY_SECRET, GEMINI_API_KEY_SECRET],
     timeoutSeconds: 300,
 }, async (request) => {
@@ -8879,6 +8885,7 @@ ${precLines}`;
 // ===== TTS 음성 생성 =====
 exports.generateTTS = (0, https_2.onCall)({
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GEMINI_API_KEY_SECRET, GOOGLE_CLOUD_API_KEY_SECRET, OPENAI_API_KEY_SECRET],
     timeoutSeconds: 120,
 }, async (request) => {
@@ -9359,7 +9366,7 @@ ${JSON.stringify(parsed, null, 2)}`;
     return verified;
 });
 // ===== 장 문법 사전생성 =====
-exports.preloadChapterGrammar = (0, https_2.onCall)({ region: 'asia-northeast3', timeoutSeconds: 540, secrets: [GEMINI_API_KEY_SECRET, OPENAI_API_KEY_SECRET] }, async (request) => {
+exports.preloadChapterGrammar = (0, https_2.onCall)({ region: 'asia-northeast3', memory: '512MiB', timeoutSeconds: 540, secrets: [GEMINI_API_KEY_SECRET, OPENAI_API_KEY_SECRET] }, async (request) => {
     var _a, _b, _c, _d, _f, _g, _h, _j, _k;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다');
@@ -12329,7 +12336,7 @@ async function ensureHaruFolderOnOneDrive(accessToken) {
     }
 }
 // 1) OAuth 시작 — authUrl 반환 (callable, uid 확인)
-exports.startOneDriveConnect = (0, https_2.onCall)({ region: 'asia-northeast3', secrets: [MICROSOFT_CLIENT_ID_SECRET, MICROSOFT_CLIENT_SECRET_SECRET] }, async (request) => {
+exports.startOneDriveConnect = (0, https_2.onCall)({ region: 'asia-northeast3', memory: '512MiB', secrets: [MICROSOFT_CLIENT_ID_SECRET, MICROSOFT_CLIENT_SECRET_SECRET] }, async (request) => {
     var _a;
     const uid = (_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid;
     if (!uid) {
@@ -12919,6 +12926,7 @@ async function getOrCreateMonthFolder(driveClient, year, month) {
 }
 exports.uploadReceiptToDrive = (0, https_2.onCall)({
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GOOGLE_DRIVE_SERVICE_ACCOUNT_SECRET],
 }, async (request) => {
     if (!request.auth) {
