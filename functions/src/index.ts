@@ -241,6 +241,23 @@ const RESULT_CHAT_HIGH_RISK_PATTERNS = [
   /(승소|패소|이기나|이길\s*수|반드시\s*이길|질까|유죄|무죄|위법\s*여부|소송에서\s*이기|처벌\s*되|고소하면\s*이기)/,
   /(지금\s*)?(사야|팔아|매수|매도|손절|익절|투자해도|수익\s*보장|반드시\s*수익)/,
 ];
+
+// 사용자가 명시적으로 외부검색·웹검색을 요청하는 질문(기록 종류 정책과 무관하게 적용).
+// RESULT_CHAT_RECORD_ONLY_PATTERNS보다 먼저 판정해야 "내가 먹은 음식을 외부검색으로 알려줘"처럼
+// 기록전용 패턴("내가...먹은")에 먼저 걸려 명시적 검색 요청이 가려지는 것을 막을 수 있다.
+const RESULT_CHAT_EXPLICIT_SEARCH_REQUEST_PATTERNS = [
+  /외부\s*검색/,
+  /웹\s*검색/,
+  /인터넷\s*(검색|찾아|에서)/,
+  /구글(링)?/,
+  /검색\s*(해서|해\s*줘|해줘|으로|을\s*통해)/,
+  /찾아\s*(봐|줘|보고)/,
+  /최신\s*(자료|정보)\s*(로|으로|확인)/,
+  /온라인\s*(에서|으로)/,
+];
+// "내 기록에서/나의 일기에서 검색해줘"처럼 기록 내부 검색을 뜻하는 표현은 위 패턴에서 제외한다.
+const RESULT_CHAT_INTERNAL_SEARCH_EXCLUDE_PATTERN = /(내|나의|이)\s*(기록|일기|결과)(에서|으로)\s*.*검색/;
+
 const RESULT_CHAT_AMBIGUOUS_EXTERNAL_PATTERNS = [
   /(물|비료|햇빛|분갈이|가지치기).*(얼마|언제|어떻게|줘|주면|해야)/,
   /(상태|성장|건강).*(어떤\s*것\s*같|괜찮|문제)/,
@@ -263,6 +280,12 @@ function classifyResultChatByRules(question: string, policy: ResultChatSourcePol
   if (!normalized) return { route: 'record_only', reasonCode: 'record_analysis', confidence: 1 };
   if (hasAnyResultChatPattern(normalized, RESULT_CHAT_HIGH_RISK_PATTERNS)) {
     return { route: 'high_risk_guidance', reasonCode: 'high_risk', confidence: 0.9 };
+  }
+  if (
+    hasAnyResultChatPattern(normalized, RESULT_CHAT_EXPLICIT_SEARCH_REQUEST_PATTERNS) &&
+    !RESULT_CHAT_INTERNAL_SEARCH_EXCLUDE_PATTERN.test(normalized)
+  ) {
+    return { route: 'web_search', reasonCode: 'current_fact', confidence: 0.9 };
   }
   if (hasAnyResultChatPattern(normalized, RESULT_CHAT_RECORD_ONLY_PATTERNS)) {
     return { route: 'record_only', reasonCode: 'record_analysis', confidence: 0.88 };
@@ -3477,6 +3500,7 @@ function buildResultChatPrompt(params: {
     record_only: [
       '첫 줄에 "📘 나의 기록을 바탕으로 답변"을 표시한다.',
       '웹검색, 외부 최신자료 확인, 실시간 정보 확인은 사용하지 않는다.',
+      '사용자가 외부검색·웹검색·최신자료 확인을 요청하면 "외부검색 기능이 없다/하지 않는다"고 답하지 말고, 화면의 [최신자료 확인] 버튼으로 요청할 수 있다고 짧게 안내한 뒤 기록 기반으로 답한다.',
       '개인 기록에 관한 사실(사용자가 무엇을 했는지, 느꼈는지, 누구를 만났는지, 무엇을 좋아했는지 등)은 반드시 결과물에 근거해 답하고, 결과물에 없으면 없다고 말한다.',
       '결과물에 등장한 책, 작품, 장소, 인물, 음식, 역사, 문화 등에 관한 안정적인 일반지식은 결과물에 직접 적혀 있지 않아도 답할 수 있다.',
       '일반지식을 답할 때는 기록에서 확인되는 내용과 일반적으로 알려진 내용을 필요하면 짧게 구분한다.',
