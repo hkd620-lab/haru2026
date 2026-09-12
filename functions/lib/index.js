@@ -4032,7 +4032,7 @@ ${text}`;
     }
 }
 // ===== 🟡 카카오 로그인 시작 =====
-exports.kakaoLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3', secrets: [KAKAO_CLIENT_ID_SECRET, KAKAO_CLIENT_SECRET_SECRET] }, async (req, res) => {
+exports.kakaoLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3', memory: '512MiB', secrets: [KAKAO_CLIENT_ID_SECRET, KAKAO_CLIENT_SECRET_SECRET] }, async (req, res) => {
     try {
         const state = crypto.randomBytes(32).toString('hex');
         await db.collection('oauth_states').doc(state).set({
@@ -4054,7 +4054,7 @@ exports.kakaoLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3', se
     }
 });
 // ===== 🟡 카카오 콜백 (통합 UID 적용) =====
-exports.kakaoCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', secrets: [KAKAO_CLIENT_ID_SECRET, KAKAO_CLIENT_SECRET_SECRET] }, async (req, res) => {
+exports.kakaoCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', memory: '512MiB', secrets: [KAKAO_CLIENT_ID_SECRET, KAKAO_CLIENT_SECRET_SECRET] }, async (req, res) => {
     var _a, _b, _c, _d, _f;
     try {
         const callbackStartedAt = Date.now();
@@ -4140,7 +4140,7 @@ exports.kakaoCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', secr
     }
 });
 // ===== 🟢 네이버 로그인 시작 =====
-exports.naverLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3', secrets: [NAVER_CLIENT_ID_SECRET, NAVER_CLIENT_SECRET_SECRET] }, async (req, res) => {
+exports.naverLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3', memory: '512MiB', secrets: [NAVER_CLIENT_ID_SECRET, NAVER_CLIENT_SECRET_SECRET] }, async (req, res) => {
     try {
         const state = crypto.randomBytes(32).toString('hex');
         await db.collection('oauth_states').doc(state).set({
@@ -4161,7 +4161,7 @@ exports.naverLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3', se
     }
 });
 // ===== 🟢 네이버 콜백 (통합 UID 적용) =====
-exports.naverCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', secrets: [NAVER_CLIENT_ID_SECRET, NAVER_CLIENT_SECRET_SECRET] }, async (req, res) => {
+exports.naverCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', memory: '512MiB', secrets: [NAVER_CLIENT_ID_SECRET, NAVER_CLIENT_SECRET_SECRET] }, async (req, res) => {
     try {
         const callbackStartedAt = Date.now();
         const timings = {};
@@ -4217,6 +4217,7 @@ exports.naverCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', secr
 // ===== 🔵 구글 로그인 시작 =====
 exports.googleLoginStart = (0, https_1.onRequest)({
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GOOGLE_CLIENT_ID_SECRET, GOOGLE_CLIENT_SECRET_SECRET] // 🔐 Secret 연결
 }, async (req, res) => {
     try {
@@ -4244,6 +4245,7 @@ exports.googleLoginStart = (0, https_1.onRequest)({
 // ===== 🔵 구글 콜백 (통합 UID 적용) =====
 exports.googleCallback = (0, https_1.onRequest)({
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GOOGLE_CLIENT_ID_SECRET, GOOGLE_CLIENT_SECRET_SECRET] // 🔐 Secret 연결
 }, async (req, res) => {
     try {
@@ -10289,6 +10291,7 @@ JSON 형식으로만 출력하세요 (다른 설명 없이):
 });
 exports.getCustomToken = (0, https_2.onCall)({
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [COLLECTOR_SECRET_KEY],
 }, async (request) => {
     var _a;
@@ -12355,7 +12358,7 @@ exports.startOneDriveConnect = (0, https_2.onCall)({ region: 'asia-northeast3', 
     return { authUrl: `${ONEDRIVE_AUTH_URL}?${params.toString()}` };
 });
 // 2) OAuth callback — Microsoft 가 호출 → token 교환 → 폴더 생성 → Firestore 저장 → 프론트 redirect
-exports.oneDriveCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', timeoutSeconds: 60, secrets: [MICROSOFT_CLIENT_ID_SECRET, MICROSOFT_CLIENT_SECRET_SECRET] }, async (req, res) => {
+exports.oneDriveCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', memory: '512MiB', timeoutSeconds: 60, secrets: [MICROSOFT_CLIENT_ID_SECRET, MICROSOFT_CLIENT_SECRET_SECRET] }, async (req, res) => {
     var _a, _b, _c, _d, _f;
     try {
         const env = getOneDriveEnv();
