@@ -23,6 +23,9 @@ assert(authCallbackSrc.includes('callbackInProgressKeys.has(callbackKey) || isCa
 assert(authCallbackSrc.includes("failLoginTrace('provider_error_param', 'provider_redirect_error', provider)"));
 assert(authCallbackSrc.includes("failLoginTrace('missing_custom_token', 'missing_custom_token', provider)"));
 assert(authCallbackSrc.includes("errorType === 'firebase_auth_error' ? 'firebase_custom_token_sign_in' : 'callback_processing'"));
+assert(authCallbackSrc.includes('rememberLoginProviderLocally(userCredential.user.uid, provider);'));
+assert(!authCallbackSrc.includes("from 'firebase/firestore'"));
+assert(!authCallbackSrc.includes('loginProviderUpdatedAt'));
 assert(!authCallbackSrc.includes('console.error(\'Firebase 로그인 실패:\', error)'));
 
 assert(homeSrc.includes('const isPersonalizationPending = !effectivePersonalizationLoaded && homeViewMode === \'my\';'));

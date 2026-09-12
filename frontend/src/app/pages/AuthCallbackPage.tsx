@@ -1,10 +1,9 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { signInWithCustomToken } from 'firebase/auth';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { auth, db } from '../config/firebase';
+import { auth } from '../config/firebase';
 import { toast } from 'sonner';
-import { normalizeLoginProvider } from '../utils/loginProvider';
+import { normalizeLoginProvider, rememberLoginProviderLocally } from '../utils/loginProvider';
 import { failLoginTrace, markLoginTrace } from '../utils/loginPerformance';
 
 const callbackInProgressKeys = new Set<string>();
@@ -114,16 +113,7 @@ export function AuthCallbackPage() {
           markLoginTrace('T3_firebase_sign_in_complete');
           rememberCompletedCallback(callbackKey);
           if (provider) {
-            void setDoc(
-              doc(db, 'users', userCredential.user.uid),
-              {
-                loginProvider: provider,
-                loginProviderUpdatedAt: serverTimestamp(),
-              },
-              { merge: true },
-            ).catch((providerSaveError) => {
-              console.error('로그인 제공자 저장 실패:', providerSaveError);
-            });
+            rememberLoginProviderLocally(userCredential.user.uid, provider);
           }
 
           toast.success('로그인 성공!');

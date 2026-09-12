@@ -20,7 +20,13 @@ import { doc, onSnapshot, setDoc, serverTimestamp, Timestamp } from 'firebase/fi
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { auth, db } from '../config/firebase';
 import { cleanupDuplicateTokens } from '../services/notificationService';
-import { LoginProvider, mergeProviderIds, normalizeLoginProvider } from '../utils/loginProvider';
+import {
+  LoginProvider,
+  mergeProviderIds,
+  normalizeLoginProvider,
+  readRememberedLoginProvider,
+  rememberLoginProviderLocally,
+} from '../utils/loginProvider';
 import { markLoginTrace } from '../utils/loginPerformance';
 
 // LoginPage.tsx의 회원가입 동의와 동일한 버전 문자열 — 약관 개정 시 재동의 대상을 가려낼 때 사용
@@ -63,30 +69,27 @@ function clearLegacySocialUserCache() {
   localStorage.removeItem(NAVER_USER_KEY);
 }
 
-async function rememberLoginProvider(uid: string, provider: LoginProvider) {
-  try {
-    await setDoc(
-      doc(db, 'users', uid),
-      {
-        loginProvider: provider,
-        loginProviderUpdatedAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
-  } catch (error) {
-    console.error('Login provider save error:', error);
-  }
+function rememberLoginProvider(uid: string, provider: LoginProvider) {
+  rememberLoginProviderLocally(uid, provider);
 }
 
-const mapUser = (user: FirebaseUser): LocalUser => ({
-  uid: user.uid,
-  email: user.email ?? null,
-  displayName: user.displayName ?? user.email?.split('@')[0] ?? 'User',
-  photoURL: user.photoURL ?? null,
-  providerId: normalizeLoginProvider(user.providerData[0]?.providerId) ?? user.providerData[0]?.providerId ?? 'custom',
-  providerIds: user.providerData.map((provider) => normalizeLoginProvider(provider.providerId) ?? provider.providerId),
-  emailVerified: user.emailVerified,
-});
+const mapUser = (user: FirebaseUser): LocalUser => {
+  const rememberedProvider = readRememberedLoginProvider(user.uid);
+  const providerIds = user.providerData.map((provider) => (
+    normalizeLoginProvider(provider.providerId) ?? provider.providerId
+  ));
+  const normalizedPrimaryProvider = normalizeLoginProvider(user.providerData[0]?.providerId);
+
+  return {
+    uid: user.uid,
+    email: user.email ?? null,
+    displayName: user.displayName ?? user.email?.split('@')[0] ?? 'User',
+    photoURL: user.photoURL ?? null,
+    providerId: normalizedPrimaryProvider ?? rememberedProvider ?? user.providerData[0]?.providerId ?? 'custom',
+    providerIds: rememberedProvider ? mergeProviderIds(providerIds, rememberedProvider) : providerIds,
+    emailVerified: user.emailVerified,
+  };
+};
 
 function getAuthErrorMessage(error: any): string {
   const code = error?.code || '';
@@ -408,7 +411,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const result = await getRedirectResult(auth);
         if (result?.user) {
           markLoginTrace('T3_firebase_sign_in_complete');
-          void rememberLoginProvider(result.user.uid, 'google');
+          rememberLoginProvider(result.user.uid, 'google');
           setUser(mapUser(result.user));
           setLoading(false);
           return;
@@ -467,7 +470,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       userRef,
       (snap) => {
         const data = snap.data();
-        const loginProvider = normalizeLoginProvider(data?.loginProvider);
+        const loginProvider = normalizeLoginProvider(data?.loginProvider) ?? readRememberedLoginProvider(user.uid);
         if (loginProvider) {
           setUser((currentUser) => currentUser?.uid === user.uid
             ? {
@@ -499,7 +502,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
-      void rememberLoginProvider(userCredential.user.uid, 'password');
+      rememberLoginProvider(userCredential.user.uid, 'password');
     } catch (error: any) {
       console.error('Sign in error:', error);
       throw new Error(getAuthErrorMessage(error));
@@ -518,7 +521,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (verificationError) {
         console.error('Verification email send error:', verificationError);
       }
-      await rememberLoginProvider(userCredential.user.uid, 'password');
+      rememberLoginProvider(userCredential.user.uid, 'password');
       return { user: mapUser(userCredential.user) };
     } catch (error: any) {
       console.error('Sign up error:', error);
@@ -577,7 +580,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const provider = new GoogleAuthProvider();
       if (import.meta.env.DEV) {
         const userCredential = await signInWithPopup(auth, provider);
-        void rememberLoginProvider(userCredential.user.uid, 'google');
+        rememberLoginProvider(userCredential.user.uid, 'google');
       } else {
         await signInWithRedirect(auth, provider);
       }
@@ -609,7 +612,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emailVerified: true,
       };
 
-      await rememberLoginProvider(kakaoUser.uid, 'kakao');
+      rememberLoginProvider(kakaoUser.uid, 'kakao');
       setUser(localUser);
     } catch (error: any) {
       console.error('Kakao sign in error:', error);
@@ -639,7 +642,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emailVerified: true,
       };
 
-      await rememberLoginProvider(naverUser.uid, 'naver');
+      rememberLoginProvider(naverUser.uid, 'naver');
       setUser(localUser);
     } catch (error: any) {
       console.error('Naver sign in error:', error);
