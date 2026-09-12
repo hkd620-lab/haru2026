@@ -245,18 +245,20 @@ const RESULT_CHAT_HIGH_RISK_PATTERNS = [
 // 사용자가 명시적으로 외부검색·웹검색을 요청하는 질문(기록 종류 정책과 무관하게 적용).
 // RESULT_CHAT_RECORD_ONLY_PATTERNS보다 먼저 판정해야 "내가 먹은 음식을 외부검색으로 알려줘"처럼
 // 기록전용 패턴("내가...먹은")에 먼저 걸려 명시적 검색 요청이 가려지는 것을 막을 수 있다.
+// "찾아줘" 단독은 기록 조회 요청으로도 흔하므로 외부 맥락(외부/웹/인터넷/온라인)이 있을 때만 잡는다.
 const RESULT_CHAT_EXPLICIT_SEARCH_REQUEST_PATTERNS = [
   /외부\s*검색/,
   /웹\s*검색/,
   /인터넷\s*(검색|찾아|에서)/,
   /구글(링)?/,
-  /검색\s*(해서|해\s*줘|해줘|으로|을\s*통해)/,
-  /찾아\s*(봐|줘|보고)/,
-  /최신\s*(자료|정보)\s*(로|으로|확인)/,
   /온라인\s*(에서|으로)/,
+  /최신\s*(자료|정보)\s*(로|으로|확인)/,
+  /(외부|웹|인터넷|온라인)(에서|으로|을\s*통해)?\s*찾아/,
+  /검색\s*(해서|해\s*줘|해줘|으로|을\s*통해)/,
 ];
-// "내 기록에서/나의 일기에서 검색해줘"처럼 기록 내부 검색을 뜻하는 표현은 위 패턴에서 제외한다.
-const RESULT_CHAT_INTERNAL_SEARCH_EXCLUDE_PATTERN = /(내|나의|이)\s*(기록|일기|결과)(에서|으로)\s*.*검색/;
+// 기록·일기·결과·메모·대화를 언급하면서 외부 키워드가 없는 질문은 기록 내부 검색으로 본다.
+const RESULT_CHAT_INTERNAL_SEARCH_CONTEXT_PATTERN = /(기록|일기|결과|메모|대화|내용)/;
+const RESULT_CHAT_EXTERNAL_KEYWORD_PATTERN = /(외부|웹|인터넷|온라인|구글|최신)/;
 
 const RESULT_CHAT_AMBIGUOUS_EXTERNAL_PATTERNS = [
   /(물|비료|햇빛|분갈이|가지치기).*(얼마|언제|어떻게|줘|주면|해야)/,
@@ -281,11 +283,13 @@ function classifyResultChatByRules(question: string, policy: ResultChatSourcePol
   if (hasAnyResultChatPattern(normalized, RESULT_CHAT_HIGH_RISK_PATTERNS)) {
     return { route: 'high_risk_guidance', reasonCode: 'high_risk', confidence: 0.9 };
   }
+  // 명시적 외부검색 요청 → 답변 전에 사용자에게 확인(ambiguous 게이트: "나의 기록으로 답변"/"최신자료 확인" 둘 다 제공).
+  // web_search 게이트는 "나의 기록으로 답변" 버튼이 없어(ResultChatModal.tsx) 오탐 시 사용자가 빠져나갈 길이 없으므로 ambiguous를 쓴다.
   if (
     hasAnyResultChatPattern(normalized, RESULT_CHAT_EXPLICIT_SEARCH_REQUEST_PATTERNS) &&
-    !RESULT_CHAT_INTERNAL_SEARCH_EXCLUDE_PATTERN.test(normalized)
+    !(RESULT_CHAT_INTERNAL_SEARCH_CONTEXT_PATTERN.test(normalized) && !RESULT_CHAT_EXTERNAL_KEYWORD_PATTERN.test(normalized))
   ) {
-    return { route: 'web_search', reasonCode: 'current_fact', confidence: 0.9 };
+    return { route: 'ambiguous', reasonCode: 'unclear', confidence: 0.85 };
   }
   if (hasAnyResultChatPattern(normalized, RESULT_CHAT_RECORD_ONLY_PATTERNS)) {
     return { route: 'record_only', reasonCode: 'record_analysis', confidence: 0.88 };
