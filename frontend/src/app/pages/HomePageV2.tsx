@@ -722,11 +722,10 @@ export function HomePageV2() {
   }, [authLoading, currentUserUid]);
 
   useEffect(() => {
-    if (authLoading || !user?.uid || !onboardingGateReady) return;
-    markLoginTrace('T5_home_data_ready');
-    const frameId = window.requestAnimationFrame(() => finishLoginTrace('T6_home_interactive'));
+    if (authLoading || !user?.uid) return;
+    const frameId = window.requestAnimationFrame(() => markLoginTrace('T8_home_first_render'));
     return () => window.cancelAnimationFrame(frameId);
-  }, [authLoading, onboardingGateReady, user?.uid]);
+  }, [authLoading, user?.uid]);
 
   const openTimelineModal = () => {
     if (!user?.uid) {
@@ -766,6 +765,11 @@ export function HomePageV2() {
     : visibleAgents.filter((agent) => selectedAgentSet.has(getAgentKey(agent)));
   const isMyHaruEmpty = effectivePersonalizationLoaded && homeViewMode === 'my' && hasPersonalizedHome && homeRecords.length === 0 && homeAgents.length === 0;
 
+  useEffect(() => {
+    if (authLoading || !user?.uid || !onboardingGateReady || !effectivePersonalizationLoaded) return;
+    finishLoginTrace('T9_home_core_data_ready');
+  }, [authLoading, effectivePersonalizationLoaded, onboardingGateReady, user?.uid]);
+
   const saveHomePersonalization = async (selection: {
     selectedRecordFormats: string[];
     selectedAgents: string[];
@@ -795,7 +799,7 @@ export function HomePageV2() {
     }
   };
 
-  if (authLoading || !onboardingGateReady) {
+  if (authLoading) {
     return (
       <div
         className="min-h-screen"

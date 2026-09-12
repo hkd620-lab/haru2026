@@ -488,11 +488,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setPendingDeletion(null);
         }
         setNeedsConsent(!data?.consents);
+        markLoginTrace('T5_user_doc_ready');
+        markLoginTrace('T6_required_access_ready');
       },
       (error) => {
         console.error('사용자 인증 상태 문서 구독 실패:', error);
         setPendingDeletion(null);
         setNeedsConsent(false);
+        markLoginTrace('T5_user_doc_ready');
+        markLoginTrace('T6_required_access_ready');
       },
     );
 
