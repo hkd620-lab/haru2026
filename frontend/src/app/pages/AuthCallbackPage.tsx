@@ -117,6 +117,7 @@ export function AuthCallbackPage() {
           }
 
           toast.success('로그인 성공!');
+          markLoginTrace('T7_home_route_start');
           navigate('/', { replace: true });
         } finally {
           callbackInProgressKeys.delete(callbackKey);

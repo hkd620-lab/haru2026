@@ -6,8 +6,11 @@ type LoginTraceStep =
   | 'T2_callback_arrived'
   | 'T3_firebase_sign_in_complete'
   | 'T4_auth_state_settled'
-  | 'T5_home_data_ready'
-  | 'T6_home_interactive';
+  | 'T5_user_doc_ready'
+  | 'T6_required_access_ready'
+  | 'T7_home_route_start'
+  | 'T8_home_first_render'
+  | 'T9_home_core_data_ready';
 
 type LoginFailureStage =
   | 'provider_error_param'
@@ -42,8 +45,11 @@ const ORDERED_STEPS: LoginTraceStep[] = [
   'T2_callback_arrived',
   'T3_firebase_sign_in_complete',
   'T4_auth_state_settled',
-  'T5_home_data_ready',
-  'T6_home_interactive',
+  'T5_user_doc_ready',
+  'T6_required_access_ready',
+  'T7_home_route_start',
+  'T8_home_first_render',
+  'T9_home_core_data_ready',
 ];
 
 function canUseStorage() {
@@ -180,7 +186,7 @@ export function markLoginTrace(step: LoginTraceStep) {
   return trace;
 }
 
-export function finishLoginTrace(step: LoginTraceStep = 'T6_home_interactive') {
+export function finishLoginTrace(step: LoginTraceStep = 'T9_home_core_data_ready') {
   const trace = markLoginTrace(step);
   if (!trace) return;
   persistLastTrace(trace);
