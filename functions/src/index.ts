@@ -3858,6 +3858,7 @@ async function loadHaruLawAttachmentParts(
 export const chatWithResult = onCall(
   {
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 90,
   },
