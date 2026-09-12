@@ -8,10 +8,17 @@ import HaruNewsPreview from '../components/HaruNewsPreview';
 import { InAppBrowserLoginGuide } from '../components/InAppBrowserLoginGuide';
 import { getInAppBrowserInfo, type InAppBrowserInfo } from '../utils/inAppBrowser';
 import { db } from '../config/firebase';
+import { beginLoginTrace, markLoginTrace } from '../utils/loginPerformance';
+import type { LoginProvider } from '../utils/loginProvider';
 
 // 회원가입 동의 시점에 기록해두는 약관/방침 버전 — 추후 개정 시 재동의 대상을 가려낼 때 사용
 const TERMS_VERSION = '2026-08-20';
 const PRIVACY_VERSION = '2026-08-20';
+const SOCIAL_LOGIN_URLS: Record<Extract<LoginProvider, 'google' | 'kakao' | 'naver'>, string> = {
+  google: 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/googleLoginStart',
+  kakao: 'https://kakaologinstart-6ieesxet3q-du.a.run.app',
+  naver: 'https://naverloginstart-6ieesxet3q-du.a.run.app',
+};
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -78,11 +85,15 @@ export function LoginPage() {
 
   // Google 로그인 - dev: Firebase SDK popup / prod: Cloud Functions 흐름
   const handleGoogleLogin = async () => {
+    if (isLoading) return;
     if (guardInAppBrowserLogin()) return;
     setIsLoading(true);
+    beginLoginTrace('google');
     if (import.meta.env.DEV) {
       try {
+        markLoginTrace('T1_provider_redirect_requested');
         await googleSignIn();
+        markLoginTrace('T3_firebase_sign_in_complete');
         navigate('/');
       } catch (e: any) {
         console.error('[dev] Google login failed:', e);
@@ -91,27 +102,28 @@ export function LoginPage() {
       }
       return;
     }
-    setTimeout(() => {
-      window.location.href = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/googleLoginStart';
-    }, 1500);
+    markLoginTrace('T1_provider_redirect_requested');
+    window.location.assign(SOCIAL_LOGIN_URLS.google);
   };
 
   // 카카오 로그인
   const handleKakaoLogin = () => {
+    if (isLoading) return;
     if (guardInAppBrowserLogin()) return;
     setIsLoading(true);
-    setTimeout(() => {
-      window.location.href = 'https://kakaologinstart-6ieesxet3q-du.a.run.app';
-    }, 1500);
+    beginLoginTrace('kakao');
+    markLoginTrace('T1_provider_redirect_requested');
+    window.location.assign(SOCIAL_LOGIN_URLS.kakao);
   };
 
   // 네이버 로그인
   const handleNaverLogin = () => {
+    if (isLoading) return;
     if (guardInAppBrowserLogin()) return;
     setIsLoading(true);
-    setTimeout(() => {
-      window.location.href = 'https://naverloginstart-6ieesxet3q-du.a.run.app';
-    }, 1500);
+    beginLoginTrace('naver');
+    markLoginTrace('T1_provider_redirect_requested');
+    window.location.assign(SOCIAL_LOGIN_URLS.naver);
   };
 
   const handleEmailSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -266,6 +278,7 @@ export function LoginPage() {
                 {/* 카카오 로그인 */}
                 <button
                   onClick={handleKakaoLogin}
+                  disabled={isLoading}
                   className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-90"
                   style={{
                     backgroundColor: '#FEE500',
@@ -282,6 +295,7 @@ export function LoginPage() {
                 {/* 네이버 로그인 */}
                 <button
                   onClick={handleNaverLogin}
+                  disabled={isLoading}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-all hover:opacity-90"
                   style={{
                     backgroundColor: '#03A94D',

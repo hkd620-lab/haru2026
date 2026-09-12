@@ -64,6 +64,7 @@ const englishBibleWordMeaning_1 = require("./englishBibleWordMeaning");
 const PortOne = __importStar(require("@portone/server-sdk"));
 const monthlyAiQuota_1 = require("./utils/monthlyAiQuota");
 const internalEntitlements_1 = require("./internalEntitlements");
+const oauthStateCore_1 = require("./oauthStateCore");
 // 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
 const genai_1 = require("@google/genai");
 // HARU가계부 카카오뱅크 XLSX 잠금 해제 전용 (msoffcrypto-tool TS 포트)
@@ -278,6 +279,34 @@ const HARU_DRIVE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfun
 const ONEDRIVE_REDIRECT_URI = 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/oneDriveCallback';
 const ONEDRIVE_OAUTH_SCOPE = 'offline_access Files.ReadWrite User.Read';
 const db = admin.firestore();
+const OAUTH_TOKEN_TIMEOUT_MS = 10000;
+const OAUTH_PROFILE_TIMEOUT_MS = 8000;
+async function consumeLoginOAuthState(state, provider) {
+    return (0, oauthStateCore_1.consumeLoginOAuthStateWithDb)(db, state, provider);
+}
+async function measureOAuthPhase(timings, phase, task) {
+    const startedAt = Date.now();
+    try {
+        return await task();
+    }
+    finally {
+        timings[phase] = Date.now() - startedAt;
+    }
+}
+function logOAuthCallbackCompleted(provider, startedAt, timings) {
+    logger.info('OAuth callback completed', {
+        provider,
+        totalMs: Date.now() - startedAt,
+        ...timings,
+    });
+}
+function buildFrontendAuthCallbackUrl(customToken, provider) {
+    const params = new URLSearchParams({ customToken, provider });
+    return `${FRONTEND_URL}/auth/callback#${params.toString()}`;
+}
+function buildLoginErrorRedirect(provider) {
+    return `${FRONTEND_URL}/login?error=${provider}_login_failed`;
+}
 const HARU_PORTONE_STORE_ID = 'store-d9310c4a-b5e8-4f6e-9e92-88e6b119e838';
 const HARU_INICIS_PROVIDER = 'kg_inicis';
 const HARU_INICIS_CARD_PAY_METHOD = 'kg_inicis_card';
@@ -1727,16 +1756,16 @@ async function getOrCreateUnifiedUid(email, provider) {
         if (emailDoc.exists) {
             // 기존 매핑 반환
             const data = emailDoc.data();
-            console.log(`✅ 매핑된 UID 사용: ${data === null || data === void 0 ? void 0 : data.uid} (이메일: ${normalizedEmail})`);
+            logger.info('OAuth UID mapping hit', { provider });
             return data === null || data === void 0 ? void 0 : data.uid;
         }
         // 3. 기존 사용자 데이터 검색 (naver_xxx, kakao_xxx, BBPe... 등)
-        console.log(`🔍 기존 사용자 검색 중... (이메일: ${normalizedEmail})`);
+        logger.info('OAuth UID mapping miss; checking Firebase Auth user', { provider });
         try {
             // Firebase Auth에서 이메일로 사용자 검색
             const userRecord = await admin.auth().getUserByEmail(normalizedEmail);
             if (userRecord && userRecord.uid) {
-                console.log(`✅ 기존 UID 발견: ${userRecord.uid} (이메일: ${normalizedEmail})`);
+                logger.info('OAuth Firebase Auth user matched by email', { provider });
                 // 매핑 저장
                 await db.collection('email_to_uid').doc(normalizedEmail).set({
                     uid: userRecord.uid,
@@ -1764,11 +1793,14 @@ async function getOrCreateUnifiedUid(email, provider) {
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             firstProvider: provider,
         });
-        console.log(`✨ 새 통합 UID 생성: ${unifiedUid} (이메일: ${normalizedEmail}, provider: ${provider})`);
+        logger.info('OAuth unified UID created', { provider });
         return unifiedUid;
     }
     catch (error) {
-        console.error('❌ 통합 UID 생성/조회 실패:', error);
+        logger.error('OAuth unified UID lookup failed', {
+            provider,
+            message: error instanceof Error ? error.message : String(error),
+        });
         throw error;
     }
 }
@@ -4025,19 +4057,14 @@ exports.kakaoLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3', se
 exports.kakaoCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', secrets: [KAKAO_CLIENT_ID_SECRET, KAKAO_CLIENT_SECRET_SECRET] }, async (req, res) => {
     var _a, _b, _c, _d, _f;
     try {
+        const callbackStartedAt = Date.now();
+        const timings = {};
         const { code, state } = req.query;
         if (!code || typeof code !== 'string')
             throw new Error('Invalid code');
         if (!state || typeof state !== 'string')
             throw new Error('Invalid state');
-        const stateDoc = await db.collection('oauth_states').doc(state).get();
-        if (!stateDoc.exists)
-            throw new Error('State not found');
-        const stateData = stateDoc.data();
-        if ((stateData === null || stateData === void 0 ? void 0 : stateData.expiresAt.toMillis()) < Date.now()) {
-            throw new Error('State expired');
-        }
-        await stateDoc.ref.delete();
+        await measureOAuthPhase(timings, 'stateMs', () => consumeLoginOAuthState(state, 'kakao'));
         const kakaoTokenParams = {
             grant_type: 'authorization_code',
             client_id: KAKAO_CLIENT_ID_SECRET.value().trim(),
@@ -4050,12 +4077,13 @@ exports.kakaoCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', secr
         }
         let tokenResponse;
         try {
-            tokenResponse = await axios_1.default.post('https://kauth.kakao.com/oauth/token', null, {
+            tokenResponse = await measureOAuthPhase(timings, 'tokenMs', () => axios_1.default.post('https://kauth.kakao.com/oauth/token', null, {
                 params: kakaoTokenParams,
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
-            });
+                timeout: OAUTH_TOKEN_TIMEOUT_MS,
+            }));
         }
         catch (tokenError) {
             const data = axios_1.default.isAxiosError(tokenError) ? (_a = tokenError.response) === null || _a === void 0 ? void 0 : _a.data : null;
@@ -4064,19 +4092,23 @@ exports.kakaoCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', secr
                 (data === null || data === void 0 ? void 0 : data.error) === 'invalid_client') {
                 logger.warn('카카오 client_secret 거절됨. client_secret 없이 토큰 교환 재시도');
                 const { client_secret, ...retryParams } = kakaoTokenParams;
-                tokenResponse = await axios_1.default.post('https://kauth.kakao.com/oauth/token', null, {
+                tokenResponse = await measureOAuthPhase(timings, 'tokenRetryMs', () => axios_1.default.post('https://kauth.kakao.com/oauth/token', null, {
                     params: retryParams,
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                     },
-                });
+                    timeout: OAUTH_TOKEN_TIMEOUT_MS,
+                }));
             }
             else {
                 throw tokenError;
             }
         }
         const { access_token } = tokenResponse.data;
-        const userResponse = await axios_1.default.get('https://kapi.kakao.com/v2/user/me', { headers: { Authorization: `Bearer ${access_token}` } });
+        const userResponse = await measureOAuthPhase(timings, 'profileMs', () => axios_1.default.get('https://kapi.kakao.com/v2/user/me', {
+            headers: { Authorization: `Bearer ${access_token}` },
+            timeout: OAUTH_PROFILE_TIMEOUT_MS,
+        }));
         const kakaoUser = userResponse.data;
         if (!kakaoUser.id) {
             throw new Error('카카오 사용자 ID를 가져올 수 없습니다');
@@ -4084,24 +4116,27 @@ exports.kakaoCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', secr
         const email = ((_c = kakaoUser.kakao_account) === null || _c === void 0 ? void 0 : _c.email) || `kakao_${kakaoUser.id}@placeholder.local`;
         const displayName = ((_f = (_d = kakaoUser.kakao_account) === null || _d === void 0 ? void 0 : _d.profile) === null || _f === void 0 ? void 0 : _f.nickname) || `kakao_user_${kakaoUser.id}`;
         // 🔑 통합 UID 생성/조회
-        const uid = await getOrCreateUnifiedUid(email, 'kakao');
+        const uid = await measureOAuthPhase(timings, 'uidMs', () => getOrCreateUnifiedUid(email, 'kakao'));
         // photoURL 완전히 제거 - 카카오는 photoURL 없이 생성
-        try {
-            await admin.auth().updateUser(uid, { email, displayName });
-        }
-        catch (error) {
-            if (error.code === 'auth/user-not-found') {
-                await admin.auth().createUser({ uid, email, displayName });
+        await measureOAuthPhase(timings, 'authUserMs', async () => {
+            try {
+                await admin.auth().updateUser(uid, { email, displayName });
             }
-            else
-                throw error;
-        }
-        const customToken = await admin.auth().createCustomToken(uid);
-        res.redirect(`${FRONTEND_URL}/auth/callback?customToken=${customToken}&provider=kakao`);
+            catch (error) {
+                if (error.code === 'auth/user-not-found') {
+                    await admin.auth().createUser({ uid, email, displayName });
+                }
+                else
+                    throw error;
+            }
+        });
+        const customToken = await measureOAuthPhase(timings, 'customTokenMs', () => admin.auth().createCustomToken(uid));
+        logOAuthCallbackCompleted('kakao', callbackStartedAt, timings);
+        res.redirect(buildFrontendAuthCallbackUrl(customToken, 'kakao'));
     }
     catch (error) {
         logger.error('❌ 카카오 콜백 실패:', getSafeOAuthError(error));
-        res.redirect(`${FRONTEND_URL}/login?error=kakao_login_failed`);
+        res.redirect(buildLoginErrorRedirect('kakao'));
     }
 });
 // ===== 🟢 네이버 로그인 시작 =====
@@ -4128,18 +4163,15 @@ exports.naverLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3', se
 // ===== 🟢 네이버 콜백 (통합 UID 적용) =====
 exports.naverCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', secrets: [NAVER_CLIENT_ID_SECRET, NAVER_CLIENT_SECRET_SECRET] }, async (req, res) => {
     try {
+        const callbackStartedAt = Date.now();
+        const timings = {};
         const { code, state } = req.query;
+        if (!code || typeof code !== 'string')
+            throw new Error('Invalid code');
         if (!state || typeof state !== 'string')
             throw new Error('Invalid state');
-        const stateDoc = await db.collection('oauth_states').doc(state).get();
-        if (!stateDoc.exists)
-            throw new Error('State not found');
-        const stateData = stateDoc.data();
-        if ((stateData === null || stateData === void 0 ? void 0 : stateData.expiresAt.toMillis()) < Date.now()) {
-            throw new Error('State expired');
-        }
-        await stateDoc.ref.delete();
-        const tokenResponse = await axios_1.default.post('https://nid.naver.com/oauth2.0/token', null, {
+        await measureOAuthPhase(timings, 'stateMs', () => consumeLoginOAuthState(state, 'naver'));
+        const tokenResponse = await measureOAuthPhase(timings, 'tokenMs', () => axios_1.default.post('https://nid.naver.com/oauth2.0/token', null, {
             params: {
                 grant_type: 'authorization_code',
                 client_id: NAVER_CLIENT_ID_SECRET.value().trim(),
@@ -4148,31 +4180,38 @@ exports.naverCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', secr
                 code,
                 state,
             },
-        });
+            timeout: OAUTH_TOKEN_TIMEOUT_MS,
+        }));
         const { access_token } = tokenResponse.data;
-        const userResponse = await axios_1.default.get('https://openapi.naver.com/v1/nid/me', { headers: { Authorization: `Bearer ${access_token}` } });
+        const userResponse = await measureOAuthPhase(timings, 'profileMs', () => axios_1.default.get('https://openapi.naver.com/v1/nid/me', {
+            headers: { Authorization: `Bearer ${access_token}` },
+            timeout: OAUTH_PROFILE_TIMEOUT_MS,
+        }));
         const naverUser = userResponse.data.response;
         const email = naverUser.email || `naver_${naverUser.id}@placeholder.local`;
         const displayName = naverUser.name || `naver_user_${naverUser.id}`;
         // 🔑 통합 UID 생성/조회
-        const uid = await getOrCreateUnifiedUid(email, 'naver');
+        const uid = await measureOAuthPhase(timings, 'uidMs', () => getOrCreateUnifiedUid(email, 'naver'));
         // photoURL 완전히 제거 - 네이버는 photoURL 없이 생성
-        try {
-            await admin.auth().updateUser(uid, { email, displayName });
-        }
-        catch (error) {
-            if (error.code === 'auth/user-not-found') {
-                await admin.auth().createUser({ uid, email, displayName });
+        await measureOAuthPhase(timings, 'authUserMs', async () => {
+            try {
+                await admin.auth().updateUser(uid, { email, displayName });
             }
-            else
-                throw error;
-        }
-        const customToken = await admin.auth().createCustomToken(uid);
-        res.redirect(`${FRONTEND_URL}/auth/callback?customToken=${customToken}&provider=naver`);
+            catch (error) {
+                if (error.code === 'auth/user-not-found') {
+                    await admin.auth().createUser({ uid, email, displayName });
+                }
+                else
+                    throw error;
+            }
+        });
+        const customToken = await measureOAuthPhase(timings, 'customTokenMs', () => admin.auth().createCustomToken(uid));
+        logOAuthCallbackCompleted('naver', callbackStartedAt, timings);
+        res.redirect(buildFrontendAuthCallbackUrl(customToken, 'naver'));
     }
     catch (error) {
-        console.error('❌ 네이버 콜백 실패:', error);
-        res.redirect(`${FRONTEND_URL}/login?error=${encodeURIComponent(error.message)}`);
+        logger.error('❌ 네이버 콜백 실패:', getSafeOAuthError(error));
+        res.redirect(buildLoginErrorRedirect('naver'));
     }
 });
 // ===== 🔵 구글 로그인 시작 =====
@@ -4208,50 +4247,55 @@ exports.googleCallback = (0, https_1.onRequest)({
     secrets: [GOOGLE_CLIENT_ID_SECRET, GOOGLE_CLIENT_SECRET_SECRET] // 🔐 Secret 연결
 }, async (req, res) => {
     try {
+        const callbackStartedAt = Date.now();
+        const timings = {};
         const GOOGLE_CLIENT_ID = GOOGLE_CLIENT_ID_SECRET.value(); // 🔐 Secret 값 사용
         const GOOGLE_CLIENT_SECRET = GOOGLE_CLIENT_SECRET_SECRET.value(); // 🔐 Secret 값 사용
         const { code, state } = req.query;
+        if (!code || typeof code !== 'string')
+            throw new Error('Invalid code');
         if (!state || typeof state !== 'string')
             throw new Error('Invalid state');
-        const stateDoc = await db.collection('oauth_states').doc(state).get();
-        if (!stateDoc.exists)
-            throw new Error('State not found');
-        const stateData = stateDoc.data();
-        if ((stateData === null || stateData === void 0 ? void 0 : stateData.expiresAt.toMillis()) < Date.now()) {
-            throw new Error('State expired');
-        }
-        await stateDoc.ref.delete();
-        const tokenResponse = await axios_1.default.post('https://oauth2.googleapis.com/token', {
+        await measureOAuthPhase(timings, 'stateMs', () => consumeLoginOAuthState(state, 'google'));
+        const tokenResponse = await measureOAuthPhase(timings, 'tokenMs', () => axios_1.default.post('https://oauth2.googleapis.com/token', {
             code,
             client_id: GOOGLE_CLIENT_ID,
             client_secret: GOOGLE_CLIENT_SECRET,
             redirect_uri: GOOGLE_REDIRECT_URI,
             grant_type: 'authorization_code',
-        });
+        }, { timeout: OAUTH_TOKEN_TIMEOUT_MS }));
         const { access_token } = tokenResponse.data;
-        const userResponse = await axios_1.default.get('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { Authorization: `Bearer ${access_token}` } });
+        const userResponse = await measureOAuthPhase(timings, 'profileMs', () => axios_1.default.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+            headers: { Authorization: `Bearer ${access_token}` },
+            timeout: OAUTH_PROFILE_TIMEOUT_MS,
+        }));
         const googleUser = userResponse.data;
         const email = googleUser.email;
+        if (!email || typeof email !== 'string')
+            throw new Error('Google email missing');
         const displayName = googleUser.name || `google_user_${googleUser.id}`;
         const photoURL = googleUser.picture || null;
         // 🔑 통합 UID 생성/조회
-        const uid = await getOrCreateUnifiedUid(email, 'google');
-        try {
-            await admin.auth().updateUser(uid, { email, displayName, photoURL });
-        }
-        catch (error) {
-            if (error.code === 'auth/user-not-found') {
-                await admin.auth().createUser({ uid, email, displayName, photoURL });
+        const uid = await measureOAuthPhase(timings, 'uidMs', () => getOrCreateUnifiedUid(email, 'google'));
+        await measureOAuthPhase(timings, 'authUserMs', async () => {
+            try {
+                await admin.auth().updateUser(uid, { email, displayName, photoURL });
             }
-            else
-                throw error;
-        }
-        const customToken = await admin.auth().createCustomToken(uid);
-        res.redirect(`${FRONTEND_URL}/auth/callback?customToken=${customToken}&provider=google`);
+            catch (error) {
+                if (error.code === 'auth/user-not-found') {
+                    await admin.auth().createUser({ uid, email, displayName, photoURL });
+                }
+                else
+                    throw error;
+            }
+        });
+        const customToken = await measureOAuthPhase(timings, 'customTokenMs', () => admin.auth().createCustomToken(uid));
+        logOAuthCallbackCompleted('google', callbackStartedAt, timings);
+        res.redirect(buildFrontendAuthCallbackUrl(customToken, 'google'));
     }
     catch (error) {
-        console.error('❌ 구글 콜백 실패:', error);
-        res.redirect(`${FRONTEND_URL}/login?error=${encodeURIComponent(error.message)}`);
+        logger.error('❌ 구글 콜백 실패:', getSafeOAuthError(error));
+        res.redirect(buildLoginErrorRedirect('google'));
     }
 });
 const DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder';

@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { setOrigin } from '../services/v2Origin';
 import { useAuth } from '../contexts/AuthContext';
@@ -7,6 +7,7 @@ import { TimelineCollageModal } from '../components/TimelineCollageModal';
 import { HomePersonalizationModal } from '../components/HomePersonalizationModal';
 import { shouldShowAssistantOnboarding } from '../services/assistantOnboardingService';
 import { firestoreService, type HomePersonalizationSettings } from '../services/firestoreService';
+import { finishLoginTrace, markLoginTrace } from '../utils/loginPerformance';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -556,10 +557,23 @@ function getAgentKey(agent: Agent) {
   return `path:${agent.path || 'none'}:${JSON.stringify(agent.state || {})}`;
 }
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+    promise
+      .then(resolve)
+      .catch(reject)
+      .finally(() => clearTimeout(timeoutId));
+  });
+}
+
 export function HomePageV2() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, loading: authLoading } = useAuth();
+  const currentUserUid = user?.uid ?? null;
+  const currentUserUidRef = useRef<string | null>(currentUserUid);
+  currentUserUidRef.current = currentUserUid;
   const isDeveloper = user?.uid === DEVELOPER_UID;
   // 숨김 기록 + 개발자 전용 항목은 일반 사용자 홈에서 비노출
   const visibleRecords = useMemo(
@@ -577,6 +591,7 @@ export function HomePageV2() {
   const [personalizationModalOpen, setPersonalizationModalOpen] = useState(false);
   const [personalizationSaving, setPersonalizationSaving] = useState(false);
   const [personalization, setPersonalization] = useState<HomePersonalizationSettings | null>(null);
+  const [personalizationOwnerUid, setPersonalizationOwnerUid] = useState<string | null>(null);
   const [personalizationLoaded, setPersonalizationLoaded] = useState(false);
   const [homeViewMode, setHomeViewMode] = useState<'my' | 'all'>('my');
   const [myHaruBannerHidden, setMyHaruBannerHidden] = useState(() => {
@@ -628,7 +643,11 @@ export function HomePageV2() {
 
       setOnboardingGateReady(false);
       try {
-        const shouldShow = await shouldShowAssistantOnboarding(user.uid);
+        const shouldShow = await withTimeout(
+          shouldShowAssistantOnboarding(user.uid),
+          3500,
+          'assistant onboarding check timed out',
+        );
         if (cancelled) return;
 
         if (shouldShow) {
@@ -658,21 +677,41 @@ export function HomePageV2() {
 
     const loadHomePersonalization = async () => {
       if (authLoading) {
+        setPersonalization(null);
+        setPersonalizationOwnerUid(null);
         setPersonalizationLoaded(false);
         return;
       }
 
-      if (!user?.uid) {
+      if (!currentUserUid) {
         setPersonalization(null);
+        setPersonalizationOwnerUid(null);
         setPersonalizationLoaded(true);
         return;
       }
 
+      const requestUid = currentUserUid;
+      setPersonalization(null);
+      setPersonalizationOwnerUid(null);
       setPersonalizationLoaded(false);
-      const settings = await firestoreService.getHomePersonalization(user.uid);
-      if (cancelled) return;
-      setPersonalization(settings);
-      setPersonalizationLoaded(true);
+      try {
+        const settings = await withTimeout(
+          firestoreService.getHomePersonalization(requestUid),
+          2500,
+          'home personalization load timed out',
+        );
+        if (cancelled || currentUserUidRef.current !== requestUid) return;
+        setPersonalization(settings);
+        setPersonalizationOwnerUid(requestUid);
+      } catch (error) {
+        console.warn('홈 개인화 설정 확인 실패:', error);
+        if (!cancelled && currentUserUidRef.current === requestUid) {
+          setPersonalization(null);
+          setPersonalizationOwnerUid(requestUid);
+        }
+      } finally {
+        if (!cancelled && currentUserUidRef.current === requestUid) setPersonalizationLoaded(true);
+      }
     };
 
     loadHomePersonalization();
@@ -680,7 +719,14 @@ export function HomePageV2() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, user?.uid]);
+  }, [authLoading, currentUserUid]);
+
+  useEffect(() => {
+    if (authLoading || !user?.uid || !onboardingGateReady) return;
+    markLoginTrace('T5_home_data_ready');
+    const frameId = window.requestAnimationFrame(() => finishLoginTrace('T6_home_interactive'));
+    return () => window.cancelAnimationFrame(frameId);
+  }, [authLoading, onboardingGateReady, user?.uid]);
 
   const openTimelineModal = () => {
     if (!user?.uid) {
@@ -691,12 +737,24 @@ export function HomePageV2() {
     setTimelineModalOpen(true);
   };
 
-  const hasPersonalizedHome = personalization?.personalized === true;
-  const selectedRecordFormats = hasPersonalizedHome
-    ? personalization?.selectedRecordFormats || []
+  const personalizationMatchesCurrentUser = currentUserUid
+    ? personalizationOwnerUid === currentUserUid
+    : personalizationOwnerUid === null;
+  const effectivePersonalizationLoaded = currentUserUid
+    ? personalizationLoaded && personalizationMatchesCurrentUser
+    : personalizationLoaded;
+  const currentPersonalization = personalizationMatchesCurrentUser ? personalization : null;
+  const hasPersonalizedHome = currentPersonalization?.personalized === true;
+  const isPersonalizationPending = !effectivePersonalizationLoaded && homeViewMode === 'my';
+  const selectedRecordFormats = !effectivePersonalizationLoaded
+    ? []
+    : hasPersonalizedHome
+    ? currentPersonalization?.selectedRecordFormats || []
     : visibleRecords.map((record) => record.format);
-  const selectedAgents = hasPersonalizedHome
-    ? personalization?.selectedAgents || []
+  const selectedAgents = !effectivePersonalizationLoaded
+    ? []
+    : hasPersonalizedHome
+    ? currentPersonalization?.selectedAgents || []
     : visibleAgents.map((agent) => getAgentKey(agent));
   const selectedRecordSet = useMemo(() => new Set(selectedRecordFormats), [selectedRecordFormats]);
   const selectedAgentSet = useMemo(() => new Set(selectedAgents), [selectedAgents]);
@@ -706,25 +764,28 @@ export function HomePageV2() {
   const homeAgents = homeViewMode === 'all'
     ? visibleAgents
     : visibleAgents.filter((agent) => selectedAgentSet.has(getAgentKey(agent)));
-  const isMyHaruEmpty = homeViewMode === 'my' && hasPersonalizedHome && homeRecords.length === 0 && homeAgents.length === 0;
+  const isMyHaruEmpty = effectivePersonalizationLoaded && homeViewMode === 'my' && hasPersonalizedHome && homeRecords.length === 0 && homeAgents.length === 0;
 
   const saveHomePersonalization = async (selection: {
     selectedRecordFormats: string[];
     selectedAgents: string[];
   }) => {
-    if (!user?.uid) {
+    if (!currentUserUid) {
       navigate('/login');
       return;
     }
 
+    const saveUid = currentUserUid;
     setPersonalizationSaving(true);
     try {
-      await firestoreService.saveHomePersonalization(user.uid, selection);
+      await firestoreService.saveHomePersonalization(saveUid, selection);
+      if (currentUserUidRef.current !== saveUid) return;
       setPersonalization({
         selectedRecordFormats: selection.selectedRecordFormats,
         selectedAgents: selection.selectedAgents,
         personalized: true,
       });
+      setPersonalizationOwnerUid(saveUid);
       setHomeViewMode('my');
       setPersonalizationModalOpen(false);
       setMyHaruBannerHidden(true);
@@ -734,7 +795,7 @@ export function HomePageV2() {
     }
   };
 
-  if (authLoading || !onboardingGateReady || !personalizationLoaded) {
+  if (authLoading || !onboardingGateReady) {
     return (
       <div
         className="min-h-screen"
@@ -1456,7 +1517,7 @@ export function HomePageV2() {
           </button>
         </section>
 
-        {!hasPersonalizedHome && !myHaruBannerHidden && (
+        {personalizationLoaded && !hasPersonalizedHome && !myHaruBannerHidden && (
           <div
             style={{
               display: 'flex',
@@ -1550,7 +1611,9 @@ export function HomePageV2() {
           </div>
         )}
 
-        {isMyHaruEmpty && (
+        {isPersonalizationPending && <HomePersonalizationSkeleton />}
+
+        {!isPersonalizationPending && isMyHaruEmpty && (
           <EmptyMyHaru
             onShowAll={() => setHomeViewMode('all')}
             onManage={() => setPersonalizationModalOpen(true)}
@@ -1558,7 +1621,7 @@ export function HomePageV2() {
         )}
 
         {/* RECORDS SECTION */}
-        {!isMyHaruEmpty && (
+        {!isPersonalizationPending && !isMyHaruEmpty && (
         <section data-v2="section" style={{ marginBottom: 36 }}>
           <SectionHead
             iconBg="#E0E8B8"
@@ -1652,7 +1715,7 @@ export function HomePageV2() {
         )}
 
         {/* AGENTS SECTION */}
-        {!isMyHaruEmpty && (
+        {!isPersonalizationPending && !isMyHaruEmpty && (
         <section data-v2="section" style={{ marginBottom: 36 }}>
           <SectionHead
             iconBg="#DDD0E8"
@@ -2190,6 +2253,103 @@ function EmptyMyHaru({
         </button>
       </div>
     </section>
+  );
+}
+
+function HomePersonalizationSkeleton() {
+  const recordPlaceholders = Array.from({ length: 5 });
+  const agentPlaceholders = Array.from({ length: 4 });
+
+  return (
+    <div aria-label="내 HARU 불러오는 중" style={{ marginBottom: 36 }}>
+      <section data-v2="section" style={{ marginBottom: 36 }}>
+        <SectionHead
+          iconBg="#E0E8B8"
+          iconStroke="#4A5A2C"
+          title="HARU 기록"
+          sub="매일의 한 줄, 오래 남는 자산"
+          badge="확인 중"
+          badgeDot="#7A8B4E"
+          icon={
+            <>
+              <path d="M4 4h13a3 3 0 013 3v13H7a3 3 0 01-3-3V4z" />
+              <path d="M4 17a3 3 0 013-3h13" />
+              <path d="M9 8h7" />
+            </>
+          }
+        />
+        <div
+          data-v2="records-grid"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(5, 1fr)',
+            gap: 14,
+          }}
+        >
+          {recordPlaceholders.map((_, index) => (
+            <SkeletonCard key={`record-${index}`} />
+          ))}
+        </div>
+      </section>
+
+      <section data-v2="section" style={{ marginBottom: 36 }}>
+        <SectionHead
+          iconBg="#DDD0E8"
+          iconStroke="#5A4E7A"
+          title="HARU 비서실"
+          sub="일상 곁의 작은 AI 동료"
+          badge="확인 중"
+          badgeDot="#5A4E7A"
+          icon={
+            <>
+              <path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z" />
+              <path d="M19 16l.8 1.8L21.5 18.5 19.7 19.3 19 21l-.8-1.7L16.5 18.5l1.7-.7z" />
+            </>
+          }
+        />
+        <div
+          data-v2="agents-grid"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: 14,
+          }}
+        >
+          {agentPlaceholders.map((_, index) => (
+            <SkeletonCard key={`agent-${index}`} minHeight={148} />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SkeletonCard({ minHeight = 134 }: { minHeight?: number }) {
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        minHeight,
+        background: '#fff',
+        border: '1px solid #E5DFD0',
+        borderRadius: 20,
+        padding: '22px 18px 20px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 14,
+      }}
+    >
+      <span
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 14,
+          background: '#F5F0E8',
+        }}
+      />
+      <span style={{ width: '42%', height: 14, borderRadius: 999, background: '#F5F0E8' }} />
+      <span style={{ width: '64%', height: 10, borderRadius: 999, background: '#F5F0E8' }} />
+    </div>
   );
 }
 

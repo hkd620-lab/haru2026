@@ -21,6 +21,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { auth, db } from '../config/firebase';
 import { cleanupDuplicateTokens } from '../services/notificationService';
 import { LoginProvider, mergeProviderIds, normalizeLoginProvider } from '../utils/loginProvider';
+import { markLoginTrace } from '../utils/loginPerformance';
 
 // LoginPage.tsx의 회원가입 동의와 동일한 버전 문자열 — 약관 개정 시 재동의 대상을 가려낼 때 사용
 const TERMS_VERSION = '2026-08-20';
@@ -406,7 +407,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // 1. Redirect 로그인 체크 (Google 등)
         const result = await getRedirectResult(auth);
         if (result?.user) {
-          await rememberLoginProvider(result.user.uid, 'google');
+          markLoginTrace('T3_firebase_sign_in_complete');
+          void rememberLoginProvider(result.user.uid, 'google');
           setUser(mapUser(result.user));
           setLoading(false);
           return;
@@ -430,6 +432,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // 5. Firebase 상태 변화 감지
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
+        markLoginTrace('T4_auth_state_settled');
         setUser(mapUser(firebaseUser));
         clearLegacySocialUserCache();
       } else {
@@ -460,27 +463,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const userRef = doc(db, 'users', user.uid);
-    const unsubscribe = onSnapshot(userRef, (snap) => {
-      const data = snap.data();
-      const loginProvider = normalizeLoginProvider(data?.loginProvider);
-      if (loginProvider) {
-        setUser((currentUser) => currentUser?.uid === user.uid
-          ? {
-            ...currentUser,
-            providerId: loginProvider,
-            providerIds: mergeProviderIds(currentUser.providerIds, loginProvider),
-          }
-          : currentUser);
-      }
-      if (data?.accountStatus === 'pending_deletion') {
-        const scheduledAtValue = data.deletionScheduledAt;
-        const scheduledAt = scheduledAtValue instanceof Timestamp ? scheduledAtValue.toDate() : null;
-        setPendingDeletion({ scheduledAt });
-      } else {
+    const unsubscribe = onSnapshot(
+      userRef,
+      (snap) => {
+        const data = snap.data();
+        const loginProvider = normalizeLoginProvider(data?.loginProvider);
+        if (loginProvider) {
+          setUser((currentUser) => currentUser?.uid === user.uid
+            ? {
+              ...currentUser,
+              providerId: loginProvider,
+              providerIds: mergeProviderIds(currentUser.providerIds, loginProvider),
+            }
+            : currentUser);
+        }
+        if (data?.accountStatus === 'pending_deletion') {
+          const scheduledAtValue = data.deletionScheduledAt;
+          const scheduledAt = scheduledAtValue instanceof Timestamp ? scheduledAtValue.toDate() : null;
+          setPendingDeletion({ scheduledAt });
+        } else {
+          setPendingDeletion(null);
+        }
+        setNeedsConsent(!data?.consents);
+      },
+      (error) => {
+        console.error('사용자 인증 상태 문서 구독 실패:', error);
         setPendingDeletion(null);
-      }
-      setNeedsConsent(!data?.consents);
-    });
+        setNeedsConsent(false);
+      },
+    );
 
     return () => unsubscribe();
   }, [user?.uid]);
@@ -488,7 +499,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
-      await rememberLoginProvider(userCredential.user.uid, 'password');
+      void rememberLoginProvider(userCredential.user.uid, 'password');
     } catch (error: any) {
       console.error('Sign in error:', error);
       throw new Error(getAuthErrorMessage(error));
@@ -566,7 +577,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const provider = new GoogleAuthProvider();
       if (import.meta.env.DEV) {
         const userCredential = await signInWithPopup(auth, provider);
-        await rememberLoginProvider(userCredential.user.uid, 'google');
+        void rememberLoginProvider(userCredential.user.uid, 'google');
       } else {
         await signInWithRedirect(auth, provider);
       }
