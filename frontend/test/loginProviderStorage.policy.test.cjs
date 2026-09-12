@@ -15,7 +15,7 @@ assert(loginProviderSrc.includes('export function readRememberedLoginProvider(ui
 
 assert(authContextSrc.includes('rememberLoginProviderLocally(uid, provider);'));
 assert(authContextSrc.includes('const rememberedProvider = readRememberedLoginProvider(user.uid);'));
-assert(authContextSrc.includes('normalizeLoginProvider(data?.loginProvider) ?? readRememberedLoginProvider(user.uid)'));
+assert(authContextSrc.includes('readRememberedLoginProvider(user.uid) ?? normalizeLoginProvider(data?.loginProvider)'));
 assert(!authContextSrc.includes('loginProviderUpdatedAt'));
 
 assert(authCallbackSrc.includes('rememberLoginProviderLocally(userCredential.user.uid, provider);'));

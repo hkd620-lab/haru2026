@@ -470,7 +470,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       userRef,
       (snap) => {
         const data = snap.data();
-        const loginProvider = normalizeLoginProvider(data?.loginProvider) ?? readRememberedLoginProvider(user.uid);
+        const loginProvider = readRememberedLoginProvider(user.uid) ?? normalizeLoginProvider(data?.loginProvider);
         if (loginProvider) {
           setUser((currentUser) => currentUser?.uid === user.uid
             ? {
