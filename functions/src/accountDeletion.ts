@@ -242,6 +242,7 @@ async function deleteAuthAccountIfExists(uid: string): Promise<void> {
 export const executeScheduledDeletion = onSchedule(
   {
     region: 'asia-northeast3',
+    memory: '512MiB',
     schedule: 'every day 04:00',
     timeZone: 'Asia/Seoul',
     timeoutSeconds: 540,

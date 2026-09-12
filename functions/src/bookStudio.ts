@@ -77,6 +77,7 @@ function buildChapterTitle(order: number, sourceTitle: string, oneLineTitle?: st
 export const generateBook = onCall(
   {
     region: "asia-northeast3",
+    memory: "512MiB",
     secrets: [OPENAI_API_KEY],
     timeoutSeconds: 300,
   },

@@ -4261,6 +4261,7 @@ export const chatWithResult = onCall(
 export const generateTitlesForAll = onCall(
   {
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 300,
   },
@@ -5126,6 +5127,7 @@ async function ensureHaruDriveFolder(accessToken: string): Promise<DriveFile> {
 export const startHaruDriveConnect = onCall(
   {
     region: 'asia-northeast3',
+    memory: '512MiB',
     cors: [
       'https://haru2026-8abb8.web.app',
       'https://haru2026.com',
@@ -5166,6 +5168,7 @@ export const startHaruDriveConnect = onCall(
 export const haruDriveCallback = onRequest(
   {
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GOOGLE_CLIENT_ID_SECRET, GOOGLE_CLIENT_SECRET_SECRET],
   },
   async (req, res) => {
@@ -5542,7 +5545,7 @@ function getBase64DecodedSizeBytes(value: string): number {
 }
 
 export const convertHeic = onCall(
-  { region: 'asia-northeast3' },
+  { region: 'asia-northeast3', memory: '512MiB' },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
@@ -6367,7 +6370,7 @@ export const extractHouseholdTextFromImage = onCall(
 export const decryptKakaoXlsx = onCall(
   {
     region: 'asia-northeast3',
-    memory: '256MiB',
+    memory: '512MiB',
     timeoutSeconds: 30,
   },
   async (request) => {
@@ -9333,6 +9336,7 @@ export const lawSearch = onCall(
 export const prepareHaruLawSharePreview = onCall(
   {
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 300,
   },
@@ -9706,6 +9710,7 @@ export const reviewHaruLawSharedCard = onCall(
 export const lawEasyExplain = onCall(
   {
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 300,
   },
@@ -9807,6 +9812,7 @@ AI 의견:
 export const lawPrecedent = onCall(
   {
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [LAW_API_KEY_SECRET, GEMINI_API_KEY_SECRET],
     timeoutSeconds: 300,
   },
@@ -10089,6 +10095,7 @@ ${precLines}`;
 export const generateTTS = onCall(
   {
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GEMINI_API_KEY_SECRET, GOOGLE_CLOUD_API_KEY_SECRET, OPENAI_API_KEY_SECRET],
     timeoutSeconds: 120,
   },
@@ -10617,7 +10624,7 @@ ${JSON.stringify(parsed, null, 2)}`;
 
 // ===== 장 문법 사전생성 =====
 export const preloadChapterGrammar = onCall(
-  { region: 'asia-northeast3', timeoutSeconds: 540, secrets: [GEMINI_API_KEY_SECRET, OPENAI_API_KEY_SECRET] },
+  { region: 'asia-northeast3', memory: '512MiB', timeoutSeconds: 540, secrets: [GEMINI_API_KEY_SECRET, OPENAI_API_KEY_SECRET] },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다');
@@ -13947,7 +13954,7 @@ async function ensureHaruFolderOnOneDrive(accessToken: string): Promise<{ folder
 
 // 1) OAuth 시작 — authUrl 반환 (callable, uid 확인)
 export const startOneDriveConnect = onCall(
-  { region: 'asia-northeast3', secrets: [MICROSOFT_CLIENT_ID_SECRET, MICROSOFT_CLIENT_SECRET_SECRET] },
+  { region: 'asia-northeast3', memory: '512MiB', secrets: [MICROSOFT_CLIENT_ID_SECRET, MICROSOFT_CLIENT_SECRET_SECRET] },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
@@ -14673,6 +14680,7 @@ async function getOrCreateMonthFolder(
 export const uploadReceiptToDrive = onCall(
   {
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GOOGLE_DRIVE_SERVICE_ACCOUNT_SECRET],
   },
   async (request) => {

@@ -24,6 +24,7 @@ function sanitizeName(raw: unknown): string {
 export const convertSnsToDiary = onCall(
   {
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GEMINI_API_KEY],
     timeoutSeconds: 120,
   },
