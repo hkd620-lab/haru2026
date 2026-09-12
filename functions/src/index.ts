@@ -242,23 +242,27 @@ const RESULT_CHAT_HIGH_RISK_PATTERNS = [
   /(지금\s*)?(사야|팔아|매수|매도|손절|익절|투자해도|수익\s*보장|반드시\s*수익)/,
 ];
 
-// 사용자가 명시적으로 외부검색·웹검색을 요청하는 질문(기록 종류 정책과 무관하게 적용).
-// RESULT_CHAT_RECORD_ONLY_PATTERNS보다 먼저 판정해야 "내가 먹은 음식을 외부검색으로 알려줘"처럼
-// 기록전용 패턴("내가...먹은")에 먼저 걸려 명시적 검색 요청이 가려지는 것을 막을 수 있다.
-// "찾아줘" 단독은 기록 조회 요청으로도 흔하므로 외부 맥락(외부/웹/인터넷/온라인)이 있을 때만 잡는다.
-const RESULT_CHAT_EXPLICIT_SEARCH_REQUEST_PATTERNS = [
-  /외부\s*검색/,
-  /웹\s*검색/,
-  /인터넷\s*(검색|찾아|에서)/,
-  /구글(링)?/,
-  /온라인\s*(에서|으로)/,
-  /최신\s*(자료|정보)\s*(로|으로|확인)/,
-  /(외부|웹|인터넷|온라인)(에서|으로|을\s*통해)?\s*찾아/,
-  /검색\s*(해서|해\s*줘|해줘|으로|을\s*통해)/,
+// 외부 자료원을 직접 지칭한 검색 요청. 기록 종류나 기록 언급 여부보다 먼저 판정한다.
+const RESULT_CHAT_EXPLICIT_EXTERNAL_SEARCH_REQUEST_PATTERNS = [
+  /외부\s*(검색|자료|정보)/,
+  /웹\s*(검색|에서\s*(검색|찾아|알아봐|확인|조사|알려)|으로\s*(검색|찾아|알아봐|확인|조사|알려))/,
+  /인터넷\s*(검색|찾아|에서\s*(검색|찾아|알아봐|확인|조사|알려)|으로\s*(검색|찾아|알아봐|확인|조사|알려)|을\s*통해)/,
+  /온라인\s*(검색|에서\s*(검색|찾아|알아봐|확인|조사|알려)|으로\s*(검색|찾아|알아봐|확인|조사|알려))/,
+  /구글링/,
+  /구글\s*(에서|로)?\s*(검색|찾아)/,
+  /최신\s*(자료|정보)\s*(로|으로|를|을)?\s*(검색|확인|찾아|알려|답)/,
 ];
-// 기록·일기·결과·메모·대화를 언급하면서 외부 키워드가 없는 질문은 기록 내부 검색으로 본다.
-const RESULT_CHAT_INTERNAL_SEARCH_CONTEXT_PATTERN = /(기록|일기|결과|메모|대화|내용)/;
-const RESULT_CHAT_EXTERNAL_KEYWORD_PATTERN = /(외부|웹|인터넷|온라인|구글|최신)/;
+// 자료원을 특정하지 않은 "검색해줘/찾아봐줘"도 외부검색일 수 있으므로 확인 게이트로 보낸다.
+const RESULT_CHAT_GENERIC_SEARCH_REQUEST_PATTERNS = [
+  /검색\s*(해서|해\s*줘|해줘|해\s*봐|해봐|으로|을\s*통해)/,
+  /찾아\s*(봐\s*줘|봐줘|줘|주|봐)/,
+];
+// 아래처럼 검색 범위가 저장 기록 내부라고 분명한 경우만 외부검색 확인을 생략한다.
+const RESULT_CHAT_INTERNAL_ONLY_SEARCH_PATTERNS = [
+  /(내|나의|이|현재|해당)?\s*(기록|일기|결과|메모|대화|내용)\s*(검색|찾아)/,
+  /(기록|일기|결과|메모|대화|내용)\s*(에서|안에서|속에서|내에서|중에서|중에).*?(검색|찾아)/,
+  /(내가|나는|내|제가|저는|어제|오늘|지난\s*(주|달)).*(먹|마시|하|했|갔|간|만났|읽|봤|쓴|샀).*?(검색|찾아)/,
+];
 
 const RESULT_CHAT_AMBIGUOUS_EXTERNAL_PATTERNS = [
   /(물|비료|햇빛|분갈이|가지치기).*(얼마|언제|어떻게|줘|주면|해야)/,
@@ -284,10 +288,11 @@ function classifyResultChatByRules(question: string, policy: ResultChatSourcePol
     return { route: 'high_risk_guidance', reasonCode: 'high_risk', confidence: 0.9 };
   }
   // 명시적 외부검색 요청 → 답변 전에 사용자에게 확인(ambiguous 게이트: "나의 기록으로 답변"/"최신자료 확인" 둘 다 제공).
-  // web_search 게이트는 "나의 기록으로 답변" 버튼이 없어(ResultChatModal.tsx) 오탐 시 사용자가 빠져나갈 길이 없으므로 ambiguous를 쓴다.
+  // 자료원이 생략된 일반 검색 표현은 기록 내부 검색이 명백하지 않을 때만 확인한다.
   if (
-    hasAnyResultChatPattern(normalized, RESULT_CHAT_EXPLICIT_SEARCH_REQUEST_PATTERNS) &&
-    !(RESULT_CHAT_INTERNAL_SEARCH_CONTEXT_PATTERN.test(normalized) && !RESULT_CHAT_EXTERNAL_KEYWORD_PATTERN.test(normalized))
+    hasAnyResultChatPattern(normalized, RESULT_CHAT_EXPLICIT_EXTERNAL_SEARCH_REQUEST_PATTERNS) ||
+    (hasAnyResultChatPattern(normalized, RESULT_CHAT_GENERIC_SEARCH_REQUEST_PATTERNS) &&
+      !hasAnyResultChatPattern(normalized, RESULT_CHAT_INTERNAL_ONLY_SEARCH_PATTERNS))
   ) {
     return { route: 'ambiguous', reasonCode: 'unclear', confidence: 0.85 };
   }
@@ -3504,7 +3509,7 @@ function buildResultChatPrompt(params: {
     record_only: [
       '첫 줄에 "📘 나의 기록을 바탕으로 답변"을 표시한다.',
       '웹검색, 외부 최신자료 확인, 실시간 정보 확인은 사용하지 않는다.',
-      '사용자가 외부검색·웹검색·최신자료 확인을 요청하면 "외부검색 기능이 없다/하지 않는다"고 답하지 말고, 화면의 [최신자료 확인] 버튼으로 요청할 수 있다고 짧게 안내한 뒤 기록 기반으로 답한다.',
+      '사용자가 외부검색·웹검색·최신자료 확인을 요청했는데 현재 답변이 기록 전용으로 처리된 경우, "외부검색 기능이 없다/하지 않는다"고 답하지 않는다. 현재는 기록 기반으로 답하고 있음을 밝히고, 최신자료가 필요하면 "최신자료 확인해줘"라고 다시 요청하도록 짧게 안내한다.',
       '개인 기록에 관한 사실(사용자가 무엇을 했는지, 느꼈는지, 누구를 만났는지, 무엇을 좋아했는지 등)은 반드시 결과물에 근거해 답하고, 결과물에 없으면 없다고 말한다.',
       '결과물에 등장한 책, 작품, 장소, 인물, 음식, 역사, 문화 등에 관한 안정적인 일반지식은 결과물에 직접 적혀 있지 않아도 답할 수 있다.',
       '일반지식을 답할 때는 기록에서 확인되는 내용과 일반적으로 알려진 내용을 필요하면 짧게 구분한다.',

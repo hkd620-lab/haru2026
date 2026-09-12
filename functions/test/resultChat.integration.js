@@ -312,12 +312,59 @@ async function run() {
   const recordOnlyCalls = genaiCalls.slice(recordOnlyBefore);
   assert.strictEqual(recordOnlyCalls.length, 1);
   assert.strictEqual(recordOnlyCalls[0].hasGoogleSearchTool, false);
+  assert.ok(!recordOnlyCalls[0].contents.includes('화면의 [최신자료 확인] 버튼'));
+  assert.ok(recordOnlyCalls[0].contents.includes('"최신자료 확인해줘"라고 다시 요청'));
   let thread = await getThread(USERS.basic, 'memo', 'memo_sayu');
   assert.strictEqual(thread.webSearchUsedCount || 0, 0);
   assert.strictEqual(thread.webSearchReservedCount || 0, 0);
   let messages = await getMessages(USERS.basic, 'memo', 'memo_sayu');
   assert.strictEqual(messages.filter((message) => message.role === 'user').length, 1);
   assert.strictEqual(messages.filter((message) => message.role === 'assistant').length, 1);
+
+  const explicitSearchQuestions = [
+    '외부검색을 통해 대답을 해줘',
+    '이 기록에 나온 작가를 검색해줘',
+    '이 일기에 나온 약 이름을 찾아봐줘',
+    '이 결과에 나온 장소를 검색해서 알려줘',
+    '기록 속 제품에 대한 외부 자료를 찾아줘',
+    '웹에서 알아봐줘',
+    '온라인에서 알려줘',
+    '최신자료로 답해줘',
+  ];
+  for (const question of explicitSearchQuestions) {
+    const callsBefore = genaiCalls.length;
+    const result = await callable(USERS.basic, {
+      recordId: 'reading',
+      sourceKey: 'reading_sayu',
+      question,
+      searchPreference: 'auto',
+    });
+    assert.strictEqual(result.requiresConfirmation, true, question);
+    assert.strictEqual(result.confirmationType, 'ambiguous', question);
+    assert.strictEqual(result.answer, '', question);
+    assert.strictEqual(genaiCalls.length, callsBefore, question);
+  }
+  await resetResultChatRateLimit(USERS.basic);
+
+  const internalSearchQuestions = [
+    '내 일기에서 찾아줘',
+    '어제 뭐 먹었는지 찾아봐',
+    '내 기록 검색해줘',
+    '이 결과 안에서 여행 내용을 찾아줘',
+    '온라인으로 신청했던 내용을 기록에서 찾아줘',
+  ];
+  for (const question of internalSearchQuestions) {
+    const result = await callable(USERS.basic, {
+      recordId: 'reading',
+      sourceKey: 'reading_sayu',
+      question,
+      searchPreference: 'auto',
+    });
+    assert.strictEqual(result.requiresConfirmation, undefined, question);
+    assert.strictEqual(result.answerRoute, 'record_only', question);
+    assert.strictEqual(result.webSearchUsed, false, question);
+  }
+  await resetResultChatRateLimit(USERS.basic);
 
   const hybridBefore = genaiCalls.length;
   const chuHan = await callable(USERS.free, {
