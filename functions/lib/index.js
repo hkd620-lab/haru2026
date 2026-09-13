@@ -1976,6 +1976,7 @@ ${polishedText.slice(0, 500)}`;
 // ===== 🎨 AI 다듬기 =====
 exports.polishContent = (0, https_2.onCall)({
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GEMINI_API_KEY_SECRET] // 🔐 Secret 연결
 }, async (request) => {
     var _a;
@@ -2262,6 +2263,7 @@ const KW_NUMUNIT_RE = /^\d+\s*(개|가지|명|번|회|차|단계|시간|초|분|
 // 평가·훈계·과잉 공감 금지. 사실 기반 짧은 관찰 메모(3문장 이내).
 exports.generateHaruMemo = (0, https_2.onCall)({
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GEMINI_API_KEY_SECRET],
 }, async (request) => {
     if (!request.auth) {
@@ -9768,7 +9770,7 @@ ${allItems.join('\n\n---\n\n')}
 );
 */
 // ===== 뉴스 수동 새로고침 (개발자용) =====
-exports.refreshNews = (0, https_2.onCall)({ secrets: [GEMINI_API_KEY_SECRET], region: 'asia-northeast3' }, async (request) => {
+exports.refreshNews = (0, https_2.onCall)({ secrets: [GEMINI_API_KEY_SECRET], region: 'asia-northeast3', memory: '512MiB' }, async (request) => {
     var _a;
     // 개발자 UID — 향후 일반 사용자 개방 시 한도 체크 로직 추가 예정
     const isDeveloper = (0, internalEntitlements_1.isInternalDeveloperUid)((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid);
@@ -9860,6 +9862,7 @@ ${allItems.join('\n\n---\n\n')}
 // ===== 🔮 HARU예언 — 기록 자동 분석 (인물·욕망·족쇄·사건 추출) =====
 exports.analyzeRecordForProphecy = (0, https_2.onCall)({
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 60,
 }, async (request) => {
@@ -10011,6 +10014,7 @@ ${content.slice(0, 4000)}
 // ===== 🔮 HARU예언 시놉시스 생성 =====
 exports.generateHaruProphecy = (0, https_2.onCall)({
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 120,
 }, async (request) => {

@@ -282,6 +282,7 @@ export const generateBook = onCall(
 export const suggestChapterTitle = onCall(
   {
     region: "asia-northeast3",
+    memory: "512MiB",
     secrets: [OPENAI_API_KEY],
     timeoutSeconds: 120,
   },

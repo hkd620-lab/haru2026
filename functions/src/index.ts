@@ -2326,8 +2326,9 @@ ${polishedText.slice(0, 500)}`;
 
 // ===== 🎨 AI 다듬기 =====
 export const polishContent = onCall(
-  { 
+  {
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GEMINI_API_KEY_SECRET]  // 🔐 Secret 연결
   },
   async (request) => {
@@ -2632,6 +2633,7 @@ const KW_NUMUNIT_RE = /^\d+\s*(개|가지|명|번|회|차|단계|시간|초|분|
 export const generateHaruMemo = onCall(
   {
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GEMINI_API_KEY_SECRET],
   },
   async (request) => {
@@ -11070,7 +11072,7 @@ ${allItems.join('\n\n---\n\n')}
 
 // ===== 뉴스 수동 새로고침 (개발자용) =====
 export const refreshNews = onCall(
-  { secrets: [GEMINI_API_KEY_SECRET], region: 'asia-northeast3' },
+  { secrets: [GEMINI_API_KEY_SECRET], region: 'asia-northeast3', memory: '512MiB' },
   async (request) => {
     // 개발자 UID — 향후 일반 사용자 개방 시 한도 체크 로직 추가 예정
     const isDeveloper = isInternalDeveloperUid(request.auth?.uid);
@@ -11162,6 +11164,7 @@ ${allItems.join('\n\n---\n\n')}
 export const analyzeRecordForProphecy = onCall(
   {
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 60,
   },
@@ -11317,6 +11320,7 @@ ${content.slice(0, 4000)}
 export const generateHaruProphecy = onCall(
   {
     region: 'asia-northeast3',
+    memory: '512MiB',
     secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 120,
   },
