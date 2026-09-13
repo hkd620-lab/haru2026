@@ -2517,7 +2517,10 @@ export function SayuPage() {
     if (targetTab === 'assistants' && filterFormat === '하루LAW') {
       openFormatSayu(recordDate, 'haruraw', 'HARUraw', openRecordId);
     } else {
-      openFormatSayu(recordDate, 'memo', filterFormat || '메모', openRecordId);
+      // filterFormat(한글 형식명)을 실제 저장 필드 prefix로 변환 — 기존에는 'memo'로 고정되어 있어
+      // 메모 외 형식(일기/에세이 등)을 열면 잘못된 필드(memo_*)를 읽는 문제가 있었다.
+      const resolvedFormatKey = ALL_FORMAT_PREFIXES[filterFormat] || 'memo';
+      openFormatSayu(recordDate, resolvedFormatKey, filterFormat || '메모', openRecordId);
     }
     navigate('/sayu', { replace: true, state: null });
   // eslint-disable-next-line react-hooks/exhaustive-deps
