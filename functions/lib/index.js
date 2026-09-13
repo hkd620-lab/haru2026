@@ -2185,7 +2185,7 @@ exports.polishContent = (0, https_2.onCall)({
         throw new https_2.HttpsError('internal', 'AI 처리에 실패했습니다.');
     }
 });
-exports.getMonthlyAiQuotaStatus = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
+exports.getMonthlyAiQuotaStatus = (0, https_2.onCall)({ region: 'asia-northeast3', memory: '512MiB' }, async (request) => {
     var _a;
     if (!((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid)) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
@@ -2667,7 +2667,7 @@ async function logPaidServiceUsage(uid, eventType, details = {}) {
     });
     return { logged: true, plan };
 }
-exports.recordPaidServiceUsage = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
+exports.recordPaidServiceUsage = (0, https_2.onCall)({ region: 'asia-northeast3', memory: '512MiB' }, async (request) => {
     var _a, _b;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
