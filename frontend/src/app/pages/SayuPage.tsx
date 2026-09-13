@@ -78,6 +78,7 @@ type SayuNavigationState = {
   filterFormat?: string;
   openRecordId?: string;
   tab?: 'records' | 'assistants';
+  justSaved?: boolean;
 } | null;
 const PLANT_SAYU_FILTERS: { key: PlantSayuFilter; label: string }[] = [
   { key: 'all', label: '전체' },
@@ -2521,6 +2522,10 @@ export function SayuPage() {
       // 메모 외 형식(일기/에세이 등)을 열면 잘못된 필드(memo_*)를 읽는 문제가 있었다.
       const resolvedFormatKey = ALL_FORMAT_PREFIXES[filterFormat] || 'memo';
       openFormatSayu(recordDate, resolvedFormatKey, filterFormat || '메모', openRecordId);
+      // SAYU 저장 직후 자동으로 편집 상태까지 열렸을 때만 안내 — 목록에서 직접 연 경우에는 표시하지 않음
+      if (routeState?.justSaved === true) {
+        toast.success('저장되었습니다. 방금 기록을 바로 수정할 수 있어요.');
+      }
     }
     navigate('/sayu', { replace: true, state: null });
   // eslint-disable-next-line react-hooks/exhaustive-deps
