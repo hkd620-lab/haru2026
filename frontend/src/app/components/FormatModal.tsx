@@ -2637,15 +2637,21 @@ ${contentValues}`,
     setIsSaving(true);
     try {
       const savedRecordId = await onSave(dataToSave);
-      toast.success('SAYU-나의 기록에 저장했습니다.');
+      const openRecordId = savedRecordId || (dataToSave._recordId as string) || undefined;
+      // openRecordId를 확보한 경우 /sayu의 자동 편집 진입 안내 토스트가 뜨므로
+      // 여기서는 생략해 토스트가 연속 2개 뜨지 않도록 한다. (id가 없는 예외적 호출부에 한해 유지)
+      if (!openRecordId) {
+        toast.success('SAYU-나의 기록에 저장했습니다.');
+      }
       // /sayu로 이동하면 이 모달을 포함한 RecordPage가 unmount되므로,
       // onClose()(→ closeToOrigin())를 호출하지 않는다 — 호출 시 /v2 등으로의
       // 이동과 아래 navigate('/sayu')가 경쟁해 잘못된 경로로 남는 문제가 있었다.
       navigate('/sayu', {
         state: {
           filterFormat: format,
-          openRecordId: savedRecordId || (dataToSave._recordId as string) || undefined,
+          openRecordId,
           tab: 'records',
+          justSaved: true,
         },
       });
     } catch (error) {
@@ -2693,7 +2699,12 @@ ${contentValues}`,
     setIsSaving(true);
     try {
       const savedRecordId = await onSave(updateData);
-      toast.success('SAYU-나의 기록에 저장했습니다.');
+      const openRecordId = savedRecordId || (updateData._recordId as string) || undefined;
+      // openRecordId를 확보한 경우 /sayu의 자동 편집 진입 안내 토스트가 뜨므로
+      // 여기서는 생략해 토스트가 연속 2개 뜨지 않도록 한다. (id가 없는 예외적 호출부에 한해 유지)
+      if (!openRecordId) {
+        toast.success('SAYU-나의 기록에 저장했습니다.');
+      }
       setShowPolishModal(false);
       // /sayu로 이동하면 이 모달을 포함한 RecordPage가 unmount되므로,
       // onClose()(→ closeToOrigin())를 호출하지 않는다 — 호출 시 /v2 등으로의
@@ -2701,8 +2712,9 @@ ${contentValues}`,
       navigate('/sayu', {
         state: {
           filterFormat: format,
-          openRecordId: savedRecordId || (updateData._recordId as string) || undefined,
+          openRecordId,
           tab: 'records',
+          justSaved: true,
         },
       });
     } catch (error) {
