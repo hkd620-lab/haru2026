@@ -2638,7 +2638,9 @@ ${contentValues}`,
     try {
       const savedRecordId = await onSave(dataToSave);
       toast.success('SAYU-나의 기록에 저장했습니다.');
-      onClose();
+      // /sayu로 이동하면 이 모달을 포함한 RecordPage가 unmount되므로,
+      // onClose()(→ closeToOrigin())를 호출하지 않는다 — 호출 시 /v2 등으로의
+      // 이동과 아래 navigate('/sayu')가 경쟁해 잘못된 경로로 남는 문제가 있었다.
       navigate('/sayu', {
         state: {
           filterFormat: format,
@@ -2693,7 +2695,9 @@ ${contentValues}`,
       const savedRecordId = await onSave(updateData);
       toast.success('SAYU-나의 기록에 저장했습니다.');
       setShowPolishModal(false);
-      onClose();
+      // /sayu로 이동하면 이 모달을 포함한 RecordPage가 unmount되므로,
+      // onClose()(→ closeToOrigin())를 호출하지 않는다 — 호출 시 /v2 등으로의
+      // 이동과 아래 navigate('/sayu')가 경쟁해 잘못된 경로로 남는 문제가 있었다.
       navigate('/sayu', {
         state: {
           filterFormat: format,
