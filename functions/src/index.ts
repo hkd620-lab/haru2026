@@ -3302,26 +3302,22 @@ function getResultChatSearchPreference(value: unknown): ResultChatSearchPreferen
   return 'auto';
 }
 
-function buildWebSearchNotice(plan: UserPlan, usage: WebSearchUsage): string {
-  return [
-    '🌐 최신 외부자료 확인이 필요한 질문입니다.',
-    '',
-    RESULT_CHAT_PLAN_LABELS[plan],
-    `이 결과의 최신자료 확인 ${usage.limit}회 중 ${usage.remainingCount}회 이용 가능`,
-    '',
-    '최신자료를 확인한 뒤 답변할까요?',
-  ].join('\n');
-}
-
-function buildAmbiguousNotice(plan: UserPlan, usage: WebSearchUsage): string {
-  return [
+function buildAmbiguousNotice(plan: UserPlan, usage: WebSearchUsage, question: string): string {
+  const lines = [
     '어떤 방식으로 답변할까요?',
     '',
-    '나의 기록만으로 답변할 수도 있고, 최신 외부자료를 함께 확인할 수도 있습니다.',
+    `질문: ${question}`,
     '',
-    RESULT_CHAT_PLAN_LABELS[plan],
-    `이 결과의 최신자료 확인 ${usage.limit}회 중 ${usage.remainingCount}회 이용 가능`,
-  ].join('\n');
+    `${RESULT_CHAT_PLAN_LABELS[plan]} · 외부자료 확인 ${usage.limit}회 중 ${usage.remainingCount}회 남음`,
+  ];
+  if (usage.remainingCount <= 0) {
+    lines.push(
+      '',
+      '이 결과의 외부자료 확인 횟수를 모두 사용했습니다.',
+      '나의 기록을 바탕으로 한 질문은 계속할 수 있습니다.',
+    );
+  }
+  return lines.join('\n');
 }
 
 function buildWebSearchExhaustedNotice(): string {
@@ -3504,6 +3500,7 @@ function buildResultChatPrompt(params: {
   safetyMode: ResultChatSafetyMode;
   systemGuide: string;
   recordOnlyChosen: boolean;
+  questionSafetyGuide?: string;
 }): string {
   const routeGuide: Record<ResultAnswerRoute, string> = {
     record_only: [
@@ -3563,6 +3560,7 @@ ${routeGuide[params.route]}
 
 [모드 제한]
 ${getSafetyModeGuide(params.safetyMode)}
+${params.questionSafetyGuide || ''}
 
 [형식별 지침]
 ${params.systemGuide || '(추가 지침 없음)'}
@@ -3614,6 +3612,18 @@ function decorateResultChatAnswer(
     return `${label}\n${missingExtra.join('\n')}${rest ? `\n\n${rest}` : ''}`;
   }
   return `${preface.join('\n')}\n\n${cleanAnswer}`;
+}
+
+function getResultChatQuestionSafetyGuide(question: string): string {
+  const normalized = normalizeResultChatQuestion(question);
+  if (!hasAnyResultChatPattern(normalized, RESULT_CHAT_HIGH_RISK_PATTERNS)) return '';
+  return [
+    '',
+    '[질문 안전 지침]',
+    '- 이 질문에는 의료·법률·금융 등 고위험 판단으로 이어질 수 있는 표현이 포함되어 있다.',
+    '- 사용자가 선택한 자료 출처 방식은 유지하되, 진단·치료·복약, 승소·패소, 위법 여부, 매수·매도 결론을 단정하지 않는다.',
+    '- 확인된 사실, 추가 확인이 필요한 사항, 전문가에게 확인할 항목을 구분해 안내한다.',
+  ].join('\n');
 }
 
 async function getRecentResultChatMessages(
@@ -3917,6 +3927,35 @@ export const chatWithResult = onCall(
     const actualPlan = coerceUserPlan(await getUserPlan(uid));
     const isDev = DEVELOPER_UIDS.has(uid);
     const requestId = createAiUsageRequestId();
+    const currentUsageForChoice = await getThreadWebSearchUsage(threadRef, actualPlan);
+
+    if (attachments.length > 0) {
+      if (sourceKey !== 'haruraw_sayu') {
+        throw new HttpsError('failed-precondition', '첨부는 하루LAW 자문에서만 사용할 수 있습니다.');
+      }
+      if (actualPlan === 'free') {
+        throw new HttpsError('permission-denied', '파일 첨부는 베이직·프리미엄 이용권 전용 기능입니다.');
+      }
+    }
+
+    if (searchPreference === 'auto') {
+      return {
+        threadId,
+        answer: '',
+        sources: [],
+        answerRoute: 'ambiguous',
+        routeLabel: RESULT_ROUTE_LABELS.ambiguous,
+        requiresConfirmation: true,
+        confirmationType: 'ambiguous',
+        notice: buildAmbiguousNotice(actualPlan, currentUsageForChoice, question),
+        plan: actualPlan,
+        planLabel: RESULT_CHAT_PLAN_LABELS[actualPlan],
+        webSearchLimit: currentUsageForChoice.limit,
+        webSearchUsedCount: currentUsageForChoice.usedCount,
+        webSearchRemainingCount: currentUsageForChoice.remainingCount,
+      };
+    }
+
     let locked = false;
     let reservedWebSearch = false;
     let webSearchFinalized = false;
@@ -3927,99 +3966,50 @@ export const chatWithResult = onCall(
       locked = true;
       await enforceResultChatRateLimit(uid);
 
-      if (attachments.length > 0) {
-        if (sourceKey !== 'haruraw_sayu') {
-          throw new HttpsError('failed-precondition', '첨부는 하루LAW 자문에서만 사용할 수 있습니다.');
-        }
-        if (actualPlan === 'free') {
-          throw new HttpsError('permission-denied', '파일 첨부는 베이직·프리미엄 이용권 전용 기능입니다.');
-        }
-      }
-      monthlyQuotaReservation = await reserveMonthlyAiQuota(uid, 'chatWithResult');
-
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
-      const classification = await classifyResultChatQuestion(ai, {
-        uid,
-        actualPlan,
-        recordId,
-        sourceKey,
-        question,
-        sourceResult,
-        requestId,
-        isDev,
-      });
       const currentUsage = await getThreadWebSearchUsage(threadRef, actualPlan);
-      let answerRoute: ResultAnswerRoute = classification.route;
-      let recordOnlyChosen = false;
+      const answerRoute: ResultAnswerRoute = searchPreference === 'web_confirmed' ? 'web_search' : 'record_only';
+      const recordOnlyChosen = searchPreference === 'record_only';
+      const questionSafetyGuide = getResultChatQuestionSafetyGuide(question);
 
-      if (searchPreference === 'record_only') {
-        if (answerRoute === 'high_risk_guidance') {
-          answerRoute = 'high_risk_guidance';
-        } else if (answerRoute === 'web_search') {
-          await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
-          monthlyQuotaReservation = null;
+      let usageForAnswer = currentUsage;
+      if (answerRoute === 'web_search') {
+        if (currentUsage.remainingCount <= 0) {
+          await logResultChatUsage({
+            uid,
+            actualPlan,
+            recordId,
+            sourceKey,
+            answerRoute,
+            model: null,
+            inputTokens: null,
+            outputTokens: null,
+            webSearchUsed: false,
+            professionalApiUsed: false,
+            searchSourceCount: 0,
+            latencyMs: null,
+            requestId,
+            success: false,
+            errorCode: 'web_search_limit_reached',
+            isDev,
+          });
           return {
             threadId,
             answer: '',
             sources: [],
             answerRoute,
             routeLabel: RESULT_ROUTE_LABELS.web_search,
-            requiresConfirmation: true,
-            confirmationType: 'web_search',
-            notice: buildWebSearchNotice(actualPlan, currentUsage),
+            limitReached: true,
+            notice: buildWebSearchExhaustedNotice(),
             plan: actualPlan,
             planLabel: RESULT_CHAT_PLAN_LABELS[actualPlan],
             webSearchLimit: currentUsage.limit,
             webSearchUsedCount: currentUsage.usedCount,
             webSearchRemainingCount: currentUsage.remainingCount,
           };
-        } else {
-          answerRoute = 'record_only';
-          recordOnlyChosen = true;
         }
-      } else if (searchPreference === 'web_confirmed') {
-        if (answerRoute === 'high_risk_guidance') {
-          answerRoute = 'high_risk_guidance';
-        } else if (answerRoute !== 'record_only') {
-          answerRoute = 'web_search';
-        }
-      } else if (answerRoute === 'web_search') {
-        await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
-        monthlyQuotaReservation = null;
-        return {
-          threadId,
-          answer: '',
-          sources: [],
-          answerRoute,
-          routeLabel: RESULT_ROUTE_LABELS.web_search,
-          requiresConfirmation: true,
-          confirmationType: 'web_search',
-          notice: buildWebSearchNotice(actualPlan, currentUsage),
-          plan: actualPlan,
-          planLabel: RESULT_CHAT_PLAN_LABELS[actualPlan],
-          webSearchLimit: currentUsage.limit,
-          webSearchUsedCount: currentUsage.usedCount,
-          webSearchRemainingCount: currentUsage.remainingCount,
-        };
-      } else if (answerRoute === 'ambiguous') {
-        await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
-        monthlyQuotaReservation = null;
-        return {
-          threadId,
-          answer: '',
-          sources: [],
-          answerRoute,
-          routeLabel: RESULT_ROUTE_LABELS.ambiguous,
-          requiresConfirmation: true,
-          confirmationType: 'ambiguous',
-          notice: buildAmbiguousNotice(actualPlan, currentUsage),
-          plan: actualPlan,
-          planLabel: RESULT_CHAT_PLAN_LABELS[actualPlan],
-          webSearchLimit: currentUsage.limit,
-          webSearchUsedCount: currentUsage.usedCount,
-          webSearchRemainingCount: currentUsage.remainingCount,
-        };
       }
+      monthlyQuotaReservation = await reserveMonthlyAiQuota(uid, 'chatWithResult');
 
       const recentMessageRows = await getRecentResultChatMessages(messagesRef);
       const reusable = attachments.length > 0
@@ -4098,7 +4088,6 @@ export const chatWithResult = onCall(
         };
       }
 
-      let usageForAnswer = currentUsage;
       if (answerRoute === 'web_search') {
         const reserved = await reserveWebSearchSlot(threadRef, actualPlan, sourceKey, sourceIndex);
         if (!reserved.reserved) {
@@ -4149,6 +4138,7 @@ export const chatWithResult = onCall(
         safetyMode: policy.safetyMode,
         systemGuide: policy.systemGuide,
         recordOnlyChosen,
+        questionSafetyGuide,
       });
       const { fileParts, attachmentMeta } = attachments.length > 0
         ? await loadHaruLawAttachmentParts(uid, attachments)
