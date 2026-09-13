@@ -69,7 +69,7 @@ interface FormatModalProps {
   format: RecordFormat;
   recordId: string;
   initialData?: Record<string, string>;
-  onSave: (formatData: Record<string, string>) => Promise<void>;
+  onSave: (formatData: Record<string, string>) => Promise<string | void>;
 }
 
 interface PolishResult {
@@ -2634,10 +2634,16 @@ ${contentValues}`,
 
     setIsSaving(true);
     try {
-      await onSave(dataToSave);
+      const savedRecordId = await onSave(dataToSave);
       toast.success('SAYU-나의 기록에 저장했습니다.');
       onClose();
-      navigate('/sayu');
+      navigate('/sayu', {
+        state: {
+          filterFormat: format,
+          openRecordId: savedRecordId || (dataToSave._recordId as string) || undefined,
+          tab: 'records',
+        },
+      });
     } catch (error) {
       console.error('저장 중 오류:', error);
       toast.error('저장에 실패했습니다.');
@@ -2682,11 +2688,17 @@ ${contentValues}`,
 
     setIsSaving(true);
     try {
-      await onSave(updateData);
+      const savedRecordId = await onSave(updateData);
       toast.success('SAYU-나의 기록에 저장했습니다.');
       setShowPolishModal(false);
       onClose();
-      navigate('/sayu');
+      navigate('/sayu', {
+        state: {
+          filterFormat: format,
+          openRecordId: savedRecordId || (updateData._recordId as string) || undefined,
+          tab: 'records',
+        },
+      });
     } catch (error) {
       console.error('SAYU 저장 실패:', error);
       toast.error('저장에 실패했습니다.');

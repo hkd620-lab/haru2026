@@ -1097,6 +1097,7 @@ export function RecordPage() {
       }
       setSavedAssistantRecommendations(nextRecommendations);
       toast.success('내용이 저장되었습니다!');
+      return recordId;
     } catch (error) {
       console.error('저장 실패:', error);
       toast.error('내용 저장에 실패했습니다.');
