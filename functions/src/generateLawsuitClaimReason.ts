@@ -103,6 +103,7 @@ async function enforceClaimReasonDailyLimit(uid: string): Promise<{
 export const generateLawsuitClaimReason = onCall(
   {
     region: 'asia-northeast3',
+    memory: '512MiB',
     cors: ALLOWED_CALLABLE_ORIGINS,
     secrets: [GEMINI_API_KEY],
     timeoutSeconds: 120,
