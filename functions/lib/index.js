@@ -4085,7 +4085,7 @@ exports.kakaoLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3', me
     }
 });
 // ===== 🟡 카카오 콜백 (통합 UID 적용) =====
-exports.kakaoCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', memory: '512MiB', minInstances: 1, secrets: [KAKAO_CLIENT_ID_SECRET, KAKAO_CLIENT_SECRET_SECRET] }, async (req, res) => {
+exports.kakaoCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', memory: '512MiB', secrets: [KAKAO_CLIENT_ID_SECRET, KAKAO_CLIENT_SECRET_SECRET] }, async (req, res) => {
     var _a, _b, _c, _d, _f;
     try {
         const callbackStartedAt = Date.now();
@@ -4192,7 +4192,7 @@ exports.naverLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3', me
     }
 });
 // ===== 🟢 네이버 콜백 (통합 UID 적용) =====
-exports.naverCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', memory: '512MiB', minInstances: 1, secrets: [NAVER_CLIENT_ID_SECRET, NAVER_CLIENT_SECRET_SECRET] }, async (req, res) => {
+exports.naverCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', memory: '512MiB', secrets: [NAVER_CLIENT_ID_SECRET, NAVER_CLIENT_SECRET_SECRET] }, async (req, res) => {
     try {
         const callbackStartedAt = Date.now();
         const timings = {};
@@ -4277,7 +4277,6 @@ exports.googleLoginStart = (0, https_1.onRequest)({
 exports.googleCallback = (0, https_1.onRequest)({
     region: 'asia-northeast3',
     memory: '512MiB',
-    minInstances: 1,
     secrets: [GOOGLE_CLIENT_ID_SECRET, GOOGLE_CLIENT_SECRET_SECRET] // 🔐 Secret 연결
 }, async (req, res) => {
     try {
