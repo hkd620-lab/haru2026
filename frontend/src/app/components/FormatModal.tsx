@@ -1,5 +1,6 @@
 import { X, TestTube2, Wand2, Upload, Trash2, Plus, Camera, FileText, Pencil } from 'lucide-react';
 import { useState, useEffect, useRef, Fragment } from 'react';
+import { useNavigate } from 'react-router';
 import { getTestData } from '../data/testData';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
@@ -9,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
 import heic2any from 'heic2any';
 import { LoadingOverlay } from './LoadingOverlay';
+import GrapeLoadingMini from './GrapeLoadingMini';
 import { readOriginalImageMeta, type UploadedImageMeta } from '../services/photoMetadataService';
 import {
   makeReadingBookId,
@@ -67,7 +69,7 @@ interface FormatModalProps {
   format: RecordFormat;
   recordId: string;
   initialData?: Record<string, string>;
-  onSave: (formatData: Record<string, string>) => Promise<void>;
+  onSave: (formatData: Record<string, string>) => Promise<string | void>;
 }
 
 interface PolishResult {
@@ -434,6 +436,7 @@ const LEDGER_OCR_PREVIEW_FIELDS: { key: keyof LedgerOcrFields; label: string }[]
 
 export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, onSave }: FormatModalProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<Record<string, string>>(initialData);
   const [isSaving, setIsSaving] = useState(false);
   const [isPolishing, setIsPolishing] = useState(false);
@@ -1210,7 +1213,24 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     }
   };
 
-  const handlePolishClick = async () => {
+  // AI 도움 사용량 조회 — 모달과 분리된 비동기 조회. 모달은 이 호출을 기다리지 않고 즉시 열린다.
+  const fetchMonthlyAiQuotaStatus = async () => {
+    setIsLoadingMonthlyAiQuota(true);
+    try {
+      const functions = getFunctions(undefined, 'asia-northeast3');
+      const getMonthlyAiQuotaStatus = httpsCallable(functions, 'getMonthlyAiQuotaStatus');
+      const result = await getMonthlyAiQuotaStatus();
+      setMonthlyAiQuotaStatus(result.data as MonthlyAiQuotaStatus);
+    } catch (error) {
+      console.error('AI 도움 사용량 조회 실패:', error);
+      toast.error('AI 도움 사용량을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+      setMonthlyAiQuotaStatus(null);
+    } finally {
+      setIsLoadingMonthlyAiQuota(false);
+    }
+  };
+
+  const handlePolishClick = () => {
     const currentTitle = (formData[`${prefix}_title`] || (format === '독서사유' ? formData.reading_book_title : '') || (isStockFormat ? formData.stock_name : '') || '').trim();
     if (!currentTitle) {
       toast.warning('제목을 입력해 주세요. 제목이 있어야 나중에 목록에서 내용을 확인하기 편합니다.');
@@ -1218,28 +1238,21 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     }
 
     setPendingPolishMode('PREMIUM');
-    setIsLoadingMonthlyAiQuota(true);
-    try {
-      const functions = getFunctions(undefined, 'asia-northeast3');
-      const getMonthlyAiQuotaStatus = httpsCallable(functions, 'getMonthlyAiQuotaStatus');
-      const result = await getMonthlyAiQuotaStatus();
-      setMonthlyAiQuotaStatus(result.data as MonthlyAiQuotaStatus);
-      setShowMonthlyAiQuotaModal(true);
-    } catch (error) {
-      console.error('AI 도움 사용량 조회 실패:', error);
-      toast.error('AI 도움 사용량을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.');
-    } finally {
-      setIsLoadingMonthlyAiQuota(false);
-    }
+    setMonthlyAiQuotaStatus(null);
+    setShowMonthlyAiQuotaModal(true);
+    // 사용량 조회는 모달 표시와 분리된 비동기 호출 — 모달이 서버 응답을 기다리지 않는다.
+    fetchMonthlyAiQuotaStatus();
   };
 
   const handleConfirmMonthlyAiPolish = () => {
+    if (isPolishing) return;
     const mode = pendingPolishMode;
     setShowMonthlyAiQuotaModal(false);
     handlePolishWithMode(mode);
   };
 
   const handlePolishWithMode = async (mode: SayuMode) => {
+    if (isPolishing) return;
     setSayuMode(mode);
     setShowModeSelect(false);
     setIsPolishing(true);
@@ -2623,9 +2636,19 @@ ${contentValues}`,
 
     setIsSaving(true);
     try {
-      await onSave(dataToSave);
-      toast.success('SAYU-나의기록에 저장되었습니다.');
-      onClose();
+      const savedRecordId = await onSave(dataToSave);
+      const openRecordId = savedRecordId || (dataToSave._recordId as string) || undefined;
+      toast.success('SAYU-나의 기록에 저장했습니다.');
+      // /sayu로 이동하면 이 모달을 포함한 RecordPage가 unmount되므로,
+      // onClose()(→ closeToOrigin())를 호출하지 않는다 — 호출 시 /v2 등으로의
+      // 이동과 아래 navigate('/sayu')가 경쟁해 잘못된 경로로 남는 문제가 있었다.
+      navigate('/sayu', {
+        state: {
+          filterFormat: format,
+          openRecordId,
+          tab: 'records',
+        },
+      });
     } catch (error) {
       console.error('저장 중 오류:', error);
       toast.error('저장에 실패했습니다.');
@@ -2670,10 +2693,20 @@ ${contentValues}`,
 
     setIsSaving(true);
     try {
-      await onSave(updateData);
-      toast.success('SAYU-나의기록에 저장되었습니다.');
+      const savedRecordId = await onSave(updateData);
+      const openRecordId = savedRecordId || (updateData._recordId as string) || undefined;
+      toast.success('SAYU-나의 기록에 저장했습니다.');
       setShowPolishModal(false);
-      onClose();
+      // /sayu로 이동하면 이 모달을 포함한 RecordPage가 unmount되므로,
+      // onClose()(→ closeToOrigin())를 호출하지 않는다 — 호출 시 /v2 등으로의
+      // 이동과 아래 navigate('/sayu')가 경쟁해 잘못된 경로로 남는 문제가 있었다.
+      navigate('/sayu', {
+        state: {
+          filterFormat: format,
+          openRecordId,
+          tab: 'records',
+        },
+      });
     } catch (error) {
       console.error('SAYU 저장 실패:', error);
       toast.error('저장에 실패했습니다.');
@@ -6368,7 +6401,7 @@ ${contentValues}`,
         </div>
       )}
 
-      {showMonthlyAiQuotaModal && monthlyAiQuotaStatus && (
+      {showMonthlyAiQuotaModal && (
         <div
           style={{
             position: 'fixed',
@@ -6393,29 +6426,64 @@ ${contentValues}`,
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 style={{ margin: 0, fontSize: 20, color: '#1A3C6E', fontWeight: 800 }}>
+            <h2 style={{ margin: 0, fontSize: 20, color: '#1A3C6E', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
               AI 도움 사용 안내
+              {isLoadingMonthlyAiQuota && <GrapeLoadingMini size={16} />}
             </h2>
             <div style={{ marginTop: 18, display: 'grid', gap: 8, fontSize: 14, color: '#374151', lineHeight: 1.6 }}>
-              <p style={{ margin: 0 }}>현재 요금제: {MONTHLY_AI_PLAN_LABELS[monthlyAiQuotaStatus.plan]}</p>
-              <p style={{ margin: 0 }}>
-                이번 달 AI 도움: <strong>{monthlyAiQuotaStatus.used} / {monthlyAiQuotaStatus.limit}회</strong>
-              </p>
-              <p style={{ margin: 0 }}>남은 AI 도움: {monthlyAiQuotaStatus.remaining}회</p>
-              <p style={{ margin: '8px 0 0', color: '#6B7280' }}>
-                무료 월 {monthlyAiQuotaStatus.freeLimit}회 · 베이직 월 {monthlyAiQuotaStatus.basicLimit}회 · 프리미엄 월 {monthlyAiQuotaStatus.premiumLimit}회
-              </p>
-              {monthlyAiQuotaStatus.remaining <= 0 && (
-                <p style={{ margin: '8px 0 0', color: '#B91C1C', fontWeight: 700 }}>
-                  이번 달 AI 도움을 모두 사용했습니다.
+              {monthlyAiQuotaStatus ? (
+                <>
+                  <p style={{ margin: 0 }}>현재 요금제: {MONTHLY_AI_PLAN_LABELS[monthlyAiQuotaStatus.plan]}</p>
+                  <p style={{ margin: 0 }}>
+                    이번 달 AI 도움: <strong>{monthlyAiQuotaStatus.used} / {monthlyAiQuotaStatus.limit}회</strong>
+                  </p>
+                  <p style={{ margin: 0 }}>남은 AI 도움: {monthlyAiQuotaStatus.remaining}회</p>
+                  <p style={{ margin: '8px 0 0', color: '#6B7280' }}>
+                    무료 월 {monthlyAiQuotaStatus.freeLimit}회 · 베이직 월 {monthlyAiQuotaStatus.basicLimit}회 · 프리미엄 월 {monthlyAiQuotaStatus.premiumLimit}회
+                  </p>
+                  {monthlyAiQuotaStatus.remaining <= 0 && (
+                    <p style={{ margin: '8px 0 0', color: '#B91C1C', fontWeight: 700 }}>
+                      이번 달 AI 도움을 모두 사용했습니다.
+                    </p>
+                  )}
+                </>
+              ) : isLoadingMonthlyAiQuota ? (
+                <>
+                  <p style={{ margin: 0, color: '#9CA3AF' }}>현재 요금제: 확인 중…</p>
+                  <p style={{ margin: 0, color: '#9CA3AF' }}>이번 달 AI 도움: 확인 중…</p>
+                  <p style={{ margin: 0, color: '#9CA3AF' }}>남은 AI 도움: 확인 중…</p>
+                </>
+              ) : (
+                <p style={{ margin: 0, color: '#B91C1C' }}>
+                  사용량 정보를 확인하지 못했습니다. 다시 시도해 주세요.
                 </p>
               )}
             </div>
             <div style={{ marginTop: 22, display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-              {monthlyAiQuotaStatus.remaining > 0 && (
+              {monthlyAiQuotaStatus ? (
+                monthlyAiQuotaStatus.remaining > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleConfirmMonthlyAiPolish}
+                    disabled={isPolishing}
+                    style={{
+                      padding: '10px 16px',
+                      border: 'none',
+                      borderRadius: 8,
+                      backgroundColor: '#10b981',
+                      color: '#fff',
+                      fontWeight: 700,
+                      cursor: isPolishing ? 'not-allowed' : 'pointer',
+                      opacity: isPolishing ? 0.7 : 1,
+                    }}
+                  >
+                    AI 다듬기 실행
+                  </button>
+                )
+              ) : !isLoadingMonthlyAiQuota ? (
                 <button
                   type="button"
-                  onClick={handleConfirmMonthlyAiPolish}
+                  onClick={fetchMonthlyAiQuotaStatus}
                   style={{
                     padding: '10px 16px',
                     border: 'none',
@@ -6426,9 +6494,9 @@ ${contentValues}`,
                     cursor: 'pointer',
                   }}
                 >
-                  AI 다듬기 실행
+                  다시 시도
                 </button>
-              )}
+              ) : null}
               <button
                 type="button"
                 onClick={() => { window.location.href = '/subscription'; }}
@@ -6648,15 +6716,17 @@ ${contentValues}`,
         </div>
       )}
 
-      {/* 사진 업로드 중 포도송이 오버레이 */}
+      {/* 사진 업로드 / AI 다듬기 실행 중 포도송이 오버레이 — isPolishing은 모든 기록형식의 AI 다듬기(polishContent) 실행 상태를 의미 */}
       <LoadingOverlay
-        visible={isUploading || isExtractingBookText || isExtractingStockText}
+        visible={isUploading || isExtractingBookText || isExtractingStockText || isPolishing}
         message={
-          isExtractingBookText
-            ? '책 본문 텍스트 변환 중...'
-            : isExtractingStockText
-              ? '거래 캡처 텍스트 추출 중...'
-              : '사진 업로드 중...'
+          isPolishing
+            ? 'AI가 다듬고 있어요. 잠시만 기다려 주세요.'
+            : isExtractingBookText
+              ? '책 본문 텍스트 변환 중...'
+              : isExtractingStockText
+                ? '거래 캡처 텍스트 추출 중...'
+                : '사진 업로드 중...'
         }
       />
     </>

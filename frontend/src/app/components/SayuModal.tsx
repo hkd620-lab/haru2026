@@ -2352,6 +2352,25 @@ export function SayuModal({
             backgroundColor: '#fafafa',
           }}
         >
+          {/* 편집 가능 안내 — 이 편집창이 열려 있는 동안 계속 표시 */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 8,
+              padding: '10px 14px',
+              marginBottom: 16,
+              borderRadius: 8,
+              border: '1px solid #D1FAE5',
+              backgroundColor: '#ECFDF5',
+              color: '#0F766E',
+              fontSize: 13,
+              lineHeight: 1.5,
+            }}
+          >
+            <span aria-hidden="true">✏️</span>
+            <span>이 기록은 바로 수정할 수 있습니다. 수정한 뒤 아래 ‘저장’ 버튼을 눌러주세요.</span>
+          </div>
           {viewMode === 'ai' ? (
             <div>
               {/* 제목 입력 */}
