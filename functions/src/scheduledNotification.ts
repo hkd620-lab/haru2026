@@ -6,6 +6,7 @@ export const scheduledPushNotification = onSchedule(
     schedule: '0 * * * *',
     timeZone: 'Asia/Seoul',
     region: 'asia-northeast3',
+    memory: '512MiB',
   },
   async (event) => {
     const now = new Date();

@@ -2543,7 +2543,7 @@ export const polishContent = onCall(
 );
 
 export const getMonthlyAiQuotaStatus = onCall(
-  { region: 'asia-northeast3' },
+  { region: 'asia-northeast3', memory: '512MiB' },
   async (request) => {
     if (!request.auth?.uid) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
@@ -3072,7 +3072,7 @@ async function logPaidServiceUsage(
 }
 
 export const recordPaidServiceUsage = onCall(
-  { region: 'asia-northeast3' },
+  { region: 'asia-northeast3', memory: '512MiB' },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
