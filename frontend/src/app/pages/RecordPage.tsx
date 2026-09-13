@@ -1100,6 +1100,7 @@ export function RecordPage() {
     } catch (error) {
       console.error('저장 실패:', error);
       toast.error('내용 저장에 실패했습니다.');
+      throw error;
     }
   };
 
