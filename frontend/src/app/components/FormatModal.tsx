@@ -69,7 +69,7 @@ interface FormatModalProps {
   format: RecordFormat;
   recordId: string;
   initialData?: Record<string, string>;
-  onSave: (formatData: Record<string, string>) => Promise<void>;
+  onSave: (formatData: Record<string, string>) => Promise<string | void>;
 }
 
 interface PolishResult {
@@ -2634,10 +2634,19 @@ ${contentValues}`,
 
     setIsSaving(true);
     try {
-      await onSave(dataToSave);
+      const savedRecordId = await onSave(dataToSave);
+      const openRecordId = savedRecordId || (dataToSave._recordId as string) || undefined;
       toast.success('SAYU-나의 기록에 저장했습니다.');
-      onClose();
-      navigate('/sayu');
+      // /sayu로 이동하면 이 모달을 포함한 RecordPage가 unmount되므로,
+      // onClose()(→ closeToOrigin())를 호출하지 않는다 — 호출 시 /v2 등으로의
+      // 이동과 아래 navigate('/sayu')가 경쟁해 잘못된 경로로 남는 문제가 있었다.
+      navigate('/sayu', {
+        state: {
+          filterFormat: format,
+          openRecordId,
+          tab: 'records',
+        },
+      });
     } catch (error) {
       console.error('저장 중 오류:', error);
       toast.error('저장에 실패했습니다.');
@@ -2682,11 +2691,20 @@ ${contentValues}`,
 
     setIsSaving(true);
     try {
-      await onSave(updateData);
+      const savedRecordId = await onSave(updateData);
+      const openRecordId = savedRecordId || (updateData._recordId as string) || undefined;
       toast.success('SAYU-나의 기록에 저장했습니다.');
       setShowPolishModal(false);
-      onClose();
-      navigate('/sayu');
+      // /sayu로 이동하면 이 모달을 포함한 RecordPage가 unmount되므로,
+      // onClose()(→ closeToOrigin())를 호출하지 않는다 — 호출 시 /v2 등으로의
+      // 이동과 아래 navigate('/sayu')가 경쟁해 잘못된 경로로 남는 문제가 있었다.
+      navigate('/sayu', {
+        state: {
+          filterFormat: format,
+          openRecordId,
+          tab: 'records',
+        },
+      });
     } catch (error) {
       console.error('SAYU 저장 실패:', error);
       toast.error('저장에 실패했습니다.');
