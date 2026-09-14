@@ -9742,6 +9742,46 @@ export const reviewHaruLawSharedCard = onCall(
   }
 );
 
+function normalizeLawConsultUserQuery(value: unknown): string {
+  return typeof value === 'string'
+    ? value.trim().replace(/\s+/g, ' ')
+    : '';
+}
+
+function normalizeLawConsultCachePart(value: unknown, fallback: string): string {
+  const normalized = typeof value === 'string'
+    ? value.trim().replace(/\s+/g, ' ')
+    : '';
+  return (normalized || fallback)
+    .replace(/[^a-zA-Z0-9가-힣]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 80) || fallback;
+}
+
+function buildLawConsultCacheKey(params: {
+  lawName: unknown;
+  articleStr: unknown;
+  userQuery: unknown;
+}) {
+  const normalizedUserQuery = normalizeLawConsultUserQuery(params.userQuery);
+  const questionHash = crypto
+    .createHash('sha256')
+    .update(normalizedUserQuery)
+    .digest('hex')
+    .slice(0, 24);
+  const lawNamePart = normalizeLawConsultCachePart(params.lawName, 'unknown_law');
+  const articlePart = normalizeLawConsultCachePart(params.articleStr, 'unknown_article');
+
+  return {
+    cacheKey: `${lawNamePart}_${articlePart}_${questionHash}`,
+    normalizedUserQuery,
+    questionHash,
+    lawNamePart,
+    articlePart,
+  };
+}
+
 // ===== 법령 쉬운 해설 =====
 export const lawEasyExplain = onCall(
   {
@@ -9755,10 +9795,36 @@ export const lawEasyExplain = onCall(
       throw new HttpsError('unauthenticated', '로그인이 필요합니다');
     }
 
-    const { lawText, userQuery } = request.data;
+    const { lawName, articleStr, lawText, userQuery } = request.data;
 
     if (!lawText) {
       throw new HttpsError('invalid-argument', '법령 텍스트를 입력해주세요.');
+    }
+
+    const {
+      cacheKey,
+      normalizedUserQuery,
+      questionHash,
+      lawNamePart,
+      articlePart,
+    } = buildLawConsultCacheKey({ lawName, articleStr, userQuery });
+    const cacheRef = db.collection('lawConsultCache').doc(cacheKey);
+
+    try {
+      const cacheSnap = await cacheRef.get();
+      const cachedExplanation = cacheSnap.exists ? cacheSnap.data()?.explanation : null;
+      if (typeof cachedExplanation === 'string' && cachedExplanation.trim()) {
+        return {
+          success: true,
+          explanation: cachedExplanation,
+          cached: true,
+        };
+      }
+    } catch (cacheError: any) {
+      logger.warn('lawEasyExplain 캐시 조회 실패, Gemini 생성 진행:', {
+        cacheKey,
+        message: cacheError?.message || String(cacheError),
+      });
     }
 
     try {
@@ -9793,10 +9859,11 @@ AI 의견:
 본 내용은 법령 정보 제공 목적이며, 전문적인 법률 자문을 대체할 수 없습니다.`
       });
 
-      const prompt = userQuery
-        ? `[사용자 질문]: ${userQuery}\n\n[관련 법조문]: ${lawText}`
+      const prompt = normalizedUserQuery
+        ? `[사용자 질문]: ${normalizedUserQuery}\n\n[관련 법조문]: ${lawText}`
         : lawText;
       const result = await model.generateContent(prompt);
+      const explanation = result.response.text();
       const usage = getGeminiUsage(result);
       await logAiUsage({
         uid: request.auth.uid,
@@ -9814,9 +9881,25 @@ AI 의견:
         errorCode: null,
         isDev: DEVELOPER_UIDS.has(request.auth.uid),
       });
+      try {
+        await cacheRef.set({
+          explanation,
+          lawName: lawNamePart,
+          articleStr: articlePart,
+          questionHash,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+      } catch (cacheError: any) {
+        logger.warn('lawEasyExplain 캐시 저장 실패, explanation 반환:', {
+          cacheKey,
+          message: cacheError?.message || String(cacheError),
+        });
+      }
       return {
         success: true,
-        explanation: result.response.text(),
+        explanation,
+        cached: false,
       };
 
     } catch (error: any) {
