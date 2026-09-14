@@ -2901,6 +2901,17 @@ function buildWebSearchFailedNotice() {
         '잠시 후 다시 시도하거나 나의 기록으로 답변을 선택해 주세요.',
     ].join('\n');
 }
+function buildResultChatWebRetryPrompt(prompt) {
+    return `${prompt}\n\n[외부자료 검색 재시도]\n이 요청은 사용자가 최신 외부자료 확인을 명시적으로 선택했습니다. 반드시 Google Search 도구를 실제로 사용하고, 검색으로 확인된 출처가 포함된 답변만 작성하세요. 검색 출처를 확보할 수 없으면 추측하거나 기록만으로 대신 답하지 마세요.`;
+}
+function addOptionalTokenCounts(current, next) {
+    const nextCount = typeof next === 'number' && Number.isFinite(next) ? next : null;
+    if (current === null)
+        return nextCount;
+    if (nextCount === null)
+        return current;
+    return current + nextCount;
+}
 function buildResultChatLimitResponse(params) {
     return {
         threadId: params.threadId,
@@ -3387,7 +3398,7 @@ exports.chatWithResult = (0, https_2.onCall)({
     secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 90,
 }, async (request) => {
-    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8;
+    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24;
     if (!((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid)) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -3483,6 +3494,38 @@ exports.chatWithResult = (0, https_2.onCall)({
         const recordOnlyChosen = searchPreference === 'record_only';
         const questionSafetyGuide = getResultChatQuestionSafetyGuide(question);
         let usageForAnswer = currentUsage;
+        // 월간 AI 한도가 소진되면 기록 답변도 만들 수 없으므로, 두 한도가 모두
+        // 소진된 경우에도 "기록 질문은 계속 가능"이라는 잘못된 안내가 먼저 나가지 않는다.
+        if (monthlyUsageForChoice.remaining <= 0) {
+            await logResultChatUsage({
+                uid,
+                actualPlan,
+                recordId,
+                sourceKey,
+                answerRoute,
+                model: null,
+                inputTokens: null,
+                outputTokens: null,
+                webSearchUsed: false,
+                professionalApiUsed: false,
+                searchSourceCount: 0,
+                latencyMs: null,
+                requestId,
+                success: false,
+                errorCode: 'MONTHLY_AI_QUOTA_EXCEEDED',
+                isDev,
+            });
+            return buildResultChatLimitResponse({
+                threadId,
+                answerRoute,
+                routeLabel: RESULT_ROUTE_LABELS[answerRoute],
+                limitReason: 'monthly_ai_quota_exceeded',
+                notice: buildMonthlyAiQuotaExhaustedNotice(),
+                actualPlan,
+                usage: currentUsage,
+                monthlyUsage: monthlyUsageForChoice,
+            });
+        }
         if (answerRoute === 'web_search') {
             if (currentUsage.remainingCount <= 0) {
                 await logResultChatUsage({
@@ -3514,36 +3557,6 @@ exports.chatWithResult = (0, https_2.onCall)({
                     monthlyUsage: monthlyUsageForChoice,
                 });
             }
-        }
-        if (monthlyUsageForChoice.remaining <= 0) {
-            await logResultChatUsage({
-                uid,
-                actualPlan,
-                recordId,
-                sourceKey,
-                answerRoute,
-                model: null,
-                inputTokens: null,
-                outputTokens: null,
-                webSearchUsed: false,
-                professionalApiUsed: false,
-                searchSourceCount: 0,
-                latencyMs: null,
-                requestId,
-                success: false,
-                errorCode: 'MONTHLY_AI_QUOTA_EXCEEDED',
-                isDev,
-            });
-            return buildResultChatLimitResponse({
-                threadId,
-                answerRoute,
-                routeLabel: RESULT_ROUTE_LABELS[answerRoute],
-                limitReason: 'monthly_ai_quota_exceeded',
-                notice: buildMonthlyAiQuotaExhaustedNotice(),
-                actualPlan,
-                usage: currentUsage,
-                monthlyUsage: monthlyUsageForChoice,
-            });
         }
         try {
             monthlyQuotaReservation = await (0, monthlyAiQuota_1.reserveMonthlyAiQuota)(uid, 'chatWithResult');
@@ -3723,31 +3736,57 @@ exports.chatWithResult = (0, https_2.onCall)({
             ? [{ role: 'user', parts: [{ text: prompt }, ...fileParts] }]
             : prompt;
         const startedAt = Date.now();
-        const response = await ai.models.generateContent({
+        let response = await ai.models.generateContent({
             model: RESULT_CHAT_MODEL_NAME,
             contents,
             config: answerRoute === 'web_search'
                 ? { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS }
                 : { maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
         });
-        const latencyMs = Date.now() - startedAt;
-        const rawAnswer = clampResultChatText(response.text || '', RESULT_CHAT_ANSWER_MAX_LENGTH);
-        const finishReason = (_l = (_k = response.candidates) === null || _k === void 0 ? void 0 : _k[0]) === null || _l === void 0 ? void 0 : _l.finishReason;
-        const { sources, usedWebSearch } = answerRoute === 'web_search'
+        let inputTokens = addOptionalTokenCounts(null, (_k = response.usageMetadata) === null || _k === void 0 ? void 0 : _k.promptTokenCount);
+        let outputTokens = addOptionalTokenCounts(null, (_l = response.usageMetadata) === null || _l === void 0 ? void 0 : _l.candidatesTokenCount);
+        let { sources, usedWebSearch } = answerRoute === 'web_search'
             ? getResultChatSources(response)
             : { sources: [], usedWebSearch: false };
         if (answerRoute === 'web_search' && !usedWebSearch) {
             logger.warn('chatWithResult web_search_not_grounded 진단:', {
-                finishReason,
-                hasCandidates: ((_o = (_m = response.candidates) === null || _m === void 0 ? void 0 : _m.length) !== null && _o !== void 0 ? _o : 0) > 0,
-                hasGroundingMetadata: !!((_q = (_p = response.candidates) === null || _p === void 0 ? void 0 : _p[0]) === null || _q === void 0 ? void 0 : _q.groundingMetadata),
-                webSearchQueriesCount: (_v = (_u = (_t = (_s = (_r = response.candidates) === null || _r === void 0 ? void 0 : _r[0]) === null || _s === void 0 ? void 0 : _s.groundingMetadata) === null || _t === void 0 ? void 0 : _t.webSearchQueries) === null || _u === void 0 ? void 0 : _u.length) !== null && _v !== void 0 ? _v : 0,
-                groundingChunksCount: (_0 = (_z = (_y = (_x = (_w = response.candidates) === null || _w === void 0 ? void 0 : _w[0]) === null || _x === void 0 ? void 0 : _x.groundingMetadata) === null || _y === void 0 ? void 0 : _y.groundingChunks) === null || _z === void 0 ? void 0 : _z.length) !== null && _0 !== void 0 ? _0 : 0,
+                attempt: 1,
+                finishReason: (_o = (_m = response.candidates) === null || _m === void 0 ? void 0 : _m[0]) === null || _o === void 0 ? void 0 : _o.finishReason,
+                hasCandidates: ((_q = (_p = response.candidates) === null || _p === void 0 ? void 0 : _p.length) !== null && _q !== void 0 ? _q : 0) > 0,
+                hasGroundingMetadata: !!((_s = (_r = response.candidates) === null || _r === void 0 ? void 0 : _r[0]) === null || _s === void 0 ? void 0 : _s.groundingMetadata),
+                webSearchQueriesCount: (_x = (_w = (_v = (_u = (_t = response.candidates) === null || _t === void 0 ? void 0 : _t[0]) === null || _u === void 0 ? void 0 : _u.groundingMetadata) === null || _v === void 0 ? void 0 : _v.webSearchQueries) === null || _w === void 0 ? void 0 : _w.length) !== null && _x !== void 0 ? _x : 0,
+                groundingChunksCount: (_2 = (_1 = (_0 = (_z = (_y = response.candidates) === null || _y === void 0 ? void 0 : _y[0]) === null || _z === void 0 ? void 0 : _z.groundingMetadata) === null || _0 === void 0 ? void 0 : _0.groundingChunks) === null || _1 === void 0 ? void 0 : _1.length) !== null && _2 !== void 0 ? _2 : 0,
                 recordId,
                 sourceKey,
             });
-            throw new Error('web_search_not_grounded');
+            const retryPrompt = buildResultChatWebRetryPrompt(prompt);
+            const retryContents = fileParts.length > 0
+                ? [{ role: 'user', parts: [{ text: retryPrompt }, ...fileParts] }]
+                : retryPrompt;
+            response = await ai.models.generateContent({
+                model: RESULT_CHAT_MODEL_NAME,
+                contents: retryContents,
+                config: { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
+            });
+            inputTokens = addOptionalTokenCounts(inputTokens, (_3 = response.usageMetadata) === null || _3 === void 0 ? void 0 : _3.promptTokenCount);
+            outputTokens = addOptionalTokenCounts(outputTokens, (_4 = response.usageMetadata) === null || _4 === void 0 ? void 0 : _4.candidatesTokenCount);
+            ({ sources, usedWebSearch } = getResultChatSources(response));
+            if (!usedWebSearch) {
+                logger.warn('chatWithResult web_search_not_grounded 진단:', {
+                    attempt: 2,
+                    finishReason: (_6 = (_5 = response.candidates) === null || _5 === void 0 ? void 0 : _5[0]) === null || _6 === void 0 ? void 0 : _6.finishReason,
+                    hasCandidates: ((_8 = (_7 = response.candidates) === null || _7 === void 0 ? void 0 : _7.length) !== null && _8 !== void 0 ? _8 : 0) > 0,
+                    hasGroundingMetadata: !!((_10 = (_9 = response.candidates) === null || _9 === void 0 ? void 0 : _9[0]) === null || _10 === void 0 ? void 0 : _10.groundingMetadata),
+                    webSearchQueriesCount: (_15 = (_14 = (_13 = (_12 = (_11 = response.candidates) === null || _11 === void 0 ? void 0 : _11[0]) === null || _12 === void 0 ? void 0 : _12.groundingMetadata) === null || _13 === void 0 ? void 0 : _13.webSearchQueries) === null || _14 === void 0 ? void 0 : _14.length) !== null && _15 !== void 0 ? _15 : 0,
+                    groundingChunksCount: (_20 = (_19 = (_18 = (_17 = (_16 = response.candidates) === null || _16 === void 0 ? void 0 : _16[0]) === null || _17 === void 0 ? void 0 : _17.groundingMetadata) === null || _18 === void 0 ? void 0 : _18.groundingChunks) === null || _19 === void 0 ? void 0 : _19.length) !== null && _20 !== void 0 ? _20 : 0,
+                    recordId,
+                    sourceKey,
+                });
+                throw new Error('web_search_not_grounded');
+            }
         }
+        const latencyMs = Date.now() - startedAt;
+        const rawAnswer = clampResultChatText(response.text || '', RESULT_CHAT_ANSWER_MAX_LENGTH);
         if (answerRoute === 'web_search') {
             usageForAnswer = await finalizeWebSearchSlot(threadRef, actualPlan, true);
             webSearchFinalized = true;
@@ -3756,7 +3795,6 @@ exports.chatWithResult = (0, https_2.onCall)({
         if (!answer) {
             throw new Error('empty_answer');
         }
-        const gUsage = response.usageMetadata;
         await logResultChatUsage({
             uid,
             actualPlan,
@@ -3764,8 +3802,8 @@ exports.chatWithResult = (0, https_2.onCall)({
             sourceKey,
             answerRoute,
             model: RESULT_CHAT_MODEL_NAME,
-            inputTokens: (_1 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.promptTokenCount) !== null && _1 !== void 0 ? _1 : null,
-            outputTokens: (_2 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.candidatesTokenCount) !== null && _2 !== void 0 ? _2 : null,
+            inputTokens,
+            outputTokens,
             webSearchUsed: answerRoute === 'web_search' && usedWebSearch,
             professionalApiUsed: false,
             searchSourceCount: sources.length,
@@ -3786,8 +3824,8 @@ exports.chatWithResult = (0, https_2.onCall)({
             safetyMode: policy.safetyMode,
             answerRoute,
             model: RESULT_CHAT_MODEL_NAME,
-            inputTokens: (_3 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.promptTokenCount) !== null && _3 !== void 0 ? _3 : null,
-            outputTokens: (_4 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.candidatesTokenCount) !== null && _4 !== void 0 ? _4 : null,
+            inputTokens,
+            outputTokens,
             latencyMs,
             webSearchUsed: answerRoute === 'web_search' && usedWebSearch,
             professionalApiUsed: false,
@@ -3806,9 +3844,9 @@ exports.chatWithResult = (0, https_2.onCall)({
             webSearchLimit: usageForAnswer.limit,
             webSearchUsedCount: usageForAnswer.usedCount,
             webSearchRemainingCount: usageForAnswer.remainingCount,
-            monthlyAiLimit: (_5 = monthlyQuotaReservation === null || monthlyQuotaReservation === void 0 ? void 0 : monthlyQuotaReservation.limit) !== null && _5 !== void 0 ? _5 : monthlyUsageForChoice.limit,
-            monthlyAiUsedCount: (_6 = monthlyQuotaReservation === null || monthlyQuotaReservation === void 0 ? void 0 : monthlyQuotaReservation.used) !== null && _6 !== void 0 ? _6 : monthlyUsageForChoice.used,
-            monthlyAiRemainingCount: (_7 = monthlyQuotaReservation === null || monthlyQuotaReservation === void 0 ? void 0 : monthlyQuotaReservation.remaining) !== null && _7 !== void 0 ? _7 : monthlyUsageForChoice.remaining,
+            monthlyAiLimit: (_21 = monthlyQuotaReservation === null || monthlyQuotaReservation === void 0 ? void 0 : monthlyQuotaReservation.limit) !== null && _21 !== void 0 ? _21 : monthlyUsageForChoice.limit,
+            monthlyAiUsedCount: (_22 = monthlyQuotaReservation === null || monthlyQuotaReservation === void 0 ? void 0 : monthlyQuotaReservation.used) !== null && _22 !== void 0 ? _22 : monthlyUsageForChoice.used,
+            monthlyAiRemainingCount: (_23 = monthlyQuotaReservation === null || monthlyQuotaReservation === void 0 ? void 0 : monthlyQuotaReservation.remaining) !== null && _23 !== void 0 ? _23 : monthlyUsageForChoice.remaining,
         };
     }
     catch (error) {
@@ -3860,7 +3898,7 @@ exports.chatWithResult = (0, https_2.onCall)({
             errorMessage: error === null || error === void 0 ? void 0 : error.message,
             errorStatus: error === null || error === void 0 ? void 0 : error.status,
             errorCode: error === null || error === void 0 ? void 0 : error.code,
-            errorCause: String((_8 = error === null || error === void 0 ? void 0 : error.cause) !== null && _8 !== void 0 ? _8 : ''),
+            errorCause: String((_24 = error === null || error === void 0 ? void 0 : error.cause) !== null && _24 !== void 0 ? _24 : ''),
             stack: error === null || error === void 0 ? void 0 : error.stack,
             recordId,
             sourceKey,

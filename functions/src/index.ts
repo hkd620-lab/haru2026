@@ -3365,6 +3365,17 @@ function buildWebSearchFailedNotice(): string {
   ].join('\n');
 }
 
+function buildResultChatWebRetryPrompt(prompt: string): string {
+  return `${prompt}\n\n[외부자료 검색 재시도]\n이 요청은 사용자가 최신 외부자료 확인을 명시적으로 선택했습니다. 반드시 Google Search 도구를 실제로 사용하고, 검색으로 확인된 출처가 포함된 답변만 작성하세요. 검색 출처를 확보할 수 없으면 추측하거나 기록만으로 대신 답하지 마세요.`;
+}
+
+function addOptionalTokenCounts(current: number | null, next: unknown): number | null {
+  const nextCount = typeof next === 'number' && Number.isFinite(next) ? next : null;
+  if (current === null) return nextCount;
+  if (nextCount === null) return current;
+  return current + nextCount;
+}
+
 function buildResultChatLimitResponse(params: {
   threadId: string;
   answerRoute: ResultAnswerRoute;
@@ -4075,6 +4086,38 @@ export const chatWithResult = onCall(
       const questionSafetyGuide = getResultChatQuestionSafetyGuide(question);
 
       let usageForAnswer = currentUsage;
+      // 월간 AI 한도가 소진되면 기록 답변도 만들 수 없으므로, 두 한도가 모두
+      // 소진된 경우에도 "기록 질문은 계속 가능"이라는 잘못된 안내가 먼저 나가지 않는다.
+      if (monthlyUsageForChoice.remaining <= 0) {
+        await logResultChatUsage({
+          uid,
+          actualPlan,
+          recordId,
+          sourceKey,
+          answerRoute,
+          model: null,
+          inputTokens: null,
+          outputTokens: null,
+          webSearchUsed: false,
+          professionalApiUsed: false,
+          searchSourceCount: 0,
+          latencyMs: null,
+          requestId,
+          success: false,
+          errorCode: 'MONTHLY_AI_QUOTA_EXCEEDED',
+          isDev,
+        });
+        return buildResultChatLimitResponse({
+          threadId,
+          answerRoute,
+          routeLabel: RESULT_ROUTE_LABELS[answerRoute],
+          limitReason: 'monthly_ai_quota_exceeded',
+          notice: buildMonthlyAiQuotaExhaustedNotice(),
+          actualPlan,
+          usage: currentUsage,
+          monthlyUsage: monthlyUsageForChoice,
+        });
+      }
       if (answerRoute === 'web_search') {
         if (currentUsage.remainingCount <= 0) {
           await logResultChatUsage({
@@ -4106,36 +4149,6 @@ export const chatWithResult = onCall(
             monthlyUsage: monthlyUsageForChoice,
           });
         }
-      }
-      if (monthlyUsageForChoice.remaining <= 0) {
-        await logResultChatUsage({
-          uid,
-          actualPlan,
-          recordId,
-          sourceKey,
-          answerRoute,
-          model: null,
-          inputTokens: null,
-          outputTokens: null,
-          webSearchUsed: false,
-          professionalApiUsed: false,
-          searchSourceCount: 0,
-          latencyMs: null,
-          requestId,
-          success: false,
-          errorCode: 'MONTHLY_AI_QUOTA_EXCEEDED',
-          isDev,
-        });
-        return buildResultChatLimitResponse({
-          threadId,
-          answerRoute,
-          routeLabel: RESULT_ROUTE_LABELS[answerRoute],
-          limitReason: 'monthly_ai_quota_exceeded',
-          notice: buildMonthlyAiQuotaExhaustedNotice(),
-          actualPlan,
-          usage: currentUsage,
-          monthlyUsage: monthlyUsageForChoice,
-        });
       }
       try {
         monthlyQuotaReservation = await reserveMonthlyAiQuota(uid, 'chatWithResult');
@@ -4317,23 +4330,23 @@ export const chatWithResult = onCall(
         ? [{ role: 'user', parts: [{ text: prompt }, ...fileParts] }]
         : prompt;
       const startedAt = Date.now();
-      const response = await ai.models.generateContent({
+      let response = await ai.models.generateContent({
         model: RESULT_CHAT_MODEL_NAME,
         contents,
         config: answerRoute === 'web_search'
           ? { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS }
           : { maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
       });
+      let inputTokens = addOptionalTokenCounts(null, response.usageMetadata?.promptTokenCount);
+      let outputTokens = addOptionalTokenCounts(null, response.usageMetadata?.candidatesTokenCount);
 
-      const latencyMs = Date.now() - startedAt;
-      const rawAnswer = clampResultChatText(response.text || '', RESULT_CHAT_ANSWER_MAX_LENGTH);
-      const finishReason = response.candidates?.[0]?.finishReason;
-      const { sources, usedWebSearch } = answerRoute === 'web_search'
+      let { sources, usedWebSearch } = answerRoute === 'web_search'
         ? getResultChatSources(response)
         : { sources: [] as { title: string; uri: string }[], usedWebSearch: false };
       if (answerRoute === 'web_search' && !usedWebSearch) {
         logger.warn('chatWithResult web_search_not_grounded 진단:', {
-          finishReason,
+          attempt: 1,
+          finishReason: response.candidates?.[0]?.finishReason,
           hasCandidates: (response.candidates?.length ?? 0) > 0,
           hasGroundingMetadata: !!response.candidates?.[0]?.groundingMetadata,
           webSearchQueriesCount: response.candidates?.[0]?.groundingMetadata?.webSearchQueries?.length ?? 0,
@@ -4341,8 +4354,35 @@ export const chatWithResult = onCall(
           recordId,
           sourceKey,
         });
-        throw new Error('web_search_not_grounded');
+        const retryPrompt = buildResultChatWebRetryPrompt(prompt);
+        const retryContents: any = fileParts.length > 0
+          ? [{ role: 'user', parts: [{ text: retryPrompt }, ...fileParts] }]
+          : retryPrompt;
+        response = await ai.models.generateContent({
+          model: RESULT_CHAT_MODEL_NAME,
+          contents: retryContents,
+          config: { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
+        });
+        inputTokens = addOptionalTokenCounts(inputTokens, response.usageMetadata?.promptTokenCount);
+        outputTokens = addOptionalTokenCounts(outputTokens, response.usageMetadata?.candidatesTokenCount);
+        ({ sources, usedWebSearch } = getResultChatSources(response));
+        if (!usedWebSearch) {
+          logger.warn('chatWithResult web_search_not_grounded 진단:', {
+            attempt: 2,
+            finishReason: response.candidates?.[0]?.finishReason,
+            hasCandidates: (response.candidates?.length ?? 0) > 0,
+            hasGroundingMetadata: !!response.candidates?.[0]?.groundingMetadata,
+            webSearchQueriesCount: response.candidates?.[0]?.groundingMetadata?.webSearchQueries?.length ?? 0,
+            groundingChunksCount: response.candidates?.[0]?.groundingMetadata?.groundingChunks?.length ?? 0,
+            recordId,
+            sourceKey,
+          });
+          throw new Error('web_search_not_grounded');
+        }
       }
+
+      const latencyMs = Date.now() - startedAt;
+      const rawAnswer = clampResultChatText(response.text || '', RESULT_CHAT_ANSWER_MAX_LENGTH);
 
       if (answerRoute === 'web_search') {
         usageForAnswer = await finalizeWebSearchSlot(threadRef, actualPlan, true);
@@ -4354,7 +4394,6 @@ export const chatWithResult = onCall(
         throw new Error('empty_answer');
       }
 
-      const gUsage = response.usageMetadata;
       await logResultChatUsage({
         uid,
         actualPlan,
@@ -4362,8 +4401,8 @@ export const chatWithResult = onCall(
         sourceKey,
         answerRoute,
         model: RESULT_CHAT_MODEL_NAME,
-        inputTokens: gUsage?.promptTokenCount ?? null,
-        outputTokens: gUsage?.candidatesTokenCount ?? null,
+        inputTokens,
+        outputTokens,
         webSearchUsed: answerRoute === 'web_search' && usedWebSearch,
         professionalApiUsed: false,
         searchSourceCount: sources.length,
@@ -4385,8 +4424,8 @@ export const chatWithResult = onCall(
         safetyMode: policy.safetyMode,
         answerRoute,
         model: RESULT_CHAT_MODEL_NAME,
-        inputTokens: gUsage?.promptTokenCount ?? null,
-        outputTokens: gUsage?.candidatesTokenCount ?? null,
+        inputTokens,
+        outputTokens,
         latencyMs,
         webSearchUsed: answerRoute === 'web_search' && usedWebSearch,
         professionalApiUsed: false,
