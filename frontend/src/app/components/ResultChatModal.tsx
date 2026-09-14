@@ -147,6 +147,9 @@ type PendingConfirmation = {
   webSearchLimit?: number;
   webSearchUsedCount?: number;
   webSearchRemainingCount?: number;
+  monthlyAiLimit?: number;
+  monthlyAiUsedCount?: number;
+  monthlyAiRemainingCount?: number;
   attachments?: HaruLawAttachmentRef[];
 };
 
@@ -188,6 +191,7 @@ export function ResultChatModal({
   const [pendingAttachments, setPendingAttachments] = useState<HaruLawAttachmentRef[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const requestInFlightRef = useRef(false);
 
   const threadId = useMemo(() => getThreadId(config.sourceKey, sourceIndex), [config.sourceKey, sourceIndex]);
   const isHaruLaw = config.sourceKey === 'haruraw_sayu';
@@ -201,6 +205,7 @@ export function ResultChatModal({
     setMessages([]);
     setStatusNotice(null);
     setPendingConfirmation(null);
+    requestInFlightRef.current = false;
     setSavedMemoIds({});
     setPendingAttachments([]);
 
@@ -351,7 +356,7 @@ export function ResultChatModal({
     options: { skipOptimisticUser?: boolean; attachments?: HaruLawAttachmentRef[] } = {},
   ) => {
     const trimmed = text.trim();
-    if (!trimmed || loading) return;
+    if (!trimmed || loading || requestInFlightRef.current) return;
     if (searchPreference === 'auto' && pendingConfirmation) return;
     if (uploadingFiles) {
       toast.info('파일 업로드가 끝난 뒤 전송해 주세요.');
@@ -362,6 +367,7 @@ export function ResultChatModal({
       ? options.attachments
       : (pendingAttachments.length > 0 ? pendingAttachments : undefined);
 
+    requestInFlightRef.current = true;
     setLoading(true);
     setQuestion('');
     setStatusNotice(null);
@@ -397,6 +403,9 @@ export function ResultChatModal({
           webSearchLimit: response.webSearchLimit,
           webSearchUsedCount: response.webSearchUsedCount,
           webSearchRemainingCount: response.webSearchRemainingCount,
+          monthlyAiLimit: response.monthlyAiLimit,
+          monthlyAiUsedCount: response.monthlyAiUsedCount,
+          monthlyAiRemainingCount: response.monthlyAiRemainingCount,
           attachments: attachmentsToSend,
         });
         return;
@@ -404,7 +413,11 @@ export function ResultChatModal({
       setPendingConfirmation(null);
       if (response.limitReached) {
         if (optimistic) setMessages((prev) => prev.filter((item) => item !== optimistic));
-        setStatusNotice(response.notice || '이 결과에서 이용할 수 있는 최신자료 확인을 모두 사용했습니다.');
+        setStatusNotice(response.notice || (
+          response.limitReason === 'monthly_ai_quota_exceeded'
+            ? '이번 달 AI 도움을 모두 사용했습니다.'
+            : '이 결과에서 이용할 수 있는 최신자료 확인을 모두 사용했습니다.'
+        ));
         return;
       }
       setPendingAttachments([]);
@@ -426,6 +439,7 @@ export function ResultChatModal({
       if (optimistic) setMessages((prev) => prev.filter((item) => item !== optimistic));
       setQuestion(trimmed);
     } finally {
+      requestInFlightRef.current = false;
       setLoading(false);
     }
   };
@@ -459,6 +473,11 @@ export function ResultChatModal({
       setSavingIndex(null);
     }
   };
+
+  const monthlyAiBlocked = typeof pendingConfirmation?.monthlyAiRemainingCount === 'number'
+    && pendingConfirmation.monthlyAiRemainingCount <= 0;
+  const webSearchBlocked = pendingConfirmation?.webSearchRemainingCount === 0 || monthlyAiBlocked;
+  const choiceActionDisabled = loading || monthlyAiBlocked;
 
   return (
     <div
@@ -668,26 +687,26 @@ export function ResultChatModal({
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
                 <button
                   type="button"
-                  disabled={loading}
+                  disabled={choiceActionDisabled}
                   onClick={() => sendQuestion(pendingConfirmation.question, 'record_only', { attachments: pendingConfirmation.attachments })}
-                  style={{ minHeight: 34, padding: '0 12px', borderRadius: 8, border: '1px solid #94A3B8', backgroundColor: '#FFFFFF', color: '#1F2937', fontSize: 12, fontWeight: 900, cursor: loading ? 'wait' : 'pointer' }}
+                  style={{ minHeight: 34, padding: '0 12px', borderRadius: 8, border: '1px solid #94A3B8', backgroundColor: monthlyAiBlocked ? '#E5E7EB' : '#FFFFFF', color: monthlyAiBlocked ? '#64748B' : '#1F2937', fontSize: 12, fontWeight: 900, cursor: choiceActionDisabled ? 'not-allowed' : 'pointer' }}
                 >
                   나의 기록으로 답변
                 </button>
                 <button
                   type="button"
-                  disabled={loading || pendingConfirmation.webSearchRemainingCount === 0}
+                  disabled={loading || webSearchBlocked}
                   onClick={() => sendQuestion(pendingConfirmation.question, 'web_confirmed', { attachments: pendingConfirmation.attachments })}
                   style={{
                     minHeight: 34,
                     padding: '0 12px',
                     borderRadius: 8,
                     border: '1px solid #1A3C6E',
-                    backgroundColor: pendingConfirmation.webSearchRemainingCount === 0 ? '#E5E7EB' : '#1A3C6E',
-                    color: '#FFFFFF',
+                    backgroundColor: webSearchBlocked ? '#E5E7EB' : '#1A3C6E',
+                    color: webSearchBlocked ? '#64748B' : '#FFFFFF',
                     fontSize: 12,
                     fontWeight: 900,
-                    cursor: loading || pendingConfirmation.webSearchRemainingCount === 0 ? 'not-allowed' : 'pointer',
+                    cursor: loading || webSearchBlocked ? 'not-allowed' : 'pointer',
                   }}
                 >
                   최신 외부자료 확인

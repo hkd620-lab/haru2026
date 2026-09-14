@@ -3108,6 +3108,8 @@ type WebSearchUsage = {
   remainingCount: number;
 };
 
+type ResultChatLimitReason = 'web_search_limit_reached' | 'monthly_ai_quota_exceeded';
+
 type ReservedWebSearchSlot = WebSearchUsage & {
   reserved: boolean;
 };
@@ -3304,14 +3306,28 @@ function getResultChatSearchPreference(value: unknown): ResultChatSearchPreferen
   return 'auto';
 }
 
-function buildAmbiguousNotice(plan: UserPlan, usage: WebSearchUsage, question: string): string {
+function buildAmbiguousNotice(
+  plan: UserPlan,
+  usage: WebSearchUsage,
+  monthlyUsage: Awaited<ReturnType<typeof getMonthlyAiQuotaStatusForUser>>,
+  question: string,
+): string {
   const lines = [
     '어떤 방식으로 답변할까요?',
     '',
     `질문: ${question}`,
     '',
     `${RESULT_CHAT_PLAN_LABELS[plan]} · 외부자료 확인 ${usage.limit}회 중 ${usage.remainingCount}회 남음`,
+    `월간 AI 도움 ${monthlyUsage.limit}회 중 ${monthlyUsage.remaining}회 남음`,
   ];
+  if (monthlyUsage.remaining <= 0) {
+    lines.push(
+      '',
+      '이번 달 AI 도움을 모두 사용했습니다.',
+      '새 답변을 받으려면 다음 달 사용량 초기화 또는 요금제 확인이 필요합니다.',
+    );
+    return lines.join('\n');
+  }
   if (usage.remainingCount <= 0) {
     lines.push(
       '',
@@ -3328,6 +3344,45 @@ function buildWebSearchExhaustedNotice(): string {
     '',
     '나의 기록을 바탕으로 한 질문은 계속할 수 있습니다.',
   ].join('\n');
+}
+
+function buildMonthlyAiQuotaExhaustedNotice(): string {
+  return [
+    '이번 달 AI 도움을 모두 사용했습니다.',
+    '',
+    '외부자료 확인 횟수가 남아 있어도 월간 AI 도움 한도가 소진되면 새 답변을 만들 수 없습니다.',
+    '요금제를 확인하거나 다음 달 사용량 초기화 후 다시 이용해 주세요.',
+  ].join('\n');
+}
+
+function buildResultChatLimitResponse(params: {
+  threadId: string;
+  answerRoute: ResultAnswerRoute;
+  routeLabel: string;
+  limitReason: ResultChatLimitReason;
+  notice: string;
+  actualPlan: UserPlan;
+  usage: WebSearchUsage;
+  monthlyUsage: Awaited<ReturnType<typeof getMonthlyAiQuotaStatusForUser>>;
+}) {
+  return {
+    threadId: params.threadId,
+    answer: '',
+    sources: [],
+    answerRoute: params.answerRoute,
+    routeLabel: params.routeLabel,
+    limitReached: true,
+    limitReason: params.limitReason,
+    notice: params.notice,
+    plan: params.actualPlan,
+    planLabel: RESULT_CHAT_PLAN_LABELS[params.actualPlan],
+    webSearchLimit: params.usage.limit,
+    webSearchUsedCount: params.usage.usedCount,
+    webSearchRemainingCount: params.usage.remainingCount,
+    monthlyAiLimit: params.monthlyUsage.limit,
+    monthlyAiUsedCount: params.monthlyUsage.used,
+    monthlyAiRemainingCount: params.monthlyUsage.remaining,
+  };
 }
 
 function extractJsonObject(text: string): any | null {
@@ -3930,6 +3985,7 @@ export const chatWithResult = onCall(
     const isDev = DEVELOPER_UIDS.has(uid);
     const requestId = createAiUsageRequestId();
     const currentUsageForChoice = await getThreadWebSearchUsage(threadRef, actualPlan);
+    const monthlyUsageForChoice = await getMonthlyAiQuotaStatusForUser(uid);
 
     if (attachments.length > 0) {
       if (sourceKey !== 'haruraw_sayu') {
@@ -3949,12 +4005,15 @@ export const chatWithResult = onCall(
         routeLabel: RESULT_ROUTE_LABELS.ambiguous,
         requiresConfirmation: true,
         confirmationType: 'ambiguous',
-        notice: buildAmbiguousNotice(actualPlan, currentUsageForChoice, question),
+        notice: buildAmbiguousNotice(actualPlan, currentUsageForChoice, monthlyUsageForChoice, question),
         plan: actualPlan,
         planLabel: RESULT_CHAT_PLAN_LABELS[actualPlan],
         webSearchLimit: currentUsageForChoice.limit,
         webSearchUsedCount: currentUsageForChoice.usedCount,
         webSearchRemainingCount: currentUsageForChoice.remainingCount,
+        monthlyAiLimit: monthlyUsageForChoice.limit,
+        monthlyAiUsedCount: monthlyUsageForChoice.used,
+        monthlyAiRemainingCount: monthlyUsageForChoice.remaining,
       };
     }
 
@@ -3995,23 +4054,87 @@ export const chatWithResult = onCall(
             errorCode: 'web_search_limit_reached',
             isDev,
           });
-          return {
+          return buildResultChatLimitResponse({
             threadId,
-            answer: '',
-            sources: [],
             answerRoute,
             routeLabel: RESULT_ROUTE_LABELS.web_search,
-            limitReached: true,
+            limitReason: 'web_search_limit_reached',
             notice: buildWebSearchExhaustedNotice(),
-            plan: actualPlan,
-            planLabel: RESULT_CHAT_PLAN_LABELS[actualPlan],
-            webSearchLimit: currentUsage.limit,
-            webSearchUsedCount: currentUsage.usedCount,
-            webSearchRemainingCount: currentUsage.remainingCount,
-          };
+            actualPlan,
+            usage: currentUsage,
+            monthlyUsage: monthlyUsageForChoice,
+          });
         }
       }
-      monthlyQuotaReservation = await reserveMonthlyAiQuota(uid, 'chatWithResult');
+      if (monthlyUsageForChoice.remaining <= 0) {
+        await logResultChatUsage({
+          uid,
+          actualPlan,
+          recordId,
+          sourceKey,
+          answerRoute,
+          model: null,
+          inputTokens: null,
+          outputTokens: null,
+          webSearchUsed: false,
+          professionalApiUsed: false,
+          searchSourceCount: 0,
+          latencyMs: null,
+          requestId,
+          success: false,
+          errorCode: 'MONTHLY_AI_QUOTA_EXCEEDED',
+          isDev,
+        });
+        return buildResultChatLimitResponse({
+          threadId,
+          answerRoute,
+          routeLabel: RESULT_ROUTE_LABELS[answerRoute],
+          limitReason: 'monthly_ai_quota_exceeded',
+          notice: buildMonthlyAiQuotaExhaustedNotice(),
+          actualPlan,
+          usage: currentUsage,
+          monthlyUsage: monthlyUsageForChoice,
+        });
+      }
+      try {
+        monthlyQuotaReservation = await reserveMonthlyAiQuota(uid, 'chatWithResult');
+      } catch (error: any) {
+        const errorDetails = error instanceof HttpsError
+          ? error.details as { reason?: string } | undefined
+          : undefined;
+        if (error instanceof HttpsError && errorDetails?.reason === 'MONTHLY_AI_QUOTA_EXCEEDED') {
+          const monthlyUsage = await getMonthlyAiQuotaStatusForUser(uid);
+          await logResultChatUsage({
+            uid,
+            actualPlan,
+            recordId,
+            sourceKey,
+            answerRoute,
+            model: null,
+            inputTokens: null,
+            outputTokens: null,
+            webSearchUsed: false,
+            professionalApiUsed: false,
+            searchSourceCount: 0,
+            latencyMs: null,
+            requestId,
+            success: false,
+            errorCode: 'MONTHLY_AI_QUOTA_EXCEEDED',
+            isDev,
+          });
+          return buildResultChatLimitResponse({
+            threadId,
+            answerRoute,
+            routeLabel: RESULT_ROUTE_LABELS[answerRoute],
+            limitReason: 'monthly_ai_quota_exceeded',
+            notice: buildMonthlyAiQuotaExhaustedNotice(),
+            actualPlan,
+            usage: currentUsage,
+            monthlyUsage,
+          });
+        }
+        throw error;
+      }
 
       const recentMessageRows = await getRecentResultChatMessages(messagesRef);
       const reusable = attachments.length > 0
@@ -4021,6 +4144,8 @@ export const chatWithResult = onCall(
           : findReusableResultChatAnswer(recentMessageRows, question, answerRoute, { allowRecentWebSearchMs: RESULT_CHAT_LOCK_STALE_MS });
       if (reusable) {
         if (answerRoute === 'web_search') {
+          await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
+          monthlyQuotaReservation = null;
           return {
             threadId,
             answer: reusable.answer,
@@ -4034,6 +4159,9 @@ export const chatWithResult = onCall(
             webSearchLimit: currentUsage.limit,
             webSearchUsedCount: currentUsage.usedCount,
             webSearchRemainingCount: currentUsage.remainingCount,
+            monthlyAiLimit: monthlyUsageForChoice.limit,
+            monthlyAiUsedCount: monthlyUsageForChoice.used,
+            monthlyAiRemainingCount: monthlyUsageForChoice.remaining,
             cached: true,
           };
         }
@@ -4087,6 +4215,9 @@ export const chatWithResult = onCall(
           webSearchLimit: currentUsage.limit,
           webSearchUsedCount: currentUsage.usedCount,
           webSearchRemainingCount: currentUsage.remainingCount,
+          monthlyAiLimit: monthlyQuotaReservation.limit,
+          monthlyAiUsedCount: monthlyQuotaReservation.used,
+          monthlyAiRemainingCount: monthlyQuotaReservation.remaining,
         };
       }
 
@@ -4113,20 +4244,16 @@ export const chatWithResult = onCall(
             errorCode: 'web_search_limit_reached',
             isDev,
           });
-          return {
+          return buildResultChatLimitResponse({
             threadId,
-            answer: '',
-            sources: [],
             answerRoute,
             routeLabel: RESULT_ROUTE_LABELS.web_search,
-            limitReached: true,
+            limitReason: 'web_search_limit_reached',
             notice: buildWebSearchExhaustedNotice(),
-            plan: actualPlan,
-            planLabel: RESULT_CHAT_PLAN_LABELS[actualPlan],
-            webSearchLimit: reserved.limit,
-            webSearchUsedCount: reserved.usedCount,
-            webSearchRemainingCount: reserved.remainingCount,
-          };
+            actualPlan,
+            usage: reserved,
+            monthlyUsage: monthlyUsageForChoice,
+          });
         }
         reservedWebSearch = true;
         usageForAnswer = reserved;
@@ -4238,6 +4365,9 @@ export const chatWithResult = onCall(
         webSearchLimit: usageForAnswer.limit,
         webSearchUsedCount: usageForAnswer.usedCount,
         webSearchRemainingCount: usageForAnswer.remainingCount,
+        monthlyAiLimit: monthlyQuotaReservation?.limit ?? monthlyUsageForChoice.limit,
+        monthlyAiUsedCount: monthlyQuotaReservation?.used ?? monthlyUsageForChoice.used,
+        monthlyAiRemainingCount: monthlyQuotaReservation?.remaining ?? monthlyUsageForChoice.remaining,
       };
     } catch (error: any) {
       await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
