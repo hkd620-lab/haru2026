@@ -2860,14 +2860,19 @@ function getResultChatSearchPreference(value) {
         return preference;
     return 'auto';
 }
-function buildAmbiguousNotice(plan, usage, question) {
+function buildAmbiguousNotice(plan, usage, monthlyUsage, question) {
     const lines = [
         '어떤 방식으로 답변할까요?',
         '',
         `질문: ${question}`,
         '',
         `${RESULT_CHAT_PLAN_LABELS[plan]} · 외부자료 확인 ${usage.limit}회 중 ${usage.remainingCount}회 남음`,
+        `월간 AI 도움 ${monthlyUsage.limit}회 중 ${monthlyUsage.remaining}회 남음`,
     ];
+    if (monthlyUsage.remaining <= 0) {
+        lines.push('', '이번 달 AI 도움을 모두 사용했습니다.', '새 답변을 받으려면 다음 달 사용량 초기화 또는 요금제 확인이 필요합니다.');
+        return lines.join('\n');
+    }
     if (usage.remainingCount <= 0) {
         lines.push('', '이 결과의 외부자료 확인 횟수를 모두 사용했습니다.', '나의 기록을 바탕으로 한 질문은 계속할 수 있습니다.');
     }
@@ -2879,6 +2884,61 @@ function buildWebSearchExhaustedNotice() {
         '',
         '나의 기록을 바탕으로 한 질문은 계속할 수 있습니다.',
     ].join('\n');
+}
+function buildMonthlyAiQuotaExhaustedNotice() {
+    return [
+        '이번 달 AI 도움을 모두 사용했습니다.',
+        '',
+        '외부자료 확인 횟수가 남아 있어도 월간 AI 도움 한도가 소진되면 새 답변을 만들 수 없습니다.',
+        '요금제를 확인하거나 다음 달 사용량 초기화 후 다시 이용해 주세요.',
+    ].join('\n');
+}
+function buildWebSearchFailedNotice() {
+    return [
+        '외부자료 확인을 실행하지 못했습니다.',
+        '',
+        '이번 요청은 최신자료 출처가 확인되지 않아 사용 횟수를 차감하지 않았습니다.',
+        '잠시 후 다시 시도하거나 나의 기록으로 답변을 선택해 주세요.',
+    ].join('\n');
+}
+function buildResultChatLimitResponse(params) {
+    return {
+        threadId: params.threadId,
+        answer: '',
+        sources: [],
+        answerRoute: params.answerRoute,
+        routeLabel: params.routeLabel,
+        limitReached: true,
+        limitReason: params.limitReason,
+        notice: params.notice,
+        plan: params.actualPlan,
+        planLabel: RESULT_CHAT_PLAN_LABELS[params.actualPlan],
+        webSearchLimit: params.usage.limit,
+        webSearchUsedCount: params.usage.usedCount,
+        webSearchRemainingCount: params.usage.remainingCount,
+        monthlyAiLimit: params.monthlyUsage.limit,
+        monthlyAiUsedCount: params.monthlyUsage.used,
+        monthlyAiRemainingCount: params.monthlyUsage.remaining,
+    };
+}
+function buildResultChatFailureResponse(params) {
+    return {
+        threadId: params.threadId,
+        answer: '',
+        sources: [],
+        answerRoute: params.answerRoute,
+        routeLabel: params.routeLabel,
+        failureReason: params.failureReason,
+        notice: params.notice,
+        plan: params.actualPlan,
+        planLabel: RESULT_CHAT_PLAN_LABELS[params.actualPlan],
+        webSearchLimit: params.usage.limit,
+        webSearchUsedCount: params.usage.usedCount,
+        webSearchRemainingCount: params.usage.remainingCount,
+        monthlyAiLimit: params.monthlyUsage.limit,
+        monthlyAiUsedCount: params.monthlyUsage.used,
+        monthlyAiRemainingCount: params.monthlyUsage.remaining,
+    };
 }
 function extractJsonObject(text) {
     const match = text.match(/\{[\s\S]*\}/);
@@ -3327,7 +3387,7 @@ exports.chatWithResult = (0, https_2.onCall)({
     secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 90,
 }, async (request) => {
-    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5;
+    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8;
     if (!((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid)) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -3378,6 +3438,7 @@ exports.chatWithResult = (0, https_2.onCall)({
     const isDev = DEVELOPER_UIDS.has(uid);
     const requestId = createAiUsageRequestId();
     const currentUsageForChoice = await getThreadWebSearchUsage(threadRef, actualPlan);
+    const monthlyUsageForChoice = await (0, monthlyAiQuota_1.getMonthlyAiQuotaStatus)(uid);
     if (attachments.length > 0) {
         if (sourceKey !== 'haruraw_sayu') {
             throw new https_2.HttpsError('failed-precondition', '첨부는 하루LAW 자문에서만 사용할 수 있습니다.');
@@ -3395,18 +3456,22 @@ exports.chatWithResult = (0, https_2.onCall)({
             routeLabel: RESULT_ROUTE_LABELS.ambiguous,
             requiresConfirmation: true,
             confirmationType: 'ambiguous',
-            notice: buildAmbiguousNotice(actualPlan, currentUsageForChoice, question),
+            notice: buildAmbiguousNotice(actualPlan, currentUsageForChoice, monthlyUsageForChoice, question),
             plan: actualPlan,
             planLabel: RESULT_CHAT_PLAN_LABELS[actualPlan],
             webSearchLimit: currentUsageForChoice.limit,
             webSearchUsedCount: currentUsageForChoice.usedCount,
             webSearchRemainingCount: currentUsageForChoice.remainingCount,
+            monthlyAiLimit: monthlyUsageForChoice.limit,
+            monthlyAiUsedCount: monthlyUsageForChoice.used,
+            monthlyAiRemainingCount: monthlyUsageForChoice.remaining,
         };
     }
     let locked = false;
     let reservedWebSearch = false;
     let webSearchFinalized = false;
     let monthlyQuotaReservation = null;
+    let attemptedAnswerRoute = 'ambiguous';
     try {
         await acquireResultChatLock(threadRef, requestId);
         locked = true;
@@ -3414,6 +3479,7 @@ exports.chatWithResult = (0, https_2.onCall)({
         const ai = new genai_1.GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
         const currentUsage = await getThreadWebSearchUsage(threadRef, actualPlan);
         const answerRoute = searchPreference === 'web_confirmed' ? 'web_search' : 'record_only';
+        attemptedAnswerRoute = answerRoute;
         const recordOnlyChosen = searchPreference === 'record_only';
         const questionSafetyGuide = getResultChatQuestionSafetyGuide(question);
         let usageForAnswer = currentUsage;
@@ -3437,23 +3503,88 @@ exports.chatWithResult = (0, https_2.onCall)({
                     errorCode: 'web_search_limit_reached',
                     isDev,
                 });
-                return {
+                return buildResultChatLimitResponse({
                     threadId,
-                    answer: '',
-                    sources: [],
                     answerRoute,
                     routeLabel: RESULT_ROUTE_LABELS.web_search,
-                    limitReached: true,
+                    limitReason: 'web_search_limit_reached',
                     notice: buildWebSearchExhaustedNotice(),
-                    plan: actualPlan,
-                    planLabel: RESULT_CHAT_PLAN_LABELS[actualPlan],
-                    webSearchLimit: currentUsage.limit,
-                    webSearchUsedCount: currentUsage.usedCount,
-                    webSearchRemainingCount: currentUsage.remainingCount,
-                };
+                    actualPlan,
+                    usage: currentUsage,
+                    monthlyUsage: monthlyUsageForChoice,
+                });
             }
         }
-        monthlyQuotaReservation = await (0, monthlyAiQuota_1.reserveMonthlyAiQuota)(uid, 'chatWithResult');
+        if (monthlyUsageForChoice.remaining <= 0) {
+            await logResultChatUsage({
+                uid,
+                actualPlan,
+                recordId,
+                sourceKey,
+                answerRoute,
+                model: null,
+                inputTokens: null,
+                outputTokens: null,
+                webSearchUsed: false,
+                professionalApiUsed: false,
+                searchSourceCount: 0,
+                latencyMs: null,
+                requestId,
+                success: false,
+                errorCode: 'MONTHLY_AI_QUOTA_EXCEEDED',
+                isDev,
+            });
+            return buildResultChatLimitResponse({
+                threadId,
+                answerRoute,
+                routeLabel: RESULT_ROUTE_LABELS[answerRoute],
+                limitReason: 'monthly_ai_quota_exceeded',
+                notice: buildMonthlyAiQuotaExhaustedNotice(),
+                actualPlan,
+                usage: currentUsage,
+                monthlyUsage: monthlyUsageForChoice,
+            });
+        }
+        try {
+            monthlyQuotaReservation = await (0, monthlyAiQuota_1.reserveMonthlyAiQuota)(uid, 'chatWithResult');
+        }
+        catch (error) {
+            const errorDetails = error instanceof https_2.HttpsError
+                ? error.details
+                : undefined;
+            if (error instanceof https_2.HttpsError && (errorDetails === null || errorDetails === void 0 ? void 0 : errorDetails.reason) === 'MONTHLY_AI_QUOTA_EXCEEDED') {
+                const monthlyUsage = await (0, monthlyAiQuota_1.getMonthlyAiQuotaStatus)(uid);
+                await logResultChatUsage({
+                    uid,
+                    actualPlan,
+                    recordId,
+                    sourceKey,
+                    answerRoute,
+                    model: null,
+                    inputTokens: null,
+                    outputTokens: null,
+                    webSearchUsed: false,
+                    professionalApiUsed: false,
+                    searchSourceCount: 0,
+                    latencyMs: null,
+                    requestId,
+                    success: false,
+                    errorCode: 'MONTHLY_AI_QUOTA_EXCEEDED',
+                    isDev,
+                });
+                return buildResultChatLimitResponse({
+                    threadId,
+                    answerRoute,
+                    routeLabel: RESULT_ROUTE_LABELS[answerRoute],
+                    limitReason: 'monthly_ai_quota_exceeded',
+                    notice: buildMonthlyAiQuotaExhaustedNotice(),
+                    actualPlan,
+                    usage: currentUsage,
+                    monthlyUsage,
+                });
+            }
+            throw error;
+        }
         const recentMessageRows = await getRecentResultChatMessages(messagesRef);
         const reusable = attachments.length > 0
             ? null
@@ -3462,6 +3593,8 @@ exports.chatWithResult = (0, https_2.onCall)({
                 : findReusableResultChatAnswer(recentMessageRows, question, answerRoute, { allowRecentWebSearchMs: RESULT_CHAT_LOCK_STALE_MS });
         if (reusable) {
             if (answerRoute === 'web_search') {
+                await (0, monthlyAiQuota_1.rollbackMonthlyAiQuotaReservation)(monthlyQuotaReservation);
+                monthlyQuotaReservation = null;
                 return {
                     threadId,
                     answer: reusable.answer,
@@ -3475,6 +3608,9 @@ exports.chatWithResult = (0, https_2.onCall)({
                     webSearchLimit: currentUsage.limit,
                     webSearchUsedCount: currentUsage.usedCount,
                     webSearchRemainingCount: currentUsage.remainingCount,
+                    monthlyAiLimit: monthlyUsageForChoice.limit,
+                    monthlyAiUsedCount: monthlyUsageForChoice.used,
+                    monthlyAiRemainingCount: monthlyUsageForChoice.remaining,
                     cached: true,
                 };
             }
@@ -3528,6 +3664,9 @@ exports.chatWithResult = (0, https_2.onCall)({
                 webSearchLimit: currentUsage.limit,
                 webSearchUsedCount: currentUsage.usedCount,
                 webSearchRemainingCount: currentUsage.remainingCount,
+                monthlyAiLimit: monthlyQuotaReservation.limit,
+                monthlyAiUsedCount: monthlyQuotaReservation.used,
+                monthlyAiRemainingCount: monthlyQuotaReservation.remaining,
             };
         }
         if (answerRoute === 'web_search') {
@@ -3553,20 +3692,16 @@ exports.chatWithResult = (0, https_2.onCall)({
                     errorCode: 'web_search_limit_reached',
                     isDev,
                 });
-                return {
+                return buildResultChatLimitResponse({
                     threadId,
-                    answer: '',
-                    sources: [],
                     answerRoute,
                     routeLabel: RESULT_ROUTE_LABELS.web_search,
-                    limitReached: true,
+                    limitReason: 'web_search_limit_reached',
                     notice: buildWebSearchExhaustedNotice(),
-                    plan: actualPlan,
-                    planLabel: RESULT_CHAT_PLAN_LABELS[actualPlan],
-                    webSearchLimit: reserved.limit,
-                    webSearchUsedCount: reserved.usedCount,
-                    webSearchRemainingCount: reserved.remainingCount,
-                };
+                    actualPlan,
+                    usage: reserved,
+                    monthlyUsage: monthlyUsageForChoice,
+                });
             }
             reservedWebSearch = true;
             usageForAnswer = reserved;
@@ -3671,12 +3806,51 @@ exports.chatWithResult = (0, https_2.onCall)({
             webSearchLimit: usageForAnswer.limit,
             webSearchUsedCount: usageForAnswer.usedCount,
             webSearchRemainingCount: usageForAnswer.remainingCount,
+            monthlyAiLimit: (_5 = monthlyQuotaReservation === null || monthlyQuotaReservation === void 0 ? void 0 : monthlyQuotaReservation.limit) !== null && _5 !== void 0 ? _5 : monthlyUsageForChoice.limit,
+            monthlyAiUsedCount: (_6 = monthlyQuotaReservation === null || monthlyQuotaReservation === void 0 ? void 0 : monthlyQuotaReservation.used) !== null && _6 !== void 0 ? _6 : monthlyUsageForChoice.used,
+            monthlyAiRemainingCount: (_7 = monthlyQuotaReservation === null || monthlyQuotaReservation === void 0 ? void 0 : monthlyQuotaReservation.remaining) !== null && _7 !== void 0 ? _7 : monthlyUsageForChoice.remaining,
         };
     }
     catch (error) {
         await (0, monthlyAiQuota_1.rollbackMonthlyAiQuotaReservation)(monthlyQuotaReservation);
+        monthlyQuotaReservation = null;
         if (reservedWebSearch && !webSearchFinalized) {
             await finalizeWebSearchSlot(threadRef, actualPlan, false);
+            reservedWebSearch = false;
+        }
+        if ((error === null || error === void 0 ? void 0 : error.message) === 'web_search_not_grounded') {
+            const [usageAfterRollback, monthlyUsageAfterRollback] = await Promise.all([
+                getThreadWebSearchUsage(threadRef, actualPlan),
+                (0, monthlyAiQuota_1.getMonthlyAiQuotaStatus)(uid),
+            ]);
+            await logResultChatUsage({
+                uid,
+                actualPlan,
+                recordId,
+                sourceKey,
+                answerRoute: attemptedAnswerRoute,
+                model: null,
+                inputTokens: null,
+                outputTokens: null,
+                webSearchUsed: false,
+                professionalApiUsed: false,
+                searchSourceCount: 0,
+                latencyMs: null,
+                requestId,
+                success: false,
+                errorCode: 'web_search_not_grounded',
+                isDev,
+            });
+            return buildResultChatFailureResponse({
+                threadId,
+                answerRoute: attemptedAnswerRoute,
+                routeLabel: RESULT_ROUTE_LABELS[attemptedAnswerRoute],
+                failureReason: 'web_search_failed',
+                notice: buildWebSearchFailedNotice(),
+                actualPlan,
+                usage: usageAfterRollback,
+                monthlyUsage: monthlyUsageAfterRollback,
+            });
         }
         if (error instanceof https_2.HttpsError) {
             throw error;
@@ -3686,7 +3860,7 @@ exports.chatWithResult = (0, https_2.onCall)({
             errorMessage: error === null || error === void 0 ? void 0 : error.message,
             errorStatus: error === null || error === void 0 ? void 0 : error.status,
             errorCode: error === null || error === void 0 ? void 0 : error.code,
-            errorCause: String((_5 = error === null || error === void 0 ? void 0 : error.cause) !== null && _5 !== void 0 ? _5 : ''),
+            errorCause: String((_8 = error === null || error === void 0 ? void 0 : error.cause) !== null && _8 !== void 0 ? _8 : ''),
             stack: error === null || error === void 0 ? void 0 : error.stack,
             recordId,
             sourceKey,

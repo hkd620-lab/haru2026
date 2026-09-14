@@ -16,6 +16,7 @@ const realGeminiSmokeOnly = process.env.HARU_RESULT_CHAT_REAL_SMOKE === '1';
 const realGenai = require('@google/genai');
 const genaiCalls = [];
 let forceWebSearchError = false;
+let forceWebSearchNotGrounded = false;
 let webSearchDelayMs = 0;
 const RESULT_CHAT_RATE_LIMIT_FOR_TEST = 12;
 
@@ -57,6 +58,13 @@ class InstrumentedGoogleGenAI {
         }
         if (captured.hasGoogleSearchTool && forceWebSearchError) {
           throw new Error('injected_web_search_failure');
+        }
+        if (captured.hasGoogleSearchTool && forceWebSearchNotGrounded) {
+          return {
+            text: '검색 출처 없는 테스트 답변입니다.',
+            usageMetadata: { promptTokenCount: 101, candidatesTokenCount: 23 },
+            candidates: [{ finishReason: 'STOP' }],
+          };
         }
         if (this.inner) {
           return this.inner.models.generateContent(request);
@@ -362,6 +370,11 @@ async function run() {
     assert.strictEqual(result.answerRoute, 'ambiguous', question);
     assert.ok(result.notice.includes(`질문: ${question}`), question);
     assert.ok(result.notice.includes('무료 이용권 · 외부자료 확인 1회 중 1회 남음'), question);
+    assert.ok(result.notice.includes('월간 AI 도움 10회 중 0회 남음'), question);
+    assert.ok(result.notice.includes('이번 달 AI 도움을 모두 사용했습니다.'), question);
+    assert.strictEqual(result.monthlyAiLimit, 10, question);
+    assert.strictEqual(result.monthlyAiUsedCount, 10, question);
+    assert.strictEqual(result.monthlyAiRemainingCount, 0, question);
     assert.strictEqual(genaiCalls.length, callsBefore, question);
     assert.strictEqual(countWebSearchCalls(), webBefore, question);
     assert.strictEqual(await getMonthlyUsed(USERS.free), monthlyBefore, question);
@@ -370,6 +383,31 @@ async function run() {
     assert.strictEqual(messages.length, 0, question);
   }
   assert.strictEqual(await getRateCount(USERS.free), 0);
+  const monthlyExhaustedCalls = genaiCalls.length;
+  const monthlyExhaustedWeb = await callable(USERS.free, {
+    recordId: 'reading',
+    sourceKey: 'reading_sayu',
+    question: '외부검색으로 알려줘',
+    searchPreference: 'web_confirmed',
+  });
+  assert.strictEqual(monthlyExhaustedWeb.limitReached, true);
+  assert.strictEqual(monthlyExhaustedWeb.limitReason, 'monthly_ai_quota_exceeded');
+  assert.ok(monthlyExhaustedWeb.notice.includes('이번 달 AI 도움을 모두 사용했습니다.'));
+  assert.strictEqual(monthlyExhaustedWeb.webSearchRemainingCount, 1);
+  assert.strictEqual(monthlyExhaustedWeb.monthlyAiRemainingCount, 0);
+  assert.strictEqual(genaiCalls.length, monthlyExhaustedCalls);
+  assert.strictEqual(await getMonthlyUsed(USERS.free), 10);
+  await assertThreadSearchUsage(USERS.free, 'reading', 'reading_sayu', 0, 0);
+  const monthlyExhaustedRecord = await callable(USERS.free, {
+    recordId: 'reading',
+    sourceKey: 'reading_sayu',
+    question: '기록으로 알려줘',
+    searchPreference: 'record_only',
+  });
+  assert.strictEqual(monthlyExhaustedRecord.limitReached, true);
+  assert.strictEqual(monthlyExhaustedRecord.limitReason, 'monthly_ai_quota_exceeded');
+  assert.strictEqual(genaiCalls.length, monthlyExhaustedCalls);
+  await resetResultChatRateLimit(USERS.free);
   await db.doc(`users/${USERS.free}/monthlyAiUsage/${quotaPeriod}`).delete().catch(() => {});
 
   for (let i = 0; i < RESULT_CHAT_RATE_LIMIT_FOR_TEST + 3; i += 1) {
@@ -475,6 +513,19 @@ async function run() {
   assert.strictEqual(medicalWebRisk.webSearchUsed, true);
   assert.ok(genaiCalls[genaiCalls.length - 1].contents.includes('[질문 안전 지침]'));
   assert.ok(genaiCalls[genaiCalls.length - 1].contents.includes('진단·치료·복약'));
+  const duplicateMonthlyBefore = await getMonthlyUsed(USERS.basic);
+  const duplicateWebCallsBefore = countWebSearchCalls();
+  const duplicateWebRisk = await callable(USERS.basic, {
+    recordId: 'child',
+    sourceKey: 'child_sayu',
+    question: '이 약을 끊어도 괜찮나요?',
+    searchPreference: 'web_confirmed',
+  });
+  assert.strictEqual(duplicateWebRisk.cached, true);
+  assert.strictEqual(duplicateWebRisk.answerRoute, 'web_search');
+  assert.strictEqual(countWebSearchCalls(), duplicateWebCallsBefore);
+  assert.strictEqual(await getMonthlyUsed(USERS.basic), duplicateMonthlyBefore);
+  await assertThreadSearchUsage(USERS.basic, 'child', 'child_sayu', 1, 0);
 
   const financeAutoRisk = await callable(USERS.basic, {
     recordId: 'stock',
@@ -528,6 +579,24 @@ async function run() {
   assert.strictEqual(genaiCalls.length, exhaustedDirectCalls);
   await assertThreadSearchUsage(exhaustedUser, 'law', 'haruraw_sayu', 1, 0);
 
+  forceWebSearchNotGrounded = true;
+  const notGroundedMonthlyBefore = await getMonthlyUsed(USERS.developer);
+  const notGroundedResult = await callable(USERS.developer, {
+    recordId: 'stock',
+    sourceKey: 'stock_sayu',
+    question: '현재 삼성전자 관련 공시를 확인해줘.',
+    searchPreference: 'web_confirmed',
+  });
+  forceWebSearchNotGrounded = false;
+  assert.strictEqual(notGroundedResult.failureReason, 'web_search_failed');
+  assert.ok(notGroundedResult.notice.includes('외부자료 확인을 실행하지 못했습니다.'));
+  assert.strictEqual(notGroundedResult.webSearchUsedCount, 0);
+  assert.strictEqual(notGroundedResult.webSearchRemainingCount, 4);
+  assert.strictEqual(await getMonthlyUsed(USERS.developer), notGroundedMonthlyBefore);
+  await assertThreadSearchUsage(USERS.developer, 'stock', 'stock_sayu', 0, 0);
+  let messages = await getMessages(USERS.developer, 'stock', 'stock_sayu');
+  assert.strictEqual(messages.length, 0);
+
   forceWebSearchError = true;
   await assert.rejects(
     callable(USERS.developer, {
@@ -540,7 +609,7 @@ async function run() {
   );
   forceWebSearchError = false;
   await assertThreadSearchUsage(USERS.developer, 'stock', 'stock_sayu', 0, 0);
-  let messages = await getMessages(USERS.developer, 'stock', 'stock_sayu');
+  messages = await getMessages(USERS.developer, 'stock', 'stock_sayu');
   assert.strictEqual(messages.length, 0);
 
   webSearchDelayMs = 250;
