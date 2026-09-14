@@ -2893,6 +2893,14 @@ function buildMonthlyAiQuotaExhaustedNotice() {
         '요금제를 확인하거나 다음 달 사용량 초기화 후 다시 이용해 주세요.',
     ].join('\n');
 }
+function buildWebSearchFailedNotice() {
+    return [
+        '외부자료 확인을 실행하지 못했습니다.',
+        '',
+        '이번 요청은 최신자료 출처가 확인되지 않아 사용 횟수를 차감하지 않았습니다.',
+        '잠시 후 다시 시도하거나 나의 기록으로 답변을 선택해 주세요.',
+    ].join('\n');
+}
 function buildResultChatLimitResponse(params) {
     return {
         threadId: params.threadId,
@@ -2902,6 +2910,25 @@ function buildResultChatLimitResponse(params) {
         routeLabel: params.routeLabel,
         limitReached: true,
         limitReason: params.limitReason,
+        notice: params.notice,
+        plan: params.actualPlan,
+        planLabel: RESULT_CHAT_PLAN_LABELS[params.actualPlan],
+        webSearchLimit: params.usage.limit,
+        webSearchUsedCount: params.usage.usedCount,
+        webSearchRemainingCount: params.usage.remainingCount,
+        monthlyAiLimit: params.monthlyUsage.limit,
+        monthlyAiUsedCount: params.monthlyUsage.used,
+        monthlyAiRemainingCount: params.monthlyUsage.remaining,
+    };
+}
+function buildResultChatFailureResponse(params) {
+    return {
+        threadId: params.threadId,
+        answer: '',
+        sources: [],
+        answerRoute: params.answerRoute,
+        routeLabel: params.routeLabel,
+        failureReason: params.failureReason,
         notice: params.notice,
         plan: params.actualPlan,
         planLabel: RESULT_CHAT_PLAN_LABELS[params.actualPlan],
@@ -3444,6 +3471,7 @@ exports.chatWithResult = (0, https_2.onCall)({
     let reservedWebSearch = false;
     let webSearchFinalized = false;
     let monthlyQuotaReservation = null;
+    let attemptedAnswerRoute = 'ambiguous';
     try {
         await acquireResultChatLock(threadRef, requestId);
         locked = true;
@@ -3451,6 +3479,7 @@ exports.chatWithResult = (0, https_2.onCall)({
         const ai = new genai_1.GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
         const currentUsage = await getThreadWebSearchUsage(threadRef, actualPlan);
         const answerRoute = searchPreference === 'web_confirmed' ? 'web_search' : 'record_only';
+        attemptedAnswerRoute = answerRoute;
         const recordOnlyChosen = searchPreference === 'record_only';
         const questionSafetyGuide = getResultChatQuestionSafetyGuide(question);
         let usageForAnswer = currentUsage;
@@ -3784,8 +3813,44 @@ exports.chatWithResult = (0, https_2.onCall)({
     }
     catch (error) {
         await (0, monthlyAiQuota_1.rollbackMonthlyAiQuotaReservation)(monthlyQuotaReservation);
+        monthlyQuotaReservation = null;
         if (reservedWebSearch && !webSearchFinalized) {
             await finalizeWebSearchSlot(threadRef, actualPlan, false);
+            reservedWebSearch = false;
+        }
+        if ((error === null || error === void 0 ? void 0 : error.message) === 'web_search_not_grounded') {
+            const [usageAfterRollback, monthlyUsageAfterRollback] = await Promise.all([
+                getThreadWebSearchUsage(threadRef, actualPlan),
+                (0, monthlyAiQuota_1.getMonthlyAiQuotaStatus)(uid),
+            ]);
+            await logResultChatUsage({
+                uid,
+                actualPlan,
+                recordId,
+                sourceKey,
+                answerRoute: attemptedAnswerRoute,
+                model: null,
+                inputTokens: null,
+                outputTokens: null,
+                webSearchUsed: false,
+                professionalApiUsed: false,
+                searchSourceCount: 0,
+                latencyMs: null,
+                requestId,
+                success: false,
+                errorCode: 'web_search_not_grounded',
+                isDev,
+            });
+            return buildResultChatFailureResponse({
+                threadId,
+                answerRoute: attemptedAnswerRoute,
+                routeLabel: RESULT_ROUTE_LABELS[attemptedAnswerRoute],
+                failureReason: 'web_search_failed',
+                notice: buildWebSearchFailedNotice(),
+                actualPlan,
+                usage: usageAfterRollback,
+                monthlyUsage: monthlyUsageAfterRollback,
+            });
         }
         if (error instanceof https_2.HttpsError) {
             throw error;

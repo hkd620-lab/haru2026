@@ -420,6 +420,11 @@ export function ResultChatModal({
         ));
         return;
       }
+      if (response.failureReason) {
+        if (optimistic) setMessages((prev) => prev.filter((item) => item !== optimistic));
+        setStatusNotice(response.notice || '외부자료 확인을 실행하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+        return;
+      }
       setPendingAttachments([]);
       setMessages((prev) => [...prev, {
         role: 'assistant',

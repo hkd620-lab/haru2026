@@ -16,6 +16,7 @@ const realGeminiSmokeOnly = process.env.HARU_RESULT_CHAT_REAL_SMOKE === '1';
 const realGenai = require('@google/genai');
 const genaiCalls = [];
 let forceWebSearchError = false;
+let forceWebSearchNotGrounded = false;
 let webSearchDelayMs = 0;
 const RESULT_CHAT_RATE_LIMIT_FOR_TEST = 12;
 
@@ -57,6 +58,13 @@ class InstrumentedGoogleGenAI {
         }
         if (captured.hasGoogleSearchTool && forceWebSearchError) {
           throw new Error('injected_web_search_failure');
+        }
+        if (captured.hasGoogleSearchTool && forceWebSearchNotGrounded) {
+          return {
+            text: '검색 출처 없는 테스트 답변입니다.',
+            usageMetadata: { promptTokenCount: 101, candidatesTokenCount: 23 },
+            candidates: [{ finishReason: 'STOP' }],
+          };
         }
         if (this.inner) {
           return this.inner.models.generateContent(request);
@@ -571,6 +579,24 @@ async function run() {
   assert.strictEqual(genaiCalls.length, exhaustedDirectCalls);
   await assertThreadSearchUsage(exhaustedUser, 'law', 'haruraw_sayu', 1, 0);
 
+  forceWebSearchNotGrounded = true;
+  const notGroundedMonthlyBefore = await getMonthlyUsed(USERS.developer);
+  const notGroundedResult = await callable(USERS.developer, {
+    recordId: 'stock',
+    sourceKey: 'stock_sayu',
+    question: '현재 삼성전자 관련 공시를 확인해줘.',
+    searchPreference: 'web_confirmed',
+  });
+  forceWebSearchNotGrounded = false;
+  assert.strictEqual(notGroundedResult.failureReason, 'web_search_failed');
+  assert.ok(notGroundedResult.notice.includes('외부자료 확인을 실행하지 못했습니다.'));
+  assert.strictEqual(notGroundedResult.webSearchUsedCount, 0);
+  assert.strictEqual(notGroundedResult.webSearchRemainingCount, 4);
+  assert.strictEqual(await getMonthlyUsed(USERS.developer), notGroundedMonthlyBefore);
+  await assertThreadSearchUsage(USERS.developer, 'stock', 'stock_sayu', 0, 0);
+  let messages = await getMessages(USERS.developer, 'stock', 'stock_sayu');
+  assert.strictEqual(messages.length, 0);
+
   forceWebSearchError = true;
   await assert.rejects(
     callable(USERS.developer, {
@@ -583,7 +609,7 @@ async function run() {
   );
   forceWebSearchError = false;
   await assertThreadSearchUsage(USERS.developer, 'stock', 'stock_sayu', 0, 0);
-  let messages = await getMessages(USERS.developer, 'stock', 'stock_sayu');
+  messages = await getMessages(USERS.developer, 'stock', 'stock_sayu');
   assert.strictEqual(messages.length, 0);
 
   webSearchDelayMs = 250;

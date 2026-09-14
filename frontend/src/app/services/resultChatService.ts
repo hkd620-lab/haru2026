@@ -57,6 +57,7 @@ export type ChatWithResultResponse = {
   confirmationType?: ResultChatConfirmationType;
   limitReached?: boolean;
   limitReason?: 'web_search_limit_reached' | 'monthly_ai_quota_exceeded';
+  failureReason?: 'web_search_failed';
   notice?: string;
   plan?: 'free' | 'basic' | 'premium' | 'developer';
   planLabel?: string;

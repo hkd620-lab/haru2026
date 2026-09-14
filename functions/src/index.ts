@@ -3109,6 +3109,7 @@ type WebSearchUsage = {
 };
 
 type ResultChatLimitReason = 'web_search_limit_reached' | 'monthly_ai_quota_exceeded';
+type ResultChatFailureReason = 'web_search_failed';
 
 type ReservedWebSearchSlot = WebSearchUsage & {
   reserved: boolean;
@@ -3355,6 +3356,15 @@ function buildMonthlyAiQuotaExhaustedNotice(): string {
   ].join('\n');
 }
 
+function buildWebSearchFailedNotice(): string {
+  return [
+    '외부자료 확인을 실행하지 못했습니다.',
+    '',
+    '이번 요청은 최신자료 출처가 확인되지 않아 사용 횟수를 차감하지 않았습니다.',
+    '잠시 후 다시 시도하거나 나의 기록으로 답변을 선택해 주세요.',
+  ].join('\n');
+}
+
 function buildResultChatLimitResponse(params: {
   threadId: string;
   answerRoute: ResultAnswerRoute;
@@ -3373,6 +3383,35 @@ function buildResultChatLimitResponse(params: {
     routeLabel: params.routeLabel,
     limitReached: true,
     limitReason: params.limitReason,
+    notice: params.notice,
+    plan: params.actualPlan,
+    planLabel: RESULT_CHAT_PLAN_LABELS[params.actualPlan],
+    webSearchLimit: params.usage.limit,
+    webSearchUsedCount: params.usage.usedCount,
+    webSearchRemainingCount: params.usage.remainingCount,
+    monthlyAiLimit: params.monthlyUsage.limit,
+    monthlyAiUsedCount: params.monthlyUsage.used,
+    monthlyAiRemainingCount: params.monthlyUsage.remaining,
+  };
+}
+
+function buildResultChatFailureResponse(params: {
+  threadId: string;
+  answerRoute: ResultAnswerRoute;
+  routeLabel: string;
+  failureReason: ResultChatFailureReason;
+  notice: string;
+  actualPlan: UserPlan;
+  usage: WebSearchUsage;
+  monthlyUsage: Awaited<ReturnType<typeof getMonthlyAiQuotaStatusForUser>>;
+}) {
+  return {
+    threadId: params.threadId,
+    answer: '',
+    sources: [],
+    answerRoute: params.answerRoute,
+    routeLabel: params.routeLabel,
+    failureReason: params.failureReason,
     notice: params.notice,
     plan: params.actualPlan,
     planLabel: RESULT_CHAT_PLAN_LABELS[params.actualPlan],
@@ -4021,6 +4060,7 @@ export const chatWithResult = onCall(
     let reservedWebSearch = false;
     let webSearchFinalized = false;
     let monthlyQuotaReservation: MonthlyAiQuotaReservation | null = null;
+    let attemptedAnswerRoute: ResultAnswerRoute = 'ambiguous';
 
     try {
       await acquireResultChatLock(threadRef, requestId);
@@ -4030,6 +4070,7 @@ export const chatWithResult = onCall(
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
       const currentUsage = await getThreadWebSearchUsage(threadRef, actualPlan);
       const answerRoute: ResultAnswerRoute = searchPreference === 'web_confirmed' ? 'web_search' : 'record_only';
+      attemptedAnswerRoute = answerRoute;
       const recordOnlyChosen = searchPreference === 'record_only';
       const questionSafetyGuide = getResultChatQuestionSafetyGuide(question);
 
@@ -4371,8 +4412,44 @@ export const chatWithResult = onCall(
       };
     } catch (error: any) {
       await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
+      monthlyQuotaReservation = null;
       if (reservedWebSearch && !webSearchFinalized) {
         await finalizeWebSearchSlot(threadRef, actualPlan, false);
+        reservedWebSearch = false;
+      }
+      if (error?.message === 'web_search_not_grounded') {
+        const [usageAfterRollback, monthlyUsageAfterRollback] = await Promise.all([
+          getThreadWebSearchUsage(threadRef, actualPlan),
+          getMonthlyAiQuotaStatusForUser(uid),
+        ]);
+        await logResultChatUsage({
+          uid,
+          actualPlan,
+          recordId,
+          sourceKey,
+          answerRoute: attemptedAnswerRoute,
+          model: null,
+          inputTokens: null,
+          outputTokens: null,
+          webSearchUsed: false,
+          professionalApiUsed: false,
+          searchSourceCount: 0,
+          latencyMs: null,
+          requestId,
+          success: false,
+          errorCode: 'web_search_not_grounded',
+          isDev,
+        });
+        return buildResultChatFailureResponse({
+          threadId,
+          answerRoute: attemptedAnswerRoute,
+          routeLabel: RESULT_ROUTE_LABELS[attemptedAnswerRoute],
+          failureReason: 'web_search_failed',
+          notice: buildWebSearchFailedNotice(),
+          actualPlan,
+          usage: usageAfterRollback,
+          monthlyUsage: monthlyUsageAfterRollback,
+        });
       }
       if (error instanceof HttpsError) {
         throw error;
