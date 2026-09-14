@@ -841,46 +841,17 @@ export function RecordPage() {
     }
     setOpenCard({ idx, type: 'explain', content: '', loading: true });
 
-    const cacheKey = `${article.lawName}_${article.articleStr}`
-      .replace(/[^a-zA-Z0-9가-힣]/g, '_')
-      .slice(0, 100);
-
-    // 1. 캐시 조회 (실패해도 계속 진행)
-    try {
-      const cacheRef = doc(db, 'lawConsultCache', cacheKey);
-      const cacheSnap = await getDoc(cacheRef);
-      if (cacheSnap.exists()) {
-        const cached = cacheSnap.data();
-        setOpenCard({ idx, type: 'explain', content: cached.explanation, loading: false });
-        return;
-      }
-    } catch (cacheError) {
-      console.warn('캐시 조회 실패, API 직접 호출:', cacheError);
-    }
-
-    // 2. API 호출
     try {
       const fns = getFunctions(undefined, 'asia-northeast3');
       const fn = httpsCallable(fns, 'lawEasyExplain');
       const res: any = await fn({
+        lawName: article.lawName,
+        articleStr: article.articleStr,
         lawText: `${article.articleStr}(${article.title}): ${article.content}`,
         userQuery: activeLawQuery,
       });
       const explanation = res.data.explanation;
       setOpenCard({ idx, type: 'explain', content: explanation, loading: false });
-
-      // 3. 캐시 저장 시도 (실패해도 무시)
-      try {
-        const cacheRef = doc(db, 'lawConsultCache', cacheKey);
-        await setDoc(cacheRef, {
-          explanation,
-          lawName: article.lawName,
-          articleStr: article.articleStr,
-          createdAt: new Date().toISOString(),
-        });
-      } catch (saveError) {
-        console.warn('캐시 저장 실패:', saveError);
-      }
     } catch {
       setOpenCard({ idx, type: 'explain', content: 'AI자문을 불러오지 못했습니다.', loading: false });
     }
