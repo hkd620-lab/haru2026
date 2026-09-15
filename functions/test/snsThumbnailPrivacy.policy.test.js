@@ -19,6 +19,9 @@ assert(!analyzerSrc.includes('storage.googleapis.com'), 'SNS records must not st
 assert(!analyzerSrc.includes("cacheControl: 'public"), 'SNS thumbnails must not use public cache metadata');
 assert(analyzerSrc.includes("predefinedAcl: 'private'"), 'SNS thumbnails must request private object ACLs');
 assert(analyzerSrc.includes('thumbnails.push(thumbPath)'), 'SNS records must store private thumbnail paths');
+assert(analyzerSrc.includes('export const getSnsThumbnailData'), 'private thumbnail callable must exist');
+assert(analyzerSrc.includes('request.auth.uid'), 'private thumbnail callable must use the authenticated uid');
+assert(analyzerSrc.includes('extractSnsThumbnailPath(raw, uid)'), 'private thumbnail callable must validate thumbnail paths against uid');
 
 const snsThumbnailRule = storageRules.match(
   /match \/users\/\{userId\}\/snsThumbnails\/\{docId\}\/\{fileName\} \{[\s\S]*?\n    \}/
@@ -31,8 +34,9 @@ assert(
 assert(!snsThumbnailRule[0].includes('allow read: if true'), 'snsThumbnails must not allow anonymous reads');
 assert(snsThumbnailRule[0].includes('allow write, delete: if false;'), 'clients must not write thumbnails');
 
-assert(thumbnailComponent.includes('getBlob('), 'frontend must fetch private thumbnails as authenticated blobs');
+assert(thumbnailComponent.includes("httpsCallable(functions, 'getSnsThumbnailData')"), 'frontend must fetch private thumbnails through the authenticated callable');
 assert(!thumbnailComponent.includes('getDownloadURL'), 'frontend must not create token download URLs for SNS thumbnails');
+assert(!thumbnailComponent.includes('getBlob'), 'frontend must not depend on browser Storage blob CORS for SNS thumbnails');
 assert(thumbnailComponent.includes('URL.createObjectURL'), 'frontend must render blob object URLs only');
 
 console.log('sns thumbnail privacy policy test passed');
