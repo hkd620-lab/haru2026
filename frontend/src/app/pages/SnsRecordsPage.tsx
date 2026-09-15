@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { db, storage, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { GrapeAnimation } from '../components/GrapeAnimation';
+import { SnsPrivateThumbnails } from '../components/SnsPrivateThumbnails';
 import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 
@@ -656,6 +657,7 @@ export function SnsRecordsPage() {
                       key={r.id}
                       record={r}
                       formatDate={formatDate}
+                      userUid={user?.uid}
                     />
                   ))}
                 </div>
@@ -809,13 +811,14 @@ export function SnsRecordsPage() {
 function PostCard({
   record,
   formatDate,
+  userUid,
 }: {
   record: SnsRecord;
   formatDate: (ts: number) => string;
+  userUid?: string | null;
 }) {
   const lines = record.text.split('\n').slice(0, 3).join('\n');
   const truncated = record.text.length > 140 ? record.text.slice(0, 140) + '…' : lines;
-  const thumbs = (record.thumbnails || []).slice(0, 3);
   return (
     <div
       style={{
@@ -833,18 +836,7 @@ function PostCard({
           {truncated}
         </p>
       )}
-      {thumbs.length > 0 && (
-        <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
-          {thumbs.map((url, i) => (
-            <img
-              key={i}
-              src={url}
-              alt=""
-              style={{ width: 88, height: 88, objectFit: 'cover', borderRadius: 8, background: '#eee' }}
-            />
-          ))}
-        </div>
-      )}
+      <SnsPrivateThumbnails thumbnails={record.thumbnails} userUid={userUid} />
     </div>
   );
 }
