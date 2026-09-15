@@ -7,6 +7,9 @@ interface SnsPrivateThumbnailsProps {
   userUid?: string | null;
 }
 
+const SNS_THUMBNAIL_DISPLAY_LIMIT = 12;
+const thumbnailDataCache = new Map<string, { contentType: string; dataBase64: string }>();
+
 function extractSnsThumbnailPath(value: string, userUid: string): string | null {
   const marker = `/users/${userUid}/snsThumbnails/`;
 
@@ -58,9 +61,11 @@ export function SnsPrivateThumbnails({ thumbnails = [], userUid }: SnsPrivateThu
     let createdUrls: string[] = [];
 
     const load = async () => {
-      const sourceValues = thumbnails.slice(0, 3).filter((value): value is string => typeof value === 'string');
+      const sourceValues = thumbnails
+        .slice(0, SNS_THUMBNAIL_DISPLAY_LIMIT)
+        .filter((value): value is string => typeof value === 'string');
       const paths = thumbnails
-        .slice(0, 3)
+        .slice(0, SNS_THUMBNAIL_DISPLAY_LIMIT)
         .map((value) => extractSnsThumbnailPath(value, userUid))
         .filter((value): value is string => Boolean(value));
 
@@ -77,22 +82,34 @@ export function SnsPrivateThumbnails({ thumbnails = [], userUid }: SnsPrivateThu
         return;
       }
 
-      const callable = httpsCallable(functions, 'getSnsThumbnailData');
-      const result = await callable({ thumbnails: paths });
-      const data = result.data as {
-        images?: { ok?: boolean; contentType?: string; dataBase64?: string; code?: string }[];
-      };
+      const missingPaths = paths.filter((path) => !thumbnailDataCache.has(path));
+      if (missingPaths.length > 0) {
+        const callable = httpsCallable(functions, 'getSnsThumbnailData');
+        const result = await callable({ thumbnails: missingPaths });
+        const data = result.data as {
+          images?: { ok?: boolean; contentType?: string; dataBase64?: string; code?: string }[];
+        };
 
-      const urls = (data.images || [])
-        .filter((image) => image?.ok && image.dataBase64)
-        .map((image) => base64ToObjectUrl(image.dataBase64 || '', image.contentType || 'image/jpeg'));
+        (data.images || []).forEach((image, index) => {
+          if (!image?.ok || !image.dataBase64) return;
+          thumbnailDataCache.set(missingPaths[index], {
+            contentType: image.contentType || 'image/jpeg',
+            dataBase64: image.dataBase64,
+          });
+        });
 
-      const failedCodes = (data.images || [])
-        .filter((image) => !image?.ok)
-        .map((image) => image?.code || 'unknown');
-      if (failedCodes.length > 0) {
-        console.warn('SNS 썸네일 일부 조회 실패', { count: failedCodes.length, codes: failedCodes });
+        const failedCodes = (data.images || [])
+          .filter((image) => !image?.ok)
+          .map((image) => image?.code || 'unknown');
+        if (failedCodes.length > 0) {
+          console.warn('SNS 썸네일 일부 조회 실패', { count: failedCodes.length, codes: failedCodes });
+        }
       }
+
+      const urls = paths
+        .map((path) => thumbnailDataCache.get(path))
+        .filter((image): image is { contentType: string; dataBase64: string } => Boolean(image))
+        .map((image) => base64ToObjectUrl(image.dataBase64, image.contentType));
 
       createdUrls = urls;
       if (active) {

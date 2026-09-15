@@ -10,6 +10,7 @@ import { GrapeAnimation } from '../components/GrapeAnimation';
 import { SnsPrivateThumbnails } from '../components/SnsPrivateThumbnails';
 import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
+import { mergeSnsRecordsForDisplay } from '../utils/snsRecords';
 
 const COLOR_BLUE = '#1A3C6E';
 const COLOR_BG = '#FAF9F6';
@@ -95,16 +96,11 @@ export function SnsRecordsPage() {
         const colRef = collection(db, 'users', user.uid, 'snsRecords');
         const snap = await getDocs(query(colRef, orderBy('timestamp', 'desc')));
         if (cancelled) return;
-        // 중복 제거: 같은 timestamp + 같은 텍스트는 1개만 유지
-        const seen = new Set<string>();
         const list: SnsRecord[] = [];
         snap.docs.forEach((d) => {
           const data = d.data() as any;
           const ts = typeof data.timestamp === 'number' ? data.timestamp : 0;
           const text = data.text || '';
-          const key = `${ts}__${text}`;
-          if (seen.has(key)) return;
-          seen.add(key);
           list.push({
             id: d.id,
             source: (data.source as Source) || 'facebook',
@@ -113,11 +109,12 @@ export function SnsRecordsPage() {
             thumbnails: Array.isArray(data.thumbnails) ? data.thumbnails : [],
           });
         });
-        setRecords(list);
+        const displayRecords = mergeSnsRecordsForDisplay(list);
+        setRecords(displayRecords);
         // 첫 진입 시 데이터가 있으면 타임라인 탭으로 자동 전환 (1회만)
         if (!initialTabSet.current) {
           initialTabSet.current = true;
-          if (list.length > 0) setTab('timeline');
+          if (displayRecords.length > 0) setTab('timeline');
         }
       } catch (e) {
         console.error('SNS 기록 조회 실패:', e);
