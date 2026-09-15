@@ -1,6 +1,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
+import * as crypto from 'crypto';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const JSZip = require('jszip');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -11,6 +12,38 @@ if (!admin.apps.length) {
 }
 
 const db = admin.firestore();
+const SNS_THUMBNAIL_MAX_BYTES = 512 * 1024;
+
+function extractSnsThumbnailPath(value: string, uid: string): string | null {
+  const prefix = `users/${uid}/snsThumbnails/`;
+  const marker = `/${prefix}`;
+
+  if (value.startsWith(prefix)) {
+    return value;
+  }
+
+  const markerIndex = value.indexOf(marker);
+  if (markerIndex >= 0) {
+    return value.slice(markerIndex + 1).split('?')[0];
+  }
+
+  try {
+    const url = new URL(value);
+    if (url.pathname.includes('/o/')) {
+      const encodedPath = url.pathname.split('/o/')[1]?.split('/')[0] || '';
+      const decodedPath = decodeURIComponent(encodedPath);
+      return decodedPath.startsWith(prefix) ? decodedPath : null;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function hashForLog(value: string): string {
+  return crypto.createHash('sha256').update(value).digest('hex').slice(0, 12);
+}
 
 // Facebook JSON exports double-encode Korean: bytes are UTF-8 but the JSON
 // stores them as latin1 escape sequences. Buffer reinterpretation restores them.
@@ -206,5 +239,68 @@ export const analyzeFacebookZip = onCall(
 
     logger.info(`analyzeFacebookZip 완료: uid=${uid}, saved=${saved}, skippedDuplicates=${skippedDuplicates}`);
     return { success: true, count: saved };
+  }
+);
+
+export const getSnsThumbnailData = onCall(
+  {
+    region: 'asia-northeast3',
+    memory: '256MiB',
+    timeoutSeconds: 60,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    const uid = request.auth.uid;
+    const thumbnails = (request.data?.thumbnails || []) as unknown;
+    if (!Array.isArray(thumbnails)) {
+      throw new HttpsError('invalid-argument', 'thumbnails 배열이 필요합니다.');
+    }
+
+    const bucket = admin.storage().bucket();
+    const images = [];
+
+    for (const [index, raw] of thumbnails.slice(0, 3).entries()) {
+      if (typeof raw !== 'string' || raw.length > 2048) {
+        images.push({ ok: false, code: 'invalid-thumbnail' });
+        continue;
+      }
+
+      const path = extractSnsThumbnailPath(raw, uid);
+      if (!path) {
+        logger.warn('SNS 썸네일 경로 검증 실패', { uidHash: hashForLog(uid), index });
+        images.push({ ok: false, code: 'permission-denied' });
+        continue;
+      }
+
+      try {
+        const file = bucket.file(path);
+        const [metadata] = await file.getMetadata();
+        const size = Number(metadata.size || 0);
+        if (!Number.isFinite(size) || size <= 0 || size > SNS_THUMBNAIL_MAX_BYTES) {
+          logger.warn('SNS 썸네일 크기 제한 실패', { uidHash: hashForLog(uid), index, size });
+          images.push({ ok: false, code: 'invalid-size' });
+          continue;
+        }
+
+        const [buffer] = await file.download();
+        images.push({
+          ok: true,
+          contentType: metadata.contentType || 'image/jpeg',
+          dataBase64: buffer.toString('base64'),
+        });
+      } catch (e: any) {
+        logger.warn('SNS 썸네일 다운로드 실패', {
+          uidHash: hashForLog(uid),
+          index,
+          code: e?.code || e?.name || 'unknown',
+        });
+        images.push({ ok: false, code: 'not-found' });
+      }
+    }
+
+    return { images };
   }
 );

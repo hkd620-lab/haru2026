@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { getBlob, ref as storageRef } from 'firebase/storage';
-import { storage } from '../../firebase';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../../firebase';
 
 interface SnsPrivateThumbnailsProps {
   thumbnails?: string[];
@@ -33,6 +33,18 @@ function extractSnsThumbnailPath(value: string, userUid: string): string | null 
   return null;
 }
 
+function base64ToObjectUrl(dataBase64: string, contentType: string): string {
+  const bytes = Uint8Array.from(atob(dataBase64), (char) => char.charCodeAt(0));
+  return URL.createObjectURL(new Blob([bytes], { type: contentType || 'image/jpeg' }));
+}
+
+function classifyThumbnailValue(value: string): string {
+  if (value.startsWith('users/')) return 'bare-path';
+  if (value.includes('storage.googleapis.com')) return 'storage.googleapis.com-url';
+  if (value.includes('/o/')) return 'firebase-o-url';
+  return 'unknown';
+}
+
 export function SnsPrivateThumbnails({ thumbnails = [], userUid }: SnsPrivateThumbnailsProps) {
   const [objectUrls, setObjectUrls] = useState<string[]>([]);
 
@@ -46,17 +58,41 @@ export function SnsPrivateThumbnails({ thumbnails = [], userUid }: SnsPrivateThu
     let createdUrls: string[] = [];
 
     const load = async () => {
+      const sourceValues = thumbnails.slice(0, 3).filter((value): value is string => typeof value === 'string');
       const paths = thumbnails
         .slice(0, 3)
         .map((value) => extractSnsThumbnailPath(value, userUid))
         .filter((value): value is string => Boolean(value));
 
-      const urls = await Promise.all(
-        paths.map(async (path) => {
-          const blob = await getBlob(storageRef(storage, path));
-          return URL.createObjectURL(blob);
-        })
-      );
+      if (paths.length === 0 && sourceValues.length > 0) {
+        console.warn('SNS 썸네일 경로 변환 실패', {
+          count: sourceValues.length,
+          kinds: sourceValues.map(classifyThumbnailValue),
+        });
+        if (active) setObjectUrls([]);
+        return;
+      }
+      if (paths.length === 0) {
+        if (active) setObjectUrls([]);
+        return;
+      }
+
+      const callable = httpsCallable(functions, 'getSnsThumbnailData');
+      const result = await callable({ thumbnails: paths });
+      const data = result.data as {
+        images?: { ok?: boolean; contentType?: string; dataBase64?: string; code?: string }[];
+      };
+
+      const urls = (data.images || [])
+        .filter((image) => image?.ok && image.dataBase64)
+        .map((image) => base64ToObjectUrl(image.dataBase64 || '', image.contentType || 'image/jpeg'));
+
+      const failedCodes = (data.images || [])
+        .filter((image) => !image?.ok)
+        .map((image) => image?.code || 'unknown');
+      if (failedCodes.length > 0) {
+        console.warn('SNS 썸네일 일부 조회 실패', { count: failedCodes.length, codes: failedCodes });
+      }
 
       createdUrls = urls;
       if (active) {
@@ -67,7 +103,9 @@ export function SnsPrivateThumbnails({ thumbnails = [], userUid }: SnsPrivateThu
     };
 
     load().catch((error) => {
-      console.error('SNS 썸네일 조회 실패:', error);
+      console.error('SNS 썸네일 조회 실패', {
+        code: error?.code || error?.name || 'unknown',
+      });
       if (active) setObjectUrls([]);
     });
 
