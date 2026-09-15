@@ -73,9 +73,9 @@ service firebase.storage {
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
-    // ✅ SNS 기록 가져오기 — 분석 결과 썸네일 (Functions가 생성·makePublic 처리)
+    // ✅ SNS 기록 가져오기 — 분석 결과 썸네일 (Functions가 생성, 소유자만 조회)
     match /users/{userId}/snsThumbnails/{docId}/{fileName} {
-      allow read: if true;
+      allow read: if request.auth != null && request.auth.uid == userId;
       allow write, delete: if false;
     }
 

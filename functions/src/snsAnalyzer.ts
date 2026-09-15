@@ -62,8 +62,8 @@ export const analyzeFacebookZip = onCall(
     if (source !== 'facebook') {
       throw new HttpsError('invalid-argument', '현재 Facebook만 지원됩니다.');
     }
-    if (!storagePath.startsWith(`users/${uid}/`)) {
-      throw new HttpsError('permission-denied', '본인 경로만 처리할 수 있습니다.');
+    if (!storagePath.startsWith(`users/${uid}/snsUploads/`)) {
+      throw new HttpsError('permission-denied', '본인 SNS 업로드 경로만 처리할 수 있습니다.');
     }
 
     const bucket = admin.storage().bucket();
@@ -177,13 +177,11 @@ export const analyzeFacebookZip = onCall(
           const thumbPath = `users/${uid}/snsThumbnails/${docRef.id}/${i}.jpg`;
           const thumbFile = bucket.file(thumbPath);
           await thumbFile.save(resized, {
+            predefinedAcl: 'private',
             contentType: 'image/jpeg',
-            metadata: { cacheControl: 'public, max-age=31536000' },
+            metadata: { cacheControl: 'private, max-age=300' },
           });
-          await thumbFile.makePublic();
-          thumbnails.push(
-            `https://storage.googleapis.com/${bucket.name}/${thumbPath}`
-          );
+          thumbnails.push(thumbPath);
         } catch (e) {
           logger.warn(`썸네일 처리 실패 (${m.uri}):`, e);
         }

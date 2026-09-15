@@ -17,6 +17,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { firestoreService } from '../services/firestoreService';
 import { GrapeAnimation } from './GrapeAnimation';
+import { SnsPrivateThumbnails } from './SnsPrivateThumbnails';
 
 const COLOR_BLUE = '#1A3C6E';
 const COLOR_GREEN = '#10b981';
@@ -454,6 +455,7 @@ export function SnsHaruTab() {
                   record={r}
                   isPaidUser={isPaidUser}
                   converting={convertingId === r.id}
+                  userUid={user?.uid}
                   onConvert={() => handleConvertToDiary(r)}
                   onProphecy={() => handleSendToProphecy(r)}
                   onPdf={() => handleSavePdf(r)}
@@ -505,6 +507,7 @@ function ResultCard({
   record,
   isPaidUser,
   converting,
+  userUid,
   onConvert,
   onProphecy,
   onPdf,
@@ -512,13 +515,13 @@ function ResultCard({
   record: SnsRecord;
   isPaidUser: boolean;
   converting: boolean;
+  userUid?: string | null;
   onConvert: () => void;
   onProphecy: () => void;
   onPdf: () => void;
 }) {
   const lines = record.text.split('\n').slice(0, 3).join('\n');
   const truncated = record.text.length > 140 ? record.text.slice(0, 140) + '…' : lines;
-  const thumbs = (record.thumbnails || []).slice(0, 3);
   const sourceLabel = record.source === 'facebook' ? '📘 Facebook' : '📷 Instagram';
   return (
     <div
@@ -537,18 +540,7 @@ function ResultCard({
           {truncated}
         </p>
       )}
-      {thumbs.length > 0 && (
-        <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
-          {thumbs.map((url, i) => (
-            <img
-              key={i}
-              src={url}
-              alt=""
-              style={{ width: 88, height: 88, objectFit: 'cover', borderRadius: 8, background: '#eee' }}
-            />
-          ))}
-        </div>
-      )}
+      <SnsPrivateThumbnails thumbnails={record.thumbnails} userUid={userUid} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 6, marginTop: 12 }}>
         <button
           type="button"
