@@ -339,17 +339,16 @@ function verifyDocumentData(snapshot, expectedData, label) {
   if (actual !== expected) throw new Error(`${label} 문서 내용이 백업과 다릅니다: ${snapshot.ref.path}`);
 }
 
-async function countCollectionReferences(db, uid) {
-  const snapshot = await db.collection('users').doc(uid).collection('snsRecords').get();
+function countSnapshotReferences(snapshots) {
   let references = 0;
   let photoDocuments = 0;
-  for (const doc of snapshot.docs) {
+  for (const doc of snapshots) {
     const thumbnails = doc.data().thumbnails;
     if (!Array.isArray(thumbnails) || thumbnails.length === 0) continue;
     photoDocuments += 1;
     references += thumbnails.filter((value) => typeof value === 'string').length;
   }
-  return { totalDocuments: snapshot.size, photoDocuments, references };
+  return { totalDocuments: snapshots.length, photoDocuments, references };
 }
 
 async function verifyStoragePreserved(bucket, manifest) {
@@ -367,13 +366,6 @@ async function verifyStoragePreserved(bucket, manifest) {
     ) {
       throw new Error(`Storage 객체 내용 또는 generation이 바뀌었습니다: ${before.path}`);
     }
-  }
-  const [files] = await bucket.getFiles({ prefix: `users/${manifest.uid}/snsThumbnails/` });
-  const liveNames = new Set(files.map((file) => file.name));
-  const missing = manifest.storageObjects.filter((object) => !liveNames.has(object.path));
-  if (missing.length > 0) throw new Error(`Storage 원본 객체 ${missing.length}개가 없습니다.`);
-  if (liveNames.size !== EXPECTED.storageObjects) {
-    throw new Error(`Storage prefix 객체 수 불일치: 예상 432, 실제 ${liveNames.size}`);
   }
 }
 
@@ -442,7 +434,7 @@ async function verifyMigratedState(db, bucket, manifestInfo, options = {}) {
     );
   }
 
-  const counts = await countCollectionReferences(db, manifest.uid);
+  const counts = countSnapshotReferences(snapshots);
   if (counts.references !== EXPECTED.referencesAfter || counts.photoDocuments !== EXPECTED.duplicateGroups) {
     throw new Error(
       `정리 후 Firestore 수 불일치: 사진 문서 ${counts.photoDocuments}, 참조 ${counts.references}`
@@ -486,7 +478,7 @@ async function applyCommand(args) {
       throw new Error(`updateTime 변경 감지: ${document.docPath}`);
     }
   }
-  const beforeCounts = await countCollectionReferences(db, manifest.uid);
+  const beforeCounts = countSnapshotReferences(snapshots);
   if (
     beforeCounts.references !== EXPECTED.referencesBefore
     || beforeCounts.photoDocuments !== EXPECTED.photoDocuments
@@ -596,7 +588,7 @@ async function rollbackCommand(args) {
       '복원 후'
     );
   }
-  const counts = await countCollectionReferences(db, manifest.uid);
+  const counts = countSnapshotReferences(restoredSnapshots);
   if (counts.references !== EXPECTED.referencesBefore || counts.photoDocuments !== EXPECTED.photoDocuments) {
     throw new Error(`복원 후 Firestore 수 불일치: 사진 문서 ${counts.photoDocuments}, 참조 ${counts.references}`);
   }

@@ -17,9 +17,11 @@ import {
   BASIS_MAIN_SHA,
   EXPECTED,
   PRIVATE_CACHE_CONTROL,
+  encodeFirestoreValue,
   isPublicCache,
   publicAclEntries,
   sha256Hex,
+  stableStringify,
 } from './snsThumbnailCleanupCore.mjs';
 
 const PROJECT_ID = 'haru2026-8abb8';
@@ -122,6 +124,7 @@ function assertBackup(backup) {
     throw new Error('허용된 PR #202 기반 Firestore backup이 아닙니다.');
   }
   if (backup.storageObjects?.length !== EXPECTED.storageObjects) throw new Error('backup 객체 수가 432개가 아닙니다.');
+  if (backup.documents?.length !== EXPECTED.photoDocuments) throw new Error('backup 문서 수가 288개가 아닙니다.');
   if (backup.migration?.changes?.length !== EXPECTED.changedDocuments) throw new Error('backup 변경 문서 수가 216개가 아닙니다.');
 }
 
@@ -134,6 +137,7 @@ function assertPlan(plan) {
     || plan.basisMainSha !== BASIS_MAIN_SHA
     || plan.targetCacheControl !== PRIVATE_CACHE_CONTROL
     || plan.storageObjects?.length !== EXPECTED.storageObjects
+    || plan.firestoreDocuments?.length !== EXPECTED.photoDocuments
   ) {
     throw new Error('허용된 432개 Storage privacy plan이 아닙니다.');
   }
@@ -143,6 +147,7 @@ function assertPlan(plan) {
   if (new Set(plan.storageObjects.map((item) => item.path)).size !== EXPECTED.storageObjects) {
     throw new Error('privacy plan의 객체 경로가 정확한 432개가 아닙니다.');
   }
+  assertFirestoreTargetPlan(plan.firestoreDocuments);
   if (
     plan.changes?.bucketChanges !== 0
     || plan.changes?.rulesChanges !== 0
@@ -189,11 +194,60 @@ async function readObjectState(bucket, target) {
   };
 }
 
-async function assertFirestoreMigrated(db, uid) {
-  const snapshot = await db.collection('users').doc(uid).collection('snsRecords').get();
+function migratedDocumentData(document, changedPaths) {
+  const encoded = JSON.parse(JSON.stringify(document.data));
+  if (encoded?.type !== 'map' || !encoded.value || typeof encoded.value !== 'object') {
+    throw new Error(`backup 문서 형식이 잘못되었습니다: ${document.docPath}`);
+  }
+  if (changedPaths.has(document.docPath)) {
+    encoded.value.thumbnails = { type: 'array', value: [] };
+  }
+  return encoded;
+}
+
+function buildFirestoreTargets(backup) {
+  const changedPaths = new Set(backup.migration.changes.map((change) => change.docPath));
+  return backup.documents.map((document) => {
+    const migratedData = migratedDocumentData(document, changedPaths);
+    const thumbnails = changedPaths.has(document.docPath) ? [] : document.thumbnails;
+    return {
+      docPath: document.docPath,
+      dataSha256: sha256Hex(stableStringify(migratedData)),
+      expectedReferences: Array.isArray(thumbnails)
+        ? thumbnails.filter((value) => typeof value === 'string').length
+        : 0,
+    };
+  });
+}
+
+function assertFirestoreTargetPlan(targets) {
+  if (targets?.length !== EXPECTED.photoDocuments) {
+    throw new Error(`Firestore target 문서 수 불일치: ${targets?.length || 0}`);
+  }
+  if (new Set(targets.map((target) => target.docPath)).size !== EXPECTED.photoDocuments) {
+    throw new Error('Firestore target 문서 경로가 중복되었습니다.');
+  }
+  const photoDocuments = targets.filter((target) => target.expectedReferences > 0).length;
+  const references = targets.reduce((sum, target) => sum + target.expectedReferences, 0);
+  if (references !== EXPECTED.referencesAfter || photoDocuments !== EXPECTED.duplicateGroups) {
+    throw new Error(`Firestore target 계획 불일치: 사진 문서 ${photoDocuments}, 참조 ${references}`);
+  }
+}
+
+async function assertFirestoreTargetsMigrated(db, targets) {
+  assertFirestoreTargetPlan(targets);
+  const refs = targets.map((target) => db.doc(target.docPath));
+  const snapshots = await db.getAll(...refs);
   let references = 0;
   let photoDocuments = 0;
-  for (const doc of snapshot.docs) {
+  for (let index = 0; index < snapshots.length; index += 1) {
+    const doc = snapshots[index];
+    const target = targets[index];
+    if (!doc.exists) throw new Error(`Firestore target 문서가 없습니다: ${target.docPath}`);
+    const actualHash = sha256Hex(stableStringify(encodeFirestoreValue(doc.data())));
+    if (actualHash !== target.dataSha256) {
+      throw new Error(`Firestore target 문서 내용 불일치: ${target.docPath}`);
+    }
     const thumbnails = doc.data().thumbnails;
     if (!Array.isArray(thumbnails) || thumbnails.length === 0) continue;
     photoDocuments += 1;
@@ -202,18 +256,7 @@ async function assertFirestoreMigrated(db, uid) {
   if (references !== EXPECTED.referencesAfter || photoDocuments !== EXPECTED.duplicateGroups) {
     throw new Error(`Firestore 정리 상태 불일치: 사진 문서 ${photoDocuments}, 참조 ${references}`);
   }
-  return { photoDocuments, references };
-}
-
-async function assertExactObjectSet(bucket, uid, targets) {
-  const [files] = await bucket.getFiles({ prefix: `users/${uid}/snsThumbnails/` });
-  const live = new Set(files.map((file) => file.name));
-  const planned = new Set(targets.map((target) => target.path));
-  const missing = [...planned].filter((name) => !live.has(name));
-  const extras = [...live].filter((name) => !planned.has(name));
-  if (missing.length > 0 || extras.length > 0 || live.size !== EXPECTED.storageObjects) {
-    throw new Error(`정확한 객체 집합 불일치: live ${live.size}, missing ${missing.length}, extras ${extras.length}`);
-  }
+  return { targetDocuments: snapshots.length, photoDocuments, references };
 }
 
 function assertContentUnchanged(current, baseline) {
@@ -234,10 +277,10 @@ async function planCommand(args) {
   const db = admin.firestore();
   const bucket = admin.storage().bucket(BUCKET_NAME);
   const backup = backupInfo.value;
+  const firestoreDocuments = buildFirestoreTargets(backup);
 
   console.log('[1/3] Firestore 432→108 상태 확인');
-  await assertFirestoreMigrated(db, backup.uid);
-  await assertExactObjectSet(bucket, backup.uid, backup.storageObjects);
+  await assertFirestoreTargetsMigrated(db, firestoreDocuments);
 
   console.log('[2/3] exact 432개 객체 fresh metadata·ACL preflight');
   const currentStates = await mapLimit(backup.storageObjects, 10, (target) =>
@@ -265,6 +308,7 @@ async function planCommand(args) {
     userHash: backup.userHash,
     expected: EXPECTED,
     targetCacheControl: PRIVATE_CACHE_CONTROL,
+    firestoreDocuments,
     storageObjects: currentStates.map((state) => ({
       ...state,
       publicAcl: publicAclEntries(state.acl),
@@ -338,8 +382,7 @@ async function applyOneObject(bucket, target, desiredCacheControl) {
 }
 
 async function verifyPlanState(db, bucket, plan, writeReceipt = true) {
-  const firestore = await assertFirestoreMigrated(db, plan.uid);
-  await assertExactObjectSet(bucket, plan.uid, plan.storageObjects);
+  const firestore = await assertFirestoreTargetsMigrated(db, plan.firestoreDocuments);
   const currentStates = await mapLimit(plan.storageObjects, 10, (target) =>
     readObjectState(bucket, target)
   );
@@ -385,8 +428,7 @@ async function applyCommand(args) {
   const plan = { ...planInfo.value, __planPath: planInfo.path, __planSha256: planInfo.checksum };
 
   console.log('[1/3] 432개 전체 사전검증(변경 전 일괄 중단 조건 확인)');
-  await assertFirestoreMigrated(db, plan.uid);
-  await assertExactObjectSet(bucket, plan.uid, plan.storageObjects);
+  await assertFirestoreTargetsMigrated(db, plan.firestoreDocuments);
   const preflight = await mapLimit(plan.storageObjects, 10, (target) => readObjectState(bucket, target));
   for (let index = 0; index < preflight.length; index += 1) {
     classifyObjectState(preflight[index], plan.storageObjects[index], plan.targetCacheControl);
