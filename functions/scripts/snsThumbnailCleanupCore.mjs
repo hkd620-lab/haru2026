@@ -253,6 +253,15 @@ export function isPublicCache(cacheControl) {
   return typeof cacheControl === 'string' && /^\s*public(?:\s*,|\s*$)/i.test(cacheControl);
 }
 
+export function cacheMaxAgeSeconds(cacheControl) {
+  if (typeof cacheControl !== 'string') return null;
+  const values = Array.from(
+    cacheControl.matchAll(/(?:^|,)\s*(?:s-maxage|max-age)\s*=\s*"?(\d+)"?/gi),
+    (match) => Number(match[1])
+  ).filter((value) => Number.isSafeInteger(value) && value >= 0);
+  return values.length > 0 ? Math.max(...values) : null;
+}
+
 export function publicAclEntries(entries) {
   return (entries || []).filter((entry) => PUBLIC_ACL_ENTITIES.has(entry.entity));
 }

@@ -1,6 +1,7 @@
 // Firestore 432→108 정리와 운영 E2E가 통과한 뒤에만 실행하는 Storage 후속 도구입니다.
 // backup에 고정된 기존 432개 객체만 대상으로 공개 ACL과 public cache metadata를 제거합니다.
 // 버킷 설정·Rules·CORS·객체 bytes는 변경하지 않으며 Storage 객체 삭제 API를 사용하지 않습니다.
+// 주의: metadata 변경은 이미 저장된 브라우저/CDN 응답을 퇴출하지 않습니다. 영수증에 보수적 만료시점을 기록합니다.
 // 실행 위치: functions/
 //
 // 1) E2E 통과 후 fresh plan
@@ -17,6 +18,7 @@ import {
   BASIS_MAIN_SHA,
   EXPECTED,
   PRIVATE_CACHE_CONTROL,
+  cacheMaxAgeSeconds,
   encodeFirestoreValue,
   isPublicCache,
   publicAclEntries,
@@ -153,8 +155,17 @@ function assertPlan(plan) {
     || plan.changes?.rulesChanges !== 0
     || plan.changes?.corsChanges !== 0
     || plan.changes?.storageDeletes !== 0
+    || plan.changes?.cacheInvalidations !== 0
+    || plan.changes?.downloadTokenChanges !== 0
   ) {
     throw new Error('privacy plan 금지 작업 값이 0이 아닙니다.');
+  }
+  if (
+    plan.priorPublicCache?.invalidationPerformed !== false
+    || !Number.isSafeInteger(plan.priorPublicCache?.maxAgeSeconds)
+    || plan.priorPublicCache.maxAgeSeconds < 0
+  ) {
+    throw new Error('privacy plan의 기존 public cache 만료 정보가 올바르지 않습니다.');
   }
 }
 
@@ -179,6 +190,24 @@ function normalizeAcl(entries) {
     .sort((a, b) => `${a.entity}:${a.role}`.localeCompare(`${b.entity}:${b.role}`));
 }
 
+function firebaseDownloadTokenCount(metadata) {
+  const raw = metadata?.metadata?.firebaseStorageDownloadTokens;
+  if (typeof raw !== 'string') return 0;
+  return raw.split(',').map((value) => value.trim()).filter(Boolean).length;
+}
+
+function safeGenerationNumber(target) {
+  const value = Number(target.generation);
+  if (!Number.isSafeInteger(value) || value < 1 || String(value) !== String(target.generation)) {
+    throw new Error(`안전하게 표현할 수 없는 Storage generation: ${target.path}`);
+  }
+  return value;
+}
+
+function addSeconds(iso, seconds) {
+  return new Date(new Date(iso).getTime() + seconds * 1000).toISOString();
+}
+
 async function readObjectState(bucket, target) {
   const file = bucket.file(target.path);
   const [[metadata], [aclEntries]] = await Promise.all([file.getMetadata(), file.acl.get()]);
@@ -190,6 +219,7 @@ async function readObjectState(bucket, target) {
     md5Hash: metadata.md5Hash || null,
     crc32c: metadata.crc32c || null,
     cacheControl: metadata.cacheControl || null,
+    firebaseDownloadTokenCount: firebaseDownloadTokenCount(metadata),
     acl: normalizeAcl(aclEntries),
   };
 }
@@ -265,8 +295,9 @@ function assertContentUnchanged(current, baseline) {
     || current.size !== baseline.size
     || current.md5Hash !== baseline.md5Hash
     || current.crc32c !== baseline.crc32c
+    || current.firebaseDownloadTokenCount !== baseline.firebaseDownloadTokenCount
   ) {
-    throw new Error(`객체 bytes 또는 generation 변경 감지: ${baseline.path}`);
+    throw new Error(`객체 bytes·generation 또는 download token 상태 변경 감지: ${baseline.path}`);
   }
 }
 
@@ -291,9 +322,18 @@ async function planCommand(args) {
   }
   const publicAclObjects = currentStates.filter((state) => publicAclEntries(state.acl).length > 0).length;
   const publicCacheObjects = currentStates.filter((state) => isPublicCache(state.cacheControl)).length;
+  const downloadTokenObjects = currentStates.filter((state) => state.firebaseDownloadTokenCount > 0).length;
   if (publicAclObjects !== EXPECTED.storageObjects || publicCacheObjects !== EXPECTED.storageObjects) {
     throw new Error(`fresh 공개 상태 불일치: public ACL ${publicAclObjects}, public cache ${publicCacheObjects}`);
   }
+  if (downloadTokenObjects !== 0) {
+    throw new Error(`허용 범위 밖 Firebase download token 객체 ${downloadTokenObjects}개 감지: privacy 적용 중단`);
+  }
+  const originalMaxAges = currentStates.map((state) => cacheMaxAgeSeconds(state.cacheControl));
+  if (originalMaxAges.some((value) => value === null)) {
+    throw new Error('기존 public cache TTL을 계산할 수 없어 privacy 적용을 중단합니다.');
+  }
+  const maxOriginalPublicCacheAgeSeconds = Math.max(...originalMaxAges);
 
   console.log('[3/3] exact-object privacy plan 저장');
   const plan = {
@@ -308,6 +348,10 @@ async function planCommand(args) {
     userHash: backup.userHash,
     expected: EXPECTED,
     targetCacheControl: PRIVATE_CACHE_CONTROL,
+    priorPublicCache: {
+      invalidationPerformed: false,
+      maxAgeSeconds: maxOriginalPublicCacheAgeSeconds,
+    },
     firestoreDocuments,
     storageObjects: currentStates.map((state) => ({
       ...state,
@@ -320,6 +364,8 @@ async function planCommand(args) {
       rulesChanges: 0,
       corsChanges: 0,
       storageDeletes: 0,
+      cacheInvalidations: 0,
+      downloadTokenChanges: 0,
     },
   };
   const outputPath = args.out
@@ -354,7 +400,7 @@ function classifyObjectState(current, target, desiredCacheControl) {
 }
 
 async function applyOneObject(bucket, target, desiredCacheControl) {
-  const file = bucket.file(target.path, { generation: Number(target.generation) });
+  const file = bucket.file(target.path, { generation: safeGenerationNumber(target) });
   let current = await readObjectState(bucket, target);
   let classification = classifyObjectState(current, target, desiredCacheControl);
   if (classification.done) return 'already-done';
@@ -381,7 +427,7 @@ async function applyOneObject(bucket, target, desiredCacheControl) {
   return 'changed';
 }
 
-async function verifyPlanState(db, bucket, plan, writeReceipt = true) {
+async function verifyPlanState(db, bucket, plan, options = {}) {
   const firestore = await assertFirestoreTargetsMigrated(db, plan.firestoreDocuments);
   const currentStates = await mapLimit(plan.storageObjects, 10, (target) =>
     readObjectState(bucket, target)
@@ -391,11 +437,16 @@ async function verifyPlanState(db, bucket, plan, writeReceipt = true) {
     const target = plan.storageObjects[index];
     assertContentUnchanged(state, target);
     if (publicAclEntries(state.acl).length !== 0) throw new Error(`공개 ACL 잔존: ${target.path}`);
-    if (state.cacheControl !== plan.targetCacheControl) throw new Error(`public cache 잔존: ${target.path}`);
+    if (state.cacheControl !== plan.targetCacheControl) throw new Error(`public cache metadata 잔존: ${target.path}`);
+    if (state.firebaseDownloadTokenCount !== 0) throw new Error(`Firebase download token 잔존: ${target.path}`);
   }
 
   let receipt = null;
-  if (writeReceipt) {
+  if (options.writeReceipt !== false) {
+    const accessCutoffAt = options.accessCutoffAt || null;
+    const priorCacheMayRemainUntil = accessCutoffAt
+      ? addSeconds(accessCutoffAt, plan.priorPublicCache.maxAgeSeconds)
+      : null;
     receipt = writeChecksummedJson(
       path.join(path.dirname(path.resolve(plan.__planPath)), `privacy-receipt-${safeIsoForPath()}.json`),
       {
@@ -407,9 +458,16 @@ async function verifyPlanState(db, bucket, plan, writeReceipt = true) {
         planSha256: plan.__planSha256,
         verifiedObjects: currentStates.length,
         publicAclObjects: 0,
-        publicCacheObjects: 0,
+        publicCacheMetadataObjects: 0,
+        firebaseDownloadTokenObjects: 0,
         storageObjectsDeleted: 0,
         firestoreReferences: firestore.references,
+        priorPublicCache: {
+          invalidationPerformed: false,
+          maxAgeSeconds: plan.priorPublicCache.maxAgeSeconds,
+          accessCutoffAt,
+          mayRemainUntil: priorCacheMayRemainUntil,
+        },
       }
     );
   }
@@ -447,10 +505,15 @@ async function applyCommand(args) {
     return outcome;
   });
 
-  console.log('[3/3] 공개 ACL 0·public cache 0·객체 삭제 0 전수검증');
-  const result = await verifyPlanState(db, bucket, plan, true);
+  console.log('[3/3] 공개 ACL 0·public cache metadata 0·객체 삭제 0 전수검증');
+  const accessCutoffAt = new Date().toISOString();
+  const result = await verifyPlanState(db, bucket, plan, { accessCutoffAt });
   const changed = outcomes.filter((outcome) => outcome === 'changed').length;
   console.log(`Storage privacy 적용 성공: changed ${changed}, already-done ${outcomes.length - changed}`);
+  console.log('현재 metadata 검증: 공개 ACL 0, public cache metadata 0, download token 0, 객체 삭제 0');
+  console.warn(
+    `주의: 기존에 캐시된 공개 응답은 퇴출되지 않았으며, 보수적 만료시점은 ${addSeconds(accessCutoffAt, plan.priorPublicCache.maxAgeSeconds)}입니다.`
+  );
   console.log(`receipt: ${result.receipt.path}`);
   console.log(`journal: ${journalPath}`);
 }
@@ -462,10 +525,11 @@ async function verifyCommand(args) {
   const db = admin.firestore();
   const bucket = admin.storage().bucket(BUCKET_NAME);
   const plan = { ...planInfo.value, __planPath: planInfo.path, __planSha256: planInfo.checksum };
-  const result = await verifyPlanState(db, bucket, plan, true);
+  const result = await verifyPlanState(db, bucket, plan);
   console.log(
-    `검증 성공: 객체 ${result.currentStates.length}, 공개 ACL 0, public cache 0, 삭제 0, Firestore 참조 ${result.firestore.references}`
+    `현재 상태 검증 성공: 객체 ${result.currentStates.length}, 공개 ACL 0, public cache metadata 0, download token 0, 삭제 0, Firestore 참조 ${result.firestore.references}`
   );
+  console.warn('주의: standalone verify는 기존 공개 캐시의 퇴출을 증명하지 않습니다. apply 영수증의 보수적 만료시점을 확인하십시오.');
   console.log(`receipt: ${result.receipt.path}`);
 }
 

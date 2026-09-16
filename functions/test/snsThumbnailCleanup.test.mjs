@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import {
   buildMigrationPlan,
+  cacheMaxAgeSeconds,
   encodeFirestoreValue,
   isPublicCache,
   normalizeThumbnailPath,
@@ -113,6 +114,8 @@ assert.strictEqual(
 assert.strictEqual(normalizeThumbnailPath('users/other/snsThumbnails/a/0.jpg', 'u'), null);
 assert.strictEqual(isPublicCache('public, max-age=31536000'), true);
 assert.strictEqual(isPublicCache('private, max-age=300'), false);
+assert.strictEqual(cacheMaxAgeSeconds('public, max-age=31536000, immutable'), 31536000);
+assert.strictEqual(cacheMaxAgeSeconds('public'), null);
 assert.deepStrictEqual(
   publicAclEntries([
     { entity: 'project-owners-123', role: 'OWNER' },
@@ -154,6 +157,7 @@ assert(storageScript.includes('file.setMetadata('));
 assert(storageScript.includes('file.acl.delete({ entity: entry.entity })'));
 assert(storageScript.includes('ifGenerationMatch'));
 assert(storageScript.includes('ifMetagenerationMatch'));
+assert(storageScript.includes('Number.isSafeInteger(value)'));
 assert(storageScript.includes('mapLimit(plan.storageObjects, 1'));
 assert(storageScript.includes('firestoreDocuments'));
 assert(storageScript.includes('await db.getAll(...refs)'));
@@ -165,5 +169,9 @@ assert(!storageScript.includes('deleteFiles('));
 assert(!storageScript.includes('setCorsConfiguration'));
 assert(!storageScript.includes('bucket.setMetadata('));
 assert(!storageScript.includes('firebase deploy'));
+assert(storageScript.includes('invalidationPerformed: false'));
+assert(storageScript.includes('publicCacheMetadataObjects: 0'));
+assert(storageScript.includes('cacheInvalidations: 0'));
+assert(storageScript.includes('downloadTokenChanges: 0'));
 
 console.log('sns thumbnail cleanup tests passed');

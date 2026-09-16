@@ -179,6 +179,12 @@ function normalizedAclEntry(entry) {
   };
 }
 
+function firebaseDownloadTokenCount(metadata) {
+  const raw = metadata?.metadata?.firebaseStorageDownloadTokens;
+  if (typeof raw !== 'string') return 0;
+  return raw.split(',').map((value) => value.trim()).filter(Boolean).length;
+}
+
 async function readObjectForBackup(bucket, objectPath) {
   const file = bucket.file(objectPath);
   const [[metadata], [aclEntries], [bytes]] = await Promise.all([
@@ -195,6 +201,7 @@ async function readObjectForBackup(bucket, objectPath) {
     crc32c: metadata.crc32c || null,
     contentType: metadata.contentType || null,
     cacheControl: metadata.cacheControl || null,
+    firebaseDownloadTokenCount: firebaseDownloadTokenCount(metadata),
     acl: (aclEntries || []).map(normalizedAclEntry).sort((a, b) =>
       `${a.entity}:${a.role}`.localeCompare(`${b.entity}:${b.role}`)
     ),
@@ -213,6 +220,7 @@ async function readObjectMetadata(bucket, objectPath) {
     md5Hash: metadata.md5Hash || null,
     crc32c: metadata.crc32c || null,
     cacheControl: metadata.cacheControl || null,
+    firebaseDownloadTokenCount: firebaseDownloadTokenCount(metadata),
     acl: (aclEntries || []).map(normalizedAclEntry),
   };
 }
@@ -363,8 +371,9 @@ async function verifyStoragePreserved(bucket, manifest) {
       || after.size !== before.size
       || after.md5Hash !== before.md5Hash
       || after.crc32c !== before.crc32c
+      || after.firebaseDownloadTokenCount !== before.firebaseDownloadTokenCount
     ) {
-      throw new Error(`Storage 객체 내용 또는 generation이 바뀌었습니다: ${before.path}`);
+      throw new Error(`Storage 객체 내용·generation 또는 download token 상태가 바뀌었습니다: ${before.path}`);
     }
   }
 }
