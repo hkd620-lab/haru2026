@@ -1,4 +1,5 @@
 export interface SnsRecordWithThumbnails {
+  source?: string;
   timestamp: number;
   text: string;
   thumbnails?: string[];
@@ -9,7 +10,7 @@ export function mergeSnsRecordsForDisplay<T extends SnsRecordWithThumbnails>(rec
   const thumbnailSets = new Map<string, Set<string>>();
 
   for (const record of records) {
-    const key = `${record.timestamp || 0}__${record.text || ''}`;
+    const key = `${record.source || ''}__${record.timestamp || 0}__${record.text || ''}`;
     const thumbnails = Array.isArray(record.thumbnails)
       ? record.thumbnails.filter((value): value is string => typeof value === 'string')
       : [];
