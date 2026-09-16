@@ -400,7 +400,8 @@ function classifyObjectState(current, target, desiredCacheControl) {
 }
 
 async function applyOneObject(bucket, target, desiredCacheControl) {
-  const file = bucket.file(target.path, { generation: safeGenerationNumber(target) });
+  const targetGeneration = safeGenerationNumber(target);
+  const file = bucket.file(target.path, { generation: targetGeneration });
   let current = await readObjectState(bucket, target);
   let classification = classifyObjectState(current, target, desiredCacheControl);
   if (classification.done) return 'already-done';
@@ -418,7 +419,7 @@ async function applyOneObject(bucket, target, desiredCacheControl) {
   }
 
   for (const entry of classification.publicAcl) {
-    await file.acl.delete({ entity: entry.entity });
+    await file.acl.delete({ entity: entry.entity, generation: targetGeneration });
   }
 
   const finalState = await readObjectState(bucket, target);

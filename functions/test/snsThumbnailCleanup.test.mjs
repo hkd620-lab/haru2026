@@ -154,7 +154,7 @@ assert(!firestoreScript.includes('deleteFiles('));
 
 assert(storageScript.includes("const APPLY_CONFIRMATION = 'REMOVE_PUBLIC_ACL_AND_CACHE_432'"));
 assert(storageScript.includes('file.setMetadata('));
-assert(storageScript.includes('file.acl.delete({ entity: entry.entity })'));
+assert(storageScript.includes('file.acl.delete({ entity: entry.entity, generation: targetGeneration })'));
 assert(storageScript.includes('ifGenerationMatch'));
 assert(storageScript.includes('ifMetagenerationMatch'));
 assert(storageScript.includes('Number.isSafeInteger(value)'));
