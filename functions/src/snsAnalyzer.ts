@@ -2,10 +2,6 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
 import * as crypto from 'crypto';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const JSZip = require('jszip');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const sharp = require('sharp');
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -13,6 +9,7 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 const SNS_THUMBNAIL_MAX_BYTES = 512 * 1024;
+const SNS_THUMBNAIL_READ_LIMIT = 12;
 
 function extractSnsThumbnailPath(value: string, uid: string): string | null {
   const prefix = `users/${uid}/snsThumbnails/`;
@@ -113,6 +110,8 @@ export const analyzeFacebookZip = onCall(
 
     let zip: any;
     try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const JSZip = require('jszip');
       zip = await JSZip.loadAsync(zipBuffer);
     } catch (e: any) {
       logger.error('ZIP 파싱 실패:', e);
@@ -200,6 +199,8 @@ export const analyzeFacebookZip = onCall(
         const m = photosToProcess[i];
         if (!m.uri) continue;
         try {
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const sharp = require('sharp');
           const photoFile = zip.file(m.uri);
           if (!photoFile) continue;
           const photoBuf: Buffer = await photoFile.async('nodebuffer');
@@ -262,7 +263,7 @@ export const getSnsThumbnailData = onCall(
     const bucket = admin.storage().bucket();
     const images = [];
 
-    for (const [index, raw] of thumbnails.slice(0, 3).entries()) {
+    for (const [index, raw] of thumbnails.slice(0, SNS_THUMBNAIL_READ_LIMIT).entries()) {
       if (typeof raw !== 'string' || raw.length > 2048) {
         images.push({ ok: false, code: 'invalid-thumbnail' });
         continue;

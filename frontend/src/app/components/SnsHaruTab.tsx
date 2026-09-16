@@ -16,6 +16,7 @@ import { db, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { firestoreService } from '../services/firestoreService';
+import { mergeSnsRecordsForDisplay } from '../utils/snsRecords';
 import { GrapeAnimation } from './GrapeAnimation';
 import { SnsPrivateThumbnails } from './SnsPrivateThumbnails';
 
@@ -83,15 +84,11 @@ export function SnsHaruTab() {
         const colRef = collection(db, 'users', user.uid, 'snsRecords');
         const snap = await getDocs(query(colRef, orderBy('timestamp', 'desc')));
         if (cancelled) return;
-        const seen = new Set<string>();
         const list: SnsRecord[] = [];
         snap.docs.forEach((d) => {
           const data = d.data() as any;
           const ts = typeof data.timestamp === 'number' ? data.timestamp : 0;
           const text = data.text || '';
-          const key = `${ts}__${text}`;
-          if (seen.has(key)) return;
-          seen.add(key);
           list.push({
             id: d.id,
             source: (data.source as 'facebook' | 'instagram') || 'facebook',
@@ -100,7 +97,7 @@ export function SnsHaruTab() {
             thumbnails: Array.isArray(data.thumbnails) ? data.thumbnails : [],
           });
         });
-        setRecords(list);
+        setRecords(mergeSnsRecordsForDisplay(list));
       } catch (e) {
         console.error('SNS 기록 조회 실패:', e);
       } finally {
