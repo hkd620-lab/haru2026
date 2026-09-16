@@ -5,6 +5,22 @@ export interface SnsRecordWithThumbnails {
   thumbnails?: string[];
 }
 
+export interface SnsThumbnailContentIdentity {
+  contentHash?: string | null;
+  fallbackKey: string;
+}
+
+export function uniqueSnsThumbnailsByContentHash<T extends SnsThumbnailContentIdentity>(items: T[]): T[] {
+  const seen = new Set<string>();
+
+  return items.filter((item) => {
+    const identity = item.contentHash || item.fallbackKey;
+    if (seen.has(identity)) return false;
+    seen.add(identity);
+    return true;
+  });
+}
+
 export function mergeSnsRecordsForDisplay<T extends SnsRecordWithThumbnails>(records: T[]): T[] {
   const merged = new Map<string, T>();
   const thumbnailSets = new Map<string, Set<string>>();

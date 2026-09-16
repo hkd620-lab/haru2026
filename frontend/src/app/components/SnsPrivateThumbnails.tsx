@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '../../firebase';
+import { uniqueSnsThumbnailsByContentHash } from '../utils/snsRecords';
 
 interface SnsPrivateThumbnailsProps {
   thumbnails?: string[];
@@ -11,7 +12,14 @@ interface SnsPrivateThumbnailsProps {
 const SNS_THUMBNAIL_DISPLAY_LIMIT = 12;
 const THUMBNAIL_CACHE_MAX_ENTRIES = 300;
 const THUMBNAIL_CACHE_MAX_BASE64_CHARS = 12 * 1024 * 1024;
-const thumbnailDataCache = new Map<string, { contentType: string; dataBase64: string; base64Chars: number }>();
+interface ThumbnailCacheItem {
+  contentType: string;
+  dataBase64: string;
+  base64Chars: number;
+  contentHash?: string;
+}
+
+const thumbnailDataCache = new Map<string, ThumbnailCacheItem>();
 let thumbnailCacheUid: string | null = null;
 let thumbnailCacheBase64Chars = 0;
 
@@ -38,7 +46,7 @@ function getThumbnailCacheItem(cacheKey: string) {
   return cached;
 }
 
-function setThumbnailCacheItem(cacheKey: string, contentType: string, dataBase64: string) {
+function setThumbnailCacheItem(cacheKey: string, contentType: string, dataBase64: string, contentHash?: string) {
   const existing = thumbnailDataCache.get(cacheKey);
   if (existing) {
     thumbnailDataCache.delete(cacheKey);
@@ -46,7 +54,7 @@ function setThumbnailCacheItem(cacheKey: string, contentType: string, dataBase64
   }
 
   const base64Chars = dataBase64.length;
-  thumbnailDataCache.set(cacheKey, { contentType, dataBase64, base64Chars });
+  thumbnailDataCache.set(cacheKey, { contentType, dataBase64, base64Chars, contentHash });
   thumbnailCacheBase64Chars += base64Chars;
 
   while (
@@ -151,7 +159,7 @@ export function SnsPrivateThumbnails({ thumbnails = [], userUid }: SnsPrivateThu
         const result = await callable({ thumbnails: missingRequests.map((request) => request.path) });
         if (!active) return;
         const data = result.data as {
-          images?: { ok?: boolean; contentType?: string; dataBase64?: string; code?: string }[];
+          images?: { ok?: boolean; contentType?: string; dataBase64?: string; contentHash?: string; code?: string }[];
         };
 
         (data.images || []).forEach((image, index) => {
@@ -159,7 +167,8 @@ export function SnsPrivateThumbnails({ thumbnails = [], userUid }: SnsPrivateThu
           setThumbnailCacheItem(
             missingRequests[index].cacheKey,
             image.contentType || 'image/jpeg',
-            image.dataBase64
+            image.dataBase64,
+            image.contentHash
           );
         });
 
@@ -171,9 +180,13 @@ export function SnsPrivateThumbnails({ thumbnails = [], userUid }: SnsPrivateThu
         }
       }
 
-      const urls = pathRequests
-        .map((request) => getThumbnailCacheItem(request.cacheKey))
-        .filter((image): image is { contentType: string; dataBase64: string; base64Chars: number } => Boolean(image))
+      const thumbnailImages = pathRequests
+        .map((request) => {
+          const image = getThumbnailCacheItem(request.cacheKey);
+          return image ? { ...image, fallbackKey: request.cacheKey } : null;
+        })
+        .filter((image): image is ThumbnailCacheItem & { fallbackKey: string } => Boolean(image));
+      const urls = uniqueSnsThumbnailsByContentHash(thumbnailImages)
         .map((image) => base64ToObjectUrl(image.dataBase64, image.contentType));
 
       createdUrls = urls;
