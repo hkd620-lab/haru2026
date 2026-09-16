@@ -291,6 +291,7 @@ export const getSnsThumbnailData = onCall(
           ok: true,
           contentType: metadata.contentType || 'image/jpeg',
           dataBase64: buffer.toString('base64'),
+          contentHash: crypto.createHash('sha256').update(buffer).digest('hex'),
         });
       } catch (e: any) {
         logger.warn('SNS 썸네일 다운로드 실패', {
