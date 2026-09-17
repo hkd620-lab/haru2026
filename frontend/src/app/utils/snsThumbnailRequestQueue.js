@@ -36,12 +36,16 @@ export function createBatchedRequestQueue(fetchBatch, options = {}) {
           const results = await fetchBatch(batch.map((entry) => entry.value));
           batch.forEach((entry, index) => {
             entry.resolve(results[index]);
-            inFlight.delete(entry.key);
+            if (inFlight.get(entry.key)?.token === entry.token) {
+              inFlight.delete(entry.key);
+            }
           });
         } catch (error) {
           batch.forEach((entry) => {
             entry.reject(error);
-            inFlight.delete(entry.key);
+            if (inFlight.get(entry.key)?.token === entry.token) {
+              inFlight.delete(entry.key);
+            }
           });
         }
       }
@@ -58,10 +62,13 @@ export function createBatchedRequestQueue(fetchBatch, options = {}) {
       return existing.promise;
     }
 
+    const token = Symbol(key);
+    let rejectRequest;
     const promise = new Promise((resolve, reject) => {
-      pending.set(key, { key, batchKey, value, resolve, reject });
+      rejectRequest = reject;
+      pending.set(key, { key, batchKey, value, resolve, reject, token });
     });
-    inFlight.set(key, { promise, subscribers: 1 });
+    inFlight.set(key, { promise, subscribers: 1, reject: rejectRequest, token });
     scheduleFlush();
     return promise;
   };
@@ -79,5 +86,12 @@ export function createBatchedRequestQueue(fetchBatch, options = {}) {
     pendingRequest.reject(new Error('request-cancelled'));
   };
 
-  return { request, release };
+  const clear = (reason = 'request-cleared') => {
+    const error = new Error(reason);
+    inFlight.forEach((entry) => entry.reject(error));
+    pending.clear();
+    inFlight.clear();
+  };
+
+  return { request, release, clear };
 }

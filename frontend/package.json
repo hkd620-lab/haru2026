@@ -9,7 +9,7 @@
     "build": "vite build",
     "dev": "vite",
     "test:subscription-display": "node test/subscriptionDisplay.policy.test.cjs",
-    "test:sns-thumbnails": "node test/snsThumbnailRequestQueue.test.mjs && node test/snsPrivateThumbnails.policy.test.cjs"
+    "test:sns-thumbnails": "node test/snsThumbnailRequestQueue.test.mjs && node test/snsThumbnailAuthCache.test.mjs && node test/snsPrivateThumbnails.policy.test.cjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

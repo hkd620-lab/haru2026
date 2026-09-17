@@ -98,4 +98,39 @@ async function flushScheduled(callbacks) {
   assert.equal(fetchCount, 0, 'unmounted cards must leave the queue before their request starts');
 }
 
+{
+  const scheduled = [];
+  let resolveFirstBatch;
+  let fetchCount = 0;
+  const queue = createBatchedRequestQueue(
+    async (items) => {
+      fetchCount += 1;
+      if (fetchCount === 1) {
+        return new Promise((resolve) => {
+          resolveFirstBatch = () => resolve(items.map(() => ({ ok: true, source: 'old-user' })));
+        });
+      }
+      return items.map(() => ({ ok: true, source: 'new-user' }));
+    },
+    { schedule: (callback) => scheduled.push(callback) }
+  );
+
+  const oldRequest = queue.request({ key: 'same:path', batchKey: 'uid-a', value: { path: 'path' } });
+  const oldAssertion = assert.rejects(oldRequest, /auth-user-changed/);
+  const firstFlush = scheduled.shift();
+  firstFlush();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  queue.clear('auth-user-changed');
+  await oldAssertion;
+
+  const newRequest = queue.request({ key: 'same:path', batchKey: 'uid-b', value: { path: 'path' } });
+  resolveFirstBatch();
+  await new Promise((resolve) => setImmediate(resolve));
+  await flushScheduled(scheduled);
+
+  assert.deepEqual(await newRequest, { ok: true, source: 'new-user' });
+  assert.equal(fetchCount, 2, 'a late old-user response must not delete or satisfy the new-user request');
+}
+
 console.log('sns thumbnail request queue tests passed');

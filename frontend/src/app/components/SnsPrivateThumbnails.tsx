@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { httpsCallable } from 'firebase/functions';
 import { RotateCw } from 'lucide-react';
-import { functions } from '../../firebase';
 import { uniqueSnsThumbnailsByContentHash } from '../utils/snsRecords';
-import { createBatchedRequestQueue } from '../utils/snsThumbnailRequestQueue';
+import {
+  createSnsThumbnailLoad,
+  isSnsThumbnailAuthUserCurrent,
+  ThumbnailCacheItem,
+} from '../utils/snsPrivateThumbnailState';
 
 interface SnsPrivateThumbnailsProps {
   thumbnails?: string[];
@@ -11,133 +13,8 @@ interface SnsPrivateThumbnailsProps {
 }
 
 const SNS_THUMBNAIL_DISPLAY_LIMIT = 12;
-const SNS_THUMBNAIL_REQUEST_BATCH_SIZE = 4;
-const THUMBNAIL_CACHE_MAX_ENTRIES = 300;
-const THUMBNAIL_CACHE_MAX_BASE64_CHARS = 12 * 1024 * 1024;
-interface ThumbnailCacheItem {
-  contentType: string;
-  dataBase64: string;
-  base64Chars: number;
-  contentHash?: string;
-}
-
-interface ThumbnailRequest {
-  userUid: string;
-  path: string;
-  cacheKey: string;
-}
-
-interface ThumbnailLoadResult {
-  ok: boolean;
-  item?: ThumbnailCacheItem;
-  code?: string;
-}
 
 type ThumbnailStatus = 'idle' | 'loading' | 'success' | 'error';
-
-const thumbnailDataCache = new Map<string, ThumbnailCacheItem>();
-let thumbnailCacheUid: string | null = null;
-let thumbnailCacheBase64Chars = 0;
-
-function clearThumbnailDataCache() {
-  thumbnailDataCache.clear();
-  thumbnailCacheBase64Chars = 0;
-}
-
-function syncThumbnailCacheUser(userUid: string | null) {
-  if (thumbnailCacheUid === userUid) return;
-  clearThumbnailDataCache();
-  thumbnailCacheUid = userUid;
-}
-
-function thumbnailCacheKey(userUid: string, path: string): string {
-  return `${userUid}:${path}`;
-}
-
-function getThumbnailCacheItem(cacheKey: string) {
-  const cached = thumbnailDataCache.get(cacheKey);
-  if (!cached) return null;
-  thumbnailDataCache.delete(cacheKey);
-  thumbnailDataCache.set(cacheKey, cached);
-  return cached;
-}
-
-function setThumbnailCacheItem(cacheKey: string, contentType: string, dataBase64: string, contentHash?: string) {
-  const existing = thumbnailDataCache.get(cacheKey);
-  if (existing) {
-    thumbnailDataCache.delete(cacheKey);
-    thumbnailCacheBase64Chars -= existing.base64Chars;
-  }
-
-  const base64Chars = dataBase64.length;
-  thumbnailDataCache.set(cacheKey, { contentType, dataBase64, base64Chars, contentHash });
-  thumbnailCacheBase64Chars += base64Chars;
-
-  while (
-    thumbnailDataCache.size > THUMBNAIL_CACHE_MAX_ENTRIES ||
-    thumbnailCacheBase64Chars > THUMBNAIL_CACHE_MAX_BASE64_CHARS
-  ) {
-    const oldestKey = thumbnailDataCache.keys().next().value;
-    if (!oldestKey) break;
-    const oldest = thumbnailDataCache.get(oldestKey);
-    if (oldest) thumbnailCacheBase64Chars -= oldest.base64Chars;
-    thumbnailDataCache.delete(oldestKey);
-  }
-}
-
-const thumbnailRequestQueue = createBatchedRequestQueue(
-  async (requests: ThumbnailRequest[]): Promise<ThumbnailLoadResult[]> => {
-    const callable = httpsCallable(functions, 'getSnsThumbnailData');
-    const result = await callable({ thumbnails: requests.map((request) => request.path) });
-    const data = result.data as {
-      images?: { ok?: boolean; contentType?: string; dataBase64?: string; contentHash?: string; code?: string }[];
-    };
-
-    return requests.map((request, index) => {
-      const image = data.images?.[index];
-      if (!image?.ok || !image.dataBase64) {
-        return { ok: false, code: image?.code || 'missing-response' };
-      }
-
-      const item = {
-        contentType: image.contentType || 'image/jpeg',
-        dataBase64: image.dataBase64,
-        base64Chars: image.dataBase64.length,
-        contentHash: image.contentHash,
-      };
-      if (thumbnailCacheUid === request.userUid) {
-        setThumbnailCacheItem(
-          request.cacheKey,
-          item.contentType,
-          item.dataBase64,
-          item.contentHash
-        );
-      }
-      return { ok: true, item };
-    });
-  },
-  { batchSize: SNS_THUMBNAIL_REQUEST_BATCH_SIZE }
-);
-
-function createThumbnailLoad(requests: ThumbnailRequest[]) {
-  const queuedKeys: string[] = [];
-  const promise = Promise.all(requests.map((request) => {
-    const cached = getThumbnailCacheItem(request.cacheKey);
-    if (cached) return Promise.resolve({ ok: true, item: cached });
-
-    queuedKeys.push(request.cacheKey);
-    return thumbnailRequestQueue.request({
-      key: request.cacheKey,
-      batchKey: request.userUid,
-      value: request,
-    }) as Promise<ThumbnailLoadResult>;
-  }));
-
-  return {
-    promise,
-    release: () => queuedKeys.forEach((key) => thumbnailRequestQueue.release(key)),
-  };
-}
 
 function extractSnsThumbnailPath(value: string, userUid: string): string | null {
   const marker = `/users/${userUid}/snsThumbnails/`;
@@ -196,18 +73,22 @@ export function SnsPrivateThumbnails({ thumbnails = [], userUid }: SnsPrivateThu
       return;
     }
     if (!userUid) {
-      syncThumbnailCacheUser(null);
       setObjectUrls([]);
       setStatus('error');
       return;
     }
-    syncThumbnailCacheUser(userUid);
+    if (!isSnsThumbnailAuthUserCurrent(userUid)) {
+      setObjectUrls([]);
+      setStatus('error');
+      return;
+    }
     setObjectUrls([]);
     setStatus('loading');
 
     let active = true;
     let createdUrls: string[] = [];
     let releaseRequests = () => {};
+    let isCurrentLoad = () => isSnsThumbnailAuthUserCurrent(userUid);
 
     const load = async () => {
       // 2026-09-16 read-only production audit: all 72 merged photo groups
@@ -225,14 +106,11 @@ export function SnsPrivateThumbnails({ thumbnails = [], userUid }: SnsPrivateThu
         return;
       }
 
-      const pathRequests = paths.map((path) => ({ path, cacheKey: thumbnailCacheKey(userUid, path) }));
-      const thumbnailLoad = createThumbnailLoad(pathRequests.map((request) => ({
-        ...request,
-        userUid,
-      })));
+      const thumbnailLoad = createSnsThumbnailLoad(userUid, paths);
       releaseRequests = thumbnailLoad.release;
+      isCurrentLoad = thumbnailLoad.isCurrent;
       const results = await thumbnailLoad.promise;
-      if (!active) return;
+      if (!active || !thumbnailLoad.isCurrent()) return;
 
       const failedCodes = results
         .filter((result) => !result.ok)
@@ -246,10 +124,8 @@ export function SnsPrivateThumbnails({ thumbnails = [], userUid }: SnsPrivateThu
       }
 
       const thumbnailImages = results
-        .map((result, index) => result.ok && result.item
-          ? { ...result.item, fallbackKey: pathRequests[index].cacheKey }
-          : null)
-        .filter((image): image is ThumbnailCacheItem & { fallbackKey: string } => Boolean(image));
+        .map((result) => result.ok && result.item ? result.item : null)
+        .filter((image): image is ThumbnailCacheItem => Boolean(image));
       const urls = uniqueSnsThumbnailsByContentHash(thumbnailImages)
         .map((image) => base64ToObjectUrl(image.dataBase64, image.contentType));
 
@@ -259,7 +135,7 @@ export function SnsPrivateThumbnails({ thumbnails = [], userUid }: SnsPrivateThu
     };
 
     load().catch((error) => {
-      if (!active) return;
+      if (!active || !isCurrentLoad()) return;
       console.error('SNS 썸네일 조회 실패', {
         code: error?.code || error?.name || 'unknown',
       });
