@@ -10537,7 +10537,7 @@ export const cleanupTtsUsage = onSchedule(
 export { generateBook, suggestChapterTitle } from "./bookStudio";
 export { reviewBookForPublish, suggestBookPublishRevision, applyBookPublishRevision } from "./bookReview";
 export { analyzeFacebookZip, getSnsThumbnailData } from "./snsAnalyzer";
-export { convertSnsToDiary } from "./snsToDiary";
+export { convertSnsToDiary, generateSnsIntegratedStory } from "./snsToDiary";
 export { generateLawsuitClaimReason } from "./generateLawsuitClaimReason";
 export { convertToBookMaterial } from "./bookMaterial";
 export { gatherElderBookSources, buildElderBookOutline, assignElderBookSources, draftElderBookChapters, polishElderBookChapters } from "./elderBook";

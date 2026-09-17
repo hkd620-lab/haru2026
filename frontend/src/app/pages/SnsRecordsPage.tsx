@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { addDoc, collection, getDocs, orderBy, query, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, deleteField, doc, getDocs, orderBy, query, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
@@ -19,6 +19,7 @@ const COLOR_BORDER = '#e5e5e5';
 
 type TabKey = 'upload' | 'timeline' | 'autobio';
 type Source = 'facebook' | 'instagram';
+type TimelineView = 'active' | 'trash';
 
 interface SnsRecord {
   id: string;
@@ -26,6 +27,9 @@ interface SnsRecord {
   timestamp: number;
   text: string;
   thumbnails?: string[];
+  isDeleted?: boolean;
+  deletedAt?: unknown;
+  sourceRecordIds?: string[];
 }
 
 export function SnsRecordsPage() {
@@ -56,8 +60,10 @@ export function SnsRecordsPage() {
   const [uploadProgress, setUploadProgress] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [records, setRecords] = useState<SnsRecord[]>([]);
+  const [rawRecords, setRawRecords] = useState<SnsRecord[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(false);
+  const [timelineView, setTimelineView] = useState<TimelineView>('active');
+  const [recordActionId, setRecordActionId] = useState<string | null>(null);
 
   // 검색 입력값 (draft) — 검색 버튼을 눌러야 applied로 반영
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -86,6 +92,7 @@ export function SnsRecordsPage() {
 
   // 검색결과 저장 진행상태
   const [savingSearch, setSavingSearch] = useState(false);
+  const [generatingStory, setGeneratingStory] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -107,10 +114,12 @@ export function SnsRecordsPage() {
             timestamp: ts,
             text,
             thumbnails: Array.isArray(data.thumbnails) ? data.thumbnails : [],
+            isDeleted: data.isDeleted === true,
+            deletedAt: data.deletedAt,
           });
         });
-        const displayRecords = mergeSnsRecordsForDisplay(list);
-        setRecords(displayRecords);
+        const displayRecords = mergeSnsRecordsForDisplay(list.filter((r) => r.isDeleted !== true));
+        setRawRecords(list);
         // 첫 진입 시 데이터가 있으면 타임라인 탭으로 자동 전환 (1회만)
         if (!initialTabSet.current) {
           initialTabSet.current = true;
@@ -126,7 +135,17 @@ export function SnsRecordsPage() {
     return () => { cancelled = true; };
   }, [user, uploading]);
 
-  useEffect(() => { setTimelinePage(1); }, [appliedSearch, records.length]);
+  const activeRecords = useMemo(
+    () => mergeSnsRecordsForDisplay(rawRecords.filter((r) => r.isDeleted !== true)),
+    [rawRecords],
+  );
+  const trashedRecords = useMemo(
+    () => mergeSnsRecordsForDisplay(rawRecords.filter((r) => r.isDeleted === true)),
+    [rawRecords],
+  );
+  const visibleRecords = timelineView === 'trash' ? trashedRecords : activeRecords;
+
+  useEffect(() => { setTimelinePage(1); }, [appliedSearch, visibleRecords.length, timelineView]);
 
   const handleOpenFacebookDownload = () => {
     window.open('https://accountscenter.facebook.com/info_and_permissions/dyi/', '_blank', 'noopener,noreferrer');
@@ -180,7 +199,7 @@ export function SnsRecordsPage() {
     const kw = appliedSearch.keyword.trim().toLowerCase();
     const fromMs = appliedSearch.dateFrom ? new Date(appliedSearch.dateFrom + 'T00:00:00').getTime() : 0;
     const toMs = appliedSearch.dateTo ? new Date(appliedSearch.dateTo + 'T23:59:59').getTime() : 0;
-    return records.filter((r) => {
+    return visibleRecords.filter((r) => {
       if (appliedSearch.source !== 'all' && r.source !== appliedSearch.source) return false;
       const hasPhoto = (r.thumbnails?.length ?? 0) > 0;
       if (appliedSearch.filter === 'text' && hasPhoto) return false;
@@ -192,7 +211,7 @@ export function SnsRecordsPage() {
       if (kw && !r.text.toLowerCase().includes(kw)) return false;
       return true;
     });
-  }, [records, appliedSearch]);
+  }, [visibleRecords, appliedSearch]);
 
   const handleApplySearch = () => {
     setAppliedSearch({
@@ -212,6 +231,10 @@ export function SnsRecordsPage() {
 
   const handleSaveSearchResults = async () => {
     if (!user) return;
+    if (timelineView !== 'active') {
+      toast.info('휴지통 기록은 검색결과로 저장하지 않습니다.');
+      return;
+    }
     if (filteredRecords.length === 0) {
       toast.info('저장할 검색결과가 없습니다.');
       return;
@@ -241,8 +264,138 @@ export function SnsRecordsPage() {
     }
   };
 
-  const handleAutobioGenerate = () => {
-    toast.info('준비 중입니다');
+  const getRecordIds = (record: SnsRecord) => {
+    const ids = Array.isArray(record.sourceRecordIds) && record.sourceRecordIds.length > 0
+      ? record.sourceRecordIds
+      : [record.id];
+    return ids.filter(Boolean);
+  };
+
+  const handleDeleteSnsRecord = async (record: SnsRecord) => {
+    if (!user) return;
+    const confirmed = window.confirm('이 SNS 기록을 휴지통으로 이동할까요?\n사진 파일은 삭제하지 않고 기록만 숨깁니다.');
+    if (!confirmed) return;
+
+    const ids = getRecordIds(record);
+    setRecordActionId(record.id);
+    try {
+      const batch = writeBatch(db);
+      ids.forEach((id) => {
+        batch.update(doc(db, 'users', user.uid, 'snsRecords', id), {
+          isDeleted: true,
+          deletedAt: serverTimestamp(),
+          restoredAt: deleteField(),
+          updatedAt: serverTimestamp(),
+        });
+      });
+      await batch.commit();
+      setRawRecords((prev) => prev.map((item) => (
+        ids.includes(item.id)
+          ? { ...item, isDeleted: true, deletedAt: new Date().toISOString() }
+          : item
+      )));
+      toast.success('휴지통으로 이동했습니다.');
+    } catch (err: any) {
+      console.error('SNS 기록 삭제 실패:', err);
+      toast.error(err?.message || '삭제에 실패했습니다.');
+    } finally {
+      setRecordActionId(null);
+    }
+  };
+
+  const handleRestoreSnsRecord = async (record: SnsRecord) => {
+    if (!user) return;
+    const ids = getRecordIds(record);
+    setRecordActionId(record.id);
+    try {
+      const batch = writeBatch(db);
+      ids.forEach((id) => {
+        batch.update(doc(db, 'users', user.uid, 'snsRecords', id), {
+          isDeleted: false,
+          deletedAt: deleteField(),
+          restoredAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      });
+      await batch.commit();
+      setRawRecords((prev) => prev.map((item) => (
+        ids.includes(item.id)
+          ? { ...item, isDeleted: false, deletedAt: undefined }
+          : item
+      )));
+      toast.success('복원했습니다.');
+    } catch (err: any) {
+      console.error('SNS 기록 복원 실패:', err);
+      toast.error(err?.message || '복원에 실패했습니다.');
+    } finally {
+      setRecordActionId(null);
+    }
+  };
+
+  const getAutobioRangePayload = () => {
+    if (autobioRange === 'year') {
+      const year = autobioYear.trim();
+      if (!/^\d{4}$/.test(year)) {
+        toast.info('연도를 4자리로 입력해주세요.');
+        return null;
+      }
+      return { range: 'year', year };
+    }
+    if (autobioRange === 'custom') {
+      if (!autobioFrom || !autobioTo) {
+        toast.info('시작일과 종료일을 모두 선택해주세요.');
+        return null;
+      }
+      if (autobioFrom > autobioTo) {
+        toast.info('종료일은 시작일보다 늦어야 합니다.');
+        return null;
+      }
+      return { range: 'custom', from: autobioFrom, to: autobioTo };
+    }
+    return { range: 'all' };
+  };
+
+  const handleAutobioGenerate = async () => {
+    if (!user) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+    const payload = getAutobioRangePayload();
+    if (!payload) return;
+
+    setGeneratingStory(true);
+    try {
+      const callable = httpsCallable(functions, 'generateSnsIntegratedStory');
+      const result = await callable(payload);
+      const data = result.data as { text?: string; sourceCount?: number; rangeLabel?: string };
+      const story = data?.text?.trim();
+      if (!story) {
+        toast.error('생성된 이야기가 비어있습니다.');
+        return;
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      navigate('/novel-story', {
+        state: {
+          story,
+          storyKind: 'sns-integrated',
+          timeOption: 'SNS 통합',
+          recordDate: today,
+          recordTitle: `SNS 통합 나의 이야기${data.rangeLabel ? ` · ${data.rangeLabel}` : ''}`,
+          recordFormat: '에세이',
+          storySource: {
+            type: 'sns-integrated-story',
+            range: payload,
+            rangeLabel: data.rangeLabel || '',
+            sourceCount: data.sourceCount || 0,
+          },
+        },
+      });
+    } catch (err: any) {
+      console.error('SNS 통합 나의 이야기 생성 실패:', err);
+      toast.error(err?.message || '나의 이야기 생성에 실패했습니다.');
+    } finally {
+      setGeneratingStory(false);
+    }
   };
 
   if (authLoading) {
@@ -271,7 +424,7 @@ export function SnsRecordsPage() {
   return (
     <div style={{ minHeight: 'calc(100vh - 56px - 80px)', background: COLOR_BG, padding: '20px 16px 32px' }}>
       <PageHeaderActions onClose={closeToOrigin} />
-      {(uploading || savingSearch) && (
+      {(uploading || savingSearch || generatingStory) && (
         <div
           style={{
             position: 'fixed',
@@ -290,7 +443,9 @@ export function SnsRecordsPage() {
           <p style={{ marginTop: 12, fontSize: 14, fontWeight: 600, color: COLOR_BLUE }}>
             {uploading
               ? (uploadProgress || '처리 중...')
-              : '검색결과 저장 중...'}
+              : generatingStory
+                ? '나의 이야기 생성 중...'
+                : '검색결과 저장 중...'}
           </p>
         </div>
       )}
@@ -467,6 +622,34 @@ export function SnsRecordsPage() {
         {/* === 탭2: 타임라인 (검색/필터 통합) === */}
         {tab === 'timeline' && (
           <section>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 6, marginBottom: 12 }}>
+              {([
+                { k: 'active', label: `보관중 ${activeRecords.length}` },
+                { k: 'trash', label: `휴지통 ${trashedRecords.length}` },
+              ] as { k: TimelineView; label: string }[]).map((item) => {
+                const active = timelineView === item.k;
+                return (
+                  <button
+                    key={item.k}
+                    type="button"
+                    onClick={() => setTimelineView(item.k)}
+                    style={{
+                      padding: '9px 10px',
+                      borderRadius: 10,
+                      border: `1px solid ${active ? COLOR_BLUE : COLOR_BORDER}`,
+                      background: active ? COLOR_BLUE : '#fff',
+                      color: active ? '#fff' : COLOR_BLUE,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+
             {/* 키워드 검색창 */}
             <input
               type="text"
@@ -608,7 +791,7 @@ export function SnsRecordsPage() {
             </button>
 
             {/* 검색결과 저장 버튼 — 결과가 1건 이상일 때만 노출 */}
-            {filteredRecords.length > 0 && (
+            {timelineView === 'active' && filteredRecords.length > 0 && (
               <button
                 type="button"
                 onClick={handleSaveSearchResults}
@@ -632,7 +815,7 @@ export function SnsRecordsPage() {
 
             {/* 검색 결과 건수 */}
             <p style={{ fontSize: 12, color: '#666', marginBottom: 10 }}>
-              검색 결과: <b>{filteredRecords.length}</b>건
+              {timelineView === 'trash' ? '휴지통' : '검색 결과'}: <b>{filteredRecords.length}</b>건
             </p>
 
             {loadingRecords ? (
@@ -642,8 +825,10 @@ export function SnsRecordsPage() {
                 </div>
                 <p style={{ marginTop: 8, fontSize: 12, color: '#666' }}>SNS 기록을 불러오는 중...</p>
               </div>
-            ) : records.length === 0 ? (
-              <EmptyState message="아직 가져온 SNS 기록이 없어요." subMessage="업로드 탭에서 ZIP을 올려주세요." />
+            ) : visibleRecords.length === 0 ? (
+              timelineView === 'trash'
+                ? <EmptyState message="휴지통에 있는 SNS 기록이 없어요." />
+                : <EmptyState message="아직 가져온 SNS 기록이 없어요." subMessage="업로드 탭에서 ZIP을 올려주세요." />
             ) : filteredRecords.length === 0 ? (
               <EmptyState message="검색 결과가 없어요." />
             ) : (
@@ -655,6 +840,10 @@ export function SnsRecordsPage() {
                       record={r}
                       formatDate={formatDate}
                       userUid={user?.uid}
+                      mode={timelineView}
+                      busy={recordActionId === r.id}
+                      onDelete={() => handleDeleteSnsRecord(r)}
+                      onRestore={() => handleRestoreSnsRecord(r)}
                     />
                   ))}
                 </div>
@@ -774,6 +963,7 @@ export function SnsRecordsPage() {
             <button
               type="button"
               onClick={handleAutobioGenerate}
+              disabled={generatingStory}
               style={{
                 width: '100%',
                 padding: '14px 14px',
@@ -783,12 +973,12 @@ export function SnsRecordsPage() {
                 color: '#fff',
                 fontSize: 14,
                 fontWeight: 700,
-                cursor: 'pointer',
+                cursor: generatingStory ? 'wait' : 'pointer',
                 marginTop: 6,
                 marginBottom: 12,
               }}
             >
-              📖 나의 이야기 시놉시스 생성
+              {generatingStory ? '생성 중...' : '📖 나의 이야기 시놉시스 생성'}
             </button>
 
             {/* 안내 문구 */}
@@ -809,10 +999,18 @@ function PostCard({
   record,
   formatDate,
   userUid,
+  mode,
+  busy,
+  onDelete,
+  onRestore,
 }: {
   record: SnsRecord;
   formatDate: (ts: number) => string;
   userUid?: string | null;
+  mode: TimelineView;
+  busy: boolean;
+  onDelete: () => void;
+  onRestore: () => void;
 }) {
   const lines = record.text.split('\n').slice(0, 3).join('\n');
   const truncated = record.text.length > 140 ? record.text.slice(0, 140) + '…' : lines;
@@ -834,6 +1032,45 @@ function PostCard({
         </p>
       )}
       <SnsPrivateThumbnails thumbnails={record.thumbnails} userUid={userUid} />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+        {mode === 'trash' ? (
+          <button
+            type="button"
+            onClick={onRestore}
+            disabled={busy}
+            style={{
+              padding: '7px 12px',
+              borderRadius: 8,
+              border: `1px solid ${COLOR_GREEN}`,
+              background: '#fff',
+              color: COLOR_GREEN,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: busy ? 'wait' : 'pointer',
+            }}
+          >
+            {busy ? '복원 중...' : '복원'}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={busy}
+            style={{
+              padding: '7px 12px',
+              borderRadius: 8,
+              border: '1px solid #fca5a5',
+              background: '#fff',
+              color: '#dc2626',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: busy ? 'wait' : 'pointer',
+            }}
+          >
+            {busy ? '삭제 중...' : '삭제'}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

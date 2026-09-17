@@ -11,6 +11,9 @@ export function NovelStoryPage() {
   const location = useLocation();
   const { user } = useAuth();
   const story: string = location.state?.story || '';
+  const storyKind: 'future' | 'sns-integrated' =
+    location.state?.storyKind === 'sns-integrated' ? 'sns-integrated' : 'future';
+  const storySource = location.state?.storySource || null;
   const fromRecord: boolean = location.state?.fromRecord || false;
   const protagonistName: string = location.state?.protagonistName || '';
   const timeOption: string = location.state?.timeOption || '';
@@ -23,9 +26,11 @@ export function NovelStoryPage() {
   const [publishingShared, setPublishingShared] = useState(false);
 
   const storyLabel = timeOption ? `${timeOption} 이야기` : '이야기';
-  const shareTitle = protagonistName
-    ? `${protagonistName}의 ${storyLabel} — HARU미래전망`
-    : `나의 ${storyLabel} — HARU미래전망`;
+  const shareTitle = storyKind === 'sns-integrated'
+    ? '나의 SNS 통합 이야기 — haru2026'
+    : protagonistName
+      ? `${protagonistName}의 ${storyLabel} — HARU미래전망`
+      : `나의 ${storyLabel} — HARU미래전망`;
 
   const handleCopy = async () => {
     try {
@@ -63,7 +68,9 @@ export function NovelStoryPage() {
   const buildStoryRecord = () => {
     const today = new Date().toISOString().slice(0, 10);
     const publishDate = recordDate || today;
-    const storyTitle = shareTitle.replace(' — HARU미래전망', '');
+    const storyTitle = storyKind === 'sns-integrated'
+      ? '나의 SNS 통합 이야기'
+      : shareTitle.replace(' — HARU미래전망', '');
     return {
       date: publishDate,
       formats: ['에세이'],
@@ -72,13 +79,15 @@ export function NovelStoryPage() {
       essay_ai_title: storyTitle,
       essay_sayu: story,
       future_story_source: {
-        type: 'HARU미래전망',
+        type: storyKind === 'sns-integrated' ? 'SNS 통합 나의 이야기' : 'HARU미래전망',
         protagonistName,
         timeOption,
         fromRecord,
         recordTitle,
         recordDate,
         recordFormat,
+        storyKind,
+        ...(storySource ? { storySource } : {}),
       },
     };
   };
@@ -174,7 +183,7 @@ export function NovelStoryPage() {
         }}
       >
         <button
-          onClick={() => navigate(fromRecord ? '/record-prophecy' : '/novel-synopsis')}
+          onClick={() => navigate(storyKind === 'sns-integrated' ? '/sns-records' : fromRecord ? '/record-prophecy' : '/novel-synopsis')}
           aria-label="이전 단계"
           title="이전 단계"
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
@@ -182,7 +191,7 @@ export function NovelStoryPage() {
           <ChevronLeft size={22} color="#1A3C6E" />
         </button>
         <span style={{ fontSize: 16, fontWeight: 600, color: '#1A3C6E', flex: 1 }}>
-          🔮 HARU미래전망 단편 이야기
+          {storyKind === 'sns-integrated' ? '📖 SNS 통합 나의 이야기' : '🔮 HARU미래전망 단편 이야기'}
         </span>
         <button
           onClick={handleCopy}
@@ -207,8 +216,14 @@ export function NovelStoryPage() {
               {protagonistName ? `${protagonistName}의 이야기` : '나의 이야기'} · {timeOption || ''}
             </p>
             <p style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>
-              사주는 태어난 날을 봅니다.<br />
-              HARU미래전망은 당신이 살아온 날을 봅니다.
+              {storyKind === 'sns-integrated'
+                ? 'SNS에 남겨둔 날들을 하나의 이야기로 엮었습니다.'
+                : (
+                  <>
+                    사주는 태어난 날을 봅니다.<br />
+                    HARU미래전망은 당신이 살아온 날을 봅니다.
+                  </>
+                )}
             </p>
           </div>
           <p

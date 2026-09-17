@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.convertSnsToDiary = void 0;
+exports.generateSnsIntegratedStory = exports.convertSnsToDiary = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const params_1 = require("firebase-functions/params");
 const generative_ai_1 = require("@google/generative-ai");
@@ -50,6 +50,95 @@ function sanitizeName(raw) {
         .replace(/[^\p{L}\p{N} \-_.]/gu, '')
         .trim()
         .slice(0, 20);
+}
+function timestampToMillis(value) {
+    const n = Number(value || 0);
+    if (!Number.isFinite(n) || n <= 0)
+        return 0;
+    return n < 1e12 ? n * 1000 : n;
+}
+function dateKeyFromTimestamp(value) {
+    const ms = timestampToMillis(value);
+    if (!ms)
+        return '날짜 미상';
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Seoul',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).format(new Date(ms));
+}
+function parseDateStart(date) {
+    const ms = Date.parse(`${date}T00:00:00+09:00`);
+    return Number.isFinite(ms) ? ms : 0;
+}
+function parseDateEnd(date) {
+    const ms = Date.parse(`${date}T23:59:59+09:00`);
+    return Number.isFinite(ms) ? ms : 0;
+}
+function resolveSnsStoryRange(data) {
+    const range = (data === null || data === void 0 ? void 0 : data.range) === 'year' || (data === null || data === void 0 ? void 0 : data.range) === 'custom' ? data.range : 'all';
+    if (range === 'year') {
+        const year = String((data === null || data === void 0 ? void 0 : data.year) || '').trim();
+        if (!/^\d{4}$/.test(year)) {
+            throw new https_1.HttpsError('invalid-argument', '연도는 4자리로 입력해주세요.');
+        }
+        return {
+            fromMs: parseDateStart(`${year}-01-01`),
+            toMs: parseDateEnd(`${year}-12-31`),
+            label: `${year}년`,
+        };
+    }
+    if (range === 'custom') {
+        const from = String((data === null || data === void 0 ? void 0 : data.from) || '').trim();
+        const to = String((data === null || data === void 0 ? void 0 : data.to) || '').trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+            throw new https_1.HttpsError('invalid-argument', '시작일과 종료일이 필요합니다.');
+        }
+        const fromMs = parseDateStart(from);
+        const toMs = parseDateEnd(to);
+        if (!fromMs || !toMs || fromMs > toMs) {
+            throw new https_1.HttpsError('invalid-argument', '기간 설정을 확인해주세요.');
+        }
+        return { fromMs, toMs, label: `${from} ~ ${to}` };
+    }
+    return { fromMs: 0, toMs: Number.MAX_SAFE_INTEGER, label: '전체 기간' };
+}
+function pickEvenly(items, maxCount) {
+    if (items.length <= maxCount)
+        return items;
+    if (maxCount <= 1)
+        return items.slice(0, 1);
+    const picked = [];
+    const seen = new Set();
+    for (let i = 0; i < maxCount; i++) {
+        const index = Math.round((i * (items.length - 1)) / (maxCount - 1));
+        if (seen.has(index))
+            continue;
+        seen.add(index);
+        picked.push(items[index]);
+    }
+    return picked;
+}
+function buildSnsStoryPostsBlock(records) {
+    const lines = [];
+    let remaining = 26000;
+    for (const record of records) {
+        if (remaining <= 0)
+            break;
+        const sourceLabel = record.source === 'instagram' ? 'Instagram' : 'Facebook';
+        const cleaned = record.text
+            .replace(/\r/g, '\n')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim()
+            .slice(0, 900);
+        if (!cleaned)
+            continue;
+        const line = `[${dateKeyFromTimestamp(record.timestamp)} · ${sourceLabel}]\n${cleaned}`;
+        remaining -= line.length;
+        lines.push(line);
+    }
+    return lines.join('\n\n---\n\n');
 }
 exports.convertSnsToDiary = (0, https_1.onCall)({
     region: 'asia-northeast3',
@@ -128,5 +217,125 @@ ${text}
             throw error;
         logger.error('convertSnsToDiary 실패:', error);
         throw new https_1.HttpsError('internal', 'AI 변환에 실패했습니다.');
+    }
+});
+exports.generateSnsIntegratedStory = (0, https_1.onCall)({
+    region: 'asia-northeast3',
+    memory: '512MiB',
+    secrets: [GEMINI_API_KEY],
+    timeoutSeconds: 180,
+}, async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const uid = request.auth.uid;
+    const range = resolveSnsStoryRange(request.data || {});
+    const snap = await admin.firestore()
+        .collection('users')
+        .doc(uid)
+        .collection('snsRecords')
+        .orderBy('timestamp', 'asc')
+        .get();
+    const allRecords = snap.docs
+        .map((doc) => {
+        const data = doc.data() || {};
+        return {
+            id: doc.id,
+            source: String(data.source || 'facebook'),
+            timestamp: Number(data.timestamp || 0),
+            text: typeof data.text === 'string' ? data.text.trim() : '',
+            isDeleted: data.isDeleted === true,
+        };
+    })
+        .filter((record) => {
+        if (record.isDeleted)
+            return false;
+        if (!record.text)
+            return false;
+        const ms = timestampToMillis(record.timestamp);
+        return ms >= range.fromMs && ms <= range.toMs;
+    });
+    if (allRecords.length === 0) {
+        throw new https_1.HttpsError('failed-precondition', '선택한 기간에 생성할 SNS 기록이 없습니다.');
+    }
+    const selectedRecords = pickEvenly(allRecords, 80);
+    const postsBlock = buildSnsStoryPostsBlock(selectedRecords);
+    if (!postsBlock) {
+        throw new https_1.HttpsError('failed-precondition', '이야기로 만들 수 있는 텍스트 기록이 없습니다.');
+    }
+    let monthlyQuotaReservation = null;
+    monthlyQuotaReservation = await (0, monthlyAiQuota_1.reserveMonthlyAiQuota)(uid, 'generateSnsIntegratedStory');
+    let realName = '';
+    let nickname = '';
+    try {
+        const profileSnap = await admin.firestore()
+            .doc(`users/${uid}/settings/profile`)
+            .get();
+        if (profileSnap.exists) {
+            const profile = profileSnap.data() || {};
+            realName = sanitizeName(profile.realName);
+            nickname = sanitizeName(profile.nickname);
+        }
+    }
+    catch (e) {
+        logger.warn('generateSnsIntegratedStory: profile 조회 실패, 이름 정보 없이 진행', e);
+    }
+    const userDisplayName = realName || nickname || '나';
+    const systemPrompt = `당신은 개인 기록을 다루는 자서전 편집자입니다.
+SNS 게시물을 바탕으로 사용자의 삶의 흐름을 따뜻하고 품위 있는 "나의 이야기" 시놉시스로 엮습니다.
+
+절대 규칙:
+- 제공된 게시물에 있는 사건, 감정, 관계만 근거로 작성합니다.
+- 없는 인물 이름, 직업, 지역, 성취, 가족관계, 날짜를 만들지 않습니다.
+- 삭제되었거나 휴지통에 있는 기록은 입력에 포함되지 않았으므로 언급하지 않습니다.
+- 마크다운 제목 기호, 목록 기호, 과장된 홍보 문구를 쓰지 않습니다.
+- 한국어로 작성합니다.`;
+    const userPrompt = `[사용자 표시 이름]
+${userDisplayName}
+
+[기간]
+${range.label}
+
+[입력 기록 수]
+전체 후보 ${allRecords.length}개 중 대표 기록 ${selectedRecords.length}개
+
+[SNS 게시물]
+${postsBlock}
+
+위 게시물들을 시간 흐름에 따라 읽고, 다음 구조의 "나의 이야기 시놉시스"를 작성해주세요.
+1. 짧은 제목 한 줄
+2. 이 기간의 삶을 설명하는 도입 문단
+3. 중요한 변화와 반복되는 마음을 4~7문단으로 정리
+4. 마지막 문단은 앞으로의 삶을 조용히 응원하는 문장으로 마무리
+
+분량은 1200~2200자 정도로 작성해주세요.`;
+    try {
+        const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY.value());
+        const model = genAI.getGenerativeModel({
+            model: 'gemini-3.1-flash-lite',
+            systemInstruction: systemPrompt,
+        });
+        const result = await model.generateContent(userPrompt);
+        const text = result.response.text().trim();
+        if (!text) {
+            throw new https_1.HttpsError('internal', 'SNS 통합 나의 이야기 생성 결과가 비어있습니다.');
+        }
+        logger.info('generateSnsIntegratedStory 완료', {
+            sourceCount: allRecords.length,
+            selectedCount: selectedRecords.length,
+        });
+        return {
+            text,
+            sourceCount: allRecords.length,
+            selectedCount: selectedRecords.length,
+            rangeLabel: range.label,
+        };
+    }
+    catch (error) {
+        await (0, monthlyAiQuota_1.rollbackMonthlyAiQuotaReservation)(monthlyQuotaReservation);
+        if (error instanceof https_1.HttpsError)
+            throw error;
+        logger.error('generateSnsIntegratedStory 실패:', error);
+        throw new https_1.HttpsError('internal', 'SNS 통합 나의 이야기 생성에 실패했습니다.');
     }
 });

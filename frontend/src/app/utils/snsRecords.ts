@@ -1,8 +1,10 @@
 export interface SnsRecordWithThumbnails {
+  id?: string;
   source?: string;
   timestamp: number;
   text: string;
   thumbnails?: string[];
+  sourceRecordIds?: string[];
 }
 
 export interface SnsThumbnailContentIdentity {
@@ -34,19 +36,26 @@ export function mergeSnsRecordsForDisplay<T extends SnsRecordWithThumbnails>(rec
 
     if (!existing) {
       const uniqueThumbnails = Array.from(new Set(thumbnails));
-      merged.set(key, { ...record, thumbnails: uniqueThumbnails });
+      merged.set(key, {
+        ...record,
+        thumbnails: uniqueThumbnails,
+        sourceRecordIds: record.id ? [record.id] : [],
+      });
       thumbnailSets.set(key, new Set(uniqueThumbnails));
       continue;
     }
 
     const seen = thumbnailSets.get(key) || new Set<string>();
     const nextThumbnails = [...(existing.thumbnails || [])];
+    const nextRecordIds = new Set(existing.sourceRecordIds || []);
+    if (record.id) nextRecordIds.add(record.id);
     for (const thumbnail of thumbnails) {
       if (seen.has(thumbnail)) continue;
       seen.add(thumbnail);
       nextThumbnails.push(thumbnail);
     }
     existing.thumbnails = nextThumbnails;
+    existing.sourceRecordIds = Array.from(nextRecordIds);
     thumbnailSets.set(key, seen);
   }
 

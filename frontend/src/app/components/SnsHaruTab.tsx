@@ -34,6 +34,7 @@ interface SnsRecord {
   timestamp: number;
   text: string;
   thumbnails?: string[];
+  sourceRecordIds?: string[];
 }
 
 interface SearchCondition {
@@ -87,6 +88,7 @@ export function SnsHaruTab() {
         const list: SnsRecord[] = [];
         snap.docs.forEach((d) => {
           const data = d.data() as any;
+          if (data.isDeleted === true) return;
           const ts = typeof data.timestamp === 'number' ? data.timestamp : 0;
           const text = data.text || '';
           list.push({
