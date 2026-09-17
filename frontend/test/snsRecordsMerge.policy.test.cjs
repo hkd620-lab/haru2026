@@ -78,8 +78,10 @@ assert(mergeUtil.includes('nextThumbnails.push(thumbnail)'), 'duplicate SNS reco
 assert(mergeUtil.includes('new Set(thumbnails)'), 'duplicate thumbnail URLs must be de-duplicated');
 assert(mergeUtil.includes('record.source'), 'SNS merge key must explicitly account for source');
 
-assert(recordsPage.includes('mergeSnsRecordsForDisplay(list)'), 'SNS timeline must merge duplicate thumbnails before rendering');
-assert(haruTab.includes('mergeSnsRecordsForDisplay(list)'), 'SNS HARU tab must merge duplicate thumbnails before rendering');
+// The management timeline now operates on individual documents. Merging here
+// would make one delete button affect siblings; the read-only HARU view still merges.
+assert(!recordsPage.includes('mergeSnsRecordsForDisplay('), 'SNS trash actions must keep individual document identity');
+assert(haruTab.includes('mergeSnsRecordsForDisplay(activeSnsRecords(rawRecords))'), 'SNS HARU must merge only active records and preserve their photos');
 assert(!recordsPage.includes('if (seen.has(key)) return;'), 'SNS timeline must not drop duplicate records before merging thumbnails');
 assert(!haruTab.includes('if (seen.has(key)) return;'), 'SNS HARU tab must not drop duplicate records before merging thumbnails');
 
