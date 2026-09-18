@@ -5,6 +5,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const page = fs.readFileSync(path.join(root, 'src/app/pages/SnsRecordsPage.tsx'), 'utf8');
 const component = fs.readFileSync(path.join(root, 'src/app/components/SnsStoryCreator.tsx'), 'utf8');
+const requestState = fs.readFileSync(path.join(root, 'src/app/utils/snsStoryRequestState.ts'), 'utf8');
 const routes = fs.readFileSync(path.join(root, 'src/app/App.tsx'), 'utf8');
 
 assert(page.includes("import { SnsStoryCreator }"), 'SnsRecordsPage must render the new SNS story creator');
@@ -23,11 +24,20 @@ assert(component.includes('이 이야기에서 제외'), 'record checkboxes must
 assert(component.includes('사진 내용은 분석하지 않습니다'), 'UI must disclose that photo content is not analyzed');
 assert(component.includes('<textarea'), 'generated synopsis must be directly editable');
 assert(component.includes('confirmedSynopsis: synopsis.trim()'), 'final generation must send the edited synopsis');
+assert(component.includes('setSourceRecordIds(data.sourceRecordIds || [])'), 'synopsis source ids must be kept for final generation');
+assert(component.includes('sourceRecordIds,'), 'final generation must send the server-returned source ids');
 assert(component.includes('synopsisRequestRef') && component.includes('finalRequestRef'), 'duplicate clicks must reuse in-flight request state');
-assert(component.includes('if (!session.isCurrent()) return'), 'late callable responses must not render after logout/user switch');
+assert(component.includes('synopsisSeqRef') && component.includes('finalSeqRef'), 'late callable responses must be guarded by request sequence');
+assert(component.includes('latestSelectionKeyRef') && component.includes('latestFinalRequestKeyRef'), 'late callable responses must match the latest logical selection');
+assert(component.includes('isCurrentSynopsisRequest()') && component.includes('isCurrentFinalRequest()'), 'late callable responses must not render after logout/user switch or input changes');
 assert(component.includes("source === 'sns_story' && item.generationStatus === 'completed'"), 'SNS artwork list must only show completed sns_story records');
-assert(component.includes("httpsCallable(functions, 'generateSnsStorySynopsis')"), 'frontend must call generateSnsStorySynopsis');
-assert(component.includes("httpsCallable(functions, 'generateSnsStoryFinal')"), 'frontend must call generateSnsStoryFinal');
+assert(component.includes("httpsCallable(functions, 'generateSnsStorySynopsis',"), 'frontend must call generateSnsStorySynopsis with explicit options');
+assert(component.includes("timeout: SNS_STORY_SYNOPSIS_CALLABLE_TIMEOUT_MS"), 'synopsis callable timeout must exceed server timeout');
+assert(component.includes("httpsCallable(functions, 'generateSnsStoryFinal',"), 'frontend must call generateSnsStoryFinal with explicit options');
+assert(component.includes("timeout: SNS_STORY_FINAL_CALLABLE_TIMEOUT_MS"), 'final callable timeout must exceed server timeout');
+assert(component.includes('getOrCreateSnsStoryRequestTimestamp'), 'final retries must reuse the same request timestamp for the same logical input');
+assert(component.includes('isSnsStoryAmbiguousCallableError'), 'network/timeout errors must be treated as ambiguous, retryable outcomes');
+assert(requestState.includes('buildSnsStoryFinalLogicalKey'), 'final idempotency key helper must be present');
 assert(!routes.includes('sns-story'), 'no new SNS story route should be added');
 
 console.log('sns story creator policy tests passed');

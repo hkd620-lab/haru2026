@@ -25,6 +25,20 @@ export const SNS_STORY_CHUNK_MIN_CHARS = 12_000;
 export const SNS_STORY_CHUNK_MAX_CHARS = 16_000;
 export const SNS_STORY_CONCURRENCY = 2;
 export const SNS_STORY_LEASE_MS = 15 * 60 * 1000;
+export const SNS_STORY_MAX_SOURCE_GROUPS = 14;
+export const SNS_STORY_MAX_SYNOPSIS_GEMINI_CALLS = 20;
+export const SNS_STORY_SUMMARY_MAX_OUTPUT_TOKENS = 1024;
+export const SNS_STORY_COMPRESSION_MAX_OUTPUT_TOKENS = 1024;
+export const SNS_STORY_FINAL_SYNOPSIS_MAX_OUTPUT_TOKENS = 2048;
+export const SNS_STORY_FINAL_STORY_MAX_OUTPUT_TOKENS = 8192;
+export const SNS_STORY_SUMMARY_TIMEOUT_MS = 45_000;
+export const SNS_STORY_COMPRESSION_TIMEOUT_MS = 45_000;
+export const SNS_STORY_FINAL_SYNOPSIS_TIMEOUT_MS = 90_000;
+export const SNS_STORY_FINAL_STORY_TIMEOUT_MS = 180_000;
+export const SNS_STORY_DEADLINE_SAFETY_MARGIN_MS = 10_000;
+export const SNS_STORY_SUMMARY_MAX_CHARS = 8_000;
+export const SNS_STORY_FINAL_STORY_MIN_CHARS = 500;
+export const SNS_STORY_FINAL_STORY_MAX_CHARS = 60_000;
 
 type SnsStoryRangeType = 'all' | 'year' | 'custom';
 
@@ -74,6 +88,47 @@ interface SelectedSnsStorySource {
 interface SnsStorySourceChunk {
   recordId: string;
   text: string;
+}
+
+export interface SnsStoryFinalPayloadIdentity {
+  range: SnsStoryRange;
+  excludedRecordIds: string[];
+  sourceFingerprint: string;
+  title: string;
+  confirmedSynopsis: string;
+}
+
+export interface SnsStoryGeminiCallBudget {
+  maxCalls: number;
+  callsStarted: number;
+  deadlineMs: number;
+  stopped: boolean;
+}
+
+interface GenerateGeminiTextOptions {
+  stageName: string;
+  maxOutputTokens: number;
+  timeoutMs: number;
+  budget: SnsStoryGeminiCallBudget;
+  minChars?: number;
+  maxChars: number;
+  onBillableAiWorkStarted?: () => void;
+}
+
+interface CompletedSnsStoryCommitInput {
+  uid: string;
+  recordId: string;
+  leaseOwner: string;
+  date: string;
+  title: string;
+  content: string;
+  range: SnsStoryRange;
+  counts: SnsStoryCounts;
+  sourceRecordIds: string[];
+  expectedFingerprint: string;
+  confirmedSynopsis: string;
+  requestTimestamp: number;
+  requestPayloadHash: string;
 }
 
 function throwWithReason(
@@ -174,6 +229,20 @@ function sanitizeExcludedIds(raw: unknown): Set<string> {
   return new Set(ids);
 }
 
+function sanitizeSourceRecordIds(raw: unknown): string[] {
+  if (!Array.isArray(raw)) {
+    throw new HttpsError('invalid-argument', 'SNS 원본 기록 확인값이 올바르지 않습니다.');
+  }
+  const ids = Array.from(new Set(raw
+    .filter((value): value is string => typeof value === 'string')
+    .map((value) => value.trim())
+    .filter((value) => value && value.length <= 160 && !value.includes('/'))));
+  if (ids.length === 0 || ids.length > SNS_STORY_MAX_RECORDS) {
+    throw new HttpsError('invalid-argument', 'SNS 원본 기록 확인값이 올바르지 않습니다.');
+  }
+  return ids;
+}
+
 function readSnsStoryRecord(id: string, data: admin.firestore.DocumentData): SnsStoryRecord {
   const timestampMs = normalizeSnsTimestampMs(data.timestamp);
   const thumbnails = Array.isArray(data.thumbnails)
@@ -231,6 +300,59 @@ export function buildSnsStoryFingerprint(records: SnsStoryRecord[]): string {
   return crypto.createHash('sha256').update(JSON.stringify(payload)).digest('hex');
 }
 
+function normalizeFinalPayloadRange(range: SnsStoryRange): SnsStoryRange {
+  if (range.type === 'year') return { type: 'year', year: range.year };
+  if (range.type === 'custom') return { type: 'custom', from: range.from, to: range.to };
+  return { type: 'all' };
+}
+
+export function normalizeSnsStoryFinalPayloadIdentity(input: SnsStoryFinalPayloadIdentity): SnsStoryFinalPayloadIdentity {
+  return {
+    range: normalizeFinalPayloadRange(input.range),
+    excludedRecordIds: Array.from(new Set(input.excludedRecordIds || []))
+      .map((id) => String(id).trim())
+      .filter(Boolean)
+      .sort(),
+    sourceFingerprint: String(input.sourceFingerprint || '').trim().toLowerCase(),
+    title: String(input.title || '').trim(),
+    confirmedSynopsis: String(input.confirmedSynopsis || '').trim(),
+  };
+}
+
+export function buildSnsStoryFinalPayloadHash(input: SnsStoryFinalPayloadIdentity): string {
+  return crypto
+    .createHash('sha256')
+    .update(JSON.stringify(normalizeSnsStoryFinalPayloadIdentity(input)))
+    .digest('hex');
+}
+
+function getStoredRequestPayloadHash(data: admin.firestore.DocumentData | undefined): string {
+  const raw = data?.requestPayloadHash || data?.sns_story_source?.requestPayloadHash;
+  return typeof raw === 'string' ? raw.trim().toLowerCase() : '';
+}
+
+export function assertSnsStoryIdempotencyCompatible(
+  existing: admin.firestore.DocumentData | undefined,
+  requestPayloadHash: string,
+): void {
+  if (!existing) return;
+  if (existing.source && existing.source !== 'sns_story') {
+    throwWithReason(
+      'failed-precondition',
+      '같은 저장 ID에 다른 기록이 이미 있습니다.',
+      'SNS_STORY_IDEMPOTENCY_CONFLICT',
+    );
+  }
+  const storedHash = getStoredRequestPayloadHash(existing);
+  if (storedHash && storedHash !== requestPayloadHash) {
+    throwWithReason(
+      'failed-precondition',
+      '같은 저장 요청 ID가 다른 입력으로 사용되었습니다.',
+      'SNS_STORY_IDEMPOTENCY_CONFLICT',
+    );
+  }
+}
+
 function selectSnsStorySource(
   activeRecords: SnsStoryRecord[],
   range: SnsStoryRange,
@@ -257,6 +379,50 @@ async function loadSelectedSnsStorySource(
 ): Promise<SelectedSnsStorySource> {
   const activeRecords = await loadActiveSnsRecords(uid);
   return selectSnsStorySource(activeRecords, range, excludedIds);
+}
+
+async function loadSelectedSnsStorySourceByIds(
+  uid: string,
+  range: SnsStoryRange,
+  excludedIds: Set<string>,
+  sourceRecordIds: string[],
+): Promise<SelectedSnsStorySource> {
+  const userRef = db.collection('users').doc(uid);
+  const refs = sourceRecordIds.map((id) => userRef.collection('snsRecords').doc(id));
+  const sourceSnaps = await db.getAll(...refs);
+  const records = sourceSnaps.map((snap) => {
+    if (!snap.exists) {
+      throwWithReason(
+        'failed-precondition',
+        'SNS 기록이 변경되었습니다. 시놉시스를 다시 생성해 주세요.',
+        'SNS_STORY_SOURCE_CHANGED',
+      );
+    }
+    const record = readSnsStoryRecord(snap.id, snap.data() || {});
+    if (record.isDeleted === true || !recordInRange(record, range)) {
+      throwWithReason(
+        'failed-precondition',
+        'SNS 기록이 변경되었습니다. 시놉시스를 다시 생성해 주세요.',
+        'SNS_STORY_SOURCE_CHANGED',
+      );
+    }
+    return record;
+  }).sort((a, b) => a.timestampMs - b.timestampMs || a.id.localeCompare(b.id));
+
+  const activeRecords = await loadActiveSnsRecords(uid);
+  const sourceIdSet = new Set(records.map((record) => record.id));
+  const periodRecords = activeRecords
+    .filter((record) => recordInRange(record, range))
+    .filter((record) => sourceIdSet.has(record.id) || excludedIds.has(record.id));
+  const totalTextChars = records.reduce((sum, record) => sum + record.text.length, 0);
+  return {
+    range,
+    records,
+    sourceRecordIds: records.map((record) => record.id),
+    sourceFingerprint: buildSnsStoryFingerprint(records),
+    counts: buildSnsStoryCounts(periodRecords, records),
+    totalTextChars,
+  };
 }
 
 function validateSelectedSourceForSynopsis(source: SelectedSnsStorySource) {
@@ -371,15 +537,109 @@ async function mapWithConcurrency<T, R>(
 ): Promise<R[]> {
   const results = new Array<R>(items.length);
   let nextIndex = 0;
+  let stopped = false;
+  let firstError: unknown = null;
   const runners = new Array(Math.min(limit, items.length)).fill(null).map(async () => {
-    while (nextIndex < items.length) {
+    while (!stopped && nextIndex < items.length) {
       const index = nextIndex;
       nextIndex += 1;
-      results[index] = await worker(items[index], index);
+      try {
+        results[index] = await worker(items[index], index);
+      } catch (error) {
+        stopped = true;
+        firstError = firstError || error;
+        break;
+      }
     }
   });
-  await Promise.all(runners);
+  await Promise.allSettled(runners);
+  if (firstError) throw firstError;
   return results;
+}
+
+export function createSnsStoryGeminiCallBudget(maxCalls: number, deadlineMs: number): SnsStoryGeminiCallBudget {
+  return {
+    maxCalls,
+    callsStarted: 0,
+    deadlineMs,
+    stopped: false,
+  };
+}
+
+export function reserveSnsStoryGeminiCall(
+  budget: SnsStoryGeminiCallBudget,
+  stageName: string,
+  timeoutMs: number,
+  nowMs = Date.now(),
+): number {
+  if (budget.stopped) {
+    throwWithReason('aborted', 'SNS 이야기 AI 호출이 중단되었습니다.', 'SNS_STORY_AI_STOPPED', { stageName });
+  }
+  if (budget.callsStarted >= budget.maxCalls) {
+    budget.stopped = true;
+    throwWithReason(
+      'resource-exhausted',
+      'SNS 이야기 생성 AI 호출 예산을 초과했습니다. 기간을 줄여 주세요.',
+      'SNS_STORY_AI_BUDGET_EXCEEDED',
+      { stageName, maxCalls: budget.maxCalls },
+    );
+  }
+  if (nowMs + timeoutMs + SNS_STORY_DEADLINE_SAFETY_MARGIN_MS >= budget.deadlineMs) {
+    budget.stopped = true;
+    throwWithReason(
+      'deadline-exceeded',
+      'SNS 이야기 생성 시간이 부족합니다. 기간을 줄여 다시 시도해 주세요.',
+      'SNS_STORY_AI_DEADLINE_TOO_CLOSE',
+      { stageName },
+    );
+  }
+  budget.callsStarted += 1;
+  return budget.callsStarted;
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, stageName: string): Promise<T> {
+  let timer: NodeJS.Timeout | null = null;
+  return new Promise((resolve, reject) => {
+    timer = setTimeout(() => {
+      reject(new HttpsError(
+        'deadline-exceeded',
+        'SNS 이야기 AI 호출 시간이 초과되었습니다.',
+        { reason: 'SNS_STORY_AI_TIMEOUT', stageName },
+      ));
+    }, timeoutMs);
+    promise.then(resolve, reject).finally(() => {
+      if (timer) clearTimeout(timer);
+    });
+  });
+}
+
+export function validateSnsStoryGeneratedText(
+  rawText: unknown,
+  stageName: string,
+  minChars: number,
+  maxChars: number,
+): string {
+  const text = typeof rawText === 'string' ? rawText.trim() : '';
+  if (!text) {
+    throwWithReason('internal', 'SNS 이야기 AI 응답이 비어 있습니다.', 'SNS_STORY_AI_EMPTY_RESULT', { stageName });
+  }
+  if (text.length < minChars) {
+    throwWithReason(
+      'internal',
+      'SNS 이야기 AI 응답이 너무 짧습니다.',
+      'SNS_STORY_AI_RESULT_TOO_SHORT',
+      { stageName, minChars, actualChars: text.length },
+    );
+  }
+  if (text.length > maxChars) {
+    throwWithReason(
+      'internal',
+      'SNS 이야기 AI 응답이 너무 깁니다.',
+      'SNS_STORY_AI_RESULT_TOO_LONG',
+      { stageName, maxChars, actualChars: text.length },
+    );
+  }
+  return text;
 }
 
 function buildSummarySystemPrompt(): string {
@@ -393,17 +653,55 @@ function buildSummarySystemPrompt(): string {
 - 마크다운 표 대신 간결한 글머리 구조로 정리하세요.`;
 }
 
-async function generateGeminiText(systemInstruction: string, prompt: string): Promise<string> {
+async function generateGeminiText(
+  systemInstruction: string,
+  prompt: string,
+  options: GenerateGeminiTextOptions,
+): Promise<string> {
+  reserveSnsStoryGeminiCall(options.budget, options.stageName, options.timeoutMs);
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY.value());
   const model = genAI.getGenerativeModel({
     model: SNS_STORY_MODEL,
     systemInstruction,
+    generationConfig: {
+      maxOutputTokens: options.maxOutputTokens,
+    },
   });
-  const result = await model.generateContent(prompt);
-  return result.response.text().trim();
+  options.onBillableAiWorkStarted?.();
+  try {
+    const result = await withTimeout(model.generateContent(prompt), options.timeoutMs, options.stageName);
+    const text = result.response.text();
+    return validateSnsStoryGeneratedText(text, options.stageName, options.minChars || 1, options.maxChars);
+  } catch (error) {
+    options.budget.stopped = true;
+    if (error instanceof HttpsError) throw error;
+    throwWithReason(
+      'internal',
+      'SNS 이야기 AI 호출에 실패했습니다.',
+      'SNS_STORY_AI_CALL_FAILED',
+      { stageName: options.stageName },
+    );
+  }
 }
 
-async function summarizeSourceGroups(groups: string[]): Promise<string[]> {
+export function validateSnsStorySourceGroupBudget(groups: string[]) {
+  // Worst-case latency is bounded before the first Gemini request so a large import cannot quietly run past
+  // the callable deadline or consume an unbounded number of paid model calls.
+  if (groups.length > SNS_STORY_MAX_SOURCE_GROUPS || groups.length + 2 > SNS_STORY_MAX_SYNOPSIS_GEMINI_CALLS) {
+    throwWithReason(
+      'resource-exhausted',
+      '선택한 기간의 SNS 기록이 너무 많습니다. 기간을 줄이거나 일부 기록을 제외해 주세요.',
+      'SNS_STORY_RANGE_TOO_LARGE',
+      { groups: groups.length, maxGroups: SNS_STORY_MAX_SOURCE_GROUPS },
+    );
+  }
+}
+
+async function summarizeSourceGroups(
+  groups: string[],
+  budget: SnsStoryGeminiCallBudget,
+  onBillableAiWorkStarted: () => void,
+): Promise<string[]> {
   return mapWithConcurrency(groups, SNS_STORY_CONCURRENCY, async (group, index) => {
     return generateGeminiText(
       buildSummarySystemPrompt(),
@@ -412,11 +710,23 @@ async function summarizeSourceGroups(groups: string[]): Promise<string[]> {
 모든 기록 조각은 빠뜨리지 말고 반영하되, 같은 사실은 합쳐도 됩니다.
 
 ${group}`,
+      {
+        stageName: 'summary',
+        maxOutputTokens: SNS_STORY_SUMMARY_MAX_OUTPUT_TOKENS,
+        timeoutMs: SNS_STORY_SUMMARY_TIMEOUT_MS,
+        budget,
+        maxChars: SNS_STORY_SUMMARY_MAX_CHARS,
+        onBillableAiWorkStarted,
+      },
     );
   });
 }
 
-async function compressSummariesHierarchically(summaries: string[]): Promise<string[]> {
+async function compressSummariesHierarchically(
+  summaries: string[],
+  budget: SnsStoryGeminiCallBudget,
+  onBillableAiWorkStarted: () => void,
+): Promise<string[]> {
   let current = summaries;
   for (let round = 1; round <= 4; round += 1) {
     const combinedLength = current.join('\n\n').length;
@@ -433,13 +743,30 @@ async function compressSummariesHierarchically(summaries: string[]): Promise<str
 원문에 없는 해석·대화·사건을 추가하지 마세요.
 
 ${group}`,
+        {
+          stageName: `compression-${round}`,
+          maxOutputTokens: SNS_STORY_COMPRESSION_MAX_OUTPUT_TOKENS,
+          timeoutMs: SNS_STORY_COMPRESSION_TIMEOUT_MS,
+          budget,
+          maxChars: SNS_STORY_SUMMARY_MAX_CHARS,
+          onBillableAiWorkStarted,
+        },
       );
     });
   }
-  return current;
+  throwWithReason(
+    'resource-exhausted',
+    'SNS 이야기 중간 요약을 호출 예산 안에서 충분히 줄이지 못했습니다. 기간을 줄여 주세요.',
+    'SNS_STORY_AI_BUDGET_EXCEEDED',
+  );
 }
 
-async function generateFinalSynopsis(source: SelectedSnsStorySource, summaries: string[]): Promise<string> {
+async function generateFinalSynopsis(
+  source: SelectedSnsStorySource,
+  summaries: string[],
+  budget: SnsStoryGeminiCallBudget,
+  onBillableAiWorkStarted: () => void,
+): Promise<string> {
   const periodText = source.range.type === 'year'
     ? `${source.range.year}년`
     : source.range.type === 'custom'
@@ -462,10 +789,25 @@ ${periodText}
 ${summaryText}
 
 위 사실만 바탕으로 '나의 이야기' 전체 시놉시스를 작성하세요.`,
+    {
+      stageName: 'final-synopsis',
+      maxOutputTokens: SNS_STORY_FINAL_SYNOPSIS_MAX_OUTPUT_TOKENS,
+      timeoutMs: SNS_STORY_FINAL_SYNOPSIS_TIMEOUT_MS,
+      budget,
+      minChars: 50,
+      maxChars: 20_000,
+      onBillableAiWorkStarted,
+    },
   );
 }
 
-async function generateStoryFromConfirmedSynopsis(title: string, confirmedSynopsis: string, source: SelectedSnsStorySource): Promise<string> {
+async function generateStoryFromConfirmedSynopsis(
+  title: string,
+  confirmedSynopsis: string,
+  source: SelectedSnsStorySource,
+  budget: SnsStoryGeminiCallBudget,
+  onBillableAiWorkStarted: () => void,
+): Promise<string> {
   const periodText = source.range.type === 'year'
     ? `${source.range.year}년`
     : source.range.type === 'custom'
@@ -492,6 +834,15 @@ ${confirmedSynopsis}
 CONFIRMED_SYNOPSIS_END>>>
 
 위 시놉시스에 있는 사실만 바탕으로 2500~4500자 분량의 완성된 에세이 작품을 작성하세요.`,
+    {
+      stageName: 'final-story',
+      maxOutputTokens: SNS_STORY_FINAL_STORY_MAX_OUTPUT_TOKENS,
+      timeoutMs: SNS_STORY_FINAL_STORY_TIMEOUT_MS,
+      budget,
+      minChars: SNS_STORY_FINAL_STORY_MIN_CHARS,
+      maxChars: SNS_STORY_FINAL_STORY_MAX_CHARS,
+      onBillableAiWorkStarted,
+    },
   );
 }
 
@@ -508,6 +859,98 @@ function completedPayloadFromDoc(recordId: string, data: admin.firestore.Documen
     content: data.content || data.essay_sayu || '',
     sourceFingerprint: data.sourceFingerprint || data.sns_story_source?.sourceFingerprint || '',
   };
+}
+
+export async function commitCompletedSnsStoryRecord(input: CompletedSnsStoryCommitInput): Promise<void> {
+  if (input.sourceRecordIds.length > SNS_STORY_MAX_RECORDS) {
+    throwWithReason(
+      'resource-exhausted',
+      '선택한 기간의 SNS 기록이 너무 많습니다. 기간을 줄이거나 일부 기록을 제외해 주세요.',
+      'SNS_STORY_RANGE_TOO_LARGE',
+      { records: input.sourceRecordIds.length },
+    );
+  }
+  await db.runTransaction(async (tx) => {
+    const userRef = db.collection('users').doc(input.uid);
+    const recordRef = userRef.collection('records').doc(input.recordId);
+    const sourceRefs = input.sourceRecordIds.map((id) => userRef.collection('snsRecords').doc(id));
+
+    // The synopsis snapshot defines the story source set. New SNS records after synopsis are ignored here;
+    // selected records being deleted or edited is rejected by the fingerprint check below.
+    const sourceSnaps = sourceRefs.length ? await tx.getAll(...sourceRefs) : [];
+    const sourceRecords = sourceSnaps.map((snap) => {
+      if (!snap.exists) {
+        throwWithReason(
+          'failed-precondition',
+          'SNS 기록이 생성 중 변경되어 작품을 저장하지 않았습니다. 최신 기록으로 다시 생성해 주세요.',
+          'SNS_STORY_SOURCE_CHANGED',
+        );
+      }
+      const record = readSnsStoryRecord(snap.id, snap.data() || {});
+      if (record.isDeleted === true) {
+        throwWithReason(
+          'failed-precondition',
+          'SNS 기록이 생성 중 삭제되어 작품을 저장하지 않았습니다. 최신 기록으로 다시 생성해 주세요.',
+          'SNS_STORY_SOURCE_CHANGED',
+        );
+      }
+      return record;
+    }).sort((a, b) => a.timestampMs - b.timestampMs || a.id.localeCompare(b.id));
+
+    const currentFingerprint = buildSnsStoryFingerprint(sourceRecords);
+    if (currentFingerprint !== input.expectedFingerprint) {
+      throwWithReason(
+        'failed-precondition',
+        'SNS 기록이 생성 중 변경되어 작품을 저장하지 않았습니다. 최신 기록으로 다시 생성해 주세요.',
+        'SNS_STORY_SOURCE_CHANGED',
+      );
+    }
+
+    const snap = await tx.get(recordRef);
+    const existing = snap.data() || {};
+    assertSnsStoryIdempotencyCompatible(existing, input.requestPayloadHash);
+    if (existing.generationStatus === 'completed') return;
+    if (existing.leaseOwner !== input.leaseOwner) {
+      throwWithReason(
+        'aborted',
+        '같은 요청의 생성 상태가 바뀌었습니다. 새로고침 후 확인해 주세요.',
+        'SNS_STORY_LEASE_CHANGED',
+      );
+    }
+
+    tx.set(recordRef, {
+      date: input.date,
+      formats: ['에세이'],
+      content: input.content,
+      essay_title: input.title,
+      essay_ai_title: input.title,
+      essay_sayu: input.content,
+      source: 'sns_story',
+      generationStatus: 'completed',
+      requestPayloadHash: input.requestPayloadHash,
+      sns_story_source: {
+        schemaVersion: 1,
+        range: input.range,
+        counts: input.counts,
+        sourceRecordIds: input.sourceRecordIds,
+        sourceFingerprint: input.expectedFingerprint,
+        confirmedSynopsis: input.confirmedSynopsis,
+        requestTimestamp: input.requestTimestamp,
+        requestPayloadHash: input.requestPayloadHash,
+        model: SNS_STORY_MODEL,
+      },
+      range: input.range,
+      counts: input.counts,
+      sourceRecordIds: input.sourceRecordIds,
+      sourceFingerprint: input.expectedFingerprint,
+      confirmedSynopsis: input.confirmedSynopsis,
+      model: SNS_STORY_MODEL,
+      leaseOwner: admin.firestore.FieldValue.delete(),
+      leaseExpiresAt: admin.firestore.FieldValue.delete(),
+      failureReason: admin.firestore.FieldValue.delete(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  });
 }
 
 async function markGenerationFailed(recordRef: admin.firestore.DocumentReference, leaseOwner: string, reason: string) {
@@ -541,20 +984,27 @@ export const generateSnsStorySynopsis = onCall(
     const excludedIds = sanitizeExcludedIds(data.excludedRecordIds);
     const beforeSource = await loadSelectedSnsStorySource(uid, range, excludedIds);
     validateSelectedSourceForSynopsis(beforeSource);
+    const sourceChunks = buildSnsStorySourceChunks(beforeSource.records);
+    const groups = groupSnsStoryChunks(sourceChunks);
+    validateSnsStorySourceGroupBudget(groups);
 
     let monthlyQuotaReservation: MonthlyAiQuotaReservation | null = null;
+    let billableAiWorkStarted = false;
+    const markBillableAiWorkStarted = () => {
+      billableAiWorkStarted = true;
+    };
     try {
       monthlyQuotaReservation = await reserveMonthlyAiQuota(uid, 'sns_story_synopsis');
-      const sourceChunks = buildSnsStorySourceChunks(beforeSource.records);
-      const groups = groupSnsStoryChunks(sourceChunks);
-      const summaries = await summarizeSourceGroups(groups);
-      const compactSummaries = await compressSummariesHierarchically(summaries);
-      const synopsis = await generateFinalSynopsis(beforeSource, compactSummaries);
+      const budget = createSnsStoryGeminiCallBudget(
+        SNS_STORY_MAX_SYNOPSIS_GEMINI_CALLS,
+        Date.now() + (540 * 1000),
+      );
+      const summaries = await summarizeSourceGroups(groups, budget, markBillableAiWorkStarted);
+      const compactSummaries = await compressSummariesHierarchically(summaries, budget, markBillableAiWorkStarted);
+      const synopsis = await generateFinalSynopsis(beforeSource, compactSummaries, budget, markBillableAiWorkStarted);
 
       const afterSource = await loadSelectedSnsStorySource(uid, range, excludedIds);
       if (afterSource.sourceFingerprint !== beforeSource.sourceFingerprint) {
-        await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
-        monthlyQuotaReservation = null;
         throwWithReason(
           'failed-precondition',
           'SNS 기록이 생성 중 변경되었습니다. 최신 기록으로 다시 생성해 주세요.',
@@ -571,7 +1021,9 @@ export const generateSnsStorySynopsis = onCall(
         model: SNS_STORY_MODEL,
       };
     } catch (error) {
-      await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
+      if (!billableAiWorkStarted) {
+        await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
+      }
       if (error instanceof HttpsError) throw error;
       throw new HttpsError('internal', 'SNS 이야기 시놉시스 생성에 실패했습니다.');
     }
@@ -590,16 +1042,26 @@ export const generateSnsStoryFinal = onCall(
     const data = request.data || {};
     const range = resolveSnsStoryRange(data);
     const excludedIds = sanitizeExcludedIds(data.excludedRecordIds);
+    const requestedSourceRecordIds = sanitizeSourceRecordIds(data.sourceRecordIds);
     const expectedFingerprint = sanitizeExpectedFingerprint(data.sourceFingerprint);
     const requestTimestamp = safeRequestTimestamp(data.requestTimestamp);
     const title = safeTitle(data.title);
     const confirmedSynopsis = safeSynopsis(data.confirmedSynopsis);
+    const excludedRecordIds = Array.from(excludedIds).sort();
+    const requestPayloadHash = buildSnsStoryFinalPayloadHash({
+      range,
+      excludedRecordIds,
+      sourceFingerprint: expectedFingerprint,
+      title,
+      confirmedSynopsis,
+    });
     const { date, id: recordId } = buildRecordId(requestTimestamp);
     const recordRef = db.collection('users').doc(uid).collection('records').doc(recordId);
 
     const existingSnap = await recordRef.get();
     if (existingSnap.exists) {
       const existing = existingSnap.data() || {};
+      assertSnsStoryIdempotencyCompatible(existing, requestPayloadHash);
       if (existing.generationStatus === 'completed') {
         return completedPayloadFromDoc(recordId, existing);
       }
@@ -613,7 +1075,7 @@ export const generateSnsStoryFinal = onCall(
       }
     }
 
-    const sourceBeforeLease = await loadSelectedSnsStorySource(uid, range, excludedIds);
+    const sourceBeforeLease = await loadSelectedSnsStorySourceByIds(uid, range, excludedIds, requestedSourceRecordIds);
     validateSelectedSourceForSynopsis(sourceBeforeLease);
     if (sourceBeforeLease.sourceFingerprint !== expectedFingerprint) {
       throwWithReason(
@@ -629,6 +1091,7 @@ export const generateSnsStoryFinal = onCall(
       const snap = await tx.get(recordRef);
       if (snap.exists) {
         const existing = snap.data() || {};
+        assertSnsStoryIdempotencyCompatible(existing, requestPayloadHash);
         if (existing.generationStatus === 'completed') {
           return { action: 'completed' as const, data: existing };
         }
@@ -643,7 +1106,12 @@ export const generateSnsStoryFinal = onCall(
         leaseOwner,
         leaseExpiresAt: admin.firestore.Timestamp.fromMillis(nowMs + SNS_STORY_LEASE_MS),
         requestTimestamp,
+        requestPayloadHash,
         sourceFingerprint: expectedFingerprint,
+        range,
+        counts: sourceBeforeLease.counts,
+        sourceRecordIds: sourceBeforeLease.sourceRecordIds,
+        confirmedSynopsis,
         createdAt: snap.exists ? (snap.data()?.createdAt || admin.firestore.FieldValue.serverTimestamp()) : admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
@@ -662,61 +1130,35 @@ export const generateSnsStoryFinal = onCall(
     }
 
     let monthlyQuotaReservation: MonthlyAiQuotaReservation | null = null;
+    let billableAiWorkStarted = false;
+    const markBillableAiWorkStarted = () => {
+      billableAiWorkStarted = true;
+    };
     try {
       monthlyQuotaReservation = await reserveMonthlyAiQuota(uid, 'sns_story_final');
-      const content = await generateStoryFromConfirmedSynopsis(title, confirmedSynopsis, sourceBeforeLease);
-      const sourceBeforeSave = await loadSelectedSnsStorySource(uid, range, excludedIds);
-      if (sourceBeforeSave.sourceFingerprint !== expectedFingerprint) {
-        await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
-        monthlyQuotaReservation = null;
-        throwWithReason(
-          'failed-precondition',
-          'SNS 기록이 생성 중 변경되어 작품을 저장하지 않았습니다. 최신 기록으로 다시 생성해 주세요.',
-          'SNS_STORY_SOURCE_CHANGED',
-        );
-      }
+      const budget = createSnsStoryGeminiCallBudget(1, Date.now() + (300 * 1000));
+      const content = await generateStoryFromConfirmedSynopsis(
+        title,
+        confirmedSynopsis,
+        sourceBeforeLease,
+        budget,
+        markBillableAiWorkStarted,
+      );
 
-      await db.runTransaction(async (tx) => {
-        const snap = await tx.get(recordRef);
-        const existing = snap.data() || {};
-        if (existing.generationStatus === 'completed') return;
-        if (existing.leaseOwner !== leaseOwner) {
-          throwWithReason(
-            'aborted',
-            '같은 요청의 생성 상태가 바뀌었습니다. 새로고침 후 확인해 주세요.',
-            'SNS_STORY_LEASE_CHANGED',
-          );
-        }
-        tx.set(recordRef, {
-          date,
-          formats: ['에세이'],
-          content,
-          essay_title: title,
-          essay_ai_title: title,
-          essay_sayu: content,
-          source: 'sns_story',
-          generationStatus: 'completed',
-          sns_story_source: {
-            schemaVersion: 1,
-            range,
-            counts: sourceBeforeSave.counts,
-            sourceRecordIds: sourceBeforeSave.sourceRecordIds,
-            sourceFingerprint: expectedFingerprint,
-            confirmedSynopsis,
-            requestTimestamp,
-            model: SNS_STORY_MODEL,
-          },
-          range,
-          counts: sourceBeforeSave.counts,
-          sourceRecordIds: sourceBeforeSave.sourceRecordIds,
-          sourceFingerprint: expectedFingerprint,
-          confirmedSynopsis,
-          model: SNS_STORY_MODEL,
-          leaseOwner: admin.firestore.FieldValue.delete(),
-          leaseExpiresAt: admin.firestore.FieldValue.delete(),
-          failureReason: admin.firestore.FieldValue.delete(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        }, { merge: true });
+      await commitCompletedSnsStoryRecord({
+        uid,
+        recordId,
+        leaseOwner,
+        date,
+        title,
+        content,
+        range,
+        counts: sourceBeforeLease.counts,
+        sourceRecordIds: sourceBeforeLease.sourceRecordIds,
+        expectedFingerprint,
+        confirmedSynopsis,
+        requestTimestamp,
+        requestPayloadHash,
       });
 
       return {
@@ -728,7 +1170,9 @@ export const generateSnsStoryFinal = onCall(
         sourceFingerprint: expectedFingerprint,
       };
     } catch (error) {
-      await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
+      if (!billableAiWorkStarted) {
+        await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
+      }
       await markGenerationFailed(
         recordRef,
         leaseOwner,

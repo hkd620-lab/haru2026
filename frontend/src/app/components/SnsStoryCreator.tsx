@@ -5,6 +5,15 @@ import { toast } from 'sonner';
 import { db, functions } from '../../firebase';
 import { activeSnsRecords } from '../utils/snsRecordState';
 import type { SnsRecord } from '../utils/snsRecordState';
+import {
+  SNS_STORY_FINAL_CALLABLE_TIMEOUT_MS,
+  SNS_STORY_SYNOPSIS_CALLABLE_TIMEOUT_MS,
+  buildSnsStoryFinalLogicalKey,
+  buildSnsStorySelectionKey,
+  getOrCreateSnsStoryRequestTimestamp,
+  isSnsStoryAmbiguousCallableError,
+  normalizeSnsStoryRequestBase,
+} from '../utils/snsStoryRequestState';
 import type { useSnsSession } from '../hooks/useSnsRecords';
 
 const COLOR_BLUE = '#1A3C6E';
@@ -122,6 +131,9 @@ function shortErrorMessage(error: any): string {
   if (reason === 'SNS_STORY_PHOTO_ONLY') {
     return '사진만 있는 기간은 이야기를 만들 수 없습니다. 사진 내용은 추측하지 않습니다.';
   }
+  if (reason === 'SNS_STORY_IDEMPOTENCY_CONFLICT') {
+    return '같은 저장 요청 ID로 다른 내용이 감지되었습니다. 시놉시스를 다시 확인해 주세요.';
+  }
   return error?.message || '처리하지 못했습니다. 잠시 후 다시 시도해 주세요.';
 }
 
@@ -150,6 +162,7 @@ export function SnsStoryCreator({
   const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
   const [synopsis, setSynopsis] = useState('');
   const [sourceFingerprint, setSourceFingerprint] = useState('');
+  const [sourceRecordIds, setSourceRecordIds] = useState<string[]>([]);
   const [serverCounts, setServerCounts] = useState<StoryCounts | null>(null);
   const [generatingSynopsis, setGeneratingSynopsis] = useState(false);
   const [generatingFinal, setGeneratingFinal] = useState(false);
@@ -160,6 +173,11 @@ export function SnsStoryCreator({
 
   const synopsisRequestRef = useRef<{ key: string; promise: Promise<void> } | null>(null);
   const finalRequestRef = useRef<{ key: string; requestTimestamp: number; promise: Promise<void> } | null>(null);
+  const finalRequestTimestampsRef = useRef<Map<string, number>>(new Map());
+  const synopsisSeqRef = useRef(0);
+  const finalSeqRef = useRef(0);
+  const latestSelectionKeyRef = useRef('');
+  const latestFinalRequestKeyRef = useRef('');
 
   const activeRecords = useMemo(() => activeSnsRecords(rawRecords), [rawRecords]);
   const yearOptions = useMemo(() => {
@@ -177,15 +195,28 @@ export function SnsStoryCreator({
     }
   }, [rangeType, year, yearOptions]);
 
+  const payloadBase = () => normalizeSnsStoryRequestBase({
+    rangeType,
+    year: rangeType === 'year' ? year : undefined,
+    from: rangeType === 'custom' ? from : undefined,
+    to: rangeType === 'custom' ? to : undefined,
+    excludedRecordIds: Array.from(excludedIds),
+  });
+
   const rangeKey = `${rangeType}|${year}|${from}|${to}`;
   useEffect(() => {
     setExcludedIds(new Set());
     setSynopsis('');
     setSourceFingerprint('');
+    setSourceRecordIds([]);
     setServerCounts(null);
     setFinalResult(null);
+    setGeneratingSynopsis(false);
+    setGeneratingFinal(false);
     finalRequestRef.current = null;
     synopsisRequestRef.current = null;
+    synopsisSeqRef.current += 1;
+    finalSeqRef.current += 1;
   }, [rangeKey]);
 
   const periodRecords = useMemo(
@@ -198,16 +229,40 @@ export function SnsStoryCreator({
   );
   const counts = useMemo(() => countRecords(periodRecords, includedRecords), [periodRecords, includedRecords]);
   const excludedKey = useMemo(() => Array.from(excludedIds).sort().join('|'), [excludedIds]);
-  const selectionKey = `${rangeKey}|${excludedKey}`;
+  const selectionKey = useMemo(() => buildSnsStorySelectionKey(payloadBase()), [rangeType, year, from, to, excludedKey]);
+  const finalRequestKey = useMemo(() => (
+    buildSnsStoryFinalLogicalKey({
+      ...payloadBase(),
+      sourceFingerprint,
+      title: storyTitle,
+      confirmedSynopsis: synopsis,
+    })
+  ), [rangeType, year, from, to, excludedKey, sourceFingerprint, storyTitle, synopsis]);
 
   useEffect(() => {
     setSynopsis('');
     setSourceFingerprint('');
+    setSourceRecordIds([]);
     setServerCounts(null);
     setFinalResult(null);
+    setGeneratingSynopsis(false);
+    setGeneratingFinal(false);
     finalRequestRef.current = null;
     synopsisRequestRef.current = null;
+    synopsisSeqRef.current += 1;
+    finalSeqRef.current += 1;
   }, [excludedKey]);
+
+  useEffect(() => {
+    latestSelectionKeyRef.current = selectionKey;
+  }, [selectionKey]);
+
+  useEffect(() => {
+    latestFinalRequestKeyRef.current = finalRequestKey;
+    finalSeqRef.current += 1;
+    finalRequestRef.current = null;
+    setGeneratingFinal(false);
+  }, [finalRequestKey]);
 
   useEffect(() => {
     if (!userUid || !session.isCurrent()) {
@@ -237,14 +292,6 @@ export function SnsStoryCreator({
       unsubscribe();
     };
   }, [session, userUid]);
-
-  const payloadBase = () => ({
-    rangeType,
-    year: rangeType === 'year' ? year : undefined,
-    from: rangeType === 'custom' ? from : undefined,
-    to: rangeType === 'custom' ? to : undefined,
-    excludedRecordIds: Array.from(excludedIds),
-  });
 
   const handleToggleExcluded = (recordId: string) => {
     setExcludedIds((prev) => {
@@ -277,24 +324,35 @@ export function SnsStoryCreator({
     if (synopsisRequestRef.current?.key === requestKey) {
       return synopsisRequestRef.current.promise;
     }
+    const requestSeq = synopsisSeqRef.current + 1;
+    synopsisSeqRef.current = requestSeq;
+    latestSelectionKeyRef.current = requestKey;
+    const isCurrentSynopsisRequest = () => (
+      session.isCurrent()
+      && synopsisSeqRef.current === requestSeq
+      && latestSelectionKeyRef.current === requestKey
+    );
 
     const promise = (async () => {
       setGeneratingSynopsis(true);
       setFinalResult(null);
       try {
-        const callable = httpsCallable(functions, 'generateSnsStorySynopsis');
+        const callable = httpsCallable(functions, 'generateSnsStorySynopsis', {
+          timeout: SNS_STORY_SYNOPSIS_CALLABLE_TIMEOUT_MS,
+        });
         const result = await callable(payloadBase());
-        if (!session.isCurrent()) return;
+        if (!isCurrentSynopsisRequest()) return;
         const data = result.data as SynopsisResponse;
         setSynopsis(data.synopsis || '');
         setSourceFingerprint(data.sourceFingerprint || '');
+        setSourceRecordIds(data.sourceRecordIds || []);
         setServerCounts(data.counts || null);
         toast.success('시놉시스를 생성했습니다. 본문을 확인하고 수정해 주세요.');
       } catch (error: any) {
-        if (!session.isCurrent()) return;
+        if (!isCurrentSynopsisRequest()) return;
         toast.error(shortErrorMessage(error));
       } finally {
-        if (session.isCurrent()) setGeneratingSynopsis(false);
+        if (isCurrentSynopsisRequest()) setGeneratingSynopsis(false);
         if (synopsisRequestRef.current?.key === requestKey) synopsisRequestRef.current = null;
       }
     })();
@@ -308,6 +366,7 @@ export function SnsStoryCreator({
     && session.isCurrent()
     && serverReady
     && sourceFingerprint
+    && sourceRecordIds.length > 0
     && synopsis.trim().length >= 50
     && storyTitle.trim().length > 0
     && storyTitle.trim().length <= 80,
@@ -318,23 +377,35 @@ export function SnsStoryCreator({
       toast.info('제목과 확정 시놉시스를 확인해 주세요.');
       return;
     }
-    const requestKey = `${selectionKey}|${sourceFingerprint}|${storyTitle.trim()}|${synopsis.trim()}`;
+    const requestKey = finalRequestKey;
     if (finalRequestRef.current?.key === requestKey) {
       return finalRequestRef.current.promise;
     }
-    const requestTimestamp = Date.now();
+    const requestTimestamp = getOrCreateSnsStoryRequestTimestamp(finalRequestTimestampsRef.current, requestKey);
+    const requestSeq = finalSeqRef.current + 1;
+    finalSeqRef.current = requestSeq;
+    latestFinalRequestKeyRef.current = requestKey;
+    const isCurrentFinalRequest = () => (
+      session.isCurrent()
+      && finalSeqRef.current === requestSeq
+      && latestFinalRequestKeyRef.current === requestKey
+    );
+
     const promise = (async () => {
       setGeneratingFinal(true);
       try {
-        const callable = httpsCallable(functions, 'generateSnsStoryFinal');
+        const callable = httpsCallable(functions, 'generateSnsStoryFinal', {
+          timeout: SNS_STORY_FINAL_CALLABLE_TIMEOUT_MS,
+        });
         const result = await callable({
           ...payloadBase(),
           sourceFingerprint,
+          sourceRecordIds,
           title: storyTitle.trim(),
           confirmedSynopsis: synopsis.trim(),
           requestTimestamp,
         });
-        if (!session.isCurrent()) return;
+        if (!isCurrentFinalRequest()) return;
         const data = result.data as FinalResponse;
         if (data.status === 'generating') {
           toast.info(data.message || '같은 요청이 이미 생성 중입니다.');
@@ -344,10 +415,14 @@ export function SnsStoryCreator({
         setFinalResult(data);
         toast.success('SNS 이야기를 나의 기록에 저장했습니다.');
       } catch (error: any) {
-        if (!session.isCurrent()) return;
-        toast.error(shortErrorMessage(error));
+        if (!isCurrentFinalRequest()) return;
+        if (isSnsStoryAmbiguousCallableError(error)) {
+          toast.info('응답 확인이 지연되었습니다. 저장 결과 확인이 필요하며, 같은 요청으로 다시 확인할 수 있습니다.');
+        } else {
+          toast.error(shortErrorMessage(error));
+        }
       } finally {
-        if (session.isCurrent()) setGeneratingFinal(false);
+        if (isCurrentFinalRequest()) setGeneratingFinal(false);
         if (finalRequestRef.current?.key === requestKey) finalRequestRef.current = null;
       }
     })();
