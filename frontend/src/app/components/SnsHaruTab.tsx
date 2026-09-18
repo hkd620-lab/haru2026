@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import {
@@ -17,6 +17,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { firestoreService } from '../services/firestoreService';
 import { mergeSnsRecordsForDisplay } from '../utils/snsRecords';
+import { activeSnsRecords } from '../utils/snsRecordState';
+import { useSnsRecords, useSnsSession } from '../hooks/useSnsRecords';
 import { GrapeAnimation } from './GrapeAnimation';
 import { SnsPrivateThumbnails } from './SnsPrivateThumbnails';
 
@@ -58,13 +60,21 @@ const EMPTY_COND: SearchCondition = {
 };
 
 export function SnsHaruTab() {
+  const { user } = useAuth();
+  return <SnsHaruContent key={user?.uid || 'signed-out'} />;
+}
+
+function SnsHaruContent() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { subscription } = useSubscription();
   const isPaidUser = subscription.plan === 'basic' || subscription.plan === 'premium';
 
-  const [records, setRecords] = useState<SnsRecord[]>([]);
-  const [loadingRecords, setLoadingRecords] = useState(false);
+  const session = useSnsSession(user?.uid);
+  const { records: rawRecords, loading: loadingRecords, error: recordsError } = useSnsRecords(session);
+  const records = useMemo(() => mergeSnsRecordsForDisplay(activeSnsRecords(rawRecords)), [rawRecords]);
+  const currentRecords = useRef(records);
+  currentRecords.current = records;
 
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
 
@@ -74,50 +84,14 @@ export function SnsHaruTab() {
 
   const [convertingId, setConvertingId] = useState<string | null>(null);
 
-  // SNS 기록 + 즐겨찾기 로드
   useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    const load = async () => {
-      setLoadingRecords(true);
-      try {
-        const colRef = collection(db, 'users', user.uid, 'snsRecords');
-        const snap = await getDocs(query(colRef, orderBy('timestamp', 'desc')));
-        if (cancelled) return;
-        const list: SnsRecord[] = [];
-        snap.docs.forEach((d) => {
-          const data = d.data() as any;
-          const ts = typeof data.timestamp === 'number' ? data.timestamp : 0;
-          const text = data.text || '';
-          list.push({
-            id: d.id,
-            source: (data.source as 'facebook' | 'instagram') || 'facebook',
-            timestamp: ts,
-            text,
-            thumbnails: Array.isArray(data.thumbnails) ? data.thumbnails : [],
-          });
-        });
-        setRecords(mergeSnsRecordsForDisplay(list));
-      } catch (e) {
-        console.error('SNS 기록 조회 실패:', e);
-      } finally {
-        if (!cancelled) setLoadingRecords(false);
-      }
-    };
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) return;
+    if (!user || !session.isCurrent()) return;
     let cancelled = false;
     const loadSaved = async () => {
       try {
         const colRef = collection(db, 'users', user.uid, 'savedSearches');
         const snap = await getDocs(colRef);
-        if (cancelled) return;
+        if (cancelled || !session.isCurrent()) return;
         const list: SavedSearch[] = snap.docs.map((d) => {
           const data = d.data() as any;
           return {
@@ -132,6 +106,7 @@ export function SnsHaruTab() {
         });
         setSavedSearches(list);
       } catch (e) {
+        if (cancelled || !session.isCurrent()) return;
         console.error('저장된 검색 로드 실패:', e);
       }
     };
@@ -139,7 +114,7 @@ export function SnsHaruTab() {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [user?.uid, session]);
 
   // 검색 조건 적용해 필터링
   const filteredRecords = useMemo(() => {
@@ -162,7 +137,7 @@ export function SnsHaruTab() {
 
   useEffect(() => {
     setPage(1);
-  }, [appliedCond]);
+  }, [appliedCond, records.length]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRecords.length / PAGE_SIZE));
   const pageRecords = filteredRecords.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -172,7 +147,7 @@ export function SnsHaruTab() {
   };
 
   const handleSaveSearch = async () => {
-    if (!user) return;
+    if (!user || !session.isCurrent()) return;
     if (
       !draftCond.keyword &&
       !draftCond.dateFrom &&
@@ -192,12 +167,14 @@ export function SnsHaruTab() {
         label: label.trim() || '내 검색',
         createdAt: serverTimestamp(),
       });
+      if (!session.isCurrent()) return;
       setSavedSearches((prev) => [
         ...prev,
         { id: docRef.id, ...draftCond, label: label.trim() || '내 검색' },
       ]);
       toast.success('검색 조건이 저장되었습니다.');
     } catch (e: any) {
+      if (!session.isCurrent()) return;
       console.error('검색 저장 실패:', e);
       toast.error('저장에 실패했습니다.');
     }
@@ -216,13 +193,15 @@ export function SnsHaruTab() {
   };
 
   const handleDeleteSaved = async (id: string) => {
-    if (!user) return;
+    if (!user || !session.isCurrent()) return;
     if (!window.confirm('이 즐겨찾기를 삭제할까요?')) return;
     try {
       await deleteDoc(doc(db, 'users', user.uid, 'savedSearches', id));
+      if (!session.isCurrent()) return;
       setSavedSearches((prev) => prev.filter((s) => s.id !== id));
       toast.success('삭제되었습니다.');
     } catch (e) {
+      if (!session.isCurrent()) return;
       console.error('즐겨찾기 삭제 실패:', e);
       toast.error('삭제에 실패했습니다.');
     }
@@ -239,7 +218,7 @@ export function SnsHaruTab() {
   };
 
   const handleConvertToDiary = async (record: SnsRecord) => {
-    if (!user) return;
+    if (!user || !session.isCurrent()) return;
     if (!record.text || record.text.trim().length === 0) {
       toast.info('변환할 텍스트가 없습니다.');
       return;
@@ -252,6 +231,11 @@ export function SnsHaruTab() {
         source: record.source,
         timestamp: record.timestamp,
       });
+      if (!session.isCurrent()) return;
+      if (!currentRecords.current.some((item) => item.id === record.id)) {
+        toast.info('삭제되었거나 변경된 기록입니다. 목록을 다시 확인해 주세요.');
+        return;
+      }
       const data = result.data as { diaryText?: string };
       const diaryText = data?.diaryText?.trim();
       if (!diaryText) {
@@ -267,16 +251,18 @@ export function SnsHaruTab() {
         source: 'facebook',
         _sns_origin: { id: record.id, timestamp: record.timestamp, text: record.text },
       } as any);
-      toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
+      if (session.isCurrent()) toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
     } catch (e: any) {
+      if (!session.isCurrent()) return;
       console.error('AI 일기 변환 실패:', e);
       toast.error(e?.message || 'AI 변환에 실패했습니다.');
     } finally {
-      setConvertingId(null);
+      if (session.isCurrent()) setConvertingId(null);
     }
   };
 
   const handleSendToProphecy = (record: SnsRecord) => {
+    if (!session.isCurrent() || !currentRecords.current.some((item) => item.id === record.id)) return;
     if (!requirePaidSubscription('HARU미래전망으로 보내기')) return;
     const date = formatDate(record.timestamp, 'iso');
     const incomingRecord = {
@@ -298,6 +284,7 @@ export function SnsHaruTab() {
 
   return (
     <div style={{ padding: '12px', background: '#f9fafb' }}>
+      {recordsError && <p role="alert">{recordsError}</p>}
       {/* 검색창 */}
       <section style={cardStyle}>
         <div style={sectionTitleStyle}>🔎 SNS 게시물 검색</div>
