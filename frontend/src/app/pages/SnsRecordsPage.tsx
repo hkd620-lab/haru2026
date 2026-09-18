@@ -231,7 +231,7 @@ function SnsRecordsContent() {
   const handleTrashChange = async (record: SnsRecord, deleted: boolean) => {
     if (!session.isCurrent() || !serverReady || actionLocks.current.has(record.id)) return;
     if (deleted && !window.confirm(
-      `${formatDate(record.timestamp)}의 이 기록 하나를 휴지통으로 이동할까요?\n글과 사진은 보존되며 휴지통에서 복원할 수 있습니다.`,
+      `${formatDate(record.timestamp)}의 이 SNS 기록 하나를 삭제할까요?\n삭제한 기록은 HARU 일반 휴지통이 아니라 이 화면의 'SNS 휴지통'으로 이동하며 언제든 복원할 수 있습니다.\nFacebook·Instagram 원본과 사진 파일은 삭제되지 않습니다.`,
     )) return;
     if (!session.isCurrent()) return;
     actionLocks.current.add(record.id);
@@ -240,8 +240,8 @@ function SnsRecordsContent() {
       const changed = await trashActions.change(record, deleted);
       if (!session.isCurrent()) return;
       toast.success(changed
-        ? (deleted ? '휴지통으로 이동했습니다.' : '원래 날짜로 복원했습니다.')
-        : (deleted ? '이미 휴지통으로 이동된 기록입니다.' : '이미 복원된 기록입니다.'));
+        ? (deleted ? 'SNS 휴지통으로 이동했습니다.' : '원래 날짜로 복원했습니다.')
+        : (deleted ? '이미 SNS 휴지통으로 이동된 기록입니다.' : '이미 복원된 기록입니다.'));
     } catch (error: any) {
       if (!session.isCurrent()) return;
       toast.error(error?.message || '처리하지 못했습니다. 연결 상태를 확인해 주세요.');
@@ -480,7 +480,7 @@ function SnsRecordsContent() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 6, marginBottom: 12 }}>
               {([
                 { k: 'active', label: `보관중 ${activeRecords.length}` },
-                { k: 'trash', label: `휴지통 ${trashedRecords.length}` },
+                { k: 'trash', label: `SNS 휴지통 ${trashedRecords.length}` },
               ] as { k: TimelineView; label: string }[]).map((item) => {
                 const active = timelineView === item.k;
                 return (
@@ -672,10 +672,12 @@ function SnsRecordsContent() {
             {!loadingRecords && !recordsError && !serverReady && (
               <p role="status" style={{ color: '#666', fontSize: 12 }}>최신 기록을 확인 중입니다. 연결되면 삭제·복원할 수 있습니다.</p>
             )}
-            <p style={{ color: '#666', fontSize: 12 }}>같은 날짜의 기록도 한 장씩 삭제·복원할 수 있습니다. 글과 사진 파일은 지우지 않습니다.</p>
+            <p style={{ color: '#666', fontSize: 12 }}>
+              삭제한 SNS 기록은 이 화면의 'SNS 휴지통'에서 확인하고 복원할 수 있습니다. Facebook·Instagram 원본과 사진 파일은 삭제되지 않습니다.
+            </p>
             {/* 검색 결과 건수 */}
             <p style={{ fontSize: 12, color: '#666', marginBottom: 10 }}>
-              {timelineView === 'trash' ? '휴지통' : '검색 결과'}: <b>{filteredRecords.length}</b>건
+              {timelineView === 'trash' ? 'SNS 휴지통' : '검색 결과'}: <b>{filteredRecords.length}</b>건
             </p>
 
             {loadingRecords ? (
@@ -687,7 +689,7 @@ function SnsRecordsContent() {
               </div>
             ) : visibleRecords.length === 0 ? (
               timelineView === 'trash'
-                ? <EmptyState message="휴지통에 있는 SNS 기록이 없어요." />
+                ? <EmptyState message="SNS 휴지통에 있는 기록이 없어요." />
                 : <EmptyState message="아직 가져온 SNS 기록이 없어요." subMessage="업로드 탭에서 ZIP을 올려주세요." />
             ) : filteredRecords.length === 0 ? (
               <EmptyState message="검색 결과가 없어요." />
