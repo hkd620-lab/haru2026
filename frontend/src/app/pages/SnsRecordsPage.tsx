@@ -231,7 +231,7 @@ function SnsRecordsContent() {
   const handleTrashChange = async (record: SnsRecord, deleted: boolean) => {
     if (!session.isCurrent() || !serverReady || actionLocks.current.has(record.id)) return;
     if (deleted && !window.confirm(
-      `${formatDate(record.timestamp)}의 이 SNS 기록 하나를 삭제할까요?\n삭제한 기록은 HARU 일반 휴지통이 아니라 이 화면의 'SNS 휴지통'으로 이동하며 언제든 복원할 수 있습니다.\nFacebook·Instagram 원본과 사진 파일은 삭제되지 않습니다.`,
+      `${formatDate(record.timestamp)}의 이 SNS 기록 하나를 삭제할까요?\n삭제한 기록은 HARU 일반 휴지통이 아니라 타임라인 상단의 'SNS 휴지통'으로 이동하며 언제든 복원할 수 있습니다.\nFacebook·Instagram 원본과 사진 파일은 삭제되지 않습니다.`,
     )) return;
     if (!session.isCurrent()) return;
     actionLocks.current.add(record.id);
@@ -239,9 +239,19 @@ function SnsRecordsContent() {
     try {
       const changed = await trashActions.change(record, deleted);
       if (!session.isCurrent()) return;
-      toast.success(changed
-        ? (deleted ? 'SNS 휴지통으로 이동했습니다.' : '원래 날짜로 복원했습니다.')
-        : (deleted ? '이미 SNS 휴지통으로 이동된 기록입니다.' : '이미 복원된 기록입니다.'));
+      if (deleted) {
+        toast.success(changed ? 'SNS 휴지통으로 이동했습니다.' : '이미 SNS 휴지통으로 이동된 기록입니다.', {
+          action: {
+            label: 'SNS 휴지통 보기',
+            onClick: () => {
+              setTimelineView('trash');
+              setTimelinePage(1);
+            },
+          },
+        });
+      } else {
+        toast.success(changed ? '원래 날짜로 복원했습니다.' : '이미 복원된 기록입니다.');
+      }
     } catch (error: any) {
       if (!session.isCurrent()) return;
       toast.error(error?.message || '처리하지 못했습니다. 연결 상태를 확인해 주세요.');
@@ -504,6 +514,23 @@ function SnsRecordsContent() {
                 );
               })}
             </div>
+
+            <p
+              role="note"
+              style={{
+                margin: '-4px 0 12px',
+                padding: '9px 11px',
+                borderRadius: 8,
+                background: '#eef6ff',
+                color: COLOR_BLUE,
+                fontSize: 12,
+                lineHeight: 1.5,
+              }}
+            >
+              {timelineView === 'trash'
+                ? "복원한 기록은 바로 위의 '보관중'으로 돌아갑니다."
+                : "삭제한 SNS 기록은 바로 위의 'SNS 휴지통' 버튼에서 확인하고 복원할 수 있습니다."}
+            </p>
 
             {/* 키워드 검색창 */}
             <input
