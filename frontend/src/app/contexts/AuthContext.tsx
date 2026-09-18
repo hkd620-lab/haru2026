@@ -28,6 +28,10 @@ import {
   rememberLoginProviderLocally,
 } from '../utils/loginProvider';
 import { markLoginTrace } from '../utils/loginPerformance';
+import {
+  invalidateSnsThumbnailAuthSession,
+  setSnsThumbnailAuthUser,
+} from '../utils/snsPrivateThumbnailState';
 
 // LoginPage.tsx의 회원가입 동의와 동일한 버전 문자열 — 약관 개정 시 재동의 대상을 가려낼 때 사용
 const TERMS_VERSION = '2026-08-20';
@@ -434,6 +438,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // 5. Firebase 상태 변화 감지
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setSnsThumbnailAuthUser(firebaseUser?.uid || null);
       if (firebaseUser) {
         markLoginTrace('T4_auth_state_settled');
         setUser(mapUser(firebaseUser));
@@ -656,6 +661,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
+      invalidateSnsThumbnailAuthSession();
       clearLegacySocialUserCache();
       await firebaseSignOut(auth);
       setUser(null);
