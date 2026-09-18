@@ -9,9 +9,11 @@ process.env.GCLOUD_PROJECT = process.env.GCLOUD_PROJECT || 'demo-haru-sns-story'
 
 const {
   SNS_STORY_LEASE_MS,
+  SNS_STORY_OPERATION_RECOVERY_MS,
   buildSnsStoryFinalPayloadHash,
   buildSnsStoryFingerprint,
   commitCompletedSnsStoryRecord,
+  recoverSnsStoryOperationByPayloadHash,
   toKstDateString,
 } = require('../lib/snsStory');
 
@@ -149,4 +151,104 @@ test('same idempotency request can be committed twice but creates one completed 
   const snapshot = await db.collection(`users/${uid}/records`).get();
   assert.equal(snapshot.size, 1);
   assert.equal(snapshot.docs[0].data().generationStatus, 'completed');
+});
+
+test('same payload hash with a completed record is recovered despite a different client timestamp', async () => {
+  const uid = `sns-story-recover-completed-${Date.now()}`;
+  const record = sourceRecord('selected-recover-completed');
+  const input = finalInput(uid, record, 'recover-completed');
+  await db.doc(`users/${uid}/records/${input.recordId}`).set({
+    source: 'sns_story',
+    generationStatus: 'completed',
+    requestTimestamp: input.requestTimestamp,
+    requestPayloadHash: input.requestPayloadHash,
+    essay_title: input.title,
+    content: input.content,
+  });
+
+  const recovered = await recoverSnsStoryOperationByPayloadHash(
+    uid,
+    input.requestPayloadHash,
+    input.requestTimestamp + 10_000,
+  );
+  assert.equal(recovered?.action, 'completed');
+  assert.equal(recovered?.recordId, input.recordId);
+
+  const snapshot = await db.collection(`users/${uid}/records`).get();
+  assert.equal(snapshot.size, 1, 'completed recovery must avoid creating a second record');
+});
+
+test('same payload hash with an active generating lease is recovered as in progress', async () => {
+  const uid = `sns-story-recover-generating-${Date.now()}`;
+  const record = sourceRecord('selected-recover-generating');
+  const input = finalInput(uid, record, 'recover-generating');
+  const nowMs = Date.now();
+  await db.doc(`users/${uid}/records/${input.recordId}`).set({
+    source: 'sns_story',
+    generationStatus: 'generating',
+    requestTimestamp: nowMs - 1_000,
+    requestPayloadHash: input.requestPayloadHash,
+    leaseExpiresAt: admin.firestore.Timestamp.fromMillis(nowMs + SNS_STORY_LEASE_MS),
+  });
+
+  const recovered = await recoverSnsStoryOperationByPayloadHash(uid, input.requestPayloadHash, nowMs);
+  assert.equal(recovered?.action, 'generating');
+  assert.equal(recovered?.recordId, input.recordId);
+});
+
+test('failed or expired operations with the same payload hash are recovered as retry targets', async () => {
+  const uid = `sns-story-recover-retry-${Date.now()}`;
+  const record = sourceRecord('selected-recover-retry');
+  await seedSource(uid, record);
+  const failedInput = finalInput(uid, record, 'recover-failed');
+  await db.doc(`users/${uid}/records/${failedInput.recordId}`).set({
+    source: 'sns_story',
+    generationStatus: 'failed',
+    requestTimestamp: failedInput.requestTimestamp,
+    requestPayloadHash: failedInput.requestPayloadHash,
+  });
+
+  const failedRecovered = await recoverSnsStoryOperationByPayloadHash(
+    uid,
+    failedInput.requestPayloadHash,
+    failedInput.requestTimestamp + 1_000,
+  );
+  assert.equal(failedRecovered?.action, 'retry');
+  assert.equal(failedRecovered?.recordId, failedInput.recordId);
+
+  const retryInput = { ...failedInput, leaseOwner: 'lease-retry-recovered' };
+  await seedLease(retryInput);
+  await commitCompletedSnsStoryRecord(retryInput);
+  const snapshot = await db.collection(`users/${uid}/records`).get();
+  assert.equal(snapshot.size, 1, 'retry must reuse the recovered failed operation document');
+  assert.equal(snapshot.docs[0].data().generationStatus, 'completed');
+});
+
+test('different payload hashes and stale operations are not recovered', async () => {
+  const uid = `sns-story-recover-none-${Date.now()}`;
+  const record = sourceRecord('selected-recover-none');
+  const input = finalInput(uid, record, 'recover-none');
+  await db.doc(`users/${uid}/records/${input.recordId}`).set({
+    source: 'sns_story',
+    generationStatus: 'completed',
+    requestTimestamp: input.requestTimestamp,
+    requestPayloadHash: input.requestPayloadHash,
+  });
+
+  const differentHash = buildSnsStoryFinalPayloadHash({
+    range: input.range,
+    excludedRecordIds: [],
+    sourceFingerprint: input.expectedFingerprint,
+    title: input.title,
+    confirmedSynopsis: `${input.confirmedSynopsis} 다른 내용`,
+  });
+  assert.equal(await recoverSnsStoryOperationByPayloadHash(uid, differentHash, input.requestTimestamp + 1_000), null);
+  assert.equal(
+    await recoverSnsStoryOperationByPayloadHash(
+      uid,
+      input.requestPayloadHash,
+      input.requestTimestamp + SNS_STORY_OPERATION_RECOVERY_MS + 1,
+    ),
+    null,
+  );
 });

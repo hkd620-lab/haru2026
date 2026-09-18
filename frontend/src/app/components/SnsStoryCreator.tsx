@@ -10,7 +10,8 @@ import {
   SNS_STORY_SYNOPSIS_CALLABLE_TIMEOUT_MS,
   buildSnsStoryFinalLogicalKey,
   buildSnsStorySelectionKey,
-  getOrCreateSnsStoryRequestTimestamp,
+  createSnsStoryRequestCoordinator,
+  getOrCreateDurableSnsStoryRequestTimestamp,
   isSnsStoryAmbiguousCallableError,
   normalizeSnsStoryRequestBase,
 } from '../utils/snsStoryRequestState';
@@ -172,12 +173,11 @@ export function SnsStoryCreator({
   const [loadingArtworks, setLoadingArtworks] = useState(false);
 
   const synopsisRequestRef = useRef<{ key: string; promise: Promise<void> } | null>(null);
-  const finalRequestRef = useRef<{ key: string; requestTimestamp: number; promise: Promise<void> } | null>(null);
+  const finalRequestRef = useRef<{ key: string; promise: Promise<void> } | null>(null);
   const finalRequestTimestampsRef = useRef<Map<string, number>>(new Map());
-  const synopsisSeqRef = useRef(0);
-  const finalSeqRef = useRef(0);
-  const latestSelectionKeyRef = useRef('');
-  const latestFinalRequestKeyRef = useRef('');
+  const requestCoordinatorRef = useRef(createSnsStoryRequestCoordinator(userUid || ''));
+  const currentUserUidRef = useRef(userUid || '');
+  currentUserUidRef.current = userUid || '';
 
   const activeRecords = useMemo(() => activeSnsRecords(rawRecords), [rawRecords]);
   const yearOptions = useMemo(() => {
@@ -215,8 +215,7 @@ export function SnsStoryCreator({
     setGeneratingFinal(false);
     finalRequestRef.current = null;
     synopsisRequestRef.current = null;
-    synopsisSeqRef.current += 1;
-    finalSeqRef.current += 1;
+    requestCoordinatorRef.current.invalidate();
   }, [rangeKey]);
 
   const periodRecords = useMemo(
@@ -249,20 +248,22 @@ export function SnsStoryCreator({
     setGeneratingFinal(false);
     finalRequestRef.current = null;
     synopsisRequestRef.current = null;
-    synopsisSeqRef.current += 1;
-    finalSeqRef.current += 1;
+    requestCoordinatorRef.current.invalidate();
   }, [excludedKey]);
 
   useEffect(() => {
-    latestSelectionKeyRef.current = selectionKey;
-  }, [selectionKey]);
-
-  useEffect(() => {
-    latestFinalRequestKeyRef.current = finalRequestKey;
-    finalSeqRef.current += 1;
+    requestCoordinatorRef.current.invalidate('final');
     finalRequestRef.current = null;
     setGeneratingFinal(false);
   }, [finalRequestKey]);
+
+  useEffect(() => {
+    requestCoordinatorRef.current.setUser(userUid || '');
+    finalRequestRef.current = null;
+    synopsisRequestRef.current = null;
+    setGeneratingSynopsis(false);
+    setGeneratingFinal(false);
+  }, [userUid]);
 
   useEffect(() => {
     if (!userUid || !session.isCurrent()) {
@@ -324,13 +325,10 @@ export function SnsStoryCreator({
     if (synopsisRequestRef.current?.key === requestKey) {
       return synopsisRequestRef.current.promise;
     }
-    const requestSeq = synopsisSeqRef.current + 1;
-    synopsisSeqRef.current = requestSeq;
-    latestSelectionKeyRef.current = requestKey;
+    const requestToken = requestCoordinatorRef.current.start('synopsis', requestKey, userUid || '');
     const isCurrentSynopsisRequest = () => (
       session.isCurrent()
-      && synopsisSeqRef.current === requestSeq
-      && latestSelectionKeyRef.current === requestKey
+      && requestCoordinatorRef.current.isCurrent(requestToken, requestKey, currentUserUidRef.current)
     );
 
     const promise = (async () => {
@@ -381,19 +379,21 @@ export function SnsStoryCreator({
     if (finalRequestRef.current?.key === requestKey) {
       return finalRequestRef.current.promise;
     }
-    const requestTimestamp = getOrCreateSnsStoryRequestTimestamp(finalRequestTimestampsRef.current, requestKey);
-    const requestSeq = finalSeqRef.current + 1;
-    finalSeqRef.current = requestSeq;
-    latestFinalRequestKeyRef.current = requestKey;
+    const requestToken = requestCoordinatorRef.current.start('final', requestKey, userUid || '');
     const isCurrentFinalRequest = () => (
       session.isCurrent()
-      && finalSeqRef.current === requestSeq
-      && latestFinalRequestKeyRef.current === requestKey
+      && requestCoordinatorRef.current.isCurrent(requestToken, requestKey, currentUserUidRef.current)
     );
 
     const promise = (async () => {
       setGeneratingFinal(true);
       try {
+        const operation = await getOrCreateDurableSnsStoryRequestTimestamp({
+          uid: userUid || '',
+          logicalKey: requestKey,
+          memoryFallback: finalRequestTimestampsRef.current,
+        });
+        if (!isCurrentFinalRequest()) return;
         const callable = httpsCallable(functions, 'generateSnsStoryFinal', {
           timeout: SNS_STORY_FINAL_CALLABLE_TIMEOUT_MS,
         });
@@ -403,7 +403,7 @@ export function SnsStoryCreator({
           sourceRecordIds,
           title: storyTitle.trim(),
           confirmedSynopsis: synopsis.trim(),
-          requestTimestamp,
+          requestTimestamp: operation.requestTimestamp,
         });
         if (!isCurrentFinalRequest()) return;
         const data = result.data as FinalResponse;
@@ -427,7 +427,7 @@ export function SnsStoryCreator({
       }
     })();
 
-    finalRequestRef.current = { key: requestKey, requestTimestamp, promise };
+    finalRequestRef.current = { key: requestKey, promise };
     return promise;
   };
 

@@ -39,6 +39,8 @@ export const SNS_STORY_DEADLINE_SAFETY_MARGIN_MS = 10_000;
 export const SNS_STORY_SUMMARY_MAX_CHARS = 8_000;
 export const SNS_STORY_FINAL_STORY_MIN_CHARS = 500;
 export const SNS_STORY_FINAL_STORY_MAX_CHARS = 60_000;
+export const SNS_STORY_OPERATION_RECOVERY_MS = 24 * 60 * 60 * 1000;
+export const SNS_STORY_OPERATION_RECOVERY_LIMIT = 20;
 
 type SnsStoryRangeType = 'all' | 'year' | 'custom';
 
@@ -105,7 +107,7 @@ export interface SnsStoryGeminiCallBudget {
   stopped: boolean;
 }
 
-interface GenerateGeminiTextOptions {
+export interface GenerateGeminiTextOptions {
   stageName: string;
   maxOutputTokens: number;
   timeoutMs: number;
@@ -113,6 +115,21 @@ interface GenerateGeminiTextOptions {
   minChars?: number;
   maxChars: number;
   onBillableAiWorkStarted?: () => void;
+}
+
+export interface SnsStoryGeminiModelLike {
+  generateContent(prompt: string): Promise<{ response: { text(): string } }>;
+}
+
+export interface SnsStoryGeminiFactoryLike {
+  getGenerativeModel(
+    modelParams: {
+      model: string;
+      systemInstruction: string;
+      generationConfig: { maxOutputTokens: number };
+    },
+    requestOptions?: { timeout?: number },
+  ): SnsStoryGeminiModelLike;
 }
 
 interface CompletedSnsStoryCommitInput {
@@ -351,6 +368,113 @@ export function assertSnsStoryIdempotencyCompatible(
       'SNS_STORY_IDEMPOTENCY_CONFLICT',
     );
   }
+}
+
+export type SnsStoryRecoveredOperationAction = 'completed' | 'generating' | 'retry';
+
+export interface SnsStoryRecoveredOperationCandidate {
+  id: string;
+  data: admin.firestore.DocumentData;
+}
+
+export interface SnsStoryRecoveredOperation {
+  action: SnsStoryRecoveredOperationAction;
+  recordId: string;
+  requestTimestamp: number;
+  data: admin.firestore.DocumentData;
+}
+
+function requestTimestampFromRecordId(recordId: string): number {
+  const match = recordId.match(/_snsStory_(\d+)$/);
+  return match ? normalizeSnsTimestampMs(Number(match[1])) : 0;
+}
+
+function getStoredRequestTimestamp(recordId: string, data: admin.firestore.DocumentData): number {
+  return normalizeSnsTimestampMs(data.requestTimestamp)
+    || normalizeSnsTimestampMs(data.sns_story_source?.requestTimestamp)
+    || requestTimestampFromRecordId(recordId);
+}
+
+function isRecentSnsStoryOperation(requestTimestamp: number, nowMs: number): boolean {
+  return requestTimestamp > 0
+    && requestTimestamp >= nowMs - SNS_STORY_OPERATION_RECOVERY_MS
+    && requestTimestamp <= nowMs + SNS_STORY_OPERATION_RECOVERY_MS;
+}
+
+export function chooseSnsStoryRecoveredOperation(
+  candidates: SnsStoryRecoveredOperationCandidate[],
+  requestPayloadHash: string,
+  nowMs = Date.now(),
+): SnsStoryRecoveredOperation | null {
+  const valid = candidates
+    .map((candidate) => {
+      const data = candidate.data || {};
+      const requestTimestamp = getStoredRequestTimestamp(candidate.id, data);
+      const storedHash = getStoredRequestPayloadHash(data);
+      if (
+        data.source !== 'sns_story'
+        || storedHash !== requestPayloadHash
+        || !isRecentSnsStoryOperation(requestTimestamp, nowMs)
+      ) {
+        return null;
+      }
+      return { recordId: candidate.id, requestTimestamp, data };
+    })
+    .filter((candidate): candidate is Omit<SnsStoryRecoveredOperation, 'action'> => Boolean(candidate));
+
+  const newestFirst = (a: { requestTimestamp: number }, b: { requestTimestamp: number }) =>
+    b.requestTimestamp - a.requestTimestamp;
+
+  const completed = valid
+    .filter((candidate) => candidate.data.generationStatus === 'completed')
+    .sort(newestFirst)[0];
+  if (completed) {
+    return { ...completed, action: 'completed' };
+  }
+
+  const generating = valid
+    .filter((candidate) => (
+      candidate.data.generationStatus === 'generating'
+      && normalizeSnsTimestampMs(candidate.data.leaseExpiresAt) > nowMs
+    ))
+    .sort(newestFirst)[0];
+  if (generating) {
+    return { ...generating, action: 'generating' };
+  }
+
+  const retryable = valid
+    .filter((candidate) => (
+      candidate.data.generationStatus === 'failed'
+      || (
+        candidate.data.generationStatus === 'generating'
+        && normalizeSnsTimestampMs(candidate.data.leaseExpiresAt) <= nowMs
+      )
+    ))
+    .sort(newestFirst)[0];
+  if (retryable) {
+    return { ...retryable, action: 'retry' };
+  }
+
+  return null;
+}
+
+export async function recoverSnsStoryOperationByPayloadHash(
+  uid: string,
+  requestPayloadHash: string,
+  nowMs = Date.now(),
+): Promise<SnsStoryRecoveredOperation | null> {
+  const snapshot = await db
+    .collection('users')
+    .doc(uid)
+    .collection('records')
+    .where('requestPayloadHash', '==', requestPayloadHash)
+    .limit(SNS_STORY_OPERATION_RECOVERY_LIMIT)
+    .get();
+  return chooseSnsStoryRecoveredOperation(
+    snapshot.docs.map((doc) => ({ id: doc.id, data: doc.data() || {} })),
+    requestPayloadHash,
+    nowMs,
+  );
 }
 
 function selectSnsStorySource(
@@ -653,22 +777,27 @@ function buildSummarySystemPrompt(): string {
 - 마크다운 표 대신 간결한 글머리 구조로 정리하세요.`;
 }
 
-async function generateGeminiText(
+export async function invokeSnsStoryGeminiText(
+  gemini: SnsStoryGeminiFactoryLike,
   systemInstruction: string,
   prompt: string,
   options: GenerateGeminiTextOptions,
 ): Promise<string> {
   reserveSnsStoryGeminiCall(options.budget, options.stageName, options.timeoutMs);
-  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY.value());
-  const model = genAI.getGenerativeModel({
-    model: SNS_STORY_MODEL,
-    systemInstruction,
-    generationConfig: {
-      maxOutputTokens: options.maxOutputTokens,
+  const model = gemini.getGenerativeModel(
+    {
+      model: SNS_STORY_MODEL,
+      systemInstruction,
+      generationConfig: {
+        maxOutputTokens: options.maxOutputTokens,
+      },
     },
-  });
+    { timeout: options.timeoutMs },
+  );
   options.onBillableAiWorkStarted?.();
   try {
+    // SDK timeout is the real HTTP request deadline; withTimeout is only a local guard if the SDK
+    // fails to settle on time or ignores its own timeout in an older runtime.
     const result = await withTimeout(model.generateContent(prompt), options.timeoutMs, options.stageName);
     const text = result.response.text();
     return validateSnsStoryGeneratedText(text, options.stageName, options.minChars || 1, options.maxChars);
@@ -682,6 +811,15 @@ async function generateGeminiText(
       { stageName: options.stageName },
     );
   }
+}
+
+async function generateGeminiText(
+  systemInstruction: string,
+  prompt: string,
+  options: GenerateGeminiTextOptions,
+): Promise<string> {
+  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY.value()) as unknown as SnsStoryGeminiFactoryLike;
+  return invokeSnsStoryGeminiText(genAI, systemInstruction, prompt, options);
 }
 
 export function validateSnsStorySourceGroupBudget(groups: string[]) {
@@ -979,6 +1117,7 @@ export const generateSnsStorySynopsis = onCall(
   },
   async (request) => {
     const uid = assertUid(request);
+    const requestStartedAt = Date.now();
     const data = request.data || {};
     const range = resolveSnsStoryRange(data);
     const excludedIds = sanitizeExcludedIds(data.excludedRecordIds);
@@ -997,7 +1136,7 @@ export const generateSnsStorySynopsis = onCall(
       monthlyQuotaReservation = await reserveMonthlyAiQuota(uid, 'sns_story_synopsis');
       const budget = createSnsStoryGeminiCallBudget(
         SNS_STORY_MAX_SYNOPSIS_GEMINI_CALLS,
-        Date.now() + (540 * 1000),
+        requestStartedAt + (540 * 1000),
       );
       const summaries = await summarizeSourceGroups(groups, budget, markBillableAiWorkStarted);
       const compactSummaries = await compressSummariesHierarchically(summaries, budget, markBillableAiWorkStarted);
@@ -1039,12 +1178,13 @@ export const generateSnsStoryFinal = onCall(
   },
   async (request) => {
     const uid = assertUid(request);
+    const requestStartedAt = Date.now();
     const data = request.data || {};
     const range = resolveSnsStoryRange(data);
     const excludedIds = sanitizeExcludedIds(data.excludedRecordIds);
     const requestedSourceRecordIds = sanitizeSourceRecordIds(data.sourceRecordIds);
     const expectedFingerprint = sanitizeExpectedFingerprint(data.sourceFingerprint);
-    const requestTimestamp = safeRequestTimestamp(data.requestTimestamp);
+    let requestTimestamp = safeRequestTimestamp(data.requestTimestamp);
     const title = safeTitle(data.title);
     const confirmedSynopsis = safeSynopsis(data.confirmedSynopsis);
     const excludedRecordIds = Array.from(excludedIds).sort();
@@ -1055,6 +1195,21 @@ export const generateSnsStoryFinal = onCall(
       title,
       confirmedSynopsis,
     });
+    const recoveredOperation = await recoverSnsStoryOperationByPayloadHash(uid, requestPayloadHash, requestStartedAt);
+    if (recoveredOperation?.action === 'completed') {
+      return completedPayloadFromDoc(recoveredOperation.recordId, recoveredOperation.data);
+    }
+    if (recoveredOperation?.action === 'generating') {
+      return {
+        status: 'generating',
+        recordId: recoveredOperation.recordId,
+        message: '같은 요청의 SNS 이야기가 이미 생성 중입니다. 잠시 후 다시 확인해 주세요.',
+      };
+    }
+    if (recoveredOperation?.action === 'retry') {
+      requestTimestamp = recoveredOperation.requestTimestamp;
+    }
+
     const { date, id: recordId } = buildRecordId(requestTimestamp);
     const recordRef = db.collection('users').doc(uid).collection('records').doc(recordId);
 
@@ -1136,7 +1291,7 @@ export const generateSnsStoryFinal = onCall(
     };
     try {
       monthlyQuotaReservation = await reserveMonthlyAiQuota(uid, 'sns_story_final');
-      const budget = createSnsStoryGeminiCallBudget(1, Date.now() + (300 * 1000));
+      const budget = createSnsStoryGeminiCallBudget(1, requestStartedAt + (300 * 1000));
       const content = await generateStoryFromConfirmedSynopsis(
         title,
         confirmedSynopsis,
