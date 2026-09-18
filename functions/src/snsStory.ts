@@ -1259,6 +1259,9 @@ export async function commitCompletedSnsStoryRecord(input: CompletedSnsStoryComm
       essay_ai_title: input.title,
       essay_sayu: input.content,
       source: 'sns_story',
+      sourceAgent: 'SNS 갈무리',
+      sourceType: 'assistant',
+      sourceKey: 'sns_story',
       generationStatus: 'completed',
       requestPayloadHash: input.requestPayloadHash,
       sns_story_source: {

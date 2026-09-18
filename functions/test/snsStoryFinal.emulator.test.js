@@ -178,6 +178,9 @@ test('final save completes for unchanged sources and ignores new SNS records aft
   assert.equal(saved.data()?.generationStatus, 'completed');
   assert.deepEqual(saved.data()?.sourceRecordIds, [record.id]);
   assert.equal(saved.data()?.requestPayloadHash, input.requestPayloadHash);
+  assert.equal(saved.data()?.sourceAgent, 'SNS 갈무리');
+  assert.equal(saved.data()?.sourceType, 'assistant');
+  assert.equal(saved.data()?.sourceKey, 'sns_story');
 });
 
 for (const [name, patch] of [

@@ -273,7 +273,7 @@ function SnsRecordsContent() {
           <GrapeAnimation />
         </div>
         <p style={{ marginTop: 12, fontSize: 13, fontWeight: 600, color: COLOR_BLUE }}>
-          SNS 기록 페이지 준비 중...
+          SNS 갈무리 비서 준비 중...
         </p>
       </div>
     );
@@ -308,10 +308,10 @@ function SnsRecordsContent() {
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
         <div style={{ marginBottom: 16 }}>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: COLOR_BLUE, letterSpacing: '-0.01em' }}>
-            📱 snsHARU보기
+            📱 SNS 갈무리 비서
           </h1>
           <p style={{ fontSize: 13, color: '#666', marginTop: 6 }}>
-            Facebook · Instagram 기록을 AI로 정리해드려요.
+            SNS에 흩어진 기록을 모아 정리하고 나의 이야기로 만듭니다.
           </p>
         </div>
 

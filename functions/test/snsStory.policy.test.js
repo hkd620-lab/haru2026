@@ -76,6 +76,9 @@ assert(src.includes("generationStatus: 'generating'"), 'final generation must cr
 assert(src.includes('leaseExpiresAt'), 'generating state must have a retryable lease');
 assert(src.includes("formats: ['에세이']"), 'completed records must be saved as essays');
 assert(src.includes("source: 'sns_story'"), 'completed records must identify the sns_story source');
+assert(src.includes("sourceAgent: 'SNS 갈무리'"), 'completed SNS story records must store the user-facing source agent');
+assert(src.includes("sourceType: 'assistant'"), 'completed SNS story records must identify assistant-origin records');
+assert(src.includes("sourceKey: 'sns_story'"), 'completed SNS story records must keep a stable source key');
 assert(src.includes('sns_story_source'), 'completed records must store source metadata');
 assert(src.includes('confirmedSynopsis'), 'confirmed user-edited synopsis must be stored');
 assert(src.includes('전체 SNS 원문은 제공되지 않습니다'), 'final function must not send all SNS raw text again');

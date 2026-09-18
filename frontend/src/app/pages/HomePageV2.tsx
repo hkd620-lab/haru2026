@@ -354,8 +354,8 @@ const AGENTS: Agent[] = [
     ),
   },
   {
-    label: 'SNS 가져오기',
-    sub: '페이스북과 인스타그램의 추억들을 입맛대로 정렬하고 나만의 책으로 출간해 드립니다.',
+    label: 'SNS 갈무리',
+    sub: 'SNS에 흩어진 기록을 모아 정리하고 나의 이야기로 만듭니다.',
     tag: 'IMPORT · 정리',
     variant: 'green',
     stroke: '#4A5A2C',

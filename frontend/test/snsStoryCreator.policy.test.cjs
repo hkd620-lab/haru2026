@@ -7,6 +7,9 @@ const page = fs.readFileSync(path.join(root, 'src/app/pages/SnsRecordsPage.tsx')
 const component = fs.readFileSync(path.join(root, 'src/app/components/SnsStoryCreator.tsx'), 'utf8');
 const requestState = fs.readFileSync(path.join(root, 'src/app/utils/snsStoryRequestState.ts'), 'utf8');
 const routes = fs.readFileSync(path.join(root, 'src/app/App.tsx'), 'utf8');
+const sayu = fs.readFileSync(path.join(root, 'src/app/pages/SayuPage.tsx'), 'utf8');
+const home = fs.readFileSync(path.join(root, 'src/app/pages/HomePageV2.tsx'), 'utf8');
+const recordHub = fs.readFileSync(path.join(root, 'src/app/pages/RecordHubPage.tsx'), 'utf8');
 
 assert(page.includes("import { SnsStoryCreator }"), 'SnsRecordsPage must render the new SNS story creator');
 assert(page.includes('<SnsStoryCreator'), 'autobio tab must mount SnsStoryCreator');
@@ -37,8 +40,22 @@ assert(component.includes("httpsCallable(functions, 'generateSnsStoryFinal',"), 
 assert(component.includes("timeout: SNS_STORY_FINAL_CALLABLE_TIMEOUT_MS"), 'final callable timeout must exceed server timeout');
 assert(component.includes('getOrCreateDurableSnsStoryRequestTimestamp'), 'final retries must reuse durable request timestamps for the same logical input');
 assert(component.includes('isSnsStoryAmbiguousCallableError'), 'network/timeout errors must be treated as ambiguous, retryable outcomes');
+assert(component.includes('SNS 갈무리에서 보기'), 'completed SNS story saves must offer a Sayu navigation button');
+assert(component.includes("filterFormat: SNS_GALMURI_LABEL"), 'completed SNS story navigation must target the SNS 갈무리 Sayu group');
+assert(component.includes('aria-expanded={expanded}'), 'saved SNS artworks must expose accessible expand/collapse state');
+assert(component.includes('전문 보기') && component.includes('접기'), 'saved SNS artworks must support full-text view and collapse');
+assert(component.includes("SNS 갈무리 · 저장된 작품"), 'saved artwork list must use the SNS 갈무리 naming');
 assert(requestState.includes('buildSnsStoryFinalLogicalKey'), 'final idempotency key helper must be present');
 assert(requestState.includes('logicalKeyHash') && !requestState.includes('RAW_SNS_BODY_SECRET'), 'durable operation storage must be hash-based');
+assert(sayu.includes("function isCompletedSnsStoryRecord"), 'SayuPage must identify completed sns_story records explicitly');
+assert(sayu.includes("record.source === 'sns_story' && record.generationStatus === 'completed'"), 'SNS 갈무리 records must be detected by source and completed status');
+assert(sayu.includes('if (isCompletedSnsStoryRecord(record)) return false;'), 'SNS 갈무리 records must not be hidden as Gemini knowledge warehouse records');
+assert(sayu.includes('label: SNS_GALMURI_LABEL'), 'completed SNS stories must be listed under the SNS 갈무리 assistant group');
+assert(sayu.includes("onOpen: () => openFormatSayu(record.date, 'essay', SNS_GALMURI_LABEL, record.id)"), 'SNS 갈무리 entries must reuse essay detail rendering');
+assert(sayu.includes("filterFormat === SNS_GALMURI_LABEL ? 'essay'"), 'SNS 갈무리 route state must map to essay detail fields');
+assert(home.includes("label: 'SNS 갈무리'"), 'home card must use SNS 갈무리 naming');
+assert(recordHub.includes("label: 'SNS 갈무리'"), 'record hub card must use SNS 갈무리 naming');
+assert(page.includes('SNS 갈무리 비서'), 'SNS records page title must use SNS 갈무리 비서 naming');
 assert(!routes.includes('sns-story'), 'no new SNS story route should be added');
 
 console.log('sns story creator policy tests passed');
