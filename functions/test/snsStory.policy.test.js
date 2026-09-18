@@ -19,11 +19,14 @@ const {
   SNS_STORY_FINAL_STORY_MAX_OUTPUT_TOKENS,
   SNS_STORY_OPERATION_RECOVERY_MS,
   SNS_STORY_OPERATION_RECOVERY_LIMIT,
+  SNS_STORY_OPERATION_DOC_PREFIX,
+  SNS_STORY_OPERATION_KIND,
   normalizeSnsTimestampMs,
   toKstDateString,
   resolveSnsStoryRange,
   buildSnsStoryCounts,
   buildSnsStoryFinalPayloadHash,
+  buildSnsStoryOperationDocId,
   buildSnsStorySourceChunks,
   createSnsStoryGeminiCallBudget,
   groupSnsStoryChunks,
@@ -48,6 +51,8 @@ assert.strictEqual(SNS_STORY_FINAL_SYNOPSIS_MAX_OUTPUT_TOKENS, 2048);
 assert.strictEqual(SNS_STORY_FINAL_STORY_MAX_OUTPUT_TOKENS, 8192);
 assert.strictEqual(SNS_STORY_OPERATION_RECOVERY_MS, 24 * 60 * 60 * 1000);
 assert.strictEqual(SNS_STORY_OPERATION_RECOVERY_LIMIT, 20);
+assert.strictEqual(SNS_STORY_OPERATION_DOC_PREFIX, '_snsStoryPayload_');
+assert.strictEqual(SNS_STORY_OPERATION_KIND, 'sns_story_final_operation');
 
 assert(src.includes("users').doc(uid).collection('snsRecords')"), 'server must read users/{uid}/snsRecords');
 assert(!src.includes('request.data.uid'), 'client uid must not be trusted');
@@ -61,6 +66,8 @@ assert(src.includes('rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation)'
 assert(src.includes('if (!billableAiWorkStarted)'), 'SNS story quota rollback must stop after a Gemini call begins');
 assert(src.includes('requestPayloadHash'), 'final generation must store a normalized request payload hash');
 assert(src.includes("where('requestPayloadHash', '==', requestPayloadHash)"), 'final generation must recover same-payload operations');
+assert(src.includes('leaseSnsStoryFinalOperation'), 'final generation must use a server-side atomic operation lease');
+assert(src.includes("source: 'sns_story_operation'"), 'operation documents must not look like completed sns_story records');
 assert(src.includes('SNS_STORY_IDEMPOTENCY_CONFLICT'), 'same document id with different final inputs must fail explicitly');
 assert(src.includes('await tx.getAll(...sourceRefs)'), 'final save transaction must read selected source docs atomically');
 assert(src.includes('sanitizeSourceRecordIds(data.sourceRecordIds)'), 'final generation must require synopsis source ids');
@@ -163,6 +170,11 @@ assert.notStrictEqual(payloadHashA, buildSnsStoryFinalPayloadHash({
   title: '제목',
   confirmedSynopsis: '수정된 시놉시스',
 }), 'edited synopsis must change payload hash');
+assert.strictEqual(
+  buildSnsStoryOperationDocId(payloadHashA),
+  `${SNS_STORY_OPERATION_DOC_PREFIX}${payloadHashA}`,
+  'same payload hashes must map to one deterministic operation document',
+);
 assert.doesNotThrow(() => assertSnsStoryIdempotencyCompatible({ source: 'sns_story', requestPayloadHash: payloadHashA }, payloadHashA));
 const payloadHashDifferentSynopsis = buildSnsStoryFinalPayloadHash({
   range: { type: 'custom', from: '2024-01-01', to: '2024-12-31' },

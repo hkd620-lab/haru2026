@@ -41,6 +41,8 @@ export const SNS_STORY_FINAL_STORY_MIN_CHARS = 500;
 export const SNS_STORY_FINAL_STORY_MAX_CHARS = 60_000;
 export const SNS_STORY_OPERATION_RECOVERY_MS = 24 * 60 * 60 * 1000;
 export const SNS_STORY_OPERATION_RECOVERY_LIMIT = 20;
+export const SNS_STORY_OPERATION_DOC_PREFIX = '_snsStoryPayload_';
+export const SNS_STORY_OPERATION_KIND = 'sns_story_final_operation';
 
 type SnsStoryRangeType = 'all' | 'year' | 'custom';
 
@@ -132,6 +134,12 @@ export interface SnsStoryGeminiFactoryLike {
   ): SnsStoryGeminiModelLike;
 }
 
+let snsStoryGeminiFactoryForTest: SnsStoryGeminiFactoryLike | null = null;
+
+export function setSnsStoryGeminiFactoryForTest(factory: SnsStoryGeminiFactoryLike | null): void {
+  snsStoryGeminiFactoryForTest = factory;
+}
+
 interface CompletedSnsStoryCommitInput {
   uid: string;
   recordId: string;
@@ -146,6 +154,30 @@ interface CompletedSnsStoryCommitInput {
   confirmedSynopsis: string;
   requestTimestamp: number;
   requestPayloadHash: string;
+}
+
+interface SnsStoryOperationLeaseInput {
+  uid: string;
+  requestPayloadHash: string;
+  requestTimestamp: number;
+  recoveredRecordId?: string;
+  leaseOwner: string;
+  nowMs: number;
+  range: SnsStoryRange;
+  counts: SnsStoryCounts;
+  sourceRecordIds: string[];
+  expectedFingerprint: string;
+  confirmedSynopsis: string;
+}
+
+interface SnsStoryOperationLeaseResult {
+  action: 'leased' | 'completed' | 'generating';
+  recordId: string;
+  date: string;
+  requestTimestamp: number;
+  recordRef: admin.firestore.DocumentReference;
+  operationRef: admin.firestore.DocumentReference;
+  data?: admin.firestore.DocumentData;
 }
 
 function throwWithReason(
@@ -475,6 +507,166 @@ export async function recoverSnsStoryOperationByPayloadHash(
     requestPayloadHash,
     nowMs,
   );
+}
+
+export function buildSnsStoryOperationDocId(requestPayloadHash: string): string {
+  return `${SNS_STORY_OPERATION_DOC_PREFIX}${requestPayloadHash}`;
+}
+
+function getSnsStoryRecordsCollection(uid: string) {
+  return db.collection('users').doc(uid).collection('records');
+}
+
+function getSnsStoryOperationRef(uid: string, requestPayloadHash: string) {
+  return getSnsStoryRecordsCollection(uid).doc(buildSnsStoryOperationDocId(requestPayloadHash));
+}
+
+function assertSnsStoryOperationCompatible(
+  data: admin.firestore.DocumentData | undefined,
+  requestPayloadHash: string,
+): void {
+  if (!data) return;
+  const storedHash = typeof data.operationPayloadHash === 'string'
+    ? data.operationPayloadHash.trim().toLowerCase()
+    : '';
+  if (storedHash && storedHash !== requestPayloadHash) {
+    throwWithReason(
+      'failed-precondition',
+      '같은 SNS 이야기 작업 ID가 다른 입력으로 사용되었습니다.',
+      'SNS_STORY_IDEMPOTENCY_CONFLICT',
+    );
+  }
+}
+
+function resolveSnsStoryOperationTarget(
+  data: admin.firestore.DocumentData | undefined,
+  fallbackRequestTimestamp: number,
+  fallbackRecordId?: string,
+): { recordId: string; requestTimestamp: number; date: string } {
+  const storedTimestamp = normalizeSnsTimestampMs(data?.requestTimestamp);
+  const requestTimestamp = storedTimestamp || fallbackRequestTimestamp;
+  const storedRecordId = typeof data?.targetRecordId === 'string'
+    ? data.targetRecordId.trim()
+    : '';
+  const recordId = storedRecordId || fallbackRecordId || buildRecordId(requestTimestamp).id;
+  return {
+    recordId,
+    requestTimestamp,
+    date: toKstDateString(requestTimestamp),
+  };
+}
+
+async function leaseSnsStoryFinalOperation(
+  input: SnsStoryOperationLeaseInput,
+): Promise<SnsStoryOperationLeaseResult> {
+  const recordsRef = getSnsStoryRecordsCollection(input.uid);
+  const operationRef = getSnsStoryOperationRef(input.uid, input.requestPayloadHash);
+
+  return db.runTransaction(async (tx) => {
+    const operationSnap = await tx.get(operationRef);
+    const operationData = operationSnap.data() || {};
+    assertSnsStoryOperationCompatible(operationData, input.requestPayloadHash);
+
+    const target = resolveSnsStoryOperationTarget(
+      operationData,
+      input.requestTimestamp,
+      input.recoveredRecordId,
+    );
+    const recordRef = recordsRef.doc(target.recordId);
+    const recordSnap = await tx.get(recordRef);
+
+    if (recordSnap.exists) {
+      const existing = recordSnap.data() || {};
+      assertSnsStoryIdempotencyCompatible(existing, input.requestPayloadHash);
+      if (existing.generationStatus === 'completed') {
+        if (operationSnap.exists && operationData.leaseOwner === input.leaseOwner) {
+          tx.set(operationRef, {
+            operationStatus: 'completed',
+            targetRecordId: target.recordId,
+            requestTimestamp: target.requestTimestamp,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          }, { merge: true });
+        }
+        return {
+          action: 'completed' as const,
+          recordId: target.recordId,
+          date: target.date,
+          requestTimestamp: target.requestTimestamp,
+          recordRef,
+          operationRef,
+          data: existing,
+        };
+      }
+      const recordLeaseExpiresAtMs = normalizeSnsTimestampMs(existing.leaseExpiresAt);
+      if (existing.generationStatus === 'generating' && recordLeaseExpiresAtMs > input.nowMs) {
+        return {
+          action: 'generating' as const,
+          recordId: target.recordId,
+          date: target.date,
+          requestTimestamp: target.requestTimestamp,
+          recordRef,
+          operationRef,
+          data: existing,
+        };
+      }
+    }
+
+    const operationLeaseExpiresAtMs = normalizeSnsTimestampMs(operationData.leaseExpiresAt);
+    if (
+      operationSnap.exists
+      && operationData.operationStatus === 'generating'
+      && operationLeaseExpiresAtMs > input.nowMs
+    ) {
+      return {
+        action: 'generating' as const,
+        recordId: target.recordId,
+        date: target.date,
+        requestTimestamp: target.requestTimestamp,
+        recordRef,
+        operationRef,
+        data: operationData,
+      };
+    }
+
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const leaseExpiresAt = admin.firestore.Timestamp.fromMillis(input.nowMs + SNS_STORY_LEASE_MS);
+    tx.set(operationRef, {
+      source: 'sns_story_operation',
+      operationKind: SNS_STORY_OPERATION_KIND,
+      operationPayloadHash: input.requestPayloadHash,
+      operationStatus: 'generating',
+      targetRecordId: target.recordId,
+      requestTimestamp: target.requestTimestamp,
+      leaseOwner: input.leaseOwner,
+      leaseExpiresAt,
+      createdAt: operationSnap.exists ? (operationData.createdAt || now) : now,
+      updatedAt: now,
+    }, { merge: true });
+    tx.set(recordRef, {
+      source: 'sns_story',
+      generationStatus: 'generating',
+      leaseOwner: input.leaseOwner,
+      leaseExpiresAt,
+      requestTimestamp: target.requestTimestamp,
+      requestPayloadHash: input.requestPayloadHash,
+      sourceFingerprint: input.expectedFingerprint,
+      range: input.range,
+      counts: input.counts,
+      sourceRecordIds: input.sourceRecordIds,
+      confirmedSynopsis: input.confirmedSynopsis,
+      createdAt: recordSnap.exists ? (recordSnap.data()?.createdAt || now) : now,
+      updatedAt: now,
+    }, { merge: true });
+
+    return {
+      action: 'leased' as const,
+      recordId: target.recordId,
+      date: target.date,
+      requestTimestamp: target.requestTimestamp,
+      recordRef,
+      operationRef,
+    };
+  });
 }
 
 function selectSnsStorySource(
@@ -818,7 +1010,8 @@ async function generateGeminiText(
   prompt: string,
   options: GenerateGeminiTextOptions,
 ): Promise<string> {
-  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY.value()) as unknown as SnsStoryGeminiFactoryLike;
+  const genAI = snsStoryGeminiFactoryForTest
+    || new GoogleGenerativeAI(GEMINI_API_KEY.value()) as unknown as SnsStoryGeminiFactoryLike;
   return invokeSnsStoryGeminiText(genAI, systemInstruction, prompt, options);
 }
 
@@ -1011,6 +1204,7 @@ export async function commitCompletedSnsStoryRecord(input: CompletedSnsStoryComm
   await db.runTransaction(async (tx) => {
     const userRef = db.collection('users').doc(input.uid);
     const recordRef = userRef.collection('records').doc(input.recordId);
+    const operationRef = getSnsStoryOperationRef(input.uid, input.requestPayloadHash);
     const sourceRefs = input.sourceRecordIds.map((id) => userRef.collection('snsRecords').doc(id));
 
     // The synopsis snapshot defines the story source set. New SNS records after synopsis are ignored here;
@@ -1045,6 +1239,7 @@ export async function commitCompletedSnsStoryRecord(input: CompletedSnsStoryComm
     }
 
     const snap = await tx.get(recordRef);
+    const operationSnap = await tx.get(operationRef);
     const existing = snap.data() || {};
     assertSnsStoryIdempotencyCompatible(existing, input.requestPayloadHash);
     if (existing.generationStatus === 'completed') return;
@@ -1088,13 +1283,29 @@ export async function commitCompletedSnsStoryRecord(input: CompletedSnsStoryComm
       failureReason: admin.firestore.FieldValue.delete(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
+    if (operationSnap.exists && operationSnap.data()?.leaseOwner === input.leaseOwner) {
+      tx.set(operationRef, {
+        operationStatus: 'completed',
+        targetRecordId: input.recordId,
+        requestTimestamp: input.requestTimestamp,
+        leaseExpiresAt: admin.firestore.FieldValue.delete(),
+        failureReason: admin.firestore.FieldValue.delete(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    }
   });
 }
 
-async function markGenerationFailed(recordRef: admin.firestore.DocumentReference, leaseOwner: string, reason: string) {
+async function markGenerationFailed(
+  recordRef: admin.firestore.DocumentReference,
+  leaseOwner: string,
+  reason: string,
+  operationRef?: admin.firestore.DocumentReference,
+) {
   try {
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(recordRef);
+      const operationSnap = operationRef ? await tx.get(operationRef) : null;
       if (!snap.exists || snap.data()?.leaseOwner !== leaseOwner) return;
       tx.set(recordRef, {
         generationStatus: 'failed',
@@ -1102,6 +1313,14 @@ async function markGenerationFailed(recordRef: admin.firestore.DocumentReference
         leaseExpiresAt: admin.firestore.FieldValue.delete(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
+      if (operationRef && operationSnap?.exists && operationSnap.data()?.leaseOwner === leaseOwner) {
+        tx.set(operationRef, {
+          operationStatus: 'failed',
+          failureReason: reason,
+          leaseExpiresAt: admin.firestore.FieldValue.delete(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+      }
     });
   } catch {
     // 실패 상태 기록이 실패해도 원래 오류를 덮지 않는다.
@@ -1206,28 +1425,10 @@ export const generateSnsStoryFinal = onCall(
         message: '같은 요청의 SNS 이야기가 이미 생성 중입니다. 잠시 후 다시 확인해 주세요.',
       };
     }
+    let recoveredRecordId: string | undefined;
     if (recoveredOperation?.action === 'retry') {
       requestTimestamp = recoveredOperation.requestTimestamp;
-    }
-
-    const { date, id: recordId } = buildRecordId(requestTimestamp);
-    const recordRef = db.collection('users').doc(uid).collection('records').doc(recordId);
-
-    const existingSnap = await recordRef.get();
-    if (existingSnap.exists) {
-      const existing = existingSnap.data() || {};
-      assertSnsStoryIdempotencyCompatible(existing, requestPayloadHash);
-      if (existing.generationStatus === 'completed') {
-        return completedPayloadFromDoc(recordId, existing);
-      }
-      const leaseExpiresAtMs = normalizeSnsTimestampMs(existing.leaseExpiresAt);
-      if (existing.generationStatus === 'generating' && leaseExpiresAtMs > Date.now()) {
-        return {
-          status: 'generating',
-          recordId,
-          message: '같은 요청의 SNS 이야기가 이미 생성 중입니다. 잠시 후 다시 확인해 주세요.',
-        };
-      }
+      recoveredRecordId = recoveredOperation.recordId;
     }
 
     const sourceBeforeLease = await loadSelectedSnsStorySourceByIds(uid, range, excludedIds, requestedSourceRecordIds);
@@ -1242,48 +1443,36 @@ export const generateSnsStoryFinal = onCall(
 
     const leaseOwner = crypto.randomBytes(12).toString('hex');
     const nowMs = Date.now();
-    const leaseResult = await db.runTransaction(async (tx) => {
-      const snap = await tx.get(recordRef);
-      if (snap.exists) {
-        const existing = snap.data() || {};
-        assertSnsStoryIdempotencyCompatible(existing, requestPayloadHash);
-        if (existing.generationStatus === 'completed') {
-          return { action: 'completed' as const, data: existing };
-        }
-        const leaseExpiresAtMs = normalizeSnsTimestampMs(existing.leaseExpiresAt);
-        if (existing.generationStatus === 'generating' && leaseExpiresAtMs > nowMs) {
-          return { action: 'generating' as const, data: existing };
-        }
-      }
-      tx.set(recordRef, {
-        source: 'sns_story',
-        generationStatus: 'generating',
-        leaseOwner,
-        leaseExpiresAt: admin.firestore.Timestamp.fromMillis(nowMs + SNS_STORY_LEASE_MS),
-        requestTimestamp,
-        requestPayloadHash,
-        sourceFingerprint: expectedFingerprint,
-        range,
-        counts: sourceBeforeLease.counts,
-        sourceRecordIds: sourceBeforeLease.sourceRecordIds,
-        confirmedSynopsis,
-        createdAt: snap.exists ? (snap.data()?.createdAt || admin.firestore.FieldValue.serverTimestamp()) : admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      }, { merge: true });
-      return { action: 'leased' as const, data: null };
+    const leaseResult = await leaseSnsStoryFinalOperation({
+      uid,
+      requestPayloadHash,
+      requestTimestamp,
+      recoveredRecordId,
+      leaseOwner,
+      nowMs,
+      range,
+      counts: sourceBeforeLease.counts,
+      sourceRecordIds: sourceBeforeLease.sourceRecordIds,
+      expectedFingerprint,
+      confirmedSynopsis,
     });
 
     if (leaseResult.action === 'completed') {
-      return completedPayloadFromDoc(recordId, leaseResult.data);
+      return completedPayloadFromDoc(leaseResult.recordId, leaseResult.data || {});
     }
     if (leaseResult.action === 'generating') {
       return {
         status: 'generating',
-        recordId,
+        recordId: leaseResult.recordId,
         message: '같은 요청의 SNS 이야기가 이미 생성 중입니다. 잠시 후 다시 확인해 주세요.',
       };
     }
 
+    const recordId = leaseResult.recordId;
+    const recordRef = leaseResult.recordRef;
+    const operationRef = leaseResult.operationRef;
+    const date = leaseResult.date;
+    requestTimestamp = leaseResult.requestTimestamp;
     let monthlyQuotaReservation: MonthlyAiQuotaReservation | null = null;
     let billableAiWorkStarted = false;
     const markBillableAiWorkStarted = () => {
@@ -1332,6 +1521,7 @@ export const generateSnsStoryFinal = onCall(
         recordRef,
         leaseOwner,
         error instanceof HttpsError ? String(error.details && (error.details as any).reason || error.code) : 'SNS_STORY_FINAL_FAILED',
+        operationRef,
       );
       if (error instanceof HttpsError) throw error;
       throw new HttpsError('internal', 'SNS 이야기 생성에 실패했습니다.');
