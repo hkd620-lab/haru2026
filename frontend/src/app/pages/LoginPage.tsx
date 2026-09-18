@@ -20,6 +20,12 @@ const SOCIAL_LOGIN_URLS: Record<Extract<LoginProvider, 'google' | 'kakao' | 'nav
   naver: 'https://naverloginstart-6ieesxet3q-du.a.run.app',
 };
 
+function buildSocialLoginUrl(provider: Extract<LoginProvider, 'google' | 'kakao' | 'naver'>): string {
+  const url = new URL(SOCIAL_LOGIN_URLS[provider]);
+  url.searchParams.set('returnOrigin', window.location.origin);
+  return url.toString();
+}
+
 export function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -103,7 +109,7 @@ export function LoginPage() {
       return;
     }
     markLoginTrace('T1_provider_redirect_requested');
-    window.location.assign(SOCIAL_LOGIN_URLS.google);
+    window.location.assign(buildSocialLoginUrl('google'));
   };
 
   // 카카오 로그인
@@ -113,7 +119,7 @@ export function LoginPage() {
     setIsLoading(true);
     beginLoginTrace('kakao');
     markLoginTrace('T1_provider_redirect_requested');
-    window.location.assign(SOCIAL_LOGIN_URLS.kakao);
+    window.location.assign(buildSocialLoginUrl('kakao'));
   };
 
   // 네이버 로그인
@@ -123,7 +129,7 @@ export function LoginPage() {
     setIsLoading(true);
     beginLoginTrace('naver');
     markLoginTrace('T1_provider_redirect_requested');
-    window.location.assign(SOCIAL_LOGIN_URLS.naver);
+    window.location.assign(buildSocialLoginUrl('naver'));
   };
 
   const handleEmailSubmit = async (event: FormEvent<HTMLFormElement>) => {

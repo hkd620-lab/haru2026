@@ -1,5 +1,8 @@
 export type LoginOAuthProvider = 'kakao' | 'naver' | 'google';
 
+export const DEFAULT_LOGIN_FRONTEND_ORIGIN = 'https://haru2026.com';
+const FIREBASE_PREVIEW_HOST_PATTERN = /^haru2026-8abb8--[a-z0-9-]+\.web\.app$/;
+
 type OAuthStateDoc = {
   exists: boolean;
   data(): Record<string, any> | undefined;
@@ -22,6 +25,31 @@ type NowProvider = () => number;
 function getOAuthStateExpiryMs(data: Record<string, any> | undefined): number {
   const expiresAt = data?.expiresAt;
   return typeof expiresAt?.toMillis === 'function' ? expiresAt.toMillis() : 0;
+}
+
+export function resolveLoginFrontendOrigin(
+  returnOrigin: unknown,
+  fallbackOrigin = DEFAULT_LOGIN_FRONTEND_ORIGIN,
+): string {
+  if (typeof returnOrigin !== 'string') return fallbackOrigin;
+
+  const candidate = returnOrigin.trim();
+  if (!candidate) return fallbackOrigin;
+
+  try {
+    const url = new URL(candidate);
+    if (url.protocol !== 'https:') return fallbackOrigin;
+    if (url.username || url.password || url.port) return fallbackOrigin;
+    if (url.pathname !== '/' || url.search || url.hash) return fallbackOrigin;
+    if (candidate !== url.origin) return fallbackOrigin;
+
+    if (url.hostname === 'haru2026.com') return url.origin;
+    if (FIREBASE_PREVIEW_HOST_PATTERN.test(url.hostname)) return url.origin;
+  } catch {
+    return fallbackOrigin;
+  }
+
+  return fallbackOrigin;
 }
 
 export async function consumeLoginOAuthStateWithDb(

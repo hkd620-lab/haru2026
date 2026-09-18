@@ -1,7 +1,13 @@
 const assert = require('assert');
-const { consumeLoginOAuthStateWithDb } = require('../lib/oauthStateCore');
+const {
+  DEFAULT_LOGIN_FRONTEND_ORIGIN,
+  consumeLoginOAuthStateWithDb,
+  resolveLoginFrontendOrigin,
+} = require('../lib/oauthStateCore');
 
 const NOW = Date.UTC(2026, 8, 12, 0, 0, 0);
+const PREVIEW_ORIGIN = 'https://haru2026-8abb8--pr205-feat-sns-trash-indiv-tdk7e1b5.web.app';
+const FALLBACK_ORIGIN = 'https://fallback.example';
 
 function timestamp(ms) {
   return { toMillis: () => ms };
@@ -70,6 +76,30 @@ async function rejectsWithMessage(task, message) {
 }
 
 async function run() {
+  assert.equal(DEFAULT_LOGIN_FRONTEND_ORIGIN, 'https://haru2026.com');
+  assert.equal(resolveLoginFrontendOrigin('https://haru2026.com', FALLBACK_ORIGIN), 'https://haru2026.com');
+  assert.equal(resolveLoginFrontendOrigin(PREVIEW_ORIGIN, FALLBACK_ORIGIN), PREVIEW_ORIGIN);
+
+  for (const blockedOrigin of [
+    'https://evil.com',
+    'https://haru2026-8abb8--abc.web.app.evil.com',
+    'http://haru2026-8abb8--abc.web.app',
+    'https://user@haru2026-8abb8--abc.web.app',
+    'https://haru2026-8abb8--abc.web.app:1234',
+    'https://haru2026-8abb8--abc.web.app/login',
+    'https://haru2026-8abb8--abc.web.app?next=/login',
+    'https://haru2026-8abb8--abc.web.app#token',
+    'not a url',
+    '',
+    null,
+  ]) {
+    assert.equal(
+      resolveLoginFrontendOrigin(blockedOrigin, FALLBACK_ORIGIN),
+      FALLBACK_ORIGIN,
+      `${blockedOrigin} must fall back`,
+    );
+  }
+
   {
     const db = createDb({
       one: { provider: 'google', expiresAt: timestamp(NOW + 1000) },
@@ -122,9 +152,10 @@ async function run() {
   }
 
   const db = createDb({
-    reused: { provider: 'naver', expiresAt: timestamp(NOW + 1000) },
+    reused: { provider: 'naver', returnOrigin: PREVIEW_ORIGIN, expiresAt: timestamp(NOW + 1000) },
   });
-  await consumeLoginOAuthStateWithDb(db, 'reused', 'naver', () => NOW);
+  const consumedState = await consumeLoginOAuthStateWithDb(db, 'reused', 'naver', () => NOW);
+  assert.equal(consumedState.returnOrigin, PREVIEW_ORIGIN, 'valid return origin should survive state consume');
   assert.equal(db.hasState('reused'), false, 'valid state should be consumed exactly once');
   await rejectsWithMessage(
     () => consumeLoginOAuthStateWithDb(db, 'reused', 'naver', () => NOW),
