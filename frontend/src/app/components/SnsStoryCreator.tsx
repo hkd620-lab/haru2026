@@ -629,7 +629,7 @@ export function SnsStoryCreator({
         ) : (
           artworks.map((artwork) => {
             const title = artwork.essay_title || artwork.essay_ai_title || 'SNS 갈무리 이야기';
-            const content = artwork.content || artwork.essay_sayu || '';
+            const content = artwork.essay_sayu || artwork.content || '';
             const expanded = expandedArtworkIds.has(artwork.id);
             const bodyId = `sns-story-artwork-${artwork.id}`;
             const visibleContent = expanded || content.length <= 180 ? content : `${content.slice(0, 180)}...`;

@@ -44,6 +44,8 @@ assert(component.includes('SNS 갈무리에서 보기'), 'completed SNS story sa
 assert(component.includes("filterFormat: SNS_GALMURI_LABEL"), 'completed SNS story navigation must target the SNS 갈무리 Sayu group');
 assert(component.includes('aria-expanded={expanded}'), 'saved SNS artworks must expose accessible expand/collapse state');
 assert(component.includes('전문 보기') && component.includes('접기'), 'saved SNS artworks must support full-text view and collapse');
+assert(component.includes("const content = artwork.essay_sayu || artwork.content || '';"), 'saved artwork previews must prefer edited essay_sayu over original content and fall back to content');
+assert(component.includes('const visibleContent = expanded || content.length <= 180'), 'saved artwork expand/collapse must still derive from the selected display content');
 assert(component.includes("SNS 갈무리 · 저장된 작품"), 'saved artwork list must use the SNS 갈무리 naming');
 assert(requestState.includes('buildSnsStoryFinalLogicalKey'), 'final idempotency key helper must be present');
 assert(requestState.includes('logicalKeyHash') && !requestState.includes('RAW_SNS_BODY_SECRET'), 'durable operation storage must be hash-based');
