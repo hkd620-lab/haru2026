@@ -21,6 +21,7 @@
     "test:convert-heic-guard": "node test/convertHeicGuard.policy.test.js",
     "test:account-deletion-completeness": "node test/accountDeletionCompleteness.policy.test.js",
     "test:sns-thumbnail-cleanup": "node test/snsThumbnailCleanup.test.mjs",
+    "test:sns-story": "node test/snsStory.policy.test.js",
     "deploy": "echo '❌ 전체 배포 금지. 함수명을 명시하십시오: firebase deploy --only functions:함수명 --project haru2026-8abb8' && exit 1"
   },
   "engines": {
