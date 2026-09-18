@@ -7,6 +7,8 @@ const mergeUtil = fs.readFileSync(path.join(root, 'frontend/src/app/utils/snsRec
 const recordsPage = fs.readFileSync(path.join(root, 'frontend/src/app/pages/SnsRecordsPage.tsx'), 'utf8');
 const haruTab = fs.readFileSync(path.join(root, 'frontend/src/app/components/SnsHaruTab.tsx'), 'utf8');
 const thumbnails = fs.readFileSync(path.join(root, 'frontend/src/app/components/SnsPrivateThumbnails.tsx'), 'utf8');
+const thumbnailState = fs.readFileSync(path.join(root, 'frontend/src/app/utils/snsPrivateThumbnailState.ts'), 'utf8');
+const thumbnailCache = fs.readFileSync(path.join(root, 'frontend/src/app/utils/snsThumbnailAuthCache.js'), 'utf8');
 const analyzer = fs.readFileSync(path.join(root, 'functions/src/snsAnalyzer.ts'), 'utf8');
 
 function loadMergeHelper() {
@@ -84,11 +86,11 @@ assert(!recordsPage.includes('if (seen.has(key)) return;'), 'SNS timeline must n
 assert(!haruTab.includes('if (seen.has(key)) return;'), 'SNS HARU tab must not drop duplicate records before merging thumbnails');
 
 assert(thumbnails.includes('SNS_THUMBNAIL_DISPLAY_LIMIT = 12'), 'frontend must allow all existing grouped SNS thumbnails to render');
-assert(thumbnails.includes('thumbnailDataCache'), 'frontend must cache successful thumbnail payloads within the session');
-assert(thumbnails.includes('thumbnailCacheKey(userUid, path)'), 'thumbnail cache keys must explicitly include the current uid');
-assert(thumbnails.includes('syncThumbnailCacheUser(null)'), 'thumbnail cache must clear on logout or missing uid');
-assert(thumbnails.includes('THUMBNAIL_CACHE_MAX_ENTRIES'), 'thumbnail cache must have an entry cap');
-assert(thumbnails.includes('THUMBNAIL_CACHE_MAX_BASE64_CHARS'), 'thumbnail cache must have a total payload cap');
+assert(thumbnailState.includes('thumbnailCache'), 'frontend must cache successful thumbnail payloads within the session');
+assert(thumbnailState.includes('thumbnailCacheKey(userUid, path)'), 'thumbnail cache keys must explicitly include the current uid');
+assert(thumbnailCache.includes('clearValues();'), 'thumbnail cache must clear on auth scope changes');
+assert(thumbnailState.includes('THUMBNAIL_CACHE_MAX_ENTRIES'), 'thumbnail cache must have an entry cap');
+assert(thumbnailState.includes('THUMBNAIL_CACHE_MAX_BASE64_CHARS'), 'thumbnail cache must have a total payload cap');
 assert(thumbnails.includes('uniqueSnsThumbnailsByContentHash(thumbnailImages)'), 'thumbnail cards must de-duplicate returned bytes by content hash');
 assert(
   thumbnails.includes('4: 52 groups, 8: 4, 12: 16; max 12'),

@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
-import { httpsCallable } from 'firebase/functions';
-import { auth, functions } from '../../firebase';
+import { useEffect, useMemo, useState } from 'react';
+import { RotateCw } from 'lucide-react';
 import { uniqueSnsThumbnailsByContentHash } from '../utils/snsRecords';
+import {
+  createSnsThumbnailLoad,
+  isSnsThumbnailAuthUserCurrent,
+  ThumbnailCacheItem,
+} from '../utils/snsPrivateThumbnailState';
 
 interface SnsPrivateThumbnailsProps {
   thumbnails?: string[];
@@ -10,64 +13,8 @@ interface SnsPrivateThumbnailsProps {
 }
 
 const SNS_THUMBNAIL_DISPLAY_LIMIT = 12;
-const THUMBNAIL_CACHE_MAX_ENTRIES = 300;
-const THUMBNAIL_CACHE_MAX_BASE64_CHARS = 12 * 1024 * 1024;
-interface ThumbnailCacheItem {
-  contentType: string;
-  dataBase64: string;
-  base64Chars: number;
-  contentHash?: string;
-}
 
-const thumbnailDataCache = new Map<string, ThumbnailCacheItem>();
-let thumbnailCacheUid: string | null = null;
-let thumbnailCacheBase64Chars = 0;
-
-function clearThumbnailDataCache() {
-  thumbnailDataCache.clear();
-  thumbnailCacheBase64Chars = 0;
-}
-
-function syncThumbnailCacheUser(userUid: string | null) {
-  if (thumbnailCacheUid === userUid) return;
-  clearThumbnailDataCache();
-  thumbnailCacheUid = userUid;
-}
-
-function thumbnailCacheKey(userUid: string, path: string): string {
-  return `${userUid}:${path}`;
-}
-
-function getThumbnailCacheItem(cacheKey: string) {
-  const cached = thumbnailDataCache.get(cacheKey);
-  if (!cached) return null;
-  thumbnailDataCache.delete(cacheKey);
-  thumbnailDataCache.set(cacheKey, cached);
-  return cached;
-}
-
-function setThumbnailCacheItem(cacheKey: string, contentType: string, dataBase64: string, contentHash?: string) {
-  const existing = thumbnailDataCache.get(cacheKey);
-  if (existing) {
-    thumbnailDataCache.delete(cacheKey);
-    thumbnailCacheBase64Chars -= existing.base64Chars;
-  }
-
-  const base64Chars = dataBase64.length;
-  thumbnailDataCache.set(cacheKey, { contentType, dataBase64, base64Chars, contentHash });
-  thumbnailCacheBase64Chars += base64Chars;
-
-  while (
-    thumbnailDataCache.size > THUMBNAIL_CACHE_MAX_ENTRIES ||
-    thumbnailCacheBase64Chars > THUMBNAIL_CACHE_MAX_BASE64_CHARS
-  ) {
-    const oldestKey = thumbnailDataCache.keys().next().value;
-    if (!oldestKey) break;
-    const oldest = thumbnailDataCache.get(oldestKey);
-    if (oldest) thumbnailCacheBase64Chars -= oldest.base64Chars;
-    thumbnailDataCache.delete(oldestKey);
-  }
-}
+type ThumbnailStatus = 'idle' | 'loading' | 'success' | 'error';
 
 function extractSnsThumbnailPath(value: string, userUid: string): string | null {
   const marker = `/users/${userUid}/snsThumbnails/`;
@@ -109,119 +56,148 @@ function classifyThumbnailValue(value: string): string {
 
 export function SnsPrivateThumbnails({ thumbnails = [], userUid }: SnsPrivateThumbnailsProps) {
   const [objectUrls, setObjectUrls] = useState<string[]>([]);
+  const [status, setStatus] = useState<ThumbnailStatus>('idle');
+  const [retryVersion, setRetryVersion] = useState(0);
+  const sourceValues = useMemo(
+    () => thumbnails
+      .slice(0, SNS_THUMBNAIL_DISPLAY_LIMIT)
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0),
+    [thumbnails]
+  );
+  const hasThumbnails = sourceValues.length > 0;
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      syncThumbnailCacheUser(currentUser?.uid || null);
-    });
-    return unsubscribe;
-  }, []);
-
-  useEffect(() => {
-    if (!userUid) {
-      syncThumbnailCacheUser(null);
+    if (!hasThumbnails) {
       setObjectUrls([]);
+      setStatus('idle');
       return;
     }
-    syncThumbnailCacheUser(userUid);
+    if (!userUid) {
+      setObjectUrls([]);
+      setStatus('error');
+      return;
+    }
+    if (!isSnsThumbnailAuthUserCurrent(userUid)) {
+      setObjectUrls([]);
+      setStatus('error');
+      return;
+    }
+    setObjectUrls([]);
+    setStatus('loading');
 
     let active = true;
     let createdUrls: string[] = [];
+    let releaseRequests = () => {};
+    let isCurrentLoad = () => isSnsThumbnailAuthUserCurrent(userUid);
 
     const load = async () => {
       // 2026-09-16 read-only production audit: all 72 merged photo groups
       // fit within 12 thumbnails (4: 52 groups, 8: 4, 12: 16; max 12).
-      const sourceValues = thumbnails
-        .slice(0, SNS_THUMBNAIL_DISPLAY_LIMIT)
-        .filter((value): value is string => typeof value === 'string');
-      const paths = thumbnails
-        .slice(0, SNS_THUMBNAIL_DISPLAY_LIMIT)
+      const paths = sourceValues
         .map((value) => extractSnsThumbnailPath(value, userUid))
         .filter((value): value is string => Boolean(value));
 
-      if (paths.length === 0 && sourceValues.length > 0) {
+      if (paths.length === 0) {
         console.warn('SNS 썸네일 경로 변환 실패', {
           count: sourceValues.length,
           kinds: sourceValues.map(classifyThumbnailValue),
         });
-        if (active) setObjectUrls([]);
-        return;
-      }
-      if (paths.length === 0) {
-        if (active) setObjectUrls([]);
+        if (active) setStatus('error');
         return;
       }
 
-      const pathRequests = paths.map((path) => ({ path, cacheKey: thumbnailCacheKey(userUid, path) }));
-      const missingRequests = pathRequests.filter((request) => !thumbnailDataCache.has(request.cacheKey));
-      if (missingRequests.length > 0) {
-        const callable = httpsCallable(functions, 'getSnsThumbnailData');
-        const result = await callable({ thumbnails: missingRequests.map((request) => request.path) });
-        if (!active) return;
-        const data = result.data as {
-          images?: { ok?: boolean; contentType?: string; dataBase64?: string; contentHash?: string; code?: string }[];
-        };
+      const thumbnailLoad = createSnsThumbnailLoad(userUid, paths);
+      releaseRequests = thumbnailLoad.release;
+      isCurrentLoad = thumbnailLoad.isCurrent;
+      const results = await thumbnailLoad.promise;
+      if (!active || !thumbnailLoad.isCurrent()) return;
 
-        (data.images || []).forEach((image, index) => {
-          if (!image?.ok || !image.dataBase64) return;
-          setThumbnailCacheItem(
-            missingRequests[index].cacheKey,
-            image.contentType || 'image/jpeg',
-            image.dataBase64,
-            image.contentHash
-          );
+      const failedCodes = results
+        .filter((result) => !result.ok)
+        .map((result) => result.code || 'unknown');
+      const invalidPathCount = sourceValues.length - paths.length;
+      if (failedCodes.length > 0 || invalidPathCount > 0) {
+        console.warn('SNS 썸네일 일부 조회 실패', {
+          count: failedCodes.length + invalidPathCount,
+          codes: [...failedCodes, ...Array(invalidPathCount).fill('invalid-thumbnail')],
         });
-
-        const failedCodes = (data.images || [])
-          .filter((image) => !image?.ok)
-          .map((image) => image?.code || 'unknown');
-        if (failedCodes.length > 0) {
-          console.warn('SNS 썸네일 일부 조회 실패', { count: failedCodes.length, codes: failedCodes });
-        }
       }
 
-      const thumbnailImages = pathRequests
-        .map((request) => {
-          const image = getThumbnailCacheItem(request.cacheKey);
-          return image ? { ...image, fallbackKey: request.cacheKey } : null;
-        })
-        .filter((image): image is ThumbnailCacheItem & { fallbackKey: string } => Boolean(image));
+      const thumbnailImages = results
+        .map((result) => result.ok && result.item ? result.item : null)
+        .filter((image): image is ThumbnailCacheItem => Boolean(image));
       const urls = uniqueSnsThumbnailsByContentHash(thumbnailImages)
         .map((image) => base64ToObjectUrl(image.dataBase64, image.contentType));
 
       createdUrls = urls;
-      if (active) {
-        setObjectUrls(urls);
-      } else {
-        urls.forEach((url) => URL.revokeObjectURL(url));
-      }
+      setObjectUrls(urls);
+      setStatus(failedCodes.length > 0 || invalidPathCount > 0 ? 'error' : 'success');
     };
 
     load().catch((error) => {
+      if (!active || !isCurrentLoad()) return;
       console.error('SNS 썸네일 조회 실패', {
         code: error?.code || error?.name || 'unknown',
       });
-      if (active) setObjectUrls([]);
+      setObjectUrls([]);
+      setStatus('error');
     });
 
     return () => {
       active = false;
+      releaseRequests();
       createdUrls.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [thumbnails, userUid]);
+  }, [hasThumbnails, retryVersion, sourceValues, userUid]);
 
-  if (objectUrls.length === 0) return null;
+  if (!hasThumbnails) return null;
 
   return (
-    <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
-      {objectUrls.map((url) => (
-        <img
-          key={url}
-          src={url}
-          alt=""
-          style={{ width: 88, height: 88, objectFit: 'cover', borderRadius: 8, background: '#eee' }}
-        />
-      ))}
+    <div style={{ marginTop: 10 }}>
+      {objectUrls.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {objectUrls.map((url) => (
+            <img
+              key={url}
+              src={url}
+              alt=""
+              style={{ width: 88, height: 88, objectFit: 'cover', borderRadius: 8, background: '#eee' }}
+            />
+          ))}
+        </div>
+      )}
+      {status === 'loading' && (
+        <div role="status" style={{ fontSize: 12, color: '#666', padding: '8px 0' }}>
+          사진 불러오는 중…
+        </div>
+      )}
+      {status === 'error' && (
+        <div
+          role="alert"
+          style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#9b3a32', padding: '8px 0' }}
+        >
+          <span>사진을 불러오지 못했습니다 ·</span>
+          <button
+            type="button"
+            onClick={() => setRetryVersion((version) => version + 1)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              border: 0,
+              padding: 0,
+              background: 'transparent',
+              color: '#9b3a32',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            <RotateCw size={13} aria-hidden="true" />
+            다시 시도
+          </button>
+        </div>
+      )}
     </div>
   );
 }
