@@ -9,17 +9,11 @@ import { InAppBrowserLoginGuide } from '../components/InAppBrowserLoginGuide';
 import { getInAppBrowserInfo, type InAppBrowserInfo } from '../utils/inAppBrowser';
 import { db } from '../config/firebase';
 import { beginLoginTrace, markLoginTrace } from '../utils/loginPerformance';
-import type { LoginProvider } from '../utils/loginProvider';
+import { buildSocialLoginUrl } from '../utils/socialLoginUrls';
 
 // 회원가입 동의 시점에 기록해두는 약관/방침 버전 — 추후 개정 시 재동의 대상을 가려낼 때 사용
 const TERMS_VERSION = '2026-08-20';
 const PRIVACY_VERSION = '2026-08-20';
-const SOCIAL_LOGIN_URLS: Record<Extract<LoginProvider, 'google' | 'kakao' | 'naver'>, string> = {
-  google: 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/googleLoginStart',
-  kakao: 'https://kakaologinstart-6ieesxet3q-du.a.run.app',
-  naver: 'https://naverloginstart-6ieesxet3q-du.a.run.app',
-};
-
 export function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -103,7 +97,7 @@ export function LoginPage() {
       return;
     }
     markLoginTrace('T1_provider_redirect_requested');
-    window.location.assign(SOCIAL_LOGIN_URLS.google);
+    window.location.assign(buildSocialLoginUrl('google'));
   };
 
   // 카카오 로그인
@@ -113,7 +107,7 @@ export function LoginPage() {
     setIsLoading(true);
     beginLoginTrace('kakao');
     markLoginTrace('T1_provider_redirect_requested');
-    window.location.assign(SOCIAL_LOGIN_URLS.kakao);
+    window.location.assign(buildSocialLoginUrl('kakao'));
   };
 
   // 네이버 로그인
@@ -123,7 +117,7 @@ export function LoginPage() {
     setIsLoading(true);
     beginLoginTrace('naver');
     markLoginTrace('T1_provider_redirect_requested');
-    window.location.assign(SOCIAL_LOGIN_URLS.naver);
+    window.location.assign(buildSocialLoginUrl('naver'));
   };
 
   const handleEmailSubmit = async (event: FormEvent<HTMLFormElement>) => {

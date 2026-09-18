@@ -79,6 +79,9 @@ import {
 } from './internalEntitlements';
 import {
   consumeLoginOAuthStateWithDb,
+  DEFAULT_LOGIN_FRONTEND_ORIGIN,
+  getLoginOAuthCallbackCode,
+  resolveLoginFrontendOrigin,
   type LoginOAuthProvider,
 } from './oauthStateCore';
 // 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
@@ -115,7 +118,7 @@ const PLANTNET_API_KEY_SECRET = defineSecret('PLANTNET_API_KEY');
 const MICROSOFT_CLIENT_ID_SECRET = defineSecret('MICROSOFT_CLIENT_ID');
 const MICROSOFT_CLIENT_SECRET_SECRET = defineSecret('MICROSOFT_CLIENT_SECRET');
 const GOOGLE_DRIVE_SERVICE_ACCOUNT_SECRET = defineSecret('GOOGLE_DRIVE_SERVICE_ACCOUNT');
-const FRONTEND_URL = 'https://haru2026.com';
+const FRONTEND_URL = DEFAULT_LOGIN_FRONTEND_ORIGIN;
 // 관리자 전용 기능 접근 제어용 UID
 const ADMIN_UID = INTERNAL_ADMIN_UID;
 
@@ -402,13 +405,17 @@ function logOAuthCallbackCompleted(
   });
 }
 
-function buildFrontendAuthCallbackUrl(customToken: string, provider: LoginOAuthProvider): string {
+function buildFrontendAuthCallbackUrl(
+  customToken: string,
+  provider: LoginOAuthProvider,
+  frontendOrigin = FRONTEND_URL,
+): string {
   const params = new URLSearchParams({ customToken, provider });
-  return `${FRONTEND_URL}/auth/callback#${params.toString()}`;
+  return `${frontendOrigin}/auth/callback#${params.toString()}`;
 }
 
-function buildLoginErrorRedirect(provider: LoginOAuthProvider): string {
-  return `${FRONTEND_URL}/login?error=${provider}_login_failed`;
+function buildLoginErrorRedirect(provider: LoginOAuthProvider, frontendOrigin = FRONTEND_URL): string {
+  return `${frontendOrigin}/login?error=${provider}_login_failed`;
 }
 
 const HARU_PORTONE_STORE_ID = 'store-d9310c4a-b5e8-4f6e-9e92-88e6b119e838';
@@ -4896,9 +4903,11 @@ export const kakaoLoginStart = onRequest(
   async (req, res) => {
     try {
       const state = crypto.randomBytes(32).toString('hex');
+      const returnOrigin = resolveLoginFrontendOrigin(req.query.returnOrigin);
 
       await db.collection('oauth_states').doc(state).set({
         provider: 'kakao',
+        returnOrigin,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
       });
@@ -4923,21 +4932,23 @@ export const kakaoLoginStart = onRequest(
 export const kakaoCallback = onRequest(
   { region: 'asia-northeast3', memory: '512MiB', secrets: [KAKAO_CLIENT_ID_SECRET, KAKAO_CLIENT_SECRET_SECRET] },
   async (req, res) => {
+    let frontendOrigin = FRONTEND_URL;
     try {
       const callbackStartedAt = Date.now();
       const timings: Record<string, number> = {};
-      const { code, state } = req.query;
+      const { code, state, error: providerError } = req.query;
 
-      if (!code || typeof code !== 'string') throw new Error('Invalid code');
       if (!state || typeof state !== 'string') throw new Error('Invalid state');
 
-      await measureOAuthPhase(timings, 'stateMs', () => consumeLoginOAuthState(state, 'kakao'));
+      const oauthState = await measureOAuthPhase(timings, 'stateMs', () => consumeLoginOAuthState(state, 'kakao'));
+      frontendOrigin = resolveLoginFrontendOrigin(oauthState?.returnOrigin);
+      const callbackCode = getLoginOAuthCallbackCode(code, providerError);
 
       const kakaoTokenParams: Record<string, string | string[] | undefined> = {
         grant_type: 'authorization_code',
         client_id: KAKAO_CLIENT_ID_SECRET.value().trim(),
         redirect_uri: KAKAO_REDIRECT_URI,
-        code,
+        code: callbackCode,
       };
       const kakaoClientSecret = KAKAO_CLIENT_SECRET_SECRET.value().trim();
       if (kakaoClientSecret) {
@@ -5035,11 +5046,11 @@ export const kakaoCallback = onRequest(
       );
 
       logOAuthCallbackCompleted('kakao', callbackStartedAt, timings);
-      res.redirect(buildFrontendAuthCallbackUrl(customToken, 'kakao'));
+      res.redirect(buildFrontendAuthCallbackUrl(customToken, 'kakao', frontendOrigin));
 
     } catch (error: any) {
       logger.error('❌ 카카오 콜백 실패:', getSafeOAuthError(error));
-      res.redirect(buildLoginErrorRedirect('kakao'));
+      res.redirect(buildLoginErrorRedirect('kakao', frontendOrigin));
     }
   }
 );
@@ -5050,9 +5061,11 @@ export const naverLoginStart = onRequest(
   async (req, res) => {
     try {
       const state = crypto.randomBytes(32).toString('hex');
+      const returnOrigin = resolveLoginFrontendOrigin(req.query.returnOrigin);
 
       await db.collection('oauth_states').doc(state).set({
         provider: 'naver',
+        returnOrigin,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
       });
@@ -5076,15 +5089,17 @@ export const naverLoginStart = onRequest(
 export const naverCallback = onRequest(
   { region: 'asia-northeast3', memory: '512MiB', secrets: [NAVER_CLIENT_ID_SECRET, NAVER_CLIENT_SECRET_SECRET] },
   async (req, res) => {
+    let frontendOrigin = FRONTEND_URL;
     try {
       const callbackStartedAt = Date.now();
       const timings: Record<string, number> = {};
-      const { code, state } = req.query;
+      const { code, state, error: providerError } = req.query;
 
-      if (!code || typeof code !== 'string') throw new Error('Invalid code');
       if (!state || typeof state !== 'string') throw new Error('Invalid state');
 
-      await measureOAuthPhase(timings, 'stateMs', () => consumeLoginOAuthState(state, 'naver'));
+      const oauthState = await measureOAuthPhase(timings, 'stateMs', () => consumeLoginOAuthState(state, 'naver'));
+      frontendOrigin = resolveLoginFrontendOrigin(oauthState?.returnOrigin);
+      const callbackCode = getLoginOAuthCallbackCode(code, providerError);
 
       const tokenResponse = await measureOAuthPhase(
         timings,
@@ -5098,7 +5113,7 @@ export const naverCallback = onRequest(
               client_id: NAVER_CLIENT_ID_SECRET.value().trim(),
               client_secret: NAVER_CLIENT_SECRET_SECRET.value().trim(),
               redirect_uri: NAVER_REDIRECT_URI,
-              code,
+              code: callbackCode,
               state,
             },
             timeout: OAUTH_TOKEN_TIMEOUT_MS,
@@ -5146,11 +5161,11 @@ export const naverCallback = onRequest(
       );
 
       logOAuthCallbackCompleted('naver', callbackStartedAt, timings);
-      res.redirect(buildFrontendAuthCallbackUrl(customToken, 'naver'));
+      res.redirect(buildFrontendAuthCallbackUrl(customToken, 'naver', frontendOrigin));
 
     } catch (error: any) {
       logger.error('❌ 네이버 콜백 실패:', getSafeOAuthError(error));
-      res.redirect(buildLoginErrorRedirect('naver'));
+      res.redirect(buildLoginErrorRedirect('naver', frontendOrigin));
     }
   }
 );
@@ -5167,9 +5182,11 @@ export const googleLoginStart = onRequest(
       const GOOGLE_CLIENT_ID = GOOGLE_CLIENT_ID_SECRET.value();  // 🔐 Secret 값 사용
       
       const state = crypto.randomBytes(32).toString('hex');
+      const returnOrigin = resolveLoginFrontendOrigin(req.query.returnOrigin);
 
       await db.collection('oauth_states').doc(state).set({
         provider: 'google',
+        returnOrigin,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
       });
@@ -5199,18 +5216,20 @@ export const googleCallback = onRequest(
     secrets: [GOOGLE_CLIENT_ID_SECRET, GOOGLE_CLIENT_SECRET_SECRET]  // 🔐 Secret 연결
   },
   async (req, res) => {
+    let frontendOrigin = FRONTEND_URL;
     try {
       const callbackStartedAt = Date.now();
       const timings: Record<string, number> = {};
       const GOOGLE_CLIENT_ID = GOOGLE_CLIENT_ID_SECRET.value();  // 🔐 Secret 값 사용
       const GOOGLE_CLIENT_SECRET = GOOGLE_CLIENT_SECRET_SECRET.value();  // 🔐 Secret 값 사용
       
-      const { code, state } = req.query;
+      const { code, state, error: providerError } = req.query;
 
-      if (!code || typeof code !== 'string') throw new Error('Invalid code');
       if (!state || typeof state !== 'string') throw new Error('Invalid state');
 
-      await measureOAuthPhase(timings, 'stateMs', () => consumeLoginOAuthState(state, 'google'));
+      const oauthState = await measureOAuthPhase(timings, 'stateMs', () => consumeLoginOAuthState(state, 'google'));
+      frontendOrigin = resolveLoginFrontendOrigin(oauthState?.returnOrigin);
+      const callbackCode = getLoginOAuthCallbackCode(code, providerError);
 
       const tokenResponse = await measureOAuthPhase(
         timings,
@@ -5218,7 +5237,7 @@ export const googleCallback = onRequest(
         () => axios.post(
           'https://oauth2.googleapis.com/token',
           {
-            code,
+            code: callbackCode,
             client_id: GOOGLE_CLIENT_ID,
             client_secret: GOOGLE_CLIENT_SECRET,
             redirect_uri: GOOGLE_REDIRECT_URI,
@@ -5269,11 +5288,11 @@ export const googleCallback = onRequest(
       );
 
       logOAuthCallbackCompleted('google', callbackStartedAt, timings);
-      res.redirect(buildFrontendAuthCallbackUrl(customToken, 'google'));
+      res.redirect(buildFrontendAuthCallbackUrl(customToken, 'google', frontendOrigin));
 
     } catch (error: any) {
       logger.error('❌ 구글 콜백 실패:', getSafeOAuthError(error));
-      res.redirect(buildLoginErrorRedirect('google'));
+      res.redirect(buildLoginErrorRedirect('google', frontendOrigin));
     }
   }
 );

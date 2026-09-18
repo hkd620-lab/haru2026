@@ -6,7 +6,7 @@ import { InAppBrowserLoginGuide } from '../components/InAppBrowserLoginGuide';
 import { getInAppBrowserInfo, type InAppBrowserInfo } from '../utils/inAppBrowser';
 import { GrapeAnimation } from '../components/GrapeAnimation';
 import { beginLoginTrace, markLoginTrace } from '../utils/loginPerformance';
-import type { LoginProvider } from '../utils/loginProvider';
+import { buildSocialLoginUrl } from '../utils/socialLoginUrls';
 
 /* ────────────────────────────────────────────────────────────
    HARU by HaruLab — 랜딩 (CD "Reposeful" 디자인 핸드오프 구현)
@@ -35,12 +35,6 @@ const agentBg: Record<Hue, string> = {
 const agentBorder: Record<Hue, string> = { green: C.lightGreen, lilac: C.lilac, terracotta: C.peach };
 
 const SHOW_PRICING = true;
-const SOCIAL_LOGIN_URLS: Record<Extract<LoginProvider, 'google' | 'kakao' | 'naver'>, string> = {
-  google: 'https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/googleLoginStart',
-  kakao: 'https://kakaologinstart-6ieesxet3q-du.a.run.app',
-  naver: 'https://naverloginstart-6ieesxet3q-du.a.run.app',
-};
-
 /* ── 기록 형식 11개 (홈 화면 일반 사용자 노출 기준과 일치) ── */
 const FORMATS: { name: string; icon: string; hue: Hue; cat: string; badge?: string }[] = [
   { name: '일기',         icon: 'diary',     hue: 'green',      cat: '생활' },
@@ -341,7 +335,7 @@ export function LandingPage() {
       return;
     }
     markLoginTrace('T1_provider_redirect_requested');
-    window.location.assign(SOCIAL_LOGIN_URLS.google);
+    window.location.assign(buildSocialLoginUrl('google'));
   };
 
   const handleKakaoLogin = () => {
@@ -351,7 +345,7 @@ export function LandingPage() {
     setIsLoginLoading(true);
     beginLoginTrace('kakao');
     markLoginTrace('T1_provider_redirect_requested');
-    window.location.assign(SOCIAL_LOGIN_URLS.kakao);
+    window.location.assign(buildSocialLoginUrl('kakao'));
   };
 
   const handleNaverLogin = () => {
@@ -361,7 +355,7 @@ export function LandingPage() {
     setIsLoginLoading(true);
     beginLoginTrace('naver');
     markLoginTrace('T1_provider_redirect_requested');
-    window.location.assign(SOCIAL_LOGIN_URLS.naver);
+    window.location.assign(buildSocialLoginUrl('naver'));
   };
 
   const socialLoginButtons = [
