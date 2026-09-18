@@ -8,6 +8,7 @@ import { db, storage, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { GrapeAnimation } from '../components/GrapeAnimation';
 import { SnsPrivateThumbnails } from '../components/SnsPrivateThumbnails';
+import { SnsStoryCreator } from '../components/SnsStoryCreator';
 import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { activeSnsRecords } from '../utils/snsRecordState';
@@ -82,12 +83,6 @@ function SnsRecordsContent() {
   const [timelinePage, setTimelinePage] = useState(1);
   const PAGE_SIZE = 10;
   const initialTabSet = useRef(false);
-
-  // 통합자서전 기간 선택
-  const [autobioRange, setAutobioRange] = useState<'all' | 'year' | 'custom'>('all');
-  const [autobioYear, setAutobioYear] = useState<string>('');
-  const [autobioFrom, setAutobioFrom] = useState<string>('');
-  const [autobioTo, setAutobioTo] = useState<string>('');
 
   // 검색결과 저장 진행상태
   const [savingSearch, setSavingSearch] = useState(false);
@@ -259,10 +254,6 @@ function SnsRecordsContent() {
       actionLocks.current.delete(record.id);
       if (session.isCurrent()) setBusyIds(new Set(actionLocks.current));
     }
-  };
-
-  const handleAutobioGenerate = () => {
-    toast.info('준비 중입니다');
   };
 
   if (authLoading) {
@@ -749,132 +740,14 @@ function SnsRecordsContent() {
 
         {/* === 탭3: 통합자서전생성 === */}
         {tab === 'autobio' && (
-          <section>
-            <div
-              style={{
-                background: '#fff',
-                border: `1px solid ${COLOR_BORDER}`,
-                borderRadius: 12,
-                padding: 16,
-                marginBottom: 12,
-              }}
-            >
-              <p style={{ fontSize: 13, color: '#444', lineHeight: 1.6, margin: 0 }}>
-                기간별 전체 기록으로 나의 이야기를 생성합니다
-              </p>
-            </div>
-
-            {/* 기간 선택 */}
-            <div style={{ fontSize: 12, fontWeight: 700, color: COLOR_BLUE, margin: '6px 0 8px' }}>
-              기간 선택
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-              {([
-                { k: 'all', label: '전체 기간' },
-                { k: 'year', label: '연도별' },
-                { k: 'custom', label: '직접설정' },
-              ] as { k: typeof autobioRange; label: string }[]).map((c) => {
-                const active = autobioRange === c.k;
-                return (
-                  <button
-                    key={c.k}
-                    type="button"
-                    onClick={() => setAutobioRange(c.k)}
-                    style={{
-                      padding: '8px 14px',
-                      borderRadius: 999,
-                      border: `1px solid ${active ? COLOR_BLUE : COLOR_BORDER}`,
-                      background: active ? COLOR_BLUE : '#fff',
-                      color: active ? '#fff' : COLOR_BLUE,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {c.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {autobioRange === 'year' && (
-              <input
-                type="number"
-                placeholder="예: 2024"
-                value={autobioYear}
-                onChange={(e) => setAutobioYear(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: 8,
-                  border: `1px solid ${COLOR_BORDER}`,
-                  fontSize: 13,
-                  outline: 'none',
-                  marginBottom: 10,
-                  boxSizing: 'border-box',
-                }}
-              />
-            )}
-
-            {autobioRange === 'custom' && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 6, marginBottom: 10 }}>
-                <input
-                  type="date"
-                  value={autobioFrom}
-                  onChange={(e) => setAutobioFrom(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: 8,
-                    border: `1px solid ${COLOR_BORDER}`,
-                    fontSize: 13,
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
-                />
-                <input
-                  type="date"
-                  value={autobioTo}
-                  onChange={(e) => setAutobioTo(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: 8,
-                    border: `1px solid ${COLOR_BORDER}`,
-                    fontSize: 13,
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-            )}
-
-            {/* 시놉시스 생성 버튼 */}
-            <button
-              type="button"
-              onClick={handleAutobioGenerate}
-              style={{
-                width: '100%',
-                padding: '14px 14px',
-                borderRadius: 10,
-                border: 'none',
-                background: COLOR_BLUE,
-                color: '#fff',
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: 'pointer',
-                marginTop: 6,
-                marginBottom: 12,
-              }}
-            >
-              📖 나의 이야기 시놉시스 생성
-            </button>
-
-            {/* 안내 문구 */}
-            <p style={{ fontSize: 12, color: '#666', lineHeight: 1.6, margin: 0 }}>
-              생성된 나의 이야기는 나도작가 SNS 작품 섹션에 저장됩니다
-            </p>
-          </section>
+          <SnsStoryCreator
+            rawRecords={rawRecords}
+            loadingRecords={loadingRecords}
+            serverReady={serverReady}
+            recordsError={recordsError}
+            session={session}
+            userUid={user?.uid}
+          />
         )}
       </div>
 

@@ -9,6 +9,10 @@ const thumbnailComponent = fs.readFileSync(
   path.join(root, 'frontend/src/app/components/SnsPrivateThumbnails.tsx'),
   'utf8'
 );
+const thumbnailState = fs.readFileSync(
+  path.join(root, 'frontend/src/app/utils/snsPrivateThumbnailState.ts'),
+  'utf8'
+);
 
 assert(
   analyzerSrc.includes("storagePath.startsWith(`users/${uid}/snsUploads/`)"),
@@ -34,7 +38,8 @@ assert(
 assert(!snsThumbnailRule[0].includes('allow read: if true'), 'snsThumbnails must not allow anonymous reads');
 assert(snsThumbnailRule[0].includes('allow write, delete: if false;'), 'clients must not write thumbnails');
 
-assert(thumbnailComponent.includes("httpsCallable(functions, 'getSnsThumbnailData')"), 'frontend must fetch private thumbnails through the authenticated callable');
+assert(thumbnailComponent.includes('createSnsThumbnailLoad'), 'frontend must fetch private thumbnails through the shared authenticated load path');
+assert(thumbnailState.includes("httpsCallable(functions, 'getSnsThumbnailData')"), 'shared thumbnail load path must call the authenticated callable');
 assert(!thumbnailComponent.includes('getDownloadURL'), 'frontend must not create token download URLs for SNS thumbnails');
 assert(!thumbnailComponent.includes('getBlob'), 'frontend must not depend on browser Storage blob CORS for SNS thumbnails');
 assert(thumbnailComponent.includes('URL.createObjectURL'), 'frontend must render blob object URLs only');
