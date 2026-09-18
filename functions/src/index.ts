@@ -80,6 +80,7 @@ import {
 import {
   consumeLoginOAuthStateWithDb,
   DEFAULT_LOGIN_FRONTEND_ORIGIN,
+  getLoginOAuthCallbackCode,
   resolveLoginFrontendOrigin,
   type LoginOAuthProvider,
 } from './oauthStateCore';
@@ -4935,19 +4936,19 @@ export const kakaoCallback = onRequest(
     try {
       const callbackStartedAt = Date.now();
       const timings: Record<string, number> = {};
-      const { code, state } = req.query;
+      const { code, state, error: providerError } = req.query;
 
-      if (!code || typeof code !== 'string') throw new Error('Invalid code');
       if (!state || typeof state !== 'string') throw new Error('Invalid state');
 
       const oauthState = await measureOAuthPhase(timings, 'stateMs', () => consumeLoginOAuthState(state, 'kakao'));
       frontendOrigin = resolveLoginFrontendOrigin(oauthState?.returnOrigin);
+      const callbackCode = getLoginOAuthCallbackCode(code, providerError);
 
       const kakaoTokenParams: Record<string, string | string[] | undefined> = {
         grant_type: 'authorization_code',
         client_id: KAKAO_CLIENT_ID_SECRET.value().trim(),
         redirect_uri: KAKAO_REDIRECT_URI,
-        code,
+        code: callbackCode,
       };
       const kakaoClientSecret = KAKAO_CLIENT_SECRET_SECRET.value().trim();
       if (kakaoClientSecret) {
@@ -5092,13 +5093,13 @@ export const naverCallback = onRequest(
     try {
       const callbackStartedAt = Date.now();
       const timings: Record<string, number> = {};
-      const { code, state } = req.query;
+      const { code, state, error: providerError } = req.query;
 
-      if (!code || typeof code !== 'string') throw new Error('Invalid code');
       if (!state || typeof state !== 'string') throw new Error('Invalid state');
 
       const oauthState = await measureOAuthPhase(timings, 'stateMs', () => consumeLoginOAuthState(state, 'naver'));
       frontendOrigin = resolveLoginFrontendOrigin(oauthState?.returnOrigin);
+      const callbackCode = getLoginOAuthCallbackCode(code, providerError);
 
       const tokenResponse = await measureOAuthPhase(
         timings,
@@ -5112,7 +5113,7 @@ export const naverCallback = onRequest(
               client_id: NAVER_CLIENT_ID_SECRET.value().trim(),
               client_secret: NAVER_CLIENT_SECRET_SECRET.value().trim(),
               redirect_uri: NAVER_REDIRECT_URI,
-              code,
+              code: callbackCode,
               state,
             },
             timeout: OAUTH_TOKEN_TIMEOUT_MS,
@@ -5222,13 +5223,13 @@ export const googleCallback = onRequest(
       const GOOGLE_CLIENT_ID = GOOGLE_CLIENT_ID_SECRET.value();  // 🔐 Secret 값 사용
       const GOOGLE_CLIENT_SECRET = GOOGLE_CLIENT_SECRET_SECRET.value();  // 🔐 Secret 값 사용
       
-      const { code, state } = req.query;
+      const { code, state, error: providerError } = req.query;
 
-      if (!code || typeof code !== 'string') throw new Error('Invalid code');
       if (!state || typeof state !== 'string') throw new Error('Invalid state');
 
       const oauthState = await measureOAuthPhase(timings, 'stateMs', () => consumeLoginOAuthState(state, 'google'));
       frontendOrigin = resolveLoginFrontendOrigin(oauthState?.returnOrigin);
+      const callbackCode = getLoginOAuthCallbackCode(code, providerError);
 
       const tokenResponse = await measureOAuthPhase(
         timings,
@@ -5236,7 +5237,7 @@ export const googleCallback = onRequest(
         () => axios.post(
           'https://oauth2.googleapis.com/token',
           {
-            code,
+            code: callbackCode,
             client_id: GOOGLE_CLIENT_ID,
             client_secret: GOOGLE_CLIENT_SECRET,
             redirect_uri: GOOGLE_REDIRECT_URI,

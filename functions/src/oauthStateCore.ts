@@ -52,6 +52,20 @@ export function resolveLoginFrontendOrigin(
   return fallbackOrigin;
 }
 
+export function getLoginOAuthCallbackCode(code: unknown, providerError: unknown): string {
+  if (hasLoginOAuthProviderError(providerError)) throw new Error('Provider returned OAuth error');
+  if (!code || typeof code !== 'string') throw new Error('Invalid code');
+  return code;
+}
+
+function hasLoginOAuthProviderError(providerError: unknown): boolean {
+  if (typeof providerError === 'string') return providerError.trim().length > 0;
+  if (Array.isArray(providerError)) {
+    return providerError.some((value) => typeof value === 'string' && value.trim().length > 0);
+  }
+  return false;
+}
+
 export async function consumeLoginOAuthStateWithDb(
   db: OAuthStateDb,
   state: string,

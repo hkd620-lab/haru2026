@@ -2,6 +2,7 @@ const assert = require('assert');
 const {
   DEFAULT_LOGIN_FRONTEND_ORIGIN,
   consumeLoginOAuthStateWithDb,
+  getLoginOAuthCallbackCode,
   resolveLoginFrontendOrigin,
 } = require('../lib/oauthStateCore');
 
@@ -99,6 +100,18 @@ async function run() {
       `${blockedOrigin} must fall back`,
     );
   }
+
+  assert.equal(getLoginOAuthCallbackCode('success-code', undefined), 'success-code');
+  assert.throws(
+    () => getLoginOAuthCallbackCode(undefined, 'access_denied'),
+    /Provider returned OAuth error/,
+    'provider error should be handled after valid state origin can be resolved',
+  );
+  assert.throws(
+    () => getLoginOAuthCallbackCode(undefined, undefined),
+    /Invalid code/,
+    'missing code without provider error should still fail after state processing',
+  );
 
   {
     const db = createDb({
