@@ -814,20 +814,28 @@ export function SayuModal({
     }
     setIsDeleting(true);
     try {
-      // 1. Storage: {date}_{formatKey}_ 접두사 파일 삭제
-      const storageRef = ref(storage, `users/${currentUser.uid}/format_photos/`);
-      const listResult = await listAll(storageRef);
-      const filesToDelete = listResult.items.filter((item) =>
-        item.name.startsWith(`${recordDate}_${formatKey}_`)
-      );
-      await Promise.allSettled(filesToDelete.map((file) => deleteObject(file)));
-
-      // 2. Firestore: 해당 형식 필드 삭제 (firestoreId 우선, 없으면 recordDate 폴백)
+      // 1. Firestore: 해당 형식 필드 삭제 (firestoreId 우선, 없으면 recordDate 폴백)
       const docId = firestoreId || recordDate!;
       const recordRef = doc(db, 'users', currentUser.uid, 'records', docId);
       const recordSnap = await getDoc(recordRef);
       if (recordSnap.exists()) {
         const data = recordSnap.data();
+        if (data.source === 'sns_story' && data.generationStatus === 'completed') {
+          await deleteDoc(recordRef);
+          toast.success('삭제되었습니다.');
+          onClose(true);
+          onRefresh?.();
+          return;
+        }
+
+        // 2. Storage: 일반 기록 형식 사진만 삭제. SNS 원본 기록과 사진에는 접근하지 않는다.
+        const storageRef = ref(storage, `users/${currentUser.uid}/format_photos/`);
+        const listResult = await listAll(storageRef);
+        const filesToDelete = listResult.items.filter((item) =>
+          item.name.startsWith(`${recordDate}_${formatKey}_`)
+        );
+        await Promise.allSettled(filesToDelete.map((file) => deleteObject(file)));
+
         console.log('[DELETE] recordDate:', recordDate);
         console.log('[DELETE] formatKey:', formatKey);
         console.log('[DELETE] all fields:', Object.keys(data));
