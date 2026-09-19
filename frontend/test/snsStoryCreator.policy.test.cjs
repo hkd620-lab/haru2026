@@ -11,6 +11,7 @@ const sayu = fs.readFileSync(path.join(root, 'src/app/pages/SayuPage.tsx'), 'utf
 const home = fs.readFileSync(path.join(root, 'src/app/pages/HomePageV2.tsx'), 'utf8');
 const recordHub = fs.readFileSync(path.join(root, 'src/app/pages/RecordHubPage.tsx'), 'utf8');
 const sayuModal = fs.readFileSync(path.join(root, 'src/app/components/SayuModal.tsx'), 'utf8');
+const firestoreService = fs.readFileSync(path.join(root, 'src/app/services/firestoreService.ts'), 'utf8');
 const snsStoryFunction = fs.readFileSync(path.resolve(root, '../functions/src/snsStory.ts'), 'utf8');
 
 assert(page.includes("import { SnsStoryCreator }"), 'SnsRecordsPage must render the new SNS story creator');
@@ -59,13 +60,18 @@ assert(sayu.includes("onOpen: () => openFormatSayu(record.date, 'essay', SNS_GAL
 assert(sayu.includes("filterFormat === SNS_GALMURI_LABEL ? 'essay'"), 'SNS 갈무리 route state must map to essay detail fields');
 assert(sayuModal.includes("data.source === 'sns_story' && data.generationStatus === 'completed'"), 'SNS 갈무리 completed artwork deletes must use a dedicated branch');
 assert(sayuModal.includes('await deleteDoc(recordRef);'), 'SNS 갈무리 completed artwork deletes must remove the generated artwork record document');
+assert(sayuModal.includes('await firestoreService.unpublishSharedRecord(currentUser.uid, docId);'), 'SNS 갈무리 completed artwork deletes must deactivate any public shared copy before deleting the source record');
 assert(sayuModal.includes('onClose(true);') && sayuModal.includes('onRefresh?.();'), 'SNS 갈무리 deletes must refresh the caller after deletion');
 const snsStoryDeleteBranchIndex = sayuModal.indexOf("data.source === 'sns_story' && data.generationStatus === 'completed'");
+const snsStoryUnpublishIndex = sayuModal.indexOf('await firestoreService.unpublishSharedRecord(currentUser.uid, docId);', snsStoryDeleteBranchIndex);
+const snsStoryDeleteDocIndex = sayuModal.indexOf('await deleteDoc(recordRef);', snsStoryDeleteBranchIndex);
 const snsStoryDeleteReturnIndex = sayuModal.indexOf('return;', snsStoryDeleteBranchIndex);
 const formatPhotoListIndex = sayuModal.indexOf('const listResult = await listAll(storageRef);');
 assert(snsStoryDeleteBranchIndex > -1 && snsStoryDeleteReturnIndex > snsStoryDeleteBranchIndex, 'SNS 갈무리 delete branch must return before general essay cleanup');
+assert(snsStoryUnpublishIndex > snsStoryDeleteBranchIndex && snsStoryDeleteDocIndex > snsStoryUnpublishIndex, 'SNS 갈무리 public shared copies must be unpublished before the source record is deleted');
 assert(formatPhotoListIndex > snsStoryDeleteReturnIndex, 'SNS 갈무리 deletes must not run general format photo cleanup');
 assert(!sayuModal.includes("'snsRecords'") && !sayuModal.includes('"snsRecords"'), 'SNS 갈무리 artwork deletes must not delete original SNS import records');
+assert(firestoreService.includes('isActive: false'), 'shared record unpublish flow must deactivate public copies instead of leaving them visible');
 assert(sayuModal.includes('fieldsToDelete') && sayuModal.includes("updateData['formats'] = arrayRemove(formatLabel)") && sayuModal.includes('await updateDoc(recordRef, updateData)'), 'normal essay format deletion must remain field-based');
 const leaseFunctionIndex = snsStoryFunction.indexOf('async function leaseSnsStoryFinalOperation');
 const completedRecoverIndex = snsStoryFunction.indexOf("if (existing.generationStatus === 'completed')", leaseFunctionIndex);

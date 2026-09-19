@@ -821,6 +821,9 @@ export function SayuModal({
       if (recordSnap.exists()) {
         const data = recordSnap.data();
         if (data.source === 'sns_story' && data.generationStatus === 'completed') {
+          if (data.isPublic === true || typeof data.sharedRecordId === 'string') {
+            await firestoreService.unpublishSharedRecord(currentUser.uid, docId);
+          }
           await deleteDoc(recordRef);
           toast.success('삭제되었습니다.');
           onClose(true);
