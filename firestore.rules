@@ -270,9 +270,9 @@ service cloud.firestore {
       allow write: if request.auth != null &&
         request.auth.uid == "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
     }
+    // 법률 상담 캐시 — Functions Admin SDK 전용
     match /lawConsultCache/{cacheId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read, write: if false;
     }
     match /users/{uid}/novelSettings/{docId} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
@@ -313,12 +313,6 @@ service cloud.firestore {
     match /email_to_uid/{docId} {
       allow read, write: if request.auth != null &&
         request.auth.uid == "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
-    }
-
-    // 법률 상담 캐시
-    match /lawConsultCache/{cacheId} {
-      allow read: if request.auth != null;
-      allow write: if false;
     }
 
     // 구독 정보
