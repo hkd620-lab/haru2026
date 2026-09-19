@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { RotateCw } from 'lucide-react';
 import { uniqueSnsThumbnailsByContentHash } from '../utils/snsRecords';
 import {
@@ -13,6 +13,8 @@ interface SnsPrivateThumbnailsProps {
 }
 
 const SNS_THUMBNAIL_DISPLAY_LIMIT = 12;
+// Cached photos resolve in a few ms; only show the loading text when a real wait starts.
+const SNS_THUMBNAIL_LOADING_DELAY_MS = 200;
 
 type ThumbnailStatus = 'idle' | 'loading' | 'success' | 'error';
 
@@ -58,6 +60,10 @@ export function SnsPrivateThumbnails({ thumbnails = [], userUid }: SnsPrivateThu
   const [objectUrls, setObjectUrls] = useState<string[]>([]);
   const [status, setStatus] = useState<ThumbnailStatus>('idle');
   const [retryVersion, setRetryVersion] = useState(0);
+  const [loadingVisible, setLoadingVisible] = useState(false);
+  // Retry and image-decode recovery skip the cached copies for exactly one reload.
+  const bypassCacheVersionRef = useRef(-1);
+  const decodeRecoveryUsedRef = useRef(false);
   const sourceValues = useMemo(
     () => thumbnails
       .slice(0, SNS_THUMBNAIL_DISPLAY_LIMIT)
@@ -84,8 +90,13 @@ export function SnsPrivateThumbnails({ thumbnails = [], userUid }: SnsPrivateThu
     }
     setObjectUrls([]);
     setStatus('loading');
+    setLoadingVisible(false);
 
     let active = true;
+    const loadingTimer = window.setTimeout(() => {
+      if (active) setLoadingVisible(true);
+    }, SNS_THUMBNAIL_LOADING_DELAY_MS);
+    const bypassCache = bypassCacheVersionRef.current === retryVersion;
     let createdUrls: string[] = [];
     let releaseRequests = () => {};
     let isCurrentLoad = () => isSnsThumbnailAuthUserCurrent(userUid);
@@ -106,11 +117,12 @@ export function SnsPrivateThumbnails({ thumbnails = [], userUid }: SnsPrivateThu
         return;
       }
 
-      const thumbnailLoad = createSnsThumbnailLoad(userUid, paths);
+      const thumbnailLoad = createSnsThumbnailLoad(userUid, paths, { bypassCache });
       releaseRequests = thumbnailLoad.release;
       isCurrentLoad = thumbnailLoad.isCurrent;
       const results = await thumbnailLoad.promise;
       if (!active || !thumbnailLoad.isCurrent()) return;
+      window.clearTimeout(loadingTimer);
 
       const failedCodes = results
         .filter((result) => !result.ok)
@@ -145,12 +157,29 @@ export function SnsPrivateThumbnails({ thumbnails = [], userUid }: SnsPrivateThu
 
     return () => {
       active = false;
+      window.clearTimeout(loadingTimer);
       releaseRequests();
       createdUrls.forEach((url) => URL.revokeObjectURL(url));
     };
   }, [hasThumbnails, retryVersion, sourceValues, userUid]);
 
   if (!hasThumbnails) return null;
+
+  const reloadWithoutCache = () => {
+    bypassCacheVersionRef.current = retryVersion + 1;
+    setRetryVersion((version) => version + 1);
+  };
+
+  // Structure checks cannot catch a truncated image; if the browser cannot decode a
+  // stored/cached thumbnail, drop it and reload this card from the network once.
+  const handleImageError = () => {
+    if (decodeRecoveryUsedRef.current) {
+      setStatus('error');
+      return;
+    }
+    decodeRecoveryUsedRef.current = true;
+    reloadWithoutCache();
+  };
 
   return (
     <div style={{ marginTop: 10 }}>
@@ -161,12 +190,13 @@ export function SnsPrivateThumbnails({ thumbnails = [], userUid }: SnsPrivateThu
               key={url}
               src={url}
               alt=""
+              onError={handleImageError}
               style={{ width: 88, height: 88, objectFit: 'cover', borderRadius: 8, background: '#eee' }}
             />
           ))}
         </div>
       )}
-      {status === 'loading' && (
+      {status === 'loading' && loadingVisible && (
         <div role="status" style={{ fontSize: 12, color: '#666', padding: '8px 0' }}>
           사진 불러오는 중…
         </div>
@@ -179,7 +209,7 @@ export function SnsPrivateThumbnails({ thumbnails = [], userUid }: SnsPrivateThu
           <span>사진을 불러오지 못했습니다 ·</span>
           <button
             type="button"
-            onClick={() => setRetryVersion((version) => version + 1)}
+            onClick={reloadWithoutCache}
             style={{
               display: 'inline-flex',
               alignItems: 'center',

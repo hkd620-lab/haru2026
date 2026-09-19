@@ -2,6 +2,14 @@ import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../firebase';
 import { createAuthScopedThumbnailCache } from './snsThumbnailAuthCache';
 import { createBatchedRequestQueue } from './snsThumbnailRequestQueue';
+import { createIdbThumbnailStore } from './snsThumbnailIdbStore';
+import { createPersistentThumbnailCache } from './snsThumbnailPersistentCache';
+import {
+  createSnsThumbnailCounters,
+  createTieredThumbnailLoad,
+  handleAuthSessionInvalidated,
+  handleAuthUserTransition,
+} from './snsThumbnailTieredLoad';
 
 const SNS_THUMBNAIL_REQUEST_BATCH_SIZE = 4;
 const THUMBNAIL_CACHE_MAX_ENTRIES = 300;
@@ -43,8 +51,28 @@ const thumbnailCache = createAuthScopedThumbnailCache({
   maxWeight: THUMBNAIL_CACHE_MAX_BASE64_CHARS,
 });
 
+// Survives reloads (IndexedDB, per UID). Created lazily: nothing touches IndexedDB
+// until the first lookup, so module load and first render are never blocked.
+const persistentThumbnailCache = createPersistentThumbnailCache({
+  store: createIdbThumbnailStore(),
+  estimateStorage: () => (
+    typeof navigator !== 'undefined' && navigator.storage && navigator.storage.estimate
+      ? navigator.storage.estimate()
+      : Promise.resolve(null)
+  ),
+});
+const thumbnailCounters = createSnsThumbnailCounters();
+
 function thumbnailCacheKey(userUid: string, path: string): string {
   return `${userUid}:${path}`;
+}
+
+function reportThumbnailCacheStats() {
+  if (!import.meta.env.DEV) return;
+  console.debug('[sns-thumbnail-cache]', {
+    ...thumbnailCounters,
+    persistent: persistentThumbnailCache.getStats(),
+  });
 }
 
 const thumbnailRequestQueue = createBatchedRequestQueue(
@@ -55,7 +83,9 @@ const thumbnailRequestQueue = createBatchedRequestQueue(
       images?: { ok?: boolean; contentType?: string; dataBase64?: string; contentHash?: string; code?: string }[];
     };
 
-    return requests.map((request, index) => {
+    thumbnailCounters.networkBatches += 1;
+    const persistEntries: { path: string; item: ThumbnailCacheItem }[] = [];
+    const results = requests.map((request, index) => {
       if (!thumbnailCache.isCurrent(request.scope)) {
         return { ok: false, code: 'auth-user-changed' };
       }
@@ -72,28 +102,54 @@ const thumbnailRequestQueue = createBatchedRequestQueue(
         fallbackKey: request.cacheKey,
       };
       thumbnailCache.set(request.scope, request.cacheKey, item, image.dataBase64.length);
+      persistEntries.push({ path: request.path, item });
       return { ok: true, item };
     });
+
+    // Fire-and-forget: a slow or failing persistent write must never delay the photos.
+    // The write is skipped if the auth scope changed while this batch was in flight.
+    if (persistEntries.length > 0) {
+      const persistScope = requests[0].scope;
+      void persistentThumbnailCache.putMany(
+        requests[0].userUid,
+        persistEntries,
+        () => thumbnailCache.isCurrent(persistScope)
+      );
+    }
+    reportThumbnailCacheStats();
+    return results;
   },
   { batchSize: SNS_THUMBNAIL_REQUEST_BATCH_SIZE }
 );
 
 export function setSnsThumbnailAuthUser(userUid: string | null) {
+  const previousUid = thumbnailCache.snapshot().activeUserUid as string | null;
   if (thumbnailCache.setUser(userUid)) {
     thumbnailRequestQueue.clear('auth-user-changed');
+    handleAuthUserTransition({
+      previousUid,
+      nextUid: userUid || null,
+      persistentCache: persistentThumbnailCache,
+    });
   }
 }
 
 export function invalidateSnsThumbnailAuthSession() {
+  const activeUid = thumbnailCache.snapshot().activeUserUid as string | null;
   thumbnailCache.invalidate();
   thumbnailRequestQueue.clear('auth-session-invalidated');
+  handleAuthSessionInvalidated({ activeUid, persistentCache: persistentThumbnailCache });
 }
 
 export function isSnsThumbnailAuthUserCurrent(userUid: string): boolean {
   return thumbnailCache.isCurrent(thumbnailCache.captureScope(userUid));
 }
 
-export function createSnsThumbnailLoad(userUid: string, paths: string[]): ThumbnailLoad {
+export function createSnsThumbnailLoad(
+  userUid: string,
+  paths: string[],
+  options: { bypassCache?: boolean } = {}
+): ThumbnailLoad {
   const scope = thumbnailCache.captureScope(userUid) as ThumbnailAuthScope;
   if (!thumbnailCache.isCurrent(scope)) {
     return {
@@ -103,28 +159,27 @@ export function createSnsThumbnailLoad(userUid: string, paths: string[]): Thumbn
     };
   }
 
-  const queuedKeys: string[] = [];
-  const requests = paths.map((path) => ({
+  const load = createTieredThumbnailLoad({
     userUid,
-    path,
-    cacheKey: thumbnailCacheKey(userUid, path),
+    paths,
     scope,
-  }));
-  const promise = Promise.all(requests.map((request) => {
-    const cached = thumbnailCache.get(scope, request.cacheKey) as ThumbnailCacheItem | null;
-    if (cached) return Promise.resolve({ ok: true, item: cached });
-
-    queuedKeys.push(request.cacheKey);
-    return thumbnailRequestQueue.request({
-      key: request.cacheKey,
+    cacheKeyFor: (path: string) => thumbnailCacheKey(userUid, path),
+    memoryCache: thumbnailCache,
+    persistentCache: persistentThumbnailCache,
+    requestFromNetwork: (path: string, cacheKey: string) => thumbnailRequestQueue.request({
+      key: cacheKey,
       batchKey: `${userUid}:${scope.generation}`,
-      value: request,
-    }) as Promise<ThumbnailLoadResult>;
-  }));
+      value: { userUid, path, cacheKey, scope },
+    }) as Promise<ThumbnailLoadResult>,
+    releaseNetworkRequest: (cacheKey: string) => thumbnailRequestQueue.release(cacheKey),
+    isCurrent: () => thumbnailCache.isCurrent(scope),
+    bypassCache: Boolean(options.bypassCache),
+    counters: thumbnailCounters,
+  });
 
   return {
-    promise,
-    release: () => queuedKeys.forEach((key) => thumbnailRequestQueue.release(key)),
+    promise: load.promise as Promise<ThumbnailLoadResult[]>,
+    release: load.release,
     isCurrent: () => thumbnailCache.isCurrent(scope),
   };
 }
