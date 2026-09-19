@@ -31,7 +31,7 @@ export function RecordHubPage() {
     { icon: '⚖️', label: '하루LAW', path: '/record', state: { category: '하루LAW' } },
     { icon: '📖', label: '영어성경', path: '/bible' },
     { icon: '✏️', label: '영어일기', path: '/diary-learn' },
-    { icon: '📱', label: 'SNS 기록 가져오기', desc: 'Facebook · Instagram 기록 AI로 정리', path: '/sns-records', isNew: true, accent: '#10b981' },
+    { icon: '📱', label: 'SNS 갈무리', desc: 'SNS에 흩어진 기록을 모아 정리하고 나의 이야기로 만듭니다.', path: '/sns-records', isNew: true, accent: '#10b981' },
     { icon: '📈', label: '주식거래일지', desc: '캡처 OCR·거래소감 기록', path: '/record', state: { format: '주식거래일지' } },
   ];
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
+import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { db, functions } from '../../firebase';
 import { activeSnsRecords } from '../utils/snsRecordState';
@@ -22,6 +23,7 @@ const COLOR_BG_SOFT = '#F5F7FB';
 const COLOR_BORDER = '#e5e5e5';
 const COLOR_GREEN = '#10b981';
 const COLOR_TEXT = '#222';
+const SNS_GALMURI_LABEL = 'SNS 갈무리';
 
 type RangeType = 'all' | 'year' | 'custom';
 
@@ -167,10 +169,12 @@ export function SnsStoryCreator({
   const [serverCounts, setServerCounts] = useState<StoryCounts | null>(null);
   const [generatingSynopsis, setGeneratingSynopsis] = useState(false);
   const [generatingFinal, setGeneratingFinal] = useState(false);
-  const [storyTitle, setStoryTitle] = useState('나의 SNS 이야기');
+  const [storyTitle, setStoryTitle] = useState('나의 SNS 갈무리 이야기');
   const [finalResult, setFinalResult] = useState<FinalResponse | null>(null);
   const [artworks, setArtworks] = useState<SnsStoryArtwork[]>([]);
   const [loadingArtworks, setLoadingArtworks] = useState(false);
+  const [expandedArtworkIds, setExpandedArtworkIds] = useState<Set<string>>(new Set());
+  const navigate = useNavigate();
 
   const synopsisRequestRef = useRef<{ key: string; promise: Promise<void> } | null>(null);
   const finalRequestRef = useRef<{ key: string; promise: Promise<void> } | null>(null);
@@ -413,7 +417,7 @@ export function SnsStoryCreator({
           return;
         }
         setFinalResult(data);
-        toast.success('SNS 이야기를 나의 기록에 저장했습니다.');
+        toast.success('SNS 갈무리 작품을 나의 기록에 저장했습니다.');
       } catch (error: any) {
         if (!isCurrentFinalRequest()) return;
         if (isSnsStoryAmbiguousCallableError(error)) {
@@ -433,12 +437,30 @@ export function SnsStoryCreator({
 
   const displayedCounts = serverCounts || counts;
   const allPhotoOnlySelected = counts.included > 0 && counts.textOnly + counts.textAndPhoto === 0;
+  const toggleArtworkExpanded = (artworkId: string) => {
+    setExpandedArtworkIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(artworkId)) next.delete(artworkId);
+      else next.add(artworkId);
+      return next;
+    });
+  };
+  const openCompletedArtworkInSayu = () => {
+    if (!finalResult?.recordId) return;
+    navigate('/sayu', {
+      state: {
+        tab: 'assistants',
+        filterFormat: SNS_GALMURI_LABEL,
+        openRecordId: finalResult.recordId,
+      },
+    });
+  };
 
   return (
     <section>
       <div style={panelStyle}>
         <p style={{ fontSize: 13, color: '#444', lineHeight: 1.6, margin: 0 }}>
-          SNS 원본 기록을 기간별로 모아 시놉시스를 만들고, 확인한 시놉시스만 근거로 나도작가 에세이 작품을 저장합니다.
+          SNS에 흩어진 기록을 모아 정리하고 나의 이야기로 만듭니다. 기간별 시놉시스를 만들고, 확인한 시놉시스만 근거로 작품을 저장합니다.
         </p>
       </div>
 
@@ -587,26 +609,46 @@ export function SnsStoryCreator({
           <p style={{ margin: '6px 0 0', fontSize: 12, color: '#166534' }}>
             기록 ID: {finalResult.recordId}
           </p>
+          <button
+            type="button"
+            onClick={openCompletedArtworkInSayu}
+            disabled={!finalResult.recordId}
+            style={secondaryButtonStyle(!finalResult.recordId)}
+          >
+            SNS 갈무리에서 보기
+          </button>
         </div>
       )}
 
-      <div style={{ ...sectionTitleStyle, marginTop: 22 }}>나도작가 · SNS 작품</div>
+      <div style={{ ...sectionTitleStyle, marginTop: 22 }}>SNS 갈무리 · 저장된 작품</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {loadingArtworks ? (
-          <p style={emptyTextStyle}>SNS 작품을 불러오는 중...</p>
+          <p style={emptyTextStyle}>SNS 갈무리 작품을 불러오는 중...</p>
         ) : artworks.length === 0 ? (
-          <p style={emptyTextStyle}>아직 저장된 SNS 작품이 없습니다.</p>
+          <p style={emptyTextStyle}>아직 저장된 SNS 갈무리 작품이 없습니다.</p>
         ) : (
           artworks.map((artwork) => {
-            const title = artwork.essay_title || artwork.essay_ai_title || 'SNS 이야기';
-            const content = artwork.content || artwork.essay_sayu || '';
+            const title = artwork.essay_title || artwork.essay_ai_title || 'SNS 갈무리 이야기';
+            const content = artwork.essay_sayu || artwork.content || '';
+            const expanded = expandedArtworkIds.has(artwork.id);
+            const bodyId = `sns-story-artwork-${artwork.id}`;
+            const visibleContent = expanded || content.length <= 180 ? content : `${content.slice(0, 180)}...`;
             return (
               <article key={artwork.id} style={artworkCardStyle}>
                 <div style={{ fontSize: 11, color: '#777', marginBottom: 4 }}>{artwork.date}</div>
                 <h3 style={{ margin: 0, fontSize: 15, color: COLOR_BLUE }}>{title}</h3>
-                <p style={{ margin: '8px 0 0', fontSize: 13, color: '#444', lineHeight: 1.5, whiteSpace: 'pre-line' }}>
-                  {content.length > 180 ? `${content.slice(0, 180)}...` : content}
+                <p id={bodyId} style={artworkBodyStyle}>
+                  {visibleContent}
                 </p>
+                <button
+                  type="button"
+                  aria-expanded={expanded}
+                  aria-controls={bodyId}
+                  onClick={() => toggleArtworkExpanded(artwork.id)}
+                  style={artworkToggleButtonStyle}
+                >
+                  {expanded ? '접기' : '전문 보기'}
+                </button>
               </article>
             );
           })
@@ -705,6 +747,28 @@ const artworkCardStyle: CSSProperties = {
   padding: 14,
 };
 
+const artworkBodyStyle: CSSProperties = {
+  margin: '8px 0 0',
+  fontSize: 13,
+  color: '#444',
+  lineHeight: 1.6,
+  whiteSpace: 'pre-wrap',
+  overflowWrap: 'anywhere',
+  wordBreak: 'keep-all',
+};
+
+const artworkToggleButtonStyle: CSSProperties = {
+  marginTop: 10,
+  padding: '7px 11px',
+  borderRadius: 8,
+  border: `1px solid ${COLOR_BORDER}`,
+  background: '#fff',
+  color: COLOR_BLUE,
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: 'pointer',
+};
+
 function chipButtonStyle(active: boolean): CSSProperties {
   return {
     padding: '8px 14px',
@@ -715,6 +779,21 @@ function chipButtonStyle(active: boolean): CSSProperties {
     fontSize: 13,
     fontWeight: 600,
     cursor: 'pointer',
+  };
+}
+
+function secondaryButtonStyle(disabled: boolean): CSSProperties {
+  return {
+    width: '100%',
+    padding: '11px 14px',
+    borderRadius: 10,
+    border: `1px solid ${disabled ? '#bbf7d0' : '#16a34a'}`,
+    background: disabled ? '#dcfce7' : '#fff',
+    color: disabled ? '#86efac' : '#166534',
+    fontSize: 13,
+    fontWeight: 800,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    marginTop: 12,
   };
 }
 
