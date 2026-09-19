@@ -922,6 +922,8 @@ class FirestoreService {
     const explicit = getCleanText(record.sourceAgent);
     if (explicit) return explicit;
 
+    if (record.source === 'sns_story' || record.sourceKey === 'sns_story') return 'SNS 갈무리';
+
     const recordFormats = Array.isArray(record.formats) ? record.formats : [];
     if (recordFormats.includes('HARUraw')) return '하루LAW';
     if (Array.isArray(record.plantDetective) && record.plantDetective.length > 0) return '하루식물탐정';

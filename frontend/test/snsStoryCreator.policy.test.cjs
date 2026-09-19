@@ -73,6 +73,8 @@ assert(formatPhotoListIndex > snsStoryDeleteReturnIndex, 'SNS 갈무리 deletes 
 assert(!sayuModal.includes("'snsRecords'") && !sayuModal.includes('"snsRecords"'), 'SNS 갈무리 artwork deletes must not delete original SNS import records');
 assert(firestoreService.includes('isActive: false'), 'shared record unpublish flow must deactivate public copies instead of leaving them visible');
 assert(sayuModal.includes('fieldsToDelete') && sayuModal.includes("updateData['formats'] = arrayRemove(formatLabel)") && sayuModal.includes('await updateDoc(recordRef, updateData)'), 'normal essay format deletion must remain field-based');
+assert(firestoreService.includes("record.source === 'sns_story' || record.sourceKey === 'sns_story'"), 'SNS 갈무리 legacy records must resolve to the SNS 갈무리 source agent when published');
+assert(firestoreService.includes("return 'SNS 갈무리';"), 'SNS 갈무리 shared records must not fall back to 개인기록');
 const leaseFunctionIndex = snsStoryFunction.indexOf('async function leaseSnsStoryFinalOperation');
 const completedRecoverIndex = snsStoryFunction.indexOf("if (existing.generationStatus === 'completed')", leaseFunctionIndex);
 const reLeaseIndex = snsStoryFunction.indexOf("operationStatus: 'generating'", completedRecoverIndex);
