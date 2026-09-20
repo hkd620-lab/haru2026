@@ -12223,6 +12223,20 @@ async function callDrugApi(params: Record<string, string>, deadlineMs: number): 
         totalElapsedMs: Date.now() - startedAt,
         budgetExceeded: true,
       });
+      if (firstResultResp) {
+        logger.warn('식약처 endpoint 예산 초과 — 기존 결과 응답 반환', {
+          firstResultOp,
+          reason: 'budget_exceeded_with_result',
+        });
+        return firstResultResp;
+      }
+      if (firstValidResp) {
+        logger.warn('식약처 endpoint 예산 초과 — 기존 정상 응답 반환', {
+          firstValidOp,
+          reason: 'budget_exceeded_with_valid_response',
+        });
+        return firstValidResp;
+      }
       throw createDrugApiUnavailableError();
     }
     const timeoutMs = Math.max(
@@ -12292,6 +12306,20 @@ async function callDrugApi(params: Record<string, string>, deadlineMs: number): 
         );
       }
       if (Date.now() >= deadlineMs) {
+        if (firstResultResp) {
+          logger.warn('식약처 endpoint 실패 후 예산 소진 — 기존 결과 응답 반환', {
+            firstResultOp,
+            reason: 'timeout_after_result',
+          });
+          return firstResultResp;
+        }
+        if (firstValidResp) {
+          logger.warn('식약처 endpoint 실패 후 예산 소진 — 기존 정상 응답 반환', {
+            firstValidOp,
+            reason: 'timeout_after_valid_response',
+          });
+          return firstValidResp;
+        }
         throw createDrugApiUnavailableError();
       }
       continue;
@@ -12425,6 +12453,13 @@ export const getDrugInfo = onCall(
       } catch (err: any) {
         hadDrugApiFailure = true;
         if (err instanceof HttpsError) {
+          if (err.code === 'unavailable' && mergedItems.length > 0) {
+            logger.warn('식약처 후속 검색 지연 — 기존 결과 반환', {
+              preservedItemCount: mergedItems.length,
+              reason: 'followup_unavailable',
+            });
+            break;
+          }
           throw err;
         }
         if (term === searchTerms[0] && searchTerms.length === 1) {

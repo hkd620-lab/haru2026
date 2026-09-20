@@ -10790,6 +10790,20 @@ async function callDrugApi(params, deadlineMs) {
                 totalElapsedMs: Date.now() - startedAt,
                 budgetExceeded: true,
             });
+            if (firstResultResp) {
+                logger.warn('식약처 endpoint 예산 초과 — 기존 결과 응답 반환', {
+                    firstResultOp,
+                    reason: 'budget_exceeded_with_result',
+                });
+                return firstResultResp;
+            }
+            if (firstValidResp) {
+                logger.warn('식약처 endpoint 예산 초과 — 기존 정상 응답 반환', {
+                    firstValidOp,
+                    reason: 'budget_exceeded_with_valid_response',
+                });
+                return firstValidResp;
+            }
             throw createDrugApiUnavailableError();
         }
         const timeoutMs = Math.max(DRUG_API_MIN_REMAINING_MS, Math.min(DRUG_API_MAX_SINGLE_TIMEOUT_MS, remainingMs - DRUG_API_MIN_REMAINING_MS));
@@ -10853,6 +10867,20 @@ async function callDrugApi(params, deadlineMs) {
                 throw new https_2.HttpsError('permission-denied', '식약처 공식 의약품 정보 서비스 인증이 거부됐습니다. 활용신청 승인 상태를 확인해 주세요.');
             }
             if (Date.now() >= deadlineMs) {
+                if (firstResultResp) {
+                    logger.warn('식약처 endpoint 실패 후 예산 소진 — 기존 결과 응답 반환', {
+                        firstResultOp,
+                        reason: 'timeout_after_result',
+                    });
+                    return firstResultResp;
+                }
+                if (firstValidResp) {
+                    logger.warn('식약처 endpoint 실패 후 예산 소진 — 기존 정상 응답 반환', {
+                        firstValidOp,
+                        reason: 'timeout_after_valid_response',
+                    });
+                    return firstValidResp;
+                }
                 throw createDrugApiUnavailableError();
             }
             continue;
@@ -10976,6 +11004,13 @@ exports.getDrugInfo = (0, https_2.onCall)({
         catch (err) {
             hadDrugApiFailure = true;
             if (err instanceof https_2.HttpsError) {
+                if (err.code === 'unavailable' && mergedItems.length > 0) {
+                    logger.warn('식약처 후속 검색 지연 — 기존 결과 반환', {
+                        preservedItemCount: mergedItems.length,
+                        reason: 'followup_unavailable',
+                    });
+                    break;
+                }
                 throw err;
             }
             if (term === searchTerms[0] && searchTerms.length === 1) {
