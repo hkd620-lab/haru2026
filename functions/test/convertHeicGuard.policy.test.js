@@ -24,6 +24,9 @@ assert(convertHeicSection.includes("throw new HttpsError('unauthenticated', '로
 assert(convertHeicSection.includes('imageBase64.length > CONVERT_HEIC_MAX_BASE64_LENGTH'));
 assert(convertHeicSection.includes('getBase64DecodedSizeBytes(imageBase64) > CONVERT_HEIC_MAX_BYTES'));
 assert(convertHeicSection.includes("await enforceRateLimit(request.auth.uid, 'convertHeic', 5, 30)"));
+assert(convertHeicSection.includes("`heic_temp/${safeCloudinarySegment(request.auth.uid, 'user')}/${crypto.randomUUID()}`"));
+assert(convertHeicSection.includes('convertHeicToJpegBase64(imageBase64, temporaryPublicId'));
+assert(!convertHeicSection.includes('return { url:'), 'convertHeic must not expose a temporary Cloudinary URL');
 
 const authCheck = convertHeicSection.indexOf('if (!request.auth)');
 const cloudinaryCall = convertHeicSection.indexOf('configureCloudinary()');

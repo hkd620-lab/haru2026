@@ -16,6 +16,7 @@ import GrapeLoadingMini from './GrapeLoadingMini';
 import { GrowthTimelineDocumentModal, type GrowthTimelineDocumentItem } from './GrowthTimelineDocumentModal';
 import { compressImage } from '../services/imageService';
 import { readOriginalImageMeta, type UploadedImageMeta } from '../services/photoMetadataService';
+import { decodeConvertedJpeg, persistRecordPhoto } from '../services/recordPhotoUploadCore';
 import {
   getLocationCandidateFromGps,
   type ReverseGeocodeCandidate,
@@ -105,12 +106,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer) {
 async function convertHeicRecordImage(file: File): Promise<Blob> {
   const convertHeic = httpsCallable(functions, 'convertHeic');
   const result = await convertHeic({ imageBase64: arrayBufferToBase64(await file.arrayBuffer()) });
-  const { url } = result.data as { url?: string };
-  if (!url) throw new Error('HEIC 변환 결과 URL이 없습니다.');
-
-  const response = await fetch(url);
-  if (!response.ok) throw new Error('변환된 JPG를 내려받지 못했습니다.');
-  return response.blob();
+  return decodeConvertedJpeg(result.data);
 }
 
 function formatHouseholdDate(date: string): string {
@@ -1447,13 +1443,11 @@ export function SayuModal({
       return;
     }
 
-    let uploadedFileName = '';
-    let shouldCleanupUploadedFile = false;
     setIsUploadingImage(true);
     try {
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 8);
-      uploadedFileName = `${recordDate}_${formatKey}_${timestamp}_${randomId}.jpg`;
+      const uploadedFileName = `${recordDate}_${formatKey}_${timestamp}_${randomId}.jpg`;
       const originalMeta = await readOriginalImageMeta(file);
 
       let fileToProcess: File | Blob = file;
@@ -1473,38 +1467,44 @@ export function SayuModal({
         : new File([fileToProcess], uploadedFileName, { type: 'image/jpeg' });
       const imageRef = ref(storage, `users/${currentUser.uid}/format_photos/${uploadedFileName}`);
       const compressed = await compressImage(imageFile, TIMELINE_IMAGE_MAX_WIDTH, TIMELINE_IMAGE_QUALITY);
-      await uploadBytes(imageRef, compressed, { contentType: 'image/jpeg' });
-      shouldCleanupUploadedFile = true;
-      const url = await getDownloadURL(imageRef);
-      const newImages = [...localImages, url];
-      setLocalImages(newImages);
       const recordRef = doc(db, 'users', currentUser.uid, 'records', firestoreId);
       const imageMetaKey = `${formatKey}_imageMeta`;
-      const recordSnap = await getDoc(recordRef);
-      const existingMeta = recordSnap.exists() ? parseUploadedImageMeta(recordSnap.data()[imageMetaKey]) : [];
-      const newImageMeta = [
-        ...existingMeta,
-        {
-          ...originalMeta,
-          url,
-          uploadedAt: new Date().toISOString(),
+      let committedImages = localImages;
+
+      await persistRecordPhoto({
+        upload: async () => {
+          try {
+            await uploadBytes(imageRef, compressed, { contentType: 'image/jpeg' });
+            const url = await getDownloadURL(imageRef);
+            return { url, cleanup: () => deleteObject(imageRef) };
+          } catch (error) {
+            try {
+              await deleteObject(imageRef);
+            } catch {
+              // Object creation may not have completed.
+            }
+            throw error;
+          }
         },
-      ].filter((meta) => newImages.includes(meta.url));
-      await updateDoc(recordRef, {
-        [`${formatKey}_images`]: JSON.stringify(newImages),
-        [imageMetaKey]: JSON.stringify(newImageMeta),
+        persist: async (url) => {
+          const newImages = [...localImages, url];
+          const recordSnap = await getDoc(recordRef);
+          const existingMeta = recordSnap.exists() ? parseUploadedImageMeta(recordSnap.data()[imageMetaKey]) : [];
+          const newImageMeta = [
+            ...existingMeta,
+            { ...originalMeta, url, uploadedAt: new Date().toISOString() },
+          ].filter((meta) => newImages.includes(meta.url));
+          await updateDoc(recordRef, {
+            [`${formatKey}_images`]: JSON.stringify(newImages),
+            [imageMetaKey]: JSON.stringify(newImageMeta),
+          });
+          committedImages = newImages;
+        },
+        commit: () => setLocalImages(committedImages),
       });
-      shouldCleanupUploadedFile = false;
       await refreshPublicSharedRecord();
       toast.success('사진이 추가되었습니다!');
     } catch (err) {
-      if (shouldCleanupUploadedFile && uploadedFileName) {
-        try {
-          await deleteObject(ref(storage, `users/${currentUser.uid}/format_photos/${uploadedFileName}`));
-        } catch {
-          // Firestore 반영 실패 후 롤백 삭제가 실패해도 사용자의 편집 흐름은 유지합니다.
-        }
-      }
       console.error('사진 업로드 실패:', err);
       toast.error('사진 업로드에 실패했습니다.');
     } finally {

@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, Fragment } from 'react';
 import { useNavigate } from 'react-router';
 import { getTestData } from '../data/testData';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, type StorageReference } from 'firebase/storage';
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { compressImage } from '../services/imageService';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,6 +12,7 @@ import heic2any from 'heic2any';
 import { LoadingOverlay } from './LoadingOverlay';
 import GrapeLoadingMini from './GrapeLoadingMini';
 import { readOriginalImageMeta, type UploadedImageMeta } from '../services/photoMetadataService';
+import { decodeConvertedJpeg } from '../services/recordPhotoUploadCore';
 import {
   makeReadingBookId,
   normalizeBookField,
@@ -1813,6 +1814,8 @@ ${contentValues}`,
       const functionsInstance = getFunctions(undefined, 'asia-northeast3');
 
       for (const file of filesToUpload) {
+        let pendingStorageRef: StorageReference | null = null;
+        let uploadTracked = false;
         if (file.size > 20 * 1024 * 1024) {
           toast.warning(`${file.name}은 20MB를 초과하여 건너뜁니다.`);
           continue;
@@ -1837,7 +1840,7 @@ ${contentValues}`,
 
         const originalMeta = await readOriginalImageMeta(file);
 
-        // HEIC → JPG 변환 (Cloudinary convertHeic 임시 변환만 사용)
+        // HEIC → JPG 변환 (서버가 Cloudinary 임시 객체를 회수·삭제한 뒤 JPEG 데이터만 반환)
         let fileToProcess: File | Blob = file;
         if (isHeic) {
           try {
@@ -1854,12 +1857,7 @@ ${contentValues}`,
 
             const convertHeicFunc = httpsCallable(functionsInstance, 'convertHeic');
             const result = await convertHeicFunc({ imageBase64 });
-            const { url } = result.data as { url: string };
-
-            // Cloudinary 임시 JPG URL → Blob (이후 Firebase Storage에 영구 저장)
-            const response = await fetch(url);
-            if (!response.ok) throw new Error('JPG 다운로드 실패');
-            fileToProcess = await response.blob();
+            fileToProcess = decodeConvertedJpeg(result.data);
           } catch (err) {
             console.error('HEIC 변환 실패:', err);
             toast.error('HEIC 변환에 실패했습니다.');
@@ -1877,9 +1875,11 @@ ${contentValues}`,
 
           const imagePath = `users/${user.uid}/format_photos/${recordId}_${prefix}_${fileName}`;
           const storageRef = ref(storage, imagePath);
+          pendingStorageRef = storageRef;
           await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
           const downloadUrl = await getDownloadURL(storageRef);
           sessionUploadedImageUrlsRef.current.push(downloadUrl);
+          uploadTracked = true;
           newImageUrls.push(downloadUrl);
           newImageMeta.push({
             ...originalMeta,
@@ -1895,6 +1895,13 @@ ${contentValues}`,
             }
           }
         } catch (fileError: any) {
+          if (pendingStorageRef && !uploadTracked) {
+            try {
+              await deleteObject(pendingStorageRef);
+            } catch {
+              // Object creation may not have completed.
+            }
+          }
           if (fileError?.message === 'FILE_READER_ERROR') {
             toast.error(
               '각종 클라우드에 있는 사진은 직접 업로드가 안 됩니다. 스마트폰에서 직접 업로드하거나 클라우드의 사진을 다운받은 후 추가해주세요.'
