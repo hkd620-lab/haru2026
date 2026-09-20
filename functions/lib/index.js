@@ -10672,34 +10672,80 @@ exports.getOnbidRealEstateList = (0, https_2.onCall)({
 });
 // ===== 💊 식약처 의약품 제품 허가정보 조회 (SAYU건강관리 - 약봉지 보고 약정보 얻기) =====
 // 출처: 식품의약품안전처 / Base: apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService07
-// 함수명(operation)이 버전마다 변동되므로 후보 순차 시도 + 성공한 URL 메모리 캐시
+// 2026-09-20 운영 504 재발 방지:
+// 공식 허가정보 상세 응답이 확인된 endpoint를 우선하고, 전체 외부 호출 예산 안에서만 fallback을 시도한다.
 const DRUG_API_BASE = 'https://apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService07';
 const DRUG_API_OPS = [
-    '/getDrugPrdtPrmsnDtlInq05',
     '/getDrugPrdtPrmsnDtlInq06',
-    '/getDrugPrdtPrmsnInq05',
-    '/getDrugPrdtPrmsnDtlInq07',
     '/getDrugPrdtPrmsnInq07',
-    '/getDrugPrdtPrmsnDtlInq04',
-    '/getDrugPrdtPrmsnInq04',
 ];
+const DRUG_API_TOTAL_BUDGET_MS = 9000;
+const DRUG_API_MAX_SINGLE_TIMEOUT_MS = 3500;
+const DRUG_API_MIN_REMAINING_MS = 250;
+const DRUG_API_UNAVAILABLE_MESSAGE = '식약처 공식 의약품 정보 서비스의 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.';
 let _drugApiUrlCache = null;
-async function callDrugApiOnce(url, params) {
-    var _a, _b;
+function encodeDrugApiParam(key, value) {
+    const raw = String(value);
+    if (key !== 'serviceKey')
+        return encodeURIComponent(raw);
+    try {
+        return encodeURIComponent(decodeURIComponent(raw));
+    }
+    catch {
+        return encodeURIComponent(raw);
+    }
+}
+function drugApiEndpointName(url) {
+    return url.replace(`${DRUG_API_BASE}/`, '');
+}
+function createDrugApiUnavailableError() {
+    return new https_2.HttpsError('unavailable', DRUG_API_UNAVAILABLE_MESSAGE);
+}
+function isDrugApiAuthStatus(status) {
+    return status === 401 || status === 403;
+}
+function isDrugApiAuthResult(resultCode, resultMsg) {
+    const text = `${resultCode} ${resultMsg}`.toUpperCase();
+    return (['20', '30', '31'].includes(resultCode) ||
+        text.includes('SERVICE_ACCESS_DENIED') ||
+        text.includes('SERVICE_KEY_IS_NOT_REGISTERED') ||
+        text.includes('DEADLINE_HAS_EXPIRED') ||
+        text.includes('UNREGISTERED_SERVICE_KEY'));
+}
+function drugApiErrorCode(err) {
+    var _a;
+    return String((err === null || err === void 0 ? void 0 : err.publicDataResultCode) ||
+        (err === null || err === void 0 ? void 0 : err.code) ||
+        (((_a = err === null || err === void 0 ? void 0 : err.response) === null || _a === void 0 ? void 0 : _a.status) ? `HTTP_${err.response.status}` : '') ||
+        (err === null || err === void 0 ? void 0 : err.name) ||
+        'UNKNOWN');
+}
+function isDrugApiTimeoutError(err) {
+    return (err === null || err === void 0 ? void 0 : err.code) === 'ECONNABORTED' || /timeout|aborted/i.test(String((err === null || err === void 0 ? void 0 : err.message) || (err === null || err === void 0 ? void 0 : err.name) || ''));
+}
+async function callDrugApiOnce(url, params, timeoutMs) {
+    var _a, _b, _c, _d;
     const resp = await axios_1.default.get(url, {
         params,
-        timeout: 12000,
+        timeout: timeoutMs,
         headers: { Accept: 'application/json' },
         paramsSerializer: (p) => Object.entries(p)
-            .map(([k, v]) => k === 'serviceKey'
-            ? `${k}=${encodeURIComponent(decodeURIComponent(String(v)))}`
-            : `${k}=${encodeURIComponent(String(v))}`)
+            .map(([k, v]) => `${k}=${encodeDrugApiParam(k, v)}`)
             .join('&'),
     });
     const data = resp === null || resp === void 0 ? void 0 : resp.data;
     const root = (_a = data === null || data === void 0 ? void 0 : data.response) !== null && _a !== void 0 ? _a : data;
     if (!root || (!root.body && !root.header)) {
         throw new Error('식약처 응답 구조 비정상');
+    }
+    const header = root.header;
+    const resultCode = String((_b = header === null || header === void 0 ? void 0 : header.resultCode) !== null && _b !== void 0 ? _b : '');
+    const resultMsg = String((_c = header === null || header === void 0 ? void 0 : header.resultMsg) !== null && _c !== void 0 ? _c : '');
+    if (resultCode && resultCode !== '00' && resultCode !== '0' && resultCode !== '03') {
+        const err = new Error(`식약처 API 비정상 응답: ${resultCode}`);
+        err.publicDataResultCode = resultCode;
+        err.publicDataResultMsg = resultMsg;
+        throw err;
     }
     const body = root.body;
     const rawItems = body === null || body === void 0 ? void 0 : body.items;
@@ -10709,7 +10755,7 @@ async function callDrugApiOnce(url, params) {
     else if (rawItems === null || rawItems === void 0 ? void 0 : rawItems.item)
         items = Array.isArray(rawItems.item) ? rawItems.item : [rawItems.item];
     const itemCount = items.length;
-    const totalCount = parseInt(String((_b = body === null || body === void 0 ? void 0 : body.totalCount) !== null && _b !== void 0 ? _b : '0'), 10) || 0;
+    const totalCount = parseInt(String((_d = body === null || body === void 0 ? void 0 : body.totalCount) !== null && _d !== void 0 ? _d : '0'), 10) || 0;
     const hasResults = itemCount > 0 || totalCount > 0;
     // 상세 화면이 필요로 하는 문서 필드가 하나라도 들어있는지
     const hasDetailFields = items.some((it) => ((it === null || it === void 0 ? void 0 : it.EE_DOC_DATA) && String(it.EE_DOC_DATA).trim()) ||
@@ -10717,41 +10763,63 @@ async function callDrugApiOnce(url, params) {
         ((it === null || it === void 0 ? void 0 : it.NB_DOC_DATA) && String(it.NB_DOC_DATA).trim()));
     return { resp, hasResults, hasDetailFields, totalCount, itemCount };
 }
-async function callDrugApi(params) {
-    var _a, _b, _c, _d;
-    // 1단계: 캐시된 endpoint 우선 시도.
-    // 응답 자체가 실패한 경우만 캐시 무효화 후 전체 후보 재시도.
-    if (_drugApiUrlCache) {
-        try {
-            const { resp } = await callDrugApiOnce(_drugApiUrlCache, params);
-            return resp;
-        }
-        catch (err) {
-            logger.warn('식약처 캐시 endpoint 실패 — 캐시 무효화 후 전체 후보 재시도', {
-                cached: _drugApiUrlCache.split('/').pop(),
-                status: ((_a = err === null || err === void 0 ? void 0 : err.response) === null || _a === void 0 ? void 0 : _a.status) || 0,
-            });
-            _drugApiUrlCache = null;
-        }
-    }
-    // 2단계: 전체 후보 순회 — 우선순위
+async function callDrugApi(params, deadlineMs) {
+    var _a, _b, _c;
+    // 우선순위
     //   ① 상세 필드(EE/UD/NB_DOC_DATA) 있는 endpoint → 즉시 캐시 + 반환
     //   ② items만 있고 상세 필드 없는 endpoint → fallback 후보, 캐시 보류
     //   ③ 0건이지만 정상 응답 → 마지막 fallback 후보, 캐시 보류
-    const tryUrls = DRUG_API_OPS.map((op) => DRUG_API_BASE + op);
+    const knownUrls = DRUG_API_OPS.map((op) => DRUG_API_BASE + op);
+    const tryUrls = _drugApiUrlCache
+        ? [_drugApiUrlCache, ...knownUrls.filter((url) => url !== _drugApiUrlCache)]
+        : knownUrls;
     let firstResultResp = null;
     let firstResultOp = null;
     let firstValidResp = null;
     let firstValidOp = null;
     let lastError = null;
-    let lastSnippet = '';
     let lastStatus = 0;
-    for (const url of tryUrls) {
-        const op = url.split('/').pop() || '';
-        try {
-            const { resp, hasResults, hasDetailFields, totalCount, itemCount } = await callDrugApiOnce(url, params);
-            logger.info('식약처 endpoint 시도', {
+    const startedAt = Date.now();
+    for (const [index, url] of tryUrls.entries()) {
+        const op = drugApiEndpointName(url);
+        const remainingMs = deadlineMs - Date.now();
+        if (remainingMs <= DRUG_API_MIN_REMAINING_MS) {
+            logger.warn('식약처 endpoint 예산 초과로 중단', {
                 op,
+                endpointIndex: index + 1,
+                totalElapsedMs: Date.now() - startedAt,
+                budgetExceeded: true,
+            });
+            if (firstResultResp) {
+                logger.warn('식약처 endpoint 예산 초과 — 기존 결과 응답 반환', {
+                    firstResultOp,
+                    reason: 'budget_exceeded_with_result',
+                });
+                return firstResultResp;
+            }
+            if (firstValidResp) {
+                logger.warn('식약처 endpoint 예산 초과 — 기존 정상 응답 반환', {
+                    firstValidOp,
+                    reason: 'budget_exceeded_with_valid_response',
+                });
+                return firstValidResp;
+            }
+            throw createDrugApiUnavailableError();
+        }
+        const timeoutMs = Math.max(DRUG_API_MIN_REMAINING_MS, Math.min(DRUG_API_MAX_SINGLE_TIMEOUT_MS, remainingMs - DRUG_API_MIN_REMAINING_MS));
+        const attemptStartedAt = Date.now();
+        try {
+            const { resp, hasResults, hasDetailFields, totalCount, itemCount } = await callDrugApiOnce(url, params, timeoutMs);
+            const durationMs = Date.now() - attemptStartedAt;
+            logger.info('식약처 endpoint 응답', {
+                op,
+                endpointIndex: index + 1,
+                durationMs,
+                status: 200,
+                errorCode: null,
+                timeout: false,
+                totalElapsedMs: Date.now() - startedAt,
+                budgetExceeded: Date.now() >= deadlineMs,
                 totalCount,
                 itemCount,
                 hasResults,
@@ -10777,10 +10845,44 @@ async function callDrugApi(params) {
         }
         catch (err) {
             lastError = err;
-            lastStatus = ((_b = err === null || err === void 0 ? void 0 : err.response) === null || _b === void 0 ? void 0 : _b.status) || 0;
-            lastSnippet = typeof ((_c = err === null || err === void 0 ? void 0 : err.response) === null || _c === void 0 ? void 0 : _c.data) === 'string'
-                ? err.response.data.slice(0, 200)
-                : JSON.stringify(((_d = err === null || err === void 0 ? void 0 : err.response) === null || _d === void 0 ? void 0 : _d.data) || {}).slice(0, 200);
+            lastStatus = ((_a = err === null || err === void 0 ? void 0 : err.response) === null || _a === void 0 ? void 0 : _a.status) || 0;
+            const durationMs = Date.now() - attemptStartedAt;
+            const resultCode = String((_b = err === null || err === void 0 ? void 0 : err.publicDataResultCode) !== null && _b !== void 0 ? _b : '');
+            const resultMsg = String((_c = err === null || err === void 0 ? void 0 : err.publicDataResultMsg) !== null && _c !== void 0 ? _c : '');
+            const timeout = isDrugApiTimeoutError(err);
+            logger.warn('식약처 endpoint 실패', {
+                op,
+                endpointIndex: index + 1,
+                durationMs,
+                status: lastStatus,
+                errorCode: drugApiErrorCode(err),
+                timeout,
+                totalElapsedMs: Date.now() - startedAt,
+                budgetExceeded: Date.now() >= deadlineMs,
+            });
+            if (url === _drugApiUrlCache) {
+                _drugApiUrlCache = null;
+            }
+            if (isDrugApiAuthStatus(lastStatus) || isDrugApiAuthResult(resultCode, resultMsg)) {
+                throw new https_2.HttpsError('permission-denied', '식약처 공식 의약품 정보 서비스 인증이 거부됐습니다. 활용신청 승인 상태를 확인해 주세요.');
+            }
+            if (Date.now() >= deadlineMs) {
+                if (firstResultResp) {
+                    logger.warn('식약처 endpoint 실패 후 예산 소진 — 기존 결과 응답 반환', {
+                        firstResultOp,
+                        reason: 'timeout_after_result',
+                    });
+                    return firstResultResp;
+                }
+                if (firstValidResp) {
+                    logger.warn('식약처 endpoint 실패 후 예산 소진 — 기존 정상 응답 반환', {
+                        firstValidOp,
+                        reason: 'timeout_after_valid_response',
+                    });
+                    return firstValidResp;
+                }
+                throw createDrugApiUnavailableError();
+            }
             continue;
         }
     }
@@ -10801,10 +10903,13 @@ async function callDrugApi(params) {
     }
     logger.error('식약처 API 모든 endpoint 후보 실패', {
         lastStatus,
-        lastSnippet,
         triedCount: tryUrls.length,
+        totalElapsedMs: Date.now() - startedAt,
     });
-    throw lastError || new Error('식약처 API endpoint를 찾을 수 없습니다');
+    if (lastError && isDrugApiTimeoutError(lastError)) {
+        throw createDrugApiUnavailableError();
+    }
+    throw lastError || createDrugApiUnavailableError();
 }
 function buildDrugSearchTerms(raw) {
     var _a;
@@ -10877,7 +10982,14 @@ exports.getDrugInfo = (0, https_2.onCall)({
     let totalCount = 0;
     let resultCode = '';
     let resultMsg = '';
+    let hadDrugApiFailure = false;
+    const drugApiDeadlineMs = Date.now() + DRUG_API_TOTAL_BUDGET_MS;
     for (const term of searchTerms) {
+        if (drugApiDeadlineMs - Date.now() <= DRUG_API_MIN_REMAINING_MS) {
+            if (mergedItems.length > 0)
+                break;
+            throw createDrugApiUnavailableError();
+        }
         const params = {
             serviceKey: DRUG_API_KEY_SECRET.value(),
             pageNo: String(pageNo),
@@ -10887,11 +10999,22 @@ exports.getDrugInfo = (0, https_2.onCall)({
         };
         let resp;
         try {
-            resp = await callDrugApi(params);
+            resp = await callDrugApi(params, drugApiDeadlineMs);
         }
         catch (err) {
+            hadDrugApiFailure = true;
+            if (err instanceof https_2.HttpsError) {
+                if (err.code === 'unavailable' && mergedItems.length > 0) {
+                    logger.warn('식약처 후속 검색 지연 — 기존 결과 반환', {
+                        preservedItemCount: mergedItems.length,
+                        reason: 'followup_unavailable',
+                    });
+                    break;
+                }
+                throw err;
+            }
             if (term === searchTerms[0] && searchTerms.length === 1) {
-                throw new https_2.HttpsError('internal', '식약처 서버에 연결할 수 없습니다');
+                throw createDrugApiUnavailableError();
             }
             continue;
         }
@@ -10912,6 +11035,11 @@ exports.getDrugInfo = (0, https_2.onCall)({
             seen.add(key);
             mergedItems.push(item);
         }
+        if (mergedItems.length >= numOfRows)
+            break;
+    }
+    if (mergedItems.length === 0 && hadDrugApiFailure && !resultCode) {
+        throw createDrugApiUnavailableError();
     }
     return {
         success: true,
