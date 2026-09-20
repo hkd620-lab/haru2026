@@ -1,11 +1,34 @@
 import assert from 'node:assert/strict';
 import {
   cleanupTrackedRecordPhotos,
+  decodeConvertedJpeg,
   excludeCommittedRecordPhotoUrls,
   persistRecordPhoto,
 } from '../src/app/services/recordPhotoUploadCore.ts';
 
 const originalImages = ['https://storage.test/existing.jpg'];
+
+{
+  const jpeg = Uint8Array.from([0xff, 0xd8, 0xff, 0xd9]);
+  const imageBase64 = Buffer.from(jpeg).toString('base64');
+  let fetchCalls = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    fetchCalls += 1;
+    return new Response(jpeg, { status: 200, headers: { 'content-type': 'image/jpeg' } });
+  };
+  try {
+    const newFrontendOldFunction = await decodeConvertedJpeg({ url: 'https://legacy-cloudinary.test/photo.jpg' });
+    assert.deepEqual(new Uint8Array(await newFrontendOldFunction.arrayBuffer()), jpeg);
+    assert.equal(fetchCalls, 1, 'new frontend must support the old Function URL contract');
+
+    const newFrontendNewFunction = await decodeConvertedJpeg({ imageBase64, contentType: 'image/jpeg' });
+    assert.deepEqual(new Uint8Array(await newFrontendNewFunction.arrayBuffer()), jpeg);
+    assert.equal(fetchCalls, 1, 'new frontend must prefer base64 and avoid fetching the compatibility URL');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
 
 {
   let visibleImages = [...originalImages];

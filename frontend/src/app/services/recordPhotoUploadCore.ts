@@ -52,16 +52,26 @@ export async function cleanupTrackedRecordPhotos(
   };
 }
 
-export function decodeConvertedJpeg(data: unknown): Blob {
-  const result = data as { imageBase64?: unknown; contentType?: unknown };
-  if (typeof result?.imageBase64 !== 'string' || result.contentType !== 'image/jpeg') {
-    throw new Error('HEIC 변환 결과가 올바르지 않습니다.');
+export async function decodeConvertedJpeg(data: unknown): Promise<Blob> {
+  const result = data as { imageBase64?: unknown; contentType?: unknown; url?: unknown };
+  if (typeof result?.imageBase64 === 'string' && result.contentType === 'image/jpeg') {
+    const binary = atob(result.imageBase64);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    return new Blob([bytes], { type: 'image/jpeg' });
   }
 
-  const binary = atob(result.imageBase64);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
+  if (typeof result?.url === 'string' && result.url) {
+    const response = await fetch(result.url);
+    if (!response.ok) throw new Error('변환된 JPG를 내려받지 못했습니다.');
+    const blob = await response.blob();
+    if (blob.type && blob.type !== 'image/jpeg') {
+      throw new Error('HEIC 변환 결과가 JPEG 형식이 아닙니다.');
+    }
+    return blob;
   }
-  return new Blob([bytes], { type: 'image/jpeg' });
+
+  throw new Error('HEIC 변환 결과가 올바르지 않습니다.');
 }

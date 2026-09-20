@@ -1861,7 +1861,7 @@ ${contentValues}`,
 
             const convertHeicFunc = httpsCallable(functionsInstance, 'convertHeic');
             const result = await convertHeicFunc({ imageBase64 });
-            fileToProcess = decodeConvertedJpeg(result.data);
+            fileToProcess = await decodeConvertedJpeg(result.data);
           } catch (err) {
             console.error('HEIC 변환 실패:', err);
             toast.error('HEIC 변환에 실패했습니다.');

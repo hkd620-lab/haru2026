@@ -106,7 +106,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer) {
 async function convertHeicRecordImage(file: File): Promise<Blob> {
   const convertHeic = httpsCallable(functions, 'convertHeic');
   const result = await convertHeic({ imageBase64: arrayBufferToBase64(await file.arrayBuffer()) });
-  return decodeConvertedJpeg(result.data);
+  return await decodeConvertedJpeg(result.data);
 }
 
 function formatHouseholdDate(date: string): string {

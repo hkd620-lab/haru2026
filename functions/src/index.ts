@@ -46,7 +46,12 @@ import {
   shouldBlockNewSubscriptionForInitialBillingCleanup,
 } from './subscriptionBillingCore';
 import { enforceRateLimit } from './utils/rateLimit';
-import { CONVERTED_JPEG_MAX_BYTES, convertHeicToJpegBase64 } from './heicConversionCore';
+import {
+  CONVERTED_JPEG_MAX_BYTES,
+  HEIC_UPLOAD_TRANSFORMATION,
+  convertHeicToJpegBase64,
+  sweepExpiredHeicTempObjects,
+} from './heicConversionCore';
 import {
   buildBibleWordMeaningCacheKey,
   buildBibleWordMeaningContext,
@@ -5869,6 +5874,7 @@ export const convertHeic = onCall(
           format: 'jpg',
           public_id: publicId,
           overwrite: false,
+          transformation: [HEIC_UPLOAD_TRANSFORMATION],
         }),
         download: async (url, maxBytes) => {
           const response = await axios.get(url, {
@@ -5899,6 +5905,38 @@ export const convertHeic = onCall(
       throw new HttpsError('internal', `변환 실패: ${error.message}`);
     }
   }
+);
+
+export const cleanupHeicTemp = onSchedule(
+  {
+    schedule: 'every 30 minutes',
+    region: 'asia-northeast3',
+  },
+  async () => {
+    configureCloudinary();
+    const result = await sweepExpiredHeicTempObjects(Date.now(), {
+      list: async (nextCursor) => cloudinary.api.resources({
+        resource_type: 'image',
+        type: 'upload',
+        prefix: 'heic_temp/',
+        max_results: 500,
+        ...(nextCursor ? { next_cursor: nextCursor } : {}),
+      }),
+      destroy: async (publicId) => {
+        const destroyed = await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+        if (!['ok', 'not found'].includes(String(destroyed?.result))) {
+          throw new Error(`Cloudinary temporary object cleanup failed: ${String(destroyed?.result || 'unknown')}`);
+        }
+      },
+    });
+    if (result.failed.length > 0) {
+      logger.warn('HEIC 임시 객체 정리 일부 실패', { failedCount: result.failed.length });
+    }
+    logger.info('HEIC 임시 객체 정리 완료', {
+      deletedCount: result.deleted.length,
+      failedCount: result.failed.length,
+    });
+  },
 );
 
 // uploadRecordImage 는 정책 복구(Firebase Storage 메인)에 따라 제거됨.

@@ -27,6 +27,9 @@ assert(convertHeicSection.includes("await enforceRateLimit(request.auth.uid, 'co
 assert(convertHeicSection.includes("`heic_temp/${safeCloudinarySegment(request.auth.uid, 'user')}/${crypto.randomUUID()}`"));
 assert(convertHeicSection.includes('convertHeicToJpegBase64(imageBase64, temporaryPublicId'));
 assert(!convertHeicSection.includes('return { url:'), 'convertHeic must not expose a temporary Cloudinary URL');
+assert(convertHeicSection.includes('transformation: [HEIC_UPLOAD_TRANSFORMATION]'));
+assert(indexSrc.includes("schedule: 'every 30 minutes'"));
+assert(indexSrc.includes("prefix: 'heic_temp/'"));
 
 const authCheck = convertHeicSection.indexOf('if (!request.auth)');
 const cloudinaryCall = convertHeicSection.indexOf('configureCloudinary()');
