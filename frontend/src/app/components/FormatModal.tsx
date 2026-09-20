@@ -12,7 +12,7 @@ import heic2any from 'heic2any';
 import { LoadingOverlay } from './LoadingOverlay';
 import GrapeLoadingMini from './GrapeLoadingMini';
 import { readOriginalImageMeta, type UploadedImageMeta } from '../services/photoMetadataService';
-import { decodeConvertedJpeg } from '../services/recordPhotoUploadCore';
+import { decodeConvertedJpeg, excludeCommittedRecordPhotoUrls } from '../services/recordPhotoUploadCore';
 import {
   makeReadingBookId,
   normalizeBookField,
@@ -2284,6 +2284,10 @@ ${contentValues}`,
         ].join('|'))}`,
       }));
       const result = await saveLedgerPeriodEntriesBatch(user.uid, saveEntries);
+      sessionUploadedImageUrlsRef.current = excludeCommittedRecordPhotoUrls(
+        sessionUploadedImageUrlsRef.current,
+        selectedRows.flatMap((row) => row.entry.imageUrls || []),
+      );
       setLedgerPeriodResult({
         totalCount: ledgerXlsxPreviewRows.length,
         savedCount: result.savedCount,

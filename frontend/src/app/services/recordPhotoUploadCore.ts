@@ -28,6 +28,11 @@ export async function persistRecordPhoto({ upload, persist, commit }: PersistRec
   }
 }
 
+export function excludeCommittedRecordPhotoUrls(trackedUrls: string[], committedUrls: string[]): string[] {
+  const committed = new Set(committedUrls);
+  return trackedUrls.filter((url) => !committed.has(url));
+}
+
 export function decodeConvertedJpeg(data: unknown): Blob {
   const result = data as { imageBase64?: unknown; contentType?: unknown };
   if (typeof result?.imageBase64 !== 'string' || result.contentType !== 'image/jpeg') {

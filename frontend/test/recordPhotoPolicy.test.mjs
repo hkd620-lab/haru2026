@@ -17,6 +17,7 @@ assert.match(formatModal, /compressImage\(imageFile, 800, 0\.85\)/, 'FormatModal
 assert.match(formatModal, /sessionUploadedImageUrlsRef/, 'FormatModal must track new uploads for cancel cleanup');
 assert.match(formatModal, /pendingStorageRef && !uploadTracked/, 'FormatModal must roll back uploads that fail before URL tracking');
 assert.match(formatModal, /cleanupUncommittedSessionUploads/, 'FormatModal must clean up unsaved uploaded photos on cancel');
+assert.match(formatModal, /excludeCommittedRecordPhotoUrls/, 'FormatModal must preserve photos committed by period ledger saves');
 assert.match(formatModal, /원본 파일은 보관하지 않습니다/, 'FormatModal must not imply original photo preservation');
 
 assert.match(sayuModal, /accept="image\/\*,\.heic,\.heif"/, 'SayuModal edit flow must accept HEIC/HEIF photos');

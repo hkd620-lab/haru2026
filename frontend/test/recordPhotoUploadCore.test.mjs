@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { persistRecordPhoto } from '../src/app/services/recordPhotoUploadCore.ts';
+import {
+  excludeCommittedRecordPhotoUrls,
+  persistRecordPhoto,
+} from '../src/app/services/recordPhotoUploadCore.ts';
 
 const originalImages = ['https://storage.test/existing.jpg'];
 
@@ -49,6 +52,20 @@ const originalImages = ['https://storage.test/existing.jpg'];
     commit: () => { committed = true; },
   }), /Firebase upload failed/);
   assert.equal(committed, false);
+}
+
+{
+  const tracked = ['saved-a', 'unsaved-b', 'saved-c'];
+  assert.deepEqual(
+    excludeCommittedRecordPhotoUrls(tracked, ['saved-a', 'saved-c']),
+    ['unsaved-b'],
+    'period saves must preserve committed photos while retaining unsaved photos for cancel cleanup',
+  );
+  assert.deepEqual(
+    excludeCommittedRecordPhotoUrls(tracked, []),
+    tracked,
+    'failed period saves must leave all pending photos eligible for cleanup',
+  );
 }
 
 console.log('record photo upload transaction behavior tests passed');
