@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+  cleanupTrackedRecordPhotos,
   excludeCommittedRecordPhotoUrls,
   persistRecordPhoto,
 } from '../src/app/services/recordPhotoUploadCore.ts';
@@ -16,6 +17,21 @@ const originalImages = ['https://storage.test/existing.jpg'];
   });
   assert.deepEqual(visibleImages, [...originalImages, 'https://storage.test/new.jpg']);
   assert.equal(cleaned, false);
+}
+
+{
+  const attempts = [];
+  const first = await cleanupTrackedRecordPhotos(['deleted-a', 'retry-b', 'deleted-a'], async (url) => {
+    attempts.push(url);
+    if (url === 'retry-b') throw new Error('offline');
+  });
+  assert.deepEqual(attempts, ['deleted-a', 'retry-b'], 'cleanup must deduplicate Storage targets');
+  assert.deepEqual(first.deletedUrls, ['deleted-a']);
+  assert.deepEqual(first.failedUrls, ['retry-b'], 'failed cleanup targets must remain available for retry');
+
+  const second = await cleanupTrackedRecordPhotos(first.failedUrls, async () => {});
+  assert.deepEqual(second.deletedUrls, ['retry-b']);
+  assert.deepEqual(second.failedUrls, []);
 }
 
 {

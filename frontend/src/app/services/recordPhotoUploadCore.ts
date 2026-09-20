@@ -33,6 +33,25 @@ export function excludeCommittedRecordPhotoUrls(trackedUrls: string[], committed
   return trackedUrls.filter((url) => !committed.has(url));
 }
 
+export async function cleanupTrackedRecordPhotos(
+  urls: string[],
+  deleteUrl: (url: string) => Promise<void>,
+): Promise<{ deletedUrls: string[]; failedUrls: string[] }> {
+  const uniqueUrls = Array.from(new Set(urls));
+  const results = await Promise.all(uniqueUrls.map(async (url) => {
+    try {
+      await deleteUrl(url);
+      return { url, deleted: true };
+    } catch {
+      return { url, deleted: false };
+    }
+  }));
+  return {
+    deletedUrls: results.filter((result) => result.deleted).map((result) => result.url),
+    failedUrls: results.filter((result) => !result.deleted).map((result) => result.url),
+  };
+}
+
 export function decodeConvertedJpeg(data: unknown): Blob {
   const result = data as { imageBase64?: unknown; contentType?: unknown };
   if (typeof result?.imageBase64 !== 'string' || result.contentType !== 'image/jpeg') {

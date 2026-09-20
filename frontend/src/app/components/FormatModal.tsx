@@ -12,7 +12,11 @@ import heic2any from 'heic2any';
 import { LoadingOverlay } from './LoadingOverlay';
 import GrapeLoadingMini from './GrapeLoadingMini';
 import { readOriginalImageMeta, type UploadedImageMeta } from '../services/photoMetadataService';
-import { decodeConvertedJpeg, excludeCommittedRecordPhotoUrls } from '../services/recordPhotoUploadCore';
+import {
+  cleanupTrackedRecordPhotos,
+  decodeConvertedJpeg,
+  excludeCommittedRecordPhotoUrls,
+} from '../services/recordPhotoUploadCore';
 import {
   makeReadingBookId,
   normalizeBookField,
@@ -1947,16 +1951,41 @@ ${contentValues}`,
     }
   }
 
-  const cleanupUncommittedSessionUploads = async () => {
-    if (committedCloseRef.current || sessionUploadedImageUrlsRef.current.length === 0 || !user?.uid) return;
-    const urls = Array.from(new Set(sessionUploadedImageUrlsRef.current));
-    sessionUploadedImageUrlsRef.current = [];
+  const cleanupUncommittedSessionUploads = async (): Promise<boolean> => {
+    if (committedCloseRef.current || sessionUploadedImageUrlsRef.current.length === 0) return true;
+    if (!user?.uid) return false;
+    const urls = sessionUploadedImageUrlsRef.current;
     const storage = getStorage();
-    await Promise.allSettled(urls.map(async (url) => {
+    const { deletedUrls, failedUrls } = await cleanupTrackedRecordPhotos(urls, async (url) => {
       const path = getStoragePathFromDownloadUrl(url);
-      if (!path || !path.startsWith(`users/${user.uid}/format_photos/`)) return;
+      if (!path || !path.startsWith(`users/${user.uid}/format_photos/`)) {
+        throw new Error('삭제 권한이 없는 사진 경로입니다.');
+      }
       await deleteObject(ref(storage, path));
-    }));
+    });
+    sessionUploadedImageUrlsRef.current = failedUrls;
+
+    if (deletedUrls.length > 0) {
+      const deleted = new Set(deletedUrls);
+      setUploadedImages((images) => images.filter((url) => !deleted.has(url)));
+      setUploadedImageMeta((metadata) => metadata.filter((meta) => !deleted.has(meta.url)));
+      const nextRows = ledgerXlsxPreviewRows.map((row) => ({
+        ...row,
+        entry: {
+          ...row.entry,
+          imageUrls: (row.entry.imageUrls || []).filter((url) => !deleted.has(url)),
+          imageMeta: (row.entry.imageMeta || []).filter((meta) => !deleted.has(meta.url)),
+        },
+      }));
+      setLedgerXlsxPreviewRows(nextRows);
+      saveLedgerXlsxDraft(nextRows, ledgerXlsxYear);
+    }
+
+    if (failedUrls.length > 0) {
+      toast.error('일부 사진 정리에 실패했습니다. 네트워크를 확인한 뒤 다시 닫아주세요.');
+      return false;
+    }
+    return true;
   };
 
   const closeAfterCommit = () => {
@@ -1965,11 +1994,11 @@ ${contentValues}`,
   };
 
   const handleCloseRequest = async () => {
-    if (isUploading || isSaving) {
+    if (isUploading || isSaving || isSavingLedgerXlsx) {
       toast.warning('사진 업로드 또는 저장이 끝난 뒤 닫아주세요.');
       return;
     }
-    await cleanupUncommittedSessionUploads();
+    if (!(await cleanupUncommittedSessionUploads())) return;
     onClose();
   };
 
