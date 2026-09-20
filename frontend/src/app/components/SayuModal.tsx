@@ -42,6 +42,7 @@ const TEMPERATURE_OPTIONS = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
 const MOOD_OPTIONS = ['기쁨', '평온', '무미', '울적', '번잡'];
 const TIMELINE_IMAGE_MAX_WIDTH = 1600;
 const TIMELINE_IMAGE_QUALITY = 0.82;
+const RECORD_IMAGE_MAX_BYTES = 20 * 1024 * 1024;
 type EnvTagType = 'weather' | 'temperature' | 'mood';
 
 type HouseholdSayuEntry = {
@@ -79,6 +80,37 @@ function parseHouseholdEntriesForSayu(data?: Record<string, string>): HouseholdS
   } catch {
     return [];
   }
+}
+
+function isHeicLikeFile(file: File) {
+  return file.type === 'image/heic' ||
+    file.type === 'image/heif' ||
+    /\.(heic|heif)$/i.test(file.name);
+}
+
+function isSupportedRecordImage(file: File) {
+  return file.type.startsWith('image/') || isHeicLikeFile(file);
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+async function convertHeicRecordImage(file: File): Promise<Blob> {
+  const convertHeic = httpsCallable(functions, 'convertHeic');
+  const result = await convertHeic({ imageBase64: arrayBufferToBase64(await file.arrayBuffer()) });
+  const { url } = result.data as { url?: string };
+  if (!url) throw new Error('HEIC 변환 결과 URL이 없습니다.');
+
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('변환된 JPG를 내려받지 못했습니다.');
+  return response.blob();
 }
 
 function formatHouseholdDate(date: string): string {
@@ -1401,17 +1433,48 @@ export function SayuModal({
     if (!file || !currentUser || !firestoreId || !formatKey) return;
     if (localImages.length >= 3) {
       toast.error('사진은 최대 3장까지 추가할 수 있습니다.');
+      e.target.value = '';
       return;
     }
+    if (file.size > RECORD_IMAGE_MAX_BYTES) {
+      toast.error('사진은 20MB 이하만 추가할 수 있습니다.');
+      e.target.value = '';
+      return;
+    }
+    if (!isSupportedRecordImage(file)) {
+      toast.error('PNG, JPG, JPEG, WEBP, HEIC 사진만 추가할 수 있습니다.');
+      e.target.value = '';
+      return;
+    }
+
+    let uploadedFileName = '';
+    let shouldCleanupUploadedFile = false;
     setIsUploadingImage(true);
     try {
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 8);
-      const fileName = `${recordDate}_${formatKey}_${timestamp}_${randomId}.jpg`;
+      uploadedFileName = `${recordDate}_${formatKey}_${timestamp}_${randomId}.jpg`;
       const originalMeta = await readOriginalImageMeta(file);
-      const imageRef = ref(storage, `users/${currentUser.uid}/format_photos/${fileName}`);
-      const compressed = await compressImage(file, TIMELINE_IMAGE_MAX_WIDTH, TIMELINE_IMAGE_QUALITY);
+
+      let fileToProcess: File | Blob = file;
+      if (isHeicLikeFile(file)) {
+        try {
+          toast.info('HEIC 파일을 JPG로 변환 중...');
+          fileToProcess = await convertHeicRecordImage(file);
+        } catch (heicError) {
+          console.error('HEIC 변환 실패:', heicError);
+          toast.error('HEIC 변환에 실패했습니다. JPG로 저장한 뒤 다시 시도해주세요.');
+          return;
+        }
+      }
+
+      const imageFile = fileToProcess instanceof File
+        ? fileToProcess
+        : new File([fileToProcess], uploadedFileName, { type: 'image/jpeg' });
+      const imageRef = ref(storage, `users/${currentUser.uid}/format_photos/${uploadedFileName}`);
+      const compressed = await compressImage(imageFile, TIMELINE_IMAGE_MAX_WIDTH, TIMELINE_IMAGE_QUALITY);
       await uploadBytes(imageRef, compressed, { contentType: 'image/jpeg' });
+      shouldCleanupUploadedFile = true;
       const url = await getDownloadURL(imageRef);
       const newImages = [...localImages, url];
       setLocalImages(newImages);
@@ -1431,9 +1494,17 @@ export function SayuModal({
         [`${formatKey}_images`]: JSON.stringify(newImages),
         [imageMetaKey]: JSON.stringify(newImageMeta),
       });
+      shouldCleanupUploadedFile = false;
       await refreshPublicSharedRecord();
       toast.success('사진이 추가되었습니다!');
     } catch (err) {
+      if (shouldCleanupUploadedFile && uploadedFileName) {
+        try {
+          await deleteObject(ref(storage, `users/${currentUser.uid}/format_photos/${uploadedFileName}`));
+        } catch {
+          // Firestore 반영 실패 후 롤백 삭제가 실패해도 사용자의 편집 흐름은 유지합니다.
+        }
+      }
       console.error('사진 업로드 실패:', err);
       toast.error('사진 업로드에 실패했습니다.');
     } finally {
@@ -2822,7 +2893,7 @@ export function SayuModal({
               {/* 사진 추가 버튼 - IIFE 블록 완전 밖에 위치, 항상 표시 */}
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,.heic,.heif"
                 id="sayu-image-upload"
                 style={{
                   position: 'absolute',
@@ -2855,6 +2926,9 @@ export function SayuModal({
                   >
                     {isUploadingImage ? '⏳ 업로드 중...' : `📷 사진 추가 (${localImages.length}/3)`}
                   </button>
+                  <p style={{ margin: '6px 0 0', fontSize: 11, color: '#9ca3af' }}>
+                    PNG, JPG, JPEG, WEBP, HEIC · 압축한 JPG 확인용 이미지를 저장하며 원본 파일은 보관하지 않습니다
+                  </p>
                 </div>
               )}
 

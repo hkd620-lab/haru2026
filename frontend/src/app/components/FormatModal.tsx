@@ -455,6 +455,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [uploadedImageMeta, setUploadedImageMeta] = useState<UploadedImageMeta[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const sessionUploadedImageUrlsRef = useRef<string[]>([]);
+  const committedCloseRef = useRef(false);
   const [isExtractingBookText, setIsExtractingBookText] = useState(false);
   const [readingOcrUsedCount, setReadingOcrUsedCount] = useState<number | null>(null);
   const [readingBookTextMode, setReadingBookTextMode] = useState<'photo' | 'manual'>('photo');
@@ -582,6 +584,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
 
   useEffect(() => {
     if (isOpen) {
+      sessionUploadedImageUrlsRef.current = [];
+      committedCloseRef.current = false;
       setFormData((format === '육아일기' || format === '성장기록') ? { ...initialData, child_measuredate: initialData.child_measuredate || getTodayInputValue() } : initialData);
       setGrowthSubjectBirthdate('');
       setGrowthSubjectGender('');
@@ -1106,7 +1110,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
         savedCount++;
       }
       toast.success(`${savedCount}건의 거래가 각각 저장되었습니다!`);
-      onClose();
+      closeAfterCommit();
     } catch (error) {
       console.error('주식 거래 저장 실패:', error);
       toast.error('저장에 실패했습니다.');
@@ -1187,7 +1191,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
 
       await onSave(dataToSave);
       toast.success('저장되었습니다!');
-      onClose();
+      closeAfterCommit();
 
       // 백그라운드 AI 제목 추출
       try {
@@ -1875,6 +1879,7 @@ ${contentValues}`,
           const storageRef = ref(storage, imagePath);
           await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
           const downloadUrl = await getDownloadURL(storageRef);
+          sessionUploadedImageUrlsRef.current.push(downloadUrl);
           newImageUrls.push(downloadUrl);
           newImageMeta.push({
             ...originalMeta,
@@ -1935,6 +1940,32 @@ ${contentValues}`,
     }
   }
 
+  const cleanupUncommittedSessionUploads = async () => {
+    if (committedCloseRef.current || sessionUploadedImageUrlsRef.current.length === 0 || !user?.uid) return;
+    const urls = Array.from(new Set(sessionUploadedImageUrlsRef.current));
+    sessionUploadedImageUrlsRef.current = [];
+    const storage = getStorage();
+    await Promise.allSettled(urls.map(async (url) => {
+      const path = getStoragePathFromDownloadUrl(url);
+      if (!path || !path.startsWith(`users/${user.uid}/format_photos/`)) return;
+      await deleteObject(ref(storage, path));
+    }));
+  };
+
+  const closeAfterCommit = () => {
+    committedCloseRef.current = true;
+    onClose();
+  };
+
+  const handleCloseRequest = async () => {
+    if (isUploading || isSaving) {
+      toast.warning('사진 업로드 또는 저장이 끝난 뒤 닫아주세요.');
+      return;
+    }
+    await cleanupUncommittedSessionUploads();
+    onClose();
+  };
+
   const handleDeleteImage = async (imageUrl: string, index: number) => {
     const periodRow = ledgerInputMode === 'period'
       ? ledgerXlsxPreviewRows.find((row) => row.id === expandedLedgerXlsxRowId)
@@ -1968,6 +1999,7 @@ ${contentValues}`,
         await deleteObject(imageRef);
       }
 
+      sessionUploadedImageUrlsRef.current = sessionUploadedImageUrlsRef.current.filter((url) => url !== imageUrl);
       removeFromState();
       toast.success('사진이 삭제되었습니다.');
     } catch (error: any) {
@@ -1986,6 +2018,7 @@ ${contentValues}`,
         msg.includes('이미 삭제');
 
       if (ignorable) {
+        sessionUploadedImageUrlsRef.current = sessionUploadedImageUrlsRef.current.filter((url) => url !== imageUrl);
         removeFromState();
         toast.success('사진이 제거되었습니다.');
       } else {
@@ -2073,7 +2106,7 @@ ${contentValues}`,
         });
       }
 
-      onClose();
+      closeAfterCommit();
     } catch (error) {
       console.error('저장 중 오류:', error);
       toast.error('저장에 실패했습니다.');
@@ -2397,7 +2430,7 @@ ${contentValues}`,
     try {
       await saveHouseholdEntriesBatch(householdEntries);
       toast.success(`가계부 ${householdEntries.length}건이 저장되었습니다!`);
-      onClose();
+      closeAfterCommit();
     } catch (error) {
       console.error('저장 중 오류:', error);
       toast.error('저장에 실패했습니다.');
@@ -2422,7 +2455,7 @@ ${contentValues}`,
     try {
       await onSave(dataToSave as any);
       toast.success(`배뇨일지 ${voidingEntries.length}건이 저장되었습니다!`);
-      onClose();
+      closeAfterCommit();
     } catch (error) {
       console.error('저장 중 오류:', error);
       toast.error('저장에 실패했습니다.');
@@ -2566,7 +2599,7 @@ ${contentValues}`,
       // 저장 완료된 달은 목록에서 제거 — 검증 실패로 막힌 달만 남겨 재수정할 수 있게 한다.
       const savedMonths = new Set(validGroups.map((g) => g.month));
       setKakaoXlsxMonthGroups((groups) => groups.filter((g) => !savedMonths.has(g.month)));
-      if (blockedMonths.length === 0) onClose();
+      if (blockedMonths.length === 0) closeAfterCommit();
     } catch (error) {
       console.error('카카오뱅크 가져오기 저장 실패:', error);
       toast.error('저장 중 오류가 발생했습니다. 가계부에서 반영 여부를 확인해 주세요.');
@@ -3057,7 +3090,7 @@ ${contentValues}`,
       setIsSaving(true);
       await onSave(updateData);
       toast.success(editingReadingEntryId ? '📖 독서장 회차가 수정되었습니다.' : '📖 독서장이 누적 저장되었습니다.');
-      onClose();
+      closeAfterCommit();
     } catch (error: any) {
       console.error('중간기록 저장 실패:', error);
       toast.error('중간기록 저장에 실패했습니다.');
@@ -3096,7 +3129,7 @@ ${contentValues}`,
       await onSave(updateData);
       toast.success('SAYU-나의기록에 저장되었습니다.');
       setShowReadingFinishModal(false);
-      onClose();
+      closeAfterCommit();
     } catch (error) {
       console.error('최종 독서사유 저장 실패:', error);
       toast.error('최종 저장에 실패했습니다.');
@@ -3185,7 +3218,7 @@ ${contentValues}`,
           zIndex: 1000,
           padding: '20px',
         }}
-        onClick={onClose}
+        onClick={handleCloseRequest}
       >
         <div
           style={{
@@ -3222,7 +3255,7 @@ ${contentValues}`,
               )}
             </div>
             <button
-              onClick={onClose}
+              onClick={handleCloseRequest}
               style={{
                 background: 'none',
                 border: 'none',
@@ -5796,8 +5829,8 @@ ${contentValues}`,
                 </label>
                 <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 8, marginTop: 0 }}>
                   {isLedgerFormat
-                    ? '사진 없이도 저장할 수 있습니다 · 최대 10장 · PNG, JPG, JPEG, WEBP, HEIC'
-                    : '사진 없이도 저장할 수 있습니다 · 최대 3장 · PNG, JPG, JPEG, WEBP, HEIC'}
+                    ? '사진 없이도 저장할 수 있습니다 · 최대 10장 · PNG, JPG, JPEG, WEBP, HEIC · 압축한 JPG 확인용 이미지를 저장하며 원본 파일은 보관하지 않습니다'
+                    : '사진 없이도 저장할 수 있습니다 · 최대 3장 · PNG, JPG, JPEG, WEBP, HEIC · 압축한 JPG 확인용 이미지를 저장하며 원본 파일은 보관하지 않습니다'}
                 </p>
                 <input
                   ref={fileInputRef}
