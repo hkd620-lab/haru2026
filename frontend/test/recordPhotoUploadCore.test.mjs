@@ -2,11 +2,19 @@ import assert from 'node:assert/strict';
 import {
   cleanupTrackedRecordPhotos,
   decodeConvertedJpeg,
+  enqueuePendingRecordPhotoCleanup,
   excludeCommittedRecordPhotoUrls,
   persistRecordPhoto,
+  retryPendingRecordPhotoCleanup,
 } from '../src/app/services/recordPhotoUploadCore.ts';
 
 const originalImages = ['https://storage.test/existing.jpg'];
+const localStorageValues = new Map();
+globalThis.localStorage = {
+  getItem: (key) => localStorageValues.get(key) ?? null,
+  setItem: (key, value) => localStorageValues.set(key, String(value)),
+  removeItem: (key) => localStorageValues.delete(key),
+};
 
 {
   const jpeg = Uint8Array.from([0xff, 0xd8, 0xff, 0xd9]);
@@ -55,6 +63,12 @@ const originalImages = ['https://storage.test/existing.jpg'];
   const second = await cleanupTrackedRecordPhotos(first.failedUrls, async () => {});
   assert.deepEqual(second.deletedUrls, ['retry-b']);
   assert.deepEqual(second.failedUrls, []);
+
+  const alreadyMissing = await cleanupTrackedRecordPhotos(['missing'], async () => {
+    throw { code: 'storage/object-not-found' };
+  });
+  assert.deepEqual(alreadyMissing.deletedUrls, ['missing']);
+  assert.deepEqual(alreadyMissing.failedUrls, []);
 }
 
 {
@@ -81,6 +95,40 @@ const originalImages = ['https://storage.test/existing.jpg'];
   });
   assert.equal(attempts, 2, 'the same photo can be added immediately after failure');
   assert.deepEqual(visibleImages, [...originalImages, 'https://storage.test/retry.jpg']);
+}
+
+{
+  const ownerPath = 'users/user-a/format_photos/orphan.jpg';
+  const otherPath = 'users/user-b/format_photos/other.jpg';
+  let cleanupFailureQueued = false;
+  await assert.rejects(() => persistRecordPhoto({
+    upload: async () => ({
+      url: 'https://storage.test/orphan.jpg',
+      cleanup: async () => { throw new Error('offline'); },
+    }),
+    persist: async () => { throw new Error('Firestore update failed'); },
+    commit: () => {},
+    onCleanupFailure: async () => {
+      cleanupFailureQueued = true;
+      enqueuePendingRecordPhotoCleanup(ownerPath);
+      enqueuePendingRecordPhotoCleanup(otherPath);
+    },
+  }), /Firestore update failed/);
+  assert.equal(cleanupFailureQueued, true);
+
+  let online = false;
+  const firstRetry = await retryPendingRecordPhotoCleanup('user-a', async () => {
+    if (!online) throw new Error('offline');
+  });
+  assert.deepEqual(firstRetry.failedPaths, [ownerPath]);
+
+  online = true;
+  const afterRestart = await retryPendingRecordPhotoCleanup('user-a', async () => {});
+  assert.deepEqual(afterRestart.deletedPaths, [ownerPath]);
+  const otherUserRetry = await retryPendingRecordPhotoCleanup('user-b', async (path) => {
+    assert.equal(path, otherPath, 'cleanup queue must not let one UID delete another UID path');
+  });
+  assert.deepEqual(otherUserRetry.deletedPaths, [otherPath]);
 }
 
 {

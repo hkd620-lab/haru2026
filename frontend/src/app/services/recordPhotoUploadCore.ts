@@ -7,9 +7,62 @@ type PersistRecordPhotoOptions = {
   upload: () => Promise<UploadedRecordPhoto>;
   persist: (url: string) => Promise<void>;
   commit: (url: string) => void;
+  onCleanupFailure?: (uploaded: UploadedRecordPhoto) => void | Promise<void>;
 };
 
-export async function persistRecordPhoto({ upload, persist, commit }: PersistRecordPhotoOptions): Promise<string> {
+const PENDING_RECORD_PHOTO_CLEANUP_KEY = 'haru2026_pending_record_photo_cleanup';
+
+function readPendingRecordPhotoCleanupPaths(): string[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(PENDING_RECORD_PHOTO_CLEANUP_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed.filter((path) => typeof path === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function writePendingRecordPhotoCleanupPaths(paths: string[]) {
+  localStorage.setItem(PENDING_RECORD_PHOTO_CLEANUP_KEY, JSON.stringify(Array.from(new Set(paths))));
+}
+
+export function enqueuePendingRecordPhotoCleanup(path: string) {
+  if (!path) return;
+  writePendingRecordPhotoCleanupPaths([...readPendingRecordPhotoCleanupPaths(), path]);
+}
+
+function isObjectAlreadyDeleted(error: unknown): boolean {
+  const code = String((error as { code?: unknown })?.code || '').toLowerCase();
+  return code === 'storage/object-not-found' || code.includes('object-not-found');
+}
+
+export async function retryPendingRecordPhotoCleanup(
+  uid: string,
+  deletePath: (path: string) => Promise<void>,
+): Promise<{ deletedPaths: string[]; failedPaths: string[] }> {
+  const ownerPrefix = `users/${uid}/format_photos/`;
+  const ownedPaths = readPendingRecordPhotoCleanupPaths().filter((path) => path.startsWith(ownerPrefix));
+  const unownedPaths = readPendingRecordPhotoCleanupPaths().filter((path) => !path.startsWith(ownerPrefix));
+  const deletedPaths: string[] = [];
+  const failedPaths: string[] = [];
+  for (const path of ownedPaths) {
+    try {
+      await deletePath(path);
+      deletedPaths.push(path);
+    } catch (error) {
+      if (isObjectAlreadyDeleted(error)) deletedPaths.push(path);
+      else failedPaths.push(path);
+    }
+  }
+  writePendingRecordPhotoCleanupPaths([...unownedPaths, ...failedPaths]);
+  return { deletedPaths, failedPaths };
+}
+
+export async function persistRecordPhoto({
+  upload,
+  persist,
+  commit,
+  onCleanupFailure,
+}: PersistRecordPhotoOptions): Promise<string> {
   let uploaded: UploadedRecordPhoto | null = null;
   try {
     uploaded = await upload();
@@ -21,7 +74,7 @@ export async function persistRecordPhoto({ upload, persist, commit }: PersistRec
       try {
         await uploaded.cleanup();
       } catch {
-        // Preserve the original upload or persistence failure.
+        await onCleanupFailure?.(uploaded);
       }
     }
     throw error;
@@ -42,8 +95,8 @@ export async function cleanupTrackedRecordPhotos(
     try {
       await deleteUrl(url);
       return { url, deleted: true };
-    } catch {
-      return { url, deleted: false };
+    } catch (error) {
+      return { url, deleted: isObjectAlreadyDeleted(error) };
     }
   }));
   return {

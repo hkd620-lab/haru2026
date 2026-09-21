@@ -16,7 +16,12 @@ import GrapeLoadingMini from './GrapeLoadingMini';
 import { GrowthTimelineDocumentModal, type GrowthTimelineDocumentItem } from './GrowthTimelineDocumentModal';
 import { compressImage } from '../services/imageService';
 import { readOriginalImageMeta, type UploadedImageMeta } from '../services/photoMetadataService';
-import { decodeConvertedJpeg, persistRecordPhoto } from '../services/recordPhotoUploadCore';
+import {
+  decodeConvertedJpeg,
+  enqueuePendingRecordPhotoCleanup,
+  persistRecordPhoto,
+  retryPendingRecordPhotoCleanup,
+} from '../services/recordPhotoUploadCore';
 import {
   getLocationCandidateFromGps,
   type ReverseGeocodeCandidate,
@@ -647,6 +652,14 @@ export function SayuModal({
       activationConstraint: { delay: 200, tolerance: 5 },
     }),
   );
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    void retryPendingRecordPhotoCleanup(
+      currentUser.uid,
+      (path) => deleteObject(ref(storage, path)),
+    );
+  }, [currentUser?.uid]);
 
   useEffect(() => {
     weatherTagsRef.current = weatherTags;
@@ -1466,6 +1479,7 @@ export function SayuModal({
         ? fileToProcess
         : new File([fileToProcess], uploadedFileName, { type: 'image/jpeg' });
       const imageRef = ref(storage, `users/${currentUser.uid}/format_photos/${uploadedFileName}`);
+      const imagePath = `users/${currentUser.uid}/format_photos/${uploadedFileName}`;
       const compressed = await compressImage(imageFile, TIMELINE_IMAGE_MAX_WIDTH, TIMELINE_IMAGE_QUALITY);
       const recordRef = doc(db, 'users', currentUser.uid, 'records', firestoreId);
       const imageMetaKey = `${formatKey}_imageMeta`;
@@ -1481,7 +1495,7 @@ export function SayuModal({
             try {
               await deleteObject(imageRef);
             } catch {
-              // Object creation may not have completed.
+              enqueuePendingRecordPhotoCleanup(imagePath);
             }
             throw error;
           }
@@ -1501,7 +1515,12 @@ export function SayuModal({
           committedImages = newImages;
         },
         commit: () => setLocalImages(committedImages),
+        onCleanupFailure: () => enqueuePendingRecordPhotoCleanup(imagePath),
       });
+      await retryPendingRecordPhotoCleanup(
+        currentUser.uid,
+        (path) => deleteObject(ref(storage, path)),
+      );
       await refreshPublicSharedRecord();
       toast.success('사진이 추가되었습니다!');
     } catch (err) {

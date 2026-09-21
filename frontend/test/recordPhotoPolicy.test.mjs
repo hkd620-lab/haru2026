@@ -28,6 +28,8 @@ assert.match(sayuModal, /httpsCallable\(functions, 'convertHeic'\)/, 'SayuModal 
 assert.match(sayuModal, /await decodeConvertedJpeg\(result\.data\)/, 'SayuModal must consume both old and new Function contracts');
 assert.match(sayuModal, /RECORD_IMAGE_MAX_BYTES = 20 \* 1024 \* 1024/, 'SayuModal edit flow must enforce 20MB max');
 assert.match(sayuModal, /persistRecordPhoto\(/, 'SayuModal must use transactional state commit and Storage rollback');
+assert.match(sayuModal, /enqueuePendingRecordPhotoCleanup/, 'SayuModal must persist failed Storage cleanup targets');
+assert.match(sayuModal, /retryPendingRecordPhotoCleanup/, 'SayuModal must retry cleanup after restart');
 assert.match(sayuModal, /원본 파일은 보관하지 않습니다/, 'SayuModal must not imply original photo preservation');
 
 assert.match(storageRules, /match \/users\/\{userId\}\/format_photos\/\{fileName\}/, 'Storage rules must cover format_photos');
