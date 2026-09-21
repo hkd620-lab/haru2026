@@ -547,7 +547,7 @@ export interface SayuModalProps {
   format?: string;
   dateLabel: string;
   currentRating?: number;
-  onSave: (content: string, rating: number) => void;
+  onSave: (content: string, rating: number) => Promise<boolean>;
   recordDate?: string;
   weather?: string;
   temperature?: string;
@@ -634,12 +634,22 @@ export function SayuModal({
   const [showTimelineDocument, setShowTimelineDocument] = useState(false);
   const [isExportingEpub, setIsExportingEpub] = useState(false);
   const [editedTitle, setEditedTitle] = useState(title || '');
+  const [isEditing, setIsEditing] = useState(false);
+  const savedDraftRef = useRef({
+    content,
+    title: title || '',
+    weather: weather || '',
+    temperature: temperature || '',
+    mood: mood || '',
+    specialDay: (currentRating || 0) > 0,
+  });
   const isGrowthTimeline = formatKey === 'growthTimeline';
   const isHouseholdSayu = formatKey === 'household' || format === 'HARU가계부' || Boolean(editedOriginalData.household_entries);
   const householdSayuEntries = isHouseholdSayu ? parseHouseholdEntriesForSayu(editedOriginalData) : [];
   const timelineLocationRecoveryKeyRef = useRef('');
   const editedTimelineItemsRef = useRef<GrowthTimelineEditItem[]>([]);
   const openedTimelineSummaryRef = useRef('');
+  const mainEditorRef = useRef<HTMLTextAreaElement>(null);
   const weatherTagsRef = useRef<string[]>(WEATHER_OPTIONS);
   const temperatureTagsRef = useRef<string[]>(TEMPERATURE_OPTIONS);
   const moodTagsRef = useRef<string[]>(MOOD_OPTIONS);
@@ -1214,6 +1224,14 @@ export function SayuModal({
   useEffect(() => {
     if (isOpen) {
       console.log('📌 formatKey:', formatKey, 'recordDate:', recordDate);
+      savedDraftRef.current = {
+        content,
+        title: title || '',
+        weather: weather || '',
+        temperature: temperature || '',
+        mood: mood || '',
+        specialDay: (currentRating || 0) > 0,
+      };
       setEditedContent(content);
       setEditedWeather(weather || '');
       setEditedTemperature(temperature || '');
@@ -1283,6 +1301,7 @@ export function SayuModal({
       setIsSpecialDay((currentRating || 0) > 0);
       setLocalAiComment(aiComment || '');
       setViewMode('ai');
+      setIsEditing(false);
       setIsPrinting(false);
       setShowDeleteDialog(false);
       setShowTimelineDocument(false);
@@ -1317,6 +1336,36 @@ export function SayuModal({
       }
     }
   }, [isOpen, content, currentRating, images, format, title, aiComment, timelineItems, formatKey, firestoreId, recordDate, currentUser?.uid]);
+
+  useEffect(() => {
+    if (!isOpen || !isEditing || viewMode !== 'ai' || !mainEditorRef.current) return;
+
+    const editor = mainEditorRef.current;
+    editor.style.height = 'auto';
+    editor.style.height = `${Math.max(editor.scrollHeight, 400)}px`;
+  }, [isOpen, isEditing, viewMode, editedContent]);
+
+  const handleCancelEdit = () => {
+    const saved = savedDraftRef.current;
+    setEditedContent(saved.content);
+    setEditedTitle(saved.title);
+    setEditedWeather(saved.weather);
+    setEditedTemperature(saved.temperature);
+    setEditedMood(saved.mood);
+    setIsSpecialDay(saved.specialDay);
+    setIsEditing(false);
+  };
+
+  const rememberSavedEdit = (savedContent: string) => {
+    savedDraftRef.current = {
+      content: savedContent,
+      title: editedTitle,
+      weather: editedWeather,
+      temperature: editedTemperature,
+      mood: editedMood,
+      specialDay: isSpecialDay,
+    };
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -1365,7 +1414,9 @@ export function SayuModal({
         }
         toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
         await onRefresh?.();
-        onClose();
+        rememberSavedEdit(nextContent);
+        setEditedContent(nextContent);
+        setIsEditing(false);
         return;
       }
 
@@ -1381,9 +1432,11 @@ export function SayuModal({
         }
         await updateDoc(recordRef, titleUpdate);
       }
-      onSave(editedContent, isSpecialDay ? 1 : 0);
+      const saved = await onSave(editedContent, isSpecialDay ? 1 : 0);
+      if (!saved) return;
+      rememberSavedEdit(editedContent);
       toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
-      onClose();
+      setIsEditing(false);
     } catch (error) {
       console.error('저장 실패:', error);
       toast.error('❌ 저장에 실패했습니다. 다시 시도해주세요.');
@@ -2145,6 +2198,14 @@ export function SayuModal({
         .sayu-modal-inner {
           max-width: 100%;
           width: 100%;
+          height: 100dvh;
+          max-height: 100dvh !important;
+          border-radius: 0 !important;
+        }
+        .sayu-modal-content {
+          padding: 16px !important;
+          overscroll-behavior: contain;
+          -webkit-overflow-scrolling: touch;
         }
         @media (min-width: 640px) {
           .sayu-modal-overlay {
@@ -2152,6 +2213,12 @@ export function SayuModal({
           }
           .sayu-modal-inner {
             max-width: 480px;
+            height: auto;
+            max-height: 90vh !important;
+            border-radius: 12px !important;
+          }
+          .sayu-modal-content {
+            padding: 24px !important;
           }
         }
       `}</style>
@@ -2446,14 +2513,15 @@ export function SayuModal({
 
         {/* Content */}
         <div
+          className="sayu-modal-content"
           style={{
             flex: 1,
             overflowY: 'auto',
-            padding: '24px',
             backgroundColor: '#fafafa',
           }}
         >
-          {/* 편집 가능 안내 — 이 편집창이 열려 있는 동안 계속 표시 */}
+          {/* 편집 안내는 실제 수정 화면에서만 표시 */}
+          {(viewMode === 'original' || isEditing) && (
           <div
             style={{
               display: 'flex',
@@ -2472,7 +2540,9 @@ export function SayuModal({
             <span aria-hidden="true">✏️</span>
             <span>이 기록은 바로 수정할 수 있습니다. 수정한 뒤 아래 ‘저장’ 버튼을 눌러주세요.</span>
           </div>
+          )}
           {viewMode === 'ai' ? (
+            isEditing ? (
             <div>
               {/* 제목 입력 */}
               <div style={{ marginBottom: '16px' }}>
@@ -2968,11 +3038,13 @@ export function SayuModal({
 
               {/* SAYU 텍스트 편집 영역 */}
               <textarea
+                ref={mainEditorRef}
                 value={editedContent}
                 onChange={(e) => setEditedContent(e.target.value)}
                 style={{
                   width: '100%',
                   minHeight: '400px',
+                  boxSizing: 'border-box',
                   padding: '20px',
                   fontSize: 15,
                   lineHeight: 1.8,
@@ -2980,7 +3052,8 @@ export function SayuModal({
                   borderRadius: 8,
                   backgroundColor: '#fff',
                   color: '#333',
-                  resize: 'vertical',
+                  resize: 'none',
+                  overflowY: 'hidden',
                   fontFamily: 'inherit',
                   outline: 'none',
                   whiteSpace: 'pre-wrap',
@@ -3022,6 +3095,151 @@ export function SayuModal({
               </>
               )}
             </div>
+            ) : (
+            <div aria-label="SAYU 기록 읽기 화면">
+              <div
+                style={{
+                  marginBottom: 18,
+                  padding: '18px 18px 16px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 12,
+                  backgroundColor: '#fff',
+                }}
+              >
+                <p style={{ margin: 0, color: '#6B7280', fontSize: 12, fontWeight: 700 }}>SAYU 기록</p>
+                <h3
+                  style={{
+                    margin: '6px 0 0',
+                    color: '#1A3C6E',
+                    fontSize: 20,
+                    lineHeight: 1.45,
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  {editedTitle.trim() || title?.trim() || `${format || '기록'} — ${dateLabel}`}
+                </h3>
+                {(recordDate || editedWeather || editedTemperature || editedMood) && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
+                    {recordDate && (
+                      <span style={{ padding: '5px 9px', borderRadius: 999, backgroundColor: '#EEF3FA', color: '#1A3C6E', fontSize: 12 }}>
+                        📅 {formatDateToKorean(recordDate)}
+                      </span>
+                    )}
+                    {editedWeather && (
+                      <span style={{ padding: '5px 9px', borderRadius: 999, backgroundColor: '#F3F4F6', color: '#4B5563', fontSize: 12 }}>
+                        {editedWeather}
+                      </span>
+                    )}
+                    {editedTemperature && (
+                      <span style={{ padding: '5px 9px', borderRadius: 999, backgroundColor: '#F3F4F6', color: '#4B5563', fontSize: 12 }}>
+                        {editedTemperature}
+                      </span>
+                    )}
+                    {editedMood && (
+                      <span style={{ padding: '5px 9px', borderRadius: 999, backgroundColor: '#F3F4F6', color: '#4B5563', fontSize: 12 }}>
+                        {editedMood}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {isHouseholdSayu ? (
+                renderHouseholdSayuView(householdSayuEntries, editedOriginalData.household_sayu || editedContent, allHouseholdEntries)
+              ) : (
+              <>
+                {isGrowthTimeline && editedTimelineItems.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 18 }}>
+                    {editedTimelineItems.map((item, index) => (
+                      <article
+                        key={`${item.url}_read_${index}`}
+                        style={{ overflow: 'hidden', border: '1px solid #e5e7eb', borderRadius: 12, backgroundColor: '#fff' }}
+                      >
+                        <img
+                          src={item.url}
+                          alt={`성장타임라인 사진 ${index + 1}`}
+                          onError={hideOnError}
+                          style={{ display: 'block', width: '100%', maxHeight: 360, objectFit: 'cover' }}
+                        />
+                        <div style={{ padding: '12px 14px' }}>
+                          <p style={{ margin: 0, color: '#1A3C6E', fontSize: 13, fontWeight: 700 }}>
+                            {item.takenDate ? formatDateToKorean(item.takenDate) : `사진 ${index + 1}`}
+                          </p>
+                          {getTimelineLocationText(item) && (
+                            <p style={{ margin: '5px 0 0', color: '#52715f', fontSize: 12 }}>📍 {getTimelineLocationText(item)}</p>
+                          )}
+                          {item.memo && (
+                            <p style={{ margin: '8px 0 0', color: '#374151', fontSize: 15, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{item.memo}</p>
+                          )}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+
+                {!isGrowthTimeline && localImages.filter(Boolean).length > 0 && (
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: localImages.filter(Boolean).length === 1 ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+                      gap: 8,
+                      marginBottom: 18,
+                    }}
+                  >
+                    {localImages.filter(Boolean).map((imageUrl, index) => (
+                      <img
+                        key={`${imageUrl}_read_${index}`}
+                        src={imageUrl}
+                        alt={`기록 사진 ${index + 1}`}
+                        onError={hideOnError}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          height: localImages.filter(Boolean).length === 1 ? 'auto' : 170,
+                          maxHeight: 420,
+                          objectFit: 'cover',
+                          borderRadius: 10,
+                          border: '1px solid #e5e7eb',
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {editedContent.trim() ? (
+                  <article
+                    style={{
+                      padding: '22px 18px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 12,
+                      backgroundColor: '#fff',
+                      color: '#2F3742',
+                      fontSize: 16,
+                      lineHeight: 1.85,
+                      whiteSpace: 'pre-wrap',
+                      overflowWrap: 'anywhere',
+                    }}
+                  >
+                    {editedContent}
+                  </article>
+                ) : (
+                  <div style={{ padding: '36px 16px', borderRadius: 12, backgroundColor: '#fff', color: '#6B7280', textAlign: 'center' }}>
+                    저장된 SAYU 내용이 없습니다.
+                  </div>
+                )}
+
+                {localAiComment && (
+                  <div style={{ marginTop: 16, padding: '12px 16px', backgroundColor: '#FDF6C3', borderRadius: 10, border: '1px solid #e8d87a' }}>
+                    <p style={{ margin: '0 0 4px', fontSize: 11, color: '#a08c2a', fontWeight: 700 }}>💬 AI 한마디</p>
+                    <p style={{ margin: 0, fontSize: 14, color: '#4a3d00', lineHeight: 1.6 }}>{localAiComment}</p>
+                  </div>
+                )}
+              </>
+              )}
+
+              {publicControl && <div style={{ marginTop: 16 }}>{publicControl}</div>}
+            </div>
+            )
           ) : (
             renderOriginalData()
           )}
@@ -3034,7 +3252,7 @@ export function SayuModal({
           )}
         </div>
 
-        {/* Footer - AI 탭일 때만 별점/저장 버튼 표시 */}
+        {/* Footer - 읽기에서는 닫기/수정, 편집에서는 기존 저장 기능 표시 */}
         {viewMode === 'ai' && (
         <div
           style={{
@@ -3043,6 +3261,7 @@ export function SayuModal({
             backgroundColor: '#fff',
           }}
         >
+          {isEditing && (
           <div style={{ marginBottom: '16px' }}>
             <button
               onClick={() => setIsSpecialDay(!isSpecialDay)}
@@ -3068,9 +3287,10 @@ export function SayuModal({
               )}
             </button>
           </div>
+          )}
 
           {/* 🔮 이 기록으로 예언하기 — 본문 있을 때만 노출 */}
-          {(editedContent?.trim() || content?.trim()) && (
+          {!isEditing && (editedContent?.trim() || content?.trim()) && (
             <div style={{ marginBottom: 12 }}>
               <button
                 onClick={() => {
@@ -3113,9 +3333,10 @@ export function SayuModal({
           )}
 
           {/* 버튼 */}
+          {isEditing ? (
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
             <button
-              onClick={() => onClose()}
+              onClick={handleCancelEdit}
               disabled={isSaving}
               style={{
                 padding: '10px 20px',
@@ -3149,6 +3370,46 @@ export function SayuModal({
               {isSaving ? '저장 중...' : '💾 최종 저장'}
             </button>
           </div>
+          ) : (
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              type="button"
+              onClick={() => onClose()}
+              style={{
+                flex: 1,
+                minHeight: 46,
+                padding: '11px 18px',
+                fontSize: 15,
+                border: '1px solid #d1d5db',
+                borderRadius: 10,
+                backgroundColor: '#fff',
+                color: '#4B5563',
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              닫기
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              style={{
+                flex: 1.4,
+                minHeight: 46,
+                padding: '11px 18px',
+                fontSize: 15,
+                border: 'none',
+                borderRadius: 10,
+                backgroundColor: '#10b981',
+                color: '#fff',
+                cursor: 'pointer',
+                fontWeight: 700,
+              }}
+            >
+              ✏️ 수정하기
+            </button>
+          </div>
+          )}
         </div>
         )}
 
