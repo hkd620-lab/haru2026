@@ -2207,6 +2207,17 @@ export function SayuModal({
           overscroll-behavior: contain;
           -webkit-overflow-scrolling: touch;
         }
+        .sayu-record-asset-frame {
+          box-sizing: border-box;
+          width: 100%;
+          max-width: 720px;
+          margin: 0 auto;
+          padding: 24px 18px;
+          border: 1px solid #54745A;
+          border-radius: 12px;
+          background: #FFFCF2;
+          box-shadow: 0 3px 16px rgba(42, 66, 45, 0.07);
+        }
         @media (min-width: 640px) {
           .sayu-modal-overlay {
             padding: 20px;
@@ -2219,6 +2230,9 @@ export function SayuModal({
           }
           .sayu-modal-content {
             padding: 24px !important;
+          }
+          .sayu-record-asset-frame {
+            padding: 32px;
           }
         }
       `}</style>
@@ -3097,52 +3111,57 @@ export function SayuModal({
             </div>
             ) : (
             <div aria-label="SAYU 기록 읽기 화면">
-              <div
-                style={{
-                  marginBottom: 18,
-                  padding: '18px 18px 16px',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 12,
-                  backgroundColor: '#fff',
-                }}
-              >
-                <p style={{ margin: 0, color: '#6B7280', fontSize: 12, fontWeight: 700 }}>SAYU 기록</p>
+              <article className="sayu-record-asset-frame" aria-label="하루 기록자산 액자">
+                <header style={{ marginBottom: 24, paddingBottom: 20, borderBottom: '1px solid #D9CBAA', textAlign: 'center' }}>
+                  <img
+                    src="/brand/haru-pumpkin-logo.png"
+                    alt="하루lab 공식 호박 로고"
+                    style={{ display: 'block', width: 50, height: 'auto', margin: '0 auto 12px' }}
+                  />
+                  <p style={{ margin: 0, color: '#86551E', fontSize: 14, fontWeight: 700, letterSpacing: '0.08em' }}>
+                    하루의 기록
+                  </p>
+                  {format?.trim() && (
+                    <p style={{ margin: '10px 0 0', color: '#526356', fontSize: 12, fontWeight: 600 }}>
+                      {format.trim()}
+                    </p>
+                  )}
+                  {(recordDate || dateLabel?.trim()) && (
+                    <p style={{ margin: '5px 0 0', color: '#64716A', fontSize: 12 }}>
+                      {recordDate ? formatDateToKorean(recordDate) : dateLabel}
+                    </p>
+                  )}
                 <h3
                   style={{
-                    margin: '6px 0 0',
-                    color: '#1A3C6E',
-                    fontSize: 20,
+                    margin: '18px 0 0',
+                    color: '#263B2E',
+                    fontSize: 23,
                     lineHeight: 1.45,
                     overflowWrap: 'anywhere',
                   }}
                 >
                   {editedTitle.trim() || title?.trim() || `${format || '기록'} — ${dateLabel}`}
                 </h3>
-                {(recordDate || editedWeather || editedTemperature || editedMood) && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
-                    {recordDate && (
-                      <span style={{ padding: '5px 9px', borderRadius: 999, backgroundColor: '#EEF3FA', color: '#1A3C6E', fontSize: 12 }}>
-                        📅 {formatDateToKorean(recordDate)}
-                      </span>
-                    )}
+                {(editedWeather || editedTemperature || editedMood) && (
+                  <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
                     {editedWeather && (
-                      <span style={{ padding: '5px 9px', borderRadius: 999, backgroundColor: '#F3F4F6', color: '#4B5563', fontSize: 12 }}>
+                      <span style={{ padding: '5px 9px', borderRadius: 999, backgroundColor: '#F0F2E9', color: '#4B5D50', fontSize: 12 }}>
                         {editedWeather}
                       </span>
                     )}
                     {editedTemperature && (
-                      <span style={{ padding: '5px 9px', borderRadius: 999, backgroundColor: '#F3F4F6', color: '#4B5563', fontSize: 12 }}>
+                      <span style={{ padding: '5px 9px', borderRadius: 999, backgroundColor: '#F0F2E9', color: '#4B5D50', fontSize: 12 }}>
                         {editedTemperature}
                       </span>
                     )}
                     {editedMood && (
-                      <span style={{ padding: '5px 9px', borderRadius: 999, backgroundColor: '#F3F4F6', color: '#4B5563', fontSize: 12 }}>
+                      <span style={{ padding: '5px 9px', borderRadius: 999, backgroundColor: '#F0F2E9', color: '#4B5D50', fontSize: 12 }}>
                         {editedMood}
                       </span>
                     )}
                   </div>
                 )}
-              </div>
+                </header>
 
               {isHouseholdSayu ? (
                 renderHouseholdSayuView(householdSayuEntries, editedOriginalData.household_sayu || editedContent, allHouseholdEntries)
@@ -3209,10 +3228,6 @@ export function SayuModal({
                 {editedContent.trim() ? (
                   <article
                     style={{
-                      padding: '22px 18px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: 12,
-                      backgroundColor: '#fff',
                       color: '#2F3742',
                       fontSize: 16,
                       lineHeight: 1.85,
@@ -3236,8 +3251,11 @@ export function SayuModal({
                 )}
               </>
               )}
-
-              {publicControl && <div style={{ marginTop: 16 }}>{publicControl}</div>}
+                <footer style={{ marginTop: 32, paddingTop: 16, borderTop: '1px solid #E5DABF', color: '#5C655D', fontSize: 12, lineHeight: 1.6, textAlign: 'center' }}>
+                  오늘의 기록이 삶의 자산이 됩니다 · haru2026
+                </footer>
+              </article>
+              {publicControl && <div style={{ maxWidth: 720, margin: '16px auto 0' }}>{publicControl}</div>}
             </div>
             )
           ) : (
