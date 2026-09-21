@@ -2596,15 +2596,15 @@ export function SayuPage() {
   };
 
   const handleSaveSayu = async (editedContent: string, rating: number) => {
-    if (!selectedDate) return;
+    if (!selectedDate) return false;
     const currentFormatInfo = selectedDateFormats[0];
     const record = currentFormatInfo?.recordId
       ? records.find((r) => r.id === currentFormatInfo.recordId)
       : records.find((r) => r.date === selectedDate);
-    if (!record) return;
+    if (!record) return false;
 
     const formatKey = currentFormatInfo?.key || selectedDateFormats.find((f) => record[`${f.key}_sayu`])?.key;
-    if (!formatKey) return;
+    if (!formatKey) return false;
 
     const sayuKey = `${formatKey}_sayu`;
     const ratingKey = `${formatKey}_rating`;
@@ -2628,9 +2628,11 @@ export function SayuPage() {
       );
 
       toast.success('SAYU-나의기록에 저장되었습니다!');
+      return true;
     } catch (error) {
       console.error('저장 실패:', error);
       toast.error('저장에 실패했습니다.');
+      return false;
     }
   };
 

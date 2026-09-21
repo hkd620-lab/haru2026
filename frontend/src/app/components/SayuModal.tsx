@@ -547,7 +547,7 @@ export interface SayuModalProps {
   format?: string;
   dateLabel: string;
   currentRating?: number;
-  onSave: (content: string, rating: number) => void;
+  onSave: (content: string, rating: number) => Promise<boolean>;
   recordDate?: string;
   weather?: string;
   temperature?: string;
@@ -635,6 +635,14 @@ export function SayuModal({
   const [isExportingEpub, setIsExportingEpub] = useState(false);
   const [editedTitle, setEditedTitle] = useState(title || '');
   const [isEditing, setIsEditing] = useState(false);
+  const savedDraftRef = useRef({
+    content,
+    title: title || '',
+    weather: weather || '',
+    temperature: temperature || '',
+    mood: mood || '',
+    specialDay: (currentRating || 0) > 0,
+  });
   const isGrowthTimeline = formatKey === 'growthTimeline';
   const isHouseholdSayu = formatKey === 'household' || format === 'HARU가계부' || Boolean(editedOriginalData.household_entries);
   const householdSayuEntries = isHouseholdSayu ? parseHouseholdEntriesForSayu(editedOriginalData) : [];
@@ -1216,6 +1224,14 @@ export function SayuModal({
   useEffect(() => {
     if (isOpen) {
       console.log('📌 formatKey:', formatKey, 'recordDate:', recordDate);
+      savedDraftRef.current = {
+        content,
+        title: title || '',
+        weather: weather || '',
+        temperature: temperature || '',
+        mood: mood || '',
+        specialDay: (currentRating || 0) > 0,
+      };
       setEditedContent(content);
       setEditedWeather(weather || '');
       setEditedTemperature(temperature || '');
@@ -1329,6 +1345,28 @@ export function SayuModal({
     editor.style.height = `${Math.max(editor.scrollHeight, 400)}px`;
   }, [isOpen, isEditing, viewMode, editedContent]);
 
+  const handleCancelEdit = () => {
+    const saved = savedDraftRef.current;
+    setEditedContent(saved.content);
+    setEditedTitle(saved.title);
+    setEditedWeather(saved.weather);
+    setEditedTemperature(saved.temperature);
+    setEditedMood(saved.mood);
+    setIsSpecialDay(saved.specialDay);
+    setIsEditing(false);
+  };
+
+  const rememberSavedEdit = (savedContent: string) => {
+    savedDraftRef.current = {
+      content: savedContent,
+      title: editedTitle,
+      weather: editedWeather,
+      temperature: editedTemperature,
+      mood: editedMood,
+      specialDay: isSpecialDay,
+    };
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -1376,7 +1414,9 @@ export function SayuModal({
         }
         toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
         await onRefresh?.();
-        onClose();
+        rememberSavedEdit(nextContent);
+        setEditedContent(nextContent);
+        setIsEditing(false);
         return;
       }
 
@@ -1392,9 +1432,11 @@ export function SayuModal({
         }
         await updateDoc(recordRef, titleUpdate);
       }
-      onSave(editedContent, isSpecialDay ? 1 : 0);
+      const saved = await onSave(editedContent, isSpecialDay ? 1 : 0);
+      if (!saved) return;
+      rememberSavedEdit(editedContent);
       toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
-      onClose();
+      setIsEditing(false);
     } catch (error) {
       console.error('저장 실패:', error);
       toast.error('❌ 저장에 실패했습니다. 다시 시도해주세요.');
@@ -3248,7 +3290,7 @@ export function SayuModal({
           )}
 
           {/* 🔮 이 기록으로 예언하기 — 본문 있을 때만 노출 */}
-          {(editedContent?.trim() || content?.trim()) && (
+          {!isEditing && (editedContent?.trim() || content?.trim()) && (
             <div style={{ marginBottom: 12 }}>
               <button
                 onClick={() => {
@@ -3294,7 +3336,7 @@ export function SayuModal({
           {isEditing ? (
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
             <button
-              onClick={() => onClose()}
+              onClick={handleCancelEdit}
               disabled={isSaving}
               style={{
                 padding: '10px 20px',
