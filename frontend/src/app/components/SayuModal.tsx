@@ -17,6 +17,12 @@ import { GrowthTimelineDocumentModal, type GrowthTimelineDocumentItem } from './
 import { compressImage } from '../services/imageService';
 import { readOriginalImageMeta, type UploadedImageMeta } from '../services/photoMetadataService';
 import {
+  decodeConvertedJpeg,
+  enqueuePendingRecordPhotoCleanup,
+  persistRecordPhoto,
+  retryPendingRecordPhotoCleanup,
+} from '../services/recordPhotoUploadCore';
+import {
   getLocationCandidateFromGps,
   type ReverseGeocodeCandidate,
 } from '../services/reverseGeocodeService';
@@ -42,6 +48,7 @@ const TEMPERATURE_OPTIONS = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
 const MOOD_OPTIONS = ['기쁨', '평온', '무미', '울적', '번잡'];
 const TIMELINE_IMAGE_MAX_WIDTH = 1600;
 const TIMELINE_IMAGE_QUALITY = 0.82;
+const RECORD_IMAGE_MAX_BYTES = 20 * 1024 * 1024;
 type EnvTagType = 'weather' | 'temperature' | 'mood';
 
 type HouseholdSayuEntry = {
@@ -79,6 +86,32 @@ function parseHouseholdEntriesForSayu(data?: Record<string, string>): HouseholdS
   } catch {
     return [];
   }
+}
+
+function isHeicLikeFile(file: File) {
+  return file.type === 'image/heic' ||
+    file.type === 'image/heif' ||
+    /\.(heic|heif)$/i.test(file.name);
+}
+
+function isSupportedRecordImage(file: File) {
+  return file.type.startsWith('image/') || isHeicLikeFile(file);
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+async function convertHeicRecordImage(file: File): Promise<Blob> {
+  const convertHeic = httpsCallable(functions, 'convertHeic');
+  const result = await convertHeic({ imageBase64: arrayBufferToBase64(await file.arrayBuffer()) });
+  return await decodeConvertedJpeg(result.data);
 }
 
 function formatHouseholdDate(date: string): string {
@@ -619,6 +652,14 @@ export function SayuModal({
       activationConstraint: { delay: 200, tolerance: 5 },
     }),
   );
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    void retryPendingRecordPhotoCleanup(
+      currentUser.uid,
+      (path) => deleteObject(ref(storage, path)),
+    );
+  }, [currentUser?.uid]);
 
   useEffect(() => {
     weatherTagsRef.current = weatherTags;
@@ -1401,36 +1442,85 @@ export function SayuModal({
     if (!file || !currentUser || !firestoreId || !formatKey) return;
     if (localImages.length >= 3) {
       toast.error('사진은 최대 3장까지 추가할 수 있습니다.');
+      e.target.value = '';
       return;
     }
+    if (file.size > RECORD_IMAGE_MAX_BYTES) {
+      toast.error('사진은 20MB 이하만 추가할 수 있습니다.');
+      e.target.value = '';
+      return;
+    }
+    if (!isSupportedRecordImage(file)) {
+      toast.error('PNG, JPG, JPEG, WEBP, HEIC 사진만 추가할 수 있습니다.');
+      e.target.value = '';
+      return;
+    }
+
     setIsUploadingImage(true);
     try {
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 8);
-      const fileName = `${recordDate}_${formatKey}_${timestamp}_${randomId}.jpg`;
+      const uploadedFileName = `${recordDate}_${formatKey}_${timestamp}_${randomId}.jpg`;
       const originalMeta = await readOriginalImageMeta(file);
-      const imageRef = ref(storage, `users/${currentUser.uid}/format_photos/${fileName}`);
-      const compressed = await compressImage(file, TIMELINE_IMAGE_MAX_WIDTH, TIMELINE_IMAGE_QUALITY);
-      await uploadBytes(imageRef, compressed, { contentType: 'image/jpeg' });
-      const url = await getDownloadURL(imageRef);
-      const newImages = [...localImages, url];
-      setLocalImages(newImages);
+
+      let fileToProcess: File | Blob = file;
+      if (isHeicLikeFile(file)) {
+        try {
+          toast.info('HEIC 파일을 JPG로 변환 중...');
+          fileToProcess = await convertHeicRecordImage(file);
+        } catch (heicError) {
+          console.error('HEIC 변환 실패:', heicError);
+          toast.error('HEIC 변환에 실패했습니다. JPG로 저장한 뒤 다시 시도해주세요.');
+          return;
+        }
+      }
+
+      const imageFile = fileToProcess instanceof File
+        ? fileToProcess
+        : new File([fileToProcess], uploadedFileName, { type: 'image/jpeg' });
+      const imageRef = ref(storage, `users/${currentUser.uid}/format_photos/${uploadedFileName}`);
+      const imagePath = `users/${currentUser.uid}/format_photos/${uploadedFileName}`;
+      const compressed = await compressImage(imageFile, TIMELINE_IMAGE_MAX_WIDTH, TIMELINE_IMAGE_QUALITY);
       const recordRef = doc(db, 'users', currentUser.uid, 'records', firestoreId);
       const imageMetaKey = `${formatKey}_imageMeta`;
-      const recordSnap = await getDoc(recordRef);
-      const existingMeta = recordSnap.exists() ? parseUploadedImageMeta(recordSnap.data()[imageMetaKey]) : [];
-      const newImageMeta = [
-        ...existingMeta,
-        {
-          ...originalMeta,
-          url,
-          uploadedAt: new Date().toISOString(),
+      let committedImages = localImages;
+
+      await persistRecordPhoto({
+        upload: async () => {
+          try {
+            await uploadBytes(imageRef, compressed, { contentType: 'image/jpeg' });
+            const url = await getDownloadURL(imageRef);
+            return { url, cleanup: () => deleteObject(imageRef) };
+          } catch (error) {
+            try {
+              await deleteObject(imageRef);
+            } catch {
+              enqueuePendingRecordPhotoCleanup(imagePath);
+            }
+            throw error;
+          }
         },
-      ].filter((meta) => newImages.includes(meta.url));
-      await updateDoc(recordRef, {
-        [`${formatKey}_images`]: JSON.stringify(newImages),
-        [imageMetaKey]: JSON.stringify(newImageMeta),
+        persist: async (url) => {
+          const newImages = [...localImages, url];
+          const recordSnap = await getDoc(recordRef);
+          const existingMeta = recordSnap.exists() ? parseUploadedImageMeta(recordSnap.data()[imageMetaKey]) : [];
+          const newImageMeta = [
+            ...existingMeta,
+            { ...originalMeta, url, uploadedAt: new Date().toISOString() },
+          ].filter((meta) => newImages.includes(meta.url));
+          await updateDoc(recordRef, {
+            [`${formatKey}_images`]: JSON.stringify(newImages),
+            [imageMetaKey]: JSON.stringify(newImageMeta),
+          });
+          committedImages = newImages;
+        },
+        commit: () => setLocalImages(committedImages),
+        onCleanupFailure: () => enqueuePendingRecordPhotoCleanup(imagePath),
       });
+      await retryPendingRecordPhotoCleanup(
+        currentUser.uid,
+        (path) => deleteObject(ref(storage, path)),
+      );
       await refreshPublicSharedRecord();
       toast.success('사진이 추가되었습니다!');
     } catch (err) {
@@ -2822,7 +2912,7 @@ export function SayuModal({
               {/* 사진 추가 버튼 - IIFE 블록 완전 밖에 위치, 항상 표시 */}
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,.heic,.heif"
                 id="sayu-image-upload"
                 style={{
                   position: 'absolute',
@@ -2855,6 +2945,9 @@ export function SayuModal({
                   >
                     {isUploadingImage ? '⏳ 업로드 중...' : `📷 사진 추가 (${localImages.length}/3)`}
                   </button>
+                  <p style={{ margin: '6px 0 0', fontSize: 11, color: '#9ca3af' }}>
+                    PNG, JPG, JPEG, WEBP, HEIC · 압축한 JPG 확인용 이미지를 저장하며 원본 파일은 보관하지 않습니다
+                  </p>
                 </div>
               )}
 

@@ -47,6 +47,12 @@ import {
 } from './subscriptionBillingCore';
 import { enforceRateLimit } from './utils/rateLimit';
 import {
+  CONVERTED_JPEG_MAX_BYTES,
+  HEIC_UPLOAD_TRANSFORMATION,
+  convertHeicToJpegBase64,
+  sweepExpiredHeicTempObjects,
+} from './heicConversionCore';
+import {
   buildBibleWordMeaningCacheKey,
   buildBibleWordMeaningContext,
   buildBibleWordMeaningPrompt,
@@ -5860,14 +5866,40 @@ export const convertHeic = onCall(
 
     configureCloudinary();
 
+    const temporaryPublicId = `heic_temp/${safeCloudinarySegment(request.auth.uid, 'user')}/${crypto.randomUUID()}`;
     try {
-      const dataUri = `data:image/heic;base64,${imageBase64}`;
-      const result = await cloudinary.uploader.upload(dataUri, {
-        resource_type: 'image',
-        format: 'jpg',
-        folder: 'heic_temp',
+      return await convertHeicToJpegBase64(imageBase64, temporaryPublicId, {
+        upload: async (dataUri, publicId) => cloudinary.uploader.upload(dataUri, {
+          resource_type: 'image',
+          format: 'jpg',
+          public_id: publicId,
+          overwrite: false,
+          transformation: [HEIC_UPLOAD_TRANSFORMATION],
+        }),
+        download: async (url, maxBytes) => {
+          const response = await axios.get(url, {
+            responseType: 'arraybuffer',
+            timeout: 30_000,
+            maxContentLength: maxBytes,
+            maxBodyLength: maxBytes,
+          });
+          const contentType = String(response.headers['content-type'] || '').toLowerCase();
+          if (!contentType.startsWith('image/jpeg')) {
+            throw new Error('Cloudinary conversion did not return JPEG data');
+          }
+          const jpeg = Buffer.from(response.data);
+          if (jpeg.length > CONVERTED_JPEG_MAX_BYTES) {
+            throw new Error('Converted JPEG exceeds the response size limit');
+          }
+          return jpeg;
+        },
+        destroy: async (publicId) => {
+          const result = await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+          if (!['ok', 'not found'].includes(String(result?.result))) {
+            throw new Error(`Cloudinary temporary object cleanup failed: ${String(result?.result || 'unknown')}`);
+          }
+        },
       });
-      return { url: result.secure_url };
     } catch (error: any) {
       logger.error('Cloudinary HEIC 변환 오류:', error);
       throw new HttpsError('internal', `변환 실패: ${error.message}`);
@@ -5875,9 +5907,41 @@ export const convertHeic = onCall(
   }
 );
 
+export const cleanupHeicTemp = onSchedule(
+  {
+    schedule: 'every 30 minutes',
+    region: 'asia-northeast3',
+  },
+  async () => {
+    configureCloudinary();
+    const result = await sweepExpiredHeicTempObjects(Date.now(), {
+      list: async (nextCursor) => cloudinary.api.resources({
+        resource_type: 'image',
+        type: 'upload',
+        prefix: 'heic_temp/',
+        max_results: 500,
+        ...(nextCursor ? { next_cursor: nextCursor } : {}),
+      }),
+      destroy: async (publicId) => {
+        const destroyed = await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+        if (!['ok', 'not found'].includes(String(destroyed?.result))) {
+          throw new Error(`Cloudinary temporary object cleanup failed: ${String(destroyed?.result || 'unknown')}`);
+        }
+      },
+    });
+    if (result.failed.length > 0) {
+      logger.warn('HEIC 임시 객체 정리 일부 실패', { failedCount: result.failed.length });
+    }
+    logger.info('HEIC 임시 객체 정리 완료', {
+      deletedCount: result.deleted.length,
+      failedCount: result.failed.length,
+    });
+  },
+);
+
 // uploadRecordImage 는 정책 복구(Firebase Storage 메인)에 따라 제거됨.
 // 일반 업로드는 frontend가 Firebase Storage 직접 처리.
-// HEIC만 convertHeic(임시 변환) 거친 후 Firebase Storage에 영구 저장.
+// HEIC만 convertHeic에서 임시 변환·삭제한 뒤 JPEG 데이터를 받아 Firebase Storage에 영구 저장.
 
 export const deleteRecordImage = onCall(
   { region: 'asia-northeast3' },
