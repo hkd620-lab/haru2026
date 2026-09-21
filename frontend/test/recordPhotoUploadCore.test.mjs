@@ -132,6 +132,20 @@ globalThis.localStorage = {
 }
 
 {
+  localStorageValues.clear();
+  const deletingPath = 'users/user-a/format_photos/deleting.jpg';
+  const concurrentlyQueuedPath = 'users/user-a/format_photos/queued-during-retry.jpg';
+  enqueuePendingRecordPhotoCleanup(deletingPath);
+  await retryPendingRecordPhotoCleanup('user-a', async () => {
+    enqueuePendingRecordPhotoCleanup(concurrentlyQueuedPath);
+  });
+  const retryAfterConcurrentEnqueue = await retryPendingRecordPhotoCleanup('user-a', async (path) => {
+    assert.equal(path, concurrentlyQueuedPath, 'a path queued during retry must not be overwritten');
+  });
+  assert.deepEqual(retryAfterConcurrentEnqueue.deletedPaths, [concurrentlyQueuedPath]);
+}
+
+{
   let committed = false;
   await assert.rejects(() => persistRecordPhoto({
     upload: async () => { throw new Error('Firebase upload failed'); },

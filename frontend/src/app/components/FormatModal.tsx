@@ -459,6 +459,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadedImageMeta, setUploadedImageMeta] = useState<UploadedImageMeta[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isCleaningSessionUploads, setIsCleaningSessionUploads] = useState(false);
+  const isCleaningSessionUploadsRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sessionUploadedImageUrlsRef = useRef<string[]>([]);
   const committedCloseRef = useRef(false);
@@ -1182,6 +1184,10 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   };
 
   const handleSubmit = async () => {
+    if (isCleaningSessionUploadsRef.current) {
+      toast.warning('사진 정리가 끝난 뒤 저장해주세요.');
+      return;
+    }
     if (recordStep === 'select') return;
     setIsSaving(true);
     try {
@@ -1794,6 +1800,11 @@ ${contentValues}`,
   };
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (isCleaningSessionUploadsRef.current) {
+      event.target.value = '';
+      toast.warning('사진 정리가 끝난 뒤 다시 추가해주세요.');
+      return;
+    }
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
@@ -1994,12 +2005,19 @@ ${contentValues}`,
   };
 
   const handleCloseRequest = async () => {
-    if (isUploading || isSaving || isSavingLedgerXlsx) {
+    if (isUploading || isSaving || isSavingLedgerXlsx || isCleaningSessionUploadsRef.current) {
       toast.warning('사진 업로드 또는 저장이 끝난 뒤 닫아주세요.');
       return;
     }
-    if (!(await cleanupUncommittedSessionUploads())) return;
-    onClose();
+    isCleaningSessionUploadsRef.current = true;
+    setIsCleaningSessionUploads(true);
+    try {
+      if (!(await cleanupUncommittedSessionUploads())) return;
+      onClose();
+    } finally {
+      isCleaningSessionUploadsRef.current = false;
+      setIsCleaningSessionUploads(false);
+    }
   };
 
   const handleDeleteImage = async (imageUrl: string, index: number) => {
@@ -2064,6 +2082,10 @@ ${contentValues}`,
   };
 
   const handleSaveLedgerEntries = async () => {
+    if (isCleaningSessionUploadsRef.current) {
+      toast.warning('사진 정리가 끝난 뒤 저장해주세요.');
+      return;
+    }
     if (ledgerEntries.length === 0) {
       toast.warning('거래 내역이 없습니다. 거래를 최소 1건 입력해 주세요.');
       return;
@@ -2270,6 +2292,10 @@ ${contentValues}`,
   };
 
   const handleSaveLedgerXlsxRows = async () => {
+    if (isCleaningSessionUploadsRef.current) {
+      toast.warning('사진 정리가 끝난 뒤 저장해주세요.');
+      return;
+    }
     const selectedRows = ledgerXlsxPreviewRows.filter((row) => row.selected && row.canImport);
     if (selectedRows.length === 0) {
       toast.warning('보조장부에 반영할 거래를 선택해 주세요.');
@@ -2649,6 +2675,10 @@ ${contentValues}`,
   };
 
   const handleSaveOriginalAsSayu = async () => {
+    if (isCleaningSessionUploadsRef.current) {
+      toast.warning('사진 정리가 끝난 뒤 저장해주세요.');
+      return;
+    }
     if (isLedgerFormat) {
       return handleSaveLedgerEntries();
     }
@@ -2731,6 +2761,10 @@ ${contentValues}`,
   };
 
   const handleSaveSayu = async () => {
+    if (isCleaningSessionUploadsRef.current) {
+      toast.warning('사진 정리가 끝난 뒤 저장해주세요.');
+      return;
+    }
     const updateData: Record<string, any> = {
       ...formData,
       ...getGrowthSaveFields(),
@@ -5883,7 +5917,7 @@ ${contentValues}`,
                 {format === '일기' ? (
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading || activeUploadedImages.length >= 3}
+                    disabled={isUploading || isCleaningSessionUploads || activeUploadedImages.length >= 3}
                     style={{
                       width: '100%',
                       padding: '17px',
@@ -5905,7 +5939,7 @@ ${contentValues}`,
                 ) : (
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading || activeUploadedImages.length >= (isLedgerFormat ? 10 : 3)}
+                    disabled={isUploading || isCleaningSessionUploads || activeUploadedImages.length >= (isLedgerFormat ? 10 : 3)}
                     style={{
                       width: '100%',
                       padding: '10px 16px',
@@ -6157,7 +6191,7 @@ ${contentValues}`,
                 </button>
                 <button
                   onClick={handleSaveOriginalAsSayu}
-                  disabled={isSaving || isPolishing}
+                  disabled={isSaving || isPolishing || isCleaningSessionUploads}
                   style={{
                     flex: 1, height: '56px',
                     fontSize: '14px', fontWeight: 500,
@@ -6268,8 +6302,8 @@ ${contentValues}`,
               <button
                 onClick={ledgerInputMode === 'period' ? handleSaveLedgerXlsxRows : handleSaveOriginalAsSayu}
                 disabled={ledgerInputMode === 'period'
-                  ? isSavingLedgerXlsx || ledgerPeriodSelectedRows.length === 0
-                  : isSaving}
+                  ? isSavingLedgerXlsx || isCleaningSessionUploads || ledgerPeriodSelectedRows.length === 0
+                  : isSaving || isCleaningSessionUploads}
                 style={{ width: '100%', padding: '14px', fontSize: 15, border: 'none', borderRadius: 8, backgroundColor: '#1A3C6E', color: '#fff', cursor: isSaving || isSavingLedgerXlsx ? 'not-allowed' : 'pointer', opacity: isSaving || isSavingLedgerXlsx || (ledgerInputMode === 'period' && ledgerPeriodSelectedRows.length === 0) ? 0.7 : 1, fontWeight: 700 }}
               >
                 {ledgerInputMode === 'period'
@@ -6329,7 +6363,7 @@ ${contentValues}`,
                 </button>
                 <button
                   onClick={handleSaveOriginalAsSayu}
-                  disabled={isSaving || isPolishing}
+                  disabled={isSaving || isPolishing || isCleaningSessionUploads}
                   style={{
                     padding: '12px 16px',
                     fontSize: 14,

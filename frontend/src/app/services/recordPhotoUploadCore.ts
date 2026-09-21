@@ -41,7 +41,6 @@ export async function retryPendingRecordPhotoCleanup(
 ): Promise<{ deletedPaths: string[]; failedPaths: string[] }> {
   const ownerPrefix = `users/${uid}/format_photos/`;
   const ownedPaths = readPendingRecordPhotoCleanupPaths().filter((path) => path.startsWith(ownerPrefix));
-  const unownedPaths = readPendingRecordPhotoCleanupPaths().filter((path) => !path.startsWith(ownerPrefix));
   const deletedPaths: string[] = [];
   const failedPaths: string[] = [];
   for (const path of ownedPaths) {
@@ -53,7 +52,9 @@ export async function retryPendingRecordPhotoCleanup(
       else failedPaths.push(path);
     }
   }
-  writePendingRecordPhotoCleanupPaths([...unownedPaths, ...failedPaths]);
+  const deleted = new Set(deletedPaths);
+  const latestPaths = readPendingRecordPhotoCleanupPaths();
+  writePendingRecordPhotoCleanupPaths(latestPaths.filter((path) => !deleted.has(path)));
   return { deletedPaths, failedPaths };
 }
 
