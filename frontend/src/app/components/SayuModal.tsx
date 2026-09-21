@@ -575,6 +575,10 @@ export function formatDateToKorean(dateStr: string): string {
   return `${year}년 ${month}월 ${day}일 ${dayOfWeek}요일`;
 }
 
+function hideOnError(e: React.SyntheticEvent<HTMLImageElement>) {
+  e.currentTarget.style.display = 'none';
+}
+
 export function SayuModal({
   isOpen,
   onClose,
@@ -2778,9 +2782,6 @@ export function SayuModal({
               {!isGrowthTimeline && (() => {
                 const validImages = (localImages || []).filter(img => img && img !== '');
                 if (validImages.length === 0) return null;
-                const hideOnError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                };
                 return (
                   <div style={{ marginBottom: '12px' }}>
                     {/* 1장 */}

@@ -48,6 +48,12 @@ assert(
     && readingSection.includes('alt="하루lab 공식 호박 로고"'),
   'the frame must use the accessible official pumpkin logo',
 );
+assert(
+  component.indexOf('function hideOnError(') >= 0
+    && component.indexOf('function hideOnError(') < component.indexOf('export function SayuModal(')
+    && readingSection.includes('onError={hideOnError}'),
+  'reading-mode photos must reference an image error handler available outside the edit-only branch',
+);
 assert.strictEqual(
   crypto.createHash('sha256').update(fs.readFileSync(logoPath)).digest('hex'),
   '5394b762c3d9475ee07b6f8b2f11a5872b17a73702e4b1ce19c553adb5545bc8',
