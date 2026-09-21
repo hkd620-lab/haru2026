@@ -15,7 +15,9 @@ import { readOriginalImageMeta, type UploadedImageMeta } from '../services/photo
 import {
   cleanupTrackedRecordPhotos,
   decodeConvertedJpeg,
+  enqueuePendingRecordPhotoCleanup,
   excludeCommittedRecordPhotoUrls,
+  retryPendingRecordPhotoCleanup,
 } from '../services/recordPhotoUploadCore';
 import {
   makeReadingBookId,
@@ -373,6 +375,7 @@ const LEDGER_DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // 24시간
 interface LedgerDraftPayload {
   rows: LedgerPeriodPreviewRow[];
   year: number;
+  pendingImageUrls?: string[];
   savedAt: number;
 }
 
@@ -392,13 +395,13 @@ function loadLedgerXlsxDraft(): LedgerDraftPayload | null {
   }
 }
 
-function saveLedgerXlsxDraft(rows: LedgerPeriodPreviewRow[], year: number) {
+function saveLedgerXlsxDraft(rows: LedgerPeriodPreviewRow[], year: number, pendingImageUrls: string[] = []) {
   try {
     if (rows.length === 0) {
       sessionStorage.removeItem(LEDGER_DRAFT_STORAGE_KEY);
       return;
     }
-    const payload: LedgerDraftPayload = { rows, year, savedAt: Date.now() };
+    const payload: LedgerDraftPayload = { rows, year, pendingImageUrls, savedAt: Date.now() };
     sessionStorage.setItem(LEDGER_DRAFT_STORAGE_KEY, JSON.stringify(payload));
   } catch {
     // sessionStorage 용량 초과 등은 무시한다 — draft는 편의 기능이므로 저장 흐름을 막지 않는다.
@@ -581,6 +584,14 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [blockedBookMessage, setBlockedBookMessage] = useState<string>('');
   const isDeveloper = !!user?.uid && DEVELOPER_UIDS.includes(user.uid);
 
+  useEffect(() => {
+    if (!user?.uid) return;
+    const storage = getStorage();
+    void retryPendingRecordPhotoCleanup(user.uid, async (path) => {
+      await deleteObject(ref(storage, path));
+    });
+  }, [user?.uid]);
+
   const readingReflectionQuestions = [
     '이 책은 나를 어떻게 변화시켰는가?',
     '나는 무엇을 반성하게 되었는가?',
@@ -678,6 +689,10 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       if (isLedgerFormat) {
         const draft = loadLedgerXlsxDraft();
         if (draft) {
+          sessionUploadedImageUrlsRef.current = (draft.pendingImageUrls || []).filter((url) => {
+            const path = getStoragePathFromDownloadUrl(url);
+            return Boolean(path?.startsWith(`users/${user?.uid}/format_photos/`));
+          });
           const doneCount = draft.rows.filter((row) => row.entry.category).length;
           const resume = window.confirm(
             `이전에 작업하던 카드 명세서가 있습니다.\n이어서 작업하시겠습니까? (${draft.rows.length}건, 분류 지정 ${doneCount}건 완료)`,
@@ -926,7 +941,11 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     if (!isOpen || format !== 'HARU보조장부') return;
     if (ledgerDraftSaveTimerRef.current) clearTimeout(ledgerDraftSaveTimerRef.current);
     ledgerDraftSaveTimerRef.current = setTimeout(() => {
-      saveLedgerXlsxDraft(ledgerXlsxPreviewRows, ledgerXlsxYear);
+      saveLedgerXlsxDraft(
+        ledgerXlsxPreviewRows,
+        ledgerXlsxYear,
+        sessionUploadedImageUrlsRef.current,
+      );
     }, 500);
     return () => {
       if (ledgerDraftSaveTimerRef.current) clearTimeout(ledgerDraftSaveTimerRef.current);
@@ -1914,7 +1933,7 @@ ${contentValues}`,
             try {
               await deleteObject(pendingStorageRef);
             } catch {
-              // Object creation may not have completed.
+              enqueuePendingRecordPhotoCleanup(pendingStorageRef.fullPath);
             }
           }
           if (fileError?.message === 'FILE_READER_ERROR') {
@@ -1989,7 +2008,7 @@ ${contentValues}`,
         },
       }));
       setLedgerXlsxPreviewRows(nextRows);
-      saveLedgerXlsxDraft(nextRows, ledgerXlsxYear);
+      saveLedgerXlsxDraft(nextRows, ledgerXlsxYear, sessionUploadedImageUrlsRef.current);
     }
 
     if (failedUrls.length > 0) {

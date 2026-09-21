@@ -19,7 +19,10 @@ assert.match(formatModal, /pendingStorageRef && !uploadTracked/, 'FormatModal mu
 assert.match(formatModal, /cleanupUncommittedSessionUploads/, 'FormatModal must clean up unsaved uploaded photos on cancel');
 assert.match(formatModal, /excludeCommittedRecordPhotoUrls/, 'FormatModal must preserve photos committed by period ledger saves');
 assert.match(formatModal, /isSavingLedgerXlsx/, 'FormatModal must block close while a period ledger batch is saving');
-assert.match(formatModal, /saveLedgerXlsxDraft\(nextRows, ledgerXlsxYear\)/, 'FormatModal must remove canceled photo URLs from the resumable draft');
+assert.match(formatModal, /saveLedgerXlsxDraft\(nextRows, ledgerXlsxYear, sessionUploadedImageUrlsRef\.current\)/, 'FormatModal must remove canceled photo URLs from the resumable draft');
+assert.match(formatModal, /pendingImageUrls/, 'FormatModal must persist pending draft photo ownership across reloads');
+assert.match(formatModal, /enqueuePendingRecordPhotoCleanup\(pendingStorageRef\.fullPath\)/, 'FormatModal must retain pre-tracking upload rollback failures');
+assert.match(formatModal, /retryPendingRecordPhotoCleanup/, 'FormatModal must retry persisted cleanup targets');
 assert.match(formatModal, /sessionUploadedImageUrlsRef\.current = failedUrls/, 'FormatModal must retain failed cleanup targets for retry');
 assert.match(formatModal, /원본 파일은 보관하지 않습니다/, 'FormatModal must not imply original photo preservation');
 
